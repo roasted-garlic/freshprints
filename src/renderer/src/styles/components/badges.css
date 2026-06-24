@@ -1,0 +1,72 @@
+.badge {
+  align-items: center;
+  border: 1px solid transparent;
+  border-radius: var(--radius-full);
+  display: inline-flex;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  gap: var(--space-1);
+  line-height: 1;
+  padding: 0.125rem var(--space-2);
+  text-transform: uppercase;
+  white-space: nowrap;
+  width: fit-content;
+}
+
+.badge-default {
+  background: var(--color-bg-tertiary);
+  border-color: var(--color-border);
+  color: var(--color-text-secondary);
+}
+
+.badge-success {
+  background: var(--color-success-soft);
+  border-color: var(--color-success);
+  color: var(--color-success-text);
+}
+
+.badge-warning {
+  background: var(--color-warning-soft);
+  border-color: var(--color-warning);
+  color: var(--color-warning-text);
+}
+
+.badge-danger {
+  background: var(--color-danger-soft);
+  border-color: var(--color-danger);
+  color: var(--color-danger-text);
+}
+
+.badge-info {
+  background: var(--color-accent-primary-soft);
+  border-color: var(--color-accent-primary);
+  color: var(--color-accent-primary);
+}
+
+/* Legacy alias classes used by connection diagnostics */
+.connection-badge-connected,
+.connection-badge-protected {
+  background: var(--color-success-soft);
+  border: 1px solid var(--color-success);
+  border-radius: var(--radius-full);
+  color: var(--color-success-text);
+  display: inline-flex;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  justify-self: start;
+  padding: 0.125rem var(--space-2);
+  text-transform: uppercase;
+}
+
+.connection-badge-failed {
+  background: var(--color-danger-soft);
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius-full);
+  color: var(--color-danger-text);
+  display: inline-flex;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  justify-self: start;
+  padding: 0.125rem var(--space-2);
+  text-transform: uppercase;
+}

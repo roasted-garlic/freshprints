@@ -1,0 +1,74 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function callerUser() {
+      return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isStaff() {
+      return isSignedIn()
+        && callerUser().isActive == true
+        && callerUser().role in ["owner", "admin", "helper"];
+    }
+
+    function isCanonicalOriginalFileName(fileName) {
+      return fileName.matches('[A-Za-z0-9_-]+\\.png');
+    }
+
+    function isCanonicalDerivativeFileName(fileName) {
+      return fileName.matches('[A-Za-z0-9_-]+\\.webp');
+    }
+
+    function isValidOriginalUpload() {
+      return request.resource.size < 50 * 1024 * 1024
+        && request.resource.contentType == "image/png";
+    }
+
+    function isValidDerivativeUpload() {
+      return request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType == "image/webp";
+    }
+
+    match /originals/{fileName} {
+      allow read: if isStaff() && isCanonicalOriginalFileName(fileName);
+      allow create: if isStaff()
+        && isCanonicalOriginalFileName(fileName)
+        && isValidOriginalUpload();
+      allow update: if isStaff()
+        && isCanonicalOriginalFileName(fileName)
+        && isValidOriginalUpload();
+      allow delete: if isStaff() && isCanonicalOriginalFileName(fileName);
+    }
+
+    match /thumbnails/{fileName} {
+      allow read: if isStaff() && isCanonicalDerivativeFileName(fileName);
+      allow create: if isStaff()
+        && isCanonicalDerivativeFileName(fileName)
+        && isValidDerivativeUpload();
+      allow update: if isStaff()
+        && isCanonicalDerivativeFileName(fileName)
+        && isValidDerivativeUpload();
+      allow delete: if isStaff() && isCanonicalDerivativeFileName(fileName);
+    }
+
+    match /previews/{fileName} {
+      allow read: if isStaff() && isCanonicalDerivativeFileName(fileName);
+      allow create: if isStaff()
+        && isCanonicalDerivativeFileName(fileName)
+        && isValidDerivativeUpload();
+      allow update: if isStaff()
+        && isCanonicalDerivativeFileName(fileName)
+        && isValidDerivativeUpload();
+      allow delete: if isStaff() && isCanonicalDerivativeFileName(fileName);
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

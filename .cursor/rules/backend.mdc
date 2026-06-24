@@ -1,0 +1,70 @@
+---
+description: Backend access, auth, secrets, and external service discipline
+alwaysApply: true
+---
+
+# Backend Rules
+
+Read `docs/architecture/BACKEND.md` before backend, API, auth, storage, or integration work. Backend may be self-hosted, serverless, BaaS (Firebase, Supabase, etc.), or third-party APIs—rules apply to all.
+
+## Access Pattern
+
+1. **Backend access must go through services**
+   - UI and components do not call databases, SDKs, or HTTP endpoints directly.
+   - Centralize API clients, repositories, and SDK wrappers in documented locations.
+
+2. **Auth and authorization are separate**
+   - Authentication: who is the user?
+   - Authorization: what may they do?
+   - Both must be enforced server-side or in trusted backend rules—not UI-only.
+
+## Secrets and Environment
+
+- **Secrets are never committed** — no API keys, tokens, passwords, or private certs in the repo.
+- **Environment variables must be documented** in `BACKEND.md` and/or `DEPLOYMENT.md` with name, purpose, required/optional, and which environments need them.
+- Use `.env.example` or documented templates without real values.
+- Human approval required for production secret changes (see `human-checkpoints.mdc`).
+
+## External APIs and Integrations
+
+Every external integration requires:
+
+- **Error handling** — typed errors, user-safe messages, logging
+- **Retry strategy** — idempotent retries where appropriate; document max attempts and backoff
+- **Rate limit awareness** — respect provider limits; queue or throttle when needed
+- **Timeout configuration** — avoid hung requests
+- **Documentation** in `BACKEND.md` or a project-specific doc (`API.md`, etc.)
+
+## What Must Be Documented
+
+In `BACKEND.md` or linked project-specific backend docs:
+
+| Area | Document |
+|------|----------|
+| Provider | Hosting, BaaS, or self-hosted stack |
+| Auth | Provider, flows, session/token model |
+| Database | Type, access pattern, rules/security |
+| Storage | Buckets, paths, access rules |
+| APIs | Internal and external endpoints |
+| Jobs / queues | Background work, schedules |
+| Webhooks | Inbound/outbound, verification |
+| Functions | Serverless or edge functions |
+| Local dev | How to run backend locally or against emulators |
+
+Optional project-specific supplements: `FIREBASE.md`, `SUPABASE.md`, `DATABASE.md`, `API.md`, `INFRASTRUCTURE.md`.
+
+## Safe Change Workflows
+
+Use skill `safe-backend-change` when changing:
+- Auth providers or rules
+- Database security rules
+- Storage rules
+- Webhooks, jobs, queues
+- Third-party service integration
+- Production backend configuration
+
+Production backend changes require security review and human approval.
+
+## Production Actions
+
+Agents must **not** perform production console actions, deploy backend infra, or rotate live secrets without explicit human approval and documented plan.

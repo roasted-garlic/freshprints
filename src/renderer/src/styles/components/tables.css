@@ -1,0 +1,107 @@
+.data-table {
+  border: 1px solid var(--color-border);
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+  width: 100%;
+}
+
+.data-table thead {
+  background: var(--color-bg-tertiary);
+}
+
+.data-table th {
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.data-table td {
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text-primary);
+  padding: var(--space-2) var(--space-3);
+}
+
+.data-table tbody tr:hover {
+  background: var(--color-accent-primary-soft);
+}
+
+.data-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.data-table-numeric {
+  text-align: right;
+}
+
+.data-cell-highlight {
+  border: 1px solid var(--color-accent-primary);
+  border-radius: var(--radius-xs);
+  display: inline-block;
+  padding: 0.125rem var(--space-2);
+}
+
+.connection-check-list {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.connection-check {
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-4);
+}
+
+.connection-check strong {
+  color: var(--color-text-primary);
+  font-size: var(--font-size-md);
+}
+
+.connection-check p {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  margin: 0;
+}
+
+.connection-summary {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  margin: 0;
+  padding: var(--space-3);
+}
+
+.connection-summary-connected {
+  background: var(--color-success-soft);
+  border-color: var(--color-success);
+  color: var(--color-success-text);
+}
+
+.connection-summary-detail {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+  margin: calc(var(--space-2) * -1) 0 0;
+}
+
+.connection-summary-failed {
+  background: var(--color-danger-soft);
+  border-color: var(--color-danger);
+  color: var(--color-danger-text);
+}
+
+.connection-status-row {
+  align-items: center;
+  color: var(--color-text-secondary);
+  display: flex;
+  font-size: var(--font-size-sm);
+  gap: var(--space-3);
+}

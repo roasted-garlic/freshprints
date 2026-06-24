@@ -1,0 +1,209 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function callerUser() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function callerIsActive() {
+      return isSignedIn() && callerUser().isActive == true;
+    }
+
+    function callerRole() {
+      return callerUser().role;
+    }
+
+    function isOwner() {
+      return callerIsActive() && callerRole() == "owner";
+    }
+
+    function isAdmin() {
+      return callerIsActive() && callerRole() == "admin";
+    }
+
+    function isStaff() {
+      return callerIsActive() && callerRole() in ["owner", "admin", "helper"];
+    }
+
+    function isOwnerOrAdmin() {
+      return callerIsActive() && callerRole() in ["owner", "admin"];
+    }
+
+    function isSelf(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isReadableTeamProfile(role) {
+      return role in ["owner", "admin", "helper"];
+    }
+
+    function isValidDesignStatus(status) {
+      // Catalog statuses plus deprecated queued/printed for legacy document reads.
+      return status in ["imported", "processing", "ready", "rejected", "archived", "queued", "printed"];
+    }
+
+    function isOptionalString(data, field) {
+      return !(field in data) || data[field] is string;
+    }
+
+    function isOptionalNumber(data, field) {
+      return !(field in data) || data[field] is number;
+    }
+
+    function isOptionalBool(data, field) {
+      return !(field in data) || data[field] is bool;
+    }
+
+    function isOptionalTimestamp(data, field) {
+      return !(field in data) || data[field] is timestamp;
+    }
+
+    function isValidAiReviewStatus(status) {
+      return status in ["pending", "approved", "rejected", "needs_review"];
+    }
+
+    function designRequiredFieldsValid(data) {
+      return data.keys().hasAll([
+          "id",
+          "title",
+          "tags",
+          "status",
+          "originalPath",
+          "thumbnailPath",
+          "uploadedBy",
+          "createdBy",
+          "updatedBy",
+          "queueCount",
+          "aiProcessed",
+          "aiReviewed",
+          "createdAt",
+          "updatedAt"
+        ])
+        && data.id is string
+        && data.title is string
+        && data.title.size() > 0
+        && data.title.size() <= 200
+        && data.tags is list
+        && data.status is string
+        && isValidDesignStatus(data.status)
+        && data.originalPath is string
+        && data.thumbnailPath is string
+        && data.uploadedBy is string
+        && data.createdBy is string
+        && data.updatedBy is string
+        && data.queueCount is int
+        && data.queueCount >= 0
+        && data.aiProcessed is bool
+        && data.aiReviewed is bool
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp
+        && isOptionalString(data, "description")
+        && isOptionalString(data, "categoryId")
+        && isOptionalString(data, "previewPath")
+        && isOptionalString(data, "requestedByCustomerId")
+        && isOptionalNumber(data, "width")
+        && isOptionalNumber(data, "height")
+        && isOptionalNumber(data, "dpi")
+        && isOptionalNumber(data, "printWidthInches")
+        && isOptionalNumber(data, "printHeightInches")
+        && isOptionalBool(data, "printAspectRatioLocked")
+        && isOptionalNumber(data, "metadataDpiX")
+        && isOptionalNumber(data, "metadataDpiY")
+        && isOptionalNumber(data, "effectiveDpi")
+        && isOptionalString(data, "printSizeSource")
+        && isOptionalString(data, "aiReviewStatus")
+        && (!("aiReviewStatus" in data) || isValidAiReviewStatus(data.aiReviewStatus))
+        && isOptionalTimestamp(data, "aiReviewedAt")
+        && isOptionalString(data, "aiReviewedBy")
+        && isOptionalString(data, "aiReviewVersion")
+        && isOptionalString(data, "aiReviewNotes")
+        && isOptionalNumber(data, "aiReviewConfidence")
+        && isOptionalString(data, "previousStatus")
+        && isOptionalTimestamp(data, "archivedAt")
+        && isOptionalString(data, "archivedBy");
+    }
+
+    function categoryRequiredFieldsValid(data) {
+      return data.keys().hasAll([
+          "id",
+          "name",
+          "sortOrder",
+          "isActive",
+          "createdBy",
+          "updatedBy",
+          "createdAt",
+          "updatedAt"
+        ])
+        && data.id is string
+        && data.name is string
+        && data.name.size() > 0
+        && data.name.size() <= 80
+        && data.sortOrder is int
+        && data.isActive is bool
+        && data.createdBy is string
+        && data.updatedBy is string
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp
+        && isOptionalString(data, "description");
+    }
+
+    match /users/{userId} {
+      allow read: if isSelf(userId)
+        || (isOwner() && isReadableTeamProfile(resource.data.role))
+        || (isAdmin() && resource.data.role in ["admin", "helper"]);
+
+      allow create, update, delete: if false;
+    }
+
+    match /designs/{designId} {
+      allow read: if isStaff();
+
+      allow create: if isStaff()
+        && designRequiredFieldsValid(request.resource.data)
+        && request.resource.data.id == designId
+        && request.resource.data.uploadedBy == request.auth.uid
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.updatedBy == request.auth.uid;
+
+      allow update: if isStaff()
+        && designRequiredFieldsValid(request.resource.data)
+        && request.resource.data.id == designId
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.uploadedBy == resource.data.uploadedBy
+        && (!("createdBy" in resource.data) || request.resource.data.createdBy == resource.data.createdBy)
+        && (!("createdAt" in resource.data) || request.resource.data.createdAt == resource.data.createdAt)
+        && request.resource.data.updatedBy == request.auth.uid;
+
+      allow delete: if false;
+    }
+
+    match /categories/{categoryId} {
+      allow read: if isStaff();
+
+      allow create: if isOwnerOrAdmin()
+        && categoryRequiredFieldsValid(request.resource.data)
+        && request.resource.data.id == categoryId
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.updatedBy == request.auth.uid;
+
+      allow update: if isOwnerOrAdmin()
+        && categoryRequiredFieldsValid(request.resource.data)
+        && request.resource.data.id == categoryId
+        && request.resource.data.id == resource.data.id
+        && (!("createdBy" in resource.data) || request.resource.data.createdBy == resource.data.createdBy)
+        && (!("createdAt" in resource.data) || request.resource.data.createdAt == resource.data.createdAt)
+        && request.resource.data.updatedBy == request.auth.uid;
+
+      allow delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

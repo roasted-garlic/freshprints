@@ -1,0 +1,52 @@
+---
+description: Code quality priorities and change discipline
+alwaysApply: true
+---
+
+# Code Quality Rules
+
+Read `docs/standards/CODING_STANDARDS.md` for project conventions. These priorities apply universally.
+
+## Priorities
+
+1. **Readability over cleverness**
+2. **Consistency over personal preference**
+3. **Simplicity over complexity**
+4. **Maintainability over speed**
+
+Match existing patterns in the codebase unless the plan explicitly improves them.
+
+## Size and Scope
+
+- **No large files without justification** — split when a file mixes unrelated concerns.
+- **No large functions without justification** — extract when logic branches multiply or names no longer match behavior.
+- **No broad refactors during narrow tasks** — stay within approved plan scope.
+- **No unrelated formatting churn** — avoid drive-by reformat of untouched files.
+- **No dead code** — remove unused exports, variables, and unreachable paths.
+- **No commented-out code** unless justified with a comment explaining why it remains temporarily.
+
+## Change Hygiene
+
+- One logical change per commit when humans commit; one coherent diff per implementation session when possible.
+- Update docs when behavior changes.
+- Add or update tests when behavior changes and tests exist for that layer.
+- Prefer incremental commits over giant unreviewable diffs.
+
+## Errors and Logging
+
+- Handle errors at appropriate boundaries; do not swallow exceptions silently.
+- Log with context server-side; show user-safe messages in UI.
+- Follow logging standards in `CODING_STANDARDS.md`.
+
+## Dependencies
+
+- Do not add dependencies without plan/review acknowledgment.
+- Prefer standard library or existing project utilities over new packages for trivial tasks.
+
+## Review Triggers
+
+Request review when:
+- Touching shared utilities used across features
+- Changing public API surfaces
+- Introducing new architectural patterns
+- Performance-sensitive paths change

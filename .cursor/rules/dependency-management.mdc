@@ -1,0 +1,57 @@
+---
+description: Dependency addition, review, and documentation standards
+alwaysApply: true
+---
+
+# Dependency Management Rules
+
+Apply when adding, upgrading, or removing project dependencies.
+
+## Before Adding a Dependency
+
+1. **Justify in plan** — why existing code or stdlib is insufficient
+2. **Prefer existing project dependencies** — extend what is already in use
+3. **Check package manager** — read manifest (`package.json`, `Cargo.toml`, `pyproject.toml`, `go.mod`, etc.) before suggesting install commands
+4. **Do not add dependencies without review acknowledgment** in plan/review phase
+
+## Evaluation Criteria
+
+Consider before recommending a new package:
+
+| Factor | Question |
+|--------|----------|
+| Maintenance | Actively maintained? Last release? Issue response? |
+| Security | Known CVEs? Audit trail? |
+| Bundle size | Impact on client bundle or deploy artifact (if relevant) |
+| Licensing | Compatible with project license? |
+| Ecosystem maturity | Widely used for this stack? |
+| Overlap | Duplicates an existing dependency? |
+
+## Documentation
+
+- Record significant dependency choices in `docs/project/DECISIONS.md` (ADR format)
+- Note new env or build requirements in `BACKEND.md` or `DEPLOYMENT.md` if applicable
+- During intake, dependency concerns go in `TECH_DEBT.md` and `PROJECT_HEALTH.md`
+
+## Production Dependency Changes
+
+- Require **review phase** approval
+- Security-sensitive upgrades (auth, crypto, parsing) → Security Agent perspective
+- Major version bumps → note breaking changes in plan and test strategy
+- Production deploy of dependency-only changes still follows `safe-deployment` if releasing
+
+## Commands
+
+- Use the project's actual package manager (npm, pnpm, yarn, pip, cargo, etc.)
+- Never assume npm if the repo uses pnpm or yarn — verify lockfile and manifest
+- Do not run install commands during intake unless explicitly approved for inspection
+
+## Intake
+
+During Existing Project Intake, flag:
+- Outdated critical dependencies
+- Known vulnerability patterns (document; do not auto-fix)
+- Unused or duplicate dependencies
+- Missing lockfile or inconsistent lock state
+
+Record in `TECH_DEBT.md` with category `dependencies`.

@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "_comment": "Conservative starter hooks for the AI development workflow. Adapt paths and events to your Cursor version. See Cursor Settings > Hooks and the create-hook skill docs.",
+  "hooks": {
+    "sessionStart": [
+      {
+        "_comment": "Inject workflow context at session start so the agent reads state before acting.",
+        "type": "prompt",
+        "prompt": "You are working in a repo with AppForge managed AI workflow. Recognize command aliases (see .cursor/workflow/command-aliases.md): e.g. 'Intake' or 'Existing Project' starts intake; 'Bootstrap' starts new project; 'Continue Workflow' continues managed phase. Before making changes: 1) Read AGENTS.md. 2) Read docs/AI_RULES.md. 3) Read .cursor/workflow/state.md. 4) If Human Checkpoint Required is yes, STOP and ask the user only for that checkpoint—do not implement, deploy, or migrate. 5) If Blocked is yes, STOP and explain the blocker. 6) If DONE is yes, do not start new implementation unless the user starts a new workflow or uses a workflow alias. 7) Follow Allowed Actions and Forbidden Actions in state. 8) Follow Plan → Review → Implement → Test → Signoff gates. Never force production deploys, database migrations, or destructive actions.",
+        "timeout": 15
+      }
+    ],
+    "beforeShellExecution": [
+      {
+        "_comment": "Flag potentially destructive or production-related shell commands for user review. Adjust regex matchers for your stack.",
+        "type": "prompt",
+        "prompt": "Review this shell command for the managed workflow repo. DENY or ASK if the command appears to: deploy to production; run database migrations against production; delete or truncate data; modify production secrets or env; force-push git; or run irreversible infra changes. ALLOW read-only inspection (ls, cat, git status, git diff, git log, test/lint/typecheck/build in local dev). Command input: $ARGUMENTS",
+        "timeout": 20,
+        "failClosed": false
+      }
+    ],
+    "subagentStop": [
+      {
+        "_comment": "Optional: chain workflow continuation when subagents complete. Set loop_limit low to avoid runaway loops. Remove or disable if not using Task/subagents.",
+        "type": "prompt",
+        "prompt": "A subagent just finished. Read .cursor/workflow/state.md. If Human Checkpoint Required is yes, Blocked is yes, or DONE is yes, return empty followup (no followup_message). Otherwise, if Next Required Step is clearly defined and safe, you may suggest continuing that step only—never skip Plan → Review → Implement → Test → Signoff gates.",
+        "loop_limit": 2,
+        "timeout": 15
+      }
+    ],
+    "stop": [
+      {
+        "_comment": "Optional session-end reminder. Disable if too noisy.",
+        "type": "prompt",
+        "prompt": "Before ending: confirm .cursor/workflow/state.md reflects the last completed step, Tests Run if tests were executed, and Human Checkpoint Required if waiting on the user. Do not start new scope.",
+        "loop_limit": 1,
+        "timeout": 10
+      }
+    ]
+  }
+}

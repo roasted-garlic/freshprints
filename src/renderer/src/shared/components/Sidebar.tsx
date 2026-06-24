@@ -1,0 +1,218 @@
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  ChevronsLeft,
+  ChevronsRight,
+  Images,
+  LayoutDashboard,
+  ListOrdered,
+  LogOut,
+  MessageSquare,
+  Settings,
+  Sparkles,
+  FolderInput,
+  Users,
+} from "lucide-react";
+import { NavLink, useLocation } from "react-router-dom";
+import type { LucideIcon } from "lucide-react";
+
+import { useAuth } from "../../features/auth/hooks/useAuth";
+import { permissionService } from "../../features/permissions/services/permissionService";
+import type { PermissionKey } from "../../features/permissions/types/permission.types";
+import { AppLogo } from "./AppLogo";
+import { Badge } from "./Badge";
+import { formatTeamUserRoleLabel, getTeamUserRoleBadgeVariant } from "../../features/users/utils/teamUserRoleDisplay";
+
+interface SidebarItem {
+  icon: LucideIcon;
+  label: string;
+  to: string;
+  end?: boolean;
+  isDisabled?: boolean;
+  permission?: PermissionKey;
+}
+
+const sidebarItems: SidebarItem[] = [
+  { icon: LayoutDashboard, label: "Dashboard", to: "/", end: true, permission: "accessDashboard" },
+  { icon: Images, label: "Design Library", to: "/designs", permission: "viewDesigns" },
+  { icon: FolderInput, label: "Imports", to: "/imports", permission: "importDesigns" },
+  { icon: Sparkles, label: "AI Review", to: "/ai-review", permission: "manageDesigns" },
+  { icon: ListOrdered, label: "Show Queue", to: "/show-queue", permission: "manageQueues" },
+  {
+    icon: MessageSquare,
+    label: "Customer Requests",
+    to: "/customer-requests",
+    permission: "manageRequests",
+  },
+  { icon: Users, label: "Users", to: "/users", permission: "viewUsers" },
+  { icon: Settings, label: "Settings", to: "/settings", permission: "manageSettings" },
+];
+
+const sidebarCollapsedStorageKey = "fresh-prints-sidebar-collapsed";
+
+function getStoredSidebarCollapsed(): boolean {
+  try {
+    return localStorage.getItem(sidebarCollapsedStorageKey) === "true";
+  } catch {
+    return false;
+  }
+}
+
+export function Sidebar() {
+  const { isAuthActionLoading, logout, user } = useAuth();
+  const location = useLocation();
+  const sidebarRef = useRef<HTMLElement>(null);
+  const [isIndicatorVisible, setIsIndicatorVisible] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(() => getStoredSidebarCollapsed());
+
+  const visibleSidebarItems = sidebarItems.filter(
+    (item) => !item.permission || permissionService.hasPermission(user, item.permission),
+  );
+
+  const toggleCollapsed = useCallback(() => {
+    setIsCollapsed((currentValue) => !currentValue);
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(sidebarCollapsedStorageKey, String(isCollapsed));
+    } catch {
+      // Ignore storage failures.
+    }
+  }, [isCollapsed]);
+
+  const updateActiveIndicator = useCallback(() => {
+    const sidebar = sidebarRef.current;
+
+    if (!sidebar) {
+      return;
+    }
+
+    const activeLink = sidebar.querySelector<HTMLElement>(".sidebar-link-active");
+
+    if (!activeLink || sidebar.clientHeight === 0) {
+      setIsIndicatorVisible(false);
+      return;
+    }
+
+    setIsIndicatorVisible(true);
+  }, []);
+
+  useLayoutEffect(() => {
+    updateActiveIndicator();
+  }, [isCollapsed, location.pathname, updateActiveIndicator, visibleSidebarItems.length]);
+
+  useEffect(() => {
+    const sidebar = sidebarRef.current;
+
+    if (!sidebar || typeof ResizeObserver === "undefined") {
+      return;
+    }
+
+    const observer = new ResizeObserver(() => {
+      updateActiveIndicator();
+    });
+
+    observer.observe(sidebar);
+    return () => observer.disconnect();
+  }, [updateActiveIndicator]);
+
+  const displayName = user?.displayName ?? "Fresh Prints user";
+
+  return (
+    <aside
+      aria-label="Primary navigation"
+      className={`sidebar ${isCollapsed ? "sidebar-collapsed" : ""}`.trim()}
+      ref={sidebarRef}
+    >
+      <span
+        aria-hidden="true"
+        className={`sidebar-active-indicator ${isIndicatorVisible ? "sidebar-active-indicator-visible" : ""}`.trim()}
+      />
+      <div className="sidebar-brand">
+        <AppLogo className="sidebar-logo" size="md" />
+        {!isCollapsed ? <p className="sidebar-brand-title">Fresh Prints</p> : null}
+      </div>
+
+      <nav className="sidebar-nav">
+        {visibleSidebarItems.map((item) => {
+          const ItemIcon = item.icon;
+
+          if (item.isDisabled) {
+            return (
+              <span
+                aria-disabled="true"
+                className="sidebar-link sidebar-link-disabled"
+                key={item.label}
+                title={isCollapsed ? item.label : undefined}
+              >
+                <span className="sidebar-link-main">
+                  <ItemIcon aria-hidden="true" className="sidebar-link-icon" size={18} strokeWidth={2} />
+                  {!isCollapsed ? <span className="sidebar-link-label">{item.label}</span> : null}
+                </span>
+                {!isCollapsed ? <span className="sidebar-later-badge">Later</span> : null}
+              </span>
+            );
+          }
+
+          return (
+            <NavLink
+              className={({ isActive }) =>
+                isActive ? "sidebar-link sidebar-link-active" : "sidebar-link"
+              }
+              end={item.end}
+              key={item.label}
+              title={isCollapsed ? item.label : undefined}
+              to={item.to}
+            >
+              <span className="sidebar-link-main">
+                <ItemIcon aria-hidden="true" className="sidebar-link-icon" size={18} strokeWidth={2} />
+                {!isCollapsed ? <span className="sidebar-link-label">{item.label}</span> : null}
+              </span>
+            </NavLink>
+          );
+        })}
+      </nav>
+
+      <div className="sidebar-spacer" />
+
+      <div className="sidebar-footer">
+        {!isCollapsed ? (
+          <div className="sidebar-user-card">
+            <div className="sidebar-user-meta">
+              <p className="sidebar-user-name">{displayName}</p>
+              {user ? (
+                <Badge className="sidebar-user-role-badge" variant={getTeamUserRoleBadgeVariant(user.role)}>
+                  {formatTeamUserRoleLabel(user.role)}
+                </Badge>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+
+        <button
+          className="sidebar-sign-out"
+          disabled={isAuthActionLoading}
+          onClick={() => void logout()}
+          title={isCollapsed ? "Sign out" : undefined}
+          type="button"
+        >
+          <LogOut aria-hidden="true" size={16} strokeWidth={2} />
+          {!isCollapsed ? <span>{isAuthActionLoading ? "Signing out..." : "Sign out"}</span> : null}
+        </button>
+
+        <button
+          aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          className="sidebar-collapse-button"
+          onClick={toggleCollapsed}
+          type="button"
+        >
+          {isCollapsed ? (
+            <ChevronsRight aria-hidden="true" size={16} strokeWidth={2} />
+          ) : (
+            <ChevronsLeft aria-hidden="true" size={16} strokeWidth={2} />
+          )}
+        </button>
+      </div>
+    </aside>
+  );
+}

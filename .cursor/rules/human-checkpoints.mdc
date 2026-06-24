@@ -1,0 +1,102 @@
+---
+description: Human approval gates, pause/resume, and feedback recording
+alwaysApply: true
+---
+
+# Human Checkpoint Rules
+
+The workflow runs autonomously whenever safe. Stop and request human input only when a human decision, manual test, credential, production action, or business approval is required.
+
+## Situations Requiring Human Approval
+
+Stop immediately and set `Human Checkpoint Required: yes` in workflow state when work involves:
+
+### Product and Design
+- Manual UI or UX review
+- Visual design approval
+- Business logic decisions with product impact
+- Unclear requirements that change product behavior
+
+### Business and Policy
+- Pricing, billing, payouts, or revenue logic
+- Customer-facing policy decisions
+- Legal/compliance-sensitive copy or flows
+
+### Production and Infrastructure
+- Production deployments
+- External service setup (new SaaS accounts, DNS, certificates)
+- Auth provider setup or migration
+- Environment variable or secret changes in any shared environment
+- CI/CD or hosting configuration affecting production
+
+### Data and Security
+- Database migrations (especially production)
+- Destructive data changes (delete, bulk update, irreversible transform)
+- Security rule changes in production
+- Permission model changes affecting real users
+
+### Access and Credentials
+- Anything requiring access to a console outside the repo
+- API keys, OAuth apps, webhook secrets, service accounts
+- Payment provider or identity provider dashboards
+
+### General
+- Any step where the agent would guess instead of knowing
+- Review result `blocked` awaiting human direction
+- Test failures outside approved fix scope
+
+## Manual Test Request Format
+
+When requesting manual testing, provide:
+
+```markdown
+## Manual Test Checkpoint
+
+**Feature / area:** [name]
+**Why automated tests are insufficient:** [reason]
+**Environment:** [local / staging / production-like]
+**Prerequisites:** [data, login, flags]
+
+### Steps
+1. [Action] → **Expected:** [result]
+2. [Action] → **Expected:** [result]
+
+### Pass criteria
+- [ ] [criterion]
+
+### Please reply with
+- `PASS` — all criteria met
+- `FAIL: [description]` — what failed
+- `PASS WITH NOTES: [notes]` — acceptable with follow-ups
+```
+
+Use template `.cursor/workflow/human-checkpoint-template.md` and skill `manual-test-checkpoint`.
+
+## How to Pause Workflow
+
+1. Set in `.cursor/workflow/state.md`:
+   - `Human Checkpoint Required: yes`
+   - `Human Checkpoint Reason: [clear explanation]`
+   - `Allowed Actions: [only safe actions, e.g. read docs, wait]`
+   - `Forbidden Actions: implement, deploy, migrate, ...`
+   - `Next Required Step: Await human feedback on [topic]`
+2. Create or update human checkpoint doc in `docs/workflow/reviews/` if multi-step.
+3. Tell the user exactly what decision or test is needed—no vague "please review."
+
+## How to Resume After Feedback
+
+1. Record feedback in workflow state `Decision Log` with date and summary.
+2. Update relevant docs (`PROJECT_BRIEF.md`, plan, `DECISIONS.md`) if decisions affect product.
+3. Set `Human Checkpoint Required: no` and restore `Allowed Actions` for current phase.
+4. Set `Next Required Step` to the appropriate workflow step.
+5. If feedback changes scope, update plan and re-run review before implementation.
+
+## Recording Feedback in Signoff
+
+Signoff docs must include:
+- Manual tests requested
+- Manual tests completed and result (PASS / FAIL / PASS WITH NOTES)
+- Human approvals obtained (deployment, migration, design, business)
+- Open follow-ups deferred to roadmap
+
+Never mark signoff approved if required human checkpoints are outstanding.

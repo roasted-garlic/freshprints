@@ -1,0 +1,48 @@
+---
+description: Accessibility expectations for UI work and intake findings
+alwaysApply: false
+---
+
+# Accessibility Rules
+
+Apply when implementing or reviewing UI, and during Existing Project Intake when a user interface exists.
+
+## UI Work Must Consider
+
+- **Keyboard navigation** — all interactive flows operable without mouse
+- **Semantic HTML** — correct elements (`button`, `nav`, `main`, headings hierarchy)
+- **Focus states** — visible focus indicators; logical tab order
+- **Contrast** — text and interactive elements meet project target (WCAG AA recommended)
+- **Labels** — form inputs have associated labels; icons have accessible names
+- **Readable text** — sizing, line height, zoom to 200% without loss of function
+- **Responsive behavior** — usable across breakpoints documented in `STYLE_GUIDE.md`
+- **Reduced motion** — respect `prefers-reduced-motion` where animations exist
+
+See also `docs/standards/STYLE_GUIDE.md` accessibility section.
+
+## During Existing Project Intake
+
+When UI code exists, sample key screens/components and record:
+
+- Missing labels or aria attributes
+- Keyboard traps or missing focus management
+- Color-only status indicators
+- Low contrast patterns (note; do not guess exact ratios without tooling)
+- Non-semantic interactive elements (`div` click handlers without roles)
+
+Record findings in:
+- `docs/project/PROJECT_HEALTH.md` — UX/accessibility domain
+- `docs/project/TECH_DEBT.md` — category `ux-a11y`
+- `docs/intake/INTAKE_FINDINGS.md` — if discovered during inspection
+
+**Do not fix accessibility issues during intake** — recommend managed phases.
+
+## Human Checkpoints
+
+- Significant visual or UX changes may require **manual test checkpoint** and human visual approval
+- Accessibility remediation affecting core flows → include manual test plan in review
+
+## Testing
+
+- Document a11y checks in plan test strategy (manual and/or automated tools if project uses axe, Lighthouse, etc.)
+- Never claim accessibility compliance without running applicable checks or documenting gaps

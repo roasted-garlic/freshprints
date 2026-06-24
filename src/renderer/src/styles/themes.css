@@ -1,0 +1,90 @@
+:root,
+[data-theme="light"] {
+  /* Background layers */
+  --color-bg-primary: #f3f4f6;
+  --color-bg-secondary: #ffffff;
+  --color-bg-tertiary: #f8f9fb;
+
+  /* Borders */
+  --color-border: #e3e7ee;
+  --color-border-strong: #cfd6e0;
+  --sidebar-divider: rgb(17 24 39 / 0.07);
+
+  /* Typography */
+  --color-text-primary: #111827;
+  --color-text-secondary: #6b7280;
+  --color-text-tertiary: #9ca3af;
+
+  /* Accents */
+  --color-accent-primary: #2563eb;
+  --color-accent-primary-hover: #1d4ed8;
+  --color-accent-primary-soft: rgb(37 99 235 / 0.12);
+  --color-accent-primary-text: #ffffff;
+
+  /* Status */
+  --color-success: #0d9f6e;
+  --color-success-soft: #ecfdf5;
+  --color-success-text: #047857;
+
+  --color-danger: #dc3f56;
+  --color-danger-soft: #fef2f4;
+  --color-danger-text: #b4233a;
+
+  --color-warning: #d9a406;
+  --color-warning-soft: #fffbeb;
+  --color-warning-text: #92400e;
+
+  /* Focus & overlays */
+  --color-focus-ring: rgb(37 99 235 / 0.28);
+  --color-overlay: rgb(17 24 39 / 0.42);
+  --color-scrim: rgb(243 244 246 / 0.72);
+}
+
+[data-theme="dark"] {
+  /* Background layers */
+  --color-bg-primary: #0b0e14;
+  --color-bg-secondary: #12161f;
+  --color-bg-tertiary: #1a2030;
+
+  /* Borders */
+  --color-border: #2a303c;
+  --color-border-strong: #3a4354;
+  --sidebar-divider: rgb(243 246 251 / 0.08);
+
+  /* Typography */
+  --color-text-primary: #f3f6fb;
+  --color-text-secondary: #9aa3b2;
+  --color-text-tertiary: #6f7a8c;
+
+  /* Accents */
+  --color-accent-primary: #3b82f6;
+  --color-accent-primary-hover: #60a5fa;
+  --color-accent-primary-soft: rgb(59 130 246 / 0.16);
+  --color-accent-primary-text: #ffffff;
+
+  /* Status */
+  --color-success: #22c997;
+  --color-success-soft: rgb(34 201 151 / 0.12);
+  --color-success-text: #86efca;
+
+  --color-danger: #f05264;
+  --color-danger-soft: rgb(240 82 100 / 0.14);
+  --color-danger-text: #fecdd3;
+
+  --color-warning: #e8b339;
+  --color-warning-soft: rgb(232 179 57 / 0.14);
+  --color-warning-text: #fde68a;
+
+  /* Focus & overlays */
+  --color-focus-ring: rgb(59 130 246 / 0.32);
+  --color-overlay: rgb(0 0 0 / 0.58);
+  --color-scrim: rgb(11 14 20 / 0.72);
+}
+
+:root,
+[data-theme="light"],
+[data-theme="dark"] {
+  --color-scrollbar-track: var(--color-bg-primary);
+  --color-scrollbar-thumb: var(--color-border-strong);
+  --color-scrollbar-thumb-hover: var(--color-text-secondary);
+}

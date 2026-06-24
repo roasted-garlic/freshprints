@@ -1,0 +1,83 @@
+---
+description: Existing Project Intake rules — read-only repo inspection and documentation generation
+alwaysApply: false
+---
+
+# Project Intake Rules
+
+Apply during **Existing Project Intake** mode (`Current Mode: existing-project-intake`).
+
+## Command Aliases
+
+These user messages **start Existing Project Intake** (case-insensitive):
+
+`Existing Project` · `Existing Project Intake` · `Project Intake` · `Intake` · `Intake this repo` · `Analyze this repo` · `Review this codebase` · `Document this project` · `Existing App`
+
+Treat as **Start Existing Project Intake** with full intake goals, autonomy, and docs-only rules. See `.cursor/workflow/command-aliases.md`.
+
+## Read-Only for App Code
+
+- **Do not modify application source code** during intake
+- **Do not install packages** or run destructive commands
+- Read, search, and inspect only
+- Docs, workflow state, and intake artifacts may be created or updated
+
+## Inspect Before Writing
+
+- **Inspect actual repo files** before writing or updating project-specific docs
+- **Do not rely only on user input** — verify claims against code, config, and CI
+- Read manifests, entry points, routes, models, tests, CI configs, and existing docs
+- Use checklist: `.cursor/workflow/existing-project-intake-checklist.md`
+
+## Tagging Conventions
+
+| Tag | Use when |
+|-----|----------|
+| `[INFERRED]` | Reasonable conclusion from code/docs; not confirmed by human |
+| `[NEEDS HUMAN INPUT]` | Cannot determine safely; requires user decision |
+| `[TBD]` | Not yet investigated |
+| `[ASSUMED]` | Bootstrap only — not used for established repo facts |
+
+## Required Intake Artifacts
+
+Create or update during intake:
+
+**Plan & signoff:**
+- `docs/workflow/plans/project-intake-plan.md` — **first**, before other doc work
+- `docs/workflow/reviews/project-intake-signoff.md` — at completion
+
+**Project docs:**
+- `PROJECT_BRIEF.md`, `ARCHITECTURE.md`, `DATA_MODEL.md`, `BACKEND.md`
+- `STYLE_GUIDE.md`, `ROADMAP.md`, `TESTING.md`, `DEPLOYMENT.md`
+- `DECISIONS.md`, `RISK_REGISTER.md`
+
+**Intake-specific:**
+- `PROJECT_HEALTH.md` — health summary and recommended phases
+- `INTAKE_FINDINGS.md` — inspection record
+- `TECH_DEBT.md` — discovered debt items
+
+Use templates in `.cursor/workflow/project-health-template.md` and `.cursor/workflow/tech-debt-template.md`.
+
+## Identify Issues, Do Not Fix
+
+During intake, identify and document (do **not** implement fixes for):
+
+- Architecture issues (layer violations, coupling)
+- Doc vs code mismatches
+- Security concerns
+- Testing gaps
+- Dependency concerns (outdated, vulnerable, unused)
+- Accessibility concerns when UI exists
+- Deployment gaps
+
+Record fixes as **recommended managed phases** on `ROADMAP.md` and items in `TECH_DEBT.md`.
+
+## Recommend Cleanup, Never Implement During Intake
+
+- Recommend cleanup phases with priority on `PROJECT_HEALTH.md` and `ROADMAP.md`
+- **Do not implement cleanup** until user starts an approved Managed Phase
+
+## Skill and Agent
+
+- Skill: `.cursor/skills/project-intake/SKILL.md`
+- Agent: `.cursor/agents/documentation-agent.md`

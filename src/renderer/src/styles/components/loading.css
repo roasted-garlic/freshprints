@@ -1,0 +1,43 @@
+.loading-spinner {
+  align-items: center;
+  color: var(--color-text-secondary);
+  display: inline-flex;
+  font-size: var(--font-size-sm);
+  gap: var(--space-2);
+}
+
+.loading-spinner-indicator {
+  animation: spinner-rotate 900ms linear infinite;
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-full);
+  border-top-color: var(--color-accent-primary);
+  display: inline-block;
+  height: 1.25rem;
+  width: 1.25rem;
+}
+
+.loading-panel {
+  align-items: center;
+  color: var(--color-text-secondary);
+  display: flex;
+  font-size: var(--font-size-sm);
+  gap: var(--space-3);
+  justify-content: center;
+  padding: var(--space-6);
+}
+
+.page-loading-state {
+  align-items: center;
+  color: var(--color-text-secondary);
+  display: flex;
+  font-size: var(--font-size-sm);
+  gap: var(--space-3);
+  min-height: 6rem;
+  padding: var(--space-4) 0;
+}
+
+@keyframes spinner-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}

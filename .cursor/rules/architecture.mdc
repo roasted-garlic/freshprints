@@ -1,0 +1,78 @@
+---
+description: Layered architecture, boundaries, and structural discipline
+alwaysApply: true
+---
+
+# Architecture Rules
+
+Read `docs/architecture/ARCHITECTURE.md` before structural changes. These rules apply regardless of stack (web, mobile, desktop, API, monolith, or serverless).
+
+## Layered Architecture
+
+Prefer clear layers with one-direction dependency flow:
+
+```
+UI (components, screens, views)
+  ↓
+State coordination (hooks, stores, controllers, view models)
+  ↓
+Services (business logic, orchestration)
+  ↓
+Data access (API clients, repositories, SDK adapters)
+  ↓
+External systems (database, auth, storage, third-party APIs)
+```
+
+Adapt naming to the stack (e.g. ViewModels in mobile, handlers in API apps), but preserve the separation of concerns.
+
+## Layer Responsibilities
+
+| Layer | Owns | Must not own |
+|-------|------|--------------|
+| UI components | Rendering, layout, user events, presentation | Business rules, direct backend calls, auth decisions |
+| Hooks / coordinators | UI state, wiring services to UI, side-effect triggers | Low-level API details, duplicated business logic |
+| Services | Business logic, validation orchestration, domain rules | Framework-specific rendering |
+| Data access | Fetching, persisting, mapping DTOs ↔ domain types | UI concerns |
+| Shared types | Contracts used across layers | Implementation details |
+
+## Hard Rules
+
+1. **No direct backend calls from UI components**
+   - Components call hooks, services, or framework data loaders—not raw SDKs or HTTP clients directly.
+
+2. **Services own business logic**
+   - Authorization decisions, pricing rules, state transitions, and domain validation belong in services (or domain layer), not scattered in UI.
+
+3. **Hooks coordinate state**
+   - Hooks (or equivalent) bridge UI and services; they should not become god-objects with embedded business rules.
+
+4. **Components render UI**
+   - Keep components thin; extract logic when a component grows beyond presentation and local UI state.
+
+5. **Shared types live in one place**
+   - Define entity and API types once; import consistently. Avoid duplicate interface definitions across features.
+
+6. **Feature-based organization preferred**
+   - Group by feature/domain when scale warrants it: `features/billing/`, `modules/inventory/`, etc.
+   - Shared utilities, design system, and core types live in shared locations documented in `ARCHITECTURE.md`.
+
+7. **No circular dependencies**
+   - Modules must not import each other in cycles. Extract shared contracts to break cycles.
+
+8. **No architecture shortcuts without review**
+   - Bypassing layers for speed requires explicit note in the plan and review approval.
+
+## Cross-Cutting Concerns
+
+- **Auth**: Enforce at service and backend boundaries; UI reflects auth state only.
+- **Errors**: Map errors to user-safe messages at boundary layers; log details server-side.
+- **Config**: Environment and feature flags accessed through documented config modules—not hardcoded in UI.
+
+## When to Involve Architecture Agent
+
+- New feature modules or major folder restructure
+- New integration or backend provider
+- Suspected layer violation or circular dependency
+- Performance or scalability concerns affecting structure
+
+Record significant structural decisions in `docs/project/DECISIONS.md`.

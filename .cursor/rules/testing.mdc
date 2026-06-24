@@ -1,0 +1,55 @@
+---
+description: Required tests, honest reporting, and signoff test gates
+alwaysApply: true
+---
+
+# Testing Rules
+
+Read `docs/standards/TESTING.md` before signoff. Testing requirements apply to all project types; exact commands come from the project's package scripts or documented tooling.
+
+## Required Checks Before Signoff
+
+Run or explicitly document each applicable check:
+
+| Check | When required |
+|-------|---------------|
+| Typecheck | Project uses static types |
+| Lint | Linter configured |
+| Unit tests | Test runner exists |
+| Build | Project has a build step |
+| Integration tests | Backend or multi-module changes |
+| E2E tests | User-facing flows changed |
+| Backend / security rules tests | Auth, rules, or permission changes |
+
+If a command does not exist in the project:
+- Document that fact in the test report
+- Recommend adding it in `TESTING.md` or the plan
+- Do not fabricate pass results
+
+## Honest Reporting
+
+- **Never claim tests passed unless they were actually run** in this workflow or session with recorded commands and output summary.
+- Record exact commands, exit codes, and relevant failure snippets in the test report and workflow state.
+- Partial runs must be labeled partial; skipped checks must list why.
+
+## Test Agent Scope
+
+- Fix test failures only when within approved implementation scope.
+- If failures reveal plan gaps or architectural issues, stop and return to review—not silent scope expansion.
+
+## Manual Testing
+
+- UI/UX, visual design, and cross-browser behavior often require **manual test checkpoints** (see `human-checkpoints.mdc`).
+- Provide clear steps, expected results, and pass/fail recording template.
+
+## CI Expectations
+
+- Document expected CI behavior in `TESTING.md`.
+- Local test commands should mirror CI where possible.
+- If CI is missing, note as risk in test report and `RISK_REGISTER.md`.
+
+## Test Documentation Updates
+
+When adding tests or changing commands, update `docs/standards/TESTING.md` in the same workflow.
+
+Use skill `test-phase` for structured test execution and reporting.

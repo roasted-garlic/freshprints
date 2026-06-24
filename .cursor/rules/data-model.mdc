@@ -1,0 +1,67 @@
+---
+description: Data modeling standards, persistence, and migration discipline
+alwaysApply: true
+---
+
+# Data Model Rules
+
+Read `docs/architecture/DATA_MODEL.md` before changing persisted data. Apply these rules across SQL databases, document stores, ORMs, and backend-as-a-service schemas.
+
+## Modeling Standards
+
+1. **Data models must be strongly typed**
+   - Use the project's type system (TypeScript, Python types, Go structs, etc.) for all persisted and exchanged entities.
+   - Avoid `any`, untyped maps, or stringly-typed IDs without documented meaning.
+
+2. **Primary records need id, createdAt, updatedAt**
+   - Every top-level persisted entity should have a stable unique identifier and audit timestamps unless the storage system forbids it (document exceptions in `DATA_MODEL.md`).
+
+3. **Use createdBy and updatedBy where user actions matter**
+   - For user-generated or admin-managed records, track actor IDs when accountability, auditing, or permissions require it.
+
+4. **Avoid duplicate model definitions**
+   - Single source of truth per entity. Map between API DTOs, DB rows, and UI models explicitly—not by copy-paste.
+
+5. **Avoid storing binary files in databases**
+   - Store files in object storage or filesystem; persist metadata (path, URL, mime type, size) in the database.
+
+## Documentation Requirements
+
+All of the following must be documented in `docs/architecture/DATA_MODEL.md` (or linked project-specific doc):
+
+- **Entities** — name, purpose, key fields
+- **Relationships** — one-to-one, one-to-many, many-to-many; cascade and delete behavior
+- **Status values** — enum/list, allowed transitions, who can trigger each transition
+- **Permissions** — who can read, create, update, delete
+- **Indexes** — fields indexed and why
+- **Audit fields** — what is tracked and retention expectations
+
+## Changes to Persisted Models
+
+Any change to schema, collections, tables, indexes, status values, relationships, or persisted fields requires:
+
+1. Note in the **plan** (migration impact section)
+2. **Migration notes** — forward steps, backward compatibility
+3. **Rollback or compatibility notes** — how to revert or support old clients
+4. Review before implementation
+5. Human approval before **production** migration (see `human-checkpoints.mdc`)
+
+Use skill `safe-database-change` for structured handling.
+
+## Validation and Integrity
+
+- Enforce constraints at the backend/database layer, not only in the client.
+- Document nullable vs required fields and default values.
+- Document soft-delete vs hard-delete strategy if used.
+- Document idempotency keys or unique constraints where duplicates would cause harm.
+
+## Status and State Machines
+
+- Status values must be documented with allowed transitions.
+- Invalid transitions must fail safely with clear errors.
+- Do not reuse status strings for different meanings across entities.
+
+## Sensitive Data
+
+- Classify PII, financial data, and secrets handling in `DATA_MODEL.md` and `SECURITY.md`.
+- Never persist secrets, raw payment card data, or unnecessary PII.

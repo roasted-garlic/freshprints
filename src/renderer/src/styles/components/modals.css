@@ -1,0 +1,72 @@
+.modal-page,
+.login-page,
+.status-page {
+  align-items: center;
+  background: var(--color-bg-primary);
+  display: flex;
+  justify-content: center;
+  min-height: 100vh;
+  padding: var(--space-6);
+}
+
+.modal-panel,
+.login-panel,
+.status-panel {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-primary);
+  width: min(100%, var(--panel-width-lg));
+}
+
+.modal-panel-sm,
+.login-panel {
+  max-width: var(--panel-width-md);
+  padding: var(--space-7);
+  position: relative;
+}
+
+.modal-panel-md,
+.status-panel {
+  display: grid;
+  gap: var(--space-4);
+  max-width: 34rem;
+  padding: var(--space-7);
+}
+
+.modal-header {
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  gap: var(--space-4);
+  justify-content: space-between;
+  padding: var(--space-5);
+}
+
+.modal-body {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-5);
+}
+
+.modal-footer {
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  gap: var(--space-3);
+  justify-content: flex-end;
+  padding: var(--space-5);
+}
+
+.modal-overlay {
+  align-items: center;
+  background: var(--color-overlay);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: var(--space-6);
+  position: fixed;
+  z-index: var(--z-modal);
+}
+
+.modal-overlay-blur {
+  backdrop-filter: blur(8px);
+}

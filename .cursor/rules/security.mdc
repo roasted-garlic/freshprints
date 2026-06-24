@@ -1,0 +1,62 @@
+---
+description: Security baseline, validation, permissions, and approval gates
+alwaysApply: true
+---
+
+# Security Rules
+
+Read `docs/standards/SECURITY.md` before any auth, data access, upload, dependency, or deployment work. Security rules override convenience.
+
+## Core Principles
+
+1. **Never trust client input** — treat all client data as untrusted until validated server-side or in trusted backend rules.
+
+2. **Validate user input** — type, length, format, allowed values; reject early with safe errors.
+
+3. **Use least privilege** — users, services, and API keys get minimum permissions needed.
+
+4. **Default deny** — explicit allow rules for access; deny by default for sensitive resources.
+
+5. **Avoid exposing secrets** — no secrets in code, logs, client bundles, error messages, or chat output.
+
+6. **Protect file uploads** — validate type, size, and content; scan when appropriate; store outside web root; never execute user uploads.
+
+7. **Use centralized permissions** — one authoritative permission model documented in `SECURITY.md` and `DATA_MODEL.md`.
+
+8. **Do not rely on UI checks as the only security boundary** — hidden UI is not security; enforce on backend.
+
+## Areas Requiring Care
+
+| Area | Requirement |
+|------|-------------|
+| Auth | Secure session/token handling; logout; CSRF where applicable |
+| Authorization | Role/claim checks on every sensitive operation |
+| API | Authentication, rate limiting, input validation |
+| Database | Row/collection rules, parameterized queries, no client-wide admin keys |
+| Dependencies | Review new packages; track known vulnerabilities |
+| Logging | No PII or secrets in logs; redact tokens |
+| File access | Path traversal prevention; signed URLs where appropriate |
+| Webhooks | Verify signatures; idempotent handling |
+
+## Security Changes Require Review
+
+Any change affecting auth, authorization, security rules, secrets handling, or data exposure must go through **review phase** and involve the **Security Agent** perspective.
+
+## Production Security Changes Require Human Approval
+
+Stop and request human approval before:
+
+- Changing production auth providers or identity config
+- Relaxing security rules (Firestore, Supabase RLS, IAM, etc.)
+- Exposing new public endpoints with sensitive data
+- Rotating or adding production secrets
+- Changing CORS, CSP, or network exposure in production
+- Deploying security-sensitive dependency upgrades without review
+
+Record approval in workflow state and signoff docs.
+
+## Incident and Risk Posture
+
+- New risks go in `docs/project/RISK_REGISTER.md`.
+- Security decisions go in `docs/project/DECISIONS.md` when architectural.
+- Prefer failing closed over failing open when validation is uncertain.

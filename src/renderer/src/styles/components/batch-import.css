@@ -1,0 +1,328 @@
+/* Batch import (Phase 3B) */
+
+.batch-import-panel {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.batch-import-header {
+  align-items: flex-start;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  justify-content: space-between;
+}
+
+.batch-import-header-copy {
+  display: grid;
+  gap: var(--space-2);
+  max-width: 42rem;
+}
+
+.batch-import-header-copy h2 {
+  color: var(--color-text-primary);
+  font-size: var(--font-size-xl);
+  font-weight: 600;
+  line-height: var(--line-height-tight);
+  margin: 0;
+}
+
+.batch-import-header-copy p {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-md);
+  line-height: var(--line-height-normal);
+  margin: 0;
+}
+
+.batch-import-source-actions {
+  align-items: center;
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  justify-content: flex-end;
+  margin-left: auto;
+}
+
+.batch-import-progress-panel,
+.batch-import-summary-panel,
+.batch-import-result-panel,
+.batch-import-error-panel {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.batch-import-progress-meta {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  justify-content: space-between;
+}
+
+.batch-import-progress-stats {
+  color: var(--color-text-secondary);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: var(--font-size-sm);
+  gap: var(--space-3);
+}
+
+.batch-import-progress-current {
+  color: var(--color-text-primary);
+  font-size: var(--font-size-md);
+  margin: 0;
+  word-break: break-word;
+}
+
+.batch-import-summary-stats {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+}
+
+.batch-import-summary-stat {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3);
+}
+
+.batch-import-summary-stat dt {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.batch-import-summary-stat dd {
+  color: var(--color-text-primary);
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  margin: 0;
+}
+
+.batch-import-file-lists {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+}
+
+.batch-import-file-list {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.batch-import-file-list h4 {
+  color: var(--color-text-primary);
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  margin: 0;
+}
+
+.batch-import-file-list ul {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  display: grid;
+  gap: 0;
+  list-style: none;
+  margin: 0;
+  max-height: 16rem;
+  overflow: auto;
+  padding: 0;
+}
+
+.batch-import-file-list > ul > li {
+  align-items: flex-start;
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  gap: var(--space-2);
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-3);
+}
+
+.batch-import-file-list > ul > li:first-child {
+  border-top: none;
+}
+
+.batch-import-file-list-name {
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  min-width: 0;
+  word-break: break-word;
+}
+
+.batch-import-file-list-entry {
+  display: grid;
+  flex: 1;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.batch-import-file-list-name-row {
+  align-items: flex-start;
+  color: var(--color-text-primary);
+  display: flex;
+  font-size: var(--font-size-sm);
+  gap: var(--space-2);
+  min-width: 0;
+  word-break: break-word;
+}
+
+.batch-import-file-list-validated-mark {
+  color: var(--color-success);
+  flex-shrink: 0;
+  font-weight: 700;
+  line-height: var(--line-height-normal);
+}
+
+.batch-import-file-list-label {
+  min-width: 0;
+}
+
+.batch-import-file-validation-warning {
+  color: var(--color-warning-text);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-normal);
+  margin: 0;
+  word-break: break-word;
+}
+
+.batch-import-file-validation-warnings {
+  color: var(--color-warning-text);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-normal);
+}
+
+.batch-import-file-validation-warnings summary {
+  cursor: pointer;
+  font-weight: 600;
+  list-style: none;
+  word-break: break-word;
+}
+
+.batch-import-file-validation-warnings summary::-webkit-details-marker {
+  display: none;
+}
+
+.batch-import-file-validation-warnings ul {
+  display: grid;
+  gap: var(--space-1);
+  list-style: disc;
+  margin: var(--space-1) 0 0;
+  padding-left: var(--space-4);
+}
+
+.batch-import-file-list > ul > li.batch-import-file-list-item-excluded {
+  background: var(--color-bg-tertiary);
+  opacity: 0.82;
+}
+
+.batch-import-file-list > ul > li.batch-import-file-list-item-excluded .batch-import-file-list-validated-mark,
+.batch-import-file-list > ul > li.batch-import-file-list-item-excluded .batch-import-file-list-label {
+  color: var(--color-text-secondary);
+}
+
+.batch-import-file-list-actions {
+  align-items: flex-start;
+  display: flex;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  justify-content: flex-end;
+}
+
+.batch-import-validated-section {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.batch-import-validated-header {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  justify-content: space-between;
+}
+
+.batch-import-validated-header h4 {
+  color: var(--color-text-primary);
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  margin: 0;
+}
+
+.batch-import-validated-bulk-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.batch-import-file-list-meta {
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-xs);
+  margin-top: var(--space-1);
+}
+
+.batch-import-file-list-remaining {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  margin: 0;
+}
+
+.batch-import-actions-row {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.batch-import-result-summary {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.batch-import-result-summary h3 {
+  color: var(--color-text-primary);
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  margin: 0;
+}
+
+.batch-import-failed-list {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.batch-import-failed-list ul {
+  display: grid;
+  gap: var(--space-2);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.batch-import-failed-list li {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3);
+}
+
+.batch-import-failed-list strong {
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+}
+
+.batch-import-failed-list span {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}

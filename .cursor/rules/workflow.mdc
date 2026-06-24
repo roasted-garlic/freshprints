@@ -1,0 +1,118 @@
+---
+description: Mandatory Plan → Review → Implement → Test → Signoff workflow and safety gates
+alwaysApply: true
+---
+
+# Workflow Rules
+
+## Required Workflow
+
+All feature work, bug fixes, documentation updates, and intake/bootstrap flows follow:
+
+**Plan → Review → Implement → Test → Signoff**
+
+The Managing Agent owns phase transitions. Specialist agents do focused work within the current phase only.
+
+## Hard Gates
+
+1. **No implementation before a plan exists**
+   - A plan document must exist in `docs/workflow/plans/` before any application code changes.
+   - Intake and bootstrap flows may create or update documentation only; they are not implementation phases.
+
+2. **No implementation before review is complete**
+   - Review status in `.cursor/workflow/state.md` must be `approved` or `approved_with_changes` before implementation begins.
+   - `blocked` review status stops the workflow until the plan is revised and re-reviewed.
+
+3. **No signoff before tests are complete or failures are documented**
+   - Test status must be `passed`, `passed_with_notes`, or `failed_documented` before signoff.
+   - Never mark signoff as approved if required tests were not run or failures were not recorded.
+
+4. **Always update workflow state**
+   - Read `.cursor/workflow/state.md` at the start of every session.
+   - Update it after every meaningful step: phase change, checkpoint, blocker, test run, or completion.
+
+5. **Always create plans in docs/workflow/plans/**
+   - Plan files use descriptive names: `YYYY-MM-DD-feature-name-plan.md` or workflow-specific names like `project-intake-plan.md`.
+
+6. **Always create reviews and signoffs in docs/workflow/reviews/**
+   - Review and signoff documents live in `docs/workflow/reviews/` with matching descriptive names.
+
+## Scope and Change Discipline
+
+- Prefer narrow, reversible changes over broad refactors.
+- Never silently expand scope beyond the approved plan.
+- If scope must grow, stop implementation, update the plan, and re-run review before continuing.
+- One workflow goal at a time unless the Managing Agent explicitly tracks parallel sub-goals in state.
+
+## Human Checkpoints
+
+Stop immediately when `.cursor/workflow/state.md` sets `Human Checkpoint Required: yes` or when work triggers rules in `human-checkpoints.mdc`.
+
+Do not resume implementation, testing, deployment, or signoff until human feedback is recorded in workflow state and relevant docs.
+
+## Allowed vs Forbidden by Phase
+
+| Phase | Allowed | Forbidden |
+|-------|---------|-----------|
+| Plan | Read docs, inspect repo, write plan | Implement code, deploy, migrate data |
+| Review | Read plan and docs, write review | Implement code, change plan without noting required changes |
+| Implement | Code changes within approved scope, doc updates for behavior changes | Production deploys, migrations without approval, scope expansion |
+| Test | Run tests, record results, fix failures within scope | Claim tests passed without running them, signoff |
+| Signoff | Write signoff doc, update state to DONE | New implementation, silent scope changes |
+
+## Workflow State Is Authoritative
+
+When instructions conflict, `.cursor/workflow/state.md` determines:
+- Current phase and next required step
+- What actions are allowed or forbidden right now
+- Whether the workflow is blocked or waiting on a human
+
+## Starting Modes
+
+Recognize **command aliases** (see Command Aliases below and `.cursor/workflow/command-aliases.md`).
+
+- **Existing Project Intake**: Use skill `project-intake`. Docs only; no app code changes.
+- **New Project Bootstrap**: Use skill `new-project-bootstrap`. Questionnaire and docs before implementation.
+- **Managed Phase**: Use skill `managed-phase` for Plan → Review → Implement → Test → Signoff on a defined goal.
+
+## Command Aliases
+
+When the user's message matches an alias (case-insensitive, trim whitespace), execute the mapped workflow immediately.
+
+### Existing Project Intake aliases
+
+`Existing Project` · `Existing Project Intake` · `Project Intake` · `Intake` · `Intake this repo` · `Analyze this repo` · `Review this codebase` · `Document this project` · `Existing App`
+
+→ Full intake: Plan → Repo Inspection → Documentation Generation → Project Health Review → Human Clarification List → Signoff. Docs only; tag `[INFERRED]` / `[NEEDS HUMAN INPUT]`; do not modify app code or fix tech debt.
+
+### New Project Bootstrap aliases
+
+`New Project` · `Project Bootstrap` · `New Project Bootstrap` · `Bootstrap` · `Start App` · `Start New App` · `Blank Project`
+
+→ Questionnaire → Plan → Review → Create Docs → Signoff. `[ASSUMED]` / `[TBD]`; no app code until user approves implementation.
+
+### Managed Phase aliases
+
+`Managed Phase` · `Start Phase` · `Run Phase` · `Next Phase` · `Continue Workflow` · `Continue AppForge`
+
+→ Start or continue from `.cursor/workflow/state.md`. Plan → Review → Implement → Test → Signoff. Stop for human checkpoints.
+
+## AppForge Impact Classification
+
+For **AppForge itself** (the development repository), every managed phase must classify impact in the plan:
+
+| Area | Examples |
+|------|----------|
+| **Starter Surface** | `AGENTS.md`, `.cursor/`, starter-facing `docs/` |
+| **Development Tooling** | `scripts/`, `package.json`, `.github/`, validation |
+| **Distribution/Installer** | `bin/`, install/export scripts |
+| **Documentation** | Docs describing behavior or process |
+| **Development History** | Artifacts archived under `docs/appforge-development/` |
+
+If impact includes **Starter Surface**, the plan and signoff must list which starter files changed.
+
+See `docs/appforge-development/distribution/STARTER_SURFACE.md`.
+
+## Documentation
+
+Rules point to docs; they do not duplicate them. Read `docs/AI_RULES.md` and `docs/WORKFLOWS.md` for full workflow context.
