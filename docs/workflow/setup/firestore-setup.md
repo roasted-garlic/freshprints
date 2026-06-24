@@ -28,10 +28,10 @@ https://console.firebase.google.com/
 
 ```txt
 docs/AI_RULES.md
-docs/ARCHITECTURE.md
-docs/FIREBASE.md
+docs/architecture/ARCHITECTURE.md
+docs/architecture/FIREBASE.md
 docs/DATA_MODEL.md
-docs/SECURITY.md
+docs/standards/SECURITY.md
 ```
 
 ## Step-By-Step Setup

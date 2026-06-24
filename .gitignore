@@ -27,3 +27,12 @@ functions/node_modules
 *.njsproj
 *.sln
 *.sw?
+
+# Migration backup (local only)
+docs/_migration-backup/
+.appforge-temp/
+.cache/
+.tmp/
+tmp/
+Thumbs.db
+build/

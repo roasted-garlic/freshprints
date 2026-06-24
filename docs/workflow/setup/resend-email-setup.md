@@ -18,16 +18,16 @@ The Resend API key is stored only in Firebase Functions secrets. The desktop app
 
 Before starting, confirm:
 
-- Firebase Cloud Functions are set up. See `docs/setup/firebase-functions-setup.md`.
+- Firebase Cloud Functions are set up. See `docs/workflow/setup/firebase-functions-setup.md`.
 - The Firebase project is on a plan that supports Cloud Functions and secrets.
 - You have owner or admin access to the Fresh Prints Firebase project.
 - Node.js 20 is installed locally.
 - You have reviewed:
 
 ```txt
-docs/plans/resend-team-invitation-plan.md
-docs/SECURITY.md
-docs/FIREBASE.md
+docs/workflow/plans/resend-team-invitation-plan.md
+docs/standards/SECURITY.md
+docs/architecture/FIREBASE.md
 ```
 
 ## Step-By-Step Setup

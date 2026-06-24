@@ -1,12 +1,63 @@
-# Agent Instructions
+# Agent Instructions — Fresh Prints
 
-You are working on the Fresh Prints project.
+You are working on the **Fresh Prints** project. This repository uses the **AppForge** workflow starter for AI-assisted development.
 
-Before making any code changes, read:
+---
 
-```txt
-docs/AI_RULES.md
-```
+## Start Every Session
+
+1. Read **`docs/AI_RULES.md`** — detailed behavior, gates, and reading order
+2. Read **`.cursor/workflow/state.md`** — current mode, phase, blockers, next step
+3. Obey **Allowed Actions** and **Forbidden Actions** in workflow state
+
+If `Human Checkpoint Required: yes`, `Blocked: yes`, or `DONE: yes` — follow state before starting new work.
+
+---
+
+## Mandatory Workflow
+
+All scoped work follows:
+
+**Plan → Review → Implement → Test → Signoff**
+
+| Gate | Rule |
+|------|------|
+| Implement | Requires plan in `docs/workflow/plans/` **and** review approval |
+| Signoff | Requires tests run **or** failures documented honestly |
+| Scope | Never silently expand beyond approved plan |
+
+---
+
+## Command Aliases
+
+When the user sends a matching alias (case-insensitive), execute the mapped workflow immediately.
+
+| Alias family | Examples | Action |
+|--------------|----------|--------|
+| **Existing Project Intake** | `Intake`, `Analyze this repo`, `Existing Project` | Docs-only inspection — skill `project-intake` |
+| **New Project Bootstrap** | `Bootstrap`, `New Project`, `Start App` | Questionnaire + docs — skill `new-project-bootstrap` |
+| **Managed Phase** | `Managed Phase`, `Continue Workflow`, `Next Phase` | Plan → Review → Implement → Test → Signoff |
+
+Canonical mapping: `.cursor/workflow/command-aliases.md`
+
+---
+
+## Key Docs
+
+| Area | Path |
+|------|------|
+| Core workflow | `docs/AI_RULES.md`, `docs/WORKFLOWS.md` |
+| Project context | `docs/project/PROJECT_BRIEF.md`, `docs/project/ROADMAP.md`, `docs/project/PROJECT_HEALTH.md`, `docs/project/TECH_DEBT.md`, `docs/project/DECISIONS.md`, `docs/project/RISK_REGISTER.md` |
+| Architecture | `docs/architecture/ARCHITECTURE.md`, `docs/architecture/BACKEND.md`, `docs/architecture/FIREBASE.md`, `docs/architecture/DATA_MODEL.md` |
+| Standards | `docs/standards/CODING_STANDARDS.md`, `docs/standards/STYLE_GUIDE.md`, `docs/standards/SECURITY.md`, `docs/standards/TESTING.md`, `docs/standards/DEPLOYMENT.md` |
+| Intake | `docs/intake/INTAKE_FINDINGS.md` |
+| Workflow artifacts | `docs/workflow/plans/`, `docs/workflow/reviews/`, `docs/workflow/setup/` |
+
+---
+
+# Fresh Prints Development Rules
+
+Before making any code changes, read `docs/AI_RULES.md`.
 
 The file `docs/AI_RULES.md` is the source of truth for:
 
@@ -442,7 +493,7 @@ The generated markdown document should be suitable for saving into the project d
 Use:
 
 ```txt
-docs/setup/
+docs/workflow/setup/
 ```
 
 for setup guides.
@@ -450,12 +501,11 @@ for setup guides.
 Examples:
 
 ```txt
-docs/setup/firebase-project-setup.md
-docs/setup/firebase-auth-setup.md
-docs/setup/firestore-setup.md
-docs/setup/firebase-storage-setup.md
-docs/setup/electron-security-setup.md
-docs/setup/environment-variables.md
+docs/workflow/setup/firebase-project-setup.md
+docs/workflow/setup/firestore-setup.md
+docs/workflow/setup/firebase-storage-setup.md
+docs/workflow/setup/electron-security-setup.md
+docs/workflow/setup/environment-variables.md
 ```
 
 Each setup document should contain:
@@ -487,17 +537,15 @@ Before implementing a major feature, create a markdown plan.
 Store plans in:
 
 ```txt
-docs/plans/
+docs/workflow/plans/
 ```
 
 Examples:
 
 ```txt
-docs/plans/authentication-plan.md
-docs/plans/design-library-plan.md
-docs/plans/zip-import-plan.md
-docs/plans/customer-requests-plan.md
-docs/plans/show-queue-plan.md
+docs/workflow/plans/authentication-implementation-plan.md
+docs/workflow/plans/design-library-plan.md
+docs/workflow/plans/import-pipeline-plan.md
 ```
 
 Each plan should include:
@@ -518,10 +566,10 @@ The AI should create the plan before implementing the feature unless instructed 
 Before making UI, layout, theme, or component changes, read:
 
 ```txt
-docs/STYLE_GUIDE.md
+docs/standards/STYLE_GUIDE.md
 ```
 
-The file `docs/STYLE_GUIDE.md` is the source of truth for:
+The file `docs/standards/STYLE_GUIDE.md` is the source of truth for:
 
 * Visual style
 * Light and dark theme
@@ -537,10 +585,14 @@ Do not rely on inline styles.
 
 Do not scatter one-off CSS throughout the app.
 
-Use the global styling architecture defined in `docs/STYLE_GUIDE.md`.
+Use the global styling architecture defined in `docs/standards/STYLE_GUIDE.md`.
 
 All UI must support light mode and dark mode from the beginning.
 
 When creating new UI components, check whether a shared component already exists before creating a new one.
 
 If a shared component does not exist, create one in the correct shared component folder.
+
+---
+
+**Next:** Read `docs/AI_RULES.md`, then `.cursor/workflow/state.md`.

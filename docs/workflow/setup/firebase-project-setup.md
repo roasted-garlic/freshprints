@@ -15,8 +15,8 @@ This guide does not cover Firestore setup, Firestore rules, Storage setup, Stora
 Use these separate guides for service-specific setup:
 
 ```txt
-docs/setup/firestore-setup.md
-docs/setup/firebase-storage-setup.md
+docs/workflow/setup/firestore-setup.md
+docs/workflow/setup/firebase-storage-setup.md
 ```
 
 ## Prerequisites
@@ -40,10 +40,10 @@ C:\coding\fresh-prints
 
 ```txt
 docs/AI_RULES.md
-docs/ARCHITECTURE.md
-docs/FIREBASE.md
+docs/architecture/ARCHITECTURE.md
+docs/architecture/FIREBASE.md
 docs/DATA_MODEL.md
-docs/SECURITY.md
+docs/standards/SECURITY.md
 docs/ROADMAP.md
 docs/WORKFLOWS.md
 ```

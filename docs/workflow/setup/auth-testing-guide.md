@@ -26,8 +26,8 @@ Before testing auth, confirm:
 - You have completed or reviewed:
 
 ```txt
-docs/setup/firebase-project-setup.md
-docs/setup/firestore-setup.md
+docs/workflow/setup/firebase-project-setup.md
+docs/workflow/setup/firestore-setup.md
 ```
 
 - You can access the Firebase console:
@@ -40,9 +40,9 @@ https://console.firebase.google.com/
 
 ```txt
 docs/AI_RULES.md
-docs/FIREBASE.md
+docs/architecture/FIREBASE.md
 docs/DATA_MODEL.md
-docs/SECURITY.md
+docs/standards/SECURITY.md
 ```
 
 ### Auth Architecture (What You Are Testing)
@@ -180,7 +180,7 @@ For `noprofile.test@freshprints.local`:
 
 ### Step 4: Confirm Firestore Rules Allow Profile Reads
 
-The recommended development rules from `docs/setup/firestore-setup.md` allow an authenticated user to read only their own `users/{uid}` document.
+The recommended development rules from `docs/workflow/setup/firestore-setup.md` allow an authenticated user to read only their own `users/{uid}` document.
 
 Confirm your project rules include:
 

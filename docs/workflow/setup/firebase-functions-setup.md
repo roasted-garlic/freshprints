@@ -19,9 +19,9 @@ This guide does not cover Firebase project creation or desktop `.env.local` setu
 Use these related guides first:
 
 ```txt
-docs/setup/firebase-project-setup.md
-docs/setup/firestore-setup.md
-docs/setup/auth-testing-guide.md
+docs/workflow/setup/firebase-project-setup.md
+docs/workflow/setup/firestore-setup.md
+docs/workflow/setup/auth-testing-guide.md
 ```
 
 ## Prerequisites
@@ -35,9 +35,9 @@ Before starting, confirm:
 - You have reviewed:
 
 ```txt
-docs/plans/user-management-cloud-functions-plan.md
-docs/SECURITY.md
-docs/FIREBASE.md
+docs/workflow/plans/user-management-cloud-functions-plan.md
+docs/standards/SECURITY.md
+docs/architecture/FIREBASE.md
 ```
 
 Manual billing note:
@@ -226,7 +226,7 @@ The `createTeamUser` function:
 Configure Resend and Firebase secrets using:
 
 ```txt
-docs/setup/resend-email-setup.md
+docs/workflow/setup/resend-email-setup.md
 ```
 
 If email delivery fails, the user account is still created and the UI shows a warning with manual fallback guidance.

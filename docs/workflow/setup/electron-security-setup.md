@@ -14,9 +14,9 @@ Phase 3A-1 hardened the preload bridge by removing broad `ipcRenderer` exposure 
 
 Before working on Electron security or import IPC:
 
-1. Read `docs/SECURITY.md` — Electron Security, IPC Security, Preload Security
-2. Read `docs/ARCHITECTURE.md` — Desktop architecture and layer boundaries
-3. Read `docs/plans/phase-3a-kickoff.md` — Phase 3A locked decisions
+1. Read `docs/standards/SECURITY.md` — Electron Security, IPC Security, Preload Security
+2. Read `docs/architecture/ARCHITECTURE.md` — Desktop architecture and layer boundaries
+3. Read `docs/workflow/plans/phase-3a-kickoff.md` — Phase 3A locked decisions
 
 ---
 
@@ -405,7 +405,7 @@ Phase 3A-1 Electron security:
 - [ ] IPC channels centralized in `importIpcChannels.ts`
 - [ ] Handlers return structured success/error responses
 - [ ] Test `main-process-message` IPC removed from main and renderer
-- [ ] `docs/setup/electron-security-setup.md` reviewed after changes
+- [ ] `docs/workflow/setup/electron-security-setup.md` reviewed after changes
 
 ---
 
@@ -455,4 +455,4 @@ Expect `data.derivatives.thumbnailBytes`, `data.derivatives.previewBytes`, and m
 
 ---
 
-*References: `docs/SECURITY.md`, `docs/ARCHITECTURE.md`, `docs/plans/phase-3a-kickoff.md`, `docs/plans/import-pipeline-plan.md`, `docs/plans/phase-3c-kickoff.md`*
+*References: `docs/standards/SECURITY.md`, `docs/architecture/ARCHITECTURE.md`, `docs/workflow/plans/phase-3a-kickoff.md`, `docs/workflow/plans/import-pipeline-plan.md`, `docs/workflow/plans/phase-3c-kickoff.md`*

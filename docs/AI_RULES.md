@@ -16,20 +16,16 @@ No implementation should be performed without following these documents.
 
 Before writing code, modifying code, generating plans, or creating documentation, read the following files in order:
 
-1. ARCHITECTURE.md
-2. CODING_STANDARDS.md
-3. STYLE_GUIDE.md
-4. FIREBASE.md
-5. DATA_MODEL.md
-6. SECURITY.md
-7. ROADMAP.md
-8. WORKFLOWS.md
+1. `docs/architecture/ARCHITECTURE.md`
+2. `docs/standards/CODING_STANDARDS.md`
+3. `docs/standards/STYLE_GUIDE.md`
+4. `docs/architecture/FIREBASE.md`
+5. `docs/architecture/DATA_MODEL.md`
+6. `docs/standards/SECURITY.md`
+7. `docs/project/ROADMAP.md`
+8. `docs/WORKFLOWS.md`
 
-All files are located in:
-
-```txt
-docs/
-```
+Also read `.cursor/workflow/state.md` when using AppForge managed phase workflows.
 
 ---
 
@@ -38,6 +34,8 @@ docs/
 Each document owns a specific area of the project.
 
 ## ARCHITECTURE.md
+
+Path: `docs/architecture/ARCHITECTURE.md`
 
 Source of truth for:
 
@@ -54,6 +52,8 @@ Source of truth for:
 ---
 
 ## CODING_STANDARDS.md
+
+Path: `docs/standards/CODING_STANDARDS.md`
 
 Source of truth for:
 
@@ -72,6 +72,8 @@ Source of truth for:
 
 ## STYLE_GUIDE.md
 
+Path: `docs/standards/STYLE_GUIDE.md`
+
 Source of truth for:
 
 * UI design
@@ -88,6 +90,8 @@ Source of truth for:
 
 ## FIREBASE.md
 
+Path: `docs/architecture/FIREBASE.md`
+
 Source of truth for:
 
 * Firebase configuration
@@ -103,6 +107,8 @@ Source of truth for:
 
 ## DATA_MODEL.md
 
+Path: `docs/architecture/DATA_MODEL.md`
+
 Source of truth for:
 
 * Collections
@@ -115,6 +121,8 @@ Source of truth for:
 ---
 
 ## SECURITY.md
+
+Path: `docs/standards/SECURITY.md`
 
 Source of truth for:
 
@@ -132,6 +140,8 @@ Source of truth for:
 
 ## ROADMAP.md
 
+Path: `docs/project/ROADMAP.md`
+
 Source of truth for:
 
 * Current development phase
@@ -143,6 +153,8 @@ Source of truth for:
 ---
 
 ## WORKFLOWS.md
+
+Path: `docs/WORKFLOWS.md`
 
 Source of truth for:
 
@@ -163,14 +175,14 @@ When conflicts exist:
 Priority order:
 
 ```txt
-SECURITY.md
-ARCHITECTURE.md
-DATA_MODEL.md
-FIREBASE.md
-CODING_STANDARDS.md
-STYLE_GUIDE.md
-WORKFLOWS.md
-ROADMAP.md
+docs/standards/SECURITY.md
+docs/architecture/ARCHITECTURE.md
+docs/architecture/DATA_MODEL.md
+docs/architecture/FIREBASE.md
+docs/standards/CODING_STANDARDS.md
+docs/standards/STYLE_GUIDE.md
+docs/WORKFLOWS.md
+docs/project/ROADMAP.md
 ```
 
 Security always wins.
@@ -192,17 +204,15 @@ Create a planning document.
 Store plans in:
 
 ```txt
-docs/plans/
+docs/workflow/plans/
 ```
 
 Examples:
 
 ```txt
-docs/plans/authentication-plan.md
-docs/plans/design-library-plan.md
-docs/plans/import-system-plan.md
-docs/plans/customer-requests-plan.md
-docs/plans/show-queue-plan.md
+docs/workflow/plans/authentication-implementation-plan.md
+docs/workflow/plans/design-library-plan.md
+docs/workflow/plans/import-pipeline-plan.md
 ```
 
 Plans should contain:
@@ -226,18 +236,17 @@ Infrastructure and setup tasks should generate documentation.
 Store setup guides in:
 
 ```txt
-docs/setup/
+docs/workflow/setup/
 ```
 
 Examples:
 
 ```txt
-docs/setup/firebase-project-setup.md
-docs/setup/firebase-auth-setup.md
-docs/setup/firestore-setup.md
-docs/setup/firebase-storage-setup.md
-docs/setup/environment-variables.md
-docs/setup/electron-security-setup.md
+docs/workflow/setup/firebase-project-setup.md
+docs/workflow/setup/firestore-setup.md
+docs/workflow/setup/firebase-storage-setup.md
+docs/workflow/setup/electron-security-setup.md
+docs/workflow/setup/environment-variables.md
 ```
 
 Setup guides should contain:
@@ -296,7 +305,7 @@ Do not:
 * Create duplicate status definitions
 * Introduce architecture drift
 
-Follow ARCHITECTURE.md and CODING_STANDARDS.md at all times.
+Follow `docs/architecture/ARCHITECTURE.md` and `docs/standards/CODING_STANDARDS.md` at all times.
 
 ---
 
@@ -305,7 +314,7 @@ Follow ARCHITECTURE.md and CODING_STANDARDS.md at all times.
 All UI work must follow:
 
 ```txt
-docs/STYLE_GUIDE.md
+docs/standards/STYLE_GUIDE.md
 ```
 
 Requirements:
