@@ -31,7 +31,7 @@ https://console.firebase.google.com/
 docs/AI_RULES.md
 docs/architecture/ARCHITECTURE.md
 docs/architecture/FIREBASE.md
-docs/DATA_MODEL.md
+docs/architecture/DATA_MODEL.md
 docs/standards/SECURITY.md
 docs/WORKFLOWS.md
 ```

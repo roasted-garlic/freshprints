@@ -408,13 +408,13 @@ Firestore stores:
 
 # Electron Architecture
 
-Use Electron-Vite structure.
+The project uses **Vite + vite-plugin-electron** with main process code under `electron/` (not `src/main/`). `[INFERRED]` from repository layout.
 
 ```txt
-src/
-├── main/
-├── preload/
-└── renderer/
+electron/           # Main process, IPC, import services
+electron/preload.ts # Preload bridge
+src/renderer/       # React renderer (Vite)
+shared/             # Cross-layer types and utilities
 ```
 
 ---
@@ -424,16 +424,18 @@ src/
 Location:
 
 ```txt
-src/main/
+electron/
+electron/ipc/
+electron/services/
 ```
 
 Responsibilities:
 
 * Filesystem access
 * ZIP extraction
+* PNG validation and parsing
+* Derivative generation (`sharp`)
 * Native dialogs
-* Local downloads
-* Folder watching
 * IPC handlers
 
 Forbidden:
@@ -449,7 +451,7 @@ Forbidden:
 Location:
 
 ```txt
-src/preload/
+electron/preload.ts
 ```
 
 Purpose:

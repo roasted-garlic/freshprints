@@ -324,7 +324,7 @@ Cache behavior unchanged from Step 9: one `getDownloadURL` per catalog path per 
 * Desktop text inputs — safe right-click context menu (Cut, Copy, Paste, Select all) in main process
 * Manual **Add design** UI removed — designs originate from import pipeline
 
-Manual QA gate (T1, T7, T11) must pass before final Phase 3C signoff. See `docs/reviews/phase-3c-signoff-draft.md`.
+Manual QA gate (T1, T7, T11) must pass before final Phase 3C signoff. See `docs/workflow/reviews/phase-3c-signoff.md` (supersedes `phase-3c-signoff-draft.md`).
 
 ---
 

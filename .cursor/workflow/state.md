@@ -27,7 +27,7 @@ complete
 passed
 
 ## Signoff Status
-approved
+approved_with_conditions
 
 ## Human Checkpoint Required
 no
@@ -36,10 +36,10 @@ no
 none
 
 ## Last Completed Step
-fresh-prints-appforge-install-and-migration signoff
+repository-stabilization signoff (migration merge + git cleanup)
 
 ## Next Required Step
-Start Existing Project Intake, New Project Bootstrap, or a Managed Phase
+Human: verify Storage rules in Firebase Console (C1); configure remote; `git push`. Then Managed Phase: Phase 3D print size/DPI normalization
 
 ## Blocked
 no
@@ -48,25 +48,25 @@ no
 none
 
 ## Allowed Actions
-Read docs; start intake, bootstrap, or managed phase
+Read docs; push to GitHub after human confirms; start Phase 3D managed phase
 
 ## Forbidden Actions
 none
 
 ## Files Created
-docs/architecture/BACKEND.md, docs/project/*, docs/standards/TESTING.md, docs/standards/DEPLOYMENT.md, docs/intake/INTAKE_FINDINGS.md, docs/workflow/**
+docs/workflow/reviews/repository-stabilization-signoff.md
 
 ## Files Modified
-AGENTS.md, docs/AI_RULES.md, .gitignore, docs/workflow/setup/*
+.gitignore, docs/standards/DEPLOYMENT.md, docs/standards/TESTING.md, docs/project/TECH_DEBT.md, docs/project/PROJECT_HEALTH.md
 
 ## Tests Run
-npm run lint — exit 0
+npm run lint — exit 0; npx tsc --noEmit — exit 0
 
 ## Known Risks
-.appforge-temp/ remains on disk (gitignored); remove manually
+Storage rules deploy status unverified in console (R-003)
 
 ## Decision Log
-2026-06-24 — AppForge install and doc migration completed on branch fresh-prints-appforge-migration
+2026-06-24 — Merged fresh-prints-appforge-migration to master; untracked release/, dist-electron/, build/icon.*
 
 ## DONE
 yes

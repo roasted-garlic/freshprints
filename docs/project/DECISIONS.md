@@ -1,145 +1,95 @@
-# Architecture Decision Records (DECisions)
+# Architecture Decision Records — Fresh Prints
 
-> Log significant technical and process decisions. Universal format; project-specific entries below.
-
----
-
-## How to Use
-
-When a decision affects architecture, security, data, backend, or workflow:
-
-1. Add a new ADR entry below (newest first)
-2. Reference in plans and signoff docs
-3. Update related docs (`ARCHITECTURE.md`, `BACKEND.md`, etc.)
-
----
-
-## ADR Template
-
-```markdown
-### ADR-NNN: [Title]
-
-| Field | Value |
-|-------|-------|
-| Date | YYYY-MM-DD |
-| Status | proposed / accepted / deprecated / superseded |
-| Deciders | [names or roles] |
-
-**Context**
-[What problem or constraint led to this decision?]
-
-**Options considered**
-1. [Option A] — pros/cons
-2. [Option B] — pros/cons
-
-**Decision**
-[What was chosen]
-
-**Consequences**
-- Positive: ...
-- Negative: ...
-- Follow-ups: ...
-```
+> Log significant technical and process decisions. Newest first.
 
 ---
 
 ## Decisions
 
-### ADR-004: Separate development archive from clean starter package
+### ADR-FP-005: AppForge documentation structure
 
 | Field | Value |
 |-------|-------|
-| Date | 2026-06-23 |
+| Date | 2026-06-24 |
 | Status | accepted |
 | Deciders | Project team |
 
-**Context**
-AppForge developed inside its own workflow left completed plans, reviews, and signoffs in starter-facing folders, confusing adopters copying the kit.
+**Context**  
+Fresh Prints adopted the AppForge workflow starter. Documentation needed a stable layout separating project docs from workflow artifacts.
 
-**Decision**
-Archive AppForge development artifacts under `docs/appforge-development/`. Keep `docs/workflow/plans/`, `docs/workflow/reviews/`, and `docs/workflow/setup/` clean (README + `.gitkeep` only) before copying. Document process in `docs/appforge-development/distribution/PACKAGING.md`.
+**Decision**  
+Use `docs/project/`, `docs/architecture/`, `docs/standards/`, `docs/intake/`, and `docs/workflow/{plans,reviews,setup}/`. Keep `docs/AI_RULES.md` and `docs/WORKFLOWS.md` at docs root.
 
-**Consequences**
-- Positive: Clear separation between maintainer history and adopters' workflow folders
-- Negative: Maintainers must run cleanup before shipping a copy
-- Follow-ups: `validate:structure` enforces clean starter folders
+**Consequences**  
+- Positive: Managed phase, intake, and bootstrap workflows align with AppForge  
+- Follow-ups: Historical phase docs may retain old paths (acceptable as archive)
 
 ---
 
-### ADR-003: Lightweight validation for starter repo
+### ADR-FP-004: Import derivatives in Electron main process
 
 | Field | Value |
 |-------|-------|
-| Date | 2026-06-23 |
+| Date | 2026-06-20 |
 | Status | accepted |
-| Deciders | Project team |
+| Deciders | Phase 3C signoff |
 
-**Context**
-The AppForge starter is markdown-only with no application tests. Contributors and adopters need a simple way to verify required workflow files, markdown quality, and internal links.
+**Context**  
+Thumbnail/preview generation requires native image processing (`sharp`). Renderer must not perform filesystem or native processing.
 
-**Options considered**
-1. Shell-only scripts — no Node dependency but weak markdown linting
-2. Minimal Node `package.json` for validation scripts only — one devDependency (`markdownlint-cli2`) plus stdlib link/structure scripts
-3. Full monorepo tooling — overkill for a copy-paste starter
+**Decision**  
+Generate WebP derivatives in `electron/` main process; upload via renderer Firebase services.
 
-**Decision**
-Add a private `package.json` with `validate`, `validate:structure`, `validate:markdown`, and `validate:links` scripts. Use GitHub Actions to run `npm run validate` on push/PR. Validation is optional when copying the starter into app repos (adopters may omit `package.json`).
-
-**Consequences**
-- Positive: CI catches doc/structure regressions; clear local commands in TESTING.md
-- Negative: Requires Node 18+ for local validation
-- Follow-ups: None
+**Consequences**  
+- Positive: Layer boundaries preserved  
+- Negative: Native module build complexity on Windows dev machines
 
 ---
 
-### ADR-002: Canonical project name is AppForge
+### ADR-FP-003: Firebase as sole backend
 
 | Field | Value |
 |-------|-------|
-| Date | 2026-06-23 |
+| Date | `[INFERRED]` early foundation |
 | Status | accepted |
-| Deciders | Project team |
 
-**Context**
-The workflow starter was referenced as both AppForge and BuildPilot, causing confusion in docs and agent prompts.
-
-**Options considered**
-1. Keep dual naming (AppForge / BuildPilot) — familiar to early adopters but ambiguous
-2. Standardize on AppForge — single canonical name; BuildPilot retained only as historical folder label
-
-**Decision**
-Use **AppForge** as the canonical name everywhere the starter is described. **BuildPilot** may appear only in historical notes (e.g. local folder name), clearly labeled.
-
-**Consequences**
-- Positive: Consistent branding in README, AGENTS.md, and workflow docs
-- Negative: Local clone folder may still be named BuildPilot until manually renamed
-- Follow-ups: None required for workflow behavior
+**Decision**  
+Use Firebase Auth, Firestore, Storage, and Cloud Functions as the only production backend. No separate REST API for core operations.
 
 ---
 
-### ADR-001: Adopt managed AI workflow (Plan → Review → Implement → Test → Signoff)
+### ADR-FP-002: Feature-based renderer organization
 
 | Field | Value |
 |-------|-------|
-| Date | YYYY-MM-DD |
+| Date | `[INFERRED]` Phase 1 |
 | Status | accepted |
-| Deciders | Project team |
 
-**Context**
-Need a repeatable, safe agent-driven development process that works across project types.
-
-**Options considered**
-1. Ad-hoc agent prompts — fast but inconsistent, risky for production
-2. Full workflow starter with gates and docs — more structure, safer
-
-**Decision**
-Adopt the Cursor workflow starter with mandatory phases, human checkpoints, and documentation as source of truth.
-
-**Consequences**
-- Positive: Safer changes, clearer audit trail, less scope creep
-- Negative: More overhead for trivial changes
-- Follow-ups: Customize docs during intake or bootstrap
+**Decision**  
+Organize React code under `src/renderer/src/features/{domain}/` with `components/`, `hooks/`, `services/`, `types/`, `pages/`.
 
 ---
 
-<!-- Add project-specific ADRs below -->
+### ADR-FP-001: Electron + Vite desktop admin first
+
+| Field | Value |
+|-------|-------|
+| Date | `[INFERRED]` project start |
+| Status | accepted |
+
+**Decision**  
+Build the operational admin app as Electron desktop first; customer website and mobile are future surfaces sharing Firebase and `shared/` types.
+
+---
+
+## Historical Note
+
+AppForge starter template ADRs (ADR-001 through ADR-004 in prior template) described the **AppForge development repository**, not Fresh Prints product decisions. They are not applicable to this target project and were removed during intake.
+
+---
+
+## Revision History
+
+| Date | Summary |
+|------|---------|
+| 2026-06-24 | Fresh Prints ADRs added; AppForge starter ADRs removed |

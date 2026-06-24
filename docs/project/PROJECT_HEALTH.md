@@ -1,11 +1,6 @@
-# Project Health
+# Project Health — Fresh Prints
 
-> **Project-specific** — populated during Existing Project Intake or updated after major reviews. Summary of overall health and recommended next phases.
-
-> **AppForge starter note:** For the AppForge workflow starter repository itself, health ratings apply to documentation completeness, workflow consistency, and starter maintainability — not application runtime quality.
-
-**Last updated:** `[TBD — YYYY-MM-DD]`
-**Source:** `[initial template | project-intake | manual review]`
+**Last updated:** 2026-06-24 (repository stabilization)
 
 ---
 
@@ -13,25 +8,23 @@
 
 | Rating | Value |
 |--------|-------|
-| **Overall** | `[healthy / needs attention / at risk / critical — TBD]` |
-| **Summary** | `[2–3 sentences — TBD]` |
+| **Overall** | **good** |
+| **Summary** | AppForge migration merged to `master`. Generated build artifacts untracked. Lint and TypeScript pass. **Remaining:** manual Firebase Storage rules deploy verification (Phase 3C C1); no CI/test runner yet. |
 
 ---
 
 ## Domain Health
 
-Rate each: **good** / **fair** / **poor** / **unknown**
-
 | Domain | Rating | Notes |
 |--------|--------|-------|
-| Architecture | unknown | Layer boundaries, coupling, structure |
-| Security | unknown | Auth, validation, secrets, rules |
-| Testing | unknown | Coverage, CI, critical path tests |
-| Documentation | unknown | Accuracy, completeness, drift from code |
-| Dependencies | unknown | Outdated packages, vulnerabilities, bloat |
-| Deployment | unknown | CI/CD, environments, rollback |
-| Data model | unknown | Schema clarity, migrations, consistency |
-| UX / Accessibility | unknown | Keyboard, contrast, labels, responsive |
+| Architecture | good | Feature-based renderer services; import logic in `electron/` main process `[INFERRED]` |
+| Security | fair | Firestore/Storage rules present; preload IPC breadth flagged in prior reviews; rules deploy verification pending |
+| Testing | fair | 13 unit test files; no `npm test` script or CI `[INFERRED]` |
+| Documentation | fair → good | Rich Fresh Prints docs; roadmap/header drift fixed; AppForge structure verified |
+| Dependencies | good | Modern stack; `sharp` native module requires dev setup docs |
+| Deployment | good | Build artifacts gitignored; merge complete; Storage deploy verification pending |
+| Data model | good | Detailed `DATA_MODEL.md`; `aiReviewStatus`, print size fields evolving in 3D |
+| UX / Accessibility | good | Theme system, shared components; Phase 3C signoff notes a11y work on previews |
 
 ---
 
@@ -39,25 +32,28 @@ Rate each: **good** / **fair** / **poor** / **unknown**
 
 | # | Concern | Domain | Severity | Reference |
 |---|---------|--------|----------|-----------|
-| 1 | `[TBD — populate during intake]` | | | `TECH_DEBT.md` / `RISK_REGISTER.md` |
+| 1 | Storage rules deploy status per environment unverified | security | medium | RISK_REGISTER R-003 |
+| 2 | No automated test runner despite existing `.test.ts` files | testing | medium | TECH_DEBT TD-002 |
 
 ---
 
 ## Strengths
 
-- `[TBD — what is working well]`
+- Clear layered architecture (Electron main vs renderer services vs UI)
+- Comprehensive Firebase rules and populated `FIREBASE.md` / `DATA_MODEL.md`
+- Import pipeline (3A–3C) signed off with manual QA
+- AppForge workflow structure successfully migrated
+- ESLint passes on codebase
 
 ---
 
 ## Recommended Next Phases
 
-> Recommended managed phases — **not started automatically**. Each requires Plan → Review → Implement → Test → Signoff approval.
-
 | Priority | Phase name | Goal | Rationale |
 |----------|------------|------|-----------|
-| P0 | `[TBD]` | | |
-| P1 | `[TBD]` | | |
-| P2 | `[TBD]` | | |
+| **P0** | Phase 3D — print size & DPI normalization | Complete staff-facing print size model | Active roadmap |
+| **P1** | `testing-and-ci-bootstrap` | Add `npm test`, wire existing tests | Closes test gap |
+| ~~P0~~ | ~~`git-generated-output-cleanup`~~ | ~~Complete~~ | **Done** 2026-06-24 |
 
 ---
 
@@ -65,13 +61,11 @@ Rate each: **good** / **fair** / **poor** / **unknown**
 
 | Doc | Aligned? | Notes |
 |-----|----------|-------|
-| ARCHITECTURE.md | unknown | |
-| DATA_MODEL.md | unknown | |
-| BACKEND.md | unknown | |
-| TESTING.md | unknown | |
-| DEPLOYMENT.md | unknown | |
-
-Details: `INTAKE_FINDINGS.md`
+| ARCHITECTURE.md | partial → good | Electron paths updated to `electron/` in intake |
+| DATA_MODEL.md | yes | Matches types and signoffs |
+| BACKEND.md | yes | Points to FIREBASE.md accurately |
+| TESTING.md | yes | Reflects actual scripts; notes missing test runner |
+| DEPLOYMENT.md | yes | Gitignore and Storage deploy commands documented |
 
 ---
 
@@ -79,12 +73,5 @@ Details: `INTAKE_FINDINGS.md`
 
 | Item | Why | Status |
 |------|-----|--------|
-| Run Existing Project Intake if this is still a template | Populate health from repo | pending |
-
----
-
-## Revision History
-
-| Date | Author | Summary |
-|------|--------|---------|
-| YYYY-MM-DD | | Initial template |
+| Confirm Firebase Storage rules deployed (Phase 3C C1) | Production upload reliability | pending |
+| Configure GitHub remote and push | First major remote publish | `[NEEDS HUMAN INPUT]` |

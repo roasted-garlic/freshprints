@@ -81,9 +81,10 @@ Fresh Prints does not expose a separate REST API for core operations. Business l
 
 | Function | Trigger | Purpose |
 |----------|---------|---------|
-| User management / invitations | HTTP / callable | Team account operations |
+| `createTeamUser` | Callable | Create team user + invitation flow |
+| `updateTeamUser` | Callable | Update team user fields |
 
-Location: `functions/` — see `docs/workflow/setup/firebase-functions-setup.md`
+Location: `functions/src/` — compiled to `functions/lib/` (gitignored). See `docs/workflow/setup/firebase-functions-setup.md`.
 
 ---
 

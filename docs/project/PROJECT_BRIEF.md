@@ -58,9 +58,13 @@ DTF design operations are scattered across folders, spreadsheets, messages, and 
 
 | Surface | Status |
 |---------|--------|
-| Desktop Admin (Electron) | Active development |
-| Customer Website | Planned |
+| Desktop Admin (Electron) | **Active** — Phases 1–3C complete; Phase 3D in progress |
+| Customer Website | Planned (Phase 5+) |
 | Mobile App | Future |
+
+## Current Focus (2026-06-24)
+
+Phase 3D: catalog/AI review foundation and print size/DPI normalization. See `docs/project/ROADMAP.md` and `docs/workflow/plans/print-size-dpi-normalization-plan.md`.
 
 ---
 

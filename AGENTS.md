@@ -114,19 +114,19 @@ Examples:
 ZIP extraction:
 
 ```txt
-src/main/ipc/
+electron/ipc/import/
 ```
 
 Firebase auth:
 
 ```txt
-features/auth/services/
+src/renderer/src/features/auth/services/
 ```
 
 UI form:
 
 ```txt
-features/auth/components/
+src/renderer/src/features/auth/components/
 ```
 
 ## Incorrect
@@ -166,13 +166,13 @@ src/renderer/src/
 Electron main process code belongs in:
 
 ```txt
-src/main/
+electron/
 ```
 
 Electron preload code belongs in:
 
 ```txt
-src/preload/
+electron/preload.ts
 ```
 
 Shared code belongs in:
@@ -184,7 +184,7 @@ shared/
 Feature code belongs in:
 
 ```txt
-features/
+src/renderer/src/features/
 ```
 
 ---
@@ -196,7 +196,7 @@ Use feature-based organization.
 Example:
 
 ```txt
-features/
+src/renderer/src/features/
 └── designs/
     ├── components/
     ├── hooks/

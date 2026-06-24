@@ -1,25 +1,12 @@
-# Technical Debt Register
+# Technical Debt Register — Fresh Prints
 
-> **Project-specific** — populated during Existing Project Intake and updated during managed phases. Tracks known debt; fixes require approved managed phases.
-
-> **AppForge starter note:** Debt items for the AppForge starter concern workflow docs, rules, skills, and templates — not application code unless the starter is copied into an app repo.
-
-**Last reviewed:** `[TBD — YYYY-MM-DD]`
+**Last reviewed:** 2026-06-24 (Existing Project Intake)
 
 ---
 
 ## How to Use
 
-| Field | Description |
-|-------|-------------|
-| **Issue** | Short description of the debt |
-| **Category** | architecture / security / testing / docs / dependencies / data / ux-a11y / deployment / other |
-| **Severity** | critical / high / medium / low |
-| **Location** | File paths, modules, or systems |
-| **Why it matters** | Risk or cost of not fixing |
-| **Recommended fix** | Concrete approach (not implemented during intake) |
-| **Suggested phase** | Managed phase name for ROADMAP |
-| **Status** | open / in_progress / deferred / resolved |
+See field definitions in template. Fixes require approved Managed Phases — **not** implemented during intake.
 
 ---
 
@@ -27,7 +14,14 @@
 
 | ID | Issue | Category | Severity | Location | Why it matters | Recommended fix | Suggested phase | Status |
 |----|-------|----------|----------|----------|----------------|-----------------|-----------------|--------|
-| TD-001 | `[TBD — populate during intake]` | | | | | | | open |
+| TD-001 | Generated build artifacts tracked in git | deployment | **high** | `release/`, `dist-electron/`, `build/icon.*` | Bloated repo, slow clones | Added to `.gitignore`; `git rm --cached` | `git-generated-output-cleanup` | **resolved** |
+| TD-002 | Unit tests exist but no `npm test` script | testing | medium | 13 `*.test.ts` files; root `package.json` | Tests cannot run in CI or signoff workflow | Add vitest or node:test runner; `npm test` script | `testing-and-ci-bootstrap` | open |
+| TD-003 | No CI pipeline | deployment | medium | No `.github/workflows/` | Regressions caught only manually | Add lint (+ test when TD-002 done) workflow | `testing-and-ci-bootstrap` | open |
+| TD-004 | `designService.restoreDesign` hardcoded `status: "ready"` | data | medium | `designService.ts` `[INFERRED]` | Restore may set wrong status; noted in Phase 3C signoff C2 | Capture `previousStatus` on archive; restore accurately | Phase 3D follow-up | open |
+| TD-005 | Broad preload IPC surface | security | medium | `electron/preload.ts` | Larger attack surface if renderer compromised | Narrow exposed channels per `docs/standards/SECURITY.md` | `electron-ipc-hardening` | open |
+| TD-006 | Placeholder routes (show queue, customer requests) | architecture | low | `ShowQueuePage`, `CustomerRequestsPage` | Navigation implies features not built | Keep routes; document as shells until roadmap phases | Phase 6+ | deferred |
+| TD-007 | Historical workflow docs use pre-migration paths | docs | low | `docs/workflow/plans/`, `reviews/` phase 1–3 | Confusing when searching; active entry points fixed | Optional doc path sweep or add README note | `workflow-doc-path-sweep` | deferred |
+| TD-008 | `functions/lib/` in `.gitignore` but verify not tracked | deployment | low | `functions/` | Compiled JS should not ship | Verified not tracked | `git-generated-output-cleanup` | **resolved** |
 
 ---
 
@@ -35,13 +29,10 @@
 
 | ID | Issue | Resolved | Resolution notes |
 |----|-------|----------|------------------|
-| | | | |
-
----
-
-## Intake Notes
-
-During Existing Project Intake, agents **record** debt here but **do not fix** it. Link items to `INTAKE_FINDINGS.md` and `PROJECT_HEALTH.md`.
+| TD-R01 | ROADMAP showed Phase 1 Active | 2026-06-24 | Intake updated to Phase 3D |
+| TD-R02 | AGENTS.md/ARCHITECTURE.md wrong Electron paths | 2026-06-24 | Updated to `electron/` layout |
+| TD-R03 | AppForge doc migration incomplete | 2026-06-24 | Prior managed phase `fresh-prints-appforge-migration` |
+| TD-R04 | Generated build artifacts tracked in git | 2026-06-24 | Repository stabilization: untracked 84 files; `.gitignore` updated |
 
 ---
 
@@ -49,4 +40,5 @@ During Existing Project Intake, agents **record** debt here but **do not fix** i
 
 | Date | Summary |
 |------|---------|
-| YYYY-MM-DD | Initial template |
+| 2026-06-24 | TD-001 resolved in repository stabilization |
+| 2026-06-24 | Populated from Existing Project Intake |

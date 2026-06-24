@@ -42,9 +42,9 @@ C:\coding\fresh-prints
 docs/AI_RULES.md
 docs/architecture/ARCHITECTURE.md
 docs/architecture/FIREBASE.md
-docs/DATA_MODEL.md
+docs/architecture/DATA_MODEL.md
 docs/standards/SECURITY.md
-docs/ROADMAP.md
+docs/project/ROADMAP.md
 docs/WORKFLOWS.md
 ```
 

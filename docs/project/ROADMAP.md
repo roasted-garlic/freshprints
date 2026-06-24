@@ -97,13 +97,17 @@ Avoid one-off solutions.
 Current Phase:
 
 ```txt
-Phase 1
-Foundation
+Phase 3D
+Post-import pipeline hardening
 ```
 
 Current Goal:
 
-Build the application foundation before importing a single design.
+Complete Phase 3D desktop admin work (catalog/AI review foundation, print size/DPI normalization) before Phase 4 search and organization features.
+
+**Completed milestones (per signoffs):** Phase 1 foundation, Phase 2 design library (2A–2C), Phase 3 import pipeline (3A–3C signed off 2026-06-20).
+
+**Last intake:** 2026-06-24 — roadmap header aligned with implementation state.
 
 ---
 
@@ -114,7 +118,7 @@ Build the application foundation before importing a single design.
 Status:
 
 ```txt
-Active
+Complete
 ```
 
 Goal:
@@ -242,7 +246,7 @@ No image functionality is required.
 Status:
 
 ```txt
-Planned
+Complete
 ```
 
 Goal:
@@ -314,12 +318,13 @@ No ZIP importing yet.
 Status:
 
 ```txt
-Planned
+Complete (3A–3C)
+Active (3D)
 ```
 
 Goal:
 
-Automate design importing.
+Automate design importing and production-ready metadata.
 
 ---
 
@@ -388,8 +393,13 @@ Phase 3 complete when:
 
 ### Phase 3D progress (desktop admin)
 
-* **3D Step 6 (current):** Catalog status cleanup — deprecated `queued`/`printed` on designs; `catalogApprovalService`; import sets `aiReviewStatus: pending`.
-* **3D Step 5:** AI review data foundation — `aiReviewStatus` fields, `designAiReviewService`, permissions, read-only Design Details display.
+* **3D Step 6:** Catalog status cleanup — `catalogApprovalService`; import sets `aiReviewStatus: pending` `[INFERRED]` implemented.
+* **3D Step 5:** AI review data foundation — `aiReviewStatus`, `designAiReviewService`, Ai Review page.
+* **Next (recommended):** Print size & DPI normalization per `docs/workflow/plans/print-size-dpi-normalization-plan.md`.
+
+### Recommended cleanup phase (pre-GitHub)
+
+* **`git-generated-output-cleanup`** — untrack `release/`, `dist-electron/`; see `docs/project/TECH_DEBT.md` TD-001.
 
 ---
 

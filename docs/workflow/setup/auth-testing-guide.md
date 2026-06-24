@@ -41,7 +41,7 @@ https://console.firebase.google.com/
 ```txt
 docs/AI_RULES.md
 docs/architecture/FIREBASE.md
-docs/DATA_MODEL.md
+docs/architecture/DATA_MODEL.md
 docs/standards/SECURITY.md
 ```
 
