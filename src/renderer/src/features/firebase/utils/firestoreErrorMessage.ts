@@ -19,6 +19,10 @@ export function getFirestoreErrorMessage(error: unknown, fallbackMessage: string
     case "invalid-argument":
       return message || "The request contains invalid data.";
     case "failed-precondition":
+      if (/index/i.test(message) && /building/i.test(message)) {
+        return "The catalog search index is still building. Try again in a few minutes.";
+      }
+
       return message || "This operation cannot be completed right now.";
     default:
       if (message) {

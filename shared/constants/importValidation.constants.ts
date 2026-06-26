@@ -1,7 +1,7 @@
 export const MIN_DPI = 300;
 
-/** 50 MB — single PNG import limit for Phase 3A */
-export const MAX_SINGLE_PNG_SIZE_BYTES = 50 * 1024 * 1024;
+/** Single PNG import limit — must match `storage.rules` original upload cap. */
+export const MAX_SINGLE_PNG_SIZE_BYTES = 150 * 1024 * 1024;
 
 export const ALLOWED_EXTENSIONS = [".png"] as const;
 

@@ -6,9 +6,10 @@ This document is the official visual design system for Fresh Prints.
 
 It defines how every screen, component, and interaction should look and behave across:
 
-* Desktop Admin Application
-* Customer Website
-* Future Mobile Application
+* **Fresh Prints Studio** (desktop-first staff application)
+* **Fresh Prints Portal** (mobile-first responsive web for customers)
+
+There is no separate native mobile application. Portal responsive breakpoints are the mobile strategy. Optional PWA install remains Portal styling.
 
 Every UI change must follow this guide.
 
@@ -164,6 +165,7 @@ These tokens are mandatory across the platform:
 | `--color-bg-primary` | Application root background |
 | `--color-bg-secondary` | Primary panels, cards, shell regions |
 | `--color-bg-tertiary` | Inputs, recessed areas, inactive controls |
+| `--color-artwork-preview-bg` | Light neutral backing behind transparent or white artwork previews |
 | `--color-border` | Standard 1px borders and dividers |
 | `--color-text-primary` | Headings, primary values, body text |
 | `--color-text-secondary` | Labels, captions, metadata |
@@ -181,6 +183,7 @@ These tokens are mandatory across the platform:
   --color-bg-primary: #f3f4f6;
   --color-bg-secondary: #ffffff;
   --color-bg-tertiary: #f8f9fb;
+  --color-artwork-preview-bg: #e5e7eb;
 
   /* Borders */
   --color-border: #e3e7ee;
@@ -225,6 +228,7 @@ These tokens are mandatory across the platform:
   --color-bg-primary: #0b0e14;
   --color-bg-secondary: #12161f;
   --color-bg-tertiary: #1a2030;
+  --color-artwork-preview-bg: #d9dee7;
 
   /* Borders */
   --color-border: #2a303c;
@@ -268,6 +272,7 @@ These tokens are mandatory across the platform:
 | App background | `--color-bg-primary` |
 | Sidebar, cards, modals | `--color-bg-secondary` |
 | Inputs, recessed controls | `--color-bg-tertiary` |
+| Transparent and white artwork preview backing | `--color-artwork-preview-bg` |
 | Dividers and panel edges | `--color-border` |
 | Emphasized separators | `--color-border-strong` |
 | Main text and numeric values | `--color-text-primary` |
@@ -397,7 +402,7 @@ Spacing is compact by default to support operational density.
 
 ## Application Shell
 
-Desktop admin layout:
+Fresh Prints Studio layout:
 
 ```txt
 AppShell
@@ -416,6 +421,38 @@ AppShell
 * Main content scrolls independently where needed
 * Optional right-side panel for detail/edit workflows (order-panel pattern)
 * Bottom navigation is reserved for future mobile or compact breakpoints only
+
+## AI Processing station layout (`/ai-review`)
+
+The AI Processing page uses a **hybrid scroll** layout:
+
+```txt
+page-content-area--ai-review (overflow-y: auto — page scroll for right column)
+└── ai-review-page
+    └── ai-review-layout
+        ├── queue panel (position: sticky, max-height, internal list scroll)
+        └── workspace (natural height — no inner scroll trap on workspace-flow)
+```
+
+* Apply `page-content-area--ai-review` via route detection in `AppShell`.
+* Left queue: `.ai-review-queue-panel` is sticky with `max-height: calc(100vh - 9rem)`; `.ai-review-queue-list` scrolls internally.
+* Right workspace: `.ai-review-workspace-flow` grows naturally; staff scroll the page to reach long content.
+* All tabs share the same square `.ai-review-preview-stage` (aspect-ratio 1, max 28rem).
+* Stacked layout (`max-width: 1100px`): queue panel sticky with `max-height: min(38vh, …)` and internal scroll.
+
+## AI Processing horizontal stepper (Processing tab)
+
+Three grouped steps (backend stages unchanged):
+
+| Node label | `aiProcessingStage` values |
+| --- | --- |
+| Sending to AI | `queued`, `preparing_image`, `sending_to_ai` |
+| Receiving from AI | `receiving_response`, `validating_response` |
+| Ready for review | `ready_for_review` |
+
+Markup: `.ai-review-pipeline-stepper` with numbered circle nodes, connector line, labels below. States: complete (check + green), active (spinner), pending (number), failed (X + red). Show `aiSuggestions.errorMessage` under stepper when failed.
+
+Import/thumbnail/preview steps are **not** shown in staff UI.
 
 ## Grid Behavior
 
@@ -478,7 +515,7 @@ color: var(--color-text-primary);
 * Pill-shaped switch with `--radius-full`
 * Off track: `--color-bg-tertiary`
 * On track: `--color-accent-primary`
-* Knob: `--color-text-primary` on dark track or white on accent
+* Knob: `--color-bg-primary` with subtle shadow; use shared `Toggle` (`role="switch"`) for boolean filters such as **Show archived**
 
 ## Radio And Checkbox Groups
 
@@ -912,6 +949,19 @@ border: 1px solid transparent;
 * Do not use badges for long sentences
 * Status color must match meaning across the app
 
+## Resolution quality pills (Design Library)
+
+Use `ResolutionQualityPill` for catalog resolution tiers derived from persisted `effectiveDpi`. Tooltip format: `Good Resolution · 268 DPI`.
+
+| Tier | Label | Effective DPI | Pill mapping |
+| --- | --- | --- | --- |
+| Optimal | Optimal | ≥ 300 | `success` / green (`--color-success-*`) |
+| Good | Good | 250–299 | `warning` / yellow (`--color-warning-*`) |
+| Bad | Bad | 200–249 | `danger` / red (`--color-danger-*`) |
+| Terrible | Terrible | 72–199 | `default` with black/dark border (`--color-text-primary` on `--color-bg-primary`) |
+
+CSS tokens live in `design-library.css` under `.resolution-quality-*`. Terrible tier must remain readable in dark mode — use primary text/border tokens, not pure `#000`.
+
 ---
 
 # 20. Theme Toggle Behavior
@@ -1048,6 +1098,7 @@ Complete token reference for implementation.
 --color-bg-primary
 --color-bg-secondary
 --color-bg-tertiary
+--color-artwork-preview-bg
 
 /* Borders */
 --color-border

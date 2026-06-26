@@ -12,6 +12,7 @@ interface DesignThumbnailPanelProps {
   fallbackLabel?: string;
   imageFit?: "contain" | "cover";
   interactive?: boolean;
+  borderless?: boolean;
   loadingLabel?: string;
   onImageClick?: (imageUrl: string) => void;
 }
@@ -30,6 +31,7 @@ export function DesignThumbnailPanel({
   fallbackLabel = "Preview Pending",
   imageFit = "contain",
   interactive = false,
+  borderless = false,
   loadingLabel = "Loading preview",
   onImageClick,
 }: DesignThumbnailPanelProps) {
@@ -51,6 +53,7 @@ export function DesignThumbnailPanel({
   const panelClassName = [
     "design-thumbnail-panel",
     hasResolvedUrl ? "design-thumbnail-panel--resolved" : "",
+    borderless ? "design-thumbnail-panel--borderless" : "",
     className,
   ]
     .filter(Boolean)

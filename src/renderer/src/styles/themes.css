@@ -4,6 +4,7 @@
   --color-bg-primary: #f3f4f6;
   --color-bg-secondary: #ffffff;
   --color-bg-tertiary: #f8f9fb;
+  --color-artwork-preview-bg: #e5e7eb;
 
   /* Borders */
   --color-border: #e3e7ee;
@@ -45,6 +46,7 @@
   --color-bg-primary: #0b0e14;
   --color-bg-secondary: #12161f;
   --color-bg-tertiary: #1a2030;
+  --color-artwork-preview-bg: #d9dee7;
 
   /* Borders */
   --color-border: #2a303c;

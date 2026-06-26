@@ -114,12 +114,11 @@ All applications use:
 Applications:
 
 ```txt id="udgtw3"
-Desktop App
-Customer Website
-Future Mobile App
+Fresh Prints Studio
+Fresh Prints Portal
 ```
 
-should all share one backend.
+Both share one Firebase backend. No separate mobile backend. See `docs/architecture/ADR-Application-Platform-Strategy.md`.
 
 ---
 
@@ -848,6 +847,56 @@ The renderer must call these functions instead of writing protected user records
 
 ---
 
+# Phase 5B Cloud Functions — AI Processing
+
+Automatic AI enrichment after import:
+
+* `enqueueAiEnrichment` — callable; sets `aiProcessingStage: queued` on imported designs. Optional `rerunRejected: true` for owner/admin to re-queue AI on rejected designs (replaces prior `aiSuggestions` / `aiAnalysis`).
+* `onDesignAiEnrichmentQueued` — Firestore `designs/{designId}` update trigger; runs enrichment pipeline (`maxInstances: 10`, `timeoutSeconds: 180`, `memory: 512MiB`)
+
+**Deploy (required for AI pipeline):**
+
+```bash
+firebase deploy --only firestore:rules
+firebase deploy --only functions
+```
+
+Prefer a full `functions` deploy after export/entrypoint changes so all exports stay aligned. Filtered deploy is optional afterward:
+
+```bash
+firebase deploy --only functions:enqueueAiEnrichment,functions:onDesignAiEnrichmentQueued
+```
+
+**Prerequisite:** `OPENAI_API_KEY` must exist in **Firebase Secret Manager** before deploy (functions bind the secret at deploy time). See **AI provider secrets** below — never store this key in Firestore or the desktop app.
+
+**Build entrypoint:** `functions/package.json` → `main: lib/functions/src/index.js` (see `docs/workflow/setup/firebase-functions-setup.md`).
+
+## AI provider secrets (Phase 5B)
+
+| Rule | Detail |
+|------|--------|
+| Storage | **Firebase Secret Manager only** (`OPENAI_API_KEY`) |
+| Firestore | **Not allowed** — no provider API keys in `settings` or any collection |
+| Desktop renderer | **Must not** read, write, display, or configure OpenAI keys |
+| Settings UI | **No** API-key entry on the desktop Settings page |
+| Cloud Functions | May read secrets via `defineSecret` / `secrets` binding |
+| Development | Heuristic provider runs when secret is unset or empty at **runtime** (after deploy) |
+| Production OpenAI | Requires a real `OPENAI_API_KEY` in Secret Manager (human approval) |
+
+Set secret (human, outside repo):
+
+```bash
+firebase functions:secrets:set OPENAI_API_KEY
+```
+
+**Do not** store `OPENAI_API_KEY` in Firestore `settings` or any document. The desktop renderer must never read provider secrets.
+
+### Build artifact caution
+
+Never commit compiled `shared/**/*.js` from `functions` `tsc`. Vite resolves `.js` before `.ts` and a stale CJS file can cause a white screen at startup (see TD-012).
+
+---
+
 # Phase 2A Design Library Services
 
 Phase 2A adds typed Firestore services for the design catalog foundation.
@@ -959,7 +1008,7 @@ storage.rules
 
 | Path | Format | Size cap | Access |
 | --- | --- | --- | --- |
-| `/originals/{designId}.png` | PNG | 50 MB | Active staff only |
+| `/originals/{designId}.png` | PNG | 150 MB | Active staff only |
 | `/thumbnails/{designId}.webp` | WebP | 10 MB | Active staff only (Phase 3C) |
 | `/previews/{designId}.webp` | WebP | 10 MB | Active staff only (Phase 3C) |
 
@@ -983,10 +1032,17 @@ firebase deploy --only firestore:indexes
 
 Expected query patterns:
 
-* `designs` filtered by `status`, ordered by `updatedAt` desc
-* `designs` filtered by `categoryId` + `status`, ordered by `updatedAt` desc
-* `designs` filtered by single `tags` array-contains + `status`
+* `designs` filtered by catalog `status: ready` (default) or `status: archived` (archived catalog toggle), ordered by `updatedAt` desc
+* `designs` filtered by `categoryId` + catalog `status`, ordered by `updatedAt` desc
+* `designs` filtered by single `tags` array-contains + catalog `status` (query field order: `categoryId` → `tags` → `status`)
+* `designs` filtered by `categoryId` + `tags` + catalog `status` (Design Library category + tag filters)
+* Additional `status` + `tags` and `categoryId` + `status` + `tags` composite indexes cover tag filters in both approved and archived views
+* Tag queries use a single `status` equality (`ready` or `archived`) — no combined ready+archived queries
+* If a tag index is still building, the app falls back to client-side tag filtering on a larger catalog fetch
+* `designs` filtered by `aiReviewStatus` + `status` — **reserved for AI Review (Phase 5)**; indexes retained in `firestore.indexes.json`
 * `categories` filtered by `isActive`, ordered by `sortOrder` asc
+
+Phase 4 catalog cleanup removed Design Library status and AI review filters. Library queries default to approved catalog (`status: ready`). The archived catalog toggle queries `status: archived` only. **Do not delete** `aiReviewStatus` composite indexes before Phase 5 AI Review ships.
 
 ## Firestore Rules
 

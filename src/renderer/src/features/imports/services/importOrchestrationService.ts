@@ -18,6 +18,7 @@ import { importDerivativeService } from "./importDerivativeService";
 import { importDesktopService } from "./importDesktopService";
 import { ImportOrchestrationError } from "./importOrchestrationError";
 import { importUploadService } from "./importUploadService";
+import { logPipelineEvent } from "../../../shared/utils/pipelineLog";
 
 export interface SinglePngUploadOutcome {
   uploadResult: ImportOriginalUploadResult;
@@ -78,6 +79,7 @@ function buildUploadResult(input: {
   previewPath?: string;
   derivativeError?: string;
   cleanupWarning?: string | null;
+  aiEnqueueError?: string | null;
 }): ImportOriginalUploadResult {
   return {
     catalogRecordCreated: true,
@@ -95,6 +97,7 @@ function buildUploadResult(input: {
     previewPath: input.previewPath,
     derivativeError: input.derivativeError,
     cleanupWarning: input.cleanupWarning ?? null,
+    aiEnqueueError: input.aiEnqueueError ?? null,
   };
 }
 
@@ -242,6 +245,8 @@ export async function importValidatedPngFile(
       }),
     };
   }
+
+  logPipelineEvent("import.derivatives.completed", { designId: design.id });
 
   return {
     status: "success",

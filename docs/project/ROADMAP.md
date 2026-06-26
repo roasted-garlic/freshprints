@@ -21,19 +21,21 @@ All work should align with the current roadmap phase.
 
 # Vision
 
-Fresh Prints will become a centralized platform for managing DTF designs, customer requests, live show preparation, production workflows, and design discovery.
+Fresh Prints is a centralized **design catalog and print planning platform** for DTF operations.
 
 The platform will support:
 
-* Desktop Admin Operations
-* Customer Design Browsing
-* Customer Requests
-* Design Organization
-* AI Categorization
-* AI Search
-* Show Queue Management
-* Production Preparation
-* Future Mobile Access
+* **Fresh Prints Studio** (Electron — staff only)
+* **Fresh Prints Portal** (mobile-first responsive web — customers only)
+* Approved Design Catalog browsing and search
+* AI-assisted catalog enrichment and staff review
+* Print Request planning (registered customers, guests, internal lists)
+* Print Run / Upcoming Show planning
+* Production file export for gang sheets (Pensacola workflow)
+
+Fresh Prints consists of **two applications only**. Official names: **Fresh Prints Studio** and **Fresh Prints Portal** (`docs/architecture/ADR-Application-Platform-Strategy.md`). There is no standalone native mobile app. Fresh Prints Portal serves phones, tablets, and desktop browsers.
+
+Fresh Prints is **not** ecommerce, shipping, fulfillment, or order payment software for catalog prints. The only future payment workflow is an optional custom design fee ($5–$10) for in-house Custom Requests.
 
 The goal is to eliminate scattered folders, spreadsheets, messages, ZIP files, and manual workflows.
 
@@ -84,11 +86,10 @@ Avoid partially built systems.
 
 Build systems that can support:
 
-* Desktop App
-* Customer Website
-* Future Mobile App
+* Fresh Prints Studio
+* Fresh Prints Portal (mobile-first responsive web)
 
-Avoid one-off solutions.
+Avoid one-off solutions. Do not plan for a separate native mobile application.
 
 ---
 
@@ -97,17 +98,19 @@ Avoid one-off solutions.
 Current Phase:
 
 ```txt
-Phase 3D
-Post-import pipeline hardening
+Phase 5
+AI Review Workflow (architecture refined — ready for implementation)
 ```
 
 Current Goal:
 
-Complete Phase 3D desktop admin work (catalog/AI review foundation, print size/DPI normalization) before Phase 4 search and organization features.
+Implement AI Review Inbox, automatic AI pipeline, and Approval Mode per `docs/workflow/plans/phase-5-ai-review-architecture-plan.md`.
 
-**Completed milestones (per signoffs):** Phase 1 foundation, Phase 2 design library (2A–2C), Phase 3 import pipeline (3A–3C signed off 2026-06-20).
+**Completed milestones (per signoffs):** Phase 1 foundation, Phase 2 design library (2A–2C), Phase 3 import pipeline (3A–3C), Phase 3D print size and catalog status separation, **Phase 4 catalog cleanup**.
 
-**Last intake:** 2026-06-24 — roadmap header aligned with implementation state.
+**Architecture review:** `docs/workflow/reviews/phase-5-ai-review-architecture-review.md` (2026-06-24).
+
+**Last realignment:** 2026-06-24 — `docs/workflow/reviews/roadmap-realignment-review.md`, `docs/workflow/plans/customer-print-request-and-print-run-architecture-plan.md`.
 
 ---
 
@@ -391,31 +394,67 @@ Phase 3 complete when:
 * Uploads work
 * Records are created
 
-### Phase 3D progress (desktop admin)
+### Phase 3D progress (Fresh Prints Studio)
 
-* **3D Step 6:** Catalog status cleanup — `catalogApprovalService`; import sets `aiReviewStatus: pending` `[INFERRED]` implemented.
-* **3D Step 5:** AI review data foundation — `aiReviewStatus`, `designAiReviewService`, Ai Review page.
-* **Next (recommended):** Print size & DPI normalization per `docs/workflow/plans/print-size-dpi-normalization-plan.md`.
+**Status:** Implementation complete — **signed off** `docs/workflow/reviews/phase-3d-print-size-signoff.md` (2026-06-24, manual QA PASS WITH NOTES).
 
-### Recommended cleanup phase (pre-GitHub)
+* **3D Steps 2–4, 6–7:** Print size math, import validation/persistence, Edit Design controls, Design Details display — **complete**
+* **3D Step 5 (partial):** Import assessment UI — **complete**; staff confirm modal — **deferred**
+* **3D Step 8:** Optional backfill — **deferred**
+* **Follow-up UX (non-blocking):** Show equivalent print sizes at 300 / 150 / 72 DPI during import validation to reconcile with other software — deferred
+* **Next:** Manual QA for Phase 4A; deploy Firestore indexes before production use
 
-* **`git-generated-output-cleanup`** — untrack `release/`, `dist-electron/`; see `docs/project/TECH_DEBT.md` TD-001.
+---
+
+## Phase 4A — Search & Filter Enhancement (2026-06-24)
+
+**Delivered:**
+
+* Tag filter (server `array-contains`)
+* AI review status filter (server for non-pending; client fallback for `pending` / legacy records) — **relocate to AI Review in Phase 4 cleanup**
+* Pagination — load more (100 per page)
+* Search includes description
+* URL query params: `status`, `category`, `tag`, `aiReview`
+* Clear filters control
+* Composite Firestore indexes in `firestore.indexes.json` (deploy required)
+
+**Cleanup (post-realignment):** Remove status and AI review filters from Design Library; default to approved catalog (`ready`); archived visibility toggle; simplify URL params.
+
+**Deferred:** Date range filters (4B backlog)
+
+---
+
+## Phase 4 — Catalog Cleanup (2026-06-24)
+
+**Delivered:**
+
+* Design Library defaults to approved catalog (`status: ready`)
+* Removed status and AI review filters from Design Library
+* Archived visibility toggle (`archived=true` URL param)
+* Searchable multi-select tag filter modal
+* URL params: `search`, `category`, `tags`, `archived`
+* Imports completion messaging and links point to AI Review
+* Legacy `status=imported` library URLs redirect to AI Review
+
+**Addendum (2026-06-24):** Show archived control is a toggle switch; **Design Library** is the default authenticated landing page (`/designs`); **Dev Dashboard** moved to bottom of sidebar (`/dev-dashboard`).
+
+**QA fix (2026-06-24):** Tag filter composite indexes extended; Edit Design status read-only; uniform design cards; archived metadata save preserves `archived`.
 
 ---
 
 # Phase 4
 
-## Search And Organization
+## Catalog Search And Organization
 
 Status:
 
 ```txt
-Planned
+Complete — signoff 2026-06-24 (docs/workflow/reviews/phase-4-signoff.md)
 ```
 
 Goal:
 
-Make large design libraries manageable.
+Make the **approved design catalog** easy to search and browse. Design Library is not a workflow queue.
 
 ---
 
@@ -423,90 +462,65 @@ Make large design libraries manageable.
 
 Build:
 
-* Advanced Search
-* Tags
-* Categories
-* Filters
+* Catalog search (title, description, tags)
+* Category and tag filters
+* Pagination
+* Archived visibility toggle
+* URL persistence for catalog filters
+* AI Review navigation (sidebar, import redirects)
+* Design Library limited to approved catalog (`ready`) by default
 
 ---
 
-## Search Fields
+## Design Library scope
 
-Support:
+**In scope:**
 
-* Title
-* Tags
-* Category
-* Status
-* Customer
+* Search, category, tags, pagination, archived toggle
+* Staff metadata editing
+
+**Out of scope (moved to other phases):**
+
+* AI review queue filters → Phase 5 AI Review page
+* Import / operational status filters → Phase 5 AI Review page
+* Print request or production queues → Phases 6–7
 
 ---
 
 ## Exit Criteria
 
-Large libraries remain easy to navigate.
+Staff can efficiently browse and search the approved catalog. Non-catalog workflow filters removed from Design Library. Imports route to AI Review. Documentation reflects Fresh Prints Studio and Fresh Prints Portal as the only applications.
 
 ---
 
 # Phase 5
 
-## Customer Requests
+## AI Processing And Catalog Approval
 
 Status:
 
 ```txt
-Planned
+In progress — Phase 5A workspace polish complete (2026-06-24)
 ```
 
 Goal:
 
-Capture customer demand.
+Every imported design lands in **AI Processing** (`/ai-review`). Automatic AI enrichment runs after import (Phase 5B). Staff review and approve before designs appear in Design Library.
 
----
+Architecture plan: `docs/workflow/plans/phase-5-ai-review-architecture-plan.md`  
+Architecture review: `docs/workflow/reviews/phase-5-ai-review-architecture-review.md`
 
-## Objectives
+### Sub-phases (recommended)
 
-Support:
+| Sub-phase | Focus |
+|-----------|--------|
+| **5A** | Processing station — tabs, queue stats, workflow workspace (preview → pipeline → suggestions → catalog form); oldest-first queue; **no search/filter/sort** |
+| **5B** | Automatic AI pipeline (enqueue on import; Cloud Function; `aiSuggestions` + version fields) |
+| **5C** | Approval workflow polish (already largely in 5A workspace) |
+| **5D** | Promotion & audit (`catalogApprovalService` UI, re-open rejected, duplicate title warning) |
+| **5E** | Polish & metrics (confidence badges, soft lock, re-run AI, sessionStorage optional) |
 
-* Upload Requests
-* Description Requests
-* Request Tracking
-
----
-
-## Deliverables
-
-### Customer Requests
-
-Support:
-
-* Submit
-* Review
-* Approve
-* Reject
-* Fulfill
-
----
-
-## Exit Criteria
-
-Customers can successfully submit requests.
-
----
-
-# Phase 6
-
-## Show Queue System
-
-Status:
-
-```txt
-Planned
-```
-
-Goal:
-
-Prepare inventory for live shows.
+**5B** may run parallel with **5A**. Human checkpoint required before production AI provider setup.
 
 ---
 
@@ -514,107 +528,146 @@ Prepare inventory for live shows.
 
 Build:
 
-* Queue Creation
-* Queue Items
-* Customer Assignment
-* Production Tracking
+* AI Processing station (`/ai-review`) — Processing, Needs Review, Rejected tabs; oldest-first queue
+* Automatic AI enqueue after import (Phase 5B — no manual Generate AI for new imports)
+* AI title, description, category, tag suggestions with version tracking (Phase 5B)
+* Staff review workspace (Approve & Next, Reject & Next, Skip, auto-advance)
+* `catalogApprovalService` UI wiring
+* Import completion routes to AI Processing (not Design Library)
+* **Search and catalog filters remain in Design Library only**
 
 ---
 
 ## Deliverables
 
-### Queue Management
+### AI Processing Queue
 
 Support:
 
-* Create Queue
-* Edit Queue
-* Complete Queue
+* **Processing** tab (awaiting AI) and **Needs review** tab (ready for staff)
+* **Rejected** tab for audit and re-open
+* Oldest-first queue order — no search, category filter, or sort dropdown
+* Honest AI output placeholder until Phase 5B (no fabricated suggestions)
+* Temporary form state in review workspace (no Firestore review drafts)
+* Approve → `status: ready` (Design Library)
+* Reject → `status: rejected`
 
----
-
-### Queue Items
-
-Support:
-
-* Add Design
-* Remove Design
-* Assign Customer
-* Reorder
-
----
-
-## Exit Criteria
-
-Show preparation can occur entirely within Fresh Prints.
-
----
-
-# Phase 7
-
-## AI Features
-
-Status:
-
-```txt
-Planned
-```
-
-Goal:
-
-Reduce manual organization.
-
----
-
-## Objectives
-
-Support:
-
-* AI Naming
-* AI Tags
-* AI Categories
-* Duplicate Detection
-
----
-
-## Deliverables
-
-### AI Naming
+### AI Enrichment
 
 Generate:
 
 * Titles
 * Descriptions
-
----
-
-### AI Organization
-
-Generate:
-
 * Tags
-* Categories
-
----
-
-### Duplicate Detection
-
-Identify:
-
-* Exact Duplicates
-* Similar Designs
+* Category suggestions
 
 ---
 
 ## Exit Criteria
 
-AI suggestions are reviewable and useful.
+New imports appear in AI Processing. AI runs automatically after import (5B). Staff approve in the processing workspace. Approved designs appear in Design Library only. Search/filter belongs in Design Library. No automatic catalog publish without staff action.
+
+---
+
+# Phase 6
+
+## Customers And Print Requests
+
+Status:
+
+```txt
+Planned
+```
+
+Goal:
+
+Staff create named print request lists from approved catalog designs for registered customers, guest customers, or internal use.
+
+---
+
+## Objectives
+
+Build:
+
+* Customer and guest customer records
+* Print Request CRUD
+* Print Request Items (design selections)
+* Item-level production status (`pending`, `printed`, `done`)
+
+---
+
+## Deliverables
+
+### Print Requests
+
+Support:
+
+* Create named request list
+* Add designs from approved catalog
+* Assign registered customer, guest customer, or internal list
+* Track item status
+
+**Not in scope:** Payment, checkout, shipping, order fulfillment.
+
+---
+
+## Exit Criteria
+
+Staff can build and manage print requests without mutating design catalog status.
+
+---
+
+# Phase 7
+
+## Print Runs / Upcoming Shows
+
+Status:
+
+```txt
+Planned
+```
+
+Goal:
+
+Group multiple print requests into upcoming shows or batch print runs. Export production files for Pensacola gang-sheet workflow.
+
+---
+
+## Objectives
+
+Build:
+
+* Print Run CRUD
+* Attach print requests to runs
+* Print Run Items with production status
+* Download originals / batch export for gang sheets
+
+---
+
+## Deliverables
+
+### Print Run Management
+
+Support:
+
+* Create / edit / complete print run
+* Add print request items to run
+* Mark items printed / done
+* Pensacola file export (originals to local folder)
+
+**Not in scope:** Shipping, packing, parcel tracking.
+
+---
+
+## Exit Criteria
+
+Show preparation and production file export occur within Fresh Prints. Production status lives on print run items, not designs.
 
 ---
 
 # Phase 8
 
-## Pensacola Production Workflow
+## Fresh Prints Portal
 
 Status:
 
@@ -624,7 +677,7 @@ Planned
 
 Goal:
 
-Prepare files for production.
+Registered customers browse the approved catalog and manage print requests on **Fresh Prints Portal** — a mobile-first responsive web application (phones, tablets, desktop browsers).
 
 ---
 
@@ -632,47 +685,36 @@ Prepare files for production.
 
 Build:
 
-* Download Queue Assets
-* Download Originals
-* Batch Export
+* Customer registration and login (`role: customer` only)
+* Catalog browse, search, filter
+* Customer-created print requests
+* Print request progress tracking
 
 ---
 
 ## Deliverables
 
-### Queue Downloads
+### Customer Portal
 
 Support:
 
-```txt
-Queue
- ↓
-Download Originals
- ↓
-Local Folder
-```
+* Browse approved designs
+* Create print requests
+* Track request status
 
----
-
-### Production Exports
-
-Support:
-
-* Single Design Download
-* Queue Download
-* Bulk Download
+**Security:** Customer accounts use Fresh Prints Portal only. They do not access Fresh Prints Studio.
 
 ---
 
 ## Exit Criteria
 
-Pensacola production workflow is fully supported.
+Customers self-serve catalog browse and print request creation on the web portal.
 
 ---
 
 # Phase 9
 
-## Customer Website
+## Custom Request Q&A And Etsy Referral
 
 Status:
 
@@ -682,7 +724,7 @@ Planned
 
 Goal:
 
-Allow customers to interact directly with the design library.
+Separate custom design workflow from print requests. Optional design fee for in-house custom art.
 
 ---
 
@@ -690,53 +732,47 @@ Allow customers to interact directly with the design library.
 
 Build:
 
-* Customer Login
-* Design Browsing
-* Favorites
-* Requests
+* Q&A intake form
+* Etsy search URL generation
+* Customer path: found on Etsy vs needs in-house design
+* Optional $5–$10 design fee (only payment workflow in Fresh Prints)
 
 ---
 
 ## Deliverables
 
-### Design Discovery
+### Custom Requests
 
 Support:
 
-* Browse
-* Search
-* Filter
+* Questionnaire submission
+* Etsy referral link
+* In-house custom request queue (staff review)
+* Optional design fee tracking
 
----
-
-### Requests
-
-Support:
-
-* Upload Request
-* Description Request
+**Not in scope:** Checkout for normal print requests; product payment; shipping.
 
 ---
 
 ## Exit Criteria
 
-Customers can self-serve common workflows.
+Custom requests are distinct from print requests. Etsy referral and in-house paths documented and functional.
 
 ---
 
 # Phase 10
 
-## Mobile Support
+## Analytics And Popularity Tracking
 
 Status:
 
 ```txt
-Future
+Planned
 ```
 
 Goal:
 
-Extend access to mobile devices.
+Track design popularity without changing catalog lifecycle.
 
 ---
 
@@ -744,9 +780,15 @@ Extend access to mobile devices.
 
 Support:
 
-* Request Tracking
-* Favorites
-* Notifications
+* `requestCount`, `showAddCount`, `printCount` counters on designs
+* `lastRequestedAt`, `lastAddedToShowAt`, `lastPrintedAt` timestamps
+* Trend and popularity views
+
+---
+
+## Exit Criteria
+
+Popularity metrics increment from print request and print run events. Counters are analytics only — designs never become queued or printed.
 
 ---
 
@@ -758,12 +800,13 @@ Potential future features:
 * Collections
 * Design Versioning
 * Team Activity Feed
-* Analytics Dashboard
-* Trend Tracking
-* Automated Queue Suggestions
+* Duplicate detection (AI)
+* Automated print run suggestions
 * Cloud Functions
-* Push Notifications
+* Web push notifications (Fresh Prints Portal PWA — optional)
 * Public Design Sharing
+* Date range filters (Phase 4B)
+* Multi-select tag filter modal (Phase 4B)
 
 Backlog items require approval before development.
 
@@ -773,13 +816,18 @@ Backlog items require approval before development.
 
 Do not build these without explicit approval:
 
+* Ecommerce storefront / product checkout for catalog prints
+* Shipping or parcel fulfillment
+* Order payment for normal print requests
 * Marketplace
-* Payment Processing
-* Customer Billing
+* General payment processing (except optional custom design fee in Phase 9)
+* Customer billing for catalog items
 * Social Features
 * Messaging System
 * Custom Backend APIs
 * Multi-Tenant Support
+* Customer role access to Fresh Prints Studio
+* Standalone native mobile applications (iOS, Android, React Native, Flutter, Xamarin, MAUI)
 
 ---
 
@@ -803,12 +851,13 @@ If not, postpone it.
 
 Fresh Prints succeeds when:
 
-* Design organization is effortless.
-* Customer requests are centralized.
-* Show preparation is streamlined.
-* Remote helpers can contribute easily.
-* Pensacola production becomes faster.
-* AI reduces repetitive work.
+* The approved design catalog is effortless to search and maintain.
+* Imported designs flow through AI Review before catalog visibility.
+* Print requests and print runs replace spreadsheets and messages for show prep.
+* Remote helpers can import, review, and build print plans without Pensacola filesystem access.
+* Pensacola production file export is faster.
+* AI reduces repetitive catalog enrichment.
+* Customer portal (Fresh Prints Portal) separates cleanly from Fresh Prints Studio.
 * The platform remains maintainable for years.
 
 Every feature should move the project toward these goals.

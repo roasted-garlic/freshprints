@@ -123,9 +123,26 @@ cd ..
 Expected output:
 
 ```txt
-functions/lib/index.js
-functions/lib/createTeamUser.js
+functions/lib/functions/src/index.js
+functions/lib/functions/src/enqueueAiEnrichment.js
 ```
+
+Verify exports (from repo root):
+
+```bash
+node -e "console.log(Object.keys(require('./functions')))"
+```
+
+Expected names:
+
+```txt
+createTeamUser
+updateTeamUser
+enqueueAiEnrichment
+onDesignAiEnrichmentQueued
+```
+
+> **Note:** `package.json` `main` must point at `lib/functions/src/index.js` because TypeScript emits a nested path when `../shared/types` is included in `tsconfig.json`. The build script deletes `lib/` before each compile so stale `lib/index.js` artifacts cannot mask missing exports.
 
 ### Step 6: Review Project Files
 
@@ -153,15 +170,33 @@ firebase deploy --only firestore:rules
 
 ### Step 8: Deploy Cloud Functions
 
+Set required secrets before first deploy of AI functions (non-interactive deploy fails without them):
+
+```bash
+firebase functions:secrets:set OPENAI_API_KEY
+```
+
+Use a real OpenAI key for production vision enrichment, or a placeholder for development-only heuristic provider testing.
+
+Deploy all functions (recommended first deploy after adding new exports):
+
 ```bash
 firebase deploy --only functions
 ```
 
-Expected deployed callable functions:
+Or deploy only the Phase 5B AI functions:
+
+```bash
+firebase deploy --only functions:enqueueAiEnrichment,functions:onDesignAiEnrichmentQueued
+```
+
+Expected deployed functions:
 
 ```txt
 createTeamUser
 updateTeamUser
+enqueueAiEnrichment
+onDesignAiEnrichmentQueued
 ```
 
 ### Step 9: Verify Deployment
@@ -170,7 +205,7 @@ updateTeamUser
 firebase functions:list
 ```
 
-Confirm `createTeamUser` and `updateTeamUser` appear in the project.
+Confirm `createTeamUser`, `updateTeamUser`, `enqueueAiEnrichment`, and `onDesignAiEnrichmentQueued` appear in the project.
 
 ## Local Emulator Notes
 

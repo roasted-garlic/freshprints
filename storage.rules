@@ -25,7 +25,8 @@ service firebase.storage {
     }
 
     function isValidOriginalUpload() {
-      return request.resource.size < 50 * 1024 * 1024
+      // Sync with MAX_SINGLE_PNG_SIZE_BYTES in shared/constants/importValidation.constants.ts (150 MB)
+      return request.resource.size < 150 * 1024 * 1024
         && request.resource.contentType == "image/png";
     }
 

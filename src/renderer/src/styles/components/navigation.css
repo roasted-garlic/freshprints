@@ -57,6 +57,16 @@
   padding: 0 var(--space-2);
 }
 
+.sidebar-nav-item {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.sidebar-nav-divider {
+  border-top: 0.5px solid var(--sidebar-divider);
+  margin: var(--space-2) 0 var(--space-1);
+}
+
 .sidebar-link {
   align-items: center;
   border: 1px solid transparent;
@@ -356,6 +366,11 @@
 
 .page-content-area {
   flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.page-content-area--ai-review {
   min-height: 0;
   overflow-y: auto;
 }

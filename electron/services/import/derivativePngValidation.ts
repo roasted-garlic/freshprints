@@ -1,6 +1,7 @@
 import { PNG_MAGIC_BYTES } from "../../../shared/constants/importValidation.constants";
 import { MAX_SINGLE_PNG_SIZE_BYTES } from "../../../shared/constants/importValidation.constants";
 import { isWebpMagicBytes } from "../../../shared/utils/derivativeWebpValidation";
+import { formatPngSizeLimitExceededMessage } from "../../../shared/utils/importLimitMessages";
 
 export { isWebpMagicBytes };
 import type {
@@ -59,7 +60,7 @@ export function validateDerivativeGenerationRequest(
   if (pngBytes.byteLength > MAX_SINGLE_PNG_SIZE_BYTES) {
     return {
       code: "FILE_TOO_LARGE",
-      message: `The PNG file exceeds the maximum allowed size of ${MAX_SINGLE_PNG_SIZE_BYTES} bytes.`,
+      message: formatPngSizeLimitExceededMessage(),
     };
   }
 

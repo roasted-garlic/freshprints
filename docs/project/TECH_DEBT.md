@@ -22,6 +22,10 @@ See field definitions in template. Fixes require approved Managed Phases — **n
 | TD-006 | Placeholder routes (show queue, customer requests) | architecture | low | `ShowQueuePage`, `CustomerRequestsPage` | Navigation implies features not built | Keep routes; document as shells until roadmap phases | Phase 6+ | deferred |
 | TD-007 | Historical workflow docs use pre-migration paths | docs | low | `docs/workflow/plans/`, `reviews/` phase 1–3 | Confusing when searching; active entry points fixed | Optional doc path sweep or add README note | `workflow-doc-path-sweep` | deferred |
 | TD-008 | `functions/lib/` in `.gitignore` but verify not tracked | deployment | low | `functions/` | Compiled JS should not ship | Verified not tracked | `git-generated-output-cleanup` | **resolved** |
+| TD-009 | Cloud Functions on Node.js 20 (deprecated 2026-04-30, decommission 2026-10-30) | deployment | medium | `functions/package.json` | Deploy blocked after runtime EOL | Upgrade `engines.node` to 22+; retest all functions | `functions-runtime-upgrade` | open |
+| TD-010 | `firebase-functions` package outdated vs latest | dependencies | low | `functions/package.json` | Missing fixes/features; upgrade has breaking changes | Plan upgrade + regression test callables/triggers | `functions-runtime-upgrade` | open |
+| TD-011 | Functions TS build emits nested `lib/functions/src/` (shared types in `include`) | deployment | low | `functions/tsconfig.json` | `main` must match nested output; stale flat `lib/index.js` caused deploy filter miss | Flatten with `rootDir: src` + project references or local type shim | `functions-build-layout` | open |
+| TD-012 | Accidental `tsc` output in `shared/types/` breaks Vite (CJS `.js` resolved before `.ts`) | deployment | **high** | `shared/types/ai/` | White screen — Rollup cannot import named exports from stale CJS | Keep `shared/**/*.js` gitignored; never commit compiled shared types | **resolved** 2026-06-24 | **resolved** |
 
 ---
 

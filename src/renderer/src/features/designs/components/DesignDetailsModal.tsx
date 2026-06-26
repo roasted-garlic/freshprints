@@ -2,15 +2,12 @@ import { useState } from "react";
 
 import { Button } from "../../../shared/components/Button";
 import { Badge } from "../../../shared/components/Badge";
+import { ResolutionQualityPill } from "../../../shared/components/ResolutionQualityPill";
 import { ModalBody, ModalFooter, ModalHeader } from "../../../shared/components/Modal";
 import {
   formatPrintSizeSourceLabel,
   resolveDesignPrintSizeForDisplay,
 } from "../../../../../../shared/utils/designPrintSizeState";
-import {
-  getEffectiveDpiQualityLabel,
-  resolveEffectiveDpiQualityLevel,
-} from "../../../../../../shared/utils/effectiveDpiQuality";
 import { useAuth } from "../../auth/hooks/useAuth";
 import { permissionService } from "../../permissions/services/permissionService";
 import type { Design } from "../types/design.types";
@@ -22,10 +19,7 @@ import {
   formatAiReviewStatusLabel,
   getAiReviewStatusBadgeVariant,
 } from "../utils/aiReviewDisplay";
-import {
-  formatDesignPrintInches,
-  getEffectiveDpiQualityClassName,
-} from "../utils/designPrintSizeDisplay";
+import { formatDesignPrintInches } from "../utils/designPrintSizeDisplay";
 import { resolveDesignAiReviewDisplay } from "../utils/aiReviewState";
 import { DesignLibraryModal } from "./DesignLibraryModal";
 import { DesignPreviewLightbox } from "./DesignPreviewLightbox";
@@ -156,47 +150,57 @@ export function DesignDetailsModal({
             return null;
           }
 
-          const qualityLevel = resolveEffectiveDpiQualityLevel(printSize.effectiveDpi);
-
           return (
-            <section
-              aria-labelledby="design-details-print-settings-title"
-              className="design-details-section"
-            >
-              <h3 id="design-details-print-settings-title">Print Settings</h3>
-              <dl className="design-details-grid">
-                <DetailField label="Pixel Width" value={`${printSize.pixelWidth}px`} />
-                <DetailField label="Pixel Height" value={`${printSize.pixelHeight}px`} />
-                <DetailField
-                  label="Print Width"
-                  value={`${formatDesignPrintInches(printSize.printWidthInches)} in`}
-                />
-                <DetailField
-                  label="Print Height"
-                  value={`${formatDesignPrintInches(printSize.printHeightInches)} in`}
-                />
-                <DetailField label="Effective DPI" value={String(printSize.effectiveDpi)} />
-                <DetailField
-                  label="DPI quality"
-                  value={getEffectiveDpiQualityLabel(qualityLevel)}
-                  valueClassName={getEffectiveDpiQualityClassName(qualityLevel)}
-                />
-                <DetailField
-                  label="Aspect ratio locked"
-                  value={printSize.printAspectRatioLocked ? "Yes" : "No"}
-                />
-                <DetailField
-                  label="Print size source"
-                  value={formatPrintSizeSourceLabel(printSize.printSizeSource)}
-                />
-              </dl>
-              {printSize.usesLegacyFallback ? (
-                <p className="design-details-muted">
-                  Displaying normalized fallback values. Save from Edit Design to persist print
-                  settings.
-                </p>
-              ) : null}
-            </section>
+            <>
+              <section
+                aria-labelledby="design-details-source-image-title"
+                className="design-details-section"
+              >
+                <h3 id="design-details-source-image-title">Source Image</h3>
+                <dl className="design-details-grid">
+                  <DetailField label="Pixel width" value={`${printSize.pixelWidth}px`} />
+                  <DetailField label="Pixel height" value={`${printSize.pixelHeight}px`} />
+                </dl>
+              </section>
+
+              <section
+                aria-labelledby="design-details-print-settings-title"
+                className="design-details-section"
+              >
+                <h3 id="design-details-print-settings-title">Print Settings</h3>
+                <dl className="design-details-grid">
+                  <DetailField
+                    label="Print width"
+                    value={`${formatDesignPrintInches(printSize.printWidthInches)} in`}
+                  />
+                  <DetailField
+                    label="Print height"
+                    value={`${formatDesignPrintInches(printSize.printHeightInches)} in`}
+                  />
+                  <DetailField label="Effective DPI" value={String(printSize.effectiveDpi)} />
+                  <div className="design-detail-field">
+                    <dt>DPI quality</dt>
+                    <dd>
+                      <ResolutionQualityPill effectiveDpi={printSize.effectiveDpi} />
+                    </dd>
+                  </div>
+                  <DetailField
+                    label="Aspect ratio locked"
+                    value={printSize.printAspectRatioLocked ? "Yes" : "No"}
+                  />
+                  <DetailField
+                    label="Print size source"
+                    value={formatPrintSizeSourceLabel(printSize.printSizeSource)}
+                  />
+                </dl>
+                {printSize.usesLegacyFallback ? (
+                  <p className="design-details-muted">
+                    Displaying normalized fallback values. Save from Edit Design to persist print
+                    settings.
+                  </p>
+                ) : null}
+              </section>
+            </>
           );
         })()}
 

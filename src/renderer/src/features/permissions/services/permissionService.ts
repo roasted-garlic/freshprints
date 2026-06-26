@@ -211,6 +211,14 @@ export const permissionService = {
     return isStaff(user);
   },
 
+  canSkipAiReview(user: UserLike) {
+    return isStaff(user);
+  },
+
+  canEditAiReviewInbox(user: UserLike) {
+    return this.canManageAiReview(user);
+  },
+
   canManageAiReview(user: UserLike) {
     return hasActiveRole(user, ["owner", "admin"]);
   },
@@ -232,6 +240,14 @@ export const permissionService = {
   },
 
   canRejectDesignFromCatalog(user: UserLike) {
+    return this.canApproveDesignForCatalog(user);
+  },
+
+  canReopenRejectedDesign(user: UserLike) {
+    return this.canRejectDesignFromCatalog(user);
+  },
+
+  canRerunAiSuggestions(user: UserLike) {
     return this.canApproveDesignForCatalog(user);
   },
 

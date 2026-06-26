@@ -66,7 +66,7 @@ Important:
 
 - The Firebase project ID cannot be changed later.
 - Record the project ID because it becomes `VITE_FIREBASE_PROJECT_ID`.
-- Use one shared Firebase project for the Desktop Admin App, future Customer Website, and future Mobile App unless a dev/prod split is explicitly approved.
+- Use one shared Firebase project for **Fresh Prints Studio** and **Fresh Prints Portal** unless a dev/prod split is explicitly approved.
 
 5. Continue through the setup flow.
 6. Google Analytics is optional for Phase 1.
@@ -235,7 +235,7 @@ After application code is implemented:
 
 ### Creating Separate Projects Too Early
 
-Do not create separate backend projects for desktop, website, and mobile unless explicitly approved.
+Do not create separate backend projects for Studio, Portal, or native mobile unless explicitly approved. There is no native mobile application.
 
 ### Choosing A Bad Project ID
 

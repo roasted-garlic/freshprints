@@ -36,7 +36,7 @@ export function DashboardPage() {
   useShellHeaderConfig(
     useMemo(
       () => ({
-        title: "Dashboard",
+        title: "Dev Dashboard",
         description:
           "Core access, roles, shell navigation, and theme support are being established before design workflows begin.",
         search: null,

@@ -3,6 +3,7 @@ import { readFile, stat } from "node:fs/promises";
 import {
   MAX_SINGLE_PNG_SIZE_BYTES,
 } from "../../../shared/constants/importValidation.constants";
+import { ImportLimitExceededError } from "../../../shared/errors/importLimitErrors";
 import type {
   ImportPngWarning,
   ValidateSelectedPngFileResult,
@@ -13,7 +14,9 @@ import {
   formatPrintSizeRejectedMessage,
   formatPrintSizeSmallFormatMessage,
   formatPrintSizeStandardApparelMessage,
+  formatPrintSizeTerribleMessage,
 } from "../../../shared/utils/importPrintSizeMessages";
+import { formatPngSizeLimitExceededMessage } from "../../../shared/utils/importLimitMessages";
 import { getFileExtension, getFileName, hasAllowedExtension } from "./importPathUtils";
 import { parsePngMetadata } from "./pngParser";
 
@@ -69,6 +72,13 @@ function buildPrintSizeWarnings(
     });
   }
 
+  if (assessment.acceptanceLevel === "terrible") {
+    warnings.push({
+      code: "PRINT_SIZE_TERRIBLE",
+      message: formatPrintSizeTerribleMessage(),
+    });
+  }
+
   return warnings;
 }
 
@@ -84,9 +94,7 @@ export async function validatePngFile(filePath: string): Promise<ValidateSelecte
   }
 
   if (fileStats.size > MAX_SINGLE_PNG_SIZE_BYTES) {
-    throw new PngValidationError(
-      `The PNG file exceeds the maximum allowed size of ${MAX_SINGLE_PNG_SIZE_BYTES} bytes.`,
-    );
+    throw new ImportLimitExceededError(formatPngSizeLimitExceededMessage());
   }
 
   const fileBuffer = await readFile(filePath);

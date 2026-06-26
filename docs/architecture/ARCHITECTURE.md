@@ -14,7 +14,7 @@ This is the source of truth for:
 * Desktop and web interaction
 * Data ownership
 * Shared services
-* Future scalability
+* Application platform and official naming (`docs/architecture/ADR-Application-Platform-Strategy.md`)
 
 All development must follow this architecture.
 
@@ -22,15 +22,18 @@ All development must follow this architecture.
 
 # System Overview
 
-Fresh Prints is a multi-application platform.
+Fresh Prints is a **two-application platform**.
 
 The platform consists of:
 
-1. Desktop Admin Application
-2. Customer Website
-3. Future Mobile Application
+1. **Fresh Prints Studio** — Electron desktop application; internal staff only
+2. **Fresh Prints Portal** — mobile-first responsive web application; customers only
 
-All applications share the same backend infrastructure.
+There is no third application. No standalone native mobile app is planned or permitted without explicit architectural revision.
+
+Official naming and platform strategy: `docs/architecture/ADR-Application-Platform-Strategy.md`.
+
+All applications share the same Firebase backend infrastructure.
 
 ---
 
@@ -55,49 +58,36 @@ Firebase owns data.
 # High Level Architecture
 
 ```txt
-┌────────────────────┐
-│ Desktop Admin App  │
-└─────────┬──────────┘
-          │
-          ▼
-┌────────────────────┐
-│ Firebase Backend   │
-│                    │
-│ Auth               │
-│ Firestore          │
-│ Storage            │
-└─────────┬──────────┘
-          │
-          ▼
-┌────────────────────┐
-│ Customer Website   │
-└────────────────────┘
+┌─────────────────────────────┐
+│ Fresh Prints Studio         │
+│ Electron · owner/admin/helper│
+└─────────────┬───────────────┘
+              │
+              ▼
+┌─────────────────────────────┐
+│ Firebase Backend            │
+│ Auth · Firestore · Storage  │
+└─────────────┬───────────────┘
+              │
+              ▼
+┌─────────────────────────────┐
+│ Fresh Prints Portal         │
+│ mobile-first responsive web │
+│ customer role only          │
+└─────────────────────────────┘
 ```
 
-Future:
-
-```txt
-┌────────────────────┐
-│ Desktop App        │
-└─────────┬──────────┘
-          │
-          ▼
-┌────────────────────┐
-│ Firebase Backend   │
-└─────────┬──────────┘
-          │
-     ┌────┴────┐
-     ▼         ▼
-Website    Mobile App
-```
+Both applications are peers consuming the same backend. Fresh Prints Portal is designed mobile-first and must work excellently on phones, tablets, and desktop browsers.
 
 ---
 
 # Application Responsibilities
 
-## Desktop Admin Application
+## Fresh Prints Studio
 
-The Electron application is responsible for:
+The Electron desktop application for internal staff.
+
+Responsible for:
 
 * Design imports
 * ZIP extraction
@@ -106,59 +96,59 @@ The Electron application is responsible for:
 * DPI validation
 * Dimension validation
 * Thumbnail generation
-* AI processing
-* Design management
-* Queue management
-* Customer management
-* Admin workflows
-* Downloading originals
-* Gang sheet preparation
+* AI review and catalog approval (Phase 5+)
+* Approved design catalog management (Design Library)
+* Categories
+* Customer management (registered and guest records)
+* Print Requests and Print Runs (Phases 6–7)
+* Analytics
+* Production file export for gang sheets (Pensacola)
+* Team and application administration
 
-Desktop users include:
+Users: Owner, Admin, Helper
 
-* Owner
-* Admins
-* Helpers
+Fresh Prints Studio is **never customer-facing**. Users with `role: customer` do not access Studio.
 
-The desktop app is the operational center of the business.
+### Studio workspaces (official)
 
----
+Fresh Prints Studio is organized into **three independent workspaces**:
 
-## Customer Website
+| Workspace | Route | Responsibility |
+|-----------|-------|----------------|
+| **Imports** | `/imports` | Receive, validate, create designs, derivatives, automatic AI enqueue |
+| **AI Review** | `/ai-review` | Operational Inbox — every import until approved or rejected |
+| **Design Library** | `/designs` | Approved catalog only — not a work queue |
 
-The customer website is responsible for:
+```txt
+Imports → AI Review (Inbox) → Design Library
+```
 
-* Customer authentication
-* Design browsing
-* Search
-* Filtering
-* Favorites
-* Customer requests
-* Upload requests
-* Show requests
-* Request tracking
+No workspace overlap: Design Library never shows imported or rejected designs; AI Review never replaces import validation; Imports never approves catalog entries.
 
-The website never requires Electron.
-
-The website never accesses local files.
+See `docs/WORKFLOWS.md` and ADR-FP-009.
 
 ---
 
-## Future Mobile App
+## Fresh Prints Portal (Phase 8+)
 
-Future mobile support may include:
+The mobile-first responsive web application for customers.
 
-* Customer browsing
-* Favorites
-* Request tracking
-* Notifications
+Users: Customers (`role: customer` only)
 
-The mobile app should reuse:
+Responsible for:
 
-* Firebase
-* Shared types
-* Shared services
-* Shared validation rules
+* Browse approved design catalog
+* Search, categories, tags
+* Create and track Print Requests
+* Submit Custom Requests (Phase 9)
+* Manage customer account
+* Favorites (backlog)
+
+Must work excellently on phones, tablets, and desktop browsers.
+
+Fresh Prints Portal never requires Electron and never accesses local files.
+
+**Out of scope:** Native iOS, Android, React Native, Flutter, Xamarin, MAUI, or any standalone mobile application. Optional PWA home-screen install remains Fresh Prints Portal — not a separate app.
 
 ---
 
@@ -185,9 +175,9 @@ Applications should be stateless whenever possible.
 
 ---
 
-# Desktop And Website Relationship
+# Studio And Portal Relationship
 
-The desktop app and website are peers.
+Fresh Prints Studio and Fresh Prints Portal are peers.
 
 Neither application is subordinate to the other.
 
@@ -196,21 +186,23 @@ Both consume the same backend.
 Example:
 
 ```txt
-Desktop uploads design
+Staff imports design (Studio)
        ↓
 Firebase Storage
        ↓
-Customer website displays thumbnail
+AI Review → approved catalog
+       ↓
+Fresh Prints Portal displays thumbnail (Phase 8)
 ```
 
 Example:
 
 ```txt
-Customer submits request
+Customer creates print request (Portal)
        ↓
 Firestore
        ↓
-Desktop admin reviews request
+Staff manages print run (Studio)
 ```
 
 ---
@@ -221,8 +213,8 @@ Use a single Firebase project.
 
 Do not create:
 
-* Separate desktop databases
-* Separate website databases
+* Separate Studio databases
+* Separate Portal databases
 * Separate Firestore projects
 
 Unless explicitly approved.
@@ -241,11 +233,10 @@ No custom backend is planned initially.
 
 The Firebase backend should support:
 
-* Desktop app
-* Website
-* Future mobile app
+* Fresh Prints Studio
+* Fresh Prints Portal
 
-without modification.
+without modification. No separate mobile backend or database.
 
 ---
 
@@ -348,9 +339,9 @@ Examples:
 
 Purpose:
 
-* Design grids
+* Design grids (Studio and Portal)
 * Search
-* Customer website
+* Fresh Prints Portal catalog browse
 
 ---
 
@@ -379,8 +370,8 @@ Stored in:
 
 Purpose:
 
-* Customer submitted files
-* Request assets
+* Customer uploads
+* Request assets (Fresh Prints Portal — Phase 9)
 
 ---
 
@@ -399,10 +390,14 @@ Firestore stores:
 * Users
 * Designs
 * Categories
-* Requests
-* Queues
+* Print requests and items (Phase 6)
+* Print runs and items (Phase 7)
+* Custom requests (Phase 9)
+* Customers (registered and guest)
 * Settings
 * Audit logs
+
+Legacy collection names (`showQueues`, `showQueueItems`, `customerRequests`) remain documented for migration planning — see `DATA_MODEL.md`.
 
 ---
 
@@ -581,9 +576,8 @@ QueueItem
 
 Types should be reusable across:
 
-* Desktop
-* Website
-* Mobile
+* Fresh Prints Studio
+* Fresh Prints Portal
 
 ---
 
@@ -596,8 +590,8 @@ Future target:
 ```txt
 fresh-prints/
 ├── apps/
-│   ├── desktop/
-│   └── web/
+│   ├── desktop/          # Fresh Prints Studio
+│   └── web/              # Fresh Prints Portal (mobile-first)
 │
 ├── packages/
 │   ├── shared-types/
@@ -608,31 +602,27 @@ fresh-prints/
 └── docs/
 ```
 
-Do not migrate to this structure without approval.
-
-However, write code today that can be moved there later.
+Do not migrate to this structure without approval. Do not add `apps/mobile/` or native mobile targets.
 
 ---
 
-# Pensacola Production Workflow
+# Pensacola Production File Export
 
-The Pensacola PC is the production machine.
+The Pensacola PC is the production machine for gang sheet building.
 
 Workflow:
 
 ```txt
-Helper Uploads Design
+Staff builds Print Run
          ↓
-Firebase Storage
+Print Run Items reference catalog designs
          ↓
-Firestore Metadata
-         ↓
-Queue Assignment
-         ↓
-Pensacola Downloads Originals
+Pensacola downloads originals from Firebase Storage
          ↓
 Gang Sheet Software
 ```
+
+This is **file export for production** — not shipping, packing, or order fulfillment.
 
 Remote helpers never need access to the Pensacola filesystem.
 
@@ -642,23 +632,18 @@ The shared connection point is Firebase Storage.
 
 # Scalability Rules
 
-Every new feature must support:
+Every new feature must support both applications where applicable:
 
-* Desktop
-* Website
-* Future Mobile
+* Fresh Prints Studio (staff workflows)
+* Fresh Prints Portal (customer workflows)
 
-unless explicitly approved otherwise.
+unless explicitly approved as Studio-only or Portal-only.
 
-Avoid Electron-only business logic.
+Avoid Studio-only business logic in shared services used by Portal.
 
-Avoid website-only business logic.
+Avoid duplicating business rules between Studio and Portal — favor `shared/` types and services.
 
-Favor reusable services.
-
-Favor shared types.
-
-Favor centralized rules.
+Do not introduce native mobile application code paths.
 
 ---
 

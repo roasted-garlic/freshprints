@@ -11,5 +11,6 @@
     "skipLibCheck": true
   },
   "compileOnSave": true,
-  "include": ["src"]
+  "include": ["src", "../shared/types"],
+  "exclude": ["src/**/*.test.ts"]
 }

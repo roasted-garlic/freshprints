@@ -88,10 +88,30 @@ export interface BatchImportFileManifestEntry {
 }
 
 export interface BatchDiscoverySummary {
+  /** PNGs seen in folder tree and ZIP entry scans (may exceed batch cap). */
   discovered: number;
+  /** PNGs actually validated or rejected in this batch. */
+  processed: number;
+  /** PNGs found but not processed because of `MAX_BATCH_FILES`. */
+  skippedByLimit: number;
+  /** ZIP archives skipped (size, error, or batch full) — see folder breakdown when present. */
   skipped: number;
   rejected: number;
   validated: number;
+}
+
+/** Folder batch discovery breakdown (loose PNGs + ZIP archives in tree). */
+export interface FolderBatchDiscoverySummary {
+  loosePngsFound: number;
+  zipsFound: number;
+  zipsProcessed: number;
+  /** Total ZIPs not opened (all reasons). */
+  zipsSkipped: number;
+  /** ZIPs not opened because the PNG batch cap was already full. */
+  zipsSkippedByLimit: number;
+  /** ZIPs not opened due to size, folder ZIP cap, or extraction error. */
+  zipsSkippedOther: number;
+  nestedZipsNotOpened: number;
 }
 
 /** Main-process event payload when discovery and validation complete. */
@@ -101,6 +121,7 @@ export interface BatchDiscoveryCompleteEvent {
   truncated: boolean;
   sourceType: BatchImportSourceType;
   summary: BatchDiscoverySummary;
+  folderDiscovery?: FolderBatchDiscoverySummary;
   files: BatchImportFileManifestEntry[];
 }
 

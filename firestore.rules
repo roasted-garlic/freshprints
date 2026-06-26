@@ -67,6 +67,16 @@ service cloud.firestore {
       return status in ["pending", "approved", "rejected", "needs_review"];
     }
 
+    function isOptionalMap(data, field) {
+      return !(field in data) || data[field] is map;
+    }
+
+    function clientAiFieldsUnchanged() {
+      return request.resource.data.get("aiSuggestions", null) == resource.data.get("aiSuggestions", null)
+        && request.resource.data.get("aiAnalysis", null) == resource.data.get("aiAnalysis", null)
+        && request.resource.data.get("aiProcessingStage", null) == resource.data.get("aiProcessingStage", null);
+    }
+
     function designRequiredFieldsValid(data) {
       return data.keys().hasAll([
           "id",
@@ -125,7 +135,10 @@ service cloud.firestore {
         && isOptionalNumber(data, "aiReviewConfidence")
         && isOptionalString(data, "previousStatus")
         && isOptionalTimestamp(data, "archivedAt")
-        && isOptionalString(data, "archivedBy");
+        && isOptionalString(data, "archivedBy")
+        && isOptionalString(data, "aiProcessingStage")
+        && isOptionalMap(data, "aiSuggestions")
+        && isOptionalMap(data, "aiAnalysis");
     }
 
     function categoryRequiredFieldsValid(data) {
@@ -177,7 +190,8 @@ service cloud.firestore {
         && request.resource.data.uploadedBy == resource.data.uploadedBy
         && (!("createdBy" in resource.data) || request.resource.data.createdBy == resource.data.createdBy)
         && (!("createdAt" in resource.data) || request.resource.data.createdAt == resource.data.createdAt)
-        && request.resource.data.updatedBy == request.auth.uid;
+        && request.resource.data.updatedBy == request.auth.uid
+        && clientAiFieldsUnchanged();
 
       allow delete: if false;
     }
@@ -200,6 +214,11 @@ service cloud.firestore {
         && request.resource.data.updatedBy == request.auth.uid;
 
       allow delete: if false;
+    }
+
+    match /settings/{settingId} {
+      allow read: if isStaff() && settingId == "aiEnrichment";
+      allow write: if false;
     }
 
     match /{document=**} {

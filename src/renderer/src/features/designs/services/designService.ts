@@ -8,12 +8,18 @@ import {
   query,
   serverTimestamp,
   setDoc,
+  startAfter,
+  Timestamp,
   updateDoc,
   where,
   type QueryConstraint,
 } from "firebase/firestore";
 
 import { getFirestoreErrorMessage } from "../../firebase/utils/firestoreErrorMessage";
+import {
+  mapFirestoreTimestamp,
+  resolveDesignDocumentTimestamps,
+} from "../../firebase/utils/firestoreTimestamp";
 import { assertNoUndefinedFirestoreFields, withoutUndefinedFields } from "../../firebase/utils/firestoreDocument";
 import { firestoreCollectionService } from "../../firebase/services/firestoreCollectionService";
 import { permissionService } from "../../permissions/services/permissionService";
@@ -22,9 +28,11 @@ import { isCanonicalDesignStoragePath } from "../constants/designStoragePaths";
 import type { CreateDesignInput, Design, UpdateDesignInput } from "../types/design.types";
 import type { AiReviewStateUpdate, CatalogApprovalUpdate } from "../types/aiReview.types";
 import { isAiReviewStatus } from "../types/aiReview.types";
-import type { DesignListQuery } from "../types/designQuery.types";
+import type { DesignListPage, DesignListQuery, DesignListSortField } from "../types/designQuery.types";
 import { isDesignStatus, isWritableDesignStatus } from "../types/designStatus.types";
 import { normalizeDesignTags } from "../utils/designTagNormalizer";
+import { mergeDesignDocumentDataAfterWrite } from "../utils/designDocumentAfterWrite";
+import { mapDesignAiFields } from "../utils/designAiFieldsMapper";
 import { isOperationalDesignStatus, resolveRestoreStatus } from "../utils/designArchiveRestore";
 import {
   buildStaffPrintSizePersistenceFields,
@@ -32,7 +40,85 @@ import {
 } from "../../../../../../shared/utils/staffPrintSizeEdit";
 
 const DEFAULT_LIST_LIMIT = 100;
+export const DESIGN_LIST_PAGE_SIZE = DEFAULT_LIST_LIMIT;
 const MAX_TITLE_LENGTH = 200;
+
+function shouldApplyServerAiReviewFilter(listQuery: DesignListQuery): boolean {
+  return (
+    listQuery.aiReviewStatus !== undefined &&
+    listQuery.aiReviewStatus !== "pending"
+  );
+}
+
+function getDesignSortMillis(design: Design, sortField: DesignListSortField): number {
+  return sortField === "createdAt" ? design.createdAt.toMillis() : design.updatedAt.toMillis();
+}
+
+function buildDesignListConstraints(listQuery: DesignListQuery = {}): QueryConstraint[] {
+  const constraints: QueryConstraint[] = [];
+  const pageSize = listQuery.limitCount ?? DEFAULT_LIST_LIMIT;
+  const sortField = listQuery.sortField ?? "updatedAt";
+  const sortDirection = listQuery.sortDirection ?? "desc";
+
+  // Field order matches composite indexes in firestore.indexes.json:
+  // categoryId → tags (array-contains) → status → aiReviewStatus → orderBy
+  if (listQuery.categoryId) {
+    constraints.push(where("categoryId", "==", listQuery.categoryId));
+  }
+
+  if (listQuery.tag) {
+    constraints.push(where("tags", "array-contains", listQuery.tag.trim().toLowerCase()));
+  }
+
+  if (listQuery.statusIn && listQuery.statusIn.length > 0) {
+    if (listQuery.statusIn.length === 1) {
+      constraints.push(where("status", "==", listQuery.statusIn[0]));
+    } else {
+      constraints.push(where("status", "in", [...listQuery.statusIn]));
+    }
+  } else if (listQuery.status) {
+    constraints.push(where("status", "==", listQuery.status));
+  }
+
+  if (shouldApplyServerAiReviewFilter(listQuery)) {
+    constraints.push(where("aiReviewStatus", "==", listQuery.aiReviewStatus));
+  }
+
+  constraints.push(orderBy(sortField, sortDirection));
+  constraints.push(orderBy("__name__", sortDirection));
+
+  if (listQuery.cursor) {
+    constraints.push(
+      startAfter(Timestamp.fromMillis(listQuery.cursor.sortMillis), listQuery.cursor.designId),
+    );
+  }
+
+  constraints.push(limit(pageSize + 1));
+
+  return constraints;
+}
+
+function buildDesignListPage(
+  designs: Design[],
+  pageSize: number,
+  sortField: DesignListSortField = "updatedAt",
+): DesignListPage {
+  const hasMore = designs.length > pageSize;
+  const pageDesigns = hasMore ? designs.slice(0, pageSize) : designs;
+  const lastDesign = pageDesigns.at(-1);
+
+  return {
+    designs: pageDesigns,
+    hasMore,
+    nextCursor:
+      hasMore && lastDesign
+        ? {
+            designId: lastDesign.id,
+            sortMillis: getDesignSortMillis(lastDesign, sortField),
+          }
+        : undefined,
+  };
+}
 
 interface DesignDocumentData {
   id?: unknown;
@@ -65,6 +151,9 @@ interface DesignDocumentData {
   aiReviewVersion?: unknown;
   aiReviewNotes?: unknown;
   aiReviewConfidence?: unknown;
+  aiProcessingStage?: unknown;
+  aiSuggestions?: unknown;
+  aiAnalysis?: unknown;
   createdBy?: unknown;
   updatedBy?: unknown;
   createdAt?: unknown;
@@ -75,29 +164,32 @@ interface DesignDocumentData {
 }
 
 function mapDesignDocument(designId: string, data: DesignDocumentData): Design {
+  const timestamps = resolveDesignDocumentTimestamps(data);
+  const tags = Array.isArray(data.tags)
+    ? data.tags.filter((tag): tag is string => typeof tag === "string")
+    : [];
+
   if (
     typeof data.title !== "string" ||
-    !Array.isArray(data.tags) ||
-    !data.tags.every((tag) => typeof tag === "string") ||
     !isDesignStatus(data.status) ||
     typeof data.originalPath !== "string" ||
     typeof data.thumbnailPath !== "string" ||
     typeof data.uploadedBy !== "string" ||
-    typeof data.queueCount !== "number" ||
-    typeof data.aiProcessed !== "boolean" ||
-    typeof data.aiReviewed !== "boolean" ||
-    !data.createdAt ||
-    !data.updatedAt
+    !timestamps
   ) {
     throw new Error("A design record is incomplete.");
   }
+
+  const aiProcessed = typeof data.aiProcessed === "boolean" ? data.aiProcessed : false;
+  const aiReviewed = typeof data.aiReviewed === "boolean" ? data.aiReviewed : false;
+  const queueCount = typeof data.queueCount === "number" ? data.queueCount : 0;
 
   return {
     id: designId,
     title: data.title,
     description: typeof data.description === "string" ? data.description : undefined,
     categoryId: typeof data.categoryId === "string" ? data.categoryId : undefined,
-    tags: data.tags,
+    tags,
     status: data.status,
     originalPath: data.originalPath,
     thumbnailPath: data.thumbnailPath,
@@ -122,19 +214,20 @@ function mapDesignDocument(designId: string, data: DesignDocumentData): Design {
     uploadedBy: data.uploadedBy,
     requestedByCustomerId:
       typeof data.requestedByCustomerId === "string" ? data.requestedByCustomerId : undefined,
-    queueCount: data.queueCount,
-    aiProcessed: data.aiProcessed,
-    aiReviewed: data.aiReviewed,
+    queueCount,
+    aiProcessed,
+    aiReviewed,
     aiReviewStatus:
       typeof data.aiReviewStatus === "string" && isAiReviewStatus(data.aiReviewStatus)
         ? data.aiReviewStatus
         : undefined,
-    aiReviewedAt: data.aiReviewedAt ? (data.aiReviewedAt as Design["aiReviewedAt"]) : undefined,
+    aiReviewedAt: mapFirestoreTimestamp(data.aiReviewedAt),
     aiReviewedBy: typeof data.aiReviewedBy === "string" ? data.aiReviewedBy : undefined,
     aiReviewVersion: typeof data.aiReviewVersion === "string" ? data.aiReviewVersion : undefined,
     aiReviewNotes: typeof data.aiReviewNotes === "string" ? data.aiReviewNotes : undefined,
     aiReviewConfidence:
       typeof data.aiReviewConfidence === "number" ? data.aiReviewConfidence : undefined,
+    ...mapDesignAiFields(data as Record<string, unknown>),
     createdBy: typeof data.createdBy === "string" ? data.createdBy : data.uploadedBy,
     updatedBy:
       typeof data.updatedBy === "string"
@@ -142,15 +235,15 @@ function mapDesignDocument(designId: string, data: DesignDocumentData): Design {
         : typeof data.createdBy === "string"
           ? data.createdBy
           : data.uploadedBy,
-    createdAt: data.createdAt as Design["createdAt"],
-    updatedAt: data.updatedAt as Design["updatedAt"],
+    createdAt: timestamps.createdAt,
+    updatedAt: timestamps.updatedAt,
     previousStatus:
       typeof data.previousStatus === "string" &&
       isDesignStatus(data.previousStatus) &&
       isOperationalDesignStatus(data.previousStatus)
         ? data.previousStatus
         : undefined,
-    archivedAt: data.archivedAt ? (data.archivedAt as Design["archivedAt"]) : undefined,
+    archivedAt: mapFirestoreTimestamp(data.archivedAt),
     archivedBy: typeof data.archivedBy === "string" ? data.archivedBy : undefined,
   };
 }
@@ -278,25 +371,65 @@ function validateStaffPrintSizeUpdate(
   };
 }
 
-function buildDesignListConstraints(listQuery: DesignListQuery = {}): QueryConstraint[] {
-  const constraints: QueryConstraint[] = [];
+function shouldSplitStatusQueries(listQuery: DesignListQuery): boolean {
+  return Boolean(
+    listQuery.tag?.trim() && listQuery.statusIn && listQuery.statusIn.length > 1,
+  );
+}
 
-  if (listQuery.status) {
-    constraints.push(where("status", "==", listQuery.status));
+function isFirestoreIndexError(error: unknown): boolean {
+  return error instanceof Error && /index/i.test(error.message);
+}
+
+function filterDesignsByTag(designs: Design[], tag: string): Design[] {
+  const normalizedTag = tag.trim().toLowerCase();
+
+  return designs.filter((design) => design.tags.includes(normalizedTag));
+}
+
+function mergeDesignListPages(
+  pages: DesignListPage[],
+  pageSize: number,
+  sortField: DesignListSortField = "updatedAt",
+): DesignListPage {
+  const merged = new Map<string, Design>();
+
+  for (const page of pages) {
+    for (const design of page.designs) {
+      merged.set(design.id, design);
+    }
   }
 
-  if (listQuery.categoryId) {
-    constraints.push(where("categoryId", "==", listQuery.categoryId));
-  }
+  const sortedDesigns = [...merged.values()].sort((leftDesign, rightDesign) => {
+    const timeDifference = rightDesign.updatedAt.toMillis() - leftDesign.updatedAt.toMillis();
 
-  if (listQuery.tag) {
-    constraints.push(where("tags", "array-contains", listQuery.tag.trim().toLowerCase()));
-  }
+    if (timeDifference !== 0) {
+      return timeDifference;
+    }
 
-  constraints.push(orderBy("updatedAt", "desc"));
-  constraints.push(limit(listQuery.limitCount ?? DEFAULT_LIST_LIMIT));
+    return rightDesign.id.localeCompare(leftDesign.id);
+  });
 
-  return constraints;
+  return buildDesignListPage(sortedDesigns, pageSize, sortField);
+}
+
+const TAG_FILTER_FALLBACK_LIMIT = 500;
+
+async function fetchDesignListPage(
+  _caller: User,
+  listQuery: DesignListQuery,
+): Promise<DesignListPage> {
+  const pageSize = listQuery.limitCount ?? DEFAULT_LIST_LIMIT;
+  const designsQuery = query(
+    firestoreCollectionService.getDesignsCollection(),
+    ...buildDesignListConstraints(listQuery),
+  );
+  const snapshot = await getDocs(designsQuery);
+  const designs = snapshot.docs.map((designDocument) =>
+    mapDesignDocument(designDocument.id, designDocument.data()),
+  );
+
+  return buildDesignListPage(designs, pageSize, listQuery.sortField ?? "updatedAt");
 }
 
 export const designService = {
@@ -304,24 +437,65 @@ export const designService = {
     return doc(firestoreCollectionService.getDesignsCollection()).id;
   },
 
-  async listDesigns(caller: User, listQuery: DesignListQuery = {}): Promise<Design[]> {
+  mapFirestoreDesign(designId: string, data: unknown): Design {
+    return mapDesignDocument(designId, data as DesignDocumentData);
+  },
+
+  async listDesignsPage(caller: User, listQuery: DesignListQuery = {}): Promise<DesignListPage> {
     if (!permissionService.canViewDesigns(caller)) {
-      return [];
+      return { designs: [], hasMore: false };
     }
+
+    const pageSize = listQuery.limitCount ?? DEFAULT_LIST_LIMIT;
 
     try {
-      const designsQuery = query(
-        firestoreCollectionService.getDesignsCollection(),
-        ...buildDesignListConstraints(listQuery),
-      );
-      const snapshot = await getDocs(designsQuery);
+      if (shouldSplitStatusQueries(listQuery)) {
+        const statuses = listQuery.statusIn ?? [];
+        const pages = await Promise.all(
+          statuses.map((status) =>
+            fetchDesignListPage(caller, {
+              ...listQuery,
+              status,
+              statusIn: undefined,
+              cursor: undefined,
+            }),
+          ),
+        );
 
-      return snapshot.docs.map((designDocument) =>
-        mapDesignDocument(designDocument.id, designDocument.data()),
-      );
+        return mergeDesignListPages(pages, pageSize, listQuery.sortField ?? "updatedAt");
+      }
+
+      return await fetchDesignListPage(caller, listQuery);
     } catch (error) {
+      if (listQuery.tag?.trim() && isFirestoreIndexError(error)) {
+        const fallbackPage = await fetchDesignListPage(caller, {
+          ...listQuery,
+          tag: undefined,
+          limitCount: TAG_FILTER_FALLBACK_LIMIT,
+          cursor: undefined,
+        });
+
+        let filteredDesigns = filterDesignsByTag(fallbackPage.designs, listQuery.tag);
+
+        if (listQuery.statusIn && listQuery.statusIn.length > 0) {
+          const allowedStatuses = new Set(listQuery.statusIn);
+          filteredDesigns = filteredDesigns.filter((design) =>
+            allowedStatuses.has(design.status),
+          );
+        } else if (listQuery.status) {
+          filteredDesigns = filteredDesigns.filter((design) => design.status === listQuery.status);
+        }
+
+        return buildDesignListPage(filteredDesigns, pageSize, listQuery.sortField ?? "updatedAt");
+      }
+
       throw new Error(getFirestoreErrorMessage(error, "Unable to load designs. Please try again."));
     }
+  },
+
+  async listDesigns(caller: User, listQuery: DesignListQuery = {}): Promise<Design[]> {
+    const page = await this.listDesignsPage(caller, listQuery);
+    return page.designs;
   },
 
   async getDesignById(caller: User, designId: string): Promise<Design> {
@@ -412,13 +586,22 @@ export const designService = {
     }
   },
 
-  async updateDesign(caller: User, designId: string, input: UpdateDesignInput): Promise<Design> {
+  async updateDesign(
+    caller: User,
+    designId: string,
+    input: UpdateDesignInput,
+    options?: { allowStatusChange?: boolean },
+  ): Promise<Design> {
     if (!permissionService.canEditDesigns(caller)) {
       throw new Error("You do not have permission to edit designs.");
     }
 
     if (Object.keys(input).length === 0) {
       throw new Error("No design changes were provided.");
+    }
+
+    if (input.status !== undefined && !options?.allowStatusChange) {
+      throw new Error("Design status cannot be changed through metadata updates.");
     }
 
     const updatePayload: Record<string, unknown> = {
@@ -526,13 +709,15 @@ export const designService = {
 
       assertNoUndefinedFirestoreFields(updatePayload, "Design update payload");
       await updateDoc(designRef, updatePayload);
-      const updatedSnapshot = await getDoc(designRef);
 
-      if (!updatedSnapshot.exists()) {
-        throw new Error("The design record was not found.");
-      }
-
-      return mapDesignDocument(updatedSnapshot.id, updatedSnapshot.data());
+      return mapDesignDocument(
+        designId,
+        mergeDesignDocumentDataAfterWrite(
+          existingData as Record<string, unknown>,
+          updatePayload,
+          caller.id,
+        ) as DesignDocumentData,
+      );
     } catch (error) {
       throw new Error(getFirestoreErrorMessage(error, "Unable to update the design. Please try again."));
     }
@@ -606,13 +791,15 @@ export const designService = {
 
       assertNoUndefinedFirestoreFields(updatePayload, "Design AI review update payload");
       await updateDoc(designRef, updatePayload);
-      const updatedSnapshot = await getDoc(designRef);
 
-      if (!updatedSnapshot.exists()) {
-        throw new Error("The design record was not found.");
-      }
-
-      return mapDesignDocument(updatedSnapshot.id, updatedSnapshot.data());
+      return mapDesignDocument(
+        designId,
+        mergeDesignDocumentDataAfterWrite(
+          existingData as Record<string, unknown>,
+          updatePayload,
+          caller.id,
+        ) as DesignDocumentData,
+      );
     } catch (error) {
       if (error instanceof Error && error.message.startsWith("Archived designs")) {
         throw error;
@@ -683,13 +870,15 @@ export const designService = {
 
       assertNoUndefinedFirestoreFields(updatePayload, "Design catalog approval update payload");
       await updateDoc(designRef, updatePayload);
-      const updatedSnapshot = await getDoc(designRef);
 
-      if (!updatedSnapshot.exists()) {
-        throw new Error("The design record was not found.");
-      }
-
-      return mapDesignDocument(updatedSnapshot.id, updatedSnapshot.data());
+      return mapDesignDocument(
+        designId,
+        mergeDesignDocumentDataAfterWrite(
+          existingData as Record<string, unknown>,
+          updatePayload,
+          caller.id,
+        ) as DesignDocumentData,
+      );
     } catch (error) {
       if (error instanceof Error && error.message.startsWith("Archived designs")) {
         throw error;
@@ -697,6 +886,83 @@ export const designService = {
 
       throw new Error(
         getFirestoreErrorMessage(error, "Unable to update catalog approval. Please try again."),
+      );
+    }
+  },
+
+  /**
+   * Returns a rejected design to Needs Review without re-running AI.
+   */
+  async applyReopenFromRejectedUpdate(
+    caller: User,
+    designId: string,
+    input: Pick<AiReviewStateUpdate, "aiReviewStatus" | "aiReviewed" | "aiProcessed" | "aiReviewedBy">,
+  ): Promise<Design> {
+    if (!permissionService.canEditDesigns(caller)) {
+      throw new Error("You do not have permission to edit designs.");
+    }
+
+    const updatePayload: Record<string, unknown> = {
+      updatedAt: serverTimestamp(),
+      updatedBy: caller.id,
+      status: "imported",
+      aiReviewStatus: input.aiReviewStatus,
+      aiReviewed: input.aiReviewed,
+      aiProcessed: input.aiProcessed,
+      aiReviewedBy: input.aiReviewedBy,
+      aiReviewedAt: deleteField(),
+    };
+
+    try {
+      const designRef = doc(firestoreCollectionService.getDesignsCollection(), designId);
+      const existingSnapshot = await getDoc(designRef);
+
+      if (!existingSnapshot.exists()) {
+        throw new Error("The design record was not found.");
+      }
+
+      const existingData = existingSnapshot.data();
+
+      if (existingData.status !== "rejected") {
+        throw new Error("Only rejected designs can be reopened for review.");
+      }
+
+      if (existingData.status === "archived") {
+        throw new Error("Archived designs cannot be reopened for review.");
+      }
+
+      if (typeof existingData.createdBy !== "string") {
+        updatePayload.createdBy =
+          typeof existingData.uploadedBy === "string" ? existingData.uploadedBy : caller.id;
+      }
+
+      assertNoUndefinedFirestoreFields(updatePayload, "Design reopen update payload");
+      await updateDoc(designRef, updatePayload);
+
+      const merged = mergeDesignDocumentDataAfterWrite(
+        existingData as Record<string, unknown>,
+        {
+          ...updatePayload,
+          aiReviewedAt: undefined,
+        },
+        caller.id,
+      );
+
+      delete merged.aiReviewedAt;
+
+      return mapDesignDocument(designId, merged as DesignDocumentData);
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        (error.message.startsWith("Only rejected") ||
+          error.message.startsWith("Archived designs") ||
+          error.message === "The design record was not found.")
+      ) {
+        throw error;
+      }
+
+      throw new Error(
+        getFirestoreErrorMessage(error, "Unable to reopen the design for review. Please try again."),
       );
     }
   },

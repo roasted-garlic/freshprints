@@ -6,7 +6,7 @@
 
 ## Overview
 
-Fresh Prints uses **Firebase** as the primary backend platform for authentication, Firestore data, Cloud Storage, and Cloud Functions. The desktop admin app (Electron) and future customer surfaces share Firebase services through documented service layers.
+Fresh Prints uses **Firebase** as the primary backend platform for authentication, Firestore data, Cloud Storage, and Cloud Functions. **Fresh Prints Studio** (Electron) and **Fresh Prints Portal** (responsive web) share Firebase services through documented service layers.
 
 ---
 
@@ -73,7 +73,12 @@ Fresh Prints does not expose a separate REST API for core operations. Business l
 
 | Service | Purpose | Auth method | Doc |
 |---------|---------|-------------|-----|
-| Resend | Team invitation email | API key (Functions) | `docs/workflow/setup/resend-email-setup.md` |
+| Resend | Team invitation email | API key (Functions / Secret Manager) | `docs/workflow/setup/resend-email-setup.md` |
+| OpenAI | AI design enrichment (optional production) | API key (Functions / Secret Manager only) | `FIREBASE.md` — **not** Firestore or renderer |
+
+**AI provider secrets:** `OPENAI_API_KEY` lives in Firebase Secret Manager. Cloud Functions read it; the desktop renderer must not. Do not add provider keys to Firestore settings or the Settings UI.
+
+**OpenAI vision model:** Configurable via Firestore `settings/aiEnrichment.visionModelId` (owner/admin updates through callable `updateAiEnrichmentSettings`). Server allowlist in `functions/src/ai/aiEnrichmentConfig.ts`: default `gpt-5-nano-2025-08-07`, alternate `gpt-5.4-nano-2026-03-17`. GPT-5 nano models are reasoning models — vision requests use `reasoning_effort: "minimal"` (fallback `"low"`), `max_completion_tokens` from `OPENAI_VISION_MAX_COMPLETION_TOKENS` (2500; one-shot retry at 4000 when reasoning exhausts budget). Chat Completions keep `response_format: { type: "json_object" }`. Empty `message.content` responses log usage/reasoning tokens and surface `openai_empty_output` / `openai_token_budget_exhausted` errors. Resolved model persisted on `aiSuggestions.model`.
 
 ---
 
@@ -83,6 +88,9 @@ Fresh Prints does not expose a separate REST API for core operations. Business l
 |----------|---------|---------|
 | `createTeamUser` | Callable | Create team user + invitation flow |
 | `updateTeamUser` | Callable | Update team user fields |
+| `enqueueAiEnrichment` | Callable | Queue imported design for AI processing |
+| `updateAiEnrichmentSettings` | Callable | Owner/admin: set team vision model allowlist choice |
+| `onDesignAiEnrichmentQueued` | Firestore update | Run AI enrichment pipeline |
 
 Location: `functions/src/` — compiled to `functions/lib/` (gitignored). See `docs/workflow/setup/firebase-functions-setup.md`.
 
@@ -134,4 +142,6 @@ See `docs/standards/SECURITY.md`. Firebase rules and Electron IPC security are d
 
 | Date | Summary |
 |------|---------|
+| 2026-06-25 | Configurable vision model via `settings/aiEnrichment` + `updateAiEnrichmentSettings` callable |
+| 2026-06-25 | Document OpenAI vision model `gpt-5.4-nano` (`OPENAI_VISION_MODEL_ID`) |
 | 2026-06-24 | Initial Fresh Prints backend overview; links to FIREBASE.md |

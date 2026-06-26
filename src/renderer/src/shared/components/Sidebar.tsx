@@ -28,23 +28,37 @@ interface SidebarItem {
   to: string;
   end?: boolean;
   isDisabled?: boolean;
+  dividerBefore?: boolean;
   permission?: PermissionKey;
 }
 
 const sidebarItems: SidebarItem[] = [
-  { icon: LayoutDashboard, label: "Dashboard", to: "/", end: true, permission: "accessDashboard" },
   { icon: Images, label: "Design Library", to: "/designs", permission: "viewDesigns" },
+  { icon: Sparkles, label: "AI Processing", to: "/ai-review", permission: "viewAiReview" },
   { icon: FolderInput, label: "Imports", to: "/imports", permission: "importDesigns" },
-  { icon: Sparkles, label: "AI Review", to: "/ai-review", permission: "manageDesigns" },
-  { icon: ListOrdered, label: "Show Queue", to: "/show-queue", permission: "manageQueues" },
+  {
+    icon: ListOrdered,
+    label: "Show Queue",
+    to: "/show-queue",
+    permission: "manageQueues",
+    dividerBefore: true,
+    isDisabled: true,
+  },
   {
     icon: MessageSquare,
     label: "Customer Requests",
     to: "/customer-requests",
     permission: "manageRequests",
+    isDisabled: true,
   },
-  { icon: Users, label: "Users", to: "/users", permission: "viewUsers" },
+  { icon: Users, label: "Users", to: "/users", permission: "viewUsers", dividerBefore: true },
   { icon: Settings, label: "Settings", to: "/settings", permission: "manageSettings" },
+  {
+    icon: LayoutDashboard,
+    label: "Dev Dashboard",
+    to: "/dev-dashboard",
+    permission: "accessDashboard",
+  },
 ];
 
 const sidebarCollapsedStorageKey = "fresh-prints-sidebar-collapsed";
@@ -137,38 +151,38 @@ export function Sidebar() {
         {visibleSidebarItems.map((item) => {
           const ItemIcon = item.icon;
 
-          if (item.isDisabled) {
-            return (
-              <span
-                aria-disabled="true"
-                className="sidebar-link sidebar-link-disabled"
-                key={item.label}
-                title={isCollapsed ? item.label : undefined}
-              >
-                <span className="sidebar-link-main">
-                  <ItemIcon aria-hidden="true" className="sidebar-link-icon" size={18} strokeWidth={2} />
-                  {!isCollapsed ? <span className="sidebar-link-label">{item.label}</span> : null}
-                </span>
-                {!isCollapsed ? <span className="sidebar-later-badge">Later</span> : null}
-              </span>
-            );
-          }
-
           return (
-            <NavLink
-              className={({ isActive }) =>
-                isActive ? "sidebar-link sidebar-link-active" : "sidebar-link"
-              }
-              end={item.end}
-              key={item.label}
-              title={isCollapsed ? item.label : undefined}
-              to={item.to}
-            >
-              <span className="sidebar-link-main">
-                <ItemIcon aria-hidden="true" className="sidebar-link-icon" size={18} strokeWidth={2} />
-                {!isCollapsed ? <span className="sidebar-link-label">{item.label}</span> : null}
-              </span>
-            </NavLink>
+            <div className="sidebar-nav-item" key={item.label}>
+              {item.dividerBefore ? <div aria-hidden="true" className="sidebar-nav-divider" /> : null}
+
+              {item.isDisabled ? (
+                <span
+                  aria-disabled="true"
+                  className="sidebar-link sidebar-link-disabled"
+                  title={isCollapsed ? item.label : undefined}
+                >
+                  <span className="sidebar-link-main">
+                    <ItemIcon aria-hidden="true" className="sidebar-link-icon" size={18} strokeWidth={2} />
+                    {!isCollapsed ? <span className="sidebar-link-label">{item.label}</span> : null}
+                  </span>
+                  {!isCollapsed ? <span className="sidebar-later-badge">Later</span> : null}
+                </span>
+              ) : (
+                <NavLink
+                  className={({ isActive }) =>
+                    isActive ? "sidebar-link sidebar-link-active" : "sidebar-link"
+                  }
+                  end={item.end}
+                  title={isCollapsed ? item.label : undefined}
+                  to={item.to}
+                >
+                  <span className="sidebar-link-main">
+                    <ItemIcon aria-hidden="true" className="sidebar-link-icon" size={18} strokeWidth={2} />
+                    {!isCollapsed ? <span className="sidebar-link-label">{item.label}</span> : null}
+                  </span>
+                </NavLink>
+              )}
+            </div>
           );
         })}
       </nav>

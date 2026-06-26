@@ -88,7 +88,8 @@ export type ImportPngWarningCode =
   | "DPI_BELOW_TARGET"
   | "PRINT_SIZE_NORMALIZED"
   | "PRINT_SIZE_BELOW_PREFERRED"
-  | "PRINT_SIZE_SMALL_FORMAT";
+  | "PRINT_SIZE_SMALL_FORMAT"
+  | "PRINT_SIZE_TERRIBLE";
 
 export type PngDpiSource = "pHYs";
 
@@ -160,6 +161,8 @@ export interface ImportOriginalUploadResult {
   previewPath?: string;
   derivativeError?: string;
   cleanupWarning?: string | null;
+  /** Set when automatic AI enqueue fails after successful import */
+  aiEnqueueError?: string | null;
 }
 
 export interface SelectedPngPreviewResult {

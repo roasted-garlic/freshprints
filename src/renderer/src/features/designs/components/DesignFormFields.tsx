@@ -1,35 +1,31 @@
 import type { ChangeEvent, ReactNode } from "react";
 
+import { Badge } from "../../../shared/components/Badge";
 import { Select, type SelectOption } from "../../../shared/components/Select";
+import { TagChipInput } from "../../../shared/components/TagChipInput";
 import { TextInput } from "../../../shared/components/TextInput";
 import type { DesignFormValues } from "../types/designForm.types";
-import { editableCatalogDesignStatuses } from "../types/designStatus.types";
-import { formatDesignStatusLabel } from "../utils/designStatusDisplay";
+import { formatDesignStatusLabel, getDesignStatusBadgeVariant } from "../utils/designStatusDisplay";
 import { DesignPrintSettingsFields } from "./DesignPrintSettingsFields";
 
 interface DesignFormFieldsProps {
-  canEditStatus: boolean;
   categoryOptions: SelectOption[];
   children?: ReactNode;
   designId?: string;
   error?: string | null;
   formValues: DesignFormValues;
+  isArchived?: boolean;
   onChange: (field: keyof DesignFormValues, value: string) => void;
   onPrintSettingsChange: (updates: Partial<DesignFormValues>) => void;
 }
 
-const statusOptions = editableCatalogDesignStatuses.map((status) => ({
-  label: formatDesignStatusLabel(status),
-  value: status,
-}));
-
 export function DesignFormFields({
-  canEditStatus,
   categoryOptions,
   children,
   designId,
   error,
   formValues,
+  isArchived = false,
   onChange,
   onPrintSettingsChange,
 }: DesignFormFieldsProps) {
@@ -68,30 +64,27 @@ export function DesignFormFields({
         value={formValues.categoryId}
       />
 
-      <TextInput
+      <TagChipInput
         label="Tags"
         name="tagsInput"
-        onChange={handleFieldChange("tagsInput")}
+        onChange={(nextValue) => onChange("tagsInput", nextValue)}
         value={formValues.tagsInput}
       />
-      <p className="design-form-hint">Separate tags with commas. Tags are stored lowercase.</p>
 
-      {canEditStatus ? (
-        <Select
-          label="Status"
-          name="status"
-          onChange={(event) => onChange("status", event.target.value)}
-          options={statusOptions}
-          value={formValues.status}
-        />
-      ) : (
-        <TextInput
-          label="Status"
-          name="status"
-          readOnly
-          value={formatDesignStatusLabel(formValues.status)}
-        />
-      )}
+      <div className="design-form-status-field">
+        <span className="design-form-status-label" id="design-form-status-label">
+          Status
+        </span>
+        <Badge aria-labelledby="design-form-status-label" variant={getDesignStatusBadgeVariant(formValues.status)}>
+          {formatDesignStatusLabel(formValues.status)}
+        </Badge>
+      </div>
+
+      {isArchived ? (
+        <p className="auth-message auth-message-warning" role="status">
+          This design is archived. Metadata edits will not restore it.
+        </p>
+      ) : null}
 
       <DesignPrintSettingsFields formValues={formValues} onChange={onPrintSettingsChange} />
 

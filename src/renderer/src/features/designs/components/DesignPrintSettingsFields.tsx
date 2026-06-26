@@ -1,21 +1,23 @@
-import { useMemo, type ChangeEvent } from "react";
+import { useMemo } from "react";
 
 import type { EffectiveDpiQualityLevel } from "../../../../../../shared/types/printSize/printSize.enums";
 import { PRINT_INCHES_DECIMAL_PLACES } from "../../../../../../shared/constants/printSize.constants";
 import {
   getEffectiveDpiQualityLabel,
   getEffectiveDpiQualityMessage,
+  getEffectiveDpiQualityClassName,
   resolveEffectiveDpiQualityLevel,
 } from "../../../../../../shared/utils/effectiveDpiQuality";
 import {
   applyStaffPrintHeightChange,
   applyStaffPrintWidthChange,
   computeStaffEffectiveDpi,
+  type StaffPrintSizeInput,
 } from "../../../../../../shared/utils/staffPrintSizeEdit";
 import { Checkbox } from "../../../shared/components/Checkbox";
+import { PrintDimensionInput } from "../../../shared/components/PrintDimensionInput";
 import { TextInput } from "../../../shared/components/TextInput";
 import type { DesignFormValues } from "../types/designForm.types";
-import { getEffectiveDpiQualityClassName } from "../utils/designPrintSizeDisplay";
 
 interface DesignPrintSettingsFieldsProps {
   formValues: Pick<
@@ -28,6 +30,8 @@ interface DesignPrintSettingsFieldsProps {
   >;
   onChange: (updates: Partial<DesignFormValues>) => void;
 }
+
+const PRINT_DIMENSION_STEP_INCHES = 0.25;
 
 function parsePixelDimension(value: string): number | null {
   const trimmedValue = value.trim();
@@ -82,7 +86,7 @@ export function DesignPrintSettingsFields({
   const pixelHeight = parsePixelDimension(formValues.pixelHeight);
   const hasPixelDimensions = pixelWidth !== null && pixelHeight !== null;
 
-  const effectiveDpiState = useMemo((): EffectiveDpiDisplayState | null => {
+  const staffPrintSizeInput = useMemo((): StaffPrintSizeInput | null => {
     if (!hasPixelDimensions) {
       return null;
     }
@@ -94,13 +98,28 @@ export function DesignPrintSettingsFields({
       return null;
     }
 
-    const effectiveDpi = computeStaffEffectiveDpi({
+    return {
       pixelWidth,
       pixelHeight,
       printWidthInches,
       printHeightInches,
       printAspectRatioLocked: formValues.printAspectRatioLocked,
-    });
+    };
+  }, [
+    formValues.printAspectRatioLocked,
+    formValues.printHeightInches,
+    formValues.printWidthInches,
+    hasPixelDimensions,
+    pixelHeight,
+    pixelWidth,
+  ]);
+
+  const effectiveDpiState = useMemo((): EffectiveDpiDisplayState | null => {
+    if (!staffPrintSizeInput) {
+      return null;
+    }
+
+    const effectiveDpi = computeStaffEffectiveDpi(staffPrintSizeInput);
 
     if (typeof effectiveDpi !== "number") {
       return { error: effectiveDpi.error };
@@ -114,27 +133,18 @@ export function DesignPrintSettingsFields({
       qualityLabel: getEffectiveDpiQualityLabel(qualityLevel),
       qualityMessage: getEffectiveDpiQualityMessage(qualityLevel),
     };
-  }, [
-    formValues.printAspectRatioLocked,
-    formValues.printHeightInches,
-    formValues.printWidthInches,
-    hasPixelDimensions,
-    pixelHeight,
-    pixelWidth,
-  ]);
+  }, [staffPrintSizeInput]);
 
-  function handlePrintWidthChange(event: ChangeEvent<HTMLInputElement>) {
-    const nextValue = event.target.value;
-
+  function commitPrintWidth(rawValue: string) {
     if (!hasPixelDimensions) {
-      onChange({ printWidthInches: nextValue });
+      onChange({ printWidthInches: rawValue.trim() });
       return;
     }
 
-    const parsedWidth = parsePrintInches(nextValue);
+    const parsedWidth = parsePrintInches(rawValue);
 
-    if (parsedWidth === null) {
-      onChange({ printWidthInches: nextValue });
+    if (parsedWidth === null || parsedWidth <= 0) {
+      onChange({ printWidthInches: rawValue.trim() });
       return;
     }
 
@@ -149,7 +159,7 @@ export function DesignPrintSettingsFields({
     });
 
     if ("error" in result) {
-      onChange({ printWidthInches: nextValue });
+      onChange({ printWidthInches: rawValue.trim() });
       return;
     }
 
@@ -159,18 +169,16 @@ export function DesignPrintSettingsFields({
     });
   }
 
-  function handlePrintHeightChange(event: ChangeEvent<HTMLInputElement>) {
-    const nextValue = event.target.value;
-
+  function commitPrintHeight(rawValue: string) {
     if (!hasPixelDimensions) {
-      onChange({ printHeightInches: nextValue });
+      onChange({ printHeightInches: rawValue.trim() });
       return;
     }
 
-    const parsedHeight = parsePrintInches(nextValue);
+    const parsedHeight = parsePrintInches(rawValue);
 
-    if (parsedHeight === null) {
-      onChange({ printHeightInches: nextValue });
+    if (parsedHeight === null || parsedHeight <= 0) {
+      onChange({ printHeightInches: rawValue.trim() });
       return;
     }
 
@@ -185,7 +193,7 @@ export function DesignPrintSettingsFields({
     });
 
     if ("error" in result) {
-      onChange({ printHeightInches: nextValue });
+      onChange({ printHeightInches: rawValue.trim() });
       return;
     }
 
@@ -195,11 +203,35 @@ export function DesignPrintSettingsFields({
     });
   }
 
-  function handleAspectRatioLockedChange(event: ChangeEvent<HTMLInputElement>) {
-    const locked = event.target.checked;
+  function adjustPrintWidth(direction: "decrease" | "increase") {
+    if (!hasPixelDimensions) {
+      return;
+    }
 
-    if (!locked || !hasPixelDimensions) {
-      onChange({ printAspectRatioLocked: locked });
+    const currentWidth =
+      parsePrintInches(formValues.printWidthInches) ?? pixelWidth / 300;
+    const delta = direction === "increase" ? PRINT_DIMENSION_STEP_INCHES : -PRINT_DIMENSION_STEP_INCHES;
+    const nextWidth = Math.max(PRINT_DIMENSION_STEP_INCHES, currentWidth + delta);
+
+    commitPrintWidth(formatPrintInches(nextWidth));
+  }
+
+  function adjustPrintHeight(direction: "decrease" | "increase") {
+    if (!hasPixelDimensions) {
+      return;
+    }
+
+    const currentHeight =
+      parsePrintInches(formValues.printHeightInches) ?? pixelHeight / 300;
+    const delta = direction === "increase" ? PRINT_DIMENSION_STEP_INCHES : -PRINT_DIMENSION_STEP_INCHES;
+    const nextHeight = Math.max(PRINT_DIMENSION_STEP_INCHES, currentHeight + delta);
+
+    commitPrintHeight(formatPrintInches(nextHeight));
+  }
+
+  function handleAspectRatioLockedChange(checked: boolean) {
+    if (!checked || !hasPixelDimensions) {
+      onChange({ printAspectRatioLocked: checked });
       return;
     }
 
@@ -235,44 +267,33 @@ export function DesignPrintSettingsFields({
 
       {!hasPixelDimensions ? (
         <p className="design-form-hint">
-          Pixel dimensions are unavailable. Print size cannot be edited for this design.
+          Source image dimensions are unavailable. Print size cannot be edited for this design.
         </p>
-      ) : null}
+      ) : (
+        <p className="design-form-source-image-note">
+          Source image: {pixelWidth} × {pixelHeight} px (read-only)
+        </p>
+      )}
 
       <div className="design-form-grid design-form-grid-two">
-        <TextInput
-          label="Pixel Width"
-          name="pixelWidth"
-          readOnly
-          type="number"
-          value={formValues.pixelWidth}
-        />
-        <TextInput
-          label="Pixel Height"
-          name="pixelHeight"
-          readOnly
-          type="number"
-          value={formValues.pixelHeight}
-        />
-      </div>
-
-      <div className="design-form-grid design-form-grid-two">
-        <TextInput
+        <PrintDimensionInput
           disabled={!hasPixelDimensions}
           label="Print Width (inches)"
           name="printWidthInches"
-          onChange={handlePrintWidthChange}
-          step="0.01"
-          type="number"
+          onBlur={commitPrintWidth}
+          onChange={(value) => onChange({ printWidthInches: value })}
+          onStep={adjustPrintWidth}
+          step={PRINT_DIMENSION_STEP_INCHES}
           value={formValues.printWidthInches}
         />
-        <TextInput
+        <PrintDimensionInput
           disabled={!hasPixelDimensions}
           label="Print Height (inches)"
           name="printHeightInches"
-          onChange={handlePrintHeightChange}
-          step="0.01"
-          type="number"
+          onBlur={commitPrintHeight}
+          onChange={(value) => onChange({ printHeightInches: value })}
+          onStep={adjustPrintHeight}
+          step={PRINT_DIMENSION_STEP_INCHES}
           value={formValues.printHeightInches}
         />
       </div>
@@ -282,7 +303,7 @@ export function DesignPrintSettingsFields({
         disabled={!hasPixelDimensions}
         label="Aspect Ratio Locked"
         name="printAspectRatioLocked"
-        onChange={handleAspectRatioLockedChange}
+        onChange={(event) => handleAspectRatioLockedChange(event.target.checked)}
       />
 
       <div className="design-form-grid design-form-grid-two">
@@ -290,7 +311,7 @@ export function DesignPrintSettingsFields({
           label="Effective DPI"
           name="effectiveDpi"
           readOnly
-          type="number"
+          type="text"
           value={
             effectiveDpiState && "effectiveDpi" in effectiveDpiState
               ? String(effectiveDpiState.effectiveDpi)
@@ -315,7 +336,7 @@ export function DesignPrintSettingsFields({
       {effectiveDpiState && "qualityMessage" in effectiveDpiState ? (
         <p
           className={
-            effectiveDpiState.qualityLevel === "preferred"
+            effectiveDpiState.qualityLevel === "optimal"
               ? "auth-message auth-message-success"
               : "auth-message auth-message-warning"
           }

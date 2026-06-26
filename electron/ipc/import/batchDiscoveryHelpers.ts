@@ -5,7 +5,9 @@ import type {
   BatchImportFileManifestEntry,
   BatchImportProgressEvent,
   BatchImportSourceType,
+  FolderBatchDiscoverySummary,
 } from "../../../shared/types/import/batchImport.types";
+import { buildBatchDiscoverySummary } from "../../../shared/utils/batchDiscoverySummary";
 import { emitBatchDiscoveryComplete, emitBatchImportProgress } from "./batchImportEvents";
 
 export function buildProgressCounts(files: BatchImportFileManifestEntry[]) {
@@ -58,20 +60,17 @@ export function emitDiscoveryFinished(
     canceled: boolean;
     fileTotal: number;
     files: BatchImportFileManifestEntry[];
+    folderDiscovery?: FolderBatchDiscoverySummary;
     jobId: string;
     pngsDiscovered: number;
     sourceType: BatchImportSourceType;
     truncated: boolean;
   },
 ): void {
-  const { canceled, fileTotal, files, jobId, pngsDiscovered, sourceType, truncated } = input;
+  const { canceled, fileTotal, files, folderDiscovery, jobId, pngsDiscovered, sourceType, truncated } =
+    input;
 
-  const summary = {
-    discovered: pngsDiscovered,
-    skipped: 0,
-    rejected: files.filter((file) => file.outcome === "rejected").length,
-    validated: files.filter((file) => file.outcome === "validated").length,
-  };
+  const summary = buildBatchDiscoverySummary(files, pngsDiscovered, folderDiscovery);
 
   const completeEvent: BatchDiscoveryCompleteEvent = {
     jobId,
@@ -79,6 +78,7 @@ export function emitDiscoveryFinished(
     truncated,
     sourceType,
     summary,
+    folderDiscovery,
     files,
   };
 

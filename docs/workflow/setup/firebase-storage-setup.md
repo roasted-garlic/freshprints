@@ -131,7 +131,7 @@ Deploy from the project root:
 firebase deploy --only storage
 ```
 
-Phase 3A-3 rules allow authenticated active staff to upload `/originals/{designId}.png` with `image/png` content type and a 50 MB size cap.
+Phase 3A-3 rules allow authenticated active staff to upload `/originals/{designId}.png` with `image/png` content type and a **150 MB** size cap (see `MAX_SINGLE_PNG_SIZE_BYTES`).
 
 Phase 3C Step 5 rules extend staff access to:
 
@@ -218,7 +218,7 @@ With deployed staff rules:
 
 - Unauthenticated reads and writes are denied on all design paths.
 - Inactive or customer accounts are denied on `/originals/`, `/thumbnails/`, and `/previews/`.
-- Active staff (`owner`, `admin`, `helper`) may read/write/delete canonical `/originals/{designId}.png` (PNG, 50 MB cap).
+- Active staff (`owner`, `admin`, `helper`) may read/write/delete canonical `/originals/{designId}.png` (PNG, 150 MB cap).
 - Active staff may read/write/delete canonical `/thumbnails/{designId}.webp` and `/previews/{designId}.webp` (WebP, 10 MB cap).
 - `/originals/`, `/thumbnails/`, and `/previews/` are not public.
 - `/customer-uploads/` is not writable.

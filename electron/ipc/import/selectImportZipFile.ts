@@ -1,7 +1,9 @@
 import { dialog } from "electron";
 
 import { MAX_ZIP_SIZE_BYTES } from "../../../shared/constants/import/batchImportLimits.constants";
+import { ImportLimitExceededError } from "../../../shared/errors/importLimitErrors";
 import type { SelectImportZipFileResult } from "../../../shared/types/import/importIpc.types";
+import { formatZipSizeLimitExceededMessage } from "../../../shared/utils/importLimitMessages";
 import { getActiveBrowserWindow } from "./importBrowserWindow";
 import { registerBatchImportSelection } from "./importBatchSession";
 import { buildSelectedZipFile } from "./importZipSelection";
@@ -32,7 +34,7 @@ export async function selectImportZipFile(webContentsId: number): Promise<Select
   const file = await buildSelectedZipFile(selectedPath);
 
   if (file.fileSizeBytes > MAX_ZIP_SIZE_BYTES) {
-    throw new Error("The selected ZIP file exceeds the 200 MB import limit.");
+    throw new ImportLimitExceededError(formatZipSizeLimitExceededMessage());
   }
 
   const session = registerBatchImportSelection({

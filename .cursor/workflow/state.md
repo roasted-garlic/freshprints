@@ -1,72 +1,25 @@
 # Workflow State
 
-> Single source of truth for current workflow progress. The Managing Agent reads and updates this file every session.
-
-## Current Mode
-idle
-
-## Current Phase
-none
-
 ## Current Goal
-none
+Align Needs Review shortcut hints under correct buttons
 
-## Current Workflow Step
-idle
+## Phase
+signoff
+
+## Status
+DONE — manual visual QA pending
 
 ## Plan Status
-complete
+complete — `docs/workflow/plans/2026-06-25-needs-review-shortcuts-alignment-plan.md`
 
 ## Review Status
-approved
-
-## Implementation Status
-complete
-
-## Test Status
-passed
-
-## Signoff Status
-approved_with_conditions
-
-## Human Checkpoint Required
-no
-
-## Human Checkpoint Reason
-none
-
-## Last Completed Step
-repository-stabilization signoff (migration merge + git cleanup)
-
-## Next Required Step
-Human: verify Storage rules in Firebase Console (C1); configure remote; `git push`. Then Managed Phase: Phase 3D print size/DPI normalization
-
-## Blocked
-no
-
-## Blocker
-none
-
-## Allowed Actions
-Read docs; push to GitHub after human confirms; start Phase 3D managed phase
-
-## Forbidden Actions
-none
-
-## Files Created
-docs/workflow/reviews/repository-stabilization-signoff.md
-
-## Files Modified
-.gitignore, docs/standards/DEPLOYMENT.md, docs/standards/TESTING.md, docs/project/TECH_DEBT.md, docs/project/PROJECT_HEALTH.md
+approved — `docs/workflow/reviews/2026-06-25-needs-review-shortcuts-alignment-review.md`
 
 ## Tests Run
-npm run lint — exit 0; npx tsc --noEmit — exit 0
+tsc + lint pass; keyboard shortcuts tests 3/3 pass
 
-## Known Risks
-Storage rules deploy status unverified in console (R-003)
-
-## Decision Log
-2026-06-24 — Merged fresh-prints-appforge-migration to master; untracked release/, dist-electron/, build/icon.*
+## Signoff
+`docs/workflow/reviews/2026-06-25-needs-review-shortcuts-alignment-signoff.md`
 
 ## DONE
-yes
+yes (implementation)

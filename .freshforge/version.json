@@ -1,0 +1,13 @@
+{
+  "name": "FreshForge",
+  "installedVersion": "0.2.0",
+  "installedAt": "2026-06-25T01:34:14.753Z",
+  "source": "github:roasted-garlic/freshforge",
+  "previousName": "AppForge",
+  "migrationHistory": [
+    {
+      "id": "legacy-appforge-to-freshforge",
+      "ranAt": "2026-06-25T01:34:14.753Z"
+    }
+  ]
+}

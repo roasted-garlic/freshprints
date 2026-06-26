@@ -8,7 +8,8 @@
 
 Fresh Prints consists of:
 
-- **Desktop admin app** — Electron build via `npm run build`
+- **Fresh Prints Studio** — Electron build via `npm run build`
+- **Fresh Prints Portal** — responsive web hosting (Phase 8; provider TBD)
 - **Firebase backend** — Auth, Firestore, Storage, Cloud Functions
 
 ---
@@ -85,6 +86,17 @@ Other Firebase deploys (human approval required):
 firebase deploy --only firestore:rules
 firebase deploy --only functions
 ```
+
+**Phase 5B AI pipeline:** Deploy rules first, then **all** functions (preferred after entrypoint/export changes). Set `OPENAI_API_KEY` in Secret Manager before functions deploy — see `FIREBASE.md` (never store in Firestore or desktop Settings).
+
+Verify functions build before deploy:
+
+```bash
+npm --prefix functions run build
+node -e "console.log(Object.keys(require('./functions')))"
+```
+
+Expected exports include `enqueueAiEnrichment` and `onDesignAiEnrichmentQueued`.
 
 ---
 

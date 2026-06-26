@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 
-import { getDesignLibraryPath } from "../../../designs/constants/designLibraryFilters";
+import { getAiReviewPath } from "../../../designs/constants/designLibraryFilters";
 import { Button } from "../../../../shared/components/Button";
 import { Card } from "../../../../shared/components/Card";
 import type { BatchImportUploadReport } from "../../types/batchImportOrchestration.types";
@@ -41,17 +41,17 @@ export function BatchImportResultPanel({
           </p>
         ) : allDerivativesComplete ? (
           <p className="auth-message auth-message-success">
-            Designs were imported with derivatives complete. Each design remains imported and is
-            waiting for AI review.
+            Designs were imported with derivatives complete. Open AI Processing and use Start AI or
+            Process image with AI when you are ready.
           </p>
         ) : hasDerivativeFailures ? (
           <p className="auth-message auth-message-warning">
-            Batch upload finished with partial derivative success. Imported designs remain in the
-            Imported filter.
+            Batch upload finished with partial derivative success. Imported designs remain on the
+            Processing tab until you start AI.
           </p>
         ) : (
           <p className="auth-message auth-message-success">
-            Batch upload finished. Imported designs are available in the Design Library.
+            Batch upload finished. Imported designs are waiting on the Processing tab.
           </p>
         )}
 
@@ -93,6 +93,15 @@ export function BatchImportResultPanel({
         </dl>
       </div>
 
+      <div className="batch-import-actions-row">
+        <Link className="button button-primary button-md" to={getAiReviewPath()}>
+          Open AI Processing
+        </Link>
+        <Button onClick={onCancelImport} variant="secondary">
+          Cancel Upload
+        </Button>
+      </div>
+
       {summary.failedFiles.length > 0 ? (
         <div className="batch-import-failed-list">
           <h4>Failed imports</h4>
@@ -120,18 +129,6 @@ export function BatchImportResultPanel({
           </ul>
         </div>
       ) : null}
-
-      <div className="batch-import-actions-row">
-        <Link
-          className="button button-primary button-md"
-          to={getDesignLibraryPath({ status: "imported" })}
-        >
-          Open Design Library
-        </Link>
-        <Button onClick={onCancelImport} variant="secondary">
-          Cancel Upload
-        </Button>
-      </div>
     </Card>
   );
 }

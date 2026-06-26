@@ -35,8 +35,33 @@ describe("buildImportPrintSizeCreateFields", () => {
     assert.equal(fields.metadataDpiY, 72);
   });
 
-  it("rejects when assessment level is reject", () => {
+  it("builds 72 DPI normalized fields for sub-threshold width assets", () => {
     const assessmentResult = assessPrintSizeCapability(1049, 500);
+
+    assert.equal(assessmentResult.success, true);
+    if (!assessmentResult.success) {
+      return;
+    }
+
+    assert.equal(assessmentResult.assessment.acceptanceLevel, "terrible");
+
+    const fields = buildImportPrintSizeCreateFields({
+      pixelWidth: 1049,
+      pixelHeight: 500,
+      assessment: assessmentResult.assessment,
+    });
+
+    assert.notEqual("error" in fields, true);
+    if ("error" in fields) {
+      return;
+    }
+
+    assert.equal(fields.effectiveDpi, 72);
+    assert.equal(fields.printSizeSource, "import_normalized");
+  });
+
+  it("rejects when assessment level is reject", () => {
+    const assessmentResult = assessPrintSizeCapability(71, 71);
 
     assert.equal(assessmentResult.success, true);
     if (!assessmentResult.success) {
@@ -46,8 +71,8 @@ describe("buildImportPrintSizeCreateFields", () => {
     assert.equal(assessmentResult.assessment.acceptanceLevel, "reject");
 
     const fields = buildImportPrintSizeCreateFields({
-      pixelWidth: 1049,
-      pixelHeight: 500,
+      pixelWidth: 71,
+      pixelHeight: 71,
       assessment: assessmentResult.assessment,
     });
 

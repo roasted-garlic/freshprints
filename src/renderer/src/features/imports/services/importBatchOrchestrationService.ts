@@ -82,6 +82,7 @@ function mapImportOutcomeToBatchFileResult(
     previewPath: upload.previewPath,
     derivativeError: upload.derivativeError,
     cleanupWarning: upload.cleanupWarning ?? undefined,
+    aiEnqueueError: upload.aiEnqueueError ?? undefined,
   };
 }
 
@@ -109,6 +110,7 @@ function buildBatchSummary(files: BatchImportUploadFileResult[]) {
     (file) => file.importSuccess === true && file.pipelineSuccess === false,
   ).length;
   const derivativeSkippedCount = files.filter((file) => file.derivativeStatus === "skipped").length;
+  const aiEnqueueFailedCount = files.filter((file) => Boolean(file.aiEnqueueError?.trim())).length;
 
   return {
     totalFiles: files.length,
@@ -120,6 +122,7 @@ function buildBatchSummary(files: BatchImportUploadFileResult[]) {
     derivativeCompleteCount,
     derivativeFailedCount,
     derivativeSkippedCount,
+    aiEnqueueFailedCount,
     createdDesignIds: successfulImports
       .map((file) => file.designId)
       .filter((designId): designId is string => Boolean(designId)),

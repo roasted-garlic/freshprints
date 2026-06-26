@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 import { Upload } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -6,9 +8,10 @@ import type {
   ImportOriginalUploadResult,
   ValidateSelectedPngFileResult,
 } from "../../../../../../shared/types/import/importIpc.types";
-import { getDesignLibraryPath } from "../../designs/constants/designLibraryFilters";
+import { getAiReviewPath } from "../../designs/constants/designLibraryFilters";
 import { Button } from "../../../shared/components/Button";
 import { Card } from "../../../shared/components/Card";
+import { Modal, ModalBody, ModalFooter, ModalHeader } from "../../../shared/components/Modal";
 import { formatFileSize } from "../../../shared/utils/formatFileSize";
 import type { SinglePngImportPhase } from "../hooks/useSinglePngImport";
 import {
@@ -128,6 +131,12 @@ function ValidationDetails({
 
 function ImportUploadSummary({ uploadResult }: { uploadResult: ImportOriginalUploadResult }) {
   const isPipelineSuccess = uploadResult.pipelineSuccess;
+  const derivativeStatus =
+    uploadResult.derivativeStatus === "ready"
+      ? "Complete"
+      : uploadResult.derivativeStatus === "failed"
+        ? "Failed"
+        : "Skipped";
 
   return (
     <div className="import-upload-feedback">
@@ -158,45 +167,9 @@ function ImportUploadSummary({ uploadResult }: { uploadResult: ImportOriginalUpl
           <dd>{uploadResult.designId}</dd>
         </div>
         <div>
-          <dt>Original uploaded</dt>
-          <dd>Yes</dd>
-        </div>
-        <div>
-          <dt>Original path</dt>
-          <dd>
-            <code>{uploadResult.originalPath}</code>
-          </dd>
-        </div>
-        <div>
-          <dt>Firestore record</dt>
-          <dd>{uploadResult.catalogRecordCreated ? "Created" : "Not created"}</dd>
-        </div>
-        <div>
           <dt>Derivatives</dt>
-          <dd>
-            {uploadResult.derivativeStatus === "ready"
-              ? "Complete"
-              : uploadResult.derivativeStatus === "failed"
-                ? "Failed"
-                : "Skipped"}
-          </dd>
+          <dd>{derivativeStatus}</dd>
         </div>
-        {uploadResult.thumbnailPath ? (
-          <div>
-            <dt>Thumbnail path</dt>
-            <dd>
-              <code>{uploadResult.thumbnailPath}</code>
-            </dd>
-          </div>
-        ) : null}
-        {uploadResult.previewPath ? (
-          <div>
-            <dt>Preview path</dt>
-            <dd>
-              <code>{uploadResult.previewPath}</code>
-            </dd>
-          </div>
-        ) : null}
         <div>
           <dt>Final status</dt>
           <dd>
@@ -204,14 +177,46 @@ function ImportUploadSummary({ uploadResult }: { uploadResult: ImportOriginalUpl
           </dd>
         </div>
         <div>
-          <dt>File name</dt>
-          <dd>{uploadResult.fileName}</dd>
-        </div>
-        <div>
           <dt>File size</dt>
           <dd>{formatFileSize(uploadResult.fileSizeBytes)}</dd>
         </div>
+        <div>
+          <dt>Firestore record</dt>
+          <dd>{uploadResult.catalogRecordCreated ? "Created" : "Not created"}</dd>
+        </div>
       </dl>
+
+      <details className="import-technical-details">
+        <summary>Storage and file details</summary>
+        <dl className="import-validation-details import-validation-details-technical">
+          <div>
+            <dt>File name</dt>
+            <dd>{uploadResult.fileName}</dd>
+          </div>
+          <div>
+            <dt>Original path</dt>
+            <dd>
+              <code>{uploadResult.originalPath}</code>
+            </dd>
+          </div>
+          {uploadResult.thumbnailPath ? (
+            <div>
+              <dt>Thumbnail path</dt>
+              <dd>
+                <code>{uploadResult.thumbnailPath}</code>
+              </dd>
+            </div>
+          ) : null}
+          {uploadResult.previewPath ? (
+            <div>
+              <dt>Preview path</dt>
+              <dd>
+                <code>{uploadResult.previewPath}</code>
+              </dd>
+            </div>
+          ) : null}
+        </dl>
+      </details>
 
       {uploadResult.derivativeError ? (
         <p className="auth-message auth-message-warning" role="status">
@@ -219,12 +224,53 @@ function ImportUploadSummary({ uploadResult }: { uploadResult: ImportOriginalUpl
         </p>
       ) : null}
 
-      <Link
-        className="button button-primary button-md"
-        to={getDesignLibraryPath({ status: "imported" })}
-      >
-        Open Design Library
-      </Link>
+    </div>
+  );
+}
+
+function ImportDetailsModal({
+  isOpen,
+  onClose,
+  uploadResult,
+  uploadWarning,
+  validationResult,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  uploadResult: ImportOriginalUploadResult;
+  uploadWarning: string | null;
+  validationResult: ValidateSelectedPngFileResult | null;
+}) {
+  if (!isOpen) {
+    return null;
+  }
+
+  return (
+    <div aria-modal="true" className="modal-overlay modal-overlay-blur" role="dialog">
+      <Modal aria-labelledby="import-details-title" className="modal-panel-lg import-details-modal">
+        <ModalHeader>
+          <div>
+            <p className="eyebrow">Import details</p>
+            <h2 id="import-details-title">Validation and storage results</h2>
+          </div>
+        </ModalHeader>
+
+        <ModalBody>
+          {validationResult ? <ValidationDetails validationResult={validationResult} /> : null}
+          <ImportUploadSummary uploadResult={uploadResult} />
+          {uploadWarning ? (
+            <p className="auth-message auth-message-warning" role="status">
+              {uploadWarning}
+            </p>
+          ) : null}
+        </ModalBody>
+
+        <ModalFooter>
+          <Button onClick={onClose} variant="secondary">
+            Close
+          </Button>
+        </ModalFooter>
+      </Modal>
     </div>
   );
 }
@@ -243,6 +289,7 @@ export function ImportResultPanel({
   validationResult,
 }: ImportResultPanelProps) {
   const phaseMessage = getPhaseMessage(phase);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
   if (phaseMessage) {
     return (
@@ -275,6 +322,38 @@ export function ImportResultPanel({
     return null;
   }
 
+  if (uploadResult) {
+    return (
+      <Card aria-live="polite" className="import-validation-result import-complete-panel">
+        <div className="import-complete-preview-shell">
+          {validationResult ? (
+            <ImportPngPreview
+              alt={`Preview of ${validationResult.fileName}`}
+              previewDataUrl={previewDataUrl}
+            />
+          ) : null}
+
+          <div className="import-complete-actions">
+            <Link className="button button-primary button-md" to={getAiReviewPath()}>
+              Open AI Processing
+            </Link>
+            <Button onClick={() => setIsDetailsOpen(true)} variant="secondary">
+              View import details
+            </Button>
+          </div>
+        </div>
+
+        <ImportDetailsModal
+          isOpen={isDetailsOpen}
+          onClose={() => setIsDetailsOpen(false)}
+          uploadResult={uploadResult}
+          uploadWarning={uploadWarning}
+          validationResult={validationResult}
+        />
+      </Card>
+    );
+  }
+
   return (
     <Card aria-live="polite" className="import-validation-result">
       <div className="import-validation-result-layout">
@@ -295,15 +374,10 @@ export function ImportResultPanel({
             </div>
           ) : null}
 
-          {uploadResult ? (
-            <>
-              <ImportUploadSummary uploadResult={uploadResult} />
-              {uploadWarning ? (
-                <p className="auth-message auth-message-warning" role="status">
-                  {uploadWarning}
-                </p>
-              ) : null}
-            </>
+          {uploadWarning ? (
+            <p className="auth-message auth-message-warning" role="status">
+              {uploadWarning}
+            </p>
           ) : null}
         </div>
 

@@ -8,10 +8,15 @@ import { ALLOWED_EXTENSIONS } from "../../../shared/constants/importValidation.c
 import {
   MAX_BATCH_FILES,
   MAX_EXTRACTED_BYTES,
+  MAX_NESTED_ZIP_DEPTH,
   MAX_ZIP_COMPRESSION_RATIO,
   MAX_ZIP_ENTRIES,
   MAX_ZIP_SIZE_BYTES,
 } from "../../../shared/constants/import/batchImportLimits.constants";
+import {
+  formatZipExtractedSizeLimitExceededMessage,
+  formatZipSizeLimitExceededMessage,
+} from "../../../shared/utils/importLimitMessages";
 import {
   isZipDirectoryEntry,
   resolveSafeZipEntryPath,
@@ -32,13 +37,19 @@ export interface ZipExtractedCandidate {
 export interface ZipExtractionResult {
   candidates: ZipExtractedCandidate[];
   entriesScanned: number;
+  nestedZipsNotOpened: number;
   pngsDiscovered: number;
   truncated: boolean;
 }
 
 export interface ZipExtractionOptions {
   extractRoot: string;
+  maxCandidates?: number;
+  maxNestedZipDepth?: number;
+  nestedZipDepth?: number;
   onProgress?: (progress: { entriesScanned: number; pngsDiscovered: number }) => void;
+  pathPrefix?: string;
+  sharedExtractedBytes?: { value: number };
   shouldCancel: () => boolean;
   zipPath: string;
 }
@@ -46,6 +57,10 @@ export interface ZipExtractionOptions {
 function hasPngExtension(filePath: string): boolean {
   const extension = path.extname(filePath).toLowerCase();
   return ALLOWED_EXTENSIONS.some((allowedExtension) => allowedExtension === extension);
+}
+
+function hasZipExtension(filePath: string): boolean {
+  return path.extname(filePath).toLowerCase() === ".zip";
 }
 
 function isZipSymlinkEntry(entry: yauzl.Entry): boolean {
@@ -116,7 +131,7 @@ async function assertZipArchiveSize(zipPath: string): Promise<number> {
   if (zipStats.size > MAX_ZIP_SIZE_BYTES) {
     throw new ZipExtractionError(
       "FILE_TOO_LARGE",
-      "The selected ZIP file exceeds the 200 MB import limit.",
+      formatZipSizeLimitExceededMessage(),
     );
   }
 
@@ -145,7 +160,7 @@ function assertExtractedByteBudget(currentExtractedBytes: number, entry: yauzl.E
   if (nextExtractedBytes > MAX_EXTRACTED_BYTES) {
     throw new ZipExtractionError(
       "ZIP_EXTRACTED_SIZE_EXCEEDED",
-      "The ZIP archive would exceed the 500 MB extracted size limit.",
+      formatZipExtractedSizeLimitExceededMessage(),
     );
   }
 }
@@ -177,9 +192,21 @@ function mapYauzlError(error: unknown): ZipExtractionError {
 export async function extractZipPngCandidates(
   options: ZipExtractionOptions,
 ): Promise<ZipExtractionResult> {
-  const { extractRoot, onProgress, shouldCancel, zipPath } = options;
+  const {
+    extractRoot,
+    maxCandidates = MAX_BATCH_FILES,
+    maxNestedZipDepth = MAX_NESTED_ZIP_DEPTH,
+    nestedZipDepth = 0,
+    onProgress,
+    pathPrefix = "",
+    sharedExtractedBytes,
+    shouldCancel,
+    zipPath,
+  } = options;
+
   const normalizedZipPath = path.normalize(zipPath);
   const normalizedExtractRoot = path.resolve(extractRoot);
+  const extractedBytes = sharedExtractedBytes ?? { value: 0 };
 
   await assertZipArchiveMagicBytes(normalizedZipPath);
   await assertZipArchiveSize(normalizedZipPath);
@@ -191,11 +218,11 @@ export async function extractZipPngCandidates(
     const result: ZipExtractionResult = {
       candidates: [],
       entriesScanned: 0,
+      nestedZipsNotOpened: 0,
       pngsDiscovered: 0,
       truncated: false,
     };
 
-    let extractedBytes = 0;
     let settled = false;
 
     const finish = (value: ZipExtractionResult) => {
@@ -249,24 +276,80 @@ export async function extractZipPngCandidates(
           );
         }
 
-        if (!isZipDirectoryEntry(entryName) && hasPngExtension(entryName)) {
+        if (isZipDirectoryEntry(entryName)) {
+          zipFile.readEntry();
+          return;
+        }
+
+        if (hasZipExtension(entryName)) {
+          if (nestedZipDepth >= maxNestedZipDepth) {
+            result.nestedZipsNotOpened += 1;
+            zipFile.readEntry();
+            return;
+          }
+
           assertCompressionRatio(entry);
-          assertExtractedByteBudget(extractedBytes, entry);
+          assertExtractedByteBudget(extractedBytes.value, entry);
+
+          const nestedZipPath = resolveSafeZipEntryPath(entryName, normalizedExtractRoot);
+          await writeZipEntryToDisk(zipFile, entry, nestedZipPath);
+          extractedBytes.value += entry.uncompressedSize;
+
+          const nestedExtractRoot = path.join(
+            path.dirname(nestedZipPath),
+            `${path.basename(nestedZipPath, ".zip")}-extracted`,
+          );
+          const nestedPrefix = `${pathPrefix}${toZipRelativePath(normalizedExtractRoot, nestedZipPath)}/`;
+
+          const nestedResult = await extractZipPngCandidates({
+            extractRoot: nestedExtractRoot,
+            maxCandidates: maxCandidates - result.candidates.length,
+            maxNestedZipDepth,
+            nestedZipDepth: nestedZipDepth + 1,
+            onProgress,
+            pathPrefix: nestedPrefix,
+            sharedExtractedBytes: extractedBytes,
+            shouldCancel,
+            zipPath: nestedZipPath,
+          });
+
+          result.nestedZipsNotOpened += nestedResult.nestedZipsNotOpened;
+          result.pngsDiscovered += nestedResult.pngsDiscovered;
+          result.truncated = result.truncated || nestedResult.truncated;
+
+          for (const nestedCandidate of nestedResult.candidates) {
+            if (result.candidates.length >= maxCandidates) {
+              result.truncated = true;
+              break;
+            }
+
+            result.candidates.push(nestedCandidate);
+          }
+
+          zipFile.readEntry();
+          return;
+        }
+
+        if (hasPngExtension(entryName)) {
+          assertCompressionRatio(entry);
+          assertExtractedByteBudget(extractedBytes.value, entry);
 
           const targetPath = resolveSafeZipEntryPath(entryName, normalizedExtractRoot);
 
-          if (result.candidates.length >= MAX_BATCH_FILES) {
+          if (result.candidates.length >= maxCandidates) {
             result.truncated = true;
             result.pngsDiscovered += 1;
           } else {
             await writeZipEntryToDisk(zipFile, entry, targetPath);
-            extractedBytes += entry.uncompressedSize;
+            extractedBytes.value += entry.uncompressedSize;
             result.pngsDiscovered += 1;
+
+            const relativePath = `${pathPrefix}${toZipRelativePath(normalizedExtractRoot, targetPath)}`;
 
             result.candidates.push({
               absolutePath: path.normalize(targetPath),
               fileName: path.basename(targetPath),
-              relativePath: toZipRelativePath(normalizedExtractRoot, targetPath),
+              relativePath,
             });
           }
         }

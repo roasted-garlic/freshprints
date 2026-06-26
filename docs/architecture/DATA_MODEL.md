@@ -18,9 +18,9 @@ All applications must use these models.
 
 Applications:
 
-* Desktop App
-* Customer Website
-* Future Mobile App
+* Fresh Prints Studio
+* Fresh Prints Portal
+* Future surfaces require a new ADR — no standalone mobile app
 
 must share the same data structures.
 
@@ -103,10 +103,10 @@ export type DesignStatus = CatalogDesignStatus | DeprecatedDesignStatus;
 | `processing` | Transient derivative or future AI job in flight | No |
 | `ready` | Catalog-approved; may be referenced by production items | Yes |
 | `rejected` | Catalog rejected; audit retention | No |
-| `archived` | Soft-hidden from default browse | No |
+| `archived` | Soft-hidden from default browse; Design Library **Archived catalog** toggle shows archived-only view | No |
 | `queued`, `printed` | **Deprecated on designs** — use queue items | No |
 
-New writes to `queued` or `printed` on design documents are blocked in `designService`. UI filters and Edit Design dropdowns exclude deprecated values. Legacy Firestore documents may still be read and display as “(legacy)”.
+New writes to `queued` or `printed` on design documents are blocked in `designService`. Edit Design displays status read-only; status changes use workflow services only. Legacy Firestore documents may still be read and display as “(legacy)”.
 
 **Approval:** `catalogApprovalService.approveDesignForCatalog` sets `status: ready` with coordinated AI review fields. `rejectDesignFromCatalog` sets `status: rejected`.
 
@@ -284,7 +284,16 @@ export interface Design {
 
   requestedByCustomerId?: string;
 
+  /** @deprecated — use showAddCount (Phase 10) */
   queueCount: number;
+
+  /** Popularity counters — analytics only; do not change status (Phase 10) */
+  requestCount?: number;
+  showAddCount?: number;
+  printCount?: number;
+  lastRequestedAt?: Timestamp;
+  lastAddedToShowAt?: Timestamp;
+  lastPrintedAt?: Timestamp;
 
   aiProcessed: boolean;
 
@@ -333,7 +342,7 @@ When a design is archived, the service captures:
 | `archivedAt` | `Timestamp` | When the design was archived |
 | `archivedBy` | `string` | Staff user ID who archived the design |
 
-These fields are cleared on restore. Legacy archived designs without `previousStatus` restore using a documented fallback (`imported`, or `ready` when `aiReviewed` is true).
+These fields are cleared on restore. Legacy archived designs without `previousStatus` restore to `imported`.
 
 No migration is required for existing archived records.
 
@@ -355,18 +364,21 @@ Pixel dimensions (`width`, `height`) remain immutable facts from the source PNG.
 
 **Import persistence (Phase 3D Step 3):** New imports populate print-size fields via `designService.createDesign` during orchestration. `printSizeSource` is `"import_normalized"`. Original PNG bytes are not rewritten.
 
-**Edit Design persistence (Phase 3D Step 4):** Staff may edit `printWidthInches`, `printHeightInches`, and `printAspectRatioLocked` from the Edit Design modal. `effectiveDpi` is always derived from pixels ÷ print size — never manually entered. On save, `printSizeSource` becomes `"staff_edited"`. Pixel dimensions (`width`, `height`), legacy `dpi`, metadata DPI fields, and storage paths are not modified.
+* Staff-facing print size edits in Edit Design use text inputs with custom step controls; pixel dimensions remain read-only and appear as a compact **Source image** note (not primary form fields). Design Details separates **Source Image** (pixels) from **Print Settings** (inches and DPI). `effectiveDpi` is always derived from pixels ÷ print size — never manually entered. On save, `printSizeSource` becomes `"staff_edited"`. Pixel dimensions (`width`, `height`), legacy `dpi`, metadata DPI fields, and storage paths are not modified.
 
 **Legacy display fallback:** Designs without print-size fields display `pixelWidth / 300` and `pixelHeight / 300` with `effectiveDpi` 300 until staff saves from Edit Design.
 
-**Effective DPI quality tiers (informational in Edit Design — do not block save):**
+**Effective DPI quality tiers (informational — do not block save or import):**
 
-| Tier | Effective DPI |
-| --- | --- |
-| Preferred | ≥ 300 |
-| Standard | 250–299 |
-| Small-format | 200–249 |
-| Low-resolution | < 200 |
+| Tier | Label | Effective DPI | Catalog pill color |
+| --- | --- | --- | --- |
+| Optimal | Optimal | ≥ 300 | Green |
+| Good | Good | 250–299 | Yellow |
+| Bad | Bad | 200–249 | Red |
+| Terrible | Terrible | 72–199 | Black |
+| — | (rejected at import) | < 72 | — |
+
+**Import floor (2026-06-24):** PNG import rejects only when `effectiveDpi` at import-normalized print size would be **< 72** (including when `min(pixelWidth, pixelHeight) < 72`). Assets below 3.5″ width at 300 DPI normalize at **72 DPI** instead so persisted `effectiveDpi` reflects true production quality. Embedded metadata DPI is audit-only — acceptance uses pixels ÷ normalized print inches.
 
 **Storage:** Original PNG bytes in `/originals/` are not rewritten when print size fields change.
 
@@ -417,6 +429,103 @@ AI review state is **separate** from operational `status`. A design is not catal
 
 **Service ownership:** `designAiReviewService` owns review mutations. Catalog edit forms must not write AI review fields.
 
+### AI suggestions and processing pipeline (Phase 5B)
+
+AI enrichment writes versioned fields on `designs/{id}`:
+
+| Field | Type | Writer | Purpose |
+| --- | --- | --- | --- |
+| `aiProcessingStage` | enum | Cloud Function | Live pipeline stage for Processing Status UI |
+| `aiSuggestions` | object | Cloud Function | AI catalog suggestions (separate from approved fields) |
+| `aiAnalysis` | object | Cloud Function | Rich analysis metadata for future features |
+
+```ts
+export type AiProcessingStage =
+  | "queued"
+  | "preparing_image"
+  | "sending_to_ai"
+  | "receiving_response"
+  | "validating_response"
+  | "ready_for_review"
+  | "failed";
+
+export interface DesignAiSuggestions {
+  title?: string;
+  description?: string;
+  categoryId?: string;
+  categoryName?: string;
+  tags?: string[];
+  confidence?: number;
+  fieldConfidence?: { title?: number; description?: number; categoryId?: number; tags?: number };
+  provider?: string;
+  model?: string;
+  promptVersion?: string;
+  generatedAt?: string;
+  errorCode?: string;
+  errorMessage?: string;
+}
+
+export interface DesignAiAnalysis {
+  primarySubject?: string;
+  secondarySubjects?: string[];
+  theme?: string;
+  style?: string;
+  audience?: string;
+  colorPalette?: string[];
+  artworkContainsText?: boolean;
+  visibleText?: string[];
+  visibleTextColor?: "black" | "white" | "mixed" | "unknown";
+  textRecognitionConfidence?: number;
+  overallConfidence?: number;
+  estimatedPrintComplexity?: string;
+  trademarkWarning?: string;
+  // additional fields as needed
+}
+```
+
+**Re-run AI (rejected only):** Owner/admin calls `enqueueAiEnrichment` with `rerunRejected: true`. Design returns to `status: imported`, `aiReviewStatus: pending`, `aiProcessingStage: queued`; prior `aiSuggestions` and `aiAnalysis` are **deleted and replaced** on the next successful run (no suggestion versioning in Phase 5B).
+
+**Reopen for review (rejected):** `status: imported`, `aiReviewStatus: needs_review`; preserves existing `aiSuggestions` / `aiAnalysis`; does not enqueue AI.
+
+**Writes:** Cloud Function only for `aiSuggestions`, `aiAnalysis`, and `aiProcessingStage`. Client rules block mutations.
+
+### AI suggestions (Phase 5 — planned)
+
+AI enrichment writes a versioned `aiSuggestions` object on `designs/{id}`. **One provider response per processing run** — persisted once as `aiSuggestions` + `aiAnalysis`. The AI Processing UI reads `aiSuggestions` for the suggestions panel and seeds Final Catalog Information from the same object (`createAiReviewDraftFromDesign`). Staff edits live in local draft state only; live Firestore updates do not overwrite a dirty draft. No second AI call populates the form.
+
+`generatedAt` is stored as an ISO string; clients tolerate ISO strings or resolved Firestore `Timestamp` values when mapping nested AI fields.
+
+```ts
+export interface DesignAiSuggestions {
+  title?: string;
+  description?: string;
+  categoryId?: string;
+  tags?: string[];
+  confidence?: number;           // informational only — no auto-routing
+  fieldConfidence?: {
+    title?: number;
+    description?: number;
+    categoryId?: number;
+    tags?: number;
+  };
+  provider?: string;             // e.g. "openai"
+  model?: string;                // e.g. "gpt-5-nano-2025-08-07"
+  promptVersion?: string;        // e.g. "catalog-enrich-v3"
+  generatedAt?: Timestamp;
+  errorCode?: string;
+}
+```
+
+**Version tracking from day one:** `provider`, `model`, `promptVersion`, and `generatedAt` enable regression analysis when prompts change. `promptVersion` is required for comparing approval rates and edit distance across prompt iterations.
+
+**Confidence policy:** Informational badges only. Successful AI completion moves to `needs_review`; failed AI remains in Processing for retry. Staff approval is always required for catalog publish.
+
+**Writes:** Cloud Function only for `aiSuggestions`; client services must not fabricate AI output.
+
+**Catalog title vs upload name:** `aiSuggestions.title` is a shopper-facing catalog title generated from artwork (prompt v2 — must not echo upload filename). `design.title` at import is a filename placeholder; `originalPath` / storage paths are never overwritten by AI. Staff approval copies the reviewed title into catalog `title`.
+
+**Future enhancement:** Hidden `searchTitle` (or equivalent normalized search field) on `aiSuggestions` for extra keywords — not in Phase 5B scope.
+
 ## Design Notes
 
 Store storage paths.
@@ -443,6 +552,8 @@ Service-layer normalization rules:
 * Reject empty strings
 * Maximum 20 tags per design
 * Maximum 40 characters per tag
+
+**AI suggestions (2026-06-25):** Cloud Function `normalizeAiTags` persists **single-word** tags only — filtered against merged tag exclusions. Descriptions: sentence 1 must transcribe all `visibleText` segments (prompt v11). Titles normalized server-side (no trailing punctuation). Provider prompt `catalog-enrich-openai-v11`. Staff may edit tags in Needs Review before approve.
 
 There is no separate `tags` collection in Phase 2.
 
@@ -484,7 +595,7 @@ src/renderer/src/features/designs/types/designForm.types.ts
 | `title` | Yes | Trimmed, max 200 characters |
 | `description`, `categoryId`, `tags` | Yes | Tags normalized on save |
 | `width`, `height` | No | Pixel dimensions; read-only after import (post–3C QA) |
-| `status` | Owner/admin only | Helpers see read-only status |
+| `status` | Read-only in Edit Design UI | Workflow services only (`archiveDesign`, `restoreDesign`, `catalogApprovalService`, import pipeline) |
 | `designId` | No | Display only in edit form |
 | `originalPath`, `thumbnailPath`, `previewPath` | No | Set by import pipeline; view in Design Details |
 | `dpi` | No | Read-only legacy metadata DPI from import; production DPI will use `effectiveDpi` (Phase 3D+) |
@@ -551,6 +662,8 @@ Document:
 customers/{customerId}
 ```
 
+**Roadmap realignment (2026-06-24):** Customers may be registered (`isGuest: false`, optional `userId` for portal Auth) or guest (`isGuest: true`, staff-created, no Auth). Guest and registered customers are targets for Print Requests (Phase 6).
+
 ---
 
 ## Customer Interface
@@ -567,9 +680,15 @@ export interface Customer {
 
   notes?: string;
 
-  totalRequests: number;
+  isGuest: boolean;
 
-  totalApprovedRequests: number;
+  totalPrintRequests: number;
+
+  /** @deprecated — use totalPrintRequests */
+  totalRequests?: number;
+
+  /** @deprecated — custom requests only (Phase 9) */
+  totalApprovedRequests?: number;
 
   createdAt: Timestamp;
   updatedAt: Timestamp;
@@ -578,7 +697,112 @@ export interface Customer {
 
 ---
 
-# Customer Requests Collection
+# Print Requests Collection (Phase 6 — planned)
+
+Collection:
+
+```txt
+printRequests
+```
+
+Document:
+
+```txt
+printRequests/{printRequestId}
+```
+
+A Print Request is a **named list of catalog designs** for a customer, guest, or internal staff use. It is **not an order** — no payment, checkout, or shipping fields.
+
+```ts
+export type PrintRequestStatus =
+  | "draft"
+  | "active"
+  | "completed"
+  | "archived";
+
+export interface PrintRequest {
+  id: string;
+  name: string;
+  customerId?: string;
+  guestCustomerId?: string;
+  isInternal: boolean;
+  status: PrintRequestStatus;
+  itemCount: number;
+  notes?: string;
+  createdBy: string;
+  updatedBy: string;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+```
+
+---
+
+# Print Request Items Collection (Phase 6 — planned)
+
+Collection:
+
+```txt
+printRequestItems
+```
+
+**Production status** (`pending`, `queued`, `in_progress`, `printed`, `done`, `canceled`) lives here — not on `designs`.
+
+```ts
+export interface PrintRequestItem {
+  id: string;
+  printRequestId: string;
+  designId: string;
+  quantity: number;
+  printWidthInches?: number;
+  printHeightInches?: number;
+  sizeLabel?: string;
+  notes?: string;
+  status: PrintRequestItemStatus;
+  addedBy: string;
+  printedAt?: Timestamp;
+  printedBy?: string;
+  completedAt?: Timestamp;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+```
+
+---
+
+# Custom Requests Collection (Phase 9 — planned)
+
+Collection:
+
+```txt
+customRequests
+```
+
+Separate from Print Requests. Q&A intake, Etsy referral, optional in-house design fee ($5–$10). Only payment workflow in Fresh Prints.
+
+```ts
+export interface CustomRequest {
+  id: string;
+  customerId: string;
+  questionnaireAnswers: Record<string, string>;
+  etsySearchUrl?: string;
+  customerFoundOnEtsy?: boolean;
+  designFeeAmount?: number;
+  designFeeStatus?: "none" | "pending" | "paid";
+  status: CustomRequestStatus;
+  approvedDesignId?: string;
+  reviewedBy?: string;
+  reviewNotes?: string;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+```
+
+---
+
+# Customer Requests Collection (legacy — superseded)
+
+> **Superseded 2026-06-24.** The conflated `customerRequests` model mixed custom design intake with catalog planning. Target replacement: `customRequests` (Phase 9). Do not implement new features against this schema without migration plan.
 
 Collection:
 
@@ -623,7 +847,9 @@ export interface CustomerRequest {
 
 ---
 
-# Show Queues Collection
+# Show Queues Collection (legacy — maps to Print Runs)
+
+> **Superseded 2026-06-24.** Target collection name: `printRuns`. A Print Run is upcoming show / batch planning — **not shipping or fulfillment**.
 
 Collection:
 
@@ -664,7 +890,9 @@ export interface ShowQueue {
 
 ---
 
-# Queue Items Collection
+# Queue Items Collection (legacy — maps to Print Run Items)
+
+> **Superseded 2026-06-24.** Target collection name: `printRunItems`. Production status on items — not on `designs`.
 
 Collection:
 
@@ -737,6 +965,21 @@ export interface AppSettings {
   updatedBy?: string;
 }
 ```
+
+### `settings/aiEnrichment` (AI enrichment team settings)
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `visionModelId` | string | One of server allowlist: `gpt-5-nano-2025-08-07` (default), `gpt-5.4-nano-2026-03-17` |
+| `additionalTagExclusions` | string[] | Optional owner/admin tags merged with `BASE_AI_TAG_EXCLUSIONS` (lowercase single words, max 50) |
+| `updatedAt` | Timestamp | Last change |
+| `updatedBy` | string | UID of owner/admin who saved |
+
+**Permissions:** Staff may read (AI Processing label). Writes only via callable `updateAiEnrichmentSettings` (owner/admin). No API keys in this document.
+
+**Per-design audit:** `designs.aiSuggestions.model` records the resolved model used for each enrichment run. `aiSuggestions.tags` filtered server-side against base + additional exclusions.
+
+**Needs Review re-run:** `enqueueAiEnrichment` with `rerunFromReview: true` clears suggestions and re-queues without leaving Needs Review workspace.
 
 ---
 
@@ -839,30 +1082,38 @@ Do not store raw file data.
 # Relationship Diagram
 
 ```txt id="6cd6v7"
-User
+User (staff)
  │
- ├── Designs
- │
- ├── Queues
- │
+ ├── Designs (catalog)
+ ├── Print Requests (Phase 6)
+ ├── Print Runs (Phase 7)
  └── Audit Logs
 
-Customer
+Customer (registered, portal only)
  │
- ├── Customer Requests
+ ├── Print Requests
+ └── Custom Requests (Phase 9)
+
+Guest Customer (staff-mediated)
  │
- └── Queue Items
+ └── Print Requests
 
 Design
  │
  ├── Category
- │
- └── Queue Items
+ ├── Print Request Items
+ └── Print Run Items (via print request items)
 
-Queue
+Print Request
  │
- └── Queue Items
+ └── Print Request Items
+
+Print Run
+ │
+ └── Print Run Items → Print Request Items → Designs
 ```
+
+**Legacy diagram (pre-realignment):** `showQueues` / `showQueueItems` / `customerRequests` — see migration notes in `docs/workflow/plans/customer-print-request-and-print-run-architecture-plan.md`.
 
 ---
 
@@ -871,9 +1122,14 @@ Queue
 Expected indexes:
 
 ```txt id="2gld5z"
-designs.status + updatedAt (desc)
-designs.categoryId + status + updatedAt (desc)
-designs.tags (array-contains) + status
+designs.status + updatedAt (desc) + __name__ (desc)
+designs.categoryId + status + updatedAt (desc) + __name__ (desc)
+designs.tags (array-contains) + status + updatedAt (desc) + __name__ (desc)
+designs.status + tags (array-contains) + updatedAt (desc) + __name__ (desc)
+designs.aiReviewStatus + status + updatedAt (desc) + __name__ (desc)
+designs.tags (array-contains) + aiReviewStatus + status + updatedAt (desc) + __name__ (desc)
+designs.categoryId + tags (array-contains) + status + updatedAt (desc) + __name__ (desc)
+designs.categoryId + status + tags (array-contains) + updatedAt (desc) + __name__ (desc)
 designs.categoryId
 designs.uploadedBy
 categories.isActive + sortOrder

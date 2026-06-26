@@ -70,8 +70,8 @@ Escalate unresolved conflicts to review phase or a human checkpoint; do not gues
 **Intake-generated** (populated during Existing Project Intake):
 - `docs/project/PROJECT_HEALTH.md`, `docs/intake/INTAKE_FINDINGS.md`, `docs/project/TECH_DEBT.md`
 
-**AppForge development only** (not installed into target projects):
-- `docs/appforge-development/` including `distribution/INSTALLATION.md`, `DISTRIBUTION.md`, `PACKAGING.md`, `STARTER_SURFACE.md`
+**FreshForge development only** (not installed into target projects):
+- `docs/freshforge-development/` including `distribution/INSTALLATION.md`, `DISTRIBUTION.md`, `PACKAGING.md`, `STARTER_SURFACE.md`
 
 Project-specific backend supplements may be added later, e.g. `FIREBASE.md`, `SUPABASE.md`, `DATABASE.md`, `API.md`, `INFRASTRUCTURE.md`. Reference them from `docs/architecture/BACKEND.md`.
 
@@ -93,10 +93,10 @@ Use skill `documentation-update` for structured doc maintenance.
 
 ## Starter Surface and Development Docs
 
-- `docs/appforge-development/distribution/STARTER_SURFACE.md` is the source of truth for what gets installed by default (`AGENTS.md`, `.cursor/`, `docs/`).
-- `docs/appforge-development/` is **not** starter-facing — maintainer history only; never install or export it.
-- Starter-facing docs must stay reusable and must not contain completed AppForge phase history.
-- Archive AppForge managed-phase plans and signoffs under `docs/appforge-development/plans/` and `docs/appforge-development/reviews/`.
+- `docs/freshforge-development/distribution/STARTER_SURFACE.md` is the source of truth for what gets installed by default (`AGENTS.md`, `.cursor/`, `docs/`).
+- `docs/freshforge-development/` is **not** starter-facing — maintainer history only; never install or export it.
+- Starter-facing docs must stay reusable and must not contain completed FreshForge phase history.
+- Archive FreshForge managed-phase plans and signoffs under `docs/freshforge-development/plans/` and `docs/freshforge-development/reviews/`.
 - Keep `docs/workflow/plans/`, `docs/workflow/reviews/`, and `docs/workflow/setup/` clean (README + `.gitkeep` only) in the starter surface.
 
 ## Missing Docs

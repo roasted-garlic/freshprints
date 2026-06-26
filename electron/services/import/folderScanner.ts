@@ -6,6 +6,8 @@ import {
   MAX_BATCH_FILES,
   MAX_FOLDER_DEPTH,
   MAX_FOLDER_SCAN_ENTRIES,
+  MAX_FOLDER_ZIPS,
+  MAX_ZIP_SIZE_BYTES,
 } from "../../../shared/constants/import/batchImportLimits.constants";
 
 export interface FolderScanCandidate {
@@ -14,16 +16,26 @@ export interface FolderScanCandidate {
   relativePath: string;
 }
 
+export interface FolderZipCandidate {
+  absolutePath: string;
+  fileName: string;
+  relativePath: string;
+}
+
 export type FolderScanTruncationReason =
   | "MAX_BATCH_FILES"
   | "MAX_FOLDER_DEPTH"
-  | "MAX_FOLDER_SCAN_ENTRIES";
+  | "MAX_FOLDER_SCAN_ENTRIES"
+  | "MAX_FOLDER_ZIPS";
 
 export interface FolderScanResult {
   candidates: FolderScanCandidate[];
+  zipCandidates: FolderZipCandidate[];
   directoriesSkippedDepth: number;
   entriesScanned: number;
   pngsDiscovered: number;
+  zipsDiscovered: number;
+  zipsSkipped: number;
   truncated: boolean;
   truncationReason?: FolderScanTruncationReason;
 }
@@ -39,6 +51,10 @@ function hasPngExtension(filePath: string): boolean {
   const extension = path.extname(filePath).toLowerCase();
 
   return ALLOWED_EXTENSIONS.some((allowedExtension) => allowedExtension === extension);
+}
+
+function hasZipExtension(filePath: string): boolean {
+  return path.extname(filePath).toLowerCase() === ".zip";
 }
 
 function compareEntryNames(left: string, right: string): number {
@@ -160,7 +176,41 @@ async function scanDirectory(options: {
       continue;
     }
 
-    if (!hasPngExtension(entryPath)) {
+    if (!hasPngExtension(entryPath) && !hasZipExtension(entryPath)) {
+      continue;
+    }
+
+    if (hasZipExtension(entryPath)) {
+      options.result.zipsDiscovered += 1;
+
+      if (options.result.zipCandidates.length >= MAX_FOLDER_ZIPS) {
+        options.result.zipsSkipped += 1;
+        options.result.truncated = true;
+        options.result.truncationReason = "MAX_FOLDER_ZIPS";
+        continue;
+      }
+
+      let zipSize = 0;
+
+      try {
+        zipSize = (await stat(entryPath)).size;
+      } catch {
+        options.result.zipsSkipped += 1;
+        continue;
+      }
+
+      if (zipSize > MAX_ZIP_SIZE_BYTES) {
+        options.result.zipsSkipped += 1;
+        continue;
+      }
+
+      const relativePath = toPosixRelativePath(path.relative(options.rootPath, entryPath));
+
+      options.result.zipCandidates.push({
+        absolutePath: path.normalize(entryPath),
+        fileName: entry.name,
+        relativePath,
+      });
       continue;
     }
 
@@ -196,9 +246,12 @@ export async function scanFolderForPngFiles(
 
   const result: FolderScanResult = {
     candidates: [],
+    zipCandidates: [],
     directoriesSkippedDepth: 0,
     entriesScanned: 0,
     pngsDiscovered: 0,
+    zipsDiscovered: 0,
+    zipsSkipped: 0,
     truncated: false,
   };
 
@@ -212,6 +265,7 @@ export async function scanFolderForPngFiles(
   });
 
   result.candidates.sort((left, right) => compareEntryNames(left.relativePath, right.relativePath));
+  result.zipCandidates.sort((left, right) => compareEntryNames(left.relativePath, right.relativePath));
 
   return result;
 }

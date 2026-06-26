@@ -56,8 +56,6 @@ export function EditDesignModal({
     return null;
   }
 
-  const canEditStatus = permissionService.canEditDesignStatus(user);
-
   function handleFieldChange(field: keyof DesignFormValues, value: string) {
     setFormValues((currentValues) => ({
       ...currentValues,
@@ -77,10 +75,7 @@ export function EditDesignModal({
     clearError();
 
     try {
-      await updateDesign(
-        design!.id,
-        buildEditDesignUpdateInput(design!, formValues, { includeStatus: canEditStatus }),
-      );
+      await updateDesign(design!.id, buildEditDesignUpdateInput(design!, formValues));
       await onUpdated();
       onClose();
     } catch {
@@ -101,11 +96,11 @@ export function EditDesignModal({
 
         <ModalBody>
           <DesignFormFields
-            canEditStatus={canEditStatus}
             categoryOptions={categoryOptions}
             designId={design.id}
             error={error}
             formValues={formValues}
+            isArchived={design.status === "archived"}
             onChange={handleFieldChange}
             onPrintSettingsChange={handlePrintSettingsChange}
           />

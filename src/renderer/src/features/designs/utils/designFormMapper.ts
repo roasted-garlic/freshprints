@@ -3,7 +3,7 @@ import { PRINT_INCHES_DECIMAL_PLACES } from "../../../../../../shared/constants/
 import { buildStaffPrintSizePersistenceFields } from "../../../../../../shared/utils/staffPrintSizeEdit";
 import type { Design, UpdateDesignInput } from "../types/design.types";
 import type { DesignFormValues } from "../types/designForm.types";
-import { normalizeDesignTags } from "../utils/designTagNormalizer";
+import { normalizeDesignTags, sanitizeDesignTagsForDisplay } from "../utils/designTagNormalizer";
 
 function parseRequiredPositiveNumber(value: string, fieldLabel: string): number {
   const trimmedValue = value.trim();
@@ -25,13 +25,19 @@ export function formatTagsInput(tags: string[]): string {
   return tags.join(", ");
 }
 
+function splitTagsInput(tagsInput: string): string[] {
+  return tagsInput
+    .split(",")
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+}
+
+export function tryParseTagsInput(tagsInput: string): string[] {
+  return sanitizeDesignTagsForDisplay(splitTagsInput(tagsInput)).tags;
+}
+
 export function parseTagsInput(tagsInput: string): string[] {
-  return normalizeDesignTags(
-    tagsInput
-      .split(",")
-      .map((tag) => tag.trim())
-      .filter(Boolean),
-  );
+  return normalizeDesignTags(splitTagsInput(tagsInput));
 }
 
 export function mapDesignToFormValues(design: Design): DesignFormValues {
@@ -63,7 +69,6 @@ export function mapDesignToFormValues(design: Design): DesignFormValues {
 export function buildEditDesignUpdateInput(
   design: Design,
   formValues: DesignFormValues,
-  options: { includeStatus: boolean },
 ): UpdateDesignInput {
   const resolvedPrintSize = resolveDesignPrintSizeForDisplay(design);
 
@@ -96,10 +101,6 @@ export function buildEditDesignUpdateInput(
     tags: parseTagsInput(formValues.tagsInput),
     ...printSizeFields,
   };
-
-  if (options.includeStatus) {
-    input.status = formValues.status;
-  }
 
   return input;
 }

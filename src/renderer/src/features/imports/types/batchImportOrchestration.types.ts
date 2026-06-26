@@ -34,6 +34,7 @@ export interface BatchImportUploadFileResult {
   status: BatchUploadFileStatus;
   storagePath?: string;
   thumbnailPath?: string;
+  aiEnqueueError?: string;
   warnings?: ImportPngWarning[];
 }
 
@@ -52,6 +53,7 @@ export interface BatchImportUploadSummary {
   totalFiles: number;
   userSkippedCount: number;
   warningsCount: number;
+  aiEnqueueFailedCount: number;
 }
 
 export interface BatchImportUploadReport {

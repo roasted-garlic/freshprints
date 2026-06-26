@@ -13,6 +13,7 @@ import {
   getRejectedManifestFiles,
   getValidatedManifestFiles,
 } from "../../utils/batchImportDisplay";
+import { buildDiscoverySummaryHelpText } from "../../../../../../../shared/utils/batchDiscoverySummary";
 import { BatchImportFileList } from "./BatchImportFileList";
 
 interface BatchImportDiscoverySummaryProps {
@@ -55,11 +56,9 @@ export function BatchImportDiscoverySummary({
 
       <h3>Ready to upload</h3>
 
-      {discoveryResult.truncated ? (
-        <p className="auth-message auth-message-warning" role="status">
-          Discovery stopped at the batch file limit. Some files were not scanned.
-        </p>
-      ) : null}
+      <p className="batch-import-summary-help" title={buildDiscoverySummaryHelpText()}>
+        {buildDiscoverySummaryHelpText()}
+      </p>
 
       {warning ? (
         <p className="auth-message auth-message-warning" role="status">
@@ -73,6 +72,16 @@ export function BatchImportDiscoverySummary({
           <dd>{discoveryResult.summary.discovered}</dd>
         </div>
         <div className="batch-import-summary-stat">
+          <dt>Processed</dt>
+          <dd>{discoveryResult.summary.processed}</dd>
+        </div>
+        {discoveryResult.summary.skippedByLimit > 0 ? (
+          <div className="batch-import-summary-stat">
+            <dt>Skipped by limit</dt>
+            <dd>{discoveryResult.summary.skippedByLimit}</dd>
+          </div>
+        ) : null}
+        <div className="batch-import-summary-stat">
           <dt>Validated</dt>
           <dd>{discoveryResult.summary.validated}</dd>
         </div>
@@ -80,6 +89,38 @@ export function BatchImportDiscoverySummary({
           <dt>Rejected</dt>
           <dd>{discoveryResult.summary.rejected}</dd>
         </div>
+        {discoveryResult.folderDiscovery ? (
+          <>
+            <div className="batch-import-summary-stat">
+              <dt>Loose PNGs</dt>
+              <dd>{discoveryResult.folderDiscovery.loosePngsFound}</dd>
+            </div>
+            <div className="batch-import-summary-stat">
+              <dt>ZIPs found</dt>
+              <dd>{discoveryResult.folderDiscovery.zipsFound}</dd>
+            </div>
+            <div className="batch-import-summary-stat">
+              <dt>ZIPs processed</dt>
+              <dd>{discoveryResult.folderDiscovery.zipsProcessed}</dd>
+            </div>
+            {discoveryResult.folderDiscovery.zipsSkippedByLimit > 0 ? (
+              <div className="batch-import-summary-stat">
+                <dt>ZIPs skipped (batch full)</dt>
+                <dd>{discoveryResult.folderDiscovery.zipsSkippedByLimit}</dd>
+              </div>
+            ) : null}
+            {discoveryResult.folderDiscovery.zipsSkippedOther > 0 ? (
+              <div className="batch-import-summary-stat">
+                <dt>ZIPs skipped (other)</dt>
+                <dd>{discoveryResult.folderDiscovery.zipsSkippedOther}</dd>
+              </div>
+            ) : null}
+            <div className="batch-import-summary-stat">
+              <dt>Nested ZIPs not opened</dt>
+              <dd>{discoveryResult.folderDiscovery.nestedZipsNotOpened}</dd>
+            </div>
+          </>
+        ) : null}
         <div className="batch-import-summary-stat">
           <dt>Files with warnings</dt>
           <dd>{filesWithWarningsCount}</dd>
@@ -89,6 +130,22 @@ export function BatchImportDiscoverySummary({
           <dd>{excludedCount}</dd>
         </div>
       </dl>
+
+      <div className="batch-import-actions-row">
+        <Button
+          className="button-leading-icon"
+          disabled={!canUpload || isBusy}
+          onClick={onUpload}
+        >
+          <Upload aria-hidden="true" size={16} strokeWidth={2} />
+          {isBusy
+            ? "Uploading..."
+            : `Upload batch${includedCount > 0 ? ` (${includedCount} file${includedCount === 1 ? "" : "s"})` : ""}`}
+        </Button>
+        <Button disabled={isBusy} onClick={onCancelImport} variant="secondary">
+          Cancel Upload
+        </Button>
+      </div>
 
       <div className="batch-import-file-lists">
         <div className="batch-import-validated-section">
@@ -120,22 +177,6 @@ export function BatchImportDiscoverySummary({
           title="Rejected files"
           variant="rejected"
         />
-      </div>
-
-      <div className="batch-import-actions-row">
-        <Button
-          className="button-leading-icon"
-          disabled={!canUpload || isBusy}
-          onClick={onUpload}
-        >
-          <Upload aria-hidden="true" size={16} strokeWidth={2} />
-          {isBusy
-            ? "Uploading..."
-            : `Upload batch${includedCount > 0 ? ` (${includedCount} file${includedCount === 1 ? "" : "s"})` : ""}`}
-        </Button>
-        <Button disabled={isBusy} onClick={onCancelImport} variant="secondary">
-          Cancel Upload
-        </Button>
       </div>
     </Card>
   );

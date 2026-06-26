@@ -10,6 +10,9 @@
 @import "./components/progress.css";
 @import "./components/batch-import.css";
 @import "./components/empty-states.css";
+@import "./components/tag-chip-input.css";
+@import "./components/ai-review.css";
+@import "./components/settings.css";
 @import "./components/design-library.css";
 @import "./components/navigation.css";
 @import "./layout.css";

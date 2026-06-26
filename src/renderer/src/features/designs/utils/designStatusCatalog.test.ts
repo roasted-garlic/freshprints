@@ -21,12 +21,8 @@ describe("catalog design status model", () => {
     assert.ok(filterValues.includes("ready"));
   });
 
-  it("B. excludes deprecated statuses from editable catalog statuses", () => {
-    const editableValues = editableCatalogDesignStatuses as readonly string[];
-
-    for (const status of deprecatedDesignStatuses) {
-      assert.equal(editableValues.includes(status), false);
-    }
+  it("B. keeps editable catalog statuses empty for workflow-controlled lifecycle", () => {
+    assert.equal(editableCatalogDesignStatuses.length, 0);
   });
 
   it("prevents new writes to deprecated statuses", () => {

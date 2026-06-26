@@ -1,5 +1,5 @@
 import {
-  MIN_SMALL_FORMAT_PRINT_WIDTH_INCHES,
+  MIN_ACCEPTABLE_EFFECTIVE_DPI,
   PREFERRED_PRINT_WIDTH_INCHES,
   PRINT_INCHES_DECIMAL_PLACES,
   TARGET_PRINT_DPI,
@@ -18,18 +18,21 @@ export function formatPrintSizeNormalizedMessage(
 }
 
 export function formatPrintSizeStandardApparelMessage(): string {
-  return "Image meets standard apparel print size but is below the preferred 10 inch width.";
+  return "Effective DPI is below 300 but acceptable for many production uses.";
 }
 
 export function formatPrintSizeSmallFormatMessage(): string {
-  return "Image is suitable for small-format prints at 300 DPI, but may require upscaling for larger apparel prints.";
+  return "Effective DPI may appear soft on larger apparel prints.";
+}
+
+export function formatPrintSizeTerribleMessage(): string {
+  return `Effective DPI is at the minimum accepted import floor (${MIN_ACCEPTABLE_EFFECTIVE_DPI} DPI) — suitable for small prints only.`;
 }
 
 export function formatPrintSizeRejectedMessage(
-  minWidthInches: number = MIN_SMALL_FORMAT_PRINT_WIDTH_INCHES,
-  targetDpi: number = TARGET_PRINT_DPI,
+  minEffectiveDpi: number = MIN_ACCEPTABLE_EFFECTIVE_DPI,
 ): string {
-  return `Image cannot achieve the minimum ${minWidthInches} inch print width at ${targetDpi} DPI.`;
+  return `Image cannot meet the minimum ${minEffectiveDpi} DPI effective resolution at import-normalized print size.`;
 }
 
 /** @deprecated Use formatPrintSizeStandardApparelMessage */

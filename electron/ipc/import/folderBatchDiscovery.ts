@@ -1,7 +1,13 @@
 import type { WebContents } from "electron";
 
 import type { BatchImportFileManifestEntry } from "../../../shared/types/import/batchImport.types";
+import { MAX_BATCH_FILES } from "../../../shared/constants/import/batchImportLimits.constants";
 import { scanFolderForPngFiles } from "../../services/import/folderScanner";
+import {
+  buildInitialFolderDiscoverySummary,
+  extractPngsFromFolderZipCandidates,
+} from "../../services/import/folderZipProcessor";
+import { createJobTempDir } from "../../services/import/tempDirectoryService";
 import {
   buildProgressCounts,
   createDiscoveryProgressEmitter,
@@ -15,6 +21,13 @@ import {
 } from "./importBatchSession";
 import { mapPngValidationFailureToRejection } from "./mapPngValidationFailureToRejection";
 import { validatePngFile } from "./pngValidator";
+
+interface FolderDiscoveryCandidate {
+  absolutePath: string;
+  fileName: string;
+  relativePath: string;
+  sourceType: "folder" | "zip";
+}
 
 export async function runFolderBatchDiscovery(
   jobId: string,
@@ -42,7 +55,7 @@ export async function runFolderBatchDiscovery(
     fileTotal: 0,
     currentFileName: "",
     status: "running",
-    message: "Scanning folder for PNG files",
+    message: "Scanning folder for PNG and ZIP files",
     counts: buildProgressCounts(files),
   });
 
@@ -68,7 +81,7 @@ export async function runFolderBatchDiscovery(
           fileTotal: 0,
           currentFileName: "",
           status: "running",
-          message: `Scanning folder (${discoveredCount} PNG${discoveredCount === 1 ? "" : "s"} found)`,
+          message: `Scanning folder (${discoveredCount} loose PNG${discoveredCount === 1 ? "" : "s"} found)`,
           counts: buildProgressCounts(files),
         });
       },
@@ -87,8 +100,77 @@ export async function runFolderBatchDiscovery(
   }
 
   truncated = scanResult.truncated;
+  const folderDiscovery = buildInitialFolderDiscoverySummary(scanResult);
+
+  const candidates: FolderDiscoveryCandidate[] = scanResult.candidates.map((candidate) => ({
+    ...candidate,
+    sourceType: "folder" as const,
+  }));
   pngsDiscovered = scanResult.pngsDiscovered;
-  const candidates = scanResult.candidates;
+
+  if (!canceled && scanResult.zipCandidates.length > 0) {
+    const jobTempDir = await createJobTempDir(jobId);
+
+    emitDiscoveryProgress({
+      jobId,
+      phase: "discovering",
+      fileIndex: 0,
+      fileTotal: scanResult.zipCandidates.length,
+      currentFileName: "",
+      status: "running",
+      message: `Extracting PNGs from ${scanResult.zipCandidates.length} ZIP archive${scanResult.zipCandidates.length === 1 ? "" : "s"}`,
+      counts: buildProgressCounts(files),
+    });
+
+    const zipAggregate = await extractPngsFromFolderZipCandidates({
+      extractRoot: jobTempDir,
+      maxTotalCandidates: MAX_BATCH_FILES,
+      onProgress: (message) => {
+        emitDiscoveryProgress({
+          jobId,
+          phase: "discovering",
+          fileIndex: folderDiscovery.zipsProcessed,
+          fileTotal: scanResult.zipCandidates.length,
+          currentFileName: "",
+          status: "running",
+          message,
+          counts: buildProgressCounts(files),
+        });
+      },
+      shouldCancel: () => isBatchImportCancelRequested(jobId),
+      startingCandidateCount: candidates.length,
+      zipCandidates: scanResult.zipCandidates,
+    });
+
+    if (isBatchImportCancelRequested(jobId)) {
+      canceled = true;
+    }
+
+    folderDiscovery.zipsProcessed = zipAggregate.zipsProcessed;
+    folderDiscovery.zipsSkippedByLimit += zipAggregate.zipsSkippedByLimit;
+    folderDiscovery.zipsSkippedOther += zipAggregate.zipsSkippedError;
+    folderDiscovery.zipsSkipped =
+      folderDiscovery.zipsSkippedByLimit + folderDiscovery.zipsSkippedOther;
+    folderDiscovery.nestedZipsNotOpened = zipAggregate.nestedZipsNotOpened;
+    truncated = truncated || zipAggregate.truncated;
+
+    for (const zipCandidate of zipAggregate.candidates) {
+      if (candidates.length >= MAX_BATCH_FILES) {
+        truncated = true;
+        break;
+      }
+
+      candidates.push({
+        absolutePath: zipCandidate.absolutePath,
+        fileName: zipCandidate.fileName,
+        relativePath: zipCandidate.relativePath,
+        sourceType: "zip",
+      });
+    }
+
+    pngsDiscovered += zipAggregate.pngsDiscovered;
+  }
+
   const fileTotal = candidates.length;
 
   for (let index = 0; index < candidates.length; index += 1) {
@@ -109,7 +191,7 @@ export async function runFolderBatchDiscovery(
         displayName: validation.fileName,
         relativePath: candidate.relativePath,
         fileSizeBytes: validation.fileSizeBytes,
-        sourceType: "folder",
+        sourceType: candidate.sourceType,
         outcome: "validated",
         validation,
       });
@@ -119,7 +201,7 @@ export async function runFolderBatchDiscovery(
         displayName: candidate.fileName,
         relativePath: candidate.relativePath,
         fileSizeBytes: 0,
-        sourceType: "folder",
+        sourceType: candidate.sourceType,
         outcome: "rejected",
         rejection: mapPngValidationFailureToRejection(candidate.absolutePath, error),
       });
@@ -145,6 +227,7 @@ export async function runFolderBatchDiscovery(
     canceled,
     fileTotal,
     files,
+    folderDiscovery,
     jobId,
     pngsDiscovered,
     sourceType: "folder",

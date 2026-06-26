@@ -1,4 +1,8 @@
-import type { BatchImportProgressEvent } from "../../../../../../shared/types/import/batchImport.types";
+import type {
+  BatchDiscoveryCompleteEvent,
+  BatchImportProgressEvent,
+} from "../../../../../../shared/types/import/batchImport.types";
+import { buildBatchDiscoveryLimitWarning } from "../../../../../../shared/utils/batchDiscoverySummary";
 
 import type { BatchImportUploadProgress } from "../types/batchImportOrchestration.types";
 import type { BatchImportHookProgress } from "../types/batchImportHook.types";
@@ -58,10 +62,6 @@ export function buildUploadWarning(report: {
   return messages.length > 0 ? messages.join(" ") : null;
 }
 
-export function buildTruncatedDiscoveryWarning(truncated: boolean): string | null {
-  if (!truncated) {
-    return null;
-  }
-
-  return "Discovery stopped at the batch file limit. Some files were not scanned.";
+export function buildTruncatedDiscoveryWarning(event: BatchDiscoveryCompleteEvent): string | null {
+  return buildBatchDiscoveryLimitWarning(event);
 }

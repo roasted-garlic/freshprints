@@ -33,7 +33,7 @@ function collectDerivativeCleanupWarning(
 
 async function revertDesignToImported(caller: User, designId: string): Promise<void> {
   try {
-    await designService.updateDesign(caller, designId, { status: "imported" });
+    await designService.updateDesign(caller, designId, { status: "imported" }, { allowStatusChange: true });
   } catch (error) {
     console.error(`Failed to revert design ${designId} to imported after derivative failure:`, error);
   }

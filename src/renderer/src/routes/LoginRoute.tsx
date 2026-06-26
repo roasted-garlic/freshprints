@@ -7,7 +7,7 @@ export function LoginRoute() {
   const { bootstrapStatus, isAuthenticated } = useAuth();
 
   if (bootstrapStatus === "ready" && isAuthenticated) {
-    return <Navigate replace to="/" />;
+    return <Navigate replace to="/designs" />;
   }
 
   return <LoginPage />;

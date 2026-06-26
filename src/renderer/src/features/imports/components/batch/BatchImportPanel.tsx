@@ -44,16 +44,12 @@ export function BatchImportPanel({ batchImport, disabled = false }: BatchImportP
 
   return (
     <section aria-labelledby="batch-import-heading" className="batch-import-panel">
-      <Card className="imports-phase-card">
+      <Card className="imports-phase-card imports-method-card">
         <div className="batch-import-header">
           <div className="batch-import-header-copy">
-            <p className="eyebrow">Phase 3B</p>
-            <h2 id="batch-import-heading">Batch import</h2>
-            <p>
-              Select multiple PNG files, a folder, or a ZIP archive. Discovery and validation run
-              in the desktop app, then validated files upload to Firebase Storage and create
-              Firestore design records with <code>status: imported</code>.
-            </p>
+            <p className="eyebrow">Batch import</p>
+            <h2 id="batch-import-heading">Multiple files</h2>
+            <p>Discover, validate, upload, and queue many PNG designs for AI Processing.</p>
           </div>
 
           {isDesktop ? (

@@ -10,6 +10,12 @@ import {
 } from "../utils/aiReviewState";
 import { designService } from "./designService";
 
+function assertCanSkipAiReview(caller: User): void {
+  if (!permissionService.canSkipAiReview(caller)) {
+    throw new Error("You do not have permission to skip AI review items.");
+  }
+}
+
 function assertCanManageAiReview(caller: User): void {
   if (!permissionService.canManageAiReview(caller)) {
     throw new Error("You do not have permission to manage AI review.");
@@ -88,7 +94,7 @@ export const designAiReviewService = {
     designId: string,
     input: AiReviewMutationInput = {},
   ): Promise<Design> {
-    assertCanManageAiReview(caller);
+    assertCanSkipAiReview(caller);
 
     const design = await designService.getDesignById(caller, designId);
     assertDesignIsAiReviewMutable(design);

@@ -5,6 +5,65 @@
   gap: var(--space-4);
 }
 
+.design-library-toolbar {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  justify-content: space-between;
+}
+
+.design-library-toolbar-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.design-library-active-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.design-library-active-tag {
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  padding: var(--space-1) var(--space-2);
+}
+
+.design-library-tag-filter-description {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  margin-top: var(--space-2);
+}
+
+.design-library-tag-filter-list {
+  display: grid;
+  gap: var(--space-2) var(--space-3);
+  grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
+  margin-top: var(--space-4);
+  max-height: 24rem;
+  overflow-y: auto;
+  padding-right: var(--space-1);
+}
+
+.design-library-tag-filter-list .form-checkbox {
+  min-height: 2.5rem;
+}
+
+.design-library-modal-shell-tag-filter {
+  width: min(100%, 36rem);
+}
+
+.design-library-tag-filter-empty {
+  color: var(--color-text-secondary);
+  margin-top: var(--space-4);
+}
+
 .design-library-summary-row {
   align-items: center;
   display: flex;
@@ -20,9 +79,17 @@
   padding: var(--space-1) var(--space-3);
 }
 
+.design-library-load-more-row {
+  display: flex;
+  justify-content: center;
+  padding-top: var(--space-2);
+}
+
 .design-grid {
+  align-items: stretch;
   display: grid;
   gap: var(--space-4);
+  grid-auto-rows: 1fr;
   grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
 }
 
@@ -30,9 +97,11 @@
   background: var(--color-bg-secondary);
   color: inherit;
   cursor: pointer;
-  font: inherit;
   display: grid;
+  font: inherit;
   gap: var(--space-4);
+  grid-template-rows: auto 1fr;
+  height: 100%;
   padding: var(--space-4);
   text-align: left;
   transition:
@@ -54,12 +123,17 @@
 }
 
 .design-thumbnail-panel.design-card-thumbnail {
+  aspect-ratio: 4 / 3;
+  flex-shrink: 0;
   width: 100%;
 }
 
 .design-card-body {
-  display: grid;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
   gap: var(--space-2);
+  min-height: 11rem;
 }
 
 .design-card-header {
@@ -67,20 +141,41 @@
   display: flex;
   gap: var(--space-2);
   justify-content: space-between;
+  min-height: 3.25rem;
 }
 
 .design-card-title {
   color: var(--color-text-primary);
+  display: -webkit-box;
+  flex: 1;
   font-size: var(--font-size-md);
   font-weight: 600;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   line-height: var(--line-height-tight);
   margin: 0;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .design-card-category {
   color: var(--color-text-secondary);
   font-size: var(--font-size-sm);
   margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.design-card-resolution-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.design-card-tags-row {
+  flex: 1;
+  min-height: 2.75rem;
 }
 
 .design-card-tags {
@@ -88,6 +183,8 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
+  max-height: 2.75rem;
+  overflow: hidden;
 }
 
 .design-card-tags-more,
@@ -101,6 +198,7 @@
   color: var(--color-text-tertiary);
   font-size: var(--font-size-sm);
   margin: 0;
+  margin-top: auto;
 }
 
 .design-library-empty-state {
@@ -240,7 +338,7 @@
 .design-thumbnail-panel {
   align-items: center;
   aspect-ratio: 4 / 3;
-  background: var(--color-bg-tertiary);
+  background: var(--color-artwork-preview-bg);
   border: 1px dashed var(--color-border);
   border-radius: var(--radius-md);
   display: flex;
@@ -255,7 +353,18 @@
   border-style: solid;
 }
 
+.design-thumbnail-panel--borderless {
+  background: var(--color-artwork-preview-bg);
+  border: none;
+  border-radius: 0;
+}
+
+.design-thumbnail-panel--borderless.design-thumbnail-panel--resolved {
+  border: none;
+}
+
 .design-thumbnail-panel-image {
+  background: var(--color-artwork-preview-bg);
   display: block;
   height: 100%;
   object-fit: contain;
@@ -295,6 +404,7 @@
 }
 
 .design-preview-lightbox-image {
+  background: var(--color-artwork-preview-bg);
   display: block;
   margin: 0 auto;
   max-height: calc(min(90vh, 56rem) - 3rem);
@@ -441,6 +551,25 @@
   margin: calc(var(--space-2) * -1) 0 0;
 }
 
+.design-form-source-image-note {
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-sm);
+  margin: 0;
+}
+
+.design-form-status-field {
+  align-items: center;
+  display: flex;
+  gap: var(--space-3);
+  min-height: 2.75rem;
+}
+
+.design-form-status-label {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+}
+
 .design-form-paths-section {
   border-top: 1px solid var(--color-border);
   display: grid;
@@ -482,26 +611,60 @@
   margin: 0;
 }
 
-.design-print-quality {
+.design-print-quality,
+.resolution-quality {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
   margin: 0;
 }
 
+.resolution-quality-optimal,
 .design-print-quality-preferred {
   color: var(--color-status-success);
 }
 
+.resolution-quality-good,
 .design-print-quality-standard {
-  color: var(--color-text-primary);
-}
-
-.design-print-quality-small-format {
   color: var(--color-status-warning);
 }
 
-.design-print-quality-low-resolution {
+.resolution-quality-bad,
+.design-print-quality-small-format {
   color: var(--color-status-danger);
+}
+
+.resolution-quality-terrible,
+.design-print-quality-low-resolution {
+  color: var(--color-text-primary);
+}
+
+/* Resolution quality pills on catalog cards */
+.resolution-quality-pill.resolution-quality-optimal,
+.badge.resolution-quality-optimal {
+  background: var(--color-success-soft);
+  border-color: var(--color-success);
+  color: var(--color-success-text);
+}
+
+.resolution-quality-pill.resolution-quality-good,
+.badge.resolution-quality-good {
+  background: var(--color-warning-soft);
+  border-color: var(--color-warning);
+  color: var(--color-warning-text);
+}
+
+.resolution-quality-pill.resolution-quality-bad,
+.badge.resolution-quality-bad {
+  background: var(--color-danger-soft);
+  border-color: var(--color-danger);
+  color: var(--color-danger-text);
+}
+
+.resolution-quality-pill.resolution-quality-terrible,
+.badge.resolution-quality-terrible {
+  background: var(--color-bg-primary);
+  border-color: var(--color-text-primary);
+  color: var(--color-text-primary);
 }
 
 .category-management-toolbar {

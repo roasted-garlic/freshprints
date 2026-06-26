@@ -18,9 +18,8 @@ export interface DesignRestoreContext {
 /**
  * Resolves the operational status to apply when restoring an archived design.
  *
- * Fallback order for legacy records missing `previousStatus`:
- * 1. `ready` when `aiReviewed` is true (pre-AI-review catalog approval likely applied)
- * 2. `imported` otherwise — safe default for Phase 3C imports and unknown legacy rows
+ * Uses `previousStatus` when present. Legacy records without `previousStatus`
+ * fall back to `imported` — never to `ready` without an explicit prior status.
  */
 export function resolveRestoreStatus(design: DesignRestoreContext): DesignStatus {
   if (
@@ -29,10 +28,6 @@ export function resolveRestoreStatus(design: DesignRestoreContext): DesignStatus
     isOperationalDesignStatus(design.previousStatus)
   ) {
     return design.previousStatus;
-  }
-
-  if (design.aiReviewStatus === "approved" || design.aiReviewed) {
-    return "ready";
   }
 
   return LEGACY_RESTORE_FALLBACK_STATUS;

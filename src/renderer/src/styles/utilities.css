@@ -35,6 +35,82 @@
   color: var(--color-warning-text);
 }
 
+.dismissible-success-alert {
+  overflow: hidden;
+  padding-bottom: calc(var(--space-3) + 3px);
+  position: relative;
+}
+
+.dismissible-success-alert-content {
+  align-items: flex-start;
+  display: flex;
+  gap: var(--space-3);
+  justify-content: space-between;
+}
+
+.dismissible-success-alert-message {
+  flex: 1;
+  margin: 0;
+  min-width: 0;
+}
+
+.dismissible-success-alert-close {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: var(--color-success-text);
+  cursor: pointer;
+  display: inline-flex;
+  flex-shrink: 0;
+  height: 2rem;
+  justify-content: center;
+  margin: calc(var(--space-1) * -1) calc(var(--space-1) * -1) 0 0;
+  padding: 0;
+  width: 2rem;
+}
+
+.dismissible-success-alert-close:hover {
+  background: rgb(255 255 255 / 0.18);
+}
+
+.dismissible-success-alert-close:focus-visible {
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+  outline: none;
+}
+
+.dismissible-success-alert-progress {
+  background: var(--color-success);
+  bottom: 0;
+  height: 3px;
+  left: 0;
+  position: absolute;
+  transform-origin: left center;
+  width: 100%;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .dismissible-success-alert-progress {
+    animation: dismissible-success-alert-shrink var(--dismiss-duration, 5s) linear forwards;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dismissible-success-alert-progress {
+    opacity: 0.45;
+  }
+}
+
+@keyframes dismissible-success-alert-shrink {
+  from {
+    transform: scaleX(1);
+  }
+
+  to {
+    transform: scaleX(0);
+  }
+}
+
 .status-action {
   justify-self: start;
   margin-top: var(--space-2);

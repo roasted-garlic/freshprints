@@ -26,13 +26,8 @@ export type DesignStatus = (typeof designStatuses)[number];
 /** Statuses available in Design Library filters. */
 export const designLibraryFilterStatuses = catalogDesignStatuses;
 
-/** Statuses owner/admin may select in Edit Design (archive uses a separate action). */
-export const editableCatalogDesignStatuses = [
-  "imported",
-  "processing",
-  "ready",
-  "rejected",
-] as const satisfies readonly CatalogDesignStatus[];
+/** @deprecated Status is workflow-controlled; use archive, restore, or AI Review actions. */
+export const editableCatalogDesignStatuses = [] as const satisfies readonly CatalogDesignStatus[];
 
 export function isDesignStatus(value: unknown): value is DesignStatus {
   return typeof value === "string" && designStatuses.includes(value as DesignStatus);

@@ -60,7 +60,7 @@ export function useBatchImport(): UseBatchImportReturn {
         return;
       }
 
-      const discoveryWarning = buildTruncatedDiscoveryWarning(event.truncated);
+      const discoveryWarning = buildTruncatedDiscoveryWarning(event);
 
       if (event.canceled) {
         beginOperation();

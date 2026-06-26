@@ -16,7 +16,7 @@ function getSelectButtonLabel(
   phase: ReturnType<typeof useSinglePngImport>["phase"],
 ): string {
   if (!isBusy) {
-    return "Select PNG";
+    return "Single Image";
   }
 
   switch (phase) {
@@ -75,51 +75,52 @@ export function ImportsPage() {
   );
 
   const showCancelSingleImport =
-    isSingleWorkflowActive ||
-    uploadResult !== null ||
-    validationResult !== null ||
-    validationError !== null ||
-    uploadError !== null ||
-    selectionCanceled;
+    uploadResult === null &&
+    (isSingleWorkflowActive ||
+      validationResult !== null ||
+      validationError !== null ||
+      uploadError !== null ||
+      selectionCanceled);
 
   const isUploading = phase === "uploading";
   const singleImportBlocked = isBatchImportBlockingSingleImport(batchImport.phase);
   const batchImportBlocked = isSingleWorkflowActive || isBusy;
 
   return (
-    <main className="page-layout page-layout-shell">
-      <Card className="imports-phase-card">
-        <div className="imports-phase-card-content">
-          <div>
-            <p className="eyebrow">Phase 3A</p>
-            <h2>Single PNG import</h2>
-            <p>
-              Choose one PNG file to validate dimensions and DPI metadata, upload the original to
-              Firebase Storage, and create a Firestore design record with <code>status: imported</code>.
-            </p>
-          </div>
-
-          {isDesktop ? (
-            <div className="imports-phase-actions">
-              <Button
-                className="button-leading-icon"
-                disabled={isBusy || singleImportBlocked}
-                onClick={() => {
-                  void selectAndValidatePng();
-                }}
-              >
-                <FileImage aria-hidden="true" size={16} strokeWidth={2} />
-                {getSelectButtonLabel(isBusy, phase)}
-              </Button>
+    <main className="page-layout page-layout-shell imports-page">
+      <div className="imports-entry-grid">
+        <Card className="imports-phase-card imports-method-card">
+          <div className="imports-phase-card-content">
+            <div>
+              <p className="eyebrow">Single import</p>
+              <h2>One PNG</h2>
+              <p>Validate, preview, upload, and queue one design for AI Processing.</p>
             </div>
-          ) : (
-            <p className="auth-message">
-              PNG selection, validation, and upload are only available in the Fresh Prints desktop
-              app.
-            </p>
-          )}
-        </div>
-      </Card>
+
+            {isDesktop ? (
+              <div className="imports-phase-actions">
+                <Button
+                  className="button-leading-icon"
+                  disabled={isBusy || singleImportBlocked}
+                  onClick={() => {
+                    void selectAndValidatePng();
+                  }}
+                >
+                  <FileImage aria-hidden="true" size={16} strokeWidth={2} />
+                  {getSelectButtonLabel(isBusy, phase)}
+                </Button>
+              </div>
+            ) : (
+              <p className="auth-message">
+                PNG selection, validation, and upload are only available in the Fresh Prints desktop
+                app.
+              </p>
+            )}
+          </div>
+        </Card>
+
+        <BatchImportPanel batchImport={batchImport} disabled={batchImportBlocked} />
+      </div>
 
       {singleImportBlocked ? (
         <Card>
@@ -167,7 +168,6 @@ export function ImportsPage() {
         </Card>
       ) : null}
 
-      <BatchImportPanel batchImport={batchImport} disabled={batchImportBlocked} />
     </main>
   );
 }

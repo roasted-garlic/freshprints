@@ -15,8 +15,10 @@ describe("AI review permissions", () => {
     assert.equal(permissionService.canOverrideAiReview(activeOwner), true);
   });
 
-  it("helpers can view but not manage AI review", () => {
+  it("helpers can view and skip but not manage AI review", () => {
     assert.equal(permissionService.canViewAiReview(activeHelper), true);
+    assert.equal(permissionService.canSkipAiReview(activeHelper), true);
+    assert.equal(permissionService.canEditAiReviewInbox(activeHelper), false);
     assert.equal(permissionService.canManageAiReview(activeHelper), false);
     assert.equal(permissionService.canApproveAiReview(activeHelper), false);
   });

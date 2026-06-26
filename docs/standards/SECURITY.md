@@ -369,7 +369,7 @@ Services set audit fields in `designService` and `categoryService`. UI must not 
 
 Existing `firestore.rules` already allow:
 
-* `status` transitions `imported` → `processing` → `ready` (any valid `isValidDesignStatus` value on update)
+* `status` transitions via workflow services only (`designReadyService`, `catalogApprovalService`, `archiveDesign`, `restoreDesign`) — not from Edit Design metadata saves
 * `thumbnailPath` and `previewPath` updates on staff edit
 * `updatedBy` set to the authenticated caller on update
 * Immutable `createdAt`, `createdBy`, and `uploadedBy` on update
@@ -403,9 +403,9 @@ Mutations use `designAiReviewService` with `permissionService.canManageAiReview`
 
 Hard deletes are denied in Firestore rules.
 
-## Future Customer Website
+## Fresh Prints Portal (Phase 8+)
 
-The future customer website will receive read access to approved catalog metadata only (for example `status: "ready"` designs and thumbnail paths).
+Fresh Prints Portal will receive read access to approved catalog metadata only (for example `status: "ready"` designs and thumbnail paths).
 
 Customers must not receive:
 
@@ -413,7 +413,7 @@ Customers must not receive:
 * Internal pipeline metadata
 * Admin-only fields
 
-Customer website Firestore and Storage rules are not implemented in Phase 2A.
+Fresh Prints Portal Firestore and Storage rules are not implemented in Phase 2A.
 
 ---
 
@@ -522,7 +522,7 @@ storage.rules
 Implemented constraints:
 
 * Authenticated active staff (`owner`, `admin`, `helper`) may read, write, and delete `/originals/{designId}.png`.
-* Original uploads require `contentType == "image/png"` and size under 50 MB.
+* Original uploads require `contentType == "image/png"` and size under **150 MB** (synced with `MAX_SINGLE_PNG_SIZE_BYTES` in `shared/constants/importValidation.constants.ts` and `storage.rules`).
 * Authenticated active staff may read, write, and delete `/thumbnails/{designId}.webp` and `/previews/{designId}.webp`.
 * Derivative uploads require `contentType == "image/webp"`, canonical `{designId}.webp` filenames, and size under 10 MB.
 * All other paths default deny.
@@ -746,6 +746,20 @@ serviceAccount.json
 ```
 
 Never commit private keys.
+
+---
+
+# AI Provider Secrets (Phase 5B)
+
+OpenAI and other third-party **provider API keys** for server-side AI enrichment:
+
+| Allowed | Forbidden |
+|---------|-----------|
+| Firebase Secret Manager (`OPENAI_API_KEY`) | Firestore `settings` or any document field |
+| Cloud Functions reading bound secrets | Desktop Settings page API-key fields |
+| Documented setup in `FIREBASE.md` / `DEPLOYMENT.md` | Renderer env vars, preload, or IPC exposing keys |
+
+The Electron renderer may call `enqueueAiEnrichment` but must **never** receive the OpenAI key. Development environments may run the heuristic provider without a real key; production OpenAI vision requires Secret Manager configuration with human approval.
 
 ---
 

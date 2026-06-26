@@ -27,19 +27,13 @@ describe("resolveRestoreStatus", () => {
     );
   });
 
-  it("falls back to imported when previousStatus is missing and not AI-reviewed", () => {
+  it("falls back to imported when previousStatus is missing", () => {
     assert.equal(resolveRestoreStatus({ aiReviewed: false }), LEGACY_RESTORE_FALLBACK_STATUS);
     assert.equal(resolveRestoreStatus({ aiReviewed: false, previousStatus: undefined }), "imported");
-  });
-
-  it("falls back to ready for legacy AI-reviewed designs without previousStatus", () => {
-    assert.equal(resolveRestoreStatus({ aiReviewed: true }), "ready");
-  });
-
-  it("falls back to ready when aiReviewStatus is approved", () => {
+    assert.equal(resolveRestoreStatus({ aiReviewed: true }), LEGACY_RESTORE_FALLBACK_STATUS);
     assert.equal(
       resolveRestoreStatus({ aiReviewed: false, aiReviewStatus: "approved" }),
-      "ready",
+      LEGACY_RESTORE_FALLBACK_STATUS,
     );
   });
 

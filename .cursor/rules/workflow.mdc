@@ -93,13 +93,13 @@ When the user's message matches an alias (case-insensitive, trim whitespace), ex
 
 ### Managed Phase aliases
 
-`Managed Phase` · `Start Phase` · `Run Phase` · `Next Phase` · `Continue Workflow` · `Continue AppForge`
+`Managed Phase` · `Start Phase` · `Run Phase` · `Next Phase` · `Continue Workflow` · `Continue FreshForge`
 
 → Start or continue from `.cursor/workflow/state.md`. Plan → Review → Implement → Test → Signoff. Stop for human checkpoints.
 
-## AppForge Impact Classification
+## FreshForge Impact Classification
 
-For **AppForge itself** (the development repository), every managed phase must classify impact in the plan:
+For **FreshForge itself** (the development repository), every managed phase must classify impact in the plan:
 
 | Area | Examples |
 |------|----------|
@@ -107,11 +107,11 @@ For **AppForge itself** (the development repository), every managed phase must c
 | **Development Tooling** | `scripts/`, `package.json`, `.github/`, validation |
 | **Distribution/Installer** | `bin/`, install/export scripts |
 | **Documentation** | Docs describing behavior or process |
-| **Development History** | Artifacts archived under `docs/appforge-development/` |
+| **Development History** | Artifacts archived under `docs/freshforge-development/` |
 
 If impact includes **Starter Surface**, the plan and signoff must list which starter files changed.
 
-See `docs/appforge-development/distribution/STARTER_SURFACE.md`.
+See `docs/freshforge-development/distribution/STARTER_SURFACE.md`.
 
 ## Documentation
 

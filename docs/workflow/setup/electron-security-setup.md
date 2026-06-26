@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This guide documents the Electron security model for the Fresh Prints Desktop Admin App.
+This guide documents the Electron security model for **Fresh Prints Studio**.
 
 It explains how the main process, preload bridge, and renderer are isolated, which APIs are safe to expose, and how to add new IPC methods without reintroducing unsafe patterns.
 
@@ -137,7 +137,7 @@ Invoke methods:
 | --- | --- | --- |
 | `selectMultiplePngFiles()` | `fresh-prints:import:select-multiple-png` | Multi-select PNG dialog; registers session in main; returns `jobId`, `fileNames`, `fileCount` |
 | `selectImportFolder()` | `fresh-prints:import:select-import-folder` | Folder dialog; registers session in main; returns `jobId`, `folderName` |
-| `selectImportZip()` | `fresh-prints:import:select-import-zip` | ZIP dialog; enforces 200 MB cap; registers session in main |
+| `selectImportZip()` | `fresh-prints:import:select-import-zip` | ZIP dialog; enforces `MAX_ZIP_SIZE_BYTES` cap; registers session in main |
 | `startBatchDiscovery(request)` | `fresh-prints:import:start-batch-discovery` | Validates session, delegates to `importJobRunner`, emits progress + complete events for all source types |
 | `cancelBatchJob(request)` | `fresh-prints:import:cancel-batch-job` | Clears active batch session |
 | `finishBatchJob(request)` | `fresh-prints:import:finish-batch-job` | Clears active batch session; deletes ZIP job temp dir when present (`tempDirDeleted`) |

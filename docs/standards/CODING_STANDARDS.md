@@ -15,10 +15,11 @@ The goal is to ensure:
 
 These standards apply to:
 
-* Desktop App
-* Customer Website
-* Shared Packages
-* Future Mobile Applications
+* Fresh Prints Studio
+* Fresh Prints Portal
+* Shared packages (`shared/`, future `packages/*`)
+
+There is no separate native mobile codebase. Portal responsive web follows the same shared types and service patterns.
 
 This document is the source of truth for how code should be written.
 

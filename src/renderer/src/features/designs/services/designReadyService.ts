@@ -53,7 +53,7 @@ export const designReadyService = {
       throw new Error("Only imported designs can be marked as processing.");
     }
 
-    return designService.updateDesign(caller, designId, { status: "processing" });
+    return designService.updateDesign(caller, designId, { status: "processing" }, { allowStatusChange: true });
   },
 
   /**
@@ -79,11 +79,16 @@ export const designReadyService = {
       throw formatValidationFailure(validation.errors);
     }
 
-    const updatedDesign = await designService.updateDesign(caller, designId, {
-      status: "imported",
-      thumbnailPath: paths.thumbnailPath,
-      previewPath: paths.previewPath,
-    });
+    const updatedDesign = await designService.updateDesign(
+      caller,
+      designId,
+      {
+        status: "imported",
+        thumbnailPath: paths.thumbnailPath,
+        previewPath: paths.previewPath,
+      },
+      { allowStatusChange: true },
+    );
 
     return {
       designId,
@@ -125,11 +130,16 @@ export const designReadyService = {
       throw formatValidationFailure(validation.errors);
     }
 
-    const updatedDesign = await designService.updateDesign(caller, designId, {
-      status: "ready",
-      thumbnailPath: paths.thumbnailPath,
-      previewPath: paths.previewPath,
-    });
+    const updatedDesign = await designService.updateDesign(
+      caller,
+      designId,
+      {
+        status: "ready",
+        thumbnailPath: paths.thumbnailPath,
+        previewPath: paths.previewPath,
+      },
+      { allowStatusChange: true },
+    );
 
     return {
       designId,

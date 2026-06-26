@@ -1,6 +1,7 @@
 import type { Timestamp } from "firebase/firestore";
 
 import type { PrintSizeSource } from "../../../../../../shared/types/printSize/printSize.types";
+import type { DesignAiAnalysis, DesignAiSuggestions, AiProcessingStage } from "../../../../../../shared/types/ai/aiProcessing.types";
 import type { AiReviewStatus } from "./aiReview.types";
 import type { DesignStatus } from "./designStatus.types";
 
@@ -65,6 +66,12 @@ export interface Design {
   aiReviewNotes?: string;
   /** Normalized confidence score between 0 and 1 when available. */
   aiReviewConfidence?: number;
+  /** Background AI pipeline stage (Cloud Function owned). */
+  aiProcessingStage?: AiProcessingStage;
+  /** AI-generated catalog suggestions — separate from approved catalog fields. */
+  aiSuggestions?: DesignAiSuggestions;
+  /** Rich AI analysis metadata for future features. */
+  aiAnalysis?: DesignAiAnalysis;
   createdBy: string;
   updatedBy: string;
   createdAt: Timestamp;

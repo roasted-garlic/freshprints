@@ -1,4 +1,5 @@
 import {
+  MIN_ACCEPTABLE_EFFECTIVE_DPI,
   MIN_SMALL_FORMAT_PRINT_WIDTH_INCHES,
   PREFERRED_PRINT_WIDTH_INCHES,
   PRINT_INCHES_DECIMAL_PLACES,
@@ -51,20 +52,47 @@ function validatePositiveTargetDpi(targetDpi: number): string | null {
   return null;
 }
 
-function resolveAcceptanceLevel(maxPrintWidthInchesAtTarget: number): PrintSizeAcceptanceLevel {
-  if (maxPrintWidthInchesAtTarget < MIN_SMALL_FORMAT_PRINT_WIDTH_INCHES) {
+/**
+ * Selects normalization DPI for import: 300 DPI when the asset supports at least
+ * 3.5″ width at 300 DPI; otherwise 72 DPI so persisted effectiveDpi reflects quality.
+ */
+export function resolveImportNormalizationTargetDpi(
+  pixelWidth: number,
+  assessmentTargetDpi: number = TARGET_PRINT_DPI,
+): number {
+  const widthAtAssessmentDpi = pixelWidth / assessmentTargetDpi;
+
+  if (widthAtAssessmentDpi < MIN_SMALL_FORMAT_PRINT_WIDTH_INCHES) {
+    return MIN_ACCEPTABLE_EFFECTIVE_DPI;
+  }
+
+  return assessmentTargetDpi;
+}
+
+function resolveAcceptanceLevelFromEffectiveDpi(effectiveDpi: number): PrintSizeAcceptanceLevel {
+  if (effectiveDpi < MIN_ACCEPTABLE_EFFECTIVE_DPI) {
     return "reject";
   }
 
-  if (maxPrintWidthInchesAtTarget < STANDARD_PRINT_WIDTH_INCHES) {
-    return "small_format";
+  if (effectiveDpi >= TARGET_PRINT_DPI) {
+    return "accept";
   }
 
-  if (maxPrintWidthInchesAtTarget < PREFERRED_PRINT_WIDTH_INCHES) {
+  if (effectiveDpi >= 250) {
     return "warn";
   }
 
-  return "accept";
+  if (effectiveDpi >= 200) {
+    return "small_format";
+  }
+
+  return "terrible";
+}
+
+function meetsMinimumPixelDimensions(pixelWidth: number, pixelHeight: number): boolean {
+  return (
+    Math.min(pixelWidth, pixelHeight) >= MIN_ACCEPTABLE_EFFECTIVE_DPI
+  );
 }
 
 /**
@@ -136,7 +164,7 @@ export function calculatePrintSizeAtTargetDpi(
 }
 
 /**
- * Assesses print-size capability at target DPI using production-size tiers.
+ * Assesses print-size capability for import using effective DPI at normalized print size.
  * Does not inspect embedded metadata DPI.
  */
 export function assessPrintSizeCapability(
@@ -156,10 +184,36 @@ export function assessPrintSizeCapability(
 
   const maxPrintWidthInchesAtTarget = pixelWidth / targetDpi;
   const maxPrintHeightInchesAtTarget = pixelHeight / targetDpi;
-  const acceptanceLevel = resolveAcceptanceLevel(maxPrintWidthInchesAtTarget);
+  const normalizationDpi = resolveImportNormalizationTargetDpi(pixelWidth, targetDpi);
+  const normalizedPrintSize = calculatePrintSizeAtTargetDpi(
+    pixelWidth,
+    pixelHeight,
+    normalizationDpi,
+  );
+
+  if (!normalizedPrintSize.success) {
+    return normalizedPrintSize;
+  }
+
+  const effectiveDpiResult = calculateEffectiveDpi(
+    pixelWidth,
+    pixelHeight,
+    normalizedPrintSize.printWidthInches,
+    normalizedPrintSize.printHeightInches,
+    true,
+  );
+
+  if (!effectiveDpiResult.success) {
+    return effectiveDpiResult;
+  }
+
+  const meetsPixels = meetsMinimumPixelDimensions(pixelWidth, pixelHeight);
+  const acceptanceLevel = meetsPixels
+    ? resolveAcceptanceLevelFromEffectiveDpi(effectiveDpiResult.effectiveDpi)
+    : "reject";
 
   const assessment: PrintSizeAssessment = {
-    targetDpi,
+    targetDpi: normalizationDpi,
     maxPrintWidthInchesAtTarget,
     maxPrintHeightInchesAtTarget,
     acceptanceLevel,
@@ -167,9 +221,9 @@ export function assessPrintSizeCapability(
       maxPrintWidthInchesAtTarget >= MIN_SMALL_FORMAT_PRINT_WIDTH_INCHES,
     meetsStandardApparelWidth: maxPrintWidthInchesAtTarget >= STANDARD_PRINT_WIDTH_INCHES,
     meetsPreferredWidth: maxPrintWidthInchesAtTarget >= PREFERRED_PRINT_WIDTH_INCHES,
-    suggestedPrintWidthInches: roundInches(maxPrintWidthInchesAtTarget),
-    suggestedPrintHeightInches: roundInches(maxPrintHeightInchesAtTarget),
-    suggestedEffectiveDpi: targetDpi,
+    suggestedPrintWidthInches: normalizedPrintSize.printWidthInches,
+    suggestedPrintHeightInches: normalizedPrintSize.printHeightInches,
+    suggestedEffectiveDpi: effectiveDpiResult.effectiveDpi,
   };
 
   return { success: true, assessment };

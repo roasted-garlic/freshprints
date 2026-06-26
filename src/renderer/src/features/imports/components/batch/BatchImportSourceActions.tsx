@@ -28,7 +28,7 @@ export function BatchImportSourceActions({
         variant="secondary"
       >
         <FileImage aria-hidden="true" size={16} strokeWidth={2} />
-        {isBusy ? "Working..." : "Select PNG files"}
+        {isBusy ? "Working..." : "Select Images"}
       </Button>
 
       <Button

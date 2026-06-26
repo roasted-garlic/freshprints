@@ -11,11 +11,13 @@ export function getPrintSizeAcceptanceLabel(
 ): string {
   switch (acceptanceLevel) {
     case "accept":
-      return "Accepted — preferred apparel size";
+      return "Accepted — optimal resolution";
     case "warn":
-      return "Accepted — standard apparel size";
+      return "Accepted — good resolution";
     case "small_format":
-      return "Accepted — small-format only";
+      return "Accepted — bad resolution";
+    case "terrible":
+      return "Accepted — terrible resolution (minimum floor)";
     case "reject":
       return "Rejected";
     default:
@@ -28,6 +30,8 @@ export function getImportWarningMessageClassName(code: ImportPngWarning["code"])
     case "PRINT_SIZE_NORMALIZED":
       return "auth-message auth-message-success";
     case "PRINT_SIZE_SMALL_FORMAT":
+      return "auth-message auth-message-warning batch-import-file-validation-warning-strong";
+    case "PRINT_SIZE_TERRIBLE":
       return "auth-message auth-message-warning batch-import-file-validation-warning-strong";
     case "PRINT_SIZE_BELOW_PREFERRED":
     case "DPI_METADATA_MISSING":

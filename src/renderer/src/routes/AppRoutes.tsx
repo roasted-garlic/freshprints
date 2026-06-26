@@ -19,19 +19,20 @@ export function AppRoutes() {
       <Routes>
         <Route path="/login" element={<LoginRoute />} />
         <Route element={<AuthenticatedLayout />}>
-          <Route
-            path="/"
-            element={
-              <ProtectedRoute permission="accessDashboard">
-                <DashboardPage />
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/" element={<Navigate replace to="/designs" />} />
           <Route
             path="/designs"
             element={
               <ProtectedRoute permission="viewDesigns">
                 <DesignLibraryPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dev-dashboard"
+            element={
+              <ProtectedRoute permission="accessDashboard">
+                <DashboardPage />
               </ProtectedRoute>
             }
           />
@@ -46,7 +47,7 @@ export function AppRoutes() {
           <Route
             path="/ai-review"
             element={
-              <ProtectedRoute permission="manageDesigns">
+              <ProtectedRoute permission="viewAiReview">
                 <AiReviewPage />
               </ProtectedRoute>
             }
@@ -84,7 +85,7 @@ export function AppRoutes() {
             }
           />
         </Route>
-        <Route path="*" element={<Navigate replace to="/" />} />
+        <Route path="*" element={<Navigate replace to="/designs" />} />
       </Routes>
     </AuthBootstrapGate>
   );

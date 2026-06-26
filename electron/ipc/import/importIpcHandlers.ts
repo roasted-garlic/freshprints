@@ -32,6 +32,8 @@ import { selectImportZipFile } from "./selectImportZipFile";
 import { selectMultiplePngFiles } from "./selectMultiplePngFiles";
 import { selectSinglePngFile } from "./selectSinglePngFile";
 import { registerDevDerivativeVerificationIpc } from "./verifyDerivativeGenerationIpc";
+import { ImportLimitExceededError } from "../../../shared/errors/importLimitErrors";
+import { ZipExtractionError } from "../../services/import/zipExtractionErrors";
 
 function validateFilePathInput(filePath: unknown, requireValidated = false) {
   if (typeof filePath !== "string") {
@@ -60,11 +62,11 @@ function validateFilePathInput(filePath: unknown, requireValidated = false) {
 }
 
 function mapValidationError(error: unknown) {
-  if (error instanceof PngValidationError) {
-    if (error.message.includes("maximum allowed size")) {
-      return importIpcFailure("FILE_TOO_LARGE", error.message);
-    }
+  if (error instanceof ImportLimitExceededError) {
+    return importIpcFailure("FILE_TOO_LARGE", error.message);
+  }
 
+  if (error instanceof PngValidationError) {
     return importIpcFailure("VALIDATION_FAILED", error.message);
   }
 
@@ -81,11 +83,15 @@ function mapValidationError(error: unknown) {
 }
 
 function mapPickerError(error: unknown) {
-  if (error instanceof Error) {
-    if (error.message.includes("200 MB")) {
-      return importIpcFailure("FILE_TOO_LARGE", error.message);
-    }
+  if (error instanceof ImportLimitExceededError) {
+    return importIpcFailure("FILE_TOO_LARGE", error.message);
+  }
 
+  if (error instanceof ZipExtractionError && error.code === "FILE_TOO_LARGE") {
+    return importIpcFailure("FILE_TOO_LARGE", error.message);
+  }
+
+  if (error instanceof Error) {
     if (error.message.includes("up to")) {
       return importIpcFailure("INVALID_INPUT", error.message);
     }
