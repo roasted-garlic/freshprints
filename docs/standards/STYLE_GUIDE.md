@@ -435,10 +435,10 @@ page-content-area--ai-review (overflow-y: auto — page scroll for right column)
 ```
 
 * Apply `page-content-area--ai-review` via route detection in `AppShell`.
-* Left queue: `.ai-review-queue-panel` is sticky with `max-height: calc(100vh - 9rem)`; `.ai-review-queue-list` scrolls internally.
+* Left queue: `.ai-review-queue-panel` max-height follows `--ai-review-main-panel-height` (measured from `.ai-review-main-panel` via ResizeObserver on `.ai-review-layout`). Panel shrink-wraps to content when the queue is short; `.ai-review-queue-list` scrolls when capped.
 * Right workspace: `.ai-review-workspace-flow` grows naturally; staff scroll the page to reach long content.
 * All tabs share the same square `.ai-review-preview-stage` (aspect-ratio 1, max 28rem).
-* Stacked layout (`max-width: 1100px`): queue panel sticky with `max-height: min(38vh, …)` and internal scroll.
+* Stacked layout (`max-width: 1100px`): queue panel sticky with `max-height: min(var(--ai-review-main-panel-height), 38vh, …)` and internal scroll.
 
 ## AI Processing horizontal stepper (Processing tab)
 

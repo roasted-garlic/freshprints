@@ -165,6 +165,135 @@ service cloud.firestore {
         && isOptionalString(data, "description");
     }
 
+    function isValidPrintRequestStatus(status) {
+      return status in ["draft", "active", "completed", "archived"];
+    }
+
+    function isValidPrintRequestItemStatus(status) {
+      return status in ["pending", "queued", "in_progress", "printed", "done", "canceled"];
+    }
+
+    function isValidPrintRequestAssignment(data) {
+      return (data.isInternal == true && !("customerId" in data) && !("guestCustomerId" in data))
+        || (data.isInternal == false
+          && (
+            (("customerId" in data) && !("guestCustomerId" in data) && data.customerId is string && data.customerId.size() > 0)
+            || (!("customerId" in data) && ("guestCustomerId" in data) && data.guestCustomerId is string && data.guestCustomerId.size() > 0)
+          ));
+    }
+
+    function printRequestRequiredFieldsValid(data) {
+      return data.keys().hasOnly([
+          "name",
+          "customerId",
+          "guestCustomerId",
+          "isInternal",
+          "status",
+          "itemCount",
+          "notes",
+          "createdBy",
+          "updatedBy",
+          "createdAt",
+          "updatedAt"
+        ])
+        && data.name is string
+        && data.name.size() > 0
+        && data.name.size() <= 200
+        && isOptionalString(data, "customerId")
+        && isOptionalString(data, "guestCustomerId")
+        && data.isInternal is bool
+        && data.status is string
+        && isValidPrintRequestStatus(data.status)
+        && data.itemCount is int
+        && data.itemCount >= 0
+        && isOptionalString(data, "notes")
+        && data.createdBy is string
+        && data.updatedBy is string
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp
+        && isValidPrintRequestAssignment(data);
+    }
+
+    function printRequestItemRequiredFieldsValid(data) {
+      return data.keys().hasOnly([
+          "id",
+          "printRequestId",
+          "designId",
+          "quantity",
+          "printWidthInches",
+          "printHeightInches",
+          "sizeLabel",
+          "notes",
+          "status",
+          "addedBy",
+          "printedAt",
+          "printedBy",
+          "completedAt",
+          "createdAt",
+          "updatedAt"
+        ])
+        && data.id is string
+        && data.id.size() > 0
+        && data.printRequestId is string
+        && data.printRequestId.size() > 0
+        && data.designId is string
+        && data.designId.size() > 0
+        && data.quantity is int
+        && data.quantity > 0
+        && isOptionalNumber(data, "printWidthInches")
+        && isOptionalNumber(data, "printHeightInches")
+        && isOptionalString(data, "sizeLabel")
+        && isOptionalString(data, "notes")
+        && data.status is string
+        && isValidPrintRequestItemStatus(data.status)
+        && data.addedBy is string
+        && data.addedBy.size() > 0
+        && isOptionalTimestamp(data, "printedAt")
+        && isOptionalString(data, "printedBy")
+        && isOptionalTimestamp(data, "completedAt")
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function printRequestParentExists(printRequestId) {
+      return exists(/databases/$(database)/documents/printRequests/$(printRequestId));
+    }
+
+    function isReadyDesign(designId) {
+      return exists(/databases/$(database)/documents/designs/$(designId))
+        && get(/databases/$(database)/documents/designs/$(designId)).data.status == "ready";
+    }
+
+    function customerRequiredFieldsValid(data) {
+      return data.keys().hasOnly([
+          "id",
+          "userId",
+          "displayName",
+          "email",
+          "notes",
+          "isGuest",
+          "totalPrintRequests",
+          "totalRequests",
+          "totalApprovedRequests",
+          "createdAt",
+          "updatedAt"
+        ])
+        && data.id is string
+        && data.id.size() > 0
+        && data.displayName is string
+        && data.displayName.size() > 0
+        && data.isGuest is bool
+        && data.totalPrintRequests is int
+        && data.totalPrintRequests >= 0
+        && isOptionalString(data, "userId")
+        && isOptionalString(data, "email")
+        && isOptionalString(data, "notes")
+        && isOptionalNumber(data, "totalRequests")
+        && isOptionalNumber(data, "totalApprovedRequests")
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
     match /users/{userId} {
       allow read: if isSelf(userId)
         || (isOwner() && isReadableTeamProfile(resource.data.role))
@@ -214,6 +343,66 @@ service cloud.firestore {
         && request.resource.data.updatedBy == request.auth.uid;
 
       allow delete: if false;
+    }
+
+    match /customers/{customerId} {
+      allow read: if isStaff();
+
+      allow create: if isStaff()
+        && customerRequiredFieldsValid(request.resource.data)
+        && request.resource.data.id == customerId;
+
+      allow update: if isStaff()
+        && customerRequiredFieldsValid(request.resource.data)
+        && request.resource.data.id == customerId
+        && request.resource.data.id == resource.data.id
+        && (!("userId" in resource.data) || request.resource.data.userId == resource.data.userId)
+        && (!("isGuest" in resource.data) || request.resource.data.isGuest == resource.data.isGuest)
+        && (!("createdAt" in resource.data) || request.resource.data.createdAt == resource.data.createdAt);
+
+      allow delete: if false;
+    }
+
+    match /printRequests/{printRequestId} {
+      allow read: if isStaff();
+
+      allow create: if isStaff()
+        && printRequestRequiredFieldsValid(request.resource.data)
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.updatedBy == request.auth.uid;
+
+      allow update: if isStaff()
+        && printRequestRequiredFieldsValid(request.resource.data)
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.updatedBy == request.auth.uid;
+
+      allow delete: if isStaff();
+    }
+
+    match /printRequestItems/{printRequestItemId} {
+      allow read: if isStaff();
+
+      allow create: if isStaff()
+        && printRequestItemRequiredFieldsValid(request.resource.data)
+        && request.resource.data.id == printRequestItemId
+        && request.resource.data.addedBy == request.auth.uid
+        && printRequestParentExists(request.resource.data.printRequestId)
+        && isReadyDesign(request.resource.data.designId);
+
+      allow update: if isStaff()
+        && printRequestItemRequiredFieldsValid(request.resource.data)
+        && request.resource.data.id == printRequestItemId
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.printRequestId == resource.data.printRequestId
+        && request.resource.data.designId == resource.data.designId
+        && request.resource.data.addedBy == resource.data.addedBy
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.updatedAt is timestamp
+        && printRequestParentExists(request.resource.data.printRequestId)
+        && isReadyDesign(request.resource.data.designId);
+
+      allow delete: if isStaff();
     }
 
     match /settings/{settingId} {

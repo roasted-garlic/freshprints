@@ -65,7 +65,9 @@
   color: var(--color-text-primary);
   display: grid;
   grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
-  min-height: 100vh;
+  height: 100vh;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .app-shell:has(.sidebar-collapsed) {
@@ -75,8 +77,10 @@
 .app-main {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  height: 100%;
+  min-height: 0;
   min-width: 0;
+  overflow: hidden;
 }
 
 .page-layout {
@@ -90,6 +94,23 @@
 
 .page-layout-shell {
   gap: var(--space-4);
+}
+
+.page-content-area--design-library {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.page-content-area--design-library > .page-layout.page-layout-shell {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .stats-grid {
@@ -515,19 +536,10 @@
 }
 
 @media (max-width: 880px) {
-  .app-shell {
+  /* Sidebar is position: fixed (drawer), so the shell only needs the content column */
+  .app-shell,
+  .app-shell:has(.sidebar-collapsed) {
     grid-template-columns: 1fr;
-  }
-
-  .sidebar {
-    border-bottom: 0.5px solid var(--sidebar-divider);
-    border-right: 0;
-    gap: var(--space-4);
-    padding: var(--space-4);
-  }
-
-  .sidebar-nav {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .stats-grid,
@@ -541,9 +553,5 @@
   .status-panel,
   .page-layout {
     padding: var(--space-5);
-  }
-
-  .sidebar-nav {
-    grid-template-columns: 1fr;
   }
 }

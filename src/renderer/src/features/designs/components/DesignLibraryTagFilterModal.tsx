@@ -5,11 +5,13 @@ import { Button } from "../../../shared/components/Button";
 import { Checkbox } from "../../../shared/components/Checkbox";
 import { ModalBody, ModalFooter, ModalHeader } from "../../../shared/components/Modal";
 import { TextInput } from "../../../shared/components/TextInput";
-import { filterTagsBySearch, sortTagsAlphabetically } from "../utils/designLibrarySearch";
+import { computeFacetedTagsForDraftSelection, sortTagsAlphabetically } from "../utils/designLibrarySearch";
+import type { Design } from "../types/design.types";
 import { DesignLibraryModal } from "./DesignLibraryModal";
 
 interface DesignLibraryTagFilterModalProps {
-  availableTags: string[];
+  /** Designs after every non-tag filter (catalog scope, search, category). */
+  baseDesigns: Design[];
   isOpen: boolean;
   onApply: (selectedTags: string[]) => void;
   onClose: () => void;
@@ -17,7 +19,7 @@ interface DesignLibraryTagFilterModalProps {
 }
 
 export function DesignLibraryTagFilterModal({
-  availableTags,
+  baseDesigns,
   isOpen,
   onApply,
   onClose,
@@ -35,13 +37,23 @@ export function DesignLibraryTagFilterModal({
     setDraftSelectedTags(selectedTags);
   }, [isOpen, selectedTags]);
 
-  const visibleTags = useMemo(() => {
-    const mergedTags = sortTagsAlphabetically([
-      ...new Set([...availableTags, ...draftSelectedTags]),
-    ]);
+  // Live faceting: recomputes from the current DRAFT selection on every toggle, so the
+  // visible list and counts narrow immediately as the user checks/unchecks tags.
+  const facetedTags = useMemo(
+    () =>
+      computeFacetedTagsForDraftSelection({
+        baseDesigns,
+        draftSelectedTags,
+        tagSearchQuery: searchQuery,
+      }),
+    [baseDesigns, draftSelectedTags, searchQuery],
+  );
 
-    return filterTagsBySearch(mergedTags, searchQuery);
-  }, [availableTags, draftSelectedTags, searchQuery]);
+  // Whether any tags exist at all for the current non-tag filters (ignoring search).
+  const hasAnyTags = useMemo(
+    () => computeFacetedTagsForDraftSelection({ baseDesigns, draftSelectedTags }).length > 0,
+    [baseDesigns, draftSelectedTags],
+  );
 
   const toggleTag = (tag: string) => {
     const isSelected = draftSelectedTags.includes(tag);
@@ -53,7 +65,7 @@ export function DesignLibraryTagFilterModal({
     );
 
     if (!isSelected) {
-      // Clear search after selecting a tag so the full list is visible for the next pick.
+      // Clear search after selecting so the narrowed list is fully visible for the next pick.
       setSearchQuery("");
     }
   };
@@ -76,6 +88,12 @@ export function DesignLibraryTagFilterModal({
     return null;
   }
 
+  const emptyMessage = !hasAnyTags
+    ? "No additional matching tags"
+    : facetedTags.length === 0
+      ? "No tags match your search."
+      : null;
+
   return (
     <DesignLibraryModal
       ariaLabelledBy="design-library-tag-filter-title"
@@ -88,7 +106,8 @@ export function DesignLibraryTagFilterModal({
           <p className="eyebrow">Catalog filters</p>
           <h2 id="design-library-tag-filter-title">Filter by tags</h2>
           <p className="design-library-tag-filter-description">
-            Select one or more tags. Designs must include every selected tag.
+            Select one or more tags. Designs must include every selected tag, and the list
+            narrows to tags that still have matches.
           </p>
         </div>
       </ModalHeader>
@@ -114,17 +133,17 @@ export function DesignLibraryTagFilterModal({
           value={searchQuery}
         />
 
-        {visibleTags.length === 0 ? (
-          <p className="design-library-tag-filter-empty">No tags match your search.</p>
+        {emptyMessage ? (
+          <p className="design-library-tag-filter-empty">{emptyMessage}</p>
         ) : (
           <div className="design-library-tag-filter-list" role="group" aria-label="Tag filters">
-            {visibleTags.map((tag) => (
+            {facetedTags.map((facetedTag) => (
               <Checkbox
-                checked={draftSelectedTags.includes(tag)}
-                key={tag}
-                label={tag}
-                name={`tag-${tag}`}
-                onChange={() => toggleTag(tag)}
+                checked={facetedTag.isSelected}
+                key={facetedTag.tag}
+                label={`${facetedTag.tag} (${facetedTag.count})`}
+                name={`tag-${facetedTag.tag}`}
+                onChange={() => toggleTag(facetedTag.tag)}
               />
             ))}
           </div>

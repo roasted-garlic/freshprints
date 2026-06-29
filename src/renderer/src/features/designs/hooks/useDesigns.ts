@@ -15,6 +15,20 @@ interface DesignsState {
   nextCursor?: DesignListCursor;
 }
 
+interface UseDesignsOptions {
+  /**
+   * When true, pages the (indexed) query to completion on load so the caller holds the
+   * full scope in memory — required for client-side search/tag faceting across the whole
+   * inventory. Bounded by `maxLoadAll` as a safety cap. Existing paginated callers omit
+   * this and keep the "Load more" flow.
+   */
+  loadAll?: boolean;
+  /** Hard cap on designs fetched when `loadAll` is set. Defaults to 2000. */
+  maxLoadAll?: number;
+}
+
+const DEFAULT_MAX_LOAD_ALL = 2000;
+
 const initialState: DesignsState = {
   designs: [],
   error: null,
@@ -37,21 +51,23 @@ function serializeDesignListQuery(listQuery: DesignListQuery): string {
   });
 }
 
-export function useDesigns(listQuery: DesignListQuery) {
+export function useDesigns(listQuery: DesignListQuery, options?: UseDesignsOptions) {
   const { user } = useAuth();
   const [state, setState] = useState<DesignsState>(initialState);
   const nextCursorRef = useRef<DesignListCursor | undefined>(undefined);
   const listQueryKey = useMemo(() => serializeDesignListQuery(listQuery), [listQuery]);
+  const loadAll = options?.loadAll ?? false;
+  const maxLoadAll = options?.maxLoadAll ?? DEFAULT_MAX_LOAD_ALL;
 
   const loadDesigns = useCallback(
-    async (options?: { append?: boolean }) => {
+    async (loadOptions?: { append?: boolean }) => {
       if (!user || !permissionService.canViewDesigns(user)) {
         nextCursorRef.current = undefined;
         setState({ ...initialState, isLoading: false });
         return;
       }
 
-      const append = options?.append ?? false;
+      const append = loadOptions?.append ?? false;
 
       setState((currentState) => ({
         ...currentState,
@@ -61,6 +77,33 @@ export function useDesigns(listQuery: DesignListQuery) {
       }));
 
       try {
+        if (loadAll && !append) {
+          // Page the indexed query to completion (bounded) so the full scope is in memory.
+          const collected: Design[] = [];
+          let cursor: DesignListCursor | undefined = undefined;
+          let hasMore = false;
+
+          do {
+            const page = await designService.listDesignsPage(user, { ...listQuery, cursor });
+            collected.push(...page.designs);
+            cursor = page.nextCursor;
+            hasMore = page.hasMore;
+          } while (cursor && collected.length < maxLoadAll);
+
+          nextCursorRef.current = cursor;
+
+          setState({
+            designs: collected,
+            error: null,
+            // If we stopped at the safety cap there may still be more on the server.
+            hasMore: Boolean(cursor) && hasMore,
+            isLoading: false,
+            isLoadingMore: false,
+            nextCursor: cursor,
+          });
+          return;
+        }
+
         const page = await designService.listDesignsPage(user, {
           ...listQuery,
           cursor: append ? nextCursorRef.current : undefined,
@@ -88,7 +131,7 @@ export function useDesigns(listQuery: DesignListQuery) {
         });
       }
     },
-    [listQuery, user],
+    [listQuery, loadAll, maxLoadAll, user],
   );
 
   useEffect(() => {

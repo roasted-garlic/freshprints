@@ -92,6 +92,8 @@ Fresh Prints does not expose a separate REST API for core operations. Business l
 | `updateAiEnrichmentSettings` | Callable | Owner/admin: set team vision model allowlist choice |
 | `onDesignAiEnrichmentQueued` | Firestore update | Run AI enrichment pipeline |
 
+**AI enrichment latency observability:** Callable logs `enqueue.queued` with `loggedAtMs`; trigger logs `trigger.fired`; pipeline logs phased `durationMs` / `totalPipelineMs`; OpenAI logs `openai.request.started` and `openai.completion.usage` (includes `reasoningEffort`, `durationMs`, token counts). Settings and categories are cached per function instance (60s). Primary reasoning effort is `minimal`; empty-output retry uses `low` at 4000 tokens.
+
 Location: `functions/src/` — compiled to `functions/lib/` (gitignored). See `docs/workflow/setup/firebase-functions-setup.md`.
 
 ---

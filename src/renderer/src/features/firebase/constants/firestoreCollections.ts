@@ -3,6 +3,8 @@ export const FIRESTORE_COLLECTIONS = {
   designs: "designs",
   categories: "categories",
   customers: "customers",
+  printRequests: "printRequests",
+  printRequestItems: "printRequestItems",
   customerRequests: "customerRequests",
   showQueues: "showQueues",
   showQueueItems: "showQueueItems",

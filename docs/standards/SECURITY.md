@@ -445,6 +445,31 @@ Admins and helpers may review requests based on permissions.
 
 ---
 
+# Print Requests Security
+
+Print Requests are staff-managed Phase 6 Studio records.
+
+Firestore rules and `permissionService` should stay aligned:
+
+* Active staff (`owner`, `admin`, `helper`) may read `printRequests`, `printRequestItems`, and `customers`
+* Active staff may create and update `printRequests`
+* Active staff may create, update, and remove `printRequestItems`
+* Active staff may create and update `customers`
+* Customer role has no Studio access to these collections yet
+
+Request items own production status:
+
+* `pending`
+* `queued`
+* `in_progress`
+* `printed`
+* `done`
+* `canceled`
+
+Design documents must not receive production status writes from Print Requests.
+
+---
+
 # Queue Security
 
 Customers should not access internal queue management data.

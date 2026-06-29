@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 export interface ShellHeaderFilterConfig {
   id: string;
   label: string;
@@ -13,7 +15,15 @@ export interface ShellHeaderSearchConfig {
   value: string;
 }
 
+export interface ShellHeaderToggleConfig {
+  checked: boolean;
+  label: string;
+  name: string;
+  onChange: (checked: boolean) => void;
+}
+
 export interface ShellHeaderPrimaryAction {
+  icon?: ReactNode;
   label: string;
   onClick: () => void;
 }
@@ -23,6 +33,7 @@ export interface ShellHeaderConfig {
   filters?: ShellHeaderFilterConfig[] | null;
   primaryAction?: ShellHeaderPrimaryAction | null;
   search?: ShellHeaderSearchConfig | null;
+  toggle?: ShellHeaderToggleConfig | null;
   title: string;
 }
 

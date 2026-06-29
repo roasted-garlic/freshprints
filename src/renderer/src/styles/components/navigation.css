@@ -283,6 +283,39 @@
   width: 100%;
 }
 
+/* Drawer close button — hidden on desktop, shown inside sidebar on mobile */
+.sidebar-drawer-close {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  display: none;
+  justify-content: center;
+  margin-left: auto;
+  min-height: 2rem;
+  min-width: 2rem;
+  padding: var(--space-1);
+  transition: color var(--transition-fast);
+}
+
+.sidebar-drawer-close:hover {
+  color: var(--color-text-primary);
+}
+
+.sidebar-drawer-close:focus-visible {
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+  outline: none;
+}
+
+/* Scrim behind the open drawer */
+.sidebar-drawer-scrim {
+  background: var(--color-overlay);
+  inset: 0;
+  position: fixed;
+  z-index: calc(var(--z-modal) - 1);
+}
+
 .app-header {
   align-items: flex-start;
   background: var(--color-bg-primary);
@@ -291,6 +324,43 @@
   gap: var(--space-5);
   justify-content: space-between;
   padding: var(--space-5) var(--space-6) var(--space-4);
+}
+
+/* Wraps hamburger + title/description on small screens */
+.app-header-start {
+  align-items: flex-start;
+  display: contents;
+}
+
+/* Hamburger button — hidden on desktop */
+.app-header-menu-button {
+  align-items: center;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  display: none;
+  flex-shrink: 0;
+  justify-content: center;
+  min-height: 2.5rem;
+  min-width: 2.5rem;
+  padding: var(--space-1);
+  transition:
+    background var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.app-header-menu-button:hover {
+  background: var(--color-bg-secondary);
+  border-color: var(--color-border-strong);
+  color: var(--color-text-primary);
+}
+
+.app-header-menu-button:focus-visible {
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+  outline: none;
 }
 
 .app-header-main {
@@ -388,28 +458,57 @@
 }
 
 @media (max-width: 880px) {
+  /* Sidebar becomes an off-canvas drawer */
   .sidebar {
-    height: auto;
-    min-height: 0;
-    position: static;
+    bottom: 0;
+    height: 100vh;
+    left: 0;
+    min-height: 100vh;
+    position: fixed;
+    top: 0;
+    transform: translateX(-100%);
+    transition: transform var(--transition-normal);
+    width: var(--sidebar-width);
+    z-index: var(--z-modal);
   }
 
-  .sidebar-spacer {
-    display: none;
+  .sidebar.sidebar-drawer-open {
+    transform: translateX(0);
   }
 
-  .sidebar-footer {
-    margin-top: 0;
+  .sidebar-drawer-close {
+    display: flex;
   }
 
-  .sidebar-nav {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .app-header-menu-button {
+    display: flex;
+  }
+
+  .app-header-start {
+    align-items: flex-start;
+    display: flex;
+    gap: var(--space-3);
+    min-width: 0;
+  }
+
+  .app-header {
+    align-items: center;
+    flex-direction: row;
+  }
+
+  .app-header-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .sidebar-collapsed {
+    width: var(--sidebar-width-collapsed);
   }
 }
 
 @media (max-width: 640px) {
   .app-header {
-    padding-inline: var(--space-5);
+    padding-inline: var(--space-4);
   }
 
   .global-search-input {
@@ -419,9 +518,5 @@
 
   .app-header-actions {
     width: 100%;
-  }
-
-  .sidebar-nav {
-    grid-template-columns: 1fr;
   }
 }

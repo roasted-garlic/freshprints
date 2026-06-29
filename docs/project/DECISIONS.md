@@ -6,6 +6,92 @@
 
 ## Decisions
 
+### ADR-FP-029: Catalog enrichment prompt v15 + validation hardening
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-06-26 |
+| Status | accepted |
+
+**Decision**
+
+1. **Prompt v15:** Cleaner system/user prompts with explicit JSON field formats; `visibleTextColor` requested as array in prompt.
+2. **Parse layer:** `catalogEnrichmentResponse.ts` coerces messy model output (string arrays, string booleans, confidence clamping).
+3. **Consistency:** `artworkContainsText` synced from `visibleText`; `textOnlyArtwork` corrected when illustration indicators present.
+4. **Category:** `resolveCatalogCategory` exact match then keyword remap; omit when confidence low; retry before remap on first pass.
+5. **Retry:** Unified `shouldRetryCatalogEnrichment` (max one quality retry at `reasoning_effort: low`) plus existing empty-output cap retry.
+6. **Storage:** `visibleTextColor` array collapsed to existing enum (`black` \| `white` \| `mixed` \| `unknown`).
+7. **Reasoning:** First pass stays `minimal`; optional bump to `low` deferred pending latency measurement.
+
+---
+
+### ADR-FP-028: Dual-arc OCR validation + Re-run overlay stepper
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-06-25 |
+| Status | accepted |
+
+**Decision**
+
+1. **Prompt v14:** Dual-arc OCR examples, homophone guardrails, character-by-character user prompt reinforcement.
+2. **Server validation:** `isImplausibleVisibleText` flags merged/gibberish/homophone drift; one-shot retry with `reasoning_effort: low`; description `/` phrase fallback before `visible_text_low_quality` log.
+3. **Re-run overlay:** `isRerunInProgress` forces queued/waiting stepper (step 1 active) until Firestore stages update — mirrors Processing optimistic enqueue.
+
+---
+
+### ADR-FP-027: Rejected tab actions navigate to target inbox tab
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-06-25 |
+| Status | accepted |
+
+**Decision:** **Reopen for Review** on Rejected navigates to Needs Review with the same `designId` selected. **Re-run AI Suggestions** on Rejected navigates to Processing with the same design selected. Handoff uses `pendingCrossTabSelectionRef` so tab-change effects do not reset selection to the first queue item.
+
+---
+
+### ADR-FP-026: AI catalog descriptions required with server synthesis fallback
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-06-25 |
+| Status | accepted |
+
+**Decision:** Prompt v13 requires non-empty descriptions. Server `resolveCatalogDescription` rejects placeholders (`-`, `—`, `N/A`, etc.) and empty post-sanitize strings, synthesizing copy from visible text, subject/style, title, or a generic fallback. Pipeline re-checks before `markAiSuccess`. Event `catalog.enrich.description_fallback` logged when synthesis runs.
+
+---
+
+### ADR-FP-025: AI processing latency — minimal reasoning default + timing logs
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-06-25 |
+| Status | accepted |
+
+**Decision**
+
+1. **Reasoning effort:** Primary `minimal` on Processing path (reverts ADR-FP-023 default for speed). Use `low` only on empty-output retry (4000-token cap) or when model rejects `minimal`.
+2. **Timing logs:** Pipeline phases log `durationMs`, `totalPipelineMs`, and `loggedAtMs`; OpenAI requests log `openai.request.started` and `openai.completion.usage` with `durationMs` and token breakdown.
+3. **Runtime cache:** Settings and active categories cached in function instance memory (60s TTL); cleared on settings update.
+4. **Client UX:** Optimistic "Queuing AI processing…" stepper before Firestore `queued` stage.
+5. **Deferred:** `minInstances` and callable→pipeline direct invoke require human approval for production.
+
+**Tradeoff:** Faster median runs; OCR on arched text may rely on retry path more often. Monitor `openai.empty_content` with `willRetry: true`.
+
+---
+
+### ADR-FP-024: Black/White Text title suffix — text-only designs only
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-06-25 |
+| Status | accepted |
+
+**Decision:** Append `Black Text` or `White Text` to catalog titles only when `textOnlyArtwork === true` and ink is single-color black/white. Server strips suffix when not text-only (fail-closed). Prompt v15 adds `textOnlyArtwork` field.
+
+---
+
 ### ADR-FP-023: Prompt v11 OCR quality + reasoning effort low + re-run overlay
 
 | Field | Value |

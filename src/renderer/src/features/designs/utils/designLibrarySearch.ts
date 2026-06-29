@@ -68,3 +68,74 @@ export function collectUniqueDesignTags(designs: Design[]): string[] {
 
   return sortTagsAlphabetically([...tagSet]);
 }
+
+export interface FacetedTag {
+  tag: string;
+  count: number;
+  isSelected: boolean;
+}
+
+/**
+ * Computes live faceted tag options from a base design set.
+ *
+ * `baseDesigns` must already have every non-tag filter applied (catalog/archived scope,
+ * search, category). `draftSelectedTags` are the tags currently checked — typically the
+ * modal's draft selection, so the list narrows live as the user toggles.
+ *
+ * AND semantics: a design matches the selection only if it has *all* selected tags. For
+ * each candidate tag the count is how many designs match all selected tags *plus* that
+ * candidate. Candidates with a zero count are dropped — that is what prevents zero-result
+ * combinations. Selected tags are always returned (so they can be unchecked) and their
+ * count reflects the full current selection.
+ *
+ * Returned tags are sorted alphabetically. Pass `tagSearchQuery` to filter labels by
+ * substring (selected tags always survive the search filter).
+ *
+ * Limitation: counts reflect only the designs present in `baseDesigns`. Callers that load
+ * the full catalog scope into memory get whole-inventory counts; callers passing a
+ * paginated subset get counts for that subset only.
+ */
+export function computeFacetedTagsForDraftSelection(params: {
+  baseDesigns: Design[];
+  draftSelectedTags: string[];
+  tagSearchQuery?: string;
+}): FacetedTag[] {
+  const { baseDesigns, draftSelectedTags, tagSearchQuery } = params;
+
+  // Designs already matching every selected tag — the pool every candidate narrows from.
+  const selectionMatches = filterDesignsByTags(baseDesigns, draftSelectedTags);
+  const selectedCount = selectionMatches.length;
+
+  // Candidate tags are every tag present on the matching designs, plus the selected tags
+  // themselves (so they remain visible even if selecting them emptied the pool).
+  const candidateTags = sortTagsAlphabetically([
+    ...new Set([...collectUniqueDesignTags(selectionMatches), ...draftSelectedTags]),
+  ]);
+
+  const normalizedSearch = tagSearchQuery?.trim().toLowerCase() ?? "";
+
+  const faceted: FacetedTag[] = [];
+
+  for (const tag of candidateTags) {
+    const isSelected = draftSelectedTags.includes(tag);
+
+    // Count designs that match the selection plus this candidate tag.
+    const count = isSelected
+      ? selectedCount
+      : selectionMatches.filter((design) => design.tags.includes(tag)).length;
+
+    // Hide unrelated tags that would produce zero results (selected tags always stay).
+    if (count === 0 && !isSelected) {
+      continue;
+    }
+
+    // Apply the tag label search, but never hide a selected tag.
+    if (normalizedSearch && !isSelected && !tag.includes(normalizedSearch)) {
+      continue;
+    }
+
+    faceted.push({ tag, count, isSelected });
+  }
+
+  return faceted;
+}

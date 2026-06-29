@@ -475,6 +475,7 @@ export interface DesignAiAnalysis {
   artworkContainsText?: boolean;
   visibleText?: string[];
   visibleTextColor?: "black" | "white" | "mixed" | "unknown";
+  textOnlyArtwork?: boolean;
   textRecognitionConfidence?: number;
   overallConfidence?: number;
   estimatedPrintComplexity?: string;
@@ -553,7 +554,7 @@ Service-layer normalization rules:
 * Maximum 20 tags per design
 * Maximum 40 characters per tag
 
-**AI suggestions (2026-06-25):** Cloud Function `normalizeAiTags` persists **single-word** tags only — filtered against merged tag exclusions. Descriptions: sentence 1 must transcribe all `visibleText` segments (prompt v11). Titles normalized server-side (no trailing punctuation). Provider prompt `catalog-enrich-openai-v11`. Staff may edit tags in Needs Review before approve.
+**AI suggestions (2026-06-26):** Cloud Function `normalizeAiTags` persists **single-word** tags only — filtered against merged tag exclusions and generic production/meta tags. Titles: `Black Text` / `White Text` suffix only when `aiAnalysis.textOnlyArtwork === true`. Provider prompt `catalog-enrich-openai-v15` (deploy required for production). Staff may edit tags in Needs Review before approve.
 
 There is no separate `tags` collection in Phase 2.
 

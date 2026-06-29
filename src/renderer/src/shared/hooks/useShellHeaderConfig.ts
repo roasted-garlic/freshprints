@@ -13,6 +13,8 @@ function serializeShellHeaderConfig(config: ShellHeaderConfig): string {
       id: filter.id,
       value: filter.value,
     })),
+    toggleChecked: config.toggle?.checked ?? null,
+    toggleLabel: config.toggle?.label ?? "",
     primaryActionLabel: config.primaryAction?.label ?? "",
   });
 }

@@ -24,6 +24,14 @@ export const firestoreCollectionService = {
     return this.getCollectionReference("customers");
   },
 
+  getPrintRequestsCollection() {
+    return this.getCollectionReference("printRequests");
+  },
+
+  getPrintRequestItemsCollection() {
+    return this.getCollectionReference("printRequestItems");
+  },
+
   getCustomerRequestsCollection() {
     return this.getCollectionReference("customerRequests");
   },

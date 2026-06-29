@@ -4,6 +4,7 @@ import { EmptyState } from "../../../shared/components/EmptyState";
 import { PageLoadingState } from "../../../shared/components/PageLoadingState";
 import type { Design } from "../types/design.types";
 import { DesignCard } from "./DesignCard";
+import { DesignSelectionCard } from "./DesignSelectionCard";
 
 export type DesignLibraryCatalogView = "approved" | "archived";
 
@@ -13,6 +14,12 @@ interface DesignGridProps {
   designs: Design[];
   hasActiveFilters: boolean;
   isLoading: boolean;
+  requestSelection?: {
+    getSelection: (designId: string) => { isExistingSelection: boolean; isSelected: boolean; quantity: number } | null;
+    onAdd: (design: Design) => void;
+    onQuantityChange: (designId: string, quantity: number) => void;
+    onRemove: (designId: string) => void;
+  };
   onSelectDesign: (design: Design) => void;
 }
 
@@ -50,6 +57,7 @@ export function DesignGrid({
   designs,
   hasActiveFilters,
   isLoading,
+  requestSelection,
   onSelectDesign,
 }: DesignGridProps) {
   if (isLoading) {
@@ -77,15 +85,31 @@ export function DesignGrid({
 
   return (
     <div className="design-grid" role="list">
-      {designs.map((design) => (
-        <div key={design.id} role="listitem">
-          <DesignCard
-            categoryName={design.categoryId ? categoryNameById.get(design.categoryId) : undefined}
-            design={design}
-            onSelect={onSelectDesign}
-          />
-        </div>
-      ))}
+      {designs.map((design) => {
+        const selection = requestSelection?.getSelection(design.id);
+
+        return (
+          <div key={design.id} role="listitem">
+            {requestSelection ? (
+              <DesignSelectionCard
+                design={design}
+                isExistingSelection={selection?.isExistingSelection ?? false}
+                isSelected={selection?.isSelected ?? false}
+                onAdd={requestSelection.onAdd}
+                onQuantityChange={requestSelection.onQuantityChange}
+                onRemove={requestSelection.onRemove}
+                quantity={selection?.quantity ?? 1}
+              />
+            ) : (
+              <DesignCard
+                categoryName={design.categoryId ? categoryNameById.get(design.categoryId) : undefined}
+                design={design}
+                onSelect={onSelectDesign}
+              />
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

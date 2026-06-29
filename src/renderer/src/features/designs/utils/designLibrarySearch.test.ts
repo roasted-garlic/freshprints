@@ -4,6 +4,7 @@ import { describe, it } from "node:test";
 import type { Design } from "../types/design.types";
 import {
   collectUniqueDesignTags,
+  computeFacetedTagsForDraftSelection,
   filterDesignsByAiReviewStatus,
   filterDesignsBySearch,
   filterDesignsByTags,
@@ -105,5 +106,82 @@ describe("collectUniqueDesignTags", () => {
     ]);
 
     assert.deepEqual(tags, ["alpha", "beta", "zebra"]);
+  });
+});
+
+describe("computeFacetedTagsForDraftSelection", () => {
+  // Spec example designs.
+  const designs = [
+    createDesign({ id: "A", tags: ["dog", "funny", "cartoon"] }),
+    createDesign({ id: "B", tags: ["dog", "coffee"] }),
+    createDesign({ id: "C", tags: ["cat", "funny"] }),
+    createDesign({ id: "D", tags: ["skeleton", "motherhood"] }),
+  ];
+
+  function toMap(faceted: ReturnType<typeof computeFacetedTagsForDraftSelection>) {
+    return Object.fromEntries(faceted.map((ft) => [ft.tag, ft.count]));
+  }
+
+  it("shows every tag with counts when nothing is selected", () => {
+    const result = computeFacetedTagsForDraftSelection({ baseDesigns: designs, draftSelectedTags: [] });
+
+    assert.deepEqual(toMap(result), {
+      cartoon: 1,
+      cat: 1,
+      coffee: 1,
+      dog: 2,
+      funny: 2,
+      motherhood: 1,
+      skeleton: 1,
+    });
+  });
+
+  it("narrows to compatible tags after selecting one tag", () => {
+    const result = computeFacetedTagsForDraftSelection({
+      baseDesigns: designs,
+      draftSelectedTags: ["dog"],
+    });
+
+    assert.deepEqual(toMap(result), { cartoon: 1, coffee: 1, dog: 2, funny: 1 });
+    assert.equal(result.find((ft) => ft.tag === "dog")?.isSelected, true);
+    // Unrelated tags are hidden.
+    assert.equal(result.find((ft) => ft.tag === "cat"), undefined);
+    assert.equal(result.find((ft) => ft.tag === "skeleton"), undefined);
+  });
+
+  it("narrows further after selecting a second compatible tag", () => {
+    const result = computeFacetedTagsForDraftSelection({
+      baseDesigns: designs,
+      draftSelectedTags: ["dog", "funny"],
+    });
+
+    assert.deepEqual(toMap(result), { cartoon: 1, dog: 1, funny: 1 });
+    assert.equal(result.find((ft) => ft.tag === "coffee"), undefined);
+  });
+
+  it("keeps selected tags visible even with zero remaining matches", () => {
+    const result = computeFacetedTagsForDraftSelection({
+      baseDesigns: designs,
+      draftSelectedTags: ["dog", "skeleton"],
+    });
+
+    const dog = result.find((ft) => ft.tag === "dog");
+    const skeleton = result.find((ft) => ft.tag === "skeleton");
+    assert.ok(dog && dog.isSelected);
+    assert.ok(skeleton && skeleton.isSelected);
+    assert.equal(dog.count, 0);
+  });
+
+  it("applies the tag search query but never hides selected tags", () => {
+    const result = computeFacetedTagsForDraftSelection({
+      baseDesigns: designs,
+      draftSelectedTags: ["dog"],
+      tagSearchQuery: "car",
+    });
+
+    const tags = result.map((ft) => ft.tag);
+    assert.ok(tags.includes("cartoon"));
+    assert.ok(tags.includes("dog")); // selected, survives search
+    assert.ok(!tags.includes("coffee"));
   });
 });

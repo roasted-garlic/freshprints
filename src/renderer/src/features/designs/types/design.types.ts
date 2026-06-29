@@ -47,6 +47,12 @@ export interface Design {
   uploadedBy: string;
   requestedByCustomerId?: string;
   queueCount: number;
+  requestCount?: number;
+  showAddCount?: number;
+  printCount?: number;
+  lastRequestedAt?: Timestamp;
+  lastAddedToShowAt?: Timestamp;
+  lastPrintedAt?: Timestamp;
   /** True when an AI review pipeline has processed this design. */
   aiProcessed: boolean;
   /**

@@ -7,6 +7,7 @@ import { CustomerRequestsPage } from "../features/customer-requests/pages/Custom
 import { DesignLibraryPage } from "../features/designs/pages/DesignLibraryPage";
 import { DashboardPage } from "../features/dashboard/pages/DashboardPage";
 import { ImportsPage } from "../features/imports/pages/ImportsPage";
+import { PrintRequestsPage } from "../features/print-requests/pages/PrintRequestsPage";
 import { SettingsPage } from "../features/settings/pages/SettingsPage";
 import { ShowQueuePage } from "../features/show-queue/pages/ShowQueuePage";
 import { UserManagementPage } from "../features/users/pages/UserManagementPage";
@@ -49,6 +50,14 @@ export function AppRoutes() {
             element={
               <ProtectedRoute permission="viewAiReview">
                 <AiReviewPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/print-requests"
+            element={
+              <ProtectedRoute permission="viewPrintRequests">
+                <PrintRequestsPage />
               </ProtectedRoute>
             }
           />

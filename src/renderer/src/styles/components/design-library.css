@@ -1,24 +1,81 @@
 /* Design Library (Phase 2B) */
 
 .design-library-section {
-  display: grid;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
   gap: var(--space-4);
+  min-height: 0;
+  overflow: hidden;
 }
 
-.design-library-toolbar {
+.design-library-fixed-region {
+  background: var(--color-bg-primary);
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-height: 0;
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+}
+
+.design-library-filter-dock {
   align-items: center;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-3);
   justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
 }
 
-.design-library-toolbar-actions {
+/* Shared filter controls (search + category + tags + optional archive toggle) */
+.design-library-filter-controls {
   align-items: center;
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-3);
 }
+
+.design-library-filter-dock .design-library-filter-controls {
+  flex: 1 1 24rem;
+  justify-content: flex-end;
+}
+
+.design-library-filter-controls-search {
+  flex: 1 1 14rem;
+  min-width: 0;
+}
+
+.design-library-filter-controls-search .global-search-field,
+.design-library-filter-controls-search .global-search-input {
+  width: 100%;
+}
+
+/* Category select inside the filter controls: drop the stacked label spacing so it sits
+   inline with the search field and buttons. */
+.design-library-filter-controls .design-library-filter-controls-category {
+  margin: 0;
+  min-width: 11rem;
+}
+
+.design-library-filter-controls .design-library-filter-controls-category > label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+
 
 .design-library-active-tags {
   display: flex;
@@ -85,12 +142,248 @@
   padding-top: var(--space-2);
 }
 
+.design-library-selection-tray {
+  background: linear-gradient(180deg, var(--color-surface) 0%, var(--color-bg-tertiary) 100%);
+  border: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+
+.design-library-selection-tray-top {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.design-library-selection-tray-copy {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.design-library-selection-tray-copy h3 {
+  margin: 0;
+}
+
+.design-library-selection-tray-copy p {
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+/* Bottom row: pills left, buttons right */
+.design-library-selection-tray-bottom {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  justify-content: space-between;
+}
+
+.design-library-selection-tray-stats {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.design-library-selection-tray-actions {
+  align-items: center;
+  display: flex;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  justify-content: flex-end;
+}
+
+.design-library-catalog-scroll {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: var(--space-1);
+}
+
 .design-grid {
-  align-items: stretch;
+  align-items: start;
   display: grid;
   gap: var(--space-4);
-  grid-auto-rows: 1fr;
   grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+}
+
+.design-selection-card {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+  width: 100%;
+}
+
+.design-selection-card:hover {
+  border-color: var(--color-border-strong);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Fix 4: round the top of the image to follow the card's border-radius */
+.design-selection-card .design-thumbnail-panel.design-card-thumbnail {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  border-top-left-radius: var(--radius-lg);
+  border-top-right-radius: var(--radius-lg);
+  flex-shrink: 0;
+  width: 100%;
+}
+
+/* Fix 5: soft accent glow — no harsh outline, matches sidebar active link style */
+.design-selection-card.is-selected {
+  border-color: var(--color-accent-primary);
+  box-shadow:
+    0 0 0 1px var(--color-accent-primary),
+    0 0 16px 2px color-mix(in srgb, var(--color-accent-primary) 28%, transparent);
+}
+
+.design-selection-card-body {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4) var(--space-4);
+}
+
+/* Image area: relative so the overlay remove button can anchor to it */
+.design-selection-card-image-wrap {
+  position: relative;
+}
+
+.design-selection-card-title {
+  color: var(--color-text-primary);
+  display: -webkit-box;
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-height: var(--line-height-tight);
+  margin: 0;
+  min-width: 0;
+  overflow: hidden;
+  text-align: center;
+  width: 100%;
+}
+
+/* Remove (BrushCleaning) button — overlaid on top-right of the image */
+.design-selection-card-remove-btn {
+  align-items: center;
+  background: color-mix(in srgb, var(--color-bg-primary) 80%, transparent);
+  backdrop-filter: blur(4px);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  min-height: 1.75rem;
+  min-width: 1.75rem;
+  padding: var(--space-1);
+  position: absolute;
+  right: var(--space-2);
+  top: var(--space-2);
+  transition:
+    background var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast);
+  z-index: 1;
+}
+
+.design-selection-card-remove-btn:hover {
+  background: color-mix(in srgb, var(--color-bg-primary) 95%, transparent);
+  border-color: var(--color-border-strong);
+  color: var(--color-danger, #ef4444);
+}
+
+.design-selection-card-remove-btn:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+/* Qty controls: minus | input | plus */
+.design-selection-card-qty-controls {
+  display: grid;
+  gap: var(--space-2);
+  grid-template-columns: 1fr auto 1fr;
+  width: 100%;
+}
+
+.design-selection-card-qty-btn {
+  align-items: center;
+  background: transparent;
+  border: 1.5px solid var(--color-accent-primary);
+  border-radius: var(--radius-full);
+  color: var(--color-accent-primary);
+  cursor: pointer;
+  display: flex;
+  font: inherit;
+  justify-content: center;
+  min-height: 2.25rem;
+  padding: var(--space-1) var(--space-3);
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.design-selection-card-qty-btn:hover:not(:disabled) {
+  background: var(--color-accent-primary);
+  color: var(--color-on-accent, #fff);
+}
+
+.design-selection-card-qty-btn:disabled {
+  border-color: var(--color-border);
+  color: var(--color-text-tertiary);
+  cursor: not-allowed;
+}
+
+.design-selection-card-qty-btn:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.design-selection-card-qty-input {
+  background: var(--color-bg-primary);
+  border: 1.5px solid var(--color-accent-primary);
+  border-radius: var(--radius-md);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-md);
+  font-weight: 700;
+  min-height: 2.25rem;
+  text-align: center;
+  width: 3.5rem;
+}
+
+.design-selection-card-qty-input:focus {
+  border-color: var(--color-accent-primary);
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+  outline: none;
+}
+
+/* Hide browser spin arrows */
+.design-selection-card-qty-input::-webkit-inner-spin-button,
+.design-selection-card-qty-input::-webkit-outer-spin-button {
+  appearance: none;
+  margin: 0;
+}
+
+.design-selection-card-add-btn {
+  width: 100%;
 }
 
 .design-card {
@@ -392,7 +685,7 @@
   display: grid;
   gap: var(--space-4);
   max-height: min(90vh, 56rem);
-  max-width: min(96vw, 64rem);
+  max-width: min(96vw, 72rem);
   position: relative;
   width: 100%;
 }
@@ -521,6 +814,21 @@
 }
 
 @media (max-width: 640px) {
+  .design-library-filter-dock {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .design-library-filter-dock .design-library-filter-controls {
+    justify-content: flex-start;
+  }
+
+  .design-library-summary-row,
+  .design-library-filter-controls {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
   .app-header-filter-field,
   .app-header-filter-field .form-select-trigger {
     min-width: 0;

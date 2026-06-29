@@ -4,6 +4,8 @@ export const DESIGN_LIBRARY_SEARCH_QUERY_PARAM = "search";
 export const DESIGN_LIBRARY_CATEGORY_QUERY_PARAM = "category";
 export const DESIGN_LIBRARY_TAGS_QUERY_PARAM = "tags";
 export const DESIGN_LIBRARY_ARCHIVED_QUERY_PARAM = "archived";
+export const DESIGN_LIBRARY_MODE_QUERY_PARAM = "mode";
+export const DESIGN_LIBRARY_REQUEST_ID_QUERY_PARAM = "requestId";
 
 /** @deprecated Legacy URL param — stripped on load; imported/processing redirects to AI Review */
 export const DESIGN_LIBRARY_STATUS_QUERY_PARAM = "status";
@@ -20,9 +22,13 @@ export const DESIGN_LIBRARY_CATALOG_WITH_ARCHIVED_STATUSES = DESIGN_LIBRARY_ARCH
 
 export const AI_REVIEW_PATH = "/ai-review";
 
+export type DesignLibraryMode = "browse" | "request-selection";
+
 export interface DesignLibraryUrlFilters {
   archived?: boolean;
   categoryId?: string;
+  mode?: DesignLibraryMode;
+  requestId?: string;
   search?: string;
   tags?: string[];
 }
@@ -72,10 +78,14 @@ export function parseDesignLibraryUrlFilters(searchParams: URLSearchParams): Des
   }
 
   const categoryId = searchParams.get(DESIGN_LIBRARY_CATEGORY_QUERY_PARAM)?.trim();
+  const mode = searchParams.get(DESIGN_LIBRARY_MODE_QUERY_PARAM)?.trim();
+  const requestId = searchParams.get(DESIGN_LIBRARY_REQUEST_ID_QUERY_PARAM)?.trim();
 
   return {
     archived: parseDesignLibraryArchivedParam(searchParams.get(DESIGN_LIBRARY_ARCHIVED_QUERY_PARAM)),
     categoryId: categoryId || undefined,
+    mode: mode === "request-selection" ? "request-selection" : "browse",
+    requestId: requestId || undefined,
     search: searchParams.get(DESIGN_LIBRARY_SEARCH_QUERY_PARAM)?.trim() || undefined,
     tags: tagsFromQuery.length > 0 ? tagsFromQuery : undefined,
   };
@@ -97,6 +107,14 @@ export function buildDesignLibrarySearchParams(
   filters: DesignLibraryUrlFilters,
 ): URLSearchParams {
   const searchParams = new URLSearchParams();
+
+  if (filters.mode === "request-selection") {
+    searchParams.set(DESIGN_LIBRARY_MODE_QUERY_PARAM, filters.mode);
+  }
+
+  if (filters.requestId?.trim()) {
+    searchParams.set(DESIGN_LIBRARY_REQUEST_ID_QUERY_PARAM, filters.requestId.trim());
+  }
 
   if (filters.search?.trim()) {
     searchParams.set(DESIGN_LIBRARY_SEARCH_QUERY_PARAM, filters.search.trim());

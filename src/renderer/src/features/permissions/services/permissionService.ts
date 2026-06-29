@@ -191,6 +191,22 @@ export const permissionService = {
     return isStaff(user);
   },
 
+  canViewPrintRequests(user: UserLike) {
+    return isStaff(user);
+  },
+
+  canManagePrintRequests(user: UserLike) {
+    return isStaff(user);
+  },
+
+  canManagePrintRequestItems(user: UserLike) {
+    return isStaff(user);
+  },
+
+  canManageGuestCustomers(user: UserLike) {
+    return hasActiveRole(user, ["owner", "admin"]);
+  },
+
   canManageCustomers(user: UserLike) {
     return hasActiveRole(user, ["owner", "admin"]);
   },
@@ -287,6 +303,14 @@ export const permissionService = {
         return this.canImportDesigns(user);
       case "manageQueues":
         return this.canManageQueues(user);
+      case "viewPrintRequests":
+        return this.canViewPrintRequests(user);
+      case "managePrintRequests":
+        return this.canManagePrintRequests(user);
+      case "managePrintRequestItems":
+        return this.canManagePrintRequestItems(user);
+      case "manageGuestCustomers":
+        return this.canManageGuestCustomers(user);
       case "manageCustomers":
         return this.canManageCustomers(user);
       case "manageRequests":
