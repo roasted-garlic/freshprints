@@ -49,6 +49,8 @@ export interface DesignAiAnalysis {
   artworkContainsText?: boolean;
   visibleText?: string[];
   visibleTextColor?: "black" | "white" | "mixed" | "unknown";
+  /** True when readable text is the entire design with no illustration/characters/icons. */
+  textOnlyArtwork?: boolean;
   textRecognitionConfidence?: number;
   spellingConfidence?: number;
   transparencyConfidence?: number;

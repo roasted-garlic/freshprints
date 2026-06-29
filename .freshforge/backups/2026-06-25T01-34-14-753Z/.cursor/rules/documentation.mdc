@@ -1,0 +1,113 @@
+---
+description: Documentation as source of truth; reading order and update requirements
+alwaysApply: true
+---
+
+# Documentation Rules
+
+## Docs Are Source of Truth
+
+Project documentation in `docs/` defines what the application is, how it is built, and how work must be done. Rules tell agents how to behave; docs tell agents what is true.
+
+When code and docs disagree, either update the code to match approved docs or update docs through the documentation workflow—not silently in passing during unrelated tasks.
+
+## Required Reading Order
+
+Before planning or implementing, read in this order (skip sections clearly marked as not yet customized):
+
+0. `AGENTS.md` (repo root) — universal AI entry point
+1. `.cursor/workflow/state.md` — current workflow progress
+2. `docs/AI_RULES.md` — detailed agent behavior and workflow
+3. `docs/project/PROJECT_BRIEF.md` — product context (project-specific)
+4. `docs/standards/SECURITY.md` — security baseline
+5. `docs/architecture/ARCHITECTURE.md` — structure and boundaries (project-specific)
+6. `docs/architecture/DATA_MODEL.md` — entities and relationships (project-specific)
+7. `docs/architecture/BACKEND.md` — backend services and env (project-specific)
+8. `docs/standards/CODING_STANDARDS.md` — code conventions
+9. `docs/standards/STYLE_GUIDE.md` — UI/UX conventions (project-specific)
+10. `docs/WORKFLOWS.md` — process details
+11. `docs/standards/TESTING.md` — test commands and expectations
+12. `docs/standards/DEPLOYMENT.md` — environments and release process
+13. `docs/project/ROADMAP.md` — priorities and phases (project-specific)
+14. `docs/project/DECISIONS.md` — recorded decisions
+15. `docs/project/RISK_REGISTER.md` — known risks
+16. `docs/project/PROJECT_HEALTH.md` — health summary (after intake)
+17. `docs/intake/INTAKE_FINDINGS.md` — intake inspection record (after intake)
+18. `docs/project/TECH_DEBT.md` — tech debt register (after intake)
+
+## Conflict Priority
+
+When documents conflict, resolve using this priority (highest wins):
+
+1. `SECURITY.md`
+2. `ARCHITECTURE.md`
+3. `DATA_MODEL.md`
+4. `BACKEND.md`
+5. `CODING_STANDARDS.md`
+6. `STYLE_GUIDE.md`
+7. `WORKFLOWS.md`
+8. `ROADMAP.md`
+
+Additional principles:
+- **Security wins over architecture**
+- **Architecture wins over implementation convenience**
+- **Data model consistency wins over shortcuts**
+
+Escalate unresolved conflicts to review phase or a human checkpoint; do not guess.
+
+## Universal vs Project-Specific Docs
+
+**Core workflow** (docs root):
+- `docs/AI_RULES.md`, `docs/WORKFLOWS.md`
+
+**Universal baseline** (starter content; customize cautiously):
+- `docs/standards/CODING_STANDARDS.md`, `docs/standards/SECURITY.md`, `docs/standards/TESTING.md`, `docs/standards/DEPLOYMENT.md`
+- `docs/project/DECISIONS.md`, `docs/project/RISK_REGISTER.md`
+
+**Project-specific** (must be generated or customized per app):
+- `docs/project/PROJECT_BRIEF.md`, `docs/architecture/ARCHITECTURE.md`, `docs/architecture/DATA_MODEL.md`, `docs/architecture/BACKEND.md`, `docs/standards/STYLE_GUIDE.md`, `docs/project/ROADMAP.md`
+
+**Intake-generated** (populated during Existing Project Intake):
+- `docs/project/PROJECT_HEALTH.md`, `docs/intake/INTAKE_FINDINGS.md`, `docs/project/TECH_DEBT.md`
+
+**AppForge development only** (not installed into target projects):
+- `docs/appforge-development/` including `distribution/INSTALLATION.md`, `DISTRIBUTION.md`, `PACKAGING.md`, `STARTER_SURFACE.md`
+
+Project-specific backend supplements may be added later, e.g. `FIREBASE.md`, `SUPABASE.md`, `DATABASE.md`, `API.md`, `INFRASTRUCTURE.md`. Reference them from `docs/architecture/BACKEND.md`.
+
+## When Docs Must Be Created or Updated
+
+| Trigger | Action |
+|---------|--------|
+| New project bootstrap | Generate project-specific docs from templates |
+| Existing project intake | Inspect repo; fill project-specific docs; create PROJECT_HEALTH, INTAKE_FINDINGS, TECH_DEBT |
+| Behavior change | Update relevant docs in same workflow as code |
+| Architecture change | Update `ARCHITECTURE.md`; add ADR to `DECISIONS.md` |
+| Data model change | Update `DATA_MODEL.md`; note migration in plan |
+| Backend or env change | Update `BACKEND.md` and `DEPLOYMENT.md` as needed |
+| Security change | Update `SECURITY.md` or `RISK_REGISTER.md` |
+| New test commands | Update `TESTING.md` |
+| Release process change | Update `DEPLOYMENT.md` |
+
+Use skill `documentation-update` for structured doc maintenance.
+
+## Starter Surface and Development Docs
+
+- `docs/appforge-development/distribution/STARTER_SURFACE.md` is the source of truth for what gets installed by default (`AGENTS.md`, `.cursor/`, `docs/`).
+- `docs/appforge-development/` is **not** starter-facing — maintainer history only; never install or export it.
+- Starter-facing docs must stay reusable and must not contain completed AppForge phase history.
+- Archive AppForge managed-phase plans and signoffs under `docs/appforge-development/plans/` and `docs/appforge-development/reviews/`.
+- Keep `docs/workflow/plans/`, `docs/workflow/reviews/`, and `docs/workflow/setup/` clean (README + `.gitkeep` only) in the starter surface.
+
+## Missing Docs
+
+- If project-specific docs are still templates with placeholders, run **Existing Project Intake** or **New Project Bootstrap** before large implementation work.
+- If a required universal doc is missing, recreate from starter patterns or flag in workflow state.
+- Do not invent product requirements to fill gaps; ask a human checkpoint for business decisions.
+
+## Doc Quality
+
+- Use clear headings, checklists, and tables where helpful.
+- Mark unknowns explicitly: `[TBD]`, `[INFERRED]`, `[NEEDS HUMAN INPUT]`.
+- Date significant updates at the top of the file or in `DECISIONS.md`.
+- Plans and reviews are also documentation: keep them in `docs/workflow/plans/` and `docs/workflow/reviews/`.

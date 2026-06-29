@@ -40,7 +40,7 @@ Manual workflow review found the initial inbox UI too elaborate for Fresh Prints
 | Left queue + right workspace layout | Optimized click → review → approve → next |
 | Catalog metadata form | Staff edits final title, category, tags, description |
 
-**Staff-facing label:** **AI Processing** (sidebar + shell title). Route remains `/ai-review`. **Search and filtering belong in Design Library only.**
+**Staff-facing label:** **AI Processing** (sidebar + shell title). Route remains `/ai-review`. Search and filtering stay in the Design Library.
 
 **Phase 5A workspace polish (2026-06-24):** Right panel redesigned as a vertical processing workstation: image preview → Processing Status pipeline → AI Suggestions (5B-ready) → Final Catalog Information → actions. Queue panel adds live tab counts above tabs.
 

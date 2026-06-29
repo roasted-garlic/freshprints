@@ -3,7 +3,7 @@ import type { AiReviewInboxFilters, AiReviewInboxTab } from "../types/aiReviewIn
 
 export const AI_PROCESSING_PAGE_TITLE = "AI Processing";
 export const AI_PROCESSING_PAGE_DESCRIPTION =
-  "Process imported designs — review AI metadata and approve into the Design Library. Search and filtering belong in Design Library.";
+  "Process imported designs — review AI metadata and approve into the Design Library.";
 
 export const AI_REVIEW_TAB_QUERY_PARAM = "tab";
 

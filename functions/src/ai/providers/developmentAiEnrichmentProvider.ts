@@ -3,6 +3,7 @@ import type { AiEnrichmentInput, AiEnrichmentProvider, AiEnrichmentResult } from
 import {
   DEVELOPMENT_CATALOG_ENRICHMENT_PROMPT_VERSION,
   normalizeCatalogTitle,
+  resolveCatalogDescription,
   resolveCatalogTitle,
 } from "../catalogTitleRules";
 
@@ -104,6 +105,24 @@ export const developmentAiEnrichmentProvider: AiEnrichmentProvider = {
 
     });
 
+    const descriptionResult = resolveCatalogDescription({
+
+      candidateDescription: `Imported artwork ready for catalog review. Replace the placeholder title after reviewing the image.`,
+
+      title,
+
+      primarySubject,
+
+      style: "illustrated",
+
+      theme: "general",
+
+      tags,
+
+      artworkContainsText: false,
+
+    });
+
 
 
     return {
@@ -112,7 +131,7 @@ export const developmentAiEnrichmentProvider: AiEnrichmentProvider = {
 
         title,
 
-        description: `Imported artwork ready for catalog review. Replace the placeholder title after reviewing the image.`,
+        description: descriptionResult.description,
 
         categoryId: category.categoryId,
 

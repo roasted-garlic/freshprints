@@ -10,6 +10,7 @@ import {
 } from "./ai/aiEnrichmentConfig";
 import { AI_ENRICHMENT_SETTINGS_DOC_ID } from "./ai/loadAiEnrichmentSettings";
 import { resolveAdditionalTagExclusions } from "./ai/aiTagExclusions";
+import { clearAiEnrichmentRuntimeCache } from "./ai/aiEnrichmentRuntimeCache";
 import { logPipelineEvent } from "./lib/pipelineLog";
 
 interface UpdateAiEnrichmentSettingsRequest {
@@ -86,6 +87,8 @@ export const updateAiEnrichmentSettings = onCall(
       },
       { merge: true },
     );
+
+    clearAiEnrichmentRuntimeCache();
 
     logPipelineEvent("settings.ai_enrichment.updated", {
       visionModelId: resolvedModelId,

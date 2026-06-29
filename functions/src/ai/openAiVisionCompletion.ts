@@ -1,4 +1,3 @@
-import { logPipelineEvent } from "../lib/pipelineLog";
 import {
   OPENAI_VISION_MAX_COMPLETION_TOKENS,
   OPENAI_VISION_MAX_COMPLETION_TOKENS_RETRY,
@@ -107,26 +106,12 @@ export function assertOpenAiCompletionHasContent(
 ): string {
   const choice = extractOpenAiCompletionChoice(payload);
   const usage = extractOpenAiCompletionUsage(payload);
-  const resolvedModel = typeof payload.model === "string" ? payload.model : modelId;
 
   if (choice.content) {
-    logPipelineEvent("openai.completion.usage", {
-      model: resolvedModel,
-      promptTokens: usage.promptTokens,
-      completionTokens: usage.completionTokens,
-      reasoningTokens: usage.reasoningTokens,
-    });
     return choice.content;
   }
 
-  logPipelineEvent("openai.empty_content", {
-    model: resolvedModel,
-    finishReason: choice.finishReason,
-    promptTokens: usage.promptTokens,
-    completionTokens: usage.completionTokens,
-    reasoningTokens: usage.reasoningTokens,
-    maxCompletionTokens,
-  });
+  // Usage and empty_content are logged by openAiVisionEnrichmentProvider before retry/throw.
 
   const errorCode = resolveEmptyOutputErrorCode(
     choice.finishReason,

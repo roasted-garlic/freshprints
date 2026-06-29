@@ -18,6 +18,7 @@ import {
   shouldAllowAiEnqueueForReviewStatus,
 } from "./ai/enqueueAiEnrichmentValidation";
 import { logPipelineEvent } from "./lib/pipelineLog";
+import { logPipelineMilestone } from "./ai/pipelineTiming";
 
 function assertOwnerAdminCaller(caller: Awaited<ReturnType<typeof loadCallerProfile>>): void {
   if (!caller.isActive || !["owner", "admin"].includes(caller.role)) {
@@ -161,7 +162,7 @@ export const enqueueAiEnrichment = onCall(
         ? "enqueue.rerun_rejected"
         : "enqueue.queued";
 
-    logPipelineEvent(eventName, {
+    logPipelineMilestone(eventName, {
       designId,
       callerUid: request.auth.uid,
     });
@@ -190,7 +191,7 @@ export const onDesignAiEnrichmentQueued = onDocumentUpdated(
     }
 
     const designId = event.params.designId;
-    logPipelineEvent("trigger.fired", {
+    logPipelineMilestone("trigger.fired", {
       designId,
       previousStage: before?.aiProcessingStage ?? null,
     });

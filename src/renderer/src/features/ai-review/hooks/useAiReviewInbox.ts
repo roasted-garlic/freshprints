@@ -7,7 +7,7 @@ import type { Design } from "../../designs/types/design.types";
 import { buildAiReviewInboxListQuery } from "../constants/aiReviewInboxConstants";
 import { aiEnrichmentEnqueueService } from "../services/aiEnrichmentEnqueueService";
 import { aiReviewInboxService } from "../services/aiReviewInboxService";
-import type { AiReviewDraftForm, AiReviewInboxFilters } from "../types/aiReviewInbox.types";
+import type { AiReviewDraftForm, AiReviewInboxFilters, AiReviewInboxTab } from "../types/aiReviewInbox.types";
 import {
   createAiReviewDraftFromDesign,
   isAiReviewDraftDirty,
@@ -34,9 +34,20 @@ import {
 } from "../utils/aiReviewRerunSession";
 import {
   resolveIsPinnedNeedsReviewDesign,
+  resolvePendingCrossTabDesign,
+  resolveRejectedReopenTargetTab,
+  resolveRejectedRerunTargetTab,
   shouldPrependPinnedDesignToInbox,
+  shouldRetainCrossTabSelection,
+  shouldSuppressDefaultInboxSelection,
   shouldUseLiveDesignForSelection,
+  type PendingCrossTabSelection,
 } from "../utils/aiReviewInboxSelection";
+
+export interface UseAiReviewInboxOptions {
+  onNavigateToTab?: (tab: AiReviewInboxTab, designId: string) => void;
+  onQueueChanged?: () => void;
+}
 
 export interface PendingSelectionChange {
   designId: string | null;
@@ -44,7 +55,7 @@ export interface PendingSelectionChange {
 
 export function useAiReviewInbox(
   filters: AiReviewInboxFilters,
-  options?: { onQueueChanged?: () => void },
+  options?: UseAiReviewInboxOptions,
 ) {
   const { user } = useAuth();
   const listQuery = useMemo(() => buildAiReviewInboxListQuery(filters), [filters]);
@@ -67,6 +78,7 @@ export function useAiReviewInbox(
   const queueScrollTopRef = useRef(0);
   const queueListRef = useRef<HTMLDivElement | null>(null);
   const pendingAdvanceIndexRef = useRef<number | null>(null);
+  const pendingCrossTabSelectionRef = useRef<PendingCrossTabSelection | null>(null);
   const previousTabRef = useRef(filters.tab);
   const rerunSessionRef = useRef<NeedsReviewRerunSession | null>(null);
 
@@ -344,13 +356,23 @@ export function useAiReviewInbox(
       return;
     }
 
+    if (
+      shouldSuppressDefaultInboxSelection({
+        pendingCrossTabSelection: pendingCrossTabSelectionRef.current,
+        selectedDesignId,
+        tab: filters.tab,
+      })
+    ) {
+      return;
+    }
+
     if (designs.length === 0) {
       applySelection(null);
       return;
     }
 
     applySelection(designs[0] ?? null);
-  }, [applySelection, designs, filters.tab, isLoading, isRerunningAi]);
+  }, [applySelection, designs, filters.tab, isLoading, isRerunningAi, selectedDesignId]);
 
   useEffect(() => {
     if (pendingAdvanceIndexRef.current !== null || isLoading) {
@@ -358,6 +380,30 @@ export function useAiReviewInbox(
     }
 
     if (isRerunningAi && filters.tab === "needs_review") {
+      return;
+    }
+
+    const pendingCrossTabSelection = pendingCrossTabSelectionRef.current;
+    const pendingDesign = resolvePendingCrossTabDesign(
+      designs,
+      pendingCrossTabSelection,
+      filters.tab,
+    );
+
+    if (pendingDesign) {
+      applySelection(pendingDesign);
+      pendingCrossTabSelectionRef.current = null;
+      return;
+    }
+
+    if (
+      shouldRetainCrossTabSelection({
+        designs,
+        pendingCrossTabSelection,
+        selectedDesignId,
+        tab: filters.tab,
+      })
+    ) {
       return;
     }
 
@@ -524,6 +570,40 @@ export function useAiReviewInbox(
     [options, reloadDesigns, selectedIndex, user],
   );
 
+  const runRejectedTabNavigationAction = useCallback(
+    async (input: { action: () => Promise<void>; targetTab: AiReviewInboxTab }) => {
+      if (!user || !selectedDesign) {
+        return;
+      }
+
+      const designId = selectedDesign.id;
+
+      setIsActionLoading(true);
+      setActionError(null);
+
+      try {
+        await input.action();
+        pendingCrossTabSelectionRef.current = { tab: input.targetTab, designId };
+        setSelectedDesignId(designId);
+        setDraftForm(null);
+        setBaselineForm(null);
+        setLiveDesign(null);
+        options?.onNavigateToTab?.(input.targetTab, designId);
+        options?.onQueueChanged?.();
+      } catch (navigationError) {
+        pendingCrossTabSelectionRef.current = null;
+        setActionError(
+          navigationError instanceof Error
+            ? navigationError.message
+            : "Unable to complete the action.",
+        );
+      } finally {
+        setIsActionLoading(false);
+      }
+    },
+    [options, selectedDesign, user],
+  );
+
   const approveSelected = useCallback(async () => {
     if (!user || !selectedDesign || !draftForm || !canApproveSelected) {
       return;
@@ -549,20 +629,26 @@ export function useAiReviewInbox(
       return;
     }
 
-    await runInboxAction(async () => {
-      await aiReviewInboxService.reopenFromInbox(user, selectedDesign.id);
+    await runRejectedTabNavigationAction({
+      action: async () => {
+        await aiReviewInboxService.reopenFromInbox(user, selectedDesign.id);
+      },
+      targetTab: resolveRejectedReopenTargetTab(),
     });
-  }, [canReopenSelected, runInboxAction, selectedDesign, user]);
+  }, [canReopenSelected, runRejectedTabNavigationAction, selectedDesign, user]);
 
   const rerunSelected = useCallback(async () => {
     if (!user || !selectedDesign || !canRerunSelected) {
       return;
     }
 
-    await runInboxAction(async () => {
-      await aiReviewInboxService.rerunAiFromInbox(user, selectedDesign.id);
+    await runRejectedTabNavigationAction({
+      action: async () => {
+        await aiReviewInboxService.rerunAiFromInbox(user, selectedDesign.id);
+      },
+      targetTab: resolveRejectedRerunTargetTab(),
     });
-  }, [canRerunSelected, runInboxAction, selectedDesign, user]);
+  }, [canRerunSelected, runRejectedTabNavigationAction, selectedDesign, user]);
 
   const retryProcessingSelected = useCallback(async () => {
     if (!user || !selectedDesign || !canRetryProcessingSelected) {

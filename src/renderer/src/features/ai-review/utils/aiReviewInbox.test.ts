@@ -12,6 +12,7 @@ import {
   getQueueDesignLabel,
   resolveAiProcessingOutputStatus,
   resolveAiProcessingPipelineSteps,
+  applyRerunOverlayStage,
 } from "./aiProcessingOutput";
 import { designMatchesInboxTab, isDesignApprovableInInbox } from "./aiReviewInboxEligibility";
 import type { Design } from "../../designs/types/design.types";
@@ -154,6 +155,10 @@ describe("aiProcessingOutput", () => {
   it("returns honest placeholder messages", () => {
     assert.match(getAiProcessingOutputMessage("waiting", createDesign({ aiProcessingStage: "sending_to_ai" })), /sending image to ai/i);
     assert.match(getAiProcessingOutputMessage("not_generated"), /waiting for ai/i);
+    assert.match(
+      getAiProcessingOutputMessage("waiting", createDesign(), { isOptimisticEnqueue: true }),
+      /queuing ai processing/i,
+    );
   });
 
   it("builds grouped AI processing pipeline steps", () => {
@@ -206,6 +211,25 @@ describe("aiProcessingOutput", () => {
     assert.deepEqual(
       steps.map((step) => step.state),
       ["complete", "complete", "complete"],
+    );
+  });
+
+  it("shows active first step during rerun overlay instead of all complete", () => {
+    const staleReadyDesign = createDesign({
+      aiProcessingStage: "ready_for_review",
+      aiReviewStatus: "needs_review",
+      aiSuggestions: {
+        title: "Sleep Deprived",
+        description: "SLEEP DEPRIVED / BARELY ALIVE.",
+        provider: "openai",
+        generatedAt: "2026-01-01T00:00:00.000Z",
+      },
+    });
+    const steps = resolveAiProcessingPipelineSteps(applyRerunOverlayStage(staleReadyDesign));
+
+    assert.deepEqual(
+      steps.map((step) => step.state),
+      ["active", "pending", "pending"],
     );
   });
 

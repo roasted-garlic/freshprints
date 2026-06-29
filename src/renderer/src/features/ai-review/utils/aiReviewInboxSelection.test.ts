@@ -4,7 +4,12 @@ import { describe, it } from "node:test";
 import type { Design } from "../../designs/types/design.types";
 import {
   resolveIsPinnedNeedsReviewDesign,
+  resolvePendingCrossTabDesign,
+  resolveRejectedReopenTargetTab,
+  resolveRejectedRerunTargetTab,
   shouldPrependPinnedDesignToInbox,
+  shouldRetainCrossTabSelection,
+  shouldSuppressDefaultInboxSelection,
   shouldUseLiveDesignForSelection,
 } from "./aiReviewInboxSelection";
 
@@ -131,6 +136,66 @@ describe("aiReviewInboxSelection", () => {
         isPinnedNeedsReviewDesign: true,
       }),
       true,
+    );
+  });
+
+  it("maps rejected reopen and rerun to target tabs", () => {
+    assert.equal(resolveRejectedReopenTargetTab(), "needs_review");
+    assert.equal(resolveRejectedRerunTargetTab(), "processing");
+  });
+
+  it("suppresses default inbox selection during cross-tab handoff", () => {
+    assert.equal(
+      shouldSuppressDefaultInboxSelection({
+        pendingCrossTabSelection: { tab: "needs_review", designId: "design-1" },
+        selectedDesignId: "design-1",
+        tab: "needs_review",
+      }),
+      true,
+    );
+
+    assert.equal(
+      shouldSuppressDefaultInboxSelection({
+        pendingCrossTabSelection: { tab: "needs_review", designId: "design-1" },
+        selectedDesignId: "design-1",
+        tab: "processing",
+      }),
+      false,
+    );
+  });
+
+  it("resolves pending cross-tab design when present in list", () => {
+    const targetDesign = createDesign({ id: "design-2", aiReviewStatus: "needs_review" });
+
+    assert.equal(
+      resolvePendingCrossTabDesign(
+        [createDesign({ id: "design-1" }), targetDesign],
+        { tab: "needs_review", designId: "design-2" },
+        "needs_review",
+      )?.id,
+      "design-2",
+    );
+  });
+
+  it("retains cross-tab selection while design is not yet in queue page", () => {
+    assert.equal(
+      shouldRetainCrossTabSelection({
+        designs: [createDesign({ id: "other-design" })],
+        pendingCrossTabSelection: { tab: "processing", designId: "design-1" },
+        selectedDesignId: "design-1",
+        tab: "processing",
+      }),
+      true,
+    );
+
+    assert.equal(
+      shouldRetainCrossTabSelection({
+        designs: [createDesign({ id: "design-1", aiReviewStatus: "pending" })],
+        pendingCrossTabSelection: { tab: "processing", designId: "design-1" },
+        selectedDesignId: "design-1",
+        tab: "processing",
+      }),
+      false,
     );
   });
 });

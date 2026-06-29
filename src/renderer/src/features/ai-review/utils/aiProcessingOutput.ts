@@ -131,6 +131,27 @@ export function resolveAiSuggestions(design: Design): Design["aiSuggestions"] | 
   return design.aiSuggestions ?? null;
 }
 
+export function applyOptimisticEnqueueStage(design: Design): Design {
+  return {
+    ...design,
+    aiProcessingStage: "queued",
+  };
+}
+
+export function applyRerunOverlayStage(design: Design): Design {
+  return {
+    ...design,
+    aiProcessed: false,
+    aiProcessingStage: "queued",
+    aiReviewStatus: "pending",
+    aiSuggestions: undefined,
+  };
+}
+
+export function getOptimisticEnqueueMessage(): string {
+  return "Queuing AI processing…";
+}
+
 export function resolveAiProcessingOutputStatus(design: Design): AiProcessingOutputStatus {
   if (design.aiSuggestions?.errorCode || design.aiProcessingStage === "failed") {
     return "failed";
@@ -181,7 +202,18 @@ function getStageProcessingMessage(stage: AiProcessingStage | undefined): string
   }
 }
 
-export function getAiProcessingOutputMessage(status: AiProcessingOutputStatus, design?: Design): string {
+export function getAiProcessingOutputMessage(
+  status: AiProcessingOutputStatus,
+  design?: Design,
+  options?: { isOptimisticEnqueue?: boolean; isRerunInProgress?: boolean },
+): string {
+  if (options?.isRerunInProgress && status === "waiting") {
+    return "Re-running AI suggestions…";
+  }
+
+  if (options?.isOptimisticEnqueue && status === "waiting") {
+    return getOptimisticEnqueueMessage();
+  }
   if (status === "failed") {
     return design?.aiSuggestions?.errorMessage ?? "AI processing failed. Complete metadata manually.";
   }

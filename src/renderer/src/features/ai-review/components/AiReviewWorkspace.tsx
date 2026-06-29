@@ -65,6 +65,8 @@ interface AiReviewWorkspaceProps {
 
   isQueueBusy: boolean;
 
+  isOptimisticEnqueue?: boolean;
+
   onApprove: () => void;
 
   onAutoAdvanceChange: (enabled: boolean) => void;
@@ -104,6 +106,8 @@ interface AiReviewWorkspaceProps {
   onRerunAiSuggestions: () => void;
 
   showRerunAiButton: boolean;
+
+  visionModelLabel?: string | null;
 
 }
 
@@ -145,6 +149,8 @@ export function AiReviewWorkspace({
 
   isQueueBusy,
 
+  isOptimisticEnqueue = false,
+
   onApprove,
 
   onAutoAdvanceChange,
@@ -184,6 +190,8 @@ export function AiReviewWorkspace({
   onRerunAiSuggestions,
 
   showRerunAiButton,
+
+  visionModelLabel,
 
 }: AiReviewWorkspaceProps) {
 
@@ -269,7 +277,11 @@ export function AiReviewWorkspace({
               className="ai-review-preview-overlay"
               role="status"
             >
-              <AiReviewProcessingStatusSection design={selectedDesign} variant="overlay" />
+              <AiReviewProcessingStatusSection
+                design={selectedDesign}
+                isRerunInProgress={showNeedsReviewRerunOverlay}
+                variant="overlay"
+              />
             </div>
           ) : null}
 
@@ -288,7 +300,11 @@ export function AiReviewWorkspace({
 
             design={selectedDesign}
 
+            isOptimisticEnqueue={isOptimisticEnqueue}
+
             queuePositionLabel={queuePositionLabel}
+
+            visionModelLabel={visionModelLabel}
 
           />
 

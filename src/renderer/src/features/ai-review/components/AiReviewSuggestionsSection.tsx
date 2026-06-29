@@ -52,10 +52,24 @@ export function AiReviewSuggestionsSection({
 
   return (
     <section aria-label="AI suggestions" className="ai-review-workspace-section ai-review-suggestions-section">
-      <div className="ai-review-workspace-section-header">
-        <h3 className="ai-review-workspace-section-title">AI Suggestions</h3>
-        {hasFailed ? <Badge variant="danger">AI failed</Badge> : null}
-        {showProcessingState ? <Badge variant="info">Processing</Badge> : null}
+      <div className="ai-review-workspace-section-header ai-review-suggestions-section-header">
+        <div className="ai-review-suggestions-section-header-main">
+          <h3 className="ai-review-workspace-section-title">AI Suggestions</h3>
+          {hasFailed ? <Badge variant="danger">AI failed</Badge> : null}
+          {showProcessingState ? <Badge variant="info">Processing</Badge> : null}
+        </div>
+        {showRerunAiButton ? (
+          <div className="ai-review-suggestions-section-header-actions">
+            <Button
+              disabled={isRerunningAi}
+              onClick={onRerunAiSuggestions}
+              size="sm"
+              variant="secondary"
+            >
+              {isRerunningAi ? "Re-running…" : "Re-run AI"}
+            </Button>
+          </div>
+        ) : null}
       </div>
 
       {showProcessingState ? (
@@ -128,19 +142,6 @@ export function AiReviewSuggestionsSection({
         <p className="ai-review-suggestions-note">
           Suggestions populate automatically when background AI processing completes.
         </p>
-      ) : null}
-
-      {showRerunAiButton ? (
-        <div className="ai-review-suggestions-actions">
-          <Button
-            disabled={isRerunningAi}
-            onClick={onRerunAiSuggestions}
-            size="sm"
-            variant="secondary"
-          >
-            {isRerunningAi ? "Re-running…" : "Re-run AI"}
-          </Button>
-        </div>
       ) : null}
     </section>
   );

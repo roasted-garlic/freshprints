@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import type { SelectOption } from "../../../shared/components/Select";
@@ -22,6 +22,7 @@ import { useAiReviewInbox } from "../hooks/useAiReviewInbox";
 import { useAiReviewKeyboardShortcuts } from "../hooks/useAiReviewKeyboardShortcuts";
 import { useAiReviewTabCounts } from "../hooks/useAiReviewTabCounts";
 import { useAiEnrichmentSettings } from "../../settings/hooks/useAiEnrichmentSettings";
+import { useAiReviewMainPanelHeight } from "../hooks/useAiReviewMainPanelHeight";
 import type { AiReviewInboxTab } from "../types/aiReviewInbox.types";
 
 function AiReviewPageContent() {
@@ -43,8 +44,17 @@ function AiReviewPageContent() {
 
   const tabCounts = useAiReviewTabCounts(statsRefreshKey);
   const enrichmentSettings = useAiEnrichmentSettings();
+  const { layoutStyle, mainPanelRef } = useAiReviewMainPanelHeight();
+
+  const handleNavigateToTab = useCallback(
+    (tab: AiReviewInboxTab) => {
+      setSearchParams(buildAiReviewInboxSearchParams({ tab }), { replace: true });
+    },
+    [setSearchParams],
+  );
 
   const inbox = useAiReviewInbox(filters, {
+    onNavigateToTab: handleNavigateToTab,
     onQueueChanged: () => void tabCounts.reloadCounts(),
   });
 
@@ -99,7 +109,7 @@ function AiReviewPageContent() {
         />
       ) : null}
 
-      <div className="ai-review-layout">
+      <div className="ai-review-layout" style={layoutStyle}>
         <aside className="ai-review-queue-panel">
           <AiReviewQueueStats
             counts={tabCounts.counts}
@@ -140,7 +150,7 @@ function AiReviewPageContent() {
           />
         </aside>
 
-        <main className="ai-review-main-panel">
+        <main className="ai-review-main-panel" ref={mainPanelRef}>
           <AiReviewWorkspace
             actionError={inbox.actionError}
             activeTab={inbox.activeTab}
@@ -159,6 +169,11 @@ function AiReviewPageContent() {
             isActionLoading={inbox.isActionLoading}
             isAutoQueueRunning={inbox.processingQueue.isAutoQueueRunning}
             isQueueBusy={inbox.processingQueue.isQueueBusy}
+            isOptimisticEnqueue={
+              inbox.activeTab === "processing" &&
+              Boolean(inbox.selectedDesign) &&
+              inbox.processingQueue.enqueueingDesignId === inbox.selectedDesign?.id
+            }
             onApprove={() => void inbox.approveSelected()}
             onAutoAdvanceChange={inbox.processingQueue.setAutoAdvance}
             onInputFocusChange={setIsInputFocused}
@@ -179,6 +194,7 @@ function AiReviewPageContent() {
             selectedDesign={inbox.selectedDesign}
             showReadOnlySuggestions={inbox.showReadOnlySuggestions}
             showRerunAiButton={inbox.canRerunAiSuggestions || inbox.isRerunningAi}
+            visionModelLabel={enrichmentSettings.visionModelLabel}
           />
         </main>
       </div>

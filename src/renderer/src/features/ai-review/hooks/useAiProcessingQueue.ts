@@ -44,6 +44,7 @@ export function useAiProcessingQueue({
   const [autoAdvance, setAutoAdvanceState] = useState(readAiProcessingAutoAdvancePreference);
   const [runState, setRunState] = useState<AiProcessingQueueRunState>("idle");
   const [isQueueBusy, setIsQueueBusy] = useState(false);
+  const [enqueueingDesignId, setEnqueueingDesignId] = useState<string | null>(null);
 
   const designsRef = useRef(designs);
   const runStateRef = useRef(runState);
@@ -61,6 +62,20 @@ export function useAiProcessingQueue({
   useEffect(() => {
     selectedIndexRef.current = selectedIndex;
   }, [selectedIndex]);
+
+  useEffect(() => {
+    if (!enqueueingDesignId) {
+      return;
+    }
+
+    const design = designs.find((item) => item.id === enqueueingDesignId);
+
+    if (!design?.aiProcessingStage) {
+      return;
+    }
+
+    setEnqueueingDesignId(null);
+  }, [designs, enqueueingDesignId]);
 
   const setAutoAdvance = useCallback((enabled: boolean) => {
     setAutoAdvanceState(enabled);
@@ -128,14 +143,22 @@ export function useAiProcessingQueue({
   );
 
   const enqueueDesign = useCallback(async (designId: string) => {
-    const result = await aiEnrichmentEnqueueService.enqueueForProcessing(designId);
+    setEnqueueingDesignId(designId);
 
-    if (!result.queued) {
-      throw new Error(
-        result.reason === "already_processing"
-          ? "This design is already being processed."
-          : "AI processing could not be queued. Please try again.",
-      );
+    try {
+      const result = await aiEnrichmentEnqueueService.enqueueForProcessing(designId);
+
+      if (!result.queued) {
+        setEnqueueingDesignId(null);
+        throw new Error(
+          result.reason === "already_processing"
+            ? "This design is already being processed."
+            : "AI processing could not be queued. Please try again.",
+        );
+      }
+    } catch (error) {
+      setEnqueueingDesignId(null);
+      throw error;
     }
   }, []);
 
@@ -214,6 +237,7 @@ export function useAiProcessingQueue({
         runStateRef.current = "idle";
         setRunState("idle");
       } catch (queueError) {
+        setEnqueueingDesignId(null);
         onActionError(
           queueError instanceof Error ? queueError.message : "Unable to run the AI processing queue.",
         );
@@ -275,6 +299,7 @@ export function useAiProcessingQueue({
         advanceSelectionToIndex(nextIndex);
       }
     } catch (processError) {
+      setEnqueueingDesignId(null);
       onActionError(
         processError instanceof Error ? processError.message : "Unable to process this design with AI.",
       );
@@ -295,6 +320,7 @@ export function useAiProcessingQueue({
     canProcessSelected,
     canStartAutoQueue,
     canStopAutoQueue,
+    enqueueingDesignId,
     isAutoQueueRunning,
     isQueueBusy,
     processSelectedDesign,

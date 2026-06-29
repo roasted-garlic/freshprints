@@ -2,6 +2,8 @@ import { Check, LoaderCircle, X } from "lucide-react";
 
 import type { Design } from "../../designs/types/design.types";
 import {
+  applyOptimisticEnqueueStage,
+  applyRerunOverlayStage,
   getAiProcessingOutputMessage,
   resolveAiProcessingOutputStatus,
   resolveAiProcessingPipelineSteps,
@@ -10,8 +12,11 @@ import {
 
 interface AiReviewProcessingStatusSectionProps {
   design: Design;
+  isOptimisticEnqueue?: boolean;
+  isRerunInProgress?: boolean;
   queuePositionLabel?: string | null;
   variant?: "default" | "overlay";
+  visionModelLabel?: string | null;
 }
 
 function StepperNodeIcon({ step, stepNumber }: { step: ProcessingPipelineStep; stepNumber: number }) {
@@ -41,12 +46,24 @@ function StepperNodeIcon({ step, stepNumber }: { step: ProcessingPipelineStep; s
 
 export function AiReviewProcessingStatusSection({
   design,
+  isOptimisticEnqueue = false,
+  isRerunInProgress = false,
   queuePositionLabel,
   variant = "default",
+  visionModelLabel,
 }: AiReviewProcessingStatusSectionProps) {
-  const steps = resolveAiProcessingPipelineSteps(design);
-  const outputStatus = resolveAiProcessingOutputStatus(design);
-  const statusMessage = getAiProcessingOutputMessage(outputStatus, design);
+  const showActivePipeline = isOptimisticEnqueue || isRerunInProgress;
+  const displayDesign = showActivePipeline
+    ? isRerunInProgress
+      ? applyRerunOverlayStage(design)
+      : applyOptimisticEnqueueStage(design)
+    : design;
+  const steps = resolveAiProcessingPipelineSteps(displayDesign);
+  const outputStatus = showActivePipeline ? "waiting" : resolveAiProcessingOutputStatus(design);
+  const statusMessage = getAiProcessingOutputMessage(outputStatus, displayDesign, {
+    isOptimisticEnqueue,
+    isRerunInProgress,
+  });
   const errorMessage =
     outputStatus === "failed" ? design.aiSuggestions?.errorMessage?.trim() : undefined;
   const isOverlay = variant === "overlay";
@@ -64,9 +81,14 @@ export function AiReviewProcessingStatusSection({
       {!isOverlay ? (
       <div className="ai-review-workspace-section-header">
         <h3 className="ai-review-workspace-section-title">Processing Status</h3>
-        {queuePositionLabel ? (
-          <span className="ai-review-queue-position">{queuePositionLabel}</span>
-        ) : null}
+        <div className="ai-review-processing-status-meta">
+          {queuePositionLabel ? (
+            <span className="ai-review-queue-position">{queuePositionLabel}</span>
+          ) : null}
+          {visionModelLabel ? (
+            <span className="ai-review-vision-model-label">{visionModelLabel}</span>
+          ) : null}
+        </div>
       </div>
       ) : (
       <div className="ai-review-workspace-section-header ai-review-workspace-section-header--overlay">
@@ -74,9 +96,9 @@ export function AiReviewProcessingStatusSection({
       </div>
       )}
 
-      {outputStatus === "not_generated" ? (
+      {outputStatus === "not_generated" && !showActivePipeline ? (
         <p className="ai-review-processing-idle-copy">{statusMessage}</p>
-      ) : (
+      ) : outputStatus === "not_generated" ? null : (
         <ol className="ai-review-pipeline-stepper" role="list">
         {steps.map((step, index) => (
           <li

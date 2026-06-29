@@ -117,13 +117,26 @@
   background: var(--color-bg-secondary);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  display: grid;
-  grid-template-rows: auto auto 1fr;
-  max-height: calc(100vh - 9rem);
+  display: flex;
+  flex-direction: column;
+  max-height: var(--ai-review-main-panel-height, calc(100vh - 9rem));
   min-height: 0;
   overflow: hidden;
   position: sticky;
   top: 0;
+  width: 100%;
+}
+
+.ai-review-queue-panel > .ai-review-queue-stats,
+.ai-review-queue-panel > .ai-review-tabs {
+  flex-shrink: 0;
+}
+
+.ai-review-queue-panel > .ai-review-queue-list,
+.ai-review-queue-panel > .ai-review-queue-loading,
+.ai-review-queue-panel > .ai-review-queue-empty {
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .ai-review-layout {
@@ -583,10 +596,23 @@
   margin: 0;
 }
 
-.ai-review-suggestions-actions {
+.ai-review-suggestions-section-header {
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.ai-review-suggestions-section-header-main {
+  align-items: center;
   display: flex;
-  justify-content: flex-end;
-  margin-top: var(--space-3);
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.ai-review-suggestions-section-header-actions {
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
 .ai-review-suggestions-meta {
@@ -653,6 +679,18 @@
 .ai-review-queue-position {
   color: var(--color-text-secondary);
   font-size: var(--font-size-sm);
+}
+
+.ai-review-processing-status-meta {
+  align-items: baseline;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.ai-review-vision-model-label {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
 }
 
 .ai-review-processing-idle-copy {
@@ -771,7 +809,11 @@
   }
 
   .ai-review-queue-panel {
-    max-height: min(38vh, calc(100vh - 10rem));
+    max-height: min(
+      var(--ai-review-main-panel-height, calc(100vh - 10rem)),
+      38vh,
+      calc(100vh - 10rem)
+    );
     position: sticky;
     top: 0;
     width: 100%;

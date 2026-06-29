@@ -5,12 +5,15 @@ import {
   CATALOG_ENRICHMENT_SYSTEM_PROMPT,
   OPENAI_CATALOG_ENRICHMENT_PROMPT_VERSION,
   buildCatalogEnrichmentSystemPrompt,
+  buildCatalogEnrichmentUserPrompt,
   descriptionLacksVisibleTextOverlap,
   extractPrimaryWordingFromDescription,
   isFilenameLikeTitle,
   isGenericCatalogTitle,
+  isPlaceholderCatalogDescription,
   normalizeAiTags,
   normalizeCatalogTitle,
+  resolveCatalogDescription,
   resolveCatalogTitle,
   sanitizeCatalogDescription,
   filterBackgroundColorsFromPalette,
@@ -18,16 +21,16 @@ import {
 } from "./catalogTitleRules";
 
 describe("catalogTitleRules", () => {
-  it("uses prompt version v11", () => {
-    assert.equal(OPENAI_CATALOG_ENRICHMENT_PROMPT_VERSION, "catalog-enrich-openai-v11");
+  it("uses prompt version v15", () => {
+    assert.equal(OPENAI_CATALOG_ENRICHMENT_PROMPT_VERSION, "catalog-enrich-openai-v15");
   });
 
-  it("includes v11 OCR, description, and category rules in system prompt", () => {
-    assert.match(CATALOG_ENRICHMENT_SYSTEM_PROMPT, /death/);
-    assert.match(CATALOG_ENRICHMENT_SYSTEM_PROMPT, /visibleText\[0\]/);
-    assert.match(CATALOG_ENRICHMENT_SYSTEM_PROMPT, /joined with " \/ "/);
-    assert.match(CATALOG_ENRICHMENT_SYSTEM_PROMPT, /Avoid unrelated generic categories/i);
-    assert.match(CATALOG_ENRICHMENT_SYSTEM_PROMPT, /never end the title with punctuation/i);
+  it("includes v15 OCR and JSON format rules in system prompt", () => {
+    assert.match(CATALOG_ENRICHMENT_SYSTEM_PROMPT, /SLEEP is not SLIPPED/i);
+    assert.match(CATALOG_ENRICHMENT_SYSTEM_PROMPT, /one entry per arc/i);
+    assert.match(CATALOG_ENRICHMENT_SYSTEM_PROMPT, /Return JSON only/i);
+    assert.match(buildCatalogEnrichmentUserPrompt("Animals"), /character by character/i);
+    assert.match(CATALOG_ENRICHMENT_SYSTEM_PROMPT, /description is required/i);
     assert.match(buildCatalogEnrichmentSystemPrompt(["witch"]), /\bwitch\b/);
   });
 
@@ -42,6 +45,64 @@ describe("catalogTitleRules", () => {
       sanitizeCatalogDescription("Funny raccoon against a neutral background."),
       "Funny raccoon",
     );
+    assert.equal(sanitizeCatalogDescription("on a gray background."), "");
+  });
+
+  it("detects placeholder catalog descriptions", () => {
+    assert.equal(isPlaceholderCatalogDescription("-"), true);
+    assert.equal(isPlaceholderCatalogDescription("—"), true);
+    assert.equal(isPlaceholderCatalogDescription("N/A"), true);
+    assert.equal(isPlaceholderCatalogDescription("A cartoon fox."), false);
+  });
+
+  it("fills description when sanitize removes background-only copy", () => {
+    const result = resolveCatalogDescription({
+      candidateDescription: "on a gray background.",
+      primarySubject: "raccoon",
+      style: "cartoon",
+    });
+
+    assert.equal(result.usedFallback, true);
+    assert.equal(isPlaceholderCatalogDescription(result.description), false);
+    assert.match(result.description, /raccoon/i);
+  });
+
+  it("synthesizes character-only illustration descriptions from subject and style", () => {
+    const result = resolveCatalogDescription({
+      candidateDescription: "-",
+      primarySubject: "raccoon",
+      style: "cartoon",
+      artworkContainsText: false,
+    });
+
+    assert.equal(result.usedFallback, true);
+    assert.equal(result.fallbackReason, "placeholder");
+    assert.match(result.description, /raccoon/i);
+    assert.match(result.description, /cartoon/i);
+  });
+
+  it("falls back to visible text when model returns placeholder description", () => {
+    const result = resolveCatalogDescription({
+      candidateDescription: "—",
+      visibleText: ["RAVE ON", "PARTY TIME"],
+      artworkContainsText: true,
+      primarySubject: "raccoon",
+      style: "cartoon",
+    });
+
+    assert.match(result.description, /RAVE ON/i);
+    assert.match(result.description, /PARTY TIME/i);
+  });
+
+  it("keeps valid model descriptions without fallback", () => {
+    const result = resolveCatalogDescription({
+      candidateDescription: "A playful cartoon raccoon wearing a cowboy hat.",
+      primarySubject: "raccoon",
+      style: "cartoon",
+    });
+
+    assert.equal(result.usedFallback, false);
+    assert.match(result.description, /cartoon raccoon/i);
   });
 
   it("filters excluded morbid tags after normalization", () => {
@@ -146,7 +207,7 @@ describe("catalogTitleRules", () => {
     );
   });
 
-  it("adds black or white text suffixes for single-color text artwork", () => {
+  it("adds black or white text suffixes for text-only artwork", () => {
     assert.equal(
       resolveCatalogTitle({
         candidateTitle: "Faith Over Fear",
@@ -154,8 +215,58 @@ describe("catalogTitleRules", () => {
         uploadFileStem: "upload",
         visibleText: ["Faith Over Fear"],
         visibleTextColor: "white",
+        textOnlyArtwork: true,
       }),
       "Faith Over Fear White Text",
+    );
+  });
+
+  it("does not add text color suffix for illustrated designs", () => {
+    assert.equal(
+      resolveCatalogTitle({
+        candidateTitle: "Outside I'm Hootin Black Text",
+        primarySubject: "raccoon",
+        tags: ["raccoon", "cartoon", "western"],
+        uploadFileStem: "raccoon-cowboy",
+        visibleText: ["OUTSIDE I'M HOOTIN'", "INSIDE I'M HOLLERIN'"],
+        visibleTextColor: "black",
+        textOnlyArtwork: false,
+        artworkContainsText: true,
+      }),
+      "Outside I'm Hootin",
+    );
+  });
+
+  it("strips model-added suffix when textOnlyArtwork is not true", () => {
+    assert.equal(
+      resolveCatalogTitle({
+        candidateTitle: "Faith Over Fear White Text",
+        uploadFileStem: "upload",
+        visibleText: ["Faith Over Fear"],
+        visibleTextColor: "white",
+        textOnlyArtwork: false,
+      }),
+      "Faith Over Fear",
+    );
+  });
+
+  it("applies suffix when textOnlyArtwork is true and ink is black", () => {
+    assert.equal(
+      resolveCatalogTitle({
+        candidateTitle: "Stay Humble",
+        uploadFileStem: "upload",
+        visibleText: ["STAY HUMBLE"],
+        visibleTextColor: "black",
+        textOnlyArtwork: true,
+      }),
+      "Stay Humble Black Text",
+    );
+  });
+
+  it("filters generic production tags while keeping searchable tokens", () => {
+    assert.deepEqual(
+      normalizeAiTags(["shirt", "typography", "mama", "coffee", "funny", "nurse"]),
+      ["mama", "coffee", "funny", "nurse"],
     );
   });
 

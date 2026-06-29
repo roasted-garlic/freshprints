@@ -6,8 +6,12 @@ import { updateAiProcessingStage } from "./designAiFields";
 import { logPipelineEvent } from "../lib/pipelineLog";
 import { resolveOpenAiErrorCode } from "./openAiRetry";
 import { prepareAiAnalysisImage } from "./prepareAiAnalysisImage";
-import { loadAiEnrichmentSettings } from "./loadAiEnrichmentSettings";
-import { descriptionLacksVisibleTextOverlap } from "./catalogTitleRules";
+import {
+  loadCachedActiveCategories,
+  loadCachedAiEnrichmentSettings,
+} from "./aiEnrichmentRuntimeCache";
+import { PipelinePhaseTimer } from "./pipelineTiming";
+import { descriptionLacksVisibleTextOverlap, isPlaceholderCatalogDescription, resolveCatalogDescription } from "./catalogTitleRules";
 import { resolveAiEnrichmentProvider } from "./providers/resolveAiEnrichmentProvider";
 
 interface DesignRecord {
@@ -18,26 +22,6 @@ interface DesignRecord {
   aiProcessingStage?: string;
   aiReviewStatus?: string;
   status?: string;
-}
-
-async function loadActiveCategories(): Promise<{
-  names: string[];
-  idsByName: Record<string, string>;
-}> {
-  const snapshot = await adminDb.collection("categories").where("isActive", "==", true).get();
-  const names: string[] = [];
-  const idsByName: Record<string, string> = {};
-
-  snapshot.forEach((doc) => {
-    const name = doc.data().name;
-
-    if (typeof name === "string" && name.trim()) {
-      names.push(name);
-      idsByName[name.trim().toLowerCase()] = doc.id;
-    }
-  });
-
-  return { names, idsByName };
 }
 
 async function downloadPreviewBytes(previewPath: string): Promise<Buffer> {
@@ -136,10 +120,11 @@ export async function runAiEnrichmentPipeline(
     return;
   }
 
-  const enrichmentSettings = await loadAiEnrichmentSettings();
+  const phaseTimer = new PipelinePhaseTimer();
+  const enrichmentSettings = await loadCachedAiEnrichmentSettings();
   const provider = resolveAiEnrichmentProvider(openAiApiKey, enrichmentSettings.visionModelId);
 
-  logPipelineEvent("pipeline.started", {
+  phaseTimer.logPhase("pipeline.started", {
     designId,
     providerId: provider.providerId,
     modelId: provider.modelId,
@@ -151,8 +136,8 @@ export async function runAiEnrichmentPipeline(
     await updateAiProcessingStage(designId, "preparing_image");
     const previewBytes = await downloadPreviewBytes(previewPath);
     const analysisImage = await prepareAiAnalysisImage(previewBytes);
-    const categories = await loadActiveCategories();
-    logPipelineEvent("analysis_image.prepared", {
+    const categories = await loadCachedActiveCategories();
+    phaseTimer.logPhase("analysis_image.prepared", {
       designId,
       contentType: analysisImage.contentType,
       height: analysisImage.height,
@@ -195,14 +180,34 @@ export async function runAiEnrichmentPipeline(
       });
     }
 
+    if (isPlaceholderCatalogDescription(suggestions.description)) {
+      const repaired = resolveCatalogDescription({
+        candidateDescription: suggestions.description,
+        title: suggestions.title,
+        primarySubject: result.analysis.primarySubject,
+        style: result.analysis.style,
+        theme: result.analysis.theme,
+        tags: suggestions.tags,
+        visibleText: result.analysis.visibleText,
+        artworkContainsText: result.analysis.artworkContainsText,
+        colorPalette: result.analysis.colorPalette,
+      });
+      suggestions.description = repaired.description;
+      logPipelineEvent("catalog.enrich.description_fallback", {
+        designId,
+        reason: repaired.fallbackReason ?? "pipeline_guard",
+        tier: repaired.fallbackTier ?? "generic",
+      });
+    }
+
     await markAiSuccess(designId, suggestions, result.analysis);
-    logPipelineEvent("pipeline.completed", {
+    phaseTimer.logPhase("pipeline.completed", {
       designId,
       providerId: provider.providerId,
       confidence: suggestions.confidence ?? null,
     });
   } catch (error) {
-    logPipelineEvent("pipeline.failed", {
+    phaseTimer.logPhase("pipeline.failed", {
       designId,
       providerId: provider.providerId,
       message: error instanceof Error ? error.message : "unknown_error",

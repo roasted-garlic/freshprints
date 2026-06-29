@@ -52,11 +52,11 @@ export const OPENAI_VISION_MAX_COMPLETION_TOKENS = 2500;
 /** One-shot retry cap when reasoning exhausts the primary budget (finish_reason: length). */
 export const OPENAI_VISION_MAX_COMPLETION_TOKENS_RETRY = 4000;
 
-/** Primary reasoning effort for catalog vision (better OCR on arched/multi-segment text). */
-export const OPENAI_VISION_REASONING_EFFORT = "low" as const;
+/** Primary reasoning effort for catalog vision (speed-first on Processing path). */
+export const OPENAI_VISION_REASONING_EFFORT = "minimal" as const;
 
-/** Fallback when a model rejects low reasoning effort. */
-export const OPENAI_VISION_REASONING_EFFORT_FALLBACK = "minimal" as const;
+/** Higher effort on empty-output retry or when primary effort is unsupported. */
+export const OPENAI_VISION_REASONING_EFFORT_FALLBACK = "low" as const;
 
 /** Re-queue when an active AI stage has not updated within this window. */
 
