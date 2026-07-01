@@ -113,7 +113,9 @@ describe("buildVisionRequestBody", () => {
     assert.equal(parsed.reasoning_effort, undefined);
   });
 
-  it("injects approved categories, approved tags, and excluded tags into the user prompt", () => {
+  it("injects excluded tags but not the full approved category/tag list into the default v18 user prompt", () => {
+    // v18 is vision-only: approved taxonomy resolution moved server-side (catalogTagResolver.ts,
+    // catalogThemeCategoryResolver.ts). The default template only substitutes {{excluded_tags}}.
     const parsed = parseBody();
     const userMessage = parsed.messages.find((message) => message.role === "user");
     assert.ok(userMessage);
@@ -125,11 +127,8 @@ describe("buildVisionRequestBody", () => {
     );
 
     assert.ok(textInput);
-    assert.match(textInput.text, /- Motherhood .*Use for mom, mama, and family designs/);
-    assert.match(textInput.text, /- Faith .*Use for religious and inspirational designs/);
-    assert.match(textInput.text, /- mama \| aliases: mom, mother \| preferred when:/);
-    assert.match(textInput.text, /Use when motherhood is the main searchable idea/);
-    assert.match(textInput.text, /- retro \| aliases: vintage \| preferred when:/);
     assert.match(textInput.text, /death/);
+    assert.doesNotMatch(textInput.text, /Motherhood/);
+    assert.doesNotMatch(textInput.text, /aliases: mom, mother/);
   });
 });

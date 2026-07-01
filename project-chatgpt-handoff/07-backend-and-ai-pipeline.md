@@ -35,27 +35,32 @@ Updates design aiReviewStatus → triggers onDesignAiEnrichmentQueued
     ↓
 aiEnrichmentPipeline.ts orchestrates:
     - Load settings (cached 60s)
-    - Load categories (cached 60s)
+    - Load categories and approved tags (cached 60s)
     - Fetch thumbnail/preview from Storage
-    - Call OpenAI vision (openAiVisionEnrichmentProvider)
-    - Parse response (catalogEnrichmentResponse.ts)
-    - Validate visible text (visibleTextValidation.ts)
-    - Resolve category (catalogCategoryResolver.ts)
-    - Apply title rules (catalogTitleRules.ts)
-    - Retry if needed (catalogEnrichmentRetry.ts)
+    - Call vision provider (small v18 vision-only prompt, no taxonomy injected)
+    - Parse response (simpleCatalogEnrichmentResponse.ts) — raw category/tags are transient signals
+    - Resolve approved tags + suggestedNewTags (catalogTagResolver.ts)
+    - Resolve category from approved list using matched tags + raw signals (catalogThemeCategoryResolver.ts)
+    - Apply title/description rules (catalogTitleRules.ts)
     ↓
 Write aiSuggestions + update aiReviewStatus
 ```
 
 ## Prompt versioning
 
-Current target: **`catalog-enrich-openai-v16`**
+Current target: **`catalog-enrich-openai-v18`**
 
-- Prompt text in `functions/src/ai/providers/openAiVisionEnrichmentProvider.ts`
-- Dev provider emits `catalog-enrich-dev-v16` when `OPENAI_API_KEY` secret is empty
+- v18 is a small, fixed-size, vision-only prompt (`shared/constants/aiEnrichment.constants.ts`
+  `DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE`, built by `functions/src/ai/simpleCatalogEnrichmentPrompt.ts`).
+  It no longer injects the full approved category list or full approved tag list — only
+  `{{excluded_tags}}` remains a required placeholder. Approved-tag matching, `suggestedNewTags`
+  generation, and category resolution all happen server-side after the model call
+  (`catalogTagResolver.ts`, `catalogThemeCategoryResolver.ts`) instead of being requested from the
+  model directly.
+- Dev provider emits `catalog-enrich-dev-v18` when the API key secret is empty
 - UI displays `aiSuggestions.promptVersion` in AI Review workspace
 
-**If UI shows v12:** likely undeployed functions — not a code regression.
+**If UI shows an older version:** likely undeployed functions — not a code regression.
 
 ## OpenAI configuration
 
@@ -84,14 +89,14 @@ Settings AI playground (owner/admin): `/settings` → calls `testAiEnrichmentPla
 | Module | Role |
 |--------|------|
 | `aiEnrichmentPipeline.ts` | Main orchestrator |
-| `catalogEnrichmentResponse.ts` | JSON parse + coercion |
-| `visibleTextValidation.ts` | OCR quality heuristics |
-| `catalogCategoryResolver.ts` | Category match + keyword remap |
-| `catalogTitleRules.ts` | Title formatting, suffix rules |
-| `catalogEnrichmentRetry.ts` | Quality + empty-output retry |
+| `simpleCatalogEnrichmentPrompt.ts` | Builds the small v18 vision-only prompt |
+| `simpleCatalogEnrichmentResponse.ts` | JSON parse + coercion (v18 lean schema) |
+| `catalogTagResolver.ts` | Server-side approved tag/alias matching + `suggestedNewTags` generation |
+| `catalogThemeCategoryResolver.ts` | Server-side category resolution with buyer-intent priority rules |
+| `catalogTitleRules.ts` | Title/description formatting, tag normalization helpers |
 | `pipelineTiming.ts` | Latency observability logs |
-| `aiEnrichmentRuntimeCache.ts` | Settings/categories cache |
-| `aiEnrichmentPlayground.ts` | Settings playground validation + OpenAI request builder |
+| `aiEnrichmentRuntimeCache.ts` | Settings/categories/approved tags cache |
+| `aiEnrichmentPlayground.ts` | Settings playground validation + request builder |
 
 ## External integrations
 

@@ -24,8 +24,8 @@ function hasTrailingTitlePunctuation(rawTitle: string): boolean {
   return TRAILING_TITLE_PUNCTUATION.test(rawTitle.trim());
 }
 
-export const OPENAI_CATALOG_ENRICHMENT_PROMPT_VERSION = "catalog-enrich-openai-v17";
-export const DEVELOPMENT_CATALOG_ENRICHMENT_PROMPT_VERSION = "catalog-enrich-dev-v17";
+export const OPENAI_CATALOG_ENRICHMENT_PROMPT_VERSION = "catalog-enrich-openai-v18";
+export const DEVELOPMENT_CATALOG_ENRICHMENT_PROMPT_VERSION = "catalog-enrich-dev-v18";
 
 const CATALOG_ENRICHMENT_SYSTEM_PROMPT_BODY = `Analyze one printable apparel artwork image for catalog enrichment. Base every field only on the image. Do not use the filename, outside context, or filler. Read all visible text first, then derive metadata grounded in what you observe. If a detail is uncertain, omit it or lower confidence instead of inventing it.
 
@@ -993,7 +993,7 @@ const TAG_STOPWORDS = new Set([
   "your",
 ]);
 
-function tokenizeTagCandidate(value: string): string[] {
+export function tokenizeTagCandidate(value: string): string[] {
   const normalized = value.toLowerCase().replace(/['’]/g, " ").trim();
 
   return normalized

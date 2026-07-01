@@ -6,6 +6,76 @@
 
 ## Decisions
 
+### ADR-FP-039: Lean vision-only prompt with server-side taxonomy resolution (catalog prompt v18)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-01 |
+| Status | accepted |
+
+**Supersedes:** ADR-FP-038's prompt-size direction (injecting the full approved category and tag
+lists into every AI Processing call). Keeps ADR-FP-037's global approved tag library, tag resolver,
+and `suggestedNewTags` architecture, and ADR-FP-035/036's single-call, playground-style request
+pattern (no `response_format: json_object`, tolerant server-side JSON extraction) fully intact.
+
+**Decision**
+
+1. Replace the ADR-FP-038 taxonomy-aware prompt with a small, fixed-size, vision-only prompt.
+   Bump prompt version to `catalog-enrich-openai-v18` (dev `catalog-enrich-dev-v18`). The model
+   receives no approved category list and no approved tag list; it returns only `title`,
+   `description`, a freeform `category` theme candidate, and up to 12 tag candidates (phrases
+   allowed).
+2. Move all approved-taxonomy resolution to deterministic server-side code that runs after the
+   model call:
+   - Tag resolution continues to use the existing `catalogTagResolver.resolveAiCatalogTags`
+     (unchanged architecture from ADR-FP-037) — approved name/alias matching, phrase tolerance,
+     and `suggestedNewTags` generation for unmatched candidates.
+   - A new `catalogThemeCategoryResolver.resolveThemeCategory` replaces the previous exact-match
+     `resolveLeanCatalogCategory`. It scores every approved category using token overlap against
+     its name and description versus the raw model category candidate, title, description,
+     visible text, and the tags already matched by the tag resolver — with priority boosts for
+     buyer-intent theme families (family/parenting/motherhood/fatherhood, faith/religious,
+     teacher/school/education) that can outweigh a raw candidate naming an unrelated category
+     (e.g. the model returning `"Humorous Quotes"` for a motherhood/skeleton design). Generic
+     art-style tokens (skeleton, cartoon, mascot, illustrated character) do not by themselves
+     count toward a pop-culture/character category, and a bare "quote" token does not by itself
+     count toward a humor/quotes category without a co-occurring humor signal.
+   - Category resolution runs after tag resolution in the pipeline so the resolved approved tags
+     feed the category scoring signal.
+3. The raw model category candidate is never trusted or persisted directly. It is carried as a
+   transient `DesignAiAnalysis.rawCategory` signal (deleted before the Firestore write, same
+   pattern as the existing transient `rawTags`). When no approved category clears the minimum
+   confidence threshold, `aiSuggestions.categoryId`/`categoryName` are left undefined — staff sets
+   the category manually in AI Review, the same fallback UX as before.
+4. Server-generated `suggestedNewTags` names are guaranteed safe single-word reusable tags. An
+   unmatched multi-word candidate (e.g. "messy bun") is reduced to a clean single-word name with
+   the original phrase retained as an alias, or dropped entirely if no safe reduction exists —
+   never persisted with a suggested tag `name` containing a space.
+5. `AI_ENRICHMENT_REQUIRED_PROMPT_PLACEHOLDERS` shrinks to `{{excluded_tags}}` only. Owner-edited
+   Settings prompt templates that still contain the retired `{{approved_categories}}`/
+   `{{approved_tags}}` placeholders continue to build and substitute correctly (the formatting
+   helpers are kept, not removed) so a template saved before this change keeps working.
+
+**Why**
+
+Reported AI Processing input token cost scaled with the size of the approved category/tag
+libraries because the full taxonomy was re-sent on every call. A small fixed-size prompt removes
+that scaling entirely, and the app's existing tag resolver architecture (ADR-FP-037) already
+proved this pattern works well for tags — this extends the same approach to categories.
+
+**Consequences**
+
+Positive: AI Processing input tokens no longer scale with taxonomy library size. Category
+assignment becomes deterministic, unit-testable, and immune to prompt-injection-style category
+guesses, since it only ever picks from the approved category list.
+
+Tradeoff: Category resolution is a real behavior change from "trust the model's exact-match
+candidate" to "score all approved categories using local signals." Mitigated by explicit unit
+tests for the priority-family scenarios and by preserving the existing "leave undefined, staff
+sets it in AI Review" fallback when no category scores confidently.
+
+---
+
 ### ADR-FP-038: AI Processing approved taxonomy prompt context
 
 | Field | Value |

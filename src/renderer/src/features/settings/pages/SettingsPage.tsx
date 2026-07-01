@@ -12,13 +12,11 @@ import { useShellHeaderConfig } from "../../../shared/hooks/useShellHeaderConfig
 import { useAuth } from "../../auth/hooks/useAuth";
 import { permissionService } from "../../permissions/services/permissionService";
 import {
-  AI_ENRICHMENT_APPROVED_CATEGORIES_PLACEHOLDER,
-  AI_ENRICHMENT_APPROVED_TAGS_PLACEHOLDER,
-  AI_ENRICHMENT_EXCLUDED_TAGS_PLACEHOLDER,
   AI_ENRICHMENT_PROMPT_TEMPLATE_MAX_LENGTH,
   BASE_AI_TAG_EXCLUSIONS,
   ALL_VISION_MODEL_OPTIONS,
   OPENAI_REASONING_EFFORT_OPTIONS,
+  hasRequiredAiEnrichmentPromptPlaceholders,
   isGeminiModelId,
   resolveClientReasoningEffort,
   resolveClientVisionModelId,
@@ -79,11 +77,8 @@ export function SettingsPage() {
     (draftAdditionalTagExclusions !== null &&
       formatAdditionalTagExclusionsInput(draftAdditionalTagExclusions) !==
         formatAdditionalTagExclusionsInput(additionalTagExclusions));
-  const promptTemplateError =
-    !selectedPromptTemplate.includes(AI_ENRICHMENT_APPROVED_CATEGORIES_PLACEHOLDER) ||
-    !selectedPromptTemplate.includes(AI_ENRICHMENT_APPROVED_TAGS_PLACEHOLDER) ||
-    !selectedPromptTemplate.includes(AI_ENRICHMENT_EXCLUDED_TAGS_PLACEHOLDER)
-    ? "Prompt must include {{approved_categories}}, {{approved_tags}}, and {{excluded_tags}} so server-side values are inserted."
+  const promptTemplateError = !hasRequiredAiEnrichmentPromptPlaceholders(selectedPromptTemplate)
+    ? "Prompt must include {{excluded_tags}} so server-side values are inserted."
     : null;
 
   const shellHeaderConfig = useMemo(

@@ -214,6 +214,42 @@ describe("catalogTagResolver", () => {
     ]);
   });
 
+  it("review note 4: reduces an unmatched multi-word candidate to a safe single-word suggested tag with the phrase as an alias", () => {
+    const result = resolveAiCatalogTags({
+      approvedTags: [createCatalogTag({ name: "hair" })],
+      candidates: ["messy bun"],
+    });
+
+    assert.deepEqual(result.tags, []);
+    assert.equal(result.suggestedNewTags.length, 1);
+    const suggestion = result.suggestedNewTags[0];
+    assert.ok(suggestion);
+    assert.ok(!suggestion.name.includes(" "), "suggested tag name must never contain a space");
+    assert.ok(suggestion.aliases.includes("messy bun"), "original phrase should be retained as an alias");
+  });
+
+  it("review note 4: matches a phrase candidate to an approved alias instead of suggesting a new tag", () => {
+    const result = resolveAiCatalogTags({
+      approvedTags: [createCatalogTag({ name: "hair", aliases: ["messy bun"] })],
+      candidates: ["messy bun"],
+    });
+
+    assert.deepEqual(result.tags, ["hair"]);
+    assert.deepEqual(result.suggestedNewTags, []);
+  });
+
+  it("review note 4: drops an unmatched candidate that has no safe single-word reduction", () => {
+    const result = resolveAiCatalogTags({
+      approvedTags: [],
+      candidates: ["a an the"],
+    });
+
+    assert.deepEqual(
+      result.suggestedNewTags.every((tag) => !tag.name.includes(" ")),
+      true,
+    );
+  });
+
   it("drops incomplete or invalid suggested-new-tags", () => {
     const result = resolveAiCatalogTags({
       approvedTags: [],

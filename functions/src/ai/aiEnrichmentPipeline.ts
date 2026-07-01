@@ -14,6 +14,7 @@ import {
 import { PipelinePhaseTimer } from "./pipelineTiming";
 import { descriptionLacksVisibleTextOverlap, isPlaceholderCatalogDescription, resolveCatalogDescription } from "./catalogTitleRules";
 import { resolveAiCatalogTags } from "./catalogTagResolver";
+import { resolveThemeCategory } from "./catalogThemeCategoryResolver";
 import { resolveAiEnrichmentProvider } from "./providers/resolveAiEnrichmentProvider";
 
 interface DesignRecord {
@@ -191,11 +192,6 @@ export async function runAiEnrichmentPipeline(
       generatedAt: result.suggestions.generatedAt ?? new Date().toISOString(),
     };
 
-    if (suggestions.categoryName && !suggestions.categoryId) {
-      suggestions.categoryId = categories.idsByName[suggestions.categoryName.toLowerCase()];
-      suggestions.categoryName = suggestions.categoryId ? suggestions.categoryName : undefined;
-    }
-
     // Prefer the raw (untokenized) model tags so multi-word approved names and aliases
     // (e.g. "rock and roll") resolve before falling back to suggestions. suggestions.tags is
     // already tokenized into single words, so it is only a fallback when rawTags is absent.
@@ -208,8 +204,28 @@ export async function runAiEnrichmentPipeline(
     suggestions.suggestedNewTags =
       resolvedTags.suggestedNewTags.length > 0 ? resolvedTags.suggestedNewTags : undefined;
 
-    // rawTags is a transient resolver input; do not persist it with the design.
+    // Category resolution runs after tag resolution so the just-matched approved tags can feed
+    // the category scoring signal. The model's raw category candidate (result.analysis.rawCategory)
+    // is only one competing signal here — never trusted or persisted directly — alongside title,
+    // description, visible text, and matched tags. Leaves categoryId/categoryName undefined when
+    // no approved category clears the confidence threshold (staff sets it in AI Review).
+    const resolvedCategory = resolveThemeCategory(
+      {
+        rawCategory: result.analysis.rawCategory,
+        title: suggestions.title,
+        description: suggestions.description,
+        visibleText: result.analysis.visibleText,
+        matchedTags: suggestions.tags,
+        approvedCategories: categories.categories,
+      },
+      categories.idsByName,
+    );
+    suggestions.categoryName = resolvedCategory.categoryName;
+    suggestions.categoryId = resolvedCategory.categoryId;
+
+    // rawTags/rawCategory are transient resolver inputs; do not persist them with the design.
     delete result.analysis.rawTags;
+    delete result.analysis.rawCategory;
 
     if (descriptionLacksVisibleTextOverlap(suggestions.description, result.analysis.visibleText)) {
       logPipelineEvent("catalog.enrich.description_text_mismatch", {

@@ -69,6 +69,13 @@ export interface DesignAiAnalysis {
    * and aliases. Transient pipeline signal — not persisted with the design.
    */
   rawTags?: string[];
+  /**
+   * Raw model category candidate (freeform, not guaranteed to match an approved category name).
+   * Used only as a scoring signal by the server-side theme/category resolver, alongside
+   * title/description/visibleText/matchedTags. Transient pipeline signal — never persisted as the
+   * final category and always deleted before the design write, same as rawTags.
+   */
+  rawCategory?: string;
 }
 
 export const AI_PROCESSING_STAGE_LABELS: Record<AiProcessingStage, string> = {

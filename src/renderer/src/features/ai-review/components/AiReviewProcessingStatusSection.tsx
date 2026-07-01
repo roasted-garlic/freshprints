@@ -144,16 +144,14 @@ export function AiReviewProcessingStatusSection({
               <dd>{design.aiSuggestions.provider}</dd>
             </div>
           ) : null}
-          {design.aiSuggestions?.promptTokens != null ? (
+          {design.aiSuggestions?.promptTokens != null ||
+          design.aiSuggestions?.completionTokens != null ? (
             <div>
-              <dt>Input tokens</dt>
-              <dd>{design.aiSuggestions.promptTokens}</dd>
-            </div>
-          ) : null}
-          {design.aiSuggestions?.completionTokens != null ? (
-            <div>
-              <dt>Output tokens</dt>
-              <dd>{design.aiSuggestions.completionTokens}</dd>
+              <dt>Input / Output tokens</dt>
+              <dd>
+                {design.aiSuggestions?.promptTokens ?? "—"} /{" "}
+                {design.aiSuggestions?.completionTokens ?? "—"}
+              </dd>
             </div>
           ) : null}
           {design.aiSuggestions?.estimatedCostUsd != null ? (

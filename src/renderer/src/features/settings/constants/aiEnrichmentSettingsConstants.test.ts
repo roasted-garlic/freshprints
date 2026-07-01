@@ -2,8 +2,6 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import {
-  AI_ENRICHMENT_APPROVED_CATEGORIES_PLACEHOLDER,
-  AI_ENRICHMENT_APPROVED_TAGS_PLACEHOLDER,
   AI_ENRICHMENT_EXCLUDED_TAGS_PLACEHOLDER,
   DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
   DEFAULT_OPENAI_REASONING_EFFORT,
@@ -11,6 +9,7 @@ import {
   OPENAI_REASONING_EFFORT_OPTIONS,
   DEFAULT_OPENAI_VISION_MODEL_ID,
   OPENAI_VISION_MODEL_OPTIONS,
+  hasRequiredAiEnrichmentPromptPlaceholders,
   resolveClientReasoningEffort,
   resolveClientVisionModelId,
 } from "./aiEnrichmentSettingsConstants";
@@ -53,15 +52,14 @@ describe("aiEnrichmentSettingsConstants", () => {
     assert.equal(resolveClientReasoningEffort("none"), "none");
   });
 
-  it("keeps the default AI Processing prompt editable placeholder", () => {
+  it("keeps the default AI Processing prompt small and vision-only (v18)", () => {
     assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /description:/);
     assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /category:/);
     assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /title:/);
     assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /tags:/);
-    assert.ok(
-      DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE.includes(AI_ENRICHMENT_APPROVED_CATEGORIES_PLACEHOLDER),
-    );
-    assert.ok(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE.includes(AI_ENRICHMENT_APPROVED_TAGS_PLACEHOLDER));
+    // The v18 lean prompt no longer injects the full approved category/tag list — that
+    // resolution moved server-side. Only {{excluded_tags}} remains a required placeholder.
     assert.ok(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE.includes(AI_ENRICHMENT_EXCLUDED_TAGS_PLACEHOLDER));
+    assert.ok(hasRequiredAiEnrichmentPromptPlaceholders(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE));
   });
 });

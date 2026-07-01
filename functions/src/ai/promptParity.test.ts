@@ -11,9 +11,10 @@ import { DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE } from "../../../shared/constants
 
 /**
  * Prompt parity: the Settings AI Playground (aiEnrichmentPlayground.ts) and AI Processing
- * (openAiVisionEnrichmentProvider.ts) both build their prompts from the SAME shared builders with
- * the SAME injected approved categories, approved tags, and excluded tags. This test locks that in
- * so the two paths cannot drift back into two separate prompt implementations.
+ * (openAiVisionEnrichmentProvider.ts) both build their prompts from the SAME shared builders. This
+ * test locks that in so the two paths cannot drift back into two separate prompt implementations.
+ * The v18 lean prompt no longer injects the full approved category/tag list (that resolution moved
+ * server-side); only excluded tags remain injected.
  */
 
 const categories: AiEnrichmentCategoryOption[] = [
@@ -77,19 +78,24 @@ describe("prompt parity (playground vs AI processing)", () => {
     assert.equal(buildUserPrompt(template), buildUserPrompt(template));
   });
 
-  it("injects approved categories, approved tags, and excluded tags into the resolved prompt", () => {
+  it("does not inject the full approved category or tag list into the default v18 prompt", () => {
+    // The v18 lean prompt is vision-only: approved taxonomy resolution moved server-side, so the
+    // shipped default template no longer references the approved category/tag placeholders and
+    // the resolved prompt must not contain the injected taxonomy context.
     const resolved = buildUserPrompt(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE);
 
-    assert.ok(resolved.includes("Family"));
-    assert.ok(resolved.includes("Pop Culture & Characters"));
-    assert.ok(resolved.includes("rock-n-roll"));
-    assert.ok(resolved.includes("aliases: rock and roll, rock n roll"));
-    assert.ok(resolved.includes("motherhood"));
+    assert.ok(!resolved.includes("Pop Culture & Characters"));
+    assert.ok(!resolved.includes("rock-n-roll"));
+    assert.ok(!resolved.includes("aliases: rock and roll, rock n roll"));
+    assert.ok(!DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE.includes("{{approved_categories}}"));
+    assert.ok(!DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE.includes("{{approved_tags}}"));
+  });
+
+  it("injects excluded tags into the resolved prompt", () => {
+    const resolved = buildUserPrompt(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE);
+
     assert.ok(resolved.includes("death"));
     assert.ok(resolved.includes("skull"));
-    // Placeholders must be fully replaced.
-    assert.ok(!resolved.includes("{{approved_categories}}"));
-    assert.ok(!resolved.includes("{{approved_tags}}"));
     assert.ok(!resolved.includes("{{excluded_tags}}"));
   });
 });

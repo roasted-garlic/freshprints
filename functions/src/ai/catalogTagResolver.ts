@@ -1,4 +1,5 @@
 import type { CatalogTag, SuggestedNewTag } from "../../../shared/types/catalogTag.types";
+import { tokenizeTagCandidate } from "./catalogTitleRules";
 
 const MAX_AI_APPROVED_TAGS = 12;
 const MAX_TAG_LENGTH = 40;
@@ -115,11 +116,39 @@ function buildApprovedTagLookup(approvedTags: CatalogTag[]): ApprovedTagLookups 
   return { lookup, aliasLookup };
 }
 
-function buildSuggestedNewTag(name: string): SuggestedNewTag {
+/**
+ * Reduce an unmatched raw candidate (which may be a multi-word phrase like "messy bun") to a
+ * safe single-word reusable tag name, keeping the original phrase as an alias when it differs.
+ * Returns undefined when no safe single-word reduction exists (e.g. the phrase tokenizes to
+ * nothing usable after dropping stopwords) — callers must drop the candidate in that case rather
+ * than persist a suggested tag whose name contains a space.
+ */
+function reduceToSafeSuggestedTag(rawCandidate: string): { name: string; aliases: string[] } | undefined {
+  if (!rawCandidate.includes(" ")) {
+    return isUsableTagCandidate(rawCandidate) ? { aliases: [], name: rawCandidate } : undefined;
+  }
+
+  const tokens = tokenizeTagCandidate(rawCandidate);
+  const name = tokens[tokens.length - 1];
+
+  if (!name || !isUsableTagCandidate(name)) {
+    return undefined;
+  }
+
+  return { aliases: [rawCandidate], name };
+}
+
+function buildSuggestedNewTag(rawCandidate: string): SuggestedNewTag | undefined {
+  const reduced = reduceToSafeSuggestedTag(rawCandidate);
+
+  if (!reduced) {
+    return undefined;
+  }
+
   return {
-    aliases: [],
-    name,
-    preferredWhen: `Use when "${name}" is a primary searchable subject, theme, style, or occasion for the design.`,
+    aliases: reduced.aliases,
+    name: reduced.name,
+    preferredWhen: `Use when "${rawCandidate}" is a primary searchable subject, theme, style, or occasion for the design.`,
     reason: "AI output did not match an approved tag name or alias.",
     source: "ai",
   };
@@ -313,9 +342,11 @@ export function resolveAiCatalogTags({
   }
 
   for (const candidate of unmatchedCandidates) {
-    if (!seenSuggested.has(candidate)) {
-      suggestedResult.push(buildSuggestedNewTag(candidate));
-      seenSuggested.add(candidate);
+    const suggestion = buildSuggestedNewTag(candidate);
+
+    if (suggestion && !seenSuggested.has(suggestion.name) && !lookup.has(suggestion.name)) {
+      suggestedResult.push(suggestion);
+      seenSuggested.add(suggestion.name);
     }
   }
 

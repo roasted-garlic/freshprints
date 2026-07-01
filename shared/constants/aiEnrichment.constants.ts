@@ -56,9 +56,13 @@ export const AI_ENRICHMENT_APPROVED_CATEGORIES_PLACEHOLDER = "{{approved_categor
 export const AI_ENRICHMENT_APPROVED_TAGS_PLACEHOLDER = "{{approved_tags}}";
 export const AI_ENRICHMENT_EXCLUDED_TAGS_PLACEHOLDER = "{{excluded_tags}}";
 export const AI_ENRICHMENT_PROMPT_TEMPLATE_MAX_LENGTH = 8000;
+/**
+ * Only {{excluded_tags}} is required in the shipped v18 lean prompt. {{approved_categories}} and
+ * {{approved_tags}} are no longer injected by the default template (approved taxonomy resolution
+ * moved server-side), but the substitution helpers still support them so an owner-edited legacy
+ * template that still contains those placeholders keeps working instead of breaking.
+ */
 export const AI_ENRICHMENT_REQUIRED_PROMPT_PLACEHOLDERS = [
-  AI_ENRICHMENT_APPROVED_CATEGORIES_PLACEHOLDER,
-  AI_ENRICHMENT_APPROVED_TAGS_PLACEHOLDER,
   AI_ENRICHMENT_EXCLUDED_TAGS_PLACEHOLDER,
 ] as const;
 
@@ -91,52 +95,21 @@ export function estimateVisionCostUsd(
   return (promptTokens * pricing.input + completionTokens * pricing.output) / 1_000_000;
 }
 
-export const DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE = `Analyze the provided image and return only valid JSON with these fields:
-description: clear, accurate 1 to 2 sentence description of the design, including visible text, style, colors, and main visual elements.
-category: you MUST pick exactly one category name from the approved category list below. If no category fits, return null. Never invent a category name.
-title: short searchable design title.
-tags: up to 8 approved tag names.
-suggestedNewTags: array of new tag objects only when no approved tag name or alias is relevant enough.
+export const DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE = `Analyze the provided image and return only valid JSON.
+
+Return:
+title: short natural searchable design title.
+description: clear 1 to 2 sentence description of the design, including all readable text exactly as it appears, plus style, colors, and main visual elements.
+category: one broad reusable category or theme for the design.
+tags: up to 12 searchable tag candidates.
 
 Rules:
-Use category descriptions to choose the best approved category. You MUST use a category name exactly as it appears in the approved category list. If none fit, return null for category. Never create or invent category names.
-For each important visible element, theme, style, color, audience, occasion, recognizable property, or other meaningful search concept in the image, scan the full approved tag list, including every tag name, alias, and preferred-when description, before deciding no approved tag applies.
-If a visible element matches an approved tag's name or any of its aliases, you MUST use the approved tag name in tags. A match on an alias counts as a full match.
-Return approved tag names in tags, not aliases.
-Only suggest a new tag when you have scanned the entire approved tag list and confirmed that no approved tag name or alias accurately covers that important element, theme, style, audience, occasion, or property.
-Every suggestedNewTags item must include name, aliases, preferredWhen, and reason.
-Do not use excluded tags.
-Tags and suggested tag names must be single words, lowercase, reusable, non duplicated, and accurate.
-Avoid overly narrow tags unless they are important to finding the design.
+Tags may be single words or short phrases because they will be matched against an internal tag database later.
+Use accurate searchable words for visible subjects, themes, audience, style, occasion, text, recognizable characters, brands, franchises, or properties.
+Do not use filler tags like image, design, artwork, graphic, shirt, print, png, or dtf.
+If readable text appears, include all of it in the description.
+If a recognizable character, brand, franchise, logo, team, show, movie, game, celebrity, or known property is clearly visible, name it directly. Only avoid naming it when genuinely uncertain.
+Do not use these tag words: {{excluded_tags}}
 
-Text extraction rules:
-You must inspect the entire image for readable text before writing the description.
-If any readable text appears anywhere in the image, include all of the readable text in the description exactly as it appears, preserving wording, spelling, and punctuation as closely as possible.
-Do not summarize, shorten, paraphrase, or omit visible text.
-If the image has multiple separate text elements, include all of them.
-If some text is partially obscured or unclear, include the readable portion and briefly note that part of the text is unclear.
-If no readable text is present, describe the design normally without inventing text.
-
-Description rules:
-The description must describe both the design itself and any readable text found in the image.
-When text is present, include the exact visible text naturally within the description.
-Make the description specific enough that a human could understand both what the artwork looks like and what words appear in it.
-
-Recognizable IP rules:
-If the image clearly depicts a recognizable character, brand, logo, franchise, sports team, movie, show, game, musician, celebrity reference, or other known property, name it directly in the description and use it in the title when useful for search.
-Do not replace a recognizable character or brand with a vague phrase like "goth girl", "cartoon character", "famous brand", or "spooky girl" when the specific identity is visually clear.
-If the approved tag list contains a matching tag name or alias for the character, brand, franchise, or property, use the approved tag name.
-If no approved tag name or alias exists, suggest a new single word reusable tag for the recognizable character, brand, or property.
-Only avoid naming the identity when it is genuinely uncertain. If uncertain, describe the visual style without guessing.
-
-Return exactly this JSON shape:
-{"description":"...","category":"...","title":"...","tags":["approved_tag"],"suggestedNewTags":[{"name":"newtag","aliases":["alias"],"preferredWhen":"Use when ...","reason":"Why approved tags were not enough."}]}
-
-Approved categories:
-{{approved_categories}}
-
-Approved tags:
-{{approved_tags}}
-
-Excluded tags:
-{{excluded_tags}}`;
+Return exactly this JSON shape and nothing else:
+{"title":"...","description":"...","category":"...","tags":["tag candidate"]}`;

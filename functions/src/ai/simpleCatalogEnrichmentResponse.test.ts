@@ -6,7 +6,6 @@ import {
   buildSimpleCatalogEnrichmentResult,
   extractJsonObject,
   normalizeSimpleCatalogEnrichment,
-  resolveLeanCatalogCategory,
 } from "./simpleCatalogEnrichmentResponse";
 import { OPENAI_CATALOG_ENRICHMENT_PROMPT_VERSION } from "./catalogTitleRules";
 import { DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE } from "../../../shared/constants/aiEnrichment.constants";
@@ -216,8 +215,11 @@ describe("buildSimpleCatalogEnrichmentResult", () => {
     // Lean path trusts the model title verbatim (only non-destructive normalization).
     assert.equal(result.suggestions.title, "Some Days I Rock It");
     assert.ok(result.suggestions.description && result.suggestions.description.length > 0);
-    assert.equal(result.suggestions.categoryName, "Motherhood");
-    assert.equal(result.suggestions.categoryId, "cat-motherhood");
+    // Category is no longer resolved here (v18): the raw candidate is carried as a transient
+    // analysis.rawCategory scoring signal for the pipeline's resolveThemeCategory step.
+    assert.equal(result.suggestions.categoryName, undefined);
+    assert.equal(result.suggestions.categoryId, undefined);
+    assert.equal(result.analysis.rawCategory, "Motherhood");
     assert.deepEqual(result.suggestions.tags, ["mama", "funny", "retro"]);
     assert.deepEqual(result.analysis.rawTags, ["mama", "funny", "retro"]);
     assert.ok(typeof result.suggestions.generatedAt === "string");
@@ -271,7 +273,11 @@ describe("buildSimpleCatalogEnrichmentResult", () => {
     assert.ok(result.suggestions.description?.includes("MOTHERHOOD"));
   });
 
-  it("keeps a valid model category and does not flip Family toward Pop Culture", () => {
+  it("carries the raw model category as a transient analysis signal without resolving it here", () => {
+    // Category resolution (including the Family-vs-Pop-Culture priority rules) now happens in the
+    // pipeline's resolveThemeCategory step (see catalogThemeCategoryResolver.test.ts), using the
+    // matched approved tags as an additional signal. This function only passes the raw candidate
+    // through on analysis.rawCategory.
     const parsed = normalizeSimpleCatalogEnrichment(
       {
         category: "Family",
@@ -295,8 +301,9 @@ describe("buildSimpleCatalogEnrichmentResult", () => {
       modelId: "gpt-5.4-nano-2026-03-17",
     });
 
-    assert.equal(result.suggestions.categoryName, "Family");
-    assert.equal(result.suggestions.categoryId, "cat-family");
+    assert.equal(result.suggestions.categoryName, undefined);
+    assert.equal(result.suggestions.categoryId, undefined);
+    assert.equal(result.analysis.rawCategory, "Family");
   });
 
   it("falls back to a non-empty title and description when the model omits them", () => {
@@ -338,32 +345,5 @@ describe("buildSimpleCatalogEnrichmentResult", () => {
     });
 
     assert.notEqual(result.suggestions.title?.toLowerCase(), "raw-upload-file");
-  });
-});
-
-describe("resolveLeanCatalogCategory", () => {
-  const allowed = ["Family", "Pop Culture & Characters"];
-  const idsByName = {
-    family: "cat-family",
-    "pop culture & characters": "cat-pop-culture",
-  };
-
-  it("resolves an exact (case-insensitive) match to name + id", () => {
-    assert.deepEqual(resolveLeanCatalogCategory("family", allowed, idsByName), {
-      categoryName: "Family",
-      categoryId: "cat-family",
-    });
-  });
-
-  it("returns empty when the candidate does not exactly match an allowed name", () => {
-    assert.deepEqual(resolveLeanCatalogCategory("Familyish", allowed, idsByName), {});
-    assert.deepEqual(resolveLeanCatalogCategory("", allowed, idsByName), {});
-  });
-
-  it("does not remap a valid candidate to a different category", () => {
-    assert.equal(
-      resolveLeanCatalogCategory("Family", allowed, idsByName).categoryName,
-      "Family",
-    );
   });
 });

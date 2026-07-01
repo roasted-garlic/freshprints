@@ -58,10 +58,10 @@ Passed:
 - AI Review sequential processing still runs one design at a time, but no longer waits on a separate trigger round-trip.
 - AI Processing is now a single playground-style call (ADR-FP-035/036): Settings-managed prompt template with server-side `{{excluded_tags}}` replacement, 4-field JSON (`description`, `category`, `title`, `tags`), **no** `response_format: json_object`, tolerant server-side JSON extraction.
 - One normal OpenAI call per success — no empty-output retry and no quality retry (reasoning-effort 400 fallback and 429/5xx network retry kept). This fixes the `OpenAI returned no visible output (reason: length)` error at its source.
-- Server enforces single-word/deduped/exclusion-filtered tags capped at 8 and resolves category deterministically from the model candidate (no extra model call).
+- **ADR-FP-039 (v18):** the prompt is now small and vision-only — the full approved category list and full approved tag list are no longer injected into every call (was the driver of high input token cost). Approved tag/alias matching, `suggestedNewTags` generation, and category resolution are all deterministic server-side steps (`catalogTagResolver.ts`, `catalogThemeCategoryResolver.ts`) that run after the model call, with category resolution running after tag resolution so matched tags feed category scoring. Server enforces single-word/deduped/exclusion-filtered tags capped at 8.
 - `aiSuggestions.model` continues to record the actual model used per run; Processing can pass one-off model/reasoning overrides, Auto advance snapshots them at start, and Settings playground remains unchanged.
 - Needs Review / Rejected re-run resets the design back to Processing instead of running AI in place on review tabs.
-- Current prompt target is `catalog-enrich-openai-v17`.
+- Current prompt target is `catalog-enrich-openai-v18`.
 - Latest local audit checks passed: repo lint, root TypeScript, functions TypeScript, functions build, `git diff --check`, and full `npm run build` including Electron packaging.
 
 Notes:

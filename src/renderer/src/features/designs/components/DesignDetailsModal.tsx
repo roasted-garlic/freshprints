@@ -13,6 +13,7 @@ import { formatDesignTimestamp } from "../utils/designDateDisplay";
 import { formatDesignStatusLabel, getDesignStatusBadgeVariant } from "../utils/designStatusDisplay";
 import { formatDesignPrintInches } from "../utils/designPrintSizeDisplay";
 import { resolveDesignAiReviewDisplay } from "../utils/aiReviewState";
+import { formatAiEstimatedCost } from "../utils/aiReviewDisplay";
 import { DesignLibraryModal } from "./DesignLibraryModal";
 import { DesignPreviewLightbox } from "./DesignPreviewLightbox";
 import { DesignThumbnailPanel } from "./DesignThumbnailPanel";
@@ -193,6 +194,36 @@ export function DesignDetailsModal({
               <DetailField label="Last edited date" value={formatDesignTimestamp(design.updatedAt)} />
             </dl>
           </section>
+
+          {design.aiSuggestions ? (
+            <section aria-labelledby="design-details-ai-title" className="design-details-section">
+              <h3 id="design-details-ai-title">AI Processing</h3>
+              <dl className="design-details-grid design-details-columns design-details-columns--ai">
+                {design.aiSuggestions.provider ? (
+                  <DetailField label="Provider" value={design.aiSuggestions.provider} />
+                ) : null}
+                {design.aiSuggestions.model ? (
+                  <DetailField label="Model" value={design.aiSuggestions.model} />
+                ) : null}
+                {design.aiSuggestions.promptVersion ? (
+                  <DetailField label="Prompt version" value={design.aiSuggestions.promptVersion} />
+                ) : null}
+                {typeof design.aiSuggestions.promptTokens === "number" ||
+                typeof design.aiSuggestions.completionTokens === "number" ? (
+                  <DetailField
+                    label="Input / Output tokens"
+                    value={`${design.aiSuggestions.promptTokens ?? "—"} / ${design.aiSuggestions.completionTokens ?? "—"}`}
+                  />
+                ) : null}
+                {typeof design.aiSuggestions.estimatedCostUsd === "number" ? (
+                  <DetailField
+                    label="Estimated cost"
+                    value={formatAiEstimatedCost(design.aiSuggestions.estimatedCostUsd)}
+                  />
+                ) : null}
+              </dl>
+            </section>
+          ) : null}
 
           <section
             aria-labelledby="design-details-technical-title"

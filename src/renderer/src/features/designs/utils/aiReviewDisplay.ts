@@ -38,3 +38,8 @@ export function formatAiReviewConfidence(confidence: number | undefined): string
 
   return `${Math.round(confidence * 100)}%`;
 }
+
+/** Matches the Settings AI Playground result formatting (`$X.XXXXXX`, 6 decimal places). */
+export function formatAiEstimatedCost(value: number | null | undefined): string {
+  return value != null ? `$${value.toFixed(6)}` : "N/A";
+}

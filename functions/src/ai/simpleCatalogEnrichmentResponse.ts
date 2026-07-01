@@ -231,36 +231,6 @@ export function normalizeSimpleCatalogEnrichment(
 }
 
 /**
- * Deterministic, exact-match-only category resolution for the v17 lean schema. Trusts the model's
- * category candidate and resolves the catalog ID via a case-insensitive exact match against the
- * allowed names. Returns undefined name/id when nothing matches (staff set it in AI Review). No
- * keyword-remap scoring — that path could override a correct "Family" candidate toward
- * "Pop Culture & Characters" using starved rich-schema signals.
- */
-export function resolveLeanCatalogCategory(
-  candidate: string,
-  allowedNames: readonly string[],
-  categoryIdsByName: Record<string, string>,
-): { categoryName?: string; categoryId?: string } {
-  const trimmed = candidate.trim();
-
-  if (!trimmed) {
-    return {};
-  }
-
-  const match = allowedNames.find((name) => name.toLowerCase() === trimmed.toLowerCase());
-
-  if (!match) {
-    return {};
-  }
-
-  return {
-    categoryName: match,
-    categoryId: categoryIdsByName[match.toLowerCase()],
-  };
-}
-
-/**
  * Map the normalized simple response into the existing AiEnrichmentResult shape.
  */
 export function buildSimpleCatalogEnrichmentResult(input: {
@@ -287,25 +257,21 @@ export function buildSimpleCatalogEnrichmentResult(input: {
   // visible text from the lean schema.
   const description = sanitizeCatalogDescription(parsed.description).slice(0, 500);
 
-  // Deterministic category resolution: trust the model candidate and resolve the ID only via an
-  // exact (case-insensitive) match against the allowed list. No keyword remap — that could flip a
-  // correct "Family" toward "Pop Culture & Characters". Leaves category undefined when unmatched.
-  const category = resolveLeanCatalogCategory(
-    parsed.category,
-    enrichmentInput.categoryNames,
-    enrichmentInput.categoryIdsByName,
-  );
-
   const estimatedCostUsd =
     promptTokens != null && completionTokens != null
       ? estimateVisionCostUsd(modelId, promptTokens, completionTokens)
       : null;
 
+  // Category is not resolved here. The v18 lean prompt no longer gives the model the approved
+  // category list, so parsed.category is a freeform raw candidate — not a value that can be
+  // trusted or persisted directly. It is carried on analysis.rawCategory (transient, deleted
+  // before the design write, same as rawTags) purely as a scoring signal; the pipeline's
+  // server-side resolveThemeCategory call (run after tag resolution, using matched tags as an
+  // additional signal) sets the final categoryId/categoryName, or leaves both undefined when no
+  // approved category clears the confidence threshold.
   const suggestions: DesignAiSuggestions = {
     title,
     description,
-    categoryId: category.categoryId,
-    categoryName: category.categoryName,
     suggestedNewTags: parsed.suggestedNewTags.length > 0 ? parsed.suggestedNewTags : undefined,
     tags: parsed.tags,
     provider: providerId ?? "openai",
@@ -318,6 +284,7 @@ export function buildSimpleCatalogEnrichmentResult(input: {
   };
 
   const analysis: DesignAiAnalysis = {
+    rawCategory: parsed.category || undefined,
     rawTags: parsed.rawTags.length > 0 ? parsed.rawTags : undefined,
   };
 

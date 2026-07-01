@@ -2,6 +2,7 @@ import { Button } from "../../../shared/components/Button";
 import { Badge } from "../../../shared/components/Badge";
 import { LoadingSpinner } from "../../../shared/components/LoadingSpinner";
 import type { Design } from "../../designs/types/design.types";
+import { formatAiEstimatedCost } from "../../designs/utils/aiReviewDisplay";
 import {
   designHasAiSuggestions,
   getAiProcessingOutputMessage,
@@ -139,6 +140,21 @@ export function AiReviewSuggestionsSection({
             <div>
               <dt>Generated</dt>
               <dd>{new Date(suggestions.generatedAt).toLocaleString()}</dd>
+            </div>
+          ) : null}
+          {typeof suggestions.promptTokens === "number" ||
+          typeof suggestions.completionTokens === "number" ? (
+            <div>
+              <dt>Input / Output tokens</dt>
+              <dd>
+                {suggestions.promptTokens ?? "—"} / {suggestions.completionTokens ?? "—"}
+              </dd>
+            </div>
+          ) : null}
+          {typeof suggestions.estimatedCostUsd === "number" ? (
+            <div>
+              <dt>Estimated cost</dt>
+              <dd>{formatAiEstimatedCost(suggestions.estimatedCostUsd)}</dd>
             </div>
           ) : null}
         </dl>

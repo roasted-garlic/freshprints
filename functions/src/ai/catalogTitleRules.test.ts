@@ -22,8 +22,8 @@ import {
 } from "./catalogTitleRules";
 
 describe("catalogTitleRules", () => {
-  it("uses prompt version v17", () => {
-    assert.equal(OPENAI_CATALOG_ENRICHMENT_PROMPT_VERSION, "catalog-enrich-openai-v17");
+  it("uses prompt version v18", () => {
+    assert.equal(OPENAI_CATALOG_ENRICHMENT_PROMPT_VERSION, "catalog-enrich-openai-v18");
   });
 
   it("keeps the JSON contract, OCR, canvas, and description rules in the trimmed prompt", () => {

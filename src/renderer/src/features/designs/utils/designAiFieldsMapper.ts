@@ -63,6 +63,9 @@ function mapAiSuggestions(value: unknown): DesignAiSuggestions | undefined {
     generatedAt: mapFirestoreIsoString(data.generatedAt),
     errorCode: typeof data.errorCode === "string" ? data.errorCode : undefined,
     errorMessage: typeof data.errorMessage === "string" ? data.errorMessage : undefined,
+    promptTokens: typeof data.promptTokens === "number" ? data.promptTokens : null,
+    completionTokens: typeof data.completionTokens === "number" ? data.completionTokens : null,
+    estimatedCostUsd: typeof data.estimatedCostUsd === "number" ? data.estimatedCostUsd : null,
   };
 }
 
