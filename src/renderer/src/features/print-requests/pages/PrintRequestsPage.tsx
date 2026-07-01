@@ -658,28 +658,33 @@ export function PrintRequestsPage() {
                 id="create-print-request-form"
                 onSubmit={handleCreateRequest}
               >
-                <Select
-                  label="Request type"
-                  name="customerMode"
-                  onChange={(event) =>
-                    setCreateRequestForm((current) => ({
-                      ...current,
-                      customerMode: event.target.value as CustomerMode,
-                      customerId: event.target.value === "customer" ? current.customerId : "",
-                      name:
-                        event.target.value === "customer"
-                          ? current.customerId
-                            ? buildCustomerRequestName(current.customerId)
-                            : current.name
-                          : "",
-                    }))
-                  }
-                  options={CUSTOMER_MODE_OPTIONS}
-                  value={createRequestForm.customerMode}
-                />
+                <div className="print-requests-modal-grid">
+                  <Select
+                    className={
+                      createRequestForm.customerMode === "internal"
+                        ? "print-requests-modal-grid-full"
+                        : undefined
+                    }
+                    label="Request type"
+                    name="customerMode"
+                    onChange={(event) =>
+                      setCreateRequestForm((current) => ({
+                        ...current,
+                        customerMode: event.target.value as CustomerMode,
+                        customerId: event.target.value === "customer" ? current.customerId : "",
+                        name:
+                          event.target.value === "customer"
+                            ? current.customerId
+                              ? buildCustomerRequestName(current.customerId)
+                              : current.name
+                            : "",
+                      }))
+                    }
+                    options={CUSTOMER_MODE_OPTIONS}
+                    value={createRequestForm.customerMode}
+                  />
 
-                {createRequestForm.customerMode === "customer" ? (
-                  <>
+                  {createRequestForm.customerMode === "customer" ? (
                     <Select
                       label="Customer"
                       name="customerId"
@@ -693,14 +698,35 @@ export function PrintRequestsPage() {
                       options={[{ label: "Choose a customer", value: "" }, ...customerOptions]}
                       value={createRequestForm.customerId}
                     />
+                  ) : null}
+                </div>
 
+                {createRequestForm.customerMode === "internal" ? (
+                  <TextInput
+                    label="Request name"
+                    name="requestName"
+                    onChange={(event) =>
+                      setCreateRequestForm((current) => ({ ...current, name: event.target.value }))
+                    }
+                    required
+                    value={createRequestForm.name}
+                  />
+                ) : null}
+
+                {createRequestForm.customerMode === "customer" ? (
+                  <>
                     {customerOptions.length === 0 ? (
                       <div className="print-requests-modal-helper">
                         <p className="print-requests-modal-hint">
                           Create customers from Users before creating customer requests.
                         </p>
                         {permissionService.canManageCustomers(user) ? (
-                          <Button onClick={openUsersForCustomerCreation} size="sm" variant="secondary">
+                          <Button
+                            className="print-requests-modal-helper-btn"
+                            onClick={openUsersForCustomerCreation}
+                            size="sm"
+                            variant="secondary"
+                          >
                             Go to Users
                           </Button>
                         ) : null}
@@ -710,17 +736,16 @@ export function PrintRequestsPage() {
                         Customer requests only use existing customers. Create new customers from Users.
                       </p>
                     )}
+
+                    <TextInput
+                      label="Request name"
+                      name="requestName"
+                      readOnly
+                      required
+                      value={createRequestForm.name}
+                    />
                   </>
                 ) : null}
-
-                <TextInput
-                  label="Request name"
-                  name="requestName"
-                  onChange={(event) => setCreateRequestForm((current) => ({ ...current, name: event.target.value }))}
-                  readOnly={createRequestForm.customerMode === "customer"}
-                  required
-                  value={createRequestForm.name}
-                />
 
                 <AutoResizeTextarea
                   label="Request notes"
