@@ -29,6 +29,7 @@ import {
   parseAdditionalTagExclusionsInput,
   useAiEnrichmentSettings,
 } from "../hooks/useAiEnrichmentSettings";
+import { formatAiPlaygroundOutput } from "../utils/aiPlaygroundOutputFormatter";
 
 export function SettingsPage() {
   const { user } = useAuth();
@@ -61,6 +62,10 @@ export function SettingsPage() {
   const [isPlaygroundResultModalOpen, setIsPlaygroundResultModalOpen] = useState(false);
   const [hasInjectedProcessingPrompt, setHasInjectedProcessingPrompt] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
+  const playgroundResultOutputText = useMemo(
+    () => formatAiPlaygroundOutput(playground.result?.outputText ?? ""),
+    [playground.result?.outputText],
+  );
 
   const selectedVisionModelId = draftVisionModelId ?? visionModelId;
   const selectedReasoningEffort = draftReasoningEffort ?? reasoningEffort;
@@ -640,7 +645,7 @@ export function SettingsPage() {
                         aria-label="Copy response output"
                         className="icon-button icon-button-sm icon-button-ghost"
                         onClick={() => {
-                          void navigator.clipboard.writeText(playground.result?.outputText ?? "").then(() => {
+                          void navigator.clipboard.writeText(playgroundResultOutputText).then(() => {
                             setIsCopied(true);
                             setTimeout(() => setIsCopied(false), 2000);
                           });
@@ -652,7 +657,7 @@ export function SettingsPage() {
                           : <Copy aria-hidden="true" size={15} strokeWidth={2.2} />}
                       </button>
                     </div>
-                    <pre>{playground.result.outputText}</pre>
+                    <pre>{playgroundResultOutputText}</pre>
                   </div>
                 </section>
               </ModalBody>

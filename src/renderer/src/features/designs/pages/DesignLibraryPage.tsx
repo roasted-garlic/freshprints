@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { ArrowLeft, FolderCog, Save, Tags } from "lucide-react";
+import { ArrowLeft, FolderCog, Save, Tags, X } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { Button } from "../../../shared/components/Button";
@@ -219,7 +219,6 @@ export function DesignLibraryPage() {
     [filteredDesigns.length],
   );
 
-
   const clearFilters = useCallback(() => {
     setSearchQuery("");
     setCategoryFilter(ALL_FILTER_VALUE);
@@ -228,6 +227,10 @@ export function DesignLibraryPage() {
       setIncludeArchived(false);
     }
   }, [selectionModeActive]);
+
+  const removeSelectedTag = useCallback((tagToRemove: string) => {
+    setSelectedTags((currentTags) => currentTags.filter((tag) => tag !== tagToRemove));
+  }, []);
 
   const refreshCatalog = useCallback(async () => {
     await Promise.all([reloadDesigns(), reloadCategories(), reloadTags()]);
@@ -527,9 +530,18 @@ export function DesignLibraryPage() {
 
           {selectedTags.length > 0 ? (
             <div className="design-library-active-tags" aria-label="Active tag filters">
+              <span className="design-library-active-tags-label">Tags:</span>
               {selectedTags.map((tag) => (
                 <span className="design-library-active-tag" key={tag}>
-                  {tag}
+                  <span>{tag}</span>
+                  <button
+                    aria-label={`Remove ${tag} tag filter`}
+                    className="design-library-active-tag-remove"
+                    onClick={() => removeSelectedTag(tag)}
+                    type="button"
+                  >
+                    <X aria-hidden="true" size={12} strokeWidth={2.25} />
+                  </button>
                 </span>
               ))}
             </div>

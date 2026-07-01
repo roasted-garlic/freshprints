@@ -41,6 +41,7 @@ export function DesignLibraryFilterControls({
     <div className="design-library-filter-controls">
       <div className="design-library-filter-controls-search">
         <GlobalSearchField
+          clearable
           onChange={onSearchChange}
           placeholder={searchPlaceholder}
           value={searchQuery}

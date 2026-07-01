@@ -424,8 +424,46 @@
   width: 14rem;
 }
 
+.global-search-field-clearable .global-search-input {
+  padding-right: calc(var(--space-3) + 1.5rem);
+}
+
+.global-search-clear-button {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-full);
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  display: inline-flex;
+  height: 1.5rem;
+  justify-content: center;
+  padding: 0;
+  position: absolute;
+  right: var(--space-2);
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast);
+  width: 1.5rem;
+}
+
+.global-search-clear-button:hover {
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-primary);
+}
+
+.global-search-clear-button:focus-visible {
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+  color: var(--color-text-primary);
+  outline: none;
+}
+
 .global-search-input::placeholder {
   color: var(--color-text-tertiary);
+}
+
+.global-search-input::-webkit-search-cancel-button {
+  appearance: none;
 }
 
 .global-search-input:hover {

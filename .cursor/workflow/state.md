@@ -4,31 +4,31 @@
 managed-phase
 
 ## Current Goal
-ai-tag-alias-reconciliation - Fix AI Processing suggested-new-tag reconciliation so multiword alias normalization (hyphens/ampersands/apostrophes) and suggestion-context matching prevent covered concepts from appearing as new tags
+ai-playground-pretty-json-output - Pretty format JSON responses in the Settings AI Playground result output
 
 ## Phase
 signoff
 
 ## Status
-complete - alias phrase normalization and suggestion-context matching implemented; 147/147 AI tests pass
+complete - AI Playground JSON output now displays as pretty formatted JSON when detected
 
 ## Plan Status
-created - `docs/workflow/plans/2026-07-01-ai-tag-alias-reconciliation-plan.md`
+created - `docs/workflow/plans/2026-07-01-ai-playground-pretty-json-output-plan.md`
 
 ## Review Status
-approved - user approved implementation for `ai-tag-alias-reconciliation` on 2026-07-01
+approved - user approved implementation for `ai-playground-pretty-json-output` on 2026-07-01
 
 ## Tests Run
-passed - see `docs/workflow/reviews/2026-07-01-ai-tag-alias-reconciliation-test-report.md` (147/147 pass)
+passed - see `docs/workflow/reviews/2026-07-01-ai-playground-pretty-json-output-test-report.md`
 
 ## Signoff
-complete - `docs/workflow/reviews/2026-07-01-ai-tag-alias-reconciliation-signoff.md`
+complete - `docs/workflow/reviews/2026-07-01-ai-playground-pretty-json-output-signoff.md`
 
 ## Human Checkpoint Required
 no
 
 ## Human Checkpoint Reason
-none for this local phase (Firebase Functions deploy + authenticated smoke remain a separate human checkpoint)
+none for this local renderer display phase
 
 ## Allowed Actions
 start next managed phase after user request/approval; review current state
@@ -37,12 +37,20 @@ start next managed phase after user request/approval; review current state
 deploy Firebase/functions without human approval, provision secrets, run category or tag seed writes against Firebase without approval, relax Firestore rules, add new dependencies without review approval, migrate/backfill existing design tags, change design lifecycle statuses, read or modify files outside the repository
 
 ## Next Required Step
-Human approval to deploy Functions and run authenticated smoke. Before manual QA on the motherhood-skeleton design, confirm the approved `music` tag has a rock-and-roll alias (e.g. `rock and roll`) in Firestore — that is a data decision, not a code task.
+Start `print-request-query-index-hardening` as the next recommended managed Phase 6 code phase.
 
 ## DONE
 yes
 
 ## Decision Log
+- 2026-07-01: Completed `ai-playground-pretty-json-output`. Added display-only JSON formatting for Settings AI Playground result output: direct JSON and fully fenced JSON pretty print with 2-space indentation; invalid JSON and prose stay unchanged. Copy action now copies the visible formatted output. Focused formatter tests, root TypeScript, root lint, and `git diff --check` passed. No prompt, Cloud Function, Firebase, data, persistence, dependency, deploy, or AI Processing pipeline changes.
+- 2026-07-01: User approved implementation for `ai-playground-pretty-json-output`; implementation started.
+- 2026-07-01: Opened managed phase `ai-playground-pretty-json-output` from user request to pretty format AI Playground JSON output when JSON is detected while leaving non-JSON output unchanged. Created plan `docs/workflow/plans/2026-07-01-ai-playground-pretty-json-output-plan.md`; implementation blocked pending review approval.
+- 2026-07-01: Completed `design-library-filter-clear-controls`. Added `Tags:` label before active Design Library tag filters, per-tag accessible `X` remove buttons, and an opt-in search clear `X` enabled for Design Library search. Verification passed: root TypeScript, root lint, and `git diff --check`. No Firebase, data, dependency, deploy, or query behavior changes.
+- 2026-07-01: User approved implementation for `design-library-filter-clear-controls`; implementation started.
+- 2026-07-01: Opened managed phase `design-library-filter-clear-controls` from user request to add a `Tags:` label before active Design Library tag filter pills, allow removing individual selected tags with an `X` on each pill, and add an `X` clear control to the search input. Created plan `docs/workflow/plans/2026-07-01-design-library-filter-clear-controls-plan.md`; implementation blocked pending review approval.
+- 2026-07-01: Completed `roadmap-current-state-alignment`. Updated `ROADMAP.md` Current Project Status to remove stale deterministic category-ordering and AI smoke checkpoint language, record the user-reported AI Processing smoke pass, and point the next recommended managed code phase at `print-request-query-index-hardening`. Docs-only verification passed with `git diff --check`. No app code, Firebase rules/functions/indexes, secrets, data writes, migrations, deploys, or dependencies changed.
+- 2026-07-01: User reported AI Processing smoke test passes. Opened docs-only managed phase `roadmap-current-state-alignment` to update stale `ROADMAP.md` Current Project Status before starting `print-request-query-index-hardening`. Created plan `docs/workflow/plans/2026-07-01-roadmap-current-state-alignment-plan.md`; implementation blocked pending review approval.
 - 2026-07-01: Completed `ai-tag-alias-reconciliation`. Added `normalizeForAliasMatch` (hyphens→spaces, &→and, apostrophes removed), a second `aliasLookup` built from all approved aliases using that normalization, and an n-gram context scan of suggestion `preferredWhen`/`reason` against the alias lookup. Suggested tag `rock` with rock-and-roll context now resolves to approved `music` and is dropped; stone/geology context correctly does not match. 147/147 AI tests pass; functions typecheck/build, root typecheck/lint all clean. No hardcoding, no prompt change, no deploy.
 - 2026-07-01: Opened managed phase `ai-tag-alias-reconciliation`. Root cause: `resolveAiCatalogTags` checks suggested-tag coverage only against the suggestion's own `name` and `aliases` array; does not normalize punctuation (hyphens/ampersands/apostrophes) and does not check `preferredWhen`/`reason` context for multiword alias overlap. Fix: add `normalizeForAliasMatch` (hyphens→spaces, `&`→`and`, apostrophes removed); build normalized alias lookup; extend suggestion-coverage check to n-gram scan of `preferredWhen` and `reason`. No hardcoding, no prompt change. Created plan `docs/workflow/plans/2026-07-01-ai-tag-alias-reconciliation-plan.md`; implementation blocked pending review approval.
 - 2026-07-01: Completed `provider-default-test-reconcile`. Updated 2 stale call sites in `resolveAiEnrichmentProvider.test.ts` from old 3-arg to current 6-arg positional contract; added 1 Gemini-path coverage test. Full AI suite went from 137 pass / 2 fail → 140/140. Functions typecheck and root lint clean. No production code changed, no deploy.

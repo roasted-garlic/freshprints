@@ -104,13 +104,18 @@ Customers And Print Requests (foundation PASS WITH NOTES)
 
 Current Goal:
 
-Complete manual QA/signoff for deterministic category ordering in Design Library, then return to the approved AI Functions deploy/smoke checkpoint or other Phase 6 follow-up planning.
+Start the next Phase 6 hardening phase: `print-request-query-index-hardening`.
 
-**Completed milestones (per signoffs):** Phase 1 foundation, Phase 2 design library (2A–2C), Phase 3 import pipeline (3A–3C), Phase 3D print size and catalog status separation, **Phase 4 catalog cleanup**, Phase 5 AI Review / AI enrichment baseline through the Phase 0 deploy gate.
+AI Processing local fixes through `ai-tag-alias-reconciliation` are implemented and signed off. The
+AI Processing deploy/smoke checkpoint passed per user report on 2026-07-01, so it is no longer the
+current blocker. Phase 6 Print Requests foundation remains PASS WITH NOTES; the next code priority is
+server-side query/index hardening for Print Requests before scale.
+
+**Completed milestones (per signoffs):** Phase 1 foundation, Phase 2 design library (2A–2C), Phase 3 import pipeline (3A–3C), Phase 3D print size and catalog status separation, **Phase 4 catalog cleanup**, Phase 5 AI Review / AI enrichment baseline and AI Processing smoke checkpoint.
 
 **Phase 6 source plan:** `docs/workflow/plans/2026-06-28-phase-6-print-requests-foundation-plan.md`.
 
-**Last realignment:** 2026-06-29 — Phase 6 Print Requests foundation signed off PASS WITH NOTES in `docs/workflow/reviews/2026-06-29-phase-6-print-requests-catch-up-test-report.md`; customer creation/provisioning follow-up passed in `docs/workflow/reviews/2026-06-29-customer-creation-provisioning-bug-test-report.md`.
+**Last realignment:** 2026-07-01 — AI Processing smoke test passed per user report after the local AI reconciliation fixes; roadmap current state now points to Phase 6 `print-request-query-index-hardening` as the next recommended managed code phase. Phase 6 Print Requests foundation signed off PASS WITH NOTES in `docs/workflow/reviews/2026-06-29-phase-6-print-requests-catch-up-test-report.md`; customer creation/provisioning follow-up passed in `docs/workflow/reviews/2026-06-29-customer-creation-provisioning-bug-test-report.md`.
 
 ---
 
