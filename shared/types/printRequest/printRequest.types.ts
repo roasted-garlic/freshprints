@@ -6,7 +6,6 @@ export interface PrintRequest {
   id: string;
   name: string;
   customerId?: string;
-  guestCustomerId?: string;
   isInternal: boolean;
   status: PrintRequestStatus;
   itemCount: number;

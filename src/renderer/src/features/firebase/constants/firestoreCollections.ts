@@ -2,6 +2,7 @@ export const FIRESTORE_COLLECTIONS = {
   users: "users",
   designs: "designs",
   categories: "categories",
+  tags: "tags",
   customers: "customers",
   printRequests: "printRequests",
   printRequestItems: "printRequestItems",

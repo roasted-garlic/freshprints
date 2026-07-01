@@ -6,6 +6,282 @@
 
 ## Decisions
 
+### ADR-FP-038: AI Processing approved taxonomy prompt context
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-06-30 |
+| Status | accepted |
+
+**Decision**
+
+1. Keep the ADR-FP-036 single-call, playground-style AI Processing request path and prompt version
+   `catalog-enrich-openai-v17`.
+2. Expand the saved Settings prompt placeholders before the OpenAI call:
+   `{{approved_categories}}` becomes active category names with descriptions,
+   `{{approved_tags}}` becomes approved tag names with aliases and preferred-when guidance, and
+   `{{excluded_tags}}` becomes the effective exclusion list.
+3. Require the prompt contract to choose one approved category and approved tag names first.
+4. Allow AI to return `suggestedNewTags` only when no approved tag name or alias is relevant
+   enough. Each suggested tag must include `name`, `aliases`, `preferredWhen`, and `reason`.
+5. Keep backend normalization as the final guard: approved tag names and aliases resolve to
+   `aiSuggestions.tags`; invalid suggestions or suggestions that duplicate approved names/aliases
+   are rejected before staff review.
+
+**Consequences**
+
+Positive: AI can use the same category descriptions, aliases, and preferred-when guidance staff use
+without creating approved tags automatically.
+
+Tradeoff: Prompt size now scales with the approved taxonomy library. If latency or token pressure
+returns, the next phase should add retrieval or taxonomy chunking instead of weakening validation.
+
+---
+
+### ADR-FP-037: Global approved tag library
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-06-30 |
+| Status | accepted |
+
+**Decision**
+
+1. Add a global `tags` Firestore collection for approved tag definitions with `name`, `aliases`,
+   `preferredWhen`, `status`, and audit fields.
+2. Keep design documents unchanged: `designs.tags` remains `string[]`; no tag migration or
+   backfill is part of this phase.
+3. Tags are not owned by categories. Category records do not contain tag lists or `categoryHints`.
+4. Tag Management lives in Design Library. Owner/admin may create, edit, and archive tags;
+   owner-only bulk import accepts strict flat JSON only.
+5. Cloud Functions normalize AI tag output against approved tag names and aliases. Matched values
+   persist to `aiSuggestions.tags`; unmatched values persist to `aiSuggestions.suggestedNewTags`.
+6. AI never creates approved tag documents automatically. Owner/admin may approve suggested-new-tags
+   from AI Review.
+
+**Consequences**
+
+Positive: AI and staff tagging share one approved vocabulary without changing existing design tag
+storage or category behavior.
+
+Tradeoff: Legacy/freeform design tags remain searchable/filterable alongside approved tags until a
+future explicitly approved migration/backfill phase.
+
+---
+
+### ADR-FP-036: Settings prompt template + Processing reset re-run
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-06-29 |
+| Status | accepted |
+
+**Decision**
+
+1. Keep the AI Playground unchanged as a one-off testing tool.
+2. Extend `settings/aiEnrichment` with an owner/admin-editable AI Processing `promptTemplate`.
+   The saved template must contain `{{approved_categories}}`, `{{approved_tags}}`, and
+   `{{excluded_tags}}`; the server replaces them with approved taxonomy context and the effective
+   base + Settings exclusion list immediately before the OpenAI call.
+3. Narrow live AI Processing output from ADR-FP-035's five-field v17 shape to four catalog fields:
+   `description`, `category`, `title`, and `tags`.
+4. Reduce live AI Processing tags from 10 to 8 and keep server-side single-word, lowercase,
+   dedupe, generic-word, and exclusion filtering after parsing.
+5. Add a Processing-tab settings control beside Auto advance for on-the-fly model and reasoning
+   overrides. Manual processing uses the current override or Settings default. Auto advance
+   snapshots the resolved model/reasoning when the run starts.
+6. Change Needs Review and Rejected **Re-run AI Suggestions** to reset the design back to Processing
+   instead of running AI in place. The reset clears prior AI output and waits for staff to start the
+   next Processing run.
+
+**Why**
+
+The playground-proven request pattern is strongest when the production path stays equally simple:
+one image call, a short prompt, explicit model/reasoning, tolerant JSON extraction, no forced
+`response_format`, and no extra quality/OCR/model-escalation round trips. Staff still reviews every
+result before catalog publish.
+
+**Consequences**
+
+Positive: AI Processing prompt tuning can happen from Settings without changing code; staff can pick
+stronger or cheaper model/reasoning combinations per processing session; review tabs are simpler and
+no longer host a live re-run overlay/session path.
+
+Tradeoff: historical suggestions may still contain older `confidence` or `aiAnalysis.visibleText`
+data, but new live AI Processing writes only the catalog suggestion fields needed for review plus
+provider/model/prompt metadata.
+
+---
+
+### ADR-FP-035: Playground-style single-call AI Processing (catalog prompt v17)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-06-29 |
+| Status | accepted |
+
+**Superseded note:** ADR-FP-036 keeps the ADR-FP-035 single-call request pattern but narrows the live
+output contract from five fields to four (`description`, `category`, `title`, `tags`) and caps tags
+at 8.
+
+**Decision**
+
+1. Rebuild live AI Processing around the lightweight Settings AI Playground request shape: one
+   server-side OpenAI call, a short instruction-only prompt, and tolerant server-side JSON parsing.
+2. Remove forced `response_format: { type: "json_object" }` from the catalog AI Processing call.
+   The model returns JSON from instructions alone; the server extracts the first JSON object
+   (handles fenced/prose-wrapped output).
+3. Replace the heavy v16 structured contract (15 keys + consistency rules) with a 5-field contract:
+   `visibleText`, `description`, `title`, `tags`, `confidence`. Bump prompt version to
+   `catalog-enrich-openai-v17` (dev `catalog-enrich-dev-v17`).
+4. Keep one normal OpenAI call on success. No empty-output retry, no quality retry. Keep only the
+   reasoning-effort 400 fallback and the 429/5xx network retry.
+5. Enforce tag rules server-side after parsing: single words, lowercase, dedupe, drop generic
+   words, apply tag exclusions (also injected into the prompt), cap at 10
+   (`OPENAI_SIMPLE_ENRICHMENT_MAX_TAGS`).
+6. Clamp `confidence` to 0–1; default to 0.7 only when the model omits/garbles it
+   (`OPENAI_SIMPLE_ENRICHMENT_DEFAULT_CONFIDENCE`). Store on `aiSuggestions.confidence`.
+7. Store visible text on the existing `aiAnalysis.visibleText` field (no new persisted field).
+   `aiSuggestions` keeps title/description/tags/confidence/provider/model/promptVersion/generatedAt.
+8. Resolve category deterministically via the existing `resolveCatalogCategory` (no extra model
+   call); leave category undefined when nothing matches and let staff set it in AI Review.
+9. Keep model allowlist, reasoning-effort default (`medium`), token cap (2500),
+   client/server timeouts, `detail: "high"`, model override, and staff review all unchanged.
+
+**Why**
+
+At equal model + `medium` effort, the playground returns quickly and reliably while AI Processing
+hit `OpenAI returned no visible output (reason: length)` on complex designs. Root cause: the heavy
+structured-output requirement plus `response_format` exhausted the 2500-token budget during
+reasoning before any JSON was emitted. Shrinking the output and dropping `response_format` fixes the
+error at its source without changing effort, model, cap, or timeouts.
+
+**Consequences**
+
+Positive: AI Processing now mirrors the playground — one fast call, no `length` errors expected for
+typical runs, simpler parsing. Supersedes ADR-FP-034 item 6 (prompt version) and the v16 prompt on
+the live path.
+Tradeoff: AI no longer returns rich analysis fields (theme/style/audience/colorPalette) or
+prompt-driven category matching; these were not rendered by AI Review. The v16 prompt/parser/retry
+modules remain in the repo as tested utilities for back-compat and can be removed in a later cleanup.
+
+---
+
+### ADR-FP-034: Saved reasoning effort + Settings AI playground + compact rerun menu
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-06-29 |
+| Status | accepted |
+
+**Decision**
+
+1. Extend `settings/aiEnrichment` with a saved `reasoningEffort` field.
+2. Allow only `none`, `minimal`, `low`, `medium`, and `high`; set `medium` as the default.
+3. Keep validation server-side and retry once with `low` only when the current OpenAI request path rejects the selected effort.
+4. Add an owner/admin-only Settings AI playground callable for one-off text + image testing without writing to `designs` or mutating saved settings.
+5. Replace the visible AI Review rerun model selector with a compact `Re-run AI` action menu while preserving the existing one-off override contract.
+6. Preserve `catalog-enrich-openai-v16`, default model `gpt-5.4-nano-2026-03-17`, lowest-cost option `gpt-5-nano-2025-08-07`, stronger option `gpt-5.4-mini-2026-03-17`, and server-side `detail: "high"` image behavior.
+
+**Consequences**
+
+Positive: Staff now have controlled reasoning tuning, a safe server-side playground for maintenance testing, and a less cluttered AI Review rerun UI.
+Tradeoff: AI enrichment configuration now spans saved settings, a compatibility fallback path, and a second callable surface, so docs and targeted tests need to stay aligned.
+
+---
+
+### ADR-FP-033: GPT-5.4 Mini allowlist and one-off AI Review override
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-06-29 |
+| Status | accepted |
+
+**Decision**
+
+1. Add `gpt-5.4-mini-2026-03-17` to the server allowlist and `/settings` model options.
+2. Keep `gpt-5.4-nano-2026-03-17` as the default and recommended high-volume model.
+3. Keep `gpt-5-nano-2025-08-07` as the lowest-cost selectable option.
+4. Allow AI Review re-runs to send a one-off `visionModelIdOverride` without mutating global saved settings.
+5. Validate overrides server-side, persist the resolved model on `aiSuggestions.model`, and clear transient queue metadata after the run.
+6. Preserve prompt target `catalog-enrich-openai-v16` and server-side `detail: "high"` image behavior.
+
+**Consequences**
+
+Positive: Staff can choose a stronger model for selective manual re-runs without changing the team default or exposing model control to the client beyond allowed ids.
+Tradeoff: AI Review rerun flow now spans renderer UI, callable validation, and pipeline cleanup, so regression coverage must stay in place.
+
+---
+
+### ADR-FP-032: GPT-5.4 Nano as default high-volume vision model
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-06-29 |
+| Status | accepted |
+
+**Decision**
+
+1. Promote `gpt-5.4-nano-2026-03-17` to the default OpenAI vision model when no saved override exists.
+2. Keep `gpt-5-nano-2025-08-07` available as the lowest-cost selectable option.
+3. Do not add `gpt-5.4-mini` until an exact supported snapshot ID is verified in repo-controlled configuration/docs.
+4. Keep the existing server-side Chat Completions pipeline and add `detail: "high"` on the image input for more predictable catalog-analysis fidelity.
+5. Preserve the current prompt target from repo state: `catalog-enrich-openai-v16`.
+
+**Consequences**
+
+Positive: Better default cost/accuracy balance for high-volume catalog enrichment while preserving the cheaper manual option.
+Tradeoff: Existing saved settings remain respected, so teams may still see older models until they switch settings intentionally.
+
+---
+
+### ADR-FP-031: Catalog enrichment prompt v16 observed-image-first contract
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-06-29 |
+| Status | accepted |
+
+**Decision**
+
+1. Keep the existing OpenAI Chat Completions transport, retries, and queue behavior unchanged.
+2. Upgrade the prompt contract to an observed-image-first structure: read text first, identify visible subject/style/colors second, derive catalog metadata third.
+3. Explicitly separate observed image facts from inferred catalog metadata inside the prompt wording.
+4. Tighten anti-hallucination guidance: do not invent unreadable text; omit or lower confidence when uncertain.
+5. Bump prompt version to `catalog-enrich-openai-v16` for stored auditability in `aiSuggestions.promptVersion`.
+
+**Consequences**
+
+Positive: Clearer alignment with current vision-analysis best practices while preserving the stable server pipeline.
+Tradeoff: Output distribution may shift on future AI runs, so prompt version tracking remains required for QA comparisons.
+
+---
+
+### ADR-FP-030: Phase 6 Print Request foundation, request counters, and deferred indexes
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-06-29 |
+| Status | accepted |
+
+**Context**
+The Phase 6 Print Requests foundation is implemented ahead of stale roadmap text. The implementation creates request lists, request items, guest customers, and a Design Library request-selection mode. `printRequestService.addPrintRequestItem` increments `designs.requestCount` and `designs.lastRequestedAt`; Firestore rules exist for Phase 6 collections, but `firestore.indexes.json` does not yet include Print Request indexes.
+
+**Decision**
+
+1. Treat `requestCount` and `lastRequestedAt` as lightweight request reference metadata allowed in Phase 6.
+2. These fields are analytics-adjacent but do not change design lifecycle status, do not imply printing, and do not implement Phase 10 dashboards.
+3. Production state remains on `printRequestItems` and future `printRunItems`, never on `designs.status`.
+4. Keep current broad collection reads for the Phase 6 foundation only; add server-side Print Request queries and indexes as a hardening follow-up before large request volume.
+5. No Phase 7, Portal, ecommerce, shipping, payment, Whatnot, or analytics dashboard work is introduced by this decision.
+
+**Consequences**
+Positive: Staff can see request popularity metadata as requests are built without polluting catalog lifecycle status.
+Tradeoff: Broad reads are acceptable for the foundation but must be revisited for scale.
+Follow-up: Add targeted tests for `printRequestService` and server-side indexed request queries.
+
+---
+
 ### ADR-FP-029: Catalog enrichment prompt v15 + validation hardening
 
 | Field | Value |
@@ -31,6 +307,10 @@
 |-------|-------|
 | Date | 2026-06-25 |
 | Status | accepted |
+
+**Superseded note:** ADR-FP-036 supersedes the Needs Review in-place re-run behavior. Tag exclusions
+remain, but current AI Processing replaces `{{excluded_tags}}` inside the Settings prompt template
+and review-tab re-runs now reset the design back to Processing.
 
 **Decision**
 
@@ -178,7 +458,7 @@ Staff need to A/B test speed vs accuracy between two dated nano snapshots withou
 
 **Decision**
 
-1. Team setting in Firestore `settings/aiEnrichment.visionModelId` with server allowlist: **`gpt-5-nano-2025-08-07`** (default), **`gpt-5.4-nano-2026-03-17`** (alternate).
+1. Team setting in Firestore `settings/aiEnrichment.visionModelId` with server allowlist: **`gpt-5.4-nano-2026-03-17`** (default), **`gpt-5-nano-2025-08-07`** (lowest-cost alternate).
 2. Owner/admin changes model in **Settings** (`/settings`) via callable `updateAiEnrichmentSettings`; invalid values rejected or fall back to default on read.
 3. **AI Processing** shows read-only active model label for all staff; per-design `aiSuggestions.model` records the model used.
 4. No model switch on Processing action bar; no API keys in settings.
@@ -530,6 +810,7 @@ AppForge starter template ADRs (ADR-001 through ADR-004 in prior template) descr
 
 | Date | Summary |
 |------|---------|
+| 2026-06-30 | ADR-FP-038: AI Processing approved taxonomy prompt context |
 | 2026-06-24 | ADR-FP-009: Three-workspace model; AI Review Inbox; no persisted review drafts; confidence informational only |
 | 2026-06-24 | ADR-FP-008: Fresh Prints Studio + Fresh Prints Portal naming |
 | 2026-06-24 | Fresh Prints ADRs added; AppForge starter ADRs removed |

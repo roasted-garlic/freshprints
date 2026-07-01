@@ -7,6 +7,9 @@
 | `users` | Team profiles — role, isActive (client read-only writes) |
 | `designs` | Design catalog metadata |
 | `categories` | Catalog categories |
+| `customers` | Customer records for Print Requests |
+| `printRequests` | Named request lists for customers or internal use |
+| `printRequestItems` | Request item records referencing approved catalog designs |
 | `settings` | App settings (e.g. `aiEnrichment`) |
 | `showQueues` / `showQueueItems` | Legacy names — Phase 7 migration planned |
 | `customerRequests` | Legacy — Phase 9 migration planned |
@@ -39,6 +42,8 @@ Types: `shared/types/` and `src/renderer/src/features/designs/types/`
 
 **Deprecated on designs:** `queued`, `printed` — legacy read only. New writes blocked. Production status belongs on queue/request items.
 
+Print Requests must not write `queued`, `printed`, `pending`, `done`, or any production/request lifecycle status to `designs.status`.
+
 ## AI review status
 
 Tracks pipeline progress separately from catalog `status`. Used by AI Review inbox tabs:
@@ -53,7 +58,7 @@ See `aiReview.types.ts` and `aiReviewInboxService.ts` for exact values and query
 
 | Field | Notes |
 |-------|-------|
-| `promptVersion` | e.g. `catalog-enrich-openai-v15` |
+| `promptVersion` | e.g. `catalog-enrich-openai-v16` |
 | `provider` | `openai` or `development` |
 | `model` | Resolved OpenAI model ID |
 | `title`, `description`, `tags`, `categoryId` | Suggestions |
@@ -74,6 +79,44 @@ isActive: boolean
 ```
 
 Customers use Portal only (Phase 8) — no Studio access.
+
+## Customer
+
+```ts
+isGuest: boolean
+userId?: string
+totalPrintRequests: number
+```
+
+Customer records are staff-created with `isGuest: false` for the current Phase 6 flow. They do not create Firebase Auth accounts, do not create `users/{uid}` documents, and do not grant Studio access.
+
+## Print Request
+
+```ts
+status: 'draft' | 'active' | 'completed' | 'archived'
+isInternal: boolean
+customerId?: string
+itemCount: number
+```
+
+A Print Request is a named list, not an order. It has no payment, checkout, shipping, packing, or fulfillment fields.
+
+## Print Request Item
+
+```ts
+status: 'pending' | 'queued' | 'in_progress' | 'printed' | 'done' | 'canceled'
+designId: string
+quantity: number
+printWidthInches?: number
+printHeightInches?: number
+sizeLabel?: string
+```
+
+Production/request progress lives on request items, not design documents.
+
+## Request reference counters
+
+Phase 6 may increment `designs.requestCount` and `designs.lastRequestedAt` when a design is added to a request. ADR-FP-030 defines these as lightweight request reference metadata only. They do not imply printing, do not change design lifecycle status, and do not implement Phase 10 analytics dashboards.
 
 ## Storage path helpers
 

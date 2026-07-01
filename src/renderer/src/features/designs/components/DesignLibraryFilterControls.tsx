@@ -1,3 +1,5 @@
+import { ListFilter } from "lucide-react";
+
 import { GlobalSearchField } from "../../../shared/components/GlobalSearchField";
 import { Select } from "../../../shared/components/Select";
 import { Button } from "../../../shared/components/Button";
@@ -54,7 +56,8 @@ export function DesignLibraryFilterControls({
         value={categoryFilter}
       />
 
-      <Button onClick={onOpenTags} size="sm" variant="secondary">
+      <Button className="button-leading-icon" onClick={onOpenTags} size="sm" variant="secondary">
+        <ListFilter aria-hidden="true" size={16} strokeWidth={2} />
         Tags
         {selectedTagCount > 0 ? ` (${selectedTagCount})` : ""}
       </Button>

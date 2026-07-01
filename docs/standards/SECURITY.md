@@ -333,14 +333,23 @@ Active staff (`owner`, `admin`, `helper`) may read and write design catalog reco
 | Create / edit / archive designs | Yes | Yes | Yes |
 | Assign existing category on design edit | Yes | Yes | Yes |
 | Create / edit / archive categories | Yes | Yes | No |
+| View approved tag library | Yes | Yes | Yes |
+| Create / edit / archive approved tags | Yes | Yes | No |
+| Bulk import approved tag JSON | Yes | No | No |
+| Approve AI suggested-new-tags | Yes | Yes | No |
 
 Permission checks use `permissionService` in the renderer and matching Firestore rules. UI must not expose category management write actions to helpers.
 
 Helpers may assign existing categories to designs but cannot manage category documents.
 
-Customers cannot access the desktop app and have no Firestore read access to `designs` or `categories` in the current rules.
+Helpers may view approved tags and use existing design tag strings, but cannot create, edit,
+archive, bulk import, or approve suggested tag records.
+
+Customers cannot access the desktop app and have no Firestore read access to `designs`, `categories`, or `tags` in the current rules.
 
 Category documents are readable by active staff. Category create/update/archive is restricted to `owner` and `admin`.
+
+Tag documents are readable by active staff. Tag create/update/archive is restricted to `owner` and `admin`; bulk import is additionally owner-only at the UI/service layer. Firestore rules block tag deletes.
 
 Design and category documents use soft archive patterns:
 

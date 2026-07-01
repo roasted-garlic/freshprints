@@ -125,6 +125,7 @@ Expected output:
 ```txt
 functions/lib/functions/src/index.js
 functions/lib/functions/src/enqueueAiEnrichment.js
+functions/lib/functions/src/resetAiEnrichmentForProcessing.js
 ```
 
 Verify exports (from repo root):
@@ -139,6 +140,9 @@ Expected names:
 createTeamUser
 updateTeamUser
 enqueueAiEnrichment
+resetAiEnrichmentForProcessing
+testAiEnrichmentPlayground
+updateAiEnrichmentSettings
 onDesignAiEnrichmentQueued
 ```
 
@@ -184,10 +188,10 @@ Deploy all functions (recommended first deploy after adding new exports):
 firebase deploy --only functions
 ```
 
-Or deploy only the Phase 5B AI functions:
+Or deploy only the current AI Processing callable set after a full export deploy has already aligned entrypoints:
 
 ```bash
-firebase deploy --only functions:enqueueAiEnrichment,functions:onDesignAiEnrichmentQueued
+firebase deploy --only functions:enqueueAiEnrichment,functions:resetAiEnrichmentForProcessing,functions:updateAiEnrichmentSettings,functions:testAiEnrichmentPlayground
 ```
 
 Expected deployed functions:
@@ -196,6 +200,9 @@ Expected deployed functions:
 createTeamUser
 updateTeamUser
 enqueueAiEnrichment
+resetAiEnrichmentForProcessing
+testAiEnrichmentPlayground
+updateAiEnrichmentSettings
 onDesignAiEnrichmentQueued
 ```
 
@@ -205,7 +212,7 @@ onDesignAiEnrichmentQueued
 firebase functions:list
 ```
 
-Confirm `createTeamUser`, `updateTeamUser`, `enqueueAiEnrichment`, and `onDesignAiEnrichmentQueued` appear in the project.
+Confirm `createTeamUser`, `updateTeamUser`, `enqueueAiEnrichment`, `resetAiEnrichmentForProcessing`, `testAiEnrichmentPlayground`, `updateAiEnrichmentSettings`, and `onDesignAiEnrichmentQueued` appear in the project.
 
 ## Local Emulator Notes
 

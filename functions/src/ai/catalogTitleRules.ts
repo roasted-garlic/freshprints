@@ -24,160 +24,53 @@ function hasTrailingTitlePunctuation(rawTitle: string): boolean {
   return TRAILING_TITLE_PUNCTUATION.test(rawTitle.trim());
 }
 
-export const OPENAI_CATALOG_ENRICHMENT_PROMPT_VERSION = "catalog-enrich-openai-v15";
-export const DEVELOPMENT_CATALOG_ENRICHMENT_PROMPT_VERSION = "catalog-enrich-dev-v15";
+export const OPENAI_CATALOG_ENRICHMENT_PROMPT_VERSION = "catalog-enrich-openai-v17";
+export const DEVELOPMENT_CATALOG_ENRICHMENT_PROMPT_VERSION = "catalog-enrich-dev-v17";
 
-const CATALOG_ENRICHMENT_SYSTEM_PROMPT_BODY = `Catalog printable apparel artwork from the image.
+const CATALOG_ENRICHMENT_SYSTEM_PROMPT_BODY = `Analyze one printable apparel artwork image for catalog enrichment. Base every field only on the image. Do not use the filename, outside context, or filler. Read all visible text first, then derive metadata grounded in what you observe. If a detail is uncertain, omit it or lower confidence instead of inventing it.
 
-Return JSON only. Do not include markdown, notes, explanations, comments, or extra text.
+Return JSON only. No markdown, comments, or extra text.
 
-Required JSON keys:
-title, description, categoryName, tags, primarySubject, theme, style, audience, colorPalette, artworkContainsText, visibleText, visibleTextColor, textOnlyArtwork, textRecognitionConfidence, overallConfidence.
-
-Required field formats:
+Required JSON keys and formats:
 title: string.
 description: string.
 categoryName: string.
 tags: array of 5 to 12 lowercase single-word strings.
-primarySubject: string.
-theme: string.
-style: string.
-audience: string.
+primarySubject: string (main subject, or for text-only artwork the message topic).
+theme: string (e.g. motherhood, humor, faith, animals, western, music, holiday).
+style: string (e.g. cartoon, retro, vintage, minimal, bold typography, line art).
+audience: string (e.g. moms, teachers, nurses, kids, animal lovers, music fans).
 colorPalette: array of simple printable artwork color names only.
-artworkContainsText: boolean.
+artworkContainsText: boolean. true if any readable letters, words, numbers, or typography appear; false only when there is no readable text.
 visibleText: array of readable text phrases or lines.
-visibleTextColor: array of simple printable text ink color names only.
-textOnlyArtwork: boolean.
+visibleTextColor: array of the main printable text ink color names only.
+textOnlyArtwork: boolean. true only when readable text is the entire design with no characters, illustrations, icons, logos, banners, shapes, or decorations.
 textRecognitionConfidence: number from 0 to 1.
 overallConfidence: number from 0 to 1.
 
-Priority order:
-
-1. Read all visible text accurately.
-2. Understand the message, joke, theme, or audience.
-3. Identify supporting artwork.
-4. Identify style and printable artwork colors.
-5. Create a useful catalog title, category, tags, and description.
-
 Canvas rule:
-The image may be placed on a neutral grey, white, black, transparent, or solid analysis canvas for OCR only. That canvas is not part of the printable artwork. Never mention canvas, background, backdrop, matte, border, letterbox, surrounding fill, grey, gray, neutral, white, or black in title, description, tags, categoryName, or colorPalette unless that color is clearly printable ink inside the artwork itself. Describe only printable artwork colors such as text ink, illustrations, characters, icons, logos, shapes, banners, ribbons, clothing, props, stars, hearts, or other design elements. If the only visible color belongs to the analysis canvas, return colorPalette as an empty array.
+The artwork may sit on a neutral grey, white, black, or transparent analysis canvas used only for OCR. That canvas is not part of the artwork. Never mention canvas, background, backdrop, matte, border, grey, gray, white, or black in title, description, tags, categoryName, or colorPalette unless that color is clearly printable ink in the artwork. Describe only printable artwork colors. If the only visible color is the canvas, return colorPalette as [].
 
 OCR rules:
-Read all text before creating title, description, categoryName, tags, or other metadata.
-Transcribe every readable word exactly as printed.
-Do not summarize, rewrite, correct spelling, invent missing words, or guess homophones.
-For short bold words from 4 to 12 characters, inspect letter by letter.
-For curved, arched, circular, or wavy text, read the full phrase in proper reading order before deciding the main phrase.
-Examples:
-SLEEP is not SLIPPED.
-DEPRIVED is not DEPREIVED.
-MOTHER is not OTHER.
-MAMA is not MAMMA unless printed that way.
+Transcribe every readable word exactly as printed. Do not rewrite, correct spelling, or guess. Inspect short bold words letter by letter, and read curved or arched text in full reading order before choosing the main phrase. If letters are uncertain, keep only the readable portion and lower textRecognitionConfidence.
 
 visibleText rules:
-visibleText must always be an array.
-If no readable text exists, return [].
-If text is partially readable, include only the readable parts and lower textRecognitionConfidence.
-Include every distinct readable phrase, line, or segment in reading order.
-Reading order should be top arc or top line first, then middle text, then lower arc or lower lines, then small supporting text.
-For dual-arc layouts, include one entry per arc or phrase.
-For stacked text, include one entry per line or phrase.
-For dash-separated slogans, include one entry per segment in order.
-Never merge separate arcs or lines into one garbled string.
-Preserve printed spelling, word boundaries, capitalization, and punctuation when readable.
-The first visibleText entry must be the primary slogan, headline, or most dominant readable text exactly as shown.
-
-artworkContainsText:
-true if any readable letters, words, initials, numbers, slogans, logos, or typography appear in the printable artwork.
-false only when there is no readable text.
-
-visibleTextColor:
-Return an array of the main printable text ink colors only.
-Do not include canvas or background colors.
-
-textOnlyArtwork:
-true only when readable text is the entire printable design and there are no characters, illustrations, icons, mascots, logos, clip art, banners, ribbons, shapes, stars, hearts, or decorative artwork.
-false when text appears with any supporting artwork, illustration, mascot, icon, logo, banner, ribbon, shape, or decorative element.
+Always an array; return [] if no readable text. Include every distinct readable phrase or line in reading order (top arc or line first, then middle, then lower, then small supporting text). One entry per arc, line, or dash-separated segment; never merge separate arcs or lines into one string. Preserve printed spelling, word boundaries, capitalization, and punctuation. The first entry must be the primary slogan or headline exactly as shown.
 
 Title rules:
-If readable text exists, create the title from visibleText[0] only.
-Use up to the first 6 meaningful words.
-Use Title Case.
-Do not use words from later visibleText entries unless visibleText[0] is unreadable or not the true headline.
-Do not end the title with punctuation or separators, including hyphen, dash, colon, semicolon, comma, period, exclamation, question mark, slash, backslash, or pipe.
-If the sixth word would be a separator, stop before it.
-Never use generic titles such as Text, Typography, Quote, Words, Label, Saying, Slogan, Lettering, Font, Type, Caption, Design, Graphic, Artwork, Image, Print, Shirt, Tee, DTF, Transfer, or PNG.
-Never use the filename.
-If there is no readable text, title the main artwork subject.
-Add "Black Text" or "White Text" only when textOnlyArtwork is true and all readable text is that single ink color.
-Do not add "Black Text" or "White Text" when illustrations, banners, clip art, icons, logos, shapes, or decorations are present.
+If readable text exists, build the title from visibleText[0] only, up to the first 6 meaningful words, in Title Case, with no trailing punctuation or separators. If there is no readable text, title the main artwork subject. Never use the filename and never use a generic title such as Text, Typography, Quote, Design, Graphic, Artwork, Print, Shirt, Tee, DTF, Transfer, or PNG. Add "Black Text" or "White Text" only when textOnlyArtwork is true and all text is that single ink color.
 
 Description rules:
-description is required.
-Never return an empty description.
-Never return "-", "N/A", "none", "unknown", or punctuation only.
-Use complete sentences.
-
-If artworkContainsText is true:
-Sentence 1 must transcribe every visibleText phrase exactly in order, joined with " / " between segments.
-Sentence 2 must describe only the supporting printable artwork, such as characters, icons, mascots, props, banners, shapes, style, or notable printable ink colors.
-Do not mention the canvas or background.
-
-If artworkContainsText is false:
-Write at least one complete sentence naming the subject, art style, and notable visual details.
-Do not mention the canvas or background.
+Always return a non-empty description in complete sentences. Never return "", "-", "N/A", "none", or punctuation only. Never mention the canvas or background. If artworkContainsText is true: sentence 1 transcribes every visibleText phrase in order joined with " / ", and sentence 2 describes only the supporting artwork (characters, icons, props, banners, shapes, style, or notable ink colors). If artworkContainsText is false: write at least one sentence naming the subject, style, and notable details.
 
 categoryName:
-Choose the single best allowed category based on the visible text, message, theme, subject, and likely buyer.
-If an allowed category list is provided, categoryName must exactly match one allowed category.
-Prefer the message or audience over a small supporting object.
-Examples:
-Motherhood slogans should use a motherhood, mom life, family, or closest matching allowed category.
-Animal illustrations should use an animal category unless the text clearly points to a stronger theme.
-Faith messages should use a faith category.
-Funny or sarcastic designs should use a humor category.
-Music themes should use a music category.
-Do not choose unrelated categories based only on a small prop or decoration.
+Choose the single best category from the message, theme, subject, and likely buyer; prefer the message or audience over a small supporting object. If an allowed category list is provided, categoryName must exactly match one allowed category.
 
 tags:
-Return 5 to 12 tags.
-Each tag must be lowercase.
-Each tag must be a single reusable word.
-No spaces.
-No hashtags.
-No punctuation.
-Do not copy full phrases from visibleText, title, or description.
-Useful single words from visible text are allowed only when they are strong searchable themes, audiences, or subjects, such as mama, coffee, nurse, teacher, faith, spooky, western, or baseball.
-Use searchable catalog words based on subject, theme, style, audience, and mood.
-Good examples: funny, mama, western, cowgirl, raccoon, cartoon, retro, faith, teacher, nurse, spooky, floral, patriotic.
-Bad examples: tshirt, shirt, tee, design, print, png, dtf, transfer, image, artwork, graphic, text, quote, saying, slogan, typography, lettering, background, canvas.
-
-primarySubject:
-Name the main visual subject or, for text-only artwork, the main message topic.
-Examples: raccoon, motherhood slogan, highland cow, faith quote, retro smiley.
-
-theme:
-Name the broader theme.
-Examples: motherhood, humor, faith, animals, western, music, holiday, teacher, nurse, sports.
-
-style:
-Name the visual style.
-Examples: cartoon, retro, vintage, western, minimal, bold typography, line art, watercolor, mascot.
-
-audience:
-Name the likely buyer or wearer.
-Examples: moms, women, teachers, nurses, kids, animal lovers, faith based customers, music fans, general adults.
-
-colorPalette:
-Return an array of the main printable artwork colors only.
-Use simple color names.
-Do not include background or canvas colors.
+Return 5 to 12 lowercase single reusable words. No spaces, hashtags, or punctuation. Do not copy full phrases from visibleText, title, or description. Use searchable words based on subject, theme, style, audience, and mood (e.g. funny, mama, western, cowgirl, raccoon, cartoon, retro, faith, teacher, nurse, spooky, floral). Do not use generic words such as tshirt, shirt, tee, design, print, png, dtf, transfer, image, artwork, graphic, text, quote, slogan, typography, background, or canvas.
 
 Confidence:
-textRecognitionConfidence must be a number from 0 to 1.
-overallConfidence must be a number from 0 to 1.
-Use lower confidence when text is blurry, distorted, curved, partially hidden, stylized, misspelled, or hard to separate from artwork.
-Do not pretend uncertain text is certain.`;
+Lower both confidence values when text is blurry, distorted, curved, partially hidden, stylized, or hard to separate from artwork. Do not pretend uncertain text is certain.`;
 
 export const CATALOG_ENRICHMENT_SYSTEM_PROMPT = buildCatalogEnrichmentSystemPrompt();
 
@@ -190,15 +83,7 @@ export function buildCatalogEnrichmentSystemPrompt(
 export function buildCatalogEnrichmentUserPrompt(categoryList: string): string {
   return `Allowed categories: ${categoryList}.
 
-Use the image only.
-Read all visible text before naming the artwork.
-Double-check every visible word character by character before returning JSON.
-Return categoryName as an exact match from the allowed categories when categories are provided.
-Always return a non-empty description sentence.
-Ignore the analysis canvas and describe only the printable artwork itself.
-Apply the tag exclusion list.
-Use apparel-friendly searchable tags only.
-Return valid JSON only.`;
+Analyze the provided image only. Read all visible text character by character before naming the artwork, and do not invent unreadable words or extra slogan lines. Return categoryName as an exact match from the allowed categories when categories are provided. Always return a non-empty description, ignore the analysis canvas, apply the tag exclusion list, and return valid JSON only.`;
 }
 
 const BACKGROUND_PHRASE_PATTERNS = [
@@ -972,6 +857,40 @@ export function resolveCatalogTitle(input: {
   }
 
   return appendTextColorSuffix("Artwork Design", input.visibleTextColor, input.textOnlyArtwork);
+}
+
+/**
+ * Lean-schema title resolution for the v17 playground-style contract.
+ *
+ * Unlike {@link resolveCatalogTitle}, this trusts the model's title and applies only
+ * non-destructive normalization. It NEVER derives a title from the description (which in v17
+ * leads with the full transcribed quote and would otherwise collapse a good title such as
+ * "Motherhood Skeleton Rock On" into an OCR fragment like "Some Days I Rock It"). It only falls
+ * back — to tags, never to the description — when the model title is empty, filename-like, or a
+ * purely generic word such as "Text" or "Design".
+ */
+export function resolveLeanCatalogTitle(input: {
+  candidateTitle?: string;
+  tags?: string[];
+  uploadFileStem: string;
+}): string {
+  const normalizedCandidate = normalizeCatalogTitle(input.candidateTitle ?? "");
+
+  if (
+    normalizedCandidate &&
+    !isGenericCatalogTitle(normalizedCandidate) &&
+    !isFilenameLikeTitle(normalizedCandidate, input.uploadFileStem)
+  ) {
+    return stripTrailingTitlePunctuation(normalizedCandidate);
+  }
+
+  const fromTags = buildTitleFromTags(input.tags ?? []);
+
+  if (fromTags && !isGenericCatalogTitle(fromTags)) {
+    return stripTrailingTitlePunctuation(fromTags);
+  }
+
+  return "Artwork Design";
 }
 
 export function normalizeVisibleTextPhrases(value: unknown): string[] | undefined {

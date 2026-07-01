@@ -1,4 +1,6 @@
+import type { Category } from "../types/category.types";
 import type { AiReviewStatus } from "../types/aiReview.types";
+import type { CatalogTag } from "../types/catalogTag.types";
 import type { Design } from "../types/design.types";
 import { resolveDesignAiReviewDisplay } from "./aiReviewState";
 
@@ -41,6 +43,14 @@ export function filterDesignsByTags(designs: Design[], selectedTags: string[]): 
   );
 }
 
+export function filterDesignsByCategory(designs: Design[], categoryId?: string): Design[] {
+  if (!categoryId?.trim()) {
+    return designs;
+  }
+
+  return designs.filter((design) => design.categoryId === categoryId);
+}
+
 export function sortTagsAlphabetically(tags: string[]): string[] {
   return [...tags].sort((left, right) => left.localeCompare(right, undefined, { sensitivity: "base" }));
 }
@@ -57,6 +67,71 @@ export function filterTagsBySearch(availableTags: string[], searchQuery: string)
   );
 }
 
+function normalizeTagLookupValue(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+function buildCatalogTagLookup(catalogTags: readonly CatalogTag[] = []): Map<string, CatalogTag> {
+  const lookup = new Map<string, CatalogTag>();
+
+  for (const catalogTag of catalogTags) {
+    if (catalogTag.status !== "approved") {
+      continue;
+    }
+
+    lookup.set(normalizeTagLookupValue(catalogTag.name), catalogTag);
+    for (const alias of catalogTag.aliases) {
+      lookup.set(normalizeTagLookupValue(alias), catalogTag);
+    }
+  }
+
+  return lookup;
+}
+
+function tagMatchesCatalogSearch(
+  tag: string,
+  normalizedSearch: string,
+  catalogTagLookup: Map<string, CatalogTag>,
+): boolean {
+  if (!normalizedSearch) {
+    return true;
+  }
+
+  const normalizedTag = normalizeTagLookupValue(tag);
+
+  if (normalizedTag.includes(normalizedSearch)) {
+    return true;
+  }
+
+  const catalogTag = catalogTagLookup.get(normalizedTag);
+
+  if (!catalogTag) {
+    return false;
+  }
+
+  return (
+    catalogTag.name.toLowerCase().includes(normalizedSearch) ||
+    catalogTag.aliases.some((alias) => alias.toLowerCase().includes(normalizedSearch)) ||
+    catalogTag.preferredWhen.toLowerCase().includes(normalizedSearch)
+  );
+}
+
+function sortFacetedTagsByCatalogStatus(
+  facetedTags: FacetedTag[],
+  catalogTagLookup: Map<string, CatalogTag>,
+): FacetedTag[] {
+  return [...facetedTags].sort((left, right) => {
+    const leftApproved = catalogTagLookup.has(normalizeTagLookupValue(left.tag));
+    const rightApproved = catalogTagLookup.has(normalizeTagLookupValue(right.tag));
+
+    if (leftApproved !== rightApproved) {
+      return leftApproved ? -1 : 1;
+    }
+
+    return left.tag.localeCompare(right.tag, undefined, { sensitivity: "base" });
+  });
+}
+
 export function collectUniqueDesignTags(designs: Design[]): string[] {
   const tagSet = new Set<string>();
 
@@ -67,6 +142,53 @@ export function collectUniqueDesignTags(designs: Design[]): string[] {
   }
 
   return sortTagsAlphabetically([...tagSet]);
+}
+
+export function collectUsedCategoryIds(designs: Design[]): string[] {
+  const usedCategoryIds = new Set<string>();
+
+  for (const design of designs) {
+    if (design.categoryId?.trim()) {
+      usedCategoryIds.add(design.categoryId);
+    }
+  }
+
+  return [...usedCategoryIds].sort((left, right) =>
+    left.localeCompare(right, undefined, { sensitivity: "base" }),
+  );
+}
+
+export interface CategoryFilterOption {
+  label: string;
+  value: string;
+}
+
+export function buildCategoryFilterOptions(params: {
+  allOptionValue: string;
+  categories: Category[];
+  designs: Design[];
+  selectedCategoryId?: string;
+}): CategoryFilterOption[] {
+  const { allOptionValue, categories, designs, selectedCategoryId } = params;
+  const usedCategoryIds = new Set(collectUsedCategoryIds(designs));
+  const options: CategoryFilterOption[] = [{ label: "All categories", value: allOptionValue }];
+
+  for (const category of categories) {
+    if (!category.isActive) {
+      continue;
+    }
+
+    if (!usedCategoryIds.has(category.id) && category.id !== selectedCategoryId) {
+      continue;
+    }
+
+    options.push({
+      label: category.name,
+      value: category.id,
+    });
+  }
+
+  return options;
 }
 
 export interface FacetedTag {
@@ -97,10 +219,12 @@ export interface FacetedTag {
  */
 export function computeFacetedTagsForDraftSelection(params: {
   baseDesigns: Design[];
+  catalogTags?: CatalogTag[];
   draftSelectedTags: string[];
   tagSearchQuery?: string;
 }): FacetedTag[] {
-  const { baseDesigns, draftSelectedTags, tagSearchQuery } = params;
+  const { baseDesigns, catalogTags, draftSelectedTags, tagSearchQuery } = params;
+  const catalogTagLookup = buildCatalogTagLookup(catalogTags);
 
   // Designs already matching every selected tag — the pool every candidate narrows from.
   const selectionMatches = filterDesignsByTags(baseDesigns, draftSelectedTags);
@@ -129,13 +253,17 @@ export function computeFacetedTagsForDraftSelection(params: {
       continue;
     }
 
-    // Apply the tag label search, but never hide a selected tag.
-    if (normalizedSearch && !isSelected && !tag.includes(normalizedSearch)) {
+    // Apply the tag metadata search, but never hide a selected tag.
+    if (
+      normalizedSearch &&
+      !isSelected &&
+      !tagMatchesCatalogSearch(tag, normalizedSearch, catalogTagLookup)
+    ) {
       continue;
     }
 
     faceted.push({ tag, count, isSelected });
   }
 
-  return faceted;
+  return sortFacetedTagsByCatalogStatus(faceted, catalogTagLookup);
 }

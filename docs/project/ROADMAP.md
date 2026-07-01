@@ -98,19 +98,19 @@ Avoid one-off solutions. Do not plan for a separate native mobile application.
 Current Phase:
 
 ```txt
-Phase 5
-AI Review Workflow (architecture refined — ready for implementation)
+Phase 6
+Customers And Print Requests (foundation PASS WITH NOTES)
 ```
 
 Current Goal:
 
-Implement AI Review Inbox, automatic AI pipeline, and Approval Mode per `docs/workflow/plans/phase-5-ai-review-architecture-plan.md`.
+Complete manual QA/signoff for deterministic category ordering in Design Library, then return to the approved AI Functions deploy/smoke checkpoint or other Phase 6 follow-up planning.
 
-**Completed milestones (per signoffs):** Phase 1 foundation, Phase 2 design library (2A–2C), Phase 3 import pipeline (3A–3C), Phase 3D print size and catalog status separation, **Phase 4 catalog cleanup**.
+**Completed milestones (per signoffs):** Phase 1 foundation, Phase 2 design library (2A–2C), Phase 3 import pipeline (3A–3C), Phase 3D print size and catalog status separation, **Phase 4 catalog cleanup**, Phase 5 AI Review / AI enrichment baseline through the Phase 0 deploy gate.
 
-**Architecture review:** `docs/workflow/reviews/phase-5-ai-review-architecture-review.md` (2026-06-24).
+**Phase 6 source plan:** `docs/workflow/plans/2026-06-28-phase-6-print-requests-foundation-plan.md`.
 
-**Last realignment:** 2026-06-24 — `docs/workflow/reviews/roadmap-realignment-review.md`, `docs/workflow/plans/customer-print-request-and-print-run-architecture-plan.md`.
+**Last realignment:** 2026-06-29 — Phase 6 Print Requests foundation signed off PASS WITH NOTES in `docs/workflow/reviews/2026-06-29-phase-6-print-requests-catch-up-test-report.md`; customer creation/provisioning follow-up passed in `docs/workflow/reviews/2026-06-29-customer-creation-provisioning-bug-test-report.md`.
 
 ---
 
@@ -436,7 +436,9 @@ Phase 3 complete when:
 * Imports completion messaging and links point to AI Review
 * Legacy `status=imported` library URLs redirect to AI Review
 
-**Addendum (2026-06-24):** Show archived control is a toggle switch; **Design Library** is the default authenticated landing page (`/designs`); **Dev Dashboard** moved to bottom of sidebar (`/dev-dashboard`).
+**Addendum (2026-06-24):** Show archived control is a toggle switch; **Design Library** is the default authenticated landing page (`/designs`).
+
+**Addendum (2026-06-29):** Dev Dashboard page removed; **Dev Tools** sidebar button opens Electron DevTools in development builds (staff only).
 
 **QA fix (2026-06-24):** Tag filter composite indexes extended; Edit Design status read-only; uniform design cards; archived metadata save preserves `archived`.
 
@@ -500,12 +502,12 @@ Staff can efficiently browse and search the approved catalog. Non-catalog workfl
 Status:
 
 ```txt
-In progress — Phase 5A workspace polish complete (2026-06-24)
+Complete through Phase 0 deploy gate; monitor and polish as needed
 ```
 
 Goal:
 
-Every imported design lands in **AI Processing** (`/ai-review`). Automatic AI enrichment runs after import (Phase 5B). Staff review and approve before designs appear in Design Library.
+Every imported design lands in **AI Processing** (`/ai-review`). Staff start AI enrichment from the Processing tab, one design at a time. Staff review and approve before designs appear in Design Library.
 
 Architecture plan: `docs/workflow/plans/phase-5-ai-review-architecture-plan.md`  
 Architecture review: `docs/workflow/reviews/phase-5-ai-review-architecture-review.md`
@@ -515,7 +517,7 @@ Architecture review: `docs/workflow/reviews/phase-5-ai-review-architecture-revie
 | Sub-phase | Focus |
 |-----------|--------|
 | **5A** | Processing station — tabs, queue stats, workflow workspace (preview → pipeline → suggestions → catalog form); oldest-first queue; **no search/filter/sort** |
-| **5B** | Automatic AI pipeline (enqueue on import; Cloud Function; `aiSuggestions` + version fields) |
+| **5B** | Staff-controlled AI pipeline (Processing tab starts direct Cloud Function execution; `aiSuggestions` + version fields) |
 | **5C** | Approval workflow polish (already largely in 5A workspace) |
 | **5D** | Promotion & audit (`catalogApprovalService` UI, re-open rejected, duplicate title warning) |
 | **5E** | Polish & metrics (confidence badges, soft lock, re-run AI, sessionStorage optional) |
@@ -529,7 +531,7 @@ Architecture review: `docs/workflow/reviews/phase-5-ai-review-architecture-revie
 Build:
 
 * AI Processing station (`/ai-review`) — Processing, Needs Review, Rejected tabs; oldest-first queue
-* Automatic AI enqueue after import (Phase 5B — no manual Generate AI for new imports)
+* Staff-controlled AI Processing after import (Phase 5B maintenance — no OpenAI call during import)
 * AI title, description, category, tag suggestions with version tracking (Phase 5B)
 * Staff review workspace (Approve & Next, Reject & Next, Skip, auto-advance)
 * `catalogApprovalService` UI wiring
@@ -565,7 +567,7 @@ Generate:
 
 ## Exit Criteria
 
-New imports appear in AI Processing. AI runs automatically after import (5B). Staff approve in the processing workspace. Approved designs appear in Design Library only. Search/filter belongs in Design Library. No automatic catalog publish without staff action.
+New imports appear in AI Processing. Staff start AI processing from `/ai-review`; successful output moves to Needs Review. Staff approve in the processing workspace. Approved designs appear in Design Library only. Search/filter belongs in Design Library. No automatic catalog publish without staff action.
 
 ---
 
@@ -576,7 +578,7 @@ New imports appear in AI Processing. AI runs automatically after import (5B). St
 Status:
 
 ```txt
-Planned
+PASS WITH NOTES
 ```
 
 Goal:
@@ -606,6 +608,26 @@ Support:
 * Add designs from approved catalog
 * Assign registered customer, guest customer, or internal list
 * Track item status
+
+### Implementation/signoff progress (2026-06-29)
+
+Delivered and manually QA'd in Fresh Prints Studio:
+
+* `/print-requests` staff route
+* Print request list/detail workspace
+* Internal, registered customer, and guest customer create modes
+* Request item edit/remove controls
+* Design Library request-selection mode with quantity selection
+* Owner/admin customer-record creation path from Users for registered customer Print Requests
+* Firestore rules for `customers`, `printRequests`, and `printRequestItems`
+* Shared `PrintRequest`, `PrintRequestItem`, and `Customer` types
+* Sticky Design Library filter dock for long catalog browsing
+
+Notes:
+
+* Registered customer request testing has a corrected implementation path through owner/admin-created customer records in Users; authenticated QA passed in `docs/workflow/reviews/2026-06-29-customer-creation-provisioning-bug-test-report.md`.
+* Customer records created in Phase 6 do not create Firebase Auth accounts, Portal login, or Studio access.
+* Print Request indexes and dedicated unit tests remain hardening follow-ups.
 
 **Not in scope:** Payment, checkout, shipping, order fulfillment.
 

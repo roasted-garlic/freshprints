@@ -3,9 +3,11 @@ import { AutoResizeTextarea } from "../../../shared/components/AutoResizeTextare
 import { Select, type SelectOption } from "../../../shared/components/Select";
 import { TagChipInput } from "../../../shared/components/TagChipInput";
 import { TextInput } from "../../../shared/components/TextInput";
+import type { CatalogTag } from "../../designs/types/catalogTag.types";
 import type { AiReviewDraftForm } from "../types/aiReviewInbox.types";
 
 interface AiReviewFormPanelProps {
+  approvedTags: CatalogTag[];
   canEdit: boolean;
   categoryOptions: { label: string; value: string }[];
   draftForm: AiReviewDraftForm;
@@ -14,6 +16,7 @@ interface AiReviewFormPanelProps {
 }
 
 export function AiReviewFormPanel({
+  approvedTags,
   canEdit,
   categoryOptions,
   draftForm,
@@ -78,6 +81,7 @@ export function AiReviewFormPanel({
 
       <TagChipInput
         adjustmentHint={draftForm.tagsAdjustmentNote}
+        approvedTags={approvedTags}
         disabled={!canEdit}
         label="Tags"
         name="aiReviewTags"

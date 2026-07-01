@@ -33,22 +33,16 @@
 
 .login-header h1,
 .status-panel h1,
-.dashboard-welcome h2,
-.firebase-connection-card h2,
-.dashboard-devtools-card h3,
 .empty-state h3,
-.error-state h3,
-.dashboard-permission-grid h3 {
+.error-state h3 {
   line-height: var(--line-height-tight);
   margin: 0;
 }
 
 .login-header p,
 .status-panel p,
-.dashboard-welcome p,
-.firebase-connection-card p,
-.dashboard-devtools-card p,
-.dashboard-permission-grid p {
+.empty-state p,
+.error-state p {
   color: var(--color-text-secondary);
   font-size: var(--font-size-md);
   line-height: var(--line-height-normal);
@@ -113,23 +107,6 @@
   overflow: hidden;
 }
 
-.stats-grid {
-  display: grid;
-  gap: var(--space-3);
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.dashboard-welcome {
-  display: grid;
-  gap: var(--space-4);
-}
-
-.dashboard-welcome h2 {
-  color: var(--color-text-primary);
-  font-size: var(--font-size-xl);
-  font-weight: 600;
-}
-
 .firebase-connection-card {
   display: grid;
   gap: var(--space-4);
@@ -138,20 +115,6 @@
 .firebase-connection-card h2 {
   color: var(--color-text-primary);
   font-size: var(--font-size-xl);
-  font-weight: 600;
-}
-
-.dashboard-devtools-card-content {
-  align-items: flex-start;
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-4);
-  justify-content: space-between;
-}
-
-.dashboard-devtools-card h3 {
-  color: var(--color-text-primary);
-  font-size: var(--font-size-lg);
   font-weight: 600;
 }
 
@@ -438,18 +401,6 @@
   }
 }
 
-.dashboard-permission-grid {
-  display: grid;
-  gap: var(--space-3);
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.dashboard-permission-grid h3 {
-  color: var(--color-text-primary);
-  font-size: var(--font-size-lg);
-  font-weight: 600;
-}
-
 .user-directory-panel {
   display: grid;
   gap: var(--space-3);
@@ -530,6 +481,54 @@
   font-size: var(--font-size-sm);
 }
 
+.user-directory-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.user-directory-summary-row {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.user-directory-count-chip {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  color: var(--color-text-secondary);
+  display: inline-flex;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  padding: var(--space-1) var(--space-3);
+}
+
+.user-directory-section-copy {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.user-directory-section-copy h2,
+.user-directory-section-copy p {
+  margin: 0;
+}
+
+.user-directory-section-copy p:not(.eyebrow) {
+  color: var(--color-text-secondary);
+}
+
+.customer-notes-indicator {
+  align-items: center;
+  color: var(--color-text-tertiary);
+  display: inline-flex;
+}
+
+.customer-notes-indicator.has-notes {
+  color: var(--color-accent-primary);
+}
+
 .table-scroll {
   overflow-x: auto;
   width: 100%;
@@ -539,11 +538,6 @@
   /* Sidebar is position: fixed (drawer), so the shell only needs the content column */
   .app-shell,
   .app-shell:has(.sidebar-collapsed) {
-    grid-template-columns: 1fr;
-  }
-
-  .stats-grid,
-  .dashboard-permission-grid {
     grid-template-columns: 1fr;
   }
 }

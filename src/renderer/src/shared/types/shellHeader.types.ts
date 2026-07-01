@@ -28,7 +28,14 @@ export interface ShellHeaderPrimaryAction {
   onClick: () => void;
 }
 
+export interface ShellHeaderAction {
+  icon?: ReactNode;
+  label: string;
+  onClick: () => void;
+}
+
 export interface ShellHeaderConfig {
+  actions?: ShellHeaderAction[] | null;
   description?: string;
   filters?: ShellHeaderFilterConfig[] | null;
   primaryAction?: ShellHeaderPrimaryAction | null;

@@ -115,7 +115,7 @@ Fresh Prints Studio is organized into **three independent workspaces**:
 
 | Workspace | Route | Responsibility |
 |-----------|-------|----------------|
-| **Imports** | `/imports` | Receive, validate, create designs, derivatives, automatic AI enqueue |
+| **Imports** | `/imports` | Receive, validate, create designs, derivatives, AI Processing intake |
 | **AI Review** | `/ai-review` | Operational Inbox — every import until approved or rejected |
 | **Design Library** | `/designs` | Approved catalog only — not a work queue |
 

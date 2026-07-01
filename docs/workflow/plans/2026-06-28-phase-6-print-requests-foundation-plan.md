@@ -4,7 +4,7 @@
 |-------|-------|
 | Date | 2026-06-28 |
 | Author | Managing Agent |
-| Status | ready_for_review |
+| Status | signed_off_pass_with_notes |
 | Workflow | managed-phase |
 | Related | `.cursor/workflow/state.md`, `docs/project/ROADMAP.md`, `docs/workflow/plans/customer-print-request-and-print-run-architecture-plan.md` |
 
@@ -12,16 +12,16 @@
 
 ## 1. Current blocker check
 
-Phase 5 is still blocked on Phase 0 deploy verification for AI catalog enrichment.
+Phase 5 was previously blocked on Phase 0 deploy verification for AI catalog enrichment.
 
-Until the following happen, no Phase 6 implementation should start:
+The Phase 0 gate has now cleared on `fresh-prints-dev`:
 
-* Firebase Functions are deployed.
-* One design is re-run through AI Review.
-* Studio shows `catalog-enrich-openai-v15`.
-* Studio shows `provider: openai`, not `development`.
+* Firebase Functions deployed.
+* One design was re-run through AI Review.
+* Studio showed `catalog-enrich-openai-v15`.
+* Studio showed `provider: openai`, not `development`.
 
-This plan is intentionally documentation only and does not change runtime code.
+Phase 6 foundation has been signed off PASS WITH NOTES. See `docs/workflow/reviews/2026-06-29-phase-6-print-requests-catch-up-test-report.md`.
 
 ---
 
@@ -131,9 +131,9 @@ Primary Studio route:
 
 * `/print-requests`
 
-Recommended workspace structure:
+Implemented workspace structure:
 
-* `src/renderer/src/features/print-requests/` `[NEEDS REPO CHECK]`
+* `src/renderer/src/features/print-requests/`
 
 UI shape:
 
@@ -187,10 +187,10 @@ Suggested hooks:
 * `useCustomers`
 * `useReadyDesignsForSelection`
 
-Suggested shared types:
+Implemented shared types:
 
-* `shared/types/printRequest/printRequest.types.ts` `[NEEDS REPO CHECK]`
-* `shared/types/customer/customer.types.ts` `[NEEDS REPO CHECK]`
+* `shared/types/printRequest/printRequest.types.ts`
+* `shared/types/customer/customer.types.ts`
 
 The implementation should reuse existing shared conventions rather than inventing new model shapes in the renderer.
 
@@ -198,7 +198,7 @@ The implementation should reuse existing shared conventions rather than inventin
 
 ## 8. Firestore rules and index considerations
 
-Firestore changes will be required for Phase 6, but they should not be made until the plan is approved.
+Firestore rules have been implemented for the Phase 6 collections after plan approval. Indexes have not been added because the current implementation uses broad collection reads plus client-side filtering/sorting for the foundation slice.
 
 ### Collections to protect
 
@@ -214,14 +214,14 @@ Firestore changes will be required for Phase 6, but they should not be made unti
 
 ### Index direction
 
-Expect indexes for:
+Expected future indexes when query patterns move server-side:
 
 * `printRequests` by `status`, `updatedAt`
 * `printRequests` by customer / guest / internal filter
 * `printRequestItems` by `printRequestId`, `status`, `createdAt`
 * `customers` by `isGuest`, `displayName`
 
-Exact index shape should be verified against the implemented query pattern before deployment.
+Exact index shape should be verified against the implemented query pattern before deployment. Current broad reads are acceptable only for the Phase 6 foundation and should be treated as a scalability follow-up before large request volume.
 
 ---
 
@@ -300,16 +300,26 @@ Do not build the following in this phase:
 
 ## 13. Implementation steps
 
-This plan only defines the work. Implementation should later proceed in this order:
+Implementation status:
 
-1. Confirm the Phase 5 deploy gate is cleared.
-2. Add shared types for print requests and print request items.
-3. Add print request services and hooks.
-4. Add Staff-only Studio routes and pages.
-5. Add Firestore rules and indexes.
-6. Wire request item add/edit/remove flows.
-7. Add production item status controls.
-8. Update docs and tests.
+1. Confirm the Phase 5 deploy gate is cleared — complete.
+2. Add shared types for print requests and print request items — complete.
+3. Add print request services and hooks — complete.
+4. Add Staff-only Studio routes and pages — complete.
+5. Add Firestore rules — complete.
+6. Add Firestore indexes — deferred until server-side query patterns require them.
+7. Wire request item add/edit/remove flows — complete.
+8. Add production item status controls — complete on request items only.
+9. Update docs and tests — PASS WITH NOTES; targeted Print Request tests remain a hardening follow-up.
+
+Signoff notes:
+
+* Internal and guest request workflows pass authenticated Studio QA.
+* Design Library request-selection mode works.
+* Request item persistence works.
+* Design lifecycle status remains clean.
+* Registered customer request testing is blocked by customer creation/provisioning from User Management.
+* Print Request indexes and dedicated unit tests remain follow-up hardening items.
 
 ---
 

@@ -76,7 +76,7 @@ Example:
 ### 3. AI enrichment / prompt change
 
 Always include:
-- Current prompt version target (`catalog-enrich-openai-v15`)
+- Current prompt version target (`catalog-enrich-openai-v16`)
 - Whether change is prompt-only vs validation-only vs both
 - Reminder: "Prompt handles intent; validation handles structure"
 - List affected modules: provider, parse, retry, title rules, visible text validation

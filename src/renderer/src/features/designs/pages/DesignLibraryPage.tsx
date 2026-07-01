@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft, FolderCog, Save, Tags } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { Button } from "../../../shared/components/Button";
@@ -15,6 +15,7 @@ import { DesignGrid } from "../components/DesignGrid";
 import { DesignLibraryFilterControls } from "../components/DesignLibraryFilterControls";
 import { DesignLibraryTagFilterModal } from "../components/DesignLibraryTagFilterModal";
 import { EditDesignModal } from "../components/EditDesignModal";
+import { TagManagementModal } from "../components/TagManagementModal";
 import {
   buildCatalogDesignListQuery,
   buildDesignLibrarySearchParams,
@@ -25,10 +26,16 @@ import { getPrintRequestsPath } from "../../print-requests/constants/printReques
 import { usePrintRequestSelectionMode } from "../../print-requests/hooks/usePrintRequestSelectionMode";
 import { useArchiveDesign } from "../hooks/useArchiveDesign";
 import { useCategories } from "../hooks/useCategories";
+import { useCatalogTags } from "../hooks/useCatalogTags";
 import { useDesigns } from "../hooks/useDesigns";
 import { useRestoreDesign } from "../hooks/useRestoreDesign";
 import type { Design } from "../types/design.types";
-import { filterDesignsBySearch, filterDesignsByTags } from "../utils/designLibrarySearch";
+import {
+  buildCategoryFilterOptions,
+  filterDesignsByCategory,
+  filterDesignsBySearch,
+  filterDesignsByTags,
+} from "../utils/designLibrarySearch";
 
 const ALL_FILTER_VALUE = "all";
 
@@ -68,6 +75,7 @@ export function DesignLibraryPage() {
   const [editingDesign, setEditingDesign] = useState<Design | null>(null);
   const [designToArchive, setDesignToArchive] = useState<Design | null>(null);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [isTagManagementModalOpen, setIsTagManagementModalOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -120,6 +128,7 @@ export function DesignLibraryPage() {
     setEditingDesign(null);
     setDesignToArchive(null);
     setIsCategoryModalOpen(false);
+    setIsTagManagementModalOpen(false);
     setIsTagFilterModalOpen(false);
     setSuccessMessage(null);
     setActionError(null);
@@ -131,10 +140,10 @@ export function DesignLibraryPage() {
     () =>
       buildCatalogDesignListQuery({
         archived: selectionModeActive ? false : includeArchived,
-        categoryId: categoryFilter === ALL_FILTER_VALUE ? undefined : categoryFilter,
+        categoryId: undefined,
         tags: [],
       }),
-    [categoryFilter, includeArchived, selectionModeActive],
+    [includeArchived, selectionModeActive],
   );
 
   const {
@@ -143,6 +152,10 @@ export function DesignLibraryPage() {
     isLoading: isCategoriesLoading,
     reloadCategories,
   } = useCategories();
+  const {
+    tags: catalogTags,
+    reloadTags,
+  } = useCatalogTags({ includeArchived: true });
   const {
     designs,
     error: designsError,
@@ -166,30 +179,32 @@ export function DesignLibraryPage() {
     [categories],
   );
 
-  const categoryFilterOptions = useMemo(
-    () => [
-      { label: "All categories", value: ALL_FILTER_VALUE },
-      ...categories
-        .filter((category) => category.isActive)
-        .map((category) => ({
-          label: category.name,
-          value: category.id,
-        })),
-    ],
-    [categories],
-  );
-
-  // Base for tag faceting: the full loaded scope filtered by search only (no tag filter).
-  // Category/archived/mode are already applied at the Firestore query level. The tag modal
-  // receives this and computes live facets/counts from the draft selection.
-  const baseDesignsForFaceting = useMemo(
+  const searchMatchedDesigns = useMemo(
     () => filterDesignsBySearch(designs, searchQuery),
     [designs, searchQuery],
   );
+  const categoryFilteredDesigns = useMemo(
+    () =>
+      filterDesignsByCategory(
+        searchMatchedDesigns,
+        categoryFilter === ALL_FILTER_VALUE ? undefined : categoryFilter,
+      ),
+    [categoryFilter, searchMatchedDesigns],
+  );
+  const categoryFilterOptions = useMemo(
+    () =>
+      buildCategoryFilterOptions({
+        allOptionValue: ALL_FILTER_VALUE,
+        categories,
+        designs: filterDesignsByTags(searchMatchedDesigns, selectedTags),
+        selectedCategoryId: categoryFilter === ALL_FILTER_VALUE ? undefined : categoryFilter,
+      }),
+    [categories, categoryFilter, searchMatchedDesigns, selectedTags],
+  );
 
   const filteredDesigns = useMemo(
-    () => filterDesignsByTags(baseDesignsForFaceting, selectedTags),
-    [baseDesignsForFaceting, selectedTags],
+    () => filterDesignsByTags(categoryFilteredDesigns, selectedTags),
+    [categoryFilteredDesigns, selectedTags],
   );
 
   const hasActiveFilters =
@@ -215,8 +230,8 @@ export function DesignLibraryPage() {
   }, [selectionModeActive]);
 
   const refreshCatalog = useCallback(async () => {
-    await Promise.all([reloadDesigns(), reloadCategories()]);
-  }, [reloadCategories, reloadDesigns]);
+    await Promise.all([reloadDesigns(), reloadCategories(), reloadTags()]);
+  }, [reloadCategories, reloadDesigns, reloadTags]);
 
   const dismissSuccessMessage = useCallback(() => {
     setSuccessMessage(null);
@@ -230,6 +245,12 @@ export function DesignLibraryPage() {
     setSuccessMessage(null);
     setActionError(null);
     setIsCategoryModalOpen(true);
+  }, []);
+
+  const openTagManagementModal = useCallback(() => {
+    setSuccessMessage(null);
+    setActionError(null);
+    setIsTagManagementModalOpen(true);
   }, []);
 
   const openDesignDetails = useCallback((design: Design) => {
@@ -366,14 +387,22 @@ export function DesignLibraryPage() {
     }
 
     return {
+      actions: [
+        {
+          icon: <FolderCog aria-hidden="true" size={16} strokeWidth={2} />,
+          label: "Categories",
+          onClick: openCategoryModal,
+        },
+        {
+          icon: <Tags aria-hidden="true" size={16} strokeWidth={2} />,
+          label: "Tags",
+          onClick: openTagManagementModal,
+        },
+      ],
       title: "Design Library",
       description: includeArchived
         ? "Browse archived catalog designs."
         : "Browse and manage the approved design catalog.",
-      primaryAction: {
-        label: "Categories",
-        onClick: openCategoryModal,
-      },
       toggle: {
         checked: includeArchived,
         label: "Archived",
@@ -384,6 +413,7 @@ export function DesignLibraryPage() {
   }, [
     includeArchived,
     openCategoryModal,
+    openTagManagementModal,
     selectionMode.printRequest,
     selectionModeActive,
   ]);
@@ -475,11 +505,13 @@ export function DesignLibraryPage() {
           <div className="design-library-filter-dock">
             <div className="design-library-summary-row">
               <span className="design-library-count-chip">{designCountLabel}</span>
-              {hasActiveFilters ? (
-                <Button onClick={clearFilters} size="sm" variant="ghost">
-                  Clear filters
-                </Button>
-              ) : null}
+              <div className="design-library-summary-actions">
+                {hasActiveFilters ? (
+                  <Button onClick={clearFilters} size="sm" variant="ghost">
+                    Clear filters
+                  </Button>
+                ) : null}
+              </div>
             </div>
 
             <DesignLibraryFilterControls
@@ -526,7 +558,8 @@ export function DesignLibraryPage() {
       </section>
 
       <DesignLibraryTagFilterModal
-        baseDesigns={baseDesignsForFaceting}
+        baseDesigns={categoryFilteredDesigns}
+        catalogTags={catalogTags}
         isOpen={isTagFilterModalOpen}
         onApply={setSelectedTags}
         onClose={() => setIsTagFilterModalOpen(false)}
@@ -544,6 +577,7 @@ export function DesignLibraryPage() {
       />
 
       <EditDesignModal
+        approvedTags={catalogTags}
         categories={categories}
         design={editingDesign}
         isOpen={editingDesign !== null}
@@ -556,6 +590,12 @@ export function DesignLibraryPage() {
         isOpen={isCategoryModalOpen}
         onClose={() => setIsCategoryModalOpen(false)}
         onUpdated={handleCategoriesUpdated}
+      />
+
+      <TagManagementModal
+        isOpen={isTagManagementModalOpen}
+        onClose={() => setIsTagManagementModalOpen(false)}
+        onUpdated={refreshCatalog}
       />
 
       <ArchiveDesignConfirmDialog

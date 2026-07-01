@@ -15,22 +15,43 @@ import {
   normalizeCatalogTitle,
   resolveCatalogDescription,
   resolveCatalogTitle,
+  resolveLeanCatalogTitle,
   sanitizeCatalogDescription,
   filterBackgroundColorsFromPalette,
   stripTrailingTitlePunctuation,
 } from "./catalogTitleRules";
 
 describe("catalogTitleRules", () => {
-  it("uses prompt version v15", () => {
-    assert.equal(OPENAI_CATALOG_ENRICHMENT_PROMPT_VERSION, "catalog-enrich-openai-v15");
+  it("uses prompt version v17", () => {
+    assert.equal(OPENAI_CATALOG_ENRICHMENT_PROMPT_VERSION, "catalog-enrich-openai-v17");
   });
 
-  it("includes v15 OCR and JSON format rules in system prompt", () => {
-    assert.match(CATALOG_ENRICHMENT_SYSTEM_PROMPT, /SLEEP is not SLIPPED/i);
-    assert.match(CATALOG_ENRICHMENT_SYSTEM_PROMPT, /one entry per arc/i);
+  it("keeps the JSON contract, OCR, canvas, and description rules in the trimmed prompt", () => {
+    // Required JSON keys the downstream parser depends on must still be requested.
+    for (const key of [
+      "title",
+      "description",
+      "categoryName",
+      "tags",
+      "artworkContainsText",
+      "visibleText",
+      "textOnlyArtwork",
+      "textRecognitionConfidence",
+      "overallConfidence",
+    ]) {
+      assert.match(CATALOG_ENRICHMENT_SYSTEM_PROMPT, new RegExp(`\\b${key}\\b`));
+    }
+
     assert.match(CATALOG_ENRICHMENT_SYSTEM_PROMPT, /Return JSON only/i);
+    assert.match(CATALOG_ENRICHMENT_SYSTEM_PROMPT, /5 to 12 lowercase single-word strings/i);
+    assert.match(CATALOG_ENRICHMENT_SYSTEM_PROMPT, /one entry per arc/i);
+    assert.match(CATALOG_ENRICHMENT_SYSTEM_PROMPT, /Always return a non-empty description/i);
+    assert.match(CATALOG_ENRICHMENT_SYSTEM_PROMPT, /Canvas rule:/i);
+    assert.match(CATALOG_ENRICHMENT_SYSTEM_PROMPT, /lower confidence instead of inventing it/i);
+
     assert.match(buildCatalogEnrichmentUserPrompt("Animals"), /character by character/i);
-    assert.match(CATALOG_ENRICHMENT_SYSTEM_PROMPT, /description is required/i);
+    assert.match(buildCatalogEnrichmentUserPrompt("Animals"), /Analyze the provided image only/i);
+    assert.match(buildCatalogEnrichmentUserPrompt("Animals"), /do not invent unreadable words/i);
     assert.match(buildCatalogEnrichmentSystemPrompt(["witch"]), /\bwitch\b/);
   });
 
@@ -345,6 +366,60 @@ describe("catalogTitleRules", () => {
     assert.equal(
       extractPrimaryWordingFromDescription('The shirt says "Hot Mess Highland Cow" in rustic font.'),
       "Hot Mess Highland Cow",
+    );
+  });
+});
+
+describe("resolveLeanCatalogTitle", () => {
+  it("trusts a good model title verbatim (non-destructive normalization only)", () => {
+    assert.equal(
+      resolveLeanCatalogTitle({
+        candidateTitle: "Motherhood Skeleton Rock On",
+        tags: ["motherhood", "skeleton"],
+        uploadFileStem: "upload-123",
+      }),
+      "Motherhood Skeleton Rock On",
+    );
+  });
+
+  it("never derives an OCR fragment from the description (no description input at all)", () => {
+    // The lean resolver takes no description; a transcribed-quote description can no longer
+    // overwrite a good title.
+    const title = resolveLeanCatalogTitle({
+      candidateTitle: "Motherhood Skeleton Rock On",
+      tags: ["motherhood"],
+      uploadFileStem: "upload",
+    });
+
+    assert.ok(!/some days/i.test(title));
+  });
+
+  it("falls back to tags (not the description) when the model title is generic", () => {
+    assert.equal(
+      resolveLeanCatalogTitle({
+        candidateTitle: "Text",
+        tags: ["cowgirl", "western"],
+        uploadFileStem: "upload",
+      }),
+      "Cowgirl Western",
+    );
+  });
+
+  it("rejects a filename-like title and falls back to tags", () => {
+    const title = resolveLeanCatalogTitle({
+      candidateTitle: "raw-upload-file",
+      tags: ["floral"],
+      uploadFileStem: "raw-upload-file",
+    });
+
+    assert.notEqual(title.toLowerCase(), "raw-upload-file");
+    assert.equal(title, "Floral");
+  });
+
+  it("falls back to Artwork Design when title and tags are unusable", () => {
+    assert.equal(
+      resolveLeanCatalogTitle({ candidateTitle: "Design", tags: [], uploadFileStem: "upload" }),
+      "Artwork Design",
     );
   });
 });

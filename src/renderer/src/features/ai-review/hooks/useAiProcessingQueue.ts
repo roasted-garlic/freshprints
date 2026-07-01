@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { Design } from "../../designs/types/design.types";
 import { aiEnrichmentEnqueueService } from "../services/aiEnrichmentEnqueueService";
-import { waitForAiProcessingTerminal } from "../services/aiProcessingWaitService";
+import { buildDesignPatchFromEnqueueResult } from "../utils/enqueueResultPatch";
 import type { AiReviewInboxTab } from "../types/aiReviewInbox.types";
 import {
   isDesignAiProcessingFailed,
@@ -24,6 +24,9 @@ export type { AiProcessingQueueRunState } from "../types/aiProcessingQueue.types
 
 interface UseAiProcessingQueueOptions {
   activeTab: AiReviewInboxTab;
+  applyDesignPatch: (designId: string, patch: Partial<Design>) => void;
+  defaultReasoningEffort: string;
+  defaultVisionModelId: string;
   designs: Design[];
   onActionError: (message: string | null) => void;
   reloadDesigns: () => Promise<void>;
@@ -34,6 +37,9 @@ interface UseAiProcessingQueueOptions {
 
 export function useAiProcessingQueue({
   activeTab,
+  applyDesignPatch,
+  defaultReasoningEffort,
+  defaultVisionModelId,
   designs,
   onActionError,
   reloadDesigns,
@@ -45,6 +51,8 @@ export function useAiProcessingQueue({
   const [runState, setRunState] = useState<AiProcessingQueueRunState>("idle");
   const [isQueueBusy, setIsQueueBusy] = useState(false);
   const [enqueueingDesignId, setEnqueueingDesignId] = useState<string | null>(null);
+  const [sessionVisionModelId, setSessionVisionModelId] = useState<string | null>(null);
+  const [sessionReasoningEffort, setSessionReasoningEffort] = useState<string | null>(null);
 
   const designsRef = useRef(designs);
   const runStateRef = useRef(runState);
@@ -131,6 +139,21 @@ export function useAiProcessingQueue({
     return `${position + 1} of ${awaitingDesigns.length} waiting`;
   }, [activeTab, awaitingDesigns, selectedDesign]);
 
+  const resolvedSessionVisionModelId = sessionVisionModelId ?? defaultVisionModelId;
+  const resolvedSessionReasoningEffort = sessionReasoningEffort ?? defaultReasoningEffort;
+
+  const hasSessionOverride = Boolean(sessionVisionModelId || sessionReasoningEffort);
+
+  const applySessionSettings = useCallback((visionModelId: string, reasoningEffort: string) => {
+    setSessionVisionModelId(visionModelId);
+    setSessionReasoningEffort(reasoningEffort);
+  }, []);
+
+  const clearSessionSettings = useCallback(() => {
+    setSessionVisionModelId(null);
+    setSessionReasoningEffort(null);
+  }, []);
+
   const advanceSelectionToIndex = useCallback(
     (index: number) => {
       const nextDesign = designsRef.current[index];
@@ -142,25 +165,43 @@ export function useAiProcessingQueue({
     [requestSelectDesign],
   );
 
-  const enqueueDesign = useCallback(async (designId: string) => {
-    setEnqueueingDesignId(designId);
+  const enqueueDesign = useCallback(
+    async (
+      designId: string,
+      settings: { visionModelId: string; reasoningEffort: string },
+    ) => {
+      setEnqueueingDesignId(designId);
 
-    try {
-      const result = await aiEnrichmentEnqueueService.enqueueForProcessing(designId);
+      try {
+        const result = await aiEnrichmentEnqueueService.enqueueForProcessing(designId, {
+          visionModelIdOverride: settings.visionModelId,
+          reasoningEffortOverride: settings.reasoningEffort,
+        });
 
-      if (!result.queued) {
+        if (!result.queued) {
+          setEnqueueingDesignId(null);
+          throw new Error(
+            result.reason === "already_processing"
+              ? "This design is already being processed."
+              : "AI processing could not be queued. Please try again.",
+          );
+        }
+
+        // The callable runs the pipeline synchronously and returns the terminal AI state.
+        // Apply it immediately so the UI reflects completion without waiting on the
+        // background Firestore reload below.
+        const patch = buildDesignPatchFromEnqueueResult(result);
+
+        if (patch) {
+          applyDesignPatch(designId, patch);
+        }
+      } catch (error) {
         setEnqueueingDesignId(null);
-        throw new Error(
-          result.reason === "already_processing"
-            ? "This design is already being processed."
-            : "AI processing could not be queued. Please try again.",
-        );
+        throw error;
       }
-    } catch (error) {
-      setEnqueueingDesignId(null);
-      throw error;
-    }
-  }, []);
+    },
+    [applyDesignPatch],
+  );
 
   const refreshDesignList = useCallback(async () => {
     await reloadDesigns();
@@ -172,7 +213,10 @@ export function useAiProcessingQueue({
   }, [reloadDesigns]);
 
   const runAutoQueueLoop = useCallback(
-    async (startIndex: number) => {
+    async (
+      startIndex: number,
+      settingsSnapshot: { visionModelId: string; reasoningEffort: string },
+    ) => {
       setIsQueueBusy(true);
       onActionError(null);
       setRunState("running");
@@ -210,8 +254,7 @@ export function useAiProcessingQueue({
           }
 
           requestSelectDesign(design.id);
-          await enqueueDesign(design.id);
-          await waitForAiProcessingTerminal(design.id);
+          await enqueueDesign(design.id, settingsSnapshot);
           await refreshDesignList();
 
           const refreshedDesigns = designsRef.current;
@@ -264,8 +307,17 @@ export function useAiProcessingQueue({
       return;
     }
 
-    void runAutoQueueLoop(startIndex);
-  }, [canStartAutoQueue, runAutoQueueLoop, selectedDesign]);
+    void runAutoQueueLoop(startIndex, {
+      visionModelId: resolvedSessionVisionModelId,
+      reasoningEffort: resolvedSessionReasoningEffort,
+    });
+  }, [
+    canStartAutoQueue,
+    resolvedSessionReasoningEffort,
+    resolvedSessionVisionModelId,
+    runAutoQueueLoop,
+    selectedDesign,
+  ]);
 
   const stopAutoQueue = useCallback(() => {
     if (runStateRef.current === "running") {
@@ -286,8 +338,10 @@ export function useAiProcessingQueue({
     onActionError(null);
 
     try {
-      await enqueueDesign(selectedDesignId);
-      await waitForAiProcessingTerminal(selectedDesignId);
+      await enqueueDesign(selectedDesignId, {
+        visionModelId: resolvedSessionVisionModelId,
+        reasoningEffort: resolvedSessionReasoningEffort,
+      });
       await refreshDesignList();
 
       const refreshedDesigns = designsRef.current;
@@ -312,19 +366,26 @@ export function useAiProcessingQueue({
     enqueueDesign,
     onActionError,
     refreshDesignList,
+    resolvedSessionReasoningEffort,
+    resolvedSessionVisionModelId,
     selectedDesignId,
   ]);
 
   return {
     autoAdvance,
+    applySessionSettings,
     canProcessSelected,
     canStartAutoQueue,
     canStopAutoQueue,
+    clearSessionSettings,
     enqueueingDesignId,
+    hasSessionOverride,
     isAutoQueueRunning,
     isQueueBusy,
     processSelectedDesign,
     queuePositionLabel,
+    resolvedSessionReasoningEffort,
+    resolvedSessionVisionModelId,
     runState,
     setAutoAdvance,
     startAutoQueue,

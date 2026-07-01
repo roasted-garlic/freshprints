@@ -38,6 +38,24 @@ function mapAiSuggestions(value: unknown): DesignAiSuggestions | undefined {
     tags: Array.isArray(data.tags)
       ? data.tags.filter((tag): tag is string => typeof tag === "string")
       : undefined,
+    suggestedNewTags: Array.isArray(data.suggestedNewTags)
+      ? data.suggestedNewTags
+          .filter((tag): tag is Record<string, unknown> => Boolean(tag) && typeof tag === "object")
+          .map((tag) => {
+            const source = tag.source === "ai" ? "ai" as const : undefined;
+
+            return {
+              aliases: Array.isArray(tag.aliases)
+                ? tag.aliases.filter((alias): alias is string => typeof alias === "string")
+                : [],
+              name: typeof tag.name === "string" ? tag.name : "",
+              preferredWhen: typeof tag.preferredWhen === "string" ? tag.preferredWhen : "",
+              reason: typeof tag.reason === "string" ? tag.reason : undefined,
+              source,
+            };
+          })
+          .filter((tag) => tag.name && tag.preferredWhen)
+      : undefined,
     confidence: typeof data.confidence === "number" ? data.confidence : undefined,
     provider: typeof data.provider === "string" ? data.provider : undefined,
     model: typeof data.model === "string" ? data.model : undefined,

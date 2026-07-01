@@ -6,12 +6,14 @@ import { Checkbox } from "../../../shared/components/Checkbox";
 import { ModalBody, ModalFooter, ModalHeader } from "../../../shared/components/Modal";
 import { TextInput } from "../../../shared/components/TextInput";
 import { computeFacetedTagsForDraftSelection, sortTagsAlphabetically } from "../utils/designLibrarySearch";
+import type { CatalogTag } from "../types/catalogTag.types";
 import type { Design } from "../types/design.types";
 import { DesignLibraryModal } from "./DesignLibraryModal";
 
 interface DesignLibraryTagFilterModalProps {
   /** Designs after every non-tag filter (catalog scope, search, category). */
   baseDesigns: Design[];
+  catalogTags?: CatalogTag[];
   isOpen: boolean;
   onApply: (selectedTags: string[]) => void;
   onClose: () => void;
@@ -20,6 +22,7 @@ interface DesignLibraryTagFilterModalProps {
 
 export function DesignLibraryTagFilterModal({
   baseDesigns,
+  catalogTags,
   isOpen,
   onApply,
   onClose,
@@ -43,16 +46,17 @@ export function DesignLibraryTagFilterModal({
     () =>
       computeFacetedTagsForDraftSelection({
         baseDesigns,
+        catalogTags,
         draftSelectedTags,
         tagSearchQuery: searchQuery,
       }),
-    [baseDesigns, draftSelectedTags, searchQuery],
+    [baseDesigns, catalogTags, draftSelectedTags, searchQuery],
   );
 
   // Whether any tags exist at all for the current non-tag filters (ignoring search).
   const hasAnyTags = useMemo(
-    () => computeFacetedTagsForDraftSelection({ baseDesigns, draftSelectedTags }).length > 0,
-    [baseDesigns, draftSelectedTags],
+    () => computeFacetedTagsForDraftSelection({ baseDesigns, catalogTags, draftSelectedTags }).length > 0,
+    [baseDesigns, catalogTags, draftSelectedTags],
   );
 
   const toggleTag = (tag: string) => {

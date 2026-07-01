@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
+  Bug,
   ChevronsLeft,
   ChevronsRight,
   Images,
-  LayoutDashboard,
   ListOrdered,
   LogOut,
   MessageSquare,
@@ -20,11 +20,14 @@ import { useAuth } from "../../features/auth/hooks/useAuth";
 import { permissionService } from "../../features/permissions/services/permissionService";
 import type { PermissionKey } from "../../features/permissions/types/permission.types";
 import { useSidebarDrawer } from "../hooks/useSidebarDrawer";
+import { desktopAppService } from "../services/desktopAppService";
+import { isElectronDesktop } from "../utils/isElectronDesktop";
 import { AppLogo } from "./AppLogo";
 import { Badge } from "./Badge";
 import { formatTeamUserRoleLabel, getTeamUserRoleBadgeVariant } from "../../features/users/utils/teamUserRoleDisplay";
 
-interface SidebarItem {
+interface SidebarRouteItem {
+  kind: "route";
   icon: LucideIcon;
   label: string;
   to: string;
@@ -34,17 +37,31 @@ interface SidebarItem {
   permission?: PermissionKey;
 }
 
-const sidebarItems: SidebarItem[] = [
-  { icon: Images, label: "Design Library", to: "/designs", permission: "viewDesigns" },
-  { icon: Sparkles, label: "AI Processing", to: "/ai-review", permission: "viewAiReview" },
-  { icon: FolderInput, label: "Imports", to: "/imports", permission: "importDesigns" },
+interface SidebarActionItem {
+  kind: "action";
+  icon: LucideIcon;
+  label: string;
+  onClick: () => void | Promise<void>;
+  isLoading?: boolean;
+  dividerBefore?: boolean;
+  permission?: PermissionKey;
+}
+
+type SidebarItem = SidebarRouteItem | SidebarActionItem;
+
+const sidebarItems: SidebarRouteItem[] = [
+  { kind: "route", icon: Images, label: "Design Library", to: "/designs", permission: "viewDesigns" },
+  { kind: "route", icon: Sparkles, label: "AI Processing", to: "/ai-review", permission: "viewAiReview" },
+  { kind: "route", icon: FolderInput, label: "Imports", to: "/imports", permission: "importDesigns" },
   {
+    kind: "route",
     icon: ListOrdered,
     label: "Print Requests",
     to: "/print-requests",
     permission: "viewPrintRequests",
   },
   {
+    kind: "route",
     icon: ListOrdered,
     label: "Show Queue",
     to: "/show-queue",
@@ -53,21 +70,25 @@ const sidebarItems: SidebarItem[] = [
     isDisabled: true,
   },
   {
+    kind: "route",
     icon: MessageSquare,
     label: "Customer Requests",
     to: "/customer-requests",
     permission: "manageRequests",
     isDisabled: true,
   },
-  { icon: Users, label: "Users", to: "/users", permission: "viewUsers", dividerBefore: true },
-  { icon: Settings, label: "Settings", to: "/settings", permission: "manageSettings" },
   {
-    icon: LayoutDashboard,
-    label: "Dev Dashboard",
-    to: "/dev-dashboard",
-    permission: "accessDashboard",
+    kind: "route",
+    icon: Users,
+    label: "Users",
+    to: "/users",
+    permission: "viewUsers",
+    dividerBefore: true,
   },
+  { kind: "route", icon: Settings, label: "Settings", to: "/settings", permission: "manageSettings" },
 ];
+
+const showDevToolsSidebarAction = import.meta.env.DEV && isElectronDesktop();
 
 const sidebarCollapsedStorageKey = "fresh-prints-sidebar-collapsed";
 
@@ -85,15 +106,46 @@ export function Sidebar() {
   const sidebarRef = useRef<HTMLElement>(null);
   const [isIndicatorVisible, setIsIndicatorVisible] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(() => getStoredSidebarCollapsed());
+  const [isOpeningDevTools, setIsOpeningDevTools] = useState(false);
   const { isOpen: isDrawerOpen, close: closeDrawer } = useSidebarDrawer();
+
+  const handleOpenDevTools = useCallback(async () => {
+    setIsOpeningDevTools(true);
+
+    try {
+      await desktopAppService.openDevTools();
+    } catch (error) {
+      console.error(
+        error instanceof Error ? error.message : "Unable to open DevTools. Please try again.",
+      );
+    } finally {
+      setIsOpeningDevTools(false);
+    }
+  }, []);
+
+  const devToolsAction: SidebarActionItem | null =
+    showDevToolsSidebarAction && permissionService.hasPermission(user, "accessDashboard")
+      ? {
+          kind: "action",
+          icon: Bug,
+          label: "Dev Tools",
+          onClick: () => {
+            void handleOpenDevTools();
+          },
+          isLoading: isOpeningDevTools,
+        }
+      : null;
+
+  const visibleSidebarItems: SidebarItem[] = [
+    ...sidebarItems.filter(
+      (item) => !item.permission || permissionService.hasPermission(user, item.permission),
+    ),
+    ...(devToolsAction ? [devToolsAction] : []),
+  ];
 
   useEffect(() => {
     closeDrawer();
   }, [location.pathname, closeDrawer]);
-
-  const visibleSidebarItems = sidebarItems.filter(
-    (item) => !item.permission || permissionService.hasPermission(user, item.permission),
-  );
 
   const toggleCollapsed = useCallback(() => {
     setIsCollapsed((currentValue) => !currentValue);
@@ -147,7 +199,7 @@ export function Sidebar() {
   // link pointed at the current URL (with its mode/requestId params) so clicking it does
   // not silently drop selection mode. Leaving the Library via any other link still exits it.
   const resolveSidebarItemTo = useCallback(
-    (item: SidebarItem) => {
+    (item: SidebarRouteItem) => {
       if (
         item.to === "/designs" &&
         location.pathname === "/designs" &&
@@ -202,7 +254,24 @@ export function Sidebar() {
             <div className="sidebar-nav-item" key={item.label}>
               {item.dividerBefore ? <div aria-hidden="true" className="sidebar-nav-divider" /> : null}
 
-              {item.isDisabled ? (
+              {item.kind === "action" ? (
+                <button
+                  className="sidebar-link"
+                  disabled={item.isLoading}
+                  onClick={item.onClick}
+                  title={isCollapsed ? item.label : undefined}
+                  type="button"
+                >
+                  <span className="sidebar-link-main">
+                    <ItemIcon aria-hidden="true" className="sidebar-link-icon" size={18} strokeWidth={2} />
+                    {!isCollapsed ? (
+                      <span className="sidebar-link-label">
+                        {item.isLoading ? "Opening DevTools..." : item.label}
+                      </span>
+                    ) : null}
+                  </span>
+                </button>
+              ) : item.isDisabled ? (
                 <span
                   aria-disabled="true"
                   className="sidebar-link sidebar-link-disabled"

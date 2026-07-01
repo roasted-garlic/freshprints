@@ -54,6 +54,8 @@ function AiReviewPageContent() {
   );
 
   const inbox = useAiReviewInbox(filters, {
+    defaultReasoningEffort: enrichmentSettings.reasoningEffort,
+    defaultVisionModelId: enrichmentSettings.visionModelId,
     onNavigateToTab: handleNavigateToTab,
     onQueueChanged: () => void tabCounts.reloadCounts(),
   });
@@ -154,8 +156,10 @@ function AiReviewPageContent() {
           <AiReviewWorkspace
             actionError={inbox.actionError}
             activeTab={inbox.activeTab}
+            approvedTags={inbox.approvedTags}
             autoAdvance={inbox.processingQueue.autoAdvance}
             canApprove={inbox.canApprove}
+            canApproveSuggestedTags={inbox.canApproveSuggestedTags}
             canEdit={inbox.canEdit}
             canStopAutoQueue={inbox.processingQueue.canStopAutoQueue}
             canProcessSelected={inbox.processingQueue.canProcessSelected}
@@ -165,6 +169,9 @@ function AiReviewPageContent() {
             canRetryProcessing={inbox.canRetryProcessing}
             canStartAutoQueue={inbox.processingQueue.canStartAutoQueue}
             categoryOptions={categoryOptions}
+            currentReasoningEffort={enrichmentSettings.reasoningEffort}
+            currentVisionModelId={enrichmentSettings.visionModelId}
+            hasProcessingSettingsOverride={inbox.processingQueue.hasSessionOverride}
             draftForm={inbox.draftForm}
             isActionLoading={inbox.isActionLoading}
             isAutoQueueRunning={inbox.processingQueue.isAutoQueueRunning}
@@ -174,9 +181,14 @@ function AiReviewPageContent() {
               Boolean(inbox.selectedDesign) &&
               inbox.processingQueue.enqueueingDesignId === inbox.selectedDesign?.id
             }
+            ignoredSuggestedTagNames={inbox.ignoredSuggestedTagNames}
             onApprove={() => void inbox.approveSelected()}
+            onApproveSuggestedTag={(sourceName, input, addToDraft) =>
+              void inbox.approveSuggestedTag(sourceName, input, addToDraft)
+            }
             onAutoAdvanceChange={inbox.processingQueue.setAutoAdvance}
             onInputFocusChange={setIsInputFocused}
+            onIgnoreSuggestedTag={inbox.ignoreSuggestedTag}
             onNext={() => inbox.selectRelative(1)}
             onStopAutoQueue={inbox.processingQueue.stopAutoQueue}
             onPrevious={() => inbox.selectRelative(-1)}
@@ -185,16 +197,19 @@ function AiReviewPageContent() {
             onReopen={() => void inbox.reopenSelected()}
             onRerun={() => void inbox.rerunSelected()}
             onRetryProcessing={() => void inbox.retryProcessingSelected()}
+            onApplyProcessingSettings={inbox.processingQueue.applySessionSettings}
+            onClearProcessingSettings={inbox.processingQueue.clearSessionSettings}
             onStartAutoQueue={inbox.processingQueue.startAutoQueue}
             onUpdateDraftField={inbox.updateDraftField}
             isRerunningAi={inbox.isRerunningAi}
             onRerunAiSuggestions={() => inbox.requestRerunAiSuggestions()}
             queuePositionLabel={inbox.processingQueue.queuePositionLabel}
             queueRunState={inbox.processingQueue.runState}
+            processingReasoningEffort={inbox.processingQueue.resolvedSessionReasoningEffort}
+            processingVisionModelId={inbox.processingQueue.resolvedSessionVisionModelId}
             selectedDesign={inbox.selectedDesign}
             showReadOnlySuggestions={inbox.showReadOnlySuggestions}
             showRerunAiButton={inbox.canRerunAiSuggestions || inbox.isRerunningAi}
-            visionModelLabel={enrichmentSettings.visionModelLabel}
           />
         </main>
       </div>
@@ -206,12 +221,12 @@ function AiReviewPageContent() {
       />
 
       <AiReviewUnsavedDialog
-        confirmLabel="Re-run AI"
-        copy="Re-running AI will replace current suggestions and reset unsaved review edits."
+        confirmLabel="Send to Processing"
+        copy="Sending this design back to Processing will clear current AI suggestions and reset unsaved review edits."
         isOpen={inbox.pendingRerun}
         onCancel={inbox.cancelPendingSelection}
         onConfirm={inbox.confirmPendingRerun}
-        title="Re-run AI suggestions?"
+        title="Send back to Processing?"
       />
     </section>
   );

@@ -165,6 +165,54 @@ service cloud.firestore {
         && isOptionalString(data, "description");
     }
 
+    function isValidCatalogTagStatus(status) {
+      return status in ["approved", "archived"];
+    }
+
+    function isValidTagStringList(values) {
+      return values is list
+        && values.size() <= 50;
+    }
+
+    function tagRequiredFieldsValid(data) {
+      return data.keys().hasOnly([
+          "id",
+          "name",
+          "aliases",
+          "preferredWhen",
+          "status",
+          "createdBy",
+          "updatedBy",
+          "createdAt",
+          "updatedAt"
+        ])
+        && data.keys().hasAll([
+          "id",
+          "name",
+          "aliases",
+          "preferredWhen",
+          "status",
+          "createdBy",
+          "updatedBy",
+          "createdAt",
+          "updatedAt"
+        ])
+        && data.id is string
+        && data.name is string
+        && data.name.size() > 0
+        && data.name.size() <= 40
+        && isValidTagStringList(data.aliases)
+        && data.preferredWhen is string
+        && data.preferredWhen.size() > 0
+        && data.preferredWhen.size() <= 500
+        && data.status is string
+        && isValidCatalogTagStatus(data.status)
+        && data.createdBy is string
+        && data.updatedBy is string
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
     function isValidPrintRequestStatus(status) {
       return status in ["draft", "active", "completed", "archived"];
     }
@@ -340,6 +388,26 @@ service cloud.firestore {
         && request.resource.data.id == resource.data.id
         && (!("createdBy" in resource.data) || request.resource.data.createdBy == resource.data.createdBy)
         && (!("createdAt" in resource.data) || request.resource.data.createdAt == resource.data.createdAt)
+        && request.resource.data.updatedBy == request.auth.uid;
+
+      allow delete: if false;
+    }
+
+    match /tags/{tagId} {
+      allow read: if isStaff();
+
+      allow create: if isOwnerOrAdmin()
+        && tagRequiredFieldsValid(request.resource.data)
+        && request.resource.data.id == tagId
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.updatedBy == request.auth.uid;
+
+      allow update: if isOwnerOrAdmin()
+        && tagRequiredFieldsValid(request.resource.data)
+        && request.resource.data.id == tagId
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.createdAt == resource.data.createdAt
         && request.resource.data.updatedBy == request.auth.uid;
 
       allow delete: if false;

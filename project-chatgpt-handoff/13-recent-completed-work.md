@@ -57,10 +57,23 @@
 - Firebase auth/storage handoff package (`docs/handoffs/firebase-auth-storage/`)
 - FreshForge workflow on project (AGENTS.md, .cursor/, docs/)
 
-## Currently in flight (NOT complete)
+## Phase 6 — Print Requests foundation (2026-06-29)
 
-- **Phase 0:** Deploy functions + confirm v15 in production UI
-- **Phases 8–12:** Placeholder rejection, garbled OCR hardening, confidence tiers, model fallback
+- Status: **PASS**
+- `/print-requests` staff workspace
+- Internal print requests
+- Customer print requests
+- Print request create/update flows
+- Request item list/edit/remove
+- Design Library request-selection mode
+- Approved catalog designs added to requests with quantity
+- Request items persist after revisit/reload
+- Design lifecycle status remains clean (`designs.status` stays catalog-only)
+- Customer record creation/editing now works from `/users` without customer Auth or Studio access
+
+## Follow-up hardening
+
+- Print Request unit tests and indexed query hardening remain open follow-ups.
 
 See `CURRENT-STATE.md` for live status.
 
@@ -69,4 +82,5 @@ See `CURRENT-STATE.md` for live status.
 - Staff confirm modal during import (Phase 3D Step 5)
 - Optional backfill for print sizes (Phase 3D Step 8)
 - Date range filters (Phase 4B)
-- Print Requests (Phase 6), Print Runs (Phase 7), Portal (Phase 8)
+- Print Request unit tests and indexed query hardening
+- Print Runs (Phase 7), Portal (Phase 8)

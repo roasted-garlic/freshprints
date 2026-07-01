@@ -7,12 +7,14 @@ interface DismissibleSuccessAlertProps {
   message: string;
   onDismiss: () => void;
   dismissDelayMs?: number;
+  showProgress?: boolean;
 }
 
 export function DismissibleSuccessAlert({
   message,
   onDismiss,
   dismissDelayMs = DEFAULT_DISMISS_DELAY_MS,
+  showProgress = true,
 }: DismissibleSuccessAlertProps) {
   const [progressKey, setProgressKey] = useState(0);
 
@@ -25,6 +27,22 @@ export function DismissibleSuccessAlert({
       window.clearTimeout(timer);
     };
   }, [dismissDelayMs, message, onDismiss]);
+
+  if (!showProgress) {
+    return (
+      <div className="auth-message auth-message-success dismissible-success-alert-content" role="status">
+        <p className="dismissible-success-alert-message">{message}</p>
+        <button
+          aria-label="Dismiss success message"
+          className="dismissible-success-alert-close"
+          onClick={onDismiss}
+          type="button"
+        >
+          <X aria-hidden="true" size={16} strokeWidth={2.2} />
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div

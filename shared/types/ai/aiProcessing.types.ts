@@ -2,6 +2,8 @@
  * Shared AI processing types — used by renderer, functions, and documentation.
  */
 
+import type { SuggestedNewTag } from "../catalogTag.types";
+
 export const AI_PROCESSING_STAGES = [
   "queued",
   "preparing_image",
@@ -27,6 +29,7 @@ export interface DesignAiSuggestions {
   categoryId?: string;
   categoryName?: string;
   tags?: string[];
+  suggestedNewTags?: SuggestedNewTag[];
   confidence?: number;
   fieldConfidence?: AiSuggestionFieldConfidence;
   provider?: string;
@@ -35,6 +38,9 @@ export interface DesignAiSuggestions {
   generatedAt?: string;
   errorCode?: string;
   errorMessage?: string;
+  promptTokens?: number | null;
+  completionTokens?: number | null;
+  estimatedCostUsd?: number | null;
 }
 
 export interface DesignAiAnalysis {
@@ -57,6 +63,12 @@ export interface DesignAiAnalysis {
   estimatedPrintComplexity?: string;
   trademarkWarning?: string;
   overallConfidence?: number;
+  /**
+   * Raw model tag strings before single-word tokenization. Preserves multi-word tags/aliases
+   * (e.g. "rock and roll") so the catalog tag resolver can match them against approved names
+   * and aliases. Transient pipeline signal — not persisted with the design.
+   */
+  rawTags?: string[];
 }
 
 export const AI_PROCESSING_STAGE_LABELS: Record<AiProcessingStage, string> = {

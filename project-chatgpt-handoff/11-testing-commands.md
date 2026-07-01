@@ -59,7 +59,7 @@ Use for UI changes, deploy verification, visual design:
 1. Deploy Firebase functions
 2. Open AI Review in Studio
 3. Re-run AI on one design
-4. Confirm `promptVersion: catalog-enrich-openai-v15`
+4. Confirm `promptVersion: catalog-enrich-openai-v16`
 5. Confirm `provider: openai` (not development)
 
 ## Setup guides (repo)

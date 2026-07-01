@@ -55,7 +55,7 @@ You are helping me plan and write prompts for **Fresh Prints** — a DTF design 
 
 ## When I ask for an AI enrichment prompt change
 
-Also read `07-backend-and-ai-pipeline.md`. Prompt versions are tracked (currently targeting `catalog-enrich-openai-v15`). Changes require server-side validation, not prompt-only fixes.
+Also read `07-backend-and-ai-pipeline.md`. Prompt versions are tracked (currently targeting `catalog-enrich-openai-v16`). Changes require server-side validation, not prompt-only fixes.
 
 ## Confirm before proceeding
 

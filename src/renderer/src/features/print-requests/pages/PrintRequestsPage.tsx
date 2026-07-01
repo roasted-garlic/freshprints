@@ -29,15 +29,12 @@ import type { Customer } from "../../../../../../shared/types/customer/customer.
 import { PRINT_REQUEST_ID_QUERY_PARAM, getPrintRequestsPath } from "../constants/printRequestRoutes";
 import { getDesignLibraryPath } from "../../designs/constants/designLibraryFilters";
 
-type CustomerMode = "internal" | "registered" | "guest";
+type CustomerMode = "internal" | "customer";
 
 interface PrintRequestFormState {
   name: string;
   customerMode: CustomerMode;
   customerId: string;
-  guestDisplayName: string;
-  guestEmail: string;
-  guestNotes: string;
   notes: string;
 }
 
@@ -45,16 +42,12 @@ const DEFAULT_REQUEST_FORM: PrintRequestFormState = {
   name: "",
   customerMode: "internal",
   customerId: "",
-  guestDisplayName: "",
-  guestEmail: "",
-  guestNotes: "",
   notes: "",
 };
 
 const CUSTOMER_MODE_OPTIONS = [
   { label: "Internal", value: "internal" },
-  { label: "Registered customer", value: "registered" },
-  { label: "Guest customer", value: "guest" },
+  { label: "Customer", value: "customer" },
 ];
 
 const PRINT_REQUEST_STATUS_OPTIONS = [
@@ -92,11 +85,6 @@ function getPrintRequestCustomerLabel(printRequest: PrintRequest | null, custome
 
   if (printRequest.customerId) {
     return customers.find((customer) => customer.id === printRequest.customerId)?.displayName ?? printRequest.customerId;
-  }
-
-  if (printRequest.guestCustomerId) {
-    const guest = customers.find((customer) => customer.id === printRequest.guestCustomerId);
-    return guest ? `${guest.displayName} (guest)` : `${printRequest.guestCustomerId} (guest)`;
   }
 
   return "Unassigned";
@@ -148,6 +136,15 @@ function formatDesignCountLabel(count: number): string {
 
 function formatTotalQuantityLabel(quantity: number): string {
   return `${quantity} total qty`;
+}
+
+function toRequestNameBase(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .replace(/_+/g, "_");
 }
 
 export function PrintRequestsPage() {
@@ -251,8 +248,8 @@ export function PrintRequestsPage() {
 
   const customerOptions = useMemo(
     () =>
-      customers.map((customer) => ({
-        label: customer.isGuest ? `${customer.displayName} (guest)` : customer.displayName,
+      customers.filter((customer) => !customer.isGuest).map((customer) => ({
+        label: customer.displayName,
         value: customer.id,
       })),
     [customers],
@@ -276,6 +273,40 @@ export function PrintRequestsPage() {
     setSuccessMessage(null);
   }, []);
 
+  const buildCustomerRequestName = useCallback(
+    (customerId: string) => {
+      const customer = customers.find((entry) => entry.id === customerId);
+      if (!customer) {
+        return "";
+      }
+
+      const requestNameBase = toRequestNameBase(customer.displayName);
+      if (!requestNameBase) {
+        return "";
+      }
+
+      const nextSequence =
+        requests
+          .filter((request) => request.customerId === customerId)
+          .reduce((highestSequence, request) => {
+            const match = request.name.match(new RegExp(`^${requestNameBase}-(\\d{3})$`, "i"));
+            if (!match) {
+              return highestSequence;
+            }
+
+            const sequence = Number.parseInt(match[1], 10);
+            if (Number.isNaN(sequence)) {
+              return highestSequence;
+            }
+
+            return Math.max(highestSequence, sequence);
+          }, 0) + 1;
+
+      return `${requestNameBase}-${String(nextSequence).padStart(3, "0")}`;
+    },
+    [customers, requests],
+  );
+
   async function reloadAll() {
     await Promise.all([reloadPrintRequests(), reloadCustomers(), reloadReadyDesigns(), reloadPrintRequest()]);
   }
@@ -291,15 +322,7 @@ export function PrintRequestsPage() {
       setActionError(null);
       const result = await printRequestService.createPrintRequest(user, {
         name: createRequestForm.name,
-        customerId: createRequestForm.customerMode === "registered" ? createRequestForm.customerId : undefined,
-        guestCustomer:
-          createRequestForm.customerMode === "guest"
-            ? {
-                displayName: createRequestForm.guestDisplayName,
-                email: createRequestForm.guestEmail || undefined,
-                notes: createRequestForm.guestNotes || undefined,
-              }
-            : undefined,
+        customerId: createRequestForm.customerMode === "customer" ? createRequestForm.customerId : undefined,
         isInternal: createRequestForm.customerMode === "internal",
         notes: createRequestForm.notes || undefined,
       });
@@ -397,6 +420,11 @@ export function PrintRequestsPage() {
     );
   }, [navigate, selectedRequest]);
 
+  const openUsersForCustomerCreation = useCallback(() => {
+    closeCreateModal();
+    navigate("/users");
+  }, [closeCreateModal, navigate]);
+
   const isLoading = isRequestsLoading || isCustomersLoading || isReadyDesignsLoading;
   const loadError = requestsError ?? requestError;
 
@@ -422,7 +450,7 @@ export function PrintRequestsPage() {
             <div>
               <p className="eyebrow">Staff queue</p>
               <h2>Print Requests</h2>
-              <p>Named request lists for customers, guests, and internal planning.</p>
+              <p>Named request lists for customers and internal planning.</p>
             </div>
           </div>
 
@@ -481,7 +509,7 @@ export function PrintRequestsPage() {
           <Card className="print-requests-card print-requests-workflow-card">
             <p className="eyebrow">How it works</p>
             <p className="print-requests-workflow-copy">
-              Create a request for a customer, guest, or internal list. Add approved catalog designs, then set
+              Create a request for a customer or internal list. Add approved catalog designs, then set
               quantity, notes, and item status. Phase 7 will connect requests to print runs and upcoming shows.
             </p>
           </Card>
@@ -613,7 +641,11 @@ export function PrintRequestsPage() {
 
       {isCreateModalOpen ? (
         <div className="modal-overlay modal-overlay-blur">
-          <Modal aria-labelledby="print-request-create-title" className="modal-panel modal-panel-md" role="dialog">
+          <Modal
+            aria-labelledby="print-request-create-title"
+            className="modal-panel modal-panel-md print-requests-create-modal"
+            role="dialog"
+          >
             <ModalHeader>
               <div>
                 <p className="eyebrow">Create request</p>
@@ -626,65 +658,69 @@ export function PrintRequestsPage() {
                 id="create-print-request-form"
                 onSubmit={handleCreateRequest}
               >
-                <TextInput
-                  label="Request name"
-                  name="requestName"
-                  onChange={(event) => setCreateRequestForm((current) => ({ ...current, name: event.target.value }))}
-                  required
-                  value={createRequestForm.name}
-                />
-
                 <Select
                   label="Request type"
                   name="customerMode"
                   onChange={(event) =>
-                    setCreateRequestForm((current) => ({ ...current, customerMode: event.target.value as CustomerMode }))
+                    setCreateRequestForm((current) => ({
+                      ...current,
+                      customerMode: event.target.value as CustomerMode,
+                      customerId: event.target.value === "customer" ? current.customerId : "",
+                      name:
+                        event.target.value === "customer"
+                          ? current.customerId
+                            ? buildCustomerRequestName(current.customerId)
+                            : current.name
+                          : "",
+                    }))
                   }
                   options={CUSTOMER_MODE_OPTIONS}
                   value={createRequestForm.customerMode}
                 />
 
-                {createRequestForm.customerMode === "registered" ? (
-                  <Select
-                    label="Registered customer"
-                    name="customerId"
-                    onChange={(event) =>
-                      setCreateRequestForm((current) => ({ ...current, customerId: event.target.value }))
-                    }
-                    options={[{ label: "Choose a customer", value: "" }, ...customerOptions]}
-                    value={createRequestForm.customerId}
-                  />
-                ) : null}
-
-                {createRequestForm.customerMode === "guest" ? (
+                {createRequestForm.customerMode === "customer" ? (
                   <>
-                    <TextInput
-                      label="Guest display name"
-                      name="guestDisplayName"
+                    <Select
+                      label="Customer"
+                      name="customerId"
                       onChange={(event) =>
-                        setCreateRequestForm((current) => ({ ...current, guestDisplayName: event.target.value }))
+                        setCreateRequestForm((current) => ({
+                          ...current,
+                          customerId: event.target.value,
+                          name: buildCustomerRequestName(event.target.value),
+                        }))
                       }
-                      required
-                      value={createRequestForm.guestDisplayName}
+                      options={[{ label: "Choose a customer", value: "" }, ...customerOptions]}
+                      value={createRequestForm.customerId}
                     />
-                    <TextInput
-                      label="Guest email"
-                      name="guestEmail"
-                      onChange={(event) =>
-                        setCreateRequestForm((current) => ({ ...current, guestEmail: event.target.value }))
-                      }
-                      value={createRequestForm.guestEmail}
-                    />
-                    <AutoResizeTextarea
-                      label="Guest notes"
-                      name="guestNotes"
-                      onChange={(event) =>
-                        setCreateRequestForm((current) => ({ ...current, guestNotes: event.target.value }))
-                      }
-                      value={createRequestForm.guestNotes}
-                    />
+
+                    {customerOptions.length === 0 ? (
+                      <div className="print-requests-modal-helper">
+                        <p className="print-requests-modal-hint">
+                          Create customers from Users before creating customer requests.
+                        </p>
+                        {permissionService.canManageCustomers(user) ? (
+                          <Button onClick={openUsersForCustomerCreation} size="sm" variant="secondary">
+                            Go to Users
+                          </Button>
+                        ) : null}
+                      </div>
+                    ) : (
+                      <p className="print-requests-modal-hint">
+                        Customer requests only use existing customers. Create new customers from Users.
+                      </p>
+                    )}
                   </>
                 ) : null}
+
+                <TextInput
+                  label="Request name"
+                  name="requestName"
+                  onChange={(event) => setCreateRequestForm((current) => ({ ...current, name: event.target.value }))}
+                  readOnly={createRequestForm.customerMode === "customer"}
+                  required
+                  value={createRequestForm.name}
+                />
 
                 <AutoResizeTextarea
                   label="Request notes"

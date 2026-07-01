@@ -16,7 +16,6 @@ interface AiReviewProcessingStatusSectionProps {
   isRerunInProgress?: boolean;
   queuePositionLabel?: string | null;
   variant?: "default" | "overlay";
-  visionModelLabel?: string | null;
 }
 
 function StepperNodeIcon({ step, stepNumber }: { step: ProcessingPipelineStep; stepNumber: number }) {
@@ -50,7 +49,6 @@ export function AiReviewProcessingStatusSection({
   isRerunInProgress = false,
   queuePositionLabel,
   variant = "default",
-  visionModelLabel,
 }: AiReviewProcessingStatusSectionProps) {
   const showActivePipeline = isOptimisticEnqueue || isRerunInProgress;
   const displayDesign = showActivePipeline
@@ -79,60 +77,92 @@ export function AiReviewProcessingStatusSection({
         .join(" ")}
     >
       {!isOverlay ? (
-      <div className="ai-review-workspace-section-header">
-        <h3 className="ai-review-workspace-section-title">Processing Status</h3>
-        <div className="ai-review-processing-status-meta">
+        <div className="ai-review-workspace-section-header">
+          <h3 className="ai-review-workspace-section-title">Processing Status</h3>
           {queuePositionLabel ? (
-            <span className="ai-review-queue-position">{queuePositionLabel}</span>
-          ) : null}
-          {visionModelLabel ? (
-            <span className="ai-review-vision-model-label">{visionModelLabel}</span>
+            <div className="ai-review-processing-status-meta">
+              <span className="ai-review-queue-position">{queuePositionLabel}</span>
+            </div>
           ) : null}
         </div>
-      </div>
       ) : (
-      <div className="ai-review-workspace-section-header ai-review-workspace-section-header--overlay">
-        <h3 className="ai-review-workspace-section-title">Re-running AI</h3>
-      </div>
+        <div className="ai-review-workspace-section-header ai-review-workspace-section-header--overlay">
+          <h3 className="ai-review-workspace-section-title">Re-running AI</h3>
+        </div>
       )}
 
       {outputStatus === "not_generated" && !showActivePipeline ? (
         <p className="ai-review-processing-idle-copy">{statusMessage}</p>
       ) : outputStatus === "not_generated" ? null : (
         <ol className="ai-review-pipeline-stepper" role="list">
-        {steps.map((step, index) => (
-          <li
-            aria-current={step.state === "active" ? "step" : undefined}
-            className={[
-              "ai-review-pipeline-stepper-item",
-              `ai-review-pipeline-stepper-item--${step.state}`,
-            ].join(" ")}
-            key={step.id}
-          >
-            <div className="ai-review-pipeline-stepper-track">
-              <div className="ai-review-pipeline-stepper-node">
-                <StepperNodeIcon step={step} stepNumber={index + 1} />
+          {steps.map((step, index) => (
+            <li
+              aria-current={step.state === "active" ? "step" : undefined}
+              className={[
+                "ai-review-pipeline-stepper-item",
+                `ai-review-pipeline-stepper-item--${step.state}`,
+              ].join(" ")}
+              key={step.id}
+            >
+              <div className="ai-review-pipeline-stepper-track">
+                <div className="ai-review-pipeline-stepper-node">
+                  <StepperNodeIcon step={step} stepNumber={index + 1} />
+                </div>
+                {index < steps.length - 1 ? (
+                  <div
+                    aria-hidden="true"
+                    className={[
+                      "ai-review-pipeline-stepper-connector",
+                      step.state === "complete" ? "ai-review-pipeline-stepper-connector--complete" : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                  />
+                ) : null}
               </div>
-              {index < steps.length - 1 ? (
-                <div
-                  aria-hidden="true"
-                  className={[
-                    "ai-review-pipeline-stepper-connector",
-                    step.state === "complete" ? "ai-review-pipeline-stepper-connector--complete" : "",
-                  ]
-                    .filter(Boolean)
-                    .join(" ")}
-                />
-              ) : null}
-            </div>
-            <span className="ai-review-pipeline-stepper-label">{step.label}</span>
-          </li>
-        ))}
-      </ol>
+              <span className="ai-review-pipeline-stepper-label">{step.label}</span>
+            </li>
+          ))}
+        </ol>
       )}
 
       {outputStatus === "waiting" ? (
         <p className="ai-review-processing-idle-copy">{statusMessage}</p>
+      ) : null}
+
+      {outputStatus === "ready" && !showActivePipeline ? (
+        <dl className="ai-review-processing-run-meta">
+          {design.aiSuggestions?.model ? (
+            <div>
+              <dt>Model</dt>
+              <dd>{design.aiSuggestions.model}</dd>
+            </div>
+          ) : null}
+          {design.aiSuggestions?.provider ? (
+            <div>
+              <dt>Provider</dt>
+              <dd>{design.aiSuggestions.provider}</dd>
+            </div>
+          ) : null}
+          {design.aiSuggestions?.promptTokens != null ? (
+            <div>
+              <dt>Input tokens</dt>
+              <dd>{design.aiSuggestions.promptTokens}</dd>
+            </div>
+          ) : null}
+          {design.aiSuggestions?.completionTokens != null ? (
+            <div>
+              <dt>Output tokens</dt>
+              <dd>{design.aiSuggestions.completionTokens}</dd>
+            </div>
+          ) : null}
+          {design.aiSuggestions?.estimatedCostUsd != null ? (
+            <div>
+              <dt>Est. cost</dt>
+              <dd>${design.aiSuggestions.estimatedCostUsd.toFixed(6)}</dd>
+            </div>
+          ) : null}
+        </dl>
       ) : null}
 
       {errorMessage ? (

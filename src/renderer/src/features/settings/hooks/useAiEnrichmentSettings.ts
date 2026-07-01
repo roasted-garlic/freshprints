@@ -2,13 +2,19 @@ import { useCallback, useEffect, useState } from "react";
 
 import { formatTagsInput, tryParseTagsInput } from "../../designs/utils/designFormMapper";
 import {
-  DEFAULT_OPENAI_VISION_MODEL_ID,
+  DEFAULT_OPENAI_REASONING_EFFORT,
+  DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
+  DEFAULT_VISION_MODEL_ID,
+  formatReasoningEffortLabel,
   formatVisionModelLabel,
+  resolveClientReasoningEffort,
   resolveClientVisionModelId,
 } from "../constants/aiEnrichmentSettingsConstants";
+import type { AllowedVisionModelId } from "../../../../../../shared/constants/aiEnrichment.constants";
 import {
   aiEnrichmentSettingsService,
   resolveClientAdditionalTagExclusions,
+  resolveClientPromptTemplate,
 } from "../services/aiEnrichmentSettingsService";
 
 interface UseAiEnrichmentSettingsResult {
@@ -17,9 +23,14 @@ interface UseAiEnrichmentSettingsResult {
   error: string | null;
   isLoading: boolean;
   isSaving: boolean;
+  reasoningEffort: string;
+  reasoningEffortLabel: string;
+  promptTemplate: string;
   saveError: string | null;
   saveSettings: (input: {
+    reasoningEffort: string;
     visionModelId: string;
+    promptTemplate: string;
     additionalTagExclusions: string[];
   }) => Promise<void>;
   visionModelId: string;
@@ -27,7 +38,9 @@ interface UseAiEnrichmentSettingsResult {
 }
 
 export function useAiEnrichmentSettings(): UseAiEnrichmentSettingsResult {
-  const [visionModelId, setVisionModelId] = useState(DEFAULT_OPENAI_VISION_MODEL_ID);
+  const [visionModelId, setVisionModelId] = useState<AllowedVisionModelId>(DEFAULT_VISION_MODEL_ID);
+  const [reasoningEffort, setReasoningEffort] = useState(DEFAULT_OPENAI_REASONING_EFFORT);
+  const [promptTemplate, setPromptTemplate] = useState(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE);
   const [additionalTagExclusions, setAdditionalTagExclusions] = useState<string[]>([]);
   const [effectiveTagExclusions, setEffectiveTagExclusions] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -42,13 +55,17 @@ export function useAiEnrichmentSettings(): UseAiEnrichmentSettingsResult {
     const unsubscribe = aiEnrichmentSettingsService.subscribe(
       (settings) => {
         setVisionModelId(settings.visionModelId);
+        setReasoningEffort(settings.reasoningEffort);
+        setPromptTemplate(settings.promptTemplate);
         setAdditionalTagExclusions(settings.additionalTagExclusions);
         setEffectiveTagExclusions(settings.effectiveTagExclusions);
         setIsLoading(false);
       },
       (message) => {
         setError(message);
-        setVisionModelId(DEFAULT_OPENAI_VISION_MODEL_ID);
+        setVisionModelId(DEFAULT_VISION_MODEL_ID);
+        setReasoningEffort(DEFAULT_OPENAI_REASONING_EFFORT);
+        setPromptTemplate(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE);
         setAdditionalTagExclusions([]);
         setEffectiveTagExclusions([]);
         setIsLoading(false);
@@ -59,16 +76,25 @@ export function useAiEnrichmentSettings(): UseAiEnrichmentSettingsResult {
   }, []);
 
   const saveSettings = useCallback(
-    async (input: { visionModelId: string; additionalTagExclusions: string[] }) => {
+    async (input: {
+      reasoningEffort: string;
+      visionModelId: string;
+      promptTemplate: string;
+      additionalTagExclusions: string[];
+    }) => {
       setIsSaving(true);
       setSaveError(null);
 
       try {
         const saved = await aiEnrichmentSettingsService.updateSettings({
+          reasoningEffort: resolveClientReasoningEffort(input.reasoningEffort),
           visionModelId: resolveClientVisionModelId(input.visionModelId),
+          promptTemplate: resolveClientPromptTemplate(input.promptTemplate),
           additionalTagExclusions: resolveClientAdditionalTagExclusions(input.additionalTagExclusions),
         });
         setVisionModelId(saved.visionModelId);
+        setReasoningEffort(saved.reasoningEffort);
+        setPromptTemplate(saved.promptTemplate);
         setAdditionalTagExclusions(saved.additionalTagExclusions);
         setEffectiveTagExclusions(saved.effectiveTagExclusions);
       } catch (updateError) {
@@ -89,6 +115,9 @@ export function useAiEnrichmentSettings(): UseAiEnrichmentSettingsResult {
     error,
     isLoading,
     isSaving,
+    reasoningEffort,
+    reasoningEffortLabel: formatReasoningEffortLabel(reasoningEffort),
+    promptTemplate,
     saveError,
     saveSettings,
     visionModelId,

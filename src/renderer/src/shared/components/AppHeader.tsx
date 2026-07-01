@@ -10,7 +10,7 @@ import { ThemeToggle } from "../../features/theme/components/ThemeToggle";
 
 export function AppHeader() {
   const { headerConfig } = useShellHeader();
-  const { description, filters, primaryAction, search, title, toggle } = headerConfig;
+  const { actions, description, filters, primaryAction, search, title, toggle } = headerConfig;
   const { open: openDrawer } = useSidebarDrawer();
 
   return (
@@ -58,6 +58,17 @@ export function AppHeader() {
             onChange={toggle.onChange}
           />
         ) : null}
+        {actions?.map((action) => (
+          <Button
+            className="button-leading-icon"
+            key={action.label}
+            onClick={action.onClick}
+            variant="secondary"
+          >
+            {action.icon}
+            {action.label}
+          </Button>
+        ))}
         <ThemeToggle />
         {primaryAction ? (
           <Button className="button-leading-icon" onClick={primaryAction.onClick}>

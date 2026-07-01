@@ -20,6 +20,10 @@ export const firestoreCollectionService = {
     return this.getCollectionReference("categories");
   },
 
+  getTagsCollection() {
+    return this.getCollectionReference("tags");
+  },
+
   getCustomersCollection() {
     return this.getCollectionReference("customers");
   },

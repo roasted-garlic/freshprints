@@ -5,7 +5,6 @@ import { ProtectedRoute } from "../features/auth/components/ProtectedRoute";
 import { AiReviewPage } from "../features/ai-review/pages/AiReviewPage";
 import { CustomerRequestsPage } from "../features/customer-requests/pages/CustomerRequestsPage";
 import { DesignLibraryPage } from "../features/designs/pages/DesignLibraryPage";
-import { DashboardPage } from "../features/dashboard/pages/DashboardPage";
 import { ImportsPage } from "../features/imports/pages/ImportsPage";
 import { PrintRequestsPage } from "../features/print-requests/pages/PrintRequestsPage";
 import { SettingsPage } from "../features/settings/pages/SettingsPage";
@@ -26,14 +25,6 @@ export function AppRoutes() {
             element={
               <ProtectedRoute permission="viewDesigns">
                 <DesignLibraryPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/dev-dashboard"
-            element={
-              <ProtectedRoute permission="accessDashboard">
-                <DashboardPage />
               </ProtectedRoute>
             }
           />

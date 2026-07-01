@@ -100,20 +100,20 @@ Designs never become queued or printed. Queued and printed belong only to Print 
 
 ---
 
-## Current Focus (2026-06-24)
+## Current Focus (2026-06-29)
 
-**Phase 5 — AI Review Workflow** — architecture refined and approved with conditions.
+**Phase 6 — Customers and Print Requests** — foundation signed off with notes; AI Processing maintenance signed off locally and awaits deploy/smoke approval.
 
 Plan: `docs/workflow/plans/phase-5-ai-review-architecture-plan.md`  
 Review: `docs/workflow/reviews/phase-5-ai-review-architecture-review.md`
 
 Fresh Prints Studio workspaces:
 
-1. **Imports** — receive, validate, derivatives, automatic AI enqueue  
-2. **AI Review** — operational Inbox; Approval Mode for staff review  
+1. **Imports** — receive, validate, derivatives, AI Processing intake
+2. **AI Processing** — operational Inbox; staff-controlled AI processing and Approval Mode
 3. **Design Library** — approved catalog only
 
-Phase 4 catalog cleanup is complete (signoff approved with conditions).
+Phase 4 catalog cleanup is complete. Phase 5 AI Processing is staff-controlled; imports do not call OpenAI automatically.
 
 ---
 

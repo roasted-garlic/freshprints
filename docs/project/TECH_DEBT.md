@@ -26,6 +26,8 @@ See field definitions in template. Fixes require approved Managed Phases — **n
 | TD-010 | `firebase-functions` package outdated vs latest | dependencies | low | `functions/package.json` | Missing fixes/features; upgrade has breaking changes | Plan upgrade + regression test callables/triggers | `functions-runtime-upgrade` | open |
 | TD-011 | Functions TS build emits nested `lib/functions/src/` (shared types in `include`) | deployment | low | `functions/tsconfig.json` | `main` must match nested output; stale flat `lib/index.js` caused deploy filter miss | Flatten with `rootDir: src` + project references or local type shim | `functions-build-layout` | open |
 | TD-012 | Accidental `tsc` output in `shared/types/` breaks Vite (CJS `.js` resolved before `.ts`) | deployment | **high** | `shared/types/ai/` | White screen — Rollup cannot import named exports from stale CJS | Keep `shared/**/*.js` gitignored; never commit compiled shared types | **resolved** 2026-06-24 | **resolved** |
+| TD-013 | Customer creation/provisioning unavailable from User Management | feature gap | medium | `/users`, customer record creation flow | Owner could not create a customer record for registered customer Print Request QA | Implement owner/admin customer-record creation from Users for Phase 6 Print Requests without customer Auth, Portal login, or Studio access | `customer-creation-provisioning-bug` | resolved |
+| TD-014 | Print Request broad reads need indexed server-side query hardening before scale | data/performance | medium | `printRequestService`, `firestore.indexes.json` | Current Phase 6 broad reads are acceptable for foundation but will not scale cleanly | Add server-side query patterns and indexes for request status/customer/internal/item-status/customer-directory filters | `print-request-query-index-hardening` | open |
 
 ---
 
@@ -37,6 +39,7 @@ See field definitions in template. Fixes require approved Managed Phases — **n
 | TD-R02 | AGENTS.md/ARCHITECTURE.md wrong Electron paths | 2026-06-24 | Updated to `electron/` layout |
 | TD-R03 | AppForge doc migration incomplete | 2026-06-24 | Prior managed phase `fresh-prints-appforge-migration` |
 | TD-R04 | Generated build artifacts tracked in git | 2026-06-24 | Repository stabilization: untracked 84 files; `.gitignore` updated |
+| TD-R05 | Customer creation/provisioning unavailable from User Management | 2026-06-29 | `/users` now supports customer record create/edit flows, duplicate email prevention, and registered customer Print Request QA without customer Auth or Studio access |
 
 ---
 
@@ -44,5 +47,12 @@ See field definitions in template. Fixes require approved Managed Phases — **n
 
 | Date | Summary |
 |------|---------|
+| 2026-06-29 | Manual QA rejected inline Print Request customer creation UX; implementation corrected to move customer record creation into Users |
+| 2026-06-29 | TD-014 added during wrap-up audit; Print Request indexes deferred to scale hardening and do not block Phase 6 closeout |
+| 2026-06-29 | TD-013 resolved after authenticated manual QA passed and final checks completed |
+| 2026-06-29 | TD-013 implementation completed with automated checks passing; authenticated manual QA pending |
+| 2026-06-29 | TD-013 implementation started as owner/admin customer-record creation from Print Requests |
+| 2026-06-29 | TD-013 moved to planned with managed bug plan `docs/workflow/plans/2026-06-29-customer-creation-provisioning-bug-plan.md` |
+| 2026-06-29 | TD-013 added after Phase 6 PASS WITH NOTES signoff |
 | 2026-06-24 | TD-001 resolved in repository stabilization |
 | 2026-06-24 | Populated from Existing Project Intake |

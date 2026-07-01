@@ -26,9 +26,10 @@
 | Archive / restore design | ✅ Live |
 | Print size display (300/150/72 DPI equivalents) | ✅ Live |
 | Manual design creation (Phase 2C) | ✅ Live |
-| Category CRUD | ✅ Live |
+| Category CRUD with contiguous active ordering and drag reorder | ✅ Live |
+| Request-selection mode for Print Requests | ✅ Live |
 
-**Not in Design Library:** AI review queue, import status filters, production queue.
+**Not in Design Library:** AI review queue, import status filters, production queue. In request-selection mode, Design Library still shows approved catalog designs only.
 
 ## Imports (`/imports`) — permission: `importDesigns`
 
@@ -85,6 +86,22 @@
 | Create team user (Cloud Function + invite email) | ✅ Live |
 | Edit role/status (Cloud Function) | ✅ Live |
 | Owner vs admin visibility rules | ✅ Live |
+| Customer record create/edit | ✅ Live |
+| Cross-directory duplicate email prevention | ✅ Live |
+
+## Print Requests (`/print-requests`) — permission: `viewPrintRequests`
+
+| Feature | Status |
+|---------|--------|
+| Print request list/detail workspace | ✅ Live |
+| Internal print requests | ✅ QA pass |
+| Customer print requests | ✅ QA pass |
+| Create/update request flows | ✅ QA pass |
+| Request item list/edit/remove | ✅ QA pass |
+| Add approved catalog designs from Design Library | ✅ QA pass |
+| Quantity selection | ✅ QA pass |
+| Request item persistence after reload/revisit | ✅ QA pass |
+| Design lifecycle status remains catalog-only | ✅ QA pass |
 
 ## Dev Dashboard (`/dev-dashboard`) — permission: `accessDashboard`
 

@@ -37,9 +37,53 @@
   gap: var(--space-2);
 }
 
+.settings-card-footer {
+  align-items: end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  justify-content: space-between;
+}
+
+.settings-card-aside {
+  align-items: flex-end;
+  display: grid;
+  gap: 0;
+  justify-items: end;
+  margin-left: auto;
+  max-width: 20rem;
+}
+
 .settings-tag-exclusions-block {
   display: grid;
   gap: var(--space-3);
+}
+
+.settings-prompt-template-block {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.settings-prompt-template-danger {
+  background: var(--color-warning-soft);
+  border: 1px solid var(--color-warning);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+}
+
+.settings-prompt-template-summary {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  justify-content: space-between;
+}
+
+.settings-prompt-template-copy {
+  display: grid;
+  flex: 1 1 18rem;
+  gap: var(--space-2);
+  min-width: 0;
 }
 
 .settings-subsection-title {
@@ -51,4 +95,311 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
+}
+
+.settings-playground-grid {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.settings-playground-modal-shell {
+  align-items: center;
+  display: flex;
+  justify-content: center;
+  max-height: 100%;
+  max-width: 76rem;
+  width: 100%;
+}
+
+.settings-playground-result-modal-shell {
+  align-items: center;
+  display: flex;
+  justify-content: center;
+  max-height: 100%;
+  max-width: 64rem;
+  width: 100%;
+}
+
+.settings-playground-modal {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  max-height: calc(100vh - 2rem);
+  max-width: 76rem;
+  overflow: hidden;
+  width: 100%;
+}
+
+.settings-playground-modal-header,
+.settings-playground-modal-body {
+  min-width: 0;
+}
+
+.settings-playground-result-modal {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  max-height: calc(100vh - 2rem);
+  max-width: 64rem;
+  overflow: hidden;
+  width: 100%;
+}
+
+.settings-playground-result-modal-header,
+.settings-playground-result-modal-body {
+  min-width: 0;
+}
+
+.settings-playground-result-modal-body {
+  max-height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
+.settings-playground-modal-title-group {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.settings-playground-modal-body {
+  max-height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
+.settings-playground-controls {
+  display: grid;
+  column-gap: var(--space-4);
+  gap: var(--space-4);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  min-width: 0;
+}
+
+.settings-playground-controls .form-field {
+  min-width: 0;
+}
+
+.settings-playground-controls .form-select-trigger {
+  min-width: 0;
+}
+
+.settings-playground-composer {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+  position: relative;
+  padding: var(--space-4);
+}
+
+.settings-playground-composer .form-field {
+  margin: 0;
+}
+
+.settings-playground-composer .form-field label {
+  margin-bottom: var(--space-2);
+}
+
+.settings-playground-prompt-field {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+  position: relative;
+  width: 100%;
+}
+
+.settings-playground-prompt-field > .form-field label {
+  display: none;
+}
+
+.settings-playground-prompt-header {
+  align-items: center;
+  display: flex;
+  gap: var(--space-3);
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.settings-playground-prompt-header label {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  margin: 0;
+}
+
+.settings-playground-prompt-header .button {
+  flex: 0 0 auto;
+}
+
+.settings-playground-textarea {
+  display: block;
+  line-height: 1.45;
+  max-height: 22.5rem;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 11.25rem;
+  overflow-y: auto;
+  resize: none;
+  scrollbar-gutter: stable;
+  width: 100%;
+}
+
+.settings-playground-prompt-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.settings-playground-attach-button {
+  background: transparent;
+  color: var(--color-text-tertiary);
+}
+
+.settings-playground-attach-button:hover:not(:disabled),
+.settings-playground-attach-button:focus-visible {
+  background: transparent;
+  color: var(--color-text-primary);
+}
+
+.settings-playground-composer-footer {
+  align-items: end;
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: minmax(0, 1fr) auto;
+  min-width: 0;
+}
+
+.settings-playground-upload-state {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.settings-playground-upload-summary {
+  align-items: center;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-wrap: nowrap;
+  gap: var(--space-2);
+  justify-content: space-between;
+  min-width: 0;
+  padding: var(--space-2) var(--space-3);
+}
+
+.settings-playground-upload-details {
+  align-items: center;
+  display: flex;
+  flex: 1 1 auto;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.settings-playground-upload-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-playground-upload-size {
+  color: var(--color-text-secondary);
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.settings-playground-upload-summary button {
+  flex: 0 0 auto;
+}
+
+.settings-playground-result {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+
+.settings-playground-result-meta {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0;
+}
+
+.settings-playground-result-meta div {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.settings-playground-result-meta dt {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.settings-playground-result-meta dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.settings-playground-output {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.settings-playground-output-header {
+  align-items: center;
+  display: flex;
+  gap: var(--space-2);
+  justify-content: space-between;
+}
+
+.settings-playground-output pre {
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  margin: 0;
+  max-height: 20rem;
+  overflow: auto;
+  padding: var(--space-3);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+@media (max-width: 960px) {
+  .settings-playground-controls,
+  .settings-playground-result-meta {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .settings-card-footer,
+  .settings-playground-composer-footer {
+    align-items: stretch;
+  }
+
+  .settings-playground-composer-footer {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-card-aside {
+    justify-items: stretch;
+    margin-left: 0;
+    max-width: none;
+  }
+
+  .settings-playground-modal-shell {
+    width: 100%;
+  }
 }

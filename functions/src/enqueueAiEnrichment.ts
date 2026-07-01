@@ -1,15 +1,13 @@
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
-import { onDocumentUpdated } from "firebase-functions/v2/firestore";
 import { onCall } from "firebase-functions/v2/https";
 
 import { assertStaffCaller, loadCallerProfile } from "./lib/caller";
 import { failedPrecondition, invalidArgument, permissionDenied, unauthenticated } from "./lib/errors";
-import { openAiApiKeySecret } from "./lib/secrets";
+import { geminiApiKeySecret, openAiApiKeySecret } from "./lib/secrets";
 import { adminDb } from "./lib/admin";
 import { runAiEnrichmentPipeline } from "./ai/aiEnrichmentPipeline";
 import {
   AI_ENRICHMENT_ACTIVE_STAGES,
-  AI_ENRICHMENT_MAX_INSTANCES,
   AI_ENRICHMENT_STALE_STAGE_MS,
 } from "./ai/aiEnrichmentConfig";
 import {
@@ -51,7 +49,7 @@ function isStaleAiProcessing(design: Record<string, unknown>): boolean {
 }
 
 export const enqueueAiEnrichment = onCall(
-  { secrets: [openAiApiKeySecret] },
+  { secrets: [openAiApiKeySecret, geminiApiKeySecret], timeoutSeconds: 180, memory: "512MiB" },
   async (request) => {
     if (!request.auth?.uid) {
       throw unauthenticated();
@@ -68,7 +66,7 @@ export const enqueueAiEnrichment = onCall(
       throw invalidArgument(error instanceof Error ? error.message : "Invalid request.");
     }
 
-    const { designId, rerunRejected, rerunFromReview } = parsedRequest;
+    const { designId, rerunRejected, rerunFromReview, visionModelIdOverride, reasoningEffortOverride } = parsedRequest;
     const designRef = adminDb.collection("designs").doc(designId);
     const designSnapshot = await designRef.get();
 
@@ -141,6 +139,8 @@ export const enqueueAiEnrichment = onCall(
       aiReviewStatus: "pending",
       aiProcessed: false,
       aiReviewed: false,
+      aiRequestedVisionModelId: visionModelIdOverride ?? FieldValue.delete(),
+      aiRequestedReasoningEffort: reasoningEffortOverride ?? FieldValue.delete(),
       aiSuggestions: FieldValue.delete(),
       aiAnalysis: FieldValue.delete(),
       aiReviewedAt: FieldValue.delete(),
@@ -165,36 +165,35 @@ export const enqueueAiEnrichment = onCall(
     logPipelineMilestone(eventName, {
       designId,
       callerUid: request.auth.uid,
+      visionModelIdOverride: visionModelIdOverride ?? null,
+      reasoningEffortOverride: reasoningEffortOverride ?? null,
     });
-    return { designId, queued: true };
-  },
-);
+    await runAiEnrichmentPipeline(designId, openAiApiKeySecret.value(), geminiApiKeySecret.value());
+    const completedSnapshot = await designRef.get();
+    const completedDesign = completedSnapshot.data() ?? {};
 
-export const onDesignAiEnrichmentQueued = onDocumentUpdated(
-  {
-    document: "designs/{designId}",
-    secrets: [openAiApiKeySecret],
-    timeoutSeconds: 180,
-    memory: "512MiB",
-    maxInstances: AI_ENRICHMENT_MAX_INSTANCES,
-  },
-  async (event) => {
-    const before = event.data?.before.data();
-    const after = event.data?.after.data();
-
-    if (!after || after.aiProcessingStage !== "queued") {
-      return;
-    }
-
-    if (before?.aiProcessingStage === "queued") {
-      return;
-    }
-
-    const designId = event.params.designId;
-    logPipelineMilestone("trigger.fired", {
+    logPipelineMilestone("enqueue.completed_direct", {
       designId,
-      previousStage: before?.aiProcessingStage ?? null,
+      aiProcessingStage:
+        typeof completedDesign.aiProcessingStage === "string"
+          ? completedDesign.aiProcessingStage
+          : null,
+      aiReviewStatus:
+        typeof completedDesign.aiReviewStatus === "string" ? completedDesign.aiReviewStatus : null,
+      status: typeof completedDesign.status === "string" ? completedDesign.status : null,
     });
-    await runAiEnrichmentPipeline(designId, openAiApiKeySecret.value());
+
+    return {
+      designId,
+      queued: true,
+      completed: true,
+      aiProcessingStage:
+        typeof completedDesign.aiProcessingStage === "string"
+          ? completedDesign.aiProcessingStage
+          : null,
+      aiReviewStatus:
+        typeof completedDesign.aiReviewStatus === "string" ? completedDesign.aiReviewStatus : null,
+      status: typeof completedDesign.status === "string" ? completedDesign.status : null,
+    };
   },
 );

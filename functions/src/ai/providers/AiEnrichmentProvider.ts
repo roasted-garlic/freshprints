@@ -1,4 +1,11 @@
 import type { DesignAiAnalysis, DesignAiSuggestions } from "../../../../shared/types/ai/aiProcessing.types";
+import type { CatalogTag } from "../../../../shared/types/catalogTag.types";
+
+export interface AiEnrichmentCategoryOption {
+  id: string;
+  name: string;
+  description?: string;
+}
 
 export interface AiEnrichmentInput {
   designId: string;
@@ -7,7 +14,11 @@ export interface AiEnrichmentInput {
   previewPath: string;
   previewBytes: Buffer;
   previewContentType?: string;
+  promptTemplate: string;
+  categoryOptions: AiEnrichmentCategoryOption[];
   categoryNames: string[];
+  approvedTags: CatalogTag[];
+  approvedTagNames: string[];
   categoryIdsByName: Record<string, string>;
   effectiveTagExclusions: string[];
 }

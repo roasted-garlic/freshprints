@@ -152,8 +152,24 @@ export function useDesigns(listQuery: DesignListQuery, options?: UseDesignsOptio
     await loadDesigns();
   }, [loadDesigns]);
 
+  const applyDesignPatch = useCallback((designId: string, patch: Partial<Design>) => {
+    setState((currentState) => {
+      const index = currentState.designs.findIndex((design) => design.id === designId);
+
+      if (index < 0) {
+        return currentState;
+      }
+
+      const nextDesigns = currentState.designs.slice();
+      nextDesigns[index] = { ...nextDesigns[index], ...patch };
+
+      return { ...currentState, designs: nextDesigns };
+    });
+  }, []);
+
   return {
     ...state,
+    applyDesignPatch,
     loadMoreDesigns,
     reloadDesigns,
   };

@@ -436,6 +436,7 @@ AI enrichment writes versioned fields on `designs/{id}`:
 | Field | Type | Writer | Purpose |
 | --- | --- | --- | --- |
 | `aiProcessingStage` | enum | Cloud Function | Live pipeline stage for Processing Status UI |
+| `aiRequestedVisionModelId` | string | Cloud Function callable | Transient one-off AI re-run override while queued/in flight |
 | `aiSuggestions` | object | Cloud Function | AI catalog suggestions (separate from approved fields) |
 | `aiAnalysis` | object | Cloud Function | Rich analysis metadata for future features |
 
@@ -455,6 +456,7 @@ export interface DesignAiSuggestions {
   categoryId?: string;
   categoryName?: string;
   tags?: string[];
+  suggestedNewTags?: SuggestedNewTag[];
   confidence?: number;
   fieldConfidence?: { title?: number; description?: number; categoryId?: number; tags?: number };
   provider?: string;
@@ -484,9 +486,11 @@ export interface DesignAiAnalysis {
 }
 ```
 
-**Re-run AI (rejected only):** Owner/admin calls `enqueueAiEnrichment` with `rerunRejected: true`. Design returns to `status: imported`, `aiReviewStatus: pending`, `aiProcessingStage: queued`; prior `aiSuggestions` and `aiAnalysis` are **deleted and replaced** on the next successful run (no suggestion versioning in Phase 5B).
+**Re-run AI Suggestions:** Needs Review or Rejected calls `resetAiEnrichmentForProcessing`. Design returns to `status: imported`, `aiReviewStatus: pending`; prior `aiSuggestions` and `aiAnalysis` are **deleted**. Staff starts the next AI run from the Processing tab (no suggestion versioning in Phase 5B).
 
 **Reopen for review (rejected):** `status: imported`, `aiReviewStatus: needs_review`; preserves existing `aiSuggestions` / `aiAnalysis`; does not enqueue AI.
+
+**One-off processing override (2026-06-29):** AI Processing may send `visionModelIdOverride` and `reasoningEffortOverride` on processing requests. The callable validates them against server allowlists, writes transient `aiRequestedVisionModelId` / `aiRequestedReasoningEffort`, the pipeline prefers those values for the current run, and success/failure cleanup deletes the fields. This does not mutate `settings/aiEnrichment`.
 
 **Writes:** Cloud Function only for `aiSuggestions`, `aiAnalysis`, and `aiProcessingStage`. Client rules block mutations.
 
@@ -501,17 +505,12 @@ export interface DesignAiSuggestions {
   title?: string;
   description?: string;
   categoryId?: string;
+  categoryName?: string;
   tags?: string[];
-  confidence?: number;           // informational only — no auto-routing
-  fieldConfidence?: {
-    title?: number;
-    description?: number;
-    categoryId?: number;
-    tags?: number;
-  };
+  suggestedNewTags?: SuggestedNewTag[];
   provider?: string;             // e.g. "openai"
   model?: string;                // e.g. "gpt-5-nano-2025-08-07"
-  promptVersion?: string;        // e.g. "catalog-enrich-v3"
+  promptVersion?: string;        // e.g. "catalog-enrich-openai-v17"
   generatedAt?: Timestamp;
   errorCode?: string;
 }
@@ -519,9 +518,11 @@ export interface DesignAiSuggestions {
 
 **Version tracking from day one:** `provider`, `model`, `promptVersion`, and `generatedAt` enable regression analysis when prompts change. `promptVersion` is required for comparing approval rates and edit distance across prompt iterations.
 
-**Confidence policy:** Informational badges only. Successful AI completion moves to `needs_review`; failed AI remains in Processing for retry. Staff approval is always required for catalog publish.
+**Review policy:** Successful AI completion moves to `needs_review`; failed AI remains in Processing for retry. Staff approval is always required for catalog publish. The live v17+template contract no longer writes AI confidence.
 
-**Writes:** Cloud Function only for `aiSuggestions`; client services must not fabricate AI output.
+**Approved tag normalization (2026-06-30):** Cloud Functions normalize AI tag output against the global `tags` collection. Exact approved tag name or alias matches are persisted to `aiSuggestions.tags`; unmatched AI tokens are stored as `aiSuggestions.suggestedNewTags` for owner/admin review. AI never creates approved tag documents automatically.
+
+**Writes:** Cloud Function only for `aiSuggestions`, `aiAnalysis`, and processing state; client services must not fabricate AI output.
 
 **Catalog title vs upload name:** `aiSuggestions.title` is a shopper-facing catalog title generated from artwork (prompt v2 — must not echo upload filename). `design.title` at import is a filename placeholder; `originalPath` / storage paths are never overwritten by AI. Staff approval copies the reviewed title into catalog `title`.
 
@@ -554,9 +555,33 @@ Service-layer normalization rules:
 * Maximum 20 tags per design
 * Maximum 40 characters per tag
 
-**AI suggestions (2026-06-26):** Cloud Function `normalizeAiTags` persists **single-word** tags only — filtered against merged tag exclusions and generic production/meta tags. Titles: `Black Text` / `White Text` suffix only when `aiAnalysis.textOnlyArtwork === true`. Provider prompt `catalog-enrich-openai-v15` (deploy required for production). Staff may edit tags in Needs Review before approve.
+**AI suggestions (2026-06-29):** Cloud Function `normalizeAiTags` persists **single-word** tags only — filtered against merged tag exclusions and generic production/meta tags. Titles: `Black Text` / `White Text` suffix only when `aiAnalysis.textOnlyArtwork === true`. Provider prompt `catalog-enrich-openai-v16` reinforces observed-image-first extraction and stricter anti-invention OCR rules (deploy required for production). Staff may edit tags in Needs Review before approve.
 
-There is no separate `tags` collection in Phase 2.
+As of 2026-06-30, approved tag definitions live in a global `tags` collection. Design documents still store selected design tags as `designs.tags: string[]`; there is no category-owned tag model and no design tag migration/backfill in this phase.
+
+```ts
+export type CatalogTagStatus = "approved" | "archived";
+
+export interface CatalogTag {
+  id: string;
+  name: string;
+  aliases: string[];
+  preferredWhen: string;
+  status: CatalogTagStatus;
+  createdBy: string;
+  updatedBy: string;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
+export interface SuggestedNewTag {
+  name: string;
+  aliases: string[];
+  preferredWhen: string;
+  reason?: string;
+  source?: "ai";
+}
+```
 
 ---
 
@@ -698,7 +723,7 @@ export interface Customer {
 
 ---
 
-# Print Requests Collection (Phase 6 — planned)
+# Print Requests Collection (Phase 6 — in progress)
 
 Collection:
 
@@ -739,7 +764,7 @@ export interface PrintRequest {
 
 ---
 
-# Print Request Items Collection (Phase 6 — planned)
+# Print Request Items Collection (Phase 6 — in progress)
 
 Collection:
 
@@ -971,16 +996,22 @@ export interface AppSettings {
 
 | Field | Type | Notes |
 |-------|------|-------|
-| `visionModelId` | string | One of server allowlist: `gpt-5-nano-2025-08-07` (default), `gpt-5.4-nano-2026-03-17` |
+| `visionModelId` | string | One of server allowlist: `gpt-5.4-nano-2026-03-17` (default), `gpt-5-nano-2025-08-07`, `gpt-5.4-mini-2026-03-17` |
+| `reasoningEffort` | string | One of `none`, `minimal`, `low`, `medium`, `high`; default `medium`; server may retry with `low` for request-path compatibility only |
+| `promptTemplate` | string | Owner/admin-editable AI Processing prompt template. Must contain `{{approved_categories}}`, `{{approved_tags}}`, and `{{excluded_tags}}`; default asks for `description`, one approved `category`, `title`, up to 8 approved tag names, strict visible-text extraction in the description, and complete `suggestedNewTags` objects when approved tags are not relevant enough |
 | `additionalTagExclusions` | string[] | Optional owner/admin tags merged with `BASE_AI_TAG_EXCLUSIONS` (lowercase single words, max 50) |
 | `updatedAt` | Timestamp | Last change |
 | `updatedBy` | string | UID of owner/admin who saved |
 
 **Permissions:** Staff may read (AI Processing label). Writes only via callable `updateAiEnrichmentSettings` (owner/admin). No API keys in this document.
 
-**Per-design audit:** `designs.aiSuggestions.model` records the resolved model used for each enrichment run. `aiSuggestions.tags` filtered server-side against base + additional exclusions.
+**Per-design audit:** `designs.aiSuggestions.model` records the resolved model used for each enrichment run, including one-off AI Processing overrides. `aiSuggestions.tags` are filtered server-side against base + additional exclusions and resolved against approved tag names/aliases.
 
-**Needs Review re-run:** `enqueueAiEnrichment` with `rerunFromReview: true` clears suggestions and re-queues without leaving Needs Review workspace.
+**Prompt taxonomy context (2026-06-30):** Cloud Functions replace `{{approved_categories}}` with active category names plus descriptions, `{{approved_tags}}` with approved tag names plus aliases and preferred-when guidance, and `{{excluded_tags}}` with the effective exclusion list. AI should choose one approved category and approved tag names first, inspect the full image for readable text, include exact readable text in the description when present, and return `suggestedNewTags` only when no approved name or alias is relevant enough. Each suggestion must include `name`, `aliases`, `preferredWhen`, and `reason` for owner/admin review.
+
+**Needs Review / Rejected re-run:** `resetAiEnrichmentForProcessing` clears suggestions and sends the design back to Processing. No AI call runs on the review tab.
+
+**Settings AI playground:** No playground prompt text, image payload, or response output is persisted in Firestore for this slice. Playground requests are transient callable invocations only.
 
 ---
 
@@ -1144,6 +1175,18 @@ showQueues.status
 ```
 
 Composite indexes are defined in `firestore.indexes.json`.
+
+Phase 6 Print Request indexes are not yet defined because the foundation implementation currently reads `printRequests`, `printRequestItems`, and `customers` broadly and applies request-specific filtering/sorting in the service layer. Add server-side indexes before large request volume or when query patterns move to `where` / `orderBy` combinations such as:
+
+```txt
+printRequests.status + updatedAt
+printRequests.customerId + updatedAt
+printRequests.guestCustomerId + updatedAt
+printRequests.isInternal + updatedAt
+printRequestItems.printRequestId + updatedAt
+printRequestItems.printRequestId + status + updatedAt
+customers.isGuest + displayName
+```
 
 Additional indexes should be created based on actual query patterns.
 

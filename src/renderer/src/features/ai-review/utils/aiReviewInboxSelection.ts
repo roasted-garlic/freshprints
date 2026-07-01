@@ -96,6 +96,35 @@ export function shouldUseLiveDesignForSelection(input: {
   );
 }
 
+function getDesignUpdatedAtMs(design: Design | null): number {
+  if (!design) {
+    return 0;
+  }
+
+  return design.updatedAt.toMillis();
+}
+
+export function resolveFreshestInboxDesign(input: {
+  liveDesign: Design | null;
+  listDesign: Design | null;
+}): Design | null {
+  if (!input.liveDesign) {
+    return input.listDesign;
+  }
+
+  if (!input.listDesign) {
+    return input.liveDesign;
+  }
+
+  if (input.liveDesign.id !== input.listDesign.id) {
+    return input.liveDesign;
+  }
+
+  return getDesignUpdatedAtMs(input.listDesign) > getDesignUpdatedAtMs(input.liveDesign)
+    ? input.listDesign
+    : input.liveDesign;
+}
+
 export function shouldPrependPinnedDesignToInbox(input: {
   isPinnedNeedsReviewDesign: boolean;
   liveDesign: Design | null;

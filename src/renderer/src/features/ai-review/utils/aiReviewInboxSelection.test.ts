@@ -7,6 +7,7 @@ import {
   resolvePendingCrossTabDesign,
   resolveRejectedReopenTargetTab,
   resolveRejectedRerunTargetTab,
+  resolveFreshestInboxDesign,
   shouldPrependPinnedDesignToInbox,
   shouldRetainCrossTabSelection,
   shouldSuppressDefaultInboxSelection,
@@ -136,6 +137,37 @@ describe("aiReviewInboxSelection", () => {
         isPinnedNeedsReviewDesign: true,
       }),
       true,
+    );
+  });
+
+  it("prefers the freshest snapshot when live data lags behind the list query", () => {
+    const staleLiveDesign = createDesign({
+      id: "needs-review-design",
+      title: "Old Title",
+      updatedAt: { toMillis: () => 10, toDate: () => new Date() } as Design["updatedAt"],
+      aiSuggestions: {
+        title: "Old Title",
+        provider: "openai",
+        generatedAt: "2026-06-25T10:00:00.000Z",
+      },
+    });
+    const fresherListDesign = createDesign({
+      id: "needs-review-design",
+      title: "New Title",
+      updatedAt: { toMillis: () => 25, toDate: () => new Date() } as Design["updatedAt"],
+      aiSuggestions: {
+        title: "New Title",
+        provider: "openai",
+        generatedAt: "2026-06-25T10:05:00.000Z",
+      },
+    });
+
+    assert.equal(
+      resolveFreshestInboxDesign({
+        liveDesign: staleLiveDesign,
+        listDesign: fresherListDesign,
+      })?.title,
+      "New Title",
     );
   });
 

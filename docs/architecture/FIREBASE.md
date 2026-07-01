@@ -294,6 +294,7 @@ Initial collections:
 users
 designs
 categories
+tags
 customers
 customerRequests
 showQueues
@@ -303,6 +304,10 @@ auditLogs
 ```
 
 Future collections require approval.
+
+`tags` is the global approved tag library. Active staff may read it. Owner/admin may create,
+edit, and archive individual tag records; owner-only bulk JSON import is a UI/service workflow.
+Tag archive is soft (`status: "archived"`); deletes are blocked.
 
 ---
 
@@ -849,10 +854,11 @@ The renderer must call these functions instead of writing protected user records
 
 # Phase 5B Cloud Functions — AI Processing
 
-Automatic AI enrichment after import:
+Staff-controlled AI enrichment after import:
 
-* `enqueueAiEnrichment` — callable; sets `aiProcessingStage: queued` on imported designs. Optional `rerunRejected: true` for owner/admin to re-queue AI on rejected designs (replaces prior `aiSuggestions` / `aiAnalysis`).
-* `onDesignAiEnrichmentQueued` — Firestore `designs/{designId}` update trigger; runs enrichment pipeline (`maxInstances: 10`, `timeoutSeconds: 180`, `memory: 512MiB`)
+* `enqueueAiEnrichment` — callable; validates staff access, applies Settings defaults or Processing-tab model/reasoning overrides, and runs the AI enrichment pipeline directly for one imported design.
+* `resetAiEnrichmentForProcessing` — callable; resets Needs Review or Rejected designs back to Processing for a staff-started re-run and clears prior `aiSuggestions` / `aiAnalysis`.
+* `onDesignAiEnrichmentQueued` — legacy Firestore `designs/{designId}` update trigger kept for compatibility; the live Processing flow should not depend on trigger round trips.
 
 **Deploy (required for AI pipeline):**
 
@@ -864,7 +870,7 @@ firebase deploy --only functions
 Prefer a full `functions` deploy after export/entrypoint changes so all exports stay aligned. Filtered deploy is optional afterward:
 
 ```bash
-firebase deploy --only functions:enqueueAiEnrichment,functions:onDesignAiEnrichmentQueued
+firebase deploy --only functions:enqueueAiEnrichment,functions:resetAiEnrichmentForProcessing
 ```
 
 **Prerequisite:** `OPENAI_API_KEY` must exist in **Firebase Secret Manager** before deploy (functions bind the secret at deploy time). See **AI provider secrets** below — never store this key in Firestore or the desktop app.

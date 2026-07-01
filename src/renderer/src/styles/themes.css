@@ -26,6 +26,8 @@
   --color-success: #0d9f6e;
   --color-success-soft: #ecfdf5;
   --color-success-text: #047857;
+  /* Foreground for text/icons sitting on a solid --color-success fill (buttons). */
+  --color-on-success: #04291d;
 
   --color-danger: #dc3f56;
   --color-danger-soft: #fef2f4;
@@ -68,6 +70,8 @@
   --color-success: #22c997;
   --color-success-soft: rgb(34 201 151 / 0.12);
   --color-success-text: #86efca;
+  /* Foreground for text/icons sitting on a solid --color-success fill (buttons). */
+  --color-on-success: #04291d;
 
   --color-danger: #f05264;
   --color-danger-soft: rgb(240 82 100 / 0.14);

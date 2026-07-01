@@ -5,6 +5,7 @@ import type { ShellHeaderConfig } from "../types/shellHeader.types";
 
 function serializeShellHeaderConfig(config: ShellHeaderConfig): string {
   return JSON.stringify({
+    actionLabels: config.actions?.map((action) => action.label) ?? [],
     title: config.title,
     description: config.description ?? "",
     searchPlaceholder: config.search?.placeholder ?? "",

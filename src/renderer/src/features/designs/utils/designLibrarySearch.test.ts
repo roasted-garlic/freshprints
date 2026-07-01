@@ -1,11 +1,16 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
+import type { CatalogTag } from "../types/catalogTag.types";
+import type { Category } from "../types/category.types";
 import type { Design } from "../types/design.types";
 import {
+  buildCategoryFilterOptions,
   collectUniqueDesignTags,
+  collectUsedCategoryIds,
   computeFacetedTagsForDraftSelection,
   filterDesignsByAiReviewStatus,
+  filterDesignsByCategory,
   filterDesignsBySearch,
   filterDesignsByTags,
   filterTagsBySearch,
@@ -29,6 +34,34 @@ function createDesign(overrides: Partial<Design> = {}): Design {
     createdAt: { toMillis: () => 1 } as Design["createdAt"],
     updatedAt: { toMillis: () => 2 } as Design["updatedAt"],
     ...overrides,
+  };
+}
+
+function createCatalogTag(overrides: Partial<CatalogTag> & Pick<CatalogTag, "name">): CatalogTag {
+  return {
+    aliases: overrides.aliases ?? [],
+    createdAt: null,
+    createdBy: "owner-1",
+    id: overrides.id ?? overrides.name,
+    name: overrides.name,
+    preferredWhen: overrides.preferredWhen ?? "Use when relevant.",
+    status: overrides.status ?? "approved",
+    updatedAt: null,
+    updatedBy: "owner-1",
+  };
+}
+
+function createCategory(overrides: Partial<Category> & Pick<Category, "id" | "name">): Category {
+  return {
+    createdAt: { toMillis: () => 1 } as Category["createdAt"],
+    createdBy: "owner-1",
+    description: overrides.description,
+    id: overrides.id,
+    isActive: overrides.isActive ?? true,
+    name: overrides.name,
+    sortOrder: overrides.sortOrder ?? 0,
+    updatedAt: { toMillis: () => 2 } as Category["updatedAt"],
+    updatedBy: "owner-1",
   };
 }
 
@@ -86,6 +119,32 @@ describe("filterDesignsByTags", () => {
   });
 });
 
+describe("filterDesignsByCategory", () => {
+  it("returns all designs when no category is selected", () => {
+    const designs = [
+      createDesign({ id: "design-1", categoryId: "camp" }),
+      createDesign({ id: "design-2", categoryId: "greek" }),
+    ];
+
+    const result = filterDesignsByCategory(designs);
+    assert.deepEqual(
+      result.map((design) => design.id),
+      ["design-1", "design-2"],
+    );
+  });
+
+  it("filters designs by category id", () => {
+    const designs = [
+      createDesign({ id: "design-1", categoryId: "camp" }),
+      createDesign({ id: "design-2", categoryId: "greek" }),
+      createDesign({ id: "design-3" }),
+    ];
+
+    const result = filterDesignsByCategory(designs, "camp");
+    assert.deepEqual(result.map((design) => design.id), ["design-1"]);
+  });
+});
+
 describe("filterTagsBySearch", () => {
   it("filters available tags by substring", () => {
     const result = filterTagsBySearch(["alpha", "beta", "summer"], "mm");
@@ -109,8 +168,62 @@ describe("collectUniqueDesignTags", () => {
   });
 });
 
+describe("collectUsedCategoryIds", () => {
+  it("returns sorted unique category ids that are assigned to designs", () => {
+    const categoryIds = collectUsedCategoryIds([
+      createDesign({ id: "design-1", categoryId: "greek" }),
+      createDesign({ id: "design-2", categoryId: "camp" }),
+      createDesign({ id: "design-3", categoryId: "camp" }),
+      createDesign({ id: "design-4" }),
+    ]);
+
+    assert.deepEqual(categoryIds, ["camp", "greek"]);
+  });
+});
+
+describe("buildCategoryFilterOptions", () => {
+  it("shows only active categories assigned to the current matching designs", () => {
+    const options = buildCategoryFilterOptions({
+      allOptionValue: "__all__",
+      categories: [
+        createCategory({ id: "camp", name: "Camp" }),
+        createCategory({ id: "greek", name: "Greek" }),
+        createCategory({ id: "unused", name: "Unused" }),
+        createCategory({ id: "inactive", name: "Inactive", isActive: false }),
+      ],
+      designs: [
+        createDesign({ id: "design-1", categoryId: "camp" }),
+        createDesign({ id: "design-2", categoryId: "greek" }),
+      ],
+    });
+
+    assert.deepEqual(options, [
+      { label: "All categories", value: "__all__" },
+      { label: "Camp", value: "camp" },
+      { label: "Greek", value: "greek" },
+    ]);
+  });
+
+  it("keeps the selected active category visible when current filters leave it empty", () => {
+    const options = buildCategoryFilterOptions({
+      allOptionValue: "__all__",
+      categories: [
+        createCategory({ id: "camp", name: "Camp" }),
+        createCategory({ id: "greek", name: "Greek" }),
+      ],
+      designs: [createDesign({ id: "design-1", categoryId: "camp" })],
+      selectedCategoryId: "greek",
+    });
+
+    assert.deepEqual(options, [
+      { label: "All categories", value: "__all__" },
+      { label: "Camp", value: "camp" },
+      { label: "Greek", value: "greek" },
+    ]);
+  });
+});
+
 describe("computeFacetedTagsForDraftSelection", () => {
-  // Spec example designs.
   const designs = [
     createDesign({ id: "A", tags: ["dog", "funny", "cartoon"] }),
     createDesign({ id: "B", tags: ["dog", "coffee"] }),
@@ -144,7 +257,6 @@ describe("computeFacetedTagsForDraftSelection", () => {
 
     assert.deepEqual(toMap(result), { cartoon: 1, coffee: 1, dog: 2, funny: 1 });
     assert.equal(result.find((ft) => ft.tag === "dog")?.isSelected, true);
-    // Unrelated tags are hidden.
     assert.equal(result.find((ft) => ft.tag === "cat"), undefined);
     assert.equal(result.find((ft) => ft.tag === "skeleton"), undefined);
   });
@@ -181,7 +293,40 @@ describe("computeFacetedTagsForDraftSelection", () => {
 
     const tags = result.map((ft) => ft.tag);
     assert.ok(tags.includes("cartoon"));
-    assert.ok(tags.includes("dog")); // selected, survives search
+    assert.ok(tags.includes("dog"));
     assert.ok(!tags.includes("coffee"));
+  });
+
+  it("searches approved tag aliases and sorts approved tags before legacy tags", () => {
+    const result = computeFacetedTagsForDraftSelection({
+      baseDesigns: [
+        createDesign({ id: "A", tags: ["legacy", "summer"] }),
+        createDesign({ id: "B", tags: ["vacation"] }),
+      ],
+      catalogTags: [
+        createCatalogTag({
+          name: "summer",
+          aliases: ["beach"],
+          preferredWhen: "Use for warm weather and beach designs.",
+        }),
+      ],
+      draftSelectedTags: [],
+      tagSearchQuery: "beach",
+    });
+
+    assert.deepEqual(result.map((tag) => tag.tag), ["summer"]);
+  });
+
+  it("hides approved tags that have no matching designs in the current facet set", () => {
+    const result = computeFacetedTagsForDraftSelection({
+      baseDesigns: [createDesign({ id: "A", tags: ["summer"] })],
+      catalogTags: [
+        createCatalogTag({ name: "summer" }),
+        createCatalogTag({ name: "unused" }),
+      ],
+      draftSelectedTags: [],
+    });
+
+    assert.deepEqual(result.map((tag) => tag.tag), ["summer"]);
   });
 });

@@ -1,40 +1,42 @@
 import type { AiEnrichmentInput, AiEnrichmentProvider, AiEnrichmentResult } from "./AiEnrichmentProvider";
 
-import { resolveCatalogCategory } from "../catalogCategoryResolver";
-import { parseCatalogEnrichmentResponse } from "../catalogEnrichmentResponse";
-import { shouldRetryCatalogEnrichment } from "../catalogEnrichmentRetry";
+import { OPENAI_CATALOG_ENRICHMENT_PROMPT_VERSION } from "../catalogTitleRules";
 import {
-  buildCatalogEnrichmentSystemPrompt,
-  buildCatalogEnrichmentUserPrompt,
-  normalizeAiTags,
-  OPENAI_CATALOG_ENRICHMENT_PROMPT_VERSION,
-  resolveCatalogDescription,
-  resolveCatalogTitle,
-  sanitizeCatalogDescription,
-} from "../catalogTitleRules";
-import {
+  DEFAULT_OPENAI_REASONING_EFFORT,
   OPENAI_VISION_MAX_COMPLETION_TOKENS,
-  OPENAI_VISION_MAX_COMPLETION_TOKENS_RETRY,
-  OPENAI_VISION_REASONING_EFFORT,
   OPENAI_VISION_REASONING_EFFORT_FALLBACK,
+  type AllowedOpenAiReasoningEffort,
 } from "../aiEnrichmentConfig";
+import {
+  buildSimpleCatalogEnrichmentSystemPrompt,
+  buildSimpleCatalogEnrichmentUserPrompt,
+} from "../simpleCatalogEnrichmentPrompt";
+import {
+  buildSimpleCatalogEnrichmentResult,
+  extractJsonObject,
+  normalizeSimpleCatalogEnrichment,
+} from "../simpleCatalogEnrichmentResponse";
 import {
   type OpenAiChatCompletionPayload,
   assertOpenAiCompletionHasContent,
   extractOpenAiCompletionChoice,
   extractOpenAiCompletionUsage,
-  shouldRetryEmptyOutputWithHigherCap,
 } from "../openAiVisionCompletion";
-import { resolveVisibleTextPhrases } from "../visibleTextValidation";
 import { OpenAiRequestError, fetchOpenAiWithRetry } from "../openAiRetry";
 import { logPipelineEvent } from "../../lib/pipelineLog";
 import { developmentAiEnrichmentProvider } from "./developmentAiEnrichmentProvider";
+import {
+  OPENAI_CHAT_COMPLETIONS_URL,
+  resolveProviderTarget,
+  type ProviderTarget,
+} from "./resolveProviderTarget";
 
-type ReasoningEffort = typeof OPENAI_VISION_REASONING_EFFORT | typeof OPENAI_VISION_REASONING_EFFORT_FALLBACK;
+type ReasoningEffort = AllowedOpenAiReasoningEffort;
 
 interface VisionRequestOptions {
   maxCompletionTokens: number;
   reasoningEffort: ReasoningEffort;
+  supportsReasoningEffort: boolean;
 }
 
 function isUnsupportedReasoningEffortError(error: unknown): boolean {
@@ -46,19 +48,21 @@ function isUnsupportedReasoningEffortError(error: unknown): boolean {
   return message.includes("reasoning_effort") || message.includes("reasoning effort");
 }
 
-function buildVisionRequestBody(
+export function buildVisionRequestBody(
   visionModelId: string,
-  categoryList: string,
+  userPromptText: string,
   base64Image: string,
   imageContentType: string,
   options: VisionRequestOptions,
   systemPrompt: string,
 ): string {
+  // No `response_format: json_object` — matches the Settings AI Playground request shape. The
+  // model returns instruction-only JSON and the server parses it tolerantly.
+  // reasoning_effort is OpenAI-only; omit for providers that don't support it (e.g. Gemini).
   return JSON.stringify({
     model: visionModelId,
     max_completion_tokens: options.maxCompletionTokens,
-    reasoning_effort: options.reasoningEffort,
-    response_format: { type: "json_object" },
+    ...(options.supportsReasoningEffort ? { reasoning_effort: options.reasoningEffort } : {}),
     messages: [
       {
         role: "system",
@@ -69,12 +73,13 @@ function buildVisionRequestBody(
         content: [
           {
             type: "text",
-            text: buildCatalogEnrichmentUserPrompt(categoryList),
+            text: userPromptText,
           },
           {
             type: "image_url",
             image_url: {
               url: `data:${imageContentType};base64,${base64Image}`,
+              detail: "high",
             },
           },
         ],
@@ -85,15 +90,16 @@ function buildVisionRequestBody(
 
 async function postOpenAiVisionCompletion(
   apiKey: string,
+  baseUrl: string,
   visionModelId: string,
-  categoryList: string,
+  userPromptText: string,
   base64Image: string,
   imageContentType: string,
   options: VisionRequestOptions,
   systemPrompt: string,
 ): Promise<OpenAiChatCompletionPayload> {
   const response = await fetchOpenAiWithRetry(
-    "https://api.openai.com/v1/chat/completions",
+    baseUrl,
     {
       method: "POST",
       headers: {
@@ -102,7 +108,7 @@ async function postOpenAiVisionCompletion(
       },
       body: buildVisionRequestBody(
         visionModelId,
-        categoryList,
+        userPromptText,
         base64Image,
         imageContentType,
         options,
@@ -117,20 +123,22 @@ async function postOpenAiVisionCompletion(
 
 async function requestOpenAiVisionCompletion(
   apiKey: string,
+  baseUrl: string,
   visionModelId: string,
-  categoryList: string,
+  userPromptText: string,
   base64Image: string,
   imageContentType: string,
   options: VisionRequestOptions,
   systemPrompt: string,
-  logContext: { designId: string },
+  logContext: { designId: string; providerId: string },
 ): Promise<OpenAiChatCompletionPayload> {
   const requestStartedAtMs = Date.now();
 
   logPipelineEvent("openai.request.started", {
     designId: logContext.designId,
+    providerId: logContext.providerId,
     model: visionModelId,
-    reasoningEffort: options.reasoningEffort,
+    reasoningEffort: options.supportsReasoningEffort ? options.reasoningEffort : null,
     maxCompletionTokens: options.maxCompletionTokens,
     loggedAtMs: requestStartedAtMs,
   });
@@ -138,8 +146,9 @@ async function requestOpenAiVisionCompletion(
   try {
     const payload = await postOpenAiVisionCompletion(
       apiKey,
+      baseUrl,
       visionModelId,
-      categoryList,
+      userPromptText,
       base64Image,
       imageContentType,
       options,
@@ -152,8 +161,9 @@ async function requestOpenAiVisionCompletion(
     if (choice.content) {
       logPipelineEvent("openai.completion.usage", {
         designId: logContext.designId,
+        providerId: logContext.providerId,
         model: typeof payload.model === "string" ? payload.model : visionModelId,
-        reasoningEffort: options.reasoningEffort,
+        reasoningEffort: options.supportsReasoningEffort ? options.reasoningEffort : null,
         maxCompletionTokens: options.maxCompletionTokens,
         promptTokens: usage.promptTokens,
         completionTokens: usage.completionTokens,
@@ -163,14 +173,14 @@ async function requestOpenAiVisionCompletion(
     } else {
       logPipelineEvent("openai.empty_content", {
         designId: logContext.designId,
+        providerId: logContext.providerId,
         model: typeof payload.model === "string" ? payload.model : visionModelId,
-        reasoningEffort: options.reasoningEffort,
+        reasoningEffort: options.supportsReasoningEffort ? options.reasoningEffort : null,
         finishReason: choice.finishReason,
         promptTokens: usage.promptTokens,
         completionTokens: usage.completionTokens,
         reasoningTokens: usage.reasoningTokens,
         maxCompletionTokens: options.maxCompletionTokens,
-        willRetry: shouldRetryEmptyOutputWithHigherCap(payload, options.maxCompletionTokens),
         durationMs,
       });
     }
@@ -178,13 +188,15 @@ async function requestOpenAiVisionCompletion(
     return payload;
   } catch (error) {
     if (
-      options.reasoningEffort === OPENAI_VISION_REASONING_EFFORT &&
+      options.supportsReasoningEffort &&
+      options.reasoningEffort !== OPENAI_VISION_REASONING_EFFORT_FALLBACK &&
       isUnsupportedReasoningEffortError(error)
     ) {
       return requestOpenAiVisionCompletion(
         apiKey,
+        baseUrl,
         visionModelId,
-        categoryList,
+        userPromptText,
         base64Image,
         imageContentType,
         {
@@ -200,256 +212,77 @@ async function requestOpenAiVisionCompletion(
   }
 }
 
-interface ProcessedCatalogEnrichment {
-  result: AiEnrichmentResult;
-  rawColorPalette?: string[];
-  categoryRemapped: boolean;
-}
-
-function processCatalogEnrichmentPayload(
-  input: AiEnrichmentInput,
-  raw: Record<string, unknown>,
-  visionModelId: string,
-  isRetryPass: boolean,
-): ProcessedCatalogEnrichment {
-  const parsed = parseCatalogEnrichmentResponse(raw);
-  const rawDescription = parsed.description;
-  let visibleText = parsed.visibleText;
-  const textRecognitionConfidence = parsed.textRecognitionConfidence;
-  const artworkContainsText = parsed.artworkContainsText;
-
-  const visibleTextResolution = resolveVisibleTextPhrases({
-    artworkContainsText,
-    candidatePhrases: visibleText,
-    description: rawDescription,
-  });
-  visibleText = visibleTextResolution.phrases;
-
-  if (visibleTextResolution.usedDescriptionFallback) {
-    logPipelineEvent("catalog.enrich.visible_text_description_fallback", {
-      designId: input.designId,
-      phrases: visibleText ?? [],
-    });
-  }
-
-  if (visibleTextResolution.stillImplausible) {
-    logPipelineEvent("catalog.enrich.visible_text_low_quality", {
-      designId: input.designId,
-      visibleText: visibleText ?? [],
-      textRecognitionConfidence: textRecognitionConfidence ?? null,
-    });
-  }
-
-  const categoryResolution = isRetryPass
-    ? resolveCatalogCategory(
-        {
-          candidate: parsed.categoryName,
-          allowedNames: input.categoryNames,
-          theme: parsed.theme,
-          visibleText,
-          primarySubject: parsed.primarySubject,
-        },
-        input.categoryIdsByName,
-      )
-    : {
-        categoryName: parsed.categoryName
-          ? input.categoryNames.find(
-              (name) => name.toLowerCase() === parsed.categoryName!.toLowerCase(),
-            ) ?? parsed.categoryName
-          : undefined,
-        categoryId: parsed.categoryName
-          ? input.categoryIdsByName[parsed.categoryName.toLowerCase()]
-          : undefined,
-        remapped: false,
-        originalCandidate: parsed.categoryName,
-      };
-
-  if (categoryResolution.remapped) {
-    logPipelineEvent("catalog.enrich.category_remapped", {
-      designId: input.designId,
-      from: categoryResolution.originalCandidate ?? null,
-      to: categoryResolution.categoryName ?? null,
-    });
-  }
-
-  const primarySubject = parsed.primarySubject;
-  const style = parsed.style;
-  const theme = parsed.theme;
-  const sanitizedCandidateDescription = sanitizeCatalogDescription(rawDescription);
-  const tags = normalizeAiTags(parsed.tags, visibleText, 20, input.effectiveTagExclusions);
-  const visibleTextColor = parsed.visibleTextColor;
-  const textOnlyArtwork = parsed.textOnlyArtwork;
-  const colorPalette = parsed.colorPalette;
-  const title = resolveCatalogTitle({
-    candidateTitle: parsed.title,
-    primarySubject,
-    tags,
-    uploadFileStem: input.uploadFileStem,
-    visibleText,
-    visibleTextColor,
-    textOnlyArtwork,
-    artworkContainsText,
-    description: sanitizedCandidateDescription,
-  });
-  const descriptionResult = resolveCatalogDescription({
-    candidateDescription: rawDescription,
-    title,
-    primarySubject,
-    style,
-    theme,
-    tags,
-    visibleText,
-    artworkContainsText,
-    colorPalette,
-  });
-
-  if (descriptionResult.usedFallback) {
-    logPipelineEvent("catalog.enrich.description_fallback", {
-      designId: input.designId,
-      reason: descriptionResult.fallbackReason ?? "unknown",
-      tier: descriptionResult.fallbackTier ?? "generic",
-    });
-  }
-
-  const description = descriptionResult.description;
-
-  return {
-    categoryRemapped: categoryResolution.remapped,
-    rawColorPalette: Array.isArray(raw.colorPalette)
-      ? raw.colorPalette.filter((value): value is string => typeof value === "string")
-      : undefined,
-    result: {
-      suggestions: {
-        title,
-        description,
-        categoryId: categoryResolution.categoryId,
-        categoryName: categoryResolution.categoryName,
-        tags,
-        confidence: parsed.overallConfidence ?? 0.7,
-        provider: "openai",
-        model: visionModelId,
-        promptVersion: OPENAI_CATALOG_ENRICHMENT_PROMPT_VERSION,
-        generatedAt: new Date().toISOString(),
-      },
-      analysis: {
-        primarySubject,
-        theme,
-        style,
-        audience: parsed.audience,
-        colorPalette,
-        artworkContainsText,
-        visibleText,
-        visibleTextColor,
-        textOnlyArtwork,
-        textRecognitionConfidence,
-        overallConfidence: parsed.overallConfidence,
-      },
-    },
-  };
-}
-
 async function callOpenAiVision(
   apiKey: string,
+  providerTarget: ProviderTarget,
   visionModelId: string,
   input: AiEnrichmentInput,
+  reasoningEffort: AllowedOpenAiReasoningEffort,
 ): Promise<AiEnrichmentResult> {
   const base64Image = input.previewBytes.toString("base64");
   const imageContentType = input.previewContentType ?? "image/webp";
-  const categoryList = input.categoryNames.length > 0 ? input.categoryNames.join(", ") : "none";
-  const systemPrompt = buildCatalogEnrichmentSystemPrompt(input.effectiveTagExclusions);
+  const systemPrompt = buildSimpleCatalogEnrichmentSystemPrompt();
+  const userPromptText = buildSimpleCatalogEnrichmentUserPrompt({
+    approvedCategories: input.categoryOptions,
+    approvedCategoryNames: input.categoryNames,
+    approvedTags: input.approvedTags,
+    approvedTagNames: input.approvedTagNames,
+    effectiveTagExclusions: input.effectiveTagExclusions,
+    promptTemplate: input.promptTemplate,
+  });
 
   const initialOptions: VisionRequestOptions = {
     maxCompletionTokens: OPENAI_VISION_MAX_COMPLETION_TOKENS,
-    reasoningEffort: OPENAI_VISION_REASONING_EFFORT,
+    reasoningEffort,
+    supportsReasoningEffort: providerTarget.supportsReasoningEffort,
   };
 
-  let payload = await requestOpenAiVisionCompletion(
+  // Single call, playground-style: one lightweight request, no `response_format`, no automatic
+  // empty-output or quality retries. If the result is not what staff want, they re-run manually
+  // from AI Review (optionally with a different model). The reasoning-effort 400 fallback inside
+  // requestOpenAiVisionCompletion and the transient 429/5xx network retry in fetchOpenAiWithRetry
+  // are kept; neither fires on a normal successful run.
+  const payload = await requestOpenAiVisionCompletion(
     apiKey,
+    providerTarget.baseUrl,
     visionModelId,
-    categoryList,
+    userPromptText,
     base64Image,
     imageContentType,
     initialOptions,
     systemPrompt,
-    { designId: input.designId },
+    { designId: input.designId, providerId: providerTarget.providerId },
   );
 
-  let maxCompletionTokensUsed = initialOptions.maxCompletionTokens;
+  const content = assertOpenAiCompletionHasContent(
+    payload,
+    visionModelId,
+    initialOptions.maxCompletionTokens,
+  );
 
-  if (shouldRetryEmptyOutputWithHigherCap(payload, maxCompletionTokensUsed)) {
-    maxCompletionTokensUsed = OPENAI_VISION_MAX_COMPLETION_TOKENS_RETRY;
-    payload = await requestOpenAiVisionCompletion(
-      apiKey,
-      visionModelId,
-      categoryList,
-      base64Image,
-      imageContentType,
-      {
-        maxCompletionTokens: maxCompletionTokensUsed,
-        reasoningEffort: OPENAI_VISION_REASONING_EFFORT_FALLBACK,
-      },
-      systemPrompt,
-      { designId: input.designId },
-    );
-  }
+  const usage = extractOpenAiCompletionUsage(payload);
+  const raw = extractJsonObject(content);
+  const parsed = normalizeSimpleCatalogEnrichment(raw, input.effectiveTagExclusions);
 
-  const content = assertOpenAiCompletionHasContent(payload, visionModelId, maxCompletionTokensUsed);
-
-  let parsed = JSON.parse(content) as Record<string, unknown>;
-  let processed = processCatalogEnrichmentPayload(input, parsed, visionModelId, false);
-
-  const retryDecision = shouldRetryCatalogEnrichment({
-    description: processed.result.suggestions.description ?? "",
-    title: processed.result.suggestions.title ?? "",
-    visibleText: processed.result.analysis.visibleText,
-    artworkContainsText: processed.result.analysis.artworkContainsText ?? false,
-    textRecognitionConfidence: processed.result.analysis.textRecognitionConfidence,
-    categoryName: processed.result.suggestions.categoryName,
-    allowedCategoryNames: input.categoryNames,
-    categoryRemapped: processed.categoryRemapped,
-    tags: processed.result.suggestions.tags ?? [],
-    rawColorPalette: processed.rawColorPalette,
-    isRetryPass: false,
+  return buildSimpleCatalogEnrichmentResult({
+    parsed,
+    enrichmentInput: input,
+    modelId: visionModelId,
+    providerId: providerTarget.providerId,
+    promptTokens: usage.promptTokens,
+    completionTokens: usage.completionTokens,
   });
-
-  if (retryDecision.shouldRetry) {
-    logPipelineEvent("catalog.enrich.retry", {
-      designId: input.designId,
-      reasons: retryDecision.reasons,
-    });
-
-    const retryPayload = await requestOpenAiVisionCompletion(
-      apiKey,
-      visionModelId,
-      categoryList,
-      base64Image,
-      imageContentType,
-      {
-        maxCompletionTokens: OPENAI_VISION_MAX_COMPLETION_TOKENS,
-        reasoningEffort: OPENAI_VISION_REASONING_EFFORT_FALLBACK,
-      },
-      systemPrompt,
-      { designId: input.designId },
-    );
-
-    const retryContent = assertOpenAiCompletionHasContent(
-      retryPayload,
-      visionModelId,
-      OPENAI_VISION_MAX_COMPLETION_TOKENS,
-    );
-    parsed = JSON.parse(retryContent) as Record<string, unknown>;
-    processed = processCatalogEnrichmentPayload(input, parsed, visionModelId, true);
-  }
-
-  return processed.result;
 }
 
 export function createOpenAiVisionEnrichmentProvider(
   apiKey: string,
   visionModelId: string,
+  reasoningEffort: AllowedOpenAiReasoningEffort = DEFAULT_OPENAI_REASONING_EFFORT,
 ): AiEnrichmentProvider {
+  const providerTarget = resolveProviderTarget(visionModelId);
+
   return {
-    providerId: "openai",
+    providerId: providerTarget.providerId,
     modelId: visionModelId,
     promptVersion: OPENAI_CATALOG_ENRICHMENT_PROMPT_VERSION,
 
@@ -458,7 +291,9 @@ export function createOpenAiVisionEnrichmentProvider(
         return developmentAiEnrichmentProvider.enrichDesign(input);
       }
 
-      return callOpenAiVision(apiKey, visionModelId, input);
+      return callOpenAiVision(apiKey, providerTarget, visionModelId, input, reasoningEffort);
     },
   };
 }
+
+export { OPENAI_CHAT_COMPLETIONS_URL };

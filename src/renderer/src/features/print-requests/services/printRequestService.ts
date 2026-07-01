@@ -20,16 +20,9 @@ import type { Customer } from "../../../../../../shared/types/customer/customer.
 import type { PrintRequestItemStatus } from "../../../../../../shared/types/printRequest/printRequest.enums";
 import type { PrintRequest, PrintRequestItem } from "../../../../../../shared/types/printRequest/printRequest.types";
 
-export interface GuestCustomerInput {
-  displayName: string;
-  email?: string;
-  notes?: string;
-}
-
 export interface CreatePrintRequestInput {
   name: string;
   customerId?: string;
-  guestCustomer?: GuestCustomerInput;
   isInternal?: boolean;
   notes?: string;
 }
@@ -37,7 +30,6 @@ export interface CreatePrintRequestInput {
 export interface UpdatePrintRequestInput {
   name?: string;
   customerId?: string;
-  guestCustomerId?: string;
   isInternal?: boolean;
   status?: PrintRequest["status"];
   notes?: string;
@@ -74,7 +66,6 @@ interface PrintRequestDocumentData extends DocumentData {
   id?: unknown;
   name?: unknown;
   customerId?: unknown;
-  guestCustomerId?: unknown;
   isInternal?: unknown;
   status?: unknown;
   itemCount?: unknown;
@@ -141,7 +132,6 @@ function mapPrintRequestData(printRequestId: string, data: PrintRequestDocumentD
     id: printRequestId,
     name: data.name,
     customerId: typeof data.customerId === "string" ? data.customerId : undefined,
-    guestCustomerId: typeof data.guestCustomerId === "string" ? data.guestCustomerId : undefined,
     isInternal: data.isInternal === true,
     status: data.status as PrintRequest["status"],
     itemCount: data.itemCount,
@@ -202,7 +192,7 @@ function mapCustomerData(customerId: string, data: CustomerDocumentData): Custom
     createdAt === undefined ||
     updatedAt === undefined
   ) {
-    throw new Error("A customer record is incomplete.");
+    throw new Error("A customer is incomplete.");
   }
 
   return {
@@ -254,21 +244,16 @@ function buildPrintRequestItemSummaries(items: PrintRequestItem[]): Record<strin
   );
 }
 
-function buildPrintRequestPayload(input: CreatePrintRequestInput, callerId: string, guestCustomerId?: string) {
+function buildPrintRequestPayload(input: CreatePrintRequestInput, callerId: string) {
   const isInternal = input.isInternal ?? false;
 
-  if (input.customerId && input.guestCustomer) {
-    throw new Error("Choose either a registered customer or a guest customer, not both.");
-  }
-
-  if (!isInternal && !input.customerId && !guestCustomerId) {
-    throw new Error("A print request needs a registered customer, guest customer, or internal flag.");
+  if (!isInternal && !input.customerId) {
+    throw new Error("A print request needs a customer or internal flag.");
   }
 
   return withoutUndefinedFields({
     name: input.name.trim(),
     customerId: input.customerId,
-    guestCustomerId,
     isInternal,
     status: "draft" as const,
     itemCount: 0,
@@ -368,36 +353,6 @@ export const printRequestService = {
     return [...customers].sort((left, right) => left.displayName.localeCompare(right.displayName));
   },
 
-  async createGuestCustomer(caller: User, guestCustomer: GuestCustomerInput): Promise<Customer> {
-    if (!permissionService.canManageGuestCustomers(caller)) {
-      throw new Error("You do not have permission to create guest customers.");
-    }
-
-    const displayName = guestCustomer.displayName.trim();
-
-    if (!displayName) {
-      throw new Error("Guest customer display name is required.");
-    }
-
-    const customerRef = doc(firestoreCollectionService.getCustomersCollection());
-    const payload = withoutUndefinedFields({
-      id: customerRef.id,
-      displayName,
-      email: guestCustomer.email?.trim() || undefined,
-      notes: guestCustomer.notes?.trim() || undefined,
-      isGuest: true,
-      totalPrintRequests: 0,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    });
-
-    assertNoUndefinedFirestoreFields(payload, "Guest customer payload");
-    await setDoc(customerRef, payload);
-
-    const createdSnapshot = await getDoc(customerRef);
-    return mapCustomerData(customerRef.id, createdSnapshot.data() as CustomerDocumentData);
-  },
-
   async createPrintRequest(caller: User, input: CreatePrintRequestInput): Promise<PrintRequest> {
     if (!permissionService.canManagePrintRequests(caller)) {
       throw new Error("You do not have permission to create print requests.");
@@ -408,19 +363,8 @@ export const printRequestService = {
       throw new Error("Print request name is required.");
     }
 
-    let guestCustomerId: string | undefined;
-
-    if (input.guestCustomer) {
-      const guestCustomer = await this.createGuestCustomer(caller, input.guestCustomer);
-      guestCustomerId = guestCustomer.id;
-    }
-
     const requestRef = doc(firestoreCollectionService.getPrintRequestsCollection());
-    const payload = buildPrintRequestPayload(
-      { ...input, name },
-      caller.id,
-      guestCustomerId,
-    );
+    const payload = buildPrintRequestPayload({ ...input, name }, caller.id);
 
     await setDoc(requestRef, payload);
 
@@ -448,7 +392,6 @@ export const printRequestService = {
     const nextPayload = withoutUndefinedFields({
       name: input.name?.trim() || current.name,
       customerId: input.customerId ?? current.customerId,
-      guestCustomerId: input.guestCustomerId ?? current.guestCustomerId,
       isInternal: input.isInternal ?? current.isInternal,
       status: input.status ?? current.status,
       notes: input.notes?.trim() || undefined,

@@ -36,6 +36,8 @@ View details → Edit metadata → Archive/restore
 
 Design Library **never** shows imported or rejected designs by default.
 
+In Print Request selection mode, `/designs?mode=request-selection&requestId=...` remains an approved-catalog browser but adds selected-card state, quantity controls, and save/back actions for the active request.
+
 ## AI Review workspace workflow
 
 ```
@@ -79,9 +81,34 @@ Add user modal → createTeamUser callable → invitation email
 Edit user modal → updateTeamUser callable → sync Auth disabled + Firestore isActive
 ```
 
-## Future workflows (not implemented)
+Customer provisioning note:
 
-**Print Request (Phase 6):** Staff builds named list from approved catalog for customer/guest/internal use.
+Owners/admins can create and edit customer records from `/users`. These records support registered customer Print Requests without creating Firebase Auth accounts, `users/{uid}` documents, or Studio access.
+
+## Print Request workflow (Phase 6 — PASS)
+
+```
+Open /print-requests
+    ↓
+Create internal or customer print request
+    ↓
+Open Add designs → Design Library request-selection mode
+    ↓
+Select approved catalog designs and quantities
+    ↓
+Save to request
+    ↓
+Edit/remove request items as needed
+```
+
+Rules:
+
+- Only approved catalog designs (`status: ready`) may be added.
+- Request item status and notes live on `printRequestItems`.
+- Design records remain catalog records and keep catalog lifecycle status.
+- No checkout, payment, shipping, Portal, Whatnot, or Phase 7 Print Runs in Phase 6.
+
+## Future workflows (not implemented)
 
 **Print Run (Phase 7):** Group requests into show/batch → export originals for Pensacola gang sheets.
 

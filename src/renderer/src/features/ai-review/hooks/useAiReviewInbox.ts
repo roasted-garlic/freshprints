@@ -2,11 +2,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useAuth } from "../../auth/hooks/useAuth";
 import { designDocumentSubscriptionService } from "../../designs/services/designDocumentSubscriptionService";
+import { useCatalogTags } from "../../designs/hooks/useCatalogTags";
+import type { CreateCatalogTagInput } from "../../designs/types/catalogTag.types";
 import { permissionService } from "../../permissions/services/permissionService";
 import type { Design } from "../../designs/types/design.types";
 import { buildAiReviewInboxListQuery } from "../constants/aiReviewInboxConstants";
 import { aiEnrichmentEnqueueService } from "../services/aiEnrichmentEnqueueService";
 import { aiReviewInboxService } from "../services/aiReviewInboxService";
+import { buildDesignPatchFromEnqueueResult } from "../utils/enqueueResultPatch";
 import type { AiReviewDraftForm, AiReviewInboxFilters, AiReviewInboxTab } from "../types/aiReviewInbox.types";
 import {
   createAiReviewDraftFromDesign,
@@ -28,15 +31,15 @@ import { filterDesignsByAiReviewStatus } from "../../designs/utils/designLibrary
 import { useDesigns } from "../../designs/hooks/useDesigns";
 import { useAiProcessingQueue } from "./useAiProcessingQueue";
 import {
-  createNeedsReviewRerunSession,
-  shouldCompleteNeedsReviewRerun,
-  type NeedsReviewRerunSession,
-} from "../utils/aiReviewRerunSession";
+  addApprovedSuggestedTagToDraftTags,
+  normalizeSuggestedTagKey,
+} from "../utils/suggestedNewTags";
 import {
   resolveIsPinnedNeedsReviewDesign,
   resolvePendingCrossTabDesign,
   resolveRejectedReopenTargetTab,
   resolveRejectedRerunTargetTab,
+  resolveFreshestInboxDesign,
   shouldPrependPinnedDesignToInbox,
   shouldRetainCrossTabSelection,
   shouldSuppressDefaultInboxSelection,
@@ -45,6 +48,8 @@ import {
 } from "../utils/aiReviewInboxSelection";
 
 export interface UseAiReviewInboxOptions {
+  defaultReasoningEffort: string;
+  defaultVisionModelId: string;
   onNavigateToTab?: (tab: AiReviewInboxTab, designId: string) => void;
   onQueueChanged?: () => void;
 }
@@ -60,6 +65,7 @@ export function useAiReviewInbox(
   const { user } = useAuth();
   const listQuery = useMemo(() => buildAiReviewInboxListQuery(filters), [filters]);
   const {
+    applyDesignPatch,
     designs: rawDesigns,
     error,
     hasMore,
@@ -68,10 +74,24 @@ export function useAiReviewInbox(
     loadMoreDesigns,
     reloadDesigns,
   } = useDesigns(listQuery);
+  const catalogTags = useCatalogTags({ includeArchived: true });
 
   const [selectedDesignId, setSelectedDesignId] = useState<string | null>(null);
   const [liveDesign, setLiveDesign] = useState<Design | null>(null);
-  const [isRerunningAi, setIsRerunningAi] = useState(false);
+  const [ignoredTagsByDesignId, setIgnoredTagsByDesignId] = useState<Map<string, string[]>>(
+    () => {
+      try {
+        const raw = sessionStorage.getItem("aiReview.ignoredTags");
+        if (raw) {
+          const parsed = JSON.parse(raw) as Record<string, string[]>;
+          return new Map(Object.entries(parsed));
+        }
+      } catch {
+        // corrupt storage — start fresh
+      }
+      return new Map();
+    },
+  );
   const [pendingRerun, setPendingRerun] = useState(false);
 
   const [pendingSelection, setPendingSelection] = useState<PendingSelectionChange | null>(null);
@@ -80,14 +100,14 @@ export function useAiReviewInbox(
   const pendingAdvanceIndexRef = useRef<number | null>(null);
   const pendingCrossTabSelectionRef = useRef<PendingCrossTabSelection | null>(null);
   const previousTabRef = useRef(filters.tab);
-  const rerunSessionRef = useRef<NeedsReviewRerunSession | null>(null);
+  const liveDesignRef = useRef<Design | null>(null);
 
   const isPinnedNeedsReviewDesign = resolveIsPinnedNeedsReviewDesign({
     tab: filters.tab,
-    selectedDesignId,
-    liveDesignId: liveDesign?.id,
-    isRerunningAi,
-  });
+      selectedDesignId,
+      liveDesignId: liveDesign?.id,
+      isRerunningAi: false,
+    });
 
   const designs = useMemo(() => {
     let filtered = rawDesigns.filter((design) => designMatchesInboxTab(design, filters.tab));
@@ -125,12 +145,16 @@ export function useAiReviewInbox(
   const [baselineForm, setBaselineForm] = useState<AiReviewDraftForm | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [isActionLoading, setIsActionLoading] = useState(false);
+  const [isSendingBackToProcessing, setIsSendingBackToProcessing] = useState(false);
 
   const canManageCatalog = Boolean(user && permissionService.canEditAiReviewInbox(user));
   const canApprove = Boolean(user && permissionService.canApproveDesignForCatalog(user));
   const canReject = Boolean(user && permissionService.canRejectDesignFromCatalog(user));
+  const canApproveSuggestedTags = Boolean(user && permissionService.canApproveSuggestedTags(user));
 
   const selectedDesign = useMemo(() => {
+    const listDesign = designs.find((design) => design.id === selectedDesignId) ?? null;
+
     if (
       shouldUseLiveDesignForSelection({
         liveDesign,
@@ -139,10 +163,13 @@ export function useAiReviewInbox(
         isPinnedNeedsReviewDesign,
       })
     ) {
-      return liveDesign;
+      return resolveFreshestInboxDesign({
+        liveDesign,
+        listDesign,
+      });
     }
 
-    return designs.find((design) => design.id === selectedDesignId) ?? null;
+    return listDesign;
   }, [designs, filters.tab, isPinnedNeedsReviewDesign, liveDesign, selectedDesignId]);
 
   const canEditSelected = Boolean(
@@ -174,7 +201,6 @@ export function useAiReviewInbox(
       permissionService.canRerunAiSuggestions(user) &&
       filters.tab === "needs_review" &&
       selectedDesign &&
-      !isRerunningAi &&
       isDesignRerunnableFromNeedsReview(selectedDesign),
   );
   const showReadOnlySuggestions = Boolean(
@@ -229,6 +255,9 @@ export function useAiReviewInbox(
 
   const processingQueue = useAiProcessingQueue({
     activeTab: filters.tab,
+    applyDesignPatch,
+    defaultReasoningEffort: options?.defaultReasoningEffort ?? "",
+    defaultVisionModelId: options?.defaultVisionModelId ?? "",
     designs,
     onActionError: setActionError,
     reloadDesigns,
@@ -269,6 +298,7 @@ export function useAiReviewInbox(
     return designDocumentSubscriptionService.subscribeToDesign(
       selectedDesignId,
       (design) => {
+        liveDesignRef.current = design;
         setLiveDesign(design);
       },
       (subscriptionError) => {
@@ -282,40 +312,14 @@ export function useAiReviewInbox(
   }, [selectedDesignId, user]);
 
   useEffect(() => {
-    if (
-      !liveDesign ||
-      liveDesign.id !== selectedDesignId ||
-      isDraftDirty ||
-      !canEditSelected ||
-      isRerunningAi
-    ) {
+    if (!selectedDesign || selectedDesign.id !== selectedDesignId || isDraftDirty || !canEditSelected) {
       return;
     }
 
-    const nextDraft = createAiReviewDraftFromDesign(liveDesign);
+    const nextDraft = createAiReviewDraftFromDesign(selectedDesign);
     setDraftForm(nextDraft);
     setBaselineForm(nextDraft);
-  }, [canEditSelected, isDraftDirty, isRerunningAi, liveDesign, selectedDesignId]);
-
-  useEffect(() => {
-    const session = rerunSessionRef.current;
-
-    if (!isRerunningAi || !session || !liveDesign || liveDesign.id !== selectedDesignId) {
-      return;
-    }
-
-    if (!shouldCompleteNeedsReviewRerun(liveDesign, session)) {
-      return;
-    }
-
-    rerunSessionRef.current = null;
-    setIsRerunningAi(false);
-
-    const nextDraft = createAiReviewDraftFromDesign(liveDesign);
-    setDraftForm(nextDraft);
-    setBaselineForm(nextDraft);
-    void reloadDesigns();
-  }, [isRerunningAi, liveDesign, reloadDesigns, selectedDesignId]);
+  }, [canEditSelected, isDraftDirty, selectedDesign, selectedDesignId]);
 
   useEffect(() => {
     if (!liveDesign || filters.tab !== "processing") {
@@ -352,10 +356,6 @@ export function useAiReviewInbox(
       return;
     }
 
-    if (isRerunningAi && filters.tab === "needs_review") {
-      return;
-    }
-
     if (
       shouldSuppressDefaultInboxSelection({
         pendingCrossTabSelection: pendingCrossTabSelectionRef.current,
@@ -372,14 +372,10 @@ export function useAiReviewInbox(
     }
 
     applySelection(designs[0] ?? null);
-  }, [applySelection, designs, filters.tab, isLoading, isRerunningAi, selectedDesignId]);
+  }, [applySelection, designs, filters.tab, isLoading, selectedDesignId]);
 
   useEffect(() => {
     if (pendingAdvanceIndexRef.current !== null || isLoading) {
-      return;
-    }
-
-    if (isRerunningAi && filters.tab === "needs_review") {
       return;
     }
 
@@ -415,7 +411,7 @@ export function useAiReviewInbox(
     if (!selectedDesignId || !designs.some((design) => design.id === selectedDesignId)) {
       applySelection(designs[0] ?? null);
     }
-  }, [applySelection, designs, filters.tab, isLoading, isRerunningAi, selectedDesignId]);
+  }, [applySelection, designs, filters.tab, isLoading, selectedDesignId]);
 
   useEffect(() => {
     requestAnimationFrame(() => {
@@ -459,43 +455,41 @@ export function useAiReviewInbox(
     setPendingRerun(false);
   }, []);
 
-  const executeRerunAiSuggestions = useCallback(async () => {
-    if (
-      !user ||
-      !selectedDesign ||
-      filters.tab !== "needs_review" ||
-      isRerunningAi ||
-      !isDesignRerunnableFromNeedsReview(selectedDesign)
-    ) {
+  const executeRerunToProcessing = useCallback(async () => {
+    if (!user || !selectedDesign || (!canRerunSelected && !canRerunAiSuggestions)) {
       return;
     }
 
-    rerunSessionRef.current = createNeedsReviewRerunSession(selectedDesign);
-    setIsRerunningAi(true);
+    const designId = selectedDesign.id;
+
+    setIsActionLoading(true);
+    setIsSendingBackToProcessing(true);
     setActionError(null);
 
     try {
-      const result = await aiEnrichmentEnqueueService.rerunFromReview(selectedDesign.id);
-
-      if (!result.queued) {
-        throw new Error(result.reason ?? "AI re-run could not be queued.");
-      }
+      await aiReviewInboxService.rerunAiFromInbox(user, designId);
+      pendingCrossTabSelectionRef.current = { tab: resolveRejectedRerunTargetTab(), designId };
+      setSelectedDesignId(designId);
+      setDraftForm(null);
+      setBaselineForm(null);
+      setLiveDesign(null);
+      options?.onNavigateToTab?.(resolveRejectedRerunTargetTab(), designId);
+      options?.onQueueChanged?.();
     } catch (rerunError) {
-      rerunSessionRef.current = null;
-      setIsRerunningAi(false);
+      pendingCrossTabSelectionRef.current = null;
       setActionError(
-        rerunError instanceof Error ? rerunError.message : "Unable to re-run AI suggestions.",
+        rerunError instanceof Error
+          ? rerunError.message
+          : "Unable to send this design back to Processing.",
       );
+    } finally {
+      setIsSendingBackToProcessing(false);
+      setIsActionLoading(false);
     }
-  }, [filters.tab, isRerunningAi, selectedDesign, user]);
-
-  const confirmPendingRerun = useCallback(() => {
-    setPendingRerun(false);
-    void executeRerunAiSuggestions();
-  }, [executeRerunAiSuggestions]);
+  }, [canRerunAiSuggestions, canRerunSelected, options, selectedDesign, user]);
 
   const requestRerunAiSuggestions = useCallback(() => {
-    if (!canRerunAiSuggestions) {
+    if (!canRerunAiSuggestions && !canRerunSelected) {
       return;
     }
 
@@ -504,8 +498,13 @@ export function useAiReviewInbox(
       return;
     }
 
-    void executeRerunAiSuggestions();
-  }, [canRerunAiSuggestions, executeRerunAiSuggestions, isDraftDirty]);
+    void executeRerunToProcessing();
+  }, [canRerunAiSuggestions, canRerunSelected, executeRerunToProcessing, isDraftDirty]);
+
+  const confirmPendingRerun = useCallback(() => {
+    setPendingRerun(false);
+    void executeRerunToProcessing();
+  }, [executeRerunToProcessing]);
 
   const selectRelative = useCallback(
     (offset: number) => {
@@ -637,18 +636,9 @@ export function useAiReviewInbox(
     });
   }, [canReopenSelected, runRejectedTabNavigationAction, selectedDesign, user]);
 
-  const rerunSelected = useCallback(async () => {
-    if (!user || !selectedDesign || !canRerunSelected) {
-      return;
-    }
-
-    await runRejectedTabNavigationAction({
-      action: async () => {
-        await aiReviewInboxService.rerunAiFromInbox(user, selectedDesign.id);
-      },
-      targetTab: resolveRejectedRerunTargetTab(),
-    });
-  }, [canRerunSelected, runRejectedTabNavigationAction, selectedDesign, user]);
+  const rerunSelected = useCallback(() => {
+    requestRerunAiSuggestions();
+  }, [requestRerunAiSuggestions]);
 
   const retryProcessingSelected = useCallback(async () => {
     if (!user || !selectedDesign || !canRetryProcessingSelected) {
@@ -659,10 +649,21 @@ export function useAiReviewInbox(
     setActionError(null);
 
     try {
-      const result = await aiEnrichmentEnqueueService.retryFailedProcessing(selectedDesign.id);
+      const result = await aiEnrichmentEnqueueService.retryFailedProcessing(selectedDesign.id, {
+        visionModelIdOverride: processingQueue.resolvedSessionVisionModelId,
+        reasoningEffortOverride: processingQueue.resolvedSessionReasoningEffort,
+      });
 
       if (!result.queued) {
         throw new Error("AI processing could not be queued. Please try again.");
+      }
+
+      // Reflect the terminal AI state from the callable immediately; the reload below
+      // reconciles against Firestore in the background.
+      const patch = buildDesignPatchFromEnqueueResult(result);
+
+      if (patch) {
+        applyDesignPatch(selectedDesign.id, patch);
       }
 
       setLiveDesign(null);
@@ -675,10 +676,77 @@ export function useAiReviewInbox(
     } finally {
       setIsActionLoading(false);
     }
-  }, [canRetryProcessingSelected, options, reloadDesigns, selectedDesign, user]);
+  }, [applyDesignPatch, canRetryProcessingSelected, options, processingQueue.resolvedSessionReasoningEffort, processingQueue.resolvedSessionVisionModelId, reloadDesigns, selectedDesign, user]);
+
+  const ignoreSuggestedTag = useCallback(
+    (name: string) => {
+      const normalizedName = normalizeSuggestedTagKey(name);
+
+      if (!normalizedName || !selectedDesignId) {
+        return;
+      }
+
+      setIgnoredTagsByDesignId((currentMap) => {
+        const existing = currentMap.get(selectedDesignId) ?? [];
+
+        if (existing.includes(normalizedName)) {
+          return currentMap;
+        }
+
+        const nextMap = new Map(currentMap);
+        nextMap.set(selectedDesignId, [...existing, normalizedName]);
+
+        try {
+          sessionStorage.setItem(
+            "aiReview.ignoredTags",
+            JSON.stringify(Object.fromEntries(nextMap)),
+          );
+        } catch {
+          // storage unavailable — ignore
+        }
+
+        return nextMap;
+      });
+    },
+    [selectedDesignId],
+  );
+
+  const approveSuggestedTag = useCallback(
+    async (sourceName: string, input: CreateCatalogTagInput, addToDraft: boolean) => {
+      if (!user || !canApproveSuggestedTags) {
+        return;
+      }
+
+      setIsActionLoading(true);
+      setActionError(null);
+
+      try {
+        const approvedTag = await catalogTags.approveSuggestedTag(input);
+        ignoreSuggestedTag(sourceName);
+
+        if (addToDraft) {
+          setDraftForm((currentDraft) =>
+            currentDraft ? addApprovedSuggestedTagToDraftTags(currentDraft, approvedTag.name) : currentDraft,
+          );
+        }
+      } catch (approvalError) {
+        setActionError(
+          approvalError instanceof Error ? approvalError.message : "Unable to approve suggested tag.",
+        );
+      } finally {
+        setIsActionLoading(false);
+      }
+    },
+    [canApproveSuggestedTags, catalogTags, ignoreSuggestedTag, user],
+  );
+
+  const ignoredSuggestedTagNames = selectedDesignId
+    ? (ignoredTagsByDesignId.get(selectedDesignId) ?? [])
+    : [];
 
   return {
     actionError,
+    approvedTags: catalogTags.tags,
     baselineForm,
     canApprove: canApproveSelected,
     canEdit: canEditSelected,
@@ -687,11 +755,12 @@ export function useAiReviewInbox(
     canRerun: canRerunSelected,
     canRetryProcessing: canRetryProcessingSelected,
     canRerunAiSuggestions,
+    canApproveSuggestedTags,
     showReadOnlySuggestions,
     activeTab: filters.tab,
     cancelPendingSelection,
-    confirmDiscardPendingSelection,
     confirmPendingRerun,
+    confirmDiscardPendingSelection,
     designs,
     draftForm,
     error,
@@ -701,7 +770,8 @@ export function useAiReviewInbox(
     isDraftDirty,
     isLoading,
     isLoadingMore,
-    isRerunningAi,
+    isRerunningAi: isSendingBackToProcessing,
+    ignoredSuggestedTagNames,
     listQuery,
     loadMoreDesigns,
     pendingSelection,
@@ -718,6 +788,8 @@ export function useAiReviewInbox(
     rerunSelected,
     requestRerunAiSuggestions,
     retryProcessingSelected,
+    approveSuggestedTag,
+    ignoreSuggestedTag,
     updateDraftField,
     processingQueue,
   };

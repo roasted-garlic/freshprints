@@ -4,11 +4,13 @@ import { Badge } from "../../../shared/components/Badge";
 import { Select, type SelectOption } from "../../../shared/components/Select";
 import { TagChipInput } from "../../../shared/components/TagChipInput";
 import { TextInput } from "../../../shared/components/TextInput";
+import type { CatalogTag } from "../types/catalogTag.types";
 import type { DesignFormValues } from "../types/designForm.types";
 import { formatDesignStatusLabel, getDesignStatusBadgeVariant } from "../utils/designStatusDisplay";
 import { DesignPrintSettingsFields } from "./DesignPrintSettingsFields";
 
 interface DesignFormFieldsProps {
+  approvedTags: CatalogTag[];
   categoryOptions: SelectOption[];
   children?: ReactNode;
   designId?: string;
@@ -20,6 +22,7 @@ interface DesignFormFieldsProps {
 }
 
 export function DesignFormFields({
+  approvedTags,
   categoryOptions,
   children,
   designId,
@@ -65,6 +68,7 @@ export function DesignFormFields({
       />
 
       <TagChipInput
+        approvedTags={approvedTags}
         label="Tags"
         name="tagsInput"
         onChange={(nextValue) => onChange("tagsInput", nextValue)}

@@ -32,6 +32,15 @@
   gap: var(--space-2);
 }
 
+.button .loading-spinner {
+  color: currentColor;
+}
+
+.button .loading-spinner-indicator {
+  height: 0.875rem;
+  width: 0.875rem;
+}
+
 .button-lg {
   font-size: var(--font-size-lg);
   min-height: 3rem;
@@ -97,7 +106,7 @@
 
 .button-success {
   background: var(--color-success);
-  color: var(--color-accent-primary-text);
+  color: var(--color-on-success);
 }
 
 .button-success:hover:not(:disabled) {

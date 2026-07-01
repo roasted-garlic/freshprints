@@ -183,6 +183,18 @@ export const permissionService = {
     return hasActiveRole(user, ["owner", "admin"]);
   },
 
+  canManageTags(user: UserLike) {
+    return hasActiveRole(user, ["owner", "admin"]);
+  },
+
+  canBulkImportTags(user: UserLike) {
+    return isOwner(user);
+  },
+
+  canApproveSuggestedTags(user: UserLike) {
+    return this.canManageTags(user);
+  },
+
   canImportDesigns(user: UserLike) {
     return isStaff(user);
   },

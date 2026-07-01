@@ -1,29 +1,42 @@
 import { doc, onSnapshot, type Unsubscribe } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 
+import type {
+  AllowedVisionModelId,
+  OpenAiReasoningEffort,
+} from "../../../../../../shared/constants/aiEnrichment.constants";
 import { db, functions } from "../../../config/firebase";
 import {
   ADDITIONAL_TAG_EXCLUSION_PATTERN,
   AI_ENRICHMENT_SETTINGS_DOC_ID,
   BASE_AI_TAG_EXCLUSIONS,
+  DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
   MAX_ADDITIONAL_TAG_EXCLUSIONS,
+  hasRequiredAiEnrichmentPromptPlaceholders,
+  resolveClientReasoningEffort,
   resolveClientVisionModelId,
 } from "../constants/aiEnrichmentSettingsConstants";
 
 export interface AiEnrichmentSettingsSnapshot {
-  visionModelId: string;
+  reasoningEffort: OpenAiReasoningEffort;
+  visionModelId: AllowedVisionModelId;
+  promptTemplate: string;
   additionalTagExclusions: string[];
   effectiveTagExclusions: string[];
   updatedBy?: string;
 }
 
 interface UpdateAiEnrichmentSettingsInput {
-  visionModelId: string;
+  reasoningEffort: OpenAiReasoningEffort;
+  visionModelId: AllowedVisionModelId;
+  promptTemplate: string;
   additionalTagExclusions: string[];
 }
 
 interface UpdateAiEnrichmentSettingsResult {
-  visionModelId: string;
+  reasoningEffort: OpenAiReasoningEffort;
+  visionModelId: AllowedVisionModelId;
+  promptTemplate: string;
   additionalTagExclusions: string[];
 }
 
@@ -66,14 +79,34 @@ function mergeClientTagExclusions(additionalTagExclusions: string[]): string[] {
   return [...new Set([...BASE_AI_TAG_EXCLUSIONS, ...additionalTagExclusions])];
 }
 
+export function resolveClientPromptTemplate(raw: unknown): string {
+  if (typeof raw !== "string") {
+    return DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE;
+  }
+
+  const trimmed = raw.trim();
+
+  if (!trimmed || !hasRequiredAiEnrichmentPromptPlaceholders(trimmed)) {
+    return DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE;
+  }
+
+  return trimmed;
+}
+
 function mapSettingsSnapshot(data: Record<string, unknown> | undefined): AiEnrichmentSettingsSnapshot {
   const visionModelId = resolveClientVisionModelId(
     typeof data?.visionModelId === "string" ? data.visionModelId : undefined,
   );
+  const reasoningEffort = resolveClientReasoningEffort(
+    typeof data?.reasoningEffort === "string" ? data.reasoningEffort : undefined,
+  );
   const additionalTagExclusions = resolveClientAdditionalTagExclusions(data?.additionalTagExclusions);
+  const promptTemplate = resolveClientPromptTemplate(data?.promptTemplate);
 
   return {
+    reasoningEffort,
     visionModelId,
+    promptTemplate,
     additionalTagExclusions,
     effectiveTagExclusions: mergeClientTagExclusions(additionalTagExclusions),
     updatedBy: typeof data?.updatedBy === "string" ? data.updatedBy : undefined,
@@ -97,7 +130,9 @@ export const aiEnrichmentSettingsService = {
   },
 
   async updateSettings(input: {
-    visionModelId: string;
+    reasoningEffort: OpenAiReasoningEffort;
+    visionModelId: AllowedVisionModelId;
+    promptTemplate: string;
     additionalTagExclusions: string[];
   }): Promise<AiEnrichmentSettingsSnapshot> {
     const updateCallable = httpsCallable<
@@ -106,12 +141,16 @@ export const aiEnrichmentSettingsService = {
     >(functions, "updateAiEnrichmentSettings");
 
     const response = await updateCallable({
+      reasoningEffort: resolveClientReasoningEffort(input.reasoningEffort),
       visionModelId: resolveClientVisionModelId(input.visionModelId),
+      promptTemplate: resolveClientPromptTemplate(input.promptTemplate),
       additionalTagExclusions: resolveClientAdditionalTagExclusions(input.additionalTagExclusions),
     });
 
     return {
+      reasoningEffort: resolveClientReasoningEffort(response.data.reasoningEffort),
       visionModelId: resolveClientVisionModelId(response.data.visionModelId),
+      promptTemplate: resolveClientPromptTemplate(response.data.promptTemplate),
       additionalTagExclusions: resolveClientAdditionalTagExclusions(
         response.data.additionalTagExclusions,
       ),

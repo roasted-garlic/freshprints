@@ -4,15 +4,14 @@ import {
   getDoc,
   getDocs,
   limit,
-  orderBy,
   query,
   serverTimestamp,
-  setDoc,
-  updateDoc,
   where,
   type QueryConstraint,
+  writeBatch,
 } from "firebase/firestore";
 
+import { db } from "../../../config/firebase";
 import { getFirestoreErrorMessage } from "../../firebase/utils/firestoreErrorMessage";
 import { assertNoUndefinedFirestoreFields, withoutUndefinedFields } from "../../firebase/utils/firestoreDocument";
 import { firestoreCollectionService } from "../../firebase/services/firestoreCollectionService";
@@ -24,6 +23,12 @@ import type {
   CreateCategoryInput,
   UpdateCategoryInput,
 } from "../types/category.types";
+import {
+  buildCategoryOrderUpdates,
+  compareCategoryOrder,
+  moveCategoryToOrder,
+  normalizeCategoryOrder,
+} from "../utils/categoryOrder";
 
 const MAX_CATEGORY_NAME_LENGTH = 80;
 const DEFAULT_CATEGORY_LIST_LIMIT = 200;
@@ -40,10 +45,13 @@ interface CategoryDocumentData {
   updatedAt?: unknown;
 }
 
+function isValidPersistedSortOrder(sortOrder: unknown): sortOrder is number {
+  return typeof sortOrder === "number" && Number.isInteger(sortOrder) && sortOrder >= 0;
+}
+
 function mapCategoryDocument(categoryId: string, data: CategoryDocumentData): Category {
   if (
     typeof data.name !== "string" ||
-    typeof data.sortOrder !== "number" ||
     typeof data.isActive !== "boolean" ||
     !data.createdAt ||
     !data.updatedAt
@@ -55,7 +63,7 @@ function mapCategoryDocument(categoryId: string, data: CategoryDocumentData): Ca
     id: categoryId,
     name: data.name,
     description: typeof data.description === "string" ? data.description : undefined,
-    sortOrder: data.sortOrder,
+    sortOrder: isValidPersistedSortOrder(data.sortOrder) ? data.sortOrder : 0,
     isActive: data.isActive,
     createdBy: typeof data.createdBy === "string" ? data.createdBy : "",
     updatedBy:
@@ -69,14 +77,15 @@ function mapCategoryDocument(categoryId: string, data: CategoryDocumentData): Ca
   };
 }
 
-function sortCategories(categories: Category[]): Category[] {
-  return [...categories].sort((left, right) => {
-    if (left.sortOrder !== right.sortOrder) {
-      return left.sortOrder - right.sortOrder;
-    }
+function sortCategories(categories: readonly Category[]): Category[] {
+  return [...categories].sort(compareCategoryOrder);
+}
 
-    return left.name.localeCompare(right.name);
-  });
+function normalizeCategoriesForRead(categories: readonly Category[]): Category[] {
+  const activeCategories = normalizeCategoryOrder(categories.filter((category) => category.isActive));
+  const inactiveCategories = sortCategories(categories.filter((category) => !category.isActive));
+
+  return [...activeCategories, ...inactiveCategories];
 }
 
 function validateCategoryName(name: string): string {
@@ -97,43 +106,40 @@ function normalizeCategoryNameForComparison(name: string): string {
   return validateCategoryName(name).toLowerCase();
 }
 
-const RESTORE_CATEGORY_NAME_CONFLICT_MESSAGE =
-  "A category with this name is already active. Rename this archived category before restoring it.";
+function normalizeCategoryDescription(description: string | undefined): string | undefined {
+  return description?.trim() ? description.trim() : undefined;
+}
 
-async function assertActiveCategoryNameAvailable(
-  name: string,
+function isCategoryNameConflict(
+  categories: readonly Category[],
+  candidateName: string,
   excludeCategoryId?: string,
-  conflictMessage = "An active category with this name already exists.",
-): Promise<void> {
-  const normalizedName = normalizeCategoryNameForComparison(name);
+): boolean {
+  const normalizedName = normalizeCategoryNameForComparison(candidateName);
 
-  const categoriesQuery = query(
-    firestoreCollectionService.getCategoriesCollection(),
-    where("isActive", "==", true),
-    orderBy("sortOrder", "asc"),
-    limit(DEFAULT_CATEGORY_LIST_LIMIT),
-  );
-  const snapshot = await getDocs(categoriesQuery);
-
-  const hasConflict = snapshot.docs.some((categoryDocument) => {
-    if (categoryDocument.id === excludeCategoryId) {
-      return false;
-    }
-
-    const data = categoryDocument.data();
-
-    if (typeof data.name !== "string") {
+  return categories.some((category) => {
+    if (!category.isActive || category.id === excludeCategoryId) {
       return false;
     }
 
     try {
-      return normalizeCategoryNameForComparison(data.name) === normalizedName;
+      return normalizeCategoryNameForComparison(category.name) === normalizedName;
     } catch {
       return false;
     }
   });
+}
 
-  if (hasConflict) {
+const RESTORE_CATEGORY_NAME_CONFLICT_MESSAGE =
+  "A category with this name is already active. Rename this archived category before restoring it.";
+
+function assertActiveCategoryNameAvailableInCategories(
+  categories: readonly Category[],
+  name: string,
+  excludeCategoryId?: string,
+  conflictMessage = "An active category with this name already exists.",
+): void {
+  if (isCategoryNameConflict(categories, name, excludeCategoryId)) {
     throw new Error(conflictMessage);
   }
 }
@@ -145,10 +151,117 @@ function buildCategoryListConstraints(options: CategoryListOptions = {}): QueryC
     constraints.push(where("isActive", "==", true));
   }
 
-  constraints.push(orderBy("sortOrder", "asc"));
   constraints.push(limit(DEFAULT_CATEGORY_LIST_LIMIT));
 
   return constraints;
+}
+
+function getExistingCategoryDocumentData(
+  categoryDocumentsById: Map<string, CategoryDocumentData>,
+  categoryId: string,
+): CategoryDocumentData {
+  return categoryDocumentsById.get(categoryId) ?? {};
+}
+
+function mergeCategoryTransactionPayload(
+  payloadById: Map<string, Record<string, unknown>>,
+  categoryDocumentsById: Map<string, CategoryDocumentData>,
+  categoryId: string,
+  callerId: string,
+  partialPayload: Record<string, unknown>,
+): void {
+  const nextPayload: Record<string, unknown> = {
+    ...(payloadById.get(categoryId) ?? {}),
+    ...partialPayload,
+    updatedAt: serverTimestamp(),
+    updatedBy: callerId,
+  };
+
+  const existingData = getExistingCategoryDocumentData(categoryDocumentsById, categoryId);
+
+  if (typeof existingData.createdBy !== "string") {
+    nextPayload.createdBy = callerId;
+  }
+
+  assertNoUndefinedFirestoreFields(nextPayload, "Category update payload");
+  payloadById.set(categoryId, nextPayload);
+}
+
+function applyCategoryOrderUpdates(
+  payloadById: Map<string, Record<string, unknown>>,
+  categoryDocumentsById: Map<string, CategoryDocumentData>,
+  previousCategories: readonly Category[],
+  nextCategories: readonly Category[],
+  callerId: string,
+): void {
+  const orderUpdates = buildCategoryOrderUpdates(previousCategories, nextCategories);
+
+  orderUpdates.forEach((orderUpdate) => {
+    mergeCategoryTransactionPayload(payloadById, categoryDocumentsById, orderUpdate.id, callerId, {
+      sortOrder: orderUpdate.sortOrder,
+    });
+  });
+}
+
+function buildActiveCategoryResult(
+  activeCategories: readonly Category[],
+  categoryId: string,
+): Category {
+  const category = activeCategories.find((activeCategory) => activeCategory.id === categoryId);
+
+  if (!category) {
+    throw new Error("The category record was not found.");
+  }
+
+  return category;
+}
+
+async function getAllCategories(): Promise<{
+  allCategories: Category[];
+  categoryDocumentsById: Map<string, CategoryDocumentData>;
+}> {
+  const categoriesCollection = firestoreCollectionService.getCategoriesCollection();
+  const categoriesSnapshot = await getDocs(query(categoriesCollection));
+  const categoryDocumentsById = new Map<string, CategoryDocumentData>();
+
+  const allCategories = categoriesSnapshot.docs.map((categoryDocument) => {
+    const data = categoryDocument.data();
+    categoryDocumentsById.set(categoryDocument.id, data);
+
+    return mapCategoryDocument(categoryDocument.id, data);
+  });
+
+  return {
+    allCategories,
+    categoryDocumentsById,
+  };
+}
+
+async function commitCategoryPayloads(
+  payloadById: Map<string, Record<string, unknown>>,
+): Promise<void> {
+  if (payloadById.size === 0) {
+    return;
+  }
+
+  const batch = writeBatch(db);
+
+  payloadById.forEach((payload, categoryId) => {
+    batch.update(doc(firestoreCollectionService.getCategoriesCollection(), categoryId), payload);
+  });
+
+  await batch.commit();
+}
+
+async function readCategoryAfterWrite(categoryId: string): Promise<Category> {
+  const categoryRef = doc(firestoreCollectionService.getCategoriesCollection(), categoryId);
+  const categorySnapshot = await getDoc(categoryRef);
+
+  if (!categorySnapshot.exists()) {
+    throw new Error("The category record was not found.");
+  }
+
+  return mapCategoryDocument(categorySnapshot.id, categorySnapshot.data());
 }
 
 export const categoryService = {
@@ -164,11 +277,11 @@ export const categoryService = {
       );
       const snapshot = await getDocs(categoriesQuery);
 
-      return sortCategories(
-        snapshot.docs.map((categoryDocument) =>
-          mapCategoryDocument(categoryDocument.id, categoryDocument.data()),
-        ),
+      const categories = snapshot.docs.map((categoryDocument) =>
+        mapCategoryDocument(categoryDocument.id, categoryDocument.data()),
       );
+
+      return normalizeCategoriesForRead(categories);
     } catch (error) {
       throw new Error(getFirestoreErrorMessage(error, "Unable to load categories. Please try again."));
     }
@@ -206,40 +319,97 @@ export const categoryService = {
     }
 
     const name = validateCategoryName(input.name);
+    const description = normalizeCategoryDescription(input.description);
+    const isActive = input.isActive ?? true;
+    const categoriesCollection = firestoreCollectionService.getCategoriesCollection();
+    const categoryRef = input.id ? doc(categoriesCollection, input.id) : doc(categoriesCollection);
+    const categoryId = categoryRef.id;
 
     try {
-      await assertActiveCategoryNameAvailable(name);
+      const { allCategories, categoryDocumentsById } = await getAllCategories();
+      assertActiveCategoryNameAvailableInCategories(allCategories, name);
 
-      const categoriesCollection = firestoreCollectionService.getCategoriesCollection();
-      const categoryRef = input.id ? doc(categoriesCollection, input.id) : doc(categoriesCollection);
-      const categoryId = categoryRef.id;
+      const payloadById = new Map<string, Record<string, unknown>>();
+      const activeCategories = allCategories.filter((category) => category.isActive);
+      const normalizedActiveCategories = normalizeCategoryOrder(activeCategories);
 
+      applyCategoryOrderUpdates(
+        payloadById,
+        categoryDocumentsById,
+        activeCategories,
+        normalizedActiveCategories,
+        caller.id,
+      );
+
+      const batch = writeBatch(db);
+      payloadById.forEach((payload, targetCategoryId) => {
+        batch.update(doc(categoriesCollection, targetCategoryId), payload);
+      });
+
+      const nextSortOrder = isActive ? normalizedActiveCategories.length : activeCategories.length;
       const categoryRecord = withoutUndefinedFields({
         id: categoryId,
         name,
-        description: input.description?.trim() || undefined,
-        sortOrder: input.sortOrder ?? 0,
-        isActive: input.isActive ?? true,
+        description,
+        sortOrder: nextSortOrder,
+        isActive,
         createdBy: caller.id,
         updatedBy: caller.id,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
 
-      await setDoc(categoryRef, categoryRecord);
-      const createdSnapshot = await getDoc(categoryRef);
+      batch.set(categoryRef, categoryRecord);
+      await batch.commit();
 
-      if (!createdSnapshot.exists()) {
-        throw new Error("The category record could not be created.");
-      }
-
-      return mapCategoryDocument(createdSnapshot.id, createdSnapshot.data());
+      return await readCategoryAfterWrite(categoryId);
     } catch (error) {
       if (error instanceof Error && error.message.includes("category")) {
         throw error;
       }
 
       throw new Error(getFirestoreErrorMessage(error, "Unable to create the category. Please try again."));
+    }
+  },
+
+  async reorderCategory(caller: User, categoryId: string, targetOrder: number): Promise<Category> {
+    if (!permissionService.canManageCategories(caller)) {
+      throw new Error("You do not have permission to manage categories.");
+    }
+
+    try {
+      const { allCategories, categoryDocumentsById } = await getAllCategories();
+      const targetCategory = allCategories.find((category) => category.id === categoryId);
+
+      if (!targetCategory) {
+        throw new Error("The category record was not found.");
+      }
+
+      if (!targetCategory.isActive) {
+        throw new Error("Archived categories cannot be reordered until they are restored.");
+      }
+
+      const activeCategories = allCategories.filter((category) => category.isActive);
+      const reorderedActiveCategories = moveCategoryToOrder(activeCategories, categoryId, targetOrder);
+      const payloadById = new Map<string, Record<string, unknown>>();
+
+      applyCategoryOrderUpdates(
+        payloadById,
+        categoryDocumentsById,
+        activeCategories,
+        reorderedActiveCategories,
+        caller.id,
+      );
+
+      await commitCategoryPayloads(payloadById);
+
+      return await readCategoryAfterWrite(categoryId);
+    } catch (error) {
+      if (error instanceof Error && error.message.includes("category")) {
+        throw error;
+      }
+
+      throw new Error(getFirestoreErrorMessage(error, "Unable to reorder the category. Please try again."));
     }
   },
 
@@ -256,52 +426,108 @@ export const categoryService = {
       throw new Error("No category changes were provided.");
     }
 
-    const updatePayload: Record<string, unknown> = {
-      updatedAt: serverTimestamp(),
-      updatedBy: caller.id,
-    };
-
-    if (input.name !== undefined) {
-      const name = validateCategoryName(input.name);
-      await assertActiveCategoryNameAvailable(name, categoryId);
-      updatePayload.name = name;
-    }
-
-    if (input.description !== undefined) {
-      updatePayload.description = input.description.trim() ? input.description.trim() : deleteField();
-    }
-
-    if (input.sortOrder !== undefined) {
-      updatePayload.sortOrder = input.sortOrder;
-    }
-
-    if (input.isActive !== undefined) {
-      updatePayload.isActive = input.isActive;
-    }
+    const nextName = input.name !== undefined ? validateCategoryName(input.name) : undefined;
+    const nextDescription =
+      input.description !== undefined ? normalizeCategoryDescription(input.description) : undefined;
 
     try {
-      const categoryRef = doc(firestoreCollectionService.getCategoriesCollection(), categoryId);
-      const existingSnapshot = await getDoc(categoryRef);
+      const { allCategories, categoryDocumentsById } = await getAllCategories();
+      const existingCategory = allCategories.find((category) => category.id === categoryId);
 
-      if (!existingSnapshot.exists()) {
+      if (!existingCategory) {
         throw new Error("The category record was not found.");
       }
 
-      const existingData = existingSnapshot.data();
+      const resolvedName = nextName ?? existingCategory.name;
+      const resolvedDescription =
+        input.description !== undefined ? nextDescription : existingCategory.description;
+      const resolvedIsActive = input.isActive ?? existingCategory.isActive;
+      const payloadById = new Map<string, Record<string, unknown>>();
+      const activeCategories = allCategories.filter((category) => category.isActive);
 
-      if (typeof existingData.createdBy !== "string") {
-        updatePayload.createdBy = caller.id;
+      if (resolvedIsActive) {
+        assertActiveCategoryNameAvailableInCategories(
+          allCategories,
+          resolvedName,
+          categoryId,
+          existingCategory.isActive ? undefined : RESTORE_CATEGORY_NAME_CONFLICT_MESSAGE,
+        );
       }
 
-      assertNoUndefinedFirestoreFields(updatePayload, "Category update payload");
-      await updateDoc(categoryRef, updatePayload);
-      const updatedSnapshot = await getDoc(categoryRef);
+      if (existingCategory.isActive && resolvedIsActive) {
+        const normalizedActiveCategories =
+          input.sortOrder !== undefined
+            ? moveCategoryToOrder(activeCategories, categoryId, input.sortOrder)
+            : normalizeCategoryOrder(activeCategories);
+        applyCategoryOrderUpdates(
+          payloadById,
+          categoryDocumentsById,
+          activeCategories,
+          normalizedActiveCategories,
+          caller.id,
+        );
 
-      if (!updatedSnapshot.exists()) {
-        throw new Error("The category record was not found.");
+        const updatedCategory = buildActiveCategoryResult(normalizedActiveCategories, categoryId);
+        mergeCategoryTransactionPayload(payloadById, categoryDocumentsById, categoryId, caller.id, {
+          name: resolvedName,
+          description: resolvedDescription ?? deleteField(),
+          isActive: true,
+          sortOrder: updatedCategory.sortOrder,
+        });
+      } else if (existingCategory.isActive && !resolvedIsActive) {
+        const remainingActiveCategories = normalizeCategoryOrder(
+          activeCategories.filter((category) => category.id !== categoryId),
+        );
+
+        applyCategoryOrderUpdates(
+          payloadById,
+          categoryDocumentsById,
+          activeCategories.filter((category) => category.id !== categoryId),
+          remainingActiveCategories,
+          caller.id,
+        );
+
+        mergeCategoryTransactionPayload(payloadById, categoryDocumentsById, categoryId, caller.id, {
+          name: resolvedName,
+          description: resolvedDescription ?? deleteField(),
+          isActive: false,
+        });
+      } else if (!existingCategory.isActive && resolvedIsActive) {
+        const normalizedActiveCategories = normalizeCategoryOrder(activeCategories);
+        applyCategoryOrderUpdates(
+          payloadById,
+          categoryDocumentsById,
+          activeCategories,
+          normalizedActiveCategories,
+          caller.id,
+        );
+
+        mergeCategoryTransactionPayload(payloadById, categoryDocumentsById, categoryId, caller.id, {
+          name: resolvedName,
+          description: resolvedDescription ?? deleteField(),
+          isActive: true,
+          sortOrder: normalizedActiveCategories.length,
+        });
+      } else {
+        const payload: Record<string, unknown> = {
+          name: resolvedName,
+          isActive: false,
+        };
+
+        if (input.description !== undefined) {
+          payload.description = resolvedDescription ?? deleteField();
+        }
+
+        if (input.sortOrder !== undefined) {
+          payload.sortOrder = Math.max(0, Math.trunc(input.sortOrder));
+        }
+
+        mergeCategoryTransactionPayload(payloadById, categoryDocumentsById, categoryId, caller.id, payload);
       }
 
-      return mapCategoryDocument(updatedSnapshot.id, updatedSnapshot.data());
+      await commitCategoryPayloads(payloadById);
+
+      return await readCategoryAfterWrite(categoryId);
     } catch (error) {
       if (
         error instanceof Error &&
@@ -332,11 +558,9 @@ export const categoryService = {
     try {
       const category = await this.getCategoryById(caller, categoryId);
 
-      await assertActiveCategoryNameAvailable(
-        category.name,
-        categoryId,
-        RESTORE_CATEGORY_NAME_CONFLICT_MESSAGE,
-      );
+      if (category.isActive) {
+        return category;
+      }
 
       return this.updateCategory(caller, categoryId, { isActive: true });
     } catch (error) {

@@ -5,6 +5,7 @@ import { ModalBody, ModalFooter, ModalHeader } from "../../../shared/components/
 import type { SelectOption } from "../../../shared/components/Select";
 import { useAuth } from "../../auth/hooks/useAuth";
 import { permissionService } from "../../permissions/services/permissionService";
+import type { CatalogTag } from "../types/catalogTag.types";
 import type { Category } from "../types/category.types";
 import type { Design } from "../types/design.types";
 import { useUpdateDesign } from "../hooks/useUpdateDesign";
@@ -15,6 +16,7 @@ import { DesignFormFields } from "./DesignFormFields";
 import { DesignLibraryModal } from "./DesignLibraryModal";
 
 interface EditDesignModalProps {
+  approvedTags: CatalogTag[];
   categories: Category[];
   design: Design | null;
   isOpen: boolean;
@@ -23,6 +25,7 @@ interface EditDesignModalProps {
 }
 
 export function EditDesignModal({
+  approvedTags,
   categories,
   design,
   isOpen,
@@ -96,6 +99,7 @@ export function EditDesignModal({
 
         <ModalBody>
           <DesignFormFields
+            approvedTags={approvedTags}
             categoryOptions={categoryOptions}
             designId={design.id}
             error={error}

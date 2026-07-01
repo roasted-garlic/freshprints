@@ -1,5 +1,6 @@
-import { Badge } from "../../../shared/components/Badge";
 import { Button } from "../../../shared/components/Button";
+import { Badge } from "../../../shared/components/Badge";
+import { LoadingSpinner } from "../../../shared/components/LoadingSpinner";
 import type { Design } from "../../designs/types/design.types";
 import {
   designHasAiSuggestions,
@@ -11,7 +12,7 @@ import {
 interface AiReviewSuggestionsSectionProps {
   design: Design;
   isRerunningAi?: boolean;
-  onRerunAiSuggestions?: () => void;
+  onOpenRerunModal?: () => void;
   showRerunAiButton?: boolean;
 }
 
@@ -40,7 +41,7 @@ function formatSuggestionValue(
 export function AiReviewSuggestionsSection({
   design,
   isRerunningAi = false,
-  onRerunAiSuggestions,
+  onOpenRerunModal,
   showRerunAiButton = false,
 }: AiReviewSuggestionsSectionProps) {
   const suggestions = resolveAiSuggestions(design);
@@ -61,12 +62,20 @@ export function AiReviewSuggestionsSection({
         {showRerunAiButton ? (
           <div className="ai-review-suggestions-section-header-actions">
             <Button
+              className={isRerunningAi ? "button-leading-icon" : undefined}
               disabled={isRerunningAi}
-              onClick={onRerunAiSuggestions}
+              onClick={onOpenRerunModal}
               size="sm"
               variant="secondary"
             >
-              {isRerunningAi ? "Re-running…" : "Re-run AI"}
+              {isRerunningAi ? (
+                <>
+                  <LoadingSpinner label="Sending back to Processing" />
+                  Sending…
+                </>
+              ) : (
+                "Re-run AI"
+              )}
             </Button>
           </div>
         ) : null}

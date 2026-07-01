@@ -15,11 +15,11 @@ describe("openAiVisionCompletion", () => {
   it("returns content when message.content is present", () => {
     const content = assertOpenAiCompletionHasContent(
       {
-        model: "gpt-5-nano-2025-08-07",
+        model: "gpt-5.4-nano-2026-03-17",
         choices: [{ finish_reason: "stop", message: { content: '{"title":"Test"}' } }],
         usage: { prompt_tokens: 100, completion_tokens: 50 },
       },
-      "gpt-5-nano-2025-08-07",
+      "gpt-5.4-nano-2026-03-17",
       OPENAI_VISION_MAX_COMPLETION_TOKENS,
     );
 
@@ -28,7 +28,7 @@ describe("openAiVisionCompletion", () => {
 
   it("throws user-safe error with token budget code when reasoning exhausts cap", () => {
     const payload = {
-      model: "gpt-5-nano-2025-08-07",
+      model: "gpt-5.4-nano-2026-03-17",
       choices: [{ finish_reason: "length", message: { content: "" } }],
       usage: {
         prompt_tokens: 1200,
@@ -38,7 +38,7 @@ describe("openAiVisionCompletion", () => {
     };
 
     assert.throws(
-      () => assertOpenAiCompletionHasContent(payload, "gpt-5-nano-2025-08-07", 600),
+      () => assertOpenAiCompletionHasContent(payload, "gpt-5.4-nano-2026-03-17", 600),
       (error: unknown) => {
         assert.ok(error instanceof OpenAiEmptyOutputError);
         assert.equal(error.errorCode, "openai_token_budget_exhausted");

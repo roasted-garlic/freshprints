@@ -83,21 +83,28 @@ export const aiReviewInboxService = {
     return catalogApprovalService.reopenRejectedForReview(caller, designId);
   },
 
-  async rerunAiFromInbox(caller: User, designId: string): Promise<void> {
+  async rerunAiFromInbox(
+    caller: User,
+    designId: string,
+  ): Promise<void> {
     if (!permissionService.canRerunAiSuggestions(caller)) {
       throw new Error("You do not have permission to re-run AI suggestions.");
     }
 
     const design = await designService.getDesignById(caller, designId);
 
-    if (design.status !== "rejected") {
-      throw new Error("Only rejected designs can re-run AI suggestions.");
+    const canResetNeedsReview =
+      design.status === "imported" && design.aiReviewStatus === "needs_review";
+    const canResetRejected = design.status === "rejected";
+
+    if (!canResetNeedsReview && !canResetRejected) {
+      throw new Error("Only Needs Review or Rejected designs can be sent back to Processing.");
     }
 
-    const result = await aiEnrichmentEnqueueService.rerunRejectedDesign(designId);
+    const result = await aiEnrichmentEnqueueService.resetForProcessing(designId);
 
-    if (!result.queued) {
-      throw new Error("AI processing could not be queued. Please try again.");
+    if (!result.reset) {
+      throw new Error("AI processing could not be reset. Please try again.");
     }
   },
 };

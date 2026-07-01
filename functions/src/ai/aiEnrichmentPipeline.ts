@@ -8,10 +8,12 @@ import { resolveOpenAiErrorCode } from "./openAiRetry";
 import { prepareAiAnalysisImage } from "./prepareAiAnalysisImage";
 import {
   loadCachedActiveCategories,
+  loadCachedApprovedTags,
   loadCachedAiEnrichmentSettings,
 } from "./aiEnrichmentRuntimeCache";
 import { PipelinePhaseTimer } from "./pipelineTiming";
 import { descriptionLacksVisibleTextOverlap, isPlaceholderCatalogDescription, resolveCatalogDescription } from "./catalogTitleRules";
+import { resolveAiCatalogTags } from "./catalogTagResolver";
 import { resolveAiEnrichmentProvider } from "./providers/resolveAiEnrichmentProvider";
 
 interface DesignRecord {
@@ -19,6 +21,8 @@ interface DesignRecord {
   title: string;
   previewPath?: string;
   thumbnailPath?: string;
+  aiRequestedVisionModelId?: string;
+  aiRequestedReasoningEffort?: string;
   aiProcessingStage?: string;
   aiReviewStatus?: string;
   status?: string;
@@ -49,6 +53,7 @@ async function markAiFailure(
     aiProcessingStage: "failed",
     aiProcessed: false,
     aiReviewStatus: "pending",
+    aiRequestedVisionModelId: FieldValue.delete(),
     aiSuggestions: suggestions,
     updatedAt: FieldValue.serverTimestamp(),
   });
@@ -82,6 +87,7 @@ async function markAiSuccess(
     aiProcessingStage: "ready_for_review",
     aiProcessed: true,
     aiReviewStatus: "needs_review",
+    aiRequestedVisionModelId: FieldValue.delete(),
     ...(suggestions.confidence !== undefined
       ? { aiReviewConfidence: suggestions.confidence }
       : {}),
@@ -95,6 +101,7 @@ async function markAiSuccess(
 export async function runAiEnrichmentPipeline(
   designId: string,
   openAiApiKey?: string,
+  geminiApiKey?: string,
 ): Promise<void> {
   const designSnapshot = await adminDb.collection("designs").doc(designId).get();
 
@@ -122,13 +129,25 @@ export async function runAiEnrichmentPipeline(
 
   const phaseTimer = new PipelinePhaseTimer();
   const enrichmentSettings = await loadCachedAiEnrichmentSettings();
-  const provider = resolveAiEnrichmentProvider(openAiApiKey, enrichmentSettings.visionModelId);
+  const requestedVisionModelId = data.aiRequestedVisionModelId?.trim();
+  const requestedReasoningEffort = data.aiRequestedReasoningEffort?.trim();
+  const provider = resolveAiEnrichmentProvider(
+    openAiApiKey,
+    geminiApiKey,
+    enrichmentSettings.visionModelId,
+    enrichmentSettings.reasoningEffort,
+    requestedVisionModelId,
+    requestedReasoningEffort,
+  );
 
   phaseTimer.logPhase("pipeline.started", {
     designId,
     providerId: provider.providerId,
     modelId: provider.modelId,
     configuredVisionModelId: enrichmentSettings.visionModelId,
+    configuredReasoningEffort: enrichmentSettings.reasoningEffort,
+    requestedVisionModelId: requestedVisionModelId || null,
+    requestedReasoningEffort: requestedReasoningEffort || null,
     additionalTagExclusionsCount: enrichmentSettings.additionalTagExclusions.length,
   });
 
@@ -137,6 +156,7 @@ export async function runAiEnrichmentPipeline(
     const previewBytes = await downloadPreviewBytes(previewPath);
     const analysisImage = await prepareAiAnalysisImage(previewBytes);
     const categories = await loadCachedActiveCategories();
+    const approvedTags = await loadCachedApprovedTags();
     phaseTimer.logPhase("analysis_image.prepared", {
       designId,
       contentType: analysisImage.contentType,
@@ -151,7 +171,11 @@ export async function runAiEnrichmentPipeline(
       previewPath,
       previewBytes: analysisImage.bytes,
       previewContentType: analysisImage.contentType,
+      promptTemplate: enrichmentSettings.promptTemplate,
+      categoryOptions: categories.categories,
       categoryNames: categories.names,
+      approvedTags,
+      approvedTagNames: approvedTags.map((tag) => tag.name),
       categoryIdsByName: categories.idsByName,
       effectiveTagExclusions: enrichmentSettings.effectiveTagExclusions,
     });
@@ -171,6 +195,21 @@ export async function runAiEnrichmentPipeline(
       suggestions.categoryId = categories.idsByName[suggestions.categoryName.toLowerCase()];
       suggestions.categoryName = suggestions.categoryId ? suggestions.categoryName : undefined;
     }
+
+    // Prefer the raw (untokenized) model tags so multi-word approved names and aliases
+    // (e.g. "rock and roll") resolve before falling back to suggestions. suggestions.tags is
+    // already tokenized into single words, so it is only a fallback when rawTags is absent.
+    const resolvedTags = resolveAiCatalogTags({
+      approvedTags,
+      candidates: result.analysis.rawTags ?? suggestions.tags,
+      suggestedNewTags: suggestions.suggestedNewTags,
+    });
+    suggestions.tags = resolvedTags.tags;
+    suggestions.suggestedNewTags =
+      resolvedTags.suggestedNewTags.length > 0 ? resolvedTags.suggestedNewTags : undefined;
+
+    // rawTags is a transient resolver input; do not persist it with the design.
+    delete result.analysis.rawTags;
 
     if (descriptionLacksVisibleTextOverlap(suggestions.description, result.analysis.visibleText)) {
       logPipelineEvent("catalog.enrich.description_text_mismatch", {
@@ -205,6 +244,8 @@ export async function runAiEnrichmentPipeline(
       designId,
       providerId: provider.providerId,
       confidence: suggestions.confidence ?? null,
+      approvedTagCount: suggestions.tags?.length ?? 0,
+      suggestedNewTagCount: suggestions.suggestedNewTags?.length ?? 0,
     });
   } catch (error) {
     phaseTimer.logPhase("pipeline.failed", {

@@ -2,7 +2,7 @@
 
 > **Refresh before every external AI session.**
 > Source: `.cursor/workflow/state.md` (authoritative) + `docs/project/ROADMAP.md`
-> Last updated: **2026-06-28**
+> Last updated: **2026-06-29**
 
 ---
 
@@ -12,38 +12,63 @@
 |-------|-------|
 | **App** | Fresh Prints — DTF design catalog & print planning |
 | **Active app** | Fresh Prints Studio (Electron desktop, staff only) |
-| **Roadmap phase** | **Phase 5** — AI Review Workflow (in progress) |
-| **Managed workflow goal** | `phase-6-print-requests-foundation` — Print Requests implementation |
-| **Workflow phase** | Implement |
-| **Status** | In progress — Phase 0 deploy gate cleared; Phase 6 ready |
-| **Human checkpoint** | **NO** — Phase 0 verified on `fresh-prints-dev` |
+| **Roadmap phase** | **Phase 6** — Customers and Print Requests PASS with hardening notes; Phase 5 AI Processing maintenance signed off locally |
+| **Managed workflow goal** | `owner-only-sensitive-ai-and-category-controls` — complete |
+| **Workflow phase** | Signoff |
+| **Status** | **PASS** |
+| **Human checkpoint** | **NO** |
 
 ---
 
-## Workflow Snapshot (FreshForge)
+## Workflow Snapshot (FF)
 
-```
+```txt
 Mode:           managed-phase
-Goal:           phase-6-print-requests-foundation
-Phase:          implement
-Status:         in_progress
-Plan:           docs/workflow/plans/2026-06-28-phase-6-print-requests-foundation-plan.md
-Review:         approved — Phase 0 deploy gate cleared
-Signoff:        phase 0 blocker cleared; ready to implement Phase 6
-DONE:           no
+Goal:           owner-only-sensitive-ai-and-category-controls
+Phase:          signoff
+Status:         pass
+Plan:           docs/workflow/plans/2026-06-29-owner-only-sensitive-ai-and-category-controls-plan.md
+DONE:           yes
 ```
 
-### Allowed now
-- Read docs, path verification, implementation within approved Phase 6 scope
-- Plan/review updates, tests, documentation updates
+### Current Signoff
 
-### Forbidden now
-- Phase 7 implementation
-- Whatnot integration
-- Production deploy without explicit approval
+`wrap-up-open-items-audit` remains the latest completed signoff. It did not change app behavior or run deploys. It confirmed AI Processing playground-pattern deltas and Phase 6 Print Requests can be locally accepted, with human approval still required for Firebase Functions deploy/smoke and any Phase 7 planning.
 
-### Next required step
-Implement Phase 6 Print Requests foundation from `docs/workflow/plans/2026-06-28-phase-6-print-requests-foundation-plan.md`.
+Current active managed phase:
+
+* `owner-only-sensitive-ai-and-category-controls`
+* plan created at `docs/workflow/plans/2026-06-29-owner-only-sensitive-ai-and-category-controls-plan.md`
+* implementation complete locally; automated checks passed
+* authenticated manual QA passed
+* repo-grounded result: bulk category import is now owner-only and the AI Processing prompt block in Settings is now owner-only, while admins retain standard category CRUD and other permitted AI settings
+
+`ai-processing-direct-run` remains **PASS WITH NOTES** and is the baseline for the current AI Processing implementation.
+
+Passed:
+
+- Default AI vision model remains `gpt-5.4-nano-2026-03-17`.
+- Lowest-cost selectable option remains `gpt-5-nano-2025-08-07`.
+- Stronger selective option `gpt-5.4-mini-2026-03-17` is allowlisted and selectable in `/settings` and AI Review re-runs.
+- `/settings` now persists `reasoningEffort` with allowlisted values `none`, `minimal`, `low`, `medium`, and `high`.
+- The saved reasoning-effort default is `medium`; server compatibility fallback remains `low` per request only.
+- `/settings` now includes an owner/admin AI playground for one-off text + image tests through Cloud Functions only.
+- AI Review re-runs now use a compact `Re-run AI` action menu instead of a persistent visible model selector.
+- Manual AI Processing now runs directly inside the callable instead of enqueueing to a Firestore-trigger hop.
+- AI Review sequential processing still runs one design at a time, but no longer waits on a separate trigger round-trip.
+- AI Processing is now a single playground-style call (ADR-FP-035/036): Settings-managed prompt template with server-side `{{excluded_tags}}` replacement, 4-field JSON (`description`, `category`, `title`, `tags`), **no** `response_format: json_object`, tolerant server-side JSON extraction.
+- One normal OpenAI call per success — no empty-output retry and no quality retry (reasoning-effort 400 fallback and 429/5xx network retry kept). This fixes the `OpenAI returned no visible output (reason: length)` error at its source.
+- Server enforces single-word/deduped/exclusion-filtered tags capped at 8 and resolves category deterministically from the model candidate (no extra model call).
+- `aiSuggestions.model` continues to record the actual model used per run; Processing can pass one-off model/reasoning overrides, Auto advance snapshots them at start, and Settings playground remains unchanged.
+- Needs Review / Rejected re-run resets the design back to Processing instead of running AI in place on review tabs.
+- Current prompt target is `catalog-enrich-openai-v17`.
+- Latest local audit checks passed: repo lint, root TypeScript, functions TypeScript, functions build, `git diff --check`, and full `npm run build` including Electron packaging.
+
+Notes:
+
+- Production Firebase Functions deploy was not run.
+- Authenticated AI Processing / AI Review / Settings smoke verification remains pending after approved deploy.
+- Recommended next command for the current active work: choose the next approved managed phase.
 
 ---
 
@@ -51,30 +76,17 @@ Implement Phase 6 Print Requests foundation from `docs/workflow/plans/2026-06-28
 
 | Phase | Name | Status |
 |-------|------|--------|
-| 1 | Foundation (Auth, roles, shell) | ✅ Complete |
-| 2 | Design Library (2A–2C) | ✅ Complete |
-| 3 | Import System (3A–3D) | ✅ Complete |
-| 4 | Catalog Search & Cleanup | ✅ Complete (2026-06-24) |
-| **5** | **AI Review Workflow** | **🔄 In progress** — 5A polish done; 5B pipeline active locally; enrichment v15 pending deploy |
-| 6 | Customers & Print Requests | 📋 Planned |
-| 7 | Print Runs / Upcoming Shows | 📋 Planned |
-| 8 | Fresh Prints Portal (customer web) | 📋 Planned |
-| 9 | Custom Request Q&A | 📋 Planned |
-| 10 | Analytics & Popularity | 📋 Planned |
-
----
-
-## Active Sub-Goal: AI Catalog Enrichment v15
-
-| Sub-phase | Description | Status |
-|-----------|-------------|--------|
-| **0** | Deploy + path verification (UI shows v15) | ⛔ **BLOCKED — human action** |
-| 1–7 | v15 prompt, parse, retry, category, tags | ✅ Done locally |
-| 8–12 | Placeholder rejection, garbled OCR, confidence tiers, model fallback | ⏳ Pending (after Phase 0) |
-
-**Known issue:** UI may show `catalog-enrich-openai-v12` because functions were not deployed to production; local code is v15.
-
-**Tests (local baseline):** 49/49 pass — see `docs/workflow/reviews/2026-06-26-ai-catalog-enrichment-v15-test-report.md`
+| 1 | Foundation (Auth, roles, shell) | Complete |
+| 2 | Design Library (2A–2C) | Complete |
+| 3 | Import System (3A–3D) | Complete |
+| 4 | Catalog Search & Cleanup | Complete |
+| 5 | AI Review Workflow / enrichment baseline | Complete through Phase 0 deploy gate |
+| **5** | **AI Review Workflow / enrichment baseline** | **Complete through Phase 0 deploy gate; advanced AI controls signed off locally** |
+| **6** | **Customers & Print Requests** | **PASS WITH NOTES** |
+| 7 | Print Runs / Upcoming Shows | Planned |
+| 8 | Fresh Prints Portal (customer web) | Planned |
+| 9 | Custom Request Q&A | Planned |
+| 10 | Analytics & Popularity | Planned |
 
 ---
 
@@ -83,57 +95,33 @@ Implement Phase 6 Print Requests foundation from `docs/workflow/plans/2026-06-28
 | Route | Workspace | Purpose |
 |-------|-----------|---------|
 | `/designs` | Design Library | Approved catalog only (`status: ready`) |
-| `/imports` | Imports | ZIP/folder batch import, validation, AI enqueue |
+| `/imports` | Imports | ZIP/folder batch import, validation, AI review intake |
 | `/ai-review` | AI Review | Processing / Needs Review / Rejected tabs |
-| `/users` | Team management | Owner/admin team CRUD |
-| `/settings` | Settings | AI enrichment model selection (owner/admin) |
-| `/dev-dashboard` | Dev Dashboard | Placeholder stats (bottom of sidebar) |
-| `/show-queue` | Legacy placeholder | Pre–Phase 6 scaffold |
-| `/customer-requests` | Legacy placeholder | Pre–Phase 9 scaffold |
+| `/print-requests` | Print Requests | Internal/customer request lists and request items |
+| `/users` | Team management | Owner/admin team CRUD plus customer record create/edit |
+| `/settings` | Settings | AI enrichment model + reasoning selection plus owner/admin AI playground |
+| `/show-queue` | Legacy placeholder | Future Print Runs (Phase 7) |
+| `/customer-requests` | Legacy placeholder | Future Custom Requests (Phase 9) |
 
 Default landing: `/designs` (Design Library).
 
 ---
 
-## Recently Completed (June 2026)
-
-Features signed off in managed phases — do not re-implement:
-
-- Phase 4 catalog cleanup (approved-only library, archived toggle, tag filter modal)
-- AI Review workspace (tabs, queue, approve/reject/skip, keyboard shortcuts)
-- Automatic AI enqueue on import (Cloud Functions pipeline)
-- OpenAI vision enrichment (GPT-5 nano models, configurable via Settings)
-- AI processing stepper, re-run overlay, rejected-tab cross-navigation
-- OCR/arched text validation, visible text quality checks
-- Text-only title color suffix rules
-- AI description required + server synthesis fallback
-- Processing latency investigation + pipeline timing logs
-- AI review queue panel height fix
-- Firebase auth/storage handoff package (`docs/handoffs/firebase-auth-storage/`)
-
----
-
-## Tech Stack (quick)
-
-- **Desktop:** Electron 30 + Vite + React 18 + TypeScript
-- **Backend:** Firebase Auth, Firestore, Storage, Cloud Functions
-- **AI:** OpenAI vision via Cloud Functions (`functions/src/ai/`)
-- **Image processing:** sharp (Electron main process)
-
----
-
 ## Open Blockers & Risks
 
-1. **Print Requests Firestore rules still pending** — the new route renders, but CRUD is blocked until the separate rules/index review is approved.
-2. **No `npm test` script** — unit tests exist as `*.test.ts` but no wired runner; run via node/tsx manually or add in future phase.
-3. **Portal not built** — customer-facing app is Phase 8; all current UI is Studio.
+1. **No `npm test` script** — unit tests exist as `*.test.ts` but no wired runner.
+2. **AI Processing Functions are not deployed yet** — authenticated smoke still required after approved Functions deploy.
+3. **Print Request indexes not yet added** — current broad reads are acceptable for foundation, but server-side indexed queries are needed before scale.
+4. **No `npm test` script / no CI** — tests are run through explicit `npx tsx --test ...`, lint, typecheck, and build commands.
+5. **Dirty worktree from recent managed phases** — reconcile or commit before starting Phase 7 implementation to avoid scope mixing.
+6. **Portal not built** — customer-facing app is Phase 8; all current UI is Studio.
 
 ---
 
 ## How to Update This File
 
 1. Read `.cursor/workflow/state.md`
-2. Update **Workflow Snapshot**, **Active Sub-Goal**, and **Next required step**
-3. Move completed items into **Recently Completed**
+2. Update **Workflow Snapshot**, **Roadmap Phase Status**, and **Next Managed Bug**
+3. Move completed items into **Recent Completed Work**
 4. Bump **Last updated** date
 5. Upload this file to your external AI chat

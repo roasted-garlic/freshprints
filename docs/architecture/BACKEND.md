@@ -78,7 +78,15 @@ Fresh Prints does not expose a separate REST API for core operations. Business l
 
 **AI provider secrets:** `OPENAI_API_KEY` lives in Firebase Secret Manager. Cloud Functions read it; the desktop renderer must not. Do not add provider keys to Firestore settings or the Settings UI.
 
-**OpenAI vision model:** Configurable via Firestore `settings/aiEnrichment.visionModelId` (owner/admin updates through callable `updateAiEnrichmentSettings`). Server allowlist in `functions/src/ai/aiEnrichmentConfig.ts`: default `gpt-5-nano-2025-08-07`, alternate `gpt-5.4-nano-2026-03-17`. GPT-5 nano models are reasoning models — vision requests use `reasoning_effort: "minimal"` (fallback `"low"`), `max_completion_tokens` from `OPENAI_VISION_MAX_COMPLETION_TOKENS` (2500; one-shot retry at 4000 when reasoning exhausts budget). Chat Completions keep `response_format: { type: "json_object" }`. Empty `message.content` responses log usage/reasoning tokens and surface `openai_empty_output` / `openai_token_budget_exhausted` errors. Resolved model persisted on `aiSuggestions.model`.
+**OpenAI vision model:** Configurable via Firestore `settings/aiEnrichment.visionModelId` (owner/admin updates through callable `updateAiEnrichmentSettings`). Server allowlist in `functions/src/ai/aiEnrichmentConfig.ts`: default `gpt-5.4-nano-2026-03-17`, lowest-cost alternate `gpt-5-nano-2025-08-07`, stronger selective processing/playground option `gpt-5.4-mini-2026-03-17`.
+
+**Reasoning effort:** Firestore `settings/aiEnrichment.reasoningEffort` stores the saved value. Server allowlist: `none`, `minimal`, `low`, `medium`, `high`. Default is `medium`. Catalog enrichment uses the saved value when supported and retries once with `low` only if the current Chat Completions path rejects the selected reasoning effort.
+
+**One-off AI Processing override:** The Processing tab may pass one-off `visionModelIdOverride` and `reasoningEffortOverride` values. The callable validates them, stores them only as transient processing metadata, and clears them after the run so global settings stay unchanged. Manual processing uses the current Processing override or Settings default; Auto advance snapshots the resolved values when it starts. The resolved per-run model is persisted on `aiSuggestions.model`.
+
+**Settings AI playground:** Owner/admin users can call `testAiEnrichmentPlayground` from `/settings` for one-off text + image tests. The callable validates model, reasoning effort, prompt length, and image type/size; keeps the OpenAI call server-side; does not write to `designs`; and fails safely if `OPENAI_API_KEY` is missing.
+
+GPT-5 models are reasoning models. As of ADR-FP-036 plus the 2026-06-30 taxonomy-context update, **AI Processing is a single playground-style call** (prompt version `catalog-enrich-openai-v17`): the saved Settings prompt template is sent with `{{approved_categories}}`, `{{approved_tags}}`, and `{{excluded_tags}}` replaced server-side. Approved category context includes active category names and descriptions. Approved tag context includes tag names, aliases, and preferred-when guidance. The model is asked for catalog fields (`description`, one approved `category`, `title`, up to 8 approved `tags`) plus optional complete `suggestedNewTags` objects when no approved tag name or alias is relevant enough, and the default prompt explicitly requires full-image text inspection plus exact readable-text inclusion in the description when text is present. It does **not** send `response_format: { type: "json_object" }`; the server extracts JSON tolerantly (`extractJsonObject`, handling fenced/prose-wrapped output). One normal OpenAI call per success — no empty-output retry and no quality retry; only the reasoning-effort 400 fallback and the 429/5xx network retry remain. Server-side normalization resolves AI tags against approved global `tags` documents by name/alias, persists matches to `aiSuggestions.tags`, and stores unmatched tokens or valid nonmatching `suggestedNewTags` as `aiSuggestions.suggestedNewTags` for owner/admin review. AI never creates approved tag documents. Category resolution remains deterministic against active categories (no extra model call). The server-side image input keeps `detail: "high"` for both catalog enrichment and the Settings playground. Empty `message.content` responses still log usage/reasoning tokens and surface a clean `failed` state (`openai_empty_output` / `openai_token_budget_exhausted`) for manual re-run.
 
 ---
 
@@ -88,11 +96,13 @@ Fresh Prints does not expose a separate REST API for core operations. Business l
 |----------|---------|---------|
 | `createTeamUser` | Callable | Create team user + invitation flow |
 | `updateTeamUser` | Callable | Update team user fields |
-| `enqueueAiEnrichment` | Callable | Queue imported design for AI processing |
-| `updateAiEnrichmentSettings` | Callable | Owner/admin: set team vision model allowlist choice |
-| `onDesignAiEnrichmentQueued` | Firestore update | Run AI enrichment pipeline |
+| `enqueueAiEnrichment` | Callable | Run imported design through direct AI processing |
+| `resetAiEnrichmentForProcessing` | Callable | Return Needs Review or Rejected design to Processing for a staff-started re-run |
+| `updateAiEnrichmentSettings` | Callable | Owner/admin: set team vision model, reasoning effort, prompt template, and tag exclusions |
+| `testAiEnrichmentPlayground` | Callable | Owner/admin: run one-off image + prompt test against the allowlisted OpenAI models |
+| `onDesignAiEnrichmentQueued` | Firestore update | Legacy compatibility trigger; live Processing flow should use direct callable execution |
 
-**AI enrichment latency observability:** Callable logs `enqueue.queued` with `loggedAtMs`; trigger logs `trigger.fired`; pipeline logs phased `durationMs` / `totalPipelineMs`; OpenAI logs `openai.request.started` and `openai.completion.usage` (includes `reasoningEffort`, `durationMs`, token counts). Settings and categories are cached per function instance (60s). Primary reasoning effort is `minimal`; empty-output retry uses `low` at 4000 tokens.
+**AI enrichment latency observability:** Callable logs `enqueue.queued` with `loggedAtMs`; trigger logs `trigger.fired`; pipeline logs phased `durationMs` / `totalPipelineMs`; OpenAI logs `openai.request.started` and `openai.completion.usage` (includes `reasoningEffort`, `durationMs`, token counts). Settings and categories are cached per function instance (60s). Saved reasoning default is `medium`; compatibility fallback remains `low` per request only.
 
 Location: `functions/src/` — compiled to `functions/lib/` (gitignored). See `docs/workflow/setup/firebase-functions-setup.md`.
 
@@ -144,6 +154,9 @@ See `docs/standards/SECURITY.md`. Firebase rules and Electron IPC security are d
 
 | Date | Summary |
 |------|---------|
+| 2026-06-30 | Documented AI Processing taxonomy prompt context for category descriptions, tag aliases, preferred-when guidance, and complete suggested-new-tags |
+| 2026-06-30 | Documented global approved tag normalization and suggested-new-tag review |
+| 2026-06-29 | Added saved reasoning effort, Settings AI playground callable, and documented one-off AI Review rerun override/menu behavior |
 | 2026-06-25 | Configurable vision model via `settings/aiEnrichment` + `updateAiEnrichmentSettings` callable |
 | 2026-06-25 | Document OpenAI vision model `gpt-5.4-nano` (`OPENAI_VISION_MODEL_ID`) |
 | 2026-06-24 | Initial Fresh Prints backend overview; links to FIREBASE.md |

@@ -19,6 +19,16 @@
 | Approval | Only via `catalogApprovalService` — not Edit Design modal |
 | Library scope | Approved catalog (`ready`) only by default |
 
+## Print Requests
+
+| Decision | Rule |
+|----------|------|
+| ADR-FP-030 | `requestCount` and `lastRequestedAt` are allowed as lightweight request reference metadata in Phase 6 |
+| Design lifecycle | Print Requests must not write production/request statuses to `designs.status` |
+| Request state | Request item status belongs on `printRequestItems` |
+| Indexes | Print Request indexes are deferred until server-side query patterns require them |
+| Registered customers | Customer records are created from `/users` only; no customer Auth, Portal login, `users/{uid}` record, or Studio access is added |
+
 ## AI enrichment (recent ADRs)
 
 | ADR | Summary |
