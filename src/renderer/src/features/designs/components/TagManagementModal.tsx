@@ -39,6 +39,7 @@ interface BulkTagImportResult {
 }
 
 const TAG_PREFERRED_WHEN_PREVIEW_LENGTH = 150;
+const TAG_MANAGEMENT_LIST_BODY_ID = "tag-management-list-body";
 
 const emptyTagFormValues: TagFormValues = {
   aliasesInput: "",
@@ -119,6 +120,7 @@ export function TagManagementModal({ isOpen, onClose, onUpdated }: TagManagement
   const wasOpenRef = useRef(false);
   const bulkImportTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const bulkImportSummaryRef = useRef<HTMLDivElement | null>(null);
+  const shouldScrollListToTopRef = useRef(false);
 
   const activeTags = useMemo(
     () => sortTags(tags.filter((tag) => tag.status === "approved")),
@@ -215,6 +217,21 @@ export function TagManagementModal({ isOpen, onClose, onUpdated }: TagManagement
     }
   }, [bulkImportPreview.length, bulkImportRejectedItems.length, bulkImportValidation.error, editorMode]);
 
+  useEffect(() => {
+    if (editorMode !== "list" || !shouldScrollListToTopRef.current) {
+      return;
+    }
+
+    shouldScrollListToTopRef.current = false;
+
+    window.requestAnimationFrame(() => {
+      document.getElementById(TAG_MANAGEMENT_LIST_BODY_ID)?.scrollTo({
+        top: 0,
+        behavior: "auto",
+      });
+    });
+  }, [editorMode]);
+
   if (!user || !permissionService.canViewDesigns(user)) {
     return null;
   }
@@ -244,6 +261,11 @@ export function TagManagementModal({ isOpen, onClose, onUpdated }: TagManagement
     setEditingTag(null);
     setFormValues(emptyTagFormValues);
     setEditorMode("list");
+  }
+
+  function returnToListAtTop() {
+    shouldScrollListToTopRef.current = true;
+    returnToList();
   }
 
   function openBulkImport() {
@@ -346,10 +368,10 @@ export function TagManagementModal({ isOpen, onClose, onUpdated }: TagManagement
 
       if (result.createdNames.length > 0 && totalRejectedCount === 0) {
         setSuccessMessage(`Imported ${result.createdNames.length} tag${result.createdNames.length === 1 ? "" : "s"} successfully.`);
-        returnToList();
+        returnToListAtTop();
       } else if (result.createdNames.length > 0) {
         setSuccessMessage(`Imported ${result.createdNames.length} tag${result.createdNames.length === 1 ? "" : "s"}. Rejected ${totalRejectedCount}.`);
-        returnToList();
+        returnToListAtTop();
       } else {
         setBulkImportError(`No tags were imported. Rejected ${totalRejectedCount}.`);
       }
@@ -428,7 +450,7 @@ export function TagManagementModal({ isOpen, onClose, onUpdated }: TagManagement
             </div>
           </ModalHeader>
 
-          <ModalBody>
+          <ModalBody id={TAG_MANAGEMENT_LIST_BODY_ID}>
             <div className="category-management-toolbar">
               {showArchived ? (
                 <BackToolbarButton onClick={() => setShowArchived(false)} />

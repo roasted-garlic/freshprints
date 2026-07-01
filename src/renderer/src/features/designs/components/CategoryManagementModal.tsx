@@ -40,6 +40,7 @@ interface BulkImportResult {
 }
 
 const CATEGORY_DESCRIPTION_PREVIEW_LENGTH = 180;
+const CATEGORY_MANAGEMENT_LIST_BODY_ID = "category-management-list-body";
 
 function parseSortOrder(value: string): number {
   const trimmedValue = value.trim();
@@ -137,6 +138,7 @@ export function CategoryManagementModal({
   );
   const bulkImportTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const bulkImportSummaryRef = useRef<HTMLDivElement | null>(null);
+  const shouldScrollListToTopRef = useRef(false);
 
   const activeCategories = useMemo(
     () => normalizeCategoryOrder(categories.filter((category) => category.isActive)),
@@ -233,6 +235,21 @@ export function CategoryManagementModal({
     }
   }, [bulkImportPreview, editorMode]);
 
+  useEffect(() => {
+    if (editorMode !== "list" || !shouldScrollListToTopRef.current) {
+      return;
+    }
+
+    shouldScrollListToTopRef.current = false;
+
+    window.requestAnimationFrame(() => {
+      document.getElementById(CATEGORY_MANAGEMENT_LIST_BODY_ID)?.scrollTo({
+        top: 0,
+        behavior: "auto",
+      });
+    });
+  }, [editorMode]);
+
   if (!user || !permissionService.canViewDesigns(user)) {
     return null;
   }
@@ -268,6 +285,11 @@ export function CategoryManagementModal({
     setEditingCategory(null);
     setFormValues(emptyCategoryFormValues);
     setEditorMode("list");
+  }
+
+  function returnToListAtTop() {
+    shouldScrollListToTopRef.current = true;
+    returnToList();
   }
 
   function openBulkImport() {
@@ -373,12 +395,12 @@ export function CategoryManagementModal({
           `Imported ${result.createdNames.length} categor${result.createdNames.length === 1 ? "y" : "ies"} successfully.`,
         );
         setBulkImportInput("");
-        returnToList();
+        returnToListAtTop();
       } else if (result.createdNames.length > 0) {
         setSuccessMessage(
           `Imported ${result.createdNames.length} categor${result.createdNames.length === 1 ? "y" : "ies"}. ${result.failures.length} failed.`,
         );
-        returnToList();
+        returnToListAtTop();
       } else {
         setBulkImportError("No categories were imported.");
       }
@@ -554,7 +576,7 @@ export function CategoryManagementModal({
               </div>
             </ModalHeader>
 
-            <ModalBody>
+            <ModalBody id={CATEGORY_MANAGEMENT_LIST_BODY_ID}>
               <div className="category-management-toolbar">
                 {showArchived ? (
                   <BackToolbarButton onClick={() => setShowArchived(false)} />
