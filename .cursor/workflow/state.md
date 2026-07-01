@@ -4,45 +4,46 @@
 managed-phase
 
 ## Current Goal
-ai-playground-pretty-json-output - Pretty format JSON responses in the Settings AI Playground result output
+category-bulk-import-success-parity - Make bulk category import success behavior match bulk tag import
 
 ## Phase
 signoff
 
 ## Status
-complete - AI Playground JSON output now displays as pretty formatted JSON when detected
+complete - category bulk import success parity implemented and verified
 
 ## Plan Status
-created - `docs/workflow/plans/2026-07-01-ai-playground-pretty-json-output-plan.md`
+created - `docs/workflow/plans/2026-07-01-category-bulk-import-success-parity-plan.md`
 
 ## Review Status
-approved - user approved implementation for `ai-playground-pretty-json-output` on 2026-07-01
+approved - user requested implementation and commit/push in latest instruction
 
 ## Tests Run
-passed - see `docs/workflow/reviews/2026-07-01-ai-playground-pretty-json-output-test-report.md`
+passed - `npx tsc --noEmit`; `npm run lint`; `git diff --check`
 
 ## Signoff
-complete - `docs/workflow/reviews/2026-07-01-ai-playground-pretty-json-output-signoff.md`
+complete - `docs/workflow/reviews/2026-07-01-category-bulk-import-success-parity-signoff.md`
 
 ## Human Checkpoint Required
 no
 
 ## Human Checkpoint Reason
-none for this local renderer display phase
+none - UI-only renderer behavior/style parity fix; no deploy or data writes
 
 ## Allowed Actions
-start next managed phase after user request/approval; review current state
+commit scoped changes, push branch, then resume or review next approved phase
 
 ## Forbidden Actions
-deploy Firebase/functions without human approval, provision secrets, run category or tag seed writes against Firebase without approval, relax Firestore rules, add new dependencies without review approval, migrate/backfill existing design tags, change design lifecycle statuses, read or modify files outside the repository
+deploy Firebase/functions without human approval, provision secrets, run category or tag seed writes against Firebase without approval, relax Firestore rules, add new dependencies, migrate/backfill existing design tags, change design lifecycle statuses, read or modify files outside the repository
 
 ## Next Required Step
-Start `print-request-query-index-hardening` as the next recommended managed Phase 6 code phase.
+Commit and push scoped `category-bulk-import-success-parity` changes.
 
 ## DONE
 yes
 
 ## Decision Log
+- 2026-07-01: Completed `category-bulk-import-success-parity`. Category bulk import now returns to the category list after any successful import and uses the same no-progress dismissible success alert style as Tag Management. Verification passed: root TypeScript, root lint, and `git diff --check`. No Firebase, data, dependency, seed, migration, secret, or deploy changes.
 - 2026-07-01: Completed `ai-playground-pretty-json-output`. Added display-only JSON formatting for Settings AI Playground result output: direct JSON and fully fenced JSON pretty print with 2-space indentation; invalid JSON and prose stay unchanged. Copy action now copies the visible formatted output. Focused formatter tests, root TypeScript, root lint, and `git diff --check` passed. No prompt, Cloud Function, Firebase, data, persistence, dependency, deploy, or AI Processing pipeline changes.
 - 2026-07-01: User approved implementation for `ai-playground-pretty-json-output`; implementation started.
 - 2026-07-01: Opened managed phase `ai-playground-pretty-json-output` from user request to pretty format AI Playground JSON output when JSON is detected while leaving non-JSON output unchanged. Created plan `docs/workflow/plans/2026-07-01-ai-playground-pretty-json-output-plan.md`; implementation blocked pending review approval.

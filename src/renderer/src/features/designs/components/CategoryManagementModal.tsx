@@ -369,12 +369,16 @@ export function CategoryManagementModal({
       setBulkImportResult(result);
 
       if (result.createdNames.length > 0 && result.failures.length === 0) {
-        setSuccessMessage(`Imported ${result.createdNames.length} categories successfully.`);
+        setSuccessMessage(
+          `Imported ${result.createdNames.length} categor${result.createdNames.length === 1 ? "y" : "ies"} successfully.`,
+        );
         setBulkImportInput("");
+        returnToList();
       } else if (result.createdNames.length > 0) {
         setSuccessMessage(
-          `Imported ${result.createdNames.length} categories. ${result.failures.length} failed.`,
+          `Imported ${result.createdNames.length} categor${result.createdNames.length === 1 ? "y" : "ies"}. ${result.failures.length} failed.`,
         );
+        returnToList();
       } else {
         setBulkImportError("No categories were imported.");
       }
@@ -583,7 +587,11 @@ export function CategoryManagementModal({
               ) : null}
 
               {successMessage ? (
-                <DismissibleSuccessAlert message={successMessage} onDismiss={() => setSuccessMessage(null)} />
+                <DismissibleSuccessAlert
+                  message={successMessage}
+                  onDismiss={() => setSuccessMessage(null)}
+                  showProgress={false}
+                />
               ) : null}
 
               {!showArchived && canManageCategories ? (
