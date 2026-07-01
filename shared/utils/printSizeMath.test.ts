@@ -10,8 +10,6 @@ import {
   assessPrintSizeCapability,
   calculateEffectiveDpi,
   calculatePrintSizeAtTargetDpi,
-  preserveAspectRatioFromHeight,
-  preserveAspectRatioFromWidth,
   resolveImportNormalizationTargetDpi,
 } from "./printSizeMath";
 
@@ -170,42 +168,12 @@ describe("assessPrintSizeCapability — effective DPI import floor", () => {
   });
 });
 
-describe("preserveAspectRatioFromWidth", () => {
-  it("preserves aspect ratio when width is edited", () => {
-    const result = preserveAspectRatioFromWidth(10, 10800, 9000);
-
-    assert.equal(result.success, true);
-    if (!result.success) {
-      return;
-    }
-
-    assert.equal(result.printWidthInches, 10);
-    assert.equal(result.printHeightInches, 8.33);
-  });
-});
-
-describe("preserveAspectRatioFromHeight", () => {
-  it("preserves aspect ratio when height is edited", () => {
-    const result = preserveAspectRatioFromHeight(30, 10800, 9000);
-
-    assert.equal(result.success, true);
-    if (!result.success) {
-      return;
-    }
-
-    assert.equal(result.printHeightInches, 30);
-    assert.equal(result.printWidthInches, 36);
-  });
-});
-
 describe("invalid inputs", () => {
   it("rejects zero and negative values safely", () => {
     assert.equal(calculatePrintSizeAtTargetDpi(0, 9000).success, false);
     assert.equal(calculatePrintSizeAtTargetDpi(-100, 9000).success, false);
     assert.equal(calculatePrintSizeAtTargetDpi(10800, 0).success, false);
     assert.equal(assessPrintSizeCapability(0, 9000).success, false);
-    assert.equal(preserveAspectRatioFromWidth(0, 10800, 9000).success, false);
-    assert.equal(preserveAspectRatioFromHeight(-5, 10800, 9000).success, false);
     assert.equal(calculateEffectiveDpi(10800, 9000, 0, 30).success, false);
     assert.equal(calculateEffectiveDpi(10800, 9000, 36, -1).success, false);
   });

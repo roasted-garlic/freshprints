@@ -66,19 +66,12 @@ export function EditDesignModal({
     }));
   }
 
-  function handlePrintSettingsChange(updates: Partial<DesignFormValues>) {
-    setFormValues((currentValues) => ({
-      ...currentValues,
-      ...updates,
-    }));
-  }
-
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     clearError();
 
     try {
-      await updateDesign(design!.id, buildEditDesignUpdateInput(design!, formValues));
+      await updateDesign(design!.id, buildEditDesignUpdateInput(formValues));
       await onUpdated();
       onClose();
     } catch {
@@ -106,7 +99,6 @@ export function EditDesignModal({
             formValues={formValues}
             isArchived={design.status === "archived"}
             onChange={handleFieldChange}
-            onPrintSettingsChange={handlePrintSettingsChange}
           />
         </ModalBody>
 

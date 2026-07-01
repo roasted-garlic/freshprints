@@ -34,10 +34,6 @@ import { normalizeDesignTags } from "../utils/designTagNormalizer";
 import { mergeDesignDocumentDataAfterWrite } from "../utils/designDocumentAfterWrite";
 import { mapDesignAiFields } from "../utils/designAiFieldsMapper";
 import { isOperationalDesignStatus, resolveRestoreStatus } from "../utils/designArchiveRestore";
-import {
-  buildStaffPrintSizePersistenceFields,
-  type StaffPrintSizeInput,
-} from "../../../../../../shared/utils/staffPrintSizeEdit";
 
 const DEFAULT_LIST_LIMIT = 100;
 export const DESIGN_LIST_PAGE_SIZE = DEFAULT_LIST_LIMIT;
@@ -315,60 +311,6 @@ function validateOptionalDerivativePath(path: string | undefined, root: "thumbna
   }
 
   return trimmedPath;
-}
-
-function validateStaffPrintSizeUpdate(
-  existingData: DesignDocumentData,
-  input: UpdateDesignInput,
-): StaffPrintSizeInput | null {
-  const hasPrintFieldUpdate =
-    input.printWidthInches !== undefined ||
-    input.printHeightInches !== undefined ||
-    input.printAspectRatioLocked !== undefined;
-
-  if (!hasPrintFieldUpdate) {
-    return null;
-  }
-
-  const pixelWidth = typeof existingData.width === "number" ? existingData.width : undefined;
-  const pixelHeight = typeof existingData.height === "number" ? existingData.height : undefined;
-
-  if (
-    pixelWidth === undefined ||
-    pixelHeight === undefined ||
-    pixelWidth <= 0 ||
-    pixelHeight <= 0
-  ) {
-    throw new Error("Print settings cannot be saved without pixel dimensions.");
-  }
-
-  const printWidthInches =
-    input.printWidthInches ??
-    (typeof existingData.printWidthInches === "number"
-      ? existingData.printWidthInches
-      : undefined);
-  const printHeightInches =
-    input.printHeightInches ??
-    (typeof existingData.printHeightInches === "number"
-      ? existingData.printHeightInches
-      : undefined);
-  const printAspectRatioLocked =
-    input.printAspectRatioLocked ??
-    (typeof existingData.printAspectRatioLocked === "boolean"
-      ? existingData.printAspectRatioLocked
-      : true);
-
-  if (printWidthInches === undefined || printHeightInches === undefined) {
-    throw new Error("Print width and height are required.");
-  }
-
-  return {
-    pixelWidth,
-    pixelHeight,
-    printWidthInches,
-    printHeightInches,
-    printAspectRatioLocked,
-  };
 }
 
 function shouldSplitStatusQueries(listQuery: DesignListQuery): boolean {
@@ -671,22 +613,6 @@ export const designService = {
       }
 
       const existingData = existingSnapshot.data();
-
-      const staffPrintSizeInput = validateStaffPrintSizeUpdate(existingData, input);
-
-      if (staffPrintSizeInput) {
-        const printSizeFields = buildStaffPrintSizePersistenceFields(staffPrintSizeInput);
-
-        if ("error" in printSizeFields) {
-          throw new Error(printSizeFields.error);
-        }
-
-        updatePayload.printWidthInches = printSizeFields.printWidthInches;
-        updatePayload.printHeightInches = printSizeFields.printHeightInches;
-        updatePayload.printAspectRatioLocked = printSizeFields.printAspectRatioLocked;
-        updatePayload.effectiveDpi = printSizeFields.effectiveDpi;
-        updatePayload.printSizeSource = printSizeFields.printSizeSource;
-      }
 
       if (input.status !== undefined) {
         const existingStatus = existingData.status;

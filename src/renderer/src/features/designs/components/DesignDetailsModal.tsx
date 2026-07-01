@@ -4,21 +4,13 @@ import { Button } from "../../../shared/components/Button";
 import { Badge } from "../../../shared/components/Badge";
 import { ResolutionQualityPill } from "../../../shared/components/ResolutionQualityPill";
 import { ModalBody, ModalFooter, ModalHeader } from "../../../shared/components/Modal";
-import {
-  formatPrintSizeSourceLabel,
-  resolveDesignPrintSizeForDisplay,
-} from "../../../../../../shared/utils/designPrintSizeState";
+import { resolveDesignPrintSizeForDisplay } from "../../../../../../shared/utils/designPrintSizeState";
 import { useAuth } from "../../auth/hooks/useAuth";
 import { permissionService } from "../../permissions/services/permissionService";
 import type { Design } from "../types/design.types";
 import { useDesignDerivativeUrl } from "../hooks/useDesignDerivativeUrl";
 import { formatDesignTimestamp } from "../utils/designDateDisplay";
 import { formatDesignStatusLabel, getDesignStatusBadgeVariant } from "../utils/designStatusDisplay";
-import {
-  formatAiReviewConfidence,
-  formatAiReviewStatusLabel,
-  getAiReviewStatusBadgeVariant,
-} from "../utils/aiReviewDisplay";
 import { formatDesignPrintInches } from "../utils/designPrintSizeDisplay";
 import { resolveDesignAiReviewDisplay } from "../utils/aiReviewState";
 import { DesignLibraryModal } from "./DesignLibraryModal";
@@ -50,10 +42,6 @@ function DetailField({ label, value, valueClassName }: DetailFieldProps) {
   );
 }
 
-function hasTechnicalMetadata(design: Design): boolean {
-  return design.width !== undefined || design.height !== undefined || design.dpi !== undefined;
-}
-
 export function DesignDetailsModal({
   categoryName,
   design,
@@ -65,6 +53,7 @@ export function DesignDetailsModal({
 }: DesignDetailsModalProps) {
   const { user } = useAuth();
   const [isPreviewLightboxOpen, setIsPreviewLightboxOpen] = useState(false);
+  const [isMoreDetailsOpen, setIsMoreDetailsOpen] = useState(false);
   const { url: previewUrl } = useDesignDerivativeUrl(design?.previewPath);
 
   if (!design) {
@@ -75,13 +64,7 @@ export function DesignDetailsModal({
   const canArchive = permissionService.canArchiveDesigns(user) && design.status !== "archived";
   const canRestore = permissionService.canEditDesigns(user) && design.status === "archived";
 
-  const technicalSummary = [
-    design.width !== undefined ? `${design.width}px wide` : null,
-    design.height !== undefined ? `${design.height}px tall` : null,
-    design.dpi !== undefined ? `${design.dpi} DPI` : null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  const printSize = resolveDesignPrintSizeForDisplay(design);
 
   return (
     <>
@@ -91,9 +74,14 @@ export function DesignDetailsModal({
           <div className="design-details-header-copy">
             <p className="eyebrow">Design details</p>
             <h2 id="design-details-title">{design.title}</h2>
-            <Badge variant={getDesignStatusBadgeVariant(design.status)}>
-              {formatDesignStatusLabel(design.status)}
-            </Badge>
+            <div className="design-details-header-pills">
+              <Badge variant={getDesignStatusBadgeVariant(design.status)}>
+                {formatDesignStatusLabel(design.status)}
+              </Badge>
+              {printSize?.effectiveDpi !== undefined ? (
+                <ResolutionQualityPill effectiveDpi={printSize.effectiveDpi} />
+              ) : null}
+            </div>
           </div>
 
           <div className="design-details-header-media">
@@ -134,145 +122,9 @@ export function DesignDetailsModal({
           )}
         </section>
 
-        <section aria-labelledby="design-details-provenance-title" className="design-details-section">
-          <h3 id="design-details-provenance-title">Provenance</h3>
-          <dl className="design-details-grid">
-            <DetailField label="Uploaded by" value={design.uploadedBy} />
-            <DetailField label="Upload date" value={formatDesignTimestamp(design.createdAt)} />
-            <DetailField label="Updated date" value={formatDesignTimestamp(design.updatedAt)} />
-          </dl>
-        </section>
-
-        {(() => {
-          const printSize = resolveDesignPrintSizeForDisplay(design);
-
-          if (!printSize) {
-            return null;
-          }
-
-          return (
-            <>
-              <section
-                aria-labelledby="design-details-source-image-title"
-                className="design-details-section"
-              >
-                <h3 id="design-details-source-image-title">Source Image</h3>
-                <dl className="design-details-grid">
-                  <DetailField label="Pixel width" value={`${printSize.pixelWidth}px`} />
-                  <DetailField label="Pixel height" value={`${printSize.pixelHeight}px`} />
-                </dl>
-              </section>
-
-              <section
-                aria-labelledby="design-details-print-settings-title"
-                className="design-details-section"
-              >
-                <h3 id="design-details-print-settings-title">Print Settings</h3>
-                <dl className="design-details-grid">
-                  <DetailField
-                    label="Print width"
-                    value={`${formatDesignPrintInches(printSize.printWidthInches)} in`}
-                  />
-                  <DetailField
-                    label="Print height"
-                    value={`${formatDesignPrintInches(printSize.printHeightInches)} in`}
-                  />
-                  <DetailField label="Effective DPI" value={String(printSize.effectiveDpi)} />
-                  <div className="design-detail-field">
-                    <dt>DPI quality</dt>
-                    <dd>
-                      <ResolutionQualityPill effectiveDpi={printSize.effectiveDpi} />
-                    </dd>
-                  </div>
-                  <DetailField
-                    label="Aspect ratio locked"
-                    value={printSize.printAspectRatioLocked ? "Yes" : "No"}
-                  />
-                  <DetailField
-                    label="Print size source"
-                    value={formatPrintSizeSourceLabel(printSize.printSizeSource)}
-                  />
-                </dl>
-                {printSize.usesLegacyFallback ? (
-                  <p className="design-details-muted">
-                    Displaying normalized fallback values. Save from Edit Design to persist print
-                    settings.
-                  </p>
-                ) : null}
-              </section>
-            </>
-          );
-        })()}
-
-        {(() => {
-          const aiReview = resolveDesignAiReviewDisplay(design);
-
-          return (
-            <section
-              aria-labelledby="design-details-ai-review-title"
-              className="design-details-section"
-            >
-              <h3 id="design-details-ai-review-title">AI Review</h3>
-              <dl className="design-details-grid">
-                <DetailField
-                  label="Review status"
-                  value={formatAiReviewStatusLabel(aiReview.aiReviewStatus)}
-                />
-                <DetailField
-                  label="Reviewed flag"
-                  value={aiReview.aiReviewed ? "Yes" : "No"}
-                />
-                <DetailField
-                  label="Processed flag"
-                  value={aiReview.aiProcessed ? "Yes" : "No"}
-                />
-                <DetailField
-                  label="Confidence"
-                  value={formatAiReviewConfidence(aiReview.aiReviewConfidence)}
-                />
-                <DetailField label="Review version" value={aiReview.aiReviewVersion || "—"} />
-                <DetailField label="Reviewed by" value={aiReview.aiReviewedBy || "—"} />
-                <DetailField
-                  label="Reviewed at"
-                  value={
-                    aiReview.aiReviewedAt
-                      ? formatDesignTimestamp(aiReview.aiReviewedAt)
-                      : "—"
-                  }
-                />
-              </dl>
-              <div className="design-details-ai-review-status">
-                <Badge variant={getAiReviewStatusBadgeVariant(aiReview.aiReviewStatus)}>
-                  {formatAiReviewStatusLabel(aiReview.aiReviewStatus)}
-                </Badge>
-              </div>
-              {aiReview.aiReviewNotes ? (
-                <p className="design-details-muted">{aiReview.aiReviewNotes}</p>
-              ) : null}
-              {aiReview.usesDisplayFallback ? (
-                <p className="design-details-muted">
-                  Displaying workflow fallback values until AI review fields are persisted.
-                </p>
-              ) : null}
-            </section>
-          );
-        })()}
-
-        <section aria-labelledby="design-details-storage-title" className="design-details-section">
-          <h3 id="design-details-storage-title">Storage paths</h3>
-          <dl className="design-details-grid">
-            <DetailField label="Original path" value={design.originalPath || "—"} />
-            <DetailField label="Thumbnail path" value={design.thumbnailPath || "—"} />
-            <DetailField label="Preview path" value={design.previewPath || "—"} />
-          </dl>
-        </section>
-
-        {hasTechnicalMetadata(design) ? (
-          <section aria-labelledby="design-details-technical-title" className="design-details-section">
-            <h3 id="design-details-technical-title">Technical metadata</h3>
-            <p>{technicalSummary || "—"}</p>
-          </section>
-        ) : null}
+        <Button onClick={() => setIsMoreDetailsOpen(true)} type="button" variant="secondary">
+          View more details
+        </Button>
       </ModalBody>
 
       <ModalFooter className="design-details-footer">
@@ -300,6 +152,107 @@ export function DesignDetailsModal({
           </Button>
         </div>
       </ModalFooter>
+      </DesignLibraryModal>
+
+      <DesignLibraryModal
+        ariaLabelledBy="design-more-details-title"
+        isOpen={isMoreDetailsOpen}
+        onClose={() => setIsMoreDetailsOpen(false)}
+      >
+        <ModalHeader>
+          <div>
+            <p className="eyebrow">{design.title}</p>
+            <h2 id="design-more-details-title">Audit &amp; Technical Details</h2>
+          </div>
+        </ModalHeader>
+
+        <ModalBody>
+          <section aria-labelledby="design-details-audit-title" className="design-details-section">
+            <h3 id="design-details-audit-title">Audit trail</h3>
+            <dl className="design-details-grid design-details-columns">
+              <DetailField label="Uploaded by" value={design.uploadedBy} />
+              <DetailField label="Upload date" value={formatDesignTimestamp(design.createdAt)} />
+              {(() => {
+                const aiReview = resolveDesignAiReviewDisplay(design);
+
+                return aiReview.aiReviewedBy ? (
+                  <>
+                    <DetailField label="Reviewed by" value={aiReview.aiReviewedBy} />
+                    <DetailField
+                      label="Reviewed date"
+                      value={
+                        aiReview.aiReviewedAt
+                          ? formatDesignTimestamp(aiReview.aiReviewedAt)
+                          : "—"
+                      }
+                    />
+                  </>
+                ) : null;
+              })()}
+              <DetailField label="Last edited by" value={design.updatedBy} />
+              <DetailField label="Last edited date" value={formatDesignTimestamp(design.updatedAt)} />
+            </dl>
+          </section>
+
+          <section
+            aria-labelledby="design-details-technical-title"
+            className="design-details-section"
+          >
+            <h3 id="design-details-technical-title">Technical details</h3>
+            {printSize ? (
+              <>
+                <dl className="design-details-grid design-details-columns">
+                  <DetailField
+                    label="Image size"
+                    value={`${printSize.pixelWidth} × ${printSize.pixelHeight} px`}
+                  />
+                  <DetailField
+                    label="Print size"
+                    value={`${formatDesignPrintInches(printSize.printWidthInches)} × ${formatDesignPrintInches(printSize.printHeightInches)} in`}
+                  />
+                  <div className="design-detail-field">
+                    <dt>Effective DPI</dt>
+                    <dd>
+                      {printSize.effectiveDpi}{" "}
+                      <ResolutionQualityPill effectiveDpi={printSize.effectiveDpi} />
+                    </dd>
+                  </div>
+                  {design.metadataDpiX !== undefined || design.metadataDpiY !== undefined ? (
+                    <DetailField
+                      label="Embedded file DPI"
+                      value={[design.metadataDpiX, design.metadataDpiY]
+                        .filter((value): value is number => value !== undefined)
+                        .join(" × ")}
+                    />
+                  ) : null}
+                </dl>
+                {printSize.usesLegacyFallback ? (
+                  <p className="design-details-muted">
+                    Displaying normalized fallback values. Save from Edit Design to persist print
+                    settings.
+                  </p>
+                ) : null}
+              </>
+            ) : (
+              <p className="design-details-muted">Source image dimensions are unavailable.</p>
+            )}
+          </section>
+
+          <section aria-labelledby="design-details-storage-title" className="design-details-section design-details-storage-footnote">
+            <h3 id="design-details-storage-title">Storage paths</h3>
+            <dl className="design-details-grid">
+              <DetailField label="Original path" value={design.originalPath || "—"} />
+              <DetailField label="Thumbnail path" value={design.thumbnailPath || "—"} />
+              <DetailField label="Preview path" value={design.previewPath || "—"} />
+            </dl>
+          </section>
+        </ModalBody>
+
+        <ModalFooter>
+          <Button onClick={() => setIsMoreDetailsOpen(false)} variant="secondary">
+            Close
+          </Button>
+        </ModalFooter>
       </DesignLibraryModal>
 
       <DesignPreviewLightbox

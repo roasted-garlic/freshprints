@@ -1,12 +1,8 @@
 import { Badge } from "../../../shared/components/Badge";
-import { ResolutionQualityPill } from "../../../shared/components/ResolutionQualityPill";
-import { resolveDesignPrintSizeForDisplay } from "../../../../../../shared/utils/designPrintSizeState";
 
 import type { Design } from "../types/design.types";
 
 import { formatDesignTimestamp } from "../utils/designDateDisplay";
-
-import { formatDesignStatusLabel, getDesignStatusBadgeVariant } from "../utils/designStatusDisplay";
 
 import { DesignThumbnailPanel } from "./DesignThumbnailPanel";
 
@@ -31,7 +27,6 @@ const MAX_VISIBLE_TAGS = 3;
 export function DesignCard({ categoryName, design, onSelect }: DesignCardProps) {
   const visibleTags = design.tags.slice(0, MAX_VISIBLE_TAGS);
   const hiddenTagCount = design.tags.length - visibleTags.length;
-  const printSize = resolveDesignPrintSizeForDisplay(design);
 
 
 
@@ -63,23 +58,11 @@ export function DesignCard({ categoryName, design, onSelect }: DesignCardProps) 
 
           <h3 className="design-card-title">{design.title}</h3>
 
-          <Badge variant={getDesignStatusBadgeVariant(design.status)}>
-
-            {formatDesignStatusLabel(design.status)}
-
-          </Badge>
-
         </div>
 
 
 
         <p className="design-card-category">{categoryName ?? "Uncategorized"}</p>
-
-        {printSize?.effectiveDpi !== undefined ? (
-          <div className="design-card-resolution-row">
-            <ResolutionQualityPill effectiveDpi={printSize.effectiveDpi} />
-          </div>
-        ) : null}
 
         <div className="design-card-tags-row">
 

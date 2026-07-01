@@ -24,14 +24,6 @@ export interface PrintSizeAtTargetDpiSuccess {
 
 export type PrintSizeAtTargetDpiResult = PrintSizeAtTargetDpiSuccess | PrintSizeMathErrorResult;
 
-export interface AspectRatioPreserveSuccess {
-  success: true;
-  printWidthInches: number;
-  printHeightInches: number;
-}
-
-export type AspectRatioPreserveResult = AspectRatioPreserveSuccess | PrintSizeMathErrorResult;
-
 /** Pixel-based print capability assessment at the target production DPI. */
 export interface PrintSizeAssessment {
   targetDpi: number;

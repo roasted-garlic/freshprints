@@ -1,13 +1,11 @@
 import type { ChangeEvent, ReactNode } from "react";
 
-import { Badge } from "../../../shared/components/Badge";
+import { AutoResizeTextarea } from "../../../shared/components/AutoResizeTextarea";
 import { Select, type SelectOption } from "../../../shared/components/Select";
 import { TagChipInput } from "../../../shared/components/TagChipInput";
 import { TextInput } from "../../../shared/components/TextInput";
 import type { CatalogTag } from "../types/catalogTag.types";
 import type { DesignFormValues } from "../types/designForm.types";
-import { formatDesignStatusLabel, getDesignStatusBadgeVariant } from "../utils/designStatusDisplay";
-import { DesignPrintSettingsFields } from "./DesignPrintSettingsFields";
 
 interface DesignFormFieldsProps {
   approvedTags: CatalogTag[];
@@ -18,7 +16,6 @@ interface DesignFormFieldsProps {
   formValues: DesignFormValues;
   isArchived?: boolean;
   onChange: (field: keyof DesignFormValues, value: string) => void;
-  onPrintSettingsChange: (updates: Partial<DesignFormValues>) => void;
 }
 
 export function DesignFormFields({
@@ -30,10 +27,9 @@ export function DesignFormFields({
   formValues,
   isArchived = false,
   onChange,
-  onPrintSettingsChange,
 }: DesignFormFieldsProps) {
   function handleFieldChange(field: keyof DesignFormValues) {
-    return (event: ChangeEvent<HTMLInputElement>) => {
+    return (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
       onChange(field, event.target.value);
     };
   }
@@ -52,8 +48,9 @@ export function DesignFormFields({
         value={formValues.title}
       />
 
-      <TextInput
+      <AutoResizeTextarea
         label="Description"
+        maxAutoHeightPx={320}
         name="description"
         onChange={handleFieldChange("description")}
         value={formValues.description}
@@ -75,22 +72,11 @@ export function DesignFormFields({
         value={formValues.tagsInput}
       />
 
-      <div className="design-form-status-field">
-        <span className="design-form-status-label" id="design-form-status-label">
-          Status
-        </span>
-        <Badge aria-labelledby="design-form-status-label" variant={getDesignStatusBadgeVariant(formValues.status)}>
-          {formatDesignStatusLabel(formValues.status)}
-        </Badge>
-      </div>
-
       {isArchived ? (
         <p className="auth-message auth-message-warning" role="status">
           This design is archived. Metadata edits will not restore it.
         </p>
       ) : null}
-
-      <DesignPrintSettingsFields formValues={formValues} onChange={onPrintSettingsChange} />
 
       {error ? (
         <p className="auth-message auth-message-error" role="alert">

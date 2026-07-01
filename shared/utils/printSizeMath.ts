@@ -7,7 +7,6 @@ import {
   TARGET_PRINT_DPI,
 } from "../constants/printSize.constants";
 import type {
-  AspectRatioPreserveResult,
   EffectiveDpiCalculationResult,
   PrintSizeAssessment,
   PrintSizeAssessmentResult,
@@ -227,54 +226,4 @@ export function assessPrintSizeCapability(
   };
 
   return { success: true, assessment };
-}
-
-/** Derives print height from a target width while preserving pixel aspect ratio. */
-export function preserveAspectRatioFromWidth(
-  printWidthInches: number,
-  pixelWidth: number,
-  pixelHeight: number,
-): AspectRatioPreserveResult {
-  const widthError = validatePositiveInch(printWidthInches, "Print width in inches");
-  if (widthError) {
-    return { success: false, error: widthError };
-  }
-
-  const pixelError = validatePositivePixels(pixelWidth, pixelHeight);
-  if (pixelError) {
-    return { success: false, error: pixelError };
-  }
-
-  const aspectRatio = pixelHeight / pixelWidth;
-
-  return {
-    success: true,
-    printWidthInches: roundInches(printWidthInches),
-    printHeightInches: roundInches(printWidthInches * aspectRatio),
-  };
-}
-
-/** Derives print width from a target height while preserving pixel aspect ratio. */
-export function preserveAspectRatioFromHeight(
-  printHeightInches: number,
-  pixelWidth: number,
-  pixelHeight: number,
-): AspectRatioPreserveResult {
-  const heightError = validatePositiveInch(printHeightInches, "Print height in inches");
-  if (heightError) {
-    return { success: false, error: heightError };
-  }
-
-  const pixelError = validatePositivePixels(pixelWidth, pixelHeight);
-  if (pixelError) {
-    return { success: false, error: pixelError };
-  }
-
-  const aspectRatio = pixelHeight / pixelWidth;
-
-  return {
-    success: true,
-    printWidthInches: roundInches(printHeightInches / aspectRatio),
-    printHeightInches: roundInches(printHeightInches),
-  };
 }
