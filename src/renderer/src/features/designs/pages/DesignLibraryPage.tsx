@@ -539,7 +539,6 @@ export function DesignLibraryPage() {
         <div className="design-library-catalog-scroll">
           <DesignGrid
             catalogView={effectiveCatalogView}
-            categoryNameById={categoryNameById}
             designs={filteredDesigns}
             hasActiveFilters={hasActiveFilters}
             isLoading={isLoading}

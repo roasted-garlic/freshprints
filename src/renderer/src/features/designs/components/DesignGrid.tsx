@@ -10,7 +10,6 @@ export type DesignLibraryCatalogView = "approved" | "archived";
 
 interface DesignGridProps {
   catalogView: DesignLibraryCatalogView;
-  categoryNameById: Map<string, string>;
   designs: Design[];
   hasActiveFilters: boolean;
   isLoading: boolean;
@@ -53,7 +52,6 @@ function getDefaultEmptyState(catalogView: DesignLibraryCatalogView) {
 
 export function DesignGrid({
   catalogView,
-  categoryNameById,
   designs,
   hasActiveFilters,
   isLoading,
@@ -101,11 +99,7 @@ export function DesignGrid({
                 quantity={selection?.quantity ?? 1}
               />
             ) : (
-              <DesignCard
-                categoryName={design.categoryId ? categoryNameById.get(design.categoryId) : undefined}
-                design={design}
-                onSelect={onSelectDesign}
-              />
+              <DesignCard design={design} onSelect={onSelectDesign} />
             )}
           </div>
         );
