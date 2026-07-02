@@ -16,6 +16,7 @@ import type {
   SelectImportZipFileResult,
   SelectMultiplePngFilesResult,
   SelectSinglePngFileResult,
+  SelectedPngPreviewRequest,
   StartBatchDiscoveryRequest,
   StartBatchDiscoveryResult,
   ValidateSelectedPngFileResult,
@@ -58,9 +59,9 @@ export const importDesktopService = {
     return this.readSelectedPngFileBytes({ filePath, includeDerivatives: true });
   },
 
-  async getSelectedPngPreview(filePath: string) {
+  async getSelectedPngPreview(request: SelectedPngPreviewRequest) {
     assertDesktopImportsApi();
-    return window.freshPrints.imports.getSelectedPngPreview(filePath);
+    return window.freshPrints.imports.getSelectedPngPreview(request);
   },
 
   async readBatchValidatedPngFileBytes(

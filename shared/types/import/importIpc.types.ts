@@ -27,7 +27,10 @@ export type {
   ImportPipelineOutcomeFields,
 } from "./importOrchestration.types";
 export { formatDerivativeGenerationError } from "./importOrchestration.types";
-import type { ReadSelectedPngFileBytesRequest } from "./readPngFileBytes.types";
+import type {
+  ReadBatchValidatedPngFileBytesRequest,
+  ReadSelectedPngFileBytesRequest,
+} from "./readPngFileBytes.types";
 
 export type { BatchImportSourceType } from "./batchImport.types";
 export type {
@@ -171,6 +174,8 @@ export interface SelectedPngPreviewResult {
   previewWidth: number;
 }
 
+export type SelectedPngPreviewRequest = string | ReadBatchValidatedPngFileBytesRequest;
+
 export interface SelectMultiplePngFilesResult {
   canceled: boolean;
   jobId?: BatchImportJobId;
@@ -235,7 +240,9 @@ export interface FreshPrintsImportsApi {
   readSelectedPngFileBytes(
     request: ReadSelectedPngFileBytesRequest,
   ): Promise<ImportIpcResult<ReadSelectedPngFileBytesResult>>;
-  getSelectedPngPreview(filePath: string): Promise<ImportIpcResult<SelectedPngPreviewResult>>;
+  getSelectedPngPreview(
+    request: SelectedPngPreviewRequest,
+  ): Promise<ImportIpcResult<SelectedPngPreviewResult>>;
   selectMultiplePngFiles(): Promise<ImportIpcResult<SelectMultiplePngFilesResult>>;
   selectImportFolder(): Promise<ImportIpcResult<SelectImportFolderResult>>;
   selectImportZip(): Promise<ImportIpcResult<SelectImportZipFileResult>>;

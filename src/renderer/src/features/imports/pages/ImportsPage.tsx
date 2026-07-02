@@ -7,6 +7,7 @@ import { Card } from "../../../shared/components/Card";
 import { useShellHeaderConfig } from "../../../shared/hooks/useShellHeaderConfig";
 import { isElectronDesktop } from "../../../shared/utils/isElectronDesktop";
 import { BatchImportPanel } from "../components/batch/BatchImportPanel";
+import { ImportMethodCardOverlay } from "../components/ImportMethodCardOverlay";
 import { ImportResultPanel } from "../components/ImportResultPanel";
 import { useBatchImport } from "../hooks/useBatchImport";
 import { useSinglePngImport } from "../hooks/useSinglePngImport";
@@ -85,11 +86,18 @@ export function ImportsPage() {
   const isUploading = phase === "uploading";
   const singleImportBlocked = isBatchImportBlockingSingleImport(batchImport.phase);
   const batchImportBlocked = isSingleWorkflowActive || isBusy;
+  const singleImportBlockingMessage = "Cancel batch import before using single PNG import.";
+  const batchImportBlockingMessage = "Cancel the single PNG import before starting a batch import.";
+  const singleMethodCardHasOverlay = singleImportBlocked || showCancelSingleImport;
 
   return (
     <main className="page-layout page-layout-shell imports-page">
       <div className="imports-entry-grid">
-        <Card className="imports-phase-card imports-method-card">
+        <Card
+          className={`imports-phase-card imports-method-card${
+            singleMethodCardHasOverlay ? " imports-method-card--covered" : ""
+          }`}
+        >
           <div className="imports-phase-card-content">
             <div>
               <p className="eyebrow">Single import</p>
@@ -117,18 +125,29 @@ export function ImportsPage() {
               </p>
             )}
           </div>
+
+          {singleImportBlocked ? (
+            <ImportMethodCardOverlay message={singleImportBlockingMessage} />
+          ) : showCancelSingleImport ? (
+            <ImportMethodCardOverlay>
+              <Button
+                onClick={() => {
+                  void cancelSingleImport();
+                }}
+                variant="secondary"
+              >
+                Cancel Upload
+              </Button>
+            </ImportMethodCardOverlay>
+          ) : null}
         </Card>
 
-        <BatchImportPanel batchImport={batchImport} disabled={batchImportBlocked} />
+        <BatchImportPanel
+          batchImport={batchImport}
+          blockingMessage={batchImportBlocked ? batchImportBlockingMessage : null}
+          disabled={batchImportBlocked}
+        />
       </div>
-
-      {singleImportBlocked ? (
-        <Card>
-          <p className="auth-message">
-            Cancel the active batch import before using single PNG import.
-          </p>
-        </Card>
-      ) : null}
 
       <ImportResultPanel
         canUpload={canUpload}
@@ -145,28 +164,6 @@ export function ImportsPage() {
         validationError={validationError}
         validationResult={validationResult}
       />
-
-      {showCancelSingleImport ? (
-        <div className="imports-actions-row">
-          <Button
-            onClick={() => {
-              void cancelSingleImport();
-            }}
-            variant="secondary"
-          >
-            Cancel Upload
-          </Button>
-        </div>
-      ) : null}
-
-      {batchImportBlocked ? (
-        <Card>
-          <p className="auth-message">
-            Cancel the single PNG import before starting a batch import.
-          </p>
-        </Card>
-      ) : null}
-
     </main>
   );
 }

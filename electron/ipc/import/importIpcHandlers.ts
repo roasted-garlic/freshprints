@@ -12,6 +12,8 @@ import { finishBatchImportJob } from "./finishBatchImportJob";
 import { IMPORT_IPC_CHANNELS } from "./importIpcChannels";
 import {
   markBatchDiscoveryRunning,
+  getBatchImportSession,
+  isBatchValidatedPath,
   validateBatchDiscoveryStart,
 } from "./importBatchSession";
 import { clearImportFileSession, isRegisteredImportFilePath, isValidatedImportFilePath, markImportFileValidated } from "./importFileSession";
@@ -59,6 +61,74 @@ function validateFilePathInput(filePath: unknown, requireValidated = false) {
   }
 
   return null;
+}
+
+function isBatchPreviewRequest(
+  value: unknown,
+): value is { filePath: string; jobId: string } {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const request = value as Partial<{ filePath: unknown; jobId: unknown }>;
+
+  return (
+    typeof request.filePath === "string" &&
+    request.filePath.trim().length > 0 &&
+    typeof request.jobId === "string" &&
+    request.jobId.trim().length > 0
+  );
+}
+
+function validatePreviewRequest(
+  webContentsId: number,
+  payload: unknown,
+): ReturnType<typeof importIpcFailure> | { filePath: string } {
+  if (!isBatchPreviewRequest(payload)) {
+    const validationError = validateFilePathInput(payload, true);
+
+    if (validationError) {
+      return validationError;
+    }
+
+    return { filePath: payload as string };
+  }
+
+  if (isUnsafeClientFilePath(payload.filePath)) {
+    return importIpcFailure("INVALID_INPUT", "The provided file path is invalid.");
+  }
+
+  const session = getBatchImportSession(payload.jobId);
+
+  if (!session) {
+    return importIpcFailure(
+      "INVALID_INPUT",
+      "No batch import session was found for the provided job ID.",
+    );
+  }
+
+  if (session.webContentsId !== webContentsId) {
+    return importIpcFailure(
+      "INVALID_INPUT",
+      "The batch import session does not belong to this window.",
+    );
+  }
+
+  if (session.status !== "discovering") {
+    return importIpcFailure(
+      "INVALID_INPUT",
+      "Batch previews can only be generated while the batch session is awaiting upload.",
+    );
+  }
+
+  if (!isBatchValidatedPath(payload.jobId, payload.filePath)) {
+    return importIpcFailure(
+      "INVALID_INPUT",
+      "The requested file path was not validated for this batch import job.",
+    );
+  }
+
+  return { filePath: payload.filePath };
 }
 
 function mapValidationError(error: unknown) {
@@ -195,15 +265,15 @@ export function registerImportIpcHandlers(): void {
     }
   });
 
-  ipcMain.handle(IMPORT_IPC_CHANNELS.GET_SELECTED_PNG_PREVIEW, async (_event, filePath: unknown) => {
+  ipcMain.handle(IMPORT_IPC_CHANNELS.GET_SELECTED_PNG_PREVIEW, async (event, payload: unknown) => {
     try {
-      const validationError = validateFilePathInput(filePath, true);
+      const previewRequest = validatePreviewRequest(event.sender.id, payload);
 
-      if (validationError) {
-        return validationError;
+      if (!("filePath" in previewRequest)) {
+        return previewRequest;
       }
 
-      const preview = getSelectedPngPreview(filePath as string);
+      const preview = getSelectedPngPreview(previewRequest.filePath);
 
       if (!preview) {
         return importIpcFailure(

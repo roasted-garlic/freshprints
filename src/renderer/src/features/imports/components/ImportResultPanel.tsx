@@ -5,10 +5,12 @@ import { Link } from "react-router-dom";
 
 import type {
   ImportIpcError,
+  ImportPngWarning,
   ImportOriginalUploadResult,
   ValidateSelectedPngFileResult,
 } from "../../../../../../shared/types/import/importIpc.types";
 import { getAiReviewPath } from "../../designs/constants/designLibraryFilters";
+import { Badge } from "../../../shared/components/Badge";
 import { Button } from "../../../shared/components/Button";
 import { Card } from "../../../shared/components/Card";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "../../../shared/components/Modal";
@@ -17,7 +19,6 @@ import type { SinglePngImportPhase } from "../hooks/useSinglePngImport";
 import {
   formatPrintInchesDisplay,
   getImportWarningMessageClassName,
-  getPrintSizeAcceptanceLabel,
 } from "../utils/importPrintSizeDisplay";
 import { ImportPngPreview } from "./ImportPngPreview";
 
@@ -59,6 +60,45 @@ function formatFinalStatusLabel(status: ImportOriginalUploadResult["finalStatus"
   }
 }
 
+function getResolutionQualityLabel(
+  acceptanceLevel: ValidateSelectedPngFileResult["printSizeAssessment"]["acceptanceLevel"],
+): string {
+  switch (acceptanceLevel) {
+    case "accept":
+      return "Optimal";
+    case "warn":
+      return "Good";
+    case "small_format":
+      return "Bad";
+    case "terrible":
+      return "Terrible";
+    case "reject":
+      return "Rejected";
+    default:
+      return acceptanceLevel;
+  }
+}
+
+function formatPrintSizeDisplay(validationResult: ValidateSelectedPngFileResult): string {
+  return `${formatPrintInchesDisplay(
+    validationResult.printSizeAssessment.suggestedPrintWidthInches,
+  )} in x ${formatPrintInchesDisplay(
+    validationResult.printSizeAssessment.suggestedPrintHeightInches,
+  )} in`;
+}
+
+function getVisibleValidationWarnings(
+  validationResult: ValidateSelectedPngFileResult,
+): ImportPngWarning[] {
+  return validationResult.warnings.filter((warning) => warning.code !== "PRINT_SIZE_NORMALIZED");
+}
+
+function getNormalizedPrintSizeWarning(
+  validationResult: ValidateSelectedPngFileResult,
+): ImportPngWarning | undefined {
+  return validationResult.warnings.find((warning) => warning.code === "PRINT_SIZE_NORMALIZED");
+}
+
 function ValidationDetails({
   validationResult,
 }: {
@@ -66,8 +106,12 @@ function ValidationDetails({
 }) {
   return (
     <>
-      <p className="eyebrow">Validation</p>
-      <h3>{validationResult.valid ? "PNG passed validation" : "PNG validation failed"}</h3>
+      <div className="import-validation-heading">
+        <p className="eyebrow">Validation</p>
+        <Badge variant={validationResult.valid ? "success" : "danger"}>
+          {validationResult.valid ? "Passed" : "Failed"}
+        </Badge>
+      </div>
 
       <dl className="import-validation-details">
         <div>
@@ -79,53 +123,63 @@ function ValidationDetails({
           <dd>{formatFileSize(validationResult.fileSizeBytes)}</dd>
         </div>
         <div>
-          <dt>Dimensions</dt>
-          <dd>
-            {validationResult.width} x {validationResult.height} px
-          </dd>
+          <dt>Print size</dt>
+          <dd>{formatPrintSizeDisplay(validationResult)}</dd>
         </div>
         <div>
-          <dt>DPI metadata</dt>
-          <dd>
-            {validationResult.hasDpiMetadata
-              ? `${validationResult.dpiX ?? "—"} x ${validationResult.dpiY ?? "—"} (${validationResult.dpiSource ?? "unknown"})`
-              : "Not present"}
-          </dd>
-        </div>
-        <div>
-          <dt>Print size assessment</dt>
-          <dd>
-            {getPrintSizeAcceptanceLabel(validationResult.printSizeAssessment.acceptanceLevel)}
-            {" · "}
-            {formatPrintInchesDisplay(validationResult.printSizeAssessment.suggestedPrintWidthInches)}
-            {" in × "}
-            {formatPrintInchesDisplay(validationResult.printSizeAssessment.suggestedPrintHeightInches)}
-            {" in at "}
-            {validationResult.printSizeAssessment.targetDpi}
-            {" DPI"}
-          </dd>
-        </div>
-        <div>
-          <dt>Effective DPI</dt>
-          <dd>{validationResult.printSizeAssessment.suggestedEffectiveDpi}</dd>
+          <dt>Resolution</dt>
+          <dd>{getResolutionQualityLabel(validationResult.printSizeAssessment.acceptanceLevel)}</dd>
         </div>
       </dl>
 
-      {validationResult.warnings.length > 0 ? (
-        <div className="import-validation-warnings">
-          <h4>Warnings</h4>
-          <ul>
-            {validationResult.warnings.map((warning) => (
-              <li className={getImportWarningMessageClassName(warning.code)} key={warning.code}>
-                {warning.message}
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : (
+      {validationResult.warnings.length === 0 ? (
         <p className="auth-message auth-message-success">No validation warnings.</p>
-      )}
+      ) : null}
     </>
+  );
+}
+
+function NormalizedPrintSizeNotice({
+  validationResult,
+}: {
+  validationResult: ValidateSelectedPngFileResult;
+}) {
+  const normalizedWarning = getNormalizedPrintSizeWarning(validationResult);
+
+  if (!normalizedWarning) {
+    return null;
+  }
+
+  return (
+    <p
+      className={`${getImportWarningMessageClassName(normalizedWarning.code)} import-normalized-print-size-message`}
+    >
+      Print size normalized to {formatPrintSizeDisplay(validationResult)}.
+    </p>
+  );
+}
+
+function ValidationWarnings({
+  validationResult,
+}: {
+  validationResult: ValidateSelectedPngFileResult;
+}) {
+  const visibleWarnings = getVisibleValidationWarnings(validationResult);
+
+  if (visibleWarnings.length === 0) {
+    return null;
+  }
+
+  return (
+    <div aria-label="Validation warnings" className="import-validation-warnings">
+      <ul>
+        {visibleWarnings.map((warning) => (
+          <li className={getImportWarningMessageClassName(warning.code)} key={warning.code}>
+            {warning.message}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
@@ -366,8 +420,30 @@ export function ImportResultPanel({
   return (
     <Card aria-live="polite" className="import-validation-result">
       <div className="import-validation-result-layout">
+        {validationResult ? (
+          <div className="import-validation-preview-column">
+            <ImportPngPreview
+              alt={`Preview of ${validationResult.fileName}`}
+              previewDataUrl={previewDataUrl}
+            />
+
+            {canUpload || isUploading ? (
+              <Button
+                className="button-leading-icon import-validation-preview-upload"
+                disabled={isUploading}
+                onClick={onUpload}
+              >
+                <Upload aria-hidden="true" size={16} strokeWidth={2} />
+                {isUploading ? "Uploading..." : "Upload PNG"}
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
+
         <div className="import-validation-result-main">
           {validationResult ? <ValidationDetails validationResult={validationResult} /> : null}
+
+          {validationResult ? <NormalizedPrintSizeNotice validationResult={validationResult} /> : null}
 
           {uploadError ? (
             <div className="import-upload-feedback">
@@ -388,27 +464,11 @@ export function ImportResultPanel({
               {uploadWarning}
             </p>
           ) : null}
+
+          {validationResult && getVisibleValidationWarnings(validationResult).length > 0 ? (
+            <ValidationWarnings validationResult={validationResult} />
+          ) : null}
         </div>
-
-        {validationResult ? (
-          <div className="import-validation-preview-column">
-            <ImportPngPreview
-              alt={`Preview of ${validationResult.fileName}`}
-              previewDataUrl={previewDataUrl}
-            />
-
-            {canUpload || isUploading ? (
-              <Button
-                className="button-leading-icon import-validation-preview-upload"
-                disabled={isUploading}
-                onClick={onUpload}
-              >
-                <Upload aria-hidden="true" size={16} strokeWidth={2} />
-                {isUploading ? "Uploading..." : "Upload PNG"}
-              </Button>
-            ) : null}
-          </div>
-        ) : null}
       </div>
     </Card>
   );

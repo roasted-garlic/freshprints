@@ -1,6 +1,7 @@
 import { isElectronDesktop } from "../../../../shared/utils/isElectronDesktop";
 import { Button } from "../../../../shared/components/Button";
 import { Card } from "../../../../shared/components/Card";
+import { ImportMethodCardOverlay } from "../ImportMethodCardOverlay";
 import type { UseBatchImportReturn } from "../../types/batchImportHook.types";
 import { BatchImportDiscoverySummary } from "./BatchImportDiscoverySummary";
 import { BatchImportProgressPanel } from "./BatchImportProgressPanel";
@@ -9,10 +10,15 @@ import { BatchImportSourceActions } from "./BatchImportSourceActions";
 
 interface BatchImportPanelProps {
   batchImport: UseBatchImportReturn;
+  blockingMessage?: string | null;
   disabled?: boolean;
 }
 
-export function BatchImportPanel({ batchImport, disabled = false }: BatchImportPanelProps) {
+export function BatchImportPanel({
+  batchImport,
+  blockingMessage = null,
+  disabled = false,
+}: BatchImportPanelProps) {
   const isDesktop = isElectronDesktop();
   const {
     canUpload,
@@ -40,11 +46,16 @@ export function BatchImportPanel({ batchImport, disabled = false }: BatchImportP
   const showDiscoverySummary = phase === "ready-to-upload" && discoveryResult !== null;
   const showResult = phase === "completed" && uploadReport !== null;
   const showError = phase === "error" && Boolean(error);
+  const showCancelOverlay = !blockingMessage && phase !== "idle";
   const sourcesDisabled = disabled || phase !== "idle";
 
   return (
     <section aria-labelledby="batch-import-heading" className="batch-import-panel">
-      <Card className="imports-phase-card imports-method-card">
+      <Card
+        className={`imports-phase-card imports-method-card${
+          blockingMessage || showCancelOverlay ? " imports-method-card--covered" : ""
+        }`}
+      >
         <div className="batch-import-header">
           <div className="batch-import-header-copy">
             <p className="eyebrow">Batch import</p>
@@ -72,18 +83,26 @@ export function BatchImportPanel({ batchImport, disabled = false }: BatchImportP
             </p>
           )}
         </div>
+
+        {blockingMessage ? (
+          <ImportMethodCardOverlay message={blockingMessage} />
+        ) : showCancelOverlay ? (
+          <ImportMethodCardOverlay>
+            <Button
+              onClick={() => {
+                void cancelImport();
+              }}
+              variant="secondary"
+            >
+              Cancel Upload
+            </Button>
+          </ImportMethodCardOverlay>
+        ) : null}
       </Card>
 
       {showDiscoveryProgress ? (
         <BatchImportProgressPanel
           hookPhase={phase}
-          onCancel={
-            phase === "discovering"
-              ? () => {
-                  void cancelImport();
-                }
-              : undefined
-          }
           progress={progress}
           sourceType={sourceType}
         />
@@ -95,9 +114,6 @@ export function BatchImportPanel({ batchImport, disabled = false }: BatchImportP
           discoveryResult={discoveryResult}
           excludedFilePaths={new Set(excludedFilePaths)}
           isBusy={isBusy}
-          onCancelImport={() => {
-            void cancelImport();
-          }}
           onExcludeAllValidatedFiles={excludeAllValidatedFiles}
           onIncludeAllValidatedFiles={includeAllValidatedFiles}
           onToggleFileIncluded={toggleFileIncluded}
@@ -110,9 +126,6 @@ export function BatchImportPanel({ batchImport, disabled = false }: BatchImportP
 
       {showResult && uploadReport ? (
         <BatchImportResultPanel
-          onCancelImport={() => {
-            void cancelImport();
-          }}
           uploadReport={uploadReport}
           warning={warning}
         />
@@ -128,16 +141,6 @@ export function BatchImportPanel({ batchImport, disabled = false }: BatchImportP
               {warning}
             </p>
           ) : null}
-          <div className="batch-import-actions-row">
-            <Button
-              onClick={() => {
-                void cancelImport();
-              }}
-              variant="secondary"
-            >
-              Cancel Upload
-            </Button>
-          </div>
         </Card>
       ) : null}
     </section>

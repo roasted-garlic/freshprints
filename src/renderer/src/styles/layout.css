@@ -138,6 +138,8 @@
 
 .imports-method-card {
   min-height: 9rem;
+  overflow: hidden;
+  position: relative;
 }
 
 .imports-method-card .imports-phase-card-content {
@@ -150,6 +152,44 @@
   margin-left: 0;
   margin-top: auto;
   width: 100%;
+}
+
+.imports-method-card--covered .imports-phase-card-content,
+.imports-method-card--covered .batch-import-header {
+  opacity: 0.34;
+}
+
+.imports-method-card-overlay {
+  align-items: center;
+  background: var(--color-scrim);
+  display: grid;
+  gap: var(--space-3);
+  inset: 0;
+  justify-items: center;
+  padding: var(--space-4);
+  position: absolute;
+  text-align: center;
+  z-index: 1;
+}
+
+.imports-method-card-overlay-message {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+  margin: 0;
+  max-width: 24rem;
+  padding: var(--space-3) var(--space-4);
+}
+
+.imports-method-card-overlay-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  justify-content: center;
 }
 
 .imports-phase-card-content {
@@ -202,11 +242,36 @@
   margin: 0;
 }
 
+.import-validation-heading {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  justify-content: center;
+}
+
+.import-validation-heading .eyebrow {
+  margin: 0;
+}
+
 .import-validation-details {
   display: grid;
-  gap: var(--space-2) var(--space-4);
-  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: var(--space-3);
+  grid-template-columns: repeat(2, minmax(10rem, 1fr));
+  justify-content: center;
   margin: var(--space-3) 0 0;
+  width: 100%;
+}
+
+.import-validation-details > div {
+  align-content: center;
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  display: grid;
+  min-height: 5.5rem;
+  min-width: 0;
+  padding: var(--space-3);
 }
 
 .import-validation-details dt {
@@ -221,6 +286,8 @@
 .import-validation-details dd {
   color: var(--color-text-primary);
   font-size: var(--font-size-sm);
+  font-weight: 600;
+  line-height: var(--line-height-normal);
   margin: var(--space-1) 0 0;
   min-width: 0;
   overflow-wrap: anywhere;
@@ -229,7 +296,8 @@
 .import-validation-warnings {
   display: grid;
   gap: var(--space-2);
-  margin-top: var(--space-3);
+  margin: 0;
+  width: 100%;
 }
 
 .import-validation-warnings ul {
@@ -241,24 +309,48 @@
 }
 
 .import-validation-result-layout {
-  align-items: flex-start;
+  align-items: stretch;
   display: grid;
   gap: var(--space-4);
-  grid-template-columns: minmax(0, 1fr) minmax(12rem, 17.5rem);
+  grid-template-columns: repeat(2, minmax(21rem, 23rem));
+  justify-content: center;
 }
 
 .import-validation-result-main {
+  align-content: center;
   display: grid;
   gap: var(--space-3);
+  justify-items: center;
   min-width: 0;
+  width: 100%;
+}
+
+.import-validation-result-main > .auth-message {
+  margin: 0;
+  width: 100%;
+}
+
+.import-validation-result-main > .auth-message-success {
+  color: var(--color-success-text);
+}
+
+.import-validation-result-main > .auth-message-warning {
+  color: var(--color-warning-text);
+}
+
+.import-validation-result-main > .auth-message-error {
+  color: var(--color-danger-text);
+}
+
+.import-normalized-print-size-message {
+  min-height: 3.5rem;
 }
 
 .import-validation-preview-column {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  position: sticky;
-  top: var(--space-4);
+  justify-content: center;
   width: 100%;
 }
 
@@ -276,7 +368,7 @@
   flex: 0 0 auto;
   justify-content: center;
   aspect-ratio: 4 / 3;
-  max-height: 13rem;
+  max-height: none;
   min-height: 9rem;
   min-width: 0;
   overflow: hidden;
@@ -305,11 +397,6 @@
 
 .import-png-preview-fallback span {
   font-size: var(--font-size-sm);
-}
-
-.imports-actions-row {
-  display: flex;
-  justify-content: flex-start;
 }
 
 .import-technical-details {
@@ -386,6 +473,10 @@
   .imports-entry-grid,
   .import-validation-result-layout {
     grid-template-columns: 1fr;
+  }
+
+  .import-validation-details {
+    grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
   }
 
   .imports-entry-grid > .batch-import-panel {

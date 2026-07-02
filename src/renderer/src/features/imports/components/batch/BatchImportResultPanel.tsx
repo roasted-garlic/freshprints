@@ -1,18 +1,15 @@
 import { Link } from "react-router-dom";
 
 import { getAiReviewPath } from "../../../designs/constants/designLibraryFilters";
-import { Button } from "../../../../shared/components/Button";
 import { Card } from "../../../../shared/components/Card";
 import type { BatchImportUploadReport } from "../../types/batchImportOrchestration.types";
 
 interface BatchImportResultPanelProps {
-  onCancelImport: () => void;
   uploadReport: BatchImportUploadReport | null;
   warning: string | null;
 }
 
 export function BatchImportResultPanel({
-  onCancelImport,
   uploadReport,
   warning,
 }: BatchImportResultPanelProps) {
@@ -97,9 +94,6 @@ export function BatchImportResultPanel({
         <Link className="button button-primary button-md" to={getAiReviewPath()}>
           Open AI Processing
         </Link>
-        <Button onClick={onCancelImport} variant="secondary">
-          Cancel Upload
-        </Button>
       </div>
 
       {summary.failedFiles.length > 0 ? (

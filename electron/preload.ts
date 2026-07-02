@@ -36,6 +36,7 @@ import type {
   SelectImportZipFileResult,
   SelectMultiplePngFilesResult,
   SelectSinglePngFileResult,
+  SelectedPngPreviewRequest,
   SelectedPngPreviewResult,
   StartBatchDiscoveryRequest,
   StartBatchDiscoveryResult,
@@ -166,11 +167,11 @@ contextBridge.exposeInMainWorld("freshPrints", {
     },
 
     getSelectedPngPreview(
-      filePath: string,
+      request: SelectedPngPreviewRequest,
     ): Promise<ImportIpcResult<SelectedPngPreviewResult>> {
       return invokeImportChannel<SelectedPngPreviewResult>(
         IMPORT_IPC_CHANNELS.GET_SELECTED_PNG_PREVIEW,
-        filePath,
+        request,
       );
     },
 

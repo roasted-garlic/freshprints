@@ -1,7 +1,6 @@
 import type { BatchImportSourceType } from "../../../../../../../shared/types/import/batchImport.types";
 
 import { Badge } from "../../../../shared/components/Badge";
-import { Button } from "../../../../shared/components/Button";
 import { Card } from "../../../../shared/components/Card";
 import { ProgressBar } from "../../../../shared/components/ProgressBar";
 import type { BatchImportHookPhase, BatchImportHookProgress } from "../../types/batchImportHook.types";
@@ -13,7 +12,6 @@ import {
 
 interface BatchImportProgressPanelProps {
   hookPhase: BatchImportHookPhase;
-  onCancel?: () => void;
   progress: BatchImportHookProgress | null;
   sourceType: BatchImportSourceType | null;
 }
@@ -31,7 +29,6 @@ function getProgressPhase(
 
 export function BatchImportProgressPanel({
   hookPhase,
-  onCancel,
   progress,
   sourceType,
 }: BatchImportProgressPanelProps) {
@@ -77,21 +74,6 @@ export function BatchImportProgressPanel({
       ) : (
         <ProgressBar label="Batch import progress" value={percent} />
       )}
-
-      {onCancel ? (
-        <div className="batch-import-actions-row">
-          <Button onClick={onCancel} variant="secondary">
-            Cancel Upload
-          </Button>
-        </div>
-      ) : null}
-
-      {hookPhase === "uploading" ? (
-        <p className="auth-message">
-          Upload cancellation is not available while files are uploading. Wait for the current
-          batch to finish, then use Cancel Upload to return to idle.
-        </p>
-      ) : null}
     </Card>
   );
 }
