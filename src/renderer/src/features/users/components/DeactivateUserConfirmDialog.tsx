@@ -1,3 +1,5 @@
+import { X } from "lucide-react";
+
 import { Button } from "../../../shared/components/Button";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "../../../shared/components/Modal";
 import type { User } from "../types/user.types";
@@ -29,6 +31,16 @@ export function DeactivateUserConfirmDialog({
             <p className="eyebrow">Confirm deactivation</p>
             <h2 id="deactivate-user-title">Deactivate {teamUser.displayName}?</h2>
           </div>
+
+          <button
+            aria-label="Close"
+            className="icon-button icon-button-md icon-button-ghost"
+            disabled={isSubmitting}
+            onClick={onCancel}
+            type="button"
+          >
+            <X aria-hidden="true" size={18} strokeWidth={2.2} />
+          </button>
         </ModalHeader>
         <ModalBody>
           <p>

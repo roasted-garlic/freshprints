@@ -72,3 +72,50 @@ describe("simpleCatalogEnrichmentPrompt — legacy template backward compatibili
     assert.ok(!resolved.includes("motherhood"));
   });
 });
+
+describe("simpleCatalogEnrichmentPrompt — {{approved_category_names}}", () => {
+  it("substitutes only category names, without descriptions", () => {
+    const template = [
+      "Analyze the image.",
+      "Approved categories:",
+      "{{approved_category_names}}",
+      "Excluded tags: {{excluded_tags}}",
+    ].join("\n");
+
+    const resolved = buildSimpleCatalogEnrichmentUserPrompt({
+      approvedCategories: categories,
+      approvedCategoryNames: categories.map((category) => category.name),
+      approvedTagNames: [],
+      effectiveTagExclusions: ["death"],
+      promptTemplate: template,
+    });
+
+    assert.ok(resolved.includes("Family"));
+    assert.ok(!resolved.includes("Motherhood, parenting, family themes."));
+    assert.ok(!resolved.includes("{{approved_category_names}}"));
+  });
+});
+
+describe("simpleCatalogEnrichmentPrompt — {{approved_tag_names}}", () => {
+  it("substitutes only tag names, without aliases or preferredWhen", () => {
+    const template = [
+      "Analyze the image.",
+      "Approved tags:",
+      "{{approved_tag_names}}",
+      "Excluded tags: {{excluded_tags}}",
+    ].join("\n");
+
+    const resolved = buildSimpleCatalogEnrichmentUserPrompt({
+      approvedCategoryNames: [],
+      approvedTags,
+      approvedTagNames: approvedTags.map((tag) => tag.name),
+      effectiveTagExclusions: ["death"],
+      promptTemplate: template,
+    });
+
+    assert.ok(resolved.includes("motherhood"));
+    assert.ok(!resolved.includes("aliases:"));
+    assert.ok(!resolved.includes("preferred when:"));
+    assert.ok(!resolved.includes("{{approved_tag_names}}"));
+  });
+});

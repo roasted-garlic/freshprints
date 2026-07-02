@@ -114,6 +114,15 @@ export function DesignLibraryTagFilterModal({
             narrows to tags that still have matches.
           </p>
         </div>
+
+        <button
+          aria-label="Close tag filters"
+          className="icon-button icon-button-md icon-button-ghost"
+          onClick={onClose}
+          type="button"
+        >
+          <X aria-hidden="true" size={18} strokeWidth={2.2} />
+        </button>
       </ModalHeader>
 
       <ModalBody>

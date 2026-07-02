@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { Upload } from "lucide-react";
+import { Upload, X } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import type {
@@ -253,6 +253,15 @@ function ImportDetailsModal({
             <p className="eyebrow">Import details</p>
             <h2 id="import-details-title">Validation and storage results</h2>
           </div>
+
+          <button
+            aria-label="Close import details"
+            className="icon-button icon-button-md icon-button-ghost"
+            onClick={onClose}
+            type="button"
+          >
+            <X aria-hidden="true" size={18} strokeWidth={2.2} />
+          </button>
         </ModalHeader>
 
         <ModalBody>

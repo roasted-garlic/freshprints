@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 
-import { ChevronDown, ChevronUp, ImagePlus } from "lucide-react";
+import { ChevronDown, ChevronUp, ImagePlus, X } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { Button } from "../../../shared/components/Button";
@@ -651,6 +651,15 @@ export function PrintRequestsPage() {
                 <p className="eyebrow">Create request</p>
                 <h3 id="print-request-create-title">New print request</h3>
               </div>
+
+              <button
+                aria-label="Close new print request"
+                className="icon-button icon-button-md icon-button-ghost"
+                onClick={closeCreateModal}
+                type="button"
+              >
+                <X aria-hidden="true" size={18} strokeWidth={2.2} />
+              </button>
             </ModalHeader>
             <ModalBody>
               <form

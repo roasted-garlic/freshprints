@@ -1,3 +1,4 @@
+import { X } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "../../../shared/components/Button";
@@ -165,6 +166,15 @@ export function DesignDetailsModal({
             <p className="eyebrow">{design.title}</p>
             <h2 id="design-more-details-title">Audit &amp; Technical Details</h2>
           </div>
+
+          <button
+            aria-label="Close audit and technical details"
+            className="icon-button icon-button-md icon-button-ghost"
+            onClick={() => setIsMoreDetailsOpen(false)}
+            type="button"
+          >
+            <X aria-hidden="true" size={18} strokeWidth={2.2} />
+          </button>
         </ModalHeader>
 
         <ModalBody>

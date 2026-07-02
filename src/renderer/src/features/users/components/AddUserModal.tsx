@@ -1,3 +1,4 @@
+import { X } from "lucide-react";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 
 import { AutoResizeTextarea } from "../../../shared/components/AutoResizeTextarea";
@@ -124,6 +125,15 @@ export function AddUserModal({ isOpen, onClose, onCreated }: AddUserModalProps) 
                 : "Create a customer for Print Requests. This does not create Firebase Auth, Studio access, or Portal login."}
             </p>
           </div>
+
+          <button
+            aria-label="Close add user"
+            className="icon-button icon-button-md icon-button-ghost"
+            onClick={onClose}
+            type="button"
+          >
+            <X aria-hidden="true" size={18} strokeWidth={2.2} />
+          </button>
         </ModalHeader>
 
         <ModalBody>

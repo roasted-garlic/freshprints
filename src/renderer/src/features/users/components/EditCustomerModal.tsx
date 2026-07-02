@@ -1,3 +1,4 @@
+import { X } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 
 import { AutoResizeTextarea } from "../../../shared/components/AutoResizeTextarea";
@@ -83,6 +84,15 @@ export function EditCustomerModal({
             <h2 id="edit-customer-title">Edit customer</h2>
             <p>Update customer details for Print Requests. This does not create a Studio login or Portal account.</p>
           </div>
+
+          <button
+            aria-label="Close edit customer"
+            className="icon-button icon-button-md icon-button-ghost"
+            onClick={onClose}
+            type="button"
+          >
+            <X aria-hidden="true" size={18} strokeWidth={2.2} />
+          </button>
         </ModalHeader>
 
         <ModalBody>

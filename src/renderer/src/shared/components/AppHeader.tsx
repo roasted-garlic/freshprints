@@ -34,6 +34,7 @@ export function AppHeader() {
       <div className="app-header-actions">
         {search ? (
           <GlobalSearchField
+            clearable
             onChange={search.onChange}
             placeholder={search.placeholder ?? "Search..."}
             value={search.value}

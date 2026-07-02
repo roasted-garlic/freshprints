@@ -1,3 +1,4 @@
+import { X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
 import { ArchivedToolbarButton, BackToolbarButton } from "../../../shared/components/ArchivedToolbarButton";
@@ -448,6 +449,15 @@ export function TagManagementModal({ isOpen, onClose, onUpdated }: TagManagement
                   : "View approved design tags. Tag changes require owner or admin access."}
               </p>
             </div>
+
+            <button
+              aria-label="Close tags"
+              className="icon-button icon-button-md icon-button-ghost"
+              onClick={onClose}
+              type="button"
+            >
+              <X aria-hidden="true" size={18} strokeWidth={2.2} />
+            </button>
           </ModalHeader>
 
           <ModalBody id={TAG_MANAGEMENT_LIST_BODY_ID}>
@@ -477,6 +487,18 @@ export function TagManagementModal({ isOpen, onClose, onUpdated }: TagManagement
               name="tagManagementSearch"
               onChange={(event) => setSearchQuery(event.target.value)}
               placeholder="Search by name, alias, or guidance..."
+              trailingControl={
+                searchQuery ? (
+                  <button
+                    aria-label="Clear tag search"
+                    className="form-input-clear-button"
+                    onClick={() => setSearchQuery("")}
+                    type="button"
+                  >
+                    <X aria-hidden="true" size={16} strokeWidth={2.2} />
+                  </button>
+                ) : null
+              }
               value={searchQuery}
             />
 
@@ -525,9 +547,7 @@ export function TagManagementModal({ isOpen, onClose, onUpdated }: TagManagement
                       <div className="category-management-item-copy">
                         <div className="category-management-item-header">
                           <h3>{tag.name}</h3>
-                          <Badge variant={tag.status === "approved" ? "success" : "default"}>
-                            {tag.status === "approved" ? "Approved" : "Archived"}
-                          </Badge>
+                          {tag.status !== "approved" ? <Badge variant="default">Archived</Badge> : null}
                         </div>
                         <div className="category-management-text-block">
                           <span className="category-management-field-label">Preferred when</span>
@@ -608,6 +628,15 @@ export function TagManagementModal({ isOpen, onClose, onUpdated }: TagManagement
               <h2 id="tag-management-title">Bulk import tags</h2>
               <p>Paste a JSON array of objects with name, aliases, and preferredWhen only.</p>
             </div>
+
+            <button
+              aria-label="Close tags"
+              className="icon-button icon-button-md icon-button-ghost"
+              onClick={onClose}
+              type="button"
+            >
+              <X aria-hidden="true" size={18} strokeWidth={2.2} />
+            </button>
           </ModalHeader>
 
           <ModalBody>
@@ -716,6 +745,15 @@ export function TagManagementModal({ isOpen, onClose, onUpdated }: TagManagement
               <h2 id="tag-management-title">{formTitle}</h2>
               <p>Tags are global approved metadata. They do not belong to categories.</p>
             </div>
+
+            <button
+              aria-label="Close tags"
+              className="icon-button icon-button-md icon-button-ghost"
+              onClick={onClose}
+              type="button"
+            >
+              <X aria-hidden="true" size={18} strokeWidth={2.2} />
+            </button>
           </ModalHeader>
 
           <ModalBody>

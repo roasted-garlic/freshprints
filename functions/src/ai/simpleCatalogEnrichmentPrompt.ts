@@ -1,6 +1,8 @@
 import {
   AI_ENRICHMENT_APPROVED_CATEGORIES_PLACEHOLDER,
+  AI_ENRICHMENT_APPROVED_CATEGORY_NAMES_PLACEHOLDER,
   AI_ENRICHMENT_APPROVED_TAGS_PLACEHOLDER,
+  AI_ENRICHMENT_APPROVED_TAG_NAMES_PLACEHOLDER,
   AI_ENRICHMENT_EXCLUDED_TAGS_PLACEHOLDER,
   DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
 } from "../../../shared/constants/aiEnrichment.constants";
@@ -53,6 +55,22 @@ function formatCategoryContext(
     .join("\n");
 }
 
+function formatCategoryNamesOnly(
+  categories: readonly AiEnrichmentCategoryOption[] | undefined,
+  fallbackNames: readonly string[],
+): string {
+  const names =
+    categories && categories.length > 0
+      ? categories.map((category) => category.name)
+      : fallbackNames;
+
+  if (names.length === 0) {
+    return "(none)";
+  }
+
+  return names.map((name) => `- ${collapsePromptWhitespace(name)}`).join("\n");
+}
+
 function formatTagContext(
   approvedTags: readonly CatalogTag[] | undefined,
   fallbackNames: readonly string[],
@@ -97,6 +115,22 @@ function formatTagContext(
     .join("\n");
 }
 
+function formatTagNamesOnly(
+  approvedTags: readonly CatalogTag[] | undefined,
+  fallbackNames: readonly string[],
+): string {
+  const names =
+    approvedTags && approvedTags.length > 0
+      ? approvedTags.filter((tag) => tag.status === "approved").map((tag) => tag.name)
+      : fallbackNames;
+
+  if (names.length === 0) {
+    return "(none)";
+  }
+
+  return names.map((name) => `- ${collapsePromptWhitespace(name)}`).join("\n");
+}
+
 function formatExclusionList(values: readonly string[]): string {
   return values.length > 0 ? values.join(", ") : "(none)";
 }
@@ -112,14 +146,20 @@ export function buildSimpleCatalogEnrichmentUserPrompt(input: {
   const { approvedCategoryNames, approvedTagNames, approvedCategories, approvedTags, effectiveTagExclusions } = input;
   const promptTemplate = input.promptTemplate ?? DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE;
   const approvedCategoryContext = formatCategoryContext(approvedCategories, approvedCategoryNames);
+  const approvedCategoryNamesOnly = formatCategoryNamesOnly(approvedCategories, approvedCategoryNames);
   const approvedTagContext = formatTagContext(approvedTags, approvedTagNames);
+  const approvedTagNamesOnly = formatTagNamesOnly(approvedTags, approvedTagNames);
   const excludedTags = formatExclusionList(effectiveTagExclusions);
   const template = promptTemplate.trim() || DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE;
   return template
     .split(AI_ENRICHMENT_APPROVED_CATEGORIES_PLACEHOLDER)
     .join(approvedCategoryContext)
+    .split(AI_ENRICHMENT_APPROVED_CATEGORY_NAMES_PLACEHOLDER)
+    .join(approvedCategoryNamesOnly)
     .split(AI_ENRICHMENT_APPROVED_TAGS_PLACEHOLDER)
     .join(approvedTagContext)
+    .split(AI_ENRICHMENT_APPROVED_TAG_NAMES_PLACEHOLDER)
+    .join(approvedTagNamesOnly)
     .split(AI_ENRICHMENT_EXCLUDED_TAGS_PLACEHOLDER)
     .join(excludedTags);
 }

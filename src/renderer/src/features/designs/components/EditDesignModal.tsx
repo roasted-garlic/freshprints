@@ -1,3 +1,4 @@
+import { X } from "lucide-react";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 
 import { Button } from "../../../shared/components/Button";
@@ -88,6 +89,15 @@ export function EditDesignModal({
             <h2 id="edit-design-title">Edit design</h2>
             <p>Update catalog metadata for {design.title}.</p>
           </div>
+
+          <button
+            aria-label="Close edit design"
+            className="icon-button icon-button-md icon-button-ghost"
+            onClick={onClose}
+            type="button"
+          >
+            <X aria-hidden="true" size={18} strokeWidth={2.2} />
+          </button>
         </ModalHeader>
 
         <ModalBody>

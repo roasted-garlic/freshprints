@@ -1,3 +1,4 @@
+import { X } from "lucide-react";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 
 import { Button } from "../../../shared/components/Button";
@@ -121,6 +122,15 @@ export function EditUserModal({
               <h2 id="edit-user-title">Edit user</h2>
               <p>Update account role and status. Changes sync to Firebase Authentication.</p>
             </div>
+
+            <button
+              aria-label="Close edit user"
+              className="icon-button icon-button-md icon-button-ghost"
+              onClick={onClose}
+              type="button"
+            >
+              <X aria-hidden="true" size={18} strokeWidth={2.2} />
+            </button>
           </ModalHeader>
 
           <ModalBody>

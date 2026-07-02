@@ -1,4 +1,4 @@
-import { GripVertical } from "lucide-react";
+import { GripVertical, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type FormEvent } from "react";
 
 import { ArchivedToolbarButton, BackToolbarButton } from "../../../shared/components/ArchivedToolbarButton";
@@ -574,6 +574,15 @@ export function CategoryManagementModal({
                     : "View available categories. Category changes require owner or admin access."}
                 </p>
               </div>
+
+              <button
+                aria-label="Close categories"
+                className="icon-button icon-button-md icon-button-ghost"
+                onClick={onClose}
+                type="button"
+              >
+                <X aria-hidden="true" size={18} strokeWidth={2.2} />
+              </button>
             </ModalHeader>
 
             <ModalBody id={CATEGORY_MANAGEMENT_LIST_BODY_ID}>
@@ -673,9 +682,7 @@ export function CategoryManagementModal({
                               </span>
                             ) : null}
                             <h3>{category.name}</h3>
-                            <Badge variant={category.isActive ? "success" : "default"}>
-                              {category.isActive ? "Active" : "Archived"}
-                            </Badge>
+                            {!category.isActive ? <Badge variant="default">Archived</Badge> : null}
                           </div>
                           <div className="category-management-field-row">
                             <span className="category-management-order-chip">
@@ -770,6 +777,15 @@ export function CategoryManagementModal({
                 <h2 id="category-management-title">Bulk import categories</h2>
                 <p>Paste a JSON array of objects with `name` and `description` only.</p>
               </div>
+
+              <button
+                aria-label="Close categories"
+                className="icon-button icon-button-md icon-button-ghost"
+                onClick={onClose}
+                type="button"
+              >
+                <X aria-hidden="true" size={18} strokeWidth={2.2} />
+              </button>
             </ModalHeader>
 
             <ModalBody>
@@ -860,6 +876,15 @@ export function CategoryManagementModal({
                   <p>Changes apply to the category record. Designs linked by category ID will show the updated name.</p>
                 ) : null}
               </div>
+
+              <button
+                aria-label="Close categories"
+                className="icon-button icon-button-md icon-button-ghost"
+                onClick={onClose}
+                type="button"
+              >
+                <X aria-hidden="true" size={18} strokeWidth={2.2} />
+              </button>
             </ModalHeader>
 
             <ModalBody>

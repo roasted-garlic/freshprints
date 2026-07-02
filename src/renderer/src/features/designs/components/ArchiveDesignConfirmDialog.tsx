@@ -1,3 +1,5 @@
+import { X } from "lucide-react";
+
 import { Button } from "../../../shared/components/Button";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "../../../shared/components/Modal";
 import type { Design } from "../types/design.types";
@@ -31,6 +33,16 @@ export function ArchiveDesignConfirmDialog({
             <p className="eyebrow">Confirm archive</p>
             <h2 id="archive-design-title">Archive {design.title}?</h2>
           </div>
+
+          <button
+            aria-label="Close"
+            className="icon-button icon-button-md icon-button-ghost"
+            disabled={isSubmitting}
+            onClick={onCancel}
+            type="button"
+          >
+            <X aria-hidden="true" size={18} strokeWidth={2.2} />
+          </button>
         </ModalHeader>
         <ModalBody>
           <p>

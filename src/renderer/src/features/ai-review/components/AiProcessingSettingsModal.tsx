@@ -1,3 +1,4 @@
+import { X } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { Button } from "../../../shared/components/Button";
@@ -38,7 +39,17 @@ export function AiProcessingSettingsModal({
   return (
     <div aria-modal="true" className="modal-overlay modal-overlay-blur" role="dialog">
       <div className="ai-processing-settings-modal">
-        <h2 className="ai-processing-settings-modal-title">AI processing settings</h2>
+        <div className="ai-processing-settings-modal-header">
+          <h2 className="ai-processing-settings-modal-title">AI processing settings</h2>
+          <button
+            aria-label="Close AI processing settings"
+            className="icon-button icon-button-md icon-button-ghost"
+            onClick={onCancel}
+            type="button"
+          >
+            <X aria-hidden="true" size={18} strokeWidth={2.2} />
+          </button>
+        </div>
 
         <div className="ai-processing-settings-modal-body">
           <Select

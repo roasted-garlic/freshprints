@@ -944,6 +944,13 @@
   max-width: 28rem;
 }
 
+.ai-review-unsaved-dialog-header {
+  align-items: flex-start;
+  display: flex;
+  gap: var(--space-4);
+  justify-content: space-between;
+}
+
 .ai-review-unsaved-dialog-copy {
   color: var(--color-text-secondary);
   margin: 0 0 var(--space-4);
@@ -1026,6 +1033,13 @@
   overflow-y: auto;
   padding: var(--space-6);
   width: min(100%, 34rem);
+}
+
+.ai-processing-settings-modal-header {
+  align-items: flex-start;
+  display: flex;
+  gap: var(--space-4);
+  justify-content: space-between;
 }
 
 .ai-processing-settings-modal-title {

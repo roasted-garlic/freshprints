@@ -13,7 +13,9 @@ import { useAuth } from "../../auth/hooks/useAuth";
 import { permissionService } from "../../permissions/services/permissionService";
 import {
   AI_ENRICHMENT_APPROVED_CATEGORIES_PLACEHOLDER,
+  AI_ENRICHMENT_APPROVED_CATEGORY_NAMES_PLACEHOLDER,
   AI_ENRICHMENT_APPROVED_TAGS_PLACEHOLDER,
+  AI_ENRICHMENT_APPROVED_TAG_NAMES_PLACEHOLDER,
   AI_ENRICHMENT_PROMPT_TEMPLATE_MAX_LENGTH,
   BASE_AI_TAG_EXCLUSIONS,
   ALL_VISION_MODEL_OPTIONS,
@@ -172,8 +174,16 @@ export function SettingsPage() {
     insertPromptPlaceholder("Approved categories", AI_ENRICHMENT_APPROVED_CATEGORIES_PLACEHOLDER);
   }
 
+  function handleInsertApprovedCategoryNamesPlaceholder() {
+    insertPromptPlaceholder("Approved category names", AI_ENRICHMENT_APPROVED_CATEGORY_NAMES_PLACEHOLDER);
+  }
+
   function handleInsertApprovedTagsPlaceholder() {
     insertPromptPlaceholder("Approved tags", AI_ENRICHMENT_APPROVED_TAGS_PLACEHOLDER);
+  }
+
+  function handleInsertApprovedTagNamesPlaceholder() {
+    insertPromptPlaceholder("Approved tag names", AI_ENRICHMENT_APPROVED_TAG_NAMES_PLACEHOLDER);
   }
 
   async function handleSaveSettings() {
@@ -469,6 +479,18 @@ export function SettingsPage() {
                               <button
                                 className="settings-playground-prompt-menu-option"
                                 disabled={playground.prompt.includes(
+                                  AI_ENRICHMENT_APPROVED_CATEGORY_NAMES_PLACEHOLDER,
+                                )}
+                                onClick={handleInsertApprovedCategoryNamesPlaceholder}
+                                role="menuitem"
+                                type="button"
+                              >
+                                <Sparkles aria-hidden="true" size={14} strokeWidth={2.1} />
+                                <span>Use category names</span>
+                              </button>
+                              <button
+                                className="settings-playground-prompt-menu-option"
+                                disabled={playground.prompt.includes(
                                   AI_ENRICHMENT_APPROVED_TAGS_PLACEHOLDER,
                                 )}
                                 onClick={handleInsertApprovedTagsPlaceholder}
@@ -477,6 +499,18 @@ export function SettingsPage() {
                               >
                                 <Sparkles aria-hidden="true" size={14} strokeWidth={2.1} />
                                 <span>Use tags</span>
+                              </button>
+                              <button
+                                className="settings-playground-prompt-menu-option"
+                                disabled={playground.prompt.includes(
+                                  AI_ENRICHMENT_APPROVED_TAG_NAMES_PLACEHOLDER,
+                                )}
+                                onClick={handleInsertApprovedTagNamesPlaceholder}
+                                role="menuitem"
+                                type="button"
+                              >
+                                <Sparkles aria-hidden="true" size={14} strokeWidth={2.1} />
+                                <span>Use tag names</span>
                               </button>
                             </div>
                           ) : null}
