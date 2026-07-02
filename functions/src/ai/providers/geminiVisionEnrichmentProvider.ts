@@ -1,7 +1,11 @@
 import type { AiEnrichmentInput, AiEnrichmentProvider, AiEnrichmentResult } from "./AiEnrichmentProvider";
 
 import { CATALOG_ENRICHMENT_PROMPT_VERSION } from "../catalogTitleRules";
-import { VISION_MAX_COMPLETION_TOKENS } from "../aiEnrichmentConfig";
+import {
+  VISION_MAX_COMPLETION_TOKENS,
+  VISION_REQUEST_BASE_DELAY_MS,
+  VISION_REQUEST_MAX_RETRIES,
+} from "../aiEnrichmentConfig";
 import {
   buildSimpleCatalogEnrichmentSystemPrompt,
   buildSimpleCatalogEnrichmentUserPrompt,
@@ -86,7 +90,7 @@ async function postVisionCompletion(
         systemPrompt,
       ),
     },
-    { maxRetries: 2, baseDelayMs: 2000, modelId: visionModelId },
+    { maxRetries: VISION_REQUEST_MAX_RETRIES, baseDelayMs: VISION_REQUEST_BASE_DELAY_MS, modelId: visionModelId },
   );
 
   return (await response.json()) as VisionChatCompletionPayload;

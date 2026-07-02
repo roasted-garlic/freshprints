@@ -51,6 +51,16 @@ export const VISION_MAX_COMPLETION_TOKENS = 2500;
 /** One-shot retry cap when the model exhausts the primary token budget (finish_reason: length). */
 export const VISION_MAX_COMPLETION_TOKENS_RETRY = 4000;
 
+/**
+ * Retry budget for transient vision request failures (429/5xx, incl. Gemini 503 overload).
+ * 3 retries with exponential backoff (2s/4s/8s = 14s of sleep, plus 4 total fetch attempts) stays
+ * well within the 180s enqueueAiEnrichment function timeout while giving genuine upstream overload
+ * more room to clear before surfacing a failure to staff — observed 503s recovered on the very next
+ * manual retry, just slowly, suggesting 2 retries was cutting it close.
+ */
+export const VISION_REQUEST_MAX_RETRIES = 3;
+export const VISION_REQUEST_BASE_DELAY_MS = 2000;
+
 /** Max single-word tags retained from the simplified playground-style enrichment response. */
 export const SIMPLE_ENRICHMENT_MAX_TAGS = 8;
 

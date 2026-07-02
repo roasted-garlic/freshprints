@@ -1,4 +1,4 @@
-import { useId } from "react";
+import { useId, useRef } from "react";
 
 import { Search, X } from "lucide-react";
 
@@ -16,7 +16,16 @@ export function GlobalSearchField({
   value,
 }: GlobalSearchFieldProps) {
   const inputId = useId();
+  const inputRef = useRef<HTMLInputElement | null>(null);
   const showClearButton = clearable && value.length > 0;
+
+  function handleClearSearch() {
+    onChange("");
+
+    window.requestAnimationFrame(() => {
+      inputRef.current?.focus();
+    });
+  }
 
   return (
     <div
@@ -33,6 +42,7 @@ export function GlobalSearchField({
         id={inputId}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
+        ref={inputRef}
         type="search"
         value={value}
       />
@@ -40,7 +50,7 @@ export function GlobalSearchField({
         <button
           aria-label="Clear search"
           className="global-search-clear-button"
-          onClick={() => onChange("")}
+          onClick={handleClearSearch}
           type="button"
         >
           <X aria-hidden="true" size={14} strokeWidth={2.25} />

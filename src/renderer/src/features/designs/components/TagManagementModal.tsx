@@ -119,6 +119,7 @@ export function TagManagementModal({ isOpen, onClose, onUpdated }: TagManagement
     () => new Set(),
   );
   const wasOpenRef = useRef(false);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
   const bulkImportTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const bulkImportSummaryRef = useRef<HTMLDivElement | null>(null);
   const shouldScrollListToTopRef = useRef(false);
@@ -325,6 +326,14 @@ export function TagManagementModal({ isOpen, onClose, onUpdated }: TagManagement
     });
   }
 
+  function handleClearTagSearch() {
+    setSearchQuery("");
+
+    window.requestAnimationFrame(() => {
+      searchInputRef.current?.focus();
+    });
+  }
+
   async function handleBulkImport() {
     clearActionError();
     setBulkImportError(null);
@@ -487,12 +496,13 @@ export function TagManagementModal({ isOpen, onClose, onUpdated }: TagManagement
               name="tagManagementSearch"
               onChange={(event) => setSearchQuery(event.target.value)}
               placeholder="Search by name, alias, or guidance..."
+              ref={searchInputRef}
               trailingControl={
                 searchQuery ? (
                   <button
                     aria-label="Clear tag search"
                     className="form-input-clear-button"
-                    onClick={() => setSearchQuery("")}
+                    onClick={handleClearTagSearch}
                     type="button"
                   >
                     <X aria-hidden="true" size={16} strokeWidth={2.2} />

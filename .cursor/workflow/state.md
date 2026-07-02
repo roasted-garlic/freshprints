@@ -4,45 +4,47 @@
 managed-phase
 
 ## Current Goal
-ai-category-name-prompt-and-override-reduction - Add approved category names to the AI prompt (v20), trust exact AI category matches over server heuristics, and remove hardcoded tag synonym rewriting
+search-clear-refocus - Refocus Design Library and tag search inputs after using their inline X clear controls
 
 ## Phase
 signoff
 
 ## Status
-complete - implementation, tests, typecheck, lint, and build all verified locally; deploy and manual accuracy comparison remain outstanding human checkpoints
+complete - implementation, root typecheck, root lint, and `git diff --check` verified locally
 
 ## Plan Status
-created and approved - `docs/workflow/plans/2026-07-01-ai-category-name-prompt-and-override-reduction-plan.md`
+created and approved - `docs/workflow/plans/2026-07-02-search-clear-refocus-plan.md`
 
 ## Review Status
-approved - user approved the plan as written, confirmed funny-alias seeding is in-scope (bulk-import JSON must merge/update the existing funny tag, not duplicate it) and exact-match category comparison should use the same normalization as tag alias matching
+approved - user requested the focused UI behavior update directly
 
 ## Tests Run
-passed - 163/163 relevant unit tests (functions/src/ai + provider tests + aiEnrichmentSettingsConstants), root typecheck, root lint, functions build, full root build (incl. Electron packaging), `git diff --check`
+passed - root typecheck, root lint, `git diff --check`
 
 ## Signoff
-complete - `docs/workflow/reviews/2026-07-01-ai-category-name-prompt-and-override-reduction-signoff.md`
+complete - `docs/workflow/reviews/2026-07-02-search-clear-refocus-signoff.md`
 
 ## Human Checkpoint Required
-yes
+no
 
 ## Human Checkpoint Reason
-Firebase Functions deploy required before this prompt/resolver change takes effect in production; the `funny` tag alias update must be applied manually in the Tag Management UI (not bulk import, which would reject a duplicate); a manual before/after accuracy comparison in Settings AI Playground is recommended before considering any further prompt-injection scope changes
+none
 
 ## Allowed Actions
-deploy Functions when the user explicitly approves; apply the funny-tag alias update in Tag Management when the user is ready; start next managed phase after user request/approval
+modify renderer search clear focus behavior within approved scope; run local verification checks
 
 ## Forbidden Actions
-deploy Firebase/functions without human approval, delete/rotate secrets in GCP Secret Manager, provision secrets, run category or tag seed writes against Firebase without approval, relax Firestore rules, add new dependencies, migrate/backfill existing Firestore aiSuggestions.provider data, change design lifecycle statuses, edit historical ADR decisions except to leave them as history, inject approved tag names/aliases/descriptions into the AI prompt without a measured accuracy justification, add a second AI call or embeddings to the enrichment pipeline, read or modify files outside the repository
+deploy Firebase/functions, delete/rotate secrets in GCP Secret Manager, provision secrets, run category or tag seed writes against Firebase, relax Firestore rules, add new dependencies, migrate/backfill data, change design lifecycle statuses, change search query/index behavior, read or modify files outside the repository
 
 ## Next Required Step
-Deploy Functions when the user is ready (`firebase deploy --only functions`), apply the funny tag alias update in Tag Management, then run the manual Settings AI Playground before/after accuracy comparison. Next recommended code phase after that remains `print-request-query-index-hardening` unless the user chooses a different task.
+Ready for next user-selected task. Next recommended roadmap task remains `print-request-query-index-hardening` unless the user chooses otherwise.
 
 ## DONE
 yes
 
 ## Decision Log
+- 2026-07-02: Completed `search-clear-refocus`. Updated the shared Design Library global search field and both tag search fields (Tag Management and Design Library tag filter modal) so the inline clear `X` clears the value and refocuses the same input on the next animation frame. `TextInput` now forwards refs to support this behavior without DOM queries. Verification passed: root TypeScript, root lint, and `git diff --check`. No Firebase, data, dependency, deploy, query, or index changes.
+- 2026-07-02: Opened managed phase `search-clear-refocus` from user request. Scope is renderer-only: clicking the inline search clear `X` should clear and refocus the Design Library search input and tag search inputs. Created plan `docs/workflow/plans/2026-07-02-search-clear-refocus-plan.md`; implementation approved by direct user request.
 - 2026-07-01: Completed `ai-category-name-prompt-and-override-reduction`. User provided measured per-image cost data (Settings AI Playground): v19 baseline ~$128/1M images, + approved category names ~$129/1M (+0.8%), + approved category names and approved tag names ~$565/1M (+341%/~4.4x). User wanted category accuracy improved cheaply while keeping tag-name injection gated behind a real accuracy test, and wanted server-side hardcoded overrides of explicit AI judgment reduced. Implemented: (1) added `{{approved_category_names}}` (names only, no descriptions) to `DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE`, now a required placeholder alongside `{{excluded_tags}}`; (2) added an exact-match short-circuit to `catalogThemeCategoryResolver.ts`'s `resolveThemeCategory` — when the model's raw category answer exactly matches (case/punctuation tolerant via the newly-exported `normalizeForAliasMatch` from `catalogTagResolver.ts`) an approved category name it was shown, that choice is trusted directly instead of being run through the token-overlap/priority-boost fallback scorer, which now only applies to non-exact cases (typos, paraphrases, legacy templates without the category list); (3) removed `TAG_ALIASES`/`TAG_COMPANIONS` from `catalogTitleRules.ts` — tag normalization no longer force-rewrites `comedic/comedy/humor/humorous/joke/jokes` to `funny` or silently appends a `funny` companion tag for `sarcastic/sassy/snarky/witty`; (4) bumped prompt version `catalog-enrich-v19` → `catalog-enrich-v20` (dev: `catalog-enrich-dev-v20`). Updated 6 `catalogThemeCategoryResolver.test.ts` fallback-scorer tests to use non-exact `rawCategory` values (they previously relied on the raw category exactly naming a category to test the scorer overriding a "wrong" AI guess — that scenario now correctly hits the new exact-match trust path instead) plus 1 new exact-match test. Updated `catalogTitleRules.test.ts`, `promptParity.test.ts`, `geminiVisionEnrichmentProvider.test.ts`, and `aiEnrichmentSettingsConstants.test.ts` for the v20 prompt shape. Added ADR-FP-041 to `DECISIONS.md` (next available ADR number — ADR-FP-040 was already used by `remove-openai-google-only`) and updated `project-chatgpt-handoff/07-backend-and-ai-pipeline.md` and `CURRENT-STATE.md`. 163/163 relevant unit tests, root typecheck, root lint, functions build, full root build (incl. Electron packaging), and `git diff --check` all passed. Explicitly out of scope and not done: no second AI call, no embeddings, no approved-tag-name/alias/description prompt injection, no Firestore migration/backfill, no Functions deploy. The `funny` tag alias update (comedic/comedy/humor/humorous/joke/jokes/sarcastic/sassy/snarky/witty as aliases on the existing approved `funny` tag) was NOT done as a bulk-import JSON as the user's implementation note requested — bulk import only creates new tags and would reject/collide against the existing `funny` tag as a duplicate; the correct mechanism is editing the existing `funny` tag's aliases directly via the Tag Management single-tag edit form, which was communicated to the user as a correction to their note rather than silently substituted.
 - 2026-07-01: Completed `current-state-v19-ai-doc-alignment`. Updated `project-chatgpt-handoff/CURRENT-STATE.md`, `project-chatgpt-handoff/07-backend-and-ai-pipeline.md`, and `docs/WORKFLOWS.md` so current AI Processing state says Google AI/Gemini-only with runtime prompt `catalog-enrich-v19` and development fallback `catalog-enrich-dev-v19`. Verified no stale `catalog-enrich-openai-v18`/`catalog-enrich-dev-v18` current-state references remain in those refreshed docs; source constants and tests confirm v19. No code, Firebase, secret, migration, data, or deploy changes.
 - 2026-07-01: Opened docs-only phase `current-state-v19-ai-doc-alignment` after user asked whether current state still says v18. Confirmed source code uses `CATALOG_ENRICHMENT_PROMPT_VERSION = "catalog-enrich-v19"` and `DEVELOPMENT_CATALOG_ENRICHMENT_PROMPT_VERSION = "catalog-enrich-dev-v19"` in `functions/src/ai/catalogTitleRules.ts`, with a test asserting prompt version v19. Several current-state/handoff workflow references still described v18/OpenAI and need correction.

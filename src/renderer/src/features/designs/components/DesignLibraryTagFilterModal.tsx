@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { X } from "lucide-react";
 
 import { Button } from "../../../shared/components/Button";
@@ -30,6 +30,7 @@ export function DesignLibraryTagFilterModal({
 }: DesignLibraryTagFilterModalProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [draftSelectedTags, setDraftSelectedTags] = useState<string[]>(selectedTags);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (!isOpen) {
@@ -86,6 +87,10 @@ export function DesignLibraryTagFilterModal({
 
   const handleClearSearch = () => {
     setSearchQuery("");
+
+    window.requestAnimationFrame(() => {
+      searchInputRef.current?.focus();
+    });
   };
 
   if (!isOpen) {
@@ -131,6 +136,7 @@ export function DesignLibraryTagFilterModal({
           name="tagFilterSearch"
           onChange={(event) => setSearchQuery(event.target.value)}
           placeholder="Search tags..."
+          ref={searchInputRef}
           trailingControl={
             searchQuery ? (
               <button
