@@ -940,22 +940,6 @@
   max-width: 24rem;
 }
 
-.ai-review-unsaved-dialog {
-  max-width: 28rem;
-}
-
-.ai-review-unsaved-dialog-header {
-  align-items: flex-start;
-  display: flex;
-  gap: var(--space-4);
-  justify-content: space-between;
-}
-
-.ai-review-unsaved-dialog-copy {
-  color: var(--color-text-secondary);
-  margin: 0 0 var(--space-4);
-}
-
 @media (max-width: 1100px) {
   .ai-review-page {
     gap: var(--space-4);

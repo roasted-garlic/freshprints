@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
+import { ConfirmLeaveDialog } from "../../../shared/components/ConfirmLeaveDialog";
 import type { SelectOption } from "../../../shared/components/Select";
 import { useShellHeaderConfig } from "../../../shared/hooks/useShellHeaderConfig";
 import { useCategories } from "../../designs/hooks/useCategories";
@@ -16,7 +17,6 @@ import { AiReviewErrorBoundary } from "../components/AiReviewErrorBoundary";
 import { AiReviewQueueList } from "../components/AiReviewQueueList";
 import { AiReviewQueueStats } from "../components/AiReviewQueueStats";
 import { AiReviewQueryErrorPanel } from "../components/AiReviewQueryErrorPanel";
-import { AiReviewUnsavedDialog } from "../components/AiReviewUnsavedDialog";
 import { AiReviewWorkspace } from "../components/AiReviewWorkspace";
 import { useAiReviewInbox } from "../hooks/useAiReviewInbox";
 import { useAiReviewKeyboardShortcuts } from "../hooks/useAiReviewKeyboardShortcuts";
@@ -211,13 +211,13 @@ function AiReviewPageContent() {
         </main>
       </div>
 
-      <AiReviewUnsavedDialog
+      <ConfirmLeaveDialog
         isOpen={Boolean(inbox.pendingSelection)}
         onCancel={inbox.cancelPendingSelection}
         onConfirm={inbox.confirmDiscardPendingSelection}
       />
 
-      <AiReviewUnsavedDialog
+      <ConfirmLeaveDialog
         confirmLabel="Send to Processing"
         copy="Sending this design back to Processing will clear current AI suggestions and reset unsaved review edits."
         isOpen={inbox.pendingRerun}

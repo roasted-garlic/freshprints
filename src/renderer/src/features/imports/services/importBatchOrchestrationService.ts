@@ -135,7 +135,7 @@ function buildBatchSummary(files: BatchImportUploadFileResult[]) {
 
 export const importBatchOrchestrationService = {
   async runBatchUpload(input: RunBatchImportUploadInput): Promise<BatchImportUploadReport> {
-    const { caller, discovery, excludedFilePaths, onProgress } = input;
+    const { caller, discovery, excludedFilePaths, onProgress, cancelToken } = input;
     const excludedPaths = excludedFilePaths ?? new Set<string>();
     const startedAt = new Date().toISOString();
 
@@ -189,6 +189,13 @@ export const importBatchOrchestrationService = {
             };
           }
 
+          if (cancelToken?.isCancelled) {
+            return {
+              index,
+              result: buildSkippedResult(entry, "Batch import was canceled before this file's upload started."),
+            };
+          }
+
           emitUploadProgress(onProgress, {
             phase: "uploading",
             currentFileName: entry.displayName,
@@ -201,6 +208,7 @@ export const importBatchOrchestrationService = {
 
           const outcome = await importValidatedPngFile(caller, validation, {
             jobId: discovery.jobId,
+            cancelToken,
           });
 
           const result = mapImportOutcomeToBatchFileResult(entry, outcome);

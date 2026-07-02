@@ -1,8 +1,9 @@
 import { FirebaseError } from "firebase/app";
-import { deleteObject, ref, uploadBytes } from "firebase/storage";
+import { deleteObject, ref, uploadBytesResumable } from "firebase/storage";
 
 import { storage } from "../../../config/firebase";
 import { getOriginalStoragePath } from "../../designs/constants/designStoragePaths";
+import type { UploadCancelToken } from "../utils/uploadCancelToken";
 
 const PNG_CONTENT_TYPE = "image/png";
 
@@ -51,16 +52,25 @@ function getStorageDeleteErrorMessage(error: unknown): string {
 }
 
 export const importUploadService = {
-  async uploadOriginalPng(designId: string, bytes: Uint8Array) {
+  async uploadOriginalPng(designId: string, bytes: Uint8Array, cancelToken?: UploadCancelToken) {
     const originalPath = getOriginalStoragePath(designId);
     const storageRef = ref(storage, toFirebaseStorageRefPath(originalPath));
 
+    if (cancelToken?.isCancelled) {
+      throw new Error("The upload was canceled.");
+    }
+
+    const uploadTask = uploadBytesResumable(storageRef, bytes, {
+      contentType: PNG_CONTENT_TYPE,
+    });
+    const unregister = cancelToken?.registerTask({ cancel: () => uploadTask.cancel() });
+
     try {
-      await uploadBytes(storageRef, bytes, {
-        contentType: PNG_CONTENT_TYPE,
-      });
+      await uploadTask;
     } catch (error) {
       throw new Error(getStorageUploadErrorMessage(error));
+    } finally {
+      unregister?.();
     }
 
     return {

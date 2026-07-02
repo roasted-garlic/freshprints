@@ -14,4 +14,28 @@ export const desktopAppService = {
 
     return result.data;
   },
+
+  async setUploadActive(active: boolean): Promise<void> {
+    if (!isElectronDesktop()) {
+      return;
+    }
+
+    await window.freshPrints.app.setUploadActive(active);
+  },
+
+  async confirmClose(): Promise<void> {
+    if (!isElectronDesktop()) {
+      return;
+    }
+
+    await window.freshPrints.app.confirmClose();
+  },
+
+  onConfirmCloseRequested(callback: () => void): () => void {
+    if (!isElectronDesktop()) {
+      return () => undefined;
+    }
+
+    return window.freshPrints.app.onConfirmCloseRequested(callback);
+  },
 };

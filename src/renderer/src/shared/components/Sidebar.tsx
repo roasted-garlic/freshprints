@@ -13,13 +13,14 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import type { LucideIcon } from "lucide-react";
 
 import { useAuth } from "../../features/auth/hooks/useAuth";
 import { permissionService } from "../../features/permissions/services/permissionService";
 import type { PermissionKey } from "../../features/permissions/types/permission.types";
 import { useSidebarDrawer } from "../hooks/useSidebarDrawer";
+import { useUploadActivity } from "../hooks/useUploadActivity";
 import { desktopAppService } from "../services/desktopAppService";
 import { isElectronDesktop } from "../utils/isElectronDesktop";
 import { AppLogo } from "./AppLogo";
@@ -103,11 +104,13 @@ function getStoredSidebarCollapsed(): boolean {
 export function Sidebar() {
   const { isAuthActionLoading, logout, user } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const sidebarRef = useRef<HTMLElement>(null);
   const [isIndicatorVisible, setIsIndicatorVisible] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(() => getStoredSidebarCollapsed());
   const [isOpeningDevTools, setIsOpeningDevTools] = useState(false);
   const { isOpen: isDrawerOpen, close: closeDrawer } = useSidebarDrawer();
+  const { isUploadActive, requestLeaveConfirmation } = useUploadActivity();
 
   const handleOpenDevTools = useCallback(async () => {
     setIsOpeningDevTools(true);
@@ -213,6 +216,28 @@ export function Sidebar() {
     [location.pathname, location.search],
   );
 
+  const handleNavLinkClick = useCallback(
+    (event: React.MouseEvent<HTMLAnchorElement>, to: string) => {
+      // Imports are only active while the user is on the Imports page, so the guard fires when an
+      // import session is active and the click would navigate somewhere else. Re-clicking the
+      // current route is a no-op and needs no confirmation.
+      if (!isUploadActive || to === location.pathname) {
+        return;
+      }
+
+      // Block navigation immediately (not just visually) — the confirm dialog is rendered by
+      // `UploadActivityProvider` at the app-shell level, above this click handler resolving.
+      event.preventDefault();
+
+      void requestLeaveConfirmation().then((confirmed) => {
+        if (confirmed) {
+          navigate(to);
+        }
+      });
+    },
+    [isUploadActive, location.pathname, navigate, requestLeaveConfirmation],
+  );
+
   const displayName = user?.displayName ?? "Fresh Prints user";
 
   const asideClassName = [
@@ -289,6 +314,7 @@ export function Sidebar() {
                     isActive ? "sidebar-link sidebar-link-active" : "sidebar-link"
                   }
                   end={item.end}
+                  onClick={(event) => handleNavLinkClick(event, resolveSidebarItemTo(item))}
                   title={isCollapsed ? item.label : undefined}
                   to={resolveSidebarItemTo(item)}
                 >

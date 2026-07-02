@@ -82,4 +82,5 @@ export interface RunBatchImportUploadInput {
   discovery: BatchDiscoveryCompleteEvent;
   excludedFilePaths?: ReadonlySet<string>;
   onProgress?: (progress: BatchImportUploadProgress) => void;
+  cancelToken?: import("../utils/uploadCancelToken").UploadCancelToken;
 }

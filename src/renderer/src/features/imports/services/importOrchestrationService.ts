@@ -18,6 +18,7 @@ import { importDerivativeService } from "./importDerivativeService";
 import { importDesktopService } from "./importDesktopService";
 import { ImportOrchestrationError } from "./importOrchestrationError";
 import { importUploadService } from "./importUploadService";
+import type { UploadCancelToken } from "../utils/uploadCancelToken";
 import { logPipelineEvent } from "../../../shared/utils/pipelineLog";
 
 export interface SinglePngUploadOutcome {
@@ -29,6 +30,7 @@ export interface SinglePngUploadOutcome {
 
 export interface ImportValidatedPngFileOptions {
   jobId?: string;
+  cancelToken?: UploadCancelToken;
 }
 
 export interface ImportValidatedPngFileSuccess {
@@ -128,6 +130,13 @@ export async function importValidatedPngFile(
     };
   }
 
+  if (options?.cancelToken?.isCancelled) {
+    return {
+      status: "failed",
+      message: "The upload was canceled.",
+    };
+  }
+
   const designId = designService.generateDesignId();
 
   const readResult = options?.jobId
@@ -147,7 +156,11 @@ export async function importValidatedPngFile(
   let uploadResult;
 
   try {
-    uploadResult = await importUploadService.uploadOriginalPng(designId, readResult.data.bytes);
+    uploadResult = await importUploadService.uploadOriginalPng(
+      designId,
+      readResult.data.bytes,
+      options?.cancelToken,
+    );
   } catch (error) {
     return {
       status: "failed",
@@ -268,8 +281,9 @@ export const importOrchestrationService = {
   async uploadValidatedPng(
     caller: User,
     validationResult: ValidateSelectedPngFileResult,
+    cancelToken?: UploadCancelToken,
   ): Promise<SinglePngUploadOutcome> {
-    const outcome = await importValidatedPngFile(caller, validationResult);
+    const outcome = await importValidatedPngFile(caller, validationResult, { cancelToken });
 
     if (outcome.status === "failed") {
       throw new ImportOrchestrationError(outcome.message, outcome.cleanupWarning ?? null);

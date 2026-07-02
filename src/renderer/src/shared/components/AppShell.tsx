@@ -3,6 +3,7 @@ import { useLocation } from "react-router-dom";
 
 import { SidebarDrawerContext } from "../context/sidebarDrawerContext";
 import { ShellHeaderProvider } from "../context/ShellHeaderProvider";
+import { UploadActivityProvider } from "../context/UploadActivityProvider";
 import { AppHeader } from "./AppHeader";
 import { Sidebar } from "./Sidebar";
 
@@ -54,8 +55,10 @@ function AppShellContent({ children }: AppShellProps) {
 
 export function AppShell({ children }: AppShellProps) {
   return (
-    <ShellHeaderProvider>
-      <AppShellContent>{children}</AppShellContent>
-    </ShellHeaderProvider>
+    <UploadActivityProvider>
+      <ShellHeaderProvider>
+        <AppShellContent>{children}</AppShellContent>
+      </ShellHeaderProvider>
+    </UploadActivityProvider>
   );
 }

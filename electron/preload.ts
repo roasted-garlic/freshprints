@@ -1,6 +1,10 @@
 import { contextBridge, ipcRenderer } from "electron";
 
-import { APP_IPC_CHANNELS, isAllowedAppIpcChannel } from "./ipc/app/appIpcChannels";
+import {
+  APP_CONFIRM_CLOSE_REQUESTED,
+  APP_IPC_CHANNELS,
+  isAllowedAppIpcChannel,
+} from "./ipc/app/appIpcChannels";
 import {
   DEV_IMPORT_IPC_CHANNELS,
   IMPORT_IPC_CHANNELS,
@@ -9,7 +13,11 @@ import {
   isAllowedImportIpcChannel,
   isAllowedImportIpcEventChannel,
 } from "./ipc/import/importIpcChannels";
-import type { OpenDevToolsResult } from "../shared/types/app/appIpc.types";
+import type {
+  ConfirmCloseResult,
+  OpenDevToolsResult,
+  SetUploadActiveResult,
+} from "../shared/types/app/appIpc.types";
 import type {
   BatchDiscoveryCompleteEvent,
   BatchJobErrorEvent,
@@ -37,6 +45,7 @@ import type { DerivativeGenerationVerificationResult } from "../shared/types/imp
 
 function invokeAppChannel<T>(
   channel: (typeof APP_IPC_CHANNELS)[keyof typeof APP_IPC_CHANNELS],
+  payload?: unknown,
 ): Promise<ImportIpcResult<T>> {
   if (!isAllowedAppIpcChannel(channel)) {
     return Promise.resolve({
@@ -48,7 +57,7 @@ function invokeAppChannel<T>(
     });
   }
 
-  return ipcRenderer.invoke(channel) as Promise<ImportIpcResult<T>>;
+  return ipcRenderer.invoke(channel, payload) as Promise<ImportIpcResult<T>>;
 }
 
 function invokeImportChannel<T>(
@@ -107,6 +116,23 @@ contextBridge.exposeInMainWorld("freshPrints", {
   app: {
     openDevTools(): Promise<ImportIpcResult<OpenDevToolsResult>> {
       return invokeAppChannel<OpenDevToolsResult>(APP_IPC_CHANNELS.OPEN_DEV_TOOLS);
+    },
+
+    setUploadActive(active: boolean): Promise<ImportIpcResult<SetUploadActiveResult>> {
+      return invokeAppChannel<SetUploadActiveResult>(APP_IPC_CHANNELS.SET_UPLOAD_ACTIVE, active);
+    },
+
+    confirmClose(): Promise<ImportIpcResult<ConfirmCloseResult>> {
+      return invokeAppChannel<ConfirmCloseResult>(APP_IPC_CHANNELS.CONFIRM_CLOSE);
+    },
+
+    onConfirmCloseRequested(callback: () => void): () => void {
+      const listener = () => callback();
+      ipcRenderer.on(APP_CONFIRM_CLOSE_REQUESTED, listener);
+
+      return () => {
+        ipcRenderer.removeListener(APP_CONFIRM_CLOSE_REQUESTED, listener);
+      };
     },
   },
 

@@ -70,3 +70,26 @@
 .modal-overlay-blur {
   backdrop-filter: blur(8px);
 }
+
+.confirm-leave-dialog {
+  max-width: 28rem;
+}
+
+.confirm-leave-dialog-header {
+  align-items: flex-start;
+  display: flex;
+  gap: var(--space-4);
+  justify-content: space-between;
+}
+
+.confirm-leave-dialog-copy {
+  color: var(--color-text-secondary);
+  margin: 0 0 var(--space-4);
+}
+
+/* The bare `modal-actions` class has no shared rule, so space the dialog's buttons here. */
+.confirm-leave-dialog .modal-actions {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: flex-end;
+}

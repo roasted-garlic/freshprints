@@ -6,9 +6,11 @@ import type {
 } from "../../../../../../shared/types/import/batchImport.types";
 
 import { useAuth } from "../../auth/hooks/useAuth";
+import { useUploadActivity } from "../../../shared/hooks/useUploadActivity";
 import { importBatchOrchestrationService } from "../services/importBatchOrchestrationService";
 import { importDesktopService } from "../services/importDesktopService";
 import type { UseBatchImportReturn, UseBatchImportState } from "../types/batchImportHook.types";
+import { UploadCancelToken } from "../utils/uploadCancelToken";
 import {
   buildTruncatedDiscoveryWarning,
   buildUploadWarning,
@@ -30,6 +32,23 @@ const initialState: UseBatchImportState = {
   excludedFilePaths: [],
 };
 
+/**
+ * A batch session is "active" (holds a main-process session that must be cleaned up before
+ * leaving) for the same phases `ImportsPage.tsx`'s `isBatchImportBlockingSingleImport` already
+ * treats as blocking — from the moment file selection starts through upload, not just during the
+ * upload phase itself. Selecting/discovering/ready-to-upload all hold an open main-process batch
+ * session (`electron/ipc/import/importBatchSession.ts`) that must be released via
+ * `cancelBatchJob`/`finishBatchJob` before another batch or single import can start.
+ */
+function isBatchSessionActive(phase: UseBatchImportState["phase"]): boolean {
+  return (
+    phase === "selecting" ||
+    phase === "discovering" ||
+    phase === "ready-to-upload" ||
+    phase === "uploading"
+  );
+}
+
 async function finishBatchJobSafely(jobId: string): Promise<void> {
   const result = await importDesktopService.finishBatchJob({ jobId });
 
@@ -41,9 +60,12 @@ async function finishBatchJobSafely(jobId: string): Promise<void> {
 export function useBatchImport(): UseBatchImportReturn {
   const { user } = useAuth();
   const [state, setState] = useState<UseBatchImportState>(initialState);
+  const { setUploadActive, registerCancelHandler } = useUploadActivity();
 
   const activeJobIdRef = useRef<string | null>(null);
   const operationIdRef = useRef(0);
+  const uploadCancelTokenRef = useRef<UploadCancelToken | null>(null);
+  const uploadBatchPromiseRef = useRef<Promise<void> | null>(null);
 
   const isCurrentOperation = useCallback((operationId: number) => {
     return operationIdRef.current === operationId;
@@ -255,6 +277,8 @@ export function useBatchImport(): UseBatchImportReturn {
     }
 
     const operationId = beginOperation();
+    const cancelToken = new UploadCancelToken();
+    uploadCancelTokenRef.current = cancelToken;
 
     setState((current) => ({
       ...current,
@@ -264,66 +288,76 @@ export function useBatchImport(): UseBatchImportReturn {
       uploadReport: null,
     }));
 
-    try {
-      const report = await importBatchOrchestrationService.runBatchUpload({
-        caller: user,
-        discovery: discoveryResult,
-        excludedFilePaths: new Set(state.excludedFilePaths),
-        onProgress: (progress) => {
-          if (!isCurrentOperation(operationId)) {
-            return;
-          }
-
-          setState((current) => ({
-            ...current,
-            progress: mapUploadProgressToHookProgress(progress),
-          }));
-        },
-      });
-
-      if (!isCurrentOperation(operationId)) {
-        return;
-      }
-
-      activeJobIdRef.current = null;
-
-      setState((current) => ({
-        ...current,
-        phase: "completed",
-        isBusy: false,
-        uploadReport: report,
-        warning: buildUploadWarning(report),
-        progress: current.progress
-          ? {
-              ...current.progress,
-              phase: "complete",
-              completedCount: report.summary.totalFiles,
-              totalCount: report.summary.totalFiles,
-              successCount: report.summary.successfulImports,
-              failureCount: report.summary.failedImports,
+    const runUploadAndCleanup = async (): Promise<void> => {
+      try {
+        const report = await importBatchOrchestrationService.runBatchUpload({
+          caller: user,
+          discovery: discoveryResult,
+          excludedFilePaths: new Set(state.excludedFilePaths),
+          cancelToken,
+          onProgress: (progress) => {
+            if (!isCurrentOperation(operationId)) {
+              return;
             }
-          : null,
-      }));
-    } catch (error) {
-      if (!isCurrentOperation(operationId)) {
-        return;
+
+            setState((current) => ({
+              ...current,
+              progress: mapUploadProgressToHookProgress(progress),
+            }));
+          },
+        });
+
+        if (!isCurrentOperation(operationId)) {
+          return;
+        }
+
+        activeJobIdRef.current = null;
+
+        setState((current) => ({
+          ...current,
+          phase: "completed",
+          isBusy: false,
+          uploadReport: report,
+          warning: buildUploadWarning(report),
+          progress: current.progress
+            ? {
+                ...current.progress,
+                phase: "complete",
+                completedCount: report.summary.totalFiles,
+                totalCount: report.summary.totalFiles,
+                successCount: report.summary.successfulImports,
+                failureCount: report.summary.failedImports,
+              }
+            : null,
+        }));
+      } catch (error) {
+        if (!isCurrentOperation(operationId)) {
+          return;
+        }
+
+        await finishBatchJobSafely(discoveryResult.jobId);
+        activeJobIdRef.current = null;
+
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Unable to complete the batch upload. Please try again.";
+
+        setState((current) => ({
+          ...current,
+          phase: "error",
+          isBusy: false,
+          error: message,
+        }));
+      } finally {
+        uploadCancelTokenRef.current = null;
+        uploadBatchPromiseRef.current = null;
       }
+    };
 
-      await finishBatchJobSafely(discoveryResult.jobId);
-      activeJobIdRef.current = null;
-
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Unable to complete the batch upload. Please try again.";
-
-      setState((current) => ({
-        ...current,
-        phase: "error",
-        isBusy: false,
-        error: message,
-      }));
-    }
+    const uploadPromise = runUploadAndCleanup();
+    uploadBatchPromiseRef.current = uploadPromise;
+    await uploadPromise;
   }, [
     beginOperation,
     isCurrentOperation,
@@ -386,10 +420,15 @@ export function useBatchImport(): UseBatchImportReturn {
     const jobId = activeJobIdRef.current ?? state.jobId;
 
     if (state.phase === "uploading") {
-      setState((current) => ({
-        ...current,
-        warning: "Upload cancellation is not available while files are uploading.",
-      }));
+      // Cancel the in-flight file's upload and stop any not-yet-started queued files from
+      // beginning, then wait for `uploadBatch`'s own try/finally to fully settle (including its
+      // `finishBatchJob` call) before resetting UI state — this makes cancelling mid-upload behave
+      // identically to cancelling at any other phase instead of leaving the main-process batch
+      // session active.
+      uploadCancelTokenRef.current?.cancel();
+      await uploadBatchPromiseRef.current;
+      activeJobIdRef.current = null;
+      setState(initialState);
       return;
     }
 
@@ -410,6 +449,24 @@ export function useBatchImport(): UseBatchImportReturn {
     activeJobIdRef.current = null;
     setState(initialState);
   }, [beginOperation, state.jobId, state.phase]);
+
+  // A main-process batch session is held open from the moment file selection starts (not just
+  // during upload) — see `isBatchSessionActive`. Registering `cancelImport` itself (rather than a
+  // narrower upload-only handler) means leaving the app mid-selection/discovery/ready-to-upload
+  // via the Sidebar nav guard or the Electron close guard runs the exact same cleanup path as
+  // clicking "Cancel Upload" would at that phase, so the session is never orphaned.
+  useEffect(() => {
+    const isActive = isBatchSessionActive(state.phase);
+    setUploadActive(isActive);
+    registerCancelHandler(isActive ? cancelImport : null);
+
+    return () => {
+      // If the page unmounts anyway (e.g. programmatic navigation outside the guard), never leave
+      // a stale "upload active" flag or a cancel handler pointing at an unmounted hook behind.
+      setUploadActive(false);
+      registerCancelHandler(null);
+    };
+  }, [state.phase, setUploadActive, registerCancelHandler, cancelImport]);
 
   const excludedFilePathSet = new Set(state.excludedFilePaths);
   const includedValidatedCount =

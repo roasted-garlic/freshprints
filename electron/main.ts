@@ -5,7 +5,9 @@ import path from 'node:path'
 
 import { suppressDevToolsAutofillConsoleNoise } from './dev/suppressDevToolsAutofillConsoleNoise'
 import { registerAppIpcHandlers } from './ipc/app/appIpcHandlers'
+import { APP_CONFIRM_CLOSE_REQUESTED } from './ipc/app/appIpcChannels'
 import { attachDevToolsWindowPersistence } from './ipc/app/devToolsWindowState'
+import { consumeCloseConfirmation, getUploadActive } from './ipc/app/uploadActivityState'
 import { registerImportIpcHandlers } from './ipc/import/importIpcHandlers'
 import { attachTextInputContextMenu } from './services/app/textInputContextMenu'
 import { runDevDerivativeGenerationVerification } from './services/import/verifyDerivativeGenerationInMainProcess'
@@ -175,7 +177,22 @@ function createWindow() {
 
   win.on('resize', () => scheduleWindowStateSave(win as BrowserWindow))
   win.on('move', () => scheduleWindowStateSave(win as BrowserWindow))
-  win.on('close', () => saveWindowState(win as BrowserWindow))
+  win.on('close', (event) => {
+    // Window bounds persistence must keep firing on every close attempt regardless of whether the
+    // close is later blocked/confirmed by the upload guard below.
+    saveWindowState(win as BrowserWindow)
+
+    if (consumeCloseConfirmation()) {
+      return
+    }
+
+    if (!getUploadActive()) {
+      return
+    }
+
+    event.preventDefault()
+    win?.webContents.send(APP_CONFIRM_CLOSE_REQUESTED)
+  })
 
   if (!app.isPackaged) {
     attachDevToolsWindowPersistence(win.webContents)

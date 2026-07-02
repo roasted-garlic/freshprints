@@ -149,7 +149,6 @@ export function ImportsPage() {
       {showCancelSingleImport ? (
         <div className="imports-actions-row">
           <Button
-            disabled={isUploading}
             onClick={() => {
               void cancelSingleImport();
             }}
