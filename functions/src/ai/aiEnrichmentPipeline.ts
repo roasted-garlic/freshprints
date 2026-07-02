@@ -4,7 +4,7 @@ import type { DesignAiAnalysis, DesignAiSuggestions } from "../../../shared/type
 import { adminDb, adminStorage } from "../lib/admin";
 import { updateAiProcessingStage } from "./designAiFields";
 import { logPipelineEvent } from "../lib/pipelineLog";
-import { resolveOpenAiErrorCode } from "./openAiRetry";
+import { resolveVisionErrorCode } from "./visionRequestRetry";
 import { prepareAiAnalysisImage } from "./prepareAiAnalysisImage";
 import {
   loadCachedActiveCategories,
@@ -13,6 +13,7 @@ import {
 } from "./aiEnrichmentRuntimeCache";
 import { PipelinePhaseTimer } from "./pipelineTiming";
 import { descriptionLacksVisibleTextOverlap, isPlaceholderCatalogDescription, resolveCatalogDescription } from "./catalogTitleRules";
+import { SIMPLE_ENRICHMENT_MAX_TAGS } from "./aiEnrichmentConfig";
 import { resolveAiCatalogTags } from "./catalogTagResolver";
 import { resolveThemeCategory } from "./catalogThemeCategoryResolver";
 import { resolveAiEnrichmentProvider } from "./providers/resolveAiEnrichmentProvider";
@@ -23,7 +24,6 @@ interface DesignRecord {
   previewPath?: string;
   thumbnailPath?: string;
   aiRequestedVisionModelId?: string;
-  aiRequestedReasoningEffort?: string;
   aiProcessingStage?: string;
   aiReviewStatus?: string;
   status?: string;
@@ -42,7 +42,7 @@ async function markAiFailure(
   providerId = resolveAiEnrichmentProvider().providerId,
 ): Promise<void> {
   const errorMessage = error instanceof Error ? error.message : "AI processing failed.";
-  const errorCode = resolveOpenAiErrorCode(error);
+  const errorCode = resolveVisionErrorCode(error);
   const suggestions: DesignAiSuggestions = {
     errorCode,
     errorMessage,
@@ -101,7 +101,6 @@ async function markAiSuccess(
 
 export async function runAiEnrichmentPipeline(
   designId: string,
-  openAiApiKey?: string,
   geminiApiKey?: string,
 ): Promise<void> {
   const designSnapshot = await adminDb.collection("designs").doc(designId).get();
@@ -131,14 +130,10 @@ export async function runAiEnrichmentPipeline(
   const phaseTimer = new PipelinePhaseTimer();
   const enrichmentSettings = await loadCachedAiEnrichmentSettings();
   const requestedVisionModelId = data.aiRequestedVisionModelId?.trim();
-  const requestedReasoningEffort = data.aiRequestedReasoningEffort?.trim();
   const provider = resolveAiEnrichmentProvider(
-    openAiApiKey,
     geminiApiKey,
     enrichmentSettings.visionModelId,
-    enrichmentSettings.reasoningEffort,
     requestedVisionModelId,
-    requestedReasoningEffort,
   );
 
   phaseTimer.logPhase("pipeline.started", {
@@ -146,9 +141,7 @@ export async function runAiEnrichmentPipeline(
     providerId: provider.providerId,
     modelId: provider.modelId,
     configuredVisionModelId: enrichmentSettings.visionModelId,
-    configuredReasoningEffort: enrichmentSettings.reasoningEffort,
     requestedVisionModelId: requestedVisionModelId || null,
-    requestedReasoningEffort: requestedReasoningEffort || null,
     additionalTagExclusionsCount: enrichmentSettings.additionalTagExclusions.length,
   });
 
@@ -198,6 +191,7 @@ export async function runAiEnrichmentPipeline(
     const resolvedTags = resolveAiCatalogTags({
       approvedTags,
       candidates: result.analysis.rawTags ?? suggestions.tags,
+      maxApprovedTags: SIMPLE_ENRICHMENT_MAX_TAGS,
       suggestedNewTags: suggestions.suggestedNewTags,
     });
     suggestions.tags = resolvedTags.tags;

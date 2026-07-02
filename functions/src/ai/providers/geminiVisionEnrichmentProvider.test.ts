@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import type { CatalogTag } from "../../../../shared/types/catalogTag.types";
-import { buildVisionRequestBody } from "./openAiVisionEnrichmentProvider";
+import { buildVisionRequestBody } from "./geminiVisionEnrichmentProvider";
 import { buildSimpleCatalogEnrichmentUserPrompt } from "../simpleCatalogEnrichmentPrompt";
 import { DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE } from "../../../../shared/constants/aiEnrichment.constants";
 
@@ -52,17 +52,13 @@ describe("buildVisionRequestBody", () => {
     });
   }
 
-  function parseBody(supportsReasoningEffort = true) {
+  function parseBody() {
     const body = buildVisionRequestBody(
-      "gpt-5.4-nano-2026-03-17",
+      "gemini-2.5-flash-lite",
       buildUserPrompt(),
       "ZmFrZS1pbWFnZS1ieXRlcw==",
       "image/webp",
-      {
-        maxCompletionTokens: 2500,
-        reasoningEffort: "medium",
-        supportsReasoningEffort,
-      },
+      2500,
       "System prompt",
     );
 
@@ -103,13 +99,8 @@ describe("buildVisionRequestBody", () => {
     assert.equal(parsed.response_format, undefined);
   });
 
-  it("includes reasoning_effort when supportsReasoningEffort is true", () => {
-    const parsed = parseBody(true);
-    assert.equal(parsed.reasoning_effort, "medium");
-  });
-
-  it("omits reasoning_effort when supportsReasoningEffort is false (Gemini)", () => {
-    const parsed = parseBody(false);
+  it("never includes reasoning_effort (Gemini does not support it)", () => {
+    const parsed = parseBody();
     assert.equal(parsed.reasoning_effort, undefined);
   });
 

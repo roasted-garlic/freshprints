@@ -4,7 +4,6 @@ import {
   AI_ENRICHMENT_PLAYGROUND_IMAGE_CONTENT_TYPES,
   AI_ENRICHMENT_PLAYGROUND_MAX_IMAGE_BYTES,
   AI_ENRICHMENT_PLAYGROUND_MAX_PROMPT_LENGTH,
-  DEFAULT_OPENAI_REASONING_EFFORT,
   DEFAULT_VISION_MODEL_ID,
   type AllowedVisionModelId,
 } from "../../../../../../shared/constants/aiEnrichment.constants";
@@ -12,10 +11,7 @@ import type {
   AiEnrichmentPlaygroundRequest,
   AiEnrichmentPlaygroundResponse,
 } from "../../../../../../shared/types/ai/aiEnrichmentPlayground.types";
-import {
-  resolveClientReasoningEffort,
-  resolveClientVisionModelId,
-} from "../constants/aiEnrichmentSettingsConstants";
+import { resolveClientVisionModelId } from "../constants/aiEnrichmentSettingsConstants";
 import { aiEnrichmentPlaygroundService } from "../services/aiEnrichmentPlaygroundService";
 
 function formatFileSize(bytes: number): string {
@@ -70,12 +66,10 @@ export interface UseAiEnrichmentPlaygroundResult {
   imageSizeLabel: string | null;
   isRunning: boolean;
   prompt: string;
-  reasoningEffort: string;
   result: AiEnrichmentPlaygroundResponse | null;
   resetPlayground: () => void;
   runPlayground: () => Promise<void>;
   setPrompt: (value: string) => void;
-  setReasoningEffort: (value: string) => void;
   setSelectedImage: (file: File | null) => void;
   setVisionModelId: (value: string) => void;
   visionModelId: AllowedVisionModelId;
@@ -83,7 +77,6 @@ export interface UseAiEnrichmentPlaygroundResult {
 
 export function useAiEnrichmentPlayground(): UseAiEnrichmentPlaygroundResult {
   const [visionModelId, setVisionModelIdState] = useState<AllowedVisionModelId>(DEFAULT_VISION_MODEL_ID);
-  const [reasoningEffort, setReasoningEffortState] = useState(DEFAULT_OPENAI_REASONING_EFFORT);
   const [prompt, setPromptState] = useState("");
   const [selectedImage, setSelectedImageState] = useState<File | null>(null);
   const [result, setResult] = useState<AiEnrichmentPlaygroundResponse | null>(null);
@@ -113,10 +106,6 @@ export function useAiEnrichmentPlayground(): UseAiEnrichmentPlaygroundResult {
 
   const setVisionModelId = useCallback((value: string) => {
     setVisionModelIdState(resolveClientVisionModelId(value));
-  }, []);
-
-  const setReasoningEffort = useCallback((value: string) => {
-    setReasoningEffortState(resolveClientReasoningEffort(value));
   }, []);
 
   const setPrompt = useCallback((value: string) => {
@@ -183,10 +172,6 @@ export function useAiEnrichmentPlayground(): UseAiEnrichmentPlaygroundResult {
         imageContentType:
           selectedImage.type as AiEnrichmentPlaygroundRequest["imageContentType"],
         prompt: trimmedPrompt,
-        reasoningEffort:
-          resolveClientReasoningEffort(
-            reasoningEffort,
-          ) as AiEnrichmentPlaygroundRequest["reasoningEffort"],
         visionModelId:
           resolveClientVisionModelId(
             visionModelId,
@@ -203,7 +188,7 @@ export function useAiEnrichmentPlayground(): UseAiEnrichmentPlaygroundResult {
     } finally {
       setIsRunning(false);
     }
-  }, [prompt, reasoningEffort, selectedImage, visionModelId]);
+  }, [prompt, selectedImage, visionModelId]);
 
   return {
     acceptedImageTypes,
@@ -213,12 +198,10 @@ export function useAiEnrichmentPlayground(): UseAiEnrichmentPlaygroundResult {
     imageSizeLabel,
     isRunning,
     prompt,
-    reasoningEffort,
     result,
     resetPlayground,
     runPlayground,
     setPrompt,
-    setReasoningEffort,
     setSelectedImage,
     setVisionModelId,
     visionModelId,

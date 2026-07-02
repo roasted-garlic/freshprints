@@ -1,13 +1,3 @@
-export const OPENAI_VISION_MODEL_IDS = [
-  "gpt-5.4-nano-2026-03-17",
-  "gpt-5.4-mini-2026-03-17",
-] as const;
-
-export type OpenAiVisionModelId = (typeof OPENAI_VISION_MODEL_IDS)[number];
-
-export const DEFAULT_OPENAI_VISION_MODEL_ID: OpenAiVisionModelId =
-  "gpt-5.4-nano-2026-03-17";
-
 export const GEMINI_VISION_MODEL_IDS = [
   "gemini-2.5-flash-lite",
   "gemini-3.1-flash-lite",
@@ -15,28 +5,11 @@ export const GEMINI_VISION_MODEL_IDS = [
 
 export type GeminiVisionModelId = (typeof GEMINI_VISION_MODEL_IDS)[number];
 
-export const ALLOWED_VISION_MODEL_IDS = [
-  ...OPENAI_VISION_MODEL_IDS,
-  ...GEMINI_VISION_MODEL_IDS,
-] as const;
+export const ALLOWED_VISION_MODEL_IDS = [...GEMINI_VISION_MODEL_IDS] as const;
 
 export type AllowedVisionModelId = (typeof ALLOWED_VISION_MODEL_IDS)[number];
 
 export const DEFAULT_VISION_MODEL_ID: AllowedVisionModelId = "gemini-2.5-flash-lite";
-
-export const OPENAI_REASONING_EFFORT_VALUES = [
-  "none",
-  "minimal",
-  "low",
-  "medium",
-  "high",
-] as const;
-
-export type OpenAiReasoningEffort = (typeof OPENAI_REASONING_EFFORT_VALUES)[number];
-
-export const DEFAULT_OPENAI_REASONING_EFFORT: OpenAiReasoningEffort = "medium";
-
-export const OPENAI_REASONING_EFFORT_FALLBACK: OpenAiReasoningEffort = "low";
 
 export const AI_ENRICHMENT_PLAYGROUND_VERSION = "ai-playground-v1";
 
@@ -79,8 +52,6 @@ export function hasRequiredAiEnrichmentPromptPlaceholders(value: string): boolea
 export const VISION_MODEL_PRICING_USD_PER_1M: Record<string, { input: number; output: number }> = {
   "gemini-2.5-flash-lite": { input: 0.10, output: 0.40 },
   "gemini-3.1-flash-lite": { input: 0.25, output: 1.50 },
-  "gpt-5.4-nano-2026-03-17": { input: 1.10, output: 4.40 },
-  "gpt-5.4-mini-2026-03-17": { input: 1.10, output: 4.40 },
 };
 
 export function estimateVisionCostUsd(

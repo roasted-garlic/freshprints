@@ -1,4 +1,4 @@
-import { Check, Copy, Paperclip, Sparkles, X } from "lucide-react";
+import { Check, ChevronDown, Copy, Paperclip, Sparkles, X } from "lucide-react";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 
 import { AI_ENRICHMENT_PLAYGROUND_MAX_PROMPT_LENGTH } from "../../../../../../shared/constants/aiEnrichment.constants";
@@ -12,13 +12,12 @@ import { useShellHeaderConfig } from "../../../shared/hooks/useShellHeaderConfig
 import { useAuth } from "../../auth/hooks/useAuth";
 import { permissionService } from "../../permissions/services/permissionService";
 import {
+  AI_ENRICHMENT_APPROVED_CATEGORIES_PLACEHOLDER,
+  AI_ENRICHMENT_APPROVED_TAGS_PLACEHOLDER,
   AI_ENRICHMENT_PROMPT_TEMPLATE_MAX_LENGTH,
   BASE_AI_TAG_EXCLUSIONS,
   ALL_VISION_MODEL_OPTIONS,
-  OPENAI_REASONING_EFFORT_OPTIONS,
   hasRequiredAiEnrichmentPromptPlaceholders,
-  isGeminiModelId,
-  resolveClientReasoningEffort,
   resolveClientVisionModelId,
 } from "../constants/aiEnrichmentSettingsConstants";
 import { useAiEnrichmentPlayground } from "../hooks/useAiEnrichmentPlayground";
@@ -39,7 +38,6 @@ export function SettingsPage() {
     isLoading,
     isSaving,
     promptTemplate,
-    reasoningEffort,
     saveError,
     saveSettings,
     visionModelId,
@@ -48,9 +46,11 @@ export function SettingsPage() {
   const { resetPlayground } = playground;
   const playgroundImageInputId = useId();
   const playgroundPromptId = useId();
+  const playgroundPromptMenuId = useId();
   const playgroundTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const playgroundPromptMenuRef = useRef<HTMLDivElement>(null);
+  const [isPromptMenuOpen, setIsPromptMenuOpen] = useState(false);
   const [draftVisionModelId, setDraftVisionModelId] = useState<string | null>(null);
-  const [draftReasoningEffort, setDraftReasoningEffort] = useState<string | null>(null);
   const [draftPromptTemplate, setDraftPromptTemplate] = useState<string | null>(null);
   const [draftAdditionalTagExclusions, setDraftAdditionalTagExclusions] = useState<string[] | null>(
     null,
@@ -66,13 +66,11 @@ export function SettingsPage() {
   );
 
   const selectedVisionModelId = draftVisionModelId ?? visionModelId;
-  const selectedReasoningEffort = draftReasoningEffort ?? reasoningEffort;
   const selectedPromptTemplate = draftPromptTemplate ?? promptTemplate;
   const selectedAdditionalTagExclusions = draftAdditionalTagExclusions ?? additionalTagExclusions;
   const additionalTagExclusionsInput = formatAdditionalTagExclusionsInput(selectedAdditionalTagExclusions);
   const hasUnsavedChanges =
     (draftVisionModelId !== null && draftVisionModelId !== visionModelId) ||
-    (draftReasoningEffort !== null && draftReasoningEffort !== reasoningEffort) ||
     (draftPromptTemplate !== null && draftPromptTemplate !== promptTemplate) ||
     (draftAdditionalTagExclusions !== null &&
       formatAdditionalTagExclusionsInput(draftAdditionalTagExclusions) !==
@@ -128,15 +126,63 @@ export function SettingsPage() {
     }
   }, [isPlaygroundModalOpen]);
 
+  useEffect(() => {
+    if (!isPromptMenuOpen) {
+      return;
+    }
+
+    function handlePointerDown(event: MouseEvent) {
+      if (!playgroundPromptMenuRef.current?.contains(event.target as Node)) {
+        setIsPromptMenuOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => document.removeEventListener("mousedown", handlePointerDown);
+  }, [isPromptMenuOpen]);
+
+  function focusPlaygroundTextarea() {
+    requestAnimationFrame(() => {
+      playgroundTextareaRef.current?.focus({ preventScroll: true });
+      playgroundTextareaRef.current?.scrollIntoView({ block: "nearest" });
+    });
+  }
+
+  function handleUseProcessingPrompt() {
+    playground.setPrompt(selectedPromptTemplate);
+    setHasInjectedProcessingPrompt(true);
+    setIsPromptMenuOpen(false);
+    focusPlaygroundTextarea();
+  }
+
+  function insertPromptPlaceholder(label: string, placeholder: string) {
+    setIsPromptMenuOpen(false);
+
+    if (playground.prompt.includes(placeholder)) {
+      return;
+    }
+
+    const separator = playground.prompt.trim() ? "\n\n" : "";
+    playground.setPrompt(`${playground.prompt}${separator}${label}:\n${placeholder}`);
+
+    focusPlaygroundTextarea();
+  }
+
+  function handleInsertApprovedCategoriesPlaceholder() {
+    insertPromptPlaceholder("Approved categories", AI_ENRICHMENT_APPROVED_CATEGORIES_PLACEHOLDER);
+  }
+
+  function handleInsertApprovedTagsPlaceholder() {
+    insertPromptPlaceholder("Approved tags", AI_ENRICHMENT_APPROVED_TAGS_PLACEHOLDER);
+  }
+
   async function handleSaveSettings() {
     await saveSettings({
-      reasoningEffort: resolveClientReasoningEffort(selectedReasoningEffort),
       visionModelId: resolveClientVisionModelId(selectedVisionModelId),
       promptTemplate: selectedPromptTemplate,
       additionalTagExclusions: parseAdditionalTagExclusionsInput(additionalTagExclusionsInput),
     });
     setDraftVisionModelId(null);
-    setDraftReasoningEffort(null);
     setDraftPromptTemplate(null);
     setDraftAdditionalTagExclusions(null);
     setIsPromptTemplateEditorOpen(false);
@@ -186,7 +232,7 @@ export function SettingsPage() {
             AI Enrichment
           </h2>
           <p className="settings-section-description">
-            Choose the OpenAI vision model and team tag exclusions used for catalog title,
+            Choose the Google AI vision model and team tag exclusions used for catalog title,
             description, category, tags, and OCR. Applies on the next AI processing run.
           </p>
         </header>
@@ -211,37 +257,6 @@ export function SettingsPage() {
               {ALL_VISION_MODEL_OPTIONS.find((option) => option.value === selectedVisionModelId)
                 ?.hint ?? selectedVisionModelId}
             </p>
-
-            {!isGeminiModelId(selectedVisionModelId) ? (
-              <>
-                <Select
-                  disabled={!canManageSettings || isSaving}
-                  label="Reasoning effort"
-                  name="reasoningEffort"
-                  onChange={(event) => setDraftReasoningEffort(event.target.value)}
-                  options={OPENAI_REASONING_EFFORT_OPTIONS.map((option) => ({
-                    label: option.label,
-                    value: option.value,
-                  }))}
-                  value={selectedReasoningEffort}
-                />
-
-                <p className="settings-field-hint">
-                  {OPENAI_REASONING_EFFORT_OPTIONS.find(
-                    (option) => option.value === selectedReasoningEffort,
-                  )?.hint ?? selectedReasoningEffort}
-                </p>
-              </>
-            ) : (
-              <div className="form-field">
-                <label>Reasoning effort</label>
-                <div className="form-input-shell form-select-shell">
-                  <button className="form-select-trigger" disabled type="button">
-                    <span className="form-select-value">Not applicable for Gemini models</span>
-                  </button>
-                </div>
-              </div>
-            )}
 
             {isOwner ? (
               <div className="settings-prompt-template-block settings-prompt-template-danger">
@@ -401,54 +416,71 @@ export function SettingsPage() {
                       }))}
                       value={playground.visionModelId}
                     />
-
-                    {!isGeminiModelId(playground.visionModelId) ? (
-                      <Select
-                        disabled={playground.isRunning}
-                        label="Playground reasoning effort"
-                        name="playgroundReasoningEffort"
-                        onChange={(event) => playground.setReasoningEffort(event.target.value)}
-                        options={OPENAI_REASONING_EFFORT_OPTIONS.map((option) => ({
-                          label: option.label,
-                          value: option.value,
-                        }))}
-                        value={playground.reasoningEffort}
-                      />
-                    ) : (
-                      <div className="form-field">
-                        <label>Playground reasoning effort</label>
-                        <div className="form-input-shell form-select-shell">
-                          <button className="form-select-trigger" disabled type="button">
-                            <span className="form-select-value">Not applicable for Gemini models</span>
-                          </button>
-                        </div>
-                      </div>
-                    )}
                   </div>
 
                   <div className="settings-playground-composer">
                     <div className="settings-playground-prompt-field">
                       <div className="settings-playground-prompt-header">
                         <label htmlFor={playgroundPromptId}>Prompt</label>
-                        <Button
-                          disabled={playground.isRunning || hasInjectedProcessingPrompt}
-                          onClick={() => {
-                            playground.setPrompt(selectedPromptTemplate);
-                            setHasInjectedProcessingPrompt(true);
+                        <div className="settings-playground-prompt-menu-shell" ref={playgroundPromptMenuRef}>
+                          <Button
+                            aria-controls={playgroundPromptMenuId}
+                            aria-expanded={isPromptMenuOpen}
+                            aria-haspopup="menu"
+                            disabled={playground.isRunning}
+                            onClick={() => setIsPromptMenuOpen((current) => !current)}
+                            size="sm"
+                            variant="secondary"
+                          >
+                            <Sparkles aria-hidden="true" size={14} strokeWidth={2.1} />
+                            <span>Insert prompt</span>
+                            <ChevronDown aria-hidden="true" size={14} strokeWidth={2.4} />
+                          </Button>
 
-                            requestAnimationFrame(() => {
-                              playgroundTextareaRef.current?.focus({ preventScroll: true });
-                              playgroundTextareaRef.current?.scrollIntoView({
-                                block: "nearest",
-                              });
-                            });
-                          }}
-                          size="sm"
-                          variant="secondary"
-                        >
-                          <Sparkles aria-hidden="true" size={14} strokeWidth={2.1} />
-                          Use prompt
-                        </Button>
+                          {isPromptMenuOpen ? (
+                            <div
+                              aria-label="Insert prompt options"
+                              className="settings-playground-prompt-menu"
+                              id={playgroundPromptMenuId}
+                              role="menu"
+                            >
+                              <button
+                                className="settings-playground-prompt-menu-option"
+                                disabled={hasInjectedProcessingPrompt}
+                                onClick={handleUseProcessingPrompt}
+                                role="menuitem"
+                                type="button"
+                              >
+                                <Sparkles aria-hidden="true" size={14} strokeWidth={2.1} />
+                                <span>Use prompt</span>
+                              </button>
+                              <button
+                                className="settings-playground-prompt-menu-option"
+                                disabled={playground.prompt.includes(
+                                  AI_ENRICHMENT_APPROVED_CATEGORIES_PLACEHOLDER,
+                                )}
+                                onClick={handleInsertApprovedCategoriesPlaceholder}
+                                role="menuitem"
+                                type="button"
+                              >
+                                <Sparkles aria-hidden="true" size={14} strokeWidth={2.1} />
+                                <span>Use categories</span>
+                              </button>
+                              <button
+                                className="settings-playground-prompt-menu-option"
+                                disabled={playground.prompt.includes(
+                                  AI_ENRICHMENT_APPROVED_TAGS_PLACEHOLDER,
+                                )}
+                                onClick={handleInsertApprovedTagsPlaceholder}
+                                role="menuitem"
+                                type="button"
+                              >
+                                <Sparkles aria-hidden="true" size={14} strokeWidth={2.1} />
+                                <span>Use tags</span>
+                              </button>
+                            </div>
+                          ) : null}
+                        </div>
                       </div>
 
                       <AutoResizeTextarea
@@ -600,14 +632,6 @@ export function SettingsPage() {
                       <dd>{playground.result.visionModelId}</dd>
                     </div>
                     <div>
-                      <dt>Requested reasoning</dt>
-                      <dd>{playground.result.reasoningEffortRequested}</dd>
-                    </div>
-                    <div>
-                      <dt>Applied reasoning</dt>
-                      <dd>{playground.result.reasoningEffortApplied ?? "N/A"}</dd>
-                    </div>
-                    <div>
                       <dt>Elapsed</dt>
                       <dd>{playground.result.elapsedMs} ms</dd>
                     </div>
@@ -626,10 +650,6 @@ export function SettingsPage() {
                           ? `$${playground.result.estimatedCostUsd.toFixed(6)}`
                           : "N/A"}
                       </dd>
-                    </div>
-                    <div>
-                      <dt>Playground version</dt>
-                      <dd>{playground.result.version}</dd>
                     </div>
                   </dl>
 

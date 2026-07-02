@@ -286,7 +286,17 @@ export function resolveAiCatalogTags({
     }
   }
 
+  // Suggested-new-tags exist only to fill the gap left when approved tags don't reach the cap
+  // (e.g. 7 approved matches on an 8-tag cap leaves room for exactly 1 suggestion). Once the
+  // gap is filled — either by more approved matches or by prior suggestions — stop suggesting.
+  const remainingSuggestionRoom = (): number =>
+    Math.max(0, maxApprovedTags - approvedResult.length - suggestedResult.length);
+
   for (const suggestion of suggestedNewTags ?? []) {
+    if (remainingSuggestionRoom() <= 0) {
+      break;
+    }
+
     const normalizedSuggestion = normalizeSuggestedTag(suggestion);
 
     if (!normalizedSuggestion) {
@@ -342,6 +352,10 @@ export function resolveAiCatalogTags({
   }
 
   for (const candidate of unmatchedCandidates) {
+    if (remainingSuggestionRoom() <= 0) {
+      break;
+    }
+
     const suggestion = buildSuggestedNewTag(candidate);
 
     if (suggestion && !seenSuggested.has(suggestion.name) && !lookup.has(suggestion.name)) {

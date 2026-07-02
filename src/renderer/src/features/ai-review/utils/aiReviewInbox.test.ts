@@ -221,7 +221,7 @@ describe("aiProcessingOutput", () => {
       aiSuggestions: {
         title: "Sleep Deprived",
         description: "SLEEP DEPRIVED / BARELY ALIVE.",
-        provider: "openai",
+        provider: "google",
         generatedAt: "2026-01-01T00:00:00.000Z",
       },
     });

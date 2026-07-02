@@ -9,26 +9,19 @@ import {
 import { loadCallerProfile } from "./lib/caller";
 import { adminDb } from "./lib/admin";
 import { invalidArgument, permissionDenied, unauthenticated } from "./lib/errors";
-import {
-  resolveOpenAiReasoningEffort,
-  resolveVisionModelId,
-  type AllowedOpenAiReasoningEffort,
-  type AllowedVisionModelId,
-} from "./ai/aiEnrichmentConfig";
+import { resolveVisionModelId, type AllowedVisionModelId } from "./ai/aiEnrichmentConfig";
 import { AI_ENRICHMENT_SETTINGS_DOC_ID } from "./ai/loadAiEnrichmentSettings";
 import { resolveAdditionalTagExclusions } from "./ai/aiTagExclusions";
 import { clearAiEnrichmentRuntimeCache } from "./ai/aiEnrichmentRuntimeCache";
 import { logPipelineEvent } from "./lib/pipelineLog";
 
 interface UpdateAiEnrichmentSettingsRequest {
-  reasoningEffort: string;
   visionModelId: string;
   promptTemplate: string;
   additionalTagExclusions?: string[];
 }
 
 interface UpdateAiEnrichmentSettingsResponse {
-  reasoningEffort: AllowedOpenAiReasoningEffort;
   visionModelId: AllowedVisionModelId;
   promptTemplate: string;
   additionalTagExclusions: string[];
@@ -47,17 +40,9 @@ function validateRequest(data: unknown): UpdateAiEnrichmentSettingsRequest {
 
   const visionModelId =
     "visionModelId" in data && typeof data.visionModelId === "string" ? data.visionModelId.trim() : "";
-  const reasoningEffort =
-    "reasoningEffort" in data && typeof data.reasoningEffort === "string"
-      ? data.reasoningEffort.trim()
-      : "";
 
   if (!visionModelId) {
     throw invalidArgument("A vision model ID is required.");
-  }
-
-  if (!reasoningEffort) {
-    throw invalidArgument("A reasoning effort value is required.");
   }
 
   const promptTemplate =
@@ -91,7 +76,6 @@ function validateRequest(data: unknown): UpdateAiEnrichmentSettingsRequest {
   }
 
   return {
-    reasoningEffort,
     visionModelId,
     promptTemplate,
     additionalTagExclusions: Array.isArray(additionalTagExclusions)
@@ -111,19 +95,13 @@ export const updateAiEnrichmentSettings = onCall(
 
     const {
       visionModelId: requestedModelId,
-      reasoningEffort: requestedReasoningEffort,
       promptTemplate,
       additionalTagExclusions,
     } = validateRequest(request.data);
     const resolvedModelId = resolveVisionModelId(requestedModelId);
-    const resolvedReasoningEffort = resolveOpenAiReasoningEffort(requestedReasoningEffort);
 
     if (resolvedModelId !== requestedModelId) {
       throw invalidArgument("The selected vision model is not allowed.");
-    }
-
-    if (resolvedReasoningEffort !== requestedReasoningEffort) {
-      throw invalidArgument("The selected reasoning effort is not allowed.");
     }
 
     const resolvedAdditionalTagExclusions = resolveAdditionalTagExclusions(additionalTagExclusions);
@@ -131,7 +109,6 @@ export const updateAiEnrichmentSettings = onCall(
     await adminDb.collection("settings").doc(AI_ENRICHMENT_SETTINGS_DOC_ID).set(
       {
         visionModelId: resolvedModelId,
-        reasoningEffort: resolvedReasoningEffort,
         promptTemplate,
         additionalTagExclusions: resolvedAdditionalTagExclusions,
         updatedAt: FieldValue.serverTimestamp(),
@@ -144,14 +121,12 @@ export const updateAiEnrichmentSettings = onCall(
 
     logPipelineEvent("settings.ai_enrichment.updated", {
       visionModelId: resolvedModelId,
-      reasoningEffort: resolvedReasoningEffort,
       promptTemplate,
       additionalTagExclusionsCount: resolvedAdditionalTagExclusions.length,
       updatedBy: request.auth.uid,
     });
 
     return {
-      reasoningEffort: resolvedReasoningEffort,
       visionModelId: resolvedModelId,
       promptTemplate,
       additionalTagExclusions: resolvedAdditionalTagExclusions,

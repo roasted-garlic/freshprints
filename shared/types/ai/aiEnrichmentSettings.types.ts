@@ -1,8 +1,7 @@
-import type { OpenAiReasoningEffort, OpenAiVisionModelId } from "../../constants/aiEnrichment.constants";
+import type { AllowedVisionModelId } from "../../constants/aiEnrichment.constants";
 
 export interface AiEnrichmentSettingsDocument {
-  visionModelId: OpenAiVisionModelId;
-  reasoningEffort: OpenAiReasoningEffort;
+  visionModelId: AllowedVisionModelId;
   promptTemplate: string;
   additionalTagExclusions: string[];
   updatedBy?: string;

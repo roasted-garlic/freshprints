@@ -3,7 +3,7 @@ import { onCall } from "firebase-functions/v2/https";
 
 import { assertStaffCaller, loadCallerProfile } from "./lib/caller";
 import { failedPrecondition, invalidArgument, permissionDenied, unauthenticated } from "./lib/errors";
-import { geminiApiKeySecret, openAiApiKeySecret } from "./lib/secrets";
+import { geminiApiKeySecret } from "./lib/secrets";
 import { adminDb } from "./lib/admin";
 import { runAiEnrichmentPipeline } from "./ai/aiEnrichmentPipeline";
 import {
@@ -49,7 +49,7 @@ function isStaleAiProcessing(design: Record<string, unknown>): boolean {
 }
 
 export const enqueueAiEnrichment = onCall(
-  { secrets: [openAiApiKeySecret, geminiApiKeySecret], timeoutSeconds: 180, memory: "512MiB" },
+  { secrets: [geminiApiKeySecret], timeoutSeconds: 180, memory: "512MiB" },
   async (request) => {
     if (!request.auth?.uid) {
       throw unauthenticated();
@@ -66,7 +66,7 @@ export const enqueueAiEnrichment = onCall(
       throw invalidArgument(error instanceof Error ? error.message : "Invalid request.");
     }
 
-    const { designId, rerunRejected, rerunFromReview, visionModelIdOverride, reasoningEffortOverride } = parsedRequest;
+    const { designId, rerunRejected, rerunFromReview, visionModelIdOverride } = parsedRequest;
     const designRef = adminDb.collection("designs").doc(designId);
     const designSnapshot = await designRef.get();
 
@@ -140,7 +140,7 @@ export const enqueueAiEnrichment = onCall(
       aiProcessed: false,
       aiReviewed: false,
       aiRequestedVisionModelId: visionModelIdOverride ?? FieldValue.delete(),
-      aiRequestedReasoningEffort: reasoningEffortOverride ?? FieldValue.delete(),
+      aiRequestedReasoningEffort: FieldValue.delete(),
       aiSuggestions: FieldValue.delete(),
       aiAnalysis: FieldValue.delete(),
       aiReviewedAt: FieldValue.delete(),
@@ -166,9 +166,8 @@ export const enqueueAiEnrichment = onCall(
       designId,
       callerUid: request.auth.uid,
       visionModelIdOverride: visionModelIdOverride ?? null,
-      reasoningEffortOverride: reasoningEffortOverride ?? null,
     });
-    await runAiEnrichmentPipeline(designId, openAiApiKeySecret.value(), geminiApiKeySecret.value());
+    await runAiEnrichmentPipeline(designId, geminiApiKeySecret.value());
     const completedSnapshot = await designRef.get();
     const completedDesign = completedSnapshot.data() ?? {};
 

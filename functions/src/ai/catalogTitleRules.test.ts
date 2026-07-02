@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 
 import {
   CATALOG_ENRICHMENT_SYSTEM_PROMPT,
-  OPENAI_CATALOG_ENRICHMENT_PROMPT_VERSION,
+  CATALOG_ENRICHMENT_PROMPT_VERSION,
   buildCatalogEnrichmentSystemPrompt,
   buildCatalogEnrichmentUserPrompt,
   descriptionLacksVisibleTextOverlap,
@@ -22,8 +22,8 @@ import {
 } from "./catalogTitleRules";
 
 describe("catalogTitleRules", () => {
-  it("uses prompt version v18", () => {
-    assert.equal(OPENAI_CATALOG_ENRICHMENT_PROMPT_VERSION, "catalog-enrich-openai-v18");
+  it("uses prompt version v19", () => {
+    assert.equal(CATALOG_ENRICHMENT_PROMPT_VERSION, "catalog-enrich-v19");
   });
 
   it("keeps the JSON contract, OCR, canvas, and description rules in the trimmed prompt", () => {

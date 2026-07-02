@@ -6,10 +6,7 @@ import type {
   AiEnrichmentPlaygroundResponse,
 } from "../../../../../../shared/types/ai/aiEnrichmentPlayground.types";
 import { functions } from "../../../config/firebase";
-import {
-  resolveClientReasoningEffort,
-  resolveClientVisionModelId,
-} from "../constants/aiEnrichmentSettingsConstants";
+import { resolveClientVisionModelId } from "../constants/aiEnrichmentSettingsConstants";
 
 export const aiEnrichmentPlaygroundService = {
   async runPlayground(
@@ -23,7 +20,6 @@ export const aiEnrichmentPlaygroundService = {
 
       const response = await runCallable({
         ...input,
-        reasoningEffort: resolveClientReasoningEffort(input.reasoningEffort),
         visionModelId: resolveClientVisionModelId(input.visionModelId),
       });
 

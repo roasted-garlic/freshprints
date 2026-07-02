@@ -48,7 +48,6 @@ import {
 } from "../utils/aiReviewInboxSelection";
 
 export interface UseAiReviewInboxOptions {
-  defaultReasoningEffort: string;
   defaultVisionModelId: string;
   onNavigateToTab?: (tab: AiReviewInboxTab, designId: string) => void;
   onQueueChanged?: () => void;
@@ -256,7 +255,6 @@ export function useAiReviewInbox(
   const processingQueue = useAiProcessingQueue({
     activeTab: filters.tab,
     applyDesignPatch,
-    defaultReasoningEffort: options?.defaultReasoningEffort ?? "",
     defaultVisionModelId: options?.defaultVisionModelId ?? "",
     designs,
     onActionError: setActionError,
@@ -651,7 +649,6 @@ export function useAiReviewInbox(
     try {
       const result = await aiEnrichmentEnqueueService.retryFailedProcessing(selectedDesign.id, {
         visionModelIdOverride: processingQueue.resolvedSessionVisionModelId,
-        reasoningEffortOverride: processingQueue.resolvedSessionReasoningEffort,
       });
 
       if (!result.queued) {
@@ -676,7 +673,7 @@ export function useAiReviewInbox(
     } finally {
       setIsActionLoading(false);
     }
-  }, [applyDesignPatch, canRetryProcessingSelected, options, processingQueue.resolvedSessionReasoningEffort, processingQueue.resolvedSessionVisionModelId, reloadDesigns, selectedDesign, user]);
+  }, [applyDesignPatch, canRetryProcessingSelected, options, processingQueue.resolvedSessionVisionModelId, reloadDesigns, selectedDesign, user]);
 
   const ignoreSuggestedTag = useCallback(
     (name: string) => {

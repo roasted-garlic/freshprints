@@ -6,6 +6,67 @@
 
 ## Decisions
 
+### ADR-FP-040: Remove OpenAI; Google (Gemini) is the only AI provider
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-01 |
+| Status | accepted |
+
+**Decision**
+
+Fresh Prints will no longer use OpenAI models for AI Processing or the Settings AI Playground.
+Google (Gemini) is now the only vision model provider.
+
+1. Removed the OpenAI Chat Completions branch from `resolveProviderTarget`/
+   `resolveAiEnrichmentProvider`; both always resolve to the Gemini (or `development` heuristic
+   fallback) provider. Renamed the shared HTTP client files that both providers previously used
+   (`openAiVisionEnrichmentProvider.ts` → `geminiVisionEnrichmentProvider.ts`,
+   `openAiVisionCompletion.ts` → `visionCompletion.ts`, `openAiRetry.ts` →
+   `visionRequestRetry.ts`) and their exported symbols/error codes to provider-neutral or
+   Gemini-specific names (e.g. `openai_empty_output` → `vision_empty_output`).
+2. Removed `openAiApiKeySecret` (`OPENAI_API_KEY`) from Cloud Function code
+   (`functions/src/lib/secrets.ts`, `enqueueAiEnrichment.ts`, `testAiEnrichmentPlayground.ts`,
+   `aiEnrichmentPipeline.ts`, `aiEnrichmentPlayground.ts`). The GCP Secret Manager secret itself
+   was not deleted as part of this change — only code stopped referencing it.
+3. Removed the "reasoning effort" concept end-to-end (Settings AI Enrichment section, AI
+   Processing Settings modal, AI Review re-run flow, `updateAiEnrichmentSettings` request/response,
+   Firestore `settings/aiEnrichment.reasoningEffort`, and all related shared constants/types).
+   Reasoning effort was an OpenAI-only Chat Completions parameter; Gemini's OpenAI-compatible
+   endpoint never supported it (`supportsReasoningEffort` was already `false` for Gemini), so it
+   became entirely dead surface area once OpenAI was removed.
+4. Removed OpenAI model IDs (`gpt-5.4-nano-2026-03-17`, `gpt-5.4-mini-2026-03-17`) and their
+   pricing entries from `shared/constants/aiEnrichment.constants.ts`; `AllowedVisionModelId` and
+   `AiEnrichmentProviderId` are now Gemini/`development`-only.
+5. Deleted the unused `AiReviewRerunModal.tsx` component (already dead/unimported code that only
+   referenced the removed OpenAI model/reasoning-effort options).
+6. Bumped the catalog enrichment prompt version from `catalog-enrich-openai-v18` to
+   `catalog-enrich-v19` (name no longer references a specific provider).
+7. Replaced remaining "OpenAI" references visible in the app UI (Settings AI Enrichment
+   description, AI Review "cannot be cancelled" hint) with "Google AI" or neutral phrasing.
+8. Existing Firestore designs processed before this change may still have
+   `aiSuggestions.provider === "openai"` stored; no migration/backfill was performed. The type
+   was narrowed to no longer allow producing/selecting `"openai"` going forward, but
+   `DesignAiSuggestions.provider` remains a plain `string` field, so old records continue to
+   display without breaking.
+
+**Why**
+
+Product decision to standardize on a single AI provider (Google/Gemini) going forward and remove
+the OpenAI-specific code paths, secrets, and UI options that are no longer used.
+
+**Consequences**
+
+Positive: Simpler provider resolution (no branching), no dead reasoning-effort UI/config, smaller
+secret surface area (`GEMINI_API_KEY` only), and app-visible copy accurately reflects the only
+provider in use.
+
+Tradeoff: Any future request to reintroduce a second provider (or restore OpenAI) would need to
+reintroduce the removed abstraction layer rather than just flipping a flag. This was accepted
+since there was no near-term plan to support multiple providers.
+
+---
+
 ### ADR-FP-039: Lean vision-only prompt with server-side taxonomy resolution (catalog prompt v18)
 
 | Field | Value |

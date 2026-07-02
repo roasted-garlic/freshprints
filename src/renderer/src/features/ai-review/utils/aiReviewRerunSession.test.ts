@@ -35,7 +35,7 @@ describe("aiReviewRerunSession", () => {
     const design = createDesign({
       aiSuggestions: {
         title: "Old Title",
-        provider: "openai",
+        provider: "google",
         generatedAt: "2026-06-25T10:00:00.000Z",
       },
     });
@@ -49,7 +49,7 @@ describe("aiReviewRerunSession", () => {
     const prior = createDesign({
       aiSuggestions: {
         title: "Old Title",
-        provider: "openai",
+        provider: "google",
         generatedAt: "2026-06-25T10:00:00.000Z",
       },
     });
@@ -57,7 +57,7 @@ describe("aiReviewRerunSession", () => {
     const updated = createDesign({
       aiSuggestions: {
         title: "New Title",
-        provider: "openai",
+        provider: "google",
         generatedAt: "2026-06-25T10:05:00.000Z",
       },
     });
@@ -69,7 +69,7 @@ describe("aiReviewRerunSession", () => {
     const prior = createDesign({
       aiSuggestions: {
         title: "Old Title",
-        provider: "openai",
+        provider: "google",
         generatedAt: "2026-06-25T10:00:00.000Z",
       },
     });
@@ -90,7 +90,7 @@ describe("aiReviewRerunSession", () => {
     const prior = createDesign({
       aiSuggestions: {
         title: "Old Title",
-        provider: "openai",
+        provider: "google",
         generatedAt: "2026-06-25T10:00:00.000Z",
       },
     });

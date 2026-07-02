@@ -37,7 +37,6 @@ interface AiReviewWorkspaceProps {
   canRetryProcessing: boolean;
   canStartAutoQueue: boolean;
   categoryOptions: { label: string; value: string }[];
-  currentReasoningEffort: string;
   currentVisionModelId: string;
   hasProcessingSettingsOverride: boolean;
   draftForm: AiReviewDraftForm | null;
@@ -64,14 +63,13 @@ interface AiReviewWorkspaceProps {
   onRerun: () => void;
   onRerunAiSuggestions: () => void;
   onRetryProcessing: () => void;
-  onApplyProcessingSettings: (visionModelId: string, reasoningEffort: string) => void;
+  onApplyProcessingSettings: (visionModelId: string) => void;
   onClearProcessingSettings: () => void;
   onStartAutoQueue: () => void;
   onStopAutoQueue: () => void;
   onUpdateDraftField: (field: keyof AiReviewDraftForm, value: string) => void;
   queuePositionLabel: string | null;
   queueRunState: AiProcessingQueueRunState;
-  processingReasoningEffort: string;
   processingVisionModelId: string;
   selectedDesign: Design | null;
   showReadOnlySuggestions: boolean;
@@ -94,7 +92,6 @@ export function AiReviewWorkspace({
   canRetryProcessing,
   canStartAutoQueue,
   categoryOptions,
-  currentReasoningEffort,
   currentVisionModelId,
   hasProcessingSettingsOverride,
   draftForm,
@@ -124,7 +121,6 @@ export function AiReviewWorkspace({
   onUpdateDraftField,
   queuePositionLabel,
   queueRunState,
-  processingReasoningEffort,
   processingVisionModelId,
   selectedDesign,
   showReadOnlySuggestions,
@@ -324,8 +320,8 @@ export function AiReviewWorkspace({
 
                     {showProcessingQueueControls && autoAdvance && queueRunState === "pausing" ? (
                       <p className="ai-review-actions-hint">
-                        Finishes the current image, then stops. OpenAI cannot be cancelled
-                        mid-request.
+                        Finishes the current image, then stops. The current request cannot be
+                        cancelled mid-flight.
                       </p>
                     ) : null}
 
@@ -418,16 +414,14 @@ export function AiReviewWorkspace({
       />
 
       <AiProcessingSettingsModal
-        defaultReasoningEffort={currentReasoningEffort}
         defaultVisionModelId={currentVisionModelId}
         isOpen={isProcessingSettingsOpen}
-        onApply={(visionModelId, reasoningEffort) => {
-          onApplyProcessingSettings(visionModelId, reasoningEffort);
+        onApply={(visionModelId) => {
+          onApplyProcessingSettings(visionModelId);
           setIsProcessingSettingsOpen(false);
         }}
         onCancel={() => setIsProcessingSettingsOpen(false)}
         onUseDefaults={onClearProcessingSettings}
-        reasoningEffort={processingReasoningEffort}
         visionModelId={processingVisionModelId}
       />
     </div>

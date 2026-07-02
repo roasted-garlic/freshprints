@@ -2,35 +2,26 @@ import { useEffect, useState } from "react";
 
 import { Button } from "../../../shared/components/Button";
 import { Select } from "../../../shared/components/Select";
-import {
-  ALL_VISION_MODEL_OPTIONS,
-  OPENAI_REASONING_EFFORT_OPTIONS,
-  isGeminiModelId,
-} from "../../settings/constants/aiEnrichmentSettingsConstants";
+import { ALL_VISION_MODEL_OPTIONS } from "../../settings/constants/aiEnrichmentSettingsConstants";
 
 interface AiProcessingSettingsModalProps {
-  defaultReasoningEffort: string;
   defaultVisionModelId: string;
   isOpen: boolean;
-  onApply: (visionModelId: string, reasoningEffort: string) => void;
+  onApply: (visionModelId: string) => void;
   onCancel: () => void;
   onUseDefaults: () => void;
-  reasoningEffort: string;
   visionModelId: string;
 }
 
 export function AiProcessingSettingsModal({
-  defaultReasoningEffort,
   defaultVisionModelId,
   isOpen,
   onApply,
   onCancel,
   onUseDefaults,
-  reasoningEffort,
   visionModelId,
 }: AiProcessingSettingsModalProps) {
   const [selectedModel, setSelectedModel] = useState(visionModelId);
-  const [selectedReasoning, setSelectedReasoning] = useState(reasoningEffort);
 
   useEffect(() => {
     if (!isOpen) {
@@ -38,8 +29,7 @@ export function AiProcessingSettingsModal({
     }
 
     setSelectedModel(visionModelId);
-    setSelectedReasoning(reasoningEffort);
-  }, [isOpen, reasoningEffort, visionModelId]);
+  }, [isOpen, visionModelId]);
 
   if (!isOpen) {
     return null;
@@ -62,31 +52,7 @@ export function AiProcessingSettingsModal({
             value={selectedModel}
           />
 
-          {!isGeminiModelId(selectedModel) ? (
-            <Select
-              label="Reasoning effort"
-              name="processingReasoningEffort"
-              onChange={(event) => setSelectedReasoning(event.target.value)}
-              options={OPENAI_REASONING_EFFORT_OPTIONS.map((option) => ({
-                label: option.label,
-                value: option.value,
-              }))}
-              value={selectedReasoning}
-            />
-          ) : (
-            <div className="form-field">
-              <label>Reasoning effort</label>
-              <div className="form-input-shell form-select-shell">
-                <button className="form-select-trigger" disabled type="button">
-                  <span className="form-select-value">Not applicable for Gemini models</span>
-                </button>
-              </div>
-            </div>
-          )}
-
-          <p className="ai-processing-settings-defaults">
-            Default: {defaultVisionModelId} / {isGeminiModelId(defaultVisionModelId) ? "native reasoning" : defaultReasoningEffort}
-          </p>
+          <p className="ai-processing-settings-defaults">Default: {defaultVisionModelId}</p>
         </div>
 
         <div className="ai-processing-settings-modal-actions">
@@ -102,7 +68,7 @@ export function AiProcessingSettingsModal({
           <Button onClick={onCancel} variant="secondary">
             Cancel
           </Button>
-          <Button onClick={() => onApply(selectedModel, selectedReasoning)} variant="primary">
+          <Button onClick={() => onApply(selectedModel)} variant="primary">
             Apply
           </Button>
         </div>

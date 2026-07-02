@@ -208,11 +208,16 @@ export function DesignDetailsModal({
                 {design.aiSuggestions.promptVersion ? (
                   <DetailField label="Prompt version" value={design.aiSuggestions.promptVersion} />
                 ) : null}
-                {typeof design.aiSuggestions.promptTokens === "number" ||
-                typeof design.aiSuggestions.completionTokens === "number" ? (
+                {typeof design.aiSuggestions.promptTokens === "number" ? (
                   <DetailField
-                    label="Input / Output tokens"
-                    value={`${design.aiSuggestions.promptTokens ?? "—"} / ${design.aiSuggestions.completionTokens ?? "—"}`}
+                    label="Input tokens"
+                    value={String(design.aiSuggestions.promptTokens)}
+                  />
+                ) : null}
+                {typeof design.aiSuggestions.completionTokens === "number" ? (
+                  <DetailField
+                    label="Output tokens"
+                    value={String(design.aiSuggestions.completionTokens)}
                   />
                 ) : null}
                 {typeof design.aiSuggestions.estimatedCostUsd === "number" ? (

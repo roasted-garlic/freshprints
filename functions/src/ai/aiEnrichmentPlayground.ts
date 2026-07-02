@@ -7,24 +7,21 @@ import {
   AI_ENRICHMENT_PLAYGROUND_MAX_IMAGE_BYTES,
   AI_ENRICHMENT_PLAYGROUND_MAX_PROMPT_LENGTH,
   AI_ENRICHMENT_PLAYGROUND_VERSION,
-  OPENAI_REASONING_EFFORT_FALLBACK,
   estimateVisionCostUsd,
 } from "../../../shared/constants/aiEnrichment.constants";
 import { logPipelineEvent } from "../lib/pipelineLog";
 import { prepareAiAnalysisImage } from "./prepareAiAnalysisImage";
 import {
-  OPENAI_VISION_MAX_COMPLETION_TOKENS,
-  resolveOpenAiReasoningEffort,
+  VISION_MAX_COMPLETION_TOKENS,
   resolveVisionModelId,
-  type AllowedOpenAiReasoningEffort,
   type AllowedVisionModelId,
 } from "./aiEnrichmentConfig";
 import {
-  type OpenAiChatCompletionPayload,
-  assertOpenAiCompletionHasContent,
-  extractOpenAiCompletionUsage,
-} from "./openAiVisionCompletion";
-import { OpenAiRequestError, fetchOpenAiWithRetry } from "./openAiRetry";
+  type VisionChatCompletionPayload,
+  assertVisionCompletionHasContent,
+  extractVisionCompletionUsage,
+} from "./visionCompletion";
+import { fetchVisionWithRetry } from "./visionRequestRetry";
 import {
   loadCachedActiveCategories,
   loadCachedAiEnrichmentSettings,
@@ -44,22 +41,7 @@ interface PreparedAiEnrichmentPlaygroundRequest {
   imageBytes: Buffer;
   imageContentType: (typeof AI_ENRICHMENT_PLAYGROUND_IMAGE_CONTENT_TYPES)[number];
   prompt: string;
-  reasoningEffort: AllowedOpenAiReasoningEffort;
   visionModelId: AllowedVisionModelId;
-}
-
-interface PlaygroundCompletionResult {
-  payload: OpenAiChatCompletionPayload;
-  reasoningEffortApplied: AllowedOpenAiReasoningEffort | null;
-}
-
-function isUnsupportedReasoningEffortError(error: unknown): boolean {
-  if (!(error instanceof OpenAiRequestError) || error.status !== 400) {
-    return false;
-  }
-
-  const message = error.message.toLowerCase();
-  return message.includes("reasoning_effort") || message.includes("reasoning effort");
 }
 
 function normalizeBase64(input: string): string {
@@ -111,10 +93,6 @@ export function validateAiEnrichmentPlaygroundRequest(
       ? input.imageContentType.trim().toLowerCase()
       : "";
   const prompt = "prompt" in input && typeof input.prompt === "string" ? input.prompt.trim() : "";
-  const requestedReasoningEffort =
-    "reasoningEffort" in input && typeof input.reasoningEffort === "string"
-      ? input.reasoningEffort.trim()
-      : "";
   const requestedVisionModelId =
     "visionModelId" in input && typeof input.visionModelId === "string"
       ? input.visionModelId.trim()
@@ -132,12 +110,7 @@ export function validateAiEnrichmentPlaygroundRequest(
     throw new Error(`Prompt must be ${AI_ENRICHMENT_PLAYGROUND_MAX_PROMPT_LENGTH.toLocaleString()} characters or fewer.`);
   }
 
-  const reasoningEffort = resolveOpenAiReasoningEffort(requestedReasoningEffort);
   const visionModelId = resolveVisionModelId(requestedVisionModelId);
-
-  if (reasoningEffort !== requestedReasoningEffort) {
-    throw new Error("The selected reasoning effort is not allowed.");
-  }
 
   if (visionModelId !== requestedVisionModelId) {
     throw new Error("The selected vision model is not allowed.");
@@ -147,7 +120,6 @@ export function validateAiEnrichmentPlaygroundRequest(
     imageBytes: decodeBase64Image(imageBase64),
     imageContentType: imageContentType as (typeof AI_ENRICHMENT_PLAYGROUND_IMAGE_CONTENT_TYPES)[number],
     prompt,
-    reasoningEffort,
     visionModelId,
   };
 }
@@ -158,13 +130,10 @@ export function buildAiEnrichmentPlaygroundRequestBody(
   imageContentType: string,
   expandedPrompt: string,
   systemPrompt: string,
-  supportsReasoningEffort: boolean,
-  reasoningEffort: AllowedOpenAiReasoningEffort,
 ): string {
   return JSON.stringify({
     model: input.visionModelId,
-    max_completion_tokens: OPENAI_VISION_MAX_COMPLETION_TOKENS,
-    ...(supportsReasoningEffort ? { reasoning_effort: reasoningEffort } : {}),
+    max_completion_tokens: VISION_MAX_COMPLETION_TOKENS,
     messages: [
       {
         role: "system",
@@ -193,78 +162,44 @@ export function buildAiEnrichmentPlaygroundRequestBody(
 async function requestPlaygroundCompletion(
   apiKey: string,
   baseUrl: string,
-  supportsReasoningEffort: boolean,
   input: PreparedAiEnrichmentPlaygroundRequest,
   base64Image: string,
   imageContentType: string,
   expandedPrompt: string,
   systemPrompt: string,
-  reasoningEffort: AllowedOpenAiReasoningEffort,
-): Promise<PlaygroundCompletionResult> {
-  try {
-    const response = await fetchOpenAiWithRetry(
-      baseUrl,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: buildAiEnrichmentPlaygroundRequestBody(
-          { ...input, reasoningEffort },
-          base64Image,
-          imageContentType,
-          expandedPrompt,
-          systemPrompt,
-          supportsReasoningEffort,
-          reasoningEffort,
-        ),
+): Promise<VisionChatCompletionPayload> {
+  const response = await fetchVisionWithRetry(
+    baseUrl,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
       },
-      { maxRetries: 2, baseDelayMs: 2000, modelId: input.visionModelId },
-    );
-
-    return {
-      payload: (await response.json()) as OpenAiChatCompletionPayload,
-      reasoningEffortApplied: supportsReasoningEffort ? reasoningEffort : null,
-    };
-  } catch (error) {
-    if (
-      supportsReasoningEffort &&
-      reasoningEffort !== OPENAI_REASONING_EFFORT_FALLBACK &&
-      isUnsupportedReasoningEffortError(error)
-    ) {
-      return requestPlaygroundCompletion(
-        apiKey,
-        baseUrl,
-        supportsReasoningEffort,
+      body: buildAiEnrichmentPlaygroundRequestBody(
         input,
         base64Image,
         imageContentType,
         expandedPrompt,
         systemPrompt,
-        OPENAI_REASONING_EFFORT_FALLBACK,
-      );
-    }
+      ),
+    },
+    { maxRetries: 2, baseDelayMs: 2000, modelId: input.visionModelId },
+  );
 
-    throw error;
-  }
+  return (await response.json()) as VisionChatCompletionPayload;
 }
 
 export async function runAiEnrichmentPlayground(
-  openAiApiKey: string,
   geminiApiKey: string,
   request: AiEnrichmentPlaygroundRequest,
 ): Promise<AiEnrichmentPlaygroundResponse> {
   const validatedRequest = validateAiEnrichmentPlaygroundRequest(request);
-  const providerTarget = resolveProviderTarget(validatedRequest.visionModelId);
+  const providerTarget = resolveProviderTarget();
 
-  const apiKey =
-    providerTarget.providerId === "google" ? geminiApiKey : openAiApiKey;
-
-  if (!apiKey.trim()) {
-    const providerName = providerTarget.providerId === "google" ? "GEMINI_API_KEY" : "OPENAI_API_KEY";
+  if (!geminiApiKey.trim()) {
     throw new Error(
-      `The AI playground is unavailable because ${providerName} is not configured for this environment.`,
+      "The AI playground is unavailable because GEMINI_API_KEY is not configured for this environment.",
     );
   }
 
@@ -291,53 +226,37 @@ export async function runAiEnrichmentPlayground(
   logPipelineEvent("settings.ai_playground.started", {
     providerId: providerTarget.providerId,
     modelId: validatedRequest.visionModelId,
-    reasoningEffortRequested: providerTarget.supportsReasoningEffort
-      ? validatedRequest.reasoningEffort
-      : null,
     promptLength: validatedRequest.prompt.length,
     approvedCategoryCount: categories.categories.length,
     approvedTagCount: approvedTags.length,
     effectiveTagExclusionCount: enrichmentSettings.effectiveTagExclusions.length,
   });
 
-  const completion = await requestPlaygroundCompletion(
-    apiKey,
+  const payload = await requestPlaygroundCompletion(
+    geminiApiKey,
     providerTarget.baseUrl,
-    providerTarget.supportsReasoningEffort,
     validatedRequest,
     base64Image,
     preparedImage.contentType,
     expandedPrompt,
     systemPrompt,
-    validatedRequest.reasoningEffort,
   );
-  const outputText = assertOpenAiCompletionHasContent(
-    completion.payload,
-    validatedRequest.visionModelId,
-    OPENAI_VISION_MAX_COMPLETION_TOKENS,
-  );
+  const outputText = assertVisionCompletionHasContent(payload);
   const elapsedMs = Date.now() - startedAt;
-  const usage = extractOpenAiCompletionUsage(completion.payload);
+  const usage = extractVisionCompletionUsage(payload);
 
   logPipelineEvent("settings.ai_playground.completed", {
     providerId: providerTarget.providerId,
     modelId: validatedRequest.visionModelId,
-    reasoningEffortRequested: providerTarget.supportsReasoningEffort
-      ? validatedRequest.reasoningEffort
-      : null,
-    reasoningEffortApplied: completion.reasoningEffortApplied,
     elapsedMs,
     promptTokens: usage.promptTokens,
     completionTokens: usage.completionTokens,
-    reasoningTokens: usage.reasoningTokens,
   });
 
   return {
     elapsedMs,
     outputText,
     provider: providerTarget.providerId,
-    reasoningEffortApplied: completion.reasoningEffortApplied,
-    reasoningEffortRequested: validatedRequest.reasoningEffort,
     visionModelId: validatedRequest.visionModelId,
     version: AI_ENRICHMENT_PLAYGROUND_VERSION,
     promptTokens: usage.promptTokens,

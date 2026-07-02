@@ -4,52 +4,33 @@ import { describe, it } from "node:test";
 import {
   AI_ENRICHMENT_EXCLUDED_TAGS_PLACEHOLDER,
   DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
-  DEFAULT_OPENAI_REASONING_EFFORT,
   DEFAULT_VISION_MODEL_ID,
-  OPENAI_REASONING_EFFORT_OPTIONS,
-  DEFAULT_OPENAI_VISION_MODEL_ID,
-  OPENAI_VISION_MODEL_OPTIONS,
+  GEMINI_VISION_MODEL_OPTIONS,
   hasRequiredAiEnrichmentPromptPlaceholders,
-  resolveClientReasoningEffort,
   resolveClientVisionModelId,
 } from "./aiEnrichmentSettingsConstants";
 
 describe("aiEnrichmentSettingsConstants", () => {
   it("uses the shared current default vision model", () => {
     assert.equal(DEFAULT_VISION_MODEL_ID, "gemini-2.5-flash-lite");
-    assert.equal(DEFAULT_OPENAI_VISION_MODEL_ID, DEFAULT_VISION_MODEL_ID);
   });
 
-  it("includes all supported selectable OpenAI vision model ids", () => {
+  it("includes all supported selectable Gemini vision model ids", () => {
     assert.deepEqual(
-      OPENAI_VISION_MODEL_OPTIONS.map((option) => option.value),
-      [
-        "gpt-5.4-nano-2026-03-17",
-        "gpt-5.4-mini-2026-03-17",
-      ],
+      GEMINI_VISION_MODEL_OPTIONS.map((option) => option.value),
+      ["gemini-2.5-flash-lite", "gemini-3.1-flash-lite"],
     );
   });
 
-  it("accepts gpt-5.4-mini as a saved client model selection", () => {
+  it("accepts gemini-3.1-flash-lite as a saved client model selection", () => {
     assert.equal(
-      resolveClientVisionModelId("gpt-5.4-mini-2026-03-17"),
-      "gpt-5.4-mini-2026-03-17",
+      resolveClientVisionModelId("gemini-3.1-flash-lite"),
+      "gemini-3.1-flash-lite",
     );
   });
 
-  it("uses medium as the default client reasoning effort", () => {
-    assert.equal(DEFAULT_OPENAI_REASONING_EFFORT, "medium");
-  });
-
-  it("includes the supported reasoning effort options", () => {
-    assert.deepEqual(
-      OPENAI_REASONING_EFFORT_OPTIONS.map((option) => option.value),
-      ["none", "minimal", "low", "medium", "high"],
-    );
-  });
-
-  it("accepts none as a saved client reasoning effort", () => {
-    assert.equal(resolveClientReasoningEffort("none"), "none");
+  it("falls back to the default vision model for an unknown selection", () => {
+    assert.equal(resolveClientVisionModelId("gpt-5.4-mini-2026-03-17"), DEFAULT_VISION_MODEL_ID);
   });
 
   it("keeps the default AI Processing prompt small and vision-only (v18)", () => {

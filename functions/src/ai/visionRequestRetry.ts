@@ -1,5 +1,5 @@
 import { logPipelineEvent } from "../lib/pipelineLog";
-import { OpenAiEmptyOutputError } from "./openAiVisionCompletion";
+import { VisionEmptyOutputError } from "./visionCompletion";
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => {
@@ -7,44 +7,44 @@ function sleep(ms: number): Promise<void> {
   });
 }
 
-const RETRYABLE_OPENAI_STATUSES = new Set([429, 500, 502, 503, 504]);
-const MAX_OPENAI_ERROR_MESSAGE_LENGTH = 300;
+const RETRYABLE_VISION_STATUSES = new Set([429, 500, 502, 503, 504]);
+const MAX_VISION_ERROR_MESSAGE_LENGTH = 300;
 
-export class OpenAiRequestError extends Error {
+export class VisionRequestError extends Error {
   readonly status: number;
 
   constructor(message: string, status: number) {
     super(message);
-    this.name = "OpenAiRequestError";
+    this.name = "VisionRequestError";
     this.status = status;
   }
 }
 
-export interface OpenAiRetryOptions {
+export interface VisionRetryOptions {
   maxRetries?: number;
   baseDelayMs?: number;
   modelId?: string;
 }
 
-async function readOpenAiErrorMessage(response: Response): Promise<string> {
+async function readVisionErrorMessage(response: Response): Promise<string> {
   try {
     const body = (await response.json()) as { error?: { message?: string } };
     const message = body.error?.message?.trim();
 
     if (message) {
-      return message.slice(0, MAX_OPENAI_ERROR_MESSAGE_LENGTH);
+      return message.slice(0, MAX_VISION_ERROR_MESSAGE_LENGTH);
     }
   } catch {
     // Response body may not be JSON.
   }
 
-  return `OpenAI request failed with status ${response.status}`;
+  return `Google AI request failed with status ${response.status}`;
 }
 
-export async function fetchOpenAiWithRetry(
+export async function fetchVisionWithRetry(
   url: string,
   init: RequestInit,
-  options: OpenAiRetryOptions = {},
+  options: VisionRetryOptions = {},
 ): Promise<Response> {
   const maxRetries = options.maxRetries ?? 2;
   const baseDelayMs = options.baseDelayMs ?? 2000;
@@ -58,18 +58,18 @@ export async function fetchOpenAiWithRetry(
         return response;
       }
 
-      const errorMessage = await readOpenAiErrorMessage(response);
+      const errorMessage = await readVisionErrorMessage(response);
 
-      if (!RETRYABLE_OPENAI_STATUSES.has(response.status) || attempt === maxRetries) {
-        logPipelineEvent("openai.request.failed", {
+      if (!RETRYABLE_VISION_STATUSES.has(response.status) || attempt === maxRetries) {
+        logPipelineEvent("vision.request.failed", {
           status: response.status,
           message: errorMessage,
           model: options.modelId ?? null,
         });
-        throw new OpenAiRequestError(errorMessage, response.status);
+        throw new VisionRequestError(errorMessage, response.status);
       }
 
-      lastError = new OpenAiRequestError(errorMessage, response.status);
+      lastError = new VisionRequestError(errorMessage, response.status);
     } catch (error) {
       lastError = error;
 
@@ -81,48 +81,48 @@ export async function fetchOpenAiWithRetry(
     await sleep(baseDelayMs * 2 ** attempt);
   }
 
-  throw lastError instanceof Error ? lastError : new Error("OpenAI request failed.");
+  throw lastError instanceof Error ? lastError : new Error("Google AI request failed.");
 }
 
-export function resolveOpenAiErrorCode(error: unknown): string {
-  if (error instanceof OpenAiEmptyOutputError) {
+export function resolveVisionErrorCode(error: unknown): string {
+  if (error instanceof VisionEmptyOutputError) {
     return error.errorCode;
   }
 
-  if (error instanceof OpenAiRequestError) {
+  if (error instanceof VisionRequestError) {
     if (error.status === 400) {
-      return "openai_invalid_request";
+      return "vision_invalid_request";
     }
 
     if (error.status === 429) {
-      return "openai_rate_limited";
+      return "vision_rate_limited";
     }
 
     if (error.status >= 500) {
-      return "openai_server_error";
+      return "vision_server_error";
     }
   }
 
   const message = error instanceof Error ? error.message : String(error);
 
   if (message.includes("429")) {
-    return "openai_rate_limited";
+    return "vision_rate_limited";
   }
 
   if (/status 5\d\d/.test(message)) {
-    return "openai_server_error";
+    return "vision_server_error";
   }
 
   if (message.includes("504") || message.toLowerCase().includes("timeout")) {
-    return "openai_timeout";
+    return "vision_timeout";
   }
 
   if (message.includes("status 400") || message.toLowerCase().includes("unsupported parameter")) {
-    return "openai_invalid_request";
+    return "vision_invalid_request";
   }
 
   if (message.toLowerCase().includes("no visible output")) {
-    return "openai_empty_output";
+    return "vision_empty_output";
   }
 
   return "ai_processing_failed";

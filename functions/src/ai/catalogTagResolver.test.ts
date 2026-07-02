@@ -113,7 +113,7 @@ describe("catalogTagResolver", () => {
     );
   });
 
-  it("caps approved tag output while still collecting suggestions", () => {
+  it("caps approved tag output and stops suggesting once the cap is reached", () => {
     const result = resolveAiCatalogTags({
       approvedTags: [
         createCatalogTag({ name: "one" }),
@@ -125,10 +125,56 @@ describe("catalogTagResolver", () => {
     });
 
     assert.deepEqual(result.tags, ["one", "two"]);
+    // Once the approved-tag cap is already satisfied, do not surface additional suggested-new-tags
+    // for the remaining unmatched candidates — there is no room left for them anyway.
+    assert.deepEqual(result.suggestedNewTags, []);
+  });
+
+  it("still collects a suggestion when the approved cap has not been reached", () => {
+    const result = resolveAiCatalogTags({
+      approvedTags: [createCatalogTag({ name: "one" })],
+      candidates: ["one", "new"],
+      maxApprovedTags: 2,
+    });
+
+    assert.deepEqual(result.tags, ["one"]);
     assert.deepEqual(
       result.suggestedNewTags.map((tag) => tag.name),
       ["new"],
     );
+  });
+
+  it("limits suggested-new-tags to only the remaining gap, not every unmatched candidate", () => {
+    // Real-world case: 7 of 8 approved slots matched, but the model surfaced several unmatched
+    // candidates. Only 1 slot of room remains, so only 1 suggestion should be returned even
+    // though 3 unmatched candidates were available.
+    const result = resolveAiCatalogTags({
+      approvedTags: [
+        createCatalogTag({ name: "one" }),
+        createCatalogTag({ name: "two" }),
+        createCatalogTag({ name: "three" }),
+        createCatalogTag({ name: "four" }),
+        createCatalogTag({ name: "five" }),
+        createCatalogTag({ name: "six" }),
+        createCatalogTag({ name: "seven" }),
+      ],
+      candidates: [
+        "one",
+        "two",
+        "three",
+        "four",
+        "five",
+        "six",
+        "seven",
+        "unmatched-a",
+        "unmatched-b",
+        "unmatched-c",
+      ],
+      maxApprovedTags: 8,
+    });
+
+    assert.equal(result.tags.length, 7);
+    assert.equal(result.suggestedNewTags.length, 1);
   });
 
   it("drops suggested-new-tags that match an approved name or alias", () => {

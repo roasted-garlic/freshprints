@@ -147,7 +147,7 @@ describe("aiReviewInboxSelection", () => {
       updatedAt: { toMillis: () => 10, toDate: () => new Date() } as Design["updatedAt"],
       aiSuggestions: {
         title: "Old Title",
-        provider: "openai",
+        provider: "google",
         generatedAt: "2026-06-25T10:00:00.000Z",
       },
     });
@@ -157,7 +157,7 @@ describe("aiReviewInboxSelection", () => {
       updatedAt: { toMillis: () => 25, toDate: () => new Date() } as Design["updatedAt"],
       aiSuggestions: {
         title: "New Title",
-        provider: "openai",
+        provider: "google",
         generatedAt: "2026-06-25T10:05:00.000Z",
       },
     });

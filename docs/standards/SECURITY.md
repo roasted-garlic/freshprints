@@ -785,15 +785,15 @@ Never commit private keys.
 
 # AI Provider Secrets (Phase 5B)
 
-OpenAI and other third-party **provider API keys** for server-side AI enrichment:
+Google AI (Gemini) **provider API key** for server-side AI enrichment:
 
 | Allowed | Forbidden |
 |---------|-----------|
-| Firebase Secret Manager (`OPENAI_API_KEY`) | Firestore `settings` or any document field |
+| Firebase Secret Manager (`GEMINI_API_KEY`) | Firestore `settings` or any document field |
 | Cloud Functions reading bound secrets | Desktop Settings page API-key fields |
 | Documented setup in `FIREBASE.md` / `DEPLOYMENT.md` | Renderer env vars, preload, or IPC exposing keys |
 
-The Electron renderer may call `enqueueAiEnrichment` but must **never** receive the OpenAI key. Development environments may run the heuristic provider without a real key; production OpenAI vision requires Secret Manager configuration with human approval.
+The Electron renderer may call `enqueueAiEnrichment` but must **never** receive the Gemini key. Development environments may run the heuristic provider without a real key; production Gemini vision requires Secret Manager configuration with human approval. As of ADR-FP-040, OpenAI is no longer used and `OPENAI_API_KEY` was removed from Cloud Function code.
 
 ---
 

@@ -9,7 +9,6 @@ interface EnqueueAiEnrichmentInput {
   rerunRejected?: boolean;
   rerunFromReview?: boolean;
   visionModelIdOverride?: string;
-  reasoningEffortOverride?: string;
 }
 
 interface EnqueueAiEnrichmentResult {
@@ -39,7 +38,6 @@ async function enqueueAiEnrichment(
     rerunRejected?: boolean;
     rerunFromReview?: boolean;
     visionModelIdOverride?: string;
-    reasoningEffortOverride?: string;
   },
 ): Promise<EnqueueAiEnrichmentResult> {
   try {
@@ -53,7 +51,6 @@ async function enqueueAiEnrichment(
       rerunRejected: options?.rerunRejected,
       rerunFromReview: options?.rerunFromReview,
       visionModelIdOverride: options?.visionModelIdOverride,
-      reasoningEffortOverride: options?.reasoningEffortOverride,
     });
 
     logPipelineEvent("enqueue.callable.completed", {
@@ -65,7 +62,6 @@ async function enqueueAiEnrichment(
       rerunRejected: options?.rerunRejected ?? false,
       rerunFromReview: options?.rerunFromReview ?? false,
       visionModelIdOverride: options?.visionModelIdOverride ?? null,
-      reasoningEffortOverride: options?.reasoningEffortOverride ?? null,
     });
 
     return response.data;
@@ -123,7 +119,7 @@ function isGenericCallableMessage(message: string): boolean {
 export const aiEnrichmentEnqueueService = {
   async enqueueForProcessing(
     designId: string,
-    options?: { visionModelIdOverride?: string; reasoningEffortOverride?: string },
+    options?: { visionModelIdOverride?: string },
   ): Promise<EnqueueAiEnrichmentResult> {
     return enqueueAiEnrichment(designId, options);
   },
@@ -135,7 +131,7 @@ export const aiEnrichmentEnqueueService = {
 
   async retryFailedProcessing(
     designId: string,
-    options?: { visionModelIdOverride?: string; reasoningEffortOverride?: string },
+    options?: { visionModelIdOverride?: string },
   ): Promise<EnqueueAiEnrichmentResult> {
     return enqueueAiEnrichment(designId, options);
   },

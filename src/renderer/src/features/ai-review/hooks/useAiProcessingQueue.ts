@@ -25,7 +25,6 @@ export type { AiProcessingQueueRunState } from "../types/aiProcessingQueue.types
 interface UseAiProcessingQueueOptions {
   activeTab: AiReviewInboxTab;
   applyDesignPatch: (designId: string, patch: Partial<Design>) => void;
-  defaultReasoningEffort: string;
   defaultVisionModelId: string;
   designs: Design[];
   onActionError: (message: string | null) => void;
@@ -38,7 +37,6 @@ interface UseAiProcessingQueueOptions {
 export function useAiProcessingQueue({
   activeTab,
   applyDesignPatch,
-  defaultReasoningEffort,
   defaultVisionModelId,
   designs,
   onActionError,
@@ -52,7 +50,6 @@ export function useAiProcessingQueue({
   const [isQueueBusy, setIsQueueBusy] = useState(false);
   const [enqueueingDesignId, setEnqueueingDesignId] = useState<string | null>(null);
   const [sessionVisionModelId, setSessionVisionModelId] = useState<string | null>(null);
-  const [sessionReasoningEffort, setSessionReasoningEffort] = useState<string | null>(null);
 
   const designsRef = useRef(designs);
   const runStateRef = useRef(runState);
@@ -140,18 +137,15 @@ export function useAiProcessingQueue({
   }, [activeTab, awaitingDesigns, selectedDesign]);
 
   const resolvedSessionVisionModelId = sessionVisionModelId ?? defaultVisionModelId;
-  const resolvedSessionReasoningEffort = sessionReasoningEffort ?? defaultReasoningEffort;
 
-  const hasSessionOverride = Boolean(sessionVisionModelId || sessionReasoningEffort);
+  const hasSessionOverride = Boolean(sessionVisionModelId);
 
-  const applySessionSettings = useCallback((visionModelId: string, reasoningEffort: string) => {
+  const applySessionSettings = useCallback((visionModelId: string) => {
     setSessionVisionModelId(visionModelId);
-    setSessionReasoningEffort(reasoningEffort);
   }, []);
 
   const clearSessionSettings = useCallback(() => {
     setSessionVisionModelId(null);
-    setSessionReasoningEffort(null);
   }, []);
 
   const advanceSelectionToIndex = useCallback(
@@ -168,14 +162,13 @@ export function useAiProcessingQueue({
   const enqueueDesign = useCallback(
     async (
       designId: string,
-      settings: { visionModelId: string; reasoningEffort: string },
+      settings: { visionModelId: string },
     ) => {
       setEnqueueingDesignId(designId);
 
       try {
         const result = await aiEnrichmentEnqueueService.enqueueForProcessing(designId, {
           visionModelIdOverride: settings.visionModelId,
-          reasoningEffortOverride: settings.reasoningEffort,
         });
 
         if (!result.queued) {
@@ -215,7 +208,7 @@ export function useAiProcessingQueue({
   const runAutoQueueLoop = useCallback(
     async (
       startIndex: number,
-      settingsSnapshot: { visionModelId: string; reasoningEffort: string },
+      settingsSnapshot: { visionModelId: string },
     ) => {
       setIsQueueBusy(true);
       onActionError(null);
@@ -309,11 +302,9 @@ export function useAiProcessingQueue({
 
     void runAutoQueueLoop(startIndex, {
       visionModelId: resolvedSessionVisionModelId,
-      reasoningEffort: resolvedSessionReasoningEffort,
     });
   }, [
     canStartAutoQueue,
-    resolvedSessionReasoningEffort,
     resolvedSessionVisionModelId,
     runAutoQueueLoop,
     selectedDesign,
@@ -340,7 +331,6 @@ export function useAiProcessingQueue({
     try {
       await enqueueDesign(selectedDesignId, {
         visionModelId: resolvedSessionVisionModelId,
-        reasoningEffort: resolvedSessionReasoningEffort,
       });
       await refreshDesignList();
 
@@ -366,7 +356,6 @@ export function useAiProcessingQueue({
     enqueueDesign,
     onActionError,
     refreshDesignList,
-    resolvedSessionReasoningEffort,
     resolvedSessionVisionModelId,
     selectedDesignId,
   ]);
@@ -384,7 +373,6 @@ export function useAiProcessingQueue({
     isQueueBusy,
     processSelectedDesign,
     queuePositionLabel,
-    resolvedSessionReasoningEffort,
     resolvedSessionVisionModelId,
     runState,
     setAutoAdvance,

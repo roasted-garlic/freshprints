@@ -71,7 +71,7 @@ describe("aiReviewInboxEligibility", () => {
 
   it("allows needs review rerun only when server eligibility matches", () => {
     const eligible = createDesign({
-      aiSuggestions: { title: "Suggested", provider: "openai", generatedAt: "2026-06-25T10:00:00.000Z" },
+      aiSuggestions: { title: "Suggested", provider: "google", generatedAt: "2026-06-25T10:00:00.000Z" },
     });
     assert.equal(isDesignRerunnableFromNeedsReview(eligible), true);
 

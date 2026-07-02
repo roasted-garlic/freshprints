@@ -7,7 +7,7 @@ import {
   extractJsonObject,
   normalizeSimpleCatalogEnrichment,
 } from "./simpleCatalogEnrichmentResponse";
-import { OPENAI_CATALOG_ENRICHMENT_PROMPT_VERSION } from "./catalogTitleRules";
+import { CATALOG_ENRICHMENT_PROMPT_VERSION } from "./catalogTitleRules";
 import { DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE } from "../../../shared/constants/aiEnrichment.constants";
 
 const EXCLUSIONS = ["death", "skull"];
@@ -206,12 +206,12 @@ describe("buildSimpleCatalogEnrichmentResult", () => {
         categoryNames: ["Motherhood"],
         categoryIdsByName: { motherhood: "cat-motherhood" },
       }),
-      modelId: "gpt-5.4-nano-2026-03-17",
+      modelId: "gemini-2.5-flash-lite",
     });
 
-    assert.equal(result.suggestions.provider, "openai");
-    assert.equal(result.suggestions.model, "gpt-5.4-nano-2026-03-17");
-    assert.equal(result.suggestions.promptVersion, OPENAI_CATALOG_ENRICHMENT_PROMPT_VERSION);
+    assert.equal(result.suggestions.provider, "google");
+    assert.equal(result.suggestions.model, "gemini-2.5-flash-lite");
+    assert.equal(result.suggestions.promptVersion, CATALOG_ENRICHMENT_PROMPT_VERSION);
     // Lean path trusts the model title verbatim (only non-destructive normalization).
     assert.equal(result.suggestions.title, "Some Days I Rock It");
     assert.ok(result.suggestions.description && result.suggestions.description.length > 0);

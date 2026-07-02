@@ -9,7 +9,7 @@ describe("mapDesignAiFields", () => {
       aiSuggestions: {
         provider: "google",
         model: "gemini-2.5-flash-lite",
-        promptVersion: "catalog-enrich-openai-v18",
+        promptVersion: "catalog-enrich-v19",
         promptTokens: 1234,
         completionTokens: 56,
         estimatedCostUsd: 0.000178,

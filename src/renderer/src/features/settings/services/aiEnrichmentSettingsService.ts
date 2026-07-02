@@ -1,10 +1,7 @@
 import { doc, onSnapshot, type Unsubscribe } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 
-import type {
-  AllowedVisionModelId,
-  OpenAiReasoningEffort,
-} from "../../../../../../shared/constants/aiEnrichment.constants";
+import type { AllowedVisionModelId } from "../../../../../../shared/constants/aiEnrichment.constants";
 import { db, functions } from "../../../config/firebase";
 import {
   ADDITIONAL_TAG_EXCLUSION_PATTERN,
@@ -13,12 +10,10 @@ import {
   DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
   MAX_ADDITIONAL_TAG_EXCLUSIONS,
   hasRequiredAiEnrichmentPromptPlaceholders,
-  resolveClientReasoningEffort,
   resolveClientVisionModelId,
 } from "../constants/aiEnrichmentSettingsConstants";
 
 export interface AiEnrichmentSettingsSnapshot {
-  reasoningEffort: OpenAiReasoningEffort;
   visionModelId: AllowedVisionModelId;
   promptTemplate: string;
   additionalTagExclusions: string[];
@@ -27,14 +22,12 @@ export interface AiEnrichmentSettingsSnapshot {
 }
 
 interface UpdateAiEnrichmentSettingsInput {
-  reasoningEffort: OpenAiReasoningEffort;
   visionModelId: AllowedVisionModelId;
   promptTemplate: string;
   additionalTagExclusions: string[];
 }
 
 interface UpdateAiEnrichmentSettingsResult {
-  reasoningEffort: OpenAiReasoningEffort;
   visionModelId: AllowedVisionModelId;
   promptTemplate: string;
   additionalTagExclusions: string[];
@@ -97,14 +90,10 @@ function mapSettingsSnapshot(data: Record<string, unknown> | undefined): AiEnric
   const visionModelId = resolveClientVisionModelId(
     typeof data?.visionModelId === "string" ? data.visionModelId : undefined,
   );
-  const reasoningEffort = resolveClientReasoningEffort(
-    typeof data?.reasoningEffort === "string" ? data.reasoningEffort : undefined,
-  );
   const additionalTagExclusions = resolveClientAdditionalTagExclusions(data?.additionalTagExclusions);
   const promptTemplate = resolveClientPromptTemplate(data?.promptTemplate);
 
   return {
-    reasoningEffort,
     visionModelId,
     promptTemplate,
     additionalTagExclusions,
@@ -130,7 +119,6 @@ export const aiEnrichmentSettingsService = {
   },
 
   async updateSettings(input: {
-    reasoningEffort: OpenAiReasoningEffort;
     visionModelId: AllowedVisionModelId;
     promptTemplate: string;
     additionalTagExclusions: string[];
@@ -141,14 +129,12 @@ export const aiEnrichmentSettingsService = {
     >(functions, "updateAiEnrichmentSettings");
 
     const response = await updateCallable({
-      reasoningEffort: resolveClientReasoningEffort(input.reasoningEffort),
       visionModelId: resolveClientVisionModelId(input.visionModelId),
       promptTemplate: resolveClientPromptTemplate(input.promptTemplate),
       additionalTagExclusions: resolveClientAdditionalTagExclusions(input.additionalTagExclusions),
     });
 
     return {
-      reasoningEffort: resolveClientReasoningEffort(response.data.reasoningEffort),
       visionModelId: resolveClientVisionModelId(response.data.visionModelId),
       promptTemplate: resolveClientPromptTemplate(response.data.promptTemplate),
       additionalTagExclusions: resolveClientAdditionalTagExclusions(

@@ -233,6 +233,59 @@
   flex: 0 0 auto;
 }
 
+.settings-playground-prompt-menu-shell {
+  position: relative;
+}
+
+.settings-playground-prompt-menu-shell .button {
+  align-items: center;
+  display: inline-flex;
+  gap: var(--space-2);
+}
+
+.settings-playground-prompt-menu {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  display: grid;
+  gap: var(--space-1);
+  min-width: 12rem;
+  padding: var(--space-2);
+  position: absolute;
+  right: 0;
+  top: calc(100% + var(--space-2));
+  z-index: 20;
+}
+
+.settings-playground-prompt-menu-option {
+  align-items: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  display: flex;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+}
+
+.settings-playground-prompt-menu-option:hover,
+.settings-playground-prompt-menu-option:focus-visible {
+  background: var(--color-bg-tertiary);
+  border-color: var(--color-border);
+  outline: none;
+}
+
+.settings-playground-prompt-menu-option:disabled {
+  color: var(--color-text-secondary);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 .settings-playground-textarea {
   display: block;
   line-height: 1.45;

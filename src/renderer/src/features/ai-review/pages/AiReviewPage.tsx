@@ -54,7 +54,6 @@ function AiReviewPageContent() {
   );
 
   const inbox = useAiReviewInbox(filters, {
-    defaultReasoningEffort: enrichmentSettings.reasoningEffort,
     defaultVisionModelId: enrichmentSettings.visionModelId,
     onNavigateToTab: handleNavigateToTab,
     onQueueChanged: () => void tabCounts.reloadCounts(),
@@ -169,7 +168,6 @@ function AiReviewPageContent() {
             canRetryProcessing={inbox.canRetryProcessing}
             canStartAutoQueue={inbox.processingQueue.canStartAutoQueue}
             categoryOptions={categoryOptions}
-            currentReasoningEffort={enrichmentSettings.reasoningEffort}
             currentVisionModelId={enrichmentSettings.visionModelId}
             hasProcessingSettingsOverride={inbox.processingQueue.hasSessionOverride}
             draftForm={inbox.draftForm}
@@ -205,7 +203,6 @@ function AiReviewPageContent() {
             onRerunAiSuggestions={() => inbox.requestRerunAiSuggestions()}
             queuePositionLabel={inbox.processingQueue.queuePositionLabel}
             queueRunState={inbox.processingQueue.runState}
-            processingReasoningEffort={inbox.processingQueue.resolvedSessionReasoningEffort}
             processingVisionModelId={inbox.processingQueue.resolvedSessionVisionModelId}
             selectedDesign={inbox.selectedDesign}
             showReadOnlySuggestions={inbox.showReadOnlySuggestions}

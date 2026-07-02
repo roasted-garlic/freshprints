@@ -35,7 +35,6 @@ describe("enqueueAiEnrichmentValidation", () => {
         rerunRejected: false,
         rerunFromReview: true,
         visionModelIdOverride: undefined,
-        reasoningEffortOverride: undefined,
       },
     );
   });
@@ -45,14 +44,13 @@ describe("enqueueAiEnrichmentValidation", () => {
       parseEnqueueAiEnrichmentRequest({
         designId: "abc",
         rerunRejected: true,
-        visionModelIdOverride: "gpt-5.4-mini-2026-03-17",
+        visionModelIdOverride: "gemini-3.1-flash-lite",
       }),
       {
         designId: "abc",
         rerunRejected: true,
         rerunFromReview: false,
-        visionModelIdOverride: "gpt-5.4-mini-2026-03-17",
-        reasoningEffortOverride: undefined,
+        visionModelIdOverride: "gemini-3.1-flash-lite",
       },
     );
   });

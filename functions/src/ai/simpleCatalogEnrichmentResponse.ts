@@ -3,12 +3,12 @@ import type { SuggestedNewTag } from "../../../shared/types/catalogTag.types";
 import type { AiEnrichmentInput, AiEnrichmentResult } from "./providers/AiEnrichmentProvider";
 
 import {
-  OPENAI_SIMPLE_ENRICHMENT_MAX_SUGGESTED_TAGS,
-  OPENAI_SIMPLE_ENRICHMENT_MAX_TAGS,
+  SIMPLE_ENRICHMENT_MAX_SUGGESTED_TAGS,
+  SIMPLE_ENRICHMENT_MAX_TAGS,
 } from "./aiEnrichmentConfig";
 import { estimateVisionCostUsd } from "../../../shared/constants/aiEnrichment.constants";
 import {
-  OPENAI_CATALOG_ENRICHMENT_PROMPT_VERSION,
+  CATALOG_ENRICHMENT_PROMPT_VERSION,
   normalizeAiTags,
   resolveLeanCatalogTitle,
   sanitizeCatalogDescription,
@@ -153,7 +153,7 @@ function normalizeSuggestedNewTags(value: unknown): SuggestedNewTag[] {
     });
     seen.add(name);
 
-    if (result.length >= OPENAI_SIMPLE_ENRICHMENT_MAX_SUGGESTED_TAGS) {
+    if (result.length >= SIMPLE_ENRICHMENT_MAX_SUGGESTED_TAGS) {
       break;
     }
   }
@@ -207,7 +207,7 @@ export function normalizeSimpleCatalogEnrichment(
   const tags = normalizeAiTags(
     raw.tags,
     undefined,
-    OPENAI_SIMPLE_ENRICHMENT_MAX_TAGS,
+    SIMPLE_ENRICHMENT_MAX_TAGS,
     effectiveTagExclusions,
   );
   const rawTags = normalizeRawAiTags(raw.tags);
@@ -274,9 +274,9 @@ export function buildSimpleCatalogEnrichmentResult(input: {
     description,
     suggestedNewTags: parsed.suggestedNewTags.length > 0 ? parsed.suggestedNewTags : undefined,
     tags: parsed.tags,
-    provider: providerId ?? "openai",
+    provider: providerId ?? "google",
     model: modelId,
-    promptVersion: OPENAI_CATALOG_ENRICHMENT_PROMPT_VERSION,
+    promptVersion: CATALOG_ENRICHMENT_PROMPT_VERSION,
     generatedAt: new Date().toISOString(),
     promptTokens: promptTokens ?? null,
     completionTokens: completionTokens ?? null,

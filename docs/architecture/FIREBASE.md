@@ -873,29 +873,31 @@ Prefer a full `functions` deploy after export/entrypoint changes so all exports 
 firebase deploy --only functions:enqueueAiEnrichment,functions:resetAiEnrichmentForProcessing
 ```
 
-**Prerequisite:** `OPENAI_API_KEY` must exist in **Firebase Secret Manager** before deploy (functions bind the secret at deploy time). See **AI provider secrets** below — never store this key in Firestore or the desktop app.
+**Prerequisite:** `GEMINI_API_KEY` must exist in **Firebase Secret Manager** before deploy (functions bind the secret at deploy time). See **AI provider secrets** below — never store this key in Firestore or the desktop app.
 
 **Build entrypoint:** `functions/package.json` → `main: lib/functions/src/index.js` (see `docs/workflow/setup/firebase-functions-setup.md`).
 
 ## AI provider secrets (Phase 5B)
 
+As of ADR-FP-040, Google (Gemini) is the only AI provider; OpenAI was removed and `OPENAI_API_KEY` is no longer referenced by Cloud Function code.
+
 | Rule | Detail |
 |------|--------|
-| Storage | **Firebase Secret Manager only** (`OPENAI_API_KEY`) |
+| Storage | **Firebase Secret Manager only** (`GEMINI_API_KEY`) |
 | Firestore | **Not allowed** — no provider API keys in `settings` or any collection |
-| Desktop renderer | **Must not** read, write, display, or configure OpenAI keys |
+| Desktop renderer | **Must not** read, write, display, or configure Gemini keys |
 | Settings UI | **No** API-key entry on the desktop Settings page |
 | Cloud Functions | May read secrets via `defineSecret` / `secrets` binding |
 | Development | Heuristic provider runs when secret is unset or empty at **runtime** (after deploy) |
-| Production OpenAI | Requires a real `OPENAI_API_KEY` in Secret Manager (human approval) |
+| Production Gemini | Requires a real `GEMINI_API_KEY` in Secret Manager (human approval) |
 
 Set secret (human, outside repo):
 
 ```bash
-firebase functions:secrets:set OPENAI_API_KEY
+firebase functions:secrets:set GEMINI_API_KEY
 ```
 
-**Do not** store `OPENAI_API_KEY` in Firestore `settings` or any document. The desktop renderer must never read provider secrets.
+**Do not** store `GEMINI_API_KEY` in Firestore `settings` or any document. The desktop renderer must never read provider secrets.
 
 ### Build artifact caution
 
