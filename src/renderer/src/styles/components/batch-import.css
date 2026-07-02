@@ -137,6 +137,12 @@
   color: var(--color-success-text);
 }
 
+.batch-import-detail-pill-warning {
+  background: var(--color-warning-soft);
+  border-color: var(--color-warning);
+  color: var(--color-warning-text);
+}
+
 .batch-import-progress-stats {
   color: var(--color-text-secondary);
   display: flex;
@@ -371,6 +377,7 @@
   justify-content: flex-end;
 }
 
+.batch-import-file-preview-button,
 .batch-import-file-preview-image,
 .batch-import-file-preview-placeholder {
   background: var(--color-artwork-preview-bg);
@@ -381,6 +388,23 @@
   object-fit: contain;
   padding: var(--space-1);
   width: 3rem;
+}
+
+.batch-import-file-preview-button {
+  cursor: zoom-in;
+  margin: 0;
+}
+
+.batch-import-file-preview-button:focus-visible {
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+  outline: none;
+}
+
+.batch-import-file-preview-button .batch-import-file-preview-image {
+  border: 0;
+  height: 100%;
+  padding: 0;
+  width: 100%;
 }
 
 .batch-import-file-preview-placeholder {
@@ -439,11 +463,89 @@
   gap: var(--space-3);
 }
 
+.batch-import-result-pills {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
 .batch-import-result-summary h3 {
   color: var(--color-text-primary);
   font-size: var(--font-size-lg);
   font-weight: 600;
   margin: 0;
+}
+
+.batch-import-warning-card-grid {
+  display: grid;
+  gap: var(--space-2);
+  max-height: 24rem;
+  overflow: auto;
+  padding-right: var(--space-1);
+}
+
+.batch-import-warning-card {
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+}
+
+.batch-import-warning-card-header {
+  align-items: start;
+  display: flex;
+  gap: var(--space-2);
+  justify-content: space-between;
+}
+
+.batch-import-warning-card h3 {
+  color: var(--color-text-primary);
+  font-size: var(--font-size-md);
+  font-weight: 700;
+  line-height: var(--line-height-tight);
+  margin: 0;
+  word-break: break-word;
+}
+
+.batch-import-warning-card-header span {
+  color: var(--color-warning-text);
+  flex: 0 0 auto;
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+}
+
+.batch-import-warning-path {
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-normal);
+  margin: 0;
+  word-break: break-word;
+}
+
+.batch-import-warning-card ul {
+  display: grid;
+  gap: var(--space-2);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.batch-import-warning-card li {
+  align-items: start;
+  color: var(--color-text-secondary);
+  display: grid;
+  font-size: var(--font-size-sm);
+  gap: var(--space-1);
+  line-height: var(--line-height-normal);
+}
+
+.batch-import-warning-code {
+  color: var(--color-warning-text);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
 }
 
 .batch-import-failed-list {

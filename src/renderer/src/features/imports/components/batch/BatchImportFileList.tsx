@@ -10,6 +10,7 @@ import { Badge } from "../../../../shared/components/Badge";
 import { Button } from "../../../../shared/components/Button";
 import { importDesktopService } from "../../services/importDesktopService";
 import { isValidatedFileIncluded } from "../../utils/batchImportDisplay";
+import { ImportPreviewLightbox } from "../ImportPreviewLightbox";
 import { BatchImportFileValidationWarnings } from "./BatchImportFileValidationWarnings";
 
 interface BatchImportFileListProps {
@@ -48,7 +49,9 @@ function BatchImportFilePreview({
 }) {
   const previewRef = useRef<HTMLDivElement | null>(null);
   const [hasBeenVisible, setHasBeenVisible] = useState(false);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [previewDataUrl, setPreviewDataUrl] = useState<string | null>(null);
+  const fileLabel = getFileLabel(file);
 
   useEffect(() => {
     const previewElement = previewRef.current;
@@ -120,11 +123,27 @@ function BatchImportFilePreview({
   }
 
   return (
-    <img
-      alt={`Preview of ${getFileLabel(file)}`}
-      className="batch-import-file-preview-image"
-      src={previewDataUrl}
-    />
+    <>
+      <button
+        aria-label={`Open preview of ${fileLabel}`}
+        className="batch-import-file-preview-button"
+        onClick={() => setIsPreviewOpen(true)}
+        type="button"
+      >
+        <img
+          alt={`Preview of ${fileLabel}`}
+          className="batch-import-file-preview-image"
+          src={previewDataUrl}
+        />
+      </button>
+      <ImportPreviewLightbox
+        alt={`Preview of ${fileLabel}`}
+        isOpen={isPreviewOpen}
+        onClose={() => setIsPreviewOpen(false)}
+        previewDataUrl={previewDataUrl}
+        title={fileLabel}
+      />
+    </>
   );
 }
 

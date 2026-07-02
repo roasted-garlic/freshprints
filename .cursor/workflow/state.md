@@ -9,7 +9,7 @@ batch-ready-upload-declutter - Reduce vertical space and clutter in the batch im
 ## Phase
 signoff
 
-signed off - batch ready-to-upload presentation change, normalization condensation, and guarded row-preview follow-up implemented; automated verification passed; ready to commit and push
+signed off - batch ready-to-upload presentation change, normalization condensation, guarded row-preview follow-up, and completed-upload warning details pill implemented; automated verification passed; ready to commit and push
 
 ## Plan Status
 created and approved - `docs/workflow/plans/2026-07-02-batch-ready-upload-declutter-plan.md`
@@ -41,6 +41,8 @@ Commit and push the signed-off changes if desired. No Firebase deploy applies to
 yes
 
 ## Decision Log
+- 2026-07-02: Follow-up for `batch-ready-upload-declutter`: replaced the completed batch upload full-width validation warning alert with a compact warning details pill that opens a modal grouped by file, showing each file's validation warning messages. Re-verified: `npx tsc --noEmit`, `npm run lint`, and `git diff --check` passed (Git CRLF conversion warnings only).
+- 2026-07-02: Follow-up for `batch-ready-upload-declutter`: added local-session preview lightboxes for single PNG validation/completion previews and loaded batch row thumbnails. Batch placeholders remain non-clickable until their lazy preview data URL is available. Re-verified: `npx tsc --noEmit`, `npm run lint`, and `git diff --check` passed (Git CRLF conversion warnings only).
 - 2026-07-02: Follow-up for `batch-ready-upload-declutter`: changed the normalized details modal from a bullet list to compact cards and changed batch row previews to lazy-load through `IntersectionObserver` as rows enter the scroll viewport instead of requesting every preview at once. Re-verified: `npx tsc --noEmit`, `npm run lint`, and `git diff --check` passed (Git CRLF conversion warnings only).
 - 2026-07-02: Follow-up for `batch-ready-upload-declutter`: replaced inline `Discovery details` and normalization details with compact modal-opening pills beside the source-type badge, and changed the validated file list to render all files inside a taller scrolling area instead of truncating with an `and X more` footer. Re-verified: `npx tsc --noEmit`, `npm run lint`, and `git diff --check` passed (Git CRLF conversion warnings only).
 - 2026-07-02: Follow-up for `batch-ready-upload-declutter`: added compact right-aligned image previews to visible validated batch rows and moved `Discovery details` directly below the summary cards. The preview IPC now accepts `{ jobId, filePath }` only for paths already validated in the active batch session owned by the current window; arbitrary renderer paths remain rejected. Re-verified: `npx tsc --noEmit`, `npm run lint`, and `git diff --check` passed (Git CRLF conversion warnings only).

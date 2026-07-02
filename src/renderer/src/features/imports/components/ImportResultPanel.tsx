@@ -20,6 +20,7 @@ import {
   formatPrintInchesDisplay,
   getImportWarningMessageClassName,
 } from "../utils/importPrintSizeDisplay";
+import { ImportPreviewLightbox } from "./ImportPreviewLightbox";
 import { ImportPngPreview } from "./ImportPngPreview";
 
 interface ImportResultPanelProps {
@@ -353,6 +354,7 @@ export function ImportResultPanel({
 }: ImportResultPanelProps) {
   const phaseMessage = getPhaseMessage(phase);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
   if (phaseMessage) {
     return (
@@ -392,6 +394,7 @@ export function ImportResultPanel({
           {validationResult ? (
             <ImportPngPreview
               alt={`Preview of ${validationResult.fileName}`}
+              onPreviewClick={() => setIsPreviewOpen(true)}
               previewDataUrl={previewDataUrl}
             />
           ) : null}
@@ -413,6 +416,13 @@ export function ImportResultPanel({
           uploadWarning={uploadWarning}
           validationResult={validationResult}
         />
+        <ImportPreviewLightbox
+          alt={validationResult ? `Preview of ${validationResult.fileName}` : "Import preview"}
+          isOpen={isPreviewOpen}
+          onClose={() => setIsPreviewOpen(false)}
+          previewDataUrl={previewDataUrl}
+          title={validationResult?.fileName ?? "Import preview"}
+        />
       </Card>
     );
   }
@@ -424,6 +434,7 @@ export function ImportResultPanel({
           <div className="import-validation-preview-column">
             <ImportPngPreview
               alt={`Preview of ${validationResult.fileName}`}
+              onPreviewClick={() => setIsPreviewOpen(true)}
               previewDataUrl={previewDataUrl}
             />
 
@@ -470,6 +481,13 @@ export function ImportResultPanel({
           ) : null}
         </div>
       </div>
+      <ImportPreviewLightbox
+        alt={validationResult ? `Preview of ${validationResult.fileName}` : "Import preview"}
+        isOpen={isPreviewOpen}
+        onClose={() => setIsPreviewOpen(false)}
+        previewDataUrl={previewDataUrl}
+        title={validationResult?.fileName ?? "Import preview"}
+      />
     </Card>
   );
 }
