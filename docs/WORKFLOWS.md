@@ -907,8 +907,8 @@ Design never appears in Design Library browse
 ## AI Processing rules
 
 * AI suggests; staff approves. No automatic catalog publish.
-* **Staff-controlled AI queue** — import does not call OpenAI; Processing tab **Start AI** / **Process image with AI** runs one design at a time; **Auto advance** toggle (session) switches batch vs manual stepping.
-* **Processing overrides** — the settings icon beside Auto advance lets staff choose a per-session model and reasoning effort without changing Settings defaults.
+* **Staff-controlled AI queue** — import does not call Google AI automatically; Processing tab **Start AI** / **Process image with AI** runs one design at a time; **Auto advance** toggle (session) switches batch vs manual stepping.
+* **Processing overrides** — the settings icon beside Auto advance lets staff choose a per-session Gemini model without changing Settings defaults.
 * **Re-run AI Suggestions** from Needs Review or Rejected resets the design back to Processing. AI is not re-run in place on review tabs.
 
 ### Staff-controlled AI processing (2026-06-29)
@@ -923,7 +923,7 @@ Design never appears in Design Library browse
 | Needs Review | Designs with completed AI output (`aiReviewStatus: needs_review`) — editable form + approve/reject |
 | Rejected tab | Read-only suggestions + **Reopen for Review** or **Re-run AI Suggestions** (owner/admin, sends back to Processing) |
 | Provider | **Development** heuristic when `OPENAI_API_KEY` is not configured |
-| Production | OpenAI vision (saved model from `settings/aiEnrichment`; default `gpt-5.4-nano-2026-03-17`) when `OPENAI_API_KEY` is set |
+| Production | Google AI / Gemini vision (saved model from `settings/aiEnrichment`; default `gemini-2.5-flash-lite`) when `GEMINI_API_KEY` is set |
 
 Import completion UI links to **AI Processing** (`/ai-review`). Staff start AI from the Processing tab when ready.
 
@@ -931,16 +931,16 @@ Import completion UI links to **AI Processing** (`/ai-review`). Staff start AI f
 
 | Location | Who | Behavior |
 |----------|-----|----------|
-| **Settings** (`/settings`) | Owner/admin | Default vision model, default reasoning effort, tag exclusions, and one-off AI playground. The AI Processing prompt block is owner-only. |
+| **Settings** (`/settings`) | Owner/admin | Default Gemini vision model, tag exclusions, and one-off AI playground. The AI Processing prompt block is owner-only. |
 | **AI Processing** controls | Staff with processing access | Settings icon beside Auto advance applies a Processing-only model/reasoning override; manual processing uses current override/default; Auto advance snapshots it at start |
 | **AI Review re-run** | Staff with re-run permission | Sends the design back to Processing for a fresh staff-started AI run |
 | Per design | — | `aiSuggestions.model` records model used for that run |
 
 Allowed models (server allowlist): `gpt-5.4-nano-2026-03-17` (default), `gpt-5-nano-2025-08-07`, `gpt-5.4-mini-2026-03-17`. Missing or invalid stored value falls back to default.
 
-Allowed reasoning-effort values: `none`, `minimal`, `low`, `medium`, `high`. Saved default is `medium`; request-path compatibility fallback is `low`.
+Reasoning-effort controls were removed with OpenAI support in ADR-FP-040; Gemini model selection is the remaining AI Processing override.
 
-**Tag exclusions and approved taxonomy context:** Built-in list in code (`BASE_AI_TAG_EXCLUSIONS`) plus optional `additionalTagExclusions` in Settings. The server replaces `{{approved_categories}}` with active category names and descriptions, `{{approved_tags}}` with approved tag names, aliases, and preferred-when guidance, and `{{excluded_tags}}` with the effective exclusion list before the OpenAI call. Tags are filtered again after parsing.
+**Tag exclusions and server-side taxonomy resolution:** Built-in list in code (`BASE_AI_TAG_EXCLUSIONS`) plus optional `additionalTagExclusions` in Settings. The default prompt only requires `{{excluded_tags}}`; legacy owner-edited templates containing approved category/tag placeholders are still substituted for backward compatibility. Approved categories and tags are resolved server-side after the Gemini call, not injected into every default prompt. Tags are filtered again after parsing.
 
 **Needs Review / Rejected re-run:** **Re-run AI Suggestions** does not run AI on the review tab. It calls `resetAiEnrichmentForProcessing`, clears prior AI output, returns the design to Processing (`status: imported`, `aiReviewStatus: pending`), selects the same design there, and waits for staff to start processing.
 
@@ -978,8 +978,8 @@ Structured events use scope `ai-pipeline`:
 Redeploy functions after logging changes. Do not store provider API keys in Firestore or the desktop app.
 
 * Failed AI output stays in Processing (`aiReviewStatus: pending`, `aiProcessingStage: failed`) with retry actions. Structured `errorCode` values include `openai_rate_limited`, `openai_server_error`, `openai_timeout`.
-* **Sequential direct processing (2026-06-29):** `enqueueAiEnrichment` now runs the existing AI pipeline directly inside the callable with `timeoutSeconds: 180` and `memory: 512MiB`. Client still processes one design at a time. OpenAI calls retry up to 2 times on 429/5xx. Stale active stages (>10 min) may still be restarted via the callable.
-* **Prompt contract v17+template (updated 2026-06-30):** OpenAI AI Processing uses the saved Settings prompt template, with `{{approved_categories}}`, `{{approved_tags}}`, and `{{excluded_tags}}` replaced server-side. It requests `description`, one approved `category`, `title`, up to 8 approved tag names, strict visible-text extraction into the description when readable text exists, and optional complete `suggestedNewTags` objects. Stored `aiSuggestions.promptVersion` remains `catalog-enrich-openai-v17`.
+* **Sequential direct processing (2026-06-29):** `enqueueAiEnrichment` now runs the existing AI pipeline directly inside the callable with `timeoutSeconds: 180` and `memory: 512MiB`. Client still processes one design at a time. Gemini calls retry up to 2 times on 429/5xx. Stale active stages (>10 min) may still be restarted via the callable.
+* **Prompt contract v19 (updated 2026-07-01):** Google AI / Gemini AI Processing uses the saved Settings prompt template with `{{excluded_tags}}` replaced server-side. The default v19 prompt is small and vision-only: it requests `description`, a raw `category` candidate, `title`, up to 8 tag candidates, strict visible-text extraction into the description when readable text exists, and optional complete `suggestedNewTags` objects. Approved tag matching and approved category resolution happen deterministically server-side after the model call. Stored `aiSuggestions.promptVersion` is `catalog-enrich-v19` for Gemini and `catalog-enrich-dev-v19` for the development fallback.
 * **Approved tag normalization (2026-06-30):** Cloud Functions normalize AI tag output against approved `tags` documents. Exact approved name/alias matches remain in `aiSuggestions.tags`; unmatched AI tokens and valid AI `suggestedNewTags` become `aiSuggestions.suggestedNewTags` for owner/admin approval in Needs Review. AI does not auto-create approved tag documents.
 * No Firestore review drafts — temporary form state until Approve.
 * `designAiReviewService` owns review field mutations.

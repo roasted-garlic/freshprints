@@ -10,13 +10,19 @@ import type { CatalogTag } from "../../../shared/types/catalogTag.types";
 import type { AiEnrichmentCategoryOption } from "./providers/AiEnrichmentProvider";
 
 /**
- * Playground-style AI Processing prompt (v17).
+ * Playground-style AI Processing prompt (v20).
  *
  * Intentionally lightweight: it asks for only catalog review fields and does NOT force
  * `response_format: json_object`. This matches the Settings
  * AI Playground request shape, which returns valid JSON quickly at `medium` reasoning effort
  * without exhausting the token budget (the cause of the `finish_reason: length` empty-output
  * error on the heavier v16 structured contract).
+ *
+ * v20 adds approved category names (name only, no descriptions/aliases) to the prompt so the
+ * model can pick directly from the real taxonomy. Measured cost impact was ~0.8% over the v19
+ * baseline. Approved tag names/aliases/descriptions are deliberately NOT injected — testing
+ * showed injecting the full tag list raised per-image cost ~4.4x over baseline (see ADR-FP-041),
+ * so tag-name injection stays gated behind a real accuracy comparison before being added.
  */
 
 const SIMPLE_CATALOG_SYSTEM_PROMPT = [

@@ -2,7 +2,7 @@
 
 > **Refresh before every external AI session.**
 > Source: `.cursor/workflow/state.md` (authoritative) + `docs/project/ROADMAP.md`
-> Last updated: **2026-06-29**
+> Last updated: **2026-07-01**
 
 ---
 
@@ -12,8 +12,8 @@
 |-------|-------|
 | **App** | Fresh Prints — DTF design catalog & print planning |
 | **Active app** | Fresh Prints Studio (Electron desktop, staff only) |
-| **Roadmap phase** | **Phase 6** — Customers and Print Requests PASS with hardening notes; Phase 5 AI Processing maintenance signed off locally |
-| **Managed workflow goal** | `owner-only-sensitive-ai-and-category-controls` — complete |
+| **Roadmap phase** | **Phase 6** — Customers and Print Requests PASS with hardening notes; Phase 5 AI Processing maintenance signed off and smoke-tested |
+| **Managed workflow goal** | `remove-openai-google-only` — complete; current-state v19 docs alignment in progress |
 | **Workflow phase** | Signoff |
 | **Status** | **PASS** |
 | **Human checkpoint** | **NO** |
@@ -24,51 +24,43 @@
 
 ```txt
 Mode:           managed-phase
-Goal:           owner-only-sensitive-ai-and-category-controls
+Goal:           remove-openai-google-only
 Phase:          signoff
-Status:         pass
-Plan:           docs/workflow/plans/2026-06-29-owner-only-sensitive-ai-and-category-controls-plan.md
+Status:         complete
+Plan:           docs/workflow/plans/2026-07-01-remove-openai-google-only-plan.md
 DONE:           yes
 ```
 
 ### Current Signoff
 
-`wrap-up-open-items-audit` remains the latest completed signoff. It did not change app behavior or run deploys. It confirmed AI Processing playground-pattern deltas and Phase 6 Print Requests can be locally accepted, with human approval still required for Firebase Functions deploy/smoke and any Phase 7 planning.
-
-Current active managed phase:
-
-* `owner-only-sensitive-ai-and-category-controls`
-* plan created at `docs/workflow/plans/2026-06-29-owner-only-sensitive-ai-and-category-controls-plan.md`
-* implementation complete locally; automated checks passed
-* authenticated manual QA passed
-* repo-grounded result: bulk category import is now owner-only and the AI Processing prompt block in Settings is now owner-only, while admins retain standard category CRUD and other permitted AI settings
+`remove-openai-google-only` is the latest completed AI provider/signoff baseline. User confirmed
+manual smoke testing passed on 2026-07-01. The phase removed OpenAI support from Cloud Function
+code and UI, made Google AI / Gemini the only AI provider, removed reasoning-effort controls, and
+bumped the catalog prompt version to `catalog-enrich-v19`.
 
 `ai-processing-direct-run` remains **PASS WITH NOTES** and is the baseline for the current AI Processing implementation.
 
 Passed:
 
-- Default AI vision model remains `gpt-5.4-nano-2026-03-17`.
-- Lowest-cost selectable option remains `gpt-5-nano-2025-08-07`.
-- Stronger selective option `gpt-5.4-mini-2026-03-17` is allowlisted and selectable in `/settings` and AI Review re-runs.
-- `/settings` now persists `reasoningEffort` with allowlisted values `none`, `minimal`, `low`, `medium`, and `high`.
-- The saved reasoning-effort default is `medium`; server compatibility fallback remains `low` per request only.
-- `/settings` now includes an owner/admin AI playground for one-off text + image tests through Cloud Functions only.
+- Default Gemini vision model is `gemini-2.5-flash-lite`.
+- Newer selectable Gemini option is `gemini-3.1-flash-lite`.
+- OpenAI model IDs, OpenAI provider resolution, `OPENAI_API_KEY` references in Cloud Function code, and reasoning-effort settings were removed by ADR-FP-040.
+- `/settings` includes an owner/admin AI playground for one-off text + image tests through Cloud Functions only.
 - AI Review re-runs now use a compact `Re-run AI` action menu instead of a persistent visible model selector.
 - Manual AI Processing now runs directly inside the callable instead of enqueueing to a Firestore-trigger hop.
 - AI Review sequential processing still runs one design at a time, but no longer waits on a separate trigger round-trip.
-- AI Processing is now a single playground-style call (ADR-FP-035/036): Settings-managed prompt template with server-side `{{excluded_tags}}` replacement, 4-field JSON (`description`, `category`, `title`, `tags`), **no** `response_format: json_object`, tolerant server-side JSON extraction.
-- One normal OpenAI call per success — no empty-output retry and no quality retry (reasoning-effort 400 fallback and 429/5xx network retry kept). This fixes the `OpenAI returned no visible output (reason: length)` error at its source.
-- **ADR-FP-039 (v18):** the prompt is now small and vision-only — the full approved category list and full approved tag list are no longer injected into every call (was the driver of high input token cost). Approved tag/alias matching, `suggestedNewTags` generation, and category resolution are all deterministic server-side steps (`catalogTagResolver.ts`, `catalogThemeCategoryResolver.ts`) that run after the model call, with category resolution running after tag resolution so matched tags feed category scoring. Server enforces single-word/deduped/exclusion-filtered tags capped at 8.
-- `aiSuggestions.model` continues to record the actual model used per run; Processing can pass one-off model/reasoning overrides, Auto advance snapshots them at start, and Settings playground remains unchanged.
+- AI Processing is a single playground-style Gemini call (ADR-FP-035/036/039/040): Settings-managed prompt template with server-side `{{excluded_tags}}` replacement, 4-field JSON (`description`, raw `category`, `title`, `tags`) plus optional `suggestedNewTags`, **no** `response_format: json_object`, tolerant server-side JSON extraction.
+- One normal Gemini call per success — no empty-output retry and no quality retry; only the transient 429/5xx network retry remains.
+- **ADR-FP-039/040/041 (current v20):** the prompt is small and vision-only, plus approved category names only. The full approved category list (with descriptions) and full approved tag list (names/aliases/preferredWhen) are not injected into every call — testing showed full tag-name injection costs ~4.4x per image versus category-names-only (ADR-FP-041), so that stays gated behind a real accuracy test. Approved tag/alias matching, `suggestedNewTags` generation, and category resolution are deterministic server-side steps (`catalogTagResolver.ts`, `catalogThemeCategoryResolver.ts`) that run after the model call, with category resolution running after tag resolution so matched tags feed category scoring. The category resolver trusts an exact (case/punctuation-tolerant) match between the model's answer and an approved category name directly, falling back to the token-overlap/priority-boost scorer only when there's no exact match. Server enforces single-word/deduped/exclusion-filtered tags capped at 8; tag normalization no longer silently rewrites AI word choice (removed hardcoded `funny` synonym folding — ADR-FP-041).
+- `aiSuggestions.model` continues to record the actual model used per run; Processing can pass a one-off model override, Auto advance snapshots it at start, and Settings playground remains unchanged.
 - Needs Review / Rejected re-run resets the design back to Processing instead of running AI in place on review tabs.
-- Current prompt target is `catalog-enrich-openai-v18`.
+- Current prompt target is `catalog-enrich-v20`; development fallback target is `catalog-enrich-dev-v20`.
 - Latest local audit checks passed: repo lint, root TypeScript, functions TypeScript, functions build, `git diff --check`, and full `npm run build` including Electron packaging.
 
 Notes:
 
-- Production Firebase Functions deploy was not run.
-- Authenticated AI Processing / AI Review / Settings smoke verification remains pending after approved deploy.
-- Recommended next command for the current active work: choose the next approved managed phase.
+- Cloud Functions changes from the latest provider/prompt work still require a separate human-approved `firebase deploy --only functions` before taking effect wherever not already deployed.
+- Recommended next code phase remains `print-request-query-index-hardening`.
 
 ---
 
@@ -110,10 +102,10 @@ Default landing: `/designs` (Design Library).
 ## Open Blockers & Risks
 
 1. **No `npm test` script** — unit tests exist as `*.test.ts` but no wired runner.
-2. **AI Processing Functions are not deployed yet** — authenticated smoke still required after approved Functions deploy.
+2. **Functions deploy is a separate human checkpoint** — pushing Cloud Function source to GitHub does not deploy it.
 3. **Print Request indexes not yet added** — current broad reads are acceptable for foundation, but server-side indexed queries are needed before scale.
 4. **No `npm test` script / no CI** — tests are run through explicit `npx tsx --test ...`, lint, typecheck, and build commands.
-5. **Dirty worktree from recent managed phases** — reconcile or commit before starting Phase 7 implementation to avoid scope mixing.
+5. **Old Firestore AI records may show historical provider/prompt metadata** — do not backfill without an approved migration.
 6. **Portal not built** — customer-facing app is Phase 8; all current UI is Studio.
 
 ---

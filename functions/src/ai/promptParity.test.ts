@@ -13,8 +13,9 @@ import { DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE } from "../../../shared/constants
  * Prompt parity: the Settings AI Playground (aiEnrichmentPlayground.ts) and AI Processing
  * (openAiVisionEnrichmentProvider.ts) both build their prompts from the SAME shared builders. This
  * test locks that in so the two paths cannot drift back into two separate prompt implementations.
- * The v18 lean prompt no longer injects the full approved category/tag list (that resolution moved
- * server-side); only excluded tags remain injected.
+ * The v20 lean prompt injects approved category names only (cheap, ~0.8% cost increase measured);
+ * the full approved category descriptions and the approved tag list stay resolved server-side and
+ * are not injected (full tag-name injection measured ~4.4x the per-image cost — see ADR-FP-041).
  */
 
 const categories: AiEnrichmentCategoryOption[] = [
@@ -78,13 +79,14 @@ describe("prompt parity (playground vs AI processing)", () => {
     assert.equal(buildUserPrompt(template), buildUserPrompt(template));
   });
 
-  it("does not inject the full approved category or tag list into the default v18 prompt", () => {
-    // The v18 lean prompt is vision-only: approved taxonomy resolution moved server-side, so the
-    // shipped default template no longer references the approved category/tag placeholders and
-    // the resolved prompt must not contain the injected taxonomy context.
+  it("injects approved category names but not category descriptions or the approved tag list into the default v20 prompt", () => {
+    // The v20 lean prompt sends only approved category names; category descriptions and the full
+    // approved tag list (names/aliases/preferredWhen) stay resolved server-side, so the resolved
+    // prompt must contain category names but not the injected description/tag taxonomy context.
     const resolved = buildUserPrompt(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE);
 
-    assert.ok(!resolved.includes("Pop Culture & Characters"));
+    assert.ok(resolved.includes("Pop Culture & Characters"));
+    assert.ok(!resolved.includes("Recognizable IP and characters."));
     assert.ok(!resolved.includes("rock-n-roll"));
     assert.ok(!resolved.includes("aliases: rock and roll, rock n roll"));
     assert.ok(!DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE.includes("{{approved_categories}}"));

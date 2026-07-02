@@ -16,10 +16,26 @@ const IDS_BY_NAME: Record<string, string> = Object.fromEntries(
 );
 
 describe("resolveThemeCategory", () => {
-  it("review note 1 golden case: raw category 'Humorous Quotes' with motherhood/skeleton/quote tags resolves to Family", () => {
+  it("exact-matches a raw category that copies an approved name (case/punctuation tolerant), trusting the AI directly", () => {
     const result = resolveThemeCategory(
       {
-        rawCategory: "Humorous Quotes",
+        rawCategory: "pop culture and characters",
+        title: "Wednesday Addams Portrait",
+        description: "An illustrated portrait of the recognizable character Wednesday Addams.",
+        matchedTags: ["wednesday", "characters"],
+        approvedCategories: APPROVED_CATEGORIES,
+      },
+      IDS_BY_NAME,
+    );
+
+    assert.equal(result.categoryName, "Pop Culture & Characters");
+    assert.equal(result.categoryId, "cat-pop");
+  });
+
+  it("review note 1 golden case (fallback scorer): raw category 'Humorous Quotes & Sayings' (not an exact approved name) with motherhood/skeleton/quote tags resolves to Family", () => {
+    const result = resolveThemeCategory(
+      {
+        rawCategory: "Humorous Quotes & Sayings",
         title: "Motherhood Rocks Skeleton",
         description:
           "A skeleton with its hair in a messy bun and a bandana, giving the rock on hand gesture. The text says 'Some days I rock it - Some days it rocks me - Either way we're rockin' MOTHERHOOD'.",
@@ -33,10 +49,10 @@ describe("resolveThemeCategory", () => {
     assert.equal(result.categoryId, "cat-family");
   });
 
-  it("does not force Pop Culture & Characters just because a skeleton/cartoon style is present", () => {
+  it("does not force Pop Culture & Characters just because a skeleton/cartoon style is present (fallback scorer, no exact category match)", () => {
     const result = resolveThemeCategory(
       {
-        rawCategory: "Pop Culture & Characters",
+        rawCategory: "Pop Culture Style",
         title: "Motherhood Skeleton Design",
         description: "A cartoon skeleton illustration celebrating motherhood.",
         matchedTags: ["motherhood", "skeleton", "cartoon"],
@@ -48,7 +64,7 @@ describe("resolveThemeCategory", () => {
     assert.equal(result.categoryName, "Family");
   });
 
-  it("resolves Faith when faith/religious terms are present", () => {
+  it("resolves Faith when faith/religious terms are present (fallback scorer, no exact category match)", () => {
     const result = resolveThemeCategory(
       {
         rawCategory: "Inspirational",
@@ -63,7 +79,7 @@ describe("resolveThemeCategory", () => {
     assert.equal(result.categoryName, "Faith");
   });
 
-  it("resolves Teacher when school/teacher terms are present", () => {
+  it("resolves Teacher when school/teacher terms are present (fallback scorer, no exact category match)", () => {
     const result = resolveThemeCategory(
       {
         rawCategory: "School Life",
@@ -78,7 +94,7 @@ describe("resolveThemeCategory", () => {
     assert.equal(result.categoryName, "Teacher");
   });
 
-  it("does not force Humorous Quotes from a bare quote signal without a humor signal", () => {
+  it("does not force Humorous Quotes from a bare quote signal without a humor signal (fallback scorer, no exact category match)", () => {
     const result = resolveThemeCategory(
       {
         rawCategory: "Quotes",
@@ -93,10 +109,10 @@ describe("resolveThemeCategory", () => {
     assert.notEqual(result.categoryName, "Humorous Quotes");
   });
 
-  it("resolves Humorous Quotes when both quote and humor signals are present with no stronger competing theme", () => {
+  it("resolves Humorous Quotes when both quote and humor signals are present with no stronger competing theme (fallback scorer, no exact category match)", () => {
     const result = resolveThemeCategory(
       {
-        rawCategory: "Humorous Quotes",
+        rawCategory: "Funny Sayings",
         title: "Funny Quote Design",
         description: "A funny quote design with a comedic joke about coffee.",
         matchedTags: ["funny", "quote", "coffee"],
@@ -108,10 +124,10 @@ describe("resolveThemeCategory", () => {
     assert.equal(result.categoryName, "Humorous Quotes");
   });
 
-  it("resolves a genuine recognizable character to Pop Culture & Characters", () => {
+  it("resolves a genuine recognizable character to Pop Culture & Characters (fallback scorer, no exact category match)", () => {
     const result = resolveThemeCategory(
       {
-        rawCategory: "Pop Culture & Characters",
+        rawCategory: "Pop Culture Characters and Franchises",
         title: "Wednesday Addams Portrait",
         description: "An illustrated portrait of the recognizable character Wednesday Addams.",
         matchedTags: ["wednesday", "characters"],

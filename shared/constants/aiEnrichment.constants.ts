@@ -32,13 +32,15 @@ export const AI_ENRICHMENT_APPROVED_TAG_NAMES_PLACEHOLDER = "{{approved_tag_name
 export const AI_ENRICHMENT_EXCLUDED_TAGS_PLACEHOLDER = "{{excluded_tags}}";
 export const AI_ENRICHMENT_PROMPT_TEMPLATE_MAX_LENGTH = 8000;
 /**
- * Only {{excluded_tags}} is required in the shipped v18 lean prompt. {{approved_categories}} and
- * {{approved_tags}} are no longer injected by the default template (approved taxonomy resolution
- * moved server-side), but the substitution helpers still support them so an owner-edited legacy
- * template that still contains those placeholders keeps working instead of breaking.
+ * {{excluded_tags}} and {{approved_category_names}} are required in the shipped v20 prompt.
+ * {{approved_categories}} (with descriptions) and {{approved_tags}}/{{approved_tag_names}} are not
+ * injected by the default template — full tag-name injection measured ~4.4x the per-image cost of
+ * category names alone (see ADR-FP-041) and stays gated behind an accuracy test. The substitution
+ * helpers still support all placeholders so an owner-edited legacy template keeps working.
  */
 export const AI_ENRICHMENT_REQUIRED_PROMPT_PLACEHOLDERS = [
   AI_ENRICHMENT_EXCLUDED_TAGS_PLACEHOLDER,
+  AI_ENRICHMENT_APPROVED_CATEGORY_NAMES_PLACEHOLDER,
 ] as const;
 
 export function hasRequiredAiEnrichmentPromptPlaceholders(value: string): boolean {
@@ -73,8 +75,11 @@ export const DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE = `Analyze the provided image
 Return:
 title: short natural searchable design title.
 description: clear 1 to 2 sentence description of the design, including all readable text exactly as it appears, plus style, colors, and main visual elements.
-category: one broad reusable category or theme for the design.
+category: the single best-fitting category name from this approved list, copied exactly as written. Only return a name that is not on the list if none of them genuinely fit.
 tags: up to 12 searchable tag candidates.
+
+Approved categories:
+{{approved_category_names}}
 
 Rules:
 Tags may be single words or short phrases because they will be matched against an internal tag database later.

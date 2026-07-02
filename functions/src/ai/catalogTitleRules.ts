@@ -24,8 +24,8 @@ function hasTrailingTitlePunctuation(rawTitle: string): boolean {
   return TRAILING_TITLE_PUNCTUATION.test(rawTitle.trim());
 }
 
-export const CATALOG_ENRICHMENT_PROMPT_VERSION = "catalog-enrich-v19";
-export const DEVELOPMENT_CATALOG_ENRICHMENT_PROMPT_VERSION = "catalog-enrich-dev-v19";
+export const CATALOG_ENRICHMENT_PROMPT_VERSION = "catalog-enrich-v20";
+export const DEVELOPMENT_CATALOG_ENRICHMENT_PROMPT_VERSION = "catalog-enrich-dev-v20";
 
 const CATALOG_ENRICHMENT_SYSTEM_PROMPT_BODY = `Analyze one printable apparel artwork image for catalog enrichment. Base every field only on the image. Do not use the filename, outside context, or filler. Read all visible text first, then derive metadata grounded in what you observe. If a detail is uncertain, omit it or lower confidence instead of inventing it.
 
@@ -926,22 +926,6 @@ export function normalizeVisibleTextColor(value: unknown): VisibleTextColor | un
   return undefined;
 }
 
-const TAG_ALIASES: Record<string, string> = {
-  comedic: "funny",
-  comedy: "funny",
-  humor: "funny",
-  humorous: "funny",
-  joke: "funny",
-  jokes: "funny",
-};
-
-const TAG_COMPANIONS: Record<string, string[]> = {
-  sarcastic: ["funny"],
-  sassy: ["funny"],
-  snarky: ["funny"],
-  witty: ["funny"],
-};
-
 const MAX_AI_TAG_LENGTH = 40;
 
 const TAG_STOPWORDS = new Set([
@@ -1006,11 +990,7 @@ export function tokenizeTagCandidate(value: string): string[] {
 }
 
 function pushNormalizedTag(normalizedTags: string[], value: string): void {
-  for (const token of tokenizeTagCandidate(value)) {
-    const canonicalTag = TAG_ALIASES[token] ?? token;
-    normalizedTags.push(canonicalTag);
-    normalizedTags.push(...(TAG_COMPANIONS[canonicalTag] ?? []));
-  }
+  normalizedTags.push(...tokenizeTagCandidate(value));
 }
 
 export function normalizeAiTags(

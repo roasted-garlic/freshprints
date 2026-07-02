@@ -37,7 +37,7 @@ aiEnrichmentPipeline.ts orchestrates:
     - Load settings (cached 60s)
     - Load categories and approved tags (cached 60s)
     - Fetch thumbnail/preview from Storage
-    - Call vision provider (small v18 vision-only prompt, no taxonomy injected)
+    - Call Gemini vision provider (small v20 vision-only prompt + approved category names)
     - Parse response (simpleCatalogEnrichmentResponse.ts) — raw category/tags are transient signals
     - Resolve approved tags + suggestedNewTags (catalogTagResolver.ts)
     - Resolve category from approved list using matched tags + raw signals (catalogThemeCategoryResolver.ts)
@@ -48,33 +48,36 @@ Write aiSuggestions + update aiReviewStatus
 
 ## Prompt versioning
 
-Current target: **`catalog-enrich-openai-v18`**
+Current target: **`catalog-enrich-v20`**
 
-- v18 is a small, fixed-size, vision-only prompt (`shared/constants/aiEnrichment.constants.ts`
-  `DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE`, built by `functions/src/ai/simpleCatalogEnrichmentPrompt.ts`).
-  It no longer injects the full approved category list or full approved tag list — only
-  `{{excluded_tags}}` remains a required placeholder. Approved-tag matching, `suggestedNewTags`
+- v20 is a small, fixed-size, vision-only prompt plus approved category **names only**
+  (`shared/constants/aiEnrichment.constants.ts` `DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE`, built by
+  `functions/src/ai/simpleCatalogEnrichmentPrompt.ts`). `{{excluded_tags}}` and
+  `{{approved_category_names}}` are the required placeholders. It does NOT inject the full approved
+  category list (descriptions) or the full approved tag list (names/aliases/preferredWhen) —
+  testing showed full tag-name injection costs ~4.4x per image versus category-names-only, so that
+  stays gated behind a real accuracy test (ADR-FP-041). Approved-tag matching, `suggestedNewTags`
   generation, and category resolution all happen server-side after the model call
-  (`catalogTagResolver.ts`, `catalogThemeCategoryResolver.ts`) instead of being requested from the
-  model directly.
-- Dev provider emits `catalog-enrich-dev-v18` when the API key secret is empty
+  (`catalogTagResolver.ts`, `catalogThemeCategoryResolver.ts`). The category resolver trusts an
+  exact (case/punctuation-tolerant) match between the model's answer and an approved category name
+  directly; the token-overlap/priority-boost scorer only runs as a fallback when there's no exact
+  match.
+- Dev provider emits `catalog-enrich-dev-v20` when the Gemini API key secret is empty
 - UI displays `aiSuggestions.promptVersion` in AI Review workspace
 
 **If UI shows an older version:** likely undeployed functions — not a code regression.
 
-## OpenAI configuration
+## Gemini configuration
 
 | Setting | Location |
 |---------|----------|
-| API key | Firebase Secret Manager (`OPENAI_API_KEY`) — **never client-side** |
+| API key | Firebase Secret Manager (`GEMINI_API_KEY`) — **never client-side** |
 | Vision model | Firestore `settings/aiEnrichment.visionModelId` |
-| Reasoning effort | Firestore `settings/aiEnrichment.reasoningEffort` |
 | Allowlist | `functions/src/ai/aiEnrichmentConfig.ts` |
-| Default model | `gpt-5.4-nano-2026-03-17` |
-| Lowest-cost alternate | `gpt-5-nano-2025-08-07` |
-| Stronger selective option | `gpt-5.4-mini-2026-03-17` |
+| Default model | `gemini-2.5-flash-lite` |
+| Newer alternate | `gemini-3.1-flash-lite` |
 
-Supported reasoning-effort values are `none`, `minimal`, `low`, `medium`, and `high`. Saved default is `medium`. If the current OpenAI Chat Completions path rejects the selected effort, the server retries once with `low` for that request only.
+OpenAI and reasoning-effort controls were removed by ADR-FP-040.
 
 The server-side image payload currently sets `detail: "high"` for both catalog analysis and the Settings playground.
 
@@ -82,15 +85,15 @@ AI Review re-runs can send a one-off `visionModelIdOverride`; the callable valid
 
 Settings UI (owner/admin): `/settings` → calls `updateAiEnrichmentSettings`.
 
-Settings AI playground (owner/admin): `/settings` → calls `testAiEnrichmentPlayground` for one-off text + image tests. Playground requests do not write to `designs`, do not persist uploaded images, and fail safely if the OpenAI secret is missing.
+Settings AI playground (owner/admin): `/settings` → calls `testAiEnrichmentPlayground` for one-off text + image tests. Playground requests do not write to `designs`, do not persist uploaded images, and fail safely if the Gemini secret is missing.
 
 ## Key AI modules
 
 | Module | Role |
 |--------|------|
 | `aiEnrichmentPipeline.ts` | Main orchestrator |
-| `simpleCatalogEnrichmentPrompt.ts` | Builds the small v18 vision-only prompt |
-| `simpleCatalogEnrichmentResponse.ts` | JSON parse + coercion (v18 lean schema) |
+| `simpleCatalogEnrichmentPrompt.ts` | Builds the small v20 vision-only prompt + approved category names |
+| `simpleCatalogEnrichmentResponse.ts` | JSON parse + coercion (v20 lean schema) |
 | `catalogTagResolver.ts` | Server-side approved tag/alias matching + `suggestedNewTags` generation |
 | `catalogThemeCategoryResolver.ts` | Server-side category resolution with buyer-intent priority rules |
 | `catalogTitleRules.ts` | Title/description formatting, tag normalization helpers |
@@ -102,7 +105,7 @@ Settings AI playground (owner/admin): `/settings` → calls `testAiEnrichmentPla
 
 | Service | Purpose | Secret location |
 |---------|---------|-----------------|
-| OpenAI | Vision enrichment | Firebase Secret Manager |
+| Google AI (Gemini) | Vision enrichment | Firebase Secret Manager |
 | Resend | Team invite emails | Functions / Secret Manager |
 
 ## Security rules
@@ -116,11 +119,11 @@ UI permission gates are UX only — rules are the security boundary.
 
 - Firebase emulators optional — see `docs/workflow/setup/`
 - Functions compile to `functions/lib/` (gitignored)
-- Without OpenAI key: catalog enrichment falls back to the development provider; the Settings AI playground returns an unavailable error instead of fabricating a response
+- Without Gemini key: catalog enrichment falls back to the development provider; the Settings AI playground returns an unavailable error instead of fabricating a response
 
 ## Deploy checklist (Phase 0 gate)
 
 1. Deploy functions to Firebase project
-2. Confirm `OPENAI_API_KEY` secret set in production
+2. Confirm `GEMINI_API_KEY` secret set in production
 3. Re-run AI on one design in Studio
-4. Verify UI shows `catalog-enrich-openai-v16` and `provider: openai`
+4. Verify UI shows `catalog-enrich-v20` and `provider: gemini`

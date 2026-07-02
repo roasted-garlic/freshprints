@@ -1,3 +1,4 @@
+import { normalizeForAliasMatch } from "./catalogTagResolver";
 import { normalizeComparableTitle } from "./catalogTitleRules";
 
 const STOPWORDS = new Set([
@@ -195,19 +196,55 @@ function scoreCategory(
 }
 
 /**
- * Deterministic, pure server-side category resolver for the v18 lean prompt. The model no longer
- * receives the approved category list, so its raw category candidate is only one competing signal
- * among title/description/visibleText/matchedTags — never a value trusted or persisted directly.
- * Scores every approved category using token overlap against its name+description, with priority
- * boosts for buyer-intent theme families (family/faith/teacher) that can outweigh a raw candidate
- * naming an unrelated category (e.g. "Humorous Quotes") when the real signal points elsewhere.
- * Returns {} when no approved category clears the minimum score — callers must leave
- * categoryName/categoryId undefined in that case (never fall back to the raw candidate).
+ * Find an approved category whose name matches the raw model candidate exactly, tolerant of
+ * casing and punctuation differences (the same normalization used for tag alias matching). The
+ * v20 prompt shows the model the approved category name list directly, so an exact match here
+ * means the model picked a real option — that choice is trusted outright rather than run through
+ * the token-overlap/priority-boost fallback scorer below.
+ */
+function findExactCategoryNameMatch(
+  rawCategory: string | undefined,
+  approvedCategories: readonly { id: string; name: string; description?: string }[],
+): { id: string; name: string } | undefined {
+  if (!rawCategory?.trim()) {
+    return undefined;
+  }
+
+  const normalizedCandidate = normalizeForAliasMatch(rawCategory);
+
+  if (!normalizedCandidate) {
+    return undefined;
+  }
+
+  return approvedCategories.find(
+    (category) => normalizeForAliasMatch(category.name) === normalizedCandidate,
+  );
+}
+
+/**
+ * Deterministic, pure server-side category resolver for the v20 lean-plus-category-names prompt.
+ * The model is shown the approved category name list and asked to copy one exactly — when its raw
+ * category candidate exactly matches (case/punctuation tolerant) one of those approved names, that
+ * match is trusted directly. Otherwise (typos, paraphrases, or a legacy prompt template that omits
+ * the category list) the raw candidate is only one competing signal among
+ * title/description/visibleText/matchedTags, scored via token overlap against every approved
+ * category's name+description, with priority boosts for buyer-intent theme families
+ * (family/faith/teacher) that can outweigh a raw candidate naming an unrelated category (e.g.
+ * "Humorous Quotes") when the real signal points elsewhere.
+ * Returns {} when there is no exact match and no approved category clears the minimum fallback
+ * score — callers must leave categoryName/categoryId undefined in that case (never fall back to
+ * the raw candidate string itself).
  */
 export function resolveThemeCategory(
   input: ResolveThemeCategoryInput,
   categoryIdsByName: Record<string, string>,
 ): ResolveThemeCategoryResult {
+  const exactMatch = findExactCategoryNameMatch(input.rawCategory, input.approvedCategories);
+
+  if (exactMatch) {
+    return { categoryId: exactMatch.id, categoryName: exactMatch.name };
+  }
+
   const signalTokens = [
     ...tokenize(input.rawCategory),
     ...tokenize(input.title),

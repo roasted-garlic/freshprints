@@ -6,6 +6,77 @@
 
 ## Decisions
 
+### ADR-FP-041: Approved category names in prompt (v20); trust exact AI category matches; remove hardcoded tag synonym rewriting
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-01 |
+| Status | accepted |
+
+**Decision**
+
+1. Added approved category **names only** (no descriptions, aliases, or preferred-when text) to
+   the default AI Processing prompt template via the existing `{{approved_category_names}}`
+   placeholder, which is now a required placeholder alongside `{{excluded_tags}}`. Bumped the
+   catalog enrichment prompt version from `catalog-enrich-v19` to `catalog-enrich-v20`
+   (`catalog-enrich-dev-v20` for the development provider).
+2. Measured per-image vision cost via Settings AI Playground before deciding scope:
+   - Baseline (v19, no taxonomy in prompt): ~$0.000128/image (~$128 per 1M images).
+   - + approved category names only: ~$0.000129/image (~$129 per 1M images, +0.8%).
+   - + approved category names **and** approved tag names: ~$0.000565/image (~$565 per 1M
+     images, +341% / ~4.4x baseline).
+   Approved tag names, aliases, descriptions, and preferred-when text remain **not injected** into
+   the prompt as a result — that stays gated behind a real before/after accuracy comparison run
+   through Settings AI Playground before ever being reconsidered.
+3. `catalogThemeCategoryResolver.ts` (`resolveThemeCategory`) now checks for an exact match (case
+   and punctuation tolerant, via the same `normalizeForAliasMatch` normalization already used for
+   tag alias matching) between the model's raw category candidate and an approved category name
+   before running the token-overlap/priority-boost fallback scorer. When the model copies one of
+   the approved names it was shown, that choice is trusted directly. The fallback scorer (family/
+   faith/teacher priority boosts, style-only and bare-quote exclusions — unchanged from
+   ADR-FP-039) now only runs when there is no exact match: typos, paraphrases, or a legacy
+   owner-edited prompt template that omits the category list.
+4. Removed `TAG_ALIASES` and `TAG_COMPANIONS` from `catalogTitleRules.ts`. These previously
+   force-rewrote the model's tag word choice during normalization
+   (`comedic`/`comedy`/`humor`/`humorous`/`joke`/`jokes` → `funny`; `sarcastic`/`sassy`/`snarky`/
+   `witty` silently gained an appended `funny` tag the model never returned). Tag normalization now
+   only tokenizes, lowercases, dedupes, and applies exclusion/generic-word filtering — it no longer
+   changes which word the model chose.
+5. The `funny`/`comedic`/`sarcastic`/etc. relationship is intended to move to real tag aliases on
+   the approved `funny` tag (via the existing Tag Management alias-editing UI), so the existing
+   approved-tag alias-match path in `catalogTagResolver.ts` handles the canonicalization the same
+   way it does for every other tag, without a code deploy. This is a manual data change performed
+   by an owner in the Tag Management UI, not an automated write in this change.
+
+**Why**
+
+The user wanted AI category/tag judgment trusted more and hardcoded server heuristics trusted
+less, but only where the cost was justified by measured evidence. Category names are cheap
+(~0.8% cost increase) and category accuracy was the most visible problem (the ADR-FP-039 resolver
+could — and, per its own code comment, was designed to — override an AI category guess the model
+never even saw the real options for). Full tag-name injection is not cheap (~4.4x) and its
+accuracy benefit had not yet been measured against that cost, so it stays out of scope until a
+real test justifies it. Separately, the hardcoded `funny` synonym rewrite was flagged as exactly
+the kind of server logic that silently overrides explicit AI word choice rather than validating
+it — replacing it with tag aliases keeps the same practical outcome (searchable under `funny`)
+while making the mapping owner-editable data instead of a code constant, and stops the server from
+producing a tag (the `TAG_COMPANIONS` appended `funny`) the model never returned.
+
+**Consequences**
+
+Positive: Category resolution now defers to an explicit, well-informed AI answer instead of
+second-guessing it with a heuristic scorer; the scorer still exists as a safety net for
+off-list/legacy cases. Tag normalization no longer silently changes AI word choice. Per-image cost
+increases negligibly (~0.8%).
+
+Tradeoff: Until the `funny` tag's aliases are seeded in Tag Management, `comedic`/`sarcastic`/
+`sassy`/`snarky`/`witty`/etc. tag candidates will surface as their own literal single-word tags
+(or `suggestedNewTags`) instead of automatically folding into `funny`, unless/until an owner adds
+those as aliases. Tag-name injection (and any resulting accuracy improvement) remains unmeasured
+and unimplemented pending a dedicated before/after test.
+
+---
+
 ### ADR-FP-040: Remove OpenAI; Google (Gemini) is the only AI provider
 
 | Field | Value |

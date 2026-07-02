@@ -104,9 +104,10 @@ describe("buildVisionRequestBody", () => {
     assert.equal(parsed.reasoning_effort, undefined);
   });
 
-  it("injects excluded tags but not the full approved category/tag list into the default v18 user prompt", () => {
-    // v18 is vision-only: approved taxonomy resolution moved server-side (catalogTagResolver.ts,
-    // catalogThemeCategoryResolver.ts). The default template only substitutes {{excluded_tags}}.
+  it("injects excluded tags and approved category names, but not category descriptions or the approved tag list, into the default v20 user prompt", () => {
+    // v20 is vision-only plus approved category names: full category descriptions and the
+    // approved tag list (names/aliases/preferredWhen) stay resolved server-side
+    // (catalogTagResolver.ts, catalogThemeCategoryResolver.ts) and are not sent to the model.
     const parsed = parseBody();
     const userMessage = parsed.messages.find((message) => message.role === "user");
     assert.ok(userMessage);
@@ -119,7 +120,9 @@ describe("buildVisionRequestBody", () => {
 
     assert.ok(textInput);
     assert.match(textInput.text, /death/);
-    assert.doesNotMatch(textInput.text, /Motherhood/);
+    assert.match(textInput.text, /Motherhood/);
+    assert.match(textInput.text, /Faith/);
+    assert.doesNotMatch(textInput.text, /Use for mom, mama, and family designs\./);
     assert.doesNotMatch(textInput.text, /aliases: mom, mother/);
   });
 });

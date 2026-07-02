@@ -27,7 +27,7 @@ function normalizeTagCandidate(value: string): string {
  * - apostrophes removed (rock 'n' roll → rock n roll, rockin' → rockin)
  * - multiple spaces collapsed
  */
-function normalizeForAliasMatch(value: string): string {
+export function normalizeForAliasMatch(value: string): string {
   return value
     .toLowerCase()
     .replace(/&/g, "and")

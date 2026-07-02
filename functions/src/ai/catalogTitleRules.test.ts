@@ -22,8 +22,8 @@ import {
 } from "./catalogTitleRules";
 
 describe("catalogTitleRules", () => {
-  it("uses prompt version v19", () => {
-    assert.equal(CATALOG_ENRICHMENT_PROMPT_VERSION, "catalog-enrich-v19");
+  it("uses prompt version v20", () => {
+    assert.equal(CATALOG_ENRICHMENT_PROMPT_VERSION, "catalog-enrich-v20");
   });
 
   it("keeps the JSON contract, OCR, canvas, and description rules in the trimmed prompt", () => {
@@ -291,10 +291,10 @@ describe("catalogTitleRules", () => {
     );
   });
 
-  it("normalizes reusable AI tag synonyms into single-word tags", () => {
+  it("tokenizes multi-word tags into single-word tags without rewriting the AI's word choice", () => {
     assert.deepEqual(
       normalizeAiTags(["Humorous", "sarcastic", "highland cow", "humor"]),
-      ["funny", "sarcastic", "highland", "cow"],
+      ["humorous", "sarcastic", "highland", "cow", "humor"],
     );
   });
 
