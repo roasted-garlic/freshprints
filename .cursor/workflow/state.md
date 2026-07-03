@@ -4,7 +4,7 @@
 managed-phase
 
 ## Current Goal
-settings-ai-enrichment-density - Tighten the Settings AI Enrichment layout and move tag exclusions into a modal
+print-request-create-modal-copy-alignment - Tighten Create request modal copy and align customer dropdown
 
 ## Phase
 signoff
@@ -12,33 +12,36 @@ signoff
 completed and signed off locally
 
 ## Plan Status
-created and approved with additions - `docs/workflow/plans/2026-07-03-settings-ai-enrichment-density-plan.md`
+created and approved - `docs/workflow/plans/2026-07-03-print-request-create-modal-copy-alignment-plan.md`
 
 ## Review Status
-approved - user approved in chat on 2026-07-03 and added prompt-editor modal/focus bug scope
+approved - user requested the exact copy/alignment fix on 2026-07-03; review recorded at `docs/workflow/reviews/2026-07-03-print-request-create-modal-copy-alignment-plan-review.md`
 
 ## Tests Run
-passed - root `npx tsc --noEmit`; root `npm run lint`; `npx vite build`; `git diff --check`. Interactive visual verification blocked because `npm run dev -- --host 127.0.0.1 --port 5173` exits after the Electron main bundle is launched under plain Node and throws the existing `electron` named-export runtime error.
+passed - root `npx tsc --noEmit`; root `npm run lint`; `git diff --check` (standard Windows LF/CRLF warnings only). Manual UI QA was not run.
 
 ## Signoff
-complete - `docs/workflow/reviews/2026-07-03-settings-ai-enrichment-density-signoff.md`
+complete - `docs/workflow/reviews/2026-07-03-print-request-create-modal-copy-alignment-signoff.md`
 
 ## Human Checkpoint Required
 no
 
 ## Allowed Actions
-commit changes if requested; start a new managed phase; answer follow-up questions
+commit signed-off changes if requested; start the `print-request-query-index-hardening` managed phase by drafting a plan; answer follow-up questions
 
 ## Forbidden Actions
-deploy Firebase/functions; delete/rotate secrets in GCP Secret Manager; provision secrets; run category or tag seed writes against Firebase; relax Firestore rules; add new dependencies; migrate/backfill data; change design lifecycle statuses; change category resolution scoring logic (`catalogThemeCategoryResolver.ts`); change tag resolver, tag reranker, or suggestion authoring; change Imports/Design Library/Print Requests/Print Runs/Portal behavior; read or modify files outside the repository
+deploy Firebase/functions; delete/rotate secrets in GCP Secret Manager; provision secrets; run category or tag seed writes against Firebase; relax Firestore rules; add new dependencies; migrate/backfill data; change design lifecycle statuses; change category resolution scoring logic (`catalogThemeCategoryResolver.ts`); change tag resolver, tag reranker, or suggestion authoring; implement Print Request index hardening before a plan and review approval; change Imports/Design Library/Print Requests/Print Runs/Portal behavior; read or modify files outside the repository
 
 ## Next Required Step
-Commit and push the signed-off changes if requested.
+Open `print-request-query-index-hardening` as the next managed phase by drafting a plan in `docs/workflow/plans/`, then stop for review approval.
 
 ## DONE
 yes
 
 ## Decision Log
+- 2026-07-03: Completed and signed off `print-request-create-modal-copy-alignment` after user requested a narrow Create request modal copy/alignment fix. Changed empty-customer helper copy to "Create a customer before creating customer requests." and changed the create modal control grid to a single full-width column so Request type/Customer align with Request name/notes. Verification passed: root typecheck, root lint, and `git diff --check` (standard Windows LF/CRLF warnings only). No Firebase deploy, Firestore write, data migration, seed write, rules/index/secrets/dependency change, service behavior change, permission change, or `print-request-query-index-hardening` implementation was performed.
+- 2026-07-03: Reconciled workflow artifacts for already-committed `tag-rerank-prompt-editor` work in commit `54272bc`. Added retrospective plan review, test report, and signoff docs. Verification on the current tree passed: targeted Functions AI/settings tests 61/61, targeted renderer Settings/AI Review tests 35/35, root typecheck, root lint, `npx vite build`, Functions build, and `git diff --check`. Notes documented: implementation landed before review/test/signoff artifacts; commit bundled the related false-positive shortlist guard; manual authenticated Settings/Playground QA was not run; no Firebase deploy or data write was performed.
+- 2026-07-03: Reconciled workflow artifacts for already-committed `ai-auto-advance-queue-and-modal-dropdown-fix` work in commit `794067a`. Added retrospective plan, plan review, test report, and signoff docs. Verification on the current tree passed: targeted renderer Settings/AI Review tests 35/35, root typecheck, root lint, `npx vite build`, Functions build, and `git diff --check`. Notes documented: implementation landed before plan/review/test/signoff artifacts; manual authenticated AI Processing/dropdown QA was not run; no Firebase deploy or data write was performed.
 - 2026-07-03: Opened managed phase `settings-ai-enrichment-density` from user request to tighten the Settings AI Enrichment page, widen the card, reduce vertical spacing, and move built-in/additional tag exclusions into a modal. Drafted plan `docs/workflow/plans/2026-07-03-settings-ai-enrichment-density-plan.md`: UI-only layout polish, existing save flow preserved, no AI behavior/Firestore schema/Functions/deploy/resolver/tag-pipeline changes. Implementation blocked pending UI/UX approval.
 - 2026-07-03: User approved `settings-ai-enrichment-density` with additions: also fix the bug where opening the prompt editor causes later inputs to lose visible cursor/active focus state, and consider opening the prompt editor in a modal to save space. Updated the plan to include a prompt editor modal, prompt draft-only behavior, and explicit focus/caret manual verification. Implementation may proceed.
 - 2026-07-03: Implemented `settings-ai-enrichment-density`: widened and tightened the AI Enrichment card, grouped the three AI settings controls into a compact responsive grid, moved the AI Processing prompt editor into a modal, restored focus to the `Edit prompt` button when that modal closes to avoid leaving focus on an unmounted textarea, and moved built-in/additional tag exclusions into a draft-only modal using the existing `TagChipInput`. Automated verification passed: root typecheck, root lint, `npx vite build`, and `git diff --check` (standard Windows LF/CRLF warnings only). Test report: `docs/workflow/reviews/2026-07-03-settings-ai-enrichment-density-test-report.md`. Interactive browser verification was blocked because `npm run dev -- --host 127.0.0.1 --port 5173` exits after the Electron main bundle is launched under plain Node and throws the existing `electron` named-export runtime error. Manual UI acceptance remains outstanding before signoff.

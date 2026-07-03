@@ -282,10 +282,10 @@
   gap: var(--space-3);
 }
 
-.print-requests-modal-grid {
+.print-requests-create-modal .print-requests-modal-grid {
   display: grid;
   gap: var(--space-3);
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .print-requests-modal-grid-full {
@@ -305,12 +305,6 @@
 
 .print-requests-modal-helper-btn {
   width: 100%;
-}
-
-@media (max-width: 640px) {
-  .print-requests-modal-grid {
-    grid-template-columns: 1fr;
-  }
 }
 
 @media (max-width: 1024px) {

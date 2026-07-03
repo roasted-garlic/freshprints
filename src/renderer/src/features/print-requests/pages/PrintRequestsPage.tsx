@@ -727,7 +727,7 @@ export function PrintRequestsPage() {
                     {customerOptions.length === 0 ? (
                       <div className="print-requests-modal-helper">
                         <p className="print-requests-modal-hint">
-                          Create customers from Users before creating customer requests.
+                          Create a customer before creating customer requests.
                         </p>
                         {permissionService.canManageCustomers(user) ? (
                           <Button
