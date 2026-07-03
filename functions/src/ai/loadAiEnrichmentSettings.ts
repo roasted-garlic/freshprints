@@ -2,9 +2,11 @@ import {
   DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
   DEFAULT_SUGGESTION_AUTHOR_MODE,
   DEFAULT_TAG_RERANK_MODE,
+  DEFAULT_TAG_RERANK_PROMPT_TEMPLATE,
   SUGGESTION_AUTHOR_MODES,
   TAG_RERANK_MODES,
   resolveAiEnrichmentPromptTemplate,
+  resolveTagRerankPromptTemplate,
   type SuggestionAuthorMode,
   type TagRerankMode,
 } from "../../../shared/constants/aiEnrichment.constants";
@@ -21,6 +23,7 @@ export const AI_ENRICHMENT_SETTINGS_DOC_ID = "aiEnrichment";
 export interface AiEnrichmentSettingsLoaded {
   visionModelId: AllowedVisionModelId;
   promptTemplate: string;
+  tagRerankPromptTemplate: string;
   additionalTagExclusions: string[];
   effectiveTagExclusions: string[];
   tagRerankMode: TagRerankMode;
@@ -44,6 +47,10 @@ export function resolveAiPromptTemplate(raw: unknown): string {
   return resolveAiEnrichmentPromptTemplate(raw);
 }
 
+export function resolveAiTagRerankPromptTemplate(raw: unknown): string {
+  return resolveTagRerankPromptTemplate(raw);
+}
+
 export async function loadAiEnrichmentSettings(): Promise<AiEnrichmentSettingsLoaded> {
   try {
     const snapshot = await adminDb
@@ -55,6 +62,7 @@ export async function loadAiEnrichmentSettings(): Promise<AiEnrichmentSettingsLo
       return {
         visionModelId: DEFAULT_VISION_MODEL_ID,
         promptTemplate: DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
+        tagRerankPromptTemplate: DEFAULT_TAG_RERANK_PROMPT_TEMPLATE,
         additionalTagExclusions: [],
         effectiveTagExclusions: mergeTagExclusions(),
         tagRerankMode: DEFAULT_TAG_RERANK_MODE,
@@ -68,12 +76,14 @@ export async function loadAiEnrichmentSettings(): Promise<AiEnrichmentSettingsLo
     );
     const additionalTagExclusions = resolveAdditionalTagExclusions(data?.additionalTagExclusions);
     const promptTemplate = resolveAiPromptTemplate(data?.promptTemplate);
+    const tagRerankPromptTemplate = resolveAiTagRerankPromptTemplate(data?.tagRerankPromptTemplate);
     const tagRerankMode = resolveTagRerankMode(data?.tagRerankMode);
     const suggestionAuthorMode = resolveSuggestionAuthorMode(data?.suggestionAuthorMode);
 
     return {
       visionModelId,
       promptTemplate,
+      tagRerankPromptTemplate,
       additionalTagExclusions,
       effectiveTagExclusions: mergeTagExclusions(additionalTagExclusions),
       tagRerankMode,
@@ -83,6 +93,7 @@ export async function loadAiEnrichmentSettings(): Promise<AiEnrichmentSettingsLo
     return {
       visionModelId: DEFAULT_VISION_MODEL_ID,
       promptTemplate: DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
+      tagRerankPromptTemplate: DEFAULT_TAG_RERANK_PROMPT_TEMPLATE,
       additionalTagExclusions: [],
       effectiveTagExclusions: mergeTagExclusions(),
       tagRerankMode: DEFAULT_TAG_RERANK_MODE,

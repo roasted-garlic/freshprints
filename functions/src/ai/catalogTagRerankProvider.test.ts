@@ -99,3 +99,47 @@ describe("catalogTagRerankProvider — merged suggestion-authoring prompt", () =
     assert.ok(prompt.includes("skate"), "must include the calibration example");
   });
 });
+
+describe("catalogTagRerankProvider — owner-editable prompt template", () => {
+  it("uses the default rules text when promptTemplate is not provided", () => {
+    const prompt = buildCatalogTagRerankUserPrompt(baseRerankInput());
+
+    assert.ok(
+      prompt.includes("Return only tag names that appear in approvedTagCandidates."),
+      "must include the default rules text",
+    );
+  });
+
+  it("substitutes a custom promptTemplate into the Rules section", () => {
+    const prompt = buildCatalogTagRerankUserPrompt({
+      ...baseRerankInput(),
+      promptTemplate: "Only ever return the tag motherhood.",
+    });
+
+    assert.ok(prompt.includes("Only ever return the tag motherhood."));
+    assert.ok(
+      !prompt.includes("Return only tag names that appear in approvedTagCandidates."),
+      "must not include the default rules text when a custom template is provided",
+    );
+  });
+
+  it("falls back to the default when promptTemplate is an empty/whitespace string", () => {
+    const prompt = buildCatalogTagRerankUserPrompt({
+      ...baseRerankInput(),
+      promptTemplate: "   ",
+    });
+
+    assert.ok(prompt.includes("Return only tag names that appear in approvedTagCandidates."));
+  });
+
+  it("keeps the structural data sections (image analysis, candidates JSON, response shape) fixed regardless of promptTemplate", () => {
+    const prompt = buildCatalogTagRerankUserPrompt({
+      ...baseRerankInput(),
+      promptTemplate: "Custom rules only.",
+    });
+
+    assert.ok(prompt.includes("Mom Life"), "previous image analysis title must still be injected");
+    assert.ok(prompt.includes("motherhood"), "approved tag candidates JSON must still be injected");
+    assert.ok(prompt.includes('{"tags": ["approvedtag"]'), "response shape must still be fixed");
+  });
+});

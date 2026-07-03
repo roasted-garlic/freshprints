@@ -9,7 +9,11 @@ export interface UseAiEnrichmentTagRerankPlaygroundResult {
   isRunning: boolean;
   result: AiEnrichmentTagRerankPlaygroundResponse | null;
   reset: () => void;
-  runTagRerank: (firstResponseOutputText: string, visionModelId: AllowedVisionModelId) => Promise<void>;
+  runTagRerank: (
+    firstResponseOutputText: string,
+    visionModelId: AllowedVisionModelId,
+    promptTemplate?: string,
+  ) => Promise<void>;
 }
 
 export function useAiEnrichmentTagRerankPlayground(): UseAiEnrichmentTagRerankPlaygroundResult {
@@ -23,7 +27,11 @@ export function useAiEnrichmentTagRerankPlayground(): UseAiEnrichmentTagRerankPl
   }, []);
 
   const runTagRerank = useCallback(
-    async (firstResponseOutputText: string, visionModelId: AllowedVisionModelId) => {
+    async (
+      firstResponseOutputText: string,
+      visionModelId: AllowedVisionModelId,
+      promptTemplate?: string,
+    ) => {
       setIsRunning(true);
       setError(null);
       setResult(null);
@@ -31,6 +39,7 @@ export function useAiEnrichmentTagRerankPlayground(): UseAiEnrichmentTagRerankPl
       try {
         const response = await aiEnrichmentTagRerankPlaygroundService.runTagRerank({
           firstResponseOutputText,
+          promptTemplate,
           visionModelId,
         });
         setResult(response);

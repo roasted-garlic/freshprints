@@ -313,7 +313,12 @@ function validateTagRerankPlaygroundRequest(input: unknown): AiEnrichmentTagRera
     throw new Error("The selected vision model is not allowed.");
   }
 
-  return { firstResponseOutputText, visionModelId };
+  const promptTemplate =
+    "promptTemplate" in input && typeof input.promptTemplate === "string"
+      ? input.promptTemplate.trim() || undefined
+      : undefined;
+
+  return { firstResponseOutputText, promptTemplate, visionModelId };
 }
 
 /**
@@ -382,6 +387,7 @@ export async function runAiEnrichmentTagRerankPlayground(
         tags: resolvedTags.tags,
         title: parsed.title,
       },
+      promptTemplate: validatedRequest.promptTemplate ?? enrichmentSettings.tagRerankPromptTemplate,
       resolvedCategoryName: resolvedCategory.categoryName,
     },
     { designId: "playground" },

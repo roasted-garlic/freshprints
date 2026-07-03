@@ -3,7 +3,10 @@ import type { ProviderTarget } from "./providers/resolveProviderTarget";
 import type { AuthoredSuggestedTag, SuggestedTagAuthorInput } from "./catalogSuggestedTagAuthorProvider";
 
 import { CATALOG_TAG_RERANK_PROMPT_VERSION } from "./catalogTitleRules";
-import { estimateVisionCostUsd } from "../../../shared/constants/aiEnrichment.constants";
+import {
+  estimateVisionCostUsd,
+  resolveTagRerankPromptTemplate,
+} from "../../../shared/constants/aiEnrichment.constants";
 import { VISION_REQUEST_BASE_DELAY_MS, VISION_REQUEST_MAX_RETRIES } from "./aiEnrichmentConfig";
 import { extractJsonObject } from "./simpleCatalogEnrichmentResponse";
 import { buildSuggestedTagAuthorInstructions, validateAuthoredSuggestions } from "./catalogSuggestedTagAuthorProvider";
@@ -34,6 +37,12 @@ export interface CatalogTagRerankInput {
    * making a second request. See plan §2.4/§4.2.
    */
   suggestionAuthorInput?: Pick<SuggestedTagAuthorInput, "candidateNames" | "exampleApprovedTags">;
+  /**
+   * Owner-editable instructional "Rules" text for the reranker. Falls back to
+   * DEFAULT_TAG_RERANK_PROMPT_TEMPLATE when absent — see that constant's doc comment for why only
+   * the rules section (not the data sections) is templated.
+   */
+  promptTemplate?: string;
 }
 
 export interface CatalogTagRerankSuccess {
@@ -83,6 +92,8 @@ export function buildCatalogTagRerankUserPrompt(input: CatalogTagRerankInput): s
     ? `{"tags": ["approvedtag"], "uncoveredConcepts": ["concept not covered"], "suggestions": [{"name": "...", "aliases": ["..."], "preferredWhen": "..."}]}`
     : `{"tags": ["approvedtag"], "uncoveredConcepts": ["concept not covered"]}`;
 
+  const rules = resolveTagRerankPromptTemplate(input.promptTemplate);
+
   return `You are choosing the best final approved catalog tags for a DTF design.
 
 You are not analyzing the image directly. Use the previous image analysis as your source of truth.
@@ -100,15 +111,7 @@ Task:
 Choose the best final tags from the approved tag candidates only.
 
 Rules:
-Return only tag names that appear in approvedTagCandidates.
-Do not invent final tags.
-Do not use aliases unless the alias is also an approved tag name.
-Choose tags that best help staff find this design later.
-Prioritize buyer intent, main subject, audience, occasion, recognizable property, visible text theme, and searchable design theme.
-Do not over-prioritize colors, decorative accents, or minor background elements unless they are important to finding the design.
-Avoid duplicate or near-duplicate tags.
-Use fewer than 8 tags if fewer are truly useful.
-If an important concept from the previous image analysis is not covered by the approved candidates, put it in uncoveredConcepts.${suggestionAuthorSection}
+${rules}${suggestionAuthorSection}
 
 Return exactly this JSON and nothing else:
 ${responseShape}`;

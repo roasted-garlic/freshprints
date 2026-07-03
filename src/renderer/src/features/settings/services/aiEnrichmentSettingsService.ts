@@ -15,12 +15,14 @@ import {
   resolveAiEnrichmentPromptTemplate,
   resolveClientSuggestionAuthorMode,
   resolveClientTagRerankMode,
+  resolveClientTagRerankPromptTemplate,
   resolveClientVisionModelId,
 } from "../constants/aiEnrichmentSettingsConstants";
 
 export interface AiEnrichmentSettingsSnapshot {
   visionModelId: AllowedVisionModelId;
   promptTemplate: string;
+  tagRerankPromptTemplate: string;
   additionalTagExclusions: string[];
   effectiveTagExclusions: string[];
   tagRerankMode: TagRerankMode;
@@ -31,6 +33,7 @@ export interface AiEnrichmentSettingsSnapshot {
 interface UpdateAiEnrichmentSettingsInput {
   visionModelId: AllowedVisionModelId;
   promptTemplate: string;
+  tagRerankPromptTemplate: string;
   additionalTagExclusions: string[];
   tagRerankMode: TagRerankMode;
   suggestionAuthorMode: SuggestionAuthorMode;
@@ -39,6 +42,7 @@ interface UpdateAiEnrichmentSettingsInput {
 interface UpdateAiEnrichmentSettingsResult {
   visionModelId: AllowedVisionModelId;
   promptTemplate: string;
+  tagRerankPromptTemplate: string;
   additionalTagExclusions: string[];
   tagRerankMode: TagRerankMode;
   suggestionAuthorMode: SuggestionAuthorMode;
@@ -87,12 +91,17 @@ export function resolveClientPromptTemplate(raw: unknown): string {
   return resolveAiEnrichmentPromptTemplate(raw);
 }
 
+export function resolveClientAiTagRerankPromptTemplate(raw: unknown): string {
+  return resolveClientTagRerankPromptTemplate(raw);
+}
+
 function mapSettingsSnapshot(data: Record<string, unknown> | undefined): AiEnrichmentSettingsSnapshot {
   const visionModelId = resolveClientVisionModelId(
     typeof data?.visionModelId === "string" ? data.visionModelId : undefined,
   );
   const additionalTagExclusions = resolveClientAdditionalTagExclusions(data?.additionalTagExclusions);
   const promptTemplate = resolveClientPromptTemplate(data?.promptTemplate);
+  const tagRerankPromptTemplate = resolveClientAiTagRerankPromptTemplate(data?.tagRerankPromptTemplate);
   const tagRerankMode = resolveClientTagRerankMode(
     typeof data?.tagRerankMode === "string" ? data.tagRerankMode : undefined,
   );
@@ -103,6 +112,7 @@ function mapSettingsSnapshot(data: Record<string, unknown> | undefined): AiEnric
   return {
     visionModelId,
     promptTemplate,
+    tagRerankPromptTemplate,
     additionalTagExclusions,
     effectiveTagExclusions: mergeClientTagExclusions(additionalTagExclusions),
     tagRerankMode,
@@ -130,6 +140,7 @@ export const aiEnrichmentSettingsService = {
   async updateSettings(input: {
     visionModelId: AllowedVisionModelId;
     promptTemplate: string;
+    tagRerankPromptTemplate: string;
     additionalTagExclusions: string[];
     tagRerankMode: TagRerankMode;
     suggestionAuthorMode: SuggestionAuthorMode;
@@ -142,6 +153,7 @@ export const aiEnrichmentSettingsService = {
     const response = await updateCallable({
       visionModelId: resolveClientVisionModelId(input.visionModelId),
       promptTemplate: resolveClientPromptTemplate(input.promptTemplate),
+      tagRerankPromptTemplate: resolveClientAiTagRerankPromptTemplate(input.tagRerankPromptTemplate),
       additionalTagExclusions: resolveClientAdditionalTagExclusions(input.additionalTagExclusions),
       tagRerankMode: resolveClientTagRerankMode(input.tagRerankMode),
       suggestionAuthorMode: resolveClientSuggestionAuthorMode(input.suggestionAuthorMode),
@@ -150,6 +162,9 @@ export const aiEnrichmentSettingsService = {
     return {
       visionModelId: resolveClientVisionModelId(response.data.visionModelId),
       promptTemplate: resolveClientPromptTemplate(response.data.promptTemplate),
+      tagRerankPromptTemplate: resolveClientAiTagRerankPromptTemplate(
+        response.data.tagRerankPromptTemplate,
+      ),
       additionalTagExclusions: resolveClientAdditionalTagExclusions(
         response.data.additionalTagExclusions,
       ),

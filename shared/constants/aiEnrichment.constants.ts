@@ -102,28 +102,27 @@ export function estimateVisionCostUsd(
   return (promptTokens * pricing.input + completionTokens * pricing.output) / 1_000_000;
 }
 
-export const DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE = `You are cataloging a DTF (direct-to-film) transfer design for an apparel print shop. These designs are printed onto shirts and similar garments. Judge the category, title, and tags by what the design is fundamentally about: its main subject, message, joke, buyer intent, occasion, role, or theme. Do not choose categories or tags only because of visual style, font choice, color palette, or decorative imagery. For example, lashes, lipstick, heels, or elegant script do not make a design Luxury & Fashion Inspired unless beauty, fashion, glam, or luxury is truly the subject. School supplies do not make a design School & Education unless school, teaching, students, or education is truly the subject. Religious-looking decoration does not make a design Faith & Inspirational unless faith, prayer, scripture, or inspiration is truly the subject.
+export const DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE = `You catalog DTF transfer art for apparel. Choose title, category, and tags by the design's core subject, message, joke, buyer intent, occasion, role, or theme, not style alone. Fonts, colors, lashes, heels, school items, crosses, or other decorative elements only count when truly central.
 
-Analyze the provided image and return only valid JSON.
+Analyze the image and return only valid JSON.
 
 Return:
-title: short natural searchable design title.
-description: clear 1 to 2 sentence description of the design, including all readable text exactly as it appears, plus style, colors, and main visual elements.
-category: the single best-fitting category name from this approved list, copied exactly as written. Only return a name that is not on the list if none of them genuinely fit.
+title: short searchable title.
+description: 1 to 2 sentences with all readable text exactly as shown, plus style, colors, and main visuals.
+category: best approved category, copied exactly. Use another name only if none genuinely fit.
 tags: up to 12 searchable tag candidates.
 
 Approved categories:
 {{approved_category_names}}
 
 Rules:
-Tags may be single words or short phrases because they will be matched against an internal tag database later.
-Use accurate searchable words for visible subjects, themes, audience, style, occasion, text, recognizable characters, brands, franchises, or properties.
-Do not use filler tags like image, design, artwork, graphic, shirt, print, png, or dtf.
-If readable text appears, include all of it in the description.
-If a recognizable character, brand, franchise, logo, team, show, movie, game, celebrity, or known property is clearly visible, name it directly. Only avoid naming it when genuinely uncertain.
+Tags may be words or short phrases because the server will match them later.
+Use accurate terms for subjects, themes, audience, occasion, style, text, recognizable characters, brands, franchises, or properties.
+No filler tags: image, design, artwork, graphic, shirt, print, png, dtf.
+Name recognizable characters, brands, logos, teams, shows, movies, games, celebrities, or known properties when clear.
 Do not use these tag words: {{excluded_tags}}
 
-Return exactly this JSON shape and nothing else:
+Return exactly this JSON and nothing else:
 {"title":"...","description":"...","category":"...","tags":["tag candidate"]}`;
 
 export const PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V20 = `Analyze the provided image and return only valid JSON.
@@ -169,6 +168,53 @@ export function resolveAiEnrichmentPromptTemplate(raw: unknown): string {
     isPreviousDefaultAiEnrichmentPromptTemplate(trimmed)
   ) {
     return DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE;
+  }
+
+  return trimmed;
+}
+
+export const AI_ENRICHMENT_TAG_RERANK_PROMPT_TEMPLATE_MAX_LENGTH = 4000;
+
+/**
+ * Owner-editable instructional portion of the tag reranker's second-call prompt. The structural
+ * data sections — previous image analysis, resolved category, approved tag candidates JSON, task
+ * line, and required response JSON shape — are always appended by
+ * buildCatalogTagRerankUserPrompt and are never part of this template, since they carry
+ * server-injected data that must always be present for the reranker to function. Only the "Rules"
+ * guidance below is templated, mirroring how DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE keeps its JSON
+ * contract fixed and its instructional wording editable.
+ */
+export const DEFAULT_TAG_RERANK_PROMPT_TEMPLATE = `Return only tag names that appear in approvedTagCandidates.
+Do not invent final tags.
+Do not use aliases unless the alias is also an approved tag name.
+Choose tags that best help staff find this design later.
+Prioritize buyer intent, main subject, audience, occasion, recognizable property, visible text theme, and searchable design theme.
+Do not over-prioritize colors, decorative accents, or minor background elements unless they are important to finding the design.
+Some approved tag candidates are only weakly related — their reason says something like "shares a token with this approved tag." Only choose one of these if it genuinely describes the design; reject it if the shared word is incidental (e.g. a candidate tag "ghostrider" surfaced from the word "ghost" does not belong on a design that is simply a ghost character).
+Avoid duplicate or near-duplicate tags.
+Use fewer than 8 tags if fewer are truly useful.
+If an important concept from the previous image analysis is not covered by the approved candidates, put it in uncoveredConcepts.`;
+
+function normalizeTagRerankPromptForDefaultComparison(value: string): string {
+  return value.replace(/\s+/g, " ").trim();
+}
+
+export function isDefaultTagRerankPromptTemplate(value: string): boolean {
+  return (
+    normalizeTagRerankPromptForDefaultComparison(value) ===
+    normalizeTagRerankPromptForDefaultComparison(DEFAULT_TAG_RERANK_PROMPT_TEMPLATE)
+  );
+}
+
+export function resolveTagRerankPromptTemplate(raw: unknown): string {
+  if (typeof raw !== "string") {
+    return DEFAULT_TAG_RERANK_PROMPT_TEMPLATE;
+  }
+
+  const trimmed = raw.trim();
+
+  if (!trimmed || trimmed.length > AI_ENRICHMENT_TAG_RERANK_PROMPT_TEMPLATE_MAX_LENGTH) {
+    return DEFAULT_TAG_RERANK_PROMPT_TEMPLATE;
   }
 
   return trimmed;

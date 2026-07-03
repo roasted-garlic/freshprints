@@ -35,6 +35,12 @@ export interface AiEnrichmentTagRerankPlaygroundRequest {
   /** Raw text output from a prior playground vision-call result — re-parsed here. */
   firstResponseOutputText: string;
   visionModelId: AllowedVisionModelId;
+  /**
+   * Optional one-off override for the reranker's "Rules" instructional text — not persisted, used
+   * only for this playground call. Falls back to the live (Settings-saved or default) reranker
+   * prompt when omitted.
+   */
+  promptTemplate?: string;
 }
 
 export interface AiEnrichmentTagRerankPlaygroundResponse {

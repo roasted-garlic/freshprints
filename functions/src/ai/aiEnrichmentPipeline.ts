@@ -400,6 +400,7 @@ export async function runAiEnrichmentPipeline(
               title: suggestions.title ?? "",
             },
             resolvedCategoryName: preRerankCategory.categoryName,
+            promptTemplate: enrichmentSettings.tagRerankPromptTemplate,
             suggestionAuthorInput: mergeSuggestionAuthoring
               ? { candidateNames: suggestionCandidateNames, exampleApprovedTags }
               : undefined,

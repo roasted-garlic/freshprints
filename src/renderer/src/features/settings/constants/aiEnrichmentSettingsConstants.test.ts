@@ -6,6 +6,7 @@ import {
   AI_ENRICHMENT_EXCLUDED_TAGS_PLACEHOLDER,
   DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
   DEFAULT_SUGGESTION_AUTHOR_MODE,
+  DEFAULT_TAG_RERANK_PROMPT_TEMPLATE,
   DEFAULT_VISION_MODEL_ID,
   GEMINI_VISION_MODEL_OPTIONS,
   PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V20,
@@ -13,6 +14,7 @@ import {
   hasRequiredAiEnrichmentPromptPlaceholders,
   resolveClientPromptTemplate,
   resolveClientSuggestionAuthorMode,
+  resolveClientTagRerankPromptTemplate,
   resolveClientVisionModelId,
 } from "./aiEnrichmentSettingsConstants";
 
@@ -52,21 +54,25 @@ describe("aiEnrichmentSettingsConstants", () => {
     assert.ok(hasRequiredAiEnrichmentPromptPlaceholders(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE));
   });
 
-  it("v21: opens with DTF/apparel business-context framing that judges by subject over style", () => {
+  it("v22: opens with DTF/apparel business-context framing that judges by subject over style", () => {
     // ADR-FP-044: without this framing the model free-associated from visual style (e.g. elegant
-    // script + lash imagery) toward "Luxury & Fashion Inspired" for a design that was actually a
+    // script + lash imagery) toward a fashion/luxury category for a design that was actually a
     // sarcastic joke — see docs/workflow/plans/2026-07-02-ai-business-context-prompt-plan.md.
-    assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /DTF \(direct-to-film\) transfer design/);
-    assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /apparel print shop/);
-    assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /printed onto shirts/);
+    // v22 (2026-07-03) shortened the wording while preserving the same rule: judge by subject over
+    // style, and only count decorative elements when truly central.
+    assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /catalog DTF transfer art for apparel/);
     assert.match(
       DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
-      /subject, message, joke, buyer intent, occasion, role, or theme/,
+      /core subject, message, joke, buyer intent, occasion, role, or theme/,
     );
-    assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /Luxury & Fashion Inspired/);
-    // The business-context paragraph must come before the field instructions, not after — it
-    // needs to frame every subsequent judgment, not read as an afterthought rule.
-    const contextIndex = DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE.indexOf("DTF (direct-to-film)");
+    assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /not style alone/);
+    assert.match(
+      DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
+      /only count when truly central/,
+    );
+    // The business-context framing must come before the field instructions, not after — it needs
+    // to frame every subsequent judgment, not read as an afterthought rule.
+    const contextIndex = DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE.indexOf("catalog DTF transfer art");
     const returnFieldsIndex = DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE.indexOf("Return:");
     assert.ok(contextIndex >= 0 && returnFieldsIndex >= 0 && contextIndex < returnFieldsIndex);
   });
@@ -120,5 +126,17 @@ Do not use these tag words: ${AI_ENRICHMENT_EXCLUDED_TAGS_PLACEHOLDER}`;
       SUGGESTION_AUTHOR_MODE_OPTIONS.map((option) => option.value),
       ["off", "auto", "always"],
     );
+  });
+
+  it("resolveClientTagRerankPromptTemplate falls back to the default for missing/invalid input", () => {
+    assert.equal(resolveClientTagRerankPromptTemplate(undefined), DEFAULT_TAG_RERANK_PROMPT_TEMPLATE);
+    assert.equal(resolveClientTagRerankPromptTemplate(""), DEFAULT_TAG_RERANK_PROMPT_TEMPLATE);
+    assert.equal(resolveClientTagRerankPromptTemplate("   "), DEFAULT_TAG_RERANK_PROMPT_TEMPLATE);
+    assert.equal(resolveClientTagRerankPromptTemplate(42), DEFAULT_TAG_RERANK_PROMPT_TEMPLATE);
+  });
+
+  it("resolveClientTagRerankPromptTemplate preserves a valid custom prompt", () => {
+    const customPrompt = "Only ever return the tag motherhood.";
+    assert.equal(resolveClientTagRerankPromptTemplate(customPrompt), customPrompt);
   });
 });

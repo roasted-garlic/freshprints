@@ -5,15 +5,18 @@ import {
   AI_ENRICHMENT_APPROVED_TAG_NAMES_PLACEHOLDER,
   AI_ENRICHMENT_EXCLUDED_TAGS_PLACEHOLDER,
   AI_ENRICHMENT_PROMPT_TEMPLATE_MAX_LENGTH,
+  AI_ENRICHMENT_TAG_RERANK_PROMPT_TEMPLATE_MAX_LENGTH,
   DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
   DEFAULT_SUGGESTION_AUTHOR_MODE,
   DEFAULT_TAG_RERANK_MODE,
+  DEFAULT_TAG_RERANK_PROMPT_TEMPLATE,
   PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V20,
   SUGGESTION_AUTHOR_MODES,
   TAG_RERANK_MODES,
   hasRequiredAiEnrichmentPromptPlaceholders,
   isPreviousDefaultAiEnrichmentPromptTemplate,
   resolveAiEnrichmentPromptTemplate,
+  resolveTagRerankPromptTemplate,
   DEFAULT_VISION_MODEL_ID as SHARED_DEFAULT_VISION_MODEL_ID,
   type AllowedVisionModelId,
   type SuggestionAuthorMode,
@@ -36,21 +39,28 @@ export {
   AI_ENRICHMENT_APPROVED_TAG_NAMES_PLACEHOLDER,
   AI_ENRICHMENT_EXCLUDED_TAGS_PLACEHOLDER,
   AI_ENRICHMENT_PROMPT_TEMPLATE_MAX_LENGTH,
+  AI_ENRICHMENT_TAG_RERANK_PROMPT_TEMPLATE_MAX_LENGTH,
   DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
   DEFAULT_SUGGESTION_AUTHOR_MODE,
   DEFAULT_TAG_RERANK_MODE,
+  DEFAULT_TAG_RERANK_PROMPT_TEMPLATE,
   PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V20,
   SUGGESTION_AUTHOR_MODES,
   TAG_RERANK_MODES,
   hasRequiredAiEnrichmentPromptPlaceholders,
   isPreviousDefaultAiEnrichmentPromptTemplate,
   resolveAiEnrichmentPromptTemplate,
+  resolveTagRerankPromptTemplate,
   type SuggestionAuthorMode,
   type TagRerankMode,
 };
 
 export function resolveClientPromptTemplate(raw: unknown): string {
   return resolveAiEnrichmentPromptTemplate(raw);
+}
+
+export function resolveClientTagRerankPromptTemplate(raw: unknown): string {
+  return resolveTagRerankPromptTemplate(raw);
 }
 
 export interface TagRerankModeOption {

@@ -472,16 +472,29 @@ describe("catalogTagResolver — approvedTagCandidates shortlist for the tag rer
 
   it("surfaces nearby approved tags for unmatched candidates sharing a token", () => {
     const result = resolveAiCatalogTags({
-      approvedTags: [createCatalogTag({ name: "rock climbing" }), createCatalogTag({ name: "unrelated" })],
-      candidates: ["rock on"],
+      approvedTags: [createCatalogTag({ name: "mountain climbing" }), createCatalogTag({ name: "unrelated" })],
+      candidates: ["mountain lion"],
     });
 
-    // "rock on" is unmatched (no exact/alias/token match), but shares the "rock" token with the
-    // approved "rock climbing" tag, so it should be surfaced as a nearby candidate.
-    const nearby = result.approvedTagCandidates.find((candidate) => candidate.name === "rock climbing");
-    assert.ok(nearby, "expected 'rock climbing' to be surfaced as a nearby match for 'rock on'");
-    assert.ok(nearby.matchedBy.includes("rock on"));
+    // "mountain lion" is unmatched (no exact/alias/token match), but shares the "mountain" token
+    // (long enough to clear MIN_NEARBY_MATCH_TOKEN_LENGTH) with the approved "mountain climbing"
+    // tag, so it should be surfaced as a nearby candidate.
+    const nearby = result.approvedTagCandidates.find((candidate) => candidate.name === "mountain climbing");
+    assert.ok(nearby, "expected 'mountain climbing' to be surfaced as a nearby match for 'mountain lion'");
+    assert.ok(nearby.matchedBy.includes("mountain lion"));
     assert.match(nearby.reason, /unmatched candidate/i);
+  });
+
+  it("does not surface a nearby match on a short, common shared token (e.g. 'ghost')", () => {
+    const result = resolveAiCatalogTags({
+      approvedTags: [createCatalogTag({ name: "ghostrider", aliases: ["ghost rider"] })],
+      candidates: ["ghost"],
+    });
+
+    // "ghost" is short and common — sharing it with the "ghost rider" alias on an unrelated
+    // approved tag should not be enough to surface that tag as a nearby candidate.
+    const nearby = result.approvedTagCandidates.find((candidate) => candidate.name === "ghostrider");
+    assert.equal(nearby, undefined, "expected 'ghostrider' not to be surfaced from the short token 'ghost'");
   });
 
   it("reports unmatchedCandidateCount matching the number of genuinely unmatched raw candidates", () => {

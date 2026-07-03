@@ -5,10 +5,12 @@ import {
   AI_ENRICHMENT_APPROVED_CATEGORY_NAMES_PLACEHOLDER,
   AI_ENRICHMENT_EXCLUDED_TAGS_PLACEHOLDER,
   DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
+  DEFAULT_TAG_RERANK_PROMPT_TEMPLATE,
   PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V20,
 } from "../../../shared/constants/aiEnrichment.constants";
 import {
   resolveAiPromptTemplate,
+  resolveAiTagRerankPromptTemplate,
   resolveSuggestionAuthorMode,
   resolveTagRerankMode,
 } from "./loadAiEnrichmentSettings";
@@ -80,5 +82,18 @@ Do not use: ${AI_ENRICHMENT_EXCLUDED_TAGS_PLACEHOLDER}`;
   it("falls back to the current default for invalid prompt values", () => {
     assert.equal(resolveAiPromptTemplate("missing placeholders"), DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE);
     assert.equal(resolveAiPromptTemplate(undefined), DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE);
+  });
+});
+
+describe("resolveAiTagRerankPromptTemplate", () => {
+  it("falls back to the current default for missing/invalid values", () => {
+    assert.equal(resolveAiTagRerankPromptTemplate(undefined), DEFAULT_TAG_RERANK_PROMPT_TEMPLATE);
+    assert.equal(resolveAiTagRerankPromptTemplate(""), DEFAULT_TAG_RERANK_PROMPT_TEMPLATE);
+    assert.equal(resolveAiTagRerankPromptTemplate(42), DEFAULT_TAG_RERANK_PROMPT_TEMPLATE);
+  });
+
+  it("preserves a valid custom tag rerank prompt", () => {
+    const customPrompt = "Only ever return the tag motherhood.";
+    assert.equal(resolveAiTagRerankPromptTemplate(customPrompt), customPrompt);
   });
 });

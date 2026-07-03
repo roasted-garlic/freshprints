@@ -123,6 +123,16 @@ function isUsableTagCandidate(value: string): boolean {
 const CANDIDATE_STOPWORDS = new Set(["and", "the", "of", "a", "an", "to", "in", "on", "or"]);
 
 /**
+ * Minimum token length considered specific enough to justify surfacing an approved tag as a
+ * "nearby match" candidate on shared-token overlap alone. Short common words (e.g. "ghost",
+ * "kids", "rock") appear inside many unrelated approved tag names/aliases and produced
+ * false-positive shortlist entries (e.g. an unmatched "ghost" candidate pulling in an unrelated
+ * approved tag "ghostrider" via its "ghost rider" alias) that the reranker then had no way to
+ * distinguish from a real match. Longer tokens are rare enough to be a meaningful signal.
+ */
+const MIN_NEARBY_MATCH_TOKEN_LENGTH = 6;
+
+/**
  * Split a multi-word candidate into single-word fallback tokens. Used only when the full
  * candidate (e.g. "rock and roll") does not match an approved tag name or alias, so we can
  * still salvage a matching single-word approved tag before falling back to a suggestion.
@@ -353,7 +363,9 @@ function buildApprovedTagCandidates(
       break;
     }
 
-    const candidateTokens = tokenizeCandidate(normalizeForAliasMatch(candidate));
+    const candidateTokens = tokenizeCandidate(normalizeForAliasMatch(candidate)).filter(
+      (token) => token.length >= MIN_NEARBY_MATCH_TOKEN_LENGTH,
+    );
     const nearbyNames = new Set<string>();
 
     for (const token of candidateTokens) {

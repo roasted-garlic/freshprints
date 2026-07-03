@@ -1,4 +1,4 @@
-import { Check, ChevronDown, Copy, Paperclip, Sparkles, X } from "lucide-react";
+import { Check, ChevronDown, Copy, Paperclip, Settings, Sparkles, X } from "lucide-react";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 
 import { AI_ENRICHMENT_PLAYGROUND_MAX_PROMPT_LENGTH } from "../../../../../../shared/constants/aiEnrichment.constants";
@@ -17,9 +17,11 @@ import {
   AI_ENRICHMENT_APPROVED_TAGS_PLACEHOLDER,
   AI_ENRICHMENT_APPROVED_TAG_NAMES_PLACEHOLDER,
   AI_ENRICHMENT_PROMPT_TEMPLATE_MAX_LENGTH,
+  AI_ENRICHMENT_TAG_RERANK_PROMPT_TEMPLATE_MAX_LENGTH,
   BASE_AI_TAG_EXCLUSIONS,
   ALL_VISION_MODEL_OPTIONS,
   DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
+  DEFAULT_TAG_RERANK_PROMPT_TEMPLATE,
   SUGGESTION_AUTHOR_MODE_OPTIONS,
   TAG_RERANK_MODE_OPTIONS,
   hasRequiredAiEnrichmentPromptPlaceholders,
@@ -106,6 +108,7 @@ export function SettingsPage() {
     isLoading,
     isSaving,
     promptTemplate,
+    tagRerankPromptTemplate,
     saveError,
     saveSettings,
     suggestionAuthorMode,
@@ -124,12 +127,21 @@ export function SettingsPage() {
   const [isPromptMenuOpen, setIsPromptMenuOpen] = useState(false);
   const [draftVisionModelId, setDraftVisionModelId] = useState<string | null>(null);
   const [draftPromptTemplate, setDraftPromptTemplate] = useState<string | null>(null);
+  const [draftTagRerankPromptTemplate, setDraftTagRerankPromptTemplate] = useState<string | null>(
+    null,
+  );
   const [draftAdditionalTagExclusions, setDraftAdditionalTagExclusions] = useState<string[] | null>(
     null,
   );
   const [draftTagRerankMode, setDraftTagRerankMode] = useState<string | null>(null);
   const [draftSuggestionAuthorMode, setDraftSuggestionAuthorMode] = useState<string | null>(null);
   const [isPromptTemplateEditorOpen, setIsPromptTemplateEditorOpen] = useState(false);
+  const [isTagRerankPromptEditorOpen, setIsTagRerankPromptEditorOpen] = useState(false);
+  const [tagRerankPlaygroundPromptOverride, setTagRerankPlaygroundPromptOverride] = useState<
+    string | null
+  >(null);
+  const [isTagRerankPlaygroundPromptModalOpen, setIsTagRerankPlaygroundPromptModalOpen] =
+    useState(false);
   const [isTagExclusionsModalOpen, setIsTagExclusionsModalOpen] = useState(false);
   const [isPlaygroundModalOpen, setIsPlaygroundModalOpen] = useState(false);
   const [isPlaygroundResultModalOpen, setIsPlaygroundResultModalOpen] = useState(false);
@@ -160,6 +172,7 @@ export function SettingsPage() {
 
   const selectedVisionModelId = draftVisionModelId ?? visionModelId;
   const selectedPromptTemplate = draftPromptTemplate ?? promptTemplate;
+  const selectedTagRerankPromptTemplate = draftTagRerankPromptTemplate ?? tagRerankPromptTemplate;
   const selectedAdditionalTagExclusions = draftAdditionalTagExclusions ?? additionalTagExclusions;
   const additionalTagExclusionsInput = formatAdditionalTagExclusionsInput(selectedAdditionalTagExclusions);
   const selectedTagRerankMode = resolveClientTagRerankMode(draftTagRerankMode ?? tagRerankMode);
@@ -169,6 +182,8 @@ export function SettingsPage() {
   const hasUnsavedChanges =
     (draftVisionModelId !== null && draftVisionModelId !== visionModelId) ||
     (draftPromptTemplate !== null && draftPromptTemplate !== promptTemplate) ||
+    (draftTagRerankPromptTemplate !== null &&
+      draftTagRerankPromptTemplate !== tagRerankPromptTemplate) ||
     (draftAdditionalTagExclusions !== null &&
       formatAdditionalTagExclusionsInput(draftAdditionalTagExclusions) !==
         formatAdditionalTagExclusionsInput(additionalTagExclusions)) ||
@@ -192,6 +207,8 @@ export function SettingsPage() {
     setIsPlaygroundResultModalOpen(false);
     resetPlayground();
     resetTagRerankPlayground();
+    setTagRerankPlaygroundPromptOverride(null);
+    setIsTagRerankPlaygroundPromptModalOpen(false);
     setIsPlaygroundModalOpen(false);
   }, [resetPlayground, resetTagRerankPlayground]);
 
@@ -203,6 +220,13 @@ export function SettingsPage() {
     setIsPromptTemplateEditorOpen(false);
     requestAnimationFrame(() => {
       document.getElementById("settings-prompt-editor-open-button")?.focus();
+    });
+  }, []);
+
+  const handleCloseTagRerankPromptEditor = useCallback(() => {
+    setIsTagRerankPromptEditorOpen(false);
+    requestAnimationFrame(() => {
+      document.getElementById("settings-tag-rerank-prompt-editor-open-button")?.focus();
     });
   }, []);
 
@@ -222,7 +246,7 @@ export function SettingsPage() {
   }, [closePlaygroundModal, isPlaygroundModalOpen]);
 
   useEffect(() => {
-    if (!isPromptTemplateEditorOpen && !isTagExclusionsModalOpen) {
+    if (!isPromptTemplateEditorOpen && !isTagRerankPromptEditorOpen && !isTagExclusionsModalOpen) {
       return;
     }
 
@@ -236,12 +260,23 @@ export function SettingsPage() {
         return;
       }
 
+      if (isTagRerankPromptEditorOpen) {
+        handleCloseTagRerankPromptEditor();
+        return;
+      }
+
       setIsTagExclusionsModalOpen(false);
     }
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleClosePromptTemplateEditor, isPromptTemplateEditorOpen, isTagExclusionsModalOpen]);
+  }, [
+    handleClosePromptTemplateEditor,
+    handleCloseTagRerankPromptEditor,
+    isPromptTemplateEditorOpen,
+    isTagRerankPromptEditorOpen,
+    isTagExclusionsModalOpen,
+  ]);
 
   useEffect(() => {
     if (playground.result) {
@@ -318,16 +353,19 @@ export function SettingsPage() {
     await saveSettings({
       visionModelId: resolveClientVisionModelId(selectedVisionModelId),
       promptTemplate: selectedPromptTemplate,
+      tagRerankPromptTemplate: selectedTagRerankPromptTemplate,
       additionalTagExclusions: parseAdditionalTagExclusionsInput(additionalTagExclusionsInput),
       tagRerankMode: selectedTagRerankMode,
       suggestionAuthorMode: selectedSuggestionAuthorMode,
     });
     setDraftVisionModelId(null);
     setDraftPromptTemplate(null);
+    setDraftTagRerankPromptTemplate(null);
     setDraftAdditionalTagExclusions(null);
     setDraftTagRerankMode(null);
     setDraftSuggestionAuthorMode(null);
     setIsPromptTemplateEditorOpen(false);
+    setIsTagRerankPromptEditorOpen(false);
   }
 
   function handleOpenPromptTemplateEditor() {
@@ -336,6 +374,14 @@ export function SettingsPage() {
 
   function handleUseCurrentDefaultPrompt() {
     setDraftPromptTemplate(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE);
+  }
+
+  function handleOpenTagRerankPromptEditor() {
+    setIsTagRerankPromptEditorOpen(true);
+  }
+
+  function handleUseCurrentDefaultTagRerankPrompt() {
+    setDraftTagRerankPromptTemplate(DEFAULT_TAG_RERANK_PROMPT_TEMPLATE);
   }
 
   return (
@@ -456,6 +502,29 @@ export function SettingsPage() {
               </div>
             ) : null}
 
+            {isOwner ? (
+              <div className="settings-prompt-template-block settings-prompt-template-danger">
+                <div className="settings-prompt-template-summary">
+                  <div className="settings-prompt-template-copy">
+                    <h3 className="settings-subsection-title">Tag rerank prompt</h3>
+                    <p className="settings-field-hint">
+                      Instructional rules for the optional second-call tag reranker. Only used when
+                      the tag reranker runs (see &quot;Tag reranker&quot; mode above).
+                    </p>
+                  </div>
+
+                  <Button
+                    disabled={!canManageSettings || isSaving}
+                    id="settings-tag-rerank-prompt-editor-open-button"
+                    onClick={handleOpenTagRerankPromptEditor}
+                    variant="warning"
+                  >
+                    Edit prompt
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+
             <div className="settings-tag-exclusions-block">
               <div className="settings-tag-exclusions-copy">
                 <h3 className="settings-subsection-title">Tag exclusions</h3>
@@ -568,7 +637,76 @@ export function SettingsPage() {
 
               <ModalFooter>
                 <Button onClick={handleClosePromptTemplateEditor} variant="secondary">
-                  Done
+                  Close (Save on Settings page)
+                </Button>
+              </ModalFooter>
+            </Modal>
+          </div>
+        </div>
+      ) : null}
+
+      {isOwner && isTagRerankPromptEditorOpen ? (
+        <div className="modal-overlay modal-overlay-blur" onClick={handleCloseTagRerankPromptEditor}>
+          <div
+            className="settings-editor-modal-shell"
+            onClick={(event) => event.stopPropagation()}
+            role="presentation"
+          >
+            <Modal
+              aria-labelledby="settings-tag-rerank-prompt-editor-title"
+              className="settings-editor-modal settings-prompt-editor-modal"
+              role="dialog"
+            >
+              <ModalHeader className="settings-editor-modal-header">
+                <div className="settings-editor-modal-title-group">
+                  <h2 className="settings-section-title" id="settings-tag-rerank-prompt-editor-title">
+                    Tag rerank prompt
+                  </h2>
+                  <p className="settings-section-description">
+                    Editing this prompt changes the optional second-call tag reranker used for future
+                    designs. Saving still happens from the main Settings page.
+                  </p>
+                </div>
+
+                <Button
+                  aria-label="Close tag rerank prompt editor"
+                  onClick={handleCloseTagRerankPromptEditor}
+                  variant="ghost"
+                >
+                  <X aria-hidden="true" size={18} strokeWidth={2} />
+                </Button>
+              </ModalHeader>
+
+              <ModalBody className="settings-editor-modal-body">
+                <div className="settings-form-actions">
+                  <Button
+                    disabled={!canManageSettings || isSaving}
+                    onClick={handleUseCurrentDefaultTagRerankPrompt}
+                    variant="secondary"
+                  >
+                    Use current default
+                  </Button>
+                </div>
+
+                <AutoResizeTextarea
+                  disabled={!canManageSettings || isSaving}
+                  label="Tag rerank prompt"
+                  maxAutoHeightPx={420}
+                  maxLength={AI_ENRICHMENT_TAG_RERANK_PROMPT_TEMPLATE_MAX_LENGTH}
+                  name="tagRerankPromptTemplate"
+                  onChange={(event) => setDraftTagRerankPromptTemplate(event.target.value)}
+                  value={selectedTagRerankPromptTemplate}
+                />
+
+                <p className="settings-field-hint">
+                  This prompt is used by the tag reranker in AI Processing only. The AI Playground
+                  tag rerank test has its own one-off override below and does not save here.
+                </p>
+              </ModalBody>
+
+              <ModalFooter>
+                <Button onClick={handleCloseTagRerankPromptEditor} variant="secondary">
+                  Close (Save on Settings page)
                 </Button>
               </ModalFooter>
             </Modal>
@@ -1003,12 +1141,33 @@ export function SettingsPage() {
                           void tagRerankPlayground.runTagRerank(
                             playground.result?.outputText ?? "",
                             playground.result?.visionModelId ?? playground.visionModelId,
+                            tagRerankPlaygroundPromptOverride?.trim() || undefined,
                           )
                         }
                         variant="secondary"
                       >
                         {tagRerankPlayground.isRunning ? "Running tag rerank…" : "Run tag rerank"}
                       </Button>
+
+                      <button
+                        aria-label="Edit tag rerank prompt override for this playground run"
+                        className="icon-button icon-button-sm icon-button-ghost"
+                        disabled={tagRerankPlayground.isRunning}
+                        onClick={() => {
+                          setTagRerankPlaygroundPromptOverride(
+                            (current) => current ?? tagRerankPromptTemplate,
+                          );
+                          setIsTagRerankPlaygroundPromptModalOpen(true);
+                        }}
+                        title="Tag rerank prompt override (optional, one-off — does not save)"
+                        type="button"
+                      >
+                        <Settings aria-hidden="true" size={16} strokeWidth={2} />
+                      </button>
+
+                      {tagRerankPlaygroundPromptOverride?.trim() ? (
+                        <p className="settings-field-hint">Prompt override active for this run.</p>
+                      ) : null}
                       {combinedEstimatedCostUsd != null ? (
                         <p className="settings-field-hint settings-playground-combined-cost">
                           Combined cost (both runs): ${combinedEstimatedCostUsd.toFixed(6)}
@@ -1116,6 +1275,80 @@ export function SettingsPage() {
                   </div>
                 </section>
               </ModalBody>
+            </Modal>
+          </div>
+        </div>
+      ) : null}
+
+      {canManageSettings && isTagRerankPlaygroundPromptModalOpen ? (
+        <div
+          className="modal-overlay modal-overlay-blur"
+          onClick={() => setIsTagRerankPlaygroundPromptModalOpen(false)}
+        >
+          <div
+            className="settings-editor-modal-shell"
+            onClick={(event) => event.stopPropagation()}
+            role="presentation"
+          >
+            <Modal
+              aria-labelledby="tag-rerank-playground-prompt-modal-title"
+              className="settings-editor-modal settings-prompt-editor-modal"
+              role="dialog"
+            >
+              <ModalHeader className="settings-editor-modal-header">
+                <div className="settings-editor-modal-title-group">
+                  <h2 className="settings-section-title" id="tag-rerank-playground-prompt-modal-title">
+                    Tag rerank prompt override
+                  </h2>
+                  <p className="settings-section-description">
+                    One-off override for this Playground run only. Does not save to Settings.
+                  </p>
+                </div>
+
+                <Button
+                  aria-label="Close tag rerank prompt override editor"
+                  onClick={() => setIsTagRerankPlaygroundPromptModalOpen(false)}
+                  variant="ghost"
+                >
+                  <X aria-hidden="true" size={18} strokeWidth={2} />
+                </Button>
+              </ModalHeader>
+
+              <ModalBody className="settings-editor-modal-body">
+                <div className="settings-form-actions">
+                  <Button
+                    disabled={tagRerankPlayground.isRunning}
+                    onClick={() => setTagRerankPlaygroundPromptOverride(tagRerankPromptTemplate)}
+                    variant="secondary"
+                  >
+                    Reset to live prompt
+                  </Button>
+                </div>
+
+                <AutoResizeTextarea
+                  disabled={tagRerankPlayground.isRunning}
+                  label="Tag rerank prompt override"
+                  maxAutoHeightPx={420}
+                  maxLength={AI_ENRICHMENT_TAG_RERANK_PROMPT_TEMPLATE_MAX_LENGTH}
+                  name="tagRerankPlaygroundPromptOverride"
+                  onChange={(event) => setTagRerankPlaygroundPromptOverride(event.target.value)}
+                  value={tagRerankPlaygroundPromptOverride ?? tagRerankPromptTemplate}
+                />
+
+                <p className="settings-field-hint">
+                  Pre-filled with the live tag rerank prompt from Settings. Edit freely — changes
+                  here only affect this playground run and are not saved.
+                </p>
+              </ModalBody>
+
+              <ModalFooter>
+                <Button
+                  onClick={() => setIsTagRerankPlaygroundPromptModalOpen(false)}
+                  variant="secondary"
+                >
+                  Done
+                </Button>
+              </ModalFooter>
             </Modal>
           </div>
         </div>

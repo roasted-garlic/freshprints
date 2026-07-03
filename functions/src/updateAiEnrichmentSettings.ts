@@ -4,8 +4,10 @@ import { onCall } from "firebase-functions/v2/https";
 import {
   AI_ENRICHMENT_EXCLUDED_TAGS_PLACEHOLDER,
   AI_ENRICHMENT_PROMPT_TEMPLATE_MAX_LENGTH,
+  AI_ENRICHMENT_TAG_RERANK_PROMPT_TEMPLATE_MAX_LENGTH,
   DEFAULT_SUGGESTION_AUTHOR_MODE,
   DEFAULT_TAG_RERANK_MODE,
+  DEFAULT_TAG_RERANK_PROMPT_TEMPLATE,
   SUGGESTION_AUTHOR_MODES,
   TAG_RERANK_MODES,
   hasRequiredAiEnrichmentPromptPlaceholders,
@@ -27,6 +29,7 @@ const SUGGESTION_AUTHOR_MODE_SET = new Set<string>(SUGGESTION_AUTHOR_MODES);
 interface UpdateAiEnrichmentSettingsRequest {
   visionModelId: string;
   promptTemplate: string;
+  tagRerankPromptTemplate?: string;
   additionalTagExclusions?: string[];
   tagRerankMode?: TagRerankMode;
   suggestionAuthorMode?: SuggestionAuthorMode;
@@ -35,6 +38,7 @@ interface UpdateAiEnrichmentSettingsRequest {
 interface UpdateAiEnrichmentSettingsResponse {
   visionModelId: AllowedVisionModelId;
   promptTemplate: string;
+  tagRerankPromptTemplate: string;
   additionalTagExclusions: string[];
   tagRerankMode: TagRerankMode;
   suggestionAuthorMode: SuggestionAuthorMode;
@@ -77,6 +81,18 @@ function validateRequest(data: unknown): UpdateAiEnrichmentSettingsRequest {
     );
   }
 
+  const rawTagRerankPromptTemplate =
+    "tagRerankPromptTemplate" in data && typeof data.tagRerankPromptTemplate === "string"
+      ? data.tagRerankPromptTemplate.trim()
+      : undefined;
+
+  if (
+    rawTagRerankPromptTemplate !== undefined &&
+    rawTagRerankPromptTemplate.length > AI_ENRICHMENT_TAG_RERANK_PROMPT_TEMPLATE_MAX_LENGTH
+  ) {
+    throw invalidArgument("The tag rerank prompt is too long.");
+  }
+
   const additionalTagExclusions =
     "additionalTagExclusions" in data ? data.additionalTagExclusions : undefined;
 
@@ -106,6 +122,7 @@ function validateRequest(data: unknown): UpdateAiEnrichmentSettingsRequest {
   return {
     visionModelId,
     promptTemplate,
+    tagRerankPromptTemplate: rawTagRerankPromptTemplate,
     additionalTagExclusions: Array.isArray(additionalTagExclusions)
       ? additionalTagExclusions
       : undefined,
@@ -127,6 +144,7 @@ export const updateAiEnrichmentSettings = onCall(
     const {
       visionModelId: requestedModelId,
       promptTemplate,
+      tagRerankPromptTemplate: requestedTagRerankPromptTemplate,
       additionalTagExclusions,
       tagRerankMode: requestedTagRerankMode,
       suggestionAuthorMode: requestedSuggestionAuthorMode,
@@ -141,11 +159,14 @@ export const updateAiEnrichmentSettings = onCall(
     const resolvedTagRerankMode: TagRerankMode = requestedTagRerankMode ?? DEFAULT_TAG_RERANK_MODE;
     const resolvedSuggestionAuthorMode: SuggestionAuthorMode =
       requestedSuggestionAuthorMode ?? DEFAULT_SUGGESTION_AUTHOR_MODE;
+    const resolvedTagRerankPromptTemplate =
+      requestedTagRerankPromptTemplate?.trim() || DEFAULT_TAG_RERANK_PROMPT_TEMPLATE;
 
     await adminDb.collection("settings").doc(AI_ENRICHMENT_SETTINGS_DOC_ID).set(
       {
         visionModelId: resolvedModelId,
         promptTemplate,
+        tagRerankPromptTemplate: resolvedTagRerankPromptTemplate,
         additionalTagExclusions: resolvedAdditionalTagExclusions,
         tagRerankMode: resolvedTagRerankMode,
         suggestionAuthorMode: resolvedSuggestionAuthorMode,
@@ -160,6 +181,7 @@ export const updateAiEnrichmentSettings = onCall(
     logPipelineEvent("settings.ai_enrichment.updated", {
       visionModelId: resolvedModelId,
       promptTemplate,
+      tagRerankPromptTemplate: resolvedTagRerankPromptTemplate,
       additionalTagExclusionsCount: resolvedAdditionalTagExclusions.length,
       tagRerankMode: resolvedTagRerankMode,
       suggestionAuthorMode: resolvedSuggestionAuthorMode,
@@ -169,6 +191,7 @@ export const updateAiEnrichmentSettings = onCall(
     return {
       visionModelId: resolvedModelId,
       promptTemplate,
+      tagRerankPromptTemplate: resolvedTagRerankPromptTemplate,
       additionalTagExclusions: resolvedAdditionalTagExclusions,
       tagRerankMode: resolvedTagRerankMode,
       suggestionAuthorMode: resolvedSuggestionAuthorMode,
