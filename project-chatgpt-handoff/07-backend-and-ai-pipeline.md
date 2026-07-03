@@ -38,7 +38,7 @@ aiEnrichmentPipeline.ts orchestrates:
     - Load settings (cached 60s)
     - Load categories and approved tags (cached 60s)
     - Fetch thumbnail/preview from Storage
-    - Call Gemini vision provider (small v20 vision-only prompt + approved category names)
+    - Call Gemini vision provider (small v21 vision-only prompt + business-context framing + approved category names)
     - Parse response (simpleCatalogEnrichmentResponse.ts) — raw category/tags are transient signals
     - Resolve approved tags + suggestedNewTags (catalogTagResolver.ts)
     - Resolve category from approved list using matched tags + raw signals (catalogThemeCategoryResolver.ts)
@@ -49,9 +49,9 @@ Write aiSuggestions + update aiReviewStatus
 
 ## Prompt versioning
 
-Current target: **`catalog-enrich-v20`**
+Current target: **`catalog-enrich-v21`**
 
-- v20 is a small, fixed-size, vision-only prompt plus approved category **names only**
+- v21 is a small, fixed-size, vision-only prompt plus approved category **names only**
   (`shared/constants/aiEnrichment.constants.ts` `DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE`, built by
   `functions/src/ai/simpleCatalogEnrichmentPrompt.ts`). `{{excluded_tags}}` and
   `{{approved_category_names}}` are the required placeholders. It does NOT inject the full approved
@@ -63,7 +63,15 @@ Current target: **`catalog-enrich-v20`**
   exact (case/punctuation-tolerant) match between the model's answer and an approved category name
   directly; the token-overlap/priority-boost scorer only runs as a fallback when there's no exact
   match.
-- Dev provider emits `catalog-enrich-dev-v20` when the Gemini API key secret is empty
+- **v21 (ADR-FP-044) adds a business-context paragraph** before the field instructions: frames the
+  model as cataloging DTF transfer designs for an apparel print shop, and instructs it to judge
+  category/title/tags by the design's subject/message/buyer intent rather than visual style, font
+  choice, or decorative imagery — with worked examples (fashion/luxury, school/education,
+  faith/inspirational) showing that style-adjacent decoration alone doesn't make a design belong to
+  a themed category. Added after a real miscategorization report (a sarcastic-joke design with lash
+  imagery in elegant script was categorized "Luxury & Fashion Inspired"). Prompt-content-only change
+  — no resolver, tag-matching, tag-reranker, or suggestion-authoring logic changed.
+- Dev provider emits `catalog-enrich-dev-v21` when the Gemini API key secret is empty
 - UI displays `aiSuggestions.promptVersion` in AI Review workspace
 
 **If UI shows an older version:** likely undeployed functions — not a code regression.
@@ -214,4 +222,4 @@ UI permission gates are UX only — rules are the security boundary.
 1. Deploy functions to Firebase project
 2. Confirm `GEMINI_API_KEY` secret set in production
 3. Re-run AI on one design in Studio
-4. Verify UI shows `catalog-enrich-v20` and `provider: gemini`
+4. Verify UI shows `catalog-enrich-v21` and `provider: gemini`

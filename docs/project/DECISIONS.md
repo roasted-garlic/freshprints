@@ -6,6 +6,96 @@
 
 ## Decisions
 
+### ADR-FP-044: Business-context framing in the catalog prompt (v21) — judge by subject, not visual style
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-02 |
+| Status | accepted |
+
+**Decision**
+
+1. Added a business-context paragraph to the start of `DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE`
+   (`shared/constants/aiEnrichment.constants.ts`), placed before the existing `Return:` field
+   instructions so it frames every subsequent judgment (title, description, category, tags):
+
+   > You are cataloging a DTF (direct-to-film) transfer design for an apparel print shop. These
+   > designs are printed onto shirts and similar garments. Judge the category, title, and tags by
+   > what the design is fundamentally about: its main subject, message, joke, buyer intent,
+   > occasion, role, or theme. Do not choose categories or tags only because of visual style, font
+   > choice, color palette, or decorative imagery. For example, lashes, lipstick, heels, or elegant
+   > script do not make a design Luxury & Fashion Inspired unless beauty, fashion, glam, or luxury
+   > is truly the subject. School supplies do not make a design School & Education unless school,
+   > teaching, students, or education is truly the subject. Religious-looking decoration does not
+   > make a design Faith & Inspirational unless faith, prayer, scripture, or inspiration is truly
+   > the subject.
+
+2. Bumped `CATALOG_ENRICHMENT_PROMPT_VERSION` → `catalog-enrich-v21` and
+   `DEVELOPMENT_CATALOG_ENRICHMENT_PROMPT_VERSION` → `catalog-enrich-dev-v21`
+   (`catalogTitleRules.ts`), following the established convention that any catalog-prompt content
+   change bumps the version (v18/v19/v20 all did the same).
+3. This is a prompt-content-only change. No changes were made to
+   `catalogThemeCategoryResolver.ts` (category scoring/priority-boost logic),
+   `catalogTagResolver.ts` (tag matching/last-resort suggestion gating), the tag reranker
+   (`catalogTagRerankProvider.ts`), suggestion authoring
+   (`catalogSuggestedTagAuthorProvider.ts`), or any category/tag data — all confirmed unaffected
+   and explicitly out of scope for this phase.
+4. Added a new regression test
+   (`src/renderer/src/features/settings/constants/aiEnrichmentSettingsConstants.test.ts`)
+   asserting the business-context paragraph is present, mentions DTF/apparel/shirts, names the
+   subject/message/buyer-intent judgment criteria, and appears before the `Return:` field block —
+   guarding against this framing silently regressing in a future prompt edit, since no prior test
+   covered prompt prose content at all.
+
+**Why**
+
+Real-world report: a design reading "Lashes longer than my Patience" — a sarcastic joke
+illustrated with eyelash line art in elegant script — was AI-categorized as `Luxury & Fashion
+Inspired`, titled in part "Beauty Makeup Cosmetics" (an invented phrase not present in the design),
+and tagged with a weak `fashion` tag alongside the correct `funny`. Root cause, confirmed by code
+inspection: the shipped default prompt (v20) gave the model zero business context — it opened with
+only "Analyze the provided image and return only valid JSON," no framing of what business this is
+for or what these designs are used for. With nothing anchoring it to buyer intent, the model
+free-associated from visual similarity (script font, lash/beauty-adjacent imagery) toward
+fashion/beauty concepts instead of judging what the design was actually about (a joke).
+
+This is not a category-resolution bug: per ADR-FP-039/041, `resolveThemeCategory` trusts an exact
+match between the model's raw category answer and an approved category name directly, with no
+second-guessing — `Luxury & Fashion Inspired` is a real approved category name, so the model's
+(wrong) answer passed through exactly as designed. The fallback token-overlap/priority-boost
+scorer, which has buyer-intent priority families for family/faith/teacher themes, never got a
+chance to run, and even if it had, there is no humor/sarcasm priority family that would have
+caught this case. Fixing this in the resolver would mean adding an ever-growing list of
+category-specific server-side overrides; fixing it in the prompt gives the model itself better
+judgment up front, which generalizes to categories/cases not yet observed.
+
+The wording is deliberately broader than the single reported case: rather than a fashion/luxury-
+only fix, it states one general principle (subject/message/buyer intent over visual style/
+decoration) and illustrates it with three worked examples spanning three different categories
+(fashion/luxury, school/education, faith/inspirational) that are all plausible instances of the
+same underlying confusion — style-adjacent decoration mistaken for subject matter. This was an
+explicit design choice over enumerating every possible category confusion: a good general
+principle should generalize better than a growing list of special cases, and keeps the prompt
+compact (a few dozen extra tokens, similar in scale to the `{{approved_category_names}}` addition
+in ADR-FP-041, not the ~4.4x cost of full tag-name injection that stays gated).
+
+**Alternatives considered**
+
+- *Resolver-side humor/sarcasm priority family* (mirroring `FAMILY_PRIORITY`/`FAITH_PRIORITY`/
+  `TEACHER_PRIORITY` in `catalogThemeCategoryResolver.ts`) — deferred, not rejected. Flagged as a
+  future-expansion option if the prompt-level fix alone doesn't sufficiently address this class of
+  error after real-world use. The user's immediate ask was specifically about improving the
+  model's own judgment, not adding another server-side override layer.
+- *Category-field-only instruction change* (leave the opening framing alone, only tighten the
+  `category:` field's own instructions) — rejected: the reported miscategorization affected title
+  and tags too (invented "Beauty Makeup Cosmetics," weak "fashion" tag), not just category, so a
+  category-only fix would have left the same root cause free to affect other fields.
+- *Renaming/narrowing "Luxury & Fashion Inspired" itself* — out of scope; that is Tag/Category
+  Management data curation, not an AI-prompt concern, and flagged separately for a future review of
+  whether the category name itself (the word "Inspired") invites over-eager matching.
+
+---
+
 ### ADR-FP-043: Suggested new tags are a last resort; AI-authored suggestion quality when they fire
 
 | Field | Value |

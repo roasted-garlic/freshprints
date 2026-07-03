@@ -13,7 +13,7 @@ import { DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE } from "../../../shared/constants
  * Prompt parity: the Settings AI Playground (aiEnrichmentPlayground.ts) and AI Processing
  * (openAiVisionEnrichmentProvider.ts) both build their prompts from the SAME shared builders. This
  * test locks that in so the two paths cannot drift back into two separate prompt implementations.
- * The v20 lean prompt injects approved category names only (cheap, ~0.8% cost increase measured);
+ * The lean prompt injects approved category names only (cheap, ~0.8% cost increase measured);
  * the full approved category descriptions and the approved tag list stay resolved server-side and
  * are not injected (full tag-name injection measured ~4.4x the per-image cost — see ADR-FP-041).
  */
@@ -79,8 +79,8 @@ describe("prompt parity (playground vs AI processing)", () => {
     assert.equal(buildUserPrompt(template), buildUserPrompt(template));
   });
 
-  it("injects approved category names but not category descriptions or the approved tag list into the default v20 prompt", () => {
-    // The v20 lean prompt sends only approved category names; category descriptions and the full
+  it("injects approved category names but not category descriptions or the approved tag list into the default prompt", () => {
+    // The lean prompt sends only approved category names; category descriptions and the full
     // approved tag list (names/aliases/preferredWhen) stay resolved server-side, so the resolved
     // prompt must contain category names but not the injected description/tag taxonomy context.
     const resolved = buildUserPrompt(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE);

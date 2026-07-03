@@ -11,9 +11,8 @@ import {
   ADDITIONAL_TAG_EXCLUSION_PATTERN,
   AI_ENRICHMENT_SETTINGS_DOC_ID,
   BASE_AI_TAG_EXCLUSIONS,
-  DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
   MAX_ADDITIONAL_TAG_EXCLUSIONS,
-  hasRequiredAiEnrichmentPromptPlaceholders,
+  resolveAiEnrichmentPromptTemplate,
   resolveClientSuggestionAuthorMode,
   resolveClientTagRerankMode,
   resolveClientVisionModelId,
@@ -85,17 +84,7 @@ function mergeClientTagExclusions(additionalTagExclusions: string[]): string[] {
 }
 
 export function resolveClientPromptTemplate(raw: unknown): string {
-  if (typeof raw !== "string") {
-    return DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE;
-  }
-
-  const trimmed = raw.trim();
-
-  if (!trimmed || !hasRequiredAiEnrichmentPromptPlaceholders(trimmed)) {
-    return DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE;
-  }
-
-  return trimmed;
+  return resolveAiEnrichmentPromptTemplate(raw);
 }
 
 function mapSettingsSnapshot(data: Record<string, unknown> | undefined): AiEnrichmentSettingsSnapshot {

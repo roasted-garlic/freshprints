@@ -5,7 +5,7 @@ import { AI_ENRICHMENT_PLAYGROUND_MAX_PROMPT_LENGTH } from "../../../../../../sh
 import { Badge } from "../../../shared/components/Badge";
 import { Button } from "../../../shared/components/Button";
 import { AutoResizeTextarea } from "../../../shared/components/AutoResizeTextarea";
-import { Modal, ModalBody, ModalHeader } from "../../../shared/components/Modal";
+import { Modal, ModalBody, ModalFooter, ModalHeader } from "../../../shared/components/Modal";
 import { Select } from "../../../shared/components/Select";
 import { TagChipInput } from "../../../shared/components/TagChipInput";
 import { useShellHeaderConfig } from "../../../shared/hooks/useShellHeaderConfig";
@@ -19,6 +19,7 @@ import {
   AI_ENRICHMENT_PROMPT_TEMPLATE_MAX_LENGTH,
   BASE_AI_TAG_EXCLUSIONS,
   ALL_VISION_MODEL_OPTIONS,
+  DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
   SUGGESTION_AUTHOR_MODE_OPTIONS,
   TAG_RERANK_MODE_OPTIONS,
   hasRequiredAiEnrichmentPromptPlaceholders,
@@ -129,6 +130,7 @@ export function SettingsPage() {
   const [draftTagRerankMode, setDraftTagRerankMode] = useState<string | null>(null);
   const [draftSuggestionAuthorMode, setDraftSuggestionAuthorMode] = useState<string | null>(null);
   const [isPromptTemplateEditorOpen, setIsPromptTemplateEditorOpen] = useState(false);
+  const [isTagExclusionsModalOpen, setIsTagExclusionsModalOpen] = useState(false);
   const [isPlaygroundModalOpen, setIsPlaygroundModalOpen] = useState(false);
   const [isPlaygroundResultModalOpen, setIsPlaygroundResultModalOpen] = useState(false);
   const [hasInjectedProcessingPrompt, setHasInjectedProcessingPrompt] = useState(false);
@@ -197,6 +199,13 @@ export function SettingsPage() {
     setIsPlaygroundResultModalOpen(false);
   }, []);
 
+  const handleClosePromptTemplateEditor = useCallback(() => {
+    setIsPromptTemplateEditorOpen(false);
+    requestAnimationFrame(() => {
+      document.getElementById("settings-prompt-editor-open-button")?.focus();
+    });
+  }, []);
+
   useEffect(() => {
     if (!isPlaygroundModalOpen) {
       return;
@@ -211,6 +220,28 @@ export function SettingsPage() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [closePlaygroundModal, isPlaygroundModalOpen]);
+
+  useEffect(() => {
+    if (!isPromptTemplateEditorOpen && !isTagExclusionsModalOpen) {
+      return;
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key !== "Escape") {
+        return;
+      }
+
+      if (isPromptTemplateEditorOpen) {
+        handleClosePromptTemplateEditor();
+        return;
+      }
+
+      setIsTagExclusionsModalOpen(false);
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handleClosePromptTemplateEditor, isPromptTemplateEditorOpen, isTagExclusionsModalOpen]);
 
   useEffect(() => {
     if (playground.result) {
@@ -300,27 +331,11 @@ export function SettingsPage() {
   }
 
   function handleOpenPromptTemplateEditor() {
-    const confirmed = window.confirm(
-      "Editing the AI Processing prompt changes the live catalog suggestions generated for future designs. Only continue if you are intentionally changing the production prompt.",
-    );
-
-    if (confirmed) {
-      setIsPromptTemplateEditorOpen(true);
-    }
+    setIsPromptTemplateEditorOpen(true);
   }
 
-  function handleClosePromptTemplateEditor() {
-    if (draftPromptTemplate !== null && draftPromptTemplate !== promptTemplate) {
-      const confirmed = window.confirm("Discard unsaved AI Processing prompt changes?");
-
-      if (!confirmed) {
-        return;
-      }
-
-      setDraftPromptTemplate(null);
-    }
-
-    setIsPromptTemplateEditorOpen(false);
+  function handleUseCurrentDefaultPrompt() {
+    setDraftPromptTemplate(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE);
   }
 
   return (
@@ -352,57 +367,65 @@ export function SettingsPage() {
           <p className="settings-section-status">Loading AI enrichment settings…</p>
         ) : (
           <div className="settings-form-grid">
-            <Select
-              disabled={!canManageSettings || isSaving}
-              label="Vision model"
-              name="visionModelId"
-              onChange={(event) => setDraftVisionModelId(event.target.value)}
-              options={ALL_VISION_MODEL_OPTIONS.map((option) => ({
-                label: option.label,
-                value: option.value,
-              }))}
-              value={selectedVisionModelId}
-            />
+            <div className="settings-control-grid">
+              <div className="settings-control-item">
+                <Select
+                  disabled={!canManageSettings || isSaving}
+                  label="Vision model"
+                  name="visionModelId"
+                  onChange={(event) => setDraftVisionModelId(event.target.value)}
+                  options={ALL_VISION_MODEL_OPTIONS.map((option) => ({
+                    label: option.label,
+                    value: option.value,
+                  }))}
+                  value={selectedVisionModelId}
+                />
 
-            <p className="settings-field-hint">
-              {ALL_VISION_MODEL_OPTIONS.find((option) => option.value === selectedVisionModelId)
-                ?.hint ?? selectedVisionModelId}
-            </p>
+                <p className="settings-field-hint">
+                  {ALL_VISION_MODEL_OPTIONS.find((option) => option.value === selectedVisionModelId)
+                    ?.hint ?? selectedVisionModelId}
+                </p>
+              </div>
 
-            <Select
-              disabled={!canManageSettings || isSaving}
-              label="Tag reranker (second AI call)"
-              name="tagRerankMode"
-              onChange={(event) => setDraftTagRerankMode(event.target.value)}
-              options={TAG_RERANK_MODE_OPTIONS.map((option) => ({
-                label: option.label,
-                value: option.value,
-              }))}
-              value={selectedTagRerankMode}
-            />
+              <div className="settings-control-item">
+                <Select
+                  disabled={!canManageSettings || isSaving}
+                  label="Tag reranker"
+                  name="tagRerankMode"
+                  onChange={(event) => setDraftTagRerankMode(event.target.value)}
+                  options={TAG_RERANK_MODE_OPTIONS.map((option) => ({
+                    label: option.label,
+                    value: option.value,
+                  }))}
+                  value={selectedTagRerankMode}
+                />
 
-            <p className="settings-field-hint">
-              {TAG_RERANK_MODE_OPTIONS.find((option) => option.value === selectedTagRerankMode)?.hint ??
-                selectedTagRerankMode}
-            </p>
+                <p className="settings-field-hint">
+                  {TAG_RERANK_MODE_OPTIONS.find((option) => option.value === selectedTagRerankMode)
+                    ?.hint ?? selectedTagRerankMode}
+                </p>
+              </div>
 
-            <Select
-              disabled={!canManageSettings || isSaving}
-              label="Suggested-tag quality (AI-authored, last resort only)"
-              name="suggestionAuthorMode"
-              onChange={(event) => setDraftSuggestionAuthorMode(event.target.value)}
-              options={SUGGESTION_AUTHOR_MODE_OPTIONS.map((option) => ({
-                label: option.label,
-                value: option.value,
-              }))}
-              value={selectedSuggestionAuthorMode}
-            />
+              <div className="settings-control-item">
+                <Select
+                  disabled={!canManageSettings || isSaving}
+                  label="Suggested-tag quality"
+                  name="suggestionAuthorMode"
+                  onChange={(event) => setDraftSuggestionAuthorMode(event.target.value)}
+                  options={SUGGESTION_AUTHOR_MODE_OPTIONS.map((option) => ({
+                    label: option.label,
+                    value: option.value,
+                  }))}
+                  value={selectedSuggestionAuthorMode}
+                />
 
-            <p className="settings-field-hint">
-              {SUGGESTION_AUTHOR_MODE_OPTIONS.find(
-                (option) => option.value === selectedSuggestionAuthorMode,
-              )?.hint ?? selectedSuggestionAuthorMode}
-            </p>
+                <p className="settings-field-hint">
+                  {SUGGESTION_AUTHOR_MODE_OPTIONS.find(
+                    (option) => option.value === selectedSuggestionAuthorMode,
+                  )?.hint ?? selectedSuggestionAuthorMode}
+                </p>
+              </div>
+            </div>
 
             {isOwner ? (
               <div className="settings-prompt-template-block settings-prompt-template-danger">
@@ -415,74 +438,40 @@ export function SettingsPage() {
                     </p>
                   </div>
 
-                  {isPromptTemplateEditorOpen ? (
-                    <Button
-                      disabled={isSaving}
-                      onClick={handleClosePromptTemplateEditor}
-                      variant="secondary"
-                    >
-                      Hide prompt editor
-                    </Button>
-                  ) : (
-                    <Button
-                      disabled={!canManageSettings || isSaving}
-                      onClick={handleOpenPromptTemplateEditor}
-                      variant="warning"
-                    >
-                      Unlock prompt editor
-                    </Button>
-                  )}
+                  <Button
+                    disabled={!canManageSettings || isSaving}
+                    id="settings-prompt-editor-open-button"
+                    onClick={handleOpenPromptTemplateEditor}
+                    variant="warning"
+                  >
+                    Edit prompt
+                  </Button>
                 </div>
 
-                {isPromptTemplateEditorOpen ? (
-                  <>
-                    <AutoResizeTextarea
-                      disabled={!canManageSettings || isSaving}
-                      label="AI Processing prompt"
-                      maxLength={AI_ENRICHMENT_PROMPT_TEMPLATE_MAX_LENGTH}
-                      name="promptTemplate"
-                      onChange={(event) => setDraftPromptTemplate(event.target.value)}
-                      value={selectedPromptTemplate}
-                    />
-                    <p className="settings-field-hint">
-                      This prompt is used by AI Processing only. The AI Playground remains a one-off
-                      test tool.
-                    </p>
-                    {promptTemplateError ? (
-                      <p className="auth-message auth-message-error" role="alert">
-                        {promptTemplateError}
-                      </p>
-                    ) : null}
-                  </>
+                {promptTemplateError ? (
+                  <p className="auth-message auth-message-error" role="alert">
+                    {promptTemplateError}
+                  </p>
                 ) : null}
               </div>
             ) : null}
 
             <div className="settings-tag-exclusions-block">
-              <h3 className="settings-subsection-title">Tag exclusions</h3>
-              <p className="settings-field-hint">
-                Built-in exclusions always apply. Add team-specific single-word tags to block from AI
-                suggestions.
-              </p>
-
-              <div className="settings-tag-chip-row" aria-label="Built-in tag exclusions">
-                {BASE_AI_TAG_EXCLUSIONS.map((tag: string) => (
-                  <Badge key={tag} variant="default">
-                    {tag}
-                  </Badge>
-                ))}
+              <div className="settings-tag-exclusions-copy">
+                <h3 className="settings-subsection-title">Tag exclusions</h3>
+                <p className="settings-field-hint">
+                  Built-in: {BASE_AI_TAG_EXCLUSIONS.length} | Additional:{" "}
+                  {selectedAdditionalTagExclusions.length}
+                </p>
               </div>
 
-              <TagChipInput
-                adjustmentHint="Single-word lowercase tags only. Duplicates and built-in exclusions are ignored."
+              <Button
                 disabled={!canManageSettings || isSaving}
-                label="Additional exclusions"
-                name="additionalTagExclusions"
-                onChange={(value) =>
-                  setDraftAdditionalTagExclusions(parseAdditionalTagExclusionsInput(value))
-                }
-                value={additionalTagExclusionsInput}
-              />
+                onClick={() => setIsTagExclusionsModalOpen(true)}
+                variant="secondary"
+              >
+                Manage exclusions
+              </Button>
             </div>
 
             {canManageSettings ? (
@@ -511,6 +500,167 @@ export function SettingsPage() {
           </div>
         )}
       </section>
+
+      {isOwner && isPromptTemplateEditorOpen ? (
+        <div className="modal-overlay modal-overlay-blur" onClick={handleClosePromptTemplateEditor}>
+          <div
+            className="settings-editor-modal-shell"
+            onClick={(event) => event.stopPropagation()}
+            role="presentation"
+          >
+            <Modal
+              aria-labelledby="settings-prompt-editor-title"
+              className="settings-editor-modal settings-prompt-editor-modal"
+              role="dialog"
+            >
+              <ModalHeader className="settings-editor-modal-header">
+                <div className="settings-editor-modal-title-group">
+                  <h2 className="settings-section-title" id="settings-prompt-editor-title">
+                    AI Processing prompt
+                  </h2>
+                  <p className="settings-section-description">
+                    Editing this prompt changes live catalog suggestions generated for future designs.
+                    Saving still happens from the main Settings page.
+                  </p>
+                </div>
+
+                <Button
+                  aria-label="Close prompt editor"
+                  onClick={handleClosePromptTemplateEditor}
+                  variant="ghost"
+                >
+                  <X aria-hidden="true" size={18} strokeWidth={2} />
+                </Button>
+              </ModalHeader>
+
+              <ModalBody className="settings-editor-modal-body">
+                <div className="settings-form-actions">
+                  <Button
+                    disabled={!canManageSettings || isSaving}
+                    onClick={handleUseCurrentDefaultPrompt}
+                    variant="secondary"
+                  >
+                    Use current default
+                  </Button>
+                </div>
+
+                <AutoResizeTextarea
+                  disabled={!canManageSettings || isSaving}
+                  label="AI Processing prompt"
+                  maxAutoHeightPx={420}
+                  maxLength={AI_ENRICHMENT_PROMPT_TEMPLATE_MAX_LENGTH}
+                  name="promptTemplate"
+                  onChange={(event) => setDraftPromptTemplate(event.target.value)}
+                  value={selectedPromptTemplate}
+                />
+
+                <p className="settings-field-hint">
+                  This prompt is used by AI Processing only. The AI Playground remains a one-off test
+                  tool.
+                </p>
+
+                {promptTemplateError ? (
+                  <p className="auth-message auth-message-error" role="alert">
+                    {promptTemplateError}
+                  </p>
+                ) : null}
+              </ModalBody>
+
+              <ModalFooter>
+                <Button onClick={handleClosePromptTemplateEditor} variant="secondary">
+                  Done
+                </Button>
+              </ModalFooter>
+            </Modal>
+          </div>
+        </div>
+      ) : null}
+
+      {canManageSettings && isTagExclusionsModalOpen ? (
+        <div
+          className="modal-overlay modal-overlay-blur"
+          onClick={() => setIsTagExclusionsModalOpen(false)}
+        >
+          <div
+            className="settings-editor-modal-shell"
+            onClick={(event) => event.stopPropagation()}
+            role="presentation"
+          >
+            <Modal
+              aria-labelledby="settings-tag-exclusions-title"
+              className="settings-editor-modal settings-tag-exclusions-modal"
+              role="dialog"
+            >
+              <ModalHeader className="settings-editor-modal-header">
+                <div className="settings-editor-modal-title-group">
+                  <h2 className="settings-section-title" id="settings-tag-exclusions-title">
+                    Tag exclusions
+                  </h2>
+                  <p className="settings-section-description">
+                    Built-in exclusions always apply. Add team-specific single-word tags to block from
+                    AI suggestions.
+                  </p>
+                </div>
+
+                <Button
+                  aria-label="Close tag exclusions"
+                  onClick={() => setIsTagExclusionsModalOpen(false)}
+                  variant="ghost"
+                >
+                  <X aria-hidden="true" size={18} strokeWidth={2} />
+                </Button>
+              </ModalHeader>
+
+              <ModalBody className="settings-editor-modal-body">
+                <section className="settings-modal-section" aria-labelledby="built-in-exclusions-title">
+                  <div className="settings-modal-section-header">
+                    <h3 className="settings-subsection-title" id="built-in-exclusions-title">
+                      Built-in exclusions
+                    </h3>
+                    <p className="settings-field-hint">{BASE_AI_TAG_EXCLUSIONS.length} always active</p>
+                  </div>
+
+                  <div className="settings-tag-chip-row" aria-label="Built-in tag exclusions">
+                    {BASE_AI_TAG_EXCLUSIONS.map((tag: string) => (
+                      <Badge key={tag} variant="default">
+                        {tag}
+                      </Badge>
+                    ))}
+                  </div>
+                </section>
+
+                <section className="settings-modal-section" aria-labelledby="additional-exclusions-title">
+                  <div className="settings-modal-section-header">
+                    <h3 className="settings-subsection-title" id="additional-exclusions-title">
+                      Additional exclusions
+                    </h3>
+                    <p className="settings-field-hint">
+                      {selectedAdditionalTagExclusions.length} team-specific exclusions
+                    </p>
+                  </div>
+
+                  <TagChipInput
+                    adjustmentHint="Single-word lowercase tags only. Duplicates and built-in exclusions are ignored."
+                    disabled={!canManageSettings || isSaving}
+                    label="Additional exclusions"
+                    name="additionalTagExclusions"
+                    onChange={(value) =>
+                      setDraftAdditionalTagExclusions(parseAdditionalTagExclusionsInput(value))
+                    }
+                    value={additionalTagExclusionsInput}
+                  />
+                </section>
+              </ModalBody>
+
+              <ModalFooter>
+                <Button onClick={() => setIsTagExclusionsModalOpen(false)} variant="secondary">
+                  Done
+                </Button>
+              </ModalFooter>
+            </Modal>
+          </div>
+        </div>
+      ) : null}
 
       {canManageSettings && isPlaygroundModalOpen ? (
         <div

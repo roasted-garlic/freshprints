@@ -1,11 +1,10 @@
 import {
-  hasRequiredAiEnrichmentPromptPlaceholders,
-  AI_ENRICHMENT_PROMPT_TEMPLATE_MAX_LENGTH,
   DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
   DEFAULT_SUGGESTION_AUTHOR_MODE,
   DEFAULT_TAG_RERANK_MODE,
   SUGGESTION_AUTHOR_MODES,
   TAG_RERANK_MODES,
+  resolveAiEnrichmentPromptTemplate,
   type SuggestionAuthorMode,
   type TagRerankMode,
 } from "../../../shared/constants/aiEnrichment.constants";
@@ -42,21 +41,7 @@ export function resolveSuggestionAuthorMode(raw: unknown): SuggestionAuthorMode 
 }
 
 export function resolveAiPromptTemplate(raw: unknown): string {
-  if (typeof raw !== "string") {
-    return DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE;
-  }
-
-  const trimmed = raw.trim();
-
-  if (
-    !trimmed ||
-    trimmed.length > AI_ENRICHMENT_PROMPT_TEMPLATE_MAX_LENGTH ||
-    !hasRequiredAiEnrichmentPromptPlaceholders(trimmed)
-  ) {
-    return DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE;
-  }
-
-  return trimmed;
+  return resolveAiEnrichmentPromptTemplate(raw);
 }
 
 export async function loadAiEnrichmentSettings(): Promise<AiEnrichmentSettingsLoaded> {

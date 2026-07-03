@@ -104,9 +104,9 @@ describe("buildVisionRequestBody", () => {
     assert.equal(parsed.reasoning_effort, undefined);
   });
 
-  it("injects excluded tags and approved category names, but not category descriptions or the approved tag list, into the default v20 user prompt", () => {
-    // v20 is vision-only plus approved category names: full category descriptions and the
-    // approved tag list (names/aliases/preferredWhen) stay resolved server-side
+  it("injects excluded tags and approved category names, but not category descriptions or the approved tag list, into the default user prompt", () => {
+    // The default prompt is vision-only plus approved category names: full category descriptions
+    // and the approved tag list (names/aliases/preferredWhen) stay resolved server-side
     // (catalogTagResolver.ts, catalogThemeCategoryResolver.ts) and are not sent to the model.
     const parsed = parseBody();
     const userMessage = parsed.messages.find((message) => message.role === "user");

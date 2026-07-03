@@ -8,8 +8,10 @@ import {
   DEFAULT_SUGGESTION_AUTHOR_MODE,
   DEFAULT_VISION_MODEL_ID,
   GEMINI_VISION_MODEL_OPTIONS,
+  PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V20,
   SUGGESTION_AUTHOR_MODE_OPTIONS,
   hasRequiredAiEnrichmentPromptPlaceholders,
+  resolveClientPromptTemplate,
   resolveClientSuggestionAuthorMode,
   resolveClientVisionModelId,
 } from "./aiEnrichmentSettingsConstants";
@@ -37,17 +39,65 @@ describe("aiEnrichmentSettingsConstants", () => {
     assert.equal(resolveClientVisionModelId("gpt-5.4-mini-2026-03-17"), DEFAULT_VISION_MODEL_ID);
   });
 
-  it("keeps the default AI Processing prompt small, vision-only, plus approved category names (v20)", () => {
+  it("keeps the default AI Processing prompt small, vision-only, plus approved category names (v21)", () => {
     assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /description:/);
     assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /category:/);
     assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /title:/);
     assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /tags:/);
-    // The v20 lean prompt injects only approved category names (cheap, ~0.8% cost increase) — the
+    // The lean prompt injects only approved category names (cheap, ~0.8% cost increase) — the
     // full approved category/tag list with descriptions/aliases stays server-side and gated behind
     // an accuracy test (see ADR-FP-041) because it measured ~4.4x the per-image cost.
     assert.ok(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE.includes(AI_ENRICHMENT_EXCLUDED_TAGS_PLACEHOLDER));
     assert.ok(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE.includes(AI_ENRICHMENT_APPROVED_CATEGORY_NAMES_PLACEHOLDER));
     assert.ok(hasRequiredAiEnrichmentPromptPlaceholders(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE));
+  });
+
+  it("v21: opens with DTF/apparel business-context framing that judges by subject over style", () => {
+    // ADR-FP-044: without this framing the model free-associated from visual style (e.g. elegant
+    // script + lash imagery) toward "Luxury & Fashion Inspired" for a design that was actually a
+    // sarcastic joke — see docs/workflow/plans/2026-07-02-ai-business-context-prompt-plan.md.
+    assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /DTF \(direct-to-film\) transfer design/);
+    assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /apparel print shop/);
+    assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /printed onto shirts/);
+    assert.match(
+      DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
+      /subject, message, joke, buyer intent, occasion, role, or theme/,
+    );
+    assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /Luxury & Fashion Inspired/);
+    // The business-context paragraph must come before the field instructions, not after — it
+    // needs to frame every subsequent judgment, not read as an afterthought rule.
+    const contextIndex = DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE.indexOf("DTF (direct-to-film)");
+    const returnFieldsIndex = DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE.indexOf("Return:");
+    assert.ok(contextIndex >= 0 && returnFieldsIndex >= 0 && contextIndex < returnFieldsIndex);
+  });
+
+  it("resolves a saved copy of the previous v20 default to the current v21 default", () => {
+    assert.equal(
+      resolveClientPromptTemplate(PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V20),
+      DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
+    );
+  });
+
+  it("resolves previous v20 default with line-ending/spacing drift to the current v21 default", () => {
+    const savedWithDifferentWhitespace = PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V20
+      .replace(/\n/g, "\r\n")
+      .replace("Return:\r\n", "Return:\r\n\r\n");
+
+    assert.equal(
+      resolveClientPromptTemplate(savedWithDifferentWhitespace),
+      DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
+    );
+  });
+
+  it("preserves a valid custom prompt instead of silently replacing it", () => {
+    const customPrompt = `Custom catalog prompt.
+
+Approved categories:
+${AI_ENRICHMENT_APPROVED_CATEGORY_NAMES_PLACEHOLDER}
+
+Do not use these tag words: ${AI_ENRICHMENT_EXCLUDED_TAGS_PLACEHOLDER}`;
+
+    assert.equal(resolveClientPromptTemplate(customPrompt), customPrompt);
   });
 
   it("defaults suggestion author mode to off", () => {

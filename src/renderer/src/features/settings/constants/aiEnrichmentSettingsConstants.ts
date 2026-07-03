@@ -8,9 +8,12 @@ import {
   DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
   DEFAULT_SUGGESTION_AUTHOR_MODE,
   DEFAULT_TAG_RERANK_MODE,
+  PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V20,
   SUGGESTION_AUTHOR_MODES,
   TAG_RERANK_MODES,
   hasRequiredAiEnrichmentPromptPlaceholders,
+  isPreviousDefaultAiEnrichmentPromptTemplate,
+  resolveAiEnrichmentPromptTemplate,
   DEFAULT_VISION_MODEL_ID as SHARED_DEFAULT_VISION_MODEL_ID,
   type AllowedVisionModelId,
   type SuggestionAuthorMode,
@@ -36,12 +39,19 @@ export {
   DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
   DEFAULT_SUGGESTION_AUTHOR_MODE,
   DEFAULT_TAG_RERANK_MODE,
+  PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V20,
   SUGGESTION_AUTHOR_MODES,
   TAG_RERANK_MODES,
   hasRequiredAiEnrichmentPromptPlaceholders,
+  isPreviousDefaultAiEnrichmentPromptTemplate,
+  resolveAiEnrichmentPromptTemplate,
   type SuggestionAuthorMode,
   type TagRerankMode,
 };
+
+export function resolveClientPromptTemplate(raw: unknown): string {
+  return resolveAiEnrichmentPromptTemplate(raw);
+}
 
 export interface TagRerankModeOption {
   value: TagRerankMode;
