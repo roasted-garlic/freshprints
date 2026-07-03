@@ -264,7 +264,7 @@ export function AiReviewWorkspace({
                               Sending…
                             </>
                           ) : (
-                            "Re-run AI"
+                            "Reprocess"
                           )}
                         </Button>
 

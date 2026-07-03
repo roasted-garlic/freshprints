@@ -9,6 +9,7 @@ import {
   type CatalogTagSuggestion,
 } from "../../features/designs/utils/catalogTagSuggestions";
 import { MAX_DESIGN_TAG_LENGTH, MAX_DESIGN_TAGS, normalizeDesignTags } from "../../features/designs/utils/designTagNormalizer";
+import { findScrollableAncestor } from "../utils/findScrollableAncestor";
 
 interface TagChipInputProps {
   adjustmentHint?: string;
@@ -26,6 +27,9 @@ interface TagChipInputProps {
   onFocus?: () => void;
   value: string;
 }
+
+/** Matches the CSS max-height for .tag-chip-suggestions — used to decide whether it should open upward. */
+const TAG_CHIP_SUGGESTIONS_ESTIMATED_HEIGHT_PX = 240;
 
 function tryNormalizeTag(rawTag: string): string | null {
   const trimmedTag = rawTag.trim();
@@ -55,9 +59,11 @@ export function TagChipInput({
 }: TagChipInputProps) {
   const inputId = useId();
   const listboxId = useId();
+  const shellRef = useRef<HTMLDivElement>(null);
   const [inputValue, setInputValue] = useState("");
   const [rejectionHint, setRejectionHint] = useState<string | null>(null);
   const [isSuggestionsOpen, setIsSuggestionsOpen] = useState(false);
+  const [opensUpward, setOpensUpward] = useState(false);
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(0);
   const blurTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const tags = tryParseTagsInput(value);
@@ -90,6 +96,27 @@ export function TagChipInput({
   );
 
   const showSuggestions = restrictToApproved && isSuggestionsOpen && suggestions.length > 0;
+
+  function openSuggestions() {
+    const shellRect = shellRef.current?.getBoundingClientRect();
+
+    if (shellRect) {
+      const scrollableAncestor = findScrollableAncestor(shellRef.current);
+      const lowerBound = scrollableAncestor
+        ? scrollableAncestor.getBoundingClientRect().bottom
+        : window.innerHeight;
+      const upperBound = scrollableAncestor ? scrollableAncestor.getBoundingClientRect().top : 0;
+
+      const spaceBelow = lowerBound - shellRect.bottom;
+      const spaceAbove = shellRect.top - upperBound;
+
+      setOpensUpward(
+        spaceBelow < TAG_CHIP_SUGGESTIONS_ESTIMATED_HEIGHT_PX && spaceAbove > spaceBelow,
+      );
+    }
+
+    setIsSuggestionsOpen(true);
+  }
 
   function emitTags(nextTags: string[]) {
     onChange(formatTagsInput(nextTags));
@@ -173,7 +200,7 @@ export function TagChipInput({
 
   function handleInputChange(nextValue: string) {
     setRejectionHint(null);
-    setIsSuggestionsOpen(true);
+    openSuggestions();
 
     if (nextValue.includes(",")) {
       const [firstToken, ...restTokens] = nextValue.split(",");
@@ -235,7 +262,7 @@ export function TagChipInput({
   }
 
   function handleFocus() {
-    setIsSuggestionsOpen(true);
+    openSuggestions();
     onFocus?.();
   }
 
@@ -256,7 +283,7 @@ export function TagChipInput({
     <div className="form-field tag-chip-input-field">
       <label htmlFor={inputId}>{label}</label>
 
-      <div className="tag-chip-input-shell">
+      <div className="tag-chip-input-shell" ref={shellRef}>
         <div
           className={[
             "tag-chip-input",
@@ -311,7 +338,11 @@ export function TagChipInput({
         </div>
 
         {showSuggestions ? (
-          <ul className="tag-chip-suggestions" id={listboxId} role="listbox">
+          <ul
+            className={`tag-chip-suggestions${opensUpward ? " tag-chip-suggestions--upward" : ""}`}
+            id={listboxId}
+            role="listbox"
+          >
             {suggestions.map((suggestion, index) => (
               <li
                 aria-selected={index === activeSuggestionIndex}

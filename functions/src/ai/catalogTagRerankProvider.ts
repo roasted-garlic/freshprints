@@ -7,7 +7,15 @@ import {
   estimateVisionCostUsd,
   resolveTagRerankPromptTemplate,
 } from "../../../shared/constants/aiEnrichment.constants";
-import { VISION_REQUEST_BASE_DELAY_MS, VISION_REQUEST_MAX_RETRIES } from "./aiEnrichmentConfig";
+// Deliberately smaller/faster than the primary vision call's retry budget
+// (VISION_REQUEST_MAX_RETRIES/VISION_REQUEST_BASE_DELAY_MS). The reranker is an optional
+// second call layered on top of the primary vision call within the same 180s callable — a
+// failure here is already handled gracefully (original tags are kept, see TagRerankError
+// handling in aiEnrichmentPipeline.ts), so it should fail fast rather than stack a second full
+// retry budget on top of the primary call's and risk the whole design timing out.
+const TAG_RERANK_MAX_RETRIES = 1;
+const TAG_RERANK_BASE_DELAY_MS = 1000;
+const TAG_RERANK_REQUEST_TIMEOUT_MS = 20_000;
 import { extractJsonObject } from "./simpleCatalogEnrichmentResponse";
 import { buildSuggestedTagAuthorInstructions, validateAuthoredSuggestions } from "./catalogSuggestedTagAuthorProvider";
 import {
@@ -176,7 +184,12 @@ async function requestCatalogTagRerankCompletion(
           maxCompletionTokens,
         ),
       },
-      { maxRetries: VISION_REQUEST_MAX_RETRIES, baseDelayMs: VISION_REQUEST_BASE_DELAY_MS, modelId: visionModelId },
+      {
+        maxRetries: TAG_RERANK_MAX_RETRIES,
+        baseDelayMs: TAG_RERANK_BASE_DELAY_MS,
+        modelId: visionModelId,
+        timeoutMs: TAG_RERANK_REQUEST_TIMEOUT_MS,
+      },
     );
   } catch (error) {
     throw new TagRerankError(

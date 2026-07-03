@@ -83,6 +83,13 @@ export function useAiProcessingQueue({
   const isAutoQueueLoopRunningRef = useRef(false);
 
   useEffect(() => {
+    // Set true on (re)mount, not just via the initial useRef value: React 18 StrictMode runs
+    // setup → cleanup → setup on the first mount in dev, so without re-arming here the cleanup's
+    // `= false` would leave the ref permanently false for the component's whole life — which made
+    // the auto-advance loop bail at `if (!isMountedRef.current) return` right after the first
+    // design, so it processed exactly one image and stopped.
+    isMountedRef.current = true;
+
     return () => {
       isMountedRef.current = false;
     };
@@ -93,26 +100,8 @@ export function useAiProcessingQueue({
   }, [designs]);
 
   useEffect(() => {
-    runStateRef.current = runState;
-  }, [runState]);
-
-  useEffect(() => {
     selectedIndexRef.current = selectedIndex;
   }, [selectedIndex]);
-
-  useEffect(() => {
-    if (!enqueueingDesignId) {
-      return;
-    }
-
-    const design = designs.find((item) => item.id === enqueueingDesignId);
-
-    if (!design?.aiProcessingStage) {
-      return;
-    }
-
-    setEnqueueingDesignId(null);
-  }, [designs, enqueueingDesignId]);
 
   const setAutoAdvance = useCallback((enabled: boolean) => {
     setAutoAdvanceState(enabled);
@@ -120,8 +109,13 @@ export function useAiProcessingQueue({
   }, []);
 
   const awaitingDesigns = useMemo(
-    () => (activeTab === "processing" ? designs.filter(isDesignAwaitingAiStart) : []),
-    [activeTab, designs],
+    () =>
+      activeTab === "processing"
+        ? designs.filter(
+            (design) => isDesignAwaitingAiStart(design) || design.id === enqueueingDesignId,
+          )
+        : [],
+    [activeTab, designs, enqueueingDesignId],
   );
 
   const selectedDesign = useMemo(
@@ -155,7 +149,13 @@ export function useAiProcessingQueue({
       return null;
     }
 
-    if (!isDesignAwaitingAiStart(selectedDesign) && !isDesignAiProcessingFailed(selectedDesign)) {
+    const isCurrentlyEnqueueing = selectedDesign.id === enqueueingDesignId;
+
+    if (
+      !isDesignAwaitingAiStart(selectedDesign) &&
+      !isDesignAiProcessingFailed(selectedDesign) &&
+      !isCurrentlyEnqueueing
+    ) {
       return null;
     }
 
@@ -166,7 +166,7 @@ export function useAiProcessingQueue({
     }
 
     return `${position + 1} of ${awaitingDesigns.length} waiting`;
-  }, [activeTab, awaitingDesigns, selectedDesign]);
+  }, [activeTab, awaitingDesigns, enqueueingDesignId, selectedDesign]);
 
   const resolvedSessionVisionModelId = sessionVisionModelId ?? defaultVisionModelId;
 
@@ -224,6 +224,14 @@ export function useAiProcessingQueue({
         if (patch) {
           applyDesignPatch(designId, patch);
         }
+
+        // Clear the optimistic flag now that the call has genuinely finished, rather than
+        // waiting for a design's aiProcessingStage to change (see the removed effect this
+        // replaced — a design carrying a leftover aiProcessingStage from a prior run made that
+        // approach false-positive on the very next enqueue, clearing the optimistic "Processing…"
+        // display before this call had actually completed and leaving the UI showing stale idle
+        // copy for the remaining duration of a real, still-in-flight request).
+        setEnqueueingDesignId(null);
       } catch (error) {
         if (isMountedRef.current) {
           setEnqueueingDesignId(null);

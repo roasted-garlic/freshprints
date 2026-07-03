@@ -46,6 +46,12 @@
   z-index: 20;
 }
 
+.tag-chip-suggestions--upward {
+  bottom: 100%;
+  margin: 0 0 var(--space-1);
+  top: auto;
+}
+
 .tag-chip-suggestion {
   align-items: baseline;
   border-radius: var(--radius-sm);

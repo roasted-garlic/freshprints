@@ -155,9 +155,11 @@ describe("aiProcessingOutput", () => {
   it("returns honest placeholder messages", () => {
     assert.match(getAiProcessingOutputMessage("waiting", createDesign({ aiProcessingStage: "sending_to_ai" })), /sending image to ai/i);
     assert.match(getAiProcessingOutputMessage("not_generated"), /waiting for ai/i);
-    assert.match(
+    // Optimistic enqueue shows no caption — the pipeline stepper alone conveys the state, so the
+    // message is intentionally empty and the status section skips rendering the caption line.
+    assert.equal(
       getAiProcessingOutputMessage("waiting", createDesign(), { isOptimisticEnqueue: true }),
-      /queuing ai processing/i,
+      "",
     );
   });
 

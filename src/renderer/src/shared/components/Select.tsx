@@ -10,10 +10,15 @@ import {
   type SelectHTMLAttributes,
 } from "react";
 
+import { findScrollableAncestor } from "../utils/findScrollableAncestor";
+
 export interface SelectOption {
   label: string;
   value: string;
 }
+
+/** Matches the CSS max-height for .form-select-menu — used to decide whether the menu should open upward. */
+const SELECT_MENU_ESTIMATED_HEIGHT_PX = 256;
 
 interface SelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement>, "onChange" | "children"> {
   label: string;
@@ -38,6 +43,7 @@ export function Select({
   const shellRef = useRef<HTMLDivElement>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(0);
+  const [opensUpward, setOpensUpward] = useState(false);
 
   const selectedValue = value !== undefined && value !== null ? String(value) : (options[0]?.value ?? "");
   const selectedIndex = options.findIndex((option) => option.value === selectedValue);
@@ -51,6 +57,21 @@ export function Select({
   const openMenu = useCallback(() => {
     if (disabled || options.length === 0) {
       return;
+    }
+
+    const shellRect = shellRef.current?.getBoundingClientRect();
+
+    if (shellRect) {
+      const scrollableAncestor = findScrollableAncestor(shellRef.current);
+      const lowerBound = scrollableAncestor
+        ? scrollableAncestor.getBoundingClientRect().bottom
+        : window.innerHeight;
+      const upperBound = scrollableAncestor ? scrollableAncestor.getBoundingClientRect().top : 0;
+
+      const spaceBelow = lowerBound - shellRect.bottom;
+      const spaceAbove = shellRect.top - upperBound;
+
+      setOpensUpward(spaceBelow < SELECT_MENU_ESTIMATED_HEIGHT_PX && spaceAbove > spaceBelow);
     }
 
     setHighlightedIndex(resolvedIndex);
@@ -186,7 +207,12 @@ export function Select({
         </button>
 
         {isOpen ? (
-          <ul className="form-select-menu" id={listboxId} role="listbox" aria-labelledby={selectId}>
+          <ul
+            aria-labelledby={selectId}
+            className={`form-select-menu${opensUpward ? " form-select-menu--upward" : ""}`}
+            id={listboxId}
+            role="listbox"
+          >
             {options.map((option, index) => {
               const isSelected = option.value === selectedValue;
               const isHighlighted = index === highlightedIndex;

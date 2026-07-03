@@ -149,7 +149,10 @@ export function applyRerunOverlayStage(design: Design): Design {
 }
 
 export function getOptimisticEnqueueMessage(): string {
-  return "Queuing AI processing…";
+  // Empty on purpose: during the optimistic enqueue phase the pipeline stepper (steps 1/2/3) is
+  // already shown and conveys the state on its own, so a redundant "Queuing…" caption below it
+  // just adds noise. The caller skips rendering the message line when this is empty.
+  return "";
 }
 
 export function resolveAiProcessingOutputStatus(design: Design): AiProcessingOutputStatus {
@@ -208,7 +211,7 @@ export function getAiProcessingOutputMessage(
   options?: { isOptimisticEnqueue?: boolean; isRerunInProgress?: boolean },
 ): string {
   if (options?.isRerunInProgress && status === "waiting") {
-    return "Re-running AI suggestions…";
+    return "Reprocessing AI suggestions…";
   }
 
   if (options?.isOptimisticEnqueue && status === "waiting") {

@@ -24,7 +24,11 @@ export interface VisionRetryOptions {
   maxRetries?: number;
   baseDelayMs?: number;
   modelId?: string;
+  /** Per-attempt timeout — aborts a single hung request so it can't stall the whole retry loop. */
+  timeoutMs?: number;
 }
+
+const DEFAULT_VISION_REQUEST_TIMEOUT_MS = 45_000;
 
 async function readVisionErrorMessage(response: Response): Promise<string> {
   try {
@@ -48,11 +52,15 @@ export async function fetchVisionWithRetry(
 ): Promise<Response> {
   const maxRetries = options.maxRetries ?? 2;
   const baseDelayMs = options.baseDelayMs ?? 2000;
+  const timeoutMs = options.timeoutMs ?? DEFAULT_VISION_REQUEST_TIMEOUT_MS;
   let lastError: unknown;
 
   for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
+    const timeoutController = new AbortController();
+    const timeoutId = setTimeout(() => timeoutController.abort(), timeoutMs);
+
     try {
-      const response = await fetch(url, init);
+      const response = await fetch(url, { ...init, signal: timeoutController.signal });
 
       if (response.ok) {
         return response;
@@ -71,11 +79,16 @@ export async function fetchVisionWithRetry(
 
       lastError = new VisionRequestError(errorMessage, response.status);
     } catch (error) {
-      lastError = error;
+      lastError =
+        error instanceof Error && error.name === "AbortError"
+          ? new Error(`Google AI request timed out after ${timeoutMs}ms`)
+          : error;
 
       if (attempt === maxRetries) {
-        throw error;
+        throw lastError;
       }
+    } finally {
+      clearTimeout(timeoutId);
     }
 
     await sleep(baseDelayMs * 2 ** attempt);

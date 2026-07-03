@@ -12,7 +12,7 @@ interface AiReviewRerunModelOverrideControlProps {
 }
 
 export function AiReviewRerunModelOverrideControl({
-  buttonLabel = "Re-run AI",
+  buttonLabel = "Reprocess",
   currentVisionModelId,
   disabled = false,
   onSelect,

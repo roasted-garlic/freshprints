@@ -92,7 +92,7 @@ export function AiReviewProcessingStatusSection({
         </div>
       ) : (
         <div className="ai-review-workspace-section-header ai-review-workspace-section-header--overlay">
-          <h3 className="ai-review-workspace-section-title">Re-running AI</h3>
+          <h3 className="ai-review-workspace-section-title">Reprocessing</h3>
         </div>
       )}
 
@@ -131,7 +131,7 @@ export function AiReviewProcessingStatusSection({
         </ol>
       )}
 
-      {outputStatus === "waiting" ? (
+      {outputStatus === "waiting" && statusMessage ? (
         <p className="ai-review-processing-idle-copy">{statusMessage}</p>
       ) : null}
 

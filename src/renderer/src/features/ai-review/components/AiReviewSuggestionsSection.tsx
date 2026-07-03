@@ -79,7 +79,7 @@ export function AiReviewSuggestionsSection({
                   Sending…
                 </>
               ) : (
-                "Re-run AI"
+                "Reprocess"
               )}
             </Button>
           </div>
@@ -190,7 +190,7 @@ export function AiReviewSuggestionsSection({
       ) : hasFailed ? (
         <p className="ai-review-suggestions-note">
           {design.aiSuggestions?.errorMessage ??
-            "AI could not complete automatically. Use Re-run AI to try again."}
+            "AI could not complete automatically. Use Reprocess to try again."}
         </p>
       ) : !showProcessingState ? (
         <p className="ai-review-suggestions-note">

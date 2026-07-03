@@ -200,6 +200,12 @@
   z-index: var(--z-dropdown);
 }
 
+.form-select-menu--upward {
+  bottom: 100%;
+  margin: 0 0 var(--space-1);
+  top: auto;
+}
+
 .form-select-option {
   align-items: center;
   border-radius: var(--radius-xs);
