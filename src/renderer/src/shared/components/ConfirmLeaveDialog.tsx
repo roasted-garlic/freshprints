@@ -27,7 +27,7 @@ export function ConfirmLeaveDialog({
 
   return (
     <div aria-modal="true" className="modal-overlay modal-overlay-blur" role="dialog">
-      <div className="modal-shell confirm-leave-dialog">
+      <div className="modal-panel modal-panel-sm confirm-leave-dialog">
         <div className="confirm-leave-dialog-header">
           <h2 className="modal-title">{title}</h2>
           <button
