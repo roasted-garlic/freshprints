@@ -6,8 +6,9 @@ import type {
 export type AiEnrichmentProviderId = "google" | "development";
 
 export interface AiEnrichmentPlaygroundRequest {
-  imageBase64: string;
-  imageContentType: AiEnrichmentPlaygroundImageContentType;
+  /** Optional — the playground supports text-only prompt tests with no image. */
+  imageBase64?: string;
+  imageContentType?: AiEnrichmentPlaygroundImageContentType;
   prompt: string;
   visionModelId: AllowedVisionModelId;
 }
@@ -21,4 +22,29 @@ export interface AiEnrichmentPlaygroundResponse {
   promptTokens: number | null;
   completionTokens: number | null;
   estimatedCostUsd: number | null;
+}
+
+/** A single approved-tag entry in the compact shortlist shown to the Playground tag reranker. */
+export interface AiEnrichmentPlaygroundApprovedTagCandidate {
+  name: string;
+  matchedBy: string[];
+  reason: string;
+}
+
+export interface AiEnrichmentTagRerankPlaygroundRequest {
+  /** Raw text output from a prior playground vision-call result — re-parsed here. */
+  firstResponseOutputText: string;
+  visionModelId: AllowedVisionModelId;
+}
+
+export interface AiEnrichmentTagRerankPlaygroundResponse {
+  elapsedMs: number;
+  outputText: string;
+  approvedTagCandidates: AiEnrichmentPlaygroundApprovedTagCandidate[];
+  discardedTags: string[];
+  uncoveredConcepts: string[];
+  promptTokens: number | null;
+  completionTokens: number | null;
+  estimatedCostUsd: number | null;
+  version: string;
 }

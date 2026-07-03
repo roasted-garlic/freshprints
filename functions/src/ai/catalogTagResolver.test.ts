@@ -144,10 +144,11 @@ describe("catalogTagResolver", () => {
     );
   });
 
-  it("limits suggested-new-tags to only the remaining gap, not every unmatched candidate", () => {
-    // Real-world case: 7 of 8 approved slots matched, but the model surfaced several unmatched
-    // candidates. Only 1 slot of room remains, so only 1 suggestion should be returned even
-    // though 3 unmatched candidates were available.
+  it("never suggests new tags once 4+ approved tags matched, even with unmatched candidates and room left (last-resort gate)", () => {
+    // Real-world case that motivated the last-resort gate: 7 of 8 approved slots matched via
+    // strong exact-name matches, with 3 unmatched candidates and 1 slot of room technically left.
+    // Prior behavior filled that 1 slot with a suggestion; the last-resort gate now blocks all
+    // suggestions once 4+ approved tags matched, regardless of remaining room.
     const result = resolveAiCatalogTags({
       approvedTags: [
         createCatalogTag({ name: "one" }),
@@ -174,7 +175,7 @@ describe("catalogTagResolver", () => {
     });
 
     assert.equal(result.tags.length, 7);
-    assert.equal(result.suggestedNewTags.length, 1);
+    assert.equal(result.suggestedNewTags.length, 0);
   });
 
   it("drops suggested-new-tags that match an approved name or alias", () => {
@@ -449,5 +450,164 @@ describe("catalogTagResolver — alias phrase normalization and context matching
     assert.ok(result.tags.includes("summer"));
     assert.ok(result.tags.includes("music"));
     assert.deepEqual(result.suggestedNewTags, []);
+  });
+});
+
+describe("catalogTagResolver — approvedTagCandidates shortlist for the tag reranker", () => {
+  it("includes matched approved tags with a reason and matchedBy candidate", () => {
+    const result = resolveAiCatalogTags({
+      approvedTags: [createCatalogTag({ name: "motherhood" }), createCatalogTag({ name: "hair", aliases: ["messy bun"] })],
+      candidates: ["motherhood", "messy bun", "rock on"],
+    });
+
+    const motherhoodCandidate = result.approvedTagCandidates.find((candidate) => candidate.name === "motherhood");
+    assert.ok(motherhoodCandidate);
+    assert.ok(motherhoodCandidate.matchedBy.includes("motherhood"));
+    assert.match(motherhoodCandidate.reason, /matched/i);
+
+    const hairCandidate = result.approvedTagCandidates.find((candidate) => candidate.name === "hair");
+    assert.ok(hairCandidate);
+    assert.ok(hairCandidate.matchedBy.includes("messy bun"));
+  });
+
+  it("surfaces nearby approved tags for unmatched candidates sharing a token", () => {
+    const result = resolveAiCatalogTags({
+      approvedTags: [createCatalogTag({ name: "rock climbing" }), createCatalogTag({ name: "unrelated" })],
+      candidates: ["rock on"],
+    });
+
+    // "rock on" is unmatched (no exact/alias/token match), but shares the "rock" token with the
+    // approved "rock climbing" tag, so it should be surfaced as a nearby candidate.
+    const nearby = result.approvedTagCandidates.find((candidate) => candidate.name === "rock climbing");
+    assert.ok(nearby, "expected 'rock climbing' to be surfaced as a nearby match for 'rock on'");
+    assert.ok(nearby.matchedBy.includes("rock on"));
+    assert.match(nearby.reason, /unmatched candidate/i);
+  });
+
+  it("reports unmatchedCandidateCount matching the number of genuinely unmatched raw candidates", () => {
+    const result = resolveAiCatalogTags({
+      approvedTags: [createCatalogTag({ name: "summer" })],
+      candidates: ["summer", "totally-unrelated-one", "totally-unrelated-two"],
+    });
+
+    assert.equal(result.unmatchedCandidateCount, 2);
+  });
+
+  it("caps the approvedTagCandidates shortlist even when the approved tag library is large", () => {
+    const manyTags = Array.from({ length: 100 }, (_unused, index) => createCatalogTag({ name: `tag${index}` }));
+    const result = resolveAiCatalogTags({
+      approvedTags: manyTags,
+      candidates: manyTags.map((tag) => tag.name),
+    });
+
+    assert.ok(result.approvedTagCandidates.length <= 30, "shortlist must stay capped, never the full library");
+  });
+
+  it("always returns approvedTagCandidates and unmatchedCandidateCount even with no candidates", () => {
+    const result = resolveAiCatalogTags({
+      approvedTags: [createCatalogTag({ name: "summer" })],
+      candidates: [],
+    });
+
+    assert.deepEqual(result.approvedTagCandidates, []);
+    assert.equal(result.unmatchedCandidateCount, 0);
+  });
+});
+
+describe("catalogTagResolver — suggested-tags last-resort gate", () => {
+  // Approved tags named "one".."nine" so exact-name matches are trivially "strong".
+  const namedApprovedTags = (count: number) =>
+    Array.from({ length: count }, (_unused, index) => createCatalogTag({ name: `named${index}` }));
+
+  it("0-2 approved matches: suggestions are eligible to fire", () => {
+    const zeroApproved = resolveAiCatalogTags({
+      approvedTags: [],
+      candidates: ["unmatched-only"],
+    });
+    assert.equal(zeroApproved.tags.length, 0);
+    assert.equal(zeroApproved.suggestedNewTags.length, 1);
+
+    const twoApproved = resolveAiCatalogTags({
+      approvedTags: namedApprovedTags(2),
+      candidates: ["named0", "named1", "unmatched-only"],
+    });
+    assert.equal(twoApproved.tags.length, 2);
+    assert.equal(twoApproved.suggestedNewTags.length, 1);
+  });
+
+  it("3 approved matches with at least one strong (exact) match: suggestions never fire", () => {
+    const result = resolveAiCatalogTags({
+      approvedTags: namedApprovedTags(3),
+      candidates: ["named0", "named1", "named2", "unmatched-a", "unmatched-b"],
+    });
+
+    assert.equal(result.tags.length, 3);
+    assert.equal(result.allMatchesAreWeak, false);
+    assert.equal(result.suggestedNewTags.length, 0);
+  });
+
+  it("3 approved matches, all weak (partial-token only), fewer than 2 unmatched candidates: suggestions do not fire", () => {
+    // "named0-x" etc. only match via single-token fallback (the approved names are "named0" etc,
+    // but candidates are multi-word phrases containing that token), producing weak matches.
+    const approvedTags = namedApprovedTags(3);
+    const result = resolveAiCatalogTags({
+      approvedTags,
+      candidates: ["named0 extra", "named1 extra", "named2 extra", "unmatched-a"],
+    });
+
+    assert.equal(result.tags.length, 3);
+    assert.equal(result.allMatchesAreWeak, true);
+    assert.equal(result.unmatchedCandidateCount, 1);
+    assert.equal(result.suggestedNewTags.length, 0);
+  });
+
+  it("3 approved matches, all weak, 2+ unmatched candidates: suggestions fire (last-resort edge case)", () => {
+    const approvedTags = namedApprovedTags(3);
+    const result = resolveAiCatalogTags({
+      approvedTags,
+      candidates: ["named0 extra", "named1 extra", "named2 extra", "unmatched-a", "unmatched-b"],
+    });
+
+    assert.equal(result.tags.length, 3);
+    assert.equal(result.allMatchesAreWeak, true);
+    assert.equal(result.unmatchedCandidateCount, 2);
+    assert.equal(result.suggestedNewTags.length, 2);
+  });
+
+  it("4+ approved matches: suggestions never fire, regardless of match quality or remaining room", () => {
+    const approvedTags = namedApprovedTags(5);
+    const result = resolveAiCatalogTags({
+      approvedTags,
+      // All 5 approved matches are weak (token-fallback via multi-word candidates), which would
+      // have qualified at count===3, but 5 > 3 means the gate blocks regardless.
+      candidates: [
+        "named0 extra",
+        "named1 extra",
+        "named2 extra",
+        "named3 extra",
+        "named4 extra",
+        "unmatched-a",
+        "unmatched-b",
+      ],
+      maxApprovedTags: 8,
+    });
+
+    assert.equal(result.tags.length, 5);
+    assert.equal(result.allMatchesAreWeak, true);
+    assert.equal(result.suggestedNewTags.length, 0);
+  });
+
+  it("a tag reached first via a weak match and later confirmed by a strong match reports the strong reason", () => {
+    // "named0" candidate alone would be a strong exact match; ensure a prior weak match on the
+    // same approved tag (from an earlier multi-word candidate) does not lock in "weak" incorrectly.
+    const approvedTags = namedApprovedTags(3);
+    const result = resolveAiCatalogTags({
+      approvedTags,
+      candidates: ["named0 extra", "named0", "named1 extra", "named2 extra", "unmatched-a", "unmatched-b"],
+    });
+
+    assert.equal(result.tags.length, 3);
+    assert.equal(result.allMatchesAreWeak, false, "named0 was later confirmed by a strong exact match");
+    assert.equal(result.suggestedNewTags.length, 0);
   });
 });

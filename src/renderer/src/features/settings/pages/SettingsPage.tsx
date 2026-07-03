@@ -19,16 +19,81 @@ import {
   AI_ENRICHMENT_PROMPT_TEMPLATE_MAX_LENGTH,
   BASE_AI_TAG_EXCLUSIONS,
   ALL_VISION_MODEL_OPTIONS,
+  SUGGESTION_AUTHOR_MODE_OPTIONS,
+  TAG_RERANK_MODE_OPTIONS,
   hasRequiredAiEnrichmentPromptPlaceholders,
+  resolveClientSuggestionAuthorMode,
+  resolveClientTagRerankMode,
   resolveClientVisionModelId,
 } from "../constants/aiEnrichmentSettingsConstants";
 import { useAiEnrichmentPlayground } from "../hooks/useAiEnrichmentPlayground";
+import { useAiEnrichmentTagRerankPlayground } from "../hooks/useAiEnrichmentTagRerankPlayground";
 import {
   formatAdditionalTagExclusionsInput,
   parseAdditionalTagExclusionsInput,
   useAiEnrichmentSettings,
 } from "../hooks/useAiEnrichmentSettings";
 import { formatAiPlaygroundOutput } from "../utils/aiPlaygroundOutputFormatter";
+
+/**
+ * Tolerantly extract a JSON object from raw model output that may include a fenced code block
+ * or surrounding prose — mirrors functions/src/ai/simpleCatalogEnrichmentResponse.ts's
+ * extractJsonObject (not importable here since it lives outside shared/), so the enable/disable
+ * check for "Run tag rerank" matches what the server-side callable will actually be able to
+ * parse instead of requiring perfectly bare JSON.
+ */
+function extractClientJsonObject(raw: string): Record<string, unknown> | null {
+  const trimmed = raw.trim();
+
+  const tryParse = (candidate: string): Record<string, unknown> | null => {
+    try {
+      const parsed = JSON.parse(candidate) as unknown;
+      return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+        ? (parsed as Record<string, unknown>)
+        : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const direct = tryParse(trimmed);
+  if (direct) {
+    return direct;
+  }
+
+  const fenceMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fenceMatch?.[1]) {
+    const fromFence = tryParse(fenceMatch[1].trim());
+    if (fromFence) {
+      return fromFence;
+    }
+  }
+
+  const firstBrace = trimmed.indexOf("{");
+  const lastBrace = trimmed.lastIndexOf("}");
+  if (firstBrace >= 0 && lastBrace > firstBrace) {
+    const fromBlock = tryParse(trimmed.slice(firstBrace, lastBrace + 1));
+    if (fromBlock) {
+      return fromBlock;
+    }
+  }
+
+  return null;
+}
+
+function isValidFirstCallJson(outputText: string): boolean {
+  try {
+    const parsed = extractClientJsonObject(outputText);
+    return (
+      typeof parsed?.title === "string" &&
+      typeof parsed?.description === "string" &&
+      typeof parsed?.category === "string" &&
+      Array.isArray(parsed?.tags)
+    );
+  } catch {
+    return false;
+  }
+}
 
 export function SettingsPage() {
   const { user } = useAuth();
@@ -42,10 +107,14 @@ export function SettingsPage() {
     promptTemplate,
     saveError,
     saveSettings,
+    suggestionAuthorMode,
+    tagRerankMode,
     visionModelId,
   } = useAiEnrichmentSettings();
   const playground = useAiEnrichmentPlayground();
   const { resetPlayground } = playground;
+  const tagRerankPlayground = useAiEnrichmentTagRerankPlayground();
+  const { reset: resetTagRerankPlayground } = tagRerankPlayground;
   const playgroundImageInputId = useId();
   const playgroundPromptId = useId();
   const playgroundPromptMenuId = useId();
@@ -57,26 +126,52 @@ export function SettingsPage() {
   const [draftAdditionalTagExclusions, setDraftAdditionalTagExclusions] = useState<string[] | null>(
     null,
   );
+  const [draftTagRerankMode, setDraftTagRerankMode] = useState<string | null>(null);
+  const [draftSuggestionAuthorMode, setDraftSuggestionAuthorMode] = useState<string | null>(null);
   const [isPromptTemplateEditorOpen, setIsPromptTemplateEditorOpen] = useState(false);
   const [isPlaygroundModalOpen, setIsPlaygroundModalOpen] = useState(false);
   const [isPlaygroundResultModalOpen, setIsPlaygroundResultModalOpen] = useState(false);
   const [hasInjectedProcessingPrompt, setHasInjectedProcessingPrompt] = useState(false);
-  const [isCopied, setIsCopied] = useState(false);
+  const [copiedBlockId, setCopiedBlockId] = useState<string | null>(null);
   const playgroundResultOutputText = useMemo(
     () => formatAiPlaygroundOutput(playground.result?.outputText ?? ""),
     [playground.result?.outputText],
   );
 
+  const copyBlock = useCallback((blockId: string, text: string) => {
+    void navigator.clipboard.writeText(text).then(() => {
+      setCopiedBlockId(blockId);
+      setTimeout(() => setCopiedBlockId((current) => (current === blockId ? null : current)), 2000);
+    });
+  }, []);
+
+  const combinedEstimatedCostUsd = useMemo(() => {
+    const first = playground.result?.estimatedCostUsd ?? null;
+    const rerank = tagRerankPlayground.result?.estimatedCostUsd ?? null;
+
+    if (first == null && rerank == null) {
+      return null;
+    }
+
+    return (first ?? 0) + (rerank ?? 0);
+  }, [playground.result?.estimatedCostUsd, tagRerankPlayground.result?.estimatedCostUsd]);
+
   const selectedVisionModelId = draftVisionModelId ?? visionModelId;
   const selectedPromptTemplate = draftPromptTemplate ?? promptTemplate;
   const selectedAdditionalTagExclusions = draftAdditionalTagExclusions ?? additionalTagExclusions;
   const additionalTagExclusionsInput = formatAdditionalTagExclusionsInput(selectedAdditionalTagExclusions);
+  const selectedTagRerankMode = resolveClientTagRerankMode(draftTagRerankMode ?? tagRerankMode);
+  const selectedSuggestionAuthorMode = resolveClientSuggestionAuthorMode(
+    draftSuggestionAuthorMode ?? suggestionAuthorMode,
+  );
   const hasUnsavedChanges =
     (draftVisionModelId !== null && draftVisionModelId !== visionModelId) ||
     (draftPromptTemplate !== null && draftPromptTemplate !== promptTemplate) ||
     (draftAdditionalTagExclusions !== null &&
       formatAdditionalTagExclusionsInput(draftAdditionalTagExclusions) !==
-        formatAdditionalTagExclusionsInput(additionalTagExclusions));
+        formatAdditionalTagExclusionsInput(additionalTagExclusions)) ||
+    (draftTagRerankMode !== null && draftTagRerankMode !== tagRerankMode) ||
+    (draftSuggestionAuthorMode !== null && draftSuggestionAuthorMode !== suggestionAuthorMode);
   const promptTemplateError = !hasRequiredAiEnrichmentPromptPlaceholders(selectedPromptTemplate)
     ? "Prompt must include {{excluded_tags}} and {{approved_category_names}} so server-side values are inserted."
     : null;
@@ -94,8 +189,9 @@ export function SettingsPage() {
   const closePlaygroundModal = useCallback(() => {
     setIsPlaygroundResultModalOpen(false);
     resetPlayground();
+    resetTagRerankPlayground();
     setIsPlaygroundModalOpen(false);
-  }, [resetPlayground]);
+  }, [resetPlayground, resetTagRerankPlayground]);
 
   const closePlaygroundResultModal = useCallback(() => {
     setIsPlaygroundResultModalOpen(false);
@@ -119,8 +215,9 @@ export function SettingsPage() {
   useEffect(() => {
     if (playground.result) {
       setIsPlaygroundResultModalOpen(true);
+      resetTagRerankPlayground();
     }
-  }, [playground.result]);
+  }, [playground.result, resetTagRerankPlayground]);
 
   useEffect(() => {
     if (isPlaygroundModalOpen) {
@@ -191,10 +288,14 @@ export function SettingsPage() {
       visionModelId: resolveClientVisionModelId(selectedVisionModelId),
       promptTemplate: selectedPromptTemplate,
       additionalTagExclusions: parseAdditionalTagExclusionsInput(additionalTagExclusionsInput),
+      tagRerankMode: selectedTagRerankMode,
+      suggestionAuthorMode: selectedSuggestionAuthorMode,
     });
     setDraftVisionModelId(null);
     setDraftPromptTemplate(null);
     setDraftAdditionalTagExclusions(null);
+    setDraftTagRerankMode(null);
+    setDraftSuggestionAuthorMode(null);
     setIsPromptTemplateEditorOpen(false);
   }
 
@@ -266,6 +367,41 @@ export function SettingsPage() {
             <p className="settings-field-hint">
               {ALL_VISION_MODEL_OPTIONS.find((option) => option.value === selectedVisionModelId)
                 ?.hint ?? selectedVisionModelId}
+            </p>
+
+            <Select
+              disabled={!canManageSettings || isSaving}
+              label="Tag reranker (second AI call)"
+              name="tagRerankMode"
+              onChange={(event) => setDraftTagRerankMode(event.target.value)}
+              options={TAG_RERANK_MODE_OPTIONS.map((option) => ({
+                label: option.label,
+                value: option.value,
+              }))}
+              value={selectedTagRerankMode}
+            />
+
+            <p className="settings-field-hint">
+              {TAG_RERANK_MODE_OPTIONS.find((option) => option.value === selectedTagRerankMode)?.hint ??
+                selectedTagRerankMode}
+            </p>
+
+            <Select
+              disabled={!canManageSettings || isSaving}
+              label="Suggested-tag quality (AI-authored, last resort only)"
+              name="suggestionAuthorMode"
+              onChange={(event) => setDraftSuggestionAuthorMode(event.target.value)}
+              options={SUGGESTION_AUTHOR_MODE_OPTIONS.map((option) => ({
+                label: option.label,
+                value: option.value,
+              }))}
+              value={selectedSuggestionAuthorMode}
+            />
+
+            <p className="settings-field-hint">
+              {SUGGESTION_AUTHOR_MODE_OPTIONS.find(
+                (option) => option.value === selectedSuggestionAuthorMode,
+              )?.hint ?? selectedSuggestionAuthorMode}
             </p>
 
             {isOwner ? (
@@ -565,8 +701,9 @@ export function SettingsPage() {
                     <div className="settings-playground-composer-footer">
                       <div className="settings-playground-upload-state">
                         <p className="settings-field-hint">
-                          PNG, JPEG, or WebP up to 50 MB. The file is processed transiently on the
-                          server and is not stored.
+                          Image optional — attach a PNG, JPEG, or WebP up to 50 MB to test vision
+                          prompts, or leave it empty for a text-only prompt test. The file is
+                          processed transiently on the server and is not stored.
                         </p>
 
                         {playground.imageName && playground.imageSizeLabel ? (
@@ -693,20 +830,139 @@ export function SettingsPage() {
                       <button
                         aria-label="Copy response output"
                         className="icon-button icon-button-sm icon-button-ghost"
-                        onClick={() => {
-                          void navigator.clipboard.writeText(playgroundResultOutputText).then(() => {
-                            setIsCopied(true);
-                            setTimeout(() => setIsCopied(false), 2000);
-                          });
-                        }}
+                        onClick={() => copyBlock("first-call", playgroundResultOutputText)}
                         type="button"
                       >
-                        {isCopied
+                        {copiedBlockId === "first-call"
                           ? <Check aria-hidden="true" size={15} strokeWidth={2.2} />
                           : <Copy aria-hidden="true" size={15} strokeWidth={2.2} />}
                       </button>
                     </div>
                     <pre>{playgroundResultOutputText}</pre>
+                  </div>
+
+                  <div className="settings-playground-tag-rerank">
+                    <div className="settings-form-actions">
+                      <Button
+                        disabled={
+                          !canManageSettings ||
+                          tagRerankPlayground.isRunning ||
+                          !isValidFirstCallJson(playground.result.outputText)
+                        }
+                        onClick={() =>
+                          void tagRerankPlayground.runTagRerank(
+                            playground.result?.outputText ?? "",
+                            playground.result?.visionModelId ?? playground.visionModelId,
+                          )
+                        }
+                        variant="secondary"
+                      >
+                        {tagRerankPlayground.isRunning ? "Running tag rerank…" : "Run tag rerank"}
+                      </Button>
+                      {combinedEstimatedCostUsd != null ? (
+                        <p className="settings-field-hint settings-playground-combined-cost">
+                          Combined cost (both runs): ${combinedEstimatedCostUsd.toFixed(6)}
+                        </p>
+                      ) : null}
+                      {!isValidFirstCallJson(playground.result.outputText) ? (
+                        <p className="settings-field-hint">
+                          The response above must be valid JSON with title, description, category,
+                          and tags before the tag rerank can run.
+                        </p>
+                      ) : null}
+                    </div>
+
+                    {tagRerankPlayground.error ? (
+                      <p className="auth-message auth-message-error" role="alert">
+                        {tagRerankPlayground.error}
+                      </p>
+                    ) : null}
+
+                    {tagRerankPlayground.result ? (
+                      <section
+                        aria-label="AI tag rerank result"
+                        className="settings-playground-result settings-playground-tag-rerank-result"
+                      >
+                        <h3 className="settings-subsection-title">Tag rerank result</h3>
+                        <dl className="settings-playground-result-meta">
+                          <div>
+                            <dt>Elapsed</dt>
+                            <dd>{tagRerankPlayground.result.elapsedMs} ms</dd>
+                          </div>
+                          <div>
+                            <dt>Input tokens</dt>
+                            <dd>{tagRerankPlayground.result.promptTokens ?? "N/A"}</dd>
+                          </div>
+                          <div>
+                            <dt>Output tokens</dt>
+                            <dd>{tagRerankPlayground.result.completionTokens ?? "N/A"}</dd>
+                          </div>
+                          <div>
+                            <dt>Estimated cost</dt>
+                            <dd>
+                              {tagRerankPlayground.result.estimatedCostUsd != null
+                                ? `$${tagRerankPlayground.result.estimatedCostUsd.toFixed(6)}`
+                                : "N/A"}
+                            </dd>
+                          </div>
+                        </dl>
+
+                        <div className="settings-playground-output settings-playground-output-compact">
+                          <div className="settings-playground-output-header">
+                            <h4 className="settings-subsection-title">
+                              Approved tag candidates sent ({tagRerankPlayground.result.approvedTagCandidates.length})
+                            </h4>
+                            <button
+                              aria-label="Copy approved tag candidates"
+                              className="icon-button icon-button-sm icon-button-ghost"
+                              onClick={() =>
+                                copyBlock(
+                                  "candidates",
+                                  JSON.stringify(tagRerankPlayground.result?.approvedTagCandidates, null, 2),
+                                )
+                              }
+                              type="button"
+                            >
+                              {copiedBlockId === "candidates"
+                                ? <Check aria-hidden="true" size={15} strokeWidth={2.2} />
+                                : <Copy aria-hidden="true" size={15} strokeWidth={2.2} />}
+                            </button>
+                          </div>
+                          <pre>
+                            {JSON.stringify(tagRerankPlayground.result.approvedTagCandidates, null, 2)}
+                          </pre>
+                        </div>
+
+                        <div className="settings-playground-output">
+                          <div className="settings-playground-output-header">
+                            <h4 className="settings-subsection-title">Reranker output</h4>
+                            <button
+                              aria-label="Copy reranker output"
+                              className="icon-button icon-button-sm icon-button-ghost"
+                              onClick={() =>
+                                copyBlock(
+                                  "reranker",
+                                  formatAiPlaygroundOutput(tagRerankPlayground.result?.outputText ?? ""),
+                                )
+                              }
+                              type="button"
+                            >
+                              {copiedBlockId === "reranker"
+                                ? <Check aria-hidden="true" size={15} strokeWidth={2.2} />
+                                : <Copy aria-hidden="true" size={15} strokeWidth={2.2} />}
+                            </button>
+                          </div>
+                          <pre>{formatAiPlaygroundOutput(tagRerankPlayground.result.outputText)}</pre>
+                        </div>
+
+                        {tagRerankPlayground.result.discardedTags.length > 0 ? (
+                          <p className="settings-field-hint">
+                            Discarded tags not in the approved shortlist:{" "}
+                            {tagRerankPlayground.result.discardedTags.join(", ")}
+                          </p>
+                        ) : null}
+                      </section>
+                    ) : null}
                   </div>
                 </section>
               </ModalBody>

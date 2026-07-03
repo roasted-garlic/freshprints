@@ -15,8 +15,8 @@ export function AiReviewRejectedStatusSection({ design }: AiReviewRejectedStatus
       </div>
 
       <p className="ai-review-rejected-status-copy">
-        This design was rejected from the catalog. Reopen for review to edit and approve using the
-        current AI suggestions, or re-run AI suggestions to generate fresh metadata.
+        This design was rejected from the catalog. Re-run AI to generate fresh metadata, or approve
+        the existing suggestions as-is if the rejection was unrelated to the AI output.
       </p>
 
       {design.aiReviewNotes ? (

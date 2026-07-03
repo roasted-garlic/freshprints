@@ -2,6 +2,11 @@ import { Check, LoaderCircle, X } from "lucide-react";
 
 import type { Design } from "../../designs/types/design.types";
 import {
+  formatAiEstimatedCost,
+  formatTagRerankStatusLabel,
+  resolveCombinedAiEstimatedCost,
+} from "../../designs/utils/aiReviewDisplay";
+import {
   applyOptimisticEnqueueStage,
   applyRerunOverlayStage,
   getAiProcessingOutputMessage,
@@ -159,6 +164,31 @@ export function AiReviewProcessingStatusSection({
               <dt>Est. cost</dt>
               <dd>${design.aiSuggestions.estimatedCostUsd.toFixed(6)}</dd>
             </div>
+          ) : null}
+          {design.aiSuggestions?.tagRerankStatus && design.aiSuggestions.tagRerankStatus !== "skipped" ? (
+            <>
+              <div>
+                <dt>Tag rerank</dt>
+                <dd>{formatTagRerankStatusLabel(design.aiSuggestions.tagRerankStatus)}</dd>
+              </div>
+              {design.aiSuggestions.tagRerankEstimatedCostUsd != null ? (
+                <div>
+                  <dt>Tag rerank cost</dt>
+                  <dd>{formatAiEstimatedCost(design.aiSuggestions.tagRerankEstimatedCostUsd)}</dd>
+                </div>
+              ) : null}
+              <div>
+                <dt>Combined cost</dt>
+                <dd>
+                  {formatAiEstimatedCost(
+                    resolveCombinedAiEstimatedCost(
+                      design.aiSuggestions?.estimatedCostUsd,
+                      design.aiSuggestions.tagRerankEstimatedCostUsd,
+                    ),
+                  )}
+                </dd>
+              </div>
+            </>
           ) : null}
         </dl>
       ) : null}

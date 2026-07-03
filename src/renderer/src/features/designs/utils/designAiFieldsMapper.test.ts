@@ -52,4 +52,50 @@ describe("mapDesignAiFields", () => {
     const result = mapDesignAiFields({});
     assert.equal(result.aiSuggestions, undefined);
   });
+
+  it("maps tagRerank fields from Firestore data onto aiSuggestions", () => {
+    const result = mapDesignAiFields({
+      aiSuggestions: {
+        tagRerankStatus: "succeeded",
+        tagRerankPromptTokens: 200,
+        tagRerankCompletionTokens: 40,
+        tagRerankEstimatedCostUsd: 0.000032,
+        tagRerankPromptVersion: "catalog-tag-rerank-v1",
+        tagRerankUncoveredConcepts: ["lightning"],
+      },
+    });
+
+    assert.equal(result.aiSuggestions?.tagRerankStatus, "succeeded");
+    assert.equal(result.aiSuggestions?.tagRerankPromptTokens, 200);
+    assert.equal(result.aiSuggestions?.tagRerankCompletionTokens, 40);
+    assert.equal(result.aiSuggestions?.tagRerankEstimatedCostUsd, 0.000032);
+    assert.equal(result.aiSuggestions?.tagRerankPromptVersion, "catalog-tag-rerank-v1");
+    assert.deepEqual(result.aiSuggestions?.tagRerankUncoveredConcepts, ["lightning"]);
+  });
+
+  it("maps tagRerankStatus 'skipped' and 'failed' correctly, and rejects invalid values", () => {
+    const skipped = mapDesignAiFields({ aiSuggestions: { tagRerankStatus: "skipped" } });
+    assert.equal(skipped.aiSuggestions?.tagRerankStatus, "skipped");
+
+    const failed = mapDesignAiFields({
+      aiSuggestions: { tagRerankStatus: "failed", tagRerankFailureReason: "network_error" },
+    });
+    assert.equal(failed.aiSuggestions?.tagRerankStatus, "failed");
+    assert.equal(failed.aiSuggestions?.tagRerankFailureReason, "network_error");
+
+    const invalid = mapDesignAiFields({ aiSuggestions: { tagRerankStatus: "not-a-real-status" } });
+    assert.equal(invalid.aiSuggestions?.tagRerankStatus, undefined);
+  });
+
+  it("defaults tagRerank token/cost fields to null when missing", () => {
+    const result = mapDesignAiFields({
+      aiSuggestions: { provider: "google" },
+    });
+
+    assert.equal(result.aiSuggestions?.tagRerankPromptTokens, null);
+    assert.equal(result.aiSuggestions?.tagRerankCompletionTokens, null);
+    assert.equal(result.aiSuggestions?.tagRerankEstimatedCostUsd, null);
+    assert.equal(result.aiSuggestions?.tagRerankStatus, undefined);
+    assert.equal(result.aiSuggestions?.tagRerankUncoveredConcepts, undefined);
+  });
 });

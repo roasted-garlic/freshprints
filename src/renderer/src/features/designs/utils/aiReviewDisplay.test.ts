@@ -5,7 +5,9 @@ import {
   formatAiEstimatedCost,
   formatAiReviewConfidence,
   formatAiReviewStatusLabel,
+  formatTagRerankStatusLabel,
   getAiReviewStatusBadgeVariant,
+  resolveCombinedAiEstimatedCost,
 } from "./aiReviewDisplay";
 
 describe("formatAiReviewStatusLabel", () => {
@@ -51,5 +53,38 @@ describe("formatAiEstimatedCost", () => {
 
   it("returns N/A for undefined", () => {
     assert.equal(formatAiEstimatedCost(undefined), "N/A");
+  });
+});
+
+describe("resolveCombinedAiEstimatedCost", () => {
+  it("sums first-call and tag-rerank cost when both are known", () => {
+    const result = resolveCombinedAiEstimatedCost(0.000128, 0.000032);
+    assert.ok(result != null && Math.abs(result - 0.00016) < 1e-9);
+  });
+
+  it("treats a missing tag-rerank cost as zero when the first-call cost is known", () => {
+    assert.equal(resolveCombinedAiEstimatedCost(0.000128, null), 0.000128);
+    assert.equal(resolveCombinedAiEstimatedCost(0.000128, undefined), 0.000128);
+  });
+
+  it("treats a missing first-call cost as zero when the tag-rerank cost is known", () => {
+    assert.equal(resolveCombinedAiEstimatedCost(null, 0.000032), 0.000032);
+  });
+
+  it("returns null when neither cost is known", () => {
+    assert.equal(resolveCombinedAiEstimatedCost(null, null), null);
+    assert.equal(resolveCombinedAiEstimatedCost(undefined, undefined), null);
+  });
+});
+
+describe("formatTagRerankStatusLabel", () => {
+  it("maps known statuses to display labels", () => {
+    assert.equal(formatTagRerankStatusLabel("succeeded"), "Succeeded");
+    assert.equal(formatTagRerankStatusLabel("failed"), "Failed");
+    assert.equal(formatTagRerankStatusLabel("skipped"), "Skipped");
+  });
+
+  it("returns an em dash placeholder when status is undefined", () => {
+    assert.equal(formatTagRerankStatusLabel(undefined), "—");
   });
 });

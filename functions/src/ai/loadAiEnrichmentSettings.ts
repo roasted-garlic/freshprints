@@ -2,6 +2,12 @@ import {
   hasRequiredAiEnrichmentPromptPlaceholders,
   AI_ENRICHMENT_PROMPT_TEMPLATE_MAX_LENGTH,
   DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
+  DEFAULT_SUGGESTION_AUTHOR_MODE,
+  DEFAULT_TAG_RERANK_MODE,
+  SUGGESTION_AUTHOR_MODES,
+  TAG_RERANK_MODES,
+  type SuggestionAuthorMode,
+  type TagRerankMode,
 } from "../../../shared/constants/aiEnrichment.constants";
 import { adminDb } from "../lib/admin";
 import { mergeTagExclusions, resolveAdditionalTagExclusions } from "./aiTagExclusions";
@@ -18,6 +24,21 @@ export interface AiEnrichmentSettingsLoaded {
   promptTemplate: string;
   additionalTagExclusions: string[];
   effectiveTagExclusions: string[];
+  tagRerankMode: TagRerankMode;
+  suggestionAuthorMode: SuggestionAuthorMode;
+}
+
+const TAG_RERANK_MODE_SET = new Set<string>(TAG_RERANK_MODES);
+const SUGGESTION_AUTHOR_MODE_SET = new Set<string>(SUGGESTION_AUTHOR_MODES);
+
+export function resolveTagRerankMode(raw: unknown): TagRerankMode {
+  return typeof raw === "string" && TAG_RERANK_MODE_SET.has(raw) ? (raw as TagRerankMode) : DEFAULT_TAG_RERANK_MODE;
+}
+
+export function resolveSuggestionAuthorMode(raw: unknown): SuggestionAuthorMode {
+  return typeof raw === "string" && SUGGESTION_AUTHOR_MODE_SET.has(raw)
+    ? (raw as SuggestionAuthorMode)
+    : DEFAULT_SUGGESTION_AUTHOR_MODE;
 }
 
 export function resolveAiPromptTemplate(raw: unknown): string {
@@ -51,6 +72,8 @@ export async function loadAiEnrichmentSettings(): Promise<AiEnrichmentSettingsLo
         promptTemplate: DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
         additionalTagExclusions: [],
         effectiveTagExclusions: mergeTagExclusions(),
+        tagRerankMode: DEFAULT_TAG_RERANK_MODE,
+        suggestionAuthorMode: DEFAULT_SUGGESTION_AUTHOR_MODE,
       };
     }
 
@@ -60,12 +83,16 @@ export async function loadAiEnrichmentSettings(): Promise<AiEnrichmentSettingsLo
     );
     const additionalTagExclusions = resolveAdditionalTagExclusions(data?.additionalTagExclusions);
     const promptTemplate = resolveAiPromptTemplate(data?.promptTemplate);
+    const tagRerankMode = resolveTagRerankMode(data?.tagRerankMode);
+    const suggestionAuthorMode = resolveSuggestionAuthorMode(data?.suggestionAuthorMode);
 
     return {
       visionModelId,
       promptTemplate,
       additionalTagExclusions,
       effectiveTagExclusions: mergeTagExclusions(additionalTagExclusions),
+      tagRerankMode,
+      suggestionAuthorMode,
     };
   } catch {
     return {
@@ -73,6 +100,8 @@ export async function loadAiEnrichmentSettings(): Promise<AiEnrichmentSettingsLo
       promptTemplate: DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
       additionalTagExclusions: [],
       effectiveTagExclusions: mergeTagExclusions(),
+      tagRerankMode: DEFAULT_TAG_RERANK_MODE,
+      suggestionAuthorMode: DEFAULT_SUGGESTION_AUTHOR_MODE,
     };
   }
 }

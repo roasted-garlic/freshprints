@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { Design } from "../../designs/types/design.types";
+import { useUploadActivity } from "../../../shared/hooks/useUploadActivity";
 import { aiEnrichmentEnqueueService } from "../services/aiEnrichmentEnqueueService";
 import { buildDesignPatchFromEnqueueResult } from "../utils/enqueueResultPatch";
 import type { AiReviewInboxTab } from "../types/aiReviewInbox.types";
@@ -21,6 +22,19 @@ import {
 import type { AiProcessingQueueRunState } from "../types/aiProcessingQueue.types";
 
 export type { AiProcessingQueueRunState } from "../types/aiProcessingQueue.types";
+
+const aiProcessingDialogCopy = {
+  closeCancelLabel: "Stay and continue",
+  closeConfirmLabel: "Quit and stop queue",
+  closeCopy:
+    "AI is currently processing. Quitting Fresh Prints Studio will stop the queue from starting another image, but the in-flight image may still finish.",
+  closeTitle: "Quit and stop AI queue?",
+  leaveCancelLabel: "Stay and continue",
+  leaveConfirmLabel: "Leave and stop queue",
+  leaveCopy:
+    "AI is currently processing. Leaving this page will stop the queue from starting another image, but the in-flight image may still finish.",
+  leaveTitle: "Leave and stop AI queue?",
+};
 
 interface UseAiProcessingQueueOptions {
   activeTab: AiReviewInboxTab;
@@ -50,11 +64,29 @@ export function useAiProcessingQueue({
   const [isQueueBusy, setIsQueueBusy] = useState(false);
   const [enqueueingDesignId, setEnqueueingDesignId] = useState<string | null>(null);
   const [sessionVisionModelId, setSessionVisionModelId] = useState<string | null>(null);
+  const { registerCancelHandler, setActivityDialogCopy, setUploadActive } = useUploadActivity();
 
   const designsRef = useRef(designs);
+  const isMountedRef = useRef(true);
   const runStateRef = useRef(runState);
   const stopRequestedRef = useRef(false);
   const selectedIndexRef = useRef(selectedIndex);
+  /**
+   * True only while runAutoQueueLoop's body is actually executing (set/cleared with the same
+   * try/finally shape as isQueueBusy, independent of the runState label). runState can be left at
+   * "pausing" if the loop never gets a chance to observe stopRequestedRef and settle itself back
+   * to "idle" (e.g. the page unmounted mid-await before the in-flight enqueueDesign resolved) —
+   * this ref lets stopAiProcessingForNavigation tell a genuinely-still-running loop apart from a
+   * stale "pausing" label left over from an earlier interrupted session, so it can safely
+   * reconcile the stale case without racing the real one.
+   */
+  const isAutoQueueLoopRunningRef = useRef(false);
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     designsRef.current = designs;
@@ -171,6 +203,10 @@ export function useAiProcessingQueue({
           visionModelIdOverride: settings.visionModelId,
         });
 
+        if (!isMountedRef.current) {
+          return;
+        }
+
         if (!result.queued) {
           setEnqueueingDesignId(null);
           throw new Error(
@@ -189,7 +225,9 @@ export function useAiProcessingQueue({
           applyDesignPatch(designId, patch);
         }
       } catch (error) {
-        setEnqueueingDesignId(null);
+        if (isMountedRef.current) {
+          setEnqueueingDesignId(null);
+        }
         throw error;
       }
     },
@@ -198,10 +236,16 @@ export function useAiProcessingQueue({
 
   const refreshDesignList = useCallback(async () => {
     await reloadDesigns();
+
+    // Brief settle delay before the caller reads designsRef/advances selection, so the
+    // just-applied optimistic patch has a couple of frames to render before layout shifts again.
+    // Uses a bounded timeout rather than requestAnimationFrame: rAF callbacks are throttled or
+    // fully suspended by Chromium/Electron whenever the window is minimized or loses visibility,
+    // which could hang this await indefinitely and strand isQueueBusy at true for the rest of the
+    // component's life (nothing else resets it). A timeout always fires regardless of window
+    // visibility, so this can never hang the caller's finally block.
     await new Promise<void>((resolve) => {
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => resolve());
-      });
+      window.setTimeout(resolve, 32);
     });
   }, [reloadDesigns]);
 
@@ -211,6 +255,7 @@ export function useAiProcessingQueue({
       settingsSnapshot: { visionModelId: string },
     ) => {
       setIsQueueBusy(true);
+      isAutoQueueLoopRunningRef.current = true;
       onActionError(null);
       setRunState("running");
       runStateRef.current = "running";
@@ -248,6 +293,11 @@ export function useAiProcessingQueue({
 
           requestSelectDesign(design.id);
           await enqueueDesign(design.id, settingsSnapshot);
+
+          if (!isMountedRef.current) {
+            return;
+          }
+
           await refreshDesignList();
 
           const refreshedDesigns = designsRef.current;
@@ -273,13 +323,25 @@ export function useAiProcessingQueue({
         runStateRef.current = "idle";
         setRunState("idle");
       } catch (queueError) {
-        setEnqueueingDesignId(null);
-        onActionError(
-          queueError instanceof Error ? queueError.message : "Unable to run the AI processing queue.",
-        );
+        if (isMountedRef.current) {
+          setEnqueueingDesignId(null);
+          onActionError(
+            queueError instanceof Error
+              ? queueError.message
+              : "Unable to run the AI processing queue.",
+          );
+        }
         runStateRef.current = "idle";
-        setRunState("idle");
+        if (isMountedRef.current) {
+          setRunState("idle");
+        }
       } finally {
+        isAutoQueueLoopRunningRef.current = false;
+
+        // Always clear isQueueBusy — see the matching comment in processSelectedDesign's finally
+        // block for why the isMountedRef guard here was unsafe (it could permanently strand
+        // isQueueBusy at true if the loop's in-flight work outlives an unmount that didn't
+        // actually reset this hook instance).
         setIsQueueBusy(false);
       }
     },
@@ -318,6 +380,15 @@ export function useAiProcessingQueue({
     }
   }, []);
 
+  const stopAiProcessingForNavigation = useCallback(async () => {
+    stopRequestedRef.current = true;
+
+    if (runStateRef.current === "running") {
+      runStateRef.current = "pausing";
+      setRunState("pausing");
+    }
+  }, []);
+
   const processSelectedDesign = useCallback(async () => {
     if (!canProcessSelected || !selectedDesignId) {
       return;
@@ -332,6 +403,11 @@ export function useAiProcessingQueue({
       await enqueueDesign(selectedDesignId, {
         visionModelId: resolvedSessionVisionModelId,
       });
+
+      if (!isMountedRef.current) {
+        return;
+      }
+
       await refreshDesignList();
 
       const refreshedDesigns = designsRef.current;
@@ -343,11 +419,23 @@ export function useAiProcessingQueue({
         advanceSelectionToIndex(nextIndex);
       }
     } catch (processError) {
-      setEnqueueingDesignId(null);
-      onActionError(
-        processError instanceof Error ? processError.message : "Unable to process this design with AI.",
-      );
+      if (isMountedRef.current) {
+        setEnqueueingDesignId(null);
+        onActionError(
+          processError instanceof Error
+            ? processError.message
+            : "Unable to process this design with AI.",
+        );
+      }
     } finally {
+      // Always clear isQueueBusy, even if the component unmounted mid-run (e.g. the user
+      // navigated away and confirmed the nav guard while this one-off run was still in flight).
+      // Calling a state setter after unmount is a harmless no-op in React — but skipping it here
+      // (as the isMountedRef guard used to) would strand isQueueBusy at true for the remaining
+      // life of the component if it never actually unmounts (e.g. the nav guard's "Leave and stop
+      // queue" was confirmed but navigation didn't actually unmount this instance), permanently
+      // disabling the "Process image with AI" button and tripping the nav guard on every future
+      // one-off run in the session.
       setIsQueueBusy(false);
     }
   }, [
@@ -358,6 +446,52 @@ export function useAiProcessingQueue({
     refreshDesignList,
     resolvedSessionVisionModelId,
     selectedDesignId,
+  ]);
+
+  // Self-correcting watchdog for a stuck "pausing" state. runState is normally settled back to
+  // "idle" by runAutoQueueLoop itself once it observes stopRequestedRef after its in-flight
+  // enqueueDesign call resolves — but if the loop never gets that chance (page unmounted mid-await
+  // before the in-flight call settled), runState can be left at "pausing" indefinitely, which
+  // would otherwise trip the nav guard for every future one-off run in the session even though
+  // nothing is running. isAutoQueueLoopRunningRef tracks whether the loop body is *actually* still
+  // executing, independent of the runState label, so this can distinguish "genuinely mid-pause,
+  // give the loop a moment to finish" from "stale label, no loop is running, force idle" without
+  // racing the loop's own legitimate transitions (a short delay gives an in-flight loop the window
+  // it needs to settle itself first; this only fires if that never happens).
+  useEffect(() => {
+    if (runState !== "pausing") {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      if (runStateRef.current === "pausing" && !isAutoQueueLoopRunningRef.current) {
+        runStateRef.current = "idle";
+        setRunState("idle");
+      }
+    }, 3000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [runState]);
+
+  useEffect(() => {
+    const isAiProcessingActive = isQueueBusy || runState === "running" || runState === "pausing";
+
+    setUploadActive(isAiProcessingActive);
+    registerCancelHandler(isAiProcessingActive ? stopAiProcessingForNavigation : null);
+    setActivityDialogCopy(isAiProcessingActive ? aiProcessingDialogCopy : null);
+
+    return () => {
+      setUploadActive(false);
+      registerCancelHandler(null);
+      setActivityDialogCopy(null);
+    };
+  }, [
+    isQueueBusy,
+    registerCancelHandler,
+    runState,
+    setActivityDialogCopy,
+    setUploadActive,
+    stopAiProcessingForNavigation,
   ]);
 
   return {

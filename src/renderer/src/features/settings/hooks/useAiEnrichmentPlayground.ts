@@ -156,21 +156,18 @@ export function useAiEnrichmentPlayground(): UseAiEnrichmentPlaygroundResult {
       return;
     }
 
-    if (!selectedImage) {
-      setError("Select one image before running the playground.");
-      return;
-    }
-
+    // Image is optional — an image-less run is a text-only prompt test.
     setIsRunning(true);
     setError(null);
     setResult(null);
 
     try {
-      const imageBase64 = await encodeFileToBase64(selectedImage);
+      const imageBase64 = selectedImage ? await encodeFileToBase64(selectedImage) : undefined;
       const response = await aiEnrichmentPlaygroundService.runPlayground({
         imageBase64,
-        imageContentType:
-          selectedImage.type as AiEnrichmentPlaygroundRequest["imageContentType"],
+        imageContentType: selectedImage
+          ? (selectedImage.type as AiEnrichmentPlaygroundRequest["imageContentType"])
+          : undefined,
         prompt: trimmedPrompt,
         visionModelId:
           resolveClientVisionModelId(

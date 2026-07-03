@@ -11,6 +11,34 @@ export type AllowedVisionModelId = (typeof ALLOWED_VISION_MODEL_IDS)[number];
 
 export const DEFAULT_VISION_MODEL_ID: AllowedVisionModelId = "gemini-2.5-flash-lite";
 
+/**
+ * Controls the optional text-only Gemini tag reranker second call. "off" (shipped default) never
+ * runs the second call. "auto" runs it only when the server-side tag matcher shows signs of
+ * ambiguity (see shouldRunTagRerank in aiEnrichmentPipeline.ts) — the recommended mode once
+ * Playground-based comparisons validate quality/cost. "always" runs it on every design and is
+ * intended as a temporary comparison/testing mode, not a standing production setting.
+ */
+export const TAG_RERANK_MODES = ["off", "auto", "always"] as const;
+
+export type TagRerankMode = (typeof TAG_RERANK_MODES)[number];
+
+export const DEFAULT_TAG_RERANK_MODE: TagRerankMode = "off";
+
+/**
+ * Controls the optional AI-authored suggested-tag quality call, independent of tagRerankMode
+ * (see docs/workflow/plans/2026-07-02-suggested-tags-last-resort-plan.md §4.5). Suggestions only
+ * ever fire when the server-side last-resort gate decides coverage is thin (see
+ * isSuggestedTagsLastResort in catalogTagResolver.ts) — this setting only controls whether an AI
+ * call authors their preferredWhen/aliases when that happens, or the server template is used
+ * instead. "auto" and "always" behave identically here since there is no separate trigger beyond
+ * the last-resort gate itself (unlike tagRerankMode's "auto", which has its own trigger heuristic).
+ */
+export const SUGGESTION_AUTHOR_MODES = ["off", "auto", "always"] as const;
+
+export type SuggestionAuthorMode = (typeof SUGGESTION_AUTHOR_MODES)[number];
+
+export const DEFAULT_SUGGESTION_AUTHOR_MODE: SuggestionAuthorMode = "off";
+
 export const AI_ENRICHMENT_PLAYGROUND_VERSION = "ai-playground-v1";
 
 export const AI_ENRICHMENT_PLAYGROUND_IMAGE_CONTENT_TYPES = [

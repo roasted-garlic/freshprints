@@ -256,8 +256,7 @@ export function AiReviewWorkspace({
                           className={isRerunningAi ? "button-leading-icon" : undefined}
                           disabled={!canRerun || isActionLoading}
                           onClick={onRerun}
-                          variant="secondary"
-                          size="sm"
+                          variant="primary"
                         >
                           {isRerunningAi ? (
                             <>
@@ -272,9 +271,10 @@ export function AiReviewWorkspace({
                         <Button
                           disabled={!canReopen || isActionLoading}
                           onClick={onReopen}
-                          variant="primary"
+                          variant="secondary"
+                          size="sm"
                         >
-                          Reopen for Review
+                          Approve Existing Suggestions
                         </Button>
                       </>
                     ) : null}

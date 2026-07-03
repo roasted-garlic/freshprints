@@ -41,6 +41,38 @@ export interface DesignAiSuggestions {
   promptTokens?: number | null;
   completionTokens?: number | null;
   estimatedCostUsd?: number | null;
+  /**
+   * Status of the optional text-only tag reranker second call. "skipped" means tagRerankMode was
+   * off or the auto heuristic did not trigger for this design (no second call was made). Never
+   * set at all on designs processed before this feature shipped.
+   */
+  tagRerankStatus?: "skipped" | "succeeded" | "failed";
+  /** Set only when tagRerankStatus is "failed" — why the second call did not produce usable output. */
+  tagRerankFailureReason?: string;
+  tagRerankPromptTokens?: number | null;
+  tagRerankCompletionTokens?: number | null;
+  tagRerankEstimatedCostUsd?: number | null;
+  tagRerankPromptVersion?: string;
+  /**
+   * Concepts the reranker flagged as important but not covered by approvedTagCandidates. Feeds
+   * suggestedNewTags generation only — never a source of persisted final tags directly.
+   */
+  tagRerankUncoveredConcepts?: string[];
+  /**
+   * Status of the optional AI-authored suggested-tag quality call. "skipped" means the
+   * last-resort gate did not fire for this design (no suggestions were needed at all) or
+   * suggestionAuthorMode was off (server-templated suggestions were used instead, if any).
+   * Distinct from tagRerankStatus — these are two independent optional calls that may or may not
+   * share a single physical request (see plan §2.4). Never set on designs processed before this
+   * feature shipped.
+   */
+  suggestionAuthorStatus?: "skipped" | "succeeded" | "failed";
+  /** Set only when suggestionAuthorStatus is "failed" — why the call did not produce usable output. */
+  suggestionAuthorFailureReason?: string;
+  suggestionAuthorPromptTokens?: number | null;
+  suggestionAuthorCompletionTokens?: number | null;
+  suggestionAuthorEstimatedCostUsd?: number | null;
+  suggestionAuthorPromptVersion?: string;
 }
 
 export interface DesignAiAnalysis {

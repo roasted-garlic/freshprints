@@ -4,6 +4,12 @@ import { tokenizeTagCandidate } from "./catalogTitleRules";
 const MAX_AI_APPROVED_TAGS = 12;
 const MAX_TAG_LENGTH = 40;
 
+/** Max entries in the compact approvedTagCandidates shortlist returned for the tag reranker. */
+const MAX_APPROVED_TAG_CANDIDATES = 30;
+
+/** Max nearby approved tags surfaced per unmatched candidate when building the shortlist. */
+const MAX_NEARBY_MATCHES_PER_UNMATCHED_CANDIDATE = 3;
+
 interface ResolveAiCatalogTagsInput {
   approvedTags: CatalogTag[];
   candidates: readonly string[] | undefined;
@@ -11,9 +17,65 @@ interface ResolveAiCatalogTagsInput {
   suggestedNewTags?: readonly SuggestedNewTag[];
 }
 
+/**
+ * A single approved-tag entry in the compact shortlist built for the text-only tag reranker
+ * second call. Deterministic, server-generated — never includes the full tag database, full
+ * preferredWhen text, or any AI-generated reasoning.
+ */
+export interface ApprovedTagCandidate {
+  /** Approved tag name only. */
+  name: string;
+  /** Raw candidate string(s) that pointed at this approved tag. */
+  matchedBy: string[];
+  /** Short, human-readable, deterministically generated match reason (not AI). */
+  reason: string;
+}
+
 export interface ResolveAiCatalogTagsResult {
   tags: string[];
   suggestedNewTags: SuggestedNewTag[];
+  /** Compact approved-tag shortlist for the optional tag reranker second call. Capped, always returned. */
+  approvedTagCandidates: ApprovedTagCandidate[];
+  /** Count of raw candidates that matched no approved tag/alias/token — feeds the auto-rerank heuristic. */
+  unmatchedCandidateCount: number;
+  /**
+   * True when every tag in `tags` was reached only via the per-token fallback match ("Matched via
+   * partial token match" reason) — never an exact name/alias match. Used by the suggested-tags
+   * last-resort gate (see isSuggestedTagsLastResort) to distinguish 3 solid approved matches from 3
+   * weak ones that arguably still leave the design under-described. False when `tags` is empty.
+   */
+  allMatchesAreWeak: boolean;
+}
+
+const WEAK_MATCH_REASON = "Matched via partial token match";
+
+/**
+ * Last-resort gate for suggestedNewTags generation (plan: 2026-07-02-suggested-tags-last-resort).
+ * Suggestions are only worth generating when approved-tag coverage is genuinely thin:
+ * - 0-2 approved matches: always eligible.
+ * - Exactly 3 approved matches: only eligible when all 3 are weak (partial-token-only) matches AND
+ *   there are at least 2 unmatched candidates left to draw suggestions from.
+ * - 4+ approved matches: never eligible, regardless of match quality or remaining room.
+ *
+ * Accepts plain values (not the full result shape) so it can be evaluated both as a live check
+ * during resolution — approvedResult can still grow via suggestedNewTags reconciliation, which
+ * must be able to tighten the gate mid-loop — and as a post-hoc check by callers holding a
+ * finished ResolveAiCatalogTagsResult.
+ */
+export function isSuggestedTagsLastResort(input: {
+  approvedCount: number;
+  allMatchesAreWeak: boolean;
+  unmatchedCandidateCount: number;
+}): boolean {
+  if (input.approvedCount <= 2) {
+    return true;
+  }
+
+  if (input.approvedCount === 3) {
+    return input.allMatchesAreWeak && input.unmatchedCandidateCount >= 2;
+  }
+
+  return false;
 }
 
 function normalizeTagCandidate(value: string): string {
@@ -219,6 +281,113 @@ function findAliasMatchInContext(
   return undefined;
 }
 
+/**
+ * Build a token index of approved tags (name + aliases) for the nearby-match pass used when
+ * constructing the approvedTagCandidates shortlist. Distinct from the exact/alias lookups used
+ * for real matching — this is deliberately loose (any shared non-stopword token) since it only
+ * feeds a shortlist shown to the reranker for judgment, never an auto-approved match.
+ */
+function buildApprovedTagTokenIndex(approvedTags: CatalogTag[]): Map<string, Set<string>> {
+  const tokenIndex = new Map<string, Set<string>>();
+
+  const indexTerm = (term: string, approvedTagName: string): void => {
+    for (const token of tokenizeCandidate(normalizeForAliasMatch(term))) {
+      let names = tokenIndex.get(token);
+
+      if (!names) {
+        names = new Set<string>();
+        tokenIndex.set(token, names);
+      }
+
+      names.add(approvedTagName);
+    }
+  };
+
+  for (const tag of approvedTags) {
+    if (tag.status !== "approved") {
+      continue;
+    }
+
+    indexTerm(tag.name, tag.name);
+
+    for (const alias of tag.aliases) {
+      indexTerm(alias, tag.name);
+    }
+  }
+
+  return tokenIndex;
+}
+
+/**
+ * Build the compact approvedTagCandidates shortlist for the optional tag reranker second call:
+ * every approved tag matched during resolution (reason preserved), plus up to
+ * MAX_NEARBY_MATCHES_PER_UNMATCHED_CANDIDATE approved tags per unmatched candidate that share at
+ * least one token, capped overall at MAX_APPROVED_TAG_CANDIDATES. Deterministic, no AI — this is
+ * candidate-adjacent, not the full approved tag database.
+ */
+function buildApprovedTagCandidates(
+  matchInfoByApprovedName: Map<string, { matchedBy: Set<string>; reason: string }>,
+  unmatchedCandidates: ReadonlySet<string>,
+  approvedTags: CatalogTag[],
+): ApprovedTagCandidate[] {
+  const result: ApprovedTagCandidate[] = [];
+  const included = new Set<string>();
+
+  for (const [name, info] of matchInfoByApprovedName) {
+    if (result.length >= MAX_APPROVED_TAG_CANDIDATES) {
+      return result;
+    }
+
+    result.push({ matchedBy: [...info.matchedBy], name, reason: info.reason });
+    included.add(name);
+  }
+
+  if (unmatchedCandidates.size === 0) {
+    return result;
+  }
+
+  const tokenIndex = buildApprovedTagTokenIndex(approvedTags);
+
+  for (const candidate of unmatchedCandidates) {
+    if (result.length >= MAX_APPROVED_TAG_CANDIDATES) {
+      break;
+    }
+
+    const candidateTokens = tokenizeCandidate(normalizeForAliasMatch(candidate));
+    const nearbyNames = new Set<string>();
+
+    for (const token of candidateTokens) {
+      for (const approvedName of tokenIndex.get(token) ?? []) {
+        if (!included.has(approvedName)) {
+          nearbyNames.add(approvedName);
+        }
+      }
+    }
+
+    let addedForThisCandidate = 0;
+
+    for (const nearbyName of nearbyNames) {
+      if (addedForThisCandidate >= MAX_NEARBY_MATCHES_PER_UNMATCHED_CANDIDATE) {
+        break;
+      }
+
+      if (result.length >= MAX_APPROVED_TAG_CANDIDATES) {
+        break;
+      }
+
+      result.push({
+        matchedBy: [candidate],
+        name: nearbyName,
+        reason: `Unmatched candidate '${candidate}' shares a token with this approved tag`,
+      });
+      included.add(nearbyName);
+      addedForThisCandidate += 1;
+    }
+  }
+
+  return result;
+}
+
 export function resolveAiCatalogTags({
   approvedTags,
   candidates,
@@ -231,6 +400,32 @@ export function resolveAiCatalogTags({
   const seenApproved = new Set<string>();
   const seenSuggested = new Set<string>();
   const unmatchedCandidates = new Set<string>();
+
+  // Tracks how each matched approved tag was reached, for the compact approvedTagCandidates
+  // shortlist built after matching completes. Not used by tags/suggestedNewTags computation.
+  const matchInfoByApprovedName = new Map<string, { matchedBy: Set<string>; reason: string }>();
+
+  const recordMatch = (approvedTagName: string, matchedByCandidate: string, reason: string): void => {
+    const existing = matchInfoByApprovedName.get(approvedTagName);
+
+    if (existing) {
+      existing.matchedBy.add(matchedByCandidate);
+
+      // A tag reached first via a weak (partial-token) match and later confirmed by a stronger
+      // exact/alias match should report the stronger reason — never downgrade an already-strong
+      // reason, and always upgrade a weak one once real evidence arrives.
+      if (existing.reason === WEAK_MATCH_REASON && reason !== WEAK_MATCH_REASON) {
+        existing.reason = reason;
+      }
+
+      return;
+    }
+
+    matchInfoByApprovedName.set(approvedTagName, {
+      matchedBy: new Set([matchedByCandidate]),
+      reason,
+    });
+  };
 
   const pushApproved = (approvedTagName: string): void => {
     if (!seenApproved.has(approvedTagName) && approvedResult.length < maxApprovedTags) {
@@ -252,6 +447,7 @@ export function resolveAiCatalogTags({
 
     if (approvedTagName) {
       pushApproved(approvedTagName);
+      recordMatch(approvedTagName, normalizedCandidate, "Matched via exact name or alias match");
       continue;
     }
 
@@ -262,6 +458,7 @@ export function resolveAiCatalogTags({
 
     if (aliasTagName) {
       pushApproved(aliasTagName);
+      recordMatch(aliasTagName, normalizedCandidate, "Matched via punctuation-tolerant alias match");
       continue;
     }
 
@@ -277,6 +474,7 @@ export function resolveAiCatalogTags({
 
       if (tokenTagName) {
         pushApproved(tokenTagName);
+        recordMatch(tokenTagName, normalizedCandidate, WEAK_MATCH_REASON);
         matchedAnyToken = true;
       }
     }
@@ -292,6 +490,28 @@ export function resolveAiCatalogTags({
   const remainingSuggestionRoom = (): number =>
     Math.max(0, maxApprovedTags - approvedResult.length - suggestedResult.length);
 
+  const computeAllMatchesAreWeak = (): boolean =>
+    approvedResult.length > 0 &&
+    approvedResult.every((name) => matchInfoByApprovedName.get(name)?.reason === WEAK_MATCH_REASON);
+
+  // Last-resort gate, evaluated live: approvedResult can still grow via suggestedNewTags
+  // reconciliation below (checks 2/3 promote a "suggestion" that actually matches an approved
+  // alias/context into approvedResult), which can only make the gate MORE restrictive — so it is
+  // re-checked fresh immediately before every point a suggestion would actually be recorded,
+  // rather than decided once up front.
+  const suggestionsCurrentlyAllowed = (): boolean =>
+    isSuggestedTagsLastResort({
+      allMatchesAreWeak: computeAllMatchesAreWeak(),
+      approvedCount: approvedResult.length,
+      unmatchedCandidateCount: unmatchedCandidates.size,
+    });
+
+  // The reconciliation loop below still runs unconditionally: an AI-provided suggestedNewTags
+  // entry may actually match an approved tag/alias/context (checks 1-3), which promotes it into
+  // approvedResult via pushApproved rather than treating it as a suggestion. That reconciliation
+  // must always run, since it can change approvedResult itself — one of the last-resort gate's own
+  // inputs. Only the final "this is genuinely a new suggestion" outcome (suggestedResult.push) is
+  // gated by suggestionsCurrentlyAllowed().
   for (const suggestion of suggestedNewTags ?? []) {
     if (remainingSuggestionRoom() <= 0) {
       break;
@@ -347,12 +567,18 @@ export function resolveAiCatalogTags({
       continue;
     }
 
-    suggestedResult.push(normalizedSuggestion);
-    seenSuggested.add(normalizedSuggestion.name);
+    if (suggestionsCurrentlyAllowed()) {
+      suggestedResult.push(normalizedSuggestion);
+      seenSuggested.add(normalizedSuggestion.name);
+    }
   }
 
   for (const candidate of unmatchedCandidates) {
     if (remainingSuggestionRoom() <= 0) {
+      break;
+    }
+
+    if (!suggestionsCurrentlyAllowed()) {
       break;
     }
 
@@ -365,7 +591,14 @@ export function resolveAiCatalogTags({
   }
 
   return {
+    allMatchesAreWeak: computeAllMatchesAreWeak(),
+    approvedTagCandidates: buildApprovedTagCandidates(
+      matchInfoByApprovedName,
+      unmatchedCandidates,
+      approvedTags,
+    ),
     suggestedNewTags: suggestedResult,
     tags: approvedResult,
+    unmatchedCandidateCount: unmatchedCandidates.size,
   };
 }

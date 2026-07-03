@@ -14,7 +14,11 @@ import { formatDesignTimestamp } from "../utils/designDateDisplay";
 import { formatDesignStatusLabel, getDesignStatusBadgeVariant } from "../utils/designStatusDisplay";
 import { formatDesignPrintInches } from "../utils/designPrintSizeDisplay";
 import { resolveDesignAiReviewDisplay } from "../utils/aiReviewState";
-import { formatAiEstimatedCost } from "../utils/aiReviewDisplay";
+import {
+  formatAiEstimatedCost,
+  formatTagRerankStatusLabel,
+  resolveCombinedAiEstimatedCost,
+} from "../utils/aiReviewDisplay";
 import { DesignLibraryModal } from "./DesignLibraryModal";
 import { DesignPreviewLightbox } from "./DesignPreviewLightbox";
 import { DesignThumbnailPanel } from "./DesignThumbnailPanel";
@@ -235,6 +239,42 @@ export function DesignDetailsModal({
                     label="Estimated cost"
                     value={formatAiEstimatedCost(design.aiSuggestions.estimatedCostUsd)}
                   />
+                ) : null}
+                {design.aiSuggestions.tagRerankStatus &&
+                design.aiSuggestions.tagRerankStatus !== "skipped" ? (
+                  <>
+                    <DetailField
+                      label="Tag rerank"
+                      value={formatTagRerankStatusLabel(design.aiSuggestions.tagRerankStatus)}
+                    />
+                    {typeof design.aiSuggestions.tagRerankPromptTokens === "number" ? (
+                      <DetailField
+                        label="Tag rerank input tokens"
+                        value={String(design.aiSuggestions.tagRerankPromptTokens)}
+                      />
+                    ) : null}
+                    {typeof design.aiSuggestions.tagRerankCompletionTokens === "number" ? (
+                      <DetailField
+                        label="Tag rerank output tokens"
+                        value={String(design.aiSuggestions.tagRerankCompletionTokens)}
+                      />
+                    ) : null}
+                    {typeof design.aiSuggestions.tagRerankEstimatedCostUsd === "number" ? (
+                      <DetailField
+                        label="Tag rerank cost"
+                        value={formatAiEstimatedCost(design.aiSuggestions.tagRerankEstimatedCostUsd)}
+                      />
+                    ) : null}
+                    <DetailField
+                      label="Combined cost"
+                      value={formatAiEstimatedCost(
+                        resolveCombinedAiEstimatedCost(
+                          design.aiSuggestions.estimatedCostUsd,
+                          design.aiSuggestions.tagRerankEstimatedCostUsd,
+                        ),
+                      )}
+                    />
+                  </>
                 ) : null}
               </dl>
             </section>

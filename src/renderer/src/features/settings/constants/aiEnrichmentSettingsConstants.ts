@@ -6,9 +6,15 @@ import {
   AI_ENRICHMENT_EXCLUDED_TAGS_PLACEHOLDER,
   AI_ENRICHMENT_PROMPT_TEMPLATE_MAX_LENGTH,
   DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
+  DEFAULT_SUGGESTION_AUTHOR_MODE,
+  DEFAULT_TAG_RERANK_MODE,
+  SUGGESTION_AUTHOR_MODES,
+  TAG_RERANK_MODES,
   hasRequiredAiEnrichmentPromptPlaceholders,
   DEFAULT_VISION_MODEL_ID as SHARED_DEFAULT_VISION_MODEL_ID,
   type AllowedVisionModelId,
+  type SuggestionAuthorMode,
+  type TagRerankMode,
 } from "../../../../../../shared/constants/aiEnrichment.constants";
 
 export {
@@ -28,8 +34,86 @@ export {
   AI_ENRICHMENT_EXCLUDED_TAGS_PLACEHOLDER,
   AI_ENRICHMENT_PROMPT_TEMPLATE_MAX_LENGTH,
   DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
+  DEFAULT_SUGGESTION_AUTHOR_MODE,
+  DEFAULT_TAG_RERANK_MODE,
+  SUGGESTION_AUTHOR_MODES,
+  TAG_RERANK_MODES,
   hasRequiredAiEnrichmentPromptPlaceholders,
+  type SuggestionAuthorMode,
+  type TagRerankMode,
 };
+
+export interface TagRerankModeOption {
+  value: TagRerankMode;
+  label: string;
+  hint: string;
+}
+
+export const TAG_RERANK_MODE_OPTIONS: readonly TagRerankModeOption[] = [
+  {
+    value: "off",
+    label: "Off — Default",
+    hint: "Never run the second-call tag reranker. Cheapest, current behavior.",
+  },
+  {
+    value: "auto",
+    label: "Auto",
+    hint: "Run the reranker only when the server-side tag matcher shows signs of ambiguity. Recommended once Playground comparisons validate quality/cost.",
+  },
+  {
+    value: "always",
+    label: "Always",
+    hint: "Run the reranker on every design. Temporary comparison/testing mode — not intended as a standing setting.",
+  },
+];
+
+const TAG_RERANK_MODE_SET = new Set<string>(TAG_RERANK_MODES);
+
+export function resolveClientTagRerankMode(configured?: string): TagRerankMode {
+  const trimmed = configured?.trim();
+
+  if (trimmed && TAG_RERANK_MODE_SET.has(trimmed)) {
+    return trimmed as TagRerankMode;
+  }
+
+  return DEFAULT_TAG_RERANK_MODE;
+}
+
+export interface SuggestionAuthorModeOption {
+  value: SuggestionAuthorMode;
+  label: string;
+  hint: string;
+}
+
+export const SUGGESTION_AUTHOR_MODE_OPTIONS: readonly SuggestionAuthorModeOption[] = [
+  {
+    value: "off",
+    label: "Off — Default",
+    hint: "Suggested new tags use the server-written generic template. Cheapest, current behavior.",
+  },
+  {
+    value: "auto",
+    label: "Auto",
+    hint: "When a design's approved-tag coverage is genuinely thin, an AI call writes a real preferredWhen and aliases for each suggested tag instead of the generic template.",
+  },
+  {
+    value: "always",
+    label: "Always",
+    hint: "Same trigger as Auto — suggestions are already a last resort, so there is no broader 'always' behavior beyond that.",
+  },
+];
+
+const SUGGESTION_AUTHOR_MODE_SET = new Set<string>(SUGGESTION_AUTHOR_MODES);
+
+export function resolveClientSuggestionAuthorMode(configured?: string): SuggestionAuthorMode {
+  const trimmed = configured?.trim();
+
+  if (trimmed && SUGGESTION_AUTHOR_MODE_SET.has(trimmed)) {
+    return trimmed as SuggestionAuthorMode;
+  }
+
+  return DEFAULT_SUGGESTION_AUTHOR_MODE;
+}
 
 export interface VisionModelOption {
   badgeLabel: string;

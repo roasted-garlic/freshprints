@@ -21,7 +21,7 @@ describe("validateAiEnrichmentPlaygroundRequest", () => {
     assert.equal(parsed.imageContentType, "image/png");
     assert.equal(parsed.prompt, "Describe this image.");
     assert.equal(parsed.visionModelId, "gemini-2.5-flash-lite");
-    assert.ok(parsed.imageBytes.length > 0);
+    assert.ok(parsed.imageBytes && parsed.imageBytes.length > 0);
   });
 
   it("rejects unsupported vision models", () => {
@@ -47,6 +47,28 @@ describe("validateAiEnrichmentPlaygroundRequest", () => {
           visionModelId: "gemini-2.5-flash-lite",
         }),
       /png, jpeg, or webp/i,
+    );
+  });
+
+  it("accepts a text-only request with no image", () => {
+    const parsed = validateAiEnrichmentPlaygroundRequest({
+      prompt: "Return valid JSON with a title field only.",
+      visionModelId: "gemini-2.5-flash-lite",
+    });
+
+    assert.equal(parsed.imageBytes, undefined);
+    assert.equal(parsed.imageContentType, undefined);
+    assert.equal(parsed.prompt, "Return valid JSON with a title field only.");
+  });
+
+  it("still requires a prompt when no image is provided", () => {
+    assert.throws(
+      () =>
+        validateAiEnrichmentPlaygroundRequest({
+          prompt: "",
+          visionModelId: "gemini-2.5-flash-lite",
+        }),
+      /prompt is required/i,
     );
   });
 });
@@ -92,5 +114,28 @@ describe("buildAiEnrichmentPlaygroundRequestBody", () => {
     assert.ok(imageInput);
     assert.equal(imageInput.image_url.detail, "high");
     assert.match(imageInput.image_url.url, /^data:image\/webp;base64,/);
+  });
+
+  it("omits the image_url content part entirely for a text-only request", () => {
+    const body = buildAiEnrichmentPlaygroundRequestBody(
+      validateAiEnrichmentPlaygroundRequest({
+        prompt: "Return JSON only.",
+        visionModelId: "gemini-2.5-flash-lite",
+      }),
+      undefined,
+      undefined,
+      "Return JSON only.",
+      "You catalog DTF apparel design images.",
+    );
+
+    const parsed = JSON.parse(body) as ParsedRequestBody;
+    const userMessage = parsed.messages.find((message) => message.role === "user");
+    assert.ok(userMessage);
+
+    const imageInput = userMessage.content.find((part) => part.type === "image_url");
+    assert.equal(imageInput, undefined, "text-only request must never include an image_url part");
+
+    const textInput = userMessage.content.find((part) => part.type === "text");
+    assert.ok(textInput);
   });
 });

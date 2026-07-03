@@ -6,6 +6,191 @@
 
 ## Decisions
 
+### ADR-FP-043: Suggested new tags are a last resort; AI-authored suggestion quality when they fire
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-02 |
+| Status | accepted |
+
+**Decision**
+
+1. Added a server-side "last-resort" gate, `isSuggestedTagsLastResort` (`catalogTagResolver.ts`),
+   that decides *whether* `suggestedNewTags` generation is allowed at all for a design — not just
+   how many suggestions fit in the remaining room under the 8-tag cap (the pre-existing
+   `remainingSuggestionRoom` check, which still applies once the gate passes). Rule: suggestions
+   are eligible when 0-2 approved tags matched, or when exactly 3 matched but all three were weak
+   (per-token-fallback-only, never an exact name/alias match) **and** at least 2 raw candidates
+   went completely unmatched. Suggestions never fire with 3 approved matches that include at least
+   one strong match, and never fire with 4 or more approved matches at all, regardless of match
+   quality or how much room remains under the cap. A design with 5+ solid approved tags now ships
+   with exactly those tags — no padding to 8 with weak suggestions.
+2. `resolveAiCatalogTags` now tracks match strength internally (a tag's recorded match reason
+   upgrades from weak to strong if a later candidate confirms it via exact/alias match, and never
+   downgrades) and exposes it as `allMatchesAreWeak` on its result, alongside the existing
+   `unmatchedCandidateCount`. The gate is evaluated live during resolution — since the AI's own
+   `suggestedNewTags` reconciliation loop can still promote entries into `approvedResult` via
+   alias/context matching, which can only make the gate more restrictive as it runs.
+3. Added a new optional text-only second call, the "suggestion author," that runs only when the
+   last-resort gate fired and produces AI-authored `preferredWhen` text and real aliases for each
+   candidate — replacing the previous single generic template
+   (`Use when "X" is a primary searchable subject...`) with per-design, per-concept detail matching
+   the quality of hand-written approved tags. The model may also decline to author a candidate
+   entirely (simply omitting it from its output) — a further reduction beyond the gate itself.
+4. The suggestion-author call reuses the `ai-tag-rerank-second-call` phase's established pattern
+   (text-only, `fetchVisionWithRetry`, tolerant JSON parsing, strict server-side validation) and,
+   when both the tag reranker and suggestion author are enabled and both triggers fire for the same
+   design, **shares one physical Gemini call** with the reranker rather than making two requests —
+   the reranker prompt already carries the exact context (first response, matched/shortlisted
+   approved tags) the author needs. When the reranker is off or not triggered, the suggestion
+   author runs as its own standalone call so suggestion quality never depends on an unrelated
+   setting. Controlled by a new independent owner/admin setting, `suggestionAuthorMode:
+   "off" | "auto" | "always"` (shipped default `off`), separate from `tagRerankMode` — the two
+   optional calls solve different problems (thin overall coverage vs. borderline individual
+   matches) and can be enabled independently.
+5. The author's calibration reference — up to 4 real approved tags shown so the model matches
+   existing style/specificity — is selected deterministically, never randomly: relevant-and-
+   high-quality tags first (token overlap with matched tags/candidates, 2+ aliases, non-generic
+   `preferredWhen`), then remaining relevant tags, then remaining high-quality tags to fill any
+   leftover slots, with alphabetical tie-breaking for stable, testable output. Each example is
+   reduced to name + up to 3 aliases + `preferredWhen` only — never the full approved tag database.
+6. Server-side validation (`validateAuthoredSuggestions`, shared by both call paths) rejects any
+   authored name outside the original candidate list, enforces existing length/character rules,
+   caps aliases at 5 and `preferredWhen` at 300 characters. On any failure — network error, invalid
+   JSON, or the call being disabled — suggestions still generate via the pre-existing
+   server-templated fallback for the same last-resort-gated candidates; suggestions are never
+   silently dropped once the last-resort gate has already decided they're needed, since that is
+   exactly the case where staff need *something* to review even if imperfect.
+7. New `DesignAiSuggestions` fields (all optional, no migration), mirroring the tag reranker's
+   tracking pattern with a distinct name prefix: `suggestionAuthorStatus: "skipped" | "succeeded" |
+   "failed"`, `suggestionAuthorFailureReason`, `suggestionAuthorPromptTokens`,
+   `suggestionAuthorCompletionTokens`, `suggestionAuthorEstimatedCostUsd`,
+   `suggestionAuthorPromptVersion` (`catalog-suggested-tag-author-v1`). When the merged call path
+   runs, the combined request's cost/tokens are recorded on both `tagRerank*` and
+   `suggestionAuthor*` fields for display purposes — this is not a per-call billing split, just
+   ensuring the true combined total is visible regardless of which field a UI reads.
+8. Playground support is explicitly deferred to a fast-follow phase, since the tag reranker's own
+   Playground pattern (ADR-FP-042 item 6) is still pending manual signoff at the time of this
+   decision. This phase is verified via unit tests plus a manual AI Review smoke test instead.
+
+**Why**
+
+Two related problems, both reported directly by staff after real-world use of the tag reranker
+(ADR-FP-042): first, suggestions fired too often — a design with 5+ good approved matches would
+still get padded with 3-5 weak suggested-new-tags just because room remained under the 8-tag cap,
+even though the design was already well-tagged and didn't need more. Second, when suggestions did
+fire, their quality was poor — a single fixed-template sentence with no design-specific reasoning,
+falling well short of the detailed, hand-curated `preferredWhen`/alias quality staff maintain for
+real approved tags in Tag Management. Suggestions should be a genuine last resort (only when the
+approved tag library truly can't describe the design), and when they are needed, they should look
+like something a human would actually write, since staff are the ones who will read and act on
+them. Sharing a physical call with the reranker when both fire keeps the added cost proportional —
+this is exactly the thin-coverage case where fewer designs qualify by design, so aggregate cost
+impact should be lower than the reranker's own `auto` mode, not higher.
+
+**Alternatives considered**
+
+- *Always require the tag reranker to be on for suggestion authoring* (fold into `tagRerankMode`
+  rather than a distinct setting) — rejected: a shop that keeps the reranker off entirely (e.g.
+  satisfied with server-side matching quality) should still get well-written suggestions when
+  coverage is thin; the two calls solve different problems and should be independently toggleable.
+- *Random calibration example selection* — rejected: makes output and tests harder to compare run
+  to run, with no real quality benefit over a deterministic relevance/quality-ranked selection.
+- *An explicit `worthSuggesting: boolean` field on each authored suggestion* — considered, then
+  simplified to "omit the candidate from the output array" for the same effect with a smaller
+  output schema and less validation surface.
+
+---
+
+### ADR-FP-042: Optional text-only Gemini tag reranker second call, settings-controlled, off by default
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-02 |
+| Status | accepted |
+
+**Decision**
+
+1. Added an optional second, text-only Gemini call — the "tag reranker" — that runs after the
+   existing single vision call and after the existing server-side approved-tag matching
+   (`catalogTagResolver.ts`). It receives the first call's JSON response (title/description/
+   category/tags), the pre-rerank resolved category name, and a compact `approvedTagCandidates`
+   shortlist (matched approved tags plus nearby matches for unmatched raw candidates, capped at
+   ~30 entries) built deterministically by an extension to `resolveAiCatalogTags`. It never
+   receives the image and never receives the full approved tag database.
+2. Controlled by a new owner/admin setting, `tagRerankMode: "off" | "auto" | "always"`, persisted
+   on the same `settings/aiEnrichment` document `updateAiEnrichmentSettings` already writes.
+   **Shipped default is `off`.** `auto` runs the second call only when the server-side matcher's
+   own output shows signs of ambiguity (`unmatchedCandidateCount >= 3`, fewer than 5 of 8 tag
+   slots filled, or 2+ `suggestedNewTags` generated) — a set of cheap, deterministic heuristics
+   computed from data the resolver already produces, so the decision to run the reranker costs
+   nothing extra. `always` runs it on every design and is intended as a temporary comparison/
+   testing mode, not a standing production setting.
+3. The reranker's `tags` output is validated strictly server-side: any tag not present in
+   `approvedTagCandidates` is discarded individually (a response with some valid and some invalid
+   tags is not rejected wholesale — the valid subset is kept). If zero valid tags survive, or the
+   call fails/returns invalid JSON/empty output, the pipeline falls back to the tags
+   `resolveAiCatalogTags` already resolved and continues unaffected. The reranker can never invent
+   a persisted final tag and can never override category resolution.
+4. The reranker's `uncoveredConcepts` output (concepts it flagged as important but not covered by
+   the shortlist) is fed back into the existing server-side `suggestedNewTags` generation path as
+   additional unmatched-candidate input — subject to the same single-word-safe-reduction/rejection
+   normalization as any other candidate (ADR-FP-039 review note 4). It is never written directly as
+   a persisted final tag.
+5. Because category resolution (`resolveThemeCategory`) uses matched tags as a scoring signal, and
+   the reranker can change the final tag set, category resolution now runs twice on a design that
+   triggers the reranker: once before (best-effort, to give the reranker a resolved category name
+   for its own prompt context) and once after (final, using the post-rerank tag set). Both calls
+   are pure/deterministic/free — this adds no cost, only a small control-flow change scoped
+   entirely to the reranked path. A design where the reranker does not run (`off`, or `auto` not
+   triggered) gets exactly one category resolution call, identical to pre-existing behavior.
+6. New Cloud Function callable `testAiEnrichmentTagRerank`, gated by the same owner/admin
+   authorization check as the existing `testAiEnrichmentPlayground`/`updateAiEnrichmentSettings`
+   (never weaker). Added to the Settings AI Playground UI as a "Run tag rerank" button available
+   after a valid first-call vision result, so staff can compare first-call tags, the shortlist
+   sent, the reranker's output, any discarded tags, and the second call's token/cost estimate
+   before ever enabling `auto` in production. Does not write to `designs` and does not persist the
+   uploaded image, matching the existing Playground's guarantees.
+7. New `DesignAiSuggestions` fields (all optional, no migration): `tagRerankStatus: "skipped" |
+   "succeeded" | "failed"`, `tagRerankFailureReason`, `tagRerankPromptTokens`,
+   `tagRerankCompletionTokens`, `tagRerankEstimatedCostUsd`, `tagRerankPromptVersion`
+   (`catalog-tag-rerank-v1`), `tagRerankUncoveredConcepts`. A tri-state status (rather than a
+   single boolean) distinguishes "mode was off / heuristic didn't fire" from "ran and failed" from
+   "ran and succeeded," which a single `tagRerankRan` boolean could not.
+
+**Why**
+
+Staff reported the v20 pipeline surfaces too many `suggestedNewTags` — the deterministic
+server-side matcher is good at exact/alias/token string matching but has no way to judge buyer
+intent, so phrase-y or ambiguous raw candidates (e.g. "mom life", "rock on", "messy bun") often go
+unmatched even when a genuinely relevant approved tag exists. Rather than re-injecting the full
+approved tag database into the first call (measured ~4.4x cost per ADR-FP-041) or hoping a bigger
+first prompt fixes it, this narrows the problem the AI is asked to solve: the server does what it's
+good at (deterministic matching, scoring, shortlist-building), and a second, small, text-only call
+does what the server can't (judgment over a short, well-scoped list) using the first call's own
+analysis as context. Defaulting to `off` and shipping Playground support in the same phase lets the
+team validate real cost/quality tradeoffs on real designs before committing to `auto` in
+production, rather than silently doubling AI cost the day this deploys.
+
+**Consequences**
+
+Positive: A concrete, testable path to better tag coverage on designs the server-side matcher
+struggles with, without paying full-tag-database injection cost on every design. Server remains
+authoritative over final persisted tags at every step. Existing `off`-mode behavior for the whole
+pipeline is provably unchanged (the reranker code path is only entered when `shouldRunTagRerank`
+returns `true`, which is `false` unconditionally for `off`).
+
+Tradeoff: `auto`-mode heuristic thresholds (3+ unmatched, <5 resolved tags, 2+ suggestions) are a
+reasonable starting point derived directly from the reported symptom, not yet empirically tuned —
+expect adjustment once real `auto`-mode usage data comes in. Reranked designs pay real added
+latency (a second network round trip) even though the dollar cost is small, which matters most for
+the `always` mode's aggregate impact on the AI Processing queue if left on longer than intended as
+a testing mode. Firebase Functions deploy (to actually enable `testAiEnrichmentTagRerank` and the
+new settings field in production) remains a separate human checkpoint, not performed as part of
+this change.
+
+---
+
 ### ADR-FP-041: Approved category names in prompt (v20); trust exact AI category matches; remove hardcoded tag synonym rewriting
 
 | Field | Value |

@@ -2,16 +2,31 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 
 import { ConfirmLeaveDialog } from "../components/ConfirmLeaveDialog";
 import { desktopAppService } from "../services/desktopAppService";
+import type { UploadActivityDialogCopy } from "./uploadActivityContext";
 import { UploadActivityContext } from "./uploadActivityContext";
 
 interface UploadActivityProviderProps {
   children: ReactNode;
 }
 
+const uploadActivityDialogCopy: UploadActivityDialogCopy = {
+  closeCancelLabel: "Keep uploading",
+  closeConfirmLabel: "Quit and cancel",
+  closeCopy: "An import is currently uploading. Quitting Fresh Prints Studio will cancel the upload.",
+  closeTitle: "Quit and cancel upload?",
+  leaveCancelLabel: "Keep uploading",
+  leaveConfirmLabel: "Leave and cancel",
+  leaveCopy: "An import is currently uploading. Leaving this page will cancel the upload.",
+  leaveTitle: "Leave and cancel upload?",
+};
+
 export function UploadActivityProvider({ children }: UploadActivityProviderProps) {
   const [isUploadActive, setIsUploadActive] = useState(false);
   const [isCloseConfirmPending, setIsCloseConfirmPending] = useState(false);
   const [isLeaveConfirmPending, setIsLeaveConfirmPending] = useState(false);
+  const [activityDialogCopy, setActivityDialogCopyState] = useState<UploadActivityDialogCopy>(
+    uploadActivityDialogCopy,
+  );
   const cancelHandlerRef = useRef<(() => Promise<void>) | null>(null);
   const leaveConfirmResolveRef = useRef<((confirmed: boolean) => void) | null>(null);
 
@@ -21,6 +36,10 @@ export function UploadActivityProvider({ children }: UploadActivityProviderProps
 
   const registerCancelHandler = useCallback((handler: (() => Promise<void>) | null) => {
     cancelHandlerRef.current = handler;
+  }, []);
+
+  const setActivityDialogCopy = useCallback((copy: UploadActivityDialogCopy | null) => {
+    setActivityDialogCopyState(copy ?? uploadActivityDialogCopy);
   }, []);
 
   const requestCancelActiveUpload = useCallback(async () => {
@@ -78,6 +97,7 @@ export function UploadActivityProvider({ children }: UploadActivityProviderProps
       requestCancelActiveUpload,
       registerCancelHandler,
       requestLeaveConfirmation,
+      setActivityDialogCopy,
     }),
     [
       isUploadActive,
@@ -85,6 +105,7 @@ export function UploadActivityProvider({ children }: UploadActivityProviderProps
       requestCancelActiveUpload,
       registerCancelHandler,
       requestLeaveConfirmation,
+      setActivityDialogCopy,
     ],
   );
 
@@ -93,23 +114,23 @@ export function UploadActivityProvider({ children }: UploadActivityProviderProps
       {children}
 
       <ConfirmLeaveDialog
-        cancelLabel="Keep uploading"
-        confirmLabel="Leave and cancel"
-        copy="An import is currently uploading. Leaving this page will cancel the upload."
+        cancelLabel={activityDialogCopy.leaveCancelLabel}
+        confirmLabel={activityDialogCopy.leaveConfirmLabel}
+        copy={activityDialogCopy.leaveCopy}
         isOpen={isLeaveConfirmPending}
         onCancel={cancelPendingLeave}
         onConfirm={confirmPendingLeave}
-        title="Leave and cancel upload?"
+        title={activityDialogCopy.leaveTitle}
       />
 
       <ConfirmLeaveDialog
-        cancelLabel="Keep uploading"
-        confirmLabel="Quit and cancel"
-        copy="An import is currently uploading. Quitting Fresh Prints Studio will cancel the upload."
+        cancelLabel={activityDialogCopy.closeCancelLabel}
+        confirmLabel={activityDialogCopy.closeConfirmLabel}
+        copy={activityDialogCopy.closeCopy}
         isOpen={isCloseConfirmPending}
         onCancel={cancelPendingClose}
         onConfirm={confirmPendingClose}
-        title="Quit and cancel upload?"
+        title={activityDialogCopy.closeTitle}
       />
     </UploadActivityContext.Provider>
   );

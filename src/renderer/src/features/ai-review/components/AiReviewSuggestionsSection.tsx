@@ -2,7 +2,11 @@ import { Button } from "../../../shared/components/Button";
 import { Badge } from "../../../shared/components/Badge";
 import { LoadingSpinner } from "../../../shared/components/LoadingSpinner";
 import type { Design } from "../../designs/types/design.types";
-import { formatAiEstimatedCost } from "../../designs/utils/aiReviewDisplay";
+import {
+  formatAiEstimatedCost,
+  formatTagRerankStatusLabel,
+  resolveCombinedAiEstimatedCost,
+} from "../../designs/utils/aiReviewDisplay";
 import {
   designHasAiSuggestions,
   getAiProcessingOutputMessage,
@@ -156,6 +160,31 @@ export function AiReviewSuggestionsSection({
               <dt>Estimated cost</dt>
               <dd>{formatAiEstimatedCost(suggestions.estimatedCostUsd)}</dd>
             </div>
+          ) : null}
+          {suggestions.tagRerankStatus && suggestions.tagRerankStatus !== "skipped" ? (
+            <>
+              <div>
+                <dt>Tag rerank</dt>
+                <dd>{formatTagRerankStatusLabel(suggestions.tagRerankStatus)}</dd>
+              </div>
+              {typeof suggestions.tagRerankEstimatedCostUsd === "number" ? (
+                <div>
+                  <dt>Tag rerank cost</dt>
+                  <dd>{formatAiEstimatedCost(suggestions.tagRerankEstimatedCostUsd)}</dd>
+                </div>
+              ) : null}
+              <div>
+                <dt>Combined cost</dt>
+                <dd>
+                  {formatAiEstimatedCost(
+                    resolveCombinedAiEstimatedCost(
+                      suggestions.estimatedCostUsd,
+                      suggestions.tagRerankEstimatedCostUsd,
+                    ),
+                  )}
+                </dd>
+              </div>
+            </>
           ) : null}
         </dl>
       ) : hasFailed ? (

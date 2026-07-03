@@ -66,6 +66,25 @@ function mapAiSuggestions(value: unknown): DesignAiSuggestions | undefined {
     promptTokens: typeof data.promptTokens === "number" ? data.promptTokens : null,
     completionTokens: typeof data.completionTokens === "number" ? data.completionTokens : null,
     estimatedCostUsd: typeof data.estimatedCostUsd === "number" ? data.estimatedCostUsd : null,
+    tagRerankStatus:
+      data.tagRerankStatus === "skipped" ||
+      data.tagRerankStatus === "succeeded" ||
+      data.tagRerankStatus === "failed"
+        ? data.tagRerankStatus
+        : undefined,
+    tagRerankFailureReason:
+      typeof data.tagRerankFailureReason === "string" ? data.tagRerankFailureReason : undefined,
+    tagRerankPromptTokens:
+      typeof data.tagRerankPromptTokens === "number" ? data.tagRerankPromptTokens : null,
+    tagRerankCompletionTokens:
+      typeof data.tagRerankCompletionTokens === "number" ? data.tagRerankCompletionTokens : null,
+    tagRerankEstimatedCostUsd:
+      typeof data.tagRerankEstimatedCostUsd === "number" ? data.tagRerankEstimatedCostUsd : null,
+    tagRerankPromptVersion:
+      typeof data.tagRerankPromptVersion === "string" ? data.tagRerankPromptVersion : undefined,
+    tagRerankUncoveredConcepts: Array.isArray(data.tagRerankUncoveredConcepts)
+      ? data.tagRerankUncoveredConcepts.filter((item): item is string => typeof item === "string")
+      : undefined,
   };
 }
 

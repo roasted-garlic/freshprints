@@ -218,9 +218,8 @@ export function Sidebar() {
 
   const handleNavLinkClick = useCallback(
     (event: React.MouseEvent<HTMLAnchorElement>, to: string) => {
-      // Imports are only active while the user is on the Imports page, so the guard fires when an
-      // import session is active and the click would navigate somewhere else. Re-clicking the
-      // current route is a no-op and needs no confirmation.
+      // Active workflows are page-owned, so the guard fires when the user clicks a different
+      // route while the current page has registered leave-protection.
       if (!isUploadActive || to === location.pathname) {
         return;
       }

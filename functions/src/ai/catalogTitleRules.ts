@@ -27,6 +27,13 @@ function hasTrailingTitlePunctuation(rawTitle: string): boolean {
 export const CATALOG_ENRICHMENT_PROMPT_VERSION = "catalog-enrich-v20";
 export const DEVELOPMENT_CATALOG_ENRICHMENT_PROMPT_VERSION = "catalog-enrich-dev-v20";
 
+/**
+ * Prompt version for the optional text-only tag reranker second call. Independent of
+ * CATALOG_ENRICHMENT_PROMPT_VERSION since the reranker is a separate, optional call with its own
+ * contract — recorded on aiSuggestions.tagRerankPromptVersion only when the reranker actually ran.
+ */
+export const CATALOG_TAG_RERANK_PROMPT_VERSION = "catalog-tag-rerank-v1";
+
 const CATALOG_ENRICHMENT_SYSTEM_PROMPT_BODY = `Analyze one printable apparel artwork image for catalog enrichment. Base every field only on the image. Do not use the filename, outside context, or filler. Read all visible text first, then derive metadata grounded in what you observe. If a detail is uncertain, omit it or lower confidence instead of inventing it.
 
 Return JSON only. No markdown, comments, or extra text.

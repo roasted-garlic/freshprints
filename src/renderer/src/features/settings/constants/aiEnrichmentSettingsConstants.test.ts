@@ -5,9 +5,12 @@ import {
   AI_ENRICHMENT_APPROVED_CATEGORY_NAMES_PLACEHOLDER,
   AI_ENRICHMENT_EXCLUDED_TAGS_PLACEHOLDER,
   DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
+  DEFAULT_SUGGESTION_AUTHOR_MODE,
   DEFAULT_VISION_MODEL_ID,
   GEMINI_VISION_MODEL_OPTIONS,
+  SUGGESTION_AUTHOR_MODE_OPTIONS,
   hasRequiredAiEnrichmentPromptPlaceholders,
+  resolveClientSuggestionAuthorMode,
   resolveClientVisionModelId,
 } from "./aiEnrichmentSettingsConstants";
 
@@ -45,5 +48,27 @@ describe("aiEnrichmentSettingsConstants", () => {
     assert.ok(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE.includes(AI_ENRICHMENT_EXCLUDED_TAGS_PLACEHOLDER));
     assert.ok(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE.includes(AI_ENRICHMENT_APPROVED_CATEGORY_NAMES_PLACEHOLDER));
     assert.ok(hasRequiredAiEnrichmentPromptPlaceholders(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE));
+  });
+
+  it("defaults suggestion author mode to off", () => {
+    assert.equal(DEFAULT_SUGGESTION_AUTHOR_MODE, "off");
+  });
+
+  it("resolveClientSuggestionAuthorMode accepts off, auto, and always", () => {
+    assert.equal(resolveClientSuggestionAuthorMode("off"), "off");
+    assert.equal(resolveClientSuggestionAuthorMode("auto"), "auto");
+    assert.equal(resolveClientSuggestionAuthorMode("always"), "always");
+  });
+
+  it("resolveClientSuggestionAuthorMode falls back to off for an unknown value", () => {
+    assert.equal(resolveClientSuggestionAuthorMode("not-a-real-mode"), "off");
+    assert.equal(resolveClientSuggestionAuthorMode(undefined), "off");
+  });
+
+  it("SUGGESTION_AUTHOR_MODE_OPTIONS covers exactly off/auto/always", () => {
+    assert.deepEqual(
+      SUGGESTION_AUTHOR_MODE_OPTIONS.map((option) => option.value),
+      ["off", "auto", "always"],
+    );
   });
 });
