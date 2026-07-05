@@ -2,10 +2,10 @@ import {
   doc,
   getDoc,
   getDocs,
+  runTransaction,
   serverTimestamp,
-  setDoc,
-  updateDoc,
   type DocumentData,
+  type Transaction,
   type Timestamp,
 } from "firebase/firestore";
 
@@ -16,15 +16,18 @@ import { permissionService } from "../../permissions/services/permissionService"
 import { userService } from "../../users/services/userService";
 import type { User } from "../../users/types/user.types";
 import type { Customer } from "../../../../../../shared/types/customer/customer.types";
+import { requireValidCustomerUsername } from "../../../../../../shared/utils/customerUsername";
 
 export interface CreateCustomerRecordInput {
   displayName: string;
+  username: string;
   email?: string;
   notes?: string;
 }
 
 export interface UpdateCustomerRecordInput {
   displayName: string;
+  username: string;
   email?: string;
   notes?: string;
 }
@@ -33,12 +36,15 @@ interface CustomerDocumentData extends DocumentData {
   id?: unknown;
   userId?: unknown;
   displayName?: unknown;
+  username?: unknown;
   email?: unknown;
   notes?: unknown;
   isGuest?: unknown;
   totalPrintRequests?: unknown;
+  nextPrintRequestSequence?: unknown;
   totalRequests?: unknown;
   totalApprovedRequests?: unknown;
+  usernameUpdatedAt?: unknown;
   createdAt?: unknown;
   updatedAt?: unknown;
 }
@@ -65,13 +71,17 @@ function mapCustomerData(customerId: string, data: CustomerDocumentData): Custom
     id: customerId,
     userId: typeof data.userId === "string" ? data.userId : undefined,
     displayName: data.displayName,
+    username: typeof data.username === "string" ? data.username : undefined,
     email: typeof data.email === "string" ? data.email : undefined,
     notes: typeof data.notes === "string" ? data.notes : undefined,
     isGuest: data.isGuest,
     totalPrintRequests: data.totalPrintRequests,
+    nextPrintRequestSequence:
+      typeof data.nextPrintRequestSequence === "number" ? data.nextPrintRequestSequence : undefined,
     totalRequests: typeof data.totalRequests === "number" ? data.totalRequests : undefined,
     totalApprovedRequests:
       typeof data.totalApprovedRequests === "number" ? data.totalApprovedRequests : undefined,
+    usernameUpdatedAt: resolveRequiredTimestamp(data.usernameUpdatedAt),
     createdAt,
     updatedAt,
   };
@@ -122,6 +132,28 @@ async function assertEmailIsUniqueForDirectory(
   }
 }
 
+function getCustomerUsernameReservationRef(username: string) {
+  return doc(firestoreCollectionService.getCustomerUsernamesCollection(), username);
+}
+
+async function assertUsernameReservationAvailable(
+  username: string,
+  customerId: string,
+  transaction: Transaction,
+) {
+  const reservationRef = getCustomerUsernameReservationRef(username);
+  const reservationSnapshot = await transaction.get(reservationRef);
+
+  if (
+    reservationSnapshot.exists() &&
+    reservationSnapshot.data().customerId !== customerId
+  ) {
+    throw new Error("That customer username is already used by another customer.");
+  }
+
+  return reservationRef;
+}
+
 export const customerService = {
   async listCustomers(caller: User): Promise<Customer[]> {
     if (!permissionService.canManageCustomers(caller)) {
@@ -164,6 +196,7 @@ export const customerService = {
     }
 
     const displayName = input.displayName.trim();
+    const username = requireValidCustomerUsername(input.username);
 
     if (!displayName) {
       throw new Error("Customer name is required.");
@@ -172,19 +205,34 @@ export const customerService = {
     await assertEmailIsUniqueForDirectory(caller, input.email);
 
     const customerRef = doc(firestoreCollectionService.getCustomersCollection());
-    const payload = withoutUndefinedFields({
-      id: customerRef.id,
-      displayName,
-      email: normalizeOptionalEmail(input.email),
-      notes: input.notes?.trim() || undefined,
-      isGuest: false,
-      totalPrintRequests: 0,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    });
+    const normalizedEmail = normalizeOptionalEmail(input.email);
 
-    assertNoUndefinedFirestoreFields(payload, "Customer payload");
-    await setDoc(customerRef, payload);
+    await runTransaction(firestoreCollectionService.getCustomersCollection().firestore, async (transaction) => {
+      const reservationRef = await assertUsernameReservationAvailable(username, customerRef.id, transaction);
+      const payload = withoutUndefinedFields({
+        id: customerRef.id,
+        displayName,
+        username,
+        email: normalizedEmail,
+        notes: input.notes?.trim() || undefined,
+        isGuest: false,
+        totalPrintRequests: 0,
+        nextPrintRequestSequence: 1,
+        usernameUpdatedAt: serverTimestamp(),
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+
+      const reservationPayload = {
+        customerId: customerRef.id,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      };
+
+      assertNoUndefinedFirestoreFields(payload, "Customer payload");
+      transaction.set(customerRef, payload);
+      transaction.set(reservationRef, reservationPayload);
+    });
 
     const createdSnapshot = await getDoc(customerRef);
     return mapCustomerData(customerRef.id, createdSnapshot.data() as CustomerDocumentData);
@@ -201,6 +249,7 @@ export const customerService = {
 
     const current = await this.getCustomerById(caller, customerId);
     const displayName = input.displayName.trim();
+    const username = requireValidCustomerUsername(input.username);
 
     if (!displayName) {
       throw new Error("Customer name is required.");
@@ -209,21 +258,44 @@ export const customerService = {
     await assertEmailIsUniqueForDirectory(caller, input.email, { excludeCustomerId: customerId });
 
     const customerRef = doc(firestoreCollectionService.getCustomersCollection(), customerId);
-    const payload = withoutUndefinedFields({
-      displayName,
-      email: normalizeOptionalEmail(input.email),
-      notes: input.notes?.trim() || undefined,
-      isGuest: current.isGuest,
-      totalPrintRequests: current.totalPrintRequests,
-      totalRequests: current.totalRequests,
-      totalApprovedRequests: current.totalApprovedRequests,
-      createdAt: current.createdAt,
-      updatedAt: serverTimestamp(),
-      userId: current.userId,
-    });
+    const normalizedEmail = normalizeOptionalEmail(input.email);
 
-    assertNoUndefinedFirestoreFields(payload, "Customer update payload");
-    await updateDoc(customerRef, payload);
+    await runTransaction(firestoreCollectionService.getCustomersCollection().firestore, async (transaction) => {
+      const reservationRef = await assertUsernameReservationAvailable(username, customerId, transaction);
+      const previousUsername = current.username;
+      const previousReservationRef =
+        previousUsername && previousUsername !== username
+          ? getCustomerUsernameReservationRef(previousUsername)
+          : null;
+      const payload = withoutUndefinedFields({
+        displayName,
+        username,
+        email: normalizedEmail,
+        notes: input.notes?.trim() || undefined,
+        isGuest: current.isGuest,
+        totalPrintRequests: current.totalPrintRequests,
+        nextPrintRequestSequence: current.nextPrintRequestSequence ?? 1,
+        totalRequests: current.totalRequests,
+        totalApprovedRequests: current.totalApprovedRequests,
+        createdAt: current.createdAt,
+        updatedAt: serverTimestamp(),
+        usernameUpdatedAt: previousUsername === username ? current.usernameUpdatedAt : serverTimestamp(),
+        userId: current.userId,
+      });
+      const reservationPayload = {
+        customerId,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      };
+
+      assertNoUndefinedFirestoreFields(payload, "Customer update payload");
+      transaction.update(customerRef, payload);
+      transaction.set(reservationRef, reservationPayload, { merge: true });
+
+      if (previousReservationRef) {
+        transaction.delete(previousReservationRef);
+      }
+    });
 
     const updatedSnapshot = await getDoc(customerRef);
     return mapCustomerData(updatedSnapshot.id, updatedSnapshot.data() as CustomerDocumentData);

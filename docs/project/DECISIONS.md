@@ -6,6 +6,132 @@
 
 ## Decisions
 
+### ADR-FP-047: Print Request item preview polish separates display DPI from save eligibility
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-04 |
+| Status | accepted |
+
+**Decision**
+
+Print Request item cards show contained thumbnails in the existing item-card footprint and reuse the
+existing design preview lightbox for enlarged previews. The preview uses `design.previewPath` when
+available and falls back to `design.thumbnailPath`.
+
+Requested-size DPI feedback is calculated whenever source pixel dimensions and requested inch
+dimensions are valid. The 22-inch standard Print Request maximum is applied after DPI calculation,
+so oversized requested dimensions still display the accurate DPI and quality label while remaining
+blocked from autosave with the existing Custom Request guidance.
+
+**Why**
+
+Staff need to inspect the full artwork from a request item without cropped previews. Staff also
+need accurate print-quality feedback while correcting oversized requested dimensions; displaying
+`0 DPI` solely because a size exceeds 22 inches hides useful information.
+
+**Consequences**
+
+- Positive: Item cards show full artwork without changing the card footprint.
+- Positive: Staff can open a larger preview without mutating images or design records.
+- Positive: Oversized requested sizes still block standard item saves while showing accurate DPI.
+- Neutral: No data model, Firestore rules, index, deploy, migration, backfill, or image-generation
+  change is required.
+
+---
+
+### ADR-FP-046: Print Request item creation initializes standard requested size separately from catalog dimensions
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-04 |
+| Status | accepted |
+
+**Decision**
+
+Approved catalog designs can be added to standard Print Requests even when their catalog/default
+print dimensions exceed the 22-inch standard request cap. New `printRequestItems` initialize their
+requested size separately from the catalog design dimensions:
+
+- If the design/default width is greater than 10 inches, initialize requested width to 10 inches
+  when that keeps both requested sides at or below 22 inches.
+- If the design/default width is already below 10 inches, keep that smaller requested width when
+  valid.
+- Calculate requested height proportionally from the design pixel aspect ratio.
+- For extreme aspect ratios, reduce the initialized width just enough so neither requested side
+  exceeds 22 inches.
+
+The 22-inch rule remains enforced for persisted standard Print Request item dimensions. Edit and
+autosave validation still blocks requested sizes above 22 inches and below 72 DPI. Catalog design
+dimensions are not mutated, and original images, thumbnails, and previews are not resized,
+resampled, compressed, or regenerated. Duplicate item creation preserves the source item's explicit
+requested size instead of reinitializing.
+
+**Why**
+
+The previous selection path inherited `design.printWidthInches` / `printHeightInches` as requested
+item dimensions. That incorrectly blocked approved catalog designs such as a 30 x 35 inch design
+before a Print Request item could be created. Catalog/default dimensions and requested Print Request
+item dimensions are different product concepts and must stay separate.
+
+**Consequences**
+
+- Positive: Staff can add oversized catalog designs to standard Print Requests and get a usable
+  requested size, for example about 10 x 11.67 inches for a 30 x 35 design.
+- Positive: No Firestore rules exception or deploy checkpoint is needed because new requested item
+  dimensions remain within the existing 22-inch cap.
+- Tradeoff: Extreme aspect-ratio designs may initialize below 10 inches wide so the proportional
+  requested size remains valid for standard Print Requests.
+
+---
+
+### ADR-FP-045: Print Request origin is explicit metadata, not name inference
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-04 |
+| Status | accepted |
+
+**Decision**
+
+Print Requests store explicit origin metadata on `requestOrigin`:
+
+- `studio_internal` for internal requests created in Fresh Prints Studio.
+- `studio_customer` for staff-created customer requests in Fresh Prints Studio.
+- `portal_customer` reserved for future Fresh Prints Portal-created customer requests.
+
+Request origin must not be inferred from request names. Customer request names remain
+sequence-based, such as `sarahsmith-CR001`, and internal request names remain `baseName-IR###`.
+
+Existing Print Requests without `requestOrigin` remain readable with no migration or backfill.
+Studio display badges use compatibility fallback rules:
+
+- `studio_internal` -> `Internal`
+- `studio_customer` -> `Staff Created`
+- `portal_customer` -> `Customer Submitted`
+- missing origin + `isInternal === true` -> `Internal`
+- missing origin + `customerId` exists -> `Staff Created`
+- otherwise -> `Legacy`
+
+No origin filters, Firestore indexes, Portal behavior, customer Auth, Portal login,
+customer-created request workflow, migration, or backfill are part of this Phase 6 follow-up.
+
+**Why**
+
+Studio and future Portal need to distinguish internal lists, staff-created customer lists, and
+future customer-submitted Portal lists at a glance. Names are display identifiers and may evolve;
+origin is product metadata and must be stored separately for future authorization and workflow
+clarity.
+
+**Consequences**
+
+- Positive: Future Portal work can rely on a clear origin field instead of fragile name parsing.
+- Positive: Existing records remain readable without data migration.
+- Tradeoff: Firestore rules must be deployed separately before dev/manual QA can write the new
+  field against Firebase.
+
+---
+
 ### ADR-FP-044: Business-context framing in the catalog prompt (v21) — judge by subject, not visual style
 
 | Field | Value |
@@ -759,6 +885,71 @@ Follow-up: Add targeted tests for `printRequestService` and server-side indexed 
 
 ---
 
+### ADR-FP-045: Username-based Print Request naming and standard item sizing
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-04 |
+| Status | accepted |
+
+**Context**
+Standard Print Requests need stable request names that do not depend on loaded request lists, and
+staff need to request the same catalog design in multiple sizes without moving into Print Runs,
+Portal, or Custom Requests.
+
+**Decision**
+
+1. Customer records use unique normalized usernames reserved through `customerUsernames/{username}`.
+2. Customer request names are generated in Firestore transactions as `username-CR001`; internal request names use `baseName-IR001`.
+3. Customer counters live on `customers/{customerId}.nextPrintRequestSequence`; the internal counter lives at `counters/printRequests`.
+4. Standard Print Request items support requested width/height in inches, locked aspect ratio, live DPI feedback, and duplicate same-design rows.
+5. Standard item saves are blocked above 22 inches on either axis or below 72 DPI; 72-299 DPI warns, and 300+ DPI saves without warning.
+6. Standard Print Request item UI hides item notes and production status controls, preserving persisted fields for compatibility and future production workflows.
+7. No Portal, Print Runs, Custom Requests, Remove Background, Upscale, payment, shipping, migration, backfill, or design lifecycle status changes are introduced by this decision.
+
+**Consequences**
+Positive: Request naming is transaction-safe and duplicate same-design size rows are first-class standard Print Request items.
+Tradeoff: Firestore rules must be deployed separately before dev/manual QA can pass against Firebase if the local rules changes are not already active.
+
+---
+
+### ADR-FP-046: Print Request item autosave, stable item ordering, and generated name locks
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-04 |
+| Status | accepted |
+
+**Context**
+Print Request QA found that item edits were noisy, browser number spinners looked out of place,
+duplicate/edit refreshes were disruptive, and generated request names/status should not be edited
+from the standard detail page.
+
+**Decision**
+
+1. Quantity, requested width, and requested height edits autosave through a subtle bottom-right
+   indicator.
+2. Normal autosaves do not use item save buttons or success alerts; failures show `Save failed`
+   with a retry action.
+3. Request status and customer request names remain locked on the standard Print Request detail page.
+4. Internal request base names may be edited only when the request has a usable locked sequence;
+   the generated request-name preview updates while staff type, but the persisted display name is
+   re-derived from `internalBaseName` and `requestSequenceNumber` only when staff manually save the
+   Request Detail section.
+5. Request item reads remain scoped by `printRequestId`; display ordering is client-side by
+   `sortOrder`, then `createdAt`, then document ID so legacy items without `sortOrder` remain visible.
+6. No Firestore `sortOrder` index is introduced unless a future implementation moves item ordering
+   server-side.
+
+**Consequences**
+Positive: Normal item editing is quieter and stable, duplicate rows can appear without a full
+detail reload, and generated naming cannot be accidentally broken from the page UI or saved before
+staff explicitly saves Request Detail changes.
+Tradeoff: Local Firestore rules must allow the new metadata fields before dev/manual QA can pass
+against Firebase; any rules deploy remains a separate human checkpoint.
+
+---
+
 ### ADR-FP-029: Catalog enrichment prompt v15 + validation hardening
 
 | Field | Value |
@@ -1287,6 +1478,9 @@ AppForge starter template ADRs (ADR-001 through ADR-004 in prior template) descr
 
 | Date | Summary |
 |------|---------|
+| 2026-07-04 | ADR-FP-047: Print Request item preview polish separates display DPI from save eligibility |
+| 2026-07-04 | ADR-FP-046: Print Request item creation initializes standard requested size separately from catalog dimensions |
+| 2026-07-04 | ADR-FP-045: Print Request origin is explicit metadata, not name inference |
 | 2026-06-30 | ADR-FP-038: AI Processing approved taxonomy prompt context |
 | 2026-06-24 | ADR-FP-009: Three-workspace model; AI Review Inbox; no persisted review drafts; confidence informational only |
 | 2026-06-24 | ADR-FP-008: Fresh Prints Studio + Fresh Prints Portal naming |

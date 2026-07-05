@@ -464,7 +464,14 @@ Firestore rules and `permissionService` should stay aligned:
 * Active staff may create and update `printRequests`
 * Active staff may create, update, and remove `printRequestItems`
 * Active staff may create and update `customers`
+* Active staff may create/update/delete customer username reservation documents
+* Active staff may read/update the `counters/printRequests` internal request counter
 * Customer role has no Studio access to these collections yet
+
+The standard Print Request detail page does not expose arbitrary request-name or request-status
+writes. Customer request names and all request sequences are locked after creation. Internal
+requests may manually save the internal base name when a usable locked sequence exists; the service
+re-derives the persisted display name from `internalBaseName` and `requestSequenceNumber`.
 
 Request items own production status:
 
@@ -476,6 +483,25 @@ Request items own production status:
 * `canceled`
 
 Design documents must not receive production status writes from Print Requests.
+
+Standard Print Request item quantity and requested-size edits autosave. These edits preserve hidden
+`notes` and `status` fields. The standard item UI does not expose item notes or production status
+controls.
+
+Customer usernames are staff-managed in Studio for Phase 6. Duplicate usernames are blocked through
+transactional reservation documents, not query-only checks. Firestore rules updates for username
+reservations and counters require a separate deploy checkpoint.
+
+Local Firestore rules allow the approved `internalBaseName`, `nameFormatVersion`, and item
+`sortOrder` metadata fields for Phase 6 compatibility. Deploying those rule changes remains a
+separate human checkpoint.
+
+Print Request origin metadata is explicit and optional for legacy compatibility. New Studio writes
+set `requestOrigin` to `studio_internal` or `studio_customer`; `portal_customer` is reserved for
+future Portal writes. Firestore rules validate the value and require it to align with the internal
+or customer assignment when present, but existing documents without `requestOrigin` remain readable.
+Origin metadata does not grant customer Portal write access in Phase 6, and any Firestore rules
+deploy remains a separate human checkpoint.
 
 ---
 

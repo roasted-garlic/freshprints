@@ -104,18 +104,43 @@ Customers And Print Requests (foundation PASS WITH NOTES)
 
 Current Goal:
 
-Start the next Phase 6 hardening phase: `print-request-query-index-hardening`.
+Phase 6 Print Request item sizing and username naming is complete and signed off PASS WITH FOLLOW-UP
+NOTES. The `print-request-detail-autosave-and-name-locking` follow-up is complete and signed off
+PASS: item autosave, stable item ordering, Request Detail manual save/name locks, and revised
+`CR`/`IR` request names are implemented and verified. The `print-request-origin-tracking` follow-up
+is complete and signed off PASS: explicit request-origin metadata and Studio badges are implemented,
+dev Firestore rules were deployed, and manual QA passed. The
+`print-request-oversized-selection-unblock` follow-up is complete and signed off PASS WITH
+FOLLOW-UP NOTES: standard requested-size initialization now lets oversized approved catalog designs
+be added from Design Library request-selection mode without mutating catalog dimensions or image
+files. The `print-request-item-preview-and-dpi-polish` follow-up is complete and signed off PASS:
+Print Request item thumbnails now use contained fit in the existing card footprint, thumbnails open
+in a lightbox preview, oversized requested dimensions still show accurate DPI while remaining
+blocked above 22 inches, and blank width/height edits no longer coerce to `0` during autosave
+editing.
 
 AI Processing local fixes through `ai-tag-alias-reconciliation` are implemented and signed off. The
 AI Processing deploy/smoke checkpoint passed per user report on 2026-07-01, so it is no longer the
-current blocker. Phase 6 Print Requests foundation remains PASS WITH NOTES; the next code priority is
-server-side query/index hardening for Print Requests before scale.
+current blocker. Phase 6 Print Requests foundation remains PASS WITH NOTES. The
+`print-request-query-index-hardening` follow-up is complete: request, item, summary, and customer
+reads now use indexed query paths, the required index definitions are recorded, and dev indexes were
+deployed for QA. The `print-request-item-sizing-and-username-naming` follow-up is also complete:
+customer usernames, transaction-safe request naming, standard item sizing/DPI validation, duplicate
+request items, and dev Firestore rules are in place. The detail autosave/name-locking follow-up keeps
+the work in Phase 6 and does not add Print Runs, Portal behavior, or Custom Requests. The origin
+tracking implementation remains Phase 6 foundation work with Phase 8 preparation only; it does not
+add Portal request creation. The oversized-selection unblock implementation remained Studio Print
+Request behavior only and did not change catalog design dimensions, image files, Portal behavior,
+Print Runs, or Custom Requests.
 
 **Completed milestones (per signoffs):** Phase 1 foundation, Phase 2 design library (2A–2C), Phase 3 import pipeline (3A–3C), Phase 3D print size and catalog status separation, **Phase 4 catalog cleanup**, Phase 5 AI Review / AI enrichment baseline and AI Processing smoke checkpoint.
 
 **Phase 6 source plan:** `docs/workflow/plans/2026-06-28-phase-6-print-requests-foundation-plan.md`.
 
-**Last realignment:** 2026-07-01 — AI Processing smoke test passed per user report after the local AI reconciliation fixes; roadmap current state now points to Phase 6 `print-request-query-index-hardening` as the next recommended managed code phase. Phase 6 Print Requests foundation signed off PASS WITH NOTES in `docs/workflow/reviews/2026-06-29-phase-6-print-requests-catch-up-test-report.md`; customer creation/provisioning follow-up passed in `docs/workflow/reviews/2026-06-29-customer-creation-provisioning-bug-test-report.md`.
+**Last realignment:** 2026-07-04 — Phase 6 `print-request-item-preview-and-dpi-polish` signed off PASS in `docs/workflow/reviews/2026-07-04-print-request-item-preview-and-dpi-polish-signoff.md`; plan: `docs/workflow/plans/2026-07-04-print-request-item-preview-and-dpi-polish-plan.md`; test report: `docs/workflow/reviews/2026-07-04-print-request-item-preview-and-dpi-polish-test-report.md`. Phase 6 `print-request-oversized-selection-unblock` signed off PASS WITH FOLLOW-UP NOTES in `docs/workflow/reviews/2026-07-04-print-request-oversized-selection-unblock-signoff.md`; plan: `docs/workflow/plans/2026-07-04-print-request-oversized-selection-unblock-plan.md`; test report: `docs/workflow/reviews/2026-07-04-print-request-oversized-selection-unblock-test-report.md`. Phase 6 `print-request-origin-tracking` signed off PASS in `docs/workflow/reviews/2026-07-04-print-request-origin-tracking-signoff.md`; dev Firestore rules were deployed and manual QA passed. Plan: `docs/workflow/plans/2026-07-04-print-request-origin-tracking-plan.md`; test report: `docs/workflow/reviews/2026-07-04-print-request-origin-tracking-test-report.md`. Phase 6 `print-request-detail-autosave-and-name-locking` signed off PASS in `docs/workflow/reviews/2026-07-04-print-request-detail-autosave-and-name-locking-signoff.md`. Phase 6 `print-request-item-sizing-and-username-naming` signed off PASS WITH FOLLOW-UP NOTES in `docs/workflow/reviews/2026-07-04-print-request-item-sizing-and-username-naming-signoff.md`. Phase 6 `print-request-query-index-hardening` signed off in `docs/workflow/reviews/2026-07-03-print-request-query-index-hardening-signoff.md`. Phase 6 Print Requests foundation signed off PASS WITH NOTES in `docs/workflow/reviews/2026-06-29-phase-6-print-requests-catch-up-test-report.md`; customer creation/provisioning follow-up passed in `docs/workflow/reviews/2026-06-29-customer-creation-provisioning-bug-test-report.md`.
+
+**Current implementation follow-up:** None active. The latest Phase 6 follow-up,
+`print-request-item-preview-and-dpi-polish`, is signed off PASS.
 
 ---
 
@@ -622,9 +647,11 @@ Delivered and manually QA'd in Fresh Prints Studio:
 * Print request list/detail workspace
 * Internal, registered customer, and guest customer create modes
 * Request item edit/remove controls
+* Username-based transaction-safe customer request names (`sarahsmith-CR001`) and internal request names (`whatnot-IR001`)
+* Standard request item quantity, requested-size, DPI feedback, duplicate, and confirm-remove controls
 * Design Library request-selection mode with quantity selection
 * Owner/admin customer-record creation path from Users for registered customer Print Requests
-* Firestore rules for `customers`, `printRequests`, and `printRequestItems`
+* Firestore rules for `customers`, `customerUsernames`, `counters`, `printRequests`, and `printRequestItems`
 * Shared `PrintRequest`, `PrintRequestItem`, and `Customer` types
 * Sticky Design Library filter dock for long catalog browsing
 
@@ -632,7 +659,9 @@ Notes:
 
 * Registered customer request testing has a corrected implementation path through owner/admin-created customer records in Users; authenticated QA passed in `docs/workflow/reviews/2026-06-29-customer-creation-provisioning-bug-test-report.md`.
 * Customer records created in Phase 6 do not create Firebase Auth accounts, Portal login, or Studio access.
-* Print Request indexes and dedicated unit tests remain hardening follow-ups.
+* Print Request query/index hardening is signed off in `docs/workflow/reviews/2026-07-03-print-request-query-index-hardening-signoff.md`.
+* Print Request item sizing and username naming is signed off PASS WITH FOLLOW-UP NOTES in `docs/workflow/reviews/2026-07-04-print-request-item-sizing-and-username-naming-signoff.md`; follow-ups TD-016, TD-017, and TD-018 are addressed and signed off by `print-request-detail-autosave-and-name-locking` in `docs/workflow/reviews/2026-07-04-print-request-detail-autosave-and-name-locking-signoff.md`.
+* Print Request oversized selection unblock is signed off PASS WITH FOLLOW-UP NOTES in `docs/workflow/reviews/2026-07-04-print-request-oversized-selection-unblock-signoff.md`; follow-ups TD-019, TD-020, and TD-021 are implemented and signed off by `print-request-item-preview-and-dpi-polish` for item thumbnail fit, item thumbnail lightbox, and accurate DPI display when requested dimensions are oversized.
 
 **Not in scope:** Payment, checkout, shipping, order fulfillment.
 

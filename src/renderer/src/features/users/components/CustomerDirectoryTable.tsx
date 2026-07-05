@@ -59,6 +59,7 @@ export function CustomerDirectoryTable({
           <thead>
             <tr>
               <th>Name</th>
+              <th>Username</th>
               <th>Email</th>
               <th>Type</th>
               <th>Notes</th>
@@ -69,6 +70,7 @@ export function CustomerDirectoryTable({
             {customers.map((customer) => (
               <tr key={customer.id}>
                 <td className="user-directory-name">{customer.displayName}</td>
+                <td>{customer.username ?? "Needs username"}</td>
                 <td>{customer.email ?? "—"}</td>
                 <td>
                   <Badge variant="info">Customer</Badge>

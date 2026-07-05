@@ -27,7 +27,11 @@ See field definitions in template. Fixes require approved Managed Phases — **n
 | TD-011 | Functions TS build emits nested `lib/functions/src/` (shared types in `include`) | deployment | low | `functions/tsconfig.json` | `main` must match nested output; stale flat `lib/index.js` caused deploy filter miss | Flatten with `rootDir: src` + project references or local type shim | `functions-build-layout` | open |
 | TD-012 | Accidental `tsc` output in `shared/types/` breaks Vite (CJS `.js` resolved before `.ts`) | deployment | **high** | `shared/types/ai/` | White screen — Rollup cannot import named exports from stale CJS | Keep `shared/**/*.js` gitignored; never commit compiled shared types | **resolved** 2026-06-24 | **resolved** |
 | TD-013 | Customer creation/provisioning unavailable from User Management | feature gap | medium | `/users`, customer record creation flow | Owner could not create a customer record for registered customer Print Request QA | Implement owner/admin customer-record creation from Users for Phase 6 Print Requests without customer Auth, Portal login, or Studio access | `customer-creation-provisioning-bug` | resolved |
-| TD-014 | Print Request broad reads need indexed server-side query hardening before scale | data/performance | medium | `printRequestService`, `firestore.indexes.json` | Current Phase 6 broad reads are acceptable for foundation but will not scale cleanly | Add server-side query patterns and indexes for request status/customer/internal/item-status/customer-directory filters | `print-request-query-index-hardening` | open |
+| TD-014 | Print Request broad reads need indexed server-side query hardening before scale | data/performance | medium | `printRequestService`, `firestore.indexes.json` | Phase 6 foundation broad reads were replaced for request, item, summary, and customer paths; residual scale risk remains if per-request summary queries become too costly | Consider denormalized request-level summary fields only after volume requires it, with a planned migration/backfill | `print-request-query-index-hardening` | narrowed |
+| TD-015 | Long Firebase index error URLs can stretch operational error panels horizontally | ui/polish | low | `ErrorState`, shared error message styling | Missing-index errors include very long Firebase Console URLs that can break Print Requests page width during dev/test failures | Add shared error text wrapping such as `overflow-wrap: anywhere` without changing error content | `error-state-long-url-wrapping` | open |
+| TD-019 | Print Request item thumbnails crop artwork previews | ui/polish | low | `PrintRequestItemCard` thumbnail display | Item cards should keep the same footprint but show the full artwork so staff can inspect selected request items without misleading crop | Use contained fit inside the existing thumbnail footprint | `print-request-item-thumbnail-polish` | open |
+| TD-020 | Print Request item thumbnails are not openable in a lightbox | ui/polish | low | `PrintRequestItemCard` / preview modal pattern | Staff need a quick full preview of request item artwork without leaving request detail | Make item thumbnails clickable and reuse or add a lightbox preview pattern | `print-request-item-thumbnail-polish` | open |
+| TD-021 | Oversized requested items show `0 DPI` instead of accurate DPI | ui/validation | low | `assessPrintRequestItemSize`, `PrintRequestItemCard` DPI display | Over-22 requested sizes should still display the calculated DPI while showing the oversized error and warning styling | Separate DPI calculation from save eligibility so oversized dimensions can report accurate DPI | `print-request-item-dpi-display-polish` | open |
 
 ---
 
@@ -40,6 +44,9 @@ See field definitions in template. Fixes require approved Managed Phases — **n
 | TD-R03 | AppForge doc migration incomplete | 2026-06-24 | Prior managed phase `fresh-prints-appforge-migration` |
 | TD-R04 | Generated build artifacts tracked in git | 2026-06-24 | Repository stabilization: untracked 84 files; `.gitignore` updated |
 | TD-R05 | Customer creation/provisioning unavailable from User Management | 2026-06-29 | `/users` now supports customer record create/edit flows, duplicate email prevention, and registered customer Print Request QA without customer Auth or Studio access |
+| TD-R06 | Native number spinners remain visible on Print Request item numeric inputs | 2026-07-04 | `print-request-detail-autosave-and-name-locking` hides native quantity/width/height spinners while preserving numeric inputs |
+| TD-R07 | Print Request item edits still use explicit save/alert refresh flow | 2026-07-04 | `print-request-detail-autosave-and-name-locking` replaces normal item save buttons/success alerts with autosave, dynamic duplicate/remove updates, and stable item ordering |
+| TD-R08 | Print Request generated names, sequences, and status need stronger edit locks and revised naming format | 2026-07-04 | `print-request-detail-autosave-and-name-locking` locks customer names/sequences/status on the detail page and uses `username-CR001` / `baseName-IR001` names |
 
 ---
 
@@ -47,7 +54,13 @@ See field definitions in template. Fixes require approved Managed Phases — **n
 
 | Date | Summary |
 |------|---------|
+| 2026-07-04 | TD-019, TD-020, and TD-021 added from `print-request-oversized-selection-unblock` PASS WITH FOLLOW-UP NOTES manual QA |
+| 2026-07-04 | TD-016, TD-017, and TD-018 resolved by `print-request-detail-autosave-and-name-locking`; TD-015 remains open |
+| 2026-07-04 | TD-016, TD-017, and TD-018 added from `print-request-item-sizing-and-username-naming` manual QA follow-up notes |
+| 2026-07-04 | `print-request-item-sizing-and-username-naming` removed the request-naming list-scan guardrail by moving customer/internal request names to transaction-safe counters |
+| 2026-07-03 | TD-015 added after dev QA hit a long Firebase missing-index URL that stretched the Print Requests page horizontally |
 | 2026-06-29 | Manual QA rejected inline Print Request customer creation UX; implementation corrected to move customer record creation into Users |
+| 2026-07-03 | TD-014 narrowed after `print-request-query-index-hardening`: request/item/customer reads now use server-side query paths and index definitions were added; future denormalized summaries remain deferred |
 | 2026-06-29 | TD-014 added during wrap-up audit; Print Request indexes deferred to scale hardening and do not block Phase 6 closeout |
 | 2026-06-29 | TD-013 resolved after authenticated manual QA passed and final checks completed |
 | 2026-06-29 | TD-013 implementation completed with automated checks passing; authenticated manual QA pending |

@@ -32,10 +32,12 @@ export function usePrintRequests() {
     setState((currentState) => ({ ...currentState, error: null, isLoading: true }));
 
     try {
-      const [requests, summariesByRequestId] = await Promise.all([
-        printRequestService.listPrintRequests(user),
-        printRequestService.listPrintRequestItemSummaries(user),
-      ]);
+      const requests = await printRequestService.listPrintRequests(user);
+      const summariesByRequestId = await printRequestService.listPrintRequestItemSummariesForRequests(
+        user,
+        requests.map((request) => request.id),
+      );
+
       setState({ requests, summariesByRequestId, error: null, isLoading: false });
     } catch (error) {
       setState({

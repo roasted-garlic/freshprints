@@ -1030,13 +1030,15 @@ Named lists of approved catalog designs for a customer, guest, or internal staff
 ```txt
 Staff creates a request for a registered customer, guest customer, or internal list
      ↓
+Service transaction assigns name (`username-CR001` or `baseName-IR001`)
+     ↓
 Open Design Library request-selection mode
      ↓
 Select approved catalog designs and quantities
      ↓
-Save Print Request Items (design + quantity + size snapshot)
+Print Request Items are created (design + quantity + standard initialized requested size)
      ↓
-Items tracked: pending → printed → done
+Adjust quantity and requested size in the request detail item UI; edits autosave
 ```
 
 ---
@@ -1048,10 +1050,47 @@ Items tracked: pending → printed → done
 * Staff may create requests for registered customers, guest customers, or internal lists.
 * Owner/admin staff create registered customers from `/users`, then select those existing customers when creating registered customer Print Requests.
 * Registered customers created in Phase 6 are `customers` documents with `isGuest: false`; they do not create Firebase Auth users, Portal login, or Studio access.
+* Customer records require a unique normalized username for new create/edit saves.
+* Customer Print Request names use the customer username and a transaction-safe per-customer counter, e.g. `sarahsmith-CR001`; customer request names and sequences are not editable after creation.
+* Internal Print Request names use an editable internal base name plus a locked transaction-safe global internal counter, e.g. `whatnot-IR001`; blank internal base names normalize to `internal`.
+* Print Requests store explicit origin metadata on `requestOrigin`: `studio_internal` for Studio internal requests, `studio_customer` for staff-created Studio customer requests, and `portal_customer` reserved for future Portal-created customer requests.
+* Studio origin badges display `Internal`, `Staff Created`, `Customer Submitted`, or fallback `Legacy`. Existing requests without `requestOrigin` remain readable and use compatibility display rules based on `isInternal` and `customerId`; request names are never parsed to determine origin.
+* Internal base-name edits update the generated request-name preview while staff type, but are persisted only when staff manually saves the Request Detail section.
+* Existing legacy request names such as `sarahsmith-0001` and `internal-0001` remain readable; no automatic migration or backfill is performed.
+* Request status is not editable from the standard Print Request detail page.
 * Request item status lives on `printRequestItems`, not on design documents.
+* Standard Print Request item UI hides item notes and production status controls; normal quantity/size autosaves preserve hidden values.
+* Standard Print Request item sizing is width/height in inches with locked aspect ratio.
+* New Print Request items initialize requested size separately from catalog/default design print
+  dimensions. If the design/default width is over 10 inches, requested width starts at 10 inches
+  when that keeps both sides within 22 inches; if the design/default width is already below
+  10 inches, that smaller width is preserved. Height is calculated proportionally from pixel aspect
+  ratio, and extreme aspect ratios are initialized to the largest proportional size that keeps both
+  requested sides at or below 22 inches.
+* Standard Print Request item saves are blocked above 22 inches on either axis or below 72 DPI.
+* Requested sizes from 72-299 DPI warn but may be saved; 300+ DPI saves without warning.
+* Requested-size DPI feedback is still calculated and displayed when a requested size is over
+  22 inches, as long as source pixel dimensions and requested inch dimensions are valid. The
+  over-22 Custom Request guidance remains the save-blocking error.
+* Print Request item cards show contained thumbnails in the existing item-card footprint. Available
+  thumbnails open an enlarged preview lightbox using `previewPath` when present, otherwise
+  `thumbnailPath`. Missing or unavailable images keep the fallback thumbnail state and do not open a
+  broken preview.
+* Catalog design print dimensions and image files are not mutated when a design is added to a
+  Print Request or when a request item is resized.
+* Same-design items with different requested sizes persist as separate `printRequestItems`.
+* Duplicate item creation updates the current request detail list dynamically and creates a separate `printRequestItems` document.
+* Item display ordering is stable: `sortOrder` when present, then `createdAt`, then document ID. Existing items without `sortOrder` remain visible.
 * Design lifecycle status remains catalog-only; Print Requests must not write `queued`, `printed`, `pending`, or `done` to `designs.status`.
 * `requestCount` and `lastRequestedAt` may increment on item add as lightweight request reference metadata. These fields do not imply production status and do not create Phase 10 analytics dashboards.
-* Current Phase 6 foundation uses broad reads for request collections; add Firestore indexes when server-side request queries are introduced.
+* Print Request list reads use server-side `updatedAt` ordering and supported single-field filters
+  for status, customer, or internal requests.
+* Print Request item detail reads and card summaries query `printRequestItems` by `printRequestId`
+  instead of scanning all request items. Item detail ordering is applied client-side for legacy
+  compatibility. Summaries are loaded for the currently displayed request IDs.
+* Customer directory reads are ordered by `displayName` and support the indexed `isGuest` filter path.
+* Request naming does not depend on loaded request lists.
+* Origin display does not add origin filters, origin indexes, Portal behavior, customer Auth, migrations, or backfills in Phase 6.
 
 ---
 

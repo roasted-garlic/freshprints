@@ -1,139 +1,397 @@
-import { ChevronDown, ChevronUp, Trash2 } from "lucide-react";
-import type { FormEvent } from "react";
+import { CopyPlus, Minus, Plus, Trash2, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { Badge } from "../../../shared/components/Badge";
 import { Button } from "../../../shared/components/Button";
 import { Card } from "../../../shared/components/Card";
-import { AutoResizeTextarea } from "../../../shared/components/AutoResizeTextarea";
-import { Select } from "../../../shared/components/Select";
 import { TextInput } from "../../../shared/components/TextInput";
+import { DesignPreviewLightbox } from "../../designs/components/DesignPreviewLightbox";
 import { DesignThumbnailPanel } from "../../designs/components/DesignThumbnailPanel";
+import { useDesignDerivativeUrl } from "../../designs/hooks/useDesignDerivativeUrl";
 import type { Design } from "../../designs/types/design.types";
 import type { PrintRequestItem } from "../../../../../../shared/types/printRequest/printRequest.types";
-import type { PrintRequestItemStatus } from "../../../../../../shared/types/printRequest/printRequest.enums";
+import {
+  assessPrintRequestItemSize,
+  calculateLockedHeightFromWidth,
+  calculateLockedWidthFromHeight,
+  formatPrintRequestItemSizeLabel,
+} from "../../../../../../shared/utils/printRequestItemSizing";
+import type { UpdatePrintRequestItemInput } from "../services/printRequestService";
 
 interface PrintRequestItemCardProps {
   design?: Design;
   item: PrintRequestItem;
-  isExpanded: boolean;
   onRemove: (item: PrintRequestItem) => void;
-  onToggleExpanded: (itemId: string) => void;
-  onUpdate: (event: FormEvent<HTMLFormElement>, item: PrintRequestItem) => void;
-  statusBadgeVariant: "success" | "warning" | "danger" | "info" | "default";
-  statusOptions: Array<{ label: string; value: PrintRequestItemStatus }>;
+  onDuplicate: (item: PrintRequestItem) => void;
+  onUpdate: (item: PrintRequestItem, input: UpdatePrintRequestItemInput) => Promise<void>;
+  onAutosaveStateChange: (
+    status: "saving" | "saved" | "failed",
+    message?: string,
+    retry?: () => Promise<void>,
+  ) => void;
 }
 
-function getItemStatusLabel(status: PrintRequestItemStatus): string {
-  switch (status) {
-    case "canceled":
-      return "Canceled";
-    case "done":
-      return "Done";
-    case "in_progress":
-      return "In progress";
-    case "pending":
-      return "Pending";
-    case "printed":
-      return "Printed";
-    case "queued":
-      return "Queued";
-    default:
-      return status;
+function resolveInitialWidth(item: PrintRequestItem, design?: Design): number {
+  return item.printWidthInches ?? design?.printWidthInches ?? 1;
+}
+
+function resolveInitialHeight(item: PrintRequestItem, design?: Design): number {
+  return item.printHeightInches ?? design?.printHeightInches ?? 1;
+}
+
+function formatEditableNumber(value: number): string {
+  return Number.isFinite(value) ? String(value) : "";
+}
+
+function parsePositiveIntegerInput(value: string): number | null {
+  const trimmedValue = value.trim();
+  if (!trimmedValue) {
+    return null;
   }
+
+  const parsedValue = Number(trimmedValue);
+  if (!Number.isFinite(parsedValue) || parsedValue < 1) {
+    return null;
+  }
+
+  return Math.floor(parsedValue);
+}
+
+function parsePositiveDecimalInput(value: string): number | null {
+  const trimmedValue = value.trim();
+  if (!trimmedValue) {
+    return null;
+  }
+
+  const parsedValue = Number(trimmedValue);
+  if (!Number.isFinite(parsedValue) || parsedValue <= 0) {
+    return null;
+  }
+
+  return parsedValue;
+}
+
+function buildItemSignature(quantity: number, width: number, height: number): string {
+  return JSON.stringify({
+    quantity,
+    width: Number.isFinite(width) ? Number(width.toFixed(2)) : width,
+    height: Number.isFinite(height) ? Number(height.toFixed(2)) : height,
+  });
 }
 
 export function PrintRequestItemCard({
   design,
   item,
-  isExpanded,
   onRemove,
-  onToggleExpanded,
+  onDuplicate,
   onUpdate,
-  statusBadgeVariant,
-  statusOptions,
+  onAutosaveStateChange,
 }: PrintRequestItemCardProps) {
   const title = design?.title ?? item.designId;
   const thumbPath = design?.thumbnailPath;
+  const previewPath = design?.previewPath ?? thumbPath;
+  const [quantityInput, setQuantityInput] = useState(String(item.quantity));
+  const [printWidthInput, setPrintWidthInput] = useState(formatEditableNumber(resolveInitialWidth(item, design)));
+  const [printHeightInput, setPrintHeightInput] = useState(formatEditableNumber(resolveInitialHeight(item, design)));
+  const [isConfirmingRemove, setIsConfirmingRemove] = useState(false);
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  const { url: previewUrl } = useDesignDerivativeUrl(previewPath);
+  const lastSavedSignatureRef = useRef(buildItemSignature(
+    item.quantity,
+    resolveInitialWidth(item, design),
+    resolveInitialHeight(item, design),
+  ));
+  const saveDraftRef = useRef<() => Promise<void>>(async () => undefined);
+
+  useEffect(() => {
+    const nextWidth = resolveInitialWidth(item, design);
+    const nextHeight = resolveInitialHeight(item, design);
+
+    setQuantityInput(String(item.quantity));
+    setPrintWidthInput(formatEditableNumber(nextWidth));
+    setPrintHeightInput(formatEditableNumber(nextHeight));
+    setIsConfirmingRemove(false);
+    setIsLightboxOpen(false);
+    lastSavedSignatureRef.current = buildItemSignature(item.quantity, nextWidth, nextHeight);
+  }, [design, item]);
+
+  const parsedQuantity = parsePositiveIntegerInput(quantityInput);
+  const parsedPrintWidthInches = parsePositiveDecimalInput(printWidthInput);
+  const parsedPrintHeightInches = parsePositiveDecimalInput(printHeightInput);
+
+  const sizeAssessment = useMemo(() => {
+    if (typeof design?.width !== "number" || typeof design.height !== "number") {
+      return null;
+    }
+
+    return assessPrintRequestItemSize({
+      pixelWidth: design.width,
+      pixelHeight: design.height,
+      printWidthInches: parsedPrintWidthInches ?? Number.NaN,
+      printHeightInches: parsedPrintHeightInches ?? Number.NaN,
+    });
+  }, [design, parsedPrintHeightInches, parsedPrintWidthInches]);
+
+  function commitQuantity(nextQuantity: number) {
+    if (!Number.isFinite(nextQuantity) || nextQuantity < 1) {
+      setQuantityInput("");
+      return;
+    }
+
+    setQuantityInput(String(Math.floor(nextQuantity)));
+  }
+
+  function updateWidth(nextWidthInput: string) {
+    setPrintWidthInput(nextWidthInput);
+
+    const nextWidth = parsePositiveDecimalInput(nextWidthInput);
+    if (typeof design?.width === "number" && typeof design.height === "number" && nextWidth !== null) {
+      setPrintHeightInput(
+        formatEditableNumber(calculateLockedHeightFromWidth(design.width, design.height, nextWidth)),
+      );
+    }
+  }
+
+  function updateHeight(nextHeightInput: string) {
+    setPrintHeightInput(nextHeightInput);
+
+    const nextHeight = parsePositiveDecimalInput(nextHeightInput);
+    if (typeof design?.width === "number" && typeof design.height === "number" && nextHeight !== null) {
+      setPrintWidthInput(
+        formatEditableNumber(calculateLockedWidthFromHeight(design.width, design.height, nextHeight)),
+      );
+    }
+  }
+
+  const sizeLabel =
+    parsedPrintWidthInches !== null && parsedPrintHeightInches !== null
+      ? formatPrintRequestItemSizeLabel(parsedPrintWidthInches, parsedPrintHeightInches)
+      : "Size not set";
+  const qualityClass = sizeAssessment
+    ? `print-requests-item-quality is-${sizeAssessment.qualityLevel}`
+    : "print-requests-item-quality is-unavailable";
+  const quantityError = parsedQuantity === null ? "Quantity must be at least 1." : null;
+  const canSave = (sizeAssessment?.canSave ?? true) && parsedQuantity !== null;
+  const saveDraft = useCallback(async () => {
+    if (
+      parsedQuantity === null ||
+      parsedPrintWidthInches === null ||
+      parsedPrintHeightInches === null
+    ) {
+      return;
+    }
+
+    const payload = {
+      quantity: parsedQuantity,
+      printWidthInches: parsedPrintWidthInches,
+      printHeightInches: parsedPrintHeightInches,
+    };
+
+    onAutosaveStateChange("saving");
+
+    try {
+      await onUpdate(item, payload);
+      lastSavedSignatureRef.current = buildItemSignature(
+        parsedQuantity,
+        parsedPrintWidthInches,
+        parsedPrintHeightInches,
+      );
+      onAutosaveStateChange("saved");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to save item changes.";
+      onAutosaveStateChange("failed", message, () => saveDraftRef.current());
+    }
+  }, [
+    item,
+    onAutosaveStateChange,
+    onUpdate,
+    parsedPrintHeightInches,
+    parsedPrintWidthInches,
+    parsedQuantity,
+  ]);
+
+  useEffect(() => {
+    saveDraftRef.current = saveDraft;
+  }, [saveDraft]);
+
+  useEffect(() => {
+    const draftSignature = buildItemSignature(
+      parsedQuantity ?? Number.NaN,
+      parsedPrintWidthInches ?? Number.NaN,
+      parsedPrintHeightInches ?? Number.NaN,
+    );
+
+    if (draftSignature === lastSavedSignatureRef.current || !canSave) {
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      void saveDraft();
+    }, 600);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [canSave, parsedPrintHeightInches, parsedPrintWidthInches, parsedQuantity, saveDraft]);
 
   return (
-    <Card className={`print-requests-item-card${isExpanded ? " is-expanded" : " is-collapsed"}`}>
-      <div className="print-requests-item-card-summary">
-        <div className="print-requests-item-card-summary-main">
-          <DesignThumbnailPanel
-            alt={`${title} thumbnail`}
-            catalogPath={thumbPath}
-            className="print-requests-item-card-thumbnail"
-            fallbackLabel="Thumbnail unavailable"
-            imageFit="cover"
-            loadingLabel="Loading thumbnail"
-          />
-
-          <div className="print-requests-item-card-summary-copy">
-            <strong className="print-requests-item-card-title">{title}</strong>
-            <Badge variant={statusBadgeVariant}>{getItemStatusLabel(item.status)}</Badge>
-            <span className="print-requests-item-card-qty">Qty {item.quantity}</span>
-          </div>
-        </div>
-
-        <div className="print-requests-item-card-summary-actions">
-          <Button
-            aria-label={isExpanded ? `Collapse ${title}` : `Expand ${title}`}
-            onClick={() => onToggleExpanded(item.id)}
-            size="sm"
-            variant="ghost"
-          >
-            {isExpanded ? (
-              <ChevronUp aria-hidden="true" size={16} strokeWidth={2} />
-            ) : (
-              <ChevronDown aria-hidden="true" size={16} strokeWidth={2} />
-            )}
-          </Button>
-          <Button
-            aria-label={`Remove ${title}`}
-            onClick={() => onRemove(item)}
-            size="sm"
-            variant="danger"
-            type="button"
-          >
-            <Trash2 aria-hidden="true" size={16} strokeWidth={2} />
-          </Button>
-        </div>
-      </div>
-
-      {isExpanded ? (
-        <form className="print-requests-item-card-form" onSubmit={(event) => onUpdate(event, item)}>
-          <div className="print-requests-item-grid">
-            <TextInput
-              defaultValue={String(item.quantity)}
-              label="Quantity"
-              name={`quantity-${item.id}`}
-              inputMode="numeric"
-              type="number"
-              min={1}
+    <>
+      <Card className="print-requests-item-card">
+        <div className="print-requests-item-card-summary">
+          <div className="print-requests-item-card-summary-main">
+            <DesignThumbnailPanel
+              alt={`${title} thumbnail`}
+              catalogPath={thumbPath}
+              className="print-requests-item-card-thumbnail"
+              fallbackLabel="Thumbnail unavailable"
+              imageFit="contain"
+              interactive={Boolean(previewUrl)}
+              loadingLabel="Loading thumbnail"
+              onImageClick={() => setIsLightboxOpen(true)}
             />
 
-            <Select
-              label="Production status"
-              name={`status-${item.id}`}
-              options={statusOptions}
-              value={item.status}
-            />
+            <div className="print-requests-item-card-summary-copy">
+              <strong className="print-requests-item-card-title">{title}</strong>
+              <span className="print-requests-item-card-qty">Qty {item.quantity}</span>
+              <span className="print-requests-item-card-size">{sizeLabel}</span>
+            </div>
           </div>
 
-          <AutoResizeTextarea
-            defaultValue={item.notes ?? ""}
-            label="Item notes"
-            name={`notes-${item.id}`}
-            placeholder="Optional item notes"
-          />
-
-          <div className="print-requests-item-actions">
-            <Button size="sm" type="submit">
-              Save item
+          <div className="print-requests-item-card-summary-actions">
+            <Button
+              aria-label={`Duplicate ${title}`}
+              onClick={() => onDuplicate(item)}
+              size="sm"
+              variant="secondary"
+              type="button"
+            >
+              <CopyPlus aria-hidden="true" size={16} strokeWidth={2} />
             </Button>
+            {isConfirmingRemove ? (
+              <>
+                <Button
+                  aria-label={`Cancel removing ${title}`}
+                  onClick={() => setIsConfirmingRemove(false)}
+                  size="sm"
+                  variant="ghost"
+                  type="button"
+                >
+                  <X aria-hidden="true" size={16} strokeWidth={2} />
+                </Button>
+                <Button
+                  aria-label={`Confirm remove ${title}`}
+                  onClick={() => onRemove(item)}
+                  size="sm"
+                  variant="danger"
+                  type="button"
+                >
+                  Confirm
+                </Button>
+              </>
+            ) : (
+              <Button
+                aria-label={`Remove ${title}`}
+                onClick={() => setIsConfirmingRemove(true)}
+                size="sm"
+                variant="danger"
+                type="button"
+              >
+                <Trash2 aria-hidden="true" size={16} strokeWidth={2} />
+              </Button>
+            )}
           </div>
-        </form>
-      ) : null}
-    </Card>
+        </div>
+
+        <div className="print-requests-item-card-form">
+          <div className="print-requests-item-controls">
+            <div className="print-requests-item-quantity-control">
+              <span className="print-requests-item-control-label">Quantity</span>
+              <div className="print-requests-item-stepper">
+                <button
+                  aria-label={`Decrease quantity for ${title}`}
+                  className="print-requests-item-stepper-button"
+                  onClick={() => commitQuantity((parsedQuantity ?? 1) - 1)}
+                  type="button"
+                >
+                  <Minus aria-hidden="true" size={16} strokeWidth={2} />
+                </button>
+                <input
+                  aria-label={`Quantity for ${title}`}
+                  className="print-requests-number-input"
+                  inputMode="numeric"
+                  min={1}
+                  name={`quantity-${item.id}`}
+                  onChange={(event) => setQuantityInput(event.target.value)}
+                  onFocus={(event) => event.currentTarget.select()}
+                  type="number"
+                  value={quantityInput}
+                />
+                <button
+                  aria-label={`Increase quantity for ${title}`}
+                  className="print-requests-item-stepper-button"
+                  onClick={() => commitQuantity((parsedQuantity ?? 0) + 1)}
+                  type="button"
+                >
+                  <Plus aria-hidden="true" size={16} strokeWidth={2} />
+                </button>
+              </div>
+            </div>
+
+            <TextInput
+              label="Width"
+              name={`printWidthInches-${item.id}`}
+              className="print-requests-number-input"
+              inputMode="decimal"
+              min={0.01}
+              onChange={(event) => updateWidth(event.target.value)}
+              onFocus={(event) => event.currentTarget.select()}
+              step={0.01}
+              type="number"
+              value={printWidthInput}
+            />
+
+            <TextInput
+              label="Height"
+              name={`printHeightInches-${item.id}`}
+              className="print-requests-number-input"
+              inputMode="decimal"
+              min={0.01}
+              onChange={(event) => updateHeight(event.target.value)}
+              onFocus={(event) => event.currentTarget.select()}
+              step={0.01}
+              type="number"
+              value={printHeightInput}
+            />
+          </div>
+
+          <div className="print-requests-item-quality-row">
+            <span className={qualityClass}>
+              {sizeAssessment
+                ? `${sizeAssessment.qualityLabel} (${sizeAssessment.effectiveDpi} DPI)`
+                : "DPI unavailable"}
+            </span>
+            <span className="print-requests-item-aspect-lock">Aspect ratio locked</span>
+          </div>
+
+          {quantityError ? (
+            <p className="auth-message auth-message-error" role="alert">
+              {quantityError}
+            </p>
+          ) : sizeAssessment?.errorMessage ? (
+            <p className="auth-message auth-message-error" role="alert">
+              {sizeAssessment.errorMessage}
+            </p>
+          ) : sizeAssessment?.warningMessage ? (
+            <p className="auth-message auth-message-warning" role="status">
+              {sizeAssessment.warningMessage}
+            </p>
+          ) : null}
+        </div>
+      </Card>
+
+      <DesignPreviewLightbox
+        alt={`${title} preview`}
+        isOpen={isLightboxOpen}
+        onClose={() => setIsLightboxOpen(false)}
+        previewUrl={previewUrl ?? null}
+      />
+    </>
   );
 }

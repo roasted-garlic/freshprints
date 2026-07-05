@@ -55,6 +55,10 @@ service cloud.firestore {
       return !(field in data) || data[field] is number;
     }
 
+    function isOptionalPositiveStandardPrintInches(data, field) {
+      return !(field in data) || (data[field] is number && data[field] > 0 && data[field] <= 22);
+    }
+
     function isOptionalBool(data, field) {
       return !(field in data) || data[field] is bool;
     }
@@ -217,13 +221,53 @@ service cloud.firestore {
       return status in ["draft", "active", "completed", "archived"];
     }
 
+    function isValidPrintRequestOrigin(origin) {
+      return origin in ["studio_internal", "studio_customer", "portal_customer"];
+    }
+
     function isValidPrintRequestItemStatus(status) {
       return status in ["pending", "queued", "in_progress", "printed", "done", "canceled"];
+    }
+
+    function isValidCustomerUsername(username) {
+      return username is string
+        && username.size() >= 3
+        && username.size() <= 32
+        && username.matches("^[a-z0-9][a-z0-9_-]{1,30}[a-z0-9]$")
+        && !(username in [
+          "internal",
+          "admin",
+          "owner",
+          "support",
+          "portal",
+          "print",
+          "prints",
+          "customer",
+          "customers",
+          "staff",
+          "team",
+          "freshprints",
+          "funkyfreshprints"
+        ]);
     }
 
     function isValidPrintRequestAssignment(data) {
       return (data.isInternal == true && !("customerId" in data) && !("guestCustomerId" in data))
         || (data.isInternal == false
+          && (
+            (("customerId" in data) && !("guestCustomerId" in data) && data.customerId is string && data.customerId.size() > 0)
+            || (!("customerId" in data) && ("guestCustomerId" in data) && data.guestCustomerId is string && data.guestCustomerId.size() > 0)
+          ));
+    }
+
+    function isValidPrintRequestOriginAssignment(data) {
+      return !("requestOrigin" in data)
+        || (data.requestOrigin == "studio_internal"
+          && data.isInternal == true
+          && !("customerId" in data)
+          && !("guestCustomerId" in data))
+        || ((data.requestOrigin == "studio_customer" || data.requestOrigin == "portal_customer")
+          && data.isInternal == false
           && (
             (("customerId" in data) && !("guestCustomerId" in data) && data.customerId is string && data.customerId.size() > 0)
             || (!("customerId" in data) && ("guestCustomerId" in data) && data.guestCustomerId is string && data.guestCustomerId.size() > 0)
@@ -236,8 +280,14 @@ service cloud.firestore {
           "customerId",
           "guestCustomerId",
           "isInternal",
+          "requestOrigin",
           "status",
           "itemCount",
+          "requestSequenceNumber",
+          "customerUsernameSnapshot",
+          "customerDisplayNameSnapshot",
+          "internalBaseName",
+          "nameFormatVersion",
           "notes",
           "createdBy",
           "updatedBy",
@@ -250,16 +300,23 @@ service cloud.firestore {
         && isOptionalString(data, "customerId")
         && isOptionalString(data, "guestCustomerId")
         && data.isInternal is bool
+        && (!("requestOrigin" in data) || (data.requestOrigin is string && isValidPrintRequestOrigin(data.requestOrigin)))
         && data.status is string
         && isValidPrintRequestStatus(data.status)
         && data.itemCount is int
         && data.itemCount >= 0
+        && isOptionalNumber(data, "requestSequenceNumber")
+        && isOptionalString(data, "customerUsernameSnapshot")
+        && isOptionalString(data, "customerDisplayNameSnapshot")
+        && isOptionalString(data, "internalBaseName")
+        && isOptionalString(data, "nameFormatVersion")
         && isOptionalString(data, "notes")
         && data.createdBy is string
         && data.updatedBy is string
         && data.createdAt is timestamp
         && data.updatedAt is timestamp
-        && isValidPrintRequestAssignment(data);
+        && isValidPrintRequestAssignment(data)
+        && isValidPrintRequestOriginAssignment(data);
     }
 
     function printRequestItemRequiredFieldsValid(data) {
@@ -271,6 +328,7 @@ service cloud.firestore {
           "printWidthInches",
           "printHeightInches",
           "sizeLabel",
+          "sortOrder",
           "notes",
           "status",
           "addedBy",
@@ -288,9 +346,10 @@ service cloud.firestore {
         && data.designId.size() > 0
         && data.quantity is int
         && data.quantity > 0
-        && isOptionalNumber(data, "printWidthInches")
-        && isOptionalNumber(data, "printHeightInches")
+        && isOptionalPositiveStandardPrintInches(data, "printWidthInches")
+        && isOptionalPositiveStandardPrintInches(data, "printHeightInches")
         && isOptionalString(data, "sizeLabel")
+        && isOptionalNumber(data, "sortOrder")
         && isOptionalString(data, "notes")
         && data.status is string
         && isValidPrintRequestItemStatus(data.status)
@@ -317,12 +376,15 @@ service cloud.firestore {
           "id",
           "userId",
           "displayName",
+          "username",
           "email",
           "notes",
           "isGuest",
           "totalPrintRequests",
+          "nextPrintRequestSequence",
           "totalRequests",
           "totalApprovedRequests",
+          "usernameUpdatedAt",
           "createdAt",
           "updatedAt"
         ])
@@ -330,14 +392,43 @@ service cloud.firestore {
         && data.id.size() > 0
         && data.displayName is string
         && data.displayName.size() > 0
+        && isValidCustomerUsername(data.username)
         && data.isGuest is bool
         && data.totalPrintRequests is int
         && data.totalPrintRequests >= 0
+        && data.nextPrintRequestSequence is int
+        && data.nextPrintRequestSequence >= 1
         && isOptionalString(data, "userId")
         && isOptionalString(data, "email")
         && isOptionalString(data, "notes")
         && isOptionalNumber(data, "totalRequests")
         && isOptionalNumber(data, "totalApprovedRequests")
+        && isOptionalTimestamp(data, "usernameUpdatedAt")
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function customerUsernameReservationFieldsValid(data, username) {
+      return data.keys().hasOnly([
+          "customerId",
+          "createdAt",
+          "updatedAt"
+        ])
+        && isValidCustomerUsername(username)
+        && data.customerId is string
+        && data.customerId.size() > 0
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function printRequestCounterFieldsValid(data) {
+      return data.keys().hasOnly([
+          "nextInternalRequestSequence",
+          "createdAt",
+          "updatedAt"
+        ])
+        && data.nextInternalRequestSequence is int
+        && data.nextInternalRequestSequence >= 1
         && data.createdAt is timestamp
         && data.updatedAt is timestamp;
     }
@@ -427,6 +518,25 @@ service cloud.firestore {
         && (!("userId" in resource.data) || request.resource.data.userId == resource.data.userId)
         && (!("isGuest" in resource.data) || request.resource.data.isGuest == resource.data.isGuest)
         && (!("createdAt" in resource.data) || request.resource.data.createdAt == resource.data.createdAt);
+
+      allow delete: if false;
+    }
+
+    match /customerUsernames/{username} {
+      allow read: if isStaff();
+
+      allow create, update: if isStaff()
+        && customerUsernameReservationFieldsValid(request.resource.data, username);
+
+      allow delete: if isStaff();
+    }
+
+    match /counters/{counterId} {
+      allow read: if isStaff() && counterId == "printRequests";
+
+      allow create, update: if isStaff()
+        && counterId == "printRequests"
+        && printRequestCounterFieldsValid(request.resource.data);
 
       allow delete: if false;
     }

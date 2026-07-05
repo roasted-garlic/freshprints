@@ -42,6 +42,7 @@ export function AddUserModal({ isOpen, onClose, onCreated }: AddUserModalProps) 
   } = useCreateCustomerRecord();
   const [createTarget, setCreateTarget] = useState<CreateTarget>("staff");
   const [displayName, setDisplayName] = useState("");
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [customerNotes, setCustomerNotes] = useState("");
 
@@ -67,6 +68,7 @@ export function AddUserModal({ isOpen, onClose, onCreated }: AddUserModalProps) 
     clearCustomerResult();
     setCreateTarget("staff");
     setDisplayName("");
+    setUsername("");
     setEmail("");
     setCustomerNotes("");
     setRole(roleOptions[0]?.value ?? "helper");
@@ -98,13 +100,14 @@ export function AddUserModal({ isOpen, onClose, onCreated }: AddUserModalProps) 
       } else {
         const createdCustomer = await createCustomerRecord({
           displayName,
+          username,
           email: email || undefined,
           notes: customerNotes || undefined,
         });
         onClose();
         await onCreated({
           kind: "customer",
-          message: `Customer "${createdCustomer.displayName}" was created. No Studio login or Portal account was created.`,
+          message: `Customer "${createdCustomer.displayName}" was created as ${createdCustomer.username}. No Studio login or Portal account was created.`,
         });
       }
     } catch {
@@ -169,6 +172,19 @@ export function AddUserModal({ isOpen, onClose, onCreated }: AddUserModalProps) 
             required
             value={displayName}
           />
+
+          {createTarget === "customer" ? (
+            <TextInput
+              autoCapitalize="none"
+              autoComplete="off"
+              label="Customer username"
+              name="customerUsername"
+              onChange={(event) => setUsername(event.target.value)}
+              pattern="[a-z0-9][a-z0-9_-]{1,30}[a-z0-9]"
+              required
+              value={username}
+            />
+          ) : null}
 
           <TextInput
             autoComplete="off"

@@ -24,6 +24,7 @@ export function EditCustomerModal({
 }: EditCustomerModalProps) {
   const { clearResult, error, isSubmitting, updateCustomerRecord } = useUpdateCustomerRecord();
   const [displayName, setDisplayName] = useState("");
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [notes, setNotes] = useState("");
 
@@ -34,6 +35,7 @@ export function EditCustomerModal({
 
     clearResult();
     setDisplayName(customer.displayName);
+    setUsername(customer.username ?? "");
     setEmail(customer.email ?? "");
     setNotes(customer.notes ?? "");
   }, [clearResult, customer, isOpen]);
@@ -43,10 +45,12 @@ export function EditCustomerModal({
   }
 
   const normalizedName = displayName.trim();
+  const normalizedUsername = username.trim().toLowerCase();
   const normalizedEmail = email.trim().toLowerCase();
   const normalizedNotes = notes.trim();
   const hasChanges =
     normalizedName !== customer.displayName ||
+    normalizedUsername !== (customer.username ?? "") ||
     normalizedEmail !== (customer.email ?? "").trim().toLowerCase() ||
     normalizedNotes !== (customer.notes ?? "").trim();
 
@@ -65,6 +69,7 @@ export function EditCustomerModal({
     try {
       const updatedCustomer = await updateCustomerRecord(customer.id, {
         displayName,
+        username,
         email: email || undefined,
         notes: notes || undefined,
       });
@@ -102,6 +107,17 @@ export function EditCustomerModal({
             onChange={(event) => setDisplayName(event.target.value)}
             required
             value={displayName}
+          />
+
+          <TextInput
+            autoCapitalize="none"
+            autoComplete="off"
+            label="Customer username"
+            name="username"
+            onChange={(event) => setUsername(event.target.value)}
+            pattern="[a-z0-9][a-z0-9_-]{1,30}[a-z0-9]"
+            required
+            value={username}
           />
 
           <TextInput

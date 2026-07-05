@@ -28,12 +28,20 @@ export const firestoreCollectionService = {
     return this.getCollectionReference("customers");
   },
 
+  getCustomerUsernamesCollection() {
+    return this.getCollectionReference("customerUsernames");
+  },
+
   getPrintRequestsCollection() {
     return this.getCollectionReference("printRequests");
   },
 
   getPrintRequestItemsCollection() {
     return this.getCollectionReference("printRequestItems");
+  },
+
+  getCountersCollection() {
+    return this.getCollectionReference("counters");
   },
 
   getCustomerRequestsCollection() {

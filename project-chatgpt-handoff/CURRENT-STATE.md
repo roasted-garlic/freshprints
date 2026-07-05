@@ -2,7 +2,7 @@
 
 > **Refresh before every external AI session.**
 > Source: `.cursor/workflow/state.md` (authoritative) + `docs/project/ROADMAP.md`
-> Last updated: **2026-07-01**
+> Last updated: **2026-07-04**
 
 ---
 
@@ -12,11 +12,11 @@
 |-------|-------|
 | **App** | Fresh Prints — DTF design catalog & print planning |
 | **Active app** | Fresh Prints Studio (Electron desktop, staff only) |
-| **Roadmap phase** | **Phase 6** — Customers and Print Requests PASS with hardening notes; Phase 5 AI Processing maintenance signed off and smoke-tested |
-| **Managed workflow goal** | `remove-openai-google-only` — complete; current-state v19 docs alignment in progress |
-| **Workflow phase** | Signoff |
-| **Status** | **PASS** |
-| **Human checkpoint** | **NO** |
+| **Roadmap phase** | **Phase 6** — Customers and Print Requests PASS WITH NOTES; item preview/DPI polish signed off |
+| **Managed workflow goal** | `print-request-item-preview-and-dpi-polish` — signed off PASS |
+| **Workflow phase** | Signoff complete |
+| **Status** | Automated verification passed; user-run manual QA passed; signoff complete |
+| **Human checkpoint** | No active checkpoint |
 
 ---
 
@@ -24,46 +24,180 @@
 
 ```txt
 Mode:           managed-phase
-Goal:           remove-openai-google-only
+Goal:           print-request-item-preview-and-dpi-polish
 Phase:          signoff
-Status:         complete
-Plan:           docs/workflow/plans/2026-07-01-remove-openai-google-only-plan.md
+Status:         implementation complete; automated verification passed; user-run manual QA passed; signoff complete
+Plan:           docs/workflow/plans/2026-07-04-print-request-item-preview-and-dpi-polish-plan.md
+Test report:    docs/workflow/reviews/2026-07-04-print-request-item-preview-and-dpi-polish-test-report.md
+Signoff:        docs/workflow/reviews/2026-07-04-print-request-item-preview-and-dpi-polish-signoff.md
 DONE:           yes
 ```
 
-### Current Signoff
+### Current Managed Phase
 
-`remove-openai-google-only` is the latest completed AI provider/signoff baseline. User confirmed
-manual smoke testing passed on 2026-07-01. The phase removed OpenAI support from Cloud Function
-code and UI, made Google AI / Gemini the only AI provider, removed reasoning-effort controls, and
-bumped the catalog prompt version to `catalog-enrich-v19`.
+`print-request-item-preview-and-dpi-polish` is signed off PASS. The planning artifact is:
 
-`ai-processing-direct-run` remains **PASS WITH NOTES** and is the baseline for the current AI Processing implementation.
+- `docs/workflow/plans/2026-07-04-print-request-item-preview-and-dpi-polish-plan.md`
 
-Passed:
+The automated verification artifact is:
 
-- Default Gemini vision model is `gemini-2.5-flash-lite`.
-- Newer selectable Gemini option is `gemini-3.1-flash-lite`.
-- OpenAI model IDs, OpenAI provider resolution, `OPENAI_API_KEY` references in Cloud Function code, and reasoning-effort settings were removed by ADR-FP-040.
-- `/settings` includes an owner/admin AI playground for one-off text + image tests through Cloud Functions only.
-- AI Review re-runs now use a compact `Re-run AI` action menu instead of a persistent visible model selector.
-- Manual AI Processing now runs directly inside the callable instead of enqueueing to a Firestore-trigger hop.
-- AI Review sequential processing still runs one design at a time, but no longer waits on a separate trigger round-trip.
-- AI Processing is a single playground-style Gemini call (ADR-FP-035/036/039/040): Settings-managed prompt template with server-side `{{excluded_tags}}` replacement, 4-field JSON (`description`, raw `category`, `title`, `tags`) plus optional `suggestedNewTags`, **no** `response_format: json_object`, tolerant server-side JSON extraction.
-- One normal Gemini call per success — no empty-output retry and no quality retry; only the transient 429/5xx network retry remains.
-- **ADR-FP-039/040/041 (v20 baseline):** the prompt is small and vision-only, plus approved category names only. The full approved category list (with descriptions) and full approved tag list (names/aliases/preferredWhen) are not injected into every call — testing showed full tag-name injection costs ~4.4x per image versus category-names-only (ADR-FP-041), so that stays gated behind a real accuracy test. Approved tag/alias matching, `suggestedNewTags` generation, and category resolution are deterministic server-side steps (`catalogTagResolver.ts`, `catalogThemeCategoryResolver.ts`) that run after the model call, with category resolution running after tag resolution so matched tags feed category scoring. The category resolver trusts an exact (case/punctuation-tolerant) match between the model's answer and an approved category name directly, falling back to the token-overlap/priority-boost scorer only when there's no exact match. Server enforces single-word/deduped/exclusion-filtered tags capped at 8; tag normalization no longer silently rewrites AI word choice (removed hardcoded `funny` synonym folding — ADR-FP-041).
-- **ADR-FP-044 (current v21, business-context prompt framing, implemented, not yet deployed):** added a business-context paragraph before the field instructions in `DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE` — frames the model as cataloging DTF transfer designs for an apparel print shop and instructs it to judge category/title/tags by subject/message/buyer intent rather than visual style/font/decoration, with worked examples (fashion/luxury, school/education, faith/inspirational) showing style-adjacent decoration alone doesn't qualify a design for a themed category. Added after a real report: a sarcastic-joke design ("Lashes longer than my Patience") with lash line-art in elegant script was miscategorized "Luxury & Fashion Inspired" with an invented "Beauty Makeup Cosmetics" title fragment, because the prior prompt gave the model no business context to anchor judgment against. Prompt-content-only change — `catalogThemeCategoryResolver.ts`, `catalogTagResolver.ts`, the tag reranker, and suggestion authoring are all unchanged. Requires `firebase deploy --only functions` before it is live in any environment.
-- **ADR-FP-042 (optional tag reranker, implemented, not yet deployed):** an optional second, text-only Gemini call (`catalogTagRerankProvider.ts`) can run after tag resolution to pick better final tags from a compact `approvedTagCandidates` shortlist using the first call's response as context. Never sends the image or the full tag database. Controlled by owner/admin setting `tagRerankMode: "off" | "auto" | "always"` (shipped default `off`; persisted on `settings/aiEnrichment`). `auto` triggers on cheap heuristics (3+ unmatched candidates, <5 of 8 tag slots filled, or 2+ suggestedNewTags). Server-side validation is authoritative — reranker output outside the shortlist is discarded, failures fall back to the pre-rerank server-ranked tags, and `uncoveredConcepts` can only feed `suggestedNewTags` generation, never a direct persisted tag. New Playground callable `testAiEnrichmentTagRerank` (same owner/admin gate as `testAiEnrichmentPlayground`) lets staff test the reranker against real designs and compare cost/quality before enabling `auto` in production. New `aiSuggestions.tagRerank*` fields track status (`skipped`/`succeeded`/`failed`), tokens, and cost per design. Requires `firebase deploy --only functions` before it is live in any environment.
-- **ADR-FP-043 (suggested tags as last resort + AI-authored suggestion quality, implemented, not yet deployed):** `suggestedNewTags` generation is now gated by `isSuggestedTagsLastResort` (`catalogTagResolver.ts`) — suggestions only fire with 0-2 approved matches, or exactly 3 matches that are all weak (partial-token-only) with 2+ candidates still unmatched; never with 3 matches including a strong match, and never with 4+ approved matches regardless of remaining room under the 8-tag cap. When the gate fires, an optional text-only "suggestion author" second call (`catalogSuggestedTagAuthorProvider.ts`, prompt version `catalog-suggested-tag-author-v1`) writes a real per-design `preferredWhen` sentence and real aliases per candidate, replacing the old generic template; the model may omit a candidate to decline suggesting it. Controlled by an independent owner/admin setting `suggestionAuthorMode: "off" | "auto" | "always"` (shipped default `off`; persisted on `settings/aiEnrichment`), separate from `tagRerankMode`. When both settings are enabled and both triggers fire for the same design, the two calls merge into one physical Gemini request (extending the reranker's prompt/response schema) instead of two; otherwise the suggestion author runs standalone. Calibration reference is up to 4 real approved tags (name + up to 3 aliases + `preferredWhen` only), selected deterministically by relevance then quality, never randomly. Server-side validation rejects any authored name outside the original candidate list; any failure falls back to the pre-existing server-templated suggestion, never a silent drop. New `aiSuggestions.suggestionAuthor*` fields track status, tokens, and cost per design (combined with `tagRerank*` fields for display when merged). Playground support is deferred to a fast-follow phase. Requires `firebase deploy --only functions` before it is live in any environment.
-- `aiSuggestions.model` continues to record the actual model used per run; Processing can pass a one-off model override, Auto advance snapshots it at start, and Settings playground remains unchanged.
-- Needs Review / Rejected re-run resets the design back to Processing instead of running AI in place on review tabs.
-- Current prompt target is `catalog-enrich-v21`; development fallback target is `catalog-enrich-dev-v21`.
-- Latest local audit checks passed: repo lint, root TypeScript, functions TypeScript, functions build, `git diff --check`, and full `npm run build` including Electron packaging.
+- `docs/workflow/reviews/2026-07-04-print-request-item-preview-and-dpi-polish-test-report.md`
+
+The signoff artifact is:
+
+- `docs/workflow/reviews/2026-07-04-print-request-item-preview-and-dpi-polish-signoff.md`
+
+The phase implements narrow Print Request item-card polish from the previous oversized-selection
+signoff follow-up notes:
+
+- TD-019: Print Request item thumbnails should use contained fit in the same card footprint.
+- TD-020: Print Request item thumbnails should open in a lightbox preview.
+- TD-021: Oversized requested item dimensions should still show accurate calculated DPI instead of
+  `0 DPI`.
+
+Implementation, automated verification, and user-run authenticated manual QA are complete.
+
+Implemented behavior:
+
+- `PrintRequestItemCard.tsx` now renders item thumbnails with `imageFit="contain"` in the existing
+  item-card footprint.
+- Item thumbnails reuse `DesignPreviewLightbox`.
+- Item preview URL resolution follows the existing Design Library pattern:
+  `design.previewPath ?? design.thumbnailPath`.
+- Missing/unresolved images keep the fallback thumbnail state and do not render a broken lightbox.
+- `assessPrintRequestItemSize()` now calculates requested-size DPI and quality before applying the
+  22-inch standard-size save block.
+- Over-22 requested dimensions still block autosave with the existing Custom Request guidance.
+- Over-22 requested dimensions no longer show `0 DPI` solely because they are oversized.
+- Quantity, width, and height inputs now keep transient text state while editing, allow blank
+  width/height without coercing to `0`, block autosave for blank/invalid values, and auto-select
+  their current value on focus.
+
+Automated verification passed on 2026-07-04:
+
+- `npx tsx --test src/renderer/src/features/print-requests/utils/printRequestItemSizingAndNaming.test.ts src/renderer/src/features/print-requests/utils/printRequestOversizedSelection.test.ts` — PASS, 21/21.
+- `npx tsc --noEmit` — PASS.
+- `npm run lint` — PASS.
+- `npx vite build` — PASS with the existing circular manual-chunk warning only.
+- `git diff --check` — PASS with standard Windows LF/CRLF warnings only.
+
+Manual authenticated QA passed in the user's dev session on 2026-07-04:
+
+- Opened `/print-requests`.
+- Opened a request with items.
+- Confirmed quantity, width, and height inputs auto-select their current value on focus.
+- Confirmed blank width/height edits do not coerce to `0`, show validation, and do not autosave.
+- Confirmed valid width/height edits recalculate the paired dimension through aspect-ratio lock and autosave.
+- Confirmed quantity edits autosave cleanly.
+- Confirmed over-22 requested dimensions still show Custom Request guidance, still block autosave,
+  and still show accurate DPI instead of `0 DPI`.
+- Confirmed item thumbnails keep the same card footprint, use contained fit, and open in a
+  closable lightbox.
+- Confirmed duplicate/remove behavior, CR/IR naming, and request origin badges still work.
+- Confirmed catalog dimensions and image files are unchanged.
+- Confirmed no design lifecycle status changes occurred.
+
+No Firebase deploy, Firestore rules/index deploy, migration/backfill, image mutation/regeneration/
+resizing/compression/downscaling, catalog dimension mutation, request naming change, origin badge
+change, Portal, Print Runs, Custom Requests, or design lifecycle change was performed.
+
+### Recent Print Request Signoffs
+
+- `print-request-oversized-selection-unblock` signed off PASS WITH FOLLOW-UP NOTES on 2026-07-04:
+  `docs/workflow/reviews/2026-07-04-print-request-oversized-selection-unblock-signoff.md`.
+- Manual QA verified that an approved `30 x 36` catalog/default-size test design now adds
+  successfully from Design Library request-selection mode, initializes as about `10 x 12`
+  requested inches, keeps catalog/default dimensions at `30 x 36`, does not mutate image files,
+  still blocks over-22 requested item edits, autosaves after resizing back to 22 inches or less,
+  preserves duplicate requested size, and does not affect CR/IR naming, origin badges, or design
+  lifecycle status.
+
+
+- `print-request-origin-tracking` signed off PASS on 2026-07-04:
+  `docs/workflow/reviews/2026-07-04-print-request-origin-tracking-signoff.md`.
+- Dev Firestore rules were deployed for origin tracking with:
+  `firebase deploy --only firestore:rules --project fresh-prints-dev`.
+- Manual authenticated QA passed for new and legacy origin badges, unchanged CR/IR naming, item
+  autosave, duplicate/remove behavior, no Portal/customer Auth behavior, and no design lifecycle
+  status changes.
+
+- `print-request-item-preview-and-dpi-polish` signed off PASS on 2026-07-04:
+  `docs/workflow/reviews/2026-07-04-print-request-item-preview-and-dpi-polish-signoff.md`.
+- Manual authenticated QA passed for contained item thumbnails, thumbnail lightbox open/close,
+  accurate oversized DPI feedback, blank width/height edits that no longer coerce `0`, focus
+  auto-select on quantity/width/height, unchanged CR/IR naming and origin badges, unchanged
+  catalog dimensions/image files, and no design lifecycle status changes.
+
+
+- `print-request-detail-autosave-and-name-locking` signed off PASS on 2026-07-04:
+  `docs/workflow/reviews/2026-07-04-print-request-detail-autosave-and-name-locking-signoff.md`.
+- That implemented scope covered:
+
+- Print Request item autosave for normal quantity/width/height edits.
+- Removing native browser number spinners from quantity, width, and height inputs.
+- Replacing item-level save buttons and noisy success alerts with a subtle item autosave indicator.
+- Updating duplicate item behavior so the detail list updates dynamically without disruptive page-wide reloads.
+- Stable request item visual ordering so saves do not move items to the top.
+- Locking customer request names and request sequence numbers.
+- Hiding request status editing from the Print Request detail page.
+- Revising customer request names to `username-CR001`.
+- Revising internal request names to `baseName-IR001`, with editable internal base name and locked `IR` sequence.
+- Internal create uses an `Internal base name` input that starts blank; blank input normalizes to
+  `internal` on create.
+- Item quantity, item width, and item height autosave through the subtle bottom-right indicator.
+- Request Detail fields do not autosave. Internal base-name edits update the generated request-name
+  preview while staff type, and visible request notes/internal base-name changes persist only when
+  staff manually saves the Request Detail section.
+- Legacy internal requests remain readable. They upgrade only when staff edits internal base name
+  and a usable locked `requestSequenceNumber` exists; otherwise their legacy name is not guessed or
+  rewritten.
+- Stable item ordering must keep existing items without `sortOrder` visible. Preferred first
+  implementation keeps reads request-scoped by `printRequestId` and sorts client-side by
+  `sortOrder`, then `createdAt`, then document ID.
+- Local Firestore rules were updated and deployed to `fresh-prints-dev` for
+  `printRequests.internalBaseName`, `printRequests.nameFormatVersion`, and
+  `printRequestItems.sortOrder`.
+- Dev rules deploy command used:
+  `firebase deploy --only firestore:rules --project fresh-prints-dev`.
+- QA correction after user observation: Request Detail uses manual save; item fields remain autosave.
+
+Automated verification passed on 2026-07-04:
+
+- `npx tsx --test src/renderer/src/features/print-requests/utils/printRequestItemSizingAndNaming.test.ts src/renderer/src/features/print-requests/utils/printRequestQueryPlanning.test.ts` — 20/20 tests.
+- `npx tsc --noEmit` — pass.
+- `npm run lint` — pass.
+- `npx vite build` — pass with existing circular manual-chunk warning.
+- `git diff --check` — pass with standard Windows LF/CRLF warnings.
+
+Manual authenticated QA passed in the user's dev session on 2026-07-04. The user verified request
+cards, customer labels, item counts, internal/customer request naming, locked status/sequence/name
+fields, item autosave, dynamic duplicate/remove behavior, stable item ordering, legacy item
+visibility, hidden standard item notes/status UI, no design lifecycle status changes, and the
+corrected Request Detail manual-save behavior.
+
+- `print-request-item-sizing-and-username-naming` signed off PASS WITH FOLLOW-UP NOTES on 2026-07-04:
+  `docs/workflow/reviews/2026-07-04-print-request-item-sizing-and-username-naming-signoff.md`.
+- Dev Firestore rules were deployed for that phase with:
+  `firebase deploy --only firestore:rules --project fresh-prints-dev`.
+- Manual authenticated QA passed for customer usernames, username reservations, request counters,
+  item sizing/DPI validation, duplicate same-design rows, quantity controls, hidden standard item
+  notes/status UI, and no design lifecycle status changes.
+- `print-request-query-index-hardening` signed off on 2026-07-03:
+  `docs/workflow/reviews/2026-07-03-print-request-query-index-hardening-signoff.md`.
+- Dev Firestore indexes for Print Request query hardening were deployed with:
+  `firebase deploy --only firestore:indexes --project fresh-prints-dev`.
+
+### AI Processing Baseline
+
+AI Processing local fixes through the July 2026 provider/prompt work are signed off locally. Some
+Cloud Functions prompt/provider changes still require a separate human-approved Functions deploy
+before they are live in Firebase environments.
 
 Notes:
 
 - Cloud Functions changes from the latest provider/prompt work still require a separate human-approved `firebase deploy --only functions` before taking effect wherever not already deployed.
-- Recommended next code phase remains `print-request-query-index-hardening`.
+- `print-request-item-preview-and-dpi-polish` is signed off PASS. No active Print Request
+  follow-up is currently in implementation or test.
 
 ---
 
@@ -77,7 +211,7 @@ Notes:
 | 4 | Catalog Search & Cleanup | Complete |
 | 5 | AI Review Workflow / enrichment baseline | Complete through Phase 0 deploy gate |
 | **5** | **AI Review Workflow / enrichment baseline** | **Complete through Phase 0 deploy gate; advanced AI controls signed off locally** |
-| **6** | **Customers & Print Requests** | **PASS WITH NOTES** |
+| **6** | **Customers & Print Requests** | **PASS WITH NOTES; item preview/DPI polish signed off** |
 | 7 | Print Runs / Upcoming Shows | Planned |
 | 8 | Fresh Prints Portal (customer web) | Planned |
 | 9 | Custom Request Q&A | Planned |
@@ -104,12 +238,13 @@ Default landing: `/designs` (Design Library).
 
 ## Open Blockers & Risks
 
-1. **No `npm test` script** — unit tests exist as `*.test.ts` but no wired runner.
+1. **No `npm test` script / no CI** — tests are run through explicit `npx tsx --test ...`, lint, typecheck, and build commands.
 2. **Functions deploy is a separate human checkpoint** — pushing Cloud Function source to GitHub does not deploy it.
-3. **Print Request indexes not yet added** — current broad reads are acceptable for foundation, but server-side indexed queries are needed before scale.
-4. **No `npm test` script / no CI** — tests are run through explicit `npx tsx --test ...`, lint, typecheck, and build commands.
-5. **Old Firestore AI records may show historical provider/prompt metadata** — do not backfill without an approved migration.
-6. **Portal not built** — customer-facing app is Phase 8; all current UI is Studio.
+3. **Old Firestore AI records may show historical provider/prompt metadata** — do not backfill without an approved migration.
+4. **Portal not built** — customer-facing app is Phase 8; all current UI is Studio.
+5. **Existing circular manual-chunk warning remains** — `npx vite build` still reports the
+   pre-existing `vendor -> react-vendor -> vendor` circular chunk warning, which remains unrelated
+   to the signed-off Print Request phases.
 
 ---
 

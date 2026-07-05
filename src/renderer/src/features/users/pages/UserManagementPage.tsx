@@ -47,7 +47,7 @@ export function UserManagementPage() {
     }
 
     return customers.filter((customer) =>
-      [customer.displayName, customer.email ?? "", customer.notes ?? ""].some((value) =>
+      [customer.displayName, customer.username ?? "", customer.email ?? "", customer.notes ?? ""].some((value) =>
         value.toLowerCase().includes(normalizedQuery),
       ),
     );

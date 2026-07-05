@@ -17,31 +17,32 @@ import { Badge } from "../../../shared/components/Badge";
 import { useShellHeaderConfig } from "../../../shared/hooks/useShellHeaderConfig";
 import { useAuth } from "../../auth/hooks/useAuth";
 import { permissionService } from "../../permissions/services/permissionService";
-import { printRequestService } from "../services/printRequestService";
+import { printRequestService, type UpdatePrintRequestItemInput } from "../services/printRequestService";
 import { useCustomers } from "../hooks/useCustomers";
 import { usePrintRequestDetails } from "../hooks/usePrintRequestDetails";
 import { usePrintRequests } from "../hooks/usePrintRequests";
 import { useReadyDesignsForSelection } from "../hooks/useReadyDesignsForSelection";
 import { PrintRequestItemCard } from "../components/PrintRequestItemCard";
 import type { PrintRequest, PrintRequestItem } from "../../../../../../shared/types/printRequest/printRequest.types";
-import type { PrintRequestItemStatus } from "../../../../../../shared/types/printRequest/printRequest.enums";
 import type { Customer } from "../../../../../../shared/types/customer/customer.types";
+import { formatInternalPrintRequestName } from "../../../../../../shared/utils/printRequestNaming";
+import { getPrintRequestOriginBadgeLabel } from "../../../../../../shared/utils/printRequestOrigin";
 import { PRINT_REQUEST_ID_QUERY_PARAM, getPrintRequestsPath } from "../constants/printRequestRoutes";
 import { getDesignLibraryPath } from "../../designs/constants/designLibraryFilters";
 
 type CustomerMode = "internal" | "customer";
 
 interface PrintRequestFormState {
-  name: string;
   customerMode: CustomerMode;
   customerId: string;
+  internalBaseName: string;
   notes: string;
 }
 
 const DEFAULT_REQUEST_FORM: PrintRequestFormState = {
-  name: "",
   customerMode: "internal",
   customerId: "",
+  internalBaseName: "",
   notes: "",
 };
 
@@ -50,21 +51,13 @@ const CUSTOMER_MODE_OPTIONS = [
   { label: "Customer", value: "customer" },
 ];
 
-const PRINT_REQUEST_STATUS_OPTIONS = [
-  { label: "Draft", value: "draft" },
-  { label: "Active", value: "active" },
-  { label: "Completed", value: "completed" },
-  { label: "Archived", value: "archived" },
-];
+type AutosaveStatus = "idle" | "saving" | "saved" | "failed";
 
-const PRINT_REQUEST_ITEM_STATUS_OPTIONS: Array<{ label: string; value: PrintRequestItemStatus }> = [
-  { label: "Pending", value: "pending" },
-  { label: "Queued", value: "queued" },
-  { label: "In progress", value: "in_progress" },
-  { label: "Printed", value: "printed" },
-  { label: "Done", value: "done" },
-  { label: "Canceled", value: "canceled" },
-];
+interface AutosaveState {
+  status: AutosaveStatus;
+  message?: string;
+  retry?: () => Promise<void>;
+}
 
 function formatTimestampLabel(value: { toDate: () => Date } | undefined): string {
   if (!value) {
@@ -104,22 +97,6 @@ function getStatusBadgeVariant(status: PrintRequest["status"]) {
   }
 }
 
-function getItemStatusBadgeVariant(status: PrintRequestItemStatus) {
-  switch (status) {
-    case "done":
-    case "printed":
-      return "success";
-    case "queued":
-    case "in_progress":
-      return "warning";
-    case "canceled":
-      return "danger";
-    case "pending":
-    default:
-      return "default";
-  }
-}
-
 function formatWriteErrorMessage(error: unknown): string {
   const message = error instanceof Error ? error.message : "Unable to complete the requested write.";
 
@@ -138,13 +115,36 @@ function formatTotalQuantityLabel(quantity: number): string {
   return `${quantity} total qty`;
 }
 
-function toRequestNameBase(value: string): string {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "")
-    .replace(/_+/g, "_");
+function hasUsableRequestSequence(printRequest: PrintRequest): boolean {
+  return Number.isInteger(printRequest.requestSequenceNumber) && (printRequest.requestSequenceNumber ?? 0) >= 1;
+}
+
+function getInternalBaseNameDraft(printRequest: PrintRequest): string {
+  return printRequest.internalBaseName ?? "internal";
+}
+
+function getRequestNamePreview(printRequest: PrintRequest, internalBaseName: string): string {
+  const sequence = printRequest.requestSequenceNumber;
+
+  if (!printRequest.isInternal || typeof sequence !== "number" || !Number.isInteger(sequence) || sequence < 1) {
+    return printRequest.name;
+  }
+
+  try {
+    return formatInternalPrintRequestName(internalBaseName, sequence);
+  } catch {
+    return printRequest.name;
+  }
+}
+
+function isRequestDetailDirty(printRequest: PrintRequest, notes: string, internalBaseName: string): boolean {
+  const notesChanged = notes.trim() !== (printRequest.notes ?? "");
+  const internalBaseNameChanged =
+    printRequest.isInternal &&
+    hasUsableRequestSequence(printRequest) &&
+    getRequestNamePreview(printRequest, internalBaseName) !== printRequest.name;
+
+  return notesChanged || internalBaseNameChanged;
 }
 
 export function PrintRequestsPage() {
@@ -173,13 +173,20 @@ export function PrintRequestsPage() {
   const requestError = isLoadedSelectedRequest ? requestDetails.error : null;
   const isRequestLoading = requestDetails.isLoading || (Boolean(selectedRequestId) && !isLoadedSelectedRequest);
   const reloadPrintRequest = requestDetails.reloadPrintRequest;
+  const addRequestItem = requestDetails.addItem;
+  const removeRequestItem = requestDetails.removeItem;
+  const replaceRequestItem = requestDetails.replaceItem;
+  const replaceSelectedRequest = requestDetails.replacePrintRequest;
   const visibleSelectedRequest = isRequestLoading ? null : selectedRequest;
 
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [autosaveState, setAutosaveState] = useState<AutosaveState>({ status: "idle" });
+  const [requestNotesDraft, setRequestNotesDraft] = useState("");
+  const [internalBaseNameDraft, setInternalBaseNameDraft] = useState("internal");
+  const [isSavingRequestDetail, setIsSavingRequestDetail] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [createRequestForm, setCreateRequestForm] = useState<PrintRequestFormState>(DEFAULT_REQUEST_FORM);
-  const [expandedItemIds, setExpandedItemIds] = useState<Record<string, boolean>>({});
   const [isRequestDetailExpanded, setIsRequestDetailExpanded] = useState(false);
   const [successAlertSeed, setSuccessAlertSeed] = useState(0);
   const selectedRequestIdParam = searchParams.get(PRINT_REQUEST_ID_QUERY_PARAM);
@@ -239,17 +246,13 @@ export function PrintRequestsPage() {
   }, [requests, selectedRequestId, selectedRequestIdParam, updateSelectedRequestPath]);
 
   useEffect(() => {
-    setExpandedItemIds({});
-  }, [selectedRequestId]);
-
-  useEffect(() => {
     setIsRequestDetailExpanded(false);
   }, [selectedRequestId]);
 
   const customerOptions = useMemo(
     () =>
       customers.filter((customer) => !customer.isGuest).map((customer) => ({
-        label: customer.displayName,
+        label: customer.username ? `${customer.displayName} (${customer.username})` : `${customer.displayName} (needs username)`,
         value: customer.id,
       })),
     [customers],
@@ -268,44 +271,35 @@ export function PrintRequestsPage() {
       })),
     [requests],
   );
+  const selectedCreateCustomer = useMemo(
+    () => customers.find((customer) => customer.id === createRequestForm.customerId),
+    [createRequestForm.customerId, customers],
+  );
+  const isCreateSubmitDisabled =
+    createRequestForm.customerMode === "customer" && !createRequestForm.customerId;
 
   const dismissSuccessMessage = useCallback(() => {
     setSuccessMessage(null);
   }, []);
 
-  const buildCustomerRequestName = useCallback(
-    (customerId: string) => {
-      const customer = customers.find((entry) => entry.id === customerId);
-      if (!customer) {
-        return "";
-      }
+  const updateAutosaveState = useCallback((
+    status: Exclude<AutosaveStatus, "idle">,
+    message?: string,
+    retry?: () => Promise<void>,
+  ) => {
+    setAutosaveState({ status, message, retry });
+  }, []);
 
-      const requestNameBase = toRequestNameBase(customer.displayName);
-      if (!requestNameBase) {
-        return "";
-      }
+  useEffect(() => {
+    if (!visibleSelectedRequest) {
+      setRequestNotesDraft("");
+      setInternalBaseNameDraft("internal");
+      return;
+    }
 
-      const nextSequence =
-        requests
-          .filter((request) => request.customerId === customerId)
-          .reduce((highestSequence, request) => {
-            const match = request.name.match(new RegExp(`^${requestNameBase}-(\\d{3})$`, "i"));
-            if (!match) {
-              return highestSequence;
-            }
-
-            const sequence = Number.parseInt(match[1], 10);
-            if (Number.isNaN(sequence)) {
-              return highestSequence;
-            }
-
-            return Math.max(highestSequence, sequence);
-          }, 0) + 1;
-
-      return `${requestNameBase}-${String(nextSequence).padStart(3, "0")}`;
-    },
-    [customers, requests],
-  );
+    setRequestNotesDraft(visibleSelectedRequest.notes ?? "");
+    setInternalBaseNameDraft(getInternalBaseNameDraft(visibleSelectedRequest));
+  }, [visibleSelectedRequest]);
 
   async function reloadAll() {
     await Promise.all([reloadPrintRequests(), reloadCustomers(), reloadReadyDesigns(), reloadPrintRequest()]);
@@ -320,12 +314,16 @@ export function PrintRequestsPage() {
 
     try {
       setActionError(null);
-      const result = await printRequestService.createPrintRequest(user, {
-        name: createRequestForm.name,
-        customerId: createRequestForm.customerMode === "customer" ? createRequestForm.customerId : undefined,
-        isInternal: createRequestForm.customerMode === "internal",
-        notes: createRequestForm.notes || undefined,
-      });
+      const result =
+        createRequestForm.customerMode === "customer"
+          ? await printRequestService.createCustomerPrintRequest(user, {
+              customerId: createRequestForm.customerId,
+              notes: createRequestForm.notes || undefined,
+            })
+          : await printRequestService.createInternalPrintRequest(user, {
+              internalBaseName: createRequestForm.internalBaseName,
+              notes: createRequestForm.notes || undefined,
+            });
 
       setSuccessMessage(`Print request "${result.name}" created.`);
       setSuccessAlertSeed((current) => current + 1);
@@ -337,50 +335,48 @@ export function PrintRequestsPage() {
     }
   }
 
-  async function handleUpdateRequest(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    if (!user || !selectedRequest || !permissionService.canManagePrintRequests(user)) {
-      return;
-    }
-
-    try {
-      setActionError(null);
-      const formData = new FormData(event.currentTarget);
-      await printRequestService.updatePrintRequest(user, selectedRequest.id, {
-        name: String(formData.get("requestName") ?? selectedRequest.name),
-        status: String(formData.get("requestStatus") ?? selectedRequest.status) as PrintRequest["status"],
-        notes: String(formData.get("requestNotes") ?? selectedRequest.notes ?? ""),
-      });
-      setSuccessMessage("Print request updated.");
-      setSuccessAlertSeed((current) => current + 1);
-      await reloadAll();
-    } catch (error) {
-      setActionError(formatWriteErrorMessage(error));
-    }
-  }
-
-  async function handleUpdateItem(event: FormEvent<HTMLFormElement>, item: PrintRequestItem) {
-    event.preventDefault();
-
+  const handleUpdateItem = useCallback(async (
+    item: PrintRequestItem,
+    input: UpdatePrintRequestItemInput,
+  ) => {
     if (!user || !permissionService.canManagePrintRequestItems(user)) {
+      throw new Error("You do not have permission to edit print request items.");
+    }
+
+    setActionError(null);
+    const updatedItem = await printRequestService.updatePrintRequestItem(user, item.id, input);
+    replaceRequestItem(updatedItem);
+    await reloadPrintRequests();
+  }, [reloadPrintRequests, replaceRequestItem, user]);
+
+  async function handleSaveRequestDetail() {
+    if (!user || !visibleSelectedRequest || !permissionService.canManagePrintRequests(user)) {
       return;
     }
 
+    const canEditInternalBaseName =
+      visibleSelectedRequest.isInternal && hasUsableRequestSequence(visibleSelectedRequest);
+
     try {
       setActionError(null);
-      const formData = new FormData(event.currentTarget);
-      await printRequestService.updatePrintRequestItem(user, item.id, {
-        quantity: Number(formData.get(`quantity-${item.id}`) ?? item.quantity),
-        notes: String(formData.get(`notes-${item.id}`) ?? item.notes ?? ""),
-        status: String(formData.get(`status-${item.id}`) ?? item.status) as PrintRequestItemStatus,
-      });
+      setIsSavingRequestDetail(true);
+      const updatedRequest = await printRequestService.updatePrintRequestDetail(
+        user,
+        visibleSelectedRequest.id,
+        {
+          notes: requestNotesDraft,
+          internalBaseName: canEditInternalBaseName ? internalBaseNameDraft : undefined,
+        },
+      );
 
-      setSuccessMessage("Print request item updated.");
+      replaceSelectedRequest(updatedRequest);
+      setSuccessMessage("Request detail saved.");
       setSuccessAlertSeed((current) => current + 1);
-      await reloadAll();
+      await reloadPrintRequests();
     } catch (error) {
       setActionError(formatWriteErrorMessage(error));
+    } finally {
+      setIsSavingRequestDetail(false);
     }
   }
 
@@ -392,20 +388,27 @@ export function PrintRequestsPage() {
     try {
       setActionError(null);
       await printRequestService.removePrintRequestItem(user, item.id);
-      setSuccessMessage("Print request item removed.");
-      setSuccessAlertSeed((current) => current + 1);
-      await reloadAll();
+      removeRequestItem(item.id);
+      await reloadPrintRequests();
     } catch (error) {
       setActionError(formatWriteErrorMessage(error));
     }
   }
 
-  const toggleItemExpanded = useCallback((itemId: string) => {
-    setExpandedItemIds((current) => ({
-      ...current,
-      [itemId]: !current[itemId],
-    }));
-  }, []);
+  async function handleDuplicateItem(item: PrintRequestItem) {
+    if (!user || !permissionService.canManagePrintRequestItems(user)) {
+      return;
+    }
+
+    try {
+      setActionError(null);
+      const createdItem = await printRequestService.duplicatePrintRequestItem(user, item.id);
+      addRequestItem(createdItem);
+      await reloadPrintRequests();
+    } catch (error) {
+      setActionError(formatWriteErrorMessage(error));
+    }
+  }
 
   const openDesignLibrarySelection = useCallback(() => {
     if (!selectedRequest) {
@@ -427,6 +430,13 @@ export function PrintRequestsPage() {
 
   const isLoading = isRequestsLoading || isCustomersLoading || isReadyDesignsLoading;
   const loadError = requestsError ?? requestError;
+  const requestNamePreview = visibleSelectedRequest
+    ? getRequestNamePreview(visibleSelectedRequest, internalBaseNameDraft)
+    : "";
+  const isRequestDetailSaveDisabled =
+    !visibleSelectedRequest ||
+    isSavingRequestDetail ||
+    !isRequestDetailDirty(visibleSelectedRequest, requestNotesDraft, internalBaseNameDraft);
 
   return (
     <main className="page-layout page-layout-shell print-requests-page">
@@ -489,7 +499,10 @@ export function PrintRequestsPage() {
                   >
                     <div className="print-requests-request-card-title-row">
                       <strong>{request.name}</strong>
-                      <Badge variant={getStatusBadgeVariant(request.status)}>{request.status}</Badge>
+                      <div className="print-requests-request-card-badges">
+                        <Badge variant="default">{getPrintRequestOriginBadgeLabel(request)}</Badge>
+                        <Badge variant={getStatusBadgeVariant(request.status)}>{request.status}</Badge>
+                      </div>
                     </div>
                     <p className="print-requests-request-card-subtitle">
                       {getPrintRequestCustomerLabel(request, customers)}
@@ -510,7 +523,7 @@ export function PrintRequestsPage() {
             <p className="eyebrow">How it works</p>
             <p className="print-requests-workflow-copy">
               Create a request for a customer or internal list. Add approved catalog designs, then set
-              quantity, notes, and item status. Phase 7 will connect requests to print runs and upcoming shows.
+              quantity and requested print size. Phase 7 will connect requests to print runs and upcoming shows.
             </p>
           </Card>
 
@@ -540,10 +553,12 @@ export function PrintRequestsPage() {
                   </div>
                   <div className="print-requests-detail-actions">
                     <div className="print-requests-detail-badges">
+                      <Badge variant="default">
+                        {getPrintRequestOriginBadgeLabel(visibleSelectedRequest)}
+                      </Badge>
                       <Badge variant={getStatusBadgeVariant(visibleSelectedRequest.status)}>
                         {visibleSelectedRequest.status}
                       </Badge>
-                      {visibleSelectedRequest.isInternal ? <Badge variant="default">Internal</Badge> : null}
                     </div>
                     <Button
                       aria-label={isRequestDetailExpanded ? "Collapse request detail" : "Expand request detail"}
@@ -564,31 +579,51 @@ export function PrintRequestsPage() {
                 </div>
 
                 {isRequestDetailExpanded ? (
-                  <form className="print-requests-detail-form" onSubmit={handleUpdateRequest}>
+                  <div className="print-requests-detail-form">
                     <TextInput
-                      defaultValue={visibleSelectedRequest.name}
-                      label="Request name"
+                      label={visibleSelectedRequest.isInternal ? "Generated request name" : "Customer request name"}
                       name="requestName"
+                      readOnly
+                      value={requestNamePreview}
                     />
 
-                    <Select
-                      label="Status"
-                      name="requestStatus"
-                      options={PRINT_REQUEST_STATUS_OPTIONS}
-                      value={visibleSelectedRequest.status}
-                    />
+                    {visibleSelectedRequest.isInternal ? (
+                      <TextInput
+                        disabled={!hasUsableRequestSequence(visibleSelectedRequest)}
+                        label="Internal base name"
+                        name="internalBaseName"
+                        onChange={(event) => setInternalBaseNameDraft(event.target.value)}
+                        value={internalBaseNameDraft}
+                      />
+                    ) : null}
 
                     <AutoResizeTextarea
-                      defaultValue={visibleSelectedRequest.notes ?? ""}
                       label="Notes"
                       name="requestNotes"
+                      onChange={(event) => setRequestNotesDraft(event.target.value)}
                       placeholder="Optional request notes"
+                      value={requestNotesDraft}
                     />
 
-                    <div className="print-requests-detail-actions">
-                      <Button type="submit">Save request</Button>
+                    <div className="print-requests-detail-locked-fields">
+                      <span>Status locked: {visibleSelectedRequest.status}</span>
+                      {visibleSelectedRequest.requestSequenceNumber ? (
+                        <span>Sequence locked: {visibleSelectedRequest.requestSequenceNumber}</span>
+                      ) : null}
                     </div>
-                  </form>
+
+                    <div className="print-requests-detail-actions">
+                      <Button
+                        disabled={isRequestDetailSaveDisabled}
+                        onClick={() => {
+                          void handleSaveRequestDetail();
+                        }}
+                        type="button"
+                      >
+                        {isSavingRequestDetail ? "Saving..." : "Save request detail"}
+                      </Button>
+                    </div>
+                  </div>
                 ) : null}
               </Card>
 
@@ -620,14 +655,12 @@ export function PrintRequestsPage() {
                       return (
                         <PrintRequestItemCard
                           design={design}
-                          isExpanded={expandedItemIds[item.id] ?? false}
                           item={item}
                           key={item.id}
+                          onAutosaveStateChange={updateAutosaveState}
+                          onDuplicate={handleDuplicateItem}
                           onRemove={handleRemoveItem}
-                          onToggleExpanded={toggleItemExpanded}
                           onUpdate={handleUpdateItem}
-                          statusBadgeVariant={getItemStatusBadgeVariant(item.status)}
-                          statusOptions={PRINT_REQUEST_ITEM_STATUS_OPTIONS}
                         />
                       );
                     })}
@@ -681,12 +714,7 @@ export function PrintRequestsPage() {
                         ...current,
                         customerMode: event.target.value as CustomerMode,
                         customerId: event.target.value === "customer" ? current.customerId : "",
-                        name:
-                          event.target.value === "customer"
-                            ? current.customerId
-                              ? buildCustomerRequestName(current.customerId)
-                              : current.name
-                            : "",
+                        internalBaseName: event.target.value === "internal" ? current.internalBaseName : "",
                       }))
                     }
                     options={CUSTOMER_MODE_OPTIONS}
@@ -701,7 +729,6 @@ export function PrintRequestsPage() {
                         setCreateRequestForm((current) => ({
                           ...current,
                           customerId: event.target.value,
-                          name: buildCustomerRequestName(event.target.value),
                         }))
                       }
                       options={[{ label: "Choose a customer", value: "" }, ...customerOptions]}
@@ -712,13 +739,15 @@ export function PrintRequestsPage() {
 
                 {createRequestForm.customerMode === "internal" ? (
                   <TextInput
-                    label="Request name"
-                    name="requestName"
+                    label="Internal base name"
+                    name="internalBaseName"
                     onChange={(event) =>
-                      setCreateRequestForm((current) => ({ ...current, name: event.target.value }))
+                      setCreateRequestForm((current) => ({
+                        ...current,
+                        internalBaseName: event.target.value,
+                      }))
                     }
-                    required
-                    value={createRequestForm.name}
+                    value={createRequestForm.internalBaseName}
                   />
                 ) : null}
 
@@ -742,19 +771,21 @@ export function PrintRequestsPage() {
                       </div>
                     ) : (
                       <p className="print-requests-modal-hint">
-                        Customer requests only use existing customers. Create new customers from Users.
+                        Customer request names are generated from the customer's username and next sequence.
                       </p>
                     )}
 
-                    <TextInput
-                      label="Request name"
-                      name="requestName"
-                      readOnly
-                      required
-                      value={createRequestForm.name}
-                    />
+                    {selectedCreateCustomer && !selectedCreateCustomer.username ? (
+                      <p className="auth-message auth-message-error" role="alert">
+                        Add a username to this customer before creating a print request.
+                      </p>
+                    ) : null}
                   </>
-                ) : null}
+                ) : (
+                  <p className="print-requests-modal-hint">
+                    Internal request names use the base name and next locked internal sequence. Leave blank to use internal.
+                  </p>
+                )}
 
                 <AutoResizeTextarea
                   label="Request notes"
@@ -778,11 +809,42 @@ export function PrintRequestsPage() {
               <Button onClick={closeCreateModal} variant="ghost">
                 Cancel
               </Button>
-              <Button form="create-print-request-form" type="submit">
+              <Button
+                disabled={isCreateSubmitDisabled || (selectedCreateCustomer !== undefined && !selectedCreateCustomer.username)}
+                form="create-print-request-form"
+                type="submit"
+              >
                 Create request
               </Button>
             </ModalFooter>
           </Modal>
+        </div>
+      ) : null}
+
+      {autosaveState.status !== "idle" ? (
+        <div className={`print-requests-autosave-indicator is-${autosaveState.status}`} role="status">
+          <span>
+            {autosaveState.status === "saving"
+              ? "Saving..."
+              : autosaveState.status === "saved"
+                ? "Saved"
+                : "Save failed"}
+          </span>
+          {autosaveState.status === "failed" && autosaveState.message ? (
+            <span className="print-requests-autosave-message">{autosaveState.message}</span>
+          ) : null}
+          {autosaveState.status === "failed" && autosaveState.retry ? (
+            <Button
+              onClick={() => {
+                void autosaveState.retry?.();
+              }}
+              size="sm"
+              type="button"
+              variant="secondary"
+            >
+              Retry
+            </Button>
+          ) : null}
         </div>
       ) : null}
 
