@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 
-import { Settings, X } from "lucide-react";
+import { Plus, Settings, Upload, X } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { Badge } from "../../../shared/components/Badge";
@@ -42,9 +42,9 @@ import { canRemoveRequestFromShow } from "../../../../../../shared/utils/showQue
 import { parseDateTimeInputToTimestamp } from "../utils/upcomingShowDateTimeInput";
 import {
   formatUpcomingShowTimestampLabel,
+  formatUpcomingShowManualImportTimestampLabel,
   formatUpcomingShowTitle,
   getUpcomingShowStatusBadgeVariant,
-  getUpcomingShowSyncStatusBadgeVariant,
 } from "../utils/upcomingShowDisplay";
 import { getShowAllocationStatusBadgeVariant } from "../utils/showAllocationDisplay";
 import { UPCOMING_SHOW_ID_QUERY_PARAM, getUpcomingShowsPath } from "../constants/upcomingShowRoutes";
@@ -100,7 +100,7 @@ export function UpcomingShowsPage() {
     async (summary: WhatnotShowImportSummary) => {
       await showQueueSettings.recordAssistedImportResult({ status: "succeeded", summary });
       setSuccessMessage(
-        `Imported Whatnot shows: ${summary.created} created, ${summary.updated} updated, ${summary.unchanged} unchanged, ${summary.skipped} skipped.`,
+        `Imported shows: ${summary.created} created, ${summary.updated} updated, ${summary.unchanged} unchanged, ${summary.skipped} skipped.`,
       );
       setSuccessAlertSeed((current) => current + 1);
       await reloadUpcomingShows();
@@ -177,7 +177,8 @@ export function UpcomingShowsPage() {
         actions: permissionService.canManageUpcomingShows(user)
           ? [
               {
-                label: "Import Whatnot shows",
+                icon: <Upload aria-hidden="true" size={16} strokeWidth={2} />,
+                label: "Import Shows",
                 onClick: openWhatnotImportWindow,
               },
               {
@@ -189,6 +190,7 @@ export function UpcomingShowsPage() {
           : null,
         primaryAction: permissionService.canManageUpcomingShows(user)
           ? {
+              icon: <Plus aria-hidden="true" size={16} strokeWidth={2} />,
               label: "Add show",
               onClick: openCreateModal,
             }
@@ -202,6 +204,20 @@ export function UpcomingShowsPage() {
     () => shows.find((show) => show.id === selectedShowId) ?? null,
     [selectedShowId, shows],
   );
+  const lastManualImportAt = useMemo(() => {
+    const showImportAt = selectedShow?.lastSeenInAssistedImportAt;
+    const latestImportAt = showQueueSettings.settings.lastWhatnotAssistedImportAt;
+
+    if (!showImportAt) {
+      return latestImportAt;
+    }
+
+    if (!latestImportAt) {
+      return showImportAt;
+    }
+
+    return showImportAt.toDate().getTime() >= latestImportAt.toDate().getTime() ? showImportAt : latestImportAt;
+  }, [selectedShow?.lastSeenInAssistedImportAt, showQueueSettings.settings.lastWhatnotAssistedImportAt]);
 
   const showsByScheduleTab = useMemo(() => {
     const now = new Date();
@@ -472,9 +488,6 @@ export function UpcomingShowsPage() {
                       {getDerivedShowStatusDisplay(selectedShow.productionStatus, capacity).label}
                     </Badge>
                   ) : null}
-                  <Badge variant={getUpcomingShowSyncStatusBadgeVariant(selectedShow.syncStatus)}>
-                    sync: {selectedShow.syncStatus}
-                  </Badge>
                 </div>
 
                 <dl className="upcoming-show-detail-facts">
@@ -499,8 +512,8 @@ export function UpcomingShowsPage() {
                     </dd>
                   </div>
                   <div>
-                    <dt>Last synced</dt>
-                    <dd>{formatUpcomingShowTimestampLabel(selectedShow.lastSyncedAt)}</dd>
+                    <dt>Last manual import</dt>
+                    <dd>{formatUpcomingShowManualImportTimestampLabel(lastManualImportAt)}</dd>
                   </div>
                   <div>
                     <dt>Last seen</dt>
@@ -898,7 +911,7 @@ export function UpcomingShowsPage() {
                 />
                 <p className="print-requests-modal-hint">
                   {isWhatnotBaseUrlValid
-                    ? "Used by “Import Whatnot shows” to open your show list."
+                    ? "Used by “Import Shows” to open your show list."
                     : "Must be a https://www.whatnot.com/user/<name>/shows URL."}
                 </p>
 
@@ -931,7 +944,7 @@ export function UpcomingShowsPage() {
             <ModalHeader>
               <div>
                 <p className="eyebrow">Import</p>
-                <h3 id="whatnot-import-error-title">Import Whatnot shows</h3>
+                <h3 id="whatnot-import-error-title">Import Shows</h3>
               </div>
               <button
                 aria-label="Dismiss"
@@ -959,7 +972,7 @@ export function UpcomingShowsPage() {
       {whatnotImport.stage === "importing" ? (
         <div className="modal-overlay modal-overlay-blur">
           <Card className="print-requests-card print-requests-loading-card">
-            <LoadingSpinner label="Importing Whatnot shows" />
+            <LoadingSpinner label="Importing shows" />
           </Card>
         </div>
       ) : null}

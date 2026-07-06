@@ -27,6 +27,8 @@ function AppShellContent({ children }: AppShellProps) {
     "page-content-area",
     location.pathname === "/ai-review" ? "page-content-area--ai-review" : "",
     location.pathname === "/designs" ? "page-content-area--design-library" : "",
+    location.pathname === "/print-requests" ? "page-content-area--print-requests" : "",
+    location.pathname === "/show-queue" ? "page-content-area--show-queue" : "",
   ]
     .filter(Boolean)
     .join(" ");

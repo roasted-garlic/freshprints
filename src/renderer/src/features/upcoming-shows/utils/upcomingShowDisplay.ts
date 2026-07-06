@@ -48,3 +48,11 @@ export function formatUpcomingShowTimestampLabel(value: { toDate: () => Date } |
 
   return formatShowDateTimeLabel(value.toDate());
 }
+
+export function formatUpcomingShowManualImportTimestampLabel(value: { toDate: () => Date } | undefined): string {
+  if (!value) {
+    return "Never imported";
+  }
+
+  return formatShowDateTimeLabel(value.toDate());
+}

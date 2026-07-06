@@ -63,7 +63,7 @@ export function useWhatnotShowImport(existingShows: UpcomingShow[], onImported: 
           if (!user) {
             await whatnotImportDesktopService.reportImportCompleted({
               status: "failed",
-              error: "You must be signed in to import Whatnot shows.",
+              error: "You must be signed in to import shows.",
             });
             return;
           }

@@ -2,6 +2,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-6);
+  min-height: 0;
 }
 
 .print-requests-page-actions {
@@ -14,9 +15,13 @@
 }
 
 .print-requests-layout {
+  align-items: start;
   display: grid;
+  flex: 1 1 auto;
   gap: var(--space-5);
   grid-template-columns: minmax(300px, 1fr) minmax(0, 1.8fr);
+  height: 100%;
+  min-height: 0;
 }
 
 .print-requests-rail,
@@ -24,6 +29,25 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
+  min-height: 0;
+}
+
+.print-requests-rail {
+  align-self: start;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  gap: 0;
+  max-height: calc(100vh - var(--topbar-height) - var(--space-8));
+  overflow: hidden;
+  position: sticky;
+  top: 0;
+  width: 100%;
+}
+
+.print-requests-main {
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .print-requests-rail-header {
@@ -54,6 +78,14 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
+}
+
+.print-requests-rail-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--space-3);
 }
 
 .print-requests-request-card,
@@ -92,6 +124,28 @@
 .print-requests-request-card.is-selected {
   background:
     linear-gradient(180deg, color-mix(in srgb, var(--color-bg-secondary) 88%, var(--color-accent-primary) 12%) 0%, var(--color-bg-secondary) 100%);
+}
+
+.print-requests-rail .print-requests-request-card {
+  background: transparent;
+  border-color: transparent;
+  border-radius: var(--radius-md);
+  box-shadow: none;
+  gap: var(--space-2);
+  padding: var(--space-3);
+}
+
+.print-requests-rail .print-requests-request-card:hover,
+.print-requests-rail .print-requests-request-card:focus-visible {
+  background: var(--color-bg-tertiary);
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.print-requests-rail .print-requests-request-card.is-selected {
+  background: var(--color-accent-primary-soft);
+  border-color: var(--color-accent-primary);
+  box-shadow: none;
 }
 
 .print-requests-request-card-subtitle,
@@ -542,6 +596,13 @@
 @media (max-width: 1024px) {
   .print-requests-layout {
     grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .print-requests-rail {
+    max-height: min(38vh, calc(100vh - 10rem));
+    position: sticky;
+    top: 0;
   }
 }
 

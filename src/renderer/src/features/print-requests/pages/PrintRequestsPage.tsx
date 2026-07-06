@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
-import { ExternalLink, ImagePlus, X } from "lucide-react";
+import { ExternalLink, ImagePlus, Plus, X } from "lucide-react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 import { Button } from "../../../shared/components/Button";
@@ -315,6 +315,7 @@ export function PrintRequestsPage() {
       () => ({
         title: "Print Requests",
         primaryAction: {
+          icon: <Plus aria-hidden="true" size={16} strokeWidth={2} />,
           label: "New request",
           onClick: openCreateModal,
         },

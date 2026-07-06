@@ -107,6 +107,25 @@
   overflow: hidden;
 }
 
+.page-content-area--print-requests,
+.page-content-area--show-queue {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.page-content-area--print-requests > .page-layout.page-layout-shell,
+.page-content-area--show-queue > .page-layout.page-layout-shell {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .firebase-connection-card {
   display: grid;
   gap: var(--space-4);
