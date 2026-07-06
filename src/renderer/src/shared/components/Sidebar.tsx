@@ -66,9 +66,8 @@ const sidebarItems: SidebarRouteItem[] = [
     icon: ListOrdered,
     label: "Show Queue",
     to: "/show-queue",
-    permission: "manageQueues",
+    permission: "viewUpcomingShows",
     dividerBefore: true,
-    isDisabled: true,
   },
   {
     kind: "route",

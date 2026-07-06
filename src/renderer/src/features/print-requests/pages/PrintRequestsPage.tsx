@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
-import { ChevronDown, ChevronUp, ImagePlus, X } from "lucide-react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { ExternalLink, ImagePlus, X } from "lucide-react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 import { Button } from "../../../shared/components/Button";
 import { Card } from "../../../shared/components/Card";
@@ -21,14 +21,28 @@ import { printRequestService, type UpdatePrintRequestItemInput } from "../servic
 import { useCustomers } from "../hooks/useCustomers";
 import { usePrintRequestDetails } from "../hooks/usePrintRequestDetails";
 import { usePrintRequests } from "../hooks/usePrintRequests";
+import { usePrintRequestAllocationTotals } from "../hooks/usePrintRequestAllocationTotals";
 import { useReadyDesignsForSelection } from "../hooks/useReadyDesignsForSelection";
 import { PrintRequestItemCard } from "../components/PrintRequestItemCard";
+import { AddToShowModal } from "../components/AddToShowModal";
 import type { PrintRequest, PrintRequestItem } from "../../../../../../shared/types/printRequest/printRequest.types";
 import type { Customer } from "../../../../../../shared/types/customer/customer.types";
+import type { ShowAllocation } from "../../../../../../shared/types/showAllocation/showAllocation.types";
 import { formatInternalPrintRequestName } from "../../../../../../shared/utils/printRequestNaming";
 import { getPrintRequestOriginBadgeLabel } from "../../../../../../shared/utils/printRequestOrigin";
+import { derivePrintRequestQueueState } from "../../../../../../shared/utils/printRequestQueueState";
+import { derivePrintRequestListTab, type PrintRequestListTab } from "../../../../../../shared/utils/printRequestListGrouping";
+import { resolveSelectedRequestIdForTab } from "../../../../../../shared/utils/printRequestTabSelection";
+import { groupAllocationsByShow } from "../../../../../../shared/utils/groupAllocationsByShow";
+import { canRemoveRequestFromShow } from "../../../../../../shared/utils/showQueueEditability";
+import { getPrintRequestQueueStateBadgeLabel, getPrintRequestQueueStateBadgeVariant } from "../utils/printRequestQueueBadge";
 import { PRINT_REQUEST_ID_QUERY_PARAM, getPrintRequestsPath } from "../constants/printRequestRoutes";
 import { getDesignLibraryPath } from "../../designs/constants/designLibraryFilters";
+import { useUpcomingShows } from "../../upcoming-shows/hooks/useUpcomingShows";
+import { upcomingShowService } from "../../upcoming-shows/services/upcomingShowService";
+import { formatUpcomingShowTitle } from "../../upcoming-shows/utils/upcomingShowDisplay";
+import { formatShowDateTimeLabel } from "../../../../../../shared/utils/showDateTimeDisplay";
+import { getUpcomingShowsPath } from "../../upcoming-shows/constants/upcomingShowRoutes";
 
 type CustomerMode = "internal" | "customer";
 
@@ -89,6 +103,8 @@ function getStatusBadgeVariant(status: PrintRequest["status"]) {
       return "success";
     case "completed":
       return "info";
+    case "editing":
+      return "warning";
     case "archived":
       return "warning";
     case "draft":
@@ -164,6 +180,10 @@ export function PrintRequestsPage() {
     requests,
     summariesByRequestId,
   } = usePrintRequests();
+  const { totalsByRequestId: allocationTotalsByRequestId, reload: reloadAllocationTotals } =
+    usePrintRequestAllocationTotals();
+  const { shows: upcomingShows } = useUpcomingShows();
+  const [activeListTab, setActiveListTab] = useState<PrintRequestListTab>("working");
 
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
   const requestDetails = usePrintRequestDetails(selectedRequestId);
@@ -189,7 +209,82 @@ export function PrintRequestsPage() {
   const [createRequestForm, setCreateRequestForm] = useState<PrintRequestFormState>(DEFAULT_REQUEST_FORM);
   const [isRequestDetailExpanded, setIsRequestDetailExpanded] = useState(false);
   const [successAlertSeed, setSuccessAlertSeed] = useState(0);
+  const [isAddToShowModalOpen, setIsAddToShowModalOpen] = useState(false);
+  const [selectedRequestAllocations, setSelectedRequestAllocations] = useState<ShowAllocation[]>([]);
+  const [isConfirmingShowQueueRemoval, setIsConfirmingShowQueueRemoval] = useState(false);
+  const [isRemovingFromShowQueue, setIsRemovingFromShowQueue] = useState(false);
   const selectedRequestIdParam = searchParams.get(PRINT_REQUEST_ID_QUERY_PARAM);
+
+  const reloadSelectedRequestAllocations = useCallback(async () => {
+    if (!user || !visibleSelectedRequest) {
+      setSelectedRequestAllocations([]);
+      return;
+    }
+
+    const allocations = await upcomingShowService.listShowAllocationsForPrintRequest(user, visibleSelectedRequest.id);
+    setSelectedRequestAllocations(allocations.filter((allocation) => allocation.status !== "canceled"));
+  }, [user, visibleSelectedRequest]);
+
+  useEffect(() => {
+    void reloadSelectedRequestAllocations();
+  }, [reloadSelectedRequestAllocations]);
+
+  useEffect(() => {
+    setIsConfirmingShowQueueRemoval(false);
+  }, [selectedRequestId]);
+
+  const selectedRequestShowGroups = useMemo(
+    () => groupAllocationsByShow(selectedRequestAllocations),
+    [selectedRequestAllocations],
+  );
+
+  /**
+   * Mirrors the Show Detail page's removal gate (`canRemoveRequestFromShow`): once any show the
+   * request is queued to has started printing or further along, removal must go through an admin
+   * correction instead of this normal remove-from-here flow.
+   */
+  const canRemoveSelectedRequestFromShowQueue = selectedRequestShowGroups.every((group) => {
+    const show = upcomingShows.find((candidate) => candidate.id === group.upcomingShowId);
+    return !show || canRemoveRequestFromShow(show.productionStatus);
+  });
+
+  /**
+   * Allocating/removing from a show can flip the print request's persisted `status` (e.g.
+   * `editing` -> `active` on re-add), so this must also reload the request itself and the list —
+   * otherwise the detail panel and sidebar badge keep showing the stale status object held from
+   * before the write, even though Firestore already has the correct value.
+   */
+  const reloadAllAllocationData = useCallback(async () => {
+    await Promise.all([
+      reloadAllocationTotals(),
+      reloadPrintRequest(),
+      reloadPrintRequests(),
+      reloadSelectedRequestAllocations(),
+    ]);
+  }, [reloadAllocationTotals, reloadPrintRequest, reloadPrintRequests, reloadSelectedRequestAllocations]);
+
+  const handleRemoveSelectedRequestFromShowQueue = useCallback(async () => {
+    if (!user || !visibleSelectedRequest || selectedRequestShowGroups.length === 0) {
+      return;
+    }
+
+    setIsRemovingFromShowQueue(true);
+    setActionError(null);
+
+    try {
+      for (const group of selectedRequestShowGroups) {
+        await upcomingShowService.removeShowAllocationsForRequest(user, group.upcomingShowId, visibleSelectedRequest.id);
+      }
+
+      setIsConfirmingShowQueueRemoval(false);
+      await reloadAllAllocationData();
+      setActiveListTab("working");
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Unable to remove this request from the show queue.");
+    } finally {
+      setIsRemovingFromShowQueue(false);
+    }
+  }, [reloadAllAllocationData, selectedRequestShowGroups, user, visibleSelectedRequest]);
 
   const resetCreateRequestForm = useCallback(() => {
     setCreateRequestForm(DEFAULT_REQUEST_FORM);
@@ -219,7 +314,6 @@ export function PrintRequestsPage() {
     useMemo(
       () => ({
         title: "Print Requests",
-        description: "Build named print request lists from approved catalog designs.",
         primaryAction: {
           label: "New request",
           onClick: openCreateModal,
@@ -229,21 +323,7 @@ export function PrintRequestsPage() {
     ),
   );
 
-  useEffect(() => {
-    if (selectedRequestIdParam) {
-      if (selectedRequestIdParam !== selectedRequestId) {
-        setSelectedRequestId(selectedRequestIdParam);
-      }
-
-      return;
-    }
-
-    if (!selectedRequestId && requests.length > 0) {
-      const firstRequestId = requests[0].id;
-      setSelectedRequestId(firstRequestId);
-      updateSelectedRequestPath(firstRequestId);
-    }
-  }, [requests, selectedRequestId, selectedRequestIdParam, updateSelectedRequestPath]);
+  const hasAppliedInitialUrlSelectionRef = useRef(false);
 
   useEffect(() => {
     setIsRequestDetailExpanded(false);
@@ -263,14 +343,73 @@ export function PrintRequestsPage() {
     [readyDesigns],
   );
 
-  const requestOptions = useMemo(
-    () =>
-      requests.map((request) => ({
-        label: request.name,
-        value: request.id,
-      })),
-    [requests],
-  );
+  const requestsByListTab = useMemo(() => {
+    const grouped: Record<PrintRequestListTab, PrintRequest[]> = { working: [], queued: [], printed: [] };
+
+    for (const request of requests) {
+      const summary = summariesByRequestId[request.id] ?? { totalQuantity: 0, uniqueDesignCount: 0 };
+      const allocationTotals = allocationTotalsByRequestId[request.id] ?? {
+        totalAllocatedQuantity: 0,
+        totalPrintedQuantity: 0,
+      };
+      const tab = derivePrintRequestListTab({
+        totalRequestedQuantity: summary.totalQuantity,
+        totalAllocatedQuantity: allocationTotals.totalAllocatedQuantity,
+        totalPrintedQuantity: allocationTotals.totalPrintedQuantity,
+        status: request.status,
+      });
+
+      grouped[tab].push(request);
+    }
+
+    return grouped;
+  }, [allocationTotalsByRequestId, requests, summariesByRequestId]);
+
+  const visibleRequests = requestsByListTab[activeListTab];
+
+  useEffect(() => {
+    if (hasAppliedInitialUrlSelectionRef.current || !selectedRequestIdParam || isRequestsLoading) {
+      return;
+    }
+
+    const linkedRequestTab = (Object.keys(requestsByListTab) as PrintRequestListTab[]).find((tab) =>
+      requestsByListTab[tab].some((request) => request.id === selectedRequestIdParam),
+    );
+
+    if (!linkedRequestTab) {
+      return;
+    }
+
+    hasAppliedInitialUrlSelectionRef.current = true;
+    setActiveListTab(linkedRequestTab);
+    setSelectedRequestId(selectedRequestIdParam);
+  }, [isRequestsLoading, requestsByListTab, selectedRequestIdParam]);
+
+  /**
+   * Keeps the selected request in sync with the active tab: if the current selection no longer
+   * belongs to this tab (moved by an allocation change, or the tab was just switched), fall back to
+   * the tab's first request, or clear the selection entirely if the tab is empty. Without this, the
+   * detail panel could keep showing a request that just moved to a different tab.
+   */
+  useEffect(() => {
+    if (isRequestsLoading) {
+      return;
+    }
+
+    const visibleRequestIds = visibleRequests.map((request) => request.id);
+    const nextSelectedRequestId = resolveSelectedRequestIdForTab(selectedRequestId, visibleRequestIds);
+
+    if (nextSelectedRequestId === selectedRequestId) {
+      return;
+    }
+
+    setSelectedRequestId(nextSelectedRequestId);
+
+    if (nextSelectedRequestId) {
+      updateSelectedRequestPath(nextSelectedRequestId);
+    }
+  }, [isRequestsLoading, selectedRequestId, updateSelectedRequestPath, visibleRequests]);
+
   const selectedCreateCustomer = useMemo(
     () => customers.find((customer) => customer.id === createRequestForm.customerId),
     [createRequestForm.customerId, customers],
@@ -430,6 +569,31 @@ export function PrintRequestsPage() {
 
   const isLoading = isRequestsLoading || isCustomersLoading || isReadyDesignsLoading;
   const loadError = requestsError ?? requestError;
+  /**
+   * Derived from `allocationTotalsByRequestId` (loaded once for every request and stable across
+   * selection changes) rather than the per-selection `totalAllocatedQuantity` state, which is
+   * refetched asynchronously whenever `selectedRequest` changes and briefly reads as `0` while that
+   * fetch is in flight — using it here caused the Add to Show button to flash in and back out when
+   * switching tabs, since the button would render before the async totals resolved.
+   */
+  const isSelectedRequestQueueLocked =
+    Boolean(visibleSelectedRequest) &&
+    visibleSelectedRequest?.status !== "completed" &&
+    (allocationTotalsByRequestId[visibleSelectedRequest?.id ?? ""]?.totalAllocatedQuantity ?? 0) > 0;
+  /**
+   * Uses the same stable `allocationTotalsByRequestId` map as `isSelectedRequestQueueLocked`
+   * instead of the per-selection `totalAllocatedQuantity`/`totalPrintedQuantity` state, which
+   * briefly resets while `reloadAllocationSummary()` is in flight for a newly selected request —
+   * that caused the detail panel's queue-state pill to flash from the correct state back to
+   * "Working" and then to the correct state again when clicking between cards on the Queued tab.
+   */
+  const selectedRequestQueueState = visibleSelectedRequest
+    ? derivePrintRequestQueueState({
+        totalRequestedQuantity: requestItems.reduce((sum, item) => sum + item.quantity, 0),
+        totalAllocatedQuantity: allocationTotalsByRequestId[visibleSelectedRequest.id]?.totalAllocatedQuantity ?? 0,
+        totalPrintedQuantity: allocationTotalsByRequestId[visibleSelectedRequest.id]?.totalPrintedQuantity ?? 0,
+      })
+    : null;
   const requestNamePreview = visibleSelectedRequest
     ? getRequestNamePreview(visibleSelectedRequest, internalBaseNameDraft)
     : "";
@@ -456,31 +620,30 @@ export function PrintRequestsPage() {
 
       <div className="print-requests-layout">
         <aside className="print-requests-rail">
-          <div className="print-requests-rail-header">
-            <div>
-              <p className="eyebrow">Staff queue</p>
-              <h2>Print Requests</h2>
-              <p>Named request lists for customers and internal planning.</p>
-            </div>
+          <div className="print-requests-tab-bar">
+            {(["working", "queued", "printed"] as const).map((tab) => (
+              <button
+                className={`print-requests-tab-button${activeListTab === tab ? " is-active" : ""}`}
+                key={tab}
+                onClick={() => setActiveListTab(tab)}
+                type="button"
+              >
+                {tab === "working" ? "Working" : tab === "queued" ? "Queued" : "Printed"} ({requestsByListTab[tab].length})
+              </button>
+            ))}
           </div>
-
           <div className="print-requests-rail-list">
             {isLoading ? (
               <div className="print-requests-loading">
                 <LoadingSpinner label="Loading print requests" />
               </div>
-            ) : requests.length === 0 ? (
+            ) : visibleRequests.length === 0 ? (
               <EmptyState
-                message="Create the first print request to start building request lists."
-                title="No print requests yet"
+                message="No print requests in this tab yet."
+                title="Nothing here yet"
               />
             ) : (
-              requestOptions.map((option) => {
-                const request = requests.find((entry) => entry.id === option.value);
-                if (!request) {
-                  return null;
-                }
-
+              visibleRequests.map((request) => {
                 const isSelected = request.id === selectedRequestId;
                 const requestSummary = summariesByRequestId[request.id] ?? {
                   totalQuantity: 0,
@@ -505,7 +668,9 @@ export function PrintRequestsPage() {
                       </div>
                     </div>
                     <p className="print-requests-request-card-subtitle">
-                      {getPrintRequestCustomerLabel(request, customers)}
+                      {request.isInternal
+                        ? request.notes?.trim() || "No notes"
+                        : getPrintRequestCustomerLabel(request, customers)}
                     </p>
                     <div className="print-requests-request-card-counts">
                       <span>{formatDesignCountLabel(requestSummary.uniqueDesignCount)}</span>
@@ -519,13 +684,22 @@ export function PrintRequestsPage() {
         </aside>
 
         <section className="print-requests-main">
-          <Card className="print-requests-card print-requests-workflow-card">
-            <p className="eyebrow">How it works</p>
-            <p className="print-requests-workflow-copy">
-              Create a request for a customer or internal list. Add approved catalog designs, then set
-              quantity and requested print size. Phase 7 will connect requests to print runs and upcoming shows.
-            </p>
-          </Card>
+          {visibleSelectedRequest && !isSelectedRequestQueueLocked ? (
+            <div className="print-requests-page-actions">
+              <Button
+                disabled={requestItems.length === 0}
+                onClick={() => setIsAddToShowModalOpen(true)}
+                title={
+                  requestItems.length === 0
+                    ? "Add designs to this request before adding it to a show."
+                    : undefined
+                }
+                type="button"
+              >
+                Add to Show
+              </Button>
+            </div>
+          ) : null}
 
           {isRequestLoading ? (
             <Card className="print-requests-card print-requests-loading-card">
@@ -559,22 +733,12 @@ export function PrintRequestsPage() {
                       <Badge variant={getStatusBadgeVariant(visibleSelectedRequest.status)}>
                         {visibleSelectedRequest.status}
                       </Badge>
+                      <Badge
+                        variant={getPrintRequestQueueStateBadgeVariant(selectedRequestQueueState ?? "not_queued")}
+                      >
+                        {getPrintRequestQueueStateBadgeLabel(selectedRequestQueueState ?? "not_queued")}
+                      </Badge>
                     </div>
-                    <Button
-                      aria-label={isRequestDetailExpanded ? "Collapse request detail" : "Expand request detail"}
-                      aria-expanded={isRequestDetailExpanded}
-                      className="print-requests-detail-toggle-button"
-                      onClick={() => setIsRequestDetailExpanded((current) => !current)}
-                      size="sm"
-                      variant="ghost"
-                      type="button"
-                    >
-                      {isRequestDetailExpanded ? (
-                        <ChevronUp aria-hidden="true" size={16} strokeWidth={2} />
-                      ) : (
-                        <ChevronDown aria-hidden="true" size={16} strokeWidth={2} />
-                      )}
-                    </Button>
                   </div>
                 </div>
 
@@ -614,6 +778,14 @@ export function PrintRequestsPage() {
 
                     <div className="print-requests-detail-actions">
                       <Button
+                        onClick={() => setIsRequestDetailExpanded(false)}
+                        size="sm"
+                        type="button"
+                        variant="ghost"
+                      >
+                        Cancel
+                      </Button>
+                      <Button
                         disabled={isRequestDetailSaveDisabled}
                         onClick={() => {
                           void handleSaveRequestDetail();
@@ -624,7 +796,96 @@ export function PrintRequestsPage() {
                       </Button>
                     </div>
                   </div>
-                ) : null}
+                ) : (
+                  <div className="print-requests-detail-actions">
+                    {isSelectedRequestQueueLocked ? (
+                      <div className="print-requests-show-queue-lock">
+                        <p className="print-requests-modal-hint">
+                          This request is queued to a show. Remove it from the Show Queue to edit it.
+                        </p>
+                        <div className="print-requests-show-queue-row">
+                          <div className="print-requests-show-queue-links">
+                            {selectedRequestShowGroups.map((group) => {
+                              const show = upcomingShows.find((candidate) => candidate.id === group.upcomingShowId);
+                              const groupQuantity = group.allocations.reduce(
+                                (sum, allocation) => sum + allocation.allocatedQuantity,
+                                0,
+                              );
+                              const showTitle = show ? formatUpcomingShowTitle(show) : "Show";
+                              const showDateLabel = show?.scheduledStartAt
+                                ? formatShowDateTimeLabel(show.scheduledStartAt.toDate())
+                                : "Not scheduled";
+
+                              return (
+                                <Link
+                                  className="print-requests-show-queue-pill"
+                                  key={group.upcomingShowId}
+                                  title={showTitle}
+                                  to={getUpcomingShowsPath({ showId: group.upcomingShowId })}
+                                >
+                                  <span>{groupQuantity} qty</span>
+                                  <span>&middot;</span>
+                                  <span>{showDateLabel}</span>
+                                  <ExternalLink aria-hidden="true" size={12} strokeWidth={2.2} />
+                                </Link>
+                              );
+                            })}
+                          </div>
+                          {!canRemoveSelectedRequestFromShowQueue ? (
+                            <p className="print-requests-modal-hint">
+                              This show has already started printing. Removing this request requires an
+                              admin correction.
+                            </p>
+                          ) : isConfirmingShowQueueRemoval ? (
+                            <div className="print-requests-show-queue-remove-confirm">
+                              <span>
+                                {selectedRequestShowGroups.length > 1
+                                  ? `Remove this request from all ${selectedRequestShowGroups.length} shows it's queued to?`
+                                  : "Remove this request from the show queue?"}
+                              </span>
+                              <Button
+                                disabled={isRemovingFromShowQueue}
+                                onClick={() => setIsConfirmingShowQueueRemoval(false)}
+                                size="sm"
+                                type="button"
+                                variant="ghost"
+                              >
+                                Cancel
+                              </Button>
+                              <Button
+                                disabled={isRemovingFromShowQueue}
+                                onClick={() => void handleRemoveSelectedRequestFromShowQueue()}
+                                size="sm"
+                                type="button"
+                                variant="danger"
+                              >
+                                {isRemovingFromShowQueue ? "Removing..." : "Confirm"}
+                              </Button>
+                            </div>
+                          ) : (
+                            <Button
+                              onClick={() => setIsConfirmingShowQueueRemoval(true)}
+                              size="sm"
+                              type="button"
+                              variant="danger"
+                            >
+                              Remove from show queue
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <Button
+                        onClick={() => setIsRequestDetailExpanded(true)}
+                        size="sm"
+                        type="button"
+                        variant="secondary"
+                      >
+                        Edit
+                      </Button>
+                    )}
+                  </div>
+                )}
               </Card>
 
               <Card className="print-requests-card">
@@ -633,7 +894,7 @@ export function PrintRequestsPage() {
                   <Button
                     className="button-leading-icon"
                     onClick={openDesignLibrarySelection}
-                    disabled={!selectedRequest}
+                    disabled={!selectedRequest || isSelectedRequestQueueLocked}
                     size="sm"
                     variant="secondary"
                   >
@@ -661,6 +922,7 @@ export function PrintRequestsPage() {
                           onDuplicate={handleDuplicateItem}
                           onRemove={handleRemoveItem}
                           onUpdate={handleUpdateItem}
+                          readOnly={isSelectedRequestQueueLocked}
                         />
                       );
                     })}
@@ -819,6 +1081,16 @@ export function PrintRequestsPage() {
             </ModalFooter>
           </Modal>
         </div>
+      ) : null}
+
+      {isAddToShowModalOpen && visibleSelectedRequest ? (
+        <AddToShowModal
+          designById={designById}
+          items={requestItems}
+          onAdded={reloadAllAllocationData}
+          onClose={() => setIsAddToShowModalOpen(false)}
+          printRequest={visibleSelectedRequest}
+        />
       ) : null}
 
       {autosaveState.status !== "idle" ? (

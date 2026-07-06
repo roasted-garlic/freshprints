@@ -215,6 +215,14 @@ export const permissionService = {
     return isStaff(user);
   },
 
+  canViewUpcomingShows(user: UserLike) {
+    return isStaff(user);
+  },
+
+  canManageUpcomingShows(user: UserLike) {
+    return isStaff(user);
+  },
+
   canManageGuestCustomers(user: UserLike) {
     return hasActiveRole(user, ["owner", "admin"]);
   },
@@ -321,6 +329,10 @@ export const permissionService = {
         return this.canManagePrintRequests(user);
       case "managePrintRequestItems":
         return this.canManagePrintRequestItems(user);
+      case "viewUpcomingShows":
+        return this.canViewUpcomingShows(user);
+      case "manageUpcomingShows":
+        return this.canManageUpcomingShows(user);
       case "manageGuestCustomers":
         return this.canManageGuestCustomers(user);
       case "manageCustomers":

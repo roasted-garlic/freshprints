@@ -1,5 +1,5 @@
 import { CopyPlus, Minus, Plus, Trash2, X } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 
 import { Button } from "../../../shared/components/Button";
 import { Card } from "../../../shared/components/Card";
@@ -28,6 +28,8 @@ interface PrintRequestItemCardProps {
     message?: string,
     retry?: () => Promise<void>,
   ) => void;
+  /** When true, hides edit/remove/duplicate controls because the request is locked while queued to a show. */
+  readOnly?: boolean;
 }
 
 function resolveInitialWidth(item: PrintRequestItem, design?: Design): number {
@@ -85,6 +87,7 @@ export function PrintRequestItemCard({
   onDuplicate,
   onUpdate,
   onAutosaveStateChange,
+  readOnly,
 }: PrintRequestItemCardProps) {
   const title = design?.title ?? item.designId;
   const thumbPath = design?.thumbnailPath;
@@ -138,6 +141,13 @@ export function PrintRequestItemCard({
     }
 
     setQuantityInput(String(Math.floor(nextQuantity)));
+  }
+
+  function stepQuantity(nextQuantity: number) {
+    commitQuantity(nextQuantity);
+    // Stepper clicks are a discrete action, not mid-edit typing, so they save immediately once
+    // the committed quantity is reflected in state on the next tick.
+    window.setTimeout(() => void saveDraftRef.current(), 0);
   }
 
   function updateWidth(nextWidthInput: string) {
@@ -213,23 +223,41 @@ export function PrintRequestItemCard({
     saveDraftRef.current = saveDraft;
   }, [saveDraft]);
 
-  useEffect(() => {
+  const hasUnsavedDraft = useCallback(() => {
     const draftSignature = buildItemSignature(
       parsedQuantity ?? Number.NaN,
       parsedPrintWidthInches ?? Number.NaN,
       parsedPrintHeightInches ?? Number.NaN,
     );
 
-    if (draftSignature === lastSavedSignatureRef.current || !canSave) {
-      return undefined;
+    return draftSignature !== lastSavedSignatureRef.current;
+  }, [parsedPrintHeightInches, parsedPrintWidthInches, parsedQuantity]);
+
+  /**
+   * Autosave only fires when focus leaves one of the quantity/width/height inputs (blur), not on
+   * every keystroke — moving focus to another field in this card (or clicking a stepper) still
+   * counts as leaving the input, but mid-edit typing (delete/backspace/retype) never triggers a
+   * save until the user is done with that field.
+   */
+  const handleFieldBlur = useCallback(() => {
+    if (readOnly || !canSave || !hasUnsavedDraft()) {
+      return;
     }
 
-    const timeoutId = window.setTimeout(() => {
-      void saveDraft();
-    }, 600);
+    void saveDraft();
+  }, [canSave, hasUnsavedDraft, readOnly, saveDraft]);
 
-    return () => window.clearTimeout(timeoutId);
-  }, [canSave, parsedPrintHeightInches, parsedPrintWidthInches, parsedQuantity, saveDraft]);
+  /** Pressing Enter commits the field immediately instead of waiting for blur. */
+  const handleFieldKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLInputElement>) => {
+      if (event.key !== "Enter") {
+        return;
+      }
+
+      event.currentTarget.blur();
+    },
+    [],
+  );
 
   return (
     <>
@@ -254,136 +282,146 @@ export function PrintRequestItemCard({
             </div>
           </div>
 
-          <div className="print-requests-item-card-summary-actions">
-            <Button
-              aria-label={`Duplicate ${title}`}
-              onClick={() => onDuplicate(item)}
-              size="sm"
-              variant="secondary"
-              type="button"
-            >
-              <CopyPlus aria-hidden="true" size={16} strokeWidth={2} />
-            </Button>
-            {isConfirmingRemove ? (
-              <>
+          {readOnly ? null : (
+            <div className="print-requests-item-card-summary-actions">
+              <Button
+                aria-label={`Duplicate ${title}`}
+                onClick={() => onDuplicate(item)}
+                size="sm"
+                variant="secondary"
+                type="button"
+              >
+                <CopyPlus aria-hidden="true" size={16} strokeWidth={2} />
+              </Button>
+              {isConfirmingRemove ? (
+                <>
+                  <Button
+                    aria-label={`Cancel removing ${title}`}
+                    onClick={() => setIsConfirmingRemove(false)}
+                    size="sm"
+                    variant="ghost"
+                    type="button"
+                  >
+                    <X aria-hidden="true" size={16} strokeWidth={2} />
+                  </Button>
+                  <Button
+                    aria-label={`Confirm remove ${title}`}
+                    onClick={() => onRemove(item)}
+                    size="sm"
+                    variant="danger"
+                    type="button"
+                  >
+                    Confirm
+                  </Button>
+                </>
+              ) : (
                 <Button
-                  aria-label={`Cancel removing ${title}`}
-                  onClick={() => setIsConfirmingRemove(false)}
-                  size="sm"
-                  variant="ghost"
-                  type="button"
-                >
-                  <X aria-hidden="true" size={16} strokeWidth={2} />
-                </Button>
-                <Button
-                  aria-label={`Confirm remove ${title}`}
-                  onClick={() => onRemove(item)}
+                  aria-label={`Remove ${title}`}
+                  onClick={() => setIsConfirmingRemove(true)}
                   size="sm"
                   variant="danger"
                   type="button"
                 >
-                  Confirm
+                  <Trash2 aria-hidden="true" size={16} strokeWidth={2} />
                 </Button>
-              </>
-            ) : (
-              <Button
-                aria-label={`Remove ${title}`}
-                onClick={() => setIsConfirmingRemove(true)}
-                size="sm"
-                variant="danger"
-                type="button"
-              >
-                <Trash2 aria-hidden="true" size={16} strokeWidth={2} />
-              </Button>
-            )}
-          </div>
+              )}
+            </div>
+          )}
         </div>
 
-        <div className="print-requests-item-card-form">
-          <div className="print-requests-item-controls">
-            <div className="print-requests-item-quantity-control">
-              <span className="print-requests-item-control-label">Quantity</span>
-              <div className="print-requests-item-stepper">
-                <button
-                  aria-label={`Decrease quantity for ${title}`}
-                  className="print-requests-item-stepper-button"
-                  onClick={() => commitQuantity((parsedQuantity ?? 1) - 1)}
-                  type="button"
-                >
-                  <Minus aria-hidden="true" size={16} strokeWidth={2} />
-                </button>
-                <input
-                  aria-label={`Quantity for ${title}`}
-                  className="print-requests-number-input"
-                  inputMode="numeric"
-                  min={1}
-                  name={`quantity-${item.id}`}
-                  onChange={(event) => setQuantityInput(event.target.value)}
-                  onFocus={(event) => event.currentTarget.select()}
-                  type="number"
-                  value={quantityInput}
-                />
-                <button
-                  aria-label={`Increase quantity for ${title}`}
-                  className="print-requests-item-stepper-button"
-                  onClick={() => commitQuantity((parsedQuantity ?? 0) + 1)}
-                  type="button"
-                >
-                  <Plus aria-hidden="true" size={16} strokeWidth={2} />
-                </button>
+        {readOnly ? null : (
+          <div className="print-requests-item-card-form">
+            <div className="print-requests-item-controls">
+              <div className="print-requests-item-quantity-control">
+                <span className="print-requests-item-control-label">Quantity</span>
+                <div className="print-requests-item-stepper">
+                  <button
+                    aria-label={`Decrease quantity for ${title}`}
+                    className="print-requests-item-stepper-button"
+                    onClick={() => stepQuantity((parsedQuantity ?? 1) - 1)}
+                    type="button"
+                  >
+                    <Minus aria-hidden="true" size={16} strokeWidth={2} />
+                  </button>
+                  <input
+                    aria-label={`Quantity for ${title}`}
+                    className="print-requests-number-input"
+                    inputMode="numeric"
+                    min={1}
+                    name={`quantity-${item.id}`}
+                    onBlur={handleFieldBlur}
+                    onChange={(event) => setQuantityInput(event.target.value)}
+                    onFocus={(event) => event.currentTarget.select()}
+                    onKeyDown={handleFieldKeyDown}
+                    type="number"
+                    value={quantityInput}
+                  />
+                  <button
+                    aria-label={`Increase quantity for ${title}`}
+                    className="print-requests-item-stepper-button"
+                    onClick={() => stepQuantity((parsedQuantity ?? 0) + 1)}
+                    type="button"
+                  >
+                    <Plus aria-hidden="true" size={16} strokeWidth={2} />
+                  </button>
+                </div>
               </div>
+
+              <TextInput
+                label="Width"
+                name={`printWidthInches-${item.id}`}
+                className="print-requests-number-input"
+                inputMode="decimal"
+                min={0.01}
+                onBlur={handleFieldBlur}
+                onChange={(event) => updateWidth(event.target.value)}
+                onFocus={(event) => event.currentTarget.select()}
+                onKeyDown={handleFieldKeyDown}
+                step={0.01}
+                type="number"
+                value={printWidthInput}
+              />
+
+              <TextInput
+                label="Height"
+                name={`printHeightInches-${item.id}`}
+                className="print-requests-number-input"
+                inputMode="decimal"
+                min={0.01}
+                onBlur={handleFieldBlur}
+                onChange={(event) => updateHeight(event.target.value)}
+                onFocus={(event) => event.currentTarget.select()}
+                onKeyDown={handleFieldKeyDown}
+                step={0.01}
+                type="number"
+                value={printHeightInput}
+              />
             </div>
 
-            <TextInput
-              label="Width"
-              name={`printWidthInches-${item.id}`}
-              className="print-requests-number-input"
-              inputMode="decimal"
-              min={0.01}
-              onChange={(event) => updateWidth(event.target.value)}
-              onFocus={(event) => event.currentTarget.select()}
-              step={0.01}
-              type="number"
-              value={printWidthInput}
-            />
+            <div className="print-requests-item-quality-row">
+              <span className={qualityClass}>
+                {sizeAssessment
+                  ? `${sizeAssessment.qualityLabel} (${sizeAssessment.effectiveDpi} DPI)`
+                  : "DPI unavailable"}
+              </span>
+              <span className="print-requests-item-aspect-lock">Aspect ratio locked</span>
+            </div>
 
-            <TextInput
-              label="Height"
-              name={`printHeightInches-${item.id}`}
-              className="print-requests-number-input"
-              inputMode="decimal"
-              min={0.01}
-              onChange={(event) => updateHeight(event.target.value)}
-              onFocus={(event) => event.currentTarget.select()}
-              step={0.01}
-              type="number"
-              value={printHeightInput}
-            />
+            {quantityError ? (
+              <p className="auth-message auth-message-error" role="alert">
+                {quantityError}
+              </p>
+            ) : sizeAssessment?.errorMessage ? (
+              <p className="auth-message auth-message-error" role="alert">
+                {sizeAssessment.errorMessage}
+              </p>
+            ) : sizeAssessment?.warningMessage ? (
+              <p className="auth-message auth-message-warning" role="status">
+                {sizeAssessment.warningMessage}
+              </p>
+            ) : null}
           </div>
-
-          <div className="print-requests-item-quality-row">
-            <span className={qualityClass}>
-              {sizeAssessment
-                ? `${sizeAssessment.qualityLabel} (${sizeAssessment.effectiveDpi} DPI)`
-                : "DPI unavailable"}
-            </span>
-            <span className="print-requests-item-aspect-lock">Aspect ratio locked</span>
-          </div>
-
-          {quantityError ? (
-            <p className="auth-message auth-message-error" role="alert">
-              {quantityError}
-            </p>
-          ) : sizeAssessment?.errorMessage ? (
-            <p className="auth-message auth-message-error" role="alert">
-              {sizeAssessment.errorMessage}
-            </p>
-          ) : sizeAssessment?.warningMessage ? (
-            <p className="auth-message auth-message-warning" role="status">
-              {sizeAssessment.warningMessage}
-            </p>
-          ) : null}
-        </div>
+        )}
       </Card>
 
       <DesignPreviewLightbox

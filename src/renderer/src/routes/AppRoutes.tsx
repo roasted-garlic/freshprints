@@ -8,7 +8,7 @@ import { DesignLibraryPage } from "../features/designs/pages/DesignLibraryPage";
 import { ImportsPage } from "../features/imports/pages/ImportsPage";
 import { PrintRequestsPage } from "../features/print-requests/pages/PrintRequestsPage";
 import { SettingsPage } from "../features/settings/pages/SettingsPage";
-import { ShowQueuePage } from "../features/show-queue/pages/ShowQueuePage";
+import { UpcomingShowsPage } from "../features/upcoming-shows/pages/UpcomingShowsPage";
 import { UserManagementPage } from "../features/users/pages/UserManagementPage";
 import { AuthenticatedLayout } from "./AuthenticatedLayout";
 import { LoginRoute } from "./LoginRoute";
@@ -55,11 +55,12 @@ export function AppRoutes() {
           <Route
             path="/show-queue"
             element={
-              <ProtectedRoute permission="manageQueues">
-                <ShowQueuePage />
+              <ProtectedRoute permission="viewUpcomingShows">
+                <UpcomingShowsPage />
               </ProtectedRoute>
             }
           />
+          <Route path="/print-runs" element={<Navigate replace to="/show-queue" />} />
           <Route
             path="/customer-requests"
             element={

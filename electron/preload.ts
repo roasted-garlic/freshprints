@@ -13,9 +13,15 @@ import {
   isAllowedImportIpcChannel,
   isAllowedImportIpcEventChannel,
 } from "./ipc/import/importIpcChannels";
+import {
+  WHATNOT_IMPORT_CONFIRMED_EVENT,
+  WHATNOT_IMPORT_IPC_CHANNELS,
+  isAllowedWhatnotImportIpcChannel,
+} from "./ipc/whatnotImport/whatnotImportIpcChannels";
 import type {
   ConfirmCloseResult,
   OpenDevToolsResult,
+  OpenExternalLinkResult,
   SetUploadActiveResult,
 } from "../shared/types/app/appIpc.types";
 import type {
@@ -43,6 +49,12 @@ import type {
   ValidateSelectedPngFileResult,
 } from "../shared/types/import/importIpc.types";
 import type { DerivativeGenerationVerificationResult } from "../shared/types/import/derivativeGeneration.types";
+import type {
+  OpenWhatnotImportWindowResult,
+  WhatnotExistingShowSummary,
+  WhatnotShowImportCompletedEvent,
+  WhatnotShowImportConfirmedEvent,
+} from "../shared/types/whatnotImport/whatnotImport.types";
 
 function invokeAppChannel<T>(
   channel: (typeof APP_IPC_CHANNELS)[keyof typeof APP_IPC_CHANNELS],
@@ -94,6 +106,23 @@ function invokeDevImportChannel<T>(
   return ipcRenderer.invoke(channel) as Promise<ImportIpcResult<T>>;
 }
 
+function invokeWhatnotImportChannel<T>(
+  channel: (typeof WHATNOT_IMPORT_IPC_CHANNELS)[keyof typeof WHATNOT_IMPORT_IPC_CHANNELS],
+  payload?: unknown,
+): Promise<ImportIpcResult<T>> {
+  if (!isAllowedWhatnotImportIpcChannel(channel)) {
+    return Promise.resolve({
+      success: false,
+      error: {
+        code: "INTERNAL_ERROR",
+        message: "The requested Whatnot import operation is not allowed.",
+      },
+    });
+  }
+
+  return ipcRenderer.invoke(channel, payload) as Promise<ImportIpcResult<T>>;
+}
+
 function subscribeImportEvent<T>(
   channel: (typeof IMPORT_IPC_EVENT_CHANNELS)[keyof typeof IMPORT_IPC_EVENT_CHANNELS],
   callback: (event: T) => void,
@@ -134,6 +163,47 @@ contextBridge.exposeInMainWorld("freshPrints", {
       return () => {
         ipcRenderer.removeListener(APP_CONFIRM_CLOSE_REQUESTED, listener);
       };
+    },
+
+    openExternalLink(url: string): Promise<ImportIpcResult<OpenExternalLinkResult>> {
+      return invokeAppChannel<OpenExternalLinkResult>(APP_IPC_CHANNELS.OPEN_EXTERNAL_LINK, url);
+    },
+  },
+
+  whatnotImport: {
+    openImportWindow(
+      baseUrl: string,
+      existingShows: WhatnotExistingShowSummary[],
+    ): Promise<ImportIpcResult<OpenWhatnotImportWindowResult>> {
+      return invokeWhatnotImportChannel<OpenWhatnotImportWindowResult>(
+        WHATNOT_IMPORT_IPC_CHANNELS.OPEN_WINDOW,
+        { baseUrl, existingShows },
+      );
+    },
+
+    closeImportWindow(): Promise<ImportIpcResult<{ closed: boolean }>> {
+      return invokeWhatnotImportChannel<{ closed: boolean }>(WHATNOT_IMPORT_IPC_CHANNELS.CLOSE_WINDOW);
+    },
+
+    onImportConfirmed(callback: (event: WhatnotShowImportConfirmedEvent) => void): () => void {
+      const listener = (_ipcEvent: Electron.IpcRendererEvent, payload: WhatnotShowImportConfirmedEvent) => {
+        callback(payload);
+      };
+
+      ipcRenderer.on(WHATNOT_IMPORT_CONFIRMED_EVENT, listener);
+
+      return () => {
+        ipcRenderer.removeListener(WHATNOT_IMPORT_CONFIRMED_EVENT, listener);
+      };
+    },
+
+    reportImportCompleted(
+      event: WhatnotShowImportCompletedEvent,
+    ): Promise<ImportIpcResult<{ acknowledged: boolean }>> {
+      return invokeWhatnotImportChannel<{ acknowledged: boolean }>(
+        WHATNOT_IMPORT_IPC_CHANNELS.REPORT_COMPLETED,
+        event,
+      );
     },
   },
 

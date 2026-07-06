@@ -4,7 +4,772 @@
 
 ---
 
-## Decisions
+### ADR-FP-062: Print Requests page derives status/queue-state from the stable allocation-totals map everywhere; show-queue link pills and multi-show-aware removal added
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-05 |
+| Status | accepted |
+
+**Decision**
+
+Final polish pass before signoff, bundling several small fixes and one feature addition into the
+Print Requests page:
+
+1. **"Not queued" renamed "Working."** `getPrintRequestQueueStateBadgeLabel()` now returns `"Working"`
+   for the `not_queued` state, matching the tab name it corresponds to.
+2. **Removed a second async-staleness flash source.** Following the same pattern as
+   `isSelectedRequestQueueLocked` (ADR-FP-059's fix), the detail panel's queue-state pill now also
+   derives from the stable `allocationTotalsByRequestId` map instead of the per-selection
+   `totalAllocatedQuantity`/`totalPrintedQuantity` state, which briefly reset while
+   `reloadAllocationSummary()` was in flight for a newly selected card — this caused the pill to flash
+   from correct-state to "Working" and back when clicking between cards on the Queued tab. This made
+   the old state/effect fully dead, so it (and its now-unused `upcomingShowService`/
+   `isPrintedAllocationStatus` imports) were removed.
+3. **`onAdded` now reloads the request and list, not just totals.** Allocating/removing from a show can
+   flip the print request's persisted `status` (e.g. `editing` -> `active` on re-add), but
+   `reloadAllAllocationData()` previously only reloaded allocation totals — so the detail panel kept
+   showing a stale `editing` pill even after a successful re-add. It now also calls
+   `reloadPrintRequest()` and `reloadPrintRequests()`.
+4. **Internal card subtitle shows notes instead of "Internal."** The word "Internal" in the sidebar
+   card subtitle was redundant with the origin pill already shown above it; internal requests now show
+   `request.notes?.trim() || "No notes"` there instead. Customer requests are unaffected.
+5. **Show-queue link pills + multi-show-aware removal.** The Queued tab's detail panel now shows one
+   compact pill per show the request is queued to (`{qty} qty · {date/time}` plus an external-link
+   icon, `title` attribute for the full show name on hover), linking to `/show-queue?showId=...`. A
+   "Remove from show queue" action (two-step confirm, wording pluralized when the request spans
+   multiple shows) removes every allocation across all its shows via
+   `removeShowAllocationsForRequest()` per show, then switches the active tab to `Working` — the
+   existing tab-selection-sync effect keeps the same request selected. Gated by the same
+   `canRemoveRequestFromShow()` production-status check already used on the Show Detail page. New pure
+   util `shared/utils/groupAllocationsByShow.ts` (mirrors the existing `groupAllocationsByRequest`)
+   groups one request's allocations by show.
+
+**Why**
+
+These were the last round of manual-QA-adjacent polish items raised before signoff: a label mismatch
+with the tab name, two instances of the same async-staleness flash bug pattern, a redundant subtitle
+word, and a genuinely missing capability (no way to see or leave a show from the Print Requests page
+without navigating to Show Queue and finding the request there manually).
+
+**Consequences**
+
+- No Firestore rules or index changes were needed for any of these.
+- The pill/removal UI intentionally reuses the same production-status removal gate and two-step
+  confirm pattern as the Show Detail page, rather than introducing a new confirm UX.
+
+---
+
+### ADR-FP-061: A show with zero remaining capacity skips the split-decision path entirely — override is the only way to add to it
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-05 |
+| Status | accepted |
+
+**Decision**
+
+A thirteenth Show Queue manual QA correction: when staff selected an already-full show (zero remaining
+capacity) for an 8-print request, `AddToShowModal` showed "Only 0 of 8 prints can be added to this
+show..." plus a "Choose designs for this show" button that opened `SplitDesignPickerModal` with nothing
+to actually place — there is no capacity to split into. Added `isSelectedShowFull` (true when
+`planAllocationSplit()`'s `fittingQuantity` is `0` and there is a nonzero remainder to place). When
+true, the decision area now shows plain copy ("This show is full. You can select a different show for
+the full request, or use the staff override below to add it anyway.") and hides the
+"Choose designs for this show" button entirely — the **only** action available for a full show is the
+existing staff override checkbox + "Add with override" button, which forces the whole remainder onto
+the show anyway. Showing a *different* show that still has some room continues to use the normal
+split-decision path (warning + "Choose designs" + override) unchanged.
+
+**Why**
+
+Splitting requires a show that can accept *part* of the request; a show with 0 remaining capacity can
+accept none of it, so offering a picker there was actively misleading — it looked like staff could
+place some prints when none would fit.
+
+**Consequences**
+
+- No pure-util changes were needed — `planAllocationSplit()` already returns `fittingQuantity: 0` for
+  a full/over-capacity show; this correction only branches the JSX on that existing value.
+- The footer's plain "Add to show" button was already correctly inert for a full show
+  (`canConfirmFullFitDirectly` requires `!needsDecision`, and `needsDecision` is true whenever
+  capacity doesn't fully fit) — no change was needed there.
+
+---
+
+### ADR-FP-060: Capacity progress bars and a derived Open/Full/Over Max status are added to Show Detail and Add to Show, computed live rather than persisted
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-05 |
+| Status | accepted |
+
+**Decision**
+
+A twelfth Show Queue manual QA correction, adding clear at-a-glance capacity indicators without any
+data model or migration change:
+
+1. **New shared util `shared/utils/showCapacityDisplay.ts`.** Built on top of the existing
+   `assessShowCapacity()` (`isFull`/`isOverCapacity`/`remainingQuantity`), adds: `getShowCapacityPercent()`
+   (percent used, can exceed 100 for over-capacity shows, `undefined` when uncapped),
+   `getCapacityFillLevel()` (green/yellow/red/red thresholds: `low` &lt;70%, `medium` 70–89%, `high`
+   90–99%, `critical` &ge;100%), `formatCapacityUsedLabel()` ("N of M used" / "No max set", replacing
+   the old ambiguous "N remaining of M"), `formatSpotsRemainingLabel()` ("N spots left" / "Full" /
+   "N over max" / "No limit", replacing "N / M left"), and `getDerivedShowStatusDisplay()` — the single
+   function that decides the status pill shown to staff.
+2. **Status pill priority is entirely derived, never persisted.** `getDerivedShowStatusDisplay()`
+   checks `productionStatus` first (`printing` &rarr; `PRINTING`, `fully_printed` &rarr; `FULLY PRINTED`,
+   `completed` &rarr; `COMPLETED`, `archived` &rarr; `ARCHIVED`, `canceled` &rarr; `CANCELED`) and only
+   falls through to capacity-derived `OVER MAX` / `FULL` / `OPEN` when `productionStatus` is `open`.
+   The existing `"full"` value in the `ShowProductionStatus` enum is deliberately never written to by
+   this correction — Full/Over Max is always computed live from `allocatedQuantity` vs.
+   `maxTotalQuantity` at render time, so **every existing show displays correctly immediately after a
+   code refresh, with no migration/backfill and no need to delete/re-add shows**.
+3. **Progress bars added in two places.** The Show Queue detail Capacity card
+   (`UpcomingShowsPage.tsx`) and each show option card in the Add to Show / split-picker's date-grouped
+   list (`AddToShowModal.tsx`) both render a `show-capacity-bar-fill`/`show-date-picker-option-bar-fill`
+   colored by `getCapacityFillLevel()`.
+4. **Whole-area visual state for Full/Over Max, not just the bar.** Per the explicit requirement that
+   staff not have to read carefully: the sidebar show card (`print-requests-request-card`), the Show
+   Detail capacity card (`show-capacity-card`), and each Add to Show option card
+   (`show-date-picker-option`) all gain `.is-full` (warning-tinted background/border) and
+   `.is-over-capacity` (danger-tinted background/border) modifier classes alongside the bar color and
+   pill.
+5. **Removed now-dead `getShowProductionStatusBadgeVariant()`** (`upcomingShowDisplay.ts`) — fully
+   superseded by `getDerivedShowStatusDisplay()`, which every call site now uses instead.
+
+**Why**
+
+Staff could not tell at a glance whether a show had room, was close to full, or was already full/over
+capacity — the existing `0 / 200 left` text plus an always-`OPEN` pill actively misled staff into
+thinking a full show could still take a full-fit request.
+
+**Consequences**
+
+- No Firestore rules or index changes were needed or made — this is a pure UI-derived display feature.
+- No write path changed; `allocatePrintRequestItem()`, override, and split logic are untouched.
+- Because Full/Over Max is derived, a show's pill can silently change between renders as
+  `allocatedQuantity` changes (e.g. after a removal) without any explicit status-transition code —
+  this is intentional and mirrors how the existing capacity numbers already worked.
+
+---
+
+### ADR-FP-059: `Add to Show` action is hidden (not disabled) while the selected request is queue-locked
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-05 |
+| Status | accepted |
+
+**Decision**
+
+An eleventh Show Queue manual QA correction: the Print Requests page's `Add to Show` action showed a
+disabled button (with a "This request is already queued to a show." tooltip) whenever the selected
+request was queue-locked — most visibly on the `Queued` tab, where every visible request is locked by
+definition, so the button served no purpose and just added visual noise. Changed the render condition
+from `visibleSelectedRequest ? ... : null` to `visibleSelectedRequest && !isSelectedRequestQueueLocked
+? ... : null`, so the action row (and its now-unreachable disabled/tooltip branch) doesn't render at
+all while locked. `isSelectedRequestQueueLocked` is unchanged (`totalAllocatedQuantity > 0` for a
+non-`completed` request), so once a request is fully removed from its show(s) and transitions to
+`editing` (zero active allocations), the button correctly reappears on the `Working` tab.
+
+**Why**
+
+On the `Queued` tab specifically, every request is queue-locked, so a permanently-disabled button
+provided no information and cluttered the page's primary action area.
+
+**Consequences**
+
+- No logic, allocation, or lock-state change — only the button's render condition changed. The
+  `requestItems.length === 0` empty-request tooltip still applies once the button is visible (i.e. on
+  `Working`/`editing` requests with no items yet).
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-05 |
+| Status | accepted |
+
+**Decision**
+
+A tenth Show Queue manual QA correction: each `SplitDesignPickerModal` design card showed a
+`{remainingQuantity} available to place` line alongside `{quantity} requested`, which staff read as
+"how many can go on the currently selected show" rather than its actual meaning (the design's own
+unassigned request quantity, independent of the selected show's capacity). Removed that line entirely
+— the card now shows only `{quantity} requested` and, when a prior split leg already assigned some of
+this item, `{alreadyAssigned} already assigned`. The picker's totals strip above the card list already
+covers show capacity and remaining-for-another-show, so no replacement line was needed. No change to
+the quantity input's `max={entry.remainingQuantity}` clamp — the per-design limit is still enforced,
+just no longer restated in ambiguous wording on the card.
+
+**Why**
+
+Staff misread "available to place" as show-capacity-relative rather than request-relative, and the
+totals strip introduced in ADR-FP-054 already communicates capacity information, making the line
+redundant as well as confusing.
+
+**Consequences**
+
+- No pure-util, logic, or test changes were needed — this was a JSX copy removal only;
+  `calculateSplitSelectionTotal()` and `clampSplitItemQuantity()` are unchanged.
+
+---
+
+### ADR-FP-057: Split warning explains both the split and pick-a-different-show paths; the decision area becomes one bordered callout
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-05 |
+| Status | accepted |
+
+**Decision**
+
+A ninth Show Queue manual QA correction, addressing both the split-needed warning's copy and the
+visual looseness of the surrounding decision area in `AddToShowModal`:
+
+1. **Warning copy explains both paths.** `formatSplitNeededWarning()` now reads "Only N of M prints
+   can be added to this show. You can choose which prints to add here and place the rest on another
+   show, or select a different show for the full request." — replacing wording that only described
+   the split path ("The remainder will need to be added to another show. Choose the prints to be
+   added to this show."), which left staff unaware they could simply pick a different show above
+   instead of splitting. Still says nothing about override, since the checkbox directly below already
+   explains that option.
+2. **Decision area becomes one bordered callout.** `.show-allocation-decision` gained the same
+   card-like treatment already used for `.split-picker-totals` (`--color-bg-tertiary` background,
+   `--color-border` border, `--radius-lg` radius, `--space-4` padding) so the warning text, "Choose
+   designs for this show" button, and override checkbox read as one deliberate decision area instead
+   of three loosely stacked elements.
+3. **Button spans the callout width.** `.show-allocation-decision-actions .button` is now
+   `width: 100%`, so "Choose designs for this show" reads as the callout's primary action rather than
+   an arbitrarily-sized secondary button.
+4. **Override row visually separated.** The override `<label>` (renamed `.show-allocation-decision-override`)
+   gained a top border and top padding to separate it from the button above, plus flex/`align-items:
+   flex-start` layout so a wrapping checkbox label stays aligned with the checkbox rather than
+   centering awkwardly.
+
+**Why**
+
+Manual QA reported that the old warning made it sound like splitting was the only option, and that the
+warning/button/checkbox stack looked visually loose and unpolished next to the rest of the modal.
+
+**Consequences**
+
+- No pure-util changes were needed beyond the one string change in `formatSplitNeededWarning()`; its
+  existing test was updated to match the new copy.
+- No logic, allocation, capacity, or override behavior changed — this was copy and CSS/JSX structure
+  only.
+
+---
+
+### ADR-FP-056: Staged split allocation labels show show date and time, not time only
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-05 |
+| Status | accepted |
+
+**Decision**
+
+An eighth Show Queue manual QA correction: the staged-leg summary in `AddToShowModal` (e.g.
+`8:00 PM: 25 prints`) showed only the show's time via `formatShowTimeOnlyLabel()`, leaving staff unable
+to tell which show a leg was assigned to once multiple shows on different dates are involved in a
+split. `getShowLabel()` now calls the existing `formatShowDateTimeLabel()` (already used for Show
+Queue/Show Detail's full date+time display, and already covered by a "does not include seconds" test)
+instead — no new formatter was added. The show-date-picker's compact time-only badges are unaffected;
+`formatShowTimeOnlyLabel` is still used there.
+
+**Why**
+
+Once a request is split across more than one show, a bare time label is ambiguous about *which day's*
+show received a given leg, especially across multiple Upcoming shows scheduled at the same time on
+different dates.
+
+**Consequences**
+
+- No pure-util or test changes were needed — this reused an existing, already-tested formatter in one
+  additional call site.
+
+---
+
+### ADR-FP-055: Split picker quantity inputs start blank instead of pre-filled
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-05 |
+| Status | accepted |
+
+**Decision**
+
+A seventh Show Queue manual QA correction: `SplitDesignPickerModal`'s quantity inputs previously
+pre-filled on open (each design auto-assigned up to the show's remaining capacity via a greedy
+budget-consuming loop in the `useState` initializer), which made it look like the app had already
+chosen the split for staff. Quantities now start empty:
+
+1. State changed from `SplitPickerQuantities` (a `Record<string, number>`) to a plain
+   `Record<string, string>` of raw input text, initialized to `{}` (no pre-seeding loop). A derived
+   `quantities` value (still `SplitPickerQuantities`, computed via `useMemo`) parses each raw string,
+   treating blank/whitespace-only as `0` and otherwise clamping through the existing
+   `clampSplitItemQuantity()` — all downstream calculations (`calculateSplitSelectionTotal`, the
+   totals strip, `exceedsShowCapacity`, `onConfirm`) consume this derived numeric map unchanged.
+2. `updateQuantity()` now special-cases an empty/whitespace input by storing `""` directly (so
+   clearing a field returns it to blank rather than snapping to `0`); any non-blank input is still
+   parsed and clamped to that design's own remaining quantity as before.
+3. The input's `value` now reads from the raw string map (`quantityInputs[id] ?? ""`) instead of the
+   numeric map, and gained a `placeholder="0"` so an empty box still visually reads as zero without
+   holding an actual `0` value.
+4. No change was needed to the confirm button's disabled state (`selectedTotal === 0 ||
+   exceedsShowCapacity`) or to `AddToShowModal.handleConfirmPickerSelection`'s existing filter of
+   `quantity > 0` entries — both already treat "nothing entered" as "nothing to assign," so blank
+   inputs already couldn't create allocations even before this fix targeted the initial-value bug.
+
+**Why**
+
+Manual QA reported that opening the picker with quantities already filled in (e.g. `25` and `0`) felt
+like the app had made the split decision on staff's behalf, when the intent is for staff to choose.
+
+**Consequences**
+
+- No pure-util changes were needed — `calculateSplitSelectionTotal()` and `clampSplitItemQuantity()`
+  are unchanged; this was purely a component-state representation change (number map to string map
+  plus a derived numeric map).
+- The totals strip and "Available on this show" / "Remaining for another show" figures now correctly
+  start at their true pre-selection values (`0` selected, full show capacity available, full
+  unallocated request quantity remaining) since nothing is pre-assigned.
+
+---
+
+### ADR-FP-054: Split picker totals/labels clarified ("Available on this show," "Remaining for another show"); quantity inputs use app styling; production-status pill confirmed independent of selection
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-05 |
+| Status | accepted |
+
+**Decision**
+
+A sixth Show Queue manual QA correction, addressing wording confusion and input styling in the
+`SplitDesignPickerModal` introduced by ADR-FP-053 — no new logic, just clearer copy and reused styling:
+
+1. **Totals strip relabeled and reduced to 3 values.** "Show capacity" → **"Available on this show"**,
+   now computed live as `showRemainingCapacity - selectedTotal` so it reflects what's left *after* the
+   currently-entered quantities, not the show's capacity before the picker opened. "Remaining after this
+   show" → **"Remaining for another show"** (same calculation as before: request total minus selected).
+   "Request total" was dropped from the strip entirely — it duplicated the plain-language summary
+   ("Request has N designs with a total qty of M prints") already shown one step earlier in
+   `AddToShowModal`.
+2. **Design card wording clarified.** `"Requested 25, 25 remaining"` was replaced with three separate
+   lines: `"{quantity} requested"`, `"{alreadyAssigned} already assigned"` (only shown when non-zero —
+   i.e. once a prior split leg touched that item), and `"{remainingQuantity} available to place"`. The
+   quantity input's label ("Add to this show") was unchanged, since it already matched the required
+   wording.
+3. **Quantity inputs restyled to match the app.** The picker's `<input type="number">` now reuses the
+   existing global `.print-requests-number-input` class (already used by `PrintRequestItemCard`'s
+   quantity stepper) for spinner removal, plus new box styling (`--color-bg-secondary` background,
+   `--color-border` border, `--radius-md`, focus ring via `--color-accent-primary`) matching the item
+   card's stepper input — no new input component or styling system was introduced.
+4. **Production-status pill confirmed independent of capacity/selection.** Investigated
+   `getShowProductionStatusBadgeVariant()` and the `show-date-picker-option-badge` styling: the badge's
+   `variant` prop is derived solely from `show.productionStatus` (never from capacity or the in-progress
+   picker selection), and the separate `.is-over-capacity` modifier class recolors the badge only when a
+   *different, capacity-driven* boolean (`wouldExceed`) is true — the two concerns were already
+   architecturally separate before this round. No code change was needed here; this ADR documents the
+   confirmation so a future QA pass doesn't re-flag it without checking the actual derivation first.
+
+**Why**
+
+Manual QA found the totals strip's original labels ("Show capacity: 25 remaining," "Remaining after
+this show") ambiguous about what "remaining" referred to (before vs. after the current selection), the
+design card's "25 remaining" wording didn't make clear whether that was per-design or per-request, and
+the quantity inputs looked like unstyled native browser controls next to the rest of the app's inputs.
+
+**Consequences**
+
+- No pure-util or test changes were required — `calculateSplitSelectionTotal()` and
+  `clampSplitItemQuantity()` are unchanged; only JSX copy, one inline live-capacity calculation, and CSS
+  changed.
+- The totals strip's grid (`split-picker-totals`) now renders 3 columns instead of 4; `auto-fit` grid
+  sizing means no explicit column-count change was needed in CSS.
+- Future picker copy changes should keep "available on this show" scoped to *after the current
+  selection* — if a "before selection" capacity figure is ever needed again, it should get its own,
+  differently-labeled field rather than overloading this one.
+
+---
+
+### ADR-FP-053: Split allocation uses a dedicated visual picker modal with thumbnails and live totals; Add to Show widens to `modal-panel-lg` with compact list-row show options
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-05 |
+| Status | accepted |
+
+**Decision**
+
+Three fixes from the fifth Show Queue manual QA correction, all focused on the split-allocation UX
+being too plain and the Add to Show modal running out of room:
+
+1. **Dedicated visual picker.** The plain text rows with bare quantity inputs (`show-allocation-split-form`)
+   are replaced by a new `SplitDesignPickerModal` component: each remaining design renders as a card with
+   a full, uncropped thumbnail (`DesignThumbnailPanel` with `imageFit="contain"`, the same contained-fit
+   pattern already used in `PrintRequestItemCard`), title, requested/remaining quantity, and a quantity
+   input. A live totals strip shows "Selected for this show," "Show capacity," "Remaining after this
+   show," and "Request total," all recomputed on every keystroke via `calculateSplitSelectionTotal()`.
+   Per-design quantity is clamped to that design's own remaining quantity via `clampSplitItemQuantity()`
+   (negative/fractional/non-finite input all resolve to a safe value); exceeding the show's overall
+   remaining capacity shows an inline warning and disables the confirm button rather than silently
+   overfilling — staff must lower quantities or use the danger override on the previous step instead.
+   The picker holds its selections in local component state only; confirming stages them as one
+   `AllocationLeg` in `AddToShowModal`, and canceling discards that state entirely, so no partial
+   allocation is ever written to Firestore from either action.
+2. **Wider, more space-efficient Add to Show modal.** Both `AddToShowModal` and the new
+   `SplitDesignPickerModal` use the existing `modal-panel-lg` class (42rem, already defined for Design
+   Library) instead of `modal-panel-md` (34rem) — no new CSS width tier or dependency was needed.
+3. **Compact list-row show options.** `show-date-picker-option` changed from a `flex-direction: column`
+   square card (`min-width: 8.5rem`) to a full-width horizontal row (date/time, capacity, and the
+   production-status badge in one line), and `show-date-picker-options` changed from `flex-wrap: wrap`
+   to a single vertical stack — matching the plan's explicit instruction that show title should not be
+   emphasized and that date/time plus capacity are what matters here.
+4. **Simplified, non-repetitive split warning.** The old wording ("N of M prints fit in this show's
+   capacity. Choose which designs/quantities go here, or override to add everything anyway.") mentioned
+   override redundantly, since the override checkbox directly below already explains that option. New
+   copy via `shared/utils/printRequestSplitAllocation.ts`'s `formatSplitNeededWarning()`: "Only N of M
+   prints can be added to this show. The remainder will need to be added to another show. Choose the
+   prints to be added to this show." — no mention of override at all.
+
+**Why**
+
+Manual QA reported that the split flow, while functionally correct, didn't feel like a real design
+picker (no thumbnails, no visual sense of "choosing" designs) and that the modal ran out of vertical
+space quickly with square show cards. The warning copy's repeated override mention was flagged as
+noise once the override checkbox was already self-explanatory.
+
+**Consequences**
+
+- Positive: staff can visually recognize which design they're allocating by thumbnail, not just by
+  title text, matching how designs are already presented everywhere else in Print Requests.
+- Positive: the Add to Show modal comfortably fits several show options, a split warning, capacity
+  info, and the picker entry point without excessive scrolling.
+- Positive: canceling the visual picker is provably safe — its state is local to the component and is
+  discarded on unmount/cancel, never touching `showAllocations` or any other collection.
+- Neutral: `AddToShowModal`'s `designTitleById?: Map<string,string>` prop was replaced with
+  `designById?: Map<string, Design>` so the picker can also resolve thumbnail paths, not just titles;
+  the one call site that didn't pass it (`UpcomingShowsPage`'s `+ Add Print Request` flow) continues to
+  fall back to `item.sizeLabel`/a truncated item id, same as before.
+- Neutral: no new dependency was added — thumbnails reuse the existing `DesignThumbnailPanel` component
+  and derivative-URL resolution; no calendar/date-picker library was introduced.
+
+---
+
+### ADR-FP-052: Add-to-Show wording only mentions "remaining" once a split is underway; a new `editing` status distinguishes a de-queued request from a never-queued draft
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-05 |
+| Status | accepted |
+
+**Decision**
+
+Three fixes from the fourth Show Queue manual QA correction:
+
+1. **Add to Show wording only mentions "remaining" once a split is actually underway.** The modal
+   previously always spoke in "N prints still need a show" / "Add all N remaining prints" terms, even
+   for a request that fully fits its first selected show and has never been split. That is now gated
+   by `shared/utils/printRequestSplitAllocation.ts`'s `shouldShowRemainingWording(legs.length)`: with
+   zero committed legs, the modal shows only the plain summary ("Request has 2 designs with a total
+   qty of 100 prints") and the footer's normal "Add to show" button commits the whole request directly.
+   Once at least one leg has been committed (a split has genuinely started), "remaining" wording and
+   the secondary "Add remaining N prints to this show" button reappear, matching the plan's example
+   ("4 prints still need a show").
+2. **Tab/detail selection is kept in sync with the active tab.** Adding a request to a show (moving it
+   from `Working` to `Queued`) previously left the right-hand detail panel showing that same request
+   even though `Working` was still the active tab and no longer contained it. `shared/utils/
+   printRequestTabSelection.ts`'s `resolveSelectedRequestIdForTab()` is now run in an effect keyed off
+   `activeListTab`/the tab's visible request ids: if the current selection isn't in the active tab, it
+   falls back to that tab's first request, or clears to `null` (empty/select-a-request state) if the
+   tab has none.
+3. **New persisted `editing` status distinguishes "de-queued for revision" from "never queued."** A
+   request that was queued and then fully removed from every show it was on previously fell back to
+   `active`, which looked identical to a request that had just been queued. `PrintRequestStatus` gained
+   `"editing"` (shared enum, Firestore rules, badge variant, list-grouping type). `upcomingShowService.
+   markPrintRequestEditingIfNoActiveAllocations()` transitions `active` → `editing` once a request has
+   zero active allocations left anywhere, called from both `removeShowAllocation()` and
+   `removeShowAllocationsForRequest()`. `allocatePrintRequestItem()`'s existing draft-clearing check was
+   widened to treat `draft` OR `editing` as "not yet active," transitioning either to `active` on the
+   next allocation — so a re-queued `editing` request becomes `active` (shown with the derived `Queued`
+   badge), never reverting to `draft`. This is a status-field addition, not a new field: queue/tab
+   grouping is still derived entirely from `showAllocations` via `derivePrintRequestListTab()`, per the
+   explicit instruction not to add a separate `printQueueStatus` field.
+
+**Why**
+
+Manual QA reported the "remaining" wording as actively confusing for the common case (a request that
+just fits), the stale detail panel as looking like a data bug even though the underlying tab/allocation
+data was correct, and `active` as failing to distinguish "currently queued" from "was queued, now being
+revised" — both looked the same to staff, with no way to tell from the badge whether a request was safe
+to treat as in-flight production planning or as work-in-progress.
+
+**Consequences**
+
+- Positive: the Add to Show modal's language matches its actual state — no split-flow vocabulary
+  appears until a split has actually happened.
+- Positive: the Print Requests detail panel can no longer show a request that isn't part of the active
+  tab; switching tabs or having a request move tabs always keeps the two in sync.
+- Positive: staff can tell at a glance whether a request is fresh (`Draft`), currently queued
+  (`Active` + derived `Queued` badge), previously queued and now back for edits (`Editing`), or done
+  (`Completed`), without reading allocation records directly.
+- Neutral: `PrintRequestStatus`'s Firestore rules validator (`isValidPrintRequestStatus`) now allows
+  `"editing"`; this is a **rules change that has not been deployed**. Until
+  `firebase deploy --only firestore:rules` runs against the target project, any client attempt to write
+  `status: "editing"` will be rejected by the deployed (older) rules even though local code sends it —
+  this is a required deploy checkpoint before the `editing` behavior can be verified end-to-end in a
+  live environment, not just locally against the emulator/no-backend paths.
+- Neutral: no new Firestore index was needed — this is a single-document field addition, not a new
+  query shape.
+
+---
+
+### ADR-FP-051: Split allocation is staff-directed; allocated quantity is always recomputed, never incrementally adjusted; queue state gates editing via a status transition, not a new field
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-05 |
+| Status | accepted |
+
+**Decision**
+
+Three implementation choices from the third Show Queue manual QA correction:
+
+1. **Staff-directed split allocation.** When a Print Request doesn't fully fit a selected show's
+   remaining capacity, the Add to Show flow now lets staff choose exactly which designs/quantities go
+   to that show (`shared/utils/printRequestSplitAllocation.ts` tracks per-item remaining quantity
+   across the session), see the computed remainder, and pick another show (or repeat) until the
+   request is fully allocated or they cancel. The prior behavior only warned about the split without
+   letting staff choose designs/quantities; auto-splitting without staff control was explicitly
+   rejected. A danger override can still force the full remaining quantity onto one show.
+2. **Recompute, don't decrement, `allocatedQuantity`.** Removing a Print Request from a show now
+   deletes every non-canceled `showAllocations` record for that `printRequestId` on that show in one
+   service operation (`removeShowAllocationsForRequest`), then recomputes the show's
+   `allocatedQuantity` by summing the remaining allocations (`recalculateShowAllocatedQuantity`),
+   rather than subtracting a remembered total. Manual QA found the prior per-allocation subtract path
+   left the show's allocated total stale after removal. Recomputing from source data is the only way
+   to guarantee the denormalized total can't drift.
+3. **Status transition instead of a new persisted queue field.** A Print Request moves `draft` →
+   `active` on its first show allocation, and to `completed` once every unit of its requested quantity
+   has been allocated and printed (`markPrintRequestCompletedIfFullyPrinted`). The Working/Queued/
+   Printed list tabs and the queued-request edit lock are still derived live from `showAllocations`
+   totals (`derivePrintRequestListTab`, `canRemoveRequestFromShow`) — no new `printQueueStatus` field
+   was added, per the explicit instruction to avoid a second field that needs to stay in sync unless
+   absolutely necessary. The existing `status` field only needed two additional transitions to stop
+   showing `DRAFT` on a queued request; that was judged sufficient without a new field.
+
+**Why**
+
+Manual QA specifically called out that (a) staff had no way to control which designs/quantities went
+to which show when a request didn't fit, (b) the show's allocated total visibly failed to decrease
+after removing a request, and (c) queued requests still displayed `DRAFT`, which reads as "not yet
+committed" when it is in fact already queued for production. Each fix targets the reported defect
+directly rather than introducing new persisted state where deriving from existing data is sufficient.
+
+**Consequences**
+
+- Positive: Staff have full control over which designs/quantities land on which show during a split,
+  matching the required example (204 total, 200 to Show A, 4 to Show B, or override).
+- Positive: A show's `allocatedQuantity` can never drift from its underlying allocation records,
+  because every add/remove path now recomputes it from source rather than adjusting a running total.
+- Positive: Removing a queued request from a show is blocked once that show's `productionStatus` is
+  `printing`, `fully_printed`, `completed`, or `archived` — an admin correction is required beyond
+  that point instead of silently breaking in-progress production records.
+- Neutral: `printRequests.status` now has two additional automatic transitions (to `active` on first
+  allocation, to `completed` on full print completion) driven by `upcomingShowService`, not just by
+  direct staff edits on the Print Requests page.
+- Neutral: No Firestore rules or index changes were required — `status` already allowed `active`/
+  `completed`, and `showAllocations` deletes were already staff-allowed.
+
+---
+
+### ADR-FP-050: Same-monitor external links use an in-app window; default show capacity is a direct-write setting
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-05 |
+| Status | accepted |
+
+**Decision**
+
+Two implementation choices from the Show Queue UI/flow polish pass:
+
+1. **Same-monitor external links.** Electron's `shell.openExternal` hands off entirely to the OS
+   default browser, which owns its own window placement — Electron cannot position it. To guarantee
+   the Whatnot show URL (and any future external link) opens on the same monitor as the app, links now
+   open in a new in-app `BrowserWindow` positioned via `screen.getDisplayMatching()` against the app's
+   current window bounds, rather than the user's actual default browser. This window is sandboxed,
+   has no Node integration, and only ever loads a URL passed through a shared `isSafeExternalLinkUrl()`
+   validator (`shared/utils/externalLinkSafety.ts`) that allows only `http:`/`https:` — enforced on
+   both the renderer and main-process sides via a new `fresh-prints:app:open-external-link` IPC
+   channel, following the existing app IPC channel/handler/preload pattern.
+2. **Default show capacity setting.** A new "default max quantity for new shows" setting is stored at
+   `settings/showQueue` and read/written directly by the client SDK (staff-only via Firestore rules),
+   the same simpler pattern already used for per-show `setShowMaxQuantity`, rather than the AI
+   Enrichment settings pattern (realtime `onSnapshot` plus a Cloud Function callable for writes). The
+   default is applied only when `upcomingShowService.upsertUpcomingShow()` creates a brand-new show;
+   existing shows are never retroactively changed, and staff can still override any individual show's
+   capacity afterward.
+
+**Why**
+
+Same-monitor placement was an explicit product requirement, and the only way to guarantee it is
+controlling the window ourselves — the tradeoff (an in-app window instead of the user's real default
+browser, with no extensions/saved logins from their normal profile) was discussed and approved before
+implementation. For the settings doc, a direct client write keeps the implementation proportional to
+the feature: a single staff-configurable number doesn't need server-side validation parity with the
+AI Enrichment settings, and avoids adding a new Cloud Function/deploy surface for a simple default.
+
+**Consequences**
+
+- Positive: Same-monitor placement for external links is now guaranteed rather than best-effort.
+- Positive: New shows can start with sensible default capacity without staff re-entering it every time,
+  while remaining fully overridable per show.
+- Neutral: External links opened from Studio use an embedded window, not the user's actual default
+  browser — no browser extensions, saved passwords, or existing sessions carry over. This is a known,
+  accepted limitation, not a bug.
+- Neutral: A new Firestore rules block (`settings/showQueue`) was added locally but not deployed; a
+  human-approved `firebase deploy --only firestore:rules` is required before this setting is usable
+  against a live Firebase project.
+
+---
+
+### ADR-FP-049: A Whatnot show is the print run — combine Show Queue and Print Runs into one entity
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-05 |
+| Status | accepted |
+
+**Decision**
+
+Manual QA of ADR-FP-048's split `upcomingShows` / `printRuns` / `printRunItems` model failed on
+2026-07-05 for two classes of reasons: (1) UI bugs — the "Track a Whatnot show" modal required typing
+a Whatnot show ID by hand instead of parsing it from a pasted URL, had no date/time selector, and a
+Firestore `orderBy("scheduledStartAt")` query silently excluded any show missing that field, so saved
+shows never appeared in the list and could not be attached to a run; (2) a product-model mismatch —
+the business will never have more than one print run per Whatnot show, so tracking them as two
+separate collections with two separate pages (`/show-queue` and `/print-runs`) created redundant
+navigation with no benefit.
+
+The corrected model treats **a Whatnot show as its own print run**:
+
+- `upcomingShows` becomes the single combined entity for both schedule tracking and production
+  planning. The standalone `printRuns` and `printRunItems` collections are removed; `/print-runs`
+  redirects to `/show-queue`, and the sidebar shows one `Show Queue` entry.
+- `UpcomingShow` gains `productionStatus` (`open`/`full`/`printing`/`fully_printed`/`completed`/
+  `archived`/`canceled`) as a field **separate from** the existing `status` (Whatnot schedule/source
+  health: `scheduled`/`live`/`canceled`/`missing_upstream`/etc.) — sync health must never be mixed
+  with production completion, per explicit product direction.
+- `UpcomingShow` gains staff-editable capacity: `maxTotalQuantity` (optional, undefined = no cap),
+  `allocatedQuantity` (denormalized sum of active allocations), and `maxQuantityOverridden` (set when
+  staff use the danger override to lower the max below current allocation or exceed it on allocate).
+- A new `showAllocations` collection (replacing `printRunItems`) allocates some or all of a
+  `printRequestItem`'s quantity to a show. The same item may have multiple allocation records across
+  different shows, so a Print Request can be **split across shows** when a single show's capacity
+  isn't enough — this replaces an earlier one-run-per-item assumption that no longer matches the
+  product workflow. Allocation never mutates `printRequestItems`, `printRequests`, or `designs`.
+- The manual "Track a Whatnot show" modal now requires a Whatnot URL first (show ID parsed and
+  displayed read-only, never typed), and a scheduled date/time is required to save. The show list now
+  reads the full collection and sorts **client-side** by `scheduledStartAt` (missing schedules last)
+  instead of a Firestore `orderBy`, so a record missing that field is still visible — the direct fix
+  for the list bug, kept as a defensive measure even though the date/time field is now required.
+- Print Requests do not gain a persisted queue/print status field. `derivePrintRequestQueueState()`
+  (`not_queued`/`partially_queued`/`queued`/`partially_printed`/`printed`) is computed live from a
+  request's show allocations every time it's displayed, per explicit product direction to avoid a
+  second status field that every allocation mutation would have to keep in sync.
+- `Add to Show` is the primary action, placed on the Print Request detail page (one button that
+  allocates all of a request's items to a chosen show at once, offering a staff danger override when
+  the request would exceed the show's remaining capacity). `+ Add Print Request` on the show detail
+  page is a secondary, request-picker-first path to the same allocation logic.
+
+**Why**
+
+The user's manual QA explicitly identified both the UI defects and the product-model mismatch, and
+supplied the corrected business rule directly: "We will never have more than one print run for a show,
+so keeping separate Upcoming Shows and Print Runs creates redundant work and confusion." Given this is
+a dev-only environment with no production data to preserve, the cleanest fix was to reshape the Phase 7
+data model rather than bridge the two collections together.
+
+**Consequences**
+
+- Positive: One show record is now the single place staff manage both schedule and production for a
+  Whatnot show — no more cross-referencing two pages for what is conceptually one thing.
+- Positive: A Print Request can be split across shows via independent allocation records without any
+  change to `printRequestItems`, `printRequests`, or `designs`.
+- Positive: The list-bug root cause (Firestore `orderBy` excluding schedule-less documents) is fixed
+  structurally (client-side sort) as well as by the new required date/time field, so it can't recur
+  even if a future write path omits the schedule.
+- Neutral: `printRuns`/`printRunItems` collections, their Firestore rules/index entries, and the
+  `/print-runs` feature folder were deleted outright (dev-only data, never deployed) rather than
+  migrated; `/print-runs` remains as a redirect to `/show-queue` for link compatibility.
+- Neutral: Local Firestore rules/index definitions were updated for `upcomingShows` (new fields) and
+  `showAllocations` (new collection) but were not deployed; a human-approved
+  `firebase deploy --only firestore:rules` / `--only firestore:indexes` is required before this phase
+  is usable against a live Firebase project.
+- Neutral: Live Whatnot fetch/sync, an hourly scheduled Function, a manual scrape button, and an
+  auto-update toggle remain unimplemented and unapproved; shows are still populated manually.
+
+---
+
+### ADR-FP-048: Phase 7 foundation splits Upcoming Shows (schedule) from Print Runs (production)
+
+> **Superseded 2026-07-05 by ADR-FP-049.** Manual QA failed and the split model was replaced by a
+> single combined `upcomingShows` entity. This entry is kept for history only.
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-04 |
+| Status | accepted |
+
+**Decision**
+
+Phase 7 introduces three new collections instead of reusing the legacy `showQueues`/`showQueueItems`
+model, which is now removed:
+
+- `upcomingShows` — local Studio metadata for Whatnot-backed shows, matched and updated by stable
+  `source + whatnotShowId`, never by date/time (show dates/times can move upstream). Schedule state
+  (`status`, `syncStatus`, `syncError`, `lastSyncedAt`, `lastSeenAt`) lives only here. Records are
+  never auto-deleted; a show missing upstream is marked `missing_upstream` instead.
+- `printRuns` — Studio production-planning batches. A run may optionally link to one `upcomingShow`
+  and captures that show's title/schedule as a point-in-time snapshot at creation time, so a later
+  Whatnot schedule change never rewrites already-captured planning context. One `upcomingShow` may
+  have zero, one, or many linked `printRuns`.
+- `printRunItems` — production items attached to a run, created as a snapshot-plus-reference from an
+  existing `printRequestItem`. Production status (`pending`/`queued`/`in_progress`/`printed`/`done`/
+  `canceled`) lives only here.
+
+The `/show-queue` route is repointed from the disabled legacy placeholder to a real Upcoming Shows
+page; `/print-runs` is a new Print Runs route. Both appear in the sidebar. Live Whatnot fetch/sync,
+an official Whatnot API assumption, a scheduled Cloud Function, and a manual-refresh callable are
+explicitly out of scope for this foundation slice — show records are created/updated manually by
+staff through the same upsert path a future sync would use.
+
+**Why**
+
+The legacy `showQueues`/`showQueueItems` model conflated show scheduling with production status and
+was never implemented with real data. Whatnot show dates/times are mutable, so keying local records
+by date would silently duplicate records on every reschedule; a stable external ID is required.
+Separating schedule ownership (`upcomingShows`) from production ownership (`printRunItems`) keeps the
+existing Phase 6 rule that `designs.status` never receives a production write, and keeps a future
+sync implementation additive rather than a rework of the production model.
+
+**Consequences**
+
+- Positive: Rescheduling a Whatnot show updates one local record instead of creating duplicates.
+- Positive: Print Runs keep accurate historical show context even after later schedule changes,
+  via the creation-time snapshot.
+- Positive: Attaching a Print Request item to a run never mutates `printRequestItems`, `printRequests`,
+  or `designs` — Phase 6 Print Request behavior is unaffected.
+- Neutral: Local Firestore rules/index definitions were added for the three new collections but were
+  not deployed; a human-approved `firebase deploy --only firestore:rules` / `--only firestore:indexes`
+  is required before this phase is usable against a live Firebase project.
+- Neutral: No live Whatnot integration exists yet; Upcoming Shows are populated manually until a sync
+  method is separately reviewed and approved.
+
+---
 
 ### ADR-FP-047: Print Request item preview polish separates display DPI from save eligibility
 
@@ -1478,6 +2243,21 @@ AppForge starter template ADRs (ADR-001 through ADR-004 in prior template) descr
 
 | Date | Summary |
 |------|---------|
+| 2026-07-05 | ADR-FP-062: Status/queue-state derives from stable allocation totals everywhere; show-queue link pills and multi-show-aware removal added; Phase 7 signed off |
+| 2026-07-05 | ADR-FP-061: A full show (0 remaining capacity) skips the split-decision/picker path; only staff override can add to it |
+| 2026-07-05 | ADR-FP-060: Capacity progress bars and derived Open/Full/Over Max status on Show Detail and Add to Show, computed live (no migration) |
+| 2026-07-05 | ADR-FP-059: `Add to Show` action hidden (not disabled) while the selected request is queue-locked |
+| 2026-07-05 | ADR-FP-058: Split picker design cards drop the ambiguous "available to place" line |
+| 2026-07-05 | ADR-FP-057: Split warning explains both split and pick-a-different-show paths; decision area becomes one bordered callout with full-width action button |
+| 2026-07-05 | ADR-FP-056: Staged split allocation labels show show date and time, not time only |
+| 2026-07-05 | ADR-FP-055: Split picker quantity inputs start blank instead of pre-filled |
+| 2026-07-05 | ADR-FP-054: Split picker totals relabeled ("Available on this show," "Remaining for another show"); design card wording clarified; quantity inputs restyled to match app; status pill confirmed independent of selection |
+| 2026-07-05 | ADR-FP-053: Visual thumbnail-based split picker with live totals; wider Add to Show modal; compact list-row show options; simplified split warning copy |
+| 2026-07-05 | ADR-FP-052: Add-to-Show wording gated on an active split; new `editing` status for de-queued requests; tab/detail selection kept in sync |
+| 2026-07-05 | ADR-FP-051: Staff-directed split allocation; recompute (not decrement) allocated quantity; status transition instead of a new queue field |
+| 2026-07-05 | ADR-FP-050: Same-monitor external links use an in-app window; default show capacity is a direct-write setting |
+| 2026-07-05 | ADR-FP-049: A Whatnot show is the print run — combine Show Queue and Print Runs into one entity |
+| 2026-07-04 | ADR-FP-048: Phase 7 foundation splits Upcoming Shows (schedule) from Print Runs (production) (superseded) |
 | 2026-07-04 | ADR-FP-047: Print Request item preview polish separates display DPI from save eligibility |
 | 2026-07-04 | ADR-FP-046: Print Request item creation initializes standard requested size separately from catalog dimensions |
 | 2026-07-04 | ADR-FP-045: Print Request origin is explicit metadata, not name inference |

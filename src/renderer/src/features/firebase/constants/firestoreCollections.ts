@@ -11,6 +11,8 @@ export const FIRESTORE_COLLECTIONS = {
   customerRequests: "customerRequests",
   showQueues: "showQueues",
   showQueueItems: "showQueueItems",
+  upcomingShows: "upcomingShows",
+  showAllocations: "showAllocations",
   settings: "settings",
   auditLogs: "auditLogs",
 } as const;

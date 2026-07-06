@@ -218,7 +218,7 @@ service cloud.firestore {
     }
 
     function isValidPrintRequestStatus(status) {
-      return status in ["draft", "active", "completed", "archived"];
+      return status in ["draft", "active", "editing", "completed", "archived"];
     }
 
     function isValidPrintRequestOrigin(origin) {
@@ -433,6 +433,145 @@ service cloud.firestore {
         && data.updatedAt is timestamp;
     }
 
+    function isValidUpcomingShowSource(source) {
+      return source in ["whatnot"];
+    }
+
+    function isValidUpcomingShowStatus(status) {
+      return status in ["scheduled", "rescheduled", "live", "completed", "canceled", "missing_upstream", "archived"];
+    }
+
+    function isValidUpcomingShowSyncStatus(syncStatus) {
+      return syncStatus in ["idle", "syncing", "succeeded", "failed"];
+    }
+
+    function isValidShowProductionStatus(status) {
+      return status in ["open", "full", "printing", "fully_printed", "completed", "archived", "canceled"];
+    }
+
+    function upcomingShowRequiredFieldsValid(data) {
+      return data.keys().hasOnly([
+          "source",
+          "whatnotShowId",
+          "whatnotUrl",
+          "title",
+          "scheduledStartAt",
+          "status",
+          "syncStatus",
+          "syncError",
+          "lastSyncedAt",
+          "lastSeenAt",
+          "sourceBaseUrlSnapshot",
+          "lastSeenInAssistedImportAt",
+          "notes",
+          "isArchived",
+          "productionStatus",
+          "maxTotalQuantity",
+          "maxQuantityOverridden",
+          "allocatedQuantity",
+          "createdBy",
+          "updatedBy",
+          "createdAt",
+          "updatedAt"
+        ])
+        && isValidUpcomingShowSource(data.source)
+        && data.whatnotShowId is string
+        && data.whatnotShowId.size() > 0
+        && isOptionalString(data, "whatnotUrl")
+        && isOptionalString(data, "title")
+        && isOptionalTimestamp(data, "scheduledStartAt")
+        && isValidUpcomingShowStatus(data.status)
+        && isValidUpcomingShowSyncStatus(data.syncStatus)
+        && isOptionalString(data, "syncError")
+        && isOptionalTimestamp(data, "lastSyncedAt")
+        && isOptionalTimestamp(data, "lastSeenAt")
+        && isOptionalString(data, "sourceBaseUrlSnapshot")
+        && isOptionalTimestamp(data, "lastSeenInAssistedImportAt")
+        && isOptionalString(data, "notes")
+        && data.isArchived is bool
+        && isValidShowProductionStatus(data.productionStatus)
+        && isOptionalNumber(data, "maxTotalQuantity")
+        && data.maxQuantityOverridden is bool
+        && data.allocatedQuantity is number
+        && data.allocatedQuantity >= 0
+        && isOptionalString(data, "createdBy")
+        && isOptionalString(data, "updatedBy")
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidShowAllocationStatus(status) {
+      return status in ["pending", "queued", "in_progress", "printed", "done", "canceled"];
+    }
+
+    function showAllocationRequiredFieldsValid(data) {
+      return data.keys().hasOnly([
+          "upcomingShowId",
+          "printRequestId",
+          "printRequestItemId",
+          "designId",
+          "customerId",
+          "requestNameSnapshot",
+          "requestOriginSnapshot",
+          "designTitleSnapshot",
+          "allocatedQuantity",
+          "sourceItemQuantitySnapshot",
+          "printWidthInches",
+          "printHeightInches",
+          "sizeLabel",
+          "notes",
+          "status",
+          "addedBy",
+          "updatedBy",
+          "queuedAt",
+          "queuedBy",
+          "printedAt",
+          "printedBy",
+          "completedAt",
+          "completedBy",
+          "canceledAt",
+          "canceledBy",
+          "createdAt",
+          "updatedAt"
+        ])
+        && data.upcomingShowId is string
+        && data.upcomingShowId.size() > 0
+        && data.printRequestId is string
+        && data.printRequestId.size() > 0
+        && data.printRequestItemId is string
+        && data.printRequestItemId.size() > 0
+        && data.designId is string
+        && data.designId.size() > 0
+        && isOptionalString(data, "customerId")
+        && data.requestNameSnapshot is string
+        && data.requestNameSnapshot.size() > 0
+        && (!("requestOriginSnapshot" in data) || isValidPrintRequestOrigin(data.requestOriginSnapshot))
+        && isOptionalString(data, "designTitleSnapshot")
+        && data.allocatedQuantity is int
+        && data.allocatedQuantity > 0
+        && data.sourceItemQuantitySnapshot is int
+        && data.sourceItemQuantitySnapshot > 0
+        && isOptionalPositiveStandardPrintInches(data, "printWidthInches")
+        && isOptionalPositiveStandardPrintInches(data, "printHeightInches")
+        && isOptionalString(data, "sizeLabel")
+        && isOptionalString(data, "notes")
+        && isValidShowAllocationStatus(data.status)
+        && data.addedBy is string
+        && data.addedBy.size() > 0
+        && data.updatedBy is string
+        && data.updatedBy.size() > 0
+        && isOptionalTimestamp(data, "queuedAt")
+        && isOptionalString(data, "queuedBy")
+        && isOptionalTimestamp(data, "printedAt")
+        && isOptionalString(data, "printedBy")
+        && isOptionalTimestamp(data, "completedAt")
+        && isOptionalString(data, "completedBy")
+        && isOptionalTimestamp(data, "canceledAt")
+        && isOptionalString(data, "canceledBy")
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
     match /users/{userId} {
       allow read: if isSelf(userId)
         || (isOwner() && isReadableTeamProfile(resource.data.role))
@@ -581,6 +720,84 @@ service cloud.firestore {
         && isReadyDesign(request.resource.data.designId);
 
       allow delete: if isStaff();
+    }
+
+    match /upcomingShows/{upcomingShowId} {
+      allow read: if isStaff();
+
+      allow create: if isStaff()
+        && upcomingShowRequiredFieldsValid(request.resource.data)
+        && request.resource.data.updatedBy == request.auth.uid;
+
+      allow update: if isStaff()
+        && upcomingShowRequiredFieldsValid(request.resource.data)
+        && request.resource.data.source == resource.data.source
+        && request.resource.data.whatnotShowId == resource.data.whatnotShowId
+        && (!("createdBy" in resource.data) || request.resource.data.createdBy == resource.data.createdBy)
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.updatedBy == request.auth.uid;
+
+      allow delete: if isStaff();
+    }
+
+    match /showAllocations/{showAllocationId} {
+      allow read: if isStaff();
+
+      allow create: if isStaff()
+        && showAllocationRequiredFieldsValid(request.resource.data)
+        && request.resource.data.addedBy == request.auth.uid
+        && request.resource.data.updatedBy == request.auth.uid;
+
+      allow update: if isStaff()
+        && showAllocationRequiredFieldsValid(request.resource.data)
+        && request.resource.data.upcomingShowId == resource.data.upcomingShowId
+        && request.resource.data.printRequestId == resource.data.printRequestId
+        && request.resource.data.printRequestItemId == resource.data.printRequestItemId
+        && request.resource.data.designId == resource.data.designId
+        && request.resource.data.addedBy == resource.data.addedBy
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.updatedBy == request.auth.uid;
+
+      allow delete: if isStaff();
+    }
+
+    function isValidWhatnotAssistedImportStatus(value) {
+      return value == "succeeded" || value == "failed";
+    }
+
+    function isOptionalWhatnotAssistedImportStatus(data, field) {
+      return !(field in data) || isValidWhatnotAssistedImportStatus(data[field]);
+    }
+
+    function showQueueSettingsFieldsValid(data) {
+      return data.keys().hasOnly([
+          "defaultMaxTotalQuantity",
+          "whatnotShowBaseUrl",
+          "lastWhatnotAssistedImportAt",
+          "lastWhatnotAssistedImportStatus",
+          "lastWhatnotAssistedImportSummary",
+          "lastWhatnotAssistedImportError",
+          "updatedBy",
+          "updatedAt"
+        ])
+        && isOptionalNumber(data, "defaultMaxTotalQuantity")
+        && isOptionalString(data, "whatnotShowBaseUrl")
+        && isOptionalTimestamp(data, "lastWhatnotAssistedImportAt")
+        && isOptionalWhatnotAssistedImportStatus(data, "lastWhatnotAssistedImportStatus")
+        && isOptionalMap(data, "lastWhatnotAssistedImportSummary")
+        && isOptionalString(data, "lastWhatnotAssistedImportError")
+        && isOptionalString(data, "updatedBy")
+        && data.updatedAt is timestamp;
+    }
+
+    match /settings/showQueue {
+      allow read: if isStaff();
+
+      allow create, update: if isStaff()
+        && showQueueSettingsFieldsValid(request.resource.data)
+        && request.resource.data.updatedBy == request.auth.uid;
+
+      allow delete: if false;
     }
 
     match /settings/{settingId} {

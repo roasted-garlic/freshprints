@@ -56,6 +56,14 @@ export const firestoreCollectionService = {
     return this.getCollectionReference("showQueueItems");
   },
 
+  getUpcomingShowsCollection() {
+    return this.getCollectionReference("upcomingShows");
+  },
+
+  getShowAllocationsCollection() {
+    return this.getCollectionReference("showAllocations");
+  },
+
   getSettingsCollection() {
     return this.getCollectionReference("settings");
   },

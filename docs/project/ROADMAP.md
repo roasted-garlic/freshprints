@@ -675,40 +675,278 @@ Staff can build and manage print requests without mutating design catalog status
 
 # Phase 7
 
-## Print Runs / Upcoming Shows
+## Show Queue (combined Whatnot show + print run)
 
 Status:
 
 ```txt
-Planned
+Combined model implemented (2026-07-05) after an initial split Upcoming Shows / Print Runs model
+failed manual QA on 2026-07-05. A Whatnot show is now the print run — one combined workflow.
+UI/flow polish (dark-theme readability, date-grouped show picker, whole-request attach, two-step
+confirm removal, default capacity setting, same-monitor external links) implemented 2026-07-05
+after a second manual QA pass. A third correction (real design/quantity split allocation flow,
+allocated-quantity recalculation on removal, Working/Queued/Printed request tabs, Upcoming/Past show
+tabs, queued-request edit lock) implemented 2026-07-05 after a third manual QA pass. A fourth
+correction (Add to Show wording only mentions "remaining" once a split is underway, tab/detail
+selection sync fix, new `editing` status for de-queued requests) implemented 2026-07-05 after a fourth
+manual QA pass. A fifth correction (visual thumbnail-based split picker with live totals, wider
+Add to Show modal, compact list-row show options, simplified split warning copy) implemented
+2026-07-05 after a fifth manual QA pass. A sixth correction (split picker totals relabeled for
+clarity, design card wording clarified, quantity inputs restyled to match the app, production-status
+pill confirmed independent of selection) implemented 2026-07-05 after a sixth manual QA pass. A
+seventh correction (split picker quantity inputs start blank instead of pre-filled) implemented
+2026-07-05 after a seventh manual QA pass. An eighth correction (staged split allocation labels show
+show date and time, not time only) implemented 2026-07-05 after an eighth manual QA pass. A ninth
+correction (split warning explains both the split and pick-a-different-show paths; the split decision
+area is now one bordered callout with a full-width action button) implemented 2026-07-05 after a ninth
+manual QA pass. A tenth correction (split picker design cards drop the ambiguous "available to place"
+line) implemented 2026-07-05 after a tenth manual QA pass. An eleventh correction (`Add to Show` is
+hidden, not disabled, while the selected request is queue-locked) implemented 2026-07-05 after an
+eleventh manual QA pass. A twelfth correction (green/yellow/red capacity progress bars, a derived
+Open/Full/Over Max status pill computed live with no migration, and whole-card full/over-capacity
+visual states) implemented 2026-07-05 after a twelfth manual QA pass. A thirteenth correction (a full
+show skips the split-decision/picker path entirely — only staff override can add to it) implemented
+2026-07-05 after a thirteenth manual QA pass. A final polish pass (queue-state badge label renamed to
+"Working," Add to Show / queue-state pill flash fixes, internal-card notes display, and show-queue
+link pills with a multi-show-aware removal flow) followed. **Signed off PASS on 2026-07-05** after
+full authenticated manual QA passed — see
+`docs/workflow/reviews/2026-07-05-print-runs-foundation-signoff.md`. Dev Firestore rules deploy
+(`firebase deploy --only firestore:rules --project fresh-prints-dev`) remains an outstanding,
+separately-approved checkpoint before the `editing` status and Show Queue rules work live. Live
+Whatnot sync, scheduled Functions, manual refresh callable, and Pensacola export remain Planned for a
+future phase.
 ```
 
 Goal:
 
-Group multiple print requests into upcoming shows or batch print runs. Export production files for Pensacola gang-sheet workflow.
+Track each Whatnot show as its own production run: schedule (Whatnot is the source of truth, matched
+by stable show ID), print capacity, and attached Print Requests, all on one record. Export production
+files for Pensacola gang-sheet workflow in a later slice.
 
 ---
 
 ## Objectives
 
-Build:
+Implemented 2026-07-05:
 
-* Print Run CRUD
-* Attach print requests to runs
-* Print Run Items with production status
+* Single combined `upcomingShows` collection: each Whatnot show is its own production run
+* Manual add flow parses the Whatnot show ID from a pasted URL (read-only, never typed) and requires
+  a scheduled date/time
+* `/show-queue` list/detail UI, sorted client-side (fixes a bug where shows without a schedule never
+  appeared under a Firestore `orderBy` query)
+* Staff-set optional `maxTotalQuantity` capacity per show, with a danger-confirmed override
+* `showAllocations` collection: snapshot-plus-reference allocation of Print Request item quantities to
+  a show, supporting a request being split across multiple shows when capacity requires it
+* `Add to Show` primary action on the Print Request page; secondary `+ Add Print Request` on the show
+  detail page
+* Print Request queue/print badges (`not_queued`/`partially_queued`/`queued`/`partially_printed`/
+  `printed`) derived live from allocations — no persisted status field to keep in sync
+* Production status (`pending`/`queued`/`in_progress`/`printed`/`done`/`canceled`) lives only on
+  `showAllocations`, never on `designs.status`
+* Separate show-level `status` (Whatnot schedule/source health) and `productionStatus` (print
+  production progress) fields — sync health is never mixed with production completion
+
+UI/flow polish, implemented 2026-07-05 after a second manual QA pass:
+
+* `Add to Show` and `+ Add Print Request` pickers use dark-theme-readable option cards and a compact
+  date-grouped (calendar-style) show selector emphasizing date/time and capacity over show title
+* `+ Add Print Request` attaches an entire Print Request in one action instead of one item at a time
+* Removing a Print Request from a show requires a two-step confirm, matching the existing Print
+  Request item removal pattern
+* A Show Queue settings cog exposes a staff-configurable default max quantity for new shows
+  (`settings/showQueue`, direct client read/write), applied only at show-creation time
+* Intro/"How it works" copy removed from Print Requests and Show Queue for a more compact workspace;
+  `Add to Show` moved to a prominent upper action area and disabled until the request has items
+* Show Detail status pills align horizontally; Request Detail uses a bottom-right `Edit` button
+  instead of a chevron toggle
+* External links (the Whatnot show URL) open in an in-app window positioned on the same display as
+  the app, since Electron cannot control the OS default browser's window placement
+
+Split allocation, capacity accuracy, and lifecycle polish, implemented 2026-07-05 after a third
+manual QA pass:
+
+* Real split allocation flow: staff choose exactly which designs/quantities go to the first show,
+  the app computes the remainder, and staff choose another show (or repeat) until the request is
+  fully allocated or they cancel; a danger override can still force the full request onto one show
+* Removing a Print Request from a show deletes every allocation for that request on that show in one
+  operation and recomputes the show's `allocatedQuantity` from the remaining allocations, instead of
+  incrementally subtracting — this also clears an over-capacity state caused by the removed request
+* Removing a request from a show, and removing individual allocations, is blocked once the show's
+  `productionStatus` is `printing`, `fully_printed`, `completed`, or `archived` (admin correction
+  required beyond that point)
+* A Print Request transitions `draft` → `active` on its first show allocation (so queued requests
+  never misleadingly show `DRAFT`), and to `completed` once every unit has been allocated and printed
+* Print Requests page has `Working` / `Queued` / `Printed` tabs, derived from show allocation totals
+  (no new persisted queue-status field); Show Queue page has `Upcoming` / `Past` tabs derived from
+  `scheduledStartAt` vs. now (display grouping only, never changes `productionStatus`)
+* A queued request's items and detail become read-only until removed from its show(s)
+* Show date/time displays (cards, detail, Add to Show) never show seconds; the parsed-URL field is
+  labeled `Show ID`; the Show Queue settings cog sits left of `Add Show`; `Add to Show` spans the full
+  action-row width; the Add to Show summary reads "Request has N designs with a total qty of M prints"
+
+Add to Show wording, tab/detail selection, and status polish, implemented 2026-07-05 after a fourth
+manual QA pass:
+
+* The Add to Show modal only uses "remaining"/"still need a show" wording once staff have actually
+  committed at least one show leg in the current session; a request that fully fits its first selected
+  show shows only the plain summary and commits via the normal footer `Add to show` button
+* The Print Requests detail panel stays in sync with the active `Working`/`Queued`/`Printed` tab: a
+  request that moves to a different tab (e.g. just queued) no longer keeps showing in a tab it no
+  longer belongs to; switching tabs, or a request moving tabs, resolves the selection to that tab's
+  first request or clears to an empty state
+* New `editing` `PrintRequestStatus` value: a request that was queued and then fully removed from
+  every show now displays `Editing` (not a misleading `Active`), is fully editable again, and appears
+  in `Working`; re-queuing it transitions it to `active` (shown with the derived `Queued` badge), never
+  back to `draft`. Queue/tab grouping is still fully derived from `showAllocations` — no new
+  `printQueueStatus` field was added
+
+Visual split picker and modal layout polish, implemented 2026-07-05 after a fifth manual QA pass:
+
+* The split-quantity picker (opened via "Choose designs for this show") is now a dedicated
+  `SplitDesignPickerModal` showing each remaining design as a card with a full, uncropped thumbnail
+  (contained fit, not cropped), title, requested/remaining quantity, and a quantity input
+* A live totals strip shows "Selected for this show," "Show capacity," "Remaining after this show,"
+  and "Request total," updating on every keystroke; per-design quantity is clamped to that design's
+  remaining amount, and exceeding the show's overall capacity shows a warning and disables confirm
+* The Add to Show modal and the split picker both widen to `modal-panel-lg` (42rem, already defined
+  for Design Library — no new width tier or dependency) so several show options, capacity info, and
+  the split flow fit comfortably without excessive scrolling
+* Show options in the date-grouped picker render as compact horizontal list rows (date/time, capacity,
+  status badge) instead of tall square cards, with an obvious selected state
+* The split-needed warning simplified to "Only N of M prints can be added to this show. The remainder
+  will need to be added to another show. Choose the prints to be added to this show." — no longer
+  repeats the override explanation already given by the override checkbox
+* Canceling the visual picker never commits anything; its selections are local component state until
+  staff click its confirm button, and the full-fit/multi-show split/override flows are unchanged
+
+Split picker wording and styling polish, implemented 2026-07-05 after a sixth manual QA pass:
+
+* Split picker totals strip relabeled and reduced to three values: "Selected for this show,"
+  "Available on this show" (live: show capacity minus the current selection, not the pre-picker
+  capacity), and "Remaining for another show" — "Request total" was dropped as redundant with the
+  plain-language summary shown one step earlier
+* Design cards no longer say "Requested 25, 25 remaining"; they show "{quantity} requested,"
+  "{alreadyAssigned} already assigned" (only when non-zero), and "{remaining} available to place"
+* The picker's quantity inputs reuse the app's existing `.print-requests-number-input` styling (no
+  native spinner arrows, dark-theme box/border/focus state matching the Print Request item card's
+  quantity stepper) instead of unstyled browser number inputs
+* Confirmed (no code change needed): the `OPEN`/etc. production-status pill color comes only from
+  `show.productionStatus` via `getShowProductionStatusBadgeVariant()`; over-capacity coloring is a
+  separate `.is-over-capacity` modifier driven by a different, capacity-only boolean — the two were
+  already architecturally independent
+
+Split picker blank-input correction, implemented 2026-07-05 after a seventh manual QA pass:
+
+* The split picker's `Add to this show` quantity inputs now start blank (placeholder `0`) instead of
+  being pre-filled up to the show's remaining capacity, so staff choose every quantity themselves
+  rather than the app appearing to have already decided the split
+* Blank inputs are treated as `0` for all totals/validation and cannot create allocations; the totals
+  strip and capacity/remaining figures correctly start at their true pre-selection values (`0`
+  selected, full show capacity available, full unallocated request quantity remaining)
+* The assign button remains disabled until at least one quantity greater than `0` is entered; all
+  existing per-design and show-capacity quantity validation is unchanged
+
+Staged allocation label correction, implemented 2026-07-05 after an eighth manual QA pass:
+
+* Staged split allocation summaries in the Add to Show modal (e.g. "8:00 PM: 25 prints") now show the
+  show's date as well as its time (e.g. "Jul 5, 2026, 8:00 PM: 25 prints"), reusing the existing
+  `formatShowDateTimeLabel()` already used for Show Queue/Show Detail displays instead of the
+  time-only formatter — no seconds are shown, matching the existing formatter's behavior
+
+Split warning copy and decision-area layout polish, implemented 2026-07-05 after a ninth manual QA pass:
+
+* The split-needed warning now explains both available paths: "Only N of M prints can be added to
+  this show. You can choose which prints to add here and place the rest on another show, or select a
+  different show for the full request." — staff are no longer left thinking a split is the only option
+* The warning, "Choose designs for this show" button, and staff override checkbox now sit inside one
+  bordered callout (matching the split picker's totals-strip card treatment) instead of three loosely
+  stacked elements; the action button spans the callout's full width, and the override row gets a
+  top border/padding to visually separate it from the button above
+
+Split picker design card copy correction, implemented 2026-07-05 after a tenth manual QA pass:
+
+* Design cards in the split picker no longer show `{remaining} available to place`, which staff
+  misread as show-capacity-relative rather than request-relative; cards now show only
+  `{quantity} requested` plus `{alreadyAssigned} already assigned` once a prior split leg has touched
+  that item — the totals strip above the card list already covers capacity and remaining-for-another-
+  show information
+
+`Add to Show` visibility correction, implemented 2026-07-05 after an eleventh manual QA pass:
+
+* The Print Requests page's `Add to Show` action row is now hidden entirely (not shown disabled) while
+  the selected request is queue-locked (`totalAllocatedQuantity > 0`) — most visibly on the `Queued`
+  tab, where every request is locked by definition and the button previously served no purpose; the
+  button still reappears once a request is fully removed from its show(s) and becomes `editing`
+
+Capacity progress and status correction, implemented 2026-07-05 after a twelfth manual QA pass:
+
+* Show Detail's Capacity card and every Add to Show / split-picker show option card now render a
+  green (under 70% used) / yellow (70–89%) / red (90%+ or over capacity) progress bar via new
+  `shared/utils/showCapacityDisplay.ts`, plus clear "N of M used" / "N spots left" text replacing the
+  old "N remaining of M" / "N / M left" wording
+* The status pill is now derived (`getDerivedShowStatusDisplay()`): production lifecycle states
+  (`PRINTING`, `FULLY PRINTED`, `COMPLETED`, `ARCHIVED`, `CANCELED`) always take priority; otherwise
+  `FULL`/`OVER MAX`/`OPEN` is computed live from `allocatedQuantity` vs. `maxTotalQuantity` — a show
+  is never persisted as `full`, so every existing show displays correctly after a refresh with no
+  migration, backfill, or delete/re-add
+* Full and over-capacity shows get a whole-card warning/danger-tinted background and border (sidebar
+  show card, Show Detail capacity card, and Add to Show option card), not just a red progress bar, so
+  staff don't have to read numbers carefully to notice
+* No Firestore rules or index changes were needed — this is a pure UI-derived display feature
+
+Full-show decision-path correction, implemented 2026-07-05 after a thirteenth manual QA pass:
+
+* When the selected show has zero remaining capacity (already full or over capacity), Add to Show no
+  longer shows the split warning or a "Choose designs for this show" button — there is nothing to
+  split into, so offering a picker was misleading; staff now see plain copy explaining the show is
+  full and that they can either select a different show or use the staff override checkbox to force
+  the whole remainder onto it anyway
+* A show that still has *some* room continues to use the normal split-decision path (warning + choose
+  designs + override) unchanged
+
+Final polish pass, implemented 2026-07-05, signed off with the phase:
+
+* The queue-state badge shown as "Not queued" is renamed to "Working" to match the tab name
+* Fixed the Add to Show button and the detail-panel queue-state pill both flashing/disappearing when
+  switching tabs or clicking between cards, by deriving both from the already-loaded, stable
+  allocation-totals map instead of a per-selection value that briefly reset on every selection change
+* Allocating/removing from a show now also reloads the print request itself and the list, so the
+  detail panel and sidebar badge no longer show a stale status object (e.g. `editing` instead of the
+  correct `active`) after a re-add
+* Internal request card subtitles on the Print Requests page show notes (or "No notes") instead of a
+  redundant "Internal" word already covered by a pill
+* The Queued tab's detail panel shows a compact pill per show the request is queued to (quantity, show
+  date/time, external-link icon, full show name on hover), linking to that show in `/show-queue`, plus
+  a two-step-confirm "Remove from show queue" action (wording adapts when the request spans multiple
+  shows) that removes every allocation and returns the request to the Working tab
+
+**Signed off PASS on 2026-07-05** — see `docs/workflow/reviews/2026-07-05-print-runs-foundation-signoff.md`.
+
+Still planned:
+
+* Live Whatnot fetch/sync from `https://www.whatnot.com/user/funkyfreshprints/shows` (parsing method
+  unverified; no official API assumed)
+* Hourly scheduled backend sync, manual scrape button, and an auto-update on/off toggle
 * Download originals / batch export for gang sheets
+* Pensacola file export (originals to local folder)
 
 ---
 
 ## Deliverables
 
-### Print Run Management
+### Show Queue (implemented 2026-07-05)
 
-Support:
+* Manual create/update of local show records, matched by `source + whatnotShowId`, never by date/time
+* Show metadata: title, Whatnot URL/ID, scheduled start, schedule status, sync status/error, capacity,
+  allocated quantity, production status, notes
+* Missing/canceled shows are marked, never auto-deleted
+* Capacity tracked as `maxTotalQuantity` vs. denormalized `allocatedQuantity`, with a staff danger
+  override to exceed the max
+* Print Requests attach via allocation records, supporting split-across-shows when needed
 
-* Create / edit / complete print run
-* Add print request items to run
-* Mark items printed / done
+Still planned:
+
+* Mark items printed / done via a dedicated production UI (service method exists; UI is minimal)
 * Pensacola file export (originals to local folder)
 
 **Not in scope:** Shipping, packing, parcel tracking.
@@ -717,7 +955,9 @@ Support:
 
 ## Exit Criteria
 
-Show preparation and production file export occur within Fresh Prints. Production status lives on print run items, not designs.
+Show preparation and production file export occur within Fresh Prints. Production status lives on
+show allocations, not designs. (Combined-model foundation met 2026-07-05; live sync and file export
+remain open.)
 
 ---
 

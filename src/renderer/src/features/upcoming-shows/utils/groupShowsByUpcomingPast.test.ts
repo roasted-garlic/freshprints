@@ -1,0 +1,62 @@
+import assert from "node:assert/strict";
+import { describe, it } from "node:test";
+
+import type { UpcomingShow } from "../../../../../../shared/types/upcomingShow/upcomingShow.types";
+import { filterShowsByScheduleTab, getShowScheduleTab } from "./groupShowsByUpcomingPast";
+
+function buildShow(overrides: Partial<UpcomingShow> = {}): UpcomingShow {
+  return {
+    id: "show-1",
+    source: "whatnot",
+    whatnotShowId: "wn-100",
+    status: "scheduled",
+    syncStatus: "idle",
+    isArchived: false,
+    productionStatus: "open",
+    maxQuantityOverridden: false,
+    allocatedQuantity: 0,
+    createdAt: { toDate: () => new Date("2026-01-01") } as UpcomingShow["createdAt"],
+    updatedAt: { toDate: () => new Date("2026-01-01") } as UpcomingShow["updatedAt"],
+    ...overrides,
+  };
+}
+
+function timestamp(iso: string) {
+  const millis = new Date(iso).getTime();
+  return { toMillis: () => millis, toDate: () => new Date(millis) } as UpcomingShow["scheduledStartAt"];
+}
+
+describe("getShowScheduleTab", () => {
+  const now = new Date("2026-07-05T12:00:00Z");
+
+  it("classifies a future show as upcoming", () => {
+    const show = buildShow({ scheduledStartAt: timestamp("2026-07-05T12:00:01Z") });
+    assert.equal(getShowScheduleTab(show, now), "upcoming");
+  });
+
+  it("classifies a show exactly at now as past (1 second after scheduled time is past)", () => {
+    const show = buildShow({ scheduledStartAt: timestamp("2026-07-05T12:00:00Z") });
+    assert.equal(getShowScheduleTab(show, now), "past");
+  });
+
+  it("classifies a show in the past as past", () => {
+    const show = buildShow({ scheduledStartAt: timestamp("2026-07-05T11:59:59Z") });
+    assert.equal(getShowScheduleTab(show, now), "past");
+  });
+
+  it("treats a show with no schedule as upcoming", () => {
+    const show = buildShow({ scheduledStartAt: undefined });
+    assert.equal(getShowScheduleTab(show, now), "upcoming");
+  });
+});
+
+describe("filterShowsByScheduleTab", () => {
+  it("splits shows into upcoming and past groups", () => {
+    const now = new Date("2026-07-05T12:00:00Z");
+    const future = buildShow({ id: "future", scheduledStartAt: timestamp("2026-08-01T00:00:00Z") });
+    const past = buildShow({ id: "past", scheduledStartAt: timestamp("2026-06-01T00:00:00Z") });
+
+    assert.deepEqual(filterShowsByScheduleTab([future, past], "upcoming", now).map((s) => s.id), ["future"]);
+    assert.deepEqual(filterShowsByScheduleTab([future, past], "past", now).map((s) => s.id), ["past"]);
+  });
+});

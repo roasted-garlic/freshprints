@@ -1094,39 +1094,204 @@ Adjust quantity and requested size in the request detail item UI; edits autosave
 
 ---
 
-# Print Run Workflow (Upcoming Show)
+# Show Queue Workflow (Phase 7 — combined show/print-run entity)
+
+> **Superseded 2026-07-04, corrected 2026-07-05.** An initial revision split this into two workflows —
+> Upcoming Shows (schedule) and Print Runs (production) — as separate collections and separate `/show-queue`
+> / `/print-runs` pages. Manual QA on 2026-07-05 failed and surfaced the correct business rule: **a
+> Whatnot show is the print run.** There is never more than one print run per show, so keeping them
+> separate created redundant navigation with no benefit. They are now one combined workflow. See
+> `docs/project/DECISIONS.md` ADR-FP-049.
 
 Purpose:
 
-Group print requests for an upcoming live show or batch production run. **Not shipping or fulfillment.**
+Track each Whatnot show as its own production run: schedule (source of truth: Whatnot), print
+capacity, and attached Print Requests, all on one record. Whatnot show dates and times can move, so
+shows are matched and updated by stable `whatnotShowId` — **never by date/time**.
 
-**Target phase:** Phase 7.
-
----
-
-## Workflow
-
-```txt
-Create Print Run (e.g. Tuesday Night Whatnot Show)
-     ↓
-Attach Print Requests or individual items
-     ↓
-Print Run Items track production status
-     ↓
-Mark items printed / done
-     ↓
-Export originals for Pensacola gang sheets (optional)
-```
+**Phase:** 7 — combined model implemented 2026-07-05 (`/show-queue`); live Whatnot sync not yet implemented.
 
 ---
 
-## Print Run status flow
+## Workflow (current: manual entry)
 
 ```txt
-Draft → Active → Completed → Archived
+Staff pastes a Whatnot live show URL into "Track a Whatnot show"
+     ↓
+App parses the stable Whatnot show ID from the URL (read-only, not typed manually)
+     ↓
+Staff confirms/edits title, sets scheduled date and time, optional notes
+     ↓
+upsertUpcomingShow() matches existing records by source + whatnotShowId
+     ↓
+Existing match: mutable fields (title, URL, scheduledStartAt) update in place — no duplicate
+No match: a new upcomingShows record is created, and appears in the Show Queue list immediately
+     ↓
+Staff sets an optional max total print quantity (capacity) on the show
+     ↓
+From a Print Request, staff clicks "Add to Show" to allocate its items to this show
+     ↓
+Show tracks allocatedQuantity vs maxTotalQuantity; staff can mark it fully printed/completed
+     ↓
+Overflow beyond capacity: split remaining quantity to another show, or staff danger-override
 ```
 
-Production status (`queued`, `in_progress`, `printed`, `done`) lives on **Print Run Items** and **Print Request Items** — not on designs.
+Live Whatnot fetch/parsing (from `https://www.whatnot.com/user/funkyfreshprints/shows`), an hourly
+scheduled sync, a manual scrape button, and an auto-update on/off toggle are planned but not
+implemented; adding them requires a separate approved implementation phase (parsing method, Functions,
+and any secrets are explicit human checkpoints).
+
+A show that disappears upstream should be marked `missing_upstream` rather than deleted, preserving any
+attached allocations and planning history.
+
+---
+
+## Adding Print Requests to a show
+
+Primary workflow (from the Print Request page):
+
+```txt
+Staff creates/opens a Print Request with items
+     ↓
+Staff clicks "Add to Show" on the Print Request detail
+     ↓
+Modal lists shows, grouped by date, with date/time and remaining capacity
+     ↓
+Staff picks a show
+     ↓
+Fits within capacity: the modal shows only the plain request summary (e.g. "Request has 2 designs
+with a total qty of 100 prints") — no "remaining"/"still need a show" wording, since nothing has
+been split yet — and the footer's normal "Add to show" button attaches the whole request directly
+     ↓
+Exceeds capacity: staff see a warning explaining both available paths ("Only 25 of 50 prints can be
+added to this show. You can choose which prints to add here and place the rest on another show, or
+select a different show for the full request.") with no mention of override — the override checkbox
+right below already explains that option — inside a single bordered decision callout, and either:
+  - click "Choose designs for this show" (full-width within the callout) to open the visual
+    `SplitDesignPickerModal`, which shows each remaining design as a card with a full uncropped
+    thumbnail, requested quantity (plus "already assigned" once a prior split leg has touched that
+    item), and a styled quantity input labeled "Add to this show," plus a live running total ("Selected
+    for this show," "Available on this show," "Remaining for another show"); confirming stages that
+    quantity as one leg and returns to the show-selection step for whatever's left (repeatable until
+    fully allocated), or
+  - pick a different show from the list above instead — nothing here forces staff to split, or
+  - confirm a danger override to force the full remaining quantity onto this show anyway
+```
+
+The Add to Show modal (`modal-panel-lg`) and the split design picker are both wide enough to
+comfortably show several show options, capacity information, and the visual picker at once; show
+options in the date-grouped picker render as compact list rows (date/time and capacity, not a title)
+rather than tall square cards.
+
+Secondary workflow (from the Show Queue detail page): staff click **`+ Add Print Request`** to attach
+an existing request to the currently open show, using the same picker/split flow with the show locked
+to the one already open. This is a convenience path; the primary entry point is the Print Request page.
+
+"Remaining"/"still need a show" wording (and the secondary "Add remaining N prints to this show"
+button) only appears once staff have actually committed at least one show leg in the current session
+— see `shared/utils/printRequestSplitAllocation.ts`'s `shouldShowRemainingWording()`. Before that, the
+whole request is still just the whole request; showing split-flow language before any split has
+happened was confusing and has been removed. Canceling the visual picker never commits anything — its
+quantities are local component state until staff click its confirm button.
+
+Removing a Print Request from a show requires a two-step confirm (Remove, then Cancel/Confirm),
+matching the existing Print Request item removal pattern. Confirming calls
+`removeShowAllocationsForRequest()`, which deletes every allocation belonging to that request from
+that show in one operation and then recomputes the show's `allocatedQuantity` from what remains
+(`recalculateShowAllocatedQuantity()`) — it never subtracts a remembered total, so the show's capacity
+display cannot drift out of sync with its actual allocation records. If the show was only over capacity
+because of the removed request, the over-capacity state clears immediately. Removal (and any other
+allocation edit) is blocked once the show's `productionStatus` is `printing`, `fully_printed`,
+`completed`, or `archived` — see `shared/utils/showQueueEditability.ts`'s `canRemoveRequestFromShow()`;
+beyond that point an admin correction path is required.
+
+## Show Queue capacity defaults
+
+Staff can set a default max quantity for newly created shows via the settings cog next to `Add show`.
+The default applies only when a new show is created — existing shows are never retroactively changed
+— and any individual show's capacity can still be overridden afterward via `Set max quantity`.
+
+## Capacity progress and status pill
+
+Show Detail's Capacity card and every show option card in Add to Show / the split picker's show list
+render a green/yellow/red progress bar (`shared/utils/showCapacityDisplay.ts`'s
+`getCapacityFillLevel()`: green under 70% used, yellow 70–89%, red 90% or over, including any
+over-capacity overflow past 100%) plus clear "N of M used" / "N spots left" text
+(`formatCapacityUsedLabel()`/`formatSpotsRemainingLabel()`) — replacing the old ambiguous "N remaining
+of M" / "N / M left" wording.
+
+The status pill (`getDerivedShowStatusDisplay()`) checks production lifecycle first — `PRINTING`,
+`FULLY PRINTED`, `COMPLETED`, `ARCHIVED`, `CANCELED` always win — and only derives `FULL` / `OVER MAX`
+/ `OPEN` from live capacity when `productionStatus` is still `open`. This derived state is never
+written back to `productionStatus` (the enum's existing `full` value is intentionally left unused by
+this display logic), so a show correctly shows `FULL` the instant `allocatedQuantity` reaches
+`maxTotalQuantity` — no code needs to run to "mark" it full, and no existing show needs a data change,
+migration, or delete/re-add to display correctly after a refresh. When a show is full or over capacity,
+its whole card/section (sidebar show card, Show Detail capacity card, Add to Show option card) gets a
+warning or danger-tinted background/border in addition to the pill and bar, so staff don't have to read
+capacity numbers carefully to notice.
+
+## Splitting a Print Request across shows
+
+The same `printRequestItemId` may have multiple `showAllocations` records across different shows when
+a request's quantity does not fit into a single show's remaining capacity. For example, a quantity-204
+request can split 200 allocated to Show A and 4 allocated to Show B. Staff choose exactly which
+designs/quantities go to each show through `SplitDesignPickerModal`'s visual, thumbnail-based picker
+(`shared/utils/printRequestSplitAllocation.ts` tracks remaining quantity per item across the session,
+plus `calculateSplitSelectionTotal()` and `clampSplitItemQuantity()` for the picker's live totals and
+per-design quantity validation); nothing is auto-split without staff control. Splitting never mutates
+`printRequestItems`, `printRequests`, `designs`, or any image/thumbnail/preview file — see
+`shared/utils/showCapacity.ts`'s `planAllocationSplit()`.
+
+## Show production status flow
+
+```txt
+Open → Full → Printing → Fully Printed → Completed → Archived (or Canceled)
+```
+
+Production status (`pending`, `queued`, `in_progress`, `printed`, `done`, `canceled`) lives on
+**Show Allocations** — not on designs, and allocating an item never mutates the source **Print Request
+Item**, **Print Request**, or **Design**. A show's own `productionStatus` (open/full/printing/etc.) is
+a separate field from its Whatnot schedule/source `status` (scheduled/live/canceled/etc.) — sync health
+and production completion are never mixed.
+
+The Show Queue list has **Upcoming** / **Past** tabs, derived purely from `scheduledStartAt` vs. the
+current time (`groupShowsByUpcomingPast.ts`'s `getShowScheduleTab()`) — a show moves to Past the moment
+its scheduled time passes. This is a display/filter grouping only and never changes `productionStatus`.
+
+## Print Request queued/printed state and lifecycle status
+
+Print Requests do not persist a queue/print status field. `derivePrintRequestQueueState()` computes
+`not_queued` / `partially_queued` / `queued` / `partially_printed` / `printed` on the fly from a
+request's show allocations, so the badge shown on the Print Requests page is always consistent with
+allocation records and never drifts out of sync from a second field.
+
+The Print Requests page groups requests into **Working** / **Queued** / **Printed** tabs, derived the
+same way (`shared/utils/printRequestListGrouping.ts`'s `derivePrintRequestListTab()`): a request with
+no active allocations is Working, any active allocation makes it Queued, and fully printed/completed
+makes it Printed. Selecting a tab and selecting a request are kept in sync
+(`shared/utils/printRequestTabSelection.ts`'s `resolveSelectedRequestIdForTab()`): if a selected
+request moves out of the active tab (e.g. it was just queued while `Working` was open), the detail
+panel falls back to that tab's first request, or shows the empty state if the tab is now empty —
+it never keeps showing a request that no longer belongs to the visible tab.
+
+To keep `printRequests.status` itself from misleadingly reading `DRAFT` (or a stale `ACTIVE`) on a
+request, `upcomingShowService` drives automatic transitions:
+
+- `draft` → `active` on the request's first show allocation.
+- `active` → `editing` once a request loses every one of its active allocations (removed from the
+  last show it was queued to) — `editing` means "was queued, now back with staff to revise," and is
+  distinct from `draft` ("never queued"). An `editing` request is fully editable again and appears in
+  the `Working` tab; adding it to a show again transitions it back to `active` (displayed with the
+  derived `Queued` badge), never back to `draft`.
+- `active`/`editing` → `completed` once every unit of the request's requested quantity has been
+  allocated and printed.
+
+`archived` is never used to mean printed — it remains a separate hide/cleanup action. None of these
+transitions write to `designs.status`.
+
+While a request has any active show allocation, its items and detail are read-only on the Print
+Requests page; staff must remove it from the show (subject to the removal rule above) before editing.
 
 ---
 

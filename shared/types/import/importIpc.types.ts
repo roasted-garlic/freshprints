@@ -1,4 +1,5 @@
 import type { FreshPrintsAppApi } from "../app/appIpc.types";
+import type { FreshPrintsWhatnotImportApi } from "../whatnotImport/whatnotImport.types";
 import type { PrintSizeAssessment } from "../printSize/printSize.types";
 import type {
   BatchDiscoveryCompleteEvent,
@@ -265,4 +266,5 @@ export interface FreshPrintsImportsApi {
 export interface FreshPrintsPreloadApi {
   app: FreshPrintsAppApi;
   imports: FreshPrintsImportsApi;
+  whatnotImport: FreshPrintsWhatnotImportApi;
 }

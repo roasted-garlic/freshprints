@@ -15,6 +15,8 @@ export type PermissionKey =
   | "viewPrintRequests"
   | "managePrintRequests"
   | "managePrintRequestItems"
+  | "viewUpcomingShows"
+  | "manageUpcomingShows"
   | "manageGuestCustomers"
   | "manageCustomers"
   | "manageRequests"

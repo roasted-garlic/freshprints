@@ -80,7 +80,7 @@ updatedBy
 
 ## Design Status
 
-Catalog lifecycle only (Phase 3D Step 6). Production workflow (`queued`, `printed`) belongs on `showQueueItems` — not on design documents.
+Catalog lifecycle only (Phase 3D Step 6). Production workflow (`queued`, `printed`) belongs on `showAllocations` (Phase 7) — not on design documents.
 
 ```ts
 /** Active catalog statuses */
@@ -763,6 +763,7 @@ A Print Request is a **named list of catalog designs** for a customer, guest, or
 export type PrintRequestStatus =
   | "draft"
   | "active"
+  | "editing"
   | "completed"
   | "archived";
 
@@ -965,9 +966,14 @@ export interface CustomerRequest {
 
 ---
 
-# Show Queues Collection (legacy — maps to Print Runs)
+# Show Queues Collection (legacy — removed 2026-07-04)
 
-> **Superseded 2026-06-24.** Target collection name: `printRuns`. A Print Run is upcoming show / batch planning — **not shipping or fulfillment**.
+> **Superseded 2026-06-24, removed 2026-07-04.** The `showQueues`/`showQueueItems` collections and the
+> disabled `/show-queue` placeholder route were never implemented with real data. They were replaced
+> 2026-07-04 by a split `upcomingShows` (schedule tracking) / `printRuns`/`printRunItems` (production
+> planning) model, which itself failed manual QA and was replaced 2026-07-05 by a single combined
+> `upcomingShows` entity plus `showAllocations` — see the section below and ADR-FP-049. `/show-queue`
+> is now the live **Show Queue** route.
 
 Collection:
 
@@ -1050,6 +1056,221 @@ export interface ShowQueueItem {
   updatedAt: Timestamp;
 }
 ```
+
+---
+
+# Upcoming Shows Collection (Phase 7 — combined show/print-run entity)
+
+> **Superseded 2026-07-05.** An earlier revision of this phase split scheduling (`upcomingShows`) from
+> production planning (`printRuns`/`printRunItems`) as two separate collections and two separate UI
+> workflows. Manual QA on 2026-07-05 failed and the business rule was corrected: **a Whatnot show is
+> the print run.** There will never be more than one print run per show, so `upcomingShows` is now the
+> single combined entity for both schedule tracking and production planning. `printRuns`/`printRunItems`
+> were removed; production allocation now lives on `showAllocations` (below). See
+> `docs/project/DECISIONS.md` ADR-FP-049.
+
+Whatnot is the external source of truth for show dates/times. This collection is Studio's local show
+record, matched and updated by stable `whatnotShowId` — **never by date/time**, since show dates and
+times can move. Live Whatnot fetch/sync is not implemented yet; records are created/updated manually by
+staff pasting a Whatnot show URL, parsed and upserted through `upcomingShowService.upsertUpcomingShow()`.
+
+Collection:
+
+```txt
+upcomingShows
+```
+
+Document:
+
+```txt
+upcomingShows/{upcomingShowId}
+```
+
+## Upcoming Show Interface
+
+```ts
+export type UpcomingShowSource = "whatnot";
+
+/** Whatnot schedule/source status — never mixed with production completion. */
+export type UpcomingShowStatus =
+  | "scheduled"
+  | "rescheduled"
+  | "live"
+  | "completed"
+  | "canceled"
+  | "missing_upstream"
+  | "archived";
+
+export type UpcomingShowSyncStatus = "idle" | "syncing" | "succeeded" | "failed";
+
+/** Production/print status for the show acting as its own print run. */
+export type ShowProductionStatus =
+  | "open"
+  | "full"
+  | "printing"
+  | "fully_printed"
+  | "completed"
+  | "archived"
+  | "canceled";
+
+export interface UpcomingShow {
+  id: string;
+  source: UpcomingShowSource;
+  whatnotShowId: string;
+  whatnotUrl?: string;
+  title?: string;
+  scheduledStartAt?: Timestamp;
+  status: UpcomingShowStatus;
+  syncStatus: UpcomingShowSyncStatus;
+  syncError?: string;
+  lastSyncedAt?: Timestamp;
+  lastSeenAt?: Timestamp;
+  notes?: string;
+  isArchived: boolean;
+
+  /** A Whatnot show is the print run — this is the only production entity for Phase 7. */
+  productionStatus: ShowProductionStatus;
+  /** Staff-set capacity. Undefined means no cap is enforced. */
+  maxTotalQuantity?: number;
+  /** True when staff used the danger override to exceed `maxTotalQuantity`. Portal customers may never set this. */
+  maxQuantityOverridden: boolean;
+  /** Sum of `allocatedQuantity` across all non-canceled `showAllocations` for this show. Denormalized for list/detail display. */
+  allocatedQuantity: number;
+
+  createdBy?: string;
+  updatedBy?: string;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+```
+
+Upsert rule: match existing records by `source + whatnotShowId`; update mutable upstream fields
+(`title`, `whatnotUrl`, `scheduledStartAt`, `lastSeenAt`) on a match instead of creating a duplicate.
+Local-only fields (`status`, `syncStatus`, `notes`, `isArchived`, `productionStatus`, capacity fields)
+are never overwritten by an upsert. Records are never auto-deleted; a show that disappears upstream
+should be marked `missing_upstream` rather than removed, preserving local planning history and any
+attached allocations.
+
+`status` (Whatnot schedule/source health) and `productionStatus` (print production progress) are
+intentionally separate fields — a sync failure must never be confused with, or block, production
+completion, and vice versa.
+
+List query note: shows are read unfiltered and sorted **client-side** by `scheduledStartAt` ascending
+(missing schedules sorted last), not with a Firestore `orderBy("scheduledStartAt")` query. A prior bug
+used `orderBy`, which silently excludes documents missing that field — every manually added show
+without a schedule was excluded from the list entirely. The manual-add form now requires a scheduled
+date/time, but the client-side sort remains the defensive fix so a future missing-field record still
+appears in the list.
+
+---
+
+# Show Allocations Collection (Phase 7)
+
+Allocates some or all of a Print Request item's quantity to a show. A Print Request may be split across
+multiple shows when it exceeds a single show's remaining capacity — the same `printRequestItemId` can
+have multiple `showAllocations` records across different shows. Each allocation is a
+snapshot-plus-reference created via `upcomingShowService.allocatePrintRequestItem()` — it never mutates
+the source `printRequestItems`, `printRequests`, or `designs` documents. Production status
+(`pending` → `queued` → `in_progress` → `printed`/`done`/`canceled`) lives only on `showAllocations`;
+**`designs.status` must never receive a production write.**
+
+Collection:
+
+```txt
+showAllocations
+```
+
+Document:
+
+```txt
+showAllocations/{showAllocationId}
+```
+
+## Show Allocation Interface
+
+```ts
+export type ShowAllocationStatus =
+  | "pending"
+  | "queued"
+  | "in_progress"
+  | "printed"
+  | "done"
+  | "canceled";
+
+export interface ShowAllocation {
+  id: string;
+  upcomingShowId: string;
+  printRequestId: string;
+  printRequestItemId: string;
+  designId: string;
+  customerId?: string;
+  requestNameSnapshot: string;
+  requestOriginSnapshot?: PrintRequestOrigin;
+  designTitleSnapshot?: string;
+  /** Quantity allocated to this show from the source item — may be less than the full item quantity when split. */
+  allocatedQuantity: number;
+  /** Full source item quantity at allocation time, for display/reconciliation only. */
+  sourceItemQuantitySnapshot: number;
+  printWidthInches?: number;
+  printHeightInches?: number;
+  sizeLabel?: string;
+  notes?: string;
+  status: ShowAllocationStatus;
+  addedBy: string;
+  updatedBy: string;
+  queuedAt?: Timestamp;
+  queuedBy?: string;
+  printedAt?: Timestamp;
+  printedBy?: string;
+  completedAt?: Timestamp;
+  completedBy?: string;
+  canceledAt?: Timestamp;
+  canceledBy?: string;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+```
+
+Capacity rule: a show's `maxTotalQuantity` is optional (undefined = no cap). Allocating a quantity that
+would exceed the show's remaining capacity (`maxTotalQuantity - allocatedQuantity`) is blocked unless
+staff confirm a danger override (`overrideCapacity: true`), which also sets
+`upcomingShows.maxQuantityOverridden`. Portal customers never call allocation methods, so there is no
+separate customer-facing override path to guard.
+
+Print Request queue/print state is **derived from allocations, not persisted** on `printRequests`. See
+`shared/utils/printRequestQueueState.ts`'s `derivePrintRequestQueueState()`: it compares a request's
+total item quantity against the sum of its non-canceled allocation quantities (`not_queued` /
+`partially_queued` / `queued`) and the sum of `printed`/`done` allocation quantities
+(`partially_printed` / `printed`). This was a deliberate decision to avoid a second status field that
+every allocation mutation would need to keep in sync — see ADR-FP-049. The Print Requests page's
+Working/Queued/Printed list tabs are derived the same way, via
+`shared/utils/printRequestListGrouping.ts`'s `derivePrintRequestListTab()` — see ADR-FP-051.
+
+`upcomingShows.allocatedQuantity` is a denormalized total that must always be **recomputed from the
+show's non-canceled `showAllocations`, never incrementally adjusted**, whenever an allocation is added
+or removed. `upcomingShowService.recalculateShowAllocatedQuantity()` is the single implementation of
+this; `removeShowAllocation()` and `removeShowAllocationsForRequest()` both call it after deleting
+allocation records, so the show's capacity display can never drift from its actual allocation records
+— see ADR-FP-051. Removing an allocation (individually or for a whole request) is blocked once the
+show's `productionStatus` is `printing`, `fully_printed`, `completed`, or `archived` — see
+`shared/utils/showQueueEditability.ts`'s `canRemoveRequestFromShow()`.
+
+`printRequests.status` gains automatic transitions driven by `upcomingShowService`, so its persisted
+status never misleadingly contradicts the request's actual queue state:
+
+- `draft` → `active` on the request's first show allocation (whether it was previously `draft` or
+  `editing`) — see `allocatePrintRequestItem()`.
+- `active` → `editing` once a request that had at least one active allocation loses all of them (i.e.
+  it is removed from every show it was queued to, with no allocations remaining anywhere) — see
+  `markPrintRequestEditingIfNoActiveAllocations()`, called from both `removeShowAllocation()` and
+  `removeShowAllocationsForRequest()`. `editing` means "was queued, now back with staff for revision,"
+  distinct from `draft` ("never queued yet"); the Print Requests page treats a request in `editing`
+  as fully editable again, same as `draft`.
+- `active`/`editing` → `completed` once every unit of the request's requested quantity has been
+  allocated and printed (`markPrintRequestCompletedIfFullyPrinted()`).
+
+`archived` is untouched by any of this and remains a manual hide/cleanup action, never a synonym for
+printed. None of these transitions touch `designs.status`.
 
 ---
 
@@ -1210,7 +1431,7 @@ User (staff)
  │
  ├── Designs (catalog)
  ├── Print Requests (Phase 6)
- ├── Print Runs (Phase 7)
+ ├── Upcoming Shows (Phase 7, combined Whatnot show + print run)
  └── Audit Logs
 
 Customer (registered, portal only)
@@ -1226,18 +1447,27 @@ Design
  │
  ├── Category
  ├── Print Request Items
- └── Print Run Items (via print request items)
+ └── Show Allocations (via print request items)
 
 Print Request
  │
- └── Print Request Items
+ ├── Print Request Items
+ └── Show Allocations (a request may be split across multiple shows)
 
-Print Run
+Upcoming Show
  │
- └── Print Run Items → Print Request Items → Designs
+ └── Show Allocations → Print Request Items → Designs
 ```
 
-**Legacy diagram (pre-realignment):** `showQueues` / `showQueueItems` / `customerRequests` — see migration notes in `docs/workflow/plans/customer-print-request-and-print-run-architecture-plan.md`.
+A Whatnot show is the print run — there is at most one production run per show, so `upcomingShows` is
+the single combined entity for schedule tracking and production planning. A Print Request's items may
+be split across multiple shows via separate `showAllocations` records when a single show's capacity
+isn't enough.
+
+**Legacy diagram (pre-realignment):** `showQueues` / `showQueueItems` / `customerRequests` — removed
+2026-07-04. An intermediate split `upcomingShows` / `printRuns` / `printRunItems` model (2026-07-04)
+failed manual QA and was replaced 2026-07-05 by the combined model above. See migration notes in
+`docs/workflow/plans/customer-print-request-and-print-run-architecture-plan.md` and ADR-FP-049.
 
 ---
 
@@ -1261,15 +1491,18 @@ categories.isActive + name
 
 customerRequests.status
 
-showQueueItems.queueId
-
-showQueues.status
 printRequests.status + updatedAt
 printRequests.customerId + updatedAt
 printRequests.isInternal + updatedAt
 printRequestItems.printRequestId
 printRequestItems.printRequestId + status
 customers.isGuest + displayName
+
+upcomingShows (read unfiltered, sorted client-side; see below)
+showAllocations.upcomingShowId (single-field, auto-indexed)
+showAllocations.printRequestId (single-field, auto-indexed)
+showAllocations.upcomingShowId + status + updatedAt
+showAllocations.printRequestId + status + updatedAt
 ```
 
 Composite indexes are defined in `firestore.indexes.json`.
@@ -1293,6 +1526,15 @@ summaries query `printRequestItems` by `printRequestId`; item display ordering i
 client-side for `sortOrder` compatibility, and summaries are loaded only for the request IDs
 currently displayed. Customer reads are ordered by `displayName` and may filter by `isGuest`.
 Additional indexes should be created based on actual query patterns.
+
+Phase 7 query paths: `upcomingShows` is read unfiltered (the full collection) and sorted **client-side**
+by `scheduledStartAt` ascending with missing-schedule shows sorted last — deliberately not a Firestore
+`orderBy` query, since `orderBy` would silently exclude documents missing that field (the root cause of
+a prior bug where manually added shows never appeared in the list). `showAllocations` is read scoped by
+`upcomingShowId` or by `printRequestId`, each a single-field equality filter needing no composite index
+today. The composite `upcomingShowId + status + updatedAt` and `printRequestId + status + updatedAt`
+indexes are defined in `firestore.indexes.json` ahead of the filtered list views these reads will grow
+into, but are not required by the current unfiltered/single-field queries.
 
 ---
 

@@ -12,6 +12,10 @@ export interface ConfirmCloseResult {
   acknowledged: boolean;
 }
 
+export interface OpenExternalLinkResult {
+  opened: boolean;
+}
+
 export interface FreshPrintsAppApi {
   openDevTools(): Promise<ImportIpcResult<OpenDevToolsResult>>;
   /** Push whether an import upload is currently in flight so the main process can guard window close. */
@@ -20,4 +24,6 @@ export interface FreshPrintsAppApi {
   confirmClose(): Promise<ImportIpcResult<ConfirmCloseResult>>;
   /** Main process is asking whether it's safe to close because an upload is active. */
   onConfirmCloseRequested(callback: () => void): () => void;
+  /** Opens an http(s) URL in a window positioned on the same display as the app. Rejects non-http(s) schemes. */
+  openExternalLink(url: string): Promise<ImportIpcResult<OpenExternalLinkResult>>;
 }

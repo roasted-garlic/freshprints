@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain } from "electron";
 
 import { importIpcFailure, importIpcSuccess } from "../import/importIpcResponse";
 import { openDetachedDevTools } from "./devToolsWindowState";
+import { openExternalLinkOnSameDisplay } from "./externalLinkWindow";
 import { APP_IPC_CHANNELS } from "./appIpcChannels";
 import { confirmClose, setUploadActive } from "./uploadActivityState";
 
@@ -45,5 +46,20 @@ export function registerAppIpcHandlers(): void {
     browserWindow?.close();
 
     return importIpcSuccess({ acknowledged: true });
+  });
+
+  ipcMain.handle(APP_IPC_CHANNELS.OPEN_EXTERNAL_LINK, (event, url: unknown) => {
+    if (typeof url !== "string") {
+      return importIpcFailure("INVALID_INPUT", "A URL is required to open an external link.");
+    }
+
+    const ownerWindow = BrowserWindow.fromWebContents(event.sender);
+    const opened = openExternalLinkOnSameDisplay(url, ownerWindow);
+
+    if (!opened) {
+      return importIpcFailure("INVALID_INPUT", "Only http and https links can be opened.");
+    }
+
+    return importIpcSuccess({ opened: true });
   });
 }

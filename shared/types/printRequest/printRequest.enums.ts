@@ -1,4 +1,4 @@
-export type PrintRequestStatus = "draft" | "active" | "completed" | "archived";
+export type PrintRequestStatus = "draft" | "active" | "editing" | "completed" | "archived";
 
 export type PrintRequestItemStatus =
   | "pending"

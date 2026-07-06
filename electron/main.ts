@@ -9,6 +9,7 @@ import { APP_CONFIRM_CLOSE_REQUESTED } from './ipc/app/appIpcChannels'
 import { attachDevToolsWindowPersistence } from './ipc/app/devToolsWindowState'
 import { consumeCloseConfirmation, getUploadActive } from './ipc/app/uploadActivityState'
 import { registerImportIpcHandlers } from './ipc/import/importIpcHandlers'
+import { registerWhatnotImportIpcHandlers } from './ipc/whatnotImport/whatnotImportIpcHandlers'
 import { attachTextInputContextMenu } from './services/app/textInputContextMenu'
 import { runDevDerivativeGenerationVerification } from './services/import/verifyDerivativeGenerationInMainProcess'
 
@@ -231,6 +232,7 @@ app.whenReady().then(() => {
   Menu.setApplicationMenu(null)
   registerAppIpcHandlers()
   registerImportIpcHandlers()
+  registerWhatnotImportIpcHandlers()
 
   if (!app.isPackaged) {
     void runDevDerivativeGenerationVerification()

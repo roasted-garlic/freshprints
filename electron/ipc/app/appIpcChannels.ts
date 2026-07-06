@@ -1,11 +1,13 @@
 export const APP_OPEN_DEV_TOOLS = "fresh-prints:app:open-dev-tools" as const;
 export const APP_SET_UPLOAD_ACTIVE = "fresh-prints:app:set-upload-active" as const;
 export const APP_CONFIRM_CLOSE = "fresh-prints:app:confirm-close" as const;
+export const APP_OPEN_EXTERNAL_LINK = "fresh-prints:app:open-external-link" as const;
 
 export const APP_IPC_CHANNELS = {
   OPEN_DEV_TOOLS: APP_OPEN_DEV_TOOLS,
   SET_UPLOAD_ACTIVE: APP_SET_UPLOAD_ACTIVE,
   CONFIRM_CLOSE: APP_CONFIRM_CLOSE,
+  OPEN_EXTERNAL_LINK: APP_OPEN_EXTERNAL_LINK,
 } as const;
 
 export type AppIpcChannel = (typeof APP_IPC_CHANNELS)[keyof typeof APP_IPC_CHANNELS];
