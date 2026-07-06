@@ -2,12 +2,16 @@ import { BrowserWindow, WebContentsView, screen, type Rectangle } from "electron
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { WHATNOT_IMPORT_SHELL_PAGE_STATUS_EVENT } from "./whatnotImportIpcChannels";
 import { parseWhatnotShowBaseUrl } from "../../../shared/utils/whatnotShowBaseUrl";
 import { parseWhatnotShowImportCandidates } from "../../../shared/utils/whatnotShowImportCandidate";
 import { planWhatnotShowImport } from "../../../shared/utils/whatnotShowImportPlan";
 import type { RawWhatnotShowDomCandidate } from "../../../shared/utils/whatnotShowImportCandidate";
 import type { WhatnotShowImportPlanEntry } from "../../../shared/utils/whatnotShowImportPlan";
-import type { WhatnotExistingShowSummary } from "../../../shared/types/whatnotImport/whatnotImport.types";
+import type {
+  WhatnotExistingShowSummary,
+  WhatnotImportShellPageStatusEvent,
+} from "../../../shared/types/whatnotImport/whatnotImport.types";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -30,6 +34,9 @@ let whatnotView: WebContentsView | null = null;
 let panelView: WebContentsView | null = null;
 /** Existing local shows, snapshotted when the window opens, used to classify a scan's results. */
 let existingShowsForScan: WhatnotExistingShowSummary[] = [];
+let currentWhatnotPageStatus: WhatnotImportShellPageStatusEvent = { status: "loading" };
+let whatnotPageReadyTimer: ReturnType<typeof setTimeout> | null = null;
+let whatnotPageLoadFailed = false;
 
 function clampBoundsToWorkArea(bounds: Rectangle, workArea: Rectangle): Rectangle {
   const width = Math.min(bounds.width, workArea.width);
@@ -74,6 +81,21 @@ function layoutSplitViews(): void {
   panelView.setBounds({ x: whatnotWidth, y: 0, width: panelWidth, height: contentHeight });
 }
 
+function clearWhatnotPageReadyTimer(): void {
+  if (whatnotPageReadyTimer) {
+    clearTimeout(whatnotPageReadyTimer);
+    whatnotPageReadyTimer = null;
+  }
+}
+
+function sendWhatnotPageStatus(event: WhatnotImportShellPageStatusEvent): void {
+  currentWhatnotPageStatus = event;
+
+  if (panelView && !panelView.webContents.isDestroyed()) {
+    panelView.webContents.send(WHATNOT_IMPORT_SHELL_PAGE_STATUS_EVENT, event);
+  }
+}
+
 /**
  * Opens a single split window: the configured, validated Whatnot show base URL renders on the
  * left via a native `WebContentsView` (no preload, no Node integration, sandboxed — same posture
@@ -100,6 +122,8 @@ export function openWhatnotImportWindow(
   closeWhatnotImportWindow();
 
   existingShowsForScan = existingShows;
+  currentWhatnotPageStatus = { status: "loading" };
+  whatnotPageLoadFailed = false;
 
   const referenceBounds = ownerWindow && !ownerWindow.isDestroyed() ? ownerWindow.getBounds() : undefined;
   const targetDisplay = referenceBounds
@@ -133,15 +157,57 @@ export function openWhatnotImportWindow(
   shellWindow.contentView.addChildView(panelView);
   layoutSplitViews();
 
-  void whatnotView.webContents.loadURL(parsed.normalizedUrl);
+  whatnotView.webContents.on("did-start-loading", () => {
+    clearWhatnotPageReadyTimer();
+    whatnotPageLoadFailed = false;
+    sendWhatnotPageStatus({ status: "loading" });
+  });
+
   whatnotView.webContents.on("did-finish-load", () => {
     void whatnotView?.webContents.insertCSS(WHATNOT_SCROLLBAR_CSS);
   });
 
+  whatnotView.webContents.on("did-stop-loading", () => {
+    if (whatnotPageLoadFailed) {
+      return;
+    }
+
+    clearWhatnotPageReadyTimer();
+    whatnotPageReadyTimer = setTimeout(() => {
+      sendWhatnotPageStatus({ status: "ready" });
+    }, 1500);
+  });
+
+  whatnotView.webContents.on("did-fail-load", (_event, errorCode, errorDescription, _validatedUrl, isMainFrame) => {
+    if (errorCode === -3 || isMainFrame === false) {
+      return;
+    }
+
+    whatnotPageLoadFailed = true;
+    clearWhatnotPageReadyTimer();
+    sendWhatnotPageStatus({
+      status: "failed",
+      error: errorDescription || "The Whatnot page did not finish loading.",
+    });
+  });
+
+  panelView.webContents.on("did-finish-load", () => {
+    sendWhatnotPageStatus(currentWhatnotPageStatus);
+  });
+
+  void whatnotView.webContents.loadURL(parsed.normalizedUrl).catch((error: unknown) => {
+    whatnotPageLoadFailed = true;
+    clearWhatnotPageReadyTimer();
+    sendWhatnotPageStatus({
+      status: "failed",
+      error: error instanceof Error ? error.message : "The Whatnot page did not finish loading.",
+    });
+  });
   void panelView.webContents.loadFile(path.join(__dirname, "whatnotImportShell.html"));
 
   shellWindow.on("resize", layoutSplitViews);
   shellWindow.on("closed", () => {
+    clearWhatnotPageReadyTimer();
     shellWindow = null;
     whatnotView = null;
     panelView = null;
@@ -157,6 +223,7 @@ export function closeWhatnotImportWindow(): void {
   shellWindow = null;
   whatnotView = null;
   panelView = null;
+  clearWhatnotPageReadyTimer();
 }
 
 export function getWhatnotImportPanelWebContents(): Electron.WebContents | null {

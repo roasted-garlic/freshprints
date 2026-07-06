@@ -3,10 +3,12 @@ import { contextBridge, ipcRenderer } from "electron";
 import {
   WHATNOT_IMPORT_SHELL_COMPLETED_EVENT,
   WHATNOT_IMPORT_SHELL_IPC_CHANNELS,
+  WHATNOT_IMPORT_SHELL_PAGE_STATUS_EVENT,
   isAllowedWhatnotImportShellIpcChannel,
 } from "./whatnotImportIpcChannels";
 import type {
   FreshPrintsWhatnotImportShellApi,
+  WhatnotImportShellPageStatusEvent,
   ScanWhatnotShowsResult,
   WhatnotShowImportCompletedEvent,
   WhatnotShowImportShellConfirmPayload,
@@ -51,6 +53,18 @@ const api: FreshPrintsWhatnotImportShellApi = {
 
     return () => {
       ipcRenderer.removeListener(WHATNOT_IMPORT_SHELL_COMPLETED_EVENT, listener);
+    };
+  },
+
+  onPageStatus(callback: (event: WhatnotImportShellPageStatusEvent) => void): () => void {
+    const listener = (_ipcEvent: Electron.IpcRendererEvent, payload: WhatnotImportShellPageStatusEvent) => {
+      callback(payload);
+    };
+
+    ipcRenderer.on(WHATNOT_IMPORT_SHELL_PAGE_STATUS_EVENT, listener);
+
+    return () => {
+      ipcRenderer.removeListener(WHATNOT_IMPORT_SHELL_PAGE_STATUS_EVENT, listener);
     };
   },
 };

@@ -10,6 +10,9 @@
   const unchangedSummaryToggle = document.getElementById("unchanged-summary-toggle");
   const unchangedListEl = document.getElementById("unchanged-list");
   let isUnchangedListExpanded = false;
+  let isWhatnotPageReady = false;
+  let isScanning = false;
+  let isImporting = false;
 
   /** @type {import("../../../shared/utils/whatnotShowImportPlan").WhatnotShowImportPlanEntry[]} */
   let planEntries = [];
@@ -18,6 +21,17 @@
   function showError(message) {
     errorEl.textContent = message;
     errorEl.style.display = message ? "block" : "none";
+  }
+
+  function updateScanButtonState() {
+    if (isScanning) {
+      scanButton.disabled = true;
+      scanButton.textContent = "Scanning...";
+      return;
+    }
+
+    scanButton.disabled = !isWhatnotPageReady;
+    scanButton.textContent = isWhatnotPageReady ? "Scan visible shows" : "Loading Whatnot page...";
   }
 
   function badgeLabel(action) {
@@ -32,24 +46,43 @@
     badge.textContent = badgeLabel(effectiveAction);
   }
 
-  function buildEntryRow(entry, index) {
+  function hasConfirmableSelection() {
+    return planEntries.some(function (entry, index) {
+      return (
+        !excludedIndexes.has(index) &&
+        entry.action !== "needs_review" &&
+        entry.action !== "unchanged"
+      );
+    });
+  }
+
+  function updateConfirmButtonState() {
+    confirmButton.disabled = isImporting || !hasConfirmableSelection();
+  }
+
+  function buildEntryRow(entry, index, options) {
+    const showCheckbox = !options || options.showCheckbox !== false;
     const row = document.createElement("div");
     row.className = "entry";
 
     const label = document.createElement("label");
 
-    const checkbox = document.createElement("input");
-    checkbox.type = "checkbox";
-    checkbox.checked = !excludedIndexes.has(index);
-    checkbox.disabled = entry.action === "needs_review";
-    checkbox.addEventListener("change", function () {
-      if (excludedIndexes.has(index)) {
-        excludedIndexes.delete(index);
-      } else {
-        excludedIndexes.add(index);
-      }
-      updateRowBadge(row, entry, index);
-    });
+    if (showCheckbox) {
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.checked = !excludedIndexes.has(index);
+      checkbox.disabled = entry.action === "needs_review";
+      checkbox.addEventListener("change", function () {
+        if (excludedIndexes.has(index)) {
+          excludedIndexes.delete(index);
+        } else {
+          excludedIndexes.add(index);
+        }
+        updateRowBadge(row, entry, index);
+        updateConfirmButtonState();
+      });
+      label.appendChild(checkbox);
+    }
 
     const text = document.createElement("span");
     const titleLine = document.createElement("span");
@@ -72,7 +105,6 @@
     text.appendChild(titleLine);
     text.appendChild(metaLine);
 
-    label.appendChild(checkbox);
     label.appendChild(text);
 
     const badge = document.createElement("span");
@@ -88,13 +120,15 @@
   function renderUnchangedSummary(unchangedEntries) {
     if (unchangedEntries.length === 0) {
       unchangedSummaryEl.style.display = "none";
+      unchangedSummaryEl.classList.remove("is-expanded");
       unchangedListEl.style.display = "none";
       unchangedListEl.innerHTML = "";
       isUnchangedListExpanded = false;
       return;
     }
 
-    unchangedSummaryEl.style.display = "block";
+    unchangedSummaryEl.style.display = "flex";
+    unchangedSummaryEl.classList.toggle("is-expanded", isUnchangedListExpanded);
     unchangedSummaryToggle.textContent =
       (isUnchangedListExpanded ? "Hide " : "Show ") +
       unchangedEntries.length +
@@ -106,7 +140,7 @@
     if (isUnchangedListExpanded) {
       unchangedListEl.innerHTML = "";
       unchangedEntries.forEach(function (item) {
-        unchangedListEl.appendChild(buildEntryRow(item.entry, item.index));
+        unchangedListEl.appendChild(buildEntryRow(item.entry, item.index, { showCheckbox: false }));
       });
     }
   }
@@ -126,13 +160,15 @@
     });
 
     emptyStateEl.style.display = planEntries.length === 0 ? "block" : "none";
-    confirmButton.disabled = planEntries.length === 0;
+    resultsEl.style.display = otherEntries.length === 0 ? "none" : "flex";
 
     renderUnchangedSummary(unchangedEntries);
 
     otherEntries.forEach(function (item) {
       resultsEl.appendChild(buildEntryRow(item.entry, item.index));
     });
+
+    updateConfirmButtonState();
   }
 
   unchangedSummaryToggle.addEventListener("click", function () {
@@ -152,9 +188,13 @@
   }
 
   scanButton.addEventListener("click", async function () {
+    if (!isWhatnotPageReady || isScanning) {
+      return;
+    }
+
     showError("");
-    scanButton.disabled = true;
-    scanButton.textContent = "Scanning...";
+    isScanning = true;
+    updateScanButtonState();
 
     try {
       const result = await window.freshPrintsWhatnotImportShell.scan();
@@ -177,8 +217,8 @@
     } catch (error) {
       showError(error && error.message ? error.message : "Unable to scan the Whatnot page.");
     } finally {
-      scanButton.disabled = false;
-      scanButton.textContent = "Scan visible shows";
+      isScanning = false;
+      updateScanButtonState();
     }
   });
 
@@ -189,7 +229,12 @@
   });
 
   confirmButton.addEventListener("click", async function () {
+    if (isImporting || !hasConfirmableSelection()) {
+      return;
+    }
+
     showError("");
+    isImporting = true;
     confirmButton.disabled = true;
     cancelButton.disabled = true;
     confirmButton.textContent = "Importing...";
@@ -202,25 +247,50 @@
 
       if (!result.success) {
         showError(result.error.message);
-        confirmButton.disabled = false;
+        isImporting = false;
         cancelButton.disabled = false;
         confirmButton.textContent = "Confirm import";
+        updateConfirmButtonState();
       }
       // On success, the window is closed by the main process once the owner window reports completion.
     } catch (error) {
       showError(error && error.message ? error.message : "Unable to confirm the import.");
-      confirmButton.disabled = false;
+      isImporting = false;
       cancelButton.disabled = false;
       confirmButton.textContent = "Confirm import";
+      updateConfirmButtonState();
     }
   });
 
   window.freshPrintsWhatnotImportShell.onImportCompleted(function (event) {
     if (event.status === "failed") {
       showError(event.error);
-      confirmButton.disabled = false;
+      isImporting = false;
       cancelButton.disabled = false;
       confirmButton.textContent = "Confirm import";
+      updateConfirmButtonState();
     }
   });
+
+  window.freshPrintsWhatnotImportShell.onPageStatus(function (event) {
+    if (event.status === "loading") {
+      isWhatnotPageReady = false;
+      updateScanButtonState();
+      return;
+    }
+
+    if (event.status === "failed") {
+      isWhatnotPageReady = false;
+      showError(event.error);
+      scanButton.textContent = "Page did not load";
+      scanButton.disabled = true;
+      return;
+    }
+
+    isWhatnotPageReady = true;
+    showError("");
+    updateScanButtonState();
+  });
+
+  updateScanButtonState();
 })();

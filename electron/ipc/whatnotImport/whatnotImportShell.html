@@ -109,10 +109,20 @@
 
       #unchanged-summary {
         display: none;
+        flex-direction: column;
+        flex: 0 0 auto;
+        min-height: 0;
         border: 1px solid rgba(255, 255, 255, 0.08);
         border-radius: 8px;
         padding: 8px 10px;
         background: rgba(255, 255, 255, 0.03);
+        overflow: hidden;
+        max-height: min(45vh, 340px);
+      }
+
+      #unchanged-summary.is-expanded {
+        flex: 1 1 auto;
+        max-height: none;
       }
 
       #unchanged-summary-toggle {
@@ -128,9 +138,17 @@
 
       #unchanged-list {
         display: none;
+        flex: 1 1 auto;
         flex-direction: column;
+        min-height: 0;
         gap: 6px;
         margin-top: 8px;
+        overflow-y: auto;
+        padding-right: 4px;
+      }
+
+      #unchanged-list .entry + .entry {
+        margin-top: 0;
       }
 
       #unchanged-list .entry-title {
@@ -224,6 +242,23 @@
       }
 
       #results::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.3);
+      }
+
+      #unchanged-list::-webkit-scrollbar {
+        width: 8px;
+      }
+
+      #unchanged-list::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      #unchanged-list::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.18);
+        border-radius: 999px;
+      }
+
+      #unchanged-list::-webkit-scrollbar-thumb:hover {
         background: rgba(255, 255, 255, 0.3);
       }
     </style>

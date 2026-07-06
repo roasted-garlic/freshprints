@@ -34,6 +34,11 @@ export type WhatnotShowImportCompletedEvent =
   | { status: "succeeded"; summary: WhatnotShowImportSummary }
   | { status: "failed"; error: string };
 
+export type WhatnotImportShellPageStatusEvent =
+  | { status: "loading" }
+  | { status: "ready" }
+  | { status: "failed"; error: string };
+
 export interface FreshPrintsWhatnotImportApi {
   /** Opens the configured, validated Whatnot show base URL in a split import window. */
   openImportWindow(
@@ -59,4 +64,6 @@ export interface FreshPrintsWhatnotImportShellApi {
   cancel(): Promise<ImportIpcResult<{ acknowledged: boolean }>>;
   /** The owner window's renderer (via the main process) reporting the import's outcome. */
   onImportCompleted(callback: (event: WhatnotShowImportCompletedEvent) => void): () => void;
+  /** The Whatnot page's loading state. Scan is disabled until this reports ready. */
+  onPageStatus(callback: (event: WhatnotImportShellPageStatusEvent) => void): () => void;
 }

@@ -28,6 +28,42 @@ test("resolveWhatnotShowDateText: resolves a bare weekday badge with no comma, e
   assert.equal(resolved.getHours(), 20);
 });
 
+test("resolveWhatnotShowDateText: resolves Today and Tomorrow badges", () => {
+  const today = resolveWhatnotShowDateText("TOday 8:00 PM", SATURDAY_NOON);
+  const tomorrow = resolveWhatnotShowDateText("Tomorrow 8:00 PM", SATURDAY_NOON);
+
+  assert.ok(today);
+  assert.equal(today.getMonth(), 6);
+  assert.equal(today.getDate(), 4);
+  assert.equal(today.getHours(), 20);
+
+  assert.ok(tomorrow);
+  assert.equal(tomorrow.getMonth(), 6);
+  assert.equal(tomorrow.getDate(), 5);
+  assert.equal(tomorrow.getHours(), 20);
+});
+
+test("resolveWhatnotShowDateText: resolves common weekday abbreviations", () => {
+  const cases: Array<[string, number]> = [
+    ["Su 8:00 PM", 5],
+    ["Mo 8:00 PM", 6],
+    ["Tues 8:00 PM", 7],
+    ["We 8:00 PM", 8],
+    ["Weds 8:00 PM", 8],
+    ["Thur 8:00 PM", 9],
+    ["Thurs 8:00 PM", 9],
+    ["Fr 8:00 PM", 10],
+    ["Sa 8:00 PM", 11],
+  ];
+
+  for (const [dateText, expectedDate] of cases) {
+    const resolved = resolveWhatnotShowDateText(dateText, SATURDAY_NOON);
+    assert.ok(resolved, dateText);
+    assert.equal(resolved.getDate(), expectedDate, dateText);
+    assert.equal(resolved.getHours(), 20, dateText);
+  }
+});
+
 test("resolveWhatnotShowDateText: resolves a bare weekday badge, e.g. 'Sat 8:00 PM', to next week not today", () => {
   const resolved = resolveWhatnotShowDateText("Sat 8:00 PM", SATURDAY_NOON);
   assert.ok(resolved);
@@ -130,6 +166,22 @@ test("parseWhatnotShowImportCandidate: preserves emoji/special characters withou
   );
 
   assert.equal(result.title, "🔥SUNDAY EVENING DTF Transfers | Low Starts•No Reserve");
+});
+
+test("parseWhatnotShowImportCandidate: parses a Tomorrow badge from Whatnot's visible card text", () => {
+  const result = parseWhatnotShowImportCandidate(
+    {
+      href: "https://www.whatnot.com/live/3ec90737-9d2b-4cfb-8d40-ac848d16f5d8",
+      title: "🔥 TUESDAY EVENING DTF Transfer show | Low Starts • Bundle & Save",
+      dateText: "Tomorrow 8:00 PM",
+    },
+    SATURDAY_NOON,
+  );
+
+  assert.equal(result.status, "ready");
+  assert.ok(result.scheduledStartAt);
+  assert.equal(result.scheduledStartAt.getDate(), 5);
+  assert.equal(result.scheduledStartAt.getHours(), 20);
 });
 
 test("parseWhatnotShowImportCandidate: marks a 'Live · N' badge as status live, with no invented scheduledStartAt", () => {

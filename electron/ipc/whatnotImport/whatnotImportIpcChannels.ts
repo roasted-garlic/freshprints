@@ -49,3 +49,7 @@ export function isAllowedWhatnotImportShellIpcChannel(
 /** Main → shell window: report the owner window's import outcome. */
 export const WHATNOT_IMPORT_SHELL_COMPLETED_EVENT =
   "fresh-prints:whatnot-import-shell:import-completed" as const;
+
+/** Main → shell window: report the Whatnot page's loading state. */
+export const WHATNOT_IMPORT_SHELL_PAGE_STATUS_EVENT =
+  "fresh-prints:whatnot-import-shell:page-status" as const;

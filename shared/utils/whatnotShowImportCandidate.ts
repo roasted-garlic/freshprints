@@ -28,13 +28,39 @@ export interface ParsedWhatnotShowImportCandidate {
   reviewReason?: string;
 }
 
-const WEEKDAY_NAMES = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+const WEEKDAY_LABEL_TO_INDEX: Record<string, number> = {
+  sun: 0,
+  sunday: 0,
+  su: 0,
+  mon: 1,
+  monday: 1,
+  mo: 1,
+  tue: 2,
+  tues: 2,
+  tuesday: 2,
+  tu: 2,
+  wed: 3,
+  weds: 3,
+  wednesday: 3,
+  we: 3,
+  thu: 4,
+  thur: 4,
+  thurs: 4,
+  thursday: 4,
+  th: 4,
+  fri: 5,
+  friday: 5,
+  fr: 5,
+  sat: 6,
+  saturday: 6,
+  sa: 6,
+};
 
 const LIVE_BADGE_PATTERN = /^live\b/i;
-const WEEKDAY_TIME_PATTERN = /^(sun|mon|tue|wed|thu|fri|sat)[a-z]*,?\s+(\d{1,2}):(\d{2})\s*(am|pm)$/i;
+const WEEKDAY_TIME_PATTERN = /^([a-z]{2,9})\.?,?\s+(?:at\s+)?(\d{1,2}):(\d{2})\s*(am|pm)$/i;
 const EXPLICIT_DATE_TIME_PATTERN =
-  /^(?:sun|mon|tue|wed|thu|fri|sat)[a-z]*,\s+([a-z]{3,9})\s+(\d{1,2}),\s+(\d{1,2}):(\d{2})\s*(am|pm)$/i;
-const TODAY_TIME_PATTERN = /^today,?\s+(\d{1,2}):(\d{2})\s*(am|pm)$/i;
+  /^([a-z]{2,9})\.?,\s+([a-z]{3,9})\s+(\d{1,2}),\s+(\d{1,2}):(\d{2})\s*(am|pm)$/i;
+const RELATIVE_DAY_TIME_PATTERN = /^(today|tomorrow),?\s+(?:at\s+)?(\d{1,2}):(\d{2})\s*(am|pm)$/i;
 /** Matches the individual show dashboard's "Scheduled: 7/7 8:00PM" line — numeric month/day, no year. */
 const NUMERIC_DATE_TIME_PATTERN = /^(\d{1,2})\/(\d{1,2})\s+(\d{1,2}):(\d{2})\s*(am|pm)$/i;
 
@@ -58,6 +84,11 @@ function to24Hour(hour: number, meridiem: string): number {
   return meridiem.toLowerCase() === "pm" ? normalizedHour + 12 : normalizedHour;
 }
 
+function parseWeekdayIndex(rawWeekday: string): number | undefined {
+  const normalizedWeekday = rawWeekday.toLowerCase().replace(/\.$/, "");
+  return WEEKDAY_LABEL_TO_INDEX[normalizedWeekday];
+}
+
 export function isWhatnotLiveBadgeText(rawDateText: string): boolean {
   return LIVE_BADGE_PATTERN.test(rawDateText.trim());
 }
@@ -76,24 +107,33 @@ export function resolveWhatnotShowDateText(rawDateText: string, now: Date): Date
     return undefined;
   }
 
-  const todayMatch = TODAY_TIME_PATTERN.exec(trimmed);
-  if (todayMatch) {
-    const hour = to24Hour(Number(todayMatch[1]), todayMatch[3]);
-    const minute = Number(todayMatch[2]);
-    return new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour, minute, 0, 0);
+  const relativeDayMatch = RELATIVE_DAY_TIME_PATTERN.exec(trimmed);
+  if (relativeDayMatch) {
+    const hour = to24Hour(Number(relativeDayMatch[2]), relativeDayMatch[4]);
+    const minute = Number(relativeDayMatch[3]);
+    const resolved = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour, minute, 0, 0);
+    if (relativeDayMatch[1].toLowerCase() === "tomorrow") {
+      resolved.setDate(resolved.getDate() + 1);
+    }
+    return resolved;
   }
 
   // Must be checked before the bare weekday pattern, since "Sun, Jul 12, 8:00 PM" would
   // otherwise also match the looser weekday-prefix shape.
   const explicitMatch = EXPLICIT_DATE_TIME_PATTERN.exec(trimmed);
   if (explicitMatch) {
-    const monthIndex = MONTH_NAMES.indexOf(explicitMatch[1].slice(0, 3).toLowerCase());
+    const weekdayIndex = parseWeekdayIndex(explicitMatch[1]);
+    if (weekdayIndex === undefined) {
+      return undefined;
+    }
+
+    const monthIndex = MONTH_NAMES.indexOf(explicitMatch[2].slice(0, 3).toLowerCase());
     if (monthIndex === -1) {
       return undefined;
     }
-    const day = Number(explicitMatch[2]);
-    const hour = to24Hour(Number(explicitMatch[3]), explicitMatch[5]);
-    const minute = Number(explicitMatch[4]);
+    const day = Number(explicitMatch[3]);
+    const hour = to24Hour(Number(explicitMatch[4]), explicitMatch[6]);
+    const minute = Number(explicitMatch[5]);
 
     let year = now.getFullYear();
     let candidate = new Date(year, monthIndex, day, hour, minute, 0, 0);
@@ -107,7 +147,11 @@ export function resolveWhatnotShowDateText(rawDateText: string, now: Date): Date
   // Bare weekday, with or without a trailing comma: "Tue 8:00 PM", "Sat, 8:00 PM".
   const weekdayMatch = WEEKDAY_TIME_PATTERN.exec(trimmed);
   if (weekdayMatch) {
-    const targetWeekday = WEEKDAY_NAMES.indexOf(weekdayMatch[1].toLowerCase());
+    const targetWeekday = parseWeekdayIndex(weekdayMatch[1]);
+    if (targetWeekday === undefined) {
+      return undefined;
+    }
+
     const hour = to24Hour(Number(weekdayMatch[2]), weekdayMatch[4]);
     const minute = Number(weekdayMatch[3]);
     const daysUntilTarget = (targetWeekday - now.getDay() + 7) % 7 || 7;
