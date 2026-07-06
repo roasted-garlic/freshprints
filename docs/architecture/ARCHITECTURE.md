@@ -102,7 +102,7 @@ Responsible for:
 * Customer management (registered and guest records)
 * Print Requests and Print Runs (Phases 6–7)
 * Analytics
-* Production file export for gang sheets (Pensacola)
+* Exporting to gangsheet
 * Team and application administration
 
 Users: Owner, Admin, Helper
@@ -606,25 +606,25 @@ Do not migrate to this structure without approval. Do not add `apps/mobile/` or 
 
 ---
 
-# Pensacola Production File Export
+# Gangsheet Export
 
-The Pensacola PC is the production machine for gang sheet building.
+The production machine is used for gangsheet building.
 
 Workflow:
 
 ```txt
-Staff builds Print Run
+Staff builds a show queue / print plan
          ↓
-Print Run Items reference catalog designs
+Show allocations reference print request items and catalog designs
          ↓
-Pensacola downloads originals from Firebase Storage
+Staff downloads originals from Firebase Storage
          ↓
 Gang Sheet Software
 ```
 
 This is **file export for production** — not shipping, packing, or order fulfillment.
 
-Remote helpers never need access to the Pensacola filesystem.
+Remote helpers never need access to local production folders.
 
 The shared connection point is Firebase Storage.
 

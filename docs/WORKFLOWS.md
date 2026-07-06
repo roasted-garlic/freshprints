@@ -15,7 +15,7 @@ This document is the source of truth for:
 * Custom Request Workflow (future)
 * Design Lifecycle Workflow (catalog only)
 * Manual Design Catalog Workflow (Phase 2C)
-* Pensacola Production File Export Workflow
+* Gangsheet Export Workflow
 * Download Workflow
 * Team User Management Workflow
 
@@ -1353,11 +1353,11 @@ Staff reviews in-house requests
 
 ---
 
-# Pensacola Production File Export Workflow
+# Gangsheet Export Workflow
 
 Purpose:
 
-Export original production assets for gang sheet software. **Not shipping or fulfillment.**
+Export original production assets for gangsheet software. **Not shipping or fulfillment.**
 
 ---
 
@@ -1377,15 +1377,15 @@ Print (physical production — outside Fresh Prints)
 
 ---
 
-## Pensacola PC Responsibilities
+## Production Machine Responsibilities
 
-The Pensacola PC should:
+The production machine should:
 
 * View queues
 * Download originals
 * Export production assets
 
-The Pensacola PC is the production machine.
+This is the machine used to build gangsheets for physical production.
 
 ---
 
@@ -1398,7 +1398,7 @@ Remote helpers may:
 * Categorize designs
 * Build queues
 
-Remote helpers do not require access to local Pensacola folders.
+Remote helpers do not require access to local production folders.
 
 ---
 

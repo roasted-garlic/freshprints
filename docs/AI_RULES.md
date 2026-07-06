@@ -47,7 +47,7 @@ Source of truth for:
 * Shared services
 * Shared types
 * Multi application strategy
-* Pensacola workflow architecture
+* Gangsheet export architecture
 
 ---
 

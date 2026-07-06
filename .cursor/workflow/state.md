@@ -4,24 +4,22 @@
 managed-phase
 
 ## Current Goal
-show-queue-action-polish - Polish Show Queue and Print Requests header actions, and make Show Queue detail metadata reflect the manual-assisted Whatnot import workflow.
+phase-6-closeout-roadmap - Close out Phase 6 Customers And Print Requests in durable docs, record rules deployment confirmation, and align export terminology to gangsheet export.
 
 ## Phase
 signoff complete
 
 ## Plan Status
-created `docs/workflow/plans/2026-07-06-show-queue-action-polish-plan.md`; approved by user 2026-07-06
+created `docs/workflow/plans/2026-07-06-phase-6-closeout-roadmap-plan.md`; approved by user instruction 2026-07-06
 
 ## Review Status
 approved by user 2026-07-06
 
 ## Tests Run
-- `npx tsc --noEmit` - PASS
-- `npm run lint` - PASS
-- `npx vite build` - PASS (renderer, Electron main, and preload), existing circular manual-chunk warning only
+- `rg -n "Pensacola|Production File Export" docs/project/ROADMAP.md docs/WORKFLOWS.md docs/architecture docs/AI_RULES.md` - PASS, no stale wording remains in durable docs checked
 - `git diff --check` - PASS, standard Windows LF/CRLF warnings only
 
-Test report: `docs/workflow/reviews/2026-07-06-show-queue-action-polish-test-report.md`.
+Test report: `docs/workflow/reviews/2026-07-06-phase-6-closeout-roadmap-test-report.md`.
 
 Prior completed phase records:
 - Final signoff verification 2026-07-06:
@@ -46,24 +44,25 @@ Prior completed phase records:
 Test reports: `docs/workflow/reviews/2026-07-05-whatnot-show-sync-slice2-test-report.md`; correction report `docs/workflow/reviews/2026-07-06-whatnot-show-sync-relative-date-parser-test-report.md`; signoff `docs/workflow/reviews/2026-07-06-whatnot-show-sync-signoff.md`.
 
 ## Signoff
-PASS WITH NOTES — automated verification passed. Manual authenticated visual QA was not run in this session.
+PASS — docs-only closeout verified.
 
 ## Human Checkpoint Required
 no
 
 ## Allowed Actions
-answer questions; run manual visual QA if requested; make small corrections within the approved action polish scope
+answer questions; make small documentation corrections within the approved Phase 6 closeout scope
 
 ## Forbidden Actions
-add dependencies; change Firebase rules/indexes/functions; deploy; migrate/backfill data; change Whatnot import behavior; touch show allocation, print request status, or design status logic; read or modify files outside the repository
+add dependencies; change app code; change Firebase rules/indexes/functions; deploy; migrate/backfill data; change Whatnot import behavior; touch show allocation, print request status, or design status logic; read or modify files outside the repository
 
 ## Next Required Step
-Manual visual QA if desired: open `/show-queue` and `/print-requests` and confirm the header actions, Show Queue detail pills, and `Last manual import` row render as expected.
+Decide the next Phase 7 slice: production-status UI or gangsheet export.
 
 ## DONE
 yes
 
 ## Decision Log
+- 2026-07-06: Closed out Phase 6 Customers And Print Requests in durable docs after the user confirmed all Phase 6 work is done and should be closed out. Updated `docs/project/ROADMAP.md` Current Project Status to Phase 7, marked Phase 6 complete/signed off, preserved Phase 6 signoff references, and recorded the user's confirmation that the Firestore rules checkpoint has already been deployed. Replaced durable-doc "Pensacola export" terminology with gangsheet export / Exporting to gangsheet in `docs/AI_RULES.md`, `docs/WORKFLOWS.md`, `docs/architecture/ARCHITECTURE.md`, `docs/architecture/ADR-Application-Platform-Strategy.md`, and `docs/project/ROADMAP.md`. Verification passed: durable-doc terminology grep and `git diff --check` with standard Windows LF/CRLF warnings only. Test report: `docs/workflow/reviews/2026-07-06-phase-6-closeout-roadmap-test-report.md`. No app code, Firebase rules/indexes/functions, deploy, migration, backfill, data write, dependency, Whatnot behavior, show allocation logic, print request status logic, or design status logic changed.
 - 2026-07-06: Implemented and signed off `show-queue-action-polish` as PASS WITH NOTES. Renamed the Show Queue import header action to `Import Shows` and added a lucide upload icon; added lucide plus icons to the Show Queue `Add show` action and Print Requests `New request` action; normalized visible import modal/loading/success wording to the shorter import language; removed the always-idle sync pill from Show Queue detail; replaced `Last synced` with `Last manual import`, formatted from the latest available assisted-import timestamp (`lastSeenInAssistedImportAt` or `settings/showQueue.lastWhatnotAssistedImportAt`) and falling back to `Never imported`. Verification passed: `npx tsc --noEmit`, `npm run lint`, `npx vite build` (existing circular manual-chunk warning only), and `git diff --check` with standard Windows LF/CRLF warnings only. Test report: `docs/workflow/reviews/2026-07-06-show-queue-action-polish-test-report.md`. Manual authenticated visual QA was not run. No Firebase, rules, indexes, Functions, deploy, migration, backfill, dependency, Whatnot import behavior, allocation, print request status, or design status changes.
 - 2026-07-06: Implemented and signed off `show-queue-list-scroll` as PASS WITH NOTES. Added route-specific content-area classes for `/print-requests` and `/show-queue` in `AppShell.tsx`; constrained those routes in `layout.css` so their page layouts use available app height instead of whole-page scrolling; restyled the shared `.print-requests-rail` as an AI Processing-style bordered secondary-surface panel with sticky placement, hidden panel overflow, non-scrolling tab area, and an internal `.print-requests-rail-list` scroller; updated rail request/show cards to flatter AI-style list rows with selected/hover states; preserved stacked layouts with a capped rail height and remaining-height detail/workspace row. Verification passed: `npx tsc --noEmit`, `npm run lint`, `npx vite build` (existing circular manual-chunk warning only), and `git diff --check` with standard Windows LF/CRLF warnings only. Test report: `docs/workflow/reviews/2026-07-06-show-queue-list-scroll-test-report.md`. Manual authenticated visual QA was not run in this session. No service, hook, IPC, Firebase, data model, Whatnot sync, allocation, print request status, design status, dependency, deploy, migration, or backfill changes.
 - 2026-07-06: User approved `show-queue-list-scroll` implementation after plan expansion to include AI Processing-style left rail styling for both Show Queue and Print Requests. Implementation started.

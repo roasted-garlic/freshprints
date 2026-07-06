@@ -67,7 +67,7 @@ The business model requires a hard boundary: **staff operations are desktop-only
 * Print Runs / Upcoming Shows
 * Analytics
 * Team and application administration
-* Production file export for gang sheets (Pensacola workflow)
+* Exporting to gangsheet
 
 **Replaces documentation terms:** Electron desktop application, Desktop Admin App, Desktop Admin Application, desktop admin app, staff desktop app.
 
