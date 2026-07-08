@@ -7,7 +7,7 @@ managed-phase
 studio-apps-folder-monorepo-normalization — Symmetric apps monorepo: move Studio to `apps/studio/` (mechanical only).
 
 ## Phase
-plan — Monorepo plan complete; **review pending**. Phase 8 closeout signed off 2026-07-08.
+implement — Monorepo plan reviewed and approved 2026-07-08. Ready for Slice 0 (precondition: clean working tree — commit/stash pending Portal show-selection changes first).
 
 ## Sub-goal: Phase 8 Portal closeout (2026-07-08) — **DONE**
 - Plan: `docs/workflow/plans/2026-07-08-phase-8-portal-closeout-plan.md` — approved
@@ -15,10 +15,12 @@ plan — Monorepo plan complete; **review pending**. Phase 8 closeout signed off
 - Signoff: `docs/workflow/reviews/2026-07-08-phase-8-portal-closeout-signoff.md` — **approved**
 - Phase 8 documented as **MVP complete in dev**
 
-## Sub-goal: Symmetric apps monorepo (2026-07-08) — **PLANNING**
-- Plan: `docs/workflow/plans/2026-07-08-symmetric-apps-monorepo-plan.md` — **ready_for_review**
-- Review: pending
+## Sub-goal: Symmetric apps monorepo (2026-07-08) — **APPROVED, NOT STARTED**
+- Plan: `docs/workflow/plans/2026-07-08-symmetric-apps-monorepo-plan.md` — **approved**
+- Review: `docs/workflow/reviews/2026-07-08-symmetric-apps-monorepo-review.md` — **approved** (round 1: 6 findings, all resolved in plan revision)
 - Scope: `git mv` Studio → `apps/studio/`; config/docs only; zero product logic
+- Precondition before Slice 0: working tree must be clean — commit/stash the uncommitted Portal show-selection files first (see `git status`)
+- Locked decisions: `dist`/`dist-electron`/`release/` all move under `apps/studio/`; Slice 5 packaging check uses full electron-builder installer build, not smoke-only
 
 ## Sub-goal: Portal customer show selection (2026-07-08) — **DONE**
 - Plan: `docs/workflow/plans/2026-07-08-portal-customer-show-selection-plan.md` — approved
