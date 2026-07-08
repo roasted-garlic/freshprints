@@ -7,12 +7,12 @@ managed-phase
 phase-8-portal-foundation — Fresh Prints Portal (customer web app): incremental monorepo (`apps/portal` + `packages/shared`), Firebase App Hosting, customer auth, catalog browse, print requests, progress tracking. Plan: `docs/workflow/plans/2026-07-07-phase-8-portal-foundation-plan.md`.
 
 ## Phase
-implement — Slice 3 (Portal customer print requests) in progress. Callable, rules, Portal UI implemented; deploy + manual QA pending.
+test — Slice 3 follow-up UX (portal request tabs, Continue flow, rapid-save fixes, Studio refresh) committed `e228240` and pushed. Automated checks passed; deploy + manual QA still required before Slice 3 signoff.
 
 ## Sub-goal: Phase 8 Slice 3 — Customer print requests
 - Callable `createPortalPrintRequest` implemented
-- Firestore rules: customer read/update own requests; item CRUD on draft/editing requests
-- Portal `/requests` list + `/requests/[id]` detail; catalog "Add to request"
+- Firestore rules: customer read/update own requests; item CRUD on draft/editing requests; **customer read own `showAllocations`** (for Working/Queued/Printed tabs)
+- Portal `/requests` list + `/requests/[id]` detail; catalog selection mode; Working/Queued/Printed tabs (Studio-aligned grouping)
 - **Deploy required:** `functions:createPortalPrintRequest`, `firestore:rules` to `fresh-prints-dev`
 
 ## Sub-goal: Phase 8 Slice 2 — Catalog read (complete)
@@ -33,6 +33,21 @@ Plan: `docs/workflow/plans/2026-07-07-customer-portal-invitation-plan.md`
 **approved** — Slice 3 review 2026-07-07. Review: `docs/workflow/reviews/2026-07-07-phase-8-portal-slice3-print-requests-review.md`.
 
 ## Tests Run
+Portal navigation + account + catalog modal polish (2026-07-07, commit `64921c0`):
+- `npm run typecheck --workspace @fresh-prints/portal` - PASS
+- `npm run lint` - PASS (0 warnings)
+- Portal UX: header Account/Log out + confirm modal; `/catalog` post-login entry; enriched account page (no signup badge); vertical wider design-details modal
+- **Human checkpoint:** same Slice 3 deploy + manual QA checklist below (include new nav/account/modal spot-check)
+
+Portal + Studio print request UX follow-up (2026-07-07, commit `e228240`):
+- `npm run typecheck --workspace @fresh-prints/portal` - PASS
+- `npx tsc --noEmit` - PASS
+- `npm run lint` - PASS (0 warnings)
+- `npx tsx --test packages/shared/src/utils/portalPrintRequestListTabs.test.ts packages/shared/src/utils/printRequestListGrouping.test.ts` - PASS, 10/10
+- Full repo `npx tsx --test` sweep - NOT RUN this session (prior sweep 527/527 on 2026-07-07 Slice 0 baseline)
+- `npm run build:portal` - NOT RUN this session
+- **Human checkpoint:** deploy updated `firestore:rules` (includes customer `showAllocations` read); manual QA portal Continue/Working-Queued-Printed tabs + rapid +/- saves; Studio Refresh button
+
 Phase 8 Slice 2 — catalog rules + Portal catalog browse (2026-07-07):
 - `npm run typecheck --workspace @fresh-prints/portal` - PASS
 - `npm run lint` - PASS
@@ -274,18 +289,22 @@ Phase 7 export phase signed off 2026-07-07. Phase 8 not yet signed off.
 no
 
 ## Allowed Actions
-implement Slice 3 per approved plan; run tests; prepare function + rules deploy checklist (human deploy)
+run additional tests; prepare deploy checklist; await human deploy + manual QA; signoff only after QA PASS documented
 
 ## Forbidden Actions
-deploy production rules/functions/hosting without explicit human approval; implement Slice 4 before Slice 3 verified
+deploy production rules/functions/hosting without explicit human approval; mark Slice 3 DONE without manual QA; implement Slice 4 before Slice 3 verified
 
 ## Next Required Step
-Human: deploy `createPortalPrintRequest` + updated `firestore:rules` to `fresh-prints-dev`, then manual QA (create request → add design from catalog → edit quantity → revisit list). After PASS, proceed to Slice 4 (progress tracking).
+1. **Deploy** to `fresh-prints-dev`: `firebase deploy --only firestore:rules` (customer `showAllocations` read + prior Slice 3 rules); confirm `createPortalPrintRequest` already deployed.
+2. **Manual QA** (portal + Studio): Continue vs Start on catalog; Working/Queued/Printed tabs; rapid +/- qty without incomplete-record errors; Studio Refresh updates list/detail.
+3. Reply `PASS` / `FAIL: …` — then Test Agent can write Slice 3 test report and Signoff Agent can close Slice 3 (or defer Slice 4).
 
 ## DONE
 no
 
 ## Decision Log
+- 2026-07-07: Committed `64921c0` (push pending) — portal header Account/Log out with confirm modal, `/catalog` post-login entry, Designs+Requests bottom nav, enriched account page (removed signup badge), vertical wider design-details modal. Automated: portal typecheck, lint. Left unstaged: `apps/portal/tsconfig.tsbuildinfo`; untracked `functions/.env.fresh-prints-dev` (not committed).
+- 2026-07-07: Committed and pushed `e228240` — portal Working/Queued/Printed tabs (Studio `derivePrintRequestListTab`), Continue request flow, portal rapid-save/timestamp fixes, customer `showAllocations` read rule, Studio print requests Refresh + item card save debounce. Automated: portal typecheck, root tsc, lint, 10/10 shared tab-grouping tests. Left unstaged: `apps/portal/tsconfig.tsbuildinfo`; untracked `functions/.env.fresh-prints-dev` (not committed).
 - 2026-07-07: User confirmed Slice 2 catalog mobile QA PASS (filters, layout, tunnel testing). Continued workflow → Slice 3 plan + review approved.
 - 2026-07-07: User approved Phase 8 plan with no changes — open registration, `fresh-prints-dev` App Hosting first, username required at signup. Slice 0 (monorepo + Portal scaffold) completed with all automated checks passing (527 tests). Created `docs/workflow/plans/2026-07-07-phase-8-portal-foundation-plan.md`: incremental monorepo (`apps/portal` + `packages/shared`, Studio stays at root), Firebase App Hosting, slices 0–4 for auth/catalog/requests/progress. Implementation blocked pending plan review.
 - 2026-07-07: User product direction after Phase 7 export signoff: (1) Gang Sheet Builder manual canvas is post-MVP want/not need — defer until after Portal; auto-nested export covers production. (2) Live Whatnot scheduled sync not needed for Studio (not 24/7); revisit only if future always-on hosted service needs it — not default Phase 8. (3) Move to Phase 8 Portal after Firestore rules deploy. Recorded ADR-FP-063; ROADMAP and handoff docs updated.

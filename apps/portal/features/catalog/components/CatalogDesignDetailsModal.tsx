@@ -61,30 +61,36 @@ export function CatalogDesignDetailsModal({ design, isOpen, onClose }: CatalogDe
         onClick={onClose}
         role="dialog"
       >
-        <div className="modal-panel" onClick={(event) => event.stopPropagation()} role="presentation">
-          <header className="modal-header design-details-header">
-            <div className="design-details-header-copy">
-              <p className="portal-eyebrow">Design details</p>
-              <h2 id="catalog-design-details-title">{design.title}</h2>
-            </div>
+        <div
+          className="modal-panel modal-panel-design-details"
+          onClick={(event) => event.stopPropagation()}
+          role="presentation"
+        >
+          <div className="design-details-hero">
+            <CatalogThumbnailPanel
+              alt={`${design.title} preview`}
+              catalogPath={previewPath}
+              className="design-details-hero-media"
+              fallbackLabel="Preview unavailable"
+              interactive
+              loadingLabel="Loading preview"
+              onImageClick={() => setIsPreviewLightboxOpen(true)}
+            />
 
-            <div className="design-details-header-media">
-              <CatalogThumbnailPanel
-                alt={`${design.title} preview`}
-                catalogPath={previewPath}
-                fallbackLabel="Preview unavailable"
-                interactive
-                loadingLabel="Loading preview"
-                onImageClick={() => setIsPreviewLightboxOpen(true)}
-              />
-            </div>
-
-            <button aria-label="Close design details" className="modal-close-button" onClick={onClose} type="button">
+            <button
+              aria-label="Close design details"
+              className="modal-close-button design-details-close-button"
+              onClick={onClose}
+              type="button"
+            >
               <CloseIcon />
             </button>
-          </header>
+          </div>
 
-          <div className="modal-body">
+          <div className="modal-body design-details-body">
+            <p className="portal-eyebrow design-details-eyebrow">Design details</p>
+            <h2 id="catalog-design-details-title">{design.title}</h2>
+
             <section className="design-details-section">
               <h3>Description</h3>
               <p className="design-details-description">{design.description?.trim() || '—'}</p>
@@ -105,7 +111,6 @@ export function CatalogDesignDetailsModal({ design, isOpen, onClose }: CatalogDe
               )}
             </section>
           </div>
-
         </div>
       </div>
 

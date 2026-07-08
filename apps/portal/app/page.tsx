@@ -15,7 +15,7 @@ export default function HomePage() {
       return;
     }
 
-    router.replace(isAuthenticated ? '/dashboard' : '/login');
+    router.replace(isAuthenticated ? '/catalog' : '/login');
   }, [bootstrapStatus, isAuthenticated, isInitialBootstrap, router]);
 
   return (

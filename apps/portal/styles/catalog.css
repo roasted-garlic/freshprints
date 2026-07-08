@@ -413,28 +413,48 @@
   outline: none;
 }
 
-.design-details-header {
-  align-items: flex-start;
-  display: flex;
-  flex: 1;
+.modal-panel-design-details {
+  max-width: min(100%, 36rem);
+  position: relative;
+}
+
+.design-details-hero {
+  background: var(--color-artwork-preview-bg);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+  position: relative;
+}
+
+.design-details-hero .design-thumbnail-panel.design-details-hero-media {
+  aspect-ratio: auto;
+  border: 0;
+  border-radius: 0;
+  height: clamp(14rem, 36vw, 18rem);
+  width: 100%;
+}
+
+.design-details-close-button {
+  background: color-mix(in srgb, var(--color-bg-secondary) 90%, transparent);
+  backdrop-filter: blur(6px);
+  position: absolute;
+  right: var(--space-3);
+  top: var(--space-3);
+  z-index: 2;
+}
+
+.design-details-body {
   gap: var(--space-4);
-  justify-content: space-between;
-  min-width: 0;
 }
 
-.design-details-header-copy {
-  display: grid;
-  flex: 1;
-  gap: var(--space-2);
-  min-width: 0;
-}
-
-.design-details-header-copy h2 {
+.design-details-eyebrow {
   margin: 0;
 }
 
-.design-details-header-media .design-thumbnail-panel {
-  width: 10rem;
+.design-details-body h2 {
+  font-size: var(--font-size-xl);
+  font-weight: 600;
+  line-height: 1.25;
+  margin: 0;
 }
 
 .design-details-section h3 {

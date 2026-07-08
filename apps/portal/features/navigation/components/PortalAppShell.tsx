@@ -6,8 +6,8 @@ import type { ReactNode } from 'react';
 
 import { PORTAL_APP_NAME } from '../../brand/portalBrand';
 import { portalNavItems, resolveActivePortalNavItem } from '../constants/portalNavItems';
-import { ThemeToggle } from '../../theme/components/ThemeToggle';
 import { PortalBottomNav } from './PortalBottomNav';
+import { PortalHeaderActions } from './PortalHeaderActions';
 
 interface PortalAppShellProps {
   children: ReactNode;
@@ -44,7 +44,7 @@ export function PortalAppShell({ children }: PortalAppShellProps) {
           </ul>
         </nav>
 
-        <ThemeToggle />
+        <PortalHeaderActions />
       </header>
 
       <div className="portal-app-content">{children}</div>

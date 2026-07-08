@@ -13,7 +13,7 @@ export function RegisterForm() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      router.replace('/dashboard');
+      router.replace('/catalog');
     }
   }, [isAuthenticated, router]);
 

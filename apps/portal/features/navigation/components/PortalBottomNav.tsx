@@ -5,20 +5,6 @@ import { usePathname } from 'next/navigation';
 
 import { portalNavItems, resolveActivePortalNavItem, type PortalNavItem } from '../constants/portalNavItems';
 
-function HomeIcon() {
-  return (
-    <svg aria-hidden="true" height="20" viewBox="0 0 24 24" width="20">
-      <path
-        d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1v-9.5Z"
-        fill="none"
-        stroke="currentColor"
-        strokeLinejoin="round"
-        strokeWidth="1.75"
-      />
-    </svg>
-  );
-}
-
 function DesignsIcon() {
   return (
     <svg aria-hidden="true" height="20" viewBox="0 0 24 24" width="20">
@@ -81,10 +67,6 @@ function RequestsIcon() {
 }
 
 function NavIcon({ itemId }: { itemId: PortalNavItem['id'] }) {
-  if (itemId === 'home') {
-    return <HomeIcon />;
-  }
-
   if (itemId === 'designs') {
     return <DesignsIcon />;
   }
