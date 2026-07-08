@@ -4,16 +4,29 @@
 managed-phase
 
 ## Current Goal
-portal-customer-show-selection — Wire `@fresh-prints/show-picker` into Portal; customers queue own requests to a show via callables.
+studio-apps-folder-monorepo-normalization — Symmetric apps monorepo: move Studio to `apps/studio/` (mechanical only).
 
 ## Phase
-test — Implementation complete 2026-07-08. Automated checks passed. Deploy callables before manual Portal QA.
+plan — Monorepo plan complete; **review pending**. Phase 8 closeout signed off 2026-07-08.
 
-## Sub-goal: Portal customer show selection (2026-07-08)
+## Sub-goal: Phase 8 Portal closeout (2026-07-08) — **DONE**
+- Plan: `docs/workflow/plans/2026-07-08-phase-8-portal-closeout-plan.md` — approved
+- Review: `docs/workflow/reviews/2026-07-08-phase-8-portal-closeout-review.md` — **approved**
+- Signoff: `docs/workflow/reviews/2026-07-08-phase-8-portal-closeout-signoff.md` — **approved**
+- Phase 8 documented as **MVP complete in dev**
+
+## Sub-goal: Symmetric apps monorepo (2026-07-08) — **PLANNING**
+- Plan: `docs/workflow/plans/2026-07-08-symmetric-apps-monorepo-plan.md` — **ready_for_review**
+- Review: pending
+- Scope: `git mv` Studio → `apps/studio/`; config/docs only; zero product logic
+
+## Sub-goal: Portal customer show selection (2026-07-08) — **DONE**
 - Plan: `docs/workflow/plans/2026-07-08-portal-customer-show-selection-plan.md` — approved
 - Review: `docs/workflow/reviews/2026-07-08-portal-customer-show-selection-review.md` — **approved**
-- Implemented: shared `showScheduleGrouping`, callables, `PortalQueueToShowModal`, detail page **Queue to show**
-- **Deploy required:** `listPortalAllocatableShows`, `queuePortalPrintRequestToShow` to `fresh-prints-dev`
+- Signoff: `docs/workflow/reviews/2026-07-08-portal-customer-show-selection-signoff.md` — **approved**
+- Implemented: callables, `PortalQueueToShowModal`, **Add to show**, shared `showScheduleGrouping`
+- Deploy: `listPortalAllocatableShows`, `queuePortalPrintRequestToShow` to `fresh-prints-dev` — user confirmed
+- Manual QA: PASS 2026-07-08
 
 ## Sub-goal: Show calendar picker (2026-07-07) — **DONE**
 - Plan: `docs/workflow/plans/2026-07-07-show-calendar-picker-plan.md` — approved
@@ -304,26 +317,32 @@ Prior completed phase records:
 Test reports: `docs/workflow/reviews/2026-07-05-whatnot-show-sync-slice2-test-report.md`; correction report `docs/workflow/reviews/2026-07-06-whatnot-show-sync-relative-date-parser-test-report.md`; signoff `docs/workflow/reviews/2026-07-06-whatnot-show-sync-signoff.md`.
 
 ## Signoff
-Last: `docs/workflow/reviews/2026-07-08-show-queue-timer-and-calendar-picker-signoff.md` (approved).
+Last: `docs/workflow/reviews/2026-07-08-phase-8-portal-closeout-signoff.md` (approved).
+
+## Plan Status
+`docs/workflow/plans/2026-07-08-symmetric-apps-monorepo-plan.md` — **ready_for_review**
+
+## Review Status
+**pending** — symmetric apps monorepo plan
 
 ## Human Checkpoint Required
 no
 
 ## Allowed Actions
-run tests; document deploy; manual Portal QA after functions deploy
+review monorepo plan; read docs; plan revisions only
 
 ## Forbidden Actions
-mark DONE without functions deploy + manual QA
+implement monorepo refactor before review approval
 
 ## Next Required Step
-1. Deploy: `firebase deploy --only functions:listPortalAllocatableShows,functions:queuePortalPrintRequestToShow --project fresh-prints-dev`
-2. Manual QA: Portal request detail → Queue to show → calendar → confirm → Queued tab
-3. Reply PASS / FAIL for signoff
+Review `docs/workflow/plans/2026-07-08-symmetric-apps-monorepo-plan.md` → approve → implement slices 0–5
 
 ## DONE
-no
+no (monorepo phase open)
 
 ## Decision Log
+- 2026-07-08: Signed off **Phase 8 Portal closeout** as **approved**. ROADMAP/ARCHITECTURE/TESTING/DEPLOYMENT updated; Phase 8 MVP complete in dev. Created symmetric apps monorepo plan (`2026-07-08-symmetric-apps-monorepo-plan.md`) — review pending.
+- 2026-07-08: Signed off **portal-customer-show-selection** as **approved**. User confirmed functions deploy + manual QA PASS ("Everything looks great and passes"). Signoff: `docs/workflow/reviews/2026-07-08-portal-customer-show-selection-signoff.md`. Commits: `22230a7`, `51c6cf7`, `4822acf`.
 - 2026-07-08: Implemented Portal customer show-selection: `listPortalAllocatableShows` + `queuePortalPrintRequestToShow` callables, shared `showScheduleGrouping` + `portalShowQueueCapacity`, `PortalQueueToShowModal`, detail **Queue to show** button. Tests: 40/40 targeted, tsc, portal typecheck, lint PASS. ADR-FP-066.
 - 2026-07-08: User confirmed manual QA PASS (calendar, past shows, production timer, Portal Printing tab, sidebar). Closed signoff **approved**; prior workflow DONE. Signoff: `docs/workflow/reviews/2026-07-08-show-queue-timer-and-calendar-picker-signoff.md`.
 - 2026-07-08: User confirmed Firestore rules deployed. Ran automated test phase (tsc, portal typecheck, lint, 56 targeted unit tests, vite build PASS). Created test report and signoff doc for show-queue production timer + calendar picker.

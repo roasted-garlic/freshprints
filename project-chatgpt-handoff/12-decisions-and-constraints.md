@@ -29,6 +29,14 @@
 | Indexes | Print Request indexes are deferred until server-side query patterns require them |
 | Registered customers | Customer records are created from `/users` only; no customer Auth, Portal login, `users/{uid}` record, or Studio access is added |
 
+## Portal (Phase 8)
+
+| ADR | Summary |
+|-----|---------|
+| ADR-FP-066 | Customers add requests to shows via callables only (`listPortalAllocatableShows`, `queuePortalPrintRequestToShow`); single show, full request, no override, no re-queue |
+| ADR-FP-065 | Shared `@fresh-prints/show-picker` calendar for Studio and Portal |
+| ADR-FP-064 | Show Queue production timer drives customer **Printing** tab |
+
 ## AI enrichment (recent ADRs)
 
 | ADR | Summary |

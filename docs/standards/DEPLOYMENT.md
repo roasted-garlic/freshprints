@@ -8,8 +8,8 @@
 
 Fresh Prints consists of:
 
-- **Fresh Prints Studio** — Electron build via `npm run build`
-- **Fresh Prints Portal** — responsive web hosting (Phase 8; provider TBD)
+- **Fresh Prints Studio** — Electron build via `npm run build:studio`
+- **Fresh Prints Portal** — Next.js on Firebase App Hosting (`apps/portal`)
 - **Firebase backend** — Auth, Firestore, Storage, Cloud Functions
 
 ---
@@ -18,9 +18,9 @@ Fresh Prints consists of:
 
 | Environment | Purpose | URL | Branch / trigger |
 |-------------|---------|-----|------------------|
-| Local | Development | localhost (Electron) | n/a |
+| Local | Development | Studio: Electron dev; Portal: `localhost:3000` | `npm run dev:studio`, `npm run dev:portal` |
 | Firebase dev | Development backend | `fresh-prints-dev` (`.firebaserc`) | local / manual deploy |
-| Production | Live users | `[TBD]` | `[TBD]` |
+| Production | Live users | Portal App Hosting `[TBD]` | human approval required |
 
 ---
 
@@ -28,7 +28,8 @@ Fresh Prints consists of:
 
 | Component | Provider | Notes |
 |-----------|----------|-------|
-| Desktop app | Electron distributable | Built locally or CI |
+| Desktop app | Electron distributable | `npm run build:studio` → `release/${version}/` |
+| Portal web | Firebase App Hosting | `firebase.json` → `apphosting.rootDir: ./apps/portal` |
 | Backend | Firebase | See `docs/architecture/FIREBASE.md` |
 | Database | Cloud Firestore | Security rules in repo |
 | Storage | Firebase Cloud Storage | Security rules in repo |
@@ -38,13 +39,37 @@ Fresh Prints consists of:
 
 ## Build Process
 
-### Desktop Build
+### Desktop Build (Studio)
 
 ```bash
-npm run build
+npm run build:studio
 ```
 
-Artifacts: Electron distributable output from electron-builder → `release/${version}/` locally (gitignored).
+Artifacts: Electron distributable from electron-builder → `release/${version}/` locally (gitignored).
+
+### Portal Build
+
+```bash
+npm run build:portal
+```
+
+Deploy to Firebase App Hosting (human approval required for production):
+
+```bash
+firebase deploy --only apphosting --project fresh-prints-dev
+```
+
+Portal backend config: `apps/portal/apphosting.yaml`. App root: `apps/portal` in `firebase.json`.
+
+### Portal Cloud Functions (customer flows)
+
+Deploy after Portal feature changes:
+
+```bash
+firebase deploy --only functions:registerCustomer,functions:createPortalPrintRequest,functions:listPortalAllocatableShows,functions:queuePortalPrintRequestToShow --project fresh-prints-dev
+```
+
+Adjust function list to match changed exports.
 
 ### Gitignored build outputs (2026-06-24)
 
@@ -120,5 +145,6 @@ See `docs/architecture/FIREBASE.md`. Never commit secrets.
 
 | Date | Summary |
 |------|---------|
+| 2026-07-08 | Phase 8 closeout — Portal App Hosting, build commands, Portal functions deploy note |
 | 2026-06-24 | Git artifact cleanup; Storage deploy commands; packaging icon note |
 | 2026-06-24 | Initial Fresh Prints deployment doc |

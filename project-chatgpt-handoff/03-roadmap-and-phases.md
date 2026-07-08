@@ -85,7 +85,11 @@ Status: **PASS**
 
 ### Phase 8 — Fresh Prints Portal
 
-Customer web app: registration, catalog browse, print requests, progress tracking. Mobile-first responsive.
+**Status:** **Complete (MVP — dev)** — signed off 2026-07-08.
+
+**Shipped:** Customer auth, catalog, print requests, progress tabs, customer Add to show.
+
+**Next:** Phase 9, production Portal deploy, or symmetric apps monorepo (`apps/studio`).
 
 ### Phase 9 — Custom Request Q&A
 

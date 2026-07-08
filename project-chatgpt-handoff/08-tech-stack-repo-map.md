@@ -4,109 +4,74 @@
 
 | Layer | Technology |
 |-------|------------|
-| Desktop shell | Electron 30 |
-| Build | Vite 5 + vite-plugin-electron |
+| Studio desktop | Electron 30 + Vite 5 + vite-plugin-electron |
+| Portal web | Next.js 15 (App Router) |
 | UI | React 18 + TypeScript 5 |
-| Routing | react-router-dom 7 (HashRouter for Electron) |
+| Routing | react-router-dom 7 (Studio HashRouter); Next.js routes (Portal) |
 | Backend | Firebase 12 (Auth, Firestore, Storage, Functions) |
-| Image processing | sharp 0.33 (main process) |
-| ZIP parsing | yauzl |
+| Image processing | sharp 0.33 (Electron main + Functions) |
+| ZIP | yauzl (read), yazl (write) |
 | Icons | lucide-react |
 
 ## Commands
 
 ```bash
-npm run dev      # Electron + Vite dev
-npm run build    # tsc + vite build + electron-builder
-npm run lint     # ESLint
-npx tsc --noEmit # Typecheck only
+npm run dev:studio   # Electron + Vite dev
+npm run dev:portal   # Next.js :3000
+npm run build:studio # tsc + vite + electron-builder
+npm run build:portal # Next.js production build
+npm run lint
+npx tsc --noEmit
 ```
 
-No `npm test` script yet — `*.test.ts` files exist; run manually or via future test runner.
+No root `npm test` — run `npx tsx --test` on `*.test.ts` files (see `docs/standards/TESTING.md`).
 
 ## Top-level structure
 
 ```
 fresh-prints/
-├── electron/              Main process + IPC + import services
-├── src/renderer/src/      React app
-│   ├── features/          Feature modules
-│   ├── routes/            AppRoutes, layouts
-│   ├── config/            env.ts, firebase.ts
-│   └── styles/            CSS including ai-review.css
-├── shared/                Shared types, constants, utils
-├── functions/src/         Cloud Functions + AI pipeline
+├── apps/
+│   └── portal/            # @fresh-prints/portal — Next.js (Firebase App Hosting)
+├── packages/
+│   ├── shared/            # @fresh-prints/shared — cross-app types/utils
+│   └── show-picker/       # @fresh-prints/show-picker — calendar UI
+├── electron/              # Studio main process (→ apps/studio/ when refactor ships)
+├── src/renderer/src/      # Studio React UI (→ apps/studio/ when refactor ships)
+├── functions/src/         # Cloud Functions
 ├── firestore.rules
 ├── storage.rules
-├── firestore.indexes.json
-├── firebase.json
-├── docs/                  Source of truth documentation
-├── .cursor/               FreshForge workflow (rules, skills, state)
-├── AGENTS.md              Cursor agent entry point
-├── CLAUDE.md              Claude agent entry point
-└── project-chatgpt-handoff/  This package (removable)
+├── firebase.json          # App Hosting rootDir: apps/portal
+├── docs/
+└── project-chatgpt-handoff/
 ```
 
-## Feature modules (`src/renderer/src/features/`)
+## Studio feature modules (`src/renderer/src/features/`)
 
 | Folder | Domain |
 |--------|--------|
-| `auth/` | Login, session, AuthProvider, ProtectedRoute |
-| `permissions/` | permissionService, RoleGate |
-| `users/` | Team user management |
-| `designs/` | Design Library, categories, CRUD, approval |
-| `imports/` | ZIP/folder import, batch UI |
-| `ai-review/` | AI Review inbox and workspace |
-| `settings/` | AI enrichment settings |
-| `firebase/` | Collection helpers, Firestore utils |
-| `dashboard/` | Dev dashboard |
-| `theme/` | Theme system |
-| `show-queue/` | Legacy scaffold |
-| `customer-requests/` | Legacy scaffold |
+| `auth/` | Login, session |
+| `designs/` | Design Library |
+| `imports/` | ZIP/folder import |
+| `ai-review/` | AI Review |
+| `print-requests/` | Print Requests |
+| `upcoming-shows/` | Show Queue |
+| `users/` | Team + customers |
+| `settings/` | AI settings |
 
-## Key files by task
+## Portal (`apps/portal/`)
 
-| Task | Start here |
-|------|------------|
-| Add route | `src/renderer/src/routes/AppRoutes.tsx` |
-| Add permission | `features/permissions/services/permissionService.ts` |
-| Design CRUD | `features/designs/services/designService.ts` |
-| Catalog approve/reject | `features/designs/services/catalogApprovalService.ts` |
-| Import pipeline | `electron/services/` + `features/imports/` |
-| AI Review UI | `features/ai-review/pages/AiReviewPage.tsx` |
-| AI Review queue | `features/ai-review/hooks/useAiProcessingQueue.ts` |
-| AI inbox queries | `features/ai-review/services/aiReviewInboxService.ts` |
-| Enrichment pipeline | `functions/src/ai/aiEnrichmentPipeline.ts` |
-| OpenAI provider | `functions/src/ai/providers/openAiVisionEnrichmentProvider.ts` |
-| Shared design types | `shared/types/` |
-| Storage paths | `shared/constants/design/designStoragePaths.ts` |
-| Firestore collections | `features/firebase/constants/firestoreCollections.ts` |
-| Workflow state | `.cursor/workflow/state.md` |
+| Area | Path |
+|------|------|
+| Routes | `apps/portal/app/` |
+| Print requests | `apps/portal/features/print-requests/` |
+| Catalog | `apps/portal/features/catalog/` |
 
-## Shared types
+## Shared code
 
-Cross-layer contracts live in `shared/types/` — import from both renderer and functions where applicable.
+Cross-app domain types and pure utils: `packages/shared/src/` — import as `@fresh-prints/shared/...`.
 
-## Electron IPC pattern
+**Do not confuse** with `src/renderer/src/shared/` (Studio-only UI components).
 
-Main process exposes safe APIs via preload:
+## Workflow state
 
-```ts
-window.freshPrints.files.selectZip()
-```
-
-Never expose raw Node APIs. Always `contextIsolation: true`.
-
-## Firebase init
-
-Single init in `src/renderer/src/config/firebase.ts`. Components never import `firebase/*` directly — use services.
-
-## Test files (sample locations)
-
-```
-functions/src/ai/*.test.ts
-features/designs/utils/*.test.ts
-features/ai-review/utils/*.test.ts
-features/permissions/**/*.test.ts
-shared/utils/*.test.ts
-```
+`.cursor/workflow/state.md`

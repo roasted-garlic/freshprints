@@ -146,6 +146,17 @@
 | `updateAiEnrichmentSettings` | Owner/admin model settings |
 | `onDesignAiEnrichmentQueued` | Run enrichment pipeline |
 
-## Not yet built (Portal — Phase 8+)
+## Fresh Prints Portal (Phase 8 — dev)
 
-Customer registration, catalog browse, customer print requests, favorites, custom request intake.
+| Feature | Status |
+|---------|--------|
+| Customer registration / login | ✅ Live (dev) |
+| Catalog browse, search, filters | ✅ Live (dev) |
+| Customer print requests (create, edit, tabs) | ✅ Live (dev) |
+| Progress tracking (Working / Queued / Printing / Printed) | ✅ Live (dev) |
+| **Add to show** (customer show selection) | ✅ Signed off 2026-07-08 |
+| Production App Hosting deploy | ⏸ Pending human approval |
+
+## Not yet built (Phase 9+)
+
+Favorites, custom request intake, analytics counters.

@@ -403,7 +403,9 @@ Legacy collection names (`showQueues`, `showQueueItems`, `customerRequests`) rem
 
 # Repository Layout (Incremental Monorepo)
 
-Phase 8 introduced an **incremental monorepo** — Portal and shared code are workspace packages; Studio remains at the repo root until a later low-risk migration to `apps/studio/`.
+Phase 8 introduced an **incremental monorepo** — Portal and shared code are workspace packages; Studio remains at the repo root until migration to `apps/studio/` (planned: symmetric apps monorepo phase, 2026-07-08).
+
+**Phase 8 Portal MVP** (auth, catalog, print requests, progress tabs, customer show selection) is **complete in dev** as of 2026-07-08.
 
 ```txt
 fresh-prints/

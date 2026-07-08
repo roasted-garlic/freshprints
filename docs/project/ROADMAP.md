@@ -98,15 +98,15 @@ Avoid one-off solutions. Do not plan for a separate native mobile application.
 Current Phase:
 
 ```txt
-Phase 8
-Fresh Prints Portal (next — after Firestore rules deploy)
+Phase 8 — Fresh Prints Portal (MVP complete in dev)
+Phase 9 — Custom Requests (next)
 ```
 
-Phase 7 Studio MVP is complete for staff workflows. Phase 8 is next.
+Phase 7 Studio MVP and Phase 8 Portal MVP are complete in the dev environment.
 
 Current Goal:
 
-Phase 6 Customers And Print Requests is complete and closed out per user confirmation on 2026-07-06.
+Phase 9 Custom Requests planning, production Portal deploy, or symmetric apps monorepo refactor.
 
 Phase 7 Show Queue is complete for Studio MVP: foundation, staff-assisted Whatnot import,
 production-file export (zip, multiply-by-qty, auto-nested gang sheet PNG) signed off 2026-07-07,
@@ -117,10 +117,13 @@ and production timer + shared calendar picker signed off 2026-07-08.
   after Portal and other priorities.
 - **Live Whatnot scheduled sync** is **not planned** for Studio (Electron is not 24/7). Revisit only if
   a future always-on hosted service (e.g. Portal/backend) needs it — not a Phase 8 default.
-- **Next step:** Phase 8 Portal — Slice 3 live QA and/or customer show-selection when scoped.
+- **Next step:** Phase 9 Custom Requests planning, production Portal App Hosting deploy, or symmetric apps monorepo refactor (`apps/studio`).
 
-See `docs/workflow/reviews/2026-07-07-show-queue-export-and-production-files-signoff.md` and
-`docs/workflow/reviews/2026-07-08-show-queue-timer-and-calendar-picker-signoff.md`.
+See `docs/workflow/reviews/2026-07-07-show-queue-export-and-production-files-signoff.md`,
+`docs/workflow/reviews/2026-07-08-show-queue-timer-and-calendar-picker-signoff.md`, and
+`docs/workflow/reviews/2026-07-08-portal-customer-show-selection-signoff.md`.
+
+**Portal customer show-selection:** signed off 2026-07-08 — customers add requests to a show's print run via callables + shared calendar picker.
 
 **Completed milestones (per signoffs):** Phase 1 foundation, Phase 2 design library (2A–2C), Phase 3 import pipeline (3A–3C), Phase 3D print size and catalog status separation, **Phase 4 catalog cleanup**, Phase 5 AI Review / AI enrichment baseline and AI Processing smoke checkpoint, **Phase 6 Customers And Print Requests**.
 
@@ -128,7 +131,7 @@ See `docs/workflow/reviews/2026-07-07-show-queue-export-and-production-files-sig
 
 **Last realignment:** 2026-07-06 — Phase 6 was closed out as complete per user confirmation. The prior Phase 6 signoffs remain the source records: `docs/workflow/reviews/2026-07-04-print-request-item-preview-and-dpi-polish-signoff.md`, `docs/workflow/reviews/2026-07-04-print-request-oversized-selection-unblock-signoff.md`, `docs/workflow/reviews/2026-07-04-print-request-origin-tracking-signoff.md`, `docs/workflow/reviews/2026-07-04-print-request-detail-autosave-and-name-locking-signoff.md`, `docs/workflow/reviews/2026-07-04-print-request-item-sizing-and-username-naming-signoff.md`, `docs/workflow/reviews/2026-07-03-print-request-query-index-hardening-signoff.md`, `docs/workflow/reviews/2026-06-29-phase-6-print-requests-catch-up-test-report.md`, and `docs/workflow/reviews/2026-06-29-customer-creation-provisioning-bug-test-report.md`.
 
-**Current implementation follow-up:** Portal customer show-selection (`portal-customer-show-selection` managed phase — plan approved 2026-07-08).
+**Current implementation follow-up:** Phase 9 planning, production Portal deploy, or `studio-apps-folder-monorepo-normalization` refactor phase.
 
 ---
 
@@ -960,7 +963,7 @@ See `docs/workflow/reviews/2026-07-07-show-queue-export-and-production-files-sig
 
 Show preparation and production file export occur within Fresh Prints. Production status lives on
 show allocations, not designs. Phase 7 Studio MVP met 2026-07-07 (foundation, assisted Whatnot import,
-production-file export). **Phase 8 Portal is next** after outstanding Firestore rules deploy.
+production-file export). **Phase 8 Portal MVP complete in dev** (2026-07-08 closeout). **Phase 9 is next.**
 
 ---
 
@@ -971,8 +974,12 @@ production-file export). **Phase 8 Portal is next** after outstanding Firestore 
 Status:
 
 ```txt
-Next — start after Firestore rules deploy (user direction 2026-07-07)
+Complete (MVP — dev environment)
 ```
+
+Signed off: `docs/workflow/reviews/2026-07-08-phase-8-portal-closeout-signoff.md`
+
+Production App Hosting deploy to a live customer URL is a **separate** human checkpoint — not required for Phase 8 documentation closeout.
 
 Goal:
 
@@ -1000,7 +1007,7 @@ Support:
 * Browse approved designs
 * Create print requests
 * Track request status
-* **Show selection (when scoped):** reuse `@fresh-prints/show-picker` (`ShowPicker` + `buildShowPickerOptions`) — same calendar UX as Studio Add to Show; see `packages/show-picker/README.md`
+* **Show selection:** signed off 2026-07-08 — `@fresh-prints/show-picker` in Portal; `listPortalAllocatableShows` + `queuePortalPrintRequestToShow` callables (see `packages/show-picker/README.md`)
 
 **Security:** Customer accounts use Fresh Prints Portal only. They do not access Fresh Prints Studio.
 
@@ -1008,7 +1015,9 @@ Support:
 
 ## Exit Criteria
 
-Customers self-serve catalog browse and print request creation on the web portal.
+Customers self-serve catalog browse, print request creation, progress tracking, and adding requests to a show's print run on the web portal.
+
+**Met in dev** (2026-07-08) — see `docs/workflow/reviews/2026-07-08-portal-customer-show-selection-signoff.md` and Phase 8 closeout signoff.
 
 ---
 

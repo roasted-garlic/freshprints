@@ -6,7 +6,7 @@
 
 ## Overview
 
-Fresh Prints is an Electron + React + TypeScript application with Firebase backend. Run applicable checks before signoff on code changes.
+Fresh Prints is a **two-app monorepo**: Fresh Prints Studio (Electron + Vite + React) and Fresh Prints Portal (Next.js), with shared packages and Firebase Cloud Functions. Run applicable checks before signoff on code changes.
 
 ---
 
@@ -15,15 +15,15 @@ Fresh Prints is an Electron + React + TypeScript application with Firebase backe
 | Check | Command | When required |
 |-------|---------|---------------|
 | Lint | `npm run lint` | Code or config changes affecting TS/TSX |
-| Typecheck | `tsc` (via `npm run build` first step) | Type changes |
-| Build | `npm run build` | Release or build-affecting changes |
-| Unit tests | 13 `*.test.ts` files in repo | **Not wired** — no `npm test` in `package.json` `[INFERRED]` |
+| Studio typecheck | `npx tsc --noEmit` | Studio/shared type changes |
+| Portal typecheck | `npm run typecheck --workspace @fresh-prints/portal` | Portal changes |
+| Functions build | `npm --prefix functions run build` | Functions changes |
+| Studio Vite build | `npx vite build` | Studio build-affecting changes |
+| Portal build | `npm run build:portal` | Portal release or build changes |
+| Studio installer | `npm run build:studio` | Electron packaging changes |
+| Unit tests | `npx tsx --test` (see below) | Logic changes with tests |
 
 **Never claim tests passed unless they were actually run.**
-
-### Test files detected (intake 2026-06-24)
-
-Locations include `shared/utils/*.test.ts`, `features/designs/**/*.test.ts`, `features/permissions/**/*.test.ts`. Add a test runner in a future managed phase (`testing-and-ci-bootstrap`).
 
 ---
 
@@ -35,28 +35,38 @@ Locations include `shared/utils/*.test.ts`, `features/designs/**/*.test.ts`, `fe
 npm run lint
 ```
 
-ESLint over TypeScript and TSX sources.
+ESLint over TypeScript and TSX in Studio, Portal, and shared packages.
 
-### Typecheck (standalone)
+### Typecheck
 
 ```bash
 npx tsc --noEmit
+npm run typecheck --workspace @fresh-prints/portal
+npm --prefix functions run build
 ```
 
-Runs TypeScript compiler without emit. Also runs as first step of `npm run build`.
+### Full unit test sweep
+
+```bash
+npx tsx --test packages/shared/src/**/*.test.ts src/**/*.test.ts electron/**/*.test.ts apps/portal/**/*.test.ts
+```
+
+On Windows PowerShell, run tests per directory or use the repo's documented sweep pattern from workflow state (~527 tests as of 2026-07-08).
+
+There is **no** root `npm test` script — invoke `npx tsx --test` explicitly.
 
 ### Build
 
 ```bash
-npm run build
+npm run build:studio    # tsc + vite + electron-builder
+npm run build:portal    # Next.js production build
 ```
-
-Runs TypeScript compile, Vite build, and electron-builder packaging.
 
 ### Dev (manual testing)
 
 ```bash
-npm run dev
+npm run dev:studio      # Electron + Vite
+npm run dev:portal      # Next.js on port 3000
 ```
 
 ---
@@ -65,7 +75,7 @@ npm run dev
 
 UI, Electron IPC, Firebase integration, and visual design often require manual verification. Use `.cursor/skills/manual-test-checkpoint` and record results in workflow signoff docs.
 
-Setup and auth testing guides: `docs/workflow/setup/auth-testing-guide.md`
+Setup guides: `docs/workflow/setup/`
 
 ---
 
@@ -81,4 +91,5 @@ Local commands should mirror CI where possible.
 
 | Date | Summary |
 |------|---------|
-| 2026-06-24 | Initial Fresh Prints testing doc from AppForge template |
+| 2026-07-08 | Phase 8 closeout — Portal commands, monorepo test paths |
+| 2026-06-24 | Initial Fresh Prints testing doc (intake) |

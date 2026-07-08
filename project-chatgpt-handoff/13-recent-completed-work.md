@@ -2,6 +2,19 @@
 
 > Signed-off managed phases. External agents should not re-plan or duplicate this work.
 
+## Phase 8 — Portal closeout (2026-07-08)
+
+- Status: **approved**
+- Signoff: `docs/workflow/reviews/2026-07-08-phase-8-portal-closeout-signoff.md`
+- Phase 8 MVP documented complete in dev (auth, catalog, requests, show selection)
+
+## Phase 8 — Portal customer show selection (2026-07-08)
+
+- Status: **approved**
+- Signoff: `docs/workflow/reviews/2026-07-08-portal-customer-show-selection-signoff.md`
+- Customers add print requests to a show's print run via callables + shared calendar picker
+- `listPortalAllocatableShows`, `queuePortalPrintRequestToShow`; ADR-FP-066
+
 ## Phase 7 — Show Queue production timer + calendar picker (2026-07-08)
 
 - Status: **approved**
