@@ -8,6 +8,12 @@ import type { PrintRequestItem } from '@fresh-prints/shared/types/printRequest/p
 
 import { PortalPrintRequestItemCard } from '../../../../features/print-requests/components/PortalPrintRequestItemCard';
 import { usePrintRequestDetail } from '../../../../features/print-requests/hooks/usePrintRequestDetail';
+import {
+  ArrowLeftIcon,
+  ImagePlusIcon,
+  LibraryIcon,
+  RefreshIcon,
+} from '../../../../features/shared/components/PortalIcons';
 
 type AutosaveStatus = 'idle' | 'saving' | 'saved' | 'failed';
 
@@ -126,8 +132,12 @@ export default function PrintRequestDetailView() {
   if (error || !printRequest) {
     return (
       <main className="portal-page portal-request-detail-page">
-        <Link className="portal-back-link" href="/requests?tab=working">
-          ← Back to print requests
+        <Link
+          className="portal-back-link portal-button portal-button-secondary portal-button-sm portal-button-leading-icon"
+          href="/requests?tab=working"
+        >
+          <ArrowLeftIcon size={14} />
+          Back to print requests
         </Link>
         <p className="portal-error" role="alert">
           {error ?? 'Print request not found.'}
@@ -138,8 +148,12 @@ export default function PrintRequestDetailView() {
 
   return (
     <main className="portal-page portal-request-detail-page">
-      <Link className="portal-back-link" href="/requests?tab=working">
-        ← Back to print requests
+      <Link
+        className="portal-back-link portal-button portal-button-secondary portal-button-sm portal-button-leading-icon"
+        href="/requests?tab=working"
+      >
+        <ArrowLeftIcon size={14} />
+        Back to print requests
       </Link>
 
       <header className="portal-page-header portal-request-detail-header">
@@ -152,14 +166,15 @@ export default function PrintRequestDetailView() {
           </p>
         </div>
 
-        {isEditable ? (
+        {isEditable && items.length > 0 ? (
           <button
-            className="portal-button portal-button-primary portal-request-detail-add-button"
+            className="portal-button portal-button-primary portal-button-leading-icon portal-request-detail-add-button"
             onClick={() =>
               router.push(`/catalog?mode=request-selection&requestId=${printRequest.id}`)
             }
             type="button"
           >
+            <ImagePlusIcon />
             Add designs
           </button>
         ) : null}
@@ -181,12 +196,13 @@ export default function PrintRequestDetailView() {
           </p>
           {isEditable ? (
             <button
-              className="portal-button portal-button-primary"
+              className="portal-button portal-button-primary portal-button-leading-icon"
               onClick={() =>
                 router.push(`/catalog?mode=request-selection&requestId=${printRequest.id}`)
               }
               type="button"
             >
+              <LibraryIcon />
               Browse design library
             </button>
           ) : null}
@@ -239,10 +255,11 @@ export default function PrintRequestDetailView() {
           ) : null}
           {autosaveState.status === 'failed' && autosaveState.retry ? (
             <button
-              className="portal-button portal-button-secondary portal-button-sm"
+              className="portal-button portal-button-secondary portal-button-sm portal-button-leading-icon"
               onClick={() => void autosaveState.retry?.()}
               type="button"
             >
+              <RefreshIcon size={14} />
               Retry
             </button>
           ) : null}

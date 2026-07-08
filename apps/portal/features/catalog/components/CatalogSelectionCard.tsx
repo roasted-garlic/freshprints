@@ -3,6 +3,7 @@
 import { useRef, useState, type FocusEvent, type KeyboardEvent } from 'react';
 
 import type { CatalogDesign } from '../types/catalog.types';
+import { MinusIcon, PlusIcon, TrashIcon } from '../../shared/components/PortalIcons';
 import { CatalogPreviewLightbox } from './CatalogPreviewLightbox';
 import { CatalogThumbnailPanel } from './CatalogThumbnailPanel';
 import { useCatalogDerivativeUrl } from '../hooks/useCatalogDerivativeUrl';
@@ -14,37 +15,6 @@ interface CatalogSelectionCardProps {
   onAdd: (design: CatalogDesign) => void;
   onQuantityChange: (designId: string, quantity: number) => void;
   onRemove: (designId: string) => void;
-}
-
-function MinusIcon() {
-  return (
-    <svg aria-hidden="true" height="16" viewBox="0 0 24 24" width="16">
-      <path d="M5 12h14" fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth="2" />
-    </svg>
-  );
-}
-
-function PlusIcon() {
-  return (
-    <svg aria-hidden="true" height="16" viewBox="0 0 24 24" width="16">
-      <path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth="2" />
-    </svg>
-  );
-}
-
-function TrashIcon() {
-  return (
-    <svg aria-hidden="true" height="16" viewBox="0 0 24 24" width="16">
-      <path
-        d="M4 7h16M9 7V5h6v2M10 11v6M14 11v6M6 7l1 12h10l1-12"
-        fill="none"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="2"
-      />
-    </svg>
-  );
 }
 
 function ClearSelectionIcon() {
@@ -162,10 +132,11 @@ export function CatalogSelectionCard({
             </div>
           ) : (
             <button
-              className="portal-button portal-button-secondary portal-button-sm design-selection-card-add-btn"
+              className="portal-button portal-button-secondary portal-button-sm portal-button-leading-icon design-selection-card-add-btn"
               onClick={() => onAdd(design)}
               type="button"
             >
+              <PlusIcon size={14} />
               Add to request
             </button>
           )}

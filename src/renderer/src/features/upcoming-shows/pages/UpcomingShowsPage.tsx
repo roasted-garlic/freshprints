@@ -873,7 +873,7 @@ export function UpcomingShowsPage() {
                                 ? "Timer is running. Customers see this request as Printing in the portal."
                                 : productionTimer.isPastScheduledShow
                                   ? PAST_SHOW_READ_ONLY_MESSAGE
-                                  : "Start when the press begins. Export does not start the timer."}
+                                  : "Start the timer when printing begins so customers can track request progress in the portal. Exporting does not start the timer."}
                         </p>
                       </div>
                       <div className="show-production-timer-actions">

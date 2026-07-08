@@ -1,5 +1,7 @@
 'use client';
 
+import { FilterIcon, SearchIcon } from '../../shared/components/PortalIcons';
+
 interface CatalogFilterBarProps {
   categoryFilter: string;
   categoryOptions: Array<{ value: string; label: string }>;
@@ -8,34 +10,6 @@ interface CatalogFilterBarProps {
   onSearchChange: (value: string) => void;
   searchQuery: string;
   selectedTagCount: number;
-}
-
-function SearchIcon() {
-  return (
-    <svg aria-hidden="true" className="global-search-icon" height="16" viewBox="0 0 24 24" width="16">
-      <path
-        d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Zm8.1 2.1-4.2-4.2"
-        fill="none"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeWidth="2"
-      />
-    </svg>
-  );
-}
-
-function FilterIcon() {
-  return (
-    <svg aria-hidden="true" height="16" viewBox="0 0 24 24" width="16">
-      <path
-        d="M4 6h16M7 12h10M10 18h4"
-        fill="none"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeWidth="2"
-      />
-    </svg>
-  );
 }
 
 export function CatalogFilterBar({
@@ -51,7 +25,9 @@ export function CatalogFilterBar({
     <div className="design-library-filter-controls">
       <div className="design-library-filter-controls-search">
         <label className="global-search-field">
-          <SearchIcon />
+          <span className="global-search-icon">
+            <SearchIcon />
+          </span>
           <input
             className="global-search-input"
             onChange={(event) => onSearchChange(event.target.value)}
@@ -75,7 +51,11 @@ export function CatalogFilterBar({
         ))}
       </select>
 
-      <button className="portal-button portal-button-secondary portal-button-sm" onClick={onOpenTags} type="button">
+      <button
+        className="portal-button portal-button-secondary portal-button-sm portal-button-leading-icon"
+        onClick={onOpenTags}
+        type="button"
+      >
         <FilterIcon />
         Tags{selectedTagCount > 0 ? ` (${selectedTagCount})` : ''}
       </button>

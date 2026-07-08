@@ -28,7 +28,7 @@ export function useMyPrintRequests() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const reload = useCallback(async () => {
+  const reload = useCallback(async (options?: { silent?: boolean }) => {
     if (!customer?.id) {
       setRequests([]);
       setSummariesByRequestId({});
@@ -37,7 +37,9 @@ export function useMyPrintRequests() {
       return;
     }
 
-    setIsLoading(true);
+    if (!options?.silent) {
+      setIsLoading(true);
+    }
     setError(null);
 
     try {
@@ -54,7 +56,9 @@ export function useMyPrintRequests() {
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'Unable to load print requests.');
     } finally {
-      setIsLoading(false);
+      if (!options?.silent) {
+        setIsLoading(false);
+      }
     }
   }, [customer?.id]);
 
@@ -84,7 +88,7 @@ export function useMyPrintRequests() {
       }
 
       const created = await portalPrintRequestService.createPrintRequest(notes ? { notes } : {});
-      await reload();
+      void reload({ silent: true });
       return created;
     },
     [firebaseUser, reload],

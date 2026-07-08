@@ -8,6 +8,7 @@ import { PORTAL_APP_NAME } from '../../brand/portalBrand';
 import { portalNavItems, resolveActivePortalNavItem } from '../constants/portalNavItems';
 import { PortalBottomNav } from './PortalBottomNav';
 import { PortalHeaderActions } from './PortalHeaderActions';
+import { PortalNavIcon } from './PortalNavIcon';
 
 interface PortalAppShellProps {
   children: ReactNode;
@@ -33,9 +34,10 @@ export function PortalAppShell({ children }: PortalAppShellProps) {
                 <li key={item.id}>
                   <Link
                     aria-current={isActive ? 'page' : undefined}
-                    className={`portal-desktop-nav-link${isActive ? ' portal-desktop-nav-link-active' : ''}`}
+                    className={`portal-desktop-nav-link portal-button-leading-icon${isActive ? ' portal-desktop-nav-link-active' : ''}`}
                     href={item.href}
                   >
+                    <PortalNavIcon itemId={item.id} size={16} />
                     {item.label}
                   </Link>
                 </li>

@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useState } from 'react';
 
 import { derivePrintRequestQueueState } from '@fresh-prints/shared/utils/printRequestQueueState';
 import { getPrintRequestProgressLabel } from '@fresh-prints/shared/utils/printRequestProgressDisplay';
@@ -15,6 +14,9 @@ import {
 
 import { PrintRequestCard } from '../../../features/print-requests/components/PrintRequestCard';
 import { useMyPrintRequests } from '../../../features/print-requests/hooks/useMyPrintRequests';
+import { usePrintRequestCreationFlow } from '../../../features/print-requests/hooks/usePrintRequestCreationFlow';
+import { LibraryIcon, PlusCircleIcon } from '../../../features/shared/components/PortalIcons';
+import { PortalWorkingRequestChoiceModal } from '../../../features/shared/components/PortalWorkingRequestChoiceModal';
 
 const PORTAL_REQUEST_TABS: PortalPrintRequestListTab[] = ['working', 'queued', 'printing', 'printed'];
 
@@ -52,10 +54,17 @@ export default function RequestsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const activeTab = parsePortalPrintRequestListTab(searchParams.get(PORTAL_PRINT_REQUEST_LIST_TAB_PARAM));
-  const { requests, requestsByTab, summariesByRequestId, allocationTotalsByRequestId, isLoading, error, createPrintRequest } =
+  const { requests, requestsByTab, summariesByRequestId, allocationTotalsByRequestId, continuableRequests, isLoading, error, createPrintRequest } =
     useMyPrintRequests();
-  const [isCreating, setIsCreating] = useState(false);
-  const [actionError, setActionError] = useState<string | null>(null);
+  const {
+    actionError,
+    closeChoiceModal,
+    handleContinueWorkingRequest,
+    handleStartRequestClick,
+    handleStartNewRequest,
+    isChoiceModalOpen,
+    isCreating,
+  } = usePrintRequestCreationFlow({ continuableRequests, createPrintRequest });
 
   const visibleRequests = requestsByTab[activeTab];
 
@@ -63,22 +72,8 @@ export default function RequestsPage() {
     router.replace(buildRequestsPageHref(tab));
   }
 
-  async function handleCreateRequest() {
-    setIsCreating(true);
-    setActionError(null);
-
-    try {
-      const created = await createPrintRequest();
-      router.push(`/catalog?mode=request-selection&requestId=${created.printRequestId}`);
-    } catch (createError) {
-      setActionError(createError instanceof Error ? createError.message : 'Unable to create print request.');
-    } finally {
-      setIsCreating(false);
-    }
-  }
-
   return (
-    <main className="portal-page portal-requests-page">
+    <main className={`portal-page portal-requests-page${isCreating ? ' is-creating-request' : ''}`}>
       <header className="portal-page-header portal-requests-header">
         <div>
           <h1>Print requests</h1>
@@ -88,11 +83,12 @@ export default function RequestsPage() {
           </p>
         </div>
         <button
-          className="portal-button portal-button-primary"
+          className="portal-button portal-button-primary portal-button-leading-icon"
           disabled={isCreating}
-          onClick={() => void handleCreateRequest()}
+          onClick={() => void handleStartRequestClick()}
           type="button"
         >
+          <PlusCircleIcon />
           {isCreating ? 'Starting…' : 'Start request'}
         </button>
       </header>
@@ -119,14 +115,19 @@ export default function RequestsPage() {
           </p>
           <div className="portal-requests-empty-actions">
             <button
-              className="portal-button portal-button-primary"
+              className="portal-button portal-button-primary portal-button-leading-icon"
               disabled={isCreating}
-              onClick={() => void handleCreateRequest()}
+              onClick={() => void handleStartRequestClick()}
               type="button"
             >
+              <PlusCircleIcon />
               {isCreating ? 'Starting…' : 'Start request'}
             </button>
-            <Link className="portal-button portal-button-secondary" href="/catalog">
+            <Link
+              className="portal-button portal-button-secondary portal-button-leading-icon"
+              href="/catalog"
+            >
+              <LibraryIcon />
               Browse designs
             </Link>
           </div>
@@ -155,14 +156,19 @@ export default function RequestsPage() {
               {activeTab === 'working' ? (
                 <div className="portal-requests-empty-actions">
                   <button
-                    className="portal-button portal-button-primary"
+                    className="portal-button portal-button-primary portal-button-leading-icon"
                     disabled={isCreating}
-                    onClick={() => void handleCreateRequest()}
+                    onClick={() => void handleStartRequestClick()}
                     type="button"
                   >
+                    <PlusCircleIcon />
                     {isCreating ? 'Starting…' : 'Start request'}
                   </button>
-                  <Link className="portal-button portal-button-secondary" href="/catalog">
+                  <Link
+                    className="portal-button portal-button-secondary portal-button-leading-icon"
+                    href="/catalog"
+                  >
+                    <LibraryIcon />
                     Browse designs
                   </Link>
                 </div>
@@ -196,6 +202,15 @@ export default function RequestsPage() {
           )}
         </>
       )}
+
+      <PortalWorkingRequestChoiceModal
+        continuableRequests={continuableRequests}
+        isCreating={isCreating}
+        isOpen={isChoiceModalOpen}
+        onClose={closeChoiceModal}
+        onContinue={handleContinueWorkingRequest}
+        onStartNew={() => void handleStartNewRequest()}
+      />
     </main>
   );
 }

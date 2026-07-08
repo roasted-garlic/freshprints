@@ -5,20 +5,14 @@ import { useEffect, useMemo, useState } from 'react';
 import type { CatalogDesign } from '../types/catalog.types';
 import { buildCatalogTagOptions, sortCatalogTags } from '../utils/catalogSearch';
 
+import { CheckIcon, XIcon } from '../../shared/components/PortalIcons';
+
 interface CatalogTagFilterModalProps {
   baseDesigns: CatalogDesign[];
   isOpen: boolean;
   onApply: (selectedTags: string[]) => void;
   onClose: () => void;
   selectedTags: string[];
-}
-
-function CloseIcon() {
-  return (
-    <svg aria-hidden="true" height="18" viewBox="0 0 24 24" width="18">
-      <path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth="2" />
-    </svg>
-  );
 }
 
 export function CatalogTagFilterModal({
@@ -77,7 +71,7 @@ export function CatalogTagFilterModal({
             </p>
           </div>
           <button aria-label="Close tag filters" className="modal-close-button" onClick={onClose} type="button">
-            <CloseIcon />
+            <XIcon size={18} />
           </button>
         </header>
 
@@ -114,23 +108,30 @@ export function CatalogTagFilterModal({
 
         <footer className="modal-footer">
           <button
-            className="portal-button portal-button-secondary"
+            className="portal-button portal-button-secondary portal-button-leading-icon"
             onClick={() => setDraftSelectedTags([])}
             type="button"
           >
+            <XIcon size={14} />
             Clear filters
           </button>
-          <button className="portal-button portal-button-secondary" onClick={onClose} type="button">
+          <button
+            className="portal-button portal-button-secondary portal-button-leading-icon"
+            onClick={onClose}
+            type="button"
+          >
+            <XIcon size={14} />
             Cancel
           </button>
           <button
-            className="portal-button portal-button-primary"
+            className="portal-button portal-button-primary portal-button-leading-icon"
             onClick={() => {
               onApply(draftSelectedTags);
               onClose();
             }}
             type="button"
           >
+            <CheckIcon size={14} />
             Apply tags{draftSelectedTags.length > 0 ? ` (${draftSelectedTags.length})` : ''}
           </button>
         </footer>

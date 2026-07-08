@@ -108,15 +108,21 @@
 }
 
 .portal-back-link {
-  color: var(--color-text-secondary);
-  display: inline-block;
-  font-size: var(--font-size-sm);
-  margin-bottom: var(--space-2);
-  text-decoration: none;
+  align-self: flex-start;
+  width: auto;
 }
 
-.portal-back-link:hover {
-  color: var(--color-accent-primary);
+.portal-requests-page.is-creating-request {
+  position: relative;
+}
+
+.portal-requests-page.is-creating-request::after {
+  background: color-mix(in srgb, var(--color-bg-primary) 80%, transparent);
+  content: '';
+  inset: 0;
+  pointer-events: all;
+  position: fixed;
+  z-index: 15;
 }
 
 .portal-request-detail-header {

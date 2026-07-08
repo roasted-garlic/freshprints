@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState, type FormEvent } from 'react';
 
 import { useAuth } from '../context/AuthContext';
+import { UserPlusIcon } from '../../shared/components/PortalIcons';
 
 export function RegisterForm() {
   const router = useRouter();
@@ -75,7 +76,12 @@ export function RegisterForm() {
 
       {displayError ? <p className="portal-form-error">{displayError}</p> : null}
 
-      <button className="portal-button portal-button-primary" disabled={isAuthActionLoading} type="submit">
+      <button
+        className="portal-button portal-button-primary portal-button-leading-icon"
+        disabled={isAuthActionLoading}
+        type="submit"
+      >
+        <UserPlusIcon />
         {isAuthActionLoading || bootstrapStatus === 'loading-profile' ? 'Creating account…' : 'Create account'}
       </button>
 

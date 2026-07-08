@@ -23,52 +23,15 @@ import {
 } from '../../../features/catalog/utils/catalogSearch';
 import { useMyPrintRequests } from '../../../features/print-requests/hooks/useMyPrintRequests';
 import { usePortalPrintRequestSelectionMode } from '../../../features/print-requests/hooks/usePortalPrintRequestSelectionMode';
-
-function CloseIcon() {
-  return (
-    <svg aria-hidden="true" height="12" viewBox="0 0 24 24" width="12">
-      <path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth="2.25" />
-    </svg>
-  );
-}
-
-function ArrowLeftIcon() {
-  return (
-    <svg aria-hidden="true" height="16" viewBox="0 0 24 24" width="16">
-      <path
-        d="M19 12H5M12 19l-7-7 7-7"
-        fill="none"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="2"
-      />
-    </svg>
-  );
-}
-
-function SaveIcon() {
-  return (
-    <svg aria-hidden="true" height="16" viewBox="0 0 24 24" width="16">
-      <path
-        d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"
-        fill="none"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="2"
-      />
-      <path
-        d="M17 21v-8H7v8M7 3v5h8"
-        fill="none"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="2"
-      />
-    </svg>
-  );
-}
+import { buildCatalogSelectionHref } from '../../../features/print-requests/utils/catalogSelectionNavigation';
+import {
+  ArrowLeftIcon,
+  ClipboardListIcon,
+  PlayCircleIcon,
+  PlusCircleIcon,
+  SaveIcon,
+  XIcon,
+} from '../../../features/shared/components/PortalIcons';
 
 export function CatalogPageContent() {
   const router = useRouter();
@@ -155,7 +118,7 @@ export function CatalogPageContent() {
 
     try {
       const created = await createPrintRequest();
-      router.push(`/catalog?mode=request-selection&requestId=${created.printRequestId}`);
+      router.replace(buildCatalogSelectionHref(created.printRequestId));
     } catch (createError) {
       setActionError(createError instanceof Error ? createError.message : 'Unable to create print request.');
     } finally {
@@ -190,7 +153,9 @@ export function CatalogPageContent() {
   const loadError = error ?? selectionError;
 
   return (
-    <main className={`portal-page portal-catalog-page${selectionModeActive ? ' is-selection-mode' : ''}`}>
+    <main
+      className={`portal-page portal-catalog-page${selectionModeActive ? ' is-selection-mode' : ''}${isCreatingRequest ? ' is-creating-request' : ''}`}
+    >
       <header className="portal-catalog-topbar">
         <div className="portal-catalog-topbar-copy">
           <h1>{selectionModeActive ? 'Add designs to request' : 'Design Library'}</h1>
@@ -203,15 +168,20 @@ export function CatalogPageContent() {
 
         {!selectionModeActive ? (
           <div className="portal-catalog-topbar-actions">
-            <Link className="portal-button portal-button-secondary" href="/requests?tab=working">
+            <Link
+              className="portal-button portal-button-secondary portal-button-leading-icon"
+              href="/requests?tab=working"
+            >
+              <ClipboardListIcon />
               My requests
             </Link>
             <button
-              className="portal-button portal-button-primary"
+              className="portal-button portal-button-primary portal-button-leading-icon"
               disabled={isCreatingRequest}
               onClick={() => void handleRequestAction()}
               type="button"
             >
+              {hasContinuableRequests ? <PlayCircleIcon /> : <PlusCircleIcon />}
               {isCreatingRequest ? requestActionPendingLabel : requestActionLabel}
             </button>
           </div>
@@ -281,7 +251,12 @@ export function CatalogPageContent() {
             <div className="design-library-summary-row">
               <span className="design-library-count-chip">{designCountLabel}</span>
               {hasActiveFilters ? (
-                <button className="portal-button portal-button-secondary portal-button-sm" onClick={clearFilters} type="button">
+                <button
+                  className="portal-button portal-button-secondary portal-button-sm portal-button-leading-icon"
+                  onClick={clearFilters}
+                  type="button"
+                >
+                  <XIcon size={14} />
                   Clear filters
                 </button>
               ) : null}
@@ -310,7 +285,7 @@ export function CatalogPageContent() {
                     onClick={() => removeSelectedTag(tag)}
                     type="button"
                   >
-                    <CloseIcon />
+                    <XIcon size={12} />
                   </button>
                 </span>
               ))}

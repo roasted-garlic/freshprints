@@ -6,6 +6,7 @@ import { useState } from 'react';
 
 import { useAuth } from '../../auth/context/AuthContext';
 import { PortalConfirmModal } from '../../shared/components/PortalConfirmModal';
+import { LogOutIcon, UserIcon } from '../../shared/components/PortalIcons';
 import { ThemeToggle } from '../../theme/components/ThemeToggle';
 import { PORTAL_ACCOUNT_HREF, isPortalAccountRoute } from '../constants/portalNavItems';
 
@@ -24,17 +25,19 @@ export function PortalHeaderActions() {
       <div className="portal-app-header-actions">
         <Link
           aria-current={isAccountActive ? 'page' : undefined}
-          className={`portal-header-action-button portal-header-account-link${isAccountActive ? ' is-active' : ''}`}
+          className={`portal-header-action-button portal-header-account-link portal-button-leading-icon${isAccountActive ? ' is-active' : ''}`}
           href={PORTAL_ACCOUNT_HREF}
         >
+          <UserIcon size={14} />
           Account
         </Link>
         <button
-          className="portal-header-action-button portal-header-logout-button"
+          className="portal-header-action-button portal-header-logout-button portal-button-leading-icon"
           disabled={isAuthActionLoading}
           onClick={() => setIsLogoutConfirmOpen(true)}
           type="button"
         >
+          <LogOutIcon size={14} />
           Log out
         </button>
         <ThemeToggle />

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, type FormEvent } from 'react';
 
 import { useAuth } from '../context/AuthContext';
+import { LogInIcon } from '../../shared/components/PortalIcons';
 
 export function LoginForm() {
   const router = useRouter();
@@ -39,7 +40,12 @@ export function LoginForm() {
 
       {error ? <p className="portal-form-error">{error}</p> : null}
 
-      <button className="portal-button portal-button-primary" disabled={isAuthActionLoading} type="submit">
+      <button
+        className="portal-button portal-button-primary portal-button-leading-icon"
+        disabled={isAuthActionLoading}
+        type="submit"
+      >
+        <LogInIcon />
         {isAuthActionLoading || bootstrapStatus === 'loading-profile' ? 'Signing in…' : 'Sign in'}
       </button>
 

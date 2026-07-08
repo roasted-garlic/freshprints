@@ -213,7 +213,24 @@ a {
 }
 
 .portal-button-secondary {
-  background: transparent;
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-primary);
+}
+
+a.portal-button {
+  align-items: center;
+  color: inherit;
+  display: inline-flex;
+  justify-content: center;
+  text-decoration: none;
+}
+
+a.portal-button-primary {
+  color: var(--color-accent-primary-text);
+}
+
+a.portal-button-danger {
+  color: #ef4444;
 }
 
 .portal-button-danger {

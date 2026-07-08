@@ -12,6 +12,7 @@ import {
 import { CatalogPreviewLightbox } from '../../catalog/components/CatalogPreviewLightbox';
 import { CatalogThumbnailPanel } from '../../catalog/components/CatalogThumbnailPanel';
 import { useCatalogDerivativeUrl } from '../../catalog/hooks/useCatalogDerivativeUrl';
+import { CopyIcon, TrashIcon } from '../../shared/components/PortalIcons';
 
 interface PortalPrintRequestItemDesign {
   id: string;
@@ -379,18 +380,20 @@ export function PortalPrintRequestItemCard({
             </div>
 
             <button
-              className="portal-button portal-button-secondary portal-button-sm"
+              className="portal-button portal-button-secondary portal-button-sm portal-button-leading-icon"
               onClick={() => onDuplicate(item)}
               type="button"
             >
+              <CopyIcon size={14} />
               Duplicate
             </button>
 
             <button
-              className="portal-button portal-button-danger portal-button-sm"
+              className="portal-button portal-button-danger portal-button-sm portal-button-leading-icon"
               onClick={() => onRemove(item)}
               type="button"
             >
+              <TrashIcon size={14} />
               Remove
             </button>
           </div>
