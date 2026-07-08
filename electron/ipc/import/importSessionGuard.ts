@@ -1,4 +1,4 @@
-import type { ImportIpcResult } from "../../../shared/types/import/importIpc.types";
+import type { ImportIpcResult } from "@fresh-prints/shared/types/import/importIpc.types";
 import { hasActiveBatchImportSession } from "./importBatchSession";
 import { isSingleFileImportSessionActive } from "./importFileSession";
 import { importIpcFailure } from "./importIpcResponse";

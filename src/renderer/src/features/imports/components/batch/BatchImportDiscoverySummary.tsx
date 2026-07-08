@@ -1,8 +1,8 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
 
-import type { BatchDiscoveryCompleteEvent } from "../../../../../../../shared/types/import/batchImport.types";
-import type { ImportPngWarning } from "../../../../../../../shared/types/import/importIpc.types";
+import type { BatchDiscoveryCompleteEvent } from "@fresh-prints/shared/types/import/batchImport.types";
+import type { ImportPngWarning } from "@fresh-prints/shared/types/import/importIpc.types";
 
 import { ExternalLink, Upload, X } from "lucide-react";
 
@@ -18,7 +18,7 @@ import {
   getRejectedManifestFiles,
   getValidatedManifestFiles,
 } from "../../utils/batchImportDisplay";
-import { buildDiscoverySummaryHelpText } from "../../../../../../../shared/utils/batchDiscoverySummary";
+import { buildDiscoverySummaryHelpText } from "@fresh-prints/shared/utils/batchDiscoverySummary";
 import { BatchImportFileList } from "./BatchImportFileList";
 
 interface BatchImportDiscoverySummaryProps {

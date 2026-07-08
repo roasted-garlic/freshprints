@@ -1,0 +1,6 @@
+# Settings for Cloud Run — tune in later slices.
+
+runConfig:
+  minInstances: 0
+  maxInstances: 10
+  concurrency: 80

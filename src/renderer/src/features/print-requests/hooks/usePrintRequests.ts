@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../../auth/hooks/useAuth";
 import { permissionService } from "../../permissions/services/permissionService";
 import { printRequestService, type PrintRequestItemSummary } from "../services/printRequestService";
-import type { PrintRequest } from "../../../../../../shared/types/printRequest/printRequest.types";
+import type { PrintRequest } from "@fresh-prints/shared/types/printRequest/printRequest.types";
 
 interface PrintRequestsState {
   requests: PrintRequest[];

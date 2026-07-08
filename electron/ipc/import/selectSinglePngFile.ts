@@ -1,6 +1,6 @@
 import { dialog } from "electron";
 
-import type { SelectSinglePngFileResult } from "../../../shared/types/import/importIpc.types";
+import type { SelectSinglePngFileResult } from "@fresh-prints/shared/types/import/importIpc.types";
 import { getActiveBrowserWindow } from "./importBrowserWindow";
 import { registerImportFilePath } from "./importFileSession";
 import { buildSelectedPngFile } from "./selectedPngFileBuilder";

@@ -13,6 +13,8 @@ export const FIRESTORE_COLLECTIONS = {
   showQueueItems: "showQueueItems",
   upcomingShows: "upcomingShows",
   showAllocations: "showAllocations",
+  gangSheets: "gangSheets",
+  gangSheetItems: "gangSheetItems",
   settings: "settings",
   auditLogs: "auditLogs",
 } as const;

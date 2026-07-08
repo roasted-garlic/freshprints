@@ -2,8 +2,8 @@ import type {
   CancelBatchImportJobRequest,
   FinishBatchImportJobRequest,
   StartBatchDiscoveryRequest,
-} from "../../../shared/types/import/importIpc.types";
-import type { BatchImportSourceType } from "../../../shared/types/import/batchImport.types";
+} from "@fresh-prints/shared/types/import/importIpc.types";
+import type { BatchImportSourceType } from "@fresh-prints/shared/types/import/batchImport.types";
 import { importIpcFailure } from "./importIpcResponse";
 
 const BATCH_SOURCE_TYPES = new Set<BatchImportSourceType>(["multiple-png", "folder", "zip"]);

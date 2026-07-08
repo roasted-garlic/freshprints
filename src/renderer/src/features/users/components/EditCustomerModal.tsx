@@ -5,8 +5,11 @@ import { AutoResizeTextarea } from "../../../shared/components/AutoResizeTextare
 import { Button } from "../../../shared/components/Button";
 import { ModalBody, ModalFooter, ModalHeader } from "../../../shared/components/Modal";
 import { TextInput } from "../../../shared/components/TextInput";
-import { useUpdateCustomerRecord } from "../../customers/hooks/useUpdateCustomerRecord";
-import type { Customer } from "../../../../../../shared/types/customer/customer.types";
+import {
+  buildCustomerUpdateSuccessMessage,
+  useUpdateCustomerRecord,
+} from "../../customers/hooks/useUpdateCustomerRecord";
+import type { Customer } from "@fresh-prints/shared/types/customer/customer.types";
 import { UserManagementModal } from "./UserManagementModal";
 
 interface EditCustomerModalProps {
@@ -44,10 +47,12 @@ export function EditCustomerModal({
     return null;
   }
 
+  const hasPortalAccess = Boolean(customer.userId);
   const normalizedName = displayName.trim();
   const normalizedUsername = username.trim().toLowerCase();
   const normalizedEmail = email.trim().toLowerCase();
   const normalizedNotes = notes.trim();
+  const usernameWillChange = normalizedUsername !== (customer.username ?? "").trim().toLowerCase();
   const hasChanges =
     normalizedName !== customer.displayName ||
     normalizedUsername !== (customer.username ?? "") ||
@@ -67,14 +72,14 @@ export function EditCustomerModal({
     }
 
     try {
-      const updatedCustomer = await updateCustomerRecord(customer.id, {
+      const { updateResult, updatedCustomer } = await updateCustomerRecord(customer.id, {
         displayName,
         username,
         email: email || undefined,
         notes: notes || undefined,
       });
       onClose();
-      await onUpdated(`Customer "${updatedCustomer.displayName}" was updated.`);
+      await onUpdated(buildCustomerUpdateSuccessMessage(updateResult, updatedCustomer.displayName));
     } catch {
       // Error state is handled in the hook.
     }
@@ -87,7 +92,11 @@ export function EditCustomerModal({
           <div>
             <p className="eyebrow">Customers</p>
             <h2 id="edit-customer-title">Edit customer</h2>
-            <p>Update customer details for Print Requests. This does not create a Studio login or Portal account.</p>
+            <p>
+              {hasPortalAccess
+                ? "Updates sync to the customer Portal account. Email changes update Firebase Authentication login."
+                : "Update customer details for Print Requests."}
+            </p>
           </div>
 
           <button
@@ -120,11 +129,19 @@ export function EditCustomerModal({
             value={username}
           />
 
+          {usernameWillChange ? (
+            <p className="auth-message auth-message-warning" role="status">
+              Changing the username updates future print request names only. Existing request names
+              stay the same.
+            </p>
+          ) : null}
+
           <TextInput
             autoComplete="off"
             label="Email"
             name="email"
             onChange={(event) => setEmail(event.target.value)}
+            required={hasPortalAccess}
             type="email"
             value={email}
           />

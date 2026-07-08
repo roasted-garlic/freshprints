@@ -1,0 +1,55 @@
+'use client';
+
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import type { ReactNode } from 'react';
+
+import { PORTAL_APP_NAME } from '../../brand/portalBrand';
+import { portalNavItems, resolveActivePortalNavItem } from '../constants/portalNavItems';
+import { ThemeToggle } from '../../theme/components/ThemeToggle';
+import { PortalBottomNav } from './PortalBottomNav';
+
+interface PortalAppShellProps {
+  children: ReactNode;
+}
+
+export function PortalAppShell({ children }: PortalAppShellProps) {
+  const pathname = usePathname();
+  const activeItemId = resolveActivePortalNavItem(pathname);
+
+  return (
+    <div className="portal-app-shell">
+      <header className="portal-app-header">
+        <div className="portal-app-header-brand">
+          <span className="portal-eyebrow">{PORTAL_APP_NAME}</span>
+        </div>
+
+        <nav aria-label="Portal navigation" className="portal-desktop-nav">
+          <ul className="portal-desktop-nav-list">
+            {portalNavItems.map((item) => {
+              const isActive = item.id === activeItemId;
+
+              return (
+                <li key={item.id}>
+                  <Link
+                    aria-current={isActive ? 'page' : undefined}
+                    className={`portal-desktop-nav-link${isActive ? ' portal-desktop-nav-link-active' : ''}`}
+                    href={item.href}
+                  >
+                    {item.label}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
+
+        <ThemeToggle />
+      </header>
+
+      <div className="portal-app-content">{children}</div>
+
+      <PortalBottomNav />
+    </div>
+  );
+}

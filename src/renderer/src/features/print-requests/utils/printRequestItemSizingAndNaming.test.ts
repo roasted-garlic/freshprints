@@ -4,19 +4,19 @@ import { describe, it } from "node:test";
 import {
   requireValidCustomerUsername,
   validateCustomerUsername,
-} from "../../../../../../shared/utils/customerUsername";
+} from "@fresh-prints/shared/utils/customerUsername";
 import {
   formatCustomerPrintRequestName,
   formatInternalPrintRequestName,
   formatLegacyCustomerPrintRequestName,
   formatLegacyInternalPrintRequestName,
   normalizeInternalBaseName,
-} from "../../../../../../shared/utils/printRequestNaming";
+} from "@fresh-prints/shared/utils/printRequestNaming";
 import {
   assessPrintRequestItemSize,
   calculateLockedHeightFromWidth,
   calculateLockedWidthFromHeight,
-} from "../../../../../../shared/utils/printRequestItemSizing";
+} from "@fresh-prints/shared/utils/printRequestItemSizing";
 
 describe("customer username validation", () => {
   it("normalizes lowercase username input", () => {

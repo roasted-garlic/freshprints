@@ -1,7 +1,7 @@
 import { Check, ChevronDown, Copy, Paperclip, Settings, Sparkles, X } from "lucide-react";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 
-import { AI_ENRICHMENT_PLAYGROUND_MAX_PROMPT_LENGTH } from "../../../../../../shared/constants/aiEnrichment.constants";
+import { AI_ENRICHMENT_PLAYGROUND_MAX_PROMPT_LENGTH } from "@fresh-prints/shared/constants/aiEnrichment.constants";
 import { Badge } from "../../../shared/components/Badge";
 import { Button } from "../../../shared/components/Button";
 import { AutoResizeTextarea } from "../../../shared/components/AutoResizeTextarea";

@@ -1,5 +1,5 @@
-import { PRINT_INCHES_DECIMAL_PLACES } from "../../../../../../shared/constants/printSize.constants";
-import { getEffectiveDpiQualityClassName } from "../../../../../../shared/utils/effectiveDpiQuality";
+import { PRINT_INCHES_DECIMAL_PLACES } from "@fresh-prints/shared/constants/printSize.constants";
+import { getEffectiveDpiQualityClassName } from "@fresh-prints/shared/utils/effectiveDpiQuality";
 
 export { getEffectiveDpiQualityClassName };
 

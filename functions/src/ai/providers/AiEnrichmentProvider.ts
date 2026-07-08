@@ -1,5 +1,5 @@
-import type { DesignAiAnalysis, DesignAiSuggestions } from "../../../../shared/types/ai/aiProcessing.types";
-import type { CatalogTag } from "../../../../shared/types/catalogTag.types";
+import type { DesignAiAnalysis, DesignAiSuggestions } from "../../../../packages/shared/src/types/ai/aiProcessing.types";
+import type { CatalogTag } from "../../../../packages/shared/src/types/catalogTag.types";
 
 export interface AiEnrichmentCategoryOption {
   id: string;

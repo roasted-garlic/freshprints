@@ -2,7 +2,7 @@ import {
   ALLOWED_VISION_MODEL_IDS,
   DEFAULT_VISION_MODEL_ID as SHARED_DEFAULT_VISION_MODEL_ID,
   type AllowedVisionModelId,
-} from "../../../shared/constants/aiEnrichment.constants";
+} from "../../../packages/shared/src/constants/aiEnrichment.constants";
 
 /** Max concurrent Cloud Function instances processing AI enrichment. */
 export const AI_ENRICHMENT_MAX_INSTANCES = 1;

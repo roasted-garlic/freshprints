@@ -1,21 +1,41 @@
 import { readFile } from "node:fs/promises";
 
-import type { ReadSelectedPngFileBytesResult } from "../../../shared/types/import/importIpc.types";
+import type { ReadSelectedPngFileBytesResult } from "@fresh-prints/shared/types/import/importIpc.types";
+import { trimImportImageIfNeeded } from "../../services/import/trimImportImage";
+import { upscaleImportImageIfNeeded } from "../../services/import/upscaleImportImage";
 import { getFileName } from "./importPathUtils";
 import { PngValidationError, validatePngFile } from "./pngValidator";
+import { consumeCorrectedImportBytes } from "./correctedImportBytesCache";
 
 export async function readSelectedPngFileBytes(
   filePath: string,
 ): Promise<ReadSelectedPngFileBytesResult> {
   await validatePngFile(filePath);
 
+  const cached = consumeCorrectedImportBytes(filePath);
+
+  if (cached) {
+    return {
+      filePath,
+      fileName: getFileName(filePath),
+      fileSizeBytes: cached.bytes.length,
+      bytes: Uint8Array.from(cached.bytes),
+    };
+  }
+
   const fileBuffer = await readFile(filePath);
+  const trimResult = await trimImportImageIfNeeded(fileBuffer);
+  const upscaleResult = await upscaleImportImageIfNeeded(
+    trimResult.bytes,
+    trimResult.width,
+    trimResult.height,
+  );
 
   return {
     filePath,
     fileName: getFileName(filePath),
-    fileSizeBytes: fileBuffer.length,
-    bytes: Uint8Array.from(fileBuffer),
+    fileSizeBytes: upscaleResult.bytes.length,
+    bytes: Uint8Array.from(upscaleResult.bytes),
   };
 }
 

@@ -1,5 +1,5 @@
-import { UPLOAD_CONCURRENCY } from "../../../../../../shared/constants/import/batchImportLimits.constants";
-import type { BatchImportFileManifestEntry } from "../../../../../../shared/types/import/batchImport.types";
+import { UPLOAD_CONCURRENCY } from "@fresh-prints/shared/constants/import/batchImportLimits.constants";
+import type { BatchImportFileManifestEntry } from "@fresh-prints/shared/types/import/batchImport.types";
 
 import type {
   BatchImportUploadFileResult,

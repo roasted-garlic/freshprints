@@ -46,6 +46,11 @@ function buildWhatnotImportShellAssets(): Plugin {
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  resolve: {
+    alias: {
+      '@fresh-prints/shared': path.resolve(__dirname, 'packages/shared/src'),
+    },
+  },
   build: {
     rollupOptions: {
       output: {
@@ -87,6 +92,11 @@ export default defineConfig({
         // Shortcut of `build.lib.entry`.
         entry: 'electron/main.ts',
         vite: {
+          resolve: {
+            alias: {
+              '@fresh-prints/shared': path.resolve(__dirname, 'packages/shared/src'),
+            },
+          },
           build: {
             rollupOptions: {
               external: ['sharp'],

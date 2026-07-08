@@ -14,7 +14,7 @@ import { useTeamUsers } from "../hooks/useTeamUsers";
 import { useUpdateTeamUser } from "../hooks/useUpdateTeamUser";
 import type { User } from "../types/user.types";
 import { filterTeamUsers } from "../utils/teamUserSearch";
-import type { Customer } from "../../../../../../shared/types/customer/customer.types";
+import type { Customer } from "@fresh-prints/shared/types/customer/customer.types";
 
 export function UserManagementPage() {
   const { user } = useAuth();

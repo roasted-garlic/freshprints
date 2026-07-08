@@ -2,7 +2,7 @@ import type {
   BatchDiscoveryCompleteEvent,
   BatchImportFileManifestEntry,
   BatchImportSourceType,
-} from "../../../../../../shared/types/import/batchImport.types";
+} from "@fresh-prints/shared/types/import/batchImport.types";
 
 import type {
   BatchImportHookPhase,

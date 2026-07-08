@@ -7,7 +7,7 @@ import { ModalBody, ModalFooter, ModalHeader } from "../../../shared/components/
 import { Select } from "../../../shared/components/Select";
 import { TextInput } from "../../../shared/components/TextInput";
 import { useAuth } from "../../auth/hooks/useAuth";
-import { useCreateCustomerRecord } from "../../customers/hooks/useCreateCustomerRecord";
+import { useCreateCustomerWithPortalInvite } from "../../customers/hooks/useCreateCustomerWithPortalInvite";
 import { customerService } from "../../customers/services/customerService";
 import { permissionService } from "../../permissions/services/permissionService";
 import { useCreateTeamUser } from "../hooks/useCreateTeamUser";
@@ -36,10 +36,11 @@ export function AddUserModal({ isOpen, onClose, onCreated }: AddUserModalProps) 
   const { clearResult, createTeamUser, error, isSubmitting, result } = useCreateTeamUser();
   const {
     clearResult: clearCustomerResult,
-    createCustomerRecord,
+    createCustomerWithPortalInvite,
     error: customerError,
     isSubmitting: isCreatingCustomer,
-  } = useCreateCustomerRecord();
+    result: customerResult,
+  } = useCreateCustomerWithPortalInvite();
   const [createTarget, setCreateTarget] = useState<CreateTarget>("staff");
   const [displayName, setDisplayName] = useState("");
   const [username, setUsername] = useState("");
@@ -98,16 +99,17 @@ export function AddUserModal({ isOpen, onClose, onCreated }: AddUserModalProps) 
         onClose();
         await onCreated({ kind: "staff" });
       } else {
-        const createdCustomer = await createCustomerRecord({
+        await customerService.assertEmailIsUniqueForDirectory(user, email);
+        const inviteResult = await createCustomerWithPortalInvite({
           displayName,
           username,
-          email: email || undefined,
+          email,
           notes: customerNotes || undefined,
         });
         onClose();
         await onCreated({
           kind: "customer",
-          message: `Customer "${createdCustomer.displayName}" was created as ${createdCustomer.username}. No Studio login or Portal account was created.`,
+          message: `${inviteResult.displayName} was created as ${inviteResult.username}. ${inviteResult.nextStep}`,
         });
       }
     } catch {
@@ -125,7 +127,7 @@ export function AddUserModal({ isOpen, onClose, onCreated }: AddUserModalProps) 
             <p>
               {createTarget === "staff"
                 ? "Create an admin or helper account. An invitation email is sent automatically."
-                : "Create a customer for Print Requests. This does not create Firebase Auth, Studio access, or Portal login."}
+                : "Create a customer for Print Requests. A Portal invitation email is sent automatically so they can set a password and sign in."}
             </p>
           </div>
 
@@ -191,7 +193,7 @@ export function AddUserModal({ isOpen, onClose, onCreated }: AddUserModalProps) 
             label="Email"
             name="email"
             onChange={(event) => setEmail(event.target.value)}
-            required={createTarget === "staff"}
+            required={createTarget === "staff" || createTarget === "customer"}
             type="email"
             value={email}
           />
@@ -226,6 +228,17 @@ export function AddUserModal({ isOpen, onClose, onCreated }: AddUserModalProps) 
               role="status"
             >
               {result.displayName} was created as {result.role}. {result.nextStep}
+            </p>
+          ) : null}
+
+          {createTarget === "customer" && customerResult ? (
+            <p
+              className={`auth-message ${
+                customerResult.invitationEmailSent ? "auth-message-success" : "auth-message-warning"
+              }`}
+              role="status"
+            >
+              {customerResult.displayName} was created as {customerResult.username}. {customerResult.nextStep}
             </p>
           ) : null}
 

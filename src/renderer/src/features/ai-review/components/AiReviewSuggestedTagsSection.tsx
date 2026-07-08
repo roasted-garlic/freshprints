@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import type { SuggestedNewTag } from "../../../../../../shared/types/catalogTag.types";
+import type { SuggestedNewTag } from "@fresh-prints/shared/types/catalogTag.types";
 import { AutoResizeTextarea } from "../../../shared/components/AutoResizeTextarea";
 import { Button } from "../../../shared/components/Button";
 import { CatalogAliasChipInput } from "../../../shared/components/CatalogAliasChipInput";

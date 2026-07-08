@@ -6,7 +6,7 @@ import type {
   ImportIpcError,
   ImportOriginalUploadResult,
   ValidateSelectedPngFileResult,
-} from "../../../../../../shared/types/import/importIpc.types";
+} from "@fresh-prints/shared/types/import/importIpc.types";
 import { ImportOrchestrationError } from "../services/importOrchestrationError";
 import { importDesktopService } from "../services/importDesktopService";
 import { importOrchestrationService } from "../services/importOrchestrationService";

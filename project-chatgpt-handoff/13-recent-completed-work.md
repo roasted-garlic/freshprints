@@ -1,6 +1,27 @@
-# Recent Completed Work (June 2026)
+# Recent Completed Work
 
 > Signed-off managed phases. External agents should not re-plan or duplicate this work.
+
+## Phase 7 — Show Queue production-file export (2026-07-07)
+
+- Status: **approved_with_notes**
+- Signoff: `docs/workflow/reviews/2026-07-07-show-queue-export-and-production-files-signoff.md`
+- Per-show zip export (300 DPI resize), multiply-by-qty option, auto-nested gang sheet PNG export
+- Import auto-upscale and trim-transparent-padding
+- Gang sheet layout/DPI/label/rotation polish; shell header stale-closure fix
+- Export filename date format `MM-DD-YYYY`
+
+## Phase 7 — Whatnot show sync (2026-07-06)
+
+- Staff-assisted Whatnot show-list import — `docs/workflow/reviews/2026-07-06-whatnot-show-sync-signoff.md`
+
+## Phase 7 — Show Queue foundation (2026-07-05)
+
+- Combined Whatnot show + print run model — `docs/workflow/reviews/2026-07-05-print-runs-foundation-signoff.md`
+
+---
+
+## Earlier work (June 2026)
 
 ## Phase 4 — Catalog cleanup (2026-06-24)
 

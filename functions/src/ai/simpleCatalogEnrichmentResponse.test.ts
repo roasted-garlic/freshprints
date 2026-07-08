@@ -8,7 +8,7 @@ import {
   normalizeSimpleCatalogEnrichment,
 } from "./simpleCatalogEnrichmentResponse";
 import { CATALOG_ENRICHMENT_PROMPT_VERSION } from "./catalogTitleRules";
-import { DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE } from "../../../shared/constants/aiEnrichment.constants";
+import { DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE } from "../../../packages/shared/src/constants/aiEnrichment.constants";
 
 const EXCLUSIONS = ["death", "skull"];
 

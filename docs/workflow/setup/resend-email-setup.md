@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This guide configures Resend for Fresh Prints team user invitation emails.
+This guide configures Resend for Fresh Prints invitation emails (Studio team users and Portal customers).
 
 When an owner or admin creates a team user, the `createTeamUser` Cloud Function:
 
@@ -12,7 +12,9 @@ When an owner or admin creates a team user, the `createTeamUser` Cloud Function:
 4. Sends the invitation email through Resend
 5. Returns whether the invitation email was sent
 
-The Resend API key is stored only in Firebase Functions secrets. The desktop app never sends email and never receives the API key.
+When an owner or admin creates a customer with Portal access, `createCustomerWithPortalInvite` follows the same Resend + password-reset-link pattern and sends **You're invited to Fresh Prints Portal**.
+
+The Resend API key is stored only in Firebase Functions secrets.
 
 ## Prerequisites
 

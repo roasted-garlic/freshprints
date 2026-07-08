@@ -1,11 +1,11 @@
 import type { Timestamp } from "firebase/firestore";
 
-import type { PrintSizeSource } from "../../../../../../shared/types/printSize/printSize.types";
-import type { DesignAiAnalysis, DesignAiSuggestions, AiProcessingStage } from "../../../../../../shared/types/ai/aiProcessing.types";
+import type { PrintSizeSource } from "@fresh-prints/shared/types/printSize/printSize.types";
+import type { DesignAiAnalysis, DesignAiSuggestions, AiProcessingStage } from "@fresh-prints/shared/types/ai/aiProcessing.types";
 import type { AiReviewStatus } from "./aiReview.types";
 import type { DesignStatus } from "./designStatus.types";
 
-export type { PrintSizeSource } from "../../../../../../shared/types/printSize/printSize.types";
+export type { PrintSizeSource } from "@fresh-prints/shared/types/printSize/printSize.types";
 
 export interface Design {
   id: string;

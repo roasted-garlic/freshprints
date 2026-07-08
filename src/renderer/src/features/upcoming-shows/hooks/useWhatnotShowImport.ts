@@ -5,8 +5,8 @@ import { Timestamp } from "firebase/firestore";
 import { whatnotImportDesktopService } from "../../../shared/services/desktopAppService";
 import { useAuth } from "../../auth/hooks/useAuth";
 import { upcomingShowService } from "../services/upcomingShowService";
-import type { UpcomingShow } from "../../../../../../shared/types/upcomingShow/upcomingShow.types";
-import type { WhatnotShowImportConfirmedEvent } from "../../../../../../shared/types/whatnotImport/whatnotImport.types";
+import type { UpcomingShow } from "@fresh-prints/shared/types/upcomingShow/upcomingShow.types";
+import type { WhatnotShowImportConfirmedEvent } from "@fresh-prints/shared/types/whatnotImport/whatnotImport.types";
 
 export type WhatnotShowImportStage = "idle" | "window_open" | "importing";
 

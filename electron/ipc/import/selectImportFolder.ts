@@ -2,7 +2,7 @@ import { stat } from "node:fs/promises";
 import path from "node:path";
 import { dialog } from "electron";
 
-import type { SelectImportFolderResult } from "../../../shared/types/import/importIpc.types";
+import type { SelectImportFolderResult } from "@fresh-prints/shared/types/import/importIpc.types";
 import { getActiveBrowserWindow } from "./importBrowserWindow";
 import { registerBatchImportSelection } from "./importBatchSession";
 import { getFileName } from "./importPathUtils";

@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../../auth/hooks/useAuth";
 import { permissionService } from "../../permissions/services/permissionService";
 import { upcomingShowService } from "../services/upcomingShowService";
-import type { UpcomingShow } from "../../../../../../shared/types/upcomingShow/upcomingShow.types";
+import type { UpcomingShow } from "@fresh-prints/shared/types/upcomingShow/upcomingShow.types";
 
 interface UpcomingShowsState {
   shows: UpcomingShow[];

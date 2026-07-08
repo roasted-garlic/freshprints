@@ -2,14 +2,14 @@ import type {
   ImportOriginalUploadResult,
   ImportPngWarning,
   ValidateSelectedPngFileResult,
-} from "../../../../../../shared/types/import/importIpc.types";
+} from "@fresh-prints/shared/types/import/importIpc.types";
 import {
   formatDerivativeGenerationError,
   type ImportDerivativeStatus,
   type ImportFinalDesignStatus,
-} from "../../../../../../shared/types/import/importOrchestration.types";
-import { buildImportPrintSizeCreateFields } from "../../../../../../shared/utils/importPrintSizeMetadata";
-import { formatPrintSizeRejectedMessage } from "../../../../../../shared/utils/importPrintSizeMessages";
+} from "@fresh-prints/shared/types/import/importOrchestration.types";
+import { buildImportPrintSizeCreateFields } from "@fresh-prints/shared/utils/importPrintSizeMetadata";
+import { formatPrintSizeRejectedMessage } from "@fresh-prints/shared/utils/importPrintSizeMessages";
 import type { User } from "../../users/types/user.types";
 import { designService } from "../../designs/services/designService";
 import { importDesignTitleFromFileName } from "../utils/importDesignTitleFromFileName";

@@ -5,7 +5,7 @@ import {
   getOriginalStoragePath,
   getPreviewStoragePath,
   getThumbnailStoragePath,
-} from "../../../../../../shared/constants/design/designStoragePaths";
+} from "@fresh-prints/shared/constants/design/designStoragePaths";
 import { validateDesignReadyPaths } from "./designReadyPathValidation";
 
 const designId = "abc123_test";

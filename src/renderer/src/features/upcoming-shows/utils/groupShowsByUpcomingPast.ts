@@ -1,4 +1,4 @@
-import type { UpcomingShow } from "../../../../../../shared/types/upcomingShow/upcomingShow.types";
+import type { UpcomingShow } from "@fresh-prints/shared/types/upcomingShow/upcomingShow.types";
 
 export type ShowScheduleTab = "upcoming" | "past";
 
@@ -19,4 +19,15 @@ export function getShowScheduleTab(show: UpcomingShow, now: Date): ShowScheduleT
 
 export function filterShowsByScheduleTab(shows: UpcomingShow[], tab: ShowScheduleTab, now: Date): UpcomingShow[] {
   return shows.filter((show) => getShowScheduleTab(show, now) === tab);
+}
+
+export function resolveVisibleShowSelection(
+  visibleShows: UpcomingShow[],
+  selectedShowId: string | null,
+): string | null {
+  if (selectedShowId && visibleShows.some((show) => show.id === selectedShowId)) {
+    return selectedShowId;
+  }
+
+  return visibleShows[0]?.id ?? null;
 }

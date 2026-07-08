@@ -1,6 +1,6 @@
 import path from "node:path";
 
-import { ALLOWED_EXTENSIONS } from "../../../shared/constants/importValidation.constants";
+import { ALLOWED_EXTENSIONS } from "@fresh-prints/shared/constants/importValidation.constants";
 
 export function isUnsafeClientFilePath(filePath: string): boolean {
   if (!filePath.trim()) {

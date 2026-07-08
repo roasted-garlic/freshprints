@@ -3,7 +3,7 @@ import path from "node:path";
 import {
   IMPORT_JOB_ID_PATTERN,
   IMPORT_TEMP_ROOT_DIR_NAME,
-} from "../../../shared/constants/import/importTemp.constants";
+} from "@fresh-prints/shared/constants/import/importTemp.constants";
 
 export class InvalidImportJobIdError extends Error {
   constructor(message: string) {

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import type { UpcomingShow } from "../../../../../../shared/types/upcomingShow/upcomingShow.types";
+import type { UpcomingShow } from "@fresh-prints/shared/types/upcomingShow/upcomingShow.types";
 import { groupShowsByDate } from "./groupShowsByDate";
 
 function timestamp(iso: string) {

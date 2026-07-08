@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import type { CatalogTag } from "../../../../shared/types/catalogTag.types";
+import type { CatalogTag } from "../../../../packages/shared/src/types/catalogTag.types";
 import { buildVisionRequestBody } from "./geminiVisionEnrichmentProvider";
 import { buildSimpleCatalogEnrichmentUserPrompt } from "../simpleCatalogEnrichmentPrompt";
-import { DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE } from "../../../../shared/constants/aiEnrichment.constants";
+import { DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE } from "../../../../packages/shared/src/constants/aiEnrichment.constants";
 
 describe("buildVisionRequestBody", () => {
   function catalogTag(input: Pick<CatalogTag, "name" | "aliases" | "preferredWhen">): CatalogTag {

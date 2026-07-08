@@ -1,0 +1,278 @@
+import { writeFile } from "node:fs/promises";
+import { dialog } from "electron";
+
+import { downloadAndResizeExportImage } from "./downloadAndResizeExportImage";
+import { getActiveBrowserWindow } from "../../ipc/import/importBrowserWindow";
+import { loadSharpModule } from "../import/loadSharpModule";
+import {
+  interleaveGroups,
+  nestBoxesIntoShelvesWithHeightCap,
+  type NestableBox,
+} from "@fresh-prints/shared/utils/gangSheetNesting";
+import { buildGangSheetFilename, buildGangSheetSheetLabel } from "@fresh-prints/shared/utils/showExportFilename";
+import type {
+  ExportGangSheetPngRequest,
+  ExportGangSheetPngResult,
+  GangSheetExportProgressEvent,
+} from "@fresh-prints/shared/types/export/gangSheetExportIpc.types";
+import type { ShowExportImageWarning } from "@fresh-prints/shared/types/export/showExportIpc.types";
+
+export type GangSheetExportProgressCallback = (event: GangSheetExportProgressEvent) => void;
+
+const EXPORT_DPI = 300;
+/** Clearance reserved below the label band's text before the first row of images starts. */
+const LABEL_CLEARANCE_PX = Math.round(EXPORT_DPI * 1.1);
+/** Padding above the label text, within the band, pushing it down from the very top edge. */
+const LABEL_TOP_PADDING_PX = 60;
+
+/** Label band height: padding above the text, the text's own font size, then the clearance below. */
+function computeLabelBandHeightPx(labelFontSizePx: number): number {
+  return LABEL_TOP_PADDING_PX + labelFontSizePx + LABEL_CLEARANCE_PX;
+}
+
+function escapeXmlText(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
+function buildSheetLabelSvg(
+  label: string,
+  sheetWidthPx: number,
+  bandHeightPx: number,
+  labelFontSizePx: number,
+): string {
+  const textY = LABEL_TOP_PADDING_PX + labelFontSizePx;
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${sheetWidthPx}" height="${bandHeightPx}">
+    <text x="${sheetWidthPx / 2}" y="${textY}" font-family="sans-serif" font-size="${labelFontSizePx}" font-weight="bold" fill="#1a1a1a" text-anchor="middle">${escapeXmlText(label)}</text>
+  </svg>`;
+}
+
+function formatWarningsFileContent(warnings: ShowExportImageWarning[]): string {
+  const lines = warnings.map((warning) => `${warning.fileName} [${warning.reason}]: ${warning.message}`);
+  return `Export warnings\n================\n\n${lines.join("\n")}\n`;
+}
+
+export class AllGangSheetImagesFailedError extends Error {
+  constructor() {
+    super("Every image in this gang sheet export failed to download, resize, or fit the sheet. No PNG was created.");
+    this.name = "AllGangSheetImagesFailedError";
+  }
+}
+
+interface ResizedImage {
+  id: string;
+  fileName: string;
+  pngBytes: Buffer;
+  widthPx: number;
+  heightPx: number;
+}
+
+/**
+ * Downloads and resizes every requested image (repeated by quantity, skipping and warning on
+ * individual failures), shelf-nests the results into one or more transparent-background gang
+ * sheet PNGs at a fixed artboard width, and saves each via a native save dialog. Renderer never
+ * touches the filesystem — this whole pipeline runs in Electron main, mirroring `exportShowZip`.
+ */
+export async function exportGangSheetPng(
+  request: ExportGangSheetPngRequest,
+  onProgress: GangSheetExportProgressCallback = () => undefined,
+): Promise<ExportGangSheetPngResult> {
+  const warnings: ShowExportImageWarning[] = [];
+  const imageTotal = request.images.reduce((sum, image) => sum + image.quantity, 0);
+
+  let imageIndex = 0;
+  let placementId = 0;
+  const resizedImageGroups: ResizedImage[][] = [];
+
+  for (const image of request.images) {
+    const downloadResult = await downloadAndResizeExportImage(
+      image.downloadUrl,
+      image.targetWidthPx,
+      image.targetHeightPx,
+      image.fileName,
+      (step) => {
+        if (step === "downloading" || step === "resizing") {
+          onProgress({ fileName: image.fileName, imageIndex: imageIndex + 1, imageTotal, step });
+        }
+      },
+    );
+
+    const group: ResizedImage[] = [];
+
+    for (let copyNumber = 1; copyNumber <= image.quantity; copyNumber += 1) {
+      imageIndex += 1;
+
+      if (!downloadResult.success) {
+        if (copyNumber === 1) {
+          warnings.push(downloadResult.warning);
+        }
+        continue;
+      }
+
+      if (copyNumber === 1 && downloadResult.data.warning) {
+        warnings.push(downloadResult.data.warning);
+      }
+
+      placementId += 1;
+      group.push({
+        id: String(placementId),
+        fileName: downloadResult.data.fileName,
+        pngBytes: downloadResult.data.pngBytes,
+        widthPx: image.targetWidthPx,
+        heightPx: image.targetHeightPx,
+      });
+    }
+
+    resizedImageGroups.push(group);
+  }
+
+  // Interleaving duplicate copies (rather than placing each design's copies consecutively) gives
+  // the nesting/rotation logic below the same opportunity a reference gang-sheet builder took:
+  // pairing two *different* same-height designs into a row lets more rotation options fit within
+  // the sheet's width than always defaulting to pairing two copies of the same design first.
+  const resizedImages: ResizedImage[] = interleaveGroups(resizedImageGroups);
+
+  if (resizedImages.length === 0) {
+    throw new AllGangSheetImagesFailedError();
+  }
+
+  const sheetWidthPx = Math.round(request.sheetWidthInches * EXPORT_DPI);
+  const spacingPx = {
+    sideMarginPx: Math.round(request.sideMarginInches * EXPORT_DPI),
+    topBottomMarginPx: Math.round(request.topBottomMarginInches * EXPORT_DPI),
+    gutterPx: Math.round(request.gutterInches * EXPORT_DPI),
+  };
+  const maxSheetHeightPx = Math.round(request.maxSheetLengthInches * EXPORT_DPI);
+  const nestableBoxes: NestableBox[] = resizedImages.map((image) => ({
+    id: image.id,
+    widthPx: image.widthPx,
+    heightPx: image.heightPx,
+  }));
+
+  onProgress({ fileName: request.baseFileName, imageIndex: imageTotal, imageTotal, step: "nesting" });
+
+  const nestResult = nestBoxesIntoShelvesWithHeightCap(nestableBoxes, sheetWidthPx, spacingPx, maxSheetHeightPx);
+
+  for (const skipped of nestResult.skipped) {
+    const skippedImage = resizedImages.find((image) => image.id === skipped.id);
+    warnings.push({
+      fileName: skippedImage?.fileName ?? skipped.id,
+      reason: "too_wide_for_sheet",
+      message: `This design (${skippedImage?.widthPx ?? "?"}px wide) is wider than the gang sheet's usable width and was skipped.`,
+    });
+  }
+
+  if (nestResult.sheets.length === 0) {
+    throw new AllGangSheetImagesFailedError();
+  }
+
+  const imagesById = new Map(resizedImages.map((image) => [image.id, image]));
+  const sharpApi = await loadSharpModule();
+  const rotatedPngCache = new Map<string, Buffer>();
+
+  async function getPlacementPngBytes(placementId: string, rotated: boolean): Promise<Buffer | undefined> {
+    const image = imagesById.get(placementId);
+    if (!image) {
+      return undefined;
+    }
+
+    if (!rotated) {
+      return image.pngBytes;
+    }
+
+    const cached = rotatedPngCache.get(placementId);
+    if (cached) {
+      return cached;
+    }
+
+    const rotatedBytes = await sharpApi(image.pngBytes, { limitInputPixels: false }).rotate(90).png().toBuffer();
+    rotatedPngCache.set(placementId, rotatedBytes);
+    return rotatedBytes;
+  }
+
+  onProgress({ fileName: request.baseFileName, imageIndex: imageTotal, imageTotal, step: "compositing" });
+
+  const sheetTotal = nestResult.sheets.length;
+  const sheetBuffers: Buffer[] = [];
+  const labelBandHeightPx = computeLabelBandHeightPx(request.labelFontSizePx);
+
+  for (const [sheetOffset, sheet] of nestResult.sheets.entries()) {
+    const sheetIndex = sheetOffset + 1;
+    const sheetHeightPx = sheet.sheetHeightPx + labelBandHeightPx;
+    const label = buildGangSheetSheetLabel(request.baseFileName, sheetIndex, sheetTotal);
+    const labelSvg = buildSheetLabelSvg(label, sheetWidthPx, labelBandHeightPx, request.labelFontSizePx);
+
+    const compositeInputs = await Promise.all(
+      sheet.placements.map(async (placement) => ({
+        input: await getPlacementPngBytes(placement.id, placement.rotated),
+        left: placement.x,
+        top: placement.y + labelBandHeightPx,
+      })),
+    );
+
+    const composited = await sharpApi({
+      create: {
+        width: sheetWidthPx,
+        height: sheetHeightPx,
+        channels: 4,
+        background: { r: 0, g: 0, b: 0, alpha: 0 },
+      },
+      limitInputPixels: false,
+    })
+      .composite([{ input: Buffer.from(labelSvg), left: 0, top: 0 }, ...compositeInputs])
+      .withMetadata({ density: EXPORT_DPI })
+      .png()
+      .toBuffer();
+
+    sheetBuffers.push(composited);
+  }
+
+  const browserWindow = getActiveBrowserWindow();
+  const saveDialogOptions = {
+    title: "Save gang sheet",
+    defaultPath: buildGangSheetFilename(request.baseFileName, 1, sheetTotal),
+    filters: [{ name: "PNG Images", extensions: ["png"] }],
+  };
+
+  const dialogResult = browserWindow
+    ? await dialog.showSaveDialog(browserWindow, saveDialogOptions)
+    : await dialog.showSaveDialog(saveDialogOptions);
+
+  if (dialogResult.canceled || !dialogResult.filePath) {
+    return {
+      canceled: true,
+      savedFilePaths: [],
+      placedImageCount: 0,
+      skippedImageCount: warnings.filter((warning) => warning.reason !== "upscaled").length,
+      warnings,
+    };
+  }
+
+  const saveDirectory = dialogResult.filePath.replace(/[\\/][^\\/]*$/, "");
+  const savedFilePaths: string[] = [];
+
+  for (const [index, buffer] of sheetBuffers.entries()) {
+    const sheetIndex = index + 1;
+    const path = `${saveDirectory}/${buildGangSheetFilename(request.baseFileName, sheetIndex, sheetTotal)}`;
+    await writeFile(path, buffer);
+    savedFilePaths.push(path);
+  }
+
+  if (warnings.length > 0) {
+    const warningsPath = `${saveDirectory}/${request.baseFileName}_GANG_SHEET_WARNINGS.txt`;
+    await writeFile(warningsPath, formatWarningsFileContent(warnings));
+  }
+
+  return {
+    canceled: false,
+    savedFilePaths,
+    placedImageCount: nestResult.sheets.reduce((sum, sheet) => sum + sheet.placements.length, 0),
+    skippedImageCount: warnings.filter((warning) => warning.reason !== "upscaled").length,
+    warnings,
+  };
+}

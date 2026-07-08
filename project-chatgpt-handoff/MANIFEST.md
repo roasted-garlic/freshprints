@@ -26,10 +26,12 @@
 
 ## Update checklist (after each managed phase signoff)
 
+**Required for in-repo agents (Cursor, Claude, Codex)** at signoff — not optional. See `.cursor/skills/signoff-phase/SKILL.md`.
+
 1. [ ] Update `CURRENT-STATE.md` from `.cursor/workflow/state.md`
-2. [ ] Mark phase complete in `03-roadmap-and-phases.md`
-3. [ ] Add features to `04-features-inventory.md`
-4. [ ] Add entry to `13-recent-completed-work.md`
+2. [ ] Add entry to `13-recent-completed-work.md`
+3. [ ] Mark phase complete in `03-roadmap-and-phases.md`
+4. [ ] Add features to `04-features-inventory.md`
 5. [ ] Add ADR summary to `12-decisions-and-constraints.md` if applicable
 6. [ ] Update `07-backend-and-ai-pipeline.md` if AI/backend changed
 

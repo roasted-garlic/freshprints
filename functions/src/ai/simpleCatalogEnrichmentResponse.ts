@@ -1,12 +1,12 @@
-import type { DesignAiAnalysis, DesignAiSuggestions } from "../../../shared/types/ai/aiProcessing.types";
-import type { SuggestedNewTag } from "../../../shared/types/catalogTag.types";
+import type { DesignAiAnalysis, DesignAiSuggestions } from "../../../packages/shared/src/types/ai/aiProcessing.types";
+import type { SuggestedNewTag } from "../../../packages/shared/src/types/catalogTag.types";
 import type { AiEnrichmentInput, AiEnrichmentResult } from "./providers/AiEnrichmentProvider";
 
 import {
   SIMPLE_ENRICHMENT_MAX_SUGGESTED_TAGS,
   SIMPLE_ENRICHMENT_MAX_TAGS,
 } from "./aiEnrichmentConfig";
-import { estimateVisionCostUsd } from "../../../shared/constants/aiEnrichment.constants";
+import { estimateVisionCostUsd } from "../../../packages/shared/src/constants/aiEnrichment.constants";
 import {
   CATALOG_ENRICHMENT_PROMPT_VERSION,
   normalizeAiTags,

@@ -6,7 +6,11 @@ import { EmptyState } from "../../../shared/components/EmptyState";
 import { ErrorState } from "../../../shared/components/ErrorState";
 import { IconButton } from "../../../shared/components/IconButton";
 import { PageLoadingState } from "../../../shared/components/PageLoadingState";
-import type { Customer } from "../../../../../../shared/types/customer/customer.types";
+import type { Customer } from "@fresh-prints/shared/types/customer/customer.types";
+import {
+  getCustomerSignupSourceBadgeLabel,
+  getCustomerSignupSourceBadgeVariant,
+} from "@fresh-prints/shared/utils/customerSignupSource";
 
 interface CustomerDirectoryTableProps {
   customers: Customer[];
@@ -61,7 +65,7 @@ export function CustomerDirectoryTable({
               <th>Name</th>
               <th>Username</th>
               <th>Email</th>
-              <th>Type</th>
+              <th>Source</th>
               <th>Notes</th>
               <th className="user-directory-actions-header">Actions</th>
             </tr>
@@ -73,7 +77,9 @@ export function CustomerDirectoryTable({
                 <td>{customer.username ?? "Needs username"}</td>
                 <td>{customer.email ?? "—"}</td>
                 <td>
-                  <Badge variant="info">Customer</Badge>
+                  <Badge variant={getCustomerSignupSourceBadgeVariant(customer)}>
+                    {getCustomerSignupSourceBadgeLabel(customer)}
+                  </Badge>
                 </td>
                 <td>
                   <span

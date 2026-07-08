@@ -2,7 +2,7 @@ import { useCallback, useState } from "react";
 
 import { useAuth } from "../../auth/hooks/useAuth";
 import { customerService, type CreateCustomerRecordInput } from "../services/customerService";
-import type { Customer } from "../../../../../../shared/types/customer/customer.types";
+import type { Customer } from "@fresh-prints/shared/types/customer/customer.types";
 
 interface CreateCustomerRecordState {
   createdCustomer: Customer | null;

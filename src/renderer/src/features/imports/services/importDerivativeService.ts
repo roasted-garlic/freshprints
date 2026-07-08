@@ -2,8 +2,8 @@ import {
   getOriginalStoragePath,
   getPreviewStoragePath,
   getThumbnailStoragePath,
-} from "../../../../../../shared/constants/design/designStoragePaths";
-import type { ImportDerivativePipelineResult } from "../../../../../../shared/types/import/importOrchestration.types";
+} from "@fresh-prints/shared/constants/design/designStoragePaths";
+import type { ImportDerivativePipelineResult } from "@fresh-prints/shared/types/import/importOrchestration.types";
 import type { User } from "../../users/types/user.types";
 import { designDerivativeStorageService } from "../../designs/services/designDerivativeStorageService";
 import { designReadyService } from "../../designs/services/designReadyService";

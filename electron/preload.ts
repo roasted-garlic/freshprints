@@ -6,6 +6,12 @@ import {
   isAllowedAppIpcChannel,
 } from "./ipc/app/appIpcChannels";
 import {
+  EXPORT_IPC_CHANNELS,
+  EXPORT_IPC_EVENT_CHANNELS,
+  isAllowedExportIpcChannel,
+  isAllowedExportIpcEventChannel,
+} from "./ipc/export/exportIpcChannels";
+import {
   DEV_IMPORT_IPC_CHANNELS,
   IMPORT_IPC_CHANNELS,
   IMPORT_IPC_EVENT_CHANNELS,
@@ -23,13 +29,13 @@ import type {
   OpenDevToolsResult,
   OpenExternalLinkResult,
   SetUploadActiveResult,
-} from "../shared/types/app/appIpc.types";
+} from "@fresh-prints/shared/types/app/appIpc.types";
 import type {
   BatchDiscoveryCompleteEvent,
   BatchJobErrorEvent,
   BatchImportProgressEvent,
-} from "../shared/types/import/batchImport.types";
-import type { ReadSelectedPngFileBytesRequest } from "../shared/types/import/readPngFileBytes.types";
+} from "@fresh-prints/shared/types/import/batchImport.types";
+import type { ReadSelectedPngFileBytesRequest } from "@fresh-prints/shared/types/import/readPngFileBytes.types";
 import type {
   CancelBatchImportJobRequest,
   CancelBatchImportJobResult,
@@ -47,14 +53,24 @@ import type {
   StartBatchDiscoveryRequest,
   StartBatchDiscoveryResult,
   ValidateSelectedPngFileResult,
-} from "../shared/types/import/importIpc.types";
-import type { DerivativeGenerationVerificationResult } from "../shared/types/import/derivativeGeneration.types";
+} from "@fresh-prints/shared/types/import/importIpc.types";
+import type { DerivativeGenerationVerificationResult } from "@fresh-prints/shared/types/import/derivativeGeneration.types";
 import type {
   OpenWhatnotImportWindowResult,
   WhatnotExistingShowSummary,
   WhatnotShowImportCompletedEvent,
   WhatnotShowImportConfirmedEvent,
-} from "../shared/types/whatnotImport/whatnotImport.types";
+} from "@fresh-prints/shared/types/whatnotImport/whatnotImport.types";
+import type {
+  ExportShowZipRequest,
+  ExportShowZipResult,
+  ShowExportProgressEvent,
+} from "@fresh-prints/shared/types/export/showExportIpc.types";
+import type {
+  ExportGangSheetPngRequest,
+  ExportGangSheetPngResult,
+  GangSheetExportProgressEvent,
+} from "@fresh-prints/shared/types/export/gangSheetExportIpc.types";
 
 function invokeAppChannel<T>(
   channel: (typeof APP_IPC_CHANNELS)[keyof typeof APP_IPC_CHANNELS],
@@ -121,6 +137,42 @@ function invokeWhatnotImportChannel<T>(
   }
 
   return ipcRenderer.invoke(channel, payload) as Promise<ImportIpcResult<T>>;
+}
+
+function invokeExportChannel<T>(
+  channel: (typeof EXPORT_IPC_CHANNELS)[keyof typeof EXPORT_IPC_CHANNELS],
+  payload?: unknown,
+): Promise<ImportIpcResult<T>> {
+  if (!isAllowedExportIpcChannel(channel)) {
+    return Promise.resolve({
+      success: false,
+      error: {
+        code: "INTERNAL_ERROR",
+        message: "The requested export operation is not allowed.",
+      },
+    });
+  }
+
+  return ipcRenderer.invoke(channel, payload) as Promise<ImportIpcResult<T>>;
+}
+
+function subscribeExportEvent<T>(
+  channel: (typeof EXPORT_IPC_EVENT_CHANNELS)[keyof typeof EXPORT_IPC_EVENT_CHANNELS],
+  callback: (event: T) => void,
+): () => void {
+  if (!isAllowedExportIpcEventChannel(channel)) {
+    return () => undefined;
+  }
+
+  const listener = (_ipcEvent: Electron.IpcRendererEvent, payload: T) => {
+    callback(payload);
+  };
+
+  ipcRenderer.on(channel, listener);
+
+  return () => {
+    ipcRenderer.removeListener(channel, listener);
+  };
 }
 
 function subscribeImportEvent<T>(
@@ -313,6 +365,32 @@ contextBridge.exposeInMainWorld("freshPrints", {
     verifyDerivativeGeneration(): Promise<ImportIpcResult<DerivativeGenerationVerificationResult>> {
       return invokeDevImportChannel<DerivativeGenerationVerificationResult>(
         DEV_IMPORT_IPC_CHANNELS.VERIFY_DERIVATIVE_GENERATION,
+      );
+    },
+  },
+
+  export: {
+    exportShowZip(request: ExportShowZipRequest): Promise<ImportIpcResult<ExportShowZipResult>> {
+      return invokeExportChannel<ExportShowZipResult>(EXPORT_IPC_CHANNELS.EXPORT_SHOW_ZIP, request);
+    },
+
+    onExportProgress(callback: (event: ShowExportProgressEvent) => void): () => void {
+      return subscribeExportEvent<ShowExportProgressEvent>(EXPORT_IPC_EVENT_CHANNELS.PROGRESS, callback);
+    },
+
+    exportGangSheetPng(
+      request: ExportGangSheetPngRequest,
+    ): Promise<ImportIpcResult<ExportGangSheetPngResult>> {
+      return invokeExportChannel<ExportGangSheetPngResult>(
+        EXPORT_IPC_CHANNELS.EXPORT_GANG_SHEET_PNG,
+        request,
+      );
+    },
+
+    onGangSheetExportProgress(callback: (event: GangSheetExportProgressEvent) => void): () => void {
+      return subscribeExportEvent<GangSheetExportProgressEvent>(
+        EXPORT_IPC_EVENT_CHANNELS.GANG_SHEET_PROGRESS,
+        callback,
       );
     },
   },

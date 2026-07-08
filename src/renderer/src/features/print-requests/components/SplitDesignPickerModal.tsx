@@ -5,12 +5,12 @@ import { Button } from "../../../shared/components/Button";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "../../../shared/components/Modal";
 import { DesignThumbnailPanel } from "../../designs/components/DesignThumbnailPanel";
 import type { Design } from "../../designs/types/design.types";
-import type { PrintRequestItem } from "../../../../../../shared/types/printRequest/printRequest.types";
+import type { PrintRequestItem } from "@fresh-prints/shared/types/printRequest/printRequest.types";
 import {
   calculateSplitSelectionTotal,
   clampSplitItemQuantity,
   type SplitPickerQuantities,
-} from "../../../../../../shared/utils/printRequestSplitAllocation";
+} from "@fresh-prints/shared/utils/printRequestSplitAllocation";
 
 export interface SplitDesignPickerEntry {
   item: PrintRequestItem;

@@ -2,15 +2,15 @@ import type {
   BatchDiscoveryCompleteEvent,
   BatchImportSourceType,
   BatchImportJobId,
-} from "../../../../../../shared/types/import/batchImport.types";
+} from "@fresh-prints/shared/types/import/batchImport.types";
 import type {
   FinishBatchImportJobResult,
   ImportPngWarning,
-} from "../../../../../../shared/types/import/importIpc.types";
+} from "@fresh-prints/shared/types/import/importIpc.types";
 import type {
   ImportDerivativeStatus,
   ImportFinalDesignStatus,
-} from "../../../../../../shared/types/import/importOrchestration.types";
+} from "@fresh-prints/shared/types/import/importOrchestration.types";
 
 export type BatchUploadFileStatus = "success" | "failed" | "skipped";
 

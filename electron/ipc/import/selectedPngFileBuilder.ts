@@ -1,7 +1,7 @@
 import { stat } from "node:fs/promises";
 import path from "node:path";
 
-import type { SelectedPngFile } from "../../../shared/types/import/importIpc.types";
+import type { SelectedPngFile } from "@fresh-prints/shared/types/import/importIpc.types";
 import { getFileExtension, getFileName, hasAllowedExtension } from "./importPathUtils";
 import { getSelectedPngExtension } from "./pngValidator";
 

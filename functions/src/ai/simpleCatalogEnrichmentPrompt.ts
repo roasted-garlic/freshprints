@@ -5,8 +5,8 @@ import {
   AI_ENRICHMENT_APPROVED_TAG_NAMES_PLACEHOLDER,
   AI_ENRICHMENT_EXCLUDED_TAGS_PLACEHOLDER,
   DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
-} from "../../../shared/constants/aiEnrichment.constants";
-import type { CatalogTag } from "../../../shared/types/catalogTag.types";
+} from "../../../packages/shared/src/constants/aiEnrichment.constants";
+import type { CatalogTag } from "../../../packages/shared/src/types/catalogTag.types";
 import type { AiEnrichmentCategoryOption } from "./providers/AiEnrichmentProvider";
 
 /**

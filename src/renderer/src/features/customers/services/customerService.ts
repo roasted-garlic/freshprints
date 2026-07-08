@@ -15,8 +15,9 @@ import { firestoreCollectionService } from "../../firebase/services/firestoreCol
 import { permissionService } from "../../permissions/services/permissionService";
 import { userService } from "../../users/services/userService";
 import type { User } from "../../users/types/user.types";
-import type { Customer } from "../../../../../../shared/types/customer/customer.types";
-import { requireValidCustomerUsername } from "../../../../../../shared/utils/customerUsername";
+import type { Customer } from "@fresh-prints/shared/types/customer/customer.types";
+import { parseCustomerSignupSource } from "@fresh-prints/shared/utils/customerSignupSource";
+import { requireValidCustomerUsername } from "@fresh-prints/shared/utils/customerUsername";
 
 export interface CreateCustomerRecordInput {
   displayName: string;
@@ -40,6 +41,7 @@ interface CustomerDocumentData extends DocumentData {
   email?: unknown;
   notes?: unknown;
   isGuest?: unknown;
+  signupSource?: unknown;
   totalPrintRequests?: unknown;
   nextPrintRequestSequence?: unknown;
   totalRequests?: unknown;
@@ -75,6 +77,7 @@ function mapCustomerData(customerId: string, data: CustomerDocumentData): Custom
     email: typeof data.email === "string" ? data.email : undefined,
     notes: typeof data.notes === "string" ? data.notes : undefined,
     isGuest: data.isGuest,
+    signupSource: parseCustomerSignupSource(data.signupSource),
     totalPrintRequests: data.totalPrintRequests,
     nextPrintRequestSequence:
       typeof data.nextPrintRequestSequence === "number" ? data.nextPrintRequestSequence : undefined,
@@ -216,6 +219,7 @@ export const customerService = {
         email: normalizedEmail,
         notes: input.notes?.trim() || undefined,
         isGuest: false,
+        signupSource: "studio",
         totalPrintRequests: 0,
         nextPrintRequestSequence: 1,
         usernameUpdatedAt: serverTimestamp(),
@@ -236,68 +240,5 @@ export const customerService = {
 
     const createdSnapshot = await getDoc(customerRef);
     return mapCustomerData(customerRef.id, createdSnapshot.data() as CustomerDocumentData);
-  },
-
-  async updateCustomerRecord(
-    caller: User,
-    customerId: string,
-    input: UpdateCustomerRecordInput,
-  ): Promise<Customer> {
-    if (!permissionService.canManageCustomers(caller)) {
-      throw new Error("You do not have permission to edit customers.");
-    }
-
-    const current = await this.getCustomerById(caller, customerId);
-    const displayName = input.displayName.trim();
-    const username = requireValidCustomerUsername(input.username);
-
-    if (!displayName) {
-      throw new Error("Customer name is required.");
-    }
-
-    await assertEmailIsUniqueForDirectory(caller, input.email, { excludeCustomerId: customerId });
-
-    const customerRef = doc(firestoreCollectionService.getCustomersCollection(), customerId);
-    const normalizedEmail = normalizeOptionalEmail(input.email);
-
-    await runTransaction(firestoreCollectionService.getCustomersCollection().firestore, async (transaction) => {
-      const reservationRef = await assertUsernameReservationAvailable(username, customerId, transaction);
-      const previousUsername = current.username;
-      const previousReservationRef =
-        previousUsername && previousUsername !== username
-          ? getCustomerUsernameReservationRef(previousUsername)
-          : null;
-      const payload = withoutUndefinedFields({
-        displayName,
-        username,
-        email: normalizedEmail,
-        notes: input.notes?.trim() || undefined,
-        isGuest: current.isGuest,
-        totalPrintRequests: current.totalPrintRequests,
-        nextPrintRequestSequence: current.nextPrintRequestSequence ?? 1,
-        totalRequests: current.totalRequests,
-        totalApprovedRequests: current.totalApprovedRequests,
-        createdAt: current.createdAt,
-        updatedAt: serverTimestamp(),
-        usernameUpdatedAt: previousUsername === username ? current.usernameUpdatedAt : serverTimestamp(),
-        userId: current.userId,
-      });
-      const reservationPayload = {
-        customerId,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      };
-
-      assertNoUndefinedFirestoreFields(payload, "Customer update payload");
-      transaction.update(customerRef, payload);
-      transaction.set(reservationRef, reservationPayload, { merge: true });
-
-      if (previousReservationRef) {
-        transaction.delete(previousReservationRef);
-      }
-    });
-
-    const updatedSnapshot = await getDoc(customerRef);
-    return mapCustomerData(updatedSnapshot.id, updatedSnapshot.data() as CustomerDocumentData);
   },
 };

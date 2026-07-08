@@ -4,7 +4,7 @@ import { describe, it } from "node:test";
 import {
   assessPrintRequestItemSize,
   resolveInitialPrintRequestItemSize,
-} from "../../../../../../shared/utils/printRequestItemSizing";
+} from "@fresh-prints/shared/utils/printRequestItemSizing";
 
 describe("print request oversized selection initialization", () => {
   it("initializes an oversized catalog width to a standard 10 inch requested width", () => {

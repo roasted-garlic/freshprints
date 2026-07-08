@@ -52,7 +52,14 @@ type SidebarItem = SidebarRouteItem | SidebarActionItem;
 
 const sidebarItems: SidebarRouteItem[] = [
   { kind: "route", icon: Images, label: "Design Library", to: "/designs", permission: "viewDesigns" },
-  { kind: "route", icon: Sparkles, label: "AI Processing", to: "/ai-review", permission: "viewAiReview" },
+  {
+    kind: "route",
+    icon: Sparkles,
+    label: "AI Processing",
+    to: "/ai-review",
+    permission: "viewAiReview",
+    dividerBefore: true,
+  },
   { kind: "route", icon: FolderInput, label: "Imports", to: "/imports", permission: "importDesigns" },
   {
     kind: "route",
@@ -60,6 +67,7 @@ const sidebarItems: SidebarRouteItem[] = [
     label: "Print Requests",
     to: "/print-requests",
     permission: "viewPrintRequests",
+    dividerBefore: true,
   },
   {
     kind: "route",
@@ -67,7 +75,6 @@ const sidebarItems: SidebarRouteItem[] = [
     label: "Show Queue",
     to: "/show-queue",
     permission: "viewUpcomingShows",
-    dividerBefore: true,
   },
   {
     kind: "route",

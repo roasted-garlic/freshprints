@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import type { UpcomingShow } from "../../../../../../shared/types/upcomingShow/upcomingShow.types";
-import { filterShowsByScheduleTab, getShowScheduleTab } from "./groupShowsByUpcomingPast";
+import type { UpcomingShow } from "@fresh-prints/shared/types/upcomingShow/upcomingShow.types";
+import { filterShowsByScheduleTab, getShowScheduleTab, resolveVisibleShowSelection } from "./groupShowsByUpcomingPast";
 
 function buildShow(overrides: Partial<UpcomingShow> = {}): UpcomingShow {
   return {
@@ -58,5 +58,23 @@ describe("filterShowsByScheduleTab", () => {
 
     assert.deepEqual(filterShowsByScheduleTab([future, past], "upcoming", now).map((s) => s.id), ["future"]);
     assert.deepEqual(filterShowsByScheduleTab([future, past], "past", now).map((s) => s.id), ["past"]);
+  });
+});
+
+describe("resolveVisibleShowSelection", () => {
+  it("keeps the current selection when it remains visible", () => {
+    const visibleShows = [buildShow({ id: "show-1" }), buildShow({ id: "show-2" })];
+
+    assert.equal(resolveVisibleShowSelection(visibleShows, "show-2"), "show-2");
+  });
+
+  it("falls back to the first visible show when the selection is no longer visible", () => {
+    const visibleShows = [buildShow({ id: "show-1" }), buildShow({ id: "show-2" })];
+
+    assert.equal(resolveVisibleShowSelection(visibleShows, "show-3"), "show-1");
+  });
+
+  it("clears the selection when the active tab has no shows", () => {
+    assert.equal(resolveVisibleShowSelection([], "show-1"), null);
   });
 });

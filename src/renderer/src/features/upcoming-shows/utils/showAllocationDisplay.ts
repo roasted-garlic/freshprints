@@ -1,4 +1,4 @@
-import type { ShowAllocationStatus } from "../../../../../../shared/types/showAllocation/showAllocation.enums";
+import type { ShowAllocationStatus } from "@fresh-prints/shared/types/showAllocation/showAllocation.enums";
 
 export function getShowAllocationStatusBadgeVariant(status: ShowAllocationStatus) {
   switch (status) {

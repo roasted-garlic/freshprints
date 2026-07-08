@@ -1,6 +1,6 @@
 import path from "node:path";
 
-import type { FolderBatchDiscoverySummary } from "../../../shared/types/import/batchImport.types";
+import type { FolderBatchDiscoverySummary } from "@fresh-prints/shared/types/import/batchImport.types";
 import type { FolderZipCandidate } from "./folderScanner";
 import { extractZipPngCandidates, type ZipExtractedCandidate } from "./zipExtractor";
 

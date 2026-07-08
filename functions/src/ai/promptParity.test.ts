@@ -1,13 +1,13 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import type { CatalogTag } from "../../../shared/types/catalogTag.types";
+import type { CatalogTag } from "../../../packages/shared/src/types/catalogTag.types";
 import type { AiEnrichmentCategoryOption } from "./providers/AiEnrichmentProvider";
 import {
   buildSimpleCatalogEnrichmentSystemPrompt,
   buildSimpleCatalogEnrichmentUserPrompt,
 } from "./simpleCatalogEnrichmentPrompt";
-import { DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE } from "../../../shared/constants/aiEnrichment.constants";
+import { DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE } from "../../../packages/shared/src/constants/aiEnrichment.constants";
 
 /**
  * Prompt parity: the Settings AI Playground (aiEnrichmentPlayground.ts) and AI Processing

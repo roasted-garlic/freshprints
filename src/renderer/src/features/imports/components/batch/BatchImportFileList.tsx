@@ -3,8 +3,8 @@ import { useEffect, useRef, useState } from "react";
 import type {
   BatchImportFileManifestEntry,
   BatchImportJobId,
-} from "../../../../../../../shared/types/import/batchImport.types";
-import type { ImportPngWarning } from "../../../../../../../shared/types/import/importIpc.types";
+} from "@fresh-prints/shared/types/import/batchImport.types";
+import type { ImportPngWarning } from "@fresh-prints/shared/types/import/importIpc.types";
 
 import { Badge } from "../../../../shared/components/Badge";
 import { Button } from "../../../../shared/components/Button";

@@ -1,6 +1,6 @@
 import { nativeImage } from "electron";
 
-import { MAX_SINGLE_PNG_SIZE_BYTES } from "../../../shared/constants/importValidation.constants";
+import { MAX_SINGLE_PNG_SIZE_BYTES } from "@fresh-prints/shared/constants/importValidation.constants";
 
 export const PNG_PREVIEW_MAX_WIDTH_PX = 320;
 

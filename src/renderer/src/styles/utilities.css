@@ -85,6 +85,7 @@
   height: 3px;
   left: 0;
   position: absolute;
+  transform: scaleX(var(--progress-start, 1));
   transform-origin: left center;
   width: 100%;
 }
@@ -92,6 +93,10 @@
 @media (prefers-reduced-motion: no-preference) {
   .dismissible-success-alert-progress {
     animation: dismissible-success-alert-shrink var(--dismiss-duration, 5s) linear forwards;
+  }
+
+  .dismissible-success-alert-progress.is-paused {
+    animation-play-state: paused;
   }
 }
 
@@ -103,7 +108,7 @@
 
 @keyframes dismissible-success-alert-shrink {
   from {
-    transform: scaleX(1);
+    transform: scaleX(var(--progress-start, 1));
   }
 
   to {

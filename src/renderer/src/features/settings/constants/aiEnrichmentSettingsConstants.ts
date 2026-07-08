@@ -21,13 +21,13 @@ import {
   type AllowedVisionModelId,
   type SuggestionAuthorMode,
   type TagRerankMode,
-} from "../../../../../../shared/constants/aiEnrichment.constants";
+} from "@fresh-prints/shared/constants/aiEnrichment.constants";
 
 export {
   ADDITIONAL_TAG_EXCLUSION_PATTERN,
   BASE_AI_TAG_EXCLUSIONS,
   MAX_ADDITIONAL_TAG_EXCLUSIONS,
-} from "../../../../../../shared/constants/aiTagExclusions.constants";
+} from "@fresh-prints/shared/constants/aiTagExclusions.constants";
 
 export const AI_ENRICHMENT_SETTINGS_DOC_ID = "aiEnrichment";
 

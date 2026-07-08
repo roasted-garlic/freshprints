@@ -1,7 +1,7 @@
 import { dialog } from "electron";
 
-import { MAX_BATCH_FILES } from "../../../shared/constants/import/batchImportLimits.constants";
-import type { SelectMultiplePngFilesResult } from "../../../shared/types/import/importIpc.types";
+import { MAX_BATCH_FILES } from "@fresh-prints/shared/constants/import/batchImportLimits.constants";
+import type { SelectMultiplePngFilesResult } from "@fresh-prints/shared/types/import/importIpc.types";
 import { getActiveBrowserWindow } from "./importBrowserWindow";
 import { registerBatchImportSelection } from "./importBatchSession";
 import { buildSelectedPngFile } from "./selectedPngFileBuilder";

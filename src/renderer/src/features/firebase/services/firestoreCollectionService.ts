@@ -64,6 +64,14 @@ export const firestoreCollectionService = {
     return this.getCollectionReference("showAllocations");
   },
 
+  getGangSheetsCollection() {
+    return this.getCollectionReference("gangSheets");
+  },
+
+  getGangSheetItemsCollection() {
+    return this.getCollectionReference("gangSheetItems");
+  },
+
   getSettingsCollection() {
     return this.getCollectionReference("settings");
   },

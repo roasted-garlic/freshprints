@@ -4,7 +4,7 @@ import { useAuth } from "../../auth/hooks/useAuth";
 import { permissionService } from "../../permissions/services/permissionService";
 import { printRequestService } from "../services/printRequestService";
 import { sortPrintRequestItemsForDisplay } from "../utils/printRequestQueryPlanning";
-import type { PrintRequest, PrintRequestItem } from "../../../../../../shared/types/printRequest/printRequest.types";
+import type { PrintRequest, PrintRequestItem } from "@fresh-prints/shared/types/printRequest/printRequest.types";
 
 interface PrintRequestDetailsState {
   printRequest: PrintRequest | null;

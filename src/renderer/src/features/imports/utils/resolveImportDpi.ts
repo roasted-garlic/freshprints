@@ -1,4 +1,4 @@
-import type { ValidateSelectedPngFileResult } from "../../../../../../shared/types/import/importIpc.types";
+import type { ValidateSelectedPngFileResult } from "@fresh-prints/shared/types/import/importIpc.types";
 
 export function resolveImportDpi(
   validationResult: ValidateSelectedPngFileResult,

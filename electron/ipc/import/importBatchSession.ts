@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import path from "node:path";
 
-import type { BatchImportSourceType } from "../../../shared/types/import/batchImport.types";
+import type { BatchImportSourceType } from "@fresh-prints/shared/types/import/batchImport.types";
 
 export type BatchImportSessionStatus = "selected" | "discovering" | "cancelled" | "failed" | "finished";
 

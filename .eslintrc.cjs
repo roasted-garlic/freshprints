@@ -6,7 +6,7 @@ module.exports = {
     'plugin:@typescript-eslint/recommended',
     'plugin:react-hooks/recommended',
   ],
-  ignorePatterns: ['dist', '.eslintrc.cjs', 'functions/lib', 'functions/node_modules'],
+  ignorePatterns: ['dist', '.eslintrc.cjs', 'functions/lib', 'functions/node_modules', 'gang-sheet-builder-reference', 'apps/portal/.next', 'apps/portal/next-env.d.ts'],
   parser: '@typescript-eslint/parser',
   plugins: ['react-refresh'],
   rules: {
@@ -15,4 +15,13 @@ module.exports = {
       { allowConstantExport: true },
     ],
   },
+  overrides: [
+    {
+      files: ['apps/portal/**/*.{ts,tsx}'],
+      rules: {
+        // Next.js App Router layouts export metadata alongside components.
+        'react-refresh/only-export-components': 'off',
+      },
+    },
+  ],
 }

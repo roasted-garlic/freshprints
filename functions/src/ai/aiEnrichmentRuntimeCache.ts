@@ -1,5 +1,5 @@
 import { loadAiEnrichmentSettings, type AiEnrichmentSettingsLoaded } from "./loadAiEnrichmentSettings";
-import type { CatalogTag } from "../../../shared/types/catalogTag.types";
+import type { CatalogTag } from "../../../packages/shared/src/types/catalogTag.types";
 import { adminDb } from "../lib/admin";
 
 const CACHE_TTL_MS = 60_000;

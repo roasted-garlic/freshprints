@@ -1,4 +1,4 @@
-import type { BatchJobErrorEvent } from "../../../shared/types/import/batchImport.types";
+import type { BatchJobErrorEvent } from "@fresh-prints/shared/types/import/batchImport.types";
 import { ZipExtractionError } from "../../services/import/zipExtractionErrors";
 
 export function mapZipExtractionErrorToJobError(

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import type { ShowAllocation } from "../../../../../../shared/types/showAllocation/showAllocation.types";
+import type { ShowAllocation } from "@fresh-prints/shared/types/showAllocation/showAllocation.types";
 import { groupAllocationsByRequest } from "./groupAllocationsByRequest";
 
 function buildAllocation(overrides: Partial<ShowAllocation> = {}): ShowAllocation {

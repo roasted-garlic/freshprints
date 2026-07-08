@@ -4,6 +4,38 @@
 
 ---
 
+### ADR-FP-063: Phase 7 Studio MVP complete; Gang Sheet Builder post-MVP; Whatnot scheduled sync not planned for Studio
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-07 |
+| Status | accepted |
+
+**Context**
+
+After Show Queue production-file export signoff, three follow-up items were discussed: Gang Sheet
+Builder manual canvas, Firestore rules deploy for gang sheet settings, live Whatnot scheduled sync,
+and Phase 8 Portal.
+
+**Decision**
+
+1. **Gang Sheet Builder (manual canvas)** is a post-MVP *want*, not a Studio MVP need. Auto-nested gang
+   sheet PNG export already covers production file output. Defer builder work until after Portal and
+   other higher priorities.
+2. **Live Whatnot scheduled/hourly sync** is **not planned** for Fresh Prints Studio. Electron is not
+   always-on; staff-assisted import remains the workflow. Revisit only if a future always-on hosted
+   service (e.g. Portal backend) needs automated show-list sync — not a default Phase 8 scope item.
+3. **Phase 8 Fresh Prints Portal** is the next major milestone after deploying outstanding Firestore
+   rules to the target Firebase project(s).
+
+**Consequences**
+
+- ROADMAP and handoff docs treat Phase 7 Studio MVP as complete.
+- Gang Sheet Builder plans remain archived/backlog, not active workflow goals.
+- Phase 8 planning may proceed once rules deploy is confirmed.
+
+---
+
 ### ADR-FP-062: Print Requests page derives status/queue-state from the stable allocation-totals map everywhere; show-queue link pills and multi-show-aware removal added
 
 | Field | Value |

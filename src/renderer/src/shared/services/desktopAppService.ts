@@ -1,11 +1,11 @@
-import { isSafeExternalLinkUrl } from "../../../../../shared/utils/externalLinkSafety";
+import { isSafeExternalLinkUrl } from "@fresh-prints/shared/utils/externalLinkSafety";
 import { isElectronDesktop } from "../utils/isElectronDesktop";
-import type { UpcomingShow } from "../../../../../shared/types/upcomingShow/upcomingShow.types";
+import type { UpcomingShow } from "@fresh-prints/shared/types/upcomingShow/upcomingShow.types";
 import type {
   WhatnotExistingShowSummary,
   WhatnotShowImportCompletedEvent,
   WhatnotShowImportConfirmedEvent,
-} from "../../../../../shared/types/whatnotImport/whatnotImport.types";
+} from "@fresh-prints/shared/types/whatnotImport/whatnotImport.types";
 
 export const desktopAppService = {
   async openDevTools() {

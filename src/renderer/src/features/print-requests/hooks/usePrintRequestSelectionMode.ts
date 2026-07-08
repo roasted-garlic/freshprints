@@ -5,7 +5,7 @@ import { permissionService } from "../../permissions/services/permissionService"
 import { printRequestService } from "../services/printRequestService";
 import { usePrintRequestDetails } from "./usePrintRequestDetails";
 import type { Design } from "../../designs/types/design.types";
-import type { PrintRequest } from "../../../../../../shared/types/printRequest/printRequest.types";
+import type { PrintRequest } from "@fresh-prints/shared/types/printRequest/printRequest.types";
 
 interface SelectedDesignSelection {
   quantity: number;

@@ -1,4 +1,4 @@
-import type { DerivativeGenerationVerificationResult } from "../../../shared/types/import/derivativeGeneration.types";
+import type { DerivativeGenerationVerificationResult } from "@fresh-prints/shared/types/import/derivativeGeneration.types";
 import { derivativeGenerationService } from "./derivativeGenerationService";
 import { ensureSharpLoaded, loadSharpModule } from "./loadSharpModule";
 

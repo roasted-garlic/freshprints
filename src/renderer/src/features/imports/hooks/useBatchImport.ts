@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   BatchDiscoveryCompleteEvent,
   BatchImportSourceType,
-} from "../../../../../../shared/types/import/batchImport.types";
+} from "@fresh-prints/shared/types/import/batchImport.types";
 
 import { useAuth } from "../../auth/hooks/useAuth";
 import { useUploadActivity } from "../../../shared/hooks/useUploadActivity";

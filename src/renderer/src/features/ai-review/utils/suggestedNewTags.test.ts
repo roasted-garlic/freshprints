@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import type { SuggestedNewTag } from "../../../../../../shared/types/catalogTag.types";
+import type { SuggestedNewTag } from "@fresh-prints/shared/types/catalogTag.types";
 import { addApprovedSuggestedTagToDraftTags, filterIgnoredSuggestedTags } from "./suggestedNewTags";
 
 const suggestedTags: SuggestedNewTag[] = [

@@ -98,21 +98,27 @@ Avoid one-off solutions. Do not plan for a separate native mobile application.
 Current Phase:
 
 ```txt
-Phase 7
-Show Queue (foundation signed off; Whatnot assisted import signed off)
+Phase 8
+Fresh Prints Portal (next — after Firestore rules deploy)
 ```
+
+Phase 7 Studio MVP is complete for staff workflows. Phase 8 is next.
 
 Current Goal:
 
 Phase 6 Customers And Print Requests is complete and closed out per user confirmation on 2026-07-06.
-All known Phase 6 follow-ups are signed off: query/index hardening, item sizing and username naming,
-detail autosave and name locking, origin tracking, oversized-selection unblock, and item preview/DPI
-polish. The user also confirmed the previously outstanding Firestore rules checkpoint has already
-been deployed.
 
-Phase 7 Show Queue foundation is signed off. The staff-assisted Whatnot show import is signed off
-and has been polished for the current manual-assisted workflow. The next feature work should remain
-in Phase 7 unless the user explicitly starts Phase 8 Portal work.
+Phase 7 Show Queue is complete for Studio MVP: foundation, staff-assisted Whatnot import, and
+production-file export (zip, multiply-by-qty, auto-nested gang sheet PNG) signed off 2026-07-07.
+
+**User direction (2026-07-07):**
+- **Gang Sheet Builder** (manual canvas) is a post-MVP *want*, not a Studio MVP blocker — defer until
+  after Portal and other priorities.
+- **Live Whatnot scheduled sync** is **not planned** for Studio (Electron is not 24/7). Revisit only if
+  a future always-on hosted service (e.g. Portal/backend) needs it — not a Phase 8 default.
+- **Next step:** deploy outstanding Firestore rules, then start Phase 8 Portal planning.
+
+See `docs/workflow/reviews/2026-07-07-show-queue-export-and-production-files-signoff.md`.
 
 **Completed milestones (per signoffs):** Phase 1 foundation, Phase 2 design library (2A–2C), Phase 3 import pipeline (3A–3C), Phase 3D print size and catalog status separation, **Phase 4 catalog cleanup**, Phase 5 AI Review / AI enrichment baseline and AI Processing smoke checkpoint, **Phase 6 Customers And Print Requests**.
 
@@ -694,8 +700,12 @@ link pills with a multi-show-aware removal flow) followed. **Signed off PASS on 
 full authenticated manual QA passed — see
 `docs/workflow/reviews/2026-07-05-print-runs-foundation-signoff.md`. Dev Firestore rules deploy
 (`firebase deploy --only firestore:rules --project fresh-prints-dev`) was later completed by the
-user, per confirmation on 2026-07-06. Live Whatnot sync, scheduled Functions, manual refresh
-callable, and gangsheet export remain Planned for a future phase.
+user, per confirmation on 2026-07-06. **Production-file export signed off 2026-07-07** — per-show
+zip export, multiply-by-quantity zip export, and auto-nested gang sheet PNG export are implemented in
+Studio; see `docs/workflow/reviews/2026-07-07-show-queue-export-and-production-files-signoff.md`.
+**Phase 7 Studio MVP is complete.** Live Whatnot scheduled sync is **not planned** (user 2026-07-07:
+Studio is not 24/7; revisit only for a future always-on hosted service if needed). Gang Sheet Builder
+manual canvas is **post-MVP backlog** (want, not need).
 ```
 
 Goal:
@@ -905,11 +915,17 @@ Final polish pass, implemented 2026-07-05, signed off with the phase:
 
 Still planned:
 
-* Live Whatnot fetch/sync from `https://www.whatnot.com/user/funkyfreshprints/shows` (parsing method
-  unverified; no official API assumed)
-* Hourly scheduled backend sync, manual scrape button, and an auto-update on/off toggle
-* Download originals / batch export for gangsheets
-* Gangsheet export
+* Mark items printed / done via a dedicated production UI (service method exists; UI is minimal)
+
+**Not planned (user 2026-07-07):** Live Whatnot scheduled/hourly sync for Studio — Electron is not
+always-on; staff-assisted import remains the workflow. Revisit only if a future hosted backend needs
+show-list sync for Portal.
+
+**Post-MVP backlog (not blocking Phase 8):** Gang Sheet Builder manual canvas / standalone route —
+nice-to-have after Portal; auto-nested export already covers production file needs.
+
+**Signed off 2026-07-07** — production-file export (zip + gang sheet PNG):
+`docs/workflow/reviews/2026-07-07-show-queue-export-and-production-files-signoff.md`
 
 ---
 
@@ -928,7 +944,11 @@ Still planned:
 Still planned:
 
 * Mark items printed / done via a dedicated production UI (service method exists; UI is minimal)
-* Gangsheet export
+
+**Post-MVP backlog:** Gang Sheet Builder manual canvas (auto-nested export covers production needs).
+
+**Signed off 2026-07-07** — zip export, multiply-by-qty export, and auto-nested gang sheet PNG export.
+See `docs/workflow/reviews/2026-07-07-show-queue-export-and-production-files-signoff.md`.
 
 **Not in scope:** Shipping, packing, parcel tracking.
 
@@ -937,8 +957,8 @@ Still planned:
 ## Exit Criteria
 
 Show preparation and production file export occur within Fresh Prints. Production status lives on
-show allocations, not designs. (Combined-model foundation met 2026-07-05; live sync and file export
-remain open.)
+show allocations, not designs. Phase 7 Studio MVP met 2026-07-07 (foundation, assisted Whatnot import,
+production-file export). **Phase 8 Portal is next** after outstanding Firestore rules deploy.
 
 ---
 
@@ -949,7 +969,7 @@ remain open.)
 Status:
 
 ```txt
-Planned
+Next — start after Firestore rules deploy (user direction 2026-07-07)
 ```
 
 Goal:

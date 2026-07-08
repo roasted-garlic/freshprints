@@ -8,7 +8,7 @@ import type {
   ImportPngWarning,
   ImportOriginalUploadResult,
   ValidateSelectedPngFileResult,
-} from "../../../../../../shared/types/import/importIpc.types";
+} from "@fresh-prints/shared/types/import/importIpc.types";
 import { getAiReviewPath } from "../../designs/constants/designLibraryFilters";
 import { Badge } from "../../../shared/components/Badge";
 import { Button } from "../../../shared/components/Button";

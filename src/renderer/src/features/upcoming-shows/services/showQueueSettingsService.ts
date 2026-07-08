@@ -26,7 +26,38 @@ export interface ShowQueueSettings {
   lastWhatnotAssistedImportStatus?: WhatnotAssistedImportStatus;
   lastWhatnotAssistedImportSummary?: WhatnotAssistedImportSummary;
   lastWhatnotAssistedImportError?: string;
+  /** Gang sheet artboard width in inches; defaults to `DEFAULT_GANG_SHEET_WIDTH_INCHES` when unset. */
+  gangSheetWidthInches?: number;
+  /** Sheet edge to nearest image, left/right only; defaults to `DEFAULT_GANG_SHEET_SIDE_MARGIN_INCHES`. */
+  gangSheetSideMarginInches?: number;
+  /** Sheet edge to nearest image, top/bottom only; defaults to `DEFAULT_GANG_SHEET_TOP_BOTTOM_MARGIN_INCHES`. */
+  gangSheetTopBottomMarginInches?: number;
+  /** Image-to-image spacing, both within a row and between rows; defaults to `DEFAULT_GANG_SHEET_GUTTER_INCHES`. */
+  gangSheetGutterInches?: number;
+  /** Height cap before starting a new sheet; defaults to `DEFAULT_GANG_SHEET_MAX_LENGTH_INCHES`. */
+  gangSheetMaxLengthInches?: number;
+  /** Sheet label text font size in pixels; defaults to `DEFAULT_GANG_SHEET_LABEL_FONT_SIZE_PX`. */
+  gangSheetLabelFontSizePx?: number;
 }
+
+export const DEFAULT_GANG_SHEET_WIDTH_INCHES = 23;
+export const MIN_GANG_SHEET_WIDTH_INCHES = 10;
+export const MAX_GANG_SHEET_WIDTH_INCHES = 60;
+
+export const DEFAULT_GANG_SHEET_SIDE_MARGIN_INCHES = 0.25;
+export const DEFAULT_GANG_SHEET_TOP_BOTTOM_MARGIN_INCHES = 0.5;
+export const DEFAULT_GANG_SHEET_GUTTER_INCHES = 0.5;
+export const MIN_GANG_SHEET_SPACING_INCHES = 0;
+export const MAX_GANG_SHEET_SPACING_INCHES = 5;
+
+export const DEFAULT_GANG_SHEET_MAX_LENGTH_INCHES = 300;
+export const MIN_GANG_SHEET_MAX_LENGTH_INCHES = 10;
+export const MAX_GANG_SHEET_MAX_LENGTH_INCHES = 300;
+
+/** Doubled from the original hardcoded 60px label size, per staff feedback that it was too small. */
+export const DEFAULT_GANG_SHEET_LABEL_FONT_SIZE_PX = 120;
+export const MIN_GANG_SHEET_LABEL_FONT_SIZE_PX = 20;
+export const MAX_GANG_SHEET_LABEL_FONT_SIZE_PX = 300;
 
 function mapWhatnotAssistedImportSummary(value: unknown): WhatnotAssistedImportSummary | undefined {
   if (!value || typeof value !== "object") {
@@ -67,7 +98,22 @@ function mapShowQueueSettings(data: Record<string, unknown> | undefined): ShowQu
     lastWhatnotAssistedImportSummary: mapWhatnotAssistedImportSummary(data?.lastWhatnotAssistedImportSummary),
     lastWhatnotAssistedImportError:
       typeof data?.lastWhatnotAssistedImportError === "string" ? data.lastWhatnotAssistedImportError : undefined,
+    gangSheetWidthInches: typeof data?.gangSheetWidthInches === "number" ? data.gangSheetWidthInches : undefined,
+    gangSheetSideMarginInches:
+      typeof data?.gangSheetSideMarginInches === "number" ? data.gangSheetSideMarginInches : undefined,
+    gangSheetTopBottomMarginInches:
+      typeof data?.gangSheetTopBottomMarginInches === "number" ? data.gangSheetTopBottomMarginInches : undefined,
+    gangSheetGutterInches:
+      typeof data?.gangSheetGutterInches === "number" ? data.gangSheetGutterInches : undefined,
+    gangSheetMaxLengthInches:
+      typeof data?.gangSheetMaxLengthInches === "number" ? data.gangSheetMaxLengthInches : undefined,
+    gangSheetLabelFontSizePx:
+      typeof data?.gangSheetLabelFontSizePx === "number" ? data.gangSheetLabelFontSizePx : undefined,
   };
+}
+
+function isWithinRange(value: number | undefined, min: number, max: number): boolean {
+  return value === undefined || (value >= min && value <= max);
 }
 
 export const showQueueSettingsService = {
@@ -78,15 +124,74 @@ export const showQueueSettingsService = {
 
   async updateSettings(
     caller: User,
-    input: { defaultMaxTotalQuantity?: number; whatnotShowBaseUrl?: string },
+    input: {
+      defaultMaxTotalQuantity?: number;
+      whatnotShowBaseUrl?: string;
+      gangSheetWidthInches?: number;
+      gangSheetSideMarginInches?: number;
+      gangSheetTopBottomMarginInches?: number;
+      gangSheetGutterInches?: number;
+      gangSheetMaxLengthInches?: number;
+      gangSheetLabelFontSizePx?: number;
+    },
   ): Promise<ShowQueueSettings> {
     if (!permissionService.canManageUpcomingShows(caller)) {
       throw new Error("You do not have permission to manage Show Queue settings.");
     }
 
+    if (!isWithinRange(input.gangSheetWidthInches, MIN_GANG_SHEET_WIDTH_INCHES, MAX_GANG_SHEET_WIDTH_INCHES)) {
+      throw new Error(
+        `Gang sheet width must be between ${MIN_GANG_SHEET_WIDTH_INCHES}" and ${MAX_GANG_SHEET_WIDTH_INCHES}".`,
+      );
+    }
+
+    if (
+      !isWithinRange(input.gangSheetSideMarginInches, MIN_GANG_SHEET_SPACING_INCHES, MAX_GANG_SHEET_SPACING_INCHES) ||
+      !isWithinRange(
+        input.gangSheetTopBottomMarginInches,
+        MIN_GANG_SHEET_SPACING_INCHES,
+        MAX_GANG_SHEET_SPACING_INCHES,
+      ) ||
+      !isWithinRange(input.gangSheetGutterInches, MIN_GANG_SHEET_SPACING_INCHES, MAX_GANG_SHEET_SPACING_INCHES)
+    ) {
+      throw new Error(
+        `Gang sheet spacing values must be between ${MIN_GANG_SHEET_SPACING_INCHES}" and ${MAX_GANG_SHEET_SPACING_INCHES}".`,
+      );
+    }
+
+    if (
+      !isWithinRange(
+        input.gangSheetMaxLengthInches,
+        MIN_GANG_SHEET_MAX_LENGTH_INCHES,
+        MAX_GANG_SHEET_MAX_LENGTH_INCHES,
+      )
+    ) {
+      throw new Error(
+        `Gang sheet max length must be between ${MIN_GANG_SHEET_MAX_LENGTH_INCHES}" and ${MAX_GANG_SHEET_MAX_LENGTH_INCHES}".`,
+      );
+    }
+
+    if (
+      !isWithinRange(
+        input.gangSheetLabelFontSizePx,
+        MIN_GANG_SHEET_LABEL_FONT_SIZE_PX,
+        MAX_GANG_SHEET_LABEL_FONT_SIZE_PX,
+      )
+    ) {
+      throw new Error(
+        `Gang sheet label font size must be between ${MIN_GANG_SHEET_LABEL_FONT_SIZE_PX}px and ${MAX_GANG_SHEET_LABEL_FONT_SIZE_PX}px.`,
+      );
+    }
+
     const payload = withoutUndefinedFields({
       defaultMaxTotalQuantity: input.defaultMaxTotalQuantity,
       whatnotShowBaseUrl: input.whatnotShowBaseUrl,
+      gangSheetWidthInches: input.gangSheetWidthInches,
+      gangSheetSideMarginInches: input.gangSheetSideMarginInches,
+      gangSheetTopBottomMarginInches: input.gangSheetTopBottomMarginInches,
+      gangSheetGutterInches: input.gangSheetGutterInches,
+      gangSheetMaxLengthInches: input.gangSheetMaxLengthInches,
+      gangSheetLabelFontSizePx: input.gangSheetLabelFontSizePx,
       updatedBy: caller.id,
       updatedAt: serverTimestamp(),
     });

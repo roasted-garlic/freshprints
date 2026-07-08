@@ -9,7 +9,7 @@ import {
   resolveTagRerankPromptTemplate,
   type SuggestionAuthorMode,
   type TagRerankMode,
-} from "../../../shared/constants/aiEnrichment.constants";
+} from "../../../packages/shared/src/constants/aiEnrichment.constants";
 import { adminDb } from "../lib/admin";
 import { mergeTagExclusions, resolveAdditionalTagExclusions } from "./aiTagExclusions";
 import {

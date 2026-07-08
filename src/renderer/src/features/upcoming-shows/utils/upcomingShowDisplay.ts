@@ -1,9 +1,9 @@
 import type {
   UpcomingShowStatus,
   UpcomingShowSyncStatus,
-} from "../../../../../../shared/types/upcomingShow/upcomingShow.enums";
-import type { UpcomingShow } from "../../../../../../shared/types/upcomingShow/upcomingShow.types";
-import { formatShowDateTimeLabel } from "../../../../../../shared/utils/showDateTimeDisplay";
+} from "@fresh-prints/shared/types/upcomingShow/upcomingShow.enums";
+import type { UpcomingShow } from "@fresh-prints/shared/types/upcomingShow/upcomingShow.types";
+import { formatShowDateTimeLabel } from "@fresh-prints/shared/utils/showDateTimeDisplay";
 
 export function getUpcomingShowStatusBadgeVariant(status: UpcomingShowStatus) {
   switch (status) {

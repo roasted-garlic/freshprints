@@ -3,15 +3,15 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { WHATNOT_IMPORT_SHELL_PAGE_STATUS_EVENT } from "./whatnotImportIpcChannels";
-import { parseWhatnotShowBaseUrl } from "../../../shared/utils/whatnotShowBaseUrl";
-import { parseWhatnotShowImportCandidates } from "../../../shared/utils/whatnotShowImportCandidate";
-import { planWhatnotShowImport } from "../../../shared/utils/whatnotShowImportPlan";
-import type { RawWhatnotShowDomCandidate } from "../../../shared/utils/whatnotShowImportCandidate";
-import type { WhatnotShowImportPlanEntry } from "../../../shared/utils/whatnotShowImportPlan";
+import { parseWhatnotShowBaseUrl } from "@fresh-prints/shared/utils/whatnotShowBaseUrl";
+import { parseWhatnotShowImportCandidates } from "@fresh-prints/shared/utils/whatnotShowImportCandidate";
+import { planWhatnotShowImport } from "@fresh-prints/shared/utils/whatnotShowImportPlan";
+import type { RawWhatnotShowDomCandidate } from "@fresh-prints/shared/utils/whatnotShowImportCandidate";
+import type { WhatnotShowImportPlanEntry } from "@fresh-prints/shared/utils/whatnotShowImportPlan";
 import type {
   WhatnotExistingShowSummary,
   WhatnotImportShellPageStatusEvent,
-} from "../../../shared/types/whatnotImport/whatnotImport.types";
+} from "@fresh-prints/shared/types/whatnotImport/whatnotImport.types";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 

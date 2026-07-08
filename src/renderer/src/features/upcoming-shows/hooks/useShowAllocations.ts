@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useAuth } from "../../auth/hooks/useAuth";
 import { permissionService } from "../../permissions/services/permissionService";
 import { upcomingShowService } from "../services/upcomingShowService";
-import type { ShowAllocation } from "../../../../../../shared/types/showAllocation/showAllocation.types";
+import type { ShowAllocation } from "@fresh-prints/shared/types/showAllocation/showAllocation.types";
 
 interface ShowAllocationsState {
   allocations: ShowAllocation[];
@@ -20,10 +20,16 @@ const initialState: ShowAllocationsState = {
 export function useShowAllocations(upcomingShowId: string | null) {
   const { user } = useAuth();
   const [state, setState] = useState<ShowAllocationsState>(initialState);
+  const loadRequestIdRef = useRef(0);
 
   const loadAllocations = useCallback(async () => {
+    const requestId = loadRequestIdRef.current + 1;
+    loadRequestIdRef.current = requestId;
+
     if (!user || !permissionService.canViewUpcomingShows(user) || !upcomingShowId) {
-      setState({ allocations: [], error: null, isLoading: false });
+      if (loadRequestIdRef.current === requestId) {
+        setState({ allocations: [], error: null, isLoading: false });
+      }
       return;
     }
 
@@ -31,8 +37,17 @@ export function useShowAllocations(upcomingShowId: string | null) {
 
     try {
       const allocations = await upcomingShowService.listShowAllocations(user, upcomingShowId);
+
+      if (loadRequestIdRef.current !== requestId) {
+        return;
+      }
+
       setState({ allocations, error: null, isLoading: false });
     } catch (error) {
+      if (loadRequestIdRef.current !== requestId) {
+        return;
+      }
+
       setState({
         allocations: [],
         error: error instanceof Error ? error.message : "Unable to load show allocations.",

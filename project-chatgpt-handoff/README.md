@@ -53,7 +53,9 @@ Portable documentation for **ChatGPT, Claude, or other external AI assistants** 
 
 ## Updating CURRENT-STATE
 
-Before each external AI session:
+**In-repo agents (Cursor, Claude, Codex):** updating `CURRENT-STATE.md` is **required at every managed-phase signoff**, not only when a human refreshes for ChatGPT. See `.cursor/skills/signoff-phase/SKILL.md` and `MANIFEST.md` checklist.
+
+Before each external AI session (human):
 
 1. Open `.cursor/workflow/state.md` in the repo (authoritative workflow state).
 2. Update the **Workflow Snapshot** and **Active Goal** sections in `CURRENT-STATE.md`.

@@ -1,4 +1,4 @@
-import { AI_PROCESSING_STAGES, type AiProcessingStage } from "../../../../../../shared/types/ai/aiProcessing.types";
+import { AI_PROCESSING_STAGES, type AiProcessingStage } from "@fresh-prints/shared/types/ai/aiProcessing.types";
 import { isAiReviewStatus } from "../../designs/types/aiReview.types";
 import type { Design } from "../../designs/types/design.types";
 import { isDesignStatus } from "../../designs/types/designStatus.types";

@@ -1,5 +1,5 @@
 import type { Design } from "../../designs/types/design.types";
-import type { AiProcessingStage } from "../../../../../../shared/types/ai/aiProcessing.types";
+import type { AiProcessingStage } from "@fresh-prints/shared/types/ai/aiProcessing.types";
 import { formatAiReviewStatusLabel } from "../../designs/utils/aiReviewDisplay";
 import { resolveDesignAiReviewDisplay } from "../../designs/utils/aiReviewState";
 

@@ -2,7 +2,7 @@ import { lstat, mkdir, readdir, rm, stat } from "node:fs/promises";
 import path from "node:path";
 import { app } from "electron";
 
-import { STALE_IMPORT_TEMP_DIR_MAX_AGE_MS } from "../../../shared/constants/import/importTemp.constants";
+import { STALE_IMPORT_TEMP_DIR_MAX_AGE_MS } from "@fresh-prints/shared/constants/import/importTemp.constants";
 import {
   ImportTempPathSafetyError,
   isImportJobTempDirName,

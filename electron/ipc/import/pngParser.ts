@@ -1,8 +1,8 @@
 import {
   METERS_PER_INCH,
   PNG_MAGIC_BYTES,
-} from "../../../shared/constants/importValidation.constants";
-import type { PngDpiSource } from "../../../shared/types/import/importIpc.types";
+} from "@fresh-prints/shared/constants/importValidation.constants";
+import type { PngDpiSource } from "@fresh-prints/shared/types/import/importIpc.types";
 
 const PNG_SIGNATURE = Buffer.from(PNG_MAGIC_BYTES);
 

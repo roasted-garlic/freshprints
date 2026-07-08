@@ -1,9 +1,9 @@
 import { dialog } from "electron";
 
-import { MAX_ZIP_SIZE_BYTES } from "../../../shared/constants/import/batchImportLimits.constants";
-import { ImportLimitExceededError } from "../../../shared/errors/importLimitErrors";
-import type { SelectImportZipFileResult } from "../../../shared/types/import/importIpc.types";
-import { formatZipSizeLimitExceededMessage } from "../../../shared/utils/importLimitMessages";
+import { MAX_ZIP_SIZE_BYTES } from "@fresh-prints/shared/constants/import/batchImportLimits.constants";
+import { ImportLimitExceededError } from "@fresh-prints/shared/errors/importLimitErrors";
+import type { SelectImportZipFileResult } from "@fresh-prints/shared/types/import/importIpc.types";
+import { formatZipSizeLimitExceededMessage } from "@fresh-prints/shared/utils/importLimitMessages";
 import { getActiveBrowserWindow } from "./importBrowserWindow";
 import { registerBatchImportSelection } from "./importBatchSession";
 import { buildSelectedZipFile } from "./importZipSelection";

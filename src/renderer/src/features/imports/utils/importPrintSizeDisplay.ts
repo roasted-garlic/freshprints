@@ -1,6 +1,6 @@
-import type { PrintSizeAssessment } from "../../../../../../shared/types/printSize/printSize.types";
-import type { ImportPngWarning } from "../../../../../../shared/types/import/importIpc.types";
-import { PRINT_INCHES_DECIMAL_PLACES } from "../../../../../../shared/constants/printSize.constants";
+import type { PrintSizeAssessment } from "@fresh-prints/shared/types/printSize/printSize.types";
+import type { ImportPngWarning } from "@fresh-prints/shared/types/import/importIpc.types";
+import { PRINT_INCHES_DECIMAL_PLACES } from "@fresh-prints/shared/constants/printSize.constants";
 
 export function formatPrintInchesDisplay(value: number): string {
   return value.toFixed(PRINT_INCHES_DECIMAL_PLACES);
@@ -28,6 +28,8 @@ export function getPrintSizeAcceptanceLabel(
 export function getImportWarningMessageClassName(code: ImportPngWarning["code"]): string {
   switch (code) {
     case "PRINT_SIZE_NORMALIZED":
+    case "IMAGE_TRIMMED":
+    case "IMAGE_UPSCALED":
       return "auth-message auth-message-success";
     case "PRINT_SIZE_SMALL_FORMAT":
       return "auth-message auth-message-warning batch-import-file-validation-warning-strong";

@@ -1,4 +1,4 @@
-import type { UpcomingShow } from "../../../../../../shared/types/upcomingShow/upcomingShow.types";
+import type { UpcomingShow } from "@fresh-prints/shared/types/upcomingShow/upcomingShow.types";
 
 export interface UpcomingShowDateGroup {
   /** Sort key, e.g. "2026-08-01"; "no-date" for shows missing a schedule. */

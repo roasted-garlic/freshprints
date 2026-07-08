@@ -17,7 +17,7 @@ import type {
   WhatnotExistingShowSummary,
   WhatnotShowImportCompletedEvent,
   WhatnotShowImportShellConfirmPayload,
-} from "../../../shared/types/whatnotImport/whatnotImport.types";
+} from "@fresh-prints/shared/types/whatnotImport/whatnotImport.types";
 
 function isWhatnotShowImportShellConfirmPayload(value: unknown): value is WhatnotShowImportShellConfirmPayload {
   return (

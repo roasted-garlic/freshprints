@@ -1,4 +1,4 @@
-import type { ImportFileRejection } from "../../../shared/types/import/batchImport.types";
+import type { ImportFileRejection } from "@fresh-prints/shared/types/import/batchImport.types";
 import { PngValidationError } from "./pngValidator";
 import { getFileName } from "./importPathUtils";
 

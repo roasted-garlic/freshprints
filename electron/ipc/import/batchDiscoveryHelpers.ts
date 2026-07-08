@@ -6,8 +6,8 @@ import type {
   BatchImportProgressEvent,
   BatchImportSourceType,
   FolderBatchDiscoverySummary,
-} from "../../../shared/types/import/batchImport.types";
-import { buildBatchDiscoverySummary } from "../../../shared/utils/batchDiscoverySummary";
+} from "@fresh-prints/shared/types/import/batchImport.types";
+import { buildBatchDiscoverySummary } from "@fresh-prints/shared/utils/batchDiscoverySummary";
 import { emitBatchDiscoveryComplete, emitBatchImportProgress } from "./batchImportEvents";
 
 export function buildProgressCounts(files: BatchImportFileManifestEntry[]) {

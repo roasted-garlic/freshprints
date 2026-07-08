@@ -1,4 +1,4 @@
-import { DERIVATIVE_PROCESSING_CONCURRENCY } from "../../../shared/constants/import/derivativeGeneration.constants";
+import { DERIVATIVE_PROCESSING_CONCURRENCY } from "@fresh-prints/shared/constants/import/derivativeGeneration.constants";
 
 /**
  * Serializes sharp decode/encode work in the main process.

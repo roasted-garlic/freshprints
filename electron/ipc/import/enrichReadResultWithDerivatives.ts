@@ -1,4 +1,4 @@
-import type { ReadSelectedPngFileBytesResult } from "../../../shared/types/import/importIpc.types";
+import type { ReadSelectedPngFileBytesResult } from "@fresh-prints/shared/types/import/importIpc.types";
 import { derivativeGenerationService } from "../../services/import/derivativeGenerationService";
 
 /**

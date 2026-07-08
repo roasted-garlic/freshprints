@@ -11,22 +11,22 @@ import { useUpcomingShows } from "../../upcoming-shows/hooks/useUpcomingShows";
 import { groupShowsByDate } from "../../upcoming-shows/utils/groupShowsByDate";
 import type { Design } from "../../designs/types/design.types";
 import { SplitDesignPickerModal } from "./SplitDesignPickerModal";
-import { assessShowCapacity, planAllocationSplit } from "../../../../../../shared/utils/showCapacity";
+import { assessShowCapacity, planAllocationSplit } from "@fresh-prints/shared/utils/showCapacity";
 import {
   formatCapacityUsedLabel,
   formatSpotsRemainingLabel,
   getCapacityFillLevel,
   getDerivedShowStatusDisplay,
   getShowCapacityPercent,
-} from "../../../../../../shared/utils/showCapacityDisplay";
-import { formatShowDateTimeLabel, formatShowTimeOnlyLabel } from "../../../../../../shared/utils/showDateTimeDisplay";
-import { formatPrintRequestAllocationSummary } from "../../../../../../shared/utils/printRequestSummaryCopy";
+} from "@fresh-prints/shared/utils/showCapacityDisplay";
+import { formatShowDateTimeLabel, formatShowTimeOnlyLabel } from "@fresh-prints/shared/utils/showDateTimeDisplay";
+import { formatPrintRequestAllocationSummary } from "@fresh-prints/shared/utils/printRequestSummaryCopy";
 import {
   formatSplitNeededWarning,
   shouldShowRemainingWording,
   type SplitPickerQuantities,
-} from "../../../../../../shared/utils/printRequestSplitAllocation";
-import type { PrintRequest, PrintRequestItem } from "../../../../../../shared/types/printRequest/printRequest.types";
+} from "@fresh-prints/shared/utils/printRequestSplitAllocation";
+import type { PrintRequest, PrintRequestItem } from "@fresh-prints/shared/types/printRequest/printRequest.types";
 
 interface AddToShowModalProps {
   printRequest: PrintRequest;
@@ -41,6 +41,13 @@ interface AddToShowModalProps {
 interface AllocationLeg {
   showId: string;
   quantitiesByItemId: Record<string, number>;
+}
+
+interface AllocationProgress {
+  stepIndex: number;
+  stepTotal: number;
+  showLabel: string;
+  itemLabel: string;
 }
 
 function formatWriteErrorMessage(error: unknown): string {
@@ -63,6 +70,7 @@ export function AddToShowModal({
   const [overrideConfirmed, setOverrideConfirmed] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [progress, setProgress] = useState<AllocationProgress | null>(null);
 
   useEffect(() => {
     setOverrideConfirmed(false);
@@ -213,19 +221,35 @@ export function AddToShowModal({
       return;
     }
 
+    const steps = finalLegs.flatMap((leg) =>
+      Object.entries(leg.quantitiesByItemId).map(([itemId, quantity]) => ({
+        showId: leg.showId,
+        itemId,
+        quantity,
+      })),
+    );
+
     setIsSubmitting(true);
     setActionError(null);
+    setProgress(steps.length > 0 ? { stepIndex: 0, stepTotal: steps.length, showLabel: "", itemLabel: "" } : null);
 
     try {
-      for (const leg of finalLegs) {
-        for (const [itemId, quantity] of Object.entries(leg.quantitiesByItemId)) {
-          await upcomingShowService.allocatePrintRequestItem(user, leg.showId, {
-            printRequestId: printRequest.id,
-            printRequestItemId: itemId,
-            quantity,
-            overrideCapacity: true,
-          });
-        }
+      for (const [index, step] of steps.entries()) {
+        const design = designById?.get(items.find((item) => item.id === step.itemId)?.designId ?? "");
+
+        setProgress({
+          stepIndex: index + 1,
+          stepTotal: steps.length,
+          showLabel: getShowLabel(step.showId),
+          itemLabel: design?.title ?? "design",
+        });
+
+        await upcomingShowService.allocatePrintRequestItem(user, step.showId, {
+          printRequestId: printRequest.id,
+          printRequestItemId: step.itemId,
+          quantity: step.quantity,
+          overrideCapacity: true,
+        });
       }
 
       await onAdded();
@@ -234,8 +258,21 @@ export function AddToShowModal({
       setActionError(formatWriteErrorMessage(error));
     } finally {
       setIsSubmitting(false);
+      setProgress(null);
     }
-  }, [canConfirmFullFitDirectly, legs, onAdded, onClose, printRequest.id, remainingItems, selectedShowId, user]);
+  }, [
+    canConfirmFullFitDirectly,
+    designById,
+    getShowLabel,
+    items,
+    legs,
+    onAdded,
+    onClose,
+    printRequest.id,
+    remainingItems,
+    selectedShowId,
+    user,
+  ]);
 
   const isConfirmDisabled =
     isSubmitting || (legs.length === 0 && !(canConfirmFullFitDirectly && remainingItems.length > 0));
@@ -258,142 +295,175 @@ export function AddToShowModal({
           </button>
         </ModalHeader>
         <ModalBody>
-          <p className="print-requests-modal-hint">
-            {formatPrintRequestAllocationSummary(items.length, totalRequestedQuantity)}
-          </p>
-
-          {legs.length > 0 ? (
-            <div className="show-allocation-plan-list">
-              {legs.map((leg, index) => {
-                const legTotal = Object.values(leg.quantitiesByItemId).reduce((sum, quantity) => sum + quantity, 0);
-
-                return (
-                  <div className="show-allocation-plan-row" key={`${leg.showId}-${index}`}>
-                    <span>
-                      {getShowLabel(leg.showId)}: {legTotal} print{legTotal === 1 ? "" : "s"}
-                    </span>
-                    <Button onClick={() => removeLeg(index)} size="sm" variant="ghost">
-                      Undo
-                    </Button>
-                  </div>
-                );
-              })}
+          {isSubmitting ? (
+            <div className="show-allocation-progress">
+              <p className="show-allocation-progress-label">
+                {progress
+                  ? `${progress.stepIndex} of ${progress.stepTotal} prints — allocating "${progress.itemLabel}" to ${progress.showLabel}`
+                  : "Preparing..."}
+              </p>
+              {progress ? (
+                <div
+                  aria-valuemax={progress.stepTotal}
+                  aria-valuemin={0}
+                  aria-valuenow={progress.stepIndex}
+                  className="show-allocation-progress-bar"
+                  role="progressbar"
+                >
+                  <div
+                    className="show-allocation-progress-bar-fill"
+                    style={{ width: `${(progress.stepIndex / progress.stepTotal) * 100}%` }}
+                  />
+                </div>
+              ) : null}
             </div>
-          ) : null}
-
-          {remainingItems.length === 0 ? (
-            <p className="print-requests-modal-hint">Every print in this request has been assigned to a show.</p>
-          ) : isShowsLoading ? (
-            <LoadingSpinner label="Loading shows" />
-          ) : shows.length === 0 ? (
-            <p className="print-requests-modal-hint">Add a show in the Show Queue before attaching print requests.</p>
           ) : (
             <>
-              {shouldShowRemainingWording(legs.length) ? (
-                <p className="print-requests-modal-hint">
-                  {remainingTotalQuantity} print{remainingTotalQuantity === 1 ? "" : "s"} still need a show.
-                </p>
-              ) : null}
-              {fixedShowId ? null : (
-                <div className="show-date-picker">
-                  {dateGroups.map((group) => (
-                    <div className="show-date-picker-group" key={group.dateKey}>
-                      <p className="show-date-picker-group-label">{group.dateLabel}</p>
-                      <div className="show-date-picker-options">
-                        {group.shows.map((show) => {
-                          const capacity = capacityByShowId.get(show.id);
-                          const isSelected = show.id === selectedShowId;
-                          const statusDisplay = capacity
-                            ? getDerivedShowStatusDisplay(show.productionStatus, capacity)
-                            : null;
-                          const fillLevel = capacity ? getCapacityFillLevel(getShowCapacityPercent(capacity)) : undefined;
-                          const cardStateClass = capacity?.isOverCapacity
-                            ? " is-over-capacity"
-                            : capacity?.isFull
-                              ? " is-full"
-                              : "";
+              <p className="print-requests-modal-hint">
+                {formatPrintRequestAllocationSummary(items.length, totalRequestedQuantity)}
+              </p>
 
-                          return (
-                            <button
-                              className={`show-date-picker-option${isSelected ? " is-selected" : ""}${cardStateClass}`}
-                              key={show.id}
-                              onClick={() => setSelectedShowId(show.id)}
-                              type="button"
-                            >
-                              <div className="show-date-picker-option-main">
-                                <span className="show-date-picker-option-time">
-                                  {formatShowTimeOnlyLabel(show.scheduledStartAt?.toDate() ?? new Date())}
-                                </span>
-                                {capacity ? (
-                                  <>
-                                    <div className="show-date-picker-option-bar-track">
-                                      <div
-                                        className={`show-date-picker-option-bar-fill${fillLevel ? ` is-${fillLevel}` : ""}`}
-                                        style={{ width: `${Math.min(100, getShowCapacityPercent(capacity) ?? 0)}%` }}
-                                      />
-                                    </div>
-                                    <span className="show-date-picker-option-capacity">
-                                      {formatCapacityUsedLabel(capacity)} &middot; {formatSpotsRemainingLabel(capacity)}
-                                    </span>
-                                  </>
-                                ) : null}
-                              </div>
-                              {statusDisplay ? (
-                                <Badge className="show-date-picker-option-badge" variant={statusDisplay.variant}>
-                                  {statusDisplay.label}
-                                </Badge>
-                              ) : null}
-                            </button>
-                          );
-                        })}
+              {legs.length > 0 ? (
+                <div className="show-allocation-plan-list">
+                  {legs.map((leg, index) => {
+                    const legTotal = Object.values(leg.quantitiesByItemId).reduce(
+                      (sum, quantity) => sum + quantity,
+                      0,
+                    );
+
+                    return (
+                      <div className="show-allocation-plan-row" key={`${leg.showId}-${index}`}>
+                        <span>
+                          {getShowLabel(leg.showId)}: {legTotal} print{legTotal === 1 ? "" : "s"}
+                        </span>
+                        <Button onClick={() => removeLeg(index)} size="sm" variant="ghost">
+                          Undo
+                        </Button>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
-              )}
-
-              {selectedShowId && !needsDecision && shouldShowRemainingWording(legs.length) ? (
-                <Button onClick={handleAddLegForFullRemainder} type="button" variant="secondary">
-                  Add remaining {remainingTotalQuantity} print{remainingTotalQuantity === 1 ? "" : "s"} to this show
-                </Button>
               ) : null}
 
-              {selectedShowId && needsDecision ? (
-                <div className="show-allocation-decision">
-                  <p className="show-allocation-decision-message">
-                    {isSelectedShowFull
-                      ? "This show is full. You can select a different show for the full request, or use the staff override below to add it anyway."
-                      : formatSplitNeededWarning({
-                          fittingQuantity: splitPlan?.fittingQuantity ?? 0,
-                          totalQuantity: remainingTotalQuantity,
-                        })}
-                  </p>
-                  {isSelectedShowFull ? null : (
-                    <div className="show-allocation-decision-actions">
-                      <Button onClick={() => setIsPickerOpen(true)} type="button" variant="secondary">
-                        Choose designs for this show
-                      </Button>
+              {remainingItems.length === 0 ? (
+                <p className="print-requests-modal-hint">Every print in this request has been assigned to a show.</p>
+              ) : isShowsLoading ? (
+                <LoadingSpinner label="Loading shows" />
+              ) : shows.length === 0 ? (
+                <p className="print-requests-modal-hint">Add a show in the Show Queue before attaching print requests.</p>
+              ) : (
+                <>
+                  {shouldShowRemainingWording(legs.length) ? (
+                    <p className="print-requests-modal-hint">
+                      {remainingTotalQuantity} print{remainingTotalQuantity === 1 ? "" : "s"} still need a show.
+                    </p>
+                  ) : null}
+                  {fixedShowId ? null : (
+                    <div className="show-date-picker">
+                      {dateGroups.map((group) => (
+                        <div className="show-date-picker-group" key={group.dateKey}>
+                          <p className="show-date-picker-group-label">{group.dateLabel}</p>
+                          <div className="show-date-picker-options">
+                            {group.shows.map((show) => {
+                              const capacity = capacityByShowId.get(show.id);
+                              const isSelected = show.id === selectedShowId;
+                              const statusDisplay = capacity
+                                ? getDerivedShowStatusDisplay(show.productionStatus, capacity)
+                                : null;
+                              const fillLevel = capacity
+                                ? getCapacityFillLevel(getShowCapacityPercent(capacity))
+                                : undefined;
+                              const cardStateClass = capacity?.isOverCapacity
+                                ? " is-over-capacity"
+                                : capacity?.isFull
+                                  ? " is-full"
+                                  : "";
+
+                              return (
+                                <button
+                                  className={`show-date-picker-option${isSelected ? " is-selected" : ""}${cardStateClass}`}
+                                  key={show.id}
+                                  onClick={() => setSelectedShowId(show.id)}
+                                  type="button"
+                                >
+                                  <div className="show-date-picker-option-main">
+                                    <span className="show-date-picker-option-time">
+                                      {formatShowTimeOnlyLabel(show.scheduledStartAt?.toDate() ?? new Date())}
+                                    </span>
+                                    {capacity ? (
+                                      <>
+                                        <div className="show-date-picker-option-bar-track">
+                                          <div
+                                            className={`show-date-picker-option-bar-fill${fillLevel ? ` is-${fillLevel}` : ""}`}
+                                            style={{ width: `${Math.min(100, getShowCapacityPercent(capacity) ?? 0)}%` }}
+                                          />
+                                        </div>
+                                        <span className="show-date-picker-option-capacity">
+                                          {formatCapacityUsedLabel(capacity)} &middot; {formatSpotsRemainingLabel(capacity)}
+                                        </span>
+                                      </>
+                                    ) : null}
+                                  </div>
+                                  {statusDisplay ? (
+                                    <Badge className="show-date-picker-option-badge" variant={statusDisplay.variant}>
+                                      {statusDisplay.label}
+                                    </Badge>
+                                  ) : null}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   )}
-                  <label className="show-allocation-decision-override">
-                    <input
-                      checked={overrideConfirmed}
-                      onChange={(event) => setOverrideConfirmed(event.target.checked)}
-                      type="checkbox"
-                    />
-                    <span>
-                      Staff override: add all {remainingTotalQuantity}{" "}
-                      {shouldShowRemainingWording(legs.length) ? "remaining " : ""}print
-                      {remainingTotalQuantity === 1 ? "" : "s"} to this show even though it exceeds remaining capacity.
-                    </span>
-                  </label>
-                  {overrideConfirmed ? (
-                    <Button onClick={handleAddOverrideLegForFullRemainder} type="button" variant="danger">
-                      Add with override
+
+                  {selectedShowId && !needsDecision && shouldShowRemainingWording(legs.length) ? (
+                    <Button onClick={handleAddLegForFullRemainder} type="button" variant="secondary">
+                      Add remaining {remainingTotalQuantity} print{remainingTotalQuantity === 1 ? "" : "s"} to this
+                      show
                     </Button>
                   ) : null}
-                </div>
-              ) : null}
+
+                  {selectedShowId && needsDecision ? (
+                    <div className="show-allocation-decision">
+                      <p className="show-allocation-decision-message">
+                        {isSelectedShowFull
+                          ? "This show is full. You can select a different show for the full request, or use the staff override below to add it anyway."
+                          : formatSplitNeededWarning({
+                              fittingQuantity: splitPlan?.fittingQuantity ?? 0,
+                              totalQuantity: remainingTotalQuantity,
+                            })}
+                      </p>
+                      {isSelectedShowFull ? null : (
+                        <div className="show-allocation-decision-actions">
+                          <Button onClick={() => setIsPickerOpen(true)} type="button" variant="secondary">
+                            Choose designs for this show
+                          </Button>
+                        </div>
+                      )}
+                      <label className="show-allocation-decision-override">
+                        <input
+                          checked={overrideConfirmed}
+                          onChange={(event) => setOverrideConfirmed(event.target.checked)}
+                          type="checkbox"
+                        />
+                        <span>
+                          Staff override: add all {remainingTotalQuantity}{" "}
+                          {shouldShowRemainingWording(legs.length) ? "remaining " : ""}print
+                          {remainingTotalQuantity === 1 ? "" : "s"} to this show even though it exceeds remaining
+                          capacity.
+                        </span>
+                      </label>
+                      {overrideConfirmed ? (
+                        <Button onClick={handleAddOverrideLegForFullRemainder} type="button" variant="danger">
+                          Add with override
+                        </Button>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </>
+              )}
             </>
           )}
 

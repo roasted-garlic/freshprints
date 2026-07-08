@@ -47,6 +47,9 @@
 | Batch import progress UI | ✅ Live |
 | Import completion → link to AI Review | ✅ Live |
 | 2GB ZIP limit | ✅ Live |
+| Auto-upscale low-resolution PNGs (3000px / 10in @ 300 DPI target) | ✅ Live |
+| Trim transparent padding at import | ✅ Live |
+| `IMAGE_UPSCALED` / `IMAGE_TRIMMED` informational warnings | ✅ Live |
 
 ## AI Review (`/ai-review`) — permission: `viewAiReview`
 
@@ -103,6 +106,24 @@
 | Request item persistence after reload/revisit | ✅ QA pass |
 | Design lifecycle status remains catalog-only | ✅ QA pass |
 
+## Show Queue (`/show-queue`) — permission: `viewShowQueue`
+
+| Feature | Status |
+|---------|--------|
+| Combined Whatnot show + print run list/detail | ✅ Live |
+| Manual add/update show (Whatnot URL → show ID, schedule) | ✅ Live |
+| Upcoming / Past tabs | ✅ Live |
+| Capacity tracking + progress bars + Open/Full/Over Max | ✅ Live |
+| Split allocation across shows | ✅ Live |
+| Add to Show / attach Print Requests | ✅ Live |
+| Working / Queued / Printed request tabs | ✅ Live |
+| Staff-assisted Whatnot show-list import | ✅ Live |
+| Show Queue settings (`settings/showQueue`, gang sheet layout) | ✅ Live |
+| **Export** — per-show zip (300 DPI resize per allocation) | ✅ Signed off 2026-07-07 |
+| Export multiply-by-quantity option | ✅ Signed off 2026-07-07 |
+| **Export Gang Sheet** — auto-nested PNG export | ✅ Signed off 2026-07-07 |
+| Gang Sheet Builder manual canvas (`/show-queue/:showId/gang-sheet`) | ⏸ Deferred (unlinked from nav) |
+
 ## Dev Dashboard (`/dev-dashboard`) — permission: `accessDashboard`
 
 | Feature | Status |
@@ -113,7 +134,6 @@
 
 | Route | Notes |
 |-------|-------|
-| `/show-queue` | Placeholder — will become Print Runs (Phase 7) |
 | `/customer-requests` | Placeholder — will become Custom Requests (Phase 9) |
 
 ## Backend (Cloud Functions)

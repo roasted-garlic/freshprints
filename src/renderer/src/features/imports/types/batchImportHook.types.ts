@@ -4,7 +4,7 @@ import type {
   BatchImportSourceType,
   BatchImportJobId,
   BatchJobErrorEvent,
-} from "../../../../../../shared/types/import/batchImport.types";
+} from "@fresh-prints/shared/types/import/batchImport.types";
 
 import type { BatchImportUploadReport } from "./batchImportOrchestration.types";
 

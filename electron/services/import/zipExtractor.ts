@@ -4,7 +4,7 @@ import path from "node:path";
 import { pipeline } from "node:stream/promises";
 import yauzl from "yauzl";
 
-import { ALLOWED_EXTENSIONS } from "../../../shared/constants/importValidation.constants";
+import { ALLOWED_EXTENSIONS } from "@fresh-prints/shared/constants/importValidation.constants";
 import {
   MAX_BATCH_FILES,
   MAX_EXTRACTED_BYTES,
@@ -12,11 +12,11 @@ import {
   MAX_ZIP_COMPRESSION_RATIO,
   MAX_ZIP_ENTRIES,
   MAX_ZIP_SIZE_BYTES,
-} from "../../../shared/constants/import/batchImportLimits.constants";
+} from "@fresh-prints/shared/constants/import/batchImportLimits.constants";
 import {
   formatZipExtractedSizeLimitExceededMessage,
   formatZipSizeLimitExceededMessage,
-} from "../../../shared/utils/importLimitMessages";
+} from "@fresh-prints/shared/utils/importLimitMessages";
 import {
   isZipDirectoryEntry,
   resolveSafeZipEntryPath,

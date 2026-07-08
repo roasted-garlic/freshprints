@@ -1,12 +1,12 @@
 import type { ReactNode } from "react";
 
-import type { EffectiveDpiQualityLevel } from "../../../../../shared/types/printSize/printSize.enums";
+import type { EffectiveDpiQualityLevel } from "@fresh-prints/shared/types/printSize/printSize.enums";
 import {
   formatResolutionQualityTooltip,
   getEffectiveDpiQualityClassName,
   getEffectiveDpiQualityLabel,
   resolveEffectiveDpiQualityLevel,
-} from "../../../../../shared/utils/effectiveDpiQuality";
+} from "@fresh-prints/shared/utils/effectiveDpiQuality";
 
 import { Badge } from "./Badge";
 

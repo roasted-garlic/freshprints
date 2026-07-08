@@ -1,8 +1,8 @@
 import { FieldValue } from "firebase-admin/firestore";
 
-import type { DesignAiAnalysis, DesignAiSuggestions } from "../../../shared/types/ai/aiProcessing.types";
-import type { SuggestedNewTag } from "../../../shared/types/catalogTag.types";
-import type { SuggestionAuthorMode, TagRerankMode } from "../../../shared/constants/aiEnrichment.constants";
+import type { DesignAiAnalysis, DesignAiSuggestions } from "../../../packages/shared/src/types/ai/aiProcessing.types";
+import type { SuggestedNewTag } from "../../../packages/shared/src/types/catalogTag.types";
+import type { SuggestionAuthorMode, TagRerankMode } from "../../../packages/shared/src/constants/aiEnrichment.constants";
 import { adminDb, adminStorage } from "../lib/admin";
 import { updateAiProcessingStage } from "./designAiFields";
 import { logPipelineEvent } from "../lib/pipelineLog";

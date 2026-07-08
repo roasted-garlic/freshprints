@@ -5,12 +5,12 @@ import {
   THUMBNAIL_MAX_HEIGHT_PX,
   THUMBNAIL_MAX_WIDTH_PX,
   THUMBNAIL_WEBP_QUALITY,
-} from "../../../shared/constants/import/derivativeGeneration.constants";
+} from "@fresh-prints/shared/constants/import/derivativeGeneration.constants";
 import type {
   DerivativeGenerationFailure,
   DerivativeGenerationOutcome,
   DerivativeGenerationRequest,
-} from "../../../shared/types/import/derivativeGeneration.types";
+} from "@fresh-prints/shared/types/import/derivativeGeneration.types";
 import { derivativeConcurrencyQueue } from "./derivativeConcurrencyQueue";
 import { encodeWebpDerivative } from "./encodeWebpDerivative";
 import { validateDerivativeGenerationRequest } from "./derivativePngValidation";

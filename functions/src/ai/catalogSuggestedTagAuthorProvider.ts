@@ -1,7 +1,7 @@
-import type { CatalogTag } from "../../../shared/types/catalogTag.types";
+import type { CatalogTag } from "../../../packages/shared/src/types/catalogTag.types";
 import type { ProviderTarget } from "./providers/resolveProviderTarget";
 
-import { estimateVisionCostUsd } from "../../../shared/constants/aiEnrichment.constants";
+import { estimateVisionCostUsd } from "../../../packages/shared/src/constants/aiEnrichment.constants";
 import { VISION_REQUEST_BASE_DELAY_MS, VISION_REQUEST_MAX_RETRIES } from "./aiEnrichmentConfig";
 import { extractJsonObject } from "./simpleCatalogEnrichmentResponse";
 import {

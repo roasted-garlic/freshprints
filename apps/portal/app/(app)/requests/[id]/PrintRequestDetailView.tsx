@@ -1,0 +1,196 @@
+'use client';
+
+import Link from 'next/link';
+import { useParams, useRouter } from 'next/navigation';
+import { useCallback, useState } from 'react';
+
+import type { PrintRequestItem } from '@fresh-prints/shared/types/printRequest/printRequest.types';
+
+import { PortalPrintRequestItemCard } from '../../../../features/print-requests/components/PortalPrintRequestItemCard';
+import { usePrintRequestDetail } from '../../../../features/print-requests/hooks/usePrintRequestDetail';
+
+function getStatusLabel(status: string): string {
+  switch (status) {
+    case 'draft':
+      return 'Draft';
+    case 'editing':
+      return 'Editing';
+    case 'active':
+      return 'Active';
+    case 'completed':
+      return 'Completed';
+    case 'archived':
+      return 'Archived';
+    default:
+      return status;
+  }
+}
+
+export default function PrintRequestDetailView() {
+  const params = useParams<{ id: string }>();
+  const router = useRouter();
+  const printRequestId = params.id;
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  const {
+    printRequest,
+    items,
+    designSummaries,
+    isLoading,
+    error,
+    isEditable,
+    updateItem,
+    duplicateItem,
+    removeItem,
+  } = usePrintRequestDetail(printRequestId);
+
+  const handleUpdateItem = useCallback(
+    async (
+      item: PrintRequestItem,
+      input: { quantity: number; printWidthInches: number; printHeightInches: number },
+    ) => {
+      setActionError(null);
+      await updateItem(item.id, input);
+    },
+    [updateItem],
+  );
+
+  const handleDuplicateItem = useCallback(
+    async (item: PrintRequestItem) => {
+      setActionError(null);
+
+      try {
+        await duplicateItem(item.id);
+      } catch (duplicateError) {
+        setActionError(
+          duplicateError instanceof Error ? duplicateError.message : 'Unable to duplicate item.',
+        );
+      }
+    },
+    [duplicateItem],
+  );
+
+  const handleRemoveItem = useCallback(
+    async (item: PrintRequestItem) => {
+      setActionError(null);
+
+      try {
+        await removeItem(item.id);
+      } catch (removeError) {
+        setActionError(removeError instanceof Error ? removeError.message : 'Unable to remove item.');
+      }
+    },
+    [removeItem],
+  );
+
+  if (isLoading) {
+    return (
+      <main className="portal-page portal-request-detail-page">
+        <div className="portal-panel portal-muted">Loading print request…</div>
+      </main>
+    );
+  }
+
+  if (error || !printRequest) {
+    return (
+      <main className="portal-page portal-request-detail-page">
+        <Link className="portal-back-link" href="/requests">
+          ← Back to print requests
+        </Link>
+        <p className="portal-error" role="alert">
+          {error ?? 'Print request not found.'}
+        </p>
+      </main>
+    );
+  }
+
+  return (
+    <main className="portal-page portal-request-detail-page">
+      <Link className="portal-back-link" href="/requests">
+        ← Back to print requests
+      </Link>
+
+      <header className="portal-page-header portal-request-detail-header">
+        <div className="portal-request-detail-header-copy">
+          <p className="portal-eyebrow">Print request</p>
+          <h1>{printRequest.name}</h1>
+          <p className="portal-muted">
+            {getStatusLabel(printRequest.status)} · {printRequest.itemCount} design
+            {printRequest.itemCount === 1 ? '' : 's'}
+          </p>
+        </div>
+
+        {isEditable ? (
+          <button
+            className="portal-button portal-button-primary portal-request-detail-add-button"
+            onClick={() =>
+              router.push(`/catalog?mode=request-selection&requestId=${printRequest.id}`)
+            }
+            type="button"
+          >
+            Add designs
+          </button>
+        ) : null}
+      </header>
+
+      {actionError ? (
+        <p className="portal-error" role="alert">
+          {actionError}
+        </p>
+      ) : null}
+
+      {items.length === 0 ? (
+        <section className="portal-panel portal-requests-empty">
+          <h2>No designs yet</h2>
+          <p className="portal-muted">
+            {isEditable
+              ? 'Browse the design library to add designs with quantities and print sizes.'
+              : 'This request has no designs.'}
+          </p>
+          {isEditable ? (
+            <button
+              className="portal-button portal-button-primary"
+              onClick={() =>
+                router.push(`/catalog?mode=request-selection&requestId=${printRequest.id}`)
+              }
+              type="button"
+            >
+              Browse design library
+            </button>
+          ) : null}
+        </section>
+      ) : (
+        <section aria-label="Request items" className="portal-request-item-editor-grid">
+          {items.map((item) => {
+            const design = designSummaries.get(item.designId);
+
+            return (
+              <PortalPrintRequestItemCard
+                design={
+                  design
+                    ? {
+                        id: design.id,
+                        title: design.title,
+                        width: design.width,
+                        height: design.height,
+                        thumbnailPath: design.thumbnailPath,
+                        previewPath: design.previewPath,
+                        printWidthInches: design.printWidthInches,
+                        printHeightInches: design.printHeightInches,
+                      }
+                    : null
+                }
+                item={item}
+                key={item.id}
+                onDuplicate={(nextItem) => void handleDuplicateItem(nextItem)}
+                onRemove={(nextItem) => void handleRemoveItem(nextItem)}
+                onUpdate={handleUpdateItem}
+                readOnly={!isEditable}
+              />
+            );
+          })}
+        </section>
+      )}
+    </main>
+  );
+}

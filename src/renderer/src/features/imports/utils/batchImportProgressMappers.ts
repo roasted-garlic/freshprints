@@ -1,8 +1,8 @@
 import type {
   BatchDiscoveryCompleteEvent,
   BatchImportProgressEvent,
-} from "../../../../../../shared/types/import/batchImport.types";
-import { buildBatchDiscoveryLimitWarning } from "../../../../../../shared/utils/batchDiscoverySummary";
+} from "@fresh-prints/shared/types/import/batchImport.types";
+import { buildBatchDiscoveryLimitWarning } from "@fresh-prints/shared/utils/batchDiscoverySummary";
 
 import type { BatchImportUploadProgress } from "../types/batchImportOrchestration.types";
 import type { BatchImportHookProgress } from "../types/batchImportHook.types";

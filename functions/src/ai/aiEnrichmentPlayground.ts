@@ -3,14 +3,14 @@ import type {
   AiEnrichmentPlaygroundResponse,
   AiEnrichmentTagRerankPlaygroundRequest,
   AiEnrichmentTagRerankPlaygroundResponse,
-} from "../../../shared/types/ai/aiEnrichmentPlayground.types";
+} from "../../../packages/shared/src/types/ai/aiEnrichmentPlayground.types";
 import {
   AI_ENRICHMENT_PLAYGROUND_IMAGE_CONTENT_TYPES,
   AI_ENRICHMENT_PLAYGROUND_MAX_IMAGE_BYTES,
   AI_ENRICHMENT_PLAYGROUND_MAX_PROMPT_LENGTH,
   AI_ENRICHMENT_PLAYGROUND_VERSION,
   estimateVisionCostUsd,
-} from "../../../shared/constants/aiEnrichment.constants";
+} from "../../../packages/shared/src/constants/aiEnrichment.constants";
 import { logPipelineEvent } from "../lib/pipelineLog";
 import { prepareAiAnalysisImage } from "./prepareAiAnalysisImage";
 import {

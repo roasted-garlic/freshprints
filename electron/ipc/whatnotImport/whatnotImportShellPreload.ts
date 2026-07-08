@@ -12,8 +12,8 @@ import type {
   ScanWhatnotShowsResult,
   WhatnotShowImportCompletedEvent,
   WhatnotShowImportShellConfirmPayload,
-} from "../../../shared/types/whatnotImport/whatnotImport.types";
-import type { ImportIpcResult } from "../../../shared/types/import/importIpc.types";
+} from "@fresh-prints/shared/types/whatnotImport/whatnotImport.types";
+import type { ImportIpcResult } from "@fresh-prints/shared/types/import/importIpc.types";
 
 function invokeShellChannel<T>(
   channel: (typeof WHATNOT_IMPORT_SHELL_IPC_CHANNELS)[keyof typeof WHATNOT_IMPORT_SHELL_IPC_CHANNELS],

@@ -34,7 +34,7 @@ import { selectImportZipFile } from "./selectImportZipFile";
 import { selectMultiplePngFiles } from "./selectMultiplePngFiles";
 import { selectSinglePngFile } from "./selectSinglePngFile";
 import { registerDevDerivativeVerificationIpc } from "./verifyDerivativeGenerationIpc";
-import { ImportLimitExceededError } from "../../../shared/errors/importLimitErrors";
+import { ImportLimitExceededError } from "@fresh-prints/shared/errors/importLimitErrors";
 import { ZipExtractionError } from "../../services/import/zipExtractionErrors";
 
 function validateFilePathInput(filePath: unknown, requireValidated = false) {

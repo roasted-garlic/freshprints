@@ -7,7 +7,7 @@ import {
   DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
   DEFAULT_TAG_RERANK_PROMPT_TEMPLATE,
   PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V20,
-} from "../../../shared/constants/aiEnrichment.constants";
+} from "../../../packages/shared/src/constants/aiEnrichment.constants";
 import {
   resolveAiPromptTemplate,
   resolveAiTagRerankPromptTemplate,

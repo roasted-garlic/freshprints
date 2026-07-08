@@ -401,15 +401,44 @@ Legacy collection names (`showQueues`, `showQueueItems`, `customerRequests`) rem
 
 ---
 
+# Repository Layout (Incremental Monorepo)
+
+Phase 8 introduced an **incremental monorepo** — Portal and shared code are workspace packages; Studio remains at the repo root until a later low-risk migration to `apps/studio/`.
+
+```txt
+fresh-prints/
+├── apps/portal/              # Next.js App Router — Firebase App Hosting rootDir
+├── packages/shared/src/      # @fresh-prints/shared — cross-app types and pure utils
+├── electron/                 # Studio main process (unchanged location)
+├── src/renderer/             # Studio React UI (unchanged location)
+├── functions/                # Cloud Functions (relative imports to packages/shared/src)
+├── firebase.json             # includes apphosting block for apps/portal
+└── package.json              # npm workspaces: apps/*, packages/*
+```
+
+**Import conventions**
+
+| Consumer | Shared code import |
+|----------|-------------------|
+| Studio renderer, Electron main | `@fresh-prints/shared/...` (tsconfig + Vite alias) |
+| Cloud Functions | Relative path `../../packages/shared/src/...` (deploy uploads `functions/` only) |
+| Portal (`apps/portal`) | `@fresh-prints/shared/...` (workspace package) |
+
+**Do not confuse** `packages/shared/src/` (cross-app domain types/utils) with `src/renderer/src/shared/` (Studio-only UI components and hooks).
+
+Root scripts: `dev:studio`, `dev:portal`, `build:studio`, `build:portal`.
+
+---
+
 # Electron Architecture
 
 The project uses **Vite + vite-plugin-electron** with main process code under `electron/` (not `src/main/`). `[INFERRED]` from repository layout.
 
 ```txt
-electron/           # Main process, IPC, import services
-electron/preload.ts # Preload bridge
-src/renderer/       # React renderer (Vite)
-shared/             # Cross-layer types and utilities
+electron/                 # Main process, IPC, import services
+electron/preload.ts       # Preload bridge
+src/renderer/             # React renderer (Vite)
+packages/shared/src/      # @fresh-prints/shared — cross-app types and utilities
 ```
 
 ---
@@ -641,7 +670,7 @@ unless explicitly approved as Studio-only or Portal-only.
 
 Avoid Studio-only business logic in shared services used by Portal.
 
-Avoid duplicating business rules between Studio and Portal — favor `shared/` types and services.
+Avoid duplicating business rules between Studio and Portal — favor `@fresh-prints/shared` types and pure utilities in `packages/shared/src/`.
 
 Do not introduce native mobile application code paths.
 

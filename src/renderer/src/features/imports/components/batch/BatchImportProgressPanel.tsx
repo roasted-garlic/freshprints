@@ -1,4 +1,4 @@
-import type { BatchImportSourceType } from "../../../../../../../shared/types/import/batchImport.types";
+import type { BatchImportSourceType } from "@fresh-prints/shared/types/import/batchImport.types";
 
 import { Badge } from "../../../../shared/components/Badge";
 import { Card } from "../../../../shared/components/Card";

@@ -1,5 +1,5 @@
-import type { UpcomingShowSource } from "../../../../../../shared/types/upcomingShow/upcomingShow.enums";
-import type { UpcomingShow } from "../../../../../../shared/types/upcomingShow/upcomingShow.types";
+import type { UpcomingShowSource } from "@fresh-prints/shared/types/upcomingShow/upcomingShow.enums";
+import type { UpcomingShow } from "@fresh-prints/shared/types/upcomingShow/upcomingShow.types";
 
 export interface UpcomingShowUpsertKey {
   source: UpcomingShowSource;

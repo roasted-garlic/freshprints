@@ -1,0 +1,267 @@
+.gang-sheet-builder-page {
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  height: 100vh;
+  overflow: hidden;
+  padding: var(--space-4) var(--space-6) var(--space-6);
+}
+
+.gang-sheet-builder-header {
+  align-items: center;
+  display: flex;
+  flex: 0 0 auto;
+  justify-content: space-between;
+}
+
+.gang-sheet-builder-header-copy .eyebrow {
+  margin: 0;
+}
+
+.gang-sheet-builder-header-copy h1 {
+  font-size: var(--font-size-xl);
+  line-height: var(--line-height-tight);
+  margin: 0;
+}
+
+.gang-sheet-builder-zoom-controls {
+  align-items: center;
+  display: flex;
+  gap: var(--space-2);
+}
+
+.gang-sheet-builder-zoom-value-wrapper {
+  position: relative;
+}
+
+.gang-sheet-builder-zoom-value {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  min-width: 4rem;
+  padding: var(--space-2) var(--space-3);
+}
+
+.gang-sheet-builder-zoom-presets {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  left: 0;
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  width: 100%;
+  z-index: 20;
+}
+
+.gang-sheet-builder-zoom-presets button {
+  background: none;
+  border: none;
+  color: var(--color-text-primary);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+}
+
+.gang-sheet-builder-zoom-presets button:hover {
+  background: var(--color-bg-tertiary);
+}
+
+.gang-sheet-builder-layout {
+  display: grid;
+  flex: 1 1 auto;
+  gap: var(--space-4);
+  grid-template-columns: 18rem 1fr 18rem;
+  min-height: 0;
+}
+
+.gang-sheet-builder-assets-panel,
+.gang-sheet-builder-details-panel {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  overflow-y: auto;
+  padding: var(--space-4);
+}
+
+.gang-sheet-builder-canvas-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-height: 0;
+  min-width: 0;
+}
+
+.gang-sheet-builder-canvas-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--space-4);
+}
+
+.gang-sheet-builder-toolbar {
+  align-items: center;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  color: var(--color-text-secondary);
+  display: flex;
+  font-size: var(--font-size-sm);
+  gap: var(--space-3);
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+}
+
+.gang-sheet-builder-asset-grid {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.gang-sheet-builder-asset-cell {
+  aspect-ratio: 1;
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  overflow: hidden;
+  padding: 0;
+  position: relative;
+}
+
+.gang-sheet-builder-asset-cell:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.gang-sheet-builder-asset-cell img {
+  height: 100%;
+  object-fit: contain;
+  width: 100%;
+}
+
+.gang-sheet-builder-asset-cell-fallback {
+  align-items: center;
+  color: var(--color-text-muted);
+  display: flex;
+  font-size: var(--font-size-xs);
+  height: 100%;
+  justify-content: center;
+  text-align: center;
+  width: 100%;
+}
+
+.gang-sheet-builder-asset-cell-overlay {
+  align-items: center;
+  background: rgb(0 0 0 / 0.55);
+  color: #fff;
+  display: flex;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  height: 100%;
+  justify-content: center;
+  left: 0;
+  opacity: 0;
+  position: absolute;
+  top: 0;
+  transition: opacity 0.1s ease;
+  width: 100%;
+}
+
+.gang-sheet-builder-asset-cell:hover .gang-sheet-builder-asset-cell-overlay,
+.gang-sheet-builder-asset-cell:focus-visible .gang-sheet-builder-asset-cell-overlay {
+  opacity: 1;
+}
+
+.gang-sheet-builder-asset-cell-quantity {
+  background: rgb(0 0 0 / 0.6);
+  border-radius: var(--radius-sm);
+  bottom: var(--space-1);
+  color: #fff;
+  font-size: var(--font-size-xs);
+  padding: 0 var(--space-1);
+  position: absolute;
+  right: var(--space-1);
+}
+
+.gang-sheet-builder-canvas {
+  position: relative;
+}
+
+.gang-sheet-builder-canvas-scaled {
+  background-color: var(--color-bg-primary);
+  background-image:
+    linear-gradient(45deg, var(--color-bg-tertiary) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--color-bg-tertiary) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--color-bg-tertiary) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--color-bg-tertiary) 75%);
+  background-position: 0 0, 0 6px, 6px -6px, -6px 0;
+  background-size: 12px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: top left;
+}
+
+.gang-sheet-builder-item {
+  align-items: center;
+  background: var(--color-accent-primary-soft);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  display: flex !important;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.gang-sheet-builder-item.is-selected {
+  border-color: var(--color-accent-primary);
+  box-shadow: 0 0 0 2px var(--color-accent-primary);
+}
+
+.gang-sheet-builder-item-image {
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  width: 100%;
+}
+
+.gang-sheet-builder-item-label {
+  color: var(--color-text-primary);
+  font-size: var(--font-size-xs);
+  overflow: hidden;
+  padding: 0 var(--space-1);
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gang-sheet-builder-selected-item-controls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.gang-sheet-builder-selected-item-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+@media (max-width: 960px) {
+  .gang-sheet-builder-layout {
+    grid-template-columns: 1fr;
+  }
+}

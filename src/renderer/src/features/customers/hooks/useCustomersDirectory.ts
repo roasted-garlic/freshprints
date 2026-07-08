@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../../auth/hooks/useAuth";
 import { permissionService } from "../../permissions/services/permissionService";
 import { customerService } from "../services/customerService";
-import type { Customer } from "../../../../../../shared/types/customer/customer.types";
+import type { Customer } from "@fresh-prints/shared/types/customer/customer.types";
 
 interface CustomersDirectoryState {
   customers: Customer[];

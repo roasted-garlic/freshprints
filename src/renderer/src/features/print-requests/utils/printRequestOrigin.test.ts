@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import type { PrintRequest } from "../../../../../../shared/types/printRequest/printRequest.types";
+import type { PrintRequest } from "@fresh-prints/shared/types/printRequest/printRequest.types";
 import {
   getPrintRequestOriginBadgeLabel,
   isPrintRequestOrigin,
-} from "../../../../../../shared/utils/printRequestOrigin";
+} from "@fresh-prints/shared/utils/printRequestOrigin";
 
 function buildRequest(
   input: Pick<PrintRequest, "isInternal"> & Partial<Pick<PrintRequest, "customerId" | "requestOrigin">>,

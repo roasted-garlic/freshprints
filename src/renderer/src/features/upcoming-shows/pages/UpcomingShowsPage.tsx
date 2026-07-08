@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
-import { Plus, Settings, Upload, X } from "lucide-react";
+import { ChevronDown, Download, Plus, Settings, Upload, X } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { Badge } from "../../../shared/components/Badge";
@@ -22,23 +22,40 @@ import { upcomingShowService } from "../services/upcomingShowService";
 import { useUpcomingShows } from "../hooks/useUpcomingShows";
 import { useShowAllocations } from "../hooks/useShowAllocations";
 import { useShowQueueSettings } from "../hooks/useShowQueueSettings";
+import {
+  DEFAULT_GANG_SHEET_GUTTER_INCHES,
+  DEFAULT_GANG_SHEET_LABEL_FONT_SIZE_PX,
+  DEFAULT_GANG_SHEET_MAX_LENGTH_INCHES,
+  DEFAULT_GANG_SHEET_SIDE_MARGIN_INCHES,
+  DEFAULT_GANG_SHEET_TOP_BOTTOM_MARGIN_INCHES,
+  DEFAULT_GANG_SHEET_WIDTH_INCHES,
+} from "../services/showQueueSettingsService";
 import { useWhatnotShowImport, type WhatnotShowImportSummary } from "../hooks/useWhatnotShowImport";
 import { usePrintRequests } from "../../print-requests/hooks/usePrintRequests";
 import { usePrintRequestDetails } from "../../print-requests/hooks/usePrintRequestDetails";
 import { AddToShowModal } from "../../print-requests/components/AddToShowModal";
+import { ExportShowConfirmModal } from "../components/ExportShowConfirmModal";
+import { ExportGangSheetConfirmModal } from "../components/ExportGangSheetConfirmModal";
+import { useExportShowZip } from "../hooks/useExportShowZip";
+import { useExportGangSheetPng } from "../hooks/useExportGangSheetPng";
 import { groupAllocationsByRequest } from "../utils/groupAllocationsByRequest";
-import { filterShowsByScheduleTab, type ShowScheduleTab } from "../utils/groupShowsByUpcomingPast";
-import { parseWhatnotShowUrl } from "../../../../../../shared/utils/whatnotShowUrl";
-import { parseWhatnotShowBaseUrl } from "../../../../../../shared/utils/whatnotShowBaseUrl";
-import { assessShowCapacity } from "../../../../../../shared/utils/showCapacity";
+import {
+  filterShowsByScheduleTab,
+  getShowScheduleTab,
+  resolveVisibleShowSelection,
+  type ShowScheduleTab,
+} from "../utils/groupShowsByUpcomingPast";
+import { parseWhatnotShowUrl } from "@fresh-prints/shared/utils/whatnotShowUrl";
+import { parseWhatnotShowBaseUrl } from "@fresh-prints/shared/utils/whatnotShowBaseUrl";
+import { assessShowCapacity } from "@fresh-prints/shared/utils/showCapacity";
 import {
   formatCapacityUsedLabel,
   formatSpotsRemainingLabel,
   getCapacityFillLevel,
   getDerivedShowStatusDisplay,
   getShowCapacityPercent,
-} from "../../../../../../shared/utils/showCapacityDisplay";
-import { canRemoveRequestFromShow } from "../../../../../../shared/utils/showQueueEditability";
+} from "@fresh-prints/shared/utils/showCapacityDisplay";
+import { canRemoveRequestFromShow } from "@fresh-prints/shared/utils/showQueueEditability";
 import { parseDateTimeInputToTimestamp } from "../utils/upcomingShowDateTimeInput";
 import {
   formatUpcomingShowTimestampLabel,
@@ -94,6 +111,12 @@ export function UpcomingShowsPage() {
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [defaultCapacityInput, setDefaultCapacityInput] = useState("");
   const [whatnotBaseUrlInput, setWhatnotBaseUrlInput] = useState("");
+  const [gangSheetWidthInput, setGangSheetWidthInput] = useState("");
+  const [gangSheetSideMarginInput, setGangSheetSideMarginInput] = useState("");
+  const [gangSheetTopBottomMarginInput, setGangSheetTopBottomMarginInput] = useState("");
+  const [gangSheetGutterInput, setGangSheetGutterInput] = useState("");
+  const [gangSheetMaxLengthInput, setGangSheetMaxLengthInput] = useState("");
+  const [gangSheetLabelFontSizeInput, setGangSheetLabelFontSizeInput] = useState("");
   const [isSavingSettings, setIsSavingSettings] = useState(false);
 
   const handleShowsImported = useCallback(
@@ -112,30 +135,17 @@ export function UpcomingShowsPage() {
 
   const [confirmingRemoveRequestId, setConfirmingRemoveRequestId] = useState<string | null>(null);
   const [activeScheduleTab, setActiveScheduleTab] = useState<ShowScheduleTab>("upcoming");
+  const hasHydratedFromQueryRef = useRef(false);
 
   const selectedShowIdParam = searchParams.get(UPCOMING_SHOW_ID_QUERY_PARAM);
-
-  useEffect(() => {
-    if (selectedShowIdParam) {
-      if (selectedShowIdParam !== selectedShowId) {
-        setSelectedShowId(selectedShowIdParam);
-      }
-
-      return;
-    }
-
-    if (!selectedShowId && shows.length > 0) {
-      setSelectedShowId(shows[0].id);
-    }
-  }, [selectedShowId, selectedShowIdParam, shows]);
 
   useEffect(() => {
     setConfirmingRemoveRequestId(null);
   }, [selectedShowId]);
 
   const updateSelectedShowPath = useCallback(
-    (showId: string) => {
-      navigate(getUpcomingShowsPath({ showId }), { replace: true });
+    (showId: string | null) => {
+      navigate(getUpcomingShowsPath(showId ? { showId } : undefined), { replace: true });
     },
     [navigate],
   );
@@ -155,8 +165,37 @@ export function UpcomingShowsPage() {
     setActionError(null);
     setDefaultCapacityInput(showQueueSettings.settings.defaultMaxTotalQuantity?.toString() ?? "");
     setWhatnotBaseUrlInput(showQueueSettings.settings.whatnotShowBaseUrl ?? DEFAULT_WHATNOT_SHOW_BASE_URL);
+    setGangSheetWidthInput(
+      (showQueueSettings.settings.gangSheetWidthInches ?? DEFAULT_GANG_SHEET_WIDTH_INCHES).toString(),
+    );
+    setGangSheetSideMarginInput(
+      (showQueueSettings.settings.gangSheetSideMarginInches ?? DEFAULT_GANG_SHEET_SIDE_MARGIN_INCHES).toString(),
+    );
+    setGangSheetTopBottomMarginInput(
+      (
+        showQueueSettings.settings.gangSheetTopBottomMarginInches ?? DEFAULT_GANG_SHEET_TOP_BOTTOM_MARGIN_INCHES
+      ).toString(),
+    );
+    setGangSheetGutterInput(
+      (showQueueSettings.settings.gangSheetGutterInches ?? DEFAULT_GANG_SHEET_GUTTER_INCHES).toString(),
+    );
+    setGangSheetMaxLengthInput(
+      (showQueueSettings.settings.gangSheetMaxLengthInches ?? DEFAULT_GANG_SHEET_MAX_LENGTH_INCHES).toString(),
+    );
+    setGangSheetLabelFontSizeInput(
+      (showQueueSettings.settings.gangSheetLabelFontSizePx ?? DEFAULT_GANG_SHEET_LABEL_FONT_SIZE_PX).toString(),
+    );
     setIsSettingsModalOpen(true);
-  }, [showQueueSettings.settings.defaultMaxTotalQuantity, showQueueSettings.settings.whatnotShowBaseUrl]);
+  }, [
+    showQueueSettings.settings.defaultMaxTotalQuantity,
+    showQueueSettings.settings.gangSheetGutterInches,
+    showQueueSettings.settings.gangSheetLabelFontSizePx,
+    showQueueSettings.settings.gangSheetMaxLengthInches,
+    showQueueSettings.settings.gangSheetSideMarginInches,
+    showQueueSettings.settings.gangSheetTopBottomMarginInches,
+    showQueueSettings.settings.gangSheetWidthInches,
+    showQueueSettings.settings.whatnotShowBaseUrl,
+  ]);
 
   const closeSettingsModal = useCallback(() => {
     setIsSettingsModalOpen(false);
@@ -165,10 +204,11 @@ export function UpcomingShowsPage() {
 
   const effectiveWhatnotBaseUrl = showQueueSettings.settings.whatnotShowBaseUrl ?? DEFAULT_WHATNOT_SHOW_BASE_URL;
 
+  const { openImportWindow: openWhatnotImportWindowRequest } = whatnotImport;
   const openWhatnotImportWindow = useCallback(() => {
     setActionError(null);
-    void whatnotImport.openImportWindow(effectiveWhatnotBaseUrl);
-  }, [effectiveWhatnotBaseUrl, whatnotImport]);
+    void openWhatnotImportWindowRequest(effectiveWhatnotBaseUrl);
+  }, [effectiveWhatnotBaseUrl, openWhatnotImportWindowRequest]);
 
   useShellHeaderConfig(
     useMemo(
@@ -200,9 +240,70 @@ export function UpcomingShowsPage() {
     ),
   );
 
+  const showsByScheduleTab = useMemo(() => {
+    const now = new Date();
+    return {
+      upcoming: filterShowsByScheduleTab(shows, "upcoming", now),
+      past: filterShowsByScheduleTab(shows, "past", now),
+    };
+  }, [shows]);
+  const visibleShows = showsByScheduleTab[activeScheduleTab];
+
+  useEffect(() => {
+    if (selectedShowId && visibleShows.some((show) => show.id === selectedShowId)) {
+      return;
+    }
+
+    if (!hasHydratedFromQueryRef.current) {
+      hasHydratedFromQueryRef.current = true;
+
+      const showFromQuery = selectedShowIdParam ? shows.find((show) => show.id === selectedShowIdParam) ?? null : null;
+
+      if (showFromQuery) {
+        const queryShowTab = getShowScheduleTab(showFromQuery, new Date());
+
+        if (queryShowTab !== activeScheduleTab) {
+          setActiveScheduleTab(queryShowTab);
+        }
+
+        if (selectedShowId !== selectedShowIdParam) {
+          setSelectedShowId(selectedShowIdParam);
+        }
+
+        return;
+      }
+    }
+
+    const nextSelectedShowId = resolveVisibleShowSelection(visibleShows, selectedShowId);
+
+    if (nextSelectedShowId !== selectedShowId) {
+      setSelectedShowId(nextSelectedShowId);
+      updateSelectedShowPath(nextSelectedShowId);
+    }
+  }, [activeScheduleTab, selectedShowId, selectedShowIdParam, shows, updateSelectedShowPath, visibleShows]);
+
+  const handleScheduleTabChange = useCallback(
+    (tab: ShowScheduleTab) => {
+      const nextSelectedShowId = resolveVisibleShowSelection(showsByScheduleTab[tab], null);
+
+      setActiveScheduleTab(tab);
+      setSelectedShowId(nextSelectedShowId);
+      updateSelectedShowPath(nextSelectedShowId);
+    },
+    [showsByScheduleTab, updateSelectedShowPath],
+  );
+
+  const handleSelectShow = useCallback(
+    (showId: string) => {
+      setSelectedShowId(showId);
+      updateSelectedShowPath(showId);
+    },
+    [updateSelectedShowPath],
+  );
+
   const selectedShow = useMemo(
-    () => shows.find((show) => show.id === selectedShowId) ?? null,
-    [selectedShowId, shows],
+    () => visibleShows.find((show) => show.id === selectedShowId) ?? null,
+    [selectedShowId, visibleShows],
   );
   const lastManualImportAt = useMemo(() => {
     const showImportAt = selectedShow?.lastSeenInAssistedImportAt;
@@ -219,17 +320,111 @@ export function UpcomingShowsPage() {
     return showImportAt.toDate().getTime() >= latestImportAt.toDate().getTime() ? showImportAt : latestImportAt;
   }, [selectedShow?.lastSeenInAssistedImportAt, showQueueSettings.settings.lastWhatnotAssistedImportAt]);
 
-  const showsByScheduleTab = useMemo(() => {
-    const now = new Date();
-    return {
-      upcoming: filterShowsByScheduleTab(shows, "upcoming", now),
-      past: filterShowsByScheduleTab(shows, "past", now),
-    };
-  }, [shows]);
-  const visibleShows = showsByScheduleTab[activeScheduleTab];
-
   const { allocations, reloadAllocations } = useShowAllocations(selectedShowId);
   const requestGroups = useMemo(() => groupAllocationsByRequest(allocations), [allocations]);
+  const printRequestIdsAlreadyOnSelectedShow = useMemo(
+    () =>
+      new Set(
+        allocations.filter((allocation) => allocation.status !== "canceled").map((allocation) => allocation.printRequestId),
+      ),
+    [allocations],
+  );
+  const hasActiveAllocationsForSelectedShow = useMemo(
+    () => (selectedShow?.allocatedQuantity ?? 0) > 0,
+    [selectedShow?.allocatedQuantity],
+  );
+
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [exportMultiplyByQuantity, setExportMultiplyByQuantity] = useState(false);
+  const exportShowZipState = useExportShowZip();
+
+  const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
+  const exportMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isExportMenuOpen) {
+      return;
+    }
+
+    function handlePointerDown(event: MouseEvent) {
+      if (!exportMenuRef.current?.contains(event.target as Node)) {
+        setIsExportMenuOpen(false);
+      }
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setIsExportMenuOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handlePointerDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isExportMenuOpen]);
+
+  const openExportModal = useCallback(
+    (multiplyByQuantity: boolean) => {
+      exportShowZipState.reset();
+      setExportMultiplyByQuantity(multiplyByQuantity);
+      setIsExportModalOpen(true);
+      setIsExportMenuOpen(false);
+    },
+    [exportShowZipState],
+  );
+
+  const closeExportModal = useCallback(() => {
+    setIsExportModalOpen(false);
+  }, []);
+
+  const handleConfirmExport = useCallback(() => {
+    if (selectedShow) {
+      void exportShowZipState.exportShowZip(selectedShow, exportMultiplyByQuantity);
+    }
+  }, [exportMultiplyByQuantity, exportShowZipState, selectedShow]);
+
+  const [isExportGangSheetModalOpen, setIsExportGangSheetModalOpen] = useState(false);
+  const exportGangSheetPngState = useExportGangSheetPng();
+  const gangSheetLayoutSettings = useMemo(
+    () => ({
+      sheetWidthInches: showQueueSettings.settings.gangSheetWidthInches ?? DEFAULT_GANG_SHEET_WIDTH_INCHES,
+      sideMarginInches:
+        showQueueSettings.settings.gangSheetSideMarginInches ?? DEFAULT_GANG_SHEET_SIDE_MARGIN_INCHES,
+      topBottomMarginInches:
+        showQueueSettings.settings.gangSheetTopBottomMarginInches ?? DEFAULT_GANG_SHEET_TOP_BOTTOM_MARGIN_INCHES,
+      gutterInches: showQueueSettings.settings.gangSheetGutterInches ?? DEFAULT_GANG_SHEET_GUTTER_INCHES,
+      maxSheetLengthInches:
+        showQueueSettings.settings.gangSheetMaxLengthInches ?? DEFAULT_GANG_SHEET_MAX_LENGTH_INCHES,
+      labelFontSizePx:
+        showQueueSettings.settings.gangSheetLabelFontSizePx ?? DEFAULT_GANG_SHEET_LABEL_FONT_SIZE_PX,
+    }),
+    [
+      showQueueSettings.settings.gangSheetGutterInches,
+      showQueueSettings.settings.gangSheetLabelFontSizePx,
+      showQueueSettings.settings.gangSheetMaxLengthInches,
+      showQueueSettings.settings.gangSheetSideMarginInches,
+      showQueueSettings.settings.gangSheetTopBottomMarginInches,
+      showQueueSettings.settings.gangSheetWidthInches,
+    ],
+  );
+
+  const openExportGangSheetModal = useCallback(() => {
+    exportGangSheetPngState.reset();
+    setIsExportGangSheetModalOpen(true);
+  }, [exportGangSheetPngState]);
+
+  const closeExportGangSheetModal = useCallback(() => {
+    setIsExportGangSheetModalOpen(false);
+  }, []);
+
+  const handleConfirmExportGangSheet = useCallback(() => {
+    if (selectedShow) {
+      void exportGangSheetPngState.exportGangSheetPng(selectedShow, gangSheetLayoutSettings);
+    }
+  }, [exportGangSheetPngState, gangSheetLayoutSettings, selectedShow]);
 
   const parsedShow = useMemo(() => parseWhatnotShowUrl(createForm.whatnotUrl), [createForm.whatnotUrl]);
   const scheduledStartAt = parseDateTimeInputToTimestamp(createForm.scheduledStartAtInput);
@@ -266,11 +461,57 @@ export function UpcomingShowsPage() {
 
   const parsedWhatnotBaseUrl = parseWhatnotShowBaseUrl(whatnotBaseUrlInput);
   const isWhatnotBaseUrlValid = whatnotBaseUrlInput.trim() === "" || Boolean(parsedWhatnotBaseUrl);
+  const parsedGangSheetWidth = Number(gangSheetWidthInput.trim());
+  const isGangSheetWidthValid =
+    gangSheetWidthInput.trim() !== "" &&
+    Number.isFinite(parsedGangSheetWidth) &&
+    parsedGangSheetWidth >= 10 &&
+    parsedGangSheetWidth <= 60;
+  const parsedGangSheetSideMargin = Number(gangSheetSideMarginInput.trim());
+  const isGangSheetSideMarginValid =
+    gangSheetSideMarginInput.trim() !== "" &&
+    Number.isFinite(parsedGangSheetSideMargin) &&
+    parsedGangSheetSideMargin >= 0 &&
+    parsedGangSheetSideMargin <= 5;
+  const parsedGangSheetTopBottomMargin = Number(gangSheetTopBottomMarginInput.trim());
+  const isGangSheetTopBottomMarginValid =
+    gangSheetTopBottomMarginInput.trim() !== "" &&
+    Number.isFinite(parsedGangSheetTopBottomMargin) &&
+    parsedGangSheetTopBottomMargin >= 0 &&
+    parsedGangSheetTopBottomMargin <= 5;
+  const parsedGangSheetGutter = Number(gangSheetGutterInput.trim());
+  const isGangSheetGutterValid =
+    gangSheetGutterInput.trim() !== "" &&
+    Number.isFinite(parsedGangSheetGutter) &&
+    parsedGangSheetGutter >= 0 &&
+    parsedGangSheetGutter <= 5;
+  const parsedGangSheetMaxLength = Number(gangSheetMaxLengthInput.trim());
+  const isGangSheetMaxLengthValid =
+    gangSheetMaxLengthInput.trim() !== "" &&
+    Number.isFinite(parsedGangSheetMaxLength) &&
+    parsedGangSheetMaxLength >= 10 &&
+    parsedGangSheetMaxLength <= 300;
+  const parsedGangSheetLabelFontSize = Number(gangSheetLabelFontSizeInput.trim());
+  const isGangSheetLabelFontSizeValid =
+    gangSheetLabelFontSizeInput.trim() !== "" &&
+    Number.isFinite(parsedGangSheetLabelFontSize) &&
+    parsedGangSheetLabelFontSize >= 20 &&
+    parsedGangSheetLabelFontSize <= 300;
 
   async function handleSaveSettings(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!user || !permissionService.canManageUpcomingShows(user) || !isWhatnotBaseUrlValid) {
+    if (
+      !user ||
+      !permissionService.canManageUpcomingShows(user) ||
+      !isWhatnotBaseUrlValid ||
+      !isGangSheetWidthValid ||
+      !isGangSheetSideMarginValid ||
+      !isGangSheetTopBottomMarginValid ||
+      !isGangSheetGutterValid ||
+      !isGangSheetMaxLengthValid ||
+      !isGangSheetLabelFontSizeValid
+    ) {
       return;
     }
 
@@ -283,6 +524,12 @@ export function UpcomingShowsPage() {
       await showQueueSettings.updateSettings({
         defaultMaxTotalQuantity: parsedDefault,
         whatnotShowBaseUrl: parsedWhatnotBaseUrl?.normalizedUrl,
+        gangSheetWidthInches: parsedGangSheetWidth,
+        gangSheetSideMarginInches: parsedGangSheetSideMargin,
+        gangSheetTopBottomMarginInches: parsedGangSheetTopBottomMargin,
+        gangSheetGutterInches: parsedGangSheetGutter,
+        gangSheetMaxLengthInches: parsedGangSheetMaxLength,
+        gangSheetLabelFontSizePx: parsedGangSheetLabelFontSize,
       });
       setSuccessMessage("Show Queue settings updated.");
       setSuccessAlertSeed((current) => current + 1);
@@ -360,8 +607,13 @@ export function UpcomingShowsPage() {
   );
 
   const requestOptions = useMemo(
-    () => [{ label: "Choose a request", value: "" }, ...requests.map((request) => ({ label: request.name, value: request.id }))],
-    [requests],
+    () => [
+      { label: "Choose a request", value: "" },
+      ...requests
+        .filter((request) => !printRequestIdsAlreadyOnSelectedShow.has(request.id))
+        .map((request) => ({ label: request.name, value: request.id })),
+    ],
+    [printRequestIdsAlreadyOnSelectedShow, requests],
   );
 
   async function handleRemoveRequestFromShow(printRequestId: string) {
@@ -397,7 +649,7 @@ export function UpcomingShowsPage() {
               <button
                 className={`print-requests-tab-button${activeScheduleTab === tab ? " is-active" : ""}`}
                 key={tab}
-                onClick={() => setActiveScheduleTab(tab)}
+                onClick={() => handleScheduleTabChange(tab)}
                 type="button"
               >
                 {tab === "upcoming" ? "Upcoming" : "Past"} ({showsByScheduleTab[tab].length})
@@ -432,10 +684,7 @@ export function UpcomingShowsPage() {
                   <button
                     className={`print-requests-request-card${isSelected ? " is-selected" : ""}${cardStateClass}`}
                     key={show.id}
-                    onClick={() => {
-                      setSelectedShowId(show.id);
-                      updateSelectedShowPath(show.id);
-                    }}
+                    onClick={() => handleSelectShow(show.id)}
                     type="button"
                   >
                     <div className="print-requests-request-card-title-row">
@@ -469,7 +718,7 @@ export function UpcomingShowsPage() {
           ) : (
             <>
               <Card className="print-requests-card print-requests-detail-card">
-                <div className="print-requests-detail-header">
+                <div className="print-requests-detail-header show-detail-header">
                   <div className="print-requests-detail-copy">
                     <p className="eyebrow">Show detail</p>
                     <h2>{formatUpcomingShowTitle(selectedShow)}</h2>
@@ -477,6 +726,72 @@ export function UpcomingShowsPage() {
                       Scheduled {formatUpcomingShowTimestampLabel(selectedShow.scheduledStartAt)}
                     </p>
                   </div>
+                  {permissionService.canManageUpcomingShows(user) ? (
+                    <div className="print-requests-detail-actions show-detail-header-actions">
+                      <div className="export-menu-shell" ref={exportMenuRef}>
+                        <Button
+                          aria-controls="export-menu"
+                          aria-expanded={isExportMenuOpen}
+                          aria-haspopup="menu"
+                          className="button-leading-icon"
+                          disabled={!hasActiveAllocationsForSelectedShow}
+                          onClick={() => setIsExportMenuOpen((current) => !current)}
+                          size="sm"
+                          variant="secondary"
+                          title={
+                            hasActiveAllocationsForSelectedShow
+                              ? undefined
+                              : "Add a print request to this show before exporting."
+                          }
+                        >
+                          <Download aria-hidden="true" size={16} strokeWidth={2} />
+                          Export
+                          <ChevronDown aria-hidden="true" size={14} strokeWidth={2.4} />
+                        </Button>
+
+                        {isExportMenuOpen ? (
+                          <div aria-label="Export options" className="export-menu" id="export-menu" role="menu">
+                            <button
+                              className="export-menu-option"
+                              onClick={() => openExportModal(false)}
+                              role="menuitem"
+                              type="button"
+                            >
+                              <span>Export</span>
+                              <span className="export-menu-option-hint">One file per design.</span>
+                            </button>
+                            <button
+                              className="export-menu-option"
+                              onClick={() => openExportModal(true)}
+                              role="menuitem"
+                              type="button"
+                            >
+                              <span>Export x(Qty)</span>
+                              <span className="export-menu-option-hint">
+                                One file per allocated unit.
+                              </span>
+                            </button>
+                          </div>
+                        ) : null}
+                      </div>
+
+                      <Button
+                        className="button-leading-icon"
+                        disabled={!hasActiveAllocationsForSelectedShow}
+                        onClick={openExportGangSheetModal}
+                        size="sm"
+                        variant="secondary"
+                        title={
+                          hasActiveAllocationsForSelectedShow
+                            ? undefined
+                            : "Add a print request to this show before exporting."
+                        }
+                      >
+                        <Download aria-hidden="true" size={16} strokeWidth={2} />
+                        Export Gang Sheet
+                      </Button>
+                    </div>
+                  ) : null}
                 </div>
 
                 <div className="show-detail-pill-row">
@@ -861,9 +1176,39 @@ export function UpcomingShowsPage() {
         />
       ) : null}
 
+      {isExportModalOpen && selectedShow ? (
+        <ExportShowConfirmModal
+          error={exportShowZipState.error}
+          isExporting={exportShowZipState.isExporting}
+          multiplyByQuantity={exportMultiplyByQuantity}
+          onClose={closeExportModal}
+          onConfirm={handleConfirmExport}
+          progress={exportShowZipState.progress}
+          result={exportShowZipState.result}
+          show={selectedShow}
+        />
+      ) : null}
+
+      {isExportGangSheetModalOpen && selectedShow ? (
+        <ExportGangSheetConfirmModal
+          error={exportGangSheetPngState.error}
+          gangSheetWidthInches={gangSheetLayoutSettings.sheetWidthInches}
+          isExporting={exportGangSheetPngState.isExporting}
+          onClose={closeExportGangSheetModal}
+          onConfirm={handleConfirmExportGangSheet}
+          progress={exportGangSheetPngState.progress}
+          result={exportGangSheetPngState.result}
+          show={selectedShow}
+        />
+      ) : null}
+
       {isSettingsModalOpen ? (
         <div className="modal-overlay modal-overlay-blur">
-          <Modal aria-labelledby="show-queue-settings-title" className="modal-panel modal-panel-sm" role="dialog">
+          <Modal
+            aria-labelledby="show-queue-settings-title"
+            className="modal-panel modal-panel-lg show-queue-settings-modal"
+            role="dialog"
+          >
             <ModalHeader>
               <div>
                 <p className="eyebrow">Settings</p>
@@ -879,41 +1224,164 @@ export function UpcomingShowsPage() {
               </button>
             </ModalHeader>
             <ModalBody>
-              <form className="print-requests-modal-form" id="show-queue-settings-form" onSubmit={handleSaveSettings}>
-                <p className="print-requests-modal-hint">
-                  Current default:{" "}
-                  {showQueueSettings.isLoading
-                    ? "Loading..."
-                    : showQueueSettings.settings.defaultMaxTotalQuantity === undefined
-                      ? "No default limit"
-                      : showQueueSettings.settings.defaultMaxTotalQuantity}
-                </p>
-                <TextInput
-                  label="Default max quantity for new shows"
-                  min={0}
-                  name="defaultMaxTotalQuantity"
-                  onChange={(event) => setDefaultCapacityInput(event.target.value)}
-                  placeholder="Leave blank for no default limit"
-                  type="number"
-                  value={defaultCapacityInput}
-                />
-                <p className="print-requests-modal-hint">
-                  Applied only to new shows going forward. Existing shows keep their current capacity, and
-                  staff can still override capacity on any individual show.
-                </p>
+              <form
+                className="show-queue-settings-form"
+                id="show-queue-settings-form"
+                onSubmit={handleSaveSettings}
+              >
+                <section className="show-queue-settings-section">
+                  <h4 className="show-queue-settings-section-title">General</h4>
+                  <div className="show-queue-settings-grid">
+                    <div className="show-queue-settings-field">
+                      <TextInput
+                        label="Default max quantity for new shows"
+                        min={0}
+                        name="defaultMaxTotalQuantity"
+                        onChange={(event) => setDefaultCapacityInput(event.target.value)}
+                        placeholder="Leave blank for no default limit"
+                        type="number"
+                        value={defaultCapacityInput}
+                      />
+                      <p className="print-requests-modal-hint">
+                        Current default:{" "}
+                        {showQueueSettings.isLoading
+                          ? "Loading..."
+                          : showQueueSettings.settings.defaultMaxTotalQuantity === undefined
+                            ? "No default limit"
+                            : showQueueSettings.settings.defaultMaxTotalQuantity}
+                        . Applied only to new shows going forward.
+                      </p>
+                    </div>
 
-                <TextInput
-                  label="Whatnot show base URL"
-                  name="whatnotShowBaseUrl"
-                  onChange={(event) => setWhatnotBaseUrlInput(event.target.value)}
-                  placeholder={DEFAULT_WHATNOT_SHOW_BASE_URL}
-                  value={whatnotBaseUrlInput}
-                />
-                <p className="print-requests-modal-hint">
-                  {isWhatnotBaseUrlValid
-                    ? "Used by “Import Shows” to open your show list."
-                    : "Must be a https://www.whatnot.com/user/<name>/shows URL."}
-                </p>
+                    <div className="show-queue-settings-field">
+                      <TextInput
+                        label="Whatnot show base URL"
+                        name="whatnotShowBaseUrl"
+                        onChange={(event) => setWhatnotBaseUrlInput(event.target.value)}
+                        placeholder={DEFAULT_WHATNOT_SHOW_BASE_URL}
+                        value={whatnotBaseUrlInput}
+                      />
+                      <p className="print-requests-modal-hint">
+                        {isWhatnotBaseUrlValid
+                          ? "Used by “Import Shows” to open your show list."
+                          : "Must be a https://www.whatnot.com/user/<name>/shows URL."}
+                      </p>
+                    </div>
+                  </div>
+                </section>
+
+                <section className="show-queue-settings-section">
+                  <h4 className="show-queue-settings-section-title">Gang sheet layout</h4>
+                  <div className="show-queue-settings-grid">
+                    <div className="show-queue-settings-field">
+                      <TextInput
+                        label="Sheet width (inches)"
+                        min={10}
+                        max={60}
+                        name="gangSheetWidthInches"
+                        onChange={(event) => setGangSheetWidthInput(event.target.value)}
+                        step={0.01}
+                        type="number"
+                        value={gangSheetWidthInput}
+                      />
+                      <p className="print-requests-modal-hint">
+                        {isGangSheetWidthValid
+                          ? "Fixed artboard width used by “Export Gang Sheet”."
+                          : "Must be a number between 10\" and 60\"."}
+                      </p>
+                    </div>
+
+                    <div className="show-queue-settings-field">
+                      <TextInput
+                        label="Max sheet length before new sheet (inches)"
+                        min={10}
+                        max={300}
+                        name="gangSheetMaxLengthInches"
+                        onChange={(event) => setGangSheetMaxLengthInput(event.target.value)}
+                        step={0.01}
+                        type="number"
+                        value={gangSheetMaxLengthInput}
+                      />
+                      <p className="print-requests-modal-hint">
+                        {isGangSheetMaxLengthValid
+                          ? "A new sheet starts once this height would be exceeded."
+                          : "Must be a number between 10\" and 300\"."}
+                      </p>
+                    </div>
+
+                    <div className="show-queue-settings-field">
+                      <TextInput
+                        label="Side margin (inches)"
+                        min={0}
+                        max={5}
+                        name="gangSheetSideMarginInches"
+                        onChange={(event) => setGangSheetSideMarginInput(event.target.value)}
+                        step={0.01}
+                        type="number"
+                        value={gangSheetSideMarginInput}
+                      />
+                      <p className="print-requests-modal-hint">
+                        {isGangSheetSideMarginValid
+                          ? "Sheet edge to nearest image, left/right only."
+                          : "Must be a number between 0\" and 5\"."}
+                      </p>
+                    </div>
+
+                    <div className="show-queue-settings-field">
+                      <TextInput
+                        label="Top/bottom margin (inches)"
+                        min={0}
+                        max={5}
+                        name="gangSheetTopBottomMarginInches"
+                        onChange={(event) => setGangSheetTopBottomMarginInput(event.target.value)}
+                        step={0.01}
+                        type="number"
+                        value={gangSheetTopBottomMarginInput}
+                      />
+                      <p className="print-requests-modal-hint">
+                        {isGangSheetTopBottomMarginValid
+                          ? "Sheet edge to nearest image, top/bottom only."
+                          : "Must be a number between 0\" and 5\"."}
+                      </p>
+                    </div>
+
+                    <div className="show-queue-settings-field">
+                      <TextInput
+                        label="Gutter between images (inches)"
+                        min={0}
+                        max={5}
+                        name="gangSheetGutterInches"
+                        onChange={(event) => setGangSheetGutterInput(event.target.value)}
+                        step={0.01}
+                        type="number"
+                        value={gangSheetGutterInput}
+                      />
+                      <p className="print-requests-modal-hint">
+                        {isGangSheetGutterValid
+                          ? "Spacing between images, both within a row and between rows."
+                          : "Must be a number between 0\" and 5\"."}
+                      </p>
+                    </div>
+
+                    <div className="show-queue-settings-field">
+                      <TextInput
+                        label="Sheet label font size (px)"
+                        min={20}
+                        max={300}
+                        name="gangSheetLabelFontSizePx"
+                        onChange={(event) => setGangSheetLabelFontSizeInput(event.target.value)}
+                        step={1}
+                        type="number"
+                        value={gangSheetLabelFontSizeInput}
+                      />
+                      <p className="print-requests-modal-hint">
+                        {isGangSheetLabelFontSizeValid
+                          ? "Size of the filename label printed at the top of each gang sheet."
+                          : "Must be a number between 20px and 300px."}
+                      </p>
+                    </div>
+                  </div>
+                </section>
 
                 {actionError ? (
                   <p className="auth-message auth-message-error" role="alert">
@@ -927,7 +1395,16 @@ export function UpcomingShowsPage() {
                 Cancel
               </Button>
               <Button
-                disabled={isSavingSettings || !isWhatnotBaseUrlValid}
+                disabled={
+                  isSavingSettings ||
+                  !isWhatnotBaseUrlValid ||
+                  !isGangSheetWidthValid ||
+                  !isGangSheetSideMarginValid ||
+                  !isGangSheetTopBottomMarginValid ||
+                  !isGangSheetGutterValid ||
+                  !isGangSheetMaxLengthValid ||
+                  !isGangSheetLabelFontSizeValid
+                }
                 form="show-queue-settings-form"
                 type="submit"
               >

@@ -1,6 +1,6 @@
 import type { WebContents } from "electron";
 
-import type { BatchImportFileManifestEntry } from "../../../shared/types/import/batchImport.types";
+import type { BatchImportFileManifestEntry } from "@fresh-prints/shared/types/import/batchImport.types";
 import { extractZipPngCandidates } from "../../services/import/zipExtractor";
 import { createJobTempDir } from "../../services/import/tempDirectoryService";
 import {

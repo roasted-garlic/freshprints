@@ -1,0 +1,79 @@
+@import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Inter:wght@400;600;700;900&display=swap');
+@import "tailwindcss";
+@import "tw-animate-css";
+@plugin "@tailwindcss/typography";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+
+  --color-retro-pink: #FF1493;
+  --color-retro-teal: #00CED1;
+  --color-retro-yellow: #FFE600;
+  --color-retro-purple: #9B00FF;
+  --color-retro-lime: #39FF14;
+  --color-retro-black: #000000;
+  --color-retro-white: #FFFFFF;
+  --color-retro-bg: #F0F0F0;
+
+  --font-sans: 'Inter', sans-serif;
+  --font-display: 'Fredoka One', sans-serif;
+
+  --shadow-retro: 4px 4px 0px 0px #000000;
+  --shadow-retro-hover: 6px 6px 0px 0px #000000;
+  --shadow-retro-active: 0px 0px 0px 0px #000000;
+  --shadow-retro-large: 8px 8px 0px 0px #000000;
+  --shadow-retro-huge: 12px 12px 0px 0px #9B00FF;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+:root {
+  --background: 0 0% 94%;
+  --foreground: 0 0% 0%;
+  --border: 0 0% 0%;
+  --input: 0 0% 100%;
+  --ring: 327 100% 54%;
+  
+  --radius: 0rem; /* Brutalist 90s has hard corners */
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-sans antialiased bg-retro-bg text-retro-black overflow-x-hidden;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display tracking-wide uppercase;
+  }
+}
+
+@layer utilities {
+  .border-retro {
+    @apply border-[3px] border-black;
+  }
+  
+  .shadow-retro {
+    box-shadow: var(--shadow-retro);
+  }
+
+  .shadow-retro-large {
+    box-shadow: var(--shadow-retro-large);
+  }
+
+  .text-stroke-black {
+    -webkit-text-stroke: 2px black;
+  }
+}

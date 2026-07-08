@@ -8,13 +8,13 @@ import { DesignPreviewLightbox } from "../../designs/components/DesignPreviewLig
 import { DesignThumbnailPanel } from "../../designs/components/DesignThumbnailPanel";
 import { useDesignDerivativeUrl } from "../../designs/hooks/useDesignDerivativeUrl";
 import type { Design } from "../../designs/types/design.types";
-import type { PrintRequestItem } from "../../../../../../shared/types/printRequest/printRequest.types";
+import type { PrintRequestItem } from "@fresh-prints/shared/types/printRequest/printRequest.types";
 import {
   assessPrintRequestItemSize,
   calculateLockedHeightFromWidth,
   calculateLockedWidthFromHeight,
   formatPrintRequestItemSizeLabel,
-} from "../../../../../../shared/utils/printRequestItemSizing";
+} from "@fresh-prints/shared/utils/printRequestItemSizing";
 import type { UpdatePrintRequestItemInput } from "../services/printRequestService";
 
 interface PrintRequestItemCardProps {

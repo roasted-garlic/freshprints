@@ -1,12 +1,12 @@
 import { FirebaseError } from "firebase/app";
 import { deleteObject, ref, uploadBytes } from "firebase/storage";
 
-import { DERIVATIVE_WEBP_CONTENT_TYPE } from "../../../../../../shared/constants/import/derivativeGeneration.constants";
+import { DERIVATIVE_WEBP_CONTENT_TYPE } from "@fresh-prints/shared/constants/import/derivativeGeneration.constants";
 import {
   getPreviewStoragePath,
   getThumbnailStoragePath,
-} from "../../../../../../shared/constants/design/designStoragePaths";
-import { assertValidDerivativeWebpUploadBytes } from "../../../../../../shared/utils/derivativeWebpValidation";
+} from "@fresh-prints/shared/constants/design/designStoragePaths";
+import { assertValidDerivativeWebpUploadBytes } from "@fresh-prints/shared/utils/derivativeWebpValidation";
 import { storage } from "../../../config/firebase";
 import type {
   DeleteDesignDerivativesResult,

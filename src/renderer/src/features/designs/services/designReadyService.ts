@@ -1,4 +1,4 @@
-import type { DerivativeProcessingStatus } from "../../../../../../shared/types/import/derivativeGeneration.types";
+import type { DerivativeProcessingStatus } from "@fresh-prints/shared/types/import/derivativeGeneration.types";
 import { permissionService } from "../../permissions/services/permissionService";
 import type { User } from "../../users/types/user.types";
 import type { Design } from "../types/design.types";

@@ -2,8 +2,8 @@ import {
   DERIVATIVE_ALLOW_UPSCALE,
   DERIVATIVE_PRESERVE_ALPHA,
   MAX_DERIVATIVE_FILE_SIZE_BYTES,
-} from "../../../shared/constants/import/derivativeGeneration.constants";
-import type { DerivativeGenerationFailure } from "../../../shared/types/import/derivativeGeneration.types";
+} from "@fresh-prints/shared/constants/import/derivativeGeneration.constants";
+import type { DerivativeGenerationFailure } from "@fresh-prints/shared/types/import/derivativeGeneration.types";
 import { isWebpMagicBytes } from "./derivativePngValidation";
 import type { SharpConstructor } from "./loadSharpModule";
 

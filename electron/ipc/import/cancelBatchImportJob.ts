@@ -1,4 +1,4 @@
-import type { CancelBatchImportJobRequest } from "../../../shared/types/import/importIpc.types";
+import type { CancelBatchImportJobRequest } from "@fresh-prints/shared/types/import/importIpc.types";
 import { requestBatchImportCancel } from "./importBatchSession";
 
 export function cancelBatchImportJob(

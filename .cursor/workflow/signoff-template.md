@@ -81,7 +81,10 @@
 
 ## Workflow Complete
 - [ ] `.cursor/workflow/state.md` updated with `DONE: yes`
-- [ ] ROADMAP.md updated
-- [ ] RISK_REGISTER.md updated if needed
+- [ ] `ROADMAP.md` updated
+- [ ] `RISK_REGISTER.md` updated if needed
+- [ ] **`project-chatgpt-handoff/CURRENT-STATE.md` updated** (required at signoff when handoff package exists)
+- [ ] `project-chatgpt-handoff/13-recent-completed-work.md` updated (required at signoff when handoff package exists)
+- [ ] Other handoff files per `project-chatgpt-handoff/MANIFEST.md` when behavior/architecture changed
 
 **Recommended next action for user:**

@@ -1,6 +1,6 @@
 /// <reference types="vite-plugin-electron/electron-env" />
 
-import type { FreshPrintsPreloadApi } from "../shared/types/import/importIpc.types";
+import type { FreshPrintsPreloadApi } from "@fresh-prints/shared/types/import/importIpc.types";
 
 declare namespace NodeJS {
   interface ProcessEnv {

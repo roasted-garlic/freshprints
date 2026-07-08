@@ -65,11 +65,23 @@ Status: **PASS**
 
 ---
 
+## Current phase
+
+### Phase 7 — Show Queue (combined Whatnot show + print run)
+
+**Status:** Foundation, Whatnot assisted import, and production-file export **signed off** (2026-07-05 foundation, 2026-07-06 Whatnot sync, 2026-07-07 export).
+
+**Shipped:** Combined show/print-run model, split allocation, capacity UI, zip export, multiply-by-qty export, auto-nested gang sheet PNG export, import auto-upscale and trim-padding.
+
+**Still planned within Phase 7 or deferred:** Dedicated production-status UI polish (minimal today).
+
+**Not planned:** Live Whatnot scheduled sync for Studio (user 2026-07-07).
+
+**Post-MVP backlog:** Gang Sheet Builder manual canvas.
+
+**Next:** Phase 8 Fresh Prints Portal after Firestore rules deploy.
+
 ## Planned phases
-
-### Phase 7 — Print Runs / Upcoming Shows
-
-Print Run CRUD, attach requests, production status, Pensacola file export.
 
 ### Phase 8 — Fresh Prints Portal
 

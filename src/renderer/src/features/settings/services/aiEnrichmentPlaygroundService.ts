@@ -4,7 +4,7 @@ import { httpsCallable } from "firebase/functions";
 import type {
   AiEnrichmentPlaygroundRequest,
   AiEnrichmentPlaygroundResponse,
-} from "../../../../../../shared/types/ai/aiEnrichmentPlayground.types";
+} from "@fresh-prints/shared/types/ai/aiEnrichmentPlayground.types";
 import { functions } from "../../../config/firebase";
 import { resolveClientVisionModelId } from "../constants/aiEnrichmentSettingsConstants";
 

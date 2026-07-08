@@ -3,7 +3,7 @@ import {
   getPreviewStoragePath,
   getThumbnailStoragePath,
   isCanonicalDesignStoragePath,
-} from "../../../../../../shared/constants/design/designStoragePaths";
+} from "@fresh-prints/shared/constants/design/designStoragePaths";
 import type { Design } from "../types/design.types";
 
 export interface MarkDesignReadyPaths {

@@ -4,7 +4,7 @@ import type {
   BatchDiscoveryCompleteEvent,
   BatchImportProgressEvent,
   BatchJobErrorEvent,
-} from "../../../shared/types/import/batchImport.types";
+} from "@fresh-prints/shared/types/import/batchImport.types";
 import { IMPORT_IPC_EVENT_CHANNELS } from "./importIpcChannels";
 
 export function emitBatchImportProgress(

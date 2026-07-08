@@ -1,4 +1,4 @@
-import type { ShowAllocation } from "../../../../../../shared/types/showAllocation/showAllocation.types";
+import type { ShowAllocation } from "@fresh-prints/shared/types/showAllocation/showAllocation.types";
 
 export interface ShowAllocationRequestGroup {
   printRequestId: string;

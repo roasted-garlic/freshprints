@@ -3,7 +3,7 @@ import { onCall } from "firebase-functions/v2/https";
 import type {
   AiEnrichmentTagRerankPlaygroundRequest,
   AiEnrichmentTagRerankPlaygroundResponse,
-} from "../../shared/types/ai/aiEnrichmentPlayground.types";
+} from "../../packages/shared/src/types/ai/aiEnrichmentPlayground.types";
 import { runAiEnrichmentTagRerankPlayground } from "./ai/aiEnrichmentPlayground";
 import { loadCallerProfile } from "./lib/caller";
 import { invalidArgument, permissionDenied, unauthenticated } from "./lib/errors";

@@ -1,0 +1,2 @@
+/** Runs before paint to avoid a flash of the wrong theme. */
+export const portalThemeInitScript = `(function(){try{var key="fresh-prints-portal-theme";var modes=["light","dark","system"];var mode=localStorage.getItem(key);if(modes.indexOf(mode)===-1){mode="light";}var resolved=mode==="system"?(window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"):mode;document.documentElement.dataset.theme=resolved;}catch(e){document.documentElement.dataset.theme="light";}})();`;

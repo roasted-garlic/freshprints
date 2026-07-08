@@ -2,12 +2,21 @@
   "name": "fresh-prints",
   "private": true,
   "version": "0.0.0",
-  "description": "Fresh Prints desktop admin application.",
+  "description": "Fresh Prints — Studio + Portal monorepo",
   "author": "Fresh Prints",
   "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build && electron-builder",
+    "dev:studio": "vite",
+    "dev:portal": "npm run dev --workspace @fresh-prints/portal",
+    "tunnel:portal": "cloudflared tunnel --url http://localhost:3000",
+    "build": "npm run build:studio",
+    "build:studio": "tsc && vite build && electron-builder",
+    "build:portal": "npm run build --workspace @fresh-prints/portal",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview"
   },
@@ -15,6 +24,7 @@
     "@types/react": "^18.2.64",
     "@types/react-dom": "^18.2.21",
     "@types/yauzl": "^3.4.0",
+    "@types/yazl": "^3.3.1",
     "@typescript-eslint/eslint-plugin": "^7.1.1",
     "@typescript-eslint/parser": "^7.1.1",
     "@vitejs/plugin-react": "^4.2.1",
@@ -34,8 +44,10 @@
   },
   "main": "dist-electron/main.js",
   "dependencies": {
+    "react-rnd": "^10.5.3",
     "react-router-dom": "^7.18.0",
     "sharp": "^0.33.5",
-    "yauzl": "^3.4.0"
+    "yauzl": "^3.4.0",
+    "yazl": "^3.3.1"
   }
 }

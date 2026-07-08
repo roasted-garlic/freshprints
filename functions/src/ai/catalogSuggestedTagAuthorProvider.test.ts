@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import type { CatalogTag } from "../../../shared/types/catalogTag.types";
+import type { CatalogTag } from "../../../packages/shared/src/types/catalogTag.types";
 import {
   buildSuggestedTagAuthorInstructions,
   buildSuggestedTagAuthorRequestBody,

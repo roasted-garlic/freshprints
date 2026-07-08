@@ -1,4 +1,4 @@
-import type { CatalogTag, SuggestedNewTag } from "../../../shared/types/catalogTag.types";
+import type { CatalogTag, SuggestedNewTag } from "../../../packages/shared/src/types/catalogTag.types";
 import { tokenizeTagCandidate } from "./catalogTitleRules";
 
 const MAX_AI_APPROVED_TAGS = 12;

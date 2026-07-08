@@ -6,11 +6,11 @@ import {
   AI_ENRICHMENT_PLAYGROUND_MAX_PROMPT_LENGTH,
   DEFAULT_VISION_MODEL_ID,
   type AllowedVisionModelId,
-} from "../../../../../../shared/constants/aiEnrichment.constants";
+} from "@fresh-prints/shared/constants/aiEnrichment.constants";
 import type {
   AiEnrichmentPlaygroundRequest,
   AiEnrichmentPlaygroundResponse,
-} from "../../../../../../shared/types/ai/aiEnrichmentPlayground.types";
+} from "@fresh-prints/shared/types/ai/aiEnrichmentPlayground.types";
 import { resolveClientVisionModelId } from "../constants/aiEnrichmentSettingsConstants";
 import { aiEnrichmentPlaygroundService } from "../services/aiEnrichmentPlaygroundService";
 

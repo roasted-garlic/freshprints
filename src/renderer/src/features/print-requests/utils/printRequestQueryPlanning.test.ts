@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import type { PrintRequestItem } from "../../../../../../shared/types/printRequest/printRequest.types";
+import type { PrintRequestItem } from "@fresh-prints/shared/types/printRequest/printRequest.types";
 import {
   buildCustomerListQueryPlan,
   buildPrintRequestItemSummaries,

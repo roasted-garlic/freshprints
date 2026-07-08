@@ -93,6 +93,7 @@ As of ADR-FP-039/ADR-FP-040, **AI Processing is a single playground-style call**
 | Function | Trigger | Purpose |
 |----------|---------|---------|
 | `createTeamUser` | Callable | Create team user + invitation flow |
+| `registerCustomer` | Callable | Customer self-registration — provisions `users/{uid}` + `customers/{id}` + username reservation after Firebase Auth signup |
 | `updateTeamUser` | Callable | Update team user fields |
 | `enqueueAiEnrichment` | Callable | Run imported design through direct AI processing |
 | `resetAiEnrichmentForProcessing` | Callable | Return Needs Review or Rejected design to Processing for a staff-started re-run |

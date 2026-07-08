@@ -6,7 +6,7 @@ import { CATALOG_TAG_RERANK_PROMPT_VERSION } from "./catalogTitleRules";
 import {
   estimateVisionCostUsd,
   resolveTagRerankPromptTemplate,
-} from "../../../shared/constants/aiEnrichment.constants";
+} from "../../../packages/shared/src/constants/aiEnrichment.constants";
 // Deliberately smaller/faster than the primary vision call's retry budget
 // (VISION_REQUEST_MAX_RETRIES/VISION_REQUEST_BASE_DELAY_MS). The reranker is an optional
 // second call layered on top of the primary vision call within the same 180s callable — a

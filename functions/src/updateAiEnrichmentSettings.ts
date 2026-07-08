@@ -13,7 +13,7 @@ import {
   hasRequiredAiEnrichmentPromptPlaceholders,
   type SuggestionAuthorMode,
   type TagRerankMode,
-} from "../../shared/constants/aiEnrichment.constants";
+} from "../../packages/shared/src/constants/aiEnrichment.constants";
 import { loadCallerProfile } from "./lib/caller";
 import { adminDb } from "./lib/admin";
 import { invalidArgument, permissionDenied, unauthenticated } from "./lib/errors";

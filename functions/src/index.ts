@@ -1,4 +1,8 @@
+export { createCustomerWithPortalInvite } from "./createCustomerWithPortalInvite";
+export { createPortalPrintRequest } from "./createPortalPrintRequest";
 export { createTeamUser } from "./createTeamUser";
+export { registerCustomer } from "./registerCustomer";
+export { updateCustomer } from "./updateCustomer";
 export { updateTeamUser } from "./updateTeamUser";
 export { enqueueAiEnrichment } from "./enqueueAiEnrichment";
 export { resetAiEnrichmentForProcessing } from "./resetAiEnrichmentForProcessing";

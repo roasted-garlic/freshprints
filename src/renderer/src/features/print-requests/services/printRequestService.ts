@@ -22,25 +22,25 @@ import { firestoreCollectionService } from "../../firebase/services/firestoreCol
 import { permissionService } from "../../permissions/services/permissionService";
 import type { User } from "../../users/types/user.types";
 import { designService } from "../../designs/services/designService";
-import type { Customer } from "../../../../../../shared/types/customer/customer.types";
-import type { PrintRequestItemStatus } from "../../../../../../shared/types/printRequest/printRequest.enums";
+import type { Customer } from "@fresh-prints/shared/types/customer/customer.types";
+import type { PrintRequestItemStatus } from "@fresh-prints/shared/types/printRequest/printRequest.enums";
 import type {
   PrintRequest,
   PrintRequestItem,
   PrintRequestOrigin,
-} from "../../../../../../shared/types/printRequest/printRequest.types";
-import { requireValidCustomerUsername } from "../../../../../../shared/utils/customerUsername";
-import { isPrintRequestOrigin } from "../../../../../../shared/utils/printRequestOrigin";
+} from "@fresh-prints/shared/types/printRequest/printRequest.types";
+import { requireValidCustomerUsername } from "@fresh-prints/shared/utils/customerUsername";
+import { isPrintRequestOrigin } from "@fresh-prints/shared/utils/printRequestOrigin";
 import {
   formatCustomerPrintRequestName,
   formatInternalPrintRequestName,
   requireValidInternalBaseName,
-} from "../../../../../../shared/utils/printRequestNaming";
+} from "@fresh-prints/shared/utils/printRequestNaming";
 import {
   assessPrintRequestItemSize,
   formatPrintRequestItemSizeLabel,
   resolveInitialPrintRequestItemSize,
-} from "../../../../../../shared/utils/printRequestItemSizing";
+} from "@fresh-prints/shared/utils/printRequestItemSizing";
 import {
   buildCustomerListQueryPlan,
   buildPrintRequestItemSummaries,

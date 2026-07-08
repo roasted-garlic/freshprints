@@ -1,4 +1,4 @@
-import type { UpcomingShow } from "../../../../../../shared/types/upcomingShow/upcomingShow.types";
+import type { UpcomingShow } from "@fresh-prints/shared/types/upcomingShow/upcomingShow.types";
 
 /**
  * Sorts shows by `scheduledStartAt` ascending with shows missing a schedule sorted last —

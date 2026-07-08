@@ -1,4 +1,4 @@
-import type { ImportPngWarning } from "../../../../../../../shared/types/import/importIpc.types";
+import type { ImportPngWarning } from "@fresh-prints/shared/types/import/importIpc.types";
 
 import { getImportWarningMessageClassName } from "../../utils/importPrintSizeDisplay";
 
@@ -7,7 +7,7 @@ interface BatchImportFileValidationWarningsProps {
 }
 
 function getWarningPrefix(code: ImportPngWarning["code"]): string {
-  if (code === "PRINT_SIZE_NORMALIZED") {
+  if (code === "PRINT_SIZE_NORMALIZED" || code === "IMAGE_UPSCALED") {
     return "";
   }
 

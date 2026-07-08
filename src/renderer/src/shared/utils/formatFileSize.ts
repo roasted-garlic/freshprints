@@ -1,1 +1,1 @@
-export { formatFileSize } from "../../../../../shared/utils/formatFileSize";
+export { formatFileSize } from "@fresh-prints/shared/utils/formatFileSize";

@@ -1,6 +1,6 @@
 import { BrowserWindow, screen, type Rectangle } from "electron";
 
-import { isSafeExternalLinkUrl } from "../../../shared/utils/externalLinkSafety";
+import { isSafeExternalLinkUrl } from "@fresh-prints/shared/utils/externalLinkSafety";
 
 const MIN_EXTERNAL_LINK_WIDTH = 480;
 const MIN_EXTERNAL_LINK_HEIGHT = 360;

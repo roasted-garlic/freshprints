@@ -4,6 +4,6 @@ export {
   getPreviewStoragePath,
   getThumbnailStoragePath,
   isCanonicalDesignStoragePath,
-} from "../../../../../../shared/constants/design/designStoragePaths";
+} from "@fresh-prints/shared/constants/design/designStoragePaths";
 
-export type { DesignStorageRoot } from "../../../../../../shared/constants/design/designStoragePaths";
+export type { DesignStorageRoot } from "@fresh-prints/shared/constants/design/designStoragePaths";

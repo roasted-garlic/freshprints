@@ -2,23 +2,28 @@ import { readFile, stat } from "node:fs/promises";
 
 import {
   MAX_SINGLE_PNG_SIZE_BYTES,
-} from "../../../shared/constants/importValidation.constants";
-import { ImportLimitExceededError } from "../../../shared/errors/importLimitErrors";
+} from "@fresh-prints/shared/constants/importValidation.constants";
+import { ImportLimitExceededError } from "@fresh-prints/shared/errors/importLimitErrors";
 import type {
   ImportPngWarning,
   ValidateSelectedPngFileResult,
-} from "../../../shared/types/import/importIpc.types";
-import { assessPrintSizeCapability } from "../../../shared/utils/printSizeMath";
+} from "@fresh-prints/shared/types/import/importIpc.types";
+import { assessPrintSizeCapability } from "@fresh-prints/shared/utils/printSizeMath";
 import {
+  formatImageTrimmedMessage,
+  formatImageUpscaledMessage,
   formatPrintSizeNormalizedMessage,
   formatPrintSizeRejectedMessage,
   formatPrintSizeSmallFormatMessage,
   formatPrintSizeStandardApparelMessage,
   formatPrintSizeTerribleMessage,
-} from "../../../shared/utils/importPrintSizeMessages";
-import { formatPngSizeLimitExceededMessage } from "../../../shared/utils/importLimitMessages";
+} from "@fresh-prints/shared/utils/importPrintSizeMessages";
+import { formatPngSizeLimitExceededMessage } from "@fresh-prints/shared/utils/importLimitMessages";
+import { trimImportImageIfNeeded } from "../../services/import/trimImportImage";
+import { upscaleImportImageIfNeeded } from "../../services/import/upscaleImportImage";
 import { getFileExtension, getFileName, hasAllowedExtension } from "./importPathUtils";
 import { parsePngMetadata } from "./pngParser";
+import { cacheCorrectedImportBytes } from "./correctedImportBytesCache";
 
 export class PngValidationError extends Error {
   constructor(message: string) {
@@ -42,6 +47,42 @@ function buildDpiMetadataWarnings(dpiX: number | undefined, dpiY: number | undef
   }
 
   return [];
+}
+
+function buildTrimWarning(
+  originalWidth: number,
+  originalHeight: number,
+  trimmedWidth: number,
+  trimmedHeight: number,
+): ImportPngWarning {
+  return {
+    code: "IMAGE_TRIMMED",
+    message: formatImageTrimmedMessage(originalWidth, originalHeight, trimmedWidth, trimmedHeight),
+    details: {
+      originalWidth,
+      originalHeight,
+      trimmedWidth,
+      trimmedHeight,
+    },
+  };
+}
+
+function buildUpscaleWarning(
+  originalWidth: number,
+  originalHeight: number,
+  upscaledWidth: number,
+  upscaledHeight: number,
+): ImportPngWarning {
+  return {
+    code: "IMAGE_UPSCALED",
+    message: formatImageUpscaledMessage(originalWidth, originalHeight, upscaledWidth, upscaledHeight),
+    details: {
+      originalWidth,
+      originalHeight,
+      upscaledWidth,
+      upscaledHeight,
+    },
+  };
 }
 
 function buildPrintSizeWarnings(
@@ -99,20 +140,65 @@ export async function validatePngFile(filePath: string): Promise<ValidateSelecte
 
   const fileBuffer = await readFile(filePath);
   const metadata = parsePngMetadata(fileBuffer);
-  const assessmentResult = assessPrintSizeCapability(metadata.width, metadata.height);
+
+  const trimResult = await trimImportImageIfNeeded(fileBuffer);
+
+  const rejectAssessment = assessPrintSizeCapability(trimResult.width, trimResult.height);
+
+  if (!rejectAssessment.success) {
+    throw new PngValidationError(rejectAssessment.error);
+  }
+
+  if (rejectAssessment.assessment.acceptanceLevel === "reject") {
+    throw new PngValidationError(formatPrintSizeRejectedMessage());
+  }
+
+  const upscaleResult = await upscaleImportImageIfNeeded(
+    trimResult.bytes,
+    trimResult.width,
+    trimResult.height,
+  );
+
+  const wasCorrected = trimResult.wasTrimmed || upscaleResult.wasUpscaled;
+
+  if (wasCorrected) {
+    cacheCorrectedImportBytes(filePath, {
+      bytes: upscaleResult.bytes,
+      width: upscaleResult.width,
+      height: upscaleResult.height,
+    });
+  }
+
+  const assessmentResult = assessPrintSizeCapability(upscaleResult.width, upscaleResult.height);
 
   if (!assessmentResult.success) {
     throw new PngValidationError(assessmentResult.error);
-  }
-
-  if (assessmentResult.assessment.acceptanceLevel === "reject") {
-    throw new PngValidationError(formatPrintSizeRejectedMessage());
   }
 
   const roundedDpiX = metadata.dpiX !== undefined ? roundDpi(metadata.dpiX) : undefined;
   const roundedDpiY = metadata.dpiY !== undefined ? roundDpi(metadata.dpiY) : undefined;
   const warnings = [
     ...buildDpiMetadataWarnings(roundedDpiX, roundedDpiY),
+    ...(trimResult.wasTrimmed
+      ? [
+          buildTrimWarning(
+            trimResult.originalWidth,
+            trimResult.originalHeight,
+            trimResult.width,
+            trimResult.height,
+          ),
+        ]
+      : []),
+    ...(upscaleResult.wasUpscaled
+      ? [
+          buildUpscaleWarning(
+            upscaleResult.originalWidth,
+            upscaleResult.originalHeight,
+            upscaleResult.width,
+            upscaleResult.height,
+          ),
+        ]
+      : []),
     ...buildPrintSizeWarnings(assessmentResult.assessment),
   ];
 
@@ -120,13 +206,18 @@ export async function validatePngFile(filePath: string): Promise<ValidateSelecte
     valid: true,
     filePath,
     fileName: getFileName(filePath),
-    fileSizeBytes: fileStats.size,
-    width: metadata.width,
-    height: metadata.height,
+    fileSizeBytes: upscaleResult.bytes.length,
+    width: upscaleResult.width,
+    height: upscaleResult.height,
     dpiX: roundedDpiX,
     dpiY: roundedDpiY,
     hasDpiMetadata: metadata.hasDpiMetadata,
     dpiSource: metadata.dpiSource,
+    wasTrimmed: trimResult.wasTrimmed,
+    wasUpscaled: upscaleResult.wasUpscaled,
+    ...(wasCorrected
+      ? { originalWidth: metadata.width, originalHeight: metadata.height }
+      : {}),
     printSizeAssessment: assessmentResult.assessment,
     warnings,
   };

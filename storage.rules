@@ -16,6 +16,23 @@ service firebase.storage {
         && callerUser().role in ["owner", "admin", "helper"];
     }
 
+    function isCustomer() {
+      return isSignedIn()
+        && callerUser().isActive == true
+        && callerUser().role == "customer";
+    }
+
+    function designIdFromDerivativeFileName(fileName) {
+      return fileName.replace('.webp', '');
+    }
+
+    function isReadyDesignDerivative(fileName) {
+      return isCustomer()
+        && isCanonicalDerivativeFileName(fileName)
+        && firestore.exists(/databases/(default)/documents/designs/$(designIdFromDerivativeFileName(fileName)))
+        && firestore.get(/databases/(default)/documents/designs/$(designIdFromDerivativeFileName(fileName))).data.status == "ready";
+    }
+
     function isCanonicalOriginalFileName(fileName) {
       return fileName.matches('[A-Za-z0-9_-]+\\.png');
     }
@@ -47,7 +64,8 @@ service firebase.storage {
     }
 
     match /thumbnails/{fileName} {
-      allow read: if isStaff() && isCanonicalDerivativeFileName(fileName);
+      allow read: if (isStaff() && isCanonicalDerivativeFileName(fileName))
+        || isReadyDesignDerivative(fileName);
       allow create: if isStaff()
         && isCanonicalDerivativeFileName(fileName)
         && isValidDerivativeUpload();
@@ -58,7 +76,8 @@ service firebase.storage {
     }
 
     match /previews/{fileName} {
-      allow read: if isStaff() && isCanonicalDerivativeFileName(fileName);
+      allow read: if (isStaff() && isCanonicalDerivativeFileName(fileName))
+        || isReadyDesignDerivative(fileName);
       allow create: if isStaff()
         && isCanonicalDerivativeFileName(fileName)
         && isValidDerivativeUpload();

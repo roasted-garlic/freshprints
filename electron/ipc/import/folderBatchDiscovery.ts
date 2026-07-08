@@ -1,7 +1,7 @@
 import type { WebContents } from "electron";
 
-import type { BatchImportFileManifestEntry } from "../../../shared/types/import/batchImport.types";
-import { MAX_BATCH_FILES } from "../../../shared/constants/import/batchImportLimits.constants";
+import type { BatchImportFileManifestEntry } from "@fresh-prints/shared/types/import/batchImport.types";
+import { MAX_BATCH_FILES } from "@fresh-prints/shared/constants/import/batchImportLimits.constants";
 import { scanFolderForPngFiles } from "../../services/import/folderScanner";
 import {
   buildInitialFolderDiscoverySummary,

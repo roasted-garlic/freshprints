@@ -3,7 +3,7 @@ import {
   type AiProcessingStage,
   type DesignAiAnalysis,
   type DesignAiSuggestions,
-} from "../../../../../../shared/types/ai/aiProcessing.types";
+} from "@fresh-prints/shared/types/ai/aiProcessing.types";
 import { mapFirestoreIsoString } from "../../firebase/utils/firestoreTimestamp";
 
 function isAiProcessingStage(value: unknown): value is AiProcessingStage {

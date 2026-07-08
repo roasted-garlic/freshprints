@@ -43,7 +43,16 @@ export function useShowQueueSettings() {
   }, [loadSettings]);
 
   const updateSettings = useCallback(
-    async (input: { defaultMaxTotalQuantity?: number; whatnotShowBaseUrl?: string }) => {
+    async (input: {
+      defaultMaxTotalQuantity?: number;
+      whatnotShowBaseUrl?: string;
+      gangSheetWidthInches?: number;
+      gangSheetSideMarginInches?: number;
+      gangSheetTopBottomMarginInches?: number;
+      gangSheetGutterInches?: number;
+      gangSheetMaxLengthInches?: number;
+      gangSheetLabelFontSizePx?: number;
+    }) => {
       if (!user) {
         throw new Error("You must be signed in to update Show Queue settings.");
       }

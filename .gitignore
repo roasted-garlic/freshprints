@@ -14,8 +14,9 @@ dist-electron/
 release/
 functions/lib
 functions/node_modules
-shared/**/*.js
-shared/**/*.js.map
+packages/shared/src/**/*.js
+packages/shared/src/**/*.js.map
+apps/portal/.next
 *.local
 .env
 .env.local

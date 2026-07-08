@@ -1,4 +1,4 @@
-import type { FinishBatchImportJobRequest } from "../../../shared/types/import/importIpc.types";
+import type { FinishBatchImportJobRequest } from "@fresh-prints/shared/types/import/importIpc.types";
 import { deleteJobTempDir } from "../../services/import/tempDirectoryService";
 import { finishBatchImportSession } from "./importBatchSession";
 

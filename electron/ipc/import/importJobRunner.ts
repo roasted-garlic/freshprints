@@ -1,7 +1,7 @@
 import type { WebContents } from "electron";
 
-import type { BatchImportSourceType } from "../../../shared/types/import/batchImport.types";
-import type { BatchJobErrorEvent } from "../../../shared/types/import/batchImport.types";
+import type { BatchImportSourceType } from "@fresh-prints/shared/types/import/batchImport.types";
+import type { BatchJobErrorEvent } from "@fresh-prints/shared/types/import/batchImport.types";
 import { deleteJobTempDir } from "../../services/import/tempDirectoryService";
 import { ZipExtractionError } from "../../services/import/zipExtractionErrors";
 import { emitBatchJobError } from "./batchImportEvents";

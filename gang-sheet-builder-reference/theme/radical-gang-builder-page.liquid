@@ -1,0 +1,213 @@
+{% comment %}
+  Gang Sheet Builder page section.
+  Renders a single product with centered image, variants, and purchase controls.
+{% endcomment %}
+
+{% liquid
+  assign builder_product = section.settings.product
+  if builder_product == blank
+    assign builder_product = all_products['gang-sheet-builder']
+  endif
+
+  if request.visual_preview_mode and builder_product == blank
+    assign builder_product = collections.all.products.first
+  endif
+
+  assign form_id = 'GangBuilderProductForm-' | append: section.id
+%}
+
+<section class="radical-gang-builder-page" {{ section.shopify_attributes }}>
+  <div class="radical-gang-builder-page__pattern" aria-hidden="true"></div>
+  <div class="radical-gang-builder-page__inner">
+    {% if builder_product == blank %}
+      <div class="radical-gang-builder-page__empty">
+        <h2 class="radical-gang-builder-page__title font-display">{{ section.settings.empty_heading | escape }}</h2>
+        <p class="radical-gang-builder-page__subtitle">{{ section.settings.empty_text | escape }}</p>
+      </div>
+    {% else %}
+      {% liquid
+        assign current_variant = builder_product.selected_or_first_available_variant
+        assign has_variant_picker_block = false
+        assign has_quantity_block = false
+        assign has_app_block = false
+        for block in section.blocks
+          if block.type == 'variant_picker'
+            assign has_variant_picker_block = true
+          elsif block.type == 'quantity'
+            assign has_quantity_block = true
+          elsif block.type == '@app'
+            assign has_app_block = true
+          endif
+        endfor
+      %}
+      <article class="radical-gang-builder-page__card">
+        {% form 'product', builder_product, id: form_id, class: 'radical-gang-builder-page__form' %}
+          {% unless has_variant_picker_block %}
+            <input type="hidden" name="id" value="{{ current_variant.id }}">
+          {% endunless %}
+          {% unless has_quantity_block %}
+            <input type="hidden" name="quantity" value="1">
+          {% endunless %}
+
+          {% for block in section.blocks %}
+            {% case block.type %}
+              {% when 'title' %}
+                <h1 class="radical-gang-builder-page__title font-display" {{ block.shopify_attributes }}>
+                  {{ builder_product.title | escape }}
+                </h1>
+              {% when 'subtitle' %}
+                {% if section.settings.subtitle != blank %}
+                  <p class="radical-gang-builder-page__subtitle" {{ block.shopify_attributes }}>
+                    {{ section.settings.subtitle | escape }}
+                  </p>
+                {% endif %}
+              {% when 'media' %}
+                <div class="radical-gang-builder-page__media" {{ block.shopify_attributes }}>
+                  {% if builder_product.featured_media %}
+                    {{
+                      builder_product.featured_media
+                      | image_url: width: 1600
+                      | image_tag: loading: 'lazy', class: 'radical-gang-builder-page__image', alt: builder_product.title
+                    }}
+                  {% else %}
+                    <div class="radical-gang-builder-page__image-placeholder"></div>
+                  {% endif %}
+                </div>
+              {% when 'variant_picker' %}
+                <div class="radical-gang-builder-page__field" {{ block.shopify_attributes }}>
+                  {% if builder_product.variants.size > 1 %}
+                    <label class="radical-gang-builder-page__label" for="GangBuilderVariant-{{ section.id }}">
+                      {{ section.settings.variant_label | escape }}
+                    </label>
+                    <select
+                      id="GangBuilderVariant-{{ section.id }}"
+                      class="radical-gang-builder-page__select"
+                      name="id"
+                    >
+                      {% for variant in builder_product.variants %}
+                        <option
+                          value="{{ variant.id }}"
+                          {% if variant.id == current_variant.id %}selected{% endif %}
+                          {% unless variant.available %}disabled{% endunless %}
+                        >
+                          {{ variant.title | escape }}
+                          {% unless variant.available %} - {{ 'products.product.sold_out' | t }}{% endunless %}
+                        </option>
+                      {% endfor %}
+                    </select>
+                  {% else %}
+                    <input type="hidden" name="id" value="{{ current_variant.id }}">
+                  {% endif %}
+                </div>
+              {% when 'quantity' %}
+                <div class="radical-gang-builder-page__field" {{ block.shopify_attributes }}>
+                  <label class="radical-gang-builder-page__label" for="GangBuilderQty-{{ section.id }}">
+                    {{ section.settings.quantity_label | escape }}
+                  </label>
+                  <input
+                    id="GangBuilderQty-{{ section.id }}"
+                    class="radical-gang-builder-page__qty"
+                    type="number"
+                    name="quantity"
+                    min="1"
+                    value="1"
+                  >
+                </div>
+              {% when '@app' %}
+                <div class="radical-gang-builder-page__buttons" {{ block.shopify_attributes }}>
+                  {% render block %}
+                </div>
+            {% endcase %}
+          {% endfor %}
+
+          {% if has_app_block == false and request.design_mode %}
+            <div class="radical-gang-builder-page__buttons radical-gang-builder-page__buttons--placeholder">
+              <p class="radical-gang-builder-page__app-placeholder">Add the builder app block here.</p>
+            </div>
+          {% endif %}
+        {% endform %}
+      </article>
+    {% endif %}
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Radical gang builder page",
+  "tag": "section",
+  "class": "radical-gang-builder-page-section",
+  "blocks": [
+    {
+      "type": "title",
+      "name": "Title",
+      "limit": 1
+    },
+    {
+      "type": "subtitle",
+      "name": "Subtitle",
+      "limit": 1
+    },
+    {
+      "type": "media",
+      "name": "Media",
+      "limit": 1
+    },
+    {
+      "type": "variant_picker",
+      "name": "Variant picker",
+      "limit": 1
+    },
+    {
+      "type": "quantity",
+      "name": "Quantity",
+      "limit": 1
+    },
+    {
+      "type": "@app"
+    }
+  ],
+  "settings": [
+    {
+      "type": "product",
+      "id": "product",
+      "label": "Builder product",
+      "info": "If empty, defaults to product handle gang-sheet-builder."
+    },
+    {
+      "type": "text",
+      "id": "subtitle",
+      "label": "Subtitle",
+      "default": "Build your perfect gang sheet in one spot."
+    },
+    {
+      "type": "text",
+      "id": "variant_label",
+      "label": "Variant label",
+      "default": "Choose your sheet size"
+    },
+    {
+      "type": "text",
+      "id": "quantity_label",
+      "label": "Quantity label",
+      "default": "Quantity"
+    },
+    {
+      "type": "text",
+      "id": "empty_heading",
+      "label": "Empty state heading",
+      "default": "Pick your builder product"
+    },
+    {
+      "type": "text",
+      "id": "empty_text",
+      "label": "Empty state text",
+      "default": "Select a product in the section settings, or publish the gang-sheet-builder product."
+    }
+  ],
+  "presets": [
+    {
+      "name": "Radical gang builder page"
+    }
+  ]
+}
+{% endschema %}

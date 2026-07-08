@@ -1,5 +1,5 @@
-import type { PrintRequestItemStatus } from "../../../../../../shared/types/printRequest/printRequest.enums";
-import type { PrintRequest, PrintRequestItem } from "../../../../../../shared/types/printRequest/printRequest.types";
+import type { PrintRequestItemStatus } from "@fresh-prints/shared/types/printRequest/printRequest.enums";
+import type { PrintRequest, PrintRequestItem } from "@fresh-prints/shared/types/printRequest/printRequest.types";
 
 export type QueryFilterOperator = "==";
 export type QueryOrderDirection = "asc" | "desc";

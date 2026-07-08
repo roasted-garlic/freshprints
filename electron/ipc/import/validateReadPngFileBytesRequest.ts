@@ -1,8 +1,8 @@
 import type {
   ReadBatchValidatedPngFileBytesRequest,
   ReadSinglePngFileBytesRequest,
-} from "../../../shared/types/import/readPngFileBytes.types";
-import { DEFAULT_READ_PNG_FILE_BYTES_OPTIONS } from "../../../shared/types/import/readPngFileBytes.types";
+} from "@fresh-prints/shared/types/import/readPngFileBytes.types";
+import { DEFAULT_READ_PNG_FILE_BYTES_OPTIONS } from "@fresh-prints/shared/types/import/readPngFileBytes.types";
 import { getBatchImportSession, isBatchValidatedPath } from "./importBatchSession";
 import { isRegisteredImportFilePath, isValidatedImportFilePath } from "./importFileSession";
 import { isUnsafeClientFilePath } from "./importPathUtils";

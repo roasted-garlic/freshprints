@@ -14,7 +14,7 @@
   let isScanning = false;
   let isImporting = false;
 
-  /** @type {import("../../../shared/utils/whatnotShowImportPlan").WhatnotShowImportPlanEntry[]} */
+  /** @type {import("@fresh-prints/shared/utils/whatnotShowImportPlan").WhatnotShowImportPlanEntry[]} */
   let planEntries = [];
   const excludedIndexes = new Set();
 

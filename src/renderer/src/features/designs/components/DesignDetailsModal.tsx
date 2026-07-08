@@ -5,7 +5,7 @@ import { Button } from "../../../shared/components/Button";
 import { Badge } from "../../../shared/components/Badge";
 import { ResolutionQualityPill } from "../../../shared/components/ResolutionQualityPill";
 import { ModalBody, ModalFooter, ModalHeader } from "../../../shared/components/Modal";
-import { resolveDesignPrintSizeForDisplay } from "../../../../../../shared/utils/designPrintSizeState";
+import { resolveDesignPrintSizeForDisplay } from "@fresh-prints/shared/utils/designPrintSizeState";
 import { useAuth } from "../../auth/hooks/useAuth";
 import { permissionService } from "../../permissions/services/permissionService";
 import type { Design } from "../types/design.types";

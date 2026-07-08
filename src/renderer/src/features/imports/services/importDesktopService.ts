@@ -4,7 +4,7 @@ import type {
   BatchImportJobId,
   BatchImportProgressEvent,
   BatchJobErrorEvent,
-} from "../../../../../../shared/types/import/batchImport.types";
+} from "@fresh-prints/shared/types/import/batchImport.types";
 import type {
   CancelBatchImportJobRequest,
   CancelBatchImportJobResult,
@@ -20,8 +20,8 @@ import type {
   StartBatchDiscoveryRequest,
   StartBatchDiscoveryResult,
   ValidateSelectedPngFileResult,
-} from "../../../../../../shared/types/import/importIpc.types";
-import type { ReadSinglePngFileBytesRequest } from "../../../../../../shared/types/import/readPngFileBytes.types";
+} from "@fresh-prints/shared/types/import/importIpc.types";
+import type { ReadSinglePngFileBytesRequest } from "@fresh-prints/shared/types/import/readPngFileBytes.types";
 function assertDesktopImportsApi() {
   if (!isElectronDesktop()) {
     throw new Error("PNG import is only available in the Fresh Prints desktop app.");

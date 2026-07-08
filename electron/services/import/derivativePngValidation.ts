@@ -1,13 +1,13 @@
-import { PNG_MAGIC_BYTES } from "../../../shared/constants/importValidation.constants";
-import { MAX_SINGLE_PNG_SIZE_BYTES } from "../../../shared/constants/importValidation.constants";
-import { isWebpMagicBytes } from "../../../shared/utils/derivativeWebpValidation";
-import { formatPngSizeLimitExceededMessage } from "../../../shared/utils/importLimitMessages";
+import { PNG_MAGIC_BYTES } from "@fresh-prints/shared/constants/importValidation.constants";
+import { MAX_SINGLE_PNG_SIZE_BYTES } from "@fresh-prints/shared/constants/importValidation.constants";
+import { isWebpMagicBytes } from "@fresh-prints/shared/utils/derivativeWebpValidation";
+import { formatPngSizeLimitExceededMessage } from "@fresh-prints/shared/utils/importLimitMessages";
 
 export { isWebpMagicBytes };
 import type {
   DerivativeGenerationFailure,
   DerivativeGenerationRequest,
-} from "../../../shared/types/import/derivativeGeneration.types";
+} from "@fresh-prints/shared/types/import/derivativeGeneration.types";
 
 export function isPngMagicBytes(bytes: Uint8Array): boolean {
   if (bytes.byteLength < PNG_MAGIC_BYTES.length) {

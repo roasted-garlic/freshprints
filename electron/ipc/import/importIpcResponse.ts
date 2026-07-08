@@ -1,4 +1,4 @@
-import type { ImportIpcError, ImportIpcErrorCode, ImportIpcResult } from "../../../shared/types/import/importIpc.types";
+import type { ImportIpcError, ImportIpcErrorCode, ImportIpcResult } from "@fresh-prints/shared/types/import/importIpc.types";
 
 export function importIpcSuccess<T>(data: T): ImportIpcResult<T> {
   return { success: true, data };

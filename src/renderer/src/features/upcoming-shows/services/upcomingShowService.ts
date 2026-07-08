@@ -16,19 +16,19 @@ import { assertNoUndefinedFirestoreFields, withoutUndefinedFields } from "../../
 import { firestoreCollectionService } from "../../firebase/services/firestoreCollectionService";
 import { permissionService } from "../../permissions/services/permissionService";
 import type { User } from "../../users/types/user.types";
-import { isPrintRequestOrigin } from "../../../../../../shared/utils/printRequestOrigin";
-import { planAllocationSplit } from "../../../../../../shared/utils/showCapacity";
-import { canRemoveRequestFromShow } from "../../../../../../shared/utils/showQueueEditability";
+import { isPrintRequestOrigin } from "@fresh-prints/shared/utils/printRequestOrigin";
+import { planAllocationSplit } from "@fresh-prints/shared/utils/showCapacity";
+import { canRemoveRequestFromShow } from "@fresh-prints/shared/utils/showQueueEditability";
 import { printRequestService } from "../../print-requests/services/printRequestService";
 import type {
   ShowProductionStatus,
   UpcomingShowSource,
   UpcomingShowStatus,
   UpcomingShowSyncStatus,
-} from "../../../../../../shared/types/upcomingShow/upcomingShow.enums";
-import type { UpcomingShow } from "../../../../../../shared/types/upcomingShow/upcomingShow.types";
-import type { ShowAllocationStatus } from "../../../../../../shared/types/showAllocation/showAllocation.enums";
-import type { ShowAllocation } from "../../../../../../shared/types/showAllocation/showAllocation.types";
+} from "@fresh-prints/shared/types/upcomingShow/upcomingShow.enums";
+import type { UpcomingShow } from "@fresh-prints/shared/types/upcomingShow/upcomingShow.types";
+import type { ShowAllocationStatus } from "@fresh-prints/shared/types/showAllocation/showAllocation.enums";
+import type { ShowAllocation } from "@fresh-prints/shared/types/showAllocation/showAllocation.types";
 import { findMatchingUpcomingShow } from "../utils/upcomingShowUpsert";
 import { sortUpcomingShowsForDisplay } from "../utils/upcomingShowListSort";
 import { showQueueSettingsService } from "./showQueueSettingsService";

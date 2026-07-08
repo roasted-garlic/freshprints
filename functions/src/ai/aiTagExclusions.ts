@@ -2,7 +2,7 @@ import {
   ADDITIONAL_TAG_EXCLUSION_PATTERN,
   BASE_AI_TAG_EXCLUSIONS,
   MAX_ADDITIONAL_TAG_EXCLUSIONS,
-} from "../../../shared/constants/aiTagExclusions.constants";
+} from "../../../packages/shared/src/constants/aiTagExclusions.constants";
 
 export { BASE_AI_TAG_EXCLUSIONS, MAX_ADDITIONAL_TAG_EXCLUSIONS };
 

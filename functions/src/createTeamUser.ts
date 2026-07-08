@@ -8,7 +8,7 @@ import { loadCallerProfile } from "./lib/caller";
 import { alreadyExists, internal, invalidArgument, permissionDenied, unauthenticated } from "./lib/errors";
 import { assertCanCreateTeamRole, assertTeamUserRole } from "./lib/permissions";
 import { sendTeamInvitationEmail } from "./lib/resendEmailService";
-import { resendApiKeySecret, defaultInvitationFromEmail } from "./lib/secrets";
+import { resendApiKeySecret, invitationFromEmail } from "./lib/secrets";
 import type { CreateTeamUserRequest, CreateTeamUserResponse } from "./lib/types";
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -69,7 +69,7 @@ async function sendInvitationEmail(
     const resetLink = await adminAuth.generatePasswordResetLink(email);
     return sendTeamInvitationEmail({
       apiKey: resendApiKeySecret.value(),
-      fromEmail: defaultInvitationFromEmail,
+      fromEmail: invitationFromEmail.value(),
       toEmail: email,
       displayName,
       role,

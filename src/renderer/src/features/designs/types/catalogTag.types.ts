@@ -1,11 +1,11 @@
-import type { CatalogTagStatus } from "../../../../../../shared/types/catalogTag.types";
+import type { CatalogTagStatus } from "@fresh-prints/shared/types/catalogTag.types";
 
 export type {
   CatalogTag,
   CatalogTagInput,
   CatalogTagStatus,
   SuggestedNewTag,
-} from "../../../../../../shared/types/catalogTag.types";
+} from "@fresh-prints/shared/types/catalogTag.types";
 
 export interface CatalogTagListOptions {
   includeArchived?: boolean;

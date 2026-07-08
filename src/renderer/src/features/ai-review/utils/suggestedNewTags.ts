@@ -1,4 +1,4 @@
-import type { SuggestedNewTag } from "../../../../../../shared/types/catalogTag.types";
+import type { SuggestedNewTag } from "@fresh-prints/shared/types/catalogTag.types";
 import type { CreateCatalogTagInput } from "../../designs/types/catalogTag.types";
 import { formatTagsInput, tryParseTagsInput } from "../../designs/utils/designFormMapper";
 import {

@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 
-import type { AllowedVisionModelId } from "../../../../../../shared/constants/aiEnrichment.constants";
-import type { AiEnrichmentTagRerankPlaygroundResponse } from "../../../../../../shared/types/ai/aiEnrichmentPlayground.types";
+import type { AllowedVisionModelId } from "@fresh-prints/shared/constants/aiEnrichment.constants";
+import type { AiEnrichmentTagRerankPlaygroundResponse } from "@fresh-prints/shared/types/ai/aiEnrichmentPlayground.types";
 import { aiEnrichmentTagRerankPlaygroundService } from "../services/aiEnrichmentTagRerankPlaygroundService";
 
 export interface UseAiEnrichmentTagRerankPlaygroundResult {

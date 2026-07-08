@@ -1,6 +1,6 @@
 import type Sharp from "sharp";
 
-import type { DerivativeGenerationFailure } from "../../../shared/types/import/derivativeGeneration.types";
+import type { DerivativeGenerationFailure } from "@fresh-prints/shared/types/import/derivativeGeneration.types";
 
 export type SharpConstructor = typeof Sharp;
 

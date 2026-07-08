@@ -1,6 +1,6 @@
 import { FieldValue } from "firebase-admin/firestore";
 
-import type { AiProcessingStage } from "../../../shared/types/ai/aiProcessing.types";
+import type { AiProcessingStage } from "../../../packages/shared/src/types/ai/aiProcessing.types";
 import { adminDb } from "../lib/admin";
 
 export async function updateAiProcessingStage(

@@ -16,7 +16,7 @@ import type {
   AllowedVisionModelId,
   SuggestionAuthorMode,
   TagRerankMode,
-} from "../../../../../../shared/constants/aiEnrichment.constants";
+} from "@fresh-prints/shared/constants/aiEnrichment.constants";
 import {
   aiEnrichmentSettingsService,
   resolveClientAdditionalTagExclusions,

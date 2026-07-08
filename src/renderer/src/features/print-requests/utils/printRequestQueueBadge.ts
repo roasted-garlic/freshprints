@@ -1,5 +1,5 @@
 import type { BadgeVariant } from "../../../shared/components/Badge";
-import type { PrintRequestQueueState } from "../../../../../../shared/utils/printRequestQueueState";
+import type { PrintRequestQueueState } from "@fresh-prints/shared/utils/printRequestQueueState";
 
 export function getPrintRequestQueueStateBadgeLabel(state: PrintRequestQueueState): string {
   switch (state) {

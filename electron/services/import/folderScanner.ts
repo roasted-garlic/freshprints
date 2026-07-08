@@ -1,14 +1,14 @@
 import { lstat, readdir, stat } from "node:fs/promises";
 import path from "node:path";
 
-import { ALLOWED_EXTENSIONS } from "../../../shared/constants/importValidation.constants";
+import { ALLOWED_EXTENSIONS } from "@fresh-prints/shared/constants/importValidation.constants";
 import {
   MAX_BATCH_FILES,
   MAX_FOLDER_DEPTH,
   MAX_FOLDER_SCAN_ENTRIES,
   MAX_FOLDER_ZIPS,
   MAX_ZIP_SIZE_BYTES,
-} from "../../../shared/constants/import/batchImportLimits.constants";
+} from "@fresh-prints/shared/constants/import/batchImportLimits.constants";
 
 export interface FolderScanCandidate {
   absolutePath: string;

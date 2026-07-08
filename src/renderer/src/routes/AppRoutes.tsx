@@ -1,10 +1,12 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 
 import { AuthBootstrapGate } from "../features/auth/components/AuthBootstrapGate";
+import { AuthenticatedRouteGate } from "../features/auth/components/AuthenticatedRouteGate";
 import { ProtectedRoute } from "../features/auth/components/ProtectedRoute";
 import { AiReviewPage } from "../features/ai-review/pages/AiReviewPage";
 import { CustomerRequestsPage } from "../features/customer-requests/pages/CustomerRequestsPage";
 import { DesignLibraryPage } from "../features/designs/pages/DesignLibraryPage";
+import { GangSheetBuilderPage } from "../features/gang-sheets/pages/GangSheetBuilderPage";
 import { ImportsPage } from "../features/imports/pages/ImportsPage";
 import { PrintRequestsPage } from "../features/print-requests/pages/PrintRequestsPage";
 import { SettingsPage } from "../features/settings/pages/SettingsPage";
@@ -86,6 +88,16 @@ export function AppRoutes() {
             }
           />
         </Route>
+        <Route
+          path="/show-queue/:showId/gang-sheet"
+          element={
+            <AuthenticatedRouteGate>
+              <ProtectedRoute permission="manageUpcomingShows">
+                <GangSheetBuilderPage />
+              </ProtectedRoute>
+            </AuthenticatedRouteGate>
+          }
+        />
         <Route path="*" element={<Navigate replace to="/designs" />} />
       </Routes>
     </AuthBootstrapGate>
