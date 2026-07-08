@@ -80,15 +80,17 @@ export default function RequestsPage() {
             production is complete.
           </p>
         </div>
-        <button
-          className="portal-button portal-button-primary portal-button-leading-icon"
-          disabled={isCreating}
-          onClick={() => void handleStartRequestClick()}
-          type="button"
-        >
-          <PlusCircleIcon />
-          {isCreating ? 'Starting…' : 'Start request'}
-        </button>
+        {!isLoading && requests.length > 0 ? (
+          <button
+            className="portal-button portal-button-primary portal-button-leading-icon"
+            disabled={isCreating}
+            onClick={() => void handleStartRequestClick()}
+            type="button"
+          >
+            <PlusCircleIcon />
+            {isCreating ? 'Starting…' : 'Start request'}
+          </button>
+        ) : null}
       </header>
 
       {error ? (

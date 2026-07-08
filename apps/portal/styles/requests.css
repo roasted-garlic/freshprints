@@ -88,6 +88,12 @@
   white-space: nowrap;
 }
 
+.portal-request-status-chip-continue {
+  align-items: center;
+  display: inline-flex;
+  gap: var(--space-1);
+}
+
 .portal-requests-empty {
   display: grid;
   gap: var(--space-3);

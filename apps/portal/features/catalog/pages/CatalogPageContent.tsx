@@ -145,17 +145,13 @@ export function CatalogPageContent() {
     <main
       className={`portal-page portal-catalog-page${selectionModeActive ? ' is-selection-mode' : ''}${isCreating ? ' is-creating-request' : ''}`}
     >
-      <header className="portal-catalog-topbar">
-        <div className="portal-catalog-topbar-copy">
-          <h1>{selectionModeActive ? 'Add designs to request' : 'Design Library'}</h1>
-          <p className="portal-muted">
-            {selectionModeActive
-              ? 'Select designs, set quantities, and save them to your print request.'
-              : 'Browse designs and create print requests.'}
-          </p>
-        </div>
+      {!selectionModeActive ? (
+        <header className="portal-catalog-topbar">
+          <div className="portal-catalog-topbar-copy">
+            <h1>Design Library</h1>
+            <p className="portal-muted">Browse designs and create print requests.</p>
+          </div>
 
-        {!selectionModeActive ? (
           <div className="portal-catalog-topbar-actions">
             <Link
               className="portal-button portal-button-secondary portal-button-leading-icon"
@@ -174,8 +170,8 @@ export function CatalogPageContent() {
               {isCreating ? requestActionPendingLabel : requestActionLabel}
             </button>
           </div>
-        ) : null}
-      </header>
+        </header>
+      ) : null}
 
       {loadError ? (
         <p className="portal-error" role="alert">
@@ -190,52 +186,57 @@ export function CatalogPageContent() {
       ) : null}
 
       <section className="design-library-section">
-        <div className="design-library-fixed-region">
-          {selectionModeActive && selectionMode.printRequest ? (
+        {selectionModeActive && selectionMode.printRequest ? (
+          <>
             <div className="design-library-selection-tray">
               <div className="design-library-selection-tray-top">
                 <div className="design-library-selection-tray-copy">
                   <p className="portal-eyebrow">Selection mode</p>
+                  <h2 className="design-library-selection-tray-title">Add designs to request</h2>
                   <h3>{selectionMode.printRequest.name}</h3>
                   <p>
-                    Select designs, set quantities, and save the chosen items back to this print request.
+                    Browse the designs below and choose what you need for this print request. Set a
+                    quantity for each design, then save your selections. When you are ready, this request
+                    can be added to a Whatnot show for printing.
                   </p>
                 </div>
               </div>
+            </div>
 
-              <div className="design-library-selection-tray-bottom">
-                <div className="design-library-selection-tray-stats">
-                  <span className="design-library-count-chip">
-                    {selectionMode.selectedDesignCount} selected
-                  </span>
-                  <span className="design-library-count-chip">
-                    {selectionMode.totalQuantity} total quantity
-                  </span>
-                </div>
+            <div className="design-library-selection-tray-sticky">
+              <div className="design-library-selection-tray-stats">
+                <span className="design-library-count-chip">
+                  {selectionMode.selectedDesignCount} selected
+                </span>
+                <span className="design-library-count-chip">
+                  {selectionMode.totalQuantity} total quantity
+                </span>
+              </div>
 
-                <div className="design-library-selection-tray-actions">
-                  <button
-                    className="portal-button portal-button-secondary portal-button-leading-icon"
-                    onClick={handleExitSelectionMode}
-                    type="button"
-                  >
-                    <ArrowLeftIcon />
-                    Back to request
-                  </button>
-                  <button
-                    className="portal-button portal-button-primary portal-button-leading-icon"
-                    disabled={selectionMode.isSaving || !selectionMode.hasNewSelections}
-                    onClick={() => void handleSaveSelectionMode()}
-                    type="button"
-                  >
-                    <SaveIcon />
-                    {selectionMode.isSaving ? 'Saving…' : 'Save'}
-                  </button>
-                </div>
+              <div className="design-library-selection-tray-actions">
+                <button
+                  className="portal-button portal-button-secondary portal-button-sm portal-button-leading-icon"
+                  onClick={handleExitSelectionMode}
+                  type="button"
+                >
+                  <ArrowLeftIcon />
+                  Back
+                </button>
+                <button
+                  className="portal-button portal-button-primary portal-button-sm portal-button-leading-icon"
+                  disabled={selectionMode.isSaving || !selectionMode.hasNewSelections}
+                  onClick={() => void handleSaveSelectionMode()}
+                  type="button"
+                >
+                  <SaveIcon />
+                  {selectionMode.isSaving ? 'Saving…' : 'Save'}
+                </button>
               </div>
             </div>
-          ) : null}
+          </>
+        ) : null}
 
+        <div className="design-library-fixed-region">
           <div className="design-library-filter-dock">
             <div className="design-library-summary-row">
               <span className="design-library-count-chip">{designCountLabel}</span>

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { ChevronRight } from 'lucide-react';
 
 import type { PrintRequest } from '@fresh-prints/shared/types/printRequest/printRequest.types';
 import type { Timestamp } from 'firebase/firestore';
@@ -37,11 +38,29 @@ interface PrintRequestCardProps {
 }
 
 export function PrintRequestCard({ request, progressLabel }: PrintRequestCardProps) {
+  const label = progressLabel ?? getStatusLabel(request.status);
+  const isContinueRequest = label === 'Working';
+
   return (
     <Link className="portal-request-card" href={`/requests/${request.id}`}>
       <div className="portal-request-card-header">
         <h2>{request.name}</h2>
-        <span className="portal-request-status-chip">{progressLabel ?? getStatusLabel(request.status)}</span>
+        <span
+          className={
+            isContinueRequest
+              ? 'portal-request-status-chip portal-request-status-chip-continue'
+              : 'portal-request-status-chip'
+          }
+        >
+          {isContinueRequest ? (
+            <>
+              Continue Request
+              <ChevronRight aria-hidden size={16} strokeWidth={2} />
+            </>
+          ) : (
+            label
+          )}
+        </span>
       </div>
       <p className="portal-muted">
         {request.itemCount} design{request.itemCount === 1 ? '' : 's'} · Updated{' '}

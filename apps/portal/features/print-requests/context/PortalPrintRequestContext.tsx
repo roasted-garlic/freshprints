@@ -78,7 +78,8 @@ export function PortalPrintRequestProvider({ children }: { children: ReactNode }
         title="Start a new print request?"
       >
         <p className="portal-muted portal-confirm-modal-message">
-          You will be taken to the design library to choose designs and set quantities.
+          Starting a request will activate selection mode to browse designs and set quantities. Your choices are
+          saved to a new request, which can later be added to a Whatnot show for printing.
         </p>
       </PortalConfirmModal>
     </PortalPrintRequestContext.Provider>
