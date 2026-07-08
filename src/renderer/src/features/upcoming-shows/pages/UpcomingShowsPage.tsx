@@ -33,6 +33,7 @@ import {
 } from "../services/showQueueSettingsService";
 import { useWhatnotShowImport, type WhatnotShowImportSummary } from "../hooks/useWhatnotShowImport";
 import { usePrintRequests } from "../../print-requests/hooks/usePrintRequests";
+import { usePrintRequestAllocationTotals } from "../../print-requests/hooks/usePrintRequestAllocationTotals";
 import { usePrintRequestDetails } from "../../print-requests/hooks/usePrintRequestDetails";
 import { AddToShowModal } from "../../print-requests/components/AddToShowModal";
 import { ExportShowConfirmModal } from "../components/ExportShowConfirmModal";
@@ -59,6 +60,7 @@ import {
   getShowCapacityPercent,
 } from "@fresh-prints/shared/utils/showCapacityDisplay";
 import { canRemoveRequestFromShow } from "@fresh-prints/shared/utils/showQueueEditability";
+import { isPrintRequestFullyPrinted } from "@fresh-prints/shared/utils/printRequestQueueState";
 import { parseDateTimeInputToTimestamp } from "../utils/upcomingShowDateTimeInput";
 import {
   formatUpcomingShowTimestampLabel,
@@ -95,7 +97,8 @@ export function UpcomingShowsPage() {
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const { shows, error: loadError, isLoading, reloadUpcomingShows } = useUpcomingShows();
-  const { requests } = usePrintRequests();
+  const { requests, summariesByRequestId } = usePrintRequests();
+  const { totalsByRequestId: allocationTotalsByRequestId } = usePrintRequestAllocationTotals();
   const showQueueSettings = useShowQueueSettings();
 
   const [selectedShowId, setSelectedShowId] = useState<string | null>(null);
@@ -656,9 +659,25 @@ export function UpcomingShowsPage() {
       { label: "Choose a request", value: "" },
       ...requests
         .filter((request) => !printRequestIdsAlreadyOnSelectedShow.has(request.id))
+        .filter((request) => {
+          const summary = summariesByRequestId[request.id];
+          const allocationTotals = allocationTotalsByRequestId[request.id] ?? {
+            totalAllocatedQuantity: 0,
+            totalInProgressQuantity: 0,
+            totalPrintedQuantity: 0,
+          };
+
+          return !isPrintRequestFullyPrinted({
+            status: request.status,
+            totalRequestedQuantity: summary?.totalQuantity ?? 0,
+            totalAllocatedQuantity: allocationTotals.totalAllocatedQuantity,
+            totalInProgressQuantity: allocationTotals.totalInProgressQuantity,
+            totalPrintedQuantity: allocationTotals.totalPrintedQuantity,
+          });
+        })
         .map((request) => ({ label: request.name, value: request.id })),
     ],
-    [printRequestIdsAlreadyOnSelectedShow, requests],
+    [allocationTotalsByRequestId, printRequestIdsAlreadyOnSelectedShow, requests, summariesByRequestId],
   );
 
   async function handleRemoveRequestFromShow(printRequestId: string) {

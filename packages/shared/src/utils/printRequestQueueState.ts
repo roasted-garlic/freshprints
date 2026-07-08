@@ -17,6 +17,24 @@ export interface PrintRequestQueueStateInput {
   totalPrintedQuantity: number;
 }
 
+export type PrintRequestFulfillmentStatus = "draft" | "active" | "editing" | "completed" | "archived";
+
+export interface PrintRequestFulfillmentInput extends PrintRequestQueueStateInput {
+  status: PrintRequestFulfillmentStatus;
+}
+
+/**
+ * True when every requested quantity has been printed or the request lifecycle is completed.
+ * Used to lock editing, design changes, and show attachment for finished work.
+ */
+export function isPrintRequestFullyPrinted(input: PrintRequestFulfillmentInput): boolean {
+  if (input.status === "completed") {
+    return true;
+  }
+
+  return derivePrintRequestQueueState(input) === "printed";
+}
+
 /**
  * Derives a Print Request's queue/print badge purely from its show allocations — there is no
  * persisted `printQueueStatus` field, so this must be recomputed from allocation records

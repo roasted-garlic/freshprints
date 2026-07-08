@@ -30,7 +30,7 @@ import type { Customer } from "@fresh-prints/shared/types/customer/customer.type
 import type { ShowAllocation } from "@fresh-prints/shared/types/showAllocation/showAllocation.types";
 import { formatInternalPrintRequestName } from "@fresh-prints/shared/utils/printRequestNaming";
 import { getPrintRequestOriginBadgeLabel } from "@fresh-prints/shared/utils/printRequestOrigin";
-import { derivePrintRequestQueueState } from "@fresh-prints/shared/utils/printRequestQueueState";
+import { derivePrintRequestQueueState, isPrintRequestFullyPrinted } from "@fresh-prints/shared/utils/printRequestQueueState";
 import { derivePrintRequestListTab, type PrintRequestListTab } from "@fresh-prints/shared/utils/printRequestListGrouping";
 import { resolveSelectedRequestIdForTab } from "@fresh-prints/shared/utils/printRequestTabSelection";
 import { groupAllocationsByShow } from "@fresh-prints/shared/utils/groupAllocationsByShow";
@@ -656,6 +656,16 @@ export function PrintRequestsPage() {
         totalPrintedQuantity: allocationTotalsByRequestId[visibleSelectedRequest.id]?.totalPrintedQuantity ?? 0,
       })
     : null;
+  const isSelectedRequestFullyPrinted = visibleSelectedRequest
+    ? isPrintRequestFullyPrinted({
+        status: visibleSelectedRequest.status,
+        totalRequestedQuantity: requestItems.reduce((sum, item) => sum + item.quantity, 0),
+        totalAllocatedQuantity: allocationTotalsByRequestId[visibleSelectedRequest.id]?.totalAllocatedQuantity ?? 0,
+        totalInProgressQuantity: allocationTotalsByRequestId[visibleSelectedRequest.id]?.totalInProgressQuantity ?? 0,
+        totalPrintedQuantity: allocationTotalsByRequestId[visibleSelectedRequest.id]?.totalPrintedQuantity ?? 0,
+      })
+    : false;
+  const isSelectedRequestDetailLocked = isSelectedRequestQueueLocked || isSelectedRequestFullyPrinted;
   const requestNamePreview = visibleSelectedRequest
     ? getRequestNamePreview(visibleSelectedRequest, internalBaseNameDraft)
     : "";
@@ -753,7 +763,7 @@ export function PrintRequestsPage() {
         </aside>
 
         <section className="print-requests-main">
-          {visibleSelectedRequest && !isSelectedRequestQueueLocked ? (
+          {visibleSelectedRequest && !isSelectedRequestDetailLocked ? (
             <div className="print-requests-page-actions">
               <Button
                 disabled={requestItems.length === 0}
@@ -867,7 +877,11 @@ export function PrintRequestsPage() {
                   </div>
                 ) : (
                   <div className="print-requests-detail-actions">
-                    {isSelectedRequestQueueLocked ? (
+                    {isSelectedRequestFullyPrinted ? (
+                      <p className="print-requests-modal-hint">
+                        This request has been fully printed and cannot be edited.
+                      </p>
+                    ) : isSelectedRequestQueueLocked ? (
                       <div className="print-requests-show-queue-lock">
                         <p className="print-requests-modal-hint">
                           This request is queued to a show. Remove it from the Show Queue to edit it.
@@ -960,16 +974,18 @@ export function PrintRequestsPage() {
               <Card className="print-requests-card">
                 <div className="print-requests-section-header">
                   <p className="eyebrow">Request items</p>
-                  <Button
-                    className="button-leading-icon"
-                    onClick={openDesignLibrarySelection}
-                    disabled={!selectedRequest || isSelectedRequestQueueLocked}
-                    size="sm"
-                    variant="secondary"
-                  >
-                    <ImagePlus aria-hidden="true" size={16} strokeWidth={2} />
-                    Add designs
-                  </Button>
+                  {!isSelectedRequestFullyPrinted ? (
+                    <Button
+                      className="button-leading-icon"
+                      onClick={openDesignLibrarySelection}
+                      disabled={!selectedRequest || isSelectedRequestDetailLocked}
+                      size="sm"
+                      variant="secondary"
+                    >
+                      <ImagePlus aria-hidden="true" size={16} strokeWidth={2} />
+                      Add designs
+                    </Button>
+                  ) : null}
                 </div>
 
                 {requestItems.length === 0 ? (
@@ -991,7 +1007,7 @@ export function PrintRequestsPage() {
                           onDuplicate={handleDuplicateItem}
                           onRemove={handleRemoveItem}
                           onUpdate={handleUpdateItem}
-                          readOnly={isSelectedRequestQueueLocked}
+                          readOnly={isSelectedRequestDetailLocked}
                         />
                       );
                     })}

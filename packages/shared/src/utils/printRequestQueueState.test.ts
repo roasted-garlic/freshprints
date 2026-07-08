@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { derivePrintRequestQueueState } from "./printRequestQueueState";
+import { derivePrintRequestQueueState, isPrintRequestFullyPrinted } from "./printRequestQueueState";
 
 describe("derivePrintRequestQueueState", () => {
   it("returns not_queued when nothing has been allocated", () => {
@@ -79,5 +79,46 @@ describe("derivePrintRequestQueueState", () => {
     });
 
     assert.equal(state, "printed");
+  });
+});
+
+describe("isPrintRequestFullyPrinted", () => {
+  it("returns true when lifecycle status is completed", () => {
+    assert.equal(
+      isPrintRequestFullyPrinted({
+        status: "completed",
+        totalRequestedQuantity: 5,
+        totalAllocatedQuantity: 5,
+        totalInProgressQuantity: 0,
+        totalPrintedQuantity: 3,
+      }),
+      true,
+    );
+  });
+
+  it("returns true when queue state is printed", () => {
+    assert.equal(
+      isPrintRequestFullyPrinted({
+        status: "active",
+        totalRequestedQuantity: 5,
+        totalAllocatedQuantity: 5,
+        totalInProgressQuantity: 0,
+        totalPrintedQuantity: 5,
+      }),
+      true,
+    );
+  });
+
+  it("returns false when only partially printed", () => {
+    assert.equal(
+      isPrintRequestFullyPrinted({
+        status: "active",
+        totalRequestedQuantity: 5,
+        totalAllocatedQuantity: 5,
+        totalInProgressQuantity: 0,
+        totalPrintedQuantity: 2,
+      }),
+      false,
+    );
   });
 });
