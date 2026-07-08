@@ -431,6 +431,22 @@ export function PrintRequestsPage() {
   }, []);
 
   useEffect(() => {
+    setAutosaveState({ status: "idle" });
+  }, [selectedRequestId]);
+
+  useEffect(() => {
+    if (autosaveState.status !== "saved") {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setAutosaveState({ status: "idle" });
+    }, 2000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [autosaveState.status]);
+
+  useEffect(() => {
     if (!visibleSelectedRequest) {
       setRequestNotesDraft("");
       setInternalBaseNameDraft("internal");

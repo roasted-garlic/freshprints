@@ -2,12 +2,20 @@
 
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import type { PrintRequestItem } from '@fresh-prints/shared/types/printRequest/printRequest.types';
 
 import { PortalPrintRequestItemCard } from '../../../../features/print-requests/components/PortalPrintRequestItemCard';
 import { usePrintRequestDetail } from '../../../../features/print-requests/hooks/usePrintRequestDetail';
+
+type AutosaveStatus = 'idle' | 'saving' | 'saved' | 'failed';
+
+interface AutosaveState {
+  status: AutosaveStatus;
+  message?: string;
+  retry?: () => Promise<void>;
+}
 
 function getStatusLabel(status: string): string {
   switch (status) {
@@ -31,6 +39,7 @@ export default function PrintRequestDetailView() {
   const router = useRouter();
   const printRequestId = params.id;
   const [actionError, setActionError] = useState<string | null>(null);
+  const [autosaveState, setAutosaveState] = useState<AutosaveState>({ status: 'idle' });
 
   const {
     printRequest,
@@ -43,6 +52,29 @@ export default function PrintRequestDetailView() {
     duplicateItem,
     removeItem,
   } = usePrintRequestDetail(printRequestId);
+
+  const updateAutosaveState = useCallback(
+    (status: Exclude<AutosaveStatus, 'idle'>, message?: string, retry?: () => Promise<void>) => {
+      setAutosaveState({ status, message, retry });
+    },
+    [],
+  );
+
+  useEffect(() => {
+    setAutosaveState({ status: 'idle' });
+  }, [printRequestId]);
+
+  useEffect(() => {
+    if (autosaveState.status !== 'saved') {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setAutosaveState({ status: 'idle' });
+    }, 2000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [autosaveState.status]);
 
   const handleUpdateItem = useCallback(
     async (
@@ -185,12 +217,37 @@ export default function PrintRequestDetailView() {
                 onDuplicate={(nextItem) => void handleDuplicateItem(nextItem)}
                 onRemove={(nextItem) => void handleRemoveItem(nextItem)}
                 onUpdate={handleUpdateItem}
+                onAutosaveStateChange={updateAutosaveState}
                 readOnly={!isEditable}
               />
             );
           })}
         </section>
       )}
+
+      {autosaveState.status !== 'idle' ? (
+        <div className={`portal-autosave-indicator is-${autosaveState.status}`} role="status">
+          <span>
+            {autosaveState.status === 'saving'
+              ? 'Saving…'
+              : autosaveState.status === 'saved'
+                ? 'Saved'
+                : 'Save failed'}
+          </span>
+          {autosaveState.status === 'failed' && autosaveState.message ? (
+            <span className="portal-autosave-message">{autosaveState.message}</span>
+          ) : null}
+          {autosaveState.status === 'failed' && autosaveState.retry ? (
+            <button
+              className="portal-button portal-button-secondary portal-button-sm"
+              onClick={() => void autosaveState.retry?.()}
+              type="button"
+            >
+              Retry
+            </button>
+          ) : null}
+        </div>
+      ) : null}
     </main>
   );
 }

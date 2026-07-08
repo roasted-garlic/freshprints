@@ -17,6 +17,7 @@ type SelectionState = Record<string, SelectedDesignSelection>;
 
 interface UsePrintRequestSelectionModeResult {
   error: string | null;
+  hasNewSelections: boolean;
   isLoading: boolean;
   isSaving: boolean;
   printRequest: PrintRequest | null;
@@ -180,6 +181,11 @@ export function usePrintRequestSelectionMode(printRequestId: string | null): Use
 
   const selectedDesignCount = useMemo(() => Object.keys(selectedDesigns).length, [selectedDesigns]);
 
+  const hasNewSelections = useMemo(
+    () => Object.values(selectedDesigns).some((selection) => !selection.isExisting),
+    [selectedDesigns],
+  );
+
   const totalQuantity = useMemo(
     () => Object.values(selectedDesigns).reduce((sum, selection) => sum + selection.quantity, 0),
     [selectedDesigns],
@@ -214,6 +220,7 @@ export function usePrintRequestSelectionMode(printRequestId: string | null): Use
 
   return {
     error,
+    hasNewSelections,
     isLoading,
     isSaving,
     printRequest,

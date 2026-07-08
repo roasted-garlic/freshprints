@@ -494,11 +494,11 @@ export function DesignLibraryPage() {
                   </Button>
                   <Button
                     className="button-leading-icon"
-                    disabled={selectionMode.isSaving || selectionMode.selectedDesignCount === 0}
+                    disabled={selectionMode.isSaving || !selectionMode.hasNewSelections}
                     onClick={() => void handleSaveSelectionMode()}
                   >
                     <Save aria-hidden="true" size={16} strokeWidth={2} />
-                    {selectionMode.isSaving ? "Saving..." : "Save to request"}
+                    {selectionMode.isSaving ? "Saving..." : "Save"}
                   </Button>
                 </div>
               </div>

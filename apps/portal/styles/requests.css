@@ -351,3 +351,35 @@
     width: 100%;
   }
 }
+
+.portal-autosave-indicator {
+  align-items: center;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  bottom: var(--space-4);
+  box-shadow: var(--shadow-sm);
+  color: var(--color-text-primary);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  max-width: min(28rem, calc(100vw - 2rem));
+  padding: var(--space-2) var(--space-3);
+  position: fixed;
+  right: var(--space-4);
+  z-index: var(--z-modal);
+}
+
+.portal-autosave-indicator.is-saved {
+  border-color: color-mix(in srgb, #22c55e 42%, var(--color-border));
+}
+
+.portal-autosave-indicator.is-failed {
+  border-color: color-mix(in srgb, #ef4444 42%, var(--color-border));
+}
+
+.portal-autosave-message {
+  color: var(--color-text-secondary);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}

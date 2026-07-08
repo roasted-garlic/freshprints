@@ -34,6 +34,11 @@ interface PortalPrintRequestItemCardProps {
     item: PrintRequestItem,
     input: { quantity: number; printWidthInches: number; printHeightInches: number },
   ) => Promise<void>;
+  onAutosaveStateChange: (
+    status: 'saving' | 'saved' | 'failed',
+    message?: string,
+    retry?: () => Promise<void>,
+  ) => void;
 }
 
 function resolveInitialWidth(item: PrintRequestItem, design?: PortalPrintRequestItemDesign | null): number {
@@ -91,6 +96,7 @@ export function PortalPrintRequestItemCard({
   onDuplicate,
   onRemove,
   onUpdate,
+  onAutosaveStateChange,
 }: PortalPrintRequestItemCardProps) {
   const title = design?.title ?? 'Design';
   const previewPath = design?.previewPath ?? design?.thumbnailPath;
@@ -98,7 +104,6 @@ export function PortalPrintRequestItemCard({
   const [printWidthInput, setPrintWidthInput] = useState(formatEditableNumber(resolveInitialWidth(item, design)));
   const [printHeightInput, setPrintHeightInput] = useState(formatEditableNumber(resolveInitialHeight(item, design)));
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
-  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'failed'>('idle');
   const { url: previewUrl } = useCatalogDerivativeUrl(previewPath);
   const lastSavedSignatureRef = useRef(
     buildItemSignature(item.quantity, resolveInitialWidth(item, design), resolveInitialHeight(item, design)),
@@ -118,7 +123,6 @@ export function PortalPrintRequestItemCard({
     setPrintWidthInput(formatEditableNumber(nextWidth));
     setPrintHeightInput(formatEditableNumber(nextHeight));
     setIsLightboxOpen(false);
-    setSaveState('idle');
     lastSavedSignatureRef.current = incomingSignature;
   }, [design, item]);
 
@@ -160,7 +164,7 @@ export function PortalPrintRequestItemCard({
       return;
     }
 
-    setSaveState('saving');
+    onAutosaveStateChange('saving');
 
     try {
       await onUpdate(item, {
@@ -169,11 +173,12 @@ export function PortalPrintRequestItemCard({
         printHeightInches: parsedPrintHeightInches,
       });
       lastSavedSignatureRef.current = draftSignature;
-      setSaveState('idle');
-    } catch {
-      setSaveState('failed');
+      onAutosaveStateChange('saved');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to save item changes.';
+      onAutosaveStateChange('failed', message, () => saveDraftRef.current());
     }
-  }, [item, onUpdate, parsedPrintHeightInches, parsedPrintWidthInches, parsedQuantity]);
+  }, [item, onAutosaveStateChange, onUpdate, parsedPrintHeightInches, parsedPrintWidthInches, parsedQuantity]);
 
   useEffect(() => {
     saveDraftRef.current = saveDraft;
@@ -291,12 +296,6 @@ export function PortalPrintRequestItemCard({
             {sizeAssessment?.errorMessage ? (
               <p className="portal-error portal-request-item-field-error" role="alert">
                 {sizeAssessment.errorMessage}
-              </p>
-            ) : null}
-
-            {saveState === 'failed' ? (
-              <p className="portal-error portal-request-item-field-error" role="alert">
-                Unable to save changes. Try again.
               </p>
             ) : null}
           </>
