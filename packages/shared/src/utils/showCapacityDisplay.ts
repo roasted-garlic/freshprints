@@ -66,11 +66,17 @@ export type DerivedShowStatusLabel =
   | "CANCELED"
   | "OVER MAX"
   | "FULL"
-  | "OPEN";
+  | "OPEN"
+  | "PAST";
 
 export interface DerivedShowStatusDisplay {
   label: DerivedShowStatusLabel;
   variant: "default" | "success" | "warning" | "danger" | "info";
+}
+
+export interface DerivedShowStatusDisplayOptions {
+  /** When true, idle capacity states (OPEN/FULL/OVER MAX) display as PAST instead. */
+  isPastScheduled?: boolean;
 }
 
 /**
@@ -84,6 +90,7 @@ export interface DerivedShowStatusDisplay {
 export function getDerivedShowStatusDisplay(
   productionStatus: ShowProductionStatus,
   capacity: ShowCapacityResult,
+  options?: DerivedShowStatusDisplayOptions,
 ): DerivedShowStatusDisplay {
   switch (productionStatus) {
     case "printing":
@@ -98,6 +105,10 @@ export function getDerivedShowStatusDisplay(
       return { label: "CANCELED", variant: "danger" };
     default:
       break;
+  }
+
+  if (options?.isPastScheduled) {
+    return { label: "PAST", variant: "default" };
   }
 
   if (capacity.isOverCapacity) {

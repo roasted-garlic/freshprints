@@ -9,6 +9,8 @@ export function getPrintRequestQueueStateBadgeLabel(state: PrintRequestQueueStat
       return "Partially queued";
     case "queued":
       return "Queued";
+    case "printing":
+      return "Printing";
     case "partially_printed":
       return "Partially printed";
     case "printed":
@@ -21,6 +23,7 @@ export function getPrintRequestQueueStateBadgeVariant(state: PrintRequestQueueSt
     case "printed":
       return "success";
     case "partially_printed":
+    case "printing":
     case "queued":
       return "info";
     case "partially_queued":

@@ -1,14 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { useAuth } from "../../auth/hooks/useAuth";
-import { upcomingShowService, isPrintedAllocationStatus } from "../../upcoming-shows/services/upcomingShowService";
+import { buildPrintRequestAllocationTotalsByRequestId } from "@fresh-prints/shared/utils/showAllocationTotals";
+import { upcomingShowService } from "../../upcoming-shows/services/upcomingShowService";
 
-export interface PrintRequestAllocationTotals {
-  totalAllocatedQuantity: number;
-  totalPrintedQuantity: number;
-}
-
-type AllocationTotalsByRequestId = Record<string, PrintRequestAllocationTotals>;
+type AllocationTotalsByRequestId = ReturnType<typeof buildPrintRequestAllocationTotalsByRequestId>;
 
 /**
  * Loads every show allocation once and groups totals by `printRequestId`, so the Print Requests
@@ -35,24 +31,7 @@ export function usePrintRequestAllocationTotals() {
       setIsLoading(true);
     }
     const allocations = await upcomingShowService.listAllShowAllocations(user);
-    const totals: AllocationTotalsByRequestId = {};
-
-    for (const allocation of allocations) {
-      if (allocation.status === "canceled") {
-        continue;
-      }
-
-      const current = totals[allocation.printRequestId] ?? { totalAllocatedQuantity: 0, totalPrintedQuantity: 0 };
-      current.totalAllocatedQuantity += allocation.allocatedQuantity;
-
-      if (isPrintedAllocationStatus(allocation.status)) {
-        current.totalPrintedQuantity += allocation.allocatedQuantity;
-      }
-
-      totals[allocation.printRequestId] = current;
-    }
-
-    setTotalsByRequestId(totals);
+    setTotalsByRequestId(buildPrintRequestAllocationTotalsByRequestId(allocations));
     setIsLoading(false);
   }, [user]);
 

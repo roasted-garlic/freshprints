@@ -35,6 +35,18 @@ export interface UpcomingShow {
   /** Sum of `allocatedQuantity` across all non-canceled `showAllocations` for this show. Denormalized for list/detail display. */
   allocatedQuantity: number;
 
+  /** Elapsed print time in milliseconds, excluding any active unpaused segment. */
+  accumulatedPrintMs: number;
+  /** Set while the timer is running (not paused). */
+  activePrintStartedAt?: Timestamp;
+  /** First time staff started printing for this show. */
+  printStartedAt?: Timestamp;
+  /** Set when staff pauses the timer; cleared on resume. */
+  printPausedAt?: Timestamp;
+  /** Set when staff marks the show printing finished. */
+  printFinishedAt?: Timestamp;
+  printFinishedBy?: string;
+
   createdBy?: string;
   updatedBy?: string;
   createdAt: Timestamp;

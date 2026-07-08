@@ -4,6 +4,7 @@ import type {
 } from "@fresh-prints/shared/types/upcomingShow/upcomingShow.enums";
 import type { UpcomingShow } from "@fresh-prints/shared/types/upcomingShow/upcomingShow.types";
 import { formatShowDateTimeLabel } from "@fresh-prints/shared/utils/showDateTimeDisplay";
+import { isPastScheduledShow } from "./groupShowsByUpcomingPast";
 
 export function getUpcomingShowStatusBadgeVariant(status: UpcomingShowStatus) {
   switch (status) {
@@ -47,6 +48,14 @@ export function formatUpcomingShowTimestampLabel(value: { toDate: () => Date } |
   }
 
   return formatShowDateTimeLabel(value.toDate());
+}
+
+export function shouldShowUpcomingShowScheduleStatusBadge(show: UpcomingShow, now: Date): boolean {
+  if (!isPastScheduledShow(show, now)) {
+    return true;
+  }
+
+  return show.status !== "scheduled" && show.status !== "rescheduled";
 }
 
 export function formatUpcomingShowManualImportTimestampLabel(value: { toDate: () => Date } | undefined): string {

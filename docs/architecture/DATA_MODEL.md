@@ -1137,6 +1137,14 @@ export interface UpcomingShow {
   /** Sum of `allocatedQuantity` across all non-canceled `showAllocations` for this show. Denormalized for list/detail display. */
   allocatedQuantity: number;
 
+  /** Show Queue production timer (Option B — staff Start/Pause/Resume/Mark finished; export does not start the timer). */
+  accumulatedPrintMs: number;
+  activePrintStartedAt?: Timestamp;
+  printStartedAt?: Timestamp;
+  printPausedAt?: Timestamp;
+  printFinishedAt?: Timestamp;
+  printFinishedBy?: string;
+
   createdBy?: string;
   updatedBy?: string;
   createdAt: Timestamp;
@@ -1241,7 +1249,8 @@ Print Request queue/print state is **derived from allocations, not persisted** o
 `shared/utils/printRequestQueueState.ts`'s `derivePrintRequestQueueState()`: it compares a request's
 total item quantity against the sum of its non-canceled allocation quantities (`not_queued` /
 `partially_queued` / `queued`) and the sum of `printed`/`done` allocation quantities
-(`partially_printed` / `printed`). This was a deliberate decision to avoid a second status field that
+(`partially_printed` / `printed`). **Printing** tab/state applies when any allocation quantity is
+`in_progress` (staff clicked **Start printing** on Show Queue detail). This was a deliberate decision to avoid a second status field that
 every allocation mutation would need to keep in sync — see ADR-FP-049. The Print Requests page's
 Working/Queued/Printed list tabs are derived the same way, via
 `shared/utils/printRequestListGrouping.ts`'s `derivePrintRequestListTab()` — see ADR-FP-051.

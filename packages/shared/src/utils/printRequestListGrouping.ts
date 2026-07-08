@@ -1,10 +1,12 @@
-export type PrintRequestListTab = "working" | "queued" | "printed";
+export type PrintRequestListTab = "working" | "queued" | "printing" | "printed";
 
 export interface PrintRequestListGroupingInput {
   /** Sum of all `printRequestItems.quantity` for the request. */
   totalRequestedQuantity: number;
   /** Sum of `allocatedQuantity` across all non-canceled `showAllocations` for the request. */
   totalAllocatedQuantity: number;
+  /** Sum of `allocatedQuantity` across allocations with status `in_progress`. */
+  totalInProgressQuantity: number;
   /** Sum of `allocatedQuantity` across allocations with status `printed` or `done`. */
   totalPrintedQuantity: number;
   /** The request's persisted high-level lifecycle status. */
@@ -25,6 +27,10 @@ export function derivePrintRequestListTab(input: PrintRequestListGroupingInput):
 
   if (input.totalRequestedQuantity > 0 && input.totalPrintedQuantity >= input.totalRequestedQuantity) {
     return "printed";
+  }
+
+  if (input.totalInProgressQuantity > 0) {
+    return "printing";
   }
 
   if (input.totalAllocatedQuantity > 0) {

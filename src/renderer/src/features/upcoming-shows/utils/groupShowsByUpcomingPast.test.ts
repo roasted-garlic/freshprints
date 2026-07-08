@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import type { UpcomingShow } from "@fresh-prints/shared/types/upcomingShow/upcomingShow.types";
-import { filterShowsByScheduleTab, getShowScheduleTab, resolveVisibleShowSelection } from "./groupShowsByUpcomingPast";
+import { canStartShowPrinting, filterShowsByScheduleTab, getShowScheduleTab, isPastScheduledShow, resolveVisibleShowSelection } from "./groupShowsByUpcomingPast";
 
 function buildShow(overrides: Partial<UpcomingShow> = {}): UpcomingShow {
   return {
@@ -15,6 +15,7 @@ function buildShow(overrides: Partial<UpcomingShow> = {}): UpcomingShow {
     productionStatus: "open",
     maxQuantityOverridden: false,
     allocatedQuantity: 0,
+    accumulatedPrintMs: 0,
     createdAt: { toDate: () => new Date("2026-01-01") } as UpcomingShow["createdAt"],
     updatedAt: { toDate: () => new Date("2026-01-01") } as UpcomingShow["updatedAt"],
     ...overrides,
@@ -58,6 +59,39 @@ describe("filterShowsByScheduleTab", () => {
 
     assert.deepEqual(filterShowsByScheduleTab([future, past], "upcoming", now).map((s) => s.id), ["future"]);
     assert.deepEqual(filterShowsByScheduleTab([future, past], "past", now).map((s) => s.id), ["past"]);
+  });
+});
+
+describe("isPastScheduledShow", () => {
+  const now = new Date("2026-07-07T12:00:00Z");
+
+  it("is true for past shows", () => {
+    const show = buildShow({ scheduledStartAt: timestamp("2026-06-01T00:00:00Z") });
+    assert.equal(isPastScheduledShow(show, now), true);
+  });
+
+  it("is false for upcoming shows", () => {
+    const show = buildShow({ scheduledStartAt: timestamp("2026-08-01T00:00:00Z") });
+    assert.equal(isPastScheduledShow(show, now), false);
+  });
+});
+
+describe("canStartShowPrinting", () => {
+  const now = new Date("2026-07-07T12:00:00Z");
+
+  it("allows starting on upcoming shows", () => {
+    const show = buildShow({ scheduledStartAt: timestamp("2026-08-01T00:00:00Z") });
+    assert.equal(canStartShowPrinting(show, now), true);
+  });
+
+  it("blocks starting on past shows", () => {
+    const show = buildShow({ scheduledStartAt: timestamp("2026-06-01T00:00:00Z") });
+    assert.equal(canStartShowPrinting(show, now), false);
+  });
+
+  it("allows starting on unscheduled shows", () => {
+    const show = buildShow({ scheduledStartAt: undefined });
+    assert.equal(canStartShowPrinting(show, now), true);
   });
 });
 

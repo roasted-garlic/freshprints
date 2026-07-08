@@ -93,6 +93,8 @@ export function useMyPrintRequests() {
   return {
     requests,
     requestsByTab,
+    summariesByRequestId,
+    allocationTotalsByRequestId,
     continuableRequests,
     isLoading,
     error,

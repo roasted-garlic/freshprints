@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 
+import { derivePrintRequestQueueState } from '@fresh-prints/shared/utils/printRequestQueueState';
+import { getPrintRequestProgressLabel } from '@fresh-prints/shared/utils/printRequestProgressDisplay';
 import {
   PORTAL_PRINT_REQUEST_LIST_TAB_PARAM,
   getPortalPrintRequestListTabLabel,
@@ -14,17 +16,44 @@ import {
 import { PrintRequestCard } from '../../../features/print-requests/components/PrintRequestCard';
 import { useMyPrintRequests } from '../../../features/print-requests/hooks/useMyPrintRequests';
 
-const PORTAL_REQUEST_TABS: PortalPrintRequestListTab[] = ['working', 'queued', 'printed'];
+const PORTAL_REQUEST_TABS: PortalPrintRequestListTab[] = ['working', 'queued', 'printing', 'printed'];
 
 function buildRequestsPageHref(tab: PortalPrintRequestListTab): string {
   return `/requests?tab=${tab}`;
+}
+
+function getEmptyTabTitle(tab: PortalPrintRequestListTab): string {
+  switch (tab) {
+    case 'working':
+      return 'No working requests';
+    case 'queued':
+      return 'No queued requests';
+    case 'printing':
+      return 'No printing requests';
+    case 'printed':
+      return 'No printed requests';
+  }
+}
+
+function getEmptyTabMessage(tab: PortalPrintRequestListTab): string {
+  switch (tab) {
+    case 'working':
+      return 'Working requests are drafts you are still building or revising before they go to a show.';
+    case 'queued':
+      return 'Queued requests have been added to an upcoming show and are waiting for the press to start.';
+    case 'printing':
+      return 'Printing requests are on the press right now.';
+    case 'printed':
+      return 'Printed requests have finished production.';
+  }
 }
 
 export default function RequestsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const activeTab = parsePortalPrintRequestListTab(searchParams.get(PORTAL_PRINT_REQUEST_LIST_TAB_PARAM));
-  const { requests, requestsByTab, isLoading, error, createPrintRequest } = useMyPrintRequests();
+  const { requests, requestsByTab, summariesByRequestId, allocationTotalsByRequestId, isLoading, error, createPrintRequest } =
+    useMyPrintRequests();
   const [isCreating, setIsCreating] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -54,7 +83,8 @@ export default function RequestsPage() {
         <div>
           <h1>Print requests</h1>
           <p className="portal-muted">
-            Track requests while you build them, after they are queued to a show, and once printing is complete.
+            Track requests while you build them, after they are queued to a show, while they print, and once
+            production is complete.
           </p>
         </div>
         <button
@@ -120,20 +150,8 @@ export default function RequestsPage() {
 
           {visibleRequests.length === 0 ? (
             <section className="portal-panel portal-requests-empty">
-              <h2>
-                {activeTab === 'working'
-                  ? 'No working requests'
-                  : activeTab === 'queued'
-                    ? 'No queued requests'
-                    : 'No printed requests'}
-              </h2>
-              <p className="portal-muted">
-                {activeTab === 'working'
-                  ? 'Working requests are drafts you are still building or revising before they go to a show.'
-                  : activeTab === 'queued'
-                    ? 'Queued requests have been added to an upcoming show and are waiting to print.'
-                    : 'Printed requests have finished production.'}
-              </p>
+              <h2>{getEmptyTabTitle(activeTab)}</h2>
+              <p className="portal-muted">{getEmptyTabMessage(activeTab)}</p>
               {activeTab === 'working' ? (
                 <div className="portal-requests-empty-actions">
                   <button
@@ -152,11 +170,28 @@ export default function RequestsPage() {
             </section>
           ) : (
             <section className="portal-request-list" role="list">
-              {visibleRequests.map((request) => (
-                <div key={request.id} role="listitem">
-                  <PrintRequestCard request={request} />
-                </div>
-              ))}
+              {visibleRequests.map((request) => {
+                const summary = summariesByRequestId[request.id] ?? { totalQuantity: 0, uniqueDesignCount: 0 };
+                const allocationTotals = allocationTotalsByRequestId[request.id] ?? {
+                  totalAllocatedQuantity: 0,
+                  totalInProgressQuantity: 0,
+                  totalPrintedQuantity: 0,
+                };
+                const progressLabel = getPrintRequestProgressLabel(
+                  derivePrintRequestQueueState({
+                    totalRequestedQuantity: summary.totalQuantity,
+                    totalAllocatedQuantity: allocationTotals.totalAllocatedQuantity,
+                    totalInProgressQuantity: allocationTotals.totalInProgressQuantity,
+                    totalPrintedQuantity: allocationTotals.totalPrintedQuantity,
+                  }),
+                );
+
+                return (
+                  <div key={request.id} role="listitem">
+                    <PrintRequestCard progressLabel={progressLabel} request={request} />
+                  </div>
+                );
+              })}
             </section>
           )}
         </>

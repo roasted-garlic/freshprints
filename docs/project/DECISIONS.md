@@ -4,6 +4,38 @@
 
 ---
 
+### ADR-FP-064: Show Queue production timer (Option B) drives customer print progress
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-07 |
+| Status | accepted |
+
+**Context**
+
+Customer Portal progress tracking needed a real **Printing** state. Gang sheet builder Slice 4 (timer on
+`gangSheets`) was deferred. Export alone must not start the timer because staff may export files long
+before the press runs.
+
+**Decision**
+
+1. **Show Queue detail** owns **Start printing / Pause / Resume / Mark finished** and the elapsed timer on
+   `upcomingShows` (`accumulatedPrintMs`, `activePrintStartedAt`, etc.).
+2. **Export** (zip or gang sheet PNG) remains file-only — no allocation status writes.
+3. **Start** sets show `productionStatus → printing` and active allocations `pending`/`queued` →
+   `in_progress`.
+4. **Mark finished** sets allocations → `done` and reconciles print requests to `completed` when fully
+   done.
+5. Portal and Studio derive **Working / Queued / Printing / Printed** from allocation totals (including
+   `totalInProgressQuantity`).
+
+**Consequences**
+
+- Gang sheet timer remains out of scope until/unless gang sheet builder is revived.
+- Firestore rules must allow new `upcomingShows` timer fields (deploy required before live use).
+
+---
+
 ### ADR-FP-063: Phase 7 Studio MVP complete; Gang Sheet Builder post-MVP; Whatnot scheduled sync not planned for Studio
 
 | Field | Value |

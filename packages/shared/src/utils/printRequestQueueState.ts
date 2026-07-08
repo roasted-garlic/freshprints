@@ -2,6 +2,7 @@ export type PrintRequestQueueState =
   | "not_queued"
   | "partially_queued"
   | "queued"
+  | "printing"
   | "partially_printed"
   | "printed";
 
@@ -10,6 +11,8 @@ export interface PrintRequestQueueStateInput {
   totalRequestedQuantity: number;
   /** Sum of `allocatedQuantity` across all non-canceled `showAllocations` for the request. */
   totalAllocatedQuantity: number;
+  /** Sum of `allocatedQuantity` across allocations with status `in_progress`. */
+  totalInProgressQuantity: number;
   /** Sum of `allocatedQuantity` across allocations with status `printed` or `done`. */
   totalPrintedQuantity: number;
 }
@@ -27,6 +30,10 @@ export function derivePrintRequestQueueState(input: PrintRequestQueueStateInput)
 
   if (input.totalPrintedQuantity >= input.totalRequestedQuantity) {
     return "printed";
+  }
+
+  if (input.totalInProgressQuantity > 0) {
+    return "printing";
   }
 
   if (input.totalPrintedQuantity > 0) {

@@ -33,14 +33,15 @@ function getStatusLabel(status: PrintRequest['status']): string {
 
 interface PrintRequestCardProps {
   request: PrintRequest;
+  progressLabel?: string;
 }
 
-export function PrintRequestCard({ request }: PrintRequestCardProps) {
+export function PrintRequestCard({ request, progressLabel }: PrintRequestCardProps) {
   return (
     <Link className="portal-request-card" href={`/requests/${request.id}`}>
       <div className="portal-request-card-header">
         <h2>{request.name}</h2>
-        <span className="portal-request-status-chip">{getStatusLabel(request.status)}</span>
+        <span className="portal-request-status-chip">{progressLabel ?? getStatusLabel(request.status)}</span>
       </div>
       <p className="portal-muted">
         {request.itemCount} design{request.itemCount === 1 ? '' : 's'} · Updated{' '}

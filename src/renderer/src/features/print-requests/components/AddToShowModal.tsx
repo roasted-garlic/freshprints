@@ -9,6 +9,7 @@ import { useAuth } from "../../auth/hooks/useAuth";
 import { upcomingShowService } from "../../upcoming-shows/services/upcomingShowService";
 import { useUpcomingShows } from "../../upcoming-shows/hooks/useUpcomingShows";
 import { groupShowsByDate } from "../../upcoming-shows/utils/groupShowsByDate";
+import { isPastScheduledShow } from "../../upcoming-shows/utils/groupShowsByUpcomingPast";
 import type { Design } from "../../designs/types/design.types";
 import { SplitDesignPickerModal } from "./SplitDesignPickerModal";
 import { assessShowCapacity, planAllocationSplit } from "@fresh-prints/shared/utils/showCapacity";
@@ -368,7 +369,9 @@ export function AddToShowModal({
                               const capacity = capacityByShowId.get(show.id);
                               const isSelected = show.id === selectedShowId;
                               const statusDisplay = capacity
-                                ? getDerivedShowStatusDisplay(show.productionStatus, capacity)
+                                ? getDerivedShowStatusDisplay(show.productionStatus, capacity, {
+                                    isPastScheduled: isPastScheduledShow(show, new Date()),
+                                  })
                                 : null;
                               const fillLevel = capacity
                                 ? getCapacityFillLevel(getShowCapacityPercent(capacity))

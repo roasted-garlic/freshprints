@@ -569,6 +569,12 @@ service cloud.firestore {
           "maxTotalQuantity",
           "maxQuantityOverridden",
           "allocatedQuantity",
+          "accumulatedPrintMs",
+          "activePrintStartedAt",
+          "printStartedAt",
+          "printPausedAt",
+          "printFinishedAt",
+          "printFinishedBy",
           "createdBy",
           "updatedBy",
           "createdAt",
@@ -594,6 +600,13 @@ service cloud.firestore {
         && data.maxQuantityOverridden is bool
         && data.allocatedQuantity is number
         && data.allocatedQuantity >= 0
+        && isOptionalNumber(data, "accumulatedPrintMs")
+        && (!("accumulatedPrintMs" in data) || data.accumulatedPrintMs >= 0)
+        && isOptionalTimestamp(data, "activePrintStartedAt")
+        && isOptionalTimestamp(data, "printStartedAt")
+        && isOptionalTimestamp(data, "printPausedAt")
+        && isOptionalTimestamp(data, "printFinishedAt")
+        && isOptionalString(data, "printFinishedBy")
         && isOptionalString(data, "createdBy")
         && isOptionalString(data, "updatedBy")
         && data.createdAt is timestamp

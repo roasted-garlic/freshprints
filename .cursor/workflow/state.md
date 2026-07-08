@@ -4,10 +4,18 @@
 managed-phase
 
 ## Current Goal
-phase-8-portal-foundation — Fresh Prints Portal (customer web app): incremental monorepo (`apps/portal` + `packages/shared`), Firebase App Hosting, customer auth, catalog browse, print requests, progress tracking. Plan: `docs/workflow/plans/2026-07-07-phase-8-portal-foundation-plan.md`.
+show-queue-production-timer — Show Queue Start/Pause/Resume/Mark finished drives allocation `in_progress`/`done` and customer **Printing** progress. Plan: `docs/workflow/plans/2026-07-07-show-queue-production-timer-plan.md`. (Phase 8 Portal work continues in parallel; deploy + manual QA still outstanding.)
 
 ## Phase
-test — Slice 3 follow-up UX (portal request tabs, Continue flow, rapid-save fixes, Studio refresh) committed `e228240` and pushed. Automated checks passed; deploy + manual QA still required before Slice 3 signoff.
+test — Show Queue production timer implemented 2026-07-07. Automated checks passed; **deploy `firestore:rules`** (new `upcomingShows` timer fields) + manual QA required before signoff.
+
+## Sub-goal: Show Queue production timer (2026-07-07)
+- Plan: `docs/workflow/plans/2026-07-07-show-queue-production-timer-plan.md` — approved
+- Review: `docs/workflow/reviews/2026-07-07-show-queue-production-timer-review.md` — approved
+- Studio Show Queue detail: Start/Pause/Resume/Mark finished + elapsed timer
+- `upcomingShowService`: `startShowPrinting`, `pauseShowPrinting`, `resumeShowPrinting`, `markShowPrintingFinished`
+- Portal + Studio: **Printing** tab; progress labels from allocation `in_progress`
+- **Deploy required:** `firestore:rules` to `fresh-prints-dev` before live timer writes
 
 ## Sub-goal: Phase 8 Slice 3 — Customer print requests
 - Callable `createPortalPrintRequest` implemented

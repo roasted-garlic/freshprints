@@ -382,17 +382,24 @@ export function PrintRequestsPage() {
   );
 
   const requestsByListTab = useMemo(() => {
-    const grouped: Record<PrintRequestListTab, PrintRequest[]> = { working: [], queued: [], printed: [] };
+    const grouped: Record<PrintRequestListTab, PrintRequest[]> = {
+      working: [],
+      queued: [],
+      printing: [],
+      printed: [],
+    };
 
     for (const request of requests) {
       const summary = summariesByRequestId[request.id] ?? { totalQuantity: 0, uniqueDesignCount: 0 };
       const allocationTotals = allocationTotalsByRequestId[request.id] ?? {
         totalAllocatedQuantity: 0,
+        totalInProgressQuantity: 0,
         totalPrintedQuantity: 0,
       };
       const tab = derivePrintRequestListTab({
         totalRequestedQuantity: summary.totalQuantity,
         totalAllocatedQuantity: allocationTotals.totalAllocatedQuantity,
+        totalInProgressQuantity: allocationTotals.totalInProgressQuantity,
         totalPrintedQuantity: allocationTotals.totalPrintedQuantity,
         status: request.status,
       });
@@ -645,6 +652,7 @@ export function PrintRequestsPage() {
     ? derivePrintRequestQueueState({
         totalRequestedQuantity: requestItems.reduce((sum, item) => sum + item.quantity, 0),
         totalAllocatedQuantity: allocationTotalsByRequestId[visibleSelectedRequest.id]?.totalAllocatedQuantity ?? 0,
+        totalInProgressQuantity: allocationTotalsByRequestId[visibleSelectedRequest.id]?.totalInProgressQuantity ?? 0,
         totalPrintedQuantity: allocationTotalsByRequestId[visibleSelectedRequest.id]?.totalPrintedQuantity ?? 0,
       })
     : null;
@@ -675,14 +683,21 @@ export function PrintRequestsPage() {
       <div className="print-requests-layout">
         <aside className="print-requests-rail">
           <div className="print-requests-tab-bar">
-            {(["working", "queued", "printed"] as const).map((tab) => (
+            {(["working", "queued", "printing", "printed"] as const).map((tab) => (
               <button
                 className={`print-requests-tab-button${activeListTab === tab ? " is-active" : ""}`}
                 key={tab}
                 onClick={() => setActiveListTab(tab)}
                 type="button"
               >
-                {tab === "working" ? "Working" : tab === "queued" ? "Queued" : "Printed"} ({requestsByListTab[tab].length})
+                {tab === "working"
+                  ? "Working"
+                  : tab === "queued"
+                    ? "Queued"
+                    : tab === "printing"
+                      ? "Printing"
+                      : "Printed"}{" "}
+                ({requestsByListTab[tab].length})
               </button>
             ))}
           </div>

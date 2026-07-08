@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
-import { ChevronDown, Download, Plus, Settings, Upload, X } from "lucide-react";
+import { ChevronDown, Download, Pause, Play, Plus, Settings, Upload, X } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { Badge } from "../../../shared/components/Badge";
@@ -21,6 +21,7 @@ import { permissionService } from "../../permissions/services/permissionService"
 import { upcomingShowService } from "../services/upcomingShowService";
 import { useUpcomingShows } from "../hooks/useUpcomingShows";
 import { useShowAllocations } from "../hooks/useShowAllocations";
+import { useShowProductionTimer } from "../hooks/useShowProductionTimer";
 import { useShowQueueSettings } from "../hooks/useShowQueueSettings";
 import {
   DEFAULT_GANG_SHEET_GUTTER_INCHES,
@@ -42,6 +43,8 @@ import { groupAllocationsByRequest } from "../utils/groupAllocationsByRequest";
 import {
   filterShowsByScheduleTab,
   getShowScheduleTab,
+  isPastScheduledShow,
+  PAST_SHOW_READ_ONLY_MESSAGE,
   resolveVisibleShowSelection,
   type ShowScheduleTab,
 } from "../utils/groupShowsByUpcomingPast";
@@ -62,6 +65,7 @@ import {
   formatUpcomingShowManualImportTimestampLabel,
   formatUpcomingShowTitle,
   getUpcomingShowStatusBadgeVariant,
+  shouldShowUpcomingShowScheduleStatusBadge,
 } from "../utils/upcomingShowDisplay";
 import { getShowAllocationStatusBadgeVariant } from "../utils/showAllocationDisplay";
 import { UPCOMING_SHOW_ID_QUERY_PARAM, getUpcomingShowsPath } from "../constants/upcomingShowRoutes";
@@ -305,6 +309,10 @@ export function UpcomingShowsPage() {
     () => visibleShows.find((show) => show.id === selectedShowId) ?? null,
     [selectedShowId, visibleShows],
   );
+  const isSelectedShowPast = useMemo(
+    () => (selectedShow ? isPastScheduledShow(selectedShow, new Date()) : false),
+    [selectedShow],
+  );
   const lastManualImportAt = useMemo(() => {
     const showImportAt = selectedShow?.lastSeenInAssistedImportAt;
     const latestImportAt = showQueueSettings.settings.lastWhatnotAssistedImportAt;
@@ -334,12 +342,28 @@ export function UpcomingShowsPage() {
     [selectedShow?.allocatedQuantity],
   );
 
+  const handleProductionTimerUpdated = useCallback(async () => {
+    await Promise.all([reloadUpcomingShows(), reloadAllocations()]);
+  }, [reloadAllocations, reloadUpcomingShows]);
+
+  const productionTimer = useShowProductionTimer({
+    show: selectedShow,
+    hasActiveAllocations: hasActiveAllocationsForSelectedShow,
+    onShowUpdated: handleProductionTimerUpdated,
+  });
+
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [exportMultiplyByQuantity, setExportMultiplyByQuantity] = useState(false);
   const exportShowZipState = useExportShowZip();
 
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
   const exportMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (isSelectedShowPast) {
+      setIsExportMenuOpen(false);
+    }
+  }, [isSelectedShowPast]);
 
   useEffect(() => {
     if (!isExportMenuOpen) {
@@ -368,12 +392,16 @@ export function UpcomingShowsPage() {
 
   const openExportModal = useCallback(
     (multiplyByQuantity: boolean) => {
+      if (isSelectedShowPast) {
+        return;
+      }
+
       exportShowZipState.reset();
       setExportMultiplyByQuantity(multiplyByQuantity);
       setIsExportModalOpen(true);
       setIsExportMenuOpen(false);
     },
-    [exportShowZipState],
+    [exportShowZipState, isSelectedShowPast],
   );
 
   const closeExportModal = useCallback(() => {
@@ -412,9 +440,13 @@ export function UpcomingShowsPage() {
   );
 
   const openExportGangSheetModal = useCallback(() => {
+    if (isSelectedShowPast) {
+      return;
+    }
+
     exportGangSheetPngState.reset();
     setIsExportGangSheetModalOpen(true);
-  }, [exportGangSheetPngState]);
+  }, [exportGangSheetPngState, isSelectedShowPast]);
 
   const closeExportGangSheetModal = useCallback(() => {
     setIsExportGangSheetModalOpen(false);
@@ -542,7 +574,7 @@ export function UpcomingShowsPage() {
   }
 
   const openMaxQuantityModal = useCallback(() => {
-    if (!selectedShow) {
+    if (!selectedShow || isSelectedShowPast) {
       return;
     }
 
@@ -550,7 +582,7 @@ export function UpcomingShowsPage() {
     setMaxQuantityInput(selectedShow.maxTotalQuantity?.toString() ?? "");
     setMaxQuantityOverrideConfirmed(false);
     setIsMaxQuantityModalOpen(true);
-  }, [selectedShow]);
+  }, [isSelectedShowPast, selectedShow]);
 
   const closeMaxQuantityModal = useCallback(() => {
     setIsMaxQuantityModalOpen(false);
@@ -560,6 +592,15 @@ export function UpcomingShowsPage() {
   const capacity = selectedShow
     ? assessShowCapacity({ maxTotalQuantity: selectedShow.maxTotalQuantity, allocatedQuantity: selectedShow.allocatedQuantity })
     : null;
+  const selectedShowStatusDisplay = useMemo(() => {
+    if (!selectedShow || !capacity) {
+      return null;
+    }
+
+    return getDerivedShowStatusDisplay(selectedShow.productionStatus, capacity, {
+      isPastScheduled: isSelectedShowPast,
+    });
+  }, [capacity, isSelectedShowPast, selectedShow]);
 
   const pendingMaxQuantity = maxQuantityInput.trim() ? Number(maxQuantityInput) : undefined;
   const maxQuantityNeedsOverride =
@@ -589,10 +630,14 @@ export function UpcomingShowsPage() {
   }
 
   const openAddRequestModal = useCallback(() => {
+    if (isSelectedShowPast) {
+      return;
+    }
+
     setActionError(null);
     setAddRequestId("");
     setIsAddRequestModalOpen(true);
-  }, []);
+  }, [isSelectedShowPast]);
 
   const closeAddRequestModal = useCallback(() => {
     setIsAddRequestModalOpen(false);
@@ -673,7 +718,9 @@ export function UpcomingShowsPage() {
                   maxTotalQuantity: show.maxTotalQuantity,
                   allocatedQuantity: show.allocatedQuantity,
                 });
-                const showStatusDisplay = getDerivedShowStatusDisplay(show.productionStatus, showCapacity);
+                const showStatusDisplay = getDerivedShowStatusDisplay(show.productionStatus, showCapacity, {
+                  isPastScheduled: activeScheduleTab === "past",
+                });
                 const cardStateClass = showCapacity.isOverCapacity
                   ? " is-over-capacity"
                   : showCapacity.isFull
@@ -734,14 +781,16 @@ export function UpcomingShowsPage() {
                           aria-expanded={isExportMenuOpen}
                           aria-haspopup="menu"
                           className="button-leading-icon"
-                          disabled={!hasActiveAllocationsForSelectedShow}
+                          disabled={isSelectedShowPast || !hasActiveAllocationsForSelectedShow}
                           onClick={() => setIsExportMenuOpen((current) => !current)}
                           size="sm"
                           variant="secondary"
                           title={
-                            hasActiveAllocationsForSelectedShow
-                              ? undefined
-                              : "Add a print request to this show before exporting."
+                            isSelectedShowPast
+                              ? PAST_SHOW_READ_ONLY_MESSAGE
+                              : hasActiveAllocationsForSelectedShow
+                                ? undefined
+                                : "Add a print request to this show before exporting."
                           }
                         >
                           <Download aria-hidden="true" size={16} strokeWidth={2} />
@@ -749,7 +798,7 @@ export function UpcomingShowsPage() {
                           <ChevronDown aria-hidden="true" size={14} strokeWidth={2.4} />
                         </Button>
 
-                        {isExportMenuOpen ? (
+                        {isExportMenuOpen && !isSelectedShowPast ? (
                           <div aria-label="Export options" className="export-menu" id="export-menu" role="menu">
                             <button
                               className="export-menu-option"
@@ -777,14 +826,16 @@ export function UpcomingShowsPage() {
 
                       <Button
                         className="button-leading-icon"
-                        disabled={!hasActiveAllocationsForSelectedShow}
+                        disabled={isSelectedShowPast || !hasActiveAllocationsForSelectedShow}
                         onClick={openExportGangSheetModal}
                         size="sm"
                         variant="secondary"
                         title={
-                          hasActiveAllocationsForSelectedShow
-                            ? undefined
-                            : "Add a print request to this show before exporting."
+                          isSelectedShowPast
+                            ? PAST_SHOW_READ_ONLY_MESSAGE
+                            : hasActiveAllocationsForSelectedShow
+                              ? undefined
+                              : "Add a print request to this show before exporting."
                         }
                       >
                         <Download aria-hidden="true" size={16} strokeWidth={2} />
@@ -795,15 +846,92 @@ export function UpcomingShowsPage() {
                 </div>
 
                 <div className="show-detail-pill-row">
-                  <Badge variant={getUpcomingShowStatusBadgeVariant(selectedShow.status)}>
-                    {selectedShow.status}
-                  </Badge>
-                  {capacity ? (
-                    <Badge variant={getDerivedShowStatusDisplay(selectedShow.productionStatus, capacity).variant}>
-                      {getDerivedShowStatusDisplay(selectedShow.productionStatus, capacity).label}
+                  {shouldShowUpcomingShowScheduleStatusBadge(selectedShow, new Date()) ? (
+                    <Badge variant={getUpcomingShowStatusBadgeVariant(selectedShow.status)}>
+                      {selectedShow.status}
                     </Badge>
                   ) : null}
+                  {selectedShowStatusDisplay ? (
+                    <Badge variant={selectedShowStatusDisplay.variant}>{selectedShowStatusDisplay.label}</Badge>
+                  ) : null}
                 </div>
+
+                {permissionService.canManageUpcomingShows(user) ? (
+                  <Card className="show-production-timer-card">
+                    <div className="show-production-timer-header">
+                      <div>
+                        <p className="eyebrow">Live printing</p>
+                        <p className="show-production-timer-elapsed" aria-live="polite">
+                          {productionTimer.formattedElapsed}
+                        </p>
+                        <p className="print-requests-workflow-copy">
+                          {productionTimer.isFinished
+                            ? "This show's printing run is finished."
+                            : productionTimer.isPaused
+                              ? "Printing is paused. Resume when the press is running again."
+                              : productionTimer.isPrinting
+                                ? "Timer is running. Customers see this request as Printing in the portal."
+                                : productionTimer.isPastScheduledShow
+                                  ? PAST_SHOW_READ_ONLY_MESSAGE
+                                  : "Start when the press begins. Export does not start the timer."}
+                        </p>
+                      </div>
+                      <div className="show-production-timer-actions">
+                        {productionTimer.canStart ? (
+                          <Button
+                            className="button-leading-icon"
+                            disabled={productionTimer.isActionPending}
+                            onClick={() => void productionTimer.startPrinting()}
+                            size="sm"
+                            variant="primary"
+                          >
+                            <Play aria-hidden="true" size={16} strokeWidth={2} />
+                            Start printing
+                          </Button>
+                        ) : null}
+                        {productionTimer.canPause ? (
+                          <Button
+                            className="button-leading-icon"
+                            disabled={productionTimer.isActionPending}
+                            onClick={() => void productionTimer.pausePrinting()}
+                            size="sm"
+                            variant="secondary"
+                          >
+                            <Pause aria-hidden="true" size={16} strokeWidth={2} />
+                            Pause
+                          </Button>
+                        ) : null}
+                        {productionTimer.canResume ? (
+                          <Button
+                            className="button-leading-icon"
+                            disabled={productionTimer.isActionPending}
+                            onClick={() => void productionTimer.resumePrinting()}
+                            size="sm"
+                            variant="primary"
+                          >
+                            <Play aria-hidden="true" size={16} strokeWidth={2} />
+                            Resume
+                          </Button>
+                        ) : null}
+                        {productionTimer.canMarkFinished ? (
+                          <Button
+                            disabled={productionTimer.isActionPending}
+                            onClick={() => void productionTimer.markFinished()}
+                            size="sm"
+                            variant="secondary"
+                          >
+                            Mark finished
+                          </Button>
+                        ) : null}
+                      </div>
+                    </div>
+                    {productionTimer.actionError ? (
+                      <p className="print-requests-error" role="alert">
+                        {productionTimer.actionError}
+                      </p>
+                    ) : null}
+                  </Card>
+                ) : null}
 
                 <dl className="upcoming-show-detail-facts">
                   <div>
@@ -857,9 +985,10 @@ export function UpcomingShowsPage() {
                 <div className="print-requests-section-header">
                   <p className="eyebrow">Capacity</p>
                   <Button
-                    disabled={!permissionService.canManageUpcomingShows(user)}
+                    disabled={isSelectedShowPast || !permissionService.canManageUpcomingShows(user)}
                     onClick={openMaxQuantityModal}
                     size="sm"
+                    title={isSelectedShowPast ? PAST_SHOW_READ_ONLY_MESSAGE : undefined}
                     variant="secondary"
                   >
                     Set max quantity
@@ -897,9 +1026,10 @@ export function UpcomingShowsPage() {
                 <div className="print-requests-section-header">
                   <p className="eyebrow">Attached print requests</p>
                   <Button
-                    disabled={!permissionService.canManageUpcomingShows(user)}
+                    disabled={isSelectedShowPast || !permissionService.canManageUpcomingShows(user)}
                     onClick={openAddRequestModal}
                     size="sm"
+                    title={isSelectedShowPast ? PAST_SHOW_READ_ONLY_MESSAGE : undefined}
                     variant="secondary"
                   >
                     + Add Print Request
@@ -916,7 +1046,8 @@ export function UpcomingShowsPage() {
                     {requestGroups.map((group) => {
                       const totalAllocated = group.allocations.reduce((sum, a) => sum + a.allocatedQuantity, 0);
                       const isConfirmingRemove = confirmingRemoveRequestId === group.printRequestId;
-                      const canRemove = canRemoveRequestFromShow(selectedShow.productionStatus);
+                      const canRemove =
+                        !isSelectedShowPast && canRemoveRequestFromShow(selectedShow.productionStatus);
 
                       return (
                         <div className="show-allocation-row" key={group.printRequestId}>

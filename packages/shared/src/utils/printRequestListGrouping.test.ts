@@ -8,6 +8,7 @@ test("derivePrintRequestListTab: draft with no allocations is Working", () => {
     derivePrintRequestListTab({
       totalRequestedQuantity: 10,
       totalAllocatedQuantity: 0,
+      totalInProgressQuantity: 0,
       totalPrintedQuantity: 0,
       status: "draft",
     }),
@@ -20,10 +21,24 @@ test("derivePrintRequestListTab: any active allocation is Queued", () => {
     derivePrintRequestListTab({
       totalRequestedQuantity: 10,
       totalAllocatedQuantity: 4,
+      totalInProgressQuantity: 0,
       totalPrintedQuantity: 0,
       status: "active",
     }),
     "queued",
+  );
+});
+
+test("derivePrintRequestListTab: in-progress allocations are Printing", () => {
+  assert.equal(
+    derivePrintRequestListTab({
+      totalRequestedQuantity: 10,
+      totalAllocatedQuantity: 10,
+      totalInProgressQuantity: 10,
+      totalPrintedQuantity: 0,
+      status: "active",
+    }),
+    "printing",
   );
 });
 
@@ -32,6 +47,7 @@ test("derivePrintRequestListTab: fully printed quantity is Printed", () => {
     derivePrintRequestListTab({
       totalRequestedQuantity: 10,
       totalAllocatedQuantity: 10,
+      totalInProgressQuantity: 0,
       totalPrintedQuantity: 10,
       status: "active",
     }),
@@ -44,6 +60,7 @@ test("derivePrintRequestListTab: completed status is Printed even without alloca
     derivePrintRequestListTab({
       totalRequestedQuantity: 0,
       totalAllocatedQuantity: 0,
+      totalInProgressQuantity: 0,
       totalPrintedQuantity: 0,
       status: "completed",
     }),
@@ -56,6 +73,7 @@ test("derivePrintRequestListTab: partially printed but not fully is still Queued
     derivePrintRequestListTab({
       totalRequestedQuantity: 10,
       totalAllocatedQuantity: 10,
+      totalInProgressQuantity: 0,
       totalPrintedQuantity: 4,
       status: "active",
     }),
@@ -68,6 +86,7 @@ test("derivePrintRequestListTab: editing status with no allocations is Working",
     derivePrintRequestListTab({
       totalRequestedQuantity: 10,
       totalAllocatedQuantity: 0,
+      totalInProgressQuantity: 0,
       totalPrintedQuantity: 0,
       status: "editing",
     }),

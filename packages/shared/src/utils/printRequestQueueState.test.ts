@@ -8,6 +8,7 @@ describe("derivePrintRequestQueueState", () => {
     const state = derivePrintRequestQueueState({
       totalRequestedQuantity: 20,
       totalAllocatedQuantity: 0,
+      totalInProgressQuantity: 0,
       totalPrintedQuantity: 0,
     });
 
@@ -18,6 +19,7 @@ describe("derivePrintRequestQueueState", () => {
     const state = derivePrintRequestQueueState({
       totalRequestedQuantity: 0,
       totalAllocatedQuantity: 0,
+      totalInProgressQuantity: 0,
       totalPrintedQuantity: 0,
     });
 
@@ -28,6 +30,7 @@ describe("derivePrintRequestQueueState", () => {
     const state = derivePrintRequestQueueState({
       totalRequestedQuantity: 20,
       totalAllocatedQuantity: 12,
+      totalInProgressQuantity: 0,
       totalPrintedQuantity: 0,
     });
 
@@ -38,16 +41,29 @@ describe("derivePrintRequestQueueState", () => {
     const state = derivePrintRequestQueueState({
       totalRequestedQuantity: 20,
       totalAllocatedQuantity: 20,
+      totalInProgressQuantity: 0,
       totalPrintedQuantity: 0,
     });
 
     assert.equal(state, "queued");
   });
 
+  it("returns printing when any allocated quantity is in progress", () => {
+    const state = derivePrintRequestQueueState({
+      totalRequestedQuantity: 20,
+      totalAllocatedQuantity: 20,
+      totalInProgressQuantity: 20,
+      totalPrintedQuantity: 0,
+    });
+
+    assert.equal(state, "printing");
+  });
+
   it("returns partially_printed when some allocated quantity has been printed but not all", () => {
     const state = derivePrintRequestQueueState({
       totalRequestedQuantity: 20,
       totalAllocatedQuantity: 20,
+      totalInProgressQuantity: 0,
       totalPrintedQuantity: 8,
     });
 
@@ -58,6 +74,7 @@ describe("derivePrintRequestQueueState", () => {
     const state = derivePrintRequestQueueState({
       totalRequestedQuantity: 20,
       totalAllocatedQuantity: 20,
+      totalInProgressQuantity: 0,
       totalPrintedQuantity: 20,
     });
 

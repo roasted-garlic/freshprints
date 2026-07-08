@@ -8,6 +8,7 @@ export function isPrintedAllocationStatus(status: ShowAllocationStatus): boolean
 
 export interface PrintRequestAllocationTotals {
   totalAllocatedQuantity: number;
+  totalInProgressQuantity: number;
   totalPrintedQuantity: number;
 }
 
@@ -27,9 +28,14 @@ export function buildPrintRequestAllocationTotalsByRequestId(
 
     const current = totals[allocation.printRequestId] ?? {
       totalAllocatedQuantity: 0,
+      totalInProgressQuantity: 0,
       totalPrintedQuantity: 0,
     };
     current.totalAllocatedQuantity += allocation.allocatedQuantity;
+
+    if (allocation.status === "in_progress") {
+      current.totalInProgressQuantity += allocation.allocatedQuantity;
+    }
 
     if (isPrintedAllocationStatus(allocation.status)) {
       current.totalPrintedQuantity += allocation.allocatedQuantity;

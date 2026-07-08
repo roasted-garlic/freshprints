@@ -21,6 +21,17 @@ export function filterShowsByScheduleTab(shows: UpcomingShow[], tab: ShowSchedul
   return shows.filter((show) => getShowScheduleTab(show, now) === tab);
 }
 
+export function isPastScheduledShow(show: UpcomingShow, now: Date): boolean {
+  return getShowScheduleTab(show, now) === "past";
+}
+
+/** Past-tab shows may be reviewed or finished, but printing cannot be started after the scheduled time. */
+export function canStartShowPrinting(show: UpcomingShow, now: Date): boolean {
+  return !isPastScheduledShow(show, now);
+}
+
+export const PAST_SHOW_READ_ONLY_MESSAGE = "Past shows are read-only.";
+
 export function resolveVisibleShowSelection(
   visibleShows: UpcomingShow[],
   selectedShowId: string | null,

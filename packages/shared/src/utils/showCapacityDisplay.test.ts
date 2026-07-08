@@ -131,3 +131,27 @@ test("getDerivedShowStatusDisplay: OPEN when uncapped regardless of allocation",
   const display = getDerivedShowStatusDisplay("open", capacity);
   assert.deepEqual(display, { label: "OPEN", variant: "default" });
 });
+
+test("getDerivedShowStatusDisplay: PAST when past scheduled and production is open", () => {
+  const capacity = assessShowCapacity({ maxTotalQuantity: 200, allocatedQuantity: 50 });
+  const display = getDerivedShowStatusDisplay("open", capacity, { isPastScheduled: true });
+  assert.deepEqual(display, { label: "PAST", variant: "default" });
+});
+
+test("getDerivedShowStatusDisplay: PAST when past scheduled even when full", () => {
+  const capacity = assessShowCapacity({ maxTotalQuantity: 200, allocatedQuantity: 200 });
+  const display = getDerivedShowStatusDisplay("open", capacity, { isPastScheduled: true });
+  assert.deepEqual(display, { label: "PAST", variant: "default" });
+});
+
+test("getDerivedShowStatusDisplay: PAST when past scheduled even when over max", () => {
+  const capacity = assessShowCapacity({ maxTotalQuantity: 200, allocatedQuantity: 214 });
+  const display = getDerivedShowStatusDisplay("open", capacity, { isPastScheduled: true });
+  assert.deepEqual(display, { label: "PAST", variant: "default" });
+});
+
+test("getDerivedShowStatusDisplay: printing still shown when past scheduled", () => {
+  const capacity = assessShowCapacity({ maxTotalQuantity: 200, allocatedQuantity: 50 });
+  const display = getDerivedShowStatusDisplay("printing", capacity, { isPastScheduled: true });
+  assert.deepEqual(display, { label: "PRINTING", variant: "info" });
+});

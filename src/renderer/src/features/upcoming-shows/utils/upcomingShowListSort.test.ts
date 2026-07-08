@@ -15,6 +15,7 @@ function buildShow(overrides: Partial<UpcomingShow> = {}): UpcomingShow {
     productionStatus: "open",
     maxQuantityOverridden: false,
     allocatedQuantity: 0,
+    accumulatedPrintMs: 0,
     createdAt: { toDate: () => new Date("2026-01-01") } as UpcomingShow["createdAt"],
     updatedAt: { toDate: () => new Date("2026-01-01") } as UpcomingShow["updatedAt"],
     ...overrides,

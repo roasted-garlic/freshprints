@@ -1,5 +1,6 @@
 import {
   deleteDoc,
+  deleteField,
   doc,
   getDoc,
   getDocs,
@@ -8,8 +9,11 @@ import {
   setDoc,
   updateDoc,
   where,
+  writeBatch,
   type DocumentData,
 } from "firebase/firestore";
+
+import { db } from "../../../config/firebase";
 
 import { mapFirestoreTimestamp } from "../../firebase/utils/firestoreTimestamp";
 import { assertNoUndefinedFirestoreFields, withoutUndefinedFields } from "../../firebase/utils/firestoreDocument";
@@ -19,6 +23,7 @@ import type { User } from "../../users/types/user.types";
 import { isPrintRequestOrigin } from "@fresh-prints/shared/utils/printRequestOrigin";
 import { planAllocationSplit } from "@fresh-prints/shared/utils/showCapacity";
 import { canRemoveRequestFromShow } from "@fresh-prints/shared/utils/showQueueEditability";
+import { computeElapsedPrintMs } from "@fresh-prints/shared/utils/showPrintTimer";
 import { printRequestService } from "../../print-requests/services/printRequestService";
 import type {
   ShowProductionStatus,
@@ -30,6 +35,7 @@ import type { UpcomingShow } from "@fresh-prints/shared/types/upcomingShow/upcom
 import type { ShowAllocationStatus } from "@fresh-prints/shared/types/showAllocation/showAllocation.enums";
 import type { ShowAllocation } from "@fresh-prints/shared/types/showAllocation/showAllocation.types";
 import { findMatchingUpcomingShow } from "../utils/upcomingShowUpsert";
+import { canStartShowPrinting, PAST_SHOW_READ_ONLY_MESSAGE } from "../utils/groupShowsByUpcomingPast";
 import { sortUpcomingShowsForDisplay } from "../utils/upcomingShowListSort";
 import { showQueueSettingsService } from "./showQueueSettingsService";
 
@@ -89,6 +95,12 @@ interface UpcomingShowDocumentData extends DocumentData {
   maxTotalQuantity?: unknown;
   maxQuantityOverridden?: unknown;
   allocatedQuantity?: unknown;
+  accumulatedPrintMs?: unknown;
+  activePrintStartedAt?: unknown;
+  printStartedAt?: unknown;
+  printPausedAt?: unknown;
+  printFinishedAt?: unknown;
+  printFinishedBy?: unknown;
   createdBy?: unknown;
   updatedBy?: unknown;
   createdAt?: unknown;
@@ -155,6 +167,9 @@ const VALID_ALLOCATION_STATUSES: ShowAllocationStatus[] = [
   "canceled",
 ];
 const PRINTED_ALLOCATION_STATUSES: ShowAllocationStatus[] = ["printed", "done"];
+const STARTABLE_ALLOCATION_STATUSES: ShowAllocationStatus[] = ["pending", "queued"];
+const FINISHABLE_ALLOCATION_STATUSES: ShowAllocationStatus[] = ["pending", "queued", "in_progress"];
+const STARTABLE_SHOW_PRODUCTION_STATUSES: ShowProductionStatus[] = ["open", "full"];
 
 function isUpcomingShowSource(value: unknown): value is UpcomingShowSource {
   return typeof value === "string" && VALID_SOURCES.includes(value as UpcomingShowSource);
@@ -215,6 +230,12 @@ function mapUpcomingShowData(showId: string, data: UpcomingShowDocumentData): Up
     maxTotalQuantity: typeof data.maxTotalQuantity === "number" ? data.maxTotalQuantity : undefined,
     maxQuantityOverridden: data.maxQuantityOverridden,
     allocatedQuantity: data.allocatedQuantity,
+    accumulatedPrintMs: typeof data.accumulatedPrintMs === "number" ? data.accumulatedPrintMs : 0,
+    activePrintStartedAt: mapFirestoreTimestamp(data.activePrintStartedAt),
+    printStartedAt: mapFirestoreTimestamp(data.printStartedAt),
+    printPausedAt: mapFirestoreTimestamp(data.printPausedAt),
+    printFinishedAt: mapFirestoreTimestamp(data.printFinishedAt),
+    printFinishedBy: typeof data.printFinishedBy === "string" ? data.printFinishedBy : undefined,
     createdBy: typeof data.createdBy === "string" ? data.createdBy : undefined,
     updatedBy: typeof data.updatedBy === "string" ? data.updatedBy : undefined,
     createdAt,
@@ -364,6 +385,7 @@ export const upcomingShowService = {
       maxTotalQuantity: showQueueSettings.defaultMaxTotalQuantity,
       maxQuantityOverridden: false,
       allocatedQuantity: 0,
+      accumulatedPrintMs: 0,
       createdBy: caller.id,
       updatedBy: caller.id,
       createdAt: serverTimestamp(),
@@ -631,6 +653,173 @@ export const upcomingShowService = {
     }
 
     return updatedAllocation;
+  },
+
+  async startShowPrinting(caller: User, upcomingShowId: string): Promise<UpcomingShow> {
+    if (!permissionService.canManageUpcomingShows(caller)) {
+      throw new Error("You do not have permission to manage show printing.");
+    }
+
+    const [show, allocations] = await Promise.all([
+      this.getUpcomingShowById(caller, upcomingShowId),
+      this.listShowAllocations(caller, upcomingShowId),
+    ]);
+
+    if (!STARTABLE_SHOW_PRODUCTION_STATUSES.includes(show.productionStatus)) {
+      throw new Error("This show is not ready to start printing.");
+    }
+
+    if (!canStartShowPrinting(show, new Date())) {
+      throw new Error(PAST_SHOW_READ_ONLY_MESSAGE);
+    }
+
+    const allocationsToStart = allocations.filter(
+      (allocation) =>
+        allocation.status !== "canceled" && STARTABLE_ALLOCATION_STATUSES.includes(allocation.status),
+    );
+
+    if (allocationsToStart.length === 0) {
+      throw new Error("Add print requests to this show before starting printing.");
+    }
+
+    const batch = writeBatch(db);
+    const showRef = doc(firestoreCollectionService.getUpcomingShowsCollection(), upcomingShowId);
+
+    batch.update(showRef, {
+      productionStatus: "printing",
+      activePrintStartedAt: serverTimestamp(),
+      printStartedAt: show.printStartedAt ?? serverTimestamp(),
+      printPausedAt: deleteField(),
+      updatedBy: caller.id,
+      updatedAt: serverTimestamp(),
+    });
+
+    for (const allocation of allocationsToStart) {
+      batch.update(doc(firestoreCollectionService.getShowAllocationsCollection(), allocation.id), {
+        status: "in_progress",
+        updatedBy: caller.id,
+        updatedAt: serverTimestamp(),
+      });
+    }
+
+    await batch.commit();
+    return this.getUpcomingShowById(caller, upcomingShowId);
+  },
+
+  async pauseShowPrinting(caller: User, upcomingShowId: string): Promise<UpcomingShow> {
+    if (!permissionService.canManageUpcomingShows(caller)) {
+      throw new Error("You do not have permission to manage show printing.");
+    }
+
+    const show = await this.getUpcomingShowById(caller, upcomingShowId);
+
+    if (show.productionStatus !== "printing" || show.activePrintStartedAt === undefined) {
+      throw new Error("Printing is not running on this show.");
+    }
+
+    const foldedMs = computeElapsedPrintMs({
+      accumulatedPrintMs: show.accumulatedPrintMs,
+      activePrintStartedAtMs: show.activePrintStartedAt.toMillis(),
+      nowMs: Date.now(),
+    });
+
+    await updateDoc(doc(firestoreCollectionService.getUpcomingShowsCollection(), upcomingShowId), {
+      accumulatedPrintMs: foldedMs,
+      activePrintStartedAt: deleteField(),
+      printPausedAt: serverTimestamp(),
+      updatedBy: caller.id,
+      updatedAt: serverTimestamp(),
+    });
+
+    return this.getUpcomingShowById(caller, upcomingShowId);
+  },
+
+  async resumeShowPrinting(caller: User, upcomingShowId: string): Promise<UpcomingShow> {
+    if (!permissionService.canManageUpcomingShows(caller)) {
+      throw new Error("You do not have permission to manage show printing.");
+    }
+
+    const show = await this.getUpcomingShowById(caller, upcomingShowId);
+
+    if (show.productionStatus !== "printing" || show.printPausedAt === undefined || show.activePrintStartedAt !== undefined) {
+      throw new Error("Printing is not paused on this show.");
+    }
+
+    await updateDoc(doc(firestoreCollectionService.getUpcomingShowsCollection(), upcomingShowId), {
+      activePrintStartedAt: serverTimestamp(),
+      printPausedAt: deleteField(),
+      updatedBy: caller.id,
+      updatedAt: serverTimestamp(),
+    });
+
+    return this.getUpcomingShowById(caller, upcomingShowId);
+  },
+
+  async markShowPrintingFinished(caller: User, upcomingShowId: string): Promise<UpcomingShow> {
+    if (!permissionService.canManageUpcomingShows(caller)) {
+      throw new Error("You do not have permission to manage show printing.");
+    }
+
+    const [show, allocations] = await Promise.all([
+      this.getUpcomingShowById(caller, upcomingShowId),
+      this.listShowAllocations(caller, upcomingShowId),
+    ]);
+
+    if (show.productionStatus !== "printing") {
+      throw new Error("Start printing on this show before marking it finished.");
+    }
+
+    const allocationsToFinish = allocations.filter(
+      (allocation) =>
+        allocation.status !== "canceled" && FINISHABLE_ALLOCATION_STATUSES.includes(allocation.status),
+    );
+
+    if (allocationsToFinish.length === 0) {
+      throw new Error("There are no active allocations to finish on this show.");
+    }
+
+    const foldedMs = computeElapsedPrintMs({
+      accumulatedPrintMs: show.accumulatedPrintMs,
+      activePrintStartedAtMs: show.activePrintStartedAt?.toMillis(),
+      nowMs: Date.now(),
+    });
+
+    const batch = writeBatch(db);
+    const showRef = doc(firestoreCollectionService.getUpcomingShowsCollection(), upcomingShowId);
+
+    batch.update(showRef, {
+      productionStatus: "completed",
+      accumulatedPrintMs: foldedMs,
+      activePrintStartedAt: deleteField(),
+      printPausedAt: deleteField(),
+      printFinishedAt: serverTimestamp(),
+      printFinishedBy: caller.id,
+      updatedBy: caller.id,
+      updatedAt: serverTimestamp(),
+    });
+
+    const affectedPrintRequestIds = new Set<string>();
+
+    for (const allocation of allocationsToFinish) {
+      affectedPrintRequestIds.add(allocation.printRequestId);
+      batch.update(doc(firestoreCollectionService.getShowAllocationsCollection(), allocation.id), {
+        status: "done",
+        completedAt: serverTimestamp(),
+        completedBy: caller.id,
+        updatedBy: caller.id,
+        updatedAt: serverTimestamp(),
+      });
+    }
+
+    await batch.commit();
+
+    await Promise.all(
+      [...affectedPrintRequestIds].map((printRequestId) =>
+        this.markPrintRequestCompletedIfFullyPrinted(caller, printRequestId),
+      ),
+    );
+
+    return this.getUpcomingShowById(caller, upcomingShowId);
   },
 
   /**

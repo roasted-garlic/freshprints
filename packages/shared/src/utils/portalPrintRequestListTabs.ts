@@ -16,7 +16,7 @@ export function isPortalContinuablePrintRequestStatus(status: PrintRequestStatus
 export function parsePortalPrintRequestListTab(
   value: string | null | undefined,
 ): PortalPrintRequestListTab {
-  if (value === "queued" || value === "printed" || value === "working") {
+  if (value === "queued" || value === "printing" || value === "printed" || value === "working") {
     return value;
   }
 
@@ -29,6 +29,8 @@ export function getPortalPrintRequestListTabLabel(tab: PortalPrintRequestListTab
       return "Working";
     case "queued":
       return "Queued";
+    case "printing":
+      return "Printing";
     case "printed":
       return "Printed";
   }
@@ -42,6 +44,7 @@ export function groupPortalPrintRequestsByListTab(input: {
   const grouped: Record<PortalPrintRequestListTab, PrintRequest[]> = {
     working: [],
     queued: [],
+    printing: [],
     printed: [],
   };
 
@@ -49,11 +52,13 @@ export function groupPortalPrintRequestsByListTab(input: {
     const summary = input.summariesByRequestId[request.id] ?? { totalQuantity: 0, uniqueDesignCount: 0 };
     const allocationTotals = input.allocationTotalsByRequestId[request.id] ?? {
       totalAllocatedQuantity: 0,
+      totalInProgressQuantity: 0,
       totalPrintedQuantity: 0,
     };
     const tab = derivePrintRequestListTab({
       totalRequestedQuantity: summary.totalQuantity,
       totalAllocatedQuantity: allocationTotals.totalAllocatedQuantity,
+      totalInProgressQuantity: allocationTotals.totalInProgressQuantity,
       totalPrintedQuantity: allocationTotals.totalPrintedQuantity,
       status: request.status,
     });
