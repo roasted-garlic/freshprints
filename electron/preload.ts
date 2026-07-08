@@ -28,7 +28,11 @@ import type {
   ConfirmCloseResult,
   OpenDevToolsResult,
   OpenExternalLinkResult,
+  SetMinimumWindowSizeRequest,
+  SetMinimumWindowSizeResult,
   SetUploadActiveResult,
+  ResetMinimumWindowSizeRequest,
+  WindowMetricsResult,
 } from "@fresh-prints/shared/types/app/appIpc.types";
 import type {
   BatchDiscoveryCompleteEvent,
@@ -219,6 +223,28 @@ contextBridge.exposeInMainWorld("freshPrints", {
 
     openExternalLink(url: string): Promise<ImportIpcResult<OpenExternalLinkResult>> {
       return invokeAppChannel<OpenExternalLinkResult>(APP_IPC_CHANNELS.OPEN_EXTERNAL_LINK, url);
+    },
+
+    getWindowMetrics(): Promise<ImportIpcResult<WindowMetricsResult>> {
+      return invokeAppChannel<WindowMetricsResult>(APP_IPC_CHANNELS.GET_WINDOW_METRICS);
+    },
+
+    setMinimumWindowSize(
+      size: SetMinimumWindowSizeRequest,
+    ): Promise<ImportIpcResult<SetMinimumWindowSizeResult>> {
+      return invokeAppChannel<SetMinimumWindowSizeResult>(
+        APP_IPC_CHANNELS.SET_MINIMUM_WINDOW_SIZE,
+        size,
+      );
+    },
+
+    resetMinimumWindowSize(
+      request?: ResetMinimumWindowSizeRequest,
+    ): Promise<ImportIpcResult<SetMinimumWindowSizeResult>> {
+      return invokeAppChannel<SetMinimumWindowSizeResult>(
+        APP_IPC_CHANNELS.RESET_MINIMUM_WINDOW_SIZE,
+        request ?? {},
+      );
     },
   },
 

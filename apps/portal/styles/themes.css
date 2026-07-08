@@ -21,6 +21,9 @@
   --color-danger-text: #b4233a;
 
   --color-focus-ring: rgb(37 99 235 / 0.28);
+  --color-accent-primary-soft: rgb(37 99 235 / 0.12);
+
+  --portal-sidebar-divider: rgb(17 24 39 / 0.07);
 
   --color-artwork-preview-bg: #e5e7eb;
   --color-overlay: rgb(17 24 39 / 0.55);
@@ -48,6 +51,9 @@
   --color-danger-text: #fecdd3;
 
   --color-focus-ring: rgb(59 130 246 / 0.32);
+  --color-accent-primary-soft: rgb(59 130 246 / 0.16);
+
+  --portal-sidebar-divider: rgb(243 246 251 / 0.08);
 
   --color-artwork-preview-bg: #d9dee7;
   --color-overlay: rgb(0 0 0 / 0.72);

@@ -41,7 +41,7 @@ export function AuthGate({ children }: AuthGateProps) {
       <main className="portal-shell portal-shell-narrow">
         <p className="portal-eyebrow">{PORTAL_APP_NAME}</p>
         <h1>Account unavailable</h1>
-        <p className="portal-lead">{error ?? 'This account cannot access the customer portal.'}</p>
+        <p className="portal-lead">{error ?? 'This account cannot access the Request Portal.'}</p>
       </main>
     );
   }

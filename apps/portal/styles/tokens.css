@@ -20,6 +20,10 @@
   --font-size-xl: 1.75rem;
 
   --transition-fast: 120ms ease;
+  --transition-normal: 220ms ease;
+
+  --portal-sidebar-width: 15.5rem;
+  --portal-sidebar-width-collapsed: 4.75rem;
 
   --shadow-sm: 0 4px 12px rgb(0 0 0 / 0.14);
 

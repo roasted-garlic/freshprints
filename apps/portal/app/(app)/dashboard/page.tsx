@@ -4,6 +4,7 @@ import Link from 'next/link';
 import type { Timestamp } from 'firebase/firestore';
 
 import { useAuth } from '../../../features/auth/context/AuthContext';
+import { getProfileInitials, resolvePortalDisplayName } from '../../../features/account/utils/profileDisplay';
 
 function formatMemberSince(timestamp: Timestamp): string {
   return timestamp.toDate().toLocaleDateString(undefined, {
@@ -12,23 +13,9 @@ function formatMemberSince(timestamp: Timestamp): string {
   });
 }
 
-function getProfileInitials(displayName: string): string {
-  const parts = displayName.trim().split(/\s+/).filter(Boolean);
-
-  if (parts.length === 0) {
-    return '?';
-  }
-
-  if (parts.length === 1) {
-    return parts[0]!.slice(0, 2).toUpperCase();
-  }
-
-  return `${parts[0]![0] ?? ''}${parts[parts.length - 1]![0] ?? ''}`.toUpperCase();
-}
-
 export default function DashboardPage() {
   const { customer, user } = useAuth();
-  const displayName = customer?.displayName ?? user?.displayName ?? 'Your account';
+  const displayName = resolvePortalDisplayName(customer?.displayName, user?.displayName);
   const email = user?.email ?? customer?.email ?? '—';
   const username = customer?.username;
   const printRequestCount = customer?.totalPrintRequests ?? 0;

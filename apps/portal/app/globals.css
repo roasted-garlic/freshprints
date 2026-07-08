@@ -74,6 +74,16 @@ a {
   outline: none;
 }
 
+.portal-theme-toggle-compact {
+  gap: 0.125rem;
+  padding: 0.125rem;
+}
+
+.portal-theme-toggle-compact .portal-theme-toggle-option {
+  height: 1.625rem;
+  width: 1.625rem;
+}
+
 .portal-shell {
   margin: 0 auto;
   max-width: 42rem;

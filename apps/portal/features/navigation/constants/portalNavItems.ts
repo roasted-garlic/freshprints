@@ -9,8 +9,8 @@ export interface PortalNavItem {
 export const PORTAL_ACCOUNT_HREF = '/dashboard';
 
 export const portalNavItems: PortalNavItem[] = [
-  { id: 'designs', href: '/catalog', label: 'Designs' },
-  { id: 'requests', href: '/requests?tab=working', label: 'Requests' },
+  { id: 'designs', href: '/catalog', label: 'Design Library' },
+  { id: 'requests', href: '/requests?tab=working', label: 'Print Requests' },
 ];
 
 export function isPortalAccountRoute(pathname: string): boolean {

@@ -7,7 +7,12 @@ import { suppressDevToolsAutofillConsoleNoise } from './dev/suppressDevToolsAuto
 import { registerAppIpcHandlers } from './ipc/app/appIpcHandlers'
 import { APP_CONFIRM_CLOSE_REQUESTED } from './ipc/app/appIpcChannels'
 import { attachDevToolsWindowPersistence } from './ipc/app/devToolsWindowState'
+import { applyStudioWindowMinimumSize } from './ipc/app/windowMetrics'
 import { consumeCloseConfirmation, getUploadActive } from './ipc/app/uploadActivityState'
+import {
+  STUDIO_MIN_WINDOW_HEIGHT,
+  STUDIO_MIN_WINDOW_WIDTH,
+} from './window/studioWindowConstraints'
 import { registerExportIpcHandlers } from './ipc/export/exportIpcHandlers'
 import { registerImportIpcHandlers } from './ipc/import/importIpcHandlers'
 import { registerWhatnotImportIpcHandlers } from './ipc/whatnotImport/whatnotImportIpcHandlers'
@@ -43,6 +48,7 @@ let saveWindowStateTimeout: ReturnType<typeof setTimeout> | null = null
 
 interface SavedWindowState {
   bounds: Rectangle
+  displayId?: number
   isMaximized: boolean
 }
 
@@ -50,31 +56,53 @@ function getWindowStatePath() {
   return path.join(app.getPath('userData'), 'window-state.json')
 }
 
-function isValidWindowBounds(value: unknown): value is Rectangle {
-  if (!value || typeof value !== 'object') {
-    return false
-  }
+function clampBoundsToWorkArea(bounds: Rectangle, workArea: Rectangle): Rectangle {
+  const width = Math.min(bounds.width, workArea.width)
+  const height = Math.min(bounds.height, workArea.height)
+  const x = Math.max(workArea.x, Math.min(bounds.x, workArea.x + workArea.width - width))
+  const y = Math.max(workArea.y, Math.min(bounds.y, workArea.y + workArea.height - height))
 
-  const bounds = value as Partial<Rectangle>
-
-  return (
-    typeof bounds.x === 'number' &&
-    typeof bounds.y === 'number' &&
-    typeof bounds.width === 'number' &&
-    typeof bounds.height === 'number' &&
-    bounds.width >= 640 &&
-    bounds.height >= 480
-  )
+  return { x, y, width, height }
 }
 
-function isValidWindowState(value: unknown): value is SavedWindowState {
-  if (!value || typeof value !== 'object') {
-    return false
+function getDisplayById(displayId: number) {
+  return screen.getAllDisplays().find((display) => display.id === displayId)
+}
+
+function normalizeSavedWindowBounds(
+  rawBounds: Partial<Rectangle>,
+  displayId?: number,
+): Rectangle | null {
+  if (typeof rawBounds.x !== 'number' || typeof rawBounds.y !== 'number') {
+    return null
   }
 
-  const state = value as Partial<SavedWindowState>
+  const width = Math.max(
+    typeof rawBounds.width === 'number' && Number.isFinite(rawBounds.width)
+      ? rawBounds.width
+      : STUDIO_MIN_WINDOW_WIDTH,
+    STUDIO_MIN_WINDOW_WIDTH,
+  )
+  const height = Math.max(
+    typeof rawBounds.height === 'number' && Number.isFinite(rawBounds.height)
+      ? rawBounds.height
+      : STUDIO_MIN_WINDOW_HEIGHT,
+    STUDIO_MIN_WINDOW_HEIGHT,
+  )
 
-  return isValidWindowBounds(state.bounds) && typeof state.isMaximized === 'boolean'
+  const savedDisplay = displayId !== undefined ? getDisplayById(displayId) : undefined
+  const targetDisplay =
+    savedDisplay ?? screen.getDisplayMatching({ x: rawBounds.x, y: rawBounds.y, width: 1, height: 1 })
+  const normalized = clampBoundsToWorkArea(
+    { x: rawBounds.x, y: rawBounds.y, width, height },
+    targetDisplay.workArea,
+  )
+
+  if (!isVisibleOnAnyDisplay(normalized)) {
+    return null
+  }
+
+  return normalized
 }
 
 function rectanglesIntersect(first: Rectangle, second: Rectangle) {
@@ -92,15 +120,18 @@ function isVisibleOnAnyDisplay(bounds: Rectangle) {
 
 function getCenteredPrimaryDisplayBounds(): Rectangle {
   const { workArea } = screen.getPrimaryDisplay()
-  const width = Math.min(1280, workArea.width)
-  const height = Math.min(800, workArea.height)
+  const width = Math.min(STUDIO_MIN_WINDOW_WIDTH, workArea.width)
+  const height = Math.min(STUDIO_MIN_WINDOW_HEIGHT, workArea.height)
 
-  return {
-    x: Math.round(workArea.x + (workArea.width - width) / 2),
-    y: Math.round(workArea.y + (workArea.height - height) / 2),
-    width,
-    height,
-  }
+  return clampBoundsToWorkArea(
+    {
+      x: Math.round(workArea.x + (workArea.width - width) / 2),
+      y: Math.round(workArea.y + (workArea.height - height) / 2),
+      width,
+      height,
+    },
+    workArea,
+  )
 }
 
 function loadWindowState(): SavedWindowState {
@@ -118,11 +149,25 @@ function loadWindowState(): SavedWindowState {
 
     const parsedState: unknown = JSON.parse(readFileSync(windowStatePath, 'utf-8'))
 
-    if (!isValidWindowState(parsedState) || !isVisibleOnAnyDisplay(parsedState.bounds)) {
+    if (!parsedState || typeof parsedState !== 'object') {
       return fallbackState
     }
 
-    return parsedState
+    const rawState = parsedState as Partial<SavedWindowState>
+    const normalizedBounds = normalizeSavedWindowBounds(
+      (rawState.bounds ?? {}) as Partial<Rectangle>,
+      rawState.displayId,
+    )
+
+    if (!normalizedBounds) {
+      return fallbackState
+    }
+
+    return {
+      bounds: normalizedBounds,
+      displayId: rawState.displayId,
+      isMaximized: typeof rawState.isMaximized === 'boolean' ? rawState.isMaximized : false,
+    }
   } catch {
     return fallbackState
   }
@@ -133,8 +178,11 @@ function saveWindowState(browserWindow: BrowserWindow) {
     return
   }
 
+  const bounds = browserWindow.getNormalBounds()
+  const display = screen.getDisplayMatching(bounds)
   const windowState: SavedWindowState = {
-    bounds: browserWindow.getNormalBounds(),
+    bounds,
+    displayId: display.id,
     isMaximized: browserWindow.isMaximized(),
   }
 
@@ -172,6 +220,8 @@ function createWindow() {
   win = new BrowserWindow({
     ...windowOptions,
   })
+
+  applyStudioWindowMinimumSize(win)
 
   if (savedWindowState.isMaximized) {
     win.maximize()
