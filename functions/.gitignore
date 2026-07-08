@@ -1,3 +1,7 @@
 lib/
 node_modules/
 *.log
+
+# Per-project Firebase env (secrets); keep .env.example committable
+.env.*
+!.env.example

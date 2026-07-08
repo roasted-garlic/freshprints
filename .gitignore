@@ -17,6 +17,7 @@ functions/node_modules
 packages/shared/src/**/*.js
 packages/shared/src/**/*.js.map
 apps/portal/.next
+*.tsbuildinfo
 *.local
 .env
 .env.local
