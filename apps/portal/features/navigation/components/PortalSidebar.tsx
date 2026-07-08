@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
-import { ChevronsLeft, ChevronsRight, LogOut, User, X } from 'lucide-react';
+import { ChevronRight, ChevronsLeft, ChevronsRight, LogOut, User, X } from 'lucide-react';
 
 import { resolvePortalDisplayName, getProfileInitials } from '../../account/utils/profileDisplay';
 import { useAuth } from '../../auth/context/AuthContext';
@@ -88,6 +88,7 @@ export function PortalSidebar() {
   return (
     <>
       <aside aria-label="Portal navigation" className={sidebarClassName}>
+        <span aria-hidden className="portal-sidebar-edge" />
         <div className="portal-sidebar-brand">
           <PortalLogo size={showCollapsed ? 32 : 36} />
           {!showCollapsed ? (
@@ -147,9 +148,11 @@ export function PortalSidebar() {
           ) : (
             <Link
               aria-current={isAccountActive ? 'page' : undefined}
+              aria-label={`Open your account, ${displayName}`}
               className={`portal-sidebar-user-card${isAccountActive ? ' portal-sidebar-user-card-active' : ''}`}
               href={PORTAL_ACCOUNT_HREF}
               onClick={closeDrawer}
+              title="Open your account"
             >
               <div aria-hidden className="portal-sidebar-user-avatar">
                 {getProfileInitials(displayName)}
@@ -157,18 +160,24 @@ export function PortalSidebar() {
               <div className="portal-sidebar-user-meta">
                 <p className="portal-sidebar-user-name">{displayName}</p>
                 {username ? <p className="portal-sidebar-user-handle">@{username}</p> : null}
-                <span className="portal-sidebar-user-badge">Customer</span>
               </div>
+              <ChevronRight
+                aria-hidden
+                className="portal-sidebar-user-card-chevron"
+                size={16}
+                strokeWidth={2}
+              />
             </Link>
           )}
 
           <div className="portal-sidebar-footer-actions">
             <ThemeToggle compact />
             <button
+              aria-label="Sign out"
               className="portal-sidebar-sign-out"
               disabled={isAuthActionLoading}
               onClick={() => setIsLogoutConfirmOpen(true)}
-              title={showCollapsed ? 'Sign out' : undefined}
+              title="Sign out"
               type="button"
             >
               <LogOut aria-hidden size={16} strokeWidth={2} />
