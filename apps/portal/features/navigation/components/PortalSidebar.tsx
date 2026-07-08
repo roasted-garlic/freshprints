@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
-import { ChevronRight, ChevronsLeft, ChevronsRight, LogOut, User, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, LogOut, User } from 'lucide-react';
 
 import { resolvePortalDisplayName, getProfileInitials } from '../../account/utils/profileDisplay';
 import { useAuth } from '../../auth/context/AuthContext';
@@ -103,7 +103,7 @@ export function PortalSidebar() {
             onClick={closeDrawer}
             type="button"
           >
-            <X aria-hidden size={18} strokeWidth={2} />
+            <ChevronLeft aria-hidden size={22} strokeWidth={2} />
           </button>
         </div>
 

@@ -871,6 +871,83 @@
 
   .portal-sidebar-drawer-close {
     display: flex;
+    min-height: 2.75rem;
+    min-width: 2.75rem;
+  }
+
+  .portal-sidebar .portal-sidebar-nav {
+    gap: var(--space-2);
+    padding: 0 0 0 var(--space-3);
+  }
+
+  .portal-sidebar .portal-sidebar-link {
+    border-radius: var(--radius-md) 0 0 var(--radius-md);
+    border-right: 0;
+    font-size: var(--font-size-lg);
+    gap: var(--space-3);
+    min-height: 3rem;
+    padding: 0 var(--space-4) 0 var(--space-3);
+    width: 100%;
+  }
+
+  .portal-sidebar .portal-sidebar-link-active {
+    border-bottom-color: var(--color-accent-primary);
+    border-left-color: var(--color-accent-primary);
+    border-right: 0;
+    border-top-color: var(--color-accent-primary);
+  }
+
+  .portal-sidebar .portal-sidebar-link-main {
+    gap: var(--space-3);
+  }
+
+  .portal-sidebar .portal-sidebar-link-main svg {
+    height: 1.375rem;
+    width: 1.375rem;
+  }
+
+  .portal-sidebar .portal-sidebar-footer {
+    gap: var(--space-4);
+    padding: var(--space-4) var(--space-2) var(--space-3) var(--space-3);
+  }
+
+  .portal-sidebar .portal-sidebar-user-card {
+    min-height: 3.25rem;
+    padding: var(--space-3);
+  }
+
+  .portal-sidebar .portal-sidebar-user-avatar {
+    font-size: var(--font-size-sm);
+    height: 2.5rem;
+    width: 2.5rem;
+  }
+
+  .portal-sidebar .portal-sidebar-user-name {
+    font-size: var(--font-size-md);
+  }
+
+  .portal-sidebar .portal-sidebar-footer-actions {
+    gap: var(--space-3);
+  }
+
+  .portal-sidebar .portal-sidebar-sign-out {
+    font-size: var(--font-size-sm);
+    min-height: 2.75rem;
+    padding: 0 var(--space-4);
+  }
+
+  .portal-sidebar .portal-sidebar-sign-out svg {
+    height: 1.125rem;
+    width: 1.125rem;
+  }
+
+  .portal-sidebar .portal-sidebar-footer-actions .portal-theme-toggle-compact {
+    padding: var(--space-1);
+  }
+
+  .portal-sidebar .portal-sidebar-footer-actions .portal-theme-toggle-compact .portal-theme-toggle-option {
+    height: 2.25rem;
+    width: 2.25rem;
   }
 
   .portal-app-header {
