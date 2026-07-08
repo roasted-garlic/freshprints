@@ -21,9 +21,8 @@ import {
   filterCatalogDesignsBySearch,
   sortCatalogTags,
 } from '../../../features/catalog/utils/catalogSearch';
-import { useMyPrintRequests } from '../../../features/print-requests/hooks/useMyPrintRequests';
+import { usePortalPrintRequests } from '../../../features/print-requests/context/PortalPrintRequestContext';
 import { usePortalPrintRequestSelectionMode } from '../../../features/print-requests/hooks/usePortalPrintRequestSelectionMode';
-import { buildCatalogSelectionHref } from '../../../features/print-requests/utils/catalogSelectionNavigation';
 import {
   ArrowLeftIcon,
   ClipboardListIcon,
@@ -44,10 +43,9 @@ export function CatalogPageContent() {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [isTagFilterModalOpen, setIsTagFilterModalOpen] = useState(false);
   const [selectedDesign, setSelectedDesign] = useState<CatalogDesign | null>(null);
-  const [isCreatingRequest, setIsCreatingRequest] = useState(false);
-  const [actionError, setActionError] = useState<string | null>(null);
+  const [selectionActionError, setSelectionActionError] = useState<string | null>(null);
 
-  const { continuableRequests, createPrintRequest } = useMyPrintRequests();
+  const { actionError, continuableRequests, handleStartRequestClick, isCreating } = usePortalPrintRequests();
   const selectionMode = usePortalPrintRequestSelectionMode(selectionRequestId);
   const selectionError = selectionModeActive
     ? selectionRequestId
@@ -102,8 +100,6 @@ export function CatalogPageContent() {
   const requestActionPendingLabel = hasContinuableRequests ? 'Continuing…' : 'Starting…';
 
   async function handleRequestAction() {
-    setActionError(null);
-
     if (hasSingleContinuableRequest) {
       router.push(`/requests/${continuableRequests[0].id}`);
       return;
@@ -114,16 +110,7 @@ export function CatalogPageContent() {
       return;
     }
 
-    setIsCreatingRequest(true);
-
-    try {
-      const created = await createPrintRequest();
-      router.replace(buildCatalogSelectionHref(created.printRequestId));
-    } catch (createError) {
-      setActionError(createError instanceof Error ? createError.message : 'Unable to create print request.');
-    } finally {
-      setIsCreatingRequest(false);
-    }
+    handleStartRequestClick();
   }
 
   function handleExitSelectionMode() {
@@ -140,21 +127,23 @@ export function CatalogPageContent() {
       return;
     }
 
-    setActionError(null);
+    setSelectionActionError(null);
 
     try {
       await selectionMode.saveSelections();
       router.push(`/requests/${selectionRequestId}`);
     } catch (saveError) {
-      setActionError(saveError instanceof Error ? saveError.message : 'Unable to save selections.');
+      setSelectionActionError(saveError instanceof Error ? saveError.message : 'Unable to save selections.');
     }
   }
+
+  const displayedActionError = actionError ?? selectionActionError;
 
   const loadError = error ?? selectionError;
 
   return (
     <main
-      className={`portal-page portal-catalog-page${selectionModeActive ? ' is-selection-mode' : ''}${isCreatingRequest ? ' is-creating-request' : ''}`}
+      className={`portal-page portal-catalog-page${selectionModeActive ? ' is-selection-mode' : ''}${isCreating ? ' is-creating-request' : ''}`}
     >
       <header className="portal-catalog-topbar">
         <div className="portal-catalog-topbar-copy">
@@ -177,12 +166,12 @@ export function CatalogPageContent() {
             </Link>
             <button
               className="portal-button portal-button-primary portal-button-leading-icon"
-              disabled={isCreatingRequest}
+              disabled={isCreating}
               onClick={() => void handleRequestAction()}
               type="button"
             >
               {hasContinuableRequests ? <PlayCircleIcon /> : <PlusCircleIcon />}
-              {isCreatingRequest ? requestActionPendingLabel : requestActionLabel}
+              {isCreating ? requestActionPendingLabel : requestActionLabel}
             </button>
           </div>
         ) : null}
@@ -194,9 +183,9 @@ export function CatalogPageContent() {
         </p>
       ) : null}
 
-      {actionError ? (
+      {displayedActionError ? (
         <p className="portal-error" role="alert">
-          {actionError}
+          {displayedActionError}
         </p>
       ) : null}
 

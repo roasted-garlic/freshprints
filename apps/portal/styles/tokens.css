@@ -27,6 +27,7 @@
 
   --shadow-sm: 0 4px 12px rgb(0 0 0 / 0.14);
 
+  --z-sticky: 30;
   --z-modal: 40;
   --z-lightbox: 50;
 }

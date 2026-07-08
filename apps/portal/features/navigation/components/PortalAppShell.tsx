@@ -2,8 +2,10 @@
 
 import type { ReactNode } from 'react';
 
+import { PortalPrintRequestProvider } from '../../print-requests/context/PortalPrintRequestContext';
 import { PortalDrawerProvider, usePortalDrawer } from '../context/PortalDrawerContext';
 import { PortalAppHeader } from './PortalAppHeader';
+import { PortalBottomNav } from './PortalBottomNav';
 import { PortalSidebar } from './PortalSidebar';
 
 interface PortalAppShellProps {
@@ -28,6 +30,7 @@ function PortalAppShellContent({ children }: PortalAppShellProps) {
       <div className="portal-app-main">
         <PortalAppHeader />
         <div className="portal-app-content">{children}</div>
+        <PortalBottomNav />
       </div>
     </div>
   );
@@ -36,7 +39,9 @@ function PortalAppShellContent({ children }: PortalAppShellProps) {
 export function PortalAppShell({ children }: PortalAppShellProps) {
   return (
     <PortalDrawerProvider>
-      <PortalAppShellContent>{children}</PortalAppShellContent>
+      <PortalPrintRequestProvider>
+        <PortalAppShellContent>{children}</PortalAppShellContent>
+      </PortalPrintRequestProvider>
     </PortalDrawerProvider>
   );
 }

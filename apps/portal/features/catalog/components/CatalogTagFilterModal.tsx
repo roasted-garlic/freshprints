@@ -57,11 +57,17 @@ export function CatalogTagFilterModal({
     <div
       aria-labelledby="catalog-tag-filter-title"
       aria-modal="true"
-      className="modal-overlay modal-overlay-blur"
+      className="modal-overlay modal-overlay-blur tag-filter-overlay"
       onClick={onClose}
       role="dialog"
     >
-      <div className="modal-panel modal-panel-tag-filter" onClick={(event) => event.stopPropagation()} role="presentation">
+      <div
+        className="modal-panel modal-panel-tag-filter tag-filter-drawer"
+        onClick={(event) => event.stopPropagation()}
+        role="presentation"
+      >
+        <div aria-hidden="true" className="tag-filter-drawer-handle" />
+
         <header className="modal-header">
           <div>
             <p className="portal-eyebrow">Catalog filters</p>
@@ -76,8 +82,9 @@ export function CatalogTagFilterModal({
         </header>
 
         <div className="modal-body">
-          <label className="portal-field">
-            <span>Search tags</span>
+          <label className="portal-field tag-filter-search-field">
+            <span className="tag-filter-action-label tag-filter-action-label-short">Search</span>
+            <span className="tag-filter-action-label tag-filter-action-label-full">Search tags</span>
             <input
               onChange={(event) => setSearchQuery(event.target.value)}
               placeholder="Search tags..."
@@ -106,14 +113,15 @@ export function CatalogTagFilterModal({
           )}
         </div>
 
-        <footer className="modal-footer">
+        <footer className="modal-footer modal-footer-tag-filter">
           <button
             className="portal-button portal-button-secondary portal-button-leading-icon"
             onClick={() => setDraftSelectedTags([])}
             type="button"
           >
             <XIcon size={14} />
-            Clear filters
+            <span className="tag-filter-action-label tag-filter-action-label-short">Clear</span>
+            <span className="tag-filter-action-label tag-filter-action-label-full">Clear filters</span>
           </button>
           <button
             className="portal-button portal-button-secondary portal-button-leading-icon"
@@ -132,7 +140,12 @@ export function CatalogTagFilterModal({
             type="button"
           >
             <CheckIcon size={14} />
-            Apply tags{draftSelectedTags.length > 0 ? ` (${draftSelectedTags.length})` : ''}
+            <span className="tag-filter-action-label tag-filter-action-label-short">
+              Apply{draftSelectedTags.length > 0 ? ` (${draftSelectedTags.length})` : ''}
+            </span>
+            <span className="tag-filter-action-label tag-filter-action-label-full">
+              Apply tags{draftSelectedTags.length > 0 ? ` (${draftSelectedTags.length})` : ''}
+            </span>
           </button>
         </footer>
       </div>

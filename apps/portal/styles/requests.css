@@ -382,6 +382,10 @@
     flex-direction: column;
   }
 
+  .portal-requests-header > .portal-button {
+    display: none;
+  }
+
   .portal-request-detail-header {
     align-items: stretch;
     flex-direction: column;

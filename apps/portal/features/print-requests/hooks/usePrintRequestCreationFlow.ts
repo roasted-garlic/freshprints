@@ -19,6 +19,7 @@ export function usePrintRequestCreationFlow({
   const router = useRouter();
   const [isCreating, setIsCreating] = useState(false);
   const [isChoiceModalOpen, setIsChoiceModalOpen] = useState(false);
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
   const navigateToContinue = useCallback(() => {
@@ -38,12 +39,18 @@ export function usePrintRequestCreationFlow({
       const created = await createPrintRequest();
       router.replace(buildCatalogSelectionHref(created.printRequestId));
       setIsChoiceModalOpen(false);
+      setIsConfirmModalOpen(false);
     } catch (createError) {
       setActionError(createError instanceof Error ? createError.message : 'Unable to create print request.');
     } finally {
       setIsCreating(false);
     }
   }, [createPrintRequest, router]);
+
+  const openStartNewConfirm = useCallback(() => {
+    setActionError(null);
+    setIsConfirmModalOpen(true);
+  }, []);
 
   const handleStartRequestClick = useCallback(() => {
     setActionError(null);
@@ -53,8 +60,17 @@ export function usePrintRequestCreationFlow({
       return;
     }
 
+    openStartNewConfirm();
+  }, [continuableRequests.length, openStartNewConfirm]);
+
+  const handleStartNewRequest = useCallback(() => {
+    setIsChoiceModalOpen(false);
+    openStartNewConfirm();
+  }, [openStartNewConfirm]);
+
+  const confirmStartNewRequest = useCallback(() => {
     void createAndGoToSelection();
-  }, [continuableRequests.length, createAndGoToSelection]);
+  }, [createAndGoToSelection]);
 
   const handleContinueWorkingRequest = useCallback(() => {
     setIsChoiceModalOpen(false);
@@ -67,13 +83,22 @@ export function usePrintRequestCreationFlow({
     }
   }, [isCreating]);
 
+  const closeConfirmModal = useCallback(() => {
+    if (!isCreating) {
+      setIsConfirmModalOpen(false);
+    }
+  }, [isCreating]);
+
   return {
     actionError,
     closeChoiceModal,
+    closeConfirmModal,
+    confirmStartNewRequest,
     handleContinueWorkingRequest,
     handleStartRequestClick,
-    handleStartNewRequest: createAndGoToSelection,
+    handleStartNewRequest,
     isChoiceModalOpen,
+    isConfirmModalOpen,
     isCreating,
   };
 }

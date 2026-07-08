@@ -13,10 +13,8 @@ import {
 } from '@fresh-prints/shared/utils/portalPrintRequestListTabs';
 
 import { PrintRequestCard } from '../../../features/print-requests/components/PrintRequestCard';
-import { useMyPrintRequests } from '../../../features/print-requests/hooks/useMyPrintRequests';
-import { usePrintRequestCreationFlow } from '../../../features/print-requests/hooks/usePrintRequestCreationFlow';
+import { usePortalPrintRequests } from '../../../features/print-requests/context/PortalPrintRequestContext';
 import { LibraryIcon, PlusCircleIcon } from '../../../features/shared/components/PortalIcons';
-import { PortalWorkingRequestChoiceModal } from '../../../features/shared/components/PortalWorkingRequestChoiceModal';
 
 const PORTAL_REQUEST_TABS: PortalPrintRequestListTab[] = ['working', 'queued', 'printing', 'printed'];
 
@@ -54,17 +52,17 @@ export default function RequestsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const activeTab = parsePortalPrintRequestListTab(searchParams.get(PORTAL_PRINT_REQUEST_LIST_TAB_PARAM));
-  const { requests, requestsByTab, summariesByRequestId, allocationTotalsByRequestId, continuableRequests, isLoading, error, createPrintRequest } =
-    useMyPrintRequests();
   const {
     actionError,
-    closeChoiceModal,
-    handleContinueWorkingRequest,
+    allocationTotalsByRequestId,
+    error,
     handleStartRequestClick,
-    handleStartNewRequest,
-    isChoiceModalOpen,
     isCreating,
-  } = usePrintRequestCreationFlow({ continuableRequests, createPrintRequest });
+    isLoading,
+    requests,
+    requestsByTab,
+    summariesByRequestId,
+  } = usePortalPrintRequests();
 
   const visibleRequests = requestsByTab[activeTab];
 
@@ -202,15 +200,6 @@ export default function RequestsPage() {
           )}
         </>
       )}
-
-      <PortalWorkingRequestChoiceModal
-        continuableRequests={continuableRequests}
-        isCreating={isCreating}
-        isOpen={isChoiceModalOpen}
-        onClose={closeChoiceModal}
-        onContinue={handleContinueWorkingRequest}
-        onStartNew={() => void handleStartNewRequest()}
-      />
     </main>
   );
 }

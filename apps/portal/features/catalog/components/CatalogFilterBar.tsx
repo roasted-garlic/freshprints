@@ -1,6 +1,7 @@
 'use client';
 
 import { FilterIcon, SearchIcon } from '../../shared/components/PortalIcons';
+import { PortalSelect } from '../../shared/components/PortalSelect';
 
 interface CatalogFilterBarProps {
   categoryFilter: string;
@@ -38,27 +39,27 @@ export function CatalogFilterBar({
         </label>
       </div>
 
-      <select
-        aria-label="Category"
-        className="design-library-filter-select"
-        onChange={(event) => onCategoryChange(event.target.value)}
-        value={categoryFilter}
-      >
-        {categoryOptions.map((option) => (
-          <option key={option.value || 'all'} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
+      <div className="design-library-filter-controls-secondary">
+        <PortalSelect
+          className="design-library-filter-controls-category"
+          label="Category"
+          name="portalCatalogCategoryFilter"
+          onChange={onCategoryChange}
+          options={categoryOptions}
+          value={categoryFilter}
+        />
 
-      <button
-        className="portal-button portal-button-secondary portal-button-sm portal-button-leading-icon"
-        onClick={onOpenTags}
-        type="button"
-      >
-        <FilterIcon />
-        Tags{selectedTagCount > 0 ? ` (${selectedTagCount})` : ''}
-      </button>
+        <button
+          className="portal-button portal-button-secondary portal-button-sm portal-button-leading-icon design-library-filter-tags-button"
+          onClick={onOpenTags}
+          type="button"
+        >
+          <FilterIcon />
+          <span className="design-library-filter-tags-button-label">
+            Tags{selectedTagCount > 0 ? ` (${selectedTagCount})` : ''}
+          </span>
+        </button>
+      </div>
     </div>
   );
 }
