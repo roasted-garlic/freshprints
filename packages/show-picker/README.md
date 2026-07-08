@@ -11,14 +11,13 @@ import { ShowPicker, buildShowPickerOptions } from '@fresh-prints/show-picker';
 import '@fresh-prints/show-picker/show-picker.css';
 ```
 
-## Portal (when customer show selection ships)
+## Portal (customer show selection)
 
-1. Dependency and TypeScript paths are already configured in `apps/portal`.
-2. Add `transpilePackages: ['@fresh-prints/show-picker']` in `next.config.ts` (done).
-3. Import the same CSS in the Portal layout or the feature page that hosts the picker.
-4. Map Firestore `upcomingShows` to `ShowPickerSource[]` via `buildShowPickerOptions`.
-5. Filter with `filterShowsAvailableForAllocation` from shared utils (exclude past shows).
-6. Render `<ShowPicker options={...} selectedId={...} onSelect={...} />`.
+1. Dependency and TypeScript paths are configured in `apps/portal`.
+2. `transpilePackages: ['@fresh-prints/show-picker']` in `next.config.ts`.
+3. Import `@fresh-prints/show-picker/styles.css` in Portal `globals.css`.
+4. `listPortalAllocatableShows` + `queuePortalPrintRequestToShow` callables supply shows and perform allocation.
+5. `PortalQueueToShowModal` maps callable DTOs → `buildShowPickerOptions` → `<ShowPicker />`.
 
 Portal must define the same `--color-*` design tokens as Studio (`STYLE_GUIDE.md`).
 

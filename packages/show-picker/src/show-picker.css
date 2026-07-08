@@ -1,6 +1,5 @@
 .show-picker {
   --show-picker-day-height: 3.75rem;
-  --show-picker-grid-max-height: min(24rem, 50vh);
 
   display: flex;
   flex-direction: column;
@@ -11,7 +10,7 @@
   background: var(--color-bg-secondary, #1f2430);
   border: 1px solid var(--color-border-strong, #3a3f4b);
   border-radius: var(--radius-lg, 0.75rem);
-  max-height: calc(var(--show-picker-grid-max-height) + 4.5rem);
+  flex: 0 0 auto;
   padding: var(--space-3, 0.75rem);
 }
 
@@ -75,10 +74,7 @@
   gap: 1px;
   grid-auto-rows: var(--show-picker-day-height);
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  max-height: var(--show-picker-grid-max-height);
-  min-height: calc(var(--show-picker-day-height) * 5);
-  overflow-x: hidden;
-  overflow-y: auto;
+  overflow: hidden;
 }
 
 .show-picker-week {
@@ -165,6 +161,7 @@
 
 .show-picker-slots {
   display: flex;
+  flex: 0 0 auto;
   flex-direction: column;
   gap: var(--space-2, 0.5rem);
 }
@@ -185,7 +182,7 @@
 }
 
 .show-picker-slot {
-  align-items: center;
+  align-items: flex-start;
   background: var(--color-bg-tertiary, #2a2f3a);
   border: 1px solid var(--color-border-strong, #3a3f4b);
   border-radius: var(--radius-lg, 0.75rem);

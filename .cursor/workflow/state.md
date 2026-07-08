@@ -4,25 +4,31 @@
 managed-phase
 
 ## Current Goal
-show-calendar-picker — Shared `@fresh-prints/show-picker` calendar UI in Studio Add to Show; Portal-ready for future customer show selection. Plan: `docs/workflow/plans/2026-07-07-show-calendar-picker-plan.md`.
+portal-customer-show-selection — Wire `@fresh-prints/show-picker` into Portal; customers queue own requests to a show via callables.
 
 ## Phase
-test — Show calendar picker implemented 2026-07-07. Automated checks passed; manual QA of Add to Show calendar recommended.
+test — Implementation complete 2026-07-08. Automated checks passed. Deploy callables before manual Portal QA.
 
-## Sub-goal: Show calendar picker (2026-07-07)
+## Sub-goal: Portal customer show selection (2026-07-08)
+- Plan: `docs/workflow/plans/2026-07-08-portal-customer-show-selection-plan.md` — approved
+- Review: `docs/workflow/reviews/2026-07-08-portal-customer-show-selection-review.md` — **approved**
+- Implemented: shared `showScheduleGrouping`, callables, `PortalQueueToShowModal`, detail page **Queue to show**
+- **Deploy required:** `listPortalAllocatableShows`, `queuePortalPrintRequestToShow` to `fresh-prints-dev`
+
+## Sub-goal: Show calendar picker (2026-07-07) — **DONE**
 - Plan: `docs/workflow/plans/2026-07-07-show-calendar-picker-plan.md` — approved
 - Review: `docs/workflow/reviews/2026-07-07-show-calendar-picker-review.md` — approved
 - `@fresh-prints/show-picker` package + `showCalendarGrid` shared utils
 - Studio `AddToShowModal` wired to `ShowPicker`
 - Portal: dependency + tsconfig paths added; UI wiring deferred until customer show-selection flow
 
-## Sub-goal: Show Queue production timer (2026-07-07)
+## Sub-goal: Show Queue production timer (2026-07-07) — **DONE**
 - Plan: `docs/workflow/plans/2026-07-07-show-queue-production-timer-plan.md` — approved
 - Review: `docs/workflow/reviews/2026-07-07-show-queue-production-timer-review.md` — approved
 - Studio Show Queue detail: Start/Pause/Resume/Mark finished + elapsed timer
 - `upcomingShowService`: `startShowPrinting`, `pauseShowPrinting`, `resumeShowPrinting`, `markShowPrintingFinished`
 - Portal + Studio: **Printing** tab; progress labels from allocation `in_progress`
-- **Deploy required:** `firestore:rules` to `fresh-prints-dev` before live timer writes
+- **Deploy:** User confirmed `firestore:rules` deployed 2026-07-08
 
 ## Sub-goal: Phase 8 Slice 3 — Customer print requests
 - Callable `createPortalPrintRequest` implemented
@@ -298,26 +304,29 @@ Prior completed phase records:
 Test reports: `docs/workflow/reviews/2026-07-05-whatnot-show-sync-slice2-test-report.md`; correction report `docs/workflow/reviews/2026-07-06-whatnot-show-sync-relative-date-parser-test-report.md`; signoff `docs/workflow/reviews/2026-07-06-whatnot-show-sync-signoff.md`.
 
 ## Signoff
-Phase 7 export phase signed off 2026-07-07. Phase 8 not yet signed off.
+Last: `docs/workflow/reviews/2026-07-08-show-queue-timer-and-calendar-picker-signoff.md` (approved).
 
 ## Human Checkpoint Required
 no
 
 ## Allowed Actions
-run additional tests; prepare deploy checklist; await human deploy + manual QA; signoff only after QA PASS documented
+run tests; document deploy; manual Portal QA after functions deploy
 
 ## Forbidden Actions
-deploy production rules/functions/hosting without explicit human approval; mark Slice 3 DONE without manual QA; implement Slice 4 before Slice 3 verified
+mark DONE without functions deploy + manual QA
 
 ## Next Required Step
-1. **Deploy** to `fresh-prints-dev`: `firebase deploy --only firestore:rules` (customer `showAllocations` read + prior Slice 3 rules); confirm `createPortalPrintRequest` already deployed.
-2. **Manual QA** (portal + Studio): Continue vs Start on catalog; Working/Queued/Printed tabs; rapid +/- qty without incomplete-record errors; Studio Refresh updates list/detail.
-3. Reply `PASS` / `FAIL: …` — then Test Agent can write Slice 3 test report and Signoff Agent can close Slice 3 (or defer Slice 4).
+1. Deploy: `firebase deploy --only functions:listPortalAllocatableShows,functions:queuePortalPrintRequestToShow --project fresh-prints-dev`
+2. Manual QA: Portal request detail → Queue to show → calendar → confirm → Queued tab
+3. Reply PASS / FAIL for signoff
 
 ## DONE
 no
 
 ## Decision Log
+- 2026-07-08: Implemented Portal customer show-selection: `listPortalAllocatableShows` + `queuePortalPrintRequestToShow` callables, shared `showScheduleGrouping` + `portalShowQueueCapacity`, `PortalQueueToShowModal`, detail **Queue to show** button. Tests: 40/40 targeted, tsc, portal typecheck, lint PASS. ADR-FP-066.
+- 2026-07-08: User confirmed manual QA PASS (calendar, past shows, production timer, Portal Printing tab, sidebar). Closed signoff **approved**; prior workflow DONE. Signoff: `docs/workflow/reviews/2026-07-08-show-queue-timer-and-calendar-picker-signoff.md`.
+- 2026-07-08: User confirmed Firestore rules deployed. Ran automated test phase (tsc, portal typecheck, lint, 56 targeted unit tests, vite build PASS). Created test report and signoff doc for show-queue production timer + calendar picker.
 - 2026-07-07: Committed `64921c0` (push pending) — portal header Account/Log out with confirm modal, `/catalog` post-login entry, Designs+Requests bottom nav, enriched account page (removed signup badge), vertical wider design-details modal. Automated: portal typecheck, lint. Left unstaged: `apps/portal/tsconfig.tsbuildinfo`; untracked `functions/.env.fresh-prints-dev` (not committed).
 - 2026-07-07: Committed and pushed `e228240` — portal Working/Queued/Printed tabs (Studio `derivePrintRequestListTab`), Continue request flow, portal rapid-save/timestamp fixes, customer `showAllocations` read rule, Studio print requests Refresh + item card save debounce. Automated: portal typecheck, root tsc, lint, 10/10 shared tab-grouping tests. Left unstaged: `apps/portal/tsconfig.tsbuildinfo`; untracked `functions/.env.fresh-prints-dev` (not committed).
 - 2026-07-07: User confirmed Slice 2 catalog mobile QA PASS (filters, layout, tunnel testing). Continued workflow → Slice 3 plan + review approved.

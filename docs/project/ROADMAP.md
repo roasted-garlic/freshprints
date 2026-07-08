@@ -108,17 +108,19 @@ Current Goal:
 
 Phase 6 Customers And Print Requests is complete and closed out per user confirmation on 2026-07-06.
 
-Phase 7 Show Queue is complete for Studio MVP: foundation, staff-assisted Whatnot import, and
-production-file export (zip, multiply-by-qty, auto-nested gang sheet PNG) signed off 2026-07-07.
+Phase 7 Show Queue is complete for Studio MVP: foundation, staff-assisted Whatnot import,
+production-file export (zip, multiply-by-qty, auto-nested gang sheet PNG) signed off 2026-07-07,
+and production timer + shared calendar picker signed off 2026-07-08.
 
 **User direction (2026-07-07):**
 - **Gang Sheet Builder** (manual canvas) is a post-MVP *want*, not a Studio MVP blocker — defer until
   after Portal and other priorities.
 - **Live Whatnot scheduled sync** is **not planned** for Studio (Electron is not 24/7). Revisit only if
   a future always-on hosted service (e.g. Portal/backend) needs it — not a Phase 8 default.
-- **Next step:** deploy outstanding Firestore rules, then start Phase 8 Portal planning.
+- **Next step:** Phase 8 Portal — Slice 3 live QA and/or customer show-selection when scoped.
 
-See `docs/workflow/reviews/2026-07-07-show-queue-export-and-production-files-signoff.md`.
+See `docs/workflow/reviews/2026-07-07-show-queue-export-and-production-files-signoff.md` and
+`docs/workflow/reviews/2026-07-08-show-queue-timer-and-calendar-picker-signoff.md`.
 
 **Completed milestones (per signoffs):** Phase 1 foundation, Phase 2 design library (2A–2C), Phase 3 import pipeline (3A–3C), Phase 3D print size and catalog status separation, **Phase 4 catalog cleanup**, Phase 5 AI Review / AI enrichment baseline and AI Processing smoke checkpoint, **Phase 6 Customers And Print Requests**.
 
@@ -126,7 +128,7 @@ See `docs/workflow/reviews/2026-07-07-show-queue-export-and-production-files-sig
 
 **Last realignment:** 2026-07-06 — Phase 6 was closed out as complete per user confirmation. The prior Phase 6 signoffs remain the source records: `docs/workflow/reviews/2026-07-04-print-request-item-preview-and-dpi-polish-signoff.md`, `docs/workflow/reviews/2026-07-04-print-request-oversized-selection-unblock-signoff.md`, `docs/workflow/reviews/2026-07-04-print-request-origin-tracking-signoff.md`, `docs/workflow/reviews/2026-07-04-print-request-detail-autosave-and-name-locking-signoff.md`, `docs/workflow/reviews/2026-07-04-print-request-item-sizing-and-username-naming-signoff.md`, `docs/workflow/reviews/2026-07-03-print-request-query-index-hardening-signoff.md`, `docs/workflow/reviews/2026-06-29-phase-6-print-requests-catch-up-test-report.md`, and `docs/workflow/reviews/2026-06-29-customer-creation-provisioning-bug-test-report.md`.
 
-**Current implementation follow-up:** None active.
+**Current implementation follow-up:** Portal customer show-selection (`portal-customer-show-selection` managed phase — plan approved 2026-07-08).
 
 ---
 

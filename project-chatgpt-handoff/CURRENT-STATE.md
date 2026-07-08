@@ -2,7 +2,7 @@
 
 > **Refresh before every external AI session.**
 > Source: `.cursor/workflow/state.md` (authoritative) + `docs/project/ROADMAP.md`
-> Last updated: **2026-07-07**
+> Last updated: **2026-07-08**
 
 ---
 
@@ -11,12 +11,12 @@
 | Field | Value |
 |-------|-------|
 | **App** | Fresh Prints — DTF design catalog & print planning |
-| **Active app** | Fresh Prints Studio (Electron desktop, staff only) |
-| **Roadmap phase** | **Phase 8** — Fresh Prints Portal (next, after Firestore rules deploy) |
-| **Managed workflow goal** | `phase-8-portal-foundation` — plan ready for review |
-| **Workflow phase** | plan (awaiting review) |
-| **Status** | Phase 8 planning complete. Incremental monorepo: `apps/portal` + `packages/shared`; Studio remains at root. |
-| **Human checkpoint** | Firestore rules deploy to dev before customer rules slice. App Hosting backend setup in console. |
+| **Active apps** | Fresh Prints Studio (Electron); Fresh Prints Portal (Next.js, in progress) |
+| **Roadmap phase** | **Phase 8** — Fresh Prints Portal |
+| **Managed workflow goal** | idle (last: show-queue timer + calendar picker, signed off 2026-07-08) |
+| **Workflow phase** | idle |
+| **Status** | Phase 7 Studio Show Queue complete including production timer and calendar picker. Phase 8 Portal slices 0–3 in progress. |
+| **Human checkpoint** | none |
 
 ---
 
@@ -24,10 +24,11 @@
 
 ```txt
 Mode:           managed-phase
-Goal:           phase-8-portal-foundation
-Phase:          plan (review pending)
-Plan:           docs/workflow/plans/2026-07-07-phase-8-portal-foundation-plan.md
-DONE:           no (Phase 7 yes; Phase 8 in progress)
+Goal:           idle
+Phase:          idle
+Last signoff:   docs/workflow/reviews/2026-07-08-show-queue-timer-and-calendar-picker-signoff.md
+DONE:           yes (last managed phase)
+Next:           Phase 8 Portal Slice 3 live QA or customer show-selection
 ```
 
 ### Deferred / backlog (not blocking Phase 8)

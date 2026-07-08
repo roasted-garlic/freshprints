@@ -6,6 +6,32 @@
 
 ---
 
+### ADR-FP-066: Portal customer self-queue via callables
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-08 |
+| Status | accepted |
+
+**Context**
+
+Portal customers build print requests but could not queue them to Whatnot shows. `upcomingShows` read and `showAllocations` write are staff-only in Firestore rules. `@fresh-prints/show-picker` was ready from ADR-FP-065.
+
+**Decision**
+
+1. Customers queue via callables `listPortalAllocatableShows` and `queuePortalPrintRequestToShow` (Admin SDK) — no client-side allocation writes.
+2. **Single show, full request** — all items allocated at full quantity; no split or capacity override.
+3. Block re-queue when any non-canceled allocation exists.
+4. Show schedule filters (`filterShowsAvailableForAllocation`, etc.) live in `@fresh-prints/shared` (`showScheduleGrouping.ts`).
+5. UI: `PortalQueueToShowModal` on request detail with `ShowPicker`.
+
+**Consequences**
+
+- `draft`/`editing` → `active` can now happen from Portal when customer queues (not staff-only).
+- Functions deploy required before live QA.
+
+---
+
 ### ADR-FP-065: Shared `@fresh-prints/show-picker` package for Studio and Portal
 
 | Field | Value |
@@ -26,7 +52,7 @@ Staff pick an upcoming show when allocating print requests (`Add to Show`). A ve
 
 **Consequences**
 
-- Portal adds `@fresh-prints/show-picker` dependency now; wiring deferred until customer show-selection UX is scoped.
+- Portal adds `@fresh-prints/show-picker` dependency; **Portal wiring shipped 2026-07-08** (ADR-FP-066).
 - Both apps must define `--color-*` theme tokens (already required by STYLE_GUIDE).
 
 ---

@@ -1,5 +1,8 @@
+@import '@fresh-prints/show-picker/styles.css';
+
 @import '../styles/tokens.css';
 @import '../styles/themes.css';
+@import '../styles/loading.css';
 
 * {
   box-sizing: border-box;

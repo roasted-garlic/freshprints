@@ -1,5 +1,7 @@
 export { createCustomerWithPortalInvite } from "./createCustomerWithPortalInvite";
 export { createPortalPrintRequest } from "./createPortalPrintRequest";
+export { listPortalAllocatableShows } from "./listPortalAllocatableShows";
+export { queuePortalPrintRequestToShow } from "./queuePortalPrintRequestToShow";
 export { createTeamUser } from "./createTeamUser";
 export { registerCustomer } from "./registerCustomer";
 export { updateCustomer } from "./updateCustomer";

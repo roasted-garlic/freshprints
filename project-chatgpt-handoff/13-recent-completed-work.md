@@ -2,6 +2,14 @@
 
 > Signed-off managed phases. External agents should not re-plan or duplicate this work.
 
+## Phase 7 — Show Queue production timer + calendar picker (2026-07-08)
+
+- Status: **approved**
+- Signoff: `docs/workflow/reviews/2026-07-08-show-queue-timer-and-calendar-picker-signoff.md`
+- Production timer (Start/Pause/Resume/Mark finished); Portal/Studio **Printing** tab
+- Past-show read-only UX; `@fresh-prints/show-picker` in Studio Add to Show
+- Sidebar: Print Requests + Show Queue above AI Processing
+
 ## Phase 7 — Show Queue production-file export (2026-07-07)
 
 - Status: **approved_with_notes**

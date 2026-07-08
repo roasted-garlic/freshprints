@@ -6,8 +6,11 @@ import { useCallback, useEffect, useState } from 'react';
 import type { PrintRequestItem } from '@fresh-prints/shared/types/printRequest/printRequest.types';
 
 import { PortalPrintRequestItemCard } from '../../../../features/print-requests/components/PortalPrintRequestItemCard';
+import { PortalQueueToShowModal } from '../../../../features/print-requests/components/PortalQueueToShowModal';
 import { PrintRequestDetailGuide } from '../../../../features/print-requests/components/PrintRequestDetailGuide';
 import { usePrintRequestDetail } from '../../../../features/print-requests/hooks/usePrintRequestDetail';
+import { portalPrintRequestService } from '../../../../features/print-requests/services/portalPrintRequestService';
+import { PortalConfirmModal } from '../../../../features/shared/components/PortalConfirmModal';
 import { ImagePlusIcon, LibraryIcon, RefreshIcon } from '../../../../features/shared/components/PortalIcons';
 
 type AutosaveStatus = 'idle' | 'saving' | 'saved' | 'failed';
@@ -41,6 +44,10 @@ export default function PrintRequestDetailView() {
   const printRequestId = params.id;
   const [actionError, setActionError] = useState<string | null>(null);
   const [autosaveState, setAutosaveState] = useState<AutosaveState>({ status: 'idle' });
+  const [hasAllocations, setHasAllocations] = useState(false);
+  const [isQueueModalOpen, setIsQueueModalOpen] = useState(false);
+  const [itemPendingRemoval, setItemPendingRemoval] = useState<PrintRequestItem | null>(null);
+  const [isRemovingItem, setIsRemovingItem] = useState(false);
 
   const {
     printRequest,
@@ -52,7 +59,29 @@ export default function PrintRequestDetailView() {
     updateItem,
     duplicateItem,
     removeItem,
+    reload,
   } = usePrintRequestDetail(printRequestId);
+
+  const loadAllocationState = useCallback(async () => {
+    if (!printRequestId) {
+      setHasAllocations(false);
+      return;
+    }
+
+    try {
+      const allocations = await portalPrintRequestService.listShowAllocationsForPrintRequests([
+        printRequestId,
+      ]);
+      const activeAllocations = allocations.filter((allocation) => allocation.status !== 'canceled');
+      setHasAllocations(activeAllocations.length > 0);
+    } catch {
+      setHasAllocations(false);
+    }
+  }, [printRequestId]);
+
+  useEffect(() => {
+    void loadAllocationState();
+  }, [loadAllocationState, printRequest?.status, printRequest?.itemCount]);
 
   const updateAutosaveState = useCallback(
     (status: Exclude<AutosaveStatus, 'idle'>, message?: string, retry?: () => Promise<void>) => {
@@ -106,15 +135,30 @@ export default function PrintRequestDetailView() {
   const handleRemoveItem = useCallback(
     async (item: PrintRequestItem) => {
       setActionError(null);
+      setIsRemovingItem(true);
 
       try {
         await removeItem(item.id);
+        setItemPendingRemoval(null);
       } catch (removeError) {
         setActionError(removeError instanceof Error ? removeError.message : 'Unable to remove item.');
+      } finally {
+        setIsRemovingItem(false);
       }
     },
     [removeItem],
   );
+
+  const pendingRemovalTitle =
+    itemPendingRemoval && designSummaries.get(itemPendingRemoval.designId)?.title
+      ? designSummaries.get(itemPendingRemoval.designId)?.title
+      : 'this design';
+
+  const handleQueuedToShow = useCallback(async () => {
+    await reload();
+    await loadAllocationState();
+    router.push('/requests?tab=queued');
+  }, [loadAllocationState, reload, router]);
 
   if (isLoading) {
     return (
@@ -135,6 +179,7 @@ export default function PrintRequestDetailView() {
   }
 
   const designCountLabel = `${printRequest.itemCount} design${printRequest.itemCount === 1 ? '' : 's'}`;
+  const canQueueToShow = isEditable && items.length > 0 && !hasAllocations;
 
   return (
     <main className="portal-page portal-request-detail-page">
@@ -152,7 +197,27 @@ export default function PrintRequestDetailView() {
           </div>
         </div>
 
-        {isEditable && items.length > 0 ? (
+        {canQueueToShow ? (
+          <div className="portal-request-detail-header-actions">
+            <button
+              className="portal-button portal-button-primary"
+              onClick={() => setIsQueueModalOpen(true)}
+              type="button"
+            >
+              Add to show
+            </button>
+            <button
+              className="portal-button portal-button-secondary portal-button-leading-icon portal-request-detail-add-button"
+              onClick={() =>
+                router.push(`/catalog?mode=request-selection&requestId=${printRequest.id}`)
+              }
+              type="button"
+            >
+              <ImagePlusIcon />
+              Add designs
+            </button>
+          </div>
+        ) : isEditable && items.length > 0 ? (
           <button
             className="portal-button portal-button-primary portal-button-leading-icon portal-request-detail-add-button"
             onClick={() =>
@@ -221,7 +286,7 @@ export default function PrintRequestDetailView() {
                 item={item}
                 key={item.id}
                 onDuplicate={(nextItem) => void handleDuplicateItem(nextItem)}
-                onRemove={(nextItem) => void handleRemoveItem(nextItem)}
+                onRemove={(nextItem) => setItemPendingRemoval(nextItem)}
                 onUpdate={handleUpdateItem}
                 onAutosaveStateChange={updateAutosaveState}
                 readOnly={!isEditable}
@@ -255,6 +320,37 @@ export default function PrintRequestDetailView() {
           ) : null}
         </div>
       ) : null}
+
+      <PortalQueueToShowModal
+        isOpen={isQueueModalOpen}
+        items={items}
+        onClose={() => setIsQueueModalOpen(false)}
+        onQueued={handleQueuedToShow}
+        printRequest={printRequest}
+      />
+
+      <PortalConfirmModal
+        cancelLabel="Keep design"
+        confirmLabel="Remove"
+        confirmVariant="danger"
+        isConfirmLoading={isRemovingItem}
+        isOpen={itemPendingRemoval !== null}
+        onCancel={() => {
+          if (!isRemovingItem) {
+            setItemPendingRemoval(null);
+          }
+        }}
+        onConfirm={() => {
+          if (itemPendingRemoval) {
+            void handleRemoveItem(itemPendingRemoval);
+          }
+        }}
+        title="Remove design?"
+      >
+        <p className="portal-muted portal-confirm-modal-message">
+          Remove <strong>{pendingRemovalTitle}</strong> from this print request? This cannot be undone.
+        </p>
+      </PortalConfirmModal>
     </main>
   );
 }
