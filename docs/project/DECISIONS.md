@@ -4,6 +4,33 @@
 
 ---
 
+---
+
+### ADR-FP-065: Shared `@fresh-prints/show-picker` package for Studio and Portal
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-07 |
+| Status | accepted |
+
+**Context**
+
+Staff pick an upcoming show when allocating print requests (`Add to Show`). A vertical date-grouped list does not scale as the schedule grows. Portal will eventually need the same picker when customers select a show at request submission.
+
+**Decision**
+
+1. Calendar grid math lives in `@fresh-prints/shared` (`showCalendarGrid.ts`).
+2. React UI lives in `@fresh-prints/show-picker` — domain-agnostic `ShowPickerOption` props, CSS via design tokens.
+3. Studio maps `UpcomingShow` + capacity to options; Portal will do the same when that flow ships.
+4. No third-party calendar library.
+
+**Consequences**
+
+- Portal adds `@fresh-prints/show-picker` dependency now; wiring deferred until customer show-selection UX is scoped.
+- Both apps must define `--color-*` theme tokens (already required by STYLE_GUIDE).
+
+---
+
 ### ADR-FP-064: Show Queue production timer (Option B) drives customer print progress
 
 | Field | Value |

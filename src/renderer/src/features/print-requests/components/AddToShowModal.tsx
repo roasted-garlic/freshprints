@@ -1,26 +1,23 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { X } from "lucide-react";
 
-import { Badge } from "../../../shared/components/Badge";
 import { Button } from "../../../shared/components/Button";
 import { LoadingSpinner } from "../../../shared/components/LoadingSpinner";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "../../../shared/components/Modal";
 import { useAuth } from "../../auth/hooks/useAuth";
 import { upcomingShowService } from "../../upcoming-shows/services/upcomingShowService";
 import { useUpcomingShows } from "../../upcoming-shows/hooks/useUpcomingShows";
-import { groupShowsByDate } from "../../upcoming-shows/utils/groupShowsByDate";
-import { isPastScheduledShow } from "../../upcoming-shows/utils/groupShowsByUpcomingPast";
+import {
+  filterShowsAvailableForAllocation,
+  isPastScheduledShow,
+  PAST_SHOW_READ_ONLY_MESSAGE,
+} from "../../upcoming-shows/utils/groupShowsByUpcomingPast";
+import { ShowPicker, buildShowPickerOptions } from "@fresh-prints/show-picker";
+import "@fresh-prints/show-picker/show-picker.css";
 import type { Design } from "../../designs/types/design.types";
 import { SplitDesignPickerModal } from "./SplitDesignPickerModal";
 import { assessShowCapacity, planAllocationSplit } from "@fresh-prints/shared/utils/showCapacity";
-import {
-  formatCapacityUsedLabel,
-  formatSpotsRemainingLabel,
-  getCapacityFillLevel,
-  getDerivedShowStatusDisplay,
-  getShowCapacityPercent,
-} from "@fresh-prints/shared/utils/showCapacityDisplay";
-import { formatShowDateTimeLabel, formatShowTimeOnlyLabel } from "@fresh-prints/shared/utils/showDateTimeDisplay";
+import { formatShowDateTimeLabel } from "@fresh-prints/shared/utils/showDateTimeDisplay";
 import { formatPrintRequestAllocationSummary } from "@fresh-prints/shared/utils/printRequestSummaryCopy";
 import {
   formatSplitNeededWarning,
@@ -79,6 +76,20 @@ export function AddToShowModal({
     setActionError(null);
   }, [selectedShowId]);
 
+  const allocatableShows = useMemo(
+    () => filterShowsAvailableForAllocation(shows, new Date()),
+    [shows],
+  );
+
+  const fixedShowIsPast = useMemo(() => {
+    if (!fixedShowId) {
+      return false;
+    }
+
+    const show = shows.find((candidate) => candidate.id === fixedShowId);
+    return show ? isPastScheduledShow(show, new Date()) : false;
+  }, [fixedShowId, shows]);
+
   const totalRequestedQuantity = useMemo(() => items.reduce((sum, item) => sum + item.quantity, 0), [items]);
 
   const allocatedByItemId = useMemo(() => {
@@ -105,7 +116,7 @@ export function AddToShowModal({
 
   const capacityByShowId = useMemo(() => {
     const map = new Map<string, ReturnType<typeof assessShowCapacity>>();
-    for (const show of shows) {
+    for (const show of allocatableShows) {
       const legQuantityForShow = legs
         .filter((leg) => leg.showId === show.id)
         .reduce((sum, leg) => sum + Object.values(leg.quantitiesByItemId).reduce((legSum, q) => legSum + q, 0), 0);
@@ -118,9 +129,33 @@ export function AddToShowModal({
       );
     }
     return map;
-  }, [legs, shows]);
+  }, [allocatableShows, legs]);
 
-  const dateGroups = useMemo(() => groupShowsByDate(shows), [shows]);
+  const showPickerOptions = useMemo(
+    () =>
+      buildShowPickerOptions({
+        shows: allocatableShows.map((show) => ({
+          id: show.id,
+          scheduledAt: show.scheduledStartAt?.toDate() ?? null,
+          productionStatus: show.productionStatus,
+          maxTotalQuantity: show.maxTotalQuantity,
+          allocatedQuantity: show.allocatedQuantity,
+        })),
+        extraAllocatedByShowId: new Map(
+          allocatableShows.map((show) => {
+            const legQuantityForShow = legs
+              .filter((leg) => leg.showId === show.id)
+              .reduce((sum, leg) => sum + Object.values(leg.quantitiesByItemId).reduce((legSum, q) => legSum + q, 0), 0);
+            return [show.id, legQuantityForShow] as const;
+          }),
+        ),
+        isPastScheduled: (show) => {
+          const fullShow = allocatableShows.find((candidate) => candidate.id === show.id);
+          return fullShow ? isPastScheduledShow(fullShow, new Date()) : false;
+        },
+      }),
+    [allocatableShows, legs],
+  );
 
   const selectedCapacity = selectedShowId ? capacityByShowId.get(selectedShowId) : undefined;
   const splitPlan = selectedCapacity
@@ -198,7 +233,12 @@ export function AddToShowModal({
    * a split is actually in progress (i.e. `legs.length > 0` or the selected show can't fit
    * everything and staff is mid-decision).
    */
-  const canConfirmFullFitDirectly = Boolean(selectedShowId) && !needsDecision && !isPickerOpen;
+  const canConfirmFullFitDirectly = Boolean(
+    selectedShowId &&
+      allocatableShows.some((show) => show.id === selectedShowId) &&
+      !needsDecision &&
+      !isPickerOpen,
+  );
 
   const handleConfirm = useCallback(async () => {
     if (!user) {
@@ -276,7 +316,9 @@ export function AddToShowModal({
   ]);
 
   const isConfirmDisabled =
-    isSubmitting || (legs.length === 0 && !(canConfirmFullFitDirectly && remainingItems.length > 0));
+    fixedShowIsPast ||
+    isSubmitting ||
+    (legs.length === 0 && !(canConfirmFullFitDirectly && remainingItems.length > 0));
 
   return (
     <div className="modal-overlay modal-overlay-blur">
@@ -350,8 +392,16 @@ export function AddToShowModal({
                 <p className="print-requests-modal-hint">Every print in this request has been assigned to a show.</p>
               ) : isShowsLoading ? (
                 <LoadingSpinner label="Loading shows" />
-              ) : shows.length === 0 ? (
-                <p className="print-requests-modal-hint">Add a show in the Show Queue before attaching print requests.</p>
+              ) : allocatableShows.length === 0 ? (
+                <p className="print-requests-modal-hint">
+                  {shows.length === 0
+                    ? "Add a show in the Show Queue before attaching print requests."
+                    : "No upcoming shows are available. Past shows cannot accept new print requests."}
+                </p>
+              ) : fixedShowIsPast ? (
+                <p className="auth-message auth-message-error" role="alert">
+                  {PAST_SHOW_READ_ONLY_MESSAGE}
+                </p>
               ) : (
                 <>
                   {shouldShowRemainingWording(legs.length) ? (
@@ -360,65 +410,11 @@ export function AddToShowModal({
                     </p>
                   ) : null}
                   {fixedShowId ? null : (
-                    <div className="show-date-picker">
-                      {dateGroups.map((group) => (
-                        <div className="show-date-picker-group" key={group.dateKey}>
-                          <p className="show-date-picker-group-label">{group.dateLabel}</p>
-                          <div className="show-date-picker-options">
-                            {group.shows.map((show) => {
-                              const capacity = capacityByShowId.get(show.id);
-                              const isSelected = show.id === selectedShowId;
-                              const statusDisplay = capacity
-                                ? getDerivedShowStatusDisplay(show.productionStatus, capacity, {
-                                    isPastScheduled: isPastScheduledShow(show, new Date()),
-                                  })
-                                : null;
-                              const fillLevel = capacity
-                                ? getCapacityFillLevel(getShowCapacityPercent(capacity))
-                                : undefined;
-                              const cardStateClass = capacity?.isOverCapacity
-                                ? " is-over-capacity"
-                                : capacity?.isFull
-                                  ? " is-full"
-                                  : "";
-
-                              return (
-                                <button
-                                  className={`show-date-picker-option${isSelected ? " is-selected" : ""}${cardStateClass}`}
-                                  key={show.id}
-                                  onClick={() => setSelectedShowId(show.id)}
-                                  type="button"
-                                >
-                                  <div className="show-date-picker-option-main">
-                                    <span className="show-date-picker-option-time">
-                                      {formatShowTimeOnlyLabel(show.scheduledStartAt?.toDate() ?? new Date())}
-                                    </span>
-                                    {capacity ? (
-                                      <>
-                                        <div className="show-date-picker-option-bar-track">
-                                          <div
-                                            className={`show-date-picker-option-bar-fill${fillLevel ? ` is-${fillLevel}` : ""}`}
-                                            style={{ width: `${Math.min(100, getShowCapacityPercent(capacity) ?? 0)}%` }}
-                                          />
-                                        </div>
-                                        <span className="show-date-picker-option-capacity">
-                                          {formatCapacityUsedLabel(capacity)} &middot; {formatSpotsRemainingLabel(capacity)}
-                                        </span>
-                                      </>
-                                    ) : null}
-                                  </div>
-                                  {statusDisplay ? (
-                                    <Badge className="show-date-picker-option-badge" variant={statusDisplay.variant}>
-                                      {statusDisplay.label}
-                                    </Badge>
-                                  ) : null}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                    <ShowPicker
+                      onSelect={setSelectedShowId}
+                      options={showPickerOptions}
+                      selectedId={selectedShowId || null}
+                    />
                   )}
 
                   {selectedShowId && !needsDecision && shouldShowRemainingWording(legs.length) ? (

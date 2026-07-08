@@ -998,6 +998,7 @@ Support:
 * Browse approved designs
 * Create print requests
 * Track request status
+* **Show selection (when scoped):** reuse `@fresh-prints/show-picker` (`ShowPicker` + `buildShowPickerOptions`) — same calendar UX as Studio Add to Show; see `packages/show-picker/README.md`
 
 **Security:** Customer accounts use Fresh Prints Portal only. They do not access Fresh Prints Studio.
 

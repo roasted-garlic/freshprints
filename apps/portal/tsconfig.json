@@ -15,7 +15,9 @@
     "incremental": true,
     "plugins": [{ "name": "next" }],
     "paths": {
-      "@fresh-prints/shared/*": ["../../packages/shared/src/*"]
+      "@fresh-prints/shared/*": ["../../packages/shared/src/*"],
+      "@fresh-prints/show-picker": ["../../packages/show-picker/src/index.ts"],
+      "@fresh-prints/show-picker/*": ["../../packages/show-picker/src/*"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],

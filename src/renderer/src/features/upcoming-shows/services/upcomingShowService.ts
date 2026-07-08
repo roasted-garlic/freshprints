@@ -35,7 +35,7 @@ import type { UpcomingShow } from "@fresh-prints/shared/types/upcomingShow/upcom
 import type { ShowAllocationStatus } from "@fresh-prints/shared/types/showAllocation/showAllocation.enums";
 import type { ShowAllocation } from "@fresh-prints/shared/types/showAllocation/showAllocation.types";
 import { findMatchingUpcomingShow } from "../utils/upcomingShowUpsert";
-import { canStartShowPrinting, PAST_SHOW_READ_ONLY_MESSAGE } from "../utils/groupShowsByUpcomingPast";
+import { canStartShowPrinting, canAllocatePrintRequestToShow, PAST_SHOW_READ_ONLY_MESSAGE } from "../utils/groupShowsByUpcomingPast";
 import { sortUpcomingShowsForDisplay } from "../utils/upcomingShowListSort";
 import { showQueueSettingsService } from "./showQueueSettingsService";
 
@@ -550,6 +550,10 @@ export const upcomingShowService = {
 
     if (!requestItem) {
       throw new Error("Print request item not found.");
+    }
+
+    if (!canAllocatePrintRequestToShow(show, new Date())) {
+      throw new Error(PAST_SHOW_READ_ONLY_MESSAGE);
     }
 
     const alreadyAllocatedForItem = existingAllocationsForItem

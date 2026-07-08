@@ -30,6 +30,15 @@ export function canStartShowPrinting(show: UpcomingShow, now: Date): boolean {
   return !isPastScheduledShow(show, now);
 }
 
+/** Past shows are read-only; new print requests cannot be allocated to them. */
+export function canAllocatePrintRequestToShow(show: UpcomingShow, now: Date): boolean {
+  return !isPastScheduledShow(show, now);
+}
+
+export function filterShowsAvailableForAllocation(shows: UpcomingShow[], now: Date): UpcomingShow[] {
+  return filterShowsByScheduleTab(shows, "upcoming", now);
+}
+
 export const PAST_SHOW_READ_ONLY_MESSAGE = "Past shows are read-only.";
 
 export function resolveVisibleShowSelection(

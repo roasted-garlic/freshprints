@@ -1,0 +1,17 @@
+{
+  "name": "@fresh-prints/show-picker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./styles.css": "./src/show-picker.css"
+  },
+  "peerDependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "dependencies": {
+    "@fresh-prints/shared": "*"
+  }
+}

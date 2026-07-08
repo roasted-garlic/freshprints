@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@fresh-prints/shared": "*",
+    "@fresh-prints/show-picker": "*",
     "firebase": "^12.15.0",
     "next": "^15.1.6",
     "react": "^18.3.1",

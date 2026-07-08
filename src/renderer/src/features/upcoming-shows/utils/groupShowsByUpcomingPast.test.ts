@@ -2,7 +2,15 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import type { UpcomingShow } from "@fresh-prints/shared/types/upcomingShow/upcomingShow.types";
-import { canStartShowPrinting, filterShowsByScheduleTab, getShowScheduleTab, isPastScheduledShow, resolveVisibleShowSelection } from "./groupShowsByUpcomingPast";
+import {
+  canAllocatePrintRequestToShow,
+  canStartShowPrinting,
+  filterShowsAvailableForAllocation,
+  filterShowsByScheduleTab,
+  getShowScheduleTab,
+  isPastScheduledShow,
+  resolveVisibleShowSelection,
+} from "./groupShowsByUpcomingPast";
 
 function buildShow(overrides: Partial<UpcomingShow> = {}): UpcomingShow {
   return {
@@ -92,6 +100,39 @@ describe("canStartShowPrinting", () => {
   it("allows starting on unscheduled shows", () => {
     const show = buildShow({ scheduledStartAt: undefined });
     assert.equal(canStartShowPrinting(show, now), true);
+  });
+});
+
+describe("canAllocatePrintRequestToShow", () => {
+  const now = new Date("2026-07-07T12:00:00Z");
+
+  it("allows allocation to upcoming shows", () => {
+    const show = buildShow({ scheduledStartAt: timestamp("2026-08-01T00:00:00Z") });
+    assert.equal(canAllocatePrintRequestToShow(show, now), true);
+  });
+
+  it("blocks allocation to past shows", () => {
+    const show = buildShow({ scheduledStartAt: timestamp("2026-06-01T00:00:00Z") });
+    assert.equal(canAllocatePrintRequestToShow(show, now), false);
+  });
+
+  it("allows allocation to unscheduled shows", () => {
+    const show = buildShow({ scheduledStartAt: undefined });
+    assert.equal(canAllocatePrintRequestToShow(show, now), true);
+  });
+});
+
+describe("filterShowsAvailableForAllocation", () => {
+  it("excludes past shows from allocation pickers", () => {
+    const now = new Date("2026-07-05T12:00:00Z");
+    const future = buildShow({ id: "future", scheduledStartAt: timestamp("2026-08-01T00:00:00Z") });
+    const past = buildShow({ id: "past", scheduledStartAt: timestamp("2026-06-01T00:00:00Z") });
+    const unscheduled = buildShow({ id: "unscheduled", scheduledStartAt: undefined });
+
+    assert.deepEqual(filterShowsAvailableForAllocation([future, past, unscheduled], now).map((s) => s.id), [
+      "future",
+      "unscheduled",
+    ]);
   });
 });
 

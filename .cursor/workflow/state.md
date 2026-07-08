@@ -4,10 +4,17 @@
 managed-phase
 
 ## Current Goal
-show-queue-production-timer — Show Queue Start/Pause/Resume/Mark finished drives allocation `in_progress`/`done` and customer **Printing** progress. Plan: `docs/workflow/plans/2026-07-07-show-queue-production-timer-plan.md`. (Phase 8 Portal work continues in parallel; deploy + manual QA still outstanding.)
+show-calendar-picker — Shared `@fresh-prints/show-picker` calendar UI in Studio Add to Show; Portal-ready for future customer show selection. Plan: `docs/workflow/plans/2026-07-07-show-calendar-picker-plan.md`.
 
 ## Phase
-test — Show Queue production timer implemented 2026-07-07. Automated checks passed; **deploy `firestore:rules`** (new `upcomingShows` timer fields) + manual QA required before signoff.
+test — Show calendar picker implemented 2026-07-07. Automated checks passed; manual QA of Add to Show calendar recommended.
+
+## Sub-goal: Show calendar picker (2026-07-07)
+- Plan: `docs/workflow/plans/2026-07-07-show-calendar-picker-plan.md` — approved
+- Review: `docs/workflow/reviews/2026-07-07-show-calendar-picker-review.md` — approved
+- `@fresh-prints/show-picker` package + `showCalendarGrid` shared utils
+- Studio `AddToShowModal` wired to `ShowPicker`
+- Portal: dependency + tsconfig paths added; UI wiring deferred until customer show-selection flow
 
 ## Sub-goal: Show Queue production timer (2026-07-07)
 - Plan: `docs/workflow/plans/2026-07-07-show-queue-production-timer-plan.md` — approved
