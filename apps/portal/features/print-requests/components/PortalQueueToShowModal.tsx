@@ -128,7 +128,7 @@ export function PortalQueueToShowModal({
       await onQueued();
       onClose();
     } catch (queueError) {
-      setActionError(queueError instanceof Error ? queueError.message : 'Unable to queue request.');
+      setActionError(queueError instanceof Error ? queueError.message : 'Unable to add request to a show\'s print run.');
     }
   };
 
@@ -155,7 +155,9 @@ export function PortalQueueToShowModal({
         <header className="modal-header portal-queue-to-show-header">
           <div>
             <p className="portal-eyebrow">Add to show</p>
-            <h2 id="portal-queue-to-show-title">Add &ldquo;{printRequest.name}&rdquo; to a show</h2>
+            <h2 id="portal-queue-to-show-title">
+              Add &ldquo;{printRequest.name}&rdquo; to a show&apos;s print run
+            </h2>
           </div>
           <button
             aria-label="Close"

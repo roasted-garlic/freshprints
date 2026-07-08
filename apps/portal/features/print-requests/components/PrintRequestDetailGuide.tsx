@@ -45,8 +45,8 @@ export function PrintRequestDetailGuide() {
       <div className="portal-request-detail-guide-body">
         <p>
           Set quantities and print sizes on each design card. Duplicate a design to add another size.
-          Browse the library to add more anytime. When you are ready, queue this request to a Whatnot
-          show for printing.
+          Browse the library to add more anytime. When you are ready, add this request to a show&apos;s
+          print run.
         </p>
       </div>
     </details>

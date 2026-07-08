@@ -237,8 +237,8 @@ export function CatalogPageContent() {
                   <h3>{selectionMode.printRequest.name}</h3>
                   <p>
                     Pick designs and quantities below, then save. On the request page, set print
-                    sizes—you can add the same design more than once for different sizes. Queue to a
-                    Whatnot show when you are ready to print.
+                    sizes—you can add the same design more than once for different sizes. Add to a
+                    show&apos;s print run when you are ready.
                   </p>
                 </div>
               </div>

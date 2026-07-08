@@ -952,6 +952,25 @@
 
   .portal-app-header {
     display: flex;
+    justify-content: center;
+    position: relative;
+  }
+
+  .portal-app-header-start {
+    justify-content: center;
+    position: relative;
+    width: 100%;
+  }
+
+  .portal-app-header-menu-button {
+    left: 0;
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+
+  .portal-app-header-brand {
+    text-align: center;
   }
 }
 

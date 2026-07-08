@@ -18,7 +18,7 @@ export function useQueuePrintRequestToShow() {
       return await portalShowSelectionService.queuePrintRequestToShow(input);
     } catch (queueError) {
       const message =
-        queueError instanceof Error ? queueError.message : 'Unable to queue request to show.';
+        queueError instanceof Error ? queueError.message : 'Unable to add request to a show\'s print run.';
       setError(message);
       throw queueError;
     } finally {

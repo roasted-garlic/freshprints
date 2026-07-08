@@ -15,7 +15,7 @@ import {
 import { PrintRequestCard } from '../../../features/print-requests/components/PrintRequestCard';
 import { PrintRequestsTabGuide } from '../../../features/print-requests/components/PrintRequestsTabGuide';
 import { usePortalPrintRequests } from '../../../features/print-requests/context/PortalPrintRequestContext';
-import { getPortalPrintRequestTabEmptyCopy } from '../../../features/print-requests/utils/portalPrintRequestTabCopy';
+import { getPortalPrintRequestTabEmptyCopy, getPortalPrintRequestsEmptyPageCopy } from '../../../features/print-requests/utils/portalPrintRequestTabCopy';
 import { LibraryIcon, PlusCircleIcon } from '../../../features/shared/components/PortalIcons';
 
 const PORTAL_REQUEST_TABS: PortalPrintRequestListTab[] = ['working', 'queued', 'printing', 'printed'];
@@ -69,8 +69,8 @@ export default function RequestsPage() {
         <div>
           <h1>Print requests</h1>
           <p className="portal-muted">
-            Track requests while you build them, after they are queued to a show, while they print, and once
-            production is complete.
+            Track requests while you build them, after they are queued to a show&apos;s print run, while they
+            print, and once production is complete.
           </p>
         </div>
         {!isLoading && requests.length > 0 ? (
@@ -102,12 +102,8 @@ export default function RequestsPage() {
         <div className="portal-panel portal-muted">Loading print requests…</div>
       ) : requests.length === 0 ? (
         <section className="portal-panel portal-requests-empty">
-          <PrintRequestsTabGuide tab="working" />
           <h2>No print requests yet</h2>
-          <p className="portal-muted">
-            Nothing here yet. When you start a request, it will appear under Working while you add designs
-            and get it ready for a show.
-          </p>
+          <p className="portal-muted">{getPortalPrintRequestsEmptyPageCopy()}</p>
           <div className="portal-requests-empty-actions">
             <button
               className="portal-button portal-button-primary portal-button-leading-icon"
