@@ -42,3 +42,6 @@ docs/_migration-backup/
 tmp/
 Thumbs.db
 build/
+
+# Reference material and external-AI handoff package (not app code)
+references/

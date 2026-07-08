@@ -21,7 +21,7 @@ npm run dev:portal   # Next.js :3000
 npm run build:studio # tsc + vite + electron-builder
 npm run build:portal # Next.js production build
 npm run lint
-npx tsc --noEmit
+npx tsc --noEmit     # from apps/studio/
 ```
 
 No root `npm test` — run `npx tsx --test` on `*.test.ts` files (see `docs/standards/TESTING.md`).
@@ -31,21 +31,24 @@ No root `npm test` — run `npx tsx --test` on `*.test.ts` files (see `docs/stan
 ```
 fresh-prints/
 ├── apps/
-│   └── portal/            # @fresh-prints/portal — Next.js (Firebase App Hosting)
+│   ├── portal/            # @fresh-prints/portal — Next.js (Firebase App Hosting)
+│   └── studio/            # @fresh-prints/studio — Electron + Vite
+│       ├── electron/      # Studio main process
+│       └── src/renderer/src/  # Studio React UI
 ├── packages/
 │   ├── shared/            # @fresh-prints/shared — cross-app types/utils
 │   └── show-picker/       # @fresh-prints/show-picker — calendar UI
-├── electron/              # Studio main process (→ apps/studio/ when refactor ships)
-├── src/renderer/src/      # Studio React UI (→ apps/studio/ when refactor ships)
 ├── functions/src/         # Cloud Functions
 ├── firestore.rules
 ├── storage.rules
 ├── firebase.json          # App Hosting rootDir: apps/portal
 ├── docs/
-└── project-chatgpt-handoff/
+└── references/
+    ├── gang-sheet-builder-reference/
+    └── project-chatgpt-handoff/
 ```
 
-## Studio feature modules (`src/renderer/src/features/`)
+## Studio feature modules (`apps/studio/src/renderer/src/features/`)
 
 | Folder | Domain |
 |--------|--------|
@@ -70,7 +73,7 @@ fresh-prints/
 
 Cross-app domain types and pure utils: `packages/shared/src/` — import as `@fresh-prints/shared/...`.
 
-**Do not confuse** with `src/renderer/src/shared/` (Studio-only UI components).
+**Do not confuse** with `apps/studio/src/renderer/src/shared/` (Studio-only UI components).
 
 ## Workflow state
 

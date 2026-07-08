@@ -401,32 +401,39 @@ Legacy collection names (`showQueues`, `showQueueItems`, `customerRequests`) rem
 
 ---
 
-# Repository Layout (Incremental Monorepo)
+# Repository Layout (Symmetric Apps Monorepo)
 
-Phase 8 introduced an **incremental monorepo** — Portal and shared code are workspace packages; Studio remains at the repo root until migration to `apps/studio/` (planned: symmetric apps monorepo phase, 2026-07-08).
+The repo is a **symmetric apps monorepo** — Studio and Portal are both workspace packages under `apps/*`, alongside shared workspace packages under `packages/*`. Studio moved from the repo root to `apps/studio/` in the symmetric apps monorepo phase (2026-07-08), completing the incremental monorepo Phase 8 started.
 
 **Phase 8 Portal MVP** (auth, catalog, print requests, progress tabs, customer show selection) is **complete in dev** as of 2026-07-08.
 
 ```txt
 fresh-prints/
-├── apps/portal/              # Next.js App Router — Firebase App Hosting rootDir
-├── packages/shared/src/      # @fresh-prints/shared — cross-app types and pure utils
-├── electron/                 # Studio main process (unchanged location)
-├── src/renderer/             # Studio React UI (unchanged location)
-├── functions/                # Cloud Functions (relative imports to packages/shared/src)
-├── firebase.json             # includes apphosting block for apps/portal
-└── package.json              # npm workspaces: apps/*, packages/*
+├── apps/
+│   ├── portal/                # @fresh-prints/portal — Next.js App Router — Firebase App Hosting rootDir
+│   └── studio/                # @fresh-prints/studio — Electron + Vite
+│       ├── electron/          # Studio main process
+│       ├── src/renderer/      # Studio React UI
+│       ├── vite.config.ts
+│       ├── electron-builder.json5
+│       └── tsconfig.json
+├── packages/shared/src/       # @fresh-prints/shared — cross-app types and pure utils
+├── functions/                 # Cloud Functions (relative imports to packages/shared/src)
+├── firebase.json              # includes apphosting block for apps/portal
+└── package.json               # npm workspaces: apps/*, packages/*
 ```
 
 **Import conventions**
 
 | Consumer | Shared code import |
 |----------|-------------------|
-| Studio renderer, Electron main | `@fresh-prints/shared/...` (tsconfig + Vite alias) |
+| Studio renderer, Electron main | `@fresh-prints/shared/...` (tsconfig + Vite alias, resolved via `apps/studio/tsconfig.json` and `apps/studio/vite.config.ts`) |
 | Cloud Functions | Relative path `../../packages/shared/src/...` (deploy uploads `functions/` only) |
 | Portal (`apps/portal`) | `@fresh-prints/shared/...` (workspace package) |
 
-**Do not confuse** `packages/shared/src/` (cross-app domain types/utils) with `src/renderer/src/shared/` (Studio-only UI components and hooks).
+**Do not confuse** `packages/shared/src/` (cross-app domain types/utils) with `apps/studio/src/renderer/src/shared/` (Studio-only UI components and hooks).
+
+Studio build/package output (`dist/`, `dist-electron/`, `release/`) lives under `apps/studio/`, not the repo root.
 
 Root scripts: `dev:studio`, `dev:portal`, `build:studio`, `build:portal`.
 
@@ -434,13 +441,13 @@ Root scripts: `dev:studio`, `dev:portal`, `build:studio`, `build:portal`.
 
 # Electron Architecture
 
-The project uses **Vite + vite-plugin-electron** with main process code under `electron/` (not `src/main/`). `[INFERRED]` from repository layout.
+The project uses **Vite + vite-plugin-electron** with main process code under `apps/studio/electron/` (not `src/main/`). `[INFERRED]` from repository layout.
 
 ```txt
-electron/                 # Main process, IPC, import services
-electron/preload.ts       # Preload bridge
-src/renderer/             # React renderer (Vite)
-packages/shared/src/      # @fresh-prints/shared — cross-app types and utilities
+apps/studio/electron/                 # Main process, IPC, import services
+apps/studio/electron/preload.ts       # Preload bridge
+apps/studio/src/renderer/             # React renderer (Vite)
+packages/shared/src/                  # @fresh-prints/shared — cross-app types and utilities
 ```
 
 ---
@@ -450,9 +457,9 @@ packages/shared/src/      # @fresh-prints/shared — cross-app types and utiliti
 Location:
 
 ```txt
-electron/
-electron/ipc/
-electron/services/
+apps/studio/electron/
+apps/studio/electron/ipc/
+apps/studio/electron/services/
 ```
 
 Responsibilities:
@@ -477,7 +484,7 @@ Forbidden:
 Location:
 
 ```txt
-electron/preload.ts
+apps/studio/electron/preload.ts
 ```
 
 Purpose:
@@ -507,7 +514,7 @@ contextIsolation: true
 Location:
 
 ```txt
-src/renderer/src/
+apps/studio/src/renderer/src/
 ```
 
 Responsibilities:

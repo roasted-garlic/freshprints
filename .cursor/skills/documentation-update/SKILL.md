@@ -40,7 +40,7 @@ Keep documentation aligned with the codebase and decisions after changes.
    | Tests | TESTING |
    | Release | DEPLOYMENT |
    | Process | WORKFLOWS |
-   | Managed phase signoff | `project-chatgpt-handoff/CURRENT-STATE.md`, `13-recent-completed-work.md`, and other files per `project-chatgpt-handoff/MANIFEST.md` |
+   | Managed phase signoff | `references/project-chatgpt-handoff/CURRENT-STATE.md`, `13-recent-completed-work.md`, and other files per `references/project-chatgpt-handoff/MANIFEST.md` |
 
 2. Update docs; resolve conflicts using priority order
 3. Add ADR to DECISIONS.md for significant choices

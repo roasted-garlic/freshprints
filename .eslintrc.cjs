@@ -6,7 +6,7 @@ module.exports = {
     'plugin:@typescript-eslint/recommended',
     'plugin:react-hooks/recommended',
   ],
-  ignorePatterns: ['dist', '.eslintrc.cjs', 'functions/lib', 'functions/node_modules', 'gang-sheet-builder-reference', 'apps/portal/.next', 'apps/portal/next-env.d.ts'],
+  ignorePatterns: ['dist', 'dist-electron', 'release', '.eslintrc.cjs', 'functions/lib', 'functions/node_modules', 'references', 'apps/portal/.next', 'apps/portal/next-env.d.ts'],
   parser: '@typescript-eslint/parser',
   plugins: ['react-refresh'],
   rules: {

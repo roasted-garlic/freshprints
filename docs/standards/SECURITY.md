@@ -699,7 +699,7 @@ Never disable.
 
 # Text Input Context Menu
 
-The main process attaches a minimal `context-menu` handler to each `BrowserWindow` (`electron/services/app/textInputContextMenu.ts`).
+The main process attaches a minimal `context-menu` handler to each `BrowserWindow` (`apps/studio/electron/services/app/textInputContextMenu.ts`).
 
 Allowed actions for editable fields:
 

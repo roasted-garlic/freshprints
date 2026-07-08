@@ -104,7 +104,7 @@ export type ThemeMode = "light" | "dark" | "system";
 
 ## Theme Application
 
-* Theme state is managed centrally in `src/renderer/src/features/theme/`
+* Theme state is managed centrally in `apps/studio/src/renderer/src/features/theme/`
 * Resolved theme is applied to the document root:
 
 ```html
@@ -1026,7 +1026,7 @@ Fresh Prints uses a layered global CSS architecture.
 ## File Structure
 
 ```txt
-src/renderer/src/styles/
+apps/studio/src/renderer/src/styles/
 ├── globals.css
 ├── tokens.css
 ├── themes.css
@@ -1222,7 +1222,7 @@ Shared components are mandatory. Pages compose components; they do not invent ne
 ## Required Shared Components
 
 ```txt
-src/renderer/src/shared/components/
+apps/studio/src/renderer/src/shared/components/
 ├── Button.tsx
 ├── TextInput.tsx
 ├── Card.tsx

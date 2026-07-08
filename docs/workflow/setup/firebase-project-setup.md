@@ -227,7 +227,7 @@ firebase-adminsdk*.json
 
 After application code is implemented:
 
-- Firebase initializes once in `src/renderer/src/config/firebase.ts`.
+- Firebase initializes once in `apps/studio/src/renderer/src/config/firebase.ts`.
 - Missing environment variables fail clearly.
 - The app can read the configured Firebase project values from environment variables.
 

@@ -7,7 +7,7 @@ managed-phase
 studio-apps-folder-monorepo-normalization — Symmetric apps monorepo: move Studio to `apps/studio/` (mechanical only).
 
 ## Phase
-implement — Monorepo plan reviewed and approved 2026-07-08. Ready for Slice 0 (precondition: clean working tree — commit/stash pending Portal show-selection changes first).
+implement — Symmetric apps monorepo phase **complete and signed off**. All slices 0–5 done. DONE: yes for this sub-goal.
 
 ## Sub-goal: Phase 8 Portal closeout (2026-07-08) — **DONE**
 - Plan: `docs/workflow/plans/2026-07-08-phase-8-portal-closeout-plan.md` — approved
@@ -15,12 +15,21 @@ implement — Monorepo plan reviewed and approved 2026-07-08. Ready for Slice 0 
 - Signoff: `docs/workflow/reviews/2026-07-08-phase-8-portal-closeout-signoff.md` — **approved**
 - Phase 8 documented as **MVP complete in dev**
 
-## Sub-goal: Symmetric apps monorepo (2026-07-08) — **APPROVED, NOT STARTED**
-- Plan: `docs/workflow/plans/2026-07-08-symmetric-apps-monorepo-plan.md` — **approved**
-- Review: `docs/workflow/reviews/2026-07-08-symmetric-apps-monorepo-review.md` — **approved** (round 1: 6 findings, all resolved in plan revision)
-- Scope: `git mv` Studio → `apps/studio/`; config/docs only; zero product logic
-- Precondition before Slice 0: working tree must be clean — commit/stash the uncommitted Portal show-selection files first (see `git status`)
-- Locked decisions: `dist`/`dist-electron`/`release/` all move under `apps/studio/`; Slice 5 packaging check uses full electron-builder installer build, not smoke-only
+## Sub-goal: Symmetric apps monorepo (2026-07-08) — **DONE**
+- Plan: `docs/workflow/plans/2026-07-08-symmetric-apps-monorepo-plan.md` — approved
+- Review: `docs/workflow/reviews/2026-07-08-symmetric-apps-monorepo-review.md` — approved (round 1: 6 findings, all resolved in plan revision)
+- Test report: `docs/workflow/reviews/2026-07-08-symmetric-apps-monorepo-test-report.md` — **all 8 gate checks PASS**
+- Signoff: `docs/workflow/reviews/2026-07-08-symmetric-apps-monorepo-signoff.md` — **DONE**
+- Scope: `git mv` Studio → `apps/studio/` as `@fresh-prints/studio`; config/docs only; zero product logic. All slices 0–5 complete.
+- Result: 446 files rename-tracked via `git mv`; `apps/studio/package.json` + `apps/studio/tsconfig.json` created; root `package.json` thinned to workspace orchestrator; root `tsconfig.json` removed (superseded); `package-lock.json` regenerated; ESLint + migration scripts updated; all Studio/Electron path references in `ARCHITECTURE.md`, `DATA_MODEL.md`, `FIREBASE.md`, `TESTING.md`, `DEPLOYMENT.md`, `SECURITY.md`, `STYLE_GUIDE.md`, `TECH_DEBT.md` (live-pointer cell only), workflow setup docs, and handoff files updated
+- Two build-tooling fixes beyond plan's literal text (both confirmed with user, both mechanical config-only, documented in test report): `apps/studio/electron-builder.json5` — `electronVersion: "30.5.1"` pinned (electron-builder's version auto-detect doesn't walk up npm-workspace hoisted `node_modules`) and `npmRebuild: false` set (electron-builder's default rebuild step was corrupting the hoisted root `node_modules` tree, e.g. deleting `7zip-bin`'s binary)
+- All 8 verification gate checks PASS: 598 unit tests, Studio typecheck, Portal typecheck, Functions build, lint, Portal build, full Studio NSIS installer build, both dev-server manual smokes (Studio Electron launch + Portal :3000)
+- Locked decisions verified: `dist`/`dist-electron`/`release/` all under `apps/studio/` (confirmed, no stray root artifacts); full installer build used (not smoke-only); `APP_ROOT` in `electron/main.ts` confirmed resolving correctly via successful sharp/derivative self-test at Studio launch
+- **Follow-up round (same day, user-requested):**
+  - `.env` gap fixed: `.env.local`/`.env.example` had been left at repo root during the initial move (Studio-only `VITE_FIREBASE_*` vars; Vite loads `.env*` relative to `vite.config.ts`'s new location). Moved to `apps/studio/`; `.env.example` trimmed of redundant Portal vars. Verified via clean `dev:studio` smoke.
+  - `references/` reorg: `gang-sheet-builder-reference/` and `project-chatgpt-handoff/` both `git mv`'d into `references/gang-sheet-builder-reference/` and `references/project-chatgpt-handoff/` for a cleaner repo root. Live references updated across `CLAUDE.md`, `.eslintrc.cjs`, `.gitignore` (simplified to single `references/` entry), `scripts/migrate-shared-imports.mjs`, and 3 `.cursor/` skill/template files. Historical workflow archives left untouched per existing convention.
+  - **Incident (disclosed, resolved):** accidentally executed `scripts/migrate-shared-imports.mjs` while inspecting its skip-dir logic, mutating 80 source files (incorrect rewrite of local per-app `../shared/` imports into cross-package `@fresh-prints/shared` aliases). All 80 reverted via `git checkout --`; full re-verification (598/598 tests, typechecks, lint, full Studio installer build) confirmed clean recovery.
+- Rollback: revert the phase's merge/squash commit restores prior root-level layout; no data/Firestore rollback needed
 
 ## Sub-goal: Portal customer show selection (2026-07-08) — **DONE**
 - Plan: `docs/workflow/plans/2026-07-08-portal-customer-show-selection-plan.md` — approved

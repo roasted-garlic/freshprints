@@ -2,7 +2,8 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 const root = path.resolve(import.meta.dirname, '..')
-const rendererRoot = path.join(root, 'src', 'renderer', 'src', 'shared')
+const studioRoot = path.join(root, 'apps', 'studio')
+const rendererRoot = path.join(studioRoot, 'src', 'renderer', 'src', 'shared')
 
 const studioUiPrefixes = [
   'components/',
@@ -33,7 +34,7 @@ function toRendererSharedPrefix(file) {
 }
 
 let changed = 0
-for (const file of walk(path.join(root, 'src'))) {
+for (const file of walk(path.join(studioRoot, 'src'))) {
   const prefix = toRendererSharedPrefix(file)
   const original = fs.readFileSync(file, 'utf8')
   let updated = original

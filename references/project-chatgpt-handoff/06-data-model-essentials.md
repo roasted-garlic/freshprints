@@ -28,7 +28,7 @@
 | `archived` | Soft-hide from default browse |
 | `createdAt`, `updatedAt`, `createdBy` | Audit |
 
-Types: `shared/types/` and `src/renderer/src/features/designs/types/`
+Types: `shared/types/` and `apps/studio/src/renderer/src/features/designs/types/`
 
 ## Design status (catalog lifecycle)
 

@@ -2,7 +2,7 @@
 
 Portable documentation for **ChatGPT, Claude, or other external AI assistants** that help you plan prompts and scoped work on Fresh Prints **without uploading the full source code**.
 
-> **Safe to delete:** This folder is not imported by the app. Remove `project-chatgpt-handoff/` anytime without affecting builds or runtime.
+> **Safe to delete:** This folder is not imported by the app. Remove `references/project-chatgpt-handoff/` anytime without affecting builds or runtime.
 
 ---
 

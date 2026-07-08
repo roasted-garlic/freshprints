@@ -21,11 +21,11 @@
     "noFallthroughCasesInSwitch": true,
     "baseUrl": ".",
     "paths": {
-      "@fresh-prints/shared/*": ["packages/shared/src/*"],
-      "@fresh-prints/show-picker": ["packages/show-picker/src/index.ts"],
-      "@fresh-prints/show-picker/*": ["packages/show-picker/src/*"]
+      "@fresh-prints/shared/*": ["../../packages/shared/src/*"],
+      "@fresh-prints/show-picker": ["../../packages/show-picker/src/index.ts"],
+      "@fresh-prints/show-picker/*": ["../../packages/show-picker/src/*"]
     }
   },
-  "include": ["src", "electron", "packages/shared/src", "packages/show-picker/src"],
+  "include": ["src", "electron", "../../packages/shared/src", "../../packages/show-picker/src"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

@@ -18,7 +18,7 @@ Fresh Prints consists of:
 
 | Environment | Purpose | URL | Branch / trigger |
 |-------------|---------|-----|------------------|
-| Local | Development | Studio: Electron dev; Portal: `localhost:3000` | `npm run dev:studio`, `npm run dev:portal` |
+| Local | Development | Studio: Electron dev; Portal: `localhost:3000` | `npm run dev` (both), or `dev:studio` / `dev:portal` |
 | Firebase dev | Development backend | `fresh-prints-dev` (`.firebaserc`) | local / manual deploy |
 | Production | Live users | Portal App Hosting `[TBD]` | human approval required |
 
@@ -28,7 +28,7 @@ Fresh Prints consists of:
 
 | Component | Provider | Notes |
 |-----------|----------|-------|
-| Desktop app | Electron distributable | `npm run build:studio` → `release/${version}/` |
+| Desktop app | Electron distributable | `npm run build:studio` → `apps/studio/release/${version}/` |
 | Portal web | Firebase App Hosting | `firebase.json` → `apphosting.rootDir: ./apps/portal` |
 | Backend | Firebase | See `docs/architecture/FIREBASE.md` |
 | Database | Cloud Firestore | Security rules in repo |
@@ -45,7 +45,7 @@ Fresh Prints consists of:
 npm run build:studio
 ```
 
-Artifacts: Electron distributable from electron-builder → `release/${version}/` locally (gitignored).
+Artifacts: Electron distributable from electron-builder → `apps/studio/release/${version}/` locally (gitignored).
 
 ### Portal Build
 
@@ -71,20 +71,20 @@ firebase deploy --only functions:registerCustomer,functions:createPortalPrintReq
 
 Adjust function list to match changed exports.
 
-### Gitignored build outputs (2026-06-24)
+### Gitignored build outputs (2026-06-24, paths updated 2026-07-08 for `apps/studio/` move)
 
 These paths are **not tracked** and should not be committed:
 
 | Path | Contents |
 |------|----------|
-| `dist/` | Vite renderer build |
-| `dist-electron/` | Compiled main/preload bundles |
-| `release/` | electron-builder installers and unpacked apps |
+| `apps/studio/dist/` | Vite renderer build |
+| `apps/studio/dist-electron/` | Compiled main/preload bundles |
+| `apps/studio/release/` | electron-builder installers and unpacked apps |
 | `build/` | Local packaging assets (e.g. icons); directory gitignored |
 
 ### Packaging icons
 
-`electron-builder.json5` references `icon.ico` (Windows) and `icon.png` (Linux) at the **repository root**. Local copies may exist under `build/` (gitignored). Before `npm run build`, ensure root-level icon files exist or copy from `build/` `[INFERRED]`.
+`apps/studio/electron-builder.json5` references `icon.ico` (Windows) and `icon.png` (Linux), resolved relative to `apps/studio/`. As of 2026-07-08 neither file exists in the repo (never tracked in git) — electron-builder falls back to its default Electron icon. If custom icons are added, place them at `apps/studio/icon.ico` / `apps/studio/icon.png` or under `apps/studio/build/` (gitignored) `[INFERRED]`.
 
 ### Firebase Storage rules deploy
 

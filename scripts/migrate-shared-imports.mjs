@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 const root = path.resolve(import.meta.dirname, '..')
-const skipDirs = new Set(['node_modules', 'dist', 'dist-electron', 'release', 'gang-sheet-builder-reference', '.git', 'packages/shared/src-broken'])
+const skipDirs = new Set(['node_modules', 'dist', 'dist-electron', 'release', 'references', '.git', 'packages/shared/src-broken'])
 
 function walk(dir, files = []) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {

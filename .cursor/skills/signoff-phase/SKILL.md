@@ -33,8 +33,8 @@ Formalize completion with summary, test results, risks, and approval status.
    - Risks and known issues
    - Final status: approved | approved_with_notes | blocked
 4. Update ROADMAP (done items, follow-ups)
-5. **Update external AI handoff package** when `project-chatgpt-handoff/` exists in the repo (required at signoff — see `project-chatgpt-handoff/MANIFEST.md` checklist):
-   - `project-chatgpt-handoff/CURRENT-STATE.md` from `.cursor/workflow/state.md` (always)
+5. **Update external AI handoff package** when `references/project-chatgpt-handoff/` exists in the repo (required at signoff — see `references/project-chatgpt-handoff/MANIFEST.md` checklist):
+   - `references/project-chatgpt-handoff/CURRENT-STATE.md` from `.cursor/workflow/state.md` (always)
    - `13-recent-completed-work.md` (always)
    - `03-roadmap-and-phases.md`, `04-features-inventory.md`, `07-backend-and-ai-pipeline.md`, `12-decisions-and-constraints.md` when applicable
 6. Update workflow state:

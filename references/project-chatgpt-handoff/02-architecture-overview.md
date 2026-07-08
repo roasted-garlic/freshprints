@@ -41,11 +41,11 @@ Component → Hook → Electron API → IPC → Main process (files only)
 ## Electron layout
 
 ```
-electron/           Main process — ZIP, sharp, IPC, file dialogs
-electron/preload.ts Secure bridge (contextIsolation)
-src/renderer/       React UI (Vite)
-shared/             Cross-layer types and utilities
-functions/          Firebase Cloud Functions
+apps/studio/electron/           Main process — ZIP, sharp, IPC, file dialogs
+apps/studio/electron/preload.ts Secure bridge (contextIsolation)
+apps/studio/src/renderer/       React UI (Vite)
+shared/                         Cross-layer types and utilities
+functions/                      Firebase Cloud Functions
 ```
 
 ## Authentication & authorization

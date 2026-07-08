@@ -48,8 +48,8 @@ function buildWhatnotImportShellAssets(): Plugin {
 export default defineConfig({
   resolve: {
     alias: {
-      '@fresh-prints/shared': path.resolve(__dirname, 'packages/shared/src'),
-      '@fresh-prints/show-picker': path.resolve(__dirname, 'packages/show-picker/src'),
+      '@fresh-prints/shared': path.resolve(__dirname, '../../packages/shared/src'),
+      '@fresh-prints/show-picker': path.resolve(__dirname, '../../packages/show-picker/src'),
     },
   },
   build: {
@@ -95,7 +95,7 @@ export default defineConfig({
         vite: {
           resolve: {
             alias: {
-              '@fresh-prints/shared': path.resolve(__dirname, 'packages/shared/src'),
+              '@fresh-prints/shared': path.resolve(__dirname, '../../packages/shared/src'),
             },
           },
           build: {

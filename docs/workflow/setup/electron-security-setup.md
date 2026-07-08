@@ -50,9 +50,9 @@ These settings are **required** and must not be disabled.
 
 | Setting | Value | Location |
 | --- | --- | --- |
-| `contextIsolation` | `true` | `electron/main.ts` → `webPreferences` |
-| `nodeIntegration` | `false` | `electron/main.ts` → `webPreferences` |
-| `preload` | `dist-electron/preload.mjs` | Built from `electron/preload.ts` |
+| `contextIsolation` | `true` | `apps/studio/electron/main.ts` → `webPreferences` |
+| `nodeIntegration` | `false` | `apps/studio/electron/main.ts` → `webPreferences` |
+| `preload` | `apps/studio/dist-electron/preload.mjs` | Built from `apps/studio/electron/preload.ts` |
 
 ```ts
 webPreferences: {
@@ -213,7 +213,7 @@ Filesystem work belongs in the **main process** only.
 Channels are centralized in:
 
 ```txt
-electron/ipc/import/importIpcChannels.ts
+apps/studio/electron/ipc/import/importIpcChannels.ts
 ```
 
 Current invoke constants:
@@ -255,7 +255,7 @@ shared/types/import/importIpc.types.ts
 Window typings live in:
 
 ```txt
-electron/electron-env.d.ts
+apps/studio/electron/electron-env.d.ts
 ```
 
 ---
@@ -270,11 +270,11 @@ Add request/response types to `shared/types/import/importIpc.types.ts`.
 
 ### Step 2: Add channel constant
 
-Add a named constant to `electron/ipc/import/importIpcChannels.ts` and include it in `IMPORT_IPC_CHANNELS` / `isAllowedImportIpcChannel`.
+Add a named constant to `apps/studio/electron/ipc/import/importIpcChannels.ts` and include it in `IMPORT_IPC_CHANNELS` / `isAllowedImportIpcChannel`.
 
 ### Step 3: Implement main handler
 
-In `electron/ipc/import/importIpcHandlers.ts` (or a focused handler module):
+In `apps/studio/electron/ipc/import/importIpcHandlers.ts` (or a focused handler module):
 
 1. **Validate** all inputs (type, shape, path safety)
 2. **Authorize** — confirm operation is allowed (future: staff session checks if needed)
@@ -287,7 +287,7 @@ Add one named method under `window.freshPrints.imports` that calls only the new 
 
 ### Step 5: Update typings
 
-Extend `FreshPrintsImportsApi` in shared types and verify `electron/electron-env.d.ts` still resolves.
+Extend `FreshPrintsImportsApi` in shared types and verify `apps/studio/electron/electron-env.d.ts` still resolves.
 
 ### Step 6: Document and verify
 
@@ -300,7 +300,7 @@ Extend `FreshPrintsImportsApi` in shared types and verify `electron/electron-env
 ## File Locations
 
 ```txt
-electron/
+apps/studio/electron/
 ├── main.ts                              # Registers IPC handlers on app ready
 ├── preload.ts                           # contextBridge → window.freshPrints
 ├── electron-env.d.ts                    # Window type definitions
@@ -398,8 +398,8 @@ Expected: no matches in application source.
 
 Phase 3A-1 Electron security:
 
-- [ ] `contextIsolation: true` in `electron/main.ts`
-- [ ] `nodeIntegration: false` in `electron/main.ts`
+- [ ] `contextIsolation: true` in `apps/studio/electron/main.ts`
+- [ ] `nodeIntegration: false` in `apps/studio/electron/main.ts`
 - [ ] No `window.ipcRenderer` exposure in preload
 - [ ] `window.freshPrints.imports` exposed with typed methods
 - [ ] IPC channels centralized in `importIpcChannels.ts`
@@ -419,7 +419,7 @@ Phase 3C uses [`sharp`](https://sharp.pixelplumbing.com/) in the **Electron main
 | **Electron target** | `30.0.1` |
 | **Why 0.33.5** | Stable release with prebuilt binaries for Node 20 / Windows x64; avoids custom compile on typical dev machines |
 | **Rebuild** | Run `npx @electron/rebuild -f -w sharp` after install or Electron upgrades if native load fails |
-| **Usage rule** | Import `sharp` only in `electron/services/import/` — never in renderer |
+| **Usage rule** | Import `sharp` only in `apps/studio/electron/services/import/` — never in renderer |
 
 Verify after install:
 

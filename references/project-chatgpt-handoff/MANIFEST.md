@@ -39,7 +39,7 @@
 
 ## Safe removal
 
-Delete the entire `project-chatgpt-handoff/` folder anytime. Nothing in the app imports or references it.
+Delete the entire `references/project-chatgpt-handoff/` folder anytime. Nothing in the app imports or references it.
 
 Repo-root `CLAUDE.md` is separate — keep it for Claude + FreshForge in-repo use.
 
@@ -50,4 +50,4 @@ Repo-root `CLAUDE.md` is separate — keep it for Claude + FreshForge in-repo us
 | Package | Purpose |
 |---------|---------|
 | `docs/handoffs/firebase-auth-storage/` | Replicate Firebase foundation in another app |
-| `project-chatgpt-handoff/` | External AI prompt planning (this package) |
+| `references/project-chatgpt-handoff/` | External AI prompt planning (this package) |

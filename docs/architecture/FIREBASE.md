@@ -127,7 +127,7 @@ Both share one Firebase backend. No separate mobile backend. See `docs/architect
 Firebase configuration belongs in:
 
 ```txt id="d8vwe4"
-src/renderer/src/config/firebase.ts
+apps/studio/src/renderer/src/config/firebase.ts
 ```
 
 Environment values belong in:
@@ -912,7 +912,7 @@ Phase 2A adds typed Firestore services for the design catalog foundation.
 ## Collection Constants
 
 ```txt
-src/renderer/src/features/firebase/constants/firestoreCollections.ts
+apps/studio/src/renderer/src/features/firebase/constants/firestoreCollections.ts
 ```
 
 Collections:
@@ -925,8 +925,8 @@ Access through `firestoreCollectionService.getDesignsCollection()` and `getCateg
 ## Renderer Services
 
 ```txt
-src/renderer/src/features/designs/services/designService.ts
-src/renderer/src/features/designs/services/categoryService.ts
+apps/studio/src/renderer/src/features/designs/services/designService.ts
+apps/studio/src/renderer/src/features/designs/services/categoryService.ts
 ```
 
 `designService` methods:
@@ -952,7 +952,7 @@ Components and hooks must call these services. Do not call Firestore directly fr
 ## Storage Path Helpers
 
 ```txt
-src/renderer/src/features/designs/constants/designStoragePaths.ts
+apps/studio/src/renderer/src/features/designs/constants/designStoragePaths.ts
 ```
 
 Helpers:
@@ -1082,11 +1082,11 @@ Route: `/designs` (`viewDesigns` permission).
 ## Renderer Hooks
 
 ```txt
-src/renderer/src/features/designs/hooks/useUpdateDesign.ts
-src/renderer/src/features/designs/hooks/useArchiveDesign.ts
-src/renderer/src/features/designs/hooks/useCreateCategory.ts
-src/renderer/src/features/designs/hooks/useUpdateCategory.ts
-src/renderer/src/features/designs/hooks/useArchiveCategory.ts
+apps/studio/src/renderer/src/features/designs/hooks/useUpdateDesign.ts
+apps/studio/src/renderer/src/features/designs/hooks/useArchiveDesign.ts
+apps/studio/src/renderer/src/features/designs/hooks/useCreateCategory.ts
+apps/studio/src/renderer/src/features/designs/hooks/useUpdateCategory.ts
+apps/studio/src/renderer/src/features/designs/hooks/useArchiveCategory.ts
 ```
 
 Components call hooks; hooks call `designService` / `categoryService`. Do not call Firestore from components.

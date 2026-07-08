@@ -590,11 +590,11 @@ export interface SuggestedNewTag {
 Feature-local types:
 
 ```txt
-src/renderer/src/features/designs/types/design.types.ts
-src/renderer/src/features/designs/types/designStatus.types.ts
-src/renderer/src/features/designs/types/designMetadata.types.ts
-src/renderer/src/features/designs/types/category.types.ts
-src/renderer/src/features/designs/types/designQuery.types.ts
+apps/studio/src/renderer/src/features/designs/types/design.types.ts
+apps/studio/src/renderer/src/features/designs/types/designStatus.types.ts
+apps/studio/src/renderer/src/features/designs/types/designMetadata.types.ts
+apps/studio/src/renderer/src/features/designs/types/category.types.ts
+apps/studio/src/renderer/src/features/designs/types/designQuery.types.ts
 shared/types/printSize/printSize.types.ts
 shared/constants/printSize.constants.ts
 shared/utils/printSizeMath.ts
@@ -611,7 +611,7 @@ Phase 2C added desktop modal forms for design and category management during dev
 Form types:
 
 ```txt
-src/renderer/src/features/designs/types/designForm.types.ts
+apps/studio/src/renderer/src/features/designs/types/designForm.types.ts
 ```
 
 ### Edit form fields

@@ -2,6 +2,15 @@
 {
   "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
   "appId": "com.freshprints.app",
+  // electron-builder's auto-detection only checks <projectDir>/node_modules/electron, which
+  // does not exist here because npm workspaces hoist `electron` to the repo root. Pinning
+  // electronVersion explicitly skips that broken lookup (see electron-builder issue #3984).
+  "electronVersion": "30.5.1",
+  // Default npmRebuild runs `npm install --production` scoped to apps/studio, but npm
+  // workspaces hoist all deps to the repo root (apps/studio has no local node_modules), so that
+  // step prunes/corrupts the root tree instead. `sharp` (the only native dep) is externalized
+  // from the Vite bundle already, so no native rebuild is needed at package time.
+  "npmRebuild": false,
   "asar": true,
   "productName": "Fresh Prints",
   "copyright": "Copyright 2026 Fresh Prints",

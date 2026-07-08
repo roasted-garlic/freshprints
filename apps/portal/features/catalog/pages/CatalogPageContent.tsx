@@ -190,7 +190,7 @@ export function CatalogPageContent() {
         <header className="portal-catalog-topbar">
           <div className="portal-catalog-topbar-copy">
             <h1>Design Library</h1>
-            <p className="portal-muted">Browse designs and create print requests.</p>
+            <p className="portal-muted">Browse designs and create print requests for our Whatnot shows.</p>
           </div>
 
           <div className="portal-catalog-topbar-actions">

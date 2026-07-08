@@ -4,7 +4,7 @@
 
 This project uses the FreshForge workflow starter. The active workflow surface is `CLAUDE.md` (Claude), `AGENTS.md` (Cursor/other agents), `.cursor/`, and `docs/`. FreshForge development and distribution documentation is not part of installed target projects.
 
-For **external AI without repo access** (ChatGPT, etc.), use the removable handoff package: `project-chatgpt-handoff/`.
+For **external AI without repo access** (ChatGPT, etc.), use the removable handoff package: `references/project-chatgpt-handoff/`.
 
 ---
 
@@ -162,7 +162,7 @@ Details: `.cursor/agents/`
 | Standards | `docs/standards/CODING_STANDARDS.md`, `STYLE_GUIDE.md`, `SECURITY.md`, `TESTING.md`, `DEPLOYMENT.md` |
 | Intake | `docs/intake/INTAKE_FINDINGS.md` |
 | Workflow artifacts | `docs/workflow/plans/`, `docs/workflow/reviews/`, `docs/workflow/setup/` |
-| External AI handoff | `project-chatgpt-handoff/` (removable; upload to ChatGPT etc.) |
+| External AI handoff | `references/project-chatgpt-handoff/` (removable; upload to ChatGPT etc.) |
 
 ---
 
