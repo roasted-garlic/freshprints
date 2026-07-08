@@ -22,12 +22,16 @@ const initialState: PrintRequestDetailsState = {
   loadedRequestId: null,
 };
 
+interface LoadPrintRequestDetailsOptions {
+  silent?: boolean;
+}
+
 export function usePrintRequestDetails(printRequestId: string | null) {
   const { user } = useAuth();
   const [state, setState] = useState<PrintRequestDetailsState>(initialState);
   const loadSequenceRef = useRef(0);
 
-  const loadDetails = useCallback(async () => {
+  const loadDetails = useCallback(async (options?: LoadPrintRequestDetailsOptions) => {
     const requestSequence = ++loadSequenceRef.current;
 
     if (!user || !permissionService.canViewPrintRequests(user) || !printRequestId) {
@@ -35,7 +39,11 @@ export function usePrintRequestDetails(printRequestId: string | null) {
       return;
     }
 
-    setState((currentState) => ({ ...currentState, error: null, isLoading: true }));
+    setState((currentState) => ({
+      ...currentState,
+      error: null,
+      isLoading: options?.silent ? currentState.isLoading : true,
+    }));
 
     try {
       const [printRequest, items] = await Promise.all([
@@ -47,7 +55,7 @@ export function usePrintRequestDetails(printRequestId: string | null) {
         return;
       }
 
-      setState({ printRequest, items, error: null, isLoading: false, loadedRequestId: printRequestId });
+      setState({ printRequest, items: sortPrintRequestItemsForDisplay(items), error: null, isLoading: false, loadedRequestId: printRequestId });
     } catch (error) {
       if (requestSequence !== loadSequenceRef.current) {
         return;
@@ -67,8 +75,8 @@ export function usePrintRequestDetails(printRequestId: string | null) {
     void loadDetails();
   }, [loadDetails]);
 
-  const reloadPrintRequest = useCallback(async () => {
-    await loadDetails();
+  const reloadPrintRequest = useCallback(async (options?: LoadPrintRequestDetailsOptions) => {
+    await loadDetails(options);
   }, [loadDetails]);
 
   const replacePrintRequest = useCallback((printRequest: PrintRequest) => {
@@ -100,6 +108,30 @@ export function usePrintRequestDetails(printRequestId: string | null) {
     }));
   }, []);
 
+  const insertItemAfter = useCallback((afterItemId: string, item: PrintRequestItem) => {
+    setState((currentState) => {
+      const sourceIndex = currentState.items.findIndex((entry) => entry.id === afterItemId);
+      const nextItems = [...currentState.items];
+
+      if (sourceIndex === -1) {
+        nextItems.push(item);
+      } else {
+        nextItems.splice(sourceIndex + 1, 0, item);
+      }
+
+      return {
+        ...currentState,
+        items: nextItems,
+        printRequest: currentState.printRequest
+          ? {
+              ...currentState.printRequest,
+              itemCount: currentState.printRequest.itemCount + 1,
+            }
+          : currentState.printRequest,
+      };
+    });
+  }, []);
+
   const removeItem = useCallback((itemId: string) => {
     setState((currentState) => ({
       ...currentState,
@@ -116,6 +148,7 @@ export function usePrintRequestDetails(printRequestId: string | null) {
   return {
     ...state,
     addItem,
+    insertItemAfter,
     reloadPrintRequest,
     removeItem,
     replaceItem,

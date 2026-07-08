@@ -15,19 +15,25 @@ type AllocationTotalsByRequestId = Record<string, PrintRequestAllocationTotals>;
  * list can derive Working/Queued/Printed tabs without a persisted queue-status field on each
  * request.
  */
+interface ReloadAllocationTotalsOptions {
+  silent?: boolean;
+}
+
 export function usePrintRequestAllocationTotals() {
   const { user } = useAuth();
   const [totalsByRequestId, setTotalsByRequestId] = useState<AllocationTotalsByRequestId>({});
   const [isLoading, setIsLoading] = useState(true);
 
-  const reload = useCallback(async () => {
+  const reload = useCallback(async (options?: ReloadAllocationTotalsOptions) => {
     if (!user) {
       setTotalsByRequestId({});
       setIsLoading(false);
       return;
     }
 
-    setIsLoading(true);
+    if (!options?.silent) {
+      setIsLoading(true);
+    }
     const allocations = await upcomingShowService.listAllShowAllocations(user);
     const totals: AllocationTotalsByRequestId = {};
 

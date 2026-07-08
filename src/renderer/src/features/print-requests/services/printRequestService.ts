@@ -16,7 +16,7 @@ import {
   type Transaction,
 } from "firebase/firestore";
 
-import { mapFirestoreTimestamp } from "../../firebase/utils/firestoreTimestamp";
+import { mapFirestoreTimestamp, resolveDesignDocumentTimestamps } from "../../firebase/utils/firestoreTimestamp";
 import { assertNoUndefinedFirestoreFields, withoutUndefinedFields } from "../../firebase/utils/firestoreDocument";
 import { firestoreCollectionService } from "../../firebase/services/firestoreCollectionService";
 import { permissionService } from "../../permissions/services/permissionService";
@@ -214,8 +214,7 @@ function mapPrintRequestItemData(
   itemId: string,
   data: PrintRequestItemDocumentData,
 ): PrintRequestItem {
-  const createdAt = resolveRequiredTimestamp(data.createdAt);
-  const updatedAt = resolveRequiredTimestamp(data.updatedAt);
+  const timestamps = resolveDesignDocumentTimestamps(data);
 
   if (
     typeof data.printRequestId !== "string" ||
@@ -223,8 +222,7 @@ function mapPrintRequestItemData(
     typeof data.quantity !== "number" ||
     typeof data.status !== "string" ||
     typeof data.addedBy !== "string" ||
-    createdAt === undefined ||
-    updatedAt === undefined
+    timestamps === null
   ) {
     throw new Error("A print request item record is incomplete.");
   }
@@ -241,11 +239,11 @@ function mapPrintRequestItemData(
     notes: typeof data.notes === "string" ? data.notes : undefined,
     status: data.status as PrintRequestItemStatus,
     addedBy: data.addedBy,
-    printedAt: resolveRequiredTimestamp(data.printedAt),
+    printedAt: mapFirestoreTimestamp(data.printedAt),
     printedBy: typeof data.printedBy === "string" ? data.printedBy : undefined,
-    completedAt: resolveRequiredTimestamp(data.completedAt),
-    createdAt,
-    updatedAt,
+    completedAt: mapFirestoreTimestamp(data.completedAt),
+    createdAt: timestamps.createdAt,
+    updatedAt: timestamps.updatedAt,
   };
 }
 
@@ -877,15 +875,42 @@ export const printRequestService = {
 
     const item = mapPrintRequestItemData(snapshot.id, snapshot.data() as PrintRequestItemDocumentData);
     const currentItems = await this.listPrintRequestItems(caller, item.printRequestId);
+    const sortedItems = sortPrintRequestItemsForDisplay(currentItems);
+    const sourceIndex = sortedItems.findIndex((entry) => entry.id === item.id);
     const sourceSortOrder = typeof item.sortOrder === "number" && Number.isFinite(item.sortOrder)
       ? item.sortOrder
       : undefined;
+
+    let duplicateSortOrder = resolveNextSortOrder(currentItems);
+
+    if (sourceSortOrder !== undefined) {
+      const nextItem = sortedItems[sourceIndex + 1];
+      const nextSortOrder =
+        nextItem && typeof nextItem.sortOrder === "number" && Number.isFinite(nextItem.sortOrder)
+          ? nextItem.sortOrder
+          : undefined;
+
+      duplicateSortOrder =
+        nextSortOrder !== undefined && nextSortOrder > sourceSortOrder
+          ? (sourceSortOrder + nextSortOrder) / 2
+          : sourceSortOrder + 0.5;
+    } else if (sourceIndex >= 0) {
+      const anchoredOrder = (sourceIndex + 1) * 100;
+
+      await updateDoc(itemRef, {
+        sortOrder: anchoredOrder,
+        updatedBy: caller.id,
+        updatedAt: serverTimestamp(),
+      });
+      duplicateSortOrder = anchoredOrder + 50;
+    }
+
     const createdItem = await this.addPrintRequestItem(caller, item.printRequestId, {
       designId: item.designId,
       quantity: item.quantity,
       printWidthInches: item.printWidthInches,
       printHeightInches: item.printHeightInches,
-      sortOrder: sourceSortOrder === undefined ? resolveNextSortOrder(currentItems) : sourceSortOrder + 0.5,
+      sortOrder: duplicateSortOrder,
     });
 
     return createdItem;

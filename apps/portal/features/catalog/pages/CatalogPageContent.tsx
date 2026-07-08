@@ -84,7 +84,7 @@ export function CatalogPageContent() {
   const [isCreatingRequest, setIsCreatingRequest] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
-  const { createPrintRequest } = useMyPrintRequests();
+  const { continuableRequests, createPrintRequest } = useMyPrintRequests();
   const selectionMode = usePortalPrintRequestSelectionMode(selectionRequestId);
   const selectionError = selectionModeActive
     ? selectionRequestId
@@ -133,9 +133,25 @@ export function CatalogPageContent() {
     setSelectedTags((currentTags) => currentTags.filter((tag) => tag !== tagToRemove));
   }
 
-  async function handleStartRequest() {
-    setIsCreatingRequest(true);
+  const hasContinuableRequests = continuableRequests.length > 0;
+  const hasSingleContinuableRequest = continuableRequests.length === 1;
+  const requestActionLabel = hasContinuableRequests ? 'Continue request' : 'Start request';
+  const requestActionPendingLabel = hasContinuableRequests ? 'Continuing…' : 'Starting…';
+
+  async function handleRequestAction() {
     setActionError(null);
+
+    if (hasSingleContinuableRequest) {
+      router.push(`/requests/${continuableRequests[0].id}`);
+      return;
+    }
+
+    if (hasContinuableRequests) {
+      router.push('/requests?tab=working');
+      return;
+    }
+
+    setIsCreatingRequest(true);
 
     try {
       const created = await createPrintRequest();
@@ -153,7 +169,7 @@ export function CatalogPageContent() {
       return;
     }
 
-    router.push('/requests');
+    router.push('/requests?tab=working');
   }
 
   async function handleSaveSelectionMode() {
@@ -187,16 +203,16 @@ export function CatalogPageContent() {
 
         {!selectionModeActive ? (
           <div className="portal-catalog-topbar-actions">
-            <Link className="portal-button portal-button-secondary" href="/requests">
+            <Link className="portal-button portal-button-secondary" href="/requests?tab=working">
               My requests
             </Link>
             <button
               className="portal-button portal-button-primary"
               disabled={isCreatingRequest}
-              onClick={() => void handleStartRequest()}
+              onClick={() => void handleRequestAction()}
               type="button"
             >
-              {isCreatingRequest ? 'Starting…' : 'Start request'}
+              {isCreatingRequest ? requestActionPendingLabel : requestActionLabel}
             </button>
           </div>
         ) : null}

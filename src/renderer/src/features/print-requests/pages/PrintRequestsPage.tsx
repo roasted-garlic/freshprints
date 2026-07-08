@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
-import { ExternalLink, ImagePlus, Plus, X } from "lucide-react";
+import { ExternalLink, ImagePlus, Plus, RefreshCw, X } from "lucide-react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 import { Button } from "../../../shared/components/Button";
@@ -193,7 +193,7 @@ export function PrintRequestsPage() {
   const requestError = isLoadedSelectedRequest ? requestDetails.error : null;
   const isRequestLoading = requestDetails.isLoading || (Boolean(selectedRequestId) && !isLoadedSelectedRequest);
   const reloadPrintRequest = requestDetails.reloadPrintRequest;
-  const addRequestItem = requestDetails.addItem;
+  const insertRequestItemAfter = requestDetails.insertItemAfter;
   const removeRequestItem = requestDetails.removeItem;
   const replaceRequestItem = requestDetails.replaceItem;
   const replaceSelectedRequest = requestDetails.replacePrintRequest;
@@ -213,6 +213,7 @@ export function PrintRequestsPage() {
   const [selectedRequestAllocations, setSelectedRequestAllocations] = useState<ShowAllocation[]>([]);
   const [isConfirmingShowQueueRemoval, setIsConfirmingShowQueueRemoval] = useState(false);
   const [isRemovingFromShowQueue, setIsRemovingFromShowQueue] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const selectedRequestIdParam = searchParams.get(PRINT_REQUEST_ID_QUERY_PARAM);
 
   const reloadSelectedRequestAllocations = useCallback(async () => {
@@ -262,6 +263,31 @@ export function PrintRequestsPage() {
       reloadSelectedRequestAllocations(),
     ]);
   }, [reloadAllocationTotals, reloadPrintRequest, reloadPrintRequests, reloadSelectedRequestAllocations]);
+
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    setActionError(null);
+
+    try {
+      await Promise.all([
+        reloadPrintRequests({ silent: true }),
+        reloadAllocationTotals({ silent: true }),
+        reloadReadyDesigns({ silent: true }),
+        reloadPrintRequest({ silent: true }),
+        reloadSelectedRequestAllocations(),
+      ]);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Unable to refresh print requests.");
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [
+    reloadAllocationTotals,
+    reloadPrintRequest,
+    reloadPrintRequests,
+    reloadReadyDesigns,
+    reloadSelectedRequestAllocations,
+  ]);
 
   const handleRemoveSelectedRequestFromShowQueue = useCallback(async () => {
     if (!user || !visibleSelectedRequest || selectedRequestShowGroups.length === 0) {
@@ -314,13 +340,24 @@ export function PrintRequestsPage() {
     useMemo(
       () => ({
         title: "Print Requests",
+        actions: [
+          {
+            icon: <RefreshCw aria-hidden="true" size={16} strokeWidth={2} />,
+            label: isRefreshing ? "Refreshing…" : "Refresh",
+            onClick: () => {
+              if (!isRefreshing) {
+                void handleRefresh();
+              }
+            },
+          },
+        ],
         primaryAction: {
           icon: <Plus aria-hidden="true" size={16} strokeWidth={2} />,
           label: "New request",
           onClick: openCreateModal,
         },
       }),
-      [openCreateModal],
+      [handleRefresh, isRefreshing, openCreateModal],
     ),
   );
 
@@ -559,7 +596,7 @@ export function PrintRequestsPage() {
     try {
       setActionError(null);
       const createdItem = await printRequestService.duplicatePrintRequestItem(user, item.id);
-      addRequestItem(createdItem);
+      insertRequestItemAfter(item.id, createdItem);
       await reloadPrintRequests();
     } catch (error) {
       setActionError(formatWriteErrorMessage(error));
@@ -926,7 +963,7 @@ export function PrintRequestsPage() {
                     title="No items yet"
                   />
                 ) : (
-                  <div className="print-requests-item-list">
+                  <div className="print-requests-item-editor-grid">
                     {requestItems.map((item) => {
                       const design = designById.get(item.designId);
 

@@ -19,13 +19,14 @@ import type {
   CreatePortalPrintRequestResponse,
 } from '@fresh-prints/shared/types/printRequest/createPortalPrintRequest.types';
 import type { PrintRequest, PrintRequestItem } from '@fresh-prints/shared/types/printRequest/printRequest.types';
+import type { ShowAllocationStatus } from '@fresh-prints/shared/types/showAllocation/showAllocation.enums';
 import {
   formatPrintRequestItemSizeLabel,
   resolveInitialPrintRequestItemSize,
 } from '@fresh-prints/shared/utils/printRequestItemSizing';
 
 import { getPortalDb, getPortalFunctions } from '../../../lib/firebase/client';
-import { mapFirestoreTimestamp } from '../../firebase/utils/mapFirestoreTimestamp';
+import { mapFirestoreTimestamp, resolveDesignDocumentTimestamps } from '../../firebase/utils/mapFirestoreTimestamp';
 import { portalAuthService } from '../../auth/services/authService';
 
 interface PrintRequestDocumentData extends DocumentData {
@@ -68,6 +69,44 @@ interface DesignDocumentData extends DocumentData {
   printHeightInches?: unknown;
 }
 
+interface PortalShowAllocationRecord {
+  printRequestId: string;
+  allocatedQuantity: number;
+  status: ShowAllocationStatus;
+}
+
+interface ShowAllocationDocumentData extends DocumentData {
+  printRequestId?: unknown;
+  allocatedQuantity?: unknown;
+  status?: unknown;
+}
+
+function chunkValues<T>(values: T[], chunkSize: number): T[][] {
+  const chunks: T[][] = [];
+
+  for (let index = 0; index < values.length; index += chunkSize) {
+    chunks.push(values.slice(index, index + chunkSize));
+  }
+
+  return chunks;
+}
+
+function mapShowAllocationRecord(data: ShowAllocationDocumentData): PortalShowAllocationRecord {
+  if (
+    typeof data.printRequestId !== 'string' ||
+    typeof data.allocatedQuantity !== 'number' ||
+    typeof data.status !== 'string'
+  ) {
+    throw new Error('Show allocation data is incomplete.');
+  }
+
+  return {
+    printRequestId: data.printRequestId,
+    allocatedQuantity: data.allocatedQuantity,
+    status: data.status as ShowAllocationStatus,
+  };
+}
+
 function mapPrintRequest(printRequestId: string, data: PrintRequestDocumentData): PrintRequest {
   const createdAt = mapFirestoreTimestamp(data.createdAt);
   const updatedAt = mapFirestoreTimestamp(data.updatedAt);
@@ -107,8 +146,7 @@ function mapPrintRequest(printRequestId: string, data: PrintRequestDocumentData)
 }
 
 function mapPrintRequestItem(itemId: string, data: PrintRequestItemDocumentData): PrintRequestItem {
-  const createdAt = mapFirestoreTimestamp(data.createdAt);
-  const updatedAt = mapFirestoreTimestamp(data.updatedAt);
+  const timestamps = resolveDesignDocumentTimestamps(data);
 
   if (
     typeof data.printRequestId !== 'string' ||
@@ -116,8 +154,7 @@ function mapPrintRequestItem(itemId: string, data: PrintRequestItemDocumentData)
     typeof data.quantity !== 'number' ||
     typeof data.status !== 'string' ||
     typeof data.addedBy !== 'string' ||
-    createdAt === undefined ||
-    updatedAt === undefined
+    timestamps === null
   ) {
     throw new Error('Print request item data is incomplete.');
   }
@@ -134,8 +171,8 @@ function mapPrintRequestItem(itemId: string, data: PrintRequestItemDocumentData)
     notes: typeof data.notes === 'string' ? data.notes : undefined,
     status: data.status as PrintRequestItem['status'],
     addedBy: data.addedBy,
-    createdAt,
-    updatedAt,
+    createdAt: timestamps.createdAt,
+    updatedAt: timestamps.updatedAt,
   };
 }
 
@@ -206,6 +243,58 @@ export const portalPrintRequestService = {
     return snapshot.docs.map((itemDoc) =>
       mapPrintRequestItem(itemDoc.id, itemDoc.data() as PrintRequestItemDocumentData),
     );
+  },
+
+  async listPrintRequestItemsForRequests(printRequestIds: string[]): Promise<PrintRequestItem[]> {
+    const uniquePrintRequestIds = [...new Set(printRequestIds.map((id) => id.trim()).filter(Boolean))];
+
+    if (uniquePrintRequestIds.length === 0) {
+      return [];
+    }
+
+    const itemLists = await Promise.all(
+      chunkValues(uniquePrintRequestIds, 10).map(async (printRequestIdChunk) => {
+        const snapshot = await getDocs(
+          query(
+            collection(getPortalDb(), 'printRequestItems'),
+            where('printRequestId', 'in', printRequestIdChunk),
+          ),
+        );
+
+        return snapshot.docs.map((itemDoc) =>
+          mapPrintRequestItem(itemDoc.id, itemDoc.data() as PrintRequestItemDocumentData),
+        );
+      }),
+    );
+
+    return itemLists.flat();
+  },
+
+  async listShowAllocationsForPrintRequests(
+    printRequestIds: string[],
+  ): Promise<PortalShowAllocationRecord[]> {
+    const uniquePrintRequestIds = [...new Set(printRequestIds.map((id) => id.trim()).filter(Boolean))];
+
+    if (uniquePrintRequestIds.length === 0) {
+      return [];
+    }
+
+    const allocationLists = await Promise.all(
+      chunkValues(uniquePrintRequestIds, 10).map(async (printRequestIdChunk) => {
+        const snapshot = await getDocs(
+          query(
+            collection(getPortalDb(), 'showAllocations'),
+            where('printRequestId', 'in', printRequestIdChunk),
+          ),
+        );
+
+        return snapshot.docs.map((allocationDoc) =>
+          mapShowAllocationRecord(allocationDoc.data() as ShowAllocationDocumentData),
+        );
+      }),
+    );
+
+    return allocationLists.flat();
   },
 
   async getReadyDesign(designId: string) {

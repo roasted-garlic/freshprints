@@ -109,6 +109,9 @@ export function PortalPrintRequestItemCard({
     buildItemSignature(item.quantity, resolveInitialWidth(item, design), resolveInitialHeight(item, design)),
   );
   const saveDraftRef = useRef<() => Promise<void>>(async () => undefined);
+  const saveDebounceRef = useRef<number | null>(null);
+  const saveInFlightRef = useRef(false);
+  const saveQueuedRef = useRef(false);
 
   useEffect(() => {
     const nextWidth = resolveInitialWidth(item, design);
@@ -145,6 +148,29 @@ export function PortalPrintRequestItemCard({
 
   const canSave = (sizeAssessment?.canSave ?? true) && parsedQuantity !== null;
 
+  useEffect(() => {
+    return () => {
+      if (saveDebounceRef.current !== null) {
+        window.clearTimeout(saveDebounceRef.current);
+      }
+    };
+  }, []);
+
+  function cancelScheduledSave() {
+    if (saveDebounceRef.current !== null) {
+      window.clearTimeout(saveDebounceRef.current);
+      saveDebounceRef.current = null;
+    }
+  }
+
+  function scheduleSave() {
+    cancelScheduledSave();
+    saveDebounceRef.current = window.setTimeout(() => {
+      saveDebounceRef.current = null;
+      void saveDraftRef.current();
+    }, 300);
+  }
+
   const saveDraft = useCallback(async () => {
     if (
       parsedQuantity === null ||
@@ -164,6 +190,12 @@ export function PortalPrintRequestItemCard({
       return;
     }
 
+    if (saveInFlightRef.current) {
+      saveQueuedRef.current = true;
+      return;
+    }
+
+    saveInFlightRef.current = true;
     onAutosaveStateChange('saving');
 
     try {
@@ -177,6 +209,13 @@ export function PortalPrintRequestItemCard({
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unable to save item changes.';
       onAutosaveStateChange('failed', message, () => saveDraftRef.current());
+    } finally {
+      saveInFlightRef.current = false;
+
+      if (saveQueuedRef.current) {
+        saveQueuedRef.current = false;
+        void saveDraftRef.current();
+      }
     }
   }, [item, onAutosaveStateChange, onUpdate, parsedPrintHeightInches, parsedPrintWidthInches, parsedQuantity]);
 
@@ -185,9 +224,13 @@ export function PortalPrintRequestItemCard({
   }, [saveDraft]);
 
   function stepQuantity(nextQuantity: number) {
-    const parsed = parsePositiveIntegerInput(String(nextQuantity));
-    setQuantityInput(parsed === null ? '' : String(parsed));
-    window.setTimeout(() => void saveDraftRef.current(), 0);
+    if (!Number.isFinite(nextQuantity) || nextQuantity < 1) {
+      setQuantityInput('');
+      return;
+    }
+
+    setQuantityInput(String(Math.floor(nextQuantity)));
+    scheduleSave();
   }
 
   function updateWidth(nextWidthInput: string) {

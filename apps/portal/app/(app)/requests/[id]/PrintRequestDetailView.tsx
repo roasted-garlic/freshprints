@@ -126,7 +126,7 @@ export default function PrintRequestDetailView() {
   if (error || !printRequest) {
     return (
       <main className="portal-page portal-request-detail-page">
-        <Link className="portal-back-link" href="/requests">
+        <Link className="portal-back-link" href="/requests?tab=working">
           ← Back to print requests
         </Link>
         <p className="portal-error" role="alert">
@@ -138,7 +138,7 @@ export default function PrintRequestDetailView() {
 
   return (
     <main className="portal-page portal-request-detail-page">
-      <Link className="portal-back-link" href="/requests">
+      <Link className="portal-back-link" href="/requests?tab=working">
         ← Back to print requests
       </Link>
 

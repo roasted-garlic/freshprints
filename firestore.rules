@@ -1022,7 +1022,8 @@ service cloud.firestore {
     }
 
     match /showAllocations/{showAllocationId} {
-      allow read: if isStaff();
+      allow read: if isStaff()
+        || (isCustomer() && customerOwnsPrintRequestById(resource.data.printRequestId));
 
       allow create: if isStaff()
         && showAllocationRequiredFieldsValid(request.resource.data)

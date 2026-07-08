@@ -17,17 +17,25 @@ const initialState: ReadyDesignsState = {
   isLoading: true,
 };
 
+interface LoadReadyDesignsOptions {
+  silent?: boolean;
+}
+
 export function useReadyDesignsForSelection() {
   const { user } = useAuth();
   const [state, setState] = useState<ReadyDesignsState>(initialState);
 
-  const loadDesigns = useCallback(async () => {
+  const loadDesigns = useCallback(async (options?: LoadReadyDesignsOptions) => {
     if (!user || !permissionService.canViewPrintRequests(user)) {
       setState({ designs: [], error: null, isLoading: false });
       return;
     }
 
-    setState((currentState) => ({ ...currentState, error: null, isLoading: true }));
+    setState((currentState) => ({
+      ...currentState,
+      error: null,
+      isLoading: options?.silent ? currentState.isLoading : true,
+    }));
 
     try {
       const designs = await printRequestService.listReadyDesigns(user);
