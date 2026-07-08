@@ -1,9 +1,11 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect } from 'react';
 import type { Timestamp } from 'firebase/firestore';
 
 import { useAuth } from '../../../features/auth/context/AuthContext';
+import { usePortalPrintRequests } from '../../../features/print-requests/context/PortalPrintRequestContext';
 import { getProfileInitials, resolvePortalDisplayName } from '../../../features/account/utils/profileDisplay';
 
 function formatMemberSince(timestamp: Timestamp): string {
@@ -14,11 +16,17 @@ function formatMemberSince(timestamp: Timestamp): string {
 }
 
 export default function DashboardPage() {
-  const { customer, user } = useAuth();
+  const { customer, refreshCustomer, user } = useAuth();
+  const { isLoading: isRequestsLoading, refreshRequests, requests } = usePortalPrintRequests();
   const displayName = resolvePortalDisplayName(customer?.displayName, user?.displayName);
   const email = user?.email ?? customer?.email ?? '—';
   const username = customer?.username;
-  const printRequestCount = customer?.totalPrintRequests ?? 0;
+  const printRequestCount = isRequestsLoading ? (customer?.totalPrintRequests ?? 0) : requests.length;
+
+  useEffect(() => {
+    void refreshRequests({ silent: true });
+    void refreshCustomer();
+  }, [refreshCustomer, refreshRequests]);
 
   return (
     <main className="portal-page portal-account-page">

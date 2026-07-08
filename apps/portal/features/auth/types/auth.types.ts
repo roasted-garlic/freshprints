@@ -41,4 +41,5 @@ export interface PortalAuthContextValue extends PortalAuthState {
   login: (credentials: LoginCredentials) => Promise<void>;
   register: (credentials: RegisterCredentials) => Promise<void>;
   logout: () => Promise<void>;
+  refreshCustomer: () => Promise<void>;
 }

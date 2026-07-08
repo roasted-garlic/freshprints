@@ -9,7 +9,10 @@ import { buildCatalogSelectionHref } from '../utils/catalogSelectionNavigation';
 
 interface UsePrintRequestCreationFlowOptions {
   continuableRequests: PrintRequest[];
-  createPrintRequest: (notes?: string) => Promise<{ printRequestId: string }>;
+  createPrintRequest: (
+    notes?: string,
+    options?: { skipListReload?: boolean },
+  ) => Promise<{ printRequestId: string }>;
 }
 
 export function usePrintRequestCreationFlow({
@@ -24,7 +27,7 @@ export function usePrintRequestCreationFlow({
 
   const navigateToContinue = useCallback(() => {
     if (continuableRequests.length === 1) {
-      router.push(`/requests/${continuableRequests[0]!.id}`);
+      router.push(buildCatalogSelectionHref(continuableRequests[0]!.id));
       return;
     }
 
@@ -36,16 +39,19 @@ export function usePrintRequestCreationFlow({
     setActionError(null);
 
     try {
-      const created = await createPrintRequest();
+      const created = await createPrintRequest(undefined, { skipListReload: true });
       router.replace(buildCatalogSelectionHref(created.printRequestId));
       setIsChoiceModalOpen(false);
       setIsConfirmModalOpen(false);
     } catch (createError) {
       setActionError(createError instanceof Error ? createError.message : 'Unable to create print request.');
-    } finally {
       setIsCreating(false);
     }
   }, [createPrintRequest, router]);
+
+  const finishCreating = useCallback(() => {
+    setIsCreating(false);
+  }, []);
 
   const openStartNewConfirm = useCallback(() => {
     setActionError(null);
@@ -94,6 +100,7 @@ export function usePrintRequestCreationFlow({
     closeChoiceModal,
     closeConfirmModal,
     confirmStartNewRequest,
+    finishCreating,
     handleContinueWorkingRequest,
     handleStartRequestClick,
     handleStartNewRequest,

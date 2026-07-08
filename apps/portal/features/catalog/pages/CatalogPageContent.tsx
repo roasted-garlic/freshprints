@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { CatalogDesignCard } from '../../../features/catalog/components/CatalogDesignCard';
 import { CatalogDesignDetailsModal } from '../../../features/catalog/components/CatalogDesignDetailsModal';
@@ -21,8 +21,10 @@ import {
   filterCatalogDesignsBySearch,
   sortCatalogTags,
 } from '../../../features/catalog/utils/catalogSearch';
+import { catalogStorageService } from '../../../features/catalog/services/catalogStorageService';
 import { usePortalPrintRequests } from '../../../features/print-requests/context/PortalPrintRequestContext';
 import { usePortalPrintRequestSelectionMode } from '../../../features/print-requests/hooks/usePortalPrintRequestSelectionMode';
+import { buildCatalogSelectionHref } from '../../../features/print-requests/utils/catalogSelectionNavigation';
 import {
   ArrowLeftIcon,
   ClipboardListIcon,
@@ -44,8 +46,10 @@ export function CatalogPageContent() {
   const [isTagFilterModalOpen, setIsTagFilterModalOpen] = useState(false);
   const [selectedDesign, setSelectedDesign] = useState<CatalogDesign | null>(null);
   const [selectionActionError, setSelectionActionError] = useState<string | null>(null);
+  const [isLeavingSelection, setIsLeavingSelection] = useState(false);
 
-  const { actionError, continuableRequests, handleStartRequestClick, isCreating } = usePortalPrintRequests();
+  const { actionError, continuableRequests, finishCreating, handleStartRequestClick, isCreating, refreshRequests } =
+    usePortalPrintRequests();
   const selectionMode = usePortalPrintRequestSelectionMode(selectionRequestId);
   const selectionError = selectionModeActive
     ? selectionRequestId
@@ -99,9 +103,43 @@ export function CatalogPageContent() {
   const requestActionLabel = hasContinuableRequests ? 'Continue request' : 'Start request';
   const requestActionPendingLabel = hasContinuableRequests ? 'Continuing…' : 'Starting…';
 
+  useEffect(() => {
+    if (!selectionModeActive) {
+      return;
+    }
+
+    finishCreating();
+    void refreshRequests({ silent: true });
+  }, [finishCreating, refreshRequests, selectionModeActive]);
+
+  useEffect(() => {
+    if (designs.length === 0) {
+      return;
+    }
+
+    catalogStorageService.prefetchCatalogPaths(
+      designs.map((design) => design.thumbnailPath),
+      selectionModeActive ? 96 : 64,
+    );
+  }, [designs, selectionModeActive]);
+
+  useEffect(() => {
+    if (!selectionModeActive) {
+      return;
+    }
+
+    catalogStorageService.prefetchCatalogPaths(
+      Object.keys(selectionMode.selectedDesigns).map((designId) => {
+        const design = designs.find((entry) => entry.id === designId);
+        return design?.thumbnailPath ?? design?.previewPath;
+      }),
+      32,
+    );
+  }, [designs, selectionMode.selectedDesigns, selectionModeActive]);
+
   async function handleRequestAction() {
     if (hasSingleContinuableRequest) {
-      router.push(`/requests/${continuableRequests[0].id}`);
+      router.push(buildCatalogSelectionHref(continuableRequests[0]!.id));
       return;
     }
 
@@ -128,11 +166,14 @@ export function CatalogPageContent() {
     }
 
     setSelectionActionError(null);
+    setIsLeavingSelection(true);
 
     try {
-      await selectionMode.saveSelections();
-      router.push(`/requests/${selectionRequestId}`);
+      await selectionMode.saveSelections({ skipReload: true });
+      void refreshRequests({ silent: true });
+      router.replace(`/requests/${selectionRequestId}`);
     } catch (saveError) {
+      setIsLeavingSelection(false);
       setSelectionActionError(saveError instanceof Error ? saveError.message : 'Unable to save selections.');
     }
   }
@@ -143,7 +184,7 @@ export function CatalogPageContent() {
 
   return (
     <main
-      className={`portal-page portal-catalog-page${selectionModeActive ? ' is-selection-mode' : ''}${isCreating ? ' is-creating-request' : ''}`}
+      className={`portal-page portal-catalog-page${selectionModeActive ? ' is-selection-mode' : ''}${isCreating ? ' is-creating-request' : ''}${isLeavingSelection ? ' is-leaving-selection' : ''}`}
     >
       {!selectionModeActive ? (
         <header className="portal-catalog-topbar">

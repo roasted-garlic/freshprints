@@ -302,14 +302,42 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }, []);
 
+  const refreshCustomer = useCallback(async () => {
+    const firebaseUser = getPortalAuth().currentUser;
+
+    if (!firebaseUser) {
+      return;
+    }
+
+    try {
+      const customer = await customerProfileService.getCustomerByUserId(firebaseUser.uid);
+
+      if (!customer) {
+        return;
+      }
+
+      setAuthState((currentState) =>
+        currentState.firebaseUser?.uid === firebaseUser.uid && currentState.user
+          ? {
+              ...currentState,
+              customer,
+            }
+          : currentState,
+      );
+    } catch {
+      // Keep the last known profile if a background refresh fails.
+    }
+  }, []);
+
   const value = useMemo<PortalAuthContextValue>(
     () => ({
       ...authState,
       login,
       register,
       logout,
+      refreshCustomer,
     }),
-    [authState, login, logout, register],
+    [authState, login, logout, refreshCustomer, register],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

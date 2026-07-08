@@ -8,6 +8,8 @@ import type { PrintRequestItem } from '@fresh-prints/shared/types/printRequest/p
 import { PortalPrintRequestItemCard } from '../../../../features/print-requests/components/PortalPrintRequestItemCard';
 import { PortalQueueToShowModal } from '../../../../features/print-requests/components/PortalQueueToShowModal';
 import { PrintRequestDetailGuide } from '../../../../features/print-requests/components/PrintRequestDetailGuide';
+import { useAuth } from '../../../../features/auth/context/AuthContext';
+import { usePortalPrintRequests } from '../../../../features/print-requests/context/PortalPrintRequestContext';
 import { usePrintRequestDetail } from '../../../../features/print-requests/hooks/usePrintRequestDetail';
 import { portalPrintRequestService } from '../../../../features/print-requests/services/portalPrintRequestService';
 import { PortalConfirmModal } from '../../../../features/shared/components/PortalConfirmModal';
@@ -41,6 +43,8 @@ function getStatusLabel(status: string): string {
 export default function PrintRequestDetailView() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const { refreshCustomer } = useAuth();
+  const { refreshRequests } = usePortalPrintRequests();
   const printRequestId = params.id;
   const [actionError, setActionError] = useState<string | null>(null);
   const [autosaveState, setAutosaveState] = useState<AutosaveState>({ status: 'idle' });
@@ -155,10 +159,10 @@ export default function PrintRequestDetailView() {
       : 'this design';
 
   const handleQueuedToShow = useCallback(async () => {
-    await reload();
+    await Promise.all([reload(), refreshRequests({ silent: true }), refreshCustomer()]);
     await loadAllocationState();
     router.push('/requests?tab=queued');
-  }, [loadAllocationState, reload, router]);
+  }, [loadAllocationState, refreshCustomer, refreshRequests, reload, router]);
 
   if (isLoading) {
     return (
@@ -200,13 +204,6 @@ export default function PrintRequestDetailView() {
         {canQueueToShow ? (
           <div className="portal-request-detail-header-actions">
             <button
-              className="portal-button portal-button-primary"
-              onClick={() => setIsQueueModalOpen(true)}
-              type="button"
-            >
-              Add to show
-            </button>
-            <button
               className="portal-button portal-button-secondary portal-button-leading-icon portal-request-detail-add-button"
               onClick={() =>
                 router.push(`/catalog?mode=request-selection&requestId=${printRequest.id}`)
@@ -215,6 +212,13 @@ export default function PrintRequestDetailView() {
             >
               <ImagePlusIcon />
               Add designs
+            </button>
+            <button
+              className="portal-button portal-button-primary"
+              onClick={() => setIsQueueModalOpen(true)}
+              type="button"
+            >
+              Add to show
             </button>
           </div>
         ) : isEditable && items.length > 0 ? (
@@ -257,7 +261,7 @@ export default function PrintRequestDetailView() {
                 type="button"
               >
                 <LibraryIcon />
-                Browse design library
+                Add designs
               </button>
             </div>
           ) : null}

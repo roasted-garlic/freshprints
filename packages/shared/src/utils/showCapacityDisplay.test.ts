@@ -4,6 +4,7 @@ import { test } from "node:test";
 import { assessShowCapacity } from "./showCapacity";
 import {
   formatCapacityUsedLabel,
+  formatShowCapacitySlotLabel,
   formatSpotsRemainingLabel,
   getCapacityFillLevel,
   getDerivedShowStatusDisplay,
@@ -82,6 +83,36 @@ test("formatSpotsRemainingLabel: N over max when over capacity", () => {
 test("formatSpotsRemainingLabel: No limit when uncapped", () => {
   const capacity = assessShowCapacity({ maxTotalQuantity: undefined, allocatedQuantity: 40 });
   assert.equal(formatSpotsRemainingLabel(capacity), "No limit");
+});
+
+test("formatShowCapacitySlotLabel: empty show leads with spots left then taken of total", () => {
+  const capacity = assessShowCapacity({ maxTotalQuantity: 200, allocatedQuantity: 0 });
+  assert.equal(formatShowCapacitySlotLabel(capacity), "200 spots left · 0 of 200 taken");
+});
+
+test("formatShowCapacitySlotLabel: partial fill", () => {
+  const capacity = assessShowCapacity({ maxTotalQuantity: 200, allocatedQuantity: 175 });
+  assert.equal(formatShowCapacitySlotLabel(capacity), "25 spots left · 175 of 200 taken");
+});
+
+test("formatShowCapacitySlotLabel: singular spot left", () => {
+  const capacity = assessShowCapacity({ maxTotalQuantity: 200, allocatedQuantity: 199 });
+  assert.equal(formatShowCapacitySlotLabel(capacity), "1 spot left · 199 of 200 taken");
+});
+
+test("formatShowCapacitySlotLabel: full show", () => {
+  const capacity = assessShowCapacity({ maxTotalQuantity: 200, allocatedQuantity: 200 });
+  assert.equal(formatShowCapacitySlotLabel(capacity), "Full · 200 of 200 taken");
+});
+
+test("formatShowCapacitySlotLabel: over max", () => {
+  const capacity = assessShowCapacity({ maxTotalQuantity: 200, allocatedQuantity: 214 });
+  assert.equal(formatShowCapacitySlotLabel(capacity), "14 over max · 214 of 200 taken");
+});
+
+test("formatShowCapacitySlotLabel: uncapped with allocation", () => {
+  const capacity = assessShowCapacity({ maxTotalQuantity: undefined, allocatedQuantity: 40 });
+  assert.equal(formatShowCapacitySlotLabel(capacity), "40 taken · No limit");
 });
 
 test("getDerivedShowStatusDisplay: printing beats full capacity", () => {

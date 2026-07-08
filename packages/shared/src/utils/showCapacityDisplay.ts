@@ -58,6 +58,33 @@ export function formatSpotsRemainingLabel(capacity: ShowCapacityResult): string 
   return `${remaining} spot${remaining === 1 ? "" : "s"} left`;
 }
 
+/**
+ * Single-line capacity copy for calendar slot cards and compact summaries — leads with spots left,
+ * then how many are taken of the allotted total (avoids repeating the same number twice).
+ */
+export function formatShowCapacitySlotLabel(capacity: ShowCapacityResult): string {
+  if (capacity.maxTotalQuantity === undefined) {
+    const taken = capacity.allocatedQuantity;
+    return taken === 0 ? "No limit" : `${taken} taken · No limit`;
+  }
+
+  const max = capacity.maxTotalQuantity;
+  const taken = capacity.allocatedQuantity;
+
+  if (capacity.isOverCapacity) {
+    const over = taken - max;
+    return `${over} over max · ${taken} of ${max} taken`;
+  }
+
+  if (capacity.isFull) {
+    return `Full · ${taken} of ${max} taken`;
+  }
+
+  const remaining = Math.max(0, capacity.remainingQuantity ?? 0);
+  const spotsWord = remaining === 1 ? "spot" : "spots";
+  return `${remaining} ${spotsWord} left · ${taken} of ${max} taken`;
+}
+
 export type DerivedShowStatusLabel =
   | "PRINTING"
   | "FULLY PRINTED"

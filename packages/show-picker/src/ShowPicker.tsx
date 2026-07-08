@@ -65,9 +65,7 @@ function ShowTimeSlotOption({
             style={{ width: `${Math.min(100, option.capacityPercent ?? 0)}%` }}
           />
         </div>
-        <span className="show-picker-slot-capacity">
-          {option.capacityUsedLabel} · {option.spotsRemainingLabel}
-        </span>
+        <span className="show-picker-slot-capacity">{option.capacityLabel}</span>
       </div>
       <span className={`show-picker-badge show-picker-badge--${option.statusVariant}`}>{option.statusLabel}</span>
     </button>

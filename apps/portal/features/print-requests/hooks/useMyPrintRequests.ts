@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { usePathname } from 'next/navigation';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { PrintRequest } from '@fresh-prints/shared/types/printRequest/printRequest.types';
 import { buildPrintRequestItemSummaries } from '@fresh-prints/shared/utils/printRequestItemSummaries';
@@ -19,7 +20,7 @@ import { useAuth } from '../../auth/context/AuthContext';
 import { portalPrintRequestService } from '../services/portalPrintRequestService';
 
 export function useMyPrintRequests() {
-  const { customer, firebaseUser } = useAuth();
+  const { customer, firebaseUser, refreshCustomer } = useAuth();
   const [requests, setRequests] = useState<PrintRequest[]>([]);
   const [summariesByRequestId, setSummariesByRequestId] = useState<Record<string, PrintRequestItemSummary>>({});
   const [allocationTotalsByRequestId, setAllocationTotalsByRequestId] = useState<
@@ -66,6 +67,29 @@ export function useMyPrintRequests() {
     void reload();
   }, [reload]);
 
+  const pathname = usePathname();
+  const previousPathnameRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const isRequestsList = pathname === '/requests';
+    const isDashboard = pathname === '/dashboard';
+    const wasRequestsList = previousPathnameRef.current === '/requests';
+    const wasDashboard = previousPathnameRef.current === '/dashboard';
+
+    if (previousPathnameRef.current !== null) {
+      if (isRequestsList && !wasRequestsList) {
+        void reload({ silent: true });
+      }
+
+      if (isDashboard && !wasDashboard) {
+        void reload({ silent: true });
+        void refreshCustomer();
+      }
+    }
+
+    previousPathnameRef.current = pathname;
+  }, [pathname, refreshCustomer, reload]);
+
   const continuableRequests = useMemo(
     () => requests.filter((request) => isPortalContinuablePrintRequestStatus(request.status)),
     [requests],
@@ -82,16 +106,21 @@ export function useMyPrintRequests() {
   );
 
   const createPrintRequest = useCallback(
-    async (notes?: string) => {
+    async (notes?: string, options?: { skipListReload?: boolean }) => {
       if (!firebaseUser) {
         throw new Error('You must be signed in to create a print request.');
       }
 
       const created = await portalPrintRequestService.createPrintRequest(notes ? { notes } : {});
-      void reload({ silent: true });
+
+      if (!options?.skipListReload) {
+        void reload({ silent: true });
+      }
+
+      void refreshCustomer();
       return created;
     },
-    [firebaseUser, reload],
+    [firebaseUser, refreshCustomer, reload],
   );
 
   return {

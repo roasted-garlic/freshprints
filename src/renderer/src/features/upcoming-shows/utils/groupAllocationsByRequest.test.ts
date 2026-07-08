@@ -51,4 +51,26 @@ describe("groupAllocationsByRequest", () => {
   it("returns an empty array for no allocations", () => {
     assert.deepEqual(groupAllocationsByRequest([]), []);
   });
+
+  it("sorts groups by most recently attached request first", () => {
+    const olderRequest = buildAllocation({
+      id: "alloc-1",
+      printRequestId: "request-old",
+      requestNameSnapshot: "older-CR001",
+      createdAt: { toDate: () => new Date("2026-01-01"), toMillis: () => new Date("2026-01-01").getTime() } as ShowAllocation["createdAt"],
+    });
+    const newerRequest = buildAllocation({
+      id: "alloc-2",
+      printRequestId: "request-new",
+      requestNameSnapshot: "newer-CR002",
+      createdAt: { toDate: () => new Date("2026-02-01"), toMillis: () => new Date("2026-02-01").getTime() } as ShowAllocation["createdAt"],
+    });
+
+    const groups = groupAllocationsByRequest([olderRequest, newerRequest]);
+
+    assert.deepEqual(
+      groups.map((group) => group.printRequestId),
+      ["request-new", "request-old"],
+    );
+  });
 });

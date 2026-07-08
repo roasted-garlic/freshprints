@@ -53,8 +53,7 @@ import { parseWhatnotShowUrl } from "@fresh-prints/shared/utils/whatnotShowUrl";
 import { parseWhatnotShowBaseUrl } from "@fresh-prints/shared/utils/whatnotShowBaseUrl";
 import { assessShowCapacity } from "@fresh-prints/shared/utils/showCapacity";
 import {
-  formatCapacityUsedLabel,
-  formatSpotsRemainingLabel,
+  formatShowCapacitySlotLabel,
   getCapacityFillLevel,
   getDerivedShowStatusDisplay,
   getShowCapacityPercent,
@@ -1029,8 +1028,7 @@ export function UpcomingShowsPage() {
                       />
                     </div>
                     <div className="show-capacity-summary">
-                      <span>{formatCapacityUsedLabel(capacity)}</span>
-                      <span>{formatSpotsRemainingLabel(capacity)}</span>
+                      <span>{formatShowCapacitySlotLabel(capacity)}</span>
                     </div>
                     {capacity.isOverCapacity ? (
                       <p className="print-requests-workflow-copy">

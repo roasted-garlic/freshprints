@@ -6,6 +6,22 @@ export interface ShowAllocationRequestGroup {
   allocations: ShowAllocation[];
 }
 
+function getAllocationCreatedAtMillis(allocation: ShowAllocation): number {
+  if (typeof allocation.createdAt?.toMillis === "function") {
+    return allocation.createdAt.toMillis();
+  }
+
+  if (typeof allocation.createdAt?.toDate === "function") {
+    return allocation.createdAt.toDate().getTime();
+  }
+
+  return 0;
+}
+
+function getGroupLatestCreatedAtMillis(group: ShowAllocationRequestGroup): number {
+  return Math.max(...group.allocations.map(getAllocationCreatedAtMillis));
+}
+
 /**
  * Groups a show's allocations by Print Request so the Show Queue detail page can display and
  * act on whole requests (attach/remove) instead of individual allocation rows, matching the
@@ -28,5 +44,7 @@ export function groupAllocationsByRequest(allocations: ShowAllocation[]): ShowAl
     }
   }
 
-  return [...map.values()];
+  return [...map.values()].sort(
+    (left, right) => getGroupLatestCreatedAtMillis(right) - getGroupLatestCreatedAtMillis(left),
+  );
 }

@@ -17,9 +17,11 @@ interface PortalPrintRequestContextValue {
   allocationTotalsByRequestId: Record<string, PrintRequestAllocationTotals>;
   continuableRequests: PrintRequest[];
   error: string | null;
+  finishCreating: () => void;
   handleStartRequestClick: () => void;
   isCreating: boolean;
   isLoading: boolean;
+  refreshRequests: (options?: { silent?: boolean }) => Promise<void>;
   requests: PrintRequest[];
   requestsByTab: Record<PortalPrintRequestListTab, PrintRequest[]>;
   summariesByRequestId: Record<string, PrintRequestItemSummary>;
@@ -34,6 +36,7 @@ export function PortalPrintRequestProvider({ children }: { children: ReactNode }
     closeChoiceModal,
     closeConfirmModal,
     confirmStartNewRequest,
+    finishCreating,
     handleContinueWorkingRequest,
     handleStartRequestClick,
     handleStartNewRequest,
@@ -50,9 +53,11 @@ export function PortalPrintRequestProvider({ children }: { children: ReactNode }
     allocationTotalsByRequestId: printRequests.allocationTotalsByRequestId,
     continuableRequests: printRequests.continuableRequests,
     error: printRequests.error,
+    finishCreating,
     handleStartRequestClick,
     isCreating,
     isLoading: printRequests.isLoading,
+    refreshRequests: printRequests.reload,
     requests: printRequests.requests,
     requestsByTab: printRequests.requestsByTab,
     summariesByRequestId: printRequests.summariesByRequestId,

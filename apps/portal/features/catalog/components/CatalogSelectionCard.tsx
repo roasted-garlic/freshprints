@@ -75,6 +75,7 @@ export function CatalogSelectionCard({
             interactive
             loadingLabel="Loading thumbnail"
             onImageClick={() => setIsLightboxOpen(true)}
+            prioritizeLoading
           />
 
           {isSelected ? (

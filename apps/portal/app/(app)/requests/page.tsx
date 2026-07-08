@@ -13,7 +13,9 @@ import {
 } from '@fresh-prints/shared/utils/portalPrintRequestListTabs';
 
 import { PrintRequestCard } from '../../../features/print-requests/components/PrintRequestCard';
+import { PrintRequestsTabGuide } from '../../../features/print-requests/components/PrintRequestsTabGuide';
 import { usePortalPrintRequests } from '../../../features/print-requests/context/PortalPrintRequestContext';
+import { getPortalPrintRequestTabEmptyCopy } from '../../../features/print-requests/utils/portalPrintRequestTabCopy';
 import { LibraryIcon, PlusCircleIcon } from '../../../features/shared/components/PortalIcons';
 
 const PORTAL_REQUEST_TABS: PortalPrintRequestListTab[] = ['working', 'queued', 'printing', 'printed'];
@@ -36,16 +38,7 @@ function getEmptyTabTitle(tab: PortalPrintRequestListTab): string {
 }
 
 function getEmptyTabMessage(tab: PortalPrintRequestListTab): string {
-  switch (tab) {
-    case 'working':
-      return 'Working requests are drafts you are still building or revising before they go to a show.';
-    case 'queued':
-      return 'Queued requests have been added to an upcoming show and are waiting for the press to start.';
-    case 'printing':
-      return 'Printing requests are on the press right now.';
-    case 'printed':
-      return 'Printed requests have finished production.';
-  }
+  return getPortalPrintRequestTabEmptyCopy(tab);
 }
 
 export default function RequestsPage() {
@@ -109,9 +102,11 @@ export default function RequestsPage() {
         <div className="portal-panel portal-muted">Loading print requests…</div>
       ) : requests.length === 0 ? (
         <section className="portal-panel portal-requests-empty">
+          <PrintRequestsTabGuide tab="working" />
           <h2>No print requests yet</h2>
           <p className="portal-muted">
-            Start a request from the design library or create one here, then add designs with quantities.
+            Nothing here yet. When you start a request, it will appear under Working while you add designs
+            and get it ready for a show.
           </p>
           <div className="portal-requests-empty-actions">
             <button
@@ -148,6 +143,8 @@ export default function RequestsPage() {
               </button>
             ))}
           </div>
+
+          <PrintRequestsTabGuide tab={activeTab} />
 
           {visibleRequests.length === 0 ? (
             <section className="portal-panel portal-requests-empty">

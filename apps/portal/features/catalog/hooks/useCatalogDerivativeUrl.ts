@@ -5,8 +5,11 @@ import { useEffect, useState } from 'react';
 import { catalogStorageService } from '../services/catalogStorageService';
 
 export function useCatalogDerivativeUrl(catalogPath: string | undefined) {
-  const [url, setUrl] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(Boolean(catalogPath?.trim()));
+  const cachedUrl = catalogStorageService.getCachedUrlForCatalogPath(catalogPath);
+  const [url, setUrl] = useState<string | null>(cachedUrl ?? null);
+  const [isLoading, setIsLoading] = useState(
+    Boolean(catalogPath?.trim()) && cachedUrl === undefined,
+  );
 
   useEffect(() => {
     let isCancelled = false;
@@ -14,6 +17,14 @@ export function useCatalogDerivativeUrl(catalogPath: string | undefined) {
     async function loadUrl() {
       if (!catalogPath?.trim()) {
         setUrl(null);
+        setIsLoading(false);
+        return;
+      }
+
+      const immediateUrl = catalogStorageService.getCachedUrlForCatalogPath(catalogPath);
+
+      if (immediateUrl !== undefined) {
+        setUrl(immediateUrl);
         setIsLoading(false);
         return;
       }

@@ -13,6 +13,7 @@ interface CatalogThumbnailPanelProps {
   interactive?: boolean;
   loadingLabel?: string;
   onImageClick?: (imageUrl: string) => void;
+  prioritizeLoading?: boolean;
 }
 
 export function CatalogThumbnailPanel({
@@ -24,6 +25,7 @@ export function CatalogThumbnailPanel({
   interactive = false,
   loadingLabel = 'Loading preview',
   onImageClick,
+  prioritizeLoading = false,
 }: CatalogThumbnailPanelProps) {
   const { isLoading, url } = useCatalogDerivativeUrl(catalogPath);
   const [imageLoadFailed, setImageLoadFailed] = useState(false);
@@ -71,6 +73,8 @@ export function CatalogThumbnailPanel({
           alt={decorative ? '' : alt}
           className={imageClassName}
           decoding="async"
+          fetchPriority={prioritizeLoading ? 'high' : undefined}
+          loading={prioritizeLoading ? 'eager' : 'lazy'}
           onClick={isImageInteractive ? handleImageClick : undefined}
           onError={() => setImageLoadFailed(true)}
           onKeyDown={

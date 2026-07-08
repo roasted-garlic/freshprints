@@ -1,8 +1,7 @@
 import type { ShowProductionStatus } from "@fresh-prints/shared/types/upcomingShow/upcomingShow.enums";
 import { assessShowCapacity } from "@fresh-prints/shared/utils/showCapacity";
 import {
-  formatCapacityUsedLabel,
-  formatSpotsRemainingLabel,
+  formatShowCapacitySlotLabel,
   getCapacityFillLevel,
   getDerivedShowStatusDisplay,
   getShowCapacityPercent,
@@ -50,8 +49,7 @@ export function buildShowPickerOptions({
       scheduledAt: show.scheduledAt,
       timeLabel: show.scheduledAt ? formatShowTimeOnlyLabel(show.scheduledAt) : "No time set",
       capacityPercent,
-      capacityUsedLabel: formatCapacityUsedLabel(capacity),
-      spotsRemainingLabel: formatSpotsRemainingLabel(capacity),
+      capacityLabel: formatShowCapacitySlotLabel(capacity),
       fillLevel: getCapacityFillLevel(capacityPercent),
       statusLabel: statusDisplay.label,
       statusVariant: statusDisplay.variant,

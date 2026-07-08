@@ -8,8 +8,7 @@ export interface ShowPickerOption {
   scheduledAt: Date | null;
   timeLabel: string;
   capacityPercent: number | undefined;
-  capacityUsedLabel: string;
-  spotsRemainingLabel: string;
+  capacityLabel: string;
   fillLevel: ShowPickerFillLevel | undefined;
   statusLabel: string;
   statusVariant: ShowPickerStatusVariant;

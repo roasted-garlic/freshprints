@@ -179,7 +179,7 @@ export function usePortalPrintRequestSelectionMode(printRequestId: string | null
     [selectedDesigns],
   );
 
-  const saveSelections = useCallback(async () => {
+  const saveSelections = useCallback(async (options?: { skipReload?: boolean }) => {
     if (!firebaseUser || !printRequestId || !printRequest) {
       return;
     }
@@ -196,7 +196,9 @@ export function usePortalPrintRequestSelectionMode(printRequestId: string | null
         })),
       });
 
-      await reload();
+      if (!options?.skipReload) {
+        await reload({ silent: true });
+      }
     } finally {
       setIsSaving(false);
     }
