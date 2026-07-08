@@ -1,19 +1,14 @@
 'use client';
 
-import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 
 import type { PrintRequestItem } from '@fresh-prints/shared/types/printRequest/printRequest.types';
 
 import { PortalPrintRequestItemCard } from '../../../../features/print-requests/components/PortalPrintRequestItemCard';
+import { PrintRequestDetailGuide } from '../../../../features/print-requests/components/PrintRequestDetailGuide';
 import { usePrintRequestDetail } from '../../../../features/print-requests/hooks/usePrintRequestDetail';
-import {
-  ArrowLeftIcon,
-  ImagePlusIcon,
-  LibraryIcon,
-  RefreshIcon,
-} from '../../../../features/shared/components/PortalIcons';
+import { ImagePlusIcon, LibraryIcon, RefreshIcon } from '../../../../features/shared/components/PortalIcons';
 
 type AutosaveStatus = 'idle' | 'saving' | 'saved' | 'failed';
 
@@ -132,13 +127,6 @@ export default function PrintRequestDetailView() {
   if (error || !printRequest) {
     return (
       <main className="portal-page portal-request-detail-page">
-        <Link
-          className="portal-back-link portal-button portal-button-secondary portal-button-sm portal-button-leading-icon"
-          href="/requests?tab=working"
-        >
-          <ArrowLeftIcon size={14} />
-          Back to print requests
-        </Link>
         <p className="portal-error" role="alert">
           {error ?? 'Print request not found.'}
         </p>
@@ -146,24 +134,22 @@ export default function PrintRequestDetailView() {
     );
   }
 
+  const designCountLabel = `${printRequest.itemCount} design${printRequest.itemCount === 1 ? '' : 's'}`;
+
   return (
     <main className="portal-page portal-request-detail-page">
-      <Link
-        className="portal-back-link portal-button portal-button-secondary portal-button-sm portal-button-leading-icon"
-        href="/requests?tab=working"
-      >
-        <ArrowLeftIcon size={14} />
-        Back to print requests
-      </Link>
-
       <header className="portal-page-header portal-request-detail-header">
         <div className="portal-request-detail-header-copy">
           <p className="portal-eyebrow">Print request</p>
-          <h1>{printRequest.name}</h1>
-          <p className="portal-muted">
-            {getStatusLabel(printRequest.status)} · {printRequest.itemCount} design
-            {printRequest.itemCount === 1 ? '' : 's'}
-          </p>
+          <div className="portal-request-detail-title-row">
+            <h1>{printRequest.name}</h1>
+            <div className="portal-request-detail-meta-pills">
+              <span className="portal-request-detail-meta-pill">
+                {getStatusLabel(printRequest.status)}
+              </span>
+              <span className="portal-request-detail-meta-pill">{designCountLabel}</span>
+            </div>
+          </div>
         </div>
 
         {isEditable && items.length > 0 ? (
@@ -180,6 +166,8 @@ export default function PrintRequestDetailView() {
         ) : null}
       </header>
 
+      {isEditable ? <PrintRequestDetailGuide /> : null}
+
       {actionError ? (
         <p className="portal-error" role="alert">
           {actionError}
@@ -195,16 +183,18 @@ export default function PrintRequestDetailView() {
               : 'This request has no designs.'}
           </p>
           {isEditable ? (
-            <button
-              className="portal-button portal-button-primary portal-button-leading-icon"
-              onClick={() =>
-                router.push(`/catalog?mode=request-selection&requestId=${printRequest.id}`)
-              }
-              type="button"
-            >
-              <LibraryIcon />
-              Browse design library
-            </button>
+            <div className="portal-requests-empty-actions">
+              <button
+                className="portal-button portal-button-primary portal-button-leading-icon"
+                onClick={() =>
+                  router.push(`/catalog?mode=request-selection&requestId=${printRequest.id}`)
+                }
+                type="button"
+              >
+                <LibraryIcon />
+                Browse design library
+              </button>
+            </div>
           ) : null}
         </section>
       ) : (

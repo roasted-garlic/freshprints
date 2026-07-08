@@ -195,9 +195,9 @@ export function CatalogPageContent() {
                   <h2 className="design-library-selection-tray-title">Add designs to request</h2>
                   <h3>{selectionMode.printRequest.name}</h3>
                   <p>
-                    Browse the designs below and choose what you need for this print request. Set a
-                    quantity for each design, then save your selections. When you are ready, this request
-                    can be added to a Whatnot show for printing.
+                    Pick designs and quantities below, then save. On the request page, set print
+                    sizes—you can add the same design more than once for different sizes. Queue to a
+                    Whatnot show when you are ready to print.
                   </p>
                 </div>
               </div>
