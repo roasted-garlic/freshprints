@@ -1,4 +1,5 @@
 import type { FreshPrintsAppApi } from "../app/appIpc.types";
+import type { FreshPrintsInboxAlertApi } from "../inboxAlert/inboxAlertIpc.types";
 import type { FreshPrintsExportApi } from "../export/showExportIpc.types";
 import type { FreshPrintsWhatnotImportApi } from "../whatnotImport/whatnotImport.types";
 import type { PrintSizeAssessment } from "../printSize/printSize.types";
@@ -282,6 +283,7 @@ export interface FreshPrintsImportsApi {
 export interface FreshPrintsPreloadApi {
   app: FreshPrintsAppApi;
   imports: FreshPrintsImportsApi;
+  inboxAlert: FreshPrintsInboxAlertApi;
   whatnotImport: FreshPrintsWhatnotImportApi;
   export: FreshPrintsExportApi;
 }

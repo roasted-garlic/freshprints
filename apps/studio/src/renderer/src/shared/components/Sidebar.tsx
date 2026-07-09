@@ -5,7 +5,6 @@ import {
   ChevronsRight,
   ClipboardList,
   Images,
-  ListOrdered,
   LogOut,
   MessageSquare,
   Settings,
@@ -13,11 +12,14 @@ import {
   FolderInput,
   Users,
   X,
+  Bell,
+  Clapperboard,
 } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import type { LucideIcon } from "lucide-react";
 
 import { useAuth } from "../../features/auth/hooks/useAuth";
+import { useStaffInboxContext } from "../../features/staff-inbox/context/staffInboxContext";
 import { permissionService } from "../../features/permissions/services/permissionService";
 import type { PermissionKey } from "../../features/permissions/types/permission.types";
 import { useSidebarDrawer } from "../hooks/useSidebarDrawer";
@@ -37,6 +39,7 @@ interface SidebarRouteItem {
   isDisabled?: boolean;
   dividerBefore?: boolean;
   permission?: PermissionKey;
+  showInboxBadge?: boolean;
 }
 
 interface SidebarActionItem {
@@ -55,18 +58,34 @@ const sidebarItems: SidebarRouteItem[] = [
   { kind: "route", icon: Images, label: "Design Library", to: "/designs", permission: "viewDesigns" },
   {
     kind: "route",
-    icon: ClipboardList,
-    label: "Print Requests",
-    to: "/print-requests",
+    icon: Bell,
+    label: "Inbox",
+    to: "/inbox",
     permission: "viewPrintRequests",
+    showInboxBadge: true,
     dividerBefore: true,
   },
   {
     kind: "route",
-    icon: ListOrdered,
+    icon: Clapperboard,
     label: "Show Queue",
     to: "/show-queue",
     permission: "viewUpcomingShows",
+  },
+  {
+    kind: "route",
+    icon: ClipboardList,
+    label: "Print Requests",
+    to: "/print-requests",
+    permission: "viewPrintRequests",
+  },
+  {
+    kind: "route",
+    icon: FolderInput,
+    label: "Imports",
+    to: "/imports",
+    permission: "importDesigns",
+    dividerBefore: true,
   },
   {
     kind: "route",
@@ -74,9 +93,7 @@ const sidebarItems: SidebarRouteItem[] = [
     label: "AI Processing",
     to: "/ai-review",
     permission: "viewAiReview",
-    dividerBefore: true,
   },
-  { kind: "route", icon: FolderInput, label: "Imports", to: "/imports", permission: "importDesigns" },
   {
     kind: "route",
     icon: MessageSquare,
@@ -118,6 +135,20 @@ export function Sidebar() {
   const [isOpeningDevTools, setIsOpeningDevTools] = useState(false);
   const { isOpen: isDrawerOpen, close: closeDrawer } = useSidebarDrawer();
   const { isUploadActive, requestLeaveConfirmation } = useUploadActivity();
+  const staffInbox = useStaffInboxContext();
+
+  const inboxOpenCount = staffInbox.isEnabled ? staffInbox.badgeCounts.printRequests : 0;
+
+  const resolveSidebarBadgeCount = useCallback(
+    (showInboxBadge: SidebarRouteItem["showInboxBadge"]) => {
+      if (!showInboxBadge || !staffInbox.isEnabled) {
+        return 0;
+      }
+
+      return inboxOpenCount;
+    },
+    [inboxOpenCount, staffInbox.isEnabled],
+  );
 
   const handleOpenDevTools = useCallback(async () => {
     setIsOpeningDevTools(true);
@@ -280,6 +311,7 @@ export function Sidebar() {
       <nav className="sidebar-nav">
         {visibleSidebarItems.map((item) => {
           const ItemIcon = item.icon;
+          const badgeCount = item.kind === "route" ? resolveSidebarBadgeCount(item.showInboxBadge) : 0;
 
           return (
             <div className="sidebar-nav-item" key={item.label}>
@@ -328,6 +360,11 @@ export function Sidebar() {
                     <ItemIcon aria-hidden="true" className="sidebar-link-icon" size={18} strokeWidth={2} />
                     {!isCollapsed ? <span className="sidebar-link-label">{item.label}</span> : null}
                   </span>
+                  {badgeCount > 0 ? (
+                    <span aria-hidden="true" className="sidebar-inbox-badge">
+                      {badgeCount}
+                    </span>
+                  ) : null}
                 </NavLink>
               )}
             </div>

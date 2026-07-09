@@ -30,13 +30,14 @@ import type { Customer } from "@fresh-prints/shared/types/customer/customer.type
 import type { ShowAllocation } from "@fresh-prints/shared/types/showAllocation/showAllocation.types";
 import { formatInternalPrintRequestName } from "@fresh-prints/shared/utils/printRequestNaming";
 import { getPrintRequestOriginBadgeLabel } from "@fresh-prints/shared/utils/printRequestOrigin";
+import { getPrintRequestTabHelperCopy } from "@fresh-prints/shared/staffInbox/printRequestTabHelperCopy";
 import { derivePrintRequestQueueState, isPrintRequestFullyPrinted } from "@fresh-prints/shared/utils/printRequestQueueState";
 import { derivePrintRequestListTab, type PrintRequestListTab } from "@fresh-prints/shared/utils/printRequestListGrouping";
 import { resolveSelectedRequestIdForTab } from "@fresh-prints/shared/utils/printRequestTabSelection";
 import { groupAllocationsByShow } from "@fresh-prints/shared/utils/groupAllocationsByShow";
 import { canRemoveRequestFromShow } from "@fresh-prints/shared/utils/showQueueEditability";
 import { getPrintRequestQueueStateBadgeLabel, getPrintRequestQueueStateBadgeVariant } from "../utils/printRequestQueueBadge";
-import { PRINT_REQUEST_ID_QUERY_PARAM, getPrintRequestsPath } from "../constants/printRequestRoutes";
+import { PRINT_REQUEST_ID_QUERY_PARAM, PRINT_REQUEST_TAB_QUERY_PARAM, getPrintRequestsPath, isPrintRequestRouteTab } from "../constants/printRequestRoutes";
 import { getDesignLibraryPath } from "../../designs/constants/designLibraryFilters";
 import { useUpcomingShows } from "../../upcoming-shows/hooks/useUpcomingShows";
 import { upcomingShowService } from "../../upcoming-shows/services/upcomingShowService";
@@ -215,6 +216,7 @@ export function PrintRequestsPage() {
   const [isRemovingFromShowQueue, setIsRemovingFromShowQueue] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const selectedRequestIdParam = searchParams.get(PRINT_REQUEST_ID_QUERY_PARAM);
+  const tabParam = searchParams.get(PRINT_REQUEST_TAB_QUERY_PARAM);
 
   const reloadSelectedRequestAllocations = useCallback(async () => {
     if (!user || !visibleSelectedRequest) {
@@ -331,9 +333,9 @@ export function PrintRequestsPage() {
 
   const updateSelectedRequestPath = useCallback(
     (requestId: string) => {
-      navigate(getPrintRequestsPath({ requestId }), { replace: true });
+      navigate(getPrintRequestsPath({ requestId, tab: activeListTab }), { replace: true });
     },
-    [navigate],
+    [activeListTab, navigate],
   );
 
   useShellHeaderConfig(
@@ -413,22 +415,30 @@ export function PrintRequestsPage() {
   const visibleRequests = requestsByListTab[activeListTab];
 
   useEffect(() => {
-    if (hasAppliedInitialUrlSelectionRef.current || !selectedRequestIdParam || isRequestsLoading) {
+    if (hasAppliedInitialUrlSelectionRef.current || isRequestsLoading) {
       return;
     }
 
-    const linkedRequestTab = (Object.keys(requestsByListTab) as PrintRequestListTab[]).find((tab) =>
-      requestsByListTab[tab].some((request) => request.id === selectedRequestIdParam),
-    );
+    if (selectedRequestIdParam) {
+      const linkedRequestTab = (Object.keys(requestsByListTab) as PrintRequestListTab[]).find((tab) =>
+        requestsByListTab[tab].some((request) => request.id === selectedRequestIdParam),
+      );
 
-    if (!linkedRequestTab) {
+      if (!linkedRequestTab) {
+        return;
+      }
+
+      hasAppliedInitialUrlSelectionRef.current = true;
+      setActiveListTab(linkedRequestTab);
+      setSelectedRequestId(selectedRequestIdParam);
       return;
     }
 
-    hasAppliedInitialUrlSelectionRef.current = true;
-    setActiveListTab(linkedRequestTab);
-    setSelectedRequestId(selectedRequestIdParam);
-  }, [isRequestsLoading, requestsByListTab, selectedRequestIdParam]);
+    if (isPrintRequestRouteTab(tabParam)) {
+      hasAppliedInitialUrlSelectionRef.current = true;
+      setActiveListTab(tabParam);
+    }
+  }, [isRequestsLoading, requestsByListTab, selectedRequestIdParam, tabParam]);
 
   /**
    * Keeps the selected request in sync with the active tab: if the current selection no longer
@@ -697,7 +707,16 @@ export function PrintRequestsPage() {
               <button
                 className={`print-requests-tab-button${activeListTab === tab ? " is-active" : ""}`}
                 key={tab}
-                onClick={() => setActiveListTab(tab)}
+                onClick={() => {
+                  setActiveListTab(tab);
+                  navigate(
+                    getPrintRequestsPath({
+                      tab,
+                      requestId: selectedRequestId ?? undefined,
+                    }),
+                    { replace: true },
+                  );
+                }}
                 type="button"
               >
                 {tab === "working"
@@ -711,6 +730,7 @@ export function PrintRequestsPage() {
               </button>
             ))}
           </div>
+          <p className="print-requests-tab-helper">{getPrintRequestTabHelperCopy(activeListTab)}</p>
           <div className="print-requests-rail-list">
             {isLoading ? (
               <div className="print-requests-loading">

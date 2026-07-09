@@ -20,10 +20,22 @@ import {
   isAllowedImportIpcEventChannel,
 } from "./ipc/import/importIpcChannels";
 import {
+  INBOX_ALERT_IPC_CHANNELS,
+  isAllowedInboxAlertIpcChannel,
+} from "./ipc/inboxAlert/inboxAlertIpcChannels";
+import {
   WHATNOT_IMPORT_CONFIRMED_EVENT,
   WHATNOT_IMPORT_IPC_CHANNELS,
   isAllowedWhatnotImportIpcChannel,
 } from "./ipc/whatnotImport/whatnotImportIpcChannels";
+import type {
+  ClearInboxAlertSoundRequest,
+  ClearInboxAlertSoundResult,
+  GetInboxAlertSoundPlayableUrlRequest,
+  GetInboxAlertSoundPlayableUrlResult,
+  SelectInboxAlertSoundRequest,
+  SelectInboxAlertSoundResult,
+} from "@fresh-prints/shared/types/inboxAlert/inboxAlertIpc.types";
 import type {
   ConfirmCloseResult,
   OpenDevToolsResult,
@@ -124,6 +136,23 @@ function invokeDevImportChannel<T>(
   }
 
   return ipcRenderer.invoke(channel) as Promise<ImportIpcResult<T>>;
+}
+
+function invokeInboxAlertChannel<T>(
+  channel: (typeof INBOX_ALERT_IPC_CHANNELS)[keyof typeof INBOX_ALERT_IPC_CHANNELS],
+  payload?: unknown,
+): Promise<ImportIpcResult<T>> {
+  if (!isAllowedInboxAlertIpcChannel(channel)) {
+    return Promise.resolve({
+      success: false,
+      error: {
+        code: "INTERNAL_ERROR",
+        message: "The requested inbox alert operation is not allowed.",
+      },
+    });
+  }
+
+  return ipcRenderer.invoke(channel, payload) as Promise<ImportIpcResult<T>>;
 }
 
 function invokeWhatnotImportChannel<T>(
@@ -391,6 +420,35 @@ contextBridge.exposeInMainWorld("freshPrints", {
     verifyDerivativeGeneration(): Promise<ImportIpcResult<DerivativeGenerationVerificationResult>> {
       return invokeDevImportChannel<DerivativeGenerationVerificationResult>(
         DEV_IMPORT_IPC_CHANNELS.VERIFY_DERIVATIVE_GENERATION,
+      );
+    },
+  },
+
+  inboxAlert: {
+    selectAndSaveLocalSound(
+      request: SelectInboxAlertSoundRequest,
+    ): Promise<ImportIpcResult<SelectInboxAlertSoundResult>> {
+      return invokeInboxAlertChannel<SelectInboxAlertSoundResult>(
+        INBOX_ALERT_IPC_CHANNELS.SELECT_LOCAL_SOUND,
+        request,
+      );
+    },
+
+    getLocalSoundPlayableUrl(
+      request: GetInboxAlertSoundPlayableUrlRequest,
+    ): Promise<ImportIpcResult<GetInboxAlertSoundPlayableUrlResult>> {
+      return invokeInboxAlertChannel<GetInboxAlertSoundPlayableUrlResult>(
+        INBOX_ALERT_IPC_CHANNELS.GET_LOCAL_SOUND_PLAYABLE_URL,
+        request,
+      );
+    },
+
+    clearLocalSound(
+      request: ClearInboxAlertSoundRequest,
+    ): Promise<ImportIpcResult<ClearInboxAlertSoundResult>> {
+      return invokeInboxAlertChannel<ClearInboxAlertSoundResult>(
+        INBOX_ALERT_IPC_CHANNELS.CLEAR_LOCAL_SOUND,
+        request,
       );
     },
   },

@@ -35,6 +35,21 @@ function buildSelectionSignature(items: Array<{ designId: string; id: string; qu
   return items.map((item) => `${item.id}:${item.designId}:${item.quantity}`).join('|');
 }
 
+function buildQuantitySignature(state: SelectionState): string {
+  return Object.entries(state)
+    .sort(([leftDesignId], [rightDesignId]) => leftDesignId.localeCompare(rightDesignId))
+    .map(([designId, selection]) => `${designId}:${selection.quantity}`)
+    .join('|');
+}
+
+function buildQuantitySignatureFromItems(items: Array<{ designId: string; quantity: number }>): string {
+  return items
+    .slice()
+    .sort((left, right) => left.designId.localeCompare(right.designId))
+    .map((item) => `${item.designId}:${item.quantity}`)
+    .join('|');
+}
+
 export function usePortalPrintRequestSelectionMode(printRequestId: string | null) {
   const { firebaseUser } = useAuth();
   const [selectedDesigns, setSelectedDesigns] = useState<SelectionState>({});
@@ -169,9 +184,16 @@ export function usePortalPrintRequestSelectionMode(printRequestId: string | null
 
   const selectedDesignCount = useMemo(() => Object.keys(selectedDesigns).length, [selectedDesigns]);
 
-  const hasNewSelections = useMemo(
-    () => Object.values(selectedDesigns).some((selection) => !selection.isExisting),
+  const baselineQuantitySignature = useMemo(() => buildQuantitySignatureFromItems(items), [items]);
+
+  const currentQuantitySignature = useMemo(
+    () => buildQuantitySignature(selectedDesigns),
     [selectedDesigns],
+  );
+
+  const hasPendingChanges = useMemo(
+    () => currentQuantitySignature !== baselineQuantitySignature,
+    [baselineQuantitySignature, currentQuantitySignature],
   );
 
   const totalQuantity = useMemo(
@@ -206,7 +228,7 @@ export function usePortalPrintRequestSelectionMode(printRequestId: string | null
 
   return {
     error,
-    hasNewSelections,
+    hasPendingChanges,
     isLoading,
     isSaving,
     printRequest: printRequest as PrintRequest | null,

@@ -15,6 +15,7 @@ import {
 } from './window/studioWindowConstraints'
 import { registerExportIpcHandlers } from './ipc/export/exportIpcHandlers'
 import { registerImportIpcHandlers } from './ipc/import/importIpcHandlers'
+import { registerInboxAlertIpcHandlers } from './ipc/inboxAlert/inboxAlertIpcHandlers'
 import { registerWhatnotImportIpcHandlers } from './ipc/whatnotImport/whatnotImportIpcHandlers'
 import { attachTextInputContextMenu } from './services/app/textInputContextMenu'
 import { runDevDerivativeGenerationVerification } from './services/import/verifyDerivativeGenerationInMainProcess'
@@ -283,6 +284,7 @@ app.whenReady().then(() => {
   Menu.setApplicationMenu(null)
   registerAppIpcHandlers()
   registerImportIpcHandlers()
+  registerInboxAlertIpcHandlers()
   registerWhatnotImportIpcHandlers()
   registerExportIpcHandlers()
 

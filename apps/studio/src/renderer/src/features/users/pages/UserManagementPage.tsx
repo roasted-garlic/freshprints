@@ -9,7 +9,9 @@ import { AddUserModal, type AddUserModalCreatedPayload } from "../components/Add
 import { CustomerDirectoryTable } from "../components/CustomerDirectoryTable";
 import { EditCustomerModal } from "../components/EditCustomerModal";
 import { EditUserModal } from "../components/EditUserModal";
+import { UserAuditTrailModal } from "../components/UserAuditTrailModal";
 import { UserDirectoryTable } from "../components/UserDirectoryTable";
+import type { AuditTrailSubject } from "../types/auditTrail.types";
 import { useTeamUsers } from "../hooks/useTeamUsers";
 import { useUpdateTeamUser } from "../hooks/useUpdateTeamUser";
 import type { User } from "../types/user.types";
@@ -32,6 +34,7 @@ export function UserManagementPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+  const [auditTrailSubject, setAuditTrailSubject] = useState<AuditTrailSubject | null>(null);
   const [pageSuccessMessage, setPageSuccessMessage] = useState<string | null>(null);
   const [successAlertSeed, setSuccessAlertSeed] = useState(0);
 
@@ -145,6 +148,7 @@ export function UserManagementPage() {
             clearMessages();
             setEditingUser(teamUser);
           }}
+          onViewAuditTrail={(teamUser) => setAuditTrailSubject({ kind: "team_user", user: teamUser })}
           searchQuery={searchQuery}
           users={filteredUsers}
         />
@@ -159,6 +163,7 @@ export function UserManagementPage() {
           error={customersError}
           isLoading={isCustomersLoading}
           onEditCustomer={(customer) => setEditingCustomer(customer)}
+          onViewAuditTrail={(customer) => setAuditTrailSubject({ kind: "customer", customer })}
           searchQuery={searchQuery}
         />
       </section>
@@ -189,6 +194,12 @@ export function UserManagementPage() {
           setPageSuccessMessage(message);
           setSuccessAlertSeed((current) => current + 1);
         }}
+      />
+
+      <UserAuditTrailModal
+        isOpen={auditTrailSubject !== null}
+        onClose={() => setAuditTrailSubject(null)}
+        subject={auditTrailSubject}
       />
     </main>
   );

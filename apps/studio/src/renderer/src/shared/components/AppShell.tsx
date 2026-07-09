@@ -4,6 +4,8 @@ import { useLocation } from "react-router-dom";
 import { SidebarDrawerContext } from "../context/sidebarDrawerContext";
 import { ShellHeaderProvider } from "../context/ShellHeaderProvider";
 import { UploadActivityProvider } from "../context/UploadActivityProvider";
+import { StaffInboxProvider } from "../../features/staff-inbox/components/StaffInboxProvider";
+import { StaffInboxToastHost } from "../../features/staff-inbox/components/StaffInboxToastHost";
 import { AppHeader } from "./AppHeader";
 import { Sidebar } from "./Sidebar";
 
@@ -28,6 +30,7 @@ function AppShellContent({ children }: AppShellProps) {
     location.pathname === "/ai-review" ? "page-content-area--ai-review" : "",
     location.pathname === "/designs" ? "page-content-area--design-library" : "",
     location.pathname === "/print-requests" ? "page-content-area--print-requests" : "",
+    location.pathname === "/inbox" ? "page-content-area--inbox" : "",
     location.pathname === "/show-queue" ? "page-content-area--show-queue" : "",
   ]
     .filter(Boolean)
@@ -59,7 +62,10 @@ export function AppShell({ children }: AppShellProps) {
   return (
     <UploadActivityProvider>
       <ShellHeaderProvider>
-        <AppShellContent>{children}</AppShellContent>
+        <StaffInboxProvider>
+          <AppShellContent>{children}</AppShellContent>
+          <StaffInboxToastHost />
+        </StaffInboxProvider>
       </ShellHeaderProvider>
     </UploadActivityProvider>
   );

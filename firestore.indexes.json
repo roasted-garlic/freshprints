@@ -166,6 +166,22 @@
       ]
     },
     {
+      "collectionGroup": "printRequests",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "requestOrigin", "order": "ASCENDING" },
+        { "fieldPath": "updatedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "showAllocations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "requestOriginSnapshot", "order": "ASCENDING" },
+        { "fieldPath": "updatedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "gangSheets",
       "queryScope": "COLLECTION",
       "fields": [

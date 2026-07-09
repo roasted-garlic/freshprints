@@ -9,6 +9,7 @@ import { DesignLibraryPage } from "../features/designs/pages/DesignLibraryPage";
 import { GangSheetBuilderPage } from "../features/gang-sheets/pages/GangSheetBuilderPage";
 import { ImportsPage } from "../features/imports/pages/ImportsPage";
 import { PrintRequestsPage } from "../features/print-requests/pages/PrintRequestsPage";
+import { StaffInboxPage } from "../features/staff-inbox/pages/StaffInboxPage";
 import { SettingsPage } from "../features/settings/pages/SettingsPage";
 import { UpcomingShowsPage } from "../features/upcoming-shows/pages/UpcomingShowsPage";
 import { UserManagementPage } from "../features/users/pages/UserManagementPage";
@@ -43,6 +44,14 @@ export function AppRoutes() {
             element={
               <ProtectedRoute permission="viewAiReview">
                 <AiReviewPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/inbox"
+            element={
+              <ProtectedRoute permission="viewPrintRequests">
+                <StaffInboxPage />
               </ProtectedRoute>
             }
           />

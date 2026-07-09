@@ -265,7 +265,7 @@ export function CatalogPageContent() {
                 </button>
                 <button
                   className="portal-button portal-button-primary portal-button-sm portal-button-leading-icon"
-                  disabled={selectionMode.isSaving || !selectionMode.hasNewSelections}
+                  disabled={selectionMode.isSaving || !selectionMode.hasPendingChanges}
                   onClick={() => void handleSaveSelectionMode()}
                   type="button"
                 >

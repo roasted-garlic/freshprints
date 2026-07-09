@@ -1,4 +1,4 @@
-import { Lock, Pencil } from "lucide-react";
+import { BadgeInfo, Lock, Pencil } from "lucide-react";
 
 import { Badge } from "../../../shared/components/Badge";
 import { Card } from "../../../shared/components/Card";
@@ -15,6 +15,7 @@ interface UserDirectoryTableProps {
   error: string | null;
   isLoading: boolean;
   onEditUser: (teamUser: User) => void;
+  onViewAuditTrail: (teamUser: User) => void;
   searchQuery: string;
   users: User[];
 }
@@ -24,6 +25,7 @@ export function UserDirectoryTable({
   error,
   isLoading,
   onEditUser,
+  onViewAuditTrail,
   searchQuery,
   users,
 }: UserDirectoryTableProps) {
@@ -66,6 +68,7 @@ export function UserDirectoryTable({
               <th>Email</th>
               <th>Role</th>
               <th>Status</th>
+              <th className="user-directory-info-header">INFO</th>
               <th className="user-directory-actions-header">Actions</th>
             </tr>
           </thead>
@@ -87,6 +90,15 @@ export function UserDirectoryTable({
                     <Badge variant={teamUser.isActive ? "success" : "danger"}>
                       {teamUser.isActive ? "Active" : "Inactive"}
                     </Badge>
+                  </td>
+                  <td className="user-directory-info-cell">
+                    <IconButton
+                      label="View user info"
+                      onClick={() => onViewAuditTrail(teamUser)}
+                      variant="outline"
+                    >
+                      <BadgeInfo aria-hidden="true" size={15} strokeWidth={2} />
+                    </IconButton>
                   </td>
                   <td className="user-directory-actions-cell">
                     <div className="user-directory-actions">

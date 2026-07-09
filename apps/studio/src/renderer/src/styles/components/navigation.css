@@ -139,6 +139,38 @@
   white-space: nowrap;
 }
 
+.sidebar-inbox-badge {
+  align-items: center;
+  background: var(--color-bg-secondary);
+  border: 1px solid color-mix(in srgb, var(--sidebar-divider) 90%, transparent);
+  border-radius: var(--radius-sm);
+  box-sizing: border-box;
+  color: var(--color-text-secondary);
+  display: inline-flex;
+  font-size: var(--font-size-xs);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  height: 1.375rem;
+  justify-content: center;
+  line-height: 1;
+  min-width: 1.375rem;
+  padding: 0.0625rem var(--space-1) 0;
+}
+
+.sidebar-nav-badge {
+  align-items: center;
+  background: var(--color-accent);
+  border-radius: var(--radius-full);
+  color: var(--color-accent-contrast, #fff);
+  display: inline-flex;
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  justify-content: center;
+  line-height: 1;
+  min-width: 1.125rem;
+  padding: 0.125rem var(--space-2);
+}
+
 .sidebar-spacer {
   flex: 1 1 auto;
   min-height: var(--space-4);

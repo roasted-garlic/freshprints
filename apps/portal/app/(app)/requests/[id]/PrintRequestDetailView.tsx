@@ -1,9 +1,10 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import type { PrintRequestItem } from '@fresh-prints/shared/types/printRequest/printRequest.types';
+import { sumPrintRequestItemQuantities } from '@fresh-prints/shared/utils/portalShowQueueCapacity';
 
 import { PortalPrintRequestItemCard } from '../../../../features/print-requests/components/PortalPrintRequestItemCard';
 import { PortalQueueToShowModal } from '../../../../features/print-requests/components/PortalQueueToShowModal';
@@ -158,6 +159,8 @@ export default function PrintRequestDetailView() {
       ? designSummaries.get(itemPendingRemoval.designId)?.title
       : 'this design';
 
+  const totalPrintCount = useMemo(() => sumPrintRequestItemQuantities(items), [items]);
+
   const handleQueuedToShow = useCallback(async () => {
     await Promise.all([reload(), refreshRequests({ silent: true }), refreshCustomer()]);
     await loadAllocationState();
@@ -183,6 +186,7 @@ export default function PrintRequestDetailView() {
   }
 
   const designCountLabel = `${printRequest.itemCount} design${printRequest.itemCount === 1 ? '' : 's'}`;
+  const printCountLabel = `${totalPrintCount} print${totalPrintCount === 1 ? '' : 's'}`;
   const canQueueToShow = isEditable && items.length > 0 && !hasAllocations;
 
   return (
@@ -191,12 +195,13 @@ export default function PrintRequestDetailView() {
         <div className="portal-request-detail-header-copy">
           <p className="portal-eyebrow">Print request</p>
           <div className="portal-request-detail-title-row">
-            <h1>{printRequest.name}</h1>
+            <h1 title={printRequest.name}>{printRequest.name}</h1>
             <div className="portal-request-detail-meta-pills">
               <span className="portal-request-detail-meta-pill">
                 {getStatusLabel(printRequest.status)}
               </span>
               <span className="portal-request-detail-meta-pill">{designCountLabel}</span>
+              <span className="portal-request-detail-meta-pill">{printCountLabel}</span>
             </div>
           </div>
         </div>

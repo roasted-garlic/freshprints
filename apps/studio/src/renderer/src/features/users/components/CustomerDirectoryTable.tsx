@@ -1,4 +1,4 @@
-import { FileText, Pencil } from "lucide-react";
+import { BadgeInfo, FileText, Pencil } from "lucide-react";
 
 import { Badge } from "../../../shared/components/Badge";
 import { Card } from "../../../shared/components/Card";
@@ -17,6 +17,7 @@ interface CustomerDirectoryTableProps {
   error: string | null;
   isLoading: boolean;
   onEditCustomer: (customer: Customer) => void;
+  onViewAuditTrail: (customer: Customer) => void;
   searchQuery: string;
 }
 
@@ -25,6 +26,7 @@ export function CustomerDirectoryTable({
   error,
   isLoading,
   onEditCustomer,
+  onViewAuditTrail,
   searchQuery,
 }: CustomerDirectoryTableProps) {
   if (isLoading) {
@@ -66,7 +68,8 @@ export function CustomerDirectoryTable({
               <th>Username</th>
               <th>Email</th>
               <th>Source</th>
-              <th>Notes</th>
+              <th className="user-directory-notes-header">Notes</th>
+              <th className="user-directory-info-header">INFO</th>
               <th className="user-directory-actions-header">Actions</th>
             </tr>
           </thead>
@@ -81,7 +84,7 @@ export function CustomerDirectoryTable({
                     {getCustomerSignupSourceBadgeLabel(customer)}
                   </Badge>
                 </td>
-                <td>
+                <td className="user-directory-notes-cell">
                   <span
                     aria-label={customer.notes?.trim() ? "Customer has notes" : "Customer has no notes"}
                     className={`customer-notes-indicator${customer.notes?.trim() ? " has-notes" : ""}`}
@@ -89,6 +92,15 @@ export function CustomerDirectoryTable({
                   >
                     <FileText aria-hidden="true" size={15} strokeWidth={2} />
                   </span>
+                </td>
+                <td className="user-directory-info-cell">
+                  <IconButton
+                    label="View user info"
+                    onClick={() => onViewAuditTrail(customer)}
+                    variant="outline"
+                  >
+                    <BadgeInfo aria-hidden="true" size={15} strokeWidth={2} />
+                  </IconButton>
                 </td>
                 <td className="user-directory-actions-cell">
                   <div className="user-directory-actions">

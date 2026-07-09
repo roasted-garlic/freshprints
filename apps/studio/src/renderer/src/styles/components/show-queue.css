@@ -598,6 +598,15 @@
   color: var(--color-text-primary);
 }
 
+.print-requests-tab-helper {
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: 1.45;
+  margin: 0;
+  padding: 0 var(--space-4) var(--space-3);
+}
+
 @media (max-width: 720px) {
   .upcoming-show-detail-facts {
     grid-template-columns: 1fr;
