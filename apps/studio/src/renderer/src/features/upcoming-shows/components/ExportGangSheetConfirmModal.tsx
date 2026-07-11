@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useRef, useState } from "react";
 import { WandSparkles, X } from "lucide-react";
 
 import { Button } from "../../../shared/components/Button";
@@ -35,11 +36,49 @@ const STEP_LABELS: Record<GangSheetExportImageStep, string> = {
   downloading: "Downloading original image",
   resizing: "Resizing to print size",
   nesting: "Nesting images onto the gang sheet",
-  compositing: "Compositing the gang sheet image",
+  compositing: "Compositing gang sheet",
 };
 
-function formatProgressLabel(progress: GangSheetExportProgressEvent): string {
-  return `${progress.imageIndex} of ${progress.imageTotal} images — ${STEP_LABELS[progress.step]}`;
+function formatElapsed(seconds: number): string {
+  const whole = Math.max(0, Math.floor(seconds));
+  const minutes = Math.floor(whole / 60);
+  const remainder = whole % 60;
+
+  if (minutes <= 0) {
+    return `${remainder}s`;
+  }
+
+  return `${minutes}m ${remainder.toString().padStart(2, "0")}s`;
+}
+
+function formatProgressLabel(progress: GangSheetExportProgressEvent, elapsedSeconds: number): string {
+  const elapsed = `Elapsed ${formatElapsed(elapsedSeconds)}`;
+
+  if (progress.step === "compositing" && progress.sheetIndex && progress.sheetTotal) {
+    return `Compositing sheet ${progress.sheetIndex} of ${progress.sheetTotal} — ${elapsed}`;
+  }
+
+  if (progress.step === "nesting") {
+    return `Nesting ${progress.imageTotal} images — ${elapsed}`;
+  }
+
+  return `${progress.imageIndex} of ${progress.imageTotal} images — ${STEP_LABELS[progress.step]} — ${elapsed}`;
+}
+
+function getProgressPercent(progress: GangSheetExportProgressEvent): number {
+  if (progress.step === "compositing" && progress.sheetIndex && progress.sheetTotal) {
+    return Math.min(100, ((progress.sheetIndex - 0.35) / progress.sheetTotal) * 100);
+  }
+
+  if (progress.step === "nesting") {
+    return 92;
+  }
+
+  if (progress.imageTotal <= 0) {
+    return 0;
+  }
+
+  return Math.min(90, (progress.imageIndex / progress.imageTotal) * 90);
 }
 
 function formatByteSize(bytes: number): string {
@@ -48,6 +87,12 @@ function formatByteSize(bytes: number): string {
   }
 
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function formatTotalLength(totalInches: number): string {
+  const inchesLabel = formatInchesForFilename(totalInches);
+  const feetLabel = Number((totalInches / 12).toFixed(2)).toString();
+  return `${inchesLabel}″ total (${feetLabel} ft)`;
 }
 
 export function ExportGangSheetConfirmModal({
@@ -68,6 +113,78 @@ export function ExportGangSheetConfirmModal({
 }: ExportGangSheetConfirmModalProps) {
   const isBusy = isGenerating || isExporting;
   const hasGenerated = Boolean(generated) && sheets.length > 0;
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const generateStartedAtRef = useRef<number | null>(null);
+  const compositingStartedAtRef = useRef<number | null>(null);
+  const lastSheetIndexRef = useRef<number | null>(null);
+  const [etaSeconds, setEtaSeconds] = useState<number | null>(null);
+
+  const totalLengthInches = useMemo(
+    () => sheets.reduce((sum, sheet) => sum + sheet.lengthInches, 0),
+    [sheets],
+  );
+
+  useEffect(() => {
+    if (!isGenerating) {
+      generateStartedAtRef.current = null;
+      compositingStartedAtRef.current = null;
+      lastSheetIndexRef.current = null;
+      setElapsedSeconds(0);
+      setEtaSeconds(null);
+      return;
+    }
+
+    if (generateStartedAtRef.current === null) {
+      generateStartedAtRef.current = Date.now();
+    }
+
+    const intervalId = window.setInterval(() => {
+      const startedAt = generateStartedAtRef.current;
+      if (startedAt) {
+        setElapsedSeconds((Date.now() - startedAt) / 1000);
+      }
+    }, 500);
+
+    return () => window.clearInterval(intervalId);
+  }, [isGenerating]);
+
+  useEffect(() => {
+    if (!isGenerating || !progress || progress.step !== "compositing" || !progress.sheetIndex || !progress.sheetTotal) {
+      return;
+    }
+
+    if (compositingStartedAtRef.current === null) {
+      compositingStartedAtRef.current = Date.now();
+      lastSheetIndexRef.current = progress.sheetIndex;
+      return;
+    }
+
+    if (lastSheetIndexRef.current === progress.sheetIndex) {
+      return;
+    }
+
+    lastSheetIndexRef.current = progress.sheetIndex;
+    const completedSheets = progress.sheetIndex - 1;
+
+    if (completedSheets <= 0 || !compositingStartedAtRef.current) {
+      return;
+    }
+
+    const elapsedCompositingMs = Date.now() - compositingStartedAtRef.current;
+    const averageMsPerSheet = elapsedCompositingMs / completedSheets;
+    const remainingSheets = progress.sheetTotal - completedSheets;
+    setEtaSeconds((averageMsPerSheet * remainingSheets) / 1000);
+  }, [isGenerating, progress]);
+
+  const progressPercent = progress ? getProgressPercent(progress) : Math.min(8, elapsedSeconds);
+  const progressMax =
+    progress?.step === "compositing" && progress.sheetTotal
+      ? progress.sheetTotal
+      : (progress?.imageTotal ?? 100);
+  const progressNow =
+    progress?.step === "compositing" && progress.sheetIndex
+      ? progress.sheetIndex
+      : (progress?.imageIndex ?? 0);
 
   return (
     <div className="modal-overlay modal-overlay-blur">
@@ -95,30 +212,41 @@ export function ExportGangSheetConfirmModal({
           {isGenerating ? (
             <div className="export-show-progress">
               <p className="export-show-progress-label">
-                {progress ? formatProgressLabel(progress) : "Preparing gang sheet generation..."}
+                {progress
+                  ? formatProgressLabel(progress, elapsedSeconds)
+                  : `Preparing gang sheet generation... — Elapsed ${formatElapsed(elapsedSeconds)}`}
               </p>
-              {progress ? (
+              {etaSeconds !== null && progress?.step === "compositing" ? (
+                <p className="print-requests-modal-hint">
+                  About {formatElapsed(etaSeconds)} remaining (estimate)
+                </p>
+              ) : (
+                <p className="print-requests-modal-hint">
+                  Large sheets can take a while — the timer keeps running so you know Studio is still
+                  working.
+                </p>
+              )}
+              <div
+                aria-valuemax={progressMax}
+                aria-valuemin={0}
+                aria-valuenow={progressNow}
+                className="export-show-progress-bar"
+                role="progressbar"
+              >
                 <div
-                  aria-valuemax={progress.imageTotal}
-                  aria-valuemin={0}
-                  aria-valuenow={progress.imageIndex}
-                  className="export-show-progress-bar"
-                  role="progressbar"
-                >
-                  <div
-                    className="export-show-progress-bar-fill"
-                    style={{ width: `${(progress.imageIndex / progress.imageTotal) * 100}%` }}
-                  />
-                </div>
-              ) : null}
+                  className="export-show-progress-bar-fill"
+                  style={{ width: `${progressPercent}%` }}
+                />
+              </div>
             </div>
           ) : hasGenerated && generated ? (
             <div className="export-show-result">
               <p>
                 Generated {generated.placedImageCount} image
                 {generated.placedImageCount === 1 ? "" : "s"} onto {sheets.length} gang sheet
-                {sheets.length === 1 ? "" : "s"} {formatByteSize(generated.totalByteSize)}
+                {sheets.length === 1 ? "" : "s"} · {formatByteSize(generated.totalByteSize)}
               </p>
+              <p className="print-requests-modal-hint">{formatTotalLength(totalLengthInches)}</p>
               <ul className="gang-sheet-preview-list">
                 {sheets.map((sheet) => (
                   <li className="gang-sheet-preview-row" key={sheet.fileName}>

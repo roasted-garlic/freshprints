@@ -1,4 +1,4 @@
-import { copyFile, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { app, dialog } from "electron";
 
@@ -134,30 +134,67 @@ export async function readGangSheetCacheManifest(
   }
 }
 
-export async function getGangSheetCacheStatus(
-  showId: string,
-  fingerprint: string,
-): Promise<GetGangSheetCacheStatusResult> {
-  const manifest = await readGangSheetCacheManifest(showId, fingerprint);
-  if (!manifest) {
-    return {
-      ready: false,
-      sheets: [],
-      totalByteSize: 0,
-      placedImageCount: 0,
-      skippedImageCount: 0,
-      warnings: [],
-    };
-  }
+function emptyGangSheetCacheStatus(): GetGangSheetCacheStatusResult {
+  return {
+    ready: false,
+    fingerprint: null,
+    sheets: [],
+    totalByteSize: 0,
+    placedImageCount: 0,
+    skippedImageCount: 0,
+    warnings: [],
+  };
+}
 
+function statusFromManifest(manifest: GangSheetCacheManifest): GetGangSheetCacheStatusResult {
   return {
     ready: true,
+    fingerprint: manifest.fingerprint,
     sheets: manifest.sheets,
     totalByteSize: manifest.totalByteSize,
     placedImageCount: manifest.placedImageCount,
     skippedImageCount: manifest.skippedImageCount,
     warnings: manifest.warnings,
   };
+}
+
+/** Returns any valid cached generate for the show (disk peek — no fingerprint required). */
+export async function peekGangSheetCacheForShow(showId: string): Promise<GetGangSheetCacheStatusResult> {
+  const showDir = path.join(resolveCacheRoot(), sanitizeGangSheetCacheShowId(showId));
+
+  try {
+    const entries = await readdir(showDir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isDirectory()) {
+        continue;
+      }
+
+      const manifest = await readGangSheetCacheManifest(showId, entry.name);
+      if (manifest) {
+        return statusFromManifest(manifest);
+      }
+    }
+  } catch {
+    // Missing show cache directory is treated as not ready.
+  }
+
+  return emptyGangSheetCacheStatus();
+}
+
+export async function getGangSheetCacheStatus(
+  showId: string,
+  fingerprint?: string,
+): Promise<GetGangSheetCacheStatusResult> {
+  if (!fingerprint) {
+    return peekGangSheetCacheForShow(showId);
+  }
+
+  const manifest = await readGangSheetCacheManifest(showId, fingerprint);
+  if (!manifest) {
+    return emptyGangSheetCacheStatus();
+  }
+
+  return statusFromManifest(manifest);
 }
 
 export async function exportCachedGangSheetsToDirectory(

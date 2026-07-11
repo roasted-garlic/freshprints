@@ -843,7 +843,7 @@ export function UpcomingShowsPage() {
                           }
                         >
                           <Download aria-hidden="true" size={16} strokeWidth={2} />
-                          Export
+                          Export Images
                           <ChevronDown aria-hidden="true" size={14} strokeWidth={2.4} />
                         </Button>
 
@@ -894,7 +894,7 @@ export function UpcomingShowsPage() {
                         ) : (
                           <WandSparkles aria-hidden="true" size={16} strokeWidth={2} />
                         )}
-                        {exportGangSheetPngState.hasGeneratedCache ? "Export Gang Sheets" : "Generate"}
+                        {exportGangSheetPngState.hasGeneratedCache ? "Export Gang Sheet" : "Generate"}
                       </Button>
                     </div>
                   ) : null}

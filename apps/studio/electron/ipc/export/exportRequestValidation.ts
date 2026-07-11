@@ -225,8 +225,17 @@ export function validateClearGangSheetCacheRequest(payload: unknown) {
 }
 
 export function validateGetGangSheetCacheStatusRequest(payload: unknown) {
-  if (!isValidCacheLookup(payload)) {
-    return { error: importIpcFailure("INVALID_INPUT", "Show id and cache fingerprint are required.") };
+  if (!payload || typeof payload !== "object") {
+    return { error: importIpcFailure("INVALID_INPUT", "A show id is required to read the gang sheet cache.") };
+  }
+
+  const request = payload as Partial<GetGangSheetCacheStatusRequest>;
+  if (!isNonEmptyString(request.showId)) {
+    return { error: importIpcFailure("INVALID_INPUT", "A show id is required to read the gang sheet cache.") };
+  }
+
+  if (request.fingerprint !== undefined && !isNonEmptyString(request.fingerprint)) {
+    return { error: importIpcFailure("INVALID_INPUT", "Cache fingerprint must be a non-empty string when provided.") };
   }
 
   return { request: payload as GetGangSheetCacheStatusRequest };

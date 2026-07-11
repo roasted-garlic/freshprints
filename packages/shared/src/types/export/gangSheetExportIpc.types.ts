@@ -78,11 +78,14 @@ export interface ClearGangSheetCacheRequest {
 
 export interface GetGangSheetCacheStatusRequest {
   showId: string;
-  fingerprint: string;
+  /** When omitted, returns any existing cache for the show (fast peek for UI). */
+  fingerprint?: string;
 }
 
 export interface GetGangSheetCacheStatusResult {
   ready: boolean;
+  /** Fingerprint of the ready cache folder, or null when not ready. */
+  fingerprint: string | null;
   sheets: CachedGangSheetSheetMeta[];
   totalByteSize: number;
   placedImageCount: number;
@@ -108,4 +111,8 @@ export interface GangSheetExportProgressEvent {
   imageIndex: number;
   imageTotal: number;
   step: GangSheetExportImageStep;
+  /** Present during compositing — which sheet is being built (1-based). */
+  sheetIndex?: number;
+  /** Present during compositing — total sheets after nesting. */
+  sheetTotal?: number;
 }

@@ -142,6 +142,7 @@ export function useExportGangSheetPng() {
   const { user } = useAuth();
   const [state, setState] = useState<GangSheetGenerateState>(initialState);
   const isBusyRef = useRef(false);
+  const refreshRequestIdRef = useRef(0);
 
   useEffect(() => {
     return window.freshPrints.export.onGangSheetExportProgress((event) => {
@@ -159,6 +160,7 @@ export function useExportGangSheetPng() {
         return;
       }
 
+      refreshRequestIdRef.current += 1;
       isBusyRef.current = true;
       setState({
         isGenerating: true,
@@ -277,6 +279,7 @@ export function useExportGangSheetPng() {
   );
 
   const clearCacheForShow = useCallback(async (showId: string) => {
+    refreshRequestIdRef.current += 1;
     try {
       await window.freshPrints.export.clearGangSheetCache({ showId });
     } catch {
@@ -285,14 +288,74 @@ export function useExportGangSheetPng() {
     setState(initialState);
   }, []);
 
+  const applyCacheStatus = useCallback(
+    (showId: string, fingerprint: string, status: {
+      sheets: CachedGangSheetSheetMeta[];
+      placedImageCount: number;
+      skippedImageCount: number;
+      totalByteSize: number;
+      warnings: ShowExportImageWarning[];
+    }) => {
+      setState({
+        isGenerating: false,
+        isExporting: false,
+        error: null,
+        progress: null,
+        generated: {
+          showId,
+          fingerprint,
+          sheets: status.sheets,
+          placedImageCount: status.placedImageCount,
+          skippedImageCount: status.skippedImageCount,
+          totalByteSize: status.totalByteSize,
+          warnings: status.warnings,
+        },
+        lastSavedPaths: [],
+      });
+    },
+    [],
+  );
+
   const refreshCacheStatus = useCallback(
     async (show: UpcomingShow, layoutSettings: GangSheetLayoutSettings) => {
       if (!user || !permissionService.canManageUpcomingShows(user)) {
         return;
       }
 
+      const refreshId = ++refreshRequestIdRef.current;
+
+      // Drop another show's cache from the button immediately to avoid a stale Export label.
+      setState((current) => {
+        if (current.generated?.showId === show.id || current.isGenerating || current.isExporting) {
+          return current;
+        }
+        return initialState;
+      });
+
       try {
+        // Fast disk peek — no Firestore allocation/design fetch — so Export shows without a Generate flash.
+        const peekResult = await window.freshPrints.export.getGangSheetCacheStatus({
+          showId: show.id,
+        });
+
+        if (refreshId !== refreshRequestIdRef.current) {
+          return;
+        }
+
+        if (peekResult.success && peekResult.data.ready && peekResult.data.fingerprint) {
+          applyCacheStatus(show.id, peekResult.data.fingerprint, peekResult.data);
+        } else {
+          setState((current) =>
+            current.generated?.showId === show.id && !current.isGenerating ? initialState : current,
+          );
+        }
+
+        // Confirm the peeked cache still matches current allocations + layout settings.
         const { imageRequests, error } = await buildImageRequests(user, show);
+        if (refreshId !== refreshRequestIdRef.current) {
+          return;
+        }
+
         if (error || imageRequests.length === 0) {
           setState(initialState);
           return;
@@ -300,40 +363,38 @@ export function useExportGangSheetPng() {
 
         const layoutRequest = buildLayoutRequest(show, layoutSettings, imageRequests);
         const fingerprint = buildGangSheetCacheFingerprint(layoutRequest);
+
+        if (peekResult.success && peekResult.data.ready && peekResult.data.fingerprint === fingerprint) {
+          // Peek already applied the correct cache.
+          return;
+        }
+
         const statusResult = await window.freshPrints.export.getGangSheetCacheStatus({
           showId: show.id,
           fingerprint,
         });
 
-        if (!statusResult.success || !statusResult.data.ready) {
+        if (refreshId !== refreshRequestIdRef.current) {
+          return;
+        }
+
+        if (!statusResult.success || !statusResult.data.ready || !statusResult.data.fingerprint) {
           setState(initialState);
           return;
         }
 
-        setState({
-          isGenerating: false,
-          isExporting: false,
-          error: null,
-          progress: null,
-          generated: {
-            showId: show.id,
-            fingerprint,
-            sheets: statusResult.data.sheets,
-            placedImageCount: statusResult.data.placedImageCount,
-            skippedImageCount: statusResult.data.skippedImageCount,
-            totalByteSize: statusResult.data.totalByteSize,
-            warnings: statusResult.data.warnings,
-          },
-          lastSavedPaths: [],
-        });
+        applyCacheStatus(show.id, statusResult.data.fingerprint, statusResult.data);
       } catch {
-        setState(initialState);
+        if (refreshId === refreshRequestIdRef.current) {
+          setState(initialState);
+        }
       }
     },
-    [user],
+    [applyCacheStatus, user],
   );
 
   const reset = useCallback(() => {
+    refreshRequestIdRef.current += 1;
     isBusyRef.current = false;
     setState(initialState);
   }, []);

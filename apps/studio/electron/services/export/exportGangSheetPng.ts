@@ -196,14 +196,21 @@ export async function generateGangSheetPng(
     return rotatedBytes;
   }
 
-  onProgress({ fileName: request.baseFileName, imageIndex: imageTotal, imageTotal, step: "compositing" });
-
   const sheetTotal = nestResult.sheets.length;
   const labelBandHeightPx = computeLabelBandHeightPx(request.labelFontSizePx);
   const composedSheets: Array<{ fileName: string; lengthInches: number; heightPx: number; buffer: Buffer }> = [];
 
   for (const [sheetOffset, sheet] of nestResult.sheets.entries()) {
     const sheetIndex = sheetOffset + 1;
+    onProgress({
+      fileName: request.baseFileName,
+      imageIndex: imageTotal,
+      imageTotal,
+      step: "compositing",
+      sheetIndex,
+      sheetTotal,
+    });
+
     const sheetHeightPx = sheet.sheetHeightPx + labelBandHeightPx;
     const lengthInches = sheetHeightPx / EXPORT_DPI;
     const fileName = buildGangSheetFilename(request.baseFileName, sheetIndex, sheetTotal, lengthInches);
@@ -275,5 +282,5 @@ export async function clearAllGangSheetCache(): Promise<void> {
 export async function readGangSheetCacheStatus(
   request: GetGangSheetCacheStatusRequest,
 ): Promise<GetGangSheetCacheStatusResult> {
-  return getGangSheetCacheStatus(request.showId, request.fingerprint);
+  return getGangSheetCacheStatus(request.showId, request.fingerprint ?? undefined);
 }
