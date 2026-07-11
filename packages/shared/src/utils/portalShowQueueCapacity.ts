@@ -22,6 +22,11 @@ export function canFitPrintRequestOnShow(input: {
   return input.totalQuantity <= capacity.remainingQuantity;
 }
 
-export function formatShowCapacityExceededMessage(totalQuantity: number, remainingQuantity: number): string {
-  return `This show only has ${remainingQuantity} spot${remainingQuantity === 1 ? "" : "s"} left, but your request has ${totalQuantity} print${totalQuantity === 1 ? "" : "s"}. Choose a different show or contact staff.`;
+/** Friendly customer-facing copy when a show cannot fit the request. */
+export function formatShowCapacityExceededMessage(_totalQuantity: number, remainingQuantity: number): string {
+  if (remainingQuantity <= 0) {
+    return "This show is already full — please choose another show.";
+  }
+
+  return "There aren’t enough spots left on this show for your request — please choose another show.";
 }

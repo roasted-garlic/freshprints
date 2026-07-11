@@ -54,8 +54,17 @@ describe("canFitPrintRequestOnShow", () => {
 });
 
 describe("formatShowCapacityExceededMessage", () => {
-  it("formats a user-safe capacity message", () => {
-    assert.match(formatShowCapacityExceededMessage(15, 5), /5 spots left/);
-    assert.match(formatShowCapacityExceededMessage(15, 5), /15 prints/);
+  it("says the show is full when no spots remain", () => {
+    assert.equal(
+      formatShowCapacityExceededMessage(5, 0),
+      "This show is already full — please choose another show.",
+    );
+  });
+
+  it("asks the customer to pick another show when remaining spots are insufficient", () => {
+    assert.equal(
+      formatShowCapacityExceededMessage(15, 5),
+      "There aren’t enough spots left on this show for your request — please choose another show.",
+    );
   });
 });

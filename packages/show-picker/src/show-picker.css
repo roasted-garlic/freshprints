@@ -116,7 +116,7 @@
   background: var(--color-bg-tertiary, #2a2f3a);
 }
 
-.show-picker-day.is-today:not(.is-selected) .show-picker-day-number {
+.show-picker-day.is-today:not(.is-selected):not(.has-shows-full):not(.has-shows-completed) .show-picker-day-number {
   box-shadow: inset 0 0 0 1px var(--color-accent-primary, #4f8cff);
 }
 
@@ -143,6 +143,26 @@
   font-weight: 700;
 }
 
+.show-picker-day.has-shows-full:not(.is-selected) .show-picker-day-number {
+  box-shadow: inset 0 0 0 1.5px var(--color-warning, #f5b942);
+  color: var(--color-warning-text, var(--color-warning, #f5b942));
+}
+
+.show-picker-day.has-shows-completed:not(.is-selected) .show-picker-day-number {
+  box-shadow: inset 0 0 0 1.5px var(--color-success, #3ecf8e);
+  color: var(--color-success-text, var(--color-success, #3ecf8e));
+}
+
+.show-picker-day.is-selected.has-shows-full .show-picker-day-number {
+  background: var(--color-warning, #f5b942);
+  color: var(--color-text-on-accent, #171b24);
+}
+
+.show-picker-day.is-selected.has-shows-completed .show-picker-day-number {
+  background: var(--color-success, #3ecf8e);
+  color: var(--color-text-on-accent, #171b24);
+}
+
 .show-picker-day-dot {
   background: var(--color-text-muted, #7d8594);
   border-radius: 999px;
@@ -151,12 +171,26 @@
   width: 0.25rem;
 }
 
-.show-picker-day.has-shows .show-picker-day-dot {
+.show-picker-day.has-shows .show-picker-day-dot,
+.show-picker-day-dot--open {
   background: var(--color-accent-primary, #4f8cff);
+}
+
+.show-picker-day-dot--full {
+  background: var(--color-warning, #f5b942);
+}
+
+.show-picker-day-dot--completed {
+  background: var(--color-success, #3ecf8e);
 }
 
 .show-picker-day.is-selected .show-picker-day-dot {
   background: var(--color-text-on-accent, #ffffff);
+}
+
+.show-picker-day.is-selected.has-shows-full .show-picker-day-dot,
+.show-picker-day.is-selected.has-shows-completed .show-picker-day-dot {
+  background: color-mix(in srgb, var(--color-text-on-accent, #ffffff) 85%, transparent);
 }
 
 .show-picker-slots {

@@ -15,6 +15,7 @@ import {
   SHOW_CAPACITY_BAR_ANIMATION_MS,
   ShowPicker,
   buildShowPickerOptions,
+  getDefaultShowPickerOptionId,
 } from '@fresh-prints/show-picker';
 
 import { usePortalAllocatableShows } from '../hooks/usePortalAllocatableShows';
@@ -76,9 +77,30 @@ export function PortalQueueToShowModal({
     [allocatedBaselineByShowId, pendingAllocatedByShowId, shows],
   );
 
+  const defaultShowId = useMemo(
+    () =>
+      getDefaultShowPickerOptionId(showPickerOptions, (showId) => {
+        const show = shows.find((candidate) => candidate.id === showId);
+        if (!show) {
+          return false;
+        }
+
+        return canFitPrintRequestOnShow({
+          totalQuantity,
+          maxTotalQuantity: show.maxTotalQuantity,
+          allocatedQuantity: show.allocatedQuantity,
+        });
+      }),
+    [showPickerOptions, shows, totalQuantity],
+  );
+
+  // Derive on render so ShowPicker mounts with the open show already selected (avoids its
+  // null-selectedId fallback racing to the soonest/full slot).
+  const effectiveSelectedId = selectedShowId ?? (!isLoading ? defaultShowId : null);
+
   const selectedShow = useMemo(
-    () => shows.find((show) => show.id === selectedShowId) ?? null,
-    [selectedShowId, shows],
+    () => shows.find((show) => show.id === effectiveSelectedId) ?? null,
+    [effectiveSelectedId, shows],
   );
 
   const capacityMessage = useMemo(() => {
@@ -107,7 +129,7 @@ export function PortalQueueToShowModal({
 
   const isBusy = isSubmitting || isCelebratingSave;
   const canConfirm =
-    Boolean(selectedShowId) && !capacityMessage && !isLoading && !isBusy && items.length > 0;
+    Boolean(effectiveSelectedId) && !capacityMessage && !isLoading && !isBusy && items.length > 0;
 
   useEffect(() => {
     if (!isOpen) {
@@ -120,10 +142,10 @@ export function PortalQueueToShowModal({
       return;
     }
 
-    if (!isLoading && !selectedShowId && showPickerOptions.length > 0) {
-      setSelectedShowId(showPickerOptions[0]?.id ?? null);
+    if (!isLoading && !selectedShowId && defaultShowId) {
+      setSelectedShowId(defaultShowId);
     }
-  }, [clearError, isOpen, isLoading, selectedShowId, showPickerOptions]);
+  }, [clearError, defaultShowId, isOpen, isLoading, selectedShowId]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -141,7 +163,7 @@ export function PortalQueueToShowModal({
   }, [isBusy, isOpen, onClose]);
 
   const handleConfirm = async () => {
-    if (!selectedShowId || !canConfirm) {
+    if (!effectiveSelectedId || !canConfirm) {
       return;
     }
 
@@ -153,10 +175,10 @@ export function PortalQueueToShowModal({
       );
       await queueToShow({
         printRequestId: printRequest.id,
-        upcomingShowId: selectedShowId,
+        upcomingShowId: effectiveSelectedId,
       });
       setIsCelebratingSave(true);
-      setPendingAllocatedByShowId(new Map([[selectedShowId, totalQuantity]]));
+      setPendingAllocatedByShowId(new Map([[effectiveSelectedId, totalQuantity]]));
       await waitForNextPaint();
       await waitForCapacityBarAnimation();
       await onQueued();
@@ -190,11 +212,16 @@ export function PortalQueueToShowModal({
         onClick={(event) => event.stopPropagation()}
       >
         <header className="modal-header portal-queue-to-show-header">
-          <div>
+          <div className="portal-queue-to-show-header-copy">
             <p className="portal-eyebrow">Add to show</p>
             <h2 id="portal-queue-to-show-title">
               Add &ldquo;{printRequest.name}&rdquo; to a show&apos;s print run
             </h2>
+            {!isLoading ? (
+              <p className="portal-muted portal-queue-to-show-summary">
+                {formatPrintRequestAllocationSummary(items.length, totalQuantity)}
+              </p>
+            ) : null}
           </div>
           <button
             aria-label="Close"
@@ -210,40 +237,34 @@ export function PortalQueueToShowModal({
         <div className="modal-body portal-queue-to-show-body">
           {isLoading ? (
             <PortalLoadingPanel label="Loading show dates…" />
+          ) : loadError ? (
+            <p className="portal-error" role="alert">
+              {loadError}
+            </p>
+          ) : showPickerOptions.length === 0 ? (
+            <p className="portal-muted">No upcoming shows are available right now. Try again later.</p>
           ) : (
-            <>
-              <p className="portal-muted portal-queue-to-show-summary">
-                {formatPrintRequestAllocationSummary(items.length, totalQuantity)}
-              </p>
-
-              {loadError ? (
-                <p className="portal-error" role="alert">
-                  {loadError}
-                </p>
-              ) : showPickerOptions.length === 0 ? (
-                <p className="portal-muted">No upcoming shows are available right now. Try again later.</p>
-              ) : (
-                <ShowPicker
-                  className="portal-show-picker"
-                  onSelect={setSelectedShowId}
-                  options={showPickerOptions}
-                  selectedId={selectedShowId}
-                />
-              )}
-
-              {capacityMessage ? (
-                <p className="portal-error" role="alert">
-                  {capacityMessage}
-                </p>
-              ) : null}
-
-              {submitError || actionError ? (
-                <p className="portal-error" role="alert">
-                  {submitError ?? actionError}
-                </p>
-              ) : null}
-            </>
+            <ShowPicker
+              className="portal-show-picker"
+              onSelect={setSelectedShowId}
+              options={showPickerOptions}
+              selectedId={effectiveSelectedId}
+            />
           )}
+        </div>
+
+        <div className="portal-queue-to-show-alerts" aria-live="polite">
+          {capacityMessage ? (
+            <p className="portal-error portal-queue-to-show-alert" role="alert">
+              {capacityMessage}
+            </p>
+          ) : null}
+
+          {submitError || actionError ? (
+            <p className="portal-error portal-queue-to-show-alert" role="alert">
+              {submitError ?? actionError}
+            </p>
+          ) : null}
         </div>
 
         <footer className="modal-footer portal-queue-to-show-footer">

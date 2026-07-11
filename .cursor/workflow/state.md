@@ -4,49 +4,58 @@
 managed-phase
 
 ## Current Goal
-portal-print-progress-rail — Portal request detail: Queued → Printing → Done stage rail + live show elapsed clock (no quantity/design checklist).
+show-calendar-day-markers — Distinct calendar circle/dot for full (warning) and completed (success) show days.
 
 ## Phase
-test — Implementation complete; automated PASS; awaiting callable deploy + manual UI QA.
+signoff — complete
 
 ## Plan Status
-`docs/workflow/plans/2026-07-10-portal-print-progress-rail-plan.md` — **complete** (approved)
+`docs/workflow/plans/2026-07-11-show-calendar-day-markers-plan.md` — **complete** (approved)
 
 ## Review Status
-**approved** — `docs/workflow/reviews/2026-07-10-portal-print-progress-rail-review.md`
+**approved** — `docs/workflow/reviews/2026-07-11-show-calendar-day-markers-review.md`
 
 ## Implementation Status
 complete
 
 ## Test Status
-passed_with_notes — automated PASS; callable deploy + manual QA outstanding  
-Report: `docs/workflow/reviews/2026-07-10-portal-print-progress-rail-test-report.md`
+passed_with_notes — `docs/workflow/reviews/2026-07-11-show-calendar-day-markers-test-report.md`
 
 ## Signoff Status
-pending
+**approved** — `docs/workflow/reviews/2026-07-11-show-calendar-day-markers-signoff.md`
+
+## DONE
+yes
 
 ## Blocked
 no
 
 ## Human Checkpoint Required
-yes
+no
 
 ## Human Checkpoint Reason
-Deploy `getPortalShowPrintProgress` callable, then manual UI QA of stage rail + elapsed clock on Portal request detail.
+—
 
 ## Allowed Actions
-Record deploy confirmation and manual QA feedback; write signoff after PASS; read docs
+Read docs; start next managed phase; resume parked goals
 
 ## Forbidden Actions
-Quantity/design checklist; opening upcomingShows client reads; production deploy without approval
+—
 
 ## Next Required Step
-Await human: deploy callable + manual Portal progress QA
+Idle — pick next goal or resume parked portal-print-progress-rail
 
 
 ## Decision Log
+- 2026-07-11 — show-calendar-day-markers signed off (full=warning, completed=success day circles).
+- 2026-07-11 — portal-show-calendar-default-open signed off (prefer next open/fitting show in Portal queue-to-show).
+- 2026-07-11 — User: portal show calendar should default to next open show if soonest is full. Park portal-print-progress-rail (still needs callable deploy + manual QA).
 - 2026-07-10 — User: ship stage rail + elapsed clock only; defer quantity/design checklist; Done = finished stage. Park gang-sheet-local-generate (manual QA still outstanding).
 - 2026-07-10 — User approved local-cache generate/preview/export (not Firebase). Park staff-inbox-firestore-acks (still needs rules+wipe deploy + manual QA).
+
+## Parked: portal-print-progress-rail
+- Implementation complete; automated PASS; awaiting callable deploy + manual UI QA
+- Plan/review/test: `docs/workflow/plans|reviews/2026-07-10-portal-print-progress-rail-*`
 
 ## Parked: gang-sheet-local-generate
 - Implementation complete; automated PASS; manual UI QA outstanding
