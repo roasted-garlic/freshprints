@@ -34,6 +34,17 @@ interface DesignDocumentData {
   printWidthInches?: unknown;
   printHeightInches?: unknown;
   updatedAt?: unknown;
+  createdAt?: unknown;
+  requestCount?: unknown;
+  lastRequestedAt?: unknown;
+}
+
+function timestampToMillis(value: unknown): number | undefined {
+  if (value instanceof Timestamp) {
+    return value.toMillis();
+  }
+
+  return undefined;
 }
 
 function mapCatalogDesign(designId: string, data: DesignDocumentData): CatalogDesign | null {
@@ -55,6 +66,12 @@ function mapCatalogDesign(designId: string, data: DesignDocumentData): CatalogDe
     previewPath: typeof data.previewPath === 'string' ? data.previewPath : undefined,
     printWidthInches: typeof data.printWidthInches === 'number' ? data.printWidthInches : undefined,
     printHeightInches: typeof data.printHeightInches === 'number' ? data.printHeightInches : undefined,
+    createdAtMs: timestampToMillis(data.createdAt),
+    requestCount:
+      typeof data.requestCount === 'number' && Number.isFinite(data.requestCount) && data.requestCount >= 0
+        ? data.requestCount
+        : 0,
+    lastRequestedAtMs: timestampToMillis(data.lastRequestedAt),
   };
 }
 

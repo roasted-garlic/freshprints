@@ -1,41 +1,50 @@
 'use client';
 
-import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { CatalogDesignCard } from '../../../features/catalog/components/CatalogDesignCard';
-import { CatalogDesignDetailsModal } from '../../../features/catalog/components/CatalogDesignDetailsModal';
-import { CatalogFilterBar } from '../../../features/catalog/components/CatalogFilterBar';
-import { CatalogSelectionCard } from '../../../features/catalog/components/CatalogSelectionCard';
-import { CatalogTagFilterModal } from '../../../features/catalog/components/CatalogTagFilterModal';
-import { useCatalogCategories } from '../../../features/catalog/hooks/useCatalogCategories';
+import {
+  getCatalogDiscoveryModeLabel,
+  parseCatalogDiscoveryMode,
+  rankCatalogDiscoveryDesigns,
+  type CatalogDiscoveryMode,
+} from '@fresh-prints/shared/utils/catalogDiscoveryRanking';
+
+import { CatalogDesignCard } from '../components/CatalogDesignCard';
+import { CatalogDesignDetailsModal } from '../components/CatalogDesignDetailsModal';
+import { CatalogFilterBar } from '../components/CatalogFilterBar';
+import { CatalogSelectionCard } from '../components/CatalogSelectionCard';
+import { CatalogTagFilterModal } from '../components/CatalogTagFilterModal';
+import { useCatalogCategories } from '../hooks/useCatalogCategories';
 import {
   useCatalogCategoryOptions,
   useCatalogDesigns,
   useFilteredCatalogDesigns,
-} from '../../../features/catalog/hooks/useCatalogDesigns';
-import type { CatalogDesign } from '../../../features/catalog/types/catalog.types';
+} from '../hooks/useCatalogDesigns';
+import type { CatalogDesign } from '../types/catalog.types';
 import {
   filterCatalogDesignsByCategory,
   filterCatalogDesignsBySearch,
   sortCatalogTags,
-} from '../../../features/catalog/utils/catalogSearch';
-import { catalogStorageService } from '../../../features/catalog/services/catalogStorageService';
-import { usePortalPrintRequests } from '../../../features/print-requests/context/PortalPrintRequestContext';
-import { useAddDesignToRequestFlow } from '../../../features/print-requests/hooks/useAddDesignToRequestFlow';
-import { usePortalPrintRequestSelectionMode } from '../../../features/print-requests/hooks/usePortalPrintRequestSelectionMode';
-import { buildCatalogSelectionHref } from '../../../features/print-requests/utils/catalogSelectionNavigation';
-import { PortalConfirmModal } from '../../../features/shared/components/PortalConfirmModal';
-import { PortalPickContinuableRequestModal } from '../../../features/shared/components/PortalPickContinuableRequestModal';
+} from '../utils/catalogSearch';
+import { catalogStorageService } from '../services/catalogStorageService';
+import { usePortalPrintRequests } from '../../print-requests/context/PortalPrintRequestContext';
+import { useAddDesignToRequestFlow } from '../../print-requests/hooks/useAddDesignToRequestFlow';
+import { usePortalPrintRequestSelectionMode } from '../../print-requests/hooks/usePortalPrintRequestSelectionMode';
+import {
+  buildCatalogLibraryHref,
+  buildCatalogSelectionHref,
+  CATALOG_HOME_PATH,
+} from '../../print-requests/utils/catalogSelectionNavigation';
+import { PortalConfirmModal } from '../../shared/components/PortalConfirmModal';
+import { PortalPickContinuableRequestModal } from '../../shared/components/PortalPickContinuableRequestModal';
 import {
   ArrowLeftIcon,
-  ClipboardListIcon,
   PlayCircleIcon,
   PlusCircleIcon,
   SaveIcon,
   XIcon,
-} from '../../../features/shared/components/PortalIcons';
+} from '../../shared/components/PortalIcons';
 
 export function CatalogPageContent() {
   const router = useRouter();
@@ -43,10 +52,13 @@ export function CatalogPageContent() {
   const selectionModeActive = searchParams.get('mode') === 'request-selection';
   const selectionRequestId = selectionModeActive ? searchParams.get('requestId') : null;
   const seedDesignId = selectionModeActive ? searchParams.get('seedDesignId') : null;
+  const discoveryMode = parseCatalogDiscoveryMode(searchParams.get('discover'));
+  const initialSearch = searchParams.get('q') ?? '';
+  const initialCategory = searchParams.get('category') ?? '';
   const appliedSeedDesignIdRef = useRef<string | null>(null);
 
-  const [searchQuery, setSearchQuery] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('');
+  const [searchQuery, setSearchQuery] = useState(initialSearch);
+  const [categoryFilter, setCategoryFilter] = useState(initialCategory);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [isTagFilterModalOpen, setIsTagFilterModalOpen] = useState(false);
   const [selectedDesign, setSelectedDesign] = useState<CatalogDesign | null>(null);
@@ -105,18 +117,51 @@ export function CatalogPageContent() {
     selectedTags,
   });
 
+  const displayedDesigns = useMemo(() => {
+    if (!discoveryMode) {
+      return filteredDesigns;
+    }
+
+    return rankCatalogDiscoveryDesigns(filteredDesigns, discoveryMode);
+  }, [discoveryMode, filteredDesigns]);
+
   const categoryOptions = useCatalogCategoryOptions(categories, designs, selectedTags, searchQuery);
+  const activeCategoryName =
+    categories.find((category) => category.id === categoryFilter)?.name ?? null;
+  const curatedLibraryView = Boolean(discoveryMode || categoryFilter);
 
   const hasActiveFilters = Boolean(
-    searchQuery.trim() || categoryFilter || selectedTags.length > 0,
+    searchQuery.trim() || categoryFilter || selectedTags.length > 0 || discoveryMode,
   );
 
-  const designCountLabel = `${filteredDesigns.length} design${filteredDesigns.length === 1 ? '' : 's'}`;
+  const designCountLabel = `${displayedDesigns.length} design${displayedDesigns.length === 1 ? '' : 's'}`;
+
+  function syncLibraryUrl(next: {
+    discover?: CatalogDiscoveryMode | null;
+    search?: string | null;
+    categoryId?: string | null;
+  }) {
+    router.replace(
+      buildCatalogLibraryHref({
+        selectionMode: selectionModeActive,
+        requestId: selectionRequestId,
+        discover: next.discover === undefined ? discoveryMode : next.discover,
+        search: next.search === undefined ? searchQuery : next.search,
+        categoryId: next.categoryId === undefined ? categoryFilter : next.categoryId,
+      }),
+    );
+  }
 
   function clearFilters() {
     setSearchQuery('');
     setCategoryFilter('');
     setSelectedTags([]);
+    syncLibraryUrl({ discover: discoveryMode, search: '', categoryId: '' });
+  }
+
+  function handleCategoryChange(nextCategoryId: string) {
+    setCategoryFilter(nextCategoryId);
+    syncLibraryUrl({ categoryId: nextCategoryId || null });
   }
 
   function removeSelectedTag(tagToRemove: string) {
@@ -129,6 +174,11 @@ export function CatalogPageContent() {
   const requestActionPendingLabel = hasContinuableRequests ? 'Continuing…' : 'Starting…';
 
   const { resetTransientState } = addDesignFlow;
+
+  useEffect(() => {
+    setSearchQuery(searchParams.get('q') ?? '');
+    setCategoryFilter(searchParams.get('category') ?? '');
+  }, [searchParams]);
 
   useEffect(() => {
     if (!selectionModeActive) {
@@ -259,18 +309,27 @@ export function CatalogPageContent() {
       {!selectionModeActive ? (
         <header className="portal-catalog-topbar">
           <div className="portal-catalog-topbar-copy">
-            <h1>Design Library</h1>
-            <p className="portal-muted">Browse designs and create print requests for our Whatnot shows.</p>
+            <button
+              className="portal-catalog-back-link"
+              onClick={() => router.push(CATALOG_HOME_PATH)}
+              type="button"
+            >
+              <ArrowLeftIcon />
+              Discover
+            </button>
+            <h1>
+              {discoveryMode
+                ? getCatalogDiscoveryModeLabel(discoveryMode)
+                : (activeCategoryName ?? 'Design Library')}
+            </h1>
+            <p className="portal-muted portal-catalog-topbar-subtitle">
+              {curatedLibraryView
+                ? 'Search and filters still apply to this list.'
+                : 'Search and filter the full catalog, or open a curated list from Discover.'}
+            </p>
           </div>
 
           <div className="portal-catalog-topbar-actions">
-            <Link
-              className="portal-button portal-button-secondary portal-button-leading-icon"
-              href="/requests?tab=working"
-            >
-              <ClipboardListIcon />
-              My requests
-            </Link>
             <button
               className="portal-button portal-button-primary portal-button-leading-icon"
               disabled={pageBusy}
@@ -351,7 +410,7 @@ export function CatalogPageContent() {
           <div className="design-library-filter-dock">
             <div className="design-library-summary-row">
               <span className="design-library-count-chip">{designCountLabel}</span>
-              {hasActiveFilters ? (
+              {Boolean(searchQuery.trim() || categoryFilter || selectedTags.length > 0) ? (
                 <button
                   className="portal-button portal-button-secondary portal-button-sm portal-button-leading-icon"
                   onClick={clearFilters}
@@ -366,7 +425,7 @@ export function CatalogPageContent() {
             <CatalogFilterBar
               categoryFilter={categoryFilter}
               categoryOptions={categoryOptions}
-              onCategoryChange={setCategoryFilter}
+              onCategoryChange={handleCategoryChange}
               onOpenTags={() => setIsTagFilterModalOpen(true)}
               onSearchChange={setSearchQuery}
               searchQuery={searchQuery}
@@ -397,19 +456,19 @@ export function CatalogPageContent() {
         <div className="design-library-catalog-scroll">
           {isLoading || (selectionModeActive && selectionMode.isLoading) ? (
             <div className="design-library-loading-state">Loading design library…</div>
-          ) : filteredDesigns.length === 0 ? (
+          ) : displayedDesigns.length === 0 ? (
             <div className="design-library-empty-state">
               <p className="portal-eyebrow">Design library</p>
               <h3>{hasActiveFilters ? 'No designs found' : 'No designs yet'}</h3>
               <p>
                 {hasActiveFilters
-                  ? 'Try adjusting your search, category, or tag filters.'
+                  ? 'Try adjusting your search, category, tag, or discovery filters.'
                   : 'Designs you can use for print requests will appear here.'}
               </p>
             </div>
           ) : selectionModeActive ? (
             <div className="design-grid" role="list">
-              {filteredDesigns.map((design) => {
+              {displayedDesigns.map((design) => {
                 const selection = selectionMode.selectedDesigns[design.id];
 
                 return (
@@ -428,7 +487,7 @@ export function CatalogPageContent() {
             </div>
           ) : (
             <div className="design-grid" role="list">
-              {filteredDesigns.map((design) => (
+              {displayedDesigns.map((design) => (
                 <div key={design.id} role="listitem">
                   <CatalogDesignCard
                     design={design}

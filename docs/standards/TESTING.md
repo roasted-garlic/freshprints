@@ -90,6 +90,13 @@ Studio sidebar **Test Data Reset** (`/test-data-reset`) — owner/admin on `fres
 6. Wipe of print requests / show-queue attachments / upcoming shows also clears `staffInboxAcks` (inbox Done history).
 7. Print-request or attachments-only wipe also zeros each kept upcoming show’s `allocatedQuantity`, resets queue `productionStatus` from `full` / `printing` / `fully_printed` / `completed` → `open`, and clears print timer fields so Show Queue looks empty and allocatable again (`archived` / `canceled` are left alone).
 
+### Portal Design Library discovery
+
+1. Deploy `onPrintRequestItemCreated` so Portal/Studio item creates update `requestCount` / `lastRequestedAt`.
+2. Browse `/catalog`: New This Week / Popular / Recently Requested rails; no My requests header button.
+3. View all → `?discover=new|popular|recent` hides rails and sorts/filters the grid; Back to discovery clears it.
+4. Selection mode shows the same rails above the selection grid.
+
 ### Staff inbox (Firestore acks)
 
 1. Deploy `firestore:rules` (and `wipeOperationalTestData` if wipe expansion not yet deployed).

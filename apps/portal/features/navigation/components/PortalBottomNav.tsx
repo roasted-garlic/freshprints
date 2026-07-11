@@ -9,7 +9,7 @@ import { portalNavItems, resolveActivePortalNavItem } from '../constants/portalN
 import { PortalNavIcon } from './PortalNavIcon';
 
 const BOTTOM_NAV_LABELS: Record<string, string> = {
-  designs: 'Designs',
+  designs: 'Home',
   requests: 'Requests',
 };
 

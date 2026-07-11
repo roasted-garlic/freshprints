@@ -13,3 +13,4 @@ export { testAiEnrichmentPlayground } from "./testAiEnrichmentPlayground";
 export { testAiEnrichmentTagRerank } from "./testAiEnrichmentTagRerank";
 export { updateAiEnrichmentSettings } from "./updateAiEnrichmentSettings";
 export { wipeOperationalTestData } from "./wipeOperationalTestData";
+export { onPrintRequestItemCreated } from "./onPrintRequestItemCreated";

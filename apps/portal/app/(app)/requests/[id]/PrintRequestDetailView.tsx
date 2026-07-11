@@ -22,6 +22,7 @@ import { usePortalPrintRequests } from '../../../../features/print-requests/cont
 import { usePrintRequestDetail } from '../../../../features/print-requests/hooks/usePrintRequestDetail';
 import { usePortalShowPrintProgress } from '../../../../features/print-requests/hooks/usePortalShowPrintProgress';
 import { portalPrintRequestService } from '../../../../features/print-requests/services/portalPrintRequestService';
+import { buildCatalogSelectionHref } from '../../../../features/print-requests/utils/catalogSelectionNavigation';
 import { PortalConfirmModal } from '../../../../features/shared/components/PortalConfirmModal';
 import { ArrowLeftIcon, ImagePlusIcon, LibraryIcon, RefreshIcon } from '../../../../features/shared/components/PortalIcons';
 
@@ -259,7 +260,7 @@ export default function PrintRequestDetailView() {
             <button
               className="portal-button portal-button-secondary portal-button-leading-icon portal-request-detail-add-button"
               onClick={() =>
-                router.push(`/catalog?mode=request-selection&requestId=${printRequest.id}`)
+                router.push(buildCatalogSelectionHref(printRequest.id))
               }
               type="button"
             >
@@ -278,7 +279,7 @@ export default function PrintRequestDetailView() {
           <button
             className="portal-button portal-button-primary portal-button-leading-icon portal-request-detail-add-button"
             onClick={() =>
-              router.push(`/catalog?mode=request-selection&requestId=${printRequest.id}`)
+              router.push(buildCatalogSelectionHref(printRequest.id))
             }
             type="button"
           >
@@ -324,7 +325,7 @@ export default function PrintRequestDetailView() {
               <button
                 className="portal-button portal-button-primary portal-button-leading-icon"
                 onClick={() =>
-                  router.push(`/catalog?mode=request-selection&requestId=${printRequest.id}`)
+                  router.push(buildCatalogSelectionHref(printRequest.id))
                 }
                 type="button"
               >

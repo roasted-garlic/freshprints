@@ -113,6 +113,33 @@ Portal catalog browse and design details were read-only. Customers could only st
 
 ---
 
+### ADR-FP-072: Portal Design Library discovery sections (lightweight)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-11 |
+| Status | accepted |
+
+**Context**
+
+The Portal catalog was a flat searchable grid. Customers needed curated discovery without Phase 10 analytics.
+
+**Decision**
+
+1. Three sections: **New This Week** (`createdAt` last 7 days), **Popular** (lifetime `requestCount`), **Recently Requested** (`lastRequestedAt` then `requestCount`).
+2. **View All** stays on `/catalog` via `?discover=new|popular|recent` — hide curated rows, apply sort/filter.
+3. Ranking helpers live in shared `catalogDiscoveryRanking.ts`; Phase 10 may replace only `rankRecentlyRequested`.
+4. `printRequestItems` **onCreate** Cloud Function increments `requestCount` / `lastRequestedAt` (Portal + Studio). Studio client increment removed to avoid double-count.
+5. Do **not** add `favoriteCount` now — optional fields can land later without migration.
+6. Remove Design Library **My requests** header button (nav covers requests).
+
+**Consequences**
+
+- Deploy `onPrintRequestItemCreated` required for accurate Popular / Recently Requested after Portal adds.
+- No rolling analytics collections in this phase.
+
+---
+
 ### ADR-FP-071: One working print request per portal customer
 
 | Field | Value |

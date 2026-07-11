@@ -4,26 +4,26 @@
 managed-phase
 
 ## Current Goal
-portal-one-working-request — At most one draft/editing print request per portal customer (UI + callable).
+portal-catalog-discovery — Design Library discovery sections (New / Popular / Recently Requested) + counter trigger; remove My requests.
 
 ## Phase
-test — Implementation complete; awaiting function/index deploy + manual QA.
+test — Implementation complete; awaiting function deploy + manual QA.
 
 ## Plan Status
-`docs/workflow/plans/2026-07-11-portal-one-working-request-plan.md` — **complete** (approved)
+`docs/workflow/plans/2026-07-11-portal-catalog-discovery-plan.md` — **complete** (approved)
 
 ## Review Status
-**approved** — `docs/workflow/reviews/2026-07-11-portal-one-working-request-review.md`
+**approved** — `docs/workflow/reviews/2026-07-11-portal-catalog-discovery-review.md`
 
 ## Implementation Status
 complete
 
 ## Test Status
-passed_with_notes — unit PASS; deploy + manual QA outstanding  
-Report: `docs/workflow/reviews/2026-07-11-portal-one-working-request-test-report.md`
+passed_with_notes — unit + functions tsc PASS; deploy + manual QA outstanding  
+Report: `docs/workflow/reviews/2026-07-11-portal-catalog-discovery-test-report.md`
 
 ## Signoff Status
-pending — `docs/workflow/reviews/2026-07-11-portal-one-working-request-signoff.md`
+pending — `docs/workflow/reviews/2026-07-11-portal-catalog-discovery-signoff.md`
 
 ## Blocked
 no
@@ -32,25 +32,33 @@ no
 yes
 
 ## Human Checkpoint Reason
-Deploy `createPortalPrintRequest` + Firestore indexes (`customerId`+`status`), then manual QA of Start/Continue one-request lock.
+Deploy `onPrintRequestItemCreated`, then manual QA of discovery rails / View all / selection mode / counters.
 
 ## Allowed Actions
 Record deploy confirmation and manual QA; write final signoff after PASS; read docs
 
 ## Forbidden Actions
-Production deploy without approval; relaxing the one-request rule
+Phase 10 analytics; Favorites; production deploy without approval
 
 ## Next Required Step
-Await human: deploy callable + indexes, then reply PASS/FAIL on one-working-request QA
+Await human: deploy onPrintRequestItemCreated + discovery QA (PASS/FAIL)
 
 
 ## Decision Log
+- 2026-07-11 — Discover: add up to 3 popular category rails (ranked by sum of requestCount; min 3 designs); View all → library `?category=`.
+- 2026-07-11 — Portal catalog UX polish: `/catalog` = discovery landing (carousels + search); `/catalog/library` = full Design Library (search/filters/View all/selection). Invisible-scroll carousels with L/R buttons.
+- 2026-07-11 — portal-catalog-discovery implemented (ADR-FP-072); awaiting deploy + QA.
+- 2026-07-11 — User approved portal catalog discovery plan; park portal-one-working-request (still needs createPortalPrintRequest deploy + QA).
 - 2026-07-11 — User: lock portal to one working (draft/editing) request at a time. ADR-FP-071.
 - 2026-07-11 — show-calendar-day-markers signed off (full=warning, completed=success day circles).
 - 2026-07-11 — portal-show-calendar-default-open signed off (prefer next open/fitting show in Portal queue-to-show).
 - 2026-07-11 — User: portal show calendar should default to next open show if soonest is full. Park portal-print-progress-rail (still needs callable deploy + manual QA).
 - 2026-07-10 — User: ship stage rail + elapsed clock only; defer quantity/design checklist; Done = finished stage. Park gang-sheet-local-generate (manual QA still outstanding).
 - 2026-07-10 — User approved local-cache generate/preview/export (not Firebase). Park staff-inbox-firestore-acks (still needs rules+wipe deploy + manual QA).
+
+## Parked: portal-one-working-request
+- Implementation complete; awaiting createPortalPrintRequest + indexes deploy + manual QA
+- Plan/review: `docs/workflow/plans|reviews/2026-07-11-portal-one-working-request-*`
 
 ## Parked: portal-print-progress-rail
 - Implementation complete; automated PASS; awaiting callable deploy + manual UI QA

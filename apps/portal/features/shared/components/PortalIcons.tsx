@@ -27,6 +27,36 @@ export function ArrowLeftIcon({ size }: PortalIconProps) {
   );
 }
 
+export function ChevronLeftIcon({ size }: PortalIconProps) {
+  return (
+    <IconSvg size={size}>
+      <path
+        d="M15 18l-6-6 6-6"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+    </IconSvg>
+  );
+}
+
+export function ChevronRightIcon({ size }: PortalIconProps) {
+  return (
+    <IconSvg size={size}>
+      <path
+        d="M9 18l6-6-6-6"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+    </IconSvg>
+  );
+}
+
 export function CheckIcon({ size }: PortalIconProps) {
   return (
     <IconSvg size={size}>

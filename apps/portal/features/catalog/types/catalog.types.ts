@@ -20,6 +20,11 @@ export interface CatalogDesign {
   previewPath?: string;
   printWidthInches?: number;
   printHeightInches?: number;
+  /** Milliseconds since epoch; omitted when missing on legacy docs. */
+  createdAtMs?: number;
+  requestCount: number;
+  /** Milliseconds since epoch; omitted when never requested. */
+  lastRequestedAtMs?: number;
 }
 
 export interface CatalogDesignListCursor {

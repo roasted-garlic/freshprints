@@ -797,10 +797,7 @@ export const printRequestService = {
       updatedAt: serverTimestamp(),
     });
 
-    await updateDoc(doc(firestoreCollectionService.getDesignsCollection(), design.id), {
-      requestCount: (design.requestCount ?? 0) + 1,
-      lastRequestedAt: serverTimestamp(),
-    });
+    // requestCount / lastRequestedAt are updated by Cloud Function onPrintRequestItemCreated.
 
     const createdSnapshot = await getDoc(itemRef);
     return mapPrintRequestItemData(createdSnapshot.id, createdSnapshot.data() as PrintRequestItemDocumentData);

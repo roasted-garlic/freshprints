@@ -2,12 +2,12 @@
 
 import { Suspense } from 'react';
 
-import { CatalogPageContent } from '../../../features/catalog/pages/CatalogPageContent';
+import { CatalogHomePageContent } from '../../../features/catalog/pages/CatalogHomePageContent';
 
 export default function CatalogPage() {
   return (
-    <Suspense fallback={<div className="portal-page portal-muted">Loading design library…</div>}>
-      <CatalogPageContent />
+    <Suspense fallback={<div className="portal-page portal-muted">Loading designs…</div>}>
+      <CatalogHomePageContent />
     </Suspense>
   );
 }

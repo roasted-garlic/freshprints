@@ -287,7 +287,7 @@ export interface Design {
   /** @deprecated — use showAddCount (Phase 10) */
   queueCount: number;
 
-  /** Popularity counters — analytics only; do not change status (Phase 10) */
+  /** Popularity counters — lightweight discovery (Portal) + future Phase 10 analytics; do not change status */
   requestCount?: number;
   showAddCount?: number;
   printCount?: number;
