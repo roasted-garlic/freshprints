@@ -912,25 +912,57 @@ export function UpcomingShowsPage() {
                 </div>
 
                 {permissionService.canManageUpcomingShows(user) ? (
-                  <Card className="show-production-timer-card">
-                    <div className="show-production-timer-header">
-                      <div>
+                  <Card
+                    className={[
+                      "show-production-timer-card",
+                      productionTimer.isFinished
+                        ? "is-finished"
+                        : productionTimer.isPaused
+                          ? "is-paused"
+                          : productionTimer.isPrinting
+                            ? "is-live"
+                            : "is-idle",
+                    ].join(" ")}
+                  >
+                    <div className="show-production-timer-readout" aria-live="polite">
+                      <div className="show-production-timer-label-row">
+                        <span
+                          aria-hidden="true"
+                          className={[
+                            "show-production-timer-live-dot",
+                            productionTimer.isPrinting ? "is-pulsing" : "",
+                          ]
+                            .filter(Boolean)
+                            .join(" ")}
+                        />
                         <p className="eyebrow">Live printing</p>
-                        <p className="show-production-timer-elapsed" aria-live="polite">
-                          {productionTimer.formattedElapsed}
-                        </p>
-                        <p className="print-requests-workflow-copy">
+                        <span className="show-production-timer-status-chip">
                           {productionTimer.isFinished
-                            ? "This show's printing run is finished."
+                            ? "Finished"
                             : productionTimer.isPaused
-                              ? "Printing is paused. Resume when the press is running again."
+                              ? "Paused"
                               : productionTimer.isPrinting
-                                ? "Timer is running. Customers see this request as Printing in the portal."
+                                ? "Running"
                                 : productionTimer.isPastScheduledShow
-                                  ? PAST_SHOW_READ_ONLY_MESSAGE
-                                  : "Start the timer when printing begins so customers can track request progress in the portal. Exporting does not start the timer."}
-                        </p>
+                                  ? "Past show"
+                                  : "Ready"}
+                        </span>
                       </div>
+                      <p className="show-production-timer-elapsed">{productionTimer.formattedElapsed}</p>
+                    </div>
+
+                    <div className="show-production-timer-side">
+                      <p className="show-production-timer-copy">
+                        {productionTimer.isFinished
+                          ? "This show's printing run is finished."
+                          : productionTimer.isPaused
+                            ? "Paused — resume when the printer is running again."
+                            : productionTimer.isPrinting
+                              ? "Customers see this as Printing in the portal."
+                              : productionTimer.isPastScheduledShow
+                                ? PAST_SHOW_READ_ONLY_MESSAGE
+                                : "Start when the printer begins. Exporting does not start the timer."}
+                      </p>
                       <div className="show-production-timer-actions">
                         {productionTimer.canStart ? (
                           <Button
@@ -980,8 +1012,9 @@ export function UpcomingShowsPage() {
                         ) : null}
                       </div>
                     </div>
+
                     {productionTimer.actionError ? (
-                      <p className="print-requests-error" role="alert">
+                      <p className="print-requests-error show-production-timer-error" role="alert">
                         {productionTimer.actionError}
                       </p>
                     ) : null}
@@ -1108,8 +1141,8 @@ export function UpcomingShowsPage() {
                           <div>
                             <strong>{group.requestNameSnapshot}</strong>
                             <p>
-                              {group.allocations.length} item{group.allocations.length === 1 ? "" : "s"} |{" "}
-                              {totalAllocated} allocated
+                              {group.allocations.length} Design{group.allocations.length === 1 ? "" : "s"} |{" "}
+                              {totalAllocated} Item{totalAllocated === 1 ? "" : "s"}
                             </p>
                           </div>
                           <div className="show-allocation-row-actions">
