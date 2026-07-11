@@ -4,23 +4,23 @@
 managed-phase
 
 ## Current Goal
-gang-sheet-local-generate — Local Generate → preview lengths → Download/Export from Electron cache (no Firebase Storage for PNGs).
+portal-print-progress-rail — Portal request detail: Queued → Printing → Done stage rail + live show elapsed clock (no quantity/design checklist).
 
 ## Phase
-test — Implementation complete; automated tests PASS; awaiting manual UI QA.
+test — Implementation complete; automated PASS; awaiting callable deploy + manual UI QA.
 
 ## Plan Status
-`docs/workflow/plans/2026-07-10-gang-sheet-local-generate-plan.md` — **complete** (approved)
+`docs/workflow/plans/2026-07-10-portal-print-progress-rail-plan.md` — **complete** (approved)
 
 ## Review Status
-**approved** — `docs/workflow/reviews/2026-07-10-gang-sheet-local-generate-review.md`
+**approved** — `docs/workflow/reviews/2026-07-10-portal-print-progress-rail-review.md`
 
 ## Implementation Status
 complete
 
 ## Test Status
-passed_with_notes — automated PASS; manual QA outstanding  
-Report: `docs/workflow/reviews/2026-07-10-gang-sheet-local-generate-test-report.md`
+passed_with_notes — automated PASS; callable deploy + manual QA outstanding  
+Report: `docs/workflow/reviews/2026-07-10-portal-print-progress-rail-test-report.md`
 
 ## Signoff Status
 pending
@@ -32,20 +32,25 @@ no
 yes
 
 ## Human Checkpoint Reason
-Manual UI QA for Generate → preview lengths → Download/Export gang sheets on a multi-sheet show.
+Deploy `getPortalShowPrintProgress` callable, then manual UI QA of stage rail + elapsed clock on Portal request detail.
 
 ## Allowed Actions
-Record manual QA feedback; write signoff after PASS; read docs
+Record deploy confirmation and manual QA feedback; write signoff after PASS; read docs
 
 ## Forbidden Actions
-New scope expansion; Firebase Storage for gang sheet PNGs; production deploy
+Quantity/design checklist; opening upcomingShows client reads; production deploy without approval
 
 ## Next Required Step
-Await human manual QA on Show Queue gang sheet generate/export (see test report checklist)
+Await human: deploy callable + manual Portal progress QA
 
 
 ## Decision Log
+- 2026-07-10 — User: ship stage rail + elapsed clock only; defer quantity/design checklist; Done = finished stage. Park gang-sheet-local-generate (manual QA still outstanding).
 - 2026-07-10 — User approved local-cache generate/preview/export (not Firebase). Park staff-inbox-firestore-acks (still needs rules+wipe deploy + manual QA).
+
+## Parked: gang-sheet-local-generate
+- Implementation complete; automated PASS; manual UI QA outstanding
+- Plan/review/test: `docs/workflow/plans|reviews/2026-07-10-gang-sheet-local-generate-*`
 
 ## Parked: staff-inbox-firestore-acks
 - Implementation complete; blocked on `firebase deploy --only firestore:rules,functions:wipeOperationalTestData --project fresh-prints-dev` + manual QA

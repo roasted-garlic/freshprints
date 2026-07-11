@@ -17,6 +17,11 @@
   --color-accent-primary-hover: #1d4ed8;
   --color-accent-primary-text: #ffffff;
 
+  --color-success: #16a34a;
+  --color-success-text: #15803d;
+  --color-warning: #d97706;
+  --color-warning-text: #b45309;
+
   --color-danger: #dc3f56;
   --color-danger-text: #b4233a;
 
@@ -46,6 +51,11 @@
   --color-accent-primary: #3b82f6;
   --color-accent-primary-hover: #60a5fa;
   --color-accent-primary-text: #ffffff;
+
+  --color-success: #22c55e;
+  --color-success-text: #86efac;
+  --color-warning: #f59e0b;
+  --color-warning-text: #fcd34d;
 
   --color-danger: #f05264;
   --color-danger-text: #fecdd3;

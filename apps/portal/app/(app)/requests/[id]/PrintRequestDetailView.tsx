@@ -10,14 +10,17 @@ import {
   getPortalPrintRequestListTabLabel,
   type PortalPrintRequestListTab,
 } from '@fresh-prints/shared/utils/portalPrintRequestListTabs';
+import { resolvePortalPrintProgressStage } from '@fresh-prints/shared/utils/portalPrintProgressStage';
 import { sumPrintRequestItemQuantities } from '@fresh-prints/shared/utils/portalShowQueueCapacity';
 
 import { PortalPrintRequestItemCard } from '../../../../features/print-requests/components/PortalPrintRequestItemCard';
+import { PortalPrintRequestProgressPanel } from '../../../../features/print-requests/components/PortalPrintRequestProgressPanel';
 import { PortalQueueToShowModal } from '../../../../features/print-requests/components/PortalQueueToShowModal';
 import { PrintRequestDetailGuide } from '../../../../features/print-requests/components/PrintRequestDetailGuide';
 import { useAuth } from '../../../../features/auth/context/AuthContext';
 import { usePortalPrintRequests } from '../../../../features/print-requests/context/PortalPrintRequestContext';
 import { usePrintRequestDetail } from '../../../../features/print-requests/hooks/usePrintRequestDetail';
+import { usePortalShowPrintProgress } from '../../../../features/print-requests/hooks/usePortalShowPrintProgress';
 import { portalPrintRequestService } from '../../../../features/print-requests/services/portalPrintRequestService';
 import { PortalConfirmModal } from '../../../../features/shared/components/PortalConfirmModal';
 import { ArrowLeftIcon, ImagePlusIcon, LibraryIcon, RefreshIcon } from '../../../../features/shared/components/PortalIcons';
@@ -190,6 +193,8 @@ export default function PrintRequestDetailView() {
 
   const backHref = buildRequestsListHref(listTab);
   const backLabel = `Back to ${getPortalPrintRequestListTabLabel(listTab)}`;
+  const progressStage = resolvePortalPrintProgressStage(listTab);
+  const printProgress = usePortalShowPrintProgress(printRequestId, progressStage !== null);
 
   const handleQueuedToShow = useCallback(async () => {
     await Promise.all([reload(), refreshRequests({ silent: true }), refreshCustomer()]);
@@ -282,6 +287,21 @@ export default function PrintRequestDetailView() {
           </button>
         ) : null}
       </header>
+
+      {progressStage ? (
+        <PortalPrintRequestProgressPanel
+          activeStage={progressStage}
+          formattedElapsed={printProgress.formattedElapsed}
+          isLive={printProgress.isRunning}
+          isLoading={printProgress.isLoading}
+          isPaused={printProgress.isPaused}
+          showElapsed={
+            progressStage === 'done'
+              ? Boolean(printProgress.primaryShow) || printProgress.showElapsed
+              : printProgress.showElapsed
+          }
+        />
+      ) : null}
 
       {isEditable ? <PrintRequestDetailGuide /> : null}
 

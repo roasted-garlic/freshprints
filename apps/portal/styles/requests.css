@@ -227,6 +227,273 @@
   outline-offset: 2px;
 }
 
+.portal-print-progress-panel {
+  align-items: stretch;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  display: grid;
+  gap: 0;
+  grid-template-columns: minmax(10rem, 14rem) minmax(0, 1fr);
+  overflow: hidden;
+  padding: 0;
+  position: relative;
+}
+
+.portal-print-progress-panel::before {
+  background: var(--color-accent-primary);
+  bottom: 0;
+  content: '';
+  left: 0;
+  position: absolute;
+  top: 0;
+  width: 3px;
+  z-index: 1;
+}
+
+.portal-print-progress-panel.is-live::before,
+.portal-print-progress-panel.is-finished::before {
+  background: var(--color-success);
+}
+
+.portal-print-progress-panel.is-paused::before {
+  background: var(--color-warning);
+}
+
+.portal-print-progress-readout {
+  background:
+    linear-gradient(160deg, var(--color-accent-primary-soft) 0%, transparent 58%),
+    var(--color-bg-secondary);
+  border-right: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  justify-content: center;
+  min-width: 0;
+  padding: var(--space-4);
+}
+
+.portal-print-progress-panel.is-live .portal-print-progress-readout,
+.portal-print-progress-panel.is-finished .portal-print-progress-readout {
+  background:
+    linear-gradient(160deg, color-mix(in srgb, var(--color-success) 14%, transparent) 0%, transparent 58%),
+    var(--color-bg-secondary);
+}
+
+.portal-print-progress-panel.is-paused .portal-print-progress-readout {
+  background:
+    linear-gradient(160deg, color-mix(in srgb, var(--color-warning) 14%, transparent) 0%, transparent 58%),
+    var(--color-bg-secondary);
+}
+
+.portal-print-progress-label-row {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.portal-print-progress-label-row .portal-eyebrow {
+  margin: 0;
+}
+
+.portal-print-progress-live-dot {
+  background: var(--color-text-muted);
+  border-radius: 999px;
+  display: inline-block;
+  flex-shrink: 0;
+  height: 0.5rem;
+  width: 0.5rem;
+}
+
+.portal-print-progress-panel.is-live .portal-print-progress-live-dot,
+.portal-print-progress-panel.is-finished .portal-print-progress-live-dot {
+  background: var(--color-success);
+}
+
+.portal-print-progress-panel.is-paused .portal-print-progress-live-dot {
+  background: var(--color-warning);
+}
+
+.portal-print-progress-live-dot.is-pulsing {
+  animation: portal-print-progress-pulse 1.6s ease-out infinite;
+}
+
+.portal-print-progress-status-chip {
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  padding: 0.28rem 0.45rem;
+  text-transform: uppercase;
+}
+
+.portal-print-progress-panel.is-live .portal-print-progress-status-chip,
+.portal-print-progress-panel.is-finished .portal-print-progress-status-chip {
+  background: color-mix(in srgb, var(--color-success) 12%, var(--color-bg-secondary));
+  border-color: color-mix(in srgb, var(--color-success) 45%, var(--color-border));
+  color: var(--color-success);
+}
+
+.portal-print-progress-panel.is-paused .portal-print-progress-status-chip {
+  background: color-mix(in srgb, var(--color-warning) 12%, var(--color-bg-secondary));
+  border-color: color-mix(in srgb, var(--color-warning) 45%, var(--color-border));
+  color: var(--color-warning);
+}
+
+.portal-print-progress-elapsed {
+  color: var(--color-text-primary);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: clamp(2rem, 4.5vw, 2.75rem);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  margin: 0;
+  min-height: 1em;
+}
+
+.portal-print-progress-elapsed.is-pending {
+  color: var(--color-text-muted);
+  opacity: 0.45;
+}
+
+.portal-print-progress-panel.is-loading .portal-print-progress-elapsed {
+  animation: portal-print-progress-shimmer 1.2s ease-in-out infinite;
+}
+
+.portal-print-progress-side {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  padding: var(--space-4);
+}
+
+.portal-print-progress-rail {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+}
+
+.portal-print-progress-step {
+  align-items: center;
+  color: var(--color-text-muted);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  position: relative;
+  text-align: center;
+  z-index: 1;
+}
+
+.portal-print-progress-segment {
+  background: var(--color-border);
+  height: 3px;
+  left: calc(50% + 0.7rem);
+  position: absolute;
+  right: calc(-50% + 0.7rem);
+  top: 0.55rem;
+  z-index: 0;
+}
+
+.portal-print-progress-segment.is-filled {
+  background: var(--color-accent-primary);
+}
+
+.portal-print-progress-marker {
+  align-items: center;
+  background: var(--color-bg-secondary);
+  border: 2px solid var(--color-border-strong);
+  border-radius: 999px;
+  box-sizing: border-box;
+  color: #fff;
+  display: inline-flex;
+  flex-shrink: 0;
+  font-size: 0.65rem;
+  font-weight: 800;
+  height: 1.25rem;
+  justify-content: center;
+  line-height: 1;
+  position: relative;
+  width: 1.25rem;
+  z-index: 1;
+}
+
+.portal-print-progress-step-label {
+  color: inherit;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.portal-print-progress-step.is-complete,
+.portal-print-progress-step.is-active {
+  color: var(--color-text-primary);
+}
+
+.portal-print-progress-step.is-complete .portal-print-progress-marker,
+.portal-print-progress-step.is-active .portal-print-progress-marker {
+  background: var(--color-accent-primary);
+  border-color: var(--color-accent-primary);
+}
+
+.portal-print-progress-step.is-active {
+  color: var(--color-accent-primary);
+}
+
+.portal-print-progress-step.is-active .portal-print-progress-marker {
+  box-shadow: 0 0 0 4px var(--color-accent-primary-soft);
+}
+
+.portal-print-progress-step.is-live .portal-print-progress-marker {
+  animation: portal-print-progress-pulse 1.6s ease-out infinite;
+}
+
+@keyframes portal-print-progress-pulse {
+  0% {
+    box-shadow: 0 0 0 4px var(--color-accent-primary-soft);
+  }
+
+  70% {
+    box-shadow: 0 0 0 10px transparent;
+  }
+
+  100% {
+    box-shadow: 0 0 0 4px var(--color-accent-primary-soft);
+  }
+}
+
+@keyframes portal-print-progress-shimmer {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+
+  50% {
+    opacity: 0.7;
+  }
+}
+
+@media (max-width: 39.99rem) {
+  .portal-print-progress-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .portal-print-progress-readout {
+    border-bottom: 1px solid var(--color-border);
+    border-right: none;
+  }
+}
+
 .portal-request-detail-header {
   align-items: flex-end;
   display: flex;

@@ -3,6 +3,11 @@ import { httpsCallable } from 'firebase/functions';
 import type { ListPortalAllocatableShowsResponse } from '@fresh-prints/shared/types/portal/listPortalAllocatableShows.types';
 import type { PortalAllocatableShow } from '@fresh-prints/shared/types/portal/listPortalAllocatableShows.types';
 import type {
+  GetPortalShowPrintProgressRequest,
+  GetPortalShowPrintProgressResponse,
+  PortalShowPrintProgress,
+} from '@fresh-prints/shared/types/portal/getPortalShowPrintProgress.types';
+import type {
   QueuePortalPrintRequestToShowRequest,
   QueuePortalPrintRequestToShowResponse,
 } from '@fresh-prints/shared/types/portal/queuePortalPrintRequestToShow.types';
@@ -22,6 +27,19 @@ export const portalShowSelectionService = {
         'listPortalAllocatableShows',
       );
       const result = await listCallable({});
+      return result.data.shows;
+    } catch (error) {
+      throw mapCallableError(error);
+    }
+  },
+
+  async getShowPrintProgress(printRequestId: string): Promise<PortalShowPrintProgress[]> {
+    try {
+      const progressCallable = httpsCallable<
+        GetPortalShowPrintProgressRequest,
+        GetPortalShowPrintProgressResponse
+      >(getPortalFunctions(), 'getPortalShowPrintProgress');
+      const result = await progressCallable({ printRequestId });
       return result.data.shows;
     } catch (error) {
       throw mapCallableError(error);
