@@ -325,7 +325,7 @@ export function CatalogPageContent() {
             <p className="portal-muted portal-catalog-topbar-subtitle">
               {curatedLibraryView
                 ? 'Search and filters still apply to this list.'
-                : 'Search and filter the full catalog, or open a curated list from Discover.'}
+                : 'Search and filter through our full design catalog'}
             </p>
           </div>
 
