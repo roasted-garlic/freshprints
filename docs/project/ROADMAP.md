@@ -1005,6 +1005,7 @@ Build:
 Support:
 
 * Browse approved designs
+* **Discover landing + Design Library** (signed off 2026-07-11) — `/catalog` curated rails; `/catalog/library` search/filter; ADR-FP-072
 * Create print requests
 * Track request status
 * **Show selection:** signed off 2026-07-08 — `@fresh-prints/show-picker` in Portal; `listPortalAllocatableShows` + `queuePortalPrintRequestToShow` callables (see `packages/show-picker/README.md`)

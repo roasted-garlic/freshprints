@@ -126,8 +126,8 @@ The Portal catalog was a flat searchable grid. Customers needed curated discover
 
 **Decision**
 
-1. Three sections: **New This Week** (`createdAt` last 7 days), **Popular** (lifetime `requestCount`), **Recently Requested** (`lastRequestedAt` then `requestCount`).
-2. **View All** stays on `/catalog` via `?discover=new|popular|recent` — hide curated rows, apply sort/filter.
+1. Three sections: **New This Week** (`createdAt` last 7 days), **Popular** (lifetime `requestCount`), **Recently Requested** (`lastRequestedAt` then `requestCount`), plus up to **3 popular category** rails (summed `requestCount`, min 3 designs).
+2. **Discover** landing is `/catalog`; full **Design Library** is `/catalog/library`. **View All** uses `?discover=` or `?category=` on the library route.
 3. Ranking helpers live in shared `catalogDiscoveryRanking.ts`; Phase 10 may replace only `rankRecentlyRequested`.
 4. `printRequestItems` **onCreate** Cloud Function increments `requestCount` / `lastRequestedAt` (Portal + Studio). Studio client increment removed to avoid double-count.
 5. Do **not** add `favoriteCount` now — optional fields can land later without migration.
@@ -137,6 +137,7 @@ The Portal catalog was a flat searchable grid. Customers needed curated discover
 
 - Deploy `onPrintRequestItemCreated` required for accurate Popular / Recently Requested after Portal adds.
 - No rolling analytics collections in this phase.
+- Signed off 2026-07-11 (`approved_with_notes`).
 
 ---
 

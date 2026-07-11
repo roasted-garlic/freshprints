@@ -4,47 +4,51 @@
 managed-phase
 
 ## Current Goal
-portal-catalog-discovery — Design Library discovery sections (New / Popular / Recently Requested) + counter trigger; remove My requests.
+admin-operational-test-data-wipe — Test Data Reset / operational wipe (still open; ongoing bug fixes)
 
 ## Phase
-test — Implementation complete; awaiting function deploy + manual QA.
+implement / test — Implementation exists; keep iterating on bugs; deploy + QA as needed
 
 ## Plan Status
-`docs/workflow/plans/2026-07-11-portal-catalog-discovery-plan.md` — **complete** (approved)
+`docs/workflow/plans/2026-07-10-admin-operational-test-data-wipe-plan.md` — **approved**
 
 ## Review Status
-**approved** — `docs/workflow/reviews/2026-07-11-portal-catalog-discovery-review.md`
+**approved** — `docs/workflow/reviews/2026-07-10-admin-operational-test-data-wipe-review.md`
 
 ## Implementation Status
-complete
+complete (baseline); **open for continued fixes**
 
 ## Test Status
-passed_with_notes — unit + functions tsc PASS; deploy + manual QA outstanding  
-Report: `docs/workflow/reviews/2026-07-11-portal-catalog-discovery-test-report.md`
+partial — automated PASS historically; owner still finding bugs; not signed off
 
 ## Signoff Status
-pending — `docs/workflow/reviews/2026-07-11-portal-catalog-discovery-signoff.md`
+pending — wipe remains open (not in parked batch closeout)
+
+## DONE
+no
 
 ## Blocked
 no
 
 ## Human Checkpoint Required
-yes
+no
 
 ## Human Checkpoint Reason
-Deploy `onPrintRequestItemCreated`, then manual QA of discovery rails / View all / selection mode / counters.
+—
 
 ## Allowed Actions
-Record deploy confirmation and manual QA; write final signoff after PASS; read docs
+Fix in-scope wipe bugs; update wipe UI/callable; record deploy/QA; read docs
 
 ## Forbidden Actions
-Phase 10 analytics; Favorites; production deploy without approval
+add production project to allowlist; wipe Auth/catalog/Storage outside approved wipe targets; silent scope expansion into unrelated features
 
 ## Next Required Step
-Await human: deploy onPrintRequestItemCreated + discovery QA (PASS/FAIL)
+Continue wipe bugfixes when reported; redeploy `wipeOperationalTestData` after changes; signoff only when owner accepts wipe as stable
 
 
 ## Decision Log
+- 2026-07-11 — Owner: close parked follow-ups as done **except** `admin-operational-test-data-wipe` (still buggy / building). Batch signoff: `docs/workflow/reviews/2026-07-11-parked-followups-batch-closeout-signoff.md`.
+- 2026-07-11 — portal-catalog-discovery **signed off** (approved_with_notes): owner happy with Discover + Design Library UX; optional CF deploy note retained.
 - 2026-07-11 — Discover: add up to 3 popular category rails (ranked by sum of requestCount; min 3 designs); View all → library `?category=`.
 - 2026-07-11 — Portal catalog UX polish: `/catalog` = discovery landing (carousels + search); `/catalog/library` = full Design Library (search/filters/View all/selection). Invisible-scroll carousels with L/R buttons.
 - 2026-07-11 — portal-catalog-discovery implemented (ADR-FP-072); awaiting deploy + QA.
@@ -56,26 +60,19 @@ Await human: deploy onPrintRequestItemCreated + discovery QA (PASS/FAIL)
 - 2026-07-10 — User: ship stage rail + elapsed clock only; defer quantity/design checklist; Done = finished stage. Park gang-sheet-local-generate (manual QA still outstanding).
 - 2026-07-10 — User approved local-cache generate/preview/export (not Firebase). Park staff-inbox-firestore-acks (still needs rules+wipe deploy + manual QA).
 
-## Parked: portal-one-working-request
-- Implementation complete; awaiting createPortalPrintRequest + indexes deploy + manual QA
-- Plan/review: `docs/workflow/plans|reviews/2026-07-11-portal-one-working-request-*`
+## Closed (was parked) — owner accepted 2026-07-11
+- `portal-one-working-request` — DONE (batch closeout)
+- `portal-print-progress-rail` — DONE (batch closeout)
+- `gang-sheet-local-generate` — DONE (batch closeout)
+- `staff-inbox-firestore-acks` — DONE (batch closeout)
+- `portal-catalog-add-to-request` — DONE (batch closeout)
+- `portal-catalog-discovery` — DONE (separate signoff same day)
 
-## Parked: portal-print-progress-rail
-- Implementation complete; automated PASS; awaiting callable deploy + manual UI QA
-- Plan/review/test: `docs/workflow/plans|reviews/2026-07-10-portal-print-progress-rail-*`
-
-## Parked: gang-sheet-local-generate
-- Implementation complete; automated PASS; manual UI QA outstanding
-- Plan/review/test: `docs/workflow/plans|reviews/2026-07-10-gang-sheet-local-generate-*`
-
-## Parked: staff-inbox-firestore-acks
-- Implementation complete; blocked on `firebase deploy --only firestore:rules,functions:wipeOperationalTestData --project fresh-prints-dev` + manual QA
-
-## Parked: admin-operational-test-data-wipe
-- Implementation complete; still needs callable deploy + manual QA
-
-## Parked: portal-catalog-add-to-request
-- Implementation complete; automated PASS; manual UI QA still outstanding
+## Open: admin-operational-test-data-wipe
+- Baseline implementation complete; **not signed off**
+- Owner: keep finding bugs and building on this feature
+- Plan/review: `docs/workflow/plans|reviews/2026-07-10-admin-operational-test-data-wipe-*`
+- Redeploy after fixes: `firebase deploy --only functions:wipeOperationalTestData --project fresh-prints-dev`
 
 ## Prior: studio-apps-folder-monorepo-normalization
 implement — Symmetric apps monorepo phase **complete and signed off**. All slices 0–5 done. DONE: yes for this sub-goal.

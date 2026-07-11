@@ -9,17 +9,22 @@
 
 | Check | Command | Exit | Result |
 |-------|---------|------|--------|
-| Unit | `npx tsx --test packages/shared/src/utils/catalogDiscoveryRanking.test.ts` | 0 | PASS 8/8 |
+| Unit | `npx tsx --test packages/shared/src/utils/catalogDiscoveryRanking.test.ts` | 0 | PASS (includes popular category rails) |
 | Unit | `npx tsx --test apps/portal/features/catalog/utils/catalogSearch.test.ts` | 0 | PASS |
-| Functions tsc | `cd functions && npx tsc --noEmit` | 0 | PASS |
+| Functions tsc | `cd functions && npx tsc --noEmit` | 0 | PASS (implementation session) |
+| Portal tsc | `cd apps/portal && npx tsc --noEmit` | 0 | PASS (UX polish sessions) |
 
-## Outstanding
+## Manual
 
-| Check | Why |
-|-------|-----|
-| Deploy `onPrintRequestItemCreated` | Required for live counter updates |
-| Manual UI QA | Discovery rails, View all, selection mode, My requests removed |
+| Check | Result |
+|-------|--------|
+| Discover landing, carousels, Design Library split, View all, layout polish | **PASS WITH NOTES** — product owner closed phase as satisfied (2026-07-11) |
+
+## Notes
+
+- Live `requestCount` / `lastRequestedAt` updates require deployed `onPrintRequestItemCreated` on the target Firebase project.
+- Category rails: top 3 by summed `requestCount`, min 3 designs per category.
 
 ## Verdict
 
-Automated scope PASS. Await deploy + manual QA for signoff.
+Automated + owner UX acceptance sufficient for signoff (**approved_with_notes**).
