@@ -118,6 +118,14 @@
       "collectionGroup": "printRequests",
       "queryScope": "COLLECTION",
       "fields": [
+        { "fieldPath": "customerId", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "printRequests",
+      "queryScope": "COLLECTION",
+      "fields": [
         { "fieldPath": "isInternal", "order": "ASCENDING" },
         { "fieldPath": "updatedAt", "order": "DESCENDING" }
       ]

@@ -75,6 +75,9 @@ Scratch QA of print requests → show queue required manual Firebase Console del
 3. **Designs** wipe requires **print requests** in the same run, an extra catalog confirm modal (`acknowledgeDesignCatalogWipe`), then the typed phrase. Deletes `designs` docs plus Storage `originals/`, `thumbnails/`, `previews/`.
 4. Server enforces owner/admin + project allowlist + typed confirm phrase `WIPE TEST DATA`.
 5. Sequences reset to **1** (not 0). Accounts, categories, tags, and settings are never wiped by this tool.
+6. When shows are **kept** but allocations are cleared, each show’s `allocatedQuantity` is zeroed, print
+   timer fields are cleared, and `productionStatus` values `full` / `printing` / `fully_printed` /
+   `completed` are reset to **`open`** (`archived` / `canceled` unchanged).
 
 **Consequences**
 
@@ -99,14 +102,39 @@ Portal catalog browse and design details were read-only. Customers could only st
 
 1. **Add to request** CTAs on design details (eyebrow row, right-aligned) and browse design cards.
 2. **Immediate persist** the design at quantity 1 via `savePrintRequestDesignSelections` (dedupe-safe), then navigate to existing selection mode for that request.
-3. Branch on continuable (`draft`/`editing`) count: **0** create without confirm → add → selection; **1** add to that request → selection; **2+** `PortalPickContinuableRequestModal` (pick or start new).
-4. Design-level CTA skips the generic “Start a new print request?” confirm; top-bar/FAB keep it.
+3. Branch on continuable (`draft`/`editing`) count: **0** create → add → selection; **1** add to that request → selection; **2+** `PortalPickContinuableRequestModal` (pick only — no start new; see ADR-FP-071).
+4. Design-level CTA skips the generic “Start a new print request?” confirm; top-bar/FAB keep it **only when no continuable request exists**.
 5. If the design is already on the target request, do not duplicate; still enter selection mode.
 
 **Consequences**
 
 - Browse and details become request entry points without new callables or rules.
 - Selection mode remains the place to adjust quantities and add more designs.
+
+---
+
+### ADR-FP-071: One working print request per portal customer
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-11 |
+| Status | accepted |
+
+**Context**
+
+Customers could create multiple `draft`/`editing` requests via Portal UI (“Start new”) and `createPortalPrintRequest`, which made Working-tab clutter and split unfinished carts.
+
+**Decision**
+
+1. A portal customer may have **at most one** continuable print request (`draft` or `editing`) at a time.
+2. **`createPortalPrintRequest`** rejects with `failed-precondition` when any such request already exists (transactional query).
+3. Portal Start/FAB/catalog actions **continue** the existing request when one exists; they never offer “Start new” beside an open draft.
+4. Queued (`active`) / printing / printed requests do not block creating a new request after the current working request is queued.
+
+**Consequences**
+
+- UI and callable must stay aligned; deploy function + `customerId`+`status` index with the release.
+- Customers who already have multiple drafts can still open/pick among them but cannot create another until they are down to zero continuable.
 
 ---
 

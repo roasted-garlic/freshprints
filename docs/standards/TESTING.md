@@ -88,7 +88,7 @@ Studio sidebar **Test Data Reset** (`/test-data-reset`) — owner/admin on `fres
 4. Type `WIPE TEST DATA` to confirm any wipe.
 5. Reload Studio/Portal after wipe; sequences restart at `…-CR001` / `…-IR001`.
 6. Wipe of print requests / show-queue attachments / upcoming shows also clears `staffInboxAcks` (inbox Done history).
-7. Print-request or attachments-only wipe also zeros each kept upcoming show’s `allocatedQuantity` (and demotes `productionStatus` from `full` → `open`) so Show Queue capacity looks empty.
+7. Print-request or attachments-only wipe also zeros each kept upcoming show’s `allocatedQuantity`, resets queue `productionStatus` from `full` / `printing` / `fully_printed` / `completed` → `open`, and clears print timer fields so Show Queue looks empty and allocatable again (`archived` / `canceled` are left alone).
 
 ### Staff inbox (Firestore acks)
 

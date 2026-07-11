@@ -4,8 +4,15 @@ import { HttpsError, onCall } from "firebase-functions/v2/https";
 import type { CreatePortalPrintRequestResponse } from "../../packages/shared/src/types/printRequest/createPortalPrintRequest.types";
 import { formatCustomerPrintRequestName } from "../../packages/shared/src/utils/printRequestNaming";
 import { requireValidCustomerUsername } from "../../packages/shared/src/utils/customerUsername";
+import { PORTAL_ONE_WORKING_REQUEST_MESSAGE } from "../../packages/shared/src/utils/portalOneWorkingPrintRequest";
 import { adminDb } from "./lib/admin";
-import { internal, invalidArgument, permissionDenied, unauthenticated } from "./lib/errors";
+import {
+  failedPrecondition,
+  internal,
+  invalidArgument,
+  permissionDenied,
+  unauthenticated,
+} from "./lib/errors";
 import { validateCreatePortalPrintRequestRequest } from "./lib/createPortalPrintRequestValidation";
 
 function resolveNextSequence(value: unknown): number {
@@ -73,6 +80,18 @@ export const createPortalPrintRequest = onCall(async (request): Promise<CreatePo
     let createdName = "";
 
     await adminDb.runTransaction(async (transaction) => {
+      const existingContinuable = await transaction.get(
+        adminDb
+          .collection("printRequests")
+          .where("customerId", "==", customer.id)
+          .where("status", "in", ["draft", "editing"])
+          .limit(1),
+      );
+
+      if (!existingContinuable.empty) {
+        throw failedPrecondition(PORTAL_ONE_WORKING_REQUEST_MESSAGE);
+      }
+
       const customerSnapshot = await transaction.get(customerRef);
 
       if (!customerSnapshot.exists) {

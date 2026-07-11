@@ -8,7 +8,6 @@ import type { PrintRequestAllocationTotals } from '@fresh-prints/shared/utils/sh
 import type { PrintRequestItemSummary } from '@fresh-prints/shared/utils/printRequestItemSummaries';
 
 import { PortalConfirmModal } from '../../shared/components/PortalConfirmModal';
-import { PortalWorkingRequestChoiceModal } from '../../shared/components/PortalWorkingRequestChoiceModal';
 import { useMyPrintRequests } from '../hooks/useMyPrintRequests';
 import { usePrintRequestCreationFlow } from '../hooks/usePrintRequestCreationFlow';
 
@@ -37,14 +36,10 @@ export function PortalPrintRequestProvider({ children }: { children: ReactNode }
   const printRequests = useMyPrintRequests();
   const {
     actionError,
-    closeChoiceModal,
     closeConfirmModal,
     confirmStartNewRequest,
     finishCreating,
-    handleContinueWorkingRequest,
     handleStartRequestClick,
-    handleStartNewRequest,
-    isChoiceModalOpen,
     isConfirmModalOpen,
     isCreating,
   } = usePrintRequestCreationFlow({
@@ -71,14 +66,6 @@ export function PortalPrintRequestProvider({ children }: { children: ReactNode }
   return (
     <PortalPrintRequestContext.Provider value={value}>
       {children}
-      <PortalWorkingRequestChoiceModal
-        continuableRequests={printRequests.continuableRequests}
-        isCreating={isCreating}
-        isOpen={isChoiceModalOpen}
-        onClose={closeChoiceModal}
-        onContinue={handleContinueWorkingRequest}
-        onStartNew={handleStartNewRequest}
-      />
       <PortalConfirmModal
         confirmLabel={isCreating ? 'Starting…' : 'Start request'}
         isConfirmLoading={isCreating}

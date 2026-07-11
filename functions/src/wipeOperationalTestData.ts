@@ -168,6 +168,13 @@ async function resetCustomerSequences(): Promise<number> {
   return resetCount;
 }
 
+const SHOW_PRODUCTION_STATUSES_RESET_TO_OPEN = new Set([
+  "full",
+  "printing",
+  "fully_printed",
+  "completed",
+]);
+
 async function resetUpcomingShowAllocationTotals(): Promise<number> {
   let resetCount = 0;
   let lastDocId: string | undefined;
@@ -188,11 +195,17 @@ async function resetUpcomingShowAllocationTotals(): Promise<number> {
       const data = document.data();
       const patch: Record<string, unknown> = {
         allocatedQuantity: 0,
+        accumulatedPrintMs: 0,
+        activePrintStartedAt: FieldValue.delete(),
         updatedAt: FieldValue.serverTimestamp(),
       };
 
-      // Capacity-based "full" is meaningless once allocations are gone; leave timer/finished states alone.
-      if (data.productionStatus === "full") {
+      // After wiping allocations, re-open queueable production states so shows can accept
+      // new requests. Leave archived/canceled alone — those are intentional schedule hides.
+      if (
+        typeof data.productionStatus === "string" &&
+        SHOW_PRODUCTION_STATUSES_RESET_TO_OPEN.has(data.productionStatus)
+      ) {
         patch.productionStatus = "open";
       }
 

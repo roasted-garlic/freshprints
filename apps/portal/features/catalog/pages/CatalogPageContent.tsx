@@ -471,7 +471,6 @@ export function CatalogPageContent() {
         isOpen={addDesignFlow.isPickerOpen}
         onClose={addDesignFlow.closePicker}
         onSelectRequest={addDesignFlow.confirmPickRequest}
-        onStartNew={addDesignFlow.confirmStartNewFromPicker}
       />
 
       <CatalogTagFilterModal

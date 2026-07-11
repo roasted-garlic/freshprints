@@ -1275,6 +1275,8 @@ status never misleadingly contradicts the request's actual queue state:
   `removeShowAllocationsForRequest()`. `editing` means "was queued, now back with staff for revision,"
   distinct from `draft` ("never queued yet"); the Print Requests page treats a request in `editing`
   as fully editable again, same as `draft`.
+- Portal customers may have **at most one** `draft` or `editing` request at a time (`createPortalPrintRequest`
+  enforces this; see ADR-FP-071). Queuing to a show (`active`) frees the customer to start another.
 - `active`/`editing` → `completed` once every unit of the request's requested quantity has been
   allocated and printed (`markPrintRequestCompletedIfFullyPrinted()`).
 

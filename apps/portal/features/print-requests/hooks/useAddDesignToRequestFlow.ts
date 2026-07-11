@@ -210,21 +210,6 @@ export function useAddDesignToRequestFlow({
     [addDesignAndEnterSelection, isAdding, pendingDesign],
   );
 
-  const confirmStartNewFromPicker = useCallback(() => {
-    if (!pendingDesign || isAdding) {
-      return;
-    }
-
-    const design = pendingDesign;
-    setAddingDesignId(design.id);
-    setActionError(null);
-
-    void createRequestAddDesignAndEnterSelection(design).catch((error: unknown) => {
-      setAddingDesignId(null);
-      setActionError(error instanceof Error ? error.message : 'Unable to create print request.');
-    });
-  }, [createRequestAddDesignAndEnterSelection, isAdding, pendingDesign]);
-
   const confirmMessage = (() => {
     if (!pendingDesign) {
       return 'Add this design to a print request?';
@@ -252,7 +237,6 @@ export function useAddDesignToRequestFlow({
     confirmAddDesign,
     confirmMessage,
     confirmPickRequest,
-    confirmStartNewFromPicker,
     isAdding,
     isConfirmOpen,
     isPickerOpen,

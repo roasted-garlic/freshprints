@@ -5,7 +5,7 @@ import { useEffect } from 'react';
 import type { PrintRequest } from '@fresh-prints/shared/types/printRequest/printRequest.types';
 import type { Timestamp } from 'firebase/firestore';
 
-import { PlusCircleIcon, XIcon } from './PortalIcons';
+import { XIcon } from './PortalIcons';
 
 interface PortalPickContinuableRequestModalProps {
   continuableRequests: PrintRequest[];
@@ -14,7 +14,6 @@ interface PortalPickContinuableRequestModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSelectRequest: (printRequestId: string) => void;
-  onStartNew: () => void;
 }
 
 function formatUpdatedDate(timestamp: Timestamp): string {
@@ -43,7 +42,6 @@ export function PortalPickContinuableRequestModal({
   isOpen,
   onClose,
   onSelectRequest,
-  onStartNew,
 }: PortalPickContinuableRequestModalProps) {
   useEffect(() => {
     if (!isOpen) {
@@ -87,10 +85,10 @@ export function PortalPickContinuableRequestModal({
           <p className="portal-muted portal-confirm-modal-message">
             {designTitle ? (
               <>
-                Choose a request for <strong>{designTitle}</strong>, or start a new one.
+                Choose which open request should get <strong>{designTitle}</strong>.
               </>
             ) : (
-              <>Choose a request in progress, or start a new one.</>
+              <>Choose which open request to use.</>
             )}
           </p>
 
@@ -117,15 +115,6 @@ export function PortalPickContinuableRequestModal({
           </ul>
         </div>
         <footer className="modal-footer portal-pick-continuable-request-footer">
-          <button
-            className="portal-button portal-button-secondary portal-button-leading-icon"
-            disabled={isAdding}
-            onClick={onStartNew}
-            type="button"
-          >
-            <PlusCircleIcon />
-            {isAdding ? 'Adding…' : 'Start new request'}
-          </button>
           <button
             className="portal-button portal-button-secondary portal-button-leading-icon"
             disabled={isAdding}

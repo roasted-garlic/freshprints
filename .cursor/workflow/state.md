@@ -4,49 +4,48 @@
 managed-phase
 
 ## Current Goal
-show-calendar-day-markers — Distinct calendar circle/dot for full (warning) and completed (success) show days.
+portal-one-working-request — At most one draft/editing print request per portal customer (UI + callable).
 
 ## Phase
-signoff — complete
+test — Implementation complete; awaiting function/index deploy + manual QA.
 
 ## Plan Status
-`docs/workflow/plans/2026-07-11-show-calendar-day-markers-plan.md` — **complete** (approved)
+`docs/workflow/plans/2026-07-11-portal-one-working-request-plan.md` — **complete** (approved)
 
 ## Review Status
-**approved** — `docs/workflow/reviews/2026-07-11-show-calendar-day-markers-review.md`
+**approved** — `docs/workflow/reviews/2026-07-11-portal-one-working-request-review.md`
 
 ## Implementation Status
 complete
 
 ## Test Status
-passed_with_notes — `docs/workflow/reviews/2026-07-11-show-calendar-day-markers-test-report.md`
+passed_with_notes — unit PASS; deploy + manual QA outstanding  
+Report: `docs/workflow/reviews/2026-07-11-portal-one-working-request-test-report.md`
 
 ## Signoff Status
-**approved** — `docs/workflow/reviews/2026-07-11-show-calendar-day-markers-signoff.md`
-
-## DONE
-yes
+pending — `docs/workflow/reviews/2026-07-11-portal-one-working-request-signoff.md`
 
 ## Blocked
 no
 
 ## Human Checkpoint Required
-no
+yes
 
 ## Human Checkpoint Reason
-—
+Deploy `createPortalPrintRequest` + Firestore indexes (`customerId`+`status`), then manual QA of Start/Continue one-request lock.
 
 ## Allowed Actions
-Read docs; start next managed phase; resume parked goals
+Record deploy confirmation and manual QA; write final signoff after PASS; read docs
 
 ## Forbidden Actions
-—
+Production deploy without approval; relaxing the one-request rule
 
 ## Next Required Step
-Idle — pick next goal or resume parked portal-print-progress-rail
+Await human: deploy callable + indexes, then reply PASS/FAIL on one-working-request QA
 
 
 ## Decision Log
+- 2026-07-11 — User: lock portal to one working (draft/editing) request at a time. ADR-FP-071.
 - 2026-07-11 — show-calendar-day-markers signed off (full=warning, completed=success day circles).
 - 2026-07-11 — portal-show-calendar-default-open signed off (prefer next open/fitting show in Portal queue-to-show).
 - 2026-07-11 — User: portal show calendar should default to next open show if soonest is full. Park portal-print-progress-rail (still needs callable deploy + manual QA).

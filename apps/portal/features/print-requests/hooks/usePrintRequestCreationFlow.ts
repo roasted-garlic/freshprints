@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useState } from 'react';
 
 import type { PrintRequest } from '@fresh-prints/shared/types/printRequest/printRequest.types';
+import { shouldBlockPortalPrintRequestCreate } from '@fresh-prints/shared/utils/portalOneWorkingPrintRequest';
 
 import { buildCatalogSelectionHref } from '../utils/catalogSelectionNavigation';
 
@@ -21,7 +22,6 @@ export function usePrintRequestCreationFlow({
 }: UsePrintRequestCreationFlowOptions) {
   const router = useRouter();
   const [isCreating, setIsCreating] = useState(false);
-  const [isChoiceModalOpen, setIsChoiceModalOpen] = useState(false);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -41,7 +41,6 @@ export function usePrintRequestCreationFlow({
     try {
       const created = await createPrintRequest(undefined, { skipListReload: true });
       router.replace(buildCatalogSelectionHref(created.printRequestId));
-      setIsChoiceModalOpen(false);
       setIsConfirmModalOpen(false);
     } catch (createError) {
       setActionError(createError instanceof Error ? createError.message : 'Unable to create print request.');
@@ -61,33 +60,17 @@ export function usePrintRequestCreationFlow({
   const handleStartRequestClick = useCallback(() => {
     setActionError(null);
 
-    if (continuableRequests.length > 0) {
-      setIsChoiceModalOpen(true);
+    if (shouldBlockPortalPrintRequestCreate(continuableRequests.length)) {
+      navigateToContinue();
       return;
     }
 
     openStartNewConfirm();
-  }, [continuableRequests.length, openStartNewConfirm]);
-
-  const handleStartNewRequest = useCallback(() => {
-    setIsChoiceModalOpen(false);
-    openStartNewConfirm();
-  }, [openStartNewConfirm]);
+  }, [continuableRequests.length, navigateToContinue, openStartNewConfirm]);
 
   const confirmStartNewRequest = useCallback(() => {
     void createAndGoToSelection();
   }, [createAndGoToSelection]);
-
-  const handleContinueWorkingRequest = useCallback(() => {
-    setIsChoiceModalOpen(false);
-    navigateToContinue();
-  }, [navigateToContinue]);
-
-  const closeChoiceModal = useCallback(() => {
-    if (!isCreating) {
-      setIsChoiceModalOpen(false);
-    }
-  }, [isCreating]);
 
   const closeConfirmModal = useCallback(() => {
     if (!isCreating) {
@@ -97,14 +80,10 @@ export function usePrintRequestCreationFlow({
 
   return {
     actionError,
-    closeChoiceModal,
     closeConfirmModal,
     confirmStartNewRequest,
     finishCreating,
-    handleContinueWorkingRequest,
     handleStartRequestClick,
-    handleStartNewRequest,
-    isChoiceModalOpen,
     isConfirmModalOpen,
     isCreating,
   };
