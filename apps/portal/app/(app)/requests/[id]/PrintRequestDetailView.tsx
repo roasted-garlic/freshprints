@@ -1,9 +1,15 @@
 'use client';
 
+import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import type { PrintRequestItem } from '@fresh-prints/shared/types/printRequest/printRequest.types';
+import { derivePrintRequestListTab } from '@fresh-prints/shared/utils/printRequestListGrouping';
+import {
+  getPortalPrintRequestListTabLabel,
+  type PortalPrintRequestListTab,
+} from '@fresh-prints/shared/utils/portalPrintRequestListTabs';
 import { sumPrintRequestItemQuantities } from '@fresh-prints/shared/utils/portalShowQueueCapacity';
 
 import { PortalPrintRequestItemCard } from '../../../../features/print-requests/components/PortalPrintRequestItemCard';
@@ -14,7 +20,7 @@ import { usePortalPrintRequests } from '../../../../features/print-requests/cont
 import { usePrintRequestDetail } from '../../../../features/print-requests/hooks/usePrintRequestDetail';
 import { portalPrintRequestService } from '../../../../features/print-requests/services/portalPrintRequestService';
 import { PortalConfirmModal } from '../../../../features/shared/components/PortalConfirmModal';
-import { ImagePlusIcon, LibraryIcon, RefreshIcon } from '../../../../features/shared/components/PortalIcons';
+import { ArrowLeftIcon, ImagePlusIcon, LibraryIcon, RefreshIcon } from '../../../../features/shared/components/PortalIcons';
 
 type AutosaveStatus = 'idle' | 'saving' | 'saved' | 'failed';
 
@@ -22,6 +28,10 @@ interface AutosaveState {
   status: AutosaveStatus;
   message?: string;
   retry?: () => Promise<void>;
+}
+
+function buildRequestsListHref(tab: PortalPrintRequestListTab): string {
+  return `/requests?tab=${tab}`;
 }
 
 function getStatusLabel(status: string): string {
@@ -45,7 +55,7 @@ export default function PrintRequestDetailView() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const { refreshCustomer } = useAuth();
-  const { refreshRequests } = usePortalPrintRequests();
+  const { allocationTotalsByRequestId, refreshRequests, summariesByRequestId } = usePortalPrintRequests();
   const printRequestId = params.id;
   const [actionError, setActionError] = useState<string | null>(null);
   const [autosaveState, setAutosaveState] = useState<AutosaveState>({ status: 'idle' });
@@ -161,6 +171,26 @@ export default function PrintRequestDetailView() {
 
   const totalPrintCount = useMemo(() => sumPrintRequestItemQuantities(items), [items]);
 
+  const listTab = useMemo((): PortalPrintRequestListTab => {
+    if (!printRequest) {
+      return 'working';
+    }
+
+    const summary = summariesByRequestId[printRequest.id];
+    const allocationTotals = allocationTotalsByRequestId[printRequest.id];
+
+    return derivePrintRequestListTab({
+      totalRequestedQuantity: summary?.totalQuantity ?? totalPrintCount,
+      totalAllocatedQuantity: allocationTotals?.totalAllocatedQuantity ?? 0,
+      totalInProgressQuantity: allocationTotals?.totalInProgressQuantity ?? 0,
+      totalPrintedQuantity: allocationTotals?.totalPrintedQuantity ?? 0,
+      status: printRequest.status,
+    });
+  }, [allocationTotalsByRequestId, printRequest, summariesByRequestId, totalPrintCount]);
+
+  const backHref = buildRequestsListHref(listTab);
+  const backLabel = `Back to ${getPortalPrintRequestListTabLabel(listTab)}`;
+
   const handleQueuedToShow = useCallback(async () => {
     await Promise.all([reload(), refreshRequests({ silent: true }), refreshCustomer()]);
     await loadAllocationState();
@@ -170,6 +200,10 @@ export default function PrintRequestDetailView() {
   if (isLoading) {
     return (
       <main className="portal-page portal-request-detail-page">
+        <Link className="portal-request-detail-back" href="/requests?tab=working">
+          <ArrowLeftIcon />
+          Back to Print requests
+        </Link>
         <div className="portal-panel portal-muted">Loading print request…</div>
       </main>
     );
@@ -178,6 +212,10 @@ export default function PrintRequestDetailView() {
   if (error || !printRequest) {
     return (
       <main className="portal-page portal-request-detail-page">
+        <Link className="portal-request-detail-back" href="/requests?tab=working">
+          <ArrowLeftIcon />
+          Back to Print requests
+        </Link>
         <p className="portal-error" role="alert">
           {error ?? 'Print request not found.'}
         </p>
@@ -191,6 +229,11 @@ export default function PrintRequestDetailView() {
 
   return (
     <main className="portal-page portal-request-detail-page">
+      <Link className="portal-request-detail-back" href={backHref}>
+        <ArrowLeftIcon />
+        {backLabel}
+      </Link>
+
       <header className="portal-page-header portal-request-detail-header">
         <div className="portal-request-detail-header-copy">
           <p className="portal-eyebrow">Print request</p>

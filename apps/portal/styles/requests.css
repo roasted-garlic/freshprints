@@ -203,6 +203,30 @@
   z-index: 15;
 }
 
+.portal-request-detail-back {
+  align-items: center;
+  align-self: flex-start;
+  color: var(--color-text-secondary);
+  display: inline-flex;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  gap: var(--space-2);
+  line-height: 1.2;
+  margin: 0;
+  text-decoration: none;
+  transition: color 120ms ease;
+}
+
+.portal-request-detail-back:hover {
+  color: var(--color-accent-primary);
+}
+
+.portal-request-detail-back:focus-visible {
+  border-radius: var(--radius-sm);
+  outline: 2px solid var(--color-accent-primary);
+  outline-offset: 2px;
+}
+
 .portal-request-detail-header {
   align-items: flex-end;
   display: flex;
