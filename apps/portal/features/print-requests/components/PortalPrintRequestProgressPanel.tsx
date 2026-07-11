@@ -89,6 +89,7 @@ export function PortalPrintRequestProgressPanel({
           {STAGES.map((stage, index) => {
             const isComplete = index < activeIndex;
             const isActive = index === activeIndex;
+            const showCheck = isComplete || (isActive && stage === 'done');
             const segmentFilled = index < activeIndex;
 
             return (
@@ -117,7 +118,7 @@ export function PortalPrintRequestProgressPanel({
                   />
                 ) : null}
                 <span aria-hidden="true" className="portal-print-progress-marker">
-                  {isComplete ? '✓' : null}
+                  {showCheck ? '✓' : null}
                 </span>
                 <span className="portal-print-progress-step-label">
                   {getPortalPrintProgressStageLabel(stage)}
