@@ -42,7 +42,7 @@ export function StaffInboxSoundSourceField({
     onChange(
       setStaffInboxAlertSoundSource(settings, soundKind, {
         kind,
-        value,
+        value: kind === "default" ? "" : value,
       }),
     );
   }
@@ -75,7 +75,7 @@ export function StaffInboxSoundSourceField({
       await staffInboxAlertDesktopService.clearLocalSound(userId, soundKind);
       onChange(
         setStaffInboxAlertSoundSource(settings, soundKind, {
-          kind: "local",
+          kind: "default",
           value: "",
         }),
       );
@@ -93,11 +93,11 @@ export function StaffInboxSoundSourceField({
 
       <div className="staff-inbox-sound-source-tabs">
         <button
-          className={`staff-inbox-sound-source-tab${source.kind === "url" ? " is-active" : ""}`}
-          onClick={() => updateSource("url")}
+          className={`staff-inbox-sound-source-tab${source.kind === "default" ? " is-active" : ""}`}
+          onClick={() => updateSource("default")}
           type="button"
         >
-          Online URL
+          Default
         </button>
         <button
           className={`staff-inbox-sound-source-tab${source.kind === "local" ? " is-active" : ""}`}
@@ -107,9 +107,20 @@ export function StaffInboxSoundSourceField({
         >
           Local file
         </button>
+        <button
+          className={`staff-inbox-sound-source-tab${source.kind === "url" ? " is-active" : ""}`}
+          onClick={() => updateSource("url", source.kind === "url" ? source.value : "")}
+          type="button"
+        >
+          Online URL
+        </button>
       </div>
 
-      {source.kind === "url" ? (
+      {source.kind === "default" ? (
+        <p className="staff-inbox-sound-source-hint">
+          Uses the built-in alert tone on this computer. Upload a local file or set a URL to override.
+        </p>
+      ) : source.kind === "url" ? (
         <TextInput
           label="Sound file URL"
           name={`${soundKind}-url`}
@@ -119,9 +130,9 @@ export function StaffInboxSoundSourceField({
         />
       ) : (
         <div className="staff-inbox-sound-source-local">
-          <p className="staff-inbox-sound-source-local-label">Saved file</p>
+          <p className="staff-inbox-sound-source-local-label">Saved file on this computer</p>
           <p className="staff-inbox-sound-source-local-value">
-            {source.value || "No local sound saved yet."}
+            {source.value || "No local sound saved yet — default tone will play."}
           </p>
           <div className="staff-inbox-sound-source-local-actions">
             <Button onClick={() => void handleUploadLocalSound()} type="button" variant="secondary">
@@ -129,7 +140,7 @@ export function StaffInboxSoundSourceField({
             </Button>
             {source.value ? (
               <Button onClick={() => void handleClearLocalSound()} type="button" variant="secondary">
-                Remove
+                Use default
               </Button>
             ) : null}
           </div>
@@ -139,7 +150,7 @@ export function StaffInboxSoundSourceField({
             </p>
           ) : (
             <p className="staff-inbox-sound-source-hint">
-              Supported formats: MP3, WAV, OGG, M4A, AAC. Files are saved on this computer.
+              Supported formats: MP3, WAV, OGG, M4A, AAC. Overrides apply only on this machine.
             </p>
           )}
         </div>

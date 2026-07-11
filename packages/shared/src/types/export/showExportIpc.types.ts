@@ -1,7 +1,14 @@
 import type { ImportIpcResult } from "../import/importIpc.types";
 import type {
-  ExportGangSheetPngRequest,
-  ExportGangSheetPngResult,
+  ClearGangSheetCacheRequest,
+  DownloadCachedGangSheetRequest,
+  DownloadCachedGangSheetResult,
+  ExportCachedGangSheetsRequest,
+  ExportCachedGangSheetsResult,
+  GenerateGangSheetPngRequest,
+  GenerateGangSheetPngResult,
+  GetGangSheetCacheStatusRequest,
+  GetGangSheetCacheStatusResult,
   GangSheetExportProgressEvent,
 } from "./gangSheetExportIpc.types";
 
@@ -51,8 +58,19 @@ export interface ShowExportProgressEvent {
 export interface FreshPrintsExportApi {
   exportShowZip(request: ExportShowZipRequest): Promise<ImportIpcResult<ExportShowZipResult>>;
   onExportProgress(callback: (event: ShowExportProgressEvent) => void): () => void;
-  exportGangSheetPng(
-    request: ExportGangSheetPngRequest,
-  ): Promise<ImportIpcResult<ExportGangSheetPngResult>>;
+  generateGangSheetPng(
+    request: GenerateGangSheetPngRequest,
+  ): Promise<ImportIpcResult<GenerateGangSheetPngResult>>;
+  exportCachedGangSheets(
+    request: ExportCachedGangSheetsRequest,
+  ): Promise<ImportIpcResult<ExportCachedGangSheetsResult>>;
+  downloadCachedGangSheet(
+    request: DownloadCachedGangSheetRequest,
+  ): Promise<ImportIpcResult<DownloadCachedGangSheetResult>>;
+  clearGangSheetCache(request: ClearGangSheetCacheRequest): Promise<ImportIpcResult<{ cleared: boolean }>>;
+  clearAllGangSheetCache(): Promise<ImportIpcResult<{ cleared: boolean }>>;
+  getGangSheetCacheStatus(
+    request: GetGangSheetCacheStatusRequest,
+  ): Promise<ImportIpcResult<GetGangSheetCacheStatusResult>>;
   onGangSheetExportProgress(callback: (event: GangSheetExportProgressEvent) => void): () => void;
 }

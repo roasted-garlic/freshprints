@@ -7,6 +7,10 @@ import type { PrintRequest } from '@fresh-prints/shared/types/printRequest/print
 import { useAuth } from '../../auth/context/AuthContext';
 import type { CatalogDesign } from '../../catalog/types/catalog.types';
 import { portalPrintRequestService } from '../services/portalPrintRequestService';
+import {
+  awaitPendingSeedPersist,
+  awaitPendingSeedPersists,
+} from '../utils/seedPersistRegistry';
 import { usePrintRequestDetail } from './usePrintRequestDetail';
 
 interface SelectedDesignSelection {
@@ -55,6 +59,8 @@ export function usePortalPrintRequestSelectionMode(printRequestId: string | null
   const [selectedDesigns, setSelectedDesigns] = useState<SelectionState>({});
   const hydratedRequestIdRef = useRef<string | null>(null);
   const hydratedSelectionSignatureRef = useRef<string | null>(null);
+  const intentionallyRemovedDesignIdsRef = useRef<Set<string>>(new Set());
+  const pendingRemovalWorkRef = useRef<Set<Promise<unknown>>>(new Set());
   const [isSaving, setIsSaving] = useState(false);
 
   const { error, isLoading, items, printRequest, reload, removeItem } = usePrintRequestDetail(
@@ -65,6 +71,7 @@ export function usePortalPrintRequestSelectionMode(printRequestId: string | null
     if (!printRequestId) {
       hydratedRequestIdRef.current = null;
       hydratedSelectionSignatureRef.current = null;
+      intentionallyRemovedDesignIdsRef.current.clear();
       setSelectedDesigns({});
       return;
     }
@@ -89,12 +96,40 @@ export function usePortalPrintRequestSelectionMode(printRequestId: string | null
       return;
     }
 
-    setSelectedDesigns(buildSelectionStateFromRequestItems(items));
+    // Drop intentional removals from the "still pending on server" set once the server agrees.
+    for (const designId of [...intentionallyRemovedDesignIdsRef.current]) {
+      if (!items.some((item) => item.designId === designId)) {
+        intentionallyRemovedDesignIdsRef.current.delete(designId);
+      }
+    }
+
+    setSelectedDesigns((current) => {
+      const fromServer = buildSelectionStateFromRequestItems(items);
+      const merged: SelectionState = { ...fromServer };
+
+      for (const designId of intentionallyRemovedDesignIdsRef.current) {
+        delete merged[designId];
+      }
+
+      // Keep optimistic seed / local adds until the server item appears.
+      for (const [designId, selection] of Object.entries(current)) {
+        if (
+          !selection.isExisting &&
+          !merged[designId] &&
+          !intentionallyRemovedDesignIdsRef.current.has(designId)
+        ) {
+          merged[designId] = selection;
+        }
+      }
+
+      return merged;
+    });
     hydratedRequestIdRef.current = printRequestId;
     hydratedSelectionSignatureRef.current = nextSignature;
   }, [error, isLoading, items, printRequest, printRequestId]);
 
   const addDesign = useCallback((design: CatalogDesign) => {
+    intentionallyRemovedDesignIdsRef.current.delete(design.id);
     setSelectedDesigns((current) => {
       if (current[design.id]) {
         return current;
@@ -124,6 +159,14 @@ export function usePortalPrintRequestSelectionMode(printRequestId: string | null
     });
   }, []);
 
+  const trackRemovalWork = useCallback((work: Promise<unknown>) => {
+    pendingRemovalWorkRef.current.add(work);
+    void work.finally(() => {
+      pendingRemovalWorkRef.current.delete(work);
+    });
+    return work;
+  }, []);
+
   const removeDesign = useCallback(
     async (designId: string) => {
       const existingSelection = selectedDesigns[designId];
@@ -132,28 +175,41 @@ export function usePortalPrintRequestSelectionMode(printRequestId: string | null
         return;
       }
 
-      if (!existingSelection.isExisting || !existingSelection.existingItemId) {
-        clearNewSelection(designId);
-        return;
-      }
-
-      if (!firebaseUser || !printRequestId) {
-        return;
-      }
-
+      intentionallyRemovedDesignIdsRef.current.add(designId);
       setSelectedDesigns((current) => {
         const nextState = { ...current };
         delete nextState[designId];
         return nextState;
       });
 
-      try {
-        await removeItem(existingSelection.existingItemId);
-      } catch {
-        await reload({ silent: true });
+      if (!firebaseUser || !printRequestId) {
+        return;
       }
+
+      const work = (async () => {
+        try {
+          if (existingSelection.isExisting && existingSelection.existingItemId) {
+            await removeItem(existingSelection.existingItemId);
+            return;
+          }
+
+          // Just-seeded designs are local-only until background persist finishes.
+          await awaitPendingSeedPersist(printRequestId, designId);
+          const currentItems = await portalPrintRequestService.listPrintRequestItems(printRequestId);
+          const createdItem = currentItems.find((item) => item.designId === designId);
+
+          if (createdItem) {
+            await removeItem(createdItem.id);
+          }
+        } catch {
+          intentionallyRemovedDesignIdsRef.current.delete(designId);
+          await reload({ silent: true });
+        }
+      })();
+
+      await trackRemovalWork(work);
     },
-    [clearNewSelection, firebaseUser, printRequestId, reload, removeItem, selectedDesigns],
+    [firebaseUser, printRequestId, reload, removeItem, selectedDesigns, trackRemovalWork],
   );
 
   const setQuantity = useCallback((designId: string, quantity: number) => {
@@ -201,6 +257,15 @@ export function usePortalPrintRequestSelectionMode(printRequestId: string | null
     [selectedDesigns],
   );
 
+  const flushPendingMutations = useCallback(async () => {
+    if (!printRequestId) {
+      return;
+    }
+
+    await awaitPendingSeedPersists(printRequestId);
+    await Promise.all([...pendingRemovalWorkRef.current]);
+  }, [printRequestId]);
+
   const saveSelections = useCallback(async (options?: { skipReload?: boolean }) => {
     if (!firebaseUser || !printRequestId || !printRequest) {
       return;
@@ -209,14 +274,41 @@ export function usePortalPrintRequestSelectionMode(printRequestId: string | null
     setIsSaving(true);
 
     try {
-      await portalPrintRequestService.savePrintRequestDesignSelections({
-        printRequestId,
-        userId: firebaseUser.uid,
-        selections: Object.entries(selectedDesigns).map(([designId, selection]) => ({
+      await flushPendingMutations();
+
+      const latestItems = await portalPrintRequestService.listPrintRequestItems(printRequestId);
+      const selectedDesignIds = new Set(Object.keys(selectedDesigns));
+      const removedItems = latestItems.filter((item) => !selectedDesignIds.has(item.designId));
+
+      for (const item of removedItems) {
+        await portalPrintRequestService.removePrintRequestItem({
+          itemId: item.id,
+          printRequestId,
+          userId: firebaseUser.uid,
+        });
+      }
+
+      const quantityByExistingItemId = new Map(latestItems.map((item) => [item.id, item.quantity]));
+      const dirtySelections = Object.entries(selectedDesigns)
+        .filter(([, selection]) => {
+          if (!selection.isExisting || !selection.existingItemId) {
+            return true;
+          }
+
+          return quantityByExistingItemId.get(selection.existingItemId) !== selection.quantity;
+        })
+        .map(([designId, selection]) => ({
           designId,
           quantity: selection.quantity,
-        })),
-      });
+        }));
+
+      if (dirtySelections.length > 0) {
+        await portalPrintRequestService.savePrintRequestDesignSelections({
+          printRequestId,
+          userId: firebaseUser.uid,
+          selections: dirtySelections,
+        });
+      }
 
       if (!options?.skipReload) {
         await reload({ silent: true });
@@ -224,7 +316,14 @@ export function usePortalPrintRequestSelectionMode(printRequestId: string | null
     } finally {
       setIsSaving(false);
     }
-  }, [firebaseUser, printRequest, printRequestId, reload, selectedDesigns]);
+  }, [
+    firebaseUser,
+    flushPendingMutations,
+    printRequest,
+    printRequestId,
+    reload,
+    selectedDesigns,
+  ]);
 
   return {
     error,
@@ -237,6 +336,7 @@ export function usePortalPrintRequestSelectionMode(printRequestId: string | null
     totalQuantity,
     addDesign,
     clearNewSelection,
+    flushPendingMutations,
     refreshSelection: reload,
     removeDesign,
     saveSelections,

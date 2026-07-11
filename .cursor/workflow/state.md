@@ -4,10 +4,61 @@
 managed-phase
 
 ## Current Goal
-studio-apps-folder-monorepo-normalization — Symmetric apps monorepo: move Studio to `apps/studio/` (mechanical only).
+gang-sheet-local-generate — Local Generate → preview lengths → Download/Export from Electron cache (no Firebase Storage for PNGs).
 
 ## Phase
+test — Implementation complete; automated tests PASS; awaiting manual UI QA.
+
+## Plan Status
+`docs/workflow/plans/2026-07-10-gang-sheet-local-generate-plan.md` — **complete** (approved)
+
+## Review Status
+**approved** — `docs/workflow/reviews/2026-07-10-gang-sheet-local-generate-review.md`
+
+## Implementation Status
+complete
+
+## Test Status
+passed_with_notes — automated PASS; manual QA outstanding  
+Report: `docs/workflow/reviews/2026-07-10-gang-sheet-local-generate-test-report.md`
+
+## Signoff Status
+pending
+
+## Blocked
+no
+
+## Human Checkpoint Required
+yes
+
+## Human Checkpoint Reason
+Manual UI QA for Generate → preview lengths → Download/Export gang sheets on a multi-sheet show.
+
+## Allowed Actions
+Record manual QA feedback; write signoff after PASS; read docs
+
+## Forbidden Actions
+New scope expansion; Firebase Storage for gang sheet PNGs; production deploy
+
+## Next Required Step
+Await human manual QA on Show Queue gang sheet generate/export (see test report checklist)
+
+
+## Decision Log
+- 2026-07-10 — User approved local-cache generate/preview/export (not Firebase). Park staff-inbox-firestore-acks (still needs rules+wipe deploy + manual QA).
+
+## Parked: staff-inbox-firestore-acks
+- Implementation complete; blocked on `firebase deploy --only firestore:rules,functions:wipeOperationalTestData --project fresh-prints-dev` + manual QA
+
+## Parked: admin-operational-test-data-wipe
+- Implementation complete; still needs callable deploy + manual QA
+
+## Parked: portal-catalog-add-to-request
+- Implementation complete; automated PASS; manual UI QA still outstanding
+
+## Prior: studio-apps-folder-monorepo-normalization
 implement — Symmetric apps monorepo phase **complete and signed off**. All slices 0–5 done. DONE: yes for this sub-goal.
+
 
 ## Sub-goal: Phase 8 Portal closeout (2026-07-08) — **DONE**
 - Plan: `docs/workflow/plans/2026-07-08-phase-8-portal-closeout-plan.md` — approved
@@ -331,27 +382,39 @@ Test reports: `docs/workflow/reviews/2026-07-05-whatnot-show-sync-slice2-test-re
 Last: `docs/workflow/reviews/2026-07-08-phase-8-portal-closeout-signoff.md` (approved).
 
 ## Plan Status
-`docs/workflow/plans/2026-07-08-symmetric-apps-monorepo-plan.md` — **ready_for_review**
+`docs/workflow/plans/2026-07-10-admin-operational-test-data-wipe-plan.md` — **approved**
 
 ## Review Status
-**pending** — symmetric apps monorepo plan
+**approved** — `docs/workflow/reviews/2026-07-10-admin-operational-test-data-wipe-review.md`
+
+## Implementation Status
+complete
+
+## Test Status
+partial — automated PASS; deploy + manual QA required
 
 ## Human Checkpoint Required
-no
+yes
+
+## Human Checkpoint Reason
+Deploy `wipeOperationalTestData` to fresh-prints-dev, then manual QA of Test Data Reset page (presets + individual targets).
 
 ## Allowed Actions
-review monorepo plan; read docs; plan revisions only
+record deploy confirmation; record manual QA; fix in-scope bugs; write test report / signoff after PASS
 
 ## Forbidden Actions
-implement monorepo refactor before review approval
+add production project to allowlist; wipe Auth/catalog/Storage; scope expansion
 
 ## Next Required Step
-Review `docs/workflow/plans/2026-07-08-symmetric-apps-monorepo-plan.md` → approve → implement slices 0–5
+Human: `firebase deploy --only functions:wipeOperationalTestData --project fresh-prints-dev` → manual QA on Test Data Reset
 
 ## DONE
-no (monorepo phase open)
+no
 
 ## Decision Log
+- 2026-07-10: Added **designs** wipe target (requires print requests; extra catalog confirm modal; deletes Storage originals/thumbnails/previews). Redeploy `wipeOperationalTestData` required.
+- 2026-07-10: Implemented Test Data Reset page + callable with selectable targets/presets (print-request keep-shows, select all, individuals). Human confirmed all defaults + dedicated page. Awaiting function deploy + manual QA.
+- 2026-07-10: Opened **admin-operational-test-data-wipe** plan. Parked Add-to-request manual QA (implementation already done). Recommended operational wipe (not catalog/accounts) via allowlisted callable + Settings UI.
 - 2026-07-08: Signed off **Phase 8 Portal closeout** as **approved**. ROADMAP/ARCHITECTURE/TESTING/DEPLOYMENT updated; Phase 8 MVP complete in dev. Created symmetric apps monorepo plan (`2026-07-08-symmetric-apps-monorepo-plan.md`) — review pending.
 - 2026-07-08: Signed off **portal-customer-show-selection** as **approved**. User confirmed functions deploy + manual QA PASS ("Everything looks great and passes"). Signoff: `docs/workflow/reviews/2026-07-08-portal-customer-show-selection-signoff.md`. Commits: `22230a7`, `51c6cf7`, `4822acf`.
 - 2026-07-08: Implemented Portal customer show-selection: `listPortalAllocatableShows` + `queuePortalPrintRequestToShow` callables, shared `showScheduleGrouping` + `portalShowQueueCapacity`, `PortalQueueToShowModal`, detail **Queue to show** button. Tests: 40/40 targeted, tsc, portal typecheck, lint PASS. ADR-FP-066.

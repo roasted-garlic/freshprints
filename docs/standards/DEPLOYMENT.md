@@ -66,7 +66,15 @@ Portal backend config: `apps/portal/apphosting.yaml`. App root: `apps/portal` in
 Deploy after Portal feature changes:
 
 ```bash
-firebase deploy --only functions:registerCustomer,functions:createPortalPrintRequest,functions:listPortalAllocatableShows,functions:queuePortalPrintRequestToShow --project fresh-prints-dev
+firebase deploy --only functions:registerCustomer,functions:createPortalPrintRequest,functions:listPortalAllocatableShows,functions:queuePortalPrintRequestToShow,functions:wipeOperationalTestData --project fresh-prints-dev
+```
+
+**Test Data Reset (2026-07-10):** Deploy `wipeOperationalTestData` to `fresh-prints-dev` before using Studio **Test Data Reset**. The callable refuses non-allowlisted projects server-side.
+
+**Staff inbox acks (2026-07-10):** Deploy `firestore:rules` (new `staffInboxAcks` collection) and redeploy `wipeOperationalTestData` (clears `staffInboxAcks` with print-request / show-queue / upcoming-show wipes) before relying on Done sync or wipe clearing inbox history:
+
+```bash
+firebase deploy --only firestore:rules,functions:wipeOperationalTestData --project fresh-prints-dev
 ```
 
 Adjust function list to match changed exports.

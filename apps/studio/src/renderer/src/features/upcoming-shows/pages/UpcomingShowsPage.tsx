@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
-import { ChevronDown, Download, Pause, Play, Plus, Settings, Upload, X } from "lucide-react";
+import { ChevronDown, Download, Pause, Play, Plus, Settings, Upload, WandSparkles, X } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { Badge } from "../../../shared/components/Badge";
@@ -441,24 +441,55 @@ export function UpcomingShowsPage() {
     ],
   );
 
-  const openExportGangSheetModal = useCallback(() => {
-    if (isSelectedShowPast) {
+  useEffect(() => {
+    if (!selectedShow) {
+      exportGangSheetPngState.reset();
       return;
     }
 
-    exportGangSheetPngState.reset();
-    setIsExportGangSheetModalOpen(true);
-  }, [exportGangSheetPngState, isSelectedShowPast]);
+    if (isSelectedShowPast) {
+      void exportGangSheetPngState.clearCacheForShow(selectedShow.id);
+      return;
+    }
+
+    void exportGangSheetPngState.refreshCacheStatus(selectedShow, gangSheetLayoutSettings);
+    // Intentionally keyed to show/settings identity, not the whole hook object.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- stable show/settings triggers only
+  }, [selectedShow?.id, isSelectedShowPast, gangSheetLayoutSettings]);
+
+  const openExportGangSheetModal = useCallback(() => {
+    if (isSelectedShowPast || !selectedShow) {
+      return;
+    }
+
+    void (async () => {
+      // Ensure cache status is loaded before opening so Export skips the generate prompt.
+      if (!exportGangSheetPngState.hasGeneratedCache) {
+        await exportGangSheetPngState.refreshCacheStatus(selectedShow, gangSheetLayoutSettings);
+      }
+      setIsExportGangSheetModalOpen(true);
+    })();
+  }, [
+    exportGangSheetPngState.hasGeneratedCache,
+    exportGangSheetPngState.refreshCacheStatus,
+    gangSheetLayoutSettings,
+    isSelectedShowPast,
+    selectedShow,
+  ]);
 
   const closeExportGangSheetModal = useCallback(() => {
     setIsExportGangSheetModalOpen(false);
   }, []);
 
-  const handleConfirmExportGangSheet = useCallback(() => {
+  const handleGenerateGangSheet = useCallback(() => {
     if (selectedShow) {
-      void exportGangSheetPngState.exportGangSheetPng(selectedShow, gangSheetLayoutSettings);
+      void exportGangSheetPngState.generateGangSheet(selectedShow, gangSheetLayoutSettings);
     }
   }, [exportGangSheetPngState, gangSheetLayoutSettings, selectedShow]);
+
+  const handleExportCachedGangSheets = useCallback(() => {
+    void exportGangSheetPngState.exportCachedGangSheets();
+  }, [exportGangSheetPngState]);
 
   const parsedShow = useMemo(() => parseWhatnotShowUrl(createForm.whatnotUrl), [createForm.whatnotUrl]);
   const scheduledStartAt = parseDateTimeInputToTimestamp(createForm.scheduledStartAtInput);
@@ -847,7 +878,9 @@ export function UpcomingShowsPage() {
                         disabled={isSelectedShowPast || !hasActiveAllocationsForSelectedShow}
                         onClick={openExportGangSheetModal}
                         size="sm"
-                        variant="secondary"
+                        variant={
+                          exportGangSheetPngState.hasGeneratedCache ? "secondary" : "success-outline"
+                        }
                         title={
                           isSelectedShowPast
                             ? PAST_SHOW_READ_ONLY_MESSAGE
@@ -856,8 +889,12 @@ export function UpcomingShowsPage() {
                               : "Add a print request to this show before exporting."
                         }
                       >
-                        <Download aria-hidden="true" size={16} strokeWidth={2} />
-                        Export Gang Sheet
+                        {exportGangSheetPngState.hasGeneratedCache ? (
+                          <Download aria-hidden="true" size={16} strokeWidth={2} />
+                        ) : (
+                          <WandSparkles aria-hidden="true" size={16} strokeWidth={2} />
+                        )}
+                        {exportGangSheetPngState.hasGeneratedCache ? "Export Gang Sheets" : "Generate"}
                       </Button>
                     </div>
                   ) : null}
@@ -1341,12 +1378,18 @@ export function UpcomingShowsPage() {
         <ExportGangSheetConfirmModal
           error={exportGangSheetPngState.error}
           gangSheetWidthInches={gangSheetLayoutSettings.sheetWidthInches}
+          generated={exportGangSheetPngState.generated}
           isExporting={exportGangSheetPngState.isExporting}
+          isGenerating={exportGangSheetPngState.isGenerating}
+          lastSavedPaths={exportGangSheetPngState.lastSavedPaths}
           onClose={closeExportGangSheetModal}
-          onConfirm={handleConfirmExportGangSheet}
+          onDownloadSheet={(sheetIndex) => void exportGangSheetPngState.downloadCachedSheet(sheetIndex)}
+          onExport={handleExportCachedGangSheets}
+          onGenerate={handleGenerateGangSheet}
           progress={exportGangSheetPngState.progress}
-          result={exportGangSheetPngState.result}
+          sheets={exportGangSheetPngState.sheets}
           show={selectedShow}
+          warnings={exportGangSheetPngState.warnings}
         />
       ) : null}
 

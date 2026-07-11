@@ -2,6 +2,7 @@ import {
   DEFAULT_STAFF_INBOX_ALERT_SETTINGS,
   type StaffInboxAlertSettings,
   type StaffInboxAlertSettingsV1,
+  type StaffInboxAlertSoundSource,
 } from "../types/staffInboxAlertSettings.types";
 
 const STORAGE_KEY_PREFIX = "fresh-prints-staff-inbox-alert-settings";
@@ -14,15 +15,29 @@ function migrateV1Settings(settings: StaffInboxAlertSettingsV1): StaffInboxAlert
   return {
     version: 2,
     soundsEnabled: settings.soundsEnabled,
-    requestQueuedToShow: {
-      kind: "url",
-      value: settings.requestQueuedToShowSoundUrl,
-    },
-    showQueueFull: {
-      kind: "url",
-      value: settings.showQueueFullSoundUrl,
-    },
+    requestQueuedToShow: settings.requestQueuedToShowSoundUrl.trim()
+      ? { kind: "url", value: settings.requestQueuedToShowSoundUrl }
+      : { kind: "default", value: "" },
+    showQueueFull: settings.showQueueFullSoundUrl.trim()
+      ? { kind: "url", value: settings.showQueueFullSoundUrl }
+      : { kind: "default", value: "" },
   };
+}
+
+function normalizeSoundSource(source: StaffInboxAlertSoundSource): StaffInboxAlertSoundSource {
+  if (source.kind === "url" && !source.value.trim()) {
+    return { kind: "default", value: "" };
+  }
+
+  if (source.kind === "local" && !source.value.trim()) {
+    return { kind: "default", value: "" };
+  }
+
+  if (source.kind !== "default" && source.kind !== "local" && source.kind !== "url") {
+    return { kind: "default", value: "" };
+  }
+
+  return source;
 }
 
 function isStaffInboxAlertSettingsV2(value: unknown): value is StaffInboxAlertSettings {
@@ -72,7 +87,11 @@ export function loadStaffInboxAlertSettings(userId: string): StaffInboxAlertSett
     const parsed = JSON.parse(raw) as unknown;
 
     if (isStaffInboxAlertSettingsV2(parsed)) {
-      return parsed;
+      return {
+        ...parsed,
+        requestQueuedToShow: normalizeSoundSource(parsed.requestQueuedToShow),
+        showQueueFull: normalizeSoundSource(parsed.showQueueFull),
+      };
     }
 
     if (isStaffInboxAlertSettingsV1(parsed)) {

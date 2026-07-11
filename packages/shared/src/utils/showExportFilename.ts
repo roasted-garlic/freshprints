@@ -30,15 +30,17 @@ export function buildGangSheetBaseFileName(scheduledStartAt: Date): string {
 
 /**
  * Builds one sheet's PNG filename from the gang sheet's base name. Every sheet gets a
- * filename-safe "N of M" suffix, even a single sheet (`_1-of-1`), so every saved file's sheet
- * position is unambiguous regardless of how many sheets a show's content produced.
+ * filename-safe "N of M" suffix, even a single sheet (`_1-of-1`), plus the sheet length in
+ * inches so staff can see length before opening the file.
  */
 export function buildGangSheetFilename(
   baseFileName: string,
   sheetIndex: number,
   sheetTotal: number,
+  lengthInches: number,
 ): string {
-  return `${baseFileName}_${sheetIndex}-of-${sheetTotal}.png`;
+  const lengthSegment = formatInchesForFilename(lengthInches);
+  return `${baseFileName}_${sheetIndex}-of-${sheetTotal}_${lengthSegment}in.png`;
 }
 
 /**

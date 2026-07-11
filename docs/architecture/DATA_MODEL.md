@@ -1480,6 +1480,54 @@ failed manual QA and was replaced 2026-07-05 by the combined model above. See mi
 
 ---
 
+# Staff Inbox Acks Collection
+
+Per-staff-user **Done** history for the Studio operations inbox. Open inbox items are derived from
+live `printRequests` / `showAllocations` / `upcomingShows`; acks only hide items the signed-in staff
+user has marked Done (synced across that user’s devices).
+
+Collection:
+
+```txt
+staffInboxAcks
+```
+
+Document:
+
+```txt
+staffInboxAcks/{userId}__{itemIdWithColonsAsUnderscores}
+```
+
+## Staff Inbox Ack Interface
+
+```ts
+export type StaffInboxItemKind = "portal_queued" | "show_queue_full";
+
+export interface StaffInboxAckDocument {
+  userId: string;
+  itemId: string;
+  kind: StaffInboxItemKind;
+  title: string;
+  subtitle: string;
+  printRequestId?: string;
+  upcomingShowId?: string;
+  printRequestTab?: "working" | "queued" | "printing" | "printed";
+  occurredAtMillis: number;
+  acknowledgedAt: Timestamp;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+```
+
+## Permissions
+
+* Active staff may read/create/delete **own** ack docs (`userId == auth.uid`)
+* No client updates (delete + recreate if needed)
+* Customers: deny
+* Operational wipe deletes this collection when wiping print requests, show-queue attachments, or upcoming shows
+
+---
+
 # Indexing Considerations
 
 Expected indexes:
@@ -1512,6 +1560,8 @@ showAllocations.upcomingShowId (single-field, auto-indexed)
 showAllocations.printRequestId (single-field, auto-indexed)
 showAllocations.upcomingShowId + status + updatedAt
 showAllocations.printRequestId + status + updatedAt
+
+staffInboxAcks.userId (single-field; per-staff Done history)
 ```
 
 Composite indexes are defined in `firestore.indexes.json`.

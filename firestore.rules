@@ -1112,6 +1112,63 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    function isValidStaffInboxAckKind(kind) {
+      return kind in ["portal_queued", "show_queue_full"];
+    }
+
+    function isOptionalPrintRequestListTab(data, field) {
+      return !(field in data)
+        || data[field] in ["working", "queued", "printing", "printed"];
+    }
+
+    function staffInboxAckFieldsValid(data) {
+      return data.keys().hasOnly([
+          "userId",
+          "itemId",
+          "kind",
+          "title",
+          "subtitle",
+          "printRequestId",
+          "upcomingShowId",
+          "printRequestTab",
+          "occurredAtMillis",
+          "acknowledgedAt",
+          "createdAt",
+          "updatedAt"
+        ])
+        && data.userId is string
+        && data.userId.size() > 0
+        && data.itemId is string
+        && data.itemId.size() > 0
+        && isValidStaffInboxAckKind(data.kind)
+        && data.title is string
+        && data.title.size() > 0
+        && data.subtitle is string
+        && data.subtitle.size() > 0
+        && isOptionalString(data, "printRequestId")
+        && isOptionalString(data, "upcomingShowId")
+        && isOptionalPrintRequestListTab(data, "printRequestTab")
+        && data.occurredAtMillis is number
+        && data.occurredAtMillis >= 0
+        && data.acknowledgedAt is timestamp
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    match /staffInboxAcks/{ackId} {
+      allow read: if isStaff()
+        && resource.data.userId == request.auth.uid;
+
+      allow create: if isStaff()
+        && request.resource.data.userId == request.auth.uid
+        && staffInboxAckFieldsValid(request.resource.data);
+
+      allow update: if false;
+
+      allow delete: if isStaff()
+        && resource.data.userId == request.auth.uid;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

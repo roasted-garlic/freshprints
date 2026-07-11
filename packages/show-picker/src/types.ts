@@ -7,7 +7,13 @@ export interface ShowPickerOption {
   /** Null when the show has no scheduled start time. */
   scheduledAt: Date | null;
   timeLabel: string;
+  /** Projected fill percent (committed + pending preview). */
   capacityPercent: number | undefined;
+  /**
+   * Committed fill percent before pending preview. When set and lower than
+   * `capacityPercent`, the picker draws a two-tone “filling” bar.
+   */
+  committedCapacityPercent?: number | undefined;
   capacityLabel: string;
   fillLevel: ShowPickerFillLevel | undefined;
   statusLabel: string;

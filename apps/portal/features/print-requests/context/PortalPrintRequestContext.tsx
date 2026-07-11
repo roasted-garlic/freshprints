@@ -16,6 +16,10 @@ interface PortalPrintRequestContextValue {
   actionError: string | null;
   allocationTotalsByRequestId: Record<string, PrintRequestAllocationTotals>;
   continuableRequests: PrintRequest[];
+  createPrintRequest: (
+    notes?: string,
+    options?: { skipListReload?: boolean },
+  ) => Promise<{ printRequestId: string }>;
   error: string | null;
   finishCreating: () => void;
   handleStartRequestClick: () => void;
@@ -52,6 +56,7 @@ export function PortalPrintRequestProvider({ children }: { children: ReactNode }
     actionError,
     allocationTotalsByRequestId: printRequests.allocationTotalsByRequestId,
     continuableRequests: printRequests.continuableRequests,
+    createPrintRequest: printRequests.createPrintRequest,
     error: printRequests.error,
     finishCreating,
     handleStartRequestClick,

@@ -4,6 +4,7 @@ import {
   ChevronsLeft,
   ChevronsRight,
   ClipboardList,
+  DatabaseZap,
   Images,
   LogOut,
   MessageSquare,
@@ -22,6 +23,7 @@ import { useAuth } from "../../features/auth/hooks/useAuth";
 import { useStaffInboxContext } from "../../features/staff-inbox/context/staffInboxContext";
 import { permissionService } from "../../features/permissions/services/permissionService";
 import type { PermissionKey } from "../../features/permissions/types/permission.types";
+import { isOperationalWipeUiEnabled } from "../../features/test-data-reset/utils/operationalWipeUiGate";
 import { useSidebarDrawer } from "../hooks/useSidebarDrawer";
 import { useUploadActivity } from "../hooks/useUploadActivity";
 import { desktopAppService } from "../services/desktopAppService";
@@ -40,6 +42,8 @@ interface SidebarRouteItem {
   dividerBefore?: boolean;
   permission?: PermissionKey;
   showInboxBadge?: boolean;
+  /** Extra client-side visibility gate beyond permission (e.g. allowlisted Firebase project). */
+  isVisible?: () => boolean;
 }
 
 interface SidebarActionItem {
@@ -111,6 +115,14 @@ const sidebarItems: SidebarRouteItem[] = [
     dividerBefore: true,
   },
   { kind: "route", icon: Settings, label: "Settings", to: "/settings", permission: "manageSettings" },
+  {
+    kind: "route",
+    icon: DatabaseZap,
+    label: "Test Data",
+    to: "/test-data-reset",
+    permission: "manageSettings",
+    isVisible: isOperationalWipeUiEnabled,
+  },
 ];
 
 const showDevToolsSidebarAction = import.meta.env.DEV && isElectronDesktop();
@@ -179,7 +191,9 @@ export function Sidebar() {
 
   const visibleSidebarItems: SidebarItem[] = [
     ...sidebarItems.filter(
-      (item) => !item.permission || permissionService.hasPermission(user, item.permission),
+      (item) =>
+        (!item.permission || permissionService.hasPermission(user, item.permission)) &&
+        (!item.isVisible || item.isVisible()),
     ),
     ...(devToolsAction ? [devToolsAction] : []),
   ];

@@ -78,6 +78,24 @@ UI, Electron IPC, Firebase integration, and visual design often require manual v
 
 Setup guides: `docs/workflow/setup/`
 
+### Test Data Reset (dev only)
+
+Studio sidebar **Test Data Reset** (`/test-data-reset`) — owner/admin on `fresh-prints-dev` only.
+
+1. Deploy `wipeOperationalTestData` if not already deployed.
+2. Prefer preset **Print-request reset (keep shows)** for request→queue scratch loops.
+3. To wipe the catalog, select **Designs** (auto-includes print requests) → extra confirm modal → type `WIPE TEST DATA`.
+4. Type `WIPE TEST DATA` to confirm any wipe.
+5. Reload Studio/Portal after wipe; sequences restart at `…-CR001` / `…-IR001`.
+6. Wipe of print requests / show-queue attachments / upcoming shows also clears `staffInboxAcks` (inbox Done history).
+7. Print-request or attachments-only wipe also zeros each kept upcoming show’s `allocatedQuantity` (and demotes `productionStatus` from `full` → `open`) so Show Queue capacity looks empty.
+
+### Staff inbox (Firestore acks)
+
+1. Deploy `firestore:rules` (and `wipeOperationalTestData` if wipe expansion not yet deployed).
+2. Mark an Open item Done → appears under Done; second Studio session for the same user should match.
+3. Wipe print-request stack → Done list clears; refill a portal show to full → Open + toast again.
+
 ---
 
 ## CI Expectations
@@ -92,5 +110,7 @@ Local commands should mirror CI where possible.
 
 | Date | Summary |
 |------|---------|
+| 2026-07-10 | Staff inbox acks in Firestore; wipe clears staffInboxAcks |
+| 2026-07-10 | Test Data Reset page + wipeOperationalTestData callable |
 | 2026-07-08 | Phase 8 closeout — Portal commands, monorepo test paths |
 | 2026-06-24 | Initial Fresh Prints testing doc (intake) |

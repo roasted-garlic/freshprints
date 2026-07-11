@@ -8,6 +8,7 @@ import {
   query,
   serverTimestamp,
   setDoc,
+  Timestamp,
   updateDoc,
   where,
   type DocumentData,
@@ -26,7 +27,7 @@ import {
 } from '@fresh-prints/shared/utils/printRequestItemSizing';
 
 import { getPortalDb, getPortalFunctions } from '../../../lib/firebase/client';
-import { mapFirestoreTimestamp, resolveDesignDocumentTimestamps } from '../../firebase/utils/mapFirestoreTimestamp';
+import { resolveDesignDocumentTimestamps } from '../../firebase/utils/mapFirestoreTimestamp';
 import { portalAuthService } from '../../auth/services/authService';
 
 interface PrintRequestDocumentData extends DocumentData {
@@ -108,8 +109,12 @@ function mapShowAllocationRecord(data: ShowAllocationDocumentData): PortalShowAl
 }
 
 function mapPrintRequest(printRequestId: string, data: PrintRequestDocumentData): PrintRequest {
-  const createdAt = mapFirestoreTimestamp(data.createdAt);
-  const updatedAt = mapFirestoreTimestamp(data.updatedAt);
+  // After local writes with serverTimestamp(), one or both audit fields can be null in the
+  // client cache until the server ack arrives — same fallback used for print request items.
+  const resolvedTimestamps = resolveDesignDocumentTimestamps(data);
+  const fallbackNow = Timestamp.now();
+  const createdAt = resolvedTimestamps?.createdAt ?? fallbackNow;
+  const updatedAt = resolvedTimestamps?.updatedAt ?? fallbackNow;
 
   if (
     typeof data.name !== 'string' ||
@@ -117,9 +122,7 @@ function mapPrintRequest(printRequestId: string, data: PrintRequestDocumentData)
     typeof data.status !== 'string' ||
     typeof data.itemCount !== 'number' ||
     typeof data.createdBy !== 'string' ||
-    typeof data.updatedBy !== 'string' ||
-    createdAt === undefined ||
-    updatedAt === undefined
+    typeof data.updatedBy !== 'string'
   ) {
     throw new Error('Print request data is incomplete.');
   }
@@ -146,15 +149,19 @@ function mapPrintRequest(printRequestId: string, data: PrintRequestDocumentData)
 }
 
 function mapPrintRequestItem(itemId: string, data: PrintRequestItemDocumentData): PrintRequestItem {
-  const timestamps = resolveDesignDocumentTimestamps(data);
+  // Fresh writes with serverTimestamp() can leave both audit fields pending/null in the
+  // local cache — same race as mapPrintRequest after "Add to request" seed persist.
+  const resolvedTimestamps = resolveDesignDocumentTimestamps(data);
+  const fallbackNow = Timestamp.now();
+  const createdAt = resolvedTimestamps?.createdAt ?? fallbackNow;
+  const updatedAt = resolvedTimestamps?.updatedAt ?? fallbackNow;
 
   if (
     typeof data.printRequestId !== 'string' ||
     typeof data.designId !== 'string' ||
     typeof data.quantity !== 'number' ||
     typeof data.status !== 'string' ||
-    typeof data.addedBy !== 'string' ||
-    timestamps === null
+    typeof data.addedBy !== 'string'
   ) {
     throw new Error('Print request item data is incomplete.');
   }
@@ -171,8 +178,8 @@ function mapPrintRequestItem(itemId: string, data: PrintRequestItemDocumentData)
     notes: typeof data.notes === 'string' ? data.notes : undefined,
     status: data.status as PrintRequestItem['status'],
     addedBy: data.addedBy,
-    createdAt: timestamps.createdAt,
-    updatedAt: timestamps.updatedAt,
+    createdAt,
+    updatedAt,
   };
 }
 
@@ -240,9 +247,14 @@ export const portalPrintRequestService = {
       ),
     );
 
-    return snapshot.docs.map((itemDoc) =>
-      mapPrintRequestItem(itemDoc.id, itemDoc.data() as PrintRequestItemDocumentData),
-    );
+    return snapshot.docs.flatMap((itemDoc) => {
+      try {
+        return [mapPrintRequestItem(itemDoc.id, itemDoc.data() as PrintRequestItemDocumentData)];
+      } catch {
+        // Skip a single malformed/pending doc instead of failing the whole selection load.
+        return [];
+      }
+    });
   },
 
   async listPrintRequestItemsForRequests(printRequestIds: string[]): Promise<PrintRequestItem[]> {
@@ -261,9 +273,13 @@ export const portalPrintRequestService = {
           ),
         );
 
-        return snapshot.docs.map((itemDoc) =>
-          mapPrintRequestItem(itemDoc.id, itemDoc.data() as PrintRequestItemDocumentData),
-        );
+        return snapshot.docs.flatMap((itemDoc) => {
+          try {
+            return [mapPrintRequestItem(itemDoc.id, itemDoc.data() as PrintRequestItemDocumentData)];
+          } catch {
+            return [];
+          }
+        });
       }),
     );
 
@@ -400,8 +416,12 @@ export const portalPrintRequestService = {
       updatedAt: serverTimestamp(),
     });
 
-    const createdSnapshot = await getDoc(itemRef);
-    return mapPrintRequestItem(createdSnapshot.id, createdSnapshot.data() as PrintRequestItemDocumentData);
+    const now = Timestamp.now();
+    return mapPrintRequestItem(itemRef.id, {
+      ...payload,
+      createdAt: now,
+      updatedAt: now,
+    });
   },
 
   async updatePrintRequestItem(input: {
@@ -498,15 +518,49 @@ export const portalPrintRequestService = {
       return;
     }
 
-    await this.getPrintRequest(input.printRequestId);
-    const currentItems = await this.listPrintRequestItems(input.printRequestId);
-
     for (const selection of normalizedSelections) {
       if (!Number.isFinite(selection.quantity) || selection.quantity < 1) {
         throw new Error('Quantity must be at least 1.');
       }
+    }
 
-      const design = await this.getReadyDesign(selection.designId);
+    const [printRequest, currentItems] = await Promise.all([
+      this.getPrintRequest(input.printRequestId),
+      this.listPrintRequestItems(input.printRequestId),
+    ]);
+
+    if (!printRequest) {
+      throw new Error('Print request not found.');
+    }
+
+    if (printRequest.status !== 'draft' && printRequest.status !== 'editing') {
+      throw new Error('This print request can no longer be edited.');
+    }
+
+    const uniqueDesignIds = [...new Set(normalizedSelections.map((selection) => selection.designId))];
+    const designs = await Promise.all(uniqueDesignIds.map((designId) => this.getReadyDesign(designId)));
+    const designById = new Map(designs.map((design) => [design.id, design]));
+
+    type QuantityUpdate = { itemId: string; quantity: number; printWidthInches: number; printHeightInches: number };
+    type ItemCreate = {
+      designId: string;
+      quantity: number;
+      printWidthInches: number;
+      printHeightInches: number;
+      sortOrder: number;
+    };
+
+    const quantityUpdates: QuantityUpdate[] = [];
+    const itemCreates: ItemCreate[] = [];
+    let nextSortOrder = resolveNextSortOrder(currentItems);
+
+    for (const selection of normalizedSelections) {
+      const design = designById.get(selection.designId);
+
+      if (!design) {
+        throw new Error('Design is not available for print requests.');
+      }
+
       const requestedSize = resolveInitialPrintRequestItemSize({
         pixelWidth: design.width,
         pixelHeight: design.height,
@@ -518,24 +572,73 @@ export const portalPrintRequestService = {
 
       if (existingItem) {
         if (existingItem.quantity !== selection.quantity) {
-          await this.updatePrintRequestItem({
+          quantityUpdates.push({
             itemId: existingItem.id,
-            printRequestId: input.printRequestId,
-            userId: input.userId,
             quantity: selection.quantity,
+            printWidthInches: existingItem.printWidthInches ?? requestedSize.printWidthInches,
+            printHeightInches: existingItem.printHeightInches ?? requestedSize.printHeightInches,
           });
         }
 
         continue;
       }
 
-      await this.addPrintRequestItem({
-        printRequestId: input.printRequestId,
-        designId: selection.designId,
+      itemCreates.push({
+        designId: design.id,
         quantity: selection.quantity,
-        userId: input.userId,
+        printWidthInches: requestedSize.printWidthInches,
+        printHeightInches: requestedSize.printHeightInches,
+        sortOrder: nextSortOrder,
       });
+      nextSortOrder += 1;
     }
+
+    if (quantityUpdates.length === 0 && itemCreates.length === 0) {
+      return;
+    }
+
+    const db = getPortalDb();
+    const requestRef = doc(db, 'printRequests', input.printRequestId);
+
+    // Use parallel single-doc writes (not one writeBatch). Customer rules call get()/exists()
+    // on the parent request, customer profile, and design per item; a multi-doc batch shares
+    // one ~20 access budget and fails as "Missing or insufficient permissions."
+    await Promise.all([
+      ...quantityUpdates.map((update) =>
+        updateDoc(doc(db, 'printRequestItems', update.itemId), {
+          quantity: Math.floor(update.quantity),
+          printWidthInches: update.printWidthInches,
+          printHeightInches: update.printHeightInches,
+          sizeLabel: formatPrintRequestItemSizeLabel(update.printWidthInches, update.printHeightInches),
+          updatedAt: serverTimestamp(),
+        }),
+      ),
+      ...itemCreates.map((create) => {
+        const itemRef = doc(collection(db, 'printRequestItems'));
+        return setDoc(itemRef, {
+          id: itemRef.id,
+          printRequestId: input.printRequestId,
+          designId: create.designId,
+          quantity: Math.floor(create.quantity),
+          printWidthInches: create.printWidthInches,
+          printHeightInches: create.printHeightInches,
+          sizeLabel: formatPrintRequestItemSizeLabel(create.printWidthInches, create.printHeightInches),
+          sortOrder: create.sortOrder,
+          status: 'pending' as const,
+          addedBy: input.userId,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+      }),
+    ]);
+
+    await updateDoc(requestRef, {
+      ...(itemCreates.length > 0
+        ? { itemCount: printRequest.itemCount + itemCreates.length }
+        : {}),
+      updatedBy: input.userId,
+      updatedAt: serverTimestamp(),
+    });
   },
 
   async updatePrintRequestItemQuantity(input: {
@@ -557,7 +660,10 @@ export const portalPrintRequestService = {
     printRequestId: string;
     userId: string;
   }): Promise<void> {
-    const printRequest = await this.getPrintRequest(input.printRequestId);
+    const [printRequest, itemSnapshot] = await Promise.all([
+      this.getPrintRequest(input.printRequestId),
+      getDoc(doc(getPortalDb(), 'printRequestItems', input.itemId)),
+    ]);
 
     if (!printRequest) {
       throw new Error('Print request not found.');
@@ -565,6 +671,10 @@ export const portalPrintRequestService = {
 
     if (printRequest.status !== 'draft' && printRequest.status !== 'editing') {
       throw new Error('This print request can no longer be edited.');
+    }
+
+    if (!itemSnapshot.exists()) {
+      return;
     }
 
     await deleteDoc(doc(getPortalDb(), 'printRequestItems', input.itemId));

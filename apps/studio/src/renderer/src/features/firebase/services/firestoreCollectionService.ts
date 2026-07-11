@@ -72,6 +72,10 @@ export const firestoreCollectionService = {
     return this.getCollectionReference("gangSheetItems");
   },
 
+  getStaffInboxAcksCollection() {
+    return this.getCollectionReference("staffInboxAcks");
+  },
+
   getSettingsCollection() {
     return this.getCollectionReference("settings");
   },

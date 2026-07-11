@@ -12,7 +12,7 @@ import {
   isPastScheduledShow,
   PAST_SHOW_READ_ONLY_MESSAGE,
 } from "../../upcoming-shows/utils/groupShowsByUpcomingPast";
-import { ShowPicker, buildShowPickerOptions } from "@fresh-prints/show-picker";
+import { ShowPicker, SHOW_CAPACITY_BAR_ANIMATION_MS, buildShowPickerOptions } from "@fresh-prints/show-picker";
 import "@fresh-prints/show-picker/show-picker.css";
 import type { Design } from "../../designs/types/design.types";
 import { SplitDesignPickerModal } from "./SplitDesignPickerModal";
@@ -52,6 +52,32 @@ function formatWriteErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "Unable to complete the requested write.";
 }
 
+function waitForCapacityBarAnimation(): Promise<void> {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, SHOW_CAPACITY_BAR_ANIMATION_MS);
+  });
+}
+
+function waitForNextPaint(): Promise<void> {
+  return new Promise((resolve) => {
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => resolve());
+    });
+  });
+}
+
+function sumLegQuantities(leg: AllocationLeg): number {
+  return Object.values(leg.quantitiesByItemId).reduce((sum, quantity) => sum + quantity, 0);
+}
+
+function aggregateLegQuantitiesByShowId(legs: AllocationLeg[]): Map<string, number> {
+  const byShowId = new Map<string, number>();
+  for (const leg of legs) {
+    byShowId.set(leg.showId, (byShowId.get(leg.showId) ?? 0) + sumLegQuantities(leg));
+  }
+  return byShowId;
+}
+
 export function AddToShowModal({
   printRequest,
   items,
@@ -69,6 +95,11 @@ export function AddToShowModal({
   const [actionError, setActionError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [progress, setProgress] = useState<AllocationProgress | null>(null);
+  const [savePendingByShowId, setSavePendingByShowId] = useState<ReadonlyMap<string, number> | undefined>();
+  const [isCelebratingSave, setIsCelebratingSave] = useState(false);
+  /** Frozen allocated totals at save start so live Firestore updates do not double-count the pending fill. */
+  const [allocatedBaselineByShowId, setAllocatedBaselineByShowId] = useState<ReadonlyMap<string, number> | undefined>();
+
 
   useEffect(() => {
     setOverrideConfirmed(false);
@@ -139,22 +170,27 @@ export function AddToShowModal({
           scheduledAt: show.scheduledStartAt?.toDate() ?? null,
           productionStatus: show.productionStatus,
           maxTotalQuantity: show.maxTotalQuantity,
-          allocatedQuantity: show.allocatedQuantity,
+          allocatedQuantity: allocatedBaselineByShowId?.get(show.id) ?? show.allocatedQuantity,
         })),
-        extraAllocatedByShowId: new Map(
-          allocatableShows.map((show) => {
-            const legQuantityForShow = legs
-              .filter((leg) => leg.showId === show.id)
-              .reduce((sum, leg) => sum + Object.values(leg.quantitiesByItemId).reduce((legSum, q) => legSum + q, 0), 0);
-            return [show.id, legQuantityForShow] as const;
-          }),
-        ),
+        // While celebrating a save, drop staged-leg extras so the pending layer can fill from the
+        // live allocated baseline (avoids double-counting and matches the post-save animation).
+        extraAllocatedByShowId: isCelebratingSave
+          ? undefined
+          : new Map(
+              allocatableShows.map((show) => {
+                const legQuantityForShow = legs
+                  .filter((leg) => leg.showId === show.id)
+                  .reduce((sum, leg) => sum + sumLegQuantities(leg), 0);
+                return [show.id, legQuantityForShow] as const;
+              }),
+            ),
+        pendingAllocatedByShowId: savePendingByShowId,
         isPastScheduled: (show) => {
           const fullShow = allocatableShows.find((candidate) => candidate.id === show.id);
           return fullShow ? isPastScheduledShow(fullShow, new Date()) : false;
         },
       }),
-    [allocatableShows, legs],
+    [allocatableShows, allocatedBaselineByShowId, isCelebratingSave, legs, savePendingByShowId],
   );
 
   const selectedCapacity = selectedShowId ? capacityByShowId.get(selectedShowId) : undefined;
@@ -273,6 +309,9 @@ export function AddToShowModal({
     setIsSubmitting(true);
     setActionError(null);
     setProgress(steps.length > 0 ? { stepIndex: 0, stepTotal: steps.length, showLabel: "", itemLabel: "" } : null);
+    setAllocatedBaselineByShowId(
+      new Map(allocatableShows.map((show) => [show.id, show.allocatedQuantity] as const)),
+    );
 
     try {
       for (const [index, step] of steps.entries()) {
@@ -293,15 +332,27 @@ export function AddToShowModal({
         });
       }
 
+      // Hand off to capacity-bar celebration (picker must be visible).
+      setProgress(null);
+      setIsSubmitting(false);
+      setIsCelebratingSave(true);
+      setSavePendingByShowId(aggregateLegQuantitiesByShowId(finalLegs));
+      await waitForNextPaint();
+      await waitForCapacityBarAnimation();
+
       await onAdded();
       onClose();
     } catch (error) {
+      setSavePendingByShowId(undefined);
+      setIsCelebratingSave(false);
+      setAllocatedBaselineByShowId(undefined);
       setActionError(formatWriteErrorMessage(error));
     } finally {
       setIsSubmitting(false);
       setProgress(null);
     }
   }, [
+    allocatableShows,
     canConfirmFullFitDirectly,
     designById,
     getShowLabel,
@@ -318,6 +369,7 @@ export function AddToShowModal({
   const isConfirmDisabled =
     fixedShowIsPast ||
     isSubmitting ||
+    isCelebratingSave ||
     (legs.length === 0 && !(canConfirmFullFitDirectly && remainingItems.length > 0));
 
   return (
@@ -331,6 +383,7 @@ export function AddToShowModal({
           <button
             aria-label="Close add to show"
             className="icon-button icon-button-md icon-button-ghost"
+            disabled={isSubmitting || isCelebratingSave}
             onClick={onClose}
             type="button"
           >
@@ -338,7 +391,16 @@ export function AddToShowModal({
           </button>
         </ModalHeader>
         <ModalBody>
-          {isSubmitting ? (
+          {isCelebratingSave ? (
+            <div className="show-allocation-progress">
+              <p className="show-allocation-progress-label">Updating show capacity…</p>
+              <ShowPicker
+                onSelect={() => undefined}
+                options={showPickerOptions}
+                selectedId={selectedShowId || null}
+              />
+            </div>
+          ) : isSubmitting ? (
             <div className="show-allocation-progress">
               <p className="show-allocation-progress-label">
                 {progress
@@ -473,11 +535,11 @@ export function AddToShowModal({
           ) : null}
         </ModalBody>
         <ModalFooter>
-          <Button onClick={onClose} variant="ghost">
+          <Button disabled={isSubmitting || isCelebratingSave} onClick={onClose} variant="ghost">
             Cancel
           </Button>
           <Button disabled={isConfirmDisabled} onClick={() => void handleConfirm()} type="button">
-            {isSubmitting ? "Adding..." : "Add to show"}
+            {isSubmitting || isCelebratingSave ? "Adding..." : "Add to show"}
           </Button>
         </ModalFooter>
       </Modal>

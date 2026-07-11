@@ -50,19 +50,60 @@ function ShowTimeSlotOption({
   onSelect: (id: string) => void;
 }) {
   const cardStateClass = option.isOverCapacity ? " is-over-capacity" : option.isFull ? " is-full" : "";
+  const projectedPercent = Math.min(100, option.capacityPercent ?? 0);
+  const committedPercent =
+    option.committedCapacityPercent === undefined
+      ? projectedPercent
+      : Math.min(100, option.committedCapacityPercent);
+  const hasPendingPreview = option.committedCapacityPercent !== undefined && projectedPercent > committedPercent;
+  const [pendingDisplayPercent, setPendingDisplayPercent] = useState(committedPercent);
+
+  useEffect(() => {
+    if (!hasPendingPreview) {
+      setPendingDisplayPercent(committedPercent);
+      return;
+    }
+
+    // Start at committed fill, then ease to projected so the bar visibly “fills”.
+    // Double rAF ensures the browser paints the start width before transitioning.
+    setPendingDisplayPercent(committedPercent);
+    let secondFrameId = 0;
+    const firstFrameId = window.requestAnimationFrame(() => {
+      secondFrameId = window.requestAnimationFrame(() => {
+        setPendingDisplayPercent(projectedPercent);
+      });
+    });
+
+    return () => {
+      window.cancelAnimationFrame(firstFrameId);
+      window.cancelAnimationFrame(secondFrameId);
+    };
+  }, [committedPercent, hasPendingPreview, option.id, projectedPercent]);
 
   return (
     <button
-      className={`show-picker-slot${isSelected ? " is-selected" : ""}${cardStateClass}`}
+      className={`show-picker-slot${isSelected ? " is-selected" : ""}${cardStateClass}${hasPendingPreview ? " has-pending-fill" : ""}`}
       onClick={() => onSelect(option.id)}
       type="button"
     >
       <div className="show-picker-slot-main">
         <span className="show-picker-slot-time">{option.timeLabel}</span>
-        <div className="show-picker-slot-bar-track">
+        <div
+          aria-valuemax={100}
+          aria-valuemin={0}
+          aria-valuenow={Math.round(projectedPercent)}
+          className="show-picker-slot-bar-track"
+          role="progressbar"
+        >
+          {hasPendingPreview ? (
+            <div
+              className={`show-picker-slot-bar-fill show-picker-slot-bar-fill--pending${option.fillLevel ? ` is-${option.fillLevel}` : ""}`}
+              style={{ width: `${pendingDisplayPercent}%` }}
+            />
+          ) : null}
           <div
             className={`show-picker-slot-bar-fill${option.fillLevel ? ` is-${option.fillLevel}` : ""}`}
-            style={{ width: `${Math.min(100, option.capacityPercent ?? 0)}%` }}
+            style={{ width: `${committedPercent}%` }}
           />
         </div>
         <span className="show-picker-slot-capacity">{option.capacityLabel}</span>

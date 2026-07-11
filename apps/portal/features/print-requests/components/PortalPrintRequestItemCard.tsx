@@ -270,6 +270,35 @@ export function PortalPrintRequestItemCard({
     }
   }, []);
 
+  const handleQuantityKeyDown = useCallback((event: KeyboardEvent<HTMLInputElement>) => {
+    handleFieldKeyDown(event);
+
+    if (event.key !== 'Tab') {
+      return;
+    }
+
+    const quantityInputs = Array.from(
+      document.querySelectorAll<HTMLInputElement>('input[data-portal-request-qty-input="true"]'),
+    ).filter((input) => !input.disabled);
+
+    const currentIndex = quantityInputs.indexOf(event.currentTarget);
+
+    if (currentIndex < 0) {
+      return;
+    }
+
+    const nextIndex = event.shiftKey ? currentIndex - 1 : currentIndex + 1;
+
+    if (nextIndex < 0 || nextIndex >= quantityInputs.length) {
+      return;
+    }
+
+    event.preventDefault();
+    const nextInput = quantityInputs[nextIndex];
+    nextInput.focus();
+    nextInput.select();
+  }, [handleFieldKeyDown]);
+
   return (
     <>
       <article className="portal-request-item-editor-card">
@@ -352,6 +381,7 @@ export function PortalPrintRequestItemCard({
                 aria-label={`Decrease quantity for ${title}`}
                 className="portal-request-item-stepper-button"
                 onClick={() => stepQuantity((parsedQuantity ?? 1) - 1)}
+                tabIndex={-1}
                 type="button"
               >
                 −
@@ -359,13 +389,14 @@ export function PortalPrintRequestItemCard({
               <input
                 aria-label={`Quantity for ${title}`}
                 className="portal-request-item-number-input portal-request-item-stepper-input"
+                data-portal-request-qty-input="true"
                 inputMode="numeric"
                 min={1}
                 name={`quantity-${item.id}`}
                 onBlur={handleFieldBlur}
                 onChange={(event) => setQuantityInput(event.target.value)}
                 onFocus={handleFieldFocus}
-                onKeyDown={handleFieldKeyDown}
+                onKeyDown={handleQuantityKeyDown}
                 type="number"
                 value={quantityInput}
               />
@@ -373,6 +404,7 @@ export function PortalPrintRequestItemCard({
                 aria-label={`Increase quantity for ${title}`}
                 className="portal-request-item-stepper-button"
                 onClick={() => stepQuantity((parsedQuantity ?? 0) + 1)}
+                tabIndex={-1}
                 type="button"
               >
                 +
@@ -382,6 +414,7 @@ export function PortalPrintRequestItemCard({
             <button
               className="portal-button portal-button-secondary portal-button-sm portal-button-leading-icon"
               onClick={() => onDuplicate(item)}
+              tabIndex={-1}
               type="button"
             >
               <CopyIcon size={14} />
@@ -391,6 +424,7 @@ export function PortalPrintRequestItemCard({
             <button
               className="portal-button portal-button-danger portal-button-sm portal-button-leading-icon"
               onClick={() => onRemove(item)}
+              tabIndex={-1}
               type="button"
             >
               <TrashIcon size={14} />

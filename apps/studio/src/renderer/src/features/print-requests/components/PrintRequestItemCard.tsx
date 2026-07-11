@@ -293,6 +293,38 @@ export function PrintRequestItemCard({
     }
   }, []);
 
+  const handleQuantityKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLInputElement>) => {
+      handleFieldKeyDown(event);
+
+      if (event.key !== "Tab") {
+        return;
+      }
+
+      const quantityInputs = Array.from(
+        document.querySelectorAll<HTMLInputElement>('input[data-print-request-qty-input="true"]'),
+      ).filter((input) => !input.disabled);
+
+      const currentIndex = quantityInputs.indexOf(event.currentTarget);
+
+      if (currentIndex < 0) {
+        return;
+      }
+
+      const nextIndex = event.shiftKey ? currentIndex - 1 : currentIndex + 1;
+
+      if (nextIndex < 0 || nextIndex >= quantityInputs.length) {
+        return;
+      }
+
+      event.preventDefault();
+      const nextInput = quantityInputs[nextIndex];
+      nextInput.focus();
+      nextInput.select();
+    },
+    [handleFieldKeyDown],
+  );
+
   return (
     <>
       <Card className="print-requests-item-card">
@@ -380,6 +412,7 @@ export function PrintRequestItemCard({
                   aria-label={`Decrease quantity for ${title}`}
                   className="print-requests-item-stepper-button"
                   onClick={() => stepQuantity((parsedQuantity ?? 1) - 1)}
+                  tabIndex={-1}
                   type="button"
                 >
                   <Minus aria-hidden="true" size={14} strokeWidth={2} />
@@ -387,13 +420,14 @@ export function PrintRequestItemCard({
                 <input
                   aria-label={`Quantity for ${title}`}
                   className="print-requests-number-input print-requests-item-stepper-input"
+                  data-print-request-qty-input="true"
                   inputMode="numeric"
                   min={1}
                   name={`quantity-${item.id}`}
                   onBlur={handleFieldBlur}
                   onChange={(event) => setQuantityInput(event.target.value)}
                   onFocus={handleFieldFocus}
-                  onKeyDown={handleFieldKeyDown}
+                  onKeyDown={handleQuantityKeyDown}
                   type="number"
                   value={quantityInput}
                 />
@@ -401,6 +435,7 @@ export function PrintRequestItemCard({
                   aria-label={`Increase quantity for ${title}`}
                   className="print-requests-item-stepper-button"
                   onClick={() => stepQuantity((parsedQuantity ?? 0) + 1)}
+                  tabIndex={-1}
                   type="button"
                 >
                   <Plus aria-hidden="true" size={14} strokeWidth={2} />
@@ -419,21 +454,21 @@ export function PrintRequestItemCard({
             ) : null}
 
             <div className="print-requests-item-editor-actions">
-              <Button onClick={() => onDuplicate(item)} size="sm" type="button" variant="secondary">
+              <Button onClick={() => onDuplicate(item)} size="sm" tabIndex={-1} type="button" variant="secondary">
                 Duplicate
               </Button>
 
               {isConfirmingRemove ? (
                 <>
-                  <Button onClick={() => setIsConfirmingRemove(false)} size="sm" type="button" variant="ghost">
+                  <Button onClick={() => setIsConfirmingRemove(false)} size="sm" tabIndex={-1} type="button" variant="ghost">
                     Cancel
                   </Button>
-                  <Button onClick={() => onRemove(item)} size="sm" type="button" variant="danger">
+                  <Button onClick={() => onRemove(item)} size="sm" tabIndex={-1} type="button" variant="danger">
                     Confirm
                   </Button>
                 </>
               ) : (
-                <Button onClick={() => setIsConfirmingRemove(true)} size="sm" type="button" variant="danger">
+                <Button onClick={() => setIsConfirmingRemove(true)} size="sm" tabIndex={-1} type="button" variant="danger">
                   Remove
                 </Button>
               )}

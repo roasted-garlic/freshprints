@@ -11,11 +11,30 @@ import {
   formatShowCapacityExceededMessage,
   sumPrintRequestItemQuantities,
 } from '@fresh-prints/shared/utils/portalShowQueueCapacity';
-import { ShowPicker, buildShowPickerOptions } from '@fresh-prints/show-picker';
+import {
+  SHOW_CAPACITY_BAR_ANIMATION_MS,
+  ShowPicker,
+  buildShowPickerOptions,
+} from '@fresh-prints/show-picker';
 
 import { usePortalAllocatableShows } from '../hooks/usePortalAllocatableShows';
 import { useQueuePrintRequestToShow } from '../hooks/useQueuePrintRequestToShow';
 import { PortalLoadingPanel } from '../../shared/components/PortalLoadingPanel';
+
+function waitForCapacityBarAnimation(): Promise<void> {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, SHOW_CAPACITY_BAR_ANIMATION_MS);
+  });
+}
+
+/** Let React commit the pending fill widths before starting the hold timer. */
+function waitForNextPaint(): Promise<void> {
+  return new Promise((resolve) => {
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => resolve());
+    });
+  });
+}
 
 interface PortalQueueToShowModalProps {
   isOpen: boolean;
@@ -36,6 +55,9 @@ export function PortalQueueToShowModal({
   const { queueToShow, isSubmitting, error: submitError, clearError } = useQueuePrintRequestToShow();
   const [selectedShowId, setSelectedShowId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [pendingAllocatedByShowId, setPendingAllocatedByShowId] = useState<ReadonlyMap<string, number> | undefined>();
+  const [isCelebratingSave, setIsCelebratingSave] = useState(false);
+  const [allocatedBaselineByShowId, setAllocatedBaselineByShowId] = useState<ReadonlyMap<string, number> | undefined>();
 
   const totalQuantity = useMemo(() => sumPrintRequestItemQuantities(items), [items]);
 
@@ -47,10 +69,11 @@ export function PortalQueueToShowModal({
           scheduledAt: show.scheduledStartAt ? new Date(show.scheduledStartAt) : null,
           productionStatus: show.productionStatus,
           maxTotalQuantity: show.maxTotalQuantity,
-          allocatedQuantity: show.allocatedQuantity,
+          allocatedQuantity: allocatedBaselineByShowId?.get(show.id) ?? show.allocatedQuantity,
         })),
+        pendingAllocatedByShowId,
       }),
-    [shows],
+    [allocatedBaselineByShowId, pendingAllocatedByShowId, shows],
   );
 
   const selectedShow = useMemo(
@@ -82,13 +105,17 @@ export function PortalQueueToShowModal({
     return null;
   }, [selectedShow, totalQuantity]);
 
+  const isBusy = isSubmitting || isCelebratingSave;
   const canConfirm =
-    Boolean(selectedShowId) && !capacityMessage && !isLoading && !isSubmitting && items.length > 0;
+    Boolean(selectedShowId) && !capacityMessage && !isLoading && !isBusy && items.length > 0;
 
   useEffect(() => {
     if (!isOpen) {
       setSelectedShowId(null);
       setActionError(null);
+      setPendingAllocatedByShowId(undefined);
+      setIsCelebratingSave(false);
+      setAllocatedBaselineByShowId(undefined);
       clearError();
       return;
     }
@@ -104,14 +131,14 @@ export function PortalQueueToShowModal({
     }
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !isSubmitting) {
+      if (event.key === 'Escape' && !isBusy) {
         onClose();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, isSubmitting, onClose]);
+  }, [isBusy, isOpen, onClose]);
 
   const handleConfirm = async () => {
     if (!selectedShowId || !canConfirm) {
@@ -121,13 +148,23 @@ export function PortalQueueToShowModal({
     setActionError(null);
 
     try {
+      setAllocatedBaselineByShowId(
+        new Map(shows.map((show) => [show.id, show.allocatedQuantity] as const)),
+      );
       await queueToShow({
         printRequestId: printRequest.id,
         upcomingShowId: selectedShowId,
       });
+      setIsCelebratingSave(true);
+      setPendingAllocatedByShowId(new Map([[selectedShowId, totalQuantity]]));
+      await waitForNextPaint();
+      await waitForCapacityBarAnimation();
       await onQueued();
       onClose();
     } catch (queueError) {
+      setPendingAllocatedByShowId(undefined);
+      setIsCelebratingSave(false);
+      setAllocatedBaselineByShowId(undefined);
       setActionError(queueError instanceof Error ? queueError.message : 'Unable to add request to a show\'s print run.');
     }
   };
@@ -142,7 +179,7 @@ export function PortalQueueToShowModal({
       aria-modal="true"
       className="modal-overlay modal-overlay-blur portal-queue-to-show-overlay"
       onClick={() => {
-        if (!isSubmitting) {
+        if (!isBusy) {
           onClose();
         }
       }}
@@ -162,7 +199,7 @@ export function PortalQueueToShowModal({
           <button
             aria-label="Close"
             className="modal-close-button"
-            disabled={isSubmitting}
+            disabled={isBusy}
             onClick={onClose}
             type="button"
           >
@@ -212,7 +249,7 @@ export function PortalQueueToShowModal({
         <footer className="modal-footer portal-queue-to-show-footer">
           <button
             className="portal-button portal-button-secondary"
-            disabled={isSubmitting}
+            disabled={isBusy}
             onClick={onClose}
             type="button"
           >
@@ -224,7 +261,7 @@ export function PortalQueueToShowModal({
             onClick={() => void handleConfirm()}
             type="button"
           >
-            {isSubmitting ? 'Adding…' : 'Add to show'}
+            {isBusy ? 'Adding…' : 'Add to show'}
           </button>
         </footer>
       </div>

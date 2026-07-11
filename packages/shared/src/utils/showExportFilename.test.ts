@@ -47,21 +47,21 @@ describe("buildGangSheetBaseFileName", () => {
 });
 
 describe("buildGangSheetFilename", () => {
-  it("adds a _1-of-1 suffix when there is only one sheet", () => {
+  it("adds a _1-of-1 suffix and length when there is only one sheet", () => {
     assert.equal(
-      buildGangSheetFilename("whatnot_07-06-2026_gang-sheet", 1, 1),
-      "whatnot_07-06-2026_gang-sheet_1-of-1.png",
+      buildGangSheetFilename("whatnot_07-06-2026_gang-sheet", 1, 1, 42.25),
+      "whatnot_07-06-2026_gang-sheet_1-of-1_42.25in.png",
     );
   });
 
-  it("adds a _{n}-of-{m} suffix when there are multiple sheets", () => {
+  it("adds a _{n}-of-{m}_{length}in suffix when there are multiple sheets", () => {
     assert.equal(
-      buildGangSheetFilename("whatnot_07-06-2026_gang-sheet", 1, 3),
-      "whatnot_07-06-2026_gang-sheet_1-of-3.png",
+      buildGangSheetFilename("whatnot_07-06-2026_gang-sheet", 1, 3, 38),
+      "whatnot_07-06-2026_gang-sheet_1-of-3_38in.png",
     );
     assert.equal(
-      buildGangSheetFilename("whatnot_07-06-2026_gang-sheet", 2, 3),
-      "whatnot_07-06-2026_gang-sheet_2-of-3.png",
+      buildGangSheetFilename("whatnot_07-06-2026_gang-sheet", 2, 3, 41.5),
+      "whatnot_07-06-2026_gang-sheet_2-of-3_41.5in.png",
     );
   });
 });

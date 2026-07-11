@@ -11,6 +11,7 @@ import { ImportsPage } from "../features/imports/pages/ImportsPage";
 import { PrintRequestsPage } from "../features/print-requests/pages/PrintRequestsPage";
 import { StaffInboxPage } from "../features/staff-inbox/pages/StaffInboxPage";
 import { SettingsPage } from "../features/settings/pages/SettingsPage";
+import { TestDataResetPage } from "../features/test-data-reset/pages/TestDataResetPage";
 import { UpcomingShowsPage } from "../features/upcoming-shows/pages/UpcomingShowsPage";
 import { UserManagementPage } from "../features/users/pages/UserManagementPage";
 import { AuthenticatedLayout } from "./AuthenticatedLayout";
@@ -93,6 +94,14 @@ export function AppRoutes() {
             element={
               <ProtectedRoute permission="manageSettings">
                 <SettingsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/test-data-reset"
+            element={
+              <ProtectedRoute permission="manageSettings">
+                <TestDataResetPage />
               </ProtectedRoute>
             }
           />

@@ -4,12 +4,15 @@ import { useEffect, useState } from 'react';
 
 import type { CatalogDesign } from '../types/catalog.types';
 import { useCatalogDerivativeUrl } from '../hooks/useCatalogDerivativeUrl';
+import { PlusIcon } from '../../shared/components/PortalIcons';
 import { CatalogPreviewLightbox } from './CatalogPreviewLightbox';
 import { CatalogThumbnailPanel } from './CatalogThumbnailPanel';
 
 interface CatalogDesignDetailsModalProps {
   design: CatalogDesign | null;
+  isAdding?: boolean;
   isOpen: boolean;
+  onAddToRequest?: (design: CatalogDesign) => void;
   onClose: () => void;
 }
 
@@ -21,7 +24,13 @@ function CloseIcon() {
   );
 }
 
-export function CatalogDesignDetailsModal({ design, isOpen, onClose }: CatalogDesignDetailsModalProps) {
+export function CatalogDesignDetailsModal({
+  design,
+  isAdding = false,
+  isOpen,
+  onAddToRequest,
+  onClose,
+}: CatalogDesignDetailsModalProps) {
   const [isPreviewLightboxOpen, setIsPreviewLightboxOpen] = useState(false);
   const previewPath = design?.previewPath ?? design?.thumbnailPath;
   const { url: previewUrl } = useCatalogDerivativeUrl(isOpen ? previewPath : undefined);
@@ -88,7 +97,20 @@ export function CatalogDesignDetailsModal({ design, isOpen, onClose }: CatalogDe
           </div>
 
           <div className="modal-body design-details-body">
-            <p className="portal-eyebrow design-details-eyebrow">Design details</p>
+            <div className="design-details-eyebrow-row">
+              <p className="portal-eyebrow design-details-eyebrow">Design details</p>
+              {onAddToRequest ? (
+                <button
+                  className="portal-button portal-button-primary portal-button-sm portal-button-leading-icon design-details-add-btn"
+                  disabled={isAdding}
+                  onClick={() => onAddToRequest(design)}
+                  type="button"
+                >
+                  <PlusIcon size={14} />
+                  {isAdding ? 'Adding…' : 'Add to request'}
+                </button>
+              ) : null}
+            </div>
             <h2 id="catalog-design-details-title">{design.title}</h2>
 
             <section className="design-details-section">

@@ -43,11 +43,19 @@ export function StaffInboxAlertSettingsModal({ isOpen, onClose }: StaffInboxAler
   }
 
   function handleSave() {
+    if (!user?.id) {
+      return;
+    }
+
     saveStaffInboxAlertSettings(user.id, settings);
     onClose();
   }
 
   async function handlePreview(kind: "request_queued_to_show" | "show_queue_full") {
+    if (!user?.id) {
+      return;
+    }
+
     setError(null);
 
     try {
@@ -71,7 +79,8 @@ export function StaffInboxAlertSettingsModal({ isOpen, onClose }: StaffInboxAler
           <p className="eyebrow">Inbox</p>
           <h2 id="staff-inbox-alert-settings-title">Alert settings</h2>
           <p className="staff-inbox-settings-description">
-            Configure a URL or local file for each alert sound.
+            Turn audible alerts on or off for this computer. Each alert uses a built-in default tone
+            unless you override it with a local file or URL.
           </p>
         </div>
 

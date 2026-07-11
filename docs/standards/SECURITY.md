@@ -178,6 +178,7 @@ Admins can:
 * Manage customers
 * View the Users directory and manage helper accounts through the `updateTeamUser` callable function
 * Edit helper status in the Users directory edit modal
+* Use **Test Data Reset** (`/test-data-reset`) on allowlisted development projects only (`fresh-prints-dev`) via the `wipeOperationalTestData` callable — never for production project IDs without a separate approved plan
 
 Admins cannot:
 
@@ -467,6 +468,12 @@ Firestore rules and `permissionService` should stay aligned:
 * Active staff may create/update/delete customer username reservation documents
 * Active staff may read/update the `counters/printRequests` internal request counter
 * Customer role has no Studio access to these collections yet
+
+### Staff inbox acknowledgments
+
+* Active staff may read, create, and delete their own `staffInboxAcks` documents (`userId == auth.uid`)
+* Acks are per staff user (not team-shared); Open alerts remain derived from portal queue data
+* Customers have no access to `staffInboxAcks`
 
 The standard Print Request detail page does not expose arbitrary request-name or request-status
 writes. Customer request names and all request sequences are locked after creation. Internal

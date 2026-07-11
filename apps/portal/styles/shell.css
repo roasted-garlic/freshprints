@@ -700,6 +700,76 @@
   width: 100%;
 }
 
+.portal-pick-continuable-request-modal {
+  max-width: min(100%, 28rem);
+}
+
+.portal-pick-request-list {
+  display: grid;
+  gap: var(--space-2);
+  list-style: none;
+  margin: var(--space-4) 0 0;
+  padding: 0;
+}
+
+.portal-pick-request-option {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: inherit;
+  cursor: pointer;
+  display: block;
+  font: inherit;
+  padding: var(--space-3);
+  text-align: left;
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+  width: 100%;
+}
+
+.portal-pick-request-option:hover:not(:disabled) {
+  border-color: var(--color-border-strong);
+  box-shadow: var(--shadow-sm);
+}
+
+.portal-pick-request-option:focus-visible {
+  border-color: var(--color-accent-primary);
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+  outline: none;
+}
+
+.portal-pick-request-option:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.portal-pick-request-option-copy {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.portal-pick-request-option-name {
+  font-weight: 600;
+}
+
+.portal-pick-request-option-meta {
+  font-size: var(--font-size-sm);
+}
+
+.portal-pick-continuable-request-footer {
+  align-items: stretch;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  gap: var(--space-2);
+  justify-content: flex-start;
+}
+
+.portal-pick-continuable-request-footer .portal-button {
+  justify-content: center;
+  width: 100%;
+}
+
 .portal-account-layout {
   display: grid;
   gap: var(--space-4);

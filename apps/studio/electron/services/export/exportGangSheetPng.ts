@@ -1,8 +1,13 @@
-import { writeFile } from "node:fs/promises";
-import { dialog } from "electron";
-
 import { downloadAndResizeExportImage } from "./downloadAndResizeExportImage";
-import { getActiveBrowserWindow } from "../../ipc/import/importBrowserWindow";
+import {
+  clearAllGangSheetCaches,
+  clearGangSheetCacheForShow,
+  downloadCachedGangSheetFile,
+  exportCachedGangSheetsToDirectory,
+  fingerprintForRequest,
+  getGangSheetCacheStatus,
+  writeGangSheetCache,
+} from "./gangSheetCache";
 import { loadSharpModule } from "../import/loadSharpModule";
 import {
   interleaveGroups,
@@ -11,8 +16,15 @@ import {
 } from "@fresh-prints/shared/utils/gangSheetNesting";
 import { buildGangSheetFilename, buildGangSheetSheetLabel } from "@fresh-prints/shared/utils/showExportFilename";
 import type {
-  ExportGangSheetPngRequest,
-  ExportGangSheetPngResult,
+  ClearGangSheetCacheRequest,
+  DownloadCachedGangSheetRequest,
+  DownloadCachedGangSheetResult,
+  ExportCachedGangSheetsRequest,
+  ExportCachedGangSheetsResult,
+  GenerateGangSheetPngRequest,
+  GenerateGangSheetPngResult,
+  GetGangSheetCacheStatusRequest,
+  GetGangSheetCacheStatusResult,
   GangSheetExportProgressEvent,
 } from "@fresh-prints/shared/types/export/gangSheetExportIpc.types";
 import type { ShowExportImageWarning } from "@fresh-prints/shared/types/export/showExportIpc.types";
@@ -52,11 +64,6 @@ function buildSheetLabelSvg(
   </svg>`;
 }
 
-function formatWarningsFileContent(warnings: ShowExportImageWarning[]): string {
-  const lines = warnings.map((warning) => `${warning.fileName} [${warning.reason}]: ${warning.message}`);
-  return `Export warnings\n================\n\n${lines.join("\n")}\n`;
-}
-
 export class AllGangSheetImagesFailedError extends Error {
   constructor() {
     super("Every image in this gang sheet export failed to download, resize, or fit the sheet. No PNG was created.");
@@ -73,15 +80,13 @@ interface ResizedImage {
 }
 
 /**
- * Downloads and resizes every requested image (repeated by quantity, skipping and warning on
- * individual failures), shelf-nests the results into one or more transparent-background gang
- * sheet PNGs at a fixed artboard width, and saves each via a native save dialog. Renderer never
- * touches the filesystem — this whole pipeline runs in Electron main, mirroring `exportShowZip`.
+ * Downloads, resizes, nests, and composites gang sheet PNGs into the local Electron cache.
+ * Does not open a save dialog — use export/download-from-cache afterward.
  */
-export async function exportGangSheetPng(
-  request: ExportGangSheetPngRequest,
+export async function generateGangSheetPng(
+  request: GenerateGangSheetPngRequest,
   onProgress: GangSheetExportProgressCallback = () => undefined,
-): Promise<ExportGangSheetPngResult> {
+): Promise<GenerateGangSheetPngResult> {
   const warnings: ShowExportImageWarning[] = [];
   const imageTotal = request.images.reduce((sum, image) => sum + image.quantity, 0);
 
@@ -131,10 +136,6 @@ export async function exportGangSheetPng(
     resizedImageGroups.push(group);
   }
 
-  // Interleaving duplicate copies (rather than placing each design's copies consecutively) gives
-  // the nesting/rotation logic below the same opportunity a reference gang-sheet builder took:
-  // pairing two *different* same-height designs into a row lets more rotation options fit within
-  // the sheet's width than always defaulting to pairing two copies of the same design first.
   const resizedImages: ResizedImage[] = interleaveGroups(resizedImageGroups);
 
   if (resizedImages.length === 0) {
@@ -198,12 +199,14 @@ export async function exportGangSheetPng(
   onProgress({ fileName: request.baseFileName, imageIndex: imageTotal, imageTotal, step: "compositing" });
 
   const sheetTotal = nestResult.sheets.length;
-  const sheetBuffers: Buffer[] = [];
   const labelBandHeightPx = computeLabelBandHeightPx(request.labelFontSizePx);
+  const composedSheets: Array<{ fileName: string; lengthInches: number; heightPx: number; buffer: Buffer }> = [];
 
   for (const [sheetOffset, sheet] of nestResult.sheets.entries()) {
     const sheetIndex = sheetOffset + 1;
     const sheetHeightPx = sheet.sheetHeightPx + labelBandHeightPx;
+    const lengthInches = sheetHeightPx / EXPORT_DPI;
+    const fileName = buildGangSheetFilename(request.baseFileName, sheetIndex, sheetTotal, lengthInches);
     const label = buildGangSheetSheetLabel(request.baseFileName, sheetIndex, sheetTotal);
     const labelSvg = buildSheetLabelSvg(label, sheetWidthPx, labelBandHeightPx, request.labelFontSizePx);
 
@@ -229,50 +232,48 @@ export async function exportGangSheetPng(
       .png()
       .toBuffer();
 
-    sheetBuffers.push(composited);
+    composedSheets.push({
+      fileName,
+      lengthInches,
+      heightPx: sheetHeightPx,
+      buffer: composited,
+    });
   }
 
-  const browserWindow = getActiveBrowserWindow();
-  const saveDialogOptions = {
-    title: "Save gang sheet",
-    defaultPath: buildGangSheetFilename(request.baseFileName, 1, sheetTotal),
-    filters: [{ name: "PNG Images", extensions: ["png"] }],
-  };
+  const fingerprint = fingerprintForRequest(request);
 
-  const dialogResult = browserWindow
-    ? await dialog.showSaveDialog(browserWindow, saveDialogOptions)
-    : await dialog.showSaveDialog(saveDialogOptions);
-
-  if (dialogResult.canceled || !dialogResult.filePath) {
-    return {
-      canceled: true,
-      savedFilePaths: [],
-      placedImageCount: 0,
-      skippedImageCount: warnings.filter((warning) => warning.reason !== "upscaled").length,
-      warnings,
-    };
-  }
-
-  const saveDirectory = dialogResult.filePath.replace(/[\\/][^\\/]*$/, "");
-  const savedFilePaths: string[] = [];
-
-  for (const [index, buffer] of sheetBuffers.entries()) {
-    const sheetIndex = index + 1;
-    const path = `${saveDirectory}/${buildGangSheetFilename(request.baseFileName, sheetIndex, sheetTotal)}`;
-    await writeFile(path, buffer);
-    savedFilePaths.push(path);
-  }
-
-  if (warnings.length > 0) {
-    const warningsPath = `${saveDirectory}/${request.baseFileName}_GANG_SHEET_WARNINGS.txt`;
-    await writeFile(warningsPath, formatWarningsFileContent(warnings));
-  }
-
-  return {
-    canceled: false,
-    savedFilePaths,
+  return writeGangSheetCache({
+    request,
+    fingerprint,
+    sheets: composedSheets,
     placedImageCount: nestResult.sheets.reduce((sum, sheet) => sum + sheet.placements.length, 0),
     skippedImageCount: warnings.filter((warning) => warning.reason !== "upscaled").length,
     warnings,
-  };
+  });
+}
+
+export async function exportCachedGangSheets(
+  request: ExportCachedGangSheetsRequest,
+): Promise<ExportCachedGangSheetsResult> {
+  return exportCachedGangSheetsToDirectory(request.showId, request.fingerprint);
+}
+
+export async function downloadCachedGangSheet(
+  request: DownloadCachedGangSheetRequest,
+): Promise<DownloadCachedGangSheetResult> {
+  return downloadCachedGangSheetFile(request.showId, request.fingerprint, request.sheetIndex);
+}
+
+export async function clearGangSheetCache(request: ClearGangSheetCacheRequest): Promise<void> {
+  await clearGangSheetCacheForShow(request.showId);
+}
+
+export async function clearAllGangSheetCache(): Promise<void> {
+  await clearAllGangSheetCaches();
+}
+
+export async function readGangSheetCacheStatus(
+  request: GetGangSheetCacheStatusRequest,
+): Promise<GetGangSheetCacheStatusResult> {
+  return getGangSheetCacheStatus(request.showId, request.fingerprint);
 }

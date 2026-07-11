@@ -1,11 +1,24 @@
 export const EXPORT_SHOW_ZIP = "fresh-prints:export:export-show-zip" as const;
 export const EXPORT_PROGRESS = "fresh-prints:export:progress" as const;
-export const EXPORT_GANG_SHEET_PNG = "fresh-prints:export:export-gang-sheet-png" as const;
+export const GENERATE_GANG_SHEET_PNG = "fresh-prints:export:generate-gang-sheet-png" as const;
+export const EXPORT_CACHED_GANG_SHEETS = "fresh-prints:export:export-cached-gang-sheets" as const;
+export const DOWNLOAD_CACHED_GANG_SHEET = "fresh-prints:export:download-cached-gang-sheet" as const;
+export const CLEAR_GANG_SHEET_CACHE = "fresh-prints:export:clear-gang-sheet-cache" as const;
+export const CLEAR_ALL_GANG_SHEET_CACHE = "fresh-prints:export:clear-all-gang-sheet-cache" as const;
+export const GET_GANG_SHEET_CACHE_STATUS = "fresh-prints:export:get-gang-sheet-cache-status" as const;
 export const EXPORT_GANG_SHEET_PROGRESS = "fresh-prints:export:gang-sheet-progress" as const;
+
+/** @deprecated Use GENERATE_GANG_SHEET_PNG + EXPORT_CACHED_GANG_SHEETS. */
+export const EXPORT_GANG_SHEET_PNG = "fresh-prints:export:export-gang-sheet-png" as const;
 
 export const EXPORT_IPC_CHANNELS = {
   EXPORT_SHOW_ZIP,
-  EXPORT_GANG_SHEET_PNG,
+  GENERATE_GANG_SHEET_PNG,
+  EXPORT_CACHED_GANG_SHEETS,
+  DOWNLOAD_CACHED_GANG_SHEET,
+  CLEAR_GANG_SHEET_CACHE,
+  CLEAR_ALL_GANG_SHEET_CACHE,
+  GET_GANG_SHEET_CACHE_STATUS,
 } as const;
 
 export const EXPORT_IPC_EVENT_CHANNELS = {

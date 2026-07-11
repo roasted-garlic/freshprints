@@ -14,13 +14,13 @@ import type { StaffInboxCompletedItem, StaffInboxItem } from "@fresh-prints/shar
 import { useAuth } from "../../auth/hooks/useAuth";
 import { permissionService } from "../../permissions/services/permissionService";
 import { StaffInboxContext, type StaffInboxToast } from "../context/staffInboxContext";
+import type { StaffInboxSubscriptionSnapshot } from "../services/staffInboxSubscriptionService";
+import type { StaffInboxShowSnapshot } from "@fresh-prints/shared/staffInbox/staffInboxShowSnapshots";
+import type { StaffInboxAckRecord } from "../services/staffInboxAckLegacyLocalStore";
 import {
-  acknowledgeStaffInboxItem,
-  loadAcknowledgedStaffInboxItemIds,
-  loadStaffInboxAckRecords,
   mapAckRecordsToCompletedItems,
-  restoreStaffInboxItem,
-} from "../services/staffInboxAckStore";
+  staffInboxAckService,
+} from "../services/staffInboxAckService";
 import { loadStaffInboxAlertSettings } from "../services/staffInboxAlertSettingsStore";
 import { enqueueStaffInboxAlertSound } from "../services/staffInboxAlertSoundService";
 import { staffInboxSubscriptionService } from "../services/staffInboxSubscriptionService";
@@ -30,7 +30,7 @@ import { getStaffInboxItemNavigationPath } from "../utils/staffInboxNavigation";
 const HIGHLIGHT_DURATION_MS = 8_000;
 const ALERT_BATCH_WINDOW_MS = 150;
 
-const EMPTY_SUBSCRIPTION_SNAPSHOT = {
+const EMPTY_SUBSCRIPTION_SNAPSHOT: StaffInboxSubscriptionSnapshot = {
   portalRequests: [],
   portalAllocations: [],
   shows: [],
@@ -57,6 +57,15 @@ function buildInboxWarningMessage(
   return message ? formatStaffInboxFirestoreError(message) : null;
 }
 
+function applyAckRecordsToState(
+  records: StaffInboxAckRecord[],
+  setAcknowledgedItemIds: (ids: Set<string>) => void,
+  setCompletedItems: (items: StaffInboxCompletedItem[]) => void,
+): void {
+  setAcknowledgedItemIds(new Set(records.map((record) => record.itemId)));
+  setCompletedItems(mapAckRecordsToCompletedItems(records));
+}
+
 export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -64,6 +73,7 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
 
   const [acknowledgedItemIds, setAcknowledgedItemIds] = useState<Set<string>>(() => new Set());
   const [completedItems, setCompletedItems] = useState<StaffInboxCompletedItem[]>([]);
+  const [ackRecords, setAckRecords] = useState<StaffInboxAckRecord[]>([]);
   const [subscriptionSnapshot, setSubscriptionSnapshot] = useState(EMPTY_SUBSCRIPTION_SNAPSHOT);
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
@@ -72,21 +82,35 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
   const [highlightedItemIds, setHighlightedItemIds] = useState<Set<string>>(() => new Set());
 
   const acknowledgedItemIdsRef = useRef(acknowledgedItemIds);
-  const showSnapshotsRef = useRef(EMPTY_SUBSCRIPTION_SNAPSHOT.shows.map((show) => show.snapshot));
+  const ackRecordsRef = useRef(ackRecords);
+  const showSnapshotsRef = useRef<StaffInboxShowSnapshot[]>([]);
   const showTitleByIdRef = useRef<Record<string, string>>({});
   const previousQueuedGroupKeysRef = useRef<Set<string> | null>(null);
   const previousFullShowIdsRef = useRef<Set<string> | null>(null);
   const previousOpenItemIdsRef = useRef<Set<string> | null>(null);
+  const previousAckCountRef = useRef<number | null>(null);
+  const acksHydratedRef = useRef(false);
   const highlightTimeoutIdsRef = useRef<Map<string, number>>(new Map());
   const toastSequenceRef = useRef(0);
   const pendingAlertsRef = useRef<Omit<StaffInboxToast, "id">[]>([]);
   const alertFlushTimeoutRef = useRef<number | null>(null);
   const toastQueueRef = useRef<StaffInboxToast[]>([]);
   const activeToastIdRef = useRef<string | null>(null);
+  const migrationStartedRef = useRef<string | null>(null);
+  const evaluateAlertsRef = useRef<(snapshot: StaffInboxSubscriptionSnapshot) => void>(() => undefined);
+  const subscriptionSnapshotRef = useRef(subscriptionSnapshot);
 
   useEffect(() => {
     acknowledgedItemIdsRef.current = acknowledgedItemIds;
   }, [acknowledgedItemIds]);
+
+  useEffect(() => {
+    ackRecordsRef.current = ackRecords;
+  }, [ackRecords]);
+
+  useEffect(() => {
+    subscriptionSnapshotRef.current = subscriptionSnapshot;
+  }, [subscriptionSnapshot]);
 
   const showSnapshots = useMemo(
     () => subscriptionSnapshot.shows.map((show) => show.snapshot),
@@ -104,16 +128,70 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
   }, [showSnapshots, showTitleById]);
 
   useEffect(() => {
-    if (!user?.id) {
+    if (!user?.id || !isEnabled) {
       setAcknowledgedItemIds(new Set());
       setCompletedItems([]);
+      setAckRecords([]);
+      previousAckCountRef.current = null;
+      acksHydratedRef.current = false;
+      migrationStartedRef.current = null;
       return;
     }
 
-    const records = loadStaffInboxAckRecords(user.id);
-    setAcknowledgedItemIds(loadAcknowledgedStaffInboxItemIds(user.id));
-    setCompletedItems(mapAckRecordsToCompletedItems(records));
-  }, [user?.id]);
+    if (migrationStartedRef.current !== user.id) {
+      migrationStartedRef.current = user.id;
+      void staffInboxAckService.migrateLegacyLocalStorage(user.id).catch(() => {
+        // Subscription still works; legacy rows may retry on next session.
+      });
+    }
+
+    const unsubscribe = staffInboxAckService.subscribe(
+      user.id,
+      (records) => {
+        const previousCount = previousAckCountRef.current;
+        previousAckCountRef.current = records.length;
+        const wasHydrated = acksHydratedRef.current;
+        acksHydratedRef.current = true;
+
+        // Wipe (or full clear) → re-baseline on next evaluate (do not treat existing rows as new).
+        if (previousCount !== null && previousCount > 0 && records.length === 0) {
+          previousQueuedGroupKeysRef.current = null;
+          previousFullShowIdsRef.current = null;
+        }
+
+        // Keep the ref in sync before any immediate evaluateAlerts call.
+        const nextAckIds = new Set(records.map((record) => record.itemId));
+        acknowledgedItemIdsRef.current = nextAckIds;
+        setAckRecords(records);
+        applyAckRecordsToState(records, setAcknowledgedItemIds, setCompletedItems);
+
+        if (!wasHydrated || (previousCount !== null && previousCount > 0 && records.length === 0)) {
+          evaluateAlertsRef.current(subscriptionSnapshotRef.current);
+        }
+      },
+      (message) => {
+        setWarning(formatStaffInboxFirestoreError(message));
+      },
+    );
+
+    return unsubscribe;
+  }, [isEnabled, user?.id]);
+
+  useEffect(() => {
+    if (!user?.id || showSnapshots.length === 0) {
+      return;
+    }
+
+    const fullShowIds = new Set(
+      listFullPortalShowIds(showSnapshots, subscriptionSnapshot.portalAllocations),
+    );
+
+    void staffInboxAckService
+      .pruneResolvedShowQueueFull(user.id, ackRecordsRef.current, fullShowIds)
+      .catch(() => {
+        // Snapshot subscription remains source of truth.
+      });
+  }, [showSnapshots, subscriptionSnapshot.portalAllocations, user?.id]);
 
   const presentNextToast = useCallback(() => {
     if (activeToastIdRef.current) {
@@ -176,6 +254,11 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
 
   const evaluateAlerts = useCallback(
     (snapshot: typeof subscriptionSnapshot) => {
+      // Wait until Done/ack state has loaded so existing queued items are not treated as brand-new.
+      if (!acksHydratedRef.current) {
+        return;
+      }
+
       const openItems = deriveStaffInboxItems({
         portalAllocations: snapshot.portalAllocations,
         acknowledgedItemIds: acknowledgedItemIdsRef.current,
@@ -186,7 +269,9 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
       const nextQueuedGroupKeys = new Set(listQueuedGroupKeys(snapshot.portalAllocations));
       const previousQueuedGroupKeys = previousQueuedGroupKeysRef.current;
 
-      if (previousQueuedGroupKeys) {
+      if (previousQueuedGroupKeys === null) {
+        previousQueuedGroupKeysRef.current = nextQueuedGroupKeys;
+      } else {
         for (const groupKey of nextQueuedGroupKeys) {
           if (previousQueuedGroupKeys.has(groupKey)) {
             continue;
@@ -208,9 +293,9 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
             navigationPath: getStaffInboxItemNavigationPath(queuedItem),
           });
         }
-      }
 
-      previousQueuedGroupKeysRef.current = nextQueuedGroupKeys;
+        previousQueuedGroupKeysRef.current = nextQueuedGroupKeys;
+      }
 
       if (showSnapshotsRef.current.length === 0) {
         return;
@@ -251,6 +336,8 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
     [queueAlert],
   );
 
+  evaluateAlertsRef.current = evaluateAlerts;
+
   useEffect(() => {
     if (!isEnabled) {
       setSubscriptionSnapshot(EMPTY_SUBSCRIPTION_SNAPSHOT);
@@ -259,6 +346,7 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
       previousQueuedGroupKeysRef.current = null;
       previousFullShowIdsRef.current = null;
       previousOpenItemIdsRef.current = null;
+      acksHydratedRef.current = false;
       setHighlightedItemIds(new Set());
 
       for (const timeoutId of highlightTimeoutIdsRef.current.values()) {
@@ -399,10 +487,23 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
         return;
       }
 
-      const records = acknowledgeStaffInboxItem(user.id, item);
-      setAcknowledgedItemIds(new Set(records.map((record) => record.itemId)));
-      setCompletedItems(mapAckRecordsToCompletedItems(records));
       clearItemHighlight(item.id);
+      setAcknowledgedItemIds((current) => {
+        const next = new Set(current);
+        next.add(item.id);
+        return next;
+      });
+      setCompletedItems((current) => [
+        {
+          ...item,
+          acknowledgedAtMillis: Date.now(),
+        },
+        ...current.filter((entry) => entry.id !== item.id),
+      ]);
+
+      void staffInboxAckService.acknowledge(user.id, item).catch(() => {
+        setWarning("Unable to save inbox Done state. Check your connection and try again.");
+      });
     },
     [clearItemHighlight, user?.id],
   );
@@ -413,9 +514,16 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
         return;
       }
 
-      const records = restoreStaffInboxItem(user.id, itemId);
-      setAcknowledgedItemIds(new Set(records.map((record) => record.itemId)));
-      setCompletedItems(mapAckRecordsToCompletedItems(records));
+      setAcknowledgedItemIds((current) => {
+        const next = new Set(current);
+        next.delete(itemId);
+        return next;
+      });
+      setCompletedItems((current) => current.filter((entry) => entry.id !== itemId));
+
+      void staffInboxAckService.restore(user.id, itemId).catch(() => {
+        setWarning("Unable to restore inbox item. Check your connection and try again.");
+      });
     },
     [user?.id],
   );
@@ -478,12 +586,14 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
   );
 
   useEffect(() => {
+    const highlightTimeouts = highlightTimeoutIdsRef.current;
+
     return () => {
-      for (const timeoutId of highlightTimeoutIdsRef.current.values()) {
+      for (const timeoutId of highlightTimeouts.values()) {
         window.clearTimeout(timeoutId);
       }
 
-      highlightTimeoutIdsRef.current.clear();
+      highlightTimeouts.clear();
 
       if (alertFlushTimeoutRef.current) {
         window.clearTimeout(alertFlushTimeoutRef.current);

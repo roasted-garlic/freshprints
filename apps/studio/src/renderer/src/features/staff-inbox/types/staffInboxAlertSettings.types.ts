@@ -1,10 +1,10 @@
 export type StaffInboxAlertSoundKind = "request_queued_to_show" | "show_queue_full";
 
-export type StaffInboxAlertSoundSourceKind = "local" | "url";
+export type StaffInboxAlertSoundSourceKind = "default" | "local" | "url";
 
 export interface StaffInboxAlertSoundSource {
   kind: StaffInboxAlertSoundSourceKind;
-  /** URL string for online sounds, or saved local file name for desktop uploads. */
+  /** URL string for online sounds, or saved local file name for desktop uploads. Empty when using default. */
   value: string;
 }
 
@@ -25,7 +25,7 @@ export interface StaffInboxAlertSettingsV1 {
 export type StaffInboxAlertSettings = StaffInboxAlertSettingsV2;
 
 export const EMPTY_STAFF_INBOX_ALERT_SOUND_SOURCE: StaffInboxAlertSoundSource = {
-  kind: "url",
+  kind: "default",
   value: "",
 };
 

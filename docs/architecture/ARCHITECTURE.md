@@ -655,16 +655,20 @@ Staff builds a show queue / print plan
          ↓
 Show allocations reference print request items and catalog designs
          ↓
-Staff downloads originals from Firebase Storage
+Staff generates gang sheets in Studio (download originals → nest → composite)
          ↓
-Gang Sheet Software
+Sheets are cached locally on the production PC (Electron userData)
+         ↓
+Staff previews lengths, downloads individual sheets, or exports all to a folder
 ```
+
+Generated gang sheet PNGs are **not** stored in Firebase Storage or Firestore — they can be hundreds of megabytes per show. Cache is fingerprint-keyed and cleared when the show is past or regenerated.
 
 This is **file export for production** — not shipping, packing, or order fulfillment.
 
 Remote helpers never need access to local production folders.
 
-The shared connection point is Firebase Storage.
+The shared connection point for **design originals** remains Firebase Storage.
 
 ---
 

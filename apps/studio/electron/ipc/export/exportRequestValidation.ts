@@ -1,5 +1,10 @@
 import type {
+  ClearGangSheetCacheRequest,
+  DownloadCachedGangSheetRequest,
+  ExportCachedGangSheetsRequest,
   ExportGangSheetPngRequest,
+  GenerateGangSheetPngRequest,
+  GetGangSheetCacheStatusRequest,
   GangSheetExportImageRequest,
 } from "@fresh-prints/shared/types/export/gangSheetExportIpc.types";
 import type { ExportShowZipRequest, ShowExportImageRequest } from "@fresh-prints/shared/types/export/showExportIpc.types";
@@ -127,6 +132,10 @@ export function validateExportGangSheetPngRequest(payload: unknown) {
     return { error: importIpcFailure("INVALID_INPUT", "A positive max sheet length in inches is required.") };
   }
 
+  if (!isPositiveInteger(request.labelFontSizePx)) {
+    return { error: importIpcFailure("INVALID_INPUT", "A positive label font size in pixels is required.") };
+  }
+
   if (!Array.isArray(request.images) || request.images.length === 0) {
     return { error: importIpcFailure("INVALID_INPUT", "At least one image is required to export.") };
   }
@@ -136,4 +145,89 @@ export function validateExportGangSheetPngRequest(payload: unknown) {
   }
 
   return { request: request as ExportGangSheetPngRequest };
+}
+
+export function validateGenerateGangSheetPngRequest(
+  payload: unknown,
+): { request: GenerateGangSheetPngRequest } | { error: ReturnType<typeof importIpcFailure> } {
+  const base = validateExportGangSheetPngRequest(payload);
+  if (!("request" in base) || !base.request) {
+    return {
+      error:
+        "error" in base && base.error
+          ? base.error
+          : importIpcFailure("INVALID_INPUT", "A gang sheet export request object is required."),
+    };
+  }
+
+  const exportRequest = base.request;
+  const request = payload as Partial<GenerateGangSheetPngRequest>;
+  if (!isNonEmptyString(request.showId)) {
+    return { error: importIpcFailure("INVALID_INPUT", "A show id is required to generate gang sheets.") };
+  }
+
+  return {
+    request: {
+      baseFileName: exportRequest.baseFileName,
+      sheetWidthInches: exportRequest.sheetWidthInches,
+      sideMarginInches: exportRequest.sideMarginInches,
+      topBottomMarginInches: exportRequest.topBottomMarginInches,
+      gutterInches: exportRequest.gutterInches,
+      maxSheetLengthInches: exportRequest.maxSheetLengthInches,
+      labelFontSizePx: exportRequest.labelFontSizePx,
+      images: exportRequest.images,
+      showId: request.showId.trim(),
+    },
+  };
+}
+
+function isValidCacheLookup(payload: unknown): payload is { showId: string; fingerprint: string } {
+  if (!payload || typeof payload !== "object") {
+    return false;
+  }
+
+  const request = payload as Partial<ExportCachedGangSheetsRequest>;
+  return isNonEmptyString(request.showId) && isNonEmptyString(request.fingerprint);
+}
+
+export function validateExportCachedGangSheetsRequest(payload: unknown) {
+  if (!isValidCacheLookup(payload)) {
+    return { error: importIpcFailure("INVALID_INPUT", "Show id and cache fingerprint are required.") };
+  }
+
+  return { request: payload as ExportCachedGangSheetsRequest };
+}
+
+export function validateDownloadCachedGangSheetRequest(payload: unknown) {
+  if (!isValidCacheLookup(payload)) {
+    return { error: importIpcFailure("INVALID_INPUT", "Show id and cache fingerprint are required.") };
+  }
+
+  const request = payload as Partial<DownloadCachedGangSheetRequest>;
+  if (!isPositiveInteger(request.sheetIndex)) {
+    return { error: importIpcFailure("INVALID_INPUT", "A positive sheet index is required.") };
+  }
+
+  return { request: payload as DownloadCachedGangSheetRequest };
+}
+
+export function validateClearGangSheetCacheRequest(payload: unknown) {
+  if (!payload || typeof payload !== "object") {
+    return { error: importIpcFailure("INVALID_INPUT", "A show id is required to clear the gang sheet cache.") };
+  }
+
+  const request = payload as Partial<ClearGangSheetCacheRequest>;
+  if (!isNonEmptyString(request.showId)) {
+    return { error: importIpcFailure("INVALID_INPUT", "A show id is required to clear the gang sheet cache.") };
+  }
+
+  return { request: payload as ClearGangSheetCacheRequest };
+}
+
+export function validateGetGangSheetCacheStatusRequest(payload: unknown) {
+  if (!isValidCacheLookup(payload)) {
+    return { error: importIpcFailure("INVALID_INPUT", "Show id and cache fingerprint are required.") };
+  }
+
+  return { request: payload as GetGangSheetCacheStatusRequest };
 }

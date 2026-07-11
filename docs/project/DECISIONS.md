@@ -4,6 +4,110 @@
 
 ---
 
+### ADR-FP-070: Local gang sheet generate/cache (not Firebase Storage)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-10 |
+| Status | accepted |
+
+**Context**
+
+Staff need sheet count and lengths before saving files. A ~200-image show produced ~4 sheets / ~677MB. Uploading those PNGs to Firebase Storage (even temporarily) would fill quotas and add latency on the production machine that already runs Studio.
+
+**Decision**
+
+1. **Generate Gang Sheet** composites PNGs into an Electron `userData` cache keyed by show id + content fingerprint.
+2. UI previews sheet count, lengths, and filenames (length included in the filename); staff can download one sheet or export all via native save dialogs.
+3. After a successful generate, the primary action is **Export gang sheets** (copy from cache).
+4. Do **not** persist generated gang sheet PNGs in Firebase Storage or Firestore.
+5. Clear cache when the show is past, on regenerate, when the fingerprint no longer matches allocations/settings, or when Test Data Reset wipes print requests / show-queue attachments / upcoming shows (clears the entire local `gang-sheet-cache` folder on this computer).
+
+**Consequences**
+
+- Disk use is local to the production PC; fingerprinting prevents exporting stale sheets after queue edits.
+- Cross-machine sharing of generated sheets is out of scope unless revisited later.
+
+---
+
+### ADR-FP-069: Staff inbox Done state in Firestore (per user)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-10 |
+| Status | accepted |
+
+**Context**
+
+Staff inbox Open items are derived from Firestore, but Done/ack state lived in `localStorage`. That broke multi-device sync, left Done history after Test Data wipe, and suppressed `show_queue_full` alerts after wipe+refill on the same show id.
+
+**Decision**
+
+1. Persist acks in `staffInboxAcks` with deterministic doc ids `{userId}__{encodedItemId}`.
+2. Scope is **per staff user** (sync across that user’s devices; not team-shared Done).
+3. Staff may only read/create/delete own docs; no client updates.
+4. Operational wipe deletes `staffInboxAcks` when wiping print requests, show-queue attachments, or upcoming shows.
+5. One-time migrate existing localStorage acks into Firestore for the signed-in user, then clear the local key.
+
+**Consequences**
+
+- Done survives app restart and syncs across machines for the same staff account.
+- Wipe clears Done server-side; rules deploy required before client writes succeed.
+- Team-shared Done remains out of scope.
+
+---
+
+### ADR-FP-068: Admin Test Data Reset page for allowlisted operational wipes
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-10 |
+| Status | accepted |
+
+**Context**
+
+Scratch QA of print requests → show queue required manual Firebase Console deletes and sequence resets. Catalog and accounts must stay intact.
+
+**Decision**
+
+1. Dedicated Studio page `/test-data-reset` (sidebar **Test Data Reset**), visible only for owner/admin when the client Firebase project is allowlisted (`fresh-prints-dev`).
+2. Callable `wipeOperationalTestData` with selectable targets and presets, including **print-request reset (keep shows)** and optional **designs** wipe.
+3. **Designs** wipe requires **print requests** in the same run, an extra catalog confirm modal (`acknowledgeDesignCatalogWipe`), then the typed phrase. Deletes `designs` docs plus Storage `originals/`, `thumbnails/`, `previews/`.
+4. Server enforces owner/admin + project allowlist + typed confirm phrase `WIPE TEST DATA`.
+5. Sequences reset to **1** (not 0). Accounts, categories, tags, and settings are never wiped by this tool.
+
+**Consequences**
+
+- Faster scratch loops without Console surgery.
+- Must deploy the callable to `fresh-prints-dev` before the page works.
+- Never add production project IDs to the allowlist without a new approved plan.
+
+---
+
+### ADR-FP-067: Portal browse “Add to request” enters selection mode after immediate persist
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-10 |
+| Status | accepted |
+
+**Context**
+
+Portal catalog browse and design details were read-only. Customers could only start/continue requests from the top bar or request detail “Add designs,” so the Design Library did not feel requestable. Multi-request continue dumped to the Working tab with no design-scoped picker.
+
+**Decision**
+
+1. **Add to request** CTAs on design details (eyebrow row, right-aligned) and browse design cards.
+2. **Immediate persist** the design at quantity 1 via `savePrintRequestDesignSelections` (dedupe-safe), then navigate to existing selection mode for that request.
+3. Branch on continuable (`draft`/`editing`) count: **0** create without confirm → add → selection; **1** add to that request → selection; **2+** `PortalPickContinuableRequestModal` (pick or start new).
+4. Design-level CTA skips the generic “Start a new print request?” confirm; top-bar/FAB keep it.
+5. If the design is already on the target request, do not duplicate; still enter selection mode.
+
+**Consequences**
+
+- Browse and details become request entry points without new callables or rules.
+- Selection mode remains the place to adjust quantities and add more designs.
+
 ---
 
 ### ADR-FP-066: Portal customer self-queue via callables

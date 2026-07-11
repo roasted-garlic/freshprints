@@ -83,8 +83,15 @@ import type {
   ShowExportProgressEvent,
 } from "@fresh-prints/shared/types/export/showExportIpc.types";
 import type {
-  ExportGangSheetPngRequest,
-  ExportGangSheetPngResult,
+  ClearGangSheetCacheRequest,
+  DownloadCachedGangSheetRequest,
+  DownloadCachedGangSheetResult,
+  ExportCachedGangSheetsRequest,
+  ExportCachedGangSheetsResult,
+  GenerateGangSheetPngRequest,
+  GenerateGangSheetPngResult,
+  GetGangSheetCacheStatusRequest,
+  GetGangSheetCacheStatusResult,
   GangSheetExportProgressEvent,
 } from "@fresh-prints/shared/types/export/gangSheetExportIpc.types";
 
@@ -462,11 +469,46 @@ contextBridge.exposeInMainWorld("freshPrints", {
       return subscribeExportEvent<ShowExportProgressEvent>(EXPORT_IPC_EVENT_CHANNELS.PROGRESS, callback);
     },
 
-    exportGangSheetPng(
-      request: ExportGangSheetPngRequest,
-    ): Promise<ImportIpcResult<ExportGangSheetPngResult>> {
-      return invokeExportChannel<ExportGangSheetPngResult>(
-        EXPORT_IPC_CHANNELS.EXPORT_GANG_SHEET_PNG,
+    generateGangSheetPng(
+      request: GenerateGangSheetPngRequest,
+    ): Promise<ImportIpcResult<GenerateGangSheetPngResult>> {
+      return invokeExportChannel<GenerateGangSheetPngResult>(
+        EXPORT_IPC_CHANNELS.GENERATE_GANG_SHEET_PNG,
+        request,
+      );
+    },
+
+    exportCachedGangSheets(
+      request: ExportCachedGangSheetsRequest,
+    ): Promise<ImportIpcResult<ExportCachedGangSheetsResult>> {
+      return invokeExportChannel<ExportCachedGangSheetsResult>(
+        EXPORT_IPC_CHANNELS.EXPORT_CACHED_GANG_SHEETS,
+        request,
+      );
+    },
+
+    downloadCachedGangSheet(
+      request: DownloadCachedGangSheetRequest,
+    ): Promise<ImportIpcResult<DownloadCachedGangSheetResult>> {
+      return invokeExportChannel<DownloadCachedGangSheetResult>(
+        EXPORT_IPC_CHANNELS.DOWNLOAD_CACHED_GANG_SHEET,
+        request,
+      );
+    },
+
+    clearGangSheetCache(request: ClearGangSheetCacheRequest): Promise<ImportIpcResult<{ cleared: boolean }>> {
+      return invokeExportChannel<{ cleared: boolean }>(EXPORT_IPC_CHANNELS.CLEAR_GANG_SHEET_CACHE, request);
+    },
+
+    clearAllGangSheetCache(): Promise<ImportIpcResult<{ cleared: boolean }>> {
+      return invokeExportChannel<{ cleared: boolean }>(EXPORT_IPC_CHANNELS.CLEAR_ALL_GANG_SHEET_CACHE);
+    },
+
+    getGangSheetCacheStatus(
+      request: GetGangSheetCacheStatusRequest,
+    ): Promise<ImportIpcResult<GetGangSheetCacheStatusResult>> {
+      return invokeExportChannel<GetGangSheetCacheStatusResult>(
+        EXPORT_IPC_CHANNELS.GET_GANG_SHEET_CACHE_STATUS,
         request,
       );
     },

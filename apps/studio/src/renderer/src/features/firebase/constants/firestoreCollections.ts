@@ -15,6 +15,7 @@ export const FIRESTORE_COLLECTIONS = {
   showAllocations: "showAllocations",
   gangSheets: "gangSheets",
   gangSheetItems: "gangSheetItems",
+  staffInboxAcks: "staffInboxAcks",
   settings: "settings",
   auditLogs: "auditLogs",
 } as const;

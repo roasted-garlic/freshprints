@@ -113,6 +113,18 @@
   filter: brightness(1.05);
 }
 
+.button-success-outline {
+  background: var(--color-bg-primary);
+  border-color: var(--color-success);
+  color: var(--color-success);
+}
+
+.button-success-outline:hover:not(:disabled) {
+  background: var(--color-success-soft);
+  border-color: var(--color-success);
+  color: var(--color-success-text);
+}
+
 .icon-button {
   align-items: center;
   background: transparent;

@@ -11,3 +11,4 @@ export { resetAiEnrichmentForProcessing } from "./resetAiEnrichmentForProcessing
 export { testAiEnrichmentPlayground } from "./testAiEnrichmentPlayground";
 export { testAiEnrichmentTagRerank } from "./testAiEnrichmentTagRerank";
 export { updateAiEnrichmentSettings } from "./updateAiEnrichmentSettings";
+export { wipeOperationalTestData } from "./wipeOperationalTestData";

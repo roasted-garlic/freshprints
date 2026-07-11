@@ -5,6 +5,7 @@ import type {
   StaffInboxAlertSoundKind,
   StaffInboxAlertSoundSource,
 } from "../types/staffInboxAlertSettings.types";
+import { getDefaultStaffInboxAlertSoundUrl } from "./staffInboxDefaultAlertSounds";
 
 const ALERT_SOUND_GAP_MS = 2_000;
 const ALERT_SOUND_MAX_DURATION_MS = 30_000;
@@ -63,18 +64,16 @@ export async function resolveStaffInboxAlertPlayableUrl(
   source: StaffInboxAlertSoundSource,
   soundKind: StaffInboxAlertSoundKind,
 ): Promise<string | null> {
-  const value = source.value.trim();
-
-  if (!value) {
-    return null;
+  if (source.kind === "default" || !source.value.trim()) {
+    return getDefaultStaffInboxAlertSoundUrl(soundKind);
   }
 
   if (source.kind === "url") {
-    return value;
+    return source.value.trim();
   }
 
   if (!userId || !isElectronDesktop()) {
-    return null;
+    return getDefaultStaffInboxAlertSoundUrl(soundKind);
   }
 
   const result = await window.freshPrints.inboxAlert.getLocalSoundPlayableUrl({
@@ -82,8 +81,8 @@ export async function resolveStaffInboxAlertPlayableUrl(
     soundKind,
   });
 
-  if (!result.success) {
-    return null;
+  if (!result.success || !result.data.playableUrl) {
+    return getDefaultStaffInboxAlertSoundUrl(soundKind);
   }
 
   return result.data.playableUrl;
@@ -210,7 +209,7 @@ export async function previewStaffInboxAlertSound(
   const playableUrl = await resolveStaffInboxAlertPlayableUrl(userId, source, kind);
 
   if (!playableUrl) {
-    throw new Error("Add a sound URL or upload a local file before testing.");
+    throw new Error("Unable to resolve an alert sound to preview.");
   }
 
   await playResolvedAlertSound(playableUrl);

@@ -1,0 +1,124 @@
+.test-data-reset-page {
+  gap: var(--space-3);
+}
+
+.test-data-reset-section {
+  display: grid;
+  gap: var(--space-3);
+  max-width: min(100%, 72rem);
+  width: 100%;
+}
+
+.test-data-reset-danger {
+  border-color: color-mix(in srgb, var(--color-danger) 35%, var(--color-border));
+}
+
+.test-data-reset-header {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.test-data-reset-title {
+  font-size: var(--font-size-lg);
+  margin: 0;
+}
+
+.test-data-reset-subtitle {
+  font-size: var(--font-size-md);
+  margin: 0 0 var(--space-2);
+}
+
+.test-data-reset-copy {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  margin: 0;
+}
+
+.test-data-reset-columns {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.test-data-reset-list {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.test-data-reset-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.test-data-reset-targets {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0;
+  min-width: 0;
+  padding: var(--space-4);
+}
+
+.test-data-reset-targets > legend {
+  grid-column: 1 / -1;
+  padding: 0 var(--space-1);
+}
+
+.test-data-reset-target {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.test-data-reset-target-description {
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-sm);
+  margin: 0;
+  padding-left: 1.75rem;
+}
+
+.test-data-reset-actions {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.test-data-reset-result {
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-4);
+}
+
+.test-data-reset-result .test-data-reset-list {
+  column-count: 2;
+  column-gap: var(--space-4);
+}
+
+.test-data-reset-confirm-modal .form-field {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+@media (max-width: 64rem) {
+  .test-data-reset-targets {
+    grid-template-columns: 1fr;
+  }
+
+  .test-data-reset-result .test-data-reset-list {
+    column-count: 1;
+  }
+}
+
+@media (max-width: 48rem) {
+  .test-data-reset-columns {
+    grid-template-columns: 1fr;
+  }
+}

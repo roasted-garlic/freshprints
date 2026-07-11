@@ -1,0 +1,107 @@
+import assert from "node:assert/strict";
+import { describe, it } from "node:test";
+
+import type { ExportGangSheetPngRequest } from "../types/export/gangSheetExportIpc.types";
+import {
+  buildGangSheetCacheFingerprint,
+  sanitizeGangSheetCacheShowId,
+} from "./gangSheetCacheFingerprint";
+
+function sampleRequest(overrides: Partial<ExportGangSheetPngRequest> = {}): ExportGangSheetPngRequest {
+  return {
+    baseFileName: "whatnot_07-10-2026_gang-sheet",
+    sheetWidthInches: 22,
+    sideMarginInches: 0.25,
+    topBottomMarginInches: 0.25,
+    gutterInches: 0.125,
+    maxSheetLengthInches: 100,
+    labelFontSizePx: 48,
+    images: [
+      {
+        allocationId: "alloc-b",
+        downloadUrl: "https://firebasestorage.googleapis.com/v0/b/x/o/y",
+        targetWidthPx: 900,
+        targetHeightPx: 1200,
+        fileName: "Design B",
+        quantity: 2,
+      },
+      {
+        allocationId: "alloc-a",
+        downloadUrl: "https://firebasestorage.googleapis.com/v0/b/x/o/z",
+        targetWidthPx: 900,
+        targetHeightPx: 900,
+        fileName: "Design A",
+        quantity: 1,
+      },
+    ],
+    ...overrides,
+  };
+}
+
+describe("buildGangSheetCacheFingerprint", () => {
+  it("is stable regardless of image order or download URL", () => {
+    const first = buildGangSheetCacheFingerprint(sampleRequest());
+    const second = buildGangSheetCacheFingerprint(
+      sampleRequest({
+        images: [
+          {
+            allocationId: "alloc-a",
+            downloadUrl: "https://firebasestorage.googleapis.com/v0/b/x/o/different",
+            targetWidthPx: 900,
+            targetHeightPx: 900,
+            fileName: "Design A",
+            quantity: 1,
+          },
+          {
+            allocationId: "alloc-b",
+            downloadUrl: "https://firebasestorage.googleapis.com/v0/b/x/o/other",
+            targetWidthPx: 900,
+            targetHeightPx: 1200,
+            fileName: "Design B",
+            quantity: 2,
+          },
+        ],
+      }),
+    );
+
+    assert.equal(first, second);
+  });
+
+  it("changes when quantity changes", () => {
+    const baseline = buildGangSheetCacheFingerprint(sampleRequest());
+    const changed = buildGangSheetCacheFingerprint(
+      sampleRequest({
+        images: [
+          {
+            allocationId: "alloc-a",
+            downloadUrl: "https://firebasestorage.googleapis.com/v0/b/x/o/z",
+            targetWidthPx: 900,
+            targetHeightPx: 900,
+            fileName: "Design A",
+            quantity: 99,
+          },
+          {
+            allocationId: "alloc-b",
+            downloadUrl: "https://firebasestorage.googleapis.com/v0/b/x/o/y",
+            targetWidthPx: 900,
+            targetHeightPx: 1200,
+            fileName: "Design B",
+            quantity: 2,
+          },
+        ],
+      }),
+    );
+
+    assert.notEqual(baseline, changed);
+  });
+});
+
+describe("sanitizeGangSheetCacheShowId", () => {
+  it("strips unsafe path characters", () => {
+    assert.equal(sanitizeGangSheetCacheShowId("../evil/show"), "evil_show");
+  });
+
+  it("falls back when empty", () => {
+    assert.equal(sanitizeGangSheetCacheShowId("   "), "show");
+  });
+});

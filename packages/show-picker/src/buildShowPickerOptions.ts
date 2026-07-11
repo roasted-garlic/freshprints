@@ -23,6 +23,11 @@ export interface BuildShowPickerOptionsInput {
   shows: ShowPickerSource[];
   /** Extra quantity already staged for a show in the current session (e.g. split legs). */
   extraAllocatedByShowId?: ReadonlyMap<string, number>;
+  /**
+   * Quantity that would be added if the current selection is confirmed (preview fill).
+   * Drawn as a lighter segment on top of the committed fill.
+   */
+  pendingAllocatedByShowId?: ReadonlyMap<string, number>;
   isPastScheduled?: (show: ShowPickerSource) => boolean;
   now?: Date;
 }
@@ -31,30 +36,42 @@ export interface BuildShowPickerOptionsInput {
 export function buildShowPickerOptions({
   shows,
   extraAllocatedByShowId,
+  pendingAllocatedByShowId,
   isPastScheduled,
 }: BuildShowPickerOptionsInput): ShowPickerOption[] {
   return shows.map((show) => {
     const extraAllocated = extraAllocatedByShowId?.get(show.id) ?? 0;
-    const capacity = assessShowCapacity({
+    const pendingAllocated = pendingAllocatedByShowId?.get(show.id) ?? 0;
+    const committedAllocated = show.allocatedQuantity + extraAllocated;
+    const projectedAllocated = committedAllocated + pendingAllocated;
+
+    const committedCapacity = assessShowCapacity({
       maxTotalQuantity: show.maxTotalQuantity,
-      allocatedQuantity: show.allocatedQuantity + extraAllocated,
+      allocatedQuantity: committedAllocated,
     });
-    const statusDisplay = getDerivedShowStatusDisplay(show.productionStatus, capacity, {
+    const projectedCapacity = assessShowCapacity({
+      maxTotalQuantity: show.maxTotalQuantity,
+      allocatedQuantity: projectedAllocated,
+    });
+    const statusDisplay = getDerivedShowStatusDisplay(show.productionStatus, projectedCapacity, {
       isPastScheduled: isPastScheduled?.(show) ?? false,
     });
-    const capacityPercent = getShowCapacityPercent(capacity);
+    const capacityPercent = getShowCapacityPercent(projectedCapacity);
+    const committedCapacityPercent = getShowCapacityPercent(committedCapacity);
 
     return {
       id: show.id,
       scheduledAt: show.scheduledAt,
       timeLabel: show.scheduledAt ? formatShowTimeOnlyLabel(show.scheduledAt) : "No time set",
       capacityPercent,
-      capacityLabel: formatShowCapacitySlotLabel(capacity),
+      committedCapacityPercent:
+        pendingAllocated > 0 ? committedCapacityPercent : undefined,
+      capacityLabel: formatShowCapacitySlotLabel(projectedCapacity),
       fillLevel: getCapacityFillLevel(capacityPercent),
       statusLabel: statusDisplay.label,
       statusVariant: statusDisplay.variant,
-      isFull: capacity.isFull,
-      isOverCapacity: capacity.isOverCapacity,
+      isFull: projectedCapacity.isFull,
+      isOverCapacity: projectedCapacity.isOverCapacity,
     };
   });
 }
