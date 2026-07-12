@@ -1,5 +1,5 @@
 import {
-  MIN_ACCEPTABLE_EFFECTIVE_DPI,
+  MIN_PRINT_REQUEST_EFFECTIVE_DPI,
   PRINT_INCHES_DECIMAL_PLACES,
   TARGET_PRINT_DPI,
 } from "../constants/printSize.constants";
@@ -122,12 +122,14 @@ export function resolveInitialPrintRequestItemSize(
     input.pixelHeight,
     MAX_STANDARD_PRINT_REQUEST_SIZE_INCHES,
   );
+  const maxWidthForMinDpi = roundInches(input.pixelWidth / MIN_PRINT_REQUEST_EFFECTIVE_DPI);
   const printWidthInches = roundInches(
     Math.min(
       sourceWidth,
       STANDARD_PRINT_REQUEST_INITIAL_WIDTH_INCHES,
       MAX_STANDARD_PRINT_REQUEST_SIZE_INCHES,
       maxWidthForStandardHeight,
+      maxWidthForMinDpi,
     ),
   );
 
@@ -142,7 +144,7 @@ export function resolveInitialPrintRequestItemSize(
 }
 
 export function resolvePrintRequestItemDpiQualityLevel(effectiveDpi: number): PrintRequestItemDpiQualityLevel {
-  if (!Number.isFinite(effectiveDpi) || effectiveDpi < MIN_ACCEPTABLE_EFFECTIVE_DPI) {
+  if (!Number.isFinite(effectiveDpi) || effectiveDpi < MIN_PRINT_REQUEST_EFFECTIVE_DPI) {
     return "below_minimum";
   }
 
@@ -150,11 +152,8 @@ export function resolvePrintRequestItemDpiQualityLevel(effectiveDpi: number): Pr
     return "optimal";
   }
 
-  if (effectiveDpi >= 200) {
-    return "good";
-  }
-
-  return "minimum";
+  // 200–299: saveable with soft warning (legacy "minimum" tier retired for request saves).
+  return "good";
 }
 
 export function getPrintRequestItemDpiQualityLabel(level: PrintRequestItemDpiQualityLevel): string {
@@ -235,7 +234,7 @@ export function assessPrintRequestItemSize(input: PrintRequestItemSizeInput): Pr
       qualityLevel,
       qualityLabel,
       canSave: false,
-      errorMessage: "Requested size is below the 72 DPI minimum for standard Print Requests.",
+      errorMessage: `Requested size is below the ${MIN_PRINT_REQUEST_EFFECTIVE_DPI} DPI minimum for standard Print Requests.`,
     };
   }
 

@@ -119,6 +119,8 @@ function isZipFile(file: File): boolean {
   );
 }
 
+const FINALIZE_CALLABLE_TIMEOUT_MS = 540_000;
+
 export const customerUploadService = {
   maxFilesPerBatch: CUSTOMER_UPLOAD_MAX_FILES_PER_BATCH,
   maxConcurrentFinalize: CUSTOMER_UPLOAD_MAX_CONCURRENT_FINALIZE,
@@ -158,13 +160,17 @@ export const customerUploadService = {
     return { images, zips, rejected };
   },
 
-  async createDirectImageBatch(files: File[]): Promise<CreateCustomerUploadBatchResponse> {
+  async createDirectImageBatch(
+    files: File[],
+    options?: { existingBatchId?: string },
+  ): Promise<CreateCustomerUploadBatchResponse> {
     try {
       const createCallable = httpsCallable<
         {
           mode: 'direct_images';
           clientRequestId: string;
           files: Array<{ originalFilename: string; declaredSizeBytes: number }>;
+          existingBatchId?: string;
         },
         CreateCustomerUploadBatchResponse
       >(getPortalFunctions(), 'createCustomerUploadBatch');
@@ -176,6 +182,7 @@ export const customerUploadService = {
           originalFilename: file.name,
           declaredSizeBytes: file.size,
         })),
+        existingBatchId: options?.existingBatchId,
       });
       return response.data;
     } catch (error) {
@@ -244,7 +251,9 @@ export const customerUploadService = {
       const finalizeCallable = httpsCallable<
         { uploadId: string; batchId: string },
         FinalizeCustomerUploadResponse
-      >(getPortalFunctions(), 'finalizeCustomerUpload');
+      >(getPortalFunctions(), 'finalizeCustomerUpload', {
+        timeout: FINALIZE_CALLABLE_TIMEOUT_MS,
+      });
       const response = await finalizeCallable({ uploadId, batchId });
       return response.data;
     } catch (error) {
@@ -257,6 +266,7 @@ export const customerUploadService = {
       const finalizeCallable = httpsCallable<{ batchId: string }, FinalizeCustomerUploadZipResponse>(
         getPortalFunctions(),
         'finalizeCustomerUploadZip',
+        { timeout: FINALIZE_CALLABLE_TIMEOUT_MS },
       );
       const response = await finalizeCallable({ batchId });
       return response.data;

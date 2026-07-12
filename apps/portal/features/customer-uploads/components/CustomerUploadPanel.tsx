@@ -2,7 +2,12 @@
 
 import { useEffect, useRef, useState, type ChangeEvent, type DragEvent } from 'react';
 
-import { CUSTOMER_UPLOAD_MAX_CONCURRENT_FINALIZE } from '@fresh-prints/shared/constants/customerUpload/customerUploadLimits.constants';
+import {
+  CUSTOMER_UPLOAD_MAX_CONCURRENT_FINALIZE,
+  CUSTOMER_UPLOAD_MAX_SINGLE_IMAGE_BYTES,
+  CUSTOMER_UPLOAD_MAX_ZIP_COMPRESSED_BYTES,
+} from '@fresh-prints/shared/constants/customerUpload/customerUploadLimits.constants';
+import { formatFileSize } from '@fresh-prints/shared/utils/formatFileSize';
 
 import { XIcon } from '../../shared/components/PortalIcons';
 import { useCustomerUploadBatch } from '../hooks/useCustomerUploadBatch';
@@ -131,8 +136,11 @@ export function CustomerUploadPanel({ onAttached, onClose }: CustomerUploadPanel
           <div>
             <h2 id="portal-customer-upload-title">Upload artwork</h2>
             <p className="portal-muted">
-              Add PNG or WebP files, a folder, or one ZIP. Passing technical checks only means your
-              file can print — it is not Design Library approval.
+              Add PNG or WebP files, a folder, or one ZIP. Images up to{' '}
+              {formatFileSize(CUSTOMER_UPLOAD_MAX_SINGLE_IMAGE_BYTES)} each; ZIPs up to{' '}
+              {formatFileSize(CUSTOMER_UPLOAD_MAX_ZIP_COMPRESSED_BYTES)}. Upload up to{' '}
+              {CUSTOMER_UPLOAD_MAX_CONCURRENT_FINALIZE} images at a time. Passing technical checks
+              only means your file can print — it is not added to our design library unless approved.
             </p>
           </div>
           <button
@@ -234,9 +242,6 @@ export function CustomerUploadPanel({ onAttached, onClose }: CustomerUploadPanel
               <span>{processingCount} processing</span>
               <span>{readyCount} ready</span>
               <span>{failedCount} failed</span>
-              {isProcessing ? (
-                <span>Files continue in parallel (up to {CUSTOMER_UPLOAD_MAX_CONCURRENT_FINALIZE})</span>
-              ) : null}
             </div>
           ) : null}
 
@@ -259,6 +264,11 @@ export function CustomerUploadPanel({ onAttached, onClose }: CustomerUploadPanel
                     <p className="portal-customer-upload-file-name" title={row.filename}>
                       {row.filename}
                     </p>
+                    {typeof row.fileSizeBytes === 'number' ? (
+                      <p className="portal-muted portal-customer-upload-file-size">
+                        {formatFileSize(row.fileSizeBytes)}
+                      </p>
+                    ) : null}
                     <p className="portal-muted portal-customer-upload-stage">{row.progressLabel}</p>
                     {row.phase === 'uploading' && typeof row.uploadPercent === 'number' ? (
                       <div

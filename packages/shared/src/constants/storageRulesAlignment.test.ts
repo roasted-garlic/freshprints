@@ -38,9 +38,9 @@ describe("storage.rules alignment", () => {
       "storage.rules must cap customer source uploads at 100 MB",
     );
     assert.ok(
-      rules.includes("500 * 1024 * 1024")
+      rules.includes("2 * 1024 * 1024 * 1024")
         || rules.includes(`request.resource.size < ${CUSTOMER_UPLOAD_MAX_ZIP_COMPRESSED_BYTES}`),
-      "storage.rules must cap customer ZIP uploads at 500 MB",
+      "storage.rules must cap customer ZIP uploads at 2 GB",
     );
     assert.ok(
       rules.includes('fileName == "source"'),

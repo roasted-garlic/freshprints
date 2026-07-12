@@ -21,6 +21,12 @@ export function getCustomerUploadProgressLabel(input: {
       return "Checking file format…";
     case "checking_transparency":
       return "Checking transparency…";
+    case "converting_format":
+      return "Converting to print format…";
+    case "trimming":
+      return "Trimming transparent edges…";
+    case "upscaling":
+      return "Upscaling for print quality…";
     case "preparing_artwork":
       return "Preparing artwork…";
     case "checking_print_size":

@@ -2,6 +2,7 @@ import { FieldValue } from "firebase-admin/firestore";
 import type { DocumentReference } from "firebase-admin/firestore";
 import { onCall } from "firebase-functions/v2/https";
 
+import { CUSTOMER_UPLOAD_MAX_SINGLE_IMAGE_BYTES } from "../../packages/shared/src/constants/customerUpload/customerUploadLimits.constants";
 import { CUSTOMER_UPLOAD_COLLECTIONS } from "../../packages/shared/src/constants/customerUpload/customerUploadCollections.constants";
 import {
   getCustomerUploadPreviewStoragePath,
@@ -10,11 +11,13 @@ import {
   getCustomerUploadThumbnailStoragePath,
 } from "../../packages/shared/src/constants/customerUpload/customerUploadStoragePaths";
 import type { RetryCustomerUploadProcessingResponse } from "../../packages/shared/src/types/customerUpload/customerUploadStaffActions.types";
+import { formatFileSize } from "../../packages/shared/src/utils/formatFileSize";
 
 import { adminDb, adminStorage } from "./lib/admin";
 import { assertStaffCaller, loadCallerProfile } from "./lib/caller";
 import {
   processCustomerUploadImageBytes,
+  saveCustomerUploadProcessedOutputs,
   storageObjectPath,
 } from "./lib/customerUploadProcessing";
 import {
@@ -37,7 +40,7 @@ const RETRYABLE_FAILURE_CODES = new Set([
 ]);
 
 export const retryCustomerUploadProcessing = onCall(
-  { timeoutSeconds: 240, memory: "2GiB" },
+  { timeoutSeconds: 540, memory: "2GiB" },
   async (request): Promise<RetryCustomerUploadProcessingResponse> => {
     if (!request.auth?.uid) {
       throw unauthenticated();
@@ -122,13 +125,16 @@ export const retryCustomerUploadProcessing = onCall(
     }
 
     const [sourceBytes] = await file.download();
-    if (sourceBytes.byteLength <= 0 || sourceBytes.byteLength > 25 * 1024 * 1024) {
+    if (
+      sourceBytes.byteLength <= 0 ||
+      sourceBytes.byteLength > CUSTOMER_UPLOAD_MAX_SINGLE_IMAGE_BYTES
+    ) {
       return await markFailed(
         uploadRef,
         uploadId,
         batchId,
         "image_exceeds_limits",
-        "Image exceeds the maximum allowed file size.",
+        `Image is ${formatFileSize(sourceBytes.byteLength)} and exceeds the ${formatFileSize(CUSTOMER_UPLOAD_MAX_SINGLE_IMAGE_BYTES)} size limit.`,
       );
     }
 
@@ -161,23 +167,14 @@ export const retryCustomerUploadProcessing = onCall(
     const previewStoragePath = getCustomerUploadPreviewStoragePath(customerUid, uploadId);
     const thumbnailStoragePath = getCustomerUploadThumbnailStoragePath(customerUid, uploadId);
 
-    await Promise.all([
-      bucket.file(storageObjectPath(productionStoragePath)).save(processed.productionPng, {
-        resumable: false,
-        contentType: "image/png",
-        metadata: { cacheControl: "private, max-age=3600" },
-      }),
-      bucket.file(storageObjectPath(previewStoragePath)).save(processed.previewWebp, {
-        resumable: false,
-        contentType: "image/webp",
-        metadata: { cacheControl: "private, max-age=3600" },
-      }),
-      bucket.file(storageObjectPath(thumbnailStoragePath)).save(processed.thumbnailWebp, {
-        resumable: false,
-        contentType: "image/webp",
-        metadata: { cacheControl: "private, max-age=3600" },
-      }),
-    ]);
+    await saveCustomerUploadProcessedOutputs({
+      bucket,
+      sourceObjectPath: storageObjectPath(expectedSourcePath),
+      productionObjectPath: storageObjectPath(productionStoragePath),
+      previewObjectPath: storageObjectPath(previewStoragePath),
+      thumbnailObjectPath: storageObjectPath(thumbnailStoragePath),
+      processed,
+    });
 
     const batchRef = adminDb.collection(CUSTOMER_UPLOAD_COLLECTIONS.customerUploadBatches).doc(batchId);
 

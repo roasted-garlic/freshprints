@@ -40,6 +40,12 @@ export const EFFECTIVE_DPI_GOOD_MIN = 250;
 /** Effective DPI at or above this value is bad (red). */
 export const EFFECTIVE_DPI_BAD_MIN = 200;
 
+/**
+ * Minimum effective DPI allowed when saving a size on a standard Print Request item.
+ * Import can still accept lower-resolution catalog assets; request sizing cannot go below this floor.
+ */
+export const MIN_PRINT_REQUEST_EFFECTIVE_DPI = EFFECTIVE_DPI_BAD_MIN;
+
 /** @deprecated Use EFFECTIVE_DPI_OPTIMAL_MIN */
 export const EFFECTIVE_DPI_PREFERRED_MIN = EFFECTIVE_DPI_OPTIMAL_MIN;
 

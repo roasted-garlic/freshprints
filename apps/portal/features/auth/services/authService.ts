@@ -61,6 +61,11 @@ function getCallableErrorMessage(error: unknown): string {
       return error.message || 'Upload limit reached. Try again later.';
     case 'functions/unavailable':
       return error.message || 'Service temporarily unavailable. Try again shortly.';
+    case 'functions/deadline-exceeded':
+      return (
+        error.message ||
+        'Processing took too long. Tap Retry failed — larger files can take a few minutes.'
+      );
     default:
       return error.message || 'Registration could not be completed. Please try again.';
   }

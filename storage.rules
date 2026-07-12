@@ -95,7 +95,7 @@ service firebase.storage {
     }
 
     function isValidCustomerUploadZip() {
-      return request.resource.size < 500 * 1024 * 1024
+      return request.resource.size < 2 * 1024 * 1024 * 1024
         && request.resource.contentType in [
           "application/zip",
           "application/x-zip-compressed",

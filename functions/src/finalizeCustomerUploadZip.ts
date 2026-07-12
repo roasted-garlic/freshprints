@@ -16,6 +16,7 @@ import {
 import { adminDb, adminStorage } from "./lib/admin";
 import {
   processCustomerUploadImageBytes,
+  saveCustomerUploadProcessedOutputs,
   storageObjectPath,
 } from "./lib/customerUploadProcessing";
 import {
@@ -56,7 +57,7 @@ export interface FinalizeCustomerUploadZipResponse {
 }
 
 export const finalizeCustomerUploadZip = onCall(
-  { timeoutSeconds: 240, memory: "2GiB" },
+  { timeoutSeconds: 540, memory: "2GiB" },
   async (request): Promise<FinalizeCustomerUploadZipResponse> => {
     if (!request.auth?.uid) {
       throw unauthenticated();
@@ -276,20 +277,14 @@ export const finalizeCustomerUploadZip = onCall(
           uploadId,
         );
 
-        await Promise.all([
-          bucket.file(storageObjectPath(productionStoragePath)).save(processed.productionPng, {
-            resumable: false,
-            contentType: "image/png",
-          }),
-          bucket.file(storageObjectPath(previewStoragePath)).save(processed.previewWebp, {
-            resumable: false,
-            contentType: "image/webp",
-          }),
-          bucket.file(storageObjectPath(thumbnailStoragePath)).save(processed.thumbnailWebp, {
-            resumable: false,
-            contentType: "image/webp",
-          }),
-        ]);
+        await saveCustomerUploadProcessedOutputs({
+          bucket,
+          sourceObjectPath: storageObjectPath(sourceStoragePath),
+          productionObjectPath: storageObjectPath(productionStoragePath),
+          previewObjectPath: storageObjectPath(previewStoragePath),
+          thumbnailObjectPath: storageObjectPath(thumbnailStoragePath),
+          processed,
+        });
 
         await uploadRef.update(
           withoutUndefinedFields({

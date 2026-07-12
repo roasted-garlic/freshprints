@@ -24,6 +24,7 @@ export interface UploadRowState {
   localId: string;
   file?: File;
   filename: string;
+  fileSizeBytes?: number;
   uploadId?: string;
   sourceStoragePath?: string;
   phase: UploadRowPhase;
@@ -86,6 +87,11 @@ export function useCustomerUploadBatch() {
   const [bannerError, setBannerError] = useState<string | null>(null);
   const [batchNotes, setBatchNotes] = useState<string[]>([]);
   const abortRef = useRef(false);
+  const batchIdRef = useRef<string | null>(null);
+  const rowsRef = useRef<UploadRowState[]>([]);
+
+  batchIdRef.current = batchId;
+  rowsRef.current = rows;
 
   const readyRows = useMemo(
     () => rows.filter((row) => row.phase === 'ready' && row.uploadId),
@@ -169,6 +175,7 @@ export function useCustomerUploadBatch() {
             {
               localId: zipRowId,
               filename: zip.name,
+              fileSizeBytes: zip.size,
               phase: 'uploading',
               progressLabel: 'Uploading ZIP…',
               file: zip,
@@ -216,38 +223,64 @@ export function useCustomerUploadBatch() {
           return;
         }
 
-        const limitedImages = images.slice(0, customerUploadService.maxFilesPerBatch);
+        const activeRows = rowsRef.current.filter((row) => row.phase !== 'removed');
+        const existingBatchId =
+          batchIdRef.current && activeRows.length > 0 ? batchIdRef.current : null;
+        const remainingSlots = existingBatchId
+          ? Math.max(0, customerUploadService.maxFilesPerBatch - activeRows.length)
+          : customerUploadService.maxFilesPerBatch;
+
+        if (existingBatchId && remainingSlots <= 0) {
+          setBannerError(
+            `This upload session already has ${customerUploadService.maxFilesPerBatch} images. Add them to your request first, or remove some.`,
+          );
+          return;
+        }
+
+        const limitedImages = images.slice(0, remainingSlots);
         if (images.length > limitedImages.length) {
           setBatchNotes((notes) => [
             ...notes,
-            `Only the first ${customerUploadService.maxFilesPerBatch} images were added.`,
+            `Only ${limitedImages.length} more image${limitedImages.length === 1 ? '' : 's'} could be added (max ${customerUploadService.maxFilesPerBatch} per session).`,
           ]);
         }
 
-        const created = await customerUploadService.createDirectImageBatch(limitedImages);
+        const created = await customerUploadService.createDirectImageBatch(limitedImages, {
+          existingBatchId: existingBatchId ?? undefined,
+        });
         setBatchId(created.batchId);
+        batchIdRef.current = created.batchId;
         if (!created.uploads || created.uploads.length === 0) {
           throw new Error('Server did not return upload slots.');
         }
 
-        const initialRows: UploadRowState[] = created.uploads.map((slot, index) => ({
+        const newRows: UploadRowState[] = created.uploads.map((slot, index) => ({
           localId: makeLocalId(),
           file: limitedImages[index],
           filename: slot.originalFilename,
+          fileSizeBytes: limitedImages[index]?.size,
           uploadId: slot.uploadId,
           sourceStoragePath: slot.sourceStoragePath,
           phase: 'queued' as const,
           progressLabel: 'Waiting…',
         }));
-        setRows(initialRows);
+
+        setRows((current) => {
+          const kept = existingBatchId
+            ? current.filter((row) => row.phase !== 'removed')
+            : [];
+          return [...kept, ...newRows];
+        });
         customerUploadService.persistSession(
           firebaseUser.uid,
           created.batchId,
-          initialRows.map((row) => row.uploadId!).filter(Boolean),
+          [...(existingBatchId ? activeRows : []), ...newRows]
+            .map((row) => row.uploadId)
+            .filter((id): id is string => Boolean(id)),
         );
 
         await runWithConcurrency(
-          initialRows,
+          newRows,
           customerUploadService.maxConcurrentFinalize,
           async (row) => {
             if (abortRef.current || !row.file || !row.uploadId || !row.sourceStoragePath) {

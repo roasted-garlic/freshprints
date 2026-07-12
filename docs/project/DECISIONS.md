@@ -4,6 +4,31 @@
 
 ---
 
+### ADR-FP-075: Print Request items require ≥ 200 effective DPI to save
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-12 |
+| Status | accepted |
+
+**Context**
+
+Standard Print Request sizing previously allowed saves down to 72 effective DPI (with warnings from 72–299). During r7 Portal DPI UX review, the owner decided that quality below 200 DPI should not be persisted on requests.
+
+**Decision**
+
+1. `MIN_PRINT_REQUEST_EFFECTIVE_DPI = 200` is the hard save floor for standard Print Request item sizes (Portal and Studio).
+2. 200–299 DPI may still save with a soft warning; 300+ saves without warning.
+3. Catalog **import** may still accept assets down to the import floor (`MIN_ACCEPTABLE_EFFECTIVE_DPI = 72`); that does not authorize sub-200 request sizes.
+4. Initial requested size (`resolveInitialPrintRequestItemSize`) also clamps so defaults stay at or above 200 DPI when possible.
+
+**Consequences**
+
+- Enlarging a request item past the 200 DPI point blocks autosave until the size is reduced.
+- Extreme aspect ratios may initialize smaller than the previous 22″-only clamp when needed to keep ≥ 200 DPI.
+
+---
+
 ### ADR-FP-074: Customer upload library permission is optional (visible to staff)
 
 | Field | Value |
@@ -1158,7 +1183,7 @@ requested size separately from the catalog design dimensions:
   exceeds 22 inches.
 
 The 22-inch rule remains enforced for persisted standard Print Request item dimensions. Edit and
-autosave validation still blocks requested sizes above 22 inches and below 72 DPI. Catalog design
+autosave validation still blocks requested sizes above 22 inches and below 200 DPI. Catalog design
 dimensions are not mutated, and original images, thumbnails, and previews are not resized,
 resampled, compressed, or regenerated. Duplicate item creation preserves the source item's explicit
 requested size instead of reinitializing.
@@ -1999,7 +2024,7 @@ Portal, or Custom Requests.
 2. Customer request names are generated in Firestore transactions as `username-CR001`; internal request names use `baseName-IR001`.
 3. Customer counters live on `customers/{customerId}.nextPrintRequestSequence`; the internal counter lives at `counters/printRequests`.
 4. Standard Print Request items support requested width/height in inches, locked aspect ratio, live DPI feedback, and duplicate same-design rows.
-5. Standard item saves are blocked above 22 inches on either axis or below 72 DPI; 72-299 DPI warns, and 300+ DPI saves without warning.
+5. Standard item saves are blocked above 22 inches on either axis or below 200 DPI; 200-299 DPI warns, and 300+ DPI saves without warning.
 6. Standard Print Request item UI hides item notes and production status controls, preserving persisted fields for compatibility and future production workflows.
 7. No Portal, Print Runs, Custom Requests, Remove Background, Upscale, payment, shipping, migration, backfill, or design lifecycle status changes are introduced by this decision.
 

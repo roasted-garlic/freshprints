@@ -102,11 +102,11 @@ describe("print request item sizing", () => {
 
     assert.equal(result.canSave, false);
     assert.equal(result.effectiveDpi, 100);
-    assert.equal(result.qualityLabel, "Minimum");
+    assert.equal(result.qualityLabel, "Below Minimum");
     assert.match(result.errorMessage ?? "", /Custom Request/);
   });
 
-  it("blocks requested sizes below 72 DPI", () => {
+  it("blocks requested sizes below 200 DPI", () => {
     const result = assessPrintRequestItemSize({
       pixelWidth: 1000,
       pixelHeight: 1000,
@@ -116,26 +116,39 @@ describe("print request item sizing", () => {
 
     assert.equal(result.canSave, false);
     assert.equal(result.qualityLabel, "Below Minimum");
-    assert.match(result.errorMessage ?? "", /72 DPI/);
+    assert.match(result.errorMessage ?? "", /200 DPI/);
   });
 
-  it("warns but allows requested sizes from 72 through 299 DPI", () => {
-    const minimum = assessPrintRequestItemSize({
+  it("blocks former 72–199 DPI band that used to warn-and-allow", () => {
+    const result = assessPrintRequestItemSize({
       pixelWidth: 720,
       pixelHeight: 720,
       printWidthInches: 10,
       printHeightInches: 10,
     });
-    const good = assessPrintRequestItemSize({
+
+    assert.equal(result.canSave, false);
+    assert.equal(result.qualityLabel, "Below Minimum");
+    assert.match(result.errorMessage ?? "", /200 DPI/);
+  });
+
+  it("warns but allows requested sizes from 200 through 299 DPI", () => {
+    const atFloor = assessPrintRequestItemSize({
       pixelWidth: 2000,
       pixelHeight: 2000,
       printWidthInches: 10,
       printHeightInches: 10,
     });
+    const good = assessPrintRequestItemSize({
+      pixelWidth: 2500,
+      pixelHeight: 2500,
+      printWidthInches: 10,
+      printHeightInches: 10,
+    });
 
-    assert.equal(minimum.canSave, true);
-    assert.equal(minimum.qualityLabel, "Minimum");
-    assert.match(minimum.warningMessage ?? "", /below 300 DPI/);
+    assert.equal(atFloor.canSave, true);
+    assert.equal(atFloor.qualityLabel, "Good");
+    assert.match(atFloor.warningMessage ?? "", /below 300 DPI/);
     assert.equal(good.canSave, true);
     assert.equal(good.qualityLabel, "Good");
     assert.match(good.warningMessage ?? "", /below 300 DPI/);

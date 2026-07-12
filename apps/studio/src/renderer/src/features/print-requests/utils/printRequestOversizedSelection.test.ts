@@ -48,9 +48,10 @@ describe("print request oversized selection initialization", () => {
       defaultPrintWidthInches: 30,
     });
 
+    // 22″ height would be 5.5″ wide (~182 DPI); clamp further to the 200 DPI floor → 5″ × 20″.
     assert.deepEqual(result, {
-      printWidthInches: 5.5,
-      printHeightInches: 22,
+      printWidthInches: 5,
+      printHeightInches: 20,
     });
     assert.equal(
       assessPrintRequestItemSize({
