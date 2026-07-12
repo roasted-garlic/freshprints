@@ -141,6 +141,182 @@
   gap: var(--space-4);
 }
 
+.customer-upload-intake-section {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-4);
+}
+
+.customer-upload-intake-header {
+  align-items: flex-start;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  justify-content: space-between;
+}
+
+.customer-upload-intake-panel {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  display: grid;
+  gap: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.customer-upload-intake-tab-bar {
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  justify-content: flex-start;
+  padding: var(--space-3) var(--space-4);
+}
+
+.customer-upload-intake-tab {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full, 999px);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  padding: var(--space-2) var(--space-4);
+}
+
+.customer-upload-intake-tab:hover,
+.customer-upload-intake-tab:focus-visible {
+  color: var(--color-text-primary);
+  outline: none;
+}
+
+.customer-upload-intake-tab.is-active {
+  background: var(--color-accent-primary-soft);
+  border-color: var(--color-accent-primary);
+  color: var(--color-text-primary);
+}
+
+.customer-upload-intake-panel-body {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-4);
+}
+
+.customer-upload-intake-layout {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: minmax(12rem, 18rem) minmax(0, 1fr);
+}
+
+.customer-upload-intake-list {
+  display: grid;
+  gap: var(--space-2);
+  list-style: none;
+  margin: 0;
+  max-height: 28rem;
+  overflow: auto;
+  padding: 0;
+}
+
+.customer-upload-intake-list-item {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: inherit;
+  cursor: pointer;
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  text-align: left;
+  width: 100%;
+}
+
+.customer-upload-intake-list-item.is-selected {
+  border-color: var(--color-border-strong);
+  outline: 2px solid var(--color-focus-ring, var(--color-border-strong));
+}
+
+.customer-upload-intake-list-title {
+  font-weight: 600;
+}
+
+.customer-upload-intake-list-sub,
+.customer-upload-intake-meta,
+.customer-upload-intake-empty,
+.customer-upload-intake-notice {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  margin: 0;
+}
+
+.customer-upload-intake-detail {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.customer-upload-intake-detail-header {
+  align-items: center;
+  display: flex;
+  gap: var(--space-3);
+}
+
+.customer-upload-intake-preview {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  height: 5.5rem;
+  object-fit: contain;
+  width: 5.5rem;
+}
+
+.customer-upload-intake-preview--empty {
+  align-items: center;
+  color: var(--color-text-secondary);
+  display: grid;
+  font-size: var(--font-size-xs);
+  justify-items: center;
+}
+
+.customer-upload-intake-fields {
+  display: grid;
+  gap: var(--space-2) var(--space-4);
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  margin: 0;
+}
+
+.customer-upload-intake-field dt {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  margin: 0;
+}
+
+.customer-upload-intake-field dd {
+  margin: 0;
+}
+
+.customer-upload-intake-library-decline {
+  background: color-mix(in srgb, var(--color-warning, #9a6700) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-warning, #9a6700) 40%, transparent);
+  border-radius: var(--radius-md);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  margin: 0;
+  padding: var(--space-3);
+}
+
+.customer-upload-intake-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+@media (max-width: 800px) {
+  .customer-upload-intake-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
 .imports-entry-grid {
   display: grid;
   gap: var(--space-4);

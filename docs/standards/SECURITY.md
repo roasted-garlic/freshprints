@@ -623,11 +623,26 @@ may be customer accessible.
 
 Customer uploads:
 
-```txt id="0hy63z"
+```txt
 /customer-uploads/
 ```
 
-must be protected.
+must be protected (ADR-FP-073 — Phase 8 request artwork, not Phase 9 custom requests).
+
+## Design (Sub-phase B implemented in repo; deploy to `fresh-prints-dev` before Portal UI)
+
+* Customers access only their own uploads and their own print requests.
+* Other customers must not read unapproved artwork.
+* Staff access uses centralized Studio permissions.
+* Storage rules enforce: canonical path, owner (`userId == auth.uid`), max size (25 MB source / 50 MB ZIP), allowed source/ZIP types.
+* Customers may write only `source` and `archive.zip`; derivatives are Admin SDK / Functions only.
+* Upload lifecycle / `technicalStatus` / path-to-doc binding are validated in **finalize callables**, not via complex Storage↔Firestore status coupling.
+* Ready-catalog derivative public-read patterns must **not** apply to unapproved customer uploads.
+* First-release formats: transparent PNG and static transparent WebP only. SVG deferred. JPEG and animated formats rejected.
+* ZIP: server-side extract only (`yauzl`); nested ZIPs rejected; customer limits ≪ staff import limits.
+* Per-UID daily abuse caps (create batch 10 / finalize image 50 / finalize ZIP 5) plus concurrency limit 3.
+* Firestore: client writes denied on `customerUploads` / `customerUploadBatches`; rate-limit / lease / idempotency collections deny all client access.
+* UI checks are not authorization.
 
 Customers should only access:
 
@@ -643,7 +658,7 @@ All uploads must validate:
 * File type
 * File size
 * Extension
-* Content when possible
+* Content when possible (server decode + magic bytes)
 
 Never trust file names.
 
@@ -657,28 +672,26 @@ All uploads should enforce size limits.
 
 Large uploads should be rejected.
 
-Limits should be configurable.
+Customer Portal limits (locked): single image 25 MB; batch 25 files / 100 MB; ZIP 50 MB compressed / 200 MB decompressed. Staff Studio import limits remain separate.
 
 ---
 
 # File Type Validation
 
-Allowed customer uploads should be explicitly defined.
+Allowed customer uploads (first release):
 
-Example:
-
-```txt id="v2h6h4"
-PNG
-JPG
-JPEG
-WEBP
+```txt
+PNG (transparent)
+WebP (static, transparent)
 ```
 
 Reject unknown formats.
 
 Reject executable files.
 
-Reject archives unless explicitly supported.
+Reject JPEG and other opaque-only formats for this feature.
+
+Accept ZIP only through trusted server extraction with bomb/traversal protections.
 
 ---
 

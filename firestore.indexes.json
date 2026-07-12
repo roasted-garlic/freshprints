@@ -135,6 +135,14 @@
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "printRequestId", "order": "ASCENDING" },
+        { "fieldPath": "customerUploadId", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "printRequestItems",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "printRequestId", "order": "ASCENDING" },
         { "fieldPath": "updatedAt", "order": "DESCENDING" }
       ]
     },
@@ -203,6 +211,62 @@
       "fields": [
         { "fieldPath": "gangSheetId", "order": "ASCENDING" },
         { "fieldPath": "zIndex", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "customerUploads",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "catalogReviewStatus", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "customerUploads",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "customerUid", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "customerUploads",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "batchId", "order": "ASCENDING" },
+        { "fieldPath": "customerUid", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "customerUploads",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "printRequestId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "customerUploads",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "technicalStatus", "order": "ASCENDING" },
+        { "fieldPath": "updatedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "customerUploadBatches",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "customerUid", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "customerUploadFinalizeLeases",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "customerUid", "order": "ASCENDING" },
+        { "fieldPath": "expiresAt", "order": "ASCENDING" }
       ]
     }
   ],

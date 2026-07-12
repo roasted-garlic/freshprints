@@ -3,18 +3,34 @@ export interface PrintRequestItemSummary {
   uniqueDesignCount: number;
 }
 
+/**
+ * Summarize request line items. Upload-backed items (no designId) still count
+ * toward totals using customerUploadId or item identity when present.
+ */
 export function buildPrintRequestItemSummaries(
-  items: Array<{ printRequestId: string; designId: string; quantity: number }>,
+  items: Array<{
+    printRequestId: string;
+    designId?: string;
+    customerUploadId?: string;
+    id?: string;
+    quantity: number;
+  }>,
 ): Record<string, PrintRequestItemSummary> {
-  const designIdsByRequestId = new Map<string, Set<string>>();
+  const uniqueKeysByRequestId = new Map<string, Set<string>>();
   const totalQuantityByRequestId = new Map<string, number>();
 
   for (const item of items) {
-    if (!designIdsByRequestId.has(item.printRequestId)) {
-      designIdsByRequestId.set(item.printRequestId, new Set<string>());
+    if (!uniqueKeysByRequestId.has(item.printRequestId)) {
+      uniqueKeysByRequestId.set(item.printRequestId, new Set<string>());
     }
 
-    designIdsByRequestId.get(item.printRequestId)?.add(item.designId);
+    const uniqueKey =
+      (typeof item.designId === "string" && item.designId.trim()) ||
+      (typeof item.customerUploadId === "string" && item.customerUploadId.trim()) ||
+      (typeof item.id === "string" && item.id.trim()) ||
+      `qty:${item.printRequestId}:${item.quantity}`;
+
+    uniqueKeysByRequestId.get(item.printRequestId)?.add(uniqueKey);
 
     const quantity = Number.isFinite(item.quantity) ? item.quantity : 0;
     totalQuantityByRequestId.set(
@@ -24,11 +40,11 @@ export function buildPrintRequestItemSummaries(
   }
 
   return Object.fromEntries(
-    [...designIdsByRequestId.entries()].map(([printRequestId, designIds]) => [
+    [...uniqueKeysByRequestId.entries()].map(([printRequestId, uniqueKeys]) => [
       printRequestId,
       {
         totalQuantity: totalQuantityByRequestId.get(printRequestId) ?? 0,
-        uniqueDesignCount: designIds.size,
+        uniqueDesignCount: uniqueKeys.size,
       },
     ]),
   );

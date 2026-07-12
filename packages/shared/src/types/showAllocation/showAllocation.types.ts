@@ -14,7 +14,14 @@ export interface ShowAllocation {
   upcomingShowId: string;
   printRequestId: string;
   printRequestItemId: string;
-  designId: string;
+  /**
+   * Catalog design id. Required for catalog allocations; omitted for customer_upload.
+   */
+  designId?: string;
+  /** Defaults to catalog_design when absent (legacy). */
+  sourceType?: "catalog_design" | "customer_upload";
+  /** Required when sourceType is customer_upload. */
+  customerUploadId?: string;
   customerId?: string;
   requestNameSnapshot: string;
   requestOriginSnapshot?: PrintRequestOrigin;

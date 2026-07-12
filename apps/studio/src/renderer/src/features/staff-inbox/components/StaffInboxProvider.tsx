@@ -21,6 +21,7 @@ import {
   mapAckRecordsToCompletedItems,
   staffInboxAckService,
 } from "../services/staffInboxAckService";
+import { staffInboxAlertDeliveryService } from "../services/staffInboxAlertDeliveryService";
 import { loadStaffInboxAlertSettings } from "../services/staffInboxAlertSettingsStore";
 import { enqueueStaffInboxAlertSound } from "../services/staffInboxAlertSoundService";
 import { staffInboxSubscriptionService } from "../services/staffInboxSubscriptionService";
@@ -39,6 +40,12 @@ const EMPTY_SUBSCRIPTION_SNAPSHOT: StaffInboxSubscriptionSnapshot = {
 interface StaffInboxProviderProps {
   children: ReactNode;
 }
+
+type PendingStaffInboxAlert = Omit<StaffInboxToast, "id"> & {
+  itemId: string;
+  itemKind: "portal_queued" | "show_queue_full";
+  occurredAtMillis: number;
+};
 
 function buildInboxErrorMessage(requestError: string | null, allocationError: string | null): string | null {
   const message = requestError && allocationError ? requestError : requestError;
@@ -90,9 +97,12 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
   const previousOpenItemIdsRef = useRef<Set<string> | null>(null);
   const previousAckCountRef = useRef<number | null>(null);
   const acksHydratedRef = useRef(false);
+  const subscriptionHydratedRef = useRef(false);
+  const deliveriesHydratedRef = useRef(false);
+  const soundDeliveredItemIdsRef = useRef<Set<string>>(new Set());
   const highlightTimeoutIdsRef = useRef<Map<string, number>>(new Map());
   const toastSequenceRef = useRef(0);
-  const pendingAlertsRef = useRef<Omit<StaffInboxToast, "id">[]>([]);
+  const pendingAlertsRef = useRef<PendingStaffInboxAlert[]>([]);
   const alertFlushTimeoutRef = useRef<number | null>(null);
   const toastQueueRef = useRef<StaffInboxToast[]>([]);
   const activeToastIdRef = useRef<string | null>(null);
@@ -220,16 +230,39 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
     pendingAlertsRef.current = [];
 
     const settings = user?.id ? loadStaffInboxAlertSettings(user.id) : null;
+    let playedSoundForBatch = false;
 
     for (const alert of batch) {
+      if (soundDeliveredItemIdsRef.current.has(alert.itemId)) {
+        continue;
+      }
+
       toastSequenceRef.current += 1;
       toastQueueRef.current.push({
-        ...alert,
+        alertKind: alert.alertKind,
+        title: alert.title,
+        subtitle: alert.subtitle,
+        navigationPath: alert.navigationPath,
         id: `staff-inbox-toast-${toastSequenceRef.current}`,
       });
 
-      if (user?.id && settings) {
+      soundDeliveredItemIdsRef.current.add(alert.itemId);
+      if (user?.id) {
+        void staffInboxAlertDeliveryService
+          .markSoundPlayed({
+            userId: user.id,
+            itemId: alert.itemId,
+            kind: alert.itemKind,
+            occurredAtMillis: alert.occurredAtMillis,
+          })
+          .catch(() => {
+            // Keep in-memory mark; next session may retry persistence.
+          });
+      }
+
+      if (user?.id && settings && !playedSoundForBatch) {
         enqueueStaffInboxAlertSound(user.id, settings, alert.alertKind);
+        playedSoundForBatch = true;
       }
     }
 
@@ -237,7 +270,11 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
   }, [presentNextToast, user?.id]);
 
   const queueAlert = useCallback(
-    (alert: Omit<StaffInboxToast, "id">) => {
+    (alert: PendingStaffInboxAlert) => {
+      if (soundDeliveredItemIdsRef.current.has(alert.itemId)) {
+        return;
+      }
+
       pendingAlertsRef.current.push(alert);
 
       if (alertFlushTimeoutRef.current) {
@@ -254,8 +291,12 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
 
   const evaluateAlerts = useCallback(
     (snapshot: typeof subscriptionSnapshot) => {
-      // Wait until Done/ack state has loaded so existing queued items are not treated as brand-new.
-      if (!acksHydratedRef.current) {
+      // Wait for ack + delivery hydration and at least one inbox subscription emit.
+      if (
+        !acksHydratedRef.current ||
+        !deliveriesHydratedRef.current ||
+        !subscriptionHydratedRef.current
+      ) {
         return;
       }
 
@@ -289,6 +330,9 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
 
           queueAlert({
             alertKind: "request_queued_to_show",
+            itemId: queuedItem.id,
+            itemKind: "portal_queued",
+            occurredAtMillis: queuedItem.occurredAtMillis,
             ...buildStaffInboxAlertToastCopy("portal_queued", queuedItem.title),
             navigationPath: getStaffInboxItemNavigationPath(queuedItem),
           });
@@ -326,6 +370,9 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
 
         queueAlert({
           alertKind: "show_queue_full",
+          itemId: fullItem.id,
+          itemKind: "show_queue_full",
+          occurredAtMillis: fullItem.occurredAtMillis,
           ...buildStaffInboxAlertToastCopy("show_queue_full", fullItem.title),
           navigationPath: getStaffInboxItemNavigationPath(fullItem),
         });
@@ -347,6 +394,9 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
       previousFullShowIdsRef.current = null;
       previousOpenItemIdsRef.current = null;
       acksHydratedRef.current = false;
+      subscriptionHydratedRef.current = false;
+      deliveriesHydratedRef.current = false;
+      soundDeliveredItemIdsRef.current = new Set();
       setHighlightedItemIds(new Set());
 
       for (const timeoutId of highlightTimeoutIdsRef.current.values()) {
@@ -368,6 +418,7 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
     }
 
     const unsubscribe = staffInboxSubscriptionService.subscribe((state) => {
+      subscriptionHydratedRef.current = true;
       setSubscriptionSnapshot(state.snapshot);
       setError(buildInboxErrorMessage(state.requestError, state.allocationError));
       setWarning(buildInboxWarningMessage(state.requestError, state.allocationError, state.showError));
@@ -376,6 +427,29 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
 
     return unsubscribe;
   }, [evaluateAlerts, isEnabled]);
+
+  useEffect(() => {
+    if (!isEnabled || !user?.id) {
+      deliveriesHydratedRef.current = false;
+      soundDeliveredItemIdsRef.current = new Set();
+      return;
+    }
+
+    const unsubscribe = staffInboxAlertDeliveryService.subscribe(
+      user.id,
+      (deliveries) => {
+        soundDeliveredItemIdsRef.current = new Set(deliveries.map((entry) => entry.itemId));
+        deliveriesHydratedRef.current = true;
+        evaluateAlertsRef.current(subscriptionSnapshotRef.current);
+      },
+      (message) => {
+        setWarning(formatStaffInboxFirestoreError(message));
+        deliveriesHydratedRef.current = true;
+      },
+    );
+
+    return unsubscribe;
+  }, [isEnabled, user?.id]);
 
   useEffect(() => {
     if (!isEnabled || previousQueuedGroupKeysRef.current === null) {

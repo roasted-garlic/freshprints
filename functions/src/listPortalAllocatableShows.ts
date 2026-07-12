@@ -2,10 +2,16 @@ import { onCall } from "firebase-functions/v2/https";
 
 import type { ListPortalAllocatableShowsResponse } from "../../packages/shared/src/types/portal/listPortalAllocatableShows.types";
 import type { ShowProductionStatus } from "../../packages/shared/src/types/upcomingShow/upcomingShow.enums";
-import { filterShowsAvailableForAllocation } from "../../packages/shared/src/utils/showScheduleGrouping";
+import {
+  filterShowsAvailableForAllocation,
+  isPastScheduledShow,
+} from "../../packages/shared/src/utils/showScheduleGrouping";
 import { adminDb } from "./lib/admin";
 import { internal, unauthenticated } from "./lib/errors";
 import { requirePortalCustomer } from "./lib/portalCustomer";
+
+/** Include past shows from the start of (current month − 2) for calendar highlights. */
+const PAST_CALENDAR_MONTHS = 2;
 
 function mapHttpsError(error: unknown): never {
   if (error instanceof Error && "code" in error) {
@@ -37,6 +43,10 @@ function resolveProductionStatus(value: unknown): ShowProductionStatus {
   return "open";
 }
 
+function pastCalendarWindowStart(now: Date): Date {
+  return new Date(now.getFullYear(), now.getMonth() - PAST_CALENDAR_MONTHS, 1);
+}
+
 interface InternalAllocatableShow {
   id: string;
   scheduledStartAt: { toDate: () => Date } | undefined;
@@ -56,6 +66,7 @@ export const listPortalAllocatableShows = onCall(async (request): Promise<ListPo
 
     const snapshot = await adminDb.collection("upcomingShows").get();
     const now = new Date();
+    const pastWindowStart = pastCalendarWindowStart(now);
 
     const shows: InternalAllocatableShow[] = snapshot.docs.flatMap((showDoc) => {
       const data = showDoc.data();
@@ -89,14 +100,32 @@ export const listPortalAllocatableShows = onCall(async (request): Promise<ListPo
     });
 
     const allocatable = filterShowsAvailableForAllocation(shows, now);
+    const allocatableIds = new Set(allocatable.map((show) => show.id));
 
-    const responseShows = allocatable
+    const calendarShows = shows.filter((show) => {
+      if (allocatableIds.has(show.id)) {
+        return true;
+      }
+
+      if (!show.scheduledStartAt) {
+        return false;
+      }
+
+      if (!isPastScheduledShow(show, now)) {
+        return false;
+      }
+
+      return show.scheduledStartAt.toDate().getTime() >= pastWindowStart.getTime();
+    });
+
+    const responseShows = calendarShows
       .map((show) => ({
         id: show.id,
         scheduledStartAt: show.scheduledStartAtIso,
         productionStatus: show.productionStatus,
         maxTotalQuantity: show.maxTotalQuantity,
         allocatedQuantity: show.allocatedQuantity,
+        isAllocatable: allocatableIds.has(show.id),
       }))
       .sort((left, right) => {
         if (!left.scheduledStartAt && !right.scheduledStartAt) {

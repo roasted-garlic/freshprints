@@ -1,13 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import type { PrintRequestItem } from '@fresh-prints/shared/types/printRequest/printRequest.types';
 import { derivePrintRequestListTab } from '@fresh-prints/shared/utils/printRequestListGrouping';
 import {
-  getPortalPrintRequestListTabLabel,
   type PortalPrintRequestListTab,
 } from '@fresh-prints/shared/utils/portalPrintRequestListTabs';
 import { resolvePortalPrintProgressStage } from '@fresh-prints/shared/utils/portalPrintProgressStage';
@@ -17,12 +16,21 @@ import { PortalPrintRequestItemCard } from '../../../../features/print-requests/
 import { PortalPrintRequestProgressPanel } from '../../../../features/print-requests/components/PortalPrintRequestProgressPanel';
 import { PortalQueueToShowModal } from '../../../../features/print-requests/components/PortalQueueToShowModal';
 import { PrintRequestDetailGuide } from '../../../../features/print-requests/components/PrintRequestDetailGuide';
+import { CustomerUploadPanel } from '../../../../features/customer-uploads/components/CustomerUploadPanel';
 import { useAuth } from '../../../../features/auth/context/AuthContext';
 import { usePortalPrintRequests } from '../../../../features/print-requests/context/PortalPrintRequestContext';
 import { usePrintRequestDetail } from '../../../../features/print-requests/hooks/usePrintRequestDetail';
 import { usePortalShowPrintProgress } from '../../../../features/print-requests/hooks/usePortalShowPrintProgress';
-import { portalPrintRequestService } from '../../../../features/print-requests/services/portalPrintRequestService';
+import {
+  portalPrintRequestService,
+  printRequestItemHasCustomerUpload,
+} from '../../../../features/print-requests/services/portalPrintRequestService';
 import { buildCatalogSelectionHref } from '../../../../features/print-requests/utils/catalogSelectionNavigation';
+import {
+  buildRequestDetailHref,
+  parsePortalRequestDetailFrom,
+  resolvePortalRequestDetailBack,
+} from '../../../../features/print-requests/utils/portalRequestDetailReturn';
 import { PortalConfirmModal } from '../../../../features/shared/components/PortalConfirmModal';
 import { ArrowLeftIcon, ImagePlusIcon, LibraryIcon, RefreshIcon } from '../../../../features/shared/components/PortalIcons';
 
@@ -32,10 +40,6 @@ interface AutosaveState {
   status: AutosaveStatus;
   message?: string;
   retry?: () => Promise<void>;
-}
-
-function buildRequestsListHref(tab: PortalPrintRequestListTab): string {
-  return `/requests?tab=${tab}`;
 }
 
 function getStatusLabel(status: string): string {
@@ -58,6 +62,7 @@ function getStatusLabel(status: string): string {
 export default function PrintRequestDetailView() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { refreshCustomer } = useAuth();
   const { allocationTotalsByRequestId, refreshRequests, summariesByRequestId } = usePortalPrintRequests();
   const printRequestId = params.id;
@@ -72,6 +77,7 @@ export default function PrintRequestDetailView() {
     printRequest,
     items,
     designSummaries,
+    uploadSummaries,
     isLoading,
     error,
     isEditable,
@@ -80,6 +86,25 @@ export default function PrintRequestDetailView() {
     removeItem,
     reload,
   } = usePrintRequestDetail(printRequestId);
+
+  const [isUploadPanelOpen, setIsUploadPanelOpen] = useState(false);
+
+  useEffect(() => {
+    if (searchParams.get('upload') !== '1') {
+      return;
+    }
+
+    if (isLoading || !printRequestId) {
+      return;
+    }
+
+    if (isEditable) {
+      setIsUploadPanelOpen(true);
+    }
+
+    const from = parsePortalRequestDetailFrom(searchParams.get('from'));
+    router.replace(buildRequestDetailHref(printRequestId, { from }), { scroll: false });
+  }, [isEditable, isLoading, printRequestId, router, searchParams]);
 
   const loadAllocationState = useCallback(async () => {
     if (!printRequestId) {
@@ -169,9 +194,14 @@ export default function PrintRequestDetailView() {
   );
 
   const pendingRemovalTitle =
-    itemPendingRemoval && designSummaries.get(itemPendingRemoval.designId)?.title
+    itemPendingRemoval?.titleSnapshot ||
+    (itemPendingRemoval?.designId
       ? designSummaries.get(itemPendingRemoval.designId)?.title
-      : 'this design';
+      : undefined) ||
+    (itemPendingRemoval?.customerUploadId
+      ? uploadSummaries.get(itemPendingRemoval.customerUploadId)?.originalFilename
+      : undefined) ||
+    'this design';
 
   const totalPrintCount = useMemo(() => sumPrintRequestItemQuantities(items), [items]);
 
@@ -192,10 +222,11 @@ export default function PrintRequestDetailView() {
     });
   }, [allocationTotalsByRequestId, printRequest, summariesByRequestId, totalPrintCount]);
 
-  const backHref = buildRequestsListHref(listTab);
-  const backLabel = `Back to ${getPortalPrintRequestListTabLabel(listTab)}`;
+  const returnFrom = parsePortalRequestDetailFrom(searchParams.get('from'));
+  const { href: backHref, label: backLabel } = resolvePortalRequestDetailBack(returnFrom, listTab);
   const progressStage = resolvePortalPrintProgressStage(listTab);
   const printProgress = usePortalShowPrintProgress(printRequestId, progressStage !== null);
+  const hasAttachedDesigns = items.length > 0;
 
   const handleQueuedToShow = useCallback(async () => {
     await Promise.all([reload(), refreshRequests({ silent: true }), refreshCustomer()]);
@@ -231,7 +262,8 @@ export default function PrintRequestDetailView() {
 
   const designCountLabel = `${printRequest.itemCount} design${printRequest.itemCount === 1 ? '' : 's'}`;
   const printCountLabel = `${totalPrintCount} print${totalPrintCount === 1 ? '' : 's'}`;
-  const canQueueToShow = isEditable && items.length > 0 && !hasAllocations;
+  const canQueueToShow =
+    isEditable && items.length > 0 && !hasAllocations;
 
   return (
     <main className="portal-page portal-request-detail-page">
@@ -259,13 +291,25 @@ export default function PrintRequestDetailView() {
           <div className="portal-request-detail-header-actions">
             <button
               className="portal-button portal-button-secondary portal-button-leading-icon portal-request-detail-add-button"
-              onClick={() =>
-                router.push(buildCatalogSelectionHref(printRequest.id))
-              }
+              onClick={() => setIsUploadPanelOpen(true)}
               type="button"
             >
               <ImagePlusIcon />
-              Add designs
+              Upload artwork
+            </button>
+            <button
+              className="portal-button portal-button-secondary portal-button-leading-icon portal-request-detail-add-button"
+              onClick={() =>
+                router.push(
+                  buildCatalogSelectionHref(printRequest.id, {
+                    from: returnFrom ?? 'library',
+                  }),
+                )
+              }
+              type="button"
+            >
+              <LibraryIcon />
+              Browse design library
             </button>
             <button
               className="portal-button portal-button-primary"
@@ -275,19 +319,49 @@ export default function PrintRequestDetailView() {
               Add to show
             </button>
           </div>
-        ) : isEditable && items.length > 0 ? (
-          <button
-            className="portal-button portal-button-primary portal-button-leading-icon portal-request-detail-add-button"
-            onClick={() =>
-              router.push(buildCatalogSelectionHref(printRequest.id))
-            }
-            type="button"
-          >
-            <ImagePlusIcon />
-            Add designs
-          </button>
+        ) : isEditable && hasAttachedDesigns ? (
+          <div className="portal-request-detail-header-actions">
+            <button
+              className="portal-button portal-button-secondary portal-button-leading-icon portal-request-detail-add-button"
+              onClick={() => setIsUploadPanelOpen(true)}
+              type="button"
+            >
+              <ImagePlusIcon />
+              Upload artwork
+            </button>
+            <button
+              className="portal-button portal-button-primary portal-button-leading-icon portal-request-detail-add-button"
+              onClick={() =>
+                router.push(
+                  buildCatalogSelectionHref(printRequest.id, {
+                    from: returnFrom ?? 'library',
+                  }),
+                )
+              }
+              type="button"
+            >
+              <LibraryIcon />
+              Browse design library
+            </button>
+          </div>
         ) : null}
       </header>
+
+      {isUploadPanelOpen && isEditable ? (
+        <CustomerUploadPanel
+          onAttached={async (attachedRequestId) => {
+            setIsUploadPanelOpen(false);
+            if (attachedRequestId !== printRequest.id) {
+              router.replace(
+                buildRequestDetailHref(attachedRequestId, { from: returnFrom }),
+              );
+              return;
+            }
+            await Promise.all([reload(), refreshRequests({ silent: true })]);
+          }}
+          onClose={() => setIsUploadPanelOpen(false)}
+        />
+      ) : null}
 
       {progressStage ? (
         <PortalPrintRequestProgressPanel
@@ -317,20 +391,32 @@ export default function PrintRequestDetailView() {
           <h2>No designs yet</h2>
           <p className="portal-muted">
             {isEditable
-              ? 'Browse the design library to add designs with quantities and print sizes.'
+              ? 'Upload your own artwork or browse the Design Library to add designs with quantities and print sizes.'
               : 'This request has no designs.'}
           </p>
           {isEditable ? (
             <div className="portal-requests-empty-actions">
               <button
                 className="portal-button portal-button-primary portal-button-leading-icon"
+                onClick={() => setIsUploadPanelOpen(true)}
+                type="button"
+              >
+                <ImagePlusIcon />
+                Upload artwork
+              </button>
+              <button
+                className="portal-button portal-button-secondary portal-button-leading-icon"
                 onClick={() =>
-                  router.push(buildCatalogSelectionHref(printRequest.id))
+                  router.push(
+                    buildCatalogSelectionHref(printRequest.id, {
+                      from: returnFrom ?? 'library',
+                    }),
+                  )
                 }
                 type="button"
               >
                 <LibraryIcon />
-                Add designs
+                Browse design library
               </button>
             </div>
           ) : null}
@@ -338,7 +424,10 @@ export default function PrintRequestDetailView() {
       ) : (
         <section aria-label="Request items" className="portal-request-item-editor-grid">
           {items.map((item) => {
-            const design = designSummaries.get(item.designId);
+            const design = item.designId ? designSummaries.get(item.designId) : null;
+            const upload = item.customerUploadId
+              ? uploadSummaries.get(item.customerUploadId)
+              : null;
 
             return (
               <PortalPrintRequestItemCard
@@ -353,6 +442,19 @@ export default function PrintRequestDetailView() {
                         previewPath: design.previewPath,
                         printWidthInches: design.printWidthInches,
                         printHeightInches: design.printHeightInches,
+                      }
+                    : null
+                }
+                upload={
+                  printRequestItemHasCustomerUpload(item)
+                    ? {
+                        title: upload?.originalFilename ?? item.titleSnapshot ?? 'Uploaded artwork',
+                        previewPath: upload?.previewStoragePath,
+                        thumbnailPath: upload?.thumbnailStoragePath,
+                        widthPx: upload?.widthPx,
+                        heightPx: upload?.heightPx,
+                        printWidthInches: upload?.printWidthInches,
+                        printHeightInches: upload?.printHeightInches,
                       }
                     : null
                 }

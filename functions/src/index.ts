@@ -1,5 +1,15 @@
+export { cleanupAbandonedCustomerUploads } from "./cleanupAbandonedCustomerUploads";
+export { confirmCustomerUploadsAndAttachToRequest } from "./confirmCustomerUploadsAndAttachToRequest";
 export { createCustomerWithPortalInvite } from "./createCustomerWithPortalInvite";
+export { createCustomerUploadBatch } from "./createCustomerUploadBatch";
 export { createPortalPrintRequest } from "./createPortalPrintRequest";
+export { duplicatePortalPrintRequestItem } from "./duplicatePortalPrintRequestItem";
+export { excludeCustomerUploadFromCatalog } from "./excludeCustomerUploadFromCatalog";
+export { finalizeCustomerUpload } from "./finalizeCustomerUpload";
+export { finalizeCustomerUploadZip } from "./finalizeCustomerUploadZip";
+export { promoteCustomerUploadToAiReview } from "./promoteCustomerUploadToAiReview";
+export { restoreCustomerUploadCatalogEligibility } from "./restoreCustomerUploadCatalogEligibility";
+export { retryCustomerUploadProcessing } from "./retryCustomerUploadProcessing";
 export { getPortalShowPrintProgress } from "./getPortalShowPrintProgress";
 export { listPortalAllocatableShows } from "./listPortalAllocatableShows";
 export { queuePortalPrintRequestToShow } from "./queuePortalPrintRequestToShow";

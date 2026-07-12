@@ -55,6 +55,33 @@ On Windows PowerShell, run tests per directory or use the repo's documented swee
 
 There is **no** root `npm test` script — invoke `npx tsx --test` explicitly.
 
+### Customer artwork upload (Sub-phases B–D)
+
+```bash
+npx tsx --test functions/src/lib/customerUpload*.test.ts functions/src/lib/confirmCustomerUpload*.test.ts packages/shared/src/utils/printAssetResolution.test.ts packages/shared/src/constants/storageRulesAlignment.test.ts
+npm --prefix functions run build
+npm run typecheck --workspace @fresh-prints/portal
+npm run build:portal
+```
+
+Backend smoke (dev only):
+
+```bash
+node functions/scripts/smoke-customer-upload-subphase-b.mjs
+node functions/scripts/smoke-customer-upload-subphase-c.mjs
+node functions/scripts/smoke-customer-upload-subphase-d.mjs
+node functions/scripts/smoke-customer-upload-subphase-e.mjs
+node functions/scripts/smoke-customer-upload-subphase-f.mjs
+node functions/scripts/smoke-customer-upload-subphase-g.mjs
+
+# Abandoned cleanup (owner/admin; optional dryRun)
+# Via Studio callable or Firebase console test — cleanupAbandonedCustomerUploads
+
+# Operational wipe includes target customerUploads (fresh-prints-dev allowlist only)
+```
+
+Portal upload UI: `apps/portal/features/customer-uploads/`. After Sub-phase D, upload-backed requests can queue to show; Studio gang/export resolve upload production PNGs.
+
 ### Build
 
 ```bash

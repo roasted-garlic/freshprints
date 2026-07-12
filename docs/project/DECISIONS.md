@@ -4,6 +4,60 @@
 
 ---
 
+### ADR-FP-074: Customer upload library permission is optional (visible to staff)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-12 |
+| Status | accepted |
+
+**Context**
+
+Customers confirm ownership and whether Fresh Prints may use artwork in the Design Library. Forcing library permission blocked attach UX; staff still need a clear signal when a customer declined.
+
+**Decision**
+
+1. Ownership confirmation remains **required** to attach uploads to a print request.
+2. Design Library permission is **optional**, **checked by default** in Portal UI, and persisted as `catalogUseAcknowledged` (true/false) with terms `customer-upload-terms-v2`.
+3. Staff **may still** Send to AI Review / promote when `catalogUseAcknowledged === false`.
+4. Studio Customer Uploads intake must **surface declines** clearly so staff can decide.
+
+**Consequences**
+
+- Promote callables require ownership only (not library permission).
+- Product/policy follow-up may later tighten promote rules; visibility is mandatory now.
+
+---
+
+### ADR-FP-073: Customer-provided request artwork (separate from catalog designs and Phase 9)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-11 |
+| Status | accepted |
+
+**Context**
+
+Portal customers need to print their own transparent artwork on the existing one-working-request flow. Catalog `designs` are staff-approved library assets. Phase 9 `customRequests` is a separate Q&A / Etsy / optional design-fee workflow. These must not be conflated.
+
+**Decision**
+
+1. Persist customer artwork as **`customerUploads`** (+ optional **`customerUploadBatches`**), not as `designs`, until staff explicitly promotes.
+2. **Request-use** and **catalog intake** are independent lifecycles (`technicalStatus` vs `catalogReviewStatus`). Request/production statuses stay on print request / show entities — never on `designs.status`.
+3. Print request items gain a source model: `catalog_design` | `customer_upload` (legacy docs without `sourceType` = catalog). Sub-phase A adds additive optional fields; Sub-phase D makes `designId` optional for upload-backed items and updates show/gang/export resolvers.
+4. Trusted processing boundary: authorized Storage source upload → finalize callable (server validation/normalize/derivatives). Client preflight is non-authoritative.
+5. Staff **Send to AI Review** promotes idempotently to a `designs` doc (`status: imported`) + existing `catalog-enrich-v21` enqueue; **Do not add to catalog** excludes without deleting request assets. Default click does not auto-AI before staff action.
+6. Storage layout under `/customer-uploads/{uid}/…` with separate **source** and **production** objects. Rules enforce path/owner/size/type; lifecycle validation lives in finalize callables (Sub-phase B).
+7. This feature is **Phase 8 fast-follow request artwork**. It is **not** Phase 9 `customRequests` / Custom Request Q&A. Reusing the `/customer-uploads/` prefix does not pull Phase 9 into scope.
+
+**Consequences**
+
+- Implementation is split (A contracts → B trusted backend+rules → C Portal UI → D production compatibility → E Studio intake → F AI → G wipe/hardening).
+- Popularity `requestCount` must not increment for customer-upload-only items.
+- Confirmation wording and rules/Functions deploys remain human checkpoints.
+
+---
+
 ### ADR-FP-070: Local gang sheet generate/cache (not Firebase Storage)
 
 | Field | Value |
@@ -2356,6 +2410,8 @@ Phase 4 separated Design Library (approved catalog) from operational import work
 - Trade-off: Form state lost on hard refresh unless optional sessionStorage (5E)  
 - References: `docs/workflow/plans/phase-5-ai-review-architecture-plan.md`, `docs/workflow/reviews/phase-5-ai-review-architecture-review.md`
 
+**Clarification (2026-07-12 — Customer Uploads)**  
+ADR-FP-009’s three workspaces remain the **design catalog lifecycle**. **Customer Uploads** (`/customer-uploads`) is an **operational intake queue** for Portal request artwork (similar in role to Print Requests), not a fourth design-lifecycle workspace. Staff may **hand off** eligible uploads to AI Processing via promote; Imports remains the staff local-file import path.
 ---
 
 ### ADR-FP-008: Official application naming — Fresh Prints Studio and Fresh Prints Portal

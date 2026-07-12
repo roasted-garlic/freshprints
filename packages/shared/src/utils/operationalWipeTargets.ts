@@ -3,6 +3,7 @@ import type { OperationalWipeTarget } from "../types/admin/wipeOperationalTestDa
 /** Collections deleted for operational wipes, in safe child→parent order. */
 export const OPERATIONAL_WIPE_DELETE_COLLECTION_ORDER = [
   "staffInboxAcks",
+  "staffInboxAlertDeliveries",
   "gangSheetItems",
   "gangSheets",
   "showAllocations",
@@ -12,6 +13,11 @@ export const OPERATIONAL_WIPE_DELETE_COLLECTION_ORDER = [
   "customerRequests",
   "showQueues",
   "showQueueItems",
+  "customerUploadIdempotency",
+  "customerUploadFinalizeLeases",
+  "customerUploadRateLimits",
+  "customerUploads",
+  "customerUploadBatches",
   "designs",
 ] as const;
 
@@ -23,6 +29,7 @@ export interface ExpandedOperationalWipePlan {
   resetSequences: boolean;
   resetDesignRequestStats: boolean;
   wipeDesignStorage: boolean;
+  wipeCustomerUploadStorage: boolean;
   /**
    * When allocations are deleted but upcoming show docs are kept, zero denormalized
    * `allocatedQuantity` (and demote `productionStatus` from `full` → `open`) so Show Queue
@@ -112,6 +119,7 @@ const OPERATIONAL_WIPE_TARGETS_ORDER: OperationalWipeTarget[] = [
   "sequences",
   "designRequestStats",
   "designs",
+  "customerUploads",
 ];
 
 /**
@@ -119,6 +127,7 @@ const OPERATIONAL_WIPE_TARGETS_ORDER: OperationalWipeTarget[] = [
  * `printRequests` always clears queue attachments/gang data so shows are not left pointing
  * at deleted requests; `upcomingShows` docs themselves are only removed when that target is set.
  * `designs` deletes catalog docs and Storage originals/thumbnails/previews (requires printRequests).
+ * `customerUploads` deletes upload docs/ops collections and `customer-uploads/` Storage.
  */
 export function expandOperationalWipePlan(
   targets: readonly OperationalWipeTarget[],
@@ -129,6 +138,7 @@ export function expandOperationalWipePlan(
   for (const target of uniqueTargets) {
     if (target === "printRequests") {
       deleteSet.add("staffInboxAcks");
+      deleteSet.add("staffInboxAlertDeliveries");
       for (const collectionName of PRINT_REQUEST_STACK_COLLECTIONS) {
         deleteSet.add(collectionName);
       }
@@ -137,6 +147,7 @@ export function expandOperationalWipePlan(
 
     if (target === "showQueueAttachments") {
       deleteSet.add("staffInboxAcks");
+      deleteSet.add("staffInboxAlertDeliveries");
       for (const collectionName of SHOW_QUEUE_ATTACHMENT_COLLECTIONS) {
         deleteSet.add(collectionName);
       }
@@ -145,6 +156,7 @@ export function expandOperationalWipePlan(
 
     if (target === "upcomingShows") {
       deleteSet.add("staffInboxAcks");
+      deleteSet.add("staffInboxAlertDeliveries");
       for (const collectionName of UPCOMING_SHOW_COLLECTIONS) {
         deleteSet.add(collectionName);
       }
@@ -153,11 +165,21 @@ export function expandOperationalWipePlan(
 
     if (target === "designs") {
       deleteSet.add("designs");
+      continue;
+    }
+
+    if (target === "customerUploads") {
+      deleteSet.add("customerUploadIdempotency");
+      deleteSet.add("customerUploadFinalizeLeases");
+      deleteSet.add("customerUploadRateLimits");
+      deleteSet.add("customerUploads");
+      deleteSet.add("customerUploadBatches");
     }
   }
 
   const wipeDesigns = uniqueTargets.includes("designs");
   const wipePrintRequests = uniqueTargets.includes("printRequests");
+  const wipeCustomerUploads = uniqueTargets.includes("customerUploads");
   const deleteCollections = OPERATIONAL_WIPE_DELETE_COLLECTION_ORDER.filter((collectionName) =>
     deleteSet.has(collectionName),
   );
@@ -169,6 +191,7 @@ export function expandOperationalWipePlan(
     // Stats reset is pointless if designs themselves are deleted.
     resetDesignRequestStats: uniqueTargets.includes("designRequestStats") && !wipeDesigns,
     wipeDesignStorage: wipeDesigns,
+    wipeCustomerUploadStorage: wipeCustomerUploads,
     resetShowAllocationTotals:
       deleteSet.has("showAllocations") && !deleteSet.has("upcomingShows"),
   };
@@ -187,7 +210,11 @@ export const ALL_OPERATIONAL_WIPE_TARGETS: OperationalWipeTarget[] = [
   "sequences",
   "designRequestStats",
   "designs",
+  "customerUploads",
 ];
 
 /** Storage prefixes removed when wiping designs (catalog assets only). */
 export const DESIGN_STORAGE_WIPE_PREFIXES = ["originals/", "thumbnails/", "previews/"] as const;
+
+/** Storage prefix removed when wiping customer uploads. */
+export const CUSTOMER_UPLOAD_STORAGE_WIPE_PREFIXES = ["customer-uploads/"] as const;

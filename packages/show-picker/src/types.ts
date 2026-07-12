@@ -20,6 +20,8 @@ export interface ShowPickerOption {
   statusVariant: ShowPickerStatusVariant;
   isFull: boolean;
   isOverCapacity: boolean;
+  /** False for past (or otherwise non-allocatable) shows — calendar highlight only. */
+  isSelectable: boolean;
 }
 
 export interface ShowPickerProps {

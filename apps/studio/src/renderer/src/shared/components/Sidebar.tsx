@@ -11,6 +11,7 @@ import {
   Settings,
   Sparkles,
   FolderInput,
+  Upload,
   Users,
   X,
   Bell,
@@ -20,6 +21,7 @@ import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import type { LucideIcon } from "lucide-react";
 
 import { useAuth } from "../../features/auth/hooks/useAuth";
+import { usePendingCustomerUploadCount } from "../../features/customer-uploads/hooks/usePendingCustomerUploadCount";
 import { useStaffInboxContext } from "../../features/staff-inbox/context/staffInboxContext";
 import { permissionService } from "../../features/permissions/services/permissionService";
 import type { PermissionKey } from "../../features/permissions/types/permission.types";
@@ -42,6 +44,7 @@ interface SidebarRouteItem {
   dividerBefore?: boolean;
   permission?: PermissionKey;
   showInboxBadge?: boolean;
+  showCustomerUploadBadge?: boolean;
   /** Extra client-side visibility gate beyond permission (e.g. allowlisted Firebase project). */
   isVisible?: () => boolean;
 }
@@ -90,6 +93,14 @@ const sidebarItems: SidebarRouteItem[] = [
     to: "/imports",
     permission: "importDesigns",
     dividerBefore: true,
+  },
+  {
+    kind: "route",
+    icon: Upload,
+    label: "Customer Uploads",
+    to: "/customer-uploads",
+    permission: "importDesigns",
+    showCustomerUploadBadge: true,
   },
   {
     kind: "route",
@@ -148,18 +159,26 @@ export function Sidebar() {
   const { isOpen: isDrawerOpen, close: closeDrawer } = useSidebarDrawer();
   const { isUploadActive, requestLeaveConfirmation } = useUploadActivity();
   const staffInbox = useStaffInboxContext();
+  const pendingCustomerUploadCount = usePendingCustomerUploadCount();
 
   const inboxOpenCount = staffInbox.isEnabled ? staffInbox.badgeCounts.printRequests : 0;
 
   const resolveSidebarBadgeCount = useCallback(
-    (showInboxBadge: SidebarRouteItem["showInboxBadge"]) => {
-      if (!showInboxBadge || !staffInbox.isEnabled) {
-        return 0;
+    (item: SidebarRouteItem) => {
+      if (item.showInboxBadge) {
+        if (!staffInbox.isEnabled) {
+          return 0;
+        }
+        return inboxOpenCount;
       }
 
-      return inboxOpenCount;
+      if (item.showCustomerUploadBadge) {
+        return pendingCustomerUploadCount;
+      }
+
+      return 0;
     },
-    [inboxOpenCount, staffInbox.isEnabled],
+    [inboxOpenCount, pendingCustomerUploadCount, staffInbox.isEnabled],
   );
 
   const handleOpenDevTools = useCallback(async () => {
@@ -325,7 +344,7 @@ export function Sidebar() {
       <nav className="sidebar-nav">
         {visibleSidebarItems.map((item) => {
           const ItemIcon = item.icon;
-          const badgeCount = item.kind === "route" ? resolveSidebarBadgeCount(item.showInboxBadge) : 0;
+          const badgeCount = item.kind === "route" ? resolveSidebarBadgeCount(item) : 0;
 
           return (
             <div className="sidebar-nav-item" key={item.label}>

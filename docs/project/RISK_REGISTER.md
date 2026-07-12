@@ -12,6 +12,9 @@
 | R-004 | Doc drift after rapid Phase 3 delivery | Medium | Medium | Intake + managed phase doc updates; ROADMAP header discipline | Team | mitigated |
 | R-005 | Native `sharp` module build failures on new dev machines | Medium | Medium | Document in `docs/workflow/setup/electron-security-setup.md` | Team | open |
 | R-006 | Secrets in local `.env.local` — must never commit | High | Low | `.gitignore` covers `.env.local`; pre-push review | Team | monitored |
+| R-007 | Public Portal artwork uploads (abuse, ZIP bombs, private art leakage) | High | Medium | ADR-FP-073; server finalize; customer limits + daily caps; rules before UI; SVG deferred; no public derivative reads for unapproved uploads; abandoned cleanup callable (source orphans only); wipe target `customerUploads` on allowlisted dev | Team | open |
+| R-008 | Dual assets after promote (upload production + design originals) | Low | Medium | Documented; request print uses upload path; catalog uses design paths; wipe designs ≠ wipe uploads | Team | accepted |
+| R-009 | Upload `catalogReviewStatus` stays `sent_to_ai_review` after design approve/reject | Low | High | By design (ADR-FP-073); outcome on `designs`; intake shows promotedDesignId | Team | accepted |
 
 ---
 
@@ -28,4 +31,6 @@
 
 | Date | Summary |
 |------|---------|
+| 2026-07-12 | R-008 dual assets / R-009 frozen upload catalog status after promote; R-007 notes cleanup + wipe target |
+| 2026-07-11 | R-007 public customer artwork upload threat model (Phase 8 fast-follow) |
 | 2026-06-24 | Fresh Prints intake risks added; starter template risks closed |

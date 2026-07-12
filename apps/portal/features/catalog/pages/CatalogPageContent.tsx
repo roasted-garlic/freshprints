@@ -34,12 +34,18 @@ import { usePortalPrintRequestSelectionMode } from '../../print-requests/hooks/u
 import {
   buildCatalogLibraryHref,
   buildCatalogSelectionHref,
+  buildRequestUploadHref,
   CATALOG_HOME_PATH,
 } from '../../print-requests/utils/catalogSelectionNavigation';
+import {
+  buildRequestDetailHref,
+  parsePortalRequestDetailFrom,
+} from '../../print-requests/utils/portalRequestDetailReturn';
 import { PortalConfirmModal } from '../../shared/components/PortalConfirmModal';
 import { PortalPickContinuableRequestModal } from '../../shared/components/PortalPickContinuableRequestModal';
 import {
   ArrowLeftIcon,
+  ImagePlusIcon,
   PlayCircleIcon,
   PlusCircleIcon,
   SaveIcon,
@@ -208,11 +214,17 @@ export function CatalogPageContent() {
 
     appliedSeedDesignIdRef.current = seedDesignId;
     addDesignToSelection(seededDesign);
-    router.replace(buildCatalogSelectionHref(selectionRequestId));
+    router.replace(
+      buildCatalogSelectionHref(selectionRequestId, {
+        from: parsePortalRequestDetailFrom(searchParams.get('from')) ?? 'library',
+        seedDesignId,
+      }),
+    );
   }, [
     addDesignToSelection,
     designs,
     router,
+    searchParams,
     seedDesignId,
     selectionModeActive,
     selectionRequestId,
@@ -245,7 +257,9 @@ export function CatalogPageContent() {
 
   async function handleRequestAction() {
     if (hasSingleContinuableRequest) {
-      router.push(buildCatalogSelectionHref(continuableRequests[0]!.id));
+      router.push(
+        buildCatalogSelectionHref(continuableRequests[0]!.id, { from: 'library' }),
+      );
       return;
     }
 
@@ -254,7 +268,7 @@ export function CatalogPageContent() {
       return;
     }
 
-    handleStartRequestClick();
+    handleStartRequestClick({ from: 'library' });
   }
 
   async function handleExitSelectionMode() {
@@ -269,7 +283,9 @@ export function CatalogPageContent() {
       // Removals (trash / qty→0) persist immediately; wait so Back doesn't race them.
       await selectionMode.flushPendingMutations();
       void refreshRequests({ silent: true });
-      router.push(`/requests/${selectionRequestId}`);
+      const returnFrom =
+        parsePortalRequestDetailFrom(searchParams.get('from')) ?? 'library';
+      router.push(buildRequestDetailHref(selectionRequestId, { from: returnFrom }));
     } catch (exitError) {
       setIsLeavingSelection(false);
       setSelectionActionError(
@@ -289,10 +305,44 @@ export function CatalogPageContent() {
     try {
       await selectionMode.saveSelections({ skipReload: true });
       void refreshRequests({ silent: true });
-      router.replace(`/requests/${selectionRequestId}`);
+      const returnFrom =
+        parsePortalRequestDetailFrom(searchParams.get('from')) ?? 'library';
+      router.replace(buildRequestDetailHref(selectionRequestId, { from: returnFrom }));
     } catch (saveError) {
       setIsLeavingSelection(false);
       setSelectionActionError(saveError instanceof Error ? saveError.message : 'Unable to save selections.');
+    }
+  }
+
+  async function handleUploadArtworkFromSelectionMode() {
+    if (!selectionRequestId) {
+      return;
+    }
+
+    setSelectionActionError(null);
+
+    const returnFrom =
+      parsePortalRequestDetailFrom(searchParams.get('from')) ?? 'library';
+    const uploadHref = buildRequestUploadHref(selectionRequestId, { from: returnFrom });
+
+    if (!selectionMode.hasPendingChanges) {
+      router.push(uploadHref);
+      return;
+    }
+
+    setIsLeavingSelection(true);
+
+    try {
+      await selectionMode.saveSelections({ skipReload: true });
+      void refreshRequests({ silent: true });
+      router.push(uploadHref);
+    } catch (saveError) {
+      setIsLeavingSelection(false);
+      setSelectionActionError(
+        saveError instanceof Error
+          ? saveError.message
+          : 'Unable to save selections before upload.',
+      );
     }
   }
 
@@ -343,6 +393,17 @@ export function CatalogPageContent() {
         </header>
       ) : null}
 
+      {!selectionModeActive ? (
+        <aside className="portal-catalog-request-workflow-hint" role="note">
+          <p className="portal-catalog-request-workflow-hint-title">How print requests work</p>
+          <p className="portal-catalog-request-workflow-hint-body">
+            A print request can include designs from the Design Library, artwork you upload yourself, or
+            both. Uploaded artwork is for your request only — it is not automatically added to the
+            shared Design Library.
+          </p>
+        </aside>
+      ) : null}
+
       {loadError ? (
         <p className="portal-error" role="alert">
           {loadError}
@@ -365,9 +426,9 @@ export function CatalogPageContent() {
                   <h2 className="design-library-selection-tray-title">Add designs to request</h2>
                   <h3>{selectionMode.printRequest.name}</h3>
                   <p>
-                    Pick designs and quantities below, then save. On the request page, set print
-                    sizes—you can add the same design more than once for different sizes. Add to a
-                    show&apos;s print run when you are ready.
+                    Pick designs from the library below, or upload your own artwork. Set quantities
+                    here, then save. On the request page you can set print sizes and add the same
+                    design more than once for different sizes.
                   </p>
                 </div>
               </div>
@@ -390,7 +451,18 @@ export function CatalogPageContent() {
                   type="button"
                 >
                   <ArrowLeftIcon />
-                  Back
+                  Print Request
+                </button>
+                <button
+                  className="portal-button portal-button-secondary portal-button-sm portal-button-leading-icon"
+                  disabled={selectionMode.isSaving || isLeavingSelection}
+                  onClick={() => void handleUploadArtworkFromSelectionMode()}
+                  type="button"
+                >
+                  <ImagePlusIcon />
+                  {selectionMode.isSaving && selectionMode.hasPendingChanges
+                    ? 'Saving…'
+                    : 'Upload artwork'}
                 </button>
                 <button
                   className="portal-button portal-button-primary portal-button-sm portal-button-leading-icon"

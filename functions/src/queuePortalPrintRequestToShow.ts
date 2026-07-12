@@ -1,6 +1,7 @@
 import { FieldValue } from "firebase-admin/firestore";
 import { onCall } from "firebase-functions/v2/https";
 
+import { CUSTOMER_UPLOAD_COLLECTIONS } from "../../packages/shared/src/constants/customerUpload/customerUploadCollections.constants";
 import type { QueuePortalPrintRequestToShowResponse } from "../../packages/shared/src/types/portal/queuePortalPrintRequestToShow.types";
 import {
   canAllocatePrintRequestToShow,
@@ -11,8 +12,10 @@ import {
   formatShowCapacityExceededMessage,
   sumPrintRequestItemQuantities,
 } from "../../packages/shared/src/utils/portalShowQueueCapacity";
+import { buildShowAllocationSourceFields } from "../../packages/shared/src/utils/showAllocationSourceFields";
 import { adminDb } from "./lib/admin";
 import { failedPrecondition, internal, invalidArgument, unauthenticated } from "./lib/errors";
+import { withoutUndefinedFields } from "./lib/firestoreDocument";
 import { requirePortalCustomer } from "./lib/portalCustomer";
 import { validateQueuePortalPrintRequestToShowRequest } from "./lib/queuePortalPrintRequestToShowValidation";
 
@@ -28,7 +31,11 @@ function mapHttpsError(error: unknown): never {
   throw internal("Unable to queue print request right now.");
 }
 
-const EDITABLE_STATUSES = new Set(["draft", "editing"]);
+const EDITABLE_STATUSES = setOfEditable();
+
+function setOfEditable() {
+  return new Set(["draft", "editing"]);
+}
 
 export const queuePortalPrintRequestToShow = onCall(async (request): Promise<QueuePortalPrintRequestToShowResponse> => {
   if (!request.auth?.uid) {
@@ -53,10 +60,6 @@ export const queuePortalPrintRequestToShow = onCall(async (request): Promise<Que
       throw invalidArgument("Print request not found.");
     }
 
-    if (!showSnap.exists) {
-      throw invalidArgument("Show not found.");
-    }
-
     const requestData = requestSnap.data()!;
 
     if (requestData.customerId !== customer.customerId) {
@@ -78,10 +81,21 @@ export const queuePortalPrintRequestToShow = onCall(async (request): Promise<Que
         throw invalidArgument("Print request item data is incomplete.");
       }
 
+      const sourceType =
+        data.sourceType === "customer_upload" ? ("customer_upload" as const) : ("catalog_design" as const);
+      const customerUploadId =
+        typeof data.customerUploadId === "string" ? data.customerUploadId.trim() : undefined;
+      const designId = typeof data.designId === "string" ? data.designId.trim() : undefined;
+      const titleSnapshot =
+        typeof data.titleSnapshot === "string" ? data.titleSnapshot.trim() : undefined;
+
       return {
         id: itemDoc.id,
-        designId: typeof data.designId === "string" ? data.designId : "",
-        quantity: data.quantity,
+        sourceType,
+        customerUploadId,
+        designId,
+        titleSnapshot,
+        quantity: data.quantity as number,
         printWidthInches: typeof data.printWidthInches === "number" ? data.printWidthInches : undefined,
         printHeightInches: typeof data.printHeightInches === "number" ? data.printHeightInches : undefined,
         sizeLabel: typeof data.sizeLabel === "string" ? data.sizeLabel : undefined,
@@ -92,8 +106,50 @@ export const queuePortalPrintRequestToShow = onCall(async (request): Promise<Que
       throw failedPrecondition("Add at least one design before queuing to a show.");
     }
 
-    if (items.some((item) => !item.designId)) {
-      throw invalidArgument("Print request item data is incomplete.");
+    const uploadIds = [
+      ...new Set(
+        items
+          .filter((item) => item.sourceType === "customer_upload")
+          .map((item) => item.customerUploadId)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    ];
+
+    const uploadSnaps = await Promise.all(
+      uploadIds.map((id) =>
+        adminDb.collection(CUSTOMER_UPLOAD_COLLECTIONS.customerUploads).doc(id).get(),
+      ),
+    );
+    const uploadById = new Map(
+      uploadSnaps.map((snap) => [snap.id, snap.exists ? snap.data() : null] as const),
+    );
+
+    for (const item of items) {
+      if (item.sourceType === "customer_upload") {
+        const uploadId = item.customerUploadId ?? "";
+        const upload = uploadById.get(uploadId);
+        if (!upload) {
+          throw invalidArgument("A customer upload on this request was not found.");
+        }
+        if (upload.customerUid !== userId && upload.customerId !== customer.customerId) {
+          throw failedPrecondition("You can only queue your own uploaded artwork.");
+        }
+        if (upload.technicalStatus !== "ready") {
+          throw failedPrecondition("Only successfully processed uploads can be queued to a show.");
+        }
+        if (typeof upload.productionStoragePath !== "string" || !upload.productionStoragePath) {
+          throw failedPrecondition("Upload production artwork is missing.");
+        }
+        continue;
+      }
+
+      if (!item.designId) {
+        throw invalidArgument("Print request item data is incomplete.");
+      }
+    }
+
+    if (!showSnap.exists) {
+      throw invalidArgument("Show not found.");
     }
 
     const activeAllocations = allocationsSnap.docs.filter((doc) => doc.data().status !== "canceled");
@@ -122,7 +178,6 @@ export const queuePortalPrintRequestToShow = onCall(async (request): Promise<Que
       typeof showData.maxTotalQuantity === "number" && showData.maxTotalQuantity >= 0
         ? showData.maxTotalQuantity
         : undefined;
-
     const totalQuantity = sumPrintRequestItemQuantities(items);
 
     if (
@@ -132,14 +187,19 @@ export const queuePortalPrintRequestToShow = onCall(async (request): Promise<Que
         allocatedQuantity,
       })
     ) {
-      const remaining = maxTotalQuantity === undefined ? 0 : Math.max(0, maxTotalQuantity - allocatedQuantity);
+      const remaining =
+        maxTotalQuantity === undefined ? 0 : Math.max(0, maxTotalQuantity - allocatedQuantity);
       throw failedPrecondition(formatShowCapacityExceededMessage(totalQuantity, remaining));
     }
 
-    const requestName = typeof requestData.name === "string" ? requestData.name : "Print request";
-    const timestamp = FieldValue.serverTimestamp();
+    const requestName =
+      typeof requestData.name === "string" && requestData.name.trim()
+        ? requestData.name.trim()
+        : "Print request";
+
     const allocationIds: string[] = [];
     let allocatedTotal = 0;
+    const timestamp = FieldValue.serverTimestamp();
 
     await adminDb.runTransaction(async (transaction) => {
       const freshShowSnap = await transaction.get(showSnap.ref);
@@ -180,25 +240,47 @@ export const queuePortalPrintRequestToShow = onCall(async (request): Promise<Que
         allocationIds.push(allocationRef.id);
         allocatedTotal += item.quantity;
 
-        transaction.set(allocationRef, {
-          upcomingShowId: payload.upcomingShowId,
-          printRequestId: payload.printRequestId,
-          printRequestItemId: item.id,
-          designId: item.designId,
-          customerId: customer.customerId,
-          requestNameSnapshot: requestName,
-          requestOriginSnapshot: "portal_customer",
-          allocatedQuantity: item.quantity,
-          sourceItemQuantitySnapshot: item.quantity,
-          printWidthInches: item.printWidthInches,
-          printHeightInches: item.printHeightInches,
-          sizeLabel: item.sizeLabel,
-          status: "pending",
-          addedBy: userId,
-          updatedBy: userId,
-          createdAt: timestamp,
-          updatedAt: timestamp,
+        const upload =
+          item.sourceType === "customer_upload" && item.customerUploadId
+            ? uploadById.get(item.customerUploadId)
+            : null;
+        const sourceFields = buildShowAllocationSourceFields({
+          item: {
+            sourceType: item.sourceType === "customer_upload" ? "customer_upload" : undefined,
+            designId: item.designId,
+            customerUploadId: item.customerUploadId,
+            titleSnapshot: item.titleSnapshot,
+            quantity: item.quantity,
+            printWidthInches: item.printWidthInches,
+            printHeightInches: item.printHeightInches,
+            sizeLabel: item.sizeLabel,
+          },
+          uploadOriginalFilename:
+            typeof upload?.originalFilename === "string" ? upload.originalFilename : null,
         });
+
+        transaction.set(
+          allocationRef,
+          withoutUndefinedFields({
+            upcomingShowId: payload.upcomingShowId,
+            printRequestId: payload.printRequestId,
+            printRequestItemId: item.id,
+            ...sourceFields,
+            customerId: customer.customerId,
+            requestNameSnapshot: requestName,
+            requestOriginSnapshot: "portal_customer",
+            allocatedQuantity: item.quantity,
+            sourceItemQuantitySnapshot: item.quantity,
+            printWidthInches: item.printWidthInches,
+            printHeightInches: item.printHeightInches,
+            sizeLabel: item.sizeLabel,
+            status: "pending",
+            addedBy: userId,
+            updatedBy: userId,
+            createdAt: timestamp,
+            updatedAt: timestamp,
+          }),
+        );
       }
 
       transaction.update(showSnap.ref, {

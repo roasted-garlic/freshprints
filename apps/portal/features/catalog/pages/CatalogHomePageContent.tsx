@@ -128,7 +128,9 @@ export function CatalogHomePageContent() {
 
   function handleRequestAction() {
     if (hasSingleContinuableRequest) {
-      router.push(buildCatalogSelectionHref(continuableRequests[0]!.id));
+      router.push(
+        buildCatalogSelectionHref(continuableRequests[0]!.id, { from: 'discover' }),
+      );
       return;
     }
 
@@ -137,7 +139,7 @@ export function CatalogHomePageContent() {
       return;
     }
 
-    handleStartRequestClick();
+    handleStartRequestClick({ from: 'discover' });
   }
 
   const displayedActionError = creationActionError ?? addDesignFlow.actionError;
@@ -190,6 +192,15 @@ export function CatalogHomePageContent() {
           </button>
         </div>
       </header>
+
+      <aside className="portal-catalog-request-workflow-hint" role="note">
+        <p className="portal-catalog-request-workflow-hint-title">How print requests work</p>
+        <p className="portal-catalog-request-workflow-hint-body">
+          A print request can include designs from the Design Library, artwork you upload yourself, or
+          both. Uploaded artwork is for your request only — it is not automatically added to the shared
+          Design Library.
+        </p>
+      </aside>
 
       {error ? (
         <p className="portal-error" role="alert">

@@ -72,6 +72,7 @@ export function buildShowPickerOptions({
       statusVariant: statusDisplay.variant,
       isFull: projectedCapacity.isFull,
       isOverCapacity: projectedCapacity.isOverCapacity,
+      isSelectable: !(isPastScheduled?.(show) ?? false),
     };
   });
 }

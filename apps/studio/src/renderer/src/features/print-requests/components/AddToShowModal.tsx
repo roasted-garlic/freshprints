@@ -112,6 +112,25 @@ export function AddToShowModal({
     [shows],
   );
 
+  const calendarShows = useMemo(() => {
+    const now = new Date();
+    const pastWindowStart = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+
+    return shows.filter((show) => {
+      if (show.isArchived === true) {
+        return false;
+      }
+      if (show.productionStatus === "canceled" || show.productionStatus === "archived") {
+        return false;
+      }
+      if (!isPastScheduledShow(show, now)) {
+        return true;
+      }
+      const scheduled = show.scheduledStartAt?.toDate();
+      return scheduled ? scheduled.getTime() >= pastWindowStart.getTime() : false;
+    });
+  }, [shows]);
+
   const fixedShowIsPast = useMemo(() => {
     if (!fixedShowId) {
       return false;
@@ -165,7 +184,7 @@ export function AddToShowModal({
   const showPickerOptions = useMemo(
     () =>
       buildShowPickerOptions({
-        shows: allocatableShows.map((show) => ({
+        shows: calendarShows.map((show) => ({
           id: show.id,
           scheduledAt: show.scheduledStartAt?.toDate() ?? null,
           productionStatus: show.productionStatus,
@@ -186,11 +205,11 @@ export function AddToShowModal({
             ),
         pendingAllocatedByShowId: savePendingByShowId,
         isPastScheduled: (show) => {
-          const fullShow = allocatableShows.find((candidate) => candidate.id === show.id);
+          const fullShow = calendarShows.find((candidate) => candidate.id === show.id);
           return fullShow ? isPastScheduledShow(fullShow, new Date()) : false;
         },
       }),
-    [allocatableShows, allocatedBaselineByShowId, isCelebratingSave, legs, savePendingByShowId],
+    [allocatableShows, allocatedBaselineByShowId, calendarShows, isCelebratingSave, legs, savePendingByShowId],
   );
 
   const selectedCapacity = selectedShowId ? capacityByShowId.get(selectedShowId) : undefined;

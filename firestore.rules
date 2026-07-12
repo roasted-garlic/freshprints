@@ -111,7 +111,10 @@ service cloud.firestore {
       return customerCanMutatePrintRequestItem()
         && request.resource.data.id == resource.data.id
         && request.resource.data.printRequestId == resource.data.printRequestId
-        && request.resource.data.designId == resource.data.designId
+        && request.resource.data.get("designId", "") == resource.data.get("designId", "")
+        && request.resource.data.get("sourceType", "") == resource.data.get("sourceType", "")
+        && request.resource.data.get("customerUploadId", "") == resource.data.get("customerUploadId", "")
+        && request.resource.data.get("titleSnapshot", "") == resource.data.get("titleSnapshot", "")
         && request.resource.data.addedBy == resource.data.addedBy
         && request.resource.data.status == resource.data.status
         && request.resource.data.createdAt == resource.data.createdAt
@@ -417,11 +420,22 @@ service cloud.firestore {
         && isValidPrintRequestOriginAssignment(data);
     }
 
+    function isCatalogPrintRequestItem(data) {
+      return !("sourceType" in data) || data.sourceType == "catalog_design";
+    }
+
+    function isUploadPrintRequestItem(data) {
+      return data.sourceType == "customer_upload";
+    }
+
     function printRequestItemRequiredFieldsValid(data) {
       return data.keys().hasOnly([
           "id",
           "printRequestId",
           "designId",
+          "sourceType",
+          "customerUploadId",
+          "titleSnapshot",
           "quantity",
           "printWidthInches",
           "printHeightInches",
@@ -440,8 +454,6 @@ service cloud.firestore {
         && data.id.size() > 0
         && data.printRequestId is string
         && data.printRequestId.size() > 0
-        && data.designId is string
-        && data.designId.size() > 0
         && data.quantity is int
         && data.quantity > 0
         && isOptionalPositiveStandardPrintInches(data, "printWidthInches")
@@ -457,7 +469,22 @@ service cloud.firestore {
         && isOptionalString(data, "printedBy")
         && isOptionalTimestamp(data, "completedAt")
         && data.createdAt is timestamp
-        && data.updatedAt is timestamp;
+        && data.updatedAt is timestamp
+        && (
+          (
+            isCatalogPrintRequestItem(data)
+            && data.designId is string
+            && data.designId.size() > 0
+            && !("customerUploadId" in data)
+          )
+          || (
+            isUploadPrintRequestItem(data)
+            && !("designId" in data)
+            && data.customerUploadId is string
+            && data.customerUploadId.size() > 0
+            && isOptionalString(data, "titleSnapshot")
+          )
+        );
     }
 
     function printRequestParentExists(printRequestId) {
@@ -617,12 +644,22 @@ service cloud.firestore {
       return status in ["pending", "queued", "in_progress", "printed", "done", "canceled"];
     }
 
+    function isCatalogShowAllocation(data) {
+      return !("sourceType" in data) || data.sourceType == "catalog_design";
+    }
+
+    function isUploadShowAllocation(data) {
+      return data.sourceType == "customer_upload";
+    }
+
     function showAllocationRequiredFieldsValid(data) {
       return data.keys().hasOnly([
           "upcomingShowId",
           "printRequestId",
           "printRequestItemId",
           "designId",
+          "sourceType",
+          "customerUploadId",
           "customerId",
           "requestNameSnapshot",
           "requestOriginSnapshot",
@@ -653,8 +690,6 @@ service cloud.firestore {
         && data.printRequestId.size() > 0
         && data.printRequestItemId is string
         && data.printRequestItemId.size() > 0
-        && data.designId is string
-        && data.designId.size() > 0
         && isOptionalString(data, "customerId")
         && data.requestNameSnapshot is string
         && data.requestNameSnapshot.size() > 0
@@ -682,7 +717,21 @@ service cloud.firestore {
         && isOptionalTimestamp(data, "canceledAt")
         && isOptionalString(data, "canceledBy")
         && data.createdAt is timestamp
-        && data.updatedAt is timestamp;
+        && data.updatedAt is timestamp
+        && (
+          (
+            isCatalogShowAllocation(data)
+            && data.designId is string
+            && data.designId.size() > 0
+            && !("customerUploadId" in data)
+          )
+          || (
+            isUploadShowAllocation(data)
+            && !("designId" in data)
+            && data.customerUploadId is string
+            && data.customerUploadId.size() > 0
+          )
+        );
     }
 
     match /users/{userId} {
@@ -815,39 +864,119 @@ service cloud.firestore {
       allow delete: if isStaff();
     }
 
+    function customerOwnsCustomerUpload(uploadId) {
+      return exists(/databases/$(database)/documents/customerUploads/$(uploadId))
+        && get(/databases/$(database)/documents/customerUploads/$(uploadId)).data.customerUid
+          == request.auth.uid;
+    }
+
+    function customerUploadLinkedToPrintRequest(uploadId, printRequestId) {
+      return exists(/databases/$(database)/documents/customerUploads/$(uploadId))
+        && get(/databases/$(database)/documents/customerUploads/$(uploadId)).data.printRequestId
+          == printRequestId;
+    }
+
+    function customerCanCreateUploadPrintRequestItem(data) {
+      return isCustomer()
+        && printRequestItemRequiredFieldsValid(data)
+        && isUploadPrintRequestItem(data)
+        && data.id is string
+        && data.addedBy == request.auth.uid
+        && data.status == "pending"
+        && customerCanCreatePrintRequestItem(data.printRequestId)
+        && customerOwnsCustomerUpload(data.customerUploadId)
+        && customerUploadLinkedToPrintRequest(data.customerUploadId, data.printRequestId);
+    }
+
+    function staffCanCreateUploadPrintRequestItem(data) {
+      return isStaff()
+        && printRequestItemRequiredFieldsValid(data)
+        && isUploadPrintRequestItem(data)
+        && data.id is string
+        && data.addedBy == request.auth.uid
+        && printRequestParentExists(data.printRequestId)
+        && exists(/databases/$(database)/documents/customerUploads/$(data.customerUploadId));
+    }
+
+    function showAllocationSourceIdentityUnchanged() {
+      return (
+          isCatalogShowAllocation(resource.data)
+          && isCatalogShowAllocation(request.resource.data)
+          && request.resource.data.designId == resource.data.designId
+        )
+        || (
+          isUploadShowAllocation(resource.data)
+          && isUploadShowAllocation(request.resource.data)
+          && request.resource.data.customerUploadId == resource.data.customerUploadId
+        );
+    }
+
+    function gangSheetItemSourceIdentityUnchanged() {
+      return (
+          (!("sourceType" in resource.data) || resource.data.sourceType == "catalog_design")
+          && (!("sourceType" in request.resource.data) || request.resource.data.sourceType == "catalog_design")
+          && request.resource.data.designId == resource.data.designId
+        )
+        || (
+          resource.data.sourceType == "customer_upload"
+          && request.resource.data.sourceType == "customer_upload"
+          && request.resource.data.customerUploadId == resource.data.customerUploadId
+        );
+    }
+
     match /printRequestItems/{printRequestItemId} {
       allow read: if isStaff()
         || (isCustomer() && customerOwnsPrintRequestById(resource.data.printRequestId));
 
       allow create: if isStaff()
         && printRequestItemRequiredFieldsValid(request.resource.data)
+        && isCatalogPrintRequestItem(request.resource.data)
         && request.resource.data.id == printRequestItemId
         && request.resource.data.addedBy == request.auth.uid
         && printRequestParentExists(request.resource.data.printRequestId)
         && isReadyDesign(request.resource.data.designId)
+        || staffCanCreateUploadPrintRequestItem(request.resource.data)
+        && request.resource.data.id == printRequestItemId
         || isCustomer()
         && printRequestItemRequiredFieldsValid(request.resource.data)
+        && isCatalogPrintRequestItem(request.resource.data)
         && request.resource.data.id == printRequestItemId
         && request.resource.data.addedBy == request.auth.uid
         && request.resource.data.status == "pending"
         && customerCanCreatePrintRequestItem(request.resource.data.printRequestId)
-        && isReadyDesign(request.resource.data.designId);
+        && isReadyDesign(request.resource.data.designId)
+        || customerCanCreateUploadPrintRequestItem(request.resource.data)
+        && request.resource.data.id == printRequestItemId;
 
       allow update: if isStaff()
         && printRequestItemRequiredFieldsValid(request.resource.data)
         && request.resource.data.id == printRequestItemId
         && request.resource.data.id == resource.data.id
         && request.resource.data.printRequestId == resource.data.printRequestId
-        && request.resource.data.designId == resource.data.designId
+        && request.resource.data.get("designId", "") == resource.data.get("designId", "")
+        && request.resource.data.get("sourceType", "") == resource.data.get("sourceType", "")
+        && request.resource.data.get("customerUploadId", "") == resource.data.get("customerUploadId", "")
         && request.resource.data.addedBy == resource.data.addedBy
         && request.resource.data.createdAt == resource.data.createdAt
         && request.resource.data.updatedAt is timestamp
         && printRequestParentExists(request.resource.data.printRequestId)
-        && isReadyDesign(request.resource.data.designId)
+        && (
+          isUploadPrintRequestItem(resource.data)
+          || isReadyDesign(request.resource.data.designId)
+        )
         || isCustomer()
         && printRequestItemRequiredFieldsValid(request.resource.data)
         && customerCanUpdatePrintRequestItem()
-        && isReadyDesign(request.resource.data.designId);
+        && (
+          (
+            isUploadPrintRequestItem(resource.data)
+            && isUploadPrintRequestItem(request.resource.data)
+          )
+          || (
+            isCatalogPrintRequestItem(resource.data)
+            && isReadyDesign(request.resource.data.designId)
+          )
+        );
 
       allow delete: if isStaff()
         || (isCustomer() && customerCanMutatePrintRequestItem());
@@ -946,6 +1075,8 @@ service cloud.firestore {
           "printRequestId",
           "printRequestItemId",
           "designId",
+          "sourceType",
+          "customerUploadId",
           "copyIndex",
           "sourceQuantitySnapshot",
           "designTitleSnapshot",
@@ -972,8 +1103,6 @@ service cloud.firestore {
         && data.printRequestId.size() > 0
         && data.printRequestItemId is string
         && data.printRequestItemId.size() > 0
-        && data.designId is string
-        && data.designId.size() > 0
         && data.copyIndex is int
         && data.copyIndex >= 0
         && data.sourceQuantitySnapshot is int
@@ -982,7 +1111,26 @@ service cloud.firestore {
         && data.requestNameSnapshot is string
         && data.requestNameSnapshot.size() > 0
         && data.originalPathSnapshot is string
-        && data.originalPathSnapshot.matches("^/originals/[A-Za-z0-9_-]+\\.png$")
+        && (
+          data.originalPathSnapshot.matches("^/originals/[A-Za-z0-9_-]+\\.png$")
+          || data.originalPathSnapshot.matches("^/customer-uploads/[A-Za-z0-9_-]+/[A-Za-z0-9_-]+/production\\.png$")
+        )
+        && (
+          (
+            (!("sourceType" in data) || data.sourceType == "catalog_design")
+            && data.designId is string
+            && data.designId.size() > 0
+            && !("customerUploadId" in data)
+            && data.originalPathSnapshot.matches("^/originals/[A-Za-z0-9_-]+\\.png$")
+          )
+          || (
+            data.sourceType == "customer_upload"
+            && !("designId" in data)
+            && data.customerUploadId is string
+            && data.customerUploadId.size() > 0
+            && data.originalPathSnapshot.matches("^/customer-uploads/[A-Za-z0-9_-]+/[A-Za-z0-9_-]+/production\\.png$")
+          )
+        )
         && data.xInches is number
         && data.xInches >= 0
         && data.yInches is number
@@ -1028,7 +1176,7 @@ service cloud.firestore {
         && request.resource.data.gangSheetId == resource.data.gangSheetId
         && request.resource.data.upcomingShowId == resource.data.upcomingShowId
         && request.resource.data.showAllocationId == resource.data.showAllocationId
-        && request.resource.data.designId == resource.data.designId
+        && gangSheetItemSourceIdentityUnchanged()
         && request.resource.data.createdAt == resource.data.createdAt;
 
       allow delete: if isStaff();
@@ -1048,7 +1196,7 @@ service cloud.firestore {
         && request.resource.data.upcomingShowId == resource.data.upcomingShowId
         && request.resource.data.printRequestId == resource.data.printRequestId
         && request.resource.data.printRequestItemId == resource.data.printRequestItemId
-        && request.resource.data.designId == resource.data.designId
+        && showAllocationSourceIdentityUnchanged()
         && request.resource.data.addedBy == resource.data.addedBy
         && request.resource.data.createdAt == resource.data.createdAt
         && request.resource.data.updatedBy == request.auth.uid;
@@ -1155,6 +1303,28 @@ service cloud.firestore {
         && data.updatedAt is timestamp;
     }
 
+    function staffInboxAlertDeliveryFieldsValid(data) {
+      return data.keys().hasOnly([
+          "userId",
+          "itemId",
+          "kind",
+          "occurredAtMillis",
+          "soundPlayedAt",
+          "createdAt",
+          "updatedAt"
+        ])
+        && data.userId is string
+        && data.userId.size() > 0
+        && data.itemId is string
+        && data.itemId.size() > 0
+        && isValidStaffInboxAckKind(data.kind)
+        && data.occurredAtMillis is number
+        && data.occurredAtMillis >= 0
+        && data.soundPlayedAt is timestamp
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
     match /staffInboxAcks/{ackId} {
       allow read: if isStaff()
         && resource.data.userId == request.auth.uid;
@@ -1167,6 +1337,50 @@ service cloud.firestore {
 
       allow delete: if isStaff()
         && resource.data.userId == request.auth.uid;
+    }
+
+    match /staffInboxAlertDeliveries/{deliveryId} {
+      allow read: if isStaff()
+        && resource.data.userId == request.auth.uid;
+
+      allow create: if isStaff()
+        && request.resource.data.userId == request.auth.uid
+        && staffInboxAlertDeliveryFieldsValid(request.resource.data);
+
+      allow update: if isStaff()
+        && resource.data.userId == request.auth.uid
+        && request.resource.data.userId == resource.data.userId
+        && request.resource.data.itemId == resource.data.itemId
+        && request.resource.data.kind == resource.data.kind
+        && staffInboxAlertDeliveryFieldsValid(request.resource.data);
+
+      allow delete: if isStaff()
+        && resource.data.userId == request.auth.uid;
+    }
+
+    // Customer uploads (ADR-FP-073) — Admin SDK / callables own all writes.
+    match /customerUploads/{uploadId} {
+      allow read: if isStaff()
+        || (isCustomer() && resource.data.customerUid == request.auth.uid);
+      allow create, update, delete: if false;
+    }
+
+    match /customerUploadBatches/{batchId} {
+      allow read: if isStaff()
+        || (isCustomer() && resource.data.customerUid == request.auth.uid);
+      allow create, update, delete: if false;
+    }
+
+    match /customerUploadRateLimits/{docId} {
+      allow read, write: if false;
+    }
+
+    match /customerUploadFinalizeLeases/{leaseId} {
+      allow read, write: if false;
+    }
+
+    match /customerUploadIdempotency/{docId} {
+      allow read, write: if false;
     }
 
     match /{document=**} {

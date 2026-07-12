@@ -127,7 +127,19 @@ export function useGangSheetBuilder(upcomingShowId: string | null) {
 
   const placeAsset = useCallback(
     async (asset: GangSheetShowAsset, copyIndex: number) => {
-      if (!user || !state.gangSheet || !upcomingShowId || !asset.design) {
+      if (!user || !state.gangSheet || !upcomingShowId) {
+        return;
+      }
+
+      const isUpload = Boolean(asset.upload) || asset.allocation.sourceType === "customer_upload";
+      if (!isUpload && !asset.design) {
+        return;
+      }
+      if (isUpload && (!asset.upload?.productionStoragePath || !asset.allocation.customerUploadId)) {
+        setState((current) => ({
+          ...current,
+          error: "Uploaded artwork production file is missing.",
+        }));
         return;
       }
 
@@ -139,12 +151,16 @@ export function useGangSheetBuilder(upcomingShowId: string | null) {
         return;
       }
 
-      const widthInches = asset.allocation.printWidthInches ?? DEFAULT_PLACED_WIDTH_INCHES;
+      const widthInches =
+        asset.allocation.printWidthInches ??
+        asset.upload?.printWidthInches ??
+        DEFAULT_PLACED_WIDTH_INCHES;
+      const pixelWidth = asset.design?.width ?? asset.upload?.widthPx ?? null;
+      const pixelHeight = asset.design?.height ?? asset.upload?.heightPx ?? null;
       const heightInches =
         asset.allocation.printHeightInches ??
-        (asset.design.width && asset.design.height
-          ? widthInches * (asset.design.height / asset.design.width)
-          : widthInches);
+        asset.upload?.printHeightInches ??
+        (pixelWidth && pixelHeight ? widthInches * (pixelHeight / pixelWidth) : widthInches);
 
       const origin = findNonOverlappingOrigin(
         widthInches,
@@ -159,12 +175,24 @@ export function useGangSheetBuilder(upcomingShowId: string | null) {
           showAllocationId: asset.allocation.id,
           printRequestId: asset.allocation.printRequestId,
           printRequestItemId: asset.allocation.printRequestItemId,
-          designId: asset.allocation.designId,
+          ...(isUpload
+            ? {
+                sourceType: "customer_upload" as const,
+                customerUploadId: asset.allocation.customerUploadId!,
+              }
+            : {
+                designId: asset.allocation.designId!,
+              }),
           copyIndex,
           sourceQuantitySnapshot: asset.allocation.allocatedQuantity,
-          designTitleSnapshot: asset.design.title,
+          designTitleSnapshot:
+            asset.design?.title ??
+            asset.upload?.originalFilename ??
+            asset.allocation.designTitleSnapshot,
           requestNameSnapshot: asset.allocation.requestNameSnapshot,
-          originalPathSnapshot: asset.design.originalPath,
+          originalPathSnapshot: isUpload
+            ? asset.upload!.productionStoragePath!
+            : asset.design!.originalPath,
           xInches: origin.xInches,
           yInches: origin.yInches,
           widthInches,

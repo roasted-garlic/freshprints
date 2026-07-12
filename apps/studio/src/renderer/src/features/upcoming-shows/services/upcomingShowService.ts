@@ -24,6 +24,7 @@ import { isPrintRequestOrigin } from "@fresh-prints/shared/utils/printRequestOri
 import { planAllocationSplit } from "@fresh-prints/shared/utils/showCapacity";
 import { canRemoveRequestFromShow } from "@fresh-prints/shared/utils/showQueueEditability";
 import { computeElapsedPrintMs } from "@fresh-prints/shared/utils/showPrintTimer";
+import { buildShowAllocationSourceFields } from "@fresh-prints/shared/utils/showAllocationSourceFields";
 import { printRequestService } from "../../print-requests/services/printRequestService";
 import type {
   ShowProductionStatus,
@@ -113,6 +114,8 @@ interface ShowAllocationDocumentData extends DocumentData {
   printRequestId?: unknown;
   printRequestItemId?: unknown;
   designId?: unknown;
+  sourceType?: unknown;
+  customerUploadId?: unknown;
   customerId?: unknown;
   requestNameSnapshot?: unknown;
   requestOriginSnapshot?: unknown;
@@ -247,11 +250,22 @@ function mapShowAllocationData(allocationId: string, data: ShowAllocationDocumen
   const createdAt = mapFirestoreTimestamp(data.createdAt);
   const updatedAt = mapFirestoreTimestamp(data.updatedAt);
 
+  const sourceType =
+    data.sourceType === "customer_upload" || data.sourceType === "catalog_design"
+      ? data.sourceType
+      : undefined;
+  const customerUploadId =
+    typeof data.customerUploadId === "string" && data.customerUploadId.trim()
+      ? data.customerUploadId.trim()
+      : undefined;
+  const isUploadAllocation = sourceType === "customer_upload" || Boolean(customerUploadId);
+  const designId =
+    typeof data.designId === "string" && data.designId.trim() ? data.designId.trim() : undefined;
+
   if (
     typeof data.upcomingShowId !== "string" ||
     typeof data.printRequestId !== "string" ||
     typeof data.printRequestItemId !== "string" ||
-    typeof data.designId !== "string" ||
     typeof data.requestNameSnapshot !== "string" ||
     typeof data.allocatedQuantity !== "number" ||
     typeof data.sourceItemQuantitySnapshot !== "number" ||
@@ -264,12 +278,26 @@ function mapShowAllocationData(allocationId: string, data: ShowAllocationDocumen
     throw new Error("A show allocation record is incomplete.");
   }
 
+  if (isUploadAllocation) {
+    if (!customerUploadId) {
+      throw new Error("A show allocation record is incomplete.");
+    }
+  } else if (!designId) {
+    throw new Error("A show allocation record is incomplete.");
+  }
+
   return {
     id: allocationId,
     upcomingShowId: data.upcomingShowId,
     printRequestId: data.printRequestId,
     printRequestItemId: data.printRequestItemId,
-    designId: data.designId,
+    ...(designId ? { designId } : {}),
+    ...(sourceType
+      ? { sourceType }
+      : isUploadAllocation
+        ? { sourceType: "customer_upload" as const }
+        : {}),
+    ...(customerUploadId ? { customerUploadId } : {}),
     customerId: typeof data.customerId === "string" ? data.customerId : undefined,
     requestNameSnapshot: data.requestNameSnapshot,
     requestOriginSnapshot: isPrintRequestOrigin(data.requestOriginSnapshot) ? data.requestOriginSnapshot : undefined,
@@ -309,7 +337,17 @@ export const upcomingShowService = {
     }
 
     const snapshot = await getDocs(firestoreCollectionService.getUpcomingShowsCollection());
-    const shows = snapshot.docs.map((showDoc) => mapUpcomingShowData(showDoc.id, showDoc.data() as UpcomingShowDocumentData));
+    const shows = snapshot.docs.flatMap((showDoc) => {
+      try {
+        return [mapUpcomingShowData(showDoc.id, showDoc.data() as UpcomingShowDocumentData)];
+      } catch (error) {
+        console.warn(
+          `[upcomingShowService] Skipping incomplete upcoming show ${showDoc.id}:`,
+          error instanceof Error ? error.message : error,
+        );
+        return [];
+      }
+    });
 
     return sortUpcomingShowsForDisplay(shows);
   },
@@ -488,9 +526,19 @@ export const upcomingShowService = {
     );
     const snapshot = await getDocs(allocationsQuery);
 
-    return snapshot.docs.map((allocationDoc) =>
-      mapShowAllocationData(allocationDoc.id, allocationDoc.data() as ShowAllocationDocumentData),
-    );
+    return snapshot.docs.flatMap((allocationDoc) => {
+      try {
+        return [
+          mapShowAllocationData(allocationDoc.id, allocationDoc.data() as ShowAllocationDocumentData),
+        ];
+      } catch (error) {
+        console.warn(
+          `[upcomingShowService] Skipping incomplete show allocation ${allocationDoc.id}:`,
+          error instanceof Error ? error.message : error,
+        );
+        return [];
+      }
+    });
   },
 
   async listShowAllocationsForPrintRequest(caller: User, printRequestId: string): Promise<ShowAllocation[]> {
@@ -504,9 +552,19 @@ export const upcomingShowService = {
     );
     const snapshot = await getDocs(allocationsQuery);
 
-    return snapshot.docs.map((allocationDoc) =>
-      mapShowAllocationData(allocationDoc.id, allocationDoc.data() as ShowAllocationDocumentData),
-    );
+    return snapshot.docs.flatMap((allocationDoc) => {
+      try {
+        return [
+          mapShowAllocationData(allocationDoc.id, allocationDoc.data() as ShowAllocationDocumentData),
+        ];
+      } catch (error) {
+        console.warn(
+          `[upcomingShowService] Skipping incomplete show allocation ${allocationDoc.id}:`,
+          error instanceof Error ? error.message : error,
+        );
+        return [];
+      }
+    });
   },
 
   /** Lists every show allocation across all shows, used to derive Working/Queued/Printed grouping for the Print Requests list. */
@@ -517,9 +575,19 @@ export const upcomingShowService = {
 
     const snapshot = await getDocs(firestoreCollectionService.getShowAllocationsCollection());
 
-    return snapshot.docs.map((allocationDoc) =>
-      mapShowAllocationData(allocationDoc.id, allocationDoc.data() as ShowAllocationDocumentData),
-    );
+    return snapshot.docs.flatMap((allocationDoc) => {
+      try {
+        return [
+          mapShowAllocationData(allocationDoc.id, allocationDoc.data() as ShowAllocationDocumentData),
+        ];
+      } catch (error) {
+        console.warn(
+          `[upcomingShowService] Skipping incomplete show allocation ${allocationDoc.id}:`,
+          error instanceof Error ? error.message : error,
+        );
+        return [];
+      }
+    });
   },
 
   /**
@@ -575,11 +643,23 @@ export const upcomingShowService = {
     }
 
     const allocationRef = doc(firestoreCollectionService.getShowAllocationsCollection());
+    const sourceFields = buildShowAllocationSourceFields({
+      item: {
+        sourceType: requestItem.sourceType,
+        designId: requestItem.designId,
+        customerUploadId: requestItem.customerUploadId,
+        titleSnapshot: requestItem.titleSnapshot,
+        quantity: requestItem.quantity,
+        printWidthInches: requestItem.printWidthInches,
+        printHeightInches: requestItem.printHeightInches,
+        sizeLabel: requestItem.sizeLabel,
+      },
+    });
     const payload = withoutUndefinedFields({
       upcomingShowId,
       printRequestId: printRequest.id,
       printRequestItemId: requestItem.id,
-      designId: requestItem.designId,
+      ...sourceFields,
       customerId: printRequest.customerId,
       requestNameSnapshot: printRequest.name,
       requestOriginSnapshot: printRequest.requestOrigin,

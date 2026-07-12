@@ -8,7 +8,11 @@ import { sortPrintRequestItemsForDisplay } from '@fresh-prints/shared/utils/prin
 import { formatPrintRequestItemSizeLabel } from '@fresh-prints/shared/utils/printRequestItemSizing';
 
 import { useAuth } from '../../auth/context/AuthContext';
-import { portalPrintRequestService } from '../services/portalPrintRequestService';
+import {
+  portalPrintRequestService,
+  printRequestItemHasCustomerUpload,
+} from '../services/portalPrintRequestService';
+import type { CustomerUploadDocSummary } from '../../customer-uploads/services/customerUploadService';
 
 export function usePrintRequestDetail(printRequestId: string | undefined) {
   const { firebaseUser } = useAuth();
@@ -16,6 +20,9 @@ export function usePrintRequestDetail(printRequestId: string | undefined) {
   const [items, setItems] = useState<PrintRequestItem[]>([]);
   const [designSummaries, setDesignSummaries] = useState<
     Map<string, Awaited<ReturnType<typeof portalPrintRequestService.getReadyDesign>> | null>
+  >(new Map());
+  const [uploadSummaries, setUploadSummaries] = useState<
+    Map<string, CustomerUploadDocSummary | null>
   >(new Map());
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -42,10 +49,14 @@ export function usePrintRequestDetail(printRequestId: string | undefined) {
         portalPrintRequestService.getPrintRequest(printRequestId),
         portalPrintRequestService.listPrintRequestItems(printRequestId),
       ]);
-      const nextSummaries = await portalPrintRequestService.getDesignSummariesForItems(nextItems);
+      const [nextSummaries, nextUploadSummaries] = await Promise.all([
+        portalPrintRequestService.getDesignSummariesForItems(nextItems),
+        portalPrintRequestService.getUploadSummariesForItems(nextItems),
+      ]);
       setPrintRequest(nextRequest);
       setItems(sortPrintRequestItemsForDisplay(nextItems));
       setDesignSummaries(nextSummaries);
+      setUploadSummaries(nextUploadSummaries);
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'Unable to load print request.');
     } finally {
@@ -153,12 +164,14 @@ export function usePrintRequestDetail(printRequestId: string | undefined) {
         );
 
         try {
-          const design = await portalPrintRequestService.getReadyDesign(createdItem.designId);
-          setDesignSummaries((currentSummaries) => {
-            const nextSummaries = new Map(currentSummaries);
-            nextSummaries.set(createdItem.designId, design);
-            return nextSummaries;
-          });
+          if (createdItem.designId) {
+            const design = await portalPrintRequestService.getReadyDesign(createdItem.designId);
+            setDesignSummaries((currentSummaries) => {
+              const nextSummaries = new Map(currentSummaries);
+              nextSummaries.set(createdItem.designId!, design);
+              return nextSummaries;
+            });
+          }
         } catch {
           // Design summary is optional for rendering the duplicated card title.
         }
@@ -229,6 +242,8 @@ export function usePrintRequestDetail(printRequestId: string | undefined) {
     printRequest,
     items,
     designSummaries,
+    uploadSummaries,
+    hasCustomerUploadItems: items.some(printRequestItemHasCustomerUpload),
     isLoading,
     error,
     isSaving,

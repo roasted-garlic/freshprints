@@ -69,9 +69,64 @@ async function buildImageRequests(
   const imageRequests: GangSheetExportImageRequest[] = [];
 
   for (const allocation of activeAllocations) {
+    const isUpload =
+      allocation.sourceType === "customer_upload" || Boolean(allocation.customerUploadId);
+
+    if (isUpload && allocation.customerUploadId) {
+      let upload;
+      try {
+        const { customerUploadReadService } = await import(
+          "../../customer-uploads/services/customerUploadReadService"
+        );
+        upload = await customerUploadReadService.getUploadById(user, allocation.customerUploadId);
+      } catch {
+        upload = null;
+      }
+
+      if (!upload?.productionStoragePath) {
+        continue;
+      }
+
+      const downloadUrl = await designDerivativeUrlService.getDownloadUrlForCatalogPath(
+        upload.productionStoragePath,
+      );
+      if (!downloadUrl) {
+        continue;
+      }
+
+      const printWidthInches =
+        allocation.printWidthInches ?? upload.printWidthInches ?? DEFAULT_EXPORT_WIDTH_INCHES;
+      const printHeightInches =
+        allocation.printHeightInches ??
+        upload.printHeightInches ??
+        (upload.widthPx && upload.heightPx
+          ? printWidthInches * (upload.heightPx / upload.widthPx)
+          : printWidthInches);
+
+      const { targetWidthPx, targetHeightPx } = computeExportTargetPixelSize(
+        printWidthInches,
+        printHeightInches,
+        upload.widthPx ?? 0,
+        upload.heightPx ?? 0,
+      );
+
+      imageRequests.push({
+        allocationId: allocation.id,
+        downloadUrl,
+        targetWidthPx,
+        targetHeightPx,
+        fileName: upload.originalFilename ?? allocation.designTitleSnapshot ?? "upload",
+        quantity: allocation.allocatedQuantity,
+      });
+      continue;
+    }
+
     let design;
 
     try {
+      if (!allocation.designId) {
+        continue;
+      }
       design = await designService.getDesignById(user, allocation.designId);
     } catch {
       design = null;

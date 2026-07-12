@@ -1,27 +1,15 @@
-import { FieldValue } from "firebase-admin/firestore";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 
 import type { CreatePortalPrintRequestResponse } from "../../packages/shared/src/types/printRequest/createPortalPrintRequest.types";
-import { formatCustomerPrintRequestName } from "../../packages/shared/src/utils/printRequestNaming";
-import { requireValidCustomerUsername } from "../../packages/shared/src/utils/customerUsername";
-import { PORTAL_ONE_WORKING_REQUEST_MESSAGE } from "../../packages/shared/src/utils/portalOneWorkingPrintRequest";
 import { adminDb } from "./lib/admin";
 import {
-  failedPrecondition,
   internal,
   invalidArgument,
   permissionDenied,
   unauthenticated,
 } from "./lib/errors";
 import { validateCreatePortalPrintRequestRequest } from "./lib/createPortalPrintRequestValidation";
-
-function resolveNextSequence(value: unknown): number {
-  if (typeof value === "number" && Number.isInteger(value) && value >= 1) {
-    return value;
-  }
-
-  return 1;
-}
+import { createWorkingPrintRequestInTransaction } from "./lib/portalWorkingPrintRequest";
 
 function mapHttpsError(error: unknown): never {
   if (error instanceof HttpsError) {
@@ -42,8 +30,8 @@ async function findCustomerByUserId(userId: string) {
     return null;
   }
 
-  const doc = snapshot.docs[0];
-  return { id: doc.id, data: doc.data() };
+  const docSnap = snapshot.docs[0];
+  return { id: docSnap.id, data: docSnap.data() };
 }
 
 export const createPortalPrintRequest = onCall(async (request): Promise<CreatePortalPrintRequestResponse> => {
@@ -68,72 +56,30 @@ export const createPortalPrintRequest = onCall(async (request): Promise<CreatePo
     }
 
     const payload = validateCreatePortalPrintRequestRequest(request.data);
-    const username = requireValidCustomerUsername(
-      typeof customer.data.username === "string" ? customer.data.username : "",
-    );
     const displayName =
       typeof customer.data.displayName === "string" ? customer.data.displayName : "Customer";
+    const username = typeof customer.data.username === "string" ? customer.data.username : "";
 
-    const customerRef = adminDb.collection("customers").doc(customer.id);
-    const requestRef = adminDb.collection("printRequests").doc();
-    const timestamp = FieldValue.serverTimestamp();
+    let printRequestId = "";
     let createdName = "";
 
     await adminDb.runTransaction(async (transaction) => {
-      const existingContinuable = await transaction.get(
-        adminDb
-          .collection("printRequests")
-          .where("customerId", "==", customer.id)
-          .where("status", "in", ["draft", "editing"])
-          .limit(1),
+      const created = await createWorkingPrintRequestInTransaction(
+        transaction,
+        {
+          customerId: customer.id,
+          userId,
+          username,
+          displayName,
+        },
+        payload.notes,
       );
-
-      if (!existingContinuable.empty) {
-        throw failedPrecondition(PORTAL_ONE_WORKING_REQUEST_MESSAGE);
-      }
-
-      const customerSnapshot = await transaction.get(customerRef);
-
-      if (!customerSnapshot.exists) {
-        throw invalidArgument("Customer profile not found.");
-      }
-
-      const customerData = customerSnapshot.data()!;
-      const nextSequence = resolveNextSequence(customerData.nextPrintRequestSequence);
-      const nextTotal =
-        typeof customerData.totalPrintRequests === "number" && customerData.totalPrintRequests >= 0
-          ? customerData.totalPrintRequests
-          : 0;
-
-      createdName = formatCustomerPrintRequestName(username, nextSequence);
-
-      transaction.set(requestRef, {
-        name: createdName,
-        customerId: customer.id,
-        isInternal: false,
-        requestOrigin: "portal_customer",
-        status: "draft",
-        itemCount: 0,
-        requestSequenceNumber: nextSequence,
-        customerUsernameSnapshot: username,
-        customerDisplayNameSnapshot: displayName,
-        nameFormatVersion: "cr-ir-v1",
-        ...(payload.notes ? { notes: payload.notes } : {}),
-        createdBy: userId,
-        updatedBy: userId,
-        createdAt: timestamp,
-        updatedAt: timestamp,
-      });
-
-      transaction.update(customerRef, {
-        nextPrintRequestSequence: nextSequence + 1,
-        totalPrintRequests: nextTotal + 1,
-        updatedAt: timestamp,
-      });
+      printRequestId = created.printRequestId;
+      createdName = created.name;
     });
 
     return {
-      printRequestId: requestRef.id,
+      printRequestId,
       name: createdName,
       customerId: customer.id,
     };

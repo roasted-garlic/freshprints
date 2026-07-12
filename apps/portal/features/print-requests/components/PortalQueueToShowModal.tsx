@@ -73,6 +73,10 @@ export function PortalQueueToShowModal({
           allocatedQuantity: allocatedBaselineByShowId?.get(show.id) ?? show.allocatedQuantity,
         })),
         pendingAllocatedByShowId,
+        isPastScheduled: (show) => {
+          const match = shows.find((candidate) => candidate.id === show.id);
+          return match ? match.isAllocatable === false : false;
+        },
       }),
     [allocatedBaselineByShowId, pendingAllocatedByShowId, shows],
   );
@@ -81,7 +85,7 @@ export function PortalQueueToShowModal({
     () =>
       getDefaultShowPickerOptionId(showPickerOptions, (showId) => {
         const show = shows.find((candidate) => candidate.id === showId);
-        if (!show) {
+        if (!show || show.isAllocatable === false) {
           return false;
         }
 
@@ -129,7 +133,12 @@ export function PortalQueueToShowModal({
 
   const isBusy = isSubmitting || isCelebratingSave;
   const canConfirm =
-    Boolean(effectiveSelectedId) && !capacityMessage && !isLoading && !isBusy && items.length > 0;
+    Boolean(effectiveSelectedId) &&
+    selectedShow?.isAllocatable !== false &&
+    !capacityMessage &&
+    !isLoading &&
+    !isBusy &&
+    items.length > 0;
 
   useEffect(() => {
     if (!isOpen) {

@@ -25,8 +25,19 @@ interface PortalPrintRequestItemDesign {
   printHeightInches?: number;
 }
 
+interface PortalPrintRequestItemUpload {
+  title: string;
+  previewPath?: string | null;
+  thumbnailPath?: string | null;
+  widthPx?: number | null;
+  heightPx?: number | null;
+  printWidthInches?: number | null;
+  printHeightInches?: number | null;
+}
+
 interface PortalPrintRequestItemCardProps {
   design?: PortalPrintRequestItemDesign | null;
+  upload?: PortalPrintRequestItemUpload | null;
   item: PrintRequestItem;
   readOnly?: boolean;
   onDuplicate: (item: PrintRequestItem) => void;
@@ -42,12 +53,44 @@ interface PortalPrintRequestItemCardProps {
   ) => void;
 }
 
-function resolveInitialWidth(item: PrintRequestItem, design?: PortalPrintRequestItemDesign | null): number {
-  return item.printWidthInches ?? design?.printWidthInches ?? 1;
+function resolveAspectPixels(
+  design?: PortalPrintRequestItemDesign | null,
+  upload?: PortalPrintRequestItemUpload | null,
+): { width: number; height: number } | null {
+  if (typeof design?.width === 'number' && typeof design.height === 'number') {
+    return { width: design.width, height: design.height };
+  }
+
+  if (typeof upload?.widthPx === 'number' && typeof upload.heightPx === 'number') {
+    return { width: upload.widthPx, height: upload.heightPx };
+  }
+
+  if (
+    typeof upload?.printWidthInches === 'number' &&
+    typeof upload.printHeightInches === 'number' &&
+    upload.printWidthInches > 0 &&
+    upload.printHeightInches > 0
+  ) {
+    return { width: upload.printWidthInches, height: upload.printHeightInches };
+  }
+
+  return null;
 }
 
-function resolveInitialHeight(item: PrintRequestItem, design?: PortalPrintRequestItemDesign | null): number {
-  return item.printHeightInches ?? design?.printHeightInches ?? 1;
+function resolveInitialWidth(
+  item: PrintRequestItem,
+  design?: PortalPrintRequestItemDesign | null,
+  upload?: PortalPrintRequestItemUpload | null,
+): number {
+  return item.printWidthInches ?? design?.printWidthInches ?? upload?.printWidthInches ?? 1;
+}
+
+function resolveInitialHeight(
+  item: PrintRequestItem,
+  design?: PortalPrintRequestItemDesign | null,
+  upload?: PortalPrintRequestItemUpload | null,
+): number {
+  return item.printHeightInches ?? design?.printHeightInches ?? upload?.printHeightInches ?? 1;
 }
 
 function formatEditableNumber(value: number): string {
@@ -92,6 +135,7 @@ function buildItemSignature(quantity: number, width: number, height: number): st
 
 export function PortalPrintRequestItemCard({
   design,
+  upload,
   item,
   readOnly = false,
   onDuplicate,
@@ -99,15 +143,34 @@ export function PortalPrintRequestItemCard({
   onUpdate,
   onAutosaveStateChange,
 }: PortalPrintRequestItemCardProps) {
-  const title = design?.title ?? 'Design';
-  const previewPath = design?.previewPath ?? design?.thumbnailPath;
+  const isUploadItem =
+    item.sourceType === 'customer_upload' || Boolean(item.customerUploadId);
+  const title =
+    design?.title ??
+    upload?.title ??
+    item.titleSnapshot ??
+    (isUploadItem ? 'Uploaded artwork' : 'Design');
+  const previewPath =
+    design?.previewPath ??
+    design?.thumbnailPath ??
+    upload?.previewPath ??
+    upload?.thumbnailPath ??
+    undefined;
   const [quantityInput, setQuantityInput] = useState(String(item.quantity));
-  const [printWidthInput, setPrintWidthInput] = useState(formatEditableNumber(resolveInitialWidth(item, design)));
-  const [printHeightInput, setPrintHeightInput] = useState(formatEditableNumber(resolveInitialHeight(item, design)));
+  const [printWidthInput, setPrintWidthInput] = useState(
+    formatEditableNumber(resolveInitialWidth(item, design, upload)),
+  );
+  const [printHeightInput, setPrintHeightInput] = useState(
+    formatEditableNumber(resolveInitialHeight(item, design, upload)),
+  );
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const { url: previewUrl } = useCatalogDerivativeUrl(previewPath);
   const lastSavedSignatureRef = useRef(
-    buildItemSignature(item.quantity, resolveInitialWidth(item, design), resolveInitialHeight(item, design)),
+    buildItemSignature(
+      item.quantity,
+      resolveInitialWidth(item, design, upload),
+      resolveInitialHeight(item, design, upload),
+    ),
   );
   const saveDraftRef = useRef<() => Promise<void>>(async () => undefined);
   const saveDebounceRef = useRef<number | null>(null);
@@ -115,8 +178,8 @@ export function PortalPrintRequestItemCard({
   const saveQueuedRef = useRef(false);
 
   useEffect(() => {
-    const nextWidth = resolveInitialWidth(item, design);
-    const nextHeight = resolveInitialHeight(item, design);
+    const nextWidth = resolveInitialWidth(item, design, upload);
+    const nextHeight = resolveInitialHeight(item, design, upload);
     const incomingSignature = buildItemSignature(item.quantity, nextWidth, nextHeight);
 
     if (incomingSignature === lastSavedSignatureRef.current) {
@@ -128,24 +191,26 @@ export function PortalPrintRequestItemCard({
     setPrintHeightInput(formatEditableNumber(nextHeight));
     setIsLightboxOpen(false);
     lastSavedSignatureRef.current = incomingSignature;
-  }, [design, item]);
+  }, [design, item, upload]);
 
   const parsedQuantity = parsePositiveIntegerInput(quantityInput);
   const parsedPrintWidthInches = parsePositiveDecimalInput(printWidthInput);
   const parsedPrintHeightInches = parsePositiveDecimalInput(printHeightInput);
 
+  const aspectPixels = useMemo(() => resolveAspectPixels(design, upload), [design, upload]);
+
   const sizeAssessment = useMemo(() => {
-    if (typeof design?.width !== 'number' || typeof design.height !== 'number') {
+    if (!aspectPixels) {
       return null;
     }
 
     return assessPrintRequestItemSize({
-      pixelWidth: design.width,
-      pixelHeight: design.height,
+      pixelWidth: aspectPixels.width,
+      pixelHeight: aspectPixels.height,
       printWidthInches: parsedPrintWidthInches ?? Number.NaN,
       printHeightInches: parsedPrintHeightInches ?? Number.NaN,
     });
-  }, [design, parsedPrintHeightInches, parsedPrintWidthInches]);
+  }, [aspectPixels, parsedPrintHeightInches, parsedPrintWidthInches]);
 
   const canSave = (sizeAssessment?.canSave ?? true) && parsedQuantity !== null;
 
@@ -238,8 +303,12 @@ export function PortalPrintRequestItemCard({
     setPrintWidthInput(nextWidthInput);
 
     const nextWidth = parsePositiveDecimalInput(nextWidthInput);
-    if (typeof design?.width === 'number' && typeof design.height === 'number' && nextWidth !== null) {
-      setPrintHeightInput(formatEditableNumber(calculateLockedHeightFromWidth(design.width, design.height, nextWidth)));
+    if (aspectPixels && nextWidth !== null) {
+      setPrintHeightInput(
+        formatEditableNumber(
+          calculateLockedHeightFromWidth(aspectPixels.width, aspectPixels.height, nextWidth),
+        ),
+      );
     }
   }
 
@@ -247,8 +316,12 @@ export function PortalPrintRequestItemCard({
     setPrintHeightInput(nextHeightInput);
 
     const nextHeight = parsePositiveDecimalInput(nextHeightInput);
-    if (typeof design?.width === 'number' && typeof design.height === 'number' && nextHeight !== null) {
-      setPrintWidthInput(formatEditableNumber(calculateLockedWidthFromHeight(design.width, design.height, nextHeight)));
+    if (aspectPixels && nextHeight !== null) {
+      setPrintWidthInput(
+        formatEditableNumber(
+          calculateLockedWidthFromHeight(aspectPixels.width, aspectPixels.height, nextHeight),
+        ),
+      );
     }
   }
 
@@ -303,15 +376,33 @@ export function PortalPrintRequestItemCard({
     <>
       <article className="portal-request-item-editor-card">
         <div className="portal-request-item-editor-header">
-          <CatalogThumbnailPanel
-            alt={`${title} preview`}
-            catalogPath={previewPath}
-            className="design-card-thumbnail"
-            fallbackLabel="Preview unavailable"
-            interactive={Boolean(previewUrl)}
-            loadingLabel="Loading preview"
-            onImageClick={() => setIsLightboxOpen(true)}
-          />
+          <div className="portal-request-item-editor-thumb-wrap">
+            <CatalogThumbnailPanel
+              alt={`${title} preview`}
+              catalogPath={previewPath}
+              className="design-card-thumbnail"
+              fallbackLabel="Preview unavailable"
+              interactive={Boolean(previewUrl)}
+              loadingLabel="Loading preview"
+              onImageClick={() => setIsLightboxOpen(true)}
+            />
+            {isUploadItem ? (
+              <span className="portal-request-item-upload-badge">Uploaded</span>
+            ) : null}
+            {sizeAssessment ? (
+              <span
+                aria-label={`${sizeAssessment.qualityLabel}, ${sizeAssessment.effectiveDpi} DPI`}
+                className={`portal-request-item-dpi-badge is-${sizeAssessment.qualityLevel}`}
+                title={
+                  sizeAssessment.warningMessage ??
+                  sizeAssessment.errorMessage ??
+                  `${sizeAssessment.qualityLabel} · ${sizeAssessment.effectiveDpi} DPI`
+                }
+              >
+                {sizeAssessment.effectiveDpi} DPI
+              </span>
+            ) : null}
+          </div>
 
           <div className="portal-request-item-editor-body">
             <h2>{title}</h2>
@@ -369,6 +460,10 @@ export function PortalPrintRequestItemCard({
             {sizeAssessment?.errorMessage ? (
               <p className="portal-error portal-request-item-field-error" role="alert">
                 {sizeAssessment.errorMessage}
+              </p>
+            ) : sizeAssessment?.warningMessage ? (
+              <p className="portal-muted portal-request-item-dpi-warning" role="status">
+                {sizeAssessment.warningMessage}
               </p>
             ) : null}
           </>

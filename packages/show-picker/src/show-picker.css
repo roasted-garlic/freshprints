@@ -124,6 +124,11 @@
   opacity: 0.4;
 }
 
+.show-picker-day.has-shows.is-past-only:disabled {
+  cursor: default;
+  opacity: 0.85;
+}
+
 .show-picker-day-number {
   align-items: center;
   border-radius: 999px;

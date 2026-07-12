@@ -7,6 +7,7 @@ import { AiReviewPage } from "../features/ai-review/pages/AiReviewPage";
 import { CustomerRequestsPage } from "../features/customer-requests/pages/CustomerRequestsPage";
 import { DesignLibraryPage } from "../features/designs/pages/DesignLibraryPage";
 import { GangSheetBuilderPage } from "../features/gang-sheets/pages/GangSheetBuilderPage";
+import { CustomerUploadsPage } from "../features/customer-uploads/pages/CustomerUploadsPage";
 import { ImportsPage } from "../features/imports/pages/ImportsPage";
 import { PrintRequestsPage } from "../features/print-requests/pages/PrintRequestsPage";
 import { StaffInboxPage } from "../features/staff-inbox/pages/StaffInboxPage";
@@ -37,6 +38,14 @@ export function AppRoutes() {
             element={
               <ProtectedRoute permission="importDesigns">
                 <ImportsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/customer-uploads"
+            element={
+              <ProtectedRoute permission="importDesigns">
+                <CustomerUploadsPage />
               </ProtectedRoute>
             }
           />

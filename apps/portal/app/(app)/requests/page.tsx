@@ -81,7 +81,7 @@ export default function RequestsPage() {
           <button
             className="portal-button portal-button-primary portal-button-leading-icon"
             disabled={isCreating}
-            onClick={() => void handleStartRequestClick()}
+            onClick={() => void handleStartRequestClick({ from: activeTab })}
             type="button"
           >
             <RequestActionIcon />
@@ -112,7 +112,7 @@ export default function RequestsPage() {
             <button
               className="portal-button portal-button-primary portal-button-leading-icon"
               disabled={isCreating}
-              onClick={() => void handleStartRequestClick()}
+              onClick={() => void handleStartRequestClick({ from: activeTab })}
               type="button"
             >
               <RequestActionIcon />
@@ -155,7 +155,7 @@ export default function RequestsPage() {
                   <button
                     className="portal-button portal-button-primary portal-button-leading-icon"
                     disabled={isCreating}
-                    onClick={() => void handleStartRequestClick()}
+                    onClick={() => void handleStartRequestClick({ from: activeTab })}
                     type="button"
                   >
                     <RequestActionIcon />
@@ -191,7 +191,11 @@ export default function RequestsPage() {
 
                 return (
                   <div key={request.id} role="listitem">
-                    <PrintRequestCard progressLabel={progressLabel} request={request} />
+                    <PrintRequestCard
+                      fromTab={activeTab}
+                      progressLabel={progressLabel}
+                      request={request}
+                    />
                   </div>
                 );
               })}

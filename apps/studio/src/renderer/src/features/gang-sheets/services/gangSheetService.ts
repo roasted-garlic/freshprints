@@ -73,6 +73,8 @@ interface GangSheetItemDocumentData extends DocumentData {
   printRequestId?: unknown;
   printRequestItemId?: unknown;
   designId?: unknown;
+  sourceType?: unknown;
+  customerUploadId?: unknown;
   copyIndex?: unknown;
   sourceQuantitySnapshot?: unknown;
   designTitleSnapshot?: unknown;
@@ -148,13 +150,24 @@ function mapGangSheetItemData(gangSheetItemId: string, data: GangSheetItemDocume
   // following `setDoc`/`updateDoc` can observe a still-pending sentinel on one of the pair.
   const timestamps = resolveDesignDocumentTimestamps(data);
 
+  const sourceType =
+    data.sourceType === "customer_upload" || data.sourceType === "catalog_design"
+      ? data.sourceType
+      : undefined;
+  const customerUploadId =
+    typeof data.customerUploadId === "string" && data.customerUploadId.trim()
+      ? data.customerUploadId.trim()
+      : undefined;
+  const isUploadItem = sourceType === "customer_upload" || Boolean(customerUploadId);
+  const designId =
+    typeof data.designId === "string" && data.designId.trim() ? data.designId.trim() : undefined;
+
   if (
     typeof data.gangSheetId !== "string" ||
     typeof data.upcomingShowId !== "string" ||
     typeof data.showAllocationId !== "string" ||
     typeof data.printRequestId !== "string" ||
     typeof data.printRequestItemId !== "string" ||
-    typeof data.designId !== "string" ||
     typeof data.copyIndex !== "number" ||
     typeof data.sourceQuantitySnapshot !== "number" ||
     typeof data.requestNameSnapshot !== "string" ||
@@ -172,6 +185,14 @@ function mapGangSheetItemData(gangSheetItemId: string, data: GangSheetItemDocume
     throw new Error("A gang sheet item record is incomplete.");
   }
 
+  if (isUploadItem) {
+    if (!customerUploadId) {
+      throw new Error("A gang sheet item record is incomplete.");
+    }
+  } else if (!designId) {
+    throw new Error("A gang sheet item record is incomplete.");
+  }
+
   return {
     id: gangSheetItemId,
     gangSheetId: data.gangSheetId,
@@ -179,7 +200,13 @@ function mapGangSheetItemData(gangSheetItemId: string, data: GangSheetItemDocume
     showAllocationId: data.showAllocationId,
     printRequestId: data.printRequestId,
     printRequestItemId: data.printRequestItemId,
-    designId: data.designId,
+    ...(designId ? { designId } : {}),
+    ...(sourceType
+      ? { sourceType }
+      : isUploadItem
+        ? { sourceType: "customer_upload" as const }
+        : {}),
+    ...(customerUploadId ? { customerUploadId } : {}),
     copyIndex: data.copyIndex,
     sourceQuantitySnapshot: data.sourceQuantitySnapshot,
     designTitleSnapshot: typeof data.designTitleSnapshot === "string" ? data.designTitleSnapshot : undefined,
@@ -202,7 +229,9 @@ export interface CreateGangSheetItemInput {
   showAllocationId: string;
   printRequestId: string;
   printRequestItemId: string;
-  designId: string;
+  designId?: string;
+  sourceType?: "catalog_design" | "customer_upload";
+  customerUploadId?: string;
   copyIndex: number;
   sourceQuantitySnapshot: number;
   designTitleSnapshot?: string;
@@ -376,6 +405,8 @@ export const gangSheetService = {
       printRequestId: input.printRequestId,
       printRequestItemId: input.printRequestItemId,
       designId: input.designId,
+      sourceType: input.sourceType,
+      customerUploadId: input.customerUploadId,
       copyIndex: input.copyIndex,
       sourceQuantitySnapshot: input.sourceQuantitySnapshot,
       designTitleSnapshot: input.designTitleSnapshot,

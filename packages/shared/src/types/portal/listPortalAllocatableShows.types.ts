@@ -6,6 +6,10 @@ export interface PortalAllocatableShow {
   productionStatus: ShowProductionStatus;
   maxTotalQuantity?: number;
   allocatedQuantity: number;
+  /**
+   * False for past (calendar-only) shows. Omitted/true means the show can be queued to.
+   */
+  isAllocatable?: boolean;
 }
 
 export interface ListPortalAllocatableShowsResponse {

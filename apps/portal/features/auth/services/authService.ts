@@ -55,6 +55,12 @@ function getCallableErrorMessage(error: unknown): string {
       return error.message || 'You do not have permission to register for the portal.';
     case 'functions/unauthenticated':
       return 'Sign-in is required to finish registration.';
+    case 'functions/failed-precondition':
+      return error.message || 'This action is not available right now.';
+    case 'functions/resource-exhausted':
+      return error.message || 'Upload limit reached. Try again later.';
+    case 'functions/unavailable':
+      return error.message || 'Service temporarily unavailable. Try again shortly.';
     default:
       return error.message || 'Registration could not be completed. Please try again.';
   }

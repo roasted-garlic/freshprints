@@ -47,6 +47,9 @@ interface PrintRequestDocumentData extends DocumentData {
 interface PrintRequestItemDocumentData extends DocumentData {
   printRequestId?: unknown;
   designId?: unknown;
+  sourceType?: unknown;
+  customerUploadId?: unknown;
+  titleSnapshot?: unknown;
   quantity?: unknown;
   printWidthInches?: unknown;
   printHeightInches?: unknown;
@@ -156,9 +159,20 @@ function mapPrintRequestItem(itemId: string, data: PrintRequestItemDocumentData)
   const createdAt = resolvedTimestamps?.createdAt ?? fallbackNow;
   const updatedAt = resolvedTimestamps?.updatedAt ?? fallbackNow;
 
+  const sourceType =
+    data.sourceType === 'customer_upload' || data.sourceType === 'catalog_design'
+      ? data.sourceType
+      : undefined;
+  const customerUploadId =
+    typeof data.customerUploadId === 'string' && data.customerUploadId.trim()
+      ? data.customerUploadId.trim()
+      : undefined;
+  const isUploadItem = sourceType === 'customer_upload' || Boolean(customerUploadId);
+  const designId =
+    typeof data.designId === 'string' && data.designId.trim() ? data.designId.trim() : undefined;
+
   if (
     typeof data.printRequestId !== 'string' ||
-    typeof data.designId !== 'string' ||
     typeof data.quantity !== 'number' ||
     typeof data.status !== 'string' ||
     typeof data.addedBy !== 'string'
@@ -166,10 +180,23 @@ function mapPrintRequestItem(itemId: string, data: PrintRequestItemDocumentData)
     throw new Error('Print request item data is incomplete.');
   }
 
+  if (isUploadItem) {
+    if (!customerUploadId) {
+      throw new Error('Print request item data is incomplete.');
+    }
+  } else if (!designId) {
+    throw new Error('Print request item data is incomplete.');
+  }
+
   return {
     id: itemId,
     printRequestId: data.printRequestId,
-    designId: data.designId,
+    ...(designId ? { designId } : {}),
+    ...(sourceType ? { sourceType } : isUploadItem ? { sourceType: 'customer_upload' as const } : {}),
+    ...(customerUploadId ? { customerUploadId } : {}),
+    ...(typeof data.titleSnapshot === 'string' && data.titleSnapshot.trim()
+      ? { titleSnapshot: data.titleSnapshot.trim() }
+      : {}),
     quantity: data.quantity,
     printWidthInches: typeof data.printWidthInches === 'number' ? data.printWidthInches : undefined,
     printHeightInches: typeof data.printHeightInches === 'number' ? data.printHeightInches : undefined,
@@ -181,6 +208,10 @@ function mapPrintRequestItem(itemId: string, data: PrintRequestItemDocumentData)
     createdAt,
     updatedAt,
   };
+}
+
+export function printRequestItemHasCustomerUpload(item: Pick<PrintRequestItem, 'sourceType' | 'customerUploadId'>): boolean {
+  return item.sourceType === 'customer_upload' || Boolean(item.customerUploadId);
 }
 
 function resolveNextSortOrder(items: PrintRequestItem[]): number {
@@ -343,7 +374,13 @@ export const portalPrintRequestService = {
   },
 
   async getDesignSummariesForItems(items: PrintRequestItem[]) {
-    const uniqueDesignIds = [...new Set(items.map((item) => item.designId))];
+    const uniqueDesignIds = [
+      ...new Set(
+        items
+          .map((item) => item.designId)
+          .filter((designId): designId is string => Boolean(designId)),
+      ),
+    ];
     const summaries = await Promise.all(
       uniqueDesignIds.map(async (designId) => {
         try {
@@ -351,6 +388,34 @@ export const portalPrintRequestService = {
           return [designId, design] as const;
         } catch {
           return [designId, null] as const;
+        }
+      }),
+    );
+
+    return new Map(summaries);
+  },
+
+  async getUploadSummariesForItems(items: PrintRequestItem[]) {
+    const uploadIds = [
+      ...new Set(
+        items
+          .filter(printRequestItemHasCustomerUpload)
+          .map((item) => item.customerUploadId)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    ];
+
+    const { customerUploadService } = await import(
+      '../../customer-uploads/services/customerUploadService'
+    );
+
+    const summaries = await Promise.all(
+      uploadIds.map(async (uploadId) => {
+        try {
+          const upload = await customerUploadService.getUpload(uploadId);
+          return [uploadId, upload] as const;
+        } catch {
+          return [uploadId, null] as const;
         }
       }),
     );
@@ -402,6 +467,77 @@ export const portalPrintRequestService = {
       printWidthInches,
       printHeightInches,
       sizeLabel: formatPrintRequestItemSizeLabel(printWidthInches, printHeightInches),
+      sortOrder: input.sortOrder ?? resolveNextSortOrder(currentItems),
+      status: 'pending' as const,
+      addedBy: input.userId,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    };
+
+    await setDoc(itemRef, payload);
+    await updateDoc(doc(getPortalDb(), 'printRequests', input.printRequestId), {
+      itemCount: printRequest.itemCount + 1,
+      updatedBy: input.userId,
+      updatedAt: serverTimestamp(),
+    });
+
+    const now = Timestamp.now();
+    return mapPrintRequestItem(itemRef.id, {
+      ...payload,
+      createdAt: now,
+      updatedAt: now,
+    });
+  },
+
+  async addCustomerUploadPrintRequestItem(input: {
+    printRequestId: string;
+    customerUploadId: string;
+    quantity: number;
+    userId: string;
+    printWidthInches?: number;
+    printHeightInches?: number;
+    sortOrder?: number;
+    titleSnapshot?: string;
+  }): Promise<PrintRequestItem> {
+    if (!Number.isFinite(input.quantity) || input.quantity < 1) {
+      throw new Error('Quantity must be at least 1.');
+    }
+
+    const customerUploadId = input.customerUploadId.trim();
+    if (!customerUploadId) {
+      throw new Error('A customer upload is required.');
+    }
+
+    const [printRequest, currentItems] = await Promise.all([
+      this.getPrintRequest(input.printRequestId),
+      this.listPrintRequestItems(input.printRequestId),
+    ]);
+
+    if (!printRequest) {
+      throw new Error('Print request not found.');
+    }
+
+    if (printRequest.status !== 'draft' && printRequest.status !== 'editing') {
+      throw new Error('This print request can no longer be edited.');
+    }
+
+    const printWidthInches = input.printWidthInches;
+    const printHeightInches = input.printHeightInches;
+    const itemRef = doc(collection(getPortalDb(), 'printRequestItems'));
+    const payload = {
+      id: itemRef.id,
+      printRequestId: input.printRequestId,
+      sourceType: 'customer_upload' as const,
+      customerUploadId,
+      ...(typeof input.titleSnapshot === 'string' && input.titleSnapshot.trim()
+        ? { titleSnapshot: input.titleSnapshot.trim() }
+        : {}),
+      quantity: input.quantity,
+      ...(typeof printWidthInches === 'number' ? { printWidthInches } : {}),
+      ...(typeof printHeightInches === 'number' ? { printHeightInches } : {}),
+      ...(typeof printWidthInches === 'number' && typeof printHeightInches === 'number'
+        ? { sizeLabel: formatPrintRequestItemSizeLabel(printWidthInches, printHeightInches) }
+        : {}),
       sortOrder: input.sortOrder ?? resolveNextSortOrder(currentItems),
       status: 'pending' as const,
       addedBy: input.userId,
@@ -480,26 +616,30 @@ export const portalPrintRequestService = {
     printRequestId: string;
     userId: string;
   }): Promise<PrintRequestItem> {
-    const itemSnapshot = await getDoc(doc(getPortalDb(), 'printRequestItems', input.itemId));
+    const callable = httpsCallable<
+      { printRequestId: string; itemId: string },
+      {
+        itemId: string;
+        printRequestId: string;
+        sourceType: 'catalog_design' | 'customer_upload';
+        designId?: string;
+        customerUploadId?: string;
+      }
+    >(getPortalFunctions(), 'duplicatePortalPrintRequestItem');
 
-    if (!itemSnapshot.exists()) {
-      throw new Error('Print request item not found.');
-    }
-
-    const item = mapPrintRequestItem(itemSnapshot.id, itemSnapshot.data() as PrintRequestItemDocumentData);
-    const currentItems = await this.listPrintRequestItems(input.printRequestId);
-    const sourceSortOrder =
-      typeof item.sortOrder === 'number' && Number.isFinite(item.sortOrder) ? item.sortOrder : undefined;
-
-    return this.addPrintRequestItem({
+    const response = await callable({
       printRequestId: input.printRequestId,
-      designId: item.designId,
-      quantity: item.quantity,
-      userId: input.userId,
-      printWidthInches: item.printWidthInches,
-      printHeightInches: item.printHeightInches,
-      sortOrder: sourceSortOrder === undefined ? resolveNextSortOrder(currentItems) : sourceSortOrder + 0.5,
+      itemId: input.itemId,
     });
+
+    const itemSnapshot = await getDoc(doc(getPortalDb(), 'printRequestItems', response.data.itemId));
+    if (!itemSnapshot.exists()) {
+      throw new Error('Duplicated item was created but could not be loaded.');
+    }
+    return mapPrintRequestItem(
+      itemSnapshot.id,
+      itemSnapshot.data() as PrintRequestItemDocumentData,
+    );
   },
 
   async savePrintRequestDesignSelections(input: {

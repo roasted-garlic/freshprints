@@ -55,6 +55,7 @@ describe("expandOperationalWipePlan", () => {
 
     assert.deepEqual(plan.deleteCollections, [
       "staffInboxAcks",
+      "staffInboxAlertDeliveries",
       "gangSheetItems",
       "gangSheets",
       "showAllocations",
@@ -69,16 +70,42 @@ describe("expandOperationalWipePlan", () => {
     assert.ok(plan.deleteCollections.includes("upcomingShows"));
   });
 
-  it("clears staffInboxAcks with print-request or show-queue wipes", () => {
+  it("clears staffInboxAcks and sound deliveries with print-request or show-queue wipes", () => {
     assert.ok(expandOperationalWipePlan(["printRequests"]).deleteCollections.includes("staffInboxAcks"));
+    assert.ok(
+      expandOperationalWipePlan(["printRequests"]).deleteCollections.includes(
+        "staffInboxAlertDeliveries",
+      ),
+    );
     assert.ok(expandOperationalWipePlan(["upcomingShows"]).deleteCollections.includes("staffInboxAcks"));
-    assert.ok(!expandOperationalWipePlan(["sequences"]).deleteCollections.includes("staffInboxAcks"));
+    assert.ok(
+      expandOperationalWipePlan(["upcomingShows"]).deleteCollections.includes(
+        "staffInboxAlertDeliveries",
+      ),
+    );    assert.ok(!expandOperationalWipePlan(["sequences"]).deleteCollections.includes("staffInboxAcks"));
   });
 
-  it("select all includes designs", () => {
+  it("select all includes designs and customerUploads", () => {
     const plan = expandOperationalWipePlan(ALL_OPERATIONAL_WIPE_TARGETS);
     assert.ok(plan.deleteCollections.includes("designs"));
+    assert.ok(plan.deleteCollections.includes("customerUploads"));
+    assert.ok(plan.deleteCollections.includes("customerUploadBatches"));
     assert.equal(plan.wipeDesignStorage, true);
+    assert.equal(plan.wipeCustomerUploadStorage, true);
+  });
+
+  it("expands customerUploads independently", () => {
+    const plan = expandOperationalWipePlan(["customerUploads"]);
+    assert.deepEqual(plan.deleteCollections, [
+      "customerUploadIdempotency",
+      "customerUploadFinalizeLeases",
+      "customerUploadRateLimits",
+      "customerUploads",
+      "customerUploadBatches",
+    ]);
+    assert.equal(plan.wipeCustomerUploadStorage, true);
+    assert.equal(plan.wipeDesignStorage, false);
+    assert.equal(plan.resetSequences, false);
   });
 });
 

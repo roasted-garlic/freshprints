@@ -199,6 +199,22 @@ export const permissionService = {
     return isStaff(user);
   },
 
+  canViewCustomerUploadIntake(user: UserLike) {
+    return this.canImportDesigns(user);
+  },
+
+  canExcludeCustomerUploadFromCatalog(user: UserLike) {
+    return this.canImportDesigns(user);
+  },
+
+  canPromoteCustomerUploadToAiReview(user: UserLike) {
+    return this.canApproveDesignForCatalog(user);
+  },
+
+  canRetryCustomerUploadProcessing(user: UserLike) {
+    return this.canApproveDesignForCatalog(user);
+  },
+
   canManageQueues(user: UserLike) {
     return isStaff(user);
   },

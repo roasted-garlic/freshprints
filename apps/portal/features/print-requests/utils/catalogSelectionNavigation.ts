@@ -1,11 +1,29 @@
 import type { CatalogDiscoveryMode } from '@fresh-prints/shared/utils/catalogDiscoveryRanking';
 
+import type { PortalRequestDetailFrom } from './portalRequestDetailReturn';
+import { buildRequestDetailHref } from './portalRequestDetailReturn';
+
 export const CATALOG_HOME_PATH = '/catalog';
 export const CATALOG_LIBRARY_PATH = '/catalog/library';
 
+/** Request detail with the customer upload panel opened. */
+export function buildRequestUploadHref(
+  printRequestId: string,
+  options?: { from?: PortalRequestDetailFrom | null },
+): string {
+  return buildRequestDetailHref(printRequestId, {
+    from: options?.from ?? null,
+    upload: true,
+  });
+}
+
 export function buildCatalogSelectionHref(
   printRequestId: string,
-  options?: { seedDesignId?: string; discover?: CatalogDiscoveryMode | null },
+  options?: {
+    seedDesignId?: string;
+    discover?: CatalogDiscoveryMode | null;
+    from?: PortalRequestDetailFrom | null;
+  },
 ): string {
   const params = new URLSearchParams({
     mode: 'request-selection',
@@ -18,6 +36,10 @@ export function buildCatalogSelectionHref(
 
   if (options?.discover) {
     params.set('discover', options.discover);
+  }
+
+  if (options?.from) {
+    params.set('from', options.from);
   }
 
   return `${CATALOG_LIBRARY_PATH}?${params.toString()}`;

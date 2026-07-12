@@ -7,6 +7,12 @@ export type PrintRequestOrigin =
   | "studio_customer"
   | "portal_customer";
 
+/**
+ * Provenance of a print request line item.
+ * Missing `sourceType` on legacy docs means `catalog_design`.
+ */
+export type PrintRequestItemSourceType = "catalog_design" | "customer_upload";
+
 export interface PrintRequest {
   id: string;
   name: string;
@@ -30,7 +36,18 @@ export interface PrintRequest {
 export interface PrintRequestItem {
   id: string;
   printRequestId: string;
-  designId: string;
+  /**
+   * Catalog design id.
+   * Required when `sourceType` is absent or `catalog_design`.
+   * Must be **omitted** when `sourceType` is `customer_upload` (never empty string).
+   */
+  designId?: string;
+  /** Defaults to `catalog_design` when absent (legacy documents). */
+  sourceType?: PrintRequestItemSourceType;
+  /** Required when `sourceType` is `customer_upload`. */
+  customerUploadId?: string;
+  /** Display fallback for upload-backed items. */
+  titleSnapshot?: string;
   quantity: number;
   printWidthInches?: number;
   printHeightInches?: number;

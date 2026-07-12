@@ -21,10 +21,19 @@ interface SelectedDesignSelection {
 
 type SelectionState = Record<string, SelectedDesignSelection>;
 
-function buildSelectionStateFromRequestItems(items: Array<{ designId: string; id: string; quantity: number }>) {
+function catalogSelectionItems(
+  items: Array<{ designId?: string; id: string; quantity: number }>,
+): Array<{ designId: string; id: string; quantity: number }> {
+  return items.filter(
+    (item): item is { designId: string; id: string; quantity: number } =>
+      typeof item.designId === 'string' && item.designId.length > 0,
+  );
+}
+
+function buildSelectionStateFromRequestItems(items: Array<{ designId?: string; id: string; quantity: number }>) {
   const nextState: SelectionState = {};
 
-  for (const item of items) {
+  for (const item of catalogSelectionItems(items)) {
     nextState[item.designId] = {
       quantity: item.quantity,
       existingItemId: item.id,
@@ -35,8 +44,10 @@ function buildSelectionStateFromRequestItems(items: Array<{ designId: string; id
   return nextState;
 }
 
-function buildSelectionSignature(items: Array<{ designId: string; id: string; quantity: number }>): string {
-  return items.map((item) => `${item.id}:${item.designId}:${item.quantity}`).join('|');
+function buildSelectionSignature(items: Array<{ designId?: string; id: string; quantity: number }>): string {
+  return catalogSelectionItems(items)
+    .map((item) => `${item.id}:${item.designId}:${item.quantity}`)
+    .join('|');
 }
 
 function buildQuantitySignature(state: SelectionState): string {
@@ -46,8 +57,14 @@ function buildQuantitySignature(state: SelectionState): string {
     .join('|');
 }
 
-function buildQuantitySignatureFromItems(items: Array<{ designId: string; quantity: number }>): string {
-  return items
+function buildQuantitySignatureFromItems(items: Array<{ designId?: string; quantity: number }>): string {
+  return catalogSelectionItems(
+    items.map((item, index) => ({
+      designId: item.designId,
+      id: `sig-${index}`,
+      quantity: item.quantity,
+    })),
+  )
     .slice()
     .sort((left, right) => left.designId.localeCompare(right.designId))
     .map((item) => `${item.designId}:${item.quantity}`)
@@ -278,7 +295,9 @@ export function usePortalPrintRequestSelectionMode(printRequestId: string | null
 
       const latestItems = await portalPrintRequestService.listPrintRequestItems(printRequestId);
       const selectedDesignIds = new Set(Object.keys(selectedDesigns));
-      const removedItems = latestItems.filter((item) => !selectedDesignIds.has(item.designId));
+      const removedItems = latestItems.filter(
+        (item) => item.designId && !selectedDesignIds.has(item.designId),
+      );
 
       for (const item of removedItems) {
         await portalPrintRequestService.removePrintRequestItem({

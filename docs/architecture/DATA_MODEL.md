@@ -284,6 +284,9 @@ export interface Design {
 
   requestedByCustomerId?: string;
 
+  /** Present when promoted from a Portal customer upload (Sub-phase E). */
+  sourceCustomerUploadId?: string;
+
   /** @deprecated — use showAddCount (Phase 10) */
   queueCount: number;
 
@@ -840,7 +843,15 @@ remain for compatibility and future production workflows.
 export interface PrintRequestItem {
   id: string;
   printRequestId: string;
-  designId: string;
+  /**
+   * Required for catalog_design (or legacy missing sourceType).
+   * Omitted (never empty string) when sourceType is customer_upload.
+   */
+  designId?: string;
+  /** Defaults to catalog_design when absent (legacy). See ADR-FP-073. */
+  sourceType?: "catalog_design" | "customer_upload";
+  customerUploadId?: string;
+  titleSnapshot?: string;
   quantity: number;
   printWidthInches?: number;
   printHeightInches?: number;
@@ -856,6 +867,8 @@ export interface PrintRequestItem {
   updatedAt: Timestamp;
 }
 ```
+
+**Source model (ADR-FP-073):** Catalog-backed items remain the default. Sub-phase C attaches upload-backed items via Admin callable (`confirmCustomerUploadsAndAttachToRequest`) with `sourceType: customer_upload`, non-empty `customerUploadId`, and **no `designId` field**. Client create of print request items remains catalog/`designId`+ready only. Sub-phase D makes show/gang/export resolvers source-aware. Do not increment `designs.requestCount` for customer-upload-only items. Until D, `queuePortalPrintRequestToShow` fail-closes if any item is upload-backed.
 
 Standard Print Request item sizing rules:
 
@@ -886,6 +899,45 @@ store `sortOrder` for stable display ordering, but existing items without `sortO
 visible. Runtime reads stay request-scoped by `printRequestId` and sort client-side by `sortOrder`
 when present, then `createdAt`, then document ID. Do not add a Firestore `sortOrder` index unless
 a future implementation moves ordering server-side.
+
+---
+
+# Customer Uploads (Phase 8 fast-follow — ADR-FP-073)
+
+Collections:
+
+```txt
+customerUploads
+customerUploadBatches
+customerUploadRateLimits
+customerUploadFinalizeLeases
+customerUploadIdempotency
+```
+
+Customer-provided **request artwork** for print requests. Independent of catalog `designs` until staff promotes. **Not** Phase 9 `customRequests`.
+
+**Technical status:** `awaiting_upload` → `uploading` → `validating` → `processing` → `ready` | `failed`
+
+**Technical progress stage (optional, live during finalize):** `reading_upload` | `checking_format` | `checking_transparency` | `preparing_artwork` | `checking_print_size` | `creating_previews` | `saving` — written by finalize/retry callables; cleared (`null`) when `ready` or `failed`. Portal maps these to customer-facing labels via `getCustomerUploadProgressLabel`.
+
+**Catalog review status:** `not_eligible` | `pending_staff_review` | `sent_to_ai_review` | `excluded_from_catalog`  
+(Promotion link: `promotedDesignId` — no `promoted_to_design` status.)
+
+When staff promotes via `promoteCustomerUploadToAiReview`, a `designs` document is created with `status: imported`, `sourceCustomerUploadId`, and assets copied to canonical design storage paths. The upload moves to `sent_to_ai_review` with `promotedDesignId` set. Catalog exclusion does **not** remove request items or delete production Storage objects.
+
+After AI Review **approve** or **reject**, the upload document remains `catalogReviewStatus: sent_to_ai_review` (outcome lives on `designs.status` / `aiReviewStatus`). Rejection must not unlink `printRequestItems` or delete upload production assets.
+
+Staff intake callables (Admin SDK writes only): `promoteCustomerUploadToAiReview`, `excludeCustomerUploadFromCatalog`, `restoreCustomerUploadCatalogEligibility`, `retryCustomerUploadProcessing`.
+
+### Operational collections (Admin SDK only)
+
+| Collection | Purpose |
+|------------|---------|
+| `customerUploadRateLimits/{uid}_{yyyyMMdd}` | UTC daily caps: create batch / finalize image / finalize ZIP |
+| `customerUploadFinalizeLeases/{leaseId}` | Concurrent finalize leases (max 3; 4-minute TTL) |
+| `customerUploadIdempotency/{uid}_{clientRequestId}` | Create-batch idempotency |
+
+Shared types live in `packages/shared/src/types/customerUpload/`.
 
 ---
 
@@ -1423,11 +1475,19 @@ Previews:
 /previews/{designId}.webp
 ```
 
-Customer Uploads:
+Customer Uploads (Phase 8 fast-follow — customer request artwork; ADR-FP-073):
 
-```txt id="4v2zsh"
-/customer-uploads/{requestId}/original.png
+```txt
+/customer-uploads/{customerUid}/{uploadId}/source
+/customer-uploads/{customerUid}/{uploadId}/production.png
+/customer-uploads/{customerUid}/{uploadId}/preview.webp
+/customer-uploads/{customerUid}/{uploadId}/thumbnail.webp
+/customer-uploads/{customerUid}/batches/{batchId}/archive.zip
 ```
+
+Firestore collections (planned runtime in later sub-phases): `customerUploads`, `customerUploadBatches`.
+
+This path namespace is **not** Phase 9 `customRequests` / Custom Request Q&A.
 
 Store these paths in Firestore.
 

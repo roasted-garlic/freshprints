@@ -1019,10 +1019,27 @@ storage.rules
 | `/originals/{designId}.png` | PNG | 150 MB | Active staff only |
 | `/thumbnails/{designId}.webp` | WebP | 10 MB | Active staff only (Phase 3C) |
 | `/previews/{designId}.webp` | WebP | 10 MB | Active staff only (Phase 3C) |
+| `/customer-uploads/{uid}/{uploadId}/source` | PNG/WebP | 100 MB | Owner customer write; owner/staff read |
+| `/customer-uploads/{uid}/{uploadId}/production.png` (and preview/thumbnail) | PNG/WebP | n/a (Admin write) | Owner/staff read; customer write denied |
+| `/customer-uploads/{uid}/batches/{batchId}/archive.zip` | ZIP | 500 MB | Owner customer write; owner/staff read |
 
-Customer access to derivatives remains denied in Phase 3C. All other paths default deny.
+Customer access to **catalog** derivatives remains via ready-design helpers only. Unapproved customer uploads never use those public-read patterns.
 
 Wired in `firebase.json` for deployment with `firebase deploy --only storage`. Rules are not live until deployed.
+
+### Customer artwork upload Functions (ADR-FP-073 Sub-phase B)
+
+| Callable | Auth | Notes |
+| --- | --- | --- |
+| `createCustomerUploadBatch` | Portal customer | Creates batch (+ direct upload docs); returns Storage paths |
+| `finalizeCustomerUpload` | Portal customer | 1GiB / 180s; validate + derivatives |
+| `finalizeCustomerUploadZip` | Portal customer | 1GiB / 180s; streaming extract via `yauzl` |
+
+Deploy (dev only, owner approval required):
+
+```bash
+firebase deploy --only functions:createCustomerUploadBatch,functions:finalizeCustomerUpload,functions:finalizeCustomerUploadZip,firestore:rules,storage,firestore:indexes --project fresh-prints-dev
+```
 
 ## Firestore Indexes
 

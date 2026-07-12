@@ -10,6 +10,7 @@ import {
   type WipeOperationalTestDataResponse,
 } from "../../packages/shared/src/types/admin/wipeOperationalTestData.types";
 import {
+  CUSTOMER_UPLOAD_STORAGE_WIPE_PREFIXES,
   DESIGN_STORAGE_WIPE_PREFIXES,
   expandOperationalWipePlan,
   getDesignsWipePrerequisiteError,
@@ -290,6 +291,16 @@ async function deleteDesignStorageAssets(): Promise<number> {
   return deleted;
 }
 
+async function deleteCustomerUploadStorageAssets(): Promise<number> {
+  let deleted = 0;
+
+  for (const prefix of CUSTOMER_UPLOAD_STORAGE_WIPE_PREFIXES) {
+    deleted += await deleteStoragePrefix(prefix);
+  }
+
+  return deleted;
+}
+
 export const wipeOperationalTestData = onCall(
   { timeoutSeconds: 540, memory: "512MiB" },
   async (request): Promise<WipeOperationalTestDataResponse> => {
@@ -315,6 +326,7 @@ export const wipeOperationalTestData = onCall(
       !plan.resetSequences &&
       !plan.resetDesignRequestStats &&
       !plan.wipeDesignStorage &&
+      !plan.wipeCustomerUploadStorage &&
       !plan.resetShowAllocationTotals
     ) {
       throw invalidArgument("Select at least one wipe target.");
@@ -333,7 +345,13 @@ export const wipeOperationalTestData = onCall(
     const designsRequestStatsReset = plan.resetDesignRequestStats
       ? await resetDesignRequestStats()
       : 0;
-    const storageFilesDeleted = plan.wipeDesignStorage ? await deleteDesignStorageAssets() : 0;
+    let storageFilesDeleted = 0;
+    if (plan.wipeDesignStorage) {
+      storageFilesDeleted += await deleteDesignStorageAssets();
+    }
+    if (plan.wipeCustomerUploadStorage) {
+      storageFilesDeleted += await deleteCustomerUploadStorageAssets();
+    }
 
     return {
       projectId,

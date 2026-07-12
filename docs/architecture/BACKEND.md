@@ -95,6 +95,17 @@ As of ADR-FP-039/ADR-FP-040, **AI Processing is a single playground-style call**
 | `createTeamUser` | Callable | Create team user + invitation flow |
 | `registerCustomer` | Callable | Customer self-registration — provisions `users/{uid}` + `customers/{id}` + username reservation after Firebase Auth signup |
 | `updateTeamUser` | Callable | Update team user fields |
+| `createPortalPrintRequest` | Callable | Portal: create the customer's one working print request |
+| `createCustomerUploadBatch` | Callable | Portal: create customer artwork upload batch + source/ZIP paths (ADR-FP-073) |
+| `finalizeCustomerUpload` | Callable | Portal: validate/normalize one direct image upload → ready/failed |
+| `finalizeCustomerUploadZip` | Callable | Portal: server-extract ZIP + per-image finalize (ADR-FP-073) |
+| `confirmCustomerUploadsAndAttachToRequest` | Callable | Portal: confirm ownership/catalog ack + attach ready uploads to working request |
+| `promoteCustomerUploadToAiReview` | Callable | Studio staff (owner/admin): promote ready upload → design `imported` + enqueue AI |
+| `excludeCustomerUploadFromCatalog` | Callable | Studio staff: mark upload excluded (keeps request artwork + production assets) |
+| `restoreCustomerUploadCatalogEligibility` | Callable | Studio staff: reverse exclusion → `pending_staff_review` |
+| `retryCustomerUploadProcessing` | Callable | Studio staff (owner/admin): retry eligible technical failures |
+| `cleanupAbandonedCustomerUploads` | Callable | Owner/admin: mark stale open batches abandoned; fail unfinished uploads; delete orphan **source** objects only (`dryRun` supported) |
+| `getPortalShowPrintProgress` | Callable | Portal: show print progress for customer |
 | `enqueueAiEnrichment` | Callable | Run imported design through direct AI processing |
 | `resetAiEnrichmentForProcessing` | Callable | Return Needs Review or Rejected design to Processing for a staff-started re-run |
 | `updateAiEnrichmentSettings` | Callable | Owner/admin: set team vision model, prompt template, and tag exclusions |
@@ -153,6 +164,10 @@ See `docs/standards/SECURITY.md`. Firebase rules and Electron IPC security are d
 
 | Date | Summary |
 |------|---------|
+| 2026-07-12 | Sub-phase G: wipe target `customerUploads` + callable `cleanupAbandonedCustomerUploads` (abandoned source orphans; Scheduler optional) |
+| 2026-07-12 | Sub-phase E: staff intake callables `promoteCustomerUploadToAiReview`, `excludeCustomerUploadFromCatalog`, `restoreCustomerUploadCatalogEligibility`, `retryCustomerUploadProcessing`; Studio `/imports` intake section |
+| 2026-07-12 | Sub-phase C: `confirmCustomerUploadsAndAttachToRequest` + Portal upload UI; queue-to-show rejects upload-backed items until D; deployed to `fresh-prints-dev` |
+| 2026-07-11 | Documented customer artwork upload callables (`createCustomerUploadBatch`, `finalizeCustomerUpload`, `finalizeCustomerUploadZip`) — Sub-phase B; deploy to `fresh-prints-dev` still required before Portal UI |
 | 2026-07-01 | Removed OpenAI as an AI provider; Google (Gemini) is now the only vision model provider. Removed `OPENAI_API_KEY`/reasoning effort entirely (ADR-FP-040) |
 | 2026-06-30 | Documented AI Processing taxonomy prompt context for category descriptions, tag aliases, preferred-when guidance, and complete suggested-new-tags |
 | 2026-06-30 | Documented global approved tag normalization and suggested-new-tag review |

@@ -12,6 +12,7 @@ export const OPERATIONAL_WIPE_TARGETS = [
   "sequences",
   "designRequestStats",
   "designs",
+  "customerUploads",
 ] as const;
 
 export type OperationalWipeTarget = (typeof OPERATIONAL_WIPE_TARGETS)[number];

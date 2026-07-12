@@ -7,6 +7,8 @@ export const FIRESTORE_COLLECTIONS = {
   customerUsernames: "customerUsernames",
   printRequests: "printRequests",
   printRequestItems: "printRequestItems",
+  customerUploads: "customerUploads",
+  customerUploadBatches: "customerUploadBatches",
   counters: "counters",
   customerRequests: "customerRequests",
   showQueues: "showQueues",
@@ -16,6 +18,7 @@ export const FIRESTORE_COLLECTIONS = {
   gangSheets: "gangSheets",
   gangSheetItems: "gangSheetItems",
   staffInboxAcks: "staffInboxAcks",
+  staffInboxAlertDeliveries: "staffInboxAlertDeliveries",
   settings: "settings",
   auditLogs: "auditLogs",
 } as const;

@@ -79,7 +79,10 @@ export interface UpdatePrintRequestDetailInput {
 }
 
 export interface CreatePrintRequestItemInput {
-  designId: string;
+  designId?: string;
+  customerUploadId?: string;
+  sourceType?: "catalog_design" | "customer_upload";
+  titleSnapshot?: string;
   quantity: number;
   printWidthInches?: number;
   printHeightInches?: number;
@@ -129,6 +132,9 @@ interface PrintRequestItemDocumentData extends DocumentData {
   id?: unknown;
   printRequestId?: unknown;
   designId?: unknown;
+  sourceType?: unknown;
+  customerUploadId?: unknown;
+  titleSnapshot?: unknown;
   quantity?: unknown;
   printWidthInches?: unknown;
   printHeightInches?: unknown;
@@ -218,7 +224,6 @@ function mapPrintRequestItemData(
 
   if (
     typeof data.printRequestId !== "string" ||
-    typeof data.designId !== "string" ||
     typeof data.quantity !== "number" ||
     typeof data.status !== "string" ||
     typeof data.addedBy !== "string" ||
@@ -227,10 +232,39 @@ function mapPrintRequestItemData(
     throw new Error("A print request item record is incomplete.");
   }
 
+  const sourceType =
+    data.sourceType === "customer_upload" || data.sourceType === "catalog_design"
+      ? data.sourceType
+      : undefined;
+  const customerUploadId =
+    typeof data.customerUploadId === "string" && data.customerUploadId.trim()
+      ? data.customerUploadId.trim()
+      : undefined;
+  const isUploadItem = sourceType === "customer_upload" || Boolean(customerUploadId);
+  const designId =
+    typeof data.designId === "string" && data.designId.trim() ? data.designId.trim() : undefined;
+
+  if (isUploadItem) {
+    if (!customerUploadId) {
+      throw new Error("A print request item record is incomplete.");
+    }
+  } else if (!designId) {
+    throw new Error("A print request item record is incomplete.");
+  }
+
   return {
     id: itemId,
     printRequestId: data.printRequestId,
-    designId: data.designId,
+    ...(designId ? { designId } : {}),
+    ...(sourceType
+      ? { sourceType }
+      : isUploadItem
+        ? { sourceType: "customer_upload" as const }
+        : {}),
+    ...(customerUploadId ? { customerUploadId } : {}),
+    ...(typeof data.titleSnapshot === "string" && data.titleSnapshot.trim()
+      ? { titleSnapshot: data.titleSnapshot.trim() }
+      : {}),
     quantity: data.quantity,
     printWidthInches: typeof data.printWidthInches === "number" ? data.printWidthInches : undefined,
     printHeightInches: typeof data.printHeightInches === "number" ? data.printHeightInches : undefined,
@@ -564,9 +598,19 @@ export const printRequestService = {
     const snapshot = await getDocs(itemsQuery);
 
     return sortPrintRequestItemsForDisplay(
-      snapshot.docs.map((itemDoc) =>
-        mapPrintRequestItemData(itemDoc.id, itemDoc.data() as PrintRequestItemDocumentData),
-      ),
+      snapshot.docs.flatMap((itemDoc) => {
+        try {
+          return [
+            mapPrintRequestItemData(itemDoc.id, itemDoc.data() as PrintRequestItemDocumentData),
+          ];
+        } catch (error) {
+          console.warn(
+            `[printRequestService] Skipping incomplete print request item ${itemDoc.id}:`,
+            error instanceof Error ? error.message : error,
+          );
+          return [];
+        }
+      }),
     );
   },
 
@@ -754,21 +798,74 @@ export const printRequestService = {
       throw new Error("You do not have permission to add print request items.");
     }
 
-    if (!input.designId.trim()) {
-      throw new Error("A design is required.");
-    }
-
     if (!Number.isFinite(input.quantity) || input.quantity < 1) {
       throw new Error("Quantity must be at least 1.");
     }
 
-    const [printRequest, design, currentItems] = await Promise.all([
+    const customerUploadId = input.customerUploadId?.trim() || undefined;
+    const isUploadItem =
+      input.sourceType === "customer_upload" || Boolean(customerUploadId);
+    const designId = input.designId?.trim() || undefined;
+
+    if (isUploadItem) {
+      if (!customerUploadId) {
+        throw new Error("A customer upload is required.");
+      }
+    } else if (!designId) {
+      throw new Error("A design is required.");
+    }
+
+    const [printRequest, currentItems] = await Promise.all([
       this.getPrintRequestById(caller, printRequestId),
-      loadPrintableDesign(caller, input.designId),
       this.listPrintRequestItems(caller, printRequestId),
     ]);
 
     const itemRef = doc(firestoreCollectionService.getPrintRequestItemsCollection());
+    const sortOrder =
+      typeof input.sortOrder === "number" && Number.isFinite(input.sortOrder)
+        ? input.sortOrder
+        : resolveNextSortOrder(currentItems);
+
+    if (isUploadItem && customerUploadId) {
+      const printWidthInches = input.printWidthInches;
+      const printHeightInches = input.printHeightInches;
+      const payload = withoutUndefinedFields({
+        id: itemRef.id,
+        printRequestId,
+        sourceType: "customer_upload" as const,
+        customerUploadId,
+        titleSnapshot: input.titleSnapshot?.trim() || undefined,
+        quantity: input.quantity,
+        printWidthInches,
+        printHeightInches,
+        sizeLabel:
+          typeof printWidthInches === "number" && typeof printHeightInches === "number"
+            ? formatPrintRequestItemSizeLabel(printWidthInches, printHeightInches)
+            : undefined,
+        sortOrder,
+        notes: input.notes?.trim() || undefined,
+        status: "pending" as const,
+        addedBy: caller.id,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+
+      assertNoUndefinedFirestoreFields(payload, "Print request item payload");
+      await setDoc(itemRef, payload);
+      await updateDoc(doc(firestoreCollectionService.getPrintRequestsCollection(), printRequestId), {
+        itemCount: printRequest.itemCount + 1,
+        updatedBy: caller.id,
+        updatedAt: serverTimestamp(),
+      });
+
+      const createdSnapshot = await getDoc(itemRef);
+      return mapPrintRequestItemData(
+        createdSnapshot.id,
+        createdSnapshot.data() as PrintRequestItemDocumentData,
+      );
+    }
+
+    const design = await loadPrintableDesign(caller, designId!);
     const requestedSize = resolveRequestedItemSize(design, input);
     const payload = withoutUndefinedFields({
       id: itemRef.id,
@@ -778,9 +875,7 @@ export const printRequestService = {
       printWidthInches: requestedSize.printWidthInches,
       printHeightInches: requestedSize.printHeightInches,
       sizeLabel: requestedSize.sizeLabel,
-      sortOrder: typeof input.sortOrder === "number" && Number.isFinite(input.sortOrder)
-        ? input.sortOrder
-        : resolveNextSortOrder(currentItems),
+      sortOrder,
       notes: input.notes?.trim() || undefined,
       status: "pending" as const,
       addedBy: caller.id,
@@ -824,8 +919,34 @@ export const printRequestService = {
       throw new Error("Quantity must be at least 1.");
     }
 
-    const design = await loadPrintableDesign(caller, current.designId);
-    const requestedSize = resolveRequestedItemSize(design, input, current);
+    const isUploadItem =
+      current.sourceType === "customer_upload" || Boolean(current.customerUploadId);
+
+    let requestedSize: {
+      printWidthInches: number;
+      printHeightInches: number;
+      sizeLabel: string;
+    };
+
+    if (isUploadItem) {
+      const printWidthInches = input.printWidthInches ?? current.printWidthInches;
+      const printHeightInches = input.printHeightInches ?? current.printHeightInches;
+      if (typeof printWidthInches !== "number" || typeof printHeightInches !== "number") {
+        throw new Error("Print size is required.");
+      }
+      requestedSize = {
+        printWidthInches,
+        printHeightInches,
+        sizeLabel: formatPrintRequestItemSizeLabel(printWidthInches, printHeightInches),
+      };
+    } else {
+      if (!current.designId) {
+        throw new Error("Print request item is missing a design.");
+      }
+      const design = await loadPrintableDesign(caller, current.designId);
+      requestedSize = resolveRequestedItemSize(design, input, current);
+    }
+
     const statusFields = input.status === undefined
       ? {}
       : input.status === "printed"
@@ -902,12 +1023,37 @@ export const printRequestService = {
       duplicateSortOrder = anchoredOrder + 50;
     }
 
+    const isUploadItem =
+      item.sourceType === "customer_upload" || Boolean(item.customerUploadId);
+
+    if (isUploadItem) {
+      if (!item.customerUploadId) {
+        throw new Error("Uploaded artwork is missing its source upload.");
+      }
+
+      return this.addPrintRequestItem(caller, item.printRequestId, {
+        sourceType: "customer_upload",
+        customerUploadId: item.customerUploadId,
+        titleSnapshot: item.titleSnapshot,
+        quantity: item.quantity,
+        printWidthInches: item.printWidthInches,
+        printHeightInches: item.printHeightInches,
+        sortOrder: duplicateSortOrder,
+        notes: item.notes,
+      });
+    }
+
+    if (!item.designId) {
+      throw new Error("Print request item is missing a design.");
+    }
+
     const createdItem = await this.addPrintRequestItem(caller, item.printRequestId, {
       designId: item.designId,
       quantity: item.quantity,
       printWidthInches: item.printWidthInches,
       printHeightInches: item.printHeightInches,
       sortOrder: duplicateSortOrder,
+      notes: item.notes,
     });
 
     return createdItem;

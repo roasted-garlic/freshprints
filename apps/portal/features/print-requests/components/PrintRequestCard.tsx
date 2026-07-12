@@ -4,7 +4,10 @@ import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
 
 import type { PrintRequest } from '@fresh-prints/shared/types/printRequest/printRequest.types';
+import type { PortalPrintRequestListTab } from '@fresh-prints/shared/utils/portalPrintRequestListTabs';
 import type { Timestamp } from 'firebase/firestore';
+
+import { buildRequestDetailHref } from '../utils/portalRequestDetailReturn';
 
 function formatUpdatedDate(timestamp: Timestamp): string {
   const date = timestamp.toDate();
@@ -33,16 +36,20 @@ function getStatusLabel(status: PrintRequest['status']): string {
 }
 
 interface PrintRequestCardProps {
+  fromTab?: PortalPrintRequestListTab;
   request: PrintRequest;
   progressLabel?: string;
 }
 
-export function PrintRequestCard({ request, progressLabel }: PrintRequestCardProps) {
+export function PrintRequestCard({ fromTab, request, progressLabel }: PrintRequestCardProps) {
   const label = progressLabel ?? getStatusLabel(request.status);
   const isContinueRequest = label === 'Working';
+  const href = buildRequestDetailHref(request.id, {
+    from: fromTab ?? 'working',
+  });
 
   return (
-    <Link className="portal-request-card" href={`/requests/${request.id}`}>
+    <Link className="portal-request-card" href={href}>
       <div className="portal-request-card-header">
         <h2>{request.name}</h2>
         <span

@@ -76,6 +76,10 @@ export const firestoreCollectionService = {
     return this.getCollectionReference("staffInboxAcks");
   },
 
+  getStaffInboxAlertDeliveriesCollection() {
+    return this.getCollectionReference("staffInboxAlertDeliveries");
+  },
+
   getSettingsCollection() {
     return this.getCollectionReference("settings");
   },

@@ -46,6 +46,8 @@ export interface Design {
   printSizeSource?: PrintSizeSource;
   uploadedBy: string;
   requestedByCustomerId?: string;
+  /** Set when this design was promoted from a Portal customer upload (Sub-phase E). */
+  sourceCustomerUploadId?: string;
   queueCount: number;
   requestCount?: number;
   showAddCount?: number;

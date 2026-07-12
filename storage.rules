@@ -87,6 +87,41 @@ service firebase.storage {
       allow delete: if isStaff() && isCanonicalDerivativeFileName(fileName);
     }
 
+    // Customer uploads (ADR-FP-073). Sync sizes with
+    // packages/shared/.../customerUploadLimits.constants.ts
+    function isValidCustomerUploadSource() {
+      return request.resource.size < 100 * 1024 * 1024
+        && request.resource.contentType in ["image/png", "image/webp"];
+    }
+
+    function isValidCustomerUploadZip() {
+      return request.resource.size < 500 * 1024 * 1024
+        && request.resource.contentType in [
+          "application/zip",
+          "application/x-zip-compressed",
+          "application/octet-stream"
+        ];
+    }
+
+    match /customer-uploads/{userId}/batches/{batchId}/archive.zip {
+      allow read: if isStaff() || (isCustomer() && userId == request.auth.uid);
+      allow create, update: if isCustomer()
+        && userId == request.auth.uid
+        && isValidCustomerUploadZip();
+      allow delete: if isStaff();
+    }
+
+    match /customer-uploads/{userId}/{uploadId}/{fileName} {
+      allow read: if isStaff() || (isCustomer() && userId == request.auth.uid);
+
+      allow create, update: if isCustomer()
+        && userId == request.auth.uid
+        && fileName == "source"
+        && isValidCustomerUploadSource();
+
+      allow delete: if isStaff();
+    }
+
     match /{allPaths=**} {
       allow read, write: if false;
     }

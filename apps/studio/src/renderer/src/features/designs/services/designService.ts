@@ -367,9 +367,17 @@ async function fetchDesignListPage(
     ...buildDesignListConstraints(listQuery),
   );
   const snapshot = await getDocs(designsQuery);
-  const designs = snapshot.docs.map((designDocument) =>
-    mapDesignDocument(designDocument.id, designDocument.data()),
-  );
+  const designs = snapshot.docs.flatMap((designDocument) => {
+    try {
+      return [mapDesignDocument(designDocument.id, designDocument.data())];
+    } catch (error) {
+      console.warn(
+        `[designService] Skipping incomplete design ${designDocument.id}:`,
+        error instanceof Error ? error.message : error,
+      );
+      return [];
+    }
+  });
 
   return buildDesignListPage(designs, pageSize, listQuery.sortField ?? "updatedAt");
 }

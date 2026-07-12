@@ -2,6 +2,21 @@
 
 > Signed-off managed phases. External agents should not re-plan or duplicate this work.
 
+## Phase 8 fast-follow — Customer artwork upload Sub-phase B (2026-07-11)
+
+- Status: **approved_with_notes** — deployed + backend smoke PASS on `fresh-prints-dev`
+- Signoff: `docs/workflow/reviews/2026-07-11-portal-customer-artwork-upload-subphase-b-signoff.md`
+- Callables live: `createCustomerUploadBatch`, `finalizeCustomerUpload`, `finalizeCustomerUploadZip`
+- Smoke harness: `functions/scripts/smoke-customer-upload-subphase-b.mjs` (run `mrhb5zwp`, 15/15)
+- Corrective fix: finalize transaction read-before-write; redeployed `finalizeCustomerUpload`
+- Portal UI still forbidden until Sub-phase C
+
+## Phase 8 fast-follow — Customer artwork upload Sub-phase A (2026-07-11)
+
+- Status: **passed_with_notes** / contracts landed
+- Shared types, limits, transparency, ADR-FP-073
+- Test report: `docs/workflow/reviews/2026-07-11-portal-customer-artwork-upload-subphase-a-test-report.md`
+
 ## Phase 8 — Portal closeout (2026-07-08)
 
 - Status: **approved**

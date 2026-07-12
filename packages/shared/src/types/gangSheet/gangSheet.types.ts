@@ -56,14 +56,23 @@ export interface GangSheetItem {
   showAllocationId: string;
   printRequestId: string;
   printRequestItemId: string;
-  designId: string;
+  /**
+   * Catalog design id. Required for catalog placements; omitted for customer_upload.
+   */
+  designId?: string;
+  sourceType?: "catalog_design" | "customer_upload";
+  customerUploadId?: string;
 
   copyIndex: number;
   sourceQuantitySnapshot: number;
 
   designTitleSnapshot?: string;
   requestNameSnapshot: string;
-  /** Canonical `/originals/{designId}.png` path, preserved for future high-resolution export. */
+  /**
+   * Production asset path snapshot.
+   * Catalog: `/originals/{designId}.png`
+   * Upload: `/customer-uploads/{uid}/{uploadId}/production.png`
+   */
   originalPathSnapshot: string;
 
   xInches: number;

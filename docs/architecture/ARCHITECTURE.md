@@ -111,7 +111,7 @@ Fresh Prints Studio is **never customer-facing**. Users with `role: customer` do
 
 ### Studio workspaces (official)
 
-Fresh Prints Studio is organized into **three independent workspaces**:
+Fresh Prints Studio is organized into **three independent design-lifecycle workspaces**:
 
 | Workspace | Route | Responsibility |
 |-----------|-------|----------------|
@@ -124,6 +124,8 @@ Imports → AI Review (Inbox) → Design Library
 ```
 
 No workspace overlap: Design Library never shows imported or rejected designs; AI Review never replaces import validation; Imports never approves catalog entries.
+
+**Operational queue (not a fourth design-lifecycle workspace):** **Customer Uploads** (`/customer-uploads`) reviews Portal request artwork for catalog eligibility. Promote hands off to AI Processing; it does not replace Imports. See ADR-FP-009 clarification and ADR-FP-073.
 
 See `docs/WORKFLOWS.md` and ADR-FP-009.
 
@@ -370,8 +372,21 @@ Stored in:
 
 Purpose:
 
-* Customer uploads
-* Request assets (Fresh Prints Portal — Phase 9)
+* Customer-provided **request artwork** (Phase 8 fast-follow — ADR-FP-073)
+* Separate from catalog `designs` until staff promotes to AI Review
+* **Not** Phase 9 `customRequests` / Custom Request Q&A
+
+Canonical object layout:
+
+```txt
+/customer-uploads/{customerUid}/{uploadId}/source
+/customer-uploads/{customerUid}/{uploadId}/production.png
+/customer-uploads/{customerUid}/{uploadId}/preview.webp
+/customer-uploads/{customerUid}/{uploadId}/thumbnail.webp
+/customer-uploads/{customerUid}/batches/{batchId}/archive.zip
+```
+
+Trusted processing: Portal uploads source (or ZIP archive) to Storage; Cloud Functions finalize validation/normalization. Rules enforce path/owner/size/type; lifecycle checks belong in finalize callables.
 
 ---
 

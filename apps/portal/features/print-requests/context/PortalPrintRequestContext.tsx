@@ -7,9 +7,10 @@ import type { PortalPrintRequestListTab } from '@fresh-prints/shared/utils/porta
 import type { PrintRequestAllocationTotals } from '@fresh-prints/shared/utils/showAllocationTotals';
 import type { PrintRequestItemSummary } from '@fresh-prints/shared/utils/printRequestItemSummaries';
 
-import { PortalConfirmModal } from '../../shared/components/PortalConfirmModal';
+import { PortalStartPrintRequestModal } from '../../shared/components/PortalStartPrintRequestModal';
 import { useMyPrintRequests } from '../hooks/useMyPrintRequests';
 import { usePrintRequestCreationFlow } from '../hooks/usePrintRequestCreationFlow';
+import type { PortalRequestDetailFrom } from '../utils/portalRequestDetailReturn';
 
 interface PortalPrintRequestContextValue {
   actionError: string | null;
@@ -21,7 +22,7 @@ interface PortalPrintRequestContextValue {
   ) => Promise<{ printRequestId: string }>;
   error: string | null;
   finishCreating: () => void;
-  handleStartRequestClick: () => void;
+  handleStartRequestClick: (options?: { from?: PortalRequestDetailFrom | null }) => void;
   isCreating: boolean;
   isLoading: boolean;
   refreshRequests: (options?: { silent?: boolean }) => Promise<void>;
@@ -36,12 +37,14 @@ export function PortalPrintRequestProvider({ children }: { children: ReactNode }
   const printRequests = useMyPrintRequests();
   const {
     actionError,
+    chooseStartPath,
     closeConfirmModal,
     confirmStartNewRequest,
     finishCreating,
     handleStartRequestClick,
     isConfirmModalOpen,
     isCreating,
+    modalStep,
   } = usePrintRequestCreationFlow({
     continuableRequests: printRequests.continuableRequests,
     createPrintRequest: printRequests.createPrintRequest,
@@ -66,19 +69,14 @@ export function PortalPrintRequestProvider({ children }: { children: ReactNode }
   return (
     <PortalPrintRequestContext.Provider value={value}>
       {children}
-      <PortalConfirmModal
-        confirmLabel={isCreating ? 'Starting…' : 'Start request'}
-        isConfirmLoading={isCreating}
+      <PortalStartPrintRequestModal
+        isCreating={isCreating}
         isOpen={isConfirmModalOpen}
         onCancel={closeConfirmModal}
-        onConfirm={() => void confirmStartNewRequest()}
-        title="Start a new print request?"
-      >
-        <p className="portal-muted portal-confirm-modal-message">
-          Starting a request will activate selection mode to browse designs and set quantities. Your choices are
-          saved to a new request, which can later be added to a show&apos;s print run.
-        </p>
-      </PortalConfirmModal>
+        onChoosePath={chooseStartPath}
+        onConfirmStart={confirmStartNewRequest}
+        step={modalStep}
+      />
     </PortalPrintRequestContext.Provider>
   );
 }

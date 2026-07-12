@@ -29,6 +29,7 @@ All scoped work follows:
 | Implement | Requires plan in `docs/workflow/plans/` **and** review approval |
 | Signoff | Requires tests run **or** failures documented honestly |
 | Scope | Never silently expand beyond approved plan |
+| **Signoff → state files** | **Not optional.** Closing any task or phase requires updating `.cursor/workflow/state.md` **and** `references/project-chatgpt-handoff/CURRENT-STATE.md` (if present) in the same pass — see `.cursor/skills/signoff-phase/SKILL.md` step 5. A signoff isn't done until both are current. |
 
 ---
 

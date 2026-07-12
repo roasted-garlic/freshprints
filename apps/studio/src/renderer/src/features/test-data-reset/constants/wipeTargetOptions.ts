@@ -41,6 +41,12 @@ export const OPERATIONAL_WIPE_TARGET_OPTIONS: OperationalWipeTargetOption[] = [
     id: "designs",
     label: "Designs (catalog + Storage)",
     description:
-      "Deletes all design documents and Storage originals/thumbnails/previews. Automatically includes Print requests & items. Categories, tags, accounts, and settings are kept. Requires an extra confirmation modal.",
+      "Deletes all design documents and Storage originals/thumbnails/previews. Automatically includes Print requests & items. Categories, tags, accounts, and settings are kept. Requires an extra confirmation modal. Catalog designs may keep sourceCustomerUploadId even if Customer uploads are wiped — select Customer uploads to clear upload docs/Storage.",
+  },
+  {
+    id: "customerUploads",
+    label: "Customer uploads",
+    description:
+      "Deletes customer upload docs, batches, rate-limit/lease/idempotency collections, and Storage under customer-uploads/. Does not delete print requests or catalog designs. Select this to clear Portal artwork fixtures; promoted designs may retain sourceCustomerUploadId pointing at deleted uploads.",
   },
 ];

@@ -5,12 +5,17 @@ import { permissionService } from "../../permissions/services/permissionService"
 import { upcomingShowService } from "../../upcoming-shows/services/upcomingShowService";
 import { designService } from "../../designs/services/designService";
 import { designDerivativeUrlService } from "../../designs/services/designDerivativeUrlService";
+import {
+  customerUploadReadService,
+  type StudioCustomerUploadSummary,
+} from "../../customer-uploads/services/customerUploadReadService";
 import type { ShowAllocation } from "@fresh-prints/shared/types/showAllocation/showAllocation.types";
 import type { Design } from "../../designs/types/design.types";
 
 export interface GangSheetShowAsset {
   allocation: ShowAllocation;
   design: Design | null;
+  upload: StudioCustomerUploadSummary | null;
   thumbnailUrl: string | null;
 }
 
@@ -26,12 +31,14 @@ const initialState: GangSheetShowAssetsState = {
   isLoading: true,
 };
 
+function isUploadAllocation(allocation: ShowAllocation): boolean {
+  return (
+    allocation.sourceType === "customer_upload" || Boolean(allocation.customerUploadId)
+  );
+}
+
 /**
- * Loads a show's active allocations joined with their approved catalog design (for title,
- * requested size, and a thumbnail preview). Canceled allocations are excluded since they were
- * never meant to be produced. Designs referenced by an allocation may have been archived after
- * allocation; that is not blocked here since the allocation itself already captured the
- * canonical original path snapshot fields needed at placement time.
+ * Loads a show's active allocations joined with catalog design or customer-upload assets.
  */
 export function useGangSheetShowAssets(upcomingShowId: string | null) {
   const { user } = useAuth();
@@ -54,17 +61,33 @@ export function useGangSheetShowAssets(upcomingShowId: string | null) {
 
         const assets = await Promise.all(
           activeAllocations.map(async (allocation): Promise<GangSheetShowAsset> => {
-            let design: Design | null = null;
+            if (isUploadAllocation(allocation) && allocation.customerUploadId) {
+              let upload: StudioCustomerUploadSummary | null = null;
+              try {
+                upload = await customerUploadReadService.getUploadById(user, allocation.customerUploadId);
+              } catch {
+                upload = null;
+              }
 
+              const thumbnailPath = upload?.thumbnailStoragePath ?? upload?.previewStoragePath ?? undefined;
+              const thumbnailUrl = thumbnailPath
+                ? await designDerivativeUrlService.getDownloadUrlForCatalogPath(thumbnailPath)
+                : null;
+
+              return { allocation, design: null, upload, thumbnailUrl };
+            }
+
+            let design: Design | null = null;
             try {
-              design = await designService.getDesignById(user, allocation.designId);
+              if (allocation.designId) {
+                design = await designService.getDesignById(user, allocation.designId);
+              }
             } catch {
               design = null;
             }
 
             const thumbnailUrl = design ? await designDerivativeUrlService.getThumbnailUrl(design) : null;
-
-            return { allocation, design, thumbnailUrl };
+            return { allocation, design, upload: null, thumbnailUrl };
           }),
         );
 
@@ -89,5 +112,11 @@ export function useGangSheetShowAssets(upcomingShowId: string | null) {
     };
   }, [upcomingShowId, user]);
 
-  return useMemo(() => state, [state]);
+  const assets = useMemo(() => state.assets, [state.assets]);
+
+  return {
+    assets,
+    error: state.error,
+    isLoading: state.isLoading,
+  };
 }

@@ -20,6 +20,7 @@ import { permissionService } from "../../permissions/services/permissionService"
 import {
   clearLegacyStaffInboxAckLocalStorage,
 } from "../../staff-inbox/services/staffInboxAckLegacyLocalStore";
+import { TestDataResetErrorBoundary } from "../components/TestDataResetErrorBoundary";
 import { OPERATIONAL_WIPE_TARGET_OPTIONS } from "../constants/wipeTargetOptions";
 import { wipeOperationalTestData } from "../services/wipeOperationalTestDataService";
 import {
@@ -29,7 +30,7 @@ import {
 
 type ConfirmStep = "closed" | "designsWarning" | "phrase";
 
-export function TestDataResetPage() {
+function TestDataResetPageContent() {
   const { user } = useAuth();
   const canManage = permissionService.canManageSettings(user);
   const wipeUiEnabled = isOperationalWipeUiEnabled();
@@ -239,11 +240,22 @@ export function TestDataResetPage() {
                 id={`wipe-target-${option.id}`}
                 label={option.label}
                 name={`wipe-target-${option.id}`}
-                onChange={(event) =>
-                  setSelectedTargets((current) =>
-                    applyOperationalWipeTargetToggle(current, option.id, event.currentTarget.checked),
-                  )
-                }
+                onChange={(event) => {
+                  try {
+                    // Capture before setState — currentTarget can be null inside async updaters.
+                    const checked = event.currentTarget.checked;
+                    setSelectedTargets((current) =>
+                      applyOperationalWipeTargetToggle(current, option.id, checked),
+                    );
+                    setError(null);
+                  } catch (toggleError) {
+                    setError(
+                      toggleError instanceof Error
+                        ? toggleError.message
+                        : "Unable to update wipe target selection.",
+                    );
+                  }
+                }}
               />
               <p className="test-data-reset-target-description">{option.description}</p>
             </div>
@@ -259,20 +271,29 @@ export function TestDataResetPage() {
         {lastResult ? (
           <div className="test-data-reset-result" role="status">
             <h3 className="test-data-reset-subtitle">Last wipe result</h3>
-            <p className="test-data-reset-copy">Targets: {lastResult.targets.join(", ")}</p>
+            <p className="test-data-reset-copy">
+              Targets:{" "}
+              {(Array.isArray(lastResult.targets) ? lastResult.targets : []).join(", ") || "(none)"}
+            </p>
             <ul className="test-data-reset-list">
-              {Object.entries(lastResult.deleted).map(([collectionName, count]) => (
+              {Object.entries(
+                lastResult.deleted && typeof lastResult.deleted === "object"
+                  ? lastResult.deleted
+                  : {},
+              ).map(([collectionName, count]) => (
                 <li key={collectionName}>
                   {collectionName}: {count} deleted
                 </li>
               ))}
-              {lastResult.targets.includes("sequences") ||
-              lastResult.targets.includes("printRequests") ||
+              {(Array.isArray(lastResult.targets) ? lastResult.targets : []).includes("sequences") ||
+              (Array.isArray(lastResult.targets) ? lastResult.targets : []).includes(
+                "printRequests",
+              ) ||
               lastResult.internalSequenceReset ? (
                 <>
                   <li>
-                    Customer request sequences reset to 1: {lastResult.customersReset} customer
-                    {lastResult.customersReset === 1 ? "" : "s"} (totalPrintRequests set to 0)
+                    Customer request sequences reset to 1: {lastResult.customersReset ?? 0} customer
+                    {(lastResult.customersReset ?? 0) === 1 ? "" : "s"} (totalPrintRequests set to 0)
                   </li>
                   <li>
                     Internal counters/printRequests document:{" "}
@@ -280,20 +301,29 @@ export function TestDataResetPage() {
                   </li>
                 </>
               ) : null}
-              {lastResult.designsRequestStatsReset > 0 ? (
+              {(lastResult.designsRequestStatsReset ?? 0) > 0 ? (
                 <li>Design request stats reset: {lastResult.designsRequestStatsReset}</li>
               ) : null}
-              {lastResult.showsAllocationTotalsReset > 0 ||
-              lastResult.targets.includes("printRequests") ||
-              lastResult.targets.includes("showQueueAttachments") ? (
+              {(lastResult.showsAllocationTotalsReset ?? 0) > 0 ||
+              (Array.isArray(lastResult.targets) ? lastResult.targets : []).includes(
+                "printRequests",
+              ) ||
+              (Array.isArray(lastResult.targets) ? lastResult.targets : []).includes(
+                "showQueueAttachments",
+              ) ? (
                 <li>
-                  Upcoming show allocatedQuantity zeroed: {lastResult.showsAllocationTotalsReset} show
-                  {lastResult.showsAllocationTotalsReset === 1 ? "" : "s"}
+                  Upcoming show allocatedQuantity zeroed: {lastResult.showsAllocationTotalsReset ?? 0}{" "}
+                  show
+                  {(lastResult.showsAllocationTotalsReset ?? 0) === 1 ? "" : "s"}
                   {" "}(productionStatus full → open when applicable)
                 </li>
               ) : null}
-              {lastResult.storageFilesDeleted > 0 || lastResult.targets.includes("designs") ? (
-                <li>Storage files deleted: {lastResult.storageFilesDeleted}</li>
+              {(lastResult.storageFilesDeleted ?? 0) > 0 ||
+              (Array.isArray(lastResult.targets) ? lastResult.targets : []).includes("designs") ||
+              (Array.isArray(lastResult.targets) ? lastResult.targets : []).includes(
+                "customerUploads",
+              ) ? (
+                <li>Storage files deleted: {lastResult.storageFilesDeleted ?? 0}</li>
               ) : null}
             </ul>
             <p className="test-data-reset-copy">
@@ -377,7 +407,10 @@ export function TestDataResetPage() {
                   className="form-input"
                   disabled={isSubmitting}
                   id="test-data-reset-confirm-input"
-                  onChange={(event) => setConfirmationPhrase(event.currentTarget.value)}
+                  onChange={(event) => {
+                    const value = event.currentTarget.value;
+                    setConfirmationPhrase(value);
+                  }}
                   spellCheck={false}
                   type="text"
                   value={confirmationPhrase}
@@ -406,5 +439,13 @@ export function TestDataResetPage() {
         </div>
       ) : null}
     </main>
+  );
+}
+
+export function TestDataResetPage() {
+  return (
+    <TestDataResetErrorBoundary>
+      <TestDataResetPageContent />
+    </TestDataResetErrorBoundary>
   );
 }

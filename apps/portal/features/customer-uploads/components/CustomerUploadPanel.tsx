@@ -1,0 +1,366 @@
+'use client';
+
+import { useEffect, useRef, useState, type ChangeEvent, type DragEvent } from 'react';
+
+import { CUSTOMER_UPLOAD_MAX_CONCURRENT_FINALIZE } from '@fresh-prints/shared/constants/customerUpload/customerUploadLimits.constants';
+
+import { XIcon } from '../../shared/components/PortalIcons';
+import { useCustomerUploadBatch } from '../hooks/useCustomerUploadBatch';
+import { customerUploadService } from '../services/customerUploadService';
+
+interface CustomerUploadPanelProps {
+  onAttached: (printRequestId: string) => void;
+  onClose: () => void;
+}
+
+export function CustomerUploadPanel({ onAttached, onClose }: CustomerUploadPanelProps) {
+  const {
+    rows,
+    isProcessing,
+    isAttaching,
+    ownershipConfirmed,
+    catalogUseAcknowledged,
+    setOwnershipConfirmed,
+    setCatalogUseAcknowledged,
+    bannerError,
+    batchNotes,
+    readyCount,
+    failedCount,
+    uploadingCount,
+    processingCount,
+    canAttach,
+    addFiles,
+    removeRow,
+    retryFailed,
+    attachToRequest,
+    reset,
+  } = useCustomerUploadBatch();
+
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
+  const zipInputRef = useRef<HTMLInputElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [previewUrls, setPreviewUrls] = useState<Record<string, string | null>>({});
+
+  const isBusy = isProcessing || isAttaching;
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !isBusy) {
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isBusy, onClose]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadPreviews() {
+      const next: Record<string, string | null> = {};
+      await Promise.all(
+        rows.map(async (row) => {
+          if (row.phase !== 'ready' || !row.previewStoragePath) {
+            return;
+          }
+          next[row.localId] = await customerUploadService.getDownloadUrl(row.previewStoragePath);
+        }),
+      );
+      if (!cancelled) {
+        setPreviewUrls((current) => ({ ...current, ...next }));
+      }
+    }
+    void loadPreviews();
+    return () => {
+      cancelled = true;
+    };
+  }, [rows]);
+
+  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (files && files.length > 0) {
+      void addFiles(files);
+    }
+    event.target.value = '';
+  };
+
+  const handleDrop = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setIsDragging(false);
+    if (event.dataTransfer.files?.length) {
+      void addFiles(event.dataTransfer.files);
+    }
+  };
+
+  const handleAttach = async () => {
+    const printRequestId = await attachToRequest();
+    if (printRequestId) {
+      onAttached(printRequestId);
+      reset();
+    }
+  };
+
+  const handleClose = () => {
+    if (!isBusy) {
+      onClose();
+    }
+  };
+
+  return (
+    <div
+      aria-labelledby="portal-customer-upload-title"
+      aria-modal="true"
+      className="modal-overlay modal-overlay-blur portal-customer-upload-overlay"
+      onClick={handleClose}
+      role="dialog"
+    >
+      <div
+        className="modal-panel portal-customer-upload-modal"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <header className="modal-header portal-customer-upload-modal-header">
+          <div>
+            <h2 id="portal-customer-upload-title">Upload artwork</h2>
+            <p className="portal-muted">
+              Add PNG or WebP files, a folder, or one ZIP. Passing technical checks only means your
+              file can print — it is not Design Library approval.
+            </p>
+          </div>
+          <button
+            aria-label="Close"
+            className="modal-close-button"
+            disabled={isBusy}
+            onClick={handleClose}
+            type="button"
+          >
+            <XIcon size={14} />
+          </button>
+        </header>
+
+        <div className="modal-body portal-customer-upload-modal-body">
+          <div
+            className={`portal-customer-upload-dropzone${isDragging ? ' is-dragging' : ''}`}
+            onDragEnter={(event) => {
+              event.preventDefault();
+              setIsDragging(true);
+            }}
+            onDragLeave={(event) => {
+              event.preventDefault();
+              setIsDragging(false);
+            }}
+            onDragOver={(event) => event.preventDefault()}
+            onDrop={handleDrop}
+          >
+            <p>Drop files here, or choose:</p>
+            <div className="portal-customer-upload-actions">
+              <button
+                className="portal-button portal-button-secondary"
+                disabled={isBusy}
+                onClick={() => imageInputRef.current?.click()}
+                type="button"
+              >
+                Images
+              </button>
+              <button
+                className="portal-button portal-button-secondary"
+                disabled={isBusy}
+                onClick={() => folderInputRef.current?.click()}
+                type="button"
+              >
+                Folder
+              </button>
+              <button
+                className="portal-button portal-button-secondary"
+                disabled={isBusy}
+                onClick={() => zipInputRef.current?.click()}
+                type="button"
+              >
+                ZIP
+              </button>
+            </div>
+            <input
+              accept=".png,.webp,image/png,image/webp"
+              hidden
+              multiple
+              onChange={handleFileChange}
+              ref={imageInputRef}
+              type="file"
+            />
+            <input
+              accept=".png,.webp,image/png,image/webp"
+              hidden
+              // @ts-expect-error webkitdirectory is supported in Chromium browsers
+              webkitdirectory=""
+              multiple
+              onChange={handleFileChange}
+              ref={folderInputRef}
+              type="file"
+            />
+            <input
+              accept=".zip,application/zip"
+              hidden
+              onChange={handleFileChange}
+              ref={zipInputRef}
+              type="file"
+            />
+          </div>
+
+          {bannerError ? (
+            <p className="portal-error" role="alert">
+              {bannerError}
+            </p>
+          ) : null}
+
+          {batchNotes.length > 0 ? (
+            <ul className="portal-customer-upload-notes">
+              {batchNotes.map((note) => (
+                <li key={note}>{note}</li>
+              ))}
+            </ul>
+          ) : null}
+
+          {rows.length > 0 ? (
+            <div className="portal-customer-upload-summary" aria-live="polite">
+              <span>{uploadingCount} uploading</span>
+              <span>{processingCount} processing</span>
+              <span>{readyCount} ready</span>
+              <span>{failedCount} failed</span>
+              {isProcessing ? (
+                <span>Files continue in parallel (up to {CUSTOMER_UPLOAD_MAX_CONCURRENT_FINALIZE})</span>
+              ) : null}
+            </div>
+          ) : null}
+
+          <ul className="portal-customer-upload-file-list">
+            {rows.map((row) => (
+              <li className={`portal-customer-upload-file-row is-${row.phase}`} key={row.localId}>
+                <div className="portal-customer-upload-file-preview">
+                  {previewUrls[row.localId] ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img alt="" src={previewUrls[row.localId] ?? undefined} />
+                  ) : (
+                    <span className="portal-customer-upload-file-preview-fallback" aria-hidden>
+                      ART
+                    </span>
+                  )}
+                </div>
+
+                <div className="portal-customer-upload-file-main">
+                  <div className="portal-customer-upload-file-copy">
+                    <p className="portal-customer-upload-file-name" title={row.filename}>
+                      {row.filename}
+                    </p>
+                    <p className="portal-muted portal-customer-upload-stage">{row.progressLabel}</p>
+                    {row.phase === 'uploading' && typeof row.uploadPercent === 'number' ? (
+                      <div
+                        aria-valuemax={100}
+                        aria-valuemin={0}
+                        aria-valuenow={row.uploadPercent}
+                        className="portal-customer-upload-progress"
+                        role="progressbar"
+                      >
+                        <span style={{ width: `${row.uploadPercent}%` }} />
+                      </div>
+                    ) : null}
+                    {row.phase === 'validating' ||
+                    row.phase === 'processing' ||
+                    row.phase === 'uploaded' ? (
+                      <div
+                        aria-label="Server processing"
+                        className="portal-customer-upload-progress is-indeterminate"
+                        role="progressbar"
+                      >
+                        <span />
+                      </div>
+                    ) : null}
+                    {row.errorMessage ? <p className="portal-error">{row.errorMessage}</p> : null}
+                  </div>
+                </div>
+
+                {row.phase === 'queued' || row.phase === 'ready' || row.phase === 'failed' ? (
+                  <button
+                    className="portal-button portal-button-secondary portal-customer-upload-file-remove"
+                    disabled={
+                      isAttaching || (isProcessing && row.phase !== 'failed' && row.phase !== 'ready')
+                    }
+                    onClick={() => removeRow(row.localId)}
+                    type="button"
+                  >
+                    Remove
+                  </button>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+
+          {failedCount > 0 ? (
+            <button
+              className="portal-button portal-button-secondary"
+              disabled={isBusy}
+              onClick={() => void retryFailed()}
+              type="button"
+            >
+              Retry failed
+            </button>
+          ) : null}
+
+          <fieldset className="portal-customer-upload-confirmations">
+            <legend>Confirmations</legend>
+            <p className="portal-muted portal-customer-upload-confirm-help">
+              Confirm you have the right to print this artwork. You can also allow Fresh Prints to
+              consider it for our shared design library.
+            </p>
+            <label className="form-checkbox">
+              <input
+                checked={ownershipConfirmed}
+                disabled={isBusy}
+                onChange={(event) => setOwnershipConfirmed(event.target.checked)}
+                type="checkbox"
+              />
+              <span>I own this artwork or have permission to print it.</span>
+            </label>
+            <label className="form-checkbox">
+              <input
+                checked={catalogUseAcknowledged}
+                disabled={isBusy}
+                onChange={(event) => setCatalogUseAcknowledged(event.target.checked)}
+                type="checkbox"
+              />
+              <span>
+                Fresh Prints may use this artwork in our design library for other customers.
+              </span>
+            </label>
+          </fieldset>
+        </div>
+
+        <footer className="modal-footer portal-customer-upload-footer">
+          <button
+            className="portal-button portal-button-secondary"
+            disabled={isBusy}
+            onClick={handleClose}
+            type="button"
+          >
+            Cancel
+          </button>
+          <button
+            className="portal-button portal-button-primary"
+            disabled={!canAttach}
+            onClick={() => void handleAttach()}
+            type="button"
+          >
+            {isAttaching ? 'Adding…' : 'Add to my print request'}
+          </button>
+        </footer>
+      </div>
+    </div>
+  );
+}

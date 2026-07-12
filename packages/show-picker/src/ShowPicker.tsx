@@ -121,7 +121,22 @@ export function ShowPicker({ options, selectedId, onSelect, now = new Date(), cl
     () => new Set([...optionsByDateKey.keys()].filter((key) => key !== SHOW_CALENDAR_NO_DATE_KEY)),
     [optionsByDateKey],
   );
-  const earliestDateKey = useMemo(() => getEarliestShowDateKey(showDateKeys), [showDateKeys]);
+  const selectableDateKeys = useMemo(() => {
+    const keys = new Set<string>();
+    for (const [dateKey, dayOptions] of optionsByDateKey) {
+      if (dateKey === SHOW_CALENDAR_NO_DATE_KEY) {
+        continue;
+      }
+      if (dayOptions.some((option) => option.isSelectable !== false)) {
+        keys.add(dateKey);
+      }
+    }
+    return keys;
+  }, [optionsByDateKey]);
+  const earliestDateKey = useMemo(
+    () => getEarliestShowDateKey(selectableDateKeys.size > 0 ? selectableDateKeys : showDateKeys),
+    [selectableDateKeys, showDateKeys],
+  );
   const selectedOptionDateKey = useMemo(() => {
     if (!selectedId) {
       return null;
@@ -199,8 +214,12 @@ export function ShowPicker({ options, selectedId, onSelect, now = new Date(), cl
     [now, showDateKeys, viewMonth, viewYear],
   );
   const monthLabel = useMemo(() => formatCalendarMonthLabel(viewYear, viewMonth).label, [viewMonth, viewYear]);
-  const slotsForSelectedDate = selectedDateKey ? optionsByDateKey.get(selectedDateKey) ?? [] : [];
-  const unscheduledOptions = optionsByDateKey.get(SHOW_CALENDAR_NO_DATE_KEY) ?? [];
+  const slotsForSelectedDate = selectedDateKey
+    ? (optionsByDateKey.get(selectedDateKey) ?? []).filter((option) => option.isSelectable !== false)
+    : [];
+  const unscheduledOptions = (optionsByDateKey.get(SHOW_CALENDAR_NO_DATE_KEY) ?? []).filter(
+    (option) => option.isSelectable !== false,
+  );
 
   function handlePreviousMonth() {
     const next = shiftCalendarMonth(viewYear, viewMonth, -1);
@@ -215,8 +234,11 @@ export function ShowPicker({ options, selectedId, onSelect, now = new Date(), cl
   }
 
   function handleSelectDate(dateKey: string) {
+    if (!selectableDateKeys.has(dateKey)) {
+      return;
+    }
     setSelectedDateKey(dateKey);
-    const slots = optionsByDateKey.get(dateKey) ?? [];
+    const slots = (optionsByDateKey.get(dateKey) ?? []).filter((option) => option.isSelectable !== false);
     const defaultSlotId = getDefaultShowPickerOptionId(slots);
     if (defaultSlotId) {
       onSelect(defaultSlotId);
@@ -267,7 +289,8 @@ export function ShowPicker({ options, selectedId, onSelect, now = new Date(), cl
             <div className="show-picker-week" key={`week-${weekIndex}`} role="row">
               {week.map((day) => {
                 const isSelected = day.dateKey === selectedDateKey;
-                const isDisabled = !day.hasShows;
+                const dayHasSelectableShows = selectableDateKeys.has(day.dateKey);
+                const isDisabled = !day.hasShows || !dayHasSelectableShows;
                 const dayMarker = dayMarkerByDateKey.get(day.dateKey);
                 const markerClass = dayMarker ? `has-shows-${dayMarker}` : day.hasShows ? "has-shows-open" : "";
                 const dayClassName = [
@@ -275,6 +298,7 @@ export function ShowPicker({ options, selectedId, onSelect, now = new Date(), cl
                   day.isCurrentMonth ? "" : "is-outside-month",
                   day.isToday ? "is-today" : "",
                   day.hasShows ? "has-shows" : "",
+                  day.hasShows && !dayHasSelectableShows ? "is-past-only" : "",
                   markerClass,
                   isSelected ? "is-selected" : "",
                 ]
@@ -286,9 +310,11 @@ export function ShowPicker({ options, selectedId, onSelect, now = new Date(), cl
                     ? ", full shows"
                     : dayMarker === "completed"
                       ? ", completed shows"
-                      : day.hasShows
-                        ? ", has shows"
-                        : ", no shows";
+                      : day.hasShows && !dayHasSelectableShows
+                        ? ", past shows"
+                        : day.hasShows
+                          ? ", has shows"
+                          : ", no shows";
 
                 return (
                   <button

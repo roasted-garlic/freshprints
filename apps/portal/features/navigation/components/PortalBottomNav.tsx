@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 import { usePortalPrintRequests } from '../../print-requests/context/PortalPrintRequestContext';
+import type { PortalRequestDetailFrom } from '../../print-requests/utils/portalRequestDetailReturn';
 import { PlusIcon } from '../../shared/components/PortalIcons';
 import { portalNavItems, resolveActivePortalNavItem } from '../constants/portalNavItems';
 import { PortalNavIcon } from './PortalNavIcon';
@@ -12,6 +13,19 @@ const BOTTOM_NAV_LABELS: Record<string, string> = {
   designs: 'Home',
   requests: 'Requests',
 };
+
+function resolveStartRequestFrom(pathname: string): PortalRequestDetailFrom {
+  if (pathname.startsWith('/catalog/library')) {
+    return 'library';
+  }
+  if (pathname.startsWith('/catalog')) {
+    return 'discover';
+  }
+  if (pathname.startsWith('/requests')) {
+    return 'working';
+  }
+  return 'discover';
+}
 
 export function PortalBottomNav() {
   const pathname = usePathname();
@@ -49,7 +63,11 @@ export function PortalBottomNav() {
         aria-label={isCreating ? 'Starting print request' : 'Start print request'}
         className="portal-bottom-nav-fab"
         disabled={isCreating}
-        onClick={handleStartRequestClick}
+        onClick={() =>
+          handleStartRequestClick({
+            from: resolveStartRequestFrom(pathname),
+          })
+        }
         type="button"
       >
         <PlusIcon size={24} />

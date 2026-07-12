@@ -981,6 +981,20 @@ Signed off: `docs/workflow/reviews/2026-07-08-phase-8-portal-closeout-signoff.md
 
 Production App Hosting deploy to a live customer URL is a **separate** human checkpoint — not required for Phase 8 documentation closeout.
 
+### Phase 8 fast-follow (in progress)
+
+**Customer-Provided Request Artwork** — Portal customers upload transparent PNG/WebP for their one working print request; Studio `/imports` staff intake may promote to AI Review. Separate from catalog until staff action. **Not** Phase 9 Custom Request Q&A (`customRequests`). Plan: `docs/workflow/plans/2026-07-11-portal-customer-artwork-upload-plan.md` (ADR-FP-073).
+
+- Sub-phase A: shared contracts — **complete**
+- Sub-phase B: trusted backend + rules/indexes — **complete** on `fresh-prints-dev` (deploy + smoke 15/15)
+- Sub-phase C: Portal upload UI — **complete** on `fresh-prints-dev` (attach + UI + smoke 13/13)
+- Sub-phase D: Print request / show / gang sheet / export source compatibility — **complete** (smoke 7/7)
+- Sub-phase E: Studio `/imports` customer-upload intake — **complete** (smoke 16/16)
+- Sub-phase F: Promote → AI Review → Design Library verification — **complete** (smoke 12/12)
+- Sub-phase G: Cleanup / wipe target / hardening / E2E / parent signoff — **next**
+- UX remediation r6 (2026-07-12): upload aspect lock, Uploaded badge, selection-mode upload CTA, past-show calendar highlights — in test
+- **Deferred:** always-on working request / always-in-selection “immersive browse” redesign (good direction; not a small patch — follow-up phase after artwork upload signoff)
+
 Goal:
 
 Registered customers browse the approved catalog and manage print requests on **Fresh Prints Portal** — a mobile-first responsive web application (phones, tablets, desktop browsers).
