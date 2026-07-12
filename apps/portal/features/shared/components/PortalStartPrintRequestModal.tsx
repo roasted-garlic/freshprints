@@ -70,9 +70,9 @@ export function PortalStartPrintRequestModal({
         <div className="modal-body">
           {step === 'confirm' ? (
             <p className="portal-muted portal-confirm-modal-message">
-              A print request holds designs from the Design Library, artwork you upload, or both.
-              Uploaded artwork stays on your request only — it is not added to the shared Design
-              Library. Next you will choose whether to upload or browse first.
+              A print request is your list of designs for Fresh Prints to print — from the Design
+              Library, artwork you upload, or both. Next you will choose whether to upload or browse
+              first; you can always add more later.
             </p>
           ) : (
             <p className="portal-muted portal-confirm-modal-message">

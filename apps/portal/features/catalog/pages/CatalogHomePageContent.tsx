@@ -15,6 +15,7 @@ import {
 import { CatalogDesignCard } from '../components/CatalogDesignCard';
 import { CatalogDesignDetailsModal } from '../components/CatalogDesignDetailsModal';
 import { CatalogDiscoveryCarousel } from '../components/CatalogDiscoveryCarousel';
+import { CatalogRequestWorkflowHint } from '../components/CatalogRequestWorkflowHint';
 import { useCatalogCategories } from '../hooks/useCatalogCategories';
 import { useCatalogDesigns } from '../hooks/useCatalogDesigns';
 import type { CatalogDesign } from '../types/catalog.types';
@@ -193,14 +194,7 @@ export function CatalogHomePageContent() {
         </div>
       </header>
 
-      <aside className="portal-catalog-request-workflow-hint" role="note">
-        <p className="portal-catalog-request-workflow-hint-title">How print requests work</p>
-        <p className="portal-catalog-request-workflow-hint-body">
-          A print request can include designs from the Design Library, artwork you upload yourself, or
-          both. Uploaded artwork is for your request only — it is not automatically added to the shared
-          Design Library.
-        </p>
-      </aside>
+      <CatalogRequestWorkflowHint />
 
       {error ? (
         <p className="portal-error" role="alert">

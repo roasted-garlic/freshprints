@@ -53,15 +53,40 @@
   width: 100%;
   max-width: none;
   margin: 0 0 1.25rem;
-  padding: 0.9rem 1.1rem;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   background: var(--color-bg-secondary);
   line-height: 1.5;
+  overflow: hidden;
+}
+
+.portal-catalog-request-workflow-hint-summary {
+  align-items: center;
+  color: var(--color-text-primary);
+  cursor: pointer;
+  display: flex;
+  gap: 0.75rem;
+  justify-content: space-between;
+  list-style: none;
+  padding: 0.9rem 1.1rem;
+  user-select: none;
+}
+
+.portal-catalog-request-workflow-hint-summary::-webkit-details-marker {
+  display: none;
+}
+
+.portal-catalog-request-workflow-hint-summary:hover {
+  color: var(--color-text-primary);
+}
+
+.portal-catalog-request-workflow-hint-summary:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--color-focus-ring);
+  outline: none;
 }
 
 .portal-catalog-request-workflow-hint-title {
-  margin: 0 0 0.35rem;
+  margin: 0;
   font-size: 0.8125rem;
   font-weight: 600;
   letter-spacing: 0.02em;
@@ -69,10 +94,36 @@
   color: var(--color-text-primary);
 }
 
+.portal-catalog-request-workflow-hint-chevron {
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+  transition: transform var(--transition-fast);
+}
+
+.portal-catalog-request-workflow-hint[open] .portal-catalog-request-workflow-hint-chevron {
+  transform: rotate(180deg);
+}
+
+.portal-catalog-request-workflow-hint-content {
+  border-top: 1px solid var(--color-border);
+  padding: 0.85rem 1.1rem 1rem;
+}
+
 .portal-catalog-request-workflow-hint-body {
   margin: 0;
   font-size: 0.9375rem;
   color: var(--color-text-secondary);
+}
+
+.portal-catalog-request-workflow-hint-steps {
+  margin: 0.65rem 0 0;
+  padding-left: 1.25rem;
+  font-size: 0.9375rem;
+  color: var(--color-text-secondary);
+}
+
+.portal-catalog-request-workflow-hint-steps li + li {
+  margin-top: 0.35rem;
 }
 
 .portal-catalog-topbar-actions {
