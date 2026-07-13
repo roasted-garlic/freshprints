@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
-import { ChevronDown, Download, Pause, Play, Plus, Settings, Upload, WandSparkles, X } from "lucide-react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { ChevronDown, Download, ExternalLink, Pause, Play, Plus, Settings, Upload, WandSparkles, X } from "lucide-react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 import { Badge } from "../../../shared/components/Badge";
 import { Button } from "../../../shared/components/Button";
@@ -35,6 +35,7 @@ import { useWhatnotShowImport, type WhatnotShowImportSummary } from "../hooks/us
 import { usePrintRequests } from "../../print-requests/hooks/usePrintRequests";
 import { usePrintRequestAllocationTotals } from "../../print-requests/hooks/usePrintRequestAllocationTotals";
 import { usePrintRequestDetails } from "../../print-requests/hooks/usePrintRequestDetails";
+import { getPrintRequestsPath } from "../../print-requests/constants/printRequestRoutes";
 import { AddToShowModal } from "../../print-requests/components/AddToShowModal";
 import { ExportShowConfirmModal } from "../components/ExportShowConfirmModal";
 import { ExportGangSheetConfirmModal } from "../components/ExportGangSheetConfirmModal";
@@ -60,6 +61,7 @@ import {
 } from "@fresh-prints/shared/utils/showCapacityDisplay";
 import { canRemoveRequestFromShow } from "@fresh-prints/shared/utils/showQueueEditability";
 import { isPrintRequestFullyPrinted } from "@fresh-prints/shared/utils/printRequestQueueState";
+import { derivePrintRequestListTab } from "@fresh-prints/shared/utils/printRequestListGrouping";
 import { parseDateTimeInputToTimestamp } from "../utils/upcomingShowDateTimeInput";
 import {
   formatUpcomingShowTimestampLabel,
@@ -69,7 +71,11 @@ import {
   shouldShowUpcomingShowScheduleStatusBadge,
 } from "../utils/upcomingShowDisplay";
 import { getShowAllocationStatusBadgeVariant } from "../utils/showAllocationDisplay";
-import { UPCOMING_SHOW_ID_QUERY_PARAM, getUpcomingShowsPath } from "../constants/upcomingShowRoutes";
+import {
+  UPCOMING_SHOW_ID_QUERY_PARAM,
+  UPCOMING_SHOW_REQUEST_ID_QUERY_PARAM,
+  getUpcomingShowsPath,
+} from "../constants/upcomingShowRoutes";
 
 interface CreateShowFormState {
   whatnotUrl: string;
@@ -144,6 +150,7 @@ export function UpcomingShowsPage() {
   const hasHydratedFromQueryRef = useRef(false);
 
   const selectedShowIdParam = searchParams.get(UPCOMING_SHOW_ID_QUERY_PARAM);
+  const highlightedRequestIdParam = searchParams.get(UPCOMING_SHOW_REQUEST_ID_QUERY_PARAM)?.trim() || null;
 
   useEffect(() => {
     setConfirmingRemoveRequestId(null);
@@ -332,6 +339,27 @@ export function UpcomingShowsPage() {
 
   const { allocations, reloadAllocations } = useShowAllocations(selectedShowId);
   const requestGroups = useMemo(() => groupAllocationsByRequest(allocations), [allocations]);
+
+  useEffect(() => {
+    if (!highlightedRequestIdParam || requestGroups.length === 0) {
+      return;
+    }
+
+    const hasTarget = requestGroups.some((group) => group.printRequestId === highlightedRequestIdParam);
+    if (!hasTarget) {
+      return;
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      const target = document.querySelector<HTMLElement>(
+        `[data-print-request-id="${CSS.escape(highlightedRequestIdParam)}"]`,
+      );
+      target?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [highlightedRequestIdParam, requestGroups, selectedShowId]);
+
   const printRequestIdsAlreadyOnSelectedShow = useMemo(
     () =>
       new Set(
@@ -1135,11 +1163,40 @@ export function UpcomingShowsPage() {
                       const isConfirmingRemove = confirmingRemoveRequestId === group.printRequestId;
                       const canRemove =
                         !isSelectedShowPast && canRemoveRequestFromShow(selectedShow.productionStatus);
+                      const isHighlighted = highlightedRequestIdParam === group.printRequestId;
+                      const requestSummary = summariesByRequestId[group.printRequestId] ?? {
+                        totalQuantity: 0,
+                        uniqueDesignCount: 0,
+                      };
+                      const requestAllocationTotals = allocationTotalsByRequestId[group.printRequestId] ?? {
+                        totalAllocatedQuantity: 0,
+                        totalInProgressQuantity: 0,
+                        totalPrintedQuantity: 0,
+                      };
+                      const matchedRequest = requests.find((request) => request.id === group.printRequestId);
+                      const requestTab = derivePrintRequestListTab({
+                        totalRequestedQuantity: requestSummary.totalQuantity,
+                        totalAllocatedQuantity: requestAllocationTotals.totalAllocatedQuantity,
+                        totalInProgressQuantity: requestAllocationTotals.totalInProgressQuantity,
+                        totalPrintedQuantity: requestAllocationTotals.totalPrintedQuantity,
+                        status: matchedRequest?.status ?? "active",
+                      });
+                      const printRequestHref = getPrintRequestsPath({
+                        tab: requestTab,
+                        requestId: group.printRequestId,
+                      });
 
                       return (
-                        <div className="show-allocation-row" key={group.printRequestId}>
-                          <div>
-                            <strong>{group.requestNameSnapshot}</strong>
+                        <div
+                          className={`show-allocation-row${isHighlighted ? " is-highlighted" : ""}`}
+                          data-print-request-id={group.printRequestId}
+                          key={group.printRequestId}
+                        >
+                          <div className="show-allocation-row-copy">
+                            <Link className="show-allocation-row-link" to={printRequestHref}>
+                              <strong>{group.requestNameSnapshot}</strong>
+                              <ExternalLink aria-hidden="true" size={12} strokeWidth={2.2} />
+                            </Link>
                             <p>
                               {group.allocations.length} Design{group.allocations.length === 1 ? "" : "s"} |{" "}
                               {totalAllocated} Item{totalAllocated === 1 ? "" : "s"}

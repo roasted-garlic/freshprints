@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useAuth } from "../../auth/hooks/useAuth";
+import {
+  customerUploadReadService,
+  type StudioCustomerUploadSummary,
+} from "../../customer-uploads/services/customerUploadReadService";
 import { permissionService } from "../../permissions/services/permissionService";
 import { printRequestService } from "../services/printRequestService";
 import { sortPrintRequestItemsForDisplay } from "../utils/printRequestQueryPlanning";
@@ -9,6 +13,7 @@ import type { PrintRequest, PrintRequestItem } from "@fresh-prints/shared/types/
 interface PrintRequestDetailsState {
   printRequest: PrintRequest | null;
   items: PrintRequestItem[];
+  uploadSummaries: Map<string, StudioCustomerUploadSummary | null>;
   error: string | null;
   isLoading: boolean;
   loadedRequestId: string | null;
@@ -17,6 +22,7 @@ interface PrintRequestDetailsState {
 const initialState: PrintRequestDetailsState = {
   printRequest: null,
   items: [],
+  uploadSummaries: new Map(),
   error: null,
   isLoading: true,
   loadedRequestId: null,
@@ -24,6 +30,32 @@ const initialState: PrintRequestDetailsState = {
 
 interface LoadPrintRequestDetailsOptions {
   silent?: boolean;
+}
+
+async function loadUploadSummariesForItems(
+  user: Parameters<typeof customerUploadReadService.getUploadById>[0],
+  items: PrintRequestItem[],
+): Promise<Map<string, StudioCustomerUploadSummary | null>> {
+  const uploadIds = [
+    ...new Set(
+      items
+        .map((item) => item.customerUploadId?.trim())
+        .filter((uploadId): uploadId is string => Boolean(uploadId)),
+    ),
+  ];
+
+  const summaries = await Promise.all(
+    uploadIds.map(async (uploadId) => {
+      try {
+        const upload = await customerUploadReadService.getUploadById(user, uploadId);
+        return [uploadId, upload] as const;
+      } catch {
+        return [uploadId, null] as const;
+      }
+    }),
+  );
+
+  return new Map(summaries);
 }
 
 export function usePrintRequestDetails(printRequestId: string | null) {
@@ -35,7 +67,14 @@ export function usePrintRequestDetails(printRequestId: string | null) {
     const requestSequence = ++loadSequenceRef.current;
 
     if (!user || !permissionService.canViewPrintRequests(user) || !printRequestId) {
-      setState({ printRequest: null, items: [], error: null, isLoading: false, loadedRequestId: null });
+      setState({
+        printRequest: null,
+        items: [],
+        uploadSummaries: new Map(),
+        error: null,
+        isLoading: false,
+        loadedRequestId: null,
+      });
       return;
     }
 
@@ -51,11 +90,21 @@ export function usePrintRequestDetails(printRequestId: string | null) {
         printRequestService.listPrintRequestItems(user, printRequestId),
       ]);
 
+      const sortedItems = sortPrintRequestItemsForDisplay(items);
+      const uploadSummaries = await loadUploadSummariesForItems(user, sortedItems);
+
       if (requestSequence !== loadSequenceRef.current) {
         return;
       }
 
-      setState({ printRequest, items: sortPrintRequestItemsForDisplay(items), error: null, isLoading: false, loadedRequestId: printRequestId });
+      setState({
+        printRequest,
+        items: sortedItems,
+        uploadSummaries,
+        error: null,
+        isLoading: false,
+        loadedRequestId: printRequestId,
+      });
     } catch (error) {
       if (requestSequence !== loadSequenceRef.current) {
         return;
@@ -64,6 +113,7 @@ export function usePrintRequestDetails(printRequestId: string | null) {
       setState({
         printRequest: null,
         items: [],
+        uploadSummaries: new Map(),
         error: error instanceof Error ? error.message : "Unable to load print request details.",
         isLoading: false,
         loadedRequestId: printRequestId,
@@ -106,7 +156,17 @@ export function usePrintRequestDetails(printRequestId: string | null) {
           }
         : currentState.printRequest,
     }));
-  }, []);
+
+    if (item.customerUploadId && user) {
+      void customerUploadReadService.getUploadById(user, item.customerUploadId).then((upload) => {
+        setState((currentState) => {
+          const next = new Map(currentState.uploadSummaries);
+          next.set(item.customerUploadId!, upload);
+          return { ...currentState, uploadSummaries: next };
+        });
+      });
+    }
+  }, [user]);
 
   const insertItemAfter = useCallback((afterItemId: string, item: PrintRequestItem) => {
     setState((currentState) => {
@@ -130,7 +190,17 @@ export function usePrintRequestDetails(printRequestId: string | null) {
           : currentState.printRequest,
       };
     });
-  }, []);
+
+    if (item.customerUploadId && user) {
+      void customerUploadReadService.getUploadById(user, item.customerUploadId).then((upload) => {
+        setState((currentState) => {
+          const next = new Map(currentState.uploadSummaries);
+          next.set(item.customerUploadId!, upload);
+          return { ...currentState, uploadSummaries: next };
+        });
+      });
+    }
+  }, [user]);
 
   const removeItem = useCallback((itemId: string) => {
     setState((currentState) => ({

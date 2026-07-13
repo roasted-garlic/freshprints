@@ -1067,7 +1067,8 @@
   .portal-app-header {
     display: flex;
     justify-content: space-between;
-    position: relative;
+    position: sticky;
+    top: 0;
   }
 
   .portal-app-header-start {
@@ -1104,6 +1105,27 @@
   /* Desktop uses the sidebar; hamburger is mobile-only. */
   .portal-app-header-menu-button {
     display: none;
+  }
+
+  .portal-app-header {
+    position: sticky;
+  }
+
+  .portal-app-header-brand {
+    left: 50%;
+    max-width: min(18rem, calc(100% - 16rem));
+    pointer-events: none;
+    position: absolute;
+    text-align: center;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: max-content;
+  }
+
+  .portal-app-header-actions {
+    margin-left: auto;
+    position: relative;
+    z-index: 1;
   }
 
   .portal-sidebar-collapse-button {

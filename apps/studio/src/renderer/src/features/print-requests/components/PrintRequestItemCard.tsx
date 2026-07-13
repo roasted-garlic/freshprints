@@ -16,8 +16,19 @@ import {
 } from "@fresh-prints/shared/utils/printRequestItemSizing";
 import type { UpdatePrintRequestItemInput } from "../services/printRequestService";
 
+export interface PrintRequestItemUploadSummary {
+  title: string;
+  previewPath?: string | null;
+  thumbnailPath?: string | null;
+  printWidthInches?: number | null;
+  printHeightInches?: number | null;
+  widthPx?: number | null;
+  heightPx?: number | null;
+}
+
 interface PrintRequestItemCardProps {
   design?: Design;
+  upload?: PrintRequestItemUploadSummary | null;
   item: PrintRequestItem;
   onRemove: (item: PrintRequestItem) => void;
   onDuplicate: (item: PrintRequestItem) => void;
@@ -31,12 +42,40 @@ interface PrintRequestItemCardProps {
   readOnly?: boolean;
 }
 
-function resolveInitialWidth(item: PrintRequestItem, design?: Design): number {
-  return item.printWidthInches ?? design?.printWidthInches ?? 1;
+function resolveInitialWidth(
+  item: PrintRequestItem,
+  design?: Design,
+  upload?: PrintRequestItemUploadSummary | null,
+): number {
+  return item.printWidthInches ?? design?.printWidthInches ?? upload?.printWidthInches ?? 1;
 }
 
-function resolveInitialHeight(item: PrintRequestItem, design?: Design): number {
-  return item.printHeightInches ?? design?.printHeightInches ?? 1;
+function resolveInitialHeight(
+  item: PrintRequestItem,
+  design?: Design,
+  upload?: PrintRequestItemUploadSummary | null,
+): number {
+  return item.printHeightInches ?? design?.printHeightInches ?? upload?.printHeightInches ?? 1;
+}
+
+function resolveAspectPixels(
+  design?: Design,
+  upload?: PrintRequestItemUploadSummary | null,
+): { width: number; height: number } | null {
+  if (typeof design?.width === "number" && typeof design.height === "number") {
+    return { width: design.width, height: design.height };
+  }
+
+  if (
+    typeof upload?.widthPx === "number" &&
+    upload.widthPx > 0 &&
+    typeof upload?.heightPx === "number" &&
+    upload.heightPx > 0
+  ) {
+    return { width: upload.widthPx, height: upload.heightPx };
+  }
+
+  return null;
 }
 
 function formatEditableNumber(value: number): string {
@@ -81,6 +120,7 @@ function buildItemSignature(quantity: number, width: number, height: number): st
 
 export function PrintRequestItemCard({
   design,
+  upload = null,
   item,
   onRemove,
   onDuplicate,
@@ -88,28 +128,43 @@ export function PrintRequestItemCard({
   onAutosaveStateChange,
   readOnly,
 }: PrintRequestItemCardProps) {
-  const title = design?.title ?? item.designId;
-  const thumbPath = design?.thumbnailPath;
-  const previewPath = design?.previewPath ?? thumbPath;
+  const isUploadItem = item.sourceType === "customer_upload" || Boolean(item.customerUploadId);
+  const title =
+    design?.title ??
+    upload?.title ??
+    item.titleSnapshot ??
+    (isUploadItem ? "Uploaded artwork" : item.designId ?? "Design");
+  const previewPath =
+    design?.previewPath ??
+    design?.thumbnailPath ??
+    upload?.previewPath ??
+    upload?.thumbnailPath ??
+    undefined;
   const [quantityInput, setQuantityInput] = useState(String(item.quantity));
-  const [printWidthInput, setPrintWidthInput] = useState(formatEditableNumber(resolveInitialWidth(item, design)));
-  const [printHeightInput, setPrintHeightInput] = useState(formatEditableNumber(resolveInitialHeight(item, design)));
+  const [printWidthInput, setPrintWidthInput] = useState(
+    formatEditableNumber(resolveInitialWidth(item, design, upload)),
+  );
+  const [printHeightInput, setPrintHeightInput] = useState(
+    formatEditableNumber(resolveInitialHeight(item, design, upload)),
+  );
   const [isConfirmingRemove, setIsConfirmingRemove] = useState(false);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const { url: previewUrl } = useDesignDerivativeUrl(previewPath);
-  const lastSavedSignatureRef = useRef(buildItemSignature(
-    item.quantity,
-    resolveInitialWidth(item, design),
-    resolveInitialHeight(item, design),
-  ));
+  const lastSavedSignatureRef = useRef(
+    buildItemSignature(
+      item.quantity,
+      resolveInitialWidth(item, design, upload),
+      resolveInitialHeight(item, design, upload),
+    ),
+  );
   const saveDraftRef = useRef<() => Promise<void>>(async () => undefined);
   const saveDebounceRef = useRef<number | null>(null);
   const saveInFlightRef = useRef(false);
   const saveQueuedRef = useRef(false);
 
   useEffect(() => {
-    const nextWidth = resolveInitialWidth(item, design);
-    const nextHeight = resolveInitialHeight(item, design);
+    const nextWidth = resolveInitialWidth(item, design, upload);
+    const nextHeight = resolveInitialHeight(item, design, upload);
     const incomingSignature = buildItemSignature(item.quantity, nextWidth, nextHeight);
 
     if (incomingSignature === lastSavedSignatureRef.current) {
@@ -122,24 +177,25 @@ export function PrintRequestItemCard({
     setIsConfirmingRemove(false);
     setIsLightboxOpen(false);
     lastSavedSignatureRef.current = incomingSignature;
-  }, [design, item]);
+  }, [design, item, upload]);
 
   const parsedQuantity = parsePositiveIntegerInput(quantityInput);
   const parsedPrintWidthInches = parsePositiveDecimalInput(printWidthInput);
   const parsedPrintHeightInches = parsePositiveDecimalInput(printHeightInput);
+  const aspectPixels = useMemo(() => resolveAspectPixels(design, upload), [design, upload]);
 
   const sizeAssessment = useMemo(() => {
-    if (typeof design?.width !== "number" || typeof design.height !== "number") {
+    if (!aspectPixels) {
       return null;
     }
 
     return assessPrintRequestItemSize({
-      pixelWidth: design.width,
-      pixelHeight: design.height,
+      pixelWidth: aspectPixels.width,
+      pixelHeight: aspectPixels.height,
       printWidthInches: parsedPrintWidthInches ?? Number.NaN,
       printHeightInches: parsedPrintHeightInches ?? Number.NaN,
     });
-  }, [design, parsedPrintHeightInches, parsedPrintWidthInches]);
+  }, [aspectPixels, parsedPrintHeightInches, parsedPrintWidthInches]);
 
   const sizeLabel =
     parsedPrintWidthInches !== null && parsedPrintHeightInches !== null
@@ -187,9 +243,11 @@ export function PrintRequestItemCard({
     setPrintWidthInput(nextWidthInput);
 
     const nextWidth = parsePositiveDecimalInput(nextWidthInput);
-    if (typeof design?.width === "number" && typeof design.height === "number" && nextWidth !== null) {
+    if (aspectPixels && nextWidth !== null) {
       setPrintHeightInput(
-        formatEditableNumber(calculateLockedHeightFromWidth(design.width, design.height, nextWidth)),
+        formatEditableNumber(
+          calculateLockedHeightFromWidth(aspectPixels.width, aspectPixels.height, nextWidth),
+        ),
       );
     }
   }
@@ -198,9 +256,11 @@ export function PrintRequestItemCard({
     setPrintHeightInput(nextHeightInput);
 
     const nextHeight = parsePositiveDecimalInput(nextHeightInput);
-    if (typeof design?.width === "number" && typeof design.height === "number" && nextHeight !== null) {
+    if (aspectPixels && nextHeight !== null) {
       setPrintWidthInput(
-        formatEditableNumber(calculateLockedWidthFromHeight(design.width, design.height, nextHeight)),
+        formatEditableNumber(
+          calculateLockedWidthFromHeight(aspectPixels.width, aspectPixels.height, nextHeight),
+        ),
       );
     }
   }

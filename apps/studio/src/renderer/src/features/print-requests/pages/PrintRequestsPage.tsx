@@ -191,6 +191,7 @@ export function PrintRequestsPage() {
   const isLoadedSelectedRequest = requestDetails.loadedRequestId === selectedRequestId;
   const selectedRequest = isLoadedSelectedRequest ? requestDetails.printRequest : null;
   const requestItems = isLoadedSelectedRequest ? requestDetails.items : [];
+  const uploadSummariesById = isLoadedSelectedRequest ? requestDetails.uploadSummaries : new Map();
   const requestError = isLoadedSelectedRequest ? requestDetails.error : null;
   const isRequestLoading = requestDetails.isLoading || (Boolean(selectedRequestId) && !isLoadedSelectedRequest);
   const reloadPrintRequest = requestDetails.reloadPrintRequest;
@@ -924,7 +925,10 @@ export function PrintRequestsPage() {
                                   className="print-requests-show-queue-pill"
                                   key={group.upcomingShowId}
                                   title={showTitle}
-                                  to={getUpcomingShowsPath({ showId: group.upcomingShowId })}
+                                  to={getUpcomingShowsPath({
+                                    showId: group.upcomingShowId,
+                                    requestId: visibleSelectedRequest?.id,
+                                  })}
                                 >
                                   <span>{groupQuantity} qty</span>
                                   <span>&middot;</span>
@@ -1016,7 +1020,30 @@ export function PrintRequestsPage() {
                 ) : (
                   <div className="print-requests-item-editor-grid">
                     {requestItems.map((item) => {
-                      const design = designById.get(item.designId);
+                      const design = item.designId ? designById.get(item.designId) : undefined;
+                      const uploadDoc = item.customerUploadId
+                        ? uploadSummariesById.get(item.customerUploadId)
+                        : null;
+                      const upload = uploadDoc
+                        ? {
+                            title:
+                              uploadDoc.originalFilename?.trim() ||
+                              item.titleSnapshot?.trim() ||
+                              "Uploaded artwork",
+                            previewPath: uploadDoc.previewStoragePath,
+                            thumbnailPath: uploadDoc.thumbnailStoragePath,
+                            printWidthInches: uploadDoc.printWidthInches,
+                            printHeightInches: uploadDoc.printHeightInches,
+                            widthPx: uploadDoc.widthPx,
+                            heightPx: uploadDoc.heightPx,
+                          }
+                        : item.titleSnapshot
+                          ? {
+                              title: item.titleSnapshot,
+                              previewPath: null,
+                              thumbnailPath: null,
+                            }
+                          : null;
 
                       return (
                         <PrintRequestItemCard
@@ -1028,6 +1055,7 @@ export function PrintRequestsPage() {
                           onRemove={handleRemoveItem}
                           onUpdate={handleUpdateItem}
                           readOnly={isSelectedRequestDetailLocked}
+                          upload={upload}
                         />
                       );
                     })}
