@@ -9,7 +9,7 @@ import {
 } from '@fresh-prints/shared/constants/customerUpload/customerUploadLimits.constants';
 import { formatFileSize } from '@fresh-prints/shared/utils/formatFileSize';
 
-import { XIcon } from '../../shared/components/PortalIcons';
+import { ArrowLeftIcon, PlusIcon, XIcon } from '../../shared/components/PortalIcons';
 import { useCustomerUploadBatch } from '../hooks/useCustomerUploadBatch';
 import { customerUploadService } from '../services/customerUploadService';
 
@@ -373,19 +373,21 @@ export function CustomerUploadPanel({
 
         <footer className="modal-footer portal-customer-upload-footer">
           <button
-            className="portal-button portal-button-secondary"
+            className="portal-button portal-button-secondary portal-button-leading-icon"
             disabled={isBusy}
             onClick={handleClose}
             type="button"
           >
+            <ArrowLeftIcon size={16} />
             {variant === 'embedded' ? 'Back' : 'Cancel'}
           </button>
           <button
-            className="portal-button portal-button-primary"
+            className="portal-button portal-button-primary portal-button-leading-icon"
             disabled={!canAttach}
             onClick={() => void handleAttach()}
             type="button"
           >
+            <PlusIcon size={16} />
             {isAttaching ? 'Adding…' : 'Add to Current Request'}
           </button>
         </footer>

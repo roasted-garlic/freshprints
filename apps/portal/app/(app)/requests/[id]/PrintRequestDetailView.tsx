@@ -294,10 +294,16 @@ export default function PrintRequestDetailView() {
           <div className="portal-request-detail-header-actions">
             <Link
               className="portal-button portal-button-secondary portal-button-leading-icon portal-request-detail-add-button"
-              href={buildRequestArtworkHref({ requestId: printRequest.id, from: returnFrom ?? 'library' })}
+              href={buildRequestArtworkHref({
+                requestId: printRequest.id,
+                from: returnFrom ?? 'library',
+                returnTo: `/requests/${printRequest.id}${
+                  searchParams.toString() ? `?${searchParams.toString()}` : ''
+                }`,
+              })}
             >
               <ImagePlusIcon />
-              Upload Artwork
+              Upload Designs
             </Link>
             <Link
               className="portal-button portal-button-secondary portal-button-leading-icon portal-request-detail-add-button"
@@ -318,10 +324,16 @@ export default function PrintRequestDetailView() {
           <div className="portal-request-detail-header-actions">
             <Link
               className="portal-button portal-button-secondary portal-button-leading-icon portal-request-detail-add-button"
-              href={buildRequestArtworkHref({ requestId: printRequest.id, from: returnFrom ?? 'library' })}
+              href={buildRequestArtworkHref({
+                requestId: printRequest.id,
+                from: returnFrom ?? 'library',
+                returnTo: `/requests/${printRequest.id}${
+                  searchParams.toString() ? `?${searchParams.toString()}` : ''
+                }`,
+              })}
             >
               <ImagePlusIcon />
-              Upload Artwork
+              Upload Designs
             </Link>
             <Link
               className="portal-button portal-button-primary portal-button-leading-icon portal-request-detail-add-button"
@@ -372,10 +384,13 @@ export default function PrintRequestDetailView() {
                 href={buildRequestArtworkHref({
                   requestId: printRequest.id,
                   from: returnFrom ?? 'library',
+                  returnTo: `/requests/${printRequest.id}${
+                    searchParams.toString() ? `?${searchParams.toString()}` : ''
+                  }`,
                 })}
               >
                 <ImagePlusIcon />
-                Upload Artwork
+                Upload Designs
               </Link>
               <Link
                 className="portal-button portal-button-secondary portal-button-leading-icon"

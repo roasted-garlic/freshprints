@@ -179,6 +179,29 @@ export function ImageUpIcon({ size }: PortalIconProps) {
   );
 }
 
+export function GlobeIcon({ size }: PortalIconProps) {
+  return (
+    <IconSvg size={size}>
+      <path
+        d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10Z"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+      <path
+        d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10Z"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+    </IconSvg>
+  );
+}
+
 export function LibraryIcon({ size }: PortalIconProps) {
   return (
     <IconSvg size={size}>

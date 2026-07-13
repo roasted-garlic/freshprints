@@ -1,6 +1,6 @@
 'use client';
 
-import { useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import {
@@ -49,6 +49,7 @@ import {
 
 export function CatalogPageContent() {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const selectionModeActive = searchParams.get('mode') === 'request-selection';
   const selectionRequestId = selectionModeActive ? searchParams.get('requestId') : null;
@@ -293,7 +294,10 @@ export function CatalogPageContent() {
 
     const returnFrom =
       parsePortalRequestDetailFrom(searchParams.get('from')) ?? 'library';
-    const uploadHref = buildRequestUploadHref(selectionRequestId, { from: returnFrom });
+    const uploadHref = buildRequestUploadHref(selectionRequestId, {
+      from: returnFrom,
+      returnTo: `${pathname}${searchParams.toString() ? `?${searchParams.toString()}` : ''}`,
+    });
 
     if (!selectionMode.hasPendingChanges) {
       router.push(uploadHref);

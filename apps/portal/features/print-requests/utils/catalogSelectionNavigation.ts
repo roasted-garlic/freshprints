@@ -8,10 +8,25 @@ export const CATALOG_LIBRARY_PATH = '/catalog/library';
 /** Dedicated Portal page for artwork intended for the Current Request / printing. */
 export const REQUEST_ARTWORK_PATH = '/requests/artwork';
 
+/** Safe in-app return path for Back from Upload Designs (rejects absolute / protocol-relative URLs). */
+export function sanitizePortalReturnTo(raw: string | null | undefined): string | null {
+  if (!raw?.trim()) {
+    return null;
+  }
+  const value = raw.trim();
+  if (!value.startsWith('/') || value.startsWith('//') || value.includes('://')) {
+    return null;
+  }
+  if (value === REQUEST_ARTWORK_PATH || value.startsWith(`${REQUEST_ARTWORK_PATH}?`)) {
+    return null;
+  }
+  return value;
+}
+
 /** Request detail with the customer upload panel opened (legacy). Prefer REQUEST_ARTWORK_PATH. */
 export function buildRequestUploadHref(
   printRequestId: string,
-  options?: { from?: PortalRequestDetailFrom | null },
+  options?: { from?: PortalRequestDetailFrom | null; returnTo?: string | null },
 ): string {
   // Prefer dedicated artwork page; keep requestId for deep-link continuity when needed.
   const params = new URLSearchParams();
@@ -19,6 +34,10 @@ export function buildRequestUploadHref(
     params.set('from', options.from);
   }
   params.set('requestId', printRequestId);
+  const returnTo = sanitizePortalReturnTo(options?.returnTo);
+  if (returnTo) {
+    params.set('returnTo', returnTo);
+  }
   const query = params.toString();
   return query ? `${REQUEST_ARTWORK_PATH}?${query}` : REQUEST_ARTWORK_PATH;
 }
@@ -26,6 +45,7 @@ export function buildRequestUploadHref(
 export function buildRequestArtworkHref(options?: {
   from?: PortalRequestDetailFrom | null;
   requestId?: string | null;
+  returnTo?: string | null;
 }): string {
   const params = new URLSearchParams();
   if (options?.requestId?.trim()) {
@@ -33,6 +53,10 @@ export function buildRequestArtworkHref(options?: {
   }
   if (options?.from) {
     params.set('from', options.from);
+  }
+  const returnTo = sanitizePortalReturnTo(options?.returnTo);
+  if (returnTo) {
+    params.set('returnTo', returnTo);
   }
   const query = params.toString();
   return query ? `${REQUEST_ARTWORK_PATH}?${query}` : REQUEST_ARTWORK_PATH;

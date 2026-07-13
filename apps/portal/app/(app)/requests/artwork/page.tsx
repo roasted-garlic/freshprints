@@ -1,12 +1,20 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 
 import { CustomerUploadPanel } from '../../../../features/customer-uploads/components/CustomerUploadPanel';
 import { usePortalPrintRequests } from '../../../../features/print-requests/context/PortalPrintRequestContext';
-import { buildRequestDetailHref } from '../../../../features/print-requests/utils/portalRequestDetailReturn';
+import {
+  CATALOG_HOME_PATH,
+  CATALOG_LIBRARY_PATH,
+  sanitizePortalReturnTo,
+} from '../../../../features/print-requests/utils/catalogSelectionNavigation';
+import {
+  buildRequestDetailHref,
+  parsePortalRequestDetailFrom,
+} from '../../../../features/print-requests/utils/portalRequestDetailReturn';
 import { CheckIcon } from '../../../../features/shared/components/PortalIcons';
 
 /**
@@ -15,8 +23,44 @@ import { CheckIcon } from '../../../../features/shared/components/PortalIcons';
  */
 export default function RequestArtworkPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { refreshRequests, workingRequest } = usePortalPrintRequests();
   const [attachedRequestId, setAttachedRequestId] = useState<string | null>(null);
+
+  function handleBack() {
+    const returnTo = sanitizePortalReturnTo(searchParams.get('returnTo'));
+    if (returnTo) {
+      router.push(returnTo);
+      return;
+    }
+
+    const from = parsePortalRequestDetailFrom(searchParams.get('from'));
+    if (from === 'discover') {
+      router.push(CATALOG_HOME_PATH);
+      return;
+    }
+    if (from === 'library') {
+      router.push(CATALOG_LIBRARY_PATH);
+      return;
+    }
+    if (
+      from === 'requests' ||
+      from === 'working' ||
+      from === 'queued' ||
+      from === 'printing' ||
+      from === 'printed'
+    ) {
+      router.push(from === 'requests' ? '/requests' : `/requests?tab=${from}`);
+      return;
+    }
+
+    if (workingRequest) {
+      router.push(buildRequestDetailHref(workingRequest.id, { from: 'library' }));
+      return;
+    }
+
+    router.push(CATALOG_HOME_PATH);
+  }
 
   if (attachedRequestId) {
     const reviewHref = buildRequestDetailHref(attachedRequestId, { from: 'library' });
@@ -79,13 +123,7 @@ export default function RequestArtworkPage() {
           void refreshRequests({ silent: true });
           setAttachedRequestId(printRequestId);
         }}
-        onClose={() => {
-          if (workingRequest) {
-            router.push(buildRequestDetailHref(workingRequest.id, { from: 'library' }));
-            return;
-          }
-          router.push('/catalog');
-        }}
+        onClose={handleBack}
         variant="embedded"
       />
     </main>

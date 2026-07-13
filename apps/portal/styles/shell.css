@@ -1039,25 +1039,37 @@
 
   .portal-app-header {
     display: flex;
-    justify-content: center;
+    justify-content: space-between;
     position: relative;
   }
 
   .portal-app-header-start {
-    justify-content: center;
-    position: relative;
-    width: 100%;
+    align-items: center;
+    display: flex;
+    position: static;
+    width: auto;
   }
 
   .portal-app-header-menu-button {
-    left: 0;
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
+    position: relative;
+    transform: none;
+    z-index: 1;
   }
 
   .portal-app-header-brand {
+    left: 50%;
+    max-width: min(12.5rem, calc(100% - 8.5rem));
+    pointer-events: none;
+    position: absolute;
     text-align: center;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: max-content;
+  }
+
+  .portal-app-header-actions {
+    position: relative;
+    z-index: 1;
   }
 }
 

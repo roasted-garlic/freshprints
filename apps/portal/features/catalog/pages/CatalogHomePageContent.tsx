@@ -23,7 +23,7 @@ import {
 } from '../../print-requests/utils/catalogSelectionNavigation';
 import { PortalConfirmModal } from '../../shared/components/PortalConfirmModal';
 import { PortalPickContinuableRequestModal } from '../../shared/components/PortalPickContinuableRequestModal';
-import { LibraryIcon, SearchIcon } from '../../shared/components/PortalIcons';
+import { GlobeIcon, SearchIcon } from '../../shared/components/PortalIcons';
 import { CatalogDiscoveryCarousel } from '../components/CatalogDiscoveryCarousel';
 import { CatalogSelectionCard } from '../components/CatalogSelectionCard';
 
@@ -121,13 +121,18 @@ export function CatalogHomePageContent() {
     >
       <header className="catalog-home-toolbar">
         <div className="catalog-home-toolbar-brand">
-          <p className="catalog-home-toolbar-kicker">Design Library</p>
-          <h1>Discover Designs</h1>
+          <span aria-hidden className="catalog-home-toolbar-mark">
+            <SearchIcon size={18} />
+          </span>
+          <div className="catalog-home-toolbar-copy">
+            <h1>Discover</h1>
+            <p>Fresh picks for your next print</p>
+          </div>
         </div>
 
         <form className="catalog-home-search" onSubmit={handleLandingSearchSubmit}>
           <label className="catalog-home-search-pill">
-            <span className="portal-visually-hidden">Search the Design Library</span>
+            <span className="portal-visually-hidden">Search designs</span>
             <span aria-hidden className="catalog-home-search-leading">
               <SearchIcon size={18} />
             </span>
@@ -150,12 +155,13 @@ export function CatalogHomePageContent() {
 
         <div className="catalog-home-toolbar-actions">
           <button
-            className="portal-button portal-button-secondary catalog-home-pill-button"
+            aria-label="Browse all designs"
+            className="catalog-home-browse-button"
             onClick={() => openLibrary()}
             type="button"
           >
-            <LibraryIcon size={16} />
-            Browse
+            <GlobeIcon size={18} />
+            <span className="catalog-home-browse-label">Browse all</span>
           </button>
         </div>
       </header>
