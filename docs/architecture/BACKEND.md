@@ -150,6 +150,7 @@ npm run dev
 ## Production Considerations
 
 - Rate limits: Firebase quotas apply
+- Customer upload daily abuse caps are purpose-split (print-request vs catalog-donation); concurrent finalize leases shared (max 8). See `customerUploadLimits.constants.ts` and `SECURITY.md`.
 - Monitoring: Firebase console
 - **Human approval** required for production rule changes, auth config, and secret rotation
 

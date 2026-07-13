@@ -10,15 +10,26 @@ export const CUSTOMER_UPLOAD_MAX_DIMENSION_PX = 15_000;
 
 export const CUSTOMER_UPLOAD_MAX_TOTAL_PIXELS = 100_000_000;
 
-/** Max concurrent finalize operations per customer (in flight). */
+/** Max concurrent finalize operations per customer (in flight). Shared across purposes. */
 export const CUSTOMER_UPLOAD_MAX_CONCURRENT_FINALIZE = 8;
 
-/** Per-UID daily caps (UTC calendar day) — enforced in callables (Sub-phase B). */
+/**
+ * Per-UID daily caps (UTC calendar day) — enforced in callables.
+ * Print-request and catalog-donation use **separate** counters so a large donate day
+ * does not exhaust print-request quota (and vice versa).
+ */
 export const CUSTOMER_UPLOAD_DAILY_CREATE_BATCH_LIMIT = 100;
 
 export const CUSTOMER_UPLOAD_DAILY_FINALIZE_IMAGE_LIMIT = 200;
 
 export const CUSTOMER_UPLOAD_DAILY_FINALIZE_ZIP_LIMIT = 5;
+
+/** Catalog-donation purpose only (separate bucket from print-request). */
+export const CUSTOMER_UPLOAD_DAILY_CREATE_BATCH_LIMIT_DONATION = 200;
+
+export const CUSTOMER_UPLOAD_DAILY_FINALIZE_IMAGE_LIMIT_DONATION = 500;
+
+export const CUSTOMER_UPLOAD_DAILY_FINALIZE_ZIP_LIMIT_DONATION = 20;
 
 export const CUSTOMER_UPLOAD_MAX_ZIP_COMPRESSED_BYTES = 2 * 1024 * 1024 * 1024;
 

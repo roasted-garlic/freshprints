@@ -111,7 +111,7 @@ export const finalizeCustomerUploadZip = onCall(
       });
 
       if (!batch.quotaChargedFinalizeZip) {
-        await chargeDailyQuota(customerUid, "finalizeZip");
+        await chargeDailyQuota(customerUid, "finalizeZip", batchPurpose);
         await batchRef.update({
           quotaChargedFinalizeZip: true,
           updatedAt: FieldValue.serverTimestamp(),

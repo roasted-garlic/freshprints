@@ -14,6 +14,8 @@ import type { CustomerUploadTechnicalProgressStage } from "../../packages/shared
 import type { CustomerUploadTechnicalStatus } from "../../packages/shared/src/types/customerUpload/customerUpload.enums";
 import { formatFileSize } from "../../packages/shared/src/utils/formatFileSize";
 
+import { resolveCustomerUploadPurpose } from "../../packages/shared/src/utils/customerUploadPurpose";
+
 import { adminDb, adminStorage } from "./lib/admin";
 import {
   processCustomerUploadImageBytes,
@@ -100,7 +102,11 @@ export const finalizeCustomerUpload = onCall(
       });
 
       if (!upload.quotaChargedFinalize) {
-        await chargeDailyQuota(customerUid, "finalizeImage");
+        await chargeDailyQuota(
+          customerUid,
+          "finalizeImage",
+          resolveCustomerUploadPurpose(upload.purpose),
+        );
         await uploadRef.update({
           quotaChargedFinalize: true,
           updatedAt: FieldValue.serverTimestamp(),

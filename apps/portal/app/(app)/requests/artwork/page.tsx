@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 
+import { ArtworkQualityNotice } from '../../../../features/customer-uploads/components/ArtworkQualityNotice';
 import { CustomerUploadPanel } from '../../../../features/customer-uploads/components/CustomerUploadPanel';
 import { usePortalPrintRequests } from '../../../../features/print-requests/context/PortalPrintRequestContext';
 import {
@@ -117,6 +118,7 @@ export default function RequestArtworkPage() {
             ? ' A request is created when you attach ready files.'
             : null}
         </p>
+        <ArtworkQualityNotice purpose="print_request" />
       </header>
       <CustomerUploadPanel
         onAttached={(printRequestId) => {

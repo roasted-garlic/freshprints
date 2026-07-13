@@ -640,7 +640,10 @@ must be protected (ADR-FP-073 — Phase 8 request artwork, not Phase 9 custom re
 * Ready-catalog derivative public-read patterns must **not** apply to unapproved customer uploads.
 * First-release formats: transparent PNG and static transparent WebP only. SVG deferred. JPEG and animated formats rejected.
 * ZIP: server-side extract only (`yauzl`); nested ZIPs rejected; customer limits ≪ staff import limits.
-* Per-UID daily abuse caps (create batch 10 / finalize image 50 / finalize ZIP 5) plus concurrency limit 3.
+* Per-UID daily abuse caps are **purpose-split** (print-request vs catalog-donation do not share counters):
+  * Print-request: create batch **100** / finalize image **200** / finalize ZIP **5**
+  * Catalog-donation: create batch **200** / finalize image **500** / finalize ZIP **20**
+  * Concurrent finalize leases remain shared: max **8**
 * Firestore: client writes denied on `customerUploads` / `customerUploadBatches`; rate-limit / lease / idempotency collections deny all client access.
 * UI checks are not authorization.
 

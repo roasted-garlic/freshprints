@@ -38,7 +38,7 @@ Owner manual PASS on Portal donate + Studio Donated Designs; then signoff
 - 2026-07-13 — Review **approved_with_changes**.
 - 2026-07-13 — Implemented: `purpose` field, `confirmCustomerUploadsForDonation`, Portal `/donate` + sidebar link, Studio `/donated-designs`, indexes, ADR-FP-078.
 - 2026-07-13 — Automated: purpose + donate validation tests pass; functions build pass; portal typecheck pass.
-- 2026-07-13 — UX fixes: hide floating theme on `/donate`; donate sidebar chip (blue soft bg, red icon, centered inset); Studio donate intake uses existing index + client purpose filter.
+- 2026-07-13 — Purpose-split daily upload quotas: print-request stays 100/200/5; catalog-donation 200/500/20; concurrent finalize still shared at 8.
 
 ## Files Created
 - packages/shared/src/utils/customerUploadPurpose.ts (+ test)

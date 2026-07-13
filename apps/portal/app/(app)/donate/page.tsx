@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 
+import { ArtworkQualityNotice } from '../../../features/customer-uploads/components/ArtworkQualityNotice';
 import { CustomerUploadPanel } from '../../../features/customer-uploads/components/CustomerUploadPanel';
 import {
   CATALOG_HOME_PATH,
@@ -80,6 +81,7 @@ export default function DonateDesignsPage() {
           Send artwork you think Fresh Prints should list in the Design Library for you and other
           customers. This does not add files to your Current Request.
         </p>
+        <ArtworkQualityNotice purpose="catalog_donation" />
       </header>
       <CustomerUploadPanel
         onClose={handleBack}

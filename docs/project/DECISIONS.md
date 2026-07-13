@@ -28,6 +28,7 @@ ADR-FP-076 reserved image donations as a separate product path from `/requests/a
 - Print-request library permission remains optional (ADR-FP-074); donations require listing consent.
 - Any authenticated Portal customer may donate (no staff feature flag in this phase).
 - Composite Firestore indexes required for purpose + catalogReviewStatus queries.
+- Daily abuse quotas are **purpose-split**: print-request (create 100 / finalize image 200 / ZIP 5) vs catalog-donation (create 200 / finalize image 500 / ZIP 20). Concurrent finalize leases stay shared at 8.
 
 ---
 

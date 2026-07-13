@@ -108,7 +108,7 @@ export const createCustomerUploadBatch = onCall(
       });
     }
 
-    await chargeDailyQuota(customerUid, "createBatch");
+    await chargeDailyQuota(customerUid, "createBatch", payload.purpose);
 
     const batchRef = adminDb.collection(CUSTOMER_UPLOAD_COLLECTIONS.customerUploadBatches).doc();
     const batchId = batchRef.id;

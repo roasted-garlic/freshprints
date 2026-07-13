@@ -935,8 +935,8 @@ Staff intake callables (Admin SDK writes only): `promoteCustomerUploadToAiReview
 
 | Collection | Purpose |
 |------------|---------|
-| `customerUploadRateLimits/{uid}_{yyyyMMdd}` | UTC daily caps: create batch / finalize image / finalize ZIP |
-| `customerUploadFinalizeLeases/{leaseId}` | Concurrent finalize leases (max 3; 4-minute TTL) |
+| `customerUploadRateLimits/{uid}_{yyyyMMdd}` | UTC daily caps **by purpose**: print-request (`createBatchCount` / `finalizeImageCount` / `finalizeZipCount`) and catalog-donation (`*Donation` fields). Separate buckets so donate and print-request do not share quota. |
+| `customerUploadFinalizeLeases/{leaseId}` | Concurrent finalize leases (max 8; 4-minute TTL; shared across purposes) |
 | `customerUploadIdempotency/{uid}_{clientRequestId}` | Create-batch idempotency |
 
 Shared types live in `packages/shared/src/types/customerUpload/`.
