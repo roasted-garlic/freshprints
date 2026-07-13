@@ -53,12 +53,17 @@ export function PortalAppHeader() {
       <div className="portal-app-header-actions">
         <Link
           aria-label="Upload Designs"
-          className="portal-app-header-action"
+          className="portal-app-header-action portal-app-header-upload"
           href={uploadHref}
           title="Upload Designs"
         >
           <ImageUpIcon size={18} />
-          <span className="portal-app-header-action-label">Upload Designs</span>
+          <span className="portal-app-header-action-label portal-app-header-upload-label-full">
+            Upload Designs
+          </span>
+          <span className="portal-app-header-action-label portal-app-header-upload-label-short">
+            Upload
+          </span>
         </Link>
         <button
           aria-label={`Current Request, ${totalPrints} total prints${

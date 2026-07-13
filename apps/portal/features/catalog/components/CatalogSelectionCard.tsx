@@ -144,7 +144,7 @@ export function CatalogSelectionCard({
                 onClick={() =>
                   onQuantityChange(design.id, quantity + 1, {
                     title: design.title,
-                    announce: true,
+                    announce: false,
                   })
                 }
                 type="button"

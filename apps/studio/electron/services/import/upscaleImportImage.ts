@@ -12,7 +12,7 @@ export interface UpscaleImportImageResult {
 
 /**
  * Upscales a PNG's pixel data (preserving aspect ratio) when its width can't
- * reach the preferred 10in-at-300-DPI print target. Returns the original
+ * reach the import headroom target (15in at 300 DPI). Returns the original
  * bytes/dimensions unchanged when no upscale is needed, to avoid needless
  * PNG recompression of already-sufficient images.
  */

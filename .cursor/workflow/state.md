@@ -42,6 +42,9 @@ Await owner reply on restored manual checkpoint (include mid-checkpoint UX check
 
 
 ## Decision Log
+- 2026-07-12 — Mid-checkpoint: Studio tsconfig `ignoreDeprecations: 6.0` for baseUrl; qty +/- coalesced optimistic (toast only on first add).
+- 2026-07-12 — Mid-checkpoint: optimistic trash remove (working items patch immediately); mobile Discover browse uses folder-search icon.
+- 2026-07-12 — Mid-checkpoint: mobile View all → library kept previous scroll offset. Hardened PortalScrollReset (layout + delayed retries, manual history restoration) and forced scroll top on Discover openLibrary.
 - 2026-07-12 — Owner FAIL: Portal did not load.
 - 2026-07-12 — Root cause: Context↔Drawer circular import + corrupted `.next` (CSS error then concurrent build vs dev). Fixed drawer mount in PortalAppShell; cleared cache; restarted `npm run dev:portal`. Routes return 200.
 - 2026-07-12 — Regression test: PortalPrintRequestContext.boundary.test.ts. Manual checkpoint restored.
@@ -50,3 +53,4 @@ Await owner reply on restored manual checkpoint (include mid-checkpoint UX check
 - 2026-07-12 — Owner follow-up: Upload Designs + image-up icon; restore perpetual selection-card highlight/qty/trash UI (CatalogSelectionCard) on Discover/Library instead of “In Current Request” ecommerce cards.
 - 2026-07-12 — Owner follow-up: drawer Uploaded/Library one-word pills; condense `/requests/artwork` header spacing. Typecheck green; awaiting retest.
 - 2026-07-12 — ZIP upload: discovery-first finalize (list all extracted images, then process) + Portal live batch subscription. Deployed `finalizeCustomerUploadZip` to fresh-prints-dev.
+- 2026-07-12 — Import upscale floor raised to 15″@300 DPI (4500px); request defaults remain 10″. Portal “Add Request to Show” got calendar-plus icon.

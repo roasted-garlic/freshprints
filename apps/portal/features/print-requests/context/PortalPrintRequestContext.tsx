@@ -1,6 +1,15 @@
 'use client';
 
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+  type Dispatch,
+  type ReactNode,
+  type SetStateAction,
+} from 'react';
 
 import type { PrintRequest } from '@fresh-prints/shared/types/printRequest/printRequest.types';
 import type { PrintRequestItem } from '@fresh-prints/shared/types/printRequest/printRequest.types';
@@ -37,6 +46,17 @@ interface PortalPrintRequestContextValue {
   isLoadingCurrentRequestItems: boolean;
   openCurrentRequestDrawer: () => void;
   closeCurrentRequestDrawer: () => void;
+  /** Immediate local item patch for snappy qty/remove UI; reconcile with reloadWorkingItems. */
+  patchWorkingItems: Dispatch<SetStateAction<PrintRequestItem[]>>;
+  /** Seed drawer title/thumb from a known catalog design before Firestore summaries load. */
+  seedDesignSummary: (
+    designId: string,
+    summary: Awaited<
+      ReturnType<typeof import('../services/portalPrintRequestService').portalPrintRequestService.getReadyDesign>
+    >,
+  ) => void;
+  /** Fetch any missing design summaries for Current Request chrome. */
+  ensureDesignSummaries: (designIds: string[]) => Promise<void>;
   refreshRequests: (options?: { silent?: boolean }) => Promise<void>;
   reloadWorkingItems: (options?: { silent?: boolean }) => Promise<void>;
   requests: PrintRequest[];
@@ -78,6 +98,9 @@ export function PortalPrintRequestProvider({ children }: { children: ReactNode }
     uploadSummaries,
     aggregates,
     isLoadingItems,
+    ensureDesignSummaries,
+    patchWorkingItems,
+    seedDesignSummary,
     reloadWorkingItems,
   } = useWorkingCurrentRequestItems(workingRequest);
 
@@ -131,6 +154,9 @@ export function PortalPrintRequestProvider({ children }: { children: ReactNode }
       isLoadingCurrentRequestItems: isLoadingItems,
       openCurrentRequestDrawer,
       closeCurrentRequestDrawer,
+      patchWorkingItems,
+      seedDesignSummary,
+      ensureDesignSummaries,
       refreshRequests,
       reloadWorkingItems,
       requests: printRequests.requests,
@@ -153,6 +179,9 @@ export function PortalPrintRequestProvider({ children }: { children: ReactNode }
       isLoadingItems,
       isVirtualEmptyCurrentRequest,
       openCurrentRequestDrawer,
+      patchWorkingItems,
+      seedDesignSummary,
+      ensureDesignSummaries,
       printRequests.allocationTotalsByRequestId,
       printRequests.continuableRequests,
       printRequests.createPrintRequest,

@@ -585,6 +585,10 @@
   white-space: nowrap;
 }
 
+.catalog-home-browse-label-short {
+  display: none;
+}
+
 .catalog-home-browse-button:hover,
 .catalog-home-browse-button:focus-visible {
   background: color-mix(in srgb, var(--color-accent-primary) 10%, var(--color-bg-secondary));
@@ -633,13 +637,15 @@
 
   .catalog-home-browse-button {
     min-height: 2.85rem;
-    min-width: 2.85rem;
-    padding: 0;
-    width: 2.85rem;
+    padding: 0 0.85rem;
   }
 
-  .catalog-home-browse-label {
+  .catalog-home-browse-label-full {
     display: none;
+  }
+
+  .catalog-home-browse-label-short {
+    display: inline;
   }
 }
 

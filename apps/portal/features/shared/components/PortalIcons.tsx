@@ -57,6 +57,29 @@ export function ChevronRightIcon({ size }: PortalIconProps) {
   );
 }
 
+export function CalendarPlusIcon({ size }: PortalIconProps) {
+  return (
+    <IconSvg size={size}>
+      <path
+        d="M8 2v4M16 2v4M3 10h18M19 4H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Z"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+      <path
+        d="M12 14v6M9 17h6"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+    </IconSvg>
+  );
+}
+
 export function CheckIcon({ size }: PortalIconProps) {
   return (
     <IconSvg size={size}>
@@ -192,6 +215,38 @@ export function GlobeIcon({ size }: PortalIconProps) {
       />
       <path
         d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10Z"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+    </IconSvg>
+  );
+}
+
+/** Lucide `folder-search` — browse / find in library. */
+export function FolderSearchIcon({ size }: PortalIconProps) {
+  return (
+    <IconSvg size={size}>
+      <path
+        d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+      <circle
+        cx="11.5"
+        cy="12.5"
+        fill="none"
+        r="2.5"
+        stroke="currentColor"
+        strokeWidth="2"
+      />
+      <path
+        d="m13.3 14.3 1.7 1.7"
         fill="none"
         stroke="currentColor"
         strokeLinecap="round"

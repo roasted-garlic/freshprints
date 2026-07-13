@@ -142,44 +142,81 @@ export function usePrintRequestDetail(printRequestId: string | undefined) {
         throw new Error('Unable to duplicate item.');
       }
 
+      const sourceItem = items.find((item) => item.id === itemId);
+      if (!sourceItem) {
+        throw new Error('Item to duplicate was not found.');
+      }
+
+      const pendingId = `pending_dup_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+      const optimisticItem: PrintRequestItem = {
+        ...sourceItem,
+        id: pendingId,
+        sortOrder: (sourceItem.sortOrder ?? 0) + 0.5,
+      };
+
+      setItems((currentItems) =>
+        sortPrintRequestItemsForDisplay([...currentItems, optimisticItem]),
+      );
+      setPrintRequest((currentRequest) =>
+        currentRequest
+          ? {
+              ...currentRequest,
+              itemCount: currentRequest.itemCount + 1,
+            }
+          : currentRequest,
+      );
       setIsSaving(true);
 
       try {
-        const createdItem = await portalPrintRequestService.duplicatePrintRequestItem({
+        const created = await portalPrintRequestService.duplicatePrintRequestItem({
           itemId,
           printRequestId,
           userId: firebaseUser.uid,
         });
 
+        const createdItem: PrintRequestItem = {
+          ...sourceItem,
+          id: created.itemId,
+          sortOrder: optimisticItem.sortOrder,
+          sourceType: created.sourceType,
+          designId: created.designId ?? sourceItem.designId,
+          customerUploadId: created.customerUploadId ?? sourceItem.customerUploadId,
+        };
+
         setItems((currentItems) =>
-          sortPrintRequestItemsForDisplay([...currentItems, createdItem]),
-        );
-        setPrintRequest((currentRequest) =>
-          currentRequest
-            ? {
-                ...currentRequest,
-                itemCount: currentRequest.itemCount + 1,
-              }
-            : currentRequest,
+          sortPrintRequestItemsForDisplay(
+            currentItems.map((item) => (item.id === pendingId ? createdItem : item)),
+          ),
         );
 
-        try {
-          if (createdItem.designId) {
+        if (createdItem.designId && !designSummaries.has(createdItem.designId)) {
+          try {
             const design = await portalPrintRequestService.getReadyDesign(createdItem.designId);
             setDesignSummaries((currentSummaries) => {
               const nextSummaries = new Map(currentSummaries);
               nextSummaries.set(createdItem.designId!, design);
               return nextSummaries;
             });
+          } catch {
+            // Design summary is optional for rendering the duplicated card title.
           }
-        } catch {
-          // Design summary is optional for rendering the duplicated card title.
         }
+      } catch (error) {
+        setItems((currentItems) => currentItems.filter((item) => item.id !== pendingId));
+        setPrintRequest((currentRequest) =>
+          currentRequest
+            ? {
+                ...currentRequest,
+                itemCount: Math.max(0, currentRequest.itemCount - 1),
+              }
+            : currentRequest,
+        );
+        throw error;
       } finally {
         setIsSaving(false);
       }
     },
-    [firebaseUser, printRequestId],
+    [designSummaries, firebaseUser, items, printRequestId],
   );
 
   const updateItemQuantity = useCallback(

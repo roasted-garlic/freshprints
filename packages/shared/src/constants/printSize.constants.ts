@@ -13,8 +13,17 @@ export const MIN_ACCEPTABLE_EFFECTIVE_DPI = 72;
 /** Standard apparel print width at target DPI — below preferred but above small-format only. */
 export const STANDARD_PRINT_WIDTH_INCHES = 8;
 
-/** Preferred apparel print width at target DPI. */
+/** Preferred apparel print width at target DPI (request defaults + messaging). */
 export const PREFERRED_PRINT_WIDTH_INCHES = 10;
+
+/**
+ * Import/upload upscale floor width at TARGET_PRINT_DPI.
+ * Images narrower than this are upscaled once to this width; images already at or
+ * above this size (e.g. 15″ @ 300 DPI = 4500px) are left unchanged.
+ * Request items still default to PREFERRED_PRINT_WIDTH_INCHES (10″) so larger
+ * imported assets yield higher effective DPI at the requested size.
+ */
+export const IMPORT_UPSCALE_TARGET_WIDTH_INCHES = 15;
 
 /**
  * Staff-facing preferred width target for messaging and future UI defaults.

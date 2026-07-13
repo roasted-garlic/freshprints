@@ -98,12 +98,19 @@ export function CatalogHomePageContent() {
     search?: string;
     categoryId?: string;
   }) {
+    // Soft nav can keep the discover page's scroll offset on mobile; force top
+    // before push so the filtered library never opens mid-page.
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+
     router.push(
       buildCatalogLibraryHref({
         discover: options?.discover ?? null,
         search: options?.search ?? null,
         categoryId: options?.categoryId ?? null,
       }),
+      { scroll: true },
     );
   }
 
@@ -161,7 +168,12 @@ export function CatalogHomePageContent() {
             type="button"
           >
             <GlobeIcon size={18} />
-            <span className="catalog-home-browse-label">Browse all</span>
+            <span className="catalog-home-browse-label catalog-home-browse-label-full">
+              Browse all
+            </span>
+            <span className="catalog-home-browse-label catalog-home-browse-label-short">
+              Browse
+            </span>
           </button>
         </div>
       </header>

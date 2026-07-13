@@ -8,6 +8,7 @@ import { PortalToastProvider } from '../../shared/context/PortalToastContext';
 import { PortalDrawerProvider, usePortalDrawer } from '../context/PortalDrawerContext';
 import { PortalAppHeader } from './PortalAppHeader';
 import { PortalBottomNav } from './PortalBottomNav';
+import { PortalScrollReset } from './PortalScrollReset';
 import { PortalSidebar } from './PortalSidebar';
 
 interface PortalAppShellProps {
@@ -30,6 +31,7 @@ function PortalAppShellContent({ children }: PortalAppShellProps) {
       ) : null}
 
       <div className="portal-app-main">
+        <PortalScrollReset />
         <PortalAppHeader />
         <div className="portal-app-content">{children}</div>
         <PortalBottomNav />

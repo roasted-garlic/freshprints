@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { isCustomerUploadPrintRequestItem } from '@fresh-prints/shared/utils/printRequestItemSource';
 
@@ -28,6 +28,15 @@ function groupKeyForItem(item: {
   return `item:${item.id}`;
 }
 
+function itemCreatedAtMs(item: {
+  createdAt?: { toMillis?: () => number } | null;
+}): number {
+  if (item.createdAt && typeof item.createdAt.toMillis === 'function') {
+    return item.createdAt.toMillis();
+  }
+  return 0;
+}
+
 export function CurrentRequestDrawer() {
   const { firebaseUser } = useAuth();
   const {
@@ -36,15 +45,17 @@ export function CurrentRequestDrawer() {
     designSummariesById,
     isCurrentRequestDrawerOpen,
     isVirtualEmptyCurrentRequest,
-    refreshRequests,
+    patchWorkingItems,
+    reloadWorkingItems,
     uploadSummariesById,
     workingItems,
     workingRequest,
   } = usePortalPrintRequests();
 
-  const [removingKey, setRemovingKey] = useState<string | null>(null);
   const [removeError, setRemoveError] = useState<string | null>(null);
   const [uploadThumbUrls, setUploadThumbUrls] = useState<Record<string, string>>({});
+  /** Prevents double-submit on the same row; other rows stay clickable. */
+  const removingKeysRef = useRef(new Set<string>());
 
   const groups = useMemo(() => {
     const map = new Map<string, typeof workingItems>();
@@ -54,7 +65,13 @@ export function CurrentRequestDrawer() {
       list.push(item);
       map.set(key, list);
     }
-    return [...map.entries()];
+
+    // Newest added groups first (by latest item createdAt in the group).
+    return [...map.entries()].sort(([, itemsA], [, itemsB]) => {
+      const newestA = Math.max(0, ...itemsA.map(itemCreatedAtMs));
+      const newestB = Math.max(0, ...itemsB.map(itemCreatedAtMs));
+      return newestB - newestA;
+    });
   }, [workingItems]);
 
   useEffect(() => {
@@ -93,29 +110,39 @@ export function CurrentRequestDrawer() {
   }, [groups, uploadSummariesById]);
 
   const handleRemoveGroup = useCallback(
-    async (key: string, itemIds: string[]) => {
-      if (!workingRequest || !firebaseUser || removingKey) {
+    (key: string, itemIds: string[]) => {
+      if (!workingRequest || !firebaseUser) {
+        return;
+      }
+      if (removingKeysRef.current.has(key)) {
         return;
       }
 
-      setRemovingKey(key);
+      const removeIdSet = new Set(itemIds);
+      removingKeysRef.current.add(key);
       setRemoveError(null);
-      try {
-        for (const itemId of itemIds) {
-          await portalPrintRequestService.removePrintRequestItem({
-            itemId,
-            printRequestId: workingRequest.id,
-            userId: firebaseUser.uid,
-          });
+      // Optimistic: row disappears immediately so the next trash is ready on first tap.
+      patchWorkingItems((items) => items.filter((item) => !removeIdSet.has(item.id)));
+
+      void (async () => {
+        try {
+          for (const itemId of itemIds) {
+            await portalPrintRequestService.removePrintRequestItem({
+              itemId,
+              printRequestId: workingRequest.id,
+              userId: firebaseUser.uid,
+            });
+          }
+          await reloadWorkingItems({ silent: true });
+        } catch (error) {
+          setRemoveError(error instanceof Error ? error.message : 'Unable to remove item.');
+          await reloadWorkingItems({ silent: true });
+        } finally {
+          removingKeysRef.current.delete(key);
         }
-        await refreshRequests({ silent: true });
-      } catch (error) {
-        setRemoveError(error instanceof Error ? error.message : 'Unable to remove item.');
-      } finally {
-        setRemovingKey(null);
-      }
+      })();
     },
-    [firebaseUser, refreshRequests, removingKey, workingRequest],
+    [firebaseUser, patchWorkingItems, reloadWorkingItems, workingRequest],
   );
 
   if (!isCurrentRequestDrawerOpen) {
@@ -240,8 +267,7 @@ export function CurrentRequestDrawer() {
                         <button
                           aria-label={`Remove ${title} from Current Request`}
                           className="current-request-drawer-trash"
-                          disabled={removingKey === key}
-                          onClick={() => void handleRemoveGroup(key, items.map((item) => item.id))}
+                          onClick={() => handleRemoveGroup(key, items.map((item) => item.id))}
                           type="button"
                         >
                           <TrashIcon size={16} />

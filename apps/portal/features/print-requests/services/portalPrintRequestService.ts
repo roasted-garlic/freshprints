@@ -786,7 +786,13 @@ export const portalPrintRequestService = {
     itemId: string;
     printRequestId: string;
     userId: string;
-  }): Promise<PrintRequestItem> {
+  }): Promise<{
+    itemId: string;
+    printRequestId: string;
+    sourceType: 'catalog_design' | 'customer_upload';
+    designId?: string;
+    customerUploadId?: string;
+  }> {
     const callable = httpsCallable<
       { printRequestId: string; itemId: string },
       {
@@ -803,14 +809,7 @@ export const portalPrintRequestService = {
       itemId: input.itemId,
     });
 
-    const itemSnapshot = await getDoc(doc(getPortalDb(), 'printRequestItems', response.data.itemId));
-    if (!itemSnapshot.exists()) {
-      throw new Error('Duplicated item was created but could not be loaded.');
-    }
-    return mapPrintRequestItem(
-      itemSnapshot.id,
-      itemSnapshot.data() as PrintRequestItemDocumentData,
-    );
+    return response.data;
   },
 
   async savePrintRequestDesignSelections(input: {

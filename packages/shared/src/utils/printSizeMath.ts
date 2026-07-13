@@ -1,4 +1,5 @@
 import {
+  IMPORT_UPSCALE_TARGET_WIDTH_INCHES,
   MIN_ACCEPTABLE_EFFECTIVE_DPI,
   MIN_SMALL_FORMAT_PRINT_WIDTH_INCHES,
   PREFERRED_PRINT_WIDTH_INCHES,
@@ -95,7 +96,7 @@ export interface ImportUpscaleTargetPx {
 
 /**
  * Returns the pixel dimensions an underpowered import should be upscaled to
- * so its width reaches PREFERRED_PRINT_WIDTH_INCHES at TARGET_PRINT_DPI,
+ * so its width reaches IMPORT_UPSCALE_TARGET_WIDTH_INCHES at TARGET_PRINT_DPI,
  * preserving aspect ratio. Returns null when the image already meets that
  * width (no upscale needed).
  */
@@ -103,7 +104,7 @@ export function resolveImportUpscaleTargetPx(
   pixelWidth: number,
   pixelHeight: number,
   targetDpi: number = TARGET_PRINT_DPI,
-  targetWidthInches: number = PREFERRED_PRINT_WIDTH_INCHES,
+  targetWidthInches: number = IMPORT_UPSCALE_TARGET_WIDTH_INCHES,
 ): ImportUpscaleTargetPx | null {
   const targetWidthPx = targetDpi * targetWidthInches;
 

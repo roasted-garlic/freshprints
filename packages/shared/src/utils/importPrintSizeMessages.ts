@@ -1,4 +1,5 @@
 import {
+  IMPORT_UPSCALE_TARGET_WIDTH_INCHES,
   MIN_ACCEPTABLE_EFFECTIVE_DPI,
   PREFERRED_PRINT_WIDTH_INCHES,
   PRINT_INCHES_DECIMAL_PLACES,
@@ -50,9 +51,9 @@ export function formatImageUpscaledMessage(
   upscaledWidth: number,
   upscaledHeight: number,
   targetDpi: number = TARGET_PRINT_DPI,
-  targetWidthInches: number = PREFERRED_PRINT_WIDTH_INCHES,
+  targetWidthInches: number = IMPORT_UPSCALE_TARGET_WIDTH_INCHES,
 ): string {
-  return `Image was upscaled from ${originalWidth}x${originalHeight}px to ${upscaledWidth}x${upscaledHeight}px to meet the ${targetDpi} DPI / ${formatInches(targetWidthInches)} in wide print requirement.`;
+  return `Image was upscaled from ${originalWidth}x${originalHeight}px to ${upscaledWidth}x${upscaledHeight}px to meet the ${targetDpi} DPI / ${formatInches(targetWidthInches)} in wide import headroom target.`;
 }
 
 /** @deprecated Use formatPrintSizeStandardApparelMessage */

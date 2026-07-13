@@ -207,29 +207,35 @@ describe("calculateEffectiveDpi", () => {
 });
 
 describe("resolveImportUpscaleTargetPx", () => {
-  it("returns null when width already meets the 3000px (10in @ 300dpi) target", () => {
-    assert.equal(resolveImportUpscaleTargetPx(3000, 4000), null);
+  it("returns null when width already meets the 4500px (15in @ 300dpi) target", () => {
+    assert.equal(resolveImportUpscaleTargetPx(4500, 4000), null);
   });
 
   it("returns null when width exceeds the target", () => {
-    assert.equal(resolveImportUpscaleTargetPx(4500, 3000), null);
+    assert.equal(resolveImportUpscaleTargetPx(5000, 3000), null);
   });
 
   it("returns a scaled-up target preserving aspect ratio when width is below target", () => {
     const result = resolveImportUpscaleTargetPx(1500, 2000);
 
-    assert.deepEqual(result, { widthPx: 3000, heightPx: 4000 });
+    assert.deepEqual(result, { widthPx: 4500, heightPx: 6000 });
   });
 
   it("handles a non-square aspect ratio correctly", () => {
     const result = resolveImportUpscaleTargetPx(1000, 300);
 
-    assert.deepEqual(result, { widthPx: 3000, heightPx: 900 });
+    assert.deepEqual(result, { widthPx: 4500, heightPx: 1350 });
   });
 
-  it("treats exactly 2999px as needing upscale and 3000px as not (boundary)", () => {
-    assert.deepEqual(resolveImportUpscaleTargetPx(2999, 2999), { widthPx: 3000, heightPx: 3000 });
-    assert.equal(resolveImportUpscaleTargetPx(3000, 3000), null);
+  it("upscales a 10in @ 300dpi (3000px) image once to the 15in headroom target", () => {
+    const result = resolveImportUpscaleTargetPx(3000, 3000);
+
+    assert.deepEqual(result, { widthPx: 4500, heightPx: 4500 });
+  });
+
+  it("treats exactly 4499px as needing upscale and 4500px as not (boundary)", () => {
+    assert.deepEqual(resolveImportUpscaleTargetPx(4499, 4499), { widthPx: 4500, heightPx: 4500 });
+    assert.equal(resolveImportUpscaleTargetPx(4500, 4500), null);
   });
 
   it("supports custom target DPI/width overrides", () => {

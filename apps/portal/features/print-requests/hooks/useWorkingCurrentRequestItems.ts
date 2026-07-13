@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 
 import type { PrintRequest } from '@fresh-prints/shared/types/printRequest/printRequest.types';
 import type { PrintRequestItem } from '@fresh-prints/shared/types/printRequest/printRequest.types';
@@ -62,6 +62,8 @@ export function useWorkingCurrentRequestItems(workingRequest: PrintRequest | nul
   const [designSummaries, setDesignSummaries] = useState<
     Map<string, Awaited<ReturnType<typeof portalPrintRequestService.getReadyDesign>>>
   >(new Map());
+  const designSummariesRef = useRef(designSummaries);
+  designSummariesRef.current = designSummaries;
   const [uploadSummaries, setUploadSummaries] = useState<
     Map<string, CustomerUploadDocSummary | null>
   >(new Map());
@@ -157,6 +159,55 @@ export function useWorkingCurrentRequestItems(workingRequest: PrintRequest | nul
     return buildCurrentRequestAggregates(likes);
   }, [designSummaries, items, uploadSummaries]);
 
+  const patchWorkingItems = useCallback<Dispatch<SetStateAction<PrintRequestItem[]>>>((update) => {
+    setItems(update);
+  }, []);
+
+  type DesignSummary = Awaited<ReturnType<typeof portalPrintRequestService.getReadyDesign>>;
+
+  const seedDesignSummary = useCallback((designId: string, summary: DesignSummary) => {
+    const trimmed = designId.trim();
+    if (!trimmed) {
+      return;
+    }
+    setDesignSummaries((previous) => {
+      const next = new Map(previous);
+      next.set(trimmed, summary);
+      return next;
+    });
+  }, []);
+
+  const ensureDesignSummaries = useCallback(async (designIds: string[]) => {
+    const uniqueIds = [
+      ...new Set(designIds.map((id) => id.trim()).filter((id): id is string => Boolean(id))),
+    ];
+    const missingIds = uniqueIds.filter((id) => !designSummariesRef.current.has(id));
+    if (missingIds.length === 0) {
+      return;
+    }
+
+    const fetched = await Promise.all(
+      missingIds.map(async (designId) => {
+        try {
+          const design = await portalPrintRequestService.getReadyDesign(designId);
+          return [designId, design] as const;
+        } catch {
+          return [designId, null] as const;
+        }
+      }),
+    );
+
+    setDesignSummaries((previous) => {
+      const next = new Map(previous);
+      for (const [designId, design] of fetched) {
+        if (design) {
+          next.set(designId, design);
+        }
+      }
+      return next;
+    });
+  }, []);
+
   return {
     workingItems: items,
     designSummaries,
@@ -164,6 +215,9 @@ export function useWorkingCurrentRequestItems(workingRequest: PrintRequest | nul
     aggregates,
     isLoadingItems,
     itemsError,
+    ensureDesignSummaries,
+    patchWorkingItems,
+    seedDesignSummary,
     reloadWorkingItems,
   };
 }

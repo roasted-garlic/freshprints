@@ -170,24 +170,31 @@ export function useCustomerUploadBatch() {
       try {
         if (zips.length === 1) {
           const zip = zips[0];
-          const created = await customerUploadService.createZipBatch(zip);
-          setBatchId(created.batchId);
-          batchIdRef.current = created.batchId;
           const zipRowId = makeLocalId();
           setRows([
             {
               localId: zipRowId,
               filename: zip.name,
               fileSizeBytes: zip.size,
-              phase: 'uploading',
-              progressLabel: 'Uploading ZIP…',
+              phase: 'queued',
+              progressLabel: 'Preparing ZIP…',
               file: zip,
             },
           ]);
 
+          const created = await customerUploadService.createZipBatch(zip);
+          setBatchId(created.batchId);
+          batchIdRef.current = created.batchId;
+
           if (!created.zipStoragePath) {
             throw new Error('Upload path missing from server response.');
           }
+
+          updateRow(zipRowId, {
+            phase: 'uploading',
+            progressLabel: 'Uploading ZIP… 0%',
+            uploadPercent: 0,
+          });
 
           await customerUploadService.uploadSourceFile(
             created.zipStoragePath,
@@ -290,6 +297,22 @@ export function useCustomerUploadBatch() {
           ]);
         }
 
+        const pendingRows: UploadRowState[] = limitedImages.map((file) => ({
+          localId: makeLocalId(),
+          file,
+          filename: file.name,
+          fileSizeBytes: file.size,
+          phase: 'queued' as const,
+          progressLabel: 'Preparing…',
+        }));
+
+        setRows((current) => {
+          const kept = existingBatchId
+            ? current.filter((row) => row.phase !== 'removed')
+            : [];
+          return [...kept, ...pendingRows];
+        });
+
         const created = await customerUploadService.createDirectImageBatch(limitedImages, {
           existingBatchId: existingBatchId ?? undefined,
         });
@@ -299,22 +322,21 @@ export function useCustomerUploadBatch() {
           throw new Error('Server did not return upload slots.');
         }
 
-        const newRows: UploadRowState[] = created.uploads.map((slot, index) => ({
-          localId: makeLocalId(),
-          file: limitedImages[index],
-          filename: slot.originalFilename,
-          fileSizeBytes: limitedImages[index]?.size,
-          uploadId: slot.uploadId,
-          sourceStoragePath: slot.sourceStoragePath,
-          phase: 'queued' as const,
-          progressLabel: 'Waiting…',
-        }));
+        const newRows: UploadRowState[] = pendingRows.map((row, index) => {
+          const slot = created.uploads![index];
+          return {
+            ...row,
+            filename: slot?.originalFilename ?? row.filename,
+            uploadId: slot?.uploadId,
+            sourceStoragePath: slot?.sourceStoragePath,
+            phase: 'queued' as const,
+            progressLabel: 'Waiting…',
+          };
+        });
 
         setRows((current) => {
-          const kept = existingBatchId
-            ? current.filter((row) => row.phase !== 'removed')
-            : [];
-          return [...kept, ...newRows];
+          const byLocalId = new Map(newRows.map((row) => [row.localId, row] as const));
+          return current.map((row) => byLocalId.get(row.localId) ?? row);
         });
         customerUploadService.persistSession(
           firebaseUser.uid,
@@ -417,6 +439,19 @@ export function useCustomerUploadBatch() {
         );
       } catch (error) {
         setBannerError(error instanceof Error ? error.message : 'Unable to start upload.');
+        setRows((current) =>
+          current.map((row) =>
+            row.phase === 'queued' &&
+            (row.progressLabel === 'Preparing…' || row.progressLabel === 'Preparing ZIP…')
+              ? {
+                  ...row,
+                  phase: 'failed' as const,
+                  progressLabel: 'Failed',
+                  errorMessage: error instanceof Error ? error.message : 'Unable to start upload.',
+                }
+              : row,
+          ),
+        );
       } finally {
         setIsProcessing(false);
       }

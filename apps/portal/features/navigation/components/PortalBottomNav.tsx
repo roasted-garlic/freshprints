@@ -53,6 +53,9 @@ export function PortalBottomNav() {
         type="button"
       >
         <ShoppingBagIcon size={22} />
+        <span className="portal-bottom-nav-fab-badge" data-empty={totalPrints === 0 ? 'true' : 'false'}>
+          {totalPrints}
+        </span>
       </button>
     </nav>
   );

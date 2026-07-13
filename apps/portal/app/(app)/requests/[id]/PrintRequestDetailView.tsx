@@ -30,7 +30,7 @@ import {
   resolvePortalRequestDetailBack,
 } from '../../../../features/print-requests/utils/portalRequestDetailReturn';
 import { PortalConfirmModal } from '../../../../features/shared/components/PortalConfirmModal';
-import { ArrowLeftIcon, ImagePlusIcon, LibraryIcon, RefreshIcon } from '../../../../features/shared/components/PortalIcons';
+import { ArrowLeftIcon, CalendarPlusIcon, ImagePlusIcon, LibraryIcon, RefreshIcon } from '../../../../features/shared/components/PortalIcons';
 
 type AutosaveStatus = 'idle' | 'saving' | 'saved' | 'failed';
 
@@ -313,10 +313,11 @@ export default function PrintRequestDetailView() {
               Browse Design Library
             </Link>
             <button
-              className="portal-button portal-button-primary"
+              className="portal-button portal-button-primary portal-button-leading-icon"
               onClick={() => setIsQueueModalOpen(true)}
               type="button"
             >
+              <CalendarPlusIcon />
               Add Request to Show
             </button>
           </div>
