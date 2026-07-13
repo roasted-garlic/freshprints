@@ -7,7 +7,10 @@
 }
 
 .login-logo {
+  display: block;
   margin-bottom: var(--space-1);
+  max-width: min(18rem, 100%);
+  object-fit: contain;
 }
 
 .login-header .eyebrow {

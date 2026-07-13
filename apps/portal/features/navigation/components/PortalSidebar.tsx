@@ -7,8 +7,8 @@ import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, HeartHandshake,
 
 import { resolvePortalDisplayName, getProfileInitials } from '../../account/utils/profileDisplay';
 import { useAuth } from '../../auth/context/AuthContext';
-import { PORTAL_SUBTITLE } from '../../brand/portalBrand';
 import { PortalLogo } from '../../brand/components/PortalLogo';
+import { CATALOG_HOME_PATH } from '../../print-requests/utils/catalogSelectionNavigation';
 import { PortalConfirmModal } from '../../shared/components/PortalConfirmModal';
 import { ThemeToggle } from '../../theme/components/ThemeToggle';
 import { PORTAL_ACCOUNT_HREF, isPortalAccountRoute, portalNavItems, resolveActivePortalNavItem } from '../constants/portalNavItems';
@@ -90,13 +90,24 @@ export function PortalSidebar() {
       <aside aria-label="Portal navigation" className={sidebarClassName}>
         <span aria-hidden className="portal-sidebar-edge" />
         <div className="portal-sidebar-brand">
-          <PortalLogo size={showCollapsed ? 32 : 36} />
-          {!showCollapsed ? (
-            <div className="portal-sidebar-brand-copy">
-              <p className="portal-sidebar-brand-title">Fresh Prints</p>
-              <p className="portal-sidebar-brand-subtitle">{PORTAL_SUBTITLE}</p>
-            </div>
-          ) : null}
+          <Link
+            aria-label="Go to Fresh Prints home"
+            className="portal-sidebar-brand-link"
+            href={CATALOG_HOME_PATH}
+            onClick={closeDrawer}
+            title="Home"
+          >
+            {showCollapsed ? (
+              <PortalLogo
+                alt=""
+                className="portal-sidebar-brand-logo portal-sidebar-brand-logo-collapsed"
+                size={36}
+                variant="collapsed"
+              />
+            ) : (
+              <PortalLogo alt="" className="portal-sidebar-brand-logo" size={56} />
+            )}
+          </Link>
           <button
             aria-label="Close navigation menu"
             className="portal-sidebar-drawer-close"

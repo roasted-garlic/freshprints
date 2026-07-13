@@ -349,8 +349,24 @@ export function Sidebar() {
         className={`sidebar-active-indicator ${isIndicatorVisible ? "sidebar-active-indicator-visible" : ""}`.trim()}
       />
       <div className="sidebar-brand">
-        <AppLogo className="sidebar-logo" size="md" />
-        {!isCollapsed ? <p className="sidebar-brand-title">Fresh Prints</p> : null}
+        <NavLink
+          aria-label="Go to Design Library home"
+          className="sidebar-brand-link"
+          end
+          title="Design Library"
+          to="/designs"
+        >
+          {isCollapsed ? (
+            <AppLogo
+              alt=""
+              className="sidebar-logo sidebar-logo-collapsed"
+              size="sm"
+              variant="collapsed"
+            />
+          ) : (
+            <AppLogo alt="" className="sidebar-logo" size="md" />
+          )}
+        </NavLink>
         <button
           aria-label="Close navigation menu"
           className="sidebar-drawer-close"

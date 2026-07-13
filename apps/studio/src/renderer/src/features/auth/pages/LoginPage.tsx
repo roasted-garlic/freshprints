@@ -10,8 +10,8 @@ export function LoginPage() {
           <ThemeToggle />
         </div>
         <div className="login-header">
-          <AppLogo className="login-logo" size="lg" />
-          <p className="eyebrow">Fresh Prints Desktop</p>
+          <AppLogo alt="Fresh Prints Studio" className="login-logo" size="lg" />
+          <p className="eyebrow">Fresh Prints Studio</p>
           <h1 id="login-title">Sign in</h1>
         </div>
 

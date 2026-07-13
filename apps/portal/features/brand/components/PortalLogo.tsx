@@ -1,31 +1,37 @@
 interface PortalLogoProps {
+  /** Accessible name when the logo is meaningful (not decorative). */
+  alt?: string;
   className?: string;
+  /** Logo height in pixels; width scales with the asset aspect ratio. */
   size?: number;
+  /** Full wordmark or compact mark for the collapsed sidebar. */
+  variant?: 'full' | 'collapsed';
 }
 
-export function PortalLogo({ className = '', size = 36 }: PortalLogoProps) {
+export const PORTAL_LOGO_SRC = '/brand/fresh-prints-request-portal-logo.png';
+export const PORTAL_LOGO_COLLAPSED_SRC = '/brand/fresh-prints-request-portal-logo-collapsed.png';
+
+export function PortalLogo({
+  alt = '',
+  className = '',
+  size = 36,
+  variant = 'full',
+}: PortalLogoProps) {
+  const src = variant === 'collapsed' ? PORTAL_LOGO_COLLAPSED_SRC : PORTAL_LOGO_SRC;
+
   return (
-    <svg
-      aria-hidden="true"
+    <img
+      alt={alt}
+      aria-hidden={alt ? undefined : true}
       className={`portal-logo ${className}`.trim()}
       height={size}
-      viewBox="0 0 40 40"
-      width={size}
-    >
-      <circle cx="20" cy="20" fill="var(--color-accent-primary)" r="20" />
-      <text
-        dominantBaseline="middle"
-        fill="var(--color-accent-primary-text)"
-        fontFamily="Segoe UI, system-ui, sans-serif"
-        fontSize="13"
-        fontWeight="700"
-        letterSpacing="-0.04em"
-        textAnchor="middle"
-        x="20"
-        y="21"
-      >
-        FP
-      </text>
-    </svg>
+      src={src}
+      style={
+        variant === 'collapsed'
+          ? { height: size, width: size, objectFit: 'contain' }
+          : { height: size, width: 'auto' }
+      }
+      width={variant === 'collapsed' ? size : undefined}
+    />
   );
 }

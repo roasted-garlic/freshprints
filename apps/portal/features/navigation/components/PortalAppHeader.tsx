@@ -4,10 +4,11 @@ import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { Menu } from 'lucide-react';
 
-import { PORTAL_SUBTITLE } from '../../brand/portalBrand';
+import { PortalLogo } from '../../brand/components/PortalLogo';
 import { ImageUpIcon, ShoppingBagIcon } from '../../shared/components/PortalIcons';
 import {
   buildRequestArtworkHref,
+  CATALOG_HOME_PATH,
   REQUEST_ARTWORK_PATH,
 } from '../../print-requests/utils/catalogSelectionNavigation';
 import { usePortalDrawer } from '../context/PortalDrawerContext';
@@ -45,8 +46,13 @@ export function PortalAppHeader() {
           <Menu aria-hidden size={20} strokeWidth={2} />
         </button>
         <div className="portal-app-header-brand">
-          <p className="portal-app-header-title">Fresh Prints</p>
-          <p className="portal-app-header-subtitle">{PORTAL_SUBTITLE}</p>
+          <Link
+            aria-label="Go to Fresh Prints home"
+            className="portal-app-header-brand-link"
+            href={CATALOG_HOME_PATH}
+          >
+            <PortalLogo alt="Fresh Prints Request Portal" className="portal-app-header-logo" size={52} />
+          </Link>
         </div>
       </div>
 

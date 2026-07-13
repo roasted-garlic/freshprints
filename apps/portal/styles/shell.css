@@ -54,9 +54,10 @@
 .portal-sidebar-brand {
   align-items: center;
   display: flex;
-  gap: var(--space-3);
-  min-height: 2.75rem;
+  justify-content: center;
+  min-height: 3.75rem;
   padding: 0 var(--space-2);
+  position: relative;
 }
 
 .portal-sidebar-brand-copy {
@@ -79,7 +80,34 @@
 }
 
 .portal-logo {
+  display: block;
   flex-shrink: 0;
+  height: auto;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+.portal-sidebar-brand-link {
+  align-items: center;
+  display: inline-flex;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.portal-sidebar-brand-link:focus-visible {
+  border-radius: var(--radius-md);
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+  outline: none;
+}
+
+.portal-sidebar-brand-logo {
+  max-width: min(14rem, 100%);
+}
+
+.portal-sidebar-brand-logo-collapsed {
+  border-radius: 999px;
+  max-width: 2.5rem;
+  width: 2.5rem;
 }
 
 .portal-sidebar-drawer-close {
@@ -90,10 +118,13 @@
   cursor: pointer;
   display: none;
   justify-content: center;
-  margin-left: auto;
   min-height: 2rem;
   min-width: 2rem;
   padding: var(--space-1);
+  position: absolute;
+  right: var(--space-1);
+  top: 50%;
+  transform: translateY(-50%);
   transition: color var(--transition-fast);
 }
 
@@ -564,6 +595,23 @@
 
 .portal-app-header-brand {
   min-width: 0;
+}
+
+.portal-app-header-brand-link {
+  display: inline-flex;
+  pointer-events: auto;
+  text-decoration: none;
+}
+
+.portal-app-header-brand-link:focus-visible {
+  border-radius: var(--radius-md);
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+  outline: none;
+}
+
+.portal-app-header-logo {
+  display: block;
+  max-width: min(17rem, 100%);
 }
 
 .portal-app-header-title {
@@ -1159,7 +1207,7 @@
 
   .portal-app-header-brand {
     left: 50%;
-    max-width: min(12.5rem, calc(100% - 8.5rem));
+    max-width: min(17rem, calc(100% - 8.5rem));
     pointer-events: none;
     position: absolute;
     text-align: center;

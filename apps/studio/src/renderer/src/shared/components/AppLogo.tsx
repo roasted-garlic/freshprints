@@ -1,39 +1,43 @@
+import studioLogoUrl from "../../../../assets/brand/fresh-prints-studio-logo.png";
+import studioLogoCollapsedUrl from "../../../../assets/brand/fresh-prints-studio-logo-collapsed.png";
+
 interface AppLogoProps {
+  /** Accessible name when the logo is meaningful (not decorative). */
+  alt?: string;
   className?: string;
   size?: "sm" | "md" | "lg";
+  /** Full wordmark or compact mark for the collapsed sidebar. */
+  variant?: "full" | "collapsed";
 }
 
-const logoSizes = {
-  sm: 32,
-  md: 36,
-  lg: 44,
+const logoHeights = {
+  sm: 36,
+  md: 52,
+  lg: 72,
 } as const;
 
-export function AppLogo({ className = "", size = "md" }: AppLogoProps) {
-  const dimension = logoSizes[size];
+export function AppLogo({
+  alt = "",
+  className = "",
+  size = "md",
+  variant = "full",
+}: AppLogoProps) {
+  const height = logoHeights[size];
+  const src = variant === "collapsed" ? studioLogoCollapsedUrl : studioLogoUrl;
 
   return (
-    <svg
-      aria-hidden="true"
+    <img
+      alt={alt}
+      aria-hidden={alt ? undefined : true}
       className={`app-logo ${className}`.trim()}
-      height={dimension}
-      viewBox="0 0 40 40"
-      width={dimension}
-    >
-      <circle cx="20" cy="20" fill="#2563eb" r="20" />
-      <text
-        dominantBaseline="middle"
-        fill="#ffffff"
-        fontFamily="Segoe UI, system-ui, sans-serif"
-        fontSize="13"
-        fontWeight="700"
-        letterSpacing="-0.04em"
-        textAnchor="middle"
-        x="20"
-        y="21"
-      >
-        FP
-      </text>
-    </svg>
+      height={height}
+      src={src}
+      style={
+        variant === "collapsed"
+          ? { height, width: height, objectFit: "contain" }
+          : { height, width: "auto" }
+      }
+      width={variant === "collapsed" ? height : undefined}
+    />
   );
 }

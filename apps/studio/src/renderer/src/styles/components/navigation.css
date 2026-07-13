@@ -34,9 +34,10 @@
 .sidebar-brand {
   align-items: center;
   display: flex;
-  gap: var(--space-3);
-  min-height: 2.75rem;
+  justify-content: center;
+  min-height: 3.75rem;
   padding: 0 var(--space-2);
+  position: relative;
 }
 
 .sidebar-brand-title {
@@ -47,8 +48,31 @@
   white-space: nowrap;
 }
 
+.sidebar-brand-link {
+  align-items: center;
+  display: inline-flex;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.sidebar-brand-link:focus-visible {
+  border-radius: var(--radius-md);
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+  outline: none;
+}
+
 .sidebar-logo {
+  display: block;
   flex-shrink: 0;
+  max-width: min(14rem, 100%);
+  object-fit: contain;
+}
+
+.sidebar-logo-collapsed {
+  border-radius: 999px;
+  height: 2.5rem;
+  max-width: 2.5rem;
+  width: 2.5rem;
 }
 
 .sidebar-nav {
@@ -328,10 +352,13 @@
   cursor: pointer;
   display: none;
   justify-content: center;
-  margin-left: auto;
   min-height: 2rem;
   min-width: 2rem;
   padding: var(--space-1);
+  position: absolute;
+  right: var(--space-1);
+  top: 50%;
+  transform: translateY(-50%);
   transition: color var(--transition-fast);
 }
 
