@@ -14,6 +14,7 @@ import { httpsCallable } from "firebase/functions";
 import { CUSTOMER_UPLOAD_COLLECTIONS } from "@fresh-prints/shared/constants/customerUpload/customerUploadCollections.constants";
 import type {
   CustomerUploadCatalogReviewStatus,
+  CustomerUploadPurpose,
   CustomerUploadSourceFormat,
   CustomerUploadTechnicalStatus,
 } from "@fresh-prints/shared/types/customerUpload/customerUpload.enums";
@@ -23,6 +24,7 @@ import type {
   RestoreCustomerUploadCatalogEligibilityResponse,
   RetryCustomerUploadProcessingResponse,
 } from "@fresh-prints/shared/types/customerUpload/customerUploadStaffActions.types";
+import { resolveCustomerUploadPurpose } from "@fresh-prints/shared/utils/customerUploadPurpose";
 
 import { db, functions, storage } from "../../../config/firebase";
 import { permissionService } from "../../permissions/services/permissionService";
@@ -61,6 +63,7 @@ export interface CustomerUploadIntakeRow {
   promotedDesignId: string | null;
   ownershipConfirmed: boolean;
   catalogUseAcknowledged: boolean;
+  purpose: CustomerUploadPurpose;
   createdAtMs: number | null;
 }
 
@@ -219,6 +222,7 @@ export const customerUploadIntakeService = {
         promotedDesignId: asString(data.promotedDesignId),
         ownershipConfirmed: data.ownershipConfirmed === true,
         catalogUseAcknowledged: data.catalogUseAcknowledged === true,
+        purpose: resolveCustomerUploadPurpose(data.purpose),
         createdAtMs: timestampMs(data.createdAt),
       });
     }

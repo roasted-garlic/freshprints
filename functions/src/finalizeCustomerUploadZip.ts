@@ -38,6 +38,7 @@ import {
 } from "./lib/errors";
 import { withoutUndefinedFields } from "./lib/firestoreDocument";
 import { requirePortalCustomer } from "./lib/portalCustomer";
+import { resolveCustomerUploadPurpose } from "../../packages/shared/src/utils/customerUploadPurpose";
 
 export interface FinalizeCustomerUploadZipFileResult {
   uploadId: string;
@@ -87,6 +88,7 @@ export const finalizeCustomerUploadZip = onCall(
     if (batch.mode !== "zip") {
       throw failedPrecondition("This batch is not a ZIP upload.");
     }
+    const batchPurpose = resolveCustomerUploadPurpose(batch.purpose);
 
     if (batch.zipExtractionStatus === "complete") {
       const existing = await listBatchUploadResults(payload.batchId, customerUid);
@@ -214,6 +216,7 @@ export const finalizeCustomerUploadZip = onCall(
             batchId: payload.batchId,
             customerUid,
             customerId: portalCustomer.customerId,
+            purpose: batchPurpose,
             printRequestId: null,
             originalFilename: sanitizeDisplayFilename(image.displayFilename),
             sourceFormat: null,

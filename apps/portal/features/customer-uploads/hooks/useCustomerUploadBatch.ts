@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 
 import { CUSTOMER_UPLOAD_TERMS_VERSION } from '@fresh-prints/shared/types/customerUpload/customerUpload.types';
+import type { CustomerUploadPurpose } from '@fresh-prints/shared/types/customerUpload/customerUpload.enums';
 import { getCustomerUploadProgressLabel } from '@fresh-prints/shared/utils/customerUploadProgressLabel';
 
 import { useAuth } from '../../auth/context/AuthContext';
@@ -77,14 +78,17 @@ function mapTechnicalStatusToPhase(
   }
 }
 
-export function useCustomerUploadBatch() {
+export function useCustomerUploadBatch(options?: { purpose?: CustomerUploadPurpose }) {
+  const purpose = options?.purpose ?? 'print_request';
+  const isDonation = purpose === 'catalog_donation';
   const { firebaseUser } = useAuth();
   const [rows, setRows] = useState<UploadRowState[]>([]);
   const [batchId, setBatchId] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isAttaching, setIsAttaching] = useState(false);
   const [ownershipConfirmed, setOwnershipConfirmed] = useState(false);
-  const [catalogUseAcknowledged, setCatalogUseAcknowledged] = useState(true);
+  // Print: library optional, default on. Donate: listing consent required, default off.
+  const [catalogUseAcknowledged, setCatalogUseAcknowledged] = useState(!isDonation);
   const [bannerError, setBannerError] = useState<string | null>(null);
   const [batchNotes, setBatchNotes] = useState<string[]>([]);
   const abortRef = useRef(false);
@@ -121,6 +125,7 @@ export function useCustomerUploadBatch() {
   const canAttach =
     readyRows.length > 0 &&
     ownershipConfirmed &&
+    (!isDonation || catalogUseAcknowledged) &&
     !isProcessing &&
     !isAttaching;
 
@@ -182,7 +187,7 @@ export function useCustomerUploadBatch() {
             },
           ]);
 
-          const created = await customerUploadService.createZipBatch(zip);
+          const created = await customerUploadService.createZipBatch(zip, { purpose });
           setBatchId(created.batchId);
           batchIdRef.current = created.batchId;
 
@@ -315,6 +320,7 @@ export function useCustomerUploadBatch() {
 
         const created = await customerUploadService.createDirectImageBatch(limitedImages, {
           existingBatchId: existingBatchId ?? undefined,
+          purpose,
         });
         setBatchId(created.batchId);
         batchIdRef.current = created.batchId;
@@ -456,7 +462,7 @@ export function useCustomerUploadBatch() {
         setIsProcessing(false);
       }
     },
-    [firebaseUser, updateRow],
+    [firebaseUser, purpose, updateRow],
   );
 
   const retryFailed = useCallback(async () => {
@@ -557,7 +563,7 @@ export function useCustomerUploadBatch() {
   }, [batchId, firebaseUser, rows, updateRow]);
 
   const attachToRequest = useCallback(async (): Promise<string | null> => {
-    if (!batchId || !canAttach) {
+    if (isDonation || !batchId || !canAttach) {
       return null;
     }
 
@@ -582,24 +588,52 @@ export function useCustomerUploadBatch() {
     } finally {
       setIsAttaching(false);
     }
-  }, [batchId, canAttach, catalogUseAcknowledged, firebaseUser, readyRows]);
+  }, [batchId, canAttach, catalogUseAcknowledged, firebaseUser, isDonation, readyRows]);
+
+  const submitDonation = useCallback(async (): Promise<boolean> => {
+    if (!isDonation || !batchId || !canAttach) {
+      return false;
+    }
+
+    setIsAttaching(true);
+    setBannerError(null);
+    try {
+      await customerUploadService.confirmForDonation({
+        batchId,
+        uploadIds: readyRows.map((row) => row.uploadId!),
+        ownershipConfirmed: true,
+        catalogUseAcknowledged: true,
+        termsVersion: customerUploadService.donateTermsVersion,
+      });
+      if (firebaseUser) {
+        customerUploadService.clearSession(firebaseUser.uid);
+      }
+      return true;
+    } catch (error) {
+      setBannerError(error instanceof Error ? error.message : 'Unable to submit donation.');
+      return false;
+    } finally {
+      setIsAttaching(false);
+    }
+  }, [batchId, canAttach, firebaseUser, isDonation, readyRows]);
 
   const reset = useCallback(() => {
     abortRef.current = true;
     setRows([]);
     setBatchId(null);
     setOwnershipConfirmed(false);
-    setCatalogUseAcknowledged(true);
+    setCatalogUseAcknowledged(!isDonation);
     setBannerError(null);
     setBatchNotes([]);
     if (firebaseUser) {
       customerUploadService.clearSession(firebaseUser.uid);
     }
-  }, [firebaseUser]);
+  }, [firebaseUser, isDonation]);
 
   return {
     rows: activeRows,
     batchId,
+    purpose,
     isProcessing,
     isAttaching,
     ownershipConfirmed,
@@ -617,6 +651,7 @@ export function useCustomerUploadBatch() {
     removeRow,
     retryFailed,
     attachToRequest,
+    submitDonation,
     reset,
   };
 }

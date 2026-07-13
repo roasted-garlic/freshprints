@@ -4,6 +4,33 @@
 
 ---
 
+### ADR-FP-078: Catalog donations reuse customer-upload pipeline
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-13 |
+| Status | accepted |
+
+**Context**
+
+ADR-FP-076 reserved image donations as a separate product path from `/requests/artwork`. Product needs customers to submit artwork for possible Design Library listing without attaching to a Current Request, while reusing the existing technical upload/finalize/staff-promote/AI pipeline.
+
+**Decision**
+
+1. Same Firestore collections (`customerUploads` / `customerUploadBatches`) with additive `purpose: "print_request" | "catalog_donation"` (missing ≡ print_request).
+2. Portal route `/donate` with sidebar **Donate Designs**; does not share `/requests/artwork`.
+3. New callable `confirmCustomerUploadsForDonation` confirms ownership + **required** catalog listing consent (`catalogUseAcknowledged === true`, terms `customer-upload-donate-terms-v1`) and sets `catalogReviewStatus: pending_staff_review` without creating print request items.
+4. Attach callable rejects `catalog_donation` purpose; donate confirm rejects non-donation purpose.
+5. Studio **Donated Designs** (`/donated-designs`) filters `purpose == catalog_donation`; **Customer Uploads** excludes donations. Staff promote/exclude/AI path unchanged.
+
+**Consequences**
+
+- Print-request library permission remains optional (ADR-FP-074); donations require listing consent.
+- Any authenticated Portal customer may donate (no staff feature flag in this phase).
+- Composite Firestore indexes required for purpose + catalogReviewStatus queries.
+
+---
+
 ### ADR-FP-077: Soft-quality warning for aggressive import upscales
 
 | Field | Value |

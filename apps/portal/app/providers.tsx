@@ -10,7 +10,9 @@ function isAuthenticatedAppRoute(pathname: string): boolean {
   return (
     pathname.startsWith('/dashboard') ||
     pathname.startsWith('/catalog') ||
-    pathname.startsWith('/requests')
+    pathname.startsWith('/requests') ||
+    pathname.startsWith('/donate') ||
+    pathname.startsWith('/account')
   );
 }
 

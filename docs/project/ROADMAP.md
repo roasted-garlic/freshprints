@@ -985,6 +985,8 @@ Production App Hosting deploy to a live customer URL is a **separate** human che
 
 **Customer-Provided Request Artwork** — **complete** on `fresh-prints-dev` (2026-07-12 parent signoff). Portal customers upload transparent PNG/WebP for their one working print request; Studio Customer Uploads intake may promote to AI Review. Separate from catalog until staff action. **Not** Phase 9 Custom Request Q&A (`customRequests`). Plan: `docs/workflow/plans/2026-07-11-portal-customer-artwork-upload-plan.md` (ADR-FP-073). Parent signoff: `docs/workflow/reviews/2026-07-12-portal-customer-artwork-upload-parent-signoff.md`.
 
+**Catalog Donate Designs** — Portal `/donate` + Studio **Donated Designs** reuse the same upload pipeline with `purpose: catalog_donation` (ADR-FP-078). Does not attach to Current Request; listing consent required.
+
 - Sub-phases A–G + remediations r2–r7 — **complete** (owner PASS on r7)
 - ADRs: FP-073 (uploads), FP-074 (library permission), FP-075 (200 DPI save floor)
 

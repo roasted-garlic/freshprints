@@ -11,6 +11,7 @@ import {
   Settings,
   Sparkles,
   FolderInput,
+  HeartHandshake,
   Upload,
   Users,
   X,
@@ -45,6 +46,7 @@ interface SidebarRouteItem {
   permission?: PermissionKey;
   showInboxBadge?: boolean;
   showCustomerUploadBadge?: boolean;
+  showDonatedDesignsBadge?: boolean;
   /** Extra client-side visibility gate beyond permission (e.g. allowlisted Firebase project). */
   isVisible?: () => boolean;
 }
@@ -104,6 +106,14 @@ const sidebarItems: SidebarRouteItem[] = [
   },
   {
     kind: "route",
+    icon: HeartHandshake,
+    label: "Donated Designs",
+    to: "/donated-designs",
+    permission: "importDesigns",
+    showDonatedDesignsBadge: true,
+  },
+  {
+    kind: "route",
     icon: Sparkles,
     label: "AI Processing",
     to: "/ai-review",
@@ -159,7 +169,8 @@ export function Sidebar() {
   const { isOpen: isDrawerOpen, close: closeDrawer } = useSidebarDrawer();
   const { isUploadActive, requestLeaveConfirmation } = useUploadActivity();
   const staffInbox = useStaffInboxContext();
-  const pendingCustomerUploadCount = usePendingCustomerUploadCount();
+  const pendingCustomerUploadCount = usePendingCustomerUploadCount("print_request");
+  const pendingDonatedDesignsCount = usePendingCustomerUploadCount("catalog_donation");
 
   const inboxOpenCount = staffInbox.isEnabled ? staffInbox.badgeCounts.printRequests : 0;
 
@@ -176,9 +187,18 @@ export function Sidebar() {
         return pendingCustomerUploadCount;
       }
 
+      if (item.showDonatedDesignsBadge) {
+        return pendingDonatedDesignsCount;
+      }
+
       return 0;
     },
-    [inboxOpenCount, pendingCustomerUploadCount, staffInbox.isEnabled],
+    [
+      inboxOpenCount,
+      pendingCustomerUploadCount,
+      pendingDonatedDesignsCount,
+      staffInbox.isEnabled,
+    ],
   );
 
   const handleOpenDevTools = useCallback(async () => {

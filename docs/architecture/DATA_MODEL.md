@@ -914,7 +914,9 @@ customerUploadFinalizeLeases
 customerUploadIdempotency
 ```
 
-Customer-provided **request artwork** for print requests. Independent of catalog `designs` until staff promotes. **Not** Phase 9 `customRequests`.
+Customer-provided artwork for **print requests** and **catalog donations** (ADR-FP-073, ADR-FP-078). Independent of catalog `designs` until staff promotes. **Not** Phase 9 `customRequests`.
+
+**Purpose:** `print_request` | `catalog_donation` (missing on legacy docs ≡ `print_request`). Donations never set `printRequestId` or create `printRequestItems`.
 
 **Technical status:** `awaiting_upload` → `uploading` → `validating` → `processing` → `ready` | `failed`
 

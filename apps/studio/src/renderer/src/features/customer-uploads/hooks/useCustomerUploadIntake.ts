@@ -10,6 +10,8 @@ import {
 } from "firebase/firestore";
 
 import { CUSTOMER_UPLOAD_COLLECTIONS } from "@fresh-prints/shared/constants/customerUpload/customerUploadCollections.constants";
+import type { CustomerUploadPurpose } from "@fresh-prints/shared/types/customerUpload/customerUpload.enums";
+import { resolveCustomerUploadPurpose } from "@fresh-prints/shared/utils/customerUploadPurpose";
 
 import { db } from "../../../config/firebase";
 import { useAuth } from "../../auth/hooks/useAuth";
@@ -50,7 +52,10 @@ function timestampMs(value: unknown): number | null {
  * Live intake list + keyed mutation state.
  * Card actions never flip full-page loading (avoids remount / “full refresh”).
  */
-export function useCustomerUploadIntake() {
+export function useCustomerUploadIntake(options?: {
+  purposeScope?: CustomerUploadPurpose;
+}) {
+  const purposeScope = options?.purposeScope ?? "print_request";
   const { user } = useAuth();
   const canView = Boolean(user && permissionService.canViewCustomerUploadIntake(user));
   const canExclude = Boolean(user && permissionService.canExcludeCustomerUploadFromCatalog(user));
@@ -149,6 +154,7 @@ export function useCustomerUploadIntake() {
           promotedDesignId: asString(data.promotedDesignId),
           ownershipConfirmed: data.ownershipConfirmed === true,
           catalogUseAcknowledged: data.catalogUseAcknowledged === true,
+          purpose: resolveCustomerUploadPurpose(data.purpose),
           createdAtMs: timestampMs(data.createdAt),
         });
       }
@@ -189,15 +195,21 @@ export function useCustomerUploadIntake() {
                 data: () => docSnap.data() as Record<string, unknown>,
               })),
             );
+            // Client-side purpose filter reuses existing catalogReviewStatus+createdAt index
+            // (avoids requiring undeployed purpose composite indexes for local QA).
+            const scoped =
+              purposeScope === "catalog_donation"
+                ? mapped.filter((row) => row.purpose === "catalog_donation")
+                : mapped.filter((row) => row.purpose !== "catalog_donation");
             if (cancelled) {
               return;
             }
-            setRows(mapped);
+            setRows(scoped);
             setSelectedId((current) => {
-              if (current && mapped.some((row) => row.id === current)) {
+              if (current && scoped.some((row) => row.id === current)) {
                 return current;
               }
-              return mapped[0]?.id ?? null;
+              return scoped[0]?.id ?? null;
             });
             setIsInitialLoading(false);
           } catch (err) {
@@ -223,7 +235,7 @@ export function useCustomerUploadIntake() {
       cancelled = true;
       unsubscribe?.();
     };
-  }, [user, canView, filter, mapSnapshotDocs]);
+  }, [user, canView, filter, mapSnapshotDocs, purposeScope]);
 
   const selected = rows.find((row) => row.id === selectedId) ?? null;
 

@@ -20,6 +20,9 @@ export function sanitizePortalReturnTo(raw: string | null | undefined): string |
   if (value === REQUEST_ARTWORK_PATH || value.startsWith(`${REQUEST_ARTWORK_PATH}?`)) {
     return null;
   }
+  if (value === '/donate' || value.startsWith('/donate?') || value.startsWith('/donate/')) {
+    return null;
+  }
   return value;
 }
 

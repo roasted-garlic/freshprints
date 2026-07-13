@@ -5,9 +5,11 @@ import { CUSTOMER_UPLOAD_COLLECTIONS } from "../../packages/shared/src/constants
 import type { ConfirmCustomerUploadsAndAttachToRequestResponse } from "../../packages/shared/src/types/customerUpload/confirmCustomerUploadAttach.types";
 import { CUSTOMER_UPLOAD_TERMS_VERSION } from "../../packages/shared/src/types/customerUpload/customerUpload.types";
 import { resolveInitialPrintRequestItemSize } from "../../packages/shared/src/utils/printRequestItemSizing";
+import { resolveCustomerUploadPurpose } from "../../packages/shared/src/utils/customerUploadPurpose";
 
 import { adminDb } from "./lib/admin";
 import { validateConfirmCustomerUploadsAndAttachRequest } from "./lib/confirmCustomerUploadValidation";
+import { buildCatalogIntakeConfirmationPatch } from "./lib/customerUploadCatalogConfirmation";
 import {
   failedPrecondition,
   internal,
@@ -85,6 +87,9 @@ export const confirmCustomerUploadsAndAttachToRequest = onCall(
       if (batchSnap.data()?.customerUid !== customerUid) {
         throw permissionDenied("You do not own this upload batch.");
       }
+      if (resolveCustomerUploadPurpose(batchSnap.data()?.purpose) === "catalog_donation") {
+        throw failedPrecondition("Donation uploads cannot be added to a print request.");
+      }
 
       const uploadSnaps = await Promise.all(
         payload.uploadIds.map((id) =>
@@ -103,6 +108,9 @@ export const confirmCustomerUploadsAndAttachToRequest = onCall(
         }
         if (data.batchId !== payload.batchId) {
           throw invalidArgument("Upload does not belong to this batch.");
+        }
+        if (resolveCustomerUploadPurpose(data.purpose) === "catalog_donation") {
+          throw failedPrecondition("Donation uploads cannot be added to a print request.");
         }
         if (data.technicalStatus !== "ready") {
           throw failedPrecondition("Only successfully processed uploads can be added to a request.");
@@ -155,15 +163,12 @@ export const confirmCustomerUploadsAndAttachToRequest = onCall(
           const uploadId = uploadSnap.id;
           const upload = uploadSnap.data() ?? {};
           const existingItemId = existingByUploadId.get(uploadId);
-          const confirmationPatch = {
-            ownershipConfirmed: true,
+          const confirmationPatch = buildCatalogIntakeConfirmationPatch({
             catalogUseAcknowledged,
             termsVersion: CUSTOMER_UPLOAD_TERMS_VERSION,
-            confirmedAt: now,
             printRequestId,
-            catalogReviewStatus: "pending_staff_review" as const,
-            updatedAt: now,
-          };
+            now,
+          });
 
           if (existingItemId) {
             reusedItemIds.push(existingItemId);

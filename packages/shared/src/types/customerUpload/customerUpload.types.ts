@@ -3,6 +3,7 @@ import type { Timestamp } from "firebase/firestore";
 import type {
   CustomerUploadBatchStatus,
   CustomerUploadCatalogReviewStatus,
+  CustomerUploadPurpose,
   CustomerUploadSourceFormat,
   CustomerUploadTechnicalFailureCode,
   CustomerUploadTechnicalProgressStage,
@@ -13,6 +14,8 @@ export interface CustomerUploadBatch {
   id: string;
   customerUid: string;
   customerId: string;
+  /** Missing on legacy docs — treat as print_request. */
+  purpose?: CustomerUploadPurpose;
   printRequestId: string | null;
   status: CustomerUploadBatchStatus;
   fileCount: number;
@@ -32,6 +35,8 @@ export interface CustomerUpload {
   batchId: string;
   customerUid: string;
   customerId: string;
+  /** Missing on legacy docs — treat as print_request. */
+  purpose?: CustomerUploadPurpose;
   printRequestId: string | null;
   originalFilename: string;
   sourceFormat: CustomerUploadSourceFormat | null;
@@ -64,5 +69,8 @@ export interface CustomerUpload {
   updatedAt: Timestamp;
 }
 
-/** Current customer-facing confirmation copy version. */
+/** Current customer-facing confirmation copy version (print-request attach). */
 export const CUSTOMER_UPLOAD_TERMS_VERSION = "customer-upload-terms-v2" as const;
+
+/** Catalog donation confirmation copy version (donate confirm; listing consent required). */
+export const CUSTOMER_UPLOAD_DONATE_TERMS_VERSION = "customer-upload-donate-terms-v1" as const;

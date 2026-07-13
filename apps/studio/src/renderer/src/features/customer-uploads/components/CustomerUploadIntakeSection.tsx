@@ -41,9 +41,11 @@ function DetailField({ label, value }: { label: string; value: string }) {
 function IntakeDetail({
   row,
   intake,
+  isDonation = false,
 }: {
   row: CustomerUploadIntakeRow;
   intake: IntakeApi;
+  isDonation?: boolean;
 }) {
   const navigate = useNavigate();
   const pendingAction = intake.pendingByUploadId[row.id] ?? null;
@@ -67,18 +69,28 @@ function IntakeDetail({
           <h3>{row.originalFilename}</h3>
           <p className="customer-upload-intake-meta">
             {row.customerDisplayName} · {row.catalogReviewStatus.replace(/_/g, " ")}
+            {isDonation ? " · donation" : ""}
           </p>
         </div>
       </div>
 
       <dl className="customer-upload-intake-fields">
         <DetailField label="Customer" value={row.customerDisplayName} />
-        <DetailField
-          label="Linked request"
-          value={row.printRequestName ?? row.printRequestId ?? "—"}
-        />
-        <DetailField label="Request status" value={row.printRequestStatus ?? "—"} />
-        <DetailField label="Show assignment" value={row.showAssignmentLabel ?? "See print request"} />
+        {!isDonation ? (
+          <>
+            <DetailField
+              label="Linked request"
+              value={row.printRequestName ?? row.printRequestId ?? "—"}
+            />
+            <DetailField label="Request status" value={row.printRequestStatus ?? "—"} />
+            <DetailField
+              label="Show assignment"
+              value={row.showAssignmentLabel ?? "See print request"}
+            />
+          </>
+        ) : (
+          <DetailField label="Source" value="Catalog donation (not on a print request)" />
+        )}
         <DetailField label="Uploaded" value={formatDate(row.createdAtMs)} />
         <DetailField label="Format" value={row.sourceFormat ?? "—"} />
         <DetailField
@@ -107,14 +119,16 @@ function IntakeDetail({
           value={row.ownershipConfirmed ? "Yes" : "No"}
         />
         <DetailField
-          label="Design Library permission"
+          label={isDonation ? "Donation listing consent" : "Design Library permission"}
           value={
             row.catalogUseAcknowledged
-              ? "Allowed"
+              ? isDonation
+                ? "Consented to catalog listing"
+                : "Allowed"
               : "Declined — customer asked not to use in Design Library"
           }
         />
-        {!row.catalogUseAcknowledged ? (
+        {!isDonation && !row.catalogUseAcknowledged ? (
           <p className="customer-upload-intake-library-decline" role="status">
             Customer declined Design Library use. Staff may still send to AI Review if appropriate.
           </p>
@@ -128,7 +142,7 @@ function IntakeDetail({
       </dl>
 
       <div className="customer-upload-intake-actions">
-        {row.printRequestId ? (
+        {!isDonation && row.printRequestId ? (
           <Button
             onClick={() => {
               navigate(
@@ -179,7 +193,9 @@ function IntakeDetail({
             onClick={() => {
               if (
                 window.confirm(
-                  "Exclude this upload from the catalog? Artwork stays on the print request and production files are kept.",
+                  isDonation
+                    ? "Exclude this donation from the catalog? Production files are kept, but it will not be listed."
+                    : "Exclude this upload from the catalog? Artwork stays on the print request and production files are kept.",
                 )
               ) {
                 void intake.exclude(row.id);
@@ -221,8 +237,13 @@ function IntakeDetail({
   );
 }
 
-export function CustomerUploadIntakeSection() {
-  const intake = useCustomerUploadIntake();
+export function CustomerUploadIntakeSection({
+  purposeScope = "print_request",
+}: {
+  purposeScope?: "print_request" | "catalog_donation";
+}) {
+  const isDonation = purposeScope === "catalog_donation";
+  const intake = useCustomerUploadIntake({ purposeScope });
 
   if (!intake.canView) {
     return null;
@@ -232,8 +253,12 @@ export function CustomerUploadIntakeSection() {
     <Card className="customer-upload-intake-section">
       <div className="customer-upload-intake-header">
         <div>
-          <h2>Intake for catalog review</h2>
-          <p>Review Portal artwork before sending it to AI Processing or excluding it from the catalog.</p>
+          <h2>{isDonation ? "Donated designs intake" : "Intake for catalog review"}</h2>
+          <p>
+            {isDonation
+              ? "Review Portal catalog donations before sending them to AI Processing or excluding them from the Design Library."
+              : "Review Portal request artwork before sending it to AI Processing or excluding it from the catalog."}
+          </p>
         </div>
         <Button
           onClick={() => {
@@ -284,12 +309,16 @@ export function CustomerUploadIntakeSection() {
 
         <div className="customer-upload-intake-panel-body" role="tabpanel">
           {intake.isLoading && intake.rows.length === 0 ? (
-            <p>Loading customer uploads…</p>
+            <p>Loading {isDonation ? "donations" : "customer uploads"}…</p>
           ) : intake.rows.length === 0 ? (
             <p className="customer-upload-intake-empty">
               {intake.filter === "pending_staff_review"
-                ? "No uploads pending staff review."
-                : "No excluded uploads."}
+                ? isDonation
+                  ? "No donations pending staff review."
+                  : "No uploads pending staff review."
+                : isDonation
+                  ? "No excluded donations."
+                  : "No excluded uploads."}
             </p>
           ) : (
             <div className="customer-upload-intake-layout">
@@ -313,7 +342,9 @@ export function CustomerUploadIntakeSection() {
                   </li>
                 ))}
               </ul>
-              {intake.selected ? <IntakeDetail intake={intake} row={intake.selected} /> : null}
+              {intake.selected ? (
+                <IntakeDetail intake={intake} isDonation={isDonation} row={intake.selected} />
+              ) : null}
             </div>
           )}
         </div>

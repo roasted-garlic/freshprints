@@ -124,6 +124,7 @@ export default function RequestArtworkPage() {
           setAttachedRequestId(printRequestId);
         }}
         onClose={handleBack}
+        purpose="print_request"
         variant="embedded"
       />
     </main>

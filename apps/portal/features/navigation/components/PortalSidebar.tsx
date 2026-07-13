@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, LogOut, User } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, HeartHandshake, LogOut, User } from 'lucide-react';
 
 import { resolvePortalDisplayName, getProfileInitials } from '../../account/utils/profileDisplay';
 import { useAuth } from '../../auth/context/AuthContext';
@@ -132,6 +132,27 @@ export function PortalSidebar() {
         <div className="portal-sidebar-spacer" />
 
         <div className="portal-sidebar-footer">
+          <Link
+            aria-current={pathname === '/donate' || pathname.startsWith('/donate/') ? 'page' : undefined}
+            className={`portal-sidebar-donate-link${
+              pathname === '/donate' || pathname.startsWith('/donate/')
+                ? ' is-active'
+                : ''
+            }`}
+            href={
+              pathname === '/donate' || pathname.startsWith('/donate/')
+                ? '/donate'
+                : `/donate?returnTo=${encodeURIComponent(pathname)}`
+            }
+            onClick={closeDrawer}
+            title="Donate Designs"
+          >
+            <span className="portal-sidebar-donate-link-main">
+              <HeartHandshake aria-hidden className="portal-sidebar-donate-icon" size={18} strokeWidth={1.75} />
+              <span className="portal-sidebar-donate-link-label">Donate Designs</span>
+            </span>
+          </Link>
+
           {showCollapsed ? (
             <Link
               aria-current={isAccountActive ? 'page' : undefined}

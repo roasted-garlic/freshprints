@@ -22,6 +22,7 @@ import {
 } from "./lib/errors";
 import { withoutUndefinedFields } from "./lib/firestoreDocument";
 import { requirePortalCustomer } from "./lib/portalCustomer";
+import { resolveCustomerUploadPurpose } from "../../packages/shared/src/utils/customerUploadPurpose";
 
 export interface CreateCustomerUploadBatchResponse {
   batchId: string;
@@ -100,6 +101,7 @@ export const createCustomerUploadBatch = onCall(
         customerUid,
         customerId: portalCustomer.customerId,
         existingBatchId: payload.existingBatchId,
+        purpose: payload.purpose,
         files: payload.files ?? [],
         clientRequestId: payload.clientRequestId,
         idempotencyRef,
@@ -121,6 +123,7 @@ export const createCustomerUploadBatch = onCall(
             id: batchId,
             customerUid,
             customerId: portalCustomer.customerId,
+            purpose: payload.purpose,
             printRequestId: null,
             status: "open",
             mode: "zip",
@@ -175,6 +178,7 @@ export const createCustomerUploadBatch = onCall(
           id: batchId,
           customerUid,
           customerId: portalCustomer.customerId,
+          purpose: payload.purpose,
           printRequestId: null,
           status: "open",
           mode: "direct_images",
@@ -200,6 +204,7 @@ export const createCustomerUploadBatch = onCall(
             batchId,
             customerUid,
             customerId: portalCustomer.customerId,
+            purpose: payload.purpose,
             printRequestId: null,
             originalFilename: upload.originalFilename,
             sourceFormat: null,
@@ -257,6 +262,7 @@ async function appendToExistingBatch(input: {
   customerUid: string;
   customerId: string;
   existingBatchId: string;
+  purpose: "print_request" | "catalog_donation";
   files: Array<{ originalFilename: string; declaredSizeBytes: number }>;
   clientRequestId: string;
   idempotencyRef: DocumentReference;
@@ -278,6 +284,9 @@ async function appendToExistingBatch(input: {
   }
   if (batch.mode !== "direct_images") {
     throw failedPrecondition("Additional images can only be added to an image upload session.");
+  }
+  if (resolveCustomerUploadPurpose(batch.purpose) !== input.purpose) {
+    throw failedPrecondition("Cannot mix print-request uploads and catalog donations in one session.");
   }
 
   const existingCount = Number(batch.fileCount ?? 0);
@@ -325,6 +334,7 @@ async function appendToExistingBatch(input: {
           batchId: input.existingBatchId,
           customerUid: input.customerUid,
           customerId: input.customerId,
+          purpose: input.purpose,
           printRequestId: null,
           originalFilename: upload.originalFilename,
           sourceFormat: null,

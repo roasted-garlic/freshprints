@@ -13,8 +13,16 @@ import type {
   ConfirmCustomerUploadsAndAttachToRequestRequest,
   ConfirmCustomerUploadsAndAttachToRequestResponse,
 } from '@fresh-prints/shared/types/customerUpload/confirmCustomerUploadAttach.types';
-import { CUSTOMER_UPLOAD_TERMS_VERSION } from '@fresh-prints/shared/types/customerUpload/customerUpload.types';
 import type {
+  ConfirmCustomerUploadsForDonationRequest,
+  ConfirmCustomerUploadsForDonationResponse,
+} from '@fresh-prints/shared/types/customerUpload/confirmCustomerUploadDonate.types';
+import {
+  CUSTOMER_UPLOAD_DONATE_TERMS_VERSION,
+  CUSTOMER_UPLOAD_TERMS_VERSION,
+} from '@fresh-prints/shared/types/customerUpload/customerUpload.types';
+import type {
+  CustomerUploadPurpose,
   CustomerUploadTechnicalProgressStage,
   CustomerUploadTechnicalStatus,
 } from '@fresh-prints/shared/types/customerUpload/customerUpload.enums';
@@ -125,6 +133,7 @@ export const customerUploadService = {
   maxFilesPerBatch: CUSTOMER_UPLOAD_MAX_FILES_PER_BATCH,
   maxConcurrentFinalize: CUSTOMER_UPLOAD_MAX_CONCURRENT_FINALIZE,
   termsVersion: CUSTOMER_UPLOAD_TERMS_VERSION,
+  donateTermsVersion: CUSTOMER_UPLOAD_DONATE_TERMS_VERSION,
 
   classifyFiles(files: File[]): { images: File[]; zips: File[]; rejected: string[] } {
     const images: File[] = [];
@@ -162,13 +171,14 @@ export const customerUploadService = {
 
   async createDirectImageBatch(
     files: File[],
-    options?: { existingBatchId?: string },
+    options?: { existingBatchId?: string; purpose?: CustomerUploadPurpose },
   ): Promise<CreateCustomerUploadBatchResponse> {
     try {
       const createCallable = httpsCallable<
         {
           mode: 'direct_images';
           clientRequestId: string;
+          purpose: CustomerUploadPurpose;
           files: Array<{ originalFilename: string; declaredSizeBytes: number }>;
           existingBatchId?: string;
         },
@@ -178,6 +188,7 @@ export const customerUploadService = {
       const response = await createCallable({
         mode: 'direct_images',
         clientRequestId: newClientRequestId(),
+        purpose: options?.purpose ?? 'print_request',
         files: files.map((file) => ({
           originalFilename: file.name,
           declaredSizeBytes: file.size,
@@ -190,12 +201,16 @@ export const customerUploadService = {
     }
   },
 
-  async createZipBatch(file: File): Promise<CreateCustomerUploadBatchResponse> {
+  async createZipBatch(
+    file: File,
+    options?: { purpose?: CustomerUploadPurpose },
+  ): Promise<CreateCustomerUploadBatchResponse> {
     try {
       const createCallable = httpsCallable<
         {
           mode: 'zip';
           clientRequestId: string;
+          purpose: CustomerUploadPurpose;
           declaredZipSizeBytes: number;
         },
         CreateCustomerUploadBatchResponse
@@ -204,6 +219,7 @@ export const customerUploadService = {
       const response = await createCallable({
         mode: 'zip',
         clientRequestId: newClientRequestId(),
+        purpose: options?.purpose ?? 'print_request',
         declaredZipSizeBytes: file.size,
       });
       return response.data;
@@ -284,6 +300,21 @@ export const customerUploadService = {
         ConfirmCustomerUploadsAndAttachToRequestResponse
       >(getPortalFunctions(), 'confirmCustomerUploadsAndAttachToRequest');
       const response = await attachCallable(input);
+      return response.data;
+    } catch (error) {
+      throw new Error(portalAuthService.getCallableErrorMessage(error));
+    }
+  },
+
+  async confirmForDonation(
+    input: ConfirmCustomerUploadsForDonationRequest,
+  ): Promise<ConfirmCustomerUploadsForDonationResponse> {
+    try {
+      const donateCallable = httpsCallable<
+        ConfirmCustomerUploadsForDonationRequest,
+        ConfirmCustomerUploadsForDonationResponse
+      >(getPortalFunctions(), 'confirmCustomerUploadsForDonation');
+      const response = await donateCallable(input);
       return response.data;
     } catch (error) {
       throw new Error(portalAuthService.getCallableErrorMessage(error));

@@ -7,6 +7,7 @@ import {
   CUSTOMER_UPLOAD_MAX_SINGLE_IMAGE_BYTES,
   CUSTOMER_UPLOAD_MAX_ZIP_COMPRESSED_BYTES,
 } from '@fresh-prints/shared/constants/customerUpload/customerUploadLimits.constants';
+import type { CustomerUploadPurpose } from '@fresh-prints/shared/types/customerUpload/customerUpload.enums';
 import { formatFileSize } from '@fresh-prints/shared/utils/formatFileSize';
 
 import { ArrowLeftIcon, PlusIcon, XIcon } from '../../shared/components/PortalIcons';
@@ -14,17 +15,24 @@ import { useCustomerUploadBatch } from '../hooks/useCustomerUploadBatch';
 import { customerUploadService } from '../services/customerUploadService';
 
 interface CustomerUploadPanelProps {
-  onAttached: (printRequestId: string) => void;
+  /** Print-request attach success (ignored when purpose is catalog_donation). */
+  onAttached?: (printRequestId: string) => void;
+  /** Donation submit success. */
+  onDonated?: () => void;
   onClose: () => void;
+  purpose?: CustomerUploadPurpose;
   /** modal = near-fullscreen overlay (legacy); embedded = page content */
   variant?: 'modal' | 'embedded';
 }
 
 export function CustomerUploadPanel({
   onAttached,
+  onDonated,
   onClose,
+  purpose = 'print_request',
   variant = 'modal',
 }: CustomerUploadPanelProps) {
+  const isDonation = purpose === 'catalog_donation';
   const {
     rows,
     isProcessing,
@@ -44,8 +52,9 @@ export function CustomerUploadPanel({
     removeRow,
     retryFailed,
     attachToRequest,
+    submitDonation,
     reset,
-  } = useCustomerUploadBatch();
+  } = useCustomerUploadBatch({ purpose });
 
   const imageInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
@@ -118,10 +127,19 @@ export function CustomerUploadPanel({
     }
   };
 
-  const handleAttach = async () => {
+  const handleSubmit = async () => {
+    if (isDonation) {
+      const ok = await submitDonation();
+      if (ok) {
+        onDonated?.();
+        reset();
+      }
+      return;
+    }
+
     const printRequestId = await attachToRequest();
     if (printRequestId) {
-      onAttached(printRequestId);
+      onAttached?.(printRequestId);
       reset();
     }
   };
@@ -137,7 +155,7 @@ export function CustomerUploadPanel({
         <header className="modal-header portal-customer-upload-modal-header">
           <div>
             <h2 id="portal-customer-upload-title">
-              {variant === 'embedded' ? 'Choose files' : 'Upload artwork'}
+              {variant === 'embedded' ? 'Choose files' : isDonation ? 'Donate designs' : 'Upload artwork'}
             </h2>
             <p className="portal-muted">
               {variant === 'embedded' ? (
@@ -152,9 +170,10 @@ export function CustomerUploadPanel({
                   Add PNG or WebP files, a folder, or one ZIP. Images up to{' '}
                   {formatFileSize(CUSTOMER_UPLOAD_MAX_SINGLE_IMAGE_BYTES)} each; ZIPs up to{' '}
                   {formatFileSize(CUSTOMER_UPLOAD_MAX_ZIP_COMPRESSED_BYTES)}. Upload up to{' '}
-                  {CUSTOMER_UPLOAD_MAX_CONCURRENT_FINALIZE} images at a time. Passing technical checks
-                  only means your file can print — it is not added to our design library unless
-                  approved.
+                  {CUSTOMER_UPLOAD_MAX_CONCURRENT_FINALIZE} images at a time.
+                  {isDonation
+                    ? ' Submitted donations go to Fresh Prints for review before any catalog listing.'
+                    : ' Passing technical checks only means your file can print — it is not added to our design library unless approved.'}
                 </>
               )}
             </p>
@@ -342,10 +361,16 @@ export function CustomerUploadPanel({
 
           <fieldset className="portal-customer-upload-confirmations">
             <legend>Confirmations</legend>
-            {variant === 'modal' ? (
+            {variant === 'modal' && !isDonation ? (
               <p className="portal-muted portal-customer-upload-confirm-help">
                 Confirm you have the right to print this artwork. You can also allow Fresh Prints to
                 consider it for our shared design library.
+              </p>
+            ) : null}
+            {isDonation ? (
+              <p className="portal-muted portal-customer-upload-confirm-help">
+                Donations are not added to your Current Request. Both confirmations are required to
+                submit.
               </p>
             ) : null}
             <label className="form-checkbox">
@@ -355,7 +380,11 @@ export function CustomerUploadPanel({
                 onChange={(event) => setOwnershipConfirmed(event.target.checked)}
                 type="checkbox"
               />
-              <span>I own this artwork or have permission to print it.</span>
+              <span>
+                {isDonation
+                  ? 'I own this artwork or have permission to donate it for catalog use.'
+                  : 'I own this artwork or have permission to print it.'}
+              </span>
             </label>
             <label className="form-checkbox">
               <input
@@ -365,7 +394,9 @@ export function CustomerUploadPanel({
                 type="checkbox"
               />
               <span>
-                Fresh Prints may use this artwork in our design library for other customers.
+                {isDonation
+                  ? 'I understand I am donating these images to Fresh Prints. If approved, they may be listed in the Design Library for other customers to request.'
+                  : 'Fresh Prints may use this artwork in our design library for other customers.'}
               </span>
             </label>
           </fieldset>
@@ -384,11 +415,17 @@ export function CustomerUploadPanel({
           <button
             className="portal-button portal-button-primary portal-button-leading-icon"
             disabled={!canAttach}
-            onClick={() => void handleAttach()}
+            onClick={() => void handleSubmit()}
             type="button"
           >
             <PlusIcon size={16} />
-            {isAttaching ? 'Adding…' : 'Add to Current Request'}
+            {isDonation
+              ? isAttaching
+                ? 'Submitting…'
+                : 'Submit donation'
+              : isAttaching
+                ? 'Adding…'
+                : 'Add to Current Request'}
           </button>
         </footer>
     </>

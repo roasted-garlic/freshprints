@@ -36,6 +36,17 @@ export type CustomerUploadCatalogReviewStatus =
 
 export type CustomerUploadBatchStatus = "open" | "confirmed" | "abandoned" | "failed";
 
+/**
+ * Why the customer uploaded artwork.
+ * Missing / unknown values are treated as print_request (legacy request artwork).
+ */
+export type CustomerUploadPurpose = "print_request" | "catalog_donation";
+
+export const CUSTOMER_UPLOAD_PURPOSES: readonly CustomerUploadPurpose[] = [
+  "print_request",
+  "catalog_donation",
+] as const;
+
 export type CustomerUploadSourceFormat = "png" | "webp";
 
 /** Machine-readable technical failure codes (user-safe messages mapped separately). */

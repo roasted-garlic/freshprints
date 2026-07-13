@@ -178,6 +178,63 @@
   padding: var(--space-3) var(--space-2) var(--space-1);
 }
 
+.portal-sidebar-donate-link {
+  align-items: center;
+  background: color-mix(in srgb, var(--color-accent-primary) 2.5%, var(--color-bg-secondary));
+  border: 1px solid color-mix(in srgb, var(--color-accent-primary) 8%, transparent);
+  border-radius: var(--radius-md);
+  box-sizing: border-box;
+  color: var(--color-text-primary);
+  display: flex;
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  justify-content: center;
+  margin: 0 var(--space-1);
+  min-height: 2.5rem;
+  padding: 0.55rem var(--space-3);
+  text-decoration: none;
+  transition:
+    background var(--transition-fast),
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+  width: auto;
+}
+
+.portal-sidebar-donate-link.is-active {
+  background: color-mix(in srgb, var(--color-accent-primary) 3.5%, var(--color-bg-secondary));
+  border-color: color-mix(in srgb, var(--color-accent-primary) 12%, transparent);
+  box-shadow: none;
+}
+
+@media (hover: hover) {
+  .portal-sidebar-donate-link:hover,
+  .portal-sidebar-donate-link.is-active:hover {
+    background: color-mix(in srgb, var(--color-accent-primary) 14%, var(--color-bg-secondary));
+    border-color: color-mix(in srgb, var(--color-accent-primary) 32%, transparent);
+  }
+}
+
+.portal-sidebar-donate-link:focus-visible {
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+  outline: none;
+}
+
+.portal-sidebar-donate-link-main {
+  align-items: center;
+  display: inline-flex;
+  gap: var(--space-2);
+  justify-content: center;
+}
+
+.portal-sidebar-donate-icon {
+  color: #e11d48;
+  flex-shrink: 0;
+}
+
+.portal-sidebar-donate-link-label {
+  white-space: nowrap;
+}
+
 .portal-sidebar-user-card {
   align-items: center;
   background: transparent;
@@ -412,6 +469,18 @@
   justify-items: stretch;
   padding-inline: 0;
   width: 100%;
+}
+
+.portal-sidebar-collapsed .portal-sidebar-donate-link {
+  margin-inline: 0;
+  max-width: none;
+  min-height: 2.5rem;
+  padding-inline: 0;
+  width: 100%;
+}
+
+.portal-sidebar-collapsed .portal-sidebar-donate-link-label {
+  display: none;
 }
 
 .portal-sidebar-collapsed .portal-sidebar-footer-actions {
@@ -1023,6 +1092,10 @@
   .portal-sidebar .portal-sidebar-footer {
     gap: var(--space-4);
     padding: var(--space-4) var(--space-2) var(--space-3) var(--space-3);
+  }
+
+  .portal-sidebar .portal-sidebar-donate-link {
+    margin-inline: var(--space-1);
   }
 
   .portal-sidebar .portal-sidebar-user-card {

@@ -1,5 +1,6 @@
 export { cleanupAbandonedCustomerUploads } from "./cleanupAbandonedCustomerUploads";
 export { confirmCustomerUploadsAndAttachToRequest } from "./confirmCustomerUploadsAndAttachToRequest";
+export { confirmCustomerUploadsForDonation } from "./confirmCustomerUploadsForDonation";
 export { createCustomerWithPortalInvite } from "./createCustomerWithPortalInvite";
 export { createCustomerUploadBatch } from "./createCustomerUploadBatch";
 export { createPortalPrintRequest } from "./createPortalPrintRequest";
