@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   Bug,
+  ChevronLeft,
   ChevronsLeft,
   ChevronsRight,
   ClipboardList,
@@ -14,7 +15,6 @@ import {
   HeartHandshake,
   Upload,
   Users,
-  X,
   Bell,
   Clapperboard,
 } from "lucide-react";
@@ -373,7 +373,7 @@ export function Sidebar() {
           onClick={closeDrawer}
           type="button"
         >
-          <X aria-hidden="true" size={18} strokeWidth={2} />
+          <ChevronLeft aria-hidden="true" size={18} strokeWidth={2.25} />
         </button>
       </div>
 

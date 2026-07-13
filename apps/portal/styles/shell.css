@@ -112,23 +112,31 @@
 
 .portal-sidebar-drawer-close {
   align-items: center;
-  background: transparent;
-  border: 0;
-  color: var(--color-text-tertiary);
+  background: color-mix(in srgb, var(--color-accent-primary) 10%, var(--color-bg-secondary));
+  border: 1px solid color-mix(in srgb, var(--color-accent-primary) 34%, var(--color-border));
+  border-radius: var(--radius-md) 0 0 var(--radius-md);
+  border-right: 0;
+  color: var(--color-accent-primary);
   cursor: pointer;
   display: none;
   justify-content: center;
-  min-height: 2rem;
-  min-width: 2rem;
-  padding: var(--space-1);
+  min-height: 2.75rem;
+  min-width: 1.65rem;
+  padding: 0;
   position: absolute;
-  right: var(--space-1);
+  right: 0;
   top: 50%;
   transform: translateY(-50%);
-  transition: color var(--transition-fast);
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast),
+    border-color var(--transition-fast);
+  z-index: 3;
 }
 
 .portal-sidebar-drawer-close:hover {
+  background: color-mix(in srgb, var(--color-accent-primary) 18%, var(--color-bg-secondary));
+  border-color: color-mix(in srgb, var(--color-accent-primary) 55%, var(--color-border));
   color: var(--color-text-primary);
 }
 
@@ -1102,8 +1110,10 @@
 
   .portal-sidebar-drawer-close {
     display: flex;
-    min-height: 2.75rem;
-    min-width: 2.75rem;
+  }
+
+  .portal-sidebar-brand {
+    padding-right: 1.85rem;
   }
 
   .portal-sidebar .portal-sidebar-nav {

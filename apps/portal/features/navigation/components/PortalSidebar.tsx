@@ -114,7 +114,7 @@ export function PortalSidebar() {
             onClick={closeDrawer}
             type="button"
           >
-            <ChevronLeft aria-hidden size={22} strokeWidth={2} />
+            <ChevronLeft aria-hidden size={18} strokeWidth={2.25} />
           </button>
         </div>
 
