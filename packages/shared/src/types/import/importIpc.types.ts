@@ -94,6 +94,7 @@ export type ImportPngWarningCode =
   | "DPI_BELOW_TARGET"
   | "IMAGE_TRIMMED"
   | "IMAGE_UPSCALED"
+  | "IMAGE_UPSCALED_SOFT_QUALITY"
   | "PRINT_SIZE_NORMALIZED"
   | "PRINT_SIZE_BELOW_PREFERRED"
   | "PRINT_SIZE_SMALL_FORMAT"
@@ -114,6 +115,7 @@ export interface ImportPngWarning {
     trimmedHeight?: number;
     upscaledWidth?: number;
     upscaledHeight?: number;
+    upscaleScaleFactor?: number;
   };
 }
 

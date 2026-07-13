@@ -10,6 +10,8 @@ import {
   assessPrintSizeCapability,
   calculateEffectiveDpi,
   calculatePrintSizeAtTargetDpi,
+  getImportUpscaleScaleFactor,
+  isImportUpscaleSoftQuality,
   resolveImportNormalizationTargetDpi,
   resolveImportUpscaleTargetPx,
 } from "./printSizeMath";
@@ -242,5 +244,28 @@ describe("resolveImportUpscaleTargetPx", () => {
     const result = resolveImportUpscaleTargetPx(500, 500, 150, 4);
 
     assert.deepEqual(result, { widthPx: 600, heightPx: 600 });
+  });
+});
+
+describe("isImportUpscaleSoftQuality", () => {
+  it("does not flag a mild 10in→15in (~1.5×) upscale", () => {
+    assert.equal(isImportUpscaleSoftQuality(3000, 4500), false);
+    assert.equal(getImportUpscaleScaleFactor(3000, 4500), 1.5);
+  });
+
+  it("flags a 4in→15in (~3.75×) upscale as soft quality", () => {
+    assert.equal(isImportUpscaleSoftQuality(1200, 4500), true);
+    assert.ok((getImportUpscaleScaleFactor(1200, 4500) ?? 0) >= 3);
+  });
+
+  it("treats exact 3× as soft quality and just under as not", () => {
+    assert.equal(isImportUpscaleSoftQuality(1500, 4500), true);
+    assert.equal(isImportUpscaleSoftQuality(1501, 4500), false);
+  });
+
+  it("returns null/false for invalid or non-enlarging dimensions", () => {
+    assert.equal(getImportUpscaleScaleFactor(0, 4500), null);
+    assert.equal(getImportUpscaleScaleFactor(4500, 3000), null);
+    assert.equal(isImportUpscaleSoftQuality(4500, 4500), false);
   });
 });

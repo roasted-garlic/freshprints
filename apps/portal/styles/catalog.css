@@ -2053,6 +2053,23 @@
   word-break: break-word;
 }
 
+.design-selection-card-title-button {
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  display: block;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+  width: 100%;
+}
+
+.design-selection-card-title-button:focus-visible {
+  border-radius: var(--radius-sm);
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+  outline: none;
+}
+
 .design-selection-card-remove-btn {
   align-items: center;
   background: color-mix(in srgb, var(--color-bg-primary) 80%, transparent);

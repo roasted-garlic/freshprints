@@ -26,6 +26,13 @@ export const PREFERRED_PRINT_WIDTH_INCHES = 10;
 export const IMPORT_UPSCALE_TARGET_WIDTH_INCHES = 15;
 
 /**
+ * When import upscale scale factor (targetWidth / sourceWidth) is at or above
+ * this value, emit an extra soft-quality warning. At the 15″ / 4500px floor,
+ * 3× ≈ sources under ~5″ @ 300 DPI after trim.
+ */
+export const IMPORT_UPSCALE_SOFT_SCALE_FACTOR_THRESHOLD = 3;
+
+/**
  * Staff-facing preferred width target for messaging and future UI defaults.
  * Normalized import width is still computed per file as `pixelWidth / TARGET_PRINT_DPI`.
  */

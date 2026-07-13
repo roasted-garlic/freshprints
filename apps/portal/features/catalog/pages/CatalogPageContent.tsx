@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   getCatalogDiscoveryModeLabel,
@@ -10,6 +10,7 @@ import {
   type CatalogDiscoveryMode,
 } from '@fresh-prints/shared/utils/catalogDiscoveryRanking';
 
+import { CatalogDesignDetailsModal } from '../components/CatalogDesignDetailsModal';
 import { CatalogFilterBar } from '../components/CatalogFilterBar';
 import { CatalogSelectionCard } from '../components/CatalogSelectionCard';
 import { CatalogTagFilterModal } from '../components/CatalogTagFilterModal';
@@ -25,6 +26,7 @@ import {
   sortCatalogTags,
 } from '../utils/catalogSearch';
 import { catalogStorageService } from '../services/catalogStorageService';
+import type { CatalogDesign } from '../types/catalog.types';
 import { usePortalPrintRequests } from '../../print-requests/context/PortalPrintRequestContext';
 import { useAddDesignToRequestFlow } from '../../print-requests/hooks/useAddDesignToRequestFlow';
 import { usePortalPrintRequestSelectionMode } from '../../print-requests/hooks/usePortalPrintRequestSelectionMode';
@@ -63,6 +65,7 @@ export function CatalogPageContent() {
   const [categoryFilter, setCategoryFilter] = useState(initialCategory);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [isTagFilterModalOpen, setIsTagFilterModalOpen] = useState(false);
+  const [selectedDesign, setSelectedDesign] = useState<CatalogDesign | null>(null);
   const [selectionActionError, setSelectionActionError] = useState<string | null>(null);
   const [isLeavingSelection, setIsLeavingSelection] = useState(false);
 
@@ -77,9 +80,14 @@ export function CatalogPageContent() {
     reloadWorkingItems,
   } = usePortalPrintRequests();
 
+  const closeDesignDetails = useCallback(() => {
+    setSelectedDesign(null);
+  }, []);
+
   const addDesignFlow = useAddDesignToRequestFlow({
     continuableRequests,
     createPrintRequest,
+    onBeforeNavigate: closeDesignDetails,
     refreshRequests,
     reloadWorkingItems,
   });
@@ -500,6 +508,7 @@ export function CatalogPageContent() {
                         design={design}
                         isSelected={Boolean(selection)}
                         onAdd={selectionMode.addDesign}
+                        onOpenDetails={setSelectedDesign}
                         onQuantityChange={selectionMode.setQuantity}
                         onRemove={(designId) => void selectionMode.removeDesign(designId)}
                         quantity={selection?.quantity ?? 1}
@@ -521,6 +530,7 @@ export function CatalogPageContent() {
                       disabled={addDesignFlow.addingDesignId === design.id}
                       isSelected={isSelected}
                       onAdd={addDesignFlow.addDesign}
+                      onOpenDetails={setSelectedDesign}
                       onQuantityChange={addDesignFlow.setQuantity}
                       onRemove={addDesignFlow.removeDesign}
                       quantity={quantity > 0 ? quantity : 1}
@@ -532,6 +542,25 @@ export function CatalogPageContent() {
           )}
         </div>
       </section>
+
+      <CatalogDesignDetailsModal
+        design={selectedDesign}
+        isAdding={
+          selectedDesign !== null &&
+          (selectionModeActive
+            ? false
+            : addDesignFlow.addingDesignId === selectedDesign.id)
+        }
+        isOpen={selectedDesign !== null}
+        onAddToRequest={
+          selectionModeActive
+            ? (design) => {
+                addDesignToSelection(design);
+              }
+            : addDesignFlow.addDesign
+        }
+        onClose={closeDesignDetails}
+      />
 
       <PortalConfirmModal
         confirmLabel={addDesignFlow.isAdding ? 'Adding…' : 'Add to request'}

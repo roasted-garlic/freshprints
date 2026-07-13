@@ -9,11 +9,10 @@ import { CatalogPreviewLightbox } from './CatalogPreviewLightbox';
 import { CatalogThumbnailPanel } from './CatalogThumbnailPanel';
 
 interface CatalogDesignDetailsModalProps {
-  currentRequestQuantity?: number;
   design: CatalogDesign | null;
-  isBusy?: boolean;
+  isAdding?: boolean;
   isOpen: boolean;
-  onAdjustQuantity?: (design: CatalogDesign, delta: 1 | -1) => void;
+  onAddToRequest?: (design: CatalogDesign) => void;
   onClose: () => void;
 }
 
@@ -26,17 +25,15 @@ function CloseIcon() {
 }
 
 export function CatalogDesignDetailsModal({
-  currentRequestQuantity = 0,
   design,
-  isBusy = false,
+  isAdding = false,
   isOpen,
-  onAdjustQuantity,
+  onAddToRequest,
   onClose,
 }: CatalogDesignDetailsModalProps) {
   const [isPreviewLightboxOpen, setIsPreviewLightboxOpen] = useState(false);
   const previewPath = design?.previewPath ?? design?.thumbnailPath;
   const { url: previewUrl } = useCatalogDerivativeUrl(isOpen ? previewPath : undefined);
-  const inRequest = currentRequestQuantity > 0;
 
   useEffect(() => {
     if (!isOpen) {
@@ -82,12 +79,14 @@ export function CatalogDesignDetailsModal({
             <CatalogThumbnailPanel
               alt={`${design.title} preview`}
               catalogPath={previewPath}
-              className="design-details-hero-image"
-              interactive={Boolean(previewUrl)}
+              className="design-details-hero-media"
+              fallbackLabel="Preview unavailable"
+              interactive
               loadingLabel="Loading preview"
-              onImageClick={previewUrl ? () => setIsPreviewLightboxOpen(true) : undefined}
+              onImageClick={() => setIsPreviewLightboxOpen(true)}
               prioritizeLoading
             />
+
             <button
               aria-label="Close design details"
               className="modal-close-button design-details-close-button"
@@ -101,40 +100,16 @@ export function CatalogDesignDetailsModal({
           <div className="modal-body design-details-body">
             <div className="design-details-eyebrow-row">
               <p className="portal-eyebrow design-details-eyebrow">Design details</p>
-              {onAdjustQuantity ? (
-                inRequest ? (
-                  <div className="design-card-qty-stepper" role="group" aria-label={`${design.title} quantity`}>
-                    <button
-                      aria-label={`Decrease ${design.title} quantity`}
-                      className="design-card-qty-btn"
-                      disabled={isBusy}
-                      onClick={() => onAdjustQuantity(design, -1)}
-                      type="button"
-                    >
-                      −
-                    </button>
-                    <span className="design-card-qty-value">{currentRequestQuantity}</span>
-                    <button
-                      aria-label={`Increase ${design.title} quantity`}
-                      className="design-card-qty-btn"
-                      disabled={isBusy}
-                      onClick={() => onAdjustQuantity(design, 1)}
-                      type="button"
-                    >
-                      <PlusIcon size={14} />
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    className="portal-button portal-button-primary portal-button-sm portal-button-leading-icon design-details-add-btn"
-                    disabled={isBusy}
-                    onClick={() => onAdjustQuantity(design, 1)}
-                    type="button"
-                  >
-                    <PlusIcon size={14} />
-                    {isBusy ? 'Adding…' : 'Add'}
-                  </button>
-                )
+              {onAddToRequest ? (
+                <button
+                  className="portal-button portal-button-primary portal-button-sm portal-button-leading-icon design-details-add-btn"
+                  disabled={isAdding}
+                  onClick={() => onAddToRequest(design)}
+                  type="button"
+                >
+                  <PlusIcon size={14} />
+                  {isAdding ? 'Adding…' : 'Add to request'}
+                </button>
               ) : null}
             </div>
             <h2 id="catalog-design-details-title">{design.title}</h2>

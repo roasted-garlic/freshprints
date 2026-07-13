@@ -1,4 +1,5 @@
 import {
+  IMPORT_UPSCALE_SOFT_SCALE_FACTOR_THRESHOLD,
   IMPORT_UPSCALE_TARGET_WIDTH_INCHES,
   MIN_ACCEPTABLE_EFFECTIVE_DPI,
   PREFERRED_PRINT_WIDTH_INCHES,
@@ -54,6 +55,22 @@ export function formatImageUpscaledMessage(
   targetWidthInches: number = IMPORT_UPSCALE_TARGET_WIDTH_INCHES,
 ): string {
   return `Image was upscaled from ${originalWidth}x${originalHeight}px to ${upscaledWidth}x${upscaledHeight}px to meet the ${targetDpi} DPI / ${formatInches(targetWidthInches)} in wide import headroom target.`;
+}
+
+/**
+ * Extra warning when import upscale is ≥ soft-scale threshold (default 3×).
+ * Upscale still applies for headroom; this flags likely softness at large print sizes.
+ */
+export function formatImageUpscaledSoftQualityMessage(
+  scaleFactor: number,
+  softScaleThreshold: number = IMPORT_UPSCALE_SOFT_SCALE_FACTOR_THRESHOLD,
+): string {
+  const rounded =
+    Number.isFinite(scaleFactor) && scaleFactor > 0
+      ? scaleFactor.toFixed(1)
+      : String(softScaleThreshold);
+
+  return `Large upscale (${rounded}×). Print quality may look soft at large sizes — prefer smaller prints unless softness is acceptable.`;
 }
 
 /** @deprecated Use formatPrintSizeStandardApparelMessage */

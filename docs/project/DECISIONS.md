@@ -4,6 +4,30 @@
 
 ---
 
+### ADR-FP-077: Soft-quality warning for aggressive import upscales
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-13 |
+| Status | accepted |
+
+**Context**
+
+Import upscales any PNG under 15″ @ 300 DPI (4500px wide) to that headroom floor after trim. Large files are left alone. Tiny sources (2–4″) still receive the full 15″ pixel stretch, which invents detail and can look soft if printed large.
+
+**Decision**
+
+1. Keep `IMPORT_UPSCALE_TARGET_WIDTH_INCHES = 15` (headroom unchanged).
+2. When upscale scale factor (targetWidth / sourceWidth) is **≥ 3**, emit an additional import warning `IMAGE_UPSCALED_SOFT_QUALITY` advising that large prints may look soft and smaller prints are preferred.
+3. Do **not** reject or cap upscale; request defaults remain 10″ preferred.
+
+**Consequences**
+
+- Mild upscales (e.g. 10″→15″ ≈ 1.5×) keep only the existing `IMAGE_UPSCALED` message.
+- Aggressive upscales (e.g. 4″→15″ ≈ 3.75×) show both the headroom upscale note and the soft-quality warning.
+
+---
+
 ### ADR-FP-076: Portal Persistent Current Request (cart-style UX)
 
 | Field | Value |

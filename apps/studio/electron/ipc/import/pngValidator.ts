@@ -8,10 +8,15 @@ import type {
   ImportPngWarning,
   ValidateSelectedPngFileResult,
 } from "@fresh-prints/shared/types/import/importIpc.types";
-import { assessPrintSizeCapability } from "@fresh-prints/shared/utils/printSizeMath";
+import {
+  assessPrintSizeCapability,
+  getImportUpscaleScaleFactor,
+  isImportUpscaleSoftQuality,
+} from "@fresh-prints/shared/utils/printSizeMath";
 import {
   formatImageTrimmedMessage,
   formatImageUpscaledMessage,
+  formatImageUpscaledSoftQualityMessage,
   formatPrintSizeNormalizedMessage,
   formatPrintSizeRejectedMessage,
   formatPrintSizeSmallFormatMessage,
@@ -81,6 +86,26 @@ function buildUpscaleWarning(
       originalHeight,
       upscaledWidth,
       upscaledHeight,
+    },
+  };
+}
+
+function buildUpscaleSoftQualityWarning(
+  originalWidth: number,
+  originalHeight: number,
+  upscaledWidth: number,
+  upscaledHeight: number,
+  scaleFactor: number,
+): ImportPngWarning {
+  return {
+    code: "IMAGE_UPSCALED_SOFT_QUALITY",
+    message: formatImageUpscaledSoftQualityMessage(scaleFactor),
+    details: {
+      originalWidth,
+      originalHeight,
+      upscaledWidth,
+      upscaledHeight,
+      upscaleScaleFactor: scaleFactor,
     },
   };
 }
@@ -197,6 +222,20 @@ export async function validatePngFile(filePath: string): Promise<ValidateSelecte
             upscaleResult.width,
             upscaleResult.height,
           ),
+          ...(isImportUpscaleSoftQuality(upscaleResult.originalWidth, upscaleResult.width)
+            ? [
+                buildUpscaleSoftQualityWarning(
+                  upscaleResult.originalWidth,
+                  upscaleResult.originalHeight,
+                  upscaleResult.width,
+                  upscaleResult.height,
+                  getImportUpscaleScaleFactor(
+                    upscaleResult.originalWidth,
+                    upscaleResult.width,
+                  ) ?? 0,
+                ),
+              ]
+            : []),
         ]
       : []),
     ...buildPrintSizeWarnings(assessmentResult.assessment),

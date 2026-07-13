@@ -4,9 +4,7 @@ import { useRef, useState, type FocusEvent, type KeyboardEvent } from 'react';
 
 import type { CatalogDesign } from '../types/catalog.types';
 import { MinusIcon, PlusIcon, TrashIcon } from '../../shared/components/PortalIcons';
-import { CatalogPreviewLightbox } from './CatalogPreviewLightbox';
 import { CatalogThumbnailPanel } from './CatalogThumbnailPanel';
-import { useCatalogDerivativeUrl } from '../hooks/useCatalogDerivativeUrl';
 
 interface CatalogSelectionCardProps {
   design: CatalogDesign;
@@ -14,6 +12,7 @@ interface CatalogSelectionCardProps {
   isSelected: boolean;
   quantity: number;
   onAdd: (design: CatalogDesign) => void;
+  onOpenDetails: (design: CatalogDesign) => void;
   onQuantityChange: (
     designId: string,
     quantity: number,
@@ -43,13 +42,12 @@ export function CatalogSelectionCard({
   isSelected,
   quantity,
   onAdd,
+  onOpenDetails,
   onQuantityChange,
   onRemove,
 }: CatalogSelectionCardProps) {
-  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [rawInput, setRawInput] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const { url: previewUrl } = useCatalogDerivativeUrl(design.previewPath ?? design.thumbnailPath);
 
   function commitQuantity(value: string) {
     const parsed = Number.parseInt(value, 10);
@@ -73,105 +71,102 @@ export function CatalogSelectionCard({
   }
 
   return (
-    <>
-      <div className={`design-selection-card${isSelected ? ' is-selected' : ''}`}>
-        <div className="design-selection-card-image-wrap">
-          <CatalogThumbnailPanel
-            alt={`${design.title} thumbnail`}
-            catalogPath={design.thumbnailPath}
-            className="design-card-thumbnail"
-            fallbackLabel="Thumbnail unavailable"
-            interactive
-            loadingLabel="Loading thumbnail"
-            onImageClick={() => setIsLightboxOpen(true)}
-            prioritizeLoading
-          />
+    <div className={`design-selection-card${isSelected ? ' is-selected' : ''}`}>
+      <div className="design-selection-card-image-wrap">
+        <CatalogThumbnailPanel
+          alt={`${design.title} thumbnail`}
+          catalogPath={design.thumbnailPath}
+          className="design-card-thumbnail"
+          fallbackLabel="Thumbnail unavailable"
+          interactive
+          loadingLabel="Loading thumbnail"
+          onImageClick={() => onOpenDetails(design)}
+          prioritizeLoading
+        />
 
-          {isSelected ? (
-            <button
-              aria-label={`Remove ${design.title} from selection`}
-              className="design-selection-card-remove-btn"
-              disabled={disabled}
-              onClick={() => onRemove(design.id)}
-              type="button"
-            >
-              <ClearSelectionIcon />
-            </button>
-          ) : null}
-        </div>
-
-        <div className="design-selection-card-body">
-          <h3 className="design-selection-card-title">{design.title}</h3>
-
-          {isSelected ? (
-            <div className="design-selection-card-qty-controls portal-request-item-stepper portal-card-input-shell">
-              <button
-                aria-label={quantity <= 1 ? `Remove ${design.title}` : `Decrease quantity for ${design.title}`}
-                className="portal-request-item-stepper-button"
-                disabled={disabled}
-                onClick={() => {
-                  if (quantity <= 1) {
-                    onRemove(design.id);
-                  } else {
-                    onQuantityChange(design.id, quantity - 1, {
-                      title: design.title,
-                      announce: false,
-                    });
-                  }
-                }}
-                type="button"
-              >
-                {quantity <= 1 ? <TrashIcon /> : <MinusIcon />}
-              </button>
-              <input
-                aria-label={`Quantity for ${design.title}`}
-                className="portal-request-item-number-input portal-request-item-stepper-input"
-                disabled={disabled}
-                inputMode="numeric"
-                min={1}
-                onBlur={(event) => commitQuantity(event.target.value)}
-                onChange={(event) => setRawInput(event.target.value)}
-                onFocus={handleQuantityFocus}
-                onKeyDown={handleQuantityKeyDown}
-                ref={inputRef}
-                type="number"
-                value={rawInput !== null ? rawInput : quantity}
-              />
-              <button
-                aria-label={`Increase quantity for ${design.title}`}
-                className="portal-request-item-stepper-button"
-                disabled={disabled}
-                onClick={() =>
-                  onQuantityChange(design.id, quantity + 1, {
-                    title: design.title,
-                    announce: false,
-                  })
-                }
-                type="button"
-              >
-                <PlusIcon />
-              </button>
-            </div>
-          ) : (
-            <button
-              className="portal-button portal-button-secondary portal-button-sm portal-button-leading-icon design-selection-card-add-btn"
-              disabled={disabled}
-              onClick={() => onAdd(design)}
-              type="button"
-            >
-              <PlusIcon size={14} />
-              Add to request
-            </button>
-          )}
-        </div>
+        {isSelected ? (
+          <button
+            aria-label={`Remove ${design.title} from selection`}
+            className="design-selection-card-remove-btn"
+            disabled={disabled}
+            onClick={() => onRemove(design.id)}
+            type="button"
+          >
+            <ClearSelectionIcon />
+          </button>
+        ) : null}
       </div>
 
-      <CatalogPreviewLightbox
-        alt={`${design.title} preview`}
-        isOpen={isLightboxOpen}
-        onClose={() => setIsLightboxOpen(false)}
-        previewUrl={previewUrl}
-      />
-    </>
+      <div className="design-selection-card-body">
+        <button
+          className="design-selection-card-title-button"
+          onClick={() => onOpenDetails(design)}
+          type="button"
+        >
+          <h3 className="design-selection-card-title">{design.title}</h3>
+        </button>
+
+        {isSelected ? (
+          <div className="design-selection-card-qty-controls portal-request-item-stepper portal-card-input-shell">
+            <button
+              aria-label={quantity <= 1 ? `Remove ${design.title}` : `Decrease quantity for ${design.title}`}
+              className="portal-request-item-stepper-button"
+              disabled={disabled}
+              onClick={() => {
+                if (quantity <= 1) {
+                  onRemove(design.id);
+                } else {
+                  onQuantityChange(design.id, quantity - 1, {
+                    title: design.title,
+                    announce: false,
+                  });
+                }
+              }}
+              type="button"
+            >
+              {quantity <= 1 ? <TrashIcon /> : <MinusIcon />}
+            </button>
+            <input
+              aria-label={`Quantity for ${design.title}`}
+              className="portal-request-item-number-input portal-request-item-stepper-input"
+              disabled={disabled}
+              inputMode="numeric"
+              min={1}
+              onBlur={(event) => commitQuantity(event.target.value)}
+              onChange={(event) => setRawInput(event.target.value)}
+              onFocus={handleQuantityFocus}
+              onKeyDown={handleQuantityKeyDown}
+              ref={inputRef}
+              type="number"
+              value={rawInput !== null ? rawInput : quantity}
+            />
+            <button
+              aria-label={`Increase quantity for ${design.title}`}
+              className="portal-request-item-stepper-button"
+              disabled={disabled}
+              onClick={() =>
+                onQuantityChange(design.id, quantity + 1, {
+                  title: design.title,
+                  announce: false,
+                })
+              }
+              type="button"
+            >
+              <PlusIcon />
+            </button>
+          </div>
+        ) : (
+          <button
+            className="portal-button portal-button-secondary portal-button-sm portal-button-leading-icon design-selection-card-add-btn"
+            disabled={disabled}
+            onClick={() => onAdd(design)}
+            type="button"
+          >
+            <PlusIcon size={14} />
+            Add to request
+          </button>
+        )}
+      </div>
+    </div>
   );
 }

@@ -46,8 +46,15 @@ export function BatchImportPanel({
   const showDiscoverySummary = phase === "ready-to-upload" && discoveryResult !== null;
   const showResult = phase === "completed" && uploadReport !== null;
   const showError = phase === "error" && Boolean(error);
-  const showCancelOverlay = !blockingMessage && phase !== "idle";
-  const sourcesDisabled = disabled || phase !== "idle";
+  // Only cover the card while a batch session is in progress. After completed/error,
+  // hide Cancel and re-enable source buttons so staff can start another import.
+  const isActiveSession =
+    phase === "selecting" ||
+    phase === "discovering" ||
+    phase === "ready-to-upload" ||
+    phase === "uploading";
+  const showCancelOverlay = !blockingMessage && isActiveSession;
+  const sourcesDisabled = disabled || isActiveSession;
 
   return (
     <section aria-labelledby="batch-import-heading" className="batch-import-panel">

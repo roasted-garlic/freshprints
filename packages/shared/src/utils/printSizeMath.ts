@@ -1,4 +1,5 @@
 import {
+  IMPORT_UPSCALE_SOFT_SCALE_FACTOR_THRESHOLD,
   IMPORT_UPSCALE_TARGET_WIDTH_INCHES,
   MIN_ACCEPTABLE_EFFECTIVE_DPI,
   MIN_SMALL_FORMAT_PRINT_WIDTH_INCHES,
@@ -116,6 +117,39 @@ export function resolveImportUpscaleTargetPx(
     widthPx: Math.round(targetWidthPx),
     heightPx: Math.round(pixelHeight * (targetWidthPx / pixelWidth)),
   };
+}
+
+/**
+ * Linear width scale factor for an import upscale (target / source).
+ * Returns null when inputs are invalid or no enlargement occurred.
+ */
+export function getImportUpscaleScaleFactor(
+  sourceWidthPx: number,
+  targetWidthPx: number,
+): number | null {
+  if (
+    !Number.isFinite(sourceWidthPx) ||
+    !Number.isFinite(targetWidthPx) ||
+    sourceWidthPx <= 0 ||
+    targetWidthPx <= 0 ||
+    targetWidthPx < sourceWidthPx
+  ) {
+    return null;
+  }
+
+  return targetWidthPx / sourceWidthPx;
+}
+
+/**
+ * True when an import upscale is aggressive enough that large prints may look soft.
+ */
+export function isImportUpscaleSoftQuality(
+  sourceWidthPx: number,
+  targetWidthPx: number,
+  softScaleThreshold: number = IMPORT_UPSCALE_SOFT_SCALE_FACTOR_THRESHOLD,
+): boolean {
+  const scale = getImportUpscaleScaleFactor(sourceWidthPx, targetWidthPx);
+  return scale !== null && scale >= softScaleThreshold;
 }
 
 function meetsMinimumPixelDimensions(pixelWidth: number, pixelHeight: number): boolean {

@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 
 import {
   CATALOG_DISCOVERY_MODES,
@@ -15,6 +15,7 @@ import {
 import { useCatalogCategories } from '../hooks/useCatalogCategories';
 import { useCatalogDesigns } from '../hooks/useCatalogDesigns';
 import { catalogStorageService } from '../services/catalogStorageService';
+import type { CatalogDesign } from '../types/catalog.types';
 import { usePortalPrintRequests } from '../../print-requests/context/PortalPrintRequestContext';
 import { useAddDesignToRequestFlow } from '../../print-requests/hooks/useAddDesignToRequestFlow';
 import {
@@ -24,12 +25,14 @@ import {
 import { PortalConfirmModal } from '../../shared/components/PortalConfirmModal';
 import { PortalPickContinuableRequestModal } from '../../shared/components/PortalPickContinuableRequestModal';
 import { GlobeIcon, SearchIcon } from '../../shared/components/PortalIcons';
+import { CatalogDesignDetailsModal } from '../components/CatalogDesignDetailsModal';
 import { CatalogDiscoveryCarousel } from '../components/CatalogDiscoveryCarousel';
 import { CatalogSelectionCard } from '../components/CatalogSelectionCard';
 
 export function CatalogHomePageContent() {
   const router = useRouter();
   const [landingSearch, setLandingSearch] = useState('');
+  const [selectedDesign, setSelectedDesign] = useState<CatalogDesign | null>(null);
 
   const {
     actionError: creationActionError,
@@ -41,9 +44,14 @@ export function CatalogHomePageContent() {
     reloadWorkingItems,
   } = usePortalPrintRequests();
 
+  const closeDesignDetails = useCallback(() => {
+    setSelectedDesign(null);
+  }, []);
+
   const addDesignFlow = useAddDesignToRequestFlow({
     continuableRequests,
     createPrintRequest,
+    onBeforeNavigate: closeDesignDetails,
     refreshRequests,
     reloadWorkingItems,
   });
@@ -146,7 +154,7 @@ export function CatalogHomePageContent() {
             <input
               className="catalog-home-search-input"
               onChange={(event) => setLandingSearch(event.target.value)}
-              placeholder="Search titles, tags, or artists…"
+              placeholder="title, tag or description"
               type="search"
               value={landingSearch}
             />
@@ -232,6 +240,7 @@ export function CatalogHomePageContent() {
                       disabled={addDesignFlow.addingDesignId === design.id}
                       isSelected={isSelected}
                       onAdd={addDesignFlow.addDesign}
+                      onOpenDetails={setSelectedDesign}
                       onQuantityChange={addDesignFlow.setQuantity}
                       onRemove={addDesignFlow.removeDesign}
                       quantity={quantity > 0 ? quantity : 1}
@@ -243,6 +252,14 @@ export function CatalogHomePageContent() {
           ))}
         </div>
       )}
+
+      <CatalogDesignDetailsModal
+        design={selectedDesign}
+        isAdding={selectedDesign !== null && addDesignFlow.addingDesignId === selectedDesign.id}
+        isOpen={selectedDesign !== null}
+        onAddToRequest={addDesignFlow.addDesign}
+        onClose={closeDesignDetails}
+      />
 
       <PortalConfirmModal
         confirmLabel={addDesignFlow.isAdding ? 'Adding…' : 'Add to request'}
