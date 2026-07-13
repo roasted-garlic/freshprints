@@ -101,6 +101,8 @@ As of ADR-FP-039/ADR-FP-040, **AI Processing is a single playground-style call**
 | `finalizeCustomerUploadZip` | Callable | Portal: server-extract ZIP + per-image finalize (ADR-FP-073) |
 | `confirmCustomerUploadsAndAttachToRequest` | Callable | Portal: confirm ownership/catalog ack + attach ready **print_request** uploads to working request |
 | `confirmCustomerUploadsForDonation` | Callable | Portal: confirm ownership + required catalog listing consent for **catalog_donation** uploads (no print-request attach) |
+| `clearPortalWorkingPrintRequest` | Callable | Portal: soft-archive own working request and delete its items |
+| `archiveStaleWorkingPrintRequests` | Callable | Owner/admin: archive empty working requests older than 14 days (`dryRun` supported) |
 | `promoteCustomerUploadToAiReview` | Callable | Studio staff (owner/admin): promote ready upload → design `imported` + enqueue AI |
 | `excludeCustomerUploadFromCatalog` | Callable | Studio staff: mark upload excluded (keeps request artwork + production assets) |
 | `restoreCustomerUploadCatalogEligibility` | Callable | Studio staff: reverse exclusion → `pending_staff_review` |

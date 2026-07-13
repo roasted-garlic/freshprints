@@ -1018,4 +1018,20 @@ export const portalPrintRequestService = {
       updatedAt: serverTimestamp(),
     });
   },
+
+  async clearWorkingPrintRequest(printRequestId: string): Promise<{
+    printRequestId: string;
+    removedItemCount: number;
+  }> {
+    const callable = httpsCallable<
+      { printRequestId: string },
+      { printRequestId: string; status: 'archived'; removedItemCount: number }
+    >(getPortalFunctions(), 'clearPortalWorkingPrintRequest');
+
+    const result = await callable({ printRequestId });
+    return {
+      printRequestId: result.data.printRequestId,
+      removedItemCount: result.data.removedItemCount,
+    };
+  },
 };

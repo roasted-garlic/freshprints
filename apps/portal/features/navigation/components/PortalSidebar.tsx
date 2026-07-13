@@ -3,11 +3,12 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, HeartHandshake, LogOut, User } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, HeartHandshake, LogOut, Trash2, User } from 'lucide-react';
 
 import { resolvePortalDisplayName, getProfileInitials } from '../../account/utils/profileDisplay';
 import { useAuth } from '../../auth/context/AuthContext';
 import { PortalLogo } from '../../brand/components/PortalLogo';
+import { usePortalPrintRequests } from '../../print-requests/context/PortalPrintRequestContext';
 import { CATALOG_HOME_PATH } from '../../print-requests/utils/catalogSelectionNavigation';
 import { PortalConfirmModal } from '../../shared/components/PortalConfirmModal';
 import { ThemeToggle } from '../../theme/components/ThemeToggle';
@@ -33,9 +34,17 @@ export function PortalSidebar() {
   const pathname = usePathname();
   const { customer, isAuthActionLoading, logout, user } = useAuth();
   const { close: closeDrawer, isOpen: isDrawerOpen } = usePortalDrawer();
+  const {
+    clearWorkingRequest,
+    isClearingWorkingRequest,
+    isVirtualEmptyCurrentRequest,
+    workingRequest,
+  } = usePortalPrintRequests();
   const [isCollapsed, setIsCollapsed] = useState(() => getStoredSidebarCollapsed());
   const [isDesktop, setIsDesktop] = useState(false);
   const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
+  const [isClearRequestConfirmOpen, setIsClearRequestConfirmOpen] = useState(false);
+  const [clearRequestError, setClearRequestError] = useState<string | null>(null);
 
   const displayName = resolvePortalDisplayName(customer?.displayName, user?.displayName);
   const username = customer?.username;
@@ -202,6 +211,25 @@ export function PortalSidebar() {
             </Link>
           )}
 
+          {workingRequest ? (
+            <button
+              aria-label="Clear Current Request"
+              className="portal-sidebar-clear-request"
+              disabled={isClearingWorkingRequest}
+              onClick={() => {
+                setClearRequestError(null);
+                setIsClearRequestConfirmOpen(true);
+              }}
+              title="Clear Current Request"
+              type="button"
+            >
+              <Trash2 aria-hidden size={16} strokeWidth={2} />
+              <span className="portal-sidebar-clear-request-label">
+                {isClearingWorkingRequest ? 'Clearing…' : 'Clear request'}
+              </span>
+            </button>
+          ) : null}
+
           <div className="portal-sidebar-footer-actions">
             <ThemeToggle compact />
             <button
@@ -233,6 +261,45 @@ export function PortalSidebar() {
           </button>
         </div>
       </aside>
+
+      <PortalConfirmModal
+        cancelLabel="Keep request"
+        confirmLabel="Clear request"
+        confirmVariant="danger"
+        isConfirmLoading={isClearingWorkingRequest}
+        isOpen={isClearRequestConfirmOpen}
+        onCancel={() => {
+          if (!isClearingWorkingRequest) {
+            setIsClearRequestConfirmOpen(false);
+          }
+        }}
+        onConfirm={() => {
+          void (async () => {
+            try {
+              setClearRequestError(null);
+              await clearWorkingRequest();
+              setIsClearRequestConfirmOpen(false);
+              closeDrawer();
+            } catch (error) {
+              setClearRequestError(
+                error instanceof Error ? error.message : 'Unable to clear your Current Request.',
+              );
+            }
+          })();
+        }}
+        title="Clear Current Request?"
+      >
+        <p className="portal-muted portal-confirm-modal-message">
+          {isVirtualEmptyCurrentRequest
+            ? 'This closes your empty open request so you can start a fresh cart when you add designs again.'
+            : 'This removes all designs from your Current Request so you can start fresh.'}
+        </p>
+        {clearRequestError ? (
+          <p className="portal-error" role="alert">
+            {clearRequestError}
+          </p>
+        ) : null}
+      </PortalConfirmModal>
 
       <PortalConfirmModal
         cancelLabel="Stay signed in"

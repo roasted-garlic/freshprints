@@ -1334,8 +1334,12 @@ status never misleadingly contradicts the request's actual queue state:
 - `active`/`editing` → `completed` once every unit of the request's requested quantity has been
   allocated and printed (`markPrintRequestCompletedIfFullyPrinted()`).
 
-`archived` is untouched by any of this and remains a manual hide/cleanup action, never a synonym for
-printed. None of these transitions touch `designs.status`.
+`archived` hides a request from Studio operational list tabs. Portal **Clear request**
+(`clearPortalWorkingPrintRequest`) and owner/admin **empty stale archive**
+(`archiveStaleWorkingPrintRequests`, 14-day empty working carts) set `archived`. It is never a
+synonym for printed. Studio Working triage defaults to **Active** carts (has items, updated within
+14 days); Stale / Empty / All chips + rail search cover the rest (ADR-FP-079). None of these
+transitions touch `designs.status`.
 
 ---
 

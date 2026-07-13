@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
-import { ExternalLink, ImagePlus, Plus, RefreshCw, X } from "lucide-react";
+import { ExternalLink, ImagePlus, Plus, RefreshCw, Search, X } from "lucide-react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 import { Button } from "../../../shared/components/Button";
@@ -34,9 +34,18 @@ import { getPrintRequestTabHelperCopy } from "@fresh-prints/shared/staffInbox/pr
 import { derivePrintRequestQueueState, isPrintRequestFullyPrinted } from "@fresh-prints/shared/utils/printRequestQueueState";
 import { derivePrintRequestListTab, type PrintRequestListTab } from "@fresh-prints/shared/utils/printRequestListGrouping";
 import { resolveSelectedRequestIdForTab } from "@fresh-prints/shared/utils/printRequestTabSelection";
+import {
+  getPrintRequestWorkingTriageLabel,
+  isPrintRequestIncludedInListTabs,
+  matchesPrintRequestWorkingTriageFilter,
+  PRINT_REQUEST_WORKING_TRIAGE_FILTERS,
+  resolvePrintRequestWorkingTriageBucket,
+  type PrintRequestWorkingTriageFilter,
+} from "@fresh-prints/shared/utils/printRequestWorkingTriage";
 import { groupAllocationsByShow } from "@fresh-prints/shared/utils/groupAllocationsByShow";
 import { canRemoveRequestFromShow } from "@fresh-prints/shared/utils/showQueueEditability";
 import { getPrintRequestQueueStateBadgeLabel, getPrintRequestQueueStateBadgeVariant } from "../utils/printRequestQueueBadge";
+import { filterPrintRequestsByListSearch } from "../utils/printRequestListSearch";
 import { PRINT_REQUEST_ID_QUERY_PARAM, PRINT_REQUEST_TAB_QUERY_PARAM, getPrintRequestsPath, isPrintRequestRouteTab } from "../constants/printRequestRoutes";
 import { getDesignLibraryPath } from "../../designs/constants/designLibraryFilters";
 import { useUpcomingShows } from "../../upcoming-shows/hooks/useUpcomingShows";
@@ -185,6 +194,9 @@ export function PrintRequestsPage() {
     usePrintRequestAllocationTotals();
   const { shows: upcomingShows } = useUpcomingShows();
   const [activeListTab, setActiveListTab] = useState<PrintRequestListTab>("working");
+  const [listSearchQuery, setListSearchQuery] = useState("");
+  const [workingTriageFilter, setWorkingTriageFilter] =
+    useState<PrintRequestWorkingTriageFilter>("active");
 
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
   const requestDetails = usePrintRequestDetails(selectedRequestId);
@@ -384,6 +396,14 @@ export function PrintRequestsPage() {
     [readyDesigns],
   );
 
+  const customersById = useMemo(() => {
+    const map = new Map<string, Customer>();
+    for (const customer of customers) {
+      map.set(customer.id, customer);
+    }
+    return map;
+  }, [customers]);
+
   const requestsByListTab = useMemo(() => {
     const grouped: Record<PrintRequestListTab, PrintRequest[]> = {
       working: [],
@@ -393,6 +413,10 @@ export function PrintRequestsPage() {
     };
 
     for (const request of requests) {
+      if (!isPrintRequestIncludedInListTabs(request.status)) {
+        continue;
+      }
+
       const summary = summariesByRequestId[request.id] ?? { totalQuantity: 0, uniqueDesignCount: 0 };
       const allocationTotals = allocationTotalsByRequestId[request.id] ?? {
         totalAllocatedQuantity: 0,
@@ -413,7 +437,44 @@ export function PrintRequestsPage() {
     return grouped;
   }, [allocationTotalsByRequestId, requests, summariesByRequestId]);
 
-  const visibleRequests = requestsByListTab[activeListTab];
+  const workingTriageCounts = useMemo(() => {
+    const counts = { active: 0, stale: 0, empty: 0, all: 0 };
+    const nowMs = Date.now();
+    for (const request of requestsByListTab.working) {
+      const bucket = resolvePrintRequestWorkingTriageBucket({
+        itemCount: request.itemCount,
+        updatedAtMillis: request.updatedAt.toMillis(),
+        nowMs,
+      });
+      counts[bucket] += 1;
+      counts.all += 1;
+    }
+    return counts;
+  }, [requestsByListTab.working]);
+
+  const visibleRequests = useMemo(() => {
+    let list = requestsByListTab[activeListTab];
+
+    if (activeListTab === "working") {
+      const nowMs = Date.now();
+      list = list.filter((request) => {
+        const bucket = resolvePrintRequestWorkingTriageBucket({
+          itemCount: request.itemCount,
+          updatedAtMillis: request.updatedAt.toMillis(),
+          nowMs,
+        });
+        return matchesPrintRequestWorkingTriageFilter(bucket, workingTriageFilter);
+      });
+    }
+
+    return filterPrintRequestsByListSearch(list, listSearchQuery, customersById);
+  }, [
+    activeListTab,
+    customersById,
+    listSearchQuery,
+    requestsByListTab,
+    workingTriageFilter,
+  ]);
 
   useEffect(() => {
     if (hasAppliedInitialUrlSelectionRef.current || isRequestsLoading) {
@@ -732,6 +793,38 @@ export function PrintRequestsPage() {
             ))}
           </div>
           <p className="print-requests-tab-helper">{getPrintRequestTabHelperCopy(activeListTab)}</p>
+          <div className="print-requests-rail-controls">
+            <label className="print-requests-rail-search">
+              <span className="visually-hidden">Search print requests</span>
+              <Search aria-hidden className="print-requests-rail-search-icon" size={14} strokeWidth={2} />
+              <input
+                className="print-requests-rail-search-input"
+                onChange={(event) => setListSearchQuery(event.target.value)}
+                placeholder="Search name, customer, id…"
+                type="search"
+                value={listSearchQuery}
+              />
+            </label>
+            {activeListTab === "working" ? (
+              <div aria-label="Working triage" className="print-requests-triage-bar" role="group">
+                {PRINT_REQUEST_WORKING_TRIAGE_FILTERS.map((filter) => (
+                  <button
+                    className={`print-requests-triage-chip${
+                      workingTriageFilter === filter ? " is-active" : ""
+                    }`}
+                    key={filter}
+                    onClick={() => setWorkingTriageFilter(filter)}
+                    type="button"
+                  >
+                    {getPrintRequestWorkingTriageLabel(filter)}
+                    <span className="print-requests-triage-chip-count">
+                      {workingTriageCounts[filter]}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
           <div className="print-requests-rail-list">
             {isLoading ? (
               <div className="print-requests-loading">
@@ -739,7 +832,13 @@ export function PrintRequestsPage() {
               </div>
             ) : visibleRequests.length === 0 ? (
               <EmptyState
-                message="No print requests in this tab yet."
+                message={
+                  listSearchQuery.trim()
+                    ? "No print requests match this search in the current tab."
+                    : activeListTab === "working" && workingTriageFilter !== "all"
+                      ? "No requests in this Working filter. Try Stale, Empty, or All."
+                      : "No print requests in this tab yet."
+                }
                 title="Nothing here yet"
               />
             ) : (

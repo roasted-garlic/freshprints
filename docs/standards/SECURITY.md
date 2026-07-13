@@ -640,7 +640,8 @@ must be protected (ADR-FP-073 — Phase 8 request artwork, not Phase 9 custom re
 * Ready-catalog derivative public-read patterns must **not** apply to unapproved customer uploads.
 * First-release formats: transparent PNG and static transparent WebP only. SVG deferred. JPEG and animated formats rejected.
 * ZIP: server-side extract only (`yauzl`); nested ZIPs rejected; customer limits ≪ staff import limits.
-* Per-UID daily abuse caps are **purpose-split** (print-request vs catalog-donation do not share counters):
+* Portal customers clear Current Request via `clearPortalWorkingPrintRequest` (Admin SDK soft-archive); customer Firestore rules still lock `status` on direct updates.
+* Owner/admin may run `archiveStaleWorkingPrintRequests` to soft-archive empty working carts older than 14 days.
   * Print-request: create batch **100** / finalize image **200** / finalize ZIP **5**
   * Catalog-donation: create batch **200** / finalize image **500** / finalize ZIP **20**
   * Concurrent finalize leases remain shared: max **8**

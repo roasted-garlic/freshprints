@@ -22,6 +22,7 @@ import { PortalStartPrintRequestModal } from '../../shared/components/PortalStar
 import { useMyPrintRequests } from '../hooks/useMyPrintRequests';
 import { usePrintRequestCreationFlow } from '../hooks/usePrintRequestCreationFlow';
 import { useWorkingCurrentRequestItems } from '../hooks/useWorkingCurrentRequestItems';
+import { portalPrintRequestService } from '../services/portalPrintRequestService';
 import type { PortalRequestDetailFrom } from '../utils/portalRequestDetailReturn';
 import type { CustomerUploadDocSummary } from '../../customer-uploads/services/customerUploadService';
 
@@ -57,6 +58,9 @@ interface PortalPrintRequestContextValue {
   ) => void;
   /** Fetch any missing design summaries for Current Request chrome. */
   ensureDesignSummaries: (designIds: string[]) => Promise<void>;
+  /** Soft-archive Current Request (clears items) so a new cart can start. */
+  clearWorkingRequest: () => Promise<void>;
+  isClearingWorkingRequest: boolean;
   refreshRequests: (options?: { silent?: boolean }) => Promise<void>;
   reloadWorkingItems: (options?: { silent?: boolean }) => Promise<void>;
   requests: PrintRequest[];
@@ -87,6 +91,7 @@ const PortalPrintRequestContext = createContext<PortalPrintRequestContextValue |
 export function PortalPrintRequestProvider({ children }: { children: ReactNode }) {
   const printRequests = useMyPrintRequests();
   const [isCurrentRequestDrawerOpen, setIsCurrentRequestDrawerOpen] = useState(false);
+  const [isClearingWorkingRequest, setIsClearingWorkingRequest] = useState(false);
 
   const workingRequest = printRequests.continuableRequests[0] ?? null;
   const isVirtualEmptyCurrentRequest =
@@ -137,6 +142,22 @@ export function PortalPrintRequestProvider({ children }: { children: ReactNode }
     setIsCurrentRequestDrawerOpen(false);
   }, []);
 
+  const clearWorkingRequest = useCallback(async () => {
+    if (!workingRequest || isClearingWorkingRequest) {
+      return;
+    }
+
+    setIsClearingWorkingRequest(true);
+    try {
+      await portalPrintRequestService.clearWorkingPrintRequest(workingRequest.id);
+      await reloadRequests({ silent: true });
+      await reloadWorkingItems({ silent: true });
+      setIsCurrentRequestDrawerOpen(false);
+    } finally {
+      setIsClearingWorkingRequest(false);
+    }
+  }, [isClearingWorkingRequest, reloadRequests, reloadWorkingItems, workingRequest]);
+
   const value: PortalPrintRequestContextValue = useMemo(
     () => ({
       actionError,
@@ -145,6 +166,8 @@ export function PortalPrintRequestProvider({ children }: { children: ReactNode }
       isVirtualEmptyCurrentRequest,
       continuableRequests: printRequests.continuableRequests,
       createPrintRequest: printRequests.createPrintRequest,
+      clearWorkingRequest,
+      isClearingWorkingRequest,
       error: printRequests.error,
       finishCreating,
       handleStartRequestClick,
@@ -170,10 +193,12 @@ export function PortalPrintRequestProvider({ children }: { children: ReactNode }
     [
       actionError,
       aggregates,
+      clearWorkingRequest,
       closeCurrentRequestDrawer,
       designSummaries,
       finishCreating,
       handleStartRequestClick,
+      isClearingWorkingRequest,
       isCreating,
       isCurrentRequestDrawerOpen,
       isLoadingItems,

@@ -1,55 +1,47 @@
 ## Current Goal
-portal-donate-designs
+print-request-working-triage-search
 
 ## Phase
 test
 
 ## Plan Status
-complete — docs/workflow/plans/2026-07-13-portal-donate-designs-plan.md
+complete — docs/workflow/plans/2026-07-13-print-request-working-triage-search-plan.md
 
 ## Review Status
-approved_with_changes — docs/workflow/reviews/2026-07-13-portal-donate-designs-review.md
+approved — docs/workflow/reviews/2026-07-13-print-request-working-triage-search-review.md
 
 ## Implementation Status
 complete
 
 ## Test Status
-partial — unit tests + portal typecheck + functions build passed; Studio has pre-existing unrelated tsc errors; manual UI checkpoint pending
+partial — unit tests + functions build + portal typecheck passed; manual Studio/Portal UI pending; Functions deploy required for clear/archive callables
 
 ## Human Checkpoint Required
 yes
 
 ## Human Checkpoint Reason
-Manual UI verification of Portal Donate Designs + Studio Donated Designs; Functions/indexes deploy before production.
+Manual UI verification of Studio Working triage + search; Portal Clear request; deploy Functions before shared-env clear works.
 
 ## Allowed Actions
-Run/record remaining tests; write test report; prepare manual checkpoint; docs-only fixes
+Record test report; prepare manual checkpoint; docs-only fixes
 
 ## Forbidden Actions
 Production deploy without approval; scope expansion
 
 ## Next Required Step
-Owner manual PASS on Portal donate + Studio Donated Designs; then signoff
-
+Owner manual PASS on Studio Print Requests rail + Portal clear; deploy clearPortalWorkingPrintRequest + archiveStaleWorkingPrintRequests
 
 ## Decision Log
-- 2026-07-13 — Parked prior goal `studio-upload-preview-and-show-queue-links` (implementation complete; owner visual confirm still outstanding as follow-up).
-- 2026-07-13 — Started managed phase `portal-donate-designs`: reuse customer-upload pipeline for catalog donations.
-- 2026-07-13 — Review **approved_with_changes**.
-- 2026-07-13 — Implemented: `purpose` field, `confirmCustomerUploadsForDonation`, Portal `/donate` + sidebar link, Studio `/donated-designs`, indexes, ADR-FP-078.
-- 2026-07-13 — Automated: purpose + donate validation tests pass; functions build pass; portal typecheck pass.
-- 2026-07-13 — Purpose-split daily upload quotas: print-request stays 100/200/5; catalog-donation 200/500/20; concurrent finalize still shared at 8.
+- 2026-07-13 — Parked `portal-donate-designs` (manual PASS / deploy still outstanding).
+- 2026-07-13 — Implemented ADR-FP-079: Working triage, cross-tab search, Portal clear callable, empty stale archive callable.
 
 ## Files Created
-- packages/shared/src/utils/customerUploadPurpose.ts (+ test)
-- packages/shared/src/types/customerUpload/confirmCustomerUploadDonate.types.ts
-- functions/src/confirmCustomerUploadsForDonation.ts
-- functions/src/lib/confirmCustomerUploadDonateValidation.ts (+ test)
-- functions/src/lib/customerUploadCatalogConfirmation.ts
-- apps/portal/app/(app)/donate/page.tsx
-- apps/studio/.../pages/DonatedDesignsPage.tsx
-- docs/workflow/plans/2026-07-13-portal-donate-designs-plan.md
-- docs/workflow/reviews/2026-07-13-portal-donate-designs-review.md
+- packages/shared/src/utils/printRequestWorkingTriage.ts (+ test)
+- apps/studio/.../utils/printRequestListSearch.ts (+ test)
+- functions/src/clearPortalWorkingPrintRequest.ts
+- functions/src/archiveStaleWorkingPrintRequests.ts
+- docs/workflow/plans/2026-07-13-print-request-working-triage-search-plan.md
+- docs/workflow/reviews/2026-07-13-print-request-working-triage-search-review.md
 
 ## Files Modified
-- Shared customer upload types/enums; create/finalize/attach callables; Portal upload panel/hook/service + sidebar; Studio intake/sidebar/routes; firestore.indexes.json; DATA_MODEL, BACKEND, DECISIONS, ROADMAP
+- PrintRequestsPage + print-requests.css; Portal sidebar/drawer/context/service; functions index; DATA_MODEL, BACKEND, SECURITY, DECISIONS, tab helper copy

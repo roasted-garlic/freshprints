@@ -4,6 +4,32 @@
 
 ---
 
+### ADR-FP-079: Working-tab triage, rail search, and soft-archive clear
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-13 |
+| Status | accepted |
+
+**Context**
+
+Ecommerce-style one-open-request (ADR-FP-071) fills Studio Working with idle/empty carts. Staff need actionable defaults, search across tabs, and customers need a way to clear a stuck Current Request (Firestore rules lock `status`).
+
+**Decision**
+
+1. Working triage chips: **Active** (default) / **Stale** / **Empty** / **All** — Active = `itemCount > 0` and `updatedAt` within 14 days.
+2. Soft-exclude `status: archived` from Studio list tabs.
+3. Client-side rail search on all Print Request tabs (name, id, customer fields).
+4. Portal **Clear request** → callable `clearPortalWorkingPrintRequest` deletes items and sets `archived`.
+5. Owner/admin callable `archiveStaleWorkingPrintRequests` auto-archives **empty** working requests older than 14 days (`dryRun` supported). Stale carts with items stay filterable only.
+
+**Consequences**
+
+- Deploy Functions before Portal clear works in shared environments.
+- Optional Cloud Scheduler can invoke archive callable later with human approval.
+
+---
+
 ### ADR-FP-078: Catalog donations reuse customer-upload pipeline
 
 | Field | Value |

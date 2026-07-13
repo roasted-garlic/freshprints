@@ -8,6 +8,7 @@ import { isCustomerUploadPrintRequestItem } from '@fresh-prints/shared/utils/pri
 import { useAuth } from '../../auth/context/AuthContext';
 import { CatalogThumbnailPanel } from '../../catalog/components/CatalogThumbnailPanel';
 import { customerUploadService } from '../../customer-uploads/services/customerUploadService';
+import { PortalConfirmModal } from '../../shared/components/PortalConfirmModal';
 import { TrashIcon } from '../../shared/components/PortalIcons';
 import { usePortalPrintRequests } from '../context/PortalPrintRequestContext';
 import { portalPrintRequestService } from '../services/portalPrintRequestService';
@@ -40,9 +41,11 @@ function itemCreatedAtMs(item: {
 export function CurrentRequestDrawer() {
   const { firebaseUser } = useAuth();
   const {
+    clearWorkingRequest,
     closeCurrentRequestDrawer,
     currentRequestAggregates,
     designSummariesById,
+    isClearingWorkingRequest,
     isCurrentRequestDrawerOpen,
     isVirtualEmptyCurrentRequest,
     patchWorkingItems,
@@ -53,6 +56,8 @@ export function CurrentRequestDrawer() {
   } = usePortalPrintRequests();
 
   const [removeError, setRemoveError] = useState<string | null>(null);
+  const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false);
+  const [clearError, setClearError] = useState<string | null>(null);
   const [uploadThumbUrls, setUploadThumbUrls] = useState<Record<string, string>>({});
   /** Prevents double-submit on the same row; other rows stay clickable. */
   const removingKeysRef = useRef(new Set<string>());
@@ -282,6 +287,19 @@ export function CurrentRequestDrawer() {
         </div>
 
         <footer className="current-request-drawer-footer">
+          {workingRequest ? (
+            <button
+              className="portal-button portal-button-secondary"
+              disabled={isClearingWorkingRequest}
+              onClick={() => {
+                setClearError(null);
+                setIsClearConfirmOpen(true);
+              }}
+              type="button"
+            >
+              Clear request
+            </button>
+          ) : null}
           <Link
             className="portal-button portal-button-primary"
             href={reviewHref}
@@ -291,6 +309,43 @@ export function CurrentRequestDrawer() {
           </Link>
         </footer>
       </aside>
+
+      <PortalConfirmModal
+        cancelLabel="Keep request"
+        confirmLabel="Clear request"
+        confirmVariant="danger"
+        isConfirmLoading={isClearingWorkingRequest}
+        isOpen={isClearConfirmOpen}
+        onCancel={() => {
+          if (!isClearingWorkingRequest) {
+            setIsClearConfirmOpen(false);
+          }
+        }}
+        onConfirm={() => {
+          void (async () => {
+            try {
+              setClearError(null);
+              await clearWorkingRequest();
+              setIsClearConfirmOpen(false);
+            } catch (error) {
+              setClearError(
+                error instanceof Error ? error.message : 'Unable to clear your Current Request.',
+              );
+            }
+          })();
+        }}
+        title="Clear Current Request?"
+      >
+        <p className="portal-muted portal-confirm-modal-message">
+          This removes all designs from your Current Request so you can start fresh. You can add
+          designs again anytime.
+        </p>
+        {clearError ? (
+          <p className="portal-error" role="alert">
+            {clearError}
+          </p>
+        ) : null}
+      </PortalConfirmModal>
     </div>
   );
 }
