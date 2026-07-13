@@ -1,20 +1,41 @@
 import type { CatalogDiscoveryMode } from '@fresh-prints/shared/utils/catalogDiscoveryRanking';
 
 import type { PortalRequestDetailFrom } from './portalRequestDetailReturn';
-import { buildRequestDetailHref } from './portalRequestDetailReturn';
 
 export const CATALOG_HOME_PATH = '/catalog';
 export const CATALOG_LIBRARY_PATH = '/catalog/library';
 
-/** Request detail with the customer upload panel opened. */
+/** Dedicated Portal page for artwork intended for the Current Request / printing. */
+export const REQUEST_ARTWORK_PATH = '/requests/artwork';
+
+/** Request detail with the customer upload panel opened (legacy). Prefer REQUEST_ARTWORK_PATH. */
 export function buildRequestUploadHref(
   printRequestId: string,
   options?: { from?: PortalRequestDetailFrom | null },
 ): string {
-  return buildRequestDetailHref(printRequestId, {
-    from: options?.from ?? null,
-    upload: true,
-  });
+  // Prefer dedicated artwork page; keep requestId for deep-link continuity when needed.
+  const params = new URLSearchParams();
+  if (options?.from) {
+    params.set('from', options.from);
+  }
+  params.set('requestId', printRequestId);
+  const query = params.toString();
+  return query ? `${REQUEST_ARTWORK_PATH}?${query}` : REQUEST_ARTWORK_PATH;
+}
+
+export function buildRequestArtworkHref(options?: {
+  from?: PortalRequestDetailFrom | null;
+  requestId?: string | null;
+}): string {
+  const params = new URLSearchParams();
+  if (options?.requestId?.trim()) {
+    params.set('requestId', options.requestId.trim());
+  }
+  if (options?.from) {
+    params.set('from', options.from);
+  }
+  const query = params.toString();
+  return query ? `${REQUEST_ARTWORK_PATH}?${query}` : REQUEST_ARTWORK_PATH;
 }
 
 export function buildCatalogSelectionHref(

@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 
 import { CUSTOMER_UPLOAD_TERMS_VERSION } from '@fresh-prints/shared/types/customerUpload/customerUpload.types';
+import { getCustomerUploadProgressLabel } from '@fresh-prints/shared/utils/customerUploadProgressLabel';
 
 import { useAuth } from '../../auth/context/AuthContext';
 import {
@@ -111,7 +112,8 @@ export function useCustomerUploadBatch() {
           row.phase === 'processing',
       ),
     [rows],
-  );  const activeRows = useMemo(
+  );
+  const activeRows = useMemo(
     () => rows.filter((row) => row.phase !== 'removed'),
     [rows],
   );
@@ -170,6 +172,7 @@ export function useCustomerUploadBatch() {
           const zip = zips[0];
           const created = await customerUploadService.createZipBatch(zip);
           setBatchId(created.batchId);
+          batchIdRef.current = created.batchId;
           const zipRowId = makeLocalId();
           setRows([
             {
@@ -200,26 +203,68 @@ export function useCustomerUploadBatch() {
           );
           updateRow(zipRowId, {
             phase: 'processing',
-            progressLabel: 'Extracting and processing ZIP…',
+            progressLabel: 'Discovering images in ZIP…',
             uploadPercent: 100,
           });
 
-          const finalized = await customerUploadService.finalizeZip(created.batchId);
-          const nextRows: UploadRowState[] = finalized.files.map((result) => ({
-            localId: makeLocalId(),
-            filename: result.entryName,
-            uploadId: result.uploadId,
-            phase: result.technicalStatus === 'ready' ? 'ready' : 'failed',
-            progressLabel: result.technicalStatus === 'ready' ? 'Ready' : 'Failed',
-            technicalFailureMessage: result.technicalFailureMessage ?? null,
-            errorMessage: result.technicalFailureMessage ?? undefined,
-          }));
-          setRows(nextRows);
-          customerUploadService.persistSession(
-            firebaseUser.uid,
+          const unsubscribeBatch = customerUploadService.subscribeBatchUploads(
             created.batchId,
-            nextRows.map((row) => row.uploadId).filter((id): id is string => Boolean(id)),
+            firebaseUser.uid,
+            (uploads) => {
+              if (uploads.length === 0) {
+                return;
+              }
+              setRows(
+                uploads.map((upload) => ({
+                  localId: `zip_${upload.id}`,
+                  filename: upload.originalFilename,
+                  uploadId: upload.id,
+                  phase: mapTechnicalStatusToPhase(upload.technicalStatus),
+                  progressLabel: getCustomerUploadProgressLabel({
+                    technicalStatus: upload.technicalStatus,
+                    technicalProgressStage: upload.technicalProgressStage,
+                  }),
+                  previewStoragePath: upload.previewStoragePath,
+                  technicalFailureMessage: upload.technicalFailureMessage,
+                  errorMessage:
+                    upload.technicalStatus === 'failed'
+                      ? (upload.technicalFailureMessage ?? 'Processing failed.')
+                      : undefined,
+                })),
+              );
+            },
           );
+
+          try {
+            const finalized = await customerUploadService.finalizeZip(created.batchId);
+            setRows((current) => {
+              const byUploadId = new Map(
+                current
+                  .filter((row) => row.uploadId)
+                  .map((row) => [row.uploadId!, row] as const),
+              );
+              return finalized.files.map((result) => {
+                const existing = byUploadId.get(result.uploadId);
+                return {
+                  localId: `zip_${result.uploadId}`,
+                  filename: existing?.filename ?? result.entryName,
+                  uploadId: result.uploadId,
+                  phase: (result.technicalStatus === 'ready' ? 'ready' : 'failed') as UploadRowPhase,
+                  progressLabel: result.technicalStatus === 'ready' ? 'Ready' : 'Failed',
+                  previewStoragePath: existing?.previewStoragePath ?? null,
+                  technicalFailureMessage: result.technicalFailureMessage ?? null,
+                  errorMessage: result.technicalFailureMessage ?? undefined,
+                };
+              });
+            });
+            customerUploadService.persistSession(
+              firebaseUser.uid,
+              created.batchId,
+              finalized.files.map((file) => file.uploadId),
+            );
+          } finally {
+            unsubscribeBatch();
+          }
           return;
         }
 

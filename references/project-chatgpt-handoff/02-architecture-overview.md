@@ -3,83 +3,77 @@
 ## System shape
 
 ```
-Fresh Prints Studio (Electron)
-         ↓
-Firebase (Auth · Firestore · Storage · Functions)
-         ↓
-Fresh Prints Portal (web, Phase 8)
+Fresh Prints Studio (Electron)     Fresh Prints Portal (Next.js :3100)
+              \                         /
+               \                       /
+                ▼                     ▼
+         Firebase (Auth · Firestore · Storage · Functions)
 ```
 
 Both apps are **peers** consuming the same Firebase backend. Neither owns data — Firebase is the source of truth.
 
-## Fresh Prints Studio — three workspaces
+## Monorepo layout
 
-No overlap between workspaces:
+```
+apps/studio/          @fresh-prints/studio — Electron + Vite renderer
+apps/portal/          @fresh-prints/portal — Next.js App Router
+packages/shared/      @fresh-prints/shared — types, utils, constants
+packages/show-picker/ @fresh-prints/show-picker — shared calendar UI
+functions/            Cloud Functions (imports shared via relative paths)
+```
+
+## Fresh Prints Studio — design workspaces
 
 | Workspace | Route | Responsibility |
 |-----------|-------|----------------|
-| **Imports** | `/imports` | Receive ZIP/folder, validate PNG, derivatives, auto AI enqueue |
+| **Imports** | `/imports` | Receive ZIP/folder, validate PNG, derivatives, AI enqueue |
 | **AI Review** | `/ai-review` | Operational inbox until approved or rejected |
 | **Design Library** | `/designs` | Approved catalog only — not a work queue |
 
+Also: Print Requests, Show Queue, **Customer Uploads** intake, Users, Settings.
+
 ```
 Imports → AI Review → Design Library
+Customer Uploads → (optional) Send to AI Review → Design Library
 ```
 
-## Layer architecture (Studio)
+## Fresh Prints Portal — customer surfaces
+
+| Area | Responsibility |
+|------|----------------|
+| Auth / register | Customer Firebase Auth + linked `customers/{id}` |
+| Catalog / Discover / Design Library | Browse approved `ready` designs |
+| Print requests | One **working** request at a time; edit sizes/qty; progress tabs |
+| Upload artwork | PNG/WebP (or ZIP) → trusted Cloud Functions finalize → attach to request |
+| Add to show | Callable queue to allocatable upcoming show |
+
+## Layer architecture
 
 ```
-Component → Hook → Service → Firebase SDK
-Component → Hook → Electron API → IPC → Main process (files only)
+Component → Hook → Service → Firebase SDK / Callable
+Studio only: Component → Hook → Electron API → IPC → Main (files/sharp)
 ```
 
-**Forbidden:**
-- Component → Firebase directly
-- Component → filesystem directly
-- Business logic in UI components
+**Forbidden:** Component → Firebase directly; Component → filesystem; business logic in UI.
 
-## Electron layout
-
-```
-apps/studio/electron/           Main process — ZIP, sharp, IPC, file dialogs
-apps/studio/electron/preload.ts Secure bridge (contextIsolation)
-apps/studio/src/renderer/       React UI (Vite)
-shared/                         Cross-layer types and utilities
-functions/                      Firebase Cloud Functions
-```
-
-## Authentication & authorization
-
-- **Auth:** Firebase Auth (email/password for team)
-- **Roles:** `owner`, `admin`, `helper`, `customer`
-- **Authorization:** `permissionService.ts` — never scatter `if (role === ...)` in components
-- **Profile:** Firestore `users/{uid}` holds `role` and `isActive`
-
-## Storage paths
+## Storage paths (canonical)
 
 | Path | Content |
 |------|---------|
-| `/originals/{designId}.png` | Production assets |
+| `/originals/{designId}.png` | Catalog production assets |
 | `/thumbnails/{designId}.webp` | Grid thumbnails |
 | `/previews/{designId}.webp` | Medium previews |
-| `/customer-uploads/` | Future Portal uploads |
+| `/customer-uploads/{uid}/…` | Customer **source** + **production** + derivatives (ADR-FP-073) |
 
 Firestore stores **metadata and paths only** — never binary files.
 
-## Key services (patterns)
+## Auth & authorization
 
-| Service | Role |
-|---------|------|
-| `authService.ts` | Login, logout, session |
-| `designService.ts` | Design CRUD with permission checks |
-| `catalogApprovalService.ts` | Approve/reject for catalog |
-| `permissionService.ts` | Role → capability mapping |
-| `aiReviewInboxService.ts` | AI Review queue queries |
+- **Auth:** Firebase Auth
+- **Roles:** `owner`, `admin`, `helper`, `customer`
+- **Studio:** staff roles only via `permissionService`
+- **Portal:** `role: customer` only; customers never access Studio
 
 ## Scalability rule
 
-New features should support both Studio and Portal where applicable — unless explicitly Studio-only or Portal-only.
-
-## Pensacola production export
-
-Print Run items reference catalog designs → staff downloads originals from Firebase Storage → gang sheet software. Remote helpers never need Pensacola filesystem access.
+New features should support Studio and Portal where applicable — unless explicitly Studio-only or Portal-only.

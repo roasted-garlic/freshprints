@@ -1,122 +1,129 @@
 # Workflows Summary
 
-## Design lifecycle (catalog)
+> This is the primary “how the app works” guide for external AI. Prefer this file when explaining customer or staff request flows.
+
+---
+
+## A. Customer print-request flow (Portal) — CURRENT
 
 ```
-Staff imports PNG (ZIP or folder)
+Sign in as customer (Portal)
     ↓
-Validate (type, DPI, dimensions, print size)
+Browse Discover / Design Library (approved designs only)
     ↓
-Upload original + generate thumbnail/preview
+Start a print request  OR  Continue the single open “working” request
+    (ADR-FP-071: only one working request per customer)
     ↓
-Create Firestore design (status: imported)
+Add designs from the Design Library (selection mode: pick + quantities)
+    AND/OR
+Upload your own artwork (PNG/WebP, folder, or ZIP)
     ↓
-Auto-enqueue AI enrichment (Cloud Function)
+Upload pipeline (server-authoritative):
+  create batch → upload source to Storage → finalize callable
+  → transparency check → optional convert/trim/upscale → DPI check
+  → previews → ready
     ↓
-AI Review — Processing tab (awaiting/running AI)
+Confirm: ownership REQUIRED; Design Library permission OPTIONAL (default checked)
     ↓
-AI Review — Needs Review tab (staff review)
+Attach ready uploads to the working print request
+  (items may be sourceType: catalog_design OR customer_upload)
     ↓
-Staff approves → status: ready → Design Library
-    OR
-Staff rejects → status: rejected → Rejected tab
+On the request page: set quantity + print size (default ~10″ wide)
+  - Soft warning if 200–299 DPI
+  - HARD BLOCK save if < 200 DPI (ADR-FP-075)
+    ↓
+When ready → Add to show → pick allocatable upcoming show
+    ↓
+Request moves toward Queued / Printing / Printed (derived from show allocations + timer)
 ```
 
-## Design Library workflow
+### Customer-facing copy (catalog)
+
+Short explainer (collapsed by default): a print request is the customer’s list for Fresh Prints to print — Design Library designs, their own uploads, or both. Steps: start/continue → add designs/uploads + sizes → choose a show.
+
+### Rules customers feel
+
+- Uploaded artwork is for the **request** first — not auto-added to the shared Design Library (staff may later promote if customer allowed it).
+- Library permission decline does **not** block attach; staff still see the decline and may promote (ADR-FP-074).
+- Mixing library + uploads on one request is intentional.
+
+---
+
+## B. Staff catalog lifecycle (Studio)
 
 ```
-Open /designs (default landing)
+Import PNG (ZIP/folder)
     ↓
-Browse approved catalog (status: ready)
+Validate → trim/upscale as needed → Storage originals + derivatives
     ↓
-Search / filter by category, tags, archived
+Create design (status: imported) → enqueue AI enrichment
     ↓
-View details → Edit metadata → Archive/restore
+AI Review — Processing → Needs Review
+    ↓
+Staff Approve → status: ready → Design Library
+  OR Reject → Rejected tab
 ```
 
-Design Library **never** shows imported or rejected designs by default.
+Design Library never shows imported/rejected by default.
 
-In Print Request selection mode, `/designs?mode=request-selection&requestId=...` remains an approved-catalog browser but adds selected-card state, quantity controls, and save/back actions for the active request.
+---
 
-## AI Review workspace workflow
-
-```
-Select design from queue (oldest first)
-    ↓
-Review preview + AI suggestions + pipeline status
-    ↓
-Edit title, description, category, tags if needed
-    ↓
-Approve & Next → design moves to Library, advance queue
-Reject & Next → design moves to Rejected tab
-Skip → next item, no status change
-Re-run AI → re-enqueue, stay on Processing tab
-```
-
-## Import workflow (batch)
+## C. Customer upload → optional catalog intake (Studio)
 
 ```
-Select ZIP or folder
+Portal customer uploads artwork (customerUploads)
     ↓
-Discover PNGs (nested ZIP support)
+Appears in Studio Customer Uploads intake (Pending)
     ↓
-Validate each file
+Staff: Send to AI Review (promotes to designs + AI queue)
+     OR Exclude from catalog (request assets remain)
     ↓
-Process derivatives (main process + sharp)
-    ↓
-Upload to Storage + create/update Firestore
-    ↓
-Enqueue AI for each design
-    ↓
-Show completion summary with link to AI Review
+If approved in AI Review → shared Design Library
 ```
 
-## Team user management
+Two independent lifecycles on the upload: `technicalStatus` (processing quality) vs `catalogReviewStatus` (staff catalog eligibility). ADR-FP-073.
+
+---
+
+## D. Staff print-request flow (Studio)
 
 ```
-Users page → search/filter
+/print-requests → create internal or customer request
     ↓
-Add user modal → createTeamUser callable → invitation email
+Add approved catalog designs via Design Library selection mode
     ↓
-Edit user modal → updateTeamUser callable → sync Auth disabled + Firestore isActive
+Edit qty/size (same DPI floor as Portal: ≥ 200 to save)
+    ↓
+Attach to Show Queue / upcoming show
 ```
 
-Customer provisioning note:
+---
 
-Owners/admins can create and edit customer records from `/users`. These records support registered customer Print Requests without creating Firebase Auth accounts, `users/{uid}` documents, or Studio access.
-
-## Print Request workflow (Phase 6 — PASS)
+## E. Show Queue / production (Studio)
 
 ```
-Open /print-requests
+Upcoming show has capacity
     ↓
-Create internal or customer print request
+Attach print requests / allocations
     ↓
-Open Add designs → Design Library request-selection mode
+Production timer → Printing tab for customers
     ↓
-Select approved catalog designs and quantities
-    ↓
-Save to request
-    ↓
-Edit/remove request items as needed
+Export zip (300 DPI) and/or auto-nested gang sheet PNGs
 ```
 
-Rules:
+Gang sheet **manual builder** canvas is deferred (post-MVP).
 
-- Only approved catalog designs (`status: ready`) may be added.
-- Request item status and notes live on `printRequestItems`.
-- Design records remain catalog records and keep catalog lifecycle status.
-- No checkout, payment, shipping, Portal, Whatnot, or Phase 7 Print Runs in Phase 6.
+---
 
-## Future workflows (not implemented)
+## F. Future — Custom Requests (Phase 9)
 
-**Print Run (Phase 7):** Group requests into show/batch → export originals for Pensacola gang sheets.
+Separate Q&A / Etsy / optional design-fee path. **Not** the same as customer PNG uploads on a print request.
 
-**Custom Request (Phase 9):** Q&A intake → Etsy referral or in-house custom art path.
+---
 
 ## Workflow rules
 
-- Workflows must be **predictable**, **recoverable**, and **observable**
-- Failed imports should resume from last successful step where possible
-- Status must always indicate current state and next action
+- Predictable, recoverable, observable
 - Never auto-publish to catalog without staff approval
+- Production status never written to `designs.status`
+- Trusted image processing for customer uploads is **server-side** (finalize callables)

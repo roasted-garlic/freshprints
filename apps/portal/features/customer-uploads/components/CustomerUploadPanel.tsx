@@ -16,9 +16,15 @@ import { customerUploadService } from '../services/customerUploadService';
 interface CustomerUploadPanelProps {
   onAttached: (printRequestId: string) => void;
   onClose: () => void;
+  /** modal = near-fullscreen overlay (legacy); embedded = page content */
+  variant?: 'modal' | 'embedded';
 }
 
-export function CustomerUploadPanel({ onAttached, onClose }: CustomerUploadPanelProps) {
+export function CustomerUploadPanel({
+  onAttached,
+  onClose,
+  variant = 'modal',
+}: CustomerUploadPanelProps) {
   const {
     rows,
     isProcessing,
@@ -50,14 +56,20 @@ export function CustomerUploadPanel({ onAttached, onClose }: CustomerUploadPanel
   const isBusy = isProcessing || isAttaching;
 
   useEffect(() => {
+    if (variant !== 'modal') {
+      return;
+    }
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     return () => {
       document.body.style.overflow = previousOverflow;
     };
-  }, []);
+  }, [variant]);
 
   useEffect(() => {
+    if (variant !== 'modal') {
+      return;
+    }
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && !isBusy) {
         onClose();
@@ -66,7 +78,7 @@ export function CustomerUploadPanel({ onAttached, onClose }: CustomerUploadPanel
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isBusy, onClose]);
+  }, [isBusy, onClose, variant]);
 
   useEffect(() => {
     let cancelled = false;
@@ -120,38 +132,44 @@ export function CustomerUploadPanel({ onAttached, onClose }: CustomerUploadPanel
     }
   };
 
-  return (
-    <div
-      aria-labelledby="portal-customer-upload-title"
-      aria-modal="true"
-      className="modal-overlay modal-overlay-blur portal-customer-upload-overlay"
-      onClick={handleClose}
-      role="dialog"
-    >
-      <div
-        className="modal-panel portal-customer-upload-modal"
-        onClick={(event) => event.stopPropagation()}
-      >
+  const panelBody = (
+    <>
         <header className="modal-header portal-customer-upload-modal-header">
           <div>
-            <h2 id="portal-customer-upload-title">Upload artwork</h2>
+            <h2 id="portal-customer-upload-title">
+              {variant === 'embedded' ? 'Choose files' : 'Upload artwork'}
+            </h2>
             <p className="portal-muted">
-              Add PNG or WebP files, a folder, or one ZIP. Images up to{' '}
-              {formatFileSize(CUSTOMER_UPLOAD_MAX_SINGLE_IMAGE_BYTES)} each; ZIPs up to{' '}
-              {formatFileSize(CUSTOMER_UPLOAD_MAX_ZIP_COMPRESSED_BYTES)}. Upload up to{' '}
-              {CUSTOMER_UPLOAD_MAX_CONCURRENT_FINALIZE} images at a time. Passing technical checks
-              only means your file can print — it is not added to our design library unless approved.
+              {variant === 'embedded' ? (
+                <>
+                  PNG or WebP · up to {formatFileSize(CUSTOMER_UPLOAD_MAX_SINGLE_IMAGE_BYTES)} each ·
+                  ZIP up to {formatFileSize(CUSTOMER_UPLOAD_MAX_ZIP_COMPRESSED_BYTES)} (images are
+                  discovered and listed, then processed) ·{' '}
+                  {CUSTOMER_UPLOAD_MAX_CONCURRENT_FINALIZE} at a time
+                </>
+              ) : (
+                <>
+                  Add PNG or WebP files, a folder, or one ZIP. Images up to{' '}
+                  {formatFileSize(CUSTOMER_UPLOAD_MAX_SINGLE_IMAGE_BYTES)} each; ZIPs up to{' '}
+                  {formatFileSize(CUSTOMER_UPLOAD_MAX_ZIP_COMPRESSED_BYTES)}. Upload up to{' '}
+                  {CUSTOMER_UPLOAD_MAX_CONCURRENT_FINALIZE} images at a time. Passing technical checks
+                  only means your file can print — it is not added to our design library unless
+                  approved.
+                </>
+              )}
             </p>
           </div>
-          <button
-            aria-label="Close"
-            className="modal-close-button"
-            disabled={isBusy}
-            onClick={handleClose}
-            type="button"
-          >
-            <XIcon size={14} />
-          </button>
+          {variant === 'modal' ? (
+            <button
+              aria-label="Close"
+              className="modal-close-button"
+              disabled={isBusy}
+              onClick={handleClose}
+              type="button"
+            >
+              <XIcon size={14} />
+            </button>
+          ) : null}
         </header>
 
         <div className="modal-body portal-customer-upload-modal-body">
@@ -250,7 +268,6 @@ export function CustomerUploadPanel({ onAttached, onClose }: CustomerUploadPanel
               <li className={`portal-customer-upload-file-row is-${row.phase}`} key={row.localId}>
                 <div className="portal-customer-upload-file-preview">
                   {previewUrls[row.localId] ? (
-                    // eslint-disable-next-line @next/next/no-img-element
                     <img alt="" src={previewUrls[row.localId] ?? undefined} />
                   ) : (
                     <span className="portal-customer-upload-file-preview-fallback" aria-hidden>
@@ -325,10 +342,12 @@ export function CustomerUploadPanel({ onAttached, onClose }: CustomerUploadPanel
 
           <fieldset className="portal-customer-upload-confirmations">
             <legend>Confirmations</legend>
-            <p className="portal-muted portal-customer-upload-confirm-help">
-              Confirm you have the right to print this artwork. You can also allow Fresh Prints to
-              consider it for our shared design library.
-            </p>
+            {variant === 'modal' ? (
+              <p className="portal-muted portal-customer-upload-confirm-help">
+                Confirm you have the right to print this artwork. You can also allow Fresh Prints to
+                consider it for our shared design library.
+              </p>
+            ) : null}
             <label className="form-checkbox">
               <input
                 checked={ownershipConfirmed}
@@ -359,7 +378,7 @@ export function CustomerUploadPanel({ onAttached, onClose }: CustomerUploadPanel
             onClick={handleClose}
             type="button"
           >
-            Cancel
+            {variant === 'embedded' ? 'Back' : 'Cancel'}
           </button>
           <button
             className="portal-button portal-button-primary"
@@ -367,9 +386,36 @@ export function CustomerUploadPanel({ onAttached, onClose }: CustomerUploadPanel
             onClick={() => void handleAttach()}
             type="button"
           >
-            {isAttaching ? 'Adding…' : 'Add to my print request'}
+            {isAttaching ? 'Adding…' : 'Add to Current Request'}
           </button>
         </footer>
+    </>
+  );
+
+  if (variant === 'embedded') {
+    return (
+      <section
+        aria-labelledby="portal-customer-upload-title"
+        className="portal-customer-upload-embedded"
+      >
+        {panelBody}
+      </section>
+    );
+  }
+
+  return (
+    <div
+      aria-labelledby="portal-customer-upload-title"
+      aria-modal="true"
+      className="modal-overlay modal-overlay-blur portal-customer-upload-overlay"
+      onClick={handleClose}
+      role="dialog"
+    >
+      <div
+        className="modal-panel portal-customer-upload-modal"
+        onClick={(event) => event.stopPropagation()}
+      >
+        {panelBody}
       </div>
     </div>
   );

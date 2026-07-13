@@ -4,8 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 import { usePortalPrintRequests } from '../../print-requests/context/PortalPrintRequestContext';
-import type { PortalRequestDetailFrom } from '../../print-requests/utils/portalRequestDetailReturn';
-import { PlusIcon } from '../../shared/components/PortalIcons';
+import { ShoppingBagIcon } from '../../shared/components/PortalIcons';
 import { portalNavItems, resolveActivePortalNavItem } from '../constants/portalNavItems';
 import { PortalNavIcon } from './PortalNavIcon';
 
@@ -14,26 +13,14 @@ const BOTTOM_NAV_LABELS: Record<string, string> = {
   requests: 'Requests',
 };
 
-function resolveStartRequestFrom(pathname: string): PortalRequestDetailFrom {
-  if (pathname.startsWith('/catalog/library')) {
-    return 'library';
-  }
-  if (pathname.startsWith('/catalog')) {
-    return 'discover';
-  }
-  if (pathname.startsWith('/requests')) {
-    return 'working';
-  }
-  return 'discover';
-}
-
 export function PortalBottomNav() {
   const pathname = usePathname();
   const activeItemId = resolveActivePortalNavItem(pathname);
-  const { handleStartRequestClick, isCreating } = usePortalPrintRequests();
+  const { currentRequestAggregates, openCurrentRequestDrawer } = usePortalPrintRequests();
 
   const designsItem = portalNavItems.find((item) => item.id === 'designs')!;
   const requestsItem = portalNavItems.find((item) => item.id === 'requests')!;
+  const totalPrints = currentRequestAggregates.totalPrintQuantity;
 
   return (
     <nav aria-label="Portal navigation" className="portal-bottom-nav">
@@ -60,17 +47,12 @@ export function PortalBottomNav() {
       </div>
 
       <button
-        aria-label={isCreating ? 'Starting print request' : 'Start print request'}
+        aria-label={`Open Current Request, ${totalPrints} total prints`}
         className="portal-bottom-nav-fab"
-        disabled={isCreating}
-        onClick={() =>
-          handleStartRequestClick({
-            from: resolveStartRequestFrom(pathname),
-          })
-        }
+        onClick={openCurrentRequestDrawer}
         type="button"
       >
-        <PlusIcon size={24} />
+        <ShoppingBagIcon size={22} />
       </button>
     </nav>
   );

@@ -13,6 +13,7 @@ export type CustomerUploadTechnicalStatus =
  */
 export type CustomerUploadTechnicalProgressStage =
   | "reading_upload"
+  | "discovered"
   | "checking_format"
   | "checking_transparency"
   | "converting_format"

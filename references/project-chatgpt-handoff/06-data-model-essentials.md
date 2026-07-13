@@ -4,138 +4,72 @@
 
 | Collection | Purpose |
 |------------|---------|
-| `users` | Team profiles — role, isActive (client read-only writes) |
-| `designs` | Design catalog metadata |
-| `categories` | Catalog categories |
-| `customers` | Customer records for Print Requests |
-| `printRequests` | Named request lists for customers or internal use |
-| `printRequestItems` | Request item records referencing approved catalog designs |
-| `settings` | App settings (e.g. `aiEnrichment`) |
-| `showQueues` / `showQueueItems` | Legacy names — Phase 7 migration planned |
-| `customerRequests` | Legacy — Phase 9 migration planned |
-
-## Design document — key fields
-
-| Field | Purpose |
-|-------|---------|
-| `status` | Catalog lifecycle (see below) |
-| `title`, `description`, `tags`, `categoryId` | Catalog metadata |
-| `originalPath`, `thumbnailPath`, `previewPath` | Storage paths |
-| `widthPx`, `heightPx`, `dpi` | Image metadata |
-| `printWidthIn`, `printHeightIn` | Print size (Phase 3D) |
-| `aiReviewStatus` | AI pipeline state |
-| `aiSuggestions` | AI output blob (title, description, tags, category, version, model) |
-| `archived` | Soft-hide from default browse |
-| `createdAt`, `updatedAt`, `createdBy` | Audit |
-
-Types: `shared/types/` and `apps/studio/src/renderer/src/features/designs/types/`
+| `users` | Team + customer Auth profiles (`role`, `isActive`) — client cannot write roles |
+| `designs` | Staff catalog metadata |
+| `categories` / catalog tags | Organization |
+| `customers` | Customer business records (Portal linked) |
+| `printRequests` | Named request lists (working / queued derived) |
+| `printRequestItems` | Line items: catalog design **or** customer upload |
+| `customerUploads` | Customer artwork for requests (ADR-FP-073) |
+| `customerUploadBatches` | Upload sessions / ZIP batches |
+| `customerUploadRateLimits` / leases / idempotency | Abuse controls |
+| `upcomingShows` / `showAllocations` / print runs | Show Queue |
+| `staffInboxAcks` | Per-staff Done state for inbox |
+| `settings` | AI enrichment, show queue, etc. |
 
 ## Design status (catalog lifecycle)
 
-| Status | Meaning | In Design Library? |
-|--------|---------|---------------------|
-| `imported` | Awaiting AI/staff review | No |
-| `processing` | Transient (derivatives or AI job) | No |
-| `ready` | Catalog-approved | **Yes (default view)** |
-| `rejected` | Staff rejected | No (Rejected tab) |
-| `archived` | Soft-hidden | Only with archived toggle |
+| Status | In Design Library? |
+|--------|---------------------|
+| `imported` / `processing` | No |
+| `ready` | **Yes (default)** |
+| `rejected` | No |
+| `archived` | Only with archived toggle |
 
-**Deprecated on designs:** `queued`, `printed` — legacy read only. New writes blocked. Production status belongs on queue/request items.
-
-Print Requests must not write `queued`, `printed`, `pending`, `done`, or any production/request lifecycle status to `designs.status`.
-
-## AI review status
-
-Tracks pipeline progress separately from catalog `status`. Used by AI Review inbox tabs:
-
-- Processing tab: awaiting or running AI
-- Needs Review: AI complete, awaiting staff
-- Rejected: staff rejected from catalog
-
-See `aiReview.types.ts` and `aiReviewInboxService.ts` for exact values and query logic.
-
-## aiSuggestions structure (summary)
-
-| Field | Notes |
-|-------|-------|
-| `promptVersion` | e.g. `catalog-enrich-openai-v16` |
-| `provider` | `openai` or `development` |
-| `model` | Resolved OpenAI model ID |
-| `title`, `description`, `tags`, `categoryId` | Suggestions |
-| `visibleText`, `visibleTextColor` | OCR-related |
-| `textOnlyArtwork`, `artworkContainsText` | Classification |
-| `confidence` | Per-field or aggregate |
-| `generatedAt` | Timestamp |
-
-## Category
-
-Standard CRUD with name, optional description. AI suggests `categoryId` from allowed list.
-
-## User
-
-```ts
-role: 'owner' | 'admin' | 'helper' | 'customer'
-isActive: boolean
-```
-
-Customers use Portal only (Phase 8) — no Studio access.
-
-## Customer
-
-```ts
-isGuest: boolean
-userId?: string
-totalPrintRequests: number
-```
-
-Customer records are staff-created with `isGuest: false` for the current Phase 6 flow. They do not create Firebase Auth accounts, do not create `users/{uid}` documents, and do not grant Studio access.
+**Never** write `queued` / `printed` on designs. Production lives on request items / allocations.
 
 ## Print Request
 
-```ts
-status: 'draft' | 'active' | 'completed' | 'archived'
-isInternal: boolean
-customerId?: string
-itemCount: number
-```
+- Named list, not an order (no payment/shipping fields).
+- Portal: **one working** request per customer until queued to a show (ADR-FP-071).
+- Tabs (Working / Queued / Printing / Printed) are largely **derived** from allocations + production timer.
 
-A Print Request is a named list, not an order. It has no payment, checkout, shipping, packing, or fulfillment fields.
+## Print Request Item (dual source)
 
-## Print Request Item
+| Field | Notes |
+|-------|-------|
+| `sourceType` | `catalog_design` (default/legacy) \| `customer_upload` |
+| `designId` | Required for catalog items; **absent** for upload-backed items |
+| `customerUploadId` | Set for upload-backed items |
+| `quantity` | ≥ 1 |
+| `printWidthInches` / `printHeightInches` | Aspect-locked; standard cap 22″ |
+| `sizeLabel` | Display string |
 
-```ts
-status: 'pending' | 'queued' | 'in_progress' | 'printed' | 'done' | 'canceled'
-designId: string
-quantity: number
-printWidthInches?: number
-printHeightInches?: number
-sizeLabel?: string
-```
+**Save floor:** effective DPI must be **≥ 200** (`MIN_PRINT_REQUEST_EFFECTIVE_DPI`). Soft warn 200–299; optimal ≥ 300. ADR-FP-075.
 
-Production/request progress lives on request items, not design documents.
+Do **not** increment `designs.requestCount` for customer-upload-only items.
 
-## Request reference counters
+## Customer Uploads
 
-Phase 6 may increment `designs.requestCount` and `designs.lastRequestedAt` when a design is added to a request. ADR-FP-030 defines these as lightweight request reference metadata only. They do not imply printing, do not change design lifecycle status, and do not implement Phase 10 analytics dashboards.
+| Concern | Field / note |
+|---------|----------------|
+| Technical pipeline | `technicalStatus`: awaiting_upload → uploading → validating → processing → ready \| failed |
+| Progress stages | reading, format, transparency, converting, trimming, upscaling, DPI, previews, saving |
+| Catalog eligibility | `catalogReviewStatus`: not_eligible / pending_staff_review / sent_to_ai_review / excluded… |
+| Permissions | `ownershipAcknowledged` required to attach; `catalogUseAcknowledged` optional (ADR-FP-074) |
+| Formats | PNG / static WebP with meaningful transparency |
+| Storage | `/customer-uploads/{uid}/…` source + production + preview/thumbnail |
 
-## Storage path helpers
+After staff promote → creates/links a `designs` doc and existing AI enqueue; request items keep working.
 
-`shared/constants/design/designStoragePaths.ts`:
-- `getOriginalStoragePath(designId)`
-- `getThumbnailStoragePath(designId)`
-- `getPreviewStoragePath(designId)`
+## Show allocations
+
+Link `printRequest` / `printRequestItem` quantities to an `upcomingShow`. Source-aware resolvers support catalog originals **and** customer-upload production paths for export/gang sheets.
 
 ## Data rules
 
-1. Firestore = metadata only; Storage = files
-2. Strong typing — no `any` on persisted models
-3. Single source of truth per entity type
-4. All primary docs: `id`, `createdAt`, `updatedAt`
-5. Status transitions via workflow services — not arbitrary UI edits
-
-## Approval services
-
-- `catalogApprovalService.approveDesignForCatalog` → `status: ready`
-- `catalogApprovalService.rejectDesignFromCatalog` → `status: rejected`
-
-Edit Design modal: status is **read-only** — use workflow actions only.
+1. Firestore = metadata; Storage = files  
+2. Strong typing — no `any` on persisted models  
+3. Status transitions via workflow services  
+4. Primary docs: `id`, `createdAt`, `updatedAt`  
+5. When handoff and `docs/architecture/DATA_MODEL.md` disagree, **repo doc wins**

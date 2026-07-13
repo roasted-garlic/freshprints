@@ -4,77 +4,78 @@
 
 | Layer | Technology |
 |-------|------------|
-| Studio desktop | Electron 30 + Vite 5 + vite-plugin-electron |
-| Portal web | Next.js 15 (App Router) |
+| Studio desktop | Electron + Vite + vite-plugin-electron |
+| Portal web | Next.js 15 (App Router) — **dev port 3100** |
 | UI | React 18 + TypeScript 5 |
-| Routing | react-router-dom 7 (Studio HashRouter); Next.js routes (Portal) |
-| Backend | Firebase 12 (Auth, Firestore, Storage, Functions) |
-| Image processing | sharp 0.33 (Electron main + Functions) |
-| ZIP | yauzl (read), yazl (write) |
+| Routing | Studio: react-router HashRouter; Portal: Next.js routes |
+| Backend | Firebase (Auth, Firestore, Storage, Functions) |
+| Image processing | sharp (Electron main + Functions) |
+| ZIP | yauzl / yazl |
 | Icons | lucide-react |
+| Shared calendar | `@fresh-prints/show-picker` |
 
 ## Commands
 
 ```bash
-npm run dev:studio   # Electron + Vite dev
-npm run dev:portal   # Next.js :3000
-npm run build:studio # tsc + vite + electron-builder
-npm run build:portal # Next.js production build
+npm run dev            # Studio + Portal concurrently
+npm run dev:studio     # Electron + Vite
+npm run dev:portal     # Next.js http://localhost:3100
+npm run tunnel:portal  # cloudflared → localhost:3100
+npm run build:studio
+npm run build:portal
 npm run lint
-npx tsc --noEmit     # from apps/studio/
 ```
 
-No root `npm test` — run `npx tsx --test` on `*.test.ts` files (see `docs/standards/TESTING.md`).
+Functions:
+
+```bash
+cd functions && npm run build
+firebase deploy --only functions:... --project fresh-prints-dev
+```
+
+Unit tests (examples):
+
+```bash
+npx tsx --test packages/shared/src/**/*.test.ts
+npx tsx --test apps/studio/src/**/*.test.ts apps/portal/**/*.test.ts
+npx tsx --test functions/src/lib/customerUpload*.test.ts
+```
+
+See `docs/standards/TESTING.md`.
 
 ## Top-level structure
 
 ```
 fresh-prints/
 ├── apps/
-│   ├── portal/            # @fresh-prints/portal — Next.js (Firebase App Hosting)
-│   └── studio/            # @fresh-prints/studio — Electron + Vite
-│       ├── electron/      # Studio main process
-│       └── src/renderer/src/  # Studio React UI
+│   ├── portal/                 # @fresh-prints/portal
+│   │   ├── app/                # Next routes
+│   │   └── features/
+│   │       ├── catalog/
+│   │       ├── print-requests/
+│   │       ├── customer-uploads/
+│   │       ├── auth/
+│   │       └── …
+│   └── studio/                 # @fresh-prints/studio
+│       ├── electron/           # Main process (import, export, sharp)
+│       └── src/renderer/src/
+│           └── features/       # designs, imports, ai-review, print-requests,
+│                               # upcoming-shows, customer-uploads, users, …
 ├── packages/
-│   ├── shared/            # @fresh-prints/shared — cross-app types/utils
-│   └── show-picker/       # @fresh-prints/show-picker — calendar UI
-├── functions/src/         # Cloud Functions
-├── firestore.rules
-├── storage.rules
-├── firebase.json          # App Hosting rootDir: apps/portal
+│   ├── shared/src/             # types, utils, constants (incl. customerUpload/)
+│   └── show-picker/
+├── functions/src/              # Cloud Functions
+├── firestore.rules / storage.rules
 ├── docs/
-└── references/
-    ├── gang-sheet-builder-reference/
-    └── project-chatgpt-handoff/
+└── references/project-chatgpt-handoff/
 ```
 
-## Studio feature modules (`apps/studio/src/renderer/src/features/`)
+## Shared imports
 
-| Folder | Domain |
-|--------|--------|
-| `auth/` | Login, session |
-| `designs/` | Design Library |
-| `imports/` | ZIP/folder import |
-| `ai-review/` | AI Review |
-| `print-requests/` | Print Requests |
-| `upcoming-shows/` | Show Queue |
-| `users/` | Team + customers |
-| `settings/` | AI settings |
+Use `@fresh-prints/shared/...` from apps. Functions import via relative `../../packages/shared/src/...`.
 
-## Portal (`apps/portal/`)
-
-| Area | Path |
-|------|------|
-| Routes | `apps/portal/app/` |
-| Print requests | `apps/portal/features/print-requests/` |
-| Catalog | `apps/portal/features/catalog/` |
-
-## Shared code
-
-Cross-app domain types and pure utils: `packages/shared/src/` — import as `@fresh-prints/shared/...`.
-
-**Do not confuse** with `apps/studio/src/renderer/src/shared/` (Studio-only UI components).
+**Do not confuse** with Studio-only `apps/studio/src/renderer/src/shared/` UI kits.
 
 ## Workflow state
 
-`.cursor/workflow/state.md`
+`.cursor/workflow/state.md` — authoritative for managed phases.

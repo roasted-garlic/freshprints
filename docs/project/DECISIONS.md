@@ -4,6 +4,33 @@
 
 ---
 
+### ADR-FP-076: Portal Persistent Current Request (cart-style UX)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-12 |
+| Status | accepted |
+
+**Context**
+
+Portal customers previously entered Design Library selection mode to add designs, and uploaded artwork via a modal on the request detail page. Product needs a familiar shopping-style flow without ecommerce checkout, while preserving one working request (ADR-FP-071) and request-artwork uploads (ADR-FP-073).
+
+**Decision**
+
+1. Authenticated Portal customers always experience a **Current Request** (virtual empty when no Firestore `draft`/`editing` request exists). Working request documents are created **lazily** on the first persistent action.
+2. Catalog Discover / Design Library support **direct-add** without selection mode. Re-adding a catalog design increments the **primary** variant (earliest catalog-backed item by `createdAt`, then `id`). Size duplicates remain independent lines.
+3. Header exposes **Upload Artwork** and a **Current Request** basket (badge = total print quantity). Drawer is summary-only; **Review Request** is the detail page for resize, duplicate-for-size, DPI, and **Add Request to Show**.
+4. Request artwork lives at **`/requests/artwork`** (printing / Current Request only). Future image donations are a separate product path and must not share this route or lifecycle.
+5. Studio request-selection mode is unchanged. Legacy Portal `?mode=request-selection` may remain temporarily for compatibility until cleanup after manual verification.
+
+**Consequences**
+
+- Portal chrome and catalog cards share one working-item load owner via `PortalPrintRequestProvider`.
+- Terminology avoids checkout/order/payment language.
+- Selection-mode code is not deleted until direct-add manual QA passes.
+
+---
+
 ### ADR-FP-075: Print Request items require ≥ 200 effective DPI to save
 
 | Field | Value |

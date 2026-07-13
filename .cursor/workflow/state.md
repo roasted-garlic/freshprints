@@ -1,23 +1,23 @@
 ## Current Goal
-portal-customer-artwork-upload — remediation r7 (limits, speed, confirmations, DPI)
+portal-persistent-current-request
 
 ## Phase
-test — await manual UI checkpoint
+test — await manual UI checkpoint (after UX mid-checkpoint fixes)
 
 ## Plan Status
-complete — approved
+complete
 
 ## Review Status
-approved
+approved_with_changes
 
 ## Implementation Status
-complete — including mid-checkpoint PNG fast-path + 200 DPI save floor
+complete — load regression remediated; mid-checkpoint UX fixes applied; selection-mode cleanup still deferred
 
 ## Test Status
-passed_with_notes — sizing unit tests pass (200 DPI floor); awaiting owner manual checkpoint
+passed_with_notes — portal typecheck green after UX fixes; awaiting owner manual retest
 
 ## Signoff Status
-G / parent: blocked until manual PASS
+blocked until manual PASS
 
 ## DONE
 no
@@ -29,25 +29,24 @@ no
 yes
 
 ## Human Checkpoint Reason
-Manual verify r7 + mid-checkpoint fixes — docs/workflow/reviews/2026-07-12-portal-upload-limits-speed-confirmations-dpi-r7-manual-checkpoint.md
+Manual retest after UX mid-checkpoint fixes — docs/workflow/reviews/2026-07-12-portal-persistent-current-request-manual-checkpoint.md
 
 ## Allowed Actions
-Read docs; wait for owner PASS / PASS WITH NOTES / FAIL; record feedback
+Read docs; wait for owner PASS / PASS WITH NOTES / FAIL; narrow fixes within scope
 
 ## Forbidden Actions
-Production deploy; always-in-selection redesign; G/parent signoff without manual PASS
+Production deploy; selection-mode cleanup before manual PASS; signoff without manual PASS; concurrent next build while next dev is running
 
 ## Next Required Step
-Await owner reply on r7 manual checkpoint
+Await owner reply on restored manual checkpoint (include mid-checkpoint UX checklist)
 
 
 ## Decision Log
-- 2026-07-12 — Owner approved r6; always-in-selection deferred to roadmap follow-up.
-- 2026-07-12 — r6 implemented; listPortalAllocatableShows deployed to fresh-prints-dev.
-- 2026-07-12 — During r6 manual check: selection-mode Upload artwork now saves pending designs before opening upload.
-- 2026-07-12 — During r6 manual check: Upload artwork UI changed from inline panel to near-fullscreen modal.
-- 2026-07-12 — r7 plan approved: 100 files, 100MB, 2GB batch, concurrency 8, daily 200, copy OK; staff can promote but must see library decline.
-- 2026-07-12 — r7 implemented + deployed to fresh-prints-dev; awaiting manual checkpoint.
-- 2026-07-12 — Daily create-batch cap raised 10→100 (error was batch sessions, not MB/images); clearer quota messages; per-row Retry removed.
-- 2026-07-12 — Mid-checkpoint: PNG fast-path (sample transparency, conditional trim/upscale/convert, GCS production copy) + stages converting/trimming/upscaling; redeployed finalize/retry/zip to fresh-prints-dev.
-- 2026-07-12 — Owner: Print Request saves require ≥ 200 effective DPI (was 72). ADR-FP-075; shared assess + initial size clamp updated.
+- 2026-07-12 — Owner FAIL: Portal did not load.
+- 2026-07-12 — Root cause: Context↔Drawer circular import + corrupted `.next` (CSS error then concurrent build vs dev). Fixed drawer mount in PortalAppShell; cleared cache; restarted `npm run dev:portal`. Routes return 200.
+- 2026-07-12 — Regression test: PortalPrintRequestContext.boundary.test.ts. Manual checkpoint restored.
+- 2026-07-12 — ADR-FP-076; B–F implemented earlier; selection-mode cleanup still gated.
+- 2026-07-12 — Owner mid-checkpoint UX feedback: qty steppers, remove Continue request, remove How print requests work, snazzier drawer, hide desktop hamburger. Fixes applied; portal `tsc --noEmit` passed.
+- 2026-07-12 — Owner follow-up: Upload Designs + image-up icon; restore perpetual selection-card highlight/qty/trash UI (CatalogSelectionCard) on Discover/Library instead of “In Current Request” ecommerce cards.
+- 2026-07-12 — Owner follow-up: drawer Uploaded/Library one-word pills; condense `/requests/artwork` header spacing. Typecheck green; awaiting retest.
+- 2026-07-12 — ZIP upload: discovery-first finalize (list all extracted images, then process) + Portal live batch subscription. Deployed `finalizeCustomerUploadZip` to fresh-prints-dev.

@@ -4,78 +4,46 @@
 
 ## Core principles
 
-1. **Never trust client input** — validate server-side or in security rules
-2. **Least privilege** — minimum permissions for users and services
-3. **Default deny** — explicit allow rules only
-4. **No secrets in client** — API keys, tokens never in renderer bundle, logs, or chat
-5. **UI is not security** — `ProtectedRoute` and `RoleGate` are UX; Firestore/Storage rules enforce access
+1. Never trust client input — validate in rules and/or Cloud Functions  
+2. Least privilege  
+3. Default deny  
+4. No secrets in client bundles, logs, or chat  
+5. UI gates are UX only — Firestore/Storage rules + callables enforce access  
 
 ## Roles
 
-| Role | Studio access | Typical capabilities |
-|------|---------------|---------------------|
-| `owner` | Yes | Full admin, settings, all users |
-| `admin` | Yes | Designs, imports, AI review, helpers |
-| `helper` | Yes | Imports, AI review (limited admin) |
-| `customer` | **No** — Portal only | Catalog browse, print requests (Phase 8) |
+| Role | Studio | Portal |
+|------|--------|--------|
+| `owner` / `admin` / `helper` | Yes | No |
+| `customer` | **No** | Yes |
 
-Use `permissionService.ts` — never hardcode role checks in components.
+Use Studio `permissionService` — never scatter role checks in components.
 
-## Authentication flow
+## Customer uploads
 
-```
-Firebase Auth sign-in
-    ↓
-Load users/{uid} from Firestore
-    ↓
-Check isActive === true
-    ↓
-Bootstrap app with role + permissions
-```
+- Clients upload only to **their** `/customer-uploads/{uid}/…` paths  
+- Size/type/path enforced in Storage rules + finalize callables  
+- Transparency / DPI / format validation is **server-authoritative**  
+- Ownership acknowledgement required to attach to a request  
+- Catalog permission is optional; declining does not grant catalog write access  
 
-Deactivated users: Auth `disabled` + Firestore `isActive: false` synced via Cloud Functions.
-
-## Secrets handling
+## Secrets
 
 | Secret | Where | Never in |
 |--------|-------|----------|
-| `OPENAI_API_KEY` | Firebase Secret Manager | Client, Firestore, Settings UI |
-| Firebase config | `VITE_FIREBASE_*` env vars | Committed `.env` files |
-| Resend API key | Functions / Secret Manager | Client |
+| Gemini / AI keys | Firebase Secret Manager | Client, Firestore settings values |
+| Firebase web config | Env (`NEXT_PUBLIC_*` / `VITE_*`) | Committed real secrets |
+| Resend / other | Functions secrets | Client |
 
-## Firestore rules highlights
+## Production changes need human approval
 
-- `users` collection: client **cannot** create/update/delete (Functions only)
-- Role helpers in rules reference `users/{uid}.role`
-- Design writes require staff role checks
+Auth provider changes, relaxing rules, new public sensitive endpoints, secret rotation, production deploys.
 
-## Storage rules highlights
+## AI-specific
 
-- Originals, thumbnails, previews: staff-only read/write
-- Path structure enforced — no arbitrary paths
-
-## File uploads
-
-- Validate type, size, dimensions server-side or in main process before upload
-- Store in canonical paths only (`designStoragePaths.ts`)
-- Never execute user uploads
-
-## Production changes require human approval
-
-- Auth provider changes
-- Relaxing security rules
-- New public endpoints with sensitive data
-- Secret rotation
-- Production dependency upgrades (security-sensitive)
-
-## AI-specific security
-
-- OpenAI calls **only** from Cloud Functions
-- Thumbnail/preview URLs fetched server-side — not raw user-supplied URLs
-- AI output validated before persisting — reject placeholder/garbled content (v15 Phases 8–12)
+- Model calls only from Cloud Functions  
+- Validate AI output before persist  
 
 ## Incident posture
 
-- Fail closed when validation is uncertain
-- New risks → `docs/project/RISK_REGISTER.md`
-- Architectural security decisions → `docs/project/DECISIONS.md`
+Fail closed; log risks in `RISK_REGISTER.md`; ADRs in `DECISIONS.md`.

@@ -2,27 +2,29 @@
 
 ## One line
 
-Design catalog and print planning platform for DTF operations — **Fresh Prints Studio** (staff desktop) and **Fresh Prints Portal** (customer web, Phase 8).
+Design catalog and print planning platform for DTF operations — **Fresh Prints Studio** (staff desktop) and **Fresh Prints Portal** (customer web).
 
 ## Problem
 
-DTF design operations are scattered across folders, spreadsheets, messages, and manual ZIP workflows. Teams lack one system for catalog management, AI-assisted enrichment, print request planning, and show preparation.
+DTF design operations are scattered across folders, spreadsheets, messages, and manual ZIP workflows. Teams need one system for catalog management, AI-assisted enrichment, print request planning, customer artwork for requests, and show preparation.
 
 ## Target users
 
 | Persona | App | Needs |
 |---------|-----|-------|
-| Owner / Admin / Helper | Fresh Prints Studio | Import, AI review, catalog, print plans |
-| Customer | Fresh Prints Portal (planned) | Browse catalog, create print requests |
-| Production (Pensacola) | Studio | Download originals from print runs for gang sheets |
+| Owner / Admin / Helper | Fresh Prints Studio | Import, AI review, catalog, print requests, show queue, customer-upload intake |
+| Customer | Fresh Prints Portal | Browse Design Library, create/continue print requests, upload own artwork, add request to a show |
+| Production (Pensacola) | Studio | Download / export originals and gang sheets for production |
 
 ## Business workflow
 
 ```
-Import Designs → AI Review → Approved Design Library → Print Requests → Print Runs → Analytics
+Staff: Import Designs → AI Review → Approved Design Library
+Customers: Browse Library +/or Upload Artwork → Print Request → Choose Show → Print Run / Export
+Staff ops: Show Queue production → zip / gang sheet export
 ```
 
-**Critical rule:** Designs never become "queued" or "printed." Those statuses belong on Print Request Items / Print Run Items only.
+**Critical rule:** Designs never become "queued" or "printed." Those statuses belong on Print Request Items / Show Allocations only.
 
 ## Primary goals
 
@@ -30,7 +32,8 @@ Import Designs → AI Review → Approved Design Library → Print Requests → 
 2. Route imports through AI Review before catalog visibility
 3. Support print request and print run planning (not ecommerce/shipping)
 4. AI-assisted catalog enrichment (title, description, category, tags)
-5. Customer experience via mobile-first Portal (future)
+5. Customer experience via mobile-first Portal (live in **dev**)
+6. Let customers attach **their own transparent artwork** to requests without auto-publishing to the shared library
 
 ## Non-goals (do not build without explicit approval)
 
@@ -39,15 +42,16 @@ Import Designs → AI Review → Approved Design Library → Print Requests → 
 - Order payment for normal print requests
 - Customer access to Fresh Prints Studio
 - Standalone native mobile apps (iOS/Android/React Native)
-- Payment processing except optional custom design fee (Phase 9)
+- Payment processing except optional custom design fee (Phase 9 Custom Requests)
+- Treating customer uploads as Phase 9 custom-request Q&A (different feature — ADR-FP-073)
 
 ## Platform (two apps only)
 
-| App | Technology | Users |
-|-----|------------|-------|
-| Fresh Prints Studio | Electron desktop | owner, admin, helper |
-| Fresh Prints Portal | Responsive web | customer (`role: customer`) |
+| App | Technology | Users | Local dev |
+|-----|------------|-------|-----------|
+| Fresh Prints Studio | Electron desktop | owner, admin, helper | `npm run dev:studio` |
+| Fresh Prints Portal | Next.js responsive web | customer (`role: customer`) | `npm run dev:portal` → **http://localhost:3100** |
 
 Both share Firebase Auth, Firestore, and Storage.
 
-Official naming: ADR-FP-008 in `docs/architecture/ADR-Application-Platform-Strategy.md`.
+Official naming: ADR-FP-008.

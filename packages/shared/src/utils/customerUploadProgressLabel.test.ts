@@ -6,6 +6,13 @@ import { getCustomerUploadProgressLabel } from "./customerUploadProgressLabel";
 test("getCustomerUploadProgressLabel prefers granular stages", () => {
   assert.equal(
     getCustomerUploadProgressLabel({
+      technicalStatus: "validating",
+      technicalProgressStage: "discovered",
+    }),
+    "Discovered — waiting to process…",
+  );
+  assert.equal(
+    getCustomerUploadProgressLabel({
       technicalStatus: "processing",
       technicalProgressStage: "checking_transparency",
     }),

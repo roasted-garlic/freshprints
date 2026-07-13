@@ -16,7 +16,6 @@ import { PortalPrintRequestItemCard } from '../../../../features/print-requests/
 import { PortalPrintRequestProgressPanel } from '../../../../features/print-requests/components/PortalPrintRequestProgressPanel';
 import { PortalQueueToShowModal } from '../../../../features/print-requests/components/PortalQueueToShowModal';
 import { PrintRequestDetailGuide } from '../../../../features/print-requests/components/PrintRequestDetailGuide';
-import { CustomerUploadPanel } from '../../../../features/customer-uploads/components/CustomerUploadPanel';
 import { useAuth } from '../../../../features/auth/context/AuthContext';
 import { usePortalPrintRequests } from '../../../../features/print-requests/context/PortalPrintRequestContext';
 import { usePrintRequestDetail } from '../../../../features/print-requests/hooks/usePrintRequestDetail';
@@ -25,9 +24,8 @@ import {
   portalPrintRequestService,
   printRequestItemHasCustomerUpload,
 } from '../../../../features/print-requests/services/portalPrintRequestService';
-import { buildCatalogSelectionHref } from '../../../../features/print-requests/utils/catalogSelectionNavigation';
+import { buildCatalogLibraryHref, buildRequestArtworkHref } from '../../../../features/print-requests/utils/catalogSelectionNavigation';
 import {
-  buildRequestDetailHref,
   parsePortalRequestDetailFrom,
   resolvePortalRequestDetailBack,
 } from '../../../../features/print-requests/utils/portalRequestDetailReturn';
@@ -64,7 +62,8 @@ export default function PrintRequestDetailView() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { refreshCustomer } = useAuth();
-  const { allocationTotalsByRequestId, refreshRequests, summariesByRequestId } = usePortalPrintRequests();
+  const { allocationTotalsByRequestId, refreshRequests, reloadWorkingItems, summariesByRequestId } =
+    usePortalPrintRequests();
   const printRequestId = params.id;
   const [actionError, setActionError] = useState<string | null>(null);
   const [autosaveState, setAutosaveState] = useState<AutosaveState>({ status: 'idle' });
@@ -87,8 +86,6 @@ export default function PrintRequestDetailView() {
     reload,
   } = usePrintRequestDetail(printRequestId);
 
-  const [isUploadPanelOpen, setIsUploadPanelOpen] = useState(false);
-
   useEffect(() => {
     if (searchParams.get('upload') !== '1') {
       return;
@@ -98,13 +95,14 @@ export default function PrintRequestDetailView() {
       return;
     }
 
-    if (isEditable) {
-      setIsUploadPanelOpen(true);
-    }
-
     const from = parsePortalRequestDetailFrom(searchParams.get('from'));
-    router.replace(buildRequestDetailHref(printRequestId, { from }), { scroll: false });
-  }, [isEditable, isLoading, printRequestId, router, searchParams]);
+    router.replace(
+      buildRequestArtworkHref({
+        requestId: printRequestId,
+        from,
+      }),
+    );
+  }, [isLoading, printRequestId, router, searchParams]);
 
   const loadAllocationState = useCallback(async () => {
     if (!printRequestId) {
@@ -157,8 +155,9 @@ export default function PrintRequestDetailView() {
     ) => {
       setActionError(null);
       await updateItem(item.id, input);
+      void reloadWorkingItems({ silent: true });
     },
-    [updateItem],
+    [reloadWorkingItems, updateItem],
   );
 
   const handleDuplicateItem = useCallback(
@@ -167,13 +166,14 @@ export default function PrintRequestDetailView() {
 
       try {
         await duplicateItem(item.id);
+        void reloadWorkingItems({ silent: true });
       } catch (duplicateError) {
         setActionError(
           duplicateError instanceof Error ? duplicateError.message : 'Unable to duplicate item.',
         );
       }
     },
-    [duplicateItem],
+    [duplicateItem, reloadWorkingItems],
   );
 
   const handleRemoveItem = useCallback(
@@ -184,13 +184,14 @@ export default function PrintRequestDetailView() {
       try {
         await removeItem(item.id);
         setItemPendingRemoval(null);
+        void reloadWorkingItems({ silent: true });
       } catch (removeError) {
         setActionError(removeError instanceof Error ? removeError.message : 'Unable to remove item.');
       } finally {
         setIsRemovingItem(false);
       }
     },
-    [removeItem],
+    [reloadWorkingItems, removeItem],
   );
 
   const pendingRemovalTitle =
@@ -278,9 +279,11 @@ export default function PrintRequestDetailView() {
           <div className="portal-request-detail-title-row">
             <h1 title={printRequest.name}>{printRequest.name}</h1>
             <div className="portal-request-detail-meta-pills">
-              <span className="portal-request-detail-meta-pill">
-                {getStatusLabel(printRequest.status)}
-              </span>
+              {!isEditable ? (
+                <span className="portal-request-detail-meta-pill">
+                  {getStatusLabel(printRequest.status)}
+                </span>
+              ) : null}
               <span className="portal-request-detail-meta-pill">{designCountLabel}</span>
               <span className="portal-request-detail-meta-pill">{printCountLabel}</span>
             </div>
@@ -289,79 +292,47 @@ export default function PrintRequestDetailView() {
 
         {canQueueToShow ? (
           <div className="portal-request-detail-header-actions">
-            <button
+            <Link
               className="portal-button portal-button-secondary portal-button-leading-icon portal-request-detail-add-button"
-              onClick={() => setIsUploadPanelOpen(true)}
-              type="button"
+              href={buildRequestArtworkHref({ requestId: printRequest.id, from: returnFrom ?? 'library' })}
             >
               <ImagePlusIcon />
-              Upload artwork
-            </button>
-            <button
+              Upload Artwork
+            </Link>
+            <Link
               className="portal-button portal-button-secondary portal-button-leading-icon portal-request-detail-add-button"
-              onClick={() =>
-                router.push(
-                  buildCatalogSelectionHref(printRequest.id, {
-                    from: returnFrom ?? 'library',
-                  }),
-                )
-              }
-              type="button"
+              href={buildCatalogLibraryHref()}
             >
               <LibraryIcon />
-              Browse design library
-            </button>
+              Browse Design Library
+            </Link>
             <button
               className="portal-button portal-button-primary"
               onClick={() => setIsQueueModalOpen(true)}
               type="button"
             >
-              Add to show
+              Add Request to Show
             </button>
           </div>
         ) : isEditable && hasAttachedDesigns ? (
           <div className="portal-request-detail-header-actions">
-            <button
+            <Link
               className="portal-button portal-button-secondary portal-button-leading-icon portal-request-detail-add-button"
-              onClick={() => setIsUploadPanelOpen(true)}
-              type="button"
+              href={buildRequestArtworkHref({ requestId: printRequest.id, from: returnFrom ?? 'library' })}
             >
               <ImagePlusIcon />
-              Upload artwork
-            </button>
-            <button
+              Upload Artwork
+            </Link>
+            <Link
               className="portal-button portal-button-primary portal-button-leading-icon portal-request-detail-add-button"
-              onClick={() =>
-                router.push(
-                  buildCatalogSelectionHref(printRequest.id, {
-                    from: returnFrom ?? 'library',
-                  }),
-                )
-              }
-              type="button"
+              href={buildCatalogLibraryHref()}
             >
               <LibraryIcon />
-              Browse design library
-            </button>
+              Browse Design Library
+            </Link>
           </div>
         ) : null}
       </header>
-
-      {isUploadPanelOpen && isEditable ? (
-        <CustomerUploadPanel
-          onAttached={async (attachedRequestId) => {
-            setIsUploadPanelOpen(false);
-            if (attachedRequestId !== printRequest.id) {
-              router.replace(
-                buildRequestDetailHref(attachedRequestId, { from: returnFrom }),
-              );
-              return;
-            }
-            await Promise.all([reload(), refreshRequests({ silent: true })]);
-          }}
-          onClose={() => setIsUploadPanelOpen(false)}
-        />
-      ) : null}
 
       {progressStage ? (
         <PortalPrintRequestProgressPanel
@@ -396,28 +367,23 @@ export default function PrintRequestDetailView() {
           </p>
           {isEditable ? (
             <div className="portal-requests-empty-actions">
-              <button
+              <Link
                 className="portal-button portal-button-primary portal-button-leading-icon"
-                onClick={() => setIsUploadPanelOpen(true)}
-                type="button"
+                href={buildRequestArtworkHref({
+                  requestId: printRequest.id,
+                  from: returnFrom ?? 'library',
+                })}
               >
                 <ImagePlusIcon />
-                Upload artwork
-              </button>
-              <button
+                Upload Artwork
+              </Link>
+              <Link
                 className="portal-button portal-button-secondary portal-button-leading-icon"
-                onClick={() =>
-                  router.push(
-                    buildCatalogSelectionHref(printRequest.id, {
-                      from: returnFrom ?? 'library',
-                    }),
-                  )
-                }
-                type="button"
+                href={buildCatalogLibraryHref()}
               >
                 <LibraryIcon />
-                Browse design library
-              </button>
+                Browse Design Library
+              </Link>
             </div>
           ) : null}
         </section>

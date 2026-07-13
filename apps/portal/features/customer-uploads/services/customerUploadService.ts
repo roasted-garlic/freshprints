@@ -1,4 +1,4 @@
-import { doc, getDoc, onSnapshot, type Unsubscribe } from 'firebase/firestore';
+import { collection, doc, getDoc, onSnapshot, query, where, type Unsubscribe } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { getDownloadURL, ref, uploadBytesResumable, type UploadMetadata } from 'firebase/storage';
 
@@ -351,6 +351,48 @@ export const customerUploadService = {
         });
       },
     );
+  },
+
+  subscribeBatchUploads(
+    batchId: string,
+    customerUid: string,
+    onChange: (uploads: CustomerUploadDocSummary[]) => void,
+  ): Unsubscribe {
+    const uploadsQuery = query(
+      collection(getPortalDb(), CUSTOMER_UPLOAD_COLLECTIONS.customerUploads),
+      where('batchId', '==', batchId),
+      where('customerUid', '==', customerUid),
+    );
+
+    return onSnapshot(uploadsQuery, (snapshot) => {
+      const uploads = snapshot.docs.map((document) => {
+        const data = document.data();
+        return {
+          id: document.id,
+          batchId: String(data.batchId ?? ''),
+          originalFilename: String(data.originalFilename ?? 'Uploaded artwork'),
+          technicalStatus: data.technicalStatus as CustomerUploadTechnicalStatus,
+          technicalProgressStage:
+            typeof data.technicalProgressStage === 'string'
+              ? (data.technicalProgressStage as CustomerUploadTechnicalProgressStage)
+              : null,
+          technicalFailureMessage:
+            typeof data.technicalFailureMessage === 'string' ? data.technicalFailureMessage : null,
+          previewStoragePath:
+            typeof data.previewStoragePath === 'string' ? data.previewStoragePath : null,
+          thumbnailStoragePath:
+            typeof data.thumbnailStoragePath === 'string' ? data.thumbnailStoragePath : null,
+          widthPx: typeof data.widthPx === 'number' ? data.widthPx : null,
+          heightPx: typeof data.heightPx === 'number' ? data.heightPx : null,
+          printWidthInches: typeof data.printWidthInches === 'number' ? data.printWidthInches : null,
+          printHeightInches:
+            typeof data.printHeightInches === 'number' ? data.printHeightInches : null,
+          ownershipConfirmed: data.ownershipConfirmed === true,
+          catalogUseAcknowledged: data.catalogUseAcknowledged === true,
+        } satisfies CustomerUploadDocSummary;
+      });
+      onChange(uploads);
+    });
   },
 
   async getDownloadUrl(storagePath: string | null | undefined): Promise<string | null> {

@@ -168,6 +168,17 @@ export const finalizeCustomerUploadZip = onCall(
       let readyCount = 0;
       let failedCount = 0;
 
+      // Discovery phase: register every extracted image so Portal can list them before processing.
+      type PendingZipImage = {
+        entryName: string;
+        uploadId: string;
+        displayFilename: string;
+        bytes: Buffer;
+        sourceStoragePath: string;
+        alreadyReady: boolean;
+      };
+      const pendingImages: PendingZipImage[] = [];
+
       for (const image of extracted.images) {
         const uploadId = deterministicZipUploadId(payload.batchId, image.entryName);
         manifest.push({ entryName: image.entryName, uploadId });
@@ -184,6 +195,14 @@ export const finalizeCustomerUploadZip = onCall(
             uploadId,
             entryName: image.entryName,
             technicalStatus: "ready",
+          });
+          pendingImages.push({
+            entryName: image.entryName,
+            uploadId,
+            displayFilename: image.displayFilename,
+            bytes: image.bytes,
+            sourceStoragePath,
+            alreadyReady: true,
           });
           continue;
         }
@@ -209,7 +228,7 @@ export const finalizeCustomerUploadZip = onCall(
             effectiveDpi: null,
             transparencyPassed: null,
             technicalStatus: "validating",
-            technicalProgressStage: "checking_format",
+            technicalProgressStage: "discovered",
             technicalFailureCode: null,
             technicalFailureMessage: null,
             catalogReviewStatus: "not_eligible",
@@ -233,6 +252,38 @@ export const finalizeCustomerUploadZip = onCall(
           metadata: { cacheControl: "private, max-age=3600" },
         });
 
+        pendingImages.push({
+          entryName: image.entryName,
+          uploadId,
+          displayFilename: image.displayFilename,
+          bytes: image.bytes,
+          sourceStoragePath,
+          alreadyReady: false,
+        });
+      }
+
+      await batchRef.update({
+        fileCount: manifest.length,
+        zipManifest: manifest,
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+
+      // Processing phase: validate and prepare each discovered image.
+      for (const image of pendingImages) {
+        if (image.alreadyReady) {
+          continue;
+        }
+
+        const uploadRef = adminDb
+          .collection(CUSTOMER_UPLOAD_COLLECTIONS.customerUploads)
+          .doc(image.uploadId);
+
+        await uploadRef.update({
+          technicalStatus: "validating",
+          technicalProgressStage: "checking_format",
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+
         const processed = await processCustomerUploadImageBytes(image.bytes, {
           onStage: async (stage) => {
             await uploadRef.update({
@@ -252,7 +303,7 @@ export const finalizeCustomerUploadZip = onCall(
             updatedAt: FieldValue.serverTimestamp(),
           });
           fileResults.push({
-            uploadId,
+            uploadId: image.uploadId,
             entryName: image.entryName,
             technicalStatus: "failed",
             technicalFailureCode: processed.code,
@@ -269,17 +320,20 @@ export const finalizeCustomerUploadZip = onCall(
 
         const productionStoragePath = getCustomerUploadProductionStoragePath(
           customerUid,
-          uploadId,
+          image.uploadId,
         );
-        const previewStoragePath = getCustomerUploadPreviewStoragePath(customerUid, uploadId);
+        const previewStoragePath = getCustomerUploadPreviewStoragePath(
+          customerUid,
+          image.uploadId,
+        );
         const thumbnailStoragePath = getCustomerUploadThumbnailStoragePath(
           customerUid,
-          uploadId,
+          image.uploadId,
         );
 
         await saveCustomerUploadProcessedOutputs({
           bucket,
-          sourceObjectPath: storageObjectPath(sourceStoragePath),
+          sourceObjectPath: storageObjectPath(image.sourceStoragePath),
           productionObjectPath: storageObjectPath(productionStoragePath),
           previewObjectPath: storageObjectPath(previewStoragePath),
           thumbnailObjectPath: storageObjectPath(thumbnailStoragePath),
@@ -314,7 +368,7 @@ export const finalizeCustomerUploadZip = onCall(
 
         readyCount += 1;
         fileResults.push({
-          uploadId,
+          uploadId: image.uploadId,
           entryName: image.entryName,
           technicalStatus: "ready",
         });

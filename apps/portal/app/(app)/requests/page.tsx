@@ -15,8 +15,11 @@ import {
 import { PrintRequestCard } from '../../../features/print-requests/components/PrintRequestCard';
 import { PrintRequestsTabGuide } from '../../../features/print-requests/components/PrintRequestsTabGuide';
 import { usePortalPrintRequests } from '../../../features/print-requests/context/PortalPrintRequestContext';
-import { getPortalPrintRequestTabEmptyCopy, getPortalPrintRequestsEmptyPageCopy } from '../../../features/print-requests/utils/portalPrintRequestTabCopy';
-import { LibraryIcon, PlayCircleIcon, PlusCircleIcon } from '../../../features/shared/components/PortalIcons';
+import {
+  getPortalPrintRequestTabEmptyCopy,
+  getPortalPrintRequestsEmptyPageCopy,
+} from '../../../features/print-requests/utils/portalPrintRequestTabCopy';
+import { LibraryIcon, PlusCircleIcon } from '../../../features/shared/components/PortalIcons';
 
 const PORTAL_REQUEST_TABS: PortalPrintRequestListTab[] = ['working', 'queued', 'printing', 'printed'];
 
@@ -48,7 +51,6 @@ export default function RequestsPage() {
   const {
     actionError,
     allocationTotalsByRequestId,
-    continuableRequests,
     error,
     handleStartRequestClick,
     isCreating,
@@ -59,9 +61,6 @@ export default function RequestsPage() {
   } = usePortalPrintRequests();
 
   const visibleRequests = requestsByTab[activeTab];
-  const requestActionLabel = continuableRequests.length > 0 ? 'Continue request' : 'Start request';
-  const requestActionBusyLabel = continuableRequests.length > 0 ? 'Opening…' : 'Starting…';
-  const RequestActionIcon = continuableRequests.length > 0 ? PlayCircleIcon : PlusCircleIcon;
 
   function setActiveTab(tab: PortalPrintRequestListTab) {
     router.replace(buildRequestsPageHref(tab));
@@ -77,17 +76,6 @@ export default function RequestsPage() {
             print, and once production is complete.
           </p>
         </div>
-        {!isLoading && requests.length > 0 ? (
-          <button
-            className="portal-button portal-button-primary portal-button-leading-icon"
-            disabled={isCreating}
-            onClick={() => void handleStartRequestClick({ from: activeTab })}
-            type="button"
-          >
-            <RequestActionIcon />
-            {isCreating ? requestActionBusyLabel : requestActionLabel}
-          </button>
-        ) : null}
       </header>
 
       {error ? (
@@ -115,8 +103,8 @@ export default function RequestsPage() {
               onClick={() => void handleStartRequestClick({ from: activeTab })}
               type="button"
             >
-              <RequestActionIcon />
-              {isCreating ? requestActionBusyLabel : requestActionLabel}
+              <PlusCircleIcon />
+              {isCreating ? 'Starting…' : 'Start request'}
             </button>
             <Link
               className="portal-button portal-button-secondary portal-button-leading-icon"
@@ -152,17 +140,8 @@ export default function RequestsPage() {
               <p className="portal-muted">{getEmptyTabMessage(activeTab)}</p>
               {activeTab === 'working' ? (
                 <div className="portal-requests-empty-actions">
-                  <button
-                    className="portal-button portal-button-primary portal-button-leading-icon"
-                    disabled={isCreating}
-                    onClick={() => void handleStartRequestClick({ from: activeTab })}
-                    type="button"
-                  >
-                    <RequestActionIcon />
-                    {isCreating ? requestActionBusyLabel : requestActionLabel}
-                  </button>
                   <Link
-                    className="portal-button portal-button-secondary portal-button-leading-icon"
+                    className="portal-button portal-button-primary portal-button-leading-icon"
                     href="/catalog"
                   >
                     <LibraryIcon />

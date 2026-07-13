@@ -43,7 +43,6 @@ interface PrintRequestCardProps {
 
 export function PrintRequestCard({ fromTab, request, progressLabel }: PrintRequestCardProps) {
   const label = progressLabel ?? getStatusLabel(request.status);
-  const isContinueRequest = label === 'Working';
   const href = buildRequestDetailHref(request.id, {
     from: fromTab ?? 'working',
   });
@@ -52,21 +51,9 @@ export function PrintRequestCard({ fromTab, request, progressLabel }: PrintReque
     <Link className="portal-request-card" href={href}>
       <div className="portal-request-card-header">
         <h2>{request.name}</h2>
-        <span
-          className={
-            isContinueRequest
-              ? 'portal-request-status-chip portal-request-status-chip-continue'
-              : 'portal-request-status-chip'
-          }
-        >
-          {isContinueRequest ? (
-            <>
-              Continue Request
-              <ChevronRight aria-hidden size={16} strokeWidth={2} />
-            </>
-          ) : (
-            label
-          )}
+        <span className="portal-request-status-chip">
+          {label}
+          <ChevronRight aria-hidden size={16} strokeWidth={2} />
         </span>
       </div>
       <p className="portal-muted">

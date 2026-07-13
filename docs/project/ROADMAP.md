@@ -981,19 +981,14 @@ Signed off: `docs/workflow/reviews/2026-07-08-phase-8-portal-closeout-signoff.md
 
 Production App Hosting deploy to a live customer URL is a **separate** human checkpoint — not required for Phase 8 documentation closeout.
 
-### Phase 8 fast-follow (in progress)
+### Phase 8 fast-follow
 
-**Customer-Provided Request Artwork** — Portal customers upload transparent PNG/WebP for their one working print request; Studio `/imports` staff intake may promote to AI Review. Separate from catalog until staff action. **Not** Phase 9 Custom Request Q&A (`customRequests`). Plan: `docs/workflow/plans/2026-07-11-portal-customer-artwork-upload-plan.md` (ADR-FP-073).
+**Customer-Provided Request Artwork** — **complete** on `fresh-prints-dev` (2026-07-12 parent signoff). Portal customers upload transparent PNG/WebP for their one working print request; Studio Customer Uploads intake may promote to AI Review. Separate from catalog until staff action. **Not** Phase 9 Custom Request Q&A (`customRequests`). Plan: `docs/workflow/plans/2026-07-11-portal-customer-artwork-upload-plan.md` (ADR-FP-073). Parent signoff: `docs/workflow/reviews/2026-07-12-portal-customer-artwork-upload-parent-signoff.md`.
 
-- Sub-phase A: shared contracts — **complete**
-- Sub-phase B: trusted backend + rules/indexes — **complete** on `fresh-prints-dev` (deploy + smoke 15/15)
-- Sub-phase C: Portal upload UI — **complete** on `fresh-prints-dev` (attach + UI + smoke 13/13)
-- Sub-phase D: Print request / show / gang sheet / export source compatibility — **complete** (smoke 7/7)
-- Sub-phase E: Studio `/imports` customer-upload intake — **complete** (smoke 16/16)
-- Sub-phase F: Promote → AI Review → Design Library verification — **complete** (smoke 12/12)
-- Sub-phase G: Cleanup / wipe target / hardening / E2E / parent signoff — **next**
-- UX remediation r6 (2026-07-12): upload aspect lock, Uploaded badge, selection-mode upload CTA, past-show calendar highlights — in test
-- **Deferred:** always-on working request / always-in-selection “immersive browse” redesign (good direction; not a small patch — follow-up phase after artwork upload signoff)
+- Sub-phases A–G + remediations r2–r7 — **complete** (owner PASS on r7)
+- ADRs: FP-073 (uploads), FP-074 (library permission), FP-075 (200 DPI save floor)
+
+**Next fast-follow:** Persistent Current Request / cart-style Portal flow (`portal-persistent-current-request`) — **in test** (implemented; awaiting owner manual checkpoint). ADR-FP-076. Plan: `docs/workflow/plans/2026-07-12-portal-persistent-current-request-plan.md`.
 
 Goal:
 

@@ -139,6 +139,46 @@ export function ImagePlusIcon({ size }: PortalIconProps) {
   );
 }
 
+/** Lucide `image-up` — upload design / artwork affordance. */
+export function ImageUpIcon({ size }: PortalIconProps) {
+  return (
+    <IconSvg size={size}>
+      <path
+        d="M10.3 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10l-3.1-3.1a2 2 0 0 0-2.814.014L6 21"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+      <path
+        d="m14 19.5 3-3 3 3"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+      <path
+        d="M17 22v-5.5"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+      <circle
+        cx="9"
+        cy="9"
+        fill="none"
+        r="2"
+        stroke="currentColor"
+        strokeWidth="2"
+      />
+    </IconSvg>
+  );
+}
+
 export function LibraryIcon({ size }: PortalIconProps) {
   return (
     <IconSvg size={size}>
@@ -276,6 +316,29 @@ export function SearchIcon({ size }: PortalIconProps) {
         fill="none"
         stroke="currentColor"
         strokeLinecap="round"
+        strokeWidth="2"
+      />
+    </IconSvg>
+  );
+}
+
+export function ShoppingBagIcon({ size }: PortalIconProps) {
+  return (
+    <IconSvg size={size}>
+      <path
+        d="M6 6h15l-1.5 9h-12z"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+      <path
+        d="M6 6 5 3H2M9 20a1 1 0 1 0 0-2 1 1 0 0 0 0 2Zm9 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
         strokeWidth="2"
       />
     </IconSvg>

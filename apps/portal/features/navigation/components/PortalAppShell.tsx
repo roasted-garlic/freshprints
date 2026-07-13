@@ -2,7 +2,9 @@
 
 import type { ReactNode } from 'react';
 
+import { CurrentRequestDrawer } from '../../print-requests/components/CurrentRequestDrawer';
 import { PortalPrintRequestProvider } from '../../print-requests/context/PortalPrintRequestContext';
+import { PortalToastProvider } from '../../shared/context/PortalToastContext';
 import { PortalDrawerProvider, usePortalDrawer } from '../context/PortalDrawerContext';
 import { PortalAppHeader } from './PortalAppHeader';
 import { PortalBottomNav } from './PortalBottomNav';
@@ -32,6 +34,9 @@ function PortalAppShellContent({ children }: PortalAppShellProps) {
         <div className="portal-app-content">{children}</div>
         <PortalBottomNav />
       </div>
+
+      {/* Mounted here (not inside the context module) to avoid Context↔Drawer circular import. */}
+      <CurrentRequestDrawer />
     </div>
   );
 }
@@ -39,9 +44,11 @@ function PortalAppShellContent({ children }: PortalAppShellProps) {
 export function PortalAppShell({ children }: PortalAppShellProps) {
   return (
     <PortalDrawerProvider>
-      <PortalPrintRequestProvider>
-        <PortalAppShellContent>{children}</PortalAppShellContent>
-      </PortalPrintRequestProvider>
+      <PortalToastProvider>
+        <PortalPrintRequestProvider>
+          <PortalAppShellContent>{children}</PortalAppShellContent>
+        </PortalPrintRequestProvider>
+      </PortalToastProvider>
     </PortalDrawerProvider>
   );
 }

@@ -9,10 +9,11 @@ import { CatalogPreviewLightbox } from './CatalogPreviewLightbox';
 import { CatalogThumbnailPanel } from './CatalogThumbnailPanel';
 
 interface CatalogDesignDetailsModalProps {
+  currentRequestQuantity?: number;
   design: CatalogDesign | null;
-  isAdding?: boolean;
+  isBusy?: boolean;
   isOpen: boolean;
-  onAddToRequest?: (design: CatalogDesign) => void;
+  onAdjustQuantity?: (design: CatalogDesign, delta: 1 | -1) => void;
   onClose: () => void;
 }
 
@@ -25,15 +26,17 @@ function CloseIcon() {
 }
 
 export function CatalogDesignDetailsModal({
+  currentRequestQuantity = 0,
   design,
-  isAdding = false,
+  isBusy = false,
   isOpen,
-  onAddToRequest,
+  onAdjustQuantity,
   onClose,
 }: CatalogDesignDetailsModalProps) {
   const [isPreviewLightboxOpen, setIsPreviewLightboxOpen] = useState(false);
   const previewPath = design?.previewPath ?? design?.thumbnailPath;
   const { url: previewUrl } = useCatalogDerivativeUrl(isOpen ? previewPath : undefined);
+  const inRequest = currentRequestQuantity > 0;
 
   useEffect(() => {
     if (!isOpen) {
@@ -79,13 +82,12 @@ export function CatalogDesignDetailsModal({
             <CatalogThumbnailPanel
               alt={`${design.title} preview`}
               catalogPath={previewPath}
-              className="design-details-hero-media"
-              fallbackLabel="Preview unavailable"
-              interactive
+              className="design-details-hero-image"
+              interactive={Boolean(previewUrl)}
               loadingLabel="Loading preview"
-              onImageClick={() => setIsPreviewLightboxOpen(true)}
+              onImageClick={previewUrl ? () => setIsPreviewLightboxOpen(true) : undefined}
+              prioritizeLoading
             />
-
             <button
               aria-label="Close design details"
               className="modal-close-button design-details-close-button"
@@ -99,16 +101,40 @@ export function CatalogDesignDetailsModal({
           <div className="modal-body design-details-body">
             <div className="design-details-eyebrow-row">
               <p className="portal-eyebrow design-details-eyebrow">Design details</p>
-              {onAddToRequest ? (
-                <button
-                  className="portal-button portal-button-primary portal-button-sm portal-button-leading-icon design-details-add-btn"
-                  disabled={isAdding}
-                  onClick={() => onAddToRequest(design)}
-                  type="button"
-                >
-                  <PlusIcon size={14} />
-                  {isAdding ? 'Adding…' : 'Add to request'}
-                </button>
+              {onAdjustQuantity ? (
+                inRequest ? (
+                  <div className="design-card-qty-stepper" role="group" aria-label={`${design.title} quantity`}>
+                    <button
+                      aria-label={`Decrease ${design.title} quantity`}
+                      className="design-card-qty-btn"
+                      disabled={isBusy}
+                      onClick={() => onAdjustQuantity(design, -1)}
+                      type="button"
+                    >
+                      −
+                    </button>
+                    <span className="design-card-qty-value">{currentRequestQuantity}</span>
+                    <button
+                      aria-label={`Increase ${design.title} quantity`}
+                      className="design-card-qty-btn"
+                      disabled={isBusy}
+                      onClick={() => onAdjustQuantity(design, 1)}
+                      type="button"
+                    >
+                      <PlusIcon size={14} />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    className="portal-button portal-button-primary portal-button-sm portal-button-leading-icon design-details-add-btn"
+                    disabled={isBusy}
+                    onClick={() => onAdjustQuantity(design, 1)}
+                    type="button"
+                  >
+                    <PlusIcon size={14} />
+                    {isBusy ? 'Adding…' : 'Add'}
+                  </button>
+                )
               ) : null}
             </div>
             <h2 id="catalog-design-details-title">{design.title}</h2>

@@ -25,6 +25,7 @@ import {
   formatPrintRequestItemSizeLabel,
   resolveInitialPrintRequestItemSize,
 } from '@fresh-prints/shared/utils/printRequestItemSizing';
+import { resolveCatalogAddAction } from '@fresh-prints/shared/utils/currentRequestAggregates';
 
 import { getPortalDb, getPortalFunctions } from '../../../lib/firebase/client';
 import { resolveDesignDocumentTimestamps } from '../../firebase/utils/mapFirestoreTimestamp';
@@ -421,6 +422,176 @@ export const portalPrintRequestService = {
     );
 
     return new Map(summaries);
+  },
+
+  /**
+   * Catalog browse add: create a new line, or increment the primary (earliest)
+   * catalog-backed variant when the design is already on the request.
+   */
+  async addOrIncrementCatalogDesign(input: {
+    printRequestId: string;
+    designId: string;
+    userId: string;
+    quantityDelta?: number;
+  }): Promise<{ kind: 'created' | 'incremented'; item: PrintRequestItem }> {
+    const delta = input.quantityDelta ?? 1;
+    if (!Number.isFinite(delta) || delta < 1) {
+      throw new Error('Quantity must be at least 1.');
+    }
+
+    const currentItems = await this.listPrintRequestItems(input.printRequestId);
+    const action = resolveCatalogAddAction(
+      currentItems.map((entry) => ({
+        id: entry.id,
+        designId: entry.designId,
+        customerUploadId: entry.customerUploadId,
+        sourceType: entry.sourceType,
+        quantity: entry.quantity,
+        createdAtMs:
+          entry.createdAt && typeof entry.createdAt.toMillis === 'function'
+            ? entry.createdAt.toMillis()
+            : 0,
+      })),
+      input.designId,
+    );
+
+    if (action.kind === 'increment') {
+      const nextQuantity = action.nextQuantity + (delta - 1);
+      await this.updatePrintRequestItemQuantity({
+        itemId: action.itemId,
+        printRequestId: input.printRequestId,
+        quantity: nextQuantity,
+        userId: input.userId,
+      });
+      const items = await this.listPrintRequestItems(input.printRequestId);
+      const item = items.find((entry) => entry.id === action.itemId);
+      if (!item) {
+        throw new Error('Unable to update request item quantity.');
+      }
+      return { kind: 'incremented', item };
+    }
+
+    const item = await this.addPrintRequestItem({
+      printRequestId: input.printRequestId,
+      designId: input.designId,
+      quantity: delta,
+      userId: input.userId,
+    });
+    return { kind: 'created', item };
+  },
+
+  /**
+   * Decrease primary catalog variant qty by 1. Removes the primary line at qty 1.
+   * Duplicate size variants are left unchanged.
+   */
+  async decrementPrimaryCatalogDesign(input: {
+    printRequestId: string;
+    designId: string;
+    userId: string;
+  }): Promise<{ kind: 'decremented' | 'removed'; itemId: string }> {
+    const currentItems = await this.listPrintRequestItems(input.printRequestId);
+    const likes = currentItems.map((entry) => ({
+      id: entry.id,
+      designId: entry.designId,
+      customerUploadId: entry.customerUploadId,
+      sourceType: entry.sourceType,
+      quantity: entry.quantity,
+      createdAtMs:
+        entry.createdAt && typeof entry.createdAt.toMillis === 'function'
+          ? entry.createdAt.toMillis()
+          : 0,
+    }));
+    const action = resolveCatalogAddAction(likes, input.designId);
+    if (action.kind !== 'increment') {
+      throw new Error('This design is not in your Current Request.');
+    }
+
+    const primary = currentItems.find((entry) => entry.id === action.itemId);
+    if (!primary) {
+      throw new Error('Unable to update request item quantity.');
+    }
+
+    if (primary.quantity <= 1) {
+      await this.removePrintRequestItem({
+        itemId: primary.id,
+        printRequestId: input.printRequestId,
+        userId: input.userId,
+      });
+      return { kind: 'removed', itemId: primary.id };
+    }
+
+    await this.updatePrintRequestItemQuantity({
+      itemId: primary.id,
+      printRequestId: input.printRequestId,
+      quantity: primary.quantity - 1,
+      userId: input.userId,
+    });
+    return { kind: 'decremented', itemId: primary.id };
+  },
+
+  /**
+   * Set the primary catalog variant quantity to an absolute value (≥ 1).
+   * Duplicate size variants are left unchanged.
+   */
+  async setPrimaryCatalogDesignQuantity(input: {
+    printRequestId: string;
+    designId: string;
+    quantity: number;
+    userId: string;
+  }): Promise<{ itemId: string; quantity: number }> {
+    const nextQuantity = Math.max(1, Math.floor(input.quantity));
+    const currentItems = await this.listPrintRequestItems(input.printRequestId);
+    const likes = currentItems.map((entry) => ({
+      id: entry.id,
+      designId: entry.designId,
+      customerUploadId: entry.customerUploadId,
+      sourceType: entry.sourceType,
+      quantity: entry.quantity,
+      createdAtMs:
+        entry.createdAt && typeof entry.createdAt.toMillis === 'function'
+          ? entry.createdAt.toMillis()
+          : 0,
+    }));
+    const action = resolveCatalogAddAction(likes, input.designId);
+    if (action.kind !== 'increment') {
+      throw new Error('This design is not in your Current Request.');
+    }
+
+    await this.updatePrintRequestItemQuantity({
+      itemId: action.itemId,
+      printRequestId: input.printRequestId,
+      quantity: nextQuantity,
+      userId: input.userId,
+    });
+    return { itemId: action.itemId, quantity: nextQuantity };
+  },
+
+  /**
+   * Remove every catalog-backed line for a design (all size variants).
+   */
+  async removeCatalogDesignFromRequest(input: {
+    printRequestId: string;
+    designId: string;
+    userId: string;
+  }): Promise<{ removedItemIds: string[] }> {
+    const trimmed = input.designId.trim();
+    const currentItems = await this.listPrintRequestItems(input.printRequestId);
+    const toRemove = currentItems.filter(
+      (entry) =>
+        entry.sourceType !== 'customer_upload' &&
+        typeof entry.designId === 'string' &&
+        entry.designId.trim() === trimmed,
+    );
+
+    for (const item of toRemove) {
+      await this.removePrintRequestItem({
+        itemId: item.id,
+        printRequestId: input.printRequestId,
+        userId: input.userId,
+      });
+    }
+
+    return { removedItemIds: toRemove.map((item) => item.id) };
   },
 
   async addPrintRequestItem(input: {

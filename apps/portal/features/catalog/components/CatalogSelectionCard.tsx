@@ -10,10 +10,15 @@ import { useCatalogDerivativeUrl } from '../hooks/useCatalogDerivativeUrl';
 
 interface CatalogSelectionCardProps {
   design: CatalogDesign;
+  disabled?: boolean;
   isSelected: boolean;
   quantity: number;
   onAdd: (design: CatalogDesign) => void;
-  onQuantityChange: (designId: string, quantity: number) => void;
+  onQuantityChange: (
+    designId: string,
+    quantity: number,
+    meta?: { title?: string; announce?: boolean },
+  ) => void;
   onRemove: (designId: string) => void;
 }
 
@@ -34,6 +39,7 @@ function ClearSelectionIcon() {
 
 export function CatalogSelectionCard({
   design,
+  disabled = false,
   isSelected,
   quantity,
   onAdd,
@@ -48,7 +54,10 @@ export function CatalogSelectionCard({
   function commitQuantity(value: string) {
     const parsed = Number.parseInt(value, 10);
     const next = Number.isFinite(parsed) && parsed >= 1 ? parsed : quantity;
-    onQuantityChange(design.id, next);
+    onQuantityChange(design.id, next, {
+      title: design.title,
+      announce: next > quantity,
+    });
     setRawInput(null);
   }
 
@@ -82,6 +91,7 @@ export function CatalogSelectionCard({
             <button
               aria-label={`Remove ${design.title} from selection`}
               className="design-selection-card-remove-btn"
+              disabled={disabled}
               onClick={() => onRemove(design.id)}
               type="button"
             >
@@ -98,11 +108,15 @@ export function CatalogSelectionCard({
               <button
                 aria-label={quantity <= 1 ? `Remove ${design.title}` : `Decrease quantity for ${design.title}`}
                 className="portal-request-item-stepper-button"
+                disabled={disabled}
                 onClick={() => {
                   if (quantity <= 1) {
                     onRemove(design.id);
                   } else {
-                    onQuantityChange(design.id, quantity - 1);
+                    onQuantityChange(design.id, quantity - 1, {
+                      title: design.title,
+                      announce: false,
+                    });
                   }
                 }}
                 type="button"
@@ -112,6 +126,7 @@ export function CatalogSelectionCard({
               <input
                 aria-label={`Quantity for ${design.title}`}
                 className="portal-request-item-number-input portal-request-item-stepper-input"
+                disabled={disabled}
                 inputMode="numeric"
                 min={1}
                 onBlur={(event) => commitQuantity(event.target.value)}
@@ -125,7 +140,13 @@ export function CatalogSelectionCard({
               <button
                 aria-label={`Increase quantity for ${design.title}`}
                 className="portal-request-item-stepper-button"
-                onClick={() => onQuantityChange(design.id, quantity + 1)}
+                disabled={disabled}
+                onClick={() =>
+                  onQuantityChange(design.id, quantity + 1, {
+                    title: design.title,
+                    announce: true,
+                  })
+                }
                 type="button"
               >
                 <PlusIcon />
@@ -134,6 +155,7 @@ export function CatalogSelectionCard({
           ) : (
             <button
               className="portal-button portal-button-secondary portal-button-sm portal-button-leading-icon design-selection-card-add-btn"
+              disabled={disabled}
               onClick={() => onAdd(design)}
               type="button"
             >

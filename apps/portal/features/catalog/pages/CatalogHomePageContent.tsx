@@ -12,50 +12,40 @@ import {
   type CatalogDiscoveryMode,
 } from '@fresh-prints/shared/utils/catalogDiscoveryRanking';
 
-import { CatalogDesignCard } from '../components/CatalogDesignCard';
-import { CatalogDesignDetailsModal } from '../components/CatalogDesignDetailsModal';
-import { CatalogDiscoveryCarousel } from '../components/CatalogDiscoveryCarousel';
-import { CatalogRequestWorkflowHint } from '../components/CatalogRequestWorkflowHint';
 import { useCatalogCategories } from '../hooks/useCatalogCategories';
 import { useCatalogDesigns } from '../hooks/useCatalogDesigns';
-import type { CatalogDesign } from '../types/catalog.types';
 import { catalogStorageService } from '../services/catalogStorageService';
 import { usePortalPrintRequests } from '../../print-requests/context/PortalPrintRequestContext';
 import { useAddDesignToRequestFlow } from '../../print-requests/hooks/useAddDesignToRequestFlow';
 import {
   buildCatalogLibraryHref,
-  buildCatalogSelectionHref,
   CATALOG_LIBRARY_PATH,
 } from '../../print-requests/utils/catalogSelectionNavigation';
 import { PortalConfirmModal } from '../../shared/components/PortalConfirmModal';
 import { PortalPickContinuableRequestModal } from '../../shared/components/PortalPickContinuableRequestModal';
-import {
-  PlayCircleIcon,
-  PlusCircleIcon,
-  SearchIcon,
-} from '../../shared/components/PortalIcons';
+import { LibraryIcon, SearchIcon } from '../../shared/components/PortalIcons';
+import { CatalogDiscoveryCarousel } from '../components/CatalogDiscoveryCarousel';
+import { CatalogSelectionCard } from '../components/CatalogSelectionCard';
 
 export function CatalogHomePageContent() {
   const router = useRouter();
   const [landingSearch, setLandingSearch] = useState('');
-  const [selectedDesign, setSelectedDesign] = useState<CatalogDesign | null>(null);
 
   const {
     actionError: creationActionError,
     continuableRequests,
     createPrintRequest,
-    handleStartRequestClick,
+    currentRequestAggregates,
     isCreating,
     refreshRequests,
+    reloadWorkingItems,
   } = usePortalPrintRequests();
-
-  const closeDesignDetails = () => setSelectedDesign(null);
 
   const addDesignFlow = useAddDesignToRequestFlow({
     continuableRequests,
     createPrintRequest,
-    onBeforeNavigate: closeDesignDetails,
     refreshRequests,
+    reloadWorkingItems,
   });
 
   const { categories } = useCatalogCategories();
@@ -101,11 +91,7 @@ export function CatalogHomePageContent() {
     );
   }, [designs]);
 
-  const hasContinuableRequests = continuableRequests.length > 0;
-  const hasSingleContinuableRequest = continuableRequests.length === 1;
-  const requestActionLabel = hasContinuableRequests ? 'Continue request' : 'Start request';
-  const requestActionPendingLabel = hasContinuableRequests ? 'Continuing…' : 'Starting…';
-  const pageBusy = isCreating || addDesignFlow.isAdding;
+  const pageBusy = isCreating;
 
   function openLibrary(options?: {
     discover?: CatalogDiscoveryMode;
@@ -127,22 +113,6 @@ export function CatalogHomePageContent() {
     openLibrary({ search: query || undefined });
   }
 
-  function handleRequestAction() {
-    if (hasSingleContinuableRequest) {
-      router.push(
-        buildCatalogSelectionHref(continuableRequests[0]!.id, { from: 'discover' }),
-      );
-      return;
-    }
-
-    if (hasContinuableRequests) {
-      router.push('/requests?tab=working');
-      return;
-    }
-
-    handleStartRequestClick({ from: 'discover' });
-  }
-
   const displayedActionError = creationActionError ?? addDesignFlow.actionError;
 
   return (
@@ -151,16 +121,20 @@ export function CatalogHomePageContent() {
     >
       <header className="catalog-home-toolbar">
         <div className="catalog-home-toolbar-brand">
+          <p className="catalog-home-toolbar-kicker">Design Library</p>
           <h1>Discover Designs</h1>
         </div>
 
         <form className="catalog-home-search" onSubmit={handleLandingSearchSubmit}>
           <label className="catalog-home-search-pill">
             <span className="portal-visually-hidden">Search the Design Library</span>
+            <span aria-hidden className="catalog-home-search-leading">
+              <SearchIcon size={18} />
+            </span>
             <input
               className="catalog-home-search-input"
               onChange={(event) => setLandingSearch(event.target.value)}
-              placeholder="Search designs…"
+              placeholder="Search titles, tags, or artists…"
               type="search"
               value={landingSearch}
             />
@@ -169,7 +143,7 @@ export function CatalogHomePageContent() {
               className="catalog-home-search-submit"
               type="submit"
             >
-              <SearchIcon />
+              <SearchIcon size={16} />
             </button>
           </label>
         </form>
@@ -180,21 +154,11 @@ export function CatalogHomePageContent() {
             onClick={() => openLibrary()}
             type="button"
           >
+            <LibraryIcon size={16} />
             Browse
-          </button>
-          <button
-            className="portal-button portal-button-primary portal-button-leading-icon"
-            disabled={pageBusy}
-            onClick={() => void handleRequestAction()}
-            type="button"
-          >
-            {hasContinuableRequests ? <PlayCircleIcon /> : <PlusCircleIcon />}
-            {isCreating ? requestActionPendingLabel : requestActionLabel}
           </button>
         </div>
       </header>
-
-      <CatalogRequestWorkflowHint />
 
       {error ? (
         <p className="portal-error" role="alert">
@@ -236,28 +200,31 @@ export function CatalogHomePageContent() {
               }
               title={section.title}
             >
-              {section.designs.map((design) => (
-                <div className="catalog-discovery-rail-item" key={design.id}>
-                  <CatalogDesignCard
-                    design={design}
-                    isAdding={addDesignFlow.addingDesignId === design.id}
-                    onAddToRequest={addDesignFlow.requestAddDesign}
-                    onSelect={setSelectedDesign}
-                  />
-                </div>
-              ))}
+              {section.designs.map((design) => {
+                const quantity =
+                  currentRequestAggregates.primaryQuantityByDesignId[design.id] ??
+                  currentRequestAggregates.quantityByDesignId[design.id] ??
+                  0;
+                const isSelected = (currentRequestAggregates.quantityByDesignId[design.id] ?? 0) > 0;
+
+                return (
+                  <div className="catalog-discovery-rail-item" key={design.id}>
+                    <CatalogSelectionCard
+                      design={design}
+                      disabled={addDesignFlow.addingDesignId === design.id}
+                      isSelected={isSelected}
+                      onAdd={addDesignFlow.addDesign}
+                      onQuantityChange={addDesignFlow.setQuantity}
+                      onRemove={addDesignFlow.removeDesign}
+                      quantity={quantity > 0 ? quantity : 1}
+                    />
+                  </div>
+                );
+              })}
             </CatalogDiscoveryCarousel>
           ))}
         </div>
       )}
-
-      <CatalogDesignDetailsModal
-        design={selectedDesign}
-        isAdding={selectedDesign !== null && addDesignFlow.addingDesignId === selectedDesign.id}
-        isOpen={selectedDesign !== null}
-        onAddToRequest={addDesignFlow.requestAddDesign}
-        onClose={closeDesignDetails}
-      />
 
       <PortalConfirmModal
         confirmLabel={addDesignFlow.isAdding ? 'Adding…' : 'Add to request'}

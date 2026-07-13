@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   getCatalogDiscoveryModeLabel,
@@ -10,10 +10,7 @@ import {
   type CatalogDiscoveryMode,
 } from '@fresh-prints/shared/utils/catalogDiscoveryRanking';
 
-import { CatalogDesignCard } from '../components/CatalogDesignCard';
-import { CatalogDesignDetailsModal } from '../components/CatalogDesignDetailsModal';
 import { CatalogFilterBar } from '../components/CatalogFilterBar';
-import { CatalogRequestWorkflowHint } from '../components/CatalogRequestWorkflowHint';
 import { CatalogSelectionCard } from '../components/CatalogSelectionCard';
 import { CatalogTagFilterModal } from '../components/CatalogTagFilterModal';
 import { useCatalogCategories } from '../hooks/useCatalogCategories';
@@ -22,7 +19,6 @@ import {
   useCatalogDesigns,
   useFilteredCatalogDesigns,
 } from '../hooks/useCatalogDesigns';
-import type { CatalogDesign } from '../types/catalog.types';
 import {
   filterCatalogDesignsByCategory,
   filterCatalogDesignsBySearch,
@@ -47,8 +43,6 @@ import { PortalPickContinuableRequestModal } from '../../shared/components/Porta
 import {
   ArrowLeftIcon,
   ImagePlusIcon,
-  PlayCircleIcon,
-  PlusCircleIcon,
   SaveIcon,
   XIcon,
 } from '../../shared/components/PortalIcons';
@@ -68,7 +62,6 @@ export function CatalogPageContent() {
   const [categoryFilter, setCategoryFilter] = useState(initialCategory);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [isTagFilterModalOpen, setIsTagFilterModalOpen] = useState(false);
-  const [selectedDesign, setSelectedDesign] = useState<CatalogDesign | null>(null);
   const [selectionActionError, setSelectionActionError] = useState<string | null>(null);
   const [isLeavingSelection, setIsLeavingSelection] = useState(false);
 
@@ -76,21 +69,18 @@ export function CatalogPageContent() {
     actionError: creationActionError,
     continuableRequests,
     createPrintRequest,
+    currentRequestAggregates,
     finishCreating,
-    handleStartRequestClick,
     isCreating,
     refreshRequests,
+    reloadWorkingItems,
   } = usePortalPrintRequests();
-
-  const closeDesignDetails = useCallback(() => {
-    setSelectedDesign(null);
-  }, []);
 
   const addDesignFlow = useAddDesignToRequestFlow({
     continuableRequests,
     createPrintRequest,
-    onBeforeNavigate: closeDesignDetails,
     refreshRequests,
+    reloadWorkingItems,
   });
 
   const selectionMode = usePortalPrintRequestSelectionMode(selectionRequestId);
@@ -175,11 +165,6 @@ export function CatalogPageContent() {
     setSelectedTags((currentTags) => currentTags.filter((tag) => tag !== tagToRemove));
   }
 
-  const hasContinuableRequests = continuableRequests.length > 0;
-  const hasSingleContinuableRequest = continuableRequests.length === 1;
-  const requestActionLabel = hasContinuableRequests ? 'Continue request' : 'Start request';
-  const requestActionPendingLabel = hasContinuableRequests ? 'Continuing…' : 'Starting…';
-
   const { resetTransientState } = addDesignFlow;
 
   useEffect(() => {
@@ -255,22 +240,6 @@ export function CatalogPageContent() {
       32,
     );
   }, [designs, selectionMode.selectedDesigns, selectionModeActive]);
-
-  async function handleRequestAction() {
-    if (hasSingleContinuableRequest) {
-      router.push(
-        buildCatalogSelectionHref(continuableRequests[0]!.id, { from: 'library' }),
-      );
-      return;
-    }
-
-    if (hasContinuableRequests) {
-      router.push('/requests?tab=working');
-      return;
-    }
-
-    handleStartRequestClick({ from: 'library' });
-  }
 
   async function handleExitSelectionMode() {
     if (!selectionRequestId) {
@@ -349,7 +318,7 @@ export function CatalogPageContent() {
 
   const displayedActionError = creationActionError ?? addDesignFlow.actionError ?? selectionActionError;
   // Never keep the creating overlay once selection mode is active (query-param nav keeps this page mounted).
-  const pageBusy = !selectionModeActive && (isCreating || addDesignFlow.isAdding);
+  const pageBusy = !selectionModeActive && isCreating;
 
   const loadError = error ?? selectionError;
 
@@ -379,22 +348,8 @@ export function CatalogPageContent() {
                 : 'Search and filter through our full design catalog'}
             </p>
           </div>
-
-          <div className="portal-catalog-topbar-actions">
-            <button
-              className="portal-button portal-button-primary portal-button-leading-icon"
-              disabled={pageBusy}
-              onClick={() => void handleRequestAction()}
-              type="button"
-            >
-              {hasContinuableRequests ? <PlayCircleIcon /> : <PlusCircleIcon />}
-              {isCreating ? requestActionPendingLabel : requestActionLabel}
-            </button>
-          </div>
         </header>
       ) : null}
-
-      {!selectionModeActive ? <CatalogRequestWorkflowHint /> : null}
 
       {loadError ? (
         <p className="portal-error" role="alert">
@@ -474,7 +429,7 @@ export function CatalogPageContent() {
           <div className="design-library-filter-dock">
             <div className="design-library-summary-row">
               <span className="design-library-count-chip">{designCountLabel}</span>
-              {Boolean(searchQuery.trim() || categoryFilter || selectedTags.length > 0) ? (
+              {searchQuery.trim() || categoryFilter || selectedTags.length > 0 ? (
                 <button
                   className="portal-button portal-button-secondary portal-button-sm portal-button-leading-icon"
                   onClick={clearFilters}
@@ -530,51 +485,49 @@ export function CatalogPageContent() {
                   : 'Designs you can use for print requests will appear here.'}
               </p>
             </div>
-          ) : selectionModeActive ? (
+          ) : (
             <div className="design-grid" role="list">
               {displayedDesigns.map((design) => {
-                const selection = selectionMode.selectedDesigns[design.id];
+                if (selectionModeActive) {
+                  const selection = selectionMode.selectedDesigns[design.id];
+                  return (
+                    <div key={design.id} role="listitem">
+                      <CatalogSelectionCard
+                        design={design}
+                        isSelected={Boolean(selection)}
+                        onAdd={selectionMode.addDesign}
+                        onQuantityChange={selectionMode.setQuantity}
+                        onRemove={(designId) => void selectionMode.removeDesign(designId)}
+                        quantity={selection?.quantity ?? 1}
+                      />
+                    </div>
+                  );
+                }
+
+                const quantity =
+                  currentRequestAggregates.primaryQuantityByDesignId[design.id] ??
+                  currentRequestAggregates.quantityByDesignId[design.id] ??
+                  0;
+                const isSelected = (currentRequestAggregates.quantityByDesignId[design.id] ?? 0) > 0;
 
                 return (
                   <div key={design.id} role="listitem">
                     <CatalogSelectionCard
                       design={design}
-                      isSelected={Boolean(selection)}
-                      onAdd={selectionMode.addDesign}
-                      onQuantityChange={selectionMode.setQuantity}
-                      onRemove={(designId) => void selectionMode.removeDesign(designId)}
-                      quantity={selection?.quantity ?? 1}
+                      disabled={addDesignFlow.addingDesignId === design.id}
+                      isSelected={isSelected}
+                      onAdd={addDesignFlow.addDesign}
+                      onQuantityChange={addDesignFlow.setQuantity}
+                      onRemove={addDesignFlow.removeDesign}
+                      quantity={quantity > 0 ? quantity : 1}
                     />
                   </div>
                 );
               })}
             </div>
-          ) : (
-            <div className="design-grid" role="list">
-              {displayedDesigns.map((design) => (
-                <div key={design.id} role="listitem">
-                  <CatalogDesignCard
-                    design={design}
-                    isAdding={addDesignFlow.addingDesignId === design.id}
-                    onAddToRequest={addDesignFlow.requestAddDesign}
-                    onSelect={setSelectedDesign}
-                  />
-                </div>
-              ))}
-            </div>
           )}
         </div>
       </section>
-
-      {!selectionModeActive ? (
-        <CatalogDesignDetailsModal
-          design={selectedDesign}
-          isAdding={selectedDesign !== null && addDesignFlow.addingDesignId === selectedDesign.id}
-          isOpen={selectedDesign !== null}
-          onAddToRequest={addDesignFlow.requestAddDesign}
-          onClose={closeDesignDetails}
-        />
-      ) : null}
 
       <PortalConfirmModal
         confirmLabel={addDesignFlow.isAdding ? 'Adding…' : 'Add to request'}

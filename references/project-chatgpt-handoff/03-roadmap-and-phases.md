@@ -1,111 +1,76 @@
 # Roadmap and Phases
 
-> Align all work with the current phase. Do not jump ahead.
+> Align all work with the current phase / active managed goal. Do not jump ahead.
 
-## Current status
+## Current status (2026-07-12)
 
-**Phase 6 — Customers and Print Requests** is signed off as **PASS** for the current scope.
+| Item | Status |
+|------|--------|
+| Phases 1–7 | Complete (Studio foundation through Show Queue MVP) |
+| Phase 8 Portal MVP | **Complete in `fresh-prints-dev`** |
+| Phase 8 fast-follow — customer artwork uploads | **Complete** (parent signoff 2026-07-12) |
+| Phase 8 fast-follow — persistent Current Request | **Active** — plan ready; Review pending |
+| Phase 9 Custom Requests | Next major product phase (not started as active work) |
+| Production Portal App Hosting | Pending human approval |
 
-Phase 6 foundation includes:
-
-- Staff-only `/print-requests` workspace
-- Internal print requests
-- Customer print requests
-- Request items referencing approved catalog designs
-- Design Library request-selection mode
-- Quantity selection and persistence
-- Item edit/remove
-- Design lifecycle status kept clean
-
-Phase 6 notes:
-
-- Print Request indexes and dedicated unit tests remain hardening follow-ups.
+**Active managed goal:** `portal-persistent-current-request` (cart-style Portal UX).
 
 ---
 
-## Completed phases
+## Completed phases (summary)
 
 ### Phase 1 — Foundation
-
-Firebase project, Auth, Firestore, Storage, roles, permissions, app shell, dashboard, shared types/services.
+Firebase, Auth, roles, Studio shell, permissions.
 
 ### Phase 2 — Design Library
-
-Design CRUD, categories, grid, details panel, search foundation.
+Catalog CRUD, categories, grid, search foundation.
 
 ### Phase 3 — Import System
-
-- 3A–3C: ZIP import, validation, thumbnail/preview generation, upload workflow
-- 3D: Print size math, import validation/persistence, Edit Design print size controls
+ZIP/folder import, validation, derivatives, print-size math, upscale/trim.
 
 ### Phase 4 — Catalog Search & Organization
+Library = approved `ready` only; tag filters; archived toggle.
 
-- Design Library defaults to `status: ready` approved catalog
-- Removed status/AI review filters from Library
-- Tag filter modal, archived toggle, URL params
-- Import completion routes to AI Review
-
-### Phase 5 — AI Processing and Catalog Approval
-
-- AI Review workspace
-- Processing / Needs Review / Rejected tabs
-- Staff-controlled AI queue and re-run flows
-- OpenAI catalog enrichment baseline through Phase 0 deploy gate
-- v15 prompt/validation hardening baseline
+### Phase 5 — AI Processing / Catalog Approval
+AI Review workspace; staff-controlled enrichment (now **catalog-enrich-v21**); approve/reject.
 
 ### Phase 6 — Customers and Print Requests
+Studio `/print-requests`; internal + customer requests; selection mode; sizing/DPI; naming.
 
-Status: **PASS**
+### Phase 7 — Show Queue
+Combined Whatnot show + print run; capacity; split allocation; zip + gang sheet export; production timer; shared calendar picker. Live Whatnot scheduled sync **not** planned for Studio.
 
-- Internal and customer request workflows pass authenticated Studio QA.
-- Customer records can be created and edited from `/users` without creating Firebase Auth accounts or `users/{uid}` documents.
-- Approved catalog designs can be selected from Design Library and saved to requests.
-- Request items persist and can be edited/removed.
-- Design records remain catalog-only and stay `status: ready`.
+### Phase 8 — Fresh Prints Portal (MVP)
+Customer auth, catalog discover/library, print requests + progress tabs, **Add to show**. Signed off in dev 2026-07-08.
+
+### Phase 8 fast-follow — Customer artwork upload (ADR-FP-073)
+Sub-phases A–G + remediations r2–r7 on `fresh-prints-dev`:
+- Trusted upload finalize (PNG/WebP/ZIP)
+- Portal upload UI + attach-to-request
+- Studio Customer Uploads intake (promote / exclude / retry)
+- Limits (100 files, 100 MB/image, 2 GB batch, concurrency 8)
+- Optional library permission (default on); ownership required
+- Request item save floor **≥ 200 DPI**
 
 ---
 
-## Current phase
-
-### Phase 7 — Show Queue (combined Whatnot show + print run)
-
-**Status:** Foundation, Whatnot assisted import, and production-file export **signed off** (2026-07-05 foundation, 2026-07-06 Whatnot sync, 2026-07-07 export).
-
-**Shipped:** Combined show/print-run model, split allocation, capacity UI, zip export, multiply-by-qty export, auto-nested gang sheet PNG export, import auto-upscale and trim-padding.
-
-**Still planned within Phase 7 or deferred:** Dedicated production-status UI polish (minimal today).
-
-**Not planned:** Live Whatnot scheduled sync for Studio (user 2026-07-07).
-
-**Post-MVP backlog:** Gang Sheet Builder manual canvas.
-
-**Next:** Phase 8 Fresh Prints Portal after Firestore rules deploy.
-
-## Planned phases
-
-### Phase 8 — Fresh Prints Portal
-
-**Status:** **Complete (MVP — dev)** — signed off 2026-07-08.
-
-**Shipped:** Customer auth, catalog, print requests, progress tabs, customer Add to show.
-
-**Next:** Phase 9, production Portal deploy, or symmetric apps monorepo (`apps/studio`).
+## Planned next
 
 ### Phase 9 — Custom Request Q&A
-
-Separate from print requests. Etsy referral, in-house custom art, optional $5-$10 design fee.
+Separate from print requests and from customer-upload request artwork. Etsy referral / in-house custom art; optional $5–$10 design fee.
 
 ### Phase 10 — Analytics
+`requestCount`, `showAddCount`, `printCount` dashboards — analytics only, not lifecycle status.
 
-`requestCount`, `showAddCount`, `printCount` on designs — analytics only, not lifecycle status.
+### Deferred backlog
+- Gang Sheet Builder **manual canvas** (post-MVP want)
+- Always-in-selection Portal redesign (deferred during r6)
 
 ---
 
 ## Decision framework
 
-Before any feature, ask:
-
-1. Does it belong in the current phase or active managed bug?
+1. Does it belong in the current phase or active managed goal?
 2. Does it align with the roadmap?
 3. Does it depend on unfinished work?
 4. Does it increase technical debt?
@@ -113,8 +78,6 @@ Before any feature, ask:
 
 If not, postpone it.
 
----
-
 ## Out of scope
 
-Ecommerce checkout, shipping, order payment, marketplace, native mobile apps, customer access to Studio, multi-tenant, custom REST API for core ops.
+Ecommerce checkout, shipping, order payment, marketplace, native mobile apps, customer access to Studio, multi-tenant SaaS, custom REST API for core ops.

@@ -1,16 +1,14 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
 import { useCallback, useState } from 'react';
 
 import type { PrintRequest } from '@fresh-prints/shared/types/printRequest/printRequest.types';
 
 import { useAuth } from '../../auth/context/AuthContext';
 import type { CatalogDesign } from '../../catalog/types/catalog.types';
+import { usePortalToast } from '../../shared/context/PortalToastContext';
 import { portalPrintRequestService } from '../services/portalPrintRequestService';
-import { buildCatalogSelectionHref } from '../utils/catalogSelectionNavigation';
 import { resolveAddDesignToRequestBranch } from '../utils/resolveAddDesignToRequestBranch';
-import { registerSeedPersist } from '../utils/seedPersistRegistry';
 
 interface UseAddDesignToRequestFlowOptions {
   continuableRequests: PrintRequest[];
@@ -19,229 +17,321 @@ interface UseAddDesignToRequestFlowOptions {
     options?: { skipListReload?: boolean },
   ) => Promise<{ printRequestId: string }>;
   onBeforeNavigate?: () => void;
+  /** Full request list + working items (use after creating a new request). */
   refreshRequests: (options?: { silent?: boolean }) => Promise<void>;
+  /** Working-items-only sync for qty mutations (avoids full list flash). */
+  reloadWorkingItems: (options?: { silent?: boolean }) => Promise<void>;
 }
 
+/**
+ * Catalog qty controls: +1 creates/increments primary; −1 decrements/removes primary.
+ */
 export function useAddDesignToRequestFlow({
   continuableRequests,
   createPrintRequest,
   onBeforeNavigate,
   refreshRequests,
+  reloadWorkingItems,
 }: UseAddDesignToRequestFlowOptions) {
-  const router = useRouter();
   const { firebaseUser } = useAuth();
+  const { showSuccess } = usePortalToast();
   const [pendingDesign, setPendingDesign] = useState<CatalogDesign | null>(null);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
-  const [addingDesignId, setAddingDesignId] = useState<string | null>(null);
+  const [busyDesignId, setBusyDesignId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
-  const isAdding = addingDesignId !== null;
+  const isBusy = busyDesignId !== null;
 
   const resetTransientState = useCallback(() => {
-    setAddingDesignId(null);
+    setBusyDesignId(null);
     setIsPickerOpen(false);
     setIsConfirmOpen(false);
     setPendingDesign(null);
   }, []);
 
-  const persistDesignInBackground = useCallback(
-    (printRequestId: string, design: CatalogDesign) => {
-      if (!firebaseUser) {
-        return;
-      }
+  const syncWorkingItems = useCallback(async () => {
+    await reloadWorkingItems({ silent: true });
+  }, [reloadWorkingItems]);
 
-      const work = portalPrintRequestService
-        .addPrintRequestItem({
-          printRequestId,
-          designId: design.id,
-          quantity: 1,
-          userId: firebaseUser.uid,
-        })
-        .then(() => {
-          void refreshRequests({ silent: true });
-        });
-
-      registerSeedPersist(printRequestId, design.id, work);
-
-      void work.catch((error: unknown) => {
-        setActionError(
-          error instanceof Error
-            ? error.message
-            : 'Design was opened in selection mode, but saving it to the request failed. Tap Save or try adding it again.',
-        );
-      });
-    },
-    [firebaseUser, refreshRequests],
-  );
-
-  const enterSelectionWithSeed = useCallback(
-    (printRequestId: string, design: CatalogDesign) => {
-      // Clear busy/overlay state before navigation — CatalogPageContent stays mounted when
-      // only query params change, so leaving addingDesignId set would trap the page under
-      // the is-creating-request overlay.
-      resetTransientState();
-      onBeforeNavigate?.();
-      router.replace(
-        buildCatalogSelectionHref(printRequestId, {
-          seedDesignId: design.id,
-        }),
-      );
-    },
-    [onBeforeNavigate, resetTransientState, router],
-  );
-
-  const addDesignAndEnterSelection = useCallback(
-    async (printRequestId: string, design: CatalogDesign) => {
-      if (!firebaseUser) {
-        throw new Error('You must be signed in to add a design to a request.');
-      }
-
-      // Navigate immediately; persist in the background so selection mode feels instant.
-      enterSelectionWithSeed(printRequestId, design);
-      persistDesignInBackground(printRequestId, design);
-    },
-    [enterSelectionWithSeed, firebaseUser, persistDesignInBackground],
-  );
-
-  const createRequestAddDesignAndEnterSelection = useCallback(
-    async (design: CatalogDesign) => {
-      const created = await createPrintRequest(undefined, { skipListReload: true });
-      await addDesignAndEnterSelection(created.printRequestId, design);
-    },
-    [addDesignAndEnterSelection, createPrintRequest],
-  );
-
-  const executeAddDesign = useCallback(
-    (design: CatalogDesign) => {
-      if (addingDesignId) {
+  const adjustQuantity = useCallback(
+    (design: CatalogDesign, delta: 1 | -1) => {
+      if (busyDesignId) {
         return;
       }
 
       setActionError(null);
-      setPendingDesign(design);
 
       const branch = resolveAddDesignToRequestBranch(continuableRequests.map((request) => request.id));
 
+      if (delta < 0) {
+        if (branch.kind === 'create') {
+          return;
+        }
+        if (branch.kind === 'pick') {
+          onBeforeNavigate?.();
+          setPendingDesign(design);
+          setIsPickerOpen(true);
+          return;
+        }
+
+        if (!firebaseUser) {
+          setActionError('You must be signed in to update your Current Request.');
+          return;
+        }
+
+        setBusyDesignId(design.id);
+        void portalPrintRequestService
+          .decrementPrimaryCatalogDesign({
+            printRequestId: branch.requestId,
+            designId: design.id,
+            userId: firebaseUser.uid,
+          })
+          .then(() => syncWorkingItems())
+          .catch((error: unknown) => {
+            setActionError(
+              error instanceof Error ? error.message : 'Unable to update Current Request quantity.',
+            );
+            return syncWorkingItems();
+          })
+          .finally(() => {
+            setBusyDesignId(null);
+          });
+        return;
+      }
+
       if (branch.kind === 'pick') {
         onBeforeNavigate?.();
+        setPendingDesign(design);
         setIsPickerOpen(true);
         return;
       }
 
-      setAddingDesignId(design.id);
+      setBusyDesignId(design.id);
 
+      const isCreatingRequest = branch.kind === 'create';
       const run =
-        branch.kind === 'create'
-          ? createRequestAddDesignAndEnterSelection(design)
-          : addDesignAndEnterSelection(branch.requestId, design);
+        isCreatingRequest
+          ? createPrintRequest(undefined, { skipListReload: true }).then((created) =>
+              portalPrintRequestService.addOrIncrementCatalogDesign({
+                printRequestId: created.printRequestId,
+                designId: design.id,
+                userId: firebaseUser!.uid,
+              }),
+            )
+          : portalPrintRequestService.addOrIncrementCatalogDesign({
+              printRequestId: branch.requestId,
+              designId: design.id,
+              userId: firebaseUser!.uid,
+            });
 
-      void run.catch((error: unknown) => {
-        setAddingDesignId(null);
-        setPendingDesign(null);
-        setActionError(error instanceof Error ? error.message : 'Unable to add design to request.');
-      });
+      void run
+        .then(() => (isCreatingRequest ? refreshRequests({ silent: true }) : syncWorkingItems()))
+        .then(() => {
+          showSuccess(`Added “${design.title}” to your Current Request.`);
+        })
+        .catch((error: unknown) => {
+          setActionError(error instanceof Error ? error.message : 'Unable to update Current Request.');
+        })
+        .finally(() => {
+          setBusyDesignId(null);
+          setPendingDesign(null);
+        });
     },
     [
-      addDesignAndEnterSelection,
-      addingDesignId,
+      busyDesignId,
       continuableRequests,
-      createRequestAddDesignAndEnterSelection,
+      createPrintRequest,
+      firebaseUser,
       onBeforeNavigate,
+      refreshRequests,
+      showSuccess,
+      syncWorkingItems,
     ],
   );
 
+  /** @deprecated Prefer adjustQuantity — kept for modal confirm paths. */
   const requestAddDesign = useCallback(
     (design: CatalogDesign) => {
-      if (addingDesignId) {
+      adjustQuantity(design, 1);
+    },
+    [adjustQuantity],
+  );
+
+  const addDesign = useCallback(
+    (design: CatalogDesign) => {
+      adjustQuantity(design, 1);
+    },
+    [adjustQuantity],
+  );
+
+  const setQuantity = useCallback(
+    (designId: string, quantity: number, options?: { title?: string; announce?: boolean }) => {
+      if (busyDesignId) {
         return;
       }
 
       setActionError(null);
-      setPendingDesign(design);
-      setIsConfirmOpen(true);
+
+      const branch = resolveAddDesignToRequestBranch(continuableRequests.map((request) => request.id));
+      if (branch.kind === 'create' || branch.kind === 'pick') {
+        return;
+      }
+
+      if (!firebaseUser) {
+        setActionError('You must be signed in to update your Current Request.');
+        return;
+      }
+
+      const title = options?.title?.trim();
+      const shouldAnnounce = options?.announce !== false;
+      setBusyDesignId(designId);
+      void portalPrintRequestService
+        .setPrimaryCatalogDesignQuantity({
+          printRequestId: branch.requestId,
+          designId,
+          quantity,
+          userId: firebaseUser.uid,
+        })
+        .then(() => syncWorkingItems())
+        .then(() => {
+          if (!shouldAnnounce) {
+            return;
+          }
+          showSuccess(
+            title
+              ? `Added “${title}” to your Current Request.`
+              : 'Added to your Current Request.',
+          );
+        })
+        .catch((error: unknown) => {
+          setActionError(
+            error instanceof Error ? error.message : 'Unable to update Current Request quantity.',
+          );
+          return syncWorkingItems();
+        })
+        .finally(() => {
+          setBusyDesignId(null);
+        });
     },
-    [addingDesignId],
+    [busyDesignId, continuableRequests, firebaseUser, showSuccess, syncWorkingItems],
+  );
+
+  const removeDesign = useCallback(
+    (designId: string) => {
+      if (busyDesignId) {
+        return;
+      }
+
+      setActionError(null);
+
+      const branch = resolveAddDesignToRequestBranch(continuableRequests.map((request) => request.id));
+      if (branch.kind === 'create' || branch.kind === 'pick') {
+        return;
+      }
+
+      if (!firebaseUser) {
+        setActionError('You must be signed in to update your Current Request.');
+        return;
+      }
+
+      setBusyDesignId(designId);
+      void portalPrintRequestService
+        .removeCatalogDesignFromRequest({
+          printRequestId: branch.requestId,
+          designId,
+          userId: firebaseUser.uid,
+        })
+        .then(() => syncWorkingItems())
+        .catch((error: unknown) => {
+          setActionError(
+            error instanceof Error ? error.message : 'Unable to remove design from Current Request.',
+          );
+          return syncWorkingItems();
+        })
+        .finally(() => {
+          setBusyDesignId(null);
+        });
+    },
+    [busyDesignId, continuableRequests, firebaseUser, syncWorkingItems],
   );
 
   const closeConfirm = useCallback(() => {
-    if (isAdding) {
+    if (isBusy) {
       return;
     }
-
     setIsConfirmOpen(false);
     setPendingDesign(null);
-  }, [isAdding]);
+  }, [isBusy]);
 
   const confirmAddDesign = useCallback(() => {
-    if (!pendingDesign || isAdding) {
+    if (!pendingDesign || isBusy) {
       return;
     }
-
     const design = pendingDesign;
     setIsConfirmOpen(false);
-    executeAddDesign(design);
-  }, [executeAddDesign, isAdding, pendingDesign]);
+    adjustQuantity(design, 1);
+  }, [adjustQuantity, isBusy, pendingDesign]);
 
   const closePicker = useCallback(() => {
-    if (isAdding) {
+    if (isBusy) {
       return;
     }
-
     setIsPickerOpen(false);
     setPendingDesign(null);
-  }, [isAdding]);
+  }, [isBusy]);
 
   const confirmPickRequest = useCallback(
     (printRequestId: string) => {
-      if (!pendingDesign || isAdding) {
+      if (!pendingDesign || isBusy || !firebaseUser) {
         return;
       }
 
       const design = pendingDesign;
-      setAddingDesignId(design.id);
+      setBusyDesignId(design.id);
       setActionError(null);
+      setIsPickerOpen(false);
 
-      void addDesignAndEnterSelection(printRequestId, design).catch((error: unknown) => {
-        setAddingDesignId(null);
-        setActionError(error instanceof Error ? error.message : 'Unable to add design to request.');
-      });
+      void portalPrintRequestService
+        .addOrIncrementCatalogDesign({
+          printRequestId,
+          designId: design.id,
+          userId: firebaseUser.uid,
+        })
+        .then(() => refreshRequests({ silent: true }))
+        .then(() => {
+          showSuccess(`Added “${design.title}” to your Current Request.`);
+        })
+        .catch((error: unknown) => {
+          setActionError(error instanceof Error ? error.message : 'Unable to add design to request.');
+        })
+        .finally(() => {
+          setBusyDesignId(null);
+          setPendingDesign(null);
+        });
     },
-    [addDesignAndEnterSelection, isAdding, pendingDesign],
+    [firebaseUser, isBusy, pendingDesign, refreshRequests, showSuccess],
   );
-
-  const confirmMessage = (() => {
-    if (!pendingDesign) {
-      return 'Add this design to a print request?';
-    }
-
-    const branch = resolveAddDesignToRequestBranch(continuableRequests.map((request) => request.id));
-
-    if (branch.kind === 'create') {
-      return `Add “${pendingDesign.title}” to a new print request and open selection mode?`;
-    }
-
-    if (branch.kind === 'single') {
-      const requestName = continuableRequests[0]?.name ?? 'your open request';
-      return `Add “${pendingDesign.title}” to ${requestName} and open selection mode?`;
-    }
-
-    return `Add “${pendingDesign.title}” to a print request? You’ll choose which request next.`;
-  })();
 
   return {
     actionError,
-    addingDesignId,
+    addingDesignId: busyDesignId,
+    addDesign,
+    adjustQuantity,
     closeConfirm,
     closePicker,
     confirmAddDesign,
-    confirmMessage,
+    confirmMessage: pendingDesign
+      ? `Add “${pendingDesign.title}” to your Current Request?`
+      : 'Add this design to your Current Request?',
     confirmPickRequest,
-    isAdding,
+    isAdding: isBusy,
     isConfirmOpen,
     isPickerOpen,
     pendingDesign,
+    removeDesign,
     requestAddDesign,
     resetTransientState,
+    setQuantity,
   };
 }

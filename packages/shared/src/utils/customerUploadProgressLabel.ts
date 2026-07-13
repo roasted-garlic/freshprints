@@ -17,6 +17,8 @@ export function getCustomerUploadProgressLabel(input: {
   switch (input.technicalProgressStage) {
     case "reading_upload":
       return "Reading upload…";
+    case "discovered":
+      return "Discovered — waiting to process…";
     case "checking_format":
       return "Checking file format…";
     case "checking_transparency":

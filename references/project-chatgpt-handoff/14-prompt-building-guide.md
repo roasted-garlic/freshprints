@@ -1,6 +1,6 @@
 # Prompt Building Guide
 
-How to craft effective prompts for **Cursor + FreshForge** or other coding agents working on Fresh Prints.
+How to craft effective prompts for **Cursor + FreshForge** or other coding agents on Fresh Prints.
 
 ---
 
@@ -12,40 +12,38 @@ How to craft effective prompts for **Cursor + FreshForge** or other coding agent
 
 ## FreshForge
 - Command: Managed Phase / Continue Workflow
-- Roadmap phase: [e.g. Phase 5, sub-phase 5D]
+- Roadmap / goal: [e.g. portal-customer-artwork-upload r7 follow-up]
 - Plan required: yes/no (yes for code changes)
 
 ## Context
 - Current state: [paste key lines from CURRENT-STATE.md]
-- Related ADR: [e.g. ADR-FP-029 if AI enrichment]
+- Related ADR: [e.g. ADR-FP-073, ADR-FP-075]
 
 ## Scope
 
 ### In scope
-- [Bullet 1]
-- [Bullet 2]
+- …
 
 ### Out of scope
-- [Explicit exclusions]
+- … (e.g. Phase 9 Custom Requests, production deploy)
 
 ## Architecture constraints
-- Workspace: [Imports / AI Review / Design Library]
-- Layer: [Component / Hook / Service / Function]
-- Must not: [e.g. direct Firebase from component]
+- App: Studio / Portal / Functions / shared
+- Layer: Component / Hook / Service / Callable
+- Must not: direct Firebase from components; trust client for upload validation
 
 ## Files to inspect first
 - [From 08-tech-stack-repo-map.md]
 
 ## Acceptance criteria
-- [ ] [Testable outcome 1]
-- [ ] [Testable outcome 2]
-- [ ] `npm run lint` passes
-- [ ] [Manual test step if UI]
+- [ ] …
+- [ ] Tests / typecheck / functions build as applicable
+- [ ] Manual checkpoint if UI
 
 ## Docs to read (repo access)
-1. docs/architecture/ARCHITECTURE.md
-2. [Topic-specific doc]
-3. .cursor/workflow/state.md
+1. .cursor/workflow/state.md
+2. docs/architecture/ARCHITECTURE.md
+3. [Topic doc]
 ```
 
 ---
@@ -53,100 +51,41 @@ How to craft effective prompts for **Cursor + FreshForge** or other coding agent
 ## Prompt types
 
 ### 1. New feature (managed phase)
-
-Always include:
-- Roadmap phase alignment
-- "Create plan in `docs/workflow/plans/` before implementation"
-- FreshForge gate reminder: Review approval required
-
-Example opener:
-> Managed Phase: Plan a Phase 5D feature to warn on duplicate catalog titles during AI Review approval. Read CURRENT-STATE and 06-data-model-essentials first.
+Include roadmap alignment + “create plan before implementation” + review gate.
 
 ### 2. Bug fix
+Include repro, expected vs actual, which app (Portal :3100 / Studio / Functions).
 
-Include:
-- Reproduction steps
-- Expected vs actual behavior
-- Which workspace/route is affected
-- Whether bug is in renderer, main process, or Cloud Functions
+### 3. Customer upload / request flow
+Always reference `05-workflows-summary.md` and ADR-FP-073/074/075. Reminder: finalize is server-authoritative; don’t invent client-only security.
 
-Example:
-> Bug: Re-run AI on Rejected tab does not preserve design selection. See ADR-FP-027. Fix in ai-review hooks only — no prompt changes.
+### 4. AI enrichment
+Current target **`catalog-enrich-v21`**. Prompt vs validation vs both; Functions deploy is a human step.
 
-### 3. AI enrichment / prompt change
-
-Always include:
-- Current prompt version target (`catalog-enrich-openai-v16`)
-- Whether change is prompt-only vs validation-only vs both
-- Reminder: "Prompt handles intent; validation handles structure"
-- List affected modules: provider, parse, retry, title rules, visible text validation
-
-Example:
-> Continue Workflow: Implement Phase 8 placeholder rejection in catalogEnrichmentResponse.ts before save. Do not change prompt text yet. Add tests.
-
-### 4. UI/UX polish
-
-Include:
-- Route and component names
-- Reference STYLE_GUIDE.md for theme/patterns
-- Manual test checkpoint request
-- Screenshot description if available
-
-### 5. External planning only (no repo access)
-
-Upload:
-1. `CURRENT-STATE.md`
-2. Topic file(s) from handoff package
-3. Paste `00-START-HERE-PROMPT.md`
-
-Ask for:
-- Cursor-ready prompt (using template above)
-- Risk list
-- Phase alignment check
-- Files to verify in repo
+### 5. External planning only
+Upload `CURRENT-STATE.md` + topic files; paste `00-START-HERE-PROMPT.md`; ask for Cursor-ready prompt + risks.
 
 ---
 
-## Good vs bad prompts
+## Good vs bad
 
-### Good
-> "Add confidence badge to AI suggestions panel when field confidence < 0.70. Phase 5E. Hook reads existing aiSuggestions.confidence. Badge uses existing theme tokens. Manual test: import design, check Needs Review tab."
+**Good:** “Portal request cards must hard-block save below 200 DPI using shared `assessPrintRequestItemSize`. Update Studio tests. No import floor change (72 remains for catalog import).”
 
-### Bad
-> "Make AI review better"
-> "Fix the Firebase stuff"
-> "Add mobile app support"
+**Bad:** “Make uploads faster somehow” / “Add a mobile app” / “Auto-approve customer art into the library.”
 
 ---
 
 ## Phase alignment checks
 
-Before sending to Cursor, verify:
-
 | Question | If no → |
 |----------|---------|
-| Is this in the current roadmap phase? | Defer or note dependency |
-| Does an approved plan exist? | Start with Plan phase |
-| Is human checkpoint active? | Stop — deploy/approval first |
-| Does it violate non-goals? | Remove from scope |
-
----
-
-## AI enrichment-specific checklist
-
-When changing enrichment behavior:
-
-- [ ] Prompt version bumped if prompt text changes?
-- [ ] Parse layer handles messy JSON?
-- [ ] Retry logic updated?
-- [ ] Title rules consistent?
-- [ ] Category resolver still exact-match first?
-- [ ] Tests added/updated in `functions/src/ai/*.test.ts`?
-- [ ] Functions deploy noted as human step?
-- [ ] ADR updated if architectural?
+| Matches current managed goal / phase? | Defer |
+| Approved plan exists? | Start Plan phase |
+| Human checkpoint active? | Stop until owner replies |
+| Violates non-goals / ADRs? | Remove from scope |
 
 ---
 
 ## Refresh discipline
 
-Update `CURRENT-STATE.md` before every external planning session. Stale state causes wrong phase advice and duplicate work.
+Update `CURRENT-STATE.md` before every external planning session. Stale state causes wrong advice and duplicate work.

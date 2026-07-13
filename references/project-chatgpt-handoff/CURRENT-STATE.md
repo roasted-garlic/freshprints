@@ -11,25 +11,29 @@
 | Field | Value |
 |-------|-------|
 | **App** | Fresh Prints — DTF design catalog & print planning |
-| **Active apps** | Fresh Prints Studio (Electron, `apps/studio`); Fresh Prints Portal (Next.js, `apps/portal`) |
-| **Roadmap phase** | **Phase 8 complete (MVP)** + **Phase 8 fast-follow** customer artwork uploads |
-| **Managed workflow goal** | `portal-customer-artwork-upload` — remediation r2 done; **awaiting manual E2E retest** |
-| **Parked** | `admin-operational-test-data-wipe` (not signed off) |
-| **Status** | A–F signed off; G automated passed; manual FAIL×2; r2 fixes deployed to `fresh-prints-dev` |
-| **Human checkpoint** | yes — `docs/workflow/reviews/2026-07-12-portal-customer-artwork-upload-manual-e2e-remediation-r2-manual-checkpoint.md` |
+| **Active apps** | Studio (Electron); Portal Next.js on **http://localhost:3100** |
+| **Managed workflow goal** | `portal-persistent-current-request` |
+| **Status** | Mid-checkpoint UX fixes applied; **awaiting owner manual retest** |
+| **Human checkpoint** | yes — `docs/workflow/reviews/2026-07-12-portal-persistent-current-request-manual-checkpoint.md` |
+| **Portal** | Perpetual selection-card UI; Upload Designs + image-up; drawer polish |
 
 ---
 
-## Workflow Snapshot (FF)
+## Workflow Snapshot
 
 ```txt
 Mode:           managed-phase
-Goal:           portal-customer-artwork-upload
-Phase:          test — await remediation r2 manual retest
-Remediation r2: duplicate callable, wipe guards, inbox sound delivery,
-                Portal upload stages/progress, Studio intake live UX
-Deploy:         duplicatePortalPrintRequestItem + rules → fresh-prints-dev
-DONE:           no (manual retest + G/parent signoff)
-Next:           Owner PASS / PASS WITH NOTES / FAIL
-Forbidden:      production; wipe allowlist prod; unpark wipe track; Phase 9
+Goal:           portal-persistent-current-request
+Phase:          test — await manual UI checkpoint (after UX mid-checkpoint fixes)
+Fix just now:   qty steppers, remove Continue request, snazzier drawer, hide desktop hamburger
+DONE:           no
+Forbidden:      production deploy; selection-mode cleanup before manual PASS
 ```
+
+---
+
+## If Portal looks broken
+
+1. Do **not** run `npm run build:portal` while `npm run dev:portal` is running (corrupts `.next`).
+2. Restart: stop Portal → delete `apps/portal/.next` → `npm run dev:portal`
+3. Open http://localhost:3100/login then `/catalog`

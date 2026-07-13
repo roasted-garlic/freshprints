@@ -30,3 +30,9 @@
 - `PASS` — all criteria met  
 - `FAIL: [description]` — what failed  
 - `PASS WITH NOTES: [notes]` — acceptable with follow-ups  
+
+---
+
+## Owner result
+
+**PASS** — 2026-07-12 (owner). Closes r7 manual gate; enables G / parent signoff.

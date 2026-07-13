@@ -6,99 +6,60 @@
 
 | Decision | Rule |
 |----------|------|
-| ADR-FP-008 | Two apps only: Fresh Prints Studio + Fresh Prints Portal |
-| ADR-FP-009 | Three Studio workspaces: Imports, AI Review, Design Library |
-| No native mobile | Portal is responsive web; optional PWA only |
+| ADR-FP-008 | Two apps only: Studio + Portal |
+| ADR-FP-009 | Three Studio design workspaces: Imports, AI Review, Design Library |
+| No native mobile | Portal is responsive web |
 
 ## Catalog lifecycle
 
-| Decision | Rule |
-|----------|------|
+| Rule | Detail |
+|------|--------|
 | Design statuses | `imported`, `processing`, `ready`, `rejected`, `archived` |
-| Deprecated | `queued`, `printed` on designs — blocked for new writes |
-| Approval | Only via `catalogApprovalService` — not Edit Design modal |
-| Library scope | Approved catalog (`ready`) only by default |
+| Deprecated on designs | `queued`, `printed` |
+| Approval | Staff AI Review / catalogApprovalService only |
+| Library scope | `ready` only by default |
 
-## Print Requests
-
-| Decision | Rule |
-|----------|------|
-| ADR-FP-030 | `requestCount` and `lastRequestedAt` are allowed as lightweight request reference metadata in Phase 6 |
-| Design lifecycle | Print Requests must not write production/request statuses to `designs.status` |
-| Request state | Request item status belongs on `printRequestItems` |
-| Indexes | Print Request indexes are deferred until server-side query patterns require them |
-| Registered customers | Customer records are created from `/users` only; no customer Auth, Portal login, `users/{uid}` record, or Studio access is added |
-
-## Portal (Phase 8)
+## Print Requests & Portal
 
 | ADR | Summary |
 |-----|---------|
-| ADR-FP-066 | Customers add requests to shows via callables only (`listPortalAllocatableShows`, `queuePortalPrintRequestToShow`); single show, full request, no override, no re-queue |
-| ADR-FP-065 | Shared `@fresh-prints/show-picker` calendar for Studio and Portal |
-| ADR-FP-064 | Show Queue production timer drives customer **Printing** tab |
+| ADR-FP-071 | **One working print request** per Portal customer |
+| ADR-FP-066 | Customers add to shows via callables only; single show; full request; no override/re-queue |
+| ADR-FP-065 | Shared `@fresh-prints/show-picker` |
+| ADR-FP-064 | Production timer drives customer Printing tab |
+| ADR-FP-075 | Standard item saves require **≥ 200 effective DPI**; 200–299 warn; ≥300 no warn |
+| ADR-FP-030 | `requestCount` / `lastRequestedAt` are lightweight metadata only |
 
-## AI enrichment (recent ADRs)
+## Customer uploads (Phase 8 fast-follow)
 
 | ADR | Summary |
 |-----|---------|
-| ADR-FP-029 | v15 prompt + parse coercion + category resolver + unified retry |
-| ADR-FP-028 | Dual-arc OCR validation + re-run overlay stepper |
-| ADR-FP-027 | Rejected tab actions navigate to target inbox tab |
-| ADR-FP-026 | Descriptions required with server synthesis fallback |
-| ADR-FP-025 | Text-only title color suffix rules |
-| ADR-FP-024 | Configurable OpenAI vision model via Settings |
+| ADR-FP-073 | Customer artwork = `customerUploads`, not designs until staff promote; dual item source model; not Phase 9 |
+| ADR-FP-074 | Library permission **optional** (default on); ownership required; staff may promote but must see declines |
+
+## AI enrichment (recent)
+
+| ADR | Summary |
+|-----|---------|
+| ADR-FP-044 / v21 | Business-context Gemini prompt; server-side tag/category resolve |
+| ADR-FP-042 / 043 | Optional tag rerank + suggestion author (defaults off) |
+| ADR-FP-040 | Gemini provider (OpenAI path removed) |
 
 ## Architecture constraints
 
-- Single Firebase project for Studio and Portal
-- Services own all Firebase SDK calls
-- Single Firebase init module
-- Firestore = metadata; Storage = files
-- Permission checks centralized in `permissionService.ts`
+- Single Firebase project for Studio and Portal  
+- Services / callables own Firebase access — not components  
+- Firestore = metadata; Storage = files  
+- Studio permissions via `permissionService`  
 
-## Workflow constraints (FreshForge)
+## FreshForge workflow
 
 ```
 Plan → Review → Implement → Test → Signoff
 ```
 
-- No implementation without approved plan in `docs/workflow/plans/`
-- No signoff without tests run or failures documented
-- Scope never silently expands beyond approved plan
-- Human checkpoint stops all implementation until resolved
+No implementation without approved plan; no silent scope expansion; human checkpoints block production actions.
 
-## Product constraints
+## Product out of scope
 
-**In scope for Fresh Prints:**
-- Design catalog management
-- AI-assisted enrichment with staff review
-- Print request planning (Phase 6+)
-- Print run / show planning (Phase 7+)
-- Production file export for gang sheets
-
-**Out of scope:**
-- Ecommerce checkout for catalog prints
-- Shipping / fulfillment
-- Order payment (except optional custom design fee, Phase 9)
-- Customer Studio access
-- Marketplace / social features
-- Custom REST API for core CRUD
-
-## Naming conventions (official)
-
-| Name | Meaning |
-|------|---------|
-| Fresh Prints Studio | Electron desktop, staff |
-| Fresh Prints Portal | Customer web app |
-| AI Review / AI Processing | Workspace at `/ai-review` |
-| Design Library | Approved catalog at `/designs` |
-
-Do not use deprecated terms like "Approval Mode" as primary naming — use AI Review workspace.
-
-## When proposing changes
-
-1. Check current roadmap phase (`03-roadmap-and-phases.md`)
-2. Check if ADR already covers the decision
-3. If architectural → new ADR in `DECISIONS.md`
-4. If security-related → review phase + human approval for production
-5. If data model change → update `DATA_MODEL.md` + migration notes
+Ecommerce checkout, shipping, order payment (except optional Phase 9 design fee), customer Studio access, marketplace, native mobile, treating customer PNG uploads as Custom Request Q&A.

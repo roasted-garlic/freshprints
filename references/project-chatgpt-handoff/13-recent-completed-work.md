@@ -1,143 +1,66 @@
 # Recent Completed Work
 
-> Signed-off managed phases. External agents should not re-plan or duplicate this work.
+> Signed-off or largely complete work. External agents should not re-plan or duplicate this.
 
-## Phase 8 fast-follow — Customer artwork upload Sub-phase B (2026-07-11)
+## 2026-07-12 — Portal customer artwork upload (parent) signed off
 
-- Status: **approved_with_notes** — deployed + backend smoke PASS on `fresh-prints-dev`
-- Signoff: `docs/workflow/reviews/2026-07-11-portal-customer-artwork-upload-subphase-b-signoff.md`
-- Callables live: `createCustomerUploadBatch`, `finalizeCustomerUpload`, `finalizeCustomerUploadZip`
-- Smoke harness: `functions/scripts/smoke-customer-upload-subphase-b.mjs` (run `mrhb5zwp`, 15/15)
-- Corrective fix: finalize transaction read-before-write; redeployed `finalizeCustomerUpload`
-- Portal UI still forbidden until Sub-phase C
+- Parent goal `portal-customer-artwork-upload` **approved_with_notes** on `fresh-prints-dev`
+- Sub-phases A–G + remediations r2–r7 complete
+- Owner **PASS** on r7 manual checkpoint (limits, confirmations, DPI floor, PNG fast-path)
+- Signoffs: r7, G, parent — see `docs/workflow/reviews/2026-07-12-portal-customer-artwork-upload-parent-signoff.md`
+- ADRs: FP-073 (uploads), FP-074 (library permission), FP-075 (200 DPI save floor)
+- Deferred to next goal: persistent Current Request / cart-style Portal UX
 
-## Phase 8 fast-follow — Customer artwork upload Sub-phase A (2026-07-11)
+## 2026-07-12 — Portal upload remediation r7 (+ mid-checkpoint)
 
-- Status: **passed_with_notes** / contracts landed
-- Shared types, limits, transparency, ADR-FP-073
-- Test report: `docs/workflow/reviews/2026-07-11-portal-customer-artwork-upload-subphase-a-test-report.md`
+- Limits: 100 files, 100 MB/image, 2 GB batch/ZIP, concurrency 8, daily finalize 200, create-batch 100  
+- Confirmations: ownership required; library permission optional default-on (ADR-FP-074)  
+- Attach sizing: ~10″ default via shared helper; Portal DPI badges  
+- PNG processing fast-path: sample transparency; skip convert/re-encode when already good; GCS production copy  
+- Visible stages: converting / trimming / upscaling / DPI / previews  
+- Print Request save floor **≥ 200 DPI** (ADR-FP-075)  
+- Portal “How print requests work” collapsed hint; Portal dev port **3100**
 
-## Phase 8 — Portal closeout (2026-07-08)
+## 2026-07-12 — r6 UX polish
 
-- Status: **approved**
-- Signoff: `docs/workflow/reviews/2026-07-08-phase-8-portal-closeout-signoff.md`
-- Phase 8 MVP documented complete in dev (auth, catalog, requests, show selection)
+- Selection mode saves pending designs before upload navigation  
+- Upload UI → near-fullscreen modal  
+- Studio Customer Uploads Pending/Excluded tabs  
 
-## Phase 8 — Portal customer show selection (2026-07-08)
+## 2026-07-11–12 — Customer artwork upload A–G
 
-- Status: **approved**
-- Signoff: `docs/workflow/reviews/2026-07-08-portal-customer-show-selection-signoff.md`
-- Customers add print requests to a show's print run via callables + shared calendar picker
-- `listPortalAllocatableShows`, `queuePortalPrintRequestToShow`; ADR-FP-066
+- Contracts, trusted finalize, Portal UI, show/export source awareness, Studio intake, AI promote path, wipe/hardening  
+- Parent goal: `portal-customer-artwork-upload` (ADR-FP-073)
 
-## Phase 7 — Show Queue production timer + calendar picker (2026-07-08)
+## 2026-07-08 — Phase 8 Portal MVP closeout
 
-- Status: **approved**
-- Signoff: `docs/workflow/reviews/2026-07-08-show-queue-timer-and-calendar-picker-signoff.md`
-- Production timer (Start/Pause/Resume/Mark finished); Portal/Studio **Printing** tab
-- Past-show read-only UX; `@fresh-prints/show-picker` in Studio Add to Show
-- Sidebar: Print Requests + Show Queue above AI Processing
+- Customer auth, catalog, print requests, progress tabs, Add to show (ADR-FP-066)  
+- Signoff: `2026-07-08-phase-8-portal-closeout-signoff.md`
 
-## Phase 7 — Show Queue production-file export (2026-07-07)
+## 2026-07-08 — Show Queue timer + calendar picker
 
-- Status: **approved_with_notes**
-- Signoff: `docs/workflow/reviews/2026-07-07-show-queue-export-and-production-files-signoff.md`
-- Per-show zip export (300 DPI resize), multiply-by-qty option, auto-nested gang sheet PNG export
-- Import auto-upscale and trim-transparent-padding
-- Gang sheet layout/DPI/label/rotation polish; shell header stale-closure fix
-- Export filename date format `MM-DD-YYYY`
+- Production timer; Printing tab; `@fresh-prints/show-picker`
 
-## Phase 7 — Whatnot show sync (2026-07-06)
+## 2026-07-07 — Show Queue export
 
-- Staff-assisted Whatnot show-list import — `docs/workflow/reviews/2026-07-06-whatnot-show-sync-signoff.md`
+- Zip @ 300 DPI; multiply-by-qty; auto-nested gang sheet PNG; import upscale/trim  
 
-## Phase 7 — Show Queue foundation (2026-07-05)
+## 2026-07-06 — Whatnot assisted import + Phase 6 closeout confirmation
 
-- Combined Whatnot show + print run model — `docs/workflow/reviews/2026-07-05-print-runs-foundation-signoff.md`
+## 2026-07-05 — Show Queue foundation
+
+## Earlier (June 2026)
+
+Phases 4–5 catalog cleanup + AI Review; enrichment iterations through v15 then Gemini v21; Phase 6 Print Requests foundation and sizing/naming polish.
 
 ---
 
-## Earlier work (June 2026)
-
-## Phase 4 — Catalog cleanup (2026-06-24)
-
-- Design Library defaults to approved catalog only
-- Removed status/AI review filters from Library
-- Archived visibility toggle + URL params
-- Searchable multi-select tag filter modal
-- Import completion links to AI Review
-- Legacy `status=imported` URLs redirect to AI Review
-- Default landing page → `/designs`
-
-## Phase 5A — AI Review workspace polish
-
-- Processing / Needs Review / Rejected tabs
-- Oldest-first queue (no inbox search/filter)
-- Preview → pipeline stepper → suggestions → catalog form layout
-- Approve & Next, Reject & Next, Skip, auto-advance toggle
-- Keyboard shortcuts (J/K, approve/reject)
-- Main panel height management
-
-## Phase 5B — AI pipeline (local)
-
-- Automatic enqueue on import
-- Cloud Functions: `enqueueAiEnrichment`, `onDesignAiEnrichmentQueued`
-- OpenAI vision provider with GPT-5 nano models
-- Development provider fallback when no API key
-- Pipeline timing and latency logging
-
-## AI enrichment iterations (2026-06-24 – 2026-06-26)
-
-| Feature | Date |
-|---------|------|
-| AI processing queue fixes + stop control | 2026-06-24 |
-| AI inbox sort + skip behavior | 2026-06-24 |
-| 72 DPI import resolution pills | 2026-06-24 |
-| Auto-advance toggle | 2026-06-24 |
-| Long tags crash fix | 2026-06-24 |
-| Configurable OpenAI vision model (Settings) | 2026-06-25 |
-| GPT-5.4 nano support + params action bar | 2026-06-25 |
-| GPT-5 nano empty response fix | 2026-06-25 |
-| Settings tag exclusions + re-run AI | 2026-06-25 |
-| AI description required + synthesis fallback | 2026-06-25 |
-| Text-only title color suffix | 2026-06-25 |
-| Rejected tab cross-navigation | 2026-06-25 |
-| Needs review re-run overlay latch | 2026-06-25 |
-| OCR/arched text + re-run overlay stepper | 2026-06-25 |
-| AI processing latency investigation | 2026-06-25 |
-| AI review queue panel height | 2026-06-25 |
-| Processing J/K shortcuts alignment | 2026-06-25 |
-| **Catalog enrichment v15 baseline (Phases 1–7)** | **2026-06-26** |
-
-## Infrastructure / docs
-
-- Firebase auth/storage handoff package (`docs/handoffs/firebase-auth-storage/`)
-- FreshForge workflow on project (AGENTS.md, .cursor/, docs/)
-
-## Phase 6 — Print Requests foundation (2026-06-29)
-
-- Status: **PASS**
-- `/print-requests` staff workspace
-- Internal print requests
-- Customer print requests
-- Print request create/update flows
-- Request item list/edit/remove
-- Design Library request-selection mode
-- Approved catalog designs added to requests with quantity
-- Request items persist after revisit/reload
-- Design lifecycle status remains clean (`designs.status` stays catalog-only)
-- Customer record creation/editing now works from `/users` without customer Auth or Studio access
-
-## Follow-up hardening
-
-- Print Request unit tests and indexed query hardening remain open follow-ups.
-
-See `CURRENT-STATE.md` for live status.
-
 ## Deferred / backlog
 
-- Staff confirm modal during import (Phase 3D Step 5)
-- Optional backfill for print sizes (Phase 3D Step 8)
-- Date range filters (Phase 4B)
-- Print Request unit tests and indexed query hardening
-- Print Runs (Phase 7), Portal (Phase 8)
+- Gang Sheet Builder manual canvas  
+- **In progress:** Persistent Current Request Portal redesign (`portal-persistent-current-request`)  
+- Phase 9 Custom Requests  
+- Production Portal App Hosting deploy  
+- Live Whatnot scheduled sync (not planned for Studio)
+
+See `CURRENT-STATE.md` for live blockers.
