@@ -94,7 +94,7 @@ npm run build:portal    # Next.js production build
 ```bash
 npm run dev            # Studio + Portal together
 npm run dev:studio     # Electron + Vite only
-npm run dev:portal     # Next.js on port 3000 only
+npm run dev:portal     # Next.js on port 3100 only
 ```
 
 ---

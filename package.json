@@ -13,7 +13,7 @@
     "dev": "concurrently -n studio,portal -c blue,green \"npm run dev:studio\" \"npm run dev:portal\"",
     "dev:studio": "npm run dev --workspace @fresh-prints/studio",
     "dev:portal": "npm run dev --workspace @fresh-prints/portal",
-    "tunnel:portal": "cloudflared tunnel --url http://localhost:3000",
+    "tunnel:portal": "cloudflared tunnel --url http://localhost:3100",
     "build:studio": "npm run build --workspace @fresh-prints/studio",
     "build:portal": "npm run build --workspace @fresh-prints/portal",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"

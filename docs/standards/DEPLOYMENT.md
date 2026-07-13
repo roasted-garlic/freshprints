@@ -18,7 +18,7 @@ Fresh Prints consists of:
 
 | Environment | Purpose | URL | Branch / trigger |
 |-------------|---------|-----|------------------|
-| Local | Development | Studio: Electron dev; Portal: `localhost:3000` | `npm run dev` (both), or `dev:studio` / `dev:portal` |
+| Local | Development | Studio: Electron dev; Portal: `localhost:3100` | `npm run dev` (both), or `dev:studio` / `dev:portal` |
 | Firebase dev | Development backend | `fresh-prints-dev` (`.firebaserc`) | local / manual deploy |
 | Production | Live users | Portal App Hosting `[TBD]` | human approval required |
 

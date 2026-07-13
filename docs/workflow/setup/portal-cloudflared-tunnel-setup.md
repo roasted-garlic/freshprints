@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Expose the local Fresh Prints Portal dev server (`http://localhost:3000`) to the internet for testing on phones, tablets, or other networks — without deploying to Firebase App Hosting.
+Expose the local Fresh Prints Portal dev server (`http://localhost:3100`) to the internet for testing on phones, tablets, or other networks — without deploying to Firebase App Hosting.
 
 ## Prerequisites
 
@@ -31,7 +31,7 @@ npm run tunnel:portal
 Or directly:
 
 ```bash
-cloudflared tunnel --url http://localhost:3000
+cloudflared tunnel --url http://localhost:3100
 ```
 
 3. Copy the `https://….trycloudflare.com` URL from the tunnel output.
@@ -70,7 +70,7 @@ credentials-file: C:\Users\<YOU>\.cloudflared\<TUNNEL_UUID>.json
 
 ingress:
   - hostname: portal-dev.yourdomain.com
-    service: http://localhost:3000
+    service: http://localhost:3100
   - service: http_status:404
 ```
 
@@ -92,7 +92,7 @@ See Cloudflare docs: [Create a locally-managed tunnel](https://developers.cloudf
 
 | Symptom | Fix |
 |---------|-----|
-| `502` / connection error | Confirm `npm run dev:portal` is running on port 3000 |
+| `502` / connection error | Confirm `npm run dev:portal` is running on port 3100 |
 | `500 Internal Server Error` after route/code changes | Stop dev server, delete `apps/portal/.next`, restart `npm run dev:portal` |
 | Firebase auth fails on tunnel URL | Add tunnel hostname to Authorized domains |
 | New tunnel URL after restart | Re-add hostname (quick tunnel) or use named tunnel |
@@ -100,7 +100,7 @@ See Cloudflare docs: [Create a locally-managed tunnel](https://developers.cloudf
 
 ## Completion checklist
 
-- [ ] Portal dev server running on port 3000
+- [ ] Portal dev server running on port 3100
 - [ ] Tunnel running and URL copied
 - [ ] Tunnel hostname added to Firebase Authorized domains
 - [ ] Remote device can sign in and browse catalog
