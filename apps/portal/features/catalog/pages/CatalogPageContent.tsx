@@ -6,7 +6,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   getCatalogDiscoveryModeLabel,
   parseCatalogDiscoveryMode,
-  rankCatalogDiscoveryDesigns,
   type CatalogDiscoveryMode,
 } from '@fresh-prints/shared/utils/catalogDiscoveryRanking';
 
@@ -18,12 +17,10 @@ import { useCatalogCategories } from '../hooks/useCatalogCategories';
 import {
   useCatalogCategoryOptions,
   useCatalogDesigns,
-  useFilteredCatalogDesigns,
 } from '../hooks/useCatalogDesigns';
+import { useCatalogTags } from '../hooks/useCatalogTags';
 import {
   countVisibleSelectedTags,
-  filterCatalogDesignsByCategory,
-  filterCatalogDesignsBySearch,
   selectedTagsIncludeHalftone,
   setHalftoneInSelectedTags,
   sortCatalogTags,
@@ -108,34 +105,25 @@ export function CatalogPageContent() {
     : null;
 
   const { categories } = useCatalogCategories();
-  const { designs, error, isLoading } = useCatalogDesigns();
-
-  const searchMatchedDesigns = useMemo(
-    () => filterCatalogDesignsBySearch(designs, searchQuery),
-    [designs, searchQuery],
-  );
-
-  const tagBaseDesigns = useMemo(
-    () => filterCatalogDesignsByCategory(searchMatchedDesigns, categoryFilter || undefined),
-    [categoryFilter, searchMatchedDesigns],
-  );
-
-  const filteredDesigns = useFilteredCatalogDesigns({
-    designs,
-    search: searchQuery,
+  const { tags: approvedTags } = useCatalogTags();
+  const {
+    catalogDesigns,
+    designs: displayedDesigns,
+    error,
+    hasMore,
+    isHydrating,
+    isLoading,
+    isLoadingMore,
+    loadMoreDesigns,
+    matchingCount,
+  } = useCatalogDesigns({
     categoryId: categoryFilter || undefined,
+    discoveryMode,
+    searchQuery,
     selectedTags,
   });
 
-  const displayedDesigns = useMemo(() => {
-    if (!discoveryMode) {
-      return filteredDesigns;
-    }
-
-    return rankCatalogDiscoveryDesigns(filteredDesigns, discoveryMode);
-  }, [discoveryMode, filteredDesigns]);
-
-  const categoryOptions = useCatalogCategoryOptions(categories, designs, selectedTags, searchQuery);
+  const categoryOptions = useCatalogCategoryOptions(categories);
   const activeCategoryName =
     categories.find((category) => category.id === categoryFilter)?.name ?? null;
   const curatedLibraryView = Boolean(discoveryMode || categoryFilter);
@@ -144,7 +132,12 @@ export function CatalogPageContent() {
     searchQuery.trim() || categoryFilter || selectedTags.length > 0 || discoveryMode,
   );
 
-  const designCountLabel = `${displayedDesigns.length} design${displayedDesigns.length === 1 ? '' : 's'}`;
+  const designCountLabel =
+    matchingCount === null
+      ? isHydrating
+        ? 'Counting designs…'
+        : '0 designs'
+      : `${matchingCount} design${matchingCount === 1 ? '' : 's'}`;
 
   function syncLibraryUrl(next: {
     discover?: CatalogDiscoveryMode | null;
@@ -213,7 +206,7 @@ export function CatalogPageContent() {
       return;
     }
 
-    const seededDesign = designs.find((design) => design.id === seedDesignId);
+    const seededDesign = catalogDesigns.find((design) => design.id === seedDesignId);
 
     if (!seededDesign) {
       return;
@@ -229,7 +222,7 @@ export function CatalogPageContent() {
     );
   }, [
     addDesignToSelection,
-    designs,
+    catalogDesigns,
     router,
     searchParams,
     seedDesignId,
@@ -238,15 +231,15 @@ export function CatalogPageContent() {
   ]);
 
   useEffect(() => {
-    if (designs.length === 0) {
+    if (displayedDesigns.length === 0) {
       return;
     }
 
     catalogStorageService.prefetchCatalogPaths(
-      designs.map((design) => design.thumbnailPath),
+      displayedDesigns.map((design) => design.thumbnailPath),
       selectionModeActive ? 96 : 64,
     );
-  }, [designs, selectionModeActive]);
+  }, [displayedDesigns, selectionModeActive]);
 
   useEffect(() => {
     if (!selectionModeActive) {
@@ -255,12 +248,12 @@ export function CatalogPageContent() {
 
     catalogStorageService.prefetchCatalogPaths(
       Object.keys(selectionMode.selectedDesigns).map((designId) => {
-        const design = designs.find((entry) => entry.id === designId);
+        const design = catalogDesigns.find((entry) => entry.id === designId);
         return design?.thumbnailPath ?? design?.previewPath;
       }),
       32,
     );
-  }, [designs, selectionMode.selectedDesigns, selectionModeActive]);
+  }, [catalogDesigns, selectionMode.selectedDesigns, selectionModeActive]);
 
   async function handleExitSelectionMode() {
     if (!selectionRequestId) {
@@ -496,6 +489,12 @@ export function CatalogPageContent() {
               ))}
             </div>
           ) : null}
+
+          {isHydrating ? (
+            <p className="portal-muted design-library-search-paging-hint">
+              Loading the full catalog for search and filters…
+            </p>
+          ) : null}
         </div>
 
         <div className="design-library-catalog-scroll">
@@ -507,52 +506,69 @@ export function CatalogPageContent() {
               <h3>{hasActiveFilters ? 'No designs found' : 'No designs yet'}</h3>
               <p>
                 {hasActiveFilters
-                  ? 'Try adjusting your search, category, tag, or discovery filters.'
+                  ? isHydrating
+                    ? 'Still loading the catalog — matches may appear in a moment.'
+                    : 'Try adjusting your search, category, tag, or discovery filters.'
                   : 'Designs you can use for print requests will appear here.'}
               </p>
             </div>
           ) : (
-            <div className="design-grid" role="list">
-              {displayedDesigns.map((design) => {
-                if (selectionModeActive) {
-                  const selection = selectionMode.selectedDesigns[design.id];
+            <>
+              <div className="design-grid" role="list">
+                {displayedDesigns.map((design) => {
+                  if (selectionModeActive) {
+                    const selection = selectionMode.selectedDesigns[design.id];
+                    return (
+                      <div key={design.id} role="listitem">
+                        <CatalogSelectionCard
+                          design={design}
+                          isSelected={Boolean(selection)}
+                          onAdd={selectionMode.addDesign}
+                          onOpenDetails={setSelectedDesign}
+                          onQuantityChange={selectionMode.setQuantity}
+                          onRemove={(designId) => void selectionMode.removeDesign(designId)}
+                          quantity={selection?.quantity ?? 1}
+                        />
+                      </div>
+                    );
+                  }
+
+                  const quantity =
+                    currentRequestAggregates.primaryQuantityByDesignId[design.id] ??
+                    currentRequestAggregates.quantityByDesignId[design.id] ??
+                    0;
+                  const isSelected = (currentRequestAggregates.quantityByDesignId[design.id] ?? 0) > 0;
+
                   return (
                     <div key={design.id} role="listitem">
                       <CatalogSelectionCard
                         design={design}
-                        isSelected={Boolean(selection)}
-                        onAdd={selectionMode.addDesign}
+                        disabled={addDesignFlow.addingDesignId === design.id}
+                        isSelected={isSelected}
+                        onAdd={addDesignFlow.addDesign}
                         onOpenDetails={setSelectedDesign}
-                        onQuantityChange={selectionMode.setQuantity}
-                        onRemove={(designId) => void selectionMode.removeDesign(designId)}
-                        quantity={selection?.quantity ?? 1}
+                        onQuantityChange={addDesignFlow.setQuantity}
+                        onRemove={addDesignFlow.removeDesign}
+                        quantity={quantity > 0 ? quantity : 1}
                       />
                     </div>
                   );
-                }
+                })}
+              </div>
 
-                const quantity =
-                  currentRequestAggregates.primaryQuantityByDesignId[design.id] ??
-                  currentRequestAggregates.quantityByDesignId[design.id] ??
-                  0;
-                const isSelected = (currentRequestAggregates.quantityByDesignId[design.id] ?? 0) > 0;
-
-                return (
-                  <div key={design.id} role="listitem">
-                    <CatalogSelectionCard
-                      design={design}
-                      disabled={addDesignFlow.addingDesignId === design.id}
-                      isSelected={isSelected}
-                      onAdd={addDesignFlow.addDesign}
-                      onOpenDetails={setSelectedDesign}
-                      onQuantityChange={addDesignFlow.setQuantity}
-                      onRemove={addDesignFlow.removeDesign}
-                      quantity={quantity > 0 ? quantity : 1}
-                    />
-                  </div>
-                );
-              })}
-            </div>
+              {hasMore ? (
+                <div className="design-library-load-more-row">
+                  <button
+                    className="portal-button portal-button-secondary"
+                    disabled={isLoadingMore}
+                    onClick={loadMoreDesigns}
+                    type="button"
+                  >
+                    {isLoadingMore ? 'Loading…' : 'Load more'}
+                  </button>
+                </div>
+              ) : null}
+            </>
           )}
         </div>
       </section>
@@ -597,7 +613,7 @@ export function CatalogPageContent() {
       />
 
       <CatalogTagFilterModal
-        baseDesigns={tagBaseDesigns}
+        approvedTags={approvedTags}
         isOpen={isTagFilterModalOpen}
         onApply={(nextTags) => setSelectedTags(sortCatalogTags(nextTags))}
         onClose={() => setIsTagFilterModalOpen(false)}

@@ -2,9 +2,9 @@
 
 import { useEffect, useMemo, useState } from 'react';
 
-import type { CatalogDesign } from '../types/catalog.types';
+import type { CatalogTagOption } from '../types/catalog.types';
 import {
-  buildCatalogTagOptions,
+  buildApprovedCatalogTagOptions,
   countVisibleSelectedTags,
   isCanonicalHalftoneTag,
   sortCatalogTags,
@@ -13,7 +13,7 @@ import {
 import { CheckIcon, XIcon } from '../../shared/components/PortalIcons';
 
 interface CatalogTagFilterModalProps {
-  baseDesigns: CatalogDesign[];
+  approvedTags: CatalogTagOption[];
   isOpen: boolean;
   onApply: (selectedTags: string[]) => void;
   onClose: () => void;
@@ -21,7 +21,7 @@ interface CatalogTagFilterModalProps {
 }
 
 export function CatalogTagFilterModal({
-  baseDesigns,
+  approvedTags,
   isOpen,
   onApply,
   onClose,
@@ -40,8 +40,8 @@ export function CatalogTagFilterModal({
   }, [isOpen, selectedTags]);
 
   const facetedTags = useMemo(
-    () => buildCatalogTagOptions(baseDesigns, draftSelectedTags, searchQuery),
-    [baseDesigns, draftSelectedTags, searchQuery],
+    () => buildApprovedCatalogTagOptions(approvedTags, draftSelectedTags, searchQuery),
+    [approvedTags, draftSelectedTags, searchQuery],
   );
   const visibleDraftTagCount = countVisibleSelectedTags(draftSelectedTags);
 
@@ -110,9 +110,7 @@ export function CatalogTagFilterModal({
                     onChange={() => toggleTag(facetedTag.tag)}
                     type="checkbox"
                   />
-                  <span>
-                    {facetedTag.tag} ({facetedTag.count})
-                  </span>
+                  <span>{facetedTag.tag}</span>
                 </label>
               ))}
             </div>

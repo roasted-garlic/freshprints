@@ -46,6 +46,14 @@ service cloud.firestore {
       return isCustomer() && resource.data.status == "approved";
     }
 
+    function customerOwnsCustomerDoc(customerId) {
+      return isCustomer()
+        && customerId is string
+        && customerId.size() > 0
+        && exists(/databases/$(database)/documents/customers/$(customerId))
+        && get(/databases/$(database)/documents/customers/$(customerId)).data.userId == request.auth.uid;
+    }
+
     function customerOwnsPrintRequestData(data) {
       return isCustomer()
         && data.customerId is string
@@ -824,6 +832,21 @@ service cloud.firestore {
         && (!("createdAt" in resource.data) || request.resource.data.createdAt == resource.data.createdAt);
 
       allow delete: if false;
+
+      match /favorites/{designId} {
+        allow read: if isStaff() || customerOwnsCustomerDoc(customerId);
+
+        allow create: if customerOwnsCustomerDoc(customerId)
+          && request.resource.data.designId == designId
+          && request.resource.data.customerId == customerId
+          && request.resource.data.createdBy == request.auth.uid
+          && request.resource.data.createdAt is timestamp
+          && request.resource.data.keys().hasOnly(["designId", "customerId", "createdAt", "createdBy"]);
+
+        allow update: if false;
+
+        allow delete: if isStaff() || customerOwnsCustomerDoc(customerId);
+      }
     }
 
     match /customerUsernames/{username} {

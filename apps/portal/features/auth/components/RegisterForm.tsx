@@ -7,6 +7,7 @@ import { useEffect, useId, useState, type FormEvent } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { needsPortalCustomerProfileCompletion } from '../types/auth.types';
 import { UserPlusIcon } from '../../shared/components/PortalIcons';
+import { AuthBusyOverlay } from './AuthBusyOverlay';
 import { GoogleAuthButton } from './GoogleAuthButton';
 
 export function RegisterForm() {
@@ -151,6 +152,13 @@ export function RegisterForm() {
       <p className="portal-auth-footer">
         Already have an account? <Link href="/login">Sign in</Link>
       </p>
+
+      {isBusy ? (
+        <AuthBusyOverlay
+          message="This may take a moment."
+          title="Creating your account…"
+        />
+      ) : null}
     </div>
   );
 }

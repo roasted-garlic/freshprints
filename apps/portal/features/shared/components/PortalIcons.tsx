@@ -147,6 +147,36 @@ export function FilterIcon({ size }: PortalIconProps) {
   );
 }
 
+export function HeartIcon({ size, filled = false }: PortalIconProps & { filled?: boolean }) {
+  if (filled) {
+    return (
+      <IconSvg size={size}>
+        <path
+          d="M19.5 12.572 12 20l-7.5-7.428A5 5 0 1 1 12 6.006a5 5 0 1 1 7.5 6.572"
+          fill="currentColor"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2"
+        />
+      </IconSvg>
+    );
+  }
+
+  return (
+    <IconSvg size={size}>
+      <path
+        d="M19.5 12.572 12 20l-7.5-7.428A5 5 0 1 1 12 6.006a5 5 0 1 1 7.5 6.572"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+    </IconSvg>
+  );
+}
+
 export function ImagePlusIcon({ size }: PortalIconProps) {
   return (
     <IconSvg size={size}>
@@ -219,6 +249,46 @@ export function GlobeIcon({ size }: PortalIconProps) {
         stroke="currentColor"
         strokeLinecap="round"
         strokeLinejoin="round"
+        strokeWidth="2"
+      />
+    </IconSvg>
+  );
+}
+
+/** Lucide `book-search` — Discover / search the catalog. */
+export function BookSearchIcon({ size }: PortalIconProps) {
+  return (
+    <IconSvg size={size}>
+      <path
+        d="M12 22H6.5a1 1 0 0 1 0-5h4.501"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+      <path
+        d="m22 22-1.879-1.878"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+      <path
+        d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v8"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+      <circle
+        cx="18"
+        cy="18"
+        fill="none"
+        r="3"
+        stroke="currentColor"
         strokeWidth="2"
       />
     </IconSvg>

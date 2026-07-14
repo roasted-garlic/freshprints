@@ -471,6 +471,17 @@ Firestore rules and `permissionService` should stay aligned:
 * Active staff may read/update the `counters/printRequests` internal request counter
 * Customer role has no Studio access to these collections yet
 
+### Customer favorites (Portal)
+
+Path: `customers/{customerId}/favorites/{designId}`
+
+* Owning customer (`customers/{customerId}.userId == auth.uid`, role `customer`) may **read**, **create**, and **delete** own favorite docs
+* Create validates `designId ==` doc id, `customerId` match, `createdBy == auth.uid`, and allowlisted keys only
+* **Update** denied (unlike = delete; like again = create)
+* Staff may **read** and **delete** for support; staff may not create favorites as the customer
+* Guests / unauthenticated: no access
+* Does **not** write design-level like counters
+
 ### Staff inbox acknowledgments
 
 * Active staff may read, create, and delete their own `staffInboxAcks` documents (`userId == auth.uid`)

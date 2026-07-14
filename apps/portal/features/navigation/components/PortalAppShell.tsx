@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 
 import { CurrentRequestDrawer } from '../../print-requests/components/CurrentRequestDrawer';
 import { PortalPrintRequestProvider } from '../../print-requests/context/PortalPrintRequestContext';
+import { FavoritesProvider } from '../../favorites/context/FavoritesProvider';
 import { PortalToastProvider } from '../../shared/context/PortalToastContext';
 import { PortalDrawerProvider, usePortalDrawer } from '../context/PortalDrawerContext';
 import { PortalAppHeader } from './PortalAppHeader';
@@ -48,7 +49,9 @@ export function PortalAppShell({ children }: PortalAppShellProps) {
     <PortalDrawerProvider>
       <PortalToastProvider>
         <PortalPrintRequestProvider>
-          <PortalAppShellContent>{children}</PortalAppShellContent>
+          <FavoritesProvider>
+            <PortalAppShellContent>{children}</PortalAppShellContent>
+          </FavoritesProvider>
         </PortalPrintRequestProvider>
       </PortalToastProvider>
     </PortalDrawerProvider>

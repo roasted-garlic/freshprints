@@ -5,7 +5,7 @@
 | Date | 2026-07-14 |
 | Goal | `portal-auth-logo-studio-login-overlap` |
 | Plan | `docs/workflow/plans/2026-07-14-portal-auth-logo-studio-login-overlap-plan.md` |
-| Status | **pending_manual** |
+| Status | **passed** |
 
 ## Automated
 
@@ -17,4 +17,4 @@
 
 | Checkpoint | Result |
 |------------|--------|
-| Studio clearance + Portal logos | pending |
+| Studio clearance + Portal logos + condensed auth | **PASS** (2026-07-14) |

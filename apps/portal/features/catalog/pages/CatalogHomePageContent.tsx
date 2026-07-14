@@ -13,7 +13,8 @@ import {
 } from '@fresh-prints/shared/utils/catalogDiscoveryRanking';
 
 import { useCatalogCategories } from '../hooks/useCatalogCategories';
-import { useCatalogDesigns } from '../hooks/useCatalogDesigns';
+import { useCatalogHomeDesigns } from '../hooks/useCatalogDesigns';
+import { catalogService } from '../services/catalogService';
 import { catalogStorageService } from '../services/catalogStorageService';
 import type { CatalogDesign } from '../types/catalog.types';
 import { usePortalPrintRequests } from '../../print-requests/context/PortalPrintRequestContext';
@@ -24,7 +25,7 @@ import {
 } from '../../print-requests/utils/catalogSelectionNavigation';
 import { PortalConfirmModal } from '../../shared/components/PortalConfirmModal';
 import { PortalPickContinuableRequestModal } from '../../shared/components/PortalPickContinuableRequestModal';
-import { GlobeIcon, SearchIcon } from '../../shared/components/PortalIcons';
+import { BookSearchIcon, GlobeIcon, SearchIcon } from '../../shared/components/PortalIcons';
 import { CatalogDesignDetailsModal } from '../components/CatalogDesignDetailsModal';
 import { CatalogDiscoveryCarousel } from '../components/CatalogDiscoveryCarousel';
 import { CatalogSelectionCard } from '../components/CatalogSelectionCard';
@@ -33,6 +34,7 @@ export function CatalogHomePageContent() {
   const router = useRouter();
   const [landingSearch, setLandingSearch] = useState('');
   const [selectedDesign, setSelectedDesign] = useState<CatalogDesign | null>(null);
+  const [readyDesignCount, setReadyDesignCount] = useState<number | null>(null);
 
   const {
     actionError: creationActionError,
@@ -57,7 +59,31 @@ export function CatalogHomePageContent() {
   });
 
   const { categories } = useCatalogCategories();
-  const { designs, error, isLoading } = useCatalogDesigns();
+  const { designs, error, isLoading } = useCatalogHomeDesigns();
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    async function loadReadyDesignCount() {
+      try {
+        const count = await catalogService.countReadyDesigns();
+
+        if (!isCancelled) {
+          setReadyDesignCount(count);
+        }
+      } catch {
+        if (!isCancelled) {
+          setReadyDesignCount(null);
+        }
+      }
+    }
+
+    void loadReadyDesignCount();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
 
   const discoveryRails = useMemo(
     () =>
@@ -128,6 +154,13 @@ export function CatalogHomePageContent() {
     openLibrary({ search: query || undefined });
   }
 
+  const searchPlaceholder =
+    readyDesignCount === null
+      ? 'title, tag or description'
+      : readyDesignCount === 1
+        ? 'Search 1 design, by title, tag or description'
+        : `Search ${readyDesignCount.toLocaleString()} designs, by title, tag or description`;
+
   const displayedActionError = creationActionError ?? addDesignFlow.actionError;
 
   return (
@@ -137,7 +170,7 @@ export function CatalogHomePageContent() {
       <header className="catalog-home-toolbar">
         <div className="catalog-home-toolbar-brand">
           <span aria-hidden className="catalog-home-toolbar-mark">
-            <SearchIcon size={18} />
+            <BookSearchIcon size={18} />
           </span>
           <div className="catalog-home-toolbar-copy">
             <h1>Discover</h1>
@@ -154,7 +187,7 @@ export function CatalogHomePageContent() {
             <input
               className="catalog-home-search-input"
               onChange={(event) => setLandingSearch(event.target.value)}
-              placeholder="title, tag or description"
+              placeholder={searchPlaceholder}
               type="search"
               value={landingSearch}
             />

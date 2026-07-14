@@ -1008,7 +1008,15 @@ Production App Hosting deploy to a live customer URL is a **separate** human che
 
 **Portal Google auth (customers only)** — **complete** (2026-07-14 signoff, PASS). Email/password or Google on Portal; first Google login → `/complete-profile` username; Studio email-only; ADR-FP-081. Signoff: `docs/workflow/reviews/2026-07-14-portal-google-auth-customer-login-register-signoff.md`.
 
-**Next fast-follow:** Image load caching, Firebase account linking (password + Google same email), Phase 9 planning, production Portal deploy / production Google enablement, or monorepo normalization — pick explicitly; do not auto-start.
+**Portal auth logos + condensed login/register** — **complete** (2026-07-14 signoff, PASS). Studio login toggle clearance; Portal logos; Google-first + email expand. Signoff: `docs/workflow/reviews/2026-07-14-portal-auth-logo-studio-login-overlap-signoff.md`.
+
+**Portal auth busy overlay (login/register)** — **complete** (2026-07-14 signoff, PASS). Full-viewport signing-in / creating-account overlay while Google or email auth is busy. Signoff: `docs/workflow/reviews/2026-07-14-portal-auth-busy-overlay-signoff.md`.
+
+**Portal catalog pagination** — **complete** (2026-07-14 signoff, PASS). Fast first page (40) + background hydrate for full search/filter; exact counts; Load more; bounded Discover home; index-build fallback. Signoff: `docs/workflow/reviews/2026-07-14-portal-catalog-pagination-signoff.md`.
+
+**Portal design favorites** — **complete** (2026-07-14 signoff, PASS). Customer `favorites` subcollection; heart on cards/details; **My Favorites** nav + `/favorites`; no design `favoriteCount` (ADR-FP-082). Signoff: `docs/workflow/reviews/2026-07-14-portal-design-likes-favorites-signoff.md`.
+
+**Next fast-follow:** Image load caching, Firebase account linking, Phase 9 planning, production Portal deploy / production Google enablement, or monorepo normalization — pick explicitly; do not auto-start.
 
 Goal:
 

@@ -13,11 +13,12 @@ import {
 } from '../constants/portalNavItems';
 import { PortalNavIcon } from './PortalNavIcon';
 
-const BOTTOM_NAV_ITEM_IDS: PortalNavItemId[] = ['library', 'upload'];
+const BOTTOM_NAV_ITEM_IDS: PortalNavItemId[] = ['library', 'upload', 'favorites'];
 
 const BOTTOM_NAV_LABELS: Record<(typeof BOTTOM_NAV_ITEM_IDS)[number], string> = {
   library: 'Library',
   upload: 'Upload',
+  favorites: 'Favorites',
 };
 
 export function PortalBottomNav() {

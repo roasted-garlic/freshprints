@@ -749,6 +749,36 @@ start and end with a letter or number. Reserved operational usernames are blocke
 
 ---
 
+## Customer Favorites (Portal liked designs)
+
+Subcollection:
+
+```txt
+customers/{customerId}/favorites/{designId}
+```
+
+Document id **must equal** `designId` (idempotent add/remove). UI label is **Favorites**.
+
+```ts
+export interface CustomerFavorite {
+  designId: string;
+  customerId: string;
+  createdAt: Timestamp;
+  createdBy: string; // auth uid
+}
+```
+
+| Concern | Rule |
+|---------|------|
+| Who writes | Owning Portal customer only (create/delete); no client updates |
+| Who reads | Owning customer; staff may read for support |
+| Design popularity | **No** `favoriteCount` on designs (ADR-FP-070 / ADR-FP-082) |
+| Archived designs | Favorite doc may remain; Portal Liked page shows “No longer available” |
+
+No migration — additive empty subcollection.
+
+---
+
 # Print Requests Collection (Phase 6 — in progress)
 
 Collection:
@@ -1707,14 +1737,15 @@ whenever practical.
 Potential future models:
 
 ```txt id="bvdt86"
-favorites
 notifications
 savedSearches
 customerCollections
 designVersions
 ```
 
-Do not create these collections until approved.
+Customer favorites (`customers/{customerId}/favorites`) shipped 2026-07-14 — see Customer Favorites above.
+
+Do not create remaining collections until approved.
 
 ---
 

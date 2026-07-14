@@ -31,6 +31,31 @@ export function setHalftoneInSelectedTags(
   return sortCatalogTags([...withoutHalftone, CANONICAL_HALFTONE_TAG]);
 }
 
+export function getPrimaryCatalogQueryTag(selectedTags: readonly string[]): string | undefined {
+  if (selectedTagsIncludeHalftone(selectedTags)) {
+    return CANONICAL_HALFTONE_TAG;
+  }
+
+  const visible = visibleSelectedTags(selectedTags);
+  return visible[0];
+}
+
+export function buildApprovedCatalogTagOptions(
+  approvedTags: readonly { name: string }[],
+  selectedTags: string[],
+  tagSearchQuery: string,
+): Array<{ tag: string; isSelected: boolean }> {
+  const normalizedSearch = tagSearchQuery.trim().toLowerCase();
+
+  return sortCatalogTags(approvedTags.map((tag) => tag.name))
+    .filter((tag) => !isCanonicalHalftoneTag(tag))
+    .filter((tag) => !normalizedSearch || tag.toLowerCase().includes(normalizedSearch))
+    .map((tag) => ({
+      tag,
+      isSelected: selectedTags.includes(tag),
+    }));
+}
+
 export function filterCatalogDesignsBySearch(
   designs: CatalogDesign[],
   searchQuery: string,

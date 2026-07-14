@@ -3,6 +3,7 @@
 import { useRef, useState, type FocusEvent, type KeyboardEvent } from 'react';
 
 import type { CatalogDesign } from '../types/catalog.types';
+import { CatalogFavoriteButton } from '../../favorites/components/CatalogFavoriteButton';
 import { MinusIcon, PlusIcon, TrashIcon } from '../../shared/components/PortalIcons';
 import { CatalogThumbnailPanel } from './CatalogThumbnailPanel';
 
@@ -82,6 +83,12 @@ export function CatalogSelectionCard({
           loadingLabel="Loading thumbnail"
           onImageClick={() => onOpenDetails(design)}
           prioritizeLoading
+        />
+
+        <CatalogFavoriteButton
+          className="design-selection-card-favorite-btn"
+          designId={design.id}
+          designTitle={design.title}
         />
 
         {isSelected ? (

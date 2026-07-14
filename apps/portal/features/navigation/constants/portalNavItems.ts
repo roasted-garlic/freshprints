@@ -1,6 +1,6 @@
 import { REQUEST_ARTWORK_PATH, buildRequestArtworkHref, CATALOG_HOME_PATH } from '../../print-requests/utils/catalogSelectionNavigation';
 
-export type PortalNavItemId = 'library' | 'upload';
+export type PortalNavItemId = 'library' | 'favorites' | 'upload';
 
 export interface PortalNavItem {
   id: PortalNavItemId;
@@ -9,10 +9,12 @@ export interface PortalNavItem {
 }
 
 export const PORTAL_ACCOUNT_HREF = '/dashboard';
+export const PORTAL_FAVORITES_HREF = '/favorites';
 
 export const portalNavItems: PortalNavItem[] = [
   { id: 'library', href: '/catalog', label: 'Design Library' },
   { id: 'upload', href: REQUEST_ARTWORK_PATH, label: 'Upload Designs' },
+  { id: 'favorites', href: PORTAL_FAVORITES_HREF, label: 'My Favorites' },
 ];
 
 export function isPortalAccountRoute(pathname: string): boolean {
@@ -22,6 +24,10 @@ export function isPortalAccountRoute(pathname: string): boolean {
 export function resolveActivePortalNavItem(pathname: string): PortalNavItemId | null {
   if (pathname === '/' || pathname.startsWith('/?')) {
     return null;
+  }
+
+  if (pathname === PORTAL_FAVORITES_HREF || pathname.startsWith(`${PORTAL_FAVORITES_HREF}/`)) {
+    return 'favorites';
   }
 
   if (pathname.startsWith('/catalog')) {

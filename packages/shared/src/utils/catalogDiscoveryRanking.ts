@@ -3,7 +3,7 @@ export type CatalogDiscoveryMode = "new" | "popular" | "recent";
 
 export const CATALOG_DISCOVERY_MODES: readonly CatalogDiscoveryMode[] = ["new", "popular", "recent"];
 
-export const CATALOG_DISCOVERY_RAIL_LIMIT = 12;
+export const CATALOG_DISCOVERY_RAIL_LIMIT = 25;
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 export const CATALOG_NEW_THIS_WEEK_DAYS = 7;

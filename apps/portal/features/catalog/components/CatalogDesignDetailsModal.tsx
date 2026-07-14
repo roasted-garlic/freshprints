@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 
 import type { CatalogDesign } from '../types/catalog.types';
+import { CatalogFavoriteButton } from '../../favorites/components/CatalogFavoriteButton';
 import { useCatalogDerivativeUrl } from '../hooks/useCatalogDerivativeUrl';
 import { PlusIcon } from '../../shared/components/PortalIcons';
 import { CatalogPreviewLightbox } from './CatalogPreviewLightbox';
@@ -98,8 +99,12 @@ export function CatalogDesignDetailsModal({
           </div>
 
           <div className="modal-body design-details-body">
-            <div className="design-details-eyebrow-row">
-              <p className="portal-eyebrow design-details-eyebrow">Design details</p>
+            <div className="design-details-toolbar">
+              <CatalogFavoriteButton
+                className="design-details-favorite-btn"
+                designId={design.id}
+                designTitle={design.title}
+              />
               {onAddToRequest ? (
                 <button
                   className="portal-button portal-button-primary portal-button-sm portal-button-leading-icon design-details-add-btn"

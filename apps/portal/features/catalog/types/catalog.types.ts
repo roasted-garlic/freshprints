@@ -29,19 +29,29 @@ export interface CatalogDesign {
   requestCount: number;
   /** Milliseconds since epoch; omitted when never requested. */
   lastRequestedAtMs?: number;
+  /** Milliseconds since epoch; used for default library sort / cursors. */
+  updatedAtMs?: number;
 }
+
+/** Firestore orderBy field for ready-catalog paging. */
+export type CatalogDesignSortField = 'updatedAt' | 'createdAt' | 'requestCount' | 'lastRequestedAt';
 
 export interface CatalogDesignListCursor {
   designId: string;
-  sortMillis: number;
+  /** Sort key for the active `sortField` (timestamp millis or requestCount). */
+  sortValue: number;
 }
 
 export interface CatalogDesignListQuery {
   categoryId?: string;
   tag?: string;
+  /** Client-side only in listReadyDesignsPage today; prefer filtering after fetch. */
   search?: string;
   limitCount?: number;
   cursor?: CatalogDesignListCursor;
+  sortField?: CatalogDesignSortField;
+  /** Inclusive lower bound for `createdAt` when `sortField` is `createdAt` (e.g. New This Week). */
+  createdAfterMs?: number;
 }
 
 export interface CatalogDesignListPage {

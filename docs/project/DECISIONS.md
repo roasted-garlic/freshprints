@@ -4,6 +4,34 @@
 
 ---
 
+### ADR-FP-082: Portal design likes as customer favorites subcollection
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-14 |
+| Status | accepted |
+
+**Context**
+
+Portal customers need personal likes for catalog designs. Discovery previously deferred design-level `favoriteCount` (ADR-FP-070). Favorites were listed as Portal backlog.
+
+**Decision**
+
+1. Persist likes at `customers/{customerId}/favorites/{designId}` with fields `designId`, `customerId`, `createdAt`, `createdBy`.
+2. Doc id equals `designId` for idempotent like/unlike (create/delete only; no updates).
+3. UI label **Favorites** (nav + `/favorites` page); Firestore path remains `customers/{customerId}/favorites`.
+4. Do **not** add `favoriteCount` (or similar) on design documents.
+5. Portal-only; Studio has no favorites UI in this phase.
+6. Unavailable/archived designs: keep favorite docs; Favorites page shows remove-only unavailable state.
+
+**Consequences**
+
+- Rules use existing `customerOwnsCustomerDoc`; staff can read/delete for support.
+- Client writes under rules — no Cloud Function required for v1.
+- Discover Favorites rail remains optional follow-up.
+
+---
+
 ### ADR-FP-081: Portal customer Google auth (Studio email-only)
 
 | Field | Value |

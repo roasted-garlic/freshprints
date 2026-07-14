@@ -2,11 +2,13 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import {
+  buildApprovedCatalogTagOptions,
   buildCatalogTagOptions,
   countVisibleSelectedTags,
   filterCatalogDesignsByCategory,
   filterCatalogDesignsBySearch,
   filterCatalogDesignsByTags,
+  getPrimaryCatalogQueryTag,
   selectedTagsIncludeHalftone,
   setHalftoneInSelectedTags,
   visibleSelectedTags,
@@ -113,6 +115,23 @@ describe('halftone filter helpers', () => {
     assert.deepEqual(
       options.map((option) => option.tag),
       ['ocean', 'sunset'],
+    );
+  });
+
+  it('picks primary server query tag preferring halftone', () => {
+    assert.equal(getPrimaryCatalogQueryTag(['ocean', 'halftone']), 'halftone');
+    assert.equal(getPrimaryCatalogQueryTag(['ocean', 'zebra']), 'ocean');
+    assert.equal(getPrimaryCatalogQueryTag([]), undefined);
+  });
+
+  it('lists approved tags without design counts', () => {
+    assert.deepEqual(
+      buildApprovedCatalogTagOptions(
+        [{ name: 'sunset' }, { name: 'ocean' }, { name: 'halftone' }],
+        ['ocean'],
+        'o',
+      ),
+      [{ tag: 'ocean', isSelected: true }],
     );
   });
 });

@@ -146,7 +146,9 @@ Responsible for:
 * Create and track Print Requests
 * Submit Custom Requests (Phase 9)
 * Manage customer account
-* Favorites (backlog)
+* Favorites (`customers/{customerId}/favorites` — Portal only; no design `favoriteCount`)
+
+**Catalog loading (2026-07-14):** Library shows a fast first page (**40** designs) then **hydrates the full matching catalog** in the background so search and multi-tag filters cover every ready design. The header count is the real matching total (Firestore aggregate while browsing; exact filtered length after hydrate). Load more only windows the already-matched results. Discover home still uses a **bounded** pool, not a full-catalog download.
 
 Must work excellently on phones, tablets, and desktop browsers.
 
