@@ -21,16 +21,20 @@ import { AiReviewWorkspace } from "../components/AiReviewWorkspace";
 import { useAiReviewInbox } from "../hooks/useAiReviewInbox";
 import { useAiReviewKeyboardShortcuts } from "../hooks/useAiReviewKeyboardShortcuts";
 import { useAiReviewTabCounts } from "../hooks/useAiReviewTabCounts";
+import { useAuth } from "../../auth/hooks/useAuth";
+import { permissionService } from "../../permissions/services/permissionService";
 import { useAiEnrichmentSettings } from "../../settings/hooks/useAiEnrichmentSettings";
 import { useAiReviewMainPanelHeight } from "../hooks/useAiReviewMainPanelHeight";
 import type { AiReviewInboxTab } from "../types/aiReviewInbox.types";
 
 function AiReviewPageContent() {
+  const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [isInputFocused, setIsInputFocused] = useState(false);
   const [statsRefreshKey, setStatsRefreshKey] = useState(0);
   const filters = useMemo(() => parseAiReviewInboxFilters(searchParams), [searchParams]);
   const wasInboxLoadingRef = useRef(true);
+  const canManageProcessingSettings = permissionService.canManageSettings(user);
 
   const { categories } = useCategories();
 
@@ -160,6 +164,7 @@ function AiReviewPageContent() {
             canApprove={inbox.canApprove}
             canApproveSuggestedTags={inbox.canApproveSuggestedTags}
             canEdit={inbox.canEdit}
+            canManageProcessingSettings={canManageProcessingSettings}
             canStopAutoQueue={inbox.processingQueue.canStopAutoQueue}
             canProcessSelected={inbox.processingQueue.canProcessSelected}
             canArchive={inbox.canArchive}

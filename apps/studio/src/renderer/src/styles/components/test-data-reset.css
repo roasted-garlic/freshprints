@@ -123,6 +123,12 @@
   margin-top: var(--space-3);
 }
 
+.test-data-reset-confirm-phrase-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
 @media (max-width: 64rem) {
   .test-data-reset-targets {
     grid-template-columns: 1fr;

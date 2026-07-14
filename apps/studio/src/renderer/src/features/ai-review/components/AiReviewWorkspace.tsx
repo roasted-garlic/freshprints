@@ -29,6 +29,7 @@ interface AiReviewWorkspaceProps {
   canApprove: boolean;
   canApproveSuggestedTags: boolean;
   canEdit: boolean;
+  canManageProcessingSettings: boolean;
   canStopAutoQueue: boolean;
   canProcessSelected: boolean;
   canArchive: boolean;
@@ -86,6 +87,7 @@ export function AiReviewWorkspace({
   canApprove,
   canApproveSuggestedTags,
   canEdit,
+  canManageProcessingSettings,
   canStopAutoQueue,
   canProcessSelected,
   canArchive,
@@ -380,20 +382,24 @@ export function AiReviewWorkspace({
                         onChange={onAutoAdvanceChange}
                       />
                     </div>
-                    <button
-                      aria-label="AI processing settings"
-                      className={[
-                        "icon-button icon-button-md icon-button-ghost ai-processing-settings-button",
-                        hasProcessingSettingsOverride ? "ai-processing-settings-button--active" : "",
-                      ]
-                        .filter(Boolean)
-                        .join(" ")}
-                      disabled={isAutoQueueRunning || isQueueBusy}
-                      onClick={() => setIsProcessingSettingsOpen(true)}
-                      type="button"
-                    >
-                      <Settings aria-hidden="true" size={18} strokeWidth={2.2} />
-                    </button>
+                    {canManageProcessingSettings ? (
+                      <button
+                        aria-label="AI processing settings"
+                        className={[
+                          "icon-button icon-button-md icon-button-ghost ai-processing-settings-button",
+                          hasProcessingSettingsOverride
+                            ? "ai-processing-settings-button--active"
+                            : "",
+                        ]
+                          .filter(Boolean)
+                          .join(" ")}
+                        disabled={isAutoQueueRunning || isQueueBusy}
+                        onClick={() => setIsProcessingSettingsOpen(true)}
+                        type="button"
+                      >
+                        <Settings aria-hidden="true" size={18} strokeWidth={2.2} />
+                      </button>
+                    ) : null}
                     <p className="ai-review-shortcuts-hint ai-review-shortcuts-hint--end">
                       Shortcuts: J previous, K next
                     </p>
@@ -428,17 +434,19 @@ export function AiReviewWorkspace({
         previewUrl={previewUrl}
       />
 
-      <AiProcessingSettingsModal
-        defaultVisionModelId={currentVisionModelId}
-        isOpen={isProcessingSettingsOpen}
-        onApply={(visionModelId) => {
-          onApplyProcessingSettings(visionModelId);
-          setIsProcessingSettingsOpen(false);
-        }}
-        onCancel={() => setIsProcessingSettingsOpen(false)}
-        onUseDefaults={onClearProcessingSettings}
-        visionModelId={processingVisionModelId}
-      />
+      {canManageProcessingSettings ? (
+        <AiProcessingSettingsModal
+          defaultVisionModelId={currentVisionModelId}
+          isOpen={isProcessingSettingsOpen}
+          onApply={(visionModelId) => {
+            onApplyProcessingSettings(visionModelId);
+            setIsProcessingSettingsOpen(false);
+          }}
+          onCancel={() => setIsProcessingSettingsOpen(false)}
+          onUseDefaults={onClearProcessingSettings}
+          visionModelId={processingVisionModelId}
+        />
+      ) : null}
     </div>
   );
 }

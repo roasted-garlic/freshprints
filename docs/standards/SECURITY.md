@@ -234,6 +234,10 @@ Helpers can:
 
 Helpers should not have unrestricted administrative access.
 
+Helpers cannot open Studio **Settings** (`manageSettings` is owner/admin only) or the AI Processing
+session vision-model settings control on AI Review (same gate). They may still run AI Processing
+with the team default model.
+
 ---
 
 # Customer Permissions

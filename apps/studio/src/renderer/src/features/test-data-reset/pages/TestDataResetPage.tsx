@@ -1,3 +1,4 @@
+import { Check, Copy } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 
 import {
@@ -46,6 +47,17 @@ function TestDataResetPageContent() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastResult, setLastResult] = useState<WipeOperationalTestDataResponse | null>(null);
+  const [phraseCopied, setPhraseCopied] = useState(false);
+
+  const copyConfirmationPhrase = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(OPERATIONAL_WIPE_CONFIRMATION_PHRASE);
+      setPhraseCopied(true);
+      window.setTimeout(() => setPhraseCopied(false), 1500);
+    } catch {
+      setPhraseCopied(false);
+    }
+  }, []);
 
   const shellHeaderConfig = useMemo(
     () => ({
@@ -88,6 +100,7 @@ function TestDataResetPageContent() {
     setConfirmStep("closed");
     setConfirmationPhrase("");
     setAcknowledgeDesignCatalogWipe(false);
+    setPhraseCopied(false);
   }, [isSubmitting]);
 
   const continueFromDesignsWarning = useCallback(() => {
@@ -139,6 +152,7 @@ function TestDataResetPageContent() {
       setConfirmStep("closed");
       setConfirmationPhrase("");
       setAcknowledgeDesignCatalogWipe(false);
+      setPhraseCopied(false);
     } catch (wipeError) {
       setError(wipeError instanceof Error ? wipeError.message : "Unable to wipe test data.");
     } finally {
@@ -402,8 +416,26 @@ function TestDataResetPageContent() {
                 </p>
               ) : null}
               <label className="form-field" htmlFor="test-data-reset-confirm-input">
-                <span className="form-label">
-                  Type <code>{OPERATIONAL_WIPE_CONFIRMATION_PHRASE}</code> to confirm
+                <span className="form-label test-data-reset-confirm-phrase-label">
+                  <span>
+                    Type <code>{OPERATIONAL_WIPE_CONFIRMATION_PHRASE}</code> to confirm
+                  </span>
+                  <button
+                    aria-label="Copy confirmation phrase"
+                    className="icon-button icon-button-sm icon-button-ghost"
+                    disabled={isSubmitting}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      void copyConfirmationPhrase();
+                    }}
+                    type="button"
+                  >
+                    {phraseCopied ? (
+                      <Check aria-hidden="true" size={15} strokeWidth={2.2} />
+                    ) : (
+                      <Copy aria-hidden="true" size={15} strokeWidth={2.2} />
+                    )}
+                  </button>
                 </span>
                 <input
                   autoComplete="off"

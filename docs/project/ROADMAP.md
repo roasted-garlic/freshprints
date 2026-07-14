@@ -1038,7 +1038,9 @@ Production App Hosting deploy to a live customer URL is a **separate** human che
 
 **Suggested new tags policy settings** — **complete** (2026-07-14 signoff, PASS). Settings control `suggestedNewTagsPolicy` (Balanced default); Suggested-tag writing rename. Signoff: `docs/workflow/reviews/2026-07-14-suggested-new-tags-policy-settings-signoff.md`.
 
-**Next fast-follow:** Finish Suggested-tag writing quality (in test), Firebase account linking, Phase 9 planning, or production Portal deploy — pick explicitly. **Queued (ADR-FP-086):** optional Cloud Scheduler for retention callables.
+**Suggested-tag writing quality** — **complete** (2026-07-14 signoff, PASS). Author prompt v2 (richer aliases/preferredWhen); strip colliding catalog terms; AI Processing settings gear owner/admin only. Signoff: `docs/workflow/reviews/2026-07-14-suggested-tag-author-quality-signoff.md`.
+
+**Next fast-follow:** Firebase account linking, Phase 9 planning, or production Portal deploy — pick explicitly. **Queued (ADR-FP-086):** optional Cloud Scheduler for retention callables.
 
 Goal:
 
