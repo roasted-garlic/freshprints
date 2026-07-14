@@ -118,7 +118,7 @@ export function AppRoutes() {
           <Route
             path="/test-data-reset"
             element={
-              <ProtectedRoute permission="manageSettings">
+              <ProtectedRoute permission="wipeOperationalTestData">
                 <TestDataResetPage />
               </ProtectedRoute>
             }

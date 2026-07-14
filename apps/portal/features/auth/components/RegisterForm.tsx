@@ -14,7 +14,7 @@ export function RegisterForm() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      router.replace('/catalog');
+      router.replace('/');
     }
   }, [isAuthenticated, router]);
 

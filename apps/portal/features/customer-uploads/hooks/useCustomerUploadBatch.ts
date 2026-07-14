@@ -35,6 +35,10 @@ export interface UploadRowState {
   errorMessage?: string;
   technicalFailureMessage?: string | null;
   previewStoragePath?: string | null;
+  /** Selected customer response (yes = marked as halftone). Default unanswered/off. */
+  halftoneResponseDraft?: 'yes' | 'no' | null;
+  halftoneResponseSaving?: boolean;
+  halftoneResponseError?: string | null;
 }
 
 function makeLocalId(): string {
@@ -422,6 +426,7 @@ export function useCustomerUploadBatch(options?: { purpose?: CustomerUploadPurpo
                     progressLabel: 'Ready',
                     previewStoragePath: result.previewStoragePath,
                     technicalFailureMessage: null,
+                    halftoneResponseDraft: null,
                   });
                 } else {
                   updateRow(row.localId, {
@@ -617,6 +622,39 @@ export function useCustomerUploadBatch(options?: { purpose?: CustomerUploadPurpo
     }
   }, [batchId, canAttach, firebaseUser, isDonation, readyRows]);
 
+  const respondToHalftone = useCallback(
+    async (localId: string, value: 'yes' | 'no') => {
+      const row = rowsRef.current.find((item) => item.localId === localId);
+      if (!row?.uploadId || row.phase !== 'ready' || row.halftoneResponseSaving) {
+        return;
+      }
+      if (row.halftoneResponseDraft === value) {
+        return;
+      }
+      updateRow(localId, {
+        halftoneResponseDraft: value,
+        halftoneResponseSaving: true,
+        halftoneResponseError: null,
+      });
+      try {
+        await customerUploadService.recordHalftoneResponse(row.uploadId, value);
+        updateRow(localId, {
+          halftoneResponseSaving: false,
+          halftoneResponseDraft: value,
+          halftoneResponseError: null,
+        });
+      } catch (error) {
+        updateRow(localId, {
+          halftoneResponseDraft: value,
+          halftoneResponseSaving: false,
+          halftoneResponseError:
+            error instanceof Error ? error.message : 'Unable to save halftone selection.',
+        });
+      }
+    },
+    [updateRow],
+  );
+
   const reset = useCallback(() => {
     abortRef.current = true;
     setRows([]);
@@ -652,6 +690,7 @@ export function useCustomerUploadBatch(options?: { purpose?: CustomerUploadPurpo
     retryFailed,
     attachToRequest,
     submitDonation,
+    respondToHalftone,
     reset,
   };
 }

@@ -26,12 +26,14 @@ function toItemLike(
     ? uploadSummaries.get(item.customerUploadId)
     : null;
 
-  const pixelWidth =
+  const rawPixelWidth =
     pixels?.width ??
     (typeof upload?.widthPx === 'number' && upload.widthPx > 0 ? upload.widthPx : undefined);
-  const pixelHeight =
+  const rawPixelHeight =
     pixels?.height ??
     (typeof upload?.heightPx === 'number' && upload.heightPx > 0 ? upload.heightPx : undefined);
+  // Ignore legacy 1×1 seed placeholders so Stash does not false-flag attention.
+  const isPlaceholderPixels = rawPixelWidth === 1 && rawPixelHeight === 1;
 
   return {
     id: item.id,
@@ -45,8 +47,8 @@ function toItemLike(
       item.createdAt && typeof item.createdAt.toMillis === 'function'
         ? item.createdAt.toMillis()
         : 0,
-    pixelWidth,
-    pixelHeight,
+    pixelWidth: isPlaceholderPixels ? undefined : rawPixelWidth,
+    pixelHeight: isPlaceholderPixels ? undefined : rawPixelHeight,
     uploadTechnicalStatus: upload?.technicalStatus ?? null,
   };
 }
@@ -71,15 +73,18 @@ export function useWorkingCurrentRequestItems(workingRequest: PrintRequest | nul
   const [itemsError, setItemsError] = useState<string | null>(null);
 
   const reloadWorkingItems = useCallback(
-    async (options?: { silent?: boolean }) => {
-      if (!workingRequest) {
-        setItems([]);
-        setDesignSummaries(new Map());
-        setUploadSummaries(new Map());
-        setIsLoadingItems(false);
+    async (options?: { silent?: boolean; printRequestId?: string }) => {
+      if (!workingRequest && !options?.printRequestId) {
+        // Keep first-add optimistic (or just-reconciled) items until a working request is linked.
+        setItems((current) => (current.length > 0 ? current : []));
+        if (!options?.silent) {
+          setIsLoadingItems(false);
+        }
         setItemsError(null);
         return;
       }
+
+      const requestId = options?.printRequestId ?? workingRequest!.id;
 
       if (!options?.silent) {
         setIsLoadingItems(true);
@@ -87,7 +92,7 @@ export function useWorkingCurrentRequestItems(workingRequest: PrintRequest | nul
       setItemsError(null);
 
       try {
-        const nextItems = await portalPrintRequestService.listPrintRequestItems(workingRequest.id);
+        const nextItems = await portalPrintRequestService.listPrintRequestItems(requestId);
         // Update quantities immediately so qty controls feel live; keep existing
         // design thumbs until any newly needed summaries resolve.
         setItems(nextItems);
@@ -168,6 +173,15 @@ export function useWorkingCurrentRequestItems(workingRequest: PrintRequest | nul
   const seedDesignSummary = useCallback((designId: string, summary: DesignSummary) => {
     const trimmed = designId.trim();
     if (!trimmed) {
+      return;
+    }
+    // Never seed placeholder 1×1 pixels — that falsely flags Stash "needs attention".
+    if (
+      !Number.isFinite(summary.width) ||
+      summary.width <= 1 ||
+      !Number.isFinite(summary.height) ||
+      summary.height <= 1
+    ) {
       return;
     }
     setDesignSummaries((previous) => {

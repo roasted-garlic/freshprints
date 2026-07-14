@@ -98,11 +98,10 @@ const sidebarItems: SidebarRouteItem[] = [
   },
   {
     kind: "route",
-    icon: Upload,
-    label: "Customer Uploads",
-    to: "/customer-uploads",
-    permission: "importDesigns",
-    showCustomerUploadBadge: true,
+    icon: Sparkles,
+    label: "AI Processing",
+    to: "/ai-review",
+    permission: "viewAiReview",
   },
   {
     kind: "route",
@@ -114,10 +113,11 @@ const sidebarItems: SidebarRouteItem[] = [
   },
   {
     kind: "route",
-    icon: Sparkles,
-    label: "AI Processing",
-    to: "/ai-review",
-    permission: "viewAiReview",
+    icon: Upload,
+    label: "Customer Uploads",
+    to: "/customer-uploads",
+    permission: "importDesigns",
+    showCustomerUploadBadge: true,
   },
   {
     kind: "route",
@@ -141,7 +141,7 @@ const sidebarItems: SidebarRouteItem[] = [
     icon: DatabaseZap,
     label: "Test Data",
     to: "/test-data-reset",
-    permission: "manageSettings",
+    permission: "wipeOperationalTestData",
     isVisible: isOperationalWipeUiEnabled,
   },
 ];

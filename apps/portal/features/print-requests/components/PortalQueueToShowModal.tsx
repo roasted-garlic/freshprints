@@ -186,12 +186,13 @@ export function PortalQueueToShowModal({
         printRequestId: printRequest.id,
         upcomingShowId: effectiveSelectedId,
       });
+      // Keep the same ShowPicker mounted; animate capacity in place, then close before parent refresh.
       setIsCelebratingSave(true);
       setPendingAllocatedByShowId(new Map([[effectiveSelectedId, totalQuantity]]));
       await waitForNextPaint();
       await waitForCapacityBarAnimation();
-      await onQueued();
       onClose();
+      await onQueued();
     } catch (queueError) {
       setPendingAllocatedByShowId(undefined);
       setIsCelebratingSave(false);
@@ -253,12 +254,19 @@ export function PortalQueueToShowModal({
           ) : showPickerOptions.length === 0 ? (
             <p className="portal-muted">No upcoming shows are available right now. Try again later.</p>
           ) : (
-            <ShowPicker
-              className="portal-show-picker"
-              onSelect={setSelectedShowId}
-              options={showPickerOptions}
-              selectedId={effectiveSelectedId}
-            />
+            <>
+              {isCelebratingSave ? (
+                <p className="portal-muted portal-queue-to-show-summary" role="status">
+                  Updating show capacity…
+                </p>
+              ) : null}
+              <ShowPicker
+                className="portal-show-picker"
+                onSelect={isBusy ? () => undefined : setSelectedShowId}
+                options={showPickerOptions}
+                selectedId={effectiveSelectedId}
+              />
+            </>
           )}
         </div>
 

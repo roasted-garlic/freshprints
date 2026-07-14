@@ -8,6 +8,7 @@ import { ThemeProvider } from '../features/theme/context/ThemeProvider';
 
 function isAuthenticatedAppRoute(pathname: string): boolean {
   return (
+    pathname === '/' ||
     pathname.startsWith('/dashboard') ||
     pathname.startsWith('/catalog') ||
     pathname.startsWith('/requests') ||

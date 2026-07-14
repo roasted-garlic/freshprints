@@ -3,6 +3,12 @@
 import { ChevronDown, Heart, TriangleAlert } from 'lucide-react';
 import { useEffect, useId, useState } from 'react';
 
+import {
+  buildArtworkQualityModalSnoozeUntilIso,
+  shouldOpenArtworkQualityModalOnMount,
+  writeArtworkQualityModalSnoozeUntil,
+} from '../utils/artworkQualityModalSnooze';
+
 type ArtworkQualityNoticePurpose = 'print_request' | 'catalog_donation';
 
 interface ArtworkQualityNoticeProps {
@@ -38,9 +44,15 @@ function ArtworkQualityWarningCopy() {
  */
 export function ArtworkQualityNotice({ purpose = 'print_request' }: ArtworkQualityNoticeProps) {
   const panelId = useId();
+  const snoozeCheckboxId = useId();
   const [isExpanded, setIsExpanded] = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [snoozeFor24Hours, setSnoozeFor24Hours] = useState(false);
   const isDonation = purpose === 'catalog_donation';
+
+  useEffect(() => {
+    setIsModalOpen(shouldOpenArtworkQualityModalOnMount());
+  }, []);
 
   useEffect(() => {
     if (!isModalOpen) {
@@ -56,6 +68,13 @@ export function ArtworkQualityNotice({ purpose = 'print_request' }: ArtworkQuali
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isModalOpen]);
+
+  const dismissModal = (applySnooze: boolean) => {
+    if (applySnooze && snoozeFor24Hours) {
+      writeArtworkQualityModalSnoozeUntil(buildArtworkQualityModalSnoozeUntilIso(Date.now()));
+    }
+    setIsModalOpen(false);
+  };
 
   return (
     <>
@@ -96,7 +115,7 @@ export function ArtworkQualityNotice({ purpose = 'print_request' }: ArtworkQuali
           aria-labelledby="artwork-quality-modal-title"
           aria-modal="true"
           className="modal-overlay modal-overlay-blur"
-          onClick={() => setIsModalOpen(false)}
+          onClick={() => dismissModal(false)}
           role="dialog"
         >
           <div
@@ -140,9 +159,18 @@ export function ArtworkQualityNotice({ purpose = 'print_request' }: ArtworkQuali
               <p className="artwork-quality-modal-confirm-hint">
                 By continuing, you confirm your files meet these artwork requirements.
               </p>
+              <label className="artwork-quality-modal-snooze" htmlFor={snoozeCheckboxId}>
+                <input
+                  checked={snoozeFor24Hours}
+                  id={snoozeCheckboxId}
+                  onChange={(event) => setSnoozeFor24Hours(event.target.checked)}
+                  type="checkbox"
+                />
+                <span>Don&apos;t show this again for 24 hours</span>
+              </label>
               <button
                 className="portal-button portal-button-primary"
-                onClick={() => setIsModalOpen(false)}
+                onClick={() => dismissModal(true)}
                 type="button"
               >
                 I have the right artwork

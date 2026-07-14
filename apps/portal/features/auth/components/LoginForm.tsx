@@ -13,7 +13,7 @@ export function LoginForm() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      router.replace('/catalog');
+      router.replace('/');
     }
   }, [isAuthenticated, router]);
 

@@ -258,6 +258,27 @@ export const promoteCustomerUploadToAiReview = onCall(
           requestedByCustomerId:
             typeof upload.customerId === "string" ? upload.customerId : undefined,
           sourceCustomerUploadId: uploadId,
+          wasUpscaled: typeof upload.wasUpscaled === "boolean" ? upload.wasUpscaled : undefined,
+          upscaleFactor: typeof upload.upscaleFactor === "number" ? upload.upscaleFactor : undefined,
+          upscalePassCount:
+            upload.upscalePassCount === 0 || upload.upscalePassCount === 1
+              ? upload.upscalePassCount
+              : undefined,
+          approvedMaxPrintWidthInches:
+            typeof upload.approvedMaxPrintWidthInches === "number"
+              ? upload.approvedMaxPrintWidthInches
+              : undefined,
+          approvedMaxPrintHeightInches:
+            typeof upload.approvedMaxPrintHeightInches === "number"
+              ? upload.approvedMaxPrintHeightInches
+              : undefined,
+          sizingPolicyVersion:
+            typeof upload.sizingPolicyVersion === "string" ? upload.sizingPolicyVersion : undefined,
+          sizingWarningCode:
+            typeof upload.sizingWarningCode === "string" ? upload.sizingWarningCode : undefined,
+          halftoneDetection: upload.halftoneDetection ?? undefined,
+          halftoneSubmitterResponse: upload.halftoneSubmitterResponse ?? undefined,
+          halftoneStaffDecision: upload.halftoneStaffDecision ?? undefined,
           queueCount: 0,
           aiProcessed: false,
           aiReviewed: false,

@@ -107,7 +107,7 @@ Setup guides: `docs/workflow/setup/`
 
 ### Test Data Reset (dev only)
 
-Studio sidebar **Test Data Reset** (`/test-data-reset`) — owner/admin on `fresh-prints-dev` only.
+Studio sidebar **Test Data** (`/test-data-reset`) — **owner** on `fresh-prints-dev` only, and only in **development Studio builds** (`npm run dev`). Production Studio packages do not expose the UI. Admins cannot wipe.
 
 1. Deploy `wipeOperationalTestData` if not already deployed.
 2. Prefer preset **Print-request reset (keep shows)** for request→queue scratch loops.

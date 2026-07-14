@@ -1,5 +1,9 @@
 import { loadSharpModule } from "./loadSharpModule";
-import { resolveImportUpscaleTargetPx } from "@fresh-prints/shared/utils/printSizeMath";
+import {
+  resolveImportUpscaleDecision,
+  resolveImportUpscaleTargetPx,
+} from "@fresh-prints/shared/utils/printSizeMath";
+import type { ImageQualitySizingWarningCode } from "@fresh-prints/shared/utils/imageQualitySizingPolicy";
 
 export interface UpscaleImportImageResult {
   bytes: Buffer;
@@ -8,22 +12,25 @@ export interface UpscaleImportImageResult {
   wasUpscaled: boolean;
   originalWidth: number;
   originalHeight: number;
+  upscaleFactor: number;
+  upscalePassCount: 0 | 1;
+  sizingWarningCode?: ImageQualitySizingWarningCode;
 }
 
 /**
- * Upscales a PNG's pixel data (preserving aspect ratio) when its width can't
- * reach the import headroom target (15in at 300 DPI). Returns the original
- * bytes/dimensions unchanged when no upscale is needed, to avoid needless
- * PNG recompression of already-sufficient images.
+ * Upscales a PNG once under the shared image-quality policy (ADR-FP-080):
+ * aspect-locked ~12″ target, ≤6.0×, never downsample. Returns original bytes
+ * when no upscale is needed.
  */
 export async function upscaleImportImageIfNeeded(
   pngBytes: Buffer,
   pixelWidth: number,
   pixelHeight: number,
 ): Promise<UpscaleImportImageResult> {
+  const decision = resolveImportUpscaleDecision(pixelWidth, pixelHeight);
   const target = resolveImportUpscaleTargetPx(pixelWidth, pixelHeight);
 
-  if (!target) {
+  if (!target || !decision.wasUpscaled) {
     return {
       bytes: pngBytes,
       width: pixelWidth,
@@ -31,6 +38,9 @@ export async function upscaleImportImageIfNeeded(
       wasUpscaled: false,
       originalWidth: pixelWidth,
       originalHeight: pixelHeight,
+      upscaleFactor: 1,
+      upscalePassCount: 0,
+      ...(decision.sizingWarningCode ? { sizingWarningCode: decision.sizingWarningCode } : {}),
     };
   }
 
@@ -47,5 +57,8 @@ export async function upscaleImportImageIfNeeded(
     wasUpscaled: true,
     originalWidth: pixelWidth,
     originalHeight: pixelHeight,
+    upscaleFactor: decision.upscaleFactor,
+    upscalePassCount: 1,
+    ...(decision.sizingWarningCode ? { sizingWarningCode: decision.sizingWarningCode } : {}),
   };
 }

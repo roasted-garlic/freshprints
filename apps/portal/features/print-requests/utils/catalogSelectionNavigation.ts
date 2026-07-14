@@ -2,8 +2,8 @@ import type { CatalogDiscoveryMode } from '@fresh-prints/shared/utils/catalogDis
 
 import type { PortalRequestDetailFrom } from './portalRequestDetailReturn';
 
-export const CATALOG_HOME_PATH = '/catalog';
-export const CATALOG_LIBRARY_PATH = '/catalog/library';
+export const CATALOG_HOME_PATH = '/';
+export const CATALOG_LIBRARY_PATH = '/catalog';
 
 /** Dedicated Portal page for artwork intended for the Current Request / printing. */
 export const REQUEST_ARTWORK_PATH = '/requests/artwork';

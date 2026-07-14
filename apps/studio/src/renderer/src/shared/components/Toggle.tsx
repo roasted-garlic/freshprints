@@ -5,9 +5,19 @@ interface ToggleProps {
   label: string;
   name: string;
   onChange: (checked: boolean) => void;
+  /** When on, use success/green styling (e.g. Halftone). */
+  tone?: "accent" | "success";
 }
 
-export function Toggle({ checked, disabled = false, id, label, name, onChange }: ToggleProps) {
+export function Toggle({
+  checked,
+  disabled = false,
+  id,
+  label,
+  name,
+  onChange,
+  tone = "accent",
+}: ToggleProps) {
   const controlId = id ?? name;
   const labelId = `${controlId}-label`;
 
@@ -20,6 +30,7 @@ export function Toggle({ checked, disabled = false, id, label, name, onChange }:
         className={[
           "toggle-switch",
           checked ? "toggle-switch-on" : "",
+          checked && tone === "success" ? "toggle-switch-on-success" : "",
           disabled ? "toggle-switch-disabled" : "",
         ]
           .filter(Boolean)

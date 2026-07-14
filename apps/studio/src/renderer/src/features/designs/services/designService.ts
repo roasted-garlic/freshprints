@@ -136,6 +136,17 @@ interface DesignDocumentData {
   metadataDpiY?: unknown;
   effectiveDpi?: unknown;
   printSizeSource?: unknown;
+  sourceCustomerUploadId?: unknown;
+  wasUpscaled?: unknown;
+  upscaleFactor?: unknown;
+  upscalePassCount?: unknown;
+  approvedMaxPrintWidthInches?: unknown;
+  approvedMaxPrintHeightInches?: unknown;
+  sizingPolicyVersion?: unknown;
+  sizingWarningCode?: unknown;
+  halftoneDetection?: unknown;
+  halftoneSubmitterResponse?: unknown;
+  halftoneStaffDecision?: unknown;
   uploadedBy?: unknown;
   requestedByCustomerId?: unknown;
   queueCount?: unknown;
@@ -210,6 +221,36 @@ function mapDesignDocument(designId: string, data: DesignDocumentData): Design {
     uploadedBy: data.uploadedBy,
     requestedByCustomerId:
       typeof data.requestedByCustomerId === "string" ? data.requestedByCustomerId : undefined,
+    sourceCustomerUploadId:
+      typeof data.sourceCustomerUploadId === "string" ? data.sourceCustomerUploadId : undefined,
+    wasUpscaled: typeof data.wasUpscaled === "boolean" ? data.wasUpscaled : undefined,
+    upscaleFactor: typeof data.upscaleFactor === "number" ? data.upscaleFactor : undefined,
+    upscalePassCount:
+      data.upscalePassCount === 0 || data.upscalePassCount === 1 ? data.upscalePassCount : undefined,
+    approvedMaxPrintWidthInches:
+      typeof data.approvedMaxPrintWidthInches === "number"
+        ? data.approvedMaxPrintWidthInches
+        : undefined,
+    approvedMaxPrintHeightInches:
+      typeof data.approvedMaxPrintHeightInches === "number"
+        ? data.approvedMaxPrintHeightInches
+        : undefined,
+    sizingPolicyVersion:
+      typeof data.sizingPolicyVersion === "string" ? data.sizingPolicyVersion : undefined,
+    sizingWarningCode:
+      typeof data.sizingWarningCode === "string" ? data.sizingWarningCode : undefined,
+    halftoneDetection:
+      data.halftoneDetection && typeof data.halftoneDetection === "object"
+        ? (data.halftoneDetection as Design["halftoneDetection"])
+        : undefined,
+    halftoneSubmitterResponse:
+      data.halftoneSubmitterResponse && typeof data.halftoneSubmitterResponse === "object"
+        ? (data.halftoneSubmitterResponse as Design["halftoneSubmitterResponse"])
+        : undefined,
+    halftoneStaffDecision:
+      data.halftoneStaffDecision && typeof data.halftoneStaffDecision === "object"
+        ? (data.halftoneStaffDecision as Design["halftoneStaffDecision"])
+        : undefined,
     queueCount,
     aiProcessed,
     aiReviewed,
@@ -512,6 +553,14 @@ export const designService = {
       printSizeSource: input.printSizeSource,
       uploadedBy: caller.id,
       requestedByCustomerId: input.requestedByCustomerId?.trim() || undefined,
+      wasUpscaled: input.wasUpscaled,
+      upscaleFactor: input.upscaleFactor,
+      upscalePassCount: input.upscalePassCount,
+      approvedMaxPrintWidthInches: input.approvedMaxPrintWidthInches,
+      approvedMaxPrintHeightInches: input.approvedMaxPrintHeightInches,
+      sizingPolicyVersion: input.sizingPolicyVersion,
+      sizingWarningCode: input.sizingWarningCode,
+      halftoneDetection: input.halftoneDetection,
       queueCount: 0,
       aiProcessed: input.aiProcessed ?? false,
       aiReviewed: input.aiReviewed ?? false,
@@ -573,6 +622,15 @@ export const designService = {
 
     if (input.tags !== undefined) {
       updatePayload.tags = normalizeDesignTags(input.tags);
+    }
+
+    if (input.halftoneStaffDecision !== undefined) {
+      updatePayload.halftoneStaffDecision = {
+        value: input.halftoneStaffDecision.value,
+        decidedBy: input.halftoneStaffDecision.decidedBy ?? caller.id,
+        isExplicitOverride: input.halftoneStaffDecision.isExplicitOverride ?? true,
+        decidedAt: serverTimestamp(),
+      };
     }
 
     if (input.status !== undefined) {

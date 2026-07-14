@@ -157,10 +157,16 @@ export function UpcomingShowsPage() {
   }, [selectedShowId]);
 
   const updateSelectedShowPath = useCallback(
-    (showId: string | null) => {
-      navigate(getUpcomingShowsPath(showId ? { showId } : undefined), { replace: true });
+    (showId: string | null, requestId?: string | null) => {
+      navigate(
+        getUpcomingShowsPath({
+          showId: showId ?? undefined,
+          requestId: requestId === undefined ? highlightedRequestIdParam ?? undefined : requestId ?? undefined,
+        }),
+        { replace: true },
+      );
     },
-    [navigate],
+    [highlightedRequestIdParam, navigate],
   );
 
   const openCreateModal = useCallback(() => {
@@ -263,37 +269,75 @@ export function UpcomingShowsPage() {
   const visibleShows = showsByScheduleTab[activeScheduleTab];
 
   useEffect(() => {
-    if (selectedShowId && visibleShows.some((show) => show.id === selectedShowId)) {
+    if (isLoading) {
       return;
     }
 
-    if (!hasHydratedFromQueryRef.current) {
-      hasHydratedFromQueryRef.current = true;
+    if (selectedShowIdParam) {
+      const showFromQuery = shows.find((show) => show.id === selectedShowIdParam) ?? null;
 
-      const showFromQuery = selectedShowIdParam ? shows.find((show) => show.id === selectedShowIdParam) ?? null : null;
-
-      if (showFromQuery) {
+      if (!showFromQuery) {
+        // Unknown id after load — fall through to default selection.
+      } else {
         const queryShowTab = getShowScheduleTab(showFromQuery, new Date());
 
         if (queryShowTab !== activeScheduleTab) {
           setActiveScheduleTab(queryShowTab);
+          return;
         }
 
         if (selectedShowId !== selectedShowIdParam) {
           setSelectedShowId(selectedShowIdParam);
         }
 
+        hasHydratedFromQueryRef.current = true;
         return;
       }
     }
+
+    if (selectedShowId && visibleShows.some((show) => show.id === selectedShowId)) {
+      hasHydratedFromQueryRef.current = true;
+      return;
+    }
+
+    hasHydratedFromQueryRef.current = true;
 
     const nextSelectedShowId = resolveVisibleShowSelection(visibleShows, selectedShowId);
 
     if (nextSelectedShowId !== selectedShowId) {
       setSelectedShowId(nextSelectedShowId);
-      updateSelectedShowPath(nextSelectedShowId);
+      if (!selectedShowIdParam || nextSelectedShowId === selectedShowIdParam) {
+        updateSelectedShowPath(
+          nextSelectedShowId,
+          selectedShowIdParam ? highlightedRequestIdParam : null,
+        );
+      }
     }
-  }, [activeScheduleTab, selectedShowId, selectedShowIdParam, shows, updateSelectedShowPath, visibleShows]);
+  }, [
+    activeScheduleTab,
+    highlightedRequestIdParam,
+    isLoading,
+    selectedShowId,
+    selectedShowIdParam,
+    shows,
+    updateSelectedShowPath,
+    visibleShows,
+  ]);
+
+  useEffect(() => {
+    if (!selectedShowId || isLoading) {
+      return;
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      const target = document.querySelector<HTMLElement>(
+        `[data-upcoming-show-id="${CSS.escape(selectedShowId)}"]`,
+      );
+      target?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [isLoading, selectedShowId, visibleShows]);
 
   const handleScheduleTabChange = useCallback(
     (tab: ShowScheduleTab) => {
@@ -301,7 +345,7 @@ export function UpcomingShowsPage() {
 
       setActiveScheduleTab(tab);
       setSelectedShowId(nextSelectedShowId);
-      updateSelectedShowPath(nextSelectedShowId);
+      updateSelectedShowPath(nextSelectedShowId, null);
     },
     [showsByScheduleTab, updateSelectedShowPath],
   );
@@ -309,7 +353,7 @@ export function UpcomingShowsPage() {
   const handleSelectShow = useCallback(
     (showId: string) => {
       setSelectedShowId(showId);
-      updateSelectedShowPath(showId);
+      updateSelectedShowPath(showId, null);
     },
     [updateSelectedShowPath],
   );
@@ -807,6 +851,7 @@ export function UpcomingShowsPage() {
                 return (
                   <button
                     className={`print-requests-request-card${isSelected ? " is-selected" : ""}${cardStateClass}`}
+                    data-upcoming-show-id={show.id}
                     key={show.id}
                     onClick={() => handleSelectShow(show.id)}
                     type="button"

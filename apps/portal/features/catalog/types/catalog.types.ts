@@ -18,6 +18,10 @@ export interface CatalogDesign {
   tags: string[];
   thumbnailPath: string;
   previewPath?: string;
+  /** Production pixel width from the design document. */
+  width: number;
+  /** Production pixel height from the design document. */
+  height: number;
   printWidthInches?: number;
   printHeightInches?: number;
   /** Milliseconds since epoch; omitted when missing on legacy docs. */

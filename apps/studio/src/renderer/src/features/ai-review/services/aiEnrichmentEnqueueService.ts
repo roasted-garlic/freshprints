@@ -124,7 +124,7 @@ export const aiEnrichmentEnqueueService = {
     return enqueueAiEnrichment(designId, options);
   },
 
-  /** @deprecated Import no longer auto-enqueues; use enqueueForProcessing from AI Processing tab. */
+  /** Enqueue after import when Auto advance is on (background sequential queue). */
   async enqueueAfterImport(designId: string): Promise<EnqueueAiEnrichmentResult> {
     return enqueueAiEnrichment(designId);
   },

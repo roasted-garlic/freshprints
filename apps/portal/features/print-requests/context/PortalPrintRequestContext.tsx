@@ -29,7 +29,7 @@ import type { CustomerUploadDocSummary } from '../../customer-uploads/services/c
 interface PortalPrintRequestContextValue {
   actionError: string | null;
   allocationTotalsByRequestId: Record<string, PrintRequestAllocationTotals>;
-  /** Aggregates for the working Current Request (virtual empty when none). */
+  /** Aggregates for the working Current Request (includes optimistic first-add items). */
   currentRequestAggregates: CurrentRequestAggregates;
   /** True when authenticated customer has no working Firestore request yet. */
   isVirtualEmptyCurrentRequest: boolean;
@@ -61,8 +61,8 @@ interface PortalPrintRequestContextValue {
   /** Soft-archive Current Request (clears items) so a new cart can start. */
   clearWorkingRequest: () => Promise<void>;
   isClearingWorkingRequest: boolean;
-  refreshRequests: (options?: { silent?: boolean }) => Promise<void>;
-  reloadWorkingItems: (options?: { silent?: boolean }) => Promise<void>;
+  refreshRequests: (options?: { silent?: boolean; printRequestId?: string }) => Promise<void>;
+  reloadWorkingItems: (options?: { silent?: boolean; printRequestId?: string }) => Promise<void>;
   requests: PrintRequest[];
   requestsByTab: Record<PortalPrintRequestListTab, PrintRequest[]>;
   summariesByRequestId: Record<string, PrintRequestItemSummary>;
@@ -75,16 +75,6 @@ interface PortalPrintRequestContextValue {
   workingRequest: PrintRequest | null;
   workingItems: PrintRequestItem[];
 }
-
-const EMPTY_AGGREGATES: CurrentRequestAggregates = {
-  distinctDesignCount: 0,
-  totalPrintQuantity: 0,
-  quantityByDesignId: {},
-  primaryItemIdByDesignId: {},
-  primaryQuantityByDesignId: {},
-  attentionItems: [],
-  attentionCount: 0,
-};
 
 const PortalPrintRequestContext = createContext<PortalPrintRequestContextValue | null>(null);
 
@@ -127,9 +117,12 @@ export function PortalPrintRequestProvider({ children }: { children: ReactNode }
   const reloadRequests = printRequests.reload;
 
   const refreshRequests = useCallback(
-    async (options?: { silent?: boolean }) => {
+    async (options?: { silent?: boolean; printRequestId?: string }) => {
       await reloadRequests(options);
-      await reloadWorkingItems({ silent: true });
+      await reloadWorkingItems({
+        silent: true,
+        printRequestId: options?.printRequestId,
+      });
     },
     [reloadRequests, reloadWorkingItems],
   );
@@ -162,7 +155,7 @@ export function PortalPrintRequestProvider({ children }: { children: ReactNode }
     () => ({
       actionError,
       allocationTotalsByRequestId: printRequests.allocationTotalsByRequestId,
-      currentRequestAggregates: workingRequest ? aggregates : EMPTY_AGGREGATES,
+      currentRequestAggregates: aggregates,
       isVirtualEmptyCurrentRequest,
       continuableRequests: printRequests.continuableRequests,
       createPrintRequest: printRequests.createPrintRequest,

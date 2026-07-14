@@ -101,6 +101,8 @@ As of ADR-FP-039/ADR-FP-040, **AI Processing is a single playground-style call**
 | `finalizeCustomerUploadZip` | Callable | Portal: server-extract ZIP + per-image finalize (ADR-FP-073) |
 | `confirmCustomerUploadsAndAttachToRequest` | Callable | Portal: confirm ownership/catalog ack + attach ready **print_request** uploads to working request |
 | `confirmCustomerUploadsForDonation` | Callable | Portal: confirm ownership + required catalog listing consent for **catalog_donation** uploads (no print-request attach) |
+| `recordCustomerUploadHalftoneResponse` | Callable | Portal: persist optional customer Yes/No halftone selection (evidence only; ADR-FP-080) |
+| `recordCustomerUploadHalftoneStaffDecision` | Callable | Studio: persist explicit staff true/false halftone decision on customer upload |
 | `clearPortalWorkingPrintRequest` | Callable | Portal: soft-archive own working request and delete its items |
 | `archiveStaleWorkingPrintRequests` | Callable | Owner/admin: archive empty working requests older than 14 days (`dryRun` supported) |
 | `promoteCustomerUploadToAiReview` | Callable | Studio staff (owner/admin): promote ready upload → design `imported` + enqueue AI |
@@ -168,6 +170,7 @@ See `docs/standards/SECURITY.md`. Firebase rules and Electron IPC security are d
 
 | Date | Summary |
 |------|---------|
+| 2026-07-13 | ADR-FP-080: removed automatic halftone detection; documented `recordCustomerUploadHalftoneResponse` / staff decision callables; sizing policy `image-quality-v2` unchanged |
 | 2026-07-12 | Sub-phase G: wipe target `customerUploads` + callable `cleanupAbandonedCustomerUploads` (abandoned source orphans; Scheduler optional) |
 | 2026-07-12 | Sub-phase E: staff intake callables `promoteCustomerUploadToAiReview`, `excludeCustomerUploadFromCatalog`, `restoreCustomerUploadCatalogEligibility`, `retryCustomerUploadProcessing`; Studio `/imports` intake section |
 | 2026-07-12 | Sub-phase C: `confirmCustomerUploadsAndAttachToRequest` + Portal upload UI; queue-to-show rejects upload-backed items until D; deployed to `fresh-prints-dev` |

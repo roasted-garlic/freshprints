@@ -20,8 +20,9 @@ Upload your own artwork (PNG/WebP, folder, or ZIP)
     ↓
 Upload pipeline (server-authoritative):
   create batch → upload source to Storage → finalize callable
-  → transparency check → optional convert/trim/upscale → DPI check
+  → transparency check → optional convert/trim/upscale (ADR-FP-080: ≤6× toward 12″) → DPI check
   → previews → ready
+  (optional: mark “This artwork is a halftone design.” — evidence only, non-blocking)
     ↓
 Confirm: ownership REQUIRED; Design Library permission OPTIONAL (default checked)
     ↓

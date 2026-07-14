@@ -388,10 +388,13 @@ Pixel dimensions (`width`, `height`) remain immutable facts from the source PNG.
 Shared math and constants:
 
 ```txt
-shared/constants/printSize.constants.ts
-shared/types/printSize/printSize.types.ts
-shared/utils/printSizeMath.ts
+packages/shared/src/constants/printSize.constants.ts
+packages/shared/src/types/printSize/printSize.types.ts
+packages/shared/src/utils/printSizeMath.ts
+packages/shared/src/utils/imageQualitySizingPolicy.ts
 ```
+
+**Image quality sizing (ADR-FP-080, policy `image-quality-v2`):** automated upscale targets **12″** width (one pass, ≤**6.0×**, height ceiling 16.5″, approved max width envelope 15″); never past the aspect-locked 12″ target; print-request default remains **10″**. Upscales **above 2×** are marked extended for staff visibility only. Never downsample production assets.
 
 Acceptance thresholds (enforced at import validation; updated Phase 3D Step 3 correction):
 
@@ -940,6 +943,20 @@ Staff intake callables (Admin SDK writes only): `promoteCustomerUploadToAiReview
 | `customerUploadIdempotency/{uid}_{clientRequestId}` | Create-batch idempotency |
 
 Shared types live in `packages/shared/src/types/customerUpload/`.
+
+### Image quality sizing and human halftone confirmation (ADR-FP-080)
+
+Finalize and Studio import persist sizing fields (policy `image-quality-v2`): `upscaleFactor`, `upscalePassCount`, `approvedMaxPrintWidthInches`, `approvedMaxPrintHeightInches`, `sizingPolicyVersion`, optional `sizingWarningCode` (`EXTENDED_UPSCALE` when factor > 2×; `TARGET_NOT_REACHED_UPSCALE_CAPPED` when 6× still cannot reach the 12″ target). Automated upscale targets **12″** width (≤**6×**, one pass); request default remains **10″**.
+
+**Halftone (human only — automatic detection removed):**
+
+| Field | Purpose |
+|-------|---------|
+| `halftoneSubmitterResponse` | Customer optional Yes/No evidence (`value`, `respondedAt`, `respondedBy`). Does not add catalog tags. |
+| `halftoneStaffDecision` | Explicit staff boolean (`true`/`false`), including overrides; copied to `designs` on promote; authoritative for AI Review toggle and tag sync on approve. |
+| `halftoneDetection` | **Deprecated / historical only.** May exist on older docs; do not write new detector metadata; UI and processing ignore it. |
+
+Portal always offers an optional “This artwork is a halftone design.” control (default off). Studio import does not interrupt for halftone. Intake and AI Review use the green Halftone toggle (staff → customer yes → off). Approve with toggle on adds canonical `"halftone"` tag; off removes it.
 
 ---
 

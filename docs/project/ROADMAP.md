@@ -985,12 +985,22 @@ Production App Hosting deploy to a live customer URL is a **separate** human che
 
 **Customer-Provided Request Artwork** — **complete** on `fresh-prints-dev` (2026-07-12 parent signoff). Portal customers upload transparent PNG/WebP for their one working print request; Studio Customer Uploads intake may promote to AI Review. Separate from catalog until staff action. **Not** Phase 9 Custom Request Q&A (`customRequests`). Plan: `docs/workflow/plans/2026-07-11-portal-customer-artwork-upload-plan.md` (ADR-FP-073). Parent signoff: `docs/workflow/reviews/2026-07-12-portal-customer-artwork-upload-parent-signoff.md`.
 
-**Catalog Donate Designs** — Portal `/donate` + Studio **Donated Designs** reuse the same upload pipeline with `purpose: catalog_donation` (ADR-FP-078). Does not attach to Current Request; listing consent required.
+**Portal Persistent Current Request** — **complete** (2026-07-13 signoff). Cart-style Current Request (lazy virtual empty), header basket + Upload Designs, drawer, catalog direct-add, `/requests/artwork`, Review Request (ADR-FP-076). Signoff: `docs/workflow/reviews/2026-07-12-portal-persistent-current-request-signoff.md`.
+
+**Catalog Donate Designs** — **complete** (2026-07-13 signoff). Portal `/donate` + Studio **Donated Designs** reuse the same upload pipeline with `purpose: catalog_donation` (ADR-FP-078). Does not attach to Current Request; listing consent required. Signoff: `docs/workflow/reviews/2026-07-13-portal-donate-designs-signoff.md`.
+
+**Print request Working triage / clear** — **complete** (2026-07-13 signoff). Studio Working Active/Stale/Empty triage + search; Portal Clear request; empty stale archive callable (ADR-FP-079). Signoff: `docs/workflow/reviews/2026-07-13-print-request-working-triage-search-signoff.md`.
+
+**Image quality sizing and halftone safeguards** — **complete** (2026-07-13 signoff, PASS WITH NOTES). ADR-FP-080: pixel-based sizing (`image-quality-v2`, 12″ one-pass upscale ≤6×, 10″ request default, 15″×16.5″ envelopes); human-only halftone (detector removed); extended-upscale staff visibility above 2×. Signoff: `docs/workflow/reviews/2026-07-13-image-quality-sizing-and-halftone-safeguards-signoff.md`.
+
+**Portal Current Request empty-state + Your Stash polish** — **complete** (2026-07-13 signoff). Lazy virtual Current Request copy/CTAs; Your Stash drawer empty layout; Clear only in drawer; Close = X; catalog pixel seed fix for false attention. Signoff: `docs/workflow/reviews/2026-07-13-portal-current-request-empty-state-drawer-polish-signoff.md`.
 
 - Sub-phases A–G + remediations r2–r7 — **complete** (owner PASS on r7)
-- ADRs: FP-073 (uploads), FP-074 (library permission), FP-075 (200 DPI save floor)
+- ADRs: FP-073 (uploads), FP-074 (library permission), FP-075 (200 DPI save floor), FP-076 (persistent Current Request), FP-078 (donate), FP-079 (working triage), FP-080 (image quality / human-only halftone)
 
-**Next fast-follow:** Persistent Current Request / cart-style Portal flow (`portal-persistent-current-request`) — **in test** (implemented; awaiting owner manual checkpoint). ADR-FP-076. Plan: `docs/workflow/plans/2026-07-12-portal-persistent-current-request-plan.md`.
+**UX polish (cursor / categories / upload modal)** — **complete** (2026-07-13 signoff). Portal zoom-in lightbox cursor; wider category filter menus (Studio + Portal); artwork-quality modal width + 24h snooze. Signoff: `docs/workflow/reviews/2026-07-13-portal-studio-ux-polish-cursor-categories-upload-modal-signoff.md`.
+
+**Next fast-follow:** Phase 9 planning, production Portal App Hosting deploy, or `studio-apps-folder-monorepo-normalization` — pick explicitly; do not auto-start.
 
 Goal:
 

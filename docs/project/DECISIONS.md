@@ -4,6 +4,45 @@
 
 ---
 
+### ADR-FP-080: Pixel-based image quality sizing and halftone safeguards
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-13 |
+| Status | accepted (amended 2026-07-13 — automatic detection removed; upscale ceiling 6×) |
+
+**Context**
+
+Embedded DPI metadata is unreliable for print quality. Imports previously upscaled any image under 15″ @ 300 DPI with no hard scale-factor cap (ADR-FP-077 only warned at ≥3×). Product needs per-asset approved maximums, at most one controlled upscale toward an automated production target, a separate 10″ request default, and human-confirmed halftone tagging. An automatic pixel-based detector was tried and removed after producing both false positives and false negatives. A 2× upscale ceiling proved too restrictive for real DTF artwork that the existing gang-sheet builder already enlarges acceptably (~5–6× toward 12″).
+
+**Decision**
+
+1. **Quality basis:** trimmed/production pixel dimensions at 300 effective DPI; ignore embedded DPI for quality calculations.
+2. **Automated upscale target:** one pass only, factor ≤ **6.0**, aspect-locked target starting at **12″** width (`AUTOMATED_UPSCALE_TARGET_WIDTH_INCHES`) reduced so height ≤ 16.5″; never upscale past that aspect-locked target; skip when within 5% of target; never downsample production assets. Policy version `image-quality-v2`.
+3. **If the target cannot be reached within 6×:** upscale once by at most 6× and use the smaller resulting approved maximum (`TARGET_NOT_REACHED_UPSCALE_CAPPED`).
+4. **Extended upscale visibility:** applied factors **above 2×** are marked `EXTENDED_UPSCALE` (and Studio import soft-quality warning) for staff visibility only — do **not** block customer upload, donation, request attachment, or printing.
+5. **Request default:** normal print-request default remains **10″** (`DEFAULT_PRINT_REQUEST_WIDTH_INCHES` / `PREFERRED_PRINT_WIDTH_INCHES`). Do not conflate request defaults with the automated production upscale target.
+6. **Approved max:** `min(qualityWidth, 15″, maxWidthByHeight@16.5″)`; request defaults to min(10″, approved max); platform 22″ cap and 200 DPI save floor (ADR-FP-075) remain additional layers.
+7. **Supersedes** uncapped “upscale floor = 15″” behavior from ADR-FP-077; 15″ remains the **approved maximum width** envelope, not the upscale target.
+8. **No automatic halftone detection:** do not analyze pixels or AI output to classify, suggest, preselect, or prompt for halftone. Do not spend processing time on automatic detection. Historical `halftoneDetection` fields may remain unread for compatibility; stop writing new detector metadata (no destructive migration without separate approval).
+9. **Human confirmation only:**
+   - Portal uploads/donations: optional “This artwork is a halftone design.” control (default off); persists `halftoneSubmitterResponse` as evidence only; never blocks upload/donation/attach.
+   - Studio import: no halftone interrupt; staff decide later.
+   - Intake: green staff Halftone toggle seeded from customer yes → on, otherwise off; staff may override; persist explicit true/false on promote.
+   - AI Review: green staff toggle; precedence explicit staff → intake staff → customer yes → off; AI suggestions never auto-enable; approve syncs canonical `"halftone"` tag.
+10. **Shared sizing code** lives in `packages/shared`; Studio Electron and Functions call the same pure sizing logic.
+11. **No automatic image-type classifier** for sizing or halftone.
+12. **Historical assets:** no migration unless separately approved; derive approved max lazily from production pixels when policy fields are missing.
+
+**Consequences**
+
+- Existing assets derive approved max lazily from production pixels when policy fields are missing.
+- No bulk reprocess without a separate migration checkpoint.
+- Functions deploy required for Portal finalize in shared environments so the 6× ceiling is live.
+- Production deploy remains a separate owner checkpoint.
+
+---
+
 ### ADR-FP-079: Working-tab triage, rail search, and soft-archive clear
 
 | Field | Value |
@@ -254,10 +293,10 @@ Scratch QA of print requests → show queue required manual Firebase Console del
 
 **Decision**
 
-1. Dedicated Studio page `/test-data-reset` (sidebar **Test Data Reset**), visible only for owner/admin when the client Firebase project is allowlisted (`fresh-prints-dev`).
+1. Dedicated Studio page `/test-data-reset` (sidebar **Test Data**), visible only for **owners** in **development Studio builds** when the client Firebase project is allowlisted (`fresh-prints-dev`). Production Studio builds do not expose the UI.
 2. Callable `wipeOperationalTestData` with selectable targets and presets, including **print-request reset (keep shows)** and optional **designs** wipe.
 3. **Designs** wipe requires **print requests** in the same run, an extra catalog confirm modal (`acknowledgeDesignCatalogWipe`), then the typed phrase. Deletes `designs` docs plus Storage `originals/`, `thumbnails/`, `previews/`.
-4. Server enforces owner/admin + project allowlist + typed confirm phrase `WIPE TEST DATA`.
+4. Server enforces **owner** (not admin) + project allowlist + typed confirm phrase `WIPE TEST DATA`.
 5. Sequences reset to **1** (not 0). Accounts, categories, tags, and settings are never wiped by this tool.
 6. When shows are **kept** but allocations are cleared, each show’s `allocatedQuantity` is zeroed, print
    timer fields are cleared, and `productionStatus` values `full` / `printing` / `fully_printed` /
@@ -268,6 +307,7 @@ Scratch QA of print requests → show queue required manual Firebase Console del
 - Faster scratch loops without Console surgery.
 - Must deploy the callable to `fresh-prints-dev` before the page works.
 - Never add production project IDs to the allowlist without a new approved plan.
+- Never deploy wipe as a production-facing staff feature; keep it owner-only on the allowlisted development project.
 
 ---
 
@@ -311,7 +351,7 @@ The Portal catalog was a flat searchable grid. Customers needed curated discover
 **Decision**
 
 1. Three sections: **New This Week** (`createdAt` last 7 days), **Popular** (lifetime `requestCount`), **Recently Requested** (`lastRequestedAt` then `requestCount`), plus up to **3 popular category** rails (summed `requestCount`, min 3 designs).
-2. **Discover** landing is `/catalog`; full **Design Library** is `/catalog/library`. **View All** uses `?discover=` or `?category=` on the library route.
+2. **Discover / home** landing is `/`; full **Design Library** is `/catalog`. **View All** uses `?discover=` or `?category=` on the library route. Legacy `/catalog/library` redirects to `/catalog`. Home is reached via the brand logo (no separate Home nav item).
 3. Ranking helpers live in shared `catalogDiscoveryRanking.ts`; Phase 10 may replace only `rankRecentlyRequested`.
 4. `printRequestItems` **onCreate** Cloud Function increments `requestCount` / `lastRequestedAt` (Portal + Studio). Studio client increment removed to avoid double-count.
 5. Do **not** add `favoriteCount` now — optional fields can land later without migration.
@@ -368,11 +408,13 @@ Portal customers build print requests but could not queue them to Whatnot shows.
 3. Block re-queue when any non-canceled allocation exists.
 4. Show schedule filters (`filterShowsAvailableForAllocation`, etc.) live in `@fresh-prints/shared` (`showScheduleGrouping.ts`).
 5. UI: `PortalQueueToShowModal` on request detail with `ShowPicker`.
+6. **Post-queue UX (amended 2026-07-13):** stay on `/requests/[id]` with a silent detail refresh (do not navigate to `/requests?tab=queued`). Keep the show calendar mounted during submit/capacity celebration on Portal and Studio; close the modal before parent refresh to avoid calendar unmount/remount flicker.
 
 **Consequences**
 
 - `draft`/`editing` → `active` can now happen from Portal when customer queues (not staff-only).
 - Functions deploy required before live QA.
+- After queue, customers remain on request detail (Queued/read-only) rather than the list tab.
 
 ---
 
@@ -939,13 +981,15 @@ Three fixes from the fourth Show Queue manual QA correction:
    Once at least one leg has been committed (a split has genuinely started), "remaining" wording and
    the secondary "Add remaining N prints to this show" button reappear, matching the plan's example
    ("4 prints still need a show").
-2. **Tab/detail selection is kept in sync with the active tab.** Adding a request to a show (moving it
-   from `Working` to `Queued`) previously left the right-hand detail panel showing that same request
-   even though `Working` was still the active tab and no longer contained it. `shared/utils/
-   printRequestTabSelection.ts`'s `resolveSelectedRequestIdForTab()` is now run in an effect keyed off
-   `activeListTab`/the tab's visible request ids: if the current selection isn't in the active tab, it
-   falls back to that tab's first request, or clears to `null` (empty/select-a-request state) if the
-   tab has none.
+2. **Tab/detail selection is kept in sync with the active tab (amended 2026-07-13).** Adding a
+   request to a show (moving it from `Working` to `Queued`) must **follow** that request onto the
+   Queued tab and keep its detail open — not leave staff on Working with an empty detail, and not
+   bounce from Queued detail back to an empty Queued list. `PrintRequestsPage` navigates to
+   `requestId` + `tab=queued` before reloading allocation data after Add to Show; URL hydration +
+   `findPrintRequestListTabForRequestId()` keep selection while totals catch up. Manual tab switches
+   drop `requestId` when the current selection is not in the destination tab so hydration does not
+   pull staff back. `resolveSelectedRequestIdForTab()` still falls back to the active tab's first
+   request (or empty) when there is no URL/deep-link focus.
 3. **New persisted `editing` status distinguishes "de-queued for revision" from "never queued."** A
    request that was queued and then fully removed from every show it was on previously fell back to
    `active`, which looked identical to a request that had just been queued. `PrintRequestStatus` gained
@@ -2420,7 +2464,7 @@ Functions redeploy required. Compare Needs Review output vs prior `gpt-4o-mini` 
 | Field | Value |
 |-------|-------|
 | Date | 2026-06-24 |
-| Status | accepted |
+| Status | accepted (amended 2026-07-13 — post-import sequential auto-start) |
 | Deciders | Product owner + architecture/security review |
 
 **Context**  
@@ -2428,13 +2472,14 @@ Bulk import auto-enqueued every design, spawning up to 10 concurrent Cloud Funct
 
 **Decision**
 
-1. **No auto-enqueue on import** — after derivatives, designs remain `aiReviewStatus: pending` with no `aiProcessingStage` until staff acts.
-2. **Processing tab queue controls** — **Auto advance** (sessionStorage): **Start AI** / **Pause AI** runs sequential queue; OFF shows **Process image with AI** for one-at-a-time manual stepping.
-3. **Retry UX** — **Retry AI Processing** for the selected failed design only (bulk **Retry All Failed** removed in ADR-FP-017).
-4. **Concurrency** — `AI_ENRICHMENT_MAX_INSTANCES = 1` for manual-queue era; OpenAI retry (2× backoff) unchanged.
+1. **No concurrent auto-enqueue on import** — import orchestration must not fire N parallel `enqueueAiEnrichment` calls.
+2. **Processing tab queue controls** — **Auto advance** (sessionStorage): **Start AI** / **Pause AI** runs sequential queue; OFF shows **Process image with AI** for one-at-a-time manual stepping. **Default Auto advance = ON** when unset.
+3. **Post-import background sequential AI (2026-07-13):** When Auto advance is ON and a Studio single/batch import completes with derivative-ready designs, Studio enqueues those designs for AI **in the background** (one `enqueueAiEnrichment` at a time, session-scoped queue) so staff can **stay on Imports** and keep importing. Opening AI Processing is optional to watch progress — navigation is not required. When Auto advance is OFF, behavior remains manual.
+4. **Retry UX** — **Retry AI Processing** for the selected failed design only (bulk **Retry All Failed** removed in ADR-FP-017).
+5. **Concurrency** — keep Cloud Function instance limits that prevent 429 storms; sequential client enqueue remains the throughput control.
 
 **Consequences**  
-Staff must open AI Processing after batch import. Throughput is slower but reliable; 429 storms avoided in normal use.
+Import → AI is automatic when Auto advance is on, without leaving Imports and without concurrent enqueue storms. Staff can still disable Auto advance for one-at-a-time control.
 
 ---
 

@@ -81,4 +81,35 @@ describe("createAiReviewDraftFromDesign", () => {
     assert.equal(draft.tagsInput.split(", ").every((tag) => tag.length <= 40), true);
     assert.match(draft.tagsAdjustmentNote ?? "", /shortened to 40 characters/);
   });
+
+  it("preserves explicit staff false and ignores AI halftone suggestion", () => {
+    const draft = createAiReviewDraftFromDesign(
+      createDesign({
+        halftoneStaffDecision: { value: false },
+        aiSuggestions: {
+          title: "Dots",
+          description: "Screen",
+          categoryId: "category-ai",
+          tags: ["halftone", "dots"],
+        },
+      }),
+    );
+
+    assert.equal(draft.markAsHalftone, false);
+  });
+
+  it("initializes from customer yes when no staff decision exists", () => {
+    const draft = createAiReviewDraftFromDesign(
+      createDesign({
+        halftoneSubmitterResponse: { value: "yes" },
+        aiSuggestions: {
+          title: "Dots",
+          description: "Screen",
+          tags: ["halftone"],
+        },
+      }),
+    );
+
+    assert.equal(draft.markAsHalftone, true);
+  });
 });

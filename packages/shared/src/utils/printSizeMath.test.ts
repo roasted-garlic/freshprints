@@ -209,38 +209,29 @@ describe("calculateEffectiveDpi", () => {
 });
 
 describe("resolveImportUpscaleTargetPx", () => {
-  it("returns null when width already meets the 4500px (15in @ 300dpi) target", () => {
+  it("returns null when width already meets or exceeds the aspect-locked 12in target", () => {
+    assert.equal(resolveImportUpscaleTargetPx(3600, 3600), null);
     assert.equal(resolveImportUpscaleTargetPx(4500, 4000), null);
-  });
-
-  it("returns null when width exceeds the target", () => {
     assert.equal(resolveImportUpscaleTargetPx(5000, 3000), null);
   });
 
-  it("returns a scaled-up target preserving aspect ratio when width is below target", () => {
+  it("upscales a narrow image toward 12in @ 300dpi (not 15in), preserving aspect ratio", () => {
     const result = resolveImportUpscaleTargetPx(1500, 2000);
 
-    assert.deepEqual(result, { widthPx: 4500, heightPx: 6000 });
+    // 1500→3600 is 2.4× toward 12in; height 2000→4800
+    assert.deepEqual(result, { widthPx: 3600, heightPx: 4800 });
   });
 
-  it("handles a non-square aspect ratio correctly", () => {
-    const result = resolveImportUpscaleTargetPx(1000, 300);
-
-    assert.deepEqual(result, { widthPx: 4500, heightPx: 1350 });
+  it("does not upscale a 12in @ 300dpi image further to 15in", () => {
+    assert.equal(resolveImportUpscaleTargetPx(3600, 3600), null);
   });
 
-  it("upscales a 10in @ 300dpi (3000px) image once to the 15in headroom target", () => {
-    const result = resolveImportUpscaleTargetPx(3000, 3000);
-
-    assert.deepEqual(result, { widthPx: 4500, heightPx: 4500 });
+  it("caps a tiny square at 6× rather than stretching beyond the ceiling to 12in", () => {
+    const result = resolveImportUpscaleTargetPx(300, 300);
+    assert.deepEqual(result, { widthPx: 1800, heightPx: 1800 });
   });
 
-  it("treats exactly 4499px as needing upscale and 4500px as not (boundary)", () => {
-    assert.deepEqual(resolveImportUpscaleTargetPx(4499, 4499), { widthPx: 4500, heightPx: 4500 });
-    assert.equal(resolveImportUpscaleTargetPx(4500, 4500), null);
-  });
-
-  it("supports custom target DPI/width overrides", () => {
+  it("supports custom target DPI/width overrides (legacy floor formula)", () => {
     const result = resolveImportUpscaleTargetPx(500, 500, 150, 4);
 
     assert.deepEqual(result, { widthPx: 600, heightPx: 600 });
@@ -248,19 +239,18 @@ describe("resolveImportUpscaleTargetPx", () => {
 });
 
 describe("isImportUpscaleSoftQuality", () => {
-  it("does not flag a mild 10in→15in (~1.5×) upscale", () => {
-    assert.equal(isImportUpscaleSoftQuality(3000, 4500), false);
-    assert.equal(getImportUpscaleScaleFactor(3000, 4500), 1.5);
+  it("does not flag a mild ~1.5× upscale", () => {
+    assert.equal(isImportUpscaleSoftQuality(2000, 3000), false);
+    assert.equal(getImportUpscaleScaleFactor(2000, 3000), 1.5);
   });
 
-  it("flags a 4in→15in (~3.75×) upscale as soft quality", () => {
-    assert.equal(isImportUpscaleSoftQuality(1200, 4500), true);
-    assert.ok((getImportUpscaleScaleFactor(1200, 4500) ?? 0) >= 3);
+  it("does not flag an exact 2× upscale", () => {
+    assert.equal(isImportUpscaleSoftQuality(1500, 3000), false);
   });
 
-  it("treats exact 3× as soft quality and just under as not", () => {
-    assert.equal(isImportUpscaleSoftQuality(1500, 4500), true);
-    assert.equal(isImportUpscaleSoftQuality(1501, 4500), false);
+  it("flags upscales above 2× as soft/extended quality", () => {
+    assert.equal(isImportUpscaleSoftQuality(1500, 3600), true);
+    assert.ok((getImportUpscaleScaleFactor(1500, 3600) ?? 0) > 2);
   });
 
   it("returns null/false for invalid or non-enlarging dimensions", () => {

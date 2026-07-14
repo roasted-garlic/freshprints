@@ -100,10 +100,10 @@ Customers currently see only a status pill on request detail. Studio already run
 
 3. **Clock display:**
    - Prefer show with `productionStatus === "printing"`, else first linked show
-   - Running: `Printer running · {formatPrintElapsed}`
-   - Paused: `Paused · {elapsed}`
-   - Queued / not started: `Waiting for printing to start`
-   - Finished (`completed` / `fully_printed` or Done stage): `Finished · {elapsed}`
+   - Queued / not started: `Waiting for the printing to start` (no counting timer)
+   - Running: counting elapsed timer (`formatPrintElapsed`)
+   - Paused: `Paused` + elapsed
+   - Finished (`completed` / `fully_printed` or Done stage): `Finished` + elapsed
 
 4. **Live tick:** Client `setInterval` 1s while running (same pattern as Studio `useShowProductionTimer` display half), re-fetch callable on focus / every ~30s to resync pause/finish.
 

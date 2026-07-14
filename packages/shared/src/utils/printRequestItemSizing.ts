@@ -3,6 +3,7 @@ import {
   PRINT_INCHES_DECIMAL_PLACES,
   TARGET_PRINT_DPI,
 } from "../constants/printSize.constants";
+import { deriveApprovedMaxPrintSizeFromPixels } from "./imageQualitySizingPolicy";
 import { calculateEffectiveDpi } from "./printSizeMath";
 
 export const MAX_STANDARD_PRINT_REQUEST_SIZE_INCHES = 22;
@@ -10,11 +11,23 @@ export const STANDARD_PRINT_REQUEST_INITIAL_WIDTH_INCHES = 10;
 
 export type PrintRequestItemDpiQualityLevel = "optimal" | "good" | "minimum" | "below_minimum";
 
+export interface InitialPrintRequestItemSizeInput {
+  pixelWidth: number;
+  pixelHeight: number;
+  defaultPrintWidthInches?: number;
+  /** Per-asset approved max width (ADR-FP-080). Derived from pixels when omitted. */
+  approvedMaxPrintWidthInches?: number;
+  approvedMaxPrintHeightInches?: number;
+}
+
 export interface PrintRequestItemSizeInput {
   pixelWidth: number;
   pixelHeight: number;
   printWidthInches: number;
   printHeightInches: number;
+  approvedMaxPrintWidthInches?: number;
+  approvedMaxPrintHeightInches?: number;
+  wasUpscaled?: boolean;
 }
 
 export interface PrintRequestItemSizeAssessment {
@@ -24,12 +37,6 @@ export interface PrintRequestItemSizeAssessment {
   canSave: boolean;
   warningMessage?: string;
   errorMessage?: string;
-}
-
-export interface InitialPrintRequestItemSizeInput {
-  pixelWidth: number;
-  pixelHeight: number;
-  defaultPrintWidthInches?: number;
 }
 
 export interface InitialPrintRequestItemSize {
@@ -104,6 +111,43 @@ function resolveInitialSourceWidthInches(input: InitialPrintRequestItemSizeInput
   return roundInches(input.pixelWidth / TARGET_PRINT_DPI);
 }
 
+function resolveApprovedMaxWidthInches(input: {
+  pixelWidth: number;
+  pixelHeight: number;
+  approvedMaxPrintWidthInches?: number;
+  approvedMaxPrintHeightInches?: number;
+}): number | null {
+  if (
+    typeof input.approvedMaxPrintWidthInches === "number" &&
+    Number.isFinite(input.approvedMaxPrintWidthInches) &&
+    input.approvedMaxPrintWidthInches > 0
+  ) {
+    return roundInches(input.approvedMaxPrintWidthInches);
+  }
+
+  const derived = deriveApprovedMaxPrintSizeFromPixels(input.pixelWidth, input.pixelHeight);
+  if (
+    !derived ||
+    !Number.isFinite(derived.approvedMaxPrintWidthInches) ||
+    derived.approvedMaxPrintWidthInches <= 0
+  ) {
+    return null;
+  }
+  return derived.approvedMaxPrintWidthInches;
+}
+
+export function formatApprovedMaxPrintSizeMessage(
+  approvedMaxPrintWidthInches: number,
+  approvedMaxPrintHeightInches: number,
+  wasUpscaled = false,
+): string {
+  const size = `${approvedMaxPrintWidthInches}″ × ${approvedMaxPrintHeightInches}″`;
+  if (wasUpscaled) {
+    return `This artwork has already been enlarged once. Its maximum recommended print size is ${size}. Larger sizes may appear soft or pixelated, so they are disabled.`;
+  }
+  return `Maximum print size for this artwork is ${size}. Larger sizes are disabled because they would require stretching the image beyond its approved quality limit.`;
+}
+
 export function resolveInitialPrintRequestItemSize(
   input: InitialPrintRequestItemSizeInput,
 ): InitialPrintRequestItemSize {
@@ -123,6 +167,8 @@ export function resolveInitialPrintRequestItemSize(
     MAX_STANDARD_PRINT_REQUEST_SIZE_INCHES,
   );
   const maxWidthForMinDpi = roundInches(input.pixelWidth / MIN_PRINT_REQUEST_EFFECTIVE_DPI);
+  const approvedMaxWidth = resolveApprovedMaxWidthInches(input);
+
   const printWidthInches = roundInches(
     Math.min(
       sourceWidth,
@@ -130,6 +176,7 @@ export function resolveInitialPrintRequestItemSize(
       MAX_STANDARD_PRINT_REQUEST_SIZE_INCHES,
       maxWidthForStandardHeight,
       maxWidthForMinDpi,
+      ...(approvedMaxWidth !== null ? [approvedMaxWidth] : []),
     ),
   );
 
@@ -225,6 +272,46 @@ export function assessPrintRequestItemSize(input: PrintRequestItemSizeInput): Pr
       qualityLabel,
       canSave: false,
       errorMessage: "Requested standard print sizes cannot exceed 22 inches. Use a Custom Request for this item.",
+    };
+  }
+
+  const approvedMaxWidth = resolveApprovedMaxWidthInches(input);
+  if (approvedMaxWidth !== null && input.printWidthInches > approvedMaxWidth + 1e-9) {
+    let approvedMaxHeight: number;
+    if (
+      typeof input.approvedMaxPrintHeightInches === "number" &&
+      Number.isFinite(input.approvedMaxPrintHeightInches) &&
+      input.approvedMaxPrintHeightInches > 0
+    ) {
+      approvedMaxHeight = roundInches(input.approvedMaxPrintHeightInches);
+    } else {
+      try {
+        approvedMaxHeight = calculateLockedHeightFromWidth(
+          input.pixelWidth,
+          input.pixelHeight,
+          approvedMaxWidth,
+        );
+      } catch {
+        return {
+          effectiveDpi: dpiResult.effectiveDpi,
+          qualityLevel,
+          qualityLabel,
+          canSave: false,
+          errorMessage: `Maximum print size for this artwork is ${approvedMaxWidth}″ wide. Larger sizes are disabled because they would require stretching the image beyond its approved quality limit.`,
+        };
+      }
+    }
+
+    return {
+      effectiveDpi: dpiResult.effectiveDpi,
+      qualityLevel,
+      qualityLabel,
+      canSave: false,
+      errorMessage: formatApprovedMaxPrintSizeMessage(
+        approvedMaxWidth,
+        approvedMaxHeight,
+        Boolean(input.wasUpscaled),
+      ),
     };
   }
 

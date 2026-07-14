@@ -9,10 +9,10 @@ Login/logout, profile bootstrap, protected routes via permissions.
 Approved catalog grid; search; category + tag filters; archive toggle; details/edit; request-selection mode for staff print requests; print-size / DPI display.
 
 ### Imports (`/imports`)
-ZIP/folder import; PNG validation; trim + upscale; thumbnails/previews; Storage upload; AI enqueue; batch progress.
+ZIP/folder import; PNG validation; trim + upscale (ADR-FP-080 ≤6× toward 12″); thumbnails/previews; Storage upload; AI enqueue; batch progress. No import-time halftone interrupt.
 
 ### AI Review (`/ai-review`)
-Processing / Needs Review / Rejected tabs; suggestions panel; approve/reject/skip; re-run AI; keyboard shortcuts; settings-driven model + tag exclusions.
+Processing / Needs Review / Rejected tabs; suggestions panel; approve/reject/skip; re-run AI; keyboard shortcuts; settings-driven model + tag exclusions; staff Halftone toggle (human-only; AI never auto-enables).
 
 ### Print Requests (`/print-requests`)
 Internal + customer requests; item qty/size autosave; DPI quality feedback; duplicate same design for other sizes; Design Library selection mode.
@@ -37,11 +37,13 @@ Team users + customer records; AI enrichment settings; show-queue settings; dash
 | Collapsible “How print requests work” hint | ✅ Live |
 | Start / continue print request | ✅ Live (one working request — ADR-FP-071) |
 | Selection mode: add library designs with quantities | ✅ Live |
-| **Upload artwork** (modal; PNG/WebP/folder/ZIP) | ✅ Live (dev) — dedicated `/requests/artwork` page planned next |
-| Persistent Current Request / basket drawer | 🔄 Planned (`portal-persistent-current-request`) |
+| **Upload artwork** (modal; PNG/WebP/folder/ZIP) | ✅ Live (dev) — `/requests/artwork`; optional halftone checkbox (ADR-FP-080) |
+| Persistent Current Request / basket drawer | ✅ Live (dev) |
+| Donate designs (`/donate`) | ✅ Live (dev) — ADR-FP-078 |
 | Confirm ownership (required) + library permission (optional, default on) | ✅ Live |
 | Attach ready uploads to working request | ✅ Live |
 | Request item cards: qty, size, DPI badge; save blocked &lt; 200 DPI | ✅ Live |
+| Image quality sizing (`image-quality-v2`, ≤6× toward 12″) | ✅ Live (dev) — ADR-FP-080 |
 | Progress tabs (Working / Queued / Printing / Printed) | ✅ Live |
 | Add request to show (callable + calendar) | ✅ Live |
 | Production App Hosting | ⏸ Human approval |

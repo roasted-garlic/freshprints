@@ -521,7 +521,7 @@ export function useAiReviewInbox(
   );
 
   const updateDraftField = useCallback(
-    (field: keyof AiReviewDraftForm, value: string) => {
+    (field: keyof AiReviewDraftForm, value: string | boolean) => {
       if (!canEditSelected) {
         return;
       }

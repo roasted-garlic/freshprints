@@ -60,7 +60,24 @@
    inline with the search field and buttons. */
 .design-library-filter-controls .design-library-filter-controls-category {
   margin: 0;
-  min-width: 11rem;
+  min-width: 16rem;
+  width: min(18rem, 100%);
+}
+
+.design-library-filter-controls .design-library-filter-controls-category .form-select-menu {
+  left: 0;
+  max-width: min(24rem, 90vw);
+  min-width: 100%;
+  right: auto;
+  width: max-content;
+}
+
+.design-library-filter-controls
+  .design-library-filter-controls-category
+  .form-select-option-label {
+  overflow: visible;
+  text-overflow: unset;
+  white-space: normal;
 }
 
 .design-library-filter-controls .design-library-filter-controls-category > label {

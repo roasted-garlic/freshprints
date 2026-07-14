@@ -10,6 +10,7 @@ import {
   DEFAULT_VISION_MODEL_ID,
   GEMINI_VISION_MODEL_OPTIONS,
   PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V20,
+  PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V21,
   SUGGESTION_AUTHOR_MODE_OPTIONS,
   hasRequiredAiEnrichmentPromptPlaceholders,
   resolveClientPromptTemplate,
@@ -77,14 +78,32 @@ describe("aiEnrichmentSettingsConstants", () => {
     assert.ok(contextIndex >= 0 && returnFieldsIndex >= 0 && contextIndex < returnFieldsIndex);
   });
 
-  it("resolves a saved copy of the previous v20 default to the current v21 default", () => {
+  it("includes style/halftone tagging guidance in the default prompt", () => {
+    assert.match(
+      DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
+      /Include style tags when visually important and searchable/,
+    );
+    assert.match(
+      DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
+      /Use halftone only for clear dot-screen shading/,
+    );
+  });
+
+  it("resolves a saved copy of the previous v20 default to the current default", () => {
     assert.equal(
       resolveClientPromptTemplate(PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V20),
       DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
     );
   });
 
-  it("resolves previous v20 default with line-ending/spacing drift to the current v21 default", () => {
+  it("resolves a saved copy of the previous v21 default to the current default", () => {
+    assert.equal(
+      resolveClientPromptTemplate(PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V21),
+      DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
+    );
+  });
+
+  it("resolves previous v20 default with line-ending/spacing drift to the current default", () => {
     const savedWithDifferentWhitespace = PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V20
       .replace(/\n/g, "\r\n")
       .replace("Return:\r\n", "Return:\r\n\r\n");

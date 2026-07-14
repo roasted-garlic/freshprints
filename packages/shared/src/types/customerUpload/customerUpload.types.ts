@@ -52,8 +52,21 @@ export interface CustomerUpload {
   printHeightInches: number | null;
   effectiveDpi: number | null;
   wasUpscaled?: boolean;
+  wasTrimmed?: boolean;
+  upscaleFactor?: number | null;
+  upscalePassCount?: 0 | 1 | null;
+  approvedMaxPrintWidthInches?: number | null;
+  approvedMaxPrintHeightInches?: number | null;
+  sizingPolicyVersion?: string | null;
+  sizingWarningCode?: string | null;
   transparencyPassed: boolean | null;
   transparentPixelRatio?: number | null;
+  /** Automatic halftone scan (server-authored). */
+  halftoneDetection?: import("../halftone/halftone.types").HalftoneDetectionPersisted | null;
+  /** Customer/staff uploader confirmation (user input). */
+  halftoneSubmitterResponse?: import("../halftone/halftone.types").HalftoneSubmitterResponsePersisted | null;
+  /** Staff decision (authoritative for catalog). */
+  halftoneStaffDecision?: import("../halftone/halftone.types").HalftoneStaffDecisionPersisted | null;
   technicalStatus: CustomerUploadTechnicalStatus;
   /** Live finalize progress; null when idle, ready, or failed. */
   technicalProgressStage?: CustomerUploadTechnicalProgressStage | null;

@@ -65,6 +65,14 @@ export interface CustomerUploadIntakeRow {
   catalogUseAcknowledged: boolean;
   purpose: CustomerUploadPurpose;
   createdAtMs: number | null;
+  approvedMaxPrintWidthInches: number | null;
+  approvedMaxPrintHeightInches: number | null;
+  wasUpscaled: boolean | null;
+  upscaleFactor: number | null;
+  sizingWarningCode: string | null;
+  halftoneDetection: import("@fresh-prints/shared/types/halftone/halftone.types").HalftoneDetectionPersisted | null;
+  halftoneSubmitterResponse: import("@fresh-prints/shared/types/halftone/halftone.types").HalftoneSubmitterResponsePersisted | null;
+  halftoneStaffDecision: import("@fresh-prints/shared/types/halftone/halftone.types").HalftoneStaffDecisionPersisted | null;
 }
 
 function asNumber(value: unknown): number | null {
@@ -224,6 +232,23 @@ export const customerUploadIntakeService = {
         catalogUseAcknowledged: data.catalogUseAcknowledged === true,
         purpose: resolveCustomerUploadPurpose(data.purpose),
         createdAtMs: timestampMs(data.createdAt),
+        approvedMaxPrintWidthInches: asNumber(data.approvedMaxPrintWidthInches),
+        approvedMaxPrintHeightInches: asNumber(data.approvedMaxPrintHeightInches),
+        wasUpscaled: asBool(data.wasUpscaled),
+        upscaleFactor: asNumber(data.upscaleFactor),
+        sizingWarningCode: asString(data.sizingWarningCode),
+        halftoneDetection:
+          data.halftoneDetection && typeof data.halftoneDetection === "object"
+            ? (data.halftoneDetection as CustomerUploadIntakeRow["halftoneDetection"])
+            : null,
+        halftoneSubmitterResponse:
+          data.halftoneSubmitterResponse && typeof data.halftoneSubmitterResponse === "object"
+            ? (data.halftoneSubmitterResponse as CustomerUploadIntakeRow["halftoneSubmitterResponse"])
+            : null,
+        halftoneStaffDecision:
+          data.halftoneStaffDecision && typeof data.halftoneStaffDecision === "object"
+            ? (data.halftoneStaffDecision as CustomerUploadIntakeRow["halftoneStaffDecision"])
+            : null,
       });
     }
 
@@ -263,6 +288,18 @@ export const customerUploadIntakeService = {
       "retryCustomerUploadProcessing",
     );
     const response = await callable({ uploadId });
+    return response.data;
+  },
+
+  async recordHalftoneStaffDecision(
+    uploadId: string,
+    value: boolean,
+  ): Promise<{ uploadId: string; value: boolean }> {
+    const callable = httpsCallable<
+      { uploadId: string; value: boolean },
+      { uploadId: string; value: boolean }
+    >(functions, "recordCustomerUploadHalftoneStaffDecision");
+    const response = await callable({ uploadId, value });
     return response.data;
   },
 };

@@ -67,7 +67,7 @@ interface AiReviewWorkspaceProps {
   onClearProcessingSettings: () => void;
   onStartAutoQueue: () => void;
   onStopAutoQueue: () => void;
-  onUpdateDraftField: (field: keyof AiReviewDraftForm, value: string) => void;
+  onUpdateDraftField: (field: keyof AiReviewDraftForm, value: string | boolean) => void;
   queuePositionLabel: string | null;
   queueRunState: AiProcessingQueueRunState;
   processingVisionModelId: string;
@@ -211,8 +211,10 @@ export function AiReviewWorkspace({
               approvedTags={approvedTags}
               canEdit={canEdit}
               categoryOptions={categoryOptions}
+              design={selectedDesign}
               draftForm={draftForm}
               onChange={onUpdateDraftField}
+              onHalftoneChange={(value) => onUpdateDraftField("markAsHalftone", value)}
               onInputFocusChange={onInputFocusChange}
             />
           ) : null}

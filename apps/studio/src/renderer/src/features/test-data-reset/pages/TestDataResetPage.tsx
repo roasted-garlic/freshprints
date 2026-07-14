@@ -32,7 +32,7 @@ type ConfirmStep = "closed" | "designsWarning" | "phrase";
 
 function TestDataResetPageContent() {
   const { user } = useAuth();
-  const canManage = permissionService.canManageSettings(user);
+  const canWipe = permissionService.canWipeOperationalTestData(user);
   const wipeUiEnabled = isOperationalWipeUiEnabled();
   const projectId = getStudioFirebaseProjectId();
 
@@ -166,12 +166,12 @@ function TestDataResetPageContent() {
     );
   }
 
-  if (!canManage) {
+  if (!canWipe) {
     return (
       <main className="page-layout page-layout-shell test-data-reset-page">
         <section className="card test-data-reset-section">
-          <h2 className="test-data-reset-title">Admin access required</h2>
-          <p className="test-data-reset-copy">Only owners and admins can wipe operational test data.</p>
+          <h2 className="test-data-reset-title">Owner access required</h2>
+          <p className="test-data-reset-copy">Only owners can wipe operational test data.</p>
         </section>
       </main>
     );

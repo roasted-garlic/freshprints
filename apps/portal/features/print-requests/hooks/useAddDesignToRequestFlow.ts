@@ -21,12 +21,25 @@ interface UseAddDesignToRequestFlowOptions {
   ) => Promise<{ printRequestId: string }>;
   onBeforeNavigate?: () => void;
   /** Full request list + working items (use after creating a new request). */
-  refreshRequests: (options?: { silent?: boolean }) => Promise<void>;
+  refreshRequests: (options?: { silent?: boolean; printRequestId?: string }) => Promise<void>;
   /** Working-items-only sync for qty mutations (avoids full list flash). */
-  reloadWorkingItems: (options?: { silent?: boolean }) => Promise<void>;
+  reloadWorkingItems: (options?: { silent?: boolean; printRequestId?: string }) => Promise<void>;
 }
 
 type DesiredPrimaryQty = number; // 0 = remove all catalog lines for the design
+
+function toSeedDesignSummary(design: CatalogDesign) {
+  return {
+    id: design.id,
+    title: design.title,
+    width: design.width,
+    height: design.height,
+    thumbnailPath: design.thumbnailPath,
+    previewPath: design.previewPath,
+    printWidthInches: design.printWidthInches,
+    printHeightInches: design.printHeightInches,
+  };
+}
 
 function toActionLike(item: PrintRequestItem) {
   return {
@@ -53,6 +66,8 @@ function isCatalogDesignItem(item: PrintRequestItem, designId: string): boolean 
 function isOptimisticCatalogItemId(itemId: string): boolean {
   return itemId.startsWith('optimistic:');
 }
+
+const PENDING_WORKING_REQUEST_ID = 'optimistic:pending-request';
 
 function readPrimaryQuantity(items: PrintRequestItem[], designId: string): number {
   const action = resolveCatalogAddAction(items.map(toActionLike), designId);
@@ -91,6 +106,8 @@ export function useAddDesignToRequestFlow({
   const qtyGenerationRef = useRef(new Map<string, number>());
   const flushTimersRef = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const flushingDesignIdsRef = useRef(new Set<string>());
+  /** Coalesce first-request creates so rapid taps share one create callable. */
+  const createRequestPromiseRef = useRef<Promise<string> | null>(null);
   /** Snapshot of working items for coalescing without waiting on React state. */
   const workingItemsSnapshotRef = useRef<PrintRequestItem[]>(workingItems);
 
@@ -111,6 +128,7 @@ export function useAddDesignToRequestFlow({
     desiredPrimaryQtyRef.current.clear();
     qtyGenerationRef.current.clear();
     flushingDesignIdsRef.current.clear();
+    createRequestPromiseRef.current = null;
     setBusyDesignId(null);
     setIsPickerOpen(false);
     setIsConfirmOpen(false);
@@ -120,6 +138,21 @@ export function useAddDesignToRequestFlow({
   const syncWorkingItems = useCallback(async () => {
     await reloadWorkingItems({ silent: true });
   }, [reloadWorkingItems]);
+
+  const ensureWorkingRequestId = useCallback(async (): Promise<string> => {
+    if (createRequestPromiseRef.current) {
+      return createRequestPromiseRef.current;
+    }
+
+    const createPromise = createPrintRequest(undefined, { skipListReload: true })
+      .then((created) => created.printRequestId)
+      .finally(() => {
+        createRequestPromiseRef.current = null;
+      });
+
+    createRequestPromiseRef.current = createPromise;
+    return createPromise;
+  }, [createPrintRequest]);
 
   const patchItemsAndSnapshot = useCallback(
     (updater: (items: PrintRequestItem[]) => PrintRequestItem[]) => {
@@ -304,16 +337,7 @@ export function useAddDesignToRequestFlow({
       const nextQuantity = Math.max(0, Math.floor(input.nextQuantity));
 
       if (input.catalogDesign && nextQuantity >= 1) {
-        seedDesignSummary?.(input.designId, {
-          id: input.catalogDesign.id,
-          title: input.catalogDesign.title,
-          width: 1,
-          height: 1,
-          thumbnailPath: input.catalogDesign.thumbnailPath,
-          previewPath: input.catalogDesign.previewPath,
-          printWidthInches: input.catalogDesign.printWidthInches,
-          printHeightInches: input.catalogDesign.printHeightInches,
-        });
+        seedDesignSummary?.(input.designId, toSeedDesignSummary(input.catalogDesign));
       } else if (wasAbsent && nextQuantity >= 1) {
         void ensureDesignSummaries?.([input.designId]);
       }
@@ -354,6 +378,46 @@ export function useAddDesignToRequestFlow({
 
       if (delta < 0) {
         if (branch.kind === 'create') {
+          if (!firebaseUser) {
+            return;
+          }
+          const current =
+            desiredPrimaryQtyRef.current.get(design.id) ??
+            readPrimaryQuantity(workingItemsSnapshotRef.current, design.id);
+          if (current < 1) {
+            return;
+          }
+          const nextQuantity = current - 1;
+          desiredPrimaryQtyRef.current.set(design.id, nextQuantity);
+          applyDesiredPrimaryQuantity(
+            design.id,
+            nextQuantity,
+            PENDING_WORKING_REQUEST_ID,
+            firebaseUser.uid,
+          );
+          const generation = (qtyGenerationRef.current.get(design.id) ?? 0) + 1;
+          qtyGenerationRef.current.set(design.id, generation);
+          void ensureWorkingRequestId()
+            .then(async (printRequestId) => {
+              patchItemsAndSnapshot((items) =>
+                items.map((item) =>
+                  item.printRequestId === PENDING_WORKING_REQUEST_ID
+                    ? { ...item, printRequestId }
+                    : item,
+                ),
+              );
+              await flushDesiredQuantity(design.id, printRequestId, firebaseUser.uid, generation);
+              await refreshRequests({ silent: true, printRequestId });
+            })
+            .catch((error: unknown) => {
+              desiredPrimaryQtyRef.current.delete(design.id);
+              patchItemsAndSnapshot((items) =>
+                items.filter((item) => !isCatalogDesignItem(item, design.id)),
+              );
+              setActionError(
+                error instanceof Error ? error.message : 'Unable to update Current Request.',
+              );
+            });
           return;
         }
         if (branch.kind === 'pick') {
@@ -388,44 +452,54 @@ export function useAddDesignToRequestFlow({
       }
 
       if (branch.kind === 'create') {
-        if (!firebaseUser || busyDesignId) {
-          if (!firebaseUser) {
-            setActionError('You must be signed in to update your Current Request.');
-          }
+        if (!firebaseUser) {
+          setActionError('You must be signed in to update your Current Request.');
           return;
         }
 
-        setBusyDesignId(design.id);
-        seedDesignSummary?.(design.id, {
-          id: design.id,
-          title: design.title,
-          width: 1,
-          height: 1,
-          thumbnailPath: design.thumbnailPath,
-          previewPath: design.previewPath,
-          printWidthInches: design.printWidthInches,
-          printHeightInches: design.printHeightInches,
-        });
-        void createPrintRequest(undefined, { skipListReload: true })
-          .then((created) =>
-            portalPrintRequestService.addOrIncrementCatalogDesign({
-              printRequestId: created.printRequestId,
-              designId: design.id,
-              userId: firebaseUser.uid,
-            }),
-          )
-          .then(() => refreshRequests({ silent: true }))
-          .then(() => {
-            showSuccess(`Added “${design.title}” to your Current Request.`);
+        const current =
+          desiredPrimaryQtyRef.current.get(design.id) ??
+          readPrimaryQuantity(workingItemsSnapshotRef.current, design.id);
+        const nextQuantity = current + 1;
+        const wasAbsent = current < 1;
+
+        seedDesignSummary?.(design.id, toSeedDesignSummary(design));
+        desiredPrimaryQtyRef.current.set(design.id, nextQuantity);
+        applyDesiredPrimaryQuantity(
+          design.id,
+          nextQuantity,
+          PENDING_WORKING_REQUEST_ID,
+          firebaseUser.uid,
+          design.title,
+        );
+
+        if (wasAbsent) {
+          showSuccess(`Added “${design.title}” to your Current Request.`);
+        }
+
+        const generation = (qtyGenerationRef.current.get(design.id) ?? 0) + 1;
+        qtyGenerationRef.current.set(design.id, generation);
+
+        void ensureWorkingRequestId()
+          .then(async (printRequestId) => {
+            patchItemsAndSnapshot((items) =>
+              items.map((item) =>
+                item.printRequestId === PENDING_WORKING_REQUEST_ID
+                  ? { ...item, printRequestId }
+                  : item,
+              ),
+            );
+            await flushDesiredQuantity(design.id, printRequestId, firebaseUser.uid, generation);
+            await refreshRequests({ silent: true, printRequestId });
           })
           .catch((error: unknown) => {
+            desiredPrimaryQtyRef.current.delete(design.id);
+            patchItemsAndSnapshot((items) =>
+              items.filter((item) => !isCatalogDesignItem(item, design.id)),
+            );
             setActionError(
               error instanceof Error ? error.message : 'Unable to update Current Request.',
             );
-          })
-          .finally(() => {
-            setBusyDesignId(null);
-            setPendingDesign(null);
           });
         return;
       }
@@ -449,11 +523,14 @@ export function useAddDesignToRequestFlow({
       });
     },
     [
+      applyDesiredPrimaryQuantity,
       busyDesignId,
       continuableRequests,
-      createPrintRequest,
+      ensureWorkingRequestId,
       firebaseUser,
+      flushDesiredQuantity,
       onBeforeNavigate,
+      patchItemsAndSnapshot,
       queuePrimaryQuantity,
       refreshRequests,
       seedDesignSummary,

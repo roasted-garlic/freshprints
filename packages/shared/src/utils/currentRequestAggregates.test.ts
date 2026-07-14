@@ -122,7 +122,7 @@ describe("buildCurrentRequestAggregates", () => {
 });
 
 describe("assessCurrentRequestItemAttention", () => {
-  it("flags dpi below minimum and warning band", () => {
+  it("flags dpi below minimum and oversized vs approved max", () => {
     const below = assessCurrentRequestItemAttention(
       item({
         id: "1",
@@ -135,7 +135,9 @@ describe("assessCurrentRequestItemAttention", () => {
     );
     assert.ok(below.includes("dpi_below_minimum"));
 
-    const warn = assessCurrentRequestItemAttention(
+    // 1000px → ~3.33″ approved max @ 300 DPI. 4″ is ~250 DPI ("good") but exceeds approved max,
+    // so attention still flags as dpi_below_minimum (not saveable). Soft dpi_warning only when canSave.
+    const overApprovedMax = assessCurrentRequestItemAttention(
       item({
         id: "2",
         designId: "x",
@@ -145,7 +147,7 @@ describe("assessCurrentRequestItemAttention", () => {
         pixelHeight: 1000,
       }),
     );
-    assert.ok(warn.includes("dpi_warning"));
+    assert.ok(overApprovedMax.includes("dpi_below_minimum"));
   });
 
   it("flags upload processing and failed", () => {
@@ -186,5 +188,34 @@ describe("assessCurrentRequestItemAttention", () => {
         "missing_or_invalid_size",
       ),
     );
+  });
+
+  it("does not throw when tiny pixel dims would round approved max to 0", () => {
+    assert.doesNotThrow(() => {
+      assessCurrentRequestItemAttention(
+        item({
+          id: "tiny",
+          designId: "x",
+          sourceType: "catalog_design",
+          printWidthInches: 10,
+          printHeightInches: 10,
+          pixelWidth: 1,
+          pixelHeight: 1,
+        }),
+      );
+    });
+
+    const reasons = assessCurrentRequestItemAttention(
+      item({
+        id: "tiny2",
+        designId: "x",
+        sourceType: "catalog_design",
+        printWidthInches: 10,
+        printHeightInches: 10,
+        pixelWidth: 1,
+        pixelHeight: 1,
+      }),
+    );
+    assert.ok(reasons.includes("dpi_below_minimum") || reasons.includes("missing_or_invalid_size"));
   });
 });

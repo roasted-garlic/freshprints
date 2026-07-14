@@ -135,8 +135,9 @@ export function BatchImportResultPanel({
           </p>
         ) : allDerivativesComplete ? (
           <p className="auth-message auth-message-success">
-            Designs were imported with derivatives complete. Open AI Processing and use Start AI or
-            Process image with AI when you are ready.
+            Designs were imported with derivatives complete. With Auto advance on (default), AI
+            Processing starts in the background so you can keep importing. Open AI Processing anytime
+            to watch progress.
           </p>
         ) : hasDerivativeFailures ? (
           <p className="auth-message auth-message-warning">

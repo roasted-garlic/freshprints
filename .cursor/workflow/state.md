@@ -1,47 +1,50 @@
 ## Current Goal
-print-request-working-triage-search
+print-request-add-to-show-selection-bounce
 
 ## Phase
 test
 
 ## Plan Status
-complete — docs/workflow/plans/2026-07-13-print-request-working-triage-search-plan.md
+complete
 
 ## Review Status
-approved — docs/workflow/reviews/2026-07-13-print-request-working-triage-search-review.md
+approved
 
 ## Implementation Status
 complete
 
 ## Test Status
-partial — unit tests + functions build + portal typecheck passed; manual Studio/Portal UI pending; Functions deploy required for clear/archive callables
+pending_manual
+
+## Signoff Status
+pending
 
 ## Human Checkpoint Required
 yes
 
 ## Human Checkpoint Reason
-Manual UI verification of Studio Working triage + search; Portal Clear request; deploy Functions before shared-env clear works.
+Manual Portal + Studio verification: stay on detail after queue/add; calendar stays mounted (no flicker)
 
 ## Allowed Actions
-Record test report; prepare manual checkpoint; docs-only fixes
+Read docs; wait for owner PASS / FAIL / PASS WITH NOTES; record feedback
 
 ## Forbidden Actions
-Production deploy without approval; scope expansion
+Production deploy; new scope until checkpoint feedback
 
 ## Next Required Step
-Owner manual PASS on Studio Print Requests rail + Portal clear; deploy clearPortalWorkingPrintRequest + archiveStaleWorkingPrintRequests
+Await human feedback on `docs/workflow/reviews/2026-07-13-print-request-add-to-show-selection-bounce-manual-checkpoint.md`
+
+## DONE
+no
+
+## Last Completed Step
+Amendment implemented — Portal stay on detail; Studio/Portal keep ShowPicker mounted; close modal before refresh
 
 ## Decision Log
-- 2026-07-13 — Parked `portal-donate-designs` (manual PASS / deploy still outstanding).
-- 2026-07-13 — Implemented ADR-FP-079: Working triage, cross-tab search, Portal clear callable, empty stale archive callable.
-
-## Files Created
-- packages/shared/src/utils/printRequestWorkingTriage.ts (+ test)
-- apps/studio/.../utils/printRequestListSearch.ts (+ test)
-- functions/src/clearPortalWorkingPrintRequest.ts
-- functions/src/archiveStaleWorkingPrintRequests.ts
-- docs/workflow/plans/2026-07-13-print-request-working-triage-search-plan.md
-- docs/workflow/reviews/2026-07-13-print-request-working-triage-search-review.md
-
-## Files Modified
-- PrintRequestsPage + print-requests.css; Portal sidebar/drawer/context/service; functions index; DATA_MODEL, BACKEND, SECURITY, DECISIONS, tab helper copy
+- 2026-07-13 — Studio follow-to-Queued detail after Add to Show.
+- 2026-07-13 — Owner: original intent was Portal; keep Studio fix; smooth calendar flicker on both.
+- 2026-07-13 — Portal: removed navigate to `/requests?tab=queued`; silent in-place refresh on detail.
+- 2026-07-13 — Studio/Portal: calendar stays mounted during submit/celebrate; modal closes before parent reload.
+- 2026-07-13 — Owner: Queued progress readout = “Waiting for the printing to start”; counting timer only once printing has started.
+- 2026-07-13 — Owner: first catalog Add to request feels laggy (create-before-add); make optimistic so badge/qty/toast feel instant.
+- 2026-07-13 — Owner: make discover home `/` (no /catalog); library at `/catalog`; drop Home nav (logo returns home).

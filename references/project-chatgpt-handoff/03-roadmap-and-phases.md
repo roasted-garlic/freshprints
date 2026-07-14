@@ -2,18 +2,20 @@
 
 > Align all work with the current phase / active managed goal. Do not jump ahead.
 
-## Current status (2026-07-12)
+## Current status (2026-07-13)
 
 | Item | Status |
 |------|--------|
 | Phases 1–7 | Complete (Studio foundation through Show Queue MVP) |
 | Phase 8 Portal MVP | **Complete in `fresh-prints-dev`** |
 | Phase 8 fast-follow — customer artwork uploads | **Complete** (parent signoff 2026-07-12) |
-| Phase 8 fast-follow — persistent Current Request | **Active** — plan ready; Review pending |
+| Phase 8 fast-follow — persistent Current Request / donate / Working triage | **Complete** (2026-07-13) |
+| Phase 8 fast-follow — image quality + human-only halftone (ADR-FP-080) | **Complete** (signoff 2026-07-13, PASS WITH NOTES) |
+| Phase 8 fast-follow — Current Request empty-state / Your Stash polish | **Complete** (signoff 2026-07-13) |
 | Phase 9 Custom Requests | Next major product phase (not started as active work) |
 | Production Portal App Hosting | Pending human approval |
 
-**Active managed goal:** `portal-persistent-current-request` (cart-style Portal UX).
+**Active managed goal:** none (idle). Owner-directed next: `studio-import-auto-start-ai-processing`.
 
 ---
 
@@ -51,6 +53,11 @@ Sub-phases A–G + remediations r2–r7 on `fresh-prints-dev`:
 - Limits (100 files, 100 MB/image, 2 GB batch, concurrency 8)
 - Optional library permission (default on); ownership required
 - Request item save floor **≥ 200 DPI**
+
+### Phase 8 fast-follow — Image quality + halftone (ADR-FP-080)
+- Shared `image-quality-v2` sizing: ≤6× one-pass toward 12″; 10″ request default; 15″×16.5″ envelopes; never downsample
+- Factors **>2×** → extended staff visibility only (non-blocking)
+- No automatic halftone detection; Portal optional checkbox + Studio/AI Review staff toggle; approve syncs `halftone` tag
 
 ---
 

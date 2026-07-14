@@ -14,6 +14,8 @@ function createDesign(overrides: Partial<CatalogDesign> = {}): CatalogDesign {
     title: 'Sunset Wave',
     tags: ['ocean'],
     thumbnailPath: '/thumbnails/design-1.webp',
+    width: 3000,
+    height: 3000,
     requestCount: 0,
     ...overrides,
   };

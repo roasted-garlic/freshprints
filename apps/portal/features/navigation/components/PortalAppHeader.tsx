@@ -17,7 +17,7 @@ import { usePortalPrintRequests } from '../../print-requests/context/PortalPrint
 export function PortalAppHeader() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { open: openDrawer } = usePortalDrawer();
+  const { openNav } = usePortalDrawer();
   const {
     currentRequestAggregates,
     openCurrentRequestDrawer,
@@ -30,7 +30,7 @@ export function PortalAppHeader() {
   const currentLocation = `${pathname}${query ? `?${query}` : ''}`;
   const returnTo =
     pathname === REQUEST_ARTWORK_PATH || pathname.startsWith(`${REQUEST_ARTWORK_PATH}/`)
-      ? '/catalog'
+      ? CATALOG_HOME_PATH
       : currentLocation;
   const uploadHref = buildRequestArtworkHref({ returnTo });
 
@@ -40,7 +40,7 @@ export function PortalAppHeader() {
         <button
           aria-label="Open navigation menu"
           className="portal-app-header-menu-button"
-          onClick={openDrawer}
+          onClick={openNav}
           type="button"
         >
           <Menu aria-hidden size={20} strokeWidth={2} />

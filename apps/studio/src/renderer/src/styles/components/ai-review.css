@@ -1160,3 +1160,48 @@
   font-size: var(--font-size-xs);
   line-height: 1.4;
 }
+
+.ai-review-halftone-panel {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  padding: var(--space-3);
+}
+
+.ai-review-halftone-panel-header {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  justify-content: space-between;
+}
+
+.ai-review-halftone-title {
+  font-size: var(--font-size-md);
+  margin: 0;
+}
+
+.ai-review-halftone-evidence-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.ai-review-halftone-chip {
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full, 999px);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  padding: 0.25rem 0.55rem;
+}
+
+.ai-review-halftone-help {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: 1.4;
+  margin: 0;
+}

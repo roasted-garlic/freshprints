@@ -113,18 +113,23 @@ export function assessCurrentRequestItemAttention(
     item.pixelWidth > 0 &&
     item.pixelHeight > 0
   ) {
-    const assessment: PrintRequestItemSizeAssessment = assessPrintRequestItemSize({
-      pixelWidth: item.pixelWidth,
-      pixelHeight: item.pixelHeight,
-      printWidthInches: width,
-      printHeightInches: height,
-    });
+    try {
+      const assessment: PrintRequestItemSizeAssessment = assessPrintRequestItemSize({
+        pixelWidth: item.pixelWidth,
+        pixelHeight: item.pixelHeight,
+        printWidthInches: width,
+        printHeightInches: height,
+      });
 
-    if (!assessment.canSave || assessment.qualityLevel === "below_minimum") {
-      reasons.push("dpi_below_minimum");
-    } else if (assessment.qualityLevel === "good") {
-      // 200–299 effective DPI soft warning
-      reasons.push("dpi_warning");
+      if (!assessment.canSave || assessment.qualityLevel === "below_minimum") {
+        reasons.push("dpi_below_minimum");
+      } else if (assessment.qualityLevel === "good") {
+        // 200–299 effective DPI soft warning
+        reasons.push("dpi_warning");
+      }
+    } catch {
+      // Never let attention scoring crash Portal chrome (e.g. degenerate approved-max math).
+      reasons.push("missing_or_invalid_size");
     }
   }
 

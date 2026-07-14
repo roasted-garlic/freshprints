@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 import { FileImage } from "lucide-react";
 
@@ -11,6 +11,7 @@ import { ImportMethodCardOverlay } from "../components/ImportMethodCardOverlay";
 import { ImportResultPanel } from "../components/ImportResultPanel";
 import { useBatchImport } from "../hooks/useBatchImport";
 import { useSinglePngImport } from "../hooks/useSinglePngImport";
+import { enqueueImportedDesignsForBackgroundAi } from "../services/importAiBackgroundQueue";
 
 function getSelectButtonLabel(
   isBusy: boolean,
@@ -62,6 +63,9 @@ export function ImportsPage() {
     validationResult,
   } = useSinglePngImport();
 
+  const singleAutoStartRef = useRef<string | null>(null);
+  const batchAutoStartRef = useRef<string | null>(null);
+
   useShellHeaderConfig(
     useMemo(
       () => ({
@@ -74,6 +78,35 @@ export function ImportsPage() {
       [],
     ),
   );
+
+  useEffect(() => {
+    if (!uploadResult?.pipelineSuccess || !uploadResult.designId) {
+      return;
+    }
+    if (singleAutoStartRef.current === uploadResult.designId) {
+      return;
+    }
+    singleAutoStartRef.current = uploadResult.designId;
+    enqueueImportedDesignsForBackgroundAi([uploadResult.designId]);
+  }, [uploadResult]);
+
+  useEffect(() => {
+    if (batchImport.phase !== "completed" || !batchImport.uploadReport) {
+      return;
+    }
+    const jobKey = batchImport.jobId ?? "batch-complete";
+    if (batchAutoStartRef.current === jobKey) {
+      return;
+    }
+    const designIds = batchImport.uploadReport.files
+      .filter((file) => file.pipelineSuccess === true && Boolean(file.designId?.trim()))
+      .map((file) => file.designId!.trim());
+    if (designIds.length === 0) {
+      return;
+    }
+    batchAutoStartRef.current = jobKey;
+    enqueueImportedDesignsForBackgroundAi(designIds);
+  }, [batchImport.jobId, batchImport.phase, batchImport.uploadReport]);
 
   const showCancelSingleImport =
     uploadResult === null &&
@@ -102,7 +135,7 @@ export function ImportsPage() {
             <div>
               <p className="eyebrow">Single import</p>
               <h2>One PNG</h2>
-              <p>Validate, preview, upload, and queue one design for AI Processing.</p>
+              <p>Validate, preview, upload, and send to AI Processing.</p>
             </div>
 
             {isDesktop ? (
@@ -164,7 +197,6 @@ export function ImportsPage() {
         validationError={validationError}
         validationResult={validationResult}
       />
-
     </main>
   );
 }

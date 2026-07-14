@@ -1,4 +1,4 @@
-export type PortalNavItemId = 'designs' | 'library' | 'requests';
+export type PortalNavItemId = 'library' | 'requests';
 
 export interface PortalNavItem {
   id: PortalNavItemId;
@@ -9,8 +9,7 @@ export interface PortalNavItem {
 export const PORTAL_ACCOUNT_HREF = '/dashboard';
 
 export const portalNavItems: PortalNavItem[] = [
-  { id: 'designs', href: '/catalog', label: 'Home' },
-  { id: 'library', href: '/catalog/library', label: 'Design Library' },
+  { id: 'library', href: '/catalog', label: 'Design Library' },
   { id: 'requests', href: '/requests?tab=working', label: 'Print Requests' },
 ];
 
@@ -19,12 +18,12 @@ export function isPortalAccountRoute(pathname: string): boolean {
 }
 
 export function resolveActivePortalNavItem(pathname: string): PortalNavItemId | null {
-  if (pathname.startsWith('/catalog/library')) {
-    return 'library';
+  if (pathname === '/' || pathname.startsWith('/?')) {
+    return null;
   }
 
   if (pathname.startsWith('/catalog')) {
-    return 'designs';
+    return 'library';
   }
 
   if (pathname.startsWith('/requests')) {

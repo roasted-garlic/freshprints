@@ -16,7 +16,7 @@ interface PortalAppShellProps {
 }
 
 function PortalAppShellContent({ children }: PortalAppShellProps) {
-  const { close: closeDrawer, isOpen: isDrawerOpen } = usePortalDrawer();
+  const { closeDrawer, isDrawerOpen } = usePortalDrawer();
 
   return (
     <div className="portal-app-shell">

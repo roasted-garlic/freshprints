@@ -48,6 +48,16 @@ export interface Design {
   requestedByCustomerId?: string;
   /** Set when this design was promoted from a Portal customer upload (Sub-phase E). */
   sourceCustomerUploadId?: string;
+  wasUpscaled?: boolean;
+  upscaleFactor?: number;
+  upscalePassCount?: 0 | 1;
+  approvedMaxPrintWidthInches?: number;
+  approvedMaxPrintHeightInches?: number;
+  sizingPolicyVersion?: string;
+  sizingWarningCode?: string;
+  halftoneDetection?: import("@fresh-prints/shared/types/halftone/halftone.types").HalftoneDetectionPersisted;
+  halftoneSubmitterResponse?: import("@fresh-prints/shared/types/halftone/halftone.types").HalftoneSubmitterResponsePersisted;
+  halftoneStaffDecision?: import("@fresh-prints/shared/types/halftone/halftone.types").HalftoneStaffDecisionPersisted;
   queueCount: number;
   requestCount?: number;
   showAddCount?: number;
@@ -111,6 +121,14 @@ export interface CreateDesignInput {
   effectiveDpi?: number;
   printSizeSource?: PrintSizeSource;
   requestedByCustomerId?: string;
+  wasUpscaled?: boolean;
+  upscaleFactor?: number;
+  upscalePassCount?: 0 | 1;
+  approvedMaxPrintWidthInches?: number;
+  approvedMaxPrintHeightInches?: number;
+  sizingPolicyVersion?: string;
+  sizingWarningCode?: string;
+  halftoneDetection?: import("@fresh-prints/shared/types/halftone/halftone.types").HalftoneDetectionPersisted;
   aiReviewStatus?: AiReviewStatus;
   aiProcessed?: boolean;
   aiReviewed?: boolean;
@@ -136,5 +154,6 @@ export type UpdateDesignInput = Partial<
     | "effectiveDpi"
     | "printSizeSource"
     | "requestedByCustomerId"
+    | "halftoneStaffDecision"
   >
 >;

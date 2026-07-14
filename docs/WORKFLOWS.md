@@ -1270,10 +1270,12 @@ The Print Requests page groups requests into **Working** / **Queued** / **Printe
 same way (`shared/utils/printRequestListGrouping.ts`'s `derivePrintRequestListTab()`): a request with
 no active allocations is Working, any active allocation makes it Queued, and fully printed/completed
 makes it Printed. Selecting a tab and selecting a request are kept in sync
-(`shared/utils/printRequestTabSelection.ts`'s `resolveSelectedRequestIdForTab()`): if a selected
-request moves out of the active tab (e.g. it was just queued while `Working` was open), the detail
-panel falls back to that tab's first request, or shows the empty state if the tab is now empty —
-it never keeps showing a request that no longer belongs to the visible tab.
+(`shared/utils/printRequestTabSelection.ts`'s `resolveSelectedRequestIdForTab()` and
+`findPrintRequestListTabForRequestId()`): if a selected request moves out of the active tab because
+it was just queued (Add to Show), Studio **follows** that request to **Queued** (URL `requestId` +
+tab) and keeps the detail panel open. If the user switches tabs without that request belonging to
+the destination tab, the detail falls back to that tab's first request, or shows the empty state if
+the tab is empty — it never keeps showing a request that no longer belongs to the visible tab.
 
 To keep `printRequests.status` itself from misleadingly reading `DRAFT` (or a stale `ACTIVE`) on a
 request, `upcomingShowService` drives automatic transitions:

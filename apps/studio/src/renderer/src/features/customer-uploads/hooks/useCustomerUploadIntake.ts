@@ -12,6 +12,7 @@ import {
 import { CUSTOMER_UPLOAD_COLLECTIONS } from "@fresh-prints/shared/constants/customerUpload/customerUploadCollections.constants";
 import type { CustomerUploadPurpose } from "@fresh-prints/shared/types/customerUpload/customerUpload.enums";
 import { resolveCustomerUploadPurpose } from "@fresh-prints/shared/utils/customerUploadPurpose";
+import { resolveIntakeHalftoneStaffToggle } from "@fresh-prints/shared/utils/halftoneReviewState";
 
 import { db } from "../../../config/firebase";
 import { useAuth } from "../../auth/hooks/useAuth";
@@ -64,6 +65,8 @@ export function useCustomerUploadIntake(options?: {
 
   const [filter, setFilter] = useState<CustomerUploadIntakeFilter>("pending_staff_review");
   const [rows, setRows] = useState<CustomerUploadIntakeRow[]>([]);
+  const rowsRef = useRef<CustomerUploadIntakeRow[]>([]);
+  rowsRef.current = rows;
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [pendingByUploadId, setPendingByUploadId] = useState<
@@ -156,6 +159,23 @@ export function useCustomerUploadIntake(options?: {
           catalogUseAcknowledged: data.catalogUseAcknowledged === true,
           purpose: resolveCustomerUploadPurpose(data.purpose),
           createdAtMs: timestampMs(data.createdAt),
+          approvedMaxPrintWidthInches: asNumber(data.approvedMaxPrintWidthInches),
+          approvedMaxPrintHeightInches: asNumber(data.approvedMaxPrintHeightInches),
+          wasUpscaled: typeof data.wasUpscaled === "boolean" ? data.wasUpscaled : null,
+          upscaleFactor: asNumber(data.upscaleFactor),
+          sizingWarningCode: asString(data.sizingWarningCode),
+          halftoneDetection:
+            data.halftoneDetection && typeof data.halftoneDetection === "object"
+              ? (data.halftoneDetection as CustomerUploadIntakeRow["halftoneDetection"])
+              : null,
+          halftoneSubmitterResponse:
+            data.halftoneSubmitterResponse && typeof data.halftoneSubmitterResponse === "object"
+              ? (data.halftoneSubmitterResponse as CustomerUploadIntakeRow["halftoneSubmitterResponse"])
+              : null,
+          halftoneStaffDecision:
+            data.halftoneStaffDecision && typeof data.halftoneStaffDecision === "object"
+              ? (data.halftoneStaffDecision as CustomerUploadIntakeRow["halftoneStaffDecision"])
+              : null,
         });
       }
 
@@ -322,6 +342,22 @@ export function useCustomerUploadIntake(options?: {
         uploadId,
         "promote",
         async () => {
+          const row = rowsRef.current.find((item) => item.id === uploadId);
+          const resolvedToggle = resolveIntakeHalftoneStaffToggle({
+            staffDecision: row?.halftoneStaffDecision,
+            submitterResponse: row?.halftoneSubmitterResponse,
+          });
+          // Always persist an explicit boolean before promotion so false is not lost.
+          if (row && typeof row.halftoneStaffDecision?.value !== "boolean") {
+            await customerUploadIntakeService.recordHalftoneStaffDecision(uploadId, resolvedToggle);
+            patchRowLocally(uploadId, {
+              halftoneStaffDecision: {
+                value: resolvedToggle,
+                isExplicitOverride: true,
+                decidedBy: user?.id ?? null,
+              },
+            });
+          }
           const result = await customerUploadIntakeService.promote(uploadId);
           if (result.enqueueQueued) {
             setNotice("Sent to AI Review. Open AI Processing to continue.");
@@ -390,5 +426,21 @@ export function useCustomerUploadIntake(options?: {
         },
         "Technical processing retry succeeded.",
       ),
+    setHalftoneDecision: async (uploadId: string, value: boolean) => {
+      setError(null);
+      try {
+        await customerUploadIntakeService.recordHalftoneStaffDecision(uploadId, value);
+        patchRowLocally(uploadId, {
+          halftoneStaffDecision: {
+            value,
+            isExplicitOverride: true,
+            decidedBy: user?.id ?? null,
+          },
+        });
+        setNotice(value ? "Marked as halftone." : "Marked as not a halftone.");
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Unable to save Halftone decision.");
+      }
+    },
   };
 }

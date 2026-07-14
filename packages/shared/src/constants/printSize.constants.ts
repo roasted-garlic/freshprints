@@ -17,20 +17,60 @@ export const STANDARD_PRINT_WIDTH_INCHES = 8;
 export const PREFERRED_PRINT_WIDTH_INCHES = 10;
 
 /**
- * Import/upload upscale floor width at TARGET_PRINT_DPI.
- * Images narrower than this are upscaled once to this width; images already at or
- * above this size (e.g. 15″ @ 300 DPI = 4500px) are left unchanged.
- * Request items still default to PREFERRED_PRINT_WIDTH_INCHES (10″) so larger
- * imported assets yield higher effective DPI at the requested size.
+ * One-pass automated production upscale target width at TARGET_PRINT_DPI (ADR-FP-080 v2).
+ * Distinct from DEFAULT_PRINT_REQUEST_WIDTH_INCHES — retains resize headroom above the
+ * normal 10″ request default without changing that default.
+ */
+export const AUTOMATED_UPSCALE_TARGET_WIDTH_INCHES = 12;
+
+/**
+ * @deprecated ADR-FP-080 — 15″ is the approved-max width envelope, not an upscale floor.
+ * Prefer MAX_APPROVED_PRINT_WIDTH_INCHES / imageQualitySizingPolicy.
+ * Kept as alias so legacy call sites compile until fully migrated.
  */
 export const IMPORT_UPSCALE_TARGET_WIDTH_INCHES = 15;
 
 /**
- * When import upscale scale factor (targetWidth / sourceWidth) is at or above
- * this value, emit an extra soft-quality warning. At the 15″ / 4500px floor,
- * 3× ≈ sources under ~5″ @ 300 DPI after trim.
+ * @deprecated Prefer EXTENDED_UPSCALE_FACTOR_THRESHOLD for staff soft-quality messaging.
+ * Soft-quality / extended-upscale visibility now triggers above 2× (ADR-FP-080).
  */
-export const IMPORT_UPSCALE_SOFT_SCALE_FACTOR_THRESHOLD = 3;
+export const IMPORT_UPSCALE_SOFT_SCALE_FACTOR_THRESHOLD = 2;
+
+/** Version string persisted on processed assets (ADR-FP-080 — 12″ upscale target, ≤6×). */
+export const IMAGE_QUALITY_SIZING_POLICY_VERSION = "image-quality-v2" as const;
+
+/**
+ * Normal print-request default width when approved max allows it.
+ * Do not confuse with AUTOMATED_UPSCALE_TARGET_WIDTH_INCHES.
+ */
+export const DEFAULT_PRINT_REQUEST_WIDTH_INCHES = PREFERRED_PRINT_WIDTH_INCHES;
+
+/** @deprecated Prefer DEFAULT_PRINT_REQUEST_WIDTH_INCHES */
+export const DEFAULT_REQUEST_PRINT_WIDTH_INCHES = DEFAULT_PRINT_REQUEST_WIDTH_INCHES;
+
+/** Maximum approved print width under the quality envelope (inches). */
+export const MAX_APPROVED_PRINT_WIDTH_INCHES = 15;
+
+/** Maximum approved print height under the quality envelope (inches). */
+export const MAX_APPROVED_PRINT_HEIGHT_INCHES = 16.5;
+
+/** Maximum linear upscale factor for a single controlled pass (ADR-FP-080). */
+export const MAX_UPSCALE_FACTOR = 6;
+
+/**
+ * Upscales strictly above this factor are marked extended for staff visibility
+ * (do not block upload/print). Exact 2.0× is not extended.
+ */
+export const EXTENDED_UPSCALE_FACTOR_THRESHOLD = 2;
+
+/** Maximum number of upscale passes (never more than one). */
+export const MAX_UPSCALE_PASSES = 1;
+
+/**
+ * Relative near-target tolerance — skip upscale when already within this fraction
+ * of the aspect-locked standard target (5%).
+ */
+export const NEAR_TARGET_TOLERANCE_RATIO = 0.05;
 
 /**
  * Staff-facing preferred width target for messaging and future UI defaults.

@@ -13,6 +13,8 @@ export interface AiReviewDraftForm {
   tagsInput: string;
   /** Set when AI or catalog tags were shortened or omitted for display limits. */
   tagsAdjustmentNote?: string;
+  /** Staff Halftone toggle — authoritative on approve. */
+  markAsHalftone: boolean;
 }
 
 export interface AiReviewInboxListQuery extends DesignListQuery {

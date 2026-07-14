@@ -92,7 +92,7 @@ export default function RequestArtworkPage() {
             <Link className="portal-button portal-button-primary" href={reviewHref}>
               Review Request
             </Link>
-            <Link className="portal-button portal-button-secondary" href="/catalog">
+            <Link className="portal-button portal-button-secondary" href="/">
               Continue browsing
             </Link>
             <button

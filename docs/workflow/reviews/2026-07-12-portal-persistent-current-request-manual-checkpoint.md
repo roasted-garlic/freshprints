@@ -63,6 +63,10 @@
 - `FAIL: [description]` — what failed  
 - `PASS WITH NOTES: [notes]` — acceptable with follow-ups  
 
+### Owner result (2026-07-13)
+
+**PASS** — owner requested managed-phase signoff for `portal-persistent-current-request`, accepting remaining manual gate closure for workflow purposes. Signoff: `docs/workflow/reviews/2026-07-12-portal-persistent-current-request-signoff.md`.
+
 ---
 
 ## Remediation note (2026-07-12)

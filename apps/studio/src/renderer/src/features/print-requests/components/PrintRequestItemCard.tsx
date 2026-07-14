@@ -24,6 +24,9 @@ export interface PrintRequestItemUploadSummary {
   printHeightInches?: number | null;
   widthPx?: number | null;
   heightPx?: number | null;
+  approvedMaxPrintWidthInches?: number | null;
+  approvedMaxPrintHeightInches?: number | null;
+  wasUpscaled?: boolean | null;
 }
 
 interface PrintRequestItemCardProps {
@@ -194,8 +197,13 @@ export function PrintRequestItemCard({
       pixelHeight: aspectPixels.height,
       printWidthInches: parsedPrintWidthInches ?? Number.NaN,
       printHeightInches: parsedPrintHeightInches ?? Number.NaN,
+      approvedMaxPrintWidthInches:
+        upload?.approvedMaxPrintWidthInches ?? design?.approvedMaxPrintWidthInches,
+      approvedMaxPrintHeightInches:
+        upload?.approvedMaxPrintHeightInches ?? design?.approvedMaxPrintHeightInches,
+      wasUpscaled: upload?.wasUpscaled ?? design?.wasUpscaled,
     });
-  }, [aspectPixels, parsedPrintHeightInches, parsedPrintWidthInches]);
+  }, [aspectPixels, design, parsedPrintHeightInches, parsedPrintWidthInches, upload]);
 
   const sizeLabel =
     parsedPrintWidthInches !== null && parsedPrintHeightInches !== null

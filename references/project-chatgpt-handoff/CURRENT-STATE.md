@@ -1,8 +1,8 @@
 # Fresh Prints — Current State Snapshot
 
 > **Refresh before every external AI session.**
-> Source: `.cursor/workflow/state.md` (authoritative) + `docs/project/ROADMAP.md`
-> Last updated: **2026-07-12**
+> Source: `.cursor/workflow/state.md` (authoritative)
+> Last updated: **2026-07-13**
 
 ---
 
@@ -10,30 +10,19 @@
 
 | Field | Value |
 |-------|-------|
-| **App** | Fresh Prints — DTF design catalog & print planning |
-| **Active apps** | Studio (Electron); Portal Next.js on **http://localhost:3100** |
-| **Managed workflow goal** | `portal-persistent-current-request` |
-| **Status** | Mid-checkpoint UX fixes applied; **awaiting owner manual retest** |
-| **Human checkpoint** | yes — `docs/workflow/reviews/2026-07-12-portal-persistent-current-request-manual-checkpoint.md` |
-| **Portal** | Perpetual selection-card UI; Upload Designs + image-up; drawer polish |
+| **Managed workflow goal** | none (idle) |
+| **Status** | **DONE** — `portal-current-request-empty-state-drawer-polish` signed off **approved** |
+| **Human checkpoint** | no |
+| **Signoff** | `docs/workflow/reviews/2026-07-13-portal-current-request-empty-state-drawer-polish-signoff.md` |
 
 ---
 
-## Workflow Snapshot
+## Just closed
 
-```txt
-Mode:           managed-phase
-Goal:           portal-persistent-current-request
-Phase:          test — await manual UI checkpoint (after UX mid-checkpoint fixes)
-Fix just now:   qty steppers, remove Continue request, snazzier drawer, hide desktop hamburger
-DONE:           no
-Forbidden:      production deploy; selection-mode cleanup before manual PASS
-```
+Portal empty `/requests` + **Your Stash** drawer polish (ADR-FP-076 aligned); Clear only in drawer; Close = X; catalog pixel seed / attention false-positive fixes.
 
 ---
 
-## If Portal looks broken
+## Owner-directed next
 
-1. Do **not** run `npm run build:portal` while `npm run dev:portal` is running (corrupts `.next`).
-2. Restart: stop Portal → delete `apps/portal/.next` → `npm run dev:portal`
-3. Open http://localhost:3100/login then `/catalog`
+`studio-import-auto-start-ai-processing` — Auto advance default **on**; after Studio import + derivatives, start the **sequential** AI Processing queue (amend ADR-FP-014 carefully — no concurrent enqueue storm).

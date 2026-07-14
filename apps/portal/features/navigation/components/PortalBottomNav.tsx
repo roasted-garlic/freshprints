@@ -8,8 +8,8 @@ import { ShoppingBagIcon } from '../../shared/components/PortalIcons';
 import { portalNavItems, resolveActivePortalNavItem } from '../constants/portalNavItems';
 import { PortalNavIcon } from './PortalNavIcon';
 
-const BOTTOM_NAV_LABELS: Record<string, string> = {
-  designs: 'Home',
+const BOTTOM_NAV_LABELS: Record<(typeof portalNavItems)[number]['id'], string> = {
+  library: 'Library',
   requests: 'Requests',
 };
 
@@ -18,31 +18,26 @@ export function PortalBottomNav() {
   const activeItemId = resolveActivePortalNavItem(pathname);
   const { currentRequestAggregates, openCurrentRequestDrawer } = usePortalPrintRequests();
 
-  const designsItem = portalNavItems.find((item) => item.id === 'designs')!;
-  const requestsItem = portalNavItems.find((item) => item.id === 'requests')!;
   const totalPrints = currentRequestAggregates.totalPrintQuantity;
 
   return (
     <nav aria-label="Portal navigation" className="portal-bottom-nav">
       <div className="portal-bottom-nav-bar">
         <div className="portal-bottom-nav-links">
-          <Link
-            aria-current={activeItemId === 'designs' ? 'page' : undefined}
-            className={`portal-bottom-nav-link${activeItemId === 'designs' ? ' portal-bottom-nav-link-active' : ''}`}
-            href={designsItem.href}
-          >
-            <PortalNavIcon itemId="designs" size={20} />
-            <span>{BOTTOM_NAV_LABELS.designs}</span>
-          </Link>
-
-          <Link
-            aria-current={activeItemId === 'requests' ? 'page' : undefined}
-            className={`portal-bottom-nav-link${activeItemId === 'requests' ? ' portal-bottom-nav-link-active' : ''}`}
-            href={requestsItem.href}
-          >
-            <PortalNavIcon itemId="requests" size={20} />
-            <span>{BOTTOM_NAV_LABELS.requests}</span>
-          </Link>
+          {portalNavItems.map((item) => {
+            const isActive = activeItemId === item.id;
+            return (
+              <Link
+                aria-current={isActive ? 'page' : undefined}
+                className={`portal-bottom-nav-link${isActive ? ' portal-bottom-nav-link-active' : ''}`}
+                href={item.href}
+                key={item.id}
+              >
+                <PortalNavIcon itemId={item.id} size={20} />
+                <span>{BOTTOM_NAV_LABELS[item.id]}</span>
+              </Link>
+            );
+          })}
         </div>
       </div>
 

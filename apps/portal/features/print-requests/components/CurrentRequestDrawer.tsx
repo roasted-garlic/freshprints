@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { isCustomerUploadPrintRequestItem } from '@fresh-prints/shared/utils/printRequestItemSource';
@@ -9,9 +10,20 @@ import { useAuth } from '../../auth/context/AuthContext';
 import { CatalogThumbnailPanel } from '../../catalog/components/CatalogThumbnailPanel';
 import { customerUploadService } from '../../customer-uploads/services/customerUploadService';
 import { PortalConfirmModal } from '../../shared/components/PortalConfirmModal';
-import { TrashIcon } from '../../shared/components/PortalIcons';
+import {
+  ImageUpIcon,
+  LibraryIcon,
+  ShoppingBagIcon,
+  TrashIcon,
+  XIcon,
+} from '../../shared/components/PortalIcons';
 import { usePortalPrintRequests } from '../context/PortalPrintRequestContext';
 import { portalPrintRequestService } from '../services/portalPrintRequestService';
+import {
+  buildRequestArtworkHref,
+  CATALOG_HOME_PATH,
+  REQUEST_ARTWORK_PATH,
+} from '../utils/catalogSelectionNavigation';
 import { buildRequestDetailHref } from '../utils/portalRequestDetailReturn';
 
 function groupKeyForItem(item: {
@@ -39,6 +51,8 @@ function itemCreatedAtMs(item: {
 }
 
 export function CurrentRequestDrawer() {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { firebaseUser } = useAuth();
   const {
     clearWorkingRequest,
@@ -47,7 +61,6 @@ export function CurrentRequestDrawer() {
     designSummariesById,
     isClearingWorkingRequest,
     isCurrentRequestDrawerOpen,
-    isVirtualEmptyCurrentRequest,
     patchWorkingItems,
     reloadWorkingItems,
     uploadSummariesById,
@@ -155,41 +168,66 @@ export function CurrentRequestDrawer() {
   }
 
   const { distinctDesignCount, totalPrintQuantity, attentionCount } = currentRequestAggregates;
+  const isEmpty = workingItems.length === 0;
   const reviewHref = workingRequest
     ? buildRequestDetailHref(workingRequest.id, { from: 'library' })
     : '/requests?tab=working';
 
+  const query = searchParams.toString();
+  const currentLocation = `${pathname}${query ? `?${query}` : ''}`;
+  const uploadReturnTo =
+    pathname === REQUEST_ARTWORK_PATH || pathname.startsWith(`${REQUEST_ARTWORK_PATH}/`)
+      ? CATALOG_HOME_PATH
+      : currentLocation;
+  const uploadHref = buildRequestArtworkHref({ returnTo: uploadReturnTo });
+
   return (
     <div className="current-request-drawer-root" role="presentation">
       <button
-        aria-label="Close Current Request"
+        aria-label="Close Your Stash"
         className="current-request-drawer-scrim"
         onClick={closeCurrentRequestDrawer}
         type="button"
       />
       <aside
         aria-labelledby="current-request-drawer-title"
-        className="current-request-drawer"
+        className={`current-request-drawer${isEmpty ? ' is-empty' : ''}`}
         role="dialog"
       >
         <header className="current-request-drawer-header">
-          <div>
-            <p className="portal-eyebrow">Basket</p>
-            <h2 id="current-request-drawer-title">Current Request</h2>
-            <p className="current-request-drawer-summary">
-              {distinctDesignCount} {distinctDesignCount === 1 ? 'design' : 'designs'} ·{' '}
-              {totalPrintQuantity} {totalPrintQuantity === 1 ? 'print' : 'prints'}
-              {attentionCount > 0
-                ? ` · ${attentionCount} ${attentionCount === 1 ? 'item needs' : 'items need'} attention`
-                : ''}
-            </p>
+          <div className="current-request-drawer-heading">
+            <h2 id="current-request-drawer-title">Your Stash</h2>
+            <p className="current-request-drawer-subtitle">Current Request</p>
+            <div className="current-request-drawer-summary-row">
+              <p className="current-request-drawer-summary">
+                {distinctDesignCount} {distinctDesignCount === 1 ? 'design' : 'designs'} ·{' '}
+                {totalPrintQuantity} {totalPrintQuantity === 1 ? 'print' : 'prints'}
+                {attentionCount > 0
+                  ? ` · ${attentionCount} ${attentionCount === 1 ? 'item needs' : 'items need'} attention`
+                  : ''}
+              </p>
+              {workingRequest && !isEmpty ? (
+                <button
+                  className="current-request-drawer-clear"
+                  disabled={isClearingWorkingRequest}
+                  onClick={() => {
+                    setClearError(null);
+                    setIsClearConfirmOpen(true);
+                  }}
+                  type="button"
+                >
+                  {isClearingWorkingRequest ? 'Clearing…' : 'Clear request'}
+                </button>
+              ) : null}
+            </div>
           </div>
           <button
-            className="portal-button portal-button-secondary portal-button-sm"
+            aria-label="Close Your Stash"
+            className="current-request-drawer-close"
             onClick={closeCurrentRequestDrawer}
             type="button"
           >
-            Close
+            <XIcon size={22} />
           </button>
         </header>
 
@@ -200,10 +238,15 @@ export function CurrentRequestDrawer() {
         ) : null}
 
         <div className="current-request-drawer-body">
-          {isVirtualEmptyCurrentRequest || workingItems.length === 0 ? (
+          {isEmpty ? (
             <div className="current-request-drawer-empty">
-              <p>Your Current Request is empty.</p>
-              <p>Add designs while browsing, or use Upload Designs in the header.</p>
+              <div aria-hidden className="current-request-drawer-empty-icon">
+                <ShoppingBagIcon size={28} />
+              </div>
+              <p className="current-request-drawer-empty-title">Your Stash is empty</p>
+              <p className="current-request-drawer-empty-copy">
+                Add designs from the catalog, or upload your own artwork to print.
+              </p>
             </div>
           ) : (
             <ul className="current-request-drawer-groups">
@@ -270,7 +313,7 @@ export function CurrentRequestDrawer() {
                           </p>
                         </div>
                         <button
-                          aria-label={`Remove ${title} from Current Request`}
+                          aria-label={`Remove ${title} from Your Stash`}
                           className="current-request-drawer-trash"
                           onClick={() => handleRemoveGroup(key, items.map((item) => item.id))}
                           type="button"
@@ -286,27 +329,35 @@ export function CurrentRequestDrawer() {
           )}
         </div>
 
-        <footer className="current-request-drawer-footer">
-          {workingRequest ? (
-            <button
-              className="portal-button portal-button-secondary"
-              disabled={isClearingWorkingRequest}
-              onClick={() => {
-                setClearError(null);
-                setIsClearConfirmOpen(true);
-              }}
-              type="button"
+        <footer className={`current-request-drawer-footer${isEmpty ? ' is-empty' : ''}`}>
+          {isEmpty ? (
+            <div className="current-request-drawer-empty-actions">
+              <Link
+                className="portal-button portal-button-primary portal-button-leading-icon"
+                href={CATALOG_HOME_PATH}
+                onClick={closeCurrentRequestDrawer}
+              >
+                <LibraryIcon />
+                Browse designs
+              </Link>
+              <Link
+                className="portal-button portal-button-secondary portal-button-leading-icon"
+                href={uploadHref}
+                onClick={closeCurrentRequestDrawer}
+              >
+                <ImageUpIcon />
+                Upload Designs
+              </Link>
+            </div>
+          ) : (
+            <Link
+              className="portal-button portal-button-primary"
+              href={reviewHref}
+              onClick={closeCurrentRequestDrawer}
             >
-              Clear request
-            </button>
-          ) : null}
-          <Link
-            className="portal-button portal-button-primary"
-            href={reviewHref}
-            onClick={closeCurrentRequestDrawer}
-          >
-            Review Request
-          </Link>
+              Review Request
+            </Link>
+          )}
         </footer>
       </aside>
 
@@ -329,16 +380,16 @@ export function CurrentRequestDrawer() {
               setIsClearConfirmOpen(false);
             } catch (error) {
               setClearError(
-                error instanceof Error ? error.message : 'Unable to clear your Current Request.',
+                error instanceof Error ? error.message : 'Unable to clear Your Stash.',
               );
             }
           })();
         }}
-        title="Clear Current Request?"
+        title="Clear Your Stash?"
       >
         <p className="portal-muted portal-confirm-modal-message">
-          This removes all designs from your Current Request so you can start fresh. You can add
-          designs again anytime.
+          This removes all designs from Your Stash so you can start fresh. You can add designs again
+          anytime.
         </p>
         {clearError ? (
           <p className="portal-error" role="alert">

@@ -46,6 +46,14 @@ function resolveAttachPrintSize(upload: Record<string, unknown>): {
         pixelWidth: widthPx,
         pixelHeight: heightPx,
         defaultPrintWidthInches,
+        approvedMaxPrintWidthInches:
+          typeof upload.approvedMaxPrintWidthInches === "number"
+            ? upload.approvedMaxPrintWidthInches
+            : undefined,
+        approvedMaxPrintHeightInches:
+          typeof upload.approvedMaxPrintHeightInches === "number"
+            ? upload.approvedMaxPrintHeightInches
+            : undefined,
       });
       return {
         printWidthInches: initial.printWidthInches,

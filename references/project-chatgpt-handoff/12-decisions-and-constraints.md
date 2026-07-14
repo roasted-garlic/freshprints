@@ -36,6 +36,8 @@
 |-----|---------|
 | ADR-FP-073 | Customer artwork = `customerUploads`, not designs until staff promote; dual item source model; not Phase 9 |
 | ADR-FP-074 | Library permission **optional** (default on); ownership required; staff may promote but must see declines |
+| ADR-FP-080 | Pixel-based sizing `image-quality-v2` (≤6× toward 12″; 10″ request default; extended >2× staff-only); **human-only** halftone — no auto detector |
+| ADR-FP-014 | Sequential AI Processing queue; no concurrent import enqueue; Auto advance default ON; post-import sequential auto-start when Auto advance on (amended 2026-07-13) |
 
 ## AI enrichment (recent)
 

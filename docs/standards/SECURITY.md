@@ -162,6 +162,7 @@ Owners can:
 * Manage customers
 * Manage requests
 * Access audit logs
+* Use **Test Data Reset** (`/test-data-reset`) in **development Studio builds only**, and only when connected to the allowlisted Firebase project (`fresh-prints-dev`), via `wipeOperationalTestData` — owner role required; never for production project IDs; never exposed in production Studio builds
 
 Owners have full platform access.
 
@@ -178,10 +179,10 @@ Admins can:
 * Manage customers
 * View the Users directory and manage helper accounts through the `updateTeamUser` callable function
 * Edit helper status in the Users directory edit modal
-* Use **Test Data Reset** (`/test-data-reset`) on allowlisted development projects only (`fresh-prints-dev`) via the `wipeOperationalTestData` callable — never for production project IDs without a separate approved plan
 
 Admins cannot:
 
+* Use **Test Data Reset** / `wipeOperationalTestData` (owner + allowlisted dev project + development Studio build only)
 * Modify owner accounts
 * Change platform ownership
 * Deactivate or reactivate other admins

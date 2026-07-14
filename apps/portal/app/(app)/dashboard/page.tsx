@@ -64,7 +64,7 @@ export default function DashboardPage() {
         <section className="portal-panel portal-account-panel">
           <h2 className="portal-account-section-title">Quick links</h2>
           <div className="portal-account-link-grid">
-            <Link className="portal-account-quick-link" href="/catalog">
+            <Link className="portal-account-quick-link" href="/">
               <span className="portal-account-quick-link-label">Browse designs</span>
               <span className="portal-account-quick-link-description">
                 Explore the catalog and start a new print request.

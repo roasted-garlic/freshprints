@@ -9,6 +9,7 @@ import type { User } from "../../users/types/user.types";
 import { buildAiReviewInboxListQuery } from "../constants/aiReviewInboxConstants";
 import { aiEnrichmentEnqueueService } from "./aiEnrichmentEnqueueService";
 import type { AiReviewDraftForm, AiReviewInboxFilters } from "../types/aiReviewInbox.types";
+import { syncHalftoneTagInList } from "@fresh-prints/shared/utils/halftoneReviewState";
 
 function assertCanApproveInbox(caller: User): void {
   if (!permissionService.canApproveDesignForCatalog(caller)) {
@@ -58,13 +59,18 @@ export const aiReviewInboxService = {
   async approveFromInbox(caller: User, designId: string, draft: AiReviewDraftForm): Promise<Design> {
     assertCanApproveInbox(caller);
 
-    const tags = parseTagsInput(draft.tagsInput);
+    const tags = syncHalftoneTagInList(parseTagsInput(draft.tagsInput), draft.markAsHalftone);
 
     await designService.updateDesign(caller, designId, {
       title: draft.title.trim(),
       description: draft.description.trim() || undefined,
       categoryId: draft.categoryId.trim() || undefined,
       tags,
+      halftoneStaffDecision: {
+        value: draft.markAsHalftone,
+        decidedBy: caller.id,
+        isExplicitOverride: true,
+      },
     });
 
     return catalogApprovalService.approveDesignForCatalog(caller, designId);

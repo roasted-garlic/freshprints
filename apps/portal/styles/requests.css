@@ -107,7 +107,23 @@
   width: 100%;
 }
 
+.portal-requests-empty-copy-stacked {
+  display: none;
+}
+
+.portal-requests-empty-copy-inline {
+  display: block;
+}
+
 @media (min-width: 48rem) {
+  .portal-requests-empty-copy-stacked {
+    display: block;
+  }
+
+  .portal-requests-empty-copy-inline {
+    display: none;
+  }
+
   .portal-requests-tab-guide-body p {
     text-align: left;
   }
@@ -381,6 +397,18 @@
 .portal-print-progress-elapsed.is-pending {
   color: var(--color-text-muted);
   opacity: 0.45;
+}
+
+.portal-print-progress-elapsed.is-waiting {
+  color: var(--color-text-secondary);
+  font-family: inherit;
+  font-size: clamp(1.05rem, 2.4vw, 1.35rem);
+  font-variant-numeric: normal;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  max-width: 16rem;
+  opacity: 1;
 }
 
 .portal-print-progress-panel.is-loading .portal-print-progress-elapsed {

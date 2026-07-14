@@ -3,24 +3,52 @@ import { AutoResizeTextarea } from "../../../shared/components/AutoResizeTextare
 import { Select, type SelectOption } from "../../../shared/components/Select";
 import { TagChipInput } from "../../../shared/components/TagChipInput";
 import { TextInput } from "../../../shared/components/TextInput";
+import { Toggle } from "../../../shared/components/Toggle";
 import type { CatalogTag } from "../../designs/types/catalogTag.types";
+import type { Design } from "../../designs/types/design.types";
 import type { AiReviewDraftForm } from "../types/aiReviewInbox.types";
 
 interface AiReviewFormPanelProps {
   approvedTags: CatalogTag[];
   canEdit: boolean;
   categoryOptions: { label: string; value: string }[];
+  design: Design | null;
   draftForm: AiReviewDraftForm;
-  onChange: (field: keyof AiReviewDraftForm, value: string) => void;
+  onChange: (field: keyof AiReviewDraftForm, value: string | boolean) => void;
+  onHalftoneChange: (value: boolean) => void;
   onInputFocusChange: (isFocused: boolean) => void;
+}
+
+function formatSubmitter(design: Design | null): string {
+  const value = design?.halftoneSubmitterResponse?.value;
+  if (!value || value === "unanswered") {
+    return "Unanswered";
+  }
+  if (value === "yes") {
+    return "Yes";
+  }
+  if (value === "no") {
+    return "No";
+  }
+  return "Not sure";
+}
+
+function formatStaffDecision(design: Design | null): string {
+  const value = design?.halftoneStaffDecision?.value;
+  if (typeof value !== "boolean") {
+    return "Not set";
+  }
+  return value ? "Halftone" : "Not halftone";
 }
 
 export function AiReviewFormPanel({
   approvedTags,
   canEdit,
   categoryOptions,
+  design,
   draftForm,
   onChange,
+  onHalftoneChange,
   onInputFocusChange,
 }: AiReviewFormPanelProps) {
   const selectOptions: SelectOption[] = [
@@ -90,6 +118,30 @@ export function AiReviewFormPanel({
         onFocus={handleFocus}
         value={draftForm.tagsInput}
       />
+
+      <div className="ai-review-halftone-panel">
+        <div className="ai-review-halftone-panel-header">
+          <h4 className="ai-review-halftone-title">Halftone</h4>
+          <Toggle
+            checked={draftForm.markAsHalftone}
+            disabled={!canEdit}
+            label="Halftone"
+            name="aiReviewHalftone"
+            onChange={onHalftoneChange}
+            tone="success"
+          />
+        </div>
+        <div className="ai-review-halftone-evidence-row">
+          <span className="ai-review-halftone-chip">Customer: {formatSubmitter(design)}</span>
+          <span className="ai-review-halftone-chip">
+            Intake staff: {formatStaffDecision(design)}
+          </span>
+        </div>
+        <p className="ai-review-halftone-help">
+          Staff toggle is authoritative. AI suggestions never turn this on automatically. Approve
+          with toggle on adds the canonical halftone tag; off removes it.
+        </p>
+      </div>
     </div>
   );
 }

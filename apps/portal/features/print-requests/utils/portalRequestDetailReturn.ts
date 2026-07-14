@@ -52,10 +52,10 @@ export function resolvePortalRequestDetailBack(
   fallbackTab: PortalPrintRequestListTab,
 ): { href: string; label: string } {
   if (from === 'discover') {
-    return { href: '/catalog', label: 'Back to Discover' };
+    return { href: '/', label: 'Back to Home' };
   }
   if (from === 'library') {
-    return { href: '/catalog/library', label: 'Back to Design Library' };
+    return { href: '/catalog', label: 'Back to Design Library' };
   }
   if (from === 'requests') {
     return { href: '/requests', label: 'Back to Print requests' };

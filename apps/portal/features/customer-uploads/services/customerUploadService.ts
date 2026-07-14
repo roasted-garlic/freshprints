@@ -54,6 +54,8 @@ export interface FinalizeCustomerUploadResponse {
   productionStoragePath?: string | null;
   previewStoragePath?: string | null;
   thumbnailStoragePath?: string | null;
+  approvedMaxPrintWidthInches?: number | null;
+  approvedMaxPrintHeightInches?: number | null;
 }
 
 export interface FinalizeCustomerUploadZipFileResult {
@@ -86,6 +88,9 @@ export interface CustomerUploadDocSummary {
   heightPx: number | null;
   printWidthInches: number | null;
   printHeightInches: number | null;
+  approvedMaxPrintWidthInches: number | null;
+  approvedMaxPrintHeightInches: number | null;
+  wasUpscaled: boolean | null;
   ownershipConfirmed: boolean;
   catalogUseAcknowledged: boolean;
 }
@@ -347,9 +352,33 @@ export const customerUploadService = {
       heightPx: typeof data.heightPx === 'number' ? data.heightPx : null,
       printWidthInches: typeof data.printWidthInches === 'number' ? data.printWidthInches : null,
       printHeightInches: typeof data.printHeightInches === 'number' ? data.printHeightInches : null,
+      approvedMaxPrintWidthInches:
+        typeof data.approvedMaxPrintWidthInches === 'number'
+          ? data.approvedMaxPrintWidthInches
+          : null,
+      approvedMaxPrintHeightInches:
+        typeof data.approvedMaxPrintHeightInches === 'number'
+          ? data.approvedMaxPrintHeightInches
+          : null,
+      wasUpscaled: typeof data.wasUpscaled === 'boolean' ? data.wasUpscaled : null,
       ownershipConfirmed: data.ownershipConfirmed === true,
       catalogUseAcknowledged: data.catalogUseAcknowledged === true,
     };
+  },
+
+  async recordHalftoneResponse(
+    uploadId: string,
+    value: 'yes' | 'no',
+  ): Promise<void> {
+    try {
+      const callable = httpsCallable<
+        { uploadId: string; value: 'yes' | 'no' },
+        { uploadId: string; value: string }
+      >(getPortalFunctions(), 'recordCustomerUploadHalftoneResponse');
+      await callable({ uploadId, value });
+    } catch (error) {
+      throw new Error(portalAuthService.getCallableErrorMessage(error));
+    }
   },
 
   subscribeUploadProgress(
@@ -418,6 +447,15 @@ export const customerUploadService = {
           printWidthInches: typeof data.printWidthInches === 'number' ? data.printWidthInches : null,
           printHeightInches:
             typeof data.printHeightInches === 'number' ? data.printHeightInches : null,
+          approvedMaxPrintWidthInches:
+            typeof data.approvedMaxPrintWidthInches === 'number'
+              ? data.approvedMaxPrintWidthInches
+              : null,
+          approvedMaxPrintHeightInches:
+            typeof data.approvedMaxPrintHeightInches === 'number'
+              ? data.approvedMaxPrintHeightInches
+              : null,
+          wasUpscaled: typeof data.wasUpscaled === 'boolean' ? data.wasUpscaled : null,
           ownershipConfirmed: data.ownershipConfirmed === true,
           catalogUseAcknowledged: data.catalogUseAcknowledged === true,
         } satisfies CustomerUploadDocSummary;

@@ -10,7 +10,12 @@ import {
 import type { CustomerUploadPurpose } from '@fresh-prints/shared/types/customerUpload/customerUpload.enums';
 import { formatFileSize } from '@fresh-prints/shared/utils/formatFileSize';
 
-import { ArrowLeftIcon, PlusIcon, XIcon } from '../../shared/components/PortalIcons';
+import {
+  ArrowLeftIcon,
+  CircleHelpIcon,
+  PlusIcon,
+  XIcon,
+} from '../../shared/components/PortalIcons';
 import { useCustomerUploadBatch } from '../hooks/useCustomerUploadBatch';
 import { customerUploadService } from '../services/customerUploadService';
 
@@ -42,7 +47,6 @@ export function CustomerUploadPanel({
     setOwnershipConfirmed,
     setCatalogUseAcknowledged,
     bannerError,
-    batchNotes,
     readyCount,
     failedCount,
     uploadingCount,
@@ -53,6 +57,7 @@ export function CustomerUploadPanel({
     retryFailed,
     attachToRequest,
     submitDonation,
+    respondToHalftone,
     reset,
   } = useCustomerUploadBatch({ purpose });
 
@@ -61,11 +66,12 @@ export function CustomerUploadPanel({
   const zipInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [previewUrls, setPreviewUrls] = useState<Record<string, string | null>>({});
+  const [isHalftoneHelpOpen, setIsHalftoneHelpOpen] = useState(false);
 
   const isBusy = isProcessing || isAttaching;
 
   useEffect(() => {
-    if (variant !== 'modal') {
+    if (variant !== 'modal' && !isHalftoneHelpOpen) {
       return;
     }
     const previousOverflow = document.body.style.overflow;
@@ -73,21 +79,25 @@ export function CustomerUploadPanel({
     return () => {
       document.body.style.overflow = previousOverflow;
     };
-  }, [variant]);
+  }, [isHalftoneHelpOpen, variant]);
 
   useEffect(() => {
-    if (variant !== 'modal') {
-      return;
-    }
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !isBusy) {
+      if (event.key !== 'Escape') {
+        return;
+      }
+      if (isHalftoneHelpOpen) {
+        setIsHalftoneHelpOpen(false);
+        return;
+      }
+      if (variant === 'modal' && !isBusy) {
         onClose();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isBusy, onClose, variant]);
+  }, [isBusy, isHalftoneHelpOpen, onClose, variant]);
 
   useEffect(() => {
     let cancelled = false;
@@ -265,14 +275,6 @@ export function CustomerUploadPanel({
             </p>
           ) : null}
 
-          {batchNotes.length > 0 ? (
-            <ul className="portal-customer-upload-notes">
-              {batchNotes.map((note) => (
-                <li key={note}>{note}</li>
-              ))}
-            </ul>
-          ) : null}
-
           {rows.length > 0 ? (
             <div className="portal-customer-upload-summary" aria-live="polite">
               <span>{uploadingCount} uploading</span>
@@ -296,10 +298,11 @@ export function CustomerUploadPanel({
                 </div>
 
                 <div className="portal-customer-upload-file-main">
+                  <p className="portal-customer-upload-file-name" title={row.filename}>
+                    {row.filename}
+                  </p>
+
                   <div className="portal-customer-upload-file-copy">
-                    <p className="portal-customer-upload-file-name" title={row.filename}>
-                      {row.filename}
-                    </p>
                     {typeof row.fileSizeBytes === 'number' ? (
                       <p className="portal-muted portal-customer-upload-file-size">
                         {formatFileSize(row.fileSizeBytes)}
@@ -331,6 +334,56 @@ export function CustomerUploadPanel({
                     {row.errorMessage ? <p className="portal-error">{row.errorMessage}</p> : null}
                   </div>
                 </div>
+
+                {row.phase === 'ready' ? (
+                  <div className="portal-customer-upload-halftone-confirm">
+                    <div className="portal-customer-upload-halftone-control">
+                      <label className="portal-customer-upload-halftone-label">
+                        <input
+                          checked={row.halftoneResponseDraft === 'yes'}
+                          disabled={isBusy || Boolean(row.halftoneResponseSaving)}
+                          onChange={(event) => {
+                            void respondToHalftone(
+                              row.localId,
+                              event.target.checked ? 'yes' : 'no',
+                            );
+                          }}
+                          type="checkbox"
+                        />
+                        <span>This artwork is a halftone design.</span>
+                      </label>
+                      <button
+                        aria-haspopup="dialog"
+                        aria-label="What is a halftone design?"
+                        className="portal-customer-upload-halftone-help-toggle"
+                        onClick={() => {
+                          setIsHalftoneHelpOpen(true);
+                        }}
+                        type="button"
+                      >
+                        <CircleHelpIcon size={16} />
+                      </button>
+                    </div>
+                    {row.halftoneResponseError ? (
+                      <p className="portal-error" role="alert">
+                        {row.halftoneResponseError}{' '}
+                        <button
+                          className="portal-customer-upload-halftone-retry"
+                          disabled={isBusy || Boolean(row.halftoneResponseSaving)}
+                          onClick={() => {
+                            void respondToHalftone(
+                              row.localId,
+                              row.halftoneResponseDraft === 'yes' ? 'yes' : 'no',
+                            );
+                          }}
+                          type="button"
+                        >
+                          Retry
+                        </button>
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
 
                 {row.phase === 'queued' || row.phase === 'ready' || row.phase === 'failed' ? (
                   <button
@@ -431,31 +484,88 @@ export function CustomerUploadPanel({
     </>
   );
 
+  const halftoneHelpModal = isHalftoneHelpOpen ? (
+    <div
+      aria-labelledby="portal-halftone-help-title"
+      aria-modal="true"
+      className="modal-overlay modal-overlay-blur portal-customer-upload-halftone-help-overlay"
+      onClick={() => {
+        setIsHalftoneHelpOpen(false);
+      }}
+      role="dialog"
+    >
+      <div
+        className="modal-panel portal-customer-upload-halftone-help-modal"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <header className="modal-header">
+          <h2 id="portal-halftone-help-title">What is a halftone design?</h2>
+          <button
+            aria-label="Close"
+            className="modal-close-button"
+            onClick={() => {
+              setIsHalftoneHelpOpen(false);
+            }}
+            type="button"
+          >
+            <XIcon size={18} />
+          </button>
+        </header>
+        <div className="modal-body">
+          <p className="portal-customer-upload-halftone-help-copy">
+            Halftone artwork uses many small dots, holes, or openings to create shading and detail.
+            Mark this only if you know the design is a true halftone.
+          </p>
+          <p className="portal-muted portal-customer-upload-halftone-help-copy">
+            This selection is optional and does not block upload, donation, or submission.
+          </p>
+        </div>
+        <footer className="modal-footer">
+          <button
+            className="portal-button portal-button-primary"
+            onClick={() => {
+              setIsHalftoneHelpOpen(false);
+            }}
+            type="button"
+          >
+            Got it
+          </button>
+        </footer>
+      </div>
+    </div>
+  ) : null;
+
   if (variant === 'embedded') {
     return (
-      <section
-        aria-labelledby="portal-customer-upload-title"
-        className="portal-customer-upload-embedded"
-      >
-        {panelBody}
-      </section>
+      <>
+        <section
+          aria-labelledby="portal-customer-upload-title"
+          className="portal-customer-upload-embedded"
+        >
+          {panelBody}
+        </section>
+        {halftoneHelpModal}
+      </>
     );
   }
 
   return (
-    <div
-      aria-labelledby="portal-customer-upload-title"
-      aria-modal="true"
-      className="modal-overlay modal-overlay-blur portal-customer-upload-overlay"
-      onClick={handleClose}
-      role="dialog"
-    >
+    <>
       <div
-        className="modal-panel portal-customer-upload-modal"
-        onClick={(event) => event.stopPropagation()}
+        aria-labelledby="portal-customer-upload-title"
+        aria-modal="true"
+        className="modal-overlay modal-overlay-blur portal-customer-upload-overlay"
+        onClick={handleClose}
+        role="dialog"
       >
-        {panelBody}
+        <div
+          className="modal-panel portal-customer-upload-modal"
+          onClick={(event) => event.stopPropagation()}
+        >
+          {panelBody}
+        </div>
       </div>
-    </div>
+      {halftoneHelpModal}
+    </>
   );
 }

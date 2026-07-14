@@ -86,14 +86,18 @@ describe("aiProcessingQueueEligibility", () => {
 });
 
 describe("aiProcessingQueuePreferences", () => {
-  it("reads and writes auto advance preference when sessionStorage is available", () => {
+  it("defaults auto advance ON when unset; respects explicit false/true", () => {
     if (typeof window === "undefined" || !window.sessionStorage) {
       return;
     }
 
-    writeAiProcessingAutoAdvancePreference(true);
+    window.sessionStorage.removeItem("fresh-prints.ai-processing.auto-advance");
     assert.equal(readAiProcessingAutoAdvancePreference(), true);
+
     writeAiProcessingAutoAdvancePreference(false);
     assert.equal(readAiProcessingAutoAdvancePreference(), false);
+
+    writeAiProcessingAutoAdvancePreference(true);
+    assert.equal(readAiProcessingAutoAdvancePreference(), true);
   });
 });

@@ -1,6 +1,5 @@
 import {
   IMPORT_UPSCALE_SOFT_SCALE_FACTOR_THRESHOLD,
-  IMPORT_UPSCALE_TARGET_WIDTH_INCHES,
   MIN_ACCEPTABLE_EFFECTIVE_DPI,
   MIN_SMALL_FORMAT_PRINT_WIDTH_INCHES,
   PREFERRED_PRINT_WIDTH_INCHES,
@@ -15,6 +14,7 @@ import type {
   PrintSizeAtTargetDpiResult,
 } from "../types/printSize/printSize.types";
 import type { PrintSizeAcceptanceLevel } from "../types/printSize/printSize.enums";
+import { resolveControlledUpscale } from "./imageQualitySizingPolicy";
 
 function roundInches(value: number): number {
   const factor = 10 ** PRINT_INCHES_DECIMAL_PLACES;
@@ -96,27 +96,51 @@ export interface ImportUpscaleTargetPx {
 }
 
 /**
- * Returns the pixel dimensions an underpowered import should be upscaled to
- * so its width reaches IMPORT_UPSCALE_TARGET_WIDTH_INCHES at TARGET_PRINT_DPI,
- * preserving aspect ratio. Returns null when the image already meets that
- * width (no upscale needed).
+ * Returns pixel dimensions for a single controlled upscale pass (ADR-FP-080).
+ *
+ * Default behavior uses the shared image-quality policy (12″ automated upscale
+ * target, ≤6.0×, height envelope). Optional `targetDpi` / `targetWidthInches` overrides
+ * retain the legacy fixed-floor formula for callers that pass custom values
+ * (tests / specialized tools only). Request defaults remain 10″ separately.
  */
 export function resolveImportUpscaleTargetPx(
   pixelWidth: number,
   pixelHeight: number,
   targetDpi: number = TARGET_PRINT_DPI,
-  targetWidthInches: number = IMPORT_UPSCALE_TARGET_WIDTH_INCHES,
+  targetWidthInches?: number,
 ): ImportUpscaleTargetPx | null {
-  const targetWidthPx = targetDpi * targetWidthInches;
+  // Legacy override path — only when an explicit target width is supplied.
+  if (typeof targetWidthInches === "number" && Number.isFinite(targetWidthInches)) {
+    const targetWidthPx = targetDpi * targetWidthInches;
 
-  if (pixelWidth >= targetWidthPx) {
+    if (pixelWidth >= targetWidthPx) {
+      return null;
+    }
+
+    return {
+      widthPx: Math.round(targetWidthPx),
+      heightPx: Math.round(pixelHeight * (targetWidthPx / pixelWidth)),
+    };
+  }
+
+  const decision = resolveControlledUpscale(pixelWidth, pixelHeight, targetDpi);
+  if (!decision.wasUpscaled || decision.targetWidthPx === null || decision.targetHeightPx === null) {
     return null;
   }
 
   return {
-    widthPx: Math.round(targetWidthPx),
-    heightPx: Math.round(pixelHeight * (targetWidthPx / pixelWidth)),
+    widthPx: decision.targetWidthPx,
+    heightPx: decision.targetHeightPx,
   };
+}
+
+/** Full controlled-upscale decision for processors that need factor / warning metadata. */
+export function resolveImportUpscaleDecision(
+  pixelWidth: number,
+  pixelHeight: number,
+  targetDpi: number = TARGET_PRINT_DPI,
+) {
+  return resolveControlledUpscale(pixelWidth, pixelHeight, targetDpi);
 }
 
 /**
@@ -149,7 +173,7 @@ export function isImportUpscaleSoftQuality(
   softScaleThreshold: number = IMPORT_UPSCALE_SOFT_SCALE_FACTOR_THRESHOLD,
 ): boolean {
   const scale = getImportUpscaleScaleFactor(sourceWidthPx, targetWidthPx);
-  return scale !== null && scale >= softScaleThreshold;
+  return scale !== null && scale > softScaleThreshold;
 }
 
 function meetsMinimumPixelDimensions(pixelWidth: number, pixelHeight: number): boolean {

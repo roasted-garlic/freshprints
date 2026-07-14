@@ -351,7 +351,7 @@ export function AddToShowModal({
         });
       }
 
-      // Hand off to capacity-bar celebration (picker must be visible).
+      // Capacity celebration on the same ShowPicker instance (do not unmount the calendar).
       setProgress(null);
       setIsSubmitting(false);
       setIsCelebratingSave(true);
@@ -359,8 +359,8 @@ export function AddToShowModal({
       await waitForNextPaint();
       await waitForCapacityBarAnimation();
 
-      await onAdded();
       onClose();
+      await onAdded();
     } catch (error) {
       setSavePendingByShowId(undefined);
       setIsCelebratingSave(false);
@@ -385,10 +385,11 @@ export function AddToShowModal({
     user,
   ]);
 
+  const isBusy = isSubmitting || isCelebratingSave;
+
   const isConfirmDisabled =
     fixedShowIsPast ||
-    isSubmitting ||
-    isCelebratingSave ||
+    isBusy ||
     (legs.length === 0 && !(canConfirmFullFitDirectly && remainingItems.length > 0));
 
   return (
@@ -402,7 +403,7 @@ export function AddToShowModal({
           <button
             aria-label="Close add to show"
             className="icon-button icon-button-md icon-button-ghost"
-            disabled={isSubmitting || isCelebratingSave}
+            disabled={isBusy}
             onClick={onClose}
             type="button"
           >
@@ -410,23 +411,16 @@ export function AddToShowModal({
           </button>
         </ModalHeader>
         <ModalBody>
-          {isCelebratingSave ? (
+          {isBusy ? (
             <div className="show-allocation-progress">
-              <p className="show-allocation-progress-label">Updating show capacity…</p>
-              <ShowPicker
-                onSelect={() => undefined}
-                options={showPickerOptions}
-                selectedId={selectedShowId || null}
-              />
-            </div>
-          ) : isSubmitting ? (
-            <div className="show-allocation-progress">
-              <p className="show-allocation-progress-label">
-                {progress
-                  ? `${progress.stepIndex} of ${progress.stepTotal} prints — allocating "${progress.itemLabel}" to ${progress.showLabel}`
-                  : "Preparing..."}
+              <p className="show-allocation-progress-label" role="status">
+                {isCelebratingSave
+                  ? "Updating show capacity…"
+                  : progress
+                    ? `${progress.stepIndex} of ${progress.stepTotal} prints — allocating "${progress.itemLabel}" to ${progress.showLabel}`
+                    : "Preparing..."}
               </p>
-              {progress ? (
+              {isSubmitting && progress && !isCelebratingSave ? (
                 <div
                   aria-valuemax={progress.stepTotal}
                   aria-valuemin={0}
@@ -442,108 +436,106 @@ export function AddToShowModal({
               ) : null}
             </div>
           ) : (
+            <p className="print-requests-modal-hint">
+              {formatPrintRequestAllocationSummary(items.length, totalRequestedQuantity)}
+            </p>
+          )}
+
+          {!isBusy && legs.length > 0 ? (
+            <div className="show-allocation-plan-list">
+              {legs.map((leg, index) => {
+                const legTotal = Object.values(leg.quantitiesByItemId).reduce(
+                  (sum, quantity) => sum + quantity,
+                  0,
+                );
+
+                return (
+                  <div className="show-allocation-plan-row" key={`${leg.showId}-${index}`}>
+                    <span>
+                      {getShowLabel(leg.showId)}: {legTotal} print{legTotal === 1 ? "" : "s"}
+                    </span>
+                    <Button onClick={() => removeLeg(index)} size="sm" variant="ghost">
+                      Undo
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          ) : null}
+
+          {!isBusy && remainingItems.length === 0 ? (
+            <p className="print-requests-modal-hint">Every print in this request has been assigned to a show.</p>
+          ) : isShowsLoading ? (
+            <LoadingSpinner label="Loading shows" />
+          ) : allocatableShows.length === 0 ? (
+            <p className="print-requests-modal-hint">
+              {shows.length === 0
+                ? "Add a show in the Show Queue before attaching print requests."
+                : "No upcoming shows are available. Past shows cannot accept new print requests."}
+            </p>
+          ) : fixedShowIsPast ? (
+            <p className="auth-message auth-message-error" role="alert">
+              {PAST_SHOW_READ_ONLY_MESSAGE}
+            </p>
+          ) : (
             <>
-              <p className="print-requests-modal-hint">
-                {formatPrintRequestAllocationSummary(items.length, totalRequestedQuantity)}
-              </p>
+              {!isBusy && shouldShowRemainingWording(legs.length) ? (
+                <p className="print-requests-modal-hint">
+                  {remainingTotalQuantity} print{remainingTotalQuantity === 1 ? "" : "s"} still need a show.
+                </p>
+              ) : null}
+              {fixedShowId ? null : (
+                <ShowPicker
+                  onSelect={isBusy ? () => undefined : setSelectedShowId}
+                  options={showPickerOptions}
+                  selectedId={selectedShowId || null}
+                />
+              )}
 
-              {legs.length > 0 ? (
-                <div className="show-allocation-plan-list">
-                  {legs.map((leg, index) => {
-                    const legTotal = Object.values(leg.quantitiesByItemId).reduce(
-                      (sum, quantity) => sum + quantity,
-                      0,
-                    );
-
-                    return (
-                      <div className="show-allocation-plan-row" key={`${leg.showId}-${index}`}>
-                        <span>
-                          {getShowLabel(leg.showId)}: {legTotal} print{legTotal === 1 ? "" : "s"}
-                        </span>
-                        <Button onClick={() => removeLeg(index)} size="sm" variant="ghost">
-                          Undo
-                        </Button>
-                      </div>
-                    );
-                  })}
-                </div>
+              {!isBusy && selectedShowId && !needsDecision && shouldShowRemainingWording(legs.length) ? (
+                <Button onClick={handleAddLegForFullRemainder} type="button" variant="secondary">
+                  Add remaining {remainingTotalQuantity} print{remainingTotalQuantity === 1 ? "" : "s"} to this
+                  show
+                </Button>
               ) : null}
 
-              {remainingItems.length === 0 ? (
-                <p className="print-requests-modal-hint">Every print in this request has been assigned to a show.</p>
-              ) : isShowsLoading ? (
-                <LoadingSpinner label="Loading shows" />
-              ) : allocatableShows.length === 0 ? (
-                <p className="print-requests-modal-hint">
-                  {shows.length === 0
-                    ? "Add a show in the Show Queue before attaching print requests."
-                    : "No upcoming shows are available. Past shows cannot accept new print requests."}
-                </p>
-              ) : fixedShowIsPast ? (
-                <p className="auth-message auth-message-error" role="alert">
-                  {PAST_SHOW_READ_ONLY_MESSAGE}
-                </p>
-              ) : (
-                <>
-                  {shouldShowRemainingWording(legs.length) ? (
-                    <p className="print-requests-modal-hint">
-                      {remainingTotalQuantity} print{remainingTotalQuantity === 1 ? "" : "s"} still need a show.
-                    </p>
-                  ) : null}
-                  {fixedShowId ? null : (
-                    <ShowPicker
-                      onSelect={setSelectedShowId}
-                      options={showPickerOptions}
-                      selectedId={selectedShowId || null}
-                    />
+              {!isBusy && selectedShowId && needsDecision ? (
+                <div className="show-allocation-decision">
+                  <p className="show-allocation-decision-message">
+                    {isSelectedShowFull
+                      ? "This show is full. You can select a different show for the full request, or use the staff override below to add it anyway."
+                      : formatSplitNeededWarning({
+                          fittingQuantity: splitPlan?.fittingQuantity ?? 0,
+                          totalQuantity: remainingTotalQuantity,
+                        })}
+                  </p>
+                  {isSelectedShowFull ? null : (
+                    <div className="show-allocation-decision-actions">
+                      <Button onClick={() => setIsPickerOpen(true)} type="button" variant="secondary">
+                        Choose designs for this show
+                      </Button>
+                    </div>
                   )}
-
-                  {selectedShowId && !needsDecision && shouldShowRemainingWording(legs.length) ? (
-                    <Button onClick={handleAddLegForFullRemainder} type="button" variant="secondary">
-                      Add remaining {remainingTotalQuantity} print{remainingTotalQuantity === 1 ? "" : "s"} to this
-                      show
+                  <label className="show-allocation-decision-override">
+                    <input
+                      checked={overrideConfirmed}
+                      onChange={(event) => setOverrideConfirmed(event.target.checked)}
+                      type="checkbox"
+                    />
+                    <span>
+                      Staff override: add all {remainingTotalQuantity}{" "}
+                      {shouldShowRemainingWording(legs.length) ? "remaining " : ""}print
+                      {remainingTotalQuantity === 1 ? "" : "s"} to this show even though it exceeds remaining
+                      capacity.
+                    </span>
+                  </label>
+                  {overrideConfirmed ? (
+                    <Button onClick={handleAddOverrideLegForFullRemainder} type="button" variant="danger">
+                      Add with override
                     </Button>
                   ) : null}
-
-                  {selectedShowId && needsDecision ? (
-                    <div className="show-allocation-decision">
-                      <p className="show-allocation-decision-message">
-                        {isSelectedShowFull
-                          ? "This show is full. You can select a different show for the full request, or use the staff override below to add it anyway."
-                          : formatSplitNeededWarning({
-                              fittingQuantity: splitPlan?.fittingQuantity ?? 0,
-                              totalQuantity: remainingTotalQuantity,
-                            })}
-                      </p>
-                      {isSelectedShowFull ? null : (
-                        <div className="show-allocation-decision-actions">
-                          <Button onClick={() => setIsPickerOpen(true)} type="button" variant="secondary">
-                            Choose designs for this show
-                          </Button>
-                        </div>
-                      )}
-                      <label className="show-allocation-decision-override">
-                        <input
-                          checked={overrideConfirmed}
-                          onChange={(event) => setOverrideConfirmed(event.target.checked)}
-                          type="checkbox"
-                        />
-                        <span>
-                          Staff override: add all {remainingTotalQuantity}{" "}
-                          {shouldShowRemainingWording(legs.length) ? "remaining " : ""}print
-                          {remainingTotalQuantity === 1 ? "" : "s"} to this show even though it exceeds remaining
-                          capacity.
-                        </span>
-                      </label>
-                      {overrideConfirmed ? (
-                        <Button onClick={handleAddOverrideLegForFullRemainder} type="button" variant="danger">
-                          Add with override
-                        </Button>
-                      ) : null}
-                    </div>
-                  ) : null}
-                </>
-              )}
+                </div>
+              ) : null}
             </>
           )}
 
@@ -554,11 +546,11 @@ export function AddToShowModal({
           ) : null}
         </ModalBody>
         <ModalFooter>
-          <Button disabled={isSubmitting || isCelebratingSave} onClick={onClose} variant="ghost">
+          <Button disabled={isBusy} onClick={onClose} variant="ghost">
             Cancel
           </Button>
           <Button disabled={isConfirmDisabled} onClick={() => void handleConfirm()} type="button">
-            {isSubmitting || isCelebratingSave ? "Adding..." : "Add to show"}
+            {isBusy ? "Adding..." : "Add to show"}
           </Button>
         </ModalFooter>
       </Modal>

@@ -11,6 +11,8 @@ export { excludeCustomerUploadFromCatalog } from "./excludeCustomerUploadFromCat
 export { finalizeCustomerUpload } from "./finalizeCustomerUpload";
 export { finalizeCustomerUploadZip } from "./finalizeCustomerUploadZip";
 export { promoteCustomerUploadToAiReview } from "./promoteCustomerUploadToAiReview";
+export { recordCustomerUploadHalftoneResponse } from "./recordCustomerUploadHalftoneResponse";
+export { recordCustomerUploadHalftoneStaffDecision } from "./recordCustomerUploadHalftoneStaffDecision";
 export { restoreCustomerUploadCatalogEligibility } from "./restoreCustomerUploadCatalogEligibility";
 export { retryCustomerUploadProcessing } from "./retryCustomerUploadProcessing";
 export { getPortalShowPrintProgress } from "./getPortalShowPrintProgress";

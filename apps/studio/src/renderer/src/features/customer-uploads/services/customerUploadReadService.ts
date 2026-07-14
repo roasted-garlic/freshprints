@@ -18,6 +18,9 @@ export interface StudioCustomerUploadSummary {
   printHeightInches: number | null;
   widthPx: number | null;
   heightPx: number | null;
+  approvedMaxPrintWidthInches: number | null;
+  approvedMaxPrintHeightInches: number | null;
+  wasUpscaled: boolean | null;
   technicalStatus: CustomerUploadTechnicalStatus;
   catalogReviewStatus: string | null;
 }
@@ -51,6 +54,15 @@ export const customerUploadReadService = {
       printHeightInches: typeof data.printHeightInches === "number" ? data.printHeightInches : null,
       widthPx: typeof data.widthPx === "number" ? data.widthPx : null,
       heightPx: typeof data.heightPx === "number" ? data.heightPx : null,
+      approvedMaxPrintWidthInches:
+        typeof data.approvedMaxPrintWidthInches === "number"
+          ? data.approvedMaxPrintWidthInches
+          : null,
+      approvedMaxPrintHeightInches:
+        typeof data.approvedMaxPrintHeightInches === "number"
+          ? data.approvedMaxPrintHeightInches
+          : null,
+      wasUpscaled: typeof data.wasUpscaled === "boolean" ? data.wasUpscaled : null,
       technicalStatus: data.technicalStatus as CustomerUploadTechnicalStatus,
       catalogReviewStatus:
         typeof data.catalogReviewStatus === "string" ? data.catalogReviewStatus : null,

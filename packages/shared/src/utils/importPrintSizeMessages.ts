@@ -58,8 +58,8 @@ export function formatImageUpscaledMessage(
 }
 
 /**
- * Extra warning when import upscale is ≥ soft-scale threshold (default 3×).
- * Upscale still applies for headroom; this flags likely softness at large print sizes.
+ * Extra warning when import upscale is above the extended threshold (default >2×).
+ * Upscale still applies; this flags likely softness at large print sizes for staff.
  */
 export function formatImageUpscaledSoftQualityMessage(
   scaleFactor: number,

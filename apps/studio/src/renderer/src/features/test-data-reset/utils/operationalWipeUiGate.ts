@@ -10,7 +10,9 @@ export function getStudioFirebaseProjectId(): string {
 }
 
 export function isOperationalWipeUiEnabled(): boolean {
-  return isOperationalWipeAllowedProjectId(getStudioFirebaseProjectId());
+  // Production Studio builds must not expose wipe UI even if pointed at fresh-prints-dev.
+  // Server still enforces project allowlist + owner role as a hard backstop.
+  return import.meta.env.DEV && isOperationalWipeAllowedProjectId(getStudioFirebaseProjectId());
 }
 
 export { OPERATIONAL_WIPE_ALLOWED_PROJECT_IDS };

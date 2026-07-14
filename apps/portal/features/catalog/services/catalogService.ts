@@ -52,6 +52,17 @@ function mapCatalogDesign(designId: string, data: DesignDocumentData): CatalogDe
     return null;
   }
 
+  if (
+    typeof data.width !== 'number' ||
+    !Number.isFinite(data.width) ||
+    data.width <= 0 ||
+    typeof data.height !== 'number' ||
+    !Number.isFinite(data.height) ||
+    data.height <= 0
+  ) {
+    return null;
+  }
+
   const tags = Array.isArray(data.tags)
     ? data.tags.filter((tag): tag is string => typeof tag === 'string')
     : [];
@@ -64,6 +75,8 @@ function mapCatalogDesign(designId: string, data: DesignDocumentData): CatalogDe
     tags,
     thumbnailPath: data.thumbnailPath,
     previewPath: typeof data.previewPath === 'string' ? data.previewPath : undefined,
+    width: data.width,
+    height: data.height,
     printWidthInches: typeof data.printWidthInches === 'number' ? data.printWidthInches : undefined,
     printHeightInches: typeof data.printHeightInches === 'number' ? data.printHeightInches : undefined,
     createdAtMs: timestampToMillis(data.createdAt),

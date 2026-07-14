@@ -153,7 +153,24 @@
 }
 
 .artwork-quality-modal {
-  max-width: min(100%, 32rem);
+  max-width: min(100%, 42rem);
+}
+
+.artwork-quality-modal-snooze {
+  align-items: flex-start;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  display: flex;
+  font-size: var(--font-size-sm);
+  gap: var(--space-2);
+  line-height: 1.4;
+  user-select: none;
+}
+
+.artwork-quality-modal-snooze input {
+  accent-color: var(--color-accent-primary);
+  flex-shrink: 0;
+  margin-top: 0.15rem;
 }
 
 .artwork-quality-modal-body {
@@ -1122,7 +1139,24 @@
 
 .design-library-filter-controls .design-library-filter-controls-category {
   margin: 0;
-  min-width: 11rem;
+  min-width: 16rem;
+  width: min(18rem, 100%);
+}
+
+.design-library-filter-controls .design-library-filter-controls-category .portal-select-menu {
+  left: 0;
+  max-width: min(24rem, 90vw);
+  min-width: 100%;
+  right: auto;
+  width: max-content;
+}
+
+.design-library-filter-controls
+  .design-library-filter-controls-category
+  .portal-select-option-label {
+  overflow: visible;
+  text-overflow: unset;
+  white-space: normal;
 }
 
 .design-library-filter-controls .design-library-filter-controls-category .portal-select-label {
@@ -1477,15 +1511,11 @@
 
 .design-thumbnail-panel-image--interactive {
   /* Size the hit target to the artwork, not the letterboxed panel. */
-  cursor: pointer;
+  cursor: zoom-in;
   height: auto;
   max-height: 100%;
   max-width: 100%;
   width: auto;
-}
-
-.design-details-hero .design-thumbnail-panel-image--interactive {
-  cursor: zoom-in;
 }
 
 .design-thumbnail-panel-state {
@@ -2024,7 +2054,9 @@
   }
 
   .design-library-filter-controls .design-library-filter-controls-category {
-    width: 11rem;
+    flex: 0 1 18rem;
+    min-width: 16rem;
+    width: 18rem;
   }
 }
 

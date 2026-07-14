@@ -33,6 +33,9 @@ interface PortalPrintRequestItemUpload {
   heightPx?: number | null;
   printWidthInches?: number | null;
   printHeightInches?: number | null;
+  approvedMaxPrintWidthInches?: number | null;
+  approvedMaxPrintHeightInches?: number | null;
+  wasUpscaled?: boolean | null;
 }
 
 interface PortalPrintRequestItemCardProps {
@@ -209,8 +212,11 @@ export function PortalPrintRequestItemCard({
       pixelHeight: aspectPixels.height,
       printWidthInches: parsedPrintWidthInches ?? Number.NaN,
       printHeightInches: parsedPrintHeightInches ?? Number.NaN,
+      approvedMaxPrintWidthInches: upload?.approvedMaxPrintWidthInches ?? undefined,
+      approvedMaxPrintHeightInches: upload?.approvedMaxPrintHeightInches ?? undefined,
+      wasUpscaled: upload?.wasUpscaled ?? undefined,
     });
-  }, [aspectPixels, parsedPrintHeightInches, parsedPrintWidthInches]);
+  }, [aspectPixels, parsedPrintHeightInches, parsedPrintWidthInches, upload]);
 
   const canSave = (sizeAssessment?.canSave ?? true) && parsedQuantity !== null;
 

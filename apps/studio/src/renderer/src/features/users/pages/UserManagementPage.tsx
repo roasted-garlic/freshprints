@@ -1,3 +1,4 @@
+import { Search } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 
 import { DismissibleSuccessAlert } from "../../../shared/components/DismissibleSuccessAlert";
@@ -15,8 +16,11 @@ import type { AuditTrailSubject } from "../types/auditTrail.types";
 import { useTeamUsers } from "../hooks/useTeamUsers";
 import { useUpdateTeamUser } from "../hooks/useUpdateTeamUser";
 import type { User } from "../types/user.types";
+import { filterCustomers } from "../utils/customerDirectorySearch";
 import { filterTeamUsers } from "../utils/teamUserSearch";
 import type { Customer } from "@fresh-prints/shared/types/customer/customer.types";
+
+type UsersDirectoryTab = "staff" | "customers";
 
 export function UserManagementPage() {
   const { user } = useAuth();
@@ -30,7 +34,9 @@ export function UserManagementPage() {
   const { clearMessages, error: updateError, isSubmitting, successMessage, updateTeamUser } =
     useUpdateTeamUser();
 
-  const [searchQuery, setSearchQuery] = useState("");
+  const [directoryTab, setDirectoryTab] = useState<UsersDirectoryTab>("staff");
+  const [staffSearchQuery, setStaffSearchQuery] = useState("");
+  const [customerSearchQuery, setCustomerSearchQuery] = useState("");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
@@ -39,36 +45,18 @@ export function UserManagementPage() {
   const [successAlertSeed, setSuccessAlertSeed] = useState(0);
 
   const filteredUsers = useMemo(
-    () => filterTeamUsers(users, searchQuery),
-    [searchQuery, users],
+    () => filterTeamUsers(users, staffSearchQuery),
+    [staffSearchQuery, users],
   );
-  const filteredCustomers = useMemo(() => {
-    const normalizedQuery = searchQuery.trim().toLowerCase();
-
-    if (!normalizedQuery) {
-      return customers;
-    }
-
-    return customers.filter((customer) =>
-      [customer.displayName, customer.username ?? "", customer.email ?? "", customer.notes ?? ""].some((value) =>
-        value.toLowerCase().includes(normalizedQuery),
-      ),
-    );
-  }, [customers, searchQuery]);
+  const filteredCustomers = useMemo(
+    () => filterCustomers(customers, customerSearchQuery),
+    [customerSearchQuery, customers],
+  );
 
   const canManageUsers = permissionService.canManageUsers(user);
   const openAddUserModal = useCallback(() => {
     setIsAddModalOpen(true);
   }, []);
-
-  const teamUserCountLabel = useMemo(() => {
-    const count = searchQuery.trim() ? filteredUsers.length : users.length;
-    return `${count} team user${count === 1 ? "" : "s"}`;
-  }, [filteredUsers.length, searchQuery, users.length]);
-  const customerCountLabel = useMemo(() => {
-    const count = searchQuery.trim() ? filteredCustomers.length : customers.length;
-    return `${count} customer${count === 1 ? "" : "s"}`;
-  }, [customers.length, filteredCustomers.length, searchQuery]);
 
   const dismissSuccessMessage = useCallback(() => {
     setPageSuccessMessage(null);
@@ -79,8 +67,11 @@ export function UserManagementPage() {
       await Promise.all([reloadUsers(), reloadCustomers()]);
 
       if (payload.kind === "customer" && payload.message) {
+        setDirectoryTab("customers");
         setPageSuccessMessage(payload.message);
         setSuccessAlertSeed((current) => current + 1);
+      } else if (payload.kind === "staff") {
+        setDirectoryTab("staff");
       }
     },
     [reloadCustomers, reloadUsers],
@@ -90,11 +81,6 @@ export function UserManagementPage() {
     () => ({
       title: "Users",
       description: "Manage staff access and customers for Print Requests.",
-      search: {
-        value: searchQuery,
-        onChange: setSearchQuery,
-        placeholder: "Search...",
-      },
       primaryAction: canManageUsers
         ? {
             label: "Add user",
@@ -102,7 +88,7 @@ export function UserManagementPage() {
           }
         : null,
     }),
-    [canManageUsers, openAddUserModal, searchQuery],
+    [canManageUsers, openAddUserModal],
   );
 
   useShellHeaderConfig(shellHeaderConfig);
@@ -130,42 +116,78 @@ export function UserManagementPage() {
       ) : null}
 
       <section className="user-directory-section">
-        <div className="user-directory-summary-row">
-          <span className="user-directory-count-chip">{teamUserCountLabel}</span>
-          <span className="user-directory-count-chip">{customerCountLabel}</span>
+        <div className="user-directory-tab-bar" role="tablist" aria-label="User directories">
+          <button
+            aria-selected={directoryTab === "staff"}
+            className={`user-directory-tab-button${directoryTab === "staff" ? " is-active" : ""}`}
+            onClick={() => setDirectoryTab("staff")}
+            role="tab"
+            type="button"
+          >
+            Staff ({users.length})
+          </button>
+          <button
+            aria-selected={directoryTab === "customers"}
+            className={`user-directory-tab-button${directoryTab === "customers" ? " is-active" : ""}`}
+            onClick={() => setDirectoryTab("customers")}
+            role="tab"
+            type="button"
+          >
+            Customers ({customers.length})
+          </button>
         </div>
 
-        <div className="user-directory-section-copy">
-          <p className="eyebrow">Team users</p>
-          <h2>Staff</h2>
-          <p>Admin and helper accounts with Fresh Prints Studio access.</p>
-        </div>
-        <UserDirectoryTable
-          caller={user}
-          error={error}
-          isLoading={isLoading}
-          onEditUser={(teamUser) => {
-            clearMessages();
-            setEditingUser(teamUser);
-          }}
-          onViewAuditTrail={(teamUser) => setAuditTrailSubject({ kind: "team_user", user: teamUser })}
-          searchQuery={searchQuery}
-          users={filteredUsers}
-        />
+        {directoryTab === "staff" ? (
+          <div className="user-directory-tab-panel" role="tabpanel">
+            <label className="user-directory-search">
+              <span className="visually-hidden">Search staff</span>
+              <Search aria-hidden className="user-directory-search-icon" size={14} strokeWidth={2} />
+              <input
+                className="user-directory-search-input"
+                onChange={(event) => setStaffSearchQuery(event.target.value)}
+                placeholder="Search name, email, role…"
+                type="search"
+                value={staffSearchQuery}
+              />
+            </label>
 
-        <div className="user-directory-section-copy">
-          <p className="eyebrow">Customers</p>
-          <h2>Customers</h2>
-          <p>Customer entries are for Print Requests only. They do not create Studio logins or Portal accounts.</p>
-        </div>
-        <CustomerDirectoryTable
-          customers={filteredCustomers}
-          error={customersError}
-          isLoading={isCustomersLoading}
-          onEditCustomer={(customer) => setEditingCustomer(customer)}
-          onViewAuditTrail={(customer) => setAuditTrailSubject({ kind: "customer", customer })}
-          searchQuery={searchQuery}
-        />
+            <UserDirectoryTable
+              caller={user}
+              error={error}
+              isLoading={isLoading}
+              onEditUser={(teamUser) => {
+                clearMessages();
+                setEditingUser(teamUser);
+              }}
+              onViewAuditTrail={(teamUser) => setAuditTrailSubject({ kind: "team_user", user: teamUser })}
+              searchQuery={staffSearchQuery}
+              users={filteredUsers}
+            />
+          </div>
+        ) : (
+          <div className="user-directory-tab-panel" role="tabpanel">
+            <label className="user-directory-search">
+              <span className="visually-hidden">Search customers</span>
+              <Search aria-hidden className="user-directory-search-icon" size={14} strokeWidth={2} />
+              <input
+                className="user-directory-search-input"
+                onChange={(event) => setCustomerSearchQuery(event.target.value)}
+                placeholder="Search name, username, email, notes…"
+                type="search"
+                value={customerSearchQuery}
+              />
+            </label>
+
+            <CustomerDirectoryTable
+              customers={filteredCustomers}
+              error={customersError}
+              isLoading={isCustomersLoading}
+              onEditCustomer={(customer) => setEditingCustomer(customer)}
+              onViewAuditTrail={(customer) => setAuditTrailSubject({ kind: "customer", customer })}
+              searchQuery={customerSearchQuery}
+            />
+          </div>
+        )}
       </section>
 
       <AddUserModal

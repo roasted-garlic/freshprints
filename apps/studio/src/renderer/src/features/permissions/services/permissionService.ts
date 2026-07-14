@@ -155,6 +155,11 @@ export const permissionService = {
     return hasActiveRole(user, ["owner", "admin"]);
   },
 
+  /** Dev-only operational wipe; server also enforces owner + project allowlist. */
+  canWipeOperationalTestData(user: UserLike) {
+    return isOwner(user);
+  },
+
   canManageDesigns(user: UserLike) {
     return this.canViewDesigns(user);
   },
@@ -323,6 +328,8 @@ export const permissionService = {
         return this.canManageRoles(user);
       case "manageSettings":
         return this.canManageSettings(user);
+      case "wipeOperationalTestData":
+        return this.canWipeOperationalTestData(user);
       case "manageDesigns":
         return this.canManageDesigns(user);
       case "viewDesigns":

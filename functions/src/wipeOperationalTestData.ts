@@ -23,9 +23,9 @@ const INTERNAL_PRINT_REQUEST_COUNTER_ID = "printRequests";
 const BATCH_LIMIT = 400;
 const STORAGE_DELETE_BATCH = 100;
 
-function assertOwnerAdminCaller(caller: Awaited<ReturnType<typeof loadCallerProfile>>): void {
-  if (!caller.isActive || !["owner", "admin"].includes(caller.role)) {
-    throw permissionDenied("Only owners and admins can wipe operational test data.");
+function assertOwnerCaller(caller: Awaited<ReturnType<typeof loadCallerProfile>>): void {
+  if (!caller.isActive || caller.role !== "owner") {
+    throw permissionDenied("Only owners can wipe operational test data.");
   }
 }
 
@@ -316,7 +316,7 @@ export const wipeOperationalTestData = onCall(
     }
 
     const caller = await loadCallerProfile(request.auth.uid);
-    assertOwnerAdminCaller(caller);
+    assertOwnerCaller(caller);
 
     const { targets } = parseRequest(request.data);
     const plan = expandOperationalWipePlan(targets);

@@ -230,10 +230,13 @@ export default function PrintRequestDetailView() {
   const hasAttachedDesigns = items.length > 0;
 
   const handleQueuedToShow = useCallback(async () => {
-    await Promise.all([reload(), refreshRequests({ silent: true }), refreshCustomer()]);
+    await Promise.all([
+      reload({ silent: true }),
+      refreshRequests({ silent: true }),
+      refreshCustomer(),
+    ]);
     await loadAllocationState();
-    router.push('/requests?tab=queued');
-  }, [loadAllocationState, refreshCustomer, refreshRequests, reload, router]);
+  }, [loadAllocationState, refreshCustomer, refreshRequests, reload]);
 
   if (isLoading) {
     return (
@@ -359,6 +362,7 @@ export default function PrintRequestDetailView() {
               ? Boolean(printProgress.primaryShow) || printProgress.showElapsed
               : printProgress.showElapsed
           }
+          waitingLabel={printProgress.statusHeadline}
         />
       ) : null}
 
@@ -437,6 +441,9 @@ export default function PrintRequestDetailView() {
                         heightPx: upload?.heightPx,
                         printWidthInches: upload?.printWidthInches,
                         printHeightInches: upload?.printHeightInches,
+                        approvedMaxPrintWidthInches: upload?.approvedMaxPrintWidthInches,
+                        approvedMaxPrintHeightInches: upload?.approvedMaxPrintHeightInches,
+                        wasUpscaled: upload?.wasUpscaled,
                       }
                     : null
                 }

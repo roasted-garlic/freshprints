@@ -30,7 +30,7 @@ processCustomerUploadImageBytes (sharp):
   check format → sample transparency
   → convert only if needed (e.g. WebP)
   → trim only if empty margins need it
-  → upscale only if below print target
+  → upscale at most once per ADR-FP-080 (`image-quality-v2`: ≤6× toward 12″; never past target; never downsample)
   → DPI / print-size assess → create WebP previews
   → save production (+ GCS copy when source PNG reused)
     ↓

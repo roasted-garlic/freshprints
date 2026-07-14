@@ -29,6 +29,7 @@ import { upscaleImportImageIfNeeded } from "../../services/import/upscaleImportI
 import { getFileExtension, getFileName, hasAllowedExtension } from "./importPathUtils";
 import { parsePngMetadata } from "./pngParser";
 import { cacheCorrectedImportBytes } from "./correctedImportBytesCache";
+import { buildImageQualitySizingMetadata } from "@fresh-prints/shared/utils/imageQualitySizingPolicy";
 
 export class PngValidationError extends Error {
   constructor(message: string) {
@@ -200,6 +201,13 @@ export async function validatePngFile(filePath: string): Promise<ValidateSelecte
     throw new PngValidationError(assessmentResult.error);
   }
 
+  const sizingMeta = buildImageQualitySizingMetadata(upscaleResult.width, upscaleResult.height, {
+    wasUpscaled: upscaleResult.wasUpscaled,
+    upscalePassCount: upscaleResult.upscalePassCount,
+    upscaleFactor: upscaleResult.upscaleFactor,
+    sizingWarningCode: upscaleResult.sizingWarningCode,
+  });
+
   const roundedDpiX = metadata.dpiX !== undefined ? roundDpi(metadata.dpiX) : undefined;
   const roundedDpiY = metadata.dpiY !== undefined ? roundDpi(metadata.dpiY) : undefined;
   const warnings = [
@@ -258,6 +266,11 @@ export async function validatePngFile(filePath: string): Promise<ValidateSelecte
       ? { originalWidth: metadata.width, originalHeight: metadata.height }
       : {}),
     printSizeAssessment: assessmentResult.assessment,
+    approvedMaxPrintWidthInches: sizingMeta.approvedMaxPrintWidthInches,
+    approvedMaxPrintHeightInches: sizingMeta.approvedMaxPrintHeightInches,
+    sizingPolicyVersion: sizingMeta.sizingPolicyVersion,
+    upscaleFactor: sizingMeta.upscaleFactor,
+    upscalePassCount: sizingMeta.upscalePassCount,
     warnings,
   };
 }

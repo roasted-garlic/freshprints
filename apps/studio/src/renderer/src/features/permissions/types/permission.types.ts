@@ -24,6 +24,7 @@ export type PermissionKey =
   | "viewOriginals"
   | "viewAiReview"
   | "manageAiReview"
+  | "wipeOperationalTestData"
   | "submitCustomerRequests"
   | "viewOwnCustomerRequests";
 

@@ -471,6 +471,37 @@ export function UserPlusIcon({ size }: PortalIconProps) {
   );
 }
 
+export function CircleHelpIcon({ size }: PortalIconProps) {
+  return (
+    <IconSvg size={size}>
+      <circle
+        cx="12"
+        cy="12"
+        fill="none"
+        r="10"
+        stroke="currentColor"
+        strokeWidth="2"
+      />
+      <path
+        d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+      <path
+        d="M12 17h.01"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+    </IconSvg>
+  );
+}
+
 export function XIcon({ size }: PortalIconProps) {
   return (
     <IconSvg size={size}>

@@ -118,6 +118,31 @@ Approved categories:
 Rules:
 Tags may be words or short phrases because the server will match them later.
 Use accurate terms for subjects, themes, audience, occasion, style, text, recognizable characters, brands, franchises, or properties.
+Include style tags when visually important and searchable. Use halftone only for clear dot-screen shading, gradients, or texture, not normal noise or compression.
+No filler tags: image, design, artwork, graphic, shirt, print, png, dtf.
+Name recognizable characters, brands, logos, teams, shows, movies, games, celebrities, or known properties when clear.
+Do not use these tag words: {{excluded_tags}}
+
+Return exactly this JSON and nothing else:
+{"title":"...","description":"...","category":"...","tags":["tag candidate"]}`;
+
+/** Pre-halftone-guidance shipped default (business-context v21/v22 wording). */
+export const PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V21 = `You catalog DTF transfer art for apparel. Choose title, category, and tags by the design's core subject, message, joke, buyer intent, occasion, role, or theme, not style alone. Fonts, colors, lashes, heels, school items, crosses, or other decorative elements only count when truly central.
+
+Analyze the image and return only valid JSON.
+
+Return:
+title: short searchable title.
+description: 1 to 2 sentences with all readable text exactly as shown, plus style, colors, and main visuals.
+category: best approved category, copied exactly. Use another name only if none genuinely fit.
+tags: up to 12 searchable tag candidates.
+
+Approved categories:
+{{approved_category_names}}
+
+Rules:
+Tags may be words or short phrases because the server will match them later.
+Use accurate terms for subjects, themes, audience, occasion, style, text, recognizable characters, brands, franchises, or properties.
 No filler tags: image, design, artwork, graphic, shirt, print, png, dtf.
 Name recognizable characters, brands, logos, teams, shows, movies, games, celebrities, or known properties when clear.
 Do not use these tag words: {{excluded_tags}}
@@ -148,9 +173,12 @@ Return exactly this JSON shape and nothing else:
 {"title":"...","description":"...","category":"...","tags":["tag candidate"]}`;
 
 export function isPreviousDefaultAiEnrichmentPromptTemplate(value: string): boolean {
+  const normalized = normalizePromptForDefaultComparison(value);
   return (
-    normalizePromptForDefaultComparison(value) ===
-    normalizePromptForDefaultComparison(PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V20)
+    normalized ===
+      normalizePromptForDefaultComparison(PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V20) ||
+    normalized ===
+      normalizePromptForDefaultComparison(PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V21)
   );
 }
 

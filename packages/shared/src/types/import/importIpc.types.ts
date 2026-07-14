@@ -95,6 +95,8 @@ export type ImportPngWarningCode =
   | "IMAGE_TRIMMED"
   | "IMAGE_UPSCALED"
   | "IMAGE_UPSCALED_SOFT_QUALITY"
+  | "HALFTONE_POSSIBLE"
+  | "HALFTONE_LIKELY"
   | "PRINT_SIZE_NORMALIZED"
   | "PRINT_SIZE_BELOW_PREFERRED"
   | "PRINT_SIZE_SMALL_FORMAT"
@@ -134,11 +136,17 @@ export interface ValidateSelectedPngFileResult {
   width: number;
   /** True when transparent edge padding was trimmed from the image during import. */
   wasTrimmed?: boolean;
-  /** True when the image's pixel data was upscaled during import to meet the import headroom target (15in @ 300 DPI). */
+  /** True when the image's pixel data was upscaled during import under the image-quality policy. */
   wasUpscaled?: boolean;
   /** Present when wasTrimmed or wasUpscaled is true — the image's pixel dimensions before either correction. */
   originalWidth?: number;
   originalHeight?: number;
+  approvedMaxPrintWidthInches?: number;
+  approvedMaxPrintHeightInches?: number;
+  sizingPolicyVersion?: string;
+  upscaleFactor?: number;
+  upscalePassCount?: 0 | 1;
+  halftoneDetection?: import("../halftone/halftone.types").HalftoneDetectionPersisted;
 }
 
 export interface ReadSelectedPngFileBytesDerivatives {

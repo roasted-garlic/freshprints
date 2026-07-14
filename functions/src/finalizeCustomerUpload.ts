@@ -46,6 +46,8 @@ export interface FinalizeCustomerUploadResponse {
   productionStoragePath?: string | null;
   previewStoragePath?: string | null;
   thumbnailStoragePath?: string | null;
+  approvedMaxPrintWidthInches?: number | null;
+  approvedMaxPrintHeightInches?: number | null;
 }
 
 export const finalizeCustomerUpload = onCall(
@@ -221,6 +223,12 @@ export const finalizeCustomerUpload = onCall(
             heightPx: processed.heightPx,
             wasUpscaled: processed.wasUpscaled,
             wasTrimmed: processed.wasTrimmed,
+            upscaleFactor: processed.upscaleFactor,
+            upscalePassCount: processed.upscalePassCount,
+            approvedMaxPrintWidthInches: processed.approvedMaxPrintWidthInches,
+            approvedMaxPrintHeightInches: processed.approvedMaxPrintHeightInches,
+            sizingPolicyVersion: processed.sizingPolicyVersion,
+            sizingWarningCode: processed.sizingWarningCode ?? null,
             transparencyPassed: true,
             transparentPixelRatio: processed.transparentPixelRatio,
             productionStoragePath,
@@ -251,6 +259,8 @@ export const finalizeCustomerUpload = onCall(
         productionStoragePath,
         previewStoragePath,
         thumbnailStoragePath,
+        approvedMaxPrintWidthInches: processed.approvedMaxPrintWidthInches,
+        approvedMaxPrintHeightInches: processed.approvedMaxPrintHeightInches,
       };
     } finally {
       await releaseFinalizeLease(leaseId);

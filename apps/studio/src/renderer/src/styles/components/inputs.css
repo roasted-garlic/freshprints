@@ -495,6 +495,11 @@
   border-color: var(--color-accent-primary);
 }
 
+.toggle-switch-on-success {
+  background: var(--color-success);
+  border-color: var(--color-success);
+}
+
 .toggle-switch-on::after {
   transform: translate(1.125rem, -50%);
 }

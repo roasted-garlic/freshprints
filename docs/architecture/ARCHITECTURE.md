@@ -127,6 +127,8 @@ No workspace overlap: Design Library never shows imported or rejected designs; A
 
 **Operational queue (not a fourth design-lifecycle workspace):** **Customer Uploads** (`/customer-uploads`) reviews Portal request artwork for catalog eligibility. Promote hands off to AI Processing; it does not replace Imports. See ADR-FP-009 clarification and ADR-FP-073.
 
+**Image quality / halftone (ADR-FP-080):** Shared sizing policy in `packages/shared` is used by Studio Electron import and Functions finalize. Halftone is human-confirmed only (Portal optional checkbox + Studio/AI Review staff toggle). Automatic pixel detection was removed by owner decision — do not reintroduce detector processing.
+
 See `docs/WORKFLOWS.md` and ADR-FP-009.
 
 ---
