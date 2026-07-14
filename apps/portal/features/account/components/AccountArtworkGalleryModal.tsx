@@ -2,29 +2,65 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+import { useCatalogDerivativeUrl } from '../../catalog/hooks/useCatalogDerivativeUrl';
+import type { CatalogDesign } from '../../catalog/types/catalog.types';
 import type { AccountArtworkKind } from '../../customer-uploads/services/customerUploadService';
 import type { AccountArtworkGalleryTile } from '../hooks/useAccountArtworkGallery';
 
-type GalleryFilterTab = 'all' | AccountArtworkKind;
+type GalleryFilterTab = 'all' | AccountArtworkKind | 'reusable';
 
 interface AccountArtworkGalleryModalProps {
   isOpen: boolean;
   items: AccountArtworkGalleryTile[];
+  reusableDesigns: CatalogDesign[];
+  isReusableLoading: boolean;
+  reusableErrorMessage: string | null;
   onClose: () => void;
-  onSelect: (item: AccountArtworkGalleryTile) => void;
+  onSelectPast: (item: AccountArtworkGalleryTile) => void;
+  onSelectReusable: (design: CatalogDesign) => void;
 }
 
 const GALLERY_TABS: Array<{ id: GalleryFilterTab; label: string }> = [
   { id: 'all', label: 'All' },
   { id: 'upload', label: 'Uploaded' },
   { id: 'donation', label: 'Donated' },
+  { id: 'reusable', label: 'Reusable' },
 ];
+
+function ReusableTile({
+  design,
+  onSelect,
+}: {
+  design: CatalogDesign;
+  onSelect: (design: CatalogDesign) => void;
+}) {
+  const { url } = useCatalogDerivativeUrl(design.thumbnailPath, design.updatedAtMs);
+
+  return (
+    <button
+      className="portal-account-gallery-tile"
+      onClick={() => onSelect(design)}
+      type="button"
+    >
+      {url ? (
+        // eslint-disable-next-line @next/next/no-img-element -- signed Storage URLs
+        <img alt="" className="portal-account-gallery-tile-image" decoding="async" src={url} />
+      ) : null}
+      <span className="portal-account-gallery-tile-badge is-reusable">Catalog</span>
+      <span className="portal-account-gallery-tile-title">{design.title}</span>
+    </button>
+  );
+}
 
 export function AccountArtworkGalleryModal({
   isOpen,
   items,
+  reusableDesigns,
+  isReusableLoading,
+  reusableErrorMessage,
   onClose,
-  onSelect,
+  onSelectPast,
+  onSelectReusable,
 }: AccountArtworkGalleryModalProps) {
   const [activeTab, setActiveTab] = useState<GalleryFilterTab>('all');
   const wasOpenRef = useRef(false);
@@ -51,9 +87,12 @@ export function AccountArtworkGalleryModal({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
-  const filteredItems = useMemo(() => {
+  const filteredPastItems = useMemo(() => {
     if (activeTab === 'all') {
       return items;
+    }
+    if (activeTab === 'reusable') {
+      return [];
     }
     return items.filter((item) => item.kind === activeTab);
   }, [activeTab, items]);
@@ -63,13 +102,24 @@ export function AccountArtworkGalleryModal({
       all: items.length,
       upload: items.filter((item) => item.kind === 'upload').length,
       donation: items.filter((item) => item.kind === 'donation').length,
+      reusable: reusableDesigns.length,
     }),
-    [items],
+    [items, reusableDesigns.length],
   );
 
   if (!isOpen) {
     return null;
   }
+
+  const isReusableTab = activeTab === 'reusable';
+  const subtitleCount = isReusableTab ? reusableDesigns.length : filteredPastItems.length;
+  const subtitleSuffix = isReusableTab
+    ? ' reusable from your uploads and donations'
+    : activeTab === 'all'
+      ? ' from your uploads and donations'
+      : activeTab === 'upload'
+        ? ' uploaded'
+        : ' donated';
 
   return (
     <div
@@ -88,12 +138,8 @@ export function AccountArtworkGalleryModal({
           <div>
             <h2 className="portal-account-gallery-modal-title">Your designs</h2>
             <p className="portal-muted portal-account-gallery-modal-subtitle">
-              {filteredItems.length} design{filteredItems.length === 1 ? '' : 's'}
-              {activeTab === 'all'
-                ? ' from your uploads and donations'
-                : activeTab === 'upload'
-                  ? ' uploaded'
-                  : ' donated'}
+              {subtitleCount} design{subtitleCount === 1 ? '' : 's'}
+              {subtitleSuffix}
             </p>
           </div>
           <button
@@ -129,23 +175,45 @@ export function AccountArtworkGalleryModal({
           })}
         </div>
 
-        {filteredItems.length === 0 ? (
+        {isReusableTab ? (
+          isReusableLoading ? (
+            <p className="portal-muted portal-account-gallery-modal-empty">Loading reusable designs…</p>
+          ) : reusableErrorMessage ? (
+            <p className="portal-muted portal-account-gallery-modal-empty">{reusableErrorMessage}</p>
+          ) : reusableDesigns.length === 0 ? (
+            <p className="portal-muted portal-account-gallery-modal-empty">
+              Uploads and donations that make it into the catalog show up here while they&apos;re still
+              available.
+            </p>
+          ) : (
+            <div className="portal-account-gallery-modal-grid">
+              {reusableDesigns.map((design) => (
+                <ReusableTile key={design.id} design={design} onSelect={onSelectReusable} />
+              ))}
+            </div>
+          )
+        ) : filteredPastItems.length === 0 ? (
           <p className="portal-muted portal-account-gallery-modal-empty">
             No {activeTab === 'upload' ? 'uploads' : activeTab === 'donation' ? 'donations' : 'designs'}{' '}
             yet.
           </p>
         ) : (
           <div className="portal-account-gallery-modal-grid">
-            {filteredItems.map((item) => (
+            {filteredPastItems.map((item) => (
               <button
                 key={item.id}
                 className="portal-account-gallery-tile"
-                onClick={() => onSelect(item)}
+                onClick={() => onSelectPast(item)}
                 type="button"
               >
                 {item.imageUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element -- signed Storage URLs
-                  <img alt="" className="portal-account-gallery-tile-image" decoding="async" src={item.imageUrl} />
+                  <img
+                    alt=""
+                    className="portal-account-gallery-tile-image"
+                    decoding="async"
+                    src={item.imageUrl}
+                  />
                 ) : null}
                 <span className={`portal-account-gallery-tile-badge is-${item.kind}`}>
                   {item.kind === 'donation' ? 'Donated' : 'Upload'}

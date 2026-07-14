@@ -334,14 +334,24 @@ Active staff (`owner`, `admin`, `helper`) may read and write design catalog reco
 |--------|-------|-------|--------|
 | View designs / categories | Yes | Yes | Yes |
 | Create / edit / archive designs | Yes | Yes | Yes |
+| Restore archived designs | Yes | Yes | No |
+| Delete archived design images (purge originals/previews; keep thumbnail) | Yes | No | No |
 | Assign existing category on design edit | Yes | Yes | Yes |
 | Create / edit / archive categories | Yes | Yes | No |
 | View approved tag library | Yes | Yes | Yes |
 | Create / edit / archive approved tags | Yes | Yes | No |
 | Bulk import approved tag JSON | Yes | No | No |
 | Approve AI suggested-new-tags | Yes | Yes | No |
+| Staff-assisted Whatnot **Import Shows** | Yes | Yes | No |
+| Dev Tools sidebar (dev Electron) | Yes | No | No |
 
 Permission checks use `permissionService` in the renderer and matching Firestore rules. UI must not expose category management write actions to helpers.
+
+Helpers may archive designs but cannot restore them (`canRestoreDesigns` is owner/admin only). Service-layer `designService.restoreDesign` enforces the same check.
+
+Helpers may manage Show Queue (add/edit shows, settings) but cannot use staff-assisted Whatnot **Import Shows** (`canImportWhatnotShows`). The Import Shows button, import hook, `fromAssistedImport` upserts, and assisted-import settings writes all require owner/admin.
+
+Dev Tools sidebar action (dev Electron builds only) requires `canOpenDevTools` (owner only).
 
 Helpers may assign existing categories to designs but cannot manage category documents.
 
@@ -413,7 +423,11 @@ Mutations use `designAiReviewService` with `permissionService.canManageAiReview`
 
 **Firestore rules (Step 6):** `queued` and `printed` remain accepted on reads/updates for legacy document compatibility. New application writes block deprecated statuses in `designService`. Rules comment updated; **deploy optional** (no validator tightening).
 
-Hard deletes are denied in Firestore rules.
+Hard deletes of `designs/{id}` documents are denied in Firestore rules.
+
+**Owner archive-first asset purge (`purgeArchivedDesignAssets`):** Owner-only callable deletes Storage `/originals/` + `/previews/` for archived designs, **keeps `/thumbnails/`**, keeps the Firestore design document for print-request / show-queue history, and sets `assetsPurgedAt` / `assetsPurgedBy` via Admin SDK. Studio **hides** purged designs from the Archived library browse list and surfaces an “images deleted” state when history still resolves the thumbnail. Clients cannot create or update those purge fields. Path fields on already-purged designs are frozen for client updates. Bulk purge requires typed confirmation (`DELETE IMAGES`); max 25 ids per call.
+
+**Retention maintenance (ADR-FP-086):** `archiveStaleRejectedDesigns` and `purgeIdleCustomerUploadFullSize` are owner/admin callables (`dryRun` supported). Customer upload docs are client-immutable; full-size purge fields are Admin SDK only.
 
 ## Fresh Prints Portal (Phase 8+)
 
@@ -480,11 +494,11 @@ Path: `customers/{customerId}/favorites/{designId}`
 * **Update** denied (unlike = delete; like again = create)
 * Staff may **read** and **delete** for support; staff may not create favorites as the customer
 * Guests / unauthenticated: no access
-* Does **not** write design-level like counters
+* Design `favoriteCount` is maintained by Cloud Functions only (ADR-FP-083); clients must not treat it as a trust boundary
 
 ### Staff inbox acknowledgments
 
-* Active staff may read, create, and delete their own `staffInboxAcks` documents (`userId == auth.uid`)
+* Active staff may read, create, and delete their own `staffInboxAcks` documents (`userId == auth.uid`); optional `acknowledgedByUserId` (must match `userId`) and `acknowledgedByDisplayName` (≤120 chars) allowed for Done attribution
 * Acks are per staff user (not team-shared); Open alerts remain derived from portal queue data
 * Customers have no access to `staffInboxAcks`
 

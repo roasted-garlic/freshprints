@@ -24,6 +24,7 @@ function createDesign(overrides: Partial<CatalogDesign> = {}): CatalogDesign {
     width: 3000,
     height: 3000,
     requestCount: 0,
+    favoriteCount: 0,
     ...overrides,
   };
 }

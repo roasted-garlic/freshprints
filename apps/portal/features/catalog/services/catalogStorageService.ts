@@ -10,6 +10,7 @@ import {
   type CatalogStoragePathRef,
 } from '../utils/catalogUrlCacheKey';
 
+/** On-demand memo only — no background prefetch (prefetch fought soft navigation). */
 const inflightUrlCache = new Map<string, Promise<string | null>>();
 const resolvedUrlCache = new Map<string, string>();
 
@@ -92,22 +93,9 @@ export const catalogStorageService = {
     return request;
   },
 
-  prefetchCatalogPaths(pathRefs: CatalogStoragePathRef[], limit = 64): void {
-    const uniqueKeys = new Set<string>();
-    const uniqueRefs: CatalogStoragePathRef[] = [];
-
-    for (const pathRef of pathRefs) {
-      const cacheKey = resolveCacheKey(pathRef.catalogPath, pathRef.contentVersion);
-      if (!cacheKey || uniqueKeys.has(cacheKey)) {
-        continue;
-      }
-      uniqueKeys.add(cacheKey);
-      uniqueRefs.push(pathRef);
-    }
-
-    for (const pathRef of uniqueRefs.slice(0, limit)) {
-      void this.getDownloadUrlForCatalogPath(pathRef.catalogPath, pathRef.contentVersion);
-    }
+  /** No-op: background prefetch made soft nav feel sticky; thumbs load on demand. */
+  prefetchCatalogPaths(_pathRefs: CatalogStoragePathRef[], _limit = 32): void {
+    // intentionally empty
   },
 
   /**
@@ -120,6 +108,10 @@ export const catalogStorageService = {
         .map((path) => normalizeCatalogStoragePath(path))
         .filter((path): path is string => path !== null),
     );
+
+    if (keepPaths.size === 0) {
+      return;
+    }
 
     for (const cacheKey of [...resolvedUrlCache.keys()]) {
       if (!keepPaths.has(catalogPathFromUrlCacheKey(cacheKey))) {

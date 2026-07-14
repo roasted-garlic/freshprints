@@ -29,6 +29,8 @@ export interface BuildShowPickerOptionsInput {
    */
   pendingAllocatedByShowId?: ReadonlyMap<string, number>;
   isPastScheduled?: (show: ShowPickerSource) => boolean;
+  /** When false, show remains on the calendar but cannot be selected (full / done / past). */
+  canSelectShow?: (show: ShowPickerSource) => boolean;
   now?: Date;
 }
 
@@ -38,12 +40,14 @@ export function buildShowPickerOptions({
   extraAllocatedByShowId,
   pendingAllocatedByShowId,
   isPastScheduled,
+  canSelectShow,
 }: BuildShowPickerOptionsInput): ShowPickerOption[] {
   return shows.map((show) => {
     const extraAllocated = extraAllocatedByShowId?.get(show.id) ?? 0;
     const pendingAllocated = pendingAllocatedByShowId?.get(show.id) ?? 0;
     const committedAllocated = show.allocatedQuantity + extraAllocated;
     const projectedAllocated = committedAllocated + pendingAllocated;
+    const past = isPastScheduled?.(show) ?? false;
 
     const committedCapacity = assessShowCapacity({
       maxTotalQuantity: show.maxTotalQuantity,
@@ -54,10 +58,11 @@ export function buildShowPickerOptions({
       allocatedQuantity: projectedAllocated,
     });
     const statusDisplay = getDerivedShowStatusDisplay(show.productionStatus, projectedCapacity, {
-      isPastScheduled: isPastScheduled?.(show) ?? false,
+      isPastScheduled: past,
     });
     const capacityPercent = getShowCapacityPercent(projectedCapacity);
     const committedCapacityPercent = getShowCapacityPercent(committedCapacity);
+    const selectableByCaller = canSelectShow?.(show) ?? true;
 
     return {
       id: show.id,
@@ -72,7 +77,7 @@ export function buildShowPickerOptions({
       statusVariant: statusDisplay.variant,
       isFull: projectedCapacity.isFull,
       isOverCapacity: projectedCapacity.isOverCapacity,
-      isSelectable: !(isPastScheduled?.(show) ?? false),
+      isSelectable: !past && selectableByCaller,
     };
   });
 }

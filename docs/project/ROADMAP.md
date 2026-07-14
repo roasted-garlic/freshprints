@@ -530,7 +530,7 @@ Complete through Phase 0 deploy gate; monitor and polish as needed
 
 Goal:
 
-Every imported design lands in **AI Processing** (`/ai-review`). Staff start AI enrichment from the Processing tab, one design at a time. Staff review and approve before designs appear in Design Library.
+Every imported design lands in **AI Processing** (`/ai-review`). Successful imports auto-start AI enrichment in the background (sequential). Staff review and approve before designs appear in Design Library.
 
 Architecture plan: `docs/workflow/plans/phase-5-ai-review-architecture-plan.md`  
 Architecture review: `docs/workflow/reviews/phase-5-ai-review-architecture-review.md`
@@ -590,7 +590,7 @@ Generate:
 
 ## Exit Criteria
 
-New imports appear in AI Processing. Staff start AI processing from `/ai-review`; successful output moves to Needs Review. Staff approve in the processing workspace. Approved designs appear in Design Library only. Search/filter belongs in Design Library. No automatic catalog publish without staff action.
+New imports appear in AI Processing and auto-start AI in the background. Successful output moves to Needs Review. Staff approve in the processing workspace. Approved designs appear in Design Library only. Search/filter belongs in Design Library. No automatic catalog publish without staff action.
 
 ---
 
@@ -1016,11 +1016,29 @@ Production App Hosting deploy to a live customer URL is a **separate** human che
 
 **Portal catalog pagination** — **complete** (2026-07-14 signoff, PASS). Fast first page (40) + background hydrate for full search/filter; exact counts; Load more; bounded Discover home; index-build fallback. Signoff: `docs/workflow/reviews/2026-07-14-portal-catalog-pagination-signoff.md`.
 
-**Portal design favorites** — **complete** (2026-07-14 signoff, PASS). Customer `favorites` subcollection; heart on cards/details; **My Favorites** nav + `/favorites`; no design `favoriteCount` (ADR-FP-082). Signoff: `docs/workflow/reviews/2026-07-14-portal-design-likes-favorites-signoff.md`.
+**Portal design favorites** — **complete** (2026-07-14 signoff, PASS). Customer `favorites` subcollection; heart on cards/details; **My Favorites** nav + `/favorites`. Signoff: `docs/workflow/reviews/2026-07-14-portal-design-likes-favorites-signoff.md`. Amended by Most Liked / ADR-FP-083 (`favoriteCount` for ranking).
 
 **Symmetric apps monorepo** — **complete** (2026-07-08). Already shipped; do not list as an open next task.
 
-**Next fast-follow:** Firebase account linking, Phase 9 planning, or production Portal deploy / production Google enablement — pick explicitly; do not auto-start. **Active:** Portal catalog image load caching. **Queued:** Owner-only Studio design asset purge (draft plan; decisions required).
+**Portal catalog image load caching** — **complete** (2026-07-14 signoff, PASS). Versioned download-URL cache + prune; favorites archived auto-prune banner. Signoff: `docs/workflow/reviews/2026-07-14-portal-catalog-image-load-caching-signoff.md`.
+
+**Portal home Most Liked carousel** — **complete** (2026-07-14 signoff, PASS). Discover **Most Liked** via `favoriteCount` (Functions sync); Popular stays `requestCount`. ADR-FP-083. Signoff: `docs/workflow/reviews/2026-07-14-portal-home-most-liked-carousel-signoff.md`.
+
+**Helper permission restrictions** — **complete** (2026-07-14 signoff, PASS). Helpers cannot Import Shows, open Dev Tools, or restore designs; keep archive + show manage. Dev Tools owner-only. ADR-FP-085. Signoff: `docs/workflow/reviews/2026-07-14-helper-permission-restrictions-signoff.md`.
+
+**Owner Studio design asset purge** — **complete** (2026-07-14 signoff, PASS). Archive-first; owner single/bulk Delete images (keep thumbnail); purged hidden from Archived browse. ADR-FP-084. Signoff: `docs/workflow/reviews/2026-07-14-owner-studio-design-asset-purge-signoff.md`.
+
+**Reject auto-archive + request-upload full-size cleanup** — **complete** (2026-07-14 signoff, PASS). Callables + Studio Retention maintenance UI; donation exclude purges full-size immediately. ADR-FP-086 §2–§4 (exclude path). Signoff: `docs/workflow/reviews/2026-07-14-reject-auto-archive-customer-upload-cleanup-signoff.md`.
+
+**ADR-FP-086 promote purge + Portal account artwork** — **complete** (2026-07-14). Promote cool-off purge shipped; account UX revised: single gallery + Reusable modal tab; Favorites in Quick links; past-request Add / no longer in catalog. Signoff: `docs/workflow/reviews/2026-07-14-adr086-promote-purge-portal-account-artwork-signoff.md`. UX revision plan: `docs/workflow/plans/2026-07-14-portal-account-artwork-ux-revision-plan.md`.
+
+**Studio/Portal perf + show-queue gates** — **complete** (2026-07-14 signoff, PASS). Promote AI returns without awaiting pipeline; Portal prefetch removed (on-demand URL memo); calendar query + session cache; coalesced inbox alert; hard block full/done/past adds; inbox Done-by + rules; Stash clears after queue-to-show. Signoff: `docs/workflow/reviews/2026-07-14-studio-portal-perf-queue-gates-signoff.md`.
+
+**Portal halftone checkbox optimistic UI** — **complete** (2026-07-14 signoff, PASS). Instant toggle; background save. Signoff: `docs/workflow/reviews/2026-07-14-portal-halftone-checkbox-optimistic-signoff.md`.
+
+**Suggested new tags policy settings** — **complete** (2026-07-14 signoff, PASS). Settings control `suggestedNewTagsPolicy` (Balanced default); Suggested-tag writing rename. Signoff: `docs/workflow/reviews/2026-07-14-suggested-new-tags-policy-settings-signoff.md`.
+
+**Next fast-follow:** Finish Suggested-tag writing quality (in test), Firebase account linking, Phase 9 planning, or production Portal deploy — pick explicitly. **Queued (ADR-FP-086):** optional Cloud Scheduler for retention callables.
 
 Goal:
 

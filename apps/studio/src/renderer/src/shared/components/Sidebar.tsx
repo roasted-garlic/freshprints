@@ -216,7 +216,7 @@ export function Sidebar() {
   }, []);
 
   const devToolsAction: SidebarActionItem | null =
-    showDevToolsSidebarAction && permissionService.hasPermission(user, "accessDashboard")
+    showDevToolsSidebarAction && permissionService.canOpenDevTools(user)
       ? {
           kind: "action",
           icon: Bug,
@@ -289,16 +289,11 @@ export function Sidebar() {
     return () => observer.disconnect();
   }, [updateActiveIndicator]);
 
-  // When already browsing the Design Library in request-selection mode, keep the sidebar
-  // link pointed at the current URL (with its mode/requestId params) so clicking it does
-  // not silently drop selection mode. Leaving the Library via any other link still exits it.
+  // When already on Design Library, keep the current query string so clicking the sidebar
+  // link does not wipe archived/search filters (or exit request-selection mode).
   const resolveSidebarItemTo = useCallback(
     (item: SidebarRouteItem) => {
-      if (
-        item.to === "/designs" &&
-        location.pathname === "/designs" &&
-        new URLSearchParams(location.search).get("mode") === "request-selection"
-      ) {
+      if (item.to === "/designs" && location.pathname === "/designs") {
         return `${location.pathname}${location.search}`;
       }
 

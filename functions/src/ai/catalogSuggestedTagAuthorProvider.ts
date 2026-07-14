@@ -13,18 +13,18 @@ import { fetchVisionWithRetry } from "./visionRequestRetry";
 import { logPipelineEvent } from "../lib/pipelineLog";
 
 /** Prompt version for the optional suggestion-authoring call, independent of the rerank/enrichment prompts. */
-export const CATALOG_SUGGESTED_TAG_AUTHOR_PROMPT_VERSION = "catalog-suggested-tag-author-v1";
+export const CATALOG_SUGGESTED_TAG_AUTHOR_PROMPT_VERSION = "catalog-suggested-tag-author-v2";
 
 const SUGGESTED_TAG_AUTHOR_SYSTEM_PROMPT =
-  "You are a precise catalog tagging assistant. Follow the instructions exactly and return only valid JSON.";
+  "You are a precise catalog tagging assistant. Write reusable approved-tag entries with rich aliases and detailed preferredWhen guidance. Follow the instructions exactly and return only valid JSON.";
 
 const MAX_CALIBRATION_EXAMPLES = 4;
-const MAX_CALIBRATION_EXAMPLE_ALIASES = 3;
-const MAX_ALIASES_PER_SUGGESTION = 5;
-const MAX_PREFERRED_WHEN_LENGTH = 300;
+const MAX_CALIBRATION_EXAMPLE_ALIASES = 8;
+export const MAX_ALIASES_PER_SUGGESTION = 12;
+export const MAX_PREFERRED_WHEN_LENGTH = 500;
 const MAX_ALIAS_LENGTH = 40;
 const MIN_QUALITY_PREFERRED_WHEN_LENGTH = 20;
-const SUGGESTED_TAG_AUTHOR_MAX_COMPLETION_TOKENS = 700;
+const SUGGESTED_TAG_AUTHOR_MAX_COMPLETION_TOKENS = 1400;
 
 export type SuggestedTagAuthorFailureReason = "network_error" | "invalid_json" | "empty_output";
 
@@ -45,6 +45,29 @@ export interface SuggestedTagAuthorInput {
   approvedMatchedTags: string[];
   candidateNames: string[];
   exampleApprovedTags: CalibrationExampleTag[];
+  /** Lowercased approved tag names + aliases — colliding suggestion names/aliases are dropped. */
+  reservedCatalogTerms?: readonly string[];
+}
+
+/** Build the reserved name/alias set used to strip collisions from AI-authored suggestions. */
+export function buildReservedCatalogTagTerms(approvedTags: readonly CatalogTag[]): string[] {
+  const reserved = new Set<string>();
+
+  for (const tag of approvedTags) {
+    const name = tag.name.trim().toLowerCase();
+    if (name) {
+      reserved.add(name);
+    }
+
+    for (const alias of tag.aliases ?? []) {
+      const normalized = alias.trim().toLowerCase();
+      if (normalized) {
+        reserved.add(normalized);
+      }
+    }
+  }
+
+  return [...reserved];
 }
 
 export interface SuggestedTagAuthorSuccess {
@@ -77,7 +100,7 @@ export class SuggestedTagAuthorError extends Error {
  * 3. Remaining high-quality tags regardless of relevance, to fill any leftover slots.
  * 4. Stable tie-break: alphabetical by name.
  *
- * Each returned example is reduced to name + up to 3 aliases + preferredWhen only.
+ * Each returned example is reduced to name + up to 8 aliases + preferredWhen only.
  */
 export function selectCalibrationExampleTags(
   approvedTags: readonly CatalogTag[],
@@ -152,12 +175,15 @@ For each candidate, decide if it is genuinely worth proposing as a new approved 
 design. Skip candidates that are redundant with an already-matched tag, too narrow/one-off to
 reuse across designs, or not a meaningful searchable concept.
 
-For each candidate worth proposing, write:
+For each candidate worth proposing, write a full reusable catalog entry:
 - name: the same candidate, reduced to one clean lowercase word if it is a phrase
-- aliases: 1 to 3 real alternate search terms someone might use for this concept, matching the
-  style of the example aliases above — do not just repeat the candidate phrase
-- preferredWhen: one clear, specific sentence describing exactly when staff should use this tag,
-  matching the detail level of the example preferredWhen text above — not a generic template
+- aliases: 6 to 12 real alternate search terms (phrases allowed) someone might type for this
+  concept — plurals, spaced variants, common synonyms, and related searchable phrases. Match the
+  richness of the example aliases above. Do not invent nonsense. Do not repeat the name itself.
+- preferredWhen: 1–3 sentences matching the detail level of the best examples. State when staff
+  should use the tag (main visual subject, style, texture, or searchable element) and include a
+  short "Do not use when…" boundary for nearby concepts that should stay on other tags. Do not
+  write a generic one-liner template.
 
 Include a candidate in the output only when it is worth proposing — omit candidates you decided
 to skip entirely, do not include them with a "do not suggest" flag.`;
@@ -276,16 +302,23 @@ function sanitizeAlias(value: unknown, name: string): string | null {
  * Validate the authoring call's raw suggestions against the original candidate list. A candidate
  * name outside the original list is dropped entirely — the model cannot invent a suggestion for a
  * concept it wasn't given. Shared by both the standalone and merged-call response paths.
+ *
+ * When `reservedCatalogTerms` is provided, suggestion names that collide with an existing approved
+ * tag name/alias are dropped, and colliding aliases are stripped (staff should not see them).
  */
 export function validateAuthoredSuggestions(
   rawSuggestions: unknown,
   candidateNames: readonly string[],
+  reservedCatalogTerms: readonly string[] = [],
 ): AuthoredSuggestedTag[] {
   if (!Array.isArray(rawSuggestions)) {
     return [];
   }
 
   const allowedNames = new Set(candidateNames.map((name) => name.trim().toLowerCase()));
+  const reserved = new Set(
+    reservedCatalogTerms.map((term) => term.trim().toLowerCase()).filter(Boolean),
+  );
   const validated: AuthoredSuggestedTag[] = [];
   const seen = new Set<string>();
 
@@ -301,7 +334,7 @@ export function validateAuthoredSuggestions(
       continue;
     }
 
-    if (!allowedNames.has(name) || seen.has(name)) {
+    if (!allowedNames.has(name) || seen.has(name) || reserved.has(name)) {
       continue;
     }
 
@@ -319,7 +352,8 @@ export function validateAuthoredSuggestions(
           ...new Set(
             candidate.aliases
               .map((alias) => sanitizeAlias(alias, name))
-              .filter((alias): alias is string => Boolean(alias)),
+              .filter((alias): alias is string => alias !== null)
+              .filter((alias) => !reserved.has(alias)),
           ),
         ].slice(0, MAX_ALIASES_PER_SUGGESTION)
       : [];
@@ -370,7 +404,11 @@ export async function callSuggestedTagAuthorStandalone(
     throw new SuggestedTagAuthorError("Suggestion authoring returned unparseable output.", "invalid_json");
   }
 
-  const suggestions = validateAuthoredSuggestions(raw.suggestions, input.candidateNames);
+  const suggestions = validateAuthoredSuggestions(
+    raw.suggestions,
+    input.candidateNames,
+    input.reservedCatalogTerms ?? [],
+  );
 
   return {
     completionTokens: usage.completionTokens,

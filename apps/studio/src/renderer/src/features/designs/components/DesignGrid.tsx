@@ -13,6 +13,10 @@ interface DesignGridProps {
   designs: Design[];
   hasActiveFilters: boolean;
   isLoading: boolean;
+  purgeSelection?: {
+    isSelected: (designId: string) => boolean;
+    onToggle: (design: Design) => void;
+  };
   requestSelection?: {
     getSelection: (designId: string) => { isExistingSelection: boolean; isSelected: boolean; quantity: number } | null;
     onAdd: (design: Design) => void;
@@ -55,6 +59,7 @@ export function DesignGrid({
   designs,
   hasActiveFilters,
   isLoading,
+  purgeSelection,
   requestSelection,
   onSelectDesign,
 }: DesignGridProps) {
@@ -99,7 +104,13 @@ export function DesignGrid({
                 quantity={selection?.quantity ?? 1}
               />
             ) : (
-              <DesignCard design={design} onSelect={onSelectDesign} />
+              <DesignCard
+                design={design}
+                isSelectedForPurge={purgeSelection?.isSelected(design.id) ?? false}
+                onSelect={onSelectDesign}
+                onTogglePurgeSelection={purgeSelection?.onToggle}
+                showPurgeSelection={Boolean(purgeSelection)}
+              />
             )}
           </div>
         );

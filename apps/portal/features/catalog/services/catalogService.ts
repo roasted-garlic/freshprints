@@ -57,6 +57,7 @@ interface DesignDocumentData {
   updatedAt?: unknown;
   createdAt?: unknown;
   requestCount?: unknown;
+  favoriteCount?: unknown;
   lastRequestedAt?: unknown;
 }
 
@@ -106,6 +107,10 @@ function mapCatalogDesign(designId: string, data: DesignDocumentData): CatalogDe
       typeof data.requestCount === 'number' && Number.isFinite(data.requestCount) && data.requestCount >= 0
         ? data.requestCount
         : 0,
+    favoriteCount:
+      typeof data.favoriteCount === 'number' && Number.isFinite(data.favoriteCount) && data.favoriteCount >= 0
+        ? data.favoriteCount
+        : 0,
     lastRequestedAtMs: timestampToMillis(data.lastRequestedAt),
   };
 }
@@ -120,6 +125,8 @@ function getDesignSortValue(design: CatalogDesign, sortField: CatalogDesignSortF
       return design.createdAtMs ?? 0;
     case 'requestCount':
       return design.requestCount;
+    case 'favoriteCount':
+      return design.favoriteCount;
     case 'lastRequestedAt':
       return design.lastRequestedAtMs ?? 0;
     case 'updatedAt':
@@ -129,7 +136,7 @@ function getDesignSortValue(design: CatalogDesign, sortField: CatalogDesignSortF
 }
 
 function toCursorStartAfterValue(sortField: CatalogDesignSortField, sortValue: number): Timestamp | number {
-  if (sortField === 'requestCount') {
+  if (sortField === 'requestCount' || sortField === 'favoriteCount') {
     return sortValue;
   }
 
@@ -343,6 +350,10 @@ export const catalogService = {
       {
         limitCount: HOME_DISCOVERY_POOL_PAGE_SIZE,
         sortField: 'requestCount',
+      },
+      {
+        limitCount: HOME_DISCOVERY_POOL_PAGE_SIZE,
+        sortField: 'favoriteCount',
       },
       {
         limitCount: HOME_DISCOVERY_POOL_PAGE_SIZE,

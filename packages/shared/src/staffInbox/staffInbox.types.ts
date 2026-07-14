@@ -31,6 +31,9 @@ export interface StaffInboxItem {
 
 export interface StaffInboxCompletedItem extends StaffInboxItem {
   acknowledgedAtMillis: number;
+  /** Staff who marked the item done (display name when available). */
+  acknowledgedByDisplayName?: string;
+  acknowledgedByUserId?: string;
 }
 
 export interface StaffInboxBadgeCounts {

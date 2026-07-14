@@ -22,9 +22,11 @@ import {
   ALL_VISION_MODEL_OPTIONS,
   DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
   DEFAULT_TAG_RERANK_PROMPT_TEMPLATE,
+  SUGGESTED_NEW_TAGS_POLICY_OPTIONS,
   SUGGESTION_AUTHOR_MODE_OPTIONS,
   TAG_RERANK_MODE_OPTIONS,
   hasRequiredAiEnrichmentPromptPlaceholders,
+  resolveClientSuggestedNewTagsPolicy,
   resolveClientSuggestionAuthorMode,
   resolveClientTagRerankMode,
   resolveClientVisionModelId,
@@ -112,6 +114,7 @@ export function SettingsPage() {
     saveError,
     saveSettings,
     suggestionAuthorMode,
+    suggestedNewTagsPolicy,
     tagRerankMode,
     visionModelId,
   } = useAiEnrichmentSettings();
@@ -135,6 +138,9 @@ export function SettingsPage() {
   );
   const [draftTagRerankMode, setDraftTagRerankMode] = useState<string | null>(null);
   const [draftSuggestionAuthorMode, setDraftSuggestionAuthorMode] = useState<string | null>(null);
+  const [draftSuggestedNewTagsPolicy, setDraftSuggestedNewTagsPolicy] = useState<string | null>(
+    null,
+  );
   const [isPromptTemplateEditorOpen, setIsPromptTemplateEditorOpen] = useState(false);
   const [isTagRerankPromptEditorOpen, setIsTagRerankPromptEditorOpen] = useState(false);
   const [tagRerankPlaygroundPromptOverride, setTagRerankPlaygroundPromptOverride] = useState<
@@ -179,6 +185,9 @@ export function SettingsPage() {
   const selectedSuggestionAuthorMode = resolveClientSuggestionAuthorMode(
     draftSuggestionAuthorMode ?? suggestionAuthorMode,
   );
+  const selectedSuggestedNewTagsPolicy = resolveClientSuggestedNewTagsPolicy(
+    draftSuggestedNewTagsPolicy ?? suggestedNewTagsPolicy,
+  );
   const hasUnsavedChanges =
     (draftVisionModelId !== null && draftVisionModelId !== visionModelId) ||
     (draftPromptTemplate !== null && draftPromptTemplate !== promptTemplate) ||
@@ -188,7 +197,9 @@ export function SettingsPage() {
       formatAdditionalTagExclusionsInput(draftAdditionalTagExclusions) !==
         formatAdditionalTagExclusionsInput(additionalTagExclusions)) ||
     (draftTagRerankMode !== null && draftTagRerankMode !== tagRerankMode) ||
-    (draftSuggestionAuthorMode !== null && draftSuggestionAuthorMode !== suggestionAuthorMode);
+    (draftSuggestionAuthorMode !== null && draftSuggestionAuthorMode !== suggestionAuthorMode) ||
+    (draftSuggestedNewTagsPolicy !== null &&
+      draftSuggestedNewTagsPolicy !== suggestedNewTagsPolicy);
   const promptTemplateError = !hasRequiredAiEnrichmentPromptPlaceholders(selectedPromptTemplate)
     ? "Prompt must include {{excluded_tags}} and {{approved_category_names}} so server-side values are inserted."
     : null;
@@ -357,6 +368,7 @@ export function SettingsPage() {
       additionalTagExclusions: parseAdditionalTagExclusionsInput(additionalTagExclusionsInput),
       tagRerankMode: selectedTagRerankMode,
       suggestionAuthorMode: selectedSuggestionAuthorMode,
+      suggestedNewTagsPolicy: selectedSuggestedNewTagsPolicy,
     });
     setDraftVisionModelId(null);
     setDraftPromptTemplate(null);
@@ -364,6 +376,7 @@ export function SettingsPage() {
     setDraftAdditionalTagExclusions(null);
     setDraftTagRerankMode(null);
     setDraftSuggestionAuthorMode(null);
+    setDraftSuggestedNewTagsPolicy(null);
     setIsPromptTemplateEditorOpen(false);
     setIsTagRerankPromptEditorOpen(false);
   }
@@ -455,7 +468,27 @@ export function SettingsPage() {
               <div className="settings-control-item">
                 <Select
                   disabled={!canManageSettings || isSaving}
-                  label="Suggested-tag quality"
+                  label="Suggested new tags"
+                  name="suggestedNewTagsPolicy"
+                  onChange={(event) => setDraftSuggestedNewTagsPolicy(event.target.value)}
+                  options={SUGGESTED_NEW_TAGS_POLICY_OPTIONS.map((option) => ({
+                    label: option.label,
+                    value: option.value,
+                  }))}
+                  value={selectedSuggestedNewTagsPolicy}
+                />
+
+                <p className="settings-field-hint">
+                  {SUGGESTED_NEW_TAGS_POLICY_OPTIONS.find(
+                    (option) => option.value === selectedSuggestedNewTagsPolicy,
+                  )?.hint ?? selectedSuggestedNewTagsPolicy}
+                </p>
+              </div>
+
+              <div className="settings-control-item">
+                <Select
+                  disabled={!canManageSettings || isSaving}
+                  label="Suggested-tag writing"
                   name="suggestionAuthorMode"
                   onChange={(event) => setDraftSuggestionAuthorMode(event.target.value)}
                   options={SUGGESTION_AUTHOR_MODE_OPTIONS.map((option) => ({

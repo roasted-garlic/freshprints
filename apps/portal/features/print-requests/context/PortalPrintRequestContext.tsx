@@ -63,6 +63,8 @@ interface PortalPrintRequestContextValue {
   isClearingWorkingRequest: boolean;
   refreshRequests: (options?: { silent?: boolean; printRequestId?: string }) => Promise<void>;
   reloadWorkingItems: (options?: { silent?: boolean; printRequestId?: string }) => Promise<void>;
+  /** Immediate local cart clear (e.g. after queue-to-show before list reload finishes). */
+  resetWorkingCart: () => void;
   requests: PrintRequest[];
   requestsByTab: Record<PortalPrintRequestListTab, PrintRequest[]>;
   summariesByRequestId: Record<string, PrintRequestItemSummary>;
@@ -97,6 +99,7 @@ export function PortalPrintRequestProvider({ children }: { children: ReactNode }
     patchWorkingItems,
     seedDesignSummary,
     reloadWorkingItems,
+    resetWorkingCart,
   } = useWorkingCurrentRequestItems(workingRequest);
 
   const {
@@ -119,9 +122,12 @@ export function PortalPrintRequestProvider({ children }: { children: ReactNode }
   const refreshRequests = useCallback(
     async (options?: { silent?: boolean; printRequestId?: string }) => {
       await reloadRequests(options);
+      // Only force a specific request id when callers pass it (first create).
+      // After queue-to-show, workingRequestIdRef is already cleared via resetWorkingCart /
+      // the working-request effect — do not reload the just-queued request into Stash.
       await reloadWorkingItems({
         silent: true,
-        printRequestId: options?.printRequestId,
+        ...(options?.printRequestId ? { printRequestId: options.printRequestId } : {}),
       });
     },
     [reloadRequests, reloadWorkingItems],
@@ -175,6 +181,7 @@ export function PortalPrintRequestProvider({ children }: { children: ReactNode }
       ensureDesignSummaries,
       refreshRequests,
       reloadWorkingItems,
+      resetWorkingCart,
       requests: printRequests.requests,
       requestsByTab: printRequests.requestsByTab,
       summariesByRequestId: printRequests.summariesByRequestId,
@@ -210,6 +217,7 @@ export function PortalPrintRequestProvider({ children }: { children: ReactNode }
       printRequests.summariesByRequestId,
       refreshRequests,
       reloadWorkingItems,
+      resetWorkingCart,
       uploadSummaries,
       workingItems,
       workingRequest,

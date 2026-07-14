@@ -74,8 +74,14 @@ export function PortalQueueToShowModal({
         })),
         pendingAllocatedByShowId,
         isPastScheduled: (show) => {
+          if (!show.scheduledAt) {
+            return false;
+          }
+          return show.scheduledAt.getTime() <= Date.now();
+        },
+        canSelectShow: (show) => {
           const match = shows.find((candidate) => candidate.id === show.id);
-          return match ? match.isAllocatable === false : false;
+          return match?.isAllocatable !== false;
         },
       }),
     [allocatedBaselineByShowId, pendingAllocatedByShowId, shows],

@@ -25,19 +25,43 @@ export type TagRerankMode = (typeof TAG_RERANK_MODES)[number];
 export const DEFAULT_TAG_RERANK_MODE: TagRerankMode = "off";
 
 /**
- * Controls the optional AI-authored suggested-tag quality call, independent of tagRerankMode
- * (see docs/workflow/plans/2026-07-02-suggested-tags-last-resort-plan.md §4.5). Suggestions only
- * ever fire when the server-side last-resort gate decides coverage is thin (see
- * isSuggestedTagsLastResort in catalogTagResolver.ts) — this setting only controls whether an AI
- * call authors their preferredWhen/aliases when that happens, or the server template is used
- * instead. "auto" and "always" behave identically here since there is no separate trigger beyond
- * the last-resort gate itself (unlike tagRerankMode's "auto", which has its own trigger heuristic).
+ * Controls the optional AI-authored suggested-tag quality call, independent of tagRerankMode.
+ * Suggestions only fire when `suggestedNewTagsPolicy` allows them — this setting only controls
+ * whether an AI call authors preferredWhen/aliases when that happens, or the server template is
+ * used instead. "auto" and "always" behave identically (no separate trigger beyond the policy gate).
  */
 export const SUGGESTION_AUTHOR_MODES = ["off", "auto", "always"] as const;
 
 export type SuggestionAuthorMode = (typeof SUGGESTION_AUTHOR_MODES)[number];
 
 export const DEFAULT_SUGGESTION_AUTHOR_MODE: SuggestionAuthorMode = "off";
+
+/**
+ * Controls when Suggested New Tags may be emitted after approved-tag matching.
+ * Independent of suggestionAuthorMode (which only upgrades preferredWhen/aliases quality)
+ * and tagRerankMode. "balanced" is the shipped default — slightly looser than the original
+ * hardcoded last-resort gate, with a hard cap of 3 suggestions per design.
+ */
+export const SUGGESTED_NEW_TAGS_POLICIES = [
+  "off",
+  "strict",
+  "balanced",
+  "generous",
+  "always",
+] as const;
+
+export type SuggestedNewTagsPolicy = (typeof SUGGESTED_NEW_TAGS_POLICIES)[number];
+
+export const DEFAULT_SUGGESTED_NEW_TAGS_POLICY: SuggestedNewTagsPolicy = "balanced";
+
+/** Hard cap on suggested-new-tag count per design for each policy. */
+export const SUGGESTED_NEW_TAGS_POLICY_MAX_SUGGESTIONS: Record<SuggestedNewTagsPolicy, number> = {
+  off: 0,
+  strict: 5,
+  balanced: 3,
+  generous: 5,
+  always: 5,
+};
 
 export const AI_ENRICHMENT_PLAYGROUND_VERSION = "ai-playground-v1";
 

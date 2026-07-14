@@ -292,6 +292,8 @@ export interface Design {
 
   /** Popularity counters — lightweight discovery (Portal) + future Phase 10 analytics; do not change status */
   requestCount?: number;
+  /** Customer favorites count for Most Liked discovery (Functions-maintained, ADR-FP-083). */
+  favoriteCount?: number;
   showAddCount?: number;
   printCount?: number;
   lastRequestedAt?: Timestamp;
@@ -323,6 +325,9 @@ export interface Design {
   previousStatus?: DesignStatus;
   archivedAt?: Timestamp;
   archivedBy?: string;
+  /** Owner purge of large Storage assets (originals + previews). Thumbnail retained. */
+  assetsPurgedAt?: Timestamp;
+  assetsPurgedBy?: string;
 }
 ```
 
@@ -348,6 +353,17 @@ When a design is archived, the service captures:
 These fields are cleared on restore. Legacy archived designs without `previousStatus` restore to `imported`.
 
 No migration is required for existing archived records.
+
+### Owner asset purge (archive-first)
+
+After soft archive, the owner may delete large images via callable `purgeArchivedDesignAssets` (ADR-FP-084):
+
+| Field | Type | Purpose |
+| --- | --- | --- |
+| `assetsPurgedAt` | `Timestamp` | When originals/previews were deleted |
+| `assetsPurgedBy` | `string` | Owner user ID |
+
+Rules: clients cannot write purge fields. Purged designs leave the Studio Archived list by default (`assetsPurgedAt` set) but remain readable by `designId` for history (**title + thumbnail** + images-deleted affordance). Originals/previews are deleted; thumbnails are kept (ADR-FP-084 / ADR-FP-086). Restore is blocked after purge.
 
 ### Print size and DPI foundation (Phase 3D Step 2)
 
@@ -772,7 +788,7 @@ export interface CustomerFavorite {
 |---------|------|
 | Who writes | Owning Portal customer only (create/delete); no client updates |
 | Who reads | Owning customer; staff may read for support |
-| Design popularity | **No** `favoriteCount` on designs (ADR-FP-070 / ADR-FP-082) |
+| Design popularity | `requestCount` = print-request adds; `favoriteCount` = customer favorites (ADR-FP-083). Most Liked rail uses `favoriteCount`. |
 | Archived designs | Favorite doc may remain; Portal Liked page shows “No longer available” |
 
 No migration — additive empty subcollection.
@@ -963,6 +979,12 @@ When staff promotes via `promoteCustomerUploadToAiReview`, a `designs` document 
 After AI Review **approve** or **reject**, the upload document remains `catalogReviewStatus: sent_to_ai_review` (outcome lives on `designs.status` / `aiReviewStatus`). Rejection must not unlink `printRequestItems` or delete upload production assets.
 
 Staff intake callables (Admin SDK writes only): `promoteCustomerUploadToAiReview`, `excludeCustomerUploadFromCatalog`, `restoreCustomerUploadCatalogEligibility`, `retryCustomerUploadProcessing`.
+
+**Request-upload full-size retention (ADR-FP-086 §3):** Owner/admin callable `purgeIdleCustomerUploadFullSize` deletes `source` + `production` Storage when the upload is eligible (no active allocations; not on a working print request; either linked shows are completed/canceled/archived, or never-queued + idle 14 days). Sets `fullSizePurgedAt` / `fullSizePurgedBy` and nulls source/production paths. **Keeps** thumbnail and preview.
+
+**Promoted donation cool-off (ADR-FP-086 §4):** Promote sets `promotedAt`. Callable `purgePromotedDonationFullSize` purges donation source+production ≥ 14 days after promote (`catalogReviewStatus: sent_to_ai_review`). Catalog assets remain on the design Storage paths.
+
+**Rejected design cool-off (ADR-FP-086 §2):** Owner/admin callable `archiveStaleRejectedDesigns` soft-archives `status: rejected` designs with clock (`aiReviewedAt`, else `updatedAt`) older than 7 days → `status: archived`, `previousStatus: rejected`. Owner image purge remains separate (`purgeArchivedDesignAssets`).
 
 ### Operational collections (Admin SDK only)
 

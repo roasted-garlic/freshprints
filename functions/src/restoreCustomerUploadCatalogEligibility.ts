@@ -48,6 +48,12 @@ export const restoreCustomerUploadCatalogEligibility = onCall(
       throw failedPrecondition("Promoted uploads cannot be restored to pending review.");
     }
 
+    if (data.fullSizePurgedAt != null) {
+      throw failedPrecondition(
+        "Full-size files were deleted when this donation was excluded. It cannot be restored for AI Review.",
+      );
+    }
+
     await uploadRef.update({
       catalogReviewStatus: "pending_staff_review",
       updatedAt: FieldValue.serverTimestamp(),

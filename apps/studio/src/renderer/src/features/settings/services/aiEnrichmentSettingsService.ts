@@ -3,6 +3,7 @@ import { httpsCallable } from "firebase/functions";
 
 import type {
   AllowedVisionModelId,
+  SuggestedNewTagsPolicy,
   SuggestionAuthorMode,
   TagRerankMode,
 } from "@fresh-prints/shared/constants/aiEnrichment.constants";
@@ -13,6 +14,7 @@ import {
   BASE_AI_TAG_EXCLUSIONS,
   MAX_ADDITIONAL_TAG_EXCLUSIONS,
   resolveAiEnrichmentPromptTemplate,
+  resolveClientSuggestedNewTagsPolicy,
   resolveClientSuggestionAuthorMode,
   resolveClientTagRerankMode,
   resolveClientTagRerankPromptTemplate,
@@ -27,6 +29,7 @@ export interface AiEnrichmentSettingsSnapshot {
   effectiveTagExclusions: string[];
   tagRerankMode: TagRerankMode;
   suggestionAuthorMode: SuggestionAuthorMode;
+  suggestedNewTagsPolicy: SuggestedNewTagsPolicy;
   updatedBy?: string;
 }
 
@@ -37,6 +40,7 @@ interface UpdateAiEnrichmentSettingsInput {
   additionalTagExclusions: string[];
   tagRerankMode: TagRerankMode;
   suggestionAuthorMode: SuggestionAuthorMode;
+  suggestedNewTagsPolicy: SuggestedNewTagsPolicy;
 }
 
 interface UpdateAiEnrichmentSettingsResult {
@@ -46,6 +50,7 @@ interface UpdateAiEnrichmentSettingsResult {
   additionalTagExclusions: string[];
   tagRerankMode: TagRerankMode;
   suggestionAuthorMode: SuggestionAuthorMode;
+  suggestedNewTagsPolicy: SuggestedNewTagsPolicy;
 }
 
 export function resolveClientAdditionalTagExclusions(raw: unknown): string[] {
@@ -108,6 +113,9 @@ function mapSettingsSnapshot(data: Record<string, unknown> | undefined): AiEnric
   const suggestionAuthorMode = resolveClientSuggestionAuthorMode(
     typeof data?.suggestionAuthorMode === "string" ? data.suggestionAuthorMode : undefined,
   );
+  const suggestedNewTagsPolicy = resolveClientSuggestedNewTagsPolicy(
+    typeof data?.suggestedNewTagsPolicy === "string" ? data.suggestedNewTagsPolicy : undefined,
+  );
 
   return {
     visionModelId,
@@ -117,6 +125,7 @@ function mapSettingsSnapshot(data: Record<string, unknown> | undefined): AiEnric
     effectiveTagExclusions: mergeClientTagExclusions(additionalTagExclusions),
     tagRerankMode,
     suggestionAuthorMode,
+    suggestedNewTagsPolicy,
     updatedBy: typeof data?.updatedBy === "string" ? data.updatedBy : undefined,
   };
 }
@@ -144,6 +153,7 @@ export const aiEnrichmentSettingsService = {
     additionalTagExclusions: string[];
     tagRerankMode: TagRerankMode;
     suggestionAuthorMode: SuggestionAuthorMode;
+    suggestedNewTagsPolicy: SuggestedNewTagsPolicy;
   }): Promise<AiEnrichmentSettingsSnapshot> {
     const updateCallable = httpsCallable<
       UpdateAiEnrichmentSettingsInput,
@@ -157,6 +167,7 @@ export const aiEnrichmentSettingsService = {
       additionalTagExclusions: resolveClientAdditionalTagExclusions(input.additionalTagExclusions),
       tagRerankMode: resolveClientTagRerankMode(input.tagRerankMode),
       suggestionAuthorMode: resolveClientSuggestionAuthorMode(input.suggestionAuthorMode),
+      suggestedNewTagsPolicy: resolveClientSuggestedNewTagsPolicy(input.suggestedNewTagsPolicy),
     });
 
     return {
@@ -173,6 +184,9 @@ export const aiEnrichmentSettingsService = {
       ),
       tagRerankMode: resolveClientTagRerankMode(response.data.tagRerankMode),
       suggestionAuthorMode: resolveClientSuggestionAuthorMode(response.data.suggestionAuthorMode),
+      suggestedNewTagsPolicy: resolveClientSuggestedNewTagsPolicy(
+        response.data.suggestedNewTagsPolicy,
+      ),
     };
   },
 };

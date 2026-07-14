@@ -82,10 +82,10 @@ describe("catalogSuggestedTagAuthorProvider — selectCalibrationExampleTags", (
     assert.ok(result.length <= 4);
   });
 
-  it("caps each example to name, up to 3 aliases, and preferredWhen only", () => {
+  it("caps each example to name, up to 8 aliases, and preferredWhen only", () => {
     const approvedTags = [
       createCatalogTag({
-        aliases: ["a1", "a2", "a3", "a4", "a5"],
+        aliases: ["a1", "a2", "a3", "a4", "a5", "a6", "a7", "a8", "a9", "a10"],
         name: "richtag",
         preferredWhen: "Use when richtag is clearly the primary subject of the design.",
       }),
@@ -94,7 +94,7 @@ describe("catalogSuggestedTagAuthorProvider — selectCalibrationExampleTags", (
     const [example] = selectCalibrationExampleTags(approvedTags, { candidateNames: [], matchedTagNames: [] });
 
     assert.ok(example);
-    assert.equal(example.aliases.length, 3);
+    assert.equal(example.aliases.length, 8);
     assert.deepEqual(Object.keys(example).sort(), ["aliases", "name", "preferredWhen"]);
   });
 
@@ -198,11 +198,27 @@ describe("catalogSuggestedTagAuthorProvider — validateAuthoredSuggestions", ()
     assert.deepEqual(result, []);
   });
 
-  it("caps aliases at 5, dedupes, and drops an alias equal to the name", () => {
+  it("caps aliases at 12, dedupes, and drops an alias equal to the name", () => {
     const result = validateAuthoredSuggestions(
       [
         {
-          aliases: ["a", "a", "b", "c", "d", "e", "f", "skateboard"],
+          aliases: [
+            "a",
+            "a",
+            "b",
+            "c",
+            "d",
+            "e",
+            "f",
+            "g",
+            "h",
+            "i",
+            "j",
+            "k",
+            "l",
+            "m",
+            "skateboard",
+          ],
           name: "skateboard",
           preferredWhen: "Use when a skateboard is the primary subject.",
         },
@@ -210,8 +226,32 @@ describe("catalogSuggestedTagAuthorProvider — validateAuthoredSuggestions", ()
       ["skateboard"],
     );
 
-    assert.equal(result[0]?.aliases.length, 5);
+    assert.equal(result[0]?.aliases.length, 12);
     assert.ok(!result[0]?.aliases.includes("skateboard"));
+  });
+
+  it("strips aliases and drops names that collide with reserved catalog terms", () => {
+    const result = validateAuthoredSuggestions(
+      [
+        {
+          aliases: ["scrollwork", "parchment", "rolled document"],
+          name: "scroll",
+          preferredWhen: "Use when a scroll is the main visual element.",
+        },
+        {
+          aliases: ["bone"],
+          name: "skeleton",
+          preferredWhen: "Use when a skeleton is shown.",
+        },
+      ],
+      ["scroll", "skeleton"],
+      ["parchment", "skeleton"],
+    );
+
+    assert.deepEqual(
+      result.map((entry) => ({ name: entry.name, aliases: entry.aliases })),
+      [{ name: "scroll", aliases: ["scrollwork", "rolled document"] }],
+    );
   });
 
   it("handles non-array input safely", () => {
@@ -229,12 +269,12 @@ describe("catalogSuggestedTagAuthorProvider — validateAuthoredSuggestions", ()
   });
 
   it("truncates preferredWhen to the max length", () => {
-    const longText = "x".repeat(500);
+    const longText = "x".repeat(800);
     const result = validateAuthoredSuggestions(
       [{ aliases: [], name: "skateboard", preferredWhen: longText }],
       ["skateboard"],
     );
 
-    assert.ok((result[0]?.preferredWhen.length ?? 0) <= 300);
+    assert.ok((result[0]?.preferredWhen.length ?? 0) <= 500);
   });
 });

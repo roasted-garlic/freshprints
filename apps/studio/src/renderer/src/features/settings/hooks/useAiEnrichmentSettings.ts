@@ -3,17 +3,20 @@ import { useCallback, useEffect, useState } from "react";
 import { formatTagsInput, tryParseTagsInput } from "../../designs/utils/designFormMapper";
 import {
   DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
+  DEFAULT_SUGGESTED_NEW_TAGS_POLICY,
   DEFAULT_SUGGESTION_AUTHOR_MODE,
   DEFAULT_TAG_RERANK_MODE,
   DEFAULT_TAG_RERANK_PROMPT_TEMPLATE,
   DEFAULT_VISION_MODEL_ID,
   formatVisionModelLabel,
+  resolveClientSuggestedNewTagsPolicy,
   resolveClientSuggestionAuthorMode,
   resolveClientTagRerankMode,
   resolveClientVisionModelId,
 } from "../constants/aiEnrichmentSettingsConstants";
 import type {
   AllowedVisionModelId,
+  SuggestedNewTagsPolicy,
   SuggestionAuthorMode,
   TagRerankMode,
 } from "@fresh-prints/shared/constants/aiEnrichment.constants";
@@ -40,8 +43,10 @@ interface UseAiEnrichmentSettingsResult {
     additionalTagExclusions: string[];
     tagRerankMode: string;
     suggestionAuthorMode: string;
+    suggestedNewTagsPolicy: string;
   }) => Promise<void>;
   suggestionAuthorMode: SuggestionAuthorMode;
+  suggestedNewTagsPolicy: SuggestedNewTagsPolicy;
   tagRerankMode: TagRerankMode;
   visionModelId: string;
   visionModelLabel: string;
@@ -58,6 +63,9 @@ export function useAiEnrichmentSettings(): UseAiEnrichmentSettingsResult {
   const [tagRerankMode, setTagRerankMode] = useState<TagRerankMode>(DEFAULT_TAG_RERANK_MODE);
   const [suggestionAuthorMode, setSuggestionAuthorMode] = useState<SuggestionAuthorMode>(
     DEFAULT_SUGGESTION_AUTHOR_MODE,
+  );
+  const [suggestedNewTagsPolicy, setSuggestedNewTagsPolicy] = useState<SuggestedNewTagsPolicy>(
+    DEFAULT_SUGGESTED_NEW_TAGS_POLICY,
   );
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -77,6 +85,7 @@ export function useAiEnrichmentSettings(): UseAiEnrichmentSettingsResult {
         setEffectiveTagExclusions(settings.effectiveTagExclusions);
         setTagRerankMode(settings.tagRerankMode);
         setSuggestionAuthorMode(settings.suggestionAuthorMode);
+        setSuggestedNewTagsPolicy(settings.suggestedNewTagsPolicy);
         setIsLoading(false);
       },
       (message) => {
@@ -88,6 +97,7 @@ export function useAiEnrichmentSettings(): UseAiEnrichmentSettingsResult {
         setEffectiveTagExclusions([]);
         setTagRerankMode(DEFAULT_TAG_RERANK_MODE);
         setSuggestionAuthorMode(DEFAULT_SUGGESTION_AUTHOR_MODE);
+        setSuggestedNewTagsPolicy(DEFAULT_SUGGESTED_NEW_TAGS_POLICY);
         setIsLoading(false);
       },
     );
@@ -103,6 +113,7 @@ export function useAiEnrichmentSettings(): UseAiEnrichmentSettingsResult {
       additionalTagExclusions: string[];
       tagRerankMode: string;
       suggestionAuthorMode: string;
+      suggestedNewTagsPolicy: string;
     }) => {
       setIsSaving(true);
       setSaveError(null);
@@ -117,6 +128,7 @@ export function useAiEnrichmentSettings(): UseAiEnrichmentSettingsResult {
           additionalTagExclusions: resolveClientAdditionalTagExclusions(input.additionalTagExclusions),
           tagRerankMode: resolveClientTagRerankMode(input.tagRerankMode),
           suggestionAuthorMode: resolveClientSuggestionAuthorMode(input.suggestionAuthorMode),
+          suggestedNewTagsPolicy: resolveClientSuggestedNewTagsPolicy(input.suggestedNewTagsPolicy),
         });
         setVisionModelId(saved.visionModelId);
         setPromptTemplate(saved.promptTemplate);
@@ -125,6 +137,7 @@ export function useAiEnrichmentSettings(): UseAiEnrichmentSettingsResult {
         setEffectiveTagExclusions(saved.effectiveTagExclusions);
         setTagRerankMode(saved.tagRerankMode);
         setSuggestionAuthorMode(saved.suggestionAuthorMode);
+        setSuggestedNewTagsPolicy(saved.suggestedNewTagsPolicy);
       } catch (updateError) {
         setSaveError(
           updateError instanceof Error ? updateError.message : "Unable to save AI enrichment settings.",
@@ -148,6 +161,7 @@ export function useAiEnrichmentSettings(): UseAiEnrichmentSettingsResult {
     saveError,
     saveSettings,
     suggestionAuthorMode,
+    suggestedNewTagsPolicy,
     tagRerankMode,
     visionModelId,
     visionModelLabel: formatVisionModelLabel(visionModelId),

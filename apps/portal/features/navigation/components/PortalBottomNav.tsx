@@ -13,13 +13,10 @@ import {
 } from '../constants/portalNavItems';
 import { PortalNavIcon } from './PortalNavIcon';
 
-const BOTTOM_NAV_ITEM_IDS: PortalNavItemId[] = ['library', 'upload', 'favorites'];
-
-const BOTTOM_NAV_LABELS: Record<(typeof BOTTOM_NAV_ITEM_IDS)[number], string> = {
-  library: 'Library',
-  upload: 'Upload',
-  favorites: 'Favorites',
-};
+const BOTTOM_NAV_ITEMS = [
+  { id: 'library' as const, label: 'Library' },
+  { id: 'upload' as const, label: 'Upload' },
+] satisfies ReadonlyArray<{ id: PortalNavItemId; label: string }>;
 
 export function PortalBottomNav() {
   const pathname = usePathname();
@@ -27,9 +24,13 @@ export function PortalBottomNav() {
   const { currentRequestAggregates, openCurrentRequestDrawer } = usePortalPrintRequests();
 
   const totalPrints = currentRequestAggregates.totalPrintQuantity;
-  const bottomNavItems = BOTTOM_NAV_ITEM_IDS.map(
-    (id) => portalNavItems.find((item) => item.id === id)!,
-  );
+  const bottomNavItems = BOTTOM_NAV_ITEMS.map((entry) => {
+    const item = portalNavItems.find((navItem) => navItem.id === entry.id);
+    if (!item) {
+      throw new Error(`Missing portal nav item: ${entry.id}`);
+    }
+    return { ...item, label: entry.label };
+  });
 
   return (
     <nav aria-label="Portal navigation" className="portal-bottom-nav">
@@ -45,7 +46,7 @@ export function PortalBottomNav() {
                 key={item.id}
               >
                 <PortalNavIcon itemId={item.id} size={20} />
-                <span>{BOTTOM_NAV_LABELS[item.id]}</span>
+                <span>{item.label}</span>
               </Link>
             );
           })}

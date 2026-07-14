@@ -65,6 +65,8 @@ export interface CustomerUploadIntakeRow {
   catalogUseAcknowledged: boolean;
   purpose: CustomerUploadPurpose;
   createdAtMs: number | null;
+  /** Set when exclude purged donation full-size files (thumbnail kept). */
+  fullSizePurgedAtMs: number | null;
   approvedMaxPrintWidthInches: number | null;
   approvedMaxPrintHeightInches: number | null;
   wasUpscaled: boolean | null;
@@ -232,6 +234,7 @@ export const customerUploadIntakeService = {
         catalogUseAcknowledged: data.catalogUseAcknowledged === true,
         purpose: resolveCustomerUploadPurpose(data.purpose),
         createdAtMs: timestampMs(data.createdAt),
+        fullSizePurgedAtMs: timestampMs(data.fullSizePurgedAt),
         approvedMaxPrintWidthInches: asNumber(data.approvedMaxPrintWidthInches),
         approvedMaxPrintHeightInches: asNumber(data.approvedMaxPrintHeightInches),
         wasUpscaled: asBool(data.wasUpscaled),

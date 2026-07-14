@@ -354,6 +354,7 @@ export async function runAiEnrichmentTagRerankPlayground(
   const resolvedTags = resolveAiCatalogTags({
     approvedTags,
     candidates: parsed.rawTags.length > 0 ? parsed.rawTags : parsed.tags,
+    suggestedNewTagsPolicy: enrichmentSettings.suggestedNewTagsPolicy,
   });
 
   const resolvedCategory = resolveThemeCategory(

@@ -536,6 +536,7 @@ describe("catalogTagResolver — suggested-tags last-resort gate", () => {
     const zeroApproved = resolveAiCatalogTags({
       approvedTags: [],
       candidates: ["unmatched-only"],
+      suggestedNewTagsPolicy: "strict",
     });
     assert.equal(zeroApproved.tags.length, 0);
     assert.equal(zeroApproved.suggestedNewTags.length, 1);
@@ -543,6 +544,7 @@ describe("catalogTagResolver — suggested-tags last-resort gate", () => {
     const twoApproved = resolveAiCatalogTags({
       approvedTags: namedApprovedTags(2),
       candidates: ["named0", "named1", "unmatched-only"],
+      suggestedNewTagsPolicy: "strict",
     });
     assert.equal(twoApproved.tags.length, 2);
     assert.equal(twoApproved.suggestedNewTags.length, 1);
@@ -552,6 +554,7 @@ describe("catalogTagResolver — suggested-tags last-resort gate", () => {
     const result = resolveAiCatalogTags({
       approvedTags: namedApprovedTags(3),
       candidates: ["named0", "named1", "named2", "unmatched-a", "unmatched-b"],
+      suggestedNewTagsPolicy: "strict",
     });
 
     assert.equal(result.tags.length, 3);
@@ -566,6 +569,7 @@ describe("catalogTagResolver — suggested-tags last-resort gate", () => {
     const result = resolveAiCatalogTags({
       approvedTags,
       candidates: ["named0 extra", "named1 extra", "named2 extra", "unmatched-a"],
+      suggestedNewTagsPolicy: "strict",
     });
 
     assert.equal(result.tags.length, 3);
@@ -579,6 +583,7 @@ describe("catalogTagResolver — suggested-tags last-resort gate", () => {
     const result = resolveAiCatalogTags({
       approvedTags,
       candidates: ["named0 extra", "named1 extra", "named2 extra", "unmatched-a", "unmatched-b"],
+      suggestedNewTagsPolicy: "strict",
     });
 
     assert.equal(result.tags.length, 3);
@@ -603,10 +608,41 @@ describe("catalogTagResolver — suggested-tags last-resort gate", () => {
         "unmatched-b",
       ],
       maxApprovedTags: 8,
+      suggestedNewTagsPolicy: "strict",
     });
 
     assert.equal(result.tags.length, 5);
     assert.equal(result.allMatchesAreWeak, true);
+    assert.equal(result.suggestedNewTags.length, 0);
+  });
+
+  it("balanced policy: allows suggestions at 4 strong approved matches; hard-caps at 3", () => {
+    const result = resolveAiCatalogTags({
+      approvedTags: namedApprovedTags(4),
+      candidates: [
+        "named0",
+        "named1",
+        "named2",
+        "named3",
+        "unmatched-a",
+        "unmatched-b",
+        "unmatched-c",
+        "unmatched-d",
+      ],
+      maxApprovedTags: 8,
+      suggestedNewTagsPolicy: "balanced",
+    });
+
+    assert.equal(result.tags.length, 4);
+    assert.equal(result.suggestedNewTags.length, 3);
+  });
+
+  it("off policy: never emits suggestions", () => {
+    const result = resolveAiCatalogTags({
+      approvedTags: [],
+      candidates: ["unmatched-only"],
+      suggestedNewTagsPolicy: "off",
+    });
     assert.equal(result.suggestedNewTags.length, 0);
   });
 
@@ -617,6 +653,7 @@ describe("catalogTagResolver — suggested-tags last-resort gate", () => {
     const result = resolveAiCatalogTags({
       approvedTags,
       candidates: ["named0 extra", "named0", "named1 extra", "named2 extra", "unmatched-a", "unmatched-b"],
+      suggestedNewTagsPolicy: "strict",
     });
 
     assert.equal(result.tags.length, 3);

@@ -54,6 +54,8 @@ export interface AccountArtworkGalleryItem {
   previewStoragePath: string | null;
   thumbnailStoragePath: string | null;
   productionStoragePath: string | null;
+  /** When set, this upload was promoted into a catalog design. */
+  promotedDesignId: string | null;
   createdAtMs: number;
 }
 
@@ -585,6 +587,11 @@ export const customerUploadService = {
             ? createdAt.seconds * 1000
             : 0;
 
+      const promotedDesignId =
+        typeof data.promotedDesignId === 'string' && data.promotedDesignId.trim()
+          ? data.promotedDesignId.trim()
+          : null;
+
       items.push({
         id: document.id,
         kind: isDonation ? 'donation' : 'upload',
@@ -597,6 +604,7 @@ export const customerUploadService = {
         previewStoragePath,
         thumbnailStoragePath,
         productionStoragePath,
+        promotedDesignId,
         createdAtMs,
       });
     }

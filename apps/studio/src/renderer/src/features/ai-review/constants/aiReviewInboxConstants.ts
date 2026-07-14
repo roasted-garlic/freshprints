@@ -63,7 +63,7 @@ export function getAiReviewEmptyState(tab: AiReviewInboxTab): { copy: string; ti
     case "rejected":
       return {
         title: "No rejected designs",
-        copy: "No rejected designs.",
+        copy: "Rejected designs stay here until you archive them, or until they auto-archive after 7 days.",
       };
     default:
       return {
@@ -80,7 +80,7 @@ export function getAiReviewTabDescription(tab: AiReviewInboxTab): string {
     case "needs_review":
       return "AI output ready for staff review and approval.";
     case "rejected":
-      return "Rejected designs retained for audit or re-open.";
+      return "Rejected from catalog. Archive manually, or they auto-archive after 7 days so the owner can delete images.";
     default:
       return "";
   }

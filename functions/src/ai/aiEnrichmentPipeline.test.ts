@@ -64,68 +64,27 @@ describe("shouldRunTagRerank", () => {
 });
 
 describe("shouldRunSuggestionAuthor", () => {
-  it("off mode never triggers, regardless of coverage", () => {
+  const oneSuggestion = [
+    { aliases: [], name: "a", preferredWhen: "x", reason: "x", source: "ai" as const },
+  ];
+
+  it("off mode never triggers, even when suggestions already exist", () => {
     assert.equal(
-      shouldRunSuggestionAuthor("off", resolvedTags({ tags: [], unmatchedCandidateCount: 5 })),
+      shouldRunSuggestionAuthor("off", resolvedTags({ suggestedNewTags: oneSuggestion })),
       false,
     );
   });
 
-  it("auto mode triggers when approved coverage is thin (0-2 matches)", () => {
-    assert.equal(shouldRunSuggestionAuthor("auto", resolvedTags({ tags: [] })), true);
-    assert.equal(shouldRunSuggestionAuthor("auto", resolvedTags({ tags: ["one"] })), true);
-    assert.equal(shouldRunSuggestionAuthor("auto", resolvedTags({ tags: ["one", "two"] })), true);
-  });
-
-  it("auto mode does not trigger with 3 approved matches unless all are weak and 2+ candidates remain unmatched", () => {
+  it("auto/always trigger only when suggestedNewTags already survived the policy gate", () => {
     assert.equal(
-      shouldRunSuggestionAuthor(
-        "auto",
-        resolvedTags({ allMatchesAreWeak: false, tags: ["one", "two", "three"], unmatchedCandidateCount: 5 }),
-      ),
-      false,
-      "3 matches with at least one strong match must never trigger",
-    );
-    assert.equal(
-      shouldRunSuggestionAuthor(
-        "auto",
-        resolvedTags({ allMatchesAreWeak: true, tags: ["one", "two", "three"], unmatchedCandidateCount: 1 }),
-      ),
-      false,
-      "3 weak matches with fewer than 2 unmatched candidates must not trigger",
-    );
-    assert.equal(
-      shouldRunSuggestionAuthor(
-        "auto",
-        resolvedTags({ allMatchesAreWeak: true, tags: ["one", "two", "three"], unmatchedCandidateCount: 2 }),
-      ),
+      shouldRunSuggestionAuthor("auto", resolvedTags({ suggestedNewTags: oneSuggestion })),
       true,
-      "3 weak matches with 2+ unmatched candidates must trigger",
     );
-  });
-
-  it("never triggers with 4 or more approved matches, regardless of match quality", () => {
+    assert.equal(shouldRunSuggestionAuthor("auto", resolvedTags({ suggestedNewTags: [] })), false);
     assert.equal(
-      shouldRunSuggestionAuthor(
-        "auto",
-        resolvedTags({
-          allMatchesAreWeak: true,
-          tags: ["one", "two", "three", "four"],
-          unmatchedCandidateCount: 10,
-        }),
-      ),
-      false,
+      shouldRunSuggestionAuthor("always", resolvedTags({ suggestedNewTags: oneSuggestion })),
+      true,
     );
-  });
-
-  it("always mode behaves identically to auto mode — no separate trigger beyond the last-resort gate", () => {
-    const thinCoverage = resolvedTags({ tags: ["one"] });
-    const thickCoverage = resolvedTags({ tags: ["one", "two", "three", "four"] });
-
-    assert.equal(shouldRunSuggestionAuthor("always", thinCoverage), shouldRunSuggestionAuthor("auto", thinCoverage));
-    assert.equal(
-      shouldRunSuggestionAuthor("always", thickCoverage),
-      shouldRunSuggestionAuthor("auto", thickCoverage),
-    );
+    assert.equal(shouldRunSuggestionAuthor("always", resolvedTags({ suggestedNewTags: [] })), false);
   });
 });

@@ -12,6 +12,7 @@ import {
 import {
   resolveAiPromptTemplate,
   resolveAiTagRerankPromptTemplate,
+  resolveSuggestedNewTagsPolicySetting,
   resolveSuggestionAuthorMode,
   resolveTagRerankMode,
 } from "./loadAiEnrichmentSettings";
@@ -58,6 +59,21 @@ describe("resolveSuggestionAuthorMode", () => {
   it("is independent from resolveTagRerankMode — an invalid tagRerankMode does not affect this", () => {
     assert.equal(resolveSuggestionAuthorMode("auto"), "auto");
     assert.equal(resolveTagRerankMode("not-a-real-mode"), "off");
+  });
+});
+
+describe("resolveSuggestedNewTagsPolicySetting", () => {
+  it("defaults to balanced for undefined/invalid values", () => {
+    assert.equal(resolveSuggestedNewTagsPolicySetting(undefined), "balanced");
+    assert.equal(resolveSuggestedNewTagsPolicySetting("nope"), "balanced");
+  });
+
+  it("accepts off, strict, balanced, generous, and always", () => {
+    assert.equal(resolveSuggestedNewTagsPolicySetting("off"), "off");
+    assert.equal(resolveSuggestedNewTagsPolicySetting("strict"), "strict");
+    assert.equal(resolveSuggestedNewTagsPolicySetting("balanced"), "balanced");
+    assert.equal(resolveSuggestedNewTagsPolicySetting("generous"), "generous");
+    assert.equal(resolveSuggestedNewTagsPolicySetting("always"), "always");
   });
 });
 

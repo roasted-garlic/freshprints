@@ -9,6 +9,7 @@ export type PermissionKey =
   | "createDesigns"
   | "editDesigns"
   | "archiveDesigns"
+  | "restoreDesigns"
   | "manageCategories"
   | "importDesigns"
   | "manageQueues"
@@ -17,6 +18,8 @@ export type PermissionKey =
   | "managePrintRequestItems"
   | "viewUpcomingShows"
   | "manageUpcomingShows"
+  | "importWhatnotShows"
+  | "openDevTools"
   | "manageGuestCustomers"
   | "manageCustomers"
   | "manageRequests"
@@ -25,6 +28,7 @@ export type PermissionKey =
   | "viewAiReview"
   | "manageAiReview"
   | "wipeOperationalTestData"
+  | "purgeArchivedDesignAssets"
   | "submitCustomerRequests"
   | "viewOwnCustomerRequests";
 

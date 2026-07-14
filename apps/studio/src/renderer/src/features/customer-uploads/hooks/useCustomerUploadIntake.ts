@@ -17,6 +17,7 @@ import { resolveIntakeHalftoneStaffToggle } from "@fresh-prints/shared/utils/hal
 import { db } from "../../../config/firebase";
 import { useAuth } from "../../auth/hooks/useAuth";
 import { permissionService } from "../../permissions/services/permissionService";
+import { enqueueImportedDesignsForBackgroundAi } from "../../imports/services/importAiBackgroundQueue";
 import {
   customerUploadIntakeService,
   type CustomerUploadIntakeFilter,
@@ -359,13 +360,8 @@ export function useCustomerUploadIntake(options?: {
             });
           }
           const result = await customerUploadIntakeService.promote(uploadId);
-          if (result.enqueueQueued) {
-            setNotice("Sent to AI Review. Open AI Processing to continue.");
-          } else {
-            setNotice(
-              `Promoted to design ${result.designId}. AI enqueue: ${result.enqueueReason ?? "skipped"}. Open AI Processing to retry if needed.`,
-            );
-          }
+          enqueueImportedDesignsForBackgroundAi([result.designId]);
+          setNotice("Sent to AI Review. AI processing starts in the background.");
         },
         "Sent to AI Review.",
         () => {

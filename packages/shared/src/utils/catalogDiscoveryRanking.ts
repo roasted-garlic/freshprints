@@ -1,7 +1,12 @@
 /** Discovery mode keys for Portal Design Library (URL `discover=`). Phase 10 may swap ranking only. */
-export type CatalogDiscoveryMode = "new" | "popular" | "recent";
+export type CatalogDiscoveryMode = "new" | "popular" | "mostLiked" | "recent";
 
-export const CATALOG_DISCOVERY_MODES: readonly CatalogDiscoveryMode[] = ["new", "popular", "recent"];
+export const CATALOG_DISCOVERY_MODES: readonly CatalogDiscoveryMode[] = [
+  "new",
+  "popular",
+  "mostLiked",
+  "recent",
+];
 
 export const CATALOG_DISCOVERY_RAIL_LIMIT = 25;
 
@@ -14,6 +19,7 @@ export interface CatalogDiscoveryDesign {
   categoryId?: string;
   createdAtMs?: number;
   requestCount: number;
+  favoriteCount?: number;
   lastRequestedAtMs?: number;
 }
 
@@ -37,7 +43,7 @@ export interface CatalogPopularCategoryRail<T extends CatalogDiscoveryDesign> {
 }
 
 export function parseCatalogDiscoveryMode(value: string | null | undefined): CatalogDiscoveryMode | null {
-  if (value === "new" || value === "popular" || value === "recent") {
+  if (value === "new" || value === "popular" || value === "mostLiked" || value === "recent") {
     return value;
   }
 
@@ -50,6 +56,8 @@ export function getCatalogDiscoveryModeLabel(mode: CatalogDiscoveryMode): string
       return "New This Week";
     case "popular":
       return "Popular";
+    case "mostLiked":
+      return "Most Liked";
     case "recent":
       return "Recently Requested";
   }
@@ -91,6 +99,21 @@ export function rankPopular<T extends CatalogDiscoveryDesign>(designs: readonly 
   });
 }
 
+/** Lifetime favorites: favoriteCount descending (Most Liked rail). */
+export function rankMostLiked<T extends CatalogDiscoveryDesign>(designs: readonly T[]): T[] {
+  return designs
+    .filter((design) => (design.favoriteCount ?? 0) > 0)
+    .slice()
+    .sort((left, right) => {
+      const countCompare = (right.favoriteCount ?? 0) - (left.favoriteCount ?? 0);
+      if (countCompare !== 0) {
+        return countCompare;
+      }
+
+      return compareById(left, right);
+    });
+}
+
 /**
  * Lightweight “recently requested” proxy (not true 7-day trending).
  * Phase 10 may replace this function’s body without changing the UI contract.
@@ -124,6 +147,8 @@ export function rankCatalogDiscoveryDesigns<T extends CatalogDiscoveryDesign>(
       return rankNewThisWeek(designs, nowMs);
     case "popular":
       return rankPopular(designs);
+    case "mostLiked":
+      return rankMostLiked(designs);
     case "recent":
       return rankRecentlyRequested(designs);
   }

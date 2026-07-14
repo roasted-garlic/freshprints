@@ -26,7 +26,6 @@ import {
   sortCatalogTags,
   visibleSelectedTags,
 } from '../utils/catalogSearch';
-import { catalogStorageService } from '../services/catalogStorageService';
 import type { CatalogDesign } from '../types/catalog.types';
 import { usePortalPrintRequests } from '../../print-requests/context/PortalPrintRequestContext';
 import { useAddDesignToRequestFlow } from '../../print-requests/hooks/useAddDesignToRequestFlow';
@@ -229,42 +228,6 @@ export function CatalogPageContent() {
     selectionModeActive,
     selectionRequestId,
   ]);
-
-  useEffect(() => {
-    if (displayedDesigns.length === 0) {
-      return;
-    }
-
-    const pathRefs = displayedDesigns.map((design) => ({
-      catalogPath: design.thumbnailPath,
-      contentVersion: design.updatedAtMs,
-    }));
-
-    catalogStorageService.prefetchCatalogPaths(
-      pathRefs,
-      selectionModeActive ? 96 : 64,
-    );
-    catalogStorageService.pruneToCatalogPaths(
-      catalogDesigns.flatMap((design) => [design.thumbnailPath, design.previewPath]),
-    );
-  }, [catalogDesigns, displayedDesigns, selectionModeActive]);
-
-  useEffect(() => {
-    if (!selectionModeActive) {
-      return;
-    }
-
-    catalogStorageService.prefetchCatalogPaths(
-      Object.keys(selectionMode.selectedDesigns).map((designId) => {
-        const design = catalogDesigns.find((entry) => entry.id === designId);
-        return {
-          catalogPath: design?.thumbnailPath ?? design?.previewPath,
-          contentVersion: design?.updatedAtMs,
-        };
-      }),
-      32,
-    );
-  }, [catalogDesigns, selectionMode.selectedDesigns, selectionModeActive]);
 
   async function handleExitSelectionMode() {
     if (!selectionRequestId) {

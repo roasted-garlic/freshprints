@@ -1,7 +1,9 @@
+import { Timestamp } from "firebase-admin/firestore";
 import { onCall } from "firebase-functions/v2/https";
 
 import type { ListPortalAllocatableShowsResponse } from "../../packages/shared/src/types/portal/listPortalAllocatableShows.types";
 import type { ShowProductionStatus } from "../../packages/shared/src/types/upcomingShow/upcomingShow.enums";
+import { canAcceptNewShowAllocations } from "../../packages/shared/src/utils/showAllocationEligibility";
 import {
   filterShowsAvailableForAllocation,
   isPastScheduledShow,
@@ -64,9 +66,14 @@ export const listPortalAllocatableShows = onCall(async (request): Promise<ListPo
   try {
     await requirePortalCustomer(request.auth.uid);
 
-    const snapshot = await adminDb.collection("upcomingShows").get();
     const now = new Date();
     const pastWindowStart = pastCalendarWindowStart(now);
+
+    // Bound scan to calendar window (avoids loading the entire historical collection).
+    const snapshot = await adminDb
+      .collection("upcomingShows")
+      .where("scheduledStartAt", ">=", Timestamp.fromDate(pastWindowStart))
+      .get();
 
     const shows: InternalAllocatableShow[] = snapshot.docs.flatMap((showDoc) => {
       const data = showDoc.data();
@@ -99,7 +106,9 @@ export const listPortalAllocatableShows = onCall(async (request): Promise<ListPo
       ];
     });
 
-    const allocatable = filterShowsAvailableForAllocation(shows, now);
+    const allocatable = filterShowsAvailableForAllocation(shows, now).filter((show) =>
+      canAcceptNewShowAllocations(show, now),
+    );
     const allocatableIds = new Set(allocatable.map((show) => show.id));
 
     const calendarShows = shows.filter((show) => {

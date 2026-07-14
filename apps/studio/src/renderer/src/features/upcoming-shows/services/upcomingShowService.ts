@@ -22,6 +22,11 @@ import { permissionService } from "../../permissions/services/permissionService"
 import type { User } from "../../users/types/user.types";
 import { isPrintRequestOrigin } from "@fresh-prints/shared/utils/printRequestOrigin";
 import { planAllocationSplit } from "@fresh-prints/shared/utils/showCapacity";
+import {
+  formatShowAllocationBlockedMessage,
+  getShowAllocationBlockReason,
+  SHOW_QUEUE_FULL_MESSAGE,
+} from "@fresh-prints/shared/utils/showAllocationEligibility";
 import { canRemoveRequestFromShow } from "@fresh-prints/shared/utils/showQueueEditability";
 import { computeElapsedPrintMs } from "@fresh-prints/shared/utils/showPrintTimer";
 import { buildShowAllocationSourceFields } from "@fresh-prints/shared/utils/showAllocationSourceFields";
@@ -377,6 +382,10 @@ export const upcomingShowService = {
       throw new Error("You do not have permission to manage upcoming shows.");
     }
 
+    if (input.fromAssistedImport && !permissionService.canImportWhatnotShows(caller)) {
+      throw new Error("You do not have permission to import shows from Whatnot.");
+    }
+
     const whatnotShowId = input.whatnotShowId.trim();
 
     if (!whatnotShowId) {
@@ -620,7 +629,22 @@ export const upcomingShowService = {
       throw new Error("Print request item not found.");
     }
 
-    if (!canAllocatePrintRequestToShow(show, new Date())) {
+    const now = new Date();
+    const blockReason = getShowAllocationBlockReason(
+      {
+        scheduledStartAt: show.scheduledStartAt,
+        productionStatus: show.productionStatus,
+        maxTotalQuantity: show.maxTotalQuantity,
+        allocatedQuantity: show.allocatedQuantity,
+      },
+      now,
+    );
+
+    if (blockReason) {
+      throw new Error(formatShowAllocationBlockedMessage(blockReason));
+    }
+
+    if (!canAllocatePrintRequestToShow(show, now)) {
       throw new Error(PAST_SHOW_READ_ONLY_MESSAGE);
     }
 
@@ -637,8 +661,8 @@ export const upcomingShowService = {
     if (show.maxTotalQuantity !== undefined) {
       const remainingCapacity = show.maxTotalQuantity - show.allocatedQuantity;
 
-      if (requestedQuantity > remainingCapacity && !input.overrideCapacity) {
-        throw new Error("This exceeds the show's remaining capacity. Confirm the override to proceed.");
+      if (requestedQuantity > remainingCapacity) {
+        throw new Error(SHOW_QUEUE_FULL_MESSAGE);
       }
     }
 

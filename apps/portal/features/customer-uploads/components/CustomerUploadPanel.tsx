@@ -341,9 +341,9 @@ export function CustomerUploadPanel({
                       <label className="portal-customer-upload-halftone-label">
                         <input
                           checked={row.halftoneResponseDraft === 'yes'}
-                          disabled={isBusy || Boolean(row.halftoneResponseSaving)}
+                          disabled={isAttaching}
                           onChange={(event) => {
-                            void respondToHalftone(
+                            respondToHalftone(
                               row.localId,
                               event.target.checked ? 'yes' : 'no',
                             );
@@ -369,9 +369,9 @@ export function CustomerUploadPanel({
                         {row.halftoneResponseError}{' '}
                         <button
                           className="portal-customer-upload-halftone-retry"
-                          disabled={isBusy || Boolean(row.halftoneResponseSaving)}
+                          disabled={isAttaching}
                           onClick={() => {
-                            void respondToHalftone(
+                            respondToHalftone(
                               row.localId,
                               row.halftoneResponseDraft === 'yes' ? 'yes' : 'no',
                             );

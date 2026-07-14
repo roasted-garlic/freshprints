@@ -13,6 +13,9 @@ export interface StaffInboxAckDocument {
   printRequestTab?: PrintRequestListTab;
   /** Original alert time (millis). */
   occurredAtMillis: number;
+  /** Who marked Done (optional on legacy acks). */
+  acknowledgedByUserId?: string;
+  acknowledgedByDisplayName?: string;
 }
 
 /**

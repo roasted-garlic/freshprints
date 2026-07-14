@@ -22,7 +22,6 @@ import {
 } from "./catalogTitleRules";
 import { SIMPLE_ENRICHMENT_MAX_TAGS } from "./aiEnrichmentConfig";
 import {
-  isSuggestedTagsLastResort,
   resolveAiCatalogTags,
   type ResolveAiCatalogTagsResult,
 } from "./catalogTagResolver";
@@ -31,6 +30,7 @@ import { resolveAiEnrichmentProvider } from "./providers/resolveAiEnrichmentProv
 import { callTagRerank, TagRerankError } from "./catalogTagRerankProvider";
 import {
   CATALOG_SUGGESTED_TAG_AUTHOR_PROMPT_VERSION,
+  buildReservedCatalogTagTerms,
   callSuggestedTagAuthorStandalone,
   selectCalibrationExampleTags,
   SuggestedTagAuthorError,
@@ -63,10 +63,8 @@ export function shouldRunTagRerank(mode: TagRerankMode, resolvedTags: ResolveAiC
 
 /**
  * Decide whether the optional AI-authored suggestion-quality call should run. Independent of
- * tagRerankMode (see plan §4.5) — only cares whether the last-resort gate fired for this design
- * (resolvedTags already has suggestedNewTags gated by isSuggestedTagsLastResort internally) and
- * whether the setting allows it. "auto" and "always" behave identically: there is no separate
- * trigger condition beyond the last-resort gate itself.
+ * tagRerankMode — only cares whether suggestedNewTags already survived the settings policy gate
+ * and whether the author setting allows it. "auto" and "always" behave identically.
  */
 export function shouldRunSuggestionAuthor(
   mode: SuggestionAuthorMode,
@@ -76,11 +74,7 @@ export function shouldRunSuggestionAuthor(
     return false;
   }
 
-  return isSuggestedTagsLastResort({
-    allMatchesAreWeak: resolvedTags.allMatchesAreWeak,
-    approvedCount: resolvedTags.tags.length,
-    unmatchedCandidateCount: resolvedTags.unmatchedCandidateCount,
-  });
+  return resolvedTags.suggestedNewTags.length > 0;
 }
 
 /**
@@ -288,6 +282,7 @@ export async function runAiEnrichmentPipeline(
       candidates: result.analysis.rawTags ?? suggestions.tags,
       maxApprovedTags: SIMPLE_ENRICHMENT_MAX_TAGS,
       suggestedNewTags: suggestions.suggestedNewTags,
+      suggestedNewTagsPolicy: enrichmentSettings.suggestedNewTagsPolicy,
     });
     suggestions.tags = resolvedTags.tags;
     suggestions.suggestedNewTags =
@@ -296,9 +291,7 @@ export async function runAiEnrichmentPipeline(
     const rerankWillRun = shouldRunTagRerank(enrichmentSettings.tagRerankMode, resolvedTags);
     const authorWillRun = shouldRunSuggestionAuthor(enrichmentSettings.suggestionAuthorMode, resolvedTags);
 
-    // Candidate names about to become suggestions, taken from the already last-resort-gated
-    // resolvedTags.suggestedNewTags — resolveAiCatalogTags only populates this when
-    // isSuggestedTagsLastResort() passed, so no separate gate check is needed here.
+    // Candidate names about to become suggestions — already gated by suggestedNewTagsPolicy.
     const suggestionCandidateNames = resolvedTags.suggestedNewTags.map((tag) => tag.name);
 
     if (!authorWillRun || suggestionCandidateNames.length === 0) {
@@ -316,6 +309,7 @@ export async function runAiEnrichmentPipeline(
             candidateNames: suggestionCandidateNames,
             matchedTagNames: suggestions.tags,
           });
+          const reservedCatalogTerms = buildReservedCatalogTagTerms(approvedTags);
 
           const authorResult = await callSuggestedTagAuthorStandalone(
             geminiApiKey ?? "",
@@ -330,6 +324,7 @@ export async function runAiEnrichmentPipeline(
                 description: suggestions.description ?? "",
                 title: suggestions.title ?? "",
               },
+              reservedCatalogTerms,
             },
             { designId },
           );
@@ -402,7 +397,11 @@ export async function runAiEnrichmentPipeline(
             resolvedCategoryName: preRerankCategory.categoryName,
             promptTemplate: enrichmentSettings.tagRerankPromptTemplate,
             suggestionAuthorInput: mergeSuggestionAuthoring
-              ? { candidateNames: suggestionCandidateNames, exampleApprovedTags }
+              ? {
+                  candidateNames: suggestionCandidateNames,
+                  exampleApprovedTags,
+                  reservedCatalogTerms: buildReservedCatalogTagTerms(approvedTags),
+                }
               : undefined,
           },
           { designId },
@@ -464,6 +463,7 @@ export async function runAiEnrichmentPipeline(
             candidates: [...(result.analysis.rawTags ?? []), ...rerankResult.uncoveredConcepts],
             maxApprovedTags: SIMPLE_ENRICHMENT_MAX_TAGS,
             suggestedNewTags: suggestions.suggestedNewTags,
+            suggestedNewTagsPolicy: enrichmentSettings.suggestedNewTagsPolicy,
           });
           suggestions.suggestedNewTags =
             withUncoveredConcepts.suggestedNewTags.length > 0

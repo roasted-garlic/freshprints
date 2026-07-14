@@ -15,8 +15,9 @@ export function AiReviewRejectedStatusSection({ design }: AiReviewRejectedStatus
       </div>
 
       <p className="ai-review-rejected-status-copy">
-        This design was rejected from the catalog. Reprocess to generate fresh metadata, or approve
-        the existing suggestions as-is if the rejection was unrelated to the AI output.
+        This design was rejected from the catalog. Reprocess for fresh AI metadata, approve the
+        existing suggestions as-is, or archive it. Rejected designs also auto-archive after 7 days;
+        once archived, the owner can delete large images from Design Library → Archived.
       </p>
 
       {design.aiReviewNotes ? (

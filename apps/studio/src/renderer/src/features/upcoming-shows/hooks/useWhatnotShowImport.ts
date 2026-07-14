@@ -4,6 +4,7 @@ import { Timestamp } from "firebase/firestore";
 
 import { whatnotImportDesktopService } from "../../../shared/services/desktopAppService";
 import { useAuth } from "../../auth/hooks/useAuth";
+import { permissionService } from "../../permissions/services/permissionService";
 import { upcomingShowService } from "../services/upcomingShowService";
 import type { UpcomingShow } from "@fresh-prints/shared/types/upcomingShow/upcomingShow.types";
 import type { WhatnotShowImportConfirmedEvent } from "@fresh-prints/shared/types/whatnotImport/whatnotImport.types";
@@ -37,6 +38,14 @@ export function useWhatnotShowImport(existingShows: UpcomingShow[], onImported: 
 
   const openImportWindow = useCallback(
     async (baseUrl: string) => {
+      if (!user || !permissionService.canImportWhatnotShows(user)) {
+        setState({
+          stage: "idle",
+          error: "You do not have permission to import shows from Whatnot.",
+        });
+        return;
+      }
+
       setState({ stage: "window_open", error: null });
 
       try {
@@ -48,7 +57,7 @@ export function useWhatnotShowImport(existingShows: UpcomingShow[], onImported: 
         });
       }
     },
-    [],
+    [user],
   );
 
   const cancel = useCallback(async () => {
@@ -64,6 +73,18 @@ export function useWhatnotShowImport(existingShows: UpcomingShow[], onImported: 
             await whatnotImportDesktopService.reportImportCompleted({
               status: "failed",
               error: "You must be signed in to import shows.",
+            });
+            return;
+          }
+
+          if (!permissionService.canImportWhatnotShows(user)) {
+            await whatnotImportDesktopService.reportImportCompleted({
+              status: "failed",
+              error: "You do not have permission to import shows from Whatnot.",
+            });
+            setState({
+              stage: "idle",
+              error: "You do not have permission to import shows from Whatnot.",
             });
             return;
           }

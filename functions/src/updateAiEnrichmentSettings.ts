@@ -5,12 +5,15 @@ import {
   AI_ENRICHMENT_EXCLUDED_TAGS_PLACEHOLDER,
   AI_ENRICHMENT_PROMPT_TEMPLATE_MAX_LENGTH,
   AI_ENRICHMENT_TAG_RERANK_PROMPT_TEMPLATE_MAX_LENGTH,
+  DEFAULT_SUGGESTED_NEW_TAGS_POLICY,
   DEFAULT_SUGGESTION_AUTHOR_MODE,
   DEFAULT_TAG_RERANK_MODE,
   DEFAULT_TAG_RERANK_PROMPT_TEMPLATE,
+  SUGGESTED_NEW_TAGS_POLICIES,
   SUGGESTION_AUTHOR_MODES,
   TAG_RERANK_MODES,
   hasRequiredAiEnrichmentPromptPlaceholders,
+  type SuggestedNewTagsPolicy,
   type SuggestionAuthorMode,
   type TagRerankMode,
 } from "../../packages/shared/src/constants/aiEnrichment.constants";
@@ -25,6 +28,7 @@ import { logPipelineEvent } from "./lib/pipelineLog";
 
 const TAG_RERANK_MODE_SET = new Set<string>(TAG_RERANK_MODES);
 const SUGGESTION_AUTHOR_MODE_SET = new Set<string>(SUGGESTION_AUTHOR_MODES);
+const SUGGESTED_NEW_TAGS_POLICY_SET = new Set<string>(SUGGESTED_NEW_TAGS_POLICIES);
 
 interface UpdateAiEnrichmentSettingsRequest {
   visionModelId: string;
@@ -33,6 +37,7 @@ interface UpdateAiEnrichmentSettingsRequest {
   additionalTagExclusions?: string[];
   tagRerankMode?: TagRerankMode;
   suggestionAuthorMode?: SuggestionAuthorMode;
+  suggestedNewTagsPolicy?: SuggestedNewTagsPolicy;
 }
 
 interface UpdateAiEnrichmentSettingsResponse {
@@ -42,6 +47,7 @@ interface UpdateAiEnrichmentSettingsResponse {
   additionalTagExclusions: string[];
   tagRerankMode: TagRerankMode;
   suggestionAuthorMode: SuggestionAuthorMode;
+  suggestedNewTagsPolicy: SuggestedNewTagsPolicy;
 }
 
 function assertOwnerAdminCaller(caller: Awaited<ReturnType<typeof loadCallerProfile>>): void {
@@ -119,6 +125,19 @@ function validateRequest(data: unknown): UpdateAiEnrichmentSettingsRequest {
     throw invalidArgument(`suggestionAuthorMode must be one of: ${SUGGESTION_AUTHOR_MODES.join(", ")}.`);
   }
 
+  const suggestedNewTagsPolicy =
+    "suggestedNewTagsPolicy" in data ? data.suggestedNewTagsPolicy : undefined;
+
+  if (
+    suggestedNewTagsPolicy !== undefined &&
+    (typeof suggestedNewTagsPolicy !== "string" ||
+      !SUGGESTED_NEW_TAGS_POLICY_SET.has(suggestedNewTagsPolicy))
+  ) {
+    throw invalidArgument(
+      `suggestedNewTagsPolicy must be one of: ${SUGGESTED_NEW_TAGS_POLICIES.join(", ")}.`,
+    );
+  }
+
   return {
     visionModelId,
     promptTemplate,
@@ -129,6 +148,10 @@ function validateRequest(data: unknown): UpdateAiEnrichmentSettingsRequest {
     tagRerankMode: typeof tagRerankMode === "string" ? (tagRerankMode as TagRerankMode) : undefined,
     suggestionAuthorMode:
       typeof suggestionAuthorMode === "string" ? (suggestionAuthorMode as SuggestionAuthorMode) : undefined,
+    suggestedNewTagsPolicy:
+      typeof suggestedNewTagsPolicy === "string"
+        ? (suggestedNewTagsPolicy as SuggestedNewTagsPolicy)
+        : undefined,
   };
 }
 
@@ -148,6 +171,7 @@ export const updateAiEnrichmentSettings = onCall(
       additionalTagExclusions,
       tagRerankMode: requestedTagRerankMode,
       suggestionAuthorMode: requestedSuggestionAuthorMode,
+      suggestedNewTagsPolicy: requestedSuggestedNewTagsPolicy,
     } = validateRequest(request.data);
     const resolvedModelId = resolveVisionModelId(requestedModelId);
 
@@ -159,6 +183,8 @@ export const updateAiEnrichmentSettings = onCall(
     const resolvedTagRerankMode: TagRerankMode = requestedTagRerankMode ?? DEFAULT_TAG_RERANK_MODE;
     const resolvedSuggestionAuthorMode: SuggestionAuthorMode =
       requestedSuggestionAuthorMode ?? DEFAULT_SUGGESTION_AUTHOR_MODE;
+    const resolvedSuggestedNewTagsPolicy: SuggestedNewTagsPolicy =
+      requestedSuggestedNewTagsPolicy ?? DEFAULT_SUGGESTED_NEW_TAGS_POLICY;
     const resolvedTagRerankPromptTemplate =
       requestedTagRerankPromptTemplate?.trim() || DEFAULT_TAG_RERANK_PROMPT_TEMPLATE;
 
@@ -170,6 +196,7 @@ export const updateAiEnrichmentSettings = onCall(
         additionalTagExclusions: resolvedAdditionalTagExclusions,
         tagRerankMode: resolvedTagRerankMode,
         suggestionAuthorMode: resolvedSuggestionAuthorMode,
+        suggestedNewTagsPolicy: resolvedSuggestedNewTagsPolicy,
         updatedAt: FieldValue.serverTimestamp(),
         updatedBy: request.auth.uid,
       },
@@ -185,6 +212,7 @@ export const updateAiEnrichmentSettings = onCall(
       additionalTagExclusionsCount: resolvedAdditionalTagExclusions.length,
       tagRerankMode: resolvedTagRerankMode,
       suggestionAuthorMode: resolvedSuggestionAuthorMode,
+      suggestedNewTagsPolicy: resolvedSuggestedNewTagsPolicy,
       updatedBy: request.auth.uid,
     });
 
@@ -195,6 +223,7 @@ export const updateAiEnrichmentSettings = onCall(
       additionalTagExclusions: resolvedAdditionalTagExclusions,
       tagRerankMode: resolvedTagRerankMode,
       suggestionAuthorMode: resolvedSuggestionAuthorMode,
+      suggestedNewTagsPolicy: resolvedSuggestedNewTagsPolicy,
     };
   },
 );

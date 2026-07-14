@@ -28,4 +28,12 @@ export { testAiEnrichmentPlayground } from "./testAiEnrichmentPlayground";
 export { testAiEnrichmentTagRerank } from "./testAiEnrichmentTagRerank";
 export { updateAiEnrichmentSettings } from "./updateAiEnrichmentSettings";
 export { wipeOperationalTestData } from "./wipeOperationalTestData";
+export { purgeArchivedDesignAssets } from "./purgeArchivedDesignAssets";
+export { archiveStaleRejectedDesigns } from "./archiveStaleRejectedDesigns";
+export { purgeIdleCustomerUploadFullSize } from "./purgeIdleCustomerUploadFullSize";
+export { purgePromotedDonationFullSize } from "./purgePromotedDonationFullSize";
 export { onPrintRequestItemCreated } from "./onPrintRequestItemCreated";
+export {
+  onCustomerFavoriteCreated,
+  onCustomerFavoriteDeleted,
+} from "./onCustomerFavoriteChanged";

@@ -86,6 +86,23 @@ export const catalogApprovalService = {
     });
   },
 
+  /**
+   * Soft-archives a rejected design so the owner can Delete images from Design Library → Archived.
+   */
+  async archiveRejectedDesign(caller: User, designId: string): Promise<Design> {
+    if (!permissionService.canArchiveDesigns(caller)) {
+      throw new Error("You do not have permission to archive designs.");
+    }
+
+    const design = await designService.getDesignById(caller, designId);
+
+    if (design.status !== "rejected") {
+      throw new Error("Only rejected designs can be archived from AI Review.");
+    }
+
+    return designService.archiveDesign(caller, designId);
+  },
+
   async reopenRejectedForReview(caller: User, designId: string): Promise<Design> {
     if (!permissionService.canReopenRejectedDesign(caller)) {
       throw new Error("You do not have permission to reopen rejected designs.");

@@ -167,6 +167,7 @@ Rules:
 * Design Library default browse shows **catalog-approved** designs (`status: ready`, `aiReviewStatus: approved`).
 * Operational status filters (`imported`, `processing`, `rejected`) and AI review filters belong on the **AI Review** page (Phase 5), not Design Library.
 * All staff (`owner`, `admin`, `helper`) may edit and archive catalog designs.
+* Only `owner` and `admin` may restore archived designs (`canRestoreDesigns`). Helpers may archive but cannot restore.
 * Only `owner` and `admin` may create, edit, or archive categories.
 * Owner Category Management also supports bulk JSON import for categories using strict `{ "name", "description" }` objects only.
 * Only `owner` and `admin` may create, edit, or archive approved tags.
@@ -182,7 +183,7 @@ Rules:
 * Archiving a design sets `status: "archived"` and stores `previousStatus`, `archivedAt`, and `archivedBy`; archiving a category sets `isActive: false` and reindexes the remaining active categories contiguously.
 * Staff browse the approved catalog by default (`status: ready`). The Design Library **Archived catalog** toggle switches to archived-only view (`status: archived`, URL `archived=true`).
 * Staff view archived categories via **Archived** inside the category management modal, then **Back** to return to active categories.
-* Restore uses `designService.restoreDesign` (restores `previousStatus`, clears archive metadata) and `categoryService.restoreCategory` (`isActive: true`, restored category appended to the end of the active list before any later manual reorder). Legacy archived designs without `previousStatus` fall back to `imported`. Permanent delete is not implemented.
+* Restore uses `designService.restoreDesign` (owner/admin only; restores `previousStatus`, clears archive metadata) and `categoryService.restoreCategory` (`isActive: true`, restored category appended to the end of the active list before any later manual reorder). Legacy archived designs without `previousStatus` fall back to `imported`. Permanent delete is not implemented.
 * Edit Design shows status read-only. Metadata edits on archived designs do not restore them.
 * After mutations, the design list and category pickers refresh while preserving the current search/filter state when reasonable.
 
@@ -209,12 +210,12 @@ Imported
    ↓
 Processing (optional)
    ↓
-Rejected
+Rejected (AI Review Rejected tab)
    ↓
-Archived (optional)
+Archived (manual from Rejected tab, or auto after 7 days; ADR-FP-086)
 ```
 
-**AI Review path (Phase 5):**
+**AI Review path (Phase 5; reject stays rejected until archive — ADR-FP-086):**
 
 ```txt
 Imported (aiReviewStatus: pending)
@@ -223,7 +224,9 @@ AI enrichment + staff review
    ↓
 Approved → Ready (catalog)
    or
-Rejected
+Rejected (`status: rejected`; stays on Rejected tab)
+   ↓
+Archived (manual Archive, or auto after 7 days; owner may Delete images; thumbnail kept)
 ```
 
 Status values must match `DATA_MODEL.md`.
@@ -907,7 +910,7 @@ Design never appears in Design Library browse
 ## AI Processing rules
 
 * AI suggests; staff approves. No automatic catalog publish.
-* **Staff-controlled AI queue** — import does not call Google AI automatically; Processing tab **Start AI** / **Process image with AI** runs one design at a time; **Auto advance** toggle (session) switches batch vs manual stepping.
+* **Post-import AI auto-start** — successful Studio imports enqueue AI in the background (sequential, one at a time). Opening the Processing tab is optional to watch progress. **Auto advance** on that tab only controls Start AI / Pause vs one-at-a-time stepping while reviewing the queue.
 * **Processing overrides** — the settings icon beside Auto advance lets staff choose a per-session Gemini model without changing Settings defaults.
 * **Re-run AI Suggestions** from Needs Review or Rejected resets the design back to Processing. AI is not re-run in place on review tabs.
 

@@ -453,6 +453,48 @@
   width: 100%;
 }
 
+.design-card-shell {
+  height: 100%;
+  position: relative;
+}
+
+.design-card-shell.is-selected-for-purge .design-card {
+  border-color: var(--color-danger, #b42318);
+  box-shadow: 0 0 0 1px var(--color-danger, #b42318);
+}
+
+.design-card-purge-select {
+  left: var(--space-3);
+  position: absolute;
+  top: var(--space-3);
+  z-index: 2;
+}
+
+.design-card-purge-select input {
+  height: 1.1rem;
+  width: 1.1rem;
+}
+
+.purge-archived-design-list {
+  margin: var(--space-3) 0 0;
+  padding-left: 1.25rem;
+}
+
+.purge-archived-confirm-label {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+.purge-archived-confirm-label input[type="checkbox"] {
+  margin-right: var(--space-2);
+}
+
+.purge-archived-confirm-phrase input[type="text"] {
+  font: inherit;
+  padding: var(--space-2) var(--space-3);
+}
+
 .design-card {
   background: var(--color-bg-secondary);
   color: inherit;
@@ -486,6 +528,25 @@
   aspect-ratio: 4 / 3;
   flex-shrink: 0;
   width: 100%;
+}
+
+.design-details-images-deleted {
+  align-items: center;
+  aspect-ratio: 4 / 3;
+  background: var(--color-bg-secondary);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-tertiary);
+  display: flex;
+  font-size: var(--font-size-sm);
+  justify-content: center;
+  padding: var(--space-3);
+  text-align: center;
+  width: 100%;
+}
+
+.design-details-images-deleted p {
+  margin: 0;
 }
 
 .design-card-body {
@@ -623,14 +684,26 @@
   flex-shrink: 0;
 }
 
-.design-details-footer {
+.modal-footer.design-details-footer {
   align-items: center;
-  justify-content: space-between;
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: 1fr auto 1fr;
+  justify-content: stretch;
 }
 
 .design-details-footer-start {
   display: flex;
   flex-shrink: 0;
+  gap: var(--space-3);
+  justify-self: start;
+}
+
+.design-details-footer-center {
+  display: flex;
+  flex-shrink: 0;
+  justify-content: center;
+  justify-self: center;
 }
 
 .design-details-footer-actions {
@@ -638,7 +711,7 @@
   flex-shrink: 0;
   gap: var(--space-3);
   justify-content: flex-end;
-  margin-left: auto;
+  justify-self: end;
 }
 
 .design-thumbnail-panel.design-card-thumbnail {

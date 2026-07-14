@@ -41,6 +41,10 @@ export function isDesignReopenableInInbox(design: Design, tab: AiReviewInboxTab)
   return tab === "rejected" && design.status === "rejected";
 }
 
+export function isDesignArchivableInInbox(design: Design, tab: AiReviewInboxTab): boolean {
+  return tab === "rejected" && design.status === "rejected";
+}
+
 export function isDesignRerunnableInInbox(design: Design, tab: AiReviewInboxTab): boolean {
   return tab === "rejected" && design.status === "rejected";
 }

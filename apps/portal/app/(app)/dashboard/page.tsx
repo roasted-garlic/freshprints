@@ -7,6 +7,8 @@ import type { Timestamp } from 'firebase/firestore';
 import { AccountArtworkGallery } from '../../../features/account/components/AccountArtworkGallery';
 import { getProfileInitials, resolvePortalDisplayName } from '../../../features/account/utils/profileDisplay';
 import { useAuth } from '../../../features/auth/context/AuthContext';
+import { useFavorites } from '../../../features/favorites/context/FavoritesProvider';
+import { PORTAL_FAVORITES_HREF } from '../../../features/navigation/constants/portalNavItems';
 import { usePortalPrintRequests } from '../../../features/print-requests/context/PortalPrintRequestContext';
 import {
   buildRequestArtworkHref,
@@ -22,6 +24,7 @@ function formatMemberSince(timestamp: Timestamp): string {
 
 export default function DashboardPage() {
   const { customer, firebaseUser, refreshCustomer, user } = useAuth();
+  const { favoriteCount, isLoading: isFavoritesLoading } = useFavorites();
   const { isLoading: isRequestsLoading, refreshRequests, requests } = usePortalPrintRequests();
   const [uploadedDesignCount, setUploadedDesignCount] = useState<number | null>(null);
   const [donatedDesignCount, setDonatedDesignCount] = useState<number | null>(null);
@@ -31,6 +34,9 @@ export default function DashboardPage() {
   const printRequestCount = isRequestsLoading ? (customer?.totalPrintRequests ?? 0) : requests.length;
   const uploadHref = buildRequestArtworkHref({ returnTo: '/dashboard' });
   const customerUid = firebaseUser?.uid ?? user?.id;
+  const favoritesLabel = isFavoritesLoading
+    ? 'My Favorites'
+    : `My Favorites (${favoriteCount})`;
 
   const handleArtworkCountsChange = useCallback(
     (counts: { donatedCount: number; uploadCount: number }) => {
@@ -105,6 +111,12 @@ export default function DashboardPage() {
               <span className="portal-account-quick-link-label">Upload designs</span>
               <span className="portal-account-quick-link-description">
                 Add your own artwork to a current print request.
+              </span>
+            </Link>
+            <Link className="portal-account-quick-link" href={PORTAL_FAVORITES_HREF}>
+              <span className="portal-account-quick-link-label">{favoritesLabel}</span>
+              <span className="portal-account-quick-link-description">
+                Designs you&apos;ve hearted — open them anytime while they&apos;re in the catalog.
               </span>
             </Link>
             <Link className="portal-account-quick-link" href="/requests?tab=working">

@@ -1,4 +1,4 @@
-import { FieldValue, Timestamp } from "firebase-admin/firestore";
+import { FieldValue } from "firebase-admin/firestore";
 import { onCall } from "firebase-functions/v2/https";
 
 import { CUSTOMER_UPLOAD_COLLECTIONS } from "../../packages/shared/src/constants/customerUpload/customerUploadCollections.constants";
@@ -9,12 +9,6 @@ import {
 } from "../../packages/shared/src/constants/design/designStoragePaths";
 import type { PromoteCustomerUploadToAiReviewResponse } from "../../packages/shared/src/types/customerUpload/customerUploadStaffActions.types";
 
-import { runAiEnrichmentPipeline } from "./ai/aiEnrichmentPipeline";
-import {
-  AI_ENRICHMENT_ACTIVE_STAGES,
-  AI_ENRICHMENT_STALE_STAGE_MS,
-} from "./ai/aiEnrichmentConfig";
-import { shouldAllowAiEnqueueForReviewStatus } from "./ai/enqueueAiEnrichmentValidation";
 import { adminDb, adminStorage } from "./lib/admin";
 import { assertStaffCaller, loadCallerProfile } from "./lib/caller";
 import {
@@ -28,7 +22,6 @@ import {
   unauthenticated,
 } from "./lib/errors";
 import { withoutUndefinedFields } from "./lib/firestoreDocument";
-import { geminiApiKeySecret } from "./lib/secrets";
 
 function titleFromFilename(fileName: string): string {
   const trimmed = fileName.trim();
@@ -40,28 +33,6 @@ function titleFromFilename(fileName: string): string {
     return trimmed;
   }
   return trimmed.slice(0, extensionIndex);
-}
-
-function isStaleAiProcessing(design: Record<string, unknown>): boolean {
-  const currentStage = design.aiProcessingStage;
-  if (!currentStage) {
-    return true;
-  }
-  if (currentStage === "failed" || currentStage === "ready_for_review") {
-    return false;
-  }
-  if (
-    !AI_ENRICHMENT_ACTIVE_STAGES.includes(
-      currentStage as (typeof AI_ENRICHMENT_ACTIVE_STAGES)[number],
-    )
-  ) {
-    return false;
-  }
-  const updatedAt = design.updatedAt;
-  if (!(updatedAt instanceof Timestamp)) {
-    return true;
-  }
-  return Date.now() - updatedAt.toMillis() > AI_ENRICHMENT_STALE_STAGE_MS;
 }
 
 async function copyUploadAssetsToDesign(params: {
@@ -91,74 +62,13 @@ async function copyUploadAssetsToDesign(params: {
   }
 }
 
-async function enqueuePromotedDesign(designId: string): Promise<{
-  enqueueAttempted: boolean;
-  enqueueQueued: boolean;
-  enqueueReason: string | null;
-}> {
-  const designRef = adminDb.collection("designs").doc(designId);
-  const designSnapshot = await designRef.get();
-  if (!designSnapshot.exists) {
-    return {
-      enqueueAttempted: true,
-      enqueueQueued: false,
-      enqueueReason: "design_missing",
-    };
-  }
-
-  const design = designSnapshot.data() ?? {};
-  if (!shouldAllowAiEnqueueForReviewStatus(design, { rerunRejected: false, rerunFromReview: false })) {
-    return {
-      enqueueAttempted: true,
-      enqueueQueued: false,
-      enqueueReason: "not_eligible",
-    };
-  }
-
-  const previewPath =
-    (typeof design.previewPath === "string" && design.previewPath) ||
-    (typeof design.thumbnailPath === "string" && design.thumbnailPath) ||
-    "";
-  if (!previewPath) {
-    return {
-      enqueueAttempted: true,
-      enqueueQueued: false,
-      enqueueReason: "derivatives_missing",
-    };
-  }
-
-  const currentStage = design.aiProcessingStage;
-  if (
-    currentStage &&
-    currentStage !== "failed" &&
-    currentStage !== "ready_for_review" &&
-    !isStaleAiProcessing(design)
-  ) {
-    return {
-      enqueueAttempted: true,
-      enqueueQueued: false,
-      enqueueReason: "already_processing",
-    };
-  }
-
-  await designRef.update({
-    aiProcessingStage: "queued",
-    aiReviewStatus: "pending",
-    aiProcessed: false,
-    aiReviewed: false,
-    updatedAt: FieldValue.serverTimestamp(),
-  });
-
-  await runAiEnrichmentPipeline(designId, geminiApiKeySecret.value());
-  return {
-    enqueueAttempted: true,
-    enqueueQueued: true,
-    enqueueReason: null,
-  };
-}
-
+/**
+ * Promote creates the design + copies assets, then returns.
+ * Studio hands off AI via the same background enqueue queue as import
+ * (`enqueueImportedDesignsForBackgroundAi`) so the UI is not blocked on Gemini.
+ */
 export const promoteCustomerUploadToAiReview = onCall(
-  { secrets: [geminiApiKeySecret], timeoutSeconds: 180, memory: "1GiB" },
+  { timeoutSeconds: 120, memory: "1GiB" },
   async (request): Promise<PromoteCustomerUploadToAiReviewResponse> => {
     if (!request.auth?.uid) {
       throw unauthenticated();
@@ -293,6 +203,7 @@ export const promoteCustomerUploadToAiReview = onCall(
       tx.update(uploadRef, {
         promotedDesignId: designId,
         catalogReviewStatus: "sent_to_ai_review",
+        promotedAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
       });
 
@@ -328,26 +239,16 @@ export const promoteCustomerUploadToAiReview = onCall(
       }
     }
 
-    let enqueue;
-    try {
-      enqueue = await enqueuePromotedDesign(promoteResult.designId);
-    } catch (error) {
-      enqueue = {
-        enqueueAttempted: true,
-        enqueueQueued: false,
-        enqueueReason: error instanceof Error ? error.message : "enqueue_failed",
-      };
-    }
-
     return {
       uploadId,
       designId: promoteResult.designId,
       alreadyPromoted: promoteResult.alreadyPromoted,
       catalogReviewStatus: "sent_to_ai_review",
       originalPath: promoteResult.originalPath,
-      enqueueAttempted: enqueue.enqueueAttempted,
-      enqueueQueued: enqueue.enqueueQueued,
-      enqueueReason: enqueue.enqueueReason,
+      // Client starts AI via background enqueue queue (same as import).
+      enqueueAttempted: false,
+      enqueueQueued: false,
+      enqueueReason: "deferred_to_client",
     };
   },
 );

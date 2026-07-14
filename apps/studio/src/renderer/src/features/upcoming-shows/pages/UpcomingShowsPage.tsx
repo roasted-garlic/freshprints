@@ -43,6 +43,10 @@ import { useExportShowZip } from "../hooks/useExportShowZip";
 import { useExportGangSheetPng } from "../hooks/useExportGangSheetPng";
 import { groupAllocationsByRequest } from "../utils/groupAllocationsByRequest";
 import {
+  formatShowAllocationBlockedMessage,
+  getShowAllocationBlockReason,
+} from "@fresh-prints/shared/utils/showAllocationEligibility";
+import {
   filterShowsByScheduleTab,
   getShowScheduleTab,
   isPastScheduledShow,
@@ -235,11 +239,15 @@ export function UpcomingShowsPage() {
         title: "Show Queue",
         actions: permissionService.canManageUpcomingShows(user)
           ? [
-              {
-                icon: <Upload aria-hidden="true" size={16} strokeWidth={2} />,
-                label: "Import Shows",
-                onClick: openWhatnotImportWindow,
-              },
+              ...(permissionService.canImportWhatnotShows(user)
+                ? [
+                    {
+                      icon: <Upload aria-hidden="true" size={16} strokeWidth={2} />,
+                      label: "Import Shows",
+                      onClick: openWhatnotImportWindow,
+                    },
+                  ]
+                : []),
               {
                 icon: <Settings aria-hidden="true" size={16} strokeWidth={2} />,
                 label: "Settings",
@@ -366,6 +374,21 @@ export function UpcomingShowsPage() {
     () => (selectedShow ? isPastScheduledShow(selectedShow, new Date()) : false),
     [selectedShow],
   );
+  const selectedShowAllocationBlockReason = useMemo(() => {
+    if (!selectedShow) {
+      return null;
+    }
+    return getShowAllocationBlockReason(
+      {
+        scheduledStartAt: selectedShow.scheduledStartAt,
+        productionStatus: selectedShow.productionStatus,
+        maxTotalQuantity: selectedShow.maxTotalQuantity,
+        allocatedQuantity: selectedShow.allocatedQuantity,
+      },
+      new Date(),
+    );
+  }, [selectedShow]);
+  const canAddPrintRequestToSelectedShow = selectedShowAllocationBlockReason === null;
   const lastManualImportAt = useMemo(() => {
     const showImportAt = selectedShow?.lastSeenInAssistedImportAt;
     const latestImportAt = showQueueSettings.settings.lastWhatnotAssistedImportAt;
@@ -735,14 +758,14 @@ export function UpcomingShowsPage() {
   }
 
   const openAddRequestModal = useCallback(() => {
-    if (isSelectedShowPast) {
+    if (!canAddPrintRequestToSelectedShow) {
       return;
     }
 
     setActionError(null);
     setAddRequestId("");
     setIsAddRequestModalOpen(true);
-  }, [isSelectedShowPast]);
+  }, [canAddPrintRequestToSelectedShow]);
 
   const closeAddRequestModal = useCallback(() => {
     setIsAddRequestModalOpen(false);
@@ -1186,10 +1209,17 @@ export function UpcomingShowsPage() {
                 <div className="print-requests-section-header">
                   <p className="eyebrow">Attached print requests</p>
                   <Button
-                    disabled={isSelectedShowPast || !permissionService.canManageUpcomingShows(user)}
+                    disabled={
+                      !canAddPrintRequestToSelectedShow ||
+                      !permissionService.canManageUpcomingShows(user)
+                    }
                     onClick={openAddRequestModal}
                     size="sm"
-                    title={isSelectedShowPast ? PAST_SHOW_READ_ONLY_MESSAGE : undefined}
+                    title={
+                      selectedShowAllocationBlockReason
+                        ? formatShowAllocationBlockedMessage(selectedShowAllocationBlockReason)
+                        : undefined
+                    }
                     variant="secondary"
                   >
                     + Add Print Request

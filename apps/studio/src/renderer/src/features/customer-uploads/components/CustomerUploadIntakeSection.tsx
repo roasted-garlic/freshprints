@@ -195,7 +195,7 @@ function IntakeDetail({
               if (
                 window.confirm(
                   isDonation
-                    ? "Exclude this donation from the catalog? Production files are kept, but it will not be listed."
+                    ? "Exclude this donation from the catalog? Full-size files will be deleted now. A thumbnail is kept for staff history; it will not be listed or reusable."
                     : "Exclude this upload from the catalog? Artwork stays on the print request and production files are kept.",
                 )
               ) {
@@ -209,7 +209,9 @@ function IntakeDetail({
           </Button>
         ) : null}
 
-        {intake.canExclude && row.catalogReviewStatus === "excluded_from_catalog" ? (
+        {intake.canExclude &&
+        row.catalogReviewStatus === "excluded_from_catalog" &&
+        !row.fullSizePurgedAtMs ? (
           <Button
             disabled={busy}
             onClick={() => {

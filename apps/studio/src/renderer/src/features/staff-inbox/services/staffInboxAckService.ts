@@ -53,6 +53,14 @@ function mapAckRecord(data: DocumentData): StaffInboxAckRecord | null {
         : undefined,
     createdAtMillis: occurredAtMillis,
     acknowledgedAtMillis: acknowledgedAt?.toMillis() ?? Date.now(),
+    acknowledgedByUserId:
+      typeof data.acknowledgedByUserId === "string" && data.acknowledgedByUserId.trim()
+        ? data.acknowledgedByUserId.trim()
+        : undefined,
+    acknowledgedByDisplayName:
+      typeof data.acknowledgedByDisplayName === "string" && data.acknowledgedByDisplayName.trim()
+        ? data.acknowledgedByDisplayName.trim()
+        : undefined,
   };
 }
 
@@ -67,6 +75,8 @@ export function mapAckRecordsToCompletedItems(records: StaffInboxAckRecord[]): S
     printRequestTab: record.printRequestTab,
     occurredAtMillis: record.createdAtMillis || record.acknowledgedAtMillis,
     acknowledgedAtMillis: record.acknowledgedAtMillis,
+    acknowledgedByUserId: record.acknowledgedByUserId,
+    acknowledgedByDisplayName: record.acknowledgedByDisplayName,
   }));
 }
 
@@ -104,11 +114,19 @@ export const staffInboxAckService = {
     );
   },
 
-  async acknowledge(userId: string, item: StaffInboxItem): Promise<void> {
+  async acknowledge(
+    userId: string,
+    item: StaffInboxItem,
+    options?: { displayName?: string | null },
+  ): Promise<void> {
     const ackRef = doc(
       firestoreCollectionService.getStaffInboxAcksCollection(),
       buildStaffInboxAckDocId(userId, item.id),
     );
+    const displayName =
+      typeof options?.displayName === "string" && options.displayName.trim()
+        ? options.displayName.trim()
+        : undefined;
 
     await setDoc(ackRef, {
       userId,
@@ -120,6 +138,8 @@ export const staffInboxAckService = {
       ...(item.upcomingShowId ? { upcomingShowId: item.upcomingShowId } : {}),
       ...(item.printRequestTab ? { printRequestTab: item.printRequestTab } : {}),
       occurredAtMillis: item.occurredAtMillis,
+      acknowledgedByUserId: userId,
+      ...(displayName ? { acknowledgedByDisplayName: displayName } : {}),
       acknowledgedAt: serverTimestamp(),
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),

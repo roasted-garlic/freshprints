@@ -37,6 +37,9 @@ export function StaffInboxItemRow({
   onRestore,
 }: StaffInboxItemRowProps) {
   const acknowledgedAtMillis = isCompletedItem(item) ? item.acknowledgedAtMillis : undefined;
+  const acknowledgedByDisplayName = isCompletedItem(item)
+    ? item.acknowledgedByDisplayName
+    : undefined;
   const showCheckbox = !isCompleted && Boolean(onAcknowledge);
 
   return (
@@ -78,6 +81,7 @@ export function StaffInboxItemRow({
               {isCompleted && acknowledgedAtMillis ? (
                 <span className="staff-inbox-timestamp-pill staff-inbox-timestamp-pill-done">
                   Marked done {formatInboxTimestamp(acknowledgedAtMillis)}
+                  {acknowledgedByDisplayName ? ` by ${acknowledgedByDisplayName}` : ""}
                 </span>
               ) : null}
             </div>

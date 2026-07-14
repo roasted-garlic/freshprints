@@ -84,7 +84,23 @@
 
 .test-data-reset-actions {
   display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
   justify-content: flex-start;
+  margin-top: var(--space-3);
+}
+
+.test-data-reset-json {
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: var(--font-size-sm);
+  margin-top: var(--space-4);
+  max-height: 24rem;
+  overflow: auto;
+  padding: var(--space-4);
+  white-space: pre-wrap;
 }
 
 .test-data-reset-result {

@@ -20,6 +20,7 @@ import { permissionService } from "../../permissions/services/permissionService"
 import {
   clearLegacyStaffInboxAckLocalStorage,
 } from "../../staff-inbox/services/staffInboxAckLegacyLocalStore";
+import { RetentionMaintenancePanel } from "../components/RetentionMaintenancePanel";
 import { TestDataResetErrorBoundary } from "../components/TestDataResetErrorBoundary";
 import { OPERATIONAL_WIPE_TARGET_OPTIONS } from "../constants/wipeTargetOptions";
 import { wipeOperationalTestData } from "../services/wipeOperationalTestDataService";
@@ -179,6 +180,8 @@ function TestDataResetPageContent() {
 
   return (
     <main className="page-layout page-layout-shell test-data-reset-page">
+      <RetentionMaintenancePanel />
+
       <section className="card test-data-reset-section test-data-reset-danger">
         <header className="test-data-reset-header">
           <h2 className="test-data-reset-title">Operational wipe</h2>

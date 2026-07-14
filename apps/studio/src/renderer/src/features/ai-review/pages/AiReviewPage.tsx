@@ -162,6 +162,7 @@ function AiReviewPageContent() {
             canEdit={inbox.canEdit}
             canStopAutoQueue={inbox.processingQueue.canStopAutoQueue}
             canProcessSelected={inbox.processingQueue.canProcessSelected}
+            canArchive={inbox.canArchive}
             canReopen={inbox.canReopen}
             canReject={inbox.canReject}
             canRerun={inbox.canRerun}
@@ -191,6 +192,7 @@ function AiReviewPageContent() {
             onStopAutoQueue={inbox.processingQueue.stopAutoQueue}
             onPrevious={() => inbox.selectRelative(-1)}
             onProcessSelectedDesign={() => void inbox.processingQueue.processSelectedDesign()}
+            onArchive={() => void inbox.archiveSelected()}
             onReject={() => void inbox.rejectSelected()}
             onReopen={() => void inbox.reopenSelected()}
             onRerun={() => void inbox.rerunSelected()}

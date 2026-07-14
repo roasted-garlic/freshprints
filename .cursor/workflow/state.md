@@ -1,5 +1,5 @@
 ## Current Goal
-portal-catalog-image-load-caching
+suggested-tag-author-quality
 
 ## Phase
 test
@@ -23,29 +23,31 @@ pending
 yes
 
 ## Human Checkpoint Reason
-Manual smoke: catalog thumbs load; archive/add design reflected on Portal visit (no stale membership)
+Manual: richer Suggested New Tags + colliding aliases stripped (Suggested-tag writing Auto)
 
 ## Allowed Actions
-Await manual PASS; record results; docs already updated
+Await human feedback; update docs/state on reply
 
 ## Forbidden Actions
-Owner purge implementation; signoff without manual PASS; persist catalog lists / SW blob cache
+Production deploy; unrelated implementation
 
 ## Next Required Step
-Await human manual test: PASS / FAIL / PASS WITH NOTES
+Await human feedback (PASS / FAIL / PASS WITH NOTES)
 
 ## DONE
 no
 
 ## Last Completed Step
-Implemented versioned Portal URL cache + prune; unit tests + typecheck pass
+Policy settings signed off PASS; suggestion-author v2 deployed (richer aliases/preferredWhen + reserved-term strip)
 
-## Queued Next Goal
-owner-studio-design-asset-purge — decisions locked in draft plan
+## Prior Phase
+suggested-new-tags-policy-settings — DONE approved 2026-07-14
+
+## Tests Run
+- catalogSuggestedTagAuthorProvider + pipeline unit tests exit 0
+- functions build exit 0
+- firebase deploy enqueueAiEnrichment exit 0
 
 ## Decision Log
-- 2026-07-14 — Owner: start image load caching; must not freeze stale library across visits.
-- 2026-07-14 — Owner purge queued separately.
-- 2026-07-14 — Caching plan reviewed approved; implement allowed.
-- 2026-07-14 — Owner purge decisions: keep thumbnail only; allow purge from live; warn on active queue then allow confirm.
-- 2026-07-14 — Caching implementation complete; awaiting manual smoke.
+- 2026-07-14 — Owner PASS on suggested-new-tags-policy-settings; start author quality phase.
+- 2026-07-14 — Author v2: 6–12 aliases, richer preferredWhen, strip reserved catalog aliases.

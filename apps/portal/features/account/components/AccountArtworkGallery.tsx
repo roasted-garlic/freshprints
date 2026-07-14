@@ -2,10 +2,15 @@
 
 import { useEffect, useState } from 'react';
 
+import { CatalogDesignDetailsModal } from '../../catalog/components/CatalogDesignDetailsModal';
 import { CatalogPreviewLightbox } from '../../catalog/components/CatalogPreviewLightbox';
+import type { CatalogDesign } from '../../catalog/types/catalog.types';
 import { customerUploadService } from '../../customer-uploads/services/customerUploadService';
+import { useAddDesignToRequestFlow } from '../../print-requests/hooks/useAddDesignToRequestFlow';
+import { usePortalPrintRequests } from '../../print-requests/context/PortalPrintRequestContext';
+import { PortalConfirmModal } from '../../shared/components/PortalConfirmModal';
+import { PortalPickContinuableRequestModal } from '../../shared/components/PortalPickContinuableRequestModal';
 import {
-  ACCOUNT_ARTWORK_PREVIEW_LIMIT,
   useAccountArtworkGallery,
   type AccountArtworkGalleryTile,
 } from '../hooks/useAccountArtworkGallery';
@@ -23,10 +28,36 @@ export function AccountArtworkGallery({
   embedded = false,
   onArtworkCountsChange,
 }: AccountArtworkGalleryProps) {
-  const { donatedCount, errorMessage, isLoading, items, previewItems, uploadCount } =
-    useAccountArtworkGallery(customerUid);
+  const {
+    donatedCount,
+    errorMessage,
+    isLoading,
+    items,
+    previewItems,
+    reusableDesigns,
+    reusableErrorMessage,
+    isReusableLoading,
+    uploadCount,
+  } = useAccountArtworkGallery(customerUid);
+
+  const {
+    continuableRequests,
+    createPrintRequest,
+    refreshRequests,
+    reloadWorkingItems,
+  } = usePortalPrintRequests();
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [lightbox, setLightbox] = useState<{ alt: string; url: string } | null>(null);
+  const [selectedDesign, setSelectedDesign] = useState<CatalogDesign | null>(null);
+
+  const addDesignFlow = useAddDesignToRequestFlow({
+    continuableRequests,
+    createPrintRequest,
+    onBeforeNavigate: () => setSelectedDesign(null),
+    refreshRequests,
+    reloadWorkingItems,
+  });
 
   useEffect(() => {
     if (isLoading) {
@@ -34,8 +65,6 @@ export function AccountArtworkGallery({
     }
     onArtworkCountsChange?.({ donatedCount, uploadCount });
   }, [donatedCount, isLoading, onArtworkCountsChange, uploadCount]);
-
-  const hasMore = items.length > ACCOUNT_ARTWORK_PREVIEW_LIMIT;
 
   async function openLightbox(item: AccountArtworkGalleryTile) {
     const url =
@@ -59,15 +88,13 @@ export function AccountArtworkGallery({
             Recent uploads and donations.
           </p>
         </div>
-        {hasMore ? (
-          <button
-            className="portal-button portal-button-secondary"
-            onClick={() => setIsModalOpen(true)}
-            type="button"
-          >
-            View more
-          </button>
-        ) : null}
+        <button
+          className="portal-button portal-button-secondary"
+          onClick={() => setIsModalOpen(true)}
+          type="button"
+        >
+          View more
+        </button>
       </div>
 
       {isLoading ? (
@@ -90,7 +117,12 @@ export function AccountArtworkGallery({
             >
               {item.imageUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element -- signed Storage URLs
-                <img alt="" className="portal-account-gallery-tile-image" decoding="async" src={item.imageUrl} />
+                <img
+                  alt=""
+                  className="portal-account-gallery-tile-image"
+                  decoding="async"
+                  src={item.imageUrl}
+                />
               ) : null}
               <span className={`portal-account-gallery-tile-badge is-${item.kind}`}>
                 {item.kind === 'donation' ? 'Donated' : 'Upload'}
@@ -102,11 +134,18 @@ export function AccountArtworkGallery({
 
       <AccountArtworkGalleryModal
         isOpen={isModalOpen}
+        isReusableLoading={isReusableLoading}
         items={items}
         onClose={() => setIsModalOpen(false)}
-        onSelect={(item) => {
+        onSelectPast={(item) => {
           void openLightbox(item);
         }}
+        onSelectReusable={(design) => {
+          setIsModalOpen(false);
+          setSelectedDesign(design);
+        }}
+        reusableDesigns={reusableDesigns}
+        reusableErrorMessage={reusableErrorMessage}
       />
 
       <CatalogPreviewLightbox
@@ -114,6 +153,34 @@ export function AccountArtworkGallery({
         isOpen={lightbox !== null}
         onClose={() => setLightbox(null)}
         previewUrl={lightbox?.url ?? null}
+      />
+
+      <CatalogDesignDetailsModal
+        design={selectedDesign}
+        isAdding={selectedDesign !== null && addDesignFlow.addingDesignId === selectedDesign.id}
+        isOpen={selectedDesign !== null}
+        onAddToRequest={addDesignFlow.addDesign}
+        onClose={() => setSelectedDesign(null)}
+      />
+
+      <PortalConfirmModal
+        confirmLabel={addDesignFlow.isAdding ? 'Adding…' : 'Add to request'}
+        isConfirmLoading={addDesignFlow.isAdding}
+        isOpen={addDesignFlow.isConfirmOpen}
+        onCancel={addDesignFlow.closeConfirm}
+        onConfirm={addDesignFlow.confirmAddDesign}
+        title="Add to request?"
+      >
+        <p className="portal-muted portal-confirm-modal-message">{addDesignFlow.confirmMessage}</p>
+      </PortalConfirmModal>
+
+      <PortalPickContinuableRequestModal
+        continuableRequests={continuableRequests}
+        designTitle={addDesignFlow.pendingDesign?.title}
+        isAdding={addDesignFlow.isAdding}
+        isOpen={addDesignFlow.isPickerOpen}
+        onClose={addDesignFlow.closePicker}
+        onSelectRequest={addDesignFlow.confirmPickRequest}
       />
     </>
   );

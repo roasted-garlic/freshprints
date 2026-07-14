@@ -152,6 +152,8 @@ Responsible for:
 
 **Catalog image URL cache (2026-07-14):** Portal caches Storage download URLs in memory keyed by `path@updatedAtMs`. Failed lookups are not sticky. After catalog load, entries for paths no longer in the ready set are pruned. Membership always comes from live Firestore — never a persisted design list or image blob cache across visits.
 
+**Discover rails:** New This Week (`createdAt`), Popular (`requestCount` / print-request adds), **Most Liked** (`favoriteCount` / customer favorites), Recently Requested (`lastRequestedAt`).
+
 Must work excellently on phones, tablets, and desktop browsers.
 
 Fresh Prints Portal never requires Electron and never accesses local files.

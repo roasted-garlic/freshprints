@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { ArrowLeft, FolderCog, Save, Tags, X } from "lucide-react";
+import { ArrowLeft, FolderCog, Save, Tags, Trash2, X } from "lucide-react";
+import { Timestamp } from "firebase/firestore";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { Button } from "../../../shared/components/Button";
@@ -8,6 +9,8 @@ import { Card } from "../../../shared/components/Card";
 import { DismissibleSuccessAlert } from "../../../shared/components/DismissibleSuccessAlert";
 import { ErrorState } from "../../../shared/components/ErrorState";
 import { useShellHeaderConfig } from "../../../shared/hooks/useShellHeaderConfig";
+import { useAuth } from "../../auth/hooks/useAuth";
+import { permissionService } from "../../permissions/services/permissionService";
 import { ArchiveDesignConfirmDialog } from "../components/ArchiveDesignConfirmDialog";
 import { CategoryManagementModal } from "../components/CategoryManagementModal";
 import { DesignDetailsModal } from "../components/DesignDetailsModal";
@@ -15,6 +18,7 @@ import { DesignGrid } from "../components/DesignGrid";
 import { DesignLibraryFilterControls } from "../components/DesignLibraryFilterControls";
 import { DesignLibraryTagFilterModal } from "../components/DesignLibraryTagFilterModal";
 import { EditDesignModal } from "../components/EditDesignModal";
+import { PurgeArchivedDesignAssetsDialog } from "../components/PurgeArchivedDesignAssetsDialog";
 import { TagManagementModal } from "../components/TagManagementModal";
 import {
   buildCatalogDesignListQuery,
@@ -28,7 +32,9 @@ import { useArchiveDesign } from "../hooks/useArchiveDesign";
 import { useCategories } from "../hooks/useCategories";
 import { useCatalogTags } from "../hooks/useCatalogTags";
 import { useDesigns } from "../hooks/useDesigns";
+import { usePurgeArchivedDesignAssets } from "../hooks/usePurgeArchivedDesignAssets";
 import { useRestoreDesign } from "../hooks/useRestoreDesign";
+import { findDesignIdsOnActiveShowQueue } from "../services/purgeArchivedDesignAssetsService";
 import type { Design } from "../types/design.types";
 import {
   buildCategoryFilterOptions,
@@ -52,6 +58,8 @@ function formatSelectionActionError(error: unknown): string {
 export function DesignLibraryPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { user } = useAuth();
+  const canPurgeArchivedDesignAssets = permissionService.canPurgeArchivedDesignAssets(user);
 
   const filters = useMemo(() => parseDesignLibraryUrlFilters(searchParams), [searchParams]);
   const selectionModeActive = filters.mode === "request-selection";
@@ -74,10 +82,15 @@ export function DesignLibraryPage() {
   const [selectedDesign, setSelectedDesign] = useState<Design | null>(null);
   const [editingDesign, setEditingDesign] = useState<Design | null>(null);
   const [designToArchive, setDesignToArchive] = useState<Design | null>(null);
+  const [designsToPurge, setDesignsToPurge] = useState<Design[]>([]);
+  const [activeQueueDesignIds, setActiveQueueDesignIds] = useState<string[]>([]);
+  const [selectedPurgeIds, setSelectedPurgeIds] = useState<string[]>([]);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [isTagManagementModalOpen, setIsTagManagementModalOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  /** Skip one URL write-back after applying searchParams → local state (prevents archive toggle loop). */
+  const urlSyncGenerationRef = useRef(0);
 
   useEffect(() => {
     const legacyRedirectPath = getLegacyDesignLibraryRedirectPath(searchParams);
@@ -92,10 +105,19 @@ export function DesignLibraryPage() {
     setSearchQuery(nextFilters.search ?? "");
     setCategoryFilter(nextFilters.categoryId ?? ALL_FILTER_VALUE);
     setSelectedTags(nextFilters.tags ?? []);
+    // Sync from URL first; the write-back effect skips one pass via urlSyncGenerationRef
+    // so it cannot immediately push the previous local archived value back into the URL
+    // (that race caused Archived toggle flicker when navigating to bare /designs).
+    urlSyncGenerationRef.current += 1;
     setIncludeArchived(nextFilters.archived ?? false);
   }, [navigate, searchParams]);
 
   useEffect(() => {
+    if (urlSyncGenerationRef.current > 0) {
+      urlSyncGenerationRef.current -= 1;
+      return;
+    }
+
     const nextParams = buildDesignLibrarySearchParams({
       archived: selectionModeActive ? false : includeArchived,
       categoryId: categoryFilter === ALL_FILTER_VALUE ? undefined : categoryFilter,
@@ -127,12 +149,21 @@ export function DesignLibraryPage() {
     setSelectedDesign(null);
     setEditingDesign(null);
     setDesignToArchive(null);
+    setDesignsToPurge([]);
+    setSelectedPurgeIds([]);
     setIsCategoryModalOpen(false);
     setIsTagManagementModalOpen(false);
     setIsTagFilterModalOpen(false);
     setSuccessMessage(null);
     setActionError(null);
   }, [selectionModeActive]);
+
+  useEffect(() => {
+    if (!includeArchived || selectionModeActive) {
+      setSelectedPurgeIds([]);
+      setDesignsToPurge([]);
+    }
+  }, [includeArchived, selectionModeActive]);
 
   // The query intentionally omits `tags`: tag filtering is fully client-side (AND + live
   // faceting), so we load the whole category/archived scope once and facet in memory.
@@ -164,6 +195,7 @@ export function DesignLibraryPage() {
     isLoadingMore,
     loadMoreDesigns,
     reloadDesigns,
+    applyDesignPatch,
   } = useDesigns(listQuery, { loadAll: true });
 
   const {
@@ -173,15 +205,31 @@ export function DesignLibraryPage() {
     isSubmitting: isArchiving,
   } = useArchiveDesign();
   const { restoreDesign } = useRestoreDesign();
+  const {
+    clearError: clearPurgeError,
+    error: purgeError,
+    isSubmitting: isPurging,
+    purgeDesigns,
+  } = usePurgeArchivedDesignAssets();
 
   const categoryNameById = useMemo(
     () => new Map(categories.map((category) => [category.id, category.name])),
     [categories],
   );
 
+  const visibleDesigns = useMemo(() => {
+    if (!includeArchived || selectionModeActive) {
+      return designs;
+    }
+
+    // Image-purged designs stay in Firestore for print-request / show-queue history,
+    // but are not browsable in the Archived library.
+    return designs.filter((design) => !design.assetsPurgedAt);
+  }, [designs, includeArchived, selectionModeActive]);
+
   const searchMatchedDesigns = useMemo(
-    () => filterDesignsBySearch(designs, searchQuery),
-    [designs, searchQuery],
+    () => filterDesignsBySearch(visibleDesigns, searchQuery),
+    [searchQuery, visibleDesigns],
   );
   const categoryFilteredDesigns = useMemo(
     () =>
@@ -321,6 +369,95 @@ export function DesignLibraryPage() {
       // Error handled in hook.
     }
   }, [archiveDesign, designToArchive, refreshCatalog, showSuccessMessage]);
+
+  const togglePurgeSelection = useCallback((design: Design) => {
+    setSelectedPurgeIds((current) =>
+      current.includes(design.id)
+        ? current.filter((id) => id !== design.id)
+        : [...current, design.id],
+    );
+  }, []);
+
+  const openPurgeDesigns = useCallback(
+    async (candidates: Design[]) => {
+      const purgeable = candidates.filter(
+        (design) => design.status === "archived" && !design.assetsPurgedAt,
+      );
+
+      if (purgeable.length === 0) {
+        return;
+      }
+
+      clearPurgeError();
+      setSuccessMessage(null);
+      setActionError(null);
+      setSelectedDesign(null);
+
+      try {
+        const activeIds = await findDesignIdsOnActiveShowQueue(purgeable.map((design) => design.id));
+        setActiveQueueDesignIds(activeIds);
+        setDesignsToPurge(purgeable);
+      } catch (error) {
+        setActionError(
+          error instanceof Error
+            ? error.message
+            : "Unable to check show-queue usage for the selected designs.",
+        );
+      }
+    },
+    [clearPurgeError],
+  );
+
+  const handlePurgeConfirm = useCallback(
+    async (input: { confirmActiveQueue: boolean; confirmationPhrase?: string }) => {
+      if (designsToPurge.length === 0) {
+        return;
+      }
+
+      try {
+        const result = await purgeDesigns({
+          designIds: designsToPurge.map((design) => design.id),
+          confirmActiveQueue: input.confirmActiveQueue,
+          confirmationPhrase: input.confirmationPhrase,
+        });
+
+        const purgedAt = Timestamp.now();
+        for (const entry of result.results) {
+          if (entry.status === "purged" || entry.status === "skipped_already_purged") {
+            applyDesignPatch(entry.designId, { assetsPurgedAt: purgedAt });
+          }
+        }
+
+        setDesignsToPurge([]);
+        setActiveQueueDesignIds([]);
+        setSelectedPurgeIds((current) =>
+          current.filter((id) => !designsToPurge.some((design) => design.id === id)),
+        );
+        await refreshCatalog();
+
+        if (result.failedCount > 0 && result.purgedCount === 0) {
+          setActionError(
+            result.results.find((entry) => entry.error)?.error ??
+              "Unable to delete images for the selected designs.",
+          );
+          return;
+        }
+
+        const parts = [
+          result.purgedCount > 0
+            ? `Deleted images for ${result.purgedCount} design${result.purgedCount === 1 ? "" : "s"}.`
+            : null,
+          result.skippedCount > 0 ? `${result.skippedCount} already deleted.` : null,
+          result.failedCount > 0 ? `${result.failedCount} failed.` : null,
+        ].filter(Boolean);
+
+        showSuccessMessage(parts.join(" ") || "Delete complete.");
+      } catch {
+        // Error handled in hook.
+      }
+    },
+    [applyDesignPatch, designsToPurge, purgeDesigns, refreshCatalog, showSuccessMessage],
+  );
 
   const selectionRequestSelection = useMemo(() => {
     if (!selectionModeActive || !selectionRequestId || selectionMode.error || !selectionMode.printRequest) {
@@ -509,6 +646,25 @@ export function DesignLibraryPage() {
             <div className="design-library-summary-row">
               <span className="design-library-count-chip">{designCountLabel}</span>
               <div className="design-library-summary-actions">
+                {includeArchived &&
+                !selectionModeActive &&
+                canPurgeArchivedDesignAssets &&
+                selectedPurgeIds.length > 0 ? (
+                  <Button
+                    className="button-leading-icon"
+                    onClick={() => {
+                      const selected = filteredDesigns.filter((design) =>
+                        selectedPurgeIds.includes(design.id),
+                      );
+                      void openPurgeDesigns(selected);
+                    }}
+                    size="sm"
+                    variant="danger"
+                  >
+                    <Trash2 aria-hidden="true" size={14} strokeWidth={2} />
+                    Delete images ({selectedPurgeIds.length})
+                  </Button>
+                ) : null}
                 {hasActiveFilters ? (
                   <Button onClick={clearFilters} size="sm" variant="ghost">
                     Clear filters
@@ -555,6 +711,14 @@ export function DesignLibraryPage() {
             hasActiveFilters={hasActiveFilters}
             isLoading={isLoading}
             onSelectDesign={openDesignDetails}
+            purgeSelection={
+              includeArchived && !selectionModeActive && canPurgeArchivedDesignAssets
+                ? {
+                    isSelected: (designId) => selectedPurgeIds.includes(designId),
+                    onToggle: togglePurgeSelection,
+                  }
+                : undefined
+            }
             requestSelection={selectionRequestSelection}
           />
 
@@ -584,6 +748,9 @@ export function DesignLibraryPage() {
         onArchive={openArchiveDesign}
         onClose={closeDesignDetails}
         onEdit={openEditDesign}
+        onPurgeAssets={(design) => {
+          void openPurgeDesigns([design]);
+        }}
         onRestore={handleRestoreDesign}
       />
 
@@ -619,6 +786,20 @@ export function DesignLibraryPage() {
           setDesignToArchive(null);
         }}
         onConfirm={handleArchiveConfirm}
+      />
+
+      <PurgeArchivedDesignAssetsDialog
+        activeQueueDesignIds={activeQueueDesignIds}
+        designs={designsToPurge}
+        error={purgeError}
+        isOpen={designsToPurge.length > 0}
+        isSubmitting={isPurging}
+        onCancel={() => {
+          clearPurgeError();
+          setDesignsToPurge([]);
+          setActiveQueueDesignIds([]);
+        }}
+        onConfirm={handlePurgeConfirm}
       />
     </main>
   );

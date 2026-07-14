@@ -171,6 +171,12 @@ export function useGangSheetBuilder(upcomingShowId: string | null) {
       );
 
       try {
+        if (!isUpload && asset.design?.assetsPurgedAt) {
+          throw new Error(
+            "This design’s original image was deleted. It cannot be placed on a gang sheet.",
+          );
+        }
+
         const created = await gangSheetService.addGangSheetItem(user, state.gangSheet.id, upcomingShowId, {
           showAllocationId: asset.allocation.id,
           printRequestId: asset.allocation.printRequestId,

@@ -44,7 +44,10 @@ export interface CatalogTagRerankInput {
    * suggestionAuthorMode is enabled — merges suggestion-authoring into this same call instead of
    * making a second request. See plan §2.4/§4.2.
    */
-  suggestionAuthorInput?: Pick<SuggestedTagAuthorInput, "candidateNames" | "exampleApprovedTags">;
+  suggestionAuthorInput?: Pick<
+    SuggestedTagAuthorInput,
+    "candidateNames" | "exampleApprovedTags" | "reservedCatalogTerms"
+  >;
   /**
    * Owner-editable instructional "Rules" text for the reranker. Falls back to
    * DEFAULT_TAG_RERANK_PROMPT_TEMPLATE when absent — see that constant's doc comment for why only
@@ -319,7 +322,11 @@ export async function callTagRerank(
   // validateAuthoredSuggestions safely returns [] for missing/malformed input, and this call
   // still succeeds with tags/uncoveredConcepts populated (see plan §4.3 independent-failure note).
   const authoredSuggestions = input.suggestionAuthorInput
-    ? validateAuthoredSuggestions(raw.suggestions, input.suggestionAuthorInput.candidateNames)
+    ? validateAuthoredSuggestions(
+        raw.suggestions,
+        input.suggestionAuthorInput.candidateNames,
+        input.suggestionAuthorInput.reservedCatalogTerms ?? [],
+      )
     : undefined;
 
   return {

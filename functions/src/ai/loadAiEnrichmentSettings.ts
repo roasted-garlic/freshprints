@@ -1,5 +1,6 @@
 import {
   DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
+  DEFAULT_SUGGESTED_NEW_TAGS_POLICY,
   DEFAULT_SUGGESTION_AUTHOR_MODE,
   DEFAULT_TAG_RERANK_MODE,
   DEFAULT_TAG_RERANK_PROMPT_TEMPLATE,
@@ -7,9 +8,11 @@ import {
   TAG_RERANK_MODES,
   resolveAiEnrichmentPromptTemplate,
   resolveTagRerankPromptTemplate,
+  type SuggestedNewTagsPolicy,
   type SuggestionAuthorMode,
   type TagRerankMode,
 } from "../../../packages/shared/src/constants/aiEnrichment.constants";
+import { resolveSuggestedNewTagsPolicy } from "../../../packages/shared/src/utils/suggestedNewTagsPolicy";
 import { adminDb } from "../lib/admin";
 import { mergeTagExclusions, resolveAdditionalTagExclusions } from "./aiTagExclusions";
 import {
@@ -28,6 +31,7 @@ export interface AiEnrichmentSettingsLoaded {
   effectiveTagExclusions: string[];
   tagRerankMode: TagRerankMode;
   suggestionAuthorMode: SuggestionAuthorMode;
+  suggestedNewTagsPolicy: SuggestedNewTagsPolicy;
 }
 
 const TAG_RERANK_MODE_SET = new Set<string>(TAG_RERANK_MODES);
@@ -41,6 +45,10 @@ export function resolveSuggestionAuthorMode(raw: unknown): SuggestionAuthorMode 
   return typeof raw === "string" && SUGGESTION_AUTHOR_MODE_SET.has(raw)
     ? (raw as SuggestionAuthorMode)
     : DEFAULT_SUGGESTION_AUTHOR_MODE;
+}
+
+export function resolveSuggestedNewTagsPolicySetting(raw: unknown): SuggestedNewTagsPolicy {
+  return resolveSuggestedNewTagsPolicy(raw);
 }
 
 export function resolveAiPromptTemplate(raw: unknown): string {
@@ -67,6 +75,7 @@ export async function loadAiEnrichmentSettings(): Promise<AiEnrichmentSettingsLo
         effectiveTagExclusions: mergeTagExclusions(),
         tagRerankMode: DEFAULT_TAG_RERANK_MODE,
         suggestionAuthorMode: DEFAULT_SUGGESTION_AUTHOR_MODE,
+        suggestedNewTagsPolicy: DEFAULT_SUGGESTED_NEW_TAGS_POLICY,
       };
     }
 
@@ -79,6 +88,7 @@ export async function loadAiEnrichmentSettings(): Promise<AiEnrichmentSettingsLo
     const tagRerankPromptTemplate = resolveAiTagRerankPromptTemplate(data?.tagRerankPromptTemplate);
     const tagRerankMode = resolveTagRerankMode(data?.tagRerankMode);
     const suggestionAuthorMode = resolveSuggestionAuthorMode(data?.suggestionAuthorMode);
+    const suggestedNewTagsPolicy = resolveSuggestedNewTagsPolicySetting(data?.suggestedNewTagsPolicy);
 
     return {
       visionModelId,
@@ -88,6 +98,7 @@ export async function loadAiEnrichmentSettings(): Promise<AiEnrichmentSettingsLo
       effectiveTagExclusions: mergeTagExclusions(additionalTagExclusions),
       tagRerankMode,
       suggestionAuthorMode,
+      suggestedNewTagsPolicy,
     };
   } catch {
     return {
@@ -98,6 +109,7 @@ export async function loadAiEnrichmentSettings(): Promise<AiEnrichmentSettingsLo
       effectiveTagExclusions: mergeTagExclusions(),
       tagRerankMode: DEFAULT_TAG_RERANK_MODE,
       suggestionAuthorMode: DEFAULT_SUGGESTION_AUTHOR_MODE,
+      suggestedNewTagsPolicy: DEFAULT_SUGGESTED_NEW_TAGS_POLICY,
     };
   }
 }

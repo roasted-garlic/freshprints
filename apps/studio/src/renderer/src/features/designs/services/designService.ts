@@ -168,6 +168,8 @@ interface DesignDocumentData {
   previousStatus?: unknown;
   archivedAt?: unknown;
   archivedBy?: unknown;
+  assetsPurgedAt?: unknown;
+  assetsPurgedBy?: unknown;
 }
 
 function mapDesignDocument(designId: string, data: DesignDocumentData): Design {
@@ -282,6 +284,8 @@ function mapDesignDocument(designId: string, data: DesignDocumentData): Design {
         : undefined,
     archivedAt: mapFirestoreTimestamp(data.archivedAt),
     archivedBy: typeof data.archivedBy === "string" ? data.archivedBy : undefined,
+    assetsPurgedAt: mapFirestoreTimestamp(data.assetsPurgedAt),
+    assetsPurgedBy: typeof data.assetsPurgedBy === "string" ? data.assetsPurgedBy : undefined,
   };
 }
 
@@ -1005,7 +1009,7 @@ export const designService = {
   },
 
   async restoreDesign(caller: User, designId: string): Promise<Design> {
-    if (!permissionService.canEditDesigns(caller)) {
+    if (!permissionService.canRestoreDesigns(caller)) {
       throw new Error("You do not have permission to restore designs.");
     }
 
@@ -1013,6 +1017,12 @@ export const designService = {
 
     if (design.status !== "archived") {
       throw new Error("Only archived designs can be restored.");
+    }
+
+    if (design.assetsPurgedAt) {
+      throw new Error(
+        "This design’s large images were deleted. It cannot be restored to the catalog.",
+      );
     }
 
     const restoreStatus = resolveRestoreStatus({

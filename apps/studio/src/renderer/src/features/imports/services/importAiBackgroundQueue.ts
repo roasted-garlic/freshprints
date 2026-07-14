@@ -1,10 +1,9 @@
 import { aiEnrichmentEnqueueService } from "../../ai-review/services/aiEnrichmentEnqueueService";
-import { readAiProcessingAutoAdvancePreference } from "../../ai-review/utils/aiProcessingQueuePreferences";
 import { logPipelineEvent } from "../../../shared/utils/pipelineLog";
 
 /**
  * Session-scoped sequential AI enqueue after Studio import.
- * Runs in the background so staff can stay on Imports and keep importing.
+ * Always runs after successful import (not gated on Processing-tab Auto advance).
  * Dedupes design ids and never fires concurrent enqueueAiEnrichment calls.
  */
 const pendingDesignIds: string[] = [];
@@ -12,10 +11,6 @@ const seenDesignIds = new Set<string>();
 let isPumpRunning = false;
 
 export function enqueueImportedDesignsForBackgroundAi(designIds: readonly string[]): void {
-  if (!readAiProcessingAutoAdvancePreference()) {
-    return;
-  }
-
   let added = 0;
   for (const rawId of designIds) {
     const designId = rawId.trim();
@@ -47,13 +42,6 @@ async function pumpBackgroundAiQueue(): Promise<void> {
   isPumpRunning = true;
   try {
     while (pendingDesignIds.length > 0) {
-      if (!readAiProcessingAutoAdvancePreference()) {
-        logPipelineEvent("import.ai_background.stopped_preference_off", {
-          remaining: pendingDesignIds.length,
-        });
-        break;
-      }
-
       const designId = pendingDesignIds.shift();
       if (!designId) {
         continue;
@@ -71,7 +59,7 @@ async function pumpBackgroundAiQueue(): Promise<void> {
     }
   } finally {
     isPumpRunning = false;
-    if (pendingDesignIds.length > 0 && readAiProcessingAutoAdvancePreference()) {
+    if (pendingDesignIds.length > 0) {
       void pumpBackgroundAiQueue();
     }
   }

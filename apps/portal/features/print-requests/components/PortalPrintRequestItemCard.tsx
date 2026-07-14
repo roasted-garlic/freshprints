@@ -12,6 +12,7 @@ import {
 import { CatalogPreviewLightbox } from '../../catalog/components/CatalogPreviewLightbox';
 import { CatalogThumbnailPanel } from '../../catalog/components/CatalogThumbnailPanel';
 import { useCatalogDerivativeUrl } from '../../catalog/hooks/useCatalogDerivativeUrl';
+import type { CatalogDesign } from '../../catalog/types/catalog.types';
 import { CopyIcon, TrashIcon } from '../../shared/components/PortalIcons';
 
 interface PortalPrintRequestItemDesign {
@@ -44,6 +45,13 @@ interface PortalPrintRequestItemCardProps {
   upload?: PortalPrintRequestItemUpload | null;
   item: PrintRequestItem;
   readOnly?: boolean;
+  /**
+   * Read-only catalog reuse: ready `CatalogDesign` when still in catalog;
+   * `null` when designId exists but design is gone; omit for non-catalog lines.
+   */
+  catalogReuseDesign?: CatalogDesign | null;
+  isAddingToRequest?: boolean;
+  onAddToRequest?: (design: CatalogDesign) => void;
   onDuplicate: (item: PrintRequestItem) => void;
   onRemove: (item: PrintRequestItem) => void;
   onUpdate: (
@@ -142,6 +150,9 @@ export function PortalPrintRequestItemCard({
   upload,
   item,
   readOnly = false,
+  catalogReuseDesign,
+  isAddingToRequest = false,
+  onAddToRequest,
   onDuplicate,
   onRemove,
   onUpdate,
@@ -149,6 +160,9 @@ export function PortalPrintRequestItemCard({
 }: PortalPrintRequestItemCardProps) {
   const isUploadItem =
     item.sourceType === 'customer_upload' || Boolean(item.customerUploadId);
+  const catalogDesignId = item.designId?.trim() ?? '';
+  const showCatalogReuse =
+    readOnly && catalogDesignId.length > 0 && catalogReuseDesign !== undefined;
   const title =
     design?.title ??
     upload?.title ??
@@ -420,6 +434,25 @@ export function PortalPrintRequestItemCard({
             ) : null}
           </div>
         </div>
+
+        {showCatalogReuse ? (
+          <div className="portal-request-item-editor-actions portal-request-item-reuse-actions">
+            {catalogReuseDesign ? (
+              <button
+                className="portal-button portal-button-primary portal-button-sm"
+                disabled={isAddingToRequest}
+                onClick={() => onAddToRequest?.(catalogReuseDesign)}
+                type="button"
+              >
+                {isAddingToRequest ? 'Adding…' : 'Add to request'}
+              </button>
+            ) : (
+              <p className="portal-muted portal-request-item-unavailable" role="status">
+                No longer in catalog
+              </p>
+            )}
+          </div>
+        ) : null}
 
         {!readOnly ? (
           <>

@@ -98,6 +98,9 @@ export interface Design {
   previousStatus?: DesignStatus;
   archivedAt?: Timestamp;
   archivedBy?: string;
+  /** Set by owner purge callable when originals/previews are deleted (thumbnail kept). */
+  assetsPurgedAt?: Timestamp;
+  assetsPurgedBy?: string;
 }
 
 export interface CreateDesignInput {

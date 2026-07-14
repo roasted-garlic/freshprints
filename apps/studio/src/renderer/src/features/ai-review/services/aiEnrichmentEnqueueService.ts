@@ -124,7 +124,7 @@ export const aiEnrichmentEnqueueService = {
     return enqueueAiEnrichment(designId, options);
   },
 
-  /** Enqueue after import when Auto advance is on (background sequential queue). */
+  /** Enqueue after import (background sequential queue; always on after successful import). */
   async enqueueAfterImport(designId: string): Promise<EnqueueAiEnrichmentResult> {
     return enqueueAiEnrichment(designId);
   },

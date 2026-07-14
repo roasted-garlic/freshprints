@@ -12,6 +12,8 @@ interface DesignsState {
   hasMore: boolean;
   isLoading: boolean;
   isLoadingMore: boolean;
+  /** Query key last successfully loaded; compared to current key to avoid stale flashes. */
+  loadedQueryKey: string | null;
   nextCursor?: DesignListCursor;
 }
 
@@ -35,6 +37,7 @@ const initialState: DesignsState = {
   hasMore: false,
   isLoading: true,
   isLoadingMore: false,
+  loadedQueryKey: null,
   nextCursor: undefined,
 };
 
@@ -56,14 +59,18 @@ export function useDesigns(listQuery: DesignListQuery, options?: UseDesignsOptio
   const [state, setState] = useState<DesignsState>(initialState);
   const nextCursorRef = useRef<DesignListCursor | undefined>(undefined);
   const listQueryKey = useMemo(() => serializeDesignListQuery(listQuery), [listQuery]);
+  const listQueryKeyRef = useRef(listQueryKey);
+  listQueryKeyRef.current = listQueryKey;
   const loadAll = options?.loadAll ?? false;
   const maxLoadAll = options?.maxLoadAll ?? DEFAULT_MAX_LOAD_ALL;
 
   const loadDesigns = useCallback(
     async (loadOptions?: { append?: boolean }) => {
+      const requestQueryKey = listQueryKeyRef.current;
+
       if (!user || !permissionService.canViewDesigns(user)) {
         nextCursorRef.current = undefined;
-        setState({ ...initialState, isLoading: false });
+        setState({ ...initialState, isLoading: false, loadedQueryKey: requestQueryKey });
         return;
       }
 
@@ -71,14 +78,15 @@ export function useDesigns(listQuery: DesignListQuery, options?: UseDesignsOptio
 
       setState((currentState) => ({
         ...currentState,
+        designs: append ? currentState.designs : [],
         error: null,
         isLoading: append ? currentState.isLoading : true,
         isLoadingMore: append,
+        loadedQueryKey: append ? currentState.loadedQueryKey : null,
       }));
 
       try {
         if (loadAll && !append) {
-          // Page the indexed query to completion (bounded) so the full scope is in memory.
           const collected: Design[] = [];
           let cursor: DesignListCursor | undefined = undefined;
           let hasMore = false;
@@ -92,13 +100,18 @@ export function useDesigns(listQuery: DesignListQuery, options?: UseDesignsOptio
 
           nextCursorRef.current = cursor;
 
+          // Ignore late responses if the query changed while we were paging.
+          if (listQueryKeyRef.current !== requestQueryKey) {
+            return;
+          }
+
           setState({
             designs: collected,
             error: null,
-            // If we stopped at the safety cap there may still be more on the server.
             hasMore: Boolean(cursor) && hasMore,
             isLoading: false,
             isLoadingMore: false,
+            loadedQueryKey: requestQueryKey,
             nextCursor: cursor,
           });
           return;
@@ -109,6 +122,10 @@ export function useDesigns(listQuery: DesignListQuery, options?: UseDesignsOptio
           cursor: append ? nextCursorRef.current : undefined,
         });
 
+        if (listQueryKeyRef.current !== requestQueryKey) {
+          return;
+        }
+
         nextCursorRef.current = page.nextCursor;
 
         setState((currentState) => ({
@@ -117,9 +134,14 @@ export function useDesigns(listQuery: DesignListQuery, options?: UseDesignsOptio
           hasMore: page.hasMore,
           isLoading: false,
           isLoadingMore: false,
+          loadedQueryKey: requestQueryKey,
           nextCursor: page.nextCursor,
         }));
       } catch (error) {
+        if (listQueryKeyRef.current !== requestQueryKey) {
+          return;
+        }
+
         nextCursorRef.current = undefined;
         setState({
           designs: [],
@@ -127,6 +149,7 @@ export function useDesigns(listQuery: DesignListQuery, options?: UseDesignsOptio
           hasMore: false,
           isLoading: false,
           isLoadingMore: false,
+          loadedQueryKey: requestQueryKey,
           nextCursor: undefined,
         });
       }
@@ -167,8 +190,14 @@ export function useDesigns(listQuery: DesignListQuery, options?: UseDesignsOptio
     });
   }, []);
 
+  const isAwaitingCurrentQuery = state.isLoading || state.loadedQueryKey !== listQueryKey;
+
   return {
-    ...state,
+    designs: state.designs,
+    error: state.error,
+    hasMore: state.hasMore,
+    isLoading: isAwaitingCurrentQuery,
+    isLoadingMore: state.isLoadingMore,
     applyDesignPatch,
     loadMoreDesigns,
     reloadDesigns,

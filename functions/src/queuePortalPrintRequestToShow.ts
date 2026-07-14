@@ -4,9 +4,10 @@ import { onCall } from "firebase-functions/v2/https";
 import { CUSTOMER_UPLOAD_COLLECTIONS } from "../../packages/shared/src/constants/customerUpload/customerUploadCollections.constants";
 import type { QueuePortalPrintRequestToShowResponse } from "../../packages/shared/src/types/portal/queuePortalPrintRequestToShow.types";
 import {
-  canAllocatePrintRequestToShow,
-  PAST_SHOW_READ_ONLY_MESSAGE,
-} from "../../packages/shared/src/utils/showScheduleGrouping";
+  formatShowAllocationBlockedMessage,
+  getShowAllocationBlockReason,
+} from "../../packages/shared/src/utils/showAllocationEligibility";
+import type { ShowProductionStatus } from "../../packages/shared/src/types/upcomingShow/upcomingShow.enums";
 import {
   canFitPrintRequestOnShow,
   formatShowCapacityExceededMessage,
@@ -165,11 +166,6 @@ export const queuePortalPrintRequestToShow = onCall(async (request): Promise<Que
     }
 
     const scheduledStartAt = showData.scheduledStartAt as { toDate: () => Date } | undefined;
-
-    if (!canAllocatePrintRequestToShow({ scheduledStartAt }, now)) {
-      throw failedPrecondition(PAST_SHOW_READ_ONLY_MESSAGE);
-    }
-
     const allocatedQuantity =
       typeof showData.allocatedQuantity === "number" && showData.allocatedQuantity >= 0
         ? showData.allocatedQuantity
@@ -178,6 +174,21 @@ export const queuePortalPrintRequestToShow = onCall(async (request): Promise<Que
       typeof showData.maxTotalQuantity === "number" && showData.maxTotalQuantity >= 0
         ? showData.maxTotalQuantity
         : undefined;
+    const productionStatus = showData.productionStatus as ShowProductionStatus | undefined;
+    const blockReason = getShowAllocationBlockReason(
+      {
+        scheduledStartAt,
+        productionStatus,
+        maxTotalQuantity,
+        allocatedQuantity,
+      },
+      now,
+    );
+
+    if (blockReason) {
+      throw failedPrecondition(formatShowAllocationBlockedMessage(blockReason));
+    }
+
     const totalQuantity = sumPrintRequestItemQuantities(items);
 
     if (
@@ -222,6 +233,22 @@ export const queuePortalPrintRequestToShow = onCall(async (request): Promise<Que
 
       if (!EDITABLE_STATUSES.has(String(freshRequest.status))) {
         throw failedPrecondition("This request can no longer be queued to a show.");
+      }
+
+      const freshScheduledStartAt = freshShow.scheduledStartAt as
+        | { toDate: () => Date }
+        | undefined;
+      const freshBlockReason = getShowAllocationBlockReason(
+        {
+          scheduledStartAt: freshScheduledStartAt,
+          productionStatus: freshShow.productionStatus as ShowProductionStatus | undefined,
+          maxTotalQuantity: freshMax,
+          allocatedQuantity: freshAllocated,
+        },
+        now,
+      );
+      if (freshBlockReason) {
+        throw failedPrecondition(formatShowAllocationBlockedMessage(freshBlockReason));
       }
 
       if (

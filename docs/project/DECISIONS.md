@@ -4,6 +4,156 @@
 
 ---
 
+### ADR-FP-086: Image retention — catalog, AI reject, customer uploads, Portal account
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-14 |
+| Status | accepted (policy locked; implementation phased) |
+
+**Context**
+
+Storage cost and privacy require different retention for catalog designs, AI rejects, request uploads, and donations. Owner locked decisions 2026-07-14 after product review.
+
+**Decision**
+
+#### 1. Catalog design purge (shipped / in flight — ADR-FP-084)
+
+- Archive first → owner deletes **originals + previews**.
+- **Keep thumbnail** + Firestore metadata for print-request / show-queue reference.
+- Surface clear **Images deleted** state; hide purged rows from Archived browse.
+
+#### 2. AI Review reject → Rejected tab (manual or 7-day archive)
+
+- On **Reject** in AI Review: set `status: rejected` and `aiReviewStatus: rejected`. Design stays on the **Rejected** tab.
+- Staff with archive permission can **Archive** from the Rejected tab (soft-archive → Design Library → Archived).
+- **Auto-archive after 7 days** (scheduled job — follow-up): rejected designs older than 7 days move to Archived without staff action.
+- **Owner** deletes large images from Archived via `purgeArchivedDesignAssets` (keep thumbnail) — same as other archived designs.
+- Mistake undo while still rejected: Reprocess / Approve Existing Suggestions. After archive: **Owner/Admin Restore** (helpers cannot restore).
+- No immediate archive-on-reject; the Rejected tab is the cool-off / reconsideration queue.
+
+#### 3. Customer **request** uploads — full-size only while production needs them
+
+Recommended trigger (locked):
+
+- Keep `/customer-uploads/…/production` (and source if still present) while the upload is on a **working or active** print request **or** has any **active** show allocation (`pending` | `queued` | `in_progress`).
+- After the linked show is **completed** or **canceled** (and no active allocations remain), **or** the upload was never queued and has been idle **14 days**, purge full-size production/source.
+- **Keep thumbnail** (and optionally preview) for Portal account history.
+- Customer **cannot** reuse full-size outside catalog: reupload required unless the art was promoted and approved into the catalog.
+
+#### 4. Catalog **donations** (separate from “show past”)
+
+- Keep full-size while `pending_staff_review` or `sent_to_ai_review` (until design Storage owns the catalog asset).
+- **Promote to AI Review:** after design derivatives exist, customer-upload full-size is purged via callable `purgePromotedDonationFullSize` after a **14-day** cool-off (`promotedAt`) — catalog lives under `/originals|previews|thumbnails/{designId}`.
+- **Exclude from catalog:** **immediate** full-size purge (source + production) on exclude — donations were never in the catalog or a print request. Keep thumbnail (and preview) for staff Excluded audit only. *(Amended 2026-07-14; supersedes 14-day cool-off on exclude.)*
+- Donations are **not** keyed off show completion (they may never hit a show).
+
+#### 5. Portal account artwork UX *(amended 2026-07-14)*
+
+- Account **Your designs** stays a single gallery (uploads + donations). Full gallery modal tabs: **All / Uploaded / Donated / Reusable**.
+- **Reusable** = uploads/donations that were promoted and are still `ready` in the catalog (`promotedDesignId`).
+- **My Favorites** lives under Quick links (with count) — not inside the gallery.
+- Reuse of catalog picks from a **past print request**: open that request → **Add to request** when still in catalog; otherwise **No longer in catalog** in place of the button.
+- Customer-upload full-size is not re-addable from account history; reupload or use catalog when promoted.
+
+**Consequences**
+
+- Catalog purge thumbnail policy is shipped (ADR-FP-084).
+- AI reject stays on Rejected; manual Archive from that tab is implemented.
+- **7-day auto-archive** and **request-upload full-size purge** ship as owner/admin callables (`archiveStaleRejectedDesigns`, `purgeIdleCustomerUploadFullSize`) — Cloud Scheduler wiring optional follow-up.
+- Donation exclude + promote cool-off purge shipped; Portal account gallery + Reusable tab / past-request reuse UX revised 2026-07-14.
+
+**Follow-up phases (recommended order)**
+
+1. ~~Catalog purge (keep thumbnail)~~ — done (ADR-FP-084).
+2. ~~AI Rejected-tab manual Archive~~ — done.
+3. ~~7-day auto-archive for `status: rejected`~~ — callable shipped.
+4. ~~Callable purge for customer-upload full-size after show/idle~~ — shipped (print_request only).
+5. ~~Donation exclude immediate purge + promote cool-off purge~~ — shipped.
+6. ~~Portal account reusable vs past-uploads UI~~ — shipped.
+7. Optional: Cloud Scheduler for retention callables.
+
+---
+
+### ADR-FP-085: Helper cannot Import Shows, open Dev Tools, or restore designs
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-14 |
+| Status | accepted |
+
+**Context**
+
+Helpers are remote staff who import designs, tag, and build print plans. Owner asked to tighten three Studio capabilities that helpers previously shared with owner/admin via coarse staff permissions.
+
+**Decision**
+
+1. Helpers keep `canArchiveDesigns` and Show Queue manage (`canManageUpcomingShows`: Add show, Settings, edits).
+2. Staff-assisted Whatnot **Import Shows** requires `canImportWhatnotShows` (owner/admin). UI hides the button; hook + `fromAssistedImport` upserts + assisted-import settings writes fail closed.
+3. Dev Tools sidebar (dev Electron) requires `canOpenDevTools` (**owner only**). Admin and helper do not see the link.
+4. Design restore requires `canRestoreDesigns` (owner/admin); archive remains all staff.
+5. Enforcement is UI + `permissionService` / feature services. Firestore design/show updates remain staff-wide until a future role-scoped rules or Functions phase (same pattern as category/tag helper restrictions).
+
+**Consequences**
+
+- Helpers cannot reverse their own archives without owner/admin.
+- Helpers can still create shows manually, including Whatnot URLs, but cannot run the assisted import window.
+
+---
+
+### ADR-FP-084: Owner archive-first design asset purge
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-14 |
+| Status | accepted |
+
+**Context**
+
+Owners need to remove large Storage assets for catalog designs without breaking print-request history. Soft archive already hides designs from Portal. A prior draft considered purge from live/ready designs.
+
+**Decision**
+
+1. Designs must be soft-archived (`status: "archived"`) before images can be deleted.
+2. Owner-only callable `purgeArchivedDesignAssets` deletes `/originals/` + `/previews/`; **keeps `/thumbnails/`** and the Firestore design doc (title, description, tags, etc.).
+3. Sets `assetsPurgedAt` / `assetsPurgedBy` via Admin SDK only (clients cannot write these fields).
+4. Studio Archived library **hides** purged designs from browse (they remain in Firestore for print-request / show-queue history with thumbnail + “images deleted” affordance). Single and bulk Delete remain (bulk requires typed `DELETE IMAGES`; max 25 ids).
+5. Active show-queue usage warns; owner may confirm and continue.
+6. Restore is blocked after purge. Full Firestore hard-delete / tombstones remain deferred.
+7. Supersedes any “purge from live” draft. **2026-07-14 amendment:** keep thumbnail (supersedes interim “delete all image files” experiment). Broader retention for AI reject / customer uploads is ADR-FP-086.
+
+**Consequences**
+
+- Irreversible Storage deletes of originals/previews; history keeps thumbnail + metadata; Archived browse hides purged rows.
+- Rules + Function deploy required on each environment.
+
+---
+
+### ADR-FP-083: Design favoriteCount for Most Liked discovery
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-14 |
+| Status | accepted |
+
+**Context**
+
+Portal needs a home carousel for most favorited designs. Favorites are stored per customer under `customers/{id}/favorites/{designId}`; customers cannot query others’ favorites. ADR-FP-082 deferred design-level `favoriteCount`.
+
+**Decision**
+
+1. Add optional `favoriteCount` (number ≥ 0) on `designs`.
+2. Maintain it only via Cloud Functions on favorite create/delete (Admin SDK). Clients must not be the source of truth for increments.
+3. Portal **Most Liked** rail ranks ready designs by `favoriteCount` descending (separate from **Popular** = `requestCount`).
+4. Amends ADR-FP-082 point 4: `favoriteCount` is allowed for discovery ranking.
+
+**Consequences**
+
+- Requires Functions deploy + optional backfill for existing favorites.
+- Counter may drift if triggers fail; backfill/reconcile can repair.
+
+---
+
 ### ADR-FP-082: Portal design likes as customer favorites subcollection
 
 | Field | Value |
@@ -20,9 +170,9 @@ Portal customers need personal likes for catalog designs. Discovery previously d
 1. Persist likes at `customers/{customerId}/favorites/{designId}` with fields `designId`, `customerId`, `createdAt`, `createdBy`.
 2. Doc id equals `designId` for idempotent like/unlike (create/delete only; no updates).
 3. UI label **Favorites** (nav + `/favorites` page); Firestore path remains `customers/{customerId}/favorites`.
-4. Do **not** add `favoriteCount` (or similar) on design documents.
+4. Do **not** add `favoriteCount` on design documents in the initial likes phase — **amended by ADR-FP-083** (Functions-maintained `favoriteCount` for Most Liked discovery).
 5. Portal-only; Studio has no favorites UI in this phase.
-6. Unavailable/archived designs: keep favorite docs; Favorites page shows remove-only unavailable state.
+6. Unavailable/archived designs: Favorites page auto-prunes missing likes and notifies the customer.
 
 **Consequences**
 
@@ -1554,7 +1704,19 @@ in ADR-FP-041, not the ~4.4x cost of full tag-name injection that stays gated).
 | Field | Value |
 |-------|-------|
 | Date | 2026-07-02 |
-| Status | accepted |
+| Status | accepted (amended 2026-07-14 — tunable `suggestedNewTagsPolicy`) |
+
+**Amendment (2026-07-14):** The hardcoded Strict last-resort gate remains available as policy
+`strict`. Owner/admin setting `settings/aiEnrichment.suggestedNewTagsPolicy` now selects
+`off | strict | balanced | generous | always` (default **`balanced`**: allow when approved
+matches ≤ 4 and unmatched candidates remain; hard-cap 3 suggestions). Suggestion author
+(`suggestionAuthorMode`, UI: Suggested-tag writing) still only upgrades quality when
+suggestions already passed the policy gate. No approved-tag list injection into the vision prompt.
+
+**Amendment (2026-07-14, author quality):** Suggestion-author prompt v2 asks for 6–12 aliases and
+richer preferredWhen (including do-not-use boundaries). Caps: 12 aliases, 500-char preferredWhen.
+Authored aliases that collide with existing approved tag names/aliases are stripped before AI Review;
+colliding suggestion names are dropped. Approve-time collision checks remain.
 
 **Decision**
 
@@ -2521,7 +2683,7 @@ Functions redeploy required. Compare Needs Review output vs prior `gpt-4o-mini` 
 | Field | Value |
 |-------|-------|
 | Date | 2026-06-24 |
-| Status | accepted (amended 2026-07-13 — post-import sequential auto-start) |
+| Status | accepted (amended 2026-07-14 — post-import always auto-starts AI) |
 | Deciders | Product owner + architecture/security review |
 
 **Context**  
@@ -2531,12 +2693,12 @@ Bulk import auto-enqueued every design, spawning up to 10 concurrent Cloud Funct
 
 1. **No concurrent auto-enqueue on import** — import orchestration must not fire N parallel `enqueueAiEnrichment` calls.
 2. **Processing tab queue controls** — **Auto advance** (sessionStorage): **Start AI** / **Pause AI** runs sequential queue; OFF shows **Process image with AI** for one-at-a-time manual stepping. **Default Auto advance = ON** when unset.
-3. **Post-import background sequential AI (2026-07-13):** When Auto advance is ON and a Studio single/batch import completes with derivative-ready designs, Studio enqueues those designs for AI **in the background** (one `enqueueAiEnrichment` at a time, session-scoped queue) so staff can **stay on Imports** and keep importing. Opening AI Processing is optional to watch progress — navigation is not required. When Auto advance is OFF, behavior remains manual.
+3. **Post-import background sequential AI (amended 2026-07-14):** After a Studio single/batch import completes with derivative-ready designs, Studio **always** enqueues those designs for AI in the background (one `enqueueAiEnrichment` at a time, session-scoped queue). Staff can stay on Imports. Opening AI Processing is optional to watch progress. **Auto advance** on the Processing tab only controls Start AI / Pause vs one-at-a-time manual stepping while on that page — it no longer gates post-import enqueue.
 4. **Retry UX** — **Retry AI Processing** for the selected failed design only (bulk **Retry All Failed** removed in ADR-FP-017).
 5. **Concurrency** — keep Cloud Function instance limits that prevent 429 storms; sequential client enqueue remains the throughput control.
 
 **Consequences**  
-Import → AI is automatic when Auto advance is on, without leaving Imports and without concurrent enqueue storms. Staff can still disable Auto advance for one-at-a-time control.
+Import → AI starts automatically without visiting AI Processing and without concurrent enqueue storms. Processing-tab Auto advance remains for in-page queue control only.
 
 ---
 

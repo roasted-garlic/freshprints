@@ -5,15 +5,18 @@ import {
   AI_ENRICHMENT_APPROVED_CATEGORY_NAMES_PLACEHOLDER,
   AI_ENRICHMENT_EXCLUDED_TAGS_PLACEHOLDER,
   DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
+  DEFAULT_SUGGESTED_NEW_TAGS_POLICY,
   DEFAULT_SUGGESTION_AUTHOR_MODE,
   DEFAULT_TAG_RERANK_PROMPT_TEMPLATE,
   DEFAULT_VISION_MODEL_ID,
   GEMINI_VISION_MODEL_OPTIONS,
   PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V20,
   PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V21,
+  SUGGESTED_NEW_TAGS_POLICY_OPTIONS,
   SUGGESTION_AUTHOR_MODE_OPTIONS,
   hasRequiredAiEnrichmentPromptPlaceholders,
   resolveClientPromptTemplate,
+  resolveClientSuggestedNewTagsPolicy,
   resolveClientSuggestionAuthorMode,
   resolveClientTagRerankPromptTemplate,
   resolveClientVisionModelId,
@@ -144,6 +147,27 @@ Do not use these tag words: ${AI_ENRICHMENT_EXCLUDED_TAGS_PLACEHOLDER}`;
     assert.deepEqual(
       SUGGESTION_AUTHOR_MODE_OPTIONS.map((option) => option.value),
       ["off", "auto", "always"],
+    );
+  });
+
+  it("defaults suggested new tags policy to balanced", () => {
+    assert.equal(DEFAULT_SUGGESTED_NEW_TAGS_POLICY, "balanced");
+  });
+
+  it("resolveClientSuggestedNewTagsPolicy accepts all policy values and falls back to balanced", () => {
+    assert.equal(resolveClientSuggestedNewTagsPolicy("off"), "off");
+    assert.equal(resolveClientSuggestedNewTagsPolicy("strict"), "strict");
+    assert.equal(resolveClientSuggestedNewTagsPolicy("balanced"), "balanced");
+    assert.equal(resolveClientSuggestedNewTagsPolicy("generous"), "generous");
+    assert.equal(resolveClientSuggestedNewTagsPolicy("always"), "always");
+    assert.equal(resolveClientSuggestedNewTagsPolicy("nope"), "balanced");
+    assert.equal(resolveClientSuggestedNewTagsPolicy(undefined), "balanced");
+  });
+
+  it("SUGGESTED_NEW_TAGS_POLICY_OPTIONS covers off/strict/balanced/generous/always", () => {
+    assert.deepEqual(
+      SUGGESTED_NEW_TAGS_POLICY_OPTIONS.map((option) => option.value),
+      ["off", "strict", "balanced", "generous", "always"],
     );
   });
 

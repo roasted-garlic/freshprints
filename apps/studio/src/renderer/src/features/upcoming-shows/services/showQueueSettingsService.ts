@@ -209,8 +209,8 @@ export const showQueueSettingsService = {
       | { status: "succeeded"; summary: WhatnotAssistedImportSummary }
       | { status: "failed"; error: string },
   ): Promise<ShowQueueSettings> {
-    if (!permissionService.canManageUpcomingShows(caller)) {
-      throw new Error("You do not have permission to manage Show Queue settings.");
+    if (!permissionService.canImportWhatnotShows(caller)) {
+      throw new Error("You do not have permission to import shows from Whatnot.");
     }
 
     const payload = withoutUndefinedFields({

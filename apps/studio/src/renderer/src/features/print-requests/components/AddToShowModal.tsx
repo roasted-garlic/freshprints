@@ -10,13 +10,18 @@ import { useUpcomingShows } from "../../upcoming-shows/hooks/useUpcomingShows";
 import {
   filterShowsAvailableForAllocation,
   isPastScheduledShow,
-  PAST_SHOW_READ_ONLY_MESSAGE,
 } from "../../upcoming-shows/utils/groupShowsByUpcomingPast";
 import { ShowPicker, SHOW_CAPACITY_BAR_ANIMATION_MS, buildShowPickerOptions } from "@fresh-prints/show-picker";
 import "@fresh-prints/show-picker/show-picker.css";
 import type { Design } from "../../designs/types/design.types";
 import { SplitDesignPickerModal } from "./SplitDesignPickerModal";
 import { assessShowCapacity, planAllocationSplit } from "@fresh-prints/shared/utils/showCapacity";
+import {
+  canAcceptNewShowAllocations,
+  formatShowAllocationBlockedMessage,
+  getShowAllocationBlockReason,
+  SHOW_QUEUE_FULL_MESSAGE,
+} from "@fresh-prints/shared/utils/showAllocationEligibility";
 import { formatShowDateTimeLabel } from "@fresh-prints/shared/utils/showDateTimeDisplay";
 import { formatPrintRequestAllocationSummary } from "@fresh-prints/shared/utils/printRequestSummaryCopy";
 import {
@@ -91,7 +96,6 @@ export function AddToShowModal({
   const [legs, setLegs] = useState<AllocationLeg[]>([]);
   const [selectedShowId, setSelectedShowId] = useState<string>(fixedShowId ?? "");
   const [isPickerOpen, setIsPickerOpen] = useState(false);
-  const [overrideConfirmed, setOverrideConfirmed] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [progress, setProgress] = useState<AllocationProgress | null>(null);
@@ -102,15 +106,24 @@ export function AddToShowModal({
 
 
   useEffect(() => {
-    setOverrideConfirmed(false);
     setIsPickerOpen(false);
     setActionError(null);
   }, [selectedShowId]);
 
-  const allocatableShows = useMemo(
-    () => filterShowsAvailableForAllocation(shows, new Date()),
-    [shows],
-  );
+  const allocatableShows = useMemo(() => {
+    const now = new Date();
+    return filterShowsAvailableForAllocation(shows, now).filter((show) =>
+      canAcceptNewShowAllocations(
+        {
+          scheduledStartAt: show.scheduledStartAt,
+          productionStatus: show.productionStatus,
+          maxTotalQuantity: show.maxTotalQuantity,
+          allocatedQuantity: show.allocatedQuantity,
+        },
+        now,
+      ),
+    );
+  }, [shows]);
 
   const calendarShows = useMemo(() => {
     const now = new Date();
@@ -131,14 +144,28 @@ export function AddToShowModal({
     });
   }, [shows]);
 
-  const fixedShowIsPast = useMemo(() => {
+  const fixedShowBlockReason = useMemo(() => {
     if (!fixedShowId) {
-      return false;
+      return null;
     }
 
     const show = shows.find((candidate) => candidate.id === fixedShowId);
-    return show ? isPastScheduledShow(show, new Date()) : false;
+    if (!show) {
+      return null;
+    }
+
+    return getShowAllocationBlockReason(
+      {
+        scheduledStartAt: show.scheduledStartAt,
+        productionStatus: show.productionStatus,
+        maxTotalQuantity: show.maxTotalQuantity,
+        allocatedQuantity: show.allocatedQuantity,
+      },
+      new Date(),
+    );
   }, [fixedShowId, shows]);
+
+  const fixedShowIsBlocked = fixedShowBlockReason !== null;
 
   const totalRequestedQuantity = useMemo(() => items.reduce((sum, item) => sum + item.quantity, 0), [items]);
 
@@ -208,6 +235,7 @@ export function AddToShowModal({
           const fullShow = calendarShows.find((candidate) => candidate.id === show.id);
           return fullShow ? isPastScheduledShow(fullShow, new Date()) : false;
         },
+        canSelectShow: (show) => allocatableShows.some((candidate) => candidate.id === show.id),
       }),
     [allocatableShows, allocatedBaselineByShowId, calendarShows, isCelebratingSave, legs, savePendingByShowId],
   );
@@ -256,17 +284,6 @@ export function AddToShowModal({
     },
     [fixedShowId, selectedShowId],
   );
-
-  const handleAddOverrideLegForFullRemainder = useCallback(() => {
-    if (!selectedShowId || remainingItems.length === 0 || !overrideConfirmed) {
-      return;
-    }
-
-    const quantitiesByItemId = Object.fromEntries(remainingItems.map((entry) => [entry.item.id, entry.remainingQuantity]));
-    setLegs((current) => [...current, { showId: selectedShowId, quantitiesByItemId }]);
-    setSelectedShowId(fixedShowId ?? "");
-    setOverrideConfirmed(false);
-  }, [fixedShowId, overrideConfirmed, remainingItems, selectedShowId]);
 
   const removeLeg = useCallback((index: number) => {
     setLegs((current) => current.filter((_, legIndex) => legIndex !== index));
@@ -347,7 +364,6 @@ export function AddToShowModal({
           printRequestId: printRequest.id,
           printRequestItemId: step.itemId,
           quantity: step.quantity,
-          overrideCapacity: true,
         });
       }
 
@@ -388,7 +404,7 @@ export function AddToShowModal({
   const isBusy = isSubmitting || isCelebratingSave;
 
   const isConfirmDisabled =
-    fixedShowIsPast ||
+    fixedShowIsBlocked ||
     isBusy ||
     (legs.length === 0 && !(canConfirmFullFitDirectly && remainingItems.length > 0));
 
@@ -473,9 +489,9 @@ export function AddToShowModal({
                 ? "Add a show in the Show Queue before attaching print requests."
                 : "No upcoming shows are available. Past shows cannot accept new print requests."}
             </p>
-          ) : fixedShowIsPast ? (
+          ) : fixedShowIsBlocked ? (
             <p className="auth-message auth-message-error" role="alert">
-              {PAST_SHOW_READ_ONLY_MESSAGE}
+              {formatShowAllocationBlockedMessage(fixedShowBlockReason)}
             </p>
           ) : (
             <>
@@ -503,37 +519,23 @@ export function AddToShowModal({
                 <div className="show-allocation-decision">
                   <p className="show-allocation-decision-message">
                     {isSelectedShowFull
-                      ? "This show is full. You can select a different show for the full request, or use the staff override below to add it anyway."
+                      ? SHOW_QUEUE_FULL_MESSAGE
                       : formatSplitNeededWarning({
                           fittingQuantity: splitPlan?.fittingQuantity ?? 0,
                           totalQuantity: remainingTotalQuantity,
                         })}
                   </p>
-                  {isSelectedShowFull ? null : (
+                  {isSelectedShowFull ? (
+                    <p className="print-requests-modal-hint">
+                      Choose a different show that still has capacity.
+                    </p>
+                  ) : (
                     <div className="show-allocation-decision-actions">
                       <Button onClick={() => setIsPickerOpen(true)} type="button" variant="secondary">
                         Choose designs for this show
                       </Button>
                     </div>
                   )}
-                  <label className="show-allocation-decision-override">
-                    <input
-                      checked={overrideConfirmed}
-                      onChange={(event) => setOverrideConfirmed(event.target.checked)}
-                      type="checkbox"
-                    />
-                    <span>
-                      Staff override: add all {remainingTotalQuantity}{" "}
-                      {shouldShowRemainingWording(legs.length) ? "remaining " : ""}print
-                      {remainingTotalQuantity === 1 ? "" : "s"} to this show even though it exceeds remaining
-                      capacity.
-                    </span>
-                  </label>
-                  {overrideConfirmed ? (
-                    <Button onClick={handleAddOverrideLegForFullRemainder} type="button" variant="danger">
-                      Add with override
-                    </Button>
-                  ) : null}
                 </div>
               ) : null}
             </>

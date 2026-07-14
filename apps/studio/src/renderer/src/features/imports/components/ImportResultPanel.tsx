@@ -208,7 +208,7 @@ function ImportUploadSummary({ uploadResult }: { uploadResult: ImportOriginalUpl
         }
       >
         {isPipelineSuccess
-          ? "The original PNG, thumbnail, and preview are stored. The design is waiting for AI review."
+          ? "The original PNG, thumbnail, and preview are stored. AI processing starts in the background."
           : "The original PNG was uploaded and a Firestore catalog record was created, but derivative processing did not complete. The design remains imported."}
       </p>
 

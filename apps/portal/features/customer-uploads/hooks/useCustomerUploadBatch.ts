@@ -37,6 +37,9 @@ export interface UploadRowState {
   previewStoragePath?: string | null;
   /** Selected customer response (yes = marked as halftone). Default unanswered/off. */
   halftoneResponseDraft?: 'yes' | 'no' | null;
+  /** Last value successfully persisted to the server. */
+  halftoneResponseConfirmed?: 'yes' | 'no' | null;
+  /** True while a background save is in flight (UI stays interactive). */
   halftoneResponseSaving?: boolean;
   halftoneResponseError?: string | null;
 }
@@ -98,6 +101,8 @@ export function useCustomerUploadBatch(options?: { purpose?: CustomerUploadPurpo
   const abortRef = useRef(false);
   const batchIdRef = useRef<string | null>(null);
   const rowsRef = useRef<UploadRowState[]>([]);
+  /** Latest-wins token per row so stale callable responses cannot clobber newer toggles. */
+  const halftoneSaveGenerationRef = useRef<Map<string, number>>(new Map());
 
   batchIdRef.current = batchId;
   rowsRef.current = rows;
@@ -427,6 +432,9 @@ export function useCustomerUploadBatch(options?: { purpose?: CustomerUploadPurpo
                     previewStoragePath: result.previewStoragePath,
                     technicalFailureMessage: null,
                     halftoneResponseDraft: null,
+                    halftoneResponseConfirmed: null,
+                    halftoneResponseSaving: false,
+                    halftoneResponseError: null,
                   });
                 } else {
                   updateRow(row.localId, {
@@ -623,34 +631,51 @@ export function useCustomerUploadBatch(options?: { purpose?: CustomerUploadPurpo
   }, [batchId, canAttach, firebaseUser, isDonation, readyRows]);
 
   const respondToHalftone = useCallback(
-    async (localId: string, value: 'yes' | 'no') => {
+    (localId: string, value: 'yes' | 'no') => {
       const row = rowsRef.current.find((item) => item.localId === localId);
-      if (!row?.uploadId || row.phase !== 'ready' || row.halftoneResponseSaving) {
+      if (!row?.uploadId || row.phase !== 'ready') {
         return;
       }
-      if (row.halftoneResponseDraft === value) {
+      if (row.halftoneResponseDraft === value && !row.halftoneResponseError) {
         return;
       }
+
+      const uploadId = row.uploadId;
+      const generation = (halftoneSaveGenerationRef.current.get(localId) ?? 0) + 1;
+      halftoneSaveGenerationRef.current.set(localId, generation);
+
+      // Paint instantly; persist in the background.
       updateRow(localId, {
         halftoneResponseDraft: value,
         halftoneResponseSaving: true,
         halftoneResponseError: null,
       });
-      try {
-        await customerUploadService.recordHalftoneResponse(row.uploadId, value);
-        updateRow(localId, {
-          halftoneResponseSaving: false,
-          halftoneResponseDraft: value,
-          halftoneResponseError: null,
+
+      void customerUploadService
+        .recordHalftoneResponse(uploadId, value)
+        .then(() => {
+          if (halftoneSaveGenerationRef.current.get(localId) !== generation) {
+            return;
+          }
+          updateRow(localId, {
+            halftoneResponseDraft: value,
+            halftoneResponseConfirmed: value,
+            halftoneResponseSaving: false,
+            halftoneResponseError: null,
+          });
+        })
+        .catch((error: unknown) => {
+          if (halftoneSaveGenerationRef.current.get(localId) !== generation) {
+            return;
+          }
+          // Keep the optimistic selection so Retry can resend it; server remains authoritative on attach.
+          updateRow(localId, {
+            halftoneResponseDraft: value,
+            halftoneResponseSaving: false,
+            halftoneResponseError:
+              error instanceof Error ? error.message : 'Unable to save halftone selection.',
+          });
         });
-      } catch (error) {
-        updateRow(localId, {
-          halftoneResponseDraft: value,
-          halftoneResponseSaving: false,
-          halftoneResponseError:
-            error instanceof Error ? error.message : 'Unable to save halftone selection.',
-        });
-      }
     },
     [updateRow],
   );

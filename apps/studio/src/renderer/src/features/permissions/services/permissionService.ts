@@ -160,6 +160,10 @@ export const permissionService = {
     return isOwner(user);
   },
 
+  canPurgeArchivedDesignAssets(user: UserLike) {
+    return isOwner(user);
+  },
+
   canManageDesigns(user: UserLike) {
     return this.canViewDesigns(user);
   },
@@ -182,6 +186,10 @@ export const permissionService = {
 
   canArchiveDesigns(user: UserLike) {
     return isStaff(user);
+  },
+
+  canRestoreDesigns(user: UserLike) {
+    return hasActiveRole(user, ["owner", "admin"]);
   },
 
   canManageCategories(user: UserLike) {
@@ -242,6 +250,16 @@ export const permissionService = {
 
   canManageUpcomingShows(user: UserLike) {
     return isStaff(user);
+  },
+
+  /** Staff-assisted Whatnot Import Shows flow (not manual Add show). */
+  canImportWhatnotShows(user: UserLike) {
+    return hasActiveRole(user, ["owner", "admin"]);
+  },
+
+  /** Dev Electron sidebar action to open Chromium DevTools. Owner-only. */
+  canOpenDevTools(user: UserLike) {
+    return isOwner(user);
   },
 
   canManageGuestCustomers(user: UserLike) {
@@ -330,6 +348,8 @@ export const permissionService = {
         return this.canManageSettings(user);
       case "wipeOperationalTestData":
         return this.canWipeOperationalTestData(user);
+      case "purgeArchivedDesignAssets":
+        return this.canPurgeArchivedDesignAssets(user);
       case "manageDesigns":
         return this.canManageDesigns(user);
       case "viewDesigns":
@@ -340,6 +360,8 @@ export const permissionService = {
         return this.canEditDesigns(user);
       case "archiveDesigns":
         return this.canArchiveDesigns(user);
+      case "restoreDesigns":
+        return this.canRestoreDesigns(user);
       case "manageCategories":
         return this.canManageCategories(user);
       case "importDesigns":
@@ -356,6 +378,10 @@ export const permissionService = {
         return this.canViewUpcomingShows(user);
       case "manageUpcomingShows":
         return this.canManageUpcomingShows(user);
+      case "importWhatnotShows":
+        return this.canImportWhatnotShows(user);
+      case "openDevTools":
+        return this.canOpenDevTools(user);
       case "manageGuestCustomers":
         return this.canManageGuestCustomers(user);
       case "manageCustomers":

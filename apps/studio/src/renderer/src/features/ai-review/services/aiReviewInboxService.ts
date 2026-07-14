@@ -89,6 +89,10 @@ export const aiReviewInboxService = {
     return catalogApprovalService.reopenRejectedForReview(caller, designId);
   },
 
+  async archiveFromInbox(caller: User, designId: string): Promise<Design> {
+    return catalogApprovalService.archiveRejectedDesign(caller, designId);
+  },
+
   async rerunAiFromInbox(
     caller: User,
     designId: string,

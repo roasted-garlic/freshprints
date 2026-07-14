@@ -35,6 +35,8 @@ function sortFieldForDiscovery(mode: CatalogDiscoveryMode | null | undefined): C
       return 'createdAt';
     case 'popular':
       return 'requestCount';
+    case 'mostLiked':
+      return 'favoriteCount';
     case 'recent':
       return 'lastRequestedAt';
     default:

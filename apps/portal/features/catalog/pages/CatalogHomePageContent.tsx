@@ -15,7 +15,6 @@ import {
 import { useCatalogCategories } from '../hooks/useCatalogCategories';
 import { useCatalogHomeDesigns } from '../hooks/useCatalogDesigns';
 import { catalogService } from '../services/catalogService';
-import { catalogStorageService } from '../services/catalogStorageService';
 import type { CatalogDesign } from '../types/catalog.types';
 import { usePortalPrintRequests } from '../../print-requests/context/PortalPrintRequestContext';
 import { useAddDesignToRequestFlow } from '../../print-requests/hooks/useAddDesignToRequestFlow';
@@ -113,23 +112,6 @@ export function CatalogHomePageContent() {
   );
 
   const homeRails = useMemo(() => [...discoveryRails, ...categoryRails], [categoryRails, discoveryRails]);
-
-  useEffect(() => {
-    if (designs.length === 0) {
-      return;
-    }
-
-    catalogStorageService.prefetchCatalogPaths(
-      designs.map((design) => ({
-        catalogPath: design.thumbnailPath,
-        contentVersion: design.updatedAtMs,
-      })),
-      72,
-    );
-    catalogStorageService.pruneToCatalogPaths(
-      designs.flatMap((design) => [design.thumbnailPath, design.previewPath]),
-    );
-  }, [designs]);
 
   const pageBusy = isCreating;
 

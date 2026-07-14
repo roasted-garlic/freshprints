@@ -182,6 +182,22 @@ service cloud.firestore {
         && request.resource.data.get("aiProcessingStage", null) == resource.data.get("aiProcessingStage", null);
     }
 
+    // Owner purge sets these via Admin SDK only — clients must not forge purge state.
+    function clientDesignPurgeFieldsUnchanged() {
+      return request.resource.data.get("assetsPurgedAt", null) == resource.data.get("assetsPurgedAt", null)
+        && request.resource.data.get("assetsPurgedBy", null) == resource.data.get("assetsPurgedBy", null);
+    }
+
+    // After assets are purged, clients cannot alter Storage path fields on the design.
+    function clientDesignPurgedAssetPathsUnchanged() {
+      return !("assetsPurgedAt" in resource.data)
+        || (
+          request.resource.data.originalPath == resource.data.originalPath
+          && request.resource.data.thumbnailPath == resource.data.thumbnailPath
+          && request.resource.data.get("previewPath", null) == resource.data.get("previewPath", null)
+        );
+    }
+
     function designRequiredFieldsValid(data) {
       return data.keys().hasAll([
           "id",
@@ -230,6 +246,9 @@ service cloud.firestore {
         && isOptionalNumber(data, "metadataDpiX")
         && isOptionalNumber(data, "metadataDpiY")
         && isOptionalNumber(data, "effectiveDpi")
+        && isOptionalNumber(data, "requestCount")
+        && isOptionalNumber(data, "favoriteCount")
+        && isOptionalTimestamp(data, "lastRequestedAt")
         && isOptionalString(data, "printSizeSource")
         && isOptionalString(data, "aiReviewStatus")
         && (!("aiReviewStatus" in data) || isValidAiReviewStatus(data.aiReviewStatus))
@@ -241,6 +260,8 @@ service cloud.firestore {
         && isOptionalString(data, "previousStatus")
         && isOptionalTimestamp(data, "archivedAt")
         && isOptionalString(data, "archivedBy")
+        && isOptionalTimestamp(data, "assetsPurgedAt")
+        && isOptionalString(data, "assetsPurgedBy")
         && isOptionalString(data, "aiProcessingStage")
         && isOptionalMap(data, "aiSuggestions")
         && isOptionalMap(data, "aiAnalysis");
@@ -758,7 +779,9 @@ service cloud.firestore {
         && request.resource.data.id == designId
         && request.resource.data.uploadedBy == request.auth.uid
         && request.resource.data.createdBy == request.auth.uid
-        && request.resource.data.updatedBy == request.auth.uid;
+        && request.resource.data.updatedBy == request.auth.uid
+        && !("assetsPurgedAt" in request.resource.data)
+        && !("assetsPurgedBy" in request.resource.data);
 
       allow update: if isStaff()
         && designRequiredFieldsValid(request.resource.data)
@@ -768,7 +791,9 @@ service cloud.firestore {
         && (!("createdBy" in resource.data) || request.resource.data.createdBy == resource.data.createdBy)
         && (!("createdAt" in resource.data) || request.resource.data.createdAt == resource.data.createdAt)
         && request.resource.data.updatedBy == request.auth.uid
-        && clientAiFieldsUnchanged();
+        && clientAiFieldsUnchanged()
+        && clientDesignPurgeFieldsUnchanged()
+        && clientDesignPurgedAssetPathsUnchanged();
 
       allow delete: if false;
     }
@@ -1303,6 +1328,8 @@ service cloud.firestore {
           "upcomingShowId",
           "printRequestTab",
           "occurredAtMillis",
+          "acknowledgedByUserId",
+          "acknowledgedByDisplayName",
           "acknowledgedAt",
           "createdAt",
           "updatedAt"
@@ -1321,6 +1348,21 @@ service cloud.firestore {
         && isOptionalPrintRequestListTab(data, "printRequestTab")
         && data.occurredAtMillis is number
         && data.occurredAtMillis >= 0
+        && (
+          !("acknowledgedByUserId" in data)
+          || (
+            data.acknowledgedByUserId is string
+            && data.acknowledgedByUserId == data.userId
+          )
+        )
+        && (
+          !("acknowledgedByDisplayName" in data)
+          || (
+            data.acknowledgedByDisplayName is string
+            && data.acknowledgedByDisplayName.size() > 0
+            && data.acknowledgedByDisplayName.size() <= 120
+          )
+        )
         && data.acknowledgedAt is timestamp
         && data.createdAt is timestamp
         && data.updatedAt is timestamp;

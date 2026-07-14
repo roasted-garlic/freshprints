@@ -1,4 +1,9 @@
+import type { SuggestedNewTagsPolicy } from "../../../packages/shared/src/constants/aiEnrichment.constants";
 import type { CatalogTag, SuggestedNewTag } from "../../../packages/shared/src/types/catalogTag.types";
+import {
+  evaluateSuggestedNewTagsPolicy,
+  isStrictSuggestedTagsLastResort,
+} from "../../../packages/shared/src/utils/suggestedNewTagsPolicy";
 import { tokenizeTagCandidate } from "./catalogTitleRules";
 
 const MAX_AI_APPROVED_TAGS = 12;
@@ -15,6 +20,12 @@ interface ResolveAiCatalogTagsInput {
   candidates: readonly string[] | undefined;
   maxApprovedTags?: number;
   suggestedNewTags?: readonly SuggestedNewTag[];
+  /**
+   * Settings policy. When omitted, uses Strict (legacy last-resort) so unit tests and callers
+   * without settings stay predictable. Pipeline/playground always pass the loaded settings value
+   * (shipped settings default is Balanced).
+   */
+  suggestedNewTagsPolicy?: SuggestedNewTagsPolicy;
 }
 
 /**
@@ -50,32 +61,15 @@ export interface ResolveAiCatalogTagsResult {
 const WEAK_MATCH_REASON = "Matched via partial token match";
 
 /**
- * Last-resort gate for suggestedNewTags generation (plan: 2026-07-02-suggested-tags-last-resort).
- * Suggestions are only worth generating when approved-tag coverage is genuinely thin:
- * - 0-2 approved matches: always eligible.
- * - Exactly 3 approved matches: only eligible when all 3 are weak (partial-token-only) matches AND
- *   there are at least 2 unmatched candidates left to draw suggestions from.
- * - 4+ approved matches: never eligible, regardless of match quality or remaining room.
- *
- * Accepts plain values (not the full result shape) so it can be evaluated both as a live check
- * during resolution — approvedResult can still grow via suggestedNewTags reconciliation, which
- * must be able to tighten the gate mid-loop — and as a post-hoc check by callers holding a
- * finished ResolveAiCatalogTagsResult.
+ * @deprecated Prefer evaluateSuggestedNewTagsPolicy / suggestedNewTagsPolicy setting.
+ * Kept as the Strict policy implementation for callers and tests.
  */
 export function isSuggestedTagsLastResort(input: {
   approvedCount: number;
   allMatchesAreWeak: boolean;
   unmatchedCandidateCount: number;
 }): boolean {
-  if (input.approvedCount <= 2) {
-    return true;
-  }
-
-  if (input.approvedCount === 3) {
-    return input.allMatchesAreWeak && input.unmatchedCandidateCount >= 2;
-  }
-
-  return false;
+  return isStrictSuggestedTagsLastResort(input);
 }
 
 function normalizeTagCandidate(value: string): string {
@@ -405,6 +399,7 @@ export function resolveAiCatalogTags({
   candidates,
   maxApprovedTags = MAX_AI_APPROVED_TAGS,
   suggestedNewTags,
+  suggestedNewTagsPolicy = "strict",
 }: ResolveAiCatalogTagsInput): ResolveAiCatalogTagsResult {
   const { lookup, aliasLookup } = buildApprovedTagLookup(approvedTags);
   const approvedResult: string[] = [];
@@ -496,27 +491,37 @@ export function resolveAiCatalogTags({
     }
   }
 
-  // Suggested-new-tags exist only to fill the gap left when approved tags don't reach the cap
-  // (e.g. 7 approved matches on an 8-tag cap leaves room for exactly 1 suggestion). Once the
-  // gap is filled — either by more approved matches or by prior suggestions — stop suggesting.
-  const remainingSuggestionRoom = (): number =>
-    Math.max(0, maxApprovedTags - approvedResult.length - suggestedResult.length);
-
   const computeAllMatchesAreWeak = (): boolean =>
     approvedResult.length > 0 &&
     approvedResult.every((name) => matchInfoByApprovedName.get(name)?.reason === WEAK_MATCH_REASON);
 
-  // Last-resort gate, evaluated live: approvedResult can still grow via suggestedNewTags
-  // reconciliation below (checks 2/3 promote a "suggestion" that actually matches an approved
-  // alias/context into approvedResult), which can only make the gate MORE restrictive — so it is
-  // re-checked fresh immediately before every point a suggestion would actually be recorded,
-  // rather than decided once up front.
-  const suggestionsCurrentlyAllowed = (): boolean =>
-    isSuggestedTagsLastResort({
+  // Suggested-new-tags exist only to fill the gap left when approved tags don't reach the cap
+  // (e.g. 7 approved matches on an 8-tag cap leaves room for exactly 1 suggestion). Once the
+  // gap is filled — either by more approved matches or by prior suggestions — stop suggesting.
+  // Also respect the settings policy hard-cap (e.g. Balanced = 3).
+  const remainingSuggestionRoom = (): number => {
+    const policyEval = evaluateSuggestedNewTagsPolicy(suggestedNewTagsPolicy, {
       allMatchesAreWeak: computeAllMatchesAreWeak(),
       approvedCount: approvedResult.length,
       unmatchedCandidateCount: unmatchedCandidates.size,
     });
+    const roomByApprovedCap = Math.max(
+      0,
+      maxApprovedTags - approvedResult.length - suggestedResult.length,
+    );
+    const roomByPolicyCap = Math.max(0, policyEval.maxSuggestions - suggestedResult.length);
+    return Math.min(roomByApprovedCap, roomByPolicyCap);
+  };
+
+  // Policy gate, evaluated live: approvedResult can still grow via suggestedNewTags
+  // reconciliation below, which can only make the gate MORE restrictive — so it is
+  // re-checked fresh immediately before every point a suggestion would actually be recorded.
+  const suggestionsCurrentlyAllowed = (): boolean =>
+    evaluateSuggestedNewTagsPolicy(suggestedNewTagsPolicy, {
+      allMatchesAreWeak: computeAllMatchesAreWeak(),
+      approvedCount: approvedResult.length,
+      unmatchedCandidateCount: unmatchedCandidates.size,
+    }).allow;
 
   // The reconciliation loop below still runs unconditionally: an AI-provided suggestedNewTags
   // entry may actually match an approved tag/alias/context (checks 1-3), which promotes it into

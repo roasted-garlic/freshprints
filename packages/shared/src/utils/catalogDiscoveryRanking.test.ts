@@ -5,6 +5,7 @@ import {
   getCatalogDiscoveryModeLabel,
   parseCatalogDiscoveryMode,
   rankCatalogDiscoveryDesigns,
+  rankMostLiked,
   rankNewThisWeek,
   rankPopular,
   rankRecentlyRequested,
@@ -27,6 +28,7 @@ describe("parseCatalogDiscoveryMode", () => {
   it("parses known modes", () => {
     assert.equal(parseCatalogDiscoveryMode("new"), "new");
     assert.equal(parseCatalogDiscoveryMode("popular"), "popular");
+    assert.equal(parseCatalogDiscoveryMode("mostLiked"), "mostLiked");
     assert.equal(parseCatalogDiscoveryMode("recent"), "recent");
   });
 
@@ -40,6 +42,7 @@ describe("getCatalogDiscoveryModeLabel", () => {
   it("uses customer-facing labels", () => {
     assert.equal(getCatalogDiscoveryModeLabel("new"), "New This Week");
     assert.equal(getCatalogDiscoveryModeLabel("popular"), "Popular");
+    assert.equal(getCatalogDiscoveryModeLabel("mostLiked"), "Most Liked");
     assert.equal(getCatalogDiscoveryModeLabel("recent"), "Recently Requested");
   });
 });
@@ -78,6 +81,23 @@ describe("rankPopular", () => {
   });
 });
 
+describe("rankMostLiked", () => {
+  it("keeps only designs with favorites and sorts by favoriteCount", () => {
+    const ranked = rankMostLiked([
+      design({ id: "none", favoriteCount: 0 }),
+      design({ id: "a", favoriteCount: 2 }),
+      design({ id: "b", favoriteCount: 10 }),
+      design({ id: "c", favoriteCount: 2 }),
+      design({ id: "missing" }),
+    ]);
+
+    assert.deepEqual(
+      ranked.map((entry) => entry.id),
+      ["b", "a", "c"],
+    );
+  });
+});
+
 describe("rankRecentlyRequested", () => {
   it("sorts by lastRequestedAt then requestCount", () => {
     const ranked = rankRecentlyRequested([
@@ -96,9 +116,18 @@ describe("rankRecentlyRequested", () => {
 
 describe("rankCatalogDiscoveryDesigns", () => {
   it("routes modes", () => {
-    const designs = [design({ id: "x", createdAtMs: NOW, requestCount: 3, lastRequestedAtMs: NOW })];
+    const designs = [
+      design({
+        id: "x",
+        createdAtMs: NOW,
+        requestCount: 3,
+        favoriteCount: 2,
+        lastRequestedAtMs: NOW,
+      }),
+    ];
     assert.equal(rankCatalogDiscoveryDesigns(designs, "new", NOW).length, 1);
     assert.equal(rankCatalogDiscoveryDesigns(designs, "popular").length, 1);
+    assert.equal(rankCatalogDiscoveryDesigns(designs, "mostLiked").length, 1);
     assert.equal(rankCatalogDiscoveryDesigns(designs, "recent").length, 1);
   });
 });

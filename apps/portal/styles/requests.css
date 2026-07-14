@@ -866,6 +866,24 @@
   margin: 0;
 }
 
+.portal-request-item-reuse-actions {
+  margin-top: 0.75rem;
+}
+
+.portal-request-item-unavailable {
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.portal-request-item-reuse-actions {
+  margin-top: 0.75rem;
+}
+
+.portal-request-item-unavailable {
+  margin: 0;
+  font-size: 0.875rem;
+}
+
 .portal-request-item-editor-actions {
   border-top: 1px solid var(--color-border);
   display: grid;

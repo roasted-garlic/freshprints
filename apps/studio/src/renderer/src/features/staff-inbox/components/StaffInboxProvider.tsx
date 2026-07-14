@@ -29,7 +29,8 @@ import { formatStaffInboxFirestoreError } from "../utils/formatStaffInboxFiresto
 import { getStaffInboxItemNavigationPath } from "../utils/staffInboxNavigation";
 
 const HIGHLIGHT_DURATION_MS = 8_000;
-const ALERT_BATCH_WINDOW_MS = 150;
+/** Wide enough that queue-add + show-full Firestore emits coalesce into one sound. */
+const ALERT_BATCH_WINDOW_MS = 750;
 
 const EMPTY_SUBSCRIPTION_SNAPSHOT: StaffInboxSubscriptionSnapshot = {
   portalRequests: [],
@@ -567,19 +568,24 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
         next.add(item.id);
         return next;
       });
+      const acknowledgedByDisplayName = user.displayName?.trim() || undefined;
       setCompletedItems((current) => [
         {
           ...item,
           acknowledgedAtMillis: Date.now(),
+          acknowledgedByUserId: user.id,
+          acknowledgedByDisplayName,
         },
         ...current.filter((entry) => entry.id !== item.id),
       ]);
 
-      void staffInboxAckService.acknowledge(user.id, item).catch(() => {
-        setWarning("Unable to save inbox Done state. Check your connection and try again.");
-      });
+      void staffInboxAckService
+        .acknowledge(user.id, item, { displayName: acknowledgedByDisplayName })
+        .catch(() => {
+          setWarning("Unable to save inbox Done state. Check your connection and try again.");
+        });
     },
-    [clearItemHighlight, user?.id],
+    [clearItemHighlight, user],
   );
 
   const restoreItem = useCallback(

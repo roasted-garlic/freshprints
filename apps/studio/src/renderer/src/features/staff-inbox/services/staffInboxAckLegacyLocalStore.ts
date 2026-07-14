@@ -11,6 +11,8 @@ export interface StaffInboxAckRecord {
   subtitle: string;
   title: string;
   upcomingShowId?: string;
+  acknowledgedByUserId?: string;
+  acknowledgedByDisplayName?: string;
 }
 
 interface StaffInboxAckStorageV2 {

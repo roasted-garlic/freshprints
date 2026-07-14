@@ -7,11 +7,13 @@ import {
   AI_ENRICHMENT_PROMPT_TEMPLATE_MAX_LENGTH,
   AI_ENRICHMENT_TAG_RERANK_PROMPT_TEMPLATE_MAX_LENGTH,
   DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
+  DEFAULT_SUGGESTED_NEW_TAGS_POLICY,
   DEFAULT_SUGGESTION_AUTHOR_MODE,
   DEFAULT_TAG_RERANK_MODE,
   DEFAULT_TAG_RERANK_PROMPT_TEMPLATE,
   PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V20,
   PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V21,
+  SUGGESTED_NEW_TAGS_POLICIES,
   SUGGESTION_AUTHOR_MODES,
   TAG_RERANK_MODES,
   hasRequiredAiEnrichmentPromptPlaceholders,
@@ -20,6 +22,7 @@ import {
   resolveTagRerankPromptTemplate,
   DEFAULT_VISION_MODEL_ID as SHARED_DEFAULT_VISION_MODEL_ID,
   type AllowedVisionModelId,
+  type SuggestedNewTagsPolicy,
   type SuggestionAuthorMode,
   type TagRerankMode,
 } from "@fresh-prints/shared/constants/aiEnrichment.constants";
@@ -42,17 +45,20 @@ export {
   AI_ENRICHMENT_PROMPT_TEMPLATE_MAX_LENGTH,
   AI_ENRICHMENT_TAG_RERANK_PROMPT_TEMPLATE_MAX_LENGTH,
   DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
+  DEFAULT_SUGGESTED_NEW_TAGS_POLICY,
   DEFAULT_SUGGESTION_AUTHOR_MODE,
   DEFAULT_TAG_RERANK_MODE,
   DEFAULT_TAG_RERANK_PROMPT_TEMPLATE,
   PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V20,
   PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V21,
+  SUGGESTED_NEW_TAGS_POLICIES,
   SUGGESTION_AUTHOR_MODES,
   TAG_RERANK_MODES,
   hasRequiredAiEnrichmentPromptPlaceholders,
   isPreviousDefaultAiEnrichmentPromptTemplate,
   resolveAiEnrichmentPromptTemplate,
   resolveTagRerankPromptTemplate,
+  type SuggestedNewTagsPolicy,
   type SuggestionAuthorMode,
   type TagRerankMode,
 };
@@ -111,17 +117,17 @@ export const SUGGESTION_AUTHOR_MODE_OPTIONS: readonly SuggestionAuthorModeOption
   {
     value: "off",
     label: "Off — Default",
-    hint: "Suggested new tags use the server-written generic template. Cheapest, current behavior.",
+    hint: "Suggested new tags use the server-written generic template. Cheapest.",
   },
   {
     value: "auto",
     label: "Auto",
-    hint: "When a design's approved-tag coverage is genuinely thin, an AI call writes a real preferredWhen and aliases for each suggested tag instead of the generic template.",
+    hint: "When Suggested new tags are proposed, an AI call writes a real preferredWhen and aliases instead of the generic template.",
   },
   {
     value: "always",
     label: "Always",
-    hint: "Same trigger as Auto — suggestions are already a last resort, so there is no broader 'always' behavior beyond that.",
+    hint: "Same as Auto — writing only runs when Suggested new tags are already proposed.",
   },
 ];
 
@@ -135,6 +141,52 @@ export function resolveClientSuggestionAuthorMode(configured?: string): Suggesti
   }
 
   return DEFAULT_SUGGESTION_AUTHOR_MODE;
+}
+
+export interface SuggestedNewTagsPolicyOption {
+  value: SuggestedNewTagsPolicy;
+  label: string;
+  hint: string;
+}
+
+export const SUGGESTED_NEW_TAGS_POLICY_OPTIONS: readonly SuggestedNewTagsPolicyOption[] = [
+  {
+    value: "off",
+    label: "Off",
+    hint: "Never propose Suggested New Tags. Matched approved tags only.",
+  },
+  {
+    value: "strict",
+    label: "Strict",
+    hint: "Original last-resort gate: only when 0–2 approved matches, or 3 weak matches with leftovers.",
+  },
+  {
+    value: "balanced",
+    label: "Balanced — Default",
+    hint: "Propose when approved matches ≤ 4 and unmatched candidates remain. Hard-cap 3 suggestions per design.",
+  },
+  {
+    value: "generous",
+    label: "Generous",
+    hint: "Propose when approved matches ≤ 6 and unmatched candidates remain. Hard-cap 5 suggestions.",
+  },
+  {
+    value: "always",
+    label: "Always (testing)",
+    hint: "Ignore coverage; propose whenever unmatched candidates remain. Hard-cap 5. For testing only.",
+  },
+];
+
+const SUGGESTED_NEW_TAGS_POLICY_SET = new Set<string>(SUGGESTED_NEW_TAGS_POLICIES);
+
+export function resolveClientSuggestedNewTagsPolicy(configured?: string): SuggestedNewTagsPolicy {
+  const trimmed = configured?.trim();
+
+  if (trimmed && SUGGESTED_NEW_TAGS_POLICY_SET.has(trimmed)) {
+    return trimmed as SuggestedNewTagsPolicy;
+  }
+
+  return DEFAULT_SUGGESTED_NEW_TAGS_POLICY;
 }
 
 export interface VisionModelOption {

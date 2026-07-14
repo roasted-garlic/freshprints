@@ -72,11 +72,32 @@ export function useWorkingCurrentRequestItems(workingRequest: PrintRequest | nul
   const [isLoadingItems, setIsLoadingItems] = useState(false);
   const [itemsError, setItemsError] = useState<string | null>(null);
 
+  /** True once a real working request has been linked this session (not optimistic-only). */
+  const hasLinkedWorkingRequestRef = useRef(false);
+  /** Updated only in effect / resetWorkingCart — never synced on render (would hide transitions). */
+  const workingRequestIdRef = useRef<string | null>(null);
+
+  const resetWorkingCart = useCallback(() => {
+    hasLinkedWorkingRequestRef.current = true;
+    workingRequestIdRef.current = null;
+    setItems([]);
+    setDesignSummaries(new Map());
+    setUploadSummaries(new Map());
+    setItemsError(null);
+    setIsLoadingItems(false);
+  }, []);
+
   const reloadWorkingItems = useCallback(
     async (options?: { silent?: boolean; printRequestId?: string }) => {
-      if (!workingRequest && !options?.printRequestId) {
-        // Keep first-add optimistic (or just-reconciled) items until a working request is linked.
-        setItems((current) => (current.length > 0 ? current : []));
+      const linkedId = options?.printRequestId ?? workingRequestIdRef.current;
+
+      if (!linkedId) {
+        // Keep optimistic first-add only before any real working request existed.
+        if (hasLinkedWorkingRequestRef.current) {
+          setItems([]);
+          setDesignSummaries(new Map());
+          setUploadSummaries(new Map());
+        }
         if (!options?.silent) {
           setIsLoadingItems(false);
         }
@@ -84,17 +105,18 @@ export function useWorkingCurrentRequestItems(workingRequest: PrintRequest | nul
         return;
       }
 
-      const requestId = options?.printRequestId ?? workingRequest!.id;
-
       if (!options?.silent) {
         setIsLoadingItems(true);
       }
       setItemsError(null);
 
       try {
-        const nextItems = await portalPrintRequestService.listPrintRequestItems(requestId);
-        // Update quantities immediately so qty controls feel live; keep existing
-        // design thumbs until any newly needed summaries resolve.
+        const nextItems = await portalPrintRequestService.listPrintRequestItems(linkedId);
+        // Drop late responses if the cart was reset / working request changed while loading.
+        if (workingRequestIdRef.current !== linkedId && !options?.printRequestId) {
+          return;
+        }
+
         setItems(nextItems);
 
         const neededDesignIds = [
@@ -125,6 +147,10 @@ export function useWorkingCurrentRequestItems(workingRequest: PrintRequest | nul
           portalPrintRequestService.getUploadSummariesForItems(nextItems),
         ]);
 
+        if (workingRequestIdRef.current !== linkedId && !options?.printRequestId) {
+          return;
+        }
+
         setDesignSummaries((previous) => {
           const next = new Map(previous);
           for (const [designId, design] of nextDesigns.entries()) {
@@ -148,12 +174,26 @@ export function useWorkingCurrentRequestItems(workingRequest: PrintRequest | nul
         }
       }
     },
-    [workingRequest],
+    [],
   );
 
   useEffect(() => {
+    const nextId = workingRequest?.id ?? null;
+    const previousId = workingRequestIdRef.current;
+
+    if (nextId) {
+      hasLinkedWorkingRequestRef.current = true;
+    }
+
+    if (previousId && !nextId) {
+      // Working request left the continuable set (queued to show, archived, etc.).
+      resetWorkingCart();
+      return;
+    }
+
+    workingRequestIdRef.current = nextId;
     void reloadWorkingItems();
-  }, [reloadWorkingItems]);
+  }, [reloadWorkingItems, resetWorkingCart, workingRequest?.id]);
 
   const aggregates: CurrentRequestAggregates = useMemo(() => {
     const pixels = new Map<string, { width: number; height: number }>();
@@ -233,5 +273,6 @@ export function useWorkingCurrentRequestItems(workingRequest: PrintRequest | nul
     patchWorkingItems,
     seedDesignSummary,
     reloadWorkingItems,
+    resetWorkingCart,
   };
 }

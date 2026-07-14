@@ -29,12 +29,19 @@ export interface CatalogDesign {
   requestCount: number;
   /** Milliseconds since epoch; omitted when never requested. */
   lastRequestedAtMs?: number;
+  /** Customer favorites count (Most Liked). */
+  favoriteCount: number;
   /** Milliseconds since epoch; used for default library sort / cursors. */
   updatedAtMs?: number;
 }
 
 /** Firestore orderBy field for ready-catalog paging. */
-export type CatalogDesignSortField = 'updatedAt' | 'createdAt' | 'requestCount' | 'lastRequestedAt';
+export type CatalogDesignSortField =
+  | 'updatedAt'
+  | 'createdAt'
+  | 'requestCount'
+  | 'lastRequestedAt'
+  | 'favoriteCount';
 
 export interface CatalogDesignListCursor {
   designId: string;

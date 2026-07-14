@@ -78,6 +78,11 @@ export interface CustomerUpload {
   catalogUseAcknowledged: boolean;
   termsVersion: string | null;
   confirmedAt: Timestamp | null;
+  /** Set when source + production Storage objects were purged (thumbnail/preview kept). */
+  fullSizePurgedAt?: Timestamp | null;
+  fullSizePurgedBy?: string | null;
+  /** Set when staff promote a donation/upload to AI Review (cool-off clock). */
+  promotedAt?: Timestamp | null;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }

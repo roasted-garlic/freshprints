@@ -12,12 +12,15 @@ import {
 import { resolvePortalPrintProgressStage } from '@fresh-prints/shared/utils/portalPrintProgressStage';
 import { sumPrintRequestItemQuantities } from '@fresh-prints/shared/utils/portalShowQueueCapacity';
 
+import { catalogService } from '../../../../features/catalog/services/catalogService';
+import type { CatalogDesign } from '../../../../features/catalog/types/catalog.types';
+import { useAuth } from '../../../../features/auth/context/AuthContext';
 import { PortalPrintRequestItemCard } from '../../../../features/print-requests/components/PortalPrintRequestItemCard';
 import { PortalPrintRequestProgressPanel } from '../../../../features/print-requests/components/PortalPrintRequestProgressPanel';
 import { PortalQueueToShowModal } from '../../../../features/print-requests/components/PortalQueueToShowModal';
 import { PrintRequestDetailGuide } from '../../../../features/print-requests/components/PrintRequestDetailGuide';
-import { useAuth } from '../../../../features/auth/context/AuthContext';
 import { usePortalPrintRequests } from '../../../../features/print-requests/context/PortalPrintRequestContext';
+import { useAddDesignToRequestFlow } from '../../../../features/print-requests/hooks/useAddDesignToRequestFlow';
 import { usePrintRequestDetail } from '../../../../features/print-requests/hooks/usePrintRequestDetail';
 import { usePortalShowPrintProgress } from '../../../../features/print-requests/hooks/usePortalShowPrintProgress';
 import {
@@ -30,6 +33,7 @@ import {
   resolvePortalRequestDetailBack,
 } from '../../../../features/print-requests/utils/portalRequestDetailReturn';
 import { PortalConfirmModal } from '../../../../features/shared/components/PortalConfirmModal';
+import { PortalPickContinuableRequestModal } from '../../../../features/shared/components/PortalPickContinuableRequestModal';
 import { ArrowLeftIcon, CalendarPlusIcon, ImagePlusIcon, LibraryIcon, RefreshIcon } from '../../../../features/shared/components/PortalIcons';
 
 type AutosaveStatus = 'idle' | 'saving' | 'saved' | 'failed';
@@ -62,8 +66,16 @@ export default function PrintRequestDetailView() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { refreshCustomer } = useAuth();
-  const { allocationTotalsByRequestId, refreshRequests, reloadWorkingItems, summariesByRequestId } =
-    usePortalPrintRequests();
+  const {
+    allocationTotalsByRequestId,
+    closeCurrentRequestDrawer,
+    continuableRequests,
+    createPrintRequest,
+    refreshRequests,
+    reloadWorkingItems,
+    resetWorkingCart,
+    summariesByRequestId,
+  } = usePortalPrintRequests();
   const printRequestId = params.id;
   const [actionError, setActionError] = useState<string | null>(null);
   const [autosaveState, setAutosaveState] = useState<AutosaveState>({ status: 'idle' });
@@ -71,6 +83,10 @@ export default function PrintRequestDetailView() {
   const [isQueueModalOpen, setIsQueueModalOpen] = useState(false);
   const [itemPendingRemoval, setItemPendingRemoval] = useState<PrintRequestItem | null>(null);
   const [isRemovingItem, setIsRemovingItem] = useState(false);
+  const [catalogReuseByDesignId, setCatalogReuseByDesignId] = useState<Map<string, CatalogDesign>>(
+    () => new Map(),
+  );
+  const [catalogReuseReady, setCatalogReuseReady] = useState(false);
 
   const {
     printRequest,
@@ -85,6 +101,13 @@ export default function PrintRequestDetailView() {
     removeItem,
     reload,
   } = usePrintRequestDetail(printRequestId);
+
+  const addDesignFlow = useAddDesignToRequestFlow({
+    continuableRequests,
+    createPrintRequest,
+    refreshRequests,
+    reloadWorkingItems,
+  });
 
   useEffect(() => {
     if (searchParams.get('upload') !== '1') {
@@ -124,6 +147,54 @@ export default function PrintRequestDetailView() {
   useEffect(() => {
     void loadAllocationState();
   }, [loadAllocationState, printRequest?.status, printRequest?.itemCount]);
+
+  const catalogDesignIdsKey = useMemo(
+    () =>
+      [
+        ...new Set(
+          items
+            .map((item) => item.designId?.trim())
+            .filter((designId): designId is string => Boolean(designId)),
+        ),
+      ]
+        .sort()
+        .join('|'),
+    [items],
+  );
+
+  useEffect(() => {
+    if (!catalogDesignIdsKey || isEditable) {
+      setCatalogReuseByDesignId(new Map());
+      setCatalogReuseReady(true);
+      return;
+    }
+
+    let cancelled = false;
+    setCatalogReuseReady(false);
+
+    void (async () => {
+      try {
+        const designIds = catalogDesignIdsKey.split('|').filter(Boolean);
+        const designs = await catalogService.getReadyDesignsByIds(designIds);
+        if (cancelled) {
+          return;
+        }
+        setCatalogReuseByDesignId(new Map(designs.map((design) => [design.id, design])));
+      } catch {
+        if (!cancelled) {
+          setCatalogReuseByDesignId(new Map());
+        }
+      } finally {
+        if (!cancelled) {
+          setCatalogReuseReady(true);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [catalogDesignIdsKey, isEditable]);
 
   const updateAutosaveState = useCallback(
     (status: Exclude<AutosaveStatus, 'idle'>, message?: string, retry?: () => Promise<void>) => {
@@ -230,13 +301,23 @@ export default function PrintRequestDetailView() {
   const hasAttachedDesigns = items.length > 0;
 
   const handleQueuedToShow = useCallback(async () => {
+    // Clear Stash immediately — list reload can otherwise re-hydrate the just-queued request.
+    resetWorkingCart();
+    closeCurrentRequestDrawer();
     await Promise.all([
       reload({ silent: true }),
       refreshRequests({ silent: true }),
       refreshCustomer(),
     ]);
     await loadAllocationState();
-  }, [loadAllocationState, refreshCustomer, refreshRequests, reload]);
+  }, [
+    closeCurrentRequestDrawer,
+    loadAllocationState,
+    refreshCustomer,
+    refreshRequests,
+    reload,
+    resetWorkingCart,
+  ]);
 
   if (isLoading) {
     return (
@@ -414,9 +495,18 @@ export default function PrintRequestDetailView() {
             const upload = item.customerUploadId
               ? uploadSummaries.get(item.customerUploadId)
               : null;
+            const catalogDesignId = item.designId?.trim() ?? '';
+            const catalogReuseDesign =
+              !isEditable && catalogReuseReady && catalogDesignId
+                ? (catalogReuseByDesignId.get(catalogDesignId) ?? null)
+                : undefined;
+            const isAddingThisDesign =
+              Boolean(catalogReuseDesign) &&
+              addDesignFlow.addingDesignId === catalogReuseDesign?.id;
 
             return (
               <PortalPrintRequestItemCard
+                catalogReuseDesign={catalogReuseDesign}
                 design={
                   design
                     ? {
@@ -447,8 +537,10 @@ export default function PrintRequestDetailView() {
                       }
                     : null
                 }
+                isAddingToRequest={isAddingThisDesign}
                 item={item}
                 key={item.id}
+                onAddToRequest={addDesignFlow.addDesign}
                 onDuplicate={(nextItem) => void handleDuplicateItem(nextItem)}
                 onRemove={(nextItem) => setItemPendingRemoval(nextItem)}
                 onUpdate={handleUpdateItem}
@@ -515,6 +607,26 @@ export default function PrintRequestDetailView() {
           Remove <strong>{pendingRemovalTitle}</strong> from this print request? This cannot be undone.
         </p>
       </PortalConfirmModal>
+
+      <PortalConfirmModal
+        confirmLabel={addDesignFlow.isAdding ? 'Adding…' : 'Add to request'}
+        isConfirmLoading={addDesignFlow.isAdding}
+        isOpen={addDesignFlow.isConfirmOpen}
+        onCancel={addDesignFlow.closeConfirm}
+        onConfirm={addDesignFlow.confirmAddDesign}
+        title="Add to request?"
+      >
+        <p className="portal-muted portal-confirm-modal-message">{addDesignFlow.confirmMessage}</p>
+      </PortalConfirmModal>
+
+      <PortalPickContinuableRequestModal
+        continuableRequests={continuableRequests}
+        designTitle={addDesignFlow.pendingDesign?.title}
+        isAdding={addDesignFlow.isAdding}
+        isOpen={addDesignFlow.isPickerOpen}
+        onClose={addDesignFlow.closePicker}
+        onSelectRequest={addDesignFlow.confirmPickRequest}
+      />
     </main>
   );
 }

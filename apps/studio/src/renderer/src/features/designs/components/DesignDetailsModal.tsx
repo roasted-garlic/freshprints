@@ -30,6 +30,7 @@ interface DesignDetailsModalProps {
   onArchive?: (design: Design) => void;
   onClose: () => void;
   onEdit?: (design: Design) => void;
+  onPurgeAssets?: (design: Design) => void;
   onRestore?: (design: Design) => void;
 }
 
@@ -62,12 +63,16 @@ export function DesignDetailsModal({
   onArchive,
   onClose,
   onEdit,
+  onPurgeAssets,
   onRestore,
 }: DesignDetailsModalProps) {
   const { user } = useAuth();
   const [isPreviewLightboxOpen, setIsPreviewLightboxOpen] = useState(false);
   const [isMoreDetailsOpen, setIsMoreDetailsOpen] = useState(false);
-  const { url: previewUrl } = useDesignDerivativeUrl(design?.previewPath);
+  const isAssetsPurged = Boolean(design?.assetsPurgedAt);
+  const { url: previewUrl } = useDesignDerivativeUrl(
+    isAssetsPurged ? design?.thumbnailPath : design?.previewPath,
+  );
 
   if (!design) {
     return null;
@@ -75,7 +80,14 @@ export function DesignDetailsModal({
 
   const canEdit = permissionService.canEditDesigns(user);
   const canArchive = permissionService.canArchiveDesigns(user) && design.status !== "archived";
-  const canRestore = permissionService.canEditDesigns(user) && design.status === "archived";
+  const canRestore =
+    permissionService.canRestoreDesigns(user) &&
+    design.status === "archived" &&
+    !design.assetsPurgedAt;
+  const canPurgeAssets =
+    permissionService.canPurgeArchivedDesignAssets(user) &&
+    design.status === "archived" &&
+    !design.assetsPurgedAt;
 
   const printSize = resolveDesignPrintSizeForDisplay(design);
   const originLabel = resolveDesignOriginLabel(design);
@@ -92,6 +104,7 @@ export function DesignDetailsModal({
               <Badge variant={getDesignStatusBadgeVariant(design.status)}>
                 {formatDesignStatusLabel(design.status)}
               </Badge>
+              {isAssetsPurged ? <Badge variant="danger">Images deleted</Badge> : null}
               {printSize?.effectiveDpi !== undefined ? (
                 <ResolutionQualityPill effectiveDpi={printSize.effectiveDpi} />
               ) : null}
@@ -100,13 +113,17 @@ export function DesignDetailsModal({
 
           <div className="design-details-header-media">
             <DesignThumbnailPanel
-              alt={`${design.title} preview`}
-              catalogPath={design.previewPath}
-              fallbackLabel="Preview unavailable"
+              alt={
+                isAssetsPurged
+                  ? `${design.title} thumbnail (large images deleted)`
+                  : `${design.title} preview`
+              }
+              catalogPath={isAssetsPurged ? design.thumbnailPath : design.previewPath}
+              fallbackLabel={isAssetsPurged ? "Thumbnail unavailable" : "Preview unavailable"}
               imageFit="contain"
-              interactive
-              loadingLabel="Loading preview"
-              onImageClick={() => setIsPreviewLightboxOpen(true)}
+              interactive={!isAssetsPurged}
+              loadingLabel={isAssetsPurged ? "Loading thumbnail" : "Loading preview"}
+              onImageClick={isAssetsPurged ? undefined : () => setIsPreviewLightboxOpen(true)}
             />
           </div>
         </div>
@@ -152,6 +169,19 @@ export function DesignDetailsModal({
           {canRestore && onRestore ? (
             <Button onClick={() => onRestore(design)} type="button">
               Restore
+            </Button>
+          ) : null}
+          {design.assetsPurgedAt ? (
+            <p className="design-details-muted">
+              Large images were deleted. Thumbnail kept for history reference.
+            </p>
+          ) : null}
+        </div>
+
+        <div className="design-details-footer-center">
+          {canPurgeAssets && onPurgeAssets ? (
+            <Button onClick={() => onPurgeAssets(design)} type="button" variant="danger">
+              Delete images
             </Button>
           ) : null}
         </div>

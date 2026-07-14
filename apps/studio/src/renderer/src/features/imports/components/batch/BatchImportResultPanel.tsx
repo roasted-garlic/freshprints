@@ -135,18 +135,17 @@ export function BatchImportResultPanel({
           </p>
         ) : allDerivativesComplete ? (
           <p className="auth-message auth-message-success">
-            Designs were imported with derivatives complete. With Auto advance on (default), AI
-            Processing starts in the background so you can keep importing. Open AI Processing anytime
-            to watch progress.
+            Designs were imported with derivatives complete. AI processing starts in the
+            background so you can keep importing. Open AI Processing anytime to watch progress.
           </p>
         ) : hasDerivativeFailures ? (
           <p className="auth-message auth-message-warning">
-            Batch upload finished with partial derivative success. Imported designs remain on the
-            Processing tab until you start AI.
+            Batch upload finished with partial derivative success. Designs with complete
+            derivatives start AI in the background; incomplete ones stay on Processing until fixed.
           </p>
         ) : (
           <p className="auth-message auth-message-success">
-            Batch upload finished. Imported designs are waiting on the Processing tab.
+            Batch upload finished. AI processing starts in the background for imported designs.
           </p>
         )}
 

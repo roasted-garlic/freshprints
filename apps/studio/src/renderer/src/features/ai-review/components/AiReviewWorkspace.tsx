@@ -31,6 +31,7 @@ interface AiReviewWorkspaceProps {
   canEdit: boolean;
   canStopAutoQueue: boolean;
   canProcessSelected: boolean;
+  canArchive: boolean;
   canReopen: boolean;
   canReject: boolean;
   canRerun: boolean;
@@ -58,6 +59,7 @@ interface AiReviewWorkspaceProps {
   onNext: () => void;
   onPrevious: () => void;
   onProcessSelectedDesign: () => void;
+  onArchive: () => void;
   onReject: () => void;
   onReopen: () => void;
   onRerun: () => void;
@@ -86,6 +88,7 @@ export function AiReviewWorkspace({
   canEdit,
   canStopAutoQueue,
   canProcessSelected,
+  canArchive,
   canReopen,
   canReject,
   canRerun,
@@ -109,6 +112,7 @@ export function AiReviewWorkspace({
   onNext,
   onPrevious,
   onProcessSelectedDesign,
+  onArchive,
   onReject,
   onReopen,
   onRerun,
@@ -277,6 +281,15 @@ export function AiReviewWorkspace({
                           size="sm"
                         >
                           Approve Existing Suggestions
+                        </Button>
+
+                        <Button
+                          disabled={!canArchive || isActionLoading}
+                          onClick={onArchive}
+                          variant="secondary"
+                          size="sm"
+                        >
+                          Archive
                         </Button>
                       </>
                     ) : null}

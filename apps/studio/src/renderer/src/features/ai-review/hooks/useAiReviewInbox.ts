@@ -21,6 +21,7 @@ import {
   canEditCatalogInInbox,
   designMatchesInboxTab,
   isDesignApprovableInInbox,
+  isDesignArchivableInInbox,
   isDesignRejectableInInbox,
   isDesignReopenableInInbox,
   isDesignRerunnableFromNeedsReview,
@@ -185,6 +186,12 @@ export function useAiReviewInbox(
       permissionService.canReopenRejectedDesign(user) &&
       selectedDesign &&
       isDesignReopenableInInbox(selectedDesign, filters.tab),
+  );
+  const canArchiveSelected = Boolean(
+    user &&
+      permissionService.canArchiveDesigns(user) &&
+      selectedDesign &&
+      isDesignArchivableInInbox(selectedDesign, filters.tab),
   );
   const canRerunSelected = Boolean(
     user &&
@@ -634,6 +641,16 @@ export function useAiReviewInbox(
     });
   }, [canReopenSelected, runRejectedTabNavigationAction, selectedDesign, user]);
 
+  const archiveSelected = useCallback(async () => {
+    if (!user || !selectedDesign || !canArchiveSelected) {
+      return;
+    }
+
+    await runInboxAction(async () => {
+      await aiReviewInboxService.archiveFromInbox(user, selectedDesign.id);
+    });
+  }, [canArchiveSelected, runInboxAction, selectedDesign, user]);
+
   const rerunSelected = useCallback(() => {
     requestRerunAiSuggestions();
   }, [requestRerunAiSuggestions]);
@@ -746,6 +763,7 @@ export function useAiReviewInbox(
     approvedTags: catalogTags.tags,
     baselineForm,
     canApprove: canApproveSelected,
+    canArchive: canArchiveSelected,
     canEdit: canEditSelected,
     canReject: canRejectSelected,
     canReopen: canReopenSelected,
@@ -780,6 +798,7 @@ export function useAiReviewInbox(
     selectedIndex,
     selectRelative,
     approveSelected,
+    archiveSelected,
     rejectSelected,
     reopenSelected,
     rerunSelected,
