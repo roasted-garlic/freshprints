@@ -1574,11 +1574,15 @@
 
 .design-thumbnail-panel-image--interactive {
   /* Size the hit target to the artwork, not the letterboxed panel. */
-  cursor: zoom-in;
+  cursor: pointer;
   height: auto;
   max-height: 100%;
   max-width: 100%;
   width: auto;
+}
+
+.design-details-hero .design-thumbnail-panel-image--interactive {
+  cursor: zoom-in;
 }
 
 .design-thumbnail-panel-state {

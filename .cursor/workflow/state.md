@@ -48,3 +48,4 @@ Mobile polish applied (tag drawer shrink + filter dock layout); re-issued manual
 - 2026-07-13 — Owner: mobile tag sheet stays tall/spreads tags; Halftone broke mobile filter uniformity — fix without more vertical space.
 - 2026-07-13 — Polish: mobile tag drawer `height: auto` + `align-content: start`; Halftone sits beside search on mobile (Category|Tags unchanged).
 - 2026-07-13 — Owner: preferred Category | Halftone | Tags on one line — restored that layout.
+- 2026-07-13 — Owner: catalog card hover = pointer (finger); magnifying glass only on design details preview.

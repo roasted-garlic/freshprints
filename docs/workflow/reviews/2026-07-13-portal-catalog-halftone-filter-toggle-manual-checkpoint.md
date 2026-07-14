@@ -27,6 +27,7 @@
 6. Tags modal **Clear** then Apply → **Expected:** Other tags clear; Halftone toggle stays ON (modal clear preserves the dedicated filter).
 7. Dock **Clear filters** → **Expected:** Search, category, tags, and Halftone toggle all reset.
 8. Check mobile width → **Expected:** Filter dock stays two rows tall; controls aligned and usable.
+9. Hover a design card on home/catalog → **Expected:** finger/pointer cursor (not magnifying glass). Open details and hover the preview → **Expected:** magnifying glass (`zoom-in`).
 
 ### Pass criteria
 
@@ -36,6 +37,7 @@
 - [ ] Mobile tag sheet shrinks with fewer tags (no stretched gaps)
 - [ ] Mobile filter dock: Category | Halftone | Tags on one row (no extra height)
 - [ ] Clear filters resets toggle; modal Clear preserves toggle
+- [ ] Card hover = pointer; details preview hover = zoom-in
 - [ ] Desktop + mobile layout acceptable
 
 ### Please reply with
