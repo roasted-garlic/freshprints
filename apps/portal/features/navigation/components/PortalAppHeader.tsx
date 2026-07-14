@@ -1,38 +1,20 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname, useSearchParams } from 'next/navigation';
 import { Menu } from 'lucide-react';
 
 import { PortalLogo } from '../../brand/components/PortalLogo';
-import { ImageUpIcon, ShoppingBagIcon } from '../../shared/components/PortalIcons';
-import {
-  buildRequestArtworkHref,
-  CATALOG_HOME_PATH,
-  REQUEST_ARTWORK_PATH,
-} from '../../print-requests/utils/catalogSelectionNavigation';
-import { usePortalDrawer } from '../context/PortalDrawerContext';
+import { ShoppingBagIcon } from '../../shared/components/PortalIcons';
+import { CATALOG_HOME_PATH } from '../../print-requests/utils/catalogSelectionNavigation';
 import { usePortalPrintRequests } from '../../print-requests/context/PortalPrintRequestContext';
+import { usePortalDrawer } from '../context/PortalDrawerContext';
 
 export function PortalAppHeader() {
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
   const { openNav } = usePortalDrawer();
-  const {
-    currentRequestAggregates,
-    openCurrentRequestDrawer,
-  } = usePortalPrintRequests();
+  const { currentRequestAggregates, openCurrentRequestDrawer } = usePortalPrintRequests();
 
   const totalPrints = currentRequestAggregates.totalPrintQuantity;
   const attentionCount = currentRequestAggregates.attentionCount;
-
-  const query = searchParams.toString();
-  const currentLocation = `${pathname}${query ? `?${query}` : ''}`;
-  const returnTo =
-    pathname === REQUEST_ARTWORK_PATH || pathname.startsWith(`${REQUEST_ARTWORK_PATH}/`)
-      ? CATALOG_HOME_PATH
-      : currentLocation;
-  const uploadHref = buildRequestArtworkHref({ returnTo });
 
   return (
     <header className="portal-app-header">
@@ -57,20 +39,6 @@ export function PortalAppHeader() {
       </div>
 
       <div className="portal-app-header-actions">
-        <Link
-          aria-label="Upload Designs"
-          className="portal-app-header-action portal-app-header-upload"
-          href={uploadHref}
-          title="Upload Designs"
-        >
-          <ImageUpIcon size={18} />
-          <span className="portal-app-header-action-label portal-app-header-upload-label-full">
-            Upload Designs
-          </span>
-          <span className="portal-app-header-action-label portal-app-header-upload-label-short">
-            Upload
-          </span>
-        </Link>
         <button
           aria-label={`Current Request, ${totalPrints} total prints${
             attentionCount > 0 ? `, ${attentionCount} need attention` : ''

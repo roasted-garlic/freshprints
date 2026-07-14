@@ -1,4 +1,4 @@
-import { collection, doc, getDoc, onSnapshot, query, where, type Unsubscribe } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, onSnapshot, query, where, type Unsubscribe } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { getDownloadURL, ref, uploadBytesResumable, type UploadMetadata } from 'firebase/storage';
 
@@ -28,6 +28,7 @@ import type {
 } from '@fresh-prints/shared/types/customerUpload/customerUpload.enums';
 import { formatFileSize } from '@fresh-prints/shared/utils/formatFileSize';
 import { getCustomerUploadProgressLabel } from '@fresh-prints/shared/utils/customerUploadProgressLabel';
+import { resolveCustomerUploadPurpose } from '@fresh-prints/shared/utils/customerUploadPurpose';
 
 import { getPortalDb, getPortalFunctions, getPortalStorage } from '../../../lib/firebase/client';
 import { portalAuthService } from '../../auth/services/authService';
@@ -512,5 +513,23 @@ export const customerUploadService = {
     } catch {
       // Ignore.
     }
+  },
+
+  /** Confirmed catalog donations for the signed-in customer (account overview). */
+  async countConfirmedCatalogDonations(customerUid: string): Promise<number> {
+    const snapshot = await getDocs(
+      query(
+        collection(getPortalDb(), CUSTOMER_UPLOAD_COLLECTIONS.customerUploads),
+        where('customerUid', '==', customerUid),
+      ),
+    );
+
+    return snapshot.docs.filter((document) => {
+      const data = document.data();
+      return (
+        resolveCustomerUploadPurpose(data.purpose) === 'catalog_donation' &&
+        data.catalogUseAcknowledged === true
+      );
+    }).length;
   },
 };

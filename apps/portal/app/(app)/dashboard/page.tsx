@@ -1,11 +1,16 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import type { Timestamp } from 'firebase/firestore';
 
 import { useAuth } from '../../../features/auth/context/AuthContext';
+import { customerUploadService } from '../../../features/customer-uploads/services/customerUploadService';
 import { usePortalPrintRequests } from '../../../features/print-requests/context/PortalPrintRequestContext';
+import {
+  buildRequestArtworkHref,
+  CATALOG_HOME_PATH,
+} from '../../../features/print-requests/utils/catalogSelectionNavigation';
 import { getProfileInitials, resolvePortalDisplayName } from '../../../features/account/utils/profileDisplay';
 
 function formatMemberSince(timestamp: Timestamp): string {
@@ -18,15 +23,43 @@ function formatMemberSince(timestamp: Timestamp): string {
 export default function DashboardPage() {
   const { customer, refreshCustomer, user } = useAuth();
   const { isLoading: isRequestsLoading, refreshRequests, requests } = usePortalPrintRequests();
+  const [donatedDesignCount, setDonatedDesignCount] = useState<number | null>(null);
   const displayName = resolvePortalDisplayName(customer?.displayName, user?.displayName);
   const email = user?.email ?? customer?.email ?? '—';
   const username = customer?.username;
   const printRequestCount = isRequestsLoading ? (customer?.totalPrintRequests ?? 0) : requests.length;
+  const uploadHref = buildRequestArtworkHref({ returnTo: '/dashboard' });
 
   useEffect(() => {
     void refreshRequests({ silent: true });
     void refreshCustomer();
   }, [refreshCustomer, refreshRequests]);
+
+  useEffect(() => {
+    const uid = user?.uid;
+    if (!uid) {
+      setDonatedDesignCount(0);
+      return;
+    }
+
+    let cancelled = false;
+    void customerUploadService
+      .countConfirmedCatalogDonations(uid)
+      .then((count) => {
+        if (!cancelled) {
+          setDonatedDesignCount(count);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setDonatedDesignCount(0);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.uid]);
 
   return (
     <main className="portal-page portal-account-page">
@@ -58,16 +91,26 @@ export default function DashboardPage() {
               <dt>Print requests</dt>
               <dd>{printRequestCount}</dd>
             </div>
+            <div>
+              <dt>Donated designs</dt>
+              <dd>{donatedDesignCount === null ? '…' : donatedDesignCount}</dd>
+            </div>
           </dl>
         </section>
 
         <section className="portal-panel portal-account-panel">
           <h2 className="portal-account-section-title">Quick links</h2>
           <div className="portal-account-link-grid">
-            <Link className="portal-account-quick-link" href="/">
+            <Link className="portal-account-quick-link" href={CATALOG_HOME_PATH}>
               <span className="portal-account-quick-link-label">Browse designs</span>
               <span className="portal-account-quick-link-description">
                 Explore the catalog and start a new print request.
+              </span>
+            </Link>
+            <Link className="portal-account-quick-link" href={uploadHref}>
+              <span className="portal-account-quick-link-label">Upload designs</span>
+              <span className="portal-account-quick-link-description">
+                Add your own artwork to a current print request.
               </span>
             </Link>
             <Link className="portal-account-quick-link" href="/requests?tab=working">

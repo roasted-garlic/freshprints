@@ -5,12 +5,19 @@ import { usePathname } from 'next/navigation';
 
 import { usePortalPrintRequests } from '../../print-requests/context/PortalPrintRequestContext';
 import { ShoppingBagIcon } from '../../shared/components/PortalIcons';
-import { portalNavItems, resolveActivePortalNavItem } from '../constants/portalNavItems';
+import {
+  portalNavItems,
+  resolveActivePortalNavItem,
+  resolvePortalNavHref,
+  type PortalNavItemId,
+} from '../constants/portalNavItems';
 import { PortalNavIcon } from './PortalNavIcon';
 
-const BOTTOM_NAV_LABELS: Record<(typeof portalNavItems)[number]['id'], string> = {
+const BOTTOM_NAV_ITEM_IDS: PortalNavItemId[] = ['library', 'upload'];
+
+const BOTTOM_NAV_LABELS: Record<(typeof BOTTOM_NAV_ITEM_IDS)[number], string> = {
   library: 'Library',
-  requests: 'Requests',
+  upload: 'Upload',
 };
 
 export function PortalBottomNav() {
@@ -19,18 +26,21 @@ export function PortalBottomNav() {
   const { currentRequestAggregates, openCurrentRequestDrawer } = usePortalPrintRequests();
 
   const totalPrints = currentRequestAggregates.totalPrintQuantity;
+  const bottomNavItems = BOTTOM_NAV_ITEM_IDS.map(
+    (id) => portalNavItems.find((item) => item.id === id)!,
+  );
 
   return (
     <nav aria-label="Portal navigation" className="portal-bottom-nav">
       <div className="portal-bottom-nav-bar">
         <div className="portal-bottom-nav-links">
-          {portalNavItems.map((item) => {
+          {bottomNavItems.map((item) => {
             const isActive = activeItemId === item.id;
             return (
               <Link
                 aria-current={isActive ? 'page' : undefined}
                 className={`portal-bottom-nav-link${isActive ? ' portal-bottom-nav-link-active' : ''}`}
-                href={item.href}
+                href={resolvePortalNavHref(item, pathname)}
                 key={item.id}
               >
                 <PortalNavIcon itemId={item.id} size={20} />

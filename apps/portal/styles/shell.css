@@ -1024,7 +1024,7 @@
 .portal-account-stat-grid {
   display: grid;
   gap: var(--space-4);
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
   margin: 0;
 }
 
@@ -1244,7 +1244,7 @@
 }
 
 @media (min-width: 48rem) {
-  /* Desktop: mid-line edge tab toggles expand/collapse; no header hamburger. */
+  /* Desktop: edge tab toggles sidebar; header keeps Current Request cart. */
   .portal-app-header-menu-button {
     display: none;
   }
@@ -1254,6 +1254,7 @@
   }
 
   .portal-app-header {
+    display: flex;
     position: sticky;
   }
 
@@ -1272,6 +1273,10 @@
     margin-left: auto;
     position: relative;
     z-index: 1;
+  }
+
+  .portal-app-header-basket {
+    display: inline-flex;
   }
 
   .portal-page {
@@ -1679,18 +1684,14 @@
 }
 
 @media (max-width: 720px) {
-  .portal-app-header-basket {
-    display: none;
-  }
-
   .portal-app-header-action-label {
     display: none;
   }
 
-  .portal-app-header-upload .portal-app-header-upload-label-short {
-    display: inline;
-    font-size: 0.8125rem;
-    font-weight: 600;
+  .portal-app-header-basket {
+    display: inline-flex;
+    min-width: 2.25rem;
+    padding-inline: 0.55rem;
   }
 
   .current-request-drawer {

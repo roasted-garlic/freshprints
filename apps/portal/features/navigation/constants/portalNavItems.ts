@@ -1,4 +1,6 @@
-export type PortalNavItemId = 'library' | 'requests';
+import { REQUEST_ARTWORK_PATH, buildRequestArtworkHref, CATALOG_HOME_PATH } from '../../print-requests/utils/catalogSelectionNavigation';
+
+export type PortalNavItemId = 'library' | 'upload';
 
 export interface PortalNavItem {
   id: PortalNavItemId;
@@ -10,7 +12,7 @@ export const PORTAL_ACCOUNT_HREF = '/dashboard';
 
 export const portalNavItems: PortalNavItem[] = [
   { id: 'library', href: '/catalog', label: 'Design Library' },
-  { id: 'requests', href: '/requests?tab=working', label: 'Print Requests' },
+  { id: 'upload', href: REQUEST_ARTWORK_PATH, label: 'Upload Designs' },
 ];
 
 export function isPortalAccountRoute(pathname: string): boolean {
@@ -26,9 +28,22 @@ export function resolveActivePortalNavItem(pathname: string): PortalNavItemId | 
     return 'library';
   }
 
-  if (pathname.startsWith('/requests')) {
-    return 'requests';
+  if (pathname === REQUEST_ARTWORK_PATH || pathname.startsWith(`${REQUEST_ARTWORK_PATH}/`)) {
+    return 'upload';
   }
 
   return null;
+}
+
+export function resolvePortalNavHref(item: PortalNavItem, pathname: string): string {
+  if (item.id !== 'upload') {
+    return item.href;
+  }
+
+  const returnTo =
+    pathname === REQUEST_ARTWORK_PATH || pathname.startsWith(`${REQUEST_ARTWORK_PATH}/`)
+      ? CATALOG_HOME_PATH
+      : pathname;
+
+  return buildRequestArtworkHref({ returnTo });
 }

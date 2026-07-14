@@ -11,7 +11,7 @@ import { PortalLogo } from '../../brand/components/PortalLogo';
 import { CATALOG_HOME_PATH } from '../../print-requests/utils/catalogSelectionNavigation';
 import { PortalConfirmModal } from '../../shared/components/PortalConfirmModal';
 import { ThemeToggle } from '../../theme/components/ThemeToggle';
-import { PORTAL_ACCOUNT_HREF, isPortalAccountRoute, portalNavItems, resolveActivePortalNavItem } from '../constants/portalNavItems';
+import { PORTAL_ACCOUNT_HREF, isPortalAccountRoute, portalNavItems, resolveActivePortalNavItem, resolvePortalNavHref } from '../constants/portalNavItems';
 import { usePortalDrawer } from '../context/PortalDrawerContext';
 import { PortalNavIcon } from './PortalNavIcon';
 
@@ -122,13 +122,14 @@ export function PortalSidebar() {
           <nav className="portal-sidebar-nav">
             {portalNavItems.map((item) => {
               const isActive = isNavItemActive(item.id, pathname);
+              const href = resolvePortalNavHref(item, pathname);
 
               return (
                 <Link
                   key={item.id}
                   aria-current={isActive ? 'page' : undefined}
                   className={`portal-sidebar-link${isActive ? ' portal-sidebar-link-active' : ''}`}
-                  href={item.href}
+                  href={href}
                   onClick={closeDrawer}
                   title={showCollapsed ? item.label : undefined}
                 >
