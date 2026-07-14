@@ -48,6 +48,13 @@ function DetailField({ label, value, valueClassName }: DetailFieldProps) {
   );
 }
 
+function resolveDesignOriginLabel(design: Design): string {
+  if (design.sourceCustomerUploadId?.trim()) {
+    return "Customer upload";
+  }
+  return "Staff import";
+}
+
 export function DesignDetailsModal({
   categoryName,
   design,
@@ -71,6 +78,7 @@ export function DesignDetailsModal({
   const canRestore = permissionService.canEditDesigns(user) && design.status === "archived";
 
   const printSize = resolveDesignPrintSizeForDisplay(design);
+  const originLabel = resolveDesignOriginLabel(design);
 
   return (
     <>
@@ -110,6 +118,7 @@ export function DesignDetailsModal({
           <dl className="design-details-grid">
             <DetailField label="Description" value={design.description?.trim() || "—"} />
             <DetailField label="Category" value={categoryName ?? "Uncategorized"} />
+            <DetailField label="Origin" value={originLabel} />
           </dl>
         </section>
 
@@ -185,8 +194,21 @@ export function DesignDetailsModal({
           <section aria-labelledby="design-details-audit-title" className="design-details-section">
             <h3 id="design-details-audit-title">Audit trail</h3>
             <dl className="design-details-grid design-details-columns">
-              <DetailField label="Uploaded by" value={design.uploadedBy} />
+              <DetailField label="Origin" value={originLabel} />
+              {design.sourceCustomerUploadId ? (
+                <DetailField
+                  label="Customer upload doc"
+                  value={design.sourceCustomerUploadId}
+                />
+              ) : null}
+              <DetailField
+                label={design.sourceCustomerUploadId ? "Promoted by (staff)" : "Uploaded by (staff)"}
+                value={design.uploadedBy}
+              />
               <DetailField label="Upload date" value={formatDesignTimestamp(design.createdAt)} />
+              {design.requestedByCustomerId ? (
+                <DetailField label="Customer profile ID" value={design.requestedByCustomerId} />
+              ) : null}
               {(() => {
                 const aiReview = resolveDesignAiReviewDisplay(design);
 

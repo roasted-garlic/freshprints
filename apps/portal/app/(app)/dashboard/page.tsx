@@ -1,17 +1,17 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { Timestamp } from 'firebase/firestore';
 
+import { AccountArtworkGallery } from '../../../features/account/components/AccountArtworkGallery';
+import { getProfileInitials, resolvePortalDisplayName } from '../../../features/account/utils/profileDisplay';
 import { useAuth } from '../../../features/auth/context/AuthContext';
-import { customerUploadService } from '../../../features/customer-uploads/services/customerUploadService';
 import { usePortalPrintRequests } from '../../../features/print-requests/context/PortalPrintRequestContext';
 import {
   buildRequestArtworkHref,
   CATALOG_HOME_PATH,
 } from '../../../features/print-requests/utils/catalogSelectionNavigation';
-import { getProfileInitials, resolvePortalDisplayName } from '../../../features/account/utils/profileDisplay';
 
 function formatMemberSince(timestamp: Timestamp): string {
   return timestamp.toDate().toLocaleDateString(undefined, {
@@ -21,45 +21,29 @@ function formatMemberSince(timestamp: Timestamp): string {
 }
 
 export default function DashboardPage() {
-  const { customer, refreshCustomer, user } = useAuth();
+  const { customer, firebaseUser, refreshCustomer, user } = useAuth();
   const { isLoading: isRequestsLoading, refreshRequests, requests } = usePortalPrintRequests();
+  const [uploadedDesignCount, setUploadedDesignCount] = useState<number | null>(null);
   const [donatedDesignCount, setDonatedDesignCount] = useState<number | null>(null);
   const displayName = resolvePortalDisplayName(customer?.displayName, user?.displayName);
   const email = user?.email ?? customer?.email ?? '—';
   const username = customer?.username;
   const printRequestCount = isRequestsLoading ? (customer?.totalPrintRequests ?? 0) : requests.length;
   const uploadHref = buildRequestArtworkHref({ returnTo: '/dashboard' });
+  const customerUid = firebaseUser?.uid ?? user?.id;
+
+  const handleArtworkCountsChange = useCallback(
+    (counts: { donatedCount: number; uploadCount: number }) => {
+      setUploadedDesignCount(counts.uploadCount);
+      setDonatedDesignCount(counts.donatedCount);
+    },
+    [],
+  );
 
   useEffect(() => {
     void refreshRequests({ silent: true });
     void refreshCustomer();
   }, [refreshCustomer, refreshRequests]);
-
-  useEffect(() => {
-    const uid = user?.uid;
-    if (!uid) {
-      setDonatedDesignCount(0);
-      return;
-    }
-
-    let cancelled = false;
-    void customerUploadService
-      .countConfirmedCatalogDonations(uid)
-      .then((count) => {
-        if (!cancelled) {
-          setDonatedDesignCount(count);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setDonatedDesignCount(0);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [user?.uid]);
 
   return (
     <main className="portal-page portal-account-page">
@@ -80,7 +64,7 @@ export default function DashboardPage() {
           </div>
         </section>
 
-        <section className="portal-panel portal-account-panel">
+        <section className="portal-panel portal-account-panel portal-account-overview-panel">
           <h2 className="portal-account-section-title">Overview</h2>
           <dl className="portal-account-stat-grid">
             <div>
@@ -92,10 +76,20 @@ export default function DashboardPage() {
               <dd>{printRequestCount}</dd>
             </div>
             <div>
+              <dt>Uploaded designs</dt>
+              <dd>{uploadedDesignCount === null ? '…' : uploadedDesignCount}</dd>
+            </div>
+            <div>
               <dt>Donated designs</dt>
               <dd>{donatedDesignCount === null ? '…' : donatedDesignCount}</dd>
             </div>
           </dl>
+
+          <AccountArtworkGallery
+            customerUid={customerUid}
+            embedded
+            onArtworkCountsChange={handleArtworkCountsChange}
+          />
         </section>
 
         <section className="portal-panel portal-account-panel">

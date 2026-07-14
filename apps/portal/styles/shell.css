@@ -1086,6 +1086,276 @@
   line-height: 1.45;
 }
 
+.portal-account-gallery-embedded {
+  border-top: 1px solid var(--color-border);
+  margin-top: var(--space-5);
+  padding-top: var(--space-5);
+}
+
+.portal-account-gallery-subtitle {
+  color: var(--color-text-primary);
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  margin: 0 0 var(--space-1);
+}
+
+.portal-account-gallery-panel {
+  grid-column: 1 / -1;
+}
+
+.portal-account-gallery-header {
+  align-items: flex-start;
+  display: flex;
+  gap: var(--space-3);
+  justify-content: space-between;
+  margin-bottom: var(--space-4);
+}
+
+.portal-account-gallery-header .portal-account-section-title {
+  margin-bottom: var(--space-1);
+}
+
+.portal-account-gallery-intro,
+.portal-account-gallery-empty {
+  margin: 0;
+}
+
+.portal-account-gallery-grid {
+  display: grid;
+  gap: var(--space-2);
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.portal-account-gallery-tile {
+  aspect-ratio: 1;
+  background:
+    linear-gradient(45deg, color-mix(in srgb, var(--color-bg-tertiary) 80%, transparent) 25%, transparent 25%),
+    linear-gradient(-45deg, color-mix(in srgb, var(--color-bg-tertiary) 80%, transparent) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, color-mix(in srgb, var(--color-bg-tertiary) 80%, transparent) 75%),
+    linear-gradient(-45deg, transparent 75%, color-mix(in srgb, var(--color-bg-tertiary) 80%, transparent) 75%);
+  background-color: var(--color-bg-secondary);
+  background-position: 0 0, 0 0.375rem, 0.375rem -0.375rem, -0.375rem 0;
+  background-size: 0.75rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  display: block;
+  overflow: hidden;
+  padding: 0;
+  position: relative;
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast),
+    transform var(--transition-fast);
+}
+
+.portal-account-gallery-tile:hover {
+  border-color: color-mix(in srgb, var(--color-accent-primary) 45%, var(--color-border));
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--color-text-primary) 10%, transparent);
+  transform: translateY(-1px);
+}
+
+.portal-account-gallery-tile:focus-visible {
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+  outline: none;
+}
+
+.portal-account-gallery-tile-image {
+  display: block;
+  height: 100%;
+  object-fit: contain;
+  width: 100%;
+}
+
+.portal-account-gallery-tile-badge {
+  background: color-mix(in srgb, var(--color-bg-primary) 88%, transparent);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  color: var(--color-text-secondary);
+  font-size: 0.625rem;
+  font-weight: 600;
+  left: 0.3rem;
+  letter-spacing: 0.02em;
+  padding: 0.1rem 0.35rem;
+  position: absolute;
+  top: 0.3rem;
+}
+
+.portal-account-gallery-tile-badge.is-donation {
+  color: var(--color-accent-primary);
+}
+
+.portal-account-gallery-tile-title {
+  background: linear-gradient(transparent, color-mix(in srgb, var(--color-bg-primary) 92%, transparent));
+  bottom: 0;
+  color: var(--color-text-primary);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  left: 0;
+  overflow: hidden;
+  padding: 1.25rem 0.45rem 0.4rem;
+  position: absolute;
+  right: 0;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.portal-account-gallery-modal {
+  align-items: center;
+  display: flex;
+  justify-content: center;
+  padding: var(--space-4);
+}
+
+.portal-account-gallery-modal-shell {
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 18px 48px color-mix(in srgb, var(--color-text-primary) 18%, transparent);
+  display: flex;
+  flex-direction: column;
+  max-height: min(40rem, 90vh);
+  max-width: 44rem;
+  overflow: hidden;
+  width: min(100%, 44rem);
+}
+
+@media (max-width: 47.99rem) {
+  .portal-account-gallery-modal {
+    align-items: stretch;
+    padding: var(--space-3);
+  }
+
+  .portal-account-gallery-modal-shell {
+    max-height: calc(100dvh - 1.5rem);
+    max-width: none;
+    width: 100%;
+  }
+}
+
+.portal-account-gallery-modal-header {
+  align-items: flex-start;
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  gap: var(--space-3);
+  justify-content: space-between;
+  padding: var(--space-4);
+}
+
+.portal-account-gallery-modal-title {
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  margin: 0;
+}
+
+.portal-account-gallery-modal-subtitle {
+  margin: 0.25rem 0 0;
+}
+
+.portal-account-gallery-modal-close {
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  min-height: 2.25rem;
+  padding: 0.35rem 0.8rem;
+}
+
+.portal-account-gallery-modal-close:hover {
+  background: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+}
+
+.portal-account-gallery-modal-close:focus-visible {
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+  outline: none;
+}
+
+.portal-account-gallery-modal-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-4) 0;
+}
+
+.portal-account-gallery-modal-tab {
+  align-items: center;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  gap: 0.35rem;
+  min-height: 2rem;
+  padding: 0.25rem 0.75rem;
+}
+
+.portal-account-gallery-modal-tab:hover {
+  background: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+}
+
+.portal-account-gallery-modal-tab.is-active {
+  background: color-mix(in srgb, var(--color-accent-primary) 12%, var(--color-bg-primary));
+  border-color: color-mix(in srgb, var(--color-accent-primary) 40%, var(--color-border));
+  color: var(--color-accent-primary);
+}
+
+.portal-account-gallery-modal-tab:focus-visible {
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+  outline: none;
+}
+
+.portal-account-gallery-modal-tab-count {
+  color: inherit;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.8;
+}
+
+.portal-account-gallery-modal-empty {
+  margin: 0;
+  padding: var(--space-6) var(--space-4);
+  text-align: center;
+}
+
+.portal-account-gallery-modal-grid {
+  display: grid;
+  gap: var(--space-2);
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  min-height: 0;
+  overflow: auto;
+  padding: var(--space-4);
+}
+
+.portal-account-gallery-modal-grid .portal-account-gallery-tile {
+  min-width: 0;
+  width: 100%;
+}
+
+.portal-account-gallery-modal-grid .portal-account-gallery-tile-title {
+  font-size: 0.5625rem;
+  padding: 1rem 0.25rem 0.25rem;
+}
+
+@media (max-width: 47.99rem) {
+  .portal-account-gallery-modal-grid {
+    gap: var(--space-3);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .portal-account-gallery-modal-grid .portal-account-gallery-tile-title {
+    font-size: 0.625rem;
+    padding: 1.1rem 0.35rem 0.3rem;
+  }
+}
+
 @media (max-width: 47.99rem) {
   .portal-app-shell {
     --portal-bottom-nav-fab-size: 3.5rem;

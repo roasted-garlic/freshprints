@@ -45,6 +45,18 @@ export interface CreateCustomerUploadBatchResponse {
   reusedExisting: boolean;
 }
 
+export type AccountArtworkKind = 'upload' | 'donation';
+
+export interface AccountArtworkGalleryItem {
+  id: string;
+  kind: AccountArtworkKind;
+  title: string;
+  previewStoragePath: string | null;
+  thumbnailStoragePath: string | null;
+  productionStoragePath: string | null;
+  createdAtMs: number;
+}
+
 export interface FinalizeCustomerUploadResponse {
   uploadId: string;
   batchId: string;
@@ -517,6 +529,15 @@ export const customerUploadService = {
 
   /** Confirmed catalog donations for the signed-in customer (account overview). */
   async countConfirmedCatalogDonations(customerUid: string): Promise<number> {
+    const gallery = await this.listAccountArtworkGallery(customerUid);
+    return gallery.filter((item) => item.kind === 'donation').length;
+  },
+
+  /**
+   * Ready print-request uploads and catalog donations that already have preview/thumbnail
+   * assets in Storage — no new files are written.
+   */
+  async listAccountArtworkGallery(customerUid: string): Promise<AccountArtworkGalleryItem[]> {
     const snapshot = await getDocs(
       query(
         collection(getPortalDb(), CUSTOMER_UPLOAD_COLLECTIONS.customerUploads),
@@ -524,12 +545,71 @@ export const customerUploadService = {
       ),
     );
 
-    return snapshot.docs.filter((document) => {
+    const items: AccountArtworkGalleryItem[] = [];
+
+    for (const document of snapshot.docs) {
       const data = document.data();
-      return (
-        resolveCustomerUploadPurpose(data.purpose) === 'catalog_donation' &&
-        data.catalogUseAcknowledged === true
-      );
-    }).length;
+      const purpose = resolveCustomerUploadPurpose(data.purpose);
+      const isDonation = purpose === 'catalog_donation';
+      const isShowable =
+        data.technicalStatus === 'ready' ||
+        data.catalogUseAcknowledged === true ||
+        data.ownershipConfirmed === true;
+
+      if (!isShowable) {
+        continue;
+      }
+
+      const thumbnailStoragePath =
+        typeof data.thumbnailStoragePath === 'string' && data.thumbnailStoragePath.trim()
+          ? data.thumbnailStoragePath.trim()
+          : null;
+      const previewStoragePath =
+        typeof data.previewStoragePath === 'string' && data.previewStoragePath.trim()
+          ? data.previewStoragePath.trim()
+          : null;
+      const productionStoragePath =
+        typeof data.productionStoragePath === 'string' && data.productionStoragePath.trim()
+          ? data.productionStoragePath.trim()
+          : null;
+
+      if (!thumbnailStoragePath && !previewStoragePath && !productionStoragePath) {
+        continue;
+      }
+
+      const createdAt = data.createdAt;
+      const createdAtMs =
+        createdAt && typeof createdAt.toMillis === 'function'
+          ? createdAt.toMillis()
+          : typeof createdAt?.seconds === 'number'
+            ? createdAt.seconds * 1000
+            : 0;
+
+      items.push({
+        id: document.id,
+        kind: isDonation ? 'donation' : 'upload',
+        title:
+          typeof data.originalFilename === 'string' && data.originalFilename.trim()
+            ? data.originalFilename.trim()
+            : isDonation
+              ? 'Donated design'
+              : 'Uploaded design',
+        previewStoragePath,
+        thumbnailStoragePath,
+        productionStoragePath,
+        createdAtMs,
+      });
+    }
+
+    items.sort((a, b) => b.createdAtMs - a.createdAtMs);
+    return items;
+  },
+
+  async resolveAccountArtworkImageUrl(item: AccountArtworkGalleryItem): Promise<string | null> {
+    return (
+      (await this.getDownloadUrl(item.thumbnailStoragePath)) ??
+      (await this.getDownloadUrl(item.previewStoragePath)) ??
+      (await this.getDownloadUrl(item.productionStoragePath))
+    );
   },
 };
