@@ -3,13 +3,16 @@
   gap: var(--space-3);
   justify-items: center;
   margin-bottom: var(--space-6);
+  /* Clear absolute theme toggle without shifting logo off horizontal center */
+  padding-top: 2.75rem;
   text-align: center;
 }
 
 .login-logo {
   display: block;
   margin-bottom: var(--space-1);
-  max-width: min(18rem, 100%);
+  /* Symmetric side reserve so a wide mark cannot collide with the corner toggle */
+  max-width: min(18rem, calc(100% - 5.5rem));
   object-fit: contain;
 }
 
@@ -32,6 +35,7 @@
   position: absolute;
   right: var(--space-5);
   top: var(--space-5);
+  z-index: 1;
 }
 
 .login-header h1,

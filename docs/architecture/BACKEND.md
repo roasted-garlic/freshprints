@@ -32,7 +32,7 @@ Fresh Prints uses **Firebase** as the primary backend platform for authenticatio
 | Topic | Value |
 |-------|-------|
 | Provider | Firebase Authentication |
-| Flows | Email/password (team accounts); see `FIREBASE.md` |
+| Flows | Portal: email/password or Google (customers); Studio: email/password only. See `FIREBASE.md` and ADR-FP-081 |
 | Session / token | Firebase client SDK session |
 | Local dev auth | Firebase emulators or project dev credentials — see `docs/workflow/setup/` |
 

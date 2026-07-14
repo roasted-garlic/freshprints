@@ -15,6 +15,15 @@ export interface RegisterCredentials {
   username: string;
 }
 
+export interface CompleteCustomerProfileInput {
+  displayName: string;
+  username: string;
+}
+
+export interface CompleteCustomerProfileOptions {
+  onProgress?: (message: string) => void;
+}
+
 export type PortalAuthBootstrapStatus =
   | 'initializing'
   | 'unauthenticated'
@@ -39,7 +48,19 @@ export interface PortalAuthState {
 
 export interface PortalAuthContextValue extends PortalAuthState {
   login: (credentials: LoginCredentials) => Promise<void>;
+  loginWithGoogle: () => Promise<void>;
   register: (credentials: RegisterCredentials) => Promise<void>;
+  completeCustomerProfile: (
+    input: CompleteCustomerProfileInput,
+    options?: CompleteCustomerProfileOptions,
+  ) => Promise<void>;
+  clearAuthError: () => void;
   logout: () => Promise<void>;
   refreshCustomer: () => Promise<void>;
+}
+
+export function needsPortalCustomerProfileCompletion(
+  bootstrapStatus: PortalAuthBootstrapStatus,
+): boolean {
+  return bootstrapStatus === 'missing-profile' || bootstrapStatus === 'missing-customer';
 }

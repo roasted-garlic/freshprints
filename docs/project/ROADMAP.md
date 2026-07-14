@@ -1004,7 +1004,11 @@ Production App Hosting deploy to a live customer URL is a **separate** human che
 
 **Studio import auto-start AI processing** — **complete** (2026-07-13 signoff, PASS). Auto advance default ON; stay on Imports; background sequential AI enqueue (no concurrent storm). Signoff: `docs/workflow/reviews/2026-07-13-studio-import-auto-start-ai-processing-signoff.md`.
 
-**Next fast-follow:** Phase 9 planning, production Portal App Hosting deploy, or `studio-apps-folder-monorepo-normalization` — pick explicitly; do not auto-start.
+**Portal Halftone filter toggle** — **complete** (2026-07-14 signoff, PASS). Standalone Halftone switch on catalog filter bar (canonical tag); Tags modal hides `halftone`; mobile tag sheet + Portal chrome polish in same PASS. Signoff: `docs/workflow/reviews/2026-07-14-portal-catalog-halftone-filter-toggle-signoff.md`.
+
+**Portal Google auth (customers only)** — **complete** (2026-07-14 signoff, PASS). Email/password or Google on Portal; first Google login → `/complete-profile` username; Studio email-only; ADR-FP-081. Signoff: `docs/workflow/reviews/2026-07-14-portal-google-auth-customer-login-register-signoff.md`.
+
+**Next fast-follow:** Image load caching, Firebase account linking (password + Google same email), Phase 9 planning, production Portal deploy / production Google enablement, or monorepo normalization — pick explicitly; do not auto-start.
 
 Goal:
 

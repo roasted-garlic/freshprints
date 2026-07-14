@@ -1,7 +1,7 @@
 import { PortalLogo } from '../../features/brand/components/PortalLogo';
-import { RegisterForm } from '../../features/auth/components/RegisterForm';
+import { CompleteProfileForm } from '../../features/auth/components/CompleteProfileForm';
 
-export default function RegisterPage() {
+export default function CompleteProfilePage() {
   return (
     <main className="portal-shell portal-shell-narrow portal-shell-auth">
       <div className="portal-auth-brand">
@@ -10,9 +10,10 @@ export default function RegisterPage() {
           className="portal-auth-logo"
           size={56}
         />
-        <h1>Create account</h1>
+        <h1>Finish your account</h1>
+        <p className="portal-lead portal-auth-brand-lead">Choose a username to finish setup.</p>
       </div>
-      <RegisterForm />
+      <CompleteProfileForm />
     </main>
   );
 }

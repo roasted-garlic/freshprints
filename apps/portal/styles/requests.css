@@ -735,27 +735,27 @@
 }
 
 .portal-request-item-dpi-badge.is-optimal {
-  background: color-mix(in srgb, #1a7f37 18%, var(--color-bg-primary, #fff));
-  border-color: color-mix(in srgb, #1a7f37 50%, transparent);
-  color: #1a7f37;
+  background: color-mix(in srgb, var(--color-success) 22%, var(--color-bg-secondary));
+  border-color: color-mix(in srgb, var(--color-success) 55%, transparent);
+  color: var(--color-success-text);
 }
 
 .portal-request-item-dpi-badge.is-good {
-  background: color-mix(in srgb, #d4a017 22%, var(--color-bg-primary, #fff));
-  border-color: color-mix(in srgb, #d4a017 55%, transparent);
-  color: #8a6d00;
+  background: color-mix(in srgb, var(--color-warning) 22%, var(--color-bg-secondary));
+  border-color: color-mix(in srgb, var(--color-warning) 55%, transparent);
+  color: var(--color-warning-text);
 }
 
 .portal-request-item-dpi-badge.is-minimum {
-  background: color-mix(in srgb, #cf222e 16%, var(--color-bg-primary, #fff));
-  border-color: color-mix(in srgb, #cf222e 45%, transparent);
-  color: #cf222e;
+  background: color-mix(in srgb, var(--color-danger) 18%, var(--color-bg-secondary));
+  border-color: color-mix(in srgb, var(--color-danger) 50%, transparent);
+  color: var(--color-danger-text);
 }
 
 .portal-request-item-dpi-badge.is-below_minimum {
-  background: color-mix(in srgb, #1f2328 88%, #fff);
-  border-color: #1f2328;
-  color: #fff;
+  background: color-mix(in srgb, var(--color-text-primary) 88%, var(--color-bg-secondary));
+  border-color: var(--color-text-primary);
+  color: var(--color-bg-primary);
 }
 
 .portal-request-item-editor-body {

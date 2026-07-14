@@ -1,10 +1,12 @@
 import { FirebaseError } from 'firebase/app';
 import {
+  GoogleAuthProvider,
   browserLocalPersistence,
   createUserWithEmailAndPassword,
   onAuthStateChanged,
   setPersistence,
   signInWithEmailAndPassword,
+  signInWithPopup,
   signOut,
   type User as FirebaseUser,
 } from 'firebase/auth';
@@ -36,6 +38,15 @@ function getAuthErrorMessage(error: unknown): string {
       return 'Too many attempts. Wait a moment and try again.';
     case 'auth/network-request-failed':
       return 'Network error. Check your connection and try again.';
+    case 'auth/popup-closed-by-user':
+    case 'auth/cancelled-popup-request':
+      return 'Google sign-in was cancelled.';
+    case 'auth/popup-blocked':
+      return 'Google sign-in popup was blocked. Allow popups for this site and try again.';
+    case 'auth/account-exists-with-different-credential':
+      return 'An account already exists with this email using a different sign-in method. Sign in with email and password instead.';
+    case 'auth/operation-not-allowed':
+      return 'Google sign-in is not enabled yet. Contact support or try email and password.';
     default:
       return 'Authentication failed. Please try again.';
   }
@@ -73,12 +84,22 @@ function getCallableErrorMessage(error: unknown): string {
 
 export const portalAuthService = {
   async configurePersistence(): Promise<void> {
-      await setPersistence(getPortalAuth(), browserLocalPersistence);
+    await setPersistence(getPortalAuth(), browserLocalPersistence);
   },
 
   async login({ email, password }: LoginCredentials): Promise<void> {
     try {
       await signInWithEmailAndPassword(getPortalAuth(), email.trim(), password);
+    } catch (error) {
+      throw new Error(getAuthErrorMessage(error));
+    }
+  },
+
+  async loginWithGoogle(): Promise<void> {
+    try {
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
+      await signInWithPopup(getPortalAuth(), provider);
     } catch (error) {
       throw new Error(getAuthErrorMessage(error));
     }

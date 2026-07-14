@@ -5,8 +5,8 @@
 | Date | 2026-07-13 |
 | Goal | `portal-catalog-halftone-filter-toggle` |
 | Reason | UI/UX verification of filter dock toggle |
-| Status | **pending** |
-| Result | pending |
+| Status | **resolved** |
+| Result | **PASS** (owner 2026-07-14) |
 
 ---
 
@@ -28,6 +28,9 @@
 7. Dock **Clear filters** → **Expected:** Search, category, tags, and Halftone toggle all reset.
 8. Check mobile width → **Expected:** Filter dock stays two rows tall; controls aligned and usable.
 9. Hover a design card on home/catalog → **Expected:** finger/pointer cursor (not magnifying glass). Open details and hover the preview → **Expected:** magnifying glass (`zoom-in`).
+10. Dark mode: DPI pill on request item cards is readable; Your Stash drawer uses dark surfaces/text; header Current Request control has a visible subtle border.
+11. Upload/donate Back + Submit sit with clear space above the footer divider.
+12. Add a design → toast shows **Undo** + **X** close on one line (message ellipsizes; no wrap).
 
 ### Pass criteria
 
@@ -38,6 +41,9 @@
 - [ ] Mobile filter dock: Category | Halftone | Tags on one row (no extra height)
 - [ ] Clear filters resets toggle; modal Clear preserves toggle
 - [ ] Card hover = pointer; details preview hover = zoom-in
+- [ ] Dark mode: DPI pill, stash drawer, header cart border
+- [ ] Upload footer spacing above divider
+- [ ] Add toast: Undo + X, single line
 - [ ] Desktop + mobile layout acceptable
 
 ### Please reply with

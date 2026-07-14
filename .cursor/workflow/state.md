@@ -1,5 +1,5 @@
 ## Current Goal
-portal-catalog-halftone-filter-toggle
+portal-auth-logo-studio-login-overlap
 
 ## Phase
 test
@@ -23,29 +23,24 @@ pending
 yes
 
 ## Human Checkpoint Reason
-Manual UI re-test for Halftone toggle + mobile tag sheet / filter dock polish
+Visual PASS: Studio toggle clearance + condensed Portal auth (logo, Google-first, email toggle)
 
 ## Allowed Actions
-Await owner PASS/FAIL; read docs; update checkpoint docs when feedback arrives
+Await owner visual PASS/FAIL; read docs; update checkpoint on feedback
 
 ## Forbidden Actions
-Signoff before manual result; production deploy; Studio scope expansion
+Signoff before manual result
 
 ## Next Required Step
-Await owner re-test PASS / FAIL / PASS WITH NOTES (includes mobile tag sheet + filter dock polish)
+Owner: reply PASS / FAIL on Studio + condensed Portal auth
 
 ## DONE
 no
 
 ## Last Completed Step
-Mobile polish applied (tag drawer shrink + filter dock layout); re-issued manual checkpoint
+Condensed Portal register/login (Google-first + email expand); dropped eyebrow/lead
 
 ## Decision Log
-- 2026-07-13 — Owner: standalone Portal Halftone filter toggle (tag remains source of truth; no Tags-modal hunting).
-- 2026-07-13 — Plan: toggle syncs canonical `halftone` into `selectedTags`; hide tag from Tags modal/chips; Studio deferred.
-- 2026-07-13 — Review: approved.
-- 2026-07-13 — Implemented filter-bar Halftone switch; unit tests 8 pass; awaiting manual PASS.
-- 2026-07-13 — Owner: mobile tag sheet stays tall/spreads tags; Halftone broke mobile filter uniformity — fix without more vertical space.
-- 2026-07-13 — Polish: mobile tag drawer `height: auto` + `align-content: start`; Halftone sits beside search on mobile (Category|Tags unchanged).
-- 2026-07-13 — Owner: preferred Category | Halftone | Tags on one line — restored that layout.
-- 2026-07-13 — Owner: catalog card hover = pointer (finger); magnifying glass only on design details preview.
+- 2026-07-14 — Owner: Portal login/signup show logo; Studio theme toggle must not overlap centered logo.
+- 2026-07-14 — Plan/review approved; implemented padding-top + symmetric logo max-width on Studio; PortalLogo on login/register/complete-profile.
+- 2026-07-14 — Owner: shrink register length — drop eyebrow; Google-first; email/password behind expand toggle (login matched).

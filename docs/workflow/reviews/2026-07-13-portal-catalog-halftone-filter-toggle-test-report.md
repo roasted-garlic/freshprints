@@ -5,7 +5,7 @@
 | Date | 2026-07-13 |
 | Goal | `portal-catalog-halftone-filter-toggle` |
 | Plan | `docs/workflow/plans/2026-07-13-portal-catalog-halftone-filter-toggle-plan.md` |
-| Status | **pending_manual** |
+| Status | **passed_with_notes** |
 
 ## Automated
 
@@ -19,7 +19,7 @@
 
 | Checkpoint | Result | Date |
 |------------|--------|------|
-| `2026-07-13-portal-catalog-halftone-filter-toggle-manual-checkpoint.md` | pending | |
+| `2026-07-13-portal-catalog-halftone-filter-toggle-manual-checkpoint.md` | **PASS** | 2026-07-14 |
 
 ## Notes
 

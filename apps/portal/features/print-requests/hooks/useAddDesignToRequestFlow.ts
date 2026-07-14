@@ -98,6 +98,18 @@ export function useAddDesignToRequestFlow({
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [busyDesignId, setBusyDesignId] = useState<string | null>(null);
+  const adjustQuantityRef = useRef<(design: CatalogDesign, delta: 1 | -1) => void>(() => {});
+
+  function announceDesignAdded(design: CatalogDesign) {
+    showSuccess(`Added “${design.title}” to your Current Request.`, {
+      action: {
+        label: 'Undo',
+        onClick: () => {
+          adjustQuantityRef.current(design, -1);
+        },
+      },
+    });
+  }
   const [actionError, setActionError] = useState<string | null>(null);
 
   /** Latest desired primary qty per design (0 = remove). */
@@ -352,11 +364,14 @@ export function useAddDesignToRequestFlow({
       );
 
       if (input.announceAdd && wasAbsent && nextQuantity >= 1) {
-        showSuccess(
-          input.title ?? input.catalogDesign?.title
-            ? `Added “${input.title ?? input.catalogDesign?.title}” to your Current Request.`
-            : 'Added to your Current Request.',
-        );
+        const title = input.title ?? input.catalogDesign?.title;
+        if (input.catalogDesign) {
+          announceDesignAdded(input.catalogDesign);
+        } else {
+          showSuccess(
+            title ? `Added “${title}” to your Current Request.` : 'Added to your Current Request.',
+          );
+        }
       }
 
       scheduleQuantityFlush(input.designId, input.printRequestId, input.userId);
@@ -474,7 +489,7 @@ export function useAddDesignToRequestFlow({
         );
 
         if (wasAbsent) {
-          showSuccess(`Added “${design.title}” to your Current Request.`);
+          announceDesignAdded(design);
         }
 
         const generation = (qtyGenerationRef.current.get(design.id) ?? 0) + 1;
@@ -534,9 +549,10 @@ export function useAddDesignToRequestFlow({
       queuePrimaryQuantity,
       refreshRequests,
       seedDesignSummary,
-      showSuccess,
     ],
   );
+
+  adjustQuantityRef.current = adjustQuantity;
 
   /** @deprecated Prefer adjustQuantity — kept for modal confirm paths. */
   const requestAddDesign = useCallback(
@@ -648,7 +664,7 @@ export function useAddDesignToRequestFlow({
         })
         .then(() => refreshRequests({ silent: true }))
         .then(() => {
-          showSuccess(`Added “${design.title}” to your Current Request.`);
+          announceDesignAdded(design);
         })
         .catch((error: unknown) => {
           setActionError(error instanceof Error ? error.message : 'Unable to add design to request.');
@@ -658,7 +674,7 @@ export function useAddDesignToRequestFlow({
           setPendingDesign(null);
         });
     },
-    [firebaseUser, isBusy, pendingDesign, refreshRequests, showSuccess],
+    [firebaseUser, isBusy, pendingDesign, refreshRequests],
   );
 
   return {

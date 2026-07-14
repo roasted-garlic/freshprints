@@ -4,6 +4,35 @@
 
 ---
 
+### ADR-FP-081: Portal customer Google auth (Studio email-only)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-14 |
+| Status | accepted |
+
+**Context**
+
+Portal customers need a faster sign-up path via Google while retaining email/password. Studio staff and Studio-created customer invites must stay email/password. Google first-time Auth users do not have Firestore `users`/`customers` docs or a username until provisioned.
+
+**Decision**
+
+1. **Portal only:** customers may sign in / register with email/password **or** Google.
+2. **Username required for Google first login:** after Google Auth, if profile is not provisioned (`missing-profile` / `missing-customer`), route to `/complete-profile` to collect username (+ confirm display name), then call existing `registerCustomer`.
+3. **Studio staff login:** email/password only — no Google UI.
+4. **Studio customer invite/create:** email invite only — no Google option.
+5. **Staff Google on Portal:** blocked via existing role checks; show unavailable + sign out.
+6. **Account linking** for invite/password + same-email Google is deferred; show clear error to use the original method.
+7. **Firebase Console:** human enables Google provider and authorized domains (dev first; production with separate approval).
+
+**Consequences**
+
+- Reuses `registerCustomer` and username reservation (ADR-FP-045).
+- AuthGate redirects incomplete Google sessions to complete-profile instead of a dead-end.
+- Production Google enablement remains a human checkpoint.
+
+---
+
 ### ADR-FP-080: Pixel-based image quality sizing and halftone safeguards
 
 | Field | Value |

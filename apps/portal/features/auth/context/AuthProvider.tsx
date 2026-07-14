@@ -15,6 +15,8 @@ import { customerProfileService } from '../services/customerProfileService';
 import { registerCustomerService } from '../services/registerCustomerService';
 import { userProfileService } from '../services/userProfileService';
 import type {
+  CompleteCustomerProfileInput,
+  CompleteCustomerProfileOptions,
   LoginCredentials,
   PortalAuthBootstrapStatus,
   PortalAuthContextValue,
@@ -64,7 +66,7 @@ function getReadyState(
 function getBlockedState(
   firebaseUser: FirebaseUser,
   bootstrapStatus: PortalAuthBootstrapStatus,
-  message: string,
+  message: string | null,
 ): PortalAuthState {
   return completeInitialBootstrap({
     firebaseUser,
@@ -96,11 +98,8 @@ async function loadPortalSession(firebaseUser: FirebaseUser): Promise<PortalAuth
   const customer = await customerProfileService.getCustomerByUserId(firebaseUser.uid);
 
   if (!customer) {
-    return getBlockedState(
-      firebaseUser,
-      'missing-customer',
-      'Your portal customer profile is not set up yet. Complete registration or contact support.',
-    );
+    // Expected for brand-new Google users — complete-profile UI handles this (no error banner).
+    return getBlockedState(firebaseUser, 'missing-customer', null);
   }
 
   return getReadyState(firebaseUser, user, customer);
@@ -197,12 +196,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
               error instanceof Error
                 ? error.message
                 : 'Unable to load your portal profile. Contact support.';
+            const isMissingProfile = message.includes('No Fresh Prints user profile');
 
             setAuthState(
               getBlockedState(
                 firebaseUser,
-                message.includes('No Fresh Prints user profile') ? 'missing-profile' : 'error',
-                message,
+                isMissingProfile ? 'missing-profile' : 'error',
+                // Missing profile is the normal Google first-login path — no error banner.
+                isMissingProfile ? null : message,
               ),
             );
           });
@@ -232,6 +233,46 @@ export function AuthProvider({ children }: AuthProviderProps) {
         isAuthActionLoading: false,
       }));
     }
+  }, []);
+
+  const loginWithGoogle = useCallback(async () => {
+    setAuthState((currentState) => ({
+      ...currentState,
+      error: null,
+      isAuthActionLoading: true,
+    }));
+
+    try {
+      await portalAuthService.loginWithGoogle();
+      // Auth listener loads the session; keep the button busy until then.
+    } catch (error) {
+      setAuthState((currentState) => {
+        const stillAuthenticated = currentState.isAuthenticated && Boolean(currentState.firebaseUser);
+
+        return {
+          ...currentState,
+          // Cancelled / failed Google must never leave the auth screens stuck busy.
+          firebaseUser: stillAuthenticated ? currentState.firebaseUser : null,
+          user: stillAuthenticated ? currentState.user : null,
+          customer: stillAuthenticated ? currentState.customer : null,
+          bootstrapStatus: stillAuthenticated ? currentState.bootstrapStatus : 'unauthenticated',
+          isAuthenticated: stillAuthenticated,
+          error: error instanceof Error ? error.message : 'Unable to sign in with Google.',
+          isAuthActionLoading: false,
+        };
+      });
+    }
+  }, []);
+
+  const clearAuthError = useCallback(() => {
+    setAuthState((currentState) =>
+      currentState.error
+        ? {
+            ...currentState,
+            error: null,
+          }
+        : currentState,
+    );
   }, []);
 
   const register = useCallback(async (credentials: RegisterCredentials) => {
@@ -284,6 +325,49 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }, []);
 
+  const completeCustomerProfile = useCallback(
+    async (input: CompleteCustomerProfileInput, options?: CompleteCustomerProfileOptions) => {
+      registrationInProgressRef.current = true;
+
+      setAuthState((currentState) => ({
+        ...currentState,
+        error: null,
+        isAuthActionLoading: true,
+      }));
+
+      try {
+        options?.onProgress?.('Creating your account and reserving your username…');
+        await registerCustomerService.provisionCustomerProfile({
+          displayName: input.displayName,
+          username: input.username,
+        });
+
+        const firebaseUser = getPortalAuth().currentUser;
+
+        if (!firebaseUser) {
+          throw new Error('Signed-in user could not be loaded after profile setup.');
+        }
+
+        options?.onProgress?.('Loading your portal…');
+        const nextState = await loadPortalSession(firebaseUser);
+        setAuthState({
+          ...nextState,
+          isAuthActionLoading: nextState.isAuthenticated ? false : true,
+        });
+      } catch (error) {
+        setAuthState((currentState) => ({
+          ...currentState,
+          error: error instanceof Error ? error.message : 'Unable to finish setting up your account.',
+          isAuthActionLoading: false,
+        }));
+        throw error;
+      } finally {
+        registrationInProgressRef.current = false;
+      }
+    },
+    [],
+  );
+
   const logout = useCallback(async () => {
     setAuthState((currentState) => ({
       ...currentState,
@@ -333,11 +417,23 @@ export function AuthProvider({ children }: AuthProviderProps) {
     () => ({
       ...authState,
       login,
+      loginWithGoogle,
       register,
+      completeCustomerProfile,
+      clearAuthError,
       logout,
       refreshCustomer,
     }),
-    [authState, login, logout, refreshCustomer, register],
+    [
+      authState,
+      clearAuthError,
+      completeCustomerProfile,
+      login,
+      loginWithGoogle,
+      logout,
+      refreshCustomer,
+      register,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

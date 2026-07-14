@@ -2,7 +2,7 @@
 
 > **Refresh before every external AI session.**
 > Source: `.cursor/workflow/state.md` (authoritative)
-> Last updated: **2026-07-13**
+> Last updated: **2026-07-14**
 
 ---
 
@@ -11,19 +11,21 @@
 | Field | Value |
 |-------|-------|
 | **Managed workflow goal** | none (idle) |
-| **Status** | **DONE** — bounce + import-AI signed off |
+| **Status** | **DONE** — Halftone filter toggle signed off |
 | **Human checkpoint** | no |
-| **Signoffs** | `docs/workflow/reviews/2026-07-13-print-request-add-to-show-selection-bounce-signoff.md`, `docs/workflow/reviews/2026-07-13-studio-import-auto-start-ai-processing-signoff.md` |
+| **Signoff** | `docs/workflow/reviews/2026-07-14-portal-catalog-halftone-filter-toggle-signoff.md` |
 
 ---
 
 ## Just closed
 
-1. **`print-request-add-to-show-selection-bounce`** (**approved_with_notes**) — stay on detail after queue/add; calendar smooth; optimistic catalog add; `/` discover + `/catalog` library; Portal sidebar/account designs gallery polish.
-2. **`studio-import-auto-start-ai-processing`** (**approved**) — Auto advance ON → stay on Imports; background sequential AI.
+**`portal-catalog-halftone-filter-toggle`** (**approved_with_notes**) — Portal Halftone filter toggle + session polish (mobile tag sheet, DPI/stash/header/toast/FAB).
 
 ---
 
-## Owner-directed next
+## Owner discussing next
 
-Pick explicitly: Phase 9 Custom Requests planning, production Portal App Hosting deploy, or `studio-apps-folder-monorepo-normalization`. Do not auto-start.
+1. Image caching for faster Portal catalog loads
+2. Google login for Portal
+
+Do not auto-start — pick scope explicitly.

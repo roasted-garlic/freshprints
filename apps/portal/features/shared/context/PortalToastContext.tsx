@@ -6,22 +6,35 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
 
+import { XIcon } from '../components/PortalIcons';
+
 export type PortalToastTone = 'success' | 'error';
+
+export interface PortalToastAction {
+  label: string;
+  onClick: () => void;
+}
+
+export interface PortalToastOptions {
+  action?: PortalToastAction;
+}
 
 interface PortalToast {
   id: number;
   message: string;
   tone: PortalToastTone;
+  action?: PortalToastAction;
 }
 
 interface PortalToastContextValue {
-  showToast: (message: string, tone?: PortalToastTone) => void;
-  showSuccess: (message: string) => void;
-  showError: (message: string) => void;
+  showToast: (message: string, tone?: PortalToastTone, options?: PortalToastOptions) => void;
+  showSuccess: (message: string, options?: PortalToastOptions) => void;
+  showError: (message: string, options?: PortalToastOptions) => void;
 }
 
 const PortalToastContext = createContext<PortalToastContextValue | null>(null);
@@ -30,36 +43,43 @@ const TOAST_DURATION_MS = 4000;
 
 export function PortalToastProvider({ children }: { children: ReactNode }) {
   const [toast, setToast] = useState<PortalToast | null>(null);
+  const actionRef = useRef<PortalToastAction | undefined>(undefined);
 
-  const showToast = useCallback((message: string, tone: PortalToastTone = 'success') => {
-    const trimmed = message.trim();
-    if (!trimmed) {
-      return;
-    }
-    setToast({
-      id: Date.now(),
-      message: trimmed,
-      tone,
-    });
+  const dismiss = useCallback(() => {
+    setToast(null);
+    actionRef.current = undefined;
   }, []);
 
+  const showToast = useCallback(
+    (message: string, tone: PortalToastTone = 'success', options?: PortalToastOptions) => {
+      const trimmed = message.trim();
+      if (!trimmed) {
+        return;
+      }
+      actionRef.current = options?.action;
+      setToast({
+        id: Date.now(),
+        message: trimmed,
+        tone,
+        action: options?.action,
+      });
+    },
+    [],
+  );
+
   const showSuccess = useCallback(
-    (message: string) => {
-      showToast(message, 'success');
+    (message: string, options?: PortalToastOptions) => {
+      showToast(message, 'success', options);
     },
     [showToast],
   );
 
   const showError = useCallback(
-    (message: string) => {
-      showToast(message, 'error');
+    (message: string, options?: PortalToastOptions) => {
+      showToast(message, 'error', options);
     },
     [showToast],
   );
-
-  const dismiss = useCallback(() => {
-    setToast(null);
-  }, []);
 
   useEffect(() => {
     if (!toast) {
@@ -68,6 +88,7 @@ export function PortalToastProvider({ children }: { children: ReactNode }) {
 
     const timeoutId = window.setTimeout(() => {
       setToast(null);
+      actionRef.current = undefined;
     }, TOAST_DURATION_MS);
 
     return () => window.clearTimeout(timeoutId);
@@ -93,13 +114,26 @@ export function PortalToastProvider({ children }: { children: ReactNode }) {
             role="status"
           >
             <p className="portal-toast-message">{toast.message}</p>
+            {toast.action ? (
+              <button
+                className="portal-toast-action"
+                onClick={() => {
+                  const action = actionRef.current ?? toast.action;
+                  dismiss();
+                  action?.onClick();
+                }}
+                type="button"
+              >
+                {toast.action.label}
+              </button>
+            ) : null}
             <button
-              aria-label="Dismiss notification"
-              className="portal-toast-dismiss"
+              aria-label="Close notification"
+              className="portal-toast-close"
               onClick={dismiss}
               type="button"
             >
-              Dismiss
+              <XIcon size={14} />
             </button>
           </div>
         </div>

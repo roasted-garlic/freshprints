@@ -105,11 +105,12 @@ Firebase Authentication
 
 Supported providers:
 
-```txt id="3r9ud0"
-Email / Password
+```txt
+Email / Password — Portal customers and Studio staff
+Google — Portal customers only (ADR-FP-081)
 ```
 
-Future providers require approval.
+Studio staff login and Studio customer invites must not expose Google. Additional providers require approval.
 
 ---
 

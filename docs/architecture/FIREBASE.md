@@ -188,20 +188,20 @@ Never initialize Firebase in multiple places.
 
 Use Firebase Authentication.
 
-Supported providers initially:
+Supported providers:
 
-```txt id="o6dx1o"
-Email / Password
+```txt
+Email / Password — Portal customers and Studio staff
+Google — Portal customers only (ADR-FP-081)
 ```
 
-Future providers may include:
+Rules:
 
-```txt id="5cnuvl"
-Google
-Apple
-```
-
-Do not add providers without approval.
+* Portal UI may offer Google **or** email/password for customers.
+* Studio staff login and Studio customer invite remain email/password only.
+* Google first-time Portal users must complete username via `/complete-profile` before app access.
+* Do not add Apple or other providers without approval.
+* Enable Google in Firebase Console (authorized domains) before testing — human checkpoint for production.
 
 ---
 
