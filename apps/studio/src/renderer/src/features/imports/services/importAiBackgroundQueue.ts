@@ -2,8 +2,10 @@ import { aiEnrichmentEnqueueService } from "../../ai-review/services/aiEnrichmen
 import { logPipelineEvent } from "../../../shared/utils/pipelineLog";
 
 /**
- * Session-scoped sequential AI enqueue after Studio import.
- * Always runs after successful import (not gated on Processing-tab Auto advance).
+ * Session-scoped sequential AI enqueue for Studio import.
+ * Batch import pushes each design as soon as that file's pipeline succeeds
+ * (while other files may still be uploading). Single import pushes on success.
+ * Not gated on Processing-tab Auto advance.
  * Dedupes design ids and never fires concurrent enqueueAiEnrichment calls.
  */
 const pendingDesignIds: string[] = [];

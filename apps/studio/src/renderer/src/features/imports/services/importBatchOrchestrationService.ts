@@ -135,7 +135,8 @@ function buildBatchSummary(files: BatchImportUploadFileResult[]) {
 
 export const importBatchOrchestrationService = {
   async runBatchUpload(input: RunBatchImportUploadInput): Promise<BatchImportUploadReport> {
-    const { caller, discovery, excludedFilePaths, onProgress, cancelToken } = input;
+    const { caller, discovery, excludedFilePaths, onProgress, onDesignPipelineSuccess, cancelToken } =
+      input;
     const excludedPaths = excludedFilePaths ?? new Set<string>();
     const startedAt = new Date().toISOString();
 
@@ -220,6 +221,11 @@ export const importBatchOrchestrationService = {
           }
 
           completedCount += 1;
+
+          const designId = result.designId?.trim();
+          if (result.pipelineSuccess === true && designId) {
+            onDesignPipelineSuccess?.(designId);
+          }
 
           emitUploadProgress(onProgress, {
             phase: result.pipelineSuccess ? "creating" : "uploading",

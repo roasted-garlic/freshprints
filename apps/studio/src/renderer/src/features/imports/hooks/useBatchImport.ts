@@ -7,6 +7,7 @@ import type {
 
 import { useAuth } from "../../auth/hooks/useAuth";
 import { useUploadActivity } from "../../../shared/hooks/useUploadActivity";
+import { enqueueImportedDesignsForBackgroundAi } from "../services/importAiBackgroundQueue";
 import { importBatchOrchestrationService } from "../services/importBatchOrchestrationService";
 import { importDesktopService } from "../services/importDesktopService";
 import type { UseBatchImportReturn, UseBatchImportState } from "../types/batchImportHook.types";
@@ -295,6 +296,12 @@ export function useBatchImport(): UseBatchImportReturn {
           discovery: discoveryResult,
           excludedFilePaths: new Set(state.excludedFilePaths),
           cancelToken,
+          onDesignPipelineSuccess: (designId) => {
+            if (!isCurrentOperation(operationId)) {
+              return;
+            }
+            enqueueImportedDesignsForBackgroundAi([designId]);
+          },
           onProgress: (progress) => {
             if (!isCurrentOperation(operationId)) {
               return;

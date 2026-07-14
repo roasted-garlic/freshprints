@@ -910,7 +910,7 @@ Design never appears in Design Library browse
 ## AI Processing rules
 
 * AI suggests; staff approves. No automatic catalog publish.
-* **Post-import AI auto-start** — successful Studio imports enqueue AI in the background (sequential, one at a time). Opening the Processing tab is optional to watch progress. **Auto advance** on that tab only controls Start AI / Pause vs one-at-a-time stepping while reviewing the queue.
+* **Process-as-imported AI auto-start** — as each Studio batch design finishes with derivatives ready, it joins a background AI queue (sequential, one at a time) while other files may still be uploading. Single PNG import enqueues on success. Opening the Processing tab is optional to watch progress. **Auto advance** on that tab only controls Start AI / Pause vs one-at-a-time stepping while reviewing the queue.
 * **Processing overrides** — the settings icon beside Auto advance lets staff choose a per-session Gemini model without changing Settings defaults.
 * **Re-run AI Suggestions** from Needs Review or Rejected resets the design back to Processing. AI is not re-run in place on review tabs.
 
@@ -918,9 +918,9 @@ Design never appears in Design Library browse
 
 | Step | Behavior |
 |------|----------|
-| Import completes | Derivatives finish; **no** automatic `enqueueAiEnrichment` |
-| Processing tab (idle) | `aiReviewStatus: pending`, no `aiProcessingStage` — badge **Waiting for AI** |
-| Staff starts AI | `enqueueAiEnrichment` callable runs the pipeline immediately (one design at a time from client orchestrator) |
+| Design import pipeline succeeds | Studio pushes design into sequential background queue → `enqueueAiEnrichment` (batch: as each file finishes; single: on that upload’s success) |
+| Processing tab (idle) | `aiReviewStatus: pending`, no `aiProcessingStage` — badge **Waiting for AI** (may already be processing from import queue) |
+| Staff Start AI (Processing tab) | Additional sequential orchestrator on that page; prefer not overlapping with a large in-flight import queue |
 | Auto advance ON | **Start AI** snapshots the current Processing model/reasoning selection, runs sequential direct processing from selected design; **Pause AI** finishes current job, selects next, stops |
 | Auto advance OFF | **Process image with AI** uses the current Processing override or Settings default and advances selection after completion |
 | Needs Review | Designs with completed AI output (`aiReviewStatus: needs_review`) — editable form + approve/reject |

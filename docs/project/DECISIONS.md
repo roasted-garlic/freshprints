@@ -2683,22 +2683,22 @@ Functions redeploy required. Compare Needs Review output vs prior `gpt-4o-mini` 
 | Field | Value |
 |-------|-------|
 | Date | 2026-06-24 |
-| Status | accepted (amended 2026-07-14 — post-import always auto-starts AI) |
+| Status | accepted (amended 2026-07-14 — process-as-imported sequential AI) |
 | Deciders | Product owner + architecture/security review |
 
-**Context**  
-Bulk import auto-enqueued every design, spawning up to 10 concurrent Cloud Function instances and causing OpenAI **429** rate limits. Processing tab filled with failures before staff could review.
+**Context**
+Bulk import auto-enqueued every design, spawning up to 10 concurrent Cloud Function instances and causing OpenAI **429** rate limits. Processing tab filled with failures before staff could review. Later, waiting until the entire batch finished delayed AI Review for early successes.
 
 **Decision**
 
 1. **No concurrent auto-enqueue on import** — import orchestration must not fire N parallel `enqueueAiEnrichment` calls.
 2. **Processing tab queue controls** — **Auto advance** (sessionStorage): **Start AI** / **Pause AI** runs sequential queue; OFF shows **Process image with AI** for one-at-a-time manual stepping. **Default Auto advance = ON** when unset.
-3. **Post-import background sequential AI (amended 2026-07-14):** After a Studio single/batch import completes with derivative-ready designs, Studio **always** enqueues those designs for AI in the background (one `enqueueAiEnrichment` at a time, session-scoped queue). Staff can stay on Imports. Opening AI Processing is optional to watch progress. **Auto advance** on the Processing tab only controls Start AI / Pause vs one-at-a-time manual stepping while on that page — it no longer gates post-import enqueue.
+3. **Process-as-imported background sequential AI (amended 2026-07-14):** As each Studio batch file finishes with derivatives ready (`pipelineSuccess`), Studio pushes that design into a session-scoped FIFO that runs **one** `enqueueAiEnrichment` at a time — while other files may still be uploading. Single PNG import still enqueues on that design’s success. Staff can stay on Imports or open AI Review early. **Auto advance** on the Processing tab only controls Start AI / Pause vs one-at-a-time manual stepping while on that page — it does not gate import enqueue.
 4. **Retry UX** — **Retry AI Processing** for the selected failed design only (bulk **Retry All Failed** removed in ADR-FP-017).
-5. **Concurrency** — keep Cloud Function instance limits that prevent 429 storms; sequential client enqueue remains the throughput control.
+5. **Concurrency** — keep Cloud Function instance limits that prevent 429 storms; sequential client enqueue remains the throughput control. Residual risk: Processing-tab Start AI and the import background pump can overlap on different designs; server `already_processing` skip mitigates double-work.
 
-**Consequences**  
-Import → AI starts automatically without visiting AI Processing and without concurrent enqueue storms. Processing-tab Auto advance remains for in-page queue control only.
+**Consequences**
+Import → AI starts on each ready design without waiting for the full batch, without concurrent enqueue storms. Staff can approve/reject early successes while upload continues.
 
 ---
 

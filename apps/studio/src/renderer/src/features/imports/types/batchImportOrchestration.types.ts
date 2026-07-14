@@ -82,5 +82,7 @@ export interface RunBatchImportUploadInput {
   discovery: BatchDiscoveryCompleteEvent;
   excludedFilePaths?: ReadonlySet<string>;
   onProgress?: (progress: BatchImportUploadProgress) => void;
+  /** Fired when a file finishes import with derivatives ready (not awaited; AI enqueue is sequential elsewhere). */
+  onDesignPipelineSuccess?: (designId: string) => void;
   cancelToken?: import("../utils/uploadCancelToken").UploadCancelToken;
 }

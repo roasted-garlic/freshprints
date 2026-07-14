@@ -1040,6 +1040,8 @@ Production App Hosting deploy to a live customer URL is a **separate** human che
 
 **Suggested-tag writing quality** — **complete** (2026-07-14 signoff, PASS). Author prompt v2 (richer aliases/preferredWhen); strip colliding catalog terms; AI Processing settings gear owner/admin only. Signoff: `docs/workflow/reviews/2026-07-14-suggested-tag-author-quality-signoff.md`.
 
+**Import AI process-as-imported** — **complete** (2026-07-14 signoff, PASS). Bulk import enqueues each ready design for sequential AI while upload continues. Signoff: `docs/workflow/reviews/2026-07-14-import-ai-process-as-imported-signoff.md`.
+
 **Next fast-follow:** Firebase account linking, Phase 9 planning, or production Portal deploy — pick explicitly. **Queued (ADR-FP-086):** optional Cloud Scheduler for retention callables.
 
 Goal:

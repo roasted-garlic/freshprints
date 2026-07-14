@@ -64,7 +64,6 @@ export function ImportsPage() {
   } = useSinglePngImport();
 
   const singleAutoStartRef = useRef<string | null>(null);
-  const batchAutoStartRef = useRef<string | null>(null);
 
   useShellHeaderConfig(
     useMemo(
@@ -89,24 +88,6 @@ export function ImportsPage() {
     singleAutoStartRef.current = uploadResult.designId;
     enqueueImportedDesignsForBackgroundAi([uploadResult.designId]);
   }, [uploadResult]);
-
-  useEffect(() => {
-    if (batchImport.phase !== "completed" || !batchImport.uploadReport) {
-      return;
-    }
-    const jobKey = batchImport.jobId ?? "batch-complete";
-    if (batchAutoStartRef.current === jobKey) {
-      return;
-    }
-    const designIds = batchImport.uploadReport.files
-      .filter((file) => file.pipelineSuccess === true && Boolean(file.designId?.trim()))
-      .map((file) => file.designId!.trim());
-    if (designIds.length === 0) {
-      return;
-    }
-    batchAutoStartRef.current = jobKey;
-    enqueueImportedDesignsForBackgroundAi(designIds);
-  }, [batchImport.jobId, batchImport.phase, batchImport.uploadReport]);
 
   const showCancelSingleImport =
     uploadResult === null &&
