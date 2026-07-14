@@ -3,20 +3,18 @@ import { getDownloadURL, ref } from 'firebase/storage';
 
 import { getPortalStorage } from '../../../lib/firebase/client';
 import type { CatalogDesign } from '../types/catalog.types';
+import {
+  buildCatalogUrlCacheKey,
+  catalogPathFromUrlCacheKey,
+  normalizeCatalogStoragePath,
+  type CatalogStoragePathRef,
+} from '../utils/catalogUrlCacheKey';
 
-const urlCache = new Map<string, Promise<string | null>>();
-const resolvedUrlCache = new Map<string, string | null>();
+const inflightUrlCache = new Map<string, Promise<string | null>>();
+const resolvedUrlCache = new Map<string, string>();
 
 function toFirebaseStorageRefPath(catalogPath: string): string {
   return catalogPath.replace(/^\//, '');
-}
-
-function normalizeCatalogPath(catalogPath: string | undefined): string | null {
-  if (!catalogPath?.trim()) {
-    return null;
-  }
-
-  return catalogPath.trim();
 }
 
 async function fetchDownloadUrlForCatalogPath(catalogPath: string): Promise<string | null> {
@@ -32,55 +30,118 @@ async function fetchDownloadUrlForCatalogPath(catalogPath: string): Promise<stri
   }
 }
 
-export const catalogStorageService = {
-  getCachedUrlForCatalogPath(catalogPath: string | undefined): string | null | undefined {
-    const normalizedPath = normalizeCatalogPath(catalogPath);
+function resolveCacheKey(
+  catalogPath: string | undefined,
+  contentVersion: number | undefined,
+): string | null {
+  const normalizedPath = normalizeCatalogStoragePath(catalogPath);
+  if (!normalizedPath) {
+    return null;
+  }
 
-    if (!normalizedPath) {
+  return buildCatalogUrlCacheKey(normalizedPath, contentVersion);
+}
+
+export const catalogStorageService = {
+  getCachedUrlForCatalogPath(
+    catalogPath: string | undefined,
+    contentVersion?: number,
+  ): string | null | undefined {
+    const cacheKey = resolveCacheKey(catalogPath, contentVersion);
+    if (!cacheKey) {
       return null;
     }
 
-    if (resolvedUrlCache.has(normalizedPath)) {
-      return resolvedUrlCache.get(normalizedPath) ?? null;
+    if (resolvedUrlCache.has(cacheKey)) {
+      return resolvedUrlCache.get(cacheKey) ?? null;
     }
 
     return undefined;
   },
 
-  getDownloadUrlForCatalogPath(catalogPath: string | undefined): Promise<string | null> {
-    const normalizedPath = normalizeCatalogPath(catalogPath);
-
-    if (!normalizedPath) {
+  getDownloadUrlForCatalogPath(
+    catalogPath: string | undefined,
+    contentVersion?: number,
+  ): Promise<string | null> {
+    const cacheKey = resolveCacheKey(catalogPath, contentVersion);
+    if (!cacheKey) {
       return Promise.resolve(null);
     }
 
-    if (resolvedUrlCache.has(normalizedPath)) {
-      return Promise.resolve(resolvedUrlCache.get(normalizedPath) ?? null);
+    const resolved = resolvedUrlCache.get(cacheKey);
+    if (resolved !== undefined) {
+      return Promise.resolve(resolved);
     }
 
-    const cached = urlCache.get(normalizedPath);
-
+    const cached = inflightUrlCache.get(cacheKey);
     if (cached) {
       return cached;
     }
 
+    const normalizedPath = catalogPathFromUrlCacheKey(cacheKey);
     const request = fetchDownloadUrlForCatalogPath(normalizedPath).then((url) => {
-      resolvedUrlCache.set(normalizedPath, url);
+      inflightUrlCache.delete(cacheKey);
+      // Do not stick null failures — allow retry on later visits/remounts.
+      if (url) {
+        resolvedUrlCache.set(cacheKey, url);
+      }
       return url;
     });
-    urlCache.set(normalizedPath, request);
+
+    inflightUrlCache.set(cacheKey, request);
     return request;
   },
 
-  prefetchCatalogPaths(catalogPaths: Array<string | undefined>, limit = 64): void {
-    const uniquePaths = [...new Set(catalogPaths.map(normalizeCatalogPath).filter(Boolean))] as string[];
+  prefetchCatalogPaths(pathRefs: CatalogStoragePathRef[], limit = 64): void {
+    const uniqueKeys = new Set<string>();
+    const uniqueRefs: CatalogStoragePathRef[] = [];
 
-    for (const path of uniquePaths.slice(0, limit)) {
-      void this.getDownloadUrlForCatalogPath(path);
+    for (const pathRef of pathRefs) {
+      const cacheKey = resolveCacheKey(pathRef.catalogPath, pathRef.contentVersion);
+      if (!cacheKey || uniqueKeys.has(cacheKey)) {
+        continue;
+      }
+      uniqueKeys.add(cacheKey);
+      uniqueRefs.push(pathRef);
+    }
+
+    for (const pathRef of uniqueRefs.slice(0, limit)) {
+      void this.getDownloadUrlForCatalogPath(pathRef.catalogPath, pathRef.contentVersion);
     }
   },
 
-  getThumbnailUrl(design: Pick<CatalogDesign, 'thumbnailPath'>): Promise<string | null> {
-    return this.getDownloadUrlForCatalogPath(design.thumbnailPath);
+  /**
+   * Drop cached URLs whose storage path is no longer in the current ready set.
+   * Fresh library membership still comes from Firestore; this only frees memory.
+   */
+  pruneToCatalogPaths(catalogPaths: Iterable<string | undefined>): void {
+    const keepPaths = new Set(
+      [...catalogPaths]
+        .map((path) => normalizeCatalogStoragePath(path))
+        .filter((path): path is string => path !== null),
+    );
+
+    for (const cacheKey of [...resolvedUrlCache.keys()]) {
+      if (!keepPaths.has(catalogPathFromUrlCacheKey(cacheKey))) {
+        resolvedUrlCache.delete(cacheKey);
+      }
+    }
+
+    for (const cacheKey of [...inflightUrlCache.keys()]) {
+      if (!keepPaths.has(catalogPathFromUrlCacheKey(cacheKey))) {
+        inflightUrlCache.delete(cacheKey);
+      }
+    }
+  },
+
+  clearCache(): void {
+    resolvedUrlCache.clear();
+    inflightUrlCache.clear();
+  },
+
+  getThumbnailUrl(
+    design: Pick<CatalogDesign, 'thumbnailPath' | 'updatedAtMs'>,
+  ): Promise<string | null> {
+    return this.getDownloadUrlForCatalogPath(design.thumbnailPath, design.updatedAtMs);
   },
 };

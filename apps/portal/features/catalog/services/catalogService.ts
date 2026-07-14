@@ -1,7 +1,8 @@
 import {
   collection,
-  documentId,
+  doc,
   getCountFromServer,
+  getDoc,
   getDocs,
   limit,
   orderBy,
@@ -252,25 +253,31 @@ export const catalogService = {
       return [];
     }
 
-    const designs: CatalogDesign[] = [];
-    const designsRef = collection(getPortalDb(), PORTAL_FIRESTORE_COLLECTIONS.designs);
+    // Per-doc reads: archived/non-ready designs deny customer read and must not
+    // fail the whole Favorites page (batch `in` queries are rules-unsafe here).
+    const designs = await Promise.all(
+      uniqueIds.map(async (designId) => {
+        try {
+          const snapshot = await getDoc(
+            doc(getPortalDb(), PORTAL_FIRESTORE_COLLECTIONS.designs, designId),
+          );
 
-    for (let index = 0; index < uniqueIds.length; index += 30) {
-      const chunk = uniqueIds.slice(index, index + 30);
-      const snapshot = await getDocs(query(designsRef, where(documentId(), 'in', chunk)));
+          if (!snapshot.exists()) {
+            return null;
+          }
 
-      for (const designSnapshot of snapshot.docs) {
-        const mapped = mapCatalogDesign(designSnapshot.id, designSnapshot.data() as DesignDocumentData);
-        if (mapped) {
-          designs.push(mapped);
+          return mapCatalogDesign(snapshot.id, snapshot.data() as DesignDocumentData);
+        } catch (error) {
+          if (error instanceof FirebaseError && error.code === 'permission-denied') {
+            return null;
+          }
+
+          return null;
         }
-      }
-    }
+      }),
+    );
 
-    const byId = new Map(designs.map((design) => [design.id, design]));
-    return uniqueIds
-      .map((designId) => byId.get(designId))
-      .filter((design): design is CatalogDesign => design !== undefined);
+    return designs.filter((design): design is CatalogDesign => design !== null);
   },
 
   /** Exact count of ready designs matching category / primary tag / new-this-week bounds. */

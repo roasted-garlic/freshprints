@@ -4,8 +4,14 @@ import { useEffect, useState } from 'react';
 
 import { catalogStorageService } from '../services/catalogStorageService';
 
-export function useCatalogDerivativeUrl(catalogPath: string | undefined) {
-  const cachedUrl = catalogStorageService.getCachedUrlForCatalogPath(catalogPath);
+export function useCatalogDerivativeUrl(
+  catalogPath: string | undefined,
+  contentVersion?: number,
+) {
+  const cachedUrl = catalogStorageService.getCachedUrlForCatalogPath(
+    catalogPath,
+    contentVersion,
+  );
   const [url, setUrl] = useState<string | null>(cachedUrl ?? null);
   const [isLoading, setIsLoading] = useState(
     Boolean(catalogPath?.trim()) && cachedUrl === undefined,
@@ -21,7 +27,10 @@ export function useCatalogDerivativeUrl(catalogPath: string | undefined) {
         return;
       }
 
-      const immediateUrl = catalogStorageService.getCachedUrlForCatalogPath(catalogPath);
+      const immediateUrl = catalogStorageService.getCachedUrlForCatalogPath(
+        catalogPath,
+        contentVersion,
+      );
 
       if (immediateUrl !== undefined) {
         setUrl(immediateUrl);
@@ -30,7 +39,10 @@ export function useCatalogDerivativeUrl(catalogPath: string | undefined) {
       }
 
       setIsLoading(true);
-      const nextUrl = await catalogStorageService.getDownloadUrlForCatalogPath(catalogPath);
+      const nextUrl = await catalogStorageService.getDownloadUrlForCatalogPath(
+        catalogPath,
+        contentVersion,
+      );
 
       if (!isCancelled) {
         setUrl(nextUrl);
@@ -43,7 +55,7 @@ export function useCatalogDerivativeUrl(catalogPath: string | undefined) {
     return () => {
       isCancelled = true;
     };
-  }, [catalogPath]);
+  }, [catalogPath, contentVersion]);
 
   return { url, isLoading };
 }

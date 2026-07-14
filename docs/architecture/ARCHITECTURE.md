@@ -150,6 +150,8 @@ Responsible for:
 
 **Catalog loading (2026-07-14):** Library shows a fast first page (**40** designs) then **hydrates the full matching catalog** in the background so search and multi-tag filters cover every ready design. The header count is the real matching total (Firestore aggregate while browsing; exact filtered length after hydrate). Load more only windows the already-matched results. Discover home still uses a **bounded** pool, not a full-catalog download.
 
+**Catalog image URL cache (2026-07-14):** Portal caches Storage download URLs in memory keyed by `path@updatedAtMs`. Failed lookups are not sticky. After catalog load, entries for paths no longer in the ready set are pruned. Membership always comes from live Firestore — never a persisted design list or image blob cache across visits.
+
 Must work excellently on phones, tablets, and desktop browsers.
 
 Fresh Prints Portal never requires Electron and never accesses local files.

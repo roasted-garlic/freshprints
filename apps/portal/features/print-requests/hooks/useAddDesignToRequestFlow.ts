@@ -38,6 +38,7 @@ function toSeedDesignSummary(design: CatalogDesign) {
     previewPath: design.previewPath,
     printWidthInches: design.printWidthInches,
     printHeightInches: design.printHeightInches,
+    updatedAtMs: design.updatedAtMs,
   };
 }
 

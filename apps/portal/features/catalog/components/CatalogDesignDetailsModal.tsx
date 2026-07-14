@@ -34,7 +34,10 @@ export function CatalogDesignDetailsModal({
 }: CatalogDesignDetailsModalProps) {
   const [isPreviewLightboxOpen, setIsPreviewLightboxOpen] = useState(false);
   const previewPath = design?.previewPath ?? design?.thumbnailPath;
-  const { url: previewUrl } = useCatalogDerivativeUrl(isOpen ? previewPath : undefined);
+  const { url: previewUrl } = useCatalogDerivativeUrl(
+    isOpen ? previewPath : undefined,
+    design?.updatedAtMs,
+  );
 
   useEffect(() => {
     if (!isOpen) {
@@ -81,6 +84,7 @@ export function CatalogDesignDetailsModal({
               alt={`${design.title} preview`}
               catalogPath={previewPath}
               className="design-details-hero-media"
+              contentVersion={design.updatedAtMs}
               fallbackLabel="Preview unavailable"
               interactive
               loadingLabel="Loading preview"

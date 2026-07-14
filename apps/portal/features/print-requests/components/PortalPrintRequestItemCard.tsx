@@ -23,6 +23,7 @@ interface PortalPrintRequestItemDesign {
   previewPath?: string;
   printWidthInches?: number;
   printHeightInches?: number;
+  updatedAtMs?: number;
 }
 
 interface PortalPrintRequestItemUpload {
@@ -167,7 +168,7 @@ export function PortalPrintRequestItemCard({
     formatEditableNumber(resolveInitialHeight(item, design, upload)),
   );
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
-  const { url: previewUrl } = useCatalogDerivativeUrl(previewPath);
+  const { url: previewUrl } = useCatalogDerivativeUrl(previewPath, design?.updatedAtMs);
   const lastSavedSignatureRef = useRef(
     buildItemSignature(
       item.quantity,
@@ -387,6 +388,7 @@ export function PortalPrintRequestItemCard({
               alt={`${title} preview`}
               catalogPath={previewPath}
               className="design-card-thumbnail"
+              contentVersion={design?.updatedAtMs}
               fallbackLabel="Preview unavailable"
               interactive={Boolean(previewUrl)}
               loadingLabel="Loading preview"

@@ -32,6 +32,7 @@ export function CatalogDesignCard({
           alt={`${design.title} thumbnail`}
           catalogPath={design.thumbnailPath}
           className="design-card-thumbnail"
+          contentVersion={design.updatedAtMs}
           decorative
           fallbackLabel="Thumbnail unavailable"
           loadingLabel="Loading thumbnail"

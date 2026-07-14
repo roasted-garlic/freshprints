@@ -21,6 +21,7 @@ interface FavoritesContextValue {
   isLiked: (designId: string) => boolean;
   isLoading: boolean;
   isTogglingDesignId: string | null;
+  pruneUnavailableFavorites: (designIds: string[]) => Promise<number>;
   toggleFavorite: (designId: string) => Promise<void>;
 }
 
@@ -80,6 +81,54 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
       isCancelled = true;
     };
   }, [customer?.id, isAuthenticated]);
+
+  const pruneUnavailableFavorites = useCallback(
+    async (designIds: string[]) => {
+      if (!customer?.id) {
+        return 0;
+      }
+
+      const uniqueIds = [
+        ...new Set(
+          designIds
+            .map((id) => id.trim())
+            .filter((id) => id.length > 0 && favoriteIdsRef.current.has(id)),
+        ),
+      ];
+
+      if (uniqueIds.length === 0) {
+        return 0;
+      }
+
+      setFavoriteIds((current) => {
+        const next = new Set(current);
+        for (const designId of uniqueIds) {
+          next.delete(designId);
+        }
+        return next;
+      });
+
+      try {
+        await favoriteService.removeFavorites(customer.id, uniqueIds);
+        return uniqueIds.length;
+      } catch (pruneError) {
+        setFavoriteIds((current) => {
+          const next = new Set(current);
+          for (const designId of uniqueIds) {
+            next.add(designId);
+          }
+          return next;
+        });
+        setError(
+          pruneError instanceof Error
+            ? pruneError.message
+            : 'Unable to clean up unavailable favorites.',
+        );
+        return 0;
+      }
+    },
+    [customer?.id],
+  );
 
   const toggleFavorite = useCallback(
     async (designId: string) => {
@@ -141,9 +190,10 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
       isLiked: (designId: string) => favoriteIds.has(designId),
       isLoading,
       isTogglingDesignId,
+      pruneUnavailableFavorites,
       toggleFavorite,
     }),
-    [error, favoriteIds, isLoading, isTogglingDesignId, toggleFavorite],
+    [error, favoriteIds, isLoading, isTogglingDesignId, pruneUnavailableFavorites, toggleFavorite],
   );
 
   return <FavoritesContext.Provider value={value}>{children}</FavoritesContext.Provider>;

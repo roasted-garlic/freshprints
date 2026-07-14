@@ -72,6 +72,7 @@ interface DesignDocumentData extends DocumentData {
   previewPath?: unknown;
   printWidthInches?: unknown;
   printHeightInches?: unknown;
+  updatedAt?: unknown;
 }
 
 interface PortalShowAllocationRecord {
@@ -371,6 +372,8 @@ export const portalPrintRequestService = {
       previewPath: typeof data.previewPath === 'string' ? data.previewPath : undefined,
       printWidthInches: typeof data.printWidthInches === 'number' ? data.printWidthInches : undefined,
       printHeightInches: typeof data.printHeightInches === 'number' ? data.printHeightInches : undefined,
+      updatedAtMs:
+        data.updatedAt instanceof Timestamp ? data.updatedAt.toMillis() : undefined,
     };
   },
 

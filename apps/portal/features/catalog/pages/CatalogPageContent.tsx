@@ -235,11 +235,19 @@ export function CatalogPageContent() {
       return;
     }
 
+    const pathRefs = displayedDesigns.map((design) => ({
+      catalogPath: design.thumbnailPath,
+      contentVersion: design.updatedAtMs,
+    }));
+
     catalogStorageService.prefetchCatalogPaths(
-      displayedDesigns.map((design) => design.thumbnailPath),
+      pathRefs,
       selectionModeActive ? 96 : 64,
     );
-  }, [displayedDesigns, selectionModeActive]);
+    catalogStorageService.pruneToCatalogPaths(
+      catalogDesigns.flatMap((design) => [design.thumbnailPath, design.previewPath]),
+    );
+  }, [catalogDesigns, displayedDesigns, selectionModeActive]);
 
   useEffect(() => {
     if (!selectionModeActive) {
@@ -249,7 +257,10 @@ export function CatalogPageContent() {
     catalogStorageService.prefetchCatalogPaths(
       Object.keys(selectionMode.selectedDesigns).map((designId) => {
         const design = catalogDesigns.find((entry) => entry.id === designId);
-        return design?.thumbnailPath ?? design?.previewPath;
+        return {
+          catalogPath: design?.thumbnailPath ?? design?.previewPath,
+          contentVersion: design?.updatedAtMs,
+        };
       }),
       32,
     );

@@ -120,8 +120,14 @@ export function CatalogHomePageContent() {
     }
 
     catalogStorageService.prefetchCatalogPaths(
-      designs.map((design) => design.thumbnailPath),
+      designs.map((design) => ({
+        catalogPath: design.thumbnailPath,
+        contentVersion: design.updatedAtMs,
+      })),
       72,
+    );
+    catalogStorageService.pruneToCatalogPaths(
+      designs.flatMap((design) => [design.thumbnailPath, design.previewPath]),
     );
   }, [designs]);
 

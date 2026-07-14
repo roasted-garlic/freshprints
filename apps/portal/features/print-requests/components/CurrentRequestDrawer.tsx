@@ -282,6 +282,7 @@ export function CurrentRequestDrawer() {
                           alt=""
                           catalogPath={catalogPath}
                           className="current-request-drawer-thumb"
+                          contentVersion={design?.updatedAtMs}
                           decorative
                           fallbackLabel="Art"
                           loadingLabel=""

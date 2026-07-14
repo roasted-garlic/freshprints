@@ -49,4 +49,9 @@ export const favoriteService = {
   async removeFavorite(customerId: string, designId: string): Promise<void> {
     await deleteDoc(doc(favoritesCollection(customerId), designId));
   },
+
+  async removeFavorites(customerId: string, designIds: string[]): Promise<void> {
+    const uniqueIds = [...new Set(designIds.map((id) => id.trim()).filter(Boolean))];
+    await Promise.all(uniqueIds.map((designId) => this.removeFavorite(customerId, designId)));
+  },
 };

@@ -7,6 +7,8 @@ import { useCatalogDerivativeUrl } from '../hooks/useCatalogDerivativeUrl';
 interface CatalogThumbnailPanelProps {
   alt: string;
   catalogPath?: string;
+  /** Design updatedAtMs (or similar) so replaced files miss the URL cache. */
+  contentVersion?: number;
   className?: string;
   decorative?: boolean;
   fallbackLabel?: string;
@@ -19,6 +21,7 @@ interface CatalogThumbnailPanelProps {
 export function CatalogThumbnailPanel({
   alt,
   catalogPath,
+  contentVersion,
   className = '',
   decorative = false,
   fallbackLabel = 'Preview unavailable',
@@ -27,12 +30,12 @@ export function CatalogThumbnailPanel({
   onImageClick,
   prioritizeLoading = false,
 }: CatalogThumbnailPanelProps) {
-  const { isLoading, url } = useCatalogDerivativeUrl(catalogPath);
+  const { isLoading, url } = useCatalogDerivativeUrl(catalogPath, contentVersion);
   const [imageLoadFailed, setImageLoadFailed] = useState(false);
 
   useEffect(() => {
     setImageLoadFailed(false);
-  }, [catalogPath, url]);
+  }, [catalogPath, contentVersion, url]);
 
   const hasResolvedUrl = Boolean(url) && !imageLoadFailed;
   const isUnavailable = !catalogPath?.trim() || (!isLoading && !hasResolvedUrl);

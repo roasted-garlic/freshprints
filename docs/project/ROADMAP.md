@@ -106,7 +106,7 @@ Phase 7 Studio MVP and Phase 8 Portal MVP are complete in the dev environment.
 
 Current Goal:
 
-Phase 9 Custom Requests planning, production Portal deploy, or symmetric apps monorepo refactor.
+Phase 9 Custom Requests planning, or production Portal deploy / production Google enablement.
 
 Phase 7 Show Queue is complete for Studio MVP: foundation, staff-assisted Whatnot import,
 production-file export (zip, multiply-by-qty, auto-nested gang sheet PNG) signed off 2026-07-07,
@@ -117,7 +117,7 @@ and production timer + shared calendar picker signed off 2026-07-08.
   after Portal and other priorities.
 - **Live Whatnot scheduled sync** is **not planned** for Studio (Electron is not 24/7). Revisit only if
   a future always-on hosted service (e.g. Portal/backend) needs it — not a Phase 8 default.
-- **Next step:** Phase 9 Custom Requests planning, production Portal App Hosting deploy, or symmetric apps monorepo refactor (`apps/studio`).
+- **Next step:** Phase 9 Custom Requests planning, or production Portal App Hosting deploy / production Google enablement.
 
 See `docs/workflow/reviews/2026-07-07-show-queue-export-and-production-files-signoff.md`,
 `docs/workflow/reviews/2026-07-08-show-queue-timer-and-calendar-picker-signoff.md`, and
@@ -131,7 +131,9 @@ See `docs/workflow/reviews/2026-07-07-show-queue-export-and-production-files-sig
 
 **Last realignment:** 2026-07-06 — Phase 6 was closed out as complete per user confirmation. The prior Phase 6 signoffs remain the source records: `docs/workflow/reviews/2026-07-04-print-request-item-preview-and-dpi-polish-signoff.md`, `docs/workflow/reviews/2026-07-04-print-request-oversized-selection-unblock-signoff.md`, `docs/workflow/reviews/2026-07-04-print-request-origin-tracking-signoff.md`, `docs/workflow/reviews/2026-07-04-print-request-detail-autosave-and-name-locking-signoff.md`, `docs/workflow/reviews/2026-07-04-print-request-item-sizing-and-username-naming-signoff.md`, `docs/workflow/reviews/2026-07-03-print-request-query-index-hardening-signoff.md`, `docs/workflow/reviews/2026-06-29-phase-6-print-requests-catch-up-test-report.md`, and `docs/workflow/reviews/2026-06-29-customer-creation-provisioning-bug-test-report.md`.
 
-**Current implementation follow-up:** Phase 9 planning, production Portal deploy, or `studio-apps-folder-monorepo-normalization` refactor phase.
+**Symmetric apps monorepo** (`studio-apps-folder-monorepo-normalization`) — **complete** (2026-07-08 signoff). Studio lives under `apps/studio/` alongside `apps/portal`. Signoff: `docs/workflow/reviews/2026-07-08-symmetric-apps-monorepo-signoff.md`.
+
+**Current implementation follow-up:** Phase 9 planning, production Portal deploy / production Google enablement, image load caching, or Firebase account linking — pick explicitly.
 
 ---
 
@@ -1016,7 +1018,9 @@ Production App Hosting deploy to a live customer URL is a **separate** human che
 
 **Portal design favorites** — **complete** (2026-07-14 signoff, PASS). Customer `favorites` subcollection; heart on cards/details; **My Favorites** nav + `/favorites`; no design `favoriteCount` (ADR-FP-082). Signoff: `docs/workflow/reviews/2026-07-14-portal-design-likes-favorites-signoff.md`.
 
-**Next fast-follow:** Image load caching, Firebase account linking, Phase 9 planning, production Portal deploy / production Google enablement, or monorepo normalization — pick explicitly; do not auto-start.
+**Symmetric apps monorepo** — **complete** (2026-07-08). Already shipped; do not list as an open next task.
+
+**Next fast-follow:** Firebase account linking, Phase 9 planning, or production Portal deploy / production Google enablement — pick explicitly; do not auto-start. **Active:** Portal catalog image load caching. **Queued:** Owner-only Studio design asset purge (draft plan; decisions required).
 
 Goal:
 

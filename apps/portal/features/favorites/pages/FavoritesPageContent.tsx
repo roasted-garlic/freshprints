@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { FirebaseError } from 'firebase/app';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { CatalogDesignDetailsModal } from '../../catalog/components/CatalogDesignDetailsModal';
 import { CatalogSelectionCard } from '../../catalog/components/CatalogSelectionCard';
@@ -10,16 +11,40 @@ import { useAddDesignToRequestFlow } from '../../print-requests/hooks/useAddDesi
 import { usePortalPrintRequests } from '../../print-requests/context/PortalPrintRequestContext';
 import { PortalConfirmModal } from '../../shared/components/PortalConfirmModal';
 import { PortalPickContinuableRequestModal } from '../../shared/components/PortalPickContinuableRequestModal';
-import { HeartIcon } from '../../shared/components/PortalIcons';
+import { HeartIcon, XIcon } from '../../shared/components/PortalIcons';
 import { useFavorites } from '../context/FavoritesProvider';
 
+function isPermissionDeniedError(error: unknown): boolean {
+  if (error instanceof FirebaseError) {
+    return error.code === 'permission-denied';
+  }
+
+  return error instanceof Error && /insufficient permissions/i.test(error.message);
+}
+
+function formatRemovedFavoritesMessage(count: number): string {
+  if (count === 1) {
+    return '1 favorite was removed from the catalog and will no longer show here.';
+  }
+
+  return `${count} favorites were removed from the catalog and will no longer show here.`;
+}
+
 export function FavoritesPageContent() {
-  const { error: favoritesError, favoriteIds, isLoading: isFavoritesLoading, toggleFavorite } =
-    useFavorites();
+  const {
+    error: favoritesError,
+    favoriteIds,
+    isLoading: isFavoritesLoading,
+    pruneUnavailableFavorites,
+  } = useFavorites();
   const [designs, setDesigns] = useState<CatalogDesign[]>([]);
   const [isLoadingDesigns, setIsLoadingDesigns] = useState(false);
   const [designsError, setDesignsError] = useState<string | null>(null);
   const [selectedDesign, setSelectedDesign] = useState<CatalogDesign | null>(null);
+  const [removalNotice, setRemovalNotice] = useState<string | null>(null);
+  const pruneInFlightRef = useRef(false);
+  /** Avoid re-pruning the same ids if the effect re-runs mid-flight. */
+  const prunedIdsRef = useRef<Set<string>>(new Set());
 
   const {
     actionError: creationActionError,
@@ -45,28 +70,55 @@ export function FavoritesPageContent() {
 
     async function loadFavoriteDesigns() {
       if (favoriteIdList.length === 0) {
-        setDesigns([]);
-        setDesignsError(null);
-        setIsLoadingDesigns(false);
+        if (!isCancelled) {
+          setDesigns([]);
+          setDesignsError(null);
+          setIsLoadingDesigns(false);
+        }
         return;
       }
 
-      setIsLoadingDesigns(true);
-      setDesignsError(null);
+      if (!isCancelled) {
+        setIsLoadingDesigns(true);
+        setDesignsError(null);
+      }
 
       try {
         const nextDesigns = await catalogService.getReadyDesignsByIds(favoriteIdList);
+        if (isCancelled) {
+          return;
+        }
 
-        if (!isCancelled) {
-          setDesigns(nextDesigns);
+        const readyIds = new Set(nextDesigns.map((design) => design.id));
+        const unavailableIds = favoriteIdList.filter(
+          (designId) => !readyIds.has(designId) && !prunedIdsRef.current.has(designId),
+        );
+
+        setDesigns(nextDesigns);
+        setDesignsError(null);
+
+        if (unavailableIds.length > 0 && !pruneInFlightRef.current) {
+          pruneInFlightRef.current = true;
+          for (const designId of unavailableIds) {
+            prunedIdsRef.current.add(designId);
+          }
+          // Banner first — prune updates favoriteIds and can remount this effect.
+          setRemovalNotice(formatRemovedFavoritesMessage(unavailableIds.length));
+          try {
+            await pruneUnavailableFavorites(unavailableIds);
+          } finally {
+            pruneInFlightRef.current = false;
+          }
         }
       } catch (loadError) {
         if (!isCancelled) {
           setDesigns([]);
           setDesignsError(
-            loadError instanceof Error
-              ? loadError.message
-              : 'Unable to load favorites.',
+            isPermissionDeniedError(loadError)
+              ? null
+              : loadError instanceof Error
+                ? loadError.message
+                : 'Unable to load favorites.',
           );
         }
       } finally {
@@ -81,15 +133,11 @@ export function FavoritesPageContent() {
     return () => {
       isCancelled = true;
     };
-  }, [favoriteIdList]);
+  }, [favoriteIdList, pruneUnavailableFavorites]);
 
-  const availableIds = useMemo(() => new Set(designs.map((design) => design.id)), [designs]);
-  const unavailableIds =
-    designsError || isLoadingDesigns
-      ? []
-      : favoriteIdList.filter((designId) => !availableIds.has(designId));
-
-  const displayedActionError = creationActionError ?? addDesignFlow.actionError ?? favoritesError;
+  const rawActionError = creationActionError ?? addDesignFlow.actionError ?? favoritesError;
+  const displayedActionError =
+    rawActionError && /insufficient permissions/i.test(rawActionError) ? null : rawActionError;
   const isLoading = isFavoritesLoading || isLoadingDesigns;
 
   return (
@@ -107,6 +155,20 @@ export function FavoritesPageContent() {
           </p>
         </div>
       </header>
+
+      {removalNotice ? (
+        <div className="favorites-removal-notice" role="status">
+          <p className="favorites-removal-notice-message">{removalNotice}</p>
+          <button
+            aria-label="Dismiss notification"
+            className="favorites-removal-notice-dismiss"
+            onClick={() => setRemovalNotice(null)}
+            type="button"
+          >
+            <XIcon size={16} />
+          </button>
+        </div>
+      ) : null}
 
       {displayedActionError ? (
         <p className="portal-error" role="alert">
@@ -129,59 +191,30 @@ export function FavoritesPageContent() {
           <p>Tap the heart on any catalog design to save it here.</p>
         </div>
       ) : (
-        <>
-          {designs.length > 0 ? (
-            <div className="design-grid" role="list">
-              {designs.map((design) => {
-                const quantity =
-                  currentRequestAggregates.primaryQuantityByDesignId[design.id] ??
-                  currentRequestAggregates.quantityByDesignId[design.id] ??
-                  0;
-                const isSelected = (currentRequestAggregates.quantityByDesignId[design.id] ?? 0) > 0;
+        <div className="design-grid" role="list">
+          {designs.map((design) => {
+            const quantity =
+              currentRequestAggregates.primaryQuantityByDesignId[design.id] ??
+              currentRequestAggregates.quantityByDesignId[design.id] ??
+              0;
+            const isSelected = (currentRequestAggregates.quantityByDesignId[design.id] ?? 0) > 0;
 
-                return (
-                  <div key={design.id} role="listitem">
-                    <CatalogSelectionCard
-                      design={design}
-                      disabled={addDesignFlow.addingDesignId === design.id}
-                      isSelected={isSelected}
-                      onAdd={addDesignFlow.addDesign}
-                      onOpenDetails={setSelectedDesign}
-                      onQuantityChange={addDesignFlow.setQuantity}
-                      onRemove={addDesignFlow.removeDesign}
-                      quantity={quantity > 0 ? quantity : 1}
-                    />
-                  </div>
-                );
-              })}
-            </div>
-          ) : null}
-
-          {unavailableIds.length > 0 ? (
-            <section
-              className="liked-unavailable-section"
-              aria-label="Unavailable favorite designs"
-            >
-              <h2 className="liked-unavailable-title">No longer available</h2>
-              <ul className="liked-unavailable-list">
-                {unavailableIds.map((designId) => (
-                  <li className="liked-unavailable-item" key={designId}>
-                    <span>This design is no longer in the catalog.</span>
-                    <button
-                      className="portal-button portal-button-secondary portal-button-sm"
-                      onClick={() => {
-                        void toggleFavorite(designId);
-                      }}
-                      type="button"
-                    >
-                      Remove
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          ) : null}
-        </>
+            return (
+              <div key={design.id} role="listitem">
+                <CatalogSelectionCard
+                  design={design}
+                  disabled={addDesignFlow.addingDesignId === design.id}
+                  isSelected={isSelected}
+                  onAdd={addDesignFlow.addDesign}
+                  onOpenDetails={setSelectedDesign}
+                  onQuantityChange={addDesignFlow.setQuantity}
+                  onRemove={addDesignFlow.removeDesign}
+                  quantity={quantity > 0 ? quantity : 1}
+                />
+              </div>
+            );
+          })}
+        </div>
       )}
 
       <CatalogDesignDetailsModal
