@@ -1301,6 +1301,69 @@
   white-space: nowrap;
 }
 
+.design-library-halftone-filter {
+  align-items: center;
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: var(--space-2);
+  height: 2.5rem;
+  padding: 0 var(--space-3);
+  user-select: none;
+}
+
+.design-library-halftone-filter-input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+  width: 0;
+  height: 0;
+}
+
+.design-library-halftone-filter-track {
+  background: var(--color-border);
+  border-radius: 999px;
+  display: inline-flex;
+  flex-shrink: 0;
+  height: 1.25rem;
+  padding: 2px;
+  transition: background-color 160ms ease;
+  width: 2.25rem;
+}
+
+.design-library-halftone-filter-thumb {
+  background: var(--color-bg-primary);
+  border-radius: 999px;
+  display: block;
+  height: calc(1.25rem - 4px);
+  transform: translateX(0);
+  transition: transform 160ms ease;
+  width: calc(1.25rem - 4px);
+}
+
+.design-library-halftone-filter-input:checked + .design-library-halftone-filter-track {
+  background: var(--color-success);
+}
+
+.design-library-halftone-filter-input:checked + .design-library-halftone-filter-track .design-library-halftone-filter-thumb {
+  transform: translateX(1rem);
+}
+
+.design-library-halftone-filter:focus-within {
+  outline: 2px solid var(--color-accent-primary);
+  outline-offset: 2px;
+}
+
+.design-library-halftone-filter-label {
+  font-size: var(--font-size-md);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
 .portal-button-sm {
   align-items: center;
   display: inline-flex;
@@ -1753,6 +1816,7 @@
 }
 
 .design-library-tag-filter-list {
+  align-content: start;
   display: grid;
   gap: var(--space-2) var(--space-3);
   grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
@@ -1873,14 +1937,16 @@
 
   .design-library-filter-controls-search {
     flex: 0 0 auto;
+    min-width: 0;
     width: 100%;
   }
 
   .design-library-filter-controls-secondary {
+    align-items: stretch;
     display: grid;
     flex: 0 0 auto;
     gap: var(--space-2);
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) auto auto;
     width: 100%;
   }
 
@@ -1892,7 +1958,8 @@
 
   .design-library-filter-dock .global-search-input,
   .design-library-filter-dock .portal-select-trigger,
-  .design-library-filter-dock .portal-button-sm {
+  .design-library-filter-dock .portal-button-sm,
+  .design-library-filter-dock .design-library-halftone-filter {
     font-size: var(--font-size-sm);
     height: 2.25rem;
   }
@@ -1901,6 +1968,32 @@
     justify-content: center;
     padding: 0 var(--space-2);
     width: auto;
+  }
+
+  .design-library-filter-dock .design-library-halftone-filter {
+    gap: var(--space-1);
+    padding: 0 var(--space-2);
+  }
+
+  .design-library-filter-dock .design-library-halftone-filter-track {
+    height: 1.125rem;
+    width: 2rem;
+  }
+
+  .design-library-filter-dock .design-library-halftone-filter-thumb {
+    height: calc(1.125rem - 4px);
+    width: calc(1.125rem - 4px);
+  }
+
+  .design-library-filter-dock
+    .design-library-halftone-filter-input:checked
+    + .design-library-halftone-filter-track
+    .design-library-halftone-filter-thumb {
+    transform: translateX(0.875rem);
+  }
+
+  .design-library-filter-dock .design-library-halftone-filter-label {
+    font-size: var(--font-size-sm);
   }
 
   .design-library-filter-select,
@@ -1931,8 +2024,8 @@
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
     display: flex;
     flex-direction: column;
-    height: min(88dvh, calc(100dvh - var(--space-3)));
-    max-height: none;
+    height: auto;
+    max-height: min(88dvh, calc(100dvh - var(--space-3)));
     max-width: none;
     min-height: 0;
     padding-bottom: env(safe-area-inset-bottom, 0);
@@ -1978,6 +2071,8 @@
   }
 
   .modal-panel-tag-filter.tag-filter-drawer .design-library-tag-filter-list {
+    align-content: start;
+    align-items: start;
     flex: 1 1 auto;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     max-height: none;

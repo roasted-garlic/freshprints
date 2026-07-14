@@ -5,6 +5,7 @@
 | Date | 2026-07-13 |
 | Goal | `print-request-add-to-show-selection-bounce` |
 | Environment | Portal + Studio against `fresh-prints-dev` / emulators |
+| Result | **PASS** (owner 2026-07-13) |
 
 ## Why automated tests are insufficient
 
@@ -32,16 +33,14 @@ Queue-to-show and Add to Show need live Firebase + calendar UI timing.
 
 ### Pass criteria
 
-- [ ] Portal stays on request detail after queue-to-show
-- [ ] Portal Queued detail shows “Waiting for the printing to start” (timer only once printing)
-- [ ] First catalog add (empty stash) feels instant (optimistic qty/badge/toast)
-- [ ] Home is `/` via logo; Design Library is `/catalog`; Home nav item gone
-- [ ] Portal calendar does not unmount/remount harshly
-- [ ] Studio stays on Queued detail after Add to Show
-- [ ] Studio calendar does not disappear then come back as a separate screen
+- [x] Portal stays on request detail after queue-to-show
+- [x] Portal Queued detail shows “Waiting for the printing to start” (timer only once printing)
+- [x] First catalog add (empty stash) feels instant (optimistic qty/badge/toast)
+- [x] Home is `/` via logo; Design Library is `/catalog`; Home nav item gone
+- [x] Portal calendar does not unmount/remount harshly
+- [x] Studio stays on Queued detail after Add to Show
+- [x] Studio calendar does not disappear then come back as a separate screen
 
-### Please reply with
+### Owner reply
 
-- `PASS`
-- `FAIL: [description]`
-- `PASS WITH NOTES: [notes]`
+**PASS** — 2026-07-13

@@ -6,7 +6,9 @@ import { PortalSelect } from '../../shared/components/PortalSelect';
 interface CatalogFilterBarProps {
   categoryFilter: string;
   categoryOptions: Array<{ value: string; label: string }>;
+  halftoneFilterOn: boolean;
   onCategoryChange: (value: string) => void;
+  onHalftoneFilterChange: (on: boolean) => void;
   onOpenTags: () => void;
   onSearchChange: (value: string) => void;
   searchQuery: string;
@@ -16,7 +18,9 @@ interface CatalogFilterBarProps {
 export function CatalogFilterBar({
   categoryFilter,
   categoryOptions,
+  halftoneFilterOn,
   onCategoryChange,
+  onHalftoneFilterChange,
   onOpenTags,
   onSearchChange,
   searchQuery,
@@ -48,6 +52,21 @@ export function CatalogFilterBar({
           options={categoryOptions}
           value={categoryFilter}
         />
+
+        <label className="design-library-halftone-filter">
+          <input
+            aria-checked={halftoneFilterOn}
+            checked={halftoneFilterOn}
+            className="design-library-halftone-filter-input"
+            onChange={(event) => onHalftoneFilterChange(event.target.checked)}
+            role="switch"
+            type="checkbox"
+          />
+          <span className="design-library-halftone-filter-track" aria-hidden="true">
+            <span className="design-library-halftone-filter-thumb" />
+          </span>
+          <span className="design-library-halftone-filter-label">Halftone</span>
+        </label>
 
         <button
           className="portal-button portal-button-secondary portal-button-sm portal-button-leading-icon design-library-filter-tags-button"

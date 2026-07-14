@@ -3,7 +3,12 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import type { CatalogDesign } from '../types/catalog.types';
-import { buildCatalogTagOptions, sortCatalogTags } from '../utils/catalogSearch';
+import {
+  buildCatalogTagOptions,
+  countVisibleSelectedTags,
+  isCanonicalHalftoneTag,
+  sortCatalogTags,
+} from '../utils/catalogSearch';
 
 import { CheckIcon, XIcon } from '../../shared/components/PortalIcons';
 
@@ -38,6 +43,7 @@ export function CatalogTagFilterModal({
     () => buildCatalogTagOptions(baseDesigns, draftSelectedTags, searchQuery),
     [baseDesigns, draftSelectedTags, searchQuery],
   );
+  const visibleDraftTagCount = countVisibleSelectedTags(draftSelectedTags);
 
   if (!isOpen) {
     return null;
@@ -116,7 +122,9 @@ export function CatalogTagFilterModal({
         <footer className="modal-footer modal-footer-tag-filter">
           <button
             className="portal-button portal-button-secondary portal-button-leading-icon"
-            onClick={() => setDraftSelectedTags([])}
+            onClick={() =>
+              setDraftSelectedTags((currentTags) => currentTags.filter(isCanonicalHalftoneTag))
+            }
             type="button"
           >
             <XIcon size={14} />
@@ -141,10 +149,10 @@ export function CatalogTagFilterModal({
           >
             <CheckIcon size={14} />
             <span className="tag-filter-action-label tag-filter-action-label-short">
-              Apply{draftSelectedTags.length > 0 ? ` (${draftSelectedTags.length})` : ''}
+              Apply{visibleDraftTagCount > 0 ? ` (${visibleDraftTagCount})` : ''}
             </span>
             <span className="tag-filter-action-label tag-filter-action-label-full">
-              Apply tags{draftSelectedTags.length > 0 ? ` (${draftSelectedTags.length})` : ''}
+              Apply tags{visibleDraftTagCount > 0 ? ` (${visibleDraftTagCount})` : ''}
             </span>
           </button>
         </footer>

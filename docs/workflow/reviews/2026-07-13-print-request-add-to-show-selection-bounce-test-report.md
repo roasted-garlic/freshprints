@@ -4,7 +4,7 @@
 |-------|-------|
 | Date | 2026-07-13 |
 | Goal | `print-request-add-to-show-selection-bounce` |
-| Status | **pending_manual** |
+| Status | **passed_with_notes** |
 
 ## Automated
 
@@ -15,4 +15,10 @@
 
 ## Manual
 
-Awaiting updated checkpoint (Portal stay-on-detail + Studio/Portal calendar smoothness).
+| Checkpoint | Result | Date |
+|------------|--------|------|
+| `2026-07-13-print-request-add-to-show-selection-bounce-manual-checkpoint.md` | **PASS** | 2026-07-13 |
+
+## Notes
+
+Session also verified related Portal polish folded into this goal’s closeout (nav chrome, optimistic add, home URL remap, account designs gallery) under the same owner PASS.

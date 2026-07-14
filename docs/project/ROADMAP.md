@@ -1000,6 +1000,10 @@ Production App Hosting deploy to a live customer URL is a **separate** human che
 
 **UX polish (cursor / categories / upload modal)** — **complete** (2026-07-13 signoff). Portal zoom-in lightbox cursor; wider category filter menus (Studio + Portal); artwork-quality modal width + 24h snooze. Signoff: `docs/workflow/reviews/2026-07-13-portal-studio-ux-polish-cursor-categories-upload-modal-signoff.md`.
 
+**Add-to-show stay on detail + Portal polish batch** — **complete** (2026-07-13 signoff, PASS). Portal/Studio stay on request detail after queue/add; ShowPicker calendar stays mounted; Queued wait copy; optimistic first catalog add; discover `/` + library `/catalog`; sidebar edge-tab + account designs gallery. Signoff: `docs/workflow/reviews/2026-07-13-print-request-add-to-show-selection-bounce-signoff.md`.
+
+**Studio import auto-start AI processing** — **complete** (2026-07-13 signoff, PASS). Auto advance default ON; stay on Imports; background sequential AI enqueue (no concurrent storm). Signoff: `docs/workflow/reviews/2026-07-13-studio-import-auto-start-ai-processing-signoff.md`.
+
 **Next fast-follow:** Phase 9 planning, production Portal App Hosting deploy, or `studio-apps-folder-monorepo-normalization` — pick explicitly; do not auto-start.
 
 Goal:

@@ -1,5 +1,36 @@
 import type { CatalogDesign } from '../types/catalog.types';
 
+/** Canonical design tag synced by staff Halftone confirmation (ADR-FP-080). */
+export const CANONICAL_HALFTONE_TAG = 'halftone';
+
+export function isCanonicalHalftoneTag(tag: string): boolean {
+  return tag.trim().toLowerCase() === CANONICAL_HALFTONE_TAG;
+}
+
+export function selectedTagsIncludeHalftone(selectedTags: readonly string[]): boolean {
+  return selectedTags.some(isCanonicalHalftoneTag);
+}
+
+/** Non-halftone selected tags (for Tags button count / active chips). */
+export function visibleSelectedTags(selectedTags: readonly string[]): string[] {
+  return selectedTags.filter((tag) => !isCanonicalHalftoneTag(tag));
+}
+
+export function countVisibleSelectedTags(selectedTags: readonly string[]): number {
+  return visibleSelectedTags(selectedTags).length;
+}
+
+export function setHalftoneInSelectedTags(
+  selectedTags: readonly string[],
+  halftoneOn: boolean,
+): string[] {
+  const withoutHalftone = visibleSelectedTags(selectedTags);
+  if (!halftoneOn) {
+    return sortCatalogTags(withoutHalftone);
+  }
+  return sortCatalogTags([...withoutHalftone, CANONICAL_HALFTONE_TAG]);
+}
+
 export function filterCatalogDesignsBySearch(
   designs: CatalogDesign[],
   searchQuery: string,
@@ -66,6 +97,7 @@ export function buildCatalogTagOptions(
   }
 
   return sortCatalogTags([...tagCounts.keys()])
+    .filter((tag) => !isCanonicalHalftoneTag(tag))
     .filter((tag) => !normalizedSearch || tag.includes(normalizedSearch))
     .map((tag) => ({
       tag,

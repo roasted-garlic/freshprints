@@ -2,9 +2,14 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import {
+  buildCatalogTagOptions,
+  countVisibleSelectedTags,
   filterCatalogDesignsByCategory,
   filterCatalogDesignsBySearch,
   filterCatalogDesignsByTags,
+  selectedTagsIncludeHalftone,
+  setHalftoneInSelectedTags,
+  visibleSelectedTags,
 } from './catalogSearch';
 import type { CatalogDesign } from '../types/catalog.types';
 
@@ -70,6 +75,44 @@ describe('filterCatalogDesignsByTags', () => {
     assert.deepEqual(
       filterCatalogDesignsByTags(designs, ['ocean', 'sunset']).map((design) => design.id),
       ['design-1'],
+    );
+  });
+
+  it('filters by canonical halftone tag', () => {
+    const designs = [
+      createDesign({ tags: ['ocean', 'halftone'] }),
+      createDesign({ id: 'design-2', tags: ['ocean'] }),
+    ];
+
+    assert.deepEqual(
+      filterCatalogDesignsByTags(designs, ['halftone']).map((design) => design.id),
+      ['design-1'],
+    );
+  });
+});
+
+describe('halftone filter helpers', () => {
+  it('adds and removes the canonical halftone tag', () => {
+    assert.deepEqual(setHalftoneInSelectedTags(['ocean'], true), ['halftone', 'ocean']);
+    assert.deepEqual(setHalftoneInSelectedTags(['ocean', 'halftone'], false), ['ocean']);
+    assert.equal(selectedTagsIncludeHalftone(['Halftone']), true);
+  });
+
+  it('exposes visible tags without halftone', () => {
+    assert.deepEqual(visibleSelectedTags(['ocean', 'halftone']), ['ocean']);
+    assert.equal(countVisibleSelectedTags(['ocean', 'halftone']), 1);
+  });
+
+  it('hides halftone from tag filter options', () => {
+    const designs = [
+      createDesign({ tags: ['ocean', 'halftone'] }),
+      createDesign({ id: 'design-2', tags: ['sunset', 'halftone'] }),
+    ];
+
+    const options = buildCatalogTagOptions(designs, [], '');
+    assert.deepEqual(
+      options.map((option) => option.tag),
+      ['ocean', 'sunset'],
     );
   });
 });

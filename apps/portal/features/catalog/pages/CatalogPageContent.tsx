@@ -21,9 +21,13 @@ import {
   useFilteredCatalogDesigns,
 } from '../hooks/useCatalogDesigns';
 import {
+  countVisibleSelectedTags,
   filterCatalogDesignsByCategory,
   filterCatalogDesignsBySearch,
+  selectedTagsIncludeHalftone,
+  setHalftoneInSelectedTags,
   sortCatalogTags,
+  visibleSelectedTags,
 } from '../utils/catalogSearch';
 import { catalogStorageService } from '../services/catalogStorageService';
 import type { CatalogDesign } from '../types/catalog.types';
@@ -173,6 +177,14 @@ export function CatalogPageContent() {
   function removeSelectedTag(tagToRemove: string) {
     setSelectedTags((currentTags) => currentTags.filter((tag) => tag !== tagToRemove));
   }
+
+  function handleHalftoneFilterChange(halftoneOn: boolean) {
+    setSelectedTags((currentTags) => setHalftoneInSelectedTags(currentTags, halftoneOn));
+  }
+
+  const visibleTags = useMemo(() => visibleSelectedTags(selectedTags), [selectedTags]);
+  const visibleTagCount = countVisibleSelectedTags(selectedTags);
+  const halftoneFilterOn = selectedTagsIncludeHalftone(selectedTags);
 
   const { resetTransientState } = addDesignFlow;
 
@@ -456,18 +468,20 @@ export function CatalogPageContent() {
             <CatalogFilterBar
               categoryFilter={categoryFilter}
               categoryOptions={categoryOptions}
+              halftoneFilterOn={halftoneFilterOn}
               onCategoryChange={handleCategoryChange}
+              onHalftoneFilterChange={handleHalftoneFilterChange}
               onOpenTags={() => setIsTagFilterModalOpen(true)}
               onSearchChange={setSearchQuery}
               searchQuery={searchQuery}
-              selectedTagCount={selectedTags.length}
+              selectedTagCount={visibleTagCount}
             />
           </div>
 
-          {selectedTags.length > 0 ? (
+          {visibleTags.length > 0 ? (
             <div aria-label="Active tag filters" className="design-library-active-tags">
               <span className="design-library-active-tags-label">Tags:</span>
-              {selectedTags.map((tag) => (
+              {visibleTags.map((tag) => (
                 <span className="design-library-active-tag" key={tag}>
                   <span>{tag}</span>
                   <button

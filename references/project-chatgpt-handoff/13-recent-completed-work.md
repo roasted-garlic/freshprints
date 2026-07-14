@@ -2,6 +2,19 @@
 
 > Signed-off or largely complete work. External agents should not re-plan or duplicate this.
 
+## 2026-07-13 — Add-to-show stay on detail + Portal polish batch signed off
+
+- Goal `print-request-add-to-show-selection-bounce` **approved_with_notes**
+- Portal/Studio stay on request detail after queue/add; ShowPicker stays mounted; Queued wait copy
+- Optimistic first catalog add; discover `/` + library `/catalog`; sidebar edge-tab; account designs gallery
+- Signoff: `docs/workflow/reviews/2026-07-13-print-request-add-to-show-selection-bounce-signoff.md`
+
+## 2026-07-13 — Studio import auto-start AI processing signed off
+
+- Goal `studio-import-auto-start-ai-processing` **approved**
+- Auto advance default ON; stay on Imports; background sequential AI enqueue
+- Signoff: `docs/workflow/reviews/2026-07-13-studio-import-auto-start-ai-processing-signoff.md`
+
 ## 2026-07-13 — Portal Current Request empty-state + Your Stash polish signed off
 
 - Goal `portal-current-request-empty-state-drawer-polish` **approved**
@@ -32,9 +45,9 @@ Phase 8 Portal MVP closeout; Show Queue; Phase 6 Print Requests; catalog/AI Revi
 
 ## Deferred / backlog
 
-- **Next (owner-directed):** Studio import auto-start sequential AI when auto advance on (default on) — amends ADR-FP-014 carefully
-- Gang Sheet Builder manual canvas
-- Phase 9 Custom Requests
+- Phase 9 Custom Requests planning
 - Production Portal App Hosting deploy
+- `studio-apps-folder-monorepo-normalization`
+- Gang Sheet Builder manual canvas
 
 See `CURRENT-STATE.md` for live status.

@@ -11,18 +11,19 @@
 | Field | Value |
 |-------|-------|
 | **Managed workflow goal** | none (idle) |
-| **Status** | **DONE** — `portal-current-request-empty-state-drawer-polish` signed off **approved** |
+| **Status** | **DONE** — bounce + import-AI signed off |
 | **Human checkpoint** | no |
-| **Signoff** | `docs/workflow/reviews/2026-07-13-portal-current-request-empty-state-drawer-polish-signoff.md` |
+| **Signoffs** | `docs/workflow/reviews/2026-07-13-print-request-add-to-show-selection-bounce-signoff.md`, `docs/workflow/reviews/2026-07-13-studio-import-auto-start-ai-processing-signoff.md` |
 
 ---
 
 ## Just closed
 
-Portal empty `/requests` + **Your Stash** drawer polish (ADR-FP-076 aligned); Clear only in drawer; Close = X; catalog pixel seed / attention false-positive fixes.
+1. **`print-request-add-to-show-selection-bounce`** (**approved_with_notes**) — stay on detail after queue/add; calendar smooth; optimistic catalog add; `/` discover + `/catalog` library; Portal sidebar/account designs gallery polish.
+2. **`studio-import-auto-start-ai-processing`** (**approved**) — Auto advance ON → stay on Imports; background sequential AI.
 
 ---
 
 ## Owner-directed next
 
-`studio-import-auto-start-ai-processing` — Auto advance default **on**; after Studio import + derivatives, start the **sequential** AI Processing queue (amend ADR-FP-014 carefully — no concurrent enqueue storm).
+Pick explicitly: Phase 9 Custom Requests planning, production Portal App Hosting deploy, or `studio-apps-folder-monorepo-normalization`. Do not auto-start.

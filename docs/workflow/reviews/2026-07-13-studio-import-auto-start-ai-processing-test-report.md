@@ -5,7 +5,7 @@
 | Date | 2026-07-13 |
 | Goal | `studio-import-auto-start-ai-processing` |
 | Plan | `docs/workflow/plans/2026-07-13-studio-import-auto-start-ai-processing-plan.md` |
-| Status | **pending_manual** (amended: background enqueue, stay on Imports) |
+| Status | **passed** |
 
 ## Automated
 
@@ -16,4 +16,6 @@
 
 ## Manual
 
-Awaiting updated checkpoint: stay on Imports; background sequential AI; back-to-back imports.
+| Checkpoint | Result | Date |
+|------------|--------|------|
+| `2026-07-13-studio-import-auto-start-ai-processing-manual-checkpoint.md` | **PASS** | 2026-07-13 |
