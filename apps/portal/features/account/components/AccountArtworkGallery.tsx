@@ -85,7 +85,7 @@ export function AccountArtworkGallery({
             <h2 className="portal-account-section-title">Your designs</h2>
           )}
           <p className="portal-muted portal-account-gallery-intro">
-            Recent uploads and donations.
+            Designs you have submitted for printing or donated to the catalog.
           </p>
         </div>
         <button
@@ -103,8 +103,8 @@ export function AccountArtworkGallery({
         <p className="portal-muted portal-account-gallery-empty">{errorMessage}</p>
       ) : previewItems.length === 0 ? (
         <p className="portal-muted portal-account-gallery-empty">
-          Designs you upload for printing or donate to the catalog will show up here. Catalog designs
-          you add from the library are not listed in this gallery.
+          Submitted uploads and donations show up here once processing finishes. In-progress drafts
+          and catalog picks from the library are not listed.
         </p>
       ) : (
         <div className="portal-account-gallery-grid">

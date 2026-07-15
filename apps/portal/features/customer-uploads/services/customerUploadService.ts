@@ -536,8 +536,9 @@ export const customerUploadService = {
   },
 
   /**
-   * Ready print-request uploads and catalog donations that already have preview/thumbnail
-   * assets in Storage — no new files are written.
+   * Confirmed print-request uploads and catalog donations only — processing must have finished
+   * (`technicalStatus: ready`) and the customer must have submitted the batch
+   * (`ownershipConfirmed`, set by confirm callables). In-progress or abandoned drafts stay out.
    */
   async listAccountArtworkGallery(customerUid: string): Promise<AccountArtworkGalleryItem[]> {
     const snapshot = await getDocs(
@@ -553,12 +554,10 @@ export const customerUploadService = {
       const data = document.data();
       const purpose = resolveCustomerUploadPurpose(data.purpose);
       const isDonation = purpose === 'catalog_donation';
-      const isShowable =
-        data.technicalStatus === 'ready' ||
-        data.catalogUseAcknowledged === true ||
-        data.ownershipConfirmed === true;
+      const isSubmitted =
+        data.technicalStatus === 'ready' && data.ownershipConfirmed === true;
 
-      if (!isShowable) {
+      if (!isSubmitted) {
         continue;
       }
 
