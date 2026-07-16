@@ -1,4 +1,5 @@
-lib/
+# Compiled Functions output only (do not ignore functions/src/lib)
+/lib/
 node_modules/
 *.log
 

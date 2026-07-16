@@ -1012,7 +1012,95 @@ Portal always offers an optional “This artwork is a halftone design.” contro
 
 ---
 
-# Custom Requests Collection (Phase 9 — planned)
+# Etsy Recommendation Requests (Phase 9A — shipped in progress)
+
+Collection:
+
+```txt
+etsyRecommendationRequests
+```
+
+Server-only rate limits:
+
+```txt
+etsyRecommendationRateLimits
+```
+
+Phase 9A Etsy recommendations are **link-first + Open API listings** (ADR-FP-087l): Portal builds website search URLs from questionnaire answers; in-app listing cards come from `searchEtsyRecommendations` (Open API). Website scrape remains removed (ADR-FP-087j). Listing DTOs are ephemeral on the callable response (not stored on the request doc).
+
+```ts
+export interface EtsyRecommendationRequest {
+  id: string;
+  schemaVersion: 1;
+  customerId: string;
+  customerUid: string;
+  route: "etsy_recommendations";
+  status: "active" | "completed" | "cancelled";
+  answers: {
+    /** Free-text subject (1–80 chars). Primary for new Portal submits. */
+    subjectText?: string;
+    /** Legacy curated subject ids (still accepted when rebuilding from old docs). */
+    subjects?: string[];
+    /** Optional free-text tone/style tokens (0–2; new UI sends one free-text entry). */
+    styles?: string[];
+    /** Legacy occasion ids (optional; holidays also live in suggest dictionary). */
+    occasions?: string[];
+    /** Optional exact saying / slogan (short; max 80 chars). */
+    wording?: string;
+  };
+  canonicalQuery: string;
+  etsySearchUrl: string;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+```
+
+Legacy docs may still contain unused `apiKeywords` / `apiKeywordsFallback` fields — ignore on read; Open API keywords are rebuilt from `answers` at search time (not written on submit).
+
+**Server-only collections:**
+
+| Collection | Purpose |
+|------------|---------|
+| `etsyRecommendationRateLimits` | Per-customer and per-request UTC daily Open API search quotas (Admin SDK) |
+| `etsyRecommendationConfig` | Legacy kill-switch docs (unused for Open API this phase) |
+| `etsyWebsiteSearchCache` | Former scrape cache — inert after ADR-FP-087j |
+
+**Admin-managed suggestion overlays (ADR-FP-087k):**
+
+```txt
+etsyRecommendationSuggestions/{suggestionId}
+```
+
+```ts
+export type EtsyRecommendationSuggestionKind = "subject" | "style";
+
+export interface EtsyRecommendationSuggestion {
+  id: string;
+  kind: EtsyRecommendationSuggestionKind;
+  label: string;
+  apiToken: string;
+  aliases?: string[];
+  active: boolean;
+  /** Lowercase normalized label for dedupe. */
+  labelKey: string;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+  createdBy: string;
+  updatedBy: string;
+}
+```
+
+Static subject/style seed lists remain in shared code. Firestore stores **admin additions only**. Effective Portal autocomplete = static seed ∪ active overlays. Soft-deactivate sets `active: false` (admin docs only). Subject free-text parser still uses the static phrase index in this phase (admin overlays affect autocomplete first).
+
+**Rules:** customers may read own `etsyRecommendationRequests` (`customerUid == auth.uid`); request writes via Admin SDK callables. `etsyRecommendationSuggestions`: signed-in read; client writes denied; add/deactivate via owner/admin callables. Legacy config/cache/rate-limit collections remain deny-all.
+
+**Deferred:** Create with AI, Fresh Prints Assisted Creation, design-fee `customRequests` staff queue.
+
+---
+
+# Custom Requests Collection (broader Phase 9 — deferred)
+
+> Superseded for Phase 9A by `etsyRecommendationRequests`. The historical fee/staff-queue sketch below remains deferred until a future managed phase.
 
 Collection:
 
@@ -1020,7 +1108,7 @@ Collection:
 customRequests
 ```
 
-Separate from Print Requests. Q&A intake, Etsy referral, optional in-house design fee ($5–$10). Only payment workflow in Fresh Prints.
+Separate from Print Requests. Future: optional in-house design fee ($5–$10). Only payment workflow in Fresh Prints.
 
 ```ts
 export interface CustomRequest {
@@ -1044,7 +1132,7 @@ export interface CustomRequest {
 
 # Customer Requests Collection (legacy — superseded)
 
-> **Superseded 2026-06-24.** The conflated `customerRequests` model mixed custom design intake with catalog planning. Target replacement: `customRequests` (Phase 9). Do not implement new features against this schema without migration plan.
+> **Superseded 2026-06-24.** The conflated `customerRequests` model mixed custom design intake with catalog planning. Phase 9A uses `etsyRecommendationRequests`. Do not implement new features against this schema without migration plan.
 
 Collection:
 

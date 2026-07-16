@@ -874,6 +874,10 @@ Google AI (Gemini) **provider API key** for server-side AI enrichment:
 | Cloud Functions reading bound secrets | Desktop Settings page API-key fields |
 | Documented setup in `FIREBASE.md` / `DEPLOYMENT.md` | Renderer env vars, preload, or IPC exposing keys |
 
+`ETSY_X_API_KEY` is bound only to callable `searchEtsyRecommendations` via Firebase Secret Manager. Never put Open API keys in Portal client, Firestore, logs, or chat. Soft-fail to links-only if the secret is missing/empty.
+
+**Etsy recommendations (Phase 9A, ADR-FP-087l):** Portal builds website search URLs client-side; listing cards come from the secret-bound Open API callable. Website scrape remains forbidden (ADR-FP-087j). Purchases happen off-platform via listing/search URLs.
+
 The Electron renderer may call `enqueueAiEnrichment` but must **never** receive the Gemini key. Development environments may run the heuristic provider without a real key; production Gemini vision requires Secret Manager configuration with human approval. As of ADR-FP-040, OpenAI is no longer used and `OPENAI_API_KEY` was removed from Cloud Function code.
 
 ---

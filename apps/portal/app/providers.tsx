@@ -14,7 +14,9 @@ function isAuthenticatedAppRoute(pathname: string): boolean {
     pathname.startsWith('/favorites') ||
     pathname.startsWith('/requests') ||
     pathname.startsWith('/donate') ||
-    pathname.startsWith('/account')
+    pathname.startsWith('/account') ||
+    pathname.startsWith('/custom-designs') ||
+    pathname.startsWith('/custom-request')
   );
 }
 

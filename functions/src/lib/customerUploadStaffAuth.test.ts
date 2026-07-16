@@ -1,0 +1,44 @@
+import assert from "node:assert/strict";
+import { describe, it } from "node:test";
+
+import {
+  assertCanManageCustomerUploadIntake,
+  assertCanPromoteOrRetryCustomerUpload,
+  parseUploadId,
+} from "./customerUploadStaffAuth";
+import type { TeamUserProfile } from "./types";
+
+function caller(overrides: Partial<TeamUserProfile> = {}): TeamUserProfile {
+  return {
+    id: "u1",
+    email: "a@example.com",
+    displayName: "A",
+    role: "helper",
+    isActive: true,
+    ...overrides,
+  };
+}
+
+describe("customerUploadStaffAuth", () => {
+  it("parseUploadId requires a non-empty uploadId", () => {
+    assert.equal(parseUploadId({ uploadId: " up1 " }), "up1");
+    assert.throws(() => parseUploadId({}), /upload ID/i);
+    assert.throws(() => parseUploadId(null), /required/i);
+  });
+
+  it("assertCanManageCustomerUploadIntake allows active staff", () => {
+    assert.doesNotThrow(() => assertCanManageCustomerUploadIntake(caller({ role: "helper" })));
+    assert.doesNotThrow(() => assertCanManageCustomerUploadIntake(caller({ role: "admin" })));
+    assert.throws(
+      () => assertCanManageCustomerUploadIntake(caller({ role: "helper", isActive: false })),
+      (error: unknown) =>
+        error instanceof Error && /permission|staff/i.test(String((error as { message?: string }).message)),
+    );
+  });
+
+  it("assertCanPromoteOrRetryCustomerUpload is owner/admin only", () => {
+    assert.doesNotThrow(() => assertCanPromoteOrRetryCustomerUpload(caller({ role: "owner" })));
+    assert.doesNotThrow(() => assertCanPromoteOrRetryCustomerUpload(caller({ role: "admin" })));
+    assert.throws(() => assertCanPromoteOrRetryCustomerUpload(caller({ role: "helper" })));
+  });
+});

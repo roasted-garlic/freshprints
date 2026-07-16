@@ -1448,6 +1448,30 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    match /etsyRecommendationRequests/{requestId} {
+      allow read: if isCustomer() && resource.data.customerUid == request.auth.uid;
+      allow create, update, delete: if false;
+    }
+
+    match /etsyRecommendationRateLimits/{docId} {
+      allow read, write: if false;
+    }
+
+    match /etsyRecommendationConfig/{docId} {
+      allow read, write: if false;
+    }
+
+    // Admin-added Subject / Tone overlays for Portal Etsy wizard autocomplete.
+    // Writes only via Admin SDK callables (owner/admin).
+    match /etsyRecommendationSuggestions/{suggestionId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if false;
+    }
+
+    match /etsyWebsiteSearchCache/{docId} {
+      allow read, write: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

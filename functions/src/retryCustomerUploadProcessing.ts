@@ -18,8 +18,8 @@ import { assertStaffCaller, loadCallerProfile } from "./lib/caller";
 import {
   processCustomerUploadImageBytes,
   saveCustomerUploadProcessedOutputs,
-  storageObjectPath,
 } from "./lib/customerUploadProcessing";
+import { storageObjectPath } from "./lib/storageObjectPath";
 import {
   assertCanPromoteOrRetryCustomerUpload,
   parseUploadId,

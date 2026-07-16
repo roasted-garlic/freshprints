@@ -55,7 +55,17 @@ On Windows PowerShell, run tests per directory or use the repo's documented swee
 
 There is **no** root `npm test` script — invoke `npx tsx --test` explicitly.
 
-### Customer artwork upload (Sub-phases B–D)
+### Etsy recommendations (Phase 9A)
+
+```bash
+npx tsx --test packages/shared/src/utils/etsyRecommendation*.test.ts
+npx tsx --test functions/src/lib/etsy/*.test.ts
+npm --prefix functions run build
+npm run typecheck --workspace @fresh-prints/portal
+npm run build:portal
+```
+
+Do not make live Etsy API calls from unit tests. Inject a mock Etsy client.
 
 ```bash
 npx tsx --test functions/src/lib/customerUpload*.test.ts functions/src/lib/confirmCustomerUpload*.test.ts packages/shared/src/utils/printAssetResolution.test.ts packages/shared/src/constants/storageRulesAlignment.test.ts

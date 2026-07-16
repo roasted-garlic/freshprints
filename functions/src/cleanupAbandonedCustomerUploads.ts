@@ -5,7 +5,7 @@ import { CUSTOMER_UPLOAD_COLLECTIONS } from "../../packages/shared/src/constants
 
 import { adminDb, adminStorage } from "./lib/admin";
 import { assertStaffCaller, loadCallerProfile } from "./lib/caller";
-import { storageObjectPath } from "./lib/customerUploadProcessing";
+import { storageObjectPath } from "./lib/storageObjectPath";
 import { invalidArgument, permissionDenied, unauthenticated } from "./lib/errors";
 
 const ABANDON_AFTER_MS = 24 * 60 * 60 * 1000;

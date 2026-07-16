@@ -7,6 +7,7 @@ import './globals.css'
 import '../styles/catalog.css'
 import '../styles/requests.css'
 import '../styles/customer-uploads.css'
+import '../styles/etsy-recommendations.css'
 import '../styles/shell.css'
 
 export const metadata: Metadata = {

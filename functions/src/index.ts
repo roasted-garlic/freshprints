@@ -22,6 +22,17 @@ export { createTeamUser } from "./createTeamUser";
 export { registerCustomer } from "./registerCustomer";
 export { updateCustomer } from "./updateCustomer";
 export { updateTeamUser } from "./updateTeamUser";
+export { submitEtsyRecommendationRequest } from "./submitEtsyRecommendationRequest";
+export { searchEtsyRecommendations } from "./searchEtsyRecommendations";
+export { getEtsyRecommendationSearchQuota } from "./getEtsyRecommendationSearchQuota";
+export {
+  completeEtsyRecommendationRequest,
+  cancelEtsyRecommendationRequest,
+} from "./completeEtsyRecommendationRequest";
+export {
+  addEtsyRecommendationSuggestion,
+  deactivateEtsyRecommendationSuggestion,
+} from "./etsyRecommendationSuggestions";
 export { enqueueAiEnrichment } from "./enqueueAiEnrichment";
 export { resetAiEnrichmentForProcessing } from "./resetAiEnrichmentForProcessing";
 export { testAiEnrichmentPlayground } from "./testAiEnrichmentPlayground";

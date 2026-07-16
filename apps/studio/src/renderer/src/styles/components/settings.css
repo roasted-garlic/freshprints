@@ -574,3 +574,122 @@
     width: 100%;
   }
 }
+
+.settings-etsy-suggest-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.settings-etsy-suggest-tab {
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font: inherit;
+  padding: var(--space-1) var(--space-3);
+}
+
+.settings-etsy-suggest-tab.is-active {
+  background: var(--color-surface-elevated, var(--color-surface));
+  border-color: var(--color-text-primary);
+  color: var(--color-text-primary);
+}
+
+.settings-etsy-suggest-panel {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.settings-etsy-suggest-panel-title {
+  font-size: var(--font-size-md);
+  margin: 0;
+}
+
+.settings-etsy-suggest-form {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.settings-etsy-suggest-actions {
+  flex-wrap: wrap;
+}
+
+.settings-etsy-suggest-list {
+  display: grid;
+  gap: var(--space-2);
+  list-style: none;
+  margin: 0;
+  max-height: min(40vh, 22rem);
+  overflow: auto;
+  padding: 0;
+}
+
+.settings-etsy-suggest-item {
+  align-items: center;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  display: flex;
+  gap: var(--space-2);
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-3);
+}
+
+.settings-etsy-suggest-item-copy {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.settings-etsy-suggest-item-label {
+  font-weight: 600;
+}
+
+.settings-etsy-suggest-modal {
+  display: grid;
+  gap: 0;
+  max-width: min(52rem, 92vw);
+  width: min(52rem, 92vw);
+}
+
+.settings-etsy-suggest-modal .modal-header {
+  align-items: stretch;
+  flex-direction: column;
+  gap: var(--space-2);
+  justify-content: flex-start;
+}
+
+.settings-etsy-suggest-modal-heading {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.settings-etsy-suggest-modal-heading h2 {
+  margin: 0;
+}
+
+.settings-etsy-suggest-modal .modal-body {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.settings-etsy-suggest-modal .settings-etsy-suggest-item {
+  padding: var(--space-3) var(--space-4);
+}
+
+.settings-etsy-suggest-toast {
+  background: color-mix(in srgb, var(--color-success, #22c55e) 18%, var(--color-surface));
+  border: 1px solid color-mix(in srgb, var(--color-success, #22c55e) 45%, var(--color-border));
+  border-radius: var(--radius-sm);
+  bottom: var(--space-4);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  left: 50%;
+  padding: var(--space-2) var(--space-4);
+  position: fixed;
+  transform: translateX(-50%);
+  z-index: var(--z-toast, 1200);
+}

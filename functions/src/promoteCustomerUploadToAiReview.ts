@@ -15,7 +15,7 @@ import {
   assertCanPromoteOrRetryCustomerUpload,
   parseUploadId,
 } from "./lib/customerUploadStaffAuth";
-import { storageObjectPath } from "./lib/customerUploadProcessing";
+import { storageObjectPath } from "./lib/storageObjectPath";
 import {
   failedPrecondition,
   invalidArgument,

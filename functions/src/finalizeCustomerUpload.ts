@@ -20,8 +20,8 @@ import { adminDb, adminStorage } from "./lib/admin";
 import {
   processCustomerUploadImageBytes,
   saveCustomerUploadProcessedOutputs,
-  storageObjectPath,
 } from "./lib/customerUploadProcessing";
+import { storageObjectPath } from "./lib/storageObjectPath";
 import {
   acquireFinalizeLease,
   chargeDailyQuota,

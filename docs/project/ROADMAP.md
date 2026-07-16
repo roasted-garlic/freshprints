@@ -1087,49 +1087,41 @@ Customers self-serve catalog browse, print request creation, progress tracking, 
 
 # Phase 9
 
-## Custom Request Q&A And Etsy Referral
+## Custom Designs — Etsy Recommendations First (Phase 9A)
 
 Status:
 
 ```txt
-Planned
+Complete on fresh-prints-dev — Open API listings + link-first (ADR-FP-087l); scrape removed (ADR-FP-087j)
 ```
 
 Goal:
 
-Separate custom design workflow from print requests. Optional design fee for in-house custom art.
+Clean Portal Etsy recommendations foundation from master (archived prior Phase 9 work is not the starting point). Three-card route page; only **Help Me Find a Design** works; AI and Assisted Creation are coming-soon cards.
+
+### Phase 9A deliverables
+
+* Custom Designs nav + route selection cards
+* Short Etsy questionnaire → hybrid subject text + suggest dictionary → website search queries + Open API keywords
+* **Link-first results:** Primary + Broader search link cards above Open API listing grid (ADR-FP-087l)
+* Admin-managed Subject/Tone suggestion overlays (ADR-FP-087k)
+* Minimal `etsyRecommendationRequests` lifecycle (submit / Done / Cancel)
+* Signoff: `docs/workflow/reviews/2026-07-15-phase-9a-etsy-website-first-api-rip-signoff.md`
+
+### Deferred to later Phase 9 slices
+
+* Create My Design with AI
+* Fresh Prints Assisted Creation
+* Staff design queue / design fee / Studio inbox
+* ~~In-app listing scrape from Etsy website search~~ — **removed** (ADR-FP-087j; owner rejected scrape quality)
+
+**Not in scope:** Checkout for normal print requests; product payment; shipping; production deploy of 9A until separately authorized.
 
 ---
 
-## Objectives
+## Exit Criteria (Phase 9 overall — later)
 
-Build:
-
-* Q&A intake form
-* Etsy search URL generation
-* Customer path: found on Etsy vs needs in-house design
-* Optional $5–$10 design fee (only payment workflow in Fresh Prints)
-
----
-
-## Deliverables
-
-### Custom Requests
-
-Support:
-
-* Questionnaire submission
-* Etsy referral link
-* In-house custom request queue (staff review)
-* Optional design fee tracking
-
-**Not in scope:** Checkout for normal print requests; product payment; shipping.
-
----
-
-## Exit Criteria
-
-Custom requests are distinct from print requests. Etsy referral and in-house paths documented and functional.
+Custom design help is distinct from print requests. Etsy recommendations work in Portal. Later slices add AI and Assisted Creation when explicitly started.
 
 ---
 

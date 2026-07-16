@@ -49,6 +49,7 @@ export function buildRequestArtworkHref(options?: {
   from?: PortalRequestDetailFrom | null;
   requestId?: string | null;
   returnTo?: string | null;
+  etsyRecommendationId?: string | null;
 }): string {
   const params = new URLSearchParams();
   if (options?.requestId?.trim()) {
@@ -56,6 +57,9 @@ export function buildRequestArtworkHref(options?: {
   }
   if (options?.from) {
     params.set('from', options.from);
+  }
+  if (options?.etsyRecommendationId?.trim()) {
+    params.set('etsyRecommendationId', options.etsyRecommendationId.trim());
   }
   const returnTo = sanitizePortalReturnTo(options?.returnTo);
   if (returnTo) {

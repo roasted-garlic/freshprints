@@ -1,6 +1,6 @@
 import { REQUEST_ARTWORK_PATH, buildRequestArtworkHref, CATALOG_HOME_PATH } from '../../print-requests/utils/catalogSelectionNavigation';
 
-export type PortalNavItemId = 'library' | 'upload';
+export type PortalNavItemId = 'library' | 'customDesigns' | 'upload';
 
 export interface PortalNavItem {
   id: PortalNavItemId;
@@ -12,10 +12,11 @@ export const PORTAL_ACCOUNT_HREF = '/dashboard';
 /** Favorites live on Account; kept for dashboard / deep links. */
 export const PORTAL_FAVORITES_HREF = '/favorites';
 
-/** Primary sidebar order: Design Library → Upload Designs. Favorites live on Account. */
+/** Primary sidebar order: Browse Designs → Upload Designs → Custom Designs. Favorites live on Account. */
 export const portalNavItems: PortalNavItem[] = [
-  { id: 'library', href: '/catalog', label: 'Design Library' },
+  { id: 'library', href: '/catalog', label: 'Browse Designs' },
   { id: 'upload', href: REQUEST_ARTWORK_PATH, label: 'Upload Designs' },
+  { id: 'customDesigns', href: '/custom-designs', label: 'Custom Designs' },
 ];
 
 export function isPortalAccountRoute(pathname: string): boolean {
@@ -29,6 +30,10 @@ export function resolveActivePortalNavItem(pathname: string): PortalNavItemId | 
 
   if (pathname.startsWith('/catalog')) {
     return 'library';
+  }
+
+  if (pathname === '/custom-designs' || pathname.startsWith('/custom-designs/')) {
+    return 'customDesigns';
   }
 
   if (pathname === REQUEST_ARTWORK_PATH || pathname.startsWith(`${REQUEST_ARTWORK_PATH}/`)) {

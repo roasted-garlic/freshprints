@@ -1,9 +1,13 @@
-import sharp from "sharp";
-
 const ANALYSIS_CANVAS_SIZE_PX = 1024;
 const ANALYSIS_PADDING_PX = 64;
 const ANALYSIS_ARTWORK_SIZE_PX = ANALYSIS_CANVAS_SIZE_PX - ANALYSIS_PADDING_PX * 2;
 const ANALYSIS_BACKGROUND = { r: 128, g: 128, b: 128, alpha: 1 };
+
+/** Lazy-load native sharp — avoid cold require during Functions deploy discovery. */
+function getSharp(): typeof import("sharp") {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  return require("sharp") as typeof import("sharp");
+}
 
 export interface PreparedAiAnalysisImage {
   bytes: Buffer;
@@ -13,6 +17,7 @@ export interface PreparedAiAnalysisImage {
 }
 
 export async function prepareAiAnalysisImage(inputBytes: Buffer): Promise<PreparedAiAnalysisImage> {
+  const sharp = getSharp();
   const image = sharp(inputBytes, { failOn: "none" }).rotate();
   const resized = await image
     .resize({

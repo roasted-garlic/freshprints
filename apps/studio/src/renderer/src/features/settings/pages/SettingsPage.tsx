@@ -39,6 +39,7 @@ import {
   useAiEnrichmentSettings,
 } from "../hooks/useAiEnrichmentSettings";
 import { formatAiPlaygroundOutput } from "../utils/aiPlaygroundOutputFormatter";
+import { EtsySuggestionListsSettingsSection } from "../components/EtsySuggestionListsSettingsSection";
 
 /**
  * Tolerantly extract a JSON object from raw model output that may include a fenced code block
@@ -602,6 +603,8 @@ export function SettingsPage() {
           </div>
         )}
       </section>
+
+      <EtsySuggestionListsSettingsSection canManage={canManageSettings} />
 
       {isOwner && isPromptTemplateEditorOpen ? (
         <div className="modal-overlay modal-overlay-blur" onClick={handleClosePromptTemplateEditor}>

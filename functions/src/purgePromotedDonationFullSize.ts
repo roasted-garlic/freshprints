@@ -9,7 +9,7 @@ import {
 
 import { adminDb, adminStorage } from "./lib/admin";
 import { assertStaffCaller, loadCallerProfile } from "./lib/caller";
-import { storageObjectPath } from "./lib/customerUploadProcessing";
+import { storageObjectPath } from "./lib/storageObjectPath";
 import { invalidArgument, permissionDenied, unauthenticated } from "./lib/errors";
 
 const SCAN_LIMIT = 100;

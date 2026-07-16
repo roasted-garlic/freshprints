@@ -4,6 +4,341 @@
 
 ---
 
+### ADR-FP-087l: Restore Etsy Open API listing search (link-first)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-16 |
+| Status | accepted |
+| Supersedes | ADR-FP-087f (product path: Open API removed) |
+| Preserves | ADR-FP-087j (no website scrape); ADR-FP-087k (admin suggestion overlays) |
+| Target | `fresh-prints-dev` |
+
+**Context**
+
+Scraping was ripped (ADR-FP-087j). Results were link-only. Owner decided Etsy Open API is the only free + reliable source for in-app listing previews, while Primary/Broader website search links remain the top fallback.
+
+**Decision**
+
+1. Restore callable `searchEtsyRecommendations` with Secret Manager `ETSY_X_API_KEY` (server-only; Portal never holds the key).
+2. Results UI order: specificity warning → Primary/Broader **search link cards** → Open API listing grid.
+3. Fallback/empty/unavailable copy must **not** name “Etsy” in CTAs or soft messages (links still use official URLs; trademark statement may remain).
+4. Soft-fail to links-only when the secret is missing/empty or search returns no usable listings.
+5. Rebuild focused/fallback Open API keywords from request `answers` at search time (`png` digital term; align with website builders). Do **not** re-add ScraperAPI/Firecrawl.
+6. Rate limits resume on `etsyRecommendationRateLimits` (per customer/day and per request/day).
+
+**Consequences**
+
+- Secret must be re-set on `fresh-prints-dev` (deleted 2026-07-15 ops cleanup) before live cards work.
+- Open API recall may still be sparse for elaborate queries — warning + search links mitigate.
+- Production deploy remains out of scope for this phase.
+
+---
+
+### ADR-FP-087k: Admin-managed Etsy questionnaire suggestion lists
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-16 |
+| Status | accepted |
+| Related | Phase 9A, ADR-FP-087j |
+| Target | `fresh-prints-dev` |
+
+**Context**
+
+Portal “Help me find a design” Subject and Tone autocomplete used static shared dictionaries. Owner/admin need to grow those lists over time without a full CMS or redeploy.
+
+**Decision**
+
+1. Persist **admin additions only** in `etsyRecommendationSuggestions` (`kind: subject | style`, soft `active` flag). Static seed stays in code and always merges into Portal autocomplete.
+2. **Writes** via callables `addEtsyRecommendationSuggestion` / `deactivateEtsyRecommendationSuggestion` (Admin SDK; active owner/admin only). Client Firestore writes denied.
+3. **Reads** for any signed-in user (Portal customer or Studio staff). Case-insensitive dedupe against static seed + active admin docs.
+4. Studio **Settings → Etsy wizard suggestions** UI for add/deactivate. Portal loads active overlays (short client cache) and merges for autocomplete. Free-text remains allowed.
+5. Subject **parser** greedy matching may remain static-seed-only in this phase; admin subjects still work as free-text / applied tokens.
+
+**Consequences**
+
+- Lists grow without migrating 150+ seed docs.
+- Soft-deactivate cannot hide built-in defaults (out of scope).
+- Follow-up optional: feed admin subject overlays into the parser phrase index.
+
+---
+
+### ADR-FP-087j: Rip Etsy website scrape — link-only results (owner rejection)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-16 |
+| Status | accepted |
+| Supersedes | ADR-FP-087i, ADR-FP-087h, ADR-FP-087g (live scrape path) |
+| Related | ADR-FP-087f, R-010, Phase 9A |
+
+**Context**
+
+Owner rejected ScraperAPI (and prior Firecrawl) listing previews: scraped cards were not close enough to direct Etsy search results. Owner ordered a full rip of website scrape from the product hot path.
+
+**Decision**
+
+1. **Delete** callable `searchEtsyWebsiteRecommendations` and all ScraperAPI/Firecrawl scrape parsers, cache, kill-switch readers, and Portal listing grid / debug UI.
+2. **Keep** questionnaire → Primary + Broader Etsy website search URLs (`png` in `q`, `instant_download=true&explicit=1`); submit / Done / Cancel lifecycle unchanged.
+3. **Results UI:** polished Primary + Broader link cards only; purchases on Etsy (new tab).
+4. **Secrets:** remove code references to `SCRAPERAPI_API_KEY`; optional later GCP secret cleanup — do not require for product.
+5. **`fresh-prints-dev` only** for function delete; no production deploy.
+
+**Consequences**
+
+- R-010 scrape ToS/ops risk removed from live product path (link-only).
+- Firestore `etsyWebsiteSearchCache` / scrape config docs may remain inert; no code reads them.
+- Cursor ScraperAPI MCP (`.cursor/mcp.json`) is agent tooling only — not product.
+
+---
+
+### ADR-FP-087i: Return Etsy website scrape to ScraperAPI (markdown + HTML fallback)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-16 |
+| Status | superseded by ADR-FP-087j |
+| Amends | ADR-FP-087h, ADR-FP-087g |
+| Related | R-010, Phase 9A scrape-cards |
+
+**Context**
+
+Firecrawl was too slow / blocked for owner needs. Owner provided a working ScraperAPI HTTPS curl with `output_format=markdown`, and earlier proved proxy HTML returns excellent JSON-LD ItemList products for `parseEtsySearchHtml`.
+
+**Decision**
+
+1. **Live vendor:** ScraperAPI again for `searchEtsyWebsiteRecommendations` on `fresh-prints-dev`.
+2. **Hot fetch:** `GET https://api.scraperapi.com/?api_key=…&output_format=markdown&url=ENCODED_ETSY_URL`.
+3. **Parse:** `parseEtsyScraperApiResponse` / `parseEtsySearchHtml` on markdown; if 0 cards → one HTML fetch (omit `output_format`) for JSON-LD.
+4. Secret: `SCRAPERAPI_API_KEY` (placeholder `UNSET` = fail closed). Firecrawl off the hot path.
+5. Kill switch + Primary/Broader link fallback unchanged. No production deploy.
+
+**Consequences**
+
+- Owner must ensure `SCRAPERAPI_API_KEY` is a real key on `fresh-prints-dev` (not `UNSET`).
+- Optional later: destroy unused `FIRECRAWL_API_KEY`.
+- R-010 residual ToS risk unchanged; vendor name returns to ScraperAPI.
+
+---
+
+### ADR-FP-087h: Switch Etsy website scrape vendor to Firecrawl (dev)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-16 |
+| Status | superseded by ADR-FP-087i |
+| Amends | ADR-FP-087g |
+| Related | R-010, Phase 9A scrape-cards |
+
+**Context**
+
+ScraperAPI was never successfully used from the live `searchEtsyWebsiteRecommendations` path on `fresh-prints-dev` (secret/config and pre-API internal failures). Owner decided to **stop ScraperAPI** and use **Firecrawl** instead for Etsy website search scrape → listing cards. Purchases stay on Etsy; kill switch + link fallback remain.
+
+**Decision**
+
+1. Firecrawl `POST https://api.firecrawl.dev/v2/scrape` with slim/raw HTML formats + local `parseEtsySearchHtml`.
+2. Secret: `FIRECRAWL_API_KEY`. Soft `debugPayload` for Portal.
+3. Kill switch unchanged. No production deploy.
+
+**Consequences**
+
+- **2026-07-16:** Superseded — owner returned live path to ScraperAPI for speed/reliability (ADR-FP-087i).
+
+---
+
+### ADR-FP-087g: Etsy website scrape cards via ScraperAPI (dev)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-15 |
+| Status | accepted (restored via ADR-FP-087i) |
+| Amends | ADR-FP-087f |
+| Related | R-010, Phase 9A scrape-cards plan |
+
+**Context**
+
+Owner preferred Etsy website best-match relevance over Open API (ADR-FP-087f). In-app listing cards need search-page HTML. Owner approved scrape (legal/owner-as-counsel) using either ScraperAPI or Oxylabs; purchases stay on Etsy; `fresh-prints-dev` only.
+
+**Decision**
+
+1. Restore in-app listing cards from **Etsy website search** (Primary query only), hybrid with always-on Primary/Broader link cards.
+2. Fetch **server-side only** via **ScraperAPI** (`SCRAPERAPI_API_KEY` in Secret Manager). Oxylabs is the documented alternate if success rates fail.
+3. Callable: `searchEtsyWebsiteRecommendations` — input `requestId` only; derive search URL from owned request; parse → card fields; max 12; 30 min cache; daily quota; kill switch `etsyRecommendationConfig/websiteScrape.enabled` (missing = off).
+4. Missing/placeholder secret (`UNSET`) or scrape failure → fail closed to link-only UX (no crash).
+5. No client-side scrape; no production deploy in this phase; no Open API reintroduction.
+
+**Consequences**
+
+- Owner must create ScraperAPI account and set `SCRAPERAPI_API_KEY` on `fresh-prints-dev`.
+- Markup fragility remains; monitor empty rates; kill switch for instant rollback.
+- R-010 moves from blocked to accepted residual ToS risk with mitigations.
+- Briefly superseded by Firecrawl (ADR-FP-087h); restored and clarified by ADR-FP-087i (markdown + HTML fallback).
+
+---
+
+### ADR-FP-087f: Website-first Etsy results — Open API search removed
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-15 |
+| Status | accepted |
+| Amends | ADR-FP-087 / 087b–087e |
+
+**Context**
+
+Owner found Etsy website search links more relevant than Open API listing cards. API mainly provided images; relevance stayed disappointing despite keyword work.
+
+**Decision**
+
+1. Remove `searchEtsyRecommendations` and the live Open API client stack (no in-app listing grid, diagnostics, or search quotas).
+2. Keep questionnaire + `submit` / Done / Cancel lifecycle; results are Primary + Broader Etsy **website** search link cards only.
+3. Stop writing `apiKeywords` / `apiKeywordsFallback` on new docs.
+4. Do not delete Secret Manager `ETSY_X_API_KEY` in this phase without owner console approval. **Follow-up (2026-07-15):** Owner approved; secret deleted from `fresh-prints-dev` (versions 1–3). Prod not touched (no access / no separate confirmation).
+5. Scraping Etsy HTML for in-app cards is **deferred** and blocked until ToS / legal approval.
+
+**Consequences**
+
+- Customers browse and purchase on Etsy via built search URLs (`instant_download=true&explicit=1`).
+- Trademark disclosure no longer claims the app uses the Etsy API.
+- Future in-app listing previews require a separate managed phase after legal gate.
+- Open API function `searchEtsyRecommendations` already absent from `fresh-prints-dev` after website-first deploy; leftover secret cleanup completed 2026-07-15.
+
+---
+
+### ADR-FP-087e: Hybrid free-text subject + suggest dictionary for Etsy keywords
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-15 |
+| Status | accepted |
+| Amends | ADR-FP-087d |
+
+**Context**
+
+Fixed curated subject chips (~60) cannot cover DTF demand (pop culture, characters, decades, holidays). Long free-text prose still fails Open API. Owner wants customer control with parse-into-usable-keywords.
+
+**Decision**
+
+1. Primary input is free-text `subjectText` (max 80 chars) with autocomplete from an in-repo suggest dictionary (~legacy subjects + occasions + extras).
+2. Shared parser longest-matches dictionary phrases, strips stop words, emits short subject tokens for Open API.
+3. New Portal submits write `subjectText` only (+ optional styles/wording). Legacy docs with `subjects` ids remain valid on search rebuild (dual-path).
+4. Occasions are not a required pack for new submits; holidays live in dictionary / free text.
+5. Fallback remains subject tokens + `png digital download`. Draft key bumped to `fp.etsyRecommendation.draft.v3`.
+
+**Consequences**
+
+- Dictionary expands in-repo (no CMS this phase).
+- LLM extraction of long prose remains out of scope.
+
+---
+
+### ADR-FP-087d: Curated keyword pickers for Etsy Open API reliability
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-15 |
+| Status | accepted |
+| Amends | ADR-FP-087 / ADR-FP-087b / ADR-FP-087c |
+
+**Context**
+
+Free-text descriptions (e.g. full highland-cow sentences with long sayings) still produced Open API `keywords` that returned zero hits even after condensation. Customers need to steer search, but Open API needs short token stacks.
+
+**Decision**
+
+1. Replace required free-text `description` with curated **subject** picks (1–2) as the primary search driver.
+2. Optional **tone/style** (max 2) and **occasion** (max 1) from fixed lists; optional **exact saying** capped at 60 chars (API uses ≤6 distinctive tokens).
+3. Focused `apiKeywords` = subjects + styles + occasion + capped saying + `png digital download`.
+4. Fallback `apiKeywordsFallback` = subjects only + `png digital download` (never re-send long prose).
+5. Website `q` uses the same short stack (plus original saying text when present) with `instant_download=true&explicit=1`.
+6. Portal draft key bumped to `fp.etsyRecommendation.draft.v2`. Subject/occasion lists ship in-repo (not CMS).
+
+**Consequences**
+
+- Long free-text no longer drives Open API search.
+- Owner can expand curated lists in a later phase.
+- Dev search quotas remain elevated (200/100) until A/B closes.
+
+---
+
+### ADR-FP-087: Phase 9A Etsy recommendations foundation (clean master restart)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-15 |
+| Status | accepted |
+
+**Context**
+
+Prior Phase 9 implementation was archived outside master. Owner authorized a clean Phase 9A restart from current master for Etsy recommendations only, with AI and Assisted Creation deferred as disabled coming-soon cards.
+
+**Decision**
+
+1. Build greenfield from master; do not import archived Phase 9 code.
+2. Persist `etsyRecommendationRequests` with `schemaVersion: 1` and route `etsy_recommendations` — not the old planned fee/staff `customRequests` sketch.
+3. Primary Etsy website URL uses the full `canonicalQuery`. Open API prefers focused `apiKeywords` (sanitized canonical). If that returns zero hits, search retries once with `apiKeywordsFallback` (description + `png`).
+4. Portal never calls Etsy; `searchEtsyRecommendations` uses Firebase Secret Manager `ETSY_X_API_KEY` only.
+5. Fix `functions/.gitignore` so `functions/src/lib` is tracked (`/lib/` compile output only).
+6. Batch hydration must pass `listing_ids` as a comma-separated query value (`explode=false`); repeated `listing_ids` params only hydrate one listing and leave cards without images.
+
+**Consequences**
+
+- Broader Custom Request fee/staff queue and AI/Assisted Creation require separate managed phases.
+- Live Etsy calls require human secret + application-access checkpoints.
+- Website and in-app result sets are intentionally not guaranteed identical.
+
+---
+
+### ADR-FP-087c: Condensed Open API keywords + elevated Dev search quota
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-15 |
+| Status | accepted |
+| Amends | ADR-FP-087 / ADR-FP-087b |
+
+**Context**
+
+A/B diagnostics showed stuffing full questionnaire text (especially design-focus fillers like `phrase saying text`) into Open API keywords often returns zero hits. Description-led keywords work. Owner wants to keep questionnaire fields but condense them. Dev A/B also hit the 20 searches/request app cap with no visible counter.
+
+**Decision**
+
+1. Open API focused keywords = condensed from answers: description first, distinctive wording, at most one style, light colors/must-have; never design-focus `queryTerms`; hard token budget (12) + `png`.
+2. Fallback remains description + `png`.
+3. Rebuild keywords from stored answers on every search so algorithm deploys apply without re-submit.
+4. Elevate Dev quotas temporarily to 200/customer/day and 100/request/day (restore 40/20 after A/B). Surface remaining counts in Portal results UI.
+
+**Consequences**
+
+Website primary URL can stay rich; in-app cards optimize for Open API recall. Restore quota constants in `etsyRecommendation.constants.ts` after experimentation.
+
+---
+
+### ADR-FP-087b: Etsy Open API focused keywords with broader fallback (amendment)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-15 |
+| Status | accepted |
+| Amends | ADR-FP-087 |
+
+**Context**
+
+Owner visual smoke showed empty in-app results for a highland-cow phrase search (`rawResultCount: 0` on long punctuated canonical). A later short description-only search returned ~21k Etsy hits with weak relevance. Missing listing images were also reported: batch hydration used repeated `listing_ids` query params; Etsy expects a comma-separated list and otherwise returns only one listing (or fails silently in our catch).
+
+**Decision**
+
+1. Persist `apiKeywords` (sanitized canonical) and `apiKeywordsFallback` (sanitized broader).
+2. Search tries focused keywords first; if zero raw results, retry once with fallback.
+3. Hydrate with `listing_ids=id1,id2,…&includes=Images,Shop` and log hydration failures into diagnostics.
+
+**Consequences**
+
+In-app cards optimize for Open API recall + relevance; Primary search card still opens the richer website query. Diagnostics expose `keywordStrategy`, hydration status, and image counts.
+
+---
+
 ### ADR-FP-086: Image retention — catalog, AI reject, customer uploads, Portal account
 
 | Field | Value |

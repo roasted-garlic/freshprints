@@ -76,6 +76,12 @@ Fresh Prints does not expose a separate REST API for core operations. Business l
 | Resend | Team invitation email | API key (Functions / Secret Manager) | `docs/workflow/setup/resend-email-setup.md` |
 | Google AI (Gemini) | AI design enrichment | API key (Functions / Secret Manager only) | `FIREBASE.md` — **not** Firestore or renderer |
 
+**Etsy (Phase 9A — Open API + link-first — ADR-FP-087l):** Portal builds official website search URLs (Primary + Broader). In-app listing cards come from Etsy Open API via callable `searchEtsyRecommendations` (Secret Manager `ETSY_X_API_KEY`, bound to that callable only). Website scrape remains removed (ADR-FP-087j). Soft-fail to links-only if the secret is missing or search returns empty. Purchases stay off-platform via listing/search URLs. `SCRAPERAPI_API_KEY` / `FIRECRAWL_API_KEY` are not used by product code.
+
+**Etsy wizard suggestion lists (ADR-FP-087k):** Collection `etsyRecommendationSuggestions` holds admin-added Subject / Tone overlays. Callables `addEtsyRecommendationSuggestion` and `deactivateEtsyRecommendationSuggestion` (owner/admin, Admin SDK). Portal and Studio read active docs as signed-in clients (client write denied). Static seed dictionaries in shared code remain the baseline; admin docs grow autocomplete.
+
+**Cursor agent tooling:** Project MCP may list ScraperAPI at `.cursor/mcp.json` (agent-only). Setup note: `docs/workflow/setup/scraperapi-mcp-setup.md`.
+
 **AI provider secrets:** `GEMINI_API_KEY` lives in Firebase Secret Manager. Cloud Functions read it; the desktop renderer must not. Do not add provider keys to Firestore settings or the Settings UI. (As of ADR-FP-040, OpenAI is no longer used; `OPENAI_API_KEY` was removed from Cloud Function code.)
 
 **Vision model:** Configurable via Firestore `settings/aiEnrichment.visionModelId` (owner/admin updates through callable `updateAiEnrichmentSettings`). Server allowlist in `functions/src/ai/aiEnrichmentConfig.ts`: default `gemini-2.5-flash-lite`, newer alternate `gemini-3.1-flash-lite`. Both are called through Gemini's OpenAI-compatible Chat Completions endpoint.
@@ -115,6 +121,14 @@ As of ADR-FP-039/ADR-FP-040, **AI Processing is a single playground-style call**
 | `cleanupAbandonedCustomerUploads` | Callable | Owner/admin: mark stale open batches abandoned; fail unfinished uploads; delete orphan **source** objects only (`dryRun` supported) |
 | `purgeArchivedDesignAssets` | Callable | Owner: archive-first purge of design originals + previews (keep thumbnail; ADR-FP-084) |
 | `getPortalShowPrintProgress` | Callable | Portal: show print progress for customer |
+| `completeEtsyRecommendationRequest` | Callable | Portal: mark own active Etsy recommendation request completed |
+| `cancelEtsyRecommendationRequest` | Callable | Portal: cancel own active Etsy recommendation request |
+| `submitEtsyRecommendationRequest` | Callable | Portal: create/replace one active Etsy recommendation request; returns website search URL |
+| `searchEtsyRecommendations` | Callable | Portal: Open API listing search for an owned active request (`ETSY_X_API_KEY`) |
+| `completeEtsyRecommendationRequest` | Callable | Portal: mark active recommendation request completed |
+| `cancelEtsyRecommendationRequest` | Callable | Portal: cancel active recommendation request |
+| `addEtsyRecommendationSuggestion` | Callable | Studio: owner/admin add Subject or Tone autocomplete overlay |
+| `deactivateEtsyRecommendationSuggestion` | Callable | Studio: owner/admin soft-deactivate an overlay (`active: false`) |
 | `enqueueAiEnrichment` | Callable | Run imported design through direct AI processing |
 | `resetAiEnrichmentForProcessing` | Callable | Return Needs Review or Rejected design to Processing for a staff-started re-run |
 | `updateAiEnrichmentSettings` | Callable | Owner/admin: set team vision model, prompt template, and tag exclusions |
