@@ -1,7 +1,14 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { applyEtsySubjectSuggestion } from './applyEtsySubjectSuggestion';
+import {
+  applyEtsyMultiValueSuggestion,
+  applyEtsySubjectSuggestion,
+  commitEtsyMultiValueDraft,
+  listEtsyMultiValueInputValues,
+  parseEtsyMultiValueInput,
+  serializeEtsyMultiValueInput,
+} from './applyEtsySubjectSuggestion';
 
 const harley = {
   id: 'harley_quinn',
@@ -21,21 +28,46 @@ const christmas = {
   apiToken: 'christmas',
 };
 
-describe('applyEtsySubjectSuggestion', () => {
-  it('replaces a single-letter filter that matches a suggestion word', () => {
-    assert.equal(applyEtsySubjectSuggestion('q', harley), 'harley quinn');
+describe('etsy multi-value input helpers', () => {
+  it('keeps spaces inside the draft and splits only on commas', () => {
+    assert.deepEqual(parseEtsyMultiValueInput('highland cow'), {
+      selected: [],
+      draft: 'highland cow',
+    });
+    assert.deepEqual(parseEtsyMultiValueInput('highland cow, funny'), {
+      selected: ['highland cow'],
+      draft: 'funny',
+    });
   });
 
-  it('replaces a typed prefix of the suggestion phrase', () => {
-    assert.equal(applyEtsySubjectSuggestion('high', highland), 'highland cow');
-    assert.equal(applyEtsySubjectSuggestion('harley', harley), 'harley quinn');
+  it('commits drafts with comma/enter semantics and blocks duplicates', () => {
+    assert.equal(commitEtsyMultiValueDraft('highland cow', 3), 'highland cow, ');
+    assert.equal(
+      commitEtsyMultiValueDraft(serializeEtsyMultiValueInput(['highland cow'], 'highland cow'), 3),
+      'highland cow, ',
+    );
   });
 
-  it('appends a distinct second subject', () => {
-    assert.equal(applyEtsySubjectSuggestion('grinch', christmas), 'grinch christmas');
+  it('applies suggestion pills as selected chips and drops the draft filter', () => {
+    assert.equal(applyEtsySubjectSuggestion('high', highland), 'highland cow, ');
+    assert.equal(
+      applyEtsySubjectSuggestion('highland cow, har', harley),
+      'highland cow, harley quinn, ',
+    );
+    assert.equal(applyEtsySubjectSuggestion('grinch', christmas), 'grinch, christmas, ');
   });
 
-  it('replaces only the trailing filter when prior subject is complete', () => {
-    assert.equal(applyEtsySubjectSuggestion('grinch har', harley), 'grinch harley quinn');
+  it('does not re-add an already selected suggestion', () => {
+    assert.equal(
+      applyEtsyMultiValueSuggestion('highland cow, ', 'highland cow', 3),
+      'highland cow, ',
+    );
+  });
+
+  it('lists committed values including a trailing draft', () => {
+    assert.deepEqual(listEtsyMultiValueInputValues('highland cow, funny'), [
+      'highland cow',
+      'funny',
+    ]);
   });
 });

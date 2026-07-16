@@ -10,6 +10,80 @@ function normalizeSuggestKey(value: string): string {
     .replace(/\s+/g, ' ');
 }
 
+export interface ParsedEtsyMultiValueInput {
+  selected: string[];
+  draft: string;
+}
+
+export function parseEtsyMultiValueInput(value: string): ParsedEtsyMultiValueInput {
+  const parts = value.split(',');
+  if (parts.length === 1) {
+    return { selected: [], draft: value.trimStart() };
+  }
+  return {
+    selected: parts
+      .slice(0, -1)
+      .map((part) => part.trim())
+      .filter(Boolean),
+    draft: parts.at(-1)?.trimStart() ?? '',
+  };
+}
+
+export function serializeEtsyMultiValueInput(selected: readonly string[], draft = ''): string {
+  if (selected.length === 0) {
+    return draft;
+  }
+  // Keep a trailing ", " so committed chips stay distinct from an in-progress draft.
+  return `${selected.join(', ')}, ${draft}`;
+}
+
+export function listEtsyMultiValueInputValues(value: string): string[] {
+  const { selected, draft } = parseEtsyMultiValueInput(value);
+  const values = draft.trim() ? [...selected, draft.trim()] : selected;
+  const seen = new Set<string>();
+  return values.filter((item) => {
+    const key = normalizeSuggestKey(item);
+    if (!key || seen.has(key)) {
+      return false;
+    }
+    seen.add(key);
+    return true;
+  });
+}
+
+export function normalizeEtsyMultiValueInput(value: string): string {
+  return listEtsyMultiValueInputValues(value).join(', ');
+}
+
+export function commitEtsyMultiValueDraft(current: string, maxItems: number): string {
+  const { selected, draft } = parseEtsyMultiValueInput(current);
+  const trimmedDraft = draft.trim();
+  if (!trimmedDraft || selected.length >= maxItems) {
+    return serializeEtsyMultiValueInput(selected);
+  }
+  const draftKey = normalizeSuggestKey(trimmedDraft);
+  if (selected.some((value) => normalizeSuggestKey(value) === draftKey)) {
+    return serializeEtsyMultiValueInput(selected);
+  }
+  return serializeEtsyMultiValueInput([...selected, trimmedDraft]);
+}
+
+export function applyEtsyMultiValueSuggestion(
+  current: string,
+  suggestionValue: string,
+  maxItems: number,
+): string {
+  const { selected } = parseEtsyMultiValueInput(current);
+  if (selected.length >= maxItems) {
+    return serializeEtsyMultiValueInput(selected);
+  }
+  const suggestionKey = normalizeSuggestKey(suggestionValue);
+  if (selected.some((value) => normalizeSuggestKey(value) === suggestionKey)) {
+    return serializeEtsyMultiValueInput(selected);
+  }
+  return serializeEtsyMultiValueInput([...selected, suggestionValue.trim()]);
+}
+
 function suggestionPhrases(suggestion: EtsyRecommendationSuggestEntry): string[] {
   return [suggestion.apiToken, suggestion.label, ...(suggestion.aliases ?? [])]
     .map(normalizeSuggestKey)
@@ -49,34 +123,15 @@ export function applyEtsySubjectSuggestion(
   current: string,
   suggestion: EtsyRecommendationSuggestEntry,
 ): string {
-  const token = suggestion.apiToken;
-  const trimmed = current.trim();
-  if (!trimmed) {
-    return token.slice(0, ETSY_RECOMMENDATION_MAX_SUBJECT_TEXT_LENGTH);
-  }
-
-  const currentKey = normalizeSuggestKey(trimmed);
-  const tokenKey = normalizeSuggestKey(token);
-  if (currentKey === tokenKey || currentKey.includes(tokenKey)) {
-    return token.slice(0, ETSY_RECOMMENDATION_MAX_SUBJECT_TEXT_LENGTH);
-  }
-
-  // Whole field is still a filter for this pick (including single letters like "q").
-  if (typedMatchesSuggestionFilter(currentKey, suggestion)) {
-    return token.slice(0, ETSY_RECOMMENDATION_MAX_SUBJECT_TEXT_LENGTH);
-  }
-
-  // Trailing word(s) are an incomplete filter for this pick — replace only that tail.
-  const words = trimmed.split(/\s+/);
-  for (let take = Math.min(words.length, 4); take >= 1; take -= 1) {
-    const trailing = normalizeSuggestKey(words.slice(-take).join(' '));
-    if (trailing && typedMatchesSuggestionFilter(trailing, suggestion)) {
-      const prefix = words.slice(0, -take).join(' ').trim();
-      const next = prefix ? `${prefix} ${token}` : token;
-      return next.slice(0, ETSY_RECOMMENDATION_MAX_SUBJECT_TEXT_LENGTH);
-    }
-  }
-
-  // Distinct second subject (e.g. "grinch" + pick "christmas").
-  return `${trimmed} ${token}`.slice(0, ETSY_RECOMMENDATION_MAX_SUBJECT_TEXT_LENGTH);
+  const parsed = parseEtsyMultiValueInput(current);
+  const draftKey = normalizeSuggestKey(parsed.draft);
+  const shouldReplaceDraft =
+    !draftKey || typedMatchesSuggestionFilter(draftKey, suggestion);
+  const base = shouldReplaceDraft
+    ? serializeEtsyMultiValueInput(parsed.selected)
+    : commitEtsyMultiValueDraft(current, 3);
+  return applyEtsyMultiValueSuggestion(base, suggestion.apiToken, 3).slice(
+    0,
+    ETSY_RECOMMENDATION_MAX_SUBJECT_TEXT_LENGTH,
+  );
 }

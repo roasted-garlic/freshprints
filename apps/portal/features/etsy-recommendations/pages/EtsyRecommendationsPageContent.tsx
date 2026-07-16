@@ -1,6 +1,5 @@
 'use client';
 
-import { PortalConfirmModal } from '../../shared/components/PortalConfirmModal';
 import { EtsyQuestionnaire } from '../components/EtsyQuestionnaire';
 import { EtsyResultsDashboard } from '../components/EtsyResultsDashboard';
 import { EtsyRouteChoosePath } from '../components/EtsyRouteChoosePath';
@@ -23,9 +22,6 @@ export function EtsyRecommendationsPageContent() {
         <EtsyRouteChoosePath
           headingRef={wizard.focusHeadingRef}
           onFindDesign={wizard.beginFindDesign}
-          onResumeDraft={wizard.resumeDraft}
-          onStartOver={wizard.requestStartOver}
-          resumeDraftAvailable={wizard.resumeDraftAvailable}
         />
       ) : null}
 
@@ -72,20 +68,6 @@ export function EtsyRecommendationsPageContent() {
           }}
         />
       ) : null}
-
-      <PortalConfirmModal
-        cancelLabel="Keep draft"
-        confirmLabel="Start over"
-        confirmVariant="danger"
-        isOpen={wizard.startOverConfirmOpen}
-        onCancel={wizard.cancelStartOver}
-        onConfirm={wizard.confirmStartOver}
-        title="Start over?"
-      >
-        <p className="portal-muted portal-confirm-modal-message">
-          This clears your saved answers and starts the questionnaire over.
-        </p>
-      </PortalConfirmModal>
     </main>
   );
 }

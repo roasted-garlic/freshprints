@@ -18,11 +18,11 @@ import { parseEtsyRecommendationAnswers } from '@fresh-prints/shared/utils/etsyR
 
 import { etsyRecommendationService, EtsyRecommendationCallableError } from '../services/etsyRecommendationService';
 import {
+  listEtsyMultiValueInputValues,
+  normalizeEtsyMultiValueInput,
+} from '../utils/applyEtsySubjectSuggestion';
+import {
   clearEtsyRecommendationDraft,
-  hasResumableEtsyRecommendationDraft,
-  loadEtsyRecommendationDraft,
-  saveEtsyRecommendationDraft,
-  type EtsyRecommendationDraftStep,
 } from '../utils/etsyRecommendationDraftStorage';
 import {
   buildEtsyRecommendationHref,
@@ -45,31 +45,20 @@ const EMPTY_ANSWERS: EtsyRecommendationAnswersState = {
   wording: '',
 };
 
-function draftStepToView(step: EtsyRecommendationDraftStep): EtsyRecommendationView {
-  return step;
-}
-
-function viewToDraftStep(view: EtsyRecommendationView): EtsyRecommendationDraftStep | null {
-  if (view === 'screen1' || view === 'screen2' || view === 'screen3' || view === 'review') {
-    return view;
-  }
-  return null;
-}
-
 function answersFromRequest(request: EtsyRecommendationRequest): EtsyRecommendationAnswersState {
   const styles = request.answers.styles ?? [];
   return {
     subjectText: request.answers.subjectText?.trim() || request.answers.subjects?.[0] || '',
-    styleText: styles[0]?.trim() ?? '',
+    styleText: styles.map((style) => style.trim()).filter(Boolean).join(', '),
     wording: request.answers.wording?.trim() ?? '',
   };
 }
 
 function toParsedAnswers(answers: EtsyRecommendationAnswersState) {
-  const styleText = answers.styleText.trim();
+  const styles = listEtsyMultiValueInputValues(answers.styleText);
   return parseEtsyRecommendationAnswers({
-    subjectText: answers.subjectText || undefined,
-    styles: styleText ? [styleText] : undefined,
+    subjectText: normalizeEtsyMultiValueInput(answers.subjectText) || undefined,
+    styles: styles.length > 0 ? styles : undefined,
     wording: answers.wording || undefined,
   });
 }
@@ -96,10 +85,10 @@ export function useEtsyRecommendationWizard() {
   const [listings, setListings] = useState<EtsyRecommendationListing[]>([]);
   const [listingsMessage, setListingsMessage] = useState<string | null>(null);
   const [previewQuota, setPreviewQuota] = useState<EtsyRecommendationPreviewQuota | null>(null);
-  const [resumeDraftAvailable, setResumeDraftAvailable] = useState(false);
-  const [startOverConfirmOpen, setStartOverConfirmOpen] = useState(false);
   const headingRef = useRef<HTMLHeadingElement | null>(null);
   const hasHydratedFromUrlRef = useRef(false);
+  const previousViewRef = useRef<EtsyRecommendationView>('choose');
+  const previousSearchKeyRef = useRef<string | null>(null);
 
   const searchPreview = useMemo(() => {
     try {
@@ -191,19 +180,15 @@ export function useEtsyRecommendationWizard() {
         }
 
         if (parsed.step !== 'choose') {
-          const draft = loadEtsyRecommendationDraft();
-          if (draft) {
-            setAnswers({
-              subjectText: draft.subjectText,
-              styleText: draft.styleText,
-              wording: draft.wording,
-            });
-          }
+          // Deep links open the step blank. Drafts are not resumed after leaving.
+          clearEtsyRecommendationDraft();
+          setAnswers(EMPTY_ANSWERS);
           setView(urlStepToView(parsed.step));
           return;
         }
 
-        setResumeDraftAvailable(hasResumableEtsyRecommendationDraft());
+        clearEtsyRecommendationDraft();
+        setAnswers(EMPTY_ANSWERS);
       } catch (error) {
         setActionError(
           error instanceof Error ? error.message : 'Unable to restore this design search link.',
@@ -217,43 +202,11 @@ export function useEtsyRecommendationWizard() {
     void restore();
   }, [restoreResultsFromRequest, searchParams]);
 
-  useEffect(() => {
-    if (!hasHydratedFromUrlRef.current || isRestoringFromUrl) {
-      return;
-    }
-    const nextHref = buildEtsyRecommendationHref({ view, requestId });
-    const currentHref = `${window.location.pathname}${window.location.search}`;
-    if (nextHref !== currentHref) {
-      router.replace(nextHref, { scroll: false });
-    }
-  }, [isRestoringFromUrl, requestId, router, view]);
-
-  useEffect(() => {
-    if (view !== 'results' || !requestId) {
-      return;
-    }
-    void refreshPreviewQuota(requestId);
-  }, [view, requestId, refreshPreviewQuota]);
-
-  useEffect(() => {
-    const step = viewToDraftStep(view);
-    if (!step) {
-      return;
-    }
-    saveEtsyRecommendationDraft({
-      step,
-      subjectText: answers.subjectText,
-      styleText: answers.styleText,
-      wording: answers.wording,
-    });
-  }, [answers, view]);
-
-  useEffect(() => {
-    headingRef.current?.focus();
-  }, [view]);
-
   const goToChoose = useCallback(() => {
+    clearEtsyRecommendationDraft();
+    setAnswers(EMPTY_ANSWERS);
     setView('choose');
+    previousViewRef.current = 'choose';
     setFieldError(null);
     setActionError(null);
     setRequestId(null);
@@ -263,8 +216,56 @@ export function useEtsyRecommendationWizard() {
     setListings([]);
     setListingsMessage(null);
     setPreviewQuota(null);
-    setResumeDraftAvailable(hasResumableEtsyRecommendationDraft());
-  }, []);
+    router.replace(buildEtsyRecommendationHref({ view: 'choose' }), { scroll: false });
+  }, [router]);
+
+  useEffect(() => {
+    if (!hasHydratedFromUrlRef.current || isRestoringFromUrl) {
+      return;
+    }
+
+    const parsed = parseEtsyRecommendationUrl(searchParams);
+    const searchKey = searchParams.toString();
+    const urlChanged =
+      previousSearchKeyRef.current !== null && previousSearchKeyRef.current !== searchKey;
+    const viewChanged = previousViewRef.current !== view;
+    previousSearchKeyRef.current = searchKey;
+    previousViewRef.current = view;
+
+    // Custom Designs nav lands on /custom-designs with no step while still mid-wizard.
+    // Only then reset to options. Do NOT reset when Find a design advances view first
+    // and the URL has not caught up yet (that caused the flash / no-op).
+    if (parsed.step === 'choose' && view !== 'choose') {
+      if (urlChanged && !viewChanged) {
+        goToChoose();
+        return;
+      }
+      const nextHref = buildEtsyRecommendationHref({ view, requestId });
+      router.replace(nextHref, { scroll: false });
+      return;
+    }
+
+    if (parsed.step === 'choose' && view === 'choose') {
+      return;
+    }
+
+    const nextHref = buildEtsyRecommendationHref({ view, requestId });
+    const currentHref = `${window.location.pathname}${window.location.search}`;
+    if (nextHref !== currentHref) {
+      router.replace(nextHref, { scroll: false });
+    }
+  }, [goToChoose, isRestoringFromUrl, requestId, router, searchParams, view]);
+
+  useEffect(() => {
+    if (view !== 'results' || !requestId) {
+      return;
+    }
+    void refreshPreviewQuota(requestId);
+  }, [view, requestId, refreshPreviewQuota]);
+
+  useEffect(() => {
+    headingRef.current?.focus();
+  }, [view]);
 
   const startFreshWizard = useCallback(() => {
     clearEtsyRecommendationDraft();
@@ -277,32 +278,13 @@ export function useEtsyRecommendationWizard() {
     setCanonicalQuery('');
     setEtsySearchUrl('');
     setBroaderSearchUrl('');
-    setStartOverConfirmOpen(false);
+    setPreviewQuota(null);
     setView('screen1');
-  }, []);
-
-  const resumeDraft = useCallback(() => {
-    const draft = loadEtsyRecommendationDraft();
-    if (!draft) {
-      startFreshWizard();
-      return;
-    }
-    setAnswers({
-      subjectText: draft.subjectText,
-      styleText: draft.styleText,
-      wording: draft.wording,
-    });
-    setFieldError(null);
-    setActionError(null);
-    setView(draftStepToView(draft.step));
-    setResumeDraftAvailable(false);
-  }, [startFreshWizard]);
+    previousViewRef.current = 'screen1';
+    router.replace(buildEtsyRecommendationHref({ view: 'screen1' }), { scroll: false });
+  }, [router]);
 
   const beginFindDesign = useCallback(() => {
-    if (hasResumableEtsyRecommendationDraft()) {
-      setResumeDraftAvailable(true);
-      return;
-    }
     startFreshWizard();
   }, [startFreshWizard]);
 
@@ -384,11 +366,10 @@ export function useEtsyRecommendationWizard() {
         confirmReplaceActive: true,
       });
       clearEtsyRecommendationDraft();
-      setResumeDraftAvailable(false);
-        setRequestId(response.requestId);
-        setCanonicalQuery(response.canonicalQuery);
-        setEtsySearchUrl(buildEtsyRecommendationSearchUrl(response.canonicalQuery));
-        setBroaderSearchUrl(broaderUrl);
+      setRequestId(response.requestId);
+      setCanonicalQuery(response.canonicalQuery);
+      setEtsySearchUrl(buildEtsyRecommendationSearchUrl(response.canonicalQuery));
+      setBroaderSearchUrl(broaderUrl);
       setListings([]);
       setListingsMessage(null);
       setView('results');
@@ -401,14 +382,13 @@ export function useEtsyRecommendationWizard() {
   }, [answers, loadListingsForRequest]);
 
   const editSearch = useCallback(() => {
+    // Keep current answers in memory so Edit from results can revise them.
+    // Leaving Custom Designs / returning via Find a design starts blank again.
     setActionError(null);
     setFieldError(null);
     setListings([]);
     setListingsMessage(null);
-    setRequestId(null);
-    setCanonicalQuery('');
-    setEtsySearchUrl('');
-    setBroaderSearchUrl('');
+    setPreviewQuota(null);
     setView('screen1');
   }, []);
 
@@ -430,18 +410,6 @@ export function useEtsyRecommendationWizard() {
     goToChoose();
   }, [goToChoose]);
 
-  const requestStartOver = useCallback(() => {
-    setStartOverConfirmOpen(true);
-  }, []);
-
-  const confirmStartOver = useCallback(() => {
-    startFreshWizard();
-  }, [startFreshWizard]);
-
-  const cancelStartOver = useCallback(() => {
-    setStartOverConfirmOpen(false);
-  }, []);
-
   return {
     view,
     answers,
@@ -459,15 +427,8 @@ export function useEtsyRecommendationWizard() {
     listings,
     listingsMessage,
     previewQuota,
-    resumeDraftAvailable,
-    startOverConfirmOpen,
     focusHeadingRef: headingRef,
     beginFindDesign,
-    resumeDraft,
-    startFreshWizard,
-    requestStartOver,
-    confirmStartOver,
-    cancelStartOver,
     updateSubjectText,
     updateStyleText,
     updateWording,

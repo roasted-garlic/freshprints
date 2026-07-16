@@ -6,18 +6,9 @@ import type { Ref, RefObject } from 'react';
 interface EtsyRouteChoosePathProps {
   headingRef: RefObject<HTMLHeadingElement | null>;
   onFindDesign: () => void;
-  onResumeDraft?: () => void;
-  onStartOver?: () => void;
-  resumeDraftAvailable?: boolean;
 }
 
-export function EtsyRouteChoosePath({
-  headingRef,
-  onFindDesign,
-  onResumeDraft,
-  onStartOver,
-  resumeDraftAvailable = false,
-}: EtsyRouteChoosePathProps) {
+export function EtsyRouteChoosePath({ headingRef, onFindDesign }: EtsyRouteChoosePathProps) {
   return (
     <section aria-labelledby="etsy-route-choose-title" className="etsy-route-choose">
       <header className="etsy-route-choose-header">
@@ -34,20 +25,6 @@ export function EtsyRouteChoosePath({
           find matching designs.
         </p>
       </header>
-
-      {resumeDraftAvailable && onResumeDraft && onStartOver ? (
-        <div className="etsy-draft-resume" role="status">
-          <p className="etsy-draft-resume-copy">You have saved answers from earlier.</p>
-          <div className="etsy-draft-resume-actions">
-            <button className="portal-button portal-button-primary" onClick={onResumeDraft} type="button">
-              Resume draft
-            </button>
-            <button className="portal-button portal-button-secondary" onClick={onStartOver} type="button">
-              Start over
-            </button>
-          </div>
-        </div>
-      ) : null}
 
       <div className="etsy-route-cards">
         <article className="etsy-route-card etsy-route-card-active">
@@ -69,10 +46,7 @@ export function EtsyRouteChoosePath({
           </button>
         </article>
 
-        <article
-          aria-disabled="true"
-          className="etsy-route-card etsy-route-card-disabled"
-        >
+        <article aria-disabled="true" className="etsy-route-card etsy-route-card-disabled">
           <div aria-hidden="true" className="etsy-route-card-icon">
             <Sparkles absoluteStrokeWidth strokeWidth={1.25} />
           </div>
@@ -95,10 +69,7 @@ export function EtsyRouteChoosePath({
           </button>
         </article>
 
-        <article
-          aria-disabled="true"
-          className="etsy-route-card etsy-route-card-disabled"
-        >
+        <article aria-disabled="true" className="etsy-route-card etsy-route-card-disabled">
           <div aria-hidden="true" className="etsy-route-card-icon">
             <Palette absoluteStrokeWidth strokeWidth={1.25} />
           </div>

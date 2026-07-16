@@ -21,17 +21,25 @@ import { parseEtsyRecommendationSubjectText } from '@fresh-prints/shared/utils/e
 
 import type { EtsyRecommendationAnswersState } from '../hooks/useEtsyRecommendationWizard';
 import { loadActiveEtsySuggestionOverlays } from '../services/etsySuggestionListsService';
-import { applyEtsySubjectSuggestion } from '../utils/applyEtsySubjectSuggestion';
+import {
+  applyEtsyMultiValueSuggestion,
+  applyEtsySubjectSuggestion,
+  listEtsyMultiValueInputValues,
+  parseEtsyMultiValueInput,
+} from '../utils/applyEtsySubjectSuggestion';
+import { EtsyMultiValueInput } from './EtsyMultiValueInput';
 import { EtsySaveSuggestionAction } from './EtsySaveSuggestionAction';
 import { EtsySuggestionPills } from './EtsySuggestionPills';
 
 const POPULAR_SUGGESTION_LIMIT = 8;
 const FILTERED_SUGGESTION_LIMIT = 10;
+const MAX_SUBJECT_ITEMS = 3;
+const MAX_STYLE_ITEMS = 2;
 
 const SUBJECT_PILL_HINT =
-  'Optional. Tap a suggestion to fill the field, or keep typing your own.';
+  'Tap a suggestion to add it. Use a comma or Enter to finish your own entry.';
 const STYLE_PILL_HINT =
-  'Optional. Tap a tone or style, or keep typing your own. You can skip this step.';
+  'Tap a suggestion to add it. Use a comma or Enter to finish your own entry.';
 
 function QuestionnaireWarningCallout({ children, id }: { children: ReactNode; id: string }) {
   return (
@@ -193,15 +201,36 @@ export function EtsyQuestionnaire({
     [adminOverlays],
   );
 
-  const subjectSuggestions = useMemo(
-    () => matchSuggestDictionary(answers.subjectText, FILTERED_SUGGESTION_LIMIT, subjectEntries),
-    [answers.subjectText, subjectEntries],
+  const subjectInput = useMemo(
+    () => parseEtsyMultiValueInput(answers.subjectText),
+    [answers.subjectText],
+  );
+  const styleInput = useMemo(
+    () => parseEtsyMultiValueInput(answers.styleText),
+    [answers.styleText],
   );
 
-  const styleSuggestions = useMemo(
-    () => matchStyleSuggestions(answers.styleText, styleOptions, FILTERED_SUGGESTION_LIMIT),
-    [answers.styleText, styleOptions],
-  );
+  const subjectSuggestions = useMemo(() => {
+    const selectedKeys = new Set(
+      subjectInput.selected.map((value) => value.trim().toLowerCase()),
+    );
+    return matchSuggestDictionary(
+      subjectInput.draft,
+      FILTERED_SUGGESTION_LIMIT,
+      subjectEntries,
+    ).filter((entry) => !selectedKeys.has(entry.apiToken.trim().toLowerCase()));
+  }, [subjectEntries, subjectInput]);
+
+  const styleSuggestions = useMemo(() => {
+    const selectedKeys = new Set(
+      styleInput.selected.map((value) => value.trim().toLowerCase()),
+    );
+    return matchStyleSuggestions(
+      styleInput.draft,
+      styleOptions,
+      FILTERED_SUGGESTION_LIMIT,
+    ).filter((style) => !selectedKeys.has(style.trim().toLowerCase()));
+  }, [styleInput, styleOptions]);
 
   const subjectPillItems = useMemo(
     () =>
@@ -232,18 +261,18 @@ export function EtsyQuestionnaire({
     }
   }, [answers.subjectText]);
 
-  const subjectTrimmed = answers.subjectText.trim();
-  const styleTrimmed = answers.styleText.trim();
+  const subjectTrimmed = subjectInput.draft.trim();
+  const styleTrimmed = styleInput.draft.trim();
 
   const showSubjectSaveAction =
     subjectTrimmed.length > 0 &&
     !matchesSuggestionLabel(
       subjectTrimmed,
-      subjectSuggestions.map((entry) => entry.label),
+      subjectEntries.flatMap((entry) => [entry.label, entry.apiToken]),
     );
 
   const showStyleSaveAction =
-    styleTrimmed.length > 0 && !matchesSuggestionLabel(styleTrimmed, styleSuggestions);
+    styleTrimmed.length > 0 && !matchesSuggestionLabel(styleTrimmed, styleOptions);
 
   const selectSubjectSuggestion = (index: number) => {
     const entry = subjectSuggestions[index];
@@ -258,7 +287,9 @@ export function EtsyQuestionnaire({
     if (!entry) {
       return;
     }
-    onStyleTextChange(entry);
+    onStyleTextChange(
+      applyEtsyMultiValueSuggestion(answers.styleText, entry, MAX_STYLE_ITEMS),
+    );
   };
 
   if (screen === 'screen1') {
@@ -271,7 +302,7 @@ export function EtsyQuestionnaire({
         stepLabel="Step 1 of 3"
       >
         <p className="portal-muted etsy-wizard-lead">
-          Name one clear person, place, or thing the design is about (max{' '}
+          Add up to {MAX_SUBJECT_ITEMS} clear people, places, or things the design is about (max{' '}
           {ETSY_RECOMMENDATION_MAX_SUBJECT_TEXT_LENGTH} characters). A character, animal, job,
           holiday, decade, or object works. Keep it short.
         </p>
@@ -279,24 +310,25 @@ export function EtsyQuestionnaire({
           <label className="portal-visually-hidden" htmlFor="etsy-subject-text">
             Person, place, or thing
           </label>
-          <input
-            aria-describedby="etsy-subject-hint etsy-subject-error"
-            aria-invalid={fieldError ? true : undefined}
-            aria-labelledby="etsy-q-screen1-title"
-            autoComplete="off"
+          <EtsyMultiValueInput
+            ariaDescribedBy="etsy-subject-hint etsy-subject-error"
+            ariaInvalid={fieldError ? true : undefined}
+            ariaLabelledBy="etsy-q-screen1-title"
             id="etsy-subject-text"
+            maxItems={MAX_SUBJECT_ITEMS}
             maxLength={ETSY_RECOMMENDATION_MAX_SUBJECT_TEXT_LENGTH}
-            onChange={(event) => onSubjectTextChange(event.target.value)}
+            onChange={onSubjectTextChange}
             placeholder="Example: highland cow, Wednesday Addams, doctor, goose…"
-            type="text"
             value={answers.subjectText}
           />
-          <EtsySuggestionPills
-            groupLabel="Person, place, or thing suggestions"
-            hint={SUBJECT_PILL_HINT}
-            items={subjectPillItems}
-            onSelect={selectSubjectSuggestion}
-          />
+          {subjectInput.selected.length < MAX_SUBJECT_ITEMS ? (
+            <EtsySuggestionPills
+              groupLabel="Person, place, or thing suggestions"
+              hint={SUBJECT_PILL_HINT}
+              items={subjectPillItems}
+              onSelect={selectSubjectSuggestion}
+            />
+          ) : null}
           {showSubjectSaveAction ? (
             <EtsySaveSuggestionAction
               apiToken={parsePreview || subjectTrimmed}
@@ -335,31 +367,33 @@ export function EtsyQuestionnaire({
         stepLabel="Step 2 of 3"
       >
         <p className="portal-muted etsy-wizard-lead">
-          Optional. Add one tone or style (max {ETSY_RECOMMENDATION_MAX_STYLE_TEXT_LENGTH}{' '}
-          characters). Funny, cute, retro, sarcastic, and similar vibes help narrow results.
+          Optional. Add up to {MAX_STYLE_ITEMS} tones or styles (max{' '}
+          {ETSY_RECOMMENDATION_MAX_STYLE_TEXT_LENGTH} characters). Funny, cute, retro, sarcastic,
+          and similar vibes help narrow results.
         </p>
         <div className="portal-field etsy-questionnaire-field">
           <label className="portal-visually-hidden" htmlFor="etsy-style-text">
             Tone / style
           </label>
-          <input
-            aria-describedby="etsy-style-hint etsy-style-error"
-            aria-invalid={fieldError ? true : undefined}
-            aria-labelledby="etsy-q-screen2-title"
-            autoComplete="off"
+          <EtsyMultiValueInput
+            ariaDescribedBy="etsy-style-hint etsy-style-error"
+            ariaInvalid={fieldError ? true : undefined}
+            ariaLabelledBy="etsy-q-screen2-title"
             id="etsy-style-text"
+            maxItems={MAX_STYLE_ITEMS}
             maxLength={ETSY_RECOMMENDATION_MAX_STYLE_TEXT_LENGTH}
-            onChange={(event) => onStyleTextChange(event.target.value)}
+            onChange={onStyleTextChange}
             placeholder="Example: Funny, Cute, Sarcastic, Retro…"
-            type="text"
             value={answers.styleText}
           />
-          <EtsySuggestionPills
-            groupLabel="Tone and style suggestions"
-            hint={STYLE_PILL_HINT}
-            items={stylePillItems}
-            onSelect={selectStyleSuggestion}
-          />
+          {styleInput.selected.length < MAX_STYLE_ITEMS ? (
+            <EtsySuggestionPills
+              groupLabel="Tone and style suggestions"
+              hint={STYLE_PILL_HINT}
+              items={stylePillItems}
+              onSelect={selectStyleSuggestion}
+            />
+          ) : null}
           {showStyleSaveAction ? (
             <EtsySaveSuggestionAction
               kind="style"
@@ -368,7 +402,7 @@ export function EtsyQuestionnaire({
             />
           ) : null}
           <QuestionnaireWarningCallout id="etsy-style-hint">
-            One vibe only, not a paragraph. Unsure? Leave it blank and continue.
+            Keep each vibe short, not a paragraph. Unsure? Leave it blank and continue.
           </QuestionnaireWarningCallout>
           {fieldError ? (
             <p className="etsy-field-error" id="etsy-style-error" role="alert">
@@ -433,12 +467,12 @@ export function EtsyQuestionnaire({
       <dl className="etsy-review-summary">
         <div className="etsy-review-row">
           <dt>Person, place, or thing</dt>
-          <dd>{answers.subjectText.trim()}</dd>
+          <dd>{listEtsyMultiValueInputValues(answers.subjectText).join(', ')}</dd>
         </div>
         {answers.styleText.trim() ? (
           <div className="etsy-review-row">
             <dt>Tone / style</dt>
-            <dd>{answers.styleText.trim()}</dd>
+            <dd>{listEtsyMultiValueInputValues(answers.styleText).join(', ')}</dd>
           </div>
         ) : null}
         {answers.wording.trim() ? (
