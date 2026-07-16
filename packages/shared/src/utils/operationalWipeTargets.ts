@@ -19,6 +19,8 @@ export const OPERATIONAL_WIPE_DELETE_COLLECTION_ORDER = [
   "customerUploads",
   "customerUploadBatches",
   "designs",
+  "etsyRecommendationRateLimits",
+  "etsyRecommendationRequests",
 ] as const;
 
 export type OperationalWipeDeleteCollection =
@@ -120,6 +122,7 @@ const OPERATIONAL_WIPE_TARGETS_ORDER: OperationalWipeTarget[] = [
   "designRequestStats",
   "designs",
   "customerUploads",
+  "etsySearches",
 ];
 
 /**
@@ -128,6 +131,7 @@ const OPERATIONAL_WIPE_TARGETS_ORDER: OperationalWipeTarget[] = [
  * at deleted requests; `upcomingShows` docs themselves are only removed when that target is set.
  * `designs` deletes catalog docs and Storage originals/thumbnails/previews (requires printRequests).
  * `customerUploads` deletes upload docs/ops collections and `customer-uploads/` Storage.
+ * `etsySearches` deletes Portal Find a design request docs and Open API rate-limit docs.
  */
 export function expandOperationalWipePlan(
   targets: readonly OperationalWipeTarget[],
@@ -174,6 +178,12 @@ export function expandOperationalWipePlan(
       deleteSet.add("customerUploadRateLimits");
       deleteSet.add("customerUploads");
       deleteSet.add("customerUploadBatches");
+      continue;
+    }
+
+    if (target === "etsySearches") {
+      deleteSet.add("etsyRecommendationRateLimits");
+      deleteSet.add("etsyRecommendationRequests");
     }
   }
 
@@ -211,6 +221,7 @@ export const ALL_OPERATIONAL_WIPE_TARGETS: OperationalWipeTarget[] = [
   "designRequestStats",
   "designs",
   "customerUploads",
+  "etsySearches",
 ];
 
 /** Storage prefixes removed when wiping designs (catalog assets only). */

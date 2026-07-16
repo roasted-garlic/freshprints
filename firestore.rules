@@ -1449,7 +1449,8 @@ service cloud.firestore {
     }
 
     match /etsyRecommendationRequests/{requestId} {
-      allow read: if isCustomer() && resource.data.customerUid == request.auth.uid;
+      allow read: if isStaff()
+        || (isCustomer() && resource.data.customerUid == request.auth.uid);
       allow create, update, delete: if false;
     }
 
@@ -1465,6 +1466,13 @@ service cloud.firestore {
     // Writes only via Admin SDK callables (owner/admin).
     match /etsyRecommendationSuggestions/{suggestionId} {
       allow read: if isSignedIn();
+      allow create, update, delete: if false;
+    }
+
+    // Customer suggestion requests awaiting Studio review (Customer Requests).
+    // Writes only via Admin SDK callables.
+    match /etsySuggestionRequests/{requestId} {
+      allow read: if isStaff();
       allow create, update, delete: if false;
     }
 

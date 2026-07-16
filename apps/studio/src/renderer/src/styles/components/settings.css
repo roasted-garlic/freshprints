@@ -693,3 +693,280 @@
   transform: translateX(-50%);
   z-index: var(--z-toast, 1200);
 }
+
+.customer-requests-suggestions-stack {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.customer-requests-pending-list {
+  display: grid;
+  gap: var(--space-3);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.customer-requests-pending-item {
+  align-items: center;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+}
+
+.customer-requests-pending-copy {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.customer-requests-pending-label {
+  font-weight: 600;
+}
+
+.customer-requests-pending-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.customer-requests-etsy-split {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: minmax(14rem, 20rem) minmax(0, 1fr);
+  min-height: 24rem;
+}
+
+@media (max-width: 960px) {
+  .customer-requests-etsy-split {
+    grid-template-columns: 1fr;
+  }
+}
+
+.customer-requests-etsy-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-height: min(70vh, 40rem);
+  overflow: auto;
+  padding-right: var(--space-1);
+}
+
+.customer-requests-etsy-list-card {
+  background: var(--color-bg-secondary, var(--color-bg));
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: inherit;
+  cursor: pointer;
+  display: grid;
+  gap: 0.2rem;
+  padding: var(--space-3);
+  text-align: left;
+  transition:
+    border-color 120ms ease,
+    box-shadow 120ms ease;
+  width: 100%;
+}
+
+.customer-requests-etsy-list-card:hover {
+  border-color: color-mix(in srgb, var(--color-accent-primary) 40%, var(--color-border));
+}
+
+.customer-requests-etsy-list-card.is-selected {
+  border-color: var(--color-accent-primary);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-accent-primary) 35%, transparent);
+}
+
+.customer-requests-etsy-list-card:focus-visible {
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+  outline: none;
+}
+
+.customer-requests-etsy-list-card-title {
+  font-weight: 650;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.customer-requests-etsy-list-card-meta {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.customer-requests-etsy-detail-pane {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  min-width: 0;
+  padding: var(--space-4);
+}
+
+.customer-requests-etsy-detail {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.customer-requests-etsy-detail-header {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.customer-requests-etsy-detail-title {
+  font-size: 1.15rem;
+  font-weight: 650;
+  margin: 0;
+}
+
+.customer-requests-etsy-detail-summary {
+  display: grid;
+  gap: 0;
+  margin: 0;
+}
+
+.customer-requests-etsy-detail-row {
+  border-bottom: 1px solid var(--color-border);
+  display: grid;
+  gap: var(--space-2);
+  grid-template-columns: minmax(7rem, 10rem) minmax(0, 1fr);
+  padding: var(--space-3) 0;
+}
+
+.customer-requests-etsy-detail-row:last-child {
+  border-bottom: none;
+}
+
+.customer-requests-etsy-detail-row dt {
+  color: var(--color-text-tertiary, var(--color-text-secondary));
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+.customer-requests-etsy-detail-row dd {
+  margin: 0;
+  min-width: 0;
+  word-break: break-word;
+}
+
+.customer-requests-etsy-query {
+  word-break: break-word;
+}
+
+.customer-requests-etsy-browse-cards {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.customer-requests-etsy-browse-cards.is-single {
+  grid-template-columns: minmax(0, 1fr);
+  max-width: 28rem;
+}
+
+@media (max-width: 720px) {
+  .customer-requests-etsy-browse-cards {
+    grid-template-columns: 1fr;
+  }
+}
+
+.customer-requests-etsy-browse-card {
+  background: var(--color-bg-secondary, var(--color-bg));
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: inherit;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  font: inherit;
+  min-height: 11rem;
+  overflow: hidden;
+  padding: var(--space-4);
+  position: relative;
+  text-align: left;
+  text-decoration: none;
+  transition:
+    border-color 120ms ease,
+    box-shadow 120ms ease,
+    transform 120ms ease;
+  width: 100%;
+}
+
+.customer-requests-etsy-browse-card--primary {
+  border-color: color-mix(in srgb, var(--color-accent-primary) 45%, var(--color-border));
+}
+
+.customer-requests-etsy-browse-card--broader {
+  background: color-mix(in srgb, var(--color-bg-tertiary, var(--color-bg)) 88%, transparent);
+}
+
+.customer-requests-etsy-browse-card:hover {
+  border-color: color-mix(in srgb, var(--color-accent-primary) 55%, var(--color-border));
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--color-bg-primary, #000) 8%, transparent);
+  transform: translateY(-1px);
+}
+
+.customer-requests-etsy-browse-card:focus-visible {
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+  outline: none;
+}
+
+.customer-requests-etsy-browse-card-icon {
+  color: var(--color-accent-primary);
+  opacity: 0.16;
+  pointer-events: none;
+  position: absolute;
+  right: -4%;
+  bottom: -6%;
+}
+
+.customer-requests-etsy-browse-card-body {
+  display: grid;
+  gap: var(--space-2);
+  position: relative;
+  z-index: 1;
+}
+
+.customer-requests-etsy-browse-card-badge {
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: var(--font-size-sm);
+  font-weight: 650;
+  padding: 0.15rem 0.55rem;
+  width: fit-content;
+}
+
+.customer-requests-etsy-browse-card-badge--primary {
+  background: color-mix(in srgb, var(--color-accent-primary) 16%, transparent);
+  color: var(--color-accent-primary);
+}
+
+.customer-requests-etsy-browse-card-badge--broader {
+  background: color-mix(in srgb, var(--color-border) 55%, transparent);
+  color: var(--color-text-secondary);
+}
+
+.customer-requests-etsy-browse-card-title {
+  font-size: 1.05rem;
+  font-weight: 650;
+  margin: 0;
+}
+
+.customer-requests-etsy-browse-card-description {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: 1.45;
+  margin: 0;
+}
+
+.customer-requests-etsy-browse-card-cta {
+  align-items: center;
+  display: inline-flex;
+  font-size: var(--font-size-sm);
+  font-weight: 650;
+  gap: 0.35rem;
+  margin-top: var(--space-1);
+}
+

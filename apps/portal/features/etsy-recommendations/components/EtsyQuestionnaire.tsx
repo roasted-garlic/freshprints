@@ -113,7 +113,7 @@ function WizardShell({
 function WizardActions({
   onBack,
   onContinue,
-  continueLabel = 'Continue',
+  continueLabel = 'Next',
   continueDisabled = false,
 }: {
   onBack: () => void;

@@ -114,7 +114,7 @@ const sidebarItems: SidebarRouteItem[] = [
   {
     kind: "route",
     icon: Upload,
-    label: "Customer Uploads",
+    label: "Uploaded Designs",
     to: "/customer-uploads",
     permission: "importDesigns",
     showCustomerUploadBadge: true,
@@ -122,10 +122,9 @@ const sidebarItems: SidebarRouteItem[] = [
   {
     kind: "route",
     icon: MessageSquare,
-    label: "Customer Requests",
+    label: "Custom Designs",
     to: "/customer-requests",
     permission: "manageRequests",
-    isDisabled: true,
   },
   {
     kind: "route",

@@ -49,4 +49,10 @@ export const OPERATIONAL_WIPE_TARGET_OPTIONS: OperationalWipeTargetOption[] = [
     description:
       "Deletes customer upload docs, batches, rate-limit/lease/idempotency collections, and Storage under customer-uploads/. Does not delete print requests or catalog designs. Select this to clear Portal artwork fixtures; promoted designs may retain sourceCustomerUploadId pointing at deleted uploads.",
   },
+  {
+    id: "etsySearches",
+    label: "Etsy searches",
+    description:
+      "Deletes Portal Find a design docs (`etsyRecommendationRequests`) and Open API rate-limit docs (`etsyRecommendationRateLimits`). Does not remove suggestion overlays or pending suggestion requests.",
+  },
 ];

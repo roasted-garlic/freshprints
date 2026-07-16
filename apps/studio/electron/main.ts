@@ -7,6 +7,7 @@ import { suppressDevToolsAutofillConsoleNoise } from './dev/suppressDevToolsAuto
 import { registerAppIpcHandlers } from './ipc/app/appIpcHandlers'
 import { APP_CONFIRM_CLOSE_REQUESTED } from './ipc/app/appIpcChannels'
 import { attachDevToolsWindowPersistence } from './ipc/app/devToolsWindowState'
+import { openExternalLinkOnSameDisplay } from './ipc/app/externalLinkWindow'
 import { applyStudioWindowMinimumSize } from './ipc/app/windowMetrics'
 import { consumeCloseConfirmation, getUploadActive } from './ipc/app/uploadActivityState'
 import {
@@ -252,6 +253,12 @@ function createWindow() {
   }
 
   attachTextInputContextMenu(win.webContents)
+
+  // Keep window.open / target=_blank on the same monitor as Studio (OS browser placement cannot).
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    openExternalLinkOnSameDisplay(url, win)
+    return { action: 'deny' }
+  })
 
   if (VITE_DEV_SERVER_URL) {
     win.loadURL(VITE_DEV_SERVER_URL)

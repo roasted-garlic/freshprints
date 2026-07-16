@@ -33,6 +33,11 @@ export {
   addEtsyRecommendationSuggestion,
   deactivateEtsyRecommendationSuggestion,
 } from "./etsyRecommendationSuggestions";
+export {
+  submitEtsySuggestionRequest,
+  approveEtsySuggestionRequest,
+  rejectEtsySuggestionRequest,
+} from "./etsySuggestionRequests";
 export { enqueueAiEnrichment } from "./enqueueAiEnrichment";
 export { resetAiEnrichmentForProcessing } from "./resetAiEnrichmentForProcessing";
 export { testAiEnrichmentPlayground } from "./testAiEnrichmentPlayground";

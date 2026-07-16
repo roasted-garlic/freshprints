@@ -40,6 +40,17 @@
   width: 100%;
 }
 
+.etsy-wizard-step-label {
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  margin: 0 0 var(--space-2);
+}
+
+.etsy-wizard-heading {
+  margin: 0 0 var(--space-3);
+}
+
 .etsy-wizard-progress {
   display: flex;
   flex-wrap: nowrap;
@@ -191,7 +202,7 @@
 }
 
 .etsy-wizard-panel .etsy-wizard-actions {
-  margin-top: var(--space-6);
+  margin-top: var(--space-4);
 }
 
 .etsy-chip-grid {
@@ -250,12 +261,12 @@
 }
 
 .etsy-suggest-pills {
-  margin-top: 0.65rem;
+  margin-top: 0.45rem;
 }
 
 .etsy-suggest-pills-hint {
   font-size: var(--font-size-sm);
-  margin: 0 0 0.45rem;
+  margin: 0 0 0.3rem;
 }
 
 .etsy-suggest-pills-row {
@@ -390,6 +401,10 @@
 .etsy-save-suggestion-link:disabled {
   cursor: wait;
   opacity: 0.6;
+}
+
+.etsy-save-suggestion-error {
+  color: var(--portal-color-danger, #b42318);
 }
 
 .etsy-suggest-list {
@@ -1029,8 +1044,27 @@ a.etsy-query-card:hover .etsy-query-card-cta {
 }
 
 @media (max-width: 559px) {
+  .etsy-wizard-shell,
+  .etsy-wizard-panel {
+    padding: var(--space-4);
+  }
+
+  .etsy-wizard-lead {
+    margin-bottom: var(--space-3);
+  }
+
+  .etsy-wizard-panel .etsy-wizard-actions {
+    margin-top: var(--space-3);
+  }
+
+  .etsy-wizard-actions {
+    flex-wrap: nowrap;
+    gap: var(--space-2);
+  }
+
   .etsy-wizard-actions .portal-button {
-    flex: 1 1 100%;
+    flex: 1 1 0;
+    min-width: 0;
   }
 }
 

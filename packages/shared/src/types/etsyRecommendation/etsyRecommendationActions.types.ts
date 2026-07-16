@@ -90,3 +90,38 @@ export interface DeactivateEtsyRecommendationSuggestionResponse {
   suggestionId: string;
   active: false;
 }
+
+export type EtsySuggestionRequestStatus = "pending" | "approved" | "rejected";
+
+export interface SubmitEtsySuggestionRequestRequest {
+  kind: EtsyRecommendationSuggestionKind;
+  label: string;
+  apiToken?: string;
+}
+
+export interface SubmitEtsySuggestionRequestResponse {
+  requestId: string;
+  kind: EtsyRecommendationSuggestionKind;
+  label: string;
+  labelKey: string;
+  status: "pending";
+  alreadyPending?: boolean;
+}
+
+export interface ResolveEtsySuggestionRequestRequest {
+  requestId: string;
+  /** Optional staff note when rejecting. */
+  rejectReason?: string;
+}
+
+export interface ApproveEtsySuggestionRequestResponse {
+  requestId: string;
+  status: "approved";
+  suggestionId: string;
+  alreadyExisted?: boolean;
+}
+
+export interface RejectEtsySuggestionRequestResponse {
+  requestId: string;
+  status: "rejected";
+}

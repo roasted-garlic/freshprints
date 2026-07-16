@@ -474,6 +474,24 @@
         { "fieldPath": "kind", "order": "ASCENDING" },
         { "fieldPath": "active", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "etsySuggestionRequests",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "customerUid", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "kind", "order": "ASCENDING" },
+        { "fieldPath": "labelKey", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "etsySuggestionRequests",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

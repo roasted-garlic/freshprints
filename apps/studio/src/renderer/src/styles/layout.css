@@ -154,14 +154,6 @@
   padding: var(--space-4);
 }
 
-.customer-upload-intake-header {
-  align-items: flex-start;
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-3);
-  justify-content: space-between;
-}
-
 .customer-upload-intake-panel {
   background: var(--color-bg-secondary);
   border: 1px solid var(--color-border);

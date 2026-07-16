@@ -1105,6 +1105,7 @@ Clean Portal Etsy recommendations foundation from master (archived prior Phase 9
 * Short Etsy questionnaire → hybrid subject text + suggest dictionary → website search queries + Open API keywords
 * **Link-first results:** Primary + Broader search link cards above Open API listing grid (ADR-FP-087l)
 * Admin-managed Subject/Tone suggestion overlays (ADR-FP-087k)
+* Studio **Customer Requests** Suggestions tab: pending Portal suggestion queue + live list management
 * Minimal `etsyRecommendationRequests` lifecycle (submit / Done / Cancel)
 * Signoff: `docs/workflow/reviews/2026-07-15-phase-9a-etsy-website-first-api-rip-signoff.md`
 

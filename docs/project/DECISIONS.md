@@ -4,6 +4,62 @@
 
 ---
 
+### ADR-FP-087n: Staff read of Etsy recommendation searches in Studio
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-16 |
+| Status | accepted |
+| Related | Phase 9A, ADR-FP-087m, Customer Requests / Custom Designs |
+| Target | Rules on `fresh-prints-dev` when deployed; production later with human approval |
+
+**Context**
+
+Portal persists Find a design submits in `etsyRecommendationRequests`, but Studio staff could not list them (customer-own read only). Owner wants an **Etsy search** tab (left of Suggestions) to browse saved searches.
+
+**Decision**
+
+1. Firestore read: `isStaff() || (isCustomer() && customerUid == auth.uid)`.
+2. Client writes remain denied; no Studio mutations of individual searches in the list slice.
+3. Studio UI: Custom Designs tab order **AI Design → Fresh Prints Assisted → Etsy → Suggestions**; default **Etsy**; list recent docs with Open Etsy link.
+4. Operational wipe target `etsySearches` (Test Data Reset only — never on the Etsy tab UI) deletes `etsyRecommendationRequests` and `etsyRecommendationRateLimits` on allowlisted `fresh-prints-dev` only.
+5. Etsy tab UI is a two-column master/detail: compact selectable cards (customer, datetime, title) on the left; full answers + Best match / broader browse cards on the right (same link cards customers see on Portal results).
+
+**Consequences**
+
+- Helpers can see customer free-text search answers (operational need).
+- Rules must be deployed to the Firebase project Studio uses before the list loads.
+
+---
+
+### ADR-FP-087m: Custom Designs flow-scoped URLs + localStorage drafts
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-16 |
+| Status | accepted |
+| Related | Phase 9A, ADR-FP-087l |
+| Target | Portal `/custom-designs` |
+
+**Context**
+
+Flat `?step=subject` URLs did not namespace steps by option card (Find / AI / Assisted). Deep links also opened blank because draft persistence was implemented but never wired. Free-text answers in the query string would leak via share/history.
+
+**Decision**
+
+1. Canonical paths are flow-scoped: `/custom-designs` (choose), `/custom-designs/find/{subject|style|wording|review}`, `/custom-designs/find/results?requestId=…`. Reserve `/custom-designs/ai/…` and `/custom-designs/assisted/…` for later.
+2. Legacy `/custom-designs?step=…` redirects once via `router.replace` to the canonical path.
+3. Questionnaire answers persist in localStorage (`fp.etsyRecommendation.draft.v4`), not in the URL. Find with a resumable draft opens `draft.step`. Results remain server-backed by `requestId`.
+4. Questionnaire primary CTA label is **Next** (Review stays **Find designs**).
+
+**Consequences**
+
+- Bookmarks to `?step=` still work via redirect.
+- Drafts are device-local only (no multi-device sync).
+- Future option cards can add path namespaces without colliding step names.
+
+---
+
 ### ADR-FP-087l: Restore Etsy Open API listing search (link-first)
 
 | Field | Value |
@@ -53,14 +109,16 @@ Portal “Help me find a design” Subject and Tone autocomplete used static sha
 1. Persist **admin additions only** in `etsyRecommendationSuggestions` (`kind: subject | style`, soft `active` flag). Static seed stays in code and always merges into Portal autocomplete.
 2. **Writes** via callables `addEtsyRecommendationSuggestion` / `deactivateEtsyRecommendationSuggestion` (Admin SDK; active owner/admin only). Client Firestore writes denied.
 3. **Reads** for any signed-in user (Portal customer or Studio staff). Case-insensitive dedupe against static seed + active admin docs.
-4. Studio **Settings → Etsy wizard suggestions** UI for add/deactivate. Portal loads active overlays (short client cache) and merges for autocomplete. Free-text remains allowed.
+4. Studio **Customer Requests → Suggestions** UI for add/deactivate live overlays and for approving/rejecting Portal customer suggestion requests. (Originally Settings; moved 2026-07-16.) Portal loads active overlays (short client cache) and merges for autocomplete. Free-text remains allowed.
 5. Subject **parser** greedy matching may remain static-seed-only in this phase; admin subjects still work as free-text / applied tokens.
+6. Portal “Suggest … be added” persists `etsySuggestionRequests` (`pending` → `approved`/`rejected`). Approve creates or links an active overlay; mutations stay owner/admin. Page visibility uses `manageRequests`.
 
 **Consequences**
 
 - Lists grow without migrating 150+ seed docs.
 - Soft-deactivate cannot hide built-in defaults (out of scope).
-- Follow-up optional: feed admin subject overlays into the parser phrase index.
+- Customer suggestions are reviewable before they affect all Portal users.
+- Follow-up optional: feed admin subject overlays into the parser phrase index; inbox toast for new pending requests.
 
 ---
 

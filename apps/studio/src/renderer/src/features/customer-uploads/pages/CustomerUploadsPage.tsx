@@ -1,25 +1,42 @@
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
+import { RefreshCw } from "lucide-react";
 
 import { useShellHeaderConfig } from "../../../shared/hooks/useShellHeaderConfig";
 import { CustomerUploadIntakeSection } from "../components/CustomerUploadIntakeSection";
+import { useCustomerUploadIntake } from "../hooks/useCustomerUploadIntake";
 
 export function CustomerUploadsPage() {
+  const intake = useCustomerUploadIntake({ purposeScope: "print_request" });
+
+  const handleRefresh = useCallback(() => {
+    void intake.refresh();
+  }, [intake.refresh]);
+
   useShellHeaderConfig(
     useMemo(
       () => ({
-        title: "Customer Uploads",
+        title: "Uploaded Designs",
         description:
-          "Review Portal request artwork before sending it to AI Processing or excluding it from the shared Design Library.",
+          "Artwork customers attach to print requests. Review here, then send to AI Processing or exclude from the catalog.",
         search: null,
+        actions: intake.canView
+          ? [
+              {
+                icon: <RefreshCw aria-hidden="true" size={16} strokeWidth={2} />,
+                label: "Refresh",
+                onClick: handleRefresh,
+              },
+            ]
+          : null,
         primaryAction: null,
       }),
-      [],
+      [handleRefresh, intake.canView],
     ),
   );
 
   return (
     <main className="page-layout page-layout-shell customer-uploads-page">
-      <CustomerUploadIntakeSection purposeScope="print_request" />
+      <CustomerUploadIntakeSection intake={intake} purposeScope="print_request" />
     </main>
   );
 }

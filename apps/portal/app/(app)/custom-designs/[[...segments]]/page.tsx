@@ -2,9 +2,9 @@
 
 import { Suspense } from 'react';
 
-import { EtsyRecommendationsPageContent } from '../../../features/etsy-recommendations/pages/EtsyRecommendationsPageContent';
+import { EtsyRecommendationsPageContent } from '../../../../features/etsy-recommendations/pages/EtsyRecommendationsPageContent';
 
-export default function CustomDesignsPage() {
+export default function CustomDesignsCatchAllPage() {
   return (
     <Suspense
       fallback={

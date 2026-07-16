@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
 import type { EtsyRecommendationPreviewQuota } from '@fresh-prints/shared/types/etsyRecommendation/etsyRecommendationActions.types';
 import type {
@@ -23,10 +23,14 @@ import {
 } from '../utils/applyEtsySubjectSuggestion';
 import {
   clearEtsyRecommendationDraft,
+  hasResumableEtsyRecommendationDraft,
+  loadEtsyRecommendationDraft,
+  saveEtsyRecommendationDraft,
+  type EtsyRecommendationDraftStep,
 } from '../utils/etsyRecommendationDraftStorage';
 import {
   buildEtsyRecommendationHref,
-  parseEtsyRecommendationUrl,
+  parseEtsyRecommendationLocation,
   urlStepToView,
   type EtsyRecommendationView,
 } from '../utils/etsyRecommendationUrlState';
@@ -44,6 +48,20 @@ const EMPTY_ANSWERS: EtsyRecommendationAnswersState = {
   styleText: '',
   wording: '',
 };
+
+const DRAFTABLE_VIEWS = new Set<EtsyRecommendationView>([
+  'screen1',
+  'screen2',
+  'screen3',
+  'review',
+]);
+
+function viewToDraftStep(view: EtsyRecommendationView): EtsyRecommendationDraftStep | null {
+  if (view === 'screen1' || view === 'screen2' || view === 'screen3' || view === 'review') {
+    return view;
+  }
+  return null;
+}
 
 function answersFromRequest(request: EtsyRecommendationRequest): EtsyRecommendationAnswersState {
   const styles = request.answers.styles ?? [];
@@ -67,8 +85,14 @@ function buildBroaderUrlFromAnswers(answers: EtsyRecommendationAnswers): string 
   return buildEtsyRecommendationSearchUrl(buildEtsyRecommendationBroaderQuery(answers));
 }
 
+function currentLocationHref(pathname: string, searchParams: URLSearchParams): string {
+  const search = searchParams.toString();
+  return search ? `${pathname}?${search}` : pathname;
+}
+
 export function useEtsyRecommendationWizard() {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const [view, setView] = useState<EtsyRecommendationView>('choose');
   const [answers, setAnswers] = useState<EtsyRecommendationAnswersState>(EMPTY_ANSWERS);
@@ -88,7 +112,8 @@ export function useEtsyRecommendationWizard() {
   const headingRef = useRef<HTMLHeadingElement | null>(null);
   const hasHydratedFromUrlRef = useRef(false);
   const previousViewRef = useRef<EtsyRecommendationView>('choose');
-  const previousSearchKeyRef = useRef<string | null>(null);
+  const previousLocationKeyRef = useRef<string | null>(null);
+  const skipDraftSaveRef = useRef(true);
 
   const searchPreview = useMemo(() => {
     try {
@@ -166,9 +191,17 @@ export function useEtsyRecommendationWizard() {
     }
     hasHydratedFromUrlRef.current = true;
 
-    const parsed = parseEtsyRecommendationUrl(searchParams);
+    const parsed = parseEtsyRecommendationLocation(pathname, searchParams);
     const restore = async () => {
       try {
+        if (parsed.isLegacyQuery) {
+          const legacyHref = buildEtsyRecommendationHref({
+            view: urlStepToView(parsed.step),
+            requestId: parsed.requestId,
+          });
+          router.replace(legacyHref, { scroll: false });
+        }
+
         if (parsed.step === 'results') {
           if (!parsed.requestId) {
             setActionError('This results link is missing its search id. Start a new search below.');
@@ -180,60 +213,90 @@ export function useEtsyRecommendationWizard() {
         }
 
         if (parsed.step !== 'choose') {
-          // Deep links open the step blank. Drafts are not resumed after leaving.
-          clearEtsyRecommendationDraft();
-          setAnswers(EMPTY_ANSWERS);
+          const draft = loadEtsyRecommendationDraft();
+          if (draft) {
+            setAnswers({
+              subjectText: draft.subjectText,
+              styleText: draft.styleText,
+              wording: draft.wording,
+            });
+          } else {
+            setAnswers(EMPTY_ANSWERS);
+          }
           setView(urlStepToView(parsed.step));
           return;
         }
 
-        clearEtsyRecommendationDraft();
+        // Choose: leave draft in storage for Find resume; do not auto-jump.
         setAnswers(EMPTY_ANSWERS);
+        setView('choose');
       } catch (error) {
         setActionError(
           error instanceof Error ? error.message : 'Unable to restore this design search link.',
         );
         setView('choose');
       } finally {
+        skipDraftSaveRef.current = false;
         setIsRestoringFromUrl(false);
       }
     };
 
     void restore();
-  }, [restoreResultsFromRequest, searchParams]);
+  }, [pathname, restoreResultsFromRequest, router, searchParams]);
 
-  const goToChoose = useCallback(() => {
-    clearEtsyRecommendationDraft();
-    setAnswers(EMPTY_ANSWERS);
-    setView('choose');
-    previousViewRef.current = 'choose';
-    setFieldError(null);
-    setActionError(null);
-    setRequestId(null);
-    setCanonicalQuery('');
-    setEtsySearchUrl('');
-    setBroaderSearchUrl('');
-    setListings([]);
-    setListingsMessage(null);
-    setPreviewQuota(null);
-    router.replace(buildEtsyRecommendationHref({ view: 'choose' }), { scroll: false });
-  }, [router]);
+  const goToChoose = useCallback(
+    (options?: { clearDraft?: boolean }) => {
+      if (options?.clearDraft) {
+        clearEtsyRecommendationDraft();
+      } else {
+        // Flush so Back / nav away does not lose typed answers before debounce.
+        const draftStep = viewToDraftStep(view);
+        if (draftStep) {
+          try {
+            saveEtsyRecommendationDraft({
+              step: draftStep,
+              subjectText: answers.subjectText,
+              styleText: answers.styleText,
+              wording: answers.wording,
+            });
+          } catch {
+            // ignore storage failures
+          }
+        }
+      }
+
+      setAnswers(EMPTY_ANSWERS);
+      setView('choose');
+      previousViewRef.current = 'choose';
+      setFieldError(null);
+      setActionError(null);
+      setRequestId(null);
+      setCanonicalQuery('');
+      setEtsySearchUrl('');
+      setBroaderSearchUrl('');
+      setListings([]);
+      setListingsMessage(null);
+      setPreviewQuota(null);
+      router.replace(buildEtsyRecommendationHref({ view: 'choose' }), { scroll: false });
+    },
+    [answers, router, view],
+  );
 
   useEffect(() => {
     if (!hasHydratedFromUrlRef.current || isRestoringFromUrl) {
       return;
     }
 
-    const parsed = parseEtsyRecommendationUrl(searchParams);
-    const searchKey = searchParams.toString();
+    const parsed = parseEtsyRecommendationLocation(pathname, searchParams);
+    const locationKey = currentLocationHref(pathname, searchParams);
     const urlChanged =
-      previousSearchKeyRef.current !== null && previousSearchKeyRef.current !== searchKey;
+      previousLocationKeyRef.current !== null && previousLocationKeyRef.current !== locationKey;
     const viewChanged = previousViewRef.current !== view;
-    previousSearchKeyRef.current = searchKey;
+    previousLocationKeyRef.current = locationKey;
     previousViewRef.current = view;
 
-    // Custom Designs nav lands on /custom-designs with no step while still mid-wizard.
-    // Only then reset to options. Do NOT reset when Find a design advances view first
+    // Custom Designs nav lands on /custom-designs with no flow while still mid-wizard.
+    // Only then reset to options. Do NOT reset when Find advances view first
     // and the URL has not caught up yet (that caused the flash / no-op).
     if (parsed.step === 'choose' && view !== 'choose') {
       if (urlChanged && !viewChanged) {
@@ -250,11 +313,34 @@ export function useEtsyRecommendationWizard() {
     }
 
     const nextHref = buildEtsyRecommendationHref({ view, requestId });
-    const currentHref = `${window.location.pathname}${window.location.search}`;
+    const currentHref = currentLocationHref(pathname, searchParams);
     if (nextHref !== currentHref) {
       router.replace(nextHref, { scroll: false });
     }
-  }, [goToChoose, isRestoringFromUrl, requestId, router, searchParams, view]);
+  }, [goToChoose, isRestoringFromUrl, pathname, requestId, router, searchParams, view]);
+
+  useEffect(() => {
+    if (skipDraftSaveRef.current || isRestoringFromUrl) {
+      return;
+    }
+    const draftStep = viewToDraftStep(view);
+    if (!draftStep || !DRAFTABLE_VIEWS.has(view)) {
+      return;
+    }
+    const handle = window.setTimeout(() => {
+      try {
+        saveEtsyRecommendationDraft({
+          step: draftStep,
+          subjectText: answers.subjectText,
+          styleText: answers.styleText,
+          wording: answers.wording,
+        });
+      } catch {
+        // Quota / private mode — ignore; wizard still works in memory.
+      }
+    }, 200);
+    return () => window.clearTimeout(handle);
+  }, [answers, isRestoringFromUrl, view]);
 
   useEffect(() => {
     if (view !== 'results' || !requestId) {
@@ -267,9 +353,7 @@ export function useEtsyRecommendationWizard() {
     headingRef.current?.focus();
   }, [view]);
 
-  const startFreshWizard = useCallback(() => {
-    clearEtsyRecommendationDraft();
-    setAnswers(EMPTY_ANSWERS);
+  const beginFindDesign = useCallback(() => {
     setFieldError(null);
     setActionError(null);
     setListings([]);
@@ -279,14 +363,27 @@ export function useEtsyRecommendationWizard() {
     setEtsySearchUrl('');
     setBroaderSearchUrl('');
     setPreviewQuota(null);
+
+    const draft = loadEtsyRecommendationDraft();
+    if (hasResumableEtsyRecommendationDraft(draft) && draft) {
+      setAnswers({
+        subjectText: draft.subjectText,
+        styleText: draft.styleText,
+        wording: draft.wording,
+      });
+      const nextView = draft.step;
+      setView(nextView);
+      previousViewRef.current = nextView;
+      router.replace(buildEtsyRecommendationHref({ view: nextView }), { scroll: false });
+      return;
+    }
+
+    clearEtsyRecommendationDraft();
+    setAnswers(EMPTY_ANSWERS);
     setView('screen1');
     previousViewRef.current = 'screen1';
     router.replace(buildEtsyRecommendationHref({ view: 'screen1' }), { scroll: false });
   }, [router]);
-
-  const beginFindDesign = useCallback(() => {
-    startFreshWizard();
-  }, [startFreshWizard]);
 
   const updateSubjectText = useCallback((value: string) => {
     setAnswers((prev) => ({ ...prev, subjectText: value }));
@@ -383,7 +480,6 @@ export function useEtsyRecommendationWizard() {
 
   const editSearch = useCallback(() => {
     // Keep current answers in memory so Edit from results can revise them.
-    // Leaving Custom Designs / returning via Find a design starts blank again.
     setActionError(null);
     setFieldError(null);
     setListings([]);
@@ -407,7 +503,7 @@ export function useEtsyRecommendationWizard() {
 
   const backToOptions = useCallback(() => {
     setActionError(null);
-    goToChoose();
+    goToChoose({ clearDraft: true });
   }, [goToChoose]);
 
   return {

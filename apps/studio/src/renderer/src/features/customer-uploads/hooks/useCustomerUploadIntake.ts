@@ -317,6 +317,12 @@ export function useCustomerUploadIntake(options?: {
     [pendingByUploadId, setPending],
   );
 
+  const refresh = useCallback(async () => {
+    // Live subscription owns refresh; manual refresh re-fetches enrichment only.
+    enrichmentCacheRef.current.clear();
+    setNotice("List updates live from Firestore.");
+  }, []);
+
   return {
     canView,
     canExclude,
@@ -333,11 +339,7 @@ export function useCustomerUploadIntake(options?: {
     actionBusyId: null as string | null,
     error,
     notice,
-    refresh: async () => {
-      // Live subscription owns refresh; manual refresh re-fetches enrichment only.
-      enrichmentCacheRef.current.clear();
-      setNotice("List updates live from Firestore.");
-    },
+    refresh,
     promote: async (uploadId: string) => {
       await runMutation(
         uploadId,

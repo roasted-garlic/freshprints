@@ -1092,7 +1092,36 @@ export interface EtsyRecommendationSuggestion {
 
 Static subject/style seed lists remain in shared code. Firestore stores **admin additions only**. Effective Portal autocomplete = static seed ∪ active overlays. Soft-deactivate sets `active: false` (admin docs only). Subject free-text parser still uses the static phrase index in this phase (admin overlays affect autocomplete first).
 
-**Rules:** customers may read own `etsyRecommendationRequests` (`customerUid == auth.uid`); request writes via Admin SDK callables. `etsyRecommendationSuggestions`: signed-in read; client writes denied; add/deactivate via owner/admin callables. Legacy config/cache/rate-limit collections remain deny-all.
+**Customer suggestion requests (Studio Customer Requests):**
+
+```txt
+etsySuggestionRequests/{requestId}
+```
+
+```ts
+export type EtsySuggestionRequestStatus = "pending" | "approved" | "rejected";
+
+export interface EtsySuggestionRequest {
+  id: string;
+  kind: EtsyRecommendationSuggestionKind;
+  label: string;
+  apiToken: string;
+  labelKey: string;
+  status: EtsySuggestionRequestStatus;
+  customerUid: string;
+  customerId: string;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+  resolvedAt?: Timestamp;
+  resolvedBy?: string;
+  resultingSuggestionId?: string;
+  rejectReason?: string;
+}
+```
+
+Portal customers submit via `submitEtsySuggestionRequest` (pending only; daily per-customer cap; dedupe pending by customer+kind+labelKey). Owner/admin approve/reject via callables; approve creates (or links) an active `etsyRecommendationSuggestions` overlay.
+
+**Rules:** customers may read own `etsyRecommendationRequests` (`customerUid == auth.uid`); active staff (`owner` / `admin` / `helper`) may read all for Studio Custom Designs → Etsy search (ADR-FP-087n). Request writes via Admin SDK callables only. `etsyRecommendationSuggestions`: signed-in read; client writes denied; add/deactivate via owner/admin callables. `etsySuggestionRequests`: staff read; client writes denied. Legacy config/cache/rate-limit collections remain deny-all.
 
 **Deferred:** Create with AI, Fresh Prints Assisted Creation, design-fee `customRequests` staff queue.
 

@@ -4,39 +4,62 @@ import { useEffect, useState } from 'react';
 
 import type { EtsyRecommendationSuggestionKind } from '@fresh-prints/shared/constants/etsyRecommendation/etsyRecommendation.constants';
 
+import { submitEtsySuggestionRequest } from '../services/etsySuggestionRequestService';
+
 interface EtsySaveSuggestionActionProps {
   kind: EtsyRecommendationSuggestionKind;
   label: string;
-  /** Kept for call-site compatibility; customer suggestions are requests only. */
+  /** Subject search token; defaults to label server-side. */
   apiToken?: string;
-  /** Kept for call-site compatibility; no immediate list mutation on Portal. */
+  /** Kept for call-site compatibility; list mutation happens after Studio approval. */
   onSaved?: () => void;
 }
 
 /**
  * Customer-facing "suggest this term" action.
- * Does not write to the shared suggestion list — that happens in Studio Settings.
+ * Persists a pending review request; does not mutate the live suggestion list.
  */
 export function EtsySaveSuggestionAction({
   kind,
   label,
+  apiToken,
 }: EtsySaveSuggestionActionProps) {
-  const [status, setStatus] = useState<'idle' | 'requested'>('idle');
+  const [status, setStatus] = useState<'idle' | 'submitting' | 'requested' | 'error'>('idle');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const trimmed = label.trim();
 
   useEffect(() => {
     setStatus('idle');
-  }, [trimmed, kind]);
+    setErrorMessage(null);
+  }, [trimmed, kind, apiToken]);
 
   if (!trimmed) {
     return null;
   }
 
+  async function handleSubmit() {
+    setStatus('submitting');
+    setErrorMessage(null);
+    try {
+      await submitEtsySuggestionRequest({
+        kind,
+        label: trimmed,
+        ...(kind === 'subject' && apiToken?.trim() ? { apiToken: apiToken.trim() } : {}),
+      });
+      setStatus('requested');
+    } catch (error) {
+      setStatus('error');
+      setErrorMessage(
+        error instanceof Error ? error.message : 'Unable to submit that suggestion request.',
+      );
+    }
+  }
+
   if (status === 'requested') {
     return (
       <p className="etsy-save-suggestion etsy-save-suggestion--success portal-muted" role="status">
-        Thanks. We noted “{trimmed}” as a suggestion request. It won&apos;t appear in the list
-        until Fresh Prints adds it.
+        Thanks. We received your request to add “{trimmed}”. It won&apos;t appear in suggestions
+        until Fresh Prints reviews and approves it.
       </p>
     );
   }
@@ -45,11 +68,20 @@ export function EtsySaveSuggestionAction({
     <p className="etsy-save-suggestion portal-muted">
       <button
         className="etsy-save-suggestion-link"
-        onClick={() => setStatus('requested')}
+        disabled={status === 'submitting'}
+        onClick={() => void handleSubmit()}
         type="button"
       >
-        {`Suggest “${trimmed}” be added to the suggestions`}
+        {status === 'submitting'
+          ? 'Sending request…'
+          : `Suggest “${trimmed}” be added to the suggestions`}
       </button>
+      {status === 'error' && errorMessage ? (
+        <span className="etsy-save-suggestion-error" role="alert">
+          {' '}
+          {errorMessage}
+        </span>
+      ) : null}
     </p>
   );
 }

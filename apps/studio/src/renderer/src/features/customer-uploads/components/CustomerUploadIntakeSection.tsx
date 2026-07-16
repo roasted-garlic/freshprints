@@ -9,7 +9,7 @@ import { Modal, ModalBody, ModalFooter, ModalHeader } from "../../../shared/comp
 import { Toggle } from "../../../shared/components/Toggle";
 import { DesignPreviewLightbox } from "../../designs/components/DesignPreviewLightbox";
 import { getPrintRequestsPath } from "../../print-requests/constants/printRequestRoutes";
-import { useCustomerUploadIntake } from "../hooks/useCustomerUploadIntake";
+import type { useCustomerUploadIntake } from "../hooks/useCustomerUploadIntake";
 import type { CustomerUploadIntakeRow } from "../services/customerUploadIntakeService";
 
 type IntakeApi = ReturnType<typeof useCustomerUploadIntake>;
@@ -359,37 +359,22 @@ function IntakeDetail({
 
 export function CustomerUploadIntakeSection({
   purposeScope = "print_request",
+  intake,
 }: {
   purposeScope?: "print_request" | "catalog_donation";
+  intake: IntakeApi;
 }) {
   const isDonation = purposeScope === "catalog_donation";
-  const intake = useCustomerUploadIntake({ purposeScope });
 
   if (!intake.canView) {
     return null;
   }
 
   return (
-    <Card className="customer-upload-intake-section">
-      <div className="customer-upload-intake-header">
-        <div>
-          <h2>{isDonation ? "Donated designs intake" : "Intake for catalog review"}</h2>
-          <p>
-            {isDonation
-              ? "Review Portal catalog donations before sending them to AI Processing or excluding them from the Design Library."
-              : "Review Portal request artwork before sending it to AI Processing or excluding it from the catalog."}
-          </p>
-        </div>
-        <Button
-          onClick={() => {
-            void intake.refresh();
-          }}
-          variant="secondary"
-        >
-          Refresh
-        </Button>
-      </div>
-
+    <Card
+      aria-label={isDonation ? "Donated designs intake" : "Uploaded designs intake"}
+      className="customer-upload-intake-section"
+    >
       {intake.error ? <p className="auth-message">{intake.error}</p> : null}
       {intake.notice ? <p className="customer-upload-intake-notice">{intake.notice}</p> : null}
 

@@ -103,6 +103,15 @@ export const ETSY_WEBSITE_SCRAPE_CONFIG_DOC_ID = "websiteScrape";
  */
 export const ETSY_RECOMMENDATION_SUGGESTIONS_COLLECTION = "etsyRecommendationSuggestions";
 
+/**
+ * Customer-submitted Subject / Tone suggestion requests awaiting Studio review.
+ * Writes via Admin SDK callables only.
+ */
+export const ETSY_SUGGESTION_REQUESTS_COLLECTION = "etsySuggestionRequests";
+
+/** Max customer suggestion requests per portal user per UTC day. */
+export const ETSY_SUGGESTION_REQUEST_DAILY_CUSTOMER_LIMIT = 20;
+
 export const ETSY_RECOMMENDATION_SUGGESTION_KINDS = ["subject", "style"] as const;
 export type EtsyRecommendationSuggestionKind =
   (typeof ETSY_RECOMMENDATION_SUGGESTION_KINDS)[number];

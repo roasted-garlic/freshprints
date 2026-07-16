@@ -85,11 +85,13 @@ describe("expandOperationalWipePlan", () => {
     );    assert.ok(!expandOperationalWipePlan(["sequences"]).deleteCollections.includes("staffInboxAcks"));
   });
 
-  it("select all includes designs and customerUploads", () => {
+  it("select all includes designs, customerUploads, and etsySearches", () => {
     const plan = expandOperationalWipePlan(ALL_OPERATIONAL_WIPE_TARGETS);
     assert.ok(plan.deleteCollections.includes("designs"));
     assert.ok(plan.deleteCollections.includes("customerUploads"));
     assert.ok(plan.deleteCollections.includes("customerUploadBatches"));
+    assert.ok(plan.deleteCollections.includes("etsyRecommendationRequests"));
+    assert.ok(plan.deleteCollections.includes("etsyRecommendationRateLimits"));
     assert.equal(plan.wipeDesignStorage, true);
     assert.equal(plan.wipeCustomerUploadStorage, true);
   });
@@ -106,6 +108,16 @@ describe("expandOperationalWipePlan", () => {
     assert.equal(plan.wipeCustomerUploadStorage, true);
     assert.equal(plan.wipeDesignStorage, false);
     assert.equal(plan.resetSequences, false);
+  });
+
+  it("expands etsySearches to requests and rate limits", () => {
+    const plan = expandOperationalWipePlan(["etsySearches"]);
+    assert.deepEqual(plan.deleteCollections, [
+      "etsyRecommendationRateLimits",
+      "etsyRecommendationRequests",
+    ]);
+    assert.equal(plan.wipeDesignStorage, false);
+    assert.equal(plan.wipeCustomerUploadStorage, false);
   });
 });
 

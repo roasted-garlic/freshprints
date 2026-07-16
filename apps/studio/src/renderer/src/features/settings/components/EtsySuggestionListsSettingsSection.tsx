@@ -299,11 +299,11 @@ export function EtsySuggestionListsSettingsSection({
     <section aria-labelledby="etsy-suggest-settings-title" className="card settings-section">
       <header className="settings-section-header">
         <h2 className="settings-section-title" id="etsy-suggest-settings-title">
-          Etsy wizard suggestions
+          Live lists
         </h2>
         <p className="settings-section-description">
-          Grow Portal Custom Designs autocomplete lists for subject and tone. Free-text answers stay
-          allowed — these are helpers, not a closed list.
+          Subject and tone helpers shown in Portal Find a design. Free-text answers stay allowed;
+          these are shortcuts, not a closed list.
         </p>
       </header>
 

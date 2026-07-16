@@ -1,5 +1,5 @@
 ## Current Goal
-etsy-open-api-restore
+studio-etsy-search-tab
 
 ## Current Mode
 managed-phase
@@ -17,7 +17,7 @@ approved_with_changes
 complete
 
 ## Test Status
-pending_manual
+partial
 
 ## Signoff Status
 pending
@@ -26,36 +26,40 @@ pending
 yes
 
 ## Human Checkpoint Reason
-Manual QA for chips, Custom Designs nav → options, and no resume/start-over draft UI. After Etsy closes, next is Studio Customer Requests.
+Deploy firestore.rules + wipeOperationalTestData to fresh-prints-dev; manual QA of Etsy two-column layout + Test Data–only wipe.
 
 ## Allowed Actions
-Record manual QA feedback; answer questions; no production; no scrape; no commit unless asked.
+Record manual QA; deploy rules/function to fresh-prints-dev if human approves; update test/signoff docs; wait.
 
 ## Forbidden Actions
-Production deploy; ScraperAPI/Firecrawl; commit unless asked; signoff before manual QA recorded.
+Production deploy; silent further scope expansion; commit unless asked.
 
 ## Next Required Step
-Hard-refresh Portal. Confirm Find a design always starts blank with no resume banner. Reply PASS / FAIL / PASS WITH NOTES.
+Await human deploy + manual QA PASS/FAIL, then signoff.
 
 ## DONE
 no
 
 ## Last Completed Step
-2026-07-16 — Removed resume/start-over draft gating. Find a design always starts blank; Edit search from results keeps answers in memory; submit still saves Firestore audit trail. Portal typecheck PASS.
+2026-07-16 — Removed on-tab wipe; Etsy tab is two-column master/detail with Best match / broader cards; wipe stays on Test Data only.
 
 ## Plan Path
-docs/workflow/plans/2026-07-16-etsy-open-api-restore-plan.md
+docs/workflow/plans/2026-07-16-studio-etsy-search-tab-plan.md
 
 ## Review Path
-docs/workflow/reviews/2026-07-16-etsy-open-api-restore-review.md
+docs/workflow/reviews/2026-07-16-studio-etsy-search-tab-review.md
 
 ## Test Report Path
-docs/workflow/reviews/2026-07-16-etsy-open-api-restore-test-report.md
+docs/workflow/reviews/2026-07-16-studio-etsy-search-tab-test.md
 
 ## Manual QA Path
-docs/workflow/reviews/2026-07-16-etsy-open-api-restore-manual-qa.md
+docs/workflow/reviews/2026-07-16-studio-etsy-search-tab-test.md
 
 ## Decision Log
-- 2026-07-16 — **No draft resume UI:** Cleared localStorage drafts on options / Find a design. No Resume/Start over. Edit search from results keeps answers in memory only. Final Find designs still persists audit trail in Firestore.
-- 2026-07-16 — **Chip inputs + nav fix:** Subject and tone/style use removable chips. Separators: pill tap, comma, Enter (not space). Selected suggestion pills disappear and cannot be duplicated. Caps: 3 subjects, 2 tones. Clicking Custom Designs while on `?step=subject` (or other wizard steps) returns to options. **Next after Etsy signoff:** Studio Customer Requests page with suggestion-request queue and AI/Fresh Prints placeholders.
-- 2026-07-16 — Manual QA returned to implement for chip-input refinements (prior).
+- 2026-07-16 — Wipe is Test Data only; Etsy tab two-column detail with Portal-style browse cards.
+
+## Deploy commands
+firebase deploy --only firestore:rules,functions:wipeOperationalTestData --project fresh-prints-dev
+
+## Parked Goal
+studio-customer-requests-suggestions — may still need deploy + manual QA if not completed separately.
