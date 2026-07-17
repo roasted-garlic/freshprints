@@ -1,6 +1,5 @@
 import {
   doc,
-  getDoc,
   onSnapshot,
   query,
   serverTimestamp,
@@ -68,26 +67,54 @@ export const assistedCreationUpdateAckService = {
     );
   },
 
-  async markReadThrough(userId: string, requestId: string, readThroughAtMs: number): Promise<void> {
+  /**
+   * Advance the per-staff read-through cursor for a request (monotonic).
+   * Avoids getDoc-before-create: rules that require resource.data deny reads of
+   * non-existent ack docs, which previously made first-time Read a silent no-op.
+   *
+   * @param knownReadThroughAtMs - cursor from the live subscription when known
+   */
+  async markReadThrough(
+    userId: string,
+    requestId: string,
+    readThroughAtMs: number,
+    knownReadThroughAtMs?: number | null,
+  ): Promise<void> {
     const ackRef = doc(
       firestoreCollectionService.getAssistedCreationUpdateAcksCollection(),
       buildAssistedCreationUpdateAckDocId(userId, requestId),
     );
-    const readThroughAt = Timestamp.fromMillis(readThroughAtMs);
-    const existing = await getDoc(ackRef);
-    if (existing.exists()) {
-      await updateDoc(ackRef, {
-        readThroughAt,
-        updatedAt: serverTimestamp(),
-      });
+    const existingMs = knownReadThroughAtMs ?? null;
+    // Read-through is monotonic: never move the cursor backward.
+    if (existingMs != null && existingMs >= readThroughAtMs) {
       return;
     }
-    await setDoc(ackRef, {
-      userId,
-      requestId,
-      readThroughAt,
-      createdAt: serverTimestamp(),
+
+    const patch = {
+      readThroughAt: Timestamp.fromMillis(readThroughAtMs),
       updatedAt: serverTimestamp(),
-    });
+    };
+
+    if (existingMs != null) {
+      await updateDoc(ackRef, patch);
+      return;
+    }
+
+    try {
+      await setDoc(ackRef, {
+        userId,
+        requestId,
+        ...patch,
+        createdAt: serverTimestamp(),
+      });
+    } catch (error) {
+      // Doc may already exist (subscription lag / race). Prefer a field patch so
+      // createdAt stays stable under update rules.
+      try {
+        await updateDoc(ackRef, patch);
+      } catch {
+        throw error;
+      }
+    }
   },
 };

@@ -1442,11 +1442,20 @@ service cloud.firestore {
     }
 
     match /assistedCreationUpdateAcks/{ackId} {
-      allow read: if isStaff()
+      // Doc ids are `{userId}__{requestId}`. Allow get of missing docs on the
+      // caller's own id prefix (resource is null when the ack does not exist yet).
+      allow get: if isStaff()
+        && (
+          ackId.matches('^' + request.auth.uid + '__.*')
+          || (resource != null && resource.data.userId == request.auth.uid)
+        );
+
+      allow list: if isStaff()
         && resource.data.userId == request.auth.uid;
 
       allow create: if isStaff()
         && request.resource.data.userId == request.auth.uid
+        && ackId == request.resource.data.userId + '__' + request.resource.data.requestId
         && assistedCreationUpdateAckFieldsValid(request.resource.data);
 
       allow update: if isStaff()
@@ -1454,10 +1463,12 @@ service cloud.firestore {
         && request.resource.data.userId == resource.data.userId
         && request.resource.data.requestId == resource.data.requestId
         && request.resource.data.createdAt == resource.data.createdAt
+        && ackId == resource.data.userId + '__' + resource.data.requestId
         && assistedCreationUpdateAckFieldsValid(request.resource.data);
 
       allow delete: if isStaff()
-        && resource.data.userId == request.auth.uid;
+        && resource.data.userId == request.auth.uid
+        && ackId == resource.data.userId + '__' + resource.data.requestId;
     }
 
     match /staffInboxAlertDeliveries/{deliveryId} {

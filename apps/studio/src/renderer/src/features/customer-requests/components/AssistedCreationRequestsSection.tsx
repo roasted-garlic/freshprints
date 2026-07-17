@@ -10,10 +10,11 @@ import type {
   AssistedCreationRevisionEntry,
 } from "@fresh-prints/shared/types/assistedCreation/assistedCreation.types";
 import {
+  assistedCreationRevisionAtMillis,
   countUnreadAssistedCreationCustomerUpdates,
   isAssistedCreationCustomerUpdateEntry,
+  isAssistedCreationCustomerUpdateUnread,
   isAssistedCreationProofEmailSentEntry,
-  latestAssistedCreationCustomerUpdateAtMs,
 } from "@fresh-prints/shared/utils/assistedCreationHistory";
 
 import { useAuth } from "../../auth/hooks/useAuth";
@@ -365,15 +366,17 @@ function AssistedDetail({
   canMutate,
   canRestore,
   item,
-  onHistoryExpanded,
+  onMarkHistoryEntryRead,
   onToast,
+  readThroughAtMs,
   unreadUpdateCount,
 }: {
   canMutate: boolean;
   canRestore: boolean;
   item: AssistedCreationRequestListItem;
-  onHistoryExpanded: () => void;
+  onMarkHistoryEntryRead: (entryAtMs: number) => void;
   onToast: (message: string) => void;
+  readThroughAtMs: number | null;
   unreadUpdateCount: number;
 }) {
   const [busy, setBusy] = useState(false);
@@ -572,6 +575,8 @@ function AssistedDetail({
       const note = entry.note?.trim() ?? "";
       const showNote = note.length > 0 && !isBoilerplateHistoryNote(note);
       const isCustomerUpdate = isAssistedCreationCustomerUpdateEntry(entry);
+      const isUnread = isAssistedCreationCustomerUpdateUnread(entry, readThroughAtMs);
+      const atMs = assistedCreationRevisionAtMillis(entry.at);
       const isProofEmailSent = isAssistedCreationProofEmailSentEntry(entry);
       return {
         key: `${entry.toStatus}-${index}`,
@@ -583,6 +588,8 @@ function AssistedDetail({
         when: formatHistoryAt(entry.at),
         note: showNote ? note : null,
         byRole: entry.byRole,
+        isUnread,
+        atMs,
       };
     });
   const selectedProof = proofMedia.find((proof) => proof.id === selectedProofId) ?? null;
@@ -718,14 +725,7 @@ function AssistedDetail({
           </section>
 
           {historyEntries.length > 0 ? (
-            <details
-              className="customer-requests-assisted-panel customer-requests-assisted-history-disclosure"
-              onToggle={(event) => {
-                if (event.currentTarget.open) {
-                  onHistoryExpanded();
-                }
-              }}
-            >
+            <details className="customer-requests-assisted-panel customer-requests-assisted-history-disclosure">
               <summary className="customer-requests-assisted-panel-title">
                 History ({historyEntries.length})
                 {unreadUpdateCount > 0 ? (
@@ -739,8 +739,30 @@ function AssistedDetail({
               </summary>
               <ol className="customer-requests-assisted-history">
                 {historyEntries.map((entry) => (
-                  <li key={entry.key}>
-                    <strong>{entry.title}</strong>
+                  <li
+                    className={
+                      entry.isUnread ? "customer-requests-assisted-history-item is-unread" : undefined
+                    }
+                    key={entry.key}
+                  >
+                    <div className="customer-requests-assisted-history-item-head">
+                      <strong>{entry.title}</strong>
+                      {entry.isUnread && entry.atMs != null ? (
+                        <button
+                          className="link-button customer-requests-assisted-history-read"
+                          onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            if (entry.atMs != null) {
+                              onMarkHistoryEntryRead(entry.atMs);
+                            }
+                          }}
+                          type="button"
+                        >
+                          Read
+                        </button>
+                      ) : null}
+                    </div>
                     {entry.when ? <span>{entry.when}</span> : null}
                     <span className="customer-requests-assisted-history-role">{entry.byRole}</span>
                     {entry.note ? <span>{entry.note}</span> : null}
@@ -980,6 +1002,9 @@ export function AssistedCreationRequestsSection({
         }
         setAckByRequestId(next);
       },
+      (message) => {
+        console.error("[assistedCreationUpdateAcks] subscribe failed", message);
+      },
     );
   }, [user?.id]);
 
@@ -1045,22 +1070,33 @@ export function AssistedCreationRequestsSection({
     }
   }, [selectedId, visibleItems]);
 
-  async function markRequestHistoryRead(item: AssistedCreationRequestListItem): Promise<void> {
+  async function markRequestHistoryEntryRead(
+    item: AssistedCreationRequestListItem,
+    entryAtMs: number,
+  ): Promise<void> {
     if (!user?.id) {
-      return;
-    }
-    const latestAt = latestAssistedCreationCustomerUpdateAtMs(item.revisionHistory);
-    if (latestAt == null) {
+      onToast("Sign in required to mark history as read.");
       return;
     }
     const current = ackByRequestId[item.id] ?? null;
-    if (current != null && current >= latestAt) {
+    if (current != null && current >= entryAtMs) {
       return;
     }
     try {
-      await assistedCreationUpdateAckService.markReadThrough(user.id, item.id, latestAt);
-    } catch {
-      // Badge clear is best-effort; leave unread if write fails.
+      await assistedCreationUpdateAckService.markReadThrough(
+        user.id,
+        item.id,
+        entryAtMs,
+        current,
+      );
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unable to mark history as read.";
+      console.error("[assistedCreationUpdateAcks] markReadThrough failed", err);
+      onToast(
+        /permission|insufficient|Missing or insufficient/i.test(message)
+          ? "Could not mark read — Firestore rules for update acks may need deploy on fresh-prints-dev."
+          : `Could not mark read: ${message}`,
+      );
     }
   }
 
@@ -1173,10 +1209,11 @@ export function AssistedCreationRequestsSection({
                     canMutate={canMutate}
                     canRestore={canRestore}
                     item={selected}
-                    onHistoryExpanded={() => {
-                      void markRequestHistoryRead(selected);
+                    onMarkHistoryEntryRead={(entryAtMs) => {
+                      void markRequestHistoryEntryRead(selected, entryAtMs);
                     }}
                     onToast={onToast}
+                    readThroughAtMs={ackByRequestId[selected.id] ?? null}
                     unreadUpdateCount={unreadByRequestId[selected.id] ?? 0}
                   />
                 ) : (
