@@ -1,0 +1,357 @@
+'use client';
+
+import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
+
+import {
+  ASSISTED_CREATION_FIELD_LIMITS,
+  canCustomerUpdateAssistedCreation,
+  formatAssistedCreationStatus,
+  isAssistedCreationOpenStatus,
+  type AssistedCreationStatus,
+} from '@fresh-prints/shared/constants/assistedCreation/assistedCreation.constants';
+import type { AssistedCreationRequest } from '@fresh-prints/shared/types/assistedCreation/assistedCreation.types';
+
+import { CatalogPreviewLightbox } from '../../catalog/components/CatalogPreviewLightbox';
+import { PortalConfirmModal } from '../../shared/components/PortalConfirmModal';
+import { getPortalAuth } from '../../../lib/firebase/client';
+import { assistedCreationService } from '../services/assistedCreationService';
+import { assistedCreationStatusTone } from '../utils/assistedCreationDisplay';
+import { AssistedCreationActionsMenu } from './AssistedCreationActionsMenu';
+import {
+  AssistedCreationDetailTabs,
+  type AssistedDetailTab,
+} from './AssistedCreationDetailPanels';
+import { AssistedCreationUpdateModal } from './AssistedCreationUpdateModal';
+
+interface AssistedCreationStatusPanelProps {
+  onStartNew?: () => void;
+}
+
+function statusMessage(status: AssistedCreationStatus): string {
+  switch (status) {
+    case 'submitted':
+      return 'Fresh Prints has your brief. You can still update details or add references until staff starts work.';
+    case 'in_progress':
+      return 'Your design is being created. Additions are locked while staff works. We will send a proof here when it is ready.';
+    case 'proof_ready':
+      return 'Review the proof below. Approve it with an optional rating, or request changes with a short note.';
+    case 'revision_requested':
+      return 'Your revision notes were sent. Staff will update the design and send a new proof.';
+    case 'approved':
+      return 'This design is approved. You can start a new assisted request anytime.';
+    case 'rejected':
+      return 'This request was not approved. You can start a new assisted request anytime.';
+    case 'cancelled':
+      return 'This request was cancelled. You can start a new assisted request anytime.';
+    default:
+      return '';
+  }
+}
+
+export function AssistedCreationStatusPanel({ onStartNew }: AssistedCreationStatusPanelProps) {
+  const router = useRouter();
+  const [requests, setRequests] = useState<AssistedCreationRequest[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [revisionNote, setRevisionNote] = useState('');
+  const [approvalNote, setApprovalNote] = useState('');
+  const [rating, setRating] = useState<number | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [proofUrl, setProofUrl] = useState<string | null>(null);
+  const [proofLightboxOpen, setProofLightboxOpen] = useState(false);
+  const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
+  const [updateOpen, setUpdateOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<AssistedDetailTab>('overview');
+
+  useEffect(() => {
+    const uid = getPortalAuth().currentUser?.uid;
+    if (!uid) {
+      setLoadError('Sign in to view your assisted creation requests.');
+      return;
+    }
+    return assistedCreationService.subscribeRecentRequestsForCustomer(
+      uid,
+      setRequests,
+      (error) => setLoadError(error.message),
+    );
+  }, []);
+
+  const openRequest = useMemo(
+    () => requests.find((item) => isAssistedCreationOpenStatus(item.status)) ?? null,
+    [requests],
+  );
+  const latest = openRequest ?? requests[0] ?? null;
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadProof() {
+      if (!latest || latest.status !== 'proof_ready' || latest.proofs.length === 0) {
+        setProofUrl(null);
+        return;
+      }
+      const proof = latest.proofs[latest.proofs.length - 1];
+      try {
+        const url = await assistedCreationService.getDownloadUrl(proof.storagePath);
+        if (!cancelled) {
+          setProofUrl(url);
+        }
+      } catch {
+        if (!cancelled) {
+          setProofUrl(null);
+        }
+      }
+    }
+    void loadProof();
+    return () => {
+      cancelled = true;
+    };
+  }, [latest]);
+
+  if (loadError) {
+    return (
+      <section className="etsy-wizard-shell assisted-creation-status">
+        <p className="portal-form-error">{loadError}</p>
+      </section>
+    );
+  }
+
+  if (!latest) {
+    return (
+      <section className="etsy-wizard-shell assisted-creation-status">
+        <header className="assisted-creation-status-header">
+          <p className="etsy-wizard-step-label">Assisted Creation</p>
+          <h1 className="etsy-wizard-heading">No open request</h1>
+          <p className="portal-muted assisted-creation-status-lead">
+            You do not have an assisted creation request yet.
+          </p>
+        </header>
+        <div className="etsy-wizard-actions assisted-creation-status-footer">
+          <button
+            className="portal-button portal-button-secondary"
+            onClick={() => router.push('/custom-designs')}
+            type="button"
+          >
+            Back
+          </button>
+          {onStartNew ? (
+            <button className="portal-button portal-button-primary" onClick={onStartNew} type="button">
+              Start assisted request
+            </button>
+          ) : null}
+        </div>
+      </section>
+    );
+  }
+
+  const canCancel = isAssistedCreationOpenStatus(latest.status);
+  const canUpdate = canCustomerUpdateAssistedCreation(latest.status);
+  const canRespond = latest.status === 'proof_ready';
+
+  return (
+    <section className="etsy-wizard-shell assisted-creation-status">
+      <header className="assisted-creation-status-header">
+        <div className="assisted-creation-status-title-row">
+          <p className="etsy-wizard-step-label">Assisted Creation</p>
+          <div className="assisted-creation-status-header-actions">
+            <span
+              className={`assisted-creation-status-badge ${assistedCreationStatusTone(latest.status)}`}
+            >
+              {formatAssistedCreationStatus(latest.status)}
+            </span>
+            <AssistedCreationActionsMenu
+              canCancel={canCancel}
+              canUpdate={canUpdate}
+              disabled={busy}
+              onCancel={() => setCancelConfirmOpen(true)}
+              onUpdate={() => {
+                setActionError(null);
+                setUpdateOpen(true);
+              }}
+            />
+          </div>
+        </div>
+        <h1 className="etsy-wizard-heading">Request status</h1>
+        <p className="portal-muted assisted-creation-status-lead">{statusMessage(latest.status)}</p>
+      </header>
+
+      {canRespond ? (
+        <div className="assisted-creation-proof-panel">
+          <h2 className="assisted-creation-proof-heading">Your proof is ready</h2>
+          {proofUrl ? (
+            <button
+              aria-label="Open proof preview"
+              className="assisted-creation-proof-image-button"
+              onClick={() => setProofLightboxOpen(true)}
+              type="button"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img alt="Design proof" className="assisted-creation-proof-image" src={proofUrl} />
+            </button>
+          ) : (
+            <p className="portal-muted">Loading proof image…</p>
+          )}
+
+          <fieldset className="assisted-creation-rating-fieldset">
+            <legend>Rate this design (optional)</legend>
+            <div className="assisted-creation-rating-row">
+              {[1, 2, 3, 4, 5].map((value) => (
+                <button
+                  aria-pressed={rating === value}
+                  className={`assisted-creation-rating-star${rating != null && rating >= value ? ' is-selected' : ''}`}
+                  key={value}
+                  onClick={() => setRating((current) => (current === value ? null : value))}
+                  type="button"
+                >
+                  {value}★
+                </button>
+              ))}
+            </div>
+          </fieldset>
+
+          <label className="portal-field">
+            <span>Approval note (optional)</span>
+            <textarea
+              maxLength={ASSISTED_CREATION_FIELD_LIMITS.approvalNote}
+              onChange={(event) => setApprovalNote(event.target.value)}
+              placeholder="Anything you loved, or a quick thank-you"
+              rows={2}
+              value={approvalNote}
+            />
+          </label>
+
+          <div className="etsy-wizard-actions assisted-creation-proof-actions">
+            <button
+              className="portal-button portal-button-primary"
+              disabled={busy}
+              onClick={() => {
+                setBusy(true);
+                setActionError(null);
+                void assistedCreationService
+                  .respondToProof({
+                    requestId: latest.id,
+                    decision: 'approve',
+                    note: approvalNote.trim() || undefined,
+                    rating: rating ?? undefined,
+                  })
+                  .then(() => {
+                    setApprovalNote('');
+                    setRating(null);
+                  })
+                  .catch((error: unknown) => {
+                    setActionError(error instanceof Error ? error.message : 'Unable to approve.');
+                  })
+                  .finally(() => setBusy(false));
+              }}
+              type="button"
+            >
+              Approve &amp; send
+            </button>
+          </div>
+
+          <label className="portal-field">
+            <span>Request revisions</span>
+            <textarea
+              maxLength={ASSISTED_CREATION_FIELD_LIMITS.revisionNote}
+              onChange={(event) => setRevisionNote(event.target.value)}
+              placeholder="What should we change?"
+              rows={3}
+              value={revisionNote}
+            />
+          </label>
+          <button
+            className="portal-button portal-button-secondary"
+            disabled={busy || !revisionNote.trim()}
+            onClick={() => {
+              setBusy(true);
+              setActionError(null);
+              void assistedCreationService
+                .respondToProof({
+                  requestId: latest.id,
+                  decision: 'request_revision',
+                  note: revisionNote,
+                })
+                .then(() => setRevisionNote(''))
+                .catch((error: unknown) => {
+                  setActionError(
+                    error instanceof Error ? error.message : 'Unable to request revision.',
+                  );
+                })
+                .finally(() => setBusy(false));
+            }}
+            type="button"
+          >
+            Send revision notes
+          </button>
+        </div>
+      ) : null}
+
+      <AssistedCreationDetailTabs
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        request={latest}
+      />
+
+      {actionError ? <p className="portal-form-error">{actionError}</p> : null}
+
+      <div className="etsy-wizard-actions assisted-creation-status-footer">
+        <button
+          className="portal-button portal-button-secondary"
+          onClick={() => router.push('/custom-designs')}
+          type="button"
+        >
+          Back
+        </button>
+        {!openRequest && onStartNew ? (
+          <button className="portal-button portal-button-primary" onClick={onStartNew} type="button">
+            Start new request
+          </button>
+        ) : null}
+      </div>
+
+      <AssistedCreationUpdateModal
+        busy={busy}
+        isOpen={updateOpen}
+        onBusyChange={setBusy}
+        onClose={() => setUpdateOpen(false)}
+        onError={setActionError}
+        request={latest}
+      />
+
+      <PortalConfirmModal
+        cancelLabel="Keep request"
+        className="assisted-creation-confirm-overlay"
+        confirmLabel="Yes, cancel request"
+        confirmVariant="danger"
+        isConfirmLoading={busy}
+        isOpen={cancelConfirmOpen}
+        onCancel={() => setCancelConfirmOpen(false)}
+        onConfirm={() => {
+          setBusy(true);
+          setActionError(null);
+          void assistedCreationService
+            .cancelRequest(latest.id)
+            .then(() => setCancelConfirmOpen(false))
+            .catch((error: unknown) => {
+              setActionError(error instanceof Error ? error.message : 'Unable to cancel.');
+            })
+            .finally(() => setBusy(false));
+        }}
+        title="Cancel this request?"
+      >
+        <p>
+          Canceling closes this assisted creation request. You will need to start a new request if
+          you still want a custom design.
+        </p>
+      </PortalConfirmModal>
+
+      <CatalogPreviewLightbox
+        alt="Design proof"
+        className="assisted-creation-lightbox"
+        isOpen={proofLightboxOpen && proofUrl != null}
+        onClose={() => setProofLightboxOpen(false)}
+        previewUrl={proofUrl}
+      />
+    </section>
+  );
+}

@@ -122,6 +122,43 @@ service firebase.storage {
       allow delete: if isStaff();
     }
 
+    // Assisted Creation reference / proof assets (Phase 9C).
+    // Sync limits with packages/shared/.../assistedCreation.constants.ts
+    function isOwnerOrAdmin() {
+      return isSignedIn()
+        && callerUser().isActive == true
+        && callerUser().role in ["owner", "admin"];
+    }
+
+    function isValidAssistedCreationImage() {
+      return request.resource.size < 15 * 1024 * 1024
+        && request.resource.contentType in ["image/jpeg", "image/png", "image/webp"];
+    }
+
+    function isValidAssistedCreationProof() {
+      return request.resource.size < 25 * 1024 * 1024
+        && request.resource.contentType in ["image/jpeg", "image/png", "image/webp"];
+    }
+
+    match /assisted-creation/{userId}/pending/{fileId} {
+      allow read: if isStaff() || (isCustomer() && userId == request.auth.uid);
+      allow create, update: if isCustomer()
+        && userId == request.auth.uid
+        && isValidAssistedCreationImage();
+      allow delete: if isStaff() || (isCustomer() && userId == request.auth.uid);
+    }
+
+    match /assisted-creation/{userId}/{requestId}/references/{fileId} {
+      allow read: if isStaff() || (isCustomer() && userId == request.auth.uid);
+      allow create, update, delete: if false;
+    }
+
+    match /assisted-creation/{userId}/{requestId}/proofs/{fileId} {
+      allow read: if isStaff() || (isCustomer() && userId == request.auth.uid);
+      allow create, update: if isOwnerOrAdmin() && isValidAssistedCreationProof();
+      allow delete: if isOwnerOrAdmin();
+    }
+
     match /{allPaths=**} {
       allow read, write: if false;
     }

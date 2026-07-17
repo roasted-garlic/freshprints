@@ -194,7 +194,7 @@ export function useEtsyRecommendationWizard() {
     const parsed = parseEtsyRecommendationLocation(pathname, searchParams);
     const restore = async () => {
       try {
-        if (parsed.isLegacyQuery) {
+        if (parsed.isLegacyPath) {
           const legacyHref = buildEtsyRecommendationHref({
             view: urlStepToView(parsed.step),
             requestId: parsed.requestId,
@@ -385,6 +385,29 @@ export function useEtsyRecommendationWizard() {
     router.replace(buildEtsyRecommendationHref({ view: 'screen1' }), { scroll: false });
   }, [router]);
 
+  const continueFindDesign = useCallback(() => {
+    beginFindDesign();
+  }, [beginFindDesign]);
+
+  const resetFindDesign = useCallback(() => {
+    setFieldError(null);
+    setActionError(null);
+    setListings([]);
+    setListingsMessage(null);
+    setRequestId(null);
+    setCanonicalQuery('');
+    setEtsySearchUrl('');
+    setBroaderSearchUrl('');
+    setPreviewQuota(null);
+    clearEtsyRecommendationDraft();
+    setAnswers(EMPTY_ANSWERS);
+    setView('screen1');
+    previousViewRef.current = 'screen1';
+    router.replace(buildEtsyRecommendationHref({ view: 'screen1' }), { scroll: false });
+  }, [router]);
+
+  const hasResumableFindDraft = hasResumableEtsyRecommendationDraft();
+
   const updateSubjectText = useCallback((value: string) => {
     setAnswers((prev) => ({ ...prev, subjectText: value }));
     setFieldError(null);
@@ -525,6 +548,9 @@ export function useEtsyRecommendationWizard() {
     previewQuota,
     focusHeadingRef: headingRef,
     beginFindDesign,
+    continueFindDesign,
+    resetFindDesign,
+    hasResumableFindDraft,
     updateSubjectText,
     updateStyleText,
     updateWording,

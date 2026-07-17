@@ -85,15 +85,17 @@ describe("expandOperationalWipePlan", () => {
     );    assert.ok(!expandOperationalWipePlan(["sequences"]).deleteCollections.includes("staffInboxAcks"));
   });
 
-  it("select all includes designs, customerUploads, and etsySearches", () => {
+  it("select all includes designs, customerUploads, etsySearches, and assistedCreationRequests", () => {
     const plan = expandOperationalWipePlan(ALL_OPERATIONAL_WIPE_TARGETS);
     assert.ok(plan.deleteCollections.includes("designs"));
     assert.ok(plan.deleteCollections.includes("customerUploads"));
     assert.ok(plan.deleteCollections.includes("customerUploadBatches"));
     assert.ok(plan.deleteCollections.includes("etsyRecommendationRequests"));
     assert.ok(plan.deleteCollections.includes("etsyRecommendationRateLimits"));
+    assert.ok(plan.deleteCollections.includes("assistedCreationRequests"));
     assert.equal(plan.wipeDesignStorage, true);
     assert.equal(plan.wipeCustomerUploadStorage, true);
+    assert.equal(plan.wipeAssistedCreationStorage, true);
   });
 
   it("expands customerUploads independently", () => {
@@ -118,6 +120,15 @@ describe("expandOperationalWipePlan", () => {
     ]);
     assert.equal(plan.wipeDesignStorage, false);
     assert.equal(plan.wipeCustomerUploadStorage, false);
+    assert.equal(plan.wipeAssistedCreationStorage, false);
+  });
+
+  it("expands assistedCreationRequests to docs and Storage wipe", () => {
+    const plan = expandOperationalWipePlan(["assistedCreationRequests"]);
+    assert.deepEqual(plan.deleteCollections, ["assistedCreationRequests"]);
+    assert.equal(plan.wipeAssistedCreationStorage, true);
+    assert.equal(plan.wipeCustomerUploadStorage, false);
+    assert.equal(plan.wipeDesignStorage, false);
   });
 });
 

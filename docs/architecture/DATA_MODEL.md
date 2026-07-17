@@ -1123,7 +1123,26 @@ Portal customers submit via `submitEtsySuggestionRequest` (pending only; daily p
 
 **Rules:** customers may read own `etsyRecommendationRequests` (`customerUid == auth.uid`); active staff (`owner` / `admin` / `helper`) may read all for Studio Custom Designs → Etsy search (ADR-FP-087n). Request writes via Admin SDK callables only. `etsyRecommendationSuggestions`: signed-in read; client writes denied; add/deactivate via owner/admin callables. `etsySuggestionRequests`: staff read; client writes denied. Legacy config/cache/rate-limit collections remain deny-all.
 
-**Deferred:** Create with AI, Fresh Prints Assisted Creation, design-fee `customRequests` staff queue.
+**Deferred:** Create with AI, design-fee `customRequests` staff queue.
+
+---
+
+# Assisted Creation Requests (Phase 9C)
+
+Collection:
+
+```txt
+assistedCreationRequests
+```
+
+Storage:
+
+```txt
+assisted-creation/{customerUid}/pending/{fileId}
+assisted-creation/{customerUid}/{requestId}/proofs/{fileId}
+```
+
+One **open** request per customer (`submitted` | `in_progress` | `proof_ready` | `revision_requested`). Status machine supports staff proofing and customer approve / revision-with-notes until `approved` (also `rejected` / `cancelled`). While status is **`submitted`** only, the customer may update `answers` and `referenceImages` (callable `customerUpdateAssistedCreationRequest`); updates are locked once staff marks `in_progress`. On approve, customer may optionally set `customerRating` (1–5) and `customerApprovalNote` (short text). Client Firestore writes denied; callables only. Helper may read; owner/admin mutate status and attach proofs (ADR-FP-088). Owner wipe on `fresh-prints-dev` uses Test Data Reset target `assistedCreationRequests` (`wipeOperationalTestData`) and clears Storage under `assisted-creation/`.
 
 ---
 

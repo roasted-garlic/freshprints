@@ -8,7 +8,7 @@ export type EtsyRecommendationView =
 
 export const ETSY_RECOMMENDATIONS_BASE_PATH = '/custom-designs';
 
-/** Active Custom Designs option flows. Reserved: `ai`, `assisted`. */
+/** Active Custom Designs option flows. */
 export type EtsyRecommendationFlow = 'find';
 
 export type EtsyRecommendationUrlStep =
@@ -51,8 +51,11 @@ export interface ParsedEtsyRecommendationUrl {
   flow: EtsyRecommendationFlow | null;
   step: EtsyRecommendationUrlStep;
   requestId: string | null;
-  /** True when the location used legacy `?step=` under `/custom-designs`. */
-  isLegacyQuery: boolean;
+  /**
+   * True when the location used path segments (`/custom-designs/find/...`)
+   * or omitted `flow=find` and should be rewritten to the canonical query form.
+   */
+  isLegacyPath: boolean;
 }
 
 function normalizePathname(pathname: string): string {
@@ -62,7 +65,7 @@ function normalizePathname(pathname: string): string {
   return pathname || ETSY_RECOMMENDATIONS_BASE_PATH;
 }
 
-function parseLegacyQueryStep(
+function parseQueryStep(
   searchParams: URLSearchParams,
 ): Exclude<EtsyRecommendationUrlStep, 'choose'> | null {
   const stepRaw = searchParams.get('step')?.trim().toLowerCase();
@@ -82,9 +85,9 @@ function parseLegacyQueryStep(
 }
 
 /**
- * Parse Custom Designs location from pathname + search.
- * Canonical: `/custom-designs` or `/custom-designs/find/{step}`.
- * Legacy: `/custom-designs?step=subject` (and results + requestId).
+ * Parse Custom Designs Find location from pathname + search.
+ * Canonical: `/custom-designs?flow=find&step=subject` (+ `requestId` for results).
+ * Legacy: `/custom-designs/find/{step}` or `/custom-designs?step=subject` without flow.
  */
 export function parseEtsyRecommendationLocation(
   pathname: string,
@@ -92,23 +95,30 @@ export function parseEtsyRecommendationLocation(
 ): ParsedEtsyRecommendationUrl {
   const path = normalizePathname(pathname);
   const requestId = searchParams.get('requestId')?.trim() || null;
+  const flowParam = searchParams.get('flow')?.trim().toLowerCase();
+
+  if (flowParam === 'assisted' || flowParam === 'ai') {
+    return { flow: null, step: 'choose', requestId: null, isLegacyPath: false };
+  }
 
   if (path === ETSY_RECOMMENDATIONS_BASE_PATH) {
-    const legacyStep = parseLegacyQueryStep(searchParams);
-    if (legacyStep) {
+    const queryStep = parseQueryStep(searchParams);
+    if (queryStep) {
+      const hasFindFlow = flowParam === 'find';
       return {
         flow: 'find',
-        step: legacyStep,
-        requestId: legacyStep === 'results' ? requestId : null,
-        isLegacyQuery: true,
+        step: queryStep,
+        requestId: queryStep === 'results' ? requestId : null,
+        // Rewrite bare `?step=` (no flow) to `?flow=find&step=`.
+        isLegacyPath: !hasFindFlow,
       };
     }
-    return { flow: null, step: 'choose', requestId: null, isLegacyQuery: false };
+    return { flow: null, step: 'choose', requestId: null, isLegacyPath: false };
   }
 
   const prefix = `${ETSY_RECOMMENDATIONS_BASE_PATH}/`;
   if (!path.startsWith(prefix)) {
-    return { flow: null, step: 'choose', requestId: null, isLegacyQuery: false };
+    return { flow: null, step: 'choose', requestId: null, isLegacyPath: false };
   }
 
   const segments = path.slice(prefix.length).split('/').filter(Boolean);
@@ -116,12 +126,11 @@ export function parseEtsyRecommendationLocation(
   const stepRaw = segments[1]?.toLowerCase();
 
   if (flowRaw !== 'find') {
-    // Unknown / reserved flows (ai, assisted, …) → choose for now.
-    return { flow: null, step: 'choose', requestId: null, isLegacyQuery: false };
+    return { flow: null, step: 'choose', requestId: null, isLegacyPath: false };
   }
 
   if (!stepRaw || !FIND_STEPS.has(stepRaw as Exclude<EtsyRecommendationUrlStep, 'choose'>)) {
-    return { flow: null, step: 'choose', requestId: null, isLegacyQuery: false };
+    return { flow: null, step: 'choose', requestId: null, isLegacyPath: true };
   }
 
   const step = stepRaw as Exclude<EtsyRecommendationUrlStep, 'choose'>;
@@ -129,7 +138,7 @@ export function parseEtsyRecommendationLocation(
     flow: 'find',
     step,
     requestId: step === 'results' ? requestId : null,
-    isLegacyQuery: false,
+    isLegacyPath: true,
   };
 }
 
@@ -151,6 +160,7 @@ export function viewToUrlStep(view: EtsyRecommendationView): EtsyRecommendationU
   return VIEW_TO_URL_STEP[view];
 }
 
+/** Canonical Find URLs: `/custom-designs?flow=find&step=…`. */
 export function buildEtsyRecommendationHref(options: {
   view: EtsyRecommendationView;
   requestId?: string | null;
@@ -160,10 +170,9 @@ export function buildEtsyRecommendationHref(options: {
     return ETSY_RECOMMENDATIONS_BASE_PATH;
   }
 
-  const path = `${ETSY_RECOMMENDATIONS_BASE_PATH}/find/${step}`;
+  const params = new URLSearchParams({ flow: 'find', step });
   if (step === 'results' && options.requestId?.trim()) {
-    const params = new URLSearchParams({ requestId: options.requestId.trim() });
-    return `${path}?${params.toString()}`;
+    params.set('requestId', options.requestId.trim());
   }
-  return path;
+  return `${ETSY_RECOMMENDATIONS_BASE_PATH}?${params.toString()}`;
 }

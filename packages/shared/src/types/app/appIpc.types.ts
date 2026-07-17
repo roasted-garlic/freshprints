@@ -16,6 +16,17 @@ export interface OpenExternalLinkResult {
   opened: boolean;
 }
 
+export interface DownloadUrlToFileRequest {
+  downloadUrl: string;
+  /** Suggested file name for the save dialog (sanitized in main). */
+  fileName: string;
+}
+
+export interface DownloadUrlToFileResult {
+  canceled: boolean;
+  savedFilePath?: string;
+}
+
 export interface WindowMetricsResult {
   contentHeight: number;
   contentWidth: number;
@@ -50,6 +61,13 @@ export interface FreshPrintsAppApi {
   onConfirmCloseRequested(callback: () => void): () => void;
   /** Opens an http(s) URL in a window positioned on the same display as the app. Rejects non-http(s) schemes. */
   openExternalLink(url: string): Promise<ImportIpcResult<OpenExternalLinkResult>>;
+  /**
+   * Downloads a Firebase Storage https URL via the main process and prompts for a save path.
+   * Avoids Electron renderer CORS failures on signed Storage URLs.
+   */
+  downloadUrlToFile(
+    request: DownloadUrlToFileRequest,
+  ): Promise<ImportIpcResult<DownloadUrlToFileResult>>;
   getWindowMetrics(): Promise<ImportIpcResult<WindowMetricsResult>>;
   setMinimumWindowSize(
     size: SetMinimumWindowSizeRequest,

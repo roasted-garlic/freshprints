@@ -5,7 +5,7 @@
 | Date | 2026-07-16 |
 | Plan | docs/workflow/plans/2026-07-16-studio-customer-requests-suggestions-plan.md |
 | Review | docs/workflow/reviews/2026-07-16-studio-customer-requests-suggestions-review.md |
-| Status | **partial** — automated checks pass; `fresh-prints-dev` deploy complete; manual QA outstanding |
+| Status | **passed** — owner PASS 2026-07-16 (Studio Custom Designs page) |
 
 ---
 

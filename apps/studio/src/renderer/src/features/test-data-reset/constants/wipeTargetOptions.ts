@@ -55,4 +55,10 @@ export const OPERATIONAL_WIPE_TARGET_OPTIONS: OperationalWipeTargetOption[] = [
     description:
       "Deletes Portal Find a design docs (`etsyRecommendationRequests`) and Open API rate-limit docs (`etsyRecommendationRateLimits`). Does not remove suggestion overlays or pending suggestion requests.",
   },
+  {
+    id: "assistedCreationRequests",
+    label: "Assisted Creation requests",
+    description:
+      "Deletes Portal Assisted Creation docs (`assistedCreationRequests`) and Storage under assisted-creation/ (pending reference uploads and staff proofs). Does not affect Etsy searches or suggestion overlays.",
+  },
 ];

@@ -1,5 +1,8 @@
 import { app, BrowserWindow, ipcMain } from "electron";
 
+import type { DownloadUrlToFileRequest } from "@fresh-prints/shared/types/app/appIpc.types";
+
+import { downloadFirebaseStorageUrlToFile } from "../../services/download/downloadFirebaseStorageUrlToFile";
 import { importIpcFailure, importIpcSuccess } from "../import/importIpcResponse";
 import { openDetachedDevTools } from "./devToolsWindowState";
 import { openExternalLinkOnSameDisplay } from "./externalLinkWindow";
@@ -68,6 +71,35 @@ export function registerAppIpcHandlers(): void {
     }
 
     return importIpcSuccess({ opened: true });
+  });
+
+  ipcMain.handle(APP_IPC_CHANNELS.DOWNLOAD_URL_TO_FILE, async (event, payload: unknown) => {
+    if (!payload || typeof payload !== "object") {
+      return importIpcFailure("INVALID_INPUT", "A download request is required.");
+    }
+
+    const request = payload as Partial<DownloadUrlToFileRequest>;
+    if (typeof request.downloadUrl !== "string" || !request.downloadUrl.trim()) {
+      return importIpcFailure("INVALID_INPUT", "A download URL is required.");
+    }
+    if (typeof request.fileName !== "string" || !request.fileName.trim()) {
+      return importIpcFailure("INVALID_INPUT", "A file name is required.");
+    }
+
+    try {
+      const ownerWindow = BrowserWindow.fromWebContents(event.sender);
+      const result = await downloadFirebaseStorageUrlToFile({
+        downloadUrl: request.downloadUrl.trim(),
+        fileName: request.fileName.trim(),
+        ownerWindow,
+      });
+      return importIpcSuccess(result);
+    } catch (error) {
+      return importIpcFailure(
+        "INTERNAL_ERROR",
+        error instanceof Error ? error.message : "Unable to download that file.",
+      );
+    }
   });
 
   ipcMain.handle(APP_IPC_CHANNELS.GET_WINDOW_METRICS, (event) => {

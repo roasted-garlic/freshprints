@@ -705,10 +705,6 @@
   width: 100%;
 }
 
-.catalog-home-search-input::placeholder {
-  color: var(--color-text-tertiary);
-}
-
 .catalog-home-search-submit {
   align-items: center;
   background: var(--color-accent-primary);

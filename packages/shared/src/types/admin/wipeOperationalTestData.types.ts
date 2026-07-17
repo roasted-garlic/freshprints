@@ -14,6 +14,7 @@ export const OPERATIONAL_WIPE_TARGETS = [
   "designs",
   "customerUploads",
   "etsySearches",
+  "assistedCreationRequests",
 ] as const;
 
 export type OperationalWipeTarget = (typeof OPERATIONAL_WIPE_TARGETS)[number];

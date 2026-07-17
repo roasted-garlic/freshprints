@@ -21,6 +21,7 @@ export const OPERATIONAL_WIPE_DELETE_COLLECTION_ORDER = [
   "designs",
   "etsyRecommendationRateLimits",
   "etsyRecommendationRequests",
+  "assistedCreationRequests",
 ] as const;
 
 export type OperationalWipeDeleteCollection =
@@ -32,6 +33,7 @@ export interface ExpandedOperationalWipePlan {
   resetDesignRequestStats: boolean;
   wipeDesignStorage: boolean;
   wipeCustomerUploadStorage: boolean;
+  wipeAssistedCreationStorage: boolean;
   /**
    * When allocations are deleted but upcoming show docs are kept, zero denormalized
    * `allocatedQuantity` (and demote `productionStatus` from `full` → `open`) so Show Queue
@@ -123,6 +125,7 @@ const OPERATIONAL_WIPE_TARGETS_ORDER: OperationalWipeTarget[] = [
   "designs",
   "customerUploads",
   "etsySearches",
+  "assistedCreationRequests",
 ];
 
 /**
@@ -132,6 +135,8 @@ const OPERATIONAL_WIPE_TARGETS_ORDER: OperationalWipeTarget[] = [
  * `designs` deletes catalog docs and Storage originals/thumbnails/previews (requires printRequests).
  * `customerUploads` deletes upload docs/ops collections and `customer-uploads/` Storage.
  * `etsySearches` deletes Portal Find a design request docs and Open API rate-limit docs.
+ * `assistedCreationRequests` deletes Assisted Creation docs and `assisted-creation/` Storage
+ * (pending references + proofs).
  */
 export function expandOperationalWipePlan(
   targets: readonly OperationalWipeTarget[],
@@ -184,12 +189,18 @@ export function expandOperationalWipePlan(
     if (target === "etsySearches") {
       deleteSet.add("etsyRecommendationRateLimits");
       deleteSet.add("etsyRecommendationRequests");
+      continue;
+    }
+
+    if (target === "assistedCreationRequests") {
+      deleteSet.add("assistedCreationRequests");
     }
   }
 
   const wipeDesigns = uniqueTargets.includes("designs");
   const wipePrintRequests = uniqueTargets.includes("printRequests");
   const wipeCustomerUploads = uniqueTargets.includes("customerUploads");
+  const wipeAssistedCreation = uniqueTargets.includes("assistedCreationRequests");
   const deleteCollections = OPERATIONAL_WIPE_DELETE_COLLECTION_ORDER.filter((collectionName) =>
     deleteSet.has(collectionName),
   );
@@ -202,6 +213,7 @@ export function expandOperationalWipePlan(
     resetDesignRequestStats: uniqueTargets.includes("designRequestStats") && !wipeDesigns,
     wipeDesignStorage: wipeDesigns,
     wipeCustomerUploadStorage: wipeCustomerUploads,
+    wipeAssistedCreationStorage: wipeAssistedCreation,
     resetShowAllocationTotals:
       deleteSet.has("showAllocations") && !deleteSet.has("upcomingShows"),
   };
@@ -222,6 +234,7 @@ export const ALL_OPERATIONAL_WIPE_TARGETS: OperationalWipeTarget[] = [
   "designs",
   "customerUploads",
   "etsySearches",
+  "assistedCreationRequests",
 ];
 
 /** Storage prefixes removed when wiping designs (catalog assets only). */
@@ -229,3 +242,6 @@ export const DESIGN_STORAGE_WIPE_PREFIXES = ["originals/", "thumbnails/", "previ
 
 /** Storage prefix removed when wiping customer uploads. */
 export const CUSTOMER_UPLOAD_STORAGE_WIPE_PREFIXES = ["customer-uploads/"] as const;
+
+/** Storage prefix removed when wiping Assisted Creation requests (references + proofs). */
+export const ASSISTED_CREATION_STORAGE_WIPE_PREFIXES = ["assisted-creation/"] as const;

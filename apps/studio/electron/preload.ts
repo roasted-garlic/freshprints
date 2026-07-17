@@ -38,6 +38,8 @@ import type {
 } from "@fresh-prints/shared/types/inboxAlert/inboxAlertIpc.types";
 import type {
   ConfirmCloseResult,
+  DownloadUrlToFileRequest,
+  DownloadUrlToFileResult,
   OpenDevToolsResult,
   OpenExternalLinkResult,
   SetMinimumWindowSizeRequest,
@@ -259,6 +261,15 @@ contextBridge.exposeInMainWorld("freshPrints", {
 
     openExternalLink(url: string): Promise<ImportIpcResult<OpenExternalLinkResult>> {
       return invokeAppChannel<OpenExternalLinkResult>(APP_IPC_CHANNELS.OPEN_EXTERNAL_LINK, url);
+    },
+
+    downloadUrlToFile(
+      request: DownloadUrlToFileRequest,
+    ): Promise<ImportIpcResult<DownloadUrlToFileResult>> {
+      return invokeAppChannel<DownloadUrlToFileResult>(
+        APP_IPC_CHANNELS.DOWNLOAD_URL_TO_FILE,
+        request,
+      );
     },
 
     getWindowMetrics(): Promise<ImportIpcResult<WindowMetricsResult>> {

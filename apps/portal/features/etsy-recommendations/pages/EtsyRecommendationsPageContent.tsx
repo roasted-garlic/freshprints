@@ -1,11 +1,18 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
+
+import { ASSISTED_CREATION_WIZARD_STEPS } from '@fresh-prints/shared/constants/assistedCreation/assistedCreation.constants';
+
+import { readAssistedCreationDraft } from '../../assisted-creation/utils/assistedCreationDraftStorage';
+import { buildAssistedCreationHref } from '../../assisted-creation/utils/assistedCreationUrlState';
 import { EtsyQuestionnaire } from '../components/EtsyQuestionnaire';
 import { EtsyResultsDashboard } from '../components/EtsyResultsDashboard';
 import { EtsyRouteChoosePath } from '../components/EtsyRouteChoosePath';
 import { useEtsyRecommendationWizard } from '../hooks/useEtsyRecommendationWizard';
 
 export function EtsyRecommendationsPageContent() {
+  const router = useRouter();
   const wizard = useEtsyRecommendationWizard();
 
   if (wizard.isRestoringFromUrl) {
@@ -21,7 +28,18 @@ export function EtsyRecommendationsPageContent() {
       {wizard.view === 'choose' ? (
         <EtsyRouteChoosePath
           headingRef={wizard.focusHeadingRef}
+          hasResumableFindDraft={wizard.hasResumableFindDraft}
+          onAssistedCreation={() => {
+            const draft = readAssistedCreationDraft();
+            const stepId =
+              draft != null
+                ? (ASSISTED_CREATION_WIZARD_STEPS[draft.stepIndex]?.id ?? 'description')
+                : 'description';
+            router.push(buildAssistedCreationHref({ mode: 'wizard', stepId }));
+          }}
+          onContinueFindDesign={wizard.continueFindDesign}
           onFindDesign={wizard.beginFindDesign}
+          onResetFindDesign={wizard.resetFindDesign}
         />
       ) : null}
 

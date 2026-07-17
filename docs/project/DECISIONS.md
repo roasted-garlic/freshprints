@@ -4,6 +4,36 @@
 
 ---
 
+### ADR-FP-088: Assisted Creation proofing collection (Phase 9C)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-16 |
+| Status | accepted |
+| Related | Phase 9C, TD-027 |
+| Target | `fresh-prints-dev` first |
+
+**Context**
+
+Customers need a staff-assisted design brief with enough detail to create art, then a proof/revision loop. Archived Phase 9 WIP had overlapping questionnaires but mixed routes and statuses unsuitable as a foundation (ADR-FP-087).
+
+**Decision**
+
+- New collection `assistedCreationRequests` with proofing statuses (`submitted` → `in_progress` → `proof_ready` ⇄ `revision_requested` → `approved`; plus `rejected`/`cancelled`).
+- One open request per customer; no design fee in this slice.
+- Owner/admin mutate; helper view-only.
+- `proof_ready` requires a proof asset; customer `revision_requested` requires a non-empty note.
+- Portal cards: Find → Assisted → AI; Studio tabs: Assisted → AI → Etsy → Suggestions.
+- Omit Rights/protected-content and AI-comfort questions on this human-assisted path.
+- Owner wipe of Assisted Creation fixtures on `fresh-prints-dev` uses Test Data Reset target `assistedCreationRequests` only (`wipeOperationalTestData`) — not the Assisted tab UI — and clears Storage under `assisted-creation/`.
+- **Amendment 2026-07-16:** Customer proof approval may include an optional 1–5 `customerRating` and optional short `customerApprovalNote`. Persisted on the request doc by `customerRespondToAssistedCreationProof` (also reflected in revision history text). No fee.
+
+**Consequences**
+
+Deploy functions + Firestore/Storage rules/indexes to `fresh-prints-dev` before manual QA. Redeploy `wipeOperationalTestData` when the wipe target is added or changed. Redeploy `customerRespondToAssistedCreationProof` when approval rating fields change. Do not revive archived `customRequests` multi-route architecture.
+
+---
+
 ### ADR-FP-087n: Staff read of Etsy recommendation searches in Studio
 
 | Field | Value |
@@ -32,31 +62,33 @@ Portal persists Find a design submits in `etsyRecommendationRequests`, but Studi
 
 ---
 
-### ADR-FP-087m: Custom Designs flow-scoped URLs + localStorage drafts
+### ADR-FP-087m: Custom Designs URLs + localStorage drafts
 
 | Field | Value |
 |-------|-------|
 | Date | 2026-07-16 |
-| Status | accepted |
+| Status | amended |
 | Related | Phase 9A, ADR-FP-087l |
 | Target | Portal `/custom-designs` |
+| Amendment | 2026-07-16 — Owner prefers **query-param** URLs (`?step=`, `?flow=assisted&step=`). Path forms rewrite to query. |
 
 **Context**
 
-Flat `?step=subject` URLs did not namespace steps by option card (Find / AI / Assisted). Deep links also opened blank because draft persistence was implemented but never wired. Free-text answers in the query string would leak via share/history.
+Flat `?step=subject` URLs did not namespace steps by option card (Find / AI / Assisted). Deep links also opened blank because draft persistence was implemented but never wired. Free-text answers in the query string would leak via share/history. Path-scoped Find URLs (`/find/subject`) were tried next; owner prefers query params for readability, and path segment changes remounted the catch-all route (Assisted Continue snapped back to step 1).
 
-**Decision**
+**Decision (amended)**
 
-1. Canonical paths are flow-scoped: `/custom-designs` (choose), `/custom-designs/find/{subject|style|wording|review}`, `/custom-designs/find/results?requestId=…`. Reserve `/custom-designs/ai/…` and `/custom-designs/assisted/…` for later.
-2. Legacy `/custom-designs?step=…` redirects once via `router.replace` to the canonical path.
-3. Questionnaire answers persist in localStorage (`fp.etsyRecommendation.draft.v4`), not in the URL. Find with a resumable draft opens `draft.step`. Results remain server-backed by `requestId`.
-4. Questionnaire primary CTA label is **Next** (Review stays **Find designs**).
+1. Canonical Find URLs: `/custom-designs` (choose), `/custom-designs?flow=find&step={subject|style|wording|review}`, `/custom-designs?flow=find&step=results&requestId=…`.
+2. Canonical Assisted URLs: `/custom-designs?flow=assisted&step={wizardStep|status}`.
+3. Legacy path URLs (`/custom-designs/find/…`, `/custom-designs/assisted/…`) and bare `?step=` (missing `flow=find`) rewrite once via `router.replace` to the canonical query forms.
+4. Questionnaire answers persist in localStorage (`fp.etsyRecommendation.draft.v4` / assisted draft key), not in the URL.
+5. Questionnaire primary CTA label is **Next** (Review stays **Find designs**).
 
 **Consequences**
 
-- Bookmarks to `?step=` still work via redirect.
+- Staying on `/custom-designs` for step changes avoids remounting `[[...segments]]` when only the query changes.
 - Drafts are device-local only (no multi-device sync).
-- Future option cards can add path namespaces without colliding step names.
+- `flow=` namespaces Assisted (and later AI) without colliding Find `step=` names.
 
 ---
 

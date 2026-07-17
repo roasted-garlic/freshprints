@@ -5,6 +5,7 @@ import { useEffect } from 'react';
 interface PortalConfirmModalProps {
   cancelLabel?: string;
   children: React.ReactNode;
+  className?: string;
   confirmLabel?: string;
   confirmVariant?: 'danger' | 'primary';
   isConfirmLoading?: boolean;
@@ -17,6 +18,7 @@ interface PortalConfirmModalProps {
 export function PortalConfirmModal({
   cancelLabel = 'Cancel',
   children,
+  className,
   confirmLabel = 'Confirm',
   confirmVariant = 'primary',
   isConfirmLoading = false,
@@ -53,7 +55,7 @@ export function PortalConfirmModal({
     <div
       aria-labelledby="portal-confirm-modal-title"
       aria-modal="true"
-      className="modal-overlay modal-overlay-blur"
+      className={`modal-overlay modal-overlay-blur${className ? ` ${className}` : ''}`}
       onClick={() => {
         if (!isConfirmLoading) {
           onCancel();

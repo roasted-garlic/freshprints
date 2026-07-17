@@ -7,13 +7,14 @@ import { EtsySuggestionListsSettingsSection } from "../../settings/components/Et
 import { useShellHeaderConfig } from "../../../shared/hooks/useShellHeaderConfig";
 import { EtsyPendingSuggestionRequestsSection } from "../components/EtsyPendingSuggestionRequestsSection";
 import { EtsyRecommendationRequestsSection } from "../components/EtsyRecommendationRequestsSection";
+import { AssistedCreationRequestsSection } from "../components/AssistedCreationRequestsSection";
 
 type CustomerRequestsTab = "etsy_search" | "suggestions" | "ai" | "assisted";
 
 export function CustomerRequestsPage() {
   const { user } = useAuth();
   const canManageOverlays = permissionService.canManageSettings(user);
-  const [tab, setTab] = useState<CustomerRequestsTab>("etsy_search");
+  const [tab, setTab] = useState<CustomerRequestsTab>("assisted");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   useShellHeaderConfig(
@@ -21,7 +22,7 @@ export function CustomerRequestsPage() {
       () => ({
         title: "Custom Designs",
         description:
-          "Portal Find a design searches, suggestion approvals, live autocomplete lists, and (soon) AI and Assisted queues.",
+          "Assisted creation, AI (soon), Etsy Find searches, and suggestion approvals.",
         search: null,
         primaryAction: null,
       }),
@@ -41,16 +42,6 @@ export function CustomerRequestsPage() {
     <main className="page-layout page-layout-shell customer-requests-page">
       <div className="staff-inbox-page-tabs" role="tablist" aria-label="Custom Designs request types">
         <button
-          aria-selected={tab === "ai"}
-          className={`staff-inbox-page-tab${tab === "ai" ? " is-active" : ""}`}
-          onClick={() => setTab("ai")}
-          role="tab"
-          type="button"
-        >
-          <Sparkles aria-hidden="true" size={16} strokeWidth={2} />
-          AI Design
-        </button>
-        <button
           aria-selected={tab === "assisted"}
           className={`staff-inbox-page-tab${tab === "assisted" ? " is-active" : ""}`}
           onClick={() => setTab("assisted")}
@@ -58,7 +49,17 @@ export function CustomerRequestsPage() {
           type="button"
         >
           <Wand2 aria-hidden="true" size={16} strokeWidth={2} />
-          Fresh Prints Assisted
+          Assisted
+        </button>
+        <button
+          aria-selected={tab === "ai"}
+          className={`staff-inbox-page-tab${tab === "ai" ? " is-active" : ""}`}
+          onClick={() => setTab("ai")}
+          role="tab"
+          type="button"
+        >
+          <Sparkles aria-hidden="true" size={16} strokeWidth={2} />
+          AI
         </button>
         <button
           aria-selected={tab === "etsy_search"}
@@ -103,11 +104,11 @@ export function CustomerRequestsPage() {
       ) : null}
 
       {tab === "assisted" ? (
-        <section className="card settings-section">
-          <p className="settings-section-description">
-            Coming soon. Assisted design requests from Portal will land here for staff review.
-          </p>
-        </section>
+        <AssistedCreationRequestsSection
+          canMutate={canManageOverlays}
+          canRestore={permissionService.isOwner(user)}
+          onToast={setToastMessage}
+        />
       ) : null}
 
       {toastMessage ? (

@@ -1105,15 +1105,15 @@ Clean Portal Etsy recommendations foundation from master (archived prior Phase 9
 * Short Etsy questionnaire → hybrid subject text + suggest dictionary → website search queries + Open API keywords
 * **Link-first results:** Primary + Broader search link cards above Open API listing grid (ADR-FP-087l)
 * Admin-managed Subject/Tone suggestion overlays (ADR-FP-087k)
-* Studio **Customer Requests** Suggestions tab: pending Portal suggestion queue + live list management
+* Studio **Custom Designs**: **Etsy** tab (saved searches) + **Suggestions** tab (pending queue + live lists) — owner **PASS** 2026-07-16
 * Minimal `etsyRecommendationRequests` lifecycle (submit / Done / Cancel)
-* Signoff: `docs/workflow/reviews/2026-07-15-phase-9a-etsy-website-first-api-rip-signoff.md`
+* Signoff: `docs/workflow/reviews/2026-07-15-phase-9a-etsy-website-first-api-rip-signoff.md`; Studio closeout `docs/workflow/reviews/2026-07-16-studio-custom-designs-etsy-signoff.md`
 
 ### Deferred to later Phase 9 slices
 
 * Create My Design with AI
-* Fresh Prints Assisted Creation
-* Staff design queue / design fee / Studio inbox
+* ~~Fresh Prints Assisted Creation~~ → **Phase 9C** (implementing; ADR-FP-088)
+* Staff design-fee / Stripe for custom work
 * ~~In-app listing scrape from Etsy website search~~ — **removed** (ADR-FP-087j; owner rejected scrape quality)
 
 **Not in scope:** Checkout for normal print requests; product payment; shipping; production deploy of 9A until separately authorized.

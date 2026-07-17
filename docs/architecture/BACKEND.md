@@ -78,13 +78,15 @@ Fresh Prints does not expose a separate REST API for core operations. Business l
 
 **Etsy (Phase 9A — Open API + link-first — ADR-FP-087l):** Portal builds official website search URLs (Primary + Broader). In-app listing cards come from Etsy Open API via callable `searchEtsyRecommendations` (Secret Manager `ETSY_X_API_KEY`, bound to that callable only). Website scrape remains removed (ADR-FP-087j). Soft-fail to links-only if the secret is missing or search returns empty. Purchases stay off-platform via listing/search URLs. `SCRAPERAPI_API_KEY` / `FIRECRAWL_API_KEY` are not used by product code.
 
-**Custom Designs Portal routes (ADR-FP-087m):** Choose at `/custom-designs`; Find wizard at `/custom-designs/find/{subject|style|wording|review}`; results at `/custom-designs/find/results?requestId=…`. Legacy `?step=` query URLs redirect to these paths. In-progress questionnaire answers use localStorage draft (`fp.etsyRecommendation.draft.v4`); free-text is not placed in the URL.
+**Custom Designs Portal routes (ADR-FP-087m, amended 2026-07-16):** Choose at `/custom-designs`; Find wizard at `/custom-designs?flow=find&step={subject|style|wording|review}`; results at `/custom-designs?flow=find&step=results&requestId=…`; Assisted at `/custom-designs?flow=assisted&step=…`. Legacy path URLs and bare `?step=` (no flow) rewrite to the canonical query forms. In-progress questionnaire answers use localStorage drafts; free-text is not placed in the URL.
 
 **Etsy wizard suggestion lists (ADR-FP-087k):** Collection `etsyRecommendationSuggestions` holds admin-added Subject / Tone overlays. Callables `addEtsyRecommendationSuggestion` and `deactivateEtsyRecommendationSuggestion` (owner/admin, Admin SDK). Portal and Studio read active docs as signed-in clients (client write denied). Static seed dictionaries in shared code remain the baseline; admin docs grow autocomplete. Studio management UI lives on **Customer Requests → Suggestions** (not Settings).
 
 **Customer suggestion requests:** Collection `etsySuggestionRequests`. Portal callable `submitEtsySuggestionRequest` (customer auth; daily submit quota via `etsyRecommendationRateLimits`; pending dedupe). Studio callables `approveEtsySuggestionRequest` / `rejectEtsySuggestionRequest` (owner/admin). Staff may read pending docs; client writes denied.
 
 **Etsy recommendation searches (Studio list — ADR-FP-087n):** Staff may read `etsyRecommendationRequests` for the Custom Designs → Etsy tab. Customers still read only their own docs. Client writes remain denied. Owner wipe of searches on `fresh-prints-dev` uses Test Data Reset target `etsySearches` only (`wipeOperationalTestData`) — not the Etsy tab UI.
+
+**Assisted Creation requests (Studio list — ADR-FP-088):** Staff may read `assistedCreationRequests` for the Custom Designs → Assisted tab. Customers read only their own docs. Mutations go through callables (not client Firestore writes). Owner wipe of Assisted Creation fixtures on `fresh-prints-dev` uses Test Data Reset target `assistedCreationRequests` only (`wipeOperationalTestData`) — deletes docs plus Storage under `assisted-creation/`; not available on the Assisted tab UI.
 
 **Cursor agent tooling:** Project MCP may list ScraperAPI at `.cursor/mcp.json` (agent-only). Setup note: `docs/workflow/setup/scraperapi-mcp-setup.md`.
 
@@ -138,6 +140,12 @@ As of ADR-FP-039/ADR-FP-040, **AI Processing is a single playground-style call**
 | `submitEtsySuggestionRequest` | Callable | Portal: customer submits pending Subject/Tone suggestion for review |
 | `approveEtsySuggestionRequest` | Callable | Studio: owner/admin approve pending suggestion → live overlay |
 | `rejectEtsySuggestionRequest` | Callable | Studio: owner/admin reject pending suggestion |
+| `submitAssistedCreationRequest` | Callable | Portal: submit assisted creation brief (one open) |
+| `cancelAssistedCreationRequest` | Callable | Portal: cancel own open assisted request |
+| `customerUpdateAssistedCreationRequest` | Callable | Portal: update answers/references while status is `submitted` only |
+| `customerRespondToAssistedCreationProof` | Callable | Portal: approve proof (optional 1–5 rating + short note) or request revision with note |
+| `staffUpdateAssistedCreationStatus` | Callable | Studio: owner/admin start/resume/reject/cancel |
+| `staffAddAssistedCreationProof` | Callable | Studio: owner/admin attach proof → `proof_ready` |
 | `enqueueAiEnrichment` | Callable | Run imported design through direct AI processing |
 | `resetAiEnrichmentForProcessing` | Callable | Return Needs Review or Rejected design to Processing for a staff-started re-run |
 | `updateAiEnrichmentSettings` | Callable | Owner/admin: set team vision model, prompt template, and tag exclusions |

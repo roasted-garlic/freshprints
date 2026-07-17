@@ -5,7 +5,7 @@
 | Date | 2026-07-16 |
 | Phase | test |
 | Plan | docs/workflow/plans/2026-07-16-studio-etsy-search-tab-plan.md |
-| Status | **partial** — implementation complete; rules deploy + manual QA pending |
+| Status | **passed** — owner PASS 2026-07-16 (Studio Custom Designs + Etsy) |
 
 ---
 

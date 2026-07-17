@@ -63,6 +63,23 @@ export const desktopAppService = {
 
     await window.freshPrints.app.openExternalLink(url);
   },
+
+  /**
+   * Saves a Firebase Storage download URL via Electron main (save dialog).
+   * Outside Electron, falls back to opening the URL in a new tab.
+   */
+  async downloadUrlToFile(downloadUrl: string, fileName: string): Promise<"saved" | "canceled"> {
+    if (!isElectronDesktop()) {
+      window.open(downloadUrl, "_blank", "noopener,noreferrer");
+      return "saved";
+    }
+
+    const result = await window.freshPrints.app.downloadUrlToFile({ downloadUrl, fileName });
+    if (!result.success) {
+      throw new Error(result.error.message);
+    }
+    return result.data.canceled ? "canceled" : "saved";
+  },
 };
 
 export const whatnotImportDesktopService = {

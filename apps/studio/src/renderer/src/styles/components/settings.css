@@ -699,6 +699,12 @@
   gap: var(--space-4);
 }
 
+/* Full-bleed workspace: grow with the shell; page-layout already supplies side padding. */
+.customer-requests-page .settings-section {
+  max-width: none;
+  width: 100%;
+}
+
 .customer-requests-pending-list {
   display: grid;
   gap: var(--space-3);
@@ -738,7 +744,8 @@
   display: grid;
   gap: var(--space-4);
   grid-template-columns: minmax(14rem, 20rem) minmax(0, 1fr);
-  min-height: 24rem;
+  min-height: min(70vh, 42rem);
+  width: 100%;
 }
 
 @media (max-width: 960px) {

@@ -12,6 +12,7 @@ import {
 import {
   CUSTOMER_UPLOAD_STORAGE_WIPE_PREFIXES,
   DESIGN_STORAGE_WIPE_PREFIXES,
+  ASSISTED_CREATION_STORAGE_WIPE_PREFIXES,
   expandOperationalWipePlan,
   getDesignsWipePrerequisiteError,
 } from "../../packages/shared/src/utils/operationalWipeTargets";
@@ -301,6 +302,16 @@ async function deleteCustomerUploadStorageAssets(): Promise<number> {
   return deleted;
 }
 
+async function deleteAssistedCreationStorageAssets(): Promise<number> {
+  let deleted = 0;
+
+  for (const prefix of ASSISTED_CREATION_STORAGE_WIPE_PREFIXES) {
+    deleted += await deleteStoragePrefix(prefix);
+  }
+
+  return deleted;
+}
+
 export const wipeOperationalTestData = onCall(
   { timeoutSeconds: 540, memory: "512MiB" },
   async (request): Promise<WipeOperationalTestDataResponse> => {
@@ -327,6 +338,7 @@ export const wipeOperationalTestData = onCall(
       !plan.resetDesignRequestStats &&
       !plan.wipeDesignStorage &&
       !plan.wipeCustomerUploadStorage &&
+      !plan.wipeAssistedCreationStorage &&
       !plan.resetShowAllocationTotals
     ) {
       throw invalidArgument("Select at least one wipe target.");
@@ -351,6 +363,9 @@ export const wipeOperationalTestData = onCall(
     }
     if (plan.wipeCustomerUploadStorage) {
       storageFilesDeleted += await deleteCustomerUploadStorageAssets();
+    }
+    if (plan.wipeAssistedCreationStorage) {
+      storageFilesDeleted += await deleteAssistedCreationStorageAssets();
     }
 
     return {

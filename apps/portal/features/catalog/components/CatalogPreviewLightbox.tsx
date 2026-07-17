@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 
 interface CatalogPreviewLightboxProps {
   alt: string;
+  className?: string;
   isOpen: boolean;
   onClose: () => void;
   previewUrl: string | null;
@@ -17,7 +18,13 @@ function CloseIcon() {
   );
 }
 
-export function CatalogPreviewLightbox({ alt, isOpen, onClose, previewUrl }: CatalogPreviewLightboxProps) {
+export function CatalogPreviewLightbox({
+  alt,
+  className,
+  isOpen,
+  onClose,
+  previewUrl,
+}: CatalogPreviewLightboxProps) {
   useEffect(() => {
     if (!isOpen) {
       return;
@@ -42,7 +49,7 @@ export function CatalogPreviewLightbox({ alt, isOpen, onClose, previewUrl }: Cat
     <div
       aria-label={`${alt} enlarged preview`}
       aria-modal="true"
-      className="modal-overlay modal-overlay-blur design-preview-lightbox"
+      className={`modal-overlay modal-overlay-blur design-preview-lightbox${className ? ` ${className}` : ''}`}
       onClick={onClose}
       role="dialog"
     >

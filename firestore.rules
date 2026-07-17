@@ -1480,6 +1480,13 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Assisted Creation requests (Phase 9C). Writes only via Admin SDK callables.
+    match /assistedCreationRequests/{requestId} {
+      allow read: if isStaff()
+        || (isCustomer() && resource.data.customerUid == request.auth.uid);
+      allow create, update, delete: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

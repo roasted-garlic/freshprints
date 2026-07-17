@@ -30,6 +30,18 @@ a {
   color: var(--color-accent-primary);
 }
 
+/* Placeholders must read as hints, not typed text — especially on light theme. */
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-text-tertiary);
+  opacity: 1;
+}
+
+[data-theme='light'] input::placeholder,
+[data-theme='light'] textarea::placeholder {
+  color: #b0b7c3;
+}
+
 .portal-visually-hidden {
   border: 0;
   clip: rect(0 0 0 0);

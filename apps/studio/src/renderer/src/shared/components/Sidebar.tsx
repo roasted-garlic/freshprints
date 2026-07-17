@@ -22,6 +22,7 @@ import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import type { LucideIcon } from "lucide-react";
 
 import { useAuth } from "../../features/auth/hooks/useAuth";
+import { useAssistedCreationActionableCount } from "../../features/customer-requests/hooks/useAssistedCreationActionableCount";
 import { usePendingCustomerUploadCount } from "../../features/customer-uploads/hooks/usePendingCustomerUploadCount";
 import { useStaffInboxContext } from "../../features/staff-inbox/context/staffInboxContext";
 import { permissionService } from "../../features/permissions/services/permissionService";
@@ -47,6 +48,7 @@ interface SidebarRouteItem {
   showInboxBadge?: boolean;
   showCustomerUploadBadge?: boolean;
   showDonatedDesignsBadge?: boolean;
+  showCustomDesignsBadge?: boolean;
   /** Extra client-side visibility gate beyond permission (e.g. allowlisted Firebase project). */
   isVisible?: () => boolean;
 }
@@ -125,6 +127,7 @@ const sidebarItems: SidebarRouteItem[] = [
     label: "Custom Designs",
     to: "/customer-requests",
     permission: "manageRequests",
+    showCustomDesignsBadge: true,
   },
   {
     kind: "route",
@@ -170,6 +173,7 @@ export function Sidebar() {
   const staffInbox = useStaffInboxContext();
   const pendingCustomerUploadCount = usePendingCustomerUploadCount("print_request");
   const pendingDonatedDesignsCount = usePendingCustomerUploadCount("catalog_donation");
+  const assistedActionableCount = useAssistedCreationActionableCount();
 
   const inboxOpenCount = staffInbox.isEnabled ? staffInbox.badgeCounts.printRequests : 0;
 
@@ -190,9 +194,14 @@ export function Sidebar() {
         return pendingDonatedDesignsCount;
       }
 
+      if (item.showCustomDesignsBadge) {
+        return assistedActionableCount;
+      }
+
       return 0;
     },
     [
+      assistedActionableCount,
       inboxOpenCount,
       pendingCustomerUploadCount,
       pendingDonatedDesignsCount,
