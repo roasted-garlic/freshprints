@@ -17,7 +17,7 @@ approved
 complete
 
 ## Test Status
-in_progress
+pending_manual
 
 ## Signoff Status
 pending
@@ -26,22 +26,22 @@ pending
 yes
 
 ## Human Checkpoint Reason
-Manual QA on fresh-prints-dev blocked on redeploy. Confirmed 2026-07-16: `firebase functions:list` shows `customerUpdateAssistedCreationRequest` **absent** on fresh-prints-dev (Update → `not-found`/`internal`). Also redeploy post-MVP callables + wipe target per checklist A.
+Manual cross-app QA is required for Phase 9C after the fresh-prints-dev deploy and automated checks.
 
 ## Allowed Actions
-Record manual QA; fix in-scope bugs; prepare signoff; deploy listed surfaces to fresh-prints-dev after human confirmation.
+Read documentation; record manual QA feedback; update test/checkpoint records; answer clarifying questions.
 
 ## Forbidden Actions
-Fee/payment; AI Design route; production deploy; revive archived multi-route customRequests architecture; customer edits after in_progress; run `firebase deploy` without human confirmation.
+Begin proof-ready email implementation; implement unrelated changes; deploy production; change secrets; migrate data; expand Phase 9C scope.
 
 ## Next Required Step
-Human confirms and runs the fresh-prints-dev deploy checklist below, then continue manual QA (PASS / FAIL / PASS WITH NOTES). Include: update while submitted; blocked after Start work; cancel/reject reasons; optional approval rating; Test Data wipe target `assistedCreationRequests`.
+Await human `PASS`, `FAIL: [description]`, or `PASS WITH NOTES: [notes]` for `docs/workflow/reviews/2026-07-16-phase-9c-assisted-creation-manual-qa.md`.
 
 ## DONE
 no
 
 ## Last Completed Step
-2026-07-16 — Confirmed via `firebase functions:list --project fresh-prints-dev`: `customerUpdateAssistedCreationRequest` is **still not deployed** (only submit/cancel/respond/staff* Assisted callables are live). Modal UX: save errors now show in-modal (not only behind overlay); success still closes modal. No code bug in callable path — human must run deploy checklist A.
+2026-07-16 — Automated test phase recorded. Functions deploy, Portal typecheck, targeted lint, 25 targeted tests, and Studio Vite/Electron build passed; repository-level failures are documented. Manual QA is pending.
 
 ## Plan Path
 docs/workflow/plans/2026-07-16-phase-9c-assisted-creation-plan.md
@@ -69,6 +69,21 @@ docs/workflow/reviews/2026-07-16-phase-9c-customer-additions-while-submitted-rev
 - 2026-07-16 — Diagnosis: Portal Update → `internal` because `customerUpdateAssistedCreationRequest` was never in any deploy wave (added after initial selective deploy). Code path exports + client name/payload match; local functions build includes the export.
 - 2026-07-16 — Re-check (new refs): upload path parity with submit OK; Storage `assisted-creation/{userId}/pending` customer create OK; no move-to-references on submit (paths stay pending). Client maps not-found/internal to clearer copy; Update sheet header stacked (shared `AssistedCreationUpdateModal`). Still need functions redeploy before Update QA can pass.
 - 2026-07-16 — Live list reconfirm: `customerUpdateAssistedCreationRequest` absent on fresh-prints-dev. Update modal keeps open on failure with in-modal error; closes on success. Parent page no longer shows update errors behind the overlay.
+- 2026-07-16 — Human approved the pending dev deploy. Built Functions successfully and selectively deployed `customerUpdateAssistedCreationRequest`, `customerRespondToAssistedCreationProof`, `staffUpdateAssistedCreationStatus`, `staffAddAssistedCreationProof`, `submitAssistedCreationRequest`, `cancelAssistedCreationRequest`, and `wipeOperationalTestData` to fresh-prints-dev.
+- 2026-07-16 — Automated checks completed and recorded in `docs/workflow/reviews/2026-07-16-phase-9c-assisted-creation-test-report.md`; manual checkpoint created at `docs/workflow/reviews/2026-07-16-phase-9c-assisted-creation-manual-qa.md`.
+
+## Tests Run
+
+- Functions TypeScript build: passed
+- Portal typecheck: passed
+- Changed-feature targeted lint: passed
+- Assisted/suggestion tests: 11 passed
+- Stable Print Request list/query/origin tests: 14 passed
+- Studio Vite/Electron build: passed with bundle warnings
+- Full lint: failed_documented (existing ESLint configuration/repository findings)
+- Studio standalone typecheck: failed_documented (existing TypeScript `ignoreDeprecations` configuration)
+- Portal production build: blocked_documented (active dev server owns `.next/trace`)
+- Broader Print Request utility sweep: failed_documented (five existing sizing-policy expectation failures)
 
 ## Deploy checklist (`fresh-prints-dev` only — do not production deploy)
 

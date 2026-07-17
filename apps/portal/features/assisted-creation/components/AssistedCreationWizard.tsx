@@ -16,7 +16,6 @@ interface AssistedCreationWizardProps {
   referenceFiles: File[];
   referenceFilesError: string | null;
   stepError: string | null;
-  isFirstStep: boolean;
   isLastStep: boolean;
   isSubmitting: boolean;
   submitStatusMessage: string | null;
@@ -37,7 +36,6 @@ export function AssistedCreationWizard({
   referenceFiles,
   referenceFilesError,
   stepError,
-  isFirstStep,
   isLastStep,
   isSubmitting,
   submitStatusMessage,

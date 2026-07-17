@@ -35,18 +35,24 @@ describe('resolveClientSearchParams', () => {
   });
 
   it('prefers window flow when Next omitted it', () => {
-    const previous = globalThis.window;
-    // @ts-expect-error test stub
-    globalThis.window = {
-      location: { search: '?flow=assisted&step=styleMood', pathname: '/custom-designs' },
-    };
+    const previousDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'window');
+    Object.defineProperty(globalThis, 'window', {
+      configurable: true,
+      value: {
+        location: { search: '?flow=assisted&step=styleMood', pathname: '/custom-designs' },
+      },
+    });
 
     try {
       const resolved = resolveClientSearchParams(new URLSearchParams());
       assert.equal(resolved.get('flow'), 'assisted');
       assert.equal(resolved.get('step'), 'styleMood');
     } finally {
-      globalThis.window = previous;
+      if (previousDescriptor) {
+        Object.defineProperty(globalThis, 'window', previousDescriptor);
+      } else {
+        Reflect.deleteProperty(globalThis, 'window');
+      }
     }
   });
 });

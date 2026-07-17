@@ -180,7 +180,11 @@ export function parseSuggestionAliases(raw: unknown): ParsedSuggestionAliasesRes
         error: `Each alias must be ${ETSY_RECOMMENDATION_SUGGESTION_MAX_ALIAS_LENGTH} characters or fewer.`,
       };
     }
-    if (/[\u0000-\u001f\u007f]/.test(trimmed)) {
+    const hasControlCharacter = Array.from(trimmed).some((character) => {
+      const codePoint = character.codePointAt(0) ?? 0;
+      return codePoint <= 0x1f || codePoint === 0x7f;
+    });
+    if (hasControlCharacter) {
       return { aliases: [], error: "Aliases cannot include control characters." };
     }
     const key = normalizeSuggestionLabelKey(trimmed);

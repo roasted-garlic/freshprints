@@ -23,7 +23,9 @@ export function useLiveCustomDesignsLocation(): {
   const hydratedRef = useRef(false);
   const [ready, setReady] = useState(false);
   const [pathname, setPathname] = useState(nextPathname);
-  const [searchParams, setSearchParams] = useState(nextSearchParams);
+  const [searchParams, setSearchParams] = useState<URLSearchParams>(
+    () => new URLSearchParams(nextSearchParams.toString()),
+  );
 
   useLayoutEffect(() => {
     if (!hydratedRef.current) {
@@ -36,7 +38,7 @@ export function useLiveCustomDesignsLocation(): {
     }
 
     setPathname(nextPathname);
-    setSearchParams(nextSearchParams);
+    setSearchParams(new URLSearchParams(nextSearchParams.toString()));
   }, [nextPathname, nextSearchParams]);
 
   return { ready, pathname, searchParams };

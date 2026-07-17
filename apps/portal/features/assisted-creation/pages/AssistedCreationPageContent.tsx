@@ -140,7 +140,6 @@ export function AssistedCreationPageContent() {
     <main className="portal-page etsy-recommendations-page">
       <AssistedCreationWizard
         answers={wizard.answers}
-        isFirstStep={wizard.isFirstStep}
         isLastStep={wizard.isLastStep}
         isSubmitting={wizard.isSubmitting}
         onAnswersChange={wizard.setAnswers}

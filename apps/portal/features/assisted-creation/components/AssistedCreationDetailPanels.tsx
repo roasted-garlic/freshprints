@@ -216,7 +216,7 @@ function ProofDetailModal({
 }
 
 export function AssistedCreationProofsPanel({ request }: { request: AssistedCreationRequest }) {
-  const proofs = request.proofs ?? [];
+  const proofs = useMemo(() => request.proofs ?? [], [request.proofs]);
   const [selectedProofId, setSelectedProofId] = useState<string | null>(null);
   const selectedProof = useMemo(
     () => proofs.find((proof) => proof.id === selectedProofId) ?? null,
