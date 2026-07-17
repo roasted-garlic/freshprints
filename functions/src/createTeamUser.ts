@@ -9,6 +9,7 @@ import { alreadyExists, internal, invalidArgument, permissionDenied, unauthentic
 import { assertCanCreateTeamRole, assertTeamUserRole } from "./lib/permissions";
 import { sendTeamInvitationEmail } from "./lib/resendEmailService";
 import { resendApiKeySecret, invitationFromEmail } from "./lib/secrets";
+import { loadEmailProviderSettings } from "./lib/email/emailSettings";
 import type { CreateTeamUserRequest, CreateTeamUserResponse } from "./lib/types";
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -67,8 +68,10 @@ async function sendInvitationEmail(
 ): Promise<boolean> {
   try {
     const resetLink = await adminAuth.generatePasswordResetLink(email);
+    const settings = await loadEmailProviderSettings();
     return sendTeamInvitationEmail({
       apiKey: resendApiKeySecret.value(),
+      provider: settings.inviteProvider,
       fromEmail: invitationFromEmail.value(),
       toEmail: email,
       displayName,

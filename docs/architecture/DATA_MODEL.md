@@ -1602,6 +1602,40 @@ export interface AppSettings {
 
 **Settings AI playground:** No playground prompt text, image payload, or response output is persisted in Firestore for this slice. Playground requests are transient callable invocations only.
 
+### `settings/emailProviders`
+
+```ts
+interface EmailProviderSettings {
+  inviteProvider: "resend";
+  proofNoticeProvider: "resend";
+  updatedAt: Timestamp;
+  updatedBy: string;
+}
+```
+
+Missing settings resolve to Resend. Active owners may read the document; writes use the
+owner-authorized `updateEmailProviderSettings` callable. Brevo is not an accepted persisted value.
+
+### `emailDeliveryJobs`
+
+Server-only durable outbox for Assisted Creation proof-ready notices. The deterministic document ID
+is a fixed-length SHA-256 identity derived from `{requestId, proofId}` so client-controlled IDs
+cannot introduce Firestore path separators.
+
+| Field | Purpose |
+|-------|---------|
+| `id`, `kind` | Stable identity; kind is `assisted_proof_ready` |
+| `requestId`, `proofId` | Source proof identity |
+| `customerId`, `customerUid` | Trusted recipient linkage; no recipient email copy |
+| `provider` | Provider snapshot (`resend`) |
+| `status` | `pending` → `sending` → `sent` or `failed` |
+| `attemptCount`, `maxAttempts`, `leaseExpiresAt` | Bounded retry/claim state |
+| `providerMessageId`, `lastErrorCode` | Provider audit ID and sanitized diagnostics |
+| `createdBy`, `createdAt`, `updatedAt`, `sentAt` | Audit timestamps |
+
+All client reads and writes are denied. No backfill, destructive migration, or composite index is
+required.
+
 ---
 
 # Audit Logs Collection

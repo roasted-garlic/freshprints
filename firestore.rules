@@ -1303,6 +1303,11 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    match /settings/emailProviders {
+      allow read: if isOwner();
+      allow write: if false;
+    }
+
     match /settings/{settingId} {
       allow read: if isStaff() && settingId == "aiEnrichment";
       allow write: if false;
@@ -1485,6 +1490,10 @@ service cloud.firestore {
       allow read: if isStaff()
         || (isCustomer() && resource.data.customerUid == request.auth.uid);
       allow create, update, delete: if false;
+    }
+
+    match /emailDeliveryJobs/{jobId} {
+      allow read, write: if false;
     }
 
     match /{document=**} {

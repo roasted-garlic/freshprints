@@ -4,7 +4,7 @@
 |-------|-------|
 | Date | 2026-07-16 |
 | Author | Planning Agent |
-| Status | ready_for_review |
+| Status | approved_with_changes |
 | Workflow | managed-phase |
 | Related | `docs/workflow/reviews/2026-07-16-provider-agnostic-proof-ready-email-review.md` |
 | Target | Repository and `fresh-prints-dev`; production deploy excluded |
@@ -121,12 +121,18 @@ Locked owner decisions:
 
 - [x] Details:
   - Existing secret: `RESEND_API_KEY`.
-  - Existing config retained: `INVITATION_FROM_EMAIL`.
-  - Planned proof sender config: `PROOF_NOTICE_FROM_EMAIL` after owner confirms the address.
-  - Planned review link uses configured `PORTAL_BASE_URL` plus `/custom-designs?flow=assisted&step=status`; owner must confirm the deployed base URL.
+  - Confirmed sender config (owner 2026-07-16):
+    - `INVITATION_FROM_EMAIL`: `Fresh Prints <team@funkyfreshprints.com>` (keep existing).
+    - `PROOF_NOTICE_FROM_EMAIL`: same exact sender `Fresh Prints <team@funkyfreshprints.com>`.
+  - Canonical Portal base URLs for review CTAs (owner 2026-07-16):
+    - Development: `https://myprintrequest.dev`
+    - Production: `https://myprintrequest.com`
+  - Review link path remains `/custom-designs?flow=assisted&step=status` on the resolved base URL.
+  - **Portal URL resolver (technical constraint):** background Cloud Functions cannot derive the browser/App Hosting custom host at runtime. Use an explicit environment-aware resolver/config: map known Firebase project / deploy environment → canonical Portal URL above, with a validated config override for local/test when appropriate. Fail closed on unknown deployed environments; do not guess.
   - Resend calls use an explicit timeout and stable provider idempotency header/key. Retry only safe transient classes (network, 429, 5xx) with bounded attempts; permanent 4xx becomes `failed` with safe diagnostics.
   - Existing `resend` package is already installed; add no dependency.
   - Invitation calls resolve `inviteProvider` at runtime; proof jobs snapshot `proofNoticeProvider` when enqueued so an in-flight job is auditable and deterministic.
+  - Production deploy remains excluded from this phase.
 
 ### UI / UX Impact
 
@@ -141,7 +147,8 @@ Locked owner decisions:
 
 - [x] Forward steps:
   - Deploy rules/settings callable and delivery trigger/job handler only to an explicitly approved environment.
-  - Configure/confirm `PROOF_NOTICE_FROM_EMAIL`, `INVITATION_FROM_EMAIL`, and `PORTAL_BASE_URL`; bind existing `RESEND_API_KEY`.
+  - Configure `PROOF_NOTICE_FROM_EMAIL` and `INVITATION_FROM_EMAIL` to `Fresh Prints <team@funkyfreshprints.com>`; bind existing `RESEND_API_KEY`.
+  - Resolve Portal CTA base via environment-aware map: `https://myprintrequest.dev` (dev) / `https://myprintrequest.com` (production); validated local override only; fail closed if unknown deployed environment.
   - Missing `settings/emailProviders` resolves to Resend for both categories, allowing gradual rollout without a data backfill.
 - [x] Rollback / compatibility:
   - Disable/remove proof job creation and trigger; existing proof workflow remains functional.
@@ -153,13 +160,14 @@ Locked owner decisions:
 ## Delivery and Idempotency Design
 
 1. `staffAddAssistedCreationProof` validates and attaches a new proof.
-2. In the same transaction, it creates `emailDeliveryJobs/{requestId}__proof__{proofId}` with create-if-absent semantics.
+2. In the same transaction, it creates one fixed-length, Firestore-safe
+   `emailDeliveryJobs/{sha256(requestId, proofId)}` identity with create-if-absent semantics.
 3. The delivery worker claims a pending/expired job with a lease and bounded attempt count.
 4. It resolves the customer email:
    - load `customers/{customerId}` and use its normalized email when valid;
    - otherwise load `users/{customerUid}` and use its normalized email when valid;
    - if neither is valid or IDs conflict, mark failed with a safe code and do not guess.
-5. It builds the canonical Portal review URL and proof-ready template without embedding the private proof asset.
+5. It builds the canonical Portal review URL via the environment-aware resolver (dev/production maps above; fail closed if unknown) and the proof-ready template without embedding the private proof asset.
 6. It calls the configured provider with the job ID as the stable provider idempotency key.
 7. Success records `sent`, `sentAt`, and provider message ID. Transient failure releases/retries safely; permanent failure records a safe code.
 8. A repeated Firestore event, callable retry, or duplicate enqueue observes the same deterministic job and does not create another logical send.
@@ -221,13 +229,13 @@ Implementation review must verify the exact Resend idempotency-header behavior s
 - [x] Production deploy — excluded; requires separate explicit approval.
 - [ ] Database migration — no destructive migration/backfill.
 - [x] Auth / external service setup — no new provider account now; Brevo setup deferred.
-- [x] Secrets / env vars — confirm sender addresses and deployed Portal base URL before implementation/deploy.
+- [x] Secrets / env vars — sender addresses and canonical Portal URLs confirmed by owner (2026-07-16); production deploy still excluded.
 - [x] Other:
-  - Confirm the current `INVITATION_FROM_EMAIL`.
-  - Confirm `PROOF_NOTICE_FROM_EMAIL`.
-  - Confirm the deployed `PORTAL_BASE_URL` used by the review CTA.
+  - ~~Confirm the current `INVITATION_FROM_EMAIL`.~~ → `Fresh Prints <team@funkyfreshprints.com>`
+  - ~~Confirm `PROOF_NOTICE_FROM_EMAIL`.~~ → same sender as invitations
+  - ~~Confirm the deployed `PORTAL_BASE_URL` used by the review CTA.~~ → `https://myprintrequest.dev` (dev) / `https://myprintrequest.com` (production), via environment-aware resolver (fail closed)
 
-These values are required before implementation because guessing could send customer email from an unverified sender or generate an invalid review link.
+Sender/URL decisions are recorded; no further owner config questions block review.
 
 ---
 
@@ -240,7 +248,7 @@ These values are required before implementation because guessing could send cust
 | Wrong customer receives a notice | high | Resolve from trusted request IDs server-side, validate customer/user linkage, fail closed |
 | Secrets or PII leak through settings/logs | high | Secret Manager only; provider IDs only in settings; redact email/body/link details from logs |
 | Runtime setting selects an unavailable provider | medium | Server allowlist accepts only Resend now; disabled Brevo UI; safe default |
-| Invalid sender/domain or Portal URL | high | Human confirmation before implementation/deploy; setup verification and manual email test |
+| Invalid sender/domain or Portal URL | high | Owner-confirmed senders/URLs recorded; environment-aware fail-closed resolver; setup verification and manual email test |
 | Refactor regresses existing invitation email | medium | Preserve callable response contracts and add invitation router regression tests |
 | Worker crash around provider acceptance | medium | Provider idempotency key plus durable job state; document provider idempotency limitations |
 | Settings page is already oversized | medium | Isolated component/hook/service; Settings page only composes the section |
@@ -277,15 +285,23 @@ See also: `.cursor/workflow/risk-checklist.md`.
 
 ## Open Questions
 
-- [ ] What exact value should `INVITATION_FROM_EMAIL` use in the target environment?
-- [ ] What exact value should `PROOF_NOTICE_FROM_EMAIL` use, and is it the same verified sender as invitations?
-- [ ] What deployed `PORTAL_BASE_URL` should the proof review CTA use?
+- [x] None — owner confirmed 2026-07-16:
+  - `INVITATION_FROM_EMAIL` = `Fresh Prints <team@funkyfreshprints.com>`
+  - `PROOF_NOTICE_FROM_EMAIL` = `Fresh Prints <team@funkyfreshprints.com>`
+  - Portal CTA bases: `https://myprintrequest.dev` (dev), `https://myprintrequest.com` (production)
+  - Resolver: environment/project map + validated local override; fail closed when unknown
 
-No other product decision is currently blocking review.
+No product decision is currently blocking review.
 
 ---
 
 ## Approval
 
 - Review doc: `docs/workflow/reviews/2026-07-16-provider-agnostic-proof-ready-email-review.md`
-- Verdict: pending
+- Verdict: `approved_with_changes`
+- Implementation constraints:
+  - Firestore job state is the durable logical dedupe boundary; Resend's `Idempotency-Key` is an additional bounded safeguard, not a permanent exactly-once guarantee.
+  - Use transactional lease/attempt transitions, retry-enabled trigger handling, and safe terminal failure after bounded attempts.
+  - Add a dedicated owner-only email-provider permission; do not reuse broad owner/admin Settings authorization as the backend boundary.
+  - Remove raw recipient/provider-response logging and enforce validated customer/user linkage before recipient fallback.
+  - Do not deploy or change shared Functions parameters/secrets in the implementation phase.

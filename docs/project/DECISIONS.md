@@ -4,6 +4,38 @@
 
 ---
 
+### ADR-FP-089: Provider-neutral transactional email delivery
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-16 |
+| Status | accepted |
+| Related | Assisted Creation proof-ready email |
+| Target | Repository first; `fresh-prints-dev` only after human approval |
+
+**Decision**
+
+- Cloud Functions own a provider-neutral email message/transport contract; Resend is the only
+  implemented provider. Brevo is visible but disabled and cannot be persisted.
+- Invitation and proof-ready providers are independently selected in owner-only
+  `settings/emailProviders`; missing settings default to Resend.
+- Every attached Assisted Creation proof transactionally creates one deterministic, server-only
+  `emailDeliveryJobs` outbox record. A retry-enabled leased worker sends after commit.
+- Firestore job state is the durable logical dedupe boundary. Resend `Idempotency-Key` adds bounded
+  provider protection but is not treated as permanent exactly-once delivery.
+- Recipient addresses are resolved server-side with strict customer/user linkage; jobs do not store
+  another email copy. Logs contain no recipient, body, link, or raw provider response.
+- Proof CTAs map known environments to `https://myprintrequest.dev` /
+  `https://myprintrequest.com` and fail closed for unknown deployments.
+
+**Consequences**
+
+Proof submission remains successful during provider outages, invitation response contracts stay
+compatible, and future providers can be added behind the adapter after separate security review.
+Dev deploy and live email QA require a human checkpoint; production remains excluded.
+
+---
+
 ### ADR-FP-088: Assisted Creation proofing collection (Phase 9C)
 
 | Field | Value |

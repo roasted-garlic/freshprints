@@ -67,6 +67,19 @@ npm run build:portal
 
 Do not make live Etsy API calls from unit tests. Inject a mock Etsy client.
 
+### Provider-neutral email and proof notices
+
+```bash
+npx tsx --test packages/shared/src/constants/emailProviders.constants.test.ts functions/src/lib/email/email.test.ts apps/studio/src/renderer/src/features/permissions/services/permissionService.emailProviders.test.ts
+npm --prefix functions run build
+npx vite build
+```
+
+Run the Vite build from `apps/studio`. Automated tests inject a mock transport and must never send
+live email. Before signoff, also run targeted Assisted Creation tests, rules alignment/emulator
+checks, lint, and the applicable Studio typecheck. Live Resend delivery, first/revised proof,
+invitation regression, owner-only Settings visibility, and CTA routing require a manual checkpoint.
+
 ```bash
 npx tsx --test functions/src/lib/customerUpload*.test.ts functions/src/lib/confirmCustomerUpload*.test.ts packages/shared/src/utils/printAssetResolution.test.ts packages/shared/src/constants/storageRulesAlignment.test.ts
 npm --prefix functions run build

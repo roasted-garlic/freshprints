@@ -106,7 +106,10 @@ Phase 7 Studio MVP and Phase 8 Portal MVP are complete in the dev environment.
 
 Current Goal:
 
-Provider-agnostic proof-ready email notifications for Phase 9C, or production Portal deploy / production Google enablement.
+Provider-agnostic proof-ready email notifications for Phase 9C are implemented in the repository
+(Resend adapter, invitation routing, proof outbox worker, owner provider Settings). Automated
+verification and the dev deploy/live-email manual checkpoint remain; production is excluded.
+Brevo remains a disabled future follow-up.
 
 Phase 7 Show Queue is complete for Studio MVP: foundation, staff-assisted Whatnot import,
 production-file export (zip, multiply-by-qty, auto-nested gang sheet PNG) signed off 2026-07-07,
@@ -1113,6 +1116,7 @@ Clean Portal Etsy recommendations foundation from master (archived prior Phase 9
 
 * Create My Design with AI
 * ~~Fresh Prints Assisted Creation~~ → **Phase 9C complete on `fresh-prints-dev`** (owner manual QA `PASS`, 2026-07-16; ADR-FP-088). Signoff: `docs/workflow/reviews/2026-07-16-phase-9c-assisted-creation-signoff.md`
+* ~~Portal Past Requests terminal-only filter~~ → fixed 2026-07-16 (open statuses excluded; link hidden when zero terminals). Signoff: `docs/workflow/reviews/2026-07-16-terminal-only-assisted-past-requests-signoff.md`
 * Provider-agnostic proof-ready email notifications (Resend first; Brevo later) → next managed phase
 * Staff design-fee / Stripe for custom work
 * ~~In-app listing scrape from Etsy website search~~ — **removed** (ADR-FP-087j; owner rejected scrape quality)

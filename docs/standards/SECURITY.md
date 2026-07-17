@@ -564,6 +564,21 @@ admin
 
 Never expose settings documents to customers.
 
+## Email delivery security
+
+- `RESEND_API_KEY` remains in Firebase Secret Manager and is bound only to sending Functions.
+- `settings/emailProviders` stores provider IDs only. Active owners may read it; only the
+  owner-authorized callable writes it. `brevo` and unknown values are rejected.
+- `emailDeliveryJobs` denies every client read/write, including staff; Admin SDK owns the outbox.
+- Proof recipients are resolved server-side from trusted request `customerId`/`customerUid`.
+  Customer and user linkage must match before fallback; clients never submit a recipient address.
+- Templates HTML-escape dynamic values and never include proof assets, private proof notes, or
+  storage URLs.
+- Logs may include job/request/proof/provider IDs and safe error codes. Never log recipient/sender
+  addresses, message bodies, reset links, CTA URLs, provider response bodies, or secrets.
+- Canonical Portal CTA hosts come from an allowlisted project/environment map and fail closed for
+  unknown deployed projects; browser host derivation is forbidden.
+
 ---
 
 # Audit Log Security

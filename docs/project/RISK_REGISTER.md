@@ -16,6 +16,7 @@
 | R-008 | Dual assets after promote (upload production + design originals) | Low | Medium | Documented; request print uses upload path; catalog uses design paths; wipe designs ≠ wipe uploads | Team | accepted |
 | R-009 | Upload `catalogReviewStatus` stays `sent_to_ai_review` after design approve/reject | Low | High | By design (ADR-FP-073); outcome on `designs`; intake shows promotedDesignId | Team | accepted |
 | R-010 | Etsy website HTML scrape for in-app listing cards (ToS / legal + ops fragility) | High | Medium | **Mitigated (2026-07-16):** Owner rejected scrape quality; ADR-FP-087j rips scrape. Listings restored via Open API (ADR-FP-087l), not scrape. | Owner | mitigated |
+| R-011 | Email trigger crash after provider acceptance could retry outside the provider idempotency window | Medium | Low | Deterministic Firestore job, transactional lease/attempt state, stable Resend idempotency key, bounded retries, provider message ID audit; monitor failed jobs and do not claim permanent exactly-once delivery | Team | monitored |
 
 
 ---
@@ -35,6 +36,7 @@
 | Date | Summary |
 |------|---------|
 | 2026-07-16 | ADR-FP-087l restores Open API listings under link-first UI; R-C03 residual recall accepted with fallback links |
+| 2026-07-16 | R-011 provider email idempotency-window residual risk documented (ADR-FP-089) |
 | 2026-07-16 | R-010 mitigated — owner rejected scrape; ADR-FP-087j link-only rip |
 | 2026-07-16 | R-010 live vendor returned Firecrawl → ScraperAPI (ADR-FP-087i); secret `SCRAPERAPI_API_KEY` |
 | 2026-07-16 | R-010 live vendor switched ScraperAPI → Firecrawl (ADR-FP-087h); secret `FIRECRAWL_API_KEY` |

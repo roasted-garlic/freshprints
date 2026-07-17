@@ -11,6 +11,7 @@ import { TagChipInput } from "../../../shared/components/TagChipInput";
 import { useShellHeaderConfig } from "../../../shared/hooks/useShellHeaderConfig";
 import { useAuth } from "../../auth/hooks/useAuth";
 import { permissionService } from "../../permissions/services/permissionService";
+import { EmailProviderSettingsSection } from "../components/EmailProviderSettingsSection";
 import {
   AI_ENRICHMENT_APPROVED_CATEGORIES_PLACEHOLDER,
   AI_ENRICHMENT_APPROVED_CATEGORY_NAMES_PLACEHOLDER,
@@ -409,6 +410,10 @@ export function SettingsPage() {
         <p className="auth-message auth-message-error" role="alert">
           {saveError}
         </p>
+      ) : null}
+
+      {permissionService.canManageEmailProviders(user) ? (
+        <EmailProviderSettingsSection />
       ) : null}
 
       <section aria-labelledby="ai-enrichment-settings-title" className="card settings-section">

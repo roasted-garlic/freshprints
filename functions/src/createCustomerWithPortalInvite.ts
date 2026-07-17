@@ -12,6 +12,7 @@ import { withoutUndefinedFields } from "./lib/firestoreDocument";
 import { assertCanManageCustomers } from "./lib/permissions";
 import { sendCustomerPortalInvitationEmail } from "./lib/resendEmailService";
 import { invitationFromEmail, portalBaseUrl, resendApiKeySecret } from "./lib/secrets";
+import { loadEmailProviderSettings } from "./lib/email/emailSettings";
 
 const invitationEmailSentNextStep =
   "A Portal invitation email was sent with a link to set their password.";
@@ -71,20 +72,18 @@ async function sendPortalInvitationEmail(
 ): Promise<boolean> {
   try {
     const resetLink = await generateCustomerPasswordResetLink(email);
+    const settings = await loadEmailProviderSettings();
 
     return sendCustomerPortalInvitationEmail({
       apiKey: resendApiKeySecret.value(),
+      provider: settings.inviteProvider,
       fromEmail: invitationFromEmail.value(),
       toEmail: email,
       displayName,
       username,
       resetLink,
     });
-  } catch (error) {
-    console.error("Customer portal invitation email failed.", {
-      toEmail: email,
-      message: error instanceof Error ? error.message : "unknown",
-    });
+  } catch {
     return false;
   }
 }

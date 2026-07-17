@@ -4,6 +4,7 @@ export type PermissionKey =
   | "manageUsers"
   | "manageRoles"
   | "manageSettings"
+  | "manageEmailProviders"
   | "manageDesigns"
   | "viewDesigns"
   | "createDesigns"

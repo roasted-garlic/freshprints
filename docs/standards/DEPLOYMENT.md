@@ -79,6 +79,23 @@ firebase deploy --only firestore:rules,functions:wipeOperationalTestData --proje
 
 Adjust function list to match changed exports.
 
+### Provider-neutral email and proof-ready notices
+
+Repository implementation adds `updateEmailProviderSettings` and
+`onEmailDeliveryJobCreated`, refactors invitation callables, and changes Firestore rules. No email
+deployment is authorized by the implementation phase. After explicit human approval, deploy only
+the reviewed dev slice (never bare `--only functions` while the orphan remote function warning
+remains):
+
+```bash
+firebase deploy --only functions:createTeamUser,functions:createCustomerWithPortalInvite,functions:staffAddAssistedCreationProof,functions:updateEmailProviderSettings,functions:onEmailDeliveryJobCreated,firestore:rules --project fresh-prints-dev
+```
+
+Prerequisites: existing `RESEND_API_KEY`; verified sender
+`Fresh Prints <team@funkyfreshprints.com>` for both sender parameters; canonical dev Portal URL
+`https://myprintrequest.dev`. Secret/parameter changes and every production action require a
+separate human checkpoint.
+
 ### Gitignored build outputs (2026-06-24, paths updated 2026-07-08 for `apps/studio/` move)
 
 These paths are **not tracked** and should not be committed:
@@ -154,5 +171,6 @@ See `docs/architecture/FIREBASE.md`. Never commit secrets.
 | Date | Summary |
 |------|---------|
 | 2026-07-08 | Phase 8 closeout — Portal App Hosting, build commands, Portal functions deploy note |
+| 2026-07-16 | Provider-neutral Resend invitations + proof-ready outbox; selective dev deploy checkpoint |
 | 2026-06-24 | Git artifact cleanup; Storage deploy commands; packaging icon note |
 | 2026-06-24 | Initial Fresh Prints deployment doc |

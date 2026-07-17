@@ -239,6 +239,16 @@ Fresh Prints uses:
 * Firestore
 * Firebase Storage
 
+## Transactional email delivery
+
+Cloud Functions are the only email-sending boundary. Invitation and proof-ready workflows compose
+provider-neutral messages and route them through an allowlisted provider adapter. Assisted Creation
+proof submission writes a deterministic `emailDeliveryJobs` outbox record in the same Firestore
+transaction as the proof/status update; a retry-enabled server trigger claims the job with a bounded
+lease and sends outside the transaction. Firestore job state is the durable logical dedupe source of
+truth; provider idempotency is an additional bounded safeguard. Studio only reads/updates provider
+IDs through an owner-only service/callable and never receives credentials.
+
 No custom backend is planned initially.
 
 The Firebase backend should support:

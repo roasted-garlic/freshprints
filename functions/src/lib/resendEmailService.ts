@@ -1,53 +1,19 @@
-interface SendResendEmailInput {
-  apiKey: string;
-  fromEmail: string;
-  toEmail: string;
-  subject: string;
-  html: string;
-}
+import { createHash } from "node:crypto";
 
-import { logger } from "firebase-functions";
+import type { EmailProviderId } from "../../../packages/shared/src/constants/emailProviders.constants";
+import { sendEmail } from "./email/emailRouter";
+import {
+  buildCustomerInvitationEmail,
+  buildTeamInvitationEmail,
+} from "./email/emailTemplates";
 
-async function sendResendEmail(input: SendResendEmailInput): Promise<boolean> {
-  try {
-    const response = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${input.apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from: input.fromEmail,
-        to: [input.toEmail],
-        subject: input.subject,
-        html: input.html,
-      }),
-    });
-
-    if (!response.ok) {
-      const responseBody = await response.text();
-      logger.warn("Resend email rejected.", {
-        toEmail: input.toEmail,
-        fromEmail: input.fromEmail,
-        status: response.status,
-        responseBody,
-      });
-      return false;
-    }
-
-    return true;
-  } catch (error) {
-    logger.error("Resend email request failed.", {
-      toEmail: input.toEmail,
-      fromEmail: input.fromEmail,
-      message: error instanceof Error ? error.message : "unknown",
-    });
-    return false;
-  }
+function invitationIdempotencyKey(kind: string, email: string, resetLink: string): string {
+  return `${kind}-${createHash("sha256").update(`${email}:${resetLink}`).digest("hex")}`;
 }
 
 interface SendTeamInvitationEmailInput {
   apiKey: string;
+  provider: EmailProviderId;
   fromEmail: string;
   toEmail: string;
   displayName: string;
@@ -56,22 +22,28 @@ interface SendTeamInvitationEmailInput {
 }
 
 export async function sendTeamInvitationEmail(input: SendTeamInvitationEmailInput): Promise<boolean> {
-  return sendResendEmail({
-    apiKey: input.apiKey,
-    fromEmail: input.fromEmail,
-    toEmail: input.toEmail,
-    subject: "You're invited to Fresh Prints Studio",
-    html: `
-      <p>Hi ${input.displayName},</p>
-      <p>You were invited to Fresh Prints Studio as <strong>${input.role}</strong>.</p>
-      <p><a href="${input.resetLink}">Set your password</a> to sign in to Fresh Prints Studio.</p>
-      <p>If you did not expect this invitation, you can ignore this email.</p>
-    `,
-  });
+  try {
+    await sendEmail({
+      provider: input.provider,
+      apiKey: input.apiKey,
+      idempotencyKey: invitationIdempotencyKey("team-invite", input.toEmail, input.resetLink),
+      message: buildTeamInvitationEmail({
+        from: input.fromEmail,
+        to: input.toEmail,
+        displayName: input.displayName,
+        role: input.role,
+        resetLink: input.resetLink,
+      }),
+    });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 interface SendCustomerPortalInvitationEmailInput {
   apiKey: string;
+  provider: EmailProviderId;
   fromEmail: string;
   toEmail: string;
   displayName: string;
@@ -82,16 +54,25 @@ interface SendCustomerPortalInvitationEmailInput {
 export async function sendCustomerPortalInvitationEmail(
   input: SendCustomerPortalInvitationEmailInput,
 ): Promise<boolean> {
-  return sendResendEmail({
-    apiKey: input.apiKey,
-    fromEmail: input.fromEmail,
-    toEmail: input.toEmail,
-    subject: "You're invited to Fresh Prints Portal",
-    html: `
-      <p>Hi ${input.displayName},</p>
-      <p>Fresh Prints created a customer account for you with username <strong>${input.username}</strong>.</p>
-      <p><a href="${input.resetLink}">Set your password</a> to sign in to Fresh Prints Portal and manage your print requests.</p>
-      <p>If you did not expect this invitation, you can ignore this email.</p>
-    `,
-  });
+  try {
+    await sendEmail({
+      provider: input.provider,
+      apiKey: input.apiKey,
+      idempotencyKey: invitationIdempotencyKey(
+        "customer-invite",
+        input.toEmail,
+        input.resetLink,
+      ),
+      message: buildCustomerInvitationEmail({
+        from: input.fromEmail,
+        to: input.toEmail,
+        displayName: input.displayName,
+        username: input.username,
+        resetLink: input.resetLink,
+      }),
+    });
+    return true;
+  } catch {
+    return false;
+  }
 }

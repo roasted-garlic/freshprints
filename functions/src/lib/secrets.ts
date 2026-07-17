@@ -14,3 +14,8 @@ export const portalBaseUrl = defineString("PORTAL_BASE_URL", {
 export const invitationFromEmail = defineString("INVITATION_FROM_EMAIL", {
   default: "Fresh Prints <team@funkyfreshprints.com>",
 });
+
+/** Must match a sender on a domain verified in Resend. */
+export const proofNoticeFromEmail = defineString("PROOF_NOTICE_FROM_EMAIL", {
+  default: "Fresh Prints <team@funkyfreshprints.com>",
+});

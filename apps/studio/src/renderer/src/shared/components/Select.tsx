@@ -15,6 +15,7 @@ import { findScrollableAncestor } from "../utils/findScrollableAncestor";
 export interface SelectOption {
   label: string;
   value: string;
+  disabled?: boolean;
 }
 
 /** Matches the CSS max-height for .form-select-menu — used to decide whether the menu should open upward. */
@@ -97,6 +98,9 @@ export function Select({
       const option = options[index];
 
       if (!option) {
+        return;
+      }
+      if (option.disabled) {
         return;
       }
 
@@ -221,9 +225,10 @@ export function Select({
                 <li
                   key={option.value}
                   aria-selected={isSelected}
+                  aria-disabled={option.disabled || undefined}
                   className={`form-select-option${isSelected ? " is-selected" : ""}${
                     isHighlighted ? " is-highlighted" : ""
-                  }`}
+                  }${option.disabled ? " is-disabled" : ""}`}
                   onKeyDown={(event) => handleOptionKeyDown(event, index)}
                   onMouseEnter={() => setHighlightedIndex(index)}
                   onMouseDown={(event) => event.preventDefault()}

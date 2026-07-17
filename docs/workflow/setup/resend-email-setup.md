@@ -2,7 +2,8 @@
 
 ## Purpose
 
-This guide configures Resend for Fresh Prints invitation emails (Studio team users and Portal customers).
+This guide configures Resend for Fresh Prints invitation emails (Studio team users and Portal
+customers) and Assisted Creation proof-ready notices.
 
 When an owner or admin creates a team user, the `createTeamUser` Cloud Function:
 
@@ -15,6 +16,12 @@ When an owner or admin creates a team user, the `createTeamUser` Cloud Function:
 When an owner or admin creates a customer with Portal access, `createCustomerWithPortalInvite` follows the same Resend + password-reset-link pattern and sends **You're invited to Fresh Prints Portal**.
 
 The Resend API key is stored only in Firebase Functions secrets.
+
+When owner/admin staff attach the first or a revised Assisted Creation proof,
+`staffAddAssistedCreationProof` commits a deterministic `emailDeliveryJobs` record with the proof.
+`onEmailDeliveryJobCreated` sends the notice asynchronously. A provider failure never rolls back the
+proof. Studio owners may independently select invitation and proof providers in Settings; Resend is
+the only enabled choice and Brevo remains disabled.
 
 ## Prerequisites
 
@@ -93,6 +100,21 @@ Invitation emails are sent from:
 Fresh Prints <team@funkyfreshprints.com>
 ```
 
+Proof notices use the same confirmed sender:
+
+```txt
+PROOF_NOTICE_FROM_EMAIL=Fresh Prints <team@funkyfreshprints.com>
+```
+
+Canonical CTA hosts are resolved by Firebase project, not from a browser request:
+
+- `fresh-prints-dev` → `https://myprintrequest.dev`
+- production mapping → `https://myprintrequest.com`
+
+Unknown deployed projects fail closed. `PORTAL_BASE_URL` may override proof links only for a
+localhost Functions emulator. Do not change shared parameters or secrets without a human
+checkpoint.
+
 Verify the secret exists:
 
 ```bash
@@ -112,13 +134,15 @@ npm run build
 cd ..
 ```
 
-Deploy functions:
+Deploy only after explicit environment approval. For the email slice on dev, use the selective
+command in `docs/standards/DEPLOYMENT.md`; do not use a bare full Functions deploy while the
+repository's orphan remote-function warning remains.
 
 ```bash
-firebase deploy --only functions
+firebase deploy --only functions:createTeamUser,functions:createCustomerWithPortalInvite,functions:staffAddAssistedCreationProof,functions:updateEmailProviderSettings,functions:onEmailDeliveryJobCreated,firestore:rules --project fresh-prints-dev
 ```
 
-The `createTeamUser` callable declares both secrets and injects them at runtime.
+Invitation callables and the delivery trigger bind `RESEND_API_KEY` at runtime.
 
 ### Step 6: Confirm Firebase Auth Email Settings
 
@@ -134,6 +158,11 @@ Still confirm in Firebase Console:
 No Firebase SMTP configuration is required for this flow.
 
 ## Verification Steps
+
+Before live verification, run the automated commands in `docs/standards/TESTING.md`. Live email
+delivery is a manual checkpoint: verify owner-only provider Settings, invitation regression, one
+email for the first proof, one additional email for a revised proof, correct sender/subject, and a
+CTA to `/custom-designs?flow=assisted&step=status`.
 
 ### Verify Deployment
 

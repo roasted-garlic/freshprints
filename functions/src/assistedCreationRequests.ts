@@ -30,6 +30,7 @@ import type {
   AssistedCreationReferenceImage,
   AssistedCreationRevisionEntry,
 } from "../../packages/shared/src/types/assistedCreation/assistedCreation.types";
+import { EMAIL_DELIVERY_JOBS_COLLECTION } from "../../packages/shared/src/constants/emailProviders.constants";
 import {
   AssistedCreationTransitionError,
   assertAssistedCreationIsOpen,
@@ -55,6 +56,8 @@ import {
   unauthenticated,
 } from "./lib/errors";
 import { requirePortalCustomer } from "./lib/etsy/requirePortalCustomer";
+import { loadEmailProviderSettings } from "./lib/email/emailSettings";
+import { createProofEmailJobId } from "./lib/email/emailJobIdentity";
 
 function mapHttpsError(error: unknown, fallback: string): never {
   if (error instanceof HttpsError) {
@@ -647,7 +650,12 @@ export const staffAddAssistedCreationProof = onCall(
         throw invalidArgument("Proof file is too large.");
       }
 
+      const emailSettings = await loadEmailProviderSettings();
       const docRef = adminDb.collection(ASSISTED_CREATION_COLLECTION).doc(requestId);
+      const deliveryJobId = createProofEmailJobId(requestId, proofId);
+      const deliveryJobRef = adminDb
+        .collection(EMAIL_DELIVERY_JOBS_COLLECTION)
+        .doc(deliveryJobId);
       await adminDb.runTransaction(async (tx) => {
         const snap = await tx.get(docRef);
         if (!snap.exists) {
@@ -656,6 +664,10 @@ export const staffAddAssistedCreationProof = onCall(
         const current = snap.data()!;
         const fromStatus = current.status as AssistedCreationStatus;
         const customerUid = String(current.customerUid ?? "");
+        const customerId = String(current.customerId ?? "");
+        if (!customerUid || !customerId) {
+          throw failedPrecondition("This request is missing its customer linkage.");
+        }
         const expectedPrefix = `assisted-creation/${customerUid}/${requestId}/proofs/`;
         if (!storagePath.startsWith(expectedPrefix)) {
           throw invalidArgument("Invalid proof storage path.");
@@ -697,6 +709,21 @@ export const staffAddAssistedCreationProof = onCall(
             fromStatus,
             toStatus: "proof_ready",
           }),
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+        tx.create(deliveryJobRef, {
+          id: deliveryJobId,
+          kind: "assisted_proof_ready",
+          requestId,
+          proofId,
+          customerId,
+          customerUid,
+          provider: emailSettings.proofNoticeProvider,
+          status: "pending",
+          attemptCount: 0,
+          maxAttempts: 5,
+          createdBy: caller.id,
+          createdAt: FieldValue.serverTimestamp(),
           updatedAt: FieldValue.serverTimestamp(),
         });
       });

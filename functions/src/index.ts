@@ -51,6 +51,7 @@ export { resetAiEnrichmentForProcessing } from "./resetAiEnrichmentForProcessing
 export { testAiEnrichmentPlayground } from "./testAiEnrichmentPlayground";
 export { testAiEnrichmentTagRerank } from "./testAiEnrichmentTagRerank";
 export { updateAiEnrichmentSettings } from "./updateAiEnrichmentSettings";
+export { updateEmailProviderSettings } from "./updateEmailProviderSettings";
 export { wipeOperationalTestData } from "./wipeOperationalTestData";
 export { purgeArchivedDesignAssets } from "./purgeArchivedDesignAssets";
 export { archiveStaleRejectedDesigns } from "./archiveStaleRejectedDesigns";
@@ -61,3 +62,4 @@ export {
   onCustomerFavoriteCreated,
   onCustomerFavoriteDeleted,
 } from "./onCustomerFavoriteChanged";
+export { onEmailDeliveryJobCreated } from "./onEmailDeliveryJobCreated";
