@@ -20,6 +20,8 @@ import { assistedCreationStatusTone } from '../utils/assistedCreationDisplay';
 import { AssistedCreationActionsMenu } from './AssistedCreationActionsMenu';
 import {
   AssistedCreationDetailTabs,
+  ExpandableBlock,
+  StaffProofNote,
   type AssistedDetailTab,
 } from './AssistedCreationDetailPanels';
 import { AssistedCreationUpdateModal } from './AssistedCreationUpdateModal';
@@ -147,6 +149,8 @@ export function AssistedCreationStatusPanel({ onStartNew }: AssistedCreationStat
   const canCancel = isAssistedCreationOpenStatus(latest.status);
   const canUpdate = canCustomerUpdateAssistedCreation(latest.status);
   const canRespond = latest.status === 'proof_ready';
+  const latestProof =
+    latest.proofs.length > 0 ? latest.proofs[latest.proofs.length - 1] : null;
 
   return (
     <section className="etsy-wizard-shell assisted-creation-status">
@@ -192,97 +196,121 @@ export function AssistedCreationStatusPanel({ onStartNew }: AssistedCreationStat
             <p className="portal-muted">Loading proof image…</p>
           )}
 
-          <fieldset className="assisted-creation-rating-fieldset">
-            <legend>Rate this design (optional)</legend>
-            <div className="assisted-creation-rating-row">
-              {[1, 2, 3, 4, 5].map((value) => (
+          <StaffProofNote note={latestProof?.note} />
+
+          <section
+            aria-labelledby="assisted-creation-respond-heading"
+            className="assisted-creation-proof-response"
+          >
+            <h3
+              className="assisted-creation-proof-response-heading"
+              id="assisted-creation-respond-heading"
+            >
+              Respond to proof
+            </h3>
+
+            <ExpandableBlock title="Approve">
+              <div className="assisted-creation-proof-response-fields">
+                <fieldset className="assisted-creation-rating-fieldset">
+                  <legend>Rate this design (optional)</legend>
+                  <div className="assisted-creation-rating-row">
+                    {[1, 2, 3, 4, 5].map((value) => (
+                      <button
+                        aria-pressed={rating === value}
+                        className={`assisted-creation-rating-star${rating != null && rating >= value ? ' is-selected' : ''}`}
+                        key={value}
+                        onClick={() => setRating((current) => (current === value ? null : value))}
+                        type="button"
+                      >
+                        {value}★
+                      </button>
+                    ))}
+                  </div>
+                </fieldset>
+
+                <label className="portal-field">
+                  <span>Approval note (optional)</span>
+                  <textarea
+                    maxLength={ASSISTED_CREATION_FIELD_LIMITS.approvalNote}
+                    onChange={(event) => setApprovalNote(event.target.value)}
+                    placeholder="Anything you loved, or a quick thank-you"
+                    rows={2}
+                    value={approvalNote}
+                  />
+                </label>
+
+                <div className="etsy-wizard-actions assisted-creation-proof-actions">
+                  <button
+                    className="portal-button assisted-creation-approve-button"
+                    disabled={busy}
+                    onClick={() => {
+                      setBusy(true);
+                      setActionError(null);
+                      void assistedCreationService
+                        .respondToProof({
+                          requestId: latest.id,
+                          decision: 'approve',
+                          note: approvalNote.trim() || undefined,
+                          rating: rating ?? undefined,
+                        })
+                        .then(() => {
+                          setApprovalNote('');
+                          setRating(null);
+                        })
+                        .catch((error: unknown) => {
+                          setActionError(
+                            error instanceof Error ? error.message : 'Unable to approve.',
+                          );
+                        })
+                        .finally(() => setBusy(false));
+                    }}
+                    type="button"
+                  >
+                    Approve &amp; send
+                  </button>
+                </div>
+              </div>
+            </ExpandableBlock>
+
+            <ExpandableBlock title="Request revisions">
+              <div className="assisted-creation-proof-response-fields">
+                <label className="portal-field">
+                  <span>What should we change?</span>
+                  <textarea
+                    maxLength={ASSISTED_CREATION_FIELD_LIMITS.revisionNote}
+                    onChange={(event) => setRevisionNote(event.target.value)}
+                    placeholder="Describe the changes you need"
+                    rows={3}
+                    value={revisionNote}
+                  />
+                </label>
                 <button
-                  aria-pressed={rating === value}
-                  className={`assisted-creation-rating-star${rating != null && rating >= value ? ' is-selected' : ''}`}
-                  key={value}
-                  onClick={() => setRating((current) => (current === value ? null : value))}
+                  className="portal-button assisted-creation-revision-button"
+                  disabled={busy || !revisionNote.trim()}
+                  onClick={() => {
+                    setBusy(true);
+                    setActionError(null);
+                    void assistedCreationService
+                      .respondToProof({
+                        requestId: latest.id,
+                        decision: 'request_revision',
+                        note: revisionNote,
+                      })
+                      .then(() => setRevisionNote(''))
+                      .catch((error: unknown) => {
+                        setActionError(
+                          error instanceof Error ? error.message : 'Unable to request revision.',
+                        );
+                      })
+                      .finally(() => setBusy(false));
+                  }}
                   type="button"
                 >
-                  {value}★
+                  Send revision notes
                 </button>
-              ))}
-            </div>
-          </fieldset>
-
-          <label className="portal-field">
-            <span>Approval note (optional)</span>
-            <textarea
-              maxLength={ASSISTED_CREATION_FIELD_LIMITS.approvalNote}
-              onChange={(event) => setApprovalNote(event.target.value)}
-              placeholder="Anything you loved, or a quick thank-you"
-              rows={2}
-              value={approvalNote}
-            />
-          </label>
-
-          <div className="etsy-wizard-actions assisted-creation-proof-actions">
-            <button
-              className="portal-button portal-button-primary"
-              disabled={busy}
-              onClick={() => {
-                setBusy(true);
-                setActionError(null);
-                void assistedCreationService
-                  .respondToProof({
-                    requestId: latest.id,
-                    decision: 'approve',
-                    note: approvalNote.trim() || undefined,
-                    rating: rating ?? undefined,
-                  })
-                  .then(() => {
-                    setApprovalNote('');
-                    setRating(null);
-                  })
-                  .catch((error: unknown) => {
-                    setActionError(error instanceof Error ? error.message : 'Unable to approve.');
-                  })
-                  .finally(() => setBusy(false));
-              }}
-              type="button"
-            >
-              Approve &amp; send
-            </button>
-          </div>
-
-          <label className="portal-field">
-            <span>Request revisions</span>
-            <textarea
-              maxLength={ASSISTED_CREATION_FIELD_LIMITS.revisionNote}
-              onChange={(event) => setRevisionNote(event.target.value)}
-              placeholder="What should we change?"
-              rows={3}
-              value={revisionNote}
-            />
-          </label>
-          <button
-            className="portal-button portal-button-secondary"
-            disabled={busy || !revisionNote.trim()}
-            onClick={() => {
-              setBusy(true);
-              setActionError(null);
-              void assistedCreationService
-                .respondToProof({
-                  requestId: latest.id,
-                  decision: 'request_revision',
-                  note: revisionNote,
-                })
-                .then(() => setRevisionNote(''))
-                .catch((error: unknown) => {
-                  setActionError(
-                    error instanceof Error ? error.message : 'Unable to request revision.',
-                  );
-                })
-                .finally(() => setBusy(false));
-            }}
-            type="button"
-          >
-            Send revision notes
-          </button>
+              </div>
+            </ExpandableBlock>
+          </section>
         </div>
       ) : null}
 

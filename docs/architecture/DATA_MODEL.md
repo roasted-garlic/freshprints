@@ -1083,6 +1083,8 @@ export interface EtsyRecommendationSuggestion {
   active: boolean;
   /** Lowercase normalized label for dedupe. */
   labelKey: string;
+  /** Present when created via approve of an `etsySuggestionRequests` row; absent for staff-added overlays. */
+  sourceSuggestionRequestId?: string;
   createdAt: Timestamp;
   updatedAt: Timestamp;
   createdBy: string;
@@ -1119,7 +1121,7 @@ export interface EtsySuggestionRequest {
 }
 ```
 
-Portal customers submit via `submitEtsySuggestionRequest` (pending only; daily per-customer cap; dedupe pending by customer+kind+labelKey). Owner/admin approve/reject via callables; approve creates (or links) an active `etsyRecommendationSuggestions` overlay.
+Portal customers submit via `submitEtsySuggestionRequest` (pending only; daily per-customer cap; dedupe pending by customer+kind+labelKey). Owner/admin approve/reject via callables; approve creates (or links) an active `etsyRecommendationSuggestions` overlay and sets `sourceSuggestionRequestId` on newly created overlays. Staff-added overlays (via `addEtsyRecommendationSuggestion`) omit that field. Studio live-list UI badges approved-from-suggestion rows; awaiting-review rows stay in the Pending suggestions queue.
 
 **Rules:** customers may read own `etsyRecommendationRequests` (`customerUid == auth.uid`); active staff (`owner` / `admin` / `helper`) may read all for Studio Custom Designs → Etsy search (ADR-FP-087n). Request writes via Admin SDK callables only. `etsyRecommendationSuggestions`: signed-in read; client writes denied; add/deactivate via owner/admin callables. `etsySuggestionRequests`: staff read; client writes denied. Legacy config/cache/rate-limit collections remain deny-all.
 

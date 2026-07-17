@@ -34,7 +34,7 @@ function DetailRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function ExpandableBlock({
+export function ExpandableBlock({
   children,
   defaultOpen = false,
   title,
@@ -48,6 +48,20 @@ function ExpandableBlock({
       <summary className="assisted-creation-expand-summary">{title}</summary>
       <div className="assisted-creation-expand-body">{children}</div>
     </details>
+  );
+}
+
+/** Staff note attached to a proof — shown with the proof, not only in History. */
+export function StaffProofNote({ note }: { note: string | null | undefined }) {
+  const trimmed = note?.trim() ?? '';
+  if (!trimmed) {
+    return null;
+  }
+  return (
+    <aside aria-label="Note from Fresh Prints" className="assisted-creation-staff-proof-note">
+      <p className="assisted-creation-staff-proof-note-label">Note from Fresh Prints</p>
+      <p className="assisted-creation-staff-proof-note-text">{trimmed}</p>
+    </aside>
   );
 }
 
@@ -183,10 +197,10 @@ function ProofDetailModal({
           ) : (
             <p className="portal-muted">Loading proof…</p>
           )}
+          <StaffProofNote note={proof.note} />
           <dl className="assisted-creation-detail-rows">
             <DetailRow label="File" value={proof.fileName || ''} />
             <DetailRow label="Sent" value={formatAssistedWhen(proof.createdAt)} />
-            <DetailRow label="Staff note" value={proof.note?.trim() ?? ''} />
           </dl>
         </div>
         <footer className="modal-footer">
@@ -226,10 +240,13 @@ export function AssistedCreationProofsPanel({ request }: { request: AssistedCrea
                   onClick={() => setSelectedProofId(proof.id)}
                   type="button"
                 >
-                  <span className="assisted-creation-proof-row-title">Proof {index + 1}</span>
+                  <span className="assisted-creation-proof-row-title">
+                    Proof {index + 1}
+                    {index === proofs.length - 1 ? ' (latest)' : ''}
+                  </span>
                   <span className="assisted-creation-proof-row-meta">
                     {formatAssistedWhen(proof.createdAt) || 'Sent'}
-                    {proof.note?.trim() ? ` · ${proof.note.trim()}` : ''}
+                    {proof.note?.trim() ? ' · Has note' : ''}
                   </span>
                 </button>
               </li>
@@ -259,12 +276,24 @@ export function AssistedCreationHistoryPanel({ request }: { request: AssistedCre
         {history.length === 0 ? (
           <p className="portal-muted">No history yet.</p>
         ) : (
-          <ol className="assisted-creation-history-list">
+          <ol className="assisted-creation-history-chat">
             {history.map((entry) => (
-              <li key={entry.key}>
-                <strong>{entry.title}</strong>
-                {entry.when ? <span className="assisted-creation-history-when">{entry.when}</span> : null}
-                {entry.note ? <span className="assisted-creation-history-note">{entry.note}</span> : null}
+              <li
+                className={`assisted-creation-history-chat-row is-${entry.actor}`}
+                key={entry.key}
+              >
+                <div className="assisted-creation-history-chat-meta">
+                  <span className="assisted-creation-history-chat-role">{entry.roleLabel}</span>
+                  {entry.when ? (
+                    <span className="assisted-creation-history-chat-when">{entry.when}</span>
+                  ) : null}
+                </div>
+                <div className="assisted-creation-history-chat-bubble">
+                  <strong className="assisted-creation-history-chat-title">{entry.title}</strong>
+                  {entry.note ? (
+                    <p className="assisted-creation-history-chat-note">{entry.note}</p>
+                  ) : null}
+                </div>
               </li>
             ))}
           </ol>

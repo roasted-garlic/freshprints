@@ -15,6 +15,7 @@ import { useEtsySuggestionLists } from "../hooks/useEtsySuggestionLists";
 
 interface EtsySuggestionListsSettingsSectionProps {
   canManage: boolean;
+  onBrowseSubjectsAndTones: () => void;
 }
 
 function SuggestionListModal({
@@ -52,6 +53,32 @@ function SuggestionListModal({
     });
   }, [overlays, query]);
 
+  const fromSuggestionCount = useMemo(
+    () => overlays.filter((overlay) => Boolean(overlay.sourceSuggestionRequestId)).length,
+    [overlays],
+  );
+  const staffAddedCount = overlays.length - fromSuggestionCount;
+
+  const summaryHint = (() => {
+    if (overlays.length === 0) {
+      return "No live additions yet. Pending customer requests stay under Pending suggestions until approved.";
+    }
+    const parts: string[] = [];
+    if (staffAddedCount > 0) {
+      parts.push(`${staffAddedCount} staff-added`);
+    }
+    if (fromSuggestionCount > 0) {
+      parts.push(
+        `${fromSuggestionCount} from customer suggestion${fromSuggestionCount === 1 ? "" : "s"}`,
+      );
+    }
+    const counts = parts.join(" · ");
+    if (fromSuggestionCount > 0) {
+      return `${counts}. Items marked “From suggestion” were approved from Pending suggestions. Search to find one, then deactivate if needed.`;
+    }
+    return `${counts}. Search to find one, then deactivate if needed. Pending customer requests stay under Pending suggestions until approved.`;
+  })();
+
   return (
     <div className="modal-overlay modal-overlay-blur" onClick={onClose} role="presentation">
       <Modal
@@ -64,10 +91,7 @@ function SuggestionListModal({
         <ModalHeader>
           <div className="settings-etsy-suggest-modal-heading">
             <h2 id={titleId}>{title}</h2>
-            <p className="settings-field-hint">
-              {overlays.length} admin addition{overlays.length === 1 ? "" : "s"}. Search to find one,
-              then deactivate if needed.
-            </p>
+            <p className="settings-field-hint">{summaryHint}</p>
           </div>
         </ModalHeader>
         <ModalBody>
@@ -86,30 +110,43 @@ function SuggestionListModal({
           {isLoading ? (
             <p className="settings-section-status">Loading…</p>
           ) : overlays.length === 0 ? (
-            <p className="settings-section-status">No admin additions yet.</p>
+            <p className="settings-section-status">No live additions yet.</p>
           ) : filtered.length === 0 ? (
             <p className="settings-section-status">No suggestions match “{query.trim()}”.</p>
           ) : (
             <ul className="settings-etsy-suggest-list">
-              {filtered.map((overlay) => (
-                <li className="settings-etsy-suggest-item" key={overlay.id}>
-                  <div className="settings-etsy-suggest-item-copy">
-                    <span className="settings-etsy-suggest-item-label">{overlay.label}</span>
-                    {kind === "subject" && overlay.apiToken !== overlay.label ? (
-                      <span className="settings-field-hint">token: {overlay.apiToken}</span>
+              {filtered.map((overlay) => {
+                const fromSuggestion = Boolean(overlay.sourceSuggestionRequestId);
+                return (
+                  <li className="settings-etsy-suggest-item" key={overlay.id}>
+                    <div className="settings-etsy-suggest-item-copy">
+                      <div className="settings-etsy-suggest-item-label-row">
+                        <span className="settings-etsy-suggest-item-label">{overlay.label}</span>
+                        {fromSuggestion ? (
+                          <span className="badge badge-info">From suggestion</span>
+                        ) : null}
+                      </div>
+                      {kind === "subject" && overlay.apiToken !== overlay.label ? (
+                        <span className="settings-field-hint">token: {overlay.apiToken}</span>
+                      ) : null}
+                      {fromSuggestion ? (
+                        <span className="settings-field-hint">
+                          Approved from a customer suggestion request
+                        </span>
+                      ) : null}
+                    </div>
+                    {canManage ? (
+                      <Button
+                        disabled={isMutating}
+                        onClick={() => onDeactivate(overlay.id)}
+                        variant="secondary"
+                      >
+                        Deactivate
+                      </Button>
                     ) : null}
-                  </div>
-                  {canManage ? (
-                    <Button
-                      disabled={isMutating}
-                      onClick={() => onDeactivate(overlay.id)}
-                      variant="secondary"
-                    >
-                      Deactivate
-                    </Button>
-                  ) : null}
-                </li>
-              ))}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </ModalBody>
@@ -283,6 +320,7 @@ function KindPanel({
 
 export function EtsySuggestionListsSettingsSection({
   canManage,
+  onBrowseSubjectsAndTones,
 }: EtsySuggestionListsSettingsSectionProps) {
   const [activeKind, setActiveKind] = useState<EtsyRecommendationSuggestionKind>("subject");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -297,14 +335,24 @@ export function EtsySuggestionListsSettingsSection({
 
   return (
     <section aria-labelledby="etsy-suggest-settings-title" className="card settings-section">
-      <header className="settings-section-header">
-        <h2 className="settings-section-title" id="etsy-suggest-settings-title">
-          Live lists
-        </h2>
-        <p className="settings-section-description">
-          Subject and tone helpers shown in Portal Find a design. Free-text answers stay allowed;
-          these are shortcuts, not a closed list.
-        </p>
+      <header className="settings-section-header settings-etsy-suggest-live-header">
+        <div className="settings-etsy-suggest-live-header-copy">
+          <h2 className="settings-section-title" id="etsy-suggest-settings-title">
+            Live lists
+          </h2>
+          <p className="settings-section-description">
+            Subject and tone helpers shown in Portal Find a design. Free-text answers stay allowed;
+            these are shortcuts, not a closed list.
+          </p>
+        </div>
+        <Button
+          className="settings-etsy-suggest-live-header-action"
+          onClick={onBrowseSubjectsAndTones}
+          type="button"
+          variant="secondary"
+        >
+          Browse subjects & tones
+        </Button>
       </header>
 
       <div className="settings-etsy-suggest-tabs" role="tablist" aria-label="Suggestion kind">

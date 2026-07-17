@@ -55,7 +55,7 @@ export function EtsyPendingSuggestionRequestsSection({
         </h2>
         <p className="settings-section-description">
           Customers asked to add a subject or tone helper. Approve to publish it to the live list for
-          everyone, or reject to dismiss.
+          everyone (shown there with a “From suggestion” badge), or reject to dismiss.
         </p>
       </header>
 

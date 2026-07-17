@@ -1,13 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Binoculars, MessageSquare, Sparkles, Wand2 } from "lucide-react";
 
 import { useAuth } from "../../auth/hooks/useAuth";
 import { permissionService } from "../../permissions/services/permissionService";
 import { EtsySuggestionListsSettingsSection } from "../../settings/components/EtsySuggestionListsSettingsSection";
 import { useShellHeaderConfig } from "../../../shared/hooks/useShellHeaderConfig";
+import { AssistedCreationRequestsSection } from "../components/AssistedCreationRequestsSection";
+import { BrowseSubjectsAndTonesModal } from "../components/BrowseSubjectsAndTonesModal";
 import { EtsyPendingSuggestionRequestsSection } from "../components/EtsyPendingSuggestionRequestsSection";
 import { EtsyRecommendationRequestsSection } from "../components/EtsyRecommendationRequestsSection";
-import { AssistedCreationRequestsSection } from "../components/AssistedCreationRequestsSection";
 
 type CustomerRequestsTab = "etsy_search" | "suggestions" | "ai" | "assisted";
 
@@ -16,6 +17,11 @@ export function CustomerRequestsPage() {
   const canManageOverlays = permissionService.canManageSettings(user);
   const [tab, setTab] = useState<CustomerRequestsTab>("assisted");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [browseListsOpen, setBrowseListsOpen] = useState(false);
+
+  const openBrowseLists = useCallback(() => {
+    setBrowseListsOpen(true);
+  }, []);
 
   useShellHeaderConfig(
     useMemo(
@@ -24,6 +30,7 @@ export function CustomerRequestsPage() {
         description:
           "Assisted creation, AI (soon), Etsy Find searches, and suggestion approvals.",
         search: null,
+        actions: null,
         primaryAction: null,
       }),
       [],
@@ -37,6 +44,12 @@ export function CustomerRequestsPage() {
     const timer = window.setTimeout(() => setToastMessage(null), 4000);
     return () => window.clearTimeout(timer);
   }, [toastMessage]);
+
+  useEffect(() => {
+    if (tab !== "suggestions") {
+      setBrowseListsOpen(false);
+    }
+  }, [tab]);
 
   return (
     <main className="page-layout page-layout-shell customer-requests-page">
@@ -91,7 +104,10 @@ export function CustomerRequestsPage() {
             canResolve={canManageOverlays}
             onToast={setToastMessage}
           />
-          <EtsySuggestionListsSettingsSection canManage={canManageOverlays} />
+          <EtsySuggestionListsSettingsSection
+            canManage={canManageOverlays}
+            onBrowseSubjectsAndTones={openBrowseLists}
+          />
         </div>
       ) : null}
 
@@ -109,6 +125,10 @@ export function CustomerRequestsPage() {
           canRestore={permissionService.isOwner(user)}
           onToast={setToastMessage}
         />
+      ) : null}
+
+      {browseListsOpen ? (
+        <BrowseSubjectsAndTonesModal onClose={() => setBrowseListsOpen(false)} />
       ) : null}
 
       {toastMessage ? (

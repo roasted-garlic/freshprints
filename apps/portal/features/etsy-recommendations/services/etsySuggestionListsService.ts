@@ -54,6 +54,10 @@ function mapOverlayDoc(
   const aliases = Array.isArray(data.aliases)
     ? data.aliases.filter((entry): entry is string => typeof entry === 'string' && entry.trim().length > 0)
     : undefined;
+  const sourceSuggestionRequestId =
+    typeof data.sourceSuggestionRequestId === 'string' && data.sourceSuggestionRequestId.trim()
+      ? data.sourceSuggestionRequestId.trim()
+      : undefined;
 
   return {
     id,
@@ -63,6 +67,7 @@ function mapOverlayDoc(
     ...(aliases?.length ? { aliases } : {}),
     active: true,
     labelKey,
+    ...(sourceSuggestionRequestId ? { sourceSuggestionRequestId } : {}),
   };
 }
 

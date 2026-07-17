@@ -43,6 +43,10 @@ function mapOverlay(
   const aliases = Array.isArray(data.aliases)
     ? data.aliases.filter((entry): entry is string => typeof entry === "string" && Boolean(entry.trim()))
     : undefined;
+  const sourceSuggestionRequestId =
+    typeof data.sourceSuggestionRequestId === "string" && data.sourceSuggestionRequestId.trim()
+      ? data.sourceSuggestionRequestId.trim()
+      : undefined;
 
   return {
     id,
@@ -52,6 +56,7 @@ function mapOverlay(
     ...(aliases?.length ? { aliases } : {}),
     active: true,
     labelKey,
+    ...(sourceSuggestionRequestId ? { sourceSuggestionRequestId } : {}),
   };
 }
 
@@ -63,6 +68,20 @@ function mapCallableError(error: unknown): Error {
     return error;
   }
   return new Error("Unable to update Etsy suggestion lists.");
+}
+
+function mapSnapshotOverlays(
+  docs: { id: string; data: () => Record<string, unknown> }[],
+): AdminSuggestionOverlay[] {
+  const overlays: AdminSuggestionOverlay[] = [];
+  for (const docSnap of docs) {
+    const mapped = mapOverlay(docSnap.id, docSnap.data());
+    if (mapped) {
+      overlays.push(mapped);
+    }
+  }
+  overlays.sort((a, b) => a.label.localeCompare(b.label));
+  return overlays;
 }
 
 export const etsySuggestionListsService = {
@@ -78,15 +97,40 @@ export const etsySuggestionListsService = {
         where("active", "==", true),
       ),
       (snapshot) => {
-        const overlays: AdminSuggestionOverlay[] = [];
-        for (const docSnap of snapshot.docs) {
-          const mapped = mapOverlay(docSnap.id, docSnap.data() as Record<string, unknown>);
-          if (mapped) {
-            overlays.push(mapped);
-          }
-        }
-        overlays.sort((a, b) => a.label.localeCompare(b.label));
-        onData(overlays);
+        onData(
+          mapSnapshotOverlays(
+            snapshot.docs.map((docSnap) => ({
+              id: docSnap.id,
+              data: () => docSnap.data() as Record<string, unknown>,
+            })),
+          ),
+        );
+      },
+      (error) => {
+        onError(error.message);
+      },
+    );
+  },
+
+  /** Active admin overlays of any kind (Portal live list additions). */
+  subscribeActiveAll(
+    onData: (overlays: AdminSuggestionOverlay[]) => void,
+    onError: (message: string) => void,
+  ): Unsubscribe {
+    return onSnapshot(
+      query(
+        collection(db, ETSY_RECOMMENDATION_SUGGESTIONS_COLLECTION),
+        where("active", "==", true),
+      ),
+      (snapshot) => {
+        onData(
+          mapSnapshotOverlays(
+            snapshot.docs.map((docSnap) => ({
+              id: docSnap.id,
+              data: () => docSnap.data() as Record<string, unknown>,
+            })),
+          ),
+        );
       },
       (error) => {
         onError(error.message);

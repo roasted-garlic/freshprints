@@ -322,7 +322,6 @@ function AssistedProofDetailModal({
               label="Submitted by"
               value={proof.createdBy ? `Staff · ${proof.createdBy}` : "Staff"}
             />
-            <AnswerRow label="Staff note" value={proof.note?.trim() ?? ""} />
           </dl>
           {proof.relatedNotes.length > 0 ? (
             <div className="customer-requests-assisted-proof-modal-notes">
@@ -811,13 +810,18 @@ function AssistedDetail({
                         Choose proof image
                       </Button>
                     ) : (
-                      <>
-                        <div className="customer-requests-assisted-proof-pending">
-                          {pendingProofPreviewUrl ? (
+                      <div className="customer-requests-assisted-proof-pending">
+                        {pendingProofPreviewUrl ? (
+                          <div className="customer-requests-assisted-proof-pending-preview">
                             <img alt="Pending proof preview" src={pendingProofPreviewUrl} />
-                          ) : null}
-                          <p className="settings-field-hint">{pendingProofFile.name}</p>
-                        </div>
+                          </div>
+                        ) : null}
+                        <p
+                          className="customer-requests-assisted-proof-pending-name"
+                          title={pendingProofFile.name}
+                        >
+                          {pendingProofFile.name}
+                        </p>
                         <label className="form-field">
                           <span>Proof note (optional)</span>
                           <input
@@ -838,7 +842,7 @@ function AssistedDetail({
                             Submit to customer
                           </Button>
                         </div>
-                      </>
+                      </div>
                     )}
                   </div>
                 ) : null}

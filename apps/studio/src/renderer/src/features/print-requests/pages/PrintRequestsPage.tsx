@@ -415,6 +415,10 @@ export function PrintRequestsPage() {
   );
 
   const hasAppliedInitialUrlSelectionRef = useRef(false);
+  /** Last list tab we derived for the URL `requestId` — used to follow Add-to-Show moves without fighting intentional tab clicks. */
+  const previousLinkedListTabRef = useRef<PrintRequestListTab | null>(null);
+  /** Last URL `requestId` we hydrated — deep links / new ids still force tab + triage reveal. */
+  const previousSelectedRequestIdParamRef = useRef<string | null>(null);
 
   useEffect(() => {
     setIsRequestDetailExpanded(false);
@@ -529,17 +533,47 @@ export function PrintRequestsPage() {
         return;
       }
 
-      hasAppliedInitialUrlSelectionRef.current = true;
+      const isInitialHydration = !hasAppliedInitialUrlSelectionRef.current;
+      const requestIdChanged = previousSelectedRequestIdParamRef.current !== selectedRequestIdParam;
+      const linkedTabChanged =
+        previousLinkedListTabRef.current !== null &&
+        previousLinkedListTabRef.current !== linkedRequestTab;
 
+      hasAppliedInitialUrlSelectionRef.current = true;
+      previousSelectedRequestIdParamRef.current = selectedRequestIdParam;
+      previousLinkedListTabRef.current = linkedRequestTab;
+
+      /**
+       * Follow the URL request onto its stage tab only for deep links, a new requestId, or when
+       * allocations move the same request (Add to Show). If the user already switched
+       * `activeListTab` while a stale requestId is still in the URL (common race on the first
+       * stage-tab click), strip the requestId instead of snapping the tab back.
+       */
       if (activeListTab !== linkedRequestTab) {
-        setActiveListTab(linkedRequestTab);
+        const shouldFollowRequest =
+          isInitialHydration || requestIdChanged || linkedTabChanged;
+
+        if (shouldFollowRequest) {
+          setActiveListTab(linkedRequestTab);
+        } else {
+          navigate(getPrintRequestsPath({ tab: activeListTab }), { replace: true });
+          return;
+        }
       }
 
       if (selectedRequestId !== selectedRequestIdParam) {
         setSelectedRequestId(selectedRequestIdParam);
       }
 
-      if (linkedRequestTab === "working" && workingTriageFilter !== "all") {
+      /**
+       * Reveal a deep-linked Working request once. Do not reset triage on later filter clicks —
+       * that caused Active/Stale/Empty/All to flash then snap back to All.
+       */
+      if (
+        (isInitialHydration || requestIdChanged) &&
+        linkedRequestTab === "working" &&
+        workingTriageFilter !== "all"
+      ) {
         const isHiddenByTriage = !requestsByListTab.working
           .filter((request) => {
             const bucket = resolvePrintRequestWorkingTriageBucket({
@@ -555,7 +589,7 @@ export function PrintRequestsPage() {
         }
       }
 
-      if (listSearchQuery.trim()) {
+      if ((isInitialHydration || requestIdChanged) && listSearchQuery.trim()) {
         const matchesSearch = filterPrintRequestsByListSearch(
           requestsByListTab[linkedRequestTab],
           listSearchQuery,
@@ -567,7 +601,7 @@ export function PrintRequestsPage() {
         }
       }
 
-      if (tabParam !== linkedRequestTab) {
+      if (tabParam !== linkedRequestTab && (isInitialHydration || requestIdChanged || linkedTabChanged)) {
         navigate(
           getPrintRequestsPath({ requestId: selectedRequestIdParam, tab: linkedRequestTab }),
           { replace: true },
@@ -576,6 +610,9 @@ export function PrintRequestsPage() {
 
       return;
     }
+
+    previousSelectedRequestIdParamRef.current = null;
+    previousLinkedListTabRef.current = null;
 
     if (!hasAppliedInitialUrlSelectionRef.current && isPrintRequestRouteTab(tabParam)) {
       hasAppliedInitialUrlSelectionRef.current = true;
@@ -598,8 +635,8 @@ export function PrintRequestsPage() {
   /**
    * Keeps the selected request in sync with the active tab. When a URL `requestId` still exists but
    * now lives on another tab (Add to Show → Queued), keep that selection and let URL hydration move
-   * the tab — never clear the detail mid-follow. When the user switches tabs without a matching
-   * requestId, fall back to that tab’s first request (or empty).
+   * the tab — never clear the detail mid-follow. When the user switches tabs or triage/search hides
+   * the URL selection, fall back to that tab’s first visible request (or empty).
    */
   useEffect(() => {
     if (isRequestsLoading || isAllocationTotalsLoading) {
@@ -617,13 +654,20 @@ export function PrintRequestsPage() {
           return;
         }
 
-        if (selectedRequestId !== selectedRequestIdParam) {
-          setSelectedRequestId(selectedRequestIdParam);
-        }
-        return;
-      }
+        const isVisibleUnderCurrentFilters = visibleRequests.some(
+          (request) => request.id === selectedRequestIdParam,
+        );
 
-      if (selectedRequestId === selectedRequestIdParam) {
+        if (isVisibleUnderCurrentFilters) {
+          if (selectedRequestId !== selectedRequestIdParam) {
+            setSelectedRequestId(selectedRequestIdParam);
+          }
+          return;
+        }
+
+        // Same stage tab, but triage/search hid the URL selection — pick a visible card instead
+        // of forcing triage/search back open (which caused the two-click flash).
+      } else if (selectedRequestId === selectedRequestIdParam) {
         // Brief gap while totals/list reload — keep selection instead of bouncing to empty.
         return;
       }
@@ -633,6 +677,15 @@ export function PrintRequestsPage() {
     const nextSelectedRequestId = resolveSelectedRequestIdForTab(selectedRequestId, visibleRequestIds);
 
     if (nextSelectedRequestId === selectedRequestId) {
+      if (
+        selectedRequestIdParam &&
+        nextSelectedRequestId &&
+        selectedRequestIdParam !== nextSelectedRequestId
+      ) {
+        updateSelectedRequestPath(nextSelectedRequestId);
+      } else if (selectedRequestIdParam && !nextSelectedRequestId) {
+        navigate(getPrintRequestsPath({ tab: activeListTab }), { replace: true });
+      }
       return;
     }
 
@@ -932,7 +985,9 @@ export function PrintRequestsPage() {
                     return;
                   }
 
-                  // Drop requestId so URL hydration does not pull us back to the previous tab.
+                  // Clear selection immediately so URL hydration cannot snap the stage tab back
+                  // during the brief window where `requestId` is still in the search params.
+                  setSelectedRequestId(null);
                   navigate(getPrintRequestsPath({ tab }), { replace: true });
                 }}
                 type="button"

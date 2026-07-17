@@ -29,6 +29,11 @@ export interface AdminSuggestionOverlay {
   aliases?: string[];
   active: boolean;
   labelKey: string;
+  /**
+   * Set when this live overlay was created by approving a customer
+   * `etsySuggestionRequests` row. Absent for staff-added overlays.
+   */
+  sourceSuggestionRequestId?: string;
 }
 
 /** Collect normalized collision keys for a subject-like entry. */

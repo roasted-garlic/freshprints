@@ -1,6 +1,7 @@
 import {
   formatAssistedCreationStatus,
   type AssistedCreationStatus,
+  type AssistedCreationTransitionActor,
 } from '@fresh-prints/shared/constants/assistedCreation/assistedCreation.constants';
 import type { AssistedCreationRevisionEntry } from '@fresh-prints/shared/types/assistedCreation/assistedCreation.types';
 
@@ -52,34 +53,50 @@ function isBoilerplateHistoryNote(note: string): boolean {
   );
 }
 
+export function assistedHistoryRoleLabel(actor: AssistedCreationTransitionActor): string {
+  switch (actor) {
+    case 'customer':
+      return 'You';
+    case 'staff':
+      return 'Fresh Prints';
+    case 'system':
+      return 'System';
+    default:
+      return 'System';
+  }
+}
+
 export interface AssistedHistoryDisplayEntry {
   key: string;
   title: string;
   when: string;
   note: string | null;
+  actor: AssistedCreationTransitionActor;
+  roleLabel: string;
 }
 
+/** Chronological (oldest → newest) for chat-style history. */
 export function buildAssistedHistoryEntries(
   revisionHistory: AssistedCreationRevisionEntry[] | undefined,
 ): AssistedHistoryDisplayEntry[] {
   if (!revisionHistory?.length) {
     return [];
   }
-  return revisionHistory
-    .slice()
-    .reverse()
-    .map((entry, index) => {
-      const note = entry.note?.trim() ?? '';
-      const showNote = note.length > 0 && !isBoilerplateHistoryNote(note);
-      const isCustomerUpdate =
-        entry.fromStatus === entry.toStatus &&
-        entry.toStatus === 'submitted' &&
-        /^Customer updated request/i.test(note);
-      return {
-        key: `${entry.toStatus}-${index}`,
-        title: isCustomerUpdate ? 'Updated' : formatAssistedCreationStatus(entry.toStatus),
-        when: formatAssistedWhen(entry.at),
-        note: showNote ? note : null,
-      };
-    });
+  return revisionHistory.map((entry, index) => {
+    const note = entry.note?.trim() ?? '';
+    const showNote = note.length > 0 && !isBoilerplateHistoryNote(note);
+    const isCustomerUpdate =
+      entry.fromStatus === entry.toStatus &&
+      entry.toStatus === 'submitted' &&
+      /^Customer updated request/i.test(note);
+    const actor = entry.byRole ?? 'system';
+    return {
+      key: `${entry.toStatus}-${index}`,
+      title: isCustomerUpdate ? 'Updated' : formatAssistedCreationStatus(entry.toStatus),
+      when: formatAssistedWhen(entry.at),
+      note: showNote ? note : null,
+      actor,
+      roleLabel: assistedHistoryRoleLabel(actor),
+    };
+  });
 }

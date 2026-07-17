@@ -528,7 +528,14 @@
 }
 
 .etsy-browse-card--broader {
-  background: color-mix(in srgb, var(--color-bg-tertiary) 88%, var(--color-bg-secondary));
+  background:
+    linear-gradient(
+      165deg,
+      color-mix(in srgb, var(--color-success) 10%, var(--color-bg-secondary)) 0%,
+      var(--color-bg-secondary) 58%
+    );
+  border-color: color-mix(in srgb, var(--color-success) 42%, var(--color-border));
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--color-success) 10%, transparent);
 }
 
 a.etsy-browse-card {
@@ -539,6 +546,10 @@ a.etsy-browse-card:hover {
   border-color: color-mix(in srgb, var(--color-accent-primary) 55%, var(--color-border));
   box-shadow: 0 8px 24px color-mix(in srgb, var(--color-bg-primary) 65%, transparent);
   transform: translateY(-2px);
+}
+
+a.etsy-browse-card--broader:hover {
+  border-color: color-mix(in srgb, var(--color-success) 58%, var(--color-border));
 }
 
 a.etsy-browse-card:active {
@@ -566,8 +577,8 @@ a.etsy-browse-card:focus-visible {
 }
 
 .etsy-browse-card--broader .etsy-browse-card-icon {
-  color: var(--color-text-tertiary);
-  opacity: 0.14;
+  color: var(--color-success);
+  opacity: 0.2;
 }
 
 .etsy-browse-card-icon svg {
@@ -603,8 +614,8 @@ a.etsy-browse-card:focus-visible {
 }
 
 .etsy-browse-card-badge--broader {
-  background: color-mix(in srgb, var(--color-border) 55%, transparent);
-  color: var(--color-text-secondary);
+  background: color-mix(in srgb, var(--color-success) 18%, transparent);
+  color: var(--color-success-text);
 }
 
 .etsy-browse-card-title {
@@ -631,6 +642,10 @@ a.etsy-browse-card:focus-visible {
   font-weight: 650;
   gap: 0.35rem;
   margin-top: var(--space-2);
+}
+
+.etsy-browse-card--broader .etsy-browse-card-cta {
+  color: var(--color-success-text);
 }
 
 a.etsy-browse-card:hover .etsy-browse-card-cta {
@@ -674,7 +689,13 @@ a.etsy-browse-card:hover .etsy-browse-card-cta {
 }
 
 .etsy-query-card--broader {
-  background: var(--color-bg-tertiary);
+  background:
+    linear-gradient(
+      165deg,
+      color-mix(in srgb, var(--color-success) 10%, var(--color-bg-tertiary)) 0%,
+      var(--color-bg-tertiary) 55%
+    );
+  border-color: color-mix(in srgb, var(--color-success) 35%, var(--color-border));
 }
 
 a.etsy-query-card {
@@ -685,6 +706,10 @@ a.etsy-query-card:hover {
   border-color: color-mix(in srgb, var(--color-accent-primary) 55%, var(--color-border));
   box-shadow: 0 8px 24px color-mix(in srgb, var(--color-bg-primary) 65%, transparent);
   transform: translateY(-2px);
+}
+
+a.etsy-query-card--broader:hover {
+  border-color: color-mix(in srgb, var(--color-success) 55%, var(--color-border));
 }
 
 a.etsy-query-card:active {
@@ -728,8 +753,8 @@ a.etsy-query-card:focus-visible {
 }
 
 .etsy-query-card-badge--broader {
-  background: color-mix(in srgb, var(--color-border) 55%, transparent);
-  color: var(--color-text-secondary);
+  background: color-mix(in srgb, var(--color-success) 18%, transparent);
+  color: var(--color-success-text);
 }
 
 .etsy-query-card-title {
@@ -754,6 +779,10 @@ a.etsy-query-card:hover .etsy-query-card-external-icon {
   transform: translate(1px, -1px);
 }
 
+a.etsy-query-card--broader:hover .etsy-query-card-external-icon {
+  color: var(--color-success-text);
+}
+
 .etsy-query-card-body {
   color: var(--color-text-secondary);
   font-size: var(--font-size-sm);
@@ -776,6 +805,10 @@ a.etsy-query-card:hover .etsy-query-card-external-icon {
   font-weight: 650;
   gap: 0.35rem;
   margin-top: 0.15rem;
+}
+
+.etsy-query-card--broader .etsy-query-card-cta {
+  color: var(--color-success-text);
 }
 
 a.etsy-query-card:hover .etsy-query-card-cta {

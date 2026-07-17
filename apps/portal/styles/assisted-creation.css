@@ -879,6 +879,148 @@
   line-height: 1.4;
 }
 
+.assisted-creation-staff-proof-note {
+  background: color-mix(in srgb, var(--color-bg-primary) 55%, transparent);
+  border: 1px solid var(--color-border);
+  border-left: 3px solid var(--color-accent-primary);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.65rem 0.75rem;
+  text-align: left;
+}
+
+.assisted-creation-staff-proof-note-label {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.assisted-creation-staff-proof-note-text {
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  line-height: 1.45;
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.assisted-creation-proof-response {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.assisted-creation-proof-response-heading {
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  margin: 0 0 var(--space-1);
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.assisted-creation-proof-response-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.assisted-creation-history-chat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.assisted-creation-history-chat-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  max-width: min(100%, 22rem);
+}
+
+.assisted-creation-history-chat-row.is-staff,
+.assisted-creation-history-chat-row.is-system {
+  align-items: flex-start;
+  align-self: flex-start;
+}
+
+.assisted-creation-history-chat-row.is-customer {
+  align-items: flex-end;
+  align-self: flex-end;
+}
+
+.assisted-creation-history-chat-row.is-system {
+  max-width: min(100%, 18rem);
+}
+
+.assisted-creation-history-chat-meta {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.55rem;
+}
+
+.assisted-creation-history-chat-row.is-customer .assisted-creation-history-chat-meta {
+  flex-direction: row-reverse;
+}
+
+.assisted-creation-history-chat-role {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.assisted-creation-history-chat-when {
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-xs);
+}
+
+.assisted-creation-history-chat-bubble {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.55rem 0.7rem;
+  text-align: left;
+}
+
+.assisted-creation-history-chat-row.is-staff .assisted-creation-history-chat-bubble {
+  background: color-mix(in srgb, var(--color-bg-primary) 70%, transparent);
+}
+
+.assisted-creation-history-chat-row.is-customer .assisted-creation-history-chat-bubble {
+  background: color-mix(in srgb, var(--color-accent-primary) 10%, transparent);
+  border-color: color-mix(in srgb, var(--color-accent-primary) 35%, var(--color-border));
+}
+
+.assisted-creation-history-chat-row.is-system .assisted-creation-history-chat-bubble {
+  background: transparent;
+  border-style: dashed;
+}
+
+.assisted-creation-history-chat-title {
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+}
+
+.assisted-creation-history-chat-note {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: 1.4;
+  margin: 0;
+  white-space: pre-wrap;
+}
+
 .assisted-creation-drawer-item-top {
   align-items: baseline;
   display: flex;
@@ -898,6 +1040,59 @@
   background: color-mix(in srgb, #ef4444 28%, transparent);
   border-color: color-mix(in srgb, #ef4444 70%, var(--color-border));
   color: #b91c1c;
+}
+
+.assisted-creation-proof-actions {
+  margin-top: 0;
+}
+
+.assisted-creation-proof-actions .assisted-creation-approve-button,
+.assisted-creation-revision-button {
+  width: 100%;
+}
+
+.assisted-creation-approve-button {
+  background: color-mix(in srgb, var(--color-accent-primary) 16%, transparent);
+  border-color: color-mix(in srgb, var(--color-accent-primary) 42%, var(--color-border));
+  color: var(--color-accent-primary);
+  font-weight: 600;
+}
+
+.assisted-creation-approve-button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-accent-primary) 32%, transparent);
+  border-color: var(--color-accent-primary);
+  color: var(--color-accent-primary-hover);
+}
+
+.assisted-creation-approve-button:active:not(:disabled) {
+  background: color-mix(in srgb, var(--color-accent-primary-hover) 48%, transparent);
+  border-color: var(--color-accent-primary-hover);
+  color: var(--color-accent-primary-hover);
+}
+
+.assisted-creation-revision-button {
+  background: color-mix(in srgb, var(--color-warning) 18%, transparent);
+  border-color: color-mix(in srgb, var(--color-warning) 42%, var(--color-border));
+  color: var(--color-warning-text);
+  font-weight: 600;
+}
+
+.assisted-creation-revision-button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-warning) 30%, transparent);
+  border-color: color-mix(in srgb, var(--color-warning) 58%, var(--color-border));
+  color: var(--color-warning-text);
+}
+
+.assisted-creation-revision-button:active:not(:disabled) {
+  background: color-mix(in srgb, var(--color-warning) 42%, transparent);
+  border-color: color-mix(in srgb, var(--color-warning) 70%, var(--color-border));
+  color: var(--color-warning-text);
+}
+
+.assisted-creation-revision-button:disabled {
+  background: color-mix(in srgb, var(--color-warning) 8%, transparent);
+  border-color: color-mix(in srgb, var(--color-warning) 22%, var(--color-border));
+  color: color-mix(in srgb, var(--color-warning-text) 55%, var(--color-text-secondary));
 }
 
 .assisted-creation-rating-fieldset {
@@ -984,17 +1179,18 @@
 }
 
 /*
- * Match past-request `.modal-footer` separator above Back.
- * Modal footer is a full-bleed panel child (no parent padding/gap). Status shell
- * pads + gaps, so pull the footer flush and span the shell edges.
+ * Full-bleed separator horizontally (span shell side padding only).
+ * Keep shell flex gap above the border — never negate margin-top against
+ * content (References was touching the rule). Padding below the line / Back
+ * is unchanged.
  */
 .assisted-creation-status-footer {
   border-top: 1px solid var(--color-border);
   box-sizing: border-box;
   margin-left: calc(-1 * var(--space-4));
   margin-right: calc(-1 * var(--space-4));
-  /* Cancel shell gap + `.etsy-wizard-actions` margin so the rule sits flush like `.modal-footer`. */
-  margin-top: calc(-1 * var(--space-3));
+  /* Override `.etsy-wizard-actions` margin-top; rely on parent gap only. */
+  margin-top: 0;
   padding: var(--space-5) var(--space-4) 0;
   width: calc(100% + 2 * var(--space-4));
 }
