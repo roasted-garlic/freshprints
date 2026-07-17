@@ -76,6 +76,8 @@ export function useAssistedCreationWizard({
   const [urlSyncReady, setUrlSyncReady] = useState(false);
   const hasHydratedRef = useRef(false);
   const skipNextDraftWriteRef = useRef(true);
+  /** When true, URL sync writes the earlier step instead of snapping stepIndex forward. */
+  const intentionalBackRef = useRef(false);
 
   // Restore from the live browser URL before paint so URL sync cannot clobber deep links.
   useLayoutEffect(() => {
@@ -121,6 +123,13 @@ export function useAssistedCreationWizard({
 
   useEffect(() => {
     if (!enabled || !urlSyncReady) {
+      return;
+    }
+
+    // Intentional Back: push the earlier step to the URL; do not snap stepIndex forward.
+    if (intentionalBackRef.current) {
+      intentionalBackRef.current = false;
+      onStepChange?.(stepId);
       return;
     }
 
@@ -170,12 +179,19 @@ export function useAssistedCreationWizard({
 
   const goBack = useCallback(() => {
     setStepError(null);
+    intentionalBackRef.current = true;
     setStepIndex((current) => Math.max(current - 1, 0));
   }, []);
 
   const goToStep = useCallback((targetStepId: AssistedCreationWizardStepId) => {
     setStepError(null);
-    setStepIndex(stepIndexForId(targetStepId));
+    const nextIndex = stepIndexForId(targetStepId);
+    setStepIndex((current) => {
+      if (nextIndex < current) {
+        intentionalBackRef.current = true;
+      }
+      return nextIndex;
+    });
   }, []);
 
   const resetWizard = useCallback(() => {

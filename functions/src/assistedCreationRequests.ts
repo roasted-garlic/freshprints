@@ -31,6 +31,7 @@ import type {
   AssistedCreationRevisionEntry,
 } from "../../packages/shared/src/types/assistedCreation/assistedCreation.types";
 import { EMAIL_DELIVERY_JOBS_COLLECTION } from "../../packages/shared/src/constants/emailProviders.constants";
+import { formatAssistedCreationRequestUpdatedNote } from "../../packages/shared/src/utils/assistedCreationHistory";
 import {
   AssistedCreationTransitionError,
   assertAssistedCreationIsOpen,
@@ -359,9 +360,7 @@ export const customerUpdateAssistedCreationRequest = onCall(
         });
 
         const history = Array.isArray(current.revisionHistory) ? current.revisionHistory : [];
-        const historyNote = updateNote
-          ? `Customer updated request — ${updateNote}`
-          : "Customer updated request";
+        const historyNote = formatAssistedCreationRequestUpdatedNote(updateNote);
 
         tx.update(docRef, {
           answers: answersForFirestore(answers),

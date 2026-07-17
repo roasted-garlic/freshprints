@@ -71,6 +71,8 @@ export interface AssistedCreationRevisionEntry {
   note: string;
   fromStatus: AssistedCreationStatus | null;
   toStatus: AssistedCreationStatus;
+  /** Set when a proof-ready email delivery job successfully sends. */
+  emailDeliveryJobId?: string;
 }
 
 export type AssistedCreationCustomerRating = 1 | 2 | 3 | 4 | 5;

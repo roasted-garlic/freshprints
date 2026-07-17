@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 
 import {
   canCustomerUpdateAssistedCreation,
+  filterAssistedCreationTerminalRequests,
   formatAssistedCreationStatus,
   isAssistedCreationOpenStatus,
 } from '@fresh-prints/shared/constants/assistedCreation/assistedCreation.constants';
@@ -38,6 +39,8 @@ export function AssistedCreationPastRequests({ className }: AssistedCreationPast
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
+  const terminalRequests = filterAssistedCreationTerminalRequests(requests);
+
   useEffect(() => {
     const uid = getPortalAuth().currentUser?.uid;
     if (!uid) {
@@ -47,13 +50,14 @@ export function AssistedCreationPastRequests({ className }: AssistedCreationPast
     return assistedCreationService.subscribeRecentRequestsForCustomer(
       uid,
       (items) => {
+        const terminalItems = filterAssistedCreationTerminalRequests(items);
         setRequests(items);
         setLoadError(null);
         setSelected((current) => {
           if (!current) {
             return null;
           }
-          return items.find((item) => item.id === current.id) ?? current;
+          return terminalItems.find((item) => item.id === current.id) ?? null;
         });
       },
       (error) => setLoadError(error.message),
@@ -81,7 +85,11 @@ export function AssistedCreationPastRequests({ className }: AssistedCreationPast
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [cancelConfirmOpen, drawerOpen, selected, updateOpen]);
 
-  const count = requests.length;
+  const count = terminalRequests.length;
+  if (count === 0) {
+    return null;
+  }
+
   const linkLabel = `Past Requests (${count})`;
   const canCancel = selected != null && isAssistedCreationOpenStatus(selected.status);
   const canUpdate = selected != null && canCustomerUpdateAssistedCreation(selected.status);
@@ -130,12 +138,8 @@ export function AssistedCreationPastRequests({ className }: AssistedCreationPast
 
             {loadError ? <p className="portal-form-error">{loadError}</p> : null}
 
-            {!loadError && requests.length === 0 ? (
-              <p className="portal-muted">No assisted requests yet.</p>
-            ) : null}
-
             <ul className="assisted-creation-drawer-list">
-              {requests.map((request) => (
+              {terminalRequests.map((request) => (
                 <li key={request.id}>
                   <button
                     className="assisted-creation-drawer-item"

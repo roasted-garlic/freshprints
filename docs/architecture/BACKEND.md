@@ -92,10 +92,13 @@ Fresh Prints does not expose a separate REST API for core operations. Business l
 templates, provider routing, Resend transport, recipient resolution, and canonical Portal URL
 resolution. `staffAddAssistedCreationProof` transactionally creates a deterministic
 `emailDeliveryJobs` outbox document. `onEmailDeliveryJobCreated` uses bounded attempts and a lease;
-network/timeout/429/5xx errors retry, permanent 4xx fails safely. Resend receives the job ID through
-`Idempotency-Key`; Firestore remains the durable logical dedupe boundary. Logs contain IDs and safe
-codes only. `settings/emailProviders` independently selects invitation and proof providers; only
-`resend` is accepted now.
+network/timeout/429/5xx errors retry, permanent 4xx fails safely. Before send, the worker honors
+`customers/{id}.assistedProofEmailOptIn` (missing = opted in); opted-out jobs fail non-retryably with
+`customer_opted_out`. After a successful send, the worker appends `revisionHistory` note
+`Proof-ready email sent` (`byRole: system`, `emailDeliveryJobId` for idempotency). Resend receives
+the job ID through `Idempotency-Key`; Firestore remains the durable logical dedupe boundary. Logs
+contain IDs and safe codes only. `settings/emailProviders` independently selects invitation and
+proof providers; only `resend` is accepted now.
 
 **Cursor agent tooling:** Project MCP may list ScraperAPI at `.cursor/mcp.json` (agent-only). Setup note: `docs/workflow/setup/scraperapi-mcp-setup.md`.
 

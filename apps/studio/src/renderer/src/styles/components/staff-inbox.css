@@ -778,6 +778,28 @@
   text-align: center;
 }
 
+.customer-requests-assisted-unread-badge {
+  align-items: center;
+  background: var(--color-danger, #c62828);
+  border-radius: var(--radius-full, 999px);
+  color: #fff;
+  display: inline-flex;
+  font-size: var(--font-size-xs);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  justify-content: center;
+  line-height: 1;
+  margin-left: 0.35rem;
+  min-width: 1.15rem;
+  padding: 0.15rem 0.35rem;
+  vertical-align: middle;
+}
+
+.customer-requests-assisted-panel-title .customer-requests-assisted-unread-badge,
+.customer-requests-etsy-list-card-title .customer-requests-assisted-unread-badge {
+  margin-left: 0.45rem;
+}
+
 .customer-requests-assisted-revision-note-body {
   color: var(--color-text-primary);
   line-height: 1.45;

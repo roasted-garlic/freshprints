@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { Timestamp } from 'firebase/firestore';
 
 import { AccountArtworkGallery } from '../../../features/account/components/AccountArtworkGallery';
+import { AccountNotificationsModal } from '../../../features/account/components/AccountNotificationsModal';
 import { getProfileInitials, resolvePortalDisplayName } from '../../../features/account/utils/profileDisplay';
 import { useAuth } from '../../../features/auth/context/AuthContext';
 import { useFavorites } from '../../../features/favorites/context/FavoritesProvider';
@@ -28,6 +29,7 @@ export default function DashboardPage() {
   const { isLoading: isRequestsLoading, refreshRequests, requests } = usePortalPrintRequests();
   const [uploadedDesignCount, setUploadedDesignCount] = useState<number | null>(null);
   const [donatedDesignCount, setDonatedDesignCount] = useState<number | null>(null);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const displayName = resolvePortalDisplayName(customer?.displayName, user?.displayName);
   const email = user?.email ?? customer?.email ?? '—';
   const username = customer?.username;
@@ -99,6 +101,22 @@ export default function DashboardPage() {
         </section>
 
         <section className="portal-panel portal-account-panel">
+          <h2 className="portal-account-section-title">Settings</h2>
+          <div className="portal-account-link-grid">
+            <button
+              className="portal-account-quick-link"
+              onClick={() => setNotificationsOpen(true)}
+              type="button"
+            >
+              <span className="portal-account-quick-link-label">Notifications</span>
+              <span className="portal-account-quick-link-description">
+                Choose whether to get email when a custom design proof is ready.
+              </span>
+            </button>
+          </div>
+        </section>
+
+        <section className="portal-panel portal-account-panel">
           <h2 className="portal-account-section-title">Quick links</h2>
           <div className="portal-account-link-grid">
             <Link className="portal-account-quick-link" href={CATALOG_HOME_PATH}>
@@ -128,6 +146,11 @@ export default function DashboardPage() {
           </div>
         </section>
       </div>
+
+      <AccountNotificationsModal
+        isOpen={notificationsOpen}
+        onClose={() => setNotificationsOpen(false)}
+      />
     </main>
   );
 }

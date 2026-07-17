@@ -742,6 +742,13 @@ export interface Customer {
   /** @deprecated — custom requests only (Phase 9) */
   totalApprovedRequests?: number;
 
+  /**
+   * When false, skip Assisted Creation proof-ready email notices.
+   * Missing / undefined means opted in.
+   */
+  assistedProofEmailOptIn?: boolean;
+  assistedProofEmailOptInUpdatedAt?: Timestamp;
+
   usernameUpdatedAt?: Timestamp;
 
   createdAt: Timestamp;
@@ -1144,7 +1151,9 @@ assisted-creation/{customerUid}/pending/{fileId}
 assisted-creation/{customerUid}/{requestId}/proofs/{fileId}
 ```
 
-One **open** request per customer (`submitted` | `in_progress` | `proof_ready` | `revision_requested`). Status machine supports staff proofing and customer approve / revision-with-notes until `approved` (also `rejected` / `cancelled`). While status is **`submitted`** only, the customer may update `answers` and `referenceImages` (callable `customerUpdateAssistedCreationRequest`); updates are locked once staff marks `in_progress`. On approve, customer may optionally set `customerRating` (1–5) and `customerApprovalNote` (short text). Client Firestore writes denied; callables only. Helper may read; owner/admin mutate status and attach proofs (ADR-FP-088). Owner wipe on `fresh-prints-dev` uses Test Data Reset target `assistedCreationRequests` (`wipeOperationalTestData`) and clears Storage under `assisted-creation/`.
+One **open** request per customer (`submitted` | `in_progress` | `proof_ready` | `revision_requested`). Status machine supports staff proofing and customer approve / revision-with-notes until `approved` (also `rejected` / `cancelled`). While status is **`submitted`** only, the customer may update `answers` and `referenceImages` (callable `customerUpdateAssistedCreationRequest`); updates are locked once staff marks `in_progress`. Customer update history notes use `Request updated` (optional staff-visible detail after an em dash). When a proof-ready email delivery job completes successfully, the worker appends a system history entry `Proof-ready email sent` (with optional `emailDeliveryJobId` for idempotency). On approve, customer may optionally set `customerRating` (1–5) and `customerApprovalNote` (short text). Client Firestore writes denied; callables only. Helper may read; owner/admin mutate status and attach proofs (ADR-FP-088). Owner wipe on `fresh-prints-dev` uses Test Data Reset target `assistedCreationRequests` (`wipeOperationalTestData`) and clears Storage under `assisted-creation/`.
+
+Per-staff unread customer-update markers live in `assistedCreationUpdateAcks/{userId__requestId}` with `readThroughAt`. Studio badges count customer same-status `submitted` revision entries after that timestamp; expanding History marks them read.
 
 ---
 

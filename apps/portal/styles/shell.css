@@ -1038,14 +1038,18 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   color: inherit;
+  cursor: pointer;
   display: grid;
+  font: inherit;
   gap: var(--space-1);
   padding: var(--space-4);
+  text-align: left;
   text-decoration: none;
   transition:
     background var(--transition-fast),
     border-color var(--transition-fast),
     transform var(--transition-fast);
+  width: 100%;
 }
 
 .portal-account-quick-link:hover {
@@ -1070,6 +1074,19 @@
   color: var(--color-text-secondary);
   font-size: var(--font-size-sm);
   line-height: 1.45;
+}
+
+.portal-account-notification-option {
+  align-items: flex-start;
+  display: flex;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.portal-account-notification-hint {
+  display: block;
+  font-size: var(--font-size-sm);
+  margin-top: var(--space-1);
 }
 
 .portal-account-gallery-embedded {

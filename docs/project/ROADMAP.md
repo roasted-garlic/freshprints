@@ -1117,7 +1117,8 @@ Clean Portal Etsy recommendations foundation from master (archived prior Phase 9
 * Create My Design with AI
 * ~~Fresh Prints Assisted Creation~~ → **Phase 9C complete on `fresh-prints-dev`** (owner manual QA `PASS`, 2026-07-16; ADR-FP-088). Signoff: `docs/workflow/reviews/2026-07-16-phase-9c-assisted-creation-signoff.md`
 * ~~Portal Past Requests terminal-only filter~~ → fixed 2026-07-16 (open statuses excluded; link hidden when zero terminals). Signoff: `docs/workflow/reviews/2026-07-16-terminal-only-assisted-past-requests-signoff.md`
-* Provider-agnostic proof-ready email notifications (Resend first; Brevo later) → next managed phase
+* Provider-agnostic proof-ready email notifications (Resend first; Brevo later) → implemented; **fresh-prints-dev deploy deferred** (`NO DEPLOY`); includes opt-out + email-sent history when deployed
+* Assisted questionnaire request-type branching — deferred (not in current UX polish phase)
 * Staff design-fee / Stripe for custom work
 * ~~In-app listing scrape from Etsy website search~~ — **removed** (ADR-FP-087j; owner rejected scrape quality)
 

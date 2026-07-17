@@ -9,7 +9,14 @@ import type {
   AssistedCreationProof,
   AssistedCreationRevisionEntry,
 } from "@fresh-prints/shared/types/assistedCreation/assistedCreation.types";
+import {
+  countUnreadAssistedCreationCustomerUpdates,
+  isAssistedCreationCustomerUpdateEntry,
+  isAssistedCreationProofEmailSentEntry,
+  latestAssistedCreationCustomerUpdateAtMs,
+} from "@fresh-prints/shared/utils/assistedCreationHistory";
 
+import { useAuth } from "../../auth/hooks/useAuth";
 import { Button } from "../../../shared/components/Button";
 import {
   Modal,
@@ -23,6 +30,7 @@ import {
   assistedCreationRequestsService,
   type AssistedCreationRequestListItem,
 } from "../services/assistedCreationRequestsService";
+import { assistedCreationUpdateAckService } from "../services/assistedCreationUpdateAckService";
 import {
   joinLabeledValues,
   labelForComposition,
@@ -357,12 +365,16 @@ function AssistedDetail({
   canMutate,
   canRestore,
   item,
+  onHistoryExpanded,
   onToast,
+  unreadUpdateCount,
 }: {
   canMutate: boolean;
   canRestore: boolean;
   item: AssistedCreationRequestListItem;
+  onHistoryExpanded: () => void;
   onToast: (message: string) => void;
+  unreadUpdateCount: number;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -559,13 +571,15 @@ function AssistedDetail({
     .map((entry, index) => {
       const note = entry.note?.trim() ?? "";
       const showNote = note.length > 0 && !isBoilerplateHistoryNote(note);
-      const isCustomerUpdate =
-        entry.fromStatus === entry.toStatus &&
-        entry.toStatus === "submitted" &&
-        /^Customer updated request/i.test(note);
+      const isCustomerUpdate = isAssistedCreationCustomerUpdateEntry(entry);
+      const isProofEmailSent = isAssistedCreationProofEmailSentEntry(entry);
       return {
         key: `${entry.toStatus}-${index}`,
-        title: isCustomerUpdate ? "Updated" : formatAssistedCreationStatus(entry.toStatus),
+        title: isCustomerUpdate
+          ? "Updated"
+          : isProofEmailSent
+            ? "Email sent"
+            : formatAssistedCreationStatus(entry.toStatus),
         when: formatHistoryAt(entry.at),
         note: showNote ? note : null,
         byRole: entry.byRole,
@@ -704,9 +718,24 @@ function AssistedDetail({
           </section>
 
           {historyEntries.length > 0 ? (
-            <details className="customer-requests-assisted-panel customer-requests-assisted-history-disclosure">
+            <details
+              className="customer-requests-assisted-panel customer-requests-assisted-history-disclosure"
+              onToggle={(event) => {
+                if (event.currentTarget.open) {
+                  onHistoryExpanded();
+                }
+              }}
+            >
               <summary className="customer-requests-assisted-panel-title">
                 History ({historyEntries.length})
+                {unreadUpdateCount > 0 ? (
+                  <span
+                    aria-label={`${unreadUpdateCount} unread customer update${unreadUpdateCount === 1 ? "" : "s"}`}
+                    className="customer-requests-assisted-unread-badge"
+                  >
+                    {unreadUpdateCount}
+                  </span>
+                ) : null}
               </summary>
               <ol className="customer-requests-assisted-history">
                 {historyEntries.map((entry) => (
@@ -931,9 +960,56 @@ export function AssistedCreationRequestsSection({
   canRestore: boolean;
   onToast: (message: string) => void;
 }) {
+  const { user } = useAuth();
   const { items, isLoading, error } = useAssistedCreationRequests();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [activeStage, setActiveStage] = useState<AssistedStageTab>("new");
+  const [ackByRequestId, setAckByRequestId] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    if (!user?.id) {
+      setAckByRequestId({});
+      return;
+    }
+    return assistedCreationUpdateAckService.subscribe(
+      user.id,
+      (records) => {
+        const next: Record<string, number> = {};
+        for (const record of records) {
+          next[record.requestId] = record.readThroughAtMillis;
+        }
+        setAckByRequestId(next);
+      },
+    );
+  }, [user?.id]);
+
+  const unreadByRequestId = useMemo(() => {
+    const next: Record<string, number> = {};
+    for (const item of items) {
+      next[item.id] = countUnreadAssistedCreationCustomerUpdates(
+        item.revisionHistory,
+        ackByRequestId[item.id] ?? null,
+      );
+    }
+    return next;
+  }, [ackByRequestId, items]);
+
+  const unreadByStage = useMemo(() => {
+    const next: Record<AssistedStageTab, number> = {
+      new: 0,
+      in_progress: 0,
+      revisions: 0,
+      proof_ready: 0,
+      completed: 0,
+    };
+    for (const item of items) {
+      const unread = unreadByRequestId[item.id] ?? 0;
+      if (unread > 0) {
+        next[stageForStatus(item.status)] += unread;
+      }
+    }
+    return next;
+  }, [items, unreadByRequestId]);
 
   const counts = useMemo(() => {
     const next: Record<AssistedStageTab, number> = {
@@ -969,6 +1045,25 @@ export function AssistedCreationRequestsSection({
     }
   }, [selectedId, visibleItems]);
 
+  async function markRequestHistoryRead(item: AssistedCreationRequestListItem): Promise<void> {
+    if (!user?.id) {
+      return;
+    }
+    const latestAt = latestAssistedCreationCustomerUpdateAtMs(item.revisionHistory);
+    if (latestAt == null) {
+      return;
+    }
+    const current = ackByRequestId[item.id] ?? null;
+    if (current != null && current >= latestAt) {
+      return;
+    }
+    try {
+      await assistedCreationUpdateAckService.markReadThrough(user.id, item.id, latestAt);
+    } catch {
+      // Badge clear is best-effort; leave unread if write fails.
+    }
+  }
+
   return (
     <section
       aria-labelledby="assisted-creation-requests-title"
@@ -1003,19 +1098,30 @@ export function AssistedCreationRequestsSection({
             className="staff-inbox-page-tabs customer-requests-assisted-stage-tabs"
             role="tablist"
           >
-            {STAGE_TABS.map((tab) => (
-              <button
-                aria-selected={activeStage === tab.id}
-                className={`staff-inbox-page-tab${activeStage === tab.id ? " is-active" : ""}`}
-                key={tab.id}
-                onClick={() => setActiveStage(tab.id)}
-                role="tab"
-                type="button"
-              >
-                {tab.label}
-                <span className="customer-requests-assisted-stage-count">{counts[tab.id]}</span>
-              </button>
-            ))}
+            {STAGE_TABS.map((tab) => {
+              const unread = unreadByStage[tab.id];
+              return (
+                <button
+                  aria-selected={activeStage === tab.id}
+                  className={`staff-inbox-page-tab${activeStage === tab.id ? " is-active" : ""}`}
+                  key={tab.id}
+                  onClick={() => setActiveStage(tab.id)}
+                  role="tab"
+                  type="button"
+                >
+                  {tab.label}
+                  <span className="customer-requests-assisted-stage-count">{counts[tab.id]}</span>
+                  {unread > 0 ? (
+                    <span
+                      aria-label={`${unread} unread customer update${unread === 1 ? "" : "s"}`}
+                      className="customer-requests-assisted-unread-badge"
+                    >
+                      {unread}
+                    </span>
+                  ) : null}
+                </button>
+              );
+            })}
           </div>
 
           {visibleItems.length === 0 ? (
@@ -1029,6 +1135,7 @@ export function AssistedCreationRequestsSection({
               >
                 {visibleItems.map((item) => {
                   const isSelected = item.id === selected?.id;
+                  const unread = unreadByRequestId[item.id] ?? 0;
                   return (
                     <button
                       aria-selected={isSelected}
@@ -1040,6 +1147,14 @@ export function AssistedCreationRequestsSection({
                     >
                       <span className="customer-requests-etsy-list-card-title">
                         {item.customerDisplayName}
+                        {unread > 0 ? (
+                          <span
+                            aria-label={`${unread} unread customer update${unread === 1 ? "" : "s"}`}
+                            className="customer-requests-assisted-unread-badge"
+                          >
+                            {unread}
+                          </span>
+                        ) : null}
                       </span>
                       <span className="customer-requests-etsy-list-card-meta">{item.statusLabel}</span>
                       <span className="customer-requests-etsy-list-card-meta">
@@ -1058,7 +1173,11 @@ export function AssistedCreationRequestsSection({
                     canMutate={canMutate}
                     canRestore={canRestore}
                     item={selected}
+                    onHistoryExpanded={() => {
+                      void markRequestHistoryRead(selected);
+                    }}
                     onToast={onToast}
+                    unreadUpdateCount={unreadByRequestId[selected.id] ?? 0}
                   />
                 ) : (
                   <p className="settings-section-status">Select a request to view details.</p>

@@ -540,6 +540,8 @@ service cloud.firestore {
           "totalApprovedRequests",
           "usernameUpdatedAt",
           "signupSource",
+          "assistedProofEmailOptIn",
+          "assistedProofEmailOptInUpdatedAt",
           "createdAt",
           "updatedAt"
         ])
@@ -551,6 +553,8 @@ service cloud.firestore {
         && data.isGuest is bool
         && data.totalPrintRequests is int
         && data.totalPrintRequests >= 0
+        && (!("assistedProofEmailOptIn" in data) || data.assistedProofEmailOptIn is bool)
+        && (!("assistedProofEmailOptInUpdatedAt" in data) || data.assistedProofEmailOptInUpdatedAt is timestamp)
         && data.nextPrintRequestSequence is int
         && data.nextPrintRequestSequence >= 1
         && isOptionalString(data, "userId")
@@ -854,7 +858,18 @@ service cloud.firestore {
         && (!("userId" in resource.data) || request.resource.data.userId == resource.data.userId)
         && (!("isGuest" in resource.data) || request.resource.data.isGuest == resource.data.isGuest)
         && (!("signupSource" in resource.data) || request.resource.data.signupSource == resource.data.signupSource)
-        && (!("createdAt" in resource.data) || request.resource.data.createdAt == resource.data.createdAt);
+        && (!("createdAt" in resource.data) || request.resource.data.createdAt == resource.data.createdAt)
+        || (
+          isCustomer()
+          && resource.data.userId == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(["assistedProofEmailOptIn", "assistedProofEmailOptInUpdatedAt", "updatedAt"])
+          && request.resource.data.assistedProofEmailOptIn is bool
+          && request.resource.data.assistedProofEmailOptInUpdatedAt is timestamp
+          && request.resource.data.updatedAt is timestamp
+          && request.resource.data.id == resource.data.id
+          && request.resource.data.userId == resource.data.userId
+        );
 
       allow delete: if false;
 
@@ -1404,6 +1419,42 @@ service cloud.firestore {
         && staffInboxAckFieldsValid(request.resource.data);
 
       allow update: if false;
+
+      allow delete: if isStaff()
+        && resource.data.userId == request.auth.uid;
+    }
+
+    function assistedCreationUpdateAckFieldsValid(data) {
+      return data.keys().hasOnly([
+          "userId",
+          "requestId",
+          "readThroughAt",
+          "createdAt",
+          "updatedAt"
+        ])
+        && data.userId is string
+        && data.userId.size() > 0
+        && data.requestId is string
+        && data.requestId.size() > 0
+        && data.readThroughAt is timestamp
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    match /assistedCreationUpdateAcks/{ackId} {
+      allow read: if isStaff()
+        && resource.data.userId == request.auth.uid;
+
+      allow create: if isStaff()
+        && request.resource.data.userId == request.auth.uid
+        && assistedCreationUpdateAckFieldsValid(request.resource.data);
+
+      allow update: if isStaff()
+        && resource.data.userId == request.auth.uid
+        && request.resource.data.userId == resource.data.userId
+        && request.resource.data.requestId == resource.data.requestId
+        && request.resource.data.createdAt == resource.data.createdAt
+        && assistedCreationUpdateAckFieldsValid(request.resource.data);
 
       allow delete: if isStaff()
         && resource.data.userId == request.auth.uid;

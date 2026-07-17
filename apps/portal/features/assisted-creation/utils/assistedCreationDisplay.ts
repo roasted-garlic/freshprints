@@ -4,6 +4,10 @@ import {
   type AssistedCreationTransitionActor,
 } from '@fresh-prints/shared/constants/assistedCreation/assistedCreation.constants';
 import type { AssistedCreationRevisionEntry } from '@fresh-prints/shared/types/assistedCreation/assistedCreation.types';
+import {
+  isAssistedCreationCustomerUpdateEntry,
+  isAssistedCreationProofEmailSentEntry,
+} from '@fresh-prints/shared/utils/assistedCreationHistory';
 
 export function formatAssistedWhen(value: unknown): string {
   if (value && typeof value === 'object' && 'toDate' in value && typeof value.toDate === 'function') {
@@ -85,14 +89,16 @@ export function buildAssistedHistoryEntries(
   return revisionHistory.map((entry, index) => {
     const note = entry.note?.trim() ?? '';
     const showNote = note.length > 0 && !isBoilerplateHistoryNote(note);
-    const isCustomerUpdate =
-      entry.fromStatus === entry.toStatus &&
-      entry.toStatus === 'submitted' &&
-      /^Customer updated request/i.test(note);
+    const isCustomerUpdate = isAssistedCreationCustomerUpdateEntry(entry);
+    const isProofEmailSent = isAssistedCreationProofEmailSentEntry(entry);
     const actor = entry.byRole ?? 'system';
     return {
       key: `${entry.toStatus}-${index}`,
-      title: isCustomerUpdate ? 'Updated' : formatAssistedCreationStatus(entry.toStatus),
+      title: isCustomerUpdate
+        ? 'Updated'
+        : isProofEmailSent
+          ? 'Email sent'
+          : formatAssistedCreationStatus(entry.toStatus),
       when: formatAssistedWhen(entry.at),
       note: showNote ? note : null,
       actor,

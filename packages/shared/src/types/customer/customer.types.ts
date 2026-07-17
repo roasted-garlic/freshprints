@@ -18,6 +18,12 @@ export interface Customer {
   totalRequests?: number;
   /** @deprecated — custom requests only (Phase 9) */
   totalApprovedRequests?: number;
+  /**
+   * When false, skip Assisted Creation proof-ready email notices.
+   * Missing / undefined means opted in.
+   */
+  assistedProofEmailOptIn?: boolean;
+  assistedProofEmailOptInUpdatedAt?: Timestamp;
   usernameUpdatedAt?: Timestamp;
   createdAt: Timestamp;
   updatedAt: Timestamp;

@@ -3,9 +3,18 @@ import { logger } from "firebase-functions";
 import { onDocumentCreated } from "firebase-functions/v2/firestore";
 
 import {
+  ASSISTED_CREATION_COLLECTION,
+  type AssistedCreationStatus,
+} from "../../packages/shared/src/constants/assistedCreation/assistedCreation.constants";
+import type { AssistedCreationRevisionEntry } from "../../packages/shared/src/types/assistedCreation/assistedCreation.types";
+import {
   EMAIL_DELIVERY_JOBS_COLLECTION,
   isEmailProviderId,
 } from "../../packages/shared/src/constants/emailProviders.constants";
+import {
+  ASSISTED_CREATION_PROOF_EMAIL_SENT_NOTE,
+  isAssistedProofEmailOptedIn,
+} from "../../packages/shared/src/utils/assistedCreationHistory";
 import { adminDb } from "./lib/admin";
 import { sendEmail } from "./lib/email/emailRouter";
 import { buildProofReadyEmail } from "./lib/email/emailTemplates";
@@ -93,6 +102,15 @@ async function markSent(job: ClaimedProofJob, providerMessageId: string): Promis
   });
 }
 
+async function markNonRetryableFailure(job: ClaimedProofJob, errorCode: string): Promise<void> {
+  await adminDb.collection(EMAIL_DELIVERY_JOBS_COLLECTION).doc(job.id).update({
+    status: "failed",
+    lastErrorCode: errorCode,
+    leaseExpiresAt: FieldValue.delete(),
+    updatedAt: FieldValue.serverTimestamp(),
+  });
+}
+
 async function markFailure(job: ClaimedProofJob, error: EmailDeliveryError): Promise<boolean> {
   const retry = shouldRetryEmailFailure(error.transient, job.attemptCount);
   await adminDb.collection(EMAIL_DELIVERY_JOBS_COLLECTION).doc(job.id).update({
@@ -107,6 +125,52 @@ async function markFailure(job: ClaimedProofJob, error: EmailDeliveryError): Pro
     updatedAt: FieldValue.serverTimestamp(),
   });
   return retry;
+}
+
+function appendRevision(
+  history: AssistedCreationRevisionEntry[],
+  entry: Omit<AssistedCreationRevisionEntry, "at"> & { at?: unknown },
+): AssistedCreationRevisionEntry[] {
+  return [
+    ...history,
+    {
+      ...entry,
+      at: entry.at ?? Timestamp.now(),
+    },
+  ];
+}
+
+/** Append History only after a successful send; idempotent per delivery job id. */
+async function appendProofEmailSentHistory(job: ClaimedProofJob): Promise<void> {
+  if (!job.requestId) {
+    return;
+  }
+  const docRef = adminDb.collection(ASSISTED_CREATION_COLLECTION).doc(job.requestId);
+  await adminDb.runTransaction(async (tx) => {
+    const snap = await tx.get(docRef);
+    if (!snap.exists) {
+      return;
+    }
+    const current = snap.data()!;
+    const history = Array.isArray(current.revisionHistory)
+      ? (current.revisionHistory as AssistedCreationRevisionEntry[])
+      : [];
+    if (history.some((entry) => entry.emailDeliveryJobId === job.id)) {
+      return;
+    }
+    const status = current.status as AssistedCreationStatus;
+    tx.update(docRef, {
+      revisionHistory: appendRevision(history, {
+        byUid: "system",
+        byRole: "system",
+        note: ASSISTED_CREATION_PROOF_EMAIL_SENT_NOTE,
+        fromStatus: status,
+        toStatus: status,
+        emailDeliveryJobId: job.id,
+      }),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+  });
 }
 
 export const onEmailDeliveryJobCreated = onDocumentCreated(
@@ -130,6 +194,18 @@ export const onEmailDeliveryJobCreated = onDocumentCreated(
     }
 
     try {
+      const customerSnap = await adminDb.collection("customers").doc(job.customerId).get();
+      const customerData = customerSnap.exists ? customerSnap.data() : undefined;
+      if (!isAssistedProofEmailOptedIn(customerData?.assistedProofEmailOptIn)) {
+        await markNonRetryableFailure(job, "customer_opted_out");
+        logger.info("Email delivery skipped; customer opted out of proof-ready emails.", {
+          jobId: job.id,
+          requestId: job.requestId,
+          proofId: job.proofId,
+        });
+        return;
+      }
+
       const recipient = await resolveProofRecipient(job);
       const result = await sendEmail({
         provider: job.provider,
@@ -143,6 +219,7 @@ export const onEmailDeliveryJobCreated = onDocumentCreated(
         }),
       });
       await markSent(job, result.providerMessageId);
+      await appendProofEmailSentHistory(job);
       logger.info("Email delivery job sent.", {
         jobId: job.id,
         requestId: job.requestId,

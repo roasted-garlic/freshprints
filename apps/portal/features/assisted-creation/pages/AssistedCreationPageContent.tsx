@@ -15,7 +15,6 @@ import { AssistedCreationWizard } from '../components/AssistedCreationWizard';
 import { useAssistedCreationWizard } from '../hooks/useAssistedCreationWizard';
 import { useLiveCustomDesignsLocation } from '../hooks/useLiveCustomDesignsLocation';
 import { assistedCreationService } from '../services/assistedCreationService';
-import { stepIndexForId } from '../utils/assistedCreationDraftStorage';
 import {
   buildAssistedCreationHref,
   parseAssistedCreationLocation,
@@ -63,18 +62,7 @@ export function AssistedCreationPageContent() {
       if (parsed.mode === 'wizard' && parsed.stepId === stepId && !parsed.isLegacyPath) {
         return;
       }
-      // Never replace a deeper browser step with an earlier one during hydration races.
-      if (typeof window !== 'undefined') {
-        const live = parseAssistedCreationLocation(
-          window.location.pathname,
-          new URLSearchParams(window.location.search),
-        );
-        if (live.isAssisted && live.mode === 'wizard' && live.stepId) {
-          if (stepIndexForId(stepId) < stepIndexForId(live.stepId)) {
-            return;
-          }
-        }
-      }
+      // Intentional Back must be allowed to replace a deeper URL with the previous step.
       router.replace(buildAssistedCreationHref({ mode: 'wizard', stepId }), { scroll: false });
     },
     [parsed.isLegacyPath, parsed.mode, parsed.stepId, router],

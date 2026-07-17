@@ -266,6 +266,17 @@ export function isAssistedCreationOpenStatus(status: AssistedCreationStatus): bo
   return (ASSISTED_CREATION_OPEN_STATUSES as readonly string[]).includes(status);
 }
 
+export function isAssistedCreationTerminalStatus(status: AssistedCreationStatus): boolean {
+  return (ASSISTED_CREATION_TERMINAL_STATUSES as readonly string[]).includes(status);
+}
+
+/** Past Requests / history lists — terminal statuses only. */
+export function filterAssistedCreationTerminalRequests<T extends { status: AssistedCreationStatus }>(
+  requests: readonly T[],
+): T[] {
+  return requests.filter((request) => isAssistedCreationTerminalStatus(request.status));
+}
+
 /** Customer may edit brief / references only before staff starts work. */
 export function canCustomerUpdateAssistedCreation(status: AssistedCreationStatus): boolean {
   return status === "submitted";

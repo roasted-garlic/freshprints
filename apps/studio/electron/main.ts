@@ -19,7 +19,6 @@ import { registerImportIpcHandlers } from './ipc/import/importIpcHandlers'
 import { registerInboxAlertIpcHandlers } from './ipc/inboxAlert/inboxAlertIpcHandlers'
 import { registerWhatnotImportIpcHandlers } from './ipc/whatnotImport/whatnotImportIpcHandlers'
 import { attachTextInputContextMenu } from './services/app/textInputContextMenu'
-import { runDevDerivativeGenerationVerification } from './services/import/verifyDerivativeGenerationInMainProcess'
 
 suppressDevToolsAutofillConsoleNoise()
 
@@ -294,10 +293,6 @@ app.whenReady().then(() => {
   registerInboxAlertIpcHandlers()
   registerWhatnotImportIpcHandlers()
   registerExportIpcHandlers()
-
-  if (!app.isPackaged) {
-    void runDevDerivativeGenerationVerification()
-  }
 
   createWindow()
 })

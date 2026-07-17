@@ -80,6 +80,10 @@ export const firestoreCollectionService = {
     return this.getCollectionReference("staffInboxAlertDeliveries");
   },
 
+  getAssistedCreationUpdateAcksCollection() {
+    return this.getCollectionReference("assistedCreationUpdateAcks");
+  },
+
   getSettingsCollection() {
     return this.getCollectionReference("settings");
   },
