@@ -10,12 +10,12 @@
 
 | Field | Value |
 |-------|-------|
-| **Managed workflow goal** | `etsy-link-only-rip-scrape` |
-| **Phase** | **Test** — automated green; **manual QA pending** (questionnaire UX + link cards) |
-| **Results model** | Primary + Broader **Etsy search link cards only** (ADR-FP-087j). Scrape / ScraperAPI product path removed. |
-| **Questionnaire UX** | Step 1 subject free-text + suggest; Step 2 tone free-text + suggest (no checkboxes); Step 3 wording optional |
-| **Deployed** | Link-only on Portal local / `fresh-prints-dev` submit path; `searchEtsyWebsiteRecommendations` deleted |
-| **R-010** | Scrape product path closed; purchases stay on Etsy |
+| **Last completed goal** | `phase-9c-assisted-creation` — **approved_with_notes**, owner manual QA `PASS` |
+| **Active managed goal** | `provider-agnostic-proof-ready-email` |
+| **Phase** | **Plan complete; human checkpoint before review** |
+| **Email direction** | Resend now behind provider-neutral interface; Brevo later |
+| **Runtime settings** | Owner-only separate provider choices for invitation and proof-ready notices |
+| **Deployment** | None authorized for the email phase |
 
 ---
 
@@ -23,25 +23,38 @@
 
 | Type | Path |
 |------|------|
-| Plan | `docs/workflow/plans/2026-07-16-etsy-link-only-rip-scrape-plan.md` |
-| Review | `docs/workflow/reviews/2026-07-16-etsy-link-only-rip-scrape-review.md` |
-| Test report | `docs/workflow/reviews/2026-07-16-etsy-link-only-rip-scrape-test-report.md` |
-| Manual QA | `docs/workflow/reviews/2026-07-16-etsy-link-only-rip-scrape-manual-qa.md` |
-| ADR | ADR-FP-087j in `docs/project/DECISIONS.md` |
+| Phase 9C signoff | `docs/workflow/reviews/2026-07-16-phase-9c-assisted-creation-signoff.md` |
+| Phase 9C test report | `docs/workflow/reviews/2026-07-16-phase-9c-assisted-creation-test-report.md` |
+| Phase 9C manual QA | `docs/workflow/reviews/2026-07-16-phase-9c-assisted-creation-manual-qa.md` |
+| Active plan | `docs/workflow/plans/2026-07-16-provider-agnostic-proof-ready-email-plan.md` |
+| Active review | pending |
 
 ---
 
-## Owner next steps (manual QA)
+## Owner decisions needed before review / implementation
 
-1. Hard-refresh Portal → Custom Designs → Help me find a design.
-2. Confirm Step 2 is free-text tone (suggestions OK); Step 1 dropdown flush + Enter/arrows/Escape.
-3. Submit → only polished Primary (+ Broader) link cards; no scrape UI / Network scrape callable.
-4. Reply `PASS` / `FAIL: …` / `PASS WITH NOTES: …`.
+1. Confirm the target `INVITATION_FROM_EMAIL`.
+2. Confirm `PROOF_NOTICE_FROM_EMAIL` (same verified sender or a different verified sender).
+3. Confirm the deployed `PORTAL_BASE_URL` for the Assisted proof review CTA.
+
+After these are recorded, run review phase. Do not implement before review approval.
+
+---
+
+## Locked email behavior
+
+- Send a notice for the first proof and each new proof after revisions.
+- Enqueue one deterministic delivery job per request/proof.
+- Resolve recipient server-side from `customers`, then linked `users` fallback.
+- Keep Resend for invitations now.
+- Show Brevo disabled in Studio until a later reviewed implementation.
+- Never store provider secrets in Firestore or expose them to Studio/Portal.
 
 ---
 
 ## Do not
 
-- Re-add client or server Etsy scraping for this flow
-- Production deploy without explicit approval
-- Paste API keys into chat
+- Implement or deploy before the human checkpoint is cleared and review approves the plan.
+- Add or configure Brevo in this phase.
+- Production deploy without explicit approval.
+- Paste API keys or customer email addresses into chat/logs.

@@ -60,6 +60,20 @@ Limits (shared constants): 100 files/batch, 100 MB/image, 2 GB batch/ZIP, concur
 
 ---
 
+## Assisted Creation callables
+
+| Callable | Role |
+|----------|------|
+| `submitAssistedCreationRequest` | Submit one open customer brief |
+| `customerUpdateAssistedCreationRequest` | Update own brief/references while `submitted` |
+| `staffUpdateAssistedCreationStatus` | Owner/admin start, resume, reject, cancel, or restore |
+| `staffAddAssistedCreationProof` | Owner/admin attach proof and transition to `proof_ready` |
+| `customerRespondToAssistedCreationProof` | Approve or request revisions |
+
+Proof-ready emails are the next planned backend phase. The design will put Resend behind a provider interface, preserve the existing invite path, and keep API keys in Secret Manager rather than Firestore or Studio.
+
+---
+
 ## AI enrichment (Studio catalog)
 
 Current prompt target: **`catalog-enrich-v21`** (Gemini vision; business-context framing). Provider key: Firebase Secret Manager (`GEMINI_API_KEY`). Settings: `settings/aiEnrichment` (vision model, optional tag rerank / suggestion author modes — defaults **off**).

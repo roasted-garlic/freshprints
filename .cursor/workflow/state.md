@@ -1,61 +1,65 @@
 ## Current Goal
-phase-9c-assisted-creation
+provider-agnostic-proof-ready-email
 
 ## Current Mode
 managed-phase
 
 ## Phase
-test
+plan
 
 ## Plan Status
 complete
 
 ## Review Status
-approved
+pending
 
 ## Implementation Status
-complete
+not_started
 
 ## Test Status
-pending_manual
+not_started
 
 ## Signoff Status
-pending
+not_started
 
 ## Human Checkpoint Required
 yes
 
 ## Human Checkpoint Reason
-Manual cross-app QA is required for Phase 9C after the fresh-prints-dev deploy and automated checks.
+Owner confirmation is required for `INVITATION_FROM_EMAIL`, `PROOF_NOTICE_FROM_EMAIL`, and the deployed `PORTAL_BASE_URL` before the proof-ready email plan can be reviewed/implemented safely.
 
 ## Allowed Actions
-Read documentation; record manual QA feedback; update test/checkpoint records; answer clarifying questions.
+Read documentation; answer clarifying questions; record the confirmed sender addresses and Portal base URL; revise the email plan if requested.
 
 ## Forbidden Actions
-Begin proof-ready email implementation; implement unrelated changes; deploy production; change secrets; migrate data; expand Phase 9C scope.
+Review or implement the proof-ready email plan before the configuration decisions are recorded; deploy; change secrets or shared environment values; implement Brevo; begin unrelated work.
 
 ## Next Required Step
-Await human `PASS`, `FAIL: [description]`, or `PASS WITH NOTES: [notes]` for `docs/workflow/reviews/2026-07-16-phase-9c-assisted-creation-manual-qa.md`.
+Await owner confirmation of the invitation sender, proof-notice sender, and deployed Portal base URL; then record the decision and run review phase for `docs/workflow/plans/2026-07-16-provider-agnostic-proof-ready-email-plan.md`.
 
 ## DONE
 no
 
 ## Last Completed Step
-2026-07-16 — Automated test phase recorded. Functions deploy, Portal typecheck, targeted lint, 25 targeted tests, and Studio Vite/Electron build passed; repository-level failures are documented. Manual QA is pending.
+2026-07-16 — Phase 9C signed off `approved_with_notes` after owner manual QA `PASS`; new provider-agnostic proof-ready email plan completed and paused for sender/base-URL confirmation before review.
 
 ## Plan Path
-docs/workflow/plans/2026-07-16-phase-9c-assisted-creation-plan.md
+docs/workflow/plans/2026-07-16-provider-agnostic-proof-ready-email-plan.md
 
-## Amendment Plan Path
-docs/workflow/plans/2026-07-16-phase-9c-customer-additions-while-submitted-plan.md
+## Previous Goal Signoff
+docs/workflow/reviews/2026-07-16-phase-9c-assisted-creation-signoff.md
+
+## Previous Goal Status
+phase-9c-assisted-creation — Signoff Status: approved_with_notes; DONE: yes; Last Completed Step: Signoff
 
 ## Review Path
-docs/workflow/reviews/2026-07-16-phase-9c-assisted-creation-review.md
-
-## Amendment Review Path
-docs/workflow/reviews/2026-07-16-phase-9c-customer-additions-while-submitted-review.md
+pending
 
 ## Decision Log
+- 2026-07-16 — Owner returned `PASS` for Phase 9C Assisted Creation manual QA.
+- 2026-07-16 — Phase 9C test status set to `passed_with_notes`; signoff `approved_with_notes`; Phase 9C complete.
+- 2026-07-16 — New email phase decisions: Resend now; provider-neutral contract; Brevo later; separate runtime provider selection for invites and proof notices; invites remain on Resend; notify on first and revised proofs.
+- 2026-07-16 — Email phase plan completed; sender-address and Portal-base-URL confirmations are required before review/implementation.
 - 2026-07-16 — No fee; screenshot-based wizard minus Rights; one open; owner/admin mutate helper view; proofing flow; Studio tabs Assisted|AI|Etsy|Suggestions.
 - 2026-07-16 — Implementation complete for MVP; awaiting manual QA.
 - 2026-07-16 — Owner approved fresh-prints-dev deploy; backend live for Assisted Creation.
@@ -74,66 +78,11 @@ docs/workflow/reviews/2026-07-16-phase-9c-customer-additions-while-submitted-rev
 
 ## Tests Run
 
-- Functions TypeScript build: passed
-- Portal typecheck: passed
-- Changed-feature targeted lint: passed
-- Assisted/suggestion tests: 11 passed
-- Stable Print Request list/query/origin tests: 14 passed
-- Studio Vite/Electron build: passed with bundle warnings
-- Full lint: failed_documented (existing ESLint configuration/repository findings)
-- Studio standalone typecheck: failed_documented (existing TypeScript `ignoreDeprecations` configuration)
-- Portal production build: blocked_documented (active dev server owns `.next/trace`)
-- Broader Print Request utility sweep: failed_documented (five existing sizing-policy expectation failures)
+- New email phase: none yet (plan only).
+- Previous Phase 9C: `passed_with_notes`; see `docs/workflow/reviews/2026-07-16-phase-9c-assisted-creation-test-report.md`.
 
-## Deploy checklist (`fresh-prints-dev` only — do not production deploy)
+## Previous Phase Notes
 
-### A) Cloud Functions (required for Update + post-MVP QA)
-
-From repo root (after `cd functions && npm run build && cd ..` if preferred; Firebase predeploy may build):
-
-```bash
-firebase deploy --only functions:customerUpdateAssistedCreationRequest,functions:customerRespondToAssistedCreationProof,functions:staffUpdateAssistedCreationStatus,functions:staffAddAssistedCreationProof,functions:submitAssistedCreationRequest,functions:cancelAssistedCreationRequest,functions:wipeOperationalTestData --project fresh-prints-dev
-```
-
-| Callable | Why redeploy |
-|----------|----------------|
-| `customerUpdateAssistedCreationRequest` | **Never deployed** — causes Update → `internal` / NOT_FOUND |
-| `customerRespondToAssistedCreationProof` | Optional 1–5 rating + approval note |
-| `staffUpdateAssistedCreationStatus` | Required cancel/reject/restore reasons; owner-only restore |
-| `staffAddAssistedCreationProof` | Safe to include (same module; keeps proof path current) |
-| `submitAssistedCreationRequest` | Safe to include (same module) |
-| `cancelAssistedCreationRequest` | Safe to include (same module) |
-| `wipeOperationalTestData` | Assisted wipe target `assistedCreationRequests` + Storage `assisted-creation/` |
-
-**Note:** Do **not** use bare `firebase deploy --only functions` until orphan remote function `ensurePortalWorkingPrintRequest` is deleted or restored in source (prior full deploy aborted).
-
-### B) Rules / indexes / storage
-
-Already deployed in the initial 9C wave. Redeploy only if local files changed since then (they have wipe/rules docs, but Assisted collection/rules/storage paths were in that wave):
-
-```bash
-firebase deploy --only firestore:rules,firestore:indexes,storage --project fresh-prints-dev
-```
-
-Optional if unsure whether wipe/rules drift exists — safe on dev.
-
-### C) Portal hosting
-
-- **Local Portal (`apps/portal` npm run dev):** **No** App Hosting deploy required for Update UI / QA.
-- **Hosted Portal on App Hosting:** **Yes** if humans test the deployed site — UI for Update modal is client-only and not on hosting until:
-
-```bash
-firebase deploy --only apphosting --project fresh-prints-dev
-```
-
-### D) Studio
-
-- **Restart** Studio (`npm run dev` in `apps/studio`) so renderer picks up Assisted inbox / cancel-reason / proof UI.
-- **No new Electron IPC** specific to Assisted downloads beyond existing `desktopAppService.downloadUrlToFile` — full Electron rebuild only if main-process download IPC changed and restart alone is insufficient.
-- No Firebase Studio deploy (desktop app).
-
-### E) Anything else
-
-- Production: **none**
-- Emulator: not required for this QA path (Portal/Studio → live `fresh-prints-dev`)
-- After functions deploy: hard-refresh Portal; retry Update on a `submitted` request → expect success; after Studio **Start work**, Update should be blocked with failed-precondition messaging
+- Phase 9C signoff: `docs/workflow/reviews/2026-07-16-phase-9c-assisted-creation-signoff.md`
+- Phase 9C manual QA: `PASS`
+- Do not use bare `firebase deploy --only functions` until orphan remote `ensurePortalWorkingPrintRequest` is restored in source or explicitly deleted with human approval.

@@ -7,13 +7,13 @@
 | Plan | `docs/workflow/plans/2026-07-16-phase-9c-assisted-creation-plan.md` |
 | Amendment | `docs/workflow/plans/2026-07-16-phase-9c-customer-additions-while-submitted-plan.md` |
 | Implementation | `4f1be11`, `316dc5b`, `aca13d2`, plus test-phase fixes pending commit |
-| Overall | **pending_manual** |
+| Overall | **passed_with_notes** |
 
 ---
 
 ## Summary
 
-The required fresh-prints-dev functions built and deployed successfully. Portal typecheck, Studio Vite/Electron build, targeted lint, and 25 targeted tests pass. Full-repository lint, Studio standalone typecheck, Portal production build, and five unrelated Print Request sizing tests have documented environment or pre-existing failures. Manual cross-app QA remains required before signoff.
+The required fresh-prints-dev functions built and deployed successfully. Portal typecheck, Studio Vite/Electron build, targeted lint, and 25 targeted tests pass. The owner completed the cross-app manual QA checkpoint with `PASS`. Full-repository lint, Studio standalone typecheck, Portal production build, and five unrelated Print Request sizing tests retain documented environment or pre-existing failures, so the overall result is `passed_with_notes`.
 
 ---
 
@@ -32,7 +32,7 @@ The required fresh-prints-dev functions built and deployed successfully. Portal 
 | Broader targeted sweep | Assisted, suggestion, and Print Request utilities | 1 | fail documented | 42/47 pass; five pre-existing sizing-policy expectation failures |
 | Studio build | `npx vite build` from `apps/studio` | 0 | pass | Renderer, Electron main, and preload built; bundle warnings only |
 | Portal build | `npm run build:portal` | 1 | blocked | Running Portal dev server owns `.next/trace` (`EPERM`) |
-| Integration / E2E | Manual cross-app workflow | pending | pending | See checkpoint |
+| Integration / E2E | Manual cross-app workflow | N/A | pass | Owner returned `PASS`; see checkpoint |
 
 ---
 
@@ -72,13 +72,13 @@ The required fresh-prints-dev functions built and deployed successfully. Portal 
 
 | Test | Status | Notes |
 |------|--------|-------|
-| Submitted request update and reference upload | pending | Confirm deployed callable and modal success behavior |
-| Staff start/cancel/reject/restore controls | pending | Confirm status gates and reasons |
-| Proof staging, notes, revisions, approval, rating | pending | Cross-app Portal/Studio flow |
-| Status and past-request detail presentation | pending | Tabs, modal, history, actions |
-| Studio stage and Print Request tab stability | pending | Single-click behavior |
-| Suggestions live-list browse modal | pending | Placement, tabs, scoped search |
-| Assisted Creation dev wipe | pending | Confirm collection/storage target |
+| Submitted request update and reference upload | pass | Included in owner `PASS` |
+| Staff start/cancel/reject/restore controls | pass | Included in owner `PASS` |
+| Proof staging, notes, revisions, approval, rating | pass | Included in owner `PASS` |
+| Status and past-request detail presentation | pass | Included in owner `PASS` |
+| Studio stage and Print Request tab stability | pass | Included in owner `PASS` |
+| Suggestions live-list browse modal | pass | Included in owner `PASS` |
+| Assisted Creation dev wipe | pass | Included in owner `PASS` |
 
 Manual test instructions: `docs/workflow/reviews/2026-07-16-phase-9c-assisted-creation-manual-qa.md`
 
@@ -96,7 +96,7 @@ Manual test instructions: `docs/workflow/reviews/2026-07-16-phase-9c-assisted-cr
 ## Signoff Readiness
 
 - [x] Required automated checks pass or failures are documented
-- [ ] Manual tests complete
-- [ ] Ready for signoff phase
+- [x] Manual tests complete
+- [x] Ready for signoff phase
 
-**Next step:** manual-test-checkpoint
+**Next step:** signoff-phase

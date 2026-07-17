@@ -23,6 +23,9 @@ Upcoming/Past shows; capacity; attach requests; Working/Queued/Printed; Whatnot 
 ### Customer Uploads (intake)
 Staff review of Portal customer artwork: Pending / Excluded tabs; Send to AI Review; exclude/restore; retry processing; surface library-permission declined (ADR-FP-074).
 
+### Custom Designs
+Assisted inbox with stage tabs, request details, audited start/cancel/reject/restore actions, proof staging, and customer-revision visibility. Etsy searches and Suggestions management remain separate tabs.
+
 ### Users / Settings / Dev
 Team users + customer records; AI enrichment settings; show-queue settings; dashboard scaffold.
 
@@ -46,6 +49,8 @@ Team users + customer records; AI enrichment settings; show-queue settings; dash
 | Image quality sizing (`image-quality-v2`, ≤6× toward 12″) | ✅ Live (dev) — ADR-FP-080 |
 | Progress tabs (Working / Queued / Printing / Printed) | ✅ Live |
 | Add request to show (callable + calendar) | ✅ Live |
+| Assisted Creation brief + submitted-only updates | ✅ Live (dev) |
+| Assisted proof / revision / approval lifecycle | ✅ Live (dev) — owner QA `PASS` |
 | Production App Hosting | ⏸ Human approval |
 
 ### Customer upload limits (r7)
@@ -70,9 +75,10 @@ Team users + customer records; AI enrichment settings; show-queue settings; dash
 | AI | `enqueueAiEnrichment`, `onDesignAiEnrichmentQueued`, settings/playground |
 | Portal requests | `createPortalPrintRequest`, `duplicatePortalPrintRequestItem`, `listPortalAllocatableShows`, `queuePortalPrintRequestToShow` |
 | Customer uploads | `createCustomerUploadBatch`, `finalizeCustomerUpload`, `finalizeCustomerUploadZip`, `confirmCustomerUploadsAndAttachToRequest`, promote/exclude/restore/retry, cleanup/wipe helpers |
+| Assisted Creation | `submitAssistedCreationRequest`, `customerUpdateAssistedCreationRequest`, `cancelAssistedCreationRequest`, `staffUpdateAssistedCreationStatus`, `staffAddAssistedCreationProof`, `customerRespondToAssistedCreationProof` |
 
 ---
 
 ## Not yet built (Phase 9+)
 
-Custom Request Q&A / Etsy fee flow; analytics dashboards; favorites; production Portal hosting.
+Proof-ready email notifications; Brevo email provider; optional custom-design fee; analytics dashboards; production Portal hosting.

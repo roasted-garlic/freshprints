@@ -116,9 +116,24 @@ Gang sheet **manual builder** canvas is deferred (post-MVP).
 
 ---
 
-## F. Future — Custom Requests (Phase 9)
+## F. Assisted Creation (Phase 9C) — CURRENT
 
-Separate Q&A / Etsy / optional design-fee path. **Not** the same as customer PNG uploads on a print request.
+```
+Portal customer submits structured Assisted Creation brief
+    ↓
+Customer may update brief/references while submitted
+    ↓
+Studio owner/admin starts work and stages a proof
+    ↓
+proof_ready → customer approves
+    OR requests revisions with required notes
+    ↓
+Studio resumes work → sends revised proof → repeat until approved
+```
+
+One open Assisted request per customer. Helpers may read but not mutate. Cancel/reject reasons and owner restore are audited. This is separate from customer PNG uploads on a normal print request.
+
+**Next planned addition:** idempotent proof-ready customer emails through a provider-neutral service, using Resend first.
 
 ---
 

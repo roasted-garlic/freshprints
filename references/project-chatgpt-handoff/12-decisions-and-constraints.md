@@ -39,6 +39,13 @@
 | ADR-FP-080 | Pixel-based sizing `image-quality-v2` (≤6× toward 12″; 10″ request default; extended >2× staff-only); **human-only** halftone — no auto detector |
 | ADR-FP-014 | Sequential AI Processing queue; no concurrent import enqueue; Auto advance default ON; post-import sequential auto-start when Auto advance on (amended 2026-07-13) |
 
+## Custom Designs
+
+| ADR / decision | Summary |
+|----------------|---------|
+| ADR-FP-088 | Assisted Creation uses its own request collection and status/proof machine; one open request; owner/admin mutate; helper read-only |
+| Owner decision 2026-07-16 | Proof-ready emails use Resend first behind a provider-neutral interface; Brevo is deferred; owner Studio settings eventually select invite and proof-notice providers independently |
+
 ## AI enrichment (recent)
 
 | ADR | Summary |

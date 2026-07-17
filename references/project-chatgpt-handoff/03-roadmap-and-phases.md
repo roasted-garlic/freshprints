@@ -2,7 +2,7 @@
 
 > Align all work with the current phase / active managed goal. Do not jump ahead.
 
-## Current status (2026-07-13)
+## Current status (2026-07-16)
 
 | Item | Status |
 |------|--------|
@@ -12,10 +12,11 @@
 | Phase 8 fast-follow — persistent Current Request / donate / Working triage | **Complete** (2026-07-13) |
 | Phase 8 fast-follow — image quality + human-only halftone (ADR-FP-080) | **Complete** (signoff 2026-07-13, PASS WITH NOTES) |
 | Phase 8 fast-follow — Current Request empty-state / Your Stash polish | **Complete** (signoff 2026-07-13) |
-| Phase 9 Custom Requests | Next major product phase (not started as active work) |
+| Phase 9A Etsy recommendations | **Complete in `fresh-prints-dev`** |
+| Phase 9C Assisted Creation | **Complete in `fresh-prints-dev`** — owner QA `PASS`, signoff 2026-07-16 |
 | Production Portal App Hosting | Pending human approval |
 
-**Active managed goal:** none (idle). Owner-directed next: `studio-import-auto-start-ai-processing`.
+**Active managed goal:** `provider-agnostic-proof-ready-email` — plan phase.
 
 ---
 
@@ -59,12 +60,19 @@ Sub-phases A–G + remediations r2–r7 on `fresh-prints-dev`:
 - Factors **>2×** → extended staff visibility only (non-blocking)
 - No automatic halftone detection; Portal optional checkbox + Studio/AI Review staff toggle; approve syncs `halftone` tag
 
+### Phase 9C — Assisted Creation (ADR-FP-088)
+- Portal structured brief with submitted-only updates and reference images
+- Studio Assisted inbox, audited status controls, and proof staging
+- Customer proof-ready → revision loop → approval with optional rating/note
+- One open Assisted request per customer; owner/admin mutate; helper read-only
+- Signed off 2026-07-16 after owner manual QA `PASS`
+
 ---
 
 ## Planned next
 
-### Phase 9 — Custom Request Q&A
-Separate from print requests and from customer-upload request artwork. Etsy referral / in-house custom art; optional $5–$10 design fee.
+### Provider-agnostic proof-ready email
+Resend implementation first, behind a provider interface; Brevo later. Notify customers on each idempotent transition to `proof_ready`; owner Studio settings select invite and proof-notice providers.
 
 ### Phase 10 — Analytics
 `requestCount`, `showAddCount`, `printCount` dashboards — analytics only, not lifecycle status.

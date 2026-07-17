@@ -15,6 +15,7 @@
 | `customerUploadRateLimits` / leases / idempotency | Abuse controls |
 | `upcomingShows` / `showAllocations` / print runs | Show Queue |
 | `staffInboxAcks` | Per-staff Done state for inbox |
+| `assistedCreationRequests` | Customer Assisted Creation brief, references, proofs, and revision history |
 | `settings` | AI enrichment, show queue, etc. |
 
 ## Design status (catalog lifecycle)
@@ -65,6 +66,15 @@ After staff promote → creates/links a `designs` doc and existing AI enqueue; r
 ## Show allocations
 
 Link `printRequest` / `printRequestItem` quantities to an `upcomingShow`. Source-aware resolvers support catalog originals **and** customer-upload production paths for export/gang sheets.
+
+## Assisted Creation
+
+- Open statuses: `submitted`, `in_progress`, `proof_ready`, `revision_requested`.
+- Terminal statuses: `approved`, `rejected`, `cancelled`.
+- Customer may update answers/references only while `submitted`.
+- `proof_ready` requires a proof asset; revision requests require notes.
+- `proofs[]` and `revisionHistory[]` retain the proof/audit trail.
+- Planned email phase may add idempotent delivery metadata and `settings/emailProviders`; exact fields require plan review before implementation.
 
 ## Data rules
 
