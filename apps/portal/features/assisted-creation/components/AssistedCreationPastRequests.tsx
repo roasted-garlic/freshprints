@@ -212,7 +212,7 @@ export function AssistedCreationPastRequests({ className }: AssistedCreationPast
                 request={selected}
                 tabListLabel="Past request sections"
               />
-              {actionError ? <p className="portal-form-error">{actionError}</p> : null}
+              {actionError && !updateOpen ? <p className="portal-form-error">{actionError}</p> : null}
             </div>
             <footer className="modal-footer assisted-creation-history-modal-footer">
               <button
@@ -232,7 +232,10 @@ export function AssistedCreationPastRequests({ className }: AssistedCreationPast
           busy={busy}
           isOpen={updateOpen}
           onBusyChange={setBusy}
-          onClose={() => setUpdateOpen(false)}
+          onClose={() => {
+            setUpdateOpen(false);
+            setActionError(null);
+          }}
           onError={setActionError}
           request={selected}
         />

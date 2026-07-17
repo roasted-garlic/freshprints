@@ -56,11 +56,25 @@ function mapStorageUploadError(error: unknown): Error {
   return new Error('Could not upload reference images. Please try again.');
 }
 
-function mapCallableError(error: unknown): Error {
+function mapCallableError(error: unknown, context: 'update' | 'default' = 'default'): Error {
   if (error instanceof FirebaseError) {
+    if (context === 'update' && error.code === 'functions/not-found') {
+      return new Error(
+        'Update is not available on the server yet. Redeploy customerUpdateAssistedCreationRequest to fresh-prints-dev, then try again.',
+      );
+    }
+    if (context === 'update' && error.code === 'functions/internal') {
+      const detail = error.message?.trim();
+      if (detail && detail.toLowerCase() !== 'internal') {
+        return new Error(detail);
+      }
+      return new Error(
+        'Could not save your update. The update function is likely missing on the server — redeploy customerUpdateAssistedCreationRequest to fresh-prints-dev, then try again.',
+      );
+    }
     if (error.code === 'functions/not-found') {
       return new Error(
-        'Updating this request is not available yet on the server. Ask Fresh Prints to redeploy assisted-creation functions, then try again.',
+        'This action is not available on the server yet. Ask Fresh Prints to redeploy the related functions, then try again.',
       );
     }
     if (error.code === 'functions/internal') {
@@ -68,9 +82,7 @@ function mapCallableError(error: unknown): Error {
       if (detail && detail.toLowerCase() !== 'internal') {
         return new Error(detail);
       }
-      return new Error(
-        'Could not save your update right now. If this keeps happening after a refresh, the update function may still need a server redeploy.',
-      );
+      return new Error('Something went wrong on the server. Please try again.');
     }
     return new Error(portalAuthService.getCallableErrorMessage(error));
   }
@@ -238,7 +250,7 @@ export const assistedCreationService = {
       });
       return result.data;
     } catch (error) {
-      throw mapCallableError(error);
+      throw mapCallableError(error, 'update');
     }
   },
 

@@ -69,6 +69,7 @@ export function AssistedCreationUpdateModal({
   const [keptReferences, setKeptReferences] = useState<AssistedCreationReferenceImage[]>([]);
   const [newFiles, setNewFiles] = useState<File[]>([]);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isOpen) {
@@ -82,8 +83,22 @@ export function AssistedCreationUpdateModal({
     setKeptReferences([...(request.referenceImages ?? [])]);
     setNewFiles([]);
     setUploadError(null);
+    setSaveError(null);
     onError(null);
   }, [isOpen, onError, request]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !busy) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [busy, isOpen, onClose]);
 
   const remainingSlots = useMemo(
     () => Math.max(0, ASSISTED_CREATION_MAX_REFERENCE_IMAGES - keptReferences.length),
@@ -212,6 +227,12 @@ export function AssistedCreationUpdateModal({
               <p className="portal-muted">Reference limit reached. Remove one to add another.</p>
             )}
           </div>
+
+          {saveError ? (
+            <p className="portal-form-error assisted-creation-update-save-error" role="alert">
+              {saveError}
+            </p>
+          ) : null}
         </div>
 
         <footer className="modal-footer">
@@ -229,7 +250,7 @@ export function AssistedCreationUpdateModal({
             onClick={() => {
               const base = request.answers;
               if (!base) {
-                onError('This request is missing its brief.');
+                setSaveError('This request is missing its brief.');
                 return;
               }
               const nextAnswers = withReferenceFlags(
@@ -244,6 +265,7 @@ export function AssistedCreationUpdateModal({
               );
 
               onBusyChange(true);
+              setSaveError(null);
               onError(null);
               void assistedCreationService
                 .updateRequest({
@@ -254,17 +276,21 @@ export function AssistedCreationUpdateModal({
                   updateNote: updateNote.trim() || undefined,
                 })
                 .then(() => {
+                  setSaveError(null);
+                  onError(null);
                   onSaved?.();
                   onClose();
                 })
                 .catch((error: unknown) => {
-                  onError(error instanceof Error ? error.message : 'Unable to update request.');
+                  setSaveError(
+                    error instanceof Error ? error.message : 'Unable to update request.',
+                  );
                 })
                 .finally(() => onBusyChange(false));
             }}
             type="button"
           >
-            Save updates
+            {busy ? 'Saving…' : 'Save updates'}
           </button>
         </footer>
       </div>

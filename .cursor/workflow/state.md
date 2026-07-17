@@ -26,7 +26,7 @@ pending
 yes
 
 ## Human Checkpoint Reason
-Manual QA on fresh-prints-dev blocked on redeploy. Update-while-submitted fails with `internal` because `customerUpdateAssistedCreationRequest` was never deployed (added after the initial Assisted Creation functions deploy). Also redeploy post-MVP callables + wipe target.
+Manual QA on fresh-prints-dev blocked on redeploy. Confirmed 2026-07-16: `firebase functions:list` shows `customerUpdateAssistedCreationRequest` **absent** on fresh-prints-dev (Update → `not-found`/`internal`). Also redeploy post-MVP callables + wipe target per checklist A.
 
 ## Allowed Actions
 Record manual QA; fix in-scope bugs; prepare signoff; deploy listed surfaces to fresh-prints-dev after human confirmation.
@@ -41,7 +41,7 @@ Human confirms and runs the fresh-prints-dev deploy checklist below, then contin
 no
 
 ## Last Completed Step
-2026-07-16 — Re-verified Update + new-reference upload: still deploy-only for `internal` (callable never on fresh-prints-dev). Submit/update both use `assisted-creation/{uid}/pending/{id}`; Storage rules allow customer write; update validator accepts pending + kept paths. Fixed Update modal header stack + friendlier not-found/internal client messages (no firebase deploy run).
+2026-07-16 — Confirmed via `firebase functions:list --project fresh-prints-dev`: `customerUpdateAssistedCreationRequest` is **still not deployed** (only submit/cancel/respond/staff* Assisted callables are live). Modal UX: save errors now show in-modal (not only behind overlay); success still closes modal. No code bug in callable path — human must run deploy checklist A.
 
 ## Plan Path
 docs/workflow/plans/2026-07-16-phase-9c-assisted-creation-plan.md
@@ -68,6 +68,7 @@ docs/workflow/reviews/2026-07-16-phase-9c-customer-additions-while-submitted-rev
 - 2026-07-16 — Product: until request is `in_progress`, customer may make additions (update answers + references while `submitted`); server-enforced via `customerUpdateAssistedCreationRequest`.
 - 2026-07-16 — Diagnosis: Portal Update → `internal` because `customerUpdateAssistedCreationRequest` was never in any deploy wave (added after initial selective deploy). Code path exports + client name/payload match; local functions build includes the export.
 - 2026-07-16 — Re-check (new refs): upload path parity with submit OK; Storage `assisted-creation/{userId}/pending` customer create OK; no move-to-references on submit (paths stay pending). Client maps not-found/internal to clearer copy; Update sheet header stacked (shared `AssistedCreationUpdateModal`). Still need functions redeploy before Update QA can pass.
+- 2026-07-16 — Live list reconfirm: `customerUpdateAssistedCreationRequest` absent on fresh-prints-dev. Update modal keeps open on failure with in-modal error; closes on success. Parent page no longer shows update errors behind the overlay.
 
 ## Deploy checklist (`fresh-prints-dev` only — do not production deploy)
 

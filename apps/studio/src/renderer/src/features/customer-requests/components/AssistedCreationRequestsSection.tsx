@@ -956,16 +956,6 @@ export function AssistedCreationRequestsSection({
   );
 
   useEffect(() => {
-    if (counts[activeStage] > 0) {
-      return;
-    }
-    const fallback = STAGE_TABS.find((tab) => counts[tab.id] > 0)?.id;
-    if (fallback) {
-      setActiveStage(fallback);
-    }
-  }, [activeStage, counts]);
-
-  useEffect(() => {
     if (visibleItems.length === 0) {
       setSelectedId(null);
       return;

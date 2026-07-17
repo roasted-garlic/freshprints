@@ -292,7 +292,7 @@ export function AssistedCreationStatusPanel({ onStartNew }: AssistedCreationStat
         request={latest}
       />
 
-      {actionError ? <p className="portal-form-error">{actionError}</p> : null}
+      {actionError && !updateOpen ? <p className="portal-form-error">{actionError}</p> : null}
 
       <div className="etsy-wizard-actions assisted-creation-status-footer">
         <button
@@ -313,7 +313,10 @@ export function AssistedCreationStatusPanel({ onStartNew }: AssistedCreationStat
         busy={busy}
         isOpen={updateOpen}
         onBusyChange={setBusy}
-        onClose={() => setUpdateOpen(false)}
+        onClose={() => {
+          setUpdateOpen(false);
+          setActionError(null);
+        }}
         onError={setActionError}
         request={latest}
       />
