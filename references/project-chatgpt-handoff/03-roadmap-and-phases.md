@@ -2,21 +2,21 @@
 
 > Align all work with the current phase / active managed goal. Do not jump ahead.
 
-## Current status (2026-07-16)
+## Current status (2026-07-18)
 
 | Item | Status |
 |------|--------|
-| Phases 1–7 | Complete (Studio foundation through Show Queue MVP) |
+| Phases 1-7 | Complete (Studio foundation through Show Queue MVP; staff-assisted Whatnot import built; live scheduled Whatnot sync **not planned**) |
 | Phase 8 Portal MVP | **Complete in `fresh-prints-dev`** |
-| Phase 8 fast-follow — customer artwork uploads | **Complete** (parent signoff 2026-07-12) |
-| Phase 8 fast-follow — persistent Current Request / donate / Working triage | **Complete** (2026-07-13) |
-| Phase 8 fast-follow — image quality + human-only halftone (ADR-FP-080) | **Complete** (signoff 2026-07-13, PASS WITH NOTES) |
-| Phase 8 fast-follow — Current Request empty-state / Your Stash polish | **Complete** (signoff 2026-07-13) |
+| Phase 8 fast-follows (uploads, CR, image quality, caching, auth, etc.) | **Complete** through mid-July signoffs |
 | Phase 9A Etsy recommendations | **Complete in `fresh-prints-dev`** |
-| Phase 9C Assisted Creation | **Complete in `fresh-prints-dev`** — owner QA `PASS`, signoff 2026-07-16 |
+| Phase 9C Assisted Creation / Custom Requests | **Complete in `fresh-prints-dev`** - polish + Brevo proof email IP **PASS** 2026-07-18 |
+| Phase 9 remaining | Create My Design with AI; design fee / Stripe; questionnaire branching — deferred |
+| Portal catalog image load caching | **Complete** (2026-07-14) — not an open next step |
+| Account linking (same email) | Firebase/Google console setting — not a custom app build |
 | Production Portal App Hosting | Pending human approval |
 
-**Active managed goal:** `provider-agnostic-proof-ready-email` — plan phase.
+**Active managed goal:** (none — idle after Brevo IP + wipe closeouts)
 
 ---
 
@@ -41,7 +41,7 @@ AI Review workspace; staff-controlled enrichment (now **catalog-enrich-v21**); a
 Studio `/print-requests`; internal + customer requests; selection mode; sizing/DPI; naming.
 
 ### Phase 7 — Show Queue
-Combined Whatnot show + print run; capacity; split allocation; zip + gang sheet export; production timer; shared calendar picker. Live Whatnot scheduled sync **not** planned for Studio.
+Combined Whatnot show + print run; capacity; split allocation; zip + gang sheet export; production timer; shared calendar picker. Staff-assisted Import Shows is the Whatnot sync. Live/hourly scheduled Whatnot sync **not** planned for Studio.
 
 ### Phase 8 — Fresh Prints Portal (MVP)
 Customer auth, catalog discover/library, print requests + progress tabs, **Add to show**. Signed off in dev 2026-07-08.
@@ -71,8 +71,11 @@ Sub-phases A–G + remediations r2–r7 on `fresh-prints-dev`:
 
 ## Planned next
 
-### Provider-agnostic proof-ready email
-Resend implementation first, behind a provider interface; Brevo later. Notify customers on each idempotent transition to `proof_ready`; owner Studio settings select invite and proof-notice providers.
+### Remaining Phase 9 deferred
+Create My Design with AI; staff design-fee / Stripe; assisted questionnaire branching — start only when explicitly chosen.
+
+### Production
+Portal App Hosting / production Google enablement / production email release — human approval required.
 
 ### Phase 10 — Analytics
 `requestCount`, `showAddCount`, `printCount` dashboards — analytics only, not lifecycle status.

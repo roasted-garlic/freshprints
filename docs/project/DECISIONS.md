@@ -774,7 +774,7 @@ Portal customers need a faster sign-up path via Google while retaining email/pas
 3. **Studio staff login:** email/password only — no Google UI.
 4. **Studio customer invite/create:** email invite only — no Google option.
 5. **Staff Google on Portal:** blocked via existing role checks; show unavailable + sign out.
-6. **Account linking** for invite/password + same-email Google is deferred; show clear error to use the original method.
+6. **Account linking** for invite/password + same-email Google: prefer Firebase Auth / Google Identity console setting **"Link accounts that use the same email"** (owner-handled; not a custom app build). App may still show a clear error if linking is disabled or conflicts remain. (Clarified 2026-07-18.)
 7. **Firebase Console:** human enables Google provider and authorized domains (dev first; production with separate approval).
 
 **Consequences**

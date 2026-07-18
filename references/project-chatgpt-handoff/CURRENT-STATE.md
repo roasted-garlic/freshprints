@@ -10,27 +10,37 @@
 
 | Field | Value |
 |-------|-------|
-| **Active managed goal** | Brevo proof-ready email: owner IP/blocklist deliverability |
-| **Phase** | **test** (Brevo); wipe presets closed |
-| **Just closed** | Studio Test Data Reset presets + wipe expansion — **approved_with_notes** (owner **PASS**) |
-| **Tests** | Wipe: owner PASS 2026-07-18. Brevo: partial (`provider_rejected` on some first proofs) |
-| **Next** | Owner Brevo IP/blocklist fix + first-proof email retest (PASS/FAIL) |
+| **Active managed goal** | (none - idle) |
+| **Phase** | **done** / idle |
+| **Just closed** | Brevo IP/blocklist deliverability - **approved_with_notes** (owner **PASS**); Studio wipe presets already closed |
+| **Tests** | Owner PASS: Brevo IP 2026-07-18; wipe presets PASS 2026-07-18 |
+| **Next** | Pick next managed goal explicitly |
 | **Deployment** | `wipeOperationalTestData` on `fresh-prints-dev`. No production. |
 
 ---
 
 ## Just closed (2026-07-18)
 
-1. **studio-test-data-reset-presets** — short labels, presets (incl. **All (-) Designs**), expanded Etsy/Custom wipe leftovers; Functions wipe callable already on fresh-prints-dev. Signoff: `docs/workflow/reviews/2026-07-18-studio-test-data-reset-presets-signoff.md`
+1. **brevo-proof-email-ip-block** - owner **PASS** on Brevo IP/blocklist; no app code. Signoff: `docs/workflow/reviews/2026-07-18-brevo-proof-email-ip-block-signoff.md`
+2. **studio-test-data-reset-presets** - confirmed closed **approved_with_notes**. Signoff: `docs/workflow/reviews/2026-07-18-studio-test-data-reset-presets-signoff.md`
 
 ---
 
-## Still open
+## Clarifications recorded (2026-07-18 owner)
 
-1. **Brevo first-proof IP/blocklist** — checkpoint `docs/workflow/reviews/2026-07-18-brevo-proof-email-ip-block-checkpoint.md` (not an app skip fix)
-2. Production push / production email release — deferred
-3. **portal-notifications-web-push** — VAPID + OS toast (separate)
-4. Optional `APPROVE DEV DEPLOY` items (invite continue URL, firestore.rules harden, AI Function redeploy ops)
+- **Phase 9:** Not untouched future work - 9A Etsy + 9C Assisted/Custom Requests complete in `fresh-prints-dev`; AI Create My Design + design fee still deferred.
+- **Image caching:** Already complete (2026-07-14 Portal catalog image load caching).
+- **Account linking:** Firebase/Google console "Link accounts that use the same email" - not a custom app build.
+- **Whatnot:** Staff-assisted Import Shows is built (day-to-day sync). Automated live/hourly scheduled sync is **not built and not planned**.
+
+---
+
+## Still open / deferred (pick explicitly)
+
+1. Production Portal App Hosting / production Google enablement / production email release
+2. Remaining Phase 9: Create My Design with AI; staff design-fee / Stripe; assisted questionnaire branching
+3. Optional `APPROVE DEV DEPLOY` items (invite continue URL, firestore.rules harden, AI Function redeploy ops)
+4. Gang Sheet Builder manual canvas (post-MVP backlog)
 
 ---
 
@@ -38,4 +48,4 @@
 
 - Production deploy without explicit approval.
 - Paste API keys into chat/logs.
-- Speculative first-proof app code deploys for Brevo IP blocking.
+- Treat live Whatnot scheduled sync or image caching as open MVP app work.

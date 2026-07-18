@@ -1,62 +1,63 @@
 # Current Goal
-Brevo proof-ready email: owner IP/blocklist deliverability (not first-proof app skip)
+(none - idle)
 
 ## Current Mode
-managed-phase
+idle
 
 ## Phase
-test
+done
 
 ## Plan Status
-n/a - investigation pivot; no app fix planned
+n/a
 
 ## Review Status
 n/a
 
 ## Implementation Status
-n/a - no speculative code deploy
+n/a
 
 ## Test Status
-partial - Functions logs confirm enqueue + Brevo `provider_rejected` on failed first proofs
+passed_with_notes (owner PASS: Brevo IP/blocklist; wipe presets already closed)
 
 ## Signoff Status
-pending (Brevo); wipe presets **approved_with_notes** 2026-07-18
+approved_with_notes (Brevo IP 2026-07-18). Wipe presets approved_with_notes 2026-07-18 (confirmed closed).
 
 ## Human Checkpoint Required
-yes
+no
 
 ## Human Checkpoint Reason
-Brevo/provider IP allowlisting or blocklist - clear in Brevo dashboard, then retest first-proof email. See docs/workflow/reviews/2026-07-18-brevo-proof-email-ip-block-checkpoint.md
+(none)
 
 ## Allowed Actions
-Read docs; await owner Brevo IP/blocklist fix + retest result. No production deploy.
+Read docs; await next explicit managed goal
 
 ## Forbidden Actions
-Speculative first-proof code fixes; Functions deploy for this email issue; production deploy; secrets in chat
+Production deploy without approval; secrets in chat; speculative scope expansion
 
 ## Next Required Step
-Await owner Brevo transactional-log / IP allowlist fix; then first-proof email retest (PASS/FAIL)
+Idle - pick next managed goal explicitly
 
 ## DONE
-no (Brevo open). Wipe presets goal closed.
+yes
 
 ## Last Completed Step
-2026-07-18 - Studio Test Data Reset presets + wipe expansion signed off **approved_with_notes** after owner **PASS** (short labels, presets incl. **All (-) Designs**, expanded Etsy/Custom leftovers; `wipeOperationalTestData` already on fresh-prints-dev). Signoff: docs/workflow/reviews/2026-07-18-studio-test-data-reset-presets-signoff.md
+2026-07-18 - Owner clarifying closeouts: Brevo IP/blocklist **PASS** → signoff **approved_with_notes**; Studio wipe presets confirmed closed; ROADMAP/state corrected for Phase 9 progress, image caching (already complete), Firebase account linking (console setting), Whatnot assisted import vs live scheduled sync.
 
 ## Plan Path
-(n/a - deliverability / Brevo console)
+(n/a)
 
 ## Review Path
 docs/workflow/reviews/2026-07-18-brevo-proof-email-ip-block-checkpoint.md
 
 ## Manual QA Path
-docs/workflow/reviews/2026-07-18-brevo-proof-email-ip-block-checkpoint.md
+(n/a - closed)
 
 ## Signoff Path
+docs/workflow/reviews/2026-07-18-brevo-proof-email-ip-block-signoff.md
 (wipe closed) docs/workflow/reviews/2026-07-18-studio-test-data-reset-presets-signoff.md
 
 ## Files Modified
-(wipe closed - see signoff). Brevo: no app code.
+Docs/state only this closeout: Brevo checkpoint+signoff; ROADMAP; handoff CURRENT-STATE / 13 / 03; workflow state. No app code.
 
 ## Deploy
 - Prior: `wipeOperationalTestData` → `fresh-prints-dev` (2026-07-18)
@@ -64,9 +65,11 @@ docs/workflow/reviews/2026-07-18-brevo-proof-email-ip-block-checkpoint.md
 - No production
 
 ## Parked Prior Workflow
-(none) - Studio Test Data Reset presets closed 2026-07-18 after owner PASS.
+(none)
 
 ## Decision Log
+- 2026-07-18 - Owner **PASS** Brevo IP/blocklist → signoff **approved_with_notes**; human checkpoint cleared; workflow idle.
+- 2026-07-18 - Owner clarifying: Phase 9 = ongoing Etsy + Custom Requests / Assisted work (9A/9C complete in dev; AI Create My Design + fee still deferred). Image caching already shipped (2026-07-14). Account linking handled via Firebase/Google console "Link accounts that use the same email" (not a custom app build). Whatnot: staff-assisted import is built; live scheduled/hourly sync remains **not planned**.
 - 2026-07-18 - Owner **PASS** on Studio Test Data Reset wipe UX → signoff **approved_with_notes**; wipe human checkpoint cleared.
 - 2026-07-18 - Owner request: preset for everything but designs → `EVERYTHING_EXCEPT_DESIGNS_WIPE_PRESET_TARGETS` = all ops targets except `designs`. Final UI label: **All (-) Designs**.
 - 2026-07-18 - Owner pivot: first-proof email miss is Brevo/IP blocking, not app skip. Logs: enqueue OK; `provider_rejected` on failed first proofs; follow-up proof same day sent via Brevo. No speculative deploy.

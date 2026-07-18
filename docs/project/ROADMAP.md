@@ -106,10 +106,7 @@ Phase 7 Studio MVP and Phase 8 Portal MVP are complete in the dev environment.
 
 Current Goal:
 
-Provider-agnostic proof-ready email notifications for Phase 9C are complete on `fresh-prints-dev`
-(Resend + Brevo adapters, invitation routing, proof outbox worker, owner provider Settings).
-Owner **BREVO PASS** 2026-07-17 (Transactional Logs Sent / Delivered / First opening). Production
-email release remains separate. Proof download PASS 2026-07-17; parked owner QA for terminal messaging + cancel reason + skeleton live-smoke also **PASS** (owner **PASS all**, 2026-07-17). Studio Test Data Reset presets + wipe expansion **PASS** / signed off **approved_with_notes** 2026-07-18 (`docs/workflow/reviews/2026-07-18-studio-test-data-reset-presets-signoff.md`). Open: Brevo first-proof IP/blocklist retest (separate checkpoint).
+Phase 9 Custom Designs is **in progress / largely complete in `fresh-prints-dev`**: 9A Etsy recommendations and 9C Assisted Creation (Custom Requests) shipped with owner PASS; polish + proof-ready email (Resend + Brevo) closed. Brevo IP/blocklist deliverability **PASS** 2026-07-18 (`docs/workflow/reviews/2026-07-18-brevo-proof-email-ip-block-signoff.md`). Studio Test Data Reset presets + wipe expansion **PASS** / signed off **approved_with_notes** 2026-07-18. Still deferred inside Phase 9: Create My Design with AI, staff design-fee / Stripe, assisted questionnaire request-type branching. Production Portal / production Google / production email release remain separate human approvals.
 
 Phase 7 Show Queue is complete for Studio MVP: foundation, staff-assisted Whatnot import,
 production-file export (zip, multiply-by-qty, auto-nested gang sheet PNG) signed off 2026-07-07,
@@ -118,9 +115,8 @@ and production timer + shared calendar picker signed off 2026-07-08.
 **User direction (2026-07-07):**
 - **Gang Sheet Builder** (manual canvas) is a post-MVP *want*, not a Studio MVP blocker — defer until
   after Portal and other priorities.
-- **Live Whatnot scheduled sync** is **not planned** for Studio (Electron is not 24/7). Revisit only if
-  a future always-on hosted service (e.g. Portal/backend) needs it — not a Phase 8 default.
-- **Next step:** Phase 9 Custom Requests planning, or production Portal App Hosting deploy / production Google enablement.
+- **Whatnot (clarified 2026-07-18):** Staff-assisted Import Shows / show upsert is **built** (Phase 7). That is the day-to-day "Whatnot sync." Automated live/hourly scheduled sync is **not built and not planned** for Studio (Electron is not 24/7).
+- **Next step:** Remaining Phase 9 deferred slices (AI Create My Design, design fee) when explicitly started, or production Portal App Hosting deploy / production Google enablement.
 
 See `docs/workflow/reviews/2026-07-07-show-queue-export-and-production-files-signoff.md`,
 `docs/workflow/reviews/2026-07-08-show-queue-timer-and-calendar-picker-signoff.md`, and
@@ -136,7 +132,7 @@ See `docs/workflow/reviews/2026-07-07-show-queue-export-and-production-files-sig
 
 **Symmetric apps monorepo** (`studio-apps-folder-monorepo-normalization`) — **complete** (2026-07-08 signoff). Studio lives under `apps/studio/` alongside `apps/portal`. Signoff: `docs/workflow/reviews/2026-07-08-symmetric-apps-monorepo-signoff.md`.
 
-**Current implementation follow-up:** Phase 9 planning, production Portal deploy / production Google enablement, image load caching, or Firebase account linking — pick explicitly.
+**Current implementation follow-up:** Remaining Phase 9 deferred items (Create My Design with AI, design fee), or production Portal deploy / production Google enablement - pick explicitly. **Already complete:** Portal catalog image load caching (2026-07-14). **Account linking:** handled via Firebase Auth / Google console setting "Link accounts that use the same email" (not a custom app build; ADR-FP-081 note updated 2026-07-18).
 
 ---
 
@@ -713,7 +709,7 @@ full authenticated manual QA passed — see
 user, per confirmation on 2026-07-06. **Production-file export signed off 2026-07-07** — per-show
 zip export, multiply-by-quantity zip export, and auto-nested gang sheet PNG export are implemented in
 Studio; see `docs/workflow/reviews/2026-07-07-show-queue-export-and-production-files-signoff.md`.
-**Phase 7 Studio MVP is complete.** Live Whatnot scheduled sync is **not planned** (user 2026-07-07:
+**Phase 7 Studio MVP is complete.** Staff-assisted Whatnot import is built; automated live/hourly scheduled sync is **not planned** (user 2026-07-07:
 Studio is not 24/7; revisit only for a future always-on hosted service if needed). Gang Sheet Builder
 manual canvas is **post-MVP backlog** (want, not need).
 ```
@@ -927,8 +923,10 @@ Still planned:
 
 * Mark items printed / done via a dedicated production UI (service method exists; UI is minimal)
 
-**Not planned (user 2026-07-07):** Live Whatnot scheduled/hourly sync for Studio — Electron is not
-always-on; staff-assisted import remains the workflow. Revisit only if a future hosted backend needs
+**Built (Phase 7):** Staff-assisted Whatnot import (Import Shows Electron flow + URL/card upsert into `upcomingShows`). That is the operational Whatnot sync staff use today.
+
+**Not planned (user 2026-07-07; reconfirmed 2026-07-18):** Automated live/hourly **scheduled** Whatnot sync for Studio - Electron is not
+always-on. Do not treat "live scheduled sync" as an open MVP gap. Revisit only if a future hosted backend needs
 show-list sync for Portal.
 
 **Post-MVP backlog (not blocking Phase 8):** Gang Sheet Builder manual canvas / standalone route —
@@ -968,7 +966,7 @@ See `docs/workflow/reviews/2026-07-07-show-queue-export-and-production-files-sig
 
 Show preparation and production file export occur within Fresh Prints. Production status lives on
 show allocations, not designs. Phase 7 Studio MVP met 2026-07-07 (foundation, assisted Whatnot import,
-production-file export). **Phase 8 Portal MVP complete in dev** (2026-07-08 closeout). **Phase 9 is next.**
+production-file export). **Phase 8 Portal MVP complete in dev** (2026-07-08 closeout). **Phase 9A/9C complete in `fresh-prints-dev`**; remaining Phase 9 slices (AI Create My Design, design fee) are deferred.
 
 ---
 
@@ -1045,7 +1043,7 @@ Production App Hosting deploy to a live customer URL is a **separate** human che
 
 **Import AI process-as-imported** — **complete** (2026-07-14 signoff, PASS). Bulk import enqueues each ready design for sequential AI while upload continues. Signoff: `docs/workflow/reviews/2026-07-14-import-ai-process-as-imported-signoff.md`.
 
-**Next fast-follow:** Firebase account linking, Phase 9 planning, or production Portal deploy — pick explicitly. **Queued (ADR-FP-086):** optional Cloud Scheduler for retention callables.
+**Next fast-follow:** Remaining Phase 9 deferred slices, or production Portal deploy - pick explicitly. Account linking = Firebase/Google console (not app work). **Queued (ADR-FP-086):** optional Cloud Scheduler for retention callables.
 
 Goal:
 
@@ -1095,12 +1093,12 @@ Customers self-serve catalog browse, print request creation, progress tracking, 
 Status:
 
 ```txt
-Complete on fresh-prints-dev — Open API listings + link-first (ADR-FP-087l); scrape removed (ADR-FP-087j)
+9A + 9C complete on fresh-prints-dev; AI Create My Design + design fee still deferred (9A Open API + link-first ADR-FP-087l; scrape removed ADR-FP-087j)
 ```
 
 Goal:
 
-Clean Portal Etsy recommendations foundation from master (archived prior Phase 9 work is not the starting point). Three-card route page; only **Help Me Find a Design** works; AI and Assisted Creation are coming-soon cards.
+Phase 9 Custom Designs: Etsy recommendations (9A) and Assisted Creation / Custom Requests (9C) are the active product surface in `fresh-prints-dev` (owner PASS). Three-card Portal route: Help Me Find a Design + Assisted Creation live; Create My Design with AI still coming-soon.
 
 ### Phase 9A deliverables
 
@@ -1138,9 +1136,9 @@ Clean Portal Etsy recommendations foundation from master (archived prior Phase 9
 
 ---
 
-## Exit Criteria (Phase 9 overall — later)
+## Exit Criteria (Phase 9 overall)
 
-Custom design help is distinct from print requests. Etsy recommendations work in Portal. Later slices add AI and Assisted Creation when explicitly started.
+Custom design help is distinct from print requests. **Met in `fresh-prints-dev`:** Etsy recommendations (9A) and Assisted Creation / Custom Requests (9C), plus related proof/email/messaging polish. **Still open for full Phase 9:** Create My Design with AI; staff design-fee / Stripe; assisted questionnaire request-type branching.
 
 ---
 

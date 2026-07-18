@@ -2,13 +2,22 @@
 
 > Signed-off or largely complete work. External agents should not re-plan or duplicate this.
 
+## 2026-07-18 - Brevo IP/blocklist PASS + owner clarifying closeouts
+
+- Brevo proof-ready email IP/blocklist → **approved_with_notes**; owner **PASS** (console/provider; no app code)
+- Signoff: `docs/workflow/reviews/2026-07-18-brevo-proof-email-ip-block-signoff.md`
+- Studio wipe presets confirmed closed (prior signoff same day)
+- ROADMAP/state clarifications: Phase 9A/9C in progress/complete in dev (not untouched); image caching already done; account linking = Firebase console setting; Whatnot staff-assisted import built vs live scheduled sync not planned
+- Workflow idle / DONE
+
 ## 2026-07-18 - Studio Test Data Reset presets + wipe expansion signed off
 
 - Goal `studio-test-data-reset-presets` -> **approved_with_notes**; owner manual QA **PASS**
 - Short wipe labels; presets including **All (-) Designs**; expanded Etsy/Custom orphan wipe targets
 - `wipeOperationalTestData` already deployed to `fresh-prints-dev` (required for leftovers)
 - Signoff: `docs/workflow/reviews/2026-07-18-studio-test-data-reset-presets-signoff.md`
-- Brevo first-proof IP/blocklist checkpoint remains open (separate)
+- Brevo first-proof IP/blocklist later closed same day (owner PASS) — see entry above
+
 ## 2026-07-17 - Parked owner-QA batch (PASS all) signed off
 
 - Owner directed **PASS all** for remaining parked items after proof-download closeout
