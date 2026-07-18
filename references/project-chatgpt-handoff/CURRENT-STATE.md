@@ -1,8 +1,8 @@
-# Fresh Prints — Current State Snapshot
+# Fresh Prints - Current State Snapshot
 
 > **Refresh before every external AI session.**
 > Source: `.cursor/workflow/state.md` (authoritative)
-> Last updated: **2026-07-16**
+> Last updated: **2026-07-17**
 
 ---
 
@@ -10,51 +10,34 @@
 
 | Field | Value |
 |-------|-------|
-| **Last completed goal** | `phase-9c-assisted-creation` — **approved_with_notes**, owner manual QA `PASS` |
-| **Active managed goal** | `provider-agnostic-proof-ready-email` |
-| **Phase** | **Plan complete; human checkpoint before review** |
-| **Email direction** | Resend now behind provider-neutral interface; Brevo later |
-| **Runtime settings** | Owner-only separate provider choices for invitation and proof-ready notices |
-| **Deployment** | None authorized for the email phase |
+| **Active managed goal** | *(idle)* — last closed: `assisted-approved-proof-download` + Portal proof UX residuals |
+| **Phase** | **DONE** (`approved_with_notes`) |
+| **Implementation** | complete (callable proof file download + Portal/Studio proof UX) |
+| **Tests** | automated recorded; owner manual QA **PASS** 2026-07-17 |
+| **Next** | Optional owner QA: terminal messaging closed; customer cancel reason. No production. |
+| **Deployment** | Proof download callable on `fresh-prints-dev`. No production. |
 
 ---
 
-## Artifacts
+## Just closed
 
-| Type | Path |
-|------|------|
-| Phase 9C signoff | `docs/workflow/reviews/2026-07-16-phase-9c-assisted-creation-signoff.md` |
-| Phase 9C test report | `docs/workflow/reviews/2026-07-16-phase-9c-assisted-creation-test-report.md` |
-| Phase 9C manual QA | `docs/workflow/reviews/2026-07-16-phase-9c-assisted-creation-manual-qa.md` |
-| Active plan | `docs/workflow/plans/2026-07-16-provider-agnostic-proof-ready-email-plan.md` |
-| Active review | pending |
+1. **Approved proof download** — `customerGetAssistedCreationApprovedProofFile` (callable Admin→base64→blob); CORS/`Failed to fetch` residual fixed
+2. **Portal proof UX** — Overview 14-day + approved preview; Approved labels; Notes dedupe; Studio-like modal
+3. Signoff: `docs/workflow/reviews/2026-07-17-assisted-approved-proof-download-signoff.md`
 
 ---
 
-## Owner decisions needed before review / implementation
+## Still open (parked — need owner smoke later)
 
-1. Confirm the target `INVITATION_FROM_EMAIL`.
-2. Confirm `PROOF_NOTICE_FROM_EMAIL` (same verified sender or a different verified sender).
-3. Confirm the deployed `PORTAL_BASE_URL` for the Assisted proof review CTA.
-
-After these are recorded, run review phase. Do not implement before review approval.
-
----
-
-## Locked email behavior
-
-- Send a notice for the first proof and each new proof after revisions.
-- Enqueue one deterministic delivery job per request/proof.
-- Resolve recipient server-side from `customers`, then linked `users` fallback.
-- Keep Resend for invitations now.
-- Show Brevo disabled in Studio until a later reviewed implementation.
-- Never store provider secrets in Firestore or expose them to Studio/Portal.
+1. **assisted-terminal-messaging-closed** — manual QA pending
+2. **assisted-customer-cancel-reason** — manual QA pending
+3. **skeleton-not-halloween** — code signed off; optional live AI redeploy smoke
+4. Production push / production email release — deferred
 
 ---
 
 ## Do not
 
-- Implement or deploy before the human checkpoint is cleared and review approves the plan.
-- Add or configure Brevo in this phase.
+- Invent PASS for parked messaging/cancel QA.
 - Production deploy without explicit approval.
-- Paste API keys or customer email addresses into chat/logs.
+- Paste API keys into chat/logs.

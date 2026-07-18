@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 
 import {
+  ASSISTED_CREATION_FIELD_LIMITS,
   canCustomerUpdateAssistedCreation,
   filterAssistedCreationTerminalRequests,
   formatAssistedCreationStatus,
@@ -35,6 +36,7 @@ export function AssistedCreationPastRequests({ className }: AssistedCreationPast
   const [loadError, setLoadError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<AssistedDetailTab>('overview');
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
   const [updateOpen, setUpdateOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -151,7 +153,9 @@ export function AssistedCreationPastRequests({ className }: AssistedCreationPast
                     type="button"
                   >
                     <span className="assisted-creation-drawer-item-top">
-                      <strong>{formatAssistedCreationStatus(request.status)}</strong>
+                      <strong>
+                        {formatAssistedCreationStatus(request.status, { variant: 'list' })}
+                      </strong>
                       <span className="portal-muted">
                         {formatAssistedWhen(request.createdAt) || 'Unknown date'}
                       </span>
@@ -197,7 +201,10 @@ export function AssistedCreationPastRequests({ className }: AssistedCreationPast
                     canCancel={canCancel}
                     canUpdate={canUpdate}
                     disabled={busy}
-                    onCancel={() => setCancelConfirmOpen(true)}
+                    onCancel={() => {
+                      setCancelReason('');
+                      setCancelConfirmOpen(true);
+                    }}
                     onUpdate={() => {
                       setActionError(null);
                       setUpdateOpen(true);
@@ -248,21 +255,30 @@ export function AssistedCreationPastRequests({ className }: AssistedCreationPast
       <PortalConfirmModal
         cancelLabel="Keep request"
         className="assisted-creation-confirm-overlay"
+        confirmDisabled={cancelReason.trim().length === 0}
         confirmLabel="Yes, cancel request"
         confirmVariant="danger"
         isConfirmLoading={busy}
         isOpen={cancelConfirmOpen && selected != null}
-        onCancel={() => setCancelConfirmOpen(false)}
+        onCancel={() => {
+          setCancelConfirmOpen(false);
+          setCancelReason('');
+        }}
         onConfirm={() => {
           if (!selected) {
+            return;
+          }
+          const reason = cancelReason.trim();
+          if (!reason) {
             return;
           }
           setBusy(true);
           setActionError(null);
           void assistedCreationService
-            .cancelRequest(selected.id)
+            .cancelRequest(selected.id, reason)
             .then(() => {
               setCancelConfirmOpen(false);
+              setCancelReason('');
             })
             .catch((error: unknown) => {
               setActionError(error instanceof Error ? error.message : 'Unable to cancel.');
@@ -275,6 +291,16 @@ export function AssistedCreationPastRequests({ className }: AssistedCreationPast
           Canceling closes this assisted creation request. You will need to start a new request if
           you still want a custom design.
         </p>
+        <label className="portal-field">
+          <span>Why are you canceling? (required)</span>
+          <textarea
+            maxLength={ASSISTED_CREATION_FIELD_LIMITS.revisionNote}
+            onChange={(event) => setCancelReason(event.target.value)}
+            placeholder="Briefly tell us why"
+            rows={3}
+            value={cancelReason}
+          />
+        </label>
       </PortalConfirmModal>
     </div>
   );

@@ -20,8 +20,8 @@ The Resend API key is stored only in Firebase Functions secrets.
 When owner/admin staff attach the first or a revised Assisted Creation proof,
 `staffAddAssistedCreationProof` commits a deterministic `emailDeliveryJobs` record with the proof.
 `onEmailDeliveryJobCreated` sends the notice asynchronously. A provider failure never rolls back the
-proof. Studio owners may independently select invitation and proof providers in Settings; Resend is
-the only enabled choice and Brevo remains disabled.
+proof. Studio owners may independently select invitation and proof providers in Settings (`resend` or
+`brevo`). For Brevo product setup (not Cursor MCP), see `docs/workflow/setup/brevo-email-setup.md`.
 
 ## Prerequisites
 
@@ -106,14 +106,28 @@ Proof notices use the same confirmed sender:
 PROOF_NOTICE_FROM_EMAIL=Fresh Prints <team@funkyfreshprints.com>
 ```
 
-Canonical CTA hosts are resolved by Firebase project, not from a browser request:
+Canonical Portal hosts are resolved by Firebase project, not from a browser request:
 
 - `fresh-prints-dev` → `https://myprintrequest.dev`
 - production mapping → `https://myprintrequest.com`
 
-Unknown deployed projects fail closed. `PORTAL_BASE_URL` may override proof links only for a
-localhost Functions emulator. Do not change shared parameters or secrets without a human
-checkpoint.
+That map is used for:
+
+- Proof-notice review CTAs
+- Portal invite password create/reset Firebase Auth **continue** URLs (`https://…/login`)
+
+Unknown deployed projects fail closed. `PORTAL_BASE_URL` may override those URLs only for a
+localhost Functions emulator (`FUNCTIONS_EMULATOR=true`). Do **not** set
+`PORTAL_BASE_URL=http://localhost:…` in `.env.fresh-prints-dev` or other deploy env files —
+that previously baked localhost into invite continue links. Do not change shared parameters
+or secrets without a human checkpoint.
+
+Firebase Console checklist (dev and prod projects):
+
+1. **Authentication → Settings → Authorized domains** includes `myprintrequest.dev` /
+   `myprintrequest.com` as appropriate (plus `localhost` for local Portal only).
+2. After changing invite continue URL code, redeploy `createCustomerWithPortalInvite` before
+   re-testing; already-sent invite emails keep their old continue URL.
 
 Verify the secret exists:
 

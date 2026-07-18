@@ -8,11 +8,13 @@ export const ASSISTED_CREATION_BASE_PATH = '/custom-designs';
 const STEP_IDS = new Set<string>(ASSISTED_CREATION_WIZARD_STEPS.map((step) => step.id));
 
 export type AssistedCreationUrlMode = 'wizard' | 'status';
+export type AssistedCreationDetailTab = 'overview' | 'proofs' | 'messages';
 
 export interface ParsedAssistedCreationUrl {
   isAssisted: boolean;
   mode: AssistedCreationUrlMode;
   stepId: AssistedCreationWizardStepId | null;
+  detailTab: AssistedCreationDetailTab;
   /** Path-based `/custom-designs/assisted/...` should rewrite to query params. */
   isLegacyPath: boolean;
 }
@@ -24,6 +26,14 @@ function normalizePathname(pathname: string): string {
   return pathname || ASSISTED_CREATION_BASE_PATH;
 }
 
+function parseDetailTab(searchParams: URLSearchParams): AssistedCreationDetailTab {
+  const raw = searchParams.get('detailTab')?.trim().toLowerCase() ?? '';
+  if (raw === 'proofs' || raw === 'messages' || raw === 'overview') {
+    return raw;
+  }
+  return 'overview';
+}
+
 export function parseAssistedCreationLocation(
   pathname: string,
   searchParams: URLSearchParams,
@@ -31,16 +41,18 @@ export function parseAssistedCreationLocation(
   const path = normalizePathname(pathname);
   const flow = searchParams.get('flow')?.trim().toLowerCase();
   const stepRaw = searchParams.get('step')?.trim().toLowerCase() ?? '';
+  const detailTab = parseDetailTab(searchParams);
 
   if (flow === 'assisted') {
     if (!stepRaw || stepRaw === 'status') {
-      return { isAssisted: true, mode: 'status', stepId: null, isLegacyPath: false };
+      return { isAssisted: true, mode: 'status', stepId: null, detailTab, isLegacyPath: false };
     }
     if (STEP_IDS.has(stepRaw)) {
       return {
         isAssisted: true,
         mode: 'wizard',
         stepId: stepRaw as AssistedCreationWizardStepId,
+        detailTab,
         isLegacyPath: false,
       };
     }
@@ -48,6 +60,7 @@ export function parseAssistedCreationLocation(
       isAssisted: true,
       mode: 'wizard',
       stepId: 'description',
+      detailTab,
       isLegacyPath: false,
     };
   }
@@ -57,13 +70,14 @@ export function parseAssistedCreationLocation(
     const rest = path === prefix ? 'status' : path.slice(prefix.length + 1).split('/')[0] ?? 'status';
     const legacyStep = rest.toLowerCase();
     if (!legacyStep || legacyStep === 'status') {
-      return { isAssisted: true, mode: 'status', stepId: null, isLegacyPath: true };
+      return { isAssisted: true, mode: 'status', stepId: null, detailTab, isLegacyPath: true };
     }
     if (STEP_IDS.has(legacyStep)) {
       return {
         isAssisted: true,
         mode: 'wizard',
         stepId: legacyStep as AssistedCreationWizardStepId,
+        detailTab,
         isLegacyPath: true,
       };
     }
@@ -71,11 +85,12 @@ export function parseAssistedCreationLocation(
       isAssisted: true,
       mode: 'wizard',
       stepId: 'description',
+      detailTab,
       isLegacyPath: true,
     };
   }
 
-  return { isAssisted: false, mode: 'status', stepId: null, isLegacyPath: false };
+  return { isAssisted: false, mode: 'status', stepId: null, detailTab: 'overview', isLegacyPath: false };
 }
 
 export function isAssistedCreationLocation(

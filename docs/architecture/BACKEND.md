@@ -36,6 +36,15 @@ Fresh Prints uses **Firebase** as the primary backend platform for authenticatio
 | Session / token | Firebase client SDK session |
 | Local dev auth | Firebase emulators or project dev credentials — see `docs/workflow/setup/` |
 
+**Portal post-auth return (2026-07-17):** When `AuthGate` sends a signed-out customer to `/login`,
+it includes the protected Portal path and query string in `returnTo`. Email/password and Google login
+return to that validated target after the existing Firebase user/customer bootstrap succeeds.
+First-time Google users carry the same target through `/complete-profile`. `returnTo` is untrusted:
+Portal accepts same-origin relative application paths only, rejects external/protocol-relative,
+backslash/control-character, malformed, and auth-loop destinations, and falls back to `/`.
+This is client navigation only; it does not change Firebase providers, tokens, rules, Functions,
+environment variables, or secrets.
+
 ---
 
 ## Database / Primary Store
@@ -88,19 +97,56 @@ Fresh Prints does not expose a separate REST API for core operations. Business l
 
 **Assisted Creation requests (Studio list — ADR-FP-088):** Staff may read `assistedCreationRequests` for the Custom Designs → Assisted tab. Customers read only their own docs. Mutations go through callables (not client Firestore writes). Owner wipe of Assisted Creation fixtures on `fresh-prints-dev` uses Test Data Reset target `assistedCreationRequests` only (`wipeOperationalTestData`) — deletes docs plus Storage under `assisted-creation/`; not available on the Assisted tab UI.
 
-**Provider-neutral email (ADR-FP-089):** `functions/src/lib/email/` owns normalized messages,
-templates, provider routing, Resend transport, recipient resolution, and canonical Portal URL
-resolution. `staffAddAssistedCreationProof` transactionally creates a deterministic
-`emailDeliveryJobs` outbox document. `onEmailDeliveryJobCreated` uses bounded attempts and a lease;
-network/timeout/429/5xx errors retry, permanent 4xx fails safely. Before send, the worker honors
-`customers/{id}.assistedProofEmailOptIn` (missing = opted in); opted-out jobs fail non-retryably with
-`customer_opted_out`. After a successful send, the worker appends `revisionHistory` note
-`Proof-ready email sent` (`byRole: system`, `emailDeliveryJobId` for idempotency). Resend receives
-the job ID through `Idempotency-Key`; Firestore remains the durable logical dedupe boundary. Logs
-contain IDs and safe codes only. `settings/emailProviders` independently selects invitation and
-proof providers; only `resend` is accepted now.
+Proof and revision-request sequence labels are derived from chronological `revisionHistory` for
+display in both apps (`Proof 1`, `Revision request 1`, `Proof 2`, and so on). The customer-facing
+timeline is labeled **Messages** in Portal and Studio. `customerSendAssistedCreationMessage` and
+`staffSendAssistedCreationMessage` append owned chat messages without changing status; **open
+statuses only** (`submitted` | `in_progress` | `proof_ready` | `revision_requested`). Terminal
+statuses (`approved` | `rejected` | `cancelled`) are rejected with `failed-precondition`
+(“Messaging is closed for completed requests.”) — ADR-FP-092. Callables validate auth (Portal
+ownership or owner/admin staff), a 2,000-character maximum, and a transaction-enforced 10-second
+per-request cooldown per actor role. New rows use `kind: "customer_message"` or
+`kind: "staff_message"` so unread/display behavior does not depend on note text. Existing unmarked
+history remains compatible; no backfill, Firestore rules, Storage rules, or index change is
+required. Studio tab layout: Overview holds Internal staff notes (explicit Save notes via
+`staffUpdateAssistedCreationStatus` action `update_notes`), primary Staff actions when Start work /
+Resume revision apply, and Reject/Cancel/Restore in a status-row ⋯ menu (Portal-parity overflow);
+Proofs holds proof upload; Messages is thread + compose only while open (Portal parity).
+Deploy the updated send callables after owner approval:
+`firebase deploy --only functions:customerSendAssistedCreationMessage,functions:staffSendAssistedCreationMessage --project fresh-prints-dev`.
 
-**Cursor agent tooling:** Project MCP may list ScraperAPI at `.cursor/mcp.json` (agent-only). Setup note: `docs/workflow/setup/scraperapi-mcp-setup.md`.
+**Assisted proof download retention (ADR-FP-093):** Proofs are raw uploads at
+`assisted-creation/{uid}/{requestId}/proofs/{fileId}` where new uploads use basename
+`proof-{n}-{mmddyyyy}-{HHmm}.{ext}` (Studio local clock; Firestore `proof.id` stays a UUID; no grey derivative). On approve,
+`customerRespondToAssistedCreationProof` sets `approvedProofId`/`approvedAt` and deletes sibling
+full-res objects. Customer cancel and staff reject/cancel delete all proof full-res.
+`purgeExpiredAssistedCreationProofs` (callable, `dryRun`) and
+`purgeExpiredAssistedCreationProofsScheduled` (daily) delete approved full-res after 14 days and
+orphan leftovers on rejected/cancelled. Portal download uses callable
+`customerGetAssistedCreationApprovedProofFile` (Admin Storage download → base64 in
+callable response; AuthZ: owning customer + shared eligibility). Portal decodes to a
+blob and triggers `<a download>` so PNGs save as files (GCS signed-URL navigate often
+opens in-tab; raw HTTPS Function fetch hit CORS / “Failed to fetch” from Portal).
+Legacy callable `customerGetAssistedCreationApprovedProofDownloadUrl` (signed URL) is
+deprecated for Portal UI. Deploy (dev):
+`firebase deploy --only functions:customerGetAssistedCreationApprovedProofFile --project fresh-prints-dev`.
+Optional Storage CORS backup: `docs/workflow/setup/firebase-storage-cors.md`.
+
+**Provider-neutral email (ADR-FP-089 / ADR-FP-090):** `functions/src/lib/email/` owns normalized
+messages, templates, provider routing, Resend + Brevo HTTP transports, recipient resolution, and
+canonical Portal URL resolution. `staffAddAssistedCreationProof` transactionally creates a
+deterministic `emailDeliveryJobs` outbox document. `onEmailDeliveryJobCreated` uses bounded attempts
+and a lease; network/timeout/429/5xx errors retry, permanent 4xx fails safely. Before send, the
+worker honors `customers/{id}.assistedProofEmailOptIn` (missing = opted in); opted-out jobs fail
+non-retryably with `customer_opted_out`. After a successful send, the worker appends
+`revisionHistory` note `Proof-ready email sent` (`byRole: system`, `emailDeliveryJobId` for
+idempotency). Resend receives the job ID through `Idempotency-Key`; Brevo receives a UUID-shaped
+hash in `headers.idempotencyKey`. Firestore remains the durable logical dedupe boundary. Logs
+contain IDs and safe codes only. `settings/emailProviders` independently selects invitation and
+proof providers (`resend` or `brevo`). Product Brevo uses Secret Manager `BREVO_API_KEY` — never the
+Cursor MCP token (`BREVO_MCP_TOKEN`).
+
+**Cursor agent tooling:** Project MCP may list ScraperAPI and Brevo at `.cursor/mcp.json` (agent-only; not product email). Setup notes: `docs/workflow/setup/scraperapi-mcp-setup.md`, `docs/workflow/setup/brevo-mcp-setup.md`. Product Brevo email: `docs/workflow/setup/brevo-email-setup.md`.
 
 **AI provider secrets:** `GEMINI_API_KEY` lives in Firebase Secret Manager. Cloud Functions read it; the desktop renderer must not. Do not add provider keys to Firestore settings or the Settings UI. (As of ADR-FP-040, OpenAI is no longer used; `OPENAI_API_KEY` was removed from Cloud Function code.)
 
@@ -155,9 +201,15 @@ As of ADR-FP-039/ADR-FP-040, **AI Processing is a single playground-style call**
 | `submitAssistedCreationRequest` | Callable | Portal: submit assisted creation brief (one open) |
 | `cancelAssistedCreationRequest` | Callable | Portal: cancel own open assisted request |
 | `customerUpdateAssistedCreationRequest` | Callable | Portal: update answers/references while status is `submitted` only |
-| `customerRespondToAssistedCreationProof` | Callable | Portal: approve proof (optional 1–5 rating + short note) or request revision with note |
-| `staffUpdateAssistedCreationStatus` | Callable | Studio: owner/admin start/resume/reject/cancel |
+| `customerSendAssistedCreationMessage` | Callable | Portal: append text-only message to own Assisted request while open; rejects terminal; preserves status |
+| `staffSendAssistedCreationMessage` | Callable | Studio: owner/admin append staff chat message while open; rejects terminal; preserves status |
+| `customerRespondToAssistedCreationProof` | Callable | Portal: approve proof (optional 1–5 rating + short note; sets `approvedProofId`/`approvedAt`; purges sibling proof full-res) or request revision with note |
+| `customerGetAssistedCreationApprovedProofFile` | Callable | Portal: Admin-streamed approved proof bytes (base64) for blob file download (ownership + 14-day/legacy eligibility; ADR-FP-093) |
+| `customerGetAssistedCreationApprovedProofDownloadUrl` | Callable | Legacy: mint short-lived signed URL (deprecated for Portal UI; ADR-FP-093) |
+| `staffUpdateAssistedCreationStatus` | Callable | Studio: owner/admin start/resume/reject/cancel/restore, or `update_notes` (notes only, no status/history change); reject/cancel purge all proof full-res |
 | `staffAddAssistedCreationProof` | Callable | Studio: owner/admin attach proof → `proof_ready` |
+| `purgeExpiredAssistedCreationProofs` | Callable | Owner/admin: purge approved proof full-res after 14 days + orphan full-res on rejected/cancelled (`dryRun` supported; ADR-FP-093) |
+| `purgeExpiredAssistedCreationProofsScheduled` | Scheduled (daily) | Same purge logic as the callable (ADR-FP-093) |
 | `updateEmailProviderSettings` | Callable | Studio owner: select invitation and proof-notice providers (Resend only) |
 | `onEmailDeliveryJobCreated` | Firestore create | Deliver a proof-ready notice from the durable outbox |
 | `enqueueAiEnrichment` | Callable | Run imported design through direct AI processing |
@@ -176,14 +228,20 @@ Location: `functions/src/` — compiled to `functions/lib/` (gitignored). See `d
 
 > Document **names and purpose only**. Never commit values.
 
-See `FIREBASE.md` and `docs/workflow/setup/` for Firebase and Resend configuration.
+See `FIREBASE.md` and `docs/workflow/setup/` for Firebase, Resend, and Brevo configuration.
 
-Email Functions use Secret Manager `RESEND_API_KEY`, parameter defaults
+Email Functions use Secret Manager `RESEND_API_KEY` and `BREVO_API_KEY` (both bound on invitation
+and proof-delivery Functions; runtime selection by `settings/emailProviders`), parameter defaults
 `INVITATION_FROM_EMAIL` / `PROOF_NOTICE_FROM_EMAIL` (`Fresh Prints
-<team@funkyfreshprints.com>`), and a fail-closed project map for Portal CTAs:
+<team@funkyfreshprints.com>`), and a fail-closed project map for Portal URLs:
 `fresh-prints-dev` → `https://myprintrequest.dev`; production mapping →
-`https://myprintrequest.com`. `PORTAL_BASE_URL` is accepted only as a localhost emulator override
-for proof notices. Shared values and deployments require a human checkpoint.
+`https://myprintrequest.com`. That map drives both proof-notice review CTAs and
+Portal invite Firebase Auth password create/reset **continue** URLs
+(`…/login`). `PORTAL_BASE_URL` is accepted only as a localhost Functions
+emulator override — never as a deployed customer-facing continue host. Shared
+values and deployments require a human checkpoint. Firebase Authentication
+**Authorized domains** must include the Portal hosts (`myprintrequest.dev`,
+`myprintrequest.com`); `localhost` is for local Portal only.
 
 ---
 

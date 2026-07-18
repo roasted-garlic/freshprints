@@ -6,6 +6,7 @@ interface PortalConfirmModalProps {
   cancelLabel?: string;
   children: React.ReactNode;
   className?: string;
+  confirmDisabled?: boolean;
   confirmLabel?: string;
   confirmVariant?: 'danger' | 'primary';
   isConfirmLoading?: boolean;
@@ -19,6 +20,7 @@ export function PortalConfirmModal({
   cancelLabel = 'Cancel',
   children,
   className,
+  confirmDisabled = false,
   confirmLabel = 'Confirm',
   confirmVariant = 'primary',
   isConfirmLoading = false,
@@ -82,7 +84,7 @@ export function PortalConfirmModal({
           </button>
           <button
             className={confirmButtonClass}
-            disabled={isConfirmLoading}
+            disabled={isConfirmLoading || confirmDisabled}
             onClick={onConfirm}
             type="button"
           >

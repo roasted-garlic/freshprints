@@ -27,11 +27,19 @@ export function resolvePortalBaseUrl(input: {
   return resolved;
 }
 
-export function resolveProofReviewUrl(): string {
-  const baseUrl = resolvePortalBaseUrl({
+function resolveDeployedOrEmulatorPortalBaseUrl(): string {
+  return resolvePortalBaseUrl({
     projectId: process.env.GCLOUD_PROJECT ?? process.env.GOOGLE_CLOUD_PROJECT,
     override: process.env.FUNCTIONS_EMULATOR === "true" ? process.env.PORTAL_BASE_URL : undefined,
     isEmulator: process.env.FUNCTIONS_EMULATOR === "true",
   });
-  return `${baseUrl}/custom-designs?flow=assisted&step=status`;
+}
+
+/** Firebase Auth action continue URL after Portal invite password create/reset. */
+export function resolvePortalLoginContinueUrl(): string {
+  return `${resolveDeployedOrEmulatorPortalBaseUrl()}/login`;
+}
+
+export function resolveProofReviewUrl(): string {
+  return `${resolveDeployedOrEmulatorPortalBaseUrl()}/custom-designs?flow=assisted&step=status`;
 }

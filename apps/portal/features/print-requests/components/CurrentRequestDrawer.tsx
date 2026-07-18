@@ -197,7 +197,6 @@ export function CurrentRequestDrawer() {
         <header className="current-request-drawer-header">
           <div className="current-request-drawer-heading">
             <h2 id="current-request-drawer-title">Your Stash</h2>
-            <p className="current-request-drawer-subtitle">Current Request</p>
             <div className="current-request-drawer-summary-row">
               <p className="current-request-drawer-summary">
                 {distinctDesignCount} {distinctDesignCount === 1 ? 'design' : 'designs'} ·{' '}

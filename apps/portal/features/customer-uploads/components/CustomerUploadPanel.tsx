@@ -422,7 +422,7 @@ export function CustomerUploadPanel({
             ) : null}
             {isDonation ? (
               <p className="portal-muted portal-customer-upload-confirm-help">
-                Donations are not added to your Current Request. Both confirmations are required to
+                Donations are not added to Your Stash. Both confirmations are required to
                 submit.
               </p>
             ) : null}
@@ -478,7 +478,7 @@ export function CustomerUploadPanel({
                 : 'Submit donation'
               : isAttaching
                 ? 'Adding…'
-                : 'Add to Current Request'}
+                : 'Add to Your Stash'}
           </button>
         </footer>
     </>

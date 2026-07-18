@@ -1,14 +1,45 @@
 import { useEffect, useState } from "react";
 
-import type { EmailProviderSettings } from "@fresh-prints/shared/constants/emailProviders.constants";
+import type {
+  EmailProviderId,
+  EmailProviderSettings,
+} from "@fresh-prints/shared/constants/emailProviders.constants";
 import { Button } from "../../../shared/components/Button";
 import { Select, type SelectOption } from "../../../shared/components/Select";
 import { useEmailProviderSettings } from "../hooks/useEmailProviderSettings";
 
 const PROVIDER_OPTIONS: SelectOption[] = [
   { label: "Resend", value: "resend" },
-  { label: "Brevo — coming later", value: "brevo", disabled: true },
+  { label: "Brevo", value: "brevo" },
 ];
+
+const PROVIDER_DASHBOARD_LINKS: Record<
+  EmailProviderId,
+  { href: string; label: string }
+> = {
+  resend: {
+    href: "https://resend.com/emails",
+    label: "Open Resend email log",
+  },
+  brevo: {
+    href: "https://app.brevo.com/transactional/email/logs",
+    label: "Open Brevo transactional logs",
+  },
+};
+
+function ProviderDashboardLink({ provider }: { provider: EmailProviderId }) {
+  const link = PROVIDER_DASHBOARD_LINKS[provider];
+  return (
+    <a
+      className="settings-provider-dashboard-link"
+      href={link.href}
+      rel="noopener noreferrer"
+      target="_blank"
+    >
+      {link.label}
+    </a>
+  );
+}
 
 export function EmailProviderSettingsSection() {
   const { error, isLoading, isSaving, save, saved, settings } = useEmailProviderSettings();
@@ -40,11 +71,15 @@ export function EmailProviderSettingsSection() {
                 label="Invitation emails"
                 name="inviteProvider"
                 onChange={(event) =>
-                  setDraft((current) => ({ ...current, inviteProvider: event.target.value as "resend" }))
+                  setDraft((current) => ({
+                    ...current,
+                    inviteProvider: event.target.value as EmailProviderId,
+                  }))
                 }
                 options={PROVIDER_OPTIONS}
                 value={draft.inviteProvider}
               />
+              <ProviderDashboardLink provider={draft.inviteProvider} />
             </div>
             <div className="settings-control-item">
               <Select
@@ -54,16 +89,17 @@ export function EmailProviderSettingsSection() {
                 onChange={(event) =>
                   setDraft((current) => ({
                     ...current,
-                    proofNoticeProvider: event.target.value as "resend",
+                    proofNoticeProvider: event.target.value as EmailProviderId,
                   }))
                 }
                 options={PROVIDER_OPTIONS}
                 value={draft.proofNoticeProvider}
               />
+              <ProviderDashboardLink provider={draft.proofNoticeProvider} />
             </div>
           </div>
           <p className="settings-field-hint">
-            Brevo is visible for planning only and cannot be selected until its integration is reviewed.
+            Use a verified sender address for the provider you select.
           </p>
           {error ? (
             <p className="auth-message auth-message-error" role="alert">

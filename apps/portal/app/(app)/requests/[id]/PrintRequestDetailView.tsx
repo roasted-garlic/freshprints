@@ -28,6 +28,7 @@ import {
   printRequestItemHasCustomerUpload,
 } from '../../../../features/print-requests/services/portalPrintRequestService';
 import { buildCatalogLibraryHref, buildRequestArtworkHref } from '../../../../features/print-requests/utils/catalogSelectionNavigation';
+import { isOptimisticPrintRequestItemId } from '../../../../features/print-requests/utils/optimisticPrintRequestItemId';
 import {
   parsePortalRequestDetailFrom,
   resolvePortalRequestDetailBack,
@@ -545,7 +546,7 @@ export default function PrintRequestDetailView() {
                 onRemove={(nextItem) => setItemPendingRemoval(nextItem)}
                 onUpdate={handleUpdateItem}
                 onAutosaveStateChange={updateAutosaveState}
-                readOnly={!isEditable}
+                readOnly={!isEditable || isOptimisticPrintRequestItemId(item.id)}
               />
             );
           })}

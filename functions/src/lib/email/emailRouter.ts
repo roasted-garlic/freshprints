@@ -1,4 +1,5 @@
 import type { EmailProviderId } from "../../../../packages/shared/src/constants/emailProviders.constants";
+import { createBrevoEmailProvider } from "./brevoEmailProvider";
 import { createResendEmailProvider } from "./resendEmailProvider";
 import type { EmailMessage, EmailDeliveryResult } from "./email.types";
 
@@ -11,5 +12,7 @@ export async function sendEmail(input: {
   switch (input.provider) {
     case "resend":
       return createResendEmailProvider(input.apiKey).send(input.message, input.idempotencyKey);
+    case "brevo":
+      return createBrevoEmailProvider(input.apiKey).send(input.message, input.idempotencyKey);
   }
 }

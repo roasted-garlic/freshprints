@@ -6,6 +6,7 @@ import { ShellHeaderProvider } from "../context/ShellHeaderProvider";
 import { UploadActivityProvider } from "../context/UploadActivityProvider";
 import { StaffInboxProvider } from "../../features/staff-inbox/components/StaffInboxProvider";
 import { StaffInboxToastHost } from "../../features/staff-inbox/components/StaffInboxToastHost";
+import { AssistedMessagesProvider } from "../../features/customer-requests/components/AssistedMessagesProvider";
 import { AppHeader } from "./AppHeader";
 import { Sidebar } from "./Sidebar";
 
@@ -63,8 +64,10 @@ export function AppShell({ children }: AppShellProps) {
     <UploadActivityProvider>
       <ShellHeaderProvider>
         <StaffInboxProvider>
-          <AppShellContent>{children}</AppShellContent>
-          <StaffInboxToastHost />
+          <AssistedMessagesProvider>
+            <AppShellContent>{children}</AppShellContent>
+            <StaffInboxToastHost />
+          </AssistedMessagesProvider>
         </StaffInboxProvider>
       </ShellHeaderProvider>
     </UploadActivityProvider>

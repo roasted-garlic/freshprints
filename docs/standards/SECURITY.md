@@ -248,6 +248,7 @@ Customers can:
 * Submit requests
 * Upload request images
 * View their own requests
+* Send text-only messages on their own Assisted Creation requests at any lifecycle status
 
 Customers cannot:
 
@@ -473,6 +474,45 @@ Customers may not:
 
 Admins and helpers may review requests based on permissions.
 
+### Assisted Creation messages
+
+* Portal customers send through `customerSendAssistedCreationMessage`; Studio owner/admin staff send
+  through `staffSendAssistedCreationMessage`. Direct Firestore writes to `assistedCreationRequests`
+  remain denied.
+* Customer callable requires Firebase Auth, an active Portal customer profile, and exact
+  `customerUid == auth.uid` ownership loaded inside the transaction.
+* Staff callable requires Firebase Auth and an active owner/admin Studio profile (helpers may read
+  Messages but cannot send).
+* The server derives actor, UID, current status, timestamp, and `kind: "customer_message"` or
+  `kind: "staff_message"`; the client cannot submit forged identity or mutate `status`, `answers`,
+  references, proofs, ratings, or `staffNotes` via these callables.
+* Open statuses only (`submitted` | `in_progress` | `proof_ready` | `revision_requested`) are
+  messageable. Terminal statuses (`approved` | `rejected` | `cancelled`) are rejected with
+  `failed-precondition` (“Messaging is closed for completed requests.”). Each accepted message is a
+  same-status append and does not reopen the request.
+* Messages are trimmed, non-empty, at most 2,000 characters, and transaction-rate-limited to one
+  message per actor role per request per 10 seconds.
+* Internal `staffNotes` remain Overview-only workflow notes and are not the customer-visible chat
+  channel. Studio persists them via `staffUpdateAssistedCreationStatus` action `update_notes`
+  (owner/admin; no status or revisionHistory change).
+
+### Assisted Creation approved proof download (ADR-FP-093)
+
+* Proof full-res lives under `assisted-creation/{customerUid}/{requestId}/proofs/{proofId}`. Storage
+  rules already allow read for the owning customer and staff; create for owner/admin only. Buckets
+  stay private — no public object ACLs.
+* Portal download uses callable `customerGetAssistedCreationApprovedProofFile`, which
+  re-checks ownership and shared eligibility, then returns Admin-downloaded file bytes (base64)
+  for a client blob save. Not a public Storage ACL and not a standing share link. Legacy signed-URL
+  callable may still exist but is unused by Portal UI. UI gates are not the security boundary.
+  Physical removal after expiry / terminal purge is the hard stop. Client Storage `getBlob` is not
+  used for this flow (avoids requiring bucket CORS for Portal origins).
+* On approve, Admin SDK deletes sibling proof objects. On reject/cancel, Admin SDK deletes all
+  proof full-res objects. Daily schedule + owner/admin callable `purgeExpiredAssistedCreationProofs`
+  delete expired approved full-res and orphan leftovers on rejected/cancelled.
+* Customers must not receive Storage paths for other customers’ proofs. Callables that set
+  `approvedProofId` load ownership inside a transaction (`customerUid` match).
+
 ---
 
 # Print Requests Security
@@ -566,9 +606,12 @@ Never expose settings documents to customers.
 
 ## Email delivery security
 
-- `RESEND_API_KEY` remains in Firebase Secret Manager and is bound only to sending Functions.
+- `RESEND_API_KEY` and `BREVO_API_KEY` remain in Firebase Secret Manager and are bound only to
+  sending Functions. Runtime selection uses `settings/emailProviders`. Never use Cursor MCP
+  `BREVO_MCP_TOKEN` as the product email key.
 - `settings/emailProviders` stores provider IDs only. Active owners may read it; only the
-  owner-authorized callable writes it. `brevo` and unknown values are rejected.
+  owner-authorized callable writes it. Accepted values are `resend` and `brevo`; unknown values
+  are rejected.
 - `emailDeliveryJobs` denies every client read/write, including staff; Admin SDK owns the outbox.
 - Proof recipients are resolved server-side from trusted request `customerId`/`customerUid`.
   Customer and user linkage must match before fallback; clients never submit a recipient address.

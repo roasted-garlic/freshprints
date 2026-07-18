@@ -180,6 +180,36 @@ describe("normalizeSimpleCatalogEnrichment", () => {
     );
   });
 
+  it("strips halloween when the design only shows skeleton cues", () => {
+    const parsed = normalizeSimpleCatalogEnrichment(
+      {
+        category: "Family",
+        description: "A cartoon skeleton celebrating motherhood with a rock-on hand sign.",
+        title: "Motherhood Rocks",
+        tags: ["motherhood", "skeleton", "halloween", "funny"],
+      },
+      EXCLUSIONS,
+    );
+
+    assert.deepEqual(parsed.tags, ["motherhood", "skeleton", "funny"]);
+    assert.ok(!parsed.rawTags.includes("halloween"));
+  });
+
+  it("keeps halloween when jack-o'-lantern cues accompany a skeleton", () => {
+    const parsed = normalizeSimpleCatalogEnrichment(
+      {
+        category: "Holiday",
+        description: "A skeleton dancing next to a carved jack-o'-lantern.",
+        title: "Spooky Dance",
+        tags: ["skeleton", "halloween", "dance"],
+      },
+      EXCLUSIONS,
+    );
+
+    assert.ok(parsed.tags.includes("halloween"));
+    assert.ok(parsed.rawTags.includes("halloween"));
+  });
+
   it("rejects missing required fields", () => {
     assert.throws(
       () => normalizeSimpleCatalogEnrichment({ category: "General", title: "Cool Title", tags: [] }, EXCLUSIONS),

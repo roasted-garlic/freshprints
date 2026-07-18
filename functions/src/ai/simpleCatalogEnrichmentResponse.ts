@@ -13,6 +13,7 @@ import {
   resolveLeanCatalogTitle,
   sanitizeCatalogDescription,
 } from "./catalogTitleRules";
+import { filterUnsupportedHalloweenTags } from "./halloweenTagGuard";
 
 export interface SimpleCatalogEnrichmentParsed {
   category: string;
@@ -211,6 +212,13 @@ export function normalizeSimpleCatalogEnrichment(
     effectiveTagExclusions,
   );
   const rawTags = normalizeRawAiTags(raw.tags);
+  const halloweenContext = {
+    description,
+    tags: [...tags, ...rawTags],
+    title,
+  };
+  const guardedTags = filterUnsupportedHalloweenTags(tags, halloweenContext);
+  const guardedRawTags = filterUnsupportedHalloweenTags(rawTags, halloweenContext);
 
   assertRequiredField(description, "description");
   assertRequiredField(category, "category");
@@ -225,8 +233,8 @@ export function normalizeSimpleCatalogEnrichment(
     description,
     suggestedNewTags: normalizeSuggestedNewTags(raw.suggestedNewTags),
     title,
-    tags,
-    rawTags,
+    tags: guardedTags,
+    rawTags: guardedRawTags,
   };
 }
 

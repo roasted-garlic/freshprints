@@ -22,8 +22,12 @@ import {
 import type {
   CancelAssistedCreationRequestRequest,
   CancelAssistedCreationRequestResponse,
+  CustomerGetAssistedCreationApprovedProofFileRequest,
+  CustomerGetAssistedCreationApprovedProofFileResponse,
   CustomerRespondToAssistedCreationProofRequest,
   CustomerRespondToAssistedCreationProofResponse,
+  CustomerSendAssistedCreationMessageRequest,
+  CustomerSendAssistedCreationMessageResponse,
   CustomerUpdateAssistedCreationRequestRequest,
   CustomerUpdateAssistedCreationRequestResponse,
   SubmitAssistedCreationRequestRequest,
@@ -37,6 +41,15 @@ import type {
 
 import { getPortalAuth, getPortalDb, getPortalFunctions, getPortalStorage } from '../../../lib/firebase/client';
 import { portalAuthService } from '../../auth/services/authService';
+
+function base64ToBlob(base64: string, contentType: string): Blob {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return new Blob([bytes], { type: contentType || 'application/octet-stream' });
+}
 
 function mapStorageUploadError(error: unknown): Error {
   if (error instanceof FirebaseError) {
@@ -111,6 +124,10 @@ function parseRequestDoc(
     proofs: Array.isArray(data.proofs) ? data.proofs : [],
     revisionHistory: Array.isArray(data.revisionHistory) ? data.revisionHistory : [],
     staffNotes: typeof data.staffNotes === 'string' ? data.staffNotes : undefined,
+    customerCancelReason:
+      typeof data.customerCancelReason === 'string' && data.customerCancelReason.trim()
+        ? data.customerCancelReason.trim()
+        : undefined,
     customerRating:
       typeof data.customerRating === 'number' &&
       Number.isInteger(data.customerRating) &&
@@ -120,6 +137,11 @@ function parseRequestDoc(
         : undefined,
     customerApprovalNote:
       typeof data.customerApprovalNote === 'string' ? data.customerApprovalNote : undefined,
+    approvedProofId:
+      typeof data.approvedProofId === 'string' && data.approvedProofId.trim()
+        ? data.approvedProofId.trim()
+        : undefined,
+    approvedAt: data.approvedAt ?? undefined,
     createdAt: data.createdAt ?? null,
     updatedAt: data.updatedAt ?? null,
   };
@@ -201,13 +223,16 @@ export const assistedCreationService = {
     }
   },
 
-  async cancelRequest(requestId: string): Promise<CancelAssistedCreationRequestResponse> {
+  async cancelRequest(
+    requestId: string,
+    reason: string,
+  ): Promise<CancelAssistedCreationRequestResponse> {
     try {
       const callable = httpsCallable<
         CancelAssistedCreationRequestRequest,
         CancelAssistedCreationRequestResponse
       >(getPortalFunctions(), 'cancelAssistedCreationRequest');
-      const result = await callable({ requestId });
+      const result = await callable({ requestId, reason });
       return result.data;
     } catch (error) {
       throw mapCallableError(error);
@@ -269,8 +294,63 @@ export const assistedCreationService = {
     }
   },
 
+  async sendMessage(
+    input: CustomerSendAssistedCreationMessageRequest,
+  ): Promise<CustomerSendAssistedCreationMessageResponse> {
+    try {
+      const callable = httpsCallable<
+        CustomerSendAssistedCreationMessageRequest,
+        CustomerSendAssistedCreationMessageResponse
+      >(getPortalFunctions(), 'customerSendAssistedCreationMessage');
+      const result = await callable(input);
+      return result.data;
+    } catch (error) {
+      throw mapCallableError(error);
+    }
+  },
+
   async getDownloadUrl(storagePath: string): Promise<string> {
     return getDownloadURL(ref(getPortalStorage(), storagePath.replace(/^\//, '')));
+  },
+
+  /**
+   * Download approved proof full-res via callable (Admin bytes → base64 → blob).
+   * AuthZ + 14-day eligibility enforced server-side. Avoids GCS in-tab PNG and CORS fetch failures.
+   */
+  async downloadApprovedProof(requestId: string): Promise<void> {
+    const trimmedId = requestId.trim();
+    if (!trimmedId) {
+      throw new Error('Request id is required.');
+    }
+    try {
+      const callable = httpsCallable<
+        CustomerGetAssistedCreationApprovedProofFileRequest,
+        CustomerGetAssistedCreationApprovedProofFileResponse
+      >(getPortalFunctions(), 'customerGetAssistedCreationApprovedProofFile');
+      const result = await callable({ requestId: trimmedId });
+      const { contentBase64, contentType, fileName } = result.data;
+      if (!contentBase64?.trim()) {
+        throw new Error('Unable to download.');
+      }
+      const blob = base64ToBlob(contentBase64, contentType);
+      this.triggerBrowserDownloadFromBlob(blob, fileName || 'proof.png');
+    } catch (error) {
+      throw mapCallableError(error);
+    }
+  },
+
+  /** Same-origin object URL download (reliable after callable→blob). */
+  triggerBrowserDownloadFromBlob(blob: Blob, fileName: string): void {
+    const safeName = fileName.trim() || 'proof.png';
+    const objectUrl = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = objectUrl;
+    anchor.download = safeName;
+    anchor.rel = 'noopener';
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
   },
 
   subscribeOpenRequestsForCustomer(

@@ -3,13 +3,14 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import type { Timestamp } from 'firebase/firestore';
+import { Settings } from 'lucide-react';
 
 import { AccountArtworkGallery } from '../../../features/account/components/AccountArtworkGallery';
-import { AccountNotificationsModal } from '../../../features/account/components/AccountNotificationsModal';
 import { getProfileInitials, resolvePortalDisplayName } from '../../../features/account/utils/profileDisplay';
 import { useAuth } from '../../../features/auth/context/AuthContext';
 import { useFavorites } from '../../../features/favorites/context/FavoritesProvider';
 import { PORTAL_FAVORITES_HREF } from '../../../features/navigation/constants/portalNavItems';
+import { usePortalNotifications } from '../../../features/notifications/context/PortalNotificationsProvider';
 import { usePortalPrintRequests } from '../../../features/print-requests/context/PortalPrintRequestContext';
 import {
   buildRequestArtworkHref,
@@ -27,9 +28,9 @@ export default function DashboardPage() {
   const { customer, firebaseUser, refreshCustomer, user } = useAuth();
   const { favoriteCount, isLoading: isFavoritesLoading } = useFavorites();
   const { isLoading: isRequestsLoading, refreshRequests, requests } = usePortalPrintRequests();
+  const { openNotificationSettings } = usePortalNotifications();
   const [uploadedDesignCount, setUploadedDesignCount] = useState<number | null>(null);
   const [donatedDesignCount, setDonatedDesignCount] = useState<number | null>(null);
-  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const displayName = resolvePortalDisplayName(customer?.displayName, user?.displayName);
   const email = user?.email ?? customer?.email ?? '—';
   const username = customer?.username;
@@ -70,6 +71,15 @@ export default function DashboardPage() {
             {username ? <p className="portal-account-handle">@{username}</p> : null}
             <p className="portal-account-email">{email}</p>
           </div>
+          <button
+            aria-haspopup="dialog"
+            className="portal-button portal-button-secondary portal-button-leading-icon portal-account-settings-button"
+            onClick={openNotificationSettings}
+            type="button"
+          >
+            <Settings aria-hidden="true" size={16} strokeWidth={2} />
+            Settings
+          </button>
         </section>
 
         <section className="portal-panel portal-account-panel portal-account-overview-panel">
@@ -100,23 +110,7 @@ export default function DashboardPage() {
           />
         </section>
 
-        <section className="portal-panel portal-account-panel">
-          <h2 className="portal-account-section-title">Settings</h2>
-          <div className="portal-account-link-grid">
-            <button
-              className="portal-account-quick-link"
-              onClick={() => setNotificationsOpen(true)}
-              type="button"
-            >
-              <span className="portal-account-quick-link-label">Notifications</span>
-              <span className="portal-account-quick-link-description">
-                Choose whether to get email when a custom design proof is ready.
-              </span>
-            </button>
-          </div>
-        </section>
-
-        <section className="portal-panel portal-account-panel">
+        <section className="portal-panel portal-account-panel portal-account-quick-links-panel">
           <h2 className="portal-account-section-title">Quick links</h2>
           <div className="portal-account-link-grid">
             <Link className="portal-account-quick-link" href={CATALOG_HOME_PATH}>
@@ -147,10 +141,6 @@ export default function DashboardPage() {
         </section>
       </div>
 
-      <AccountNotificationsModal
-        isOpen={notificationsOpen}
-        onClose={() => setNotificationsOpen(false)}
-      />
     </main>
   );
 }

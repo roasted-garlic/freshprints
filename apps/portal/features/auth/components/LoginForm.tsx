@@ -6,6 +6,7 @@ import { useEffect, useId, useState, type FormEvent } from 'react';
 
 import { useAuth } from '../context/AuthContext';
 import { needsPortalCustomerProfileCompletion } from '../types/auth.types';
+import { buildPortalAuthHref, getPortalReturnToFromSearch } from '../utils/portalReturnUrl';
 import { LogInIcon } from '../../shared/components/PortalIcons';
 import { AuthBusyOverlay } from './AuthBusyOverlay';
 import { GoogleAuthButton } from './GoogleAuthButton';
@@ -30,13 +31,14 @@ export function LoginForm() {
   }, [clearAuthError]);
 
   useEffect(() => {
+    const returnTo = getPortalReturnToFromSearch(window.location.search);
     if (isAuthenticated) {
-      router.replace('/');
+      router.replace(returnTo);
       return;
     }
 
     if (needsPortalCustomerProfileCompletion(bootstrapStatus)) {
-      router.replace('/complete-profile');
+      router.replace(buildPortalAuthHref('/complete-profile', returnTo));
     }
   }, [bootstrapStatus, isAuthenticated, router]);
 

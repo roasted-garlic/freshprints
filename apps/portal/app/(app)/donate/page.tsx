@@ -49,7 +49,7 @@ export default function DonateDesignsPage() {
           <ul className="request-artwork-success-notes">
             <li>
               <span className="request-artwork-success-note-dot is-ready" />
-              Sent for staff review — not added to your Current Request
+              Sent for staff review — not added to Your Stash
             </li>
             <li>
               <span className="request-artwork-success-note-dot is-muted" />
@@ -79,7 +79,7 @@ export default function DonateDesignsPage() {
         <h1>Donate Designs</h1>
         <p className="portal-muted request-artwork-page-lead">
           Send artwork you think Fresh Prints should list in the Design Library for you and other
-          customers. This does not add files to your Current Request.
+          customers. This does not add files to Your Stash.
         </p>
         <ArtworkQualityNotice purpose="catalog_donation" />
       </header>

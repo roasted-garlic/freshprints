@@ -42,7 +42,7 @@ export function CatalogDesignCard({
           <h3 className="design-card-title">{design.title}</h3>
           {inRequest ? (
             <p className="design-card-request-qty">
-              In Current Request · Qty {currentRequestQuantity}
+              In Your Stash · Qty {currentRequestQuantity}
             </p>
           ) : null}
         </div>
@@ -74,7 +74,7 @@ export function CatalogDesignCard({
         </div>
       ) : (
         <button
-          aria-label={`Add ${design.title} to Current Request`}
+          aria-label={`Add ${design.title} to Your Stash`}
           className="portal-button portal-button-secondary portal-button-sm portal-button-leading-icon design-card-add-btn"
           disabled={isBusy}
           onClick={() => onAdjustQuantity(design, 1)}

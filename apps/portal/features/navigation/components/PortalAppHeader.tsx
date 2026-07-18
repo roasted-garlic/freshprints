@@ -5,6 +5,7 @@ import { Menu } from 'lucide-react';
 
 import { PortalLogo } from '../../brand/components/PortalLogo';
 import { ShoppingBagIcon } from '../../shared/components/PortalIcons';
+import { PortalNotificationsBell } from '../../notifications/components/PortalNotificationsBell';
 import { CATALOG_HOME_PATH } from '../../print-requests/utils/catalogSelectionNavigation';
 import { usePortalPrintRequests } from '../../print-requests/context/PortalPrintRequestContext';
 import { usePortalDrawer } from '../context/PortalDrawerContext';
@@ -39,8 +40,9 @@ export function PortalAppHeader() {
       </div>
 
       <div className="portal-app-header-actions">
+        <PortalNotificationsBell />
         <button
-          aria-label={`Current Request, ${totalPrints} total prints${
+          aria-label={`Your Stash, ${totalPrints} total prints${
             attentionCount > 0 ? `, ${attentionCount} need attention` : ''
           }`}
           className="portal-app-header-action portal-app-header-basket"
@@ -48,7 +50,7 @@ export function PortalAppHeader() {
           type="button"
         >
           <ShoppingBagIcon size={18} />
-          <span className="portal-app-header-action-label">Current Request</span>
+          <span className="portal-app-header-action-label">Your Stash</span>
           <span className="portal-app-header-basket-badge" data-empty={totalPrints === 0 ? 'true' : 'false'}>
             {totalPrints}
           </span>

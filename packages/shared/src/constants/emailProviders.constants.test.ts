@@ -11,10 +11,25 @@ test("email provider settings default to resend", () => {
   assert.deepEqual(resolveEmailProviderSettings(undefined), DEFAULT_EMAIL_PROVIDER_SETTINGS);
 });
 
-test("only resend is accepted as an implemented provider", () => {
+test("resend and brevo are accepted as implemented providers", () => {
   assert.equal(isEmailProviderId("resend"), true);
-  assert.equal(isEmailProviderId("brevo"), false);
+  assert.equal(isEmailProviderId("brevo"), true);
+  assert.equal(isEmailProviderId("smtp"), false);
   assert.deepEqual(resolveEmailProviderSettings({ inviteProvider: "brevo" }), {
+    inviteProvider: "brevo",
+    proofNoticeProvider: "resend",
+  });
+  assert.deepEqual(
+    resolveEmailProviderSettings({
+      inviteProvider: "brevo",
+      proofNoticeProvider: "brevo",
+    }),
+    {
+      inviteProvider: "brevo",
+      proofNoticeProvider: "brevo",
+    },
+  );
+  assert.deepEqual(resolveEmailProviderSettings({ inviteProvider: "unknown" }), {
     inviteProvider: "resend",
     proofNoticeProvider: "resend",
   });

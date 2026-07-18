@@ -100,4 +100,11 @@ describe("prompt parity (playground vs AI processing)", () => {
     assert.ok(resolved.includes("skull"));
     assert.ok(!resolved.includes("{{excluded_tags}}"));
   });
+
+  it("includes the skeleton-alone halloween guard in the default prompt", () => {
+    assert.match(
+      DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
+      /Do not tag halloween for skeleton, skull, or bones alone/i,
+    );
+  });
 });

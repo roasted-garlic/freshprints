@@ -13,6 +13,10 @@ import {
   printRequestItemHasCustomerUpload,
 } from '../services/portalPrintRequestService';
 import type { CustomerUploadDocSummary } from '../../customer-uploads/services/customerUploadService';
+import {
+  isOptimisticPrintRequestItemId,
+  OPTIMISTIC_PRINT_REQUEST_ITEM_ID_PREFIX,
+} from '../utils/optimisticPrintRequestItemId';
 
 export function usePrintRequestDetail(printRequestId: string | undefined) {
   const { firebaseUser } = useAuth();
@@ -101,6 +105,10 @@ export function usePrintRequestDetail(printRequestId: string | undefined) {
         throw new Error('Unable to update item.');
       }
 
+      if (isOptimisticPrintRequestItemId(itemId)) {
+        throw new Error('Wait for the duplicate to finish saving before editing.');
+      }
+
       setIsSaving(true);
 
       try {
@@ -147,7 +155,7 @@ export function usePrintRequestDetail(printRequestId: string | undefined) {
         throw new Error('Item to duplicate was not found.');
       }
 
-      const pendingId = `pending_dup_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+      const pendingId = `${OPTIMISTIC_PRINT_REQUEST_ITEM_ID_PREFIX}${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
       const optimisticItem: PrintRequestItem = {
         ...sourceItem,
         id: pendingId,
@@ -247,6 +255,10 @@ export function usePrintRequestDetail(printRequestId: string | undefined) {
     async (itemId: string) => {
       if (!printRequestId || !firebaseUser) {
         throw new Error('Unable to remove item.');
+      }
+
+      if (isOptimisticPrintRequestItemId(itemId)) {
+        throw new Error('Wait for the duplicate to finish saving before removing.');
       }
 
       setIsSaving(true);

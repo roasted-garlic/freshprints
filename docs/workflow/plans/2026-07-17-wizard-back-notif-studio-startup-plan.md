@@ -23,9 +23,9 @@ Owner selected these items for the next phase (not request-type branching). Prov
 ### In Scope
 
 1. **Assisted Creation Back flash** — intentional Back mid-wizard must move to the previous step and update the URL without snapping forward.
-2. **Account email notification opt-out** — Account (`/dashboard`) Notifications control; customer can disable/enable Assisted Creation proof-ready emails; preference persisted and enforced in the proof email delivery worker.
+2. **Account email notification opt-out** — Account (`/dashboard`) **Settings** control on the profile header card opens the Notifications modal (proof-ready email opt-in); preference persisted and enforced in the proof email delivery worker. Standalone Settings section removed; Quick links stays in the right column beside Overview.
 3. **Studio cold start** — stop automatic Sharp derivative self-test on every `npm run dev:studio` launch; keep on-demand IPC verification.
-4. **Studio unread customer-update badges** — count unread customer updates while `submitted` (same-status revision entries); badges on stage tab total, request card, and History header; mark read when History is expanded; history note copy `"Request updated"` (drop redundant “Customer”).
+4. **Studio unread customer-update badges** — count unread customer updates while `submitted` (same-status revision entries); badges on stage tab total, request card, and History header; mark read via **Read** next to History unread count; history note copy `"Request updated"` (drop redundant “Customer”).
 5. **Proof-ready email sent history** — when delivery job completes successfully, append `revisionHistory` note (e.g. “Proof-ready email sent”) with `byRole: "system"` so Studio/Portal History shows it.
 
 ### Out of Scope
@@ -91,7 +91,7 @@ Owner selected these items for the next phase (not request-type branching). Prov
 1. **Back flash:** Allow `onStepChange` to write earlier URL steps. Use an intentional-back ref so the wizard effect updates the URL instead of snapping `stepIndex` forward when `windowStep > stepIndex` after Back. Keep hydrate-only forward snap for deep links.
 2. **Opt-out:** Persist preference; Account modal; worker skips Resend when false.
 3. **Studio startup:** Remove auto `runDevDerivativeGenerationVerification()` from `app.whenReady`.
-4. **Unread badges:** Shared helpers detect customer update entries (`fromStatus === toStatus === "submitted"` + role/note). Subscribe to acks; count entries with `at > readThroughAt`. Badge on New-stage tab sum, list card, History summary. On History `<details>` open, write/update ack `readThroughAt` to latest customer-update `at` (or now).
+4. **Unread badges:** Shared helpers detect customer update entries (`fromStatus === toStatus === "submitted"` + role/note). Subscribe to acks; count entries with `at > readThroughAt`. Badge on New-stage tab sum, list card, History summary. **Read** next to History unread count writes/updates ack `readThroughAt` to latest customer-update `at`.
 5. **Email history:** In `markSent` path (after successful send), transactionally append revision entry: `byRole: "system"`, note `"Proof-ready email sent"`, `fromStatus`/`toStatus` = current request status (typically `proof_ready`). Treat as displayable (not boilerplate). Prefer success path over enqueue.
 6. Docs + targeted tests.
 
@@ -113,7 +113,7 @@ Owner selected these items for the next phase (not request-type branching). Prov
 
 - Mid-wizard Back without flash
 - Notifications toggle persists
-- Unread badges appear/clear when History expanded
+- Unread badges appear/clear when History **Read** is clicked
 - History shows “Request updated” and “Proof-ready email sent” (email after Functions deploy)
 - Studio cold start faster
 

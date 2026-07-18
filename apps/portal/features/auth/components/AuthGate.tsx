@@ -6,6 +6,7 @@ import { useEffect, type ReactNode } from 'react';
 import { PORTAL_APP_NAME } from '../../brand/portalBrand';
 import { useAuth } from '../context/AuthContext';
 import { needsPortalCustomerProfileCompletion } from '../types/auth.types';
+import { buildPortalAuthHref, getCurrentPortalPath } from '../utils/portalReturnUrl';
 
 interface AuthGateProps {
   children: ReactNode;
@@ -20,13 +21,15 @@ export function AuthGate({ children }: AuthGateProps) {
       return;
     }
 
+    const returnTo = getCurrentPortalPath(window.location);
+
     if (bootstrapStatus === 'unauthenticated') {
-      router.replace('/login');
+      router.replace(buildPortalAuthHref('/login', returnTo));
       return;
     }
 
     if (needsPortalCustomerProfileCompletion(bootstrapStatus)) {
-      router.replace('/complete-profile');
+      router.replace(buildPortalAuthHref('/complete-profile', returnTo));
     }
   }, [bootstrapStatus, isInitialBootstrap, router]);
 

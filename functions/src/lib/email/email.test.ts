@@ -4,10 +4,17 @@ import test from "node:test";
 import { buildProofReadyEmail, escapeEmailHtml } from "./emailTemplates";
 import { canClaimEmailJob, shouldRetryEmailFailure } from "./emailDeliveryPolicy";
 import { createProofEmailJobId } from "./emailJobIdentity";
+import {
+  brevoIdempotencyKey,
+  createBrevoEmailProvider,
+  parseEmailFromAddress,
+} from "./brevoEmailProvider";
 import { createResendEmailProvider } from "./resendEmailProvider";
 import { EmailDeliveryError } from "./email.types";
-import { resolvePortalBaseUrl } from "./portalUrlResolver";
+import { resolvePortalBaseUrl, resolvePortalLoginContinueUrl } from "./portalUrlResolver";
 import { resolveProofRecipientFromDocuments } from "./proofRecipient";
+import { resolveEmailApiKey } from "./resolveEmailApiKey";
+import { sendEmail } from "./emailRouter";
 
 test("email templates escape dynamic HTML", () => {
   assert.equal(escapeEmailHtml(`<script>"x" & 'y'</script>`), "&lt;script&gt;&quot;x&quot; &amp; &#39;y&#39;&lt;/script&gt;");
@@ -49,6 +56,41 @@ test("local portal override is emulator-only", () => {
   );
 });
 
+test("portal login continue URL follows project map and strips trailing slash", () => {
+  const previousProject = process.env.GCLOUD_PROJECT;
+  const previousEmulator = process.env.FUNCTIONS_EMULATOR;
+  const previousOverride = process.env.PORTAL_BASE_URL;
+  try {
+    process.env.GCLOUD_PROJECT = "fresh-prints-dev";
+    delete process.env.FUNCTIONS_EMULATOR;
+    delete process.env.PORTAL_BASE_URL;
+    assert.equal(resolvePortalLoginContinueUrl(), "https://myprintrequest.dev/login");
+
+    process.env.GCLOUD_PROJECT = "fresh-prints-prod";
+    assert.equal(resolvePortalLoginContinueUrl(), "https://myprintrequest.com/login");
+
+    process.env.FUNCTIONS_EMULATOR = "true";
+    process.env.PORTAL_BASE_URL = "http://localhost:3100/";
+    assert.equal(resolvePortalLoginContinueUrl(), "http://localhost:3100/login");
+  } finally {
+    if (previousProject === undefined) {
+      delete process.env.GCLOUD_PROJECT;
+    } else {
+      process.env.GCLOUD_PROJECT = previousProject;
+    }
+    if (previousEmulator === undefined) {
+      delete process.env.FUNCTIONS_EMULATOR;
+    } else {
+      process.env.FUNCTIONS_EMULATOR = previousEmulator;
+    }
+    if (previousOverride === undefined) {
+      delete process.env.PORTAL_BASE_URL;
+    } else {
+      process.env.PORTAL_BASE_URL = previousOverride;
+    }
+  }
+});
+
 test("Resend adapter sets idempotency and maps transient failures", async () => {
   let idempotency = "";
   const provider = createResendEmailProvider(
@@ -88,6 +130,103 @@ test("Resend adapter returns provider message id", async () => {
     ),
     { provider: "resend", providerMessageId: "email_123" },
   );
+});
+
+test("parseEmailFromAddress handles display name and bare email", () => {
+  assert.deepEqual(parseEmailFromAddress('Fresh Prints <team@example.com>'), {
+    email: "team@example.com",
+    name: "Fresh Prints",
+  });
+  assert.deepEqual(parseEmailFromAddress("team@example.com"), { email: "team@example.com" });
+});
+
+test("Brevo adapter maps rate limits and returns messageId", async () => {
+  let capturedBody = "";
+  const rateLimited = createBrevoEmailProvider(
+    "test-key",
+    (async () => new Response("", { status: 429 })) as typeof fetch,
+  );
+  await assert.rejects(
+    rateLimited.send(
+      { from: "a@example.com", to: "b@example.com", subject: "test", html: "<p>test</p>" },
+      "stable-job",
+    ),
+    (error: unknown) =>
+      error instanceof EmailDeliveryError &&
+      error.code === "provider_rate_limited" &&
+      error.transient,
+  );
+
+  const provider = createBrevoEmailProvider(
+    "test-key",
+    (async (_url, init) => {
+      capturedBody = String(init?.body ?? "");
+      return new Response(JSON.stringify({ messageId: "<msg-1@brevo>" }), {
+        status: 201,
+        headers: { "Content-Type": "application/json" },
+      });
+    }) as typeof fetch,
+  );
+  assert.deepEqual(
+    await provider.send(
+      {
+        from: "Fresh Prints <a@example.com>",
+        to: "b@example.com",
+        subject: "test",
+        html: "<p>test</p>",
+      },
+      "stable-job",
+    ),
+    { provider: "brevo", providerMessageId: "<msg-1@brevo>" },
+  );
+  const parsed = JSON.parse(capturedBody) as {
+    sender: { email: string; name?: string };
+    htmlContent: string;
+    headers: { idempotencyKey: string };
+  };
+  assert.deepEqual(parsed.sender, { email: "a@example.com", name: "Fresh Prints" });
+  assert.equal(parsed.htmlContent, "<p>test</p>");
+  assert.equal(parsed.headers.idempotencyKey, brevoIdempotencyKey("stable-job"));
+});
+
+test("email router and api key resolver select Brevo", async () => {
+  assert.equal(
+    resolveEmailApiKey("brevo", { resend: "r", brevo: "b" }),
+    "b",
+  );
+  assert.equal(
+    resolveEmailApiKey("resend", { resend: "r", brevo: "b" }),
+    "r",
+  );
+  assert.throws(
+    () => resolveEmailApiKey("brevo", { resend: "r", brevo: "  " }),
+    (error: unknown) => error instanceof EmailDeliveryError && error.code === "provider_rejected",
+  );
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async () =>
+    new Response(JSON.stringify({ messageId: "brevo-msg" }), {
+      status: 201,
+      headers: { "Content-Type": "application/json" },
+    })) as typeof fetch;
+  try {
+    assert.deepEqual(
+      await sendEmail({
+        provider: "brevo",
+        apiKey: "test-key",
+        idempotencyKey: "job-1",
+        message: {
+          from: "a@example.com",
+          to: "b@example.com",
+          subject: "test",
+          html: "<p>x</p>",
+        },
+      }),
+      { provider: "brevo", providerMessageId: "brevo-msg" },
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test("delivery policy reclaims stale leases and bounds attempts", () => {

@@ -1,15 +1,21 @@
 import {
-  formatAssistedCreationStatus,
   type AssistedCreationStatus,
   type AssistedCreationTransitionActor,
 } from '@fresh-prints/shared/constants/assistedCreation/assistedCreation.constants';
-import type { AssistedCreationRevisionEntry } from '@fresh-prints/shared/types/assistedCreation/assistedCreation.types';
+import type {
+  AssistedCreationProof,
+  AssistedCreationRevisionEntry,
+} from '@fresh-prints/shared/types/assistedCreation/assistedCreation.types';
 import {
-  isAssistedCreationCustomerUpdateEntry,
+  ASSISTED_CREATION_PROOF_EMAIL_SENT_NOTE,
+  buildAssistedCreationHistoryTitles,
   isAssistedCreationProofEmailSentEntry,
 } from '@fresh-prints/shared/utils/assistedCreationHistory';
 
 export function formatAssistedWhen(value: unknown): string {
+  if (value instanceof Date && Number.isFinite(value.getTime())) {
+    return value.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+  }
   if (value && typeof value === 'object' && 'toDate' in value && typeof value.toDate === 'function') {
     return value.toDate().toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
   }
@@ -20,6 +26,52 @@ export function formatAssistedWhen(value: unknown): string {
     }
   }
   return '';
+}
+
+/** Firestore Timestamp / Date / millis → epoch ms for retention helpers. */
+export function assistedCreationTimestampMillis(value: unknown): number | null {
+  if (value == null) {
+    return null;
+  }
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+  if (value instanceof Date) {
+    const ms = value.getTime();
+    return Number.isFinite(ms) ? ms : null;
+  }
+  if (
+    value &&
+    typeof value === 'object' &&
+    'toMillis' in value &&
+    typeof (value as { toMillis?: unknown }).toMillis === 'function'
+  ) {
+    try {
+      const ms = (value as { toMillis: () => number }).toMillis();
+      return Number.isFinite(ms) ? ms : null;
+    } catch {
+      return null;
+    }
+  }
+  if (
+    value &&
+    typeof value === 'object' &&
+    'toDate' in value &&
+    typeof (value as { toDate?: unknown }).toDate === 'function'
+  ) {
+    try {
+      const date = (value as { toDate: () => Date }).toDate();
+      const ms = date?.getTime?.();
+      return typeof ms === 'number' && Number.isFinite(ms) ? ms : null;
+    } catch {
+      return null;
+    }
+  }
+  if (typeof value === 'string') {
+    const ms = Date.parse(value);
+    return Number.isFinite(ms) ? ms : null;
+  }
+  return null;
 }
 
 export function assistedCreationStatusTone(status: AssistedCreationStatus): string {
@@ -53,8 +105,90 @@ function isBoilerplateHistoryNote(note: string): boolean {
     trimmed === 'Resumed work' ||
     trimmed === 'Rejected' ||
     trimmed === 'Cancelled' ||
-    trimmed === 'Customer approved proof'
+    trimmed === 'Customer approved proof' ||
+    trimmed === ASSISTED_CREATION_PROOF_EMAIL_SENT_NOTE ||
+    /^Proof-ready email sent/i.test(trimmed)
   );
+}
+
+function revisionEntryMillis(value: unknown): number {
+  return assistedCreationTimestampMillis(value) ?? 0;
+}
+
+/**
+ * History notes tied to a proof’s window (this proof → next proof).
+ * Excludes boilerplate, proof-ready email noise, and the proof’s own `note`
+ * (shown once via notesForProof).
+ */
+export function relatedNotesForProof(
+  proof: AssistedCreationProof,
+  proofs: AssistedCreationProof[],
+  history: AssistedCreationRevisionEntry[] | undefined,
+): string[] {
+  const start = revisionEntryMillis(proof.createdAt);
+  const index = proofs.findIndex((entry) => entry.id === proof.id);
+  const next = index >= 0 ? proofs[index + 1] : undefined;
+  const end = next ? revisionEntryMillis(next.createdAt) : Number.POSITIVE_INFINITY;
+  const proofNote = proof.note?.trim() ?? '';
+  return (history ?? [])
+    .filter((entry) => {
+      const at = revisionEntryMillis(entry.at);
+      if (at < start || at >= end) {
+        return false;
+      }
+      if (isAssistedCreationProofEmailSentEntry(entry)) {
+        return false;
+      }
+      const note = entry.note?.trim() ?? '';
+      if (!note || isBoilerplateHistoryNote(note)) {
+        return false;
+      }
+      // Same text as proof.note is already the staff proof note — don't double-list.
+      if (proofNote && note === proofNote) {
+        return false;
+      }
+      return true;
+    })
+    .map((entry) => {
+      const when = formatAssistedWhen(entry.at);
+      const who = assistedHistoryRoleLabel(entry.byRole ?? 'system');
+      const note = entry.note?.trim() ?? '';
+      return `${who}${when ? ` · ${when}` : ''}: ${note}`;
+    });
+}
+
+function noteBodyDedupeKey(formattedLine: string): string {
+  const separator = formattedLine.indexOf(': ');
+  const body = separator >= 0 ? formattedLine.slice(separator + 2) : formattedLine;
+  return body.trim().toLowerCase();
+}
+
+/**
+ * Single Notes list for a proof: staff proof note (if any) + linked history notes.
+ * Dedupes by note body so proof.note is not listed twice when history repeats it.
+ */
+export function notesForProof(
+  proof: AssistedCreationProof,
+  proofs: AssistedCreationProof[],
+  history: AssistedCreationRevisionEntry[] | undefined,
+): string[] {
+  const notes: string[] = [];
+  const seenBodies = new Set<string>();
+  const staffNote = proof.note?.trim() ?? '';
+  if (staffNote) {
+    seenBodies.add(staffNote.toLowerCase());
+    const when = formatAssistedWhen(proof.createdAt);
+    notes.push(`Fresh Prints${when ? ` · ${when}` : ''}: ${staffNote}`);
+  }
+  for (const line of relatedNotesForProof(proof, proofs, history)) {
+    const key = noteBodyDedupeKey(line);
+    if (seenBodies.has(key)) {
+      continue;
+    }
+    seenBodies.add(key);
+    notes.push(line);
+  }
+  return notes;
 }
 
 export function assistedHistoryRoleLabel(actor: AssistedCreationTransitionActor): string {
@@ -86,19 +220,14 @@ export function buildAssistedHistoryEntries(
   if (!revisionHistory?.length) {
     return [];
   }
+  const titles = buildAssistedCreationHistoryTitles(revisionHistory);
   return revisionHistory.map((entry, index) => {
     const note = entry.note?.trim() ?? '';
     const showNote = note.length > 0 && !isBoilerplateHistoryNote(note);
-    const isCustomerUpdate = isAssistedCreationCustomerUpdateEntry(entry);
-    const isProofEmailSent = isAssistedCreationProofEmailSentEntry(entry);
     const actor = entry.byRole ?? 'system';
     return {
       key: `${entry.toStatus}-${index}`,
-      title: isCustomerUpdate
-        ? 'Updated'
-        : isProofEmailSent
-          ? 'Email sent'
-          : formatAssistedCreationStatus(entry.toStatus),
+      title: titles[index] ?? '',
       when: formatAssistedWhen(entry.at),
       note: showNote ? note : null,
       actor,

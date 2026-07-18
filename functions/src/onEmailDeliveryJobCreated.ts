@@ -10,6 +10,7 @@ import type { AssistedCreationRevisionEntry } from "../../packages/shared/src/ty
 import {
   EMAIL_DELIVERY_JOBS_COLLECTION,
   isEmailProviderId,
+  type EmailProviderId,
 } from "../../packages/shared/src/constants/emailProviders.constants";
 import {
   ASSISTED_CREATION_PROOF_EMAIL_SENT_NOTE,
@@ -26,7 +27,8 @@ import {
 } from "./lib/email/emailDeliveryPolicy";
 import { resolveProofRecipient } from "./lib/email/proofRecipient";
 import { resolveProofReviewUrl } from "./lib/email/portalUrlResolver";
-import { proofNoticeFromEmail, resendApiKeySecret } from "./lib/secrets";
+import { resolveEmailApiKey } from "./lib/email/resolveEmailApiKey";
+import { brevoApiKeySecret, proofNoticeFromEmail, resendApiKeySecret } from "./lib/secrets";
 
 const LEASE_MS = 2 * 60 * 1000;
 
@@ -36,7 +38,7 @@ interface ClaimedProofJob {
   proofId: string;
   customerId: string;
   customerUid: string;
-  provider: "resend";
+  provider: EmailProviderId;
   attemptCount: number;
 }
 
@@ -177,7 +179,7 @@ export const onEmailDeliveryJobCreated = onDocumentCreated(
   {
     document: `${EMAIL_DELIVERY_JOBS_COLLECTION}/{jobId}`,
     retry: true,
-    secrets: [resendApiKeySecret],
+    secrets: [resendApiKeySecret, brevoApiKeySecret],
   },
   async (event) => {
     const job = await claimJob(event.params.jobId);
@@ -209,7 +211,10 @@ export const onEmailDeliveryJobCreated = onDocumentCreated(
       const recipient = await resolveProofRecipient(job);
       const result = await sendEmail({
         provider: job.provider,
-        apiKey: resendApiKeySecret.value(),
+        apiKey: resolveEmailApiKey(job.provider, {
+          resend: resendApiKeySecret.value(),
+          brevo: brevoApiKeySecret.value(),
+        }),
         idempotencyKey: job.id,
         message: buildProofReadyEmail({
           from: proofNoticeFromEmail.value(),

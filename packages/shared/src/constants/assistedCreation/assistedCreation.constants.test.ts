@@ -4,10 +4,25 @@ import { describe, it } from "node:test";
 import {
   ASSISTED_CREATION_OPEN_STATUSES,
   ASSISTED_CREATION_TERMINAL_STATUSES,
+  canSendAssistedCreationMessage,
   filterAssistedCreationTerminalRequests,
   isAssistedCreationTerminalStatus,
   type AssistedCreationStatus,
 } from "./assistedCreation.constants";
+
+describe("canSendAssistedCreationMessage", () => {
+  it("returns true for every open status", () => {
+    for (const status of ASSISTED_CREATION_OPEN_STATUSES) {
+      assert.equal(canSendAssistedCreationMessage(status), true, status);
+    }
+  });
+
+  it("returns false for every terminal status", () => {
+    for (const status of ASSISTED_CREATION_TERMINAL_STATUSES) {
+      assert.equal(canSendAssistedCreationMessage(status), false, status);
+    }
+  });
+});
 
 describe("isAssistedCreationTerminalStatus", () => {
   it("returns false for every open status", () => {

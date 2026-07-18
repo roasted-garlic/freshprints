@@ -24,6 +24,9 @@ export interface Customer {
    */
   assistedProofEmailOptIn?: boolean;
   assistedProofEmailOptInUpdatedAt?: Timestamp;
+  /** Missing means opted in (opt-out model). Browser / Web Push alerts. */
+  assistedBrowserPushOptIn?: boolean;
+  assistedBrowserPushOptInUpdatedAt?: Timestamp;
   usernameUpdatedAt?: Timestamp;
   createdAt: Timestamp;
   updatedAt: Timestamp;

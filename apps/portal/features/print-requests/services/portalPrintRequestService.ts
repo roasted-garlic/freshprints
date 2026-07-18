@@ -1,6 +1,7 @@
 import {
   collection,
   deleteDoc,
+  deleteField,
   doc,
   getDoc,
   getDocs,
@@ -23,6 +24,7 @@ import type { PrintRequest, PrintRequestItem } from '@fresh-prints/shared/types/
 import type { ShowAllocationStatus } from '@fresh-prints/shared/types/showAllocation/showAllocation.enums';
 import {
   formatPrintRequestItemSizeLabel,
+  MAX_STANDARD_PRINT_REQUEST_SIZE_INCHES,
   resolveInitialPrintRequestItemSize,
 } from '@fresh-prints/shared/utils/printRequestItemSizing';
 import { resolveCatalogAddAction } from '@fresh-prints/shared/utils/currentRequestAggregates';
@@ -30,6 +32,7 @@ import { resolveCatalogAddAction } from '@fresh-prints/shared/utils/currentReque
 import { getPortalDb, getPortalFunctions } from '../../../lib/firebase/client';
 import { resolveDesignDocumentTimestamps } from '../../firebase/utils/mapFirestoreTimestamp';
 import { portalAuthService } from '../../auth/services/authService';
+import { isOptimisticPrintRequestItemId } from '../utils/optimisticPrintRequestItemId';
 
 interface PrintRequestDocumentData extends DocumentData {
   name?: unknown;
@@ -506,7 +509,7 @@ export const portalPrintRequestService = {
     }));
     const action = resolveCatalogAddAction(likes, input.designId);
     if (action.kind !== 'increment') {
-      throw new Error('This design is not in your Current Request.');
+      throw new Error('This design is not in Your Stash.');
     }
 
     const primary = currentItems.find((entry) => entry.id === action.itemId);
@@ -557,7 +560,7 @@ export const portalPrintRequestService = {
     }));
     const action = resolveCatalogAddAction(likes, input.designId);
     if (action.kind !== 'increment') {
-      throw new Error('This design is not in your Current Request.');
+      throw new Error('This design is not in Your Stash.');
     }
 
     await this.updatePrintRequestItemQuantity({
@@ -742,6 +745,10 @@ export const portalPrintRequestService = {
     printWidthInches?: number;
     printHeightInches?: number;
   }): Promise<void> {
+    if (isOptimisticPrintRequestItemId(input.itemId)) {
+      throw new Error('Wait for the duplicate to finish saving before editing.');
+    }
+
     const printRequest = await this.getPrintRequest(input.printRequestId);
 
     if (!printRequest) {
@@ -759,7 +766,7 @@ export const portalPrintRequestService = {
     }
 
     const current = mapPrintRequestItem(itemSnapshot.id, itemSnapshot.data() as PrintRequestItemDocumentData);
-    const nextQuantity = input.quantity ?? current.quantity;
+    const nextQuantity = Math.floor(input.quantity ?? current.quantity);
     const nextWidth = input.printWidthInches ?? current.printWidthInches;
     const nextHeight = input.printHeightInches ?? current.printHeightInches;
 
@@ -771,16 +778,31 @@ export const portalPrintRequestService = {
       throw new Error('Print size is required.');
     }
 
+    if (
+      !Number.isFinite(nextWidth) ||
+      !Number.isFinite(nextHeight) ||
+      nextWidth <= 0 ||
+      nextHeight <= 0
+    ) {
+      throw new Error('Requested print size must be greater than 0 inches.');
+    }
+
+    if (
+      nextWidth > MAX_STANDARD_PRINT_REQUEST_SIZE_INCHES ||
+      nextHeight > MAX_STANDARD_PRINT_REQUEST_SIZE_INCHES
+    ) {
+      throw new Error(
+        `Requested standard print sizes cannot exceed ${MAX_STANDARD_PRINT_REQUEST_SIZE_INCHES} inches. Use a Custom Request for this item.`,
+      );
+    }
+
+    // Item-only write (Studio parity). Do not bump parent printRequests here — customer
+    // parent-update rules are stricter and were denying resize autosaves as permission-denied.
     await updateDoc(doc(getPortalDb(), 'printRequestItems', input.itemId), {
       quantity: nextQuantity,
       printWidthInches: nextWidth,
       printHeightInches: nextHeight,
       sizeLabel: formatPrintRequestItemSizeLabel(nextWidth, nextHeight),
-      updatedAt: serverTimestamp(),
-    });
-
-    await updateDoc(doc(getPortalDb(), 'printRequests', input.printRequestId), {
-      updatedBy: input.userId,
       updatedAt: serverTimestamp(),
     });
   },
@@ -1016,7 +1038,7 @@ export const portalPrintRequestService = {
     const notes = input.notes.trim();
 
     await updateDoc(doc(getPortalDb(), 'printRequests', input.printRequestId), {
-      notes: notes || null,
+      notes: notes ? notes : deleteField(),
       updatedBy: input.userId,
       updatedAt: serverTimestamp(),
     });

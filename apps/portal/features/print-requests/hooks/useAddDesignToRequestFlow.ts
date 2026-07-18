@@ -102,7 +102,7 @@ export function useAddDesignToRequestFlow({
   const adjustQuantityRef = useRef<(design: CatalogDesign, delta: 1 | -1) => void>(() => {});
 
   function announceDesignAdded(design: CatalogDesign) {
-    showSuccess(`Added “${design.title}” to your Current Request.`, {
+    showSuccess(`Added “${design.title}” to Your Stash.`, {
       action: {
         label: 'Undo',
         onClick: () => {
@@ -294,7 +294,7 @@ export function useAddDesignToRequestFlow({
         if (qtyGenerationRef.current.get(designId) === generation) {
           desiredPrimaryQtyRef.current.delete(designId);
           setActionError(
-            error instanceof Error ? error.message : 'Unable to update Current Request quantity.',
+            error instanceof Error ? error.message : 'Unable to update Your Stash quantity.',
           );
           await syncWorkingItems();
         }
@@ -370,7 +370,7 @@ export function useAddDesignToRequestFlow({
           announceDesignAdded(input.catalogDesign);
         } else {
           showSuccess(
-            title ? `Added “${title}” to your Current Request.` : 'Added to your Current Request.',
+            title ? `Added “${title}” to Your Stash.` : 'Added to Your Stash.',
           );
         }
       }
@@ -431,7 +431,7 @@ export function useAddDesignToRequestFlow({
                 items.filter((item) => !isCatalogDesignItem(item, design.id)),
               );
               setActionError(
-                error instanceof Error ? error.message : 'Unable to update Current Request.',
+                error instanceof Error ? error.message : 'Unable to update Your Stash.',
               );
             });
           return;
@@ -444,7 +444,7 @@ export function useAddDesignToRequestFlow({
         }
 
         if (!firebaseUser) {
-          setActionError('You must be signed in to update your Current Request.');
+          setActionError('You must be signed in to update Your Stash.');
           return;
         }
 
@@ -469,7 +469,7 @@ export function useAddDesignToRequestFlow({
 
       if (branch.kind === 'create') {
         if (!firebaseUser) {
-          setActionError('You must be signed in to update your Current Request.');
+          setActionError('You must be signed in to update Your Stash.');
           return;
         }
 
@@ -514,14 +514,14 @@ export function useAddDesignToRequestFlow({
               items.filter((item) => !isCatalogDesignItem(item, design.id)),
             );
             setActionError(
-              error instanceof Error ? error.message : 'Unable to update Current Request.',
+              error instanceof Error ? error.message : 'Unable to update Your Stash.',
             );
           });
         return;
       }
 
       if (!firebaseUser) {
-        setActionError('You must be signed in to update your Current Request.');
+        setActionError('You must be signed in to update Your Stash.');
         return;
       }
 
@@ -580,7 +580,7 @@ export function useAddDesignToRequestFlow({
       }
 
       if (!firebaseUser) {
-        setActionError('You must be signed in to update your Current Request.');
+        setActionError('You must be signed in to update Your Stash.');
         return;
       }
 
@@ -607,7 +607,7 @@ export function useAddDesignToRequestFlow({
       }
 
       if (!firebaseUser) {
-        setActionError('You must be signed in to update your Current Request.');
+        setActionError('You must be signed in to update Your Stash.');
         return;
       }
 
@@ -687,8 +687,8 @@ export function useAddDesignToRequestFlow({
     closePicker,
     confirmAddDesign,
     confirmMessage: pendingDesign
-      ? `Add “${pendingDesign.title}” to your Current Request?`
-      : 'Add this design to your Current Request?',
+      ? `Add “${pendingDesign.title}” to Your Stash?`
+      : 'Add this design to Your Stash?',
     confirmPickRequest,
     isAdding: isBusy,
     isConfirmOpen,

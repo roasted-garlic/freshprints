@@ -3,7 +3,7 @@ import type { PortalPrintRequestListTab } from '@fresh-prints/shared/utils/porta
 /** Copy for the requests page before any print requests exist (no tabs shown yet). */
 export function getPortalPrintRequestsEmptyPageCopyLines(): [string, string] {
   return [
-    'Your Current Request is always ready in Your Stash. Add designs while browsing or upload your own artwork.',
+    'Your Stash is always ready. Add designs while browsing or upload your own artwork.',
     'After you add a request to a show\'s print run, track it here through Queued, Printing, and Printed.',
   ];
 }
@@ -12,7 +12,7 @@ export function getPortalPrintRequestsEmptyPageCopyLines(): [string, string] {
 export function getPortalPrintRequestTabGuideCopy(tab: PortalPrintRequestListTab): string {
   switch (tab) {
     case 'working':
-      return 'The Working tab is for your Current Request while you add designs, set quantities and print sizes, and get ready to add it to a show\'s print run. An empty Stash still counts as your open Current Request until you queue it.';
+      return 'The Working tab is for Your Stash while you add designs, set quantities and print sizes, and get ready to add it to a show\'s print run. An empty Stash still counts as your open request until you queue it.';
     case 'queued':
       return 'The Queued tab is for requests assigned to an upcoming show\'s print run. After a request is queued to a show\'s print run, it will appear here until printing begins.';
     case 'printing':
@@ -26,7 +26,7 @@ export function getPortalPrintRequestTabGuideCopy(tab: PortalPrintRequestListTab
 export function getPortalPrintRequestTabEmptyCopy(tab: PortalPrintRequestListTab): string {
   switch (tab) {
     case 'working':
-      return 'Nothing listed yet. Open Your Stash to see your open Current Request, or browse designs to add the first item — your request is created when you add something.';
+      return 'Nothing listed yet. Open Your Stash to review what\'s in it, or browse designs to add the first item — your request is created when you add something.';
     case 'queued':
       return 'Nothing here yet. When you add a request to a show\'s print run, it will appear here until printing begins.';
     case 'printing':

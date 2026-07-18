@@ -19,6 +19,8 @@ export interface SubmitAssistedCreationRequestResponse {
 
 export interface CancelAssistedCreationRequestRequest {
   requestId: string;
+  /** Required customer-facing cancel reason (trimmed; server-validated). */
+  reason: string;
 }
 
 export interface CancelAssistedCreationRequestResponse {
@@ -49,6 +51,26 @@ export interface CustomerUpdateAssistedCreationRequestResponse {
   status: "submitted";
 }
 
+export interface CustomerSendAssistedCreationMessageRequest {
+  requestId: string;
+  message: string;
+}
+
+export interface CustomerSendAssistedCreationMessageResponse {
+  requestId: string;
+  status: AssistedCreationStatus;
+}
+
+export interface StaffSendAssistedCreationMessageRequest {
+  requestId: string;
+  message: string;
+}
+
+export interface StaffSendAssistedCreationMessageResponse {
+  requestId: string;
+  status: AssistedCreationStatus;
+}
+
 export type CustomerAssistedCreationProofDecision = "approve" | "request_revision";
 
 export interface CustomerRespondToAssistedCreationProofRequest {
@@ -70,11 +92,17 @@ export type StaffAssistedCreationStatusAction =
   | "resume_work"
   | "reject"
   | "cancel"
-  | "restore";
+  | "restore"
+  /** Persist internal staff notes without changing status or revision history. */
+  | "update_notes";
 
 export interface StaffUpdateAssistedCreationStatusRequest {
   requestId: string;
   action: StaffAssistedCreationStatusAction;
+  /**
+   * Optional on status transitions (applied when provided).
+   * For `update_notes`, trimmed value is written (empty clears notes).
+   */
   staffNotes?: string;
   /** Required for reject, cancel, and restore. */
   reason?: string;
@@ -101,6 +129,35 @@ export interface StaffAddAssistedCreationProofResponse {
   requestId: string;
   status: "proof_ready";
   proofId: string;
+}
+
+/** Customer: mint a short-lived signed URL for the approved proof full-res download. */
+export interface CustomerGetAssistedCreationApprovedProofDownloadUrlRequest {
+  requestId: string;
+}
+
+export interface CustomerGetAssistedCreationApprovedProofDownloadUrlResponse {
+  downloadUrl: string;
+  fileName: string;
+  contentType: string;
+  /** Epoch ms when the signed URL expires (not the 14-day retention window). */
+  urlExpiresAtMillis: number;
+  /** Epoch ms when the 14-day retention download window ends; null for legacy approvals. */
+  downloadExpiresAtMillis: number | null;
+}
+
+/** Customer: Admin-streamed proof bytes for reliable Portal file download (no GCS navigate / CORS fetch). */
+export interface CustomerGetAssistedCreationApprovedProofFileRequest {
+  requestId: string;
+}
+
+export interface CustomerGetAssistedCreationApprovedProofFileResponse {
+  fileName: string;
+  contentType: string;
+  /** Raw file bytes, base64-encoded. */
+  contentBase64: string;
+  /** Epoch ms when the 14-day retention download window ends; null for legacy approvals. */
+  downloadExpiresAtMillis: number | null;
 }
 
 /** Payload shape accepted by submit after client builds answers. */

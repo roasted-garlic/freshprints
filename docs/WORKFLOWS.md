@@ -1328,6 +1328,61 @@ Staff reviews in-house requests
 
 ---
 
+# Assisted Creation Request Status (Phase 9C)
+
+Portal customers and Studio staff view the same Assisted Creation request lifecycle through
+audience-appropriate interfaces.
+
+```txt
+Portal request status
+  → Overview / Proofs / Messages
+  → latest proof response (approve or request revisions)
+
+Studio Assisted request detail
+  → Overview / Proofs / Messages
+  → staff-only notes, lifecycle actions, proof upload/download, and unread controls
+```
+
+Display rules:
+
+* Proofs are numbered from chronological proof order in both apps (`Proof 1`, `Proof 2`, ...).
+* Messages independently numbers transitions to `proof_ready` and `revision_requested`
+  (`Proof 1`, `Revision request 1`, `Proof 2`, ...).
+* Numbering is derived chronologically. It is not persisted.
+* Customer updates remain `Updated`; successful proof notice records remain `Email sent`.
+* Customers may send a text-only message from **Messages** in any active or terminal status. The
+  message uses `kind: "customer_message"`, keeps `fromStatus == toStatus`, and never reopens or
+  changes the request. Brief/reference edits remain `submitted`-only.
+* The message callable enforces auth, ownership, 2,000-character maximum, and a 10-second
+  per-request cooldown. Direct client writes remain denied.
+* Portal and Studio cap the timeline height, scroll messages internally, keep oldest at the top and
+  newest at the bottom, and open/update at the newest row. Portal keeps the composer below the
+  scrolling thread.
+* Studio parity covers Overview / Proofs / Messages layout, labels, and customer-visible information
+  order. It does not expose internal notes or staff controls in Portal and does not remove those
+  controls from Studio.
+
+Portal authentication continuity:
+
+* A protected-route redirect to login carries the current internal path and query as `returnTo`.
+* Email/password and Google sign-in return to that path after profile bootstrap.
+* First-time Google profile completion preserves the same destination.
+* Only validated same-origin relative app paths are accepted; invalid or auth-loop targets fall back
+  to `/`.
+
+The Messages enhancement adds `customerSendAssistedCreationMessage` and
+`staffSendAssistedCreationMessage`; no Firestore/Storage rules, indexes, migration, secrets, or
+environment changes are required. After explicit owner approval, deploy only those dev callables with:
+`firebase deploy --only functions:customerSendAssistedCreationMessage,functions:staffSendAssistedCreationMessage --project fresh-prints-dev`.
+
+Studio Assisted detail tabs after this change:
+
+* **Overview** — request brief, references, **Internal staff notes** (explicit Save notes), primary **Staff actions** when applicable (Start work / Resume revision), and Reject/Cancel/Restore in a status-row ⋯ menu
+* **Proofs** — proof list + proof upload when `in_progress`
+* **Messages** — capped scroll thread + Send a message compose only (no Staff actions)
+
+---
+
 # Legacy: Customer Request Workflow (superseded)
 
 > **Superseded 2026-06-24.** The conflated "Customer Request" model mixed catalog print planning with custom design intake. Use **Print Request** (Phase 6) and **Custom Request** (Phase 9) instead. Existing `customerRequests` collection in DATA_MODEL.md maps to Custom Request planning only.

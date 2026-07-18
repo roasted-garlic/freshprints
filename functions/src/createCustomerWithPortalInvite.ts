@@ -11,8 +11,10 @@ import { alreadyExists, internal, invalidArgument, unauthenticated } from "./lib
 import { withoutUndefinedFields } from "./lib/firestoreDocument";
 import { assertCanManageCustomers } from "./lib/permissions";
 import { sendCustomerPortalInvitationEmail } from "./lib/resendEmailService";
-import { invitationFromEmail, portalBaseUrl, resendApiKeySecret } from "./lib/secrets";
+import { brevoApiKeySecret, invitationFromEmail, resendApiKeySecret } from "./lib/secrets";
 import { loadEmailProviderSettings } from "./lib/email/emailSettings";
+import { resolvePortalLoginContinueUrl } from "./lib/email/portalUrlResolver";
+import { resolveEmailApiKey } from "./lib/email/resolveEmailApiKey";
 
 const invitationEmailSentNextStep =
   "A Portal invitation email was sent with a link to set their password.";
@@ -48,7 +50,7 @@ async function assertEmailAvailableForCustomerInvite(email: string): Promise<voi
 }
 
 async function generateCustomerPasswordResetLink(email: string): Promise<string> {
-  const continueUrl = `${portalBaseUrl.value().replace(/\/$/, "")}/login`;
+  const continueUrl = resolvePortalLoginContinueUrl();
 
   try {
     return await adminAuth.generatePasswordResetLink(email, {
@@ -75,7 +77,10 @@ async function sendPortalInvitationEmail(
     const settings = await loadEmailProviderSettings();
 
     return sendCustomerPortalInvitationEmail({
-      apiKey: resendApiKeySecret.value(),
+      apiKey: resolveEmailApiKey(settings.inviteProvider, {
+        resend: resendApiKeySecret.value(),
+        brevo: brevoApiKeySecret.value(),
+      }),
       provider: settings.inviteProvider,
       fromEmail: invitationFromEmail.value(),
       toEmail: email,
@@ -89,7 +94,7 @@ async function sendPortalInvitationEmail(
 }
 
 export const createCustomerWithPortalInvite = onCall(
-  { secrets: [resendApiKeySecret] },
+  { secrets: [resendApiKeySecret, brevoApiKeySecret] },
   async (request): Promise<CreateCustomerWithPortalInviteResponse> => {
     if (!request.auth?.uid) {
       throw unauthenticated();

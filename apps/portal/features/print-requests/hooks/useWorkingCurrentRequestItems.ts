@@ -167,7 +167,7 @@ export function useWorkingCurrentRequestItems(workingRequest: PrintRequest | nul
         });
         setUploadSummaries(nextUploads);
       } catch (error) {
-        setItemsError(error instanceof Error ? error.message : 'Unable to load Current Request items.');
+        setItemsError(error instanceof Error ? error.message : 'Unable to load Your Stash items.');
       } finally {
         if (!options?.silent) {
           setIsLoadingItems(false);

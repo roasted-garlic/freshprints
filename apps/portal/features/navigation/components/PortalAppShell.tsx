@@ -6,6 +6,7 @@ import { CurrentRequestDrawer } from '../../print-requests/components/CurrentReq
 import { PortalPrintRequestProvider } from '../../print-requests/context/PortalPrintRequestContext';
 import { FavoritesProvider } from '../../favorites/context/FavoritesProvider';
 import { PortalToastProvider } from '../../shared/context/PortalToastContext';
+import { PortalNotificationsProvider } from '../../notifications/context/PortalNotificationsProvider';
 import { PortalDrawerProvider, usePortalDrawer } from '../context/PortalDrawerContext';
 import { PortalAppHeader } from './PortalAppHeader';
 import { PortalBottomNav } from './PortalBottomNav';
@@ -50,7 +51,9 @@ export function PortalAppShell({ children }: PortalAppShellProps) {
       <PortalToastProvider>
         <PortalPrintRequestProvider>
           <FavoritesProvider>
-            <PortalAppShellContent>{children}</PortalAppShellContent>
+            <PortalNotificationsProvider>
+              <PortalAppShellContent>{children}</PortalAppShellContent>
+            </PortalNotificationsProvider>
           </FavoritesProvider>
         </PortalPrintRequestProvider>
       </PortalToastProvider>

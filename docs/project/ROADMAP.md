@@ -106,10 +106,10 @@ Phase 7 Studio MVP and Phase 8 Portal MVP are complete in the dev environment.
 
 Current Goal:
 
-Provider-agnostic proof-ready email notifications for Phase 9C are implemented in the repository
-(Resend adapter, invitation routing, proof outbox worker, owner provider Settings). Automated
-verification and the dev deploy/live-email manual checkpoint remain; production is excluded.
-Brevo remains a disabled future follow-up.
+Provider-agnostic proof-ready email notifications for Phase 9C are complete on `fresh-prints-dev`
+(Resend + Brevo adapters, invitation routing, proof outbox worker, owner provider Settings).
+Owner **BREVO PASS** 2026-07-17 (Transactional Logs Sent / Delivered / First opening). Production
+email release remains separate. Next open follow-ups: assisted-customer-cancel-reason + assisted-terminal-messaging-closed owner QA (proof download PASS 2026-07-17).
 
 Phase 7 Show Queue is complete for Studio MVP: foundation, staff-assisted Whatnot import,
 production-file export (zip, multiply-by-qty, auto-nested gang sheet PNG) signed off 2026-07-07,
@@ -1116,8 +1116,20 @@ Clean Portal Etsy recommendations foundation from master (archived prior Phase 9
 
 * Create My Design with AI
 * ~~Fresh Prints Assisted Creation~~ → **Phase 9C complete on `fresh-prints-dev`** (owner manual QA `PASS`, 2026-07-16; ADR-FP-088). Signoff: `docs/workflow/reviews/2026-07-16-phase-9c-assisted-creation-signoff.md`
+* ~~Studio Message history (unread dropdown + acked history modal)~~ → owner manual QA `PASS` 2026-07-17. Signoff: `docs/workflow/reviews/2026-07-17-studio-message-history-signoff.md`
+* ~~Portal duplicate → resize permissions (optimistic id race + item-only update)~~ → owner manual QA `PASS` 2026-07-17. Signoff: `docs/workflow/reviews/2026-07-17-portal-duplicate-resize-permissions-signoff.md` (optional `firestore.rules` harden deploy still pending `APPROVE DEV DEPLOY`)
+* ~~Portal notification history modal (unread Alerts + read history; absorbed click-vanish/badge)~~ → owner `PASS` 2026-07-17. Signoff: `docs/workflow/reviews/2026-07-17-portal-notification-history-modal-signoff.md`
+* ~~Assisted Messages Ctrl+Enter send (Portal + Studio)~~ → owner `PASS` 2026-07-17. Signoff: `docs/workflow/reviews/2026-07-17-assisted-messages-ctrl-enter-send-signoff.md`
+* ~~Studio Messages deep-link scroll + mark-read-on-reply~~ → owner `PASS` 2026-07-17. Signoff: `docs/workflow/reviews/2026-07-17-studio-messages-deeplink-scroll-read-on-reply-signoff.md`
+* ~~Portal notifications batch mark-read (+ Alerts chrome; Messages bubble flip/moderate width)~~ → owner `PASS` 2026-07-17. Signoff: `docs/workflow/reviews/2026-07-17-portal-notifications-batch-mark-read-signoff.md`
+* ~~Portal notifications + Web Push~~ → owner `PASS` 2026-07-17 (A5 local smoke + B3 background OS toast). Signoff: `docs/workflow/reviews/2026-07-17-portal-notifications-web-push-signoff.md` (production push release still deferred)
+* ~~Assisted approved proof download + Portal proof UX~~ → owner **PASS** 2026-07-17 (callable `customerGetAssistedCreationApprovedProofFile`; Overview 14-day; Notes dedupe; Approved labels). Signoff: `docs/workflow/reviews/2026-07-17-assisted-approved-proof-download-signoff.md`
+* Assisted customer cancel reason (Portal required reason + Studio Overview) — **implemented** on `fresh-prints-dev`; owner manual QA open (`docs/workflow/reviews/2026-07-17-assisted-customer-cancel-reason-manual-qa.md`)
+* Assisted terminal messaging closed (Portal + Studio composers) - **implemented** on `fresh-prints-dev`; owner manual QA open (`docs/workflow/reviews/2026-07-17-assisted-terminal-messaging-closed-manual-qa.md`)
+* ~~Brevo transactional email provider (HTTP API + `BREVO_API_KEY`)~~ → owner **BREVO PASS** 2026-07-17 (Sent / Delivered / First opening). Signoff: `docs/workflow/reviews/2026-07-17-brevo-email-provider-signoff.md` (UX A/B absorbed/optional; production email release deferred)
+* ~~Skeleton alone ≠ Halloween AI tag~~ → prompt + post-filter (ADR-FP-091). Signoff: `docs/workflow/reviews/2026-07-17-skeleton-not-halloween-prompt-signoff.md` (redeploy `enqueueAiEnrichment` + `testAiEnrichmentPlayground` to `fresh-prints-dev` for live effect)
 * ~~Portal Past Requests terminal-only filter~~ → fixed 2026-07-16 (open statuses excluded; link hidden when zero terminals). Signoff: `docs/workflow/reviews/2026-07-16-terminal-only-assisted-past-requests-signoff.md`
-* Provider-agnostic proof-ready email notifications (Resend first; Brevo later) → implemented; **fresh-prints-dev deploy deferred** (`NO DEPLOY`); includes opt-out + email-sent history when deployed
+* ~~Provider-agnostic proof-ready email notifications (Resend + Brevo)~~ → both adapters on `fresh-prints-dev`; owner may select Brevo in Settings (defaults remain Resend until switched)
 * Assisted questionnaire request-type branching — deferred (not in current UX polish phase)
 * Staff design-fee / Stripe for custom work
 * ~~In-app listing scrape from Etsy website search~~ — **removed** (ADR-FP-087j; owner rejected scrape quality)
@@ -1233,3 +1245,4 @@ Fresh Prints succeeds when:
 * The platform remains maintainable for years.
 
 Every feature should move the project toward these goals.
+

@@ -21,6 +21,8 @@ interface CustomerDocumentData extends DocumentData {
   usernameUpdatedAt?: unknown;
   assistedProofEmailOptIn?: unknown;
   assistedProofEmailOptInUpdatedAt?: unknown;
+  assistedBrowserPushOptIn?: unknown;
+  assistedBrowserPushOptInUpdatedAt?: unknown;
   createdAt?: unknown;
   updatedAt?: unknown;
 }
@@ -57,6 +59,9 @@ function mapCustomer(customerId: string, data: CustomerDocumentData): Customer {
     assistedProofEmailOptIn:
       typeof data.assistedProofEmailOptIn === 'boolean' ? data.assistedProofEmailOptIn : undefined,
     assistedProofEmailOptInUpdatedAt: mapFirestoreTimestamp(data.assistedProofEmailOptInUpdatedAt),
+    assistedBrowserPushOptIn:
+      typeof data.assistedBrowserPushOptIn === 'boolean' ? data.assistedBrowserPushOptIn : undefined,
+    assistedBrowserPushOptInUpdatedAt: mapFirestoreTimestamp(data.assistedBrowserPushOptInUpdatedAt),
     usernameUpdatedAt: mapFirestoreTimestamp(data.usernameUpdatedAt),
     createdAt,
     updatedAt,

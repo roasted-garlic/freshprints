@@ -22,6 +22,8 @@ import {
 import type {
   StaffAddAssistedCreationProofRequest,
   StaffAddAssistedCreationProofResponse,
+  StaffSendAssistedCreationMessageRequest,
+  StaffSendAssistedCreationMessageResponse,
   StaffUpdateAssistedCreationStatusRequest,
   StaffUpdateAssistedCreationStatusResponse,
 } from "@fresh-prints/shared/types/assistedCreation/assistedCreationActions.types";
@@ -31,6 +33,7 @@ import type {
   AssistedCreationReferenceImage,
   AssistedCreationRevisionEntry,
 } from "@fresh-prints/shared/types/assistedCreation/assistedCreation.types";
+import { buildAssistedCreationProofStoredFileName } from "@fresh-prints/shared/utils/assistedCreationProofFileName";
 
 import { db, functions, storage } from "../../../config/firebase";
 
@@ -49,6 +52,8 @@ export interface AssistedCreationRequestListItem {
   proofs: AssistedCreationProof[];
   revisionHistory: AssistedCreationRevisionEntry[];
   staffNotes: string;
+  customerCancelReason: string;
+  approvedProofId: string | null;
   createdAt: Date | null;
   updatedAt: Date | null;
 }
@@ -95,6 +100,12 @@ function mapDoc(
       ? (data.revisionHistory as AssistedCreationRevisionEntry[])
       : [],
     staffNotes: typeof data.staffNotes === "string" ? data.staffNotes : "",
+    customerCancelReason:
+      typeof data.customerCancelReason === "string" ? data.customerCancelReason.trim() : "",
+    approvedProofId:
+      typeof data.approvedProofId === "string" && data.approvedProofId.trim()
+        ? data.approvedProofId.trim()
+        : null,
     createdAt: asTimestampDate(data.createdAt),
     updatedAt: asTimestampDate(data.updatedAt),
   };
@@ -163,10 +174,23 @@ export const assistedCreationRequestsService = {
     return result.data;
   },
 
+  async sendMessage(
+    input: StaffSendAssistedCreationMessageRequest,
+  ): Promise<StaffSendAssistedCreationMessageResponse> {
+    const callable = httpsCallable<
+      StaffSendAssistedCreationMessageRequest,
+      StaffSendAssistedCreationMessageResponse
+    >(functions, "staffSendAssistedCreationMessage");
+    const result = await callable(input);
+    return result.data;
+  },
+
   async uploadAndAttachProof(input: {
     requestId: string;
     customerUid: string;
     file: File;
+    /** Chronological proof number (1-based); used for stored basename. */
+    proofNumber: number;
     note?: string;
   }): Promise<StaffAddAssistedCreationProofResponse> {
     if (!(ASSISTED_CREATION_ALLOWED_PROOF_TYPES as readonly string[]).includes(input.file.type)) {
@@ -178,7 +202,14 @@ export const assistedCreationRequestsService = {
       );
     }
     const proofId = crypto.randomUUID();
-    const storagePath = `assisted-creation/${input.customerUid}/${input.requestId}/proofs/${proofId}`;
+    const fileName = buildAssistedCreationProofStoredFileName({
+      proofNumber: input.proofNumber,
+      uploadedAt: new Date(),
+      contentType: input.file.type,
+      originalFileName: input.file.name,
+    });
+    // Object basename is the rename pattern; Firestore proof.id stays a UUID.
+    const storagePath = `assisted-creation/${input.customerUid}/${input.requestId}/proofs/${fileName}`;
     await uploadBytes(ref(storage, storagePath), input.file, { contentType: input.file.type });
 
     const callable = httpsCallable<
@@ -190,7 +221,7 @@ export const assistedCreationRequestsService = {
       proof: {
         id: proofId,
         storagePath,
-        fileName: input.file.name,
+        fileName,
         contentType: input.file.type,
         sizeBytes: input.file.size,
         note: input.note,

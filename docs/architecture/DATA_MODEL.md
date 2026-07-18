@@ -1151,9 +1151,23 @@ assisted-creation/{customerUid}/pending/{fileId}
 assisted-creation/{customerUid}/{requestId}/proofs/{fileId}
 ```
 
-One **open** request per customer (`submitted` | `in_progress` | `proof_ready` | `revision_requested`). Status machine supports staff proofing and customer approve / revision-with-notes until `approved` (also `rejected` / `cancelled`). While status is **`submitted`** only, the customer may update `answers` and `referenceImages` (callable `customerUpdateAssistedCreationRequest`); updates are locked once staff marks `in_progress`. Customer update history notes use `Request updated` (optional staff-visible detail after an em dash). When a proof-ready email delivery job completes successfully, the worker appends a system history entry `Proof-ready email sent` (with optional `emailDeliveryJobId` for idempotency). On approve, customer may optionally set `customerRating` (1–5) and `customerApprovalNote` (short text). Client Firestore writes denied; callables only. Helper may read; owner/admin mutate status and attach proofs (ADR-FP-088). Owner wipe on `fresh-prints-dev` uses Test Data Reset target `assistedCreationRequests` (`wipeOperationalTestData`) and clears Storage under `assisted-creation/`.
+Proof objects are the **raw staff upload** (JPEG/PNG/WebP). There is no separate grey-background derivative — Portal/Studio grey is CSS only.
 
-Per-staff unread customer-update markers live in `assistedCreationUpdateAcks/{userId__requestId}` with `readThroughAt`. Studio badges count customer same-status `submitted` revision entries with `at > readThroughAt`. In History, each unread customer-update row shows a **Read** control; clicking it advances `readThroughAt` to that entry’s `at` (monotonic — never moves backward). Reading an older unread leaves newer ones unread; reading the newest clears all for that request. The History header keeps a count badge only (no bulk Read). **Requires deployed Firestore rules** for this collection on the target project (`firebase deploy --only firestore:rules --project fresh-prints-dev`); until then Studio shows a toast on mark-read permission failures.
+**Proof object basename (ADR-FP-093 residual):** on Studio upload, `{fileId}` / `proof.fileName` is renamed to:
+
+```txt
+proof-{n}-{mmddyyyy}-{HHmm}.{ext}
+```
+
+Example: `proof-6-10172026-2204.png` — `{n}` is chronological proof number (1-based), stamp is local wall-clock at upload (no seconds), `{ext}` is `png` | `jpg` | `webp`. Firestore `proof.id` remains a UUID. Portal customers never see the original creative filename; download uses the stored basename (or `proof-{n}.{ext}` for legacy proofs).
+
+**Full-res retention (ADR-FP-093):** on customer **approve**, set `approvedProofId` + `approvedAt` and **physically delete** other proofs’ Storage objects (set per-proof `fullSizePurgedAt`). On terminal **without** an approved downloadable proof (`rejected` / `cancelled`), delete **all** proof full-res objects. The approved proof full-res remains downloadable for **14 days** (`ASSISTED_CREATION_APPROVED_PROOF_RETENTION_DAYS`), then `purgeExpiredAssistedCreationProofs` / scheduled job deletes it and sets `fullSizePurgedAt`. Legacy `approved` docs without `approvedProofId`/`approvedAt` fail closed (no download). Portal Download is on the approved status panel **and** in the Proof detail modal when viewing the approved proof (via signed-URL callable). The Proofs list and modal title label the approved proof with an **Approved** badge.
+
+One **open** request per customer (`submitted` | `in_progress` | `proof_ready` | `revision_requested`). Status machine supports staff proofing and customer approve / revision-with-notes until `approved` (also `rejected` / `cancelled`). While status is **`submitted`** only, the customer may update `answers` and `referenceImages` (callable `customerUpdateAssistedCreationRequest`); content updates are locked once staff marks `in_progress`. Customer cancel (`cancelAssistedCreationRequest`) requires a non-empty `reason` (max revision-note length); the server persists `customerCancelReason` and appends a status history note. Staff cancel/reject/restore still require a reason in history only (no `customerCancelReason`). Separately, `customerSendAssistedCreationMessage` and `staffSendAssistedCreationMessage` append text-only chat notes **only while the request is open** (`canSendAssistedCreationMessage`); terminal statuses (`approved` | `rejected` | `cancelled`) reject new sends with `failed-precondition` (“Messaging is closed for completed requests.”). Entries are same-status and never reopen or transition the request. Messages are trimmed, required, capped at 2,000 characters, and limited to one per actor role per request per 10 seconds. Customer update history notes use `Request updated` (optional staff-visible detail after an em dash). Chat rows use structural `kind: "customer_message"` or `kind: "staff_message"`; `AssistedCreationRevisionEntry.kind` is optional for legacy records and also supports `status`, `request_update`, and `proof_email_sent`. When a proof-ready email delivery job completes successfully, the worker appends a system history entry `Proof-ready email sent` (with optional `emailDeliveryJobId` for idempotency). On approve, customer may optionally set `customerRating` (1–5) and `customerApprovalNote` (short text), plus `approvedProofId` / `approvedAt`. Client Firestore writes denied; callables only. Helper may read; owner/admin mutate status, attach proofs, and send staff Messages on open requests (ADR-FP-088, ADR-FP-092, ADR-FP-093). Owner wipe on `fresh-prints-dev` uses Test Data Reset target `assistedCreationRequests` (`wipeOperationalTestData`) and clears Storage under `assisted-creation/`.
+
+Per-staff unread customer-update markers live in `assistedCreationUpdateAcks/{userId__requestId}` with `readThroughAt` (legacy submitted updates plus `kind: "customer_message"` in any status when `at > readThroughAt`). Studio header **Messages** inbox (alerts-style) lists unread previews and deep-links to Custom Designs → Assisted → Messages; opening a row advances `readThroughAt` for that entry. Stage-tab and list-card unread chips were removed in favor of the inbox. Studio detail tabs: **Overview** (brief + references + **Internal staff notes** with Save notes + primary Staff actions when Start work / Resume apply + Reject/Cancel/Restore in status-row ⋯; when status is `cancelled` and `customerCancelReason` is set, show **Customer cancel reason** under the status header) + **Proofs** (list + proof upload when `in_progress`), **Messages** (capped thread + Send a message compose only). In **Messages**, each unread customer row shows a **Read** control; clicking it advances `readThroughAt` to that entry’s `at` (monotonic). The Messages header keeps a count badge only. **Requires deployed Firestore rules** for this collection on the target project (`firebase deploy --only firestore:rules --project fresh-prints-dev`); until then Studio shows a toast on mark-read permission failures.
+
+Customer-facing in-app alerts live in `customerNotifications/{id}` (Admin SDK writes on proof attach and staff Messages; customer may set `readAt` only). Optional browser push tokens live in `customers/{customerId}/webPushSubscriptions/{id}` (callable `registerWebPushSubscription`). Preference `assistedBrowserPushOptIn` (default on) is separate from `assistedProofEmailOptIn`.
 
 ---
 
@@ -1615,15 +1629,16 @@ export interface AppSettings {
 
 ```ts
 interface EmailProviderSettings {
-  inviteProvider: "resend";
-  proofNoticeProvider: "resend";
+  inviteProvider: "resend" | "brevo";
+  proofNoticeProvider: "resend" | "brevo";
   updatedAt: Timestamp;
   updatedBy: string;
 }
 ```
 
 Missing settings resolve to Resend. Active owners may read the document; writes use the
-owner-authorized `updateEmailProviderSettings` callable. Brevo is not an accepted persisted value.
+owner-authorized `updateEmailProviderSettings` callable. Accepted persisted values are `resend`
+and `brevo`.
 
 ### `emailDeliveryJobs`
 
@@ -1636,7 +1651,7 @@ cannot introduce Firestore path separators.
 | `id`, `kind` | Stable identity; kind is `assisted_proof_ready` |
 | `requestId`, `proofId` | Source proof identity |
 | `customerId`, `customerUid` | Trusted recipient linkage; no recipient email copy |
-| `provider` | Provider snapshot (`resend`) |
+| `provider` | Provider snapshot (`resend` \| `brevo`) |
 | `status` | `pending` → `sending` → `sent` or `failed` |
 | `attemptCount`, `maxAttempts`, `leaseExpiresAt` | Bounded retry/claim state |
 | `providerMessageId`, `lastErrorCode` | Provider audit ID and sanitized diagnostics |

@@ -1,7 +1,7 @@
 export const EMAIL_PROVIDER_SETTINGS_DOC_ID = "emailProviders";
 export const EMAIL_DELIVERY_JOBS_COLLECTION = "emailDeliveryJobs";
 
-export const EMAIL_PROVIDER_IDS = ["resend"] as const;
+export const EMAIL_PROVIDER_IDS = ["resend", "brevo"] as const;
 export type EmailProviderId = (typeof EMAIL_PROVIDER_IDS)[number];
 
 export interface EmailProviderSettings {
@@ -17,7 +17,7 @@ export const DEFAULT_EMAIL_PROVIDER_SETTINGS: Readonly<EmailProviderSettings> = 
 };
 
 export function isEmailProviderId(value: unknown): value is EmailProviderId {
-  return value === "resend";
+  return value === "resend" || value === "brevo";
 }
 
 export function resolveEmailProviderId(value: unknown): EmailProviderId {

@@ -14,6 +14,7 @@ import { CatalogThumbnailPanel } from '../../catalog/components/CatalogThumbnail
 import { useCatalogDerivativeUrl } from '../../catalog/hooks/useCatalogDerivativeUrl';
 import type { CatalogDesign } from '../../catalog/types/catalog.types';
 import { CopyIcon, TrashIcon } from '../../shared/components/PortalIcons';
+import { isOptimisticPrintRequestItemId } from '../utils/optimisticPrintRequestItemId';
 
 interface PortalPrintRequestItemDesign {
   id: string;
@@ -233,7 +234,10 @@ export function PortalPrintRequestItemCard({
     });
   }, [aspectPixels, parsedPrintHeightInches, parsedPrintWidthInches, upload]);
 
-  const canSave = (sizeAssessment?.canSave ?? true) && parsedQuantity !== null;
+  const isOptimisticItem = isOptimisticPrintRequestItemId(item.id);
+  const canSave =
+    !isOptimisticItem && (sizeAssessment?.canSave ?? true) && parsedQuantity !== null;
+  const editorsReadOnly = readOnly || isOptimisticItem;
 
   useEffect(() => {
     return () => {
@@ -259,10 +263,15 @@ export function PortalPrintRequestItemCard({
   }
 
   const saveDraft = useCallback(async () => {
+    if (isOptimisticPrintRequestItemId(item.id)) {
+      return;
+    }
+
     if (
       parsedQuantity === null ||
       parsedPrintWidthInches === null ||
-      parsedPrintHeightInches === null
+      parsedPrintHeightInches === null ||
+      !canSave
     ) {
       return;
     }
@@ -304,7 +313,15 @@ export function PortalPrintRequestItemCard({
         void saveDraftRef.current();
       }
     }
-  }, [item, onAutosaveStateChange, onUpdate, parsedPrintHeightInches, parsedPrintWidthInches, parsedQuantity]);
+  }, [
+    canSave,
+    item,
+    onAutosaveStateChange,
+    onUpdate,
+    parsedPrintHeightInches,
+    parsedPrintWidthInches,
+    parsedQuantity,
+  ]);
 
   useEffect(() => {
     saveDraftRef.current = saveDraft;
@@ -317,7 +334,9 @@ export function PortalPrintRequestItemCard({
     }
 
     setQuantityInput(String(Math.floor(nextQuantity)));
-    scheduleSave();
+    if (canSave) {
+      scheduleSave();
+    }
   }
 
   function updateWidth(nextWidthInput: string) {
@@ -347,12 +366,12 @@ export function PortalPrintRequestItemCard({
   }
 
   const handleFieldBlur = useCallback(() => {
-    if (readOnly || !canSave) {
+    if (editorsReadOnly || !canSave) {
       return;
     }
 
     void saveDraft();
-  }, [canSave, readOnly, saveDraft]);
+  }, [canSave, editorsReadOnly, saveDraft]);
 
   const handleFieldFocus = useCallback((event: FocusEvent<HTMLInputElement>) => {
     event.currentTarget.select();
@@ -429,7 +448,7 @@ export function PortalPrintRequestItemCard({
           <div className="portal-request-item-editor-body">
             <h2>{title}</h2>
 
-            {readOnly ? (
+            {editorsReadOnly ? (
               <p className="portal-muted">Qty {item.quantity}</p>
             ) : null}
           </div>
@@ -454,7 +473,7 @@ export function PortalPrintRequestItemCard({
           </div>
         ) : null}
 
-        {!readOnly ? (
+        {!editorsReadOnly ? (
           <>
             <div className="portal-request-item-size-row">
               <label className="portal-request-item-field">
@@ -510,7 +529,7 @@ export function PortalPrintRequestItemCard({
           </>
         ) : null}
 
-        {!readOnly ? (
+        {!editorsReadOnly ? (
           <div className="portal-request-item-editor-actions">
             <div className="portal-request-item-stepper portal-card-input-shell">
               <button

@@ -7,6 +7,7 @@ import { GlobalSearchField } from "./GlobalSearchField";
 import { Select } from "./Select";
 import { Toggle } from "./Toggle";
 import { StaffInboxBellButton } from "../../features/staff-inbox/components/StaffInboxBell";
+import { AssistedMessagesBellButton } from "../../features/customer-requests/components/AssistedMessagesBell";
 import { ThemeToggle } from "../../features/theme/components/ThemeToggle";
 
 export function AppHeader() {
@@ -72,6 +73,7 @@ export function AppHeader() {
           </Button>
         ))}
         <StaffInboxBellButton />
+        <AssistedMessagesBellButton />
         <ThemeToggle />
         {primaryAction ? (
           <Button className="button-leading-icon" onClick={primaryAction.onClick}>

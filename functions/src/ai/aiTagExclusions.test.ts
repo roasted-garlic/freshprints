@@ -47,4 +47,12 @@ describe("aiTagExclusions", () => {
 
     assert.match(section, /\bwitch\b/);
   });
+
+  it("does not prefer halloween for skeleton or skull artwork alone", () => {
+    const section = buildTagExclusionPromptSection(mergeTagExclusions());
+
+    assert.match(section, /Do not use halloween for skeleton, skull, or bones alone/i);
+    assert.match(section, /additional Halloween cues/i);
+    assert.doesNotMatch(section, /prefer tags like[^.]+\bhalloween\b/i);
+  });
 });

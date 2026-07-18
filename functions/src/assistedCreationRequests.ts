@@ -5,10 +5,14 @@ import {
   ASSISTED_CREATION_ALLOWED_PROOF_TYPES,
   ASSISTED_CREATION_COLLECTION,
   ASSISTED_CREATION_FIELD_LIMITS,
+  ASSISTED_CREATION_MESSAGE_COOLDOWN_MS,
+  ASSISTED_CREATION_MESSAGE_MAX_LENGTH,
   ASSISTED_CREATION_MAX_PROOF_BYTES,
+  ASSISTED_CREATION_MESSAGING_CLOSED_MESSAGE,
   ASSISTED_CREATION_OPEN_STATUSES,
   ASSISTED_CREATION_SCHEMA_VERSION,
   canCustomerUpdateAssistedCreation,
+  canSendAssistedCreationMessage,
   type AssistedCreationStatus,
 } from "../../packages/shared/src/constants/assistedCreation/assistedCreation.constants";
 import type {
@@ -16,10 +20,14 @@ import type {
   CancelAssistedCreationRequestResponse,
   CustomerRespondToAssistedCreationProofRequest,
   CustomerRespondToAssistedCreationProofResponse,
+  CustomerSendAssistedCreationMessageRequest,
+  CustomerSendAssistedCreationMessageResponse,
   CustomerUpdateAssistedCreationRequestRequest,
   CustomerUpdateAssistedCreationRequestResponse,
   StaffAddAssistedCreationProofRequest,
   StaffAddAssistedCreationProofResponse,
+  StaffSendAssistedCreationMessageRequest,
+  StaffSendAssistedCreationMessageResponse,
   StaffUpdateAssistedCreationStatusRequest,
   StaffUpdateAssistedCreationStatusResponse,
   SubmitAssistedCreationRequestRequest,
@@ -47,6 +55,7 @@ import {
 } from "../../packages/shared/src/utils/assistedCreationValidation";
 
 import { adminDb } from "./lib/admin";
+import { purgeAssistedCreationProofsForTerminal } from "./lib/assistedCreationProofPurge";
 import { loadCallerProfile } from "./lib/caller";
 import {
   failedPrecondition,
@@ -59,6 +68,46 @@ import {
 import { requirePortalCustomer } from "./lib/etsy/requirePortalCustomer";
 import { loadEmailProviderSettings } from "./lib/email/emailSettings";
 import { createProofEmailJobId } from "./lib/email/emailJobIdentity";
+import { createCustomerNotification } from "./lib/customerNotifications/createCustomerNotification";
+import {
+  buildAssistedProofReadyNotificationId,
+  buildAssistedStaffMessageNotificationId,
+  buildCustomerNotificationTitle,
+  CUSTOMER_NOTIFICATION_PROOF_BODY,
+} from "../../packages/shared/src/utils/customerNotifications";
+
+async function purgeProofsAfterTerminal(input: {
+  requestId: string;
+  terminalKind: "approved" | "rejected_or_cancelled";
+  approvedProofId?: string | null;
+}): Promise<void> {
+  const docRef = adminDb.collection(ASSISTED_CREATION_COLLECTION).doc(input.requestId);
+  const snap = await docRef.get();
+  if (!snap.exists) {
+    return;
+  }
+  const data = snap.data() ?? {};
+  const proofs = Array.isArray(data.proofs) ? (data.proofs as AssistedCreationProof[]) : [];
+  if (proofs.length === 0) {
+    return;
+  }
+  try {
+    await purgeAssistedCreationProofsForTerminal({
+      docRef,
+      proofs,
+      terminalKind: input.terminalKind,
+      approvedProofId:
+        input.approvedProofId ??
+        (typeof data.approvedProofId === "string" ? data.approvedProofId : null),
+    });
+  } catch (error) {
+    console.error("[assistedCreationProofPurge] failed after terminal transition", {
+      requestId: input.requestId,
+      terminalKind: input.terminalKind,
+      error,
+    });
+  }
+}
 
 function mapHttpsError(error: unknown, fallback: string): never {
   if (error instanceof HttpsError) {
@@ -110,6 +159,20 @@ function asRequiredReason(value: unknown, label: string): string {
   return trimmed;
 }
 
+function revisionAtMillis(value: unknown): number | null {
+  if (value instanceof Timestamp) {
+    return value.toMillis();
+  }
+  if (value && typeof value === "object" && "toMillis" in value) {
+    const toMillis = (value as { toMillis?: unknown }).toMillis;
+    if (typeof toMillis === "function") {
+      const millis = toMillis.call(value);
+      return typeof millis === "number" && Number.isFinite(millis) ? millis : null;
+    }
+  }
+  return null;
+}
+
 function staffActionLabel(action: StaffUpdateAssistedCreationStatusRequest["action"]): string {
   switch (action) {
     case "start_work":
@@ -122,9 +185,28 @@ function staffActionLabel(action: StaffUpdateAssistedCreationStatusRequest["acti
       return "Cancelled";
     case "restore":
       return "Restored cancelled request";
+    case "update_notes":
+      return "Updated staff notes";
     default:
       return action;
   }
+}
+
+/** Allows empty string so staff can clear internal notes. */
+function asStaffNotesField(value: unknown): string {
+  if (value == null) {
+    return "";
+  }
+  if (typeof value !== "string") {
+    throw invalidArgument("Staff notes must be text.");
+  }
+  const trimmed = value.trim();
+  if (trimmed.length > ASSISTED_CREATION_FIELD_LIMITS.staffNote) {
+    throw invalidArgument(
+      `Staff notes must be ${ASSISTED_CREATION_FIELD_LIMITS.staffNote} characters or fewer.`,
+    );
+  }
+  return trimmed;
 }
 
 function appendRevision(
@@ -233,6 +315,7 @@ export const cancelAssistedCreationRequest = onCall(
       if (!requestId) {
         throw invalidArgument("Request id is required.");
       }
+      const cancelReason = asRequiredReason(data.reason, "Cancel reason");
 
       const docRef = adminDb.collection(ASSISTED_CREATION_COLLECTION).doc(requestId);
       await adminDb.runTransaction(async (tx) => {
@@ -254,15 +337,22 @@ export const cancelAssistedCreationRequest = onCall(
         const history = Array.isArray(current.revisionHistory) ? current.revisionHistory : [];
         tx.update(docRef, {
           status: "cancelled",
+          customerCancelReason: cancelReason,
           revisionHistory: appendRevision(history, {
             byUid: portalCustomer.customerUid,
             byRole: "customer",
-            note: "Cancelled by customer",
+            kind: "status",
+            note: `Cancelled by customer — ${cancelReason}`,
             fromStatus,
             toStatus: "cancelled",
           }),
           updatedAt: FieldValue.serverTimestamp(),
         });
+      });
+
+      await purgeProofsAfterTerminal({
+        requestId,
+        terminalKind: "rejected_or_cancelled",
       });
 
       return { requestId, status: "cancelled" };
@@ -368,6 +458,7 @@ export const customerUpdateAssistedCreationRequest = onCall(
           revisionHistory: appendRevision(history, {
             byUid: portalCustomer.customerUid,
             byRole: "customer",
+            kind: "request_update",
             note: historyNote,
             fromStatus,
             toStatus: "submitted",
@@ -379,6 +470,199 @@ export const customerUpdateAssistedCreationRequest = onCall(
       return { requestId, status: "submitted" };
     } catch (error) {
       mapHttpsError(error, "Unable to update your assisted creation request right now.");
+    }
+  },
+);
+
+export const customerSendAssistedCreationMessage = onCall(
+  async (request): Promise<CustomerSendAssistedCreationMessageResponse> => {
+    if (!request.auth?.uid) {
+      throw unauthenticated();
+    }
+
+    try {
+      const portalCustomer = await requirePortalCustomer(request.auth.uid);
+      const data = (request.data ?? {}) as CustomerSendAssistedCreationMessageRequest;
+      const requestId = typeof data.requestId === "string" ? data.requestId.trim() : "";
+      if (!requestId) {
+        throw invalidArgument("Request id is required.");
+      }
+      const message = asTrimmedOptional(
+        data.message,
+        ASSISTED_CREATION_MESSAGE_MAX_LENGTH,
+        "Message",
+      );
+      if (!message) {
+        throw invalidArgument("Message is required.");
+      }
+
+      const docRef = adminDb.collection(ASSISTED_CREATION_COLLECTION).doc(requestId);
+      let currentStatus: AssistedCreationStatus = "submitted";
+      await adminDb.runTransaction(async (tx) => {
+        const snap = await tx.get(docRef);
+        if (!snap.exists) {
+          throw notFound("Assisted creation request not found.");
+        }
+        const current = snap.data()!;
+        if (current.customerUid !== portalCustomer.customerUid) {
+          throw permissionDenied("You can only message your own request.");
+        }
+
+        const status = current.status as AssistedCreationStatus;
+        if (!canSendAssistedCreationMessage(status)) {
+          throw failedPrecondition(ASSISTED_CREATION_MESSAGING_CLOSED_MESSAGE);
+        }
+
+        const history = Array.isArray(current.revisionHistory)
+          ? (current.revisionHistory as AssistedCreationRevisionEntry[])
+          : [];
+        const now = Timestamp.now();
+        const latestCustomerMessageAt = history.reduce<number | null>((latest, entry) => {
+          if (entry.kind !== "customer_message" || entry.byRole !== "customer") {
+            return latest;
+          }
+          const at = revisionAtMillis(entry.at);
+          return at != null && (latest == null || at > latest) ? at : latest;
+        }, null);
+        if (
+          latestCustomerMessageAt != null &&
+          now.toMillis() - latestCustomerMessageAt < ASSISTED_CREATION_MESSAGE_COOLDOWN_MS
+        ) {
+          throw failedPrecondition("Wait a few seconds before sending another message.");
+        }
+
+        currentStatus = status;
+        tx.update(docRef, {
+          revisionHistory: appendRevision(history, {
+            at: now,
+            byUid: portalCustomer.customerUid,
+            byRole: "customer",
+            kind: "customer_message",
+            note: message,
+            fromStatus: status,
+            toStatus: status,
+          }),
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+      });
+
+      return { requestId, status: currentStatus };
+    } catch (error) {
+      mapHttpsError(error, "Unable to send your message right now.");
+    }
+  },
+);
+
+export const staffSendAssistedCreationMessage = onCall(
+  async (request): Promise<StaffSendAssistedCreationMessageResponse> => {
+    if (!request.auth?.uid) {
+      throw unauthenticated();
+    }
+
+    try {
+      const caller = await loadCallerProfile(request.auth.uid);
+      assertOwnerAdminCaller(caller);
+
+      const data = (request.data ?? {}) as StaffSendAssistedCreationMessageRequest;
+      const requestId = typeof data.requestId === "string" ? data.requestId.trim() : "";
+      if (!requestId) {
+        throw invalidArgument("Request id is required.");
+      }
+      const message = asTrimmedOptional(
+        data.message,
+        ASSISTED_CREATION_MESSAGE_MAX_LENGTH,
+        "Message",
+      );
+      if (!message) {
+        throw invalidArgument("Message is required.");
+      }
+
+      const docRef = adminDb.collection(ASSISTED_CREATION_COLLECTION).doc(requestId);
+      let currentStatus: AssistedCreationStatus = "submitted";
+      let notifyCustomerId = "";
+      let notifyCustomerUid = "";
+      let notifyAtMillis = 0;
+      await adminDb.runTransaction(async (tx) => {
+        const snap = await tx.get(docRef);
+        if (!snap.exists) {
+          throw notFound("Assisted creation request not found.");
+        }
+        const current = snap.data()!;
+        const status = current.status as AssistedCreationStatus;
+        if (!canSendAssistedCreationMessage(status)) {
+          throw failedPrecondition(ASSISTED_CREATION_MESSAGING_CLOSED_MESSAGE);
+        }
+
+        const customerId = String(current.customerId ?? "").trim();
+        const customerUid = String(current.customerUid ?? "").trim();
+        if (!customerId || !customerUid) {
+          throw failedPrecondition("This request is missing its customer linkage.");
+        }
+
+        const history = Array.isArray(current.revisionHistory)
+          ? (current.revisionHistory as AssistedCreationRevisionEntry[])
+          : [];
+        const now = Timestamp.now();
+        const latestStaffMessageAt = history.reduce<number | null>((latest, entry) => {
+          if (entry.kind !== "staff_message" || entry.byRole !== "staff") {
+            return latest;
+          }
+          const at = revisionAtMillis(entry.at);
+          return at != null && (latest == null || at > latest) ? at : latest;
+        }, null);
+        if (
+          latestStaffMessageAt != null &&
+          now.toMillis() - latestStaffMessageAt < ASSISTED_CREATION_MESSAGE_COOLDOWN_MS
+        ) {
+          throw failedPrecondition("Wait a few seconds before sending another message.");
+        }
+
+        currentStatus = status;
+        notifyCustomerId = customerId;
+        notifyCustomerUid = customerUid;
+        notifyAtMillis = now.toMillis();
+        tx.update(docRef, {
+          revisionHistory: appendRevision(history, {
+            at: now,
+            byUid: caller.id,
+            byRole: "staff",
+            kind: "staff_message",
+            note: message,
+            fromStatus: status,
+            toStatus: status,
+          }),
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+      });
+
+      try {
+        const notificationId = buildAssistedStaffMessageNotificationId(requestId, notifyAtMillis);
+        await createCustomerNotification({
+          id: notificationId,
+          customerId: notifyCustomerId,
+          customerUid: notifyCustomerUid,
+          kind: "assisted_staff_message",
+          title: buildCustomerNotificationTitle("assisted_staff_message"),
+          body: message,
+          requestId,
+        });
+        console.info("[staffSendAssistedCreationMessage] notification ok", {
+          requestId,
+          notificationId,
+          customerUid: notifyCustomerUid,
+        });
+      } catch (notifyError) {
+        console.error("[staffSendAssistedCreationMessage] notification failed", {
+          requestId,
+          customerUid: notifyCustomerUid,
+          customerId: notifyCustomerId,
+          error: notifyError,
+        });
+      }
+
+      return { requestId, status: currentStatus };
+    } catch (error) {
+      mapHttpsError(error, "Unable to send staff message right now.");
     }
   },
 );
@@ -443,6 +727,7 @@ export const customerRespondToAssistedCreationProof = onCall(
           : (revisionNote ?? "");
 
       const docRef = adminDb.collection(ASSISTED_CREATION_COLLECTION).doc(requestId);
+      let approvedProofId: string | null = null;
       await adminDb.runTransaction(async (tx) => {
         const snap = await tx.get(docRef);
         if (!snap.exists) {
@@ -472,6 +757,16 @@ export const customerRespondToAssistedCreationProof = onCall(
           updatedAt: FieldValue.serverTimestamp(),
         };
         if (toStatus === "approved") {
+          const proofs = Array.isArray(current.proofs)
+            ? (current.proofs as AssistedCreationProof[])
+            : [];
+          const latestProof = proofs.length > 0 ? proofs[proofs.length - 1] : null;
+          if (!latestProof?.id) {
+            throw failedPrecondition("There is no proof to approve.");
+          }
+          approvedProofId = latestProof.id;
+          update.approvedProofId = latestProof.id;
+          update.approvedAt = FieldValue.serverTimestamp();
           if (rating != null) {
             update.customerRating = rating;
           }
@@ -481,6 +776,14 @@ export const customerRespondToAssistedCreationProof = onCall(
         }
         tx.update(docRef, update);
       });
+
+      if (toStatus === "approved") {
+        await purgeProofsAfterTerminal({
+          requestId,
+          terminalKind: "approved",
+          approvedProofId,
+        });
+      }
 
       return { requestId, status: toStatus };
     } catch (error) {
@@ -503,8 +806,29 @@ export const staffUpdateAssistedCreationStatus = onCall(
         throw invalidArgument("Request id is required.");
       }
 
+      const docRef = adminDb.collection(ASSISTED_CREATION_COLLECTION).doc(requestId);
+
+      if (data.action === "update_notes") {
+        assertOwnerAdminCaller(caller);
+        const staffNotesValue = asStaffNotesField(data.staffNotes);
+        let notesStatus: AssistedCreationStatus = "submitted";
+        await adminDb.runTransaction(async (tx) => {
+          const snap = await tx.get(docRef);
+          if (!snap.exists) {
+            throw notFound("Assisted creation request not found.");
+          }
+          const current = snap.data()!;
+          notesStatus = current.status as AssistedCreationStatus;
+          tx.update(docRef, {
+            staffNotes: staffNotesValue,
+            updatedAt: FieldValue.serverTimestamp(),
+          });
+        });
+        return { requestId, status: notesStatus };
+      }
+
       const actionToStatus: Record<
-        StaffUpdateAssistedCreationStatusRequest["action"],
+        Exclude<StaffUpdateAssistedCreationStatusRequest["action"], "update_notes">,
         AssistedCreationStatus
       > = {
         start_work: "in_progress",
@@ -542,7 +866,6 @@ export const staffUpdateAssistedCreationStatus = onCall(
           )
         : asTrimmedOptional(data.reason, ASSISTED_CREATION_FIELD_LIMITS.revisionNote, "Reason");
 
-      const docRef = adminDb.collection(ASSISTED_CREATION_COLLECTION).doc(requestId);
       let nextStatus: AssistedCreationStatus = toStatus;
 
       await adminDb.runTransaction(async (tx) => {
@@ -598,6 +921,13 @@ export const staffUpdateAssistedCreationStatus = onCall(
         tx.update(docRef, patch);
       });
 
+      if (data.action === "reject" || data.action === "cancel") {
+        await purgeProofsAfterTerminal({
+          requestId,
+          terminalKind: "rejected_or_cancelled",
+        });
+      }
+
       return { requestId, status: nextStatus };
     } catch (error) {
       mapHttpsError(error, "Unable to update assisted creation status right now.");
@@ -650,11 +980,18 @@ export const staffAddAssistedCreationProof = onCall(
       }
 
       const emailSettings = await loadEmailProviderSettings();
+      console.info("[staffAddAssistedCreationProof] proof email provider snapshot", {
+        requestId,
+        proofNoticeProvider: emailSettings.proofNoticeProvider,
+        inviteProvider: emailSettings.inviteProvider,
+      });
       const docRef = adminDb.collection(ASSISTED_CREATION_COLLECTION).doc(requestId);
       const deliveryJobId = createProofEmailJobId(requestId, proofId);
       const deliveryJobRef = adminDb
         .collection(EMAIL_DELIVERY_JOBS_COLLECTION)
         .doc(deliveryJobId);
+      let notifyCustomerId = "";
+      let notifyCustomerUid = "";
       await adminDb.runTransaction(async (tx) => {
         const snap = await tx.get(docRef);
         if (!snap.exists) {
@@ -667,6 +1004,8 @@ export const staffAddAssistedCreationProof = onCall(
         if (!customerUid || !customerId) {
           throw failedPrecondition("This request is missing its customer linkage.");
         }
+        notifyCustomerId = customerId;
+        notifyCustomerUid = customerUid;
         const expectedPrefix = `assisted-creation/${customerUid}/${requestId}/proofs/`;
         if (!storagePath.startsWith(expectedPrefix)) {
           throw invalidArgument("Invalid proof storage path.");
@@ -726,6 +1065,34 @@ export const staffAddAssistedCreationProof = onCall(
           updatedAt: FieldValue.serverTimestamp(),
         });
       });
+
+      try {
+        const notificationId = buildAssistedProofReadyNotificationId(requestId, proofId);
+        await createCustomerNotification({
+          id: notificationId,
+          customerId: notifyCustomerId,
+          customerUid: notifyCustomerUid,
+          kind: "assisted_proof_ready",
+          title: buildCustomerNotificationTitle("assisted_proof_ready"),
+          body: CUSTOMER_NOTIFICATION_PROOF_BODY,
+          requestId,
+          proofId,
+        });
+        console.info("[staffAddAssistedCreationProof] notification ok", {
+          requestId,
+          proofId,
+          notificationId,
+          customerUid: notifyCustomerUid,
+        });
+      } catch (notifyError) {
+        console.error("[staffAddAssistedCreationProof] notification failed", {
+          requestId,
+          proofId,
+          customerUid: notifyCustomerUid,
+          customerId: notifyCustomerId,
+          error: notifyError,
+        });
+      }
 
       return { requestId, status: "proof_ready", proofId };
     } catch (error) {

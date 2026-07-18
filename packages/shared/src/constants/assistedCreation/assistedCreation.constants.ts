@@ -24,6 +24,12 @@ export const ASSISTED_CREATION_ALLOWED_PROOF_TYPES = [
   "image/webp",
 ] as const;
 
+/** Days the approved proof full-res remains downloadable before physical Storage delete. */
+export const ASSISTED_CREATION_APPROVED_PROOF_RETENTION_DAYS = 14;
+
+export const ASSISTED_CREATION_MESSAGE_MAX_LENGTH = 2000;
+export const ASSISTED_CREATION_MESSAGE_COOLDOWN_MS = 10_000;
+
 export const ASSISTED_CREATION_FIELD_LIMITS = {
   rawDescription: 2000,
   exactText: 500,
@@ -282,7 +288,32 @@ export function canCustomerUpdateAssistedCreation(status: AssistedCreationStatus
   return status === "submitted";
 }
 
-export function formatAssistedCreationStatus(status: AssistedCreationStatus): string {
+/** Customer or staff may send chat messages only while the request is open (not terminal). */
+export function canSendAssistedCreationMessage(status: AssistedCreationStatus): boolean {
+  return isAssistedCreationOpenStatus(status);
+}
+
+export const ASSISTED_CREATION_MESSAGING_CLOSED_MESSAGE =
+  "Messaging is closed for completed requests.";
+
+/** Where the status label is shown — `approved` / `rejected` differ by surface. */
+export type AssistedCreationStatusLabelVariant = "requestHeader" | "list";
+
+export interface FormatAssistedCreationStatusOptions {
+  /**
+   * `requestHeader` (default): request modal / status pill → "Completed" for approved,
+   * "Not approved" for rejected.
+   * `list`: past-requests sidebar / list rows → "Approved" / "Rejected".
+   * Proof pills stay hardcoded "Approved" in UI (not this helper).
+   */
+  variant?: AssistedCreationStatusLabelVariant;
+}
+
+export function formatAssistedCreationStatus(
+  status: AssistedCreationStatus,
+  options?: FormatAssistedCreationStatusOptions,
+): string {
+  const variant = options?.variant ?? "requestHeader";
   switch (status) {
     case "submitted":
       return "Submitted";
@@ -293,9 +324,9 @@ export function formatAssistedCreationStatus(status: AssistedCreationStatus): st
     case "revision_requested":
       return "Revision requested";
     case "approved":
-      return "Approved";
+      return variant === "list" ? "Approved" : "Completed";
     case "rejected":
-      return "Not approved";
+      return variant === "list" ? "Rejected" : "Not approved";
     case "cancelled":
       return "Cancelled";
     default:

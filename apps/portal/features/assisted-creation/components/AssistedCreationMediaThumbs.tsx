@@ -79,7 +79,9 @@ export function AssistedCreationMediaThumbs({
       <ul className={`assisted-creation-media-thumbs assisted-creation-media-thumbs--${variant}`}>
         {items.map((item) => {
           const url = urls[item.id];
-          const alt = item.fileName?.trim() || (variant === 'proof' ? 'Proof' : 'Reference image');
+          // Do not surface original proof filenames to customers.
+          const alt =
+            variant === 'proof' ? 'Proof' : item.fileName?.trim() || 'Reference image';
           return (
             <li key={item.id}>
               {url ? (

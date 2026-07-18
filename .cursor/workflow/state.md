@@ -1,17 +1,17 @@
 ## Current Goal
-wizard-back-notif-studio-startup-unread-email-history
+assisted-portal-proof-notes-overview / assisted-approved-proof-download (closed)
 
 ## Current Mode
 managed-phase
 
 ## Phase
-test
+signoff
 
 ## Plan Status
 complete
 
 ## Review Status
-approved_with_changes
+approved
 
 ## Implementation Status
 complete
@@ -20,74 +20,51 @@ complete
 passed_with_notes
 
 ## Signoff Status
-not_started
+approved_with_notes
 
 ## Human Checkpoint Required
-yes
-
-## Human Checkpoint Reason
-Manual UI QA for Back flash, Notifications modal, unread badges (per-item History **Read**), and Studio cold start. History Read client fix applied (no silent getDoc denial); live clear still needs Firestore rules deploy for `assistedCreationUpdateAcks`. Selective fresh-prints-dev Functions/rules deploy still needs explicit owner approval.
-
-## Allowed Actions
-Read docs; answer questions; record manual QA result and deploy decision; prepare deploy command notes; apply owner-directed QA UX fixes for unread History Read. Do not deploy without approval.
-
-## Forbidden Actions
-Firebase deploy without explicit owner approval; production actions; push unless asked; Brevo; questionnaire branching; signoff before manual QA recorded.
-
-## Next Required Step
-Await owner reply on `docs/workflow/reviews/2026-07-17-wizard-back-notif-studio-startup-manual-qa.md` (PASS/FAIL + optional APPROVE DEV DEPLOY / NO DEPLOY / I WILL DEPLOY). Re-test per-item History **Read** after rules deploy (or confirm toast if rules still undeployed).
-
-## DONE
 no
 
+## Human Checkpoint Reason
+(none — owner PASS 2026-07-17 closed proof UX / download workstream)
+
+## Allowed Actions
+Idle / start next managed phase when requested. Read docs. No production deploy unless explicitly approved.
+
+## Forbidden Actions
+Production deploy without approval; invent PASS for parked QA; wipe parked workflow notes; secrets in chat
+
+## Next Required Step
+None for this goal. Optional later: owner QA for parked `assisted-terminal-messaging-closed` and `assisted-customer-cancel-reason`.
+
+## DONE
+yes
+
 ## Last Completed Step
-2026-07-17 — Fixed History **Read** no-op: removed getDoc-before-create (rules deny get on missing ack docs); surface toast/console on mark-read failure; local rules allow get on `{uid}__*` missing docs + id binding. Deploy still pending owner approval.
+2026-07-17 - Signoff approved_with_notes: owner PASS on assisted approved proof download + Portal proof UX residuals
 
 ## Plan Path
-docs/workflow/plans/2026-07-17-wizard-back-notif-studio-startup-plan.md
+docs/workflow/plans/2026-07-17-assisted-portal-proof-notes-overview-residual-plan.md
 
 ## Review Path
-docs/workflow/reviews/2026-07-17-wizard-back-notif-studio-startup-review.md
-
-## Test Report Path
-docs/workflow/reviews/2026-07-17-wizard-back-notif-studio-startup-test-report.md
+docs/workflow/reviews/2026-07-17-assisted-portal-proof-notes-overview-residual-review.md
 
 ## Manual QA Path
-docs/workflow/reviews/2026-07-17-wizard-back-notif-studio-startup-manual-qa.md
+docs/workflow/reviews/2026-07-17-assisted-portal-proof-ux-manual-qa.md
 
-## Deferred Goal
-provider-agnostic-proof-ready-email — implemented; deploy still deferred until owner approves (now includes opt-out + email-sent history + update acks).
+## Signoff Path
+docs/workflow/reviews/2026-07-17-assisted-approved-proof-download-signoff.md
 
-## Previous Goal Signoff
-docs/workflow/reviews/2026-07-16-terminal-only-assisted-past-requests-signoff.md
+## Parent Plan Path
+docs/workflow/plans/2026-07-17-assisted-approved-proof-download-plan.md
+
+## Parked Prior Workflow (still open — do not invent PASS)
+**assisted-terminal-messaging-closed** - awaiting owner manual QA (`docs/workflow/reviews/2026-07-17-assisted-terminal-messaging-closed-manual-qa.md`).
+**assisted-customer-cancel-reason** - awaiting owner manual QA (`docs/workflow/reviews/2026-07-17-assisted-customer-cancel-reason-manual-qa.md`).
+**skeleton-not-halloween-prompt** - code signed off; optional live Gemini after AI Function redeploy.
 
 ## Decision Log
-- 2026-07-17 — Owner QA: History **Read** click no-op. Root cause: getDoc on non-existent `assistedCreationUpdateAcks` denied by rules + silent catch; rules also undeployed on fresh-prints-dev. Client fixed; rules tightened locally; **APPROVE DEV DEPLOY** still required for live Read.
-- 2026-07-17 — Owner: **Read** must be per unread History row (not header). Read-through to that entry’s `at`; monotonic ack.
-- 2026-07-17 — Owner: unread clear via explicit History **Read** (not expand alone).
-- 2026-07-17 — Implemented Back flash, account proof-email opt-out, Studio startup (no auto Sharp verify), unread customer-update badges + `Request updated` copy, and system History `Proof-ready email sent` on successful delivery. Automated tests pass; manual QA + deploy checkpoint open.
-- 2026-07-17 — Owner: pause email as NO DEPLOY deferred; new phase = Back flash + notification opt-out + Studio cold start + unread badges + email-sent history. Review `approved_with_changes`.
-- 2026-07-16 — Email test status `pending_manual`; selective fresh-prints-dev deploy requires explicit owner approval.
-
-## Tests Run
-
-- This phase automated: 12 shared + 8 email unit tests pass; Functions build pass; Portal typecheck pass; Studio Vite build pass. See test report.
-- Email phase automated (prior): see `docs/workflow/reviews/2026-07-16-provider-agnostic-proof-ready-email-test-report.md`.
-
-## Suggested Dev Deploy (when approved)
-
-```bash
-firebase deploy --only functions:createTeamUser,functions:createCustomerWithPortalInvite,functions:customerUpdateAssistedCreationRequest,functions:staffAddAssistedCreationProof,functions:updateEmailProviderSettings,functions:onEmailDeliveryJobCreated,firestore:rules --project fresh-prints-dev
-```
-
-Rules-only (minimum for History **Read** acks):
-
-```bash
-firebase deploy --only firestore:rules --project fresh-prints-dev
-```
-
-## Confirmed Email Config (deferred deploy)
-
-- `INVITATION_FROM_EMAIL` / `PROOF_NOTICE_FROM_EMAIL`: `Fresh Prints <team@funkyfreshprints.com>`
-- Portal URLs: `https://myprintrequest.dev` (dev), `https://myprintrequest.com` (production)
-- Production deploy: excluded
+- 2026-07-17 - Download "Failed to fetch": HTTPS Function fetch CORS/URL; replaced with callable Admin→base64→blob.
+- 2026-07-17 - Notes: single button; dedupe proof.note vs history; exclude Proof-ready email.
+- 2026-07-17 - Portal proof modal aligned to Studio hierarchy (header, summary rows, stage, 14-day hint).
+- 2026-07-17 - Owner **PASS this** for proof-download / Portal proof UX; signoff `approved_with_notes`. Messaging closed + cancel-reason remain parked without PASS.

@@ -83,22 +83,11 @@ service cloud.firestore {
       return customerOwnsPrintRequestData(resource.data)
         && isCustomerEditablePrintRequestStatus(resource.data.status)
         && isCustomerEditablePrintRequestStatus(request.resource.data.status)
-        && request.resource.data.name == resource.data.name
-        && request.resource.data.customerId == resource.data.customerId
-        && request.resource.data.isInternal == resource.data.isInternal
-        && request.resource.data.requestOrigin == resource.data.requestOrigin
-        && request.resource.data.status == resource.data.status
-        && request.resource.data.requestSequenceNumber == resource.data.requestSequenceNumber
-        && request.resource.data.customerUsernameSnapshot == resource.data.customerUsernameSnapshot
-        && request.resource.data.customerDisplayNameSnapshot == resource.data.customerDisplayNameSnapshot
-        && request.resource.data.nameFormatVersion == resource.data.nameFormatVersion
-        && request.resource.data.createdBy == resource.data.createdBy
-        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(["itemCount", "notes", "updatedBy", "updatedAt"])
         && request.resource.data.updatedBy == request.auth.uid
         && request.resource.data.itemCount is int
-        && request.resource.data.itemCount >= 0
-        && optionalFieldUnchanged("internalBaseName")
-        && optionalFieldUnchanged("guestCustomerId");
+        && request.resource.data.itemCount >= 0;
     }
 
     function customerCanCreatePrintRequestItem(printRequestId) {
@@ -149,23 +138,25 @@ service cloud.firestore {
     }
 
     function isOptionalString(data, field) {
-      return !(field in data) || data[field] is string;
+      return !(field in data) || data[field] == null || data[field] is string;
     }
 
     function isOptionalNumber(data, field) {
-      return !(field in data) || data[field] is number;
+      return !(field in data) || data[field] == null || data[field] is number;
     }
 
     function isOptionalPositiveStandardPrintInches(data, field) {
-      return !(field in data) || (data[field] is number && data[field] > 0 && data[field] <= 22);
+      return !(field in data)
+        || data[field] == null
+        || (data[field] is number && data[field] > 0 && data[field] <= 22);
     }
 
     function isOptionalBool(data, field) {
-      return !(field in data) || data[field] is bool;
+      return !(field in data) || data[field] == null || data[field] is bool;
     }
 
     function isOptionalTimestamp(data, field) {
-      return !(field in data) || data[field] is timestamp;
+      return !(field in data) || data[field] == null || data[field] is timestamp;
     }
 
     function isValidAiReviewStatus(status) {
@@ -542,6 +533,8 @@ service cloud.firestore {
           "signupSource",
           "assistedProofEmailOptIn",
           "assistedProofEmailOptInUpdatedAt",
+          "assistedBrowserPushOptIn",
+          "assistedBrowserPushOptInUpdatedAt",
           "createdAt",
           "updatedAt"
         ])
@@ -555,6 +548,8 @@ service cloud.firestore {
         && data.totalPrintRequests >= 0
         && (!("assistedProofEmailOptIn" in data) || data.assistedProofEmailOptIn is bool)
         && (!("assistedProofEmailOptInUpdatedAt" in data) || data.assistedProofEmailOptInUpdatedAt is timestamp)
+        && (!("assistedBrowserPushOptIn" in data) || data.assistedBrowserPushOptIn is bool)
+        && (!("assistedBrowserPushOptInUpdatedAt" in data) || data.assistedBrowserPushOptInUpdatedAt is timestamp)
         && data.nextPrintRequestSequence is int
         && data.nextPrintRequestSequence >= 1
         && isOptionalString(data, "userId")
@@ -863,15 +858,32 @@ service cloud.firestore {
           isCustomer()
           && resource.data.userId == request.auth.uid
           && request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(["assistedProofEmailOptIn", "assistedProofEmailOptInUpdatedAt", "updatedAt"])
-          && request.resource.data.assistedProofEmailOptIn is bool
-          && request.resource.data.assistedProofEmailOptInUpdatedAt is timestamp
+            .hasOnly([
+              "assistedProofEmailOptIn",
+              "assistedProofEmailOptInUpdatedAt",
+              "assistedBrowserPushOptIn",
+              "assistedBrowserPushOptInUpdatedAt",
+              "updatedAt",
+            ])
+          && (!("assistedProofEmailOptIn" in request.resource.data)
+            || request.resource.data.assistedProofEmailOptIn is bool)
+          && (!("assistedProofEmailOptInUpdatedAt" in request.resource.data)
+            || request.resource.data.assistedProofEmailOptInUpdatedAt is timestamp)
+          && (!("assistedBrowserPushOptIn" in request.resource.data)
+            || request.resource.data.assistedBrowserPushOptIn is bool)
+          && (!("assistedBrowserPushOptInUpdatedAt" in request.resource.data)
+            || request.resource.data.assistedBrowserPushOptInUpdatedAt is timestamp)
           && request.resource.data.updatedAt is timestamp
           && request.resource.data.id == resource.data.id
           && request.resource.data.userId == resource.data.userId
         );
 
       allow delete: if false;
+
+      match /webPushSubscriptions/{subscriptionId} {
+        allow read: if isStaff() || customerOwnsCustomerDoc(customerId);
+        allow create, update, delete: if false;
+      }
 
       match /favorites/{designId} {
         allow read: if isStaff() || customerOwnsCustomerDoc(customerId);
@@ -1469,6 +1481,29 @@ service cloud.firestore {
       allow delete: if isStaff()
         && resource.data.userId == request.auth.uid
         && ackId == resource.data.userId + '__' + resource.data.requestId;
+    }
+
+    match /customerNotifications/{notificationId} {
+      allow read: if isCustomer()
+        && resource.data.customerUid == request.auth.uid;
+
+      allow create, delete: if false;
+
+      allow update: if isCustomer()
+        && resource.data.customerUid == request.auth.uid
+        && request.resource.data.customerUid == resource.data.customerUid
+        && request.resource.data.customerId == resource.data.customerId
+        && request.resource.data.kind == resource.data.kind
+        && request.resource.data.title == resource.data.title
+        && request.resource.data.body == resource.data.body
+        && request.resource.data.href == resource.data.href
+        && request.resource.data.requestId == resource.data.requestId
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(["readAt", "updatedAt"])
+        && request.resource.data.readAt is timestamp
+        && request.resource.data.updatedAt is timestamp;
     }
 
     match /staffInboxAlertDeliveries/{deliveryId} {

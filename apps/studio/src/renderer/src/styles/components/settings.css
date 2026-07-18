@@ -52,6 +52,18 @@
   min-width: 0;
 }
 
+.settings-provider-dashboard-link {
+  color: var(--color-accent-primary);
+  font-size: var(--font-size-sm);
+  text-decoration: underline;
+  width: fit-content;
+}
+
+.settings-provider-dashboard-link:hover,
+.settings-provider-dashboard-link:focus-visible {
+  color: var(--color-accent-primary-hover);
+}
+
 .settings-form-actions {
   align-items: center;
   display: flex;

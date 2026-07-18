@@ -61,7 +61,19 @@ export interface AssistedCreationProof {
   createdBy: string;
   /** Server Timestamp or ISO string in DTOs. */
   createdAt: unknown;
+  /**
+   * Set when the full-resolution Storage object was physically deleted
+   * (sibling purge on approve, terminal purge, or 14-day expiry).
+   */
+  fullSizePurgedAt?: unknown;
 }
+
+export type AssistedCreationRevisionKind =
+  | "status"
+  | "request_update"
+  | "customer_message"
+  | "staff_message"
+  | "proof_email_sent";
 
 export interface AssistedCreationRevisionEntry {
   /** Server Timestamp or ISO string in DTOs. */
@@ -71,6 +83,8 @@ export interface AssistedCreationRevisionEntry {
   note: string;
   fromStatus: AssistedCreationStatus | null;
   toStatus: AssistedCreationStatus;
+  /** Structural event marker. Optional for legacy history entries. */
+  kind?: AssistedCreationRevisionKind;
   /** Set when a proof-ready email delivery job successfully sends. */
   emailDeliveryJobId?: string;
 }
@@ -88,10 +102,19 @@ export interface AssistedCreationRequest {
   proofs: AssistedCreationProof[];
   revisionHistory: AssistedCreationRevisionEntry[];
   staffNotes?: string;
+  /**
+   * Set when the customer cancels via Portal (`cancelAssistedCreationRequest`).
+   * Absent on legacy cancels and staff-cancelled requests.
+   */
+  customerCancelReason?: string;
   /** Set when the customer approves a proof with an optional 1–5 rating. */
   customerRating?: AssistedCreationCustomerRating;
   /** Optional short note sent with proof approval. */
   customerApprovalNote?: string;
+  /** Proof id approved by the customer (latest proof at approve time). */
+  approvedProofId?: string;
+  /** Server Timestamp when the customer approved; starts the 14-day download window. */
+  approvedAt?: unknown;
   /** Server Timestamp or ISO string in DTOs. */
   createdAt: unknown;
   /** Server Timestamp or ISO string in DTOs. */

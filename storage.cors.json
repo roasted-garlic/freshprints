@@ -1,0 +1,18 @@
+[
+  {
+    "origin": [
+      "https://myprintrequest.dev",
+      "http://localhost:3100",
+      "http://127.0.0.1:3100"
+    ],
+    "method": ["GET", "HEAD", "OPTIONS"],
+    "responseHeader": [
+      "Content-Type",
+      "Authorization",
+      "x-goog-resumable",
+      "x-firebase-storage-version",
+      "x-goog-meta-*"
+    ],
+    "maxAgeSeconds": 3600
+  }
+]

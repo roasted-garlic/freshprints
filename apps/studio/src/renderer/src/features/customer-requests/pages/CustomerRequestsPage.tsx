@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Binoculars, MessageSquare, Sparkles, Wand2 } from "lucide-react";
 
 import { useAuth } from "../../auth/hooks/useAuth";
@@ -9,19 +10,42 @@ import { AssistedCreationRequestsSection } from "../components/AssistedCreationR
 import { BrowseSubjectsAndTonesModal } from "../components/BrowseSubjectsAndTonesModal";
 import { EtsyPendingSuggestionRequestsSection } from "../components/EtsyPendingSuggestionRequestsSection";
 import { EtsyRecommendationRequestsSection } from "../components/EtsyRecommendationRequestsSection";
-
-type CustomerRequestsTab = "etsy_search" | "suggestions" | "ai" | "assisted";
+import {
+  CUSTOMER_REQUEST_TAB_QUERY_PARAM,
+  isCustomerRequestPageTab,
+  type CustomerRequestPageTab,
+} from "../constants/customerRequestRoutes";
 
 export function CustomerRequestsPage() {
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const canManageOverlays = permissionService.canManageSettings(user);
-  const [tab, setTab] = useState<CustomerRequestsTab>("assisted");
+  const tabFromUrl = searchParams.get(CUSTOMER_REQUEST_TAB_QUERY_PARAM);
+  const [tab, setTab] = useState<CustomerRequestPageTab>(
+    isCustomerRequestPageTab(tabFromUrl) ? tabFromUrl : "assisted",
+  );
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [browseListsOpen, setBrowseListsOpen] = useState(false);
 
   const openBrowseLists = useCallback(() => {
     setBrowseListsOpen(true);
   }, []);
+
+  useEffect(() => {
+    if (isCustomerRequestPageTab(tabFromUrl) && tabFromUrl !== tab) {
+      setTab(tabFromUrl);
+    }
+  }, [tab, tabFromUrl]);
+
+  const selectTab = useCallback(
+    (next: CustomerRequestPageTab) => {
+      setTab(next);
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.set(CUSTOMER_REQUEST_TAB_QUERY_PARAM, next);
+      setSearchParams(nextParams, { replace: true });
+    },
+    [searchParams, setSearchParams],
+  );
 
   useShellHeaderConfig(
     useMemo(
@@ -57,7 +81,7 @@ export function CustomerRequestsPage() {
         <button
           aria-selected={tab === "assisted"}
           className={`staff-inbox-page-tab${tab === "assisted" ? " is-active" : ""}`}
-          onClick={() => setTab("assisted")}
+          onClick={() => selectTab("assisted")}
           role="tab"
           type="button"
         >
@@ -67,7 +91,7 @@ export function CustomerRequestsPage() {
         <button
           aria-selected={tab === "ai"}
           className={`staff-inbox-page-tab${tab === "ai" ? " is-active" : ""}`}
-          onClick={() => setTab("ai")}
+          onClick={() => selectTab("ai")}
           role="tab"
           type="button"
         >
@@ -77,7 +101,7 @@ export function CustomerRequestsPage() {
         <button
           aria-selected={tab === "etsy_search"}
           className={`staff-inbox-page-tab${tab === "etsy_search" ? " is-active" : ""}`}
-          onClick={() => setTab("etsy_search")}
+          onClick={() => selectTab("etsy_search")}
           role="tab"
           type="button"
         >
@@ -87,7 +111,7 @@ export function CustomerRequestsPage() {
         <button
           aria-selected={tab === "suggestions"}
           className={`staff-inbox-page-tab${tab === "suggestions" ? " is-active" : ""}`}
-          onClick={() => setTab("suggestions")}
+          onClick={() => selectTab("suggestions")}
           role="tab"
           type="button"
         >

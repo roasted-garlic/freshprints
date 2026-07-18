@@ -4,25 +4,142 @@
 
 ---
 
+### ADR-FP-093: Assisted Creation approved proof download + 14-day full-res purge
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-17 |
+| Status | accepted |
+| Related | ADR-FP-088, Assisted Creation proofs |
+| Target | Repository + `fresh-prints-dev` Functions; production excluded |
+
+**Context**
+
+Customers need to download the final approved proof with transparency preserved. Proofs are already stored as raw uploads (no grey-background Storage derivative). Large unused proof files must not linger — only the approved full-res may remain after completion, and only for 14 days.
+
+**Decision**
+
+1. **Reuse** the existing proof Storage object path — do not promote/copy on approve.
+2. On **approve**: set `approvedProofId` + `approvedAt`; **physically delete** other proofs’ full-res objects; mark `fullSizePurgedAt` on those entries.
+3. On terminal **without** approved downloadable proof (`rejected` / `cancelled`): delete **all** proof full-res objects.
+4. **14 days** after `approvedAt`: scheduled job + owner/admin callable delete the remaining approved full-res and set `fullSizePurgedAt`.
+5. Portal download uses callable `customerGetAssistedCreationApprovedProofFile` (Admin Storage download → base64 → Portal blob + `<a download>`). GCS signed-URL navigate often **displays** PNGs in-tab; a separate HTTPS Function + browser `fetch` failed from `myprintrequest.dev` with TypeError “Failed to fetch” (CORS / Gen2 URL / undeployed proxy). Firebase callable transport avoids that. Legacy signed-URL callable remains but is unused by Portal UI. Previews/thumbnails may still use client `getDownloadURL` in `<img>`. Grey preview stays CSS-only.
+6. Legacy approved docs without `approvedAt` remain downloadable while the object exists (UI + download endpoint); purge stays fail-closed without `approvedAt`.
+7. Staff proof uploads rename Storage basename + `fileName` to `proof-{n}-{mmddyyyy}-{HHmm}.{ext}` (local upload clock, no seconds). Portal never displays the original creative filename; Download appears on Overview (approved), the approved status card, and in the Proof detail modal for the approved proof. Each proof surfaces **Fresh Prints note** + **Your notes** (Studio-linked window). Proof list/modal clearly label the approved proof as **Approved**.
+
+**Consequences**
+
+- Deploy updated assisted callables + purge callable/schedule + download HTTP Function to `fresh-prints-dev`.
+- Staff should upload PNG when transparency matters.
+- No separate preview derivatives today — after purge, history shows unavailable placeholder.
+- Rename is Studio client-side at upload; no Functions change required for naming.
+- Optional Storage CORS (`docs/workflow/setup/firebase-storage-cors.md`) is a backup only if a client ever needs `getBlob` again.
+
+---
+
+### ADR-FP-092: Close Assisted Creation messaging on terminal statuses
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-17 |
+| Status | accepted |
+| Related | ADR-FP-088, Assisted Creation Messages |
+| Target | Repository + `fresh-prints-dev` send callables; production excluded |
+
+**Context**
+
+`customerSendAssistedCreationMessage` and `staffSendAssistedCreationMessage` previously accepted every defined status, including terminal `approved` / `rejected` / `cancelled`. Owner asked to stop new chat once a custom design request is completed/closed.
+
+**Decision**
+
+1. There is no `completed` status — closed work is `ASSISTED_CREATION_TERMINAL_STATUSES`.
+2. Messaging is allowed only on open statuses (`submitted` | `in_progress` | `proof_ready` | `revision_requested`) via shared `canSendAssistedCreationMessage`.
+3. Portal and Studio hide the composer and show “Messaging is closed for completed requests.”
+4. Both send callables fail closed with `failed-precondition` and that message. History remains readable. Restore from cancelled re-enables send.
+
+**Consequences**
+
+- Redeploy the two send callables on `fresh-prints-dev` for live enforcement.
+- Staff follow-up after approve requires a new request (or restore if cancelled).
+
+---
+
+### ADR-FP-091: Skeleton / bones alone must not tag Halloween
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-17 |
+| Status | accepted |
+| Related | AI catalog enrichment tagging |
+| Target | Repository + `fresh-prints-dev` after Functions deploy; production excluded |
+
+**Context**
+
+Skeleton artwork was often tagged `halloween` even when the design was motherhood, humor, music, etc. The legacy tag-exclusion prompt section even preferred `halloween` for skeleton/skull art.
+
+**Decision**
+
+1. Prompt guidance (lean default template + legacy exclusion section): do **not** use `halloween` for skeleton/skull/bones alone; require additional Halloween cues (jack-o’-lantern, witches, haunted house, “Halloween” text, candy corn, clear holiday motif). Do not over-block clear Halloween art.
+2. Deterministic post-filter (`halloweenTagGuard`) strips `halloween` when skeletal signals are present and no supporting cue exists outside the halloween tag itself.
+3. Saved copies of the previous default prompt migrate to the new default; custom prompts still get the post-filter.
+
+**Consequences**
+
+- Redeploy AI enrichment Functions on `fresh-prints-dev` for live effect.
+- Existing design tags unchanged until AI is re-run.
+
+---
+
+### ADR-FP-090: Brevo as selectable transactional email provider
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-17 |
+| Status | accepted |
+| Related | ADR-FP-089, `docs/workflow/plans/2026-07-17-brevo-email-provider-plan.md` |
+| Target | Repository + `fresh-prints-dev` after Functions deploy; production excluded |
+
+**Decision**
+
+- Add Brevo HTTP Transactional Email API (`POST https://api.brevo.com/v3/smtp/email`) behind the
+  existing `EmailProvider` contract (`createBrevoEmailProvider`).
+- Product secret is Firebase Secret Manager `BREVO_API_KEY`. Do **not** use Cursor MCP
+  `BREVO_MCP_TOKEN` for product email.
+- `settings/emailProviders` may persist `inviteProvider` / `proofNoticeProvider` as `brevo` or
+  `resend`. Defaults remain Resend.
+- Invitation callables and `onEmailDeliveryJobCreated` bind both `RESEND_API_KEY` and
+  `BREVO_API_KEY`; runtime selection uses the snapshot provider + `resolveEmailApiKey`.
+- Reuse existing `INVITATION_FROM_EMAIL` / `PROOF_NOTICE_FROM_EMAIL` params; sender must be verified
+  in Brevo for live send. Firestore job state remains the durable dedupe boundary; Brevo gets a
+  UUID-shaped hash in `headers.idempotencyKey` as best-effort.
+
+**Consequences**
+
+Owners can switch invitation and/or proof-ready delivery to Brevo in Studio Settings after the
+secret and verified sender are configured on the target Firebase project. Production secrets/deploy
+require a separate human checkpoint.
+
+---
+
 ### ADR-FP-089: Provider-neutral transactional email delivery
 
 | Field | Value |
 |-------|-------|
 | Date | 2026-07-16 |
-| Status | accepted |
+| Status | accepted (amended by ADR-FP-090) |
 | Related | Assisted Creation proof-ready email |
 | Target | Repository first; `fresh-prints-dev` only after human approval |
 
 **Decision**
 
-- Cloud Functions own a provider-neutral email message/transport contract; Resend is the only
-  implemented provider. Brevo is visible but disabled and cannot be persisted.
+- Cloud Functions own a provider-neutral email message/transport contract. Resend was the first
+  implemented provider; Brevo was added later (ADR-FP-090) as a second selectable HTTP adapter.
 - Invitation and proof-ready providers are independently selected in owner-only
   `settings/emailProviders`; missing settings default to Resend.
 - Every attached Assisted Creation proof transactionally creates one deterministic, server-only
-  `emailDeliveryJobs` outbox record. A retry-enabled leased worker sends after commit.
-- Firestore job state is the durable logical dedupe boundary. Resend `Idempotency-Key` adds bounded
-  provider protection but is not treated as permanent exactly-once delivery.
+  `emailDeliveryJobs` outbox document. A retry-enabled leased worker sends after commit.
+- Firestore job state is the durable logical dedupe boundary. Provider-specific idempotency headers
+  add bounded protection but are not treated as permanent exactly-once delivery.
 - Recipient addresses are resolved server-side with strict customer/user linkage; jobs do not store
   another email copy. Logs contain no recipient, body, link, or raw provider response.
 - Proof CTAs map known environments to `https://myprintrequest.dev` /
@@ -31,7 +148,7 @@
 **Consequences**
 
 Proof submission remains successful during provider outages, invitation response contracts stay
-compatible, and future providers can be added behind the adapter after separate security review.
+compatible, and additional providers can be added behind the adapter after separate security review.
 Dev deploy and live email QA require a human checkpoint; production remains excluded.
 
 ---

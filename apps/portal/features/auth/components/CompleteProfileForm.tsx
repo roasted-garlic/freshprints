@@ -5,6 +5,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 
 import { useAuth } from '../context/AuthContext';
 import { needsPortalCustomerProfileCompletion } from '../types/auth.types';
+import { buildPortalAuthHref, getPortalReturnToFromSearch } from '../utils/portalReturnUrl';
 import { UserPlusIcon } from '../../shared/components/PortalIcons';
 
 const SETUP_PROGRESS_MESSAGES = [
@@ -48,13 +49,14 @@ export function CompleteProfileForm() {
       return;
     }
 
+    const returnTo = getPortalReturnToFromSearch(window.location.search);
     if (isAuthenticated && !isSubmitting) {
-      router.replace('/');
+      router.replace(returnTo);
       return;
     }
 
     if (bootstrapStatus === 'unauthenticated') {
-      router.replace('/login');
+      router.replace(buildPortalAuthHref('/login', returnTo));
     }
   }, [bootstrapStatus, isAuthenticated, isInitialBootstrap, isSubmitting, router]);
 
@@ -104,7 +106,7 @@ export function CompleteProfileForm() {
         },
       );
       setProgressMessage('Opening your portal…');
-      router.replace('/');
+      router.replace(getPortalReturnToFromSearch(window.location.search));
     } catch {
       setIsSubmitting(false);
     }

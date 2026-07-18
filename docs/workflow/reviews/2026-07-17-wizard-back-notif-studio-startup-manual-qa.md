@@ -19,8 +19,8 @@
 
 1. Open Assisted Creation wizard mid-flow (e.g. step 4+). Click **Back** several times.  
    **Expected:** Step and URL move to the previous step without flashing forward to the later step.
-2. Account → **Notifications** → uncheck proof-ready emails → Save → reload → reopen.  
-   **Expected:** Preference persists. (Live email skip requires Functions/rules deploy — note if not deployed yet.)
+2. Account → profile card **Settings** (top right) → Notifications modal → uncheck proof-ready emails → Save → reload → reopen via **Settings**.  
+   **Expected:** Preference persists. (Live email skip requires Functions/rules deploy — note if not deployed yet.) No standalone Settings section on the dashboard; Quick links sits in the right column beside Overview.
 3. As customer, update a `submitted` request (ideally twice). In Studio Assisted → **New**, confirm unread badge on stage tab, list card, and History header. Expand History: each unread customer update row should show a **Read** control (header has count badge only, no Read).
    **Expected:** Clicking **Read** on an older unread advances `readThroughAt` through that entry only (newer unread remain). Clicking **Read** on the newest unread clears all badges for that request. Note reads `Request updated` (not “Customer updated request”). Unread rows are subtly highlighted.
    **If Read fails:** Studio should toast (permission / rules deploy hint) instead of doing nothing. Live clear requires `firestore:rules` deploy including `assistedCreationUpdateAcks` — reply `APPROVE DEV DEPLOY` (or deploy yourself) then re-test.

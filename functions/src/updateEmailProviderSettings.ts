@@ -31,7 +31,7 @@ export const updateEmailProviderSettings = onCall(
       !isEmailProviderId(data.inviteProvider) ||
       !isEmailProviderId(data.proofNoticeProvider)
     ) {
-      throw invalidArgument("Only the Resend provider is currently available.");
+      throw invalidArgument("inviteProvider and proofNoticeProvider must be resend or brevo.");
     }
 
     const settings: EmailProviderSettings = {

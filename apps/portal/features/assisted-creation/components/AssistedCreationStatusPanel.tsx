@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 
 import {
   ASSISTED_CREATION_FIELD_LIMITS,
@@ -11,17 +11,25 @@ import {
   type AssistedCreationStatus,
 } from '@fresh-prints/shared/constants/assistedCreation/assistedCreation.constants';
 import type { AssistedCreationRequest } from '@fresh-prints/shared/types/assistedCreation/assistedCreation.types';
+import {
+  evaluateAssistedCreationApprovedProofDownload,
+} from '@fresh-prints/shared/utils/assistedCreationApprovedProofRetention';
 
 import { CatalogPreviewLightbox } from '../../catalog/components/CatalogPreviewLightbox';
 import { PortalConfirmModal } from '../../shared/components/PortalConfirmModal';
 import { getPortalAuth } from '../../../lib/firebase/client';
 import { assistedCreationService } from '../services/assistedCreationService';
-import { assistedCreationStatusTone } from '../utils/assistedCreationDisplay';
+import {
+  assistedCreationStatusTone,
+  assistedCreationTimestampMillis,
+} from '../utils/assistedCreationDisplay';
+import { parseAssistedCreationLocation } from '../utils/assistedCreationUrlState';
 import { AssistedCreationActionsMenu } from './AssistedCreationActionsMenu';
 import {
+  AssistedApprovedDesignCard,
   AssistedCreationDetailTabs,
   ExpandableBlock,
-  StaffProofNote,
+  ProofNoteActions,
   type AssistedDetailTab,
 } from './AssistedCreationDetailPanels';
 import { AssistedCreationUpdateModal } from './AssistedCreationUpdateModal';
@@ -41,7 +49,7 @@ function statusMessage(status: AssistedCreationStatus): string {
     case 'revision_requested':
       return 'Your revision notes were sent. Staff will update the design and send a new proof.';
     case 'approved':
-      return 'This design is approved. You can start a new assisted request anytime.';
+      return 'This design is approved. Download the full-resolution file below while it is still available, or start a new assisted request anytime.';
     case 'rejected':
       return 'This request was not approved. You can start a new assisted request anytime.';
     case 'cancelled':
@@ -53,6 +61,8 @@ function statusMessage(status: AssistedCreationStatus): string {
 
 export function AssistedCreationStatusPanel({ onStartNew }: AssistedCreationStatusPanelProps) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [requests, setRequests] = useState<AssistedCreationRequest[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -60,11 +70,21 @@ export function AssistedCreationStatusPanel({ onStartNew }: AssistedCreationStat
   const [approvalNote, setApprovalNote] = useState('');
   const [rating, setRating] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
+  /** Which proof response is in flight — drives Sending… / Approving… labels. */
+  const [pendingProofAction, setPendingProofAction] = useState<'revision' | 'approve' | null>(
+    null,
+  );
   const [proofUrl, setProofUrl] = useState<string | null>(null);
   const [proofLightboxOpen, setProofLightboxOpen] = useState(false);
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
   const [updateOpen, setUpdateOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<AssistedDetailTab>('overview');
+  const initialDetailTab = parseAssistedCreationLocation(pathname, searchParams).detailTab;
+  const [activeTab, setActiveTab] = useState<AssistedDetailTab>(initialDetailTab);
+
+  useEffect(() => {
+    setActiveTab(parseAssistedCreationLocation(pathname, searchParams).detailTab);
+  }, [pathname, searchParams]);
 
   useEffect(() => {
     const uid = getPortalAuth().currentUser?.uid;
@@ -84,6 +104,24 @@ export function AssistedCreationStatusPanel({ onStartNew }: AssistedCreationStat
     [requests],
   );
   const latest = openRequest ?? requests[0] ?? null;
+  const approvedDownload = useMemo(() => {
+    if (!latest || latest.status !== 'approved') {
+      return null;
+    }
+    return evaluateAssistedCreationApprovedProofDownload({
+      status: latest.status,
+      approvedProofId: latest.approvedProofId,
+      approvedAtMillis: assistedCreationTimestampMillis(latest.approvedAt),
+      proofs: latest.proofs.map((proof) => ({
+        id: proof.id,
+        storagePath: proof.storagePath,
+        fileName: proof.fileName,
+        contentType: proof.contentType,
+        fullSizePurgedAtMillis: assistedCreationTimestampMillis(proof.fullSizePurgedAt),
+      })),
+      nowMs: Date.now(),
+    });
+  }, [latest]);
 
   useEffect(() => {
     let cancelled = false;
@@ -167,7 +205,10 @@ export function AssistedCreationStatusPanel({ onStartNew }: AssistedCreationStat
               canCancel={canCancel}
               canUpdate={canUpdate}
               disabled={busy}
-              onCancel={() => setCancelConfirmOpen(true)}
+              onCancel={() => {
+                setCancelReason('');
+                setCancelConfirmOpen(true);
+              }}
               onUpdate={() => {
                 setActionError(null);
                 setUpdateOpen(true);
@@ -185,18 +226,29 @@ export function AssistedCreationStatusPanel({ onStartNew }: AssistedCreationStat
           {proofUrl ? (
             <button
               aria-label="Open proof preview"
-              className="assisted-creation-proof-image-button"
+              className="assisted-creation-proof-image-button assisted-creation-proof-stage"
               onClick={() => setProofLightboxOpen(true)}
               type="button"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img alt="Design proof" className="assisted-creation-proof-image" src={proofUrl} />
+              <img
+                alt="Design proof"
+                className="assisted-creation-proof-stage-image"
+                src={proofUrl}
+              />
             </button>
           ) : (
             <p className="portal-muted">Loading proof image…</p>
           )}
 
-          <StaffProofNote note={latestProof?.note} />
+          {latestProof ? (
+            <ProofNoteActions
+              proof={latestProof}
+              proofNumber={latest.proofs.length}
+              proofs={latest.proofs}
+              revisionHistory={latest.revisionHistory}
+            />
+          ) : null}
 
           <section
             aria-labelledby="assisted-creation-respond-heading"
@@ -209,15 +261,69 @@ export function AssistedCreationStatusPanel({ onStartNew }: AssistedCreationStat
               Respond to proof
             </h3>
 
+            <ExpandableBlock title="Request revisions">
+              <div className="assisted-creation-proof-response-fields">
+                <label className="portal-field">
+                  <span>What should we change?</span>
+                  <textarea
+                    disabled={busy}
+                    maxLength={ASSISTED_CREATION_FIELD_LIMITS.revisionNote}
+                    onChange={(event) => setRevisionNote(event.target.value)}
+                    placeholder="Describe the changes you need"
+                    rows={3}
+                    value={revisionNote}
+                  />
+                </label>
+                <button
+                  aria-busy={pendingProofAction === 'revision' || undefined}
+                  className="portal-button assisted-creation-revision-button"
+                  disabled={busy || !revisionNote.trim()}
+                  onClick={() => {
+                    if (busy || !revisionNote.trim()) {
+                      return;
+                    }
+                    setBusy(true);
+                    setPendingProofAction('revision');
+                    setActionError(null);
+                    void assistedCreationService
+                      .respondToProof({
+                        requestId: latest.id,
+                        decision: 'request_revision',
+                        note: revisionNote,
+                      })
+                      .then(() => setRevisionNote(''))
+                      .catch((error: unknown) => {
+                        setActionError(
+                          error instanceof Error ? error.message : 'Unable to request revision.',
+                        );
+                      })
+                      .finally(() => {
+                        setPendingProofAction(null);
+                        setBusy(false);
+                      });
+                  }}
+                  type="button"
+                >
+                  {pendingProofAction === 'revision' ? 'Sending…' : 'Send revision notes'}
+                </button>
+                {pendingProofAction === 'revision' ? (
+                  <p aria-live="polite" className="portal-muted">
+                    Sending your revision notes…
+                  </p>
+                ) : null}
+              </div>
+            </ExpandableBlock>
+
             <ExpandableBlock title="Approve">
               <div className="assisted-creation-proof-response-fields">
-                <fieldset className="assisted-creation-rating-fieldset">
+                <fieldset className="assisted-creation-rating-fieldset" disabled={busy}>
                   <legend>Rate this design (optional)</legend>
                   <div className="assisted-creation-rating-row">
                     {[1, 2, 3, 4, 5].map((value) => (
                       <button
                         aria-pressed={rating === value}
                         className={`assisted-creation-rating-star${rating != null && rating >= value ? ' is-selected' : ''}`}
+                        disabled={busy}
                         key={value}
                         onClick={() => setRating((current) => (current === value ? null : value))}
                         type="button"
@@ -231,6 +337,7 @@ export function AssistedCreationStatusPanel({ onStartNew }: AssistedCreationStat
                 <label className="portal-field">
                   <span>Approval note (optional)</span>
                   <textarea
+                    disabled={busy}
                     maxLength={ASSISTED_CREATION_FIELD_LIMITS.approvalNote}
                     onChange={(event) => setApprovalNote(event.target.value)}
                     placeholder="Anything you loved, or a quick thank-you"
@@ -241,10 +348,15 @@ export function AssistedCreationStatusPanel({ onStartNew }: AssistedCreationStat
 
                 <div className="etsy-wizard-actions assisted-creation-proof-actions">
                   <button
+                    aria-busy={pendingProofAction === 'approve' || undefined}
                     className="portal-button assisted-creation-approve-button"
                     disabled={busy}
                     onClick={() => {
+                      if (busy) {
+                        return;
+                      }
                       setBusy(true);
+                      setPendingProofAction('approve');
                       setActionError(null);
                       void assistedCreationService
                         .respondToProof({
@@ -262,56 +374,29 @@ export function AssistedCreationStatusPanel({ onStartNew }: AssistedCreationStat
                             error instanceof Error ? error.message : 'Unable to approve.',
                           );
                         })
-                        .finally(() => setBusy(false));
+                        .finally(() => {
+                          setPendingProofAction(null);
+                          setBusy(false);
+                        });
                     }}
                     type="button"
                   >
-                    Approve &amp; send
+                    {pendingProofAction === 'approve' ? 'Approving…' : 'Approve & send'}
                   </button>
                 </div>
-              </div>
-            </ExpandableBlock>
-
-            <ExpandableBlock title="Request revisions">
-              <div className="assisted-creation-proof-response-fields">
-                <label className="portal-field">
-                  <span>What should we change?</span>
-                  <textarea
-                    maxLength={ASSISTED_CREATION_FIELD_LIMITS.revisionNote}
-                    onChange={(event) => setRevisionNote(event.target.value)}
-                    placeholder="Describe the changes you need"
-                    rows={3}
-                    value={revisionNote}
-                  />
-                </label>
-                <button
-                  className="portal-button assisted-creation-revision-button"
-                  disabled={busy || !revisionNote.trim()}
-                  onClick={() => {
-                    setBusy(true);
-                    setActionError(null);
-                    void assistedCreationService
-                      .respondToProof({
-                        requestId: latest.id,
-                        decision: 'request_revision',
-                        note: revisionNote,
-                      })
-                      .then(() => setRevisionNote(''))
-                      .catch((error: unknown) => {
-                        setActionError(
-                          error instanceof Error ? error.message : 'Unable to request revision.',
-                        );
-                      })
-                      .finally(() => setBusy(false));
-                  }}
-                  type="button"
-                >
-                  Send revision notes
-                </button>
+                {pendingProofAction === 'approve' ? (
+                  <p aria-live="polite" className="portal-muted">
+                    Sending your approval…
+                  </p>
+                ) : null}
               </div>
             </ExpandableBlock>
           </section>
         </div>
+      ) : null}
+
+      {latest.status === 'approved' && approvedDownload ? (
+        <AssistedApprovedDesignCard request={latest} />
       ) : null}
 
       <AssistedCreationDetailTabs
@@ -352,17 +437,28 @@ export function AssistedCreationStatusPanel({ onStartNew }: AssistedCreationStat
       <PortalConfirmModal
         cancelLabel="Keep request"
         className="assisted-creation-confirm-overlay"
+        confirmDisabled={cancelReason.trim().length === 0}
         confirmLabel="Yes, cancel request"
         confirmVariant="danger"
         isConfirmLoading={busy}
         isOpen={cancelConfirmOpen}
-        onCancel={() => setCancelConfirmOpen(false)}
+        onCancel={() => {
+          setCancelConfirmOpen(false);
+          setCancelReason('');
+        }}
         onConfirm={() => {
+          const reason = cancelReason.trim();
+          if (!reason) {
+            return;
+          }
           setBusy(true);
           setActionError(null);
           void assistedCreationService
-            .cancelRequest(latest.id)
-            .then(() => setCancelConfirmOpen(false))
+            .cancelRequest(latest.id, reason)
+            .then(() => {
+              setCancelConfirmOpen(false);
+              setCancelReason('');
+            })
             .catch((error: unknown) => {
               setActionError(error instanceof Error ? error.message : 'Unable to cancel.');
             })
@@ -374,6 +470,16 @@ export function AssistedCreationStatusPanel({ onStartNew }: AssistedCreationStat
           Canceling closes this assisted creation request. You will need to start a new request if
           you still want a custom design.
         </p>
+        <label className="portal-field">
+          <span>Why are you canceling? (required)</span>
+          <textarea
+            maxLength={ASSISTED_CREATION_FIELD_LIMITS.revisionNote}
+            onChange={(event) => setCancelReason(event.target.value)}
+            placeholder="Briefly tell us why"
+            rows={3}
+            value={cancelReason}
+          />
+        </label>
       </PortalConfirmModal>
 
       <CatalogPreviewLightbox

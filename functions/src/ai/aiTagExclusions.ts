@@ -79,5 +79,6 @@ export function filterExcludedAiTags(tags: string[], exclusions: readonly string
 export function buildTagExclusionPromptSection(exclusions: readonly string[]): string {
   return `
 Tag exclusions: never use these tag words: ${exclusions.join(", ")}.
-For skeleton or skull artwork, prefer tags like skeleton, bones, spooky, halloween, dance, retro, groovy, edgy, illustration, cartoon, punk, rock, humor, funny — never death or skull.`;
+For skeleton or skull artwork, prefer tags like skeleton, bones, spooky, dance, retro, groovy, edgy, illustration, cartoon, punk, rock, humor, funny — never death or skull.
+Do not use halloween for skeleton, skull, or bones alone. Use halloween only when additional Halloween cues are clearly present (for example jack-o'-lantern, witches, haunted house, visible "Halloween" text, candy corn, or a clear Halloween bat/cobweb holiday motif with other holiday cues). Do not over-block designs that are clearly Halloween.`;
 }

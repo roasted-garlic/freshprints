@@ -1,7 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Download } from "lucide-react";
 
 import {
+  ASSISTED_CREATION_FIELD_LIMITS,
+  ASSISTED_CREATION_MESSAGE_MAX_LENGTH,
+  ASSISTED_CREATION_MESSAGING_CLOSED_MESSAGE,
+  canSendAssistedCreationMessage,
   formatAssistedCreationStatus,
   type AssistedCreationStatus,
 } from "@fresh-prints/shared/constants/assistedCreation/assistedCreation.constants";
@@ -10,11 +15,13 @@ import type {
   AssistedCreationRevisionEntry,
 } from "@fresh-prints/shared/types/assistedCreation/assistedCreation.types";
 import {
+  ASSISTED_CREATION_PROOF_EMAIL_SENT_NOTE,
   assistedCreationRevisionAtMillis,
+  buildAssistedCreationHistoryTitles,
   countUnreadAssistedCreationCustomerUpdates,
-  isAssistedCreationCustomerUpdateEntry,
   isAssistedCreationCustomerUpdateUnread,
   isAssistedCreationProofEmailSentEntry,
+  latestAssistedCreationCustomerUpdateAtMs,
 } from "@fresh-prints/shared/utils/assistedCreationHistory";
 
 import { useAuth } from "../../auth/hooks/useAuth";
@@ -32,6 +39,13 @@ import {
   type AssistedCreationRequestListItem,
 } from "../services/assistedCreationRequestsService";
 import { assistedCreationUpdateAckService } from "../services/assistedCreationUpdateAckService";
+import { AssistedStaffOverflowMenu } from "./AssistedStaffOverflowMenu";
+import {
+  CUSTOMER_REQUEST_DETAIL_TAB_QUERY_PARAM,
+  CUSTOMER_REQUEST_ID_QUERY_PARAM,
+  isAssistedDetailRouteTab,
+  type AssistedDetailRouteTab,
+} from "../constants/customerRequestRoutes";
 import {
   joinLabeledValues,
   labelForComposition,
@@ -44,6 +58,7 @@ import {
 } from "../utils/assistedCreationLabels";
 
 type AssistedStageTab = "new" | "in_progress" | "revisions" | "proof_ready" | "completed";
+type AssistedDetailTab = "overview" | "proofs" | "messages";
 
 const STAGE_TABS: ReadonlyArray<{ id: AssistedStageTab; label: string }> = [
   { id: "new", label: "New" },
@@ -73,7 +88,10 @@ interface AssistedProofPreview extends AssistedMediaPreview {
   note?: string;
   createdAt: unknown;
   createdBy: string;
-  relatedNotes: string[];
+  /** Staff proof note + linked history notes (excludes email system noise). */
+  notes: string[];
+  /** True when full-res Storage object is missing or purged. */
+  unavailable: boolean;
 }
 
 async function downloadAssistedMediaFile(url: string, fileName: string): Promise<"saved" | "canceled"> {
@@ -123,7 +141,9 @@ function isBoilerplateHistoryNote(note: string): boolean {
     trimmed === "Resumed work" ||
     trimmed === "Rejected" ||
     trimmed === "Cancelled" ||
-    trimmed === "Customer approved proof"
+    trimmed === "Customer approved proof" ||
+    trimmed === ASSISTED_CREATION_PROOF_EMAIL_SENT_NOTE ||
+    /^Proof-ready email sent/i.test(trimmed)
   );
 }
 
@@ -171,14 +191,25 @@ function relatedNotesForProof(
   const index = proofs.findIndex((entry) => entry.id === proof.id);
   const next = index >= 0 ? proofs[index + 1] : undefined;
   const end = next ? toMillis(next.createdAt) : Number.POSITIVE_INFINITY;
+  const proofNote = proof.note?.trim() ?? "";
   return history
     .filter((entry) => {
       const at = toMillis(entry.at);
       if (at < start || at >= end) {
         return false;
       }
+      if (isAssistedCreationProofEmailSentEntry(entry)) {
+        return false;
+      }
       const note = entry.note?.trim() ?? "";
-      return note.length > 0 && !isBoilerplateHistoryNote(note);
+      if (!note || isBoilerplateHistoryNote(note)) {
+        return false;
+      }
+      // Same text as proof.note is already the staff proof note — don't double-list.
+      if (proofNote && note === proofNote) {
+        return false;
+      }
+      return true;
     })
     .map((entry) => {
       const when = formatHistoryAt(entry.at);
@@ -190,6 +221,37 @@ function relatedNotesForProof(
             : "System";
       return `${who}${when ? ` · ${when}` : ""}: ${entry.note.trim()}`;
     });
+}
+
+function noteBodyDedupeKey(formattedLine: string): string {
+  const separator = formattedLine.indexOf(": ");
+  const body = separator >= 0 ? formattedLine.slice(separator + 2) : formattedLine;
+  return body.trim().toLowerCase();
+}
+
+/** Staff proof note + linked history notes for the proof detail Notes button. */
+function notesForProof(
+  proof: AssistedCreationProof,
+  proofs: AssistedCreationProof[],
+  history: AssistedCreationRevisionEntry[],
+): string[] {
+  const notes: string[] = [];
+  const seenBodies = new Set<string>();
+  const staffNote = proof.note?.trim() ?? "";
+  if (staffNote) {
+    seenBodies.add(staffNote.toLowerCase());
+    const when = formatHistoryAt(proof.createdAt);
+    notes.push(`Staff${when ? ` · ${when}` : ""}: ${staffNote}`);
+  }
+  for (const line of relatedNotesForProof(proof, proofs, history)) {
+    const key = noteBodyDedupeKey(line);
+    if (seenBodies.has(key)) {
+      continue;
+    }
+    seenBodies.add(key);
+    notes.push(line);
+  }
+  return notes;
 }
 
 function AnswerRow({ label, value }: { label: string; value: string }) {
@@ -294,65 +356,38 @@ function StaffReasonModal({
   );
 }
 
-function AssistedProofDetailModal({
-  downloading,
+function AssistedProofNotesModal({
+  notes,
   onClose,
-  onDownload,
-  proof,
+  title,
 }: {
-  downloading: boolean;
+  notes: string[];
   onClose: () => void;
-  onDownload: (media: AssistedMediaPreview) => void;
-  proof: AssistedProofPreview;
+  title: string;
 }) {
   return (
     <div
       aria-modal="true"
-      className="modal-overlay modal-overlay-blur"
+      className="modal-overlay modal-overlay-blur customer-requests-assisted-proof-notes-overlay"
       onClick={onClose}
       role="dialog"
     >
       <Modal
-        aria-labelledby="assisted-proof-detail-title"
-        className="customer-requests-assisted-proof-modal"
+        aria-labelledby="assisted-proof-notes-title"
+        className="customer-requests-assisted-proof-notes-modal"
         onClick={(event) => event.stopPropagation()}
       >
         <ModalHeader>
-          <h2 id="assisted-proof-detail-title">Proof {proof.number}</h2>
+          <h2 id="assisted-proof-notes-title">{title}</h2>
         </ModalHeader>
-        <ModalBody>
-          <div className="customer-requests-assisted-proof-modal-image">
-            <img alt={proof.fileName || `Proof ${proof.number}`} src={proof.url} />
-          </div>
-          <dl className="customer-requests-etsy-detail-summary">
-            <AnswerRow label="File" value={proof.fileName} />
-            <AnswerRow label="Submitted" value={formatHistoryAt(proof.createdAt)} />
-            <AnswerRow
-              label="Submitted by"
-              value={proof.createdBy ? `Staff · ${proof.createdBy}` : "Staff"}
-            />
-          </dl>
-          {proof.relatedNotes.length > 0 ? (
-            <div className="customer-requests-assisted-proof-modal-notes">
-              <h3>Linked notes</h3>
-              <ul>
-                {proof.relatedNotes.map((note) => (
-                  <li key={note}>{note}</li>
-                ))}
-              </ul>
-            </div>
-          ) : (
-            <p className="settings-field-hint">No customer or follow-up notes tied to this proof.</p>
-          )}
+        <ModalBody className="customer-requests-assisted-proof-notes-modal-body">
+          <ul className="customer-requests-assisted-proof-notes-list">
+            {notes.map((note) => (
+              <li key={note}>{note}</li>
+            ))}
+          </ul>
         </ModalBody>
         <ModalFooter>
-          <Button
-            disabled={downloading}
-            onClick={() => onDownload(proof)}
-            variant="secondary"
-          >
-            Download
-          </Button>
           <Button onClick={onClose} variant="secondary">
             Close
           </Button>
@@ -362,9 +397,99 @@ function AssistedProofDetailModal({
   );
 }
 
+function AssistedProofDetailModal({
+  downloading,
+  isApprovedProof,
+  isLatest,
+  onClose,
+  onDownload,
+  proof,
+}: {
+  downloading: boolean;
+  isApprovedProof: boolean;
+  isLatest: boolean;
+  onClose: () => void;
+  onDownload: (media: AssistedMediaPreview) => void;
+  proof: AssistedProofPreview;
+}) {
+  const [notesOpen, setNotesOpen] = useState(false);
+  const noteCount = proof.notes.length;
+
+  return (
+    <>
+      <div
+        aria-modal="true"
+        className="modal-overlay modal-overlay-blur"
+        onClick={onClose}
+        role="dialog"
+      >
+        <Modal
+          aria-labelledby="assisted-proof-detail-title"
+          className="customer-requests-assisted-proof-modal"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <ModalHeader>
+            <h2 id="assisted-proof-detail-title">
+              Proof {proof.number}
+              {isLatest ? " (latest)" : ""}
+            </h2>
+          </ModalHeader>
+          <ModalBody className="customer-requests-assisted-proof-modal-body">
+            {proof.unavailable || !proof.url ? (
+              <p className="settings-field-hint">Full-resolution file is no longer available.</p>
+            ) : (
+              <div className="customer-requests-assisted-proof-modal-image">
+                <img alt={proof.fileName || `Proof ${proof.number}`} src={proof.url} />
+              </div>
+            )}
+            <dl className="customer-requests-etsy-detail-summary">
+              {isApprovedProof ? <AnswerRow label="Status" value="Approved proof" /> : null}
+              <AnswerRow label="File" value={proof.fileName} />
+              <AnswerRow label="Submitted" value={formatHistoryAt(proof.createdAt)} />
+              <AnswerRow
+                label="Submitted by"
+                value={proof.createdBy ? `Staff · ${proof.createdBy}` : "Staff"}
+              />
+            </dl>
+            <div className="customer-requests-assisted-proof-modal-actions">
+              {noteCount > 0 ? (
+                <Button onClick={() => setNotesOpen(true)} type="button" variant="secondary">
+                  Notes
+                </Button>
+              ) : (
+                <p className="settings-field-hint">No notes tied to this proof.</p>
+              )}
+            </div>
+          </ModalBody>
+          <ModalFooter>
+            <Button
+              disabled={downloading || proof.unavailable || !proof.url}
+              onClick={() => onDownload(proof)}
+              variant="secondary"
+            >
+              Download
+            </Button>
+            <Button onClick={onClose} variant="secondary">
+              Close
+            </Button>
+          </ModalFooter>
+        </Modal>
+      </div>
+      {notesOpen && noteCount > 0 ? (
+        <AssistedProofNotesModal
+          notes={proof.notes}
+          onClose={() => setNotesOpen(false)}
+          title={`Proof ${proof.number} · Notes`}
+        />
+      ) : null}
+    </>
+  );
+}
+
 function AssistedDetail({
   canMutate,
   canRestore,
+  initialDetailTab = "overview",
   item,
   onMarkHistoryEntryRead,
   onToast,
@@ -373,6 +498,7 @@ function AssistedDetail({
 }: {
   canMutate: boolean;
   canRestore: boolean;
+  initialDetailTab?: AssistedDetailTab;
   item: AssistedCreationRequestListItem;
   onMarkHistoryEntryRead: (entryAtMs: number) => void;
   onToast: (message: string) => void;
@@ -380,9 +506,13 @@ function AssistedDetail({
   unreadUpdateCount: number;
 }) {
   const [busy, setBusy] = useState(false);
+  const [savingNotes, setSavingNotes] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [proofNote, setProofNote] = useState("");
   const [staffNotes, setStaffNotes] = useState(item.staffNotes);
+  const [messageDraft, setMessageDraft] = useState("");
+  const [sendingMessage, setSendingMessage] = useState(false);
+  const [messageError, setMessageError] = useState<string | null>(null);
   const [refMedia, setRefMedia] = useState<AssistedMediaPreview[]>([]);
   const [proofMedia, setProofMedia] = useState<AssistedProofPreview[]>([]);
   const [selectedProofId, setSelectedProofId] = useState<string | null>(null);
@@ -391,12 +521,21 @@ function AssistedDetail({
   const [pendingProofPreviewUrl, setPendingProofPreviewUrl] = useState<string | null>(null);
   const [reasonModal, setReasonModal] = useState<"reject" | "cancel" | "restore" | null>(null);
   const [actionReason, setActionReason] = useState("");
+  const [activeDetailTab, setActiveDetailTab] = useState<AssistedDetailTab>("overview");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const messagesPanelRef = useRef<HTMLSectionElement>(null);
+  const messagesThreadRef = useRef<HTMLDivElement>(null);
   const answers = item.answers;
 
   useEffect(() => {
     setStaffNotes(item.staffNotes);
+    setMessageDraft("");
+    setMessageError(null);
   }, [item.id, item.staffNotes]);
+
+  useEffect(() => {
+    setActiveDetailTab(initialDetailTab);
+  }, [item.id, initialDetailTab]);
 
   useEffect(() => {
     return () => {
@@ -426,27 +565,42 @@ function AssistedDetail({
       );
       const proofs = await Promise.all(
         item.proofs.map(async (proof, index) => {
+          const base = {
+            id: proof.id,
+            fileName: proof.fileName || `proof-${proof.id}`,
+            storagePath: proof.storagePath,
+            number: index + 1,
+            ...(proof.note ? { note: proof.note } : {}),
+            createdAt: proof.createdAt,
+            createdBy: proof.createdBy,
+            notes: notesForProof(proof, item.proofs, item.revisionHistory),
+          };
+          if (proof.fullSizePurgedAt != null || !proof.storagePath?.trim()) {
+            return {
+              ...base,
+              url: "",
+              unavailable: true,
+            } satisfies AssistedProofPreview;
+          }
           try {
             const url = await assistedCreationRequestsService.getDownloadUrl(proof.storagePath);
             return {
-              id: proof.id,
+              ...base,
               url,
-              fileName: proof.fileName || `proof-${proof.id}`,
-              storagePath: proof.storagePath,
-              number: index + 1,
-              note: proof.note,
-              createdAt: proof.createdAt,
-              createdBy: proof.createdBy,
-              relatedNotes: relatedNotesForProof(proof, item.proofs, item.revisionHistory),
+              unavailable: false,
             } satisfies AssistedProofPreview;
           } catch {
-            return null;
+            return {
+              ...base,
+              url: "",
+              unavailable: true,
+            } satisfies AssistedProofPreview;
           }
         }),
       );
       if (!cancelled) {
         setRefMedia(refs.filter((entry): entry is AssistedMediaPreview => entry != null));
-        setProofMedia(proofs.filter((entry): entry is AssistedProofPreview => entry != null));
+        setProofMedia(proofs);
       }
     })();
     return () => {
@@ -535,6 +689,28 @@ function AssistedDetail({
     }
   }
 
+  async function saveStaffNotes(): Promise<void> {
+    if (!canMutate || savingNotes) {
+      return;
+    }
+    setSavingNotes(true);
+    setBusy(true);
+    setError(null);
+    try {
+      await assistedCreationRequestsService.updateStatus({
+        requestId: item.id,
+        action: "update_notes",
+        staffNotes: staffNotes.trim(),
+      });
+      onToast("Staff notes saved");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to save staff notes.");
+    } finally {
+      setSavingNotes(false);
+      setBusy(false);
+    }
+  }
+
   function clearPendingProof(): void {
     if (pendingProofPreviewUrl) {
       URL.revokeObjectURL(pendingProofPreviewUrl);
@@ -555,6 +731,7 @@ function AssistedDetail({
         requestId: item.id,
         customerUid: item.customerUid,
         file: pendingProofFile,
+        proofNumber: item.proofs.length + 1,
         note: proofNote.trim() || undefined,
       });
       clearPendingProof();
@@ -566,48 +743,167 @@ function AssistedDetail({
     }
   }
 
+  async function handleSendMessage(event: FormEvent<HTMLFormElement>): Promise<void> {
+    event.preventDefault();
+    const trimmed = messageDraft.trim();
+    if (!trimmed || sendingMessage || !canMutate || !canSendAssistedCreationMessage(item.status)) {
+      return;
+    }
+    setSendingMessage(true);
+    setMessageError(null);
+    try {
+      await assistedCreationRequestsService.sendMessage({
+        requestId: item.id,
+        message: trimmed,
+      });
+      setMessageDraft("");
+      onToast("Message sent");
+      // Replying acknowledges unread customer updates (same effect as per-row Read).
+      const latestCustomerAtMs = latestAssistedCreationCustomerUpdateAtMs(item.revisionHistory);
+      if (latestCustomerAtMs != null) {
+        onMarkHistoryEntryRead(latestCustomerAtMs);
+      }
+    } catch (err) {
+      setMessageError(err instanceof Error ? err.message : "Unable to send message.");
+    } finally {
+      setSendingMessage(false);
+    }
+  }
+
   const description = answers?.rawDescription?.trim() || "No description";
   const isDownloading = downloadingId != null;
-  const historyEntries = item.revisionHistory
-    .slice()
-    .reverse()
-    .map((entry, index) => {
-      const note = entry.note?.trim() ?? "";
-      const showNote = note.length > 0 && !isBoilerplateHistoryNote(note);
-      const isCustomerUpdate = isAssistedCreationCustomerUpdateEntry(entry);
-      const isUnread = isAssistedCreationCustomerUpdateUnread(entry, readThroughAtMs);
-      const atMs = assistedCreationRevisionAtMillis(entry.at);
-      const isProofEmailSent = isAssistedCreationProofEmailSentEntry(entry);
-      return {
-        key: `${entry.toStatus}-${index}`,
-        title: isCustomerUpdate
-          ? "Updated"
-          : isProofEmailSent
-            ? "Email sent"
-            : formatAssistedCreationStatus(entry.toStatus),
-        when: formatHistoryAt(entry.at),
-        note: showNote ? note : null,
-        byRole: entry.byRole,
-        isUnread,
-        atMs,
-      };
+  const notesDirty = staffNotes.trim() !== item.staffNotes.trim();
+  const canReject =
+    canMutate && (item.status === "submitted" || item.status === "in_progress");
+  const canCancelRequest =
+    canMutate &&
+    item.status !== "approved" &&
+    item.status !== "rejected" &&
+    item.status !== "cancelled";
+  const canShowRestore = item.status === "cancelled" && canRestore;
+  const hasPrimaryActions =
+    canMutate && (item.status === "submitted" || item.status === "revision_requested");
+  const historyTitles = buildAssistedCreationHistoryTitles(item.revisionHistory);
+  /** Chronological (oldest → newest) — matches Portal Messages. */
+  const historyEntries = item.revisionHistory.map((entry, index) => {
+    const note = entry.note?.trim() ?? "";
+    const showNote = note.length > 0 && !isBoilerplateHistoryNote(note);
+    const isUnread = isAssistedCreationCustomerUpdateUnread(entry, readThroughAtMs);
+    const atMs = assistedCreationRevisionAtMillis(entry.at);
+    const actor = entry.byRole ?? "system";
+    return {
+      key: `${entry.toStatus}-${index}`,
+      title: historyTitles[index] ?? formatAssistedCreationStatus(entry.toStatus),
+      when: formatHistoryAt(entry.at),
+      note: showNote ? note : null,
+      actor,
+      roleLabel:
+        actor === "customer" ? "Customer" : actor === "staff" ? "You" : "System",
+      isUnread,
+      atMs,
+    };
+  });
+
+  useEffect(() => {
+    if (activeDetailTab !== "messages") {
+      return;
+    }
+
+    let cancelled = false;
+    let secondFrame = 0;
+
+    const scrollMessagesIntoView = (): void => {
+      if (cancelled) {
+        return;
+      }
+      const panel = messagesPanelRef.current;
+      const thread = messagesThreadRef.current;
+      // Bring the Messages panel into the page scrollport (deep-link often lands mid-page).
+      panel?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
+      if (thread) {
+        thread.scrollTop = thread.scrollHeight;
+      }
+    };
+
+    // Double rAF: wait until the Messages tab (and thread max-height) has painted.
+    const firstFrame = window.requestAnimationFrame(() => {
+      secondFrame = window.requestAnimationFrame(scrollMessagesIntoView);
     });
-  const selectedProof = proofMedia.find((proof) => proof.id === selectedProofId) ?? null;
+
+    return () => {
+      cancelled = true;
+      window.cancelAnimationFrame(firstFrame);
+      window.cancelAnimationFrame(secondFrame);
+    };
+  }, [activeDetailTab, historyEntries.length, item.id]);
+
+  const proofMediaNewestFirst = [...proofMedia].sort(
+    (a, b) => toMillis(b.createdAt) - toMillis(a.createdAt),
+  );
+  const selectedProof =
+    proofMediaNewestFirst.find((proof) => proof.id === selectedProofId) ?? null;
 
   return (
     <div className="customer-requests-assisted-detail">
       <header className="customer-requests-assisted-detail-header">
         <div className="customer-requests-assisted-detail-heading">
           <h2 className="customer-requests-etsy-detail-title">{item.customerDisplayName}</h2>
-          <span className={`customer-requests-assisted-status-badge ${statusTone(item.status)}`}>
-            {item.statusLabel}
-          </span>
+          <div className="customer-requests-assisted-status-header-actions">
+            <span className={`customer-requests-assisted-status-badge ${statusTone(item.status)}`}>
+              {item.statusLabel}
+            </span>
+            <AssistedStaffOverflowMenu
+              canCancel={canCancelRequest}
+              canReject={canReject}
+              canRestore={canShowRestore}
+              disabled={busy}
+              onCancel={() => {
+                setActionReason("");
+                setReasonModal("cancel");
+              }}
+              onReject={() => {
+                setActionReason("");
+                setReasonModal("reject");
+              }}
+              onRestore={() => {
+                setActionReason("");
+                setReasonModal("restore");
+              }}
+            />
+          </div>
         </div>
         <p className="settings-field-hint">{formatCreatedAt(item.createdAt)}</p>
+        {item.status === "cancelled" && item.customerCancelReason ? (
+          <p className="settings-field-hint customer-requests-assisted-cancel-reason">
+            <strong>Customer cancel reason:</strong> {item.customerCancelReason}
+          </p>
+        ) : null}
       </header>
 
-      <div className="customer-requests-assisted-detail-grid">
-        <div className="customer-requests-assisted-detail-main">
+      <div
+        aria-label="Request sections"
+        className="customer-requests-assisted-detail-tabs"
+        role="tablist"
+      >
+        {(["overview", "proofs", "messages"] as const).map((tab) => (
+          <button
+            aria-selected={activeDetailTab === tab}
+            className={`customer-requests-assisted-detail-tab${
+              activeDetailTab === tab ? " is-active" : ""
+            }`}
+            key={tab}
+            onClick={() => setActiveDetailTab(tab)}
+            role="tab"
+            type="button"
+          >
+            {tab === "overview" ? "Overview" : tab === "proofs" ? "Proofs" : "Messages"}
+          </button>
+        ))}
+      </div>
+
+      <div className="customer-requests-assisted-detail-grid" role="tabpanel">
+        {activeDetailTab === "overview" ? (
+          <div className="customer-requests-assisted-detail-main">
           <section className="customer-requests-assisted-panel">
             <h3 className="customer-requests-assisted-panel-title">Brief</h3>
             <p className="customer-requests-assisted-brief">{description}</p>
@@ -656,10 +952,16 @@ function AssistedDetail({
               />
             </dl>
           </section>
-        </div>
+          </div>
+        ) : null}
 
-        <aside className="customer-requests-assisted-detail-side">
-          <section className="customer-requests-assisted-panel">
+        <aside
+          className={`customer-requests-assisted-detail-side${
+            activeDetailTab === "overview" ? "" : " is-full-width"
+          }`}
+        >
+          {activeDetailTab === "overview" ? (
+            <section className="customer-requests-assisted-panel">
             <div className="customer-requests-assisted-panel-header">
               <h3 className="customer-requests-assisted-panel-title">Reference images</h3>
               {refMedia.length > 0 ? (
@@ -691,43 +993,201 @@ function AssistedDetail({
             ) : (
               <p className="settings-field-hint">No reference images.</p>
             )}
-          </section>
+            </section>
+          ) : null}
 
-          <section className="customer-requests-assisted-panel">
-            <h3 className="customer-requests-assisted-panel-title">Proofs</h3>
-            {proofMedia.length > 0 ? (
-              <div className="customer-requests-assisted-proof-list">
-                {proofMedia.map((proof) => (
-                  <button
-                    className="customer-requests-assisted-proof-row"
-                    key={proof.id}
-                    onClick={() => setSelectedProofId(proof.id)}
-                    type="button"
-                  >
-                    <img alt="" src={proof.url} />
-                    <span className="customer-requests-assisted-proof-row-body">
-                      <strong>Proof {proof.number}</strong>
-                      <span>{formatHistoryAt(proof.createdAt) || "Unknown time"}</span>
-                      {proof.note?.trim() ? <span>{proof.note.trim()}</span> : null}
-                      {proof.relatedNotes.length > 0 ? (
-                        <span>
-                          {proof.relatedNotes.length} linked note
-                          {proof.relatedNotes.length === 1 ? "" : "s"}
-                        </span>
-                      ) : null}
+          {activeDetailTab === "overview" ? (
+            <>
+              {canMutate ? (
+                <section className="customer-requests-assisted-panel customer-requests-assisted-notes">
+                  <h3 className="customer-requests-assisted-panel-title">
+                    Internal staff notes
+                  </h3>
+                  <p className="settings-field-hint">
+                    Internal only — not shown to the customer in Messages. Click Save notes to
+                    keep changes.
+                  </p>
+                  <label className="form-field">
+                    <span className="visually-hidden">Internal staff notes</span>
+                    <textarea
+                      maxLength={ASSISTED_CREATION_FIELD_LIMITS.staffNote}
+                      onChange={(event) => setStaffNotes(event.target.value)}
+                      rows={4}
+                      value={staffNotes}
+                    />
+                  </label>
+                  <div className="customer-requests-assisted-notes-footer">
+                    <span className="settings-field-hint" aria-live="polite">
+                      {savingNotes
+                        ? "Saving…"
+                        : notesDirty
+                          ? "Unsaved changes"
+                          : "Saved"}
+                      {" · "}
+                      {staffNotes.length}/{ASSISTED_CREATION_FIELD_LIMITS.staffNote}
                     </span>
-                  </button>
-                ))}
-              </div>
+                    <Button
+                      disabled={busy || !notesDirty}
+                      onClick={() => void saveStaffNotes()}
+                      size="sm"
+                      variant="primary"
+                    >
+                      {savingNotes ? "Saving…" : "Save notes"}
+                    </Button>
+                  </div>
+                </section>
+              ) : null}
+
+              {hasPrimaryActions ? (
+                <section className="customer-requests-assisted-panel customer-requests-assisted-actions">
+                  <h3 className="customer-requests-assisted-panel-title">Staff actions</h3>
+                  <div className="customer-requests-assisted-action-row">
+                    {item.status === "submitted" ? (
+                      <Button disabled={busy} onClick={() => void runAction("start_work")}>
+                        Start work
+                      </Button>
+                    ) : null}
+                    {item.status === "revision_requested" ? (
+                      <Button disabled={busy} onClick={() => void runAction("resume_work")}>
+                        Resume revision
+                      </Button>
+                    ) : null}
+                  </div>
+                </section>
+              ) : null}
+            </>
+          ) : null}
+
+          {activeDetailTab === "proofs" ? (
+            <section className="customer-requests-assisted-panel">
+            <h3 className="customer-requests-assisted-panel-title">Proofs</h3>
+            {proofMediaNewestFirst.length > 0 ? (
+              <ul className="customer-requests-assisted-proof-list">
+                {proofMediaNewestFirst.map((proof, index) => {
+                  const isLatest = index === 0;
+                  const isApprovedProof = item.approvedProofId === proof.id;
+                  const metaBits: string[] = [];
+                  if (isApprovedProof) {
+                    metaBits.push("Approved");
+                  }
+                  if (proof.unavailable) {
+                    metaBits.push("File removed");
+                  }
+                  if (proof.notes.length > 0) {
+                    metaBits.push("Notes");
+                  }
+                  return (
+                    <li key={proof.id}>
+                      <button
+                        className="customer-requests-assisted-proof-row"
+                        onClick={() => setSelectedProofId(proof.id)}
+                        type="button"
+                      >
+                        {proof.unavailable || !proof.url ? (
+                          <span
+                            aria-hidden="true"
+                            className="customer-requests-assisted-proof-row-placeholder"
+                          />
+                        ) : (
+                          <img
+                            alt=""
+                            src={proof.url}
+                          />
+                        )}
+                        <span className="customer-requests-assisted-proof-row-body">
+                          <span className="customer-requests-assisted-proof-row-title">
+                            Proof {proof.number}
+                            {isLatest ? " (latest)" : ""}
+                          </span>
+                          <span className="customer-requests-assisted-proof-row-meta">
+                            {formatHistoryAt(proof.createdAt) || "Unknown time"}
+                            {metaBits.length > 0 ? ` · ${metaBits.join(" · ")}` : ""}
+                          </span>
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
             ) : (
               <p className="settings-field-hint">No proofs uploaded yet.</p>
             )}
-          </section>
 
-          {historyEntries.length > 0 ? (
-            <details className="customer-requests-assisted-panel customer-requests-assisted-history-disclosure">
-              <summary className="customer-requests-assisted-panel-title">
-                History ({historyEntries.length})
+            {canMutate && item.status === "in_progress" ? (
+              <div className="customer-requests-assisted-proof-upload">
+                <input
+                  accept="image/jpeg,image/png,image/webp"
+                  className="visually-hidden"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    event.target.value = "";
+                    if (!file) {
+                      return;
+                    }
+                    if (pendingProofPreviewUrl) {
+                      URL.revokeObjectURL(pendingProofPreviewUrl);
+                    }
+                    setPendingProofFile(file);
+                    setPendingProofPreviewUrl(URL.createObjectURL(file));
+                    setError(null);
+                  }}
+                  ref={fileInputRef}
+                  type="file"
+                />
+                {!pendingProofFile ? (
+                  <Button disabled={busy} onClick={() => fileInputRef.current?.click()}>
+                    Choose proof image
+                  </Button>
+                ) : (
+                  <div className="customer-requests-assisted-proof-pending">
+                    {pendingProofPreviewUrl ? (
+                      <div className="customer-requests-assisted-proof-pending-preview">
+                        <img alt="Pending proof preview" src={pendingProofPreviewUrl} />
+                      </div>
+                    ) : null}
+                    <p
+                      className="customer-requests-assisted-proof-pending-name"
+                      title={pendingProofFile.name}
+                    >
+                      {pendingProofFile.name}
+                    </p>
+                    <label className="form-field">
+                      <span>Proof note (optional)</span>
+                      <textarea
+                        className="customer-requests-assisted-proof-note-input"
+                        onChange={(event) => setProofNote(event.target.value)}
+                        placeholder="Optional note for the customer"
+                        rows={5}
+                        value={proofNote}
+                      />
+                    </label>
+                    <div className="customer-requests-assisted-action-row">
+                      <Button
+                        disabled={busy}
+                        onClick={clearPendingProof}
+                        variant="secondary"
+                      >
+                        Clear
+                      </Button>
+                      <Button disabled={busy} onClick={() => void submitPendingProof()}>
+                        Submit to customer
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : null}
+            </section>
+          ) : null}
+
+          {activeDetailTab === "messages" ? (
+            <section
+              className="customer-requests-assisted-panel"
+              data-assisted-messages-panel="true"
+              ref={messagesPanelRef}
+            >
+              <h3 className="customer-requests-assisted-panel-title">
+                Messages ({historyEntries.length})
                 {unreadUpdateCount > 0 ? (
                   <span
                     aria-label={`${unreadUpdateCount} unread customer update${unreadUpdateCount === 1 ? "" : "s"}`}
@@ -736,174 +1196,138 @@ function AssistedDetail({
                     {unreadUpdateCount}
                   </span>
                 ) : null}
-              </summary>
-              <ol className="customer-requests-assisted-history">
-                {historyEntries.map((entry) => (
-                  <li
-                    className={
-                      entry.isUnread ? "customer-requests-assisted-history-item is-unread" : undefined
-                    }
-                    key={entry.key}
-                  >
-                    <div className="customer-requests-assisted-history-item-head">
-                      <strong>{entry.title}</strong>
-                      {entry.isUnread && entry.atMs != null ? (
-                        <button
-                          className="link-button customer-requests-assisted-history-read"
-                          onClick={(event) => {
-                            event.preventDefault();
-                            event.stopPropagation();
-                            if (entry.atMs != null) {
-                              onMarkHistoryEntryRead(entry.atMs);
-                            }
-                          }}
-                          type="button"
-                        >
-                          Read
-                        </button>
-                      ) : null}
-                    </div>
-                    {entry.when ? <span>{entry.when}</span> : null}
-                    <span className="customer-requests-assisted-history-role">{entry.byRole}</span>
-                    {entry.note ? <span>{entry.note}</span> : null}
-                  </li>
-                ))}
-              </ol>
-            </details>
-          ) : null}
-
-          <section className="customer-requests-assisted-panel customer-requests-assisted-actions">
-            <h3 className="customer-requests-assisted-panel-title">Staff actions</h3>
-            {canMutate ? (
-              <>
-                <label className="form-field">
-                  <span>Internal staff notes</span>
-                  <textarea
-                    onChange={(event) => setStaffNotes(event.target.value)}
-                    rows={3}
-                    value={staffNotes}
-                  />
-                </label>
-
-                <div className="customer-requests-assisted-action-row">
-                  {item.status === "submitted" ? (
-                    <Button disabled={busy} onClick={() => void runAction("start_work")}>
-                      Start work
-                    </Button>
-                  ) : null}
-                  {item.status === "revision_requested" ? (
-                    <Button disabled={busy} onClick={() => void runAction("resume_work")}>
-                      Resume revision
-                    </Button>
-                  ) : null}
-                  {item.status === "submitted" || item.status === "in_progress" ? (
-                    <Button
-                      disabled={busy}
-                      onClick={() => {
-                        setActionReason("");
-                        setReasonModal("reject");
-                      }}
-                      variant="danger"
+              </h3>
+              <div
+                aria-label="Request messages"
+                className="customer-requests-assisted-messages-thread"
+                ref={messagesThreadRef}
+                tabIndex={0}
+              >
+              {historyEntries.length > 0 ? (
+                <ol className="customer-requests-assisted-history-chat">
+                  {historyEntries.map((entry) => (
+                    <li
+                      className={[
+                        "customer-requests-assisted-history-chat-row",
+                        `is-${entry.actor}`,
+                        entry.isUnread ? "is-unread" : "",
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
+                      key={entry.key}
                     >
-                      Reject
-                    </Button>
-                  ) : null}
-                  {item.status !== "approved" &&
-                  item.status !== "rejected" &&
-                  item.status !== "cancelled" ? (
-                    <Button
-                      disabled={busy}
-                      onClick={() => {
-                        setActionReason("");
-                        setReasonModal("cancel");
-                      }}
-                      variant="secondary"
-                    >
-                      Cancel
-                    </Button>
-                  ) : null}
-                  {item.status === "cancelled" && canRestore ? (
-                    <Button
-                      disabled={busy}
-                      onClick={() => {
-                        setActionReason("");
-                        setReasonModal("restore");
-                      }}
-                    >
-                      Restore…
-                    </Button>
-                  ) : null}
-                </div>
-
-                {item.status === "in_progress" ? (
-                  <div className="customer-requests-assisted-proof-upload">
-                    <input
-                      accept="image/jpeg,image/png,image/webp"
-                      className="visually-hidden"
-                      onChange={(event) => {
-                        const file = event.target.files?.[0];
-                        event.target.value = "";
-                        if (!file) {
-                          return;
-                        }
-                        if (pendingProofPreviewUrl) {
-                          URL.revokeObjectURL(pendingProofPreviewUrl);
-                        }
-                        setPendingProofFile(file);
-                        setPendingProofPreviewUrl(URL.createObjectURL(file));
-                        setError(null);
-                      }}
-                      ref={fileInputRef}
-                      type="file"
-                    />
-                    {!pendingProofFile ? (
-                      <Button disabled={busy} onClick={() => fileInputRef.current?.click()}>
-                        Choose proof image
-                      </Button>
-                    ) : (
-                      <div className="customer-requests-assisted-proof-pending">
-                        {pendingProofPreviewUrl ? (
-                          <div className="customer-requests-assisted-proof-pending-preview">
-                            <img alt="Pending proof preview" src={pendingProofPreviewUrl} />
-                          </div>
+                      <div className="customer-requests-assisted-history-chat-meta">
+                        <span className="customer-requests-assisted-history-chat-role">
+                          {entry.roleLabel}
+                        </span>
+                        {entry.when ? (
+                          <span className="customer-requests-assisted-history-chat-when">
+                            {entry.when}
+                          </span>
                         ) : null}
-                        <p
-                          className="customer-requests-assisted-proof-pending-name"
-                          title={pendingProofFile.name}
-                        >
-                          {pendingProofFile.name}
-                        </p>
-                        <label className="form-field">
-                          <span>Proof note (optional)</span>
-                          <input
-                            onChange={(event) => setProofNote(event.target.value)}
-                            type="text"
-                            value={proofNote}
-                          />
-                        </label>
-                        <div className="customer-requests-assisted-action-row">
-                          <Button
-                            disabled={busy}
-                            onClick={clearPendingProof}
-                            variant="secondary"
+                        {entry.isUnread && entry.atMs != null ? (
+                          <button
+                            className="link-button customer-requests-assisted-history-read"
+                            onClick={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              if (entry.atMs != null) {
+                                onMarkHistoryEntryRead(entry.atMs);
+                              }
+                            }}
+                            type="button"
                           >
-                            Clear
-                          </Button>
-                          <Button disabled={busy} onClick={() => void submitPendingProof()}>
-                            Submit to customer
-                          </Button>
-                        </div>
+                            Read
+                          </button>
+                        ) : null}
                       </div>
-                    )}
+                      <div className="customer-requests-assisted-history-chat-bubble">
+                        <strong className="customer-requests-assisted-history-chat-title">
+                          {entry.title}
+                        </strong>
+                        {entry.note ? (
+                          <p className="customer-requests-assisted-history-chat-note">{entry.note}</p>
+                        ) : null}
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              ) : (
+                <p className="settings-field-hint">No messages yet.</p>
+              )}
+              </div>
+              {canMutate && canSendAssistedCreationMessage(item.status) ? (
+                <form
+                  className="customer-requests-assisted-message-composer"
+                  onSubmit={(event) => void handleSendMessage(event)}
+                >
+                  <label
+                    className="customer-requests-assisted-message-label"
+                    htmlFor={`assisted-staff-message-${item.id}`}
+                  >
+                    Send a message
+                  </label>
+                  <textarea
+                    aria-describedby={`assisted-staff-message-help-${item.id}`}
+                    className="customer-requests-assisted-message-input"
+                    disabled={sendingMessage}
+                    id={`assisted-staff-message-${item.id}`}
+                    maxLength={ASSISTED_CREATION_MESSAGE_MAX_LENGTH}
+                    onChange={(event) => setMessageDraft(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (!(event.ctrlKey || event.metaKey) || event.key !== "Enter") {
+                        return;
+                      }
+                      event.preventDefault();
+                      if (sendingMessage || !messageDraft.trim() || !canMutate) {
+                        return;
+                      }
+                      event.currentTarget.form?.requestSubmit();
+                    }}
+                    placeholder="Message the customer"
+                    rows={3}
+                    value={messageDraft}
+                  />
+                  <div className="customer-requests-assisted-message-composer-meta">
+                    <span
+                      className="settings-field-hint"
+                      id={`assisted-staff-message-help-${item.id}`}
+                    >
+                      Messaging does not change or reopen the request status. Internal notes stay
+                      on Overview.
+                    </span>
+                    <span className="settings-field-hint">
+                      {messageDraft.length}/{ASSISTED_CREATION_MESSAGE_MAX_LENGTH}
+                    </span>
                   </div>
-                ) : null}
-              </>
-            ) : (
-              <p className="settings-field-hint">
-                Helpers can view requests but not change status or send proofs.
-              </p>
-            )}
-          </section>
+                  {messageError ? (
+                    <p className="auth-message auth-message-error" role="alert">
+                      {messageError}
+                    </p>
+                  ) : null}
+                  <div className="customer-requests-assisted-message-send-wrap">
+                    <Button
+                      disabled={sendingMessage || !messageDraft.trim()}
+                      type="submit"
+                    >
+                      {sendingMessage ? "Sending…" : "Send"}
+                    </Button>
+                    <span className="settings-field-hint customer-requests-assisted-message-send-tip">
+                      Ctrl + Enter to send
+                    </span>
+                  </div>
+                </form>
+              ) : canMutate ? (
+                <p className="settings-field-hint" role="status">
+                  {ASSISTED_CREATION_MESSAGING_CLOSED_MESSAGE}
+                </p>
+              ) : (
+                <p className="settings-field-hint">
+                  Helpers can view messages but not send replies.
+                </p>
+              )}
+            </section>
+          ) : null}
         </aside>
       </div>
 
@@ -916,6 +1340,8 @@ function AssistedDetail({
       {selectedProof ? (
         <AssistedProofDetailModal
           downloading={isDownloading}
+          isApprovedProof={item.approvedProofId === selectedProof.id}
+          isLatest={proofMediaNewestFirst[0]?.id === selectedProof.id}
           onClose={() => setSelectedProofId(null)}
           onDownload={(entry) => void handleDownload(entry)}
           proof={selectedProof}
@@ -983,10 +1409,12 @@ export function AssistedCreationRequestsSection({
   onToast: (message: string) => void;
 }) {
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { items, isLoading, error } = useAssistedCreationRequests();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [activeStage, setActiveStage] = useState<AssistedStageTab>("new");
   const [ackByRequestId, setAckByRequestId] = useState<Record<string, number>>({});
+  const [detailTabFromRoute, setDetailTabFromRoute] = useState<AssistedDetailRouteTab>("overview");
 
   useEffect(() => {
     if (!user?.id) {
@@ -1008,6 +1436,30 @@ export function AssistedCreationRequestsSection({
     );
   }, [user?.id]);
 
+  useEffect(() => {
+    const requestId = searchParams.get(CUSTOMER_REQUEST_ID_QUERY_PARAM)?.trim() || null;
+    const detailTabRaw = searchParams.get(CUSTOMER_REQUEST_DETAIL_TAB_QUERY_PARAM);
+    const detailTab = isAssistedDetailRouteTab(detailTabRaw) ? detailTabRaw : "overview";
+
+    if (!requestId) {
+      return;
+    }
+
+    const match = items.find((item) => item.id === requestId);
+    if (!match) {
+      return;
+    }
+
+    setActiveStage(stageForStatus(match.status));
+    setSelectedId(match.id);
+    setDetailTabFromRoute(detailTab);
+
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete(CUSTOMER_REQUEST_ID_QUERY_PARAM);
+    nextParams.delete(CUSTOMER_REQUEST_DETAIL_TAB_QUERY_PARAM);
+    setSearchParams(nextParams, { replace: true });
+  }, [items, searchParams, setSearchParams]);
+
   const unreadByRequestId = useMemo(() => {
     const next: Record<string, number> = {};
     for (const item of items) {
@@ -1018,23 +1470,6 @@ export function AssistedCreationRequestsSection({
     }
     return next;
   }, [ackByRequestId, items]);
-
-  const unreadByStage = useMemo(() => {
-    const next: Record<AssistedStageTab, number> = {
-      new: 0,
-      in_progress: 0,
-      revisions: 0,
-      proof_ready: 0,
-      completed: 0,
-    };
-    for (const item of items) {
-      const unread = unreadByRequestId[item.id] ?? 0;
-      if (unread > 0) {
-        next[stageForStatus(item.status)] += unread;
-      }
-    }
-    return next;
-  }, [items, unreadByRequestId]);
 
   const counts = useMemo(() => {
     const next: Record<AssistedStageTab, number> = {
@@ -1075,7 +1510,7 @@ export function AssistedCreationRequestsSection({
     entryAtMs: number,
   ): Promise<void> {
     if (!user?.id) {
-      onToast("Sign in required to mark history as read.");
+      onToast("Sign in required to mark the message as read.");
       return;
     }
     const current = ackByRequestId[item.id] ?? null;
@@ -1090,7 +1525,7 @@ export function AssistedCreationRequestsSection({
         current,
       );
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Unable to mark history as read.";
+      const message = err instanceof Error ? err.message : "Unable to mark the message as read.";
       console.error("[assistedCreationUpdateAcks] markReadThrough failed", err);
       onToast(
         /permission|insufficient|Missing or insufficient/i.test(message)
@@ -1135,7 +1570,6 @@ export function AssistedCreationRequestsSection({
             role="tablist"
           >
             {STAGE_TABS.map((tab) => {
-              const unread = unreadByStage[tab.id];
               return (
                 <button
                   aria-selected={activeStage === tab.id}
@@ -1147,14 +1581,6 @@ export function AssistedCreationRequestsSection({
                 >
                   {tab.label}
                   <span className="customer-requests-assisted-stage-count">{counts[tab.id]}</span>
-                  {unread > 0 ? (
-                    <span
-                      aria-label={`${unread} unread customer update${unread === 1 ? "" : "s"}`}
-                      className="customer-requests-assisted-unread-badge"
-                    >
-                      {unread}
-                    </span>
-                  ) : null}
                 </button>
               );
             })}
@@ -1171,26 +1597,20 @@ export function AssistedCreationRequestsSection({
               >
                 {visibleItems.map((item) => {
                   const isSelected = item.id === selected?.id;
-                  const unread = unreadByRequestId[item.id] ?? 0;
                   return (
                     <button
                       aria-selected={isSelected}
                       className={`customer-requests-etsy-list-card${isSelected ? " is-selected" : ""}`}
                       key={item.id}
-                      onClick={() => setSelectedId(item.id)}
+                      onClick={() => {
+                        setSelectedId(item.id);
+                        setDetailTabFromRoute("overview");
+                      }}
                       role="option"
                       type="button"
                     >
                       <span className="customer-requests-etsy-list-card-title">
                         {item.customerDisplayName}
-                        {unread > 0 ? (
-                          <span
-                            aria-label={`${unread} unread customer update${unread === 1 ? "" : "s"}`}
-                            className="customer-requests-assisted-unread-badge"
-                          >
-                            {unread}
-                          </span>
-                        ) : null}
                       </span>
                       <span className="customer-requests-etsy-list-card-meta">{item.statusLabel}</span>
                       <span className="customer-requests-etsy-list-card-meta">
@@ -1208,6 +1628,7 @@ export function AssistedCreationRequestsSection({
                   <AssistedDetail
                     canMutate={canMutate}
                     canRestore={canRestore}
+                    initialDetailTab={detailTabFromRoute}
                     item={selected}
                     onMarkHistoryEntryRead={(entryAtMs) => {
                       void markRequestHistoryEntryRead(selected, entryAtMs);

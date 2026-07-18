@@ -91,10 +91,11 @@ remains):
 firebase deploy --only functions:createTeamUser,functions:createCustomerWithPortalInvite,functions:staffAddAssistedCreationProof,functions:updateEmailProviderSettings,functions:onEmailDeliveryJobCreated,firestore:rules --project fresh-prints-dev
 ```
 
-Prerequisites: existing `RESEND_API_KEY`; verified sender
-`Fresh Prints <team@funkyfreshprints.com>` for both sender parameters; canonical dev Portal URL
-`https://myprintrequest.dev`. Secret/parameter changes and every production action require a
-separate human checkpoint.
+Prerequisites: existing `RESEND_API_KEY`; optional `BREVO_API_KEY` when using Brevo (see
+`docs/workflow/setup/brevo-email-setup.md`); verified sender
+`Fresh Prints <team@funkyfreshprints.com>` for both sender parameters in the selected provider;
+canonical dev Portal URL `https://myprintrequest.dev`. Secret/parameter changes and every
+production action require a separate human checkpoint.
 
 ### Gitignored build outputs (2026-06-24, paths updated 2026-07-08 for `apps/studio/` move)
 

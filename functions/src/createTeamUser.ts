@@ -8,8 +8,9 @@ import { loadCallerProfile } from "./lib/caller";
 import { alreadyExists, internal, invalidArgument, permissionDenied, unauthenticated } from "./lib/errors";
 import { assertCanCreateTeamRole, assertTeamUserRole } from "./lib/permissions";
 import { sendTeamInvitationEmail } from "./lib/resendEmailService";
-import { resendApiKeySecret, invitationFromEmail } from "./lib/secrets";
+import { brevoApiKeySecret, invitationFromEmail, resendApiKeySecret } from "./lib/secrets";
 import { loadEmailProviderSettings } from "./lib/email/emailSettings";
+import { resolveEmailApiKey } from "./lib/email/resolveEmailApiKey";
 import type { CreateTeamUserRequest, CreateTeamUserResponse } from "./lib/types";
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -70,7 +71,10 @@ async function sendInvitationEmail(
     const resetLink = await adminAuth.generatePasswordResetLink(email);
     const settings = await loadEmailProviderSettings();
     return sendTeamInvitationEmail({
-      apiKey: resendApiKeySecret.value(),
+      apiKey: resolveEmailApiKey(settings.inviteProvider, {
+        resend: resendApiKeySecret.value(),
+        brevo: brevoApiKeySecret.value(),
+      }),
       provider: settings.inviteProvider,
       fromEmail: invitationFromEmail.value(),
       toEmail: email,
@@ -84,7 +88,7 @@ async function sendInvitationEmail(
 }
 
 export const createTeamUser = onCall(
-  { secrets: [resendApiKeySecret] },
+  { secrets: [resendApiKeySecret, brevoApiKeySecret] },
   async (request): Promise<CreateTeamUserResponse> => {
     if (!request.auth?.uid) {
       throw unauthenticated();
