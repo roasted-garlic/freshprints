@@ -109,7 +109,7 @@ Current Goal:
 Provider-agnostic proof-ready email notifications for Phase 9C are complete on `fresh-prints-dev`
 (Resend + Brevo adapters, invitation routing, proof outbox worker, owner provider Settings).
 Owner **BREVO PASS** 2026-07-17 (Transactional Logs Sent / Delivered / First opening). Production
-email release remains separate. Proof download PASS 2026-07-17; parked owner QA for terminal messaging + cancel reason + skeleton live-smoke also **PASS** (owner **PASS all**, 2026-07-17).
+email release remains separate. Proof download PASS 2026-07-17; parked owner QA for terminal messaging + cancel reason + skeleton live-smoke also **PASS** (owner **PASS all**, 2026-07-17). Studio Test Data Reset presets + wipe expansion **PASS** / signed off **approved_with_notes** 2026-07-18 (`docs/workflow/reviews/2026-07-18-studio-test-data-reset-presets-signoff.md`). Open: Brevo first-proof IP/blocklist retest (separate checkpoint).
 
 Phase 7 Show Queue is complete for Studio MVP: foundation, staff-assisted Whatnot import,
 production-file export (zip, multiply-by-qty, auto-nested gang sheet PNG) signed off 2026-07-07,

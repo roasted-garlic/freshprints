@@ -1,69 +1,74 @@
-## Current Goal
-(idle) — parked owner-QA batch closed: terminal messaging, cancel reason, skeleton live-smoke note
+# Current Goal
+Brevo proof-ready email: owner IP/blocklist deliverability (not first-proof app skip)
 
 ## Current Mode
 managed-phase
 
 ## Phase
-idle
+test
 
 ## Plan Status
-complete
+n/a - investigation pivot; no app fix planned
 
 ## Review Status
-approved
+n/a
 
 ## Implementation Status
-complete
+n/a - no speculative code deploy
 
 ## Test Status
-passed_with_notes
+partial - Functions logs confirm enqueue + Brevo `provider_rejected` on failed first proofs
 
 ## Signoff Status
-approved_with_notes
+pending (Brevo); wipe presets **approved_with_notes** 2026-07-18
 
 ## Human Checkpoint Required
-no
-
-## Human Checkpoint Reason
-(none — owner **PASS all** 2026-07-17 closed remaining parked owner-QA from proof-download closeout)
-
-## Allowed Actions
-Idle / start next managed phase when requested. Read docs. No production deploy unless explicitly approved.
-
-## Forbidden Actions
-Production deploy without approval; secrets in chat
-
-## Next Required Step
-None. Workflow idle. Start a new managed phase when the owner picks the next goal.
-
-## DONE
 yes
 
+## Human Checkpoint Reason
+Brevo/provider IP allowlisting or blocklist - clear in Brevo dashboard, then retest first-proof email. See docs/workflow/reviews/2026-07-18-brevo-proof-email-ip-block-checkpoint.md
+
+## Allowed Actions
+Read docs; await owner Brevo IP/blocklist fix + retest result. No production deploy.
+
+## Forbidden Actions
+Speculative first-proof code fixes; Functions deploy for this email issue; production deploy; secrets in chat
+
+## Next Required Step
+Await owner Brevo transactional-log / IP allowlist fix; then first-proof email retest (PASS/FAIL)
+
+## DONE
+no (Brevo open). Wipe presets goal closed.
+
 ## Last Completed Step
-2026-07-17 - Owner **PASS all**: signoffs `approved_with_notes` for assisted-terminal-messaging-closed, assisted-customer-cancel-reason; skeleton optional live smoke closed
+2026-07-18 - Studio Test Data Reset presets + wipe expansion signed off **approved_with_notes** after owner **PASS** (short labels, presets incl. **All (-) Designs**, expanded Etsy/Custom leftovers; `wipeOperationalTestData` already on fresh-prints-dev). Signoff: docs/workflow/reviews/2026-07-18-studio-test-data-reset-presets-signoff.md
 
 ## Plan Path
-(n/a — idle)
+(n/a - deliverability / Brevo console)
 
 ## Review Path
-(n/a — idle)
+docs/workflow/reviews/2026-07-18-brevo-proof-email-ip-block-checkpoint.md
 
 ## Manual QA Path
-docs/workflow/reviews/2026-07-17-assisted-terminal-messaging-closed-manual-qa.md
-docs/workflow/reviews/2026-07-17-assisted-customer-cancel-reason-manual-qa.md
+docs/workflow/reviews/2026-07-18-brevo-proof-email-ip-block-checkpoint.md
 
 ## Signoff Path
-docs/workflow/reviews/2026-07-17-assisted-terminal-messaging-closed-signoff.md
-docs/workflow/reviews/2026-07-17-assisted-customer-cancel-reason-signoff.md
+(wipe closed) docs/workflow/reviews/2026-07-18-studio-test-data-reset-presets-signoff.md
+
+## Files Modified
+(wipe closed - see signoff). Brevo: no app code.
+
+## Deploy
+- Prior: `wipeOperationalTestData` → `fresh-prints-dev` (2026-07-18)
+- No deploy for Brevo pivot
+- No production
 
 ## Parked Prior Workflow
-(none — all items from proof-download closeout parked list are closed)
+(none) - Studio Test Data Reset presets closed 2026-07-18 after owner PASS.
 
 ## Decision Log
-- 2026-07-17 - Owner **PASS all**: close parked `assisted-terminal-messaging-closed`, `assisted-customer-cancel-reason`, and skeleton optional live Gemini smoke as PASS / signed off `approved_with_notes`.
-- 2026-07-17 - Download "Failed to fetch": HTTPS Function fetch CORS/URL; replaced with callable Admin→base64→blob.
-- 2026-07-17 - Notes: single button; dedupe proof.note vs history; exclude Proof-ready email.
-- 2026-07-17 - Portal proof modal aligned to Studio hierarchy (header, summary rows, stage, 14-day hint).
-- 2026-07-17 - Owner **PASS this** for proof-download / Portal proof UX; signoff `approved_with_notes`.
-
+- 2026-07-18 - Owner **PASS** on Studio Test Data Reset wipe UX → signoff **approved_with_notes**; wipe human checkpoint cleared.
+- 2026-07-18 - Owner request: preset for everything but designs → `EVERYTHING_EXCEPT_DESIGNS_WIPE_PRESET_TARGETS` = all ops targets except `designs`. Final UI label: **All (-) Designs**.
+- 2026-07-18 - Owner pivot: first-proof email miss is Brevo/IP blocking, not app skip. Logs: enqueue OK; `provider_rejected` on failed first proofs; follow-up proof same day sent via Brevo. No speculative deploy.
+- 2026-07-18 - Owner follow-up: include `etsyRecommendationSuggestions` + `etsySuggestionRequests` in Etsy wipe. Deploy wipe function to fresh-prints-dev - deployed.
+- 2026-07-18 - Started managed phase: Test Data Reset presets + short labels; expand assisted/etsy wipe to orphan side collections.

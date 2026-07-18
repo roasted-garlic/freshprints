@@ -4,9 +4,14 @@ import { describe, it } from "node:test";
 import {
   ALL_OPERATIONAL_WIPE_TARGETS,
   applyOperationalWipeTargetToggle,
+  CUSTOM_REQUESTS_WIPE_PRESET_TARGETS,
+  DESIGNS_WIPE_PRESET_TARGETS,
+  ETSY_WIPE_PRESET_TARGETS,
+  EVERYTHING_EXCEPT_DESIGNS_WIPE_PRESET_TARGETS,
   expandOperationalWipePlan,
   getDesignsWipePrerequisiteError,
   PRINT_REQUEST_RESET_PRESET_TARGETS,
+  PRINT_REQUESTS_WIPE_PRESET_TARGETS,
 } from "./operationalWipeTargets";
 
 describe("expandOperationalWipePlan", () => {
@@ -112,9 +117,14 @@ describe("expandOperationalWipePlan", () => {
     assert.equal(plan.resetSequences, false);
   });
 
-  it("expands etsySearches to requests and rate limits", () => {
+  it("expands etsySearches to requests, rate limits, overlays, and inert leftovers", () => {
     const plan = expandOperationalWipePlan(["etsySearches"]);
     assert.deepEqual(plan.deleteCollections, [
+      "customRequestEtsySearchRateLimits",
+      "etsySuggestionRequests",
+      "etsyRecommendationSuggestions",
+      "etsyWebsiteSearchCache",
+      "etsyRecommendationConfig",
       "etsyRecommendationRateLimits",
       "etsyRecommendationRequests",
     ]);
@@ -123,12 +133,52 @@ describe("expandOperationalWipePlan", () => {
     assert.equal(plan.wipeAssistedCreationStorage, false);
   });
 
-  it("expands assistedCreationRequests to docs and Storage wipe", () => {
+  it("expands assistedCreationRequests to docs, side collections, and Storage wipe", () => {
     const plan = expandOperationalWipePlan(["assistedCreationRequests"]);
-    assert.deepEqual(plan.deleteCollections, ["assistedCreationRequests"]);
+    assert.deepEqual(plan.deleteCollections, [
+      "assistedCreationUpdateAcks",
+      "customerNotifications",
+      "emailDeliveryJobs",
+      "customRequests",
+      "assistedCreationRequests",
+    ]);
     assert.equal(plan.wipeAssistedCreationStorage, true);
     assert.equal(plan.wipeCustomerUploadStorage, false);
     assert.equal(plan.wipeDesignStorage, false);
+  });
+});
+
+describe("wipe presets", () => {
+  it("Print Requests preset matches legacy print-request reset", () => {
+    assert.deepEqual(PRINT_REQUESTS_WIPE_PRESET_TARGETS, PRINT_REQUEST_RESET_PRESET_TARGETS);
+    assert.deepEqual(PRINT_REQUESTS_WIPE_PRESET_TARGETS, [
+      "printRequests",
+      "sequences",
+      "designRequestStats",
+    ]);
+  });
+
+  it("named presets select expected targets", () => {
+    assert.deepEqual(ETSY_WIPE_PRESET_TARGETS, ["etsySearches"]);
+    assert.deepEqual(CUSTOM_REQUESTS_WIPE_PRESET_TARGETS, ["assistedCreationRequests"]);
+    assert.deepEqual(DESIGNS_WIPE_PRESET_TARGETS, ["printRequests", "sequences", "designs"]);
+  });
+
+  it("All (-) Designs excludes designs and design Storage", () => {
+    assert.deepEqual(EVERYTHING_EXCEPT_DESIGNS_WIPE_PRESET_TARGETS, [
+      "printRequests",
+      "showQueueAttachments",
+      "upcomingShows",
+      "sequences",
+      "designRequestStats",
+      "customerUploads",
+      "etsySearches",
+      "assistedCreationRequests",
+    ]);
+    assert.ok(!EVERYTHING_EXCEPT_DESIGNS_WIPE_PRESET_TARGETS.includes("designs"));
+    const plan = expandOperationalWipePlan(EVERYTHING_EXCEPT_DESIGNS_WIPE_PRESET_TARGETS);
+    assert.equal(plan.wipeDesignStorage, false);
+    assert.ok(!plan.deleteCollections.includes("designs"));
   });
 });
 

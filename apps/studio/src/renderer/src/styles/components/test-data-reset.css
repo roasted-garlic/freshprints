@@ -75,11 +75,43 @@
   min-width: 0;
 }
 
-.test-data-reset-target-description {
+.test-data-reset-target-summary {
   color: var(--color-text-tertiary);
   font-size: var(--font-size-sm);
   margin: 0;
-  padding-left: 1.75rem;
+}
+
+.test-data-reset-target-details {
+  font-size: var(--font-size-sm);
+}
+
+.test-data-reset-target-details > summary {
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  list-style-position: outside;
+}
+
+.test-data-reset-target-description {
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-sm);
+  margin: var(--space-1) 0 0;
+}
+
+.test-data-reset-help {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+}
+
+.test-data-reset-help > summary {
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+.test-data-reset-help[open] > summary {
+  margin-bottom: var(--space-3);
 }
 
 .test-data-reset-actions {

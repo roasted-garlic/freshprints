@@ -132,11 +132,17 @@ Setup guides: `docs/workflow/setup/`
 
 Studio sidebar **Test Data** (`/test-data-reset`) — **owner** on `fresh-prints-dev` only, and only in **development Studio builds** (`npm run dev`). Production Studio packages do not expose the UI. Admins cannot wipe.
 
-1. Deploy `wipeOperationalTestData` if not already deployed.
-2. Prefer preset **Print-request reset (keep shows)** for request→queue scratch loops.
-3. To wipe the catalog, select **Designs** (auto-includes print requests) → extra confirm modal → type `WIPE TEST DATA`.
+1. Deploy `wipeOperationalTestData` if not already deployed (redeploy after wipe-expansion changes).
+2. Prefer presets for common intents:
+   - **Print Requests** — `printRequests` + sequences + design stats (keeps upcoming shows; clears staff inbox acks).
+   - **Etsy** — search docs + rate limits + suggestion overlays + pending suggestion requests + inert leftovers (`etsyRecommendationConfig`, `etsyWebsiteSearchCache`, `customRequestEtsySearchRateLimits`).
+   - **Custom Requests** — Assisted Creation docs/Storage + `assistedCreationUpdateAcks`, `customerNotifications`, `emailDeliveryJobs`, legacy `customRequests`.
+   - **Customer Uploads** — upload docs/ops + `customer-uploads/` Storage.
+   - **Designs + prints** — designs + print requests + sequences (extra catalog confirm).
+   - **All (-) Designs** — all ops targets except Designs (keeps catalog docs + design Storage; includes upcoming shows, uploads, Etsy, custom requests, etc.).
+3. To wipe the catalog, use **Designs + prints** or select **Designs** → extra confirm modal → type `WIPE TEST DATA`.
 4. Type `WIPE TEST DATA` to confirm any wipe.
-5. Reload Studio/Portal after wipe; sequences restart at `…-CR001` / `…-IR001`.
+5. Reload Studio and Portal pages so lists refresh; sequences restart at `…-CR001` / `…-IR001`.
 6. Wipe of print requests / show-queue attachments / upcoming shows also clears `staffInboxAcks` (inbox Done history).
 7. Print-request or attachments-only wipe also zeros each kept upcoming show’s `allocatedQuantity`, resets queue `productionStatus` from `full` / `printing` / `fully_printed` / `completed` → `open`, and clears print timer fields so Show Queue looks empty and allocatable again (`archived` / `canceled` are left alone).
 
@@ -167,6 +173,8 @@ Local commands should mirror CI where possible.
 
 | Date | Summary |
 |------|---------|
+| 2026-07-18 | Test Data Reset presets + short labels; Custom/Etsy wipe expand side leftovers (incl. overlays) |
+| 2026-07-18 | Test Data Reset preset: All (-) Designs |
 | 2026-07-10 | Staff inbox acks in Firestore; wipe clears staffInboxAcks |
 | 2026-07-10 | Test Data Reset page + wipeOperationalTestData callable |
 | 2026-07-08 | Phase 8 closeout — Portal commands, monorepo test paths |

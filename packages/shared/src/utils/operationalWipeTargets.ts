@@ -4,6 +4,9 @@ import type { OperationalWipeTarget } from "../types/admin/wipeOperationalTestDa
 export const OPERATIONAL_WIPE_DELETE_COLLECTION_ORDER = [
   "staffInboxAcks",
   "staffInboxAlertDeliveries",
+  "assistedCreationUpdateAcks",
+  "customerNotifications",
+  "emailDeliveryJobs",
   "gangSheetItems",
   "gangSheets",
   "showAllocations",
@@ -19,6 +22,12 @@ export const OPERATIONAL_WIPE_DELETE_COLLECTION_ORDER = [
   "customerUploads",
   "customerUploadBatches",
   "designs",
+  "customRequestEtsySearchRateLimits",
+  "customRequests",
+  "etsySuggestionRequests",
+  "etsyRecommendationSuggestions",
+  "etsyWebsiteSearchCache",
+  "etsyRecommendationConfig",
   "etsyRecommendationRateLimits",
   "etsyRecommendationRequests",
   "assistedCreationRequests",
@@ -75,7 +84,7 @@ export function getDesignsWipePrerequisiteError(
   }
 
   if (!targets.includes("printRequests")) {
-    return "Wiping designs requires wiping print requests first (select Print requests & items).";
+    return "Wiping designs requires wiping print requests first (select Print Requests).";
   }
 
   return null;
@@ -134,9 +143,11 @@ const OPERATIONAL_WIPE_TARGETS_ORDER: OperationalWipeTarget[] = [
  * at deleted requests; `upcomingShows` docs themselves are only removed when that target is set.
  * `designs` deletes catalog docs and Storage originals/thumbnails/previews (requires printRequests).
  * `customerUploads` deletes upload docs/ops collections and `customer-uploads/` Storage.
- * `etsySearches` deletes Portal Find a design request docs and Open API rate-limit docs.
- * `assistedCreationRequests` deletes Assisted Creation docs and `assisted-creation/` Storage
- * (pending references + proofs).
+ * `etsySearches` deletes Portal Find a design request docs, Open API rate-limit docs, inert
+ * legacy Etsy cache/config / customRequest rate-limit leftovers, suggestion overlays, and
+ * pending suggestion requests.
+ * `assistedCreationRequests` deletes Assisted Creation docs, `assisted-creation/` Storage,
+ * staff update acks, customer notifications, email delivery jobs, and legacy `customRequests`.
  */
 export function expandOperationalWipePlan(
   targets: readonly OperationalWipeTarget[],
@@ -187,12 +198,21 @@ export function expandOperationalWipePlan(
     }
 
     if (target === "etsySearches") {
+      deleteSet.add("customRequestEtsySearchRateLimits");
+      deleteSet.add("etsySuggestionRequests");
+      deleteSet.add("etsyRecommendationSuggestions");
+      deleteSet.add("etsyWebsiteSearchCache");
+      deleteSet.add("etsyRecommendationConfig");
       deleteSet.add("etsyRecommendationRateLimits");
       deleteSet.add("etsyRecommendationRequests");
       continue;
     }
 
     if (target === "assistedCreationRequests") {
+      deleteSet.add("assistedCreationUpdateAcks");
+      deleteSet.add("customerNotifications");
+      deleteSet.add("emailDeliveryJobs");
+      deleteSet.add("customRequests");
       deleteSet.add("assistedCreationRequests");
     }
   }
@@ -225,6 +245,24 @@ export const PRINT_REQUEST_RESET_PRESET_TARGETS: OperationalWipeTarget[] = [
   "designRequestStats",
 ];
 
+/** Alias for UI “Print Requests” preset (keep upcoming shows). */
+export const PRINT_REQUESTS_WIPE_PRESET_TARGETS = PRINT_REQUEST_RESET_PRESET_TARGETS;
+
+export const ETSY_WIPE_PRESET_TARGETS: OperationalWipeTarget[] = ["etsySearches"];
+
+export const CUSTOM_REQUESTS_WIPE_PRESET_TARGETS: OperationalWipeTarget[] = [
+  "assistedCreationRequests",
+];
+
+export const CUSTOMER_UPLOADS_WIPE_PRESET_TARGETS: OperationalWipeTarget[] = ["customerUploads"];
+
+/** Designs wipe always requires print requests + sequences (same as toggle). */
+export const DESIGNS_WIPE_PRESET_TARGETS: OperationalWipeTarget[] = [
+  "printRequests",
+  "sequences",
+  "designs",
+];
+
 export const ALL_OPERATIONAL_WIPE_TARGETS: OperationalWipeTarget[] = [
   "printRequests",
   "showQueueAttachments",
@@ -236,6 +274,14 @@ export const ALL_OPERATIONAL_WIPE_TARGETS: OperationalWipeTarget[] = [
   "etsySearches",
   "assistedCreationRequests",
 ];
+
+/**
+ * UI “All (-) Designs” preset: all operational wipe checkboxes except Designs
+ * (keeps catalog docs + design Storage). Includes upcoming shows, queue
+ * attachments, uploads, Etsy, custom requests, etc.
+ */
+export const EVERYTHING_EXCEPT_DESIGNS_WIPE_PRESET_TARGETS: OperationalWipeTarget[] =
+  ALL_OPERATIONAL_WIPE_TARGETS.filter((target) => target !== "designs");
 
 /** Storage prefixes removed when wiping designs (catalog assets only). */
 export const DESIGN_STORAGE_WIPE_PREFIXES = ["originals/", "thumbnails/", "previews/"] as const;

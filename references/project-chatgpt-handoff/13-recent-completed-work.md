@@ -2,6 +2,13 @@
 
 > Signed-off or largely complete work. External agents should not re-plan or duplicate this.
 
+## 2026-07-18 - Studio Test Data Reset presets + wipe expansion signed off
+
+- Goal `studio-test-data-reset-presets` -> **approved_with_notes**; owner manual QA **PASS**
+- Short wipe labels; presets including **All (-) Designs**; expanded Etsy/Custom orphan wipe targets
+- `wipeOperationalTestData` already deployed to `fresh-prints-dev` (required for leftovers)
+- Signoff: `docs/workflow/reviews/2026-07-18-studio-test-data-reset-presets-signoff.md`
+- Brevo first-proof IP/blocklist checkpoint remains open (separate)
 ## 2026-07-17 - Parked owner-QA batch (PASS all) signed off
 
 - Owner directed **PASS all** for remaining parked items after proof-download closeout

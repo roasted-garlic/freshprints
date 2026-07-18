@@ -9,7 +9,12 @@ import {
 import {
   ALL_OPERATIONAL_WIPE_TARGETS,
   applyOperationalWipeTargetToggle,
-  PRINT_REQUEST_RESET_PRESET_TARGETS,
+  CUSTOM_REQUESTS_WIPE_PRESET_TARGETS,
+  CUSTOMER_UPLOADS_WIPE_PRESET_TARGETS,
+  DESIGNS_WIPE_PRESET_TARGETS,
+  ETSY_WIPE_PRESET_TARGETS,
+  EVERYTHING_EXCEPT_DESIGNS_WIPE_PRESET_TARGETS,
+  PRINT_REQUESTS_WIPE_PRESET_TARGETS,
 } from "@fresh-prints/shared/utils/operationalWipeTargets";
 
 import { Button } from "../../../shared/components/Button";
@@ -39,7 +44,7 @@ function TestDataResetPageContent() {
   const projectId = getStudioFirebaseProjectId();
 
   const [selectedTargets, setSelectedTargets] = useState<OperationalWipeTarget[]>([
-    ...PRINT_REQUEST_RESET_PRESET_TARGETS,
+    ...PRINT_REQUESTS_WIPE_PRESET_TARGETS,
   ]);
   const [confirmStep, setConfirmStep] = useState<ConfirmStep>("closed");
   const [confirmationPhrase, setConfirmationPhrase] = useState("");
@@ -200,41 +205,78 @@ function TestDataResetPageContent() {
         <header className="test-data-reset-header">
           <h2 className="test-data-reset-title">Operational wipe</h2>
           <p className="test-data-reset-copy">
-            Project <code>{projectId}</code>. This permanently deletes selected operational data. Customer and
-            staff accounts, categories, tags, and settings are kept. Designs and Storage assets are kept unless
-            you explicitly select Designs.
+            Project <code>{projectId}</code>. Permanently deletes selected operational data. Accounts,
+            categories, tags, and settings are kept. Use presets for common groups; expand a target for the
+            full delete list.
           </p>
         </header>
 
-        <div className="test-data-reset-columns">
-          <div>
-            <h3 className="test-data-reset-subtitle">Always kept</h3>
-            <ul className="test-data-reset-list">
-              <li>Auth accounts, users, customers, usernames</li>
-              <li>Categories and tags</li>
-              <li>Settings (AI enrichment, show queue defaults)</li>
-            </ul>
+        <details className="test-data-reset-help">
+          <summary>What stays vs what presets cover</summary>
+          <div className="test-data-reset-columns">
+            <div>
+              <h3 className="test-data-reset-subtitle">Always kept</h3>
+              <ul className="test-data-reset-list">
+                <li>Auth accounts, users, customers, usernames</li>
+                <li>Categories and tags</li>
+                <li>Settings (AI, email providers, show queue)</li>
+              </ul>
+            </div>
+            <div>
+              <h3 className="test-data-reset-subtitle">Preset notes</h3>
+              <ul className="test-data-reset-list">
+                <li>Print Requests — keeps upcoming shows; clears inbox acks</li>
+                <li>Custom Requests — also clears acks, notifications, email jobs</li>
+                <li>Etsy — also clears overlays, suggestion requests, inert leftovers</li>
+                <li>Designs + prints — extra catalog confirm, then phrase</li>
+                <li>All (-) Designs — all ops targets; keeps catalog + design Storage</li>
+              </ul>
+            </div>
           </div>
-          <div>
-            <h3 className="test-data-reset-subtitle">Selectable</h3>
-            <ul className="test-data-reset-list">
-              <li>Print requests &amp; items (+ queue attachments)</li>
-              <li>Show queue attachments / gang sheets</li>
-              <li>Upcoming shows</li>
-              <li>Request name sequences</li>
-              <li>Design request stats</li>
-              <li>Designs + Storage originals/thumbnails/previews</li>
-            </ul>
-          </div>
-        </div>
+        </details>
 
         <div className="test-data-reset-presets">
           <Button
-            onClick={() => setSelectedTargets([...PRINT_REQUEST_RESET_PRESET_TARGETS])}
+            onClick={() => setSelectedTargets([...PRINT_REQUESTS_WIPE_PRESET_TARGETS])}
             type="button"
             variant="secondary"
           >
-            Print-request reset (keep shows)
+            Print Requests
+          </Button>
+          <Button
+            onClick={() => setSelectedTargets([...ETSY_WIPE_PRESET_TARGETS])}
+            type="button"
+            variant="secondary"
+          >
+            Etsy
+          </Button>
+          <Button
+            onClick={() => setSelectedTargets([...CUSTOM_REQUESTS_WIPE_PRESET_TARGETS])}
+            type="button"
+            variant="secondary"
+          >
+            Custom Requests
+          </Button>
+          <Button
+            onClick={() => setSelectedTargets([...CUSTOMER_UPLOADS_WIPE_PRESET_TARGETS])}
+            type="button"
+            variant="secondary"
+          >
+            Customer Uploads
+          </Button>
+          <Button
+            onClick={() => setSelectedTargets([...DESIGNS_WIPE_PRESET_TARGETS])}
+            type="button"
+            variant="secondary"
+          >
+            Designs + prints
+          </Button>
+          <Button
+            onClick={() => setSelectedTargets([...EVERYTHING_EXCEPT_DESIGNS_WIPE_PRESET_TARGETS])}
+            type="button"
+            variant="secondary"
+          >
+            All (-) Designs
           </Button>
           <Button
             onClick={() => setSelectedTargets([...ALL_OPERATIONAL_WIPE_TARGETS])}
@@ -244,7 +286,7 @@ function TestDataResetPageContent() {
             Select all
           </Button>
           <Button onClick={() => setSelectedTargets([])} type="button" variant="ghost">
-            Clear selection
+            Clear
           </Button>
         </div>
 
@@ -274,7 +316,11 @@ function TestDataResetPageContent() {
                   }
                 }}
               />
-              <p className="test-data-reset-target-description">{option.description}</p>
+              <p className="test-data-reset-target-summary">{option.summary}</p>
+              <details className="test-data-reset-target-details">
+                <summary>What this deletes</summary>
+                <p className="test-data-reset-target-description">{option.description}</p>
+              </details>
             </div>
           ))}
         </fieldset>
@@ -375,7 +421,7 @@ function TestDataResetPageContent() {
               <ul className="test-data-reset-list">
                 <li>Every design document in Firestore</li>
                 <li>Storage originals, thumbnails, and previews</li>
-                <li>Print requests &amp; items (required first — already included)</li>
+                <li>Print Requests (required first — already included)</li>
               </ul>
               <p className="test-data-reset-copy">
                 Categories, tags, accounts, and settings are kept. This cannot be undone.
