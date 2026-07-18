@@ -2,12 +2,21 @@
 
 > Signed-off or largely complete work. External agents should not re-plan or duplicate this.
 
+## 2026-07-17 - Parked owner-QA batch (PASS all) signed off
+
+- Owner directed **PASS all** for remaining parked items after proof-download closeout
+- `assisted-terminal-messaging-closed` -> **approved_with_notes** - `docs/workflow/reviews/2026-07-17-assisted-terminal-messaging-closed-signoff.md`
+- `assisted-customer-cancel-reason` -> **approved_with_notes** - `docs/workflow/reviews/2026-07-17-assisted-customer-cancel-reason-signoff.md`
+- `skeleton-not-halloween` optional live smoke -> **PASS** / closed (signoff updated)
+- Workflow idle; no parked owner-QA left from that closeout list
+
 ## 2026-07-17 - Assisted approved proof download + Portal proof UX signed off
 
 - Goal `assisted-approved-proof-download` (+ CORS + notes/overview residuals) **approved_with_notes**
-- Owner manual QA **PASS** ("PASS this") — callable file download; Overview 14-day; Approved labels; Notes dedupe; Studio modal absorbed
+- Owner manual QA **PASS** ("PASS this") - callable file download; Overview 14-day; Approved labels; Notes dedupe; Studio modal absorbed
 - Signoff: `docs/workflow/reviews/2026-07-17-assisted-approved-proof-download-signoff.md`
-- Still parked (no PASS invented): terminal messaging closed; customer cancel reason
+- Follow-up parked QA later closed via owner **PASS all** (see above)
+
 ## 2026-07-17 — Portal notification history + Ctrl+Enter + Studio deep-link signed off
 
 - Goals **approved_with_notes**; owner `PASS` batch:

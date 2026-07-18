@@ -90,14 +90,12 @@ Customer can download approved Assisted Creation proof PNGs from Portal without 
 
 ---
 
-## Deferred Items (Roadmap) — not PASS'd here
+## Deferred Items (Roadmap)
 
-- `assisted-terminal-messaging-closed` — awaiting owner manual QA (parked)
-- `assisted-customer-cancel-reason` — awaiting owner manual QA (parked)
-- Skeleton/Halloween — code signed off earlier; live Gemini after AI Function redeploy remains optional owner smoke
-- Production push / email production release — deferred
-
----
+- ~~`assisted-terminal-messaging-closed`~~ - closed **PASS** / signed off 2026-07-17 (owner **PASS all**)
+- ~~`assisted-customer-cancel-reason`~~ - closed **PASS** / signed off 2026-07-17 (owner **PASS all**)
+- ~~Skeleton/Halloween optional live smoke~~ - closed by owner **PASS all** 2026-07-17
+- Production push / email production release - deferred
 
 ## Open Blockers
 
@@ -107,7 +105,7 @@ Customer can download approved Assisted Creation proof PNGs from Portal without 
 
 ## Verdict
 
-**approved_with_notes** — Owner PASS closes proof-download / Portal proof UX; unrelated parked QA left open without inventing PASS.
+**approved_with_notes** - Owner PASS closes proof-download / Portal proof UX. Parked follow-ups later closed via owner **PASS all** (2026-07-17).
 
 ---
 
@@ -119,4 +117,4 @@ Customer can download approved Assisted Creation proof PNGs from Portal without 
 - [x] `references/project-chatgpt-handoff/CURRENT-STATE.md` updated
 - [x] `references/project-chatgpt-handoff/13-recent-completed-work.md` updated
 
-**Recommended next action for user:** Optional owner smoke for terminal messaging closed and/or cancel-reason; commit already requested.
+**Recommended next action for user:** Idle - parked follow-ups closed via **PASS all**; pick next managed phase when ready.

@@ -10,34 +10,34 @@
 
 | Field | Value |
 |-------|-------|
-| **Active managed goal** | *(idle)* — last closed: `assisted-approved-proof-download` + Portal proof UX residuals |
-| **Phase** | **DONE** (`approved_with_notes`) |
-| **Implementation** | complete (callable proof file download + Portal/Studio proof UX) |
-| **Tests** | automated recorded; owner manual QA **PASS** 2026-07-17 |
-| **Next** | Optional owner QA: terminal messaging closed; customer cancel reason. No production. |
-| **Deployment** | Proof download callable on `fresh-prints-dev`. No production. |
+| **Active managed goal** | *(idle)* — parked owner-QA batch closed after proof-download |
+| **Phase** | **DONE** / idle (`approved_with_notes`) |
+| **Implementation** | complete for closed goals |
+| **Tests** | owner **PASS all** 2026-07-17 |
+| **Next** | Pick next managed phase when ready. No production. |
+| **Deployment** | Dev Functions as previously deployed. No production. |
 
 ---
 
-## Just closed
+## Just closed (owner PASS all)
 
-1. **Approved proof download** — `customerGetAssistedCreationApprovedProofFile` (callable Admin→base64→blob); CORS/`Failed to fetch` residual fixed
-2. **Portal proof UX** — Overview 14-day + approved preview; Approved labels; Notes dedupe; Studio-like modal
-3. Signoff: `docs/workflow/reviews/2026-07-17-assisted-approved-proof-download-signoff.md`
+1. **assisted-terminal-messaging-closed** — composers closed on approved/rejected/cancelled; signoff `docs/workflow/reviews/2026-07-17-assisted-terminal-messaging-closed-signoff.md`
+2. **assisted-customer-cancel-reason** — cancel requires reason; Studio shows it; signoff `docs/workflow/reviews/2026-07-17-assisted-customer-cancel-reason-signoff.md`
+3. **skeleton-not-halloween** — optional live Gemini smoke closed (code already signed off); `docs/workflow/reviews/2026-07-17-skeleton-not-halloween-prompt-signoff.md`
+4. Prior: **assisted-approved-proof-download** + Portal proof UX (PASS this)
 
 ---
 
-## Still open (parked — need owner smoke later)
+## Still open (not part of this closeout)
 
-1. **assisted-terminal-messaging-closed** — manual QA pending
-2. **assisted-customer-cancel-reason** — manual QA pending
-3. **skeleton-not-halloween** — code signed off; optional live AI redeploy smoke
-4. Production push / production email release — deferred
+1. Production push / production email release — deferred
+2. **portal-notifications-web-push** — VAPID + OS toast (separate)
+3. Optional `APPROVE DEV DEPLOY` items (invite continue URL, firestore.rules harden, AI Function redeploy ops) — not parked in state as owner-QA for this batch
 
 ---
 
 ## Do not
 
-- Invent PASS for parked messaging/cancel QA.
 - Production deploy without explicit approval.
 - Paste API keys into chat/logs.
+

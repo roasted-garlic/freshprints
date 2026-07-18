@@ -5,7 +5,7 @@
 | Date | 2026-07-17 |
 | Goal | assisted-terminal-messaging-closed |
 | Plan | docs/workflow/plans/2026-07-17-assisted-terminal-messaging-closed-plan.md |
-| Status | **pending_manual** |
+| Status | **passed_with_notes** |
 
 ---
 
@@ -14,8 +14,8 @@
 | Check | Command | Exit | Result |
 |-------|---------|------|--------|
 | Unit (shared helper) | `npx tsx --test packages/shared/src/constants/assistedCreation/assistedCreation.constants.test.ts` | 0 | **pass** (6/6) |
-| Typecheck / lint / full suite | — | — | skipped (narrow change; plan) |
-| Functions unit | — | — | none exist for these callables |
+| Typecheck / lint / full suite | - | - | skipped (narrow change; plan) |
+| Functions unit | - | - | none exist for these callables |
 
 ### Unit summary
 
@@ -30,7 +30,7 @@
 firebase deploy --only functions:customerSendAssistedCreationMessage,functions:staffSendAssistedCreationMessage --project fresh-prints-dev
 ```
 
-**Result:** success — both callables updated (`us-central1`). No production deploy.
+**Result:** success - both callables updated (`us-central1`). No production deploy.
 
 ---
 
@@ -38,10 +38,11 @@ firebase deploy --only functions:customerSendAssistedCreationMessage,functions:s
 
 See `docs/workflow/reviews/2026-07-17-assisted-terminal-messaging-closed-manual-qa.md`.
 
-**Owner result:** pending
+**Owner result:** **PASS** (owner **PASS all**, 2026-07-17)
 
 ---
 
 ## Signoff readiness
 
-Blocked on owner manual QA (`PASS` / `FAIL` / `PASS WITH NOTES`).
+Ready — owner manual QA **PASS**; proceed to signoff `approved_with_notes`.
+

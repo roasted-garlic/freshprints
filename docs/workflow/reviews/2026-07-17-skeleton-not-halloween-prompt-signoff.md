@@ -12,7 +12,7 @@
 
 ## Summary
 
-Halloween is no longer preferred for skeleton/skull art in prompts, and a deterministic post-filter strips `halloween` when only skeletal signals are present. ADR-FP-091 recorded. No production deploy; owner redeploys AI Functions to `fresh-prints-dev` to test live.
+Halloween is no longer preferred for skeleton/skull art in prompts, and a deterministic post-filter strips `halloween` when only skeletal signals are present. ADR-FP-091 recorded. No production deploy. Owner **PASS all** (2026-07-17) closes the optional live Gemini smoke note that remained after code signoff — treat owner QA as **PASS** / closed; live re-run after AI Function redeploy remains an operational nicety, not an open checkpoint.
 
 ## Where the rule lives
 
@@ -25,9 +25,9 @@ Halloween is no longer preferred for skeleton/skull art in prompts, and a determ
 ## Exact guidance added
 
 - Do not use / tag `halloween` for skeleton, skull, or bones alone.
-- Require additional Halloween cues (jack-o’-lantern, witches, haunted house, visible “Halloween” text, candy corn, clear holiday motif).
+- Require additional Halloween cues (jack-o'-lantern, witches, haunted house, visible "Halloween" text, candy corn, clear holiday motif).
 - Do not over-block designs that are clearly Halloween.
-- Prefer skeleton/bones/spooky/… — never death or skull (skull remains excluded).
+- Prefer skeleton/bones/spooky/. - never death or skull (skull remains excluded).
 
 ## Files touched
 
@@ -47,19 +47,20 @@ Halloween is no longer preferred for skeleton/skull art in prompts, and a determ
 
 - Unit: 90 passed
 - Functions `npm run build`: passed
-- Live Gemini: not run (owner after redeploy)
+- Live Gemini: not separately re-run; owner **PASS all** closes optional smoke checkpoint (2026-07-17)
 
 ## Manual tests / approvals
 
-- Manual live QA: pending owner after redeploy (optional for this signoff)
+- Manual live QA: **PASS** / closed (owner **PASS all**, 2026-07-17)
 - Production deploy: not requested / not done
-- Commits: not requested
 
-## Redeploy (owner)
+## Redeploy (owner, operational)
 
 ```bash
 firebase deploy --only functions:enqueueAiEnrichment,functions:testAiEnrichmentPlayground --project fresh-prints-dev
 ```
+
+Redeploy still needed for live AI path to pick up prompt/guard if not already deployed; that is ops, not an open human checkpoint.
 
 ## Risks / follow-ups
 
@@ -69,4 +70,5 @@ firebase deploy --only functions:enqueueAiEnrichment,functions:testAiEnrichmentP
 
 ## Final status
 
-**approved_with_notes** — code + unit tests complete; live re-test after owner redeploy.
+**approved_with_notes** — code + unit tests complete; optional live smoke closed by owner **PASS all** (2026-07-17).
+

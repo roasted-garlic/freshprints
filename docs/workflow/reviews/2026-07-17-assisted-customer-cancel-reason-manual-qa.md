@@ -5,6 +5,8 @@
 | Date | 2026-07-17 |
 | Environment | Local Portal + Studio against `fresh-prints-dev` |
 | Function deploy | `cancelAssistedCreationRequest` → `fresh-prints-dev` (required) |
+| Status | **PASS** |
+| Resolution | Owner directed **PASS all** (2026-07-17) for remaining parked owner-QA after proof-download closeout |
 
 ## Prerequisites
 
@@ -23,21 +25,24 @@
 3. Studio → same request → status Cancelled.  
    **Expected:** Under status header: **Customer cancel reason:** &lt;your text&gt;.
 
-4. Staff cancel on another open request (⋯ → Cancel with staff reason).  
-   **Expected:** Still works; no “Customer cancel reason” unless customer cancelled.
+4. Staff cancel on another open request (? → Cancel with staff reason).  
+   **Expected:** Still works; no "Customer cancel reason" unless customer cancelled.
 
 5. (Optional) Past Requests path: cancel an open request from history modal with reason.  
-   **Expected:** Same as steps 1–3.
+   **Expected:** Same as steps 1-3.
 
 ## Pass criteria
 
-- [ ] Empty reason blocked
-- [ ] Reason required cancel succeeds
-- [ ] Studio shows customer cancel reason
-- [ ] Staff cancel unchanged
+- [x] Empty reason blocked
+- [x] Reason required cancel succeeds
+- [x] Studio shows customer cancel reason
+- [x] Staff cancel unchanged
 
 ## Please reply with
 
-- `PASS` — all criteria met
+- `PASS` - all criteria met
 - `FAIL: [description]`
 - `PASS WITH NOTES: [notes]`
+
+**Your result:** **PASS** (owner **PASS all**, 2026-07-17)
+
