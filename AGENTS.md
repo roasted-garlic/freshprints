@@ -227,3 +227,32 @@ Rules:
 - Do not install or export `docs/freshforge-development/`.
 
 Source of truth: `docs/freshforge-development/distribution/STARTER_SURFACE.md`.
+
+---
+
+## Cursor Cloud specific instructions
+
+Durable notes for agents running in the Cursor Cloud VM. Dependencies are refreshed automatically on startup (`npm install` at the root, plus `npm --prefix functions install`). Standard lint/test/build/dev commands live in `docs/standards/TESTING.md` and root/app `package.json` — use those; the notes below are only the non-obvious caveats.
+
+### Services
+
+- **Portal** (`@fresh-prints/portal`, Next.js): `npm run dev:portal` serves on port `3100`. Runs cleanly headless.
+- **Studio** (`@fresh-prints/studio`, Electron + Vite): `npm run dev:studio` starts the Vite renderer dev server on port `5173` and launches Electron.
+- **Functions** (`fresh-prints-functions`, Firebase Cloud Functions): build with `npm --prefix functions run build`. Emulators (`npm --prefix functions run serve`) require `firebase-tools` (not preinstalled) and project auth.
+
+### Firebase is required to boot the apps (no emulator/mock mode)
+
+- Both apps throw at startup if Firebase Web config is missing. Create local (gitignored) env files: `apps/portal/.env.local` (`NEXT_PUBLIC_FIREBASE_*`) and `apps/studio/.env.local` (`VITE_FIREBASE_*`). See each app's `.env.example`.
+- With **placeholder** values the apps boot and render their UI (login/register), and client-side logic (routing, form validation) works, but any Firebase-backed flow (Google/email auth, catalog reads, print requests, customer uploads) fails with an auth/permission error. There is **no** emulator wiring in app code.
+- **Full end-to-end** testing needs a real Firebase project's Web config (e.g. `fresh-prints-dev`), a seeded test account with the right role, and deployed Cloud Functions + Firestore rules/indexes.
+
+### Headless Electron (Studio) caveat
+
+- The VM has no physical display. Run Studio under a virtual display, e.g. `Xvfb :99 -screen 0 1600x1000x24 -ac & DISPLAY=:99 npm run dev:studio` (`xvfb` and `xvfb-run` are preinstalled; the plugin already launches Electron with `--no-sandbox`).
+- Electron's GPU process is disabled headless, so the Electron **window does not composite to the Xvfb framebuffer** (screenshots of `:99` look blank). To see/verify the Studio renderer UI, open the Vite dev server at `http://localhost:5173` in the VM's Chrome instead — it renders identically with a real GPU.
+
+### Tests, lint, typecheck caveats
+
+- There is no root `npm test`. Run tests with `npx tsx --test <globs>` (per `docs/standards/TESTING.md`); `tsx` is fetched on demand via `npx`.
+- As of this setup, a full test sweep on `master` has ~6 pre-existing failing logic assertions (unrelated to environment).
+- `npm run lint` reports pre-existing errors on `master`, and Studio `tsc --noEmit` fails with `TS5103: Invalid value for '--ignoreDeprecations'` because `apps/studio/tsconfig.json` sets `"ignoreDeprecations": "6.0"` while the pinned TypeScript is 5.9.x (accepts only `"5.0"`). Studio **dev** mode (Vite/esbuild) is unaffected.
