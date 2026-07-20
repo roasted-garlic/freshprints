@@ -9,9 +9,11 @@ import { usePortalToast } from '../../shared/context/PortalToastContext';
 
 async function shareDesignLink(design: CatalogDesign): Promise<'shared' | 'copied'> {
   const url = buildPortalDesignShareUrl(design.id);
+  // Prefer title + URL so messengers show the link preview (OG title/image) instead of
+  // pasting the long description as the only visible content.
   const shareData: ShareData = {
     title: design.title,
-    text: design.description?.trim() || design.title,
+    text: design.title,
     url,
   };
 

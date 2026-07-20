@@ -28,6 +28,19 @@ function normalizeStorageObjectPath(path: string): string {
   return path.trim().replace(/^\/+/, '')
 }
 
+function resolveDesignShareOpenGraphFunctionUrl(designId: string): string | null {
+  const projectId =
+    process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID?.trim() ||
+    process.env.GCLOUD_PROJECT?.trim() ||
+    process.env.GOOGLE_CLOUD_PROJECT?.trim() ||
+    ''
+  if (!projectId) {
+    return null
+  }
+  const params = new URLSearchParams({ designId })
+  return `https://us-central1-${projectId}.cloudfunctions.net/getPortalDesignShareOpenGraph?${params.toString()}`
+}
+
 async function resolveShareImageUrl(storagePath: string): Promise<string | null> {
   const storage = tryGetPortalAdminStorage()
   if (!storage) {
@@ -51,17 +64,9 @@ async function resolveShareImageUrl(storagePath: string): Promise<string | null>
   }
 }
 
-/**
- * Loads ready-catalog share fields for OG. Returns null when Admin is unavailable,
- * the id is invalid, or the design is missing / not ready.
- */
-export async function loadPortalDesignShareMeta(
+async function loadPortalDesignShareMetaViaAdmin(
   designId: string,
 ): Promise<PortalDesignShareMeta | null> {
-  if (!isValidPortalDesignShareId(designId)) {
-    return null
-  }
-
   const db = tryGetPortalAdminDb()
   if (!db) {
     return null
@@ -100,6 +105,70 @@ export async function loadPortalDesignShareMeta(
   } catch {
     return null
   }
+}
+
+async function loadPortalDesignShareMetaViaFunction(
+  designId: string,
+): Promise<PortalDesignShareMeta | null> {
+  const url = resolveDesignShareOpenGraphFunctionUrl(designId)
+  if (!url) {
+    return null
+  }
+
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+      cache: 'no-store',
+    })
+    if (!response.ok) {
+      return null
+    }
+    const payload = (await response.json()) as Partial<PortalDesignShareMeta>
+    if (
+      typeof payload.title !== 'string' ||
+      !payload.title.trim() ||
+      typeof payload.description !== 'string' ||
+      !payload.description.trim()
+    ) {
+      return null
+    }
+    return {
+      designId,
+      title: payload.title.trim(),
+      description: payload.description.trim(),
+      imageUrl:
+        typeof payload.imageUrl === 'string' && payload.imageUrl.trim()
+          ? payload.imageUrl.trim()
+          : null,
+    }
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Loads ready-catalog share fields for OG.
+ * Prefer Cloud Function (works on local Portal without ADC); Admin is a fast path when available.
+ */
+export async function loadPortalDesignShareMeta(
+  designId: string,
+): Promise<PortalDesignShareMeta | null> {
+  if (!isValidPortalDesignShareId(designId)) {
+    return null
+  }
+
+  const viaFunction = await loadPortalDesignShareMetaViaFunction(designId)
+  if (viaFunction?.imageUrl) {
+    return viaFunction
+  }
+
+  const viaAdmin = await loadPortalDesignShareMetaViaAdmin(designId)
+  if (viaAdmin?.imageUrl) {
+    return viaAdmin
+  }
+
+  return viaFunction ?? viaAdmin
 }
 
 export function buildPortalDesignShareMetadata(
