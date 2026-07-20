@@ -108,6 +108,7 @@ service cloud.firestore {
       return customerCanMutatePrintRequestItem()
         && request.resource.data.id == resource.data.id
         && request.resource.data.printRequestId == resource.data.printRequestId
+        && request.resource.data.quantity == resource.data.quantity
         && request.resource.data.get("designId", "") == resource.data.get("designId", "")
         && request.resource.data.get("sourceType", "") == resource.data.get("sourceType", "")
         && request.resource.data.get("customerUploadId", "") == resource.data.get("customerUploadId", "")
@@ -1011,17 +1012,8 @@ service cloud.firestore {
         && printRequestParentExists(request.resource.data.printRequestId)
         && isReadyDesign(request.resource.data.designId)
         || staffCanCreateUploadPrintRequestItem(request.resource.data)
-        && request.resource.data.id == printRequestItemId
-        || isCustomer()
-        && printRequestItemRequiredFieldsValid(request.resource.data)
-        && isCatalogPrintRequestItem(request.resource.data)
-        && request.resource.data.id == printRequestItemId
-        && request.resource.data.addedBy == request.auth.uid
-        && request.resource.data.status == "pending"
-        && customerCanCreatePrintRequestItem(request.resource.data.printRequestId)
-        && isReadyDesign(request.resource.data.designId)
-        || customerCanCreateUploadPrintRequestItem(request.resource.data)
         && request.resource.data.id == printRequestItemId;
+      // Customer creates go through Admin callables (Cap A daily design limit).
 
       allow update: if isStaff()
         && printRequestItemRequiredFieldsValid(request.resource.data)
@@ -1053,8 +1045,8 @@ service cloud.firestore {
           )
         );
 
-      allow delete: if isStaff()
-        || (isCustomer() && customerCanMutatePrintRequestItem());
+      allow delete: if isStaff();
+      // Customer deletes go through Admin callables (Cap A print-count refund).
     }
 
     match /upcomingShows/{upcomingShowId} {
@@ -1291,6 +1283,7 @@ service cloud.firestore {
       return data.keys().hasOnly([
           "defaultMaxTotalQuantity",
           "whatnotShowBaseUrl",
+          "portalQueueCutoffHoursBeforeStart",
           "lastWhatnotAssistedImportAt",
           "lastWhatnotAssistedImportStatus",
           "lastWhatnotAssistedImportSummary",
@@ -1306,6 +1299,7 @@ service cloud.firestore {
         ])
         && isOptionalNumber(data, "defaultMaxTotalQuantity")
         && isOptionalString(data, "whatnotShowBaseUrl")
+        && isOptionalNumber(data, "portalQueueCutoffHoursBeforeStart")
         && isOptionalTimestamp(data, "lastWhatnotAssistedImportAt")
         && isOptionalWhatnotAssistedImportStatus(data, "lastWhatnotAssistedImportStatus")
         && isOptionalMap(data, "lastWhatnotAssistedImportSummary")
@@ -1331,6 +1325,24 @@ service cloud.firestore {
     }
 
     match /settings/emailProviders {
+      allow read: if isOwner();
+      allow write: if false;
+    }
+
+    match /settings/customerUploadQuotas {
+      allow read: if isOwner();
+      allow write: if false;
+    }
+
+    // Sole limit L is non-sensitive policy; Portal customers need it for Current Request gates.
+    // Writes remain Admin callable only (updatePrintRequestLimitSettings).
+    match /settings/printRequestLimits {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // Portal Open Graph title/description (owner-editable). Writes via Admin callable only.
+    match /settings/portalSocialMeta {
       allow read: if isOwner();
       allow write: if false;
     }
@@ -1591,6 +1603,12 @@ service cloud.firestore {
 
     match /emailDeliveryJobs/{jobId} {
       allow read, write: if false;
+    }
+
+    // Portal account deletion requests (customer request-only). Writes via Admin SDK.
+    match /accountDeletionRequests/{userId} {
+      allow read: if isStaff() || (isCustomer() && request.auth.uid == userId);
+      allow create, update, delete: if false;
     }
 
     match /{document=**} {

@@ -30,7 +30,7 @@ function buildRequestsPageHref(tab: PortalPrintRequestListTab): string {
 function getEmptyTabTitle(tab: PortalPrintRequestListTab): string {
   switch (tab) {
     case 'working':
-      return 'Your Stash is open';
+      return 'Current Request is open';
     case 'queued':
       return 'No queued requests';
     case 'printing':
@@ -95,7 +95,7 @@ export default function RequestsPage() {
         <div className="portal-panel portal-muted">Loading print requests…</div>
       ) : requests.length === 0 ? (
         <section className="portal-panel portal-requests-empty">
-          <h2>Your Stash is ready</h2>
+          <h2>Current Request is ready</h2>
           <p className="portal-muted portal-requests-empty-copy portal-requests-empty-copy-stacked">
             {emptyCopyLineOne}
           </p>
@@ -119,7 +119,7 @@ export default function RequestsPage() {
               type="button"
             >
               <ShoppingBagIcon />
-              Open Your Stash
+              Open Current Request
             </button>
           </div>
         </section>
@@ -161,7 +161,7 @@ export default function RequestsPage() {
                     type="button"
                   >
                     <ShoppingBagIcon />
-                    Open Your Stash
+                    Open Current Request
                   </button>
                 </div>
               ) : null}

@@ -35,6 +35,8 @@ Fresh Prints uses **Firebase** as the primary backend platform for authenticatio
 | Flows | Portal: email/password or Google (customers); Studio: email/password only. See `FIREBASE.md` and ADR-FP-081 |
 | Session / token | Firebase client SDK session |
 | Local dev auth | Firebase emulators or project dev credentials — see `docs/workflow/setup/` |
+| Portal account self-service (2026-07-20) | Password reset + verify-before-update email + deletion **request** callables (`syncPortalAccountEmail`, `requestPortalAccountDeletion`, `cancelPortalAccountDeletionRequest`). ADR-FP-104. |
+| Owner single-user delete (2026-07-20) | Studio Test Data → `ownerDeleteUser` (owner + fresh-prints-dev only). Hard-deletes one staff or customer identity + associated records. Not bulk wipe. |
 
 **Portal post-auth return (2026-07-17):** When `AuthGate` sends a signed-out customer to `/login`,
 it includes the protected Portal path and query string in `returnTo`. Email/password and Google login
@@ -132,6 +134,13 @@ deprecated for Portal UI. Deploy (dev):
 `firebase deploy --only functions:customerGetAssistedCreationApprovedProofFile --project fresh-prints-dev`.
 Optional Storage CORS backup: `docs/workflow/setup/firebase-storage-cors.md`.
 
+**Assisted proof → Current Request (ADR-FP-094):** Portal callable
+`customerAddAssistedApprovedProofToPrintRequest` copies the approved proof into customer-upload
+Storage, creates a private ready upload, and attaches it to the working print request (qty 1,
+pixel sizing). Skips customer transparency/quality gates. Idempotent via
+`assistedCreationRequests.printRequestIngest`. Deploy (dev):
+`firebase deploy --only functions:customerAddAssistedApprovedProofToPrintRequest --project fresh-prints-dev`.
+
 **Provider-neutral email (ADR-FP-089 / ADR-FP-090):** `functions/src/lib/email/` owns normalized
 messages, templates, provider routing, Resend + Brevo HTTP transports, recipient resolution, and
 canonical Portal URL resolution. `staffAddAssistedCreationProof` transactionally creates a
@@ -143,7 +152,23 @@ non-retryably with `customer_opted_out`. After a successful send, the worker app
 idempotency). Resend receives the job ID through `Idempotency-Key`; Brevo receives a UUID-shaped
 hash in `headers.idempotencyKey`. Firestore remains the durable logical dedupe boundary. Logs
 contain IDs and safe codes only. `settings/emailProviders` independently selects invitation and
-proof providers (`resend` or `brevo`). Product Brevo uses Secret Manager `BREVO_API_KEY` — never the
+proof-notice providers (`resend` or `brevo`). `settings/customerUploadQuotas` holds owner-tunable
+America/Chicago (CST/CDT) daily upload caps for print-request vs catalog-donation (code defaults when
+missing; ADR-FP-095). Day key is Central midnight (not UTC).
+**Enforcement (2026-07-19 UX):** Portal Upload Designs no longer charges day buckets — Current
+Request room (`L`) is the customer cap (request-room copy only; no midnight reset line). Donate
+Designs still enforces **images/day** only (footer: resets at midnight CST); upload starts and ZIP
+day counters are not charged (Studio Settings fields remain configurable). ZIP byte max is **2 GB**
+for both Upload Designs and Donate.
+`settings/printRequestLimits` holds the sole Portal limit `L` (`maxQuantityPerShowPerCustomer`:
+max Current Request prints = max per customer per show; default 20; ADR-FP-102). Legacy Cap A field
+`dailyDesignsAddedToRequestsLimit` is mirrored = `L` on save for one-release rollback and is **not**
+enforced. Cap A counters in `printRequestDesignDailyLimits` are no longer written; optional wipe
+target remains on Test Data Reset. Print-request / queue rejects may include structured `details.code`:
+`WORKING_REQUEST_PRINT_LIMIT` (request over `L`), `SHOW_CUSTOMER_LIMIT` / `SHOW_CAPACITY` /
+`SHOW_ALLOCATION_BLOCKED` (`failed-precondition` on queue). Stale queue clients sending `selections`
+are rejected with soft-reload copy. Upload quota Settings remain ADR-FP-095 (enforcement narrowed as above).
+Product Brevo uses Secret Manager `BREVO_API_KEY` — never the
 Cursor MCP token (`BREVO_MCP_TOKEN`).
 
 **Cursor agent tooling:** Project MCP may list ScraperAPI and Brevo at `.cursor/mcp.json` (agent-only; not product email). Setup notes: `docs/workflow/setup/scraperapi-mcp-setup.md`, `docs/workflow/setup/brevo-mcp-setup.md`. Product Brevo email: `docs/workflow/setup/brevo-email-setup.md`.
@@ -165,17 +190,22 @@ As of ADR-FP-039/ADR-FP-040, **AI Processing is a single playground-style call**
 | Function | Trigger | Purpose |
 |----------|---------|---------|
 | `createTeamUser` | Callable | Create team user + invitation flow |
-| `registerCustomer` | Callable | Customer self-registration — provisions `users/{uid}` + `customers/{id}` + username reservation after Firebase Auth signup |
+| `registerCustomer` | Callable | Customer self-registration — provisions `users/{uid}` + `customers/{id}` + username reservation after Firebase Auth signup. Requires `biddingAcknowledgmentAccepted` + version; writes `portalBiddingAcknowledgments.signup`. |
 | `updateTeamUser` | Callable | Update team user fields |
 | `createPortalPrintRequest` | Callable | Portal: create the customer's one working print request |
 | `createCustomerUploadBatch` | Callable | Portal: create customer artwork upload batch + source/ZIP paths (ADR-FP-073) |
+| `getCustomerUploadDailyQuota` | Callable | Portal: remaining quota buckets + size limits. Customer-facing: Donate shows images/day; Upload Designs shows Current Request room (`L`) instead. Functions charge donation `finalizeImage` only; print-request day buckets and donation starts/ZIP are not charged. |
+| `addPortalCatalogDesignToPrintRequest` | Callable | Portal: add/increment catalog design; working-request max = `L` |
+| `updatePortalPrintRequestItemQuantity` | Callable | Portal: set item qty; clamps to working-request max `L` |
+| `removePortalPrintRequestItem` | Callable | Portal: remove item |
+| `duplicatePortalPrintRequestItem` | Callable | Portal: duplicate item; visually to the **right** of source under newest-first display via `resolveDuplicateInsertBeforeSortOrder` (ADR-FP-098); working-request max = `L` |
 | `finalizeCustomerUpload` | Callable | Portal: validate/normalize one direct image upload → ready/failed |
 | `finalizeCustomerUploadZip` | Callable | Portal: server-extract ZIP + per-image finalize (ADR-FP-073) |
 | `confirmCustomerUploadsAndAttachToRequest` | Callable | Portal: confirm ownership/catalog ack + attach ready **print_request** uploads to working request |
 | `confirmCustomerUploadsForDonation` | Callable | Portal: confirm ownership + required catalog listing consent for **catalog_donation** uploads (no print-request attach) |
 | `recordCustomerUploadHalftoneResponse` | Callable | Portal: persist optional customer Yes/No halftone selection (evidence only; ADR-FP-080) |
 | `recordCustomerUploadHalftoneStaffDecision` | Callable | Studio: persist explicit staff true/false halftone decision on customer upload |
-| `clearPortalWorkingPrintRequest` | Callable | Portal: soft-archive own working request and delete its items |
+| `clearPortalWorkingPrintRequest` | Callable | Portal: empty own working request (delete items, `itemCount: 0`); keep `draft`/`editing` so next Add reuses the same id |
 | `archiveStaleWorkingPrintRequests` | Callable | Owner/admin: archive empty working requests older than 14 days (`dryRun` supported) |
 | `archiveStaleRejectedDesigns` | Callable | Owner/admin: soft-archive `status: rejected` designs older than 7 days (`dryRun` supported; ADR-FP-086) |
 | `purgeIdleCustomerUploadFullSize` | Callable | Owner/admin: purge request-upload source+production after show done/idle 14d; keep thumb/preview (`dryRun` supported; ADR-FP-086) |
@@ -187,6 +217,8 @@ As of ADR-FP-039/ADR-FP-040, **AI Processing is a single playground-style call**
 | `cleanupAbandonedCustomerUploads` | Callable | Owner/admin: mark stale open batches abandoned; fail unfinished uploads; delete orphan **source** objects only (`dryRun` supported) |
 | `purgeArchivedDesignAssets` | Callable | Owner: archive-first purge of design originals + previews (keep thumbnail; ADR-FP-084) |
 | `getPortalShowPrintProgress` | Callable | Portal: show print progress for customer |
+| `listPortalAllocatableShows` | Callable | Portal: list upcoming shows + `customerAllocatedQuantity` (usage per show under `L`); includes past-cutoff shows as non-allocatable with cutoff meta; returns `portalQueueCutoffHoursBeforeStart` (ADR-FP-103) |
+| `queuePortalPrintRequestToShow` | Callable | Portal: allocate **entire** Continuable request to **one** show atomically or reject; one request per customer per show; rejects past Portal queue cutoff; rejects stale `selections`; no remainder; bidding ack + version (ADR-FP-102 / ADR-FP-103) |
 | `completeEtsyRecommendationRequest` | Callable | Portal: mark own active Etsy recommendation request completed |
 | `cancelEtsyRecommendationRequest` | Callable | Portal: cancel own active Etsy recommendation request |
 | `submitEtsyRecommendationRequest` | Callable | Portal: create/replace one active Etsy recommendation request; returns website search URL |
@@ -206,11 +238,14 @@ As of ADR-FP-039/ADR-FP-040, **AI Processing is a single playground-style call**
 | `customerRespondToAssistedCreationProof` | Callable | Portal: approve proof (optional 1–5 rating + short note; sets `approvedProofId`/`approvedAt`; purges sibling proof full-res) or request revision with note |
 | `customerGetAssistedCreationApprovedProofFile` | Callable | Portal: Admin-streamed approved proof bytes (base64) for blob file download (ownership + 14-day/legacy eligibility; ADR-FP-093) |
 | `customerGetAssistedCreationApprovedProofDownloadUrl` | Callable | Legacy: mint short-lived signed URL (deprecated for Portal UI; ADR-FP-093) |
+| `customerAddAssistedApprovedProofToPrintRequest` | Callable | Portal: copy approved Assisted proof → private customer upload + attach to Current Request / working request (skips upload quality gates; ADR-FP-094) |
 | `staffUpdateAssistedCreationStatus` | Callable | Studio: owner/admin start/resume/reject/cancel/restore, or `update_notes` (notes only, no status/history change); reject/cancel purge all proof full-res |
 | `staffAddAssistedCreationProof` | Callable | Studio: owner/admin attach proof → `proof_ready` |
 | `purgeExpiredAssistedCreationProofs` | Callable | Owner/admin: purge approved proof full-res after 14 days + orphan full-res on rejected/cancelled (`dryRun` supported; ADR-FP-093) |
 | `purgeExpiredAssistedCreationProofsScheduled` | Scheduled (daily) | Same purge logic as the callable (ADR-FP-093) |
-| `updateEmailProviderSettings` | Callable | Studio owner: select invitation and proof-notice providers (Resend only) |
+| `updateEmailProviderSettings` | Callable | Studio owner: select invitation and proof-notice providers (`resend` \| `brevo`) |
+| `updateCustomerUploadQuotaSettings` | Callable | Studio owner: set America/Chicago daily print-request vs donation upload caps (`settings/customerUploadQuotas`; ADR-FP-095) |
+| `updatePrintRequestLimitSettings` | Callable | Studio owner: set sole limit `L` (`maxQuantityPerShowPerCustomer`); mirrors into legacy Cap A field for one-release rollback (ADR-FP-102) |
 | `onEmailDeliveryJobCreated` | Firestore create | Deliver a proof-ready notice from the durable outbox |
 | `enqueueAiEnrichment` | Callable | Run imported design through direct AI processing |
 | `resetAiEnrichmentForProcessing` | Callable | Return Needs Review or Rejected design to Processing for a staff-started re-run |
@@ -242,6 +277,16 @@ emulator override — never as a deployed customer-facing continue host. Shared
 values and deployments require a human checkpoint. Firebase Authentication
 **Authorized domains** must include the Portal hosts (`myprintrequest.dev`,
 `myprintrequest.com`); `localhost` is for local Portal only.
+
+**Portal Open Graph absolute URLs (2026-07-20):** The Next.js Portal uses the same customer hosts
+for `metadataBase` / OG image resolution via optional `NEXT_PUBLIC_PORTAL_ORIGIN`, else
+`NEXT_PUBLIC_FIREBASE_PROJECT_ID=fresh-prints-dev` → `https://myprintrequest.dev`, else
+production non-dev project → `https://myprintrequest.com`, else `http://localhost:3100`.
+Per-design share pages at `/share/design/{id}` use **Firebase Admin** (ADC on App Hosting) to
+read ready catalog title/description and sign a Storage image URL for crawlers—without opening
+Firestore/Storage client rules to anonymous users. Non-design URLs load `settings/portalSocialMeta`
+(owner-editable via Studio **Settings → Social sharing** / `updatePortalSocialMetaSettings`) plus a
+daily-rotated ready-library image. See `docs/standards/DEPLOYMENT.md` (Portal Open Graph section).
 
 ---
 

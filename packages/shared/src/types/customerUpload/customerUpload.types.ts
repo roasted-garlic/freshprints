@@ -83,6 +83,12 @@ export interface CustomerUpload {
   fullSizePurgedBy?: string | null;
   /** Set when staff promote a donation/upload to AI Review (cool-off clock). */
   promotedAt?: Timestamp | null;
+  /**
+   * When set, this upload was server-copied from an Assisted Creation approved proof
+   * (private print-only; not a customer self-upload).
+   */
+  assistedCreationRequestId?: string | null;
+  assistedProofId?: string | null;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }

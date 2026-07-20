@@ -6,6 +6,7 @@ import {
   getCurrentPortalPath,
   getPortalReturnToFromSearch,
   getSafePortalReturnTo,
+  resolvePortalPostAuthPath,
 } from './portalReturnUrl';
 
 describe('portalReturnUrl', () => {
@@ -60,5 +61,13 @@ describe('portalReturnUrl', () => {
       '/custom-designs?flow=assisted&step=status',
     );
     assert.equal(buildPortalAuthHref('/complete-profile', 'https://evil.example'), '/complete-profile');
+  });
+
+  it('maps share design landings to catalog deep links after auth', () => {
+    assert.equal(
+      resolvePortalPostAuthPath('/share/design/Ab2dBnwdAmWG6ivXpzIC'),
+      '/catalog?designId=Ab2dBnwdAmWG6ivXpzIC',
+    );
+    assert.equal(resolvePortalPostAuthPath('/catalog?designId=abc'), '/catalog?designId=abc');
   });
 });

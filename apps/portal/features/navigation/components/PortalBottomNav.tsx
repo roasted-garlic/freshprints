@@ -79,7 +79,7 @@ export function PortalBottomNav() {
       </div>
 
       <button
-        aria-label={`Open Your Stash, ${totalPrints} total prints`}
+        aria-label={`Open Current Request, ${totalPrints} total prints`}
         className="portal-bottom-nav-fab"
         onClick={openCurrentRequestDrawer}
         type="button"

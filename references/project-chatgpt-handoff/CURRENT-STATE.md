@@ -2,7 +2,7 @@
 
 > **Refresh before every external AI session.**
 > Source: `.cursor/workflow/state.md` (authoritative)
-> Last updated: **2026-07-18**
+> Last updated: **2026-07-20** (#11 OG/social sharing signed off)
 
 ---
 
@@ -10,42 +10,32 @@
 
 | Field | Value |
 |-------|-------|
-| **Active managed goal** | (none - idle) |
-| **Phase** | **done** / idle |
-| **Just closed** | Brevo IP/blocklist deliverability - **approved_with_notes** (owner **PASS**); Studio wipe presets already closed |
-| **Tests** | Owner PASS: Brevo IP 2026-07-18; wipe presets PASS 2026-07-18 |
-| **Next** | Pick next managed goal explicitly |
-| **Deployment** | `wipeOperationalTestData` on `fresh-prints-dev`. No production. |
+| **Active managed goal** | none (idle) |
+| **Phase** | **signoff** complete - **DONE: yes** |
+| **Backlog** | **#5-#11 Done** (owner PASS); next **#12** library design share on custom requests |
+| **Tests** | Automated + owner PASS (#11 includes deep-link remount fix) |
+| **Signoff** | #11 **approved** |
+| **Deployment** | Dev Functions/rules for social meta. **No production.** |
+| **DONE** | yes |
 
 ---
 
-## Just closed (2026-07-18)
+## #11 closed (PASS)
 
-1. **brevo-proof-email-ip-block** - owner **PASS** on Brevo IP/blocklist; no app code. Signoff: `docs/workflow/reviews/2026-07-18-brevo-proof-email-ip-block-signoff.md`
-2. **studio-test-data-reset-presets** - confirmed closed **approved_with_notes**. Signoff: `docs/workflow/reviews/2026-07-18-studio-test-data-reset-presets-signoff.md`
-
----
-
-## Clarifications recorded (2026-07-18 owner)
-
-- **Phase 9:** Not untouched future work - 9A Etsy + 9C Assisted/Custom Requests complete in `fresh-prints-dev`; AI Create My Design + design fee still deferred.
-- **Image caching:** Already complete (2026-07-14 Portal catalog image load caching).
-- **Account linking:** Firebase/Google console "Link accounts that use the same email" - not a custom app build.
-- **Whatnot:** Staff-assisted Import Shows is built (day-to-day sync). Automated live/hourly scheduled sync is **not built and not planned**.
+Owner **PASS** 2026-07-20 - Portal OG / social sharing: share deep links, per-design OG, Studio Social sharing global meta, deep-link remount fix (`loadingIdRef` cleanup).
+Signoff: `docs/workflow/reviews/2026-07-20-portal-og-social-sharing-meta-signoff.md` (**approved**)
 
 ---
 
-## Still open / deferred (pick explicitly)
+## #7-#10 closed (PASS)
 
-1. Production Portal App Hosting / production Google enablement / production email release
-2. Remaining Phase 9: Create My Design with AI; staff design-fee / Stripe; assisted questionnaire branching
-3. Optional `APPROVE DEV DEPLOY` items (invite continue URL, firestore.rules harden, AI Function redeploy ops)
-4. Gang Sheet Builder manual canvas (post-MVP backlog)
+Owner **PASS** 2026-07-20 - Portal password reset / change email / deletion request + Studio owner delete user.
+Signoff: `docs/workflow/reviews/2026-07-20-portal-account-auth-settings-7-10-signoff.md` (**approved**)
+ADR-FP-104
 
 ---
 
-## Do not
+## Next
 
-- Production deploy without explicit approval.
-- Paste API keys into chat/logs.
-- Treat live Whatnot scheduled sync or image caching as open MVP app work.
+1. **#12** - Library design sharing on custom design requests
+2. Production Portal (separate approval)

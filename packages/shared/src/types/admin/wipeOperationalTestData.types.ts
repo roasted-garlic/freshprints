@@ -13,6 +13,7 @@ export const OPERATIONAL_WIPE_TARGETS = [
   "designRequestStats",
   "designs",
   "customerUploads",
+  "printRequestDesignDailyLimits",
   "etsySearches",
   "assistedCreationRequests",
 ] as const;

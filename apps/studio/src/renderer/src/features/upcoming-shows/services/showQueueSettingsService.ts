@@ -1,5 +1,12 @@
 import { doc, getDoc, serverTimestamp, setDoc, Timestamp } from "firebase/firestore";
 
+import {
+  DEFAULT_PORTAL_QUEUE_CUTOFF_HOURS_BEFORE_START,
+  MAX_PORTAL_QUEUE_CUTOFF_HOURS_BEFORE_START,
+  MIN_PORTAL_QUEUE_CUTOFF_HOURS_BEFORE_START,
+  isValidPortalQueueCutoffHours,
+} from "@fresh-prints/shared/utils/showQueueCutoff";
+
 import { db } from "../../../config/firebase";
 import { assertNoUndefinedFirestoreFields, withoutUndefinedFields } from "../../firebase/utils/firestoreDocument";
 import { permissionService } from "../../permissions/services/permissionService";
@@ -8,6 +15,12 @@ import type { User } from "../../users/types/user.types";
 const SHOW_QUEUE_SETTINGS_DOC_ID = "showQueue";
 
 export type WhatnotAssistedImportStatus = "succeeded" | "failed";
+
+export {
+  DEFAULT_PORTAL_QUEUE_CUTOFF_HOURS_BEFORE_START,
+  MAX_PORTAL_QUEUE_CUTOFF_HOURS_BEFORE_START,
+  MIN_PORTAL_QUEUE_CUTOFF_HOURS_BEFORE_START,
+};
 
 export interface WhatnotAssistedImportSummary {
   created: number;
@@ -22,6 +35,11 @@ export interface ShowQueueSettings {
   updatedBy?: string;
   /** Staff-configurable; defaults to the hardcoded constant client-side when unset. */
   whatnotShowBaseUrl?: string;
+  /**
+   * Hours before show start when Portal customers can no longer Add to Show.
+   * Default 5 when unset (ADR-FP-103). Portal-only; Studio staff allocation unchanged.
+   */
+  portalQueueCutoffHoursBeforeStart?: number;
   lastWhatnotAssistedImportAt?: Timestamp;
   lastWhatnotAssistedImportStatus?: WhatnotAssistedImportStatus;
   lastWhatnotAssistedImportSummary?: WhatnotAssistedImportSummary;
@@ -89,6 +107,10 @@ function mapShowQueueSettings(data: Record<string, unknown> | undefined): ShowQu
       typeof data?.defaultMaxTotalQuantity === "number" ? data.defaultMaxTotalQuantity : undefined,
     updatedBy: typeof data?.updatedBy === "string" ? data.updatedBy : undefined,
     whatnotShowBaseUrl: typeof data?.whatnotShowBaseUrl === "string" ? data.whatnotShowBaseUrl : undefined,
+    portalQueueCutoffHoursBeforeStart:
+      typeof data?.portalQueueCutoffHoursBeforeStart === "number"
+        ? data.portalQueueCutoffHoursBeforeStart
+        : undefined,
     lastWhatnotAssistedImportAt:
       data?.lastWhatnotAssistedImportAt instanceof Timestamp ? data.lastWhatnotAssistedImportAt : undefined,
     lastWhatnotAssistedImportStatus:
@@ -127,6 +149,7 @@ export const showQueueSettingsService = {
     input: {
       defaultMaxTotalQuantity?: number;
       whatnotShowBaseUrl?: string;
+      portalQueueCutoffHoursBeforeStart?: number;
       gangSheetWidthInches?: number;
       gangSheetSideMarginInches?: number;
       gangSheetTopBottomMarginInches?: number;
@@ -137,6 +160,15 @@ export const showQueueSettingsService = {
   ): Promise<ShowQueueSettings> {
     if (!permissionService.canManageUpcomingShows(caller)) {
       throw new Error("You do not have permission to manage Show Queue settings.");
+    }
+
+    if (
+      input.portalQueueCutoffHoursBeforeStart !== undefined &&
+      !isValidPortalQueueCutoffHours(input.portalQueueCutoffHoursBeforeStart)
+    ) {
+      throw new Error(
+        `Portal add cutoff must be a whole number between ${MIN_PORTAL_QUEUE_CUTOFF_HOURS_BEFORE_START} and ${MAX_PORTAL_QUEUE_CUTOFF_HOURS_BEFORE_START} hours.`,
+      );
     }
 
     if (!isWithinRange(input.gangSheetWidthInches, MIN_GANG_SHEET_WIDTH_INCHES, MAX_GANG_SHEET_WIDTH_INCHES)) {
@@ -186,6 +218,7 @@ export const showQueueSettingsService = {
     const payload = withoutUndefinedFields({
       defaultMaxTotalQuantity: input.defaultMaxTotalQuantity,
       whatnotShowBaseUrl: input.whatnotShowBaseUrl,
+      portalQueueCutoffHoursBeforeStart: input.portalQueueCutoffHoursBeforeStart,
       gangSheetWidthInches: input.gangSheetWidthInches,
       gangSheetSideMarginInches: input.gangSheetSideMarginInches,
       gangSheetTopBottomMarginInches: input.gangSheetTopBottomMarginInches,

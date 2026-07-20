@@ -16,8 +16,10 @@ export interface ClearPortalWorkingPrintRequestRequest {
 
 export interface ClearPortalWorkingPrintRequestResponse {
   printRequestId: string;
-  status: "archived";
+  /** Preserved open status — clear empties items; does not archive. */
+  status: "draft" | "editing";
   removedItemCount: number;
+  refundedPrints: number;
 }
 
 function parseRequest(data: unknown): ClearPortalWorkingPrintRequestRequest {
@@ -35,8 +37,9 @@ function parseRequest(data: unknown): ClearPortalWorkingPrintRequestRequest {
 }
 
 /**
- * Soft-archives the customer's working print request and deletes its items,
- * returning them to a virtual-empty Current Request (ADR-FP-071).
+ * Empties the customer's working print request (deletes items, itemCount → 0)
+ * while keeping it open as draft/editing so the next Add reuses the same id
+ * (ADR-FP-071; clear ≠ archive — see ADR-FP-079 amend 2026-07-18).
  */
 export const clearPortalWorkingPrintRequest = onCall(
   async (request): Promise<ClearPortalWorkingPrintRequestResponse> => {
@@ -46,6 +49,7 @@ export const clearPortalWorkingPrintRequest = onCall(
 
     const portalCustomer = await requirePortalCustomer(request.auth.uid);
     const payload = parseRequest(request.data);
+    const customerUid = request.auth.uid;
     const requestRef = adminDb.collection("printRequests").doc(payload.printRequestId);
     const requestSnap = await requestRef.get();
 
@@ -62,6 +66,7 @@ export const clearPortalWorkingPrintRequest = onCall(
     if (status !== "draft" && status !== "editing") {
       throw failedPrecondition("Only an open Current Request can be cleared.");
     }
+    const preservedStatus: "draft" | "editing" = status;
 
     const allocationsSnap = await adminDb
       .collection("showAllocations")
@@ -89,6 +94,14 @@ export const clearPortalWorkingPrintRequest = onCall(
       .where("printRequestId", "==", payload.printRequestId)
       .get();
 
+    let refundedPrints = 0;
+    for (const itemDoc of itemsSnap.docs) {
+      const qty = Math.floor(Number(itemDoc.data()?.quantity ?? 0));
+      if (Number.isFinite(qty) && qty > 0) {
+        refundedPrints += qty;
+      }
+    }
+
     let batch = adminDb.batch();
     let ops = 0;
     let removedItemCount = 0;
@@ -113,18 +126,18 @@ export const clearPortalWorkingPrintRequest = onCall(
     }
 
     batch.update(requestRef, {
-      status: "archived",
       itemCount: 0,
       updatedAt: FieldValue.serverTimestamp(),
-      updatedBy: request.auth.uid,
+      updatedBy: customerUid,
     });
     ops += 1;
     await commitIfNeeded(true);
 
     return {
       printRequestId: payload.printRequestId,
-      status: "archived",
+      status: preservedStatus,
       removedItemCount,
+      refundedPrints,
     };
   },
 );

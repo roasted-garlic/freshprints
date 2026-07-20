@@ -18,8 +18,11 @@ import {
   unauthenticated,
 } from "./lib/errors";
 import { withoutUndefinedFields } from "./lib/firestoreDocument";
+import { loadPrintRequestLimitSettings } from "./lib/loadPrintRequestLimitSettings";
 import { requirePortalCustomer } from "./lib/portalCustomer";
+import { assertWorkingRequestAllowsPrintAdds } from "./lib/printRequestWorkingRequestMax";
 import { resolveOrCreateWorkingPrintRequestInTransaction } from "./lib/portalWorkingPrintRequest";
+import { sumPrintRequestItemQuantities } from "../../packages/shared/src/utils/portalShowQueueCapacity";
 
 function mapHttpsError(error: unknown): never {
   if (error instanceof HttpsError) {
@@ -128,6 +131,8 @@ export const confirmCustomerUploadsAndAttachToRequest = onCall(
       const attachedItemIds: string[] = [];
       const reusedItemIds: string[] = [];
       let printRequestId = "";
+      const settings = await loadPrintRequestLimitSettings();
+      const maxPerRequest = settings.maxQuantityPerShowPerCustomer;
 
       await adminDb.runTransaction(async (tx) => {
         const resolved = await resolveOrCreateWorkingPrintRequestInTransaction(tx, {
@@ -141,6 +146,7 @@ export const confirmCustomerUploadsAndAttachToRequest = onCall(
 
         const existingByUploadId = new Map<string, string>();
         let currentItemCount = 0;
+        let currentPrintCount = 0;
 
         // When a request was just created, resolve helper already wrote — do not read after write.
         if (!resolved.created) {
@@ -162,10 +168,40 @@ export const confirmCustomerUploadsAndAttachToRequest = onCall(
 
           const requestSnap = await tx.get(requestRef);
           currentItemCount = Number(requestSnap.data()?.itemCount ?? 0);
+
+          const allItemsSnap = await tx.get(
+            adminDb.collection("printRequestItems").where("printRequestId", "==", printRequestId),
+          );
+          currentPrintCount = sumPrintRequestItemQuantities(
+            allItemsSnap.docs.map((docSnap) => {
+              const qty = Number(docSnap.data()?.quantity ?? 1);
+              return {
+                quantity: Number.isFinite(qty) && qty > 0 ? Math.floor(qty) : 1,
+              };
+            }),
+          );
         }
 
         const now = FieldValue.serverTimestamp();
         let newItemCount = 0;
+        let newPrintCount = 0;
+        for (const uploadSnap of uploadSnaps) {
+          if (!existingByUploadId.has(uploadSnap.id)) {
+            newItemCount += 1;
+            newPrintCount += quantity;
+          }
+        }
+
+        if (newPrintCount > 0) {
+          assertWorkingRequestAllowsPrintAdds({
+            currentPrintCount,
+            addCount: newPrintCount,
+            maxPerRequest,
+          });
+        }
+
+        newItemCount = 0;
+        newPrintCount = 0;
 
         for (const uploadSnap of uploadSnaps) {
           const uploadId = uploadSnap.id;
@@ -184,6 +220,8 @@ export const confirmCustomerUploadsAndAttachToRequest = onCall(
             continue;
           }
 
+          newItemCount += 1;
+          newPrintCount += quantity;
           const itemRef = adminDb.collection("printRequestItems").doc();
           const titleSnapshot =
             typeof upload.originalFilename === "string" && upload.originalFilename.trim()
@@ -209,12 +247,11 @@ export const confirmCustomerUploadsAndAttachToRequest = onCall(
             }),
           );
           attachedItemIds.push(itemRef.id);
-          newItemCount += 1;
 
           tx.update(uploadSnap.ref, confirmationPatch);
         }
 
-        if (newItemCount > 0) {
+        if (newPrintCount > 0) {
           tx.update(requestRef, {
             itemCount: resolved.created ? newItemCount : currentItemCount + newItemCount,
             updatedAt: now,

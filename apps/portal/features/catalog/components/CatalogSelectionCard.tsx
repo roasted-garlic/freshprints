@@ -5,11 +5,16 @@ import { useRef, useState, type FocusEvent, type KeyboardEvent } from 'react';
 import type { CatalogDesign } from '../types/catalog.types';
 import { CatalogFavoriteButton } from '../../favorites/components/CatalogFavoriteButton';
 import { MinusIcon, PlusIcon, TrashIcon } from '../../shared/components/PortalIcons';
+import { CatalogDesignShareButton } from './CatalogDesignShareButton';
 import { CatalogThumbnailPanel } from './CatalogThumbnailPanel';
 
 interface CatalogSelectionCardProps {
+  /** When false, Add and qty-up are disabled (request full). Qty-down / remove stay enabled. */
+  canAddPrints?: boolean;
   design: CatalogDesign;
   disabled?: boolean;
+  exhaustedHelperText?: string | null;
+  exhaustedStatusText?: string | null;
   isSelected: boolean;
   quantity: number;
   onAdd: (design: CatalogDesign) => void;
@@ -38,8 +43,11 @@ function ClearSelectionIcon() {
 }
 
 export function CatalogSelectionCard({
+  canAddPrints = true,
   design,
   disabled = false,
+  exhaustedHelperText: _exhaustedHelperText = null,
+  exhaustedStatusText = null,
   isSelected,
   quantity,
   onAdd,
@@ -49,10 +57,23 @@ export function CatalogSelectionCard({
 }: CatalogSelectionCardProps) {
   const [rawInput, setRawInput] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const increaseDisabled = disabled || !canAddPrints;
+  const statusText = exhaustedStatusText;
+  const requestFullLabel = !canAddPrints && statusText ? statusText : null;
+  const exhaustedTitle = requestFullLabel ?? undefined;
 
   function commitQuantity(value: string) {
     const parsed = Number.parseInt(value, 10);
+    if (Number.isFinite(parsed) && parsed === 0) {
+      onRemove(design.id);
+      setRawInput(null);
+      return;
+    }
     const next = Number.isFinite(parsed) && parsed >= 1 ? parsed : quantity;
+    if (next > quantity && !canAddPrints) {
+      setRawInput(null);
+      return;
+    }
     onQuantityChange(design.id, next, {
       title: design.title,
       announce: next > quantity,
@@ -106,13 +127,16 @@ export function CatalogSelectionCard({
       </div>
 
       <div className="design-selection-card-body">
-        <button
-          className="design-selection-card-title-button"
-          onClick={() => onOpenDetails(design)}
-          type="button"
-        >
-          <h3 className="design-selection-card-title">{design.title}</h3>
-        </button>
+        <div className="design-selection-card-title-row">
+          <button
+            className="design-selection-card-title-button"
+            onClick={() => onOpenDetails(design)}
+            type="button"
+          >
+            <h3 className="design-selection-card-title">{design.title}</h3>
+          </button>
+          <CatalogDesignShareButton design={design} variant="icon" />
+        </div>
 
         {isSelected ? (
           <div className="design-selection-card-qty-controls portal-request-item-stepper portal-card-input-shell">
@@ -151,13 +175,14 @@ export function CatalogSelectionCard({
             <button
               aria-label={`Increase quantity for ${design.title}`}
               className="portal-request-item-stepper-button"
-              disabled={disabled}
+              disabled={increaseDisabled}
               onClick={() =>
                 onQuantityChange(design.id, quantity + 1, {
                   title: design.title,
                   announce: false,
                 })
               }
+              title={exhaustedTitle}
               type="button"
             >
               <PlusIcon />
@@ -165,13 +190,17 @@ export function CatalogSelectionCard({
           </div>
         ) : (
           <button
-            className="portal-button portal-button-secondary portal-button-sm portal-button-leading-icon design-selection-card-add-btn"
-            disabled={disabled}
+            aria-label={requestFullLabel ?? `Add ${design.title} to request`}
+            className={`portal-button portal-button-secondary portal-button-sm design-selection-card-add-btn${
+              requestFullLabel ? ' is-request-full' : ' portal-button-leading-icon'
+            }`}
+            disabled={increaseDisabled}
             onClick={() => onAdd(design)}
+            title={exhaustedTitle}
             type="button"
           >
-            <PlusIcon size={14} />
-            Add to request
+            {requestFullLabel ? null : <PlusIcon size={14} />}
+            {requestFullLabel ?? 'Add to request'}
           </button>
         )}
       </div>

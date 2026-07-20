@@ -17,6 +17,8 @@ import { customerNotificationPreferencesService } from '../services/customerNoti
 interface AccountNotificationsModalProps {
   isOpen: boolean;
   onClose: () => void;
+  /** When set (e.g. opened from Account settings), shows Back and returns to that hub. */
+  onBack?: () => void;
   /** Called after browser push is successfully enabled so Alerts CTA can refresh. */
   onBrowserPushEnabled?: () => void;
 }
@@ -24,6 +26,7 @@ interface AccountNotificationsModalProps {
 export function AccountNotificationsModal({
   isOpen,
   onClose,
+  onBack,
   onBrowserPushEnabled,
 }: AccountNotificationsModalProps) {
   const { customer, refreshCustomer } = useAuth();
@@ -59,12 +62,16 @@ export function AccountNotificationsModal({
     }
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && !isSaving && !isEnablingPush) {
+        if (onBack) {
+          onBack();
+          return;
+        }
         onClose();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isEnablingPush, isOpen, isSaving, onClose]);
+  }, [isEnablingPush, isOpen, isSaving, onBack, onClose]);
 
   if (!isOpen) {
     return null;
@@ -210,6 +217,16 @@ export function AccountNotificationsModal({
           ) : null}
         </div>
         <footer className="modal-footer">
+          {onBack ? (
+            <button
+              className="portal-button portal-button-secondary"
+              disabled={isSaving || isEnablingPush}
+              onClick={onBack}
+              type="button"
+            >
+              Back
+            </button>
+          ) : null}
           <button
             className="portal-button portal-button-secondary"
             disabled={isSaving || isEnablingPush}

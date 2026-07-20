@@ -49,6 +49,18 @@ export async function createWorkingPrintRequestInTransaction(
 }
 
 /**
+ * Create a Continuable request for Cap B / capacity leftovers after the source request
+ * was set to `active` in the same transaction (one-working-request invariant).
+ * Does not re-query Continuable docs — caller must have finalized the source request first.
+ */
+export async function createRemainderWorkingPrintRequestInTransaction(
+  transaction: Transaction,
+  customer: WorkingPrintRequestCustomer,
+): Promise<{ printRequestId: string; name: string }> {
+  return createPrintRequestDoc(transaction, customer);
+}
+
+/**
  * Resolve the single working request or create one when none exists.
  * Fails closed if more than one continuable request exists.
  */
@@ -66,6 +78,8 @@ export async function resolveOrCreateWorkingPrintRequestInTransaction(
     return { printRequestId: existing.docs[0].id, created: false };
   }
 
+  // Cap A create-gate for empty carts is enforced on createPortalPrintRequest + Portal UX.
+  // Add/attach callables charge Cap A in the same transaction; a failed charge rolls back create.
   const created = await createPrintRequestDoc(transaction, customer);
   return { printRequestId: created.printRequestId, created: true, name: created.name };
 }

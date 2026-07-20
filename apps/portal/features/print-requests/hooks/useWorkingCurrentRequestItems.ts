@@ -14,6 +14,8 @@ import {
   portalPrintRequestService,
 } from '../services/portalPrintRequestService';
 import type { CustomerUploadDocSummary } from '../../customer-uploads/services/customerUploadService';
+import { mergeServerWorkingItemsWithLocal } from '../utils/mergeServerWorkingItemsWithLocal';
+import { sortWorkingCurrentRequestItems } from '../utils/sortWorkingCurrentRequestItems';
 
 function toItemLike(
   item: PrintRequestItem,
@@ -55,9 +57,9 @@ function toItemLike(
 
 /**
  * Single owner of working Current Request item loads for Portal chrome
- * (drawer, catalog badges, header badge). Detail page may still load its own
- * richer summaries; it should call `reloadWorkingItems` after mutations that
- * affect the shared Current Request.
+ * (drawer, catalog badges, header badge). Detail page keeps richer summaries
+ * but mirrors `workingItems` while viewing the Current Request so clear/remove
+ * from the drawer update the page immediately.
  */
 export function useWorkingCurrentRequestItems(workingRequest: PrintRequest | null) {
   const [items, setItems] = useState<PrintRequestItem[]>([]);
@@ -71,29 +73,72 @@ export function useWorkingCurrentRequestItems(workingRequest: PrintRequest | nul
   >(new Map());
   const [isLoadingItems, setIsLoadingItems] = useState(false);
   const [itemsError, setItemsError] = useState<string | null>(null);
+  /**
+   * Working-request id whose item list has finished loading at least once.
+   * `undefined` = never hydrated; `null` = hydrated as empty (no working request).
+   * Used so quota UI does not treat the initial `[]` as "0 prints used".
+   */
+  const [hydratedWorkingRequestId, setHydratedWorkingRequestId] = useState<
+    string | null | undefined
+  >(undefined);
 
   /** True once a real working request has been linked this session (not optimistic-only). */
   const hasLinkedWorkingRequestRef = useRef(false);
   /** Updated only in effect / resetWorkingCart — never synced on render (would hide transitions). */
   const workingRequestIdRef = useRef<string | null>(null);
+  /**
+   * Item ids optimistically removed but not yet confirmed by the server list.
+   * Silent reloads must not resurrect these during rapid multi-remove.
+   */
+  const pendingRemovedItemIdsRef = useRef(new Set<string>());
+  /** Monotonic epoch so a slower list response cannot overwrite a newer one. */
+  const reloadEpochRef = useRef(0);
+
+  const filterPendingRemoved = useCallback((nextItems: PrintRequestItem[]) => {
+    const pending = pendingRemovedItemIdsRef.current;
+    if (pending.size === 0) {
+      return nextItems;
+    }
+    return nextItems.filter((item) => !pending.has(item.id));
+  }, []);
+
+  const beginPendingItemRemovals = useCallback((itemIds: string[]) => {
+    for (const itemId of itemIds) {
+      const trimmed = itemId.trim();
+      if (trimmed) {
+        pendingRemovedItemIdsRef.current.add(trimmed);
+      }
+    }
+  }, []);
+
+  const endPendingItemRemovals = useCallback((itemIds: string[]) => {
+    for (const itemId of itemIds) {
+      pendingRemovedItemIdsRef.current.delete(itemId.trim());
+    }
+  }, []);
 
   const resetWorkingCart = useCallback(() => {
     hasLinkedWorkingRequestRef.current = true;
     workingRequestIdRef.current = null;
+    pendingRemovedItemIdsRef.current.clear();
+    reloadEpochRef.current += 1;
     setItems([]);
     setDesignSummaries(new Map());
     setUploadSummaries(new Map());
     setItemsError(null);
     setIsLoadingItems(false);
+    setHydratedWorkingRequestId(null);
   }, []);
 
   const reloadWorkingItems = useCallback(
     async (options?: { silent?: boolean; printRequestId?: string }) => {
       const linkedId = options?.printRequestId ?? workingRequestIdRef.current;
+      const epoch = ++reloadEpochRef.current;
 
       if (!linkedId) {
         // Keep optimistic first-add only before any real working request existed.
         if (hasLinkedWorkingRequestRef.current) {
+          pendingRemovedItemIdsRef.current.clear();
           setItems([]);
           setDesignSummaries(new Map());
           setUploadSummaries(new Map());
@@ -102,6 +147,9 @@ export function useWorkingCurrentRequestItems(workingRequest: PrintRequest | nul
           setIsLoadingItems(false);
         }
         setItemsError(null);
+        if (epoch === reloadEpochRef.current) {
+          setHydratedWorkingRequestId(null);
+        }
         return;
       }
 
@@ -112,16 +160,26 @@ export function useWorkingCurrentRequestItems(workingRequest: PrintRequest | nul
 
       try {
         const nextItems = await portalPrintRequestService.listPrintRequestItems(linkedId);
-        // Drop late responses if the cart was reset / working request changed while loading.
+        // Drop late responses if the cart was reset / working request changed / a newer reload started.
+        if (epoch !== reloadEpochRef.current) {
+          return;
+        }
         if (workingRequestIdRef.current !== linkedId && !options?.printRequestId) {
           return;
         }
 
-        setItems(nextItems);
+        const visibleItems = filterPendingRemoved(nextItems);
+        // Merge so first-create / rapid-add optimistic rows are not wiped by a
+        // partial server snapshot (list lag while flushes are still in flight).
+        let mergedItems: PrintRequestItem[] = visibleItems;
+        setItems((current) => {
+          mergedItems = mergeServerWorkingItemsWithLocal(visibleItems, current);
+          return mergedItems;
+        });
 
         const neededDesignIds = [
           ...new Set(
-            nextItems
+            mergedItems
               .map((item) => item.designId?.trim())
               .filter((designId): designId is string => Boolean(designId)),
           ),
@@ -137,16 +195,19 @@ export function useWorkingCurrentRequestItems(workingRequest: PrintRequest | nul
           return kept;
         });
 
-        const missingDesignItems = nextItems.filter((item) => {
+        const missingDesignItems = mergedItems.filter((item) => {
           const designId = item.designId?.trim();
           return Boolean(designId);
         });
 
         const [nextDesigns, nextUploads] = await Promise.all([
           portalPrintRequestService.getDesignSummariesForItems(missingDesignItems),
-          portalPrintRequestService.getUploadSummariesForItems(nextItems),
+          portalPrintRequestService.getUploadSummariesForItems(mergedItems),
         ]);
 
+        if (epoch !== reloadEpochRef.current) {
+          return;
+        }
         if (workingRequestIdRef.current !== linkedId && !options?.printRequestId) {
           return;
         }
@@ -166,15 +227,18 @@ export function useWorkingCurrentRequestItems(workingRequest: PrintRequest | nul
           return next;
         });
         setUploadSummaries(nextUploads);
+        setHydratedWorkingRequestId(linkedId);
       } catch (error) {
-        setItemsError(error instanceof Error ? error.message : 'Unable to load Your Stash items.');
+        if (epoch === reloadEpochRef.current) {
+          setItemsError(error instanceof Error ? error.message : 'Unable to load Current Request items.');
+        }
       } finally {
-        if (!options?.silent) {
+        if (!options?.silent && epoch === reloadEpochRef.current) {
           setIsLoadingItems(false);
         }
       }
     },
-    [],
+    [filterPendingRemoved],
   );
 
   useEffect(() => {
@@ -205,7 +269,10 @@ export function useWorkingCurrentRequestItems(workingRequest: PrintRequest | nul
   }, [designSummaries, items, uploadSummaries]);
 
   const patchWorkingItems = useCallback<Dispatch<SetStateAction<PrintRequestItem[]>>>((update) => {
-    setItems(update);
+    setItems((current) => {
+      const next = typeof update === 'function' ? update(current) : update;
+      return sortWorkingCurrentRequestItems(next);
+    });
   }, []);
 
   type DesignSummary = Awaited<ReturnType<typeof portalPrintRequestService.getReadyDesign>>;
@@ -268,7 +335,14 @@ export function useWorkingCurrentRequestItems(workingRequest: PrintRequest | nul
     uploadSummaries,
     aggregates,
     isLoadingItems,
+    /**
+     * Id of the working request whose items have been fetched (`null` = empty cart known).
+     * `undefined` until the first resolve — do not treat `workingItems` as authoritative yet.
+     */
+    hydratedWorkingRequestId,
     itemsError,
+    beginPendingItemRemovals,
+    endPendingItemRemovals,
     ensureDesignSummaries,
     patchWorkingItems,
     seedDesignSummary,

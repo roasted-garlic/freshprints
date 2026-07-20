@@ -106,7 +106,9 @@ Phase 7 Studio MVP and Phase 8 Portal MVP are complete in the dev environment.
 
 Current Goal:
 
-Phase 9 Custom Designs is **in progress / largely complete in `fresh-prints-dev`**: 9A Etsy recommendations and 9C Assisted Creation (Custom Requests) shipped with owner PASS; polish + proof-ready email (Resend + Brevo) closed. Brevo IP/blocklist deliverability **PASS** 2026-07-18 (`docs/workflow/reviews/2026-07-18-brevo-proof-email-ip-block-signoff.md`). Studio Test Data Reset presets + wipe expansion **PASS** / signed off **approved_with_notes** 2026-07-18. Still deferred inside Phase 9: Create My Design with AI, staff design-fee / Stripe, assisted questionnaire request-type branching. Production Portal / production Google / production email release remain separate human approvals.
+**Small Managed Items Backlog:** #5-#11 **Done**. Next: **#12** library design share on custom requests - see [Small Managed Items Backlog](#small-managed-items-backlog-2026-07-18) below.
+
+Phase 9 Custom Designs remains **largely complete in `fresh-prints-dev`**: 9A Etsy recommendations and 9C Assisted Creation shipped with owner PASS; polish + proof-ready email (Resend + Brevo) closed. Brevo IP/blocklist deliverability **PASS** 2026-07-18. Studio Test Data Reset presets + wipe expansion **PASS** / signed off **approved_with_notes** 2026-07-18. Still deferred inside Phase 9: Create My Design with AI, staff design-fee / Stripe, assisted questionnaire request-type branching. Production Portal / production Google / production email release remain separate human approvals.
 
 Phase 7 Show Queue is complete for Studio MVP: foundation, staff-assisted Whatnot import,
 production-file export (zip, multiply-by-qty, auto-nested gang sheet PNG) signed off 2026-07-07,
@@ -133,6 +135,31 @@ See `docs/workflow/reviews/2026-07-07-show-queue-export-and-production-files-sig
 **Symmetric apps monorepo** (`studio-apps-folder-monorepo-normalization`) — **complete** (2026-07-08 signoff). Studio lives under `apps/studio/` alongside `apps/portal`. Signoff: `docs/workflow/reviews/2026-07-08-symmetric-apps-monorepo-signoff.md`.
 
 **Current implementation follow-up:** Remaining Phase 9 deferred items (Create My Design with AI, design fee), or production Portal deploy / production Google enablement - pick explicitly. **Already complete:** Portal catalog image load caching (2026-07-14). **Account linking:** handled via Firebase Auth / Google console setting "Link accounts that use the same email" (not a custom app build; ADR-FP-081 note updated 2026-07-18).
+
+---
+
+# Small Managed Items Backlog (2026-07-18)
+
+Owner-directed ordered checklist of smaller todos. Work **one by one** via managed phase (Plan → Review → Implement → Test → Signoff). Do not start the next item until the current one is signed off or explicitly parked.
+
+| # | Item | Status | Notes |
+|---|------|--------|-------|
+| 1 | **Customers add approved proof to a print request** — after approving an Assisted Creation proof, add that artwork into Current Request / Stash | **Done** | Owner **PASS** 2026-07-18. Signoff: `docs/workflow/reviews/2026-07-18-assisted-approved-proof-add-to-print-request-signoff.md` (**approved_with_notes**). |
+| 2 | **Update upload caps** — decrease request uploads, increase donation uploads | **Done** | Owner **PASS** 2026-07-18. Studio Settings + Portal 25 MB / remaining / layout-ZIP polish. Signoff: `docs/workflow/reviews/2026-07-18-portal-upload-limits-copy-zip-signoff.md`. |
+| 3 | **Print request & show design caps** → **Sole limit `L`** (ADR-FP-102) — max Current Request = max per customer per show; Cap A daily + Cap B remainder removed | **Done** | Owner **PASS** 2026-07-20. One Continuable/queued Portal request per customer per show **kept** (owner 2026-07-20). Signoff: `docs/workflow/reviews/2026-07-19-simple-request-per-show-limit-signoff.md` (**approved_with_notes**). |
+| 4 | **Upload page mobile actions layout** — Back and Add to Request **side by side** on mobile; footer quota / room-hint callout **full width** | **Done** | Owner **PASS** 2026-07-20. Signoff: `docs/workflow/reviews/2026-07-20-upload-page-mobile-actions-layout-signoff.md` (**approved_with_notes**). |
+| 5 | **Show queue cutoff time** — customers cannot add a request to a show within **N hours** of show start (default example: **5 hours**; 8pm show → cutoff 3pm); must pick another show. Studio setting on **show settings / show queue** page | **Done** | Owner **PASS** 2026-07-20 (countdown layout/copy/mobile polish included). Signoff: `docs/workflow/reviews/2026-07-20-show-queue-cutoff-countdown-signoff.md`. ADR-FP-103. |
+| 6 | **Design library always newest first** — even when filtered by category or tag | **Done** | Already implemented (Portal default browse `createdAt` desc; metrics keep metric sorts). Owner **PASS** covered already 2026-07-20. Verification: `docs/workflow/reviews/2026-07-20-design-library-newest-first-verification.md`. |
+| 7 | **User reset password** — Portal forgot-password / reset via Firebase Auth reset email (login + account settings for password users) | **Done** | Owner **PASS** 2026-07-20. Signoff: `docs/workflow/reviews/2026-07-20-portal-account-auth-settings-7-10-signoff.md`. |
+| 8 | **User change email** — Portal account settings; verify new email before/after per Firebase best practices; sync Auth + `users`/`customers` email | **Done** | Same batch. Google-only: least resistance = new account (no Sync). ADR-FP-104. |
+| 9 | **User request account deletion** — Customer-initiated **request** (not immediate hard delete) | **Done** | Same batch. Owner hard-delete is #10. |
+| 10 | **Owner delete users** — On **Test Data** page (not bulk): button → modal with **search**, **Staff** and **Customer** tabs; hard-delete **one** user + Auth + username + all associated records | **Done** | Same batch; owner-only; fresh-prints-dev. |
+| 11 | **OG / social sharing meta** - Open Graph / social meta (image, title, description) for link previews when sharing | **Done** | Owner **PASS** 2026-07-20 (deep-link remount fix included). Signoff: `docs/workflow/reviews/2026-07-20-portal-og-social-sharing-meta-signoff.md`. |
+| 12 | **Library design sharing on custom design requests** — When a catalog design already matches a customer’s custom/assisted request: instead of a proof image, cancel the request **or** mark complete **without a proof**; in place of the proof, send a **link to the catalog design** (image preview + title). Customer can **approve** it or **ask for it to be changed** to meet their needs | Queued | Studio Custom Requests / messaging + Portal review UX. |
+
+**Active item:** **#12** library design share on custom requests.
+
+**Just completed:** #11 - Portal OG / social sharing meta (owner **PASS** 2026-07-20, including deep-link remount fix). Prior: #7-#10 account auth + owner delete user.
 
 ---
 
@@ -989,6 +1016,8 @@ Production App Hosting deploy to a live customer URL is a **separate** human che
 **Customer-Provided Request Artwork** — **complete** on `fresh-prints-dev` (2026-07-12 parent signoff). Portal customers upload transparent PNG/WebP for their one working print request; Studio Customer Uploads intake may promote to AI Review. Separate from catalog until staff action. **Not** Phase 9 Custom Request Q&A (`customRequests`). Plan: `docs/workflow/plans/2026-07-11-portal-customer-artwork-upload-plan.md` (ADR-FP-073). Parent signoff: `docs/workflow/reviews/2026-07-12-portal-customer-artwork-upload-parent-signoff.md`.
 
 **Portal Persistent Current Request** — **complete** (2026-07-13 signoff). Cart-style Current Request (lazy virtual empty), header basket + Upload Designs, drawer, catalog direct-add, `/requests/artwork`, Review Request (ADR-FP-076). Signoff: `docs/workflow/reviews/2026-07-12-portal-persistent-current-request-signoff.md`.
+
+**Portal cart/detail UX polish batch** — **complete** (2026-07-19 signoff, PASS). Newest-first detail + cart; per-size cart lines; Clear + quota meta bar; mobile drawer scrollbar chrome hidden; duplicate preparing feedback + editable size/qty while pending. Signoff: `docs/workflow/reviews/2026-07-19-duplicate-preparing-feedback-signoff.md`.
 
 **Catalog Donate Designs** — **complete** (2026-07-13 signoff). Portal `/donate` + Studio **Donated Designs** reuse the same upload pipeline with `purpose: catalog_donation` (ADR-FP-078). Does not attach to Current Request; listing consent required. Signoff: `docs/workflow/reviews/2026-07-13-portal-donate-designs-signoff.md`.
 

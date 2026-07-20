@@ -121,11 +121,10 @@ export function assessCurrentRequestItemAttention(
         printHeightInches: height,
       });
 
+      // Soft “good” (200–299 DPI) is saveable / queueable — do not flag Stash attention.
+      // Detail surfaces may still show a soft quality hint separately.
       if (!assessment.canSave || assessment.qualityLevel === "below_minimum") {
         reasons.push("dpi_below_minimum");
-      } else if (assessment.qualityLevel === "good") {
-        // 200–299 effective DPI soft warning
-        reasons.push("dpi_warning");
       }
     } catch {
       // Never let attention scoring crash Portal chrome (e.g. degenerate approved-max math).

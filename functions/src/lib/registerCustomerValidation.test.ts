@@ -1,12 +1,18 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
+import { PORTAL_BIDDING_ACKNOWLEDGMENT_VERSION } from "../../../packages/shared/src/constants/portal/portalBiddingAcknowledgment.constants";
 import { validateRegisterCustomerRequest } from "./registerCustomerValidation";
 
+const validAck = {
+  biddingAcknowledgmentAccepted: true as const,
+  biddingAcknowledgmentVersion: PORTAL_BIDDING_ACKNOWLEDGMENT_VERSION,
+};
+
 describe("validateRegisterCustomerRequest", () => {
-  it("accepts a valid registration payload", () => {
+  it("accepts a valid registration payload with acknowledgment", () => {
     const result = validateRegisterCustomerRequest(
-      { displayName: "Alex Customer", username: "alex_prints" },
+      { displayName: "Alex Customer", username: "alex_prints", ...validAck },
       "Alex@Example.com",
     );
 
@@ -14,6 +20,7 @@ describe("validateRegisterCustomerRequest", () => {
       displayName: "Alex Customer",
       username: "alex_prints",
       email: "alex@example.com",
+      ...validAck,
     });
   });
 
@@ -21,7 +28,7 @@ describe("validateRegisterCustomerRequest", () => {
     assert.throws(
       () =>
         validateRegisterCustomerRequest(
-          { displayName: "Alex Customer", username: "admin" },
+          { displayName: "Alex Customer", username: "admin", ...validAck },
           "alex@example.com",
         ),
       /reserved/i,
@@ -30,8 +37,23 @@ describe("validateRegisterCustomerRequest", () => {
 
   it("rejects missing auth email", () => {
     assert.throws(
-      () => validateRegisterCustomerRequest({ displayName: "Alex Customer", username: "alex_prints" }, undefined),
+      () =>
+        validateRegisterCustomerRequest(
+          { displayName: "Alex Customer", username: "alex_prints", ...validAck },
+          undefined,
+        ),
       /verified email/i,
+    );
+  });
+
+  it("rejects missing bidding acknowledgment", () => {
+    assert.throws(
+      () =>
+        validateRegisterCustomerRequest(
+          { displayName: "Alex Customer", username: "alex_prints" },
+          "alex@example.com",
+        ),
+      /public bidding/i,
     );
   });
 });

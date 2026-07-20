@@ -57,14 +57,14 @@ describe("formatShowCapacityExceededMessage", () => {
   it("says the show is full when no spots remain", () => {
     assert.equal(
       formatShowCapacityExceededMessage(5, 0),
-      "This show is already full — please choose another show.",
+      "This show is already full. Please choose another show.",
     );
   });
 
-  it("asks the customer to pick another show when remaining spots are insufficient", () => {
+  it("asks the customer to remove or lower when remaining spots are insufficient", () => {
     assert.equal(
       formatShowCapacityExceededMessage(15, 5),
-      "There aren’t enough spots left on this show for your request — please choose another show.",
+      "You can add at most 5 prints to this show. Your request has 15 prints. Remove or lower quantities by 10 before adding to this show.",
     );
   });
 });

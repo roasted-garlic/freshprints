@@ -174,7 +174,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
           user: currentState.user?.id === firebaseUser.uid ? currentState.user : null,
           customer: currentState.customer?.userId === firebaseUser.uid ? currentState.customer : null,
           bootstrapStatus: 'loading-profile',
-          isAuthActionLoading: false,
+          // Keep intentional sign-in/sign-up busy through profile bootstrap so overlays stay up.
+          isAuthActionLoading: currentState.isAuthActionLoading,
           isAuthenticated: false,
           error: null,
         }));
@@ -185,7 +186,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
               return;
             }
 
-            setAuthState(nextState);
+            setAuthState((currentState) => {
+              // Google first-login still needs complete-profile; keep busy until that page mounts.
+              if (
+                currentState.isAuthActionLoading &&
+                (nextState.bootstrapStatus === 'missing-profile' ||
+                  nextState.bootstrapStatus === 'missing-customer')
+              ) {
+                return {
+                  ...nextState,
+                  isAuthActionLoading: true,
+                };
+              }
+
+              return nextState;
+            });
           })
           .catch((error: unknown) => {
             if (!isCurrentSubscription) {
@@ -198,14 +213,23 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 : 'Unable to load your portal profile. Contact support.';
             const isMissingProfile = message.includes('No Fresh Prints user profile');
 
-            setAuthState(
-              getBlockedState(
+            setAuthState((currentState) => {
+              const blocked = getBlockedState(
                 firebaseUser,
                 isMissingProfile ? 'missing-profile' : 'error',
                 // Missing profile is the normal Google first-login path — no error banner.
                 isMissingProfile ? null : message,
-              ),
-            );
+              );
+
+              if (currentState.isAuthActionLoading && isMissingProfile) {
+                return {
+                  ...blocked,
+                  isAuthActionLoading: true,
+                };
+              }
+
+              return blocked;
+            });
           });
       });
     });
@@ -289,6 +313,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
       await registerCustomerService.provisionCustomerProfile({
         displayName: credentials.displayName,
         username: credentials.username,
+        biddingAcknowledgmentAccepted: credentials.biddingAcknowledgmentAccepted,
+        biddingAcknowledgmentVersion: credentials.biddingAcknowledgmentVersion,
       });
 
       const firebaseUser = getPortalAuth().currentUser;
@@ -340,6 +366,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
         await registerCustomerService.provisionCustomerProfile({
           displayName: input.displayName,
           username: input.username,
+          biddingAcknowledgmentAccepted: input.biddingAcknowledgmentAccepted,
+          biddingAcknowledgmentVersion: input.biddingAcknowledgmentVersion,
         });
 
         const firebaseUser = getPortalAuth().currentUser;

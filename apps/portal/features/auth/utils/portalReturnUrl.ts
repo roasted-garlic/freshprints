@@ -79,3 +79,26 @@ export function buildPortalAuthHref(
 export function getCurrentPortalPath(location: Pick<Location, 'pathname' | 'search'>): string {
   return getSafePortalReturnTo(`${location.pathname}${location.search}`);
 }
+
+/**
+ * After login / profile complete, map `/share/design/{id}` landings to the
+ * catalog deep link that opens the design modal.
+ */
+export function resolvePortalPostAuthPath(returnTo: string): string {
+  const safe = getSafePortalReturnTo(returnTo);
+  try {
+    const parsed = new URL(safe, PORTAL_VALIDATION_ORIGIN);
+    const match = /^\/share\/design\/([^/]+)$/.exec(parsed.pathname);
+    if (!match?.[1]) {
+      return safe;
+    }
+    const designId = decodeURIComponent(match[1]).trim();
+    if (!designId) {
+      return safe;
+    }
+    const params = new URLSearchParams({ designId });
+    return `/catalog?${params.toString()}`;
+  } catch {
+    return safe;
+  }
+}

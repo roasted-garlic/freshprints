@@ -31,11 +31,18 @@ export interface CatalogDesign {
   lastRequestedAtMs?: number;
   /** Customer favorites count (Most Liked). */
   favoriteCount: number;
-  /** Milliseconds since epoch; used for default library sort / cursors. */
+  /**
+   * Milliseconds since epoch; cache-bust for derivative URLs and index fallback.
+   * Not used for default library order (request counters bump this field).
+   */
   updatedAtMs?: number;
 }
 
-/** Firestore orderBy field for ready-catalog paging. */
+/**
+ * Firestore orderBy field for ready-catalog paging.
+ * Default browse uses `createdAt` (Studio-newest). Metric discover modes use
+ * requestCount / favoriteCount / lastRequestedAt.
+ */
 export type CatalogDesignSortField =
   | 'updatedAt'
   | 'createdAt'

@@ -87,6 +87,21 @@ export function rankNewThisWeek<T extends CatalogDiscoveryDesign>(
     });
 }
 
+/**
+ * Studio-newest first (design `createdAt` desc). Used for default library and
+ * non-metric home rails so request/like counters never reshuffle the grid.
+ */
+export function rankNewestStudioFirst<T extends CatalogDiscoveryDesign>(designs: readonly T[]): T[] {
+  return designs.slice().sort((left, right) => {
+    const createdCompare = (right.createdAtMs ?? 0) - (left.createdAtMs ?? 0);
+    if (createdCompare !== 0) {
+      return createdCompare;
+    }
+
+    return compareById(left, right);
+  });
+}
+
 /** Lifetime popularity: requestCount descending. */
 export function rankPopular<T extends CatalogDiscoveryDesign>(designs: readonly T[]): T[] {
   return designs.slice().sort((left, right) => {
@@ -206,7 +221,8 @@ export function selectTopPopularCategoryRails<T extends CatalogDiscoveryDesign>(
         name,
         totalRequestCount,
         designCount: categoryDesigns.length,
-        designs: takeCatalogDiscoveryRail(rankPopular(categoryDesigns), railLimit),
+        // Category sections are not metric collections — cards stay Studio-newest.
+        designs: takeCatalogDiscoveryRail(rankNewestStudioFirst(categoryDesigns), railLimit),
       };
     })
     .filter((entry) => entry.designCount >= minDesigns)

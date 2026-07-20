@@ -117,6 +117,13 @@ export const registerCustomer = onCall(async (request): Promise<RegisterCustomer
           role: "customer",
           isActive: true,
           signupSource: "portal",
+          portalBiddingAcknowledgments: {
+            signup: {
+              acceptedAt: timestamp,
+              version: payload.biddingAcknowledgmentVersion,
+              source: "signup",
+            },
+          },
           createdAt: userSnapshot.exists ? userSnapshot.data()?.createdAt ?? timestamp : timestamp,
           updatedAt: timestamp,
           createdBy: userSnapshot.exists ? userSnapshot.data()?.createdBy ?? userId : userId,

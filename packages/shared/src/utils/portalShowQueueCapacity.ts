@@ -22,11 +22,14 @@ export function canFitPrintRequestOnShow(input: {
   return input.totalQuantity <= capacity.remainingQuantity;
 }
 
-/** Friendly customer-facing copy when a show cannot fit the request. */
-export function formatShowCapacityExceededMessage(_totalQuantity: number, remainingQuantity: number): string {
-  if (remainingQuantity <= 0) {
-    return "This show is already full — please choose another show.";
+/** Friendly customer-facing copy when a show cannot fit the full request (remove-first). */
+export function formatShowCapacityExceededMessage(totalQuantity: number, remainingQuantity: number): string {
+  const remaining = Math.max(0, Math.floor(remainingQuantity));
+  if (remaining <= 0) {
+    return "This show is already full. Please choose another show.";
   }
 
-  return "There aren’t enough spots left on this show for your request — please choose another show.";
+  const total = Math.max(0, Math.floor(totalQuantity));
+  const toRemove = Math.max(0, total - remaining);
+  return `You can add at most ${remaining} prints to this show. Your request has ${total} prints. Remove or lower quantities by ${toRemove} before adding to this show.`;
 }

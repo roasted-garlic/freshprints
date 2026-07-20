@@ -928,6 +928,17 @@
   margin: 0;
 }
 
+.assisted-creation-approved-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.assisted-creation-approved-card-actions .portal-button {
+  flex: 1 1 auto;
+  min-width: 8.5rem;
+}
+
 .assisted-creation-approved-card .assisted-creation-proof-stage {
   max-height: min(40vh, 16rem);
   max-width: min(80%, 16rem);
@@ -939,8 +950,55 @@
   flex-shrink: 0;
   flex-wrap: wrap;
   gap: var(--space-2);
-  justify-content: flex-end;
+  /* Close left, primary action (Download) right */
+  justify-content: space-between;
   padding: var(--space-3) var(--space-4);
+}
+
+/* Library listing consent: Cancel left; Don’t allow / Allow right. */
+.modal-panel.portal-confirm-modal > .modal-footer.assisted-library-listing-consent-footer,
+.assisted-library-listing-consent-footer.modal-footer {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  justify-content: space-between;
+}
+
+.assisted-library-listing-consent-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  justify-content: flex-end;
+}
+
+.assisted-add-progress-message {
+  margin-bottom: var(--space-3);
+}
+
+.assisted-add-progress-steps {
+  color: var(--color-text-secondary);
+  display: flex;
+  flex-direction: column;
+  font-size: var(--font-size-sm);
+  gap: var(--space-2);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.assisted-add-progress-steps li {
+  opacity: 0.55;
+}
+
+.assisted-add-progress-steps li.is-current {
+  color: var(--color-text-primary);
+  font-weight: 600;
+  opacity: 1;
+}
+
+.assisted-add-progress-steps li.is-done {
+  opacity: 0.85;
 }
 
 .assisted-creation-detail-block {

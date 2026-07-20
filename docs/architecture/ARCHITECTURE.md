@@ -154,6 +154,8 @@ Responsible for:
 
 **Discover rails:** New This Week (`createdAt`), Popular (`requestCount` / print-request adds), **Most Liked** (`favoriteCount` / customer favorites), Recently Requested (`lastRequestedAt`).
 
+**Default library / non-metric browse (2026-07-18):** Browse-all, category/tag/search filters, and Discover category rail *cards* sort by `createdAt` descending (most recently added from Studio first). Request/favorite counters bump `updatedAt` / metrics — those must not reshuffle the default grid. Only Popular, Most Liked, and Recently Requested (and similar metric collections) sort by their metrics.
+
 Must work excellently on phones, tablets, and desktop browsers.
 
 Fresh Prints Portal never requires Electron and never accesses local files.

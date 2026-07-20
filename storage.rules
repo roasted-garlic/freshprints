@@ -90,7 +90,7 @@ service firebase.storage {
     // Customer uploads (ADR-FP-073). Sync sizes with
     // packages/shared/.../customerUploadLimits.constants.ts
     function isValidCustomerUploadSource() {
-      return request.resource.size < 100 * 1024 * 1024
+      return request.resource.size < 80 * 1024 * 1024
         && request.resource.contentType in ["image/png", "image/webp"];
     }
 

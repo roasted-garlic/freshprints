@@ -22,6 +22,8 @@ import {
 import type {
   CancelAssistedCreationRequestRequest,
   CancelAssistedCreationRequestResponse,
+  CustomerAddAssistedApprovedProofToPrintRequestRequest,
+  CustomerAddAssistedApprovedProofToPrintRequestResponse,
   CustomerGetAssistedCreationApprovedProofFileRequest,
   CustomerGetAssistedCreationApprovedProofFileResponse,
   CustomerRespondToAssistedCreationProofRequest,
@@ -35,6 +37,7 @@ import type {
 } from '@fresh-prints/shared/types/assistedCreation/assistedCreationActions.types';
 import type {
   AssistedCreationAnswers,
+  AssistedCreationPrintRequestIngest,
   AssistedCreationReferenceImage,
   AssistedCreationRequest,
 } from '@fresh-prints/shared/types/assistedCreation/assistedCreation.types';
@@ -102,6 +105,39 @@ function mapCallableError(error: unknown, context: 'update' | 'default' = 'defau
   return new Error(portalAuthService.getCallableErrorMessage(error));
 }
 
+function parsePrintRequestIngest(
+  value: unknown,
+): AssistedCreationPrintRequestIngest | null | undefined {
+  if (value == null) {
+    return value === null ? null : undefined;
+  }
+  if (typeof value !== 'object') {
+    return undefined;
+  }
+  const record = value as Record<string, unknown>;
+  const customerUploadId =
+    typeof record.customerUploadId === 'string' ? record.customerUploadId.trim() : '';
+  const printRequestItemId =
+    typeof record.printRequestItemId === 'string' ? record.printRequestItemId.trim() : '';
+  const printRequestId =
+    typeof record.printRequestId === 'string' ? record.printRequestId.trim() : '';
+  const assistedProofId =
+    typeof record.assistedProofId === 'string' ? record.assistedProofId.trim() : '';
+  if (!customerUploadId || !printRequestItemId || !printRequestId) {
+    return undefined;
+  }
+  return {
+    customerUploadId,
+    printRequestItemId,
+    printRequestId,
+    assistedProofId,
+    ingestedAt: record.ingestedAt ?? null,
+    ...(typeof record.catalogUseAcknowledged === 'boolean'
+      ? { catalogUseAcknowledged: record.catalogUseAcknowledged }
+      : {}),
+  };
+}
+
 function parseRequestDoc(
   id: string,
   data: Record<string, unknown> | undefined,
@@ -142,6 +178,7 @@ function parseRequestDoc(
         ? data.approvedProofId.trim()
         : undefined,
     approvedAt: data.approvedAt ?? undefined,
+    printRequestIngest: parsePrintRequestIngest(data.printRequestIngest),
     createdAt: data.createdAt ?? null,
     updatedAt: data.updatedAt ?? null,
   };
@@ -334,6 +371,33 @@ export const assistedCreationService = {
       }
       const blob = base64ToBlob(contentBase64, contentType);
       this.triggerBrowserDownloadFromBlob(blob, fileName || 'proof.png');
+    } catch (error) {
+      throw mapCallableError(error);
+    }
+  },
+
+  /**
+   * Copy approved proof into Current Request and Studio custom-design intake.
+   * `catalogUseAcknowledged` matches print-upload / donate consent (same intake fields).
+   */
+  async addApprovedProofToPrintRequest(
+    requestId: string,
+    options: { catalogUseAcknowledged: boolean },
+  ): Promise<CustomerAddAssistedApprovedProofToPrintRequestResponse> {
+    const trimmedId = requestId.trim();
+    if (!trimmedId) {
+      throw new Error('Request id is required.');
+    }
+    try {
+      const callable = httpsCallable<
+        CustomerAddAssistedApprovedProofToPrintRequestRequest,
+        CustomerAddAssistedApprovedProofToPrintRequestResponse
+      >(getPortalFunctions(), 'customerAddAssistedApprovedProofToPrintRequest');
+      const result = await callable({
+        requestId: trimmedId,
+        catalogUseAcknowledged: options.catalogUseAcknowledged === true,
+      });
+      return result.data;
     } catch (error) {
       throw mapCallableError(error);
     }

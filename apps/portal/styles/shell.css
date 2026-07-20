@@ -573,10 +573,145 @@
   display: none;
   flex-shrink: 0;
   gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
+  /* Vertical padding drives header band height; brand/logo is absolute-centered and out of flow. */
+  padding: var(--space-4) var(--space-4);
+  position: relative;
+  top: auto;
+  z-index: 1;
+}
+
+.portal-app-top {
+  background: var(--color-bg-primary);
+  flex-shrink: 0;
   position: sticky;
   top: 0;
-  z-index: 10;
+  z-index: var(--z-sticky);
+}
+
+.portal-print-request-quota-banner {
+  align-items: center;
+  border-bottom: 1px solid transparent;
+  display: flex;
+  justify-content: center;
+  min-height: 2rem;
+  padding: 0.35rem 0.75rem;
+}
+
+.portal-print-request-quota-banner.is-healthy {
+  background: color-mix(in srgb, var(--color-success) 14%, var(--color-bg-secondary));
+  border-bottom-color: color-mix(in srgb, var(--color-success) 35%, var(--color-border));
+  color: var(--color-success-text);
+}
+
+.portal-print-request-quota-banner.is-warning {
+  background: color-mix(in srgb, var(--color-warning) 16%, var(--color-bg-secondary));
+  border-bottom-color: color-mix(in srgb, var(--color-warning) 40%, var(--color-border));
+  color: var(--color-warning-text);
+}
+
+.portal-print-request-quota-banner.is-exhausted {
+  background: color-mix(in srgb, var(--color-danger) 14%, var(--color-bg-secondary));
+  border-bottom-color: color-mix(in srgb, var(--color-danger) 38%, var(--color-border));
+  color: var(--color-danger-text);
+}
+
+.portal-print-request-quota-banner-inner {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.portal-print-request-quota-banner-status {
+  align-items: center;
+  display: inline-flex;
+  flex-wrap: nowrap;
+  gap: 0.35rem;
+  justify-content: center;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.portal-print-request-quota-banner-text {
+  flex: 0 1 auto;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  line-height: 1.3;
+  min-width: 0;
+}
+
+.portal-print-request-quota-banner-next {
+  font-size: var(--font-size-xs, 0.75rem);
+  font-weight: 500;
+  line-height: 1.3;
+  margin: 0;
+  opacity: 0.92;
+  text-align: center;
+}
+
+.portal-print-request-quota-banner-help {
+  align-items: center;
+  appearance: none;
+  background: transparent;
+  border: 1px solid color-mix(in srgb, currentColor 28%, transparent);
+  border-radius: 999px;
+  color: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  flex-shrink: 0;
+  height: 1.5rem;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  width: 1.5rem;
+}
+
+.portal-print-request-quota-banner-help:hover {
+  background: color-mix(in srgb, currentColor 10%, transparent);
+}
+
+.portal-print-request-quota-banner-help:focus-visible {
+  box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 35%, transparent);
+  outline: none;
+}
+
+.portal-print-request-quota-help-overlay {
+  z-index: calc(var(--z-modal, 40) + 2);
+}
+
+.portal-print-request-quota-help-modal {
+  max-width: min(100%, 32rem);
+}
+
+.portal-print-request-quota-help-copy {
+  line-height: 1.45;
+  margin: 0;
+}
+
+.portal-print-request-quota-help-copy + .portal-print-request-quota-help-copy {
+  margin-top: 0.75rem;
+}
+
+.design-selection-card-quota-hint,
+.design-card-quota-hint,
+.design-details-quota-hint {
+  color: var(--color-danger-text, var(--color-text-muted));
+  font-size: var(--font-size-xs, 0.75rem);
+  line-height: 1.3;
+  margin: 0.35rem 0 0;
+}
+
+.design-card-add-btn.is-request-full,
+.design-selection-card-add-btn.is-request-full {
+  color: var(--color-danger-text, var(--color-text-muted));
+}
+
+.design-card-add-btn.is-request-full:disabled,
+.design-selection-card-add-btn.is-request-full:disabled {
+  cursor: not-allowed;
+  opacity: 1;
 }
 
 .portal-app-header-start {
@@ -836,6 +971,48 @@
   margin: 0;
 }
 
+.portal-bidding-ack-overlay {
+  /* Sit above stacked queue/split modals (split uses z-modal + 2). */
+  z-index: calc(var(--z-modal, 40) + 4);
+}
+
+.portal-bidding-ack-modal {
+  max-width: min(100%, 36rem);
+}
+
+.portal-bidding-ack-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.portal-bidding-ack-lead,
+.portal-bidding-ack-paragraph,
+.portal-bidding-ack-exclusive {
+  margin: 0;
+}
+
+.portal-bidding-ack-checkbox {
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+}
+
+.portal-bidding-ack-checkbox span {
+  line-height: 1.45;
+}
+
+.portal-bidding-ack-exclusive {
+  font-size: var(--font-size-sm, 0.875rem);
+  line-height: 1.45;
+}
+
+.portal-bidding-ack-exclusive a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.12em;
+}
+
 .portal-working-request-choice-modal {
   max-width: min(100%, 24rem);
 }
@@ -957,6 +1134,58 @@
   display: flex;
   gap: var(--space-4);
   padding: var(--space-5);
+}
+
+.portal-account-settings-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.portal-account-settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.portal-account-deletion-banner {
+  margin: 0;
+  padding: 0.75rem 0.85rem;
+  border-radius: 0.65rem;
+  border: 1px solid color-mix(in srgb, var(--portal-danger, #b42318) 35%, transparent);
+  background: color-mix(in srgb, var(--portal-danger, #b42318) 8%, transparent);
+  color: var(--portal-text, inherit);
+  font-size: 0.92rem;
+  line-height: 1.4;
+}
+
+.portal-button-danger {
+  background: color-mix(in srgb, var(--portal-danger, #b42318) 92%, black);
+  color: #fff;
+  border-color: transparent;
+}
+
+.portal-button-danger:hover:not(:disabled) {
+  filter: brightness(1.05);
+}
+
+.portal-button-ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--portal-muted, #666);
+  text-decoration: underline;
+  box-shadow: none;
+}
+
+.portal-auth-forgot-password,
+.portal-auth-reset-form {
+  margin-top: 0.35rem;
+}
+
+.portal-form-success {
+  margin: 0;
+  color: var(--portal-success, #067647);
+  font-size: 0.92rem;
 }
 
 .portal-account-settings-button {
@@ -1529,8 +1758,8 @@
   .portal-app-header {
     display: flex;
     justify-content: space-between;
-    position: sticky;
-    top: 0;
+    position: relative;
+    top: auto;
   }
 
   .portal-app-header-start {
@@ -1564,7 +1793,7 @@
 }
 
 @media (min-width: 48rem) {
-  /* Desktop: edge tab toggles sidebar; header keeps Your Stash cart. */
+  /* Desktop: edge tab toggles sidebar; header keeps Current Request cart. */
   .portal-app-header-menu-button {
     display: none;
   }
@@ -1575,7 +1804,7 @@
 
   .portal-app-header {
     display: flex;
-    position: sticky;
+    position: relative;
   }
 
   .portal-app-header-brand {
@@ -1612,7 +1841,7 @@
   }
 }
 
-/* Your Stash header + drawer */
+/* Current Request header + drawer */
 .portal-app-header {
   align-items: center;
   display: flex;
@@ -1711,14 +1940,12 @@
 
 .current-request-drawer-header {
   align-items: flex-start;
-  border-bottom: 1px solid var(--color-border);
   flex-direction: row;
   justify-content: space-between;
-  margin-bottom: var(--space-3);
-  padding-bottom: var(--space-3);
 }
 
 .current-request-drawer-heading {
+  flex: 1;
   min-width: 0;
 }
 
@@ -1738,19 +1965,87 @@
   margin: 0.15rem 0 0;
 }
 
-.current-request-drawer-summary-row {
-  align-items: baseline;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem 0.75rem;
-  margin-top: 0.45rem;
-}
-
 .current-request-drawer-summary,
-.current-request-drawer-meta {
+.current-request-drawer-meta,
+.current-request-drawer-quota-next {
   color: var(--color-text-secondary);
   font-size: 0.875rem;
   margin: 0;
+}
+
+.current-request-drawer-summary {
+  margin-top: 0.45rem;
+}
+
+.current-request-drawer-full-callout {
+  align-items: flex-start;
+  background: color-mix(in srgb, var(--color-danger) 12%, var(--color-bg-secondary));
+  border: 1px solid color-mix(in srgb, var(--color-danger) 42%, var(--color-border));
+  border-radius: var(--radius-md, 0.5rem);
+  color: var(--color-danger-text);
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  width: 100%;
+}
+
+.current-request-drawer-full-callout-icon {
+  color: var(--color-danger-text);
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+
+.current-request-drawer-full-callout-text {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.35;
+  margin: 0;
+  text-align: left;
+}
+
+.current-request-drawer-meta-bar {
+  border-bottom: 1px solid var(--color-border);
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-top: var(--space-3);
+  padding: var(--space-2) 0;
+}
+
+.current-request-drawer-meta-bar-row {
+  align-items: center;
+  display: flex;
+  gap: var(--space-3);
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.current-request-drawer-quota {
+  color: var(--color-text-secondary);
+  flex: 0 1 auto;
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin: 0;
+  margin-left: auto;
+  max-width: 12rem;
+  text-align: right;
+}
+
+.current-request-drawer-quota.is-full {
+  color: var(--color-danger-text);
+  font-weight: 600;
+}
+
+.current-request-drawer-quota-next {
+  font-size: 0.8125rem;
+  opacity: 0.92;
+}
+
+.current-request-drawer-header-actions {
+  display: flex;
+  flex-shrink: 0;
 }
 
 .current-request-drawer-clear {
@@ -1758,12 +2053,16 @@
   border: 0;
   color: var(--color-danger-text, #b42318);
   cursor: pointer;
+  flex-shrink: 0;
   font: inherit;
   font-size: 0.8125rem;
   font-weight: 600;
+  line-height: 1.2;
   padding: 0;
+  text-align: left;
   text-decoration: underline;
   text-underline-offset: 0.15em;
+  white-space: nowrap;
 }
 
 .current-request-drawer-clear:hover:not(:disabled) {
@@ -1811,7 +2110,9 @@
   flex: 1;
   flex-direction: column;
   min-height: 0;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .current-request-drawer.is-empty .current-request-drawer-body {
@@ -1867,56 +2168,81 @@
   padding: var(--space-3) 0;
 }
 
-.current-request-drawer-row {
-  align-items: stretch;
-  display: flex;
-  gap: var(--space-3);
-  min-width: 0;
+.current-request-drawer-group:first-child {
+  border-top: 0;
 }
 
+/* Thumb | stacked copy (title+trash share the top line). */
+.current-request-drawer-row {
+  align-items: start;
+  column-gap: var(--space-4);
+  display: grid;
+  grid-template-columns: 80px minmax(0, 1fr);
+  min-width: 0;
+  row-gap: 0;
+}
+
+/* Fixed 80×80 square — copy column matches this height. */
 .current-request-drawer-thumb,
 .current-request-drawer-thumb-img,
 .design-thumbnail-panel.current-request-drawer-thumb {
+  align-self: start;
   aspect-ratio: 1;
-  align-self: flex-start;
-  background: var(--color-bg-tertiary);
+  background: var(--color-artwork-preview-bg);
   border-radius: 0.5rem;
-  flex: 0 0 3.5rem;
-  height: 3.5rem;
-  max-height: 3.5rem;
+  height: 80px;
+  max-height: 80px;
   overflow: hidden;
-  width: 3.5rem;
+  width: 80px;
 }
 
 .current-request-drawer-thumb-img {
   display: block;
+  height: 100%;
   object-fit: contain;
+  width: 100%;
 }
 
+.design-thumbnail-panel.current-request-drawer-thumb {
+  border-style: solid;
+}
+
+.design-thumbnail-panel.current-request-drawer-thumb .design-thumbnail-panel-image {
+  height: 100%;
+  object-fit: contain;
+  width: 100%;
+}
+
+/* Copy column: title+trash top, qty bottom; size+pill centered in the 80px column. */
 .current-request-drawer-main {
-  align-items: flex-start;
   display: flex;
-  flex: 1;
-  gap: var(--space-2);
-  min-height: 3.5rem;
+  flex-direction: column;
+  gap: 0;
+  height: 80px;
+  justify-content: space-between;
+  min-height: 0;
   min-width: 0;
+  overflow: hidden;
+  position: relative;
 }
 
-.current-request-drawer-copy {
+/* Title and trash share one baseline row. */
+.current-request-drawer-title-row {
+  align-items: center;
+  column-gap: 0.35rem;
   display: flex;
-  flex: 1;
-  flex-direction: column;
-  gap: 0.25rem;
-  justify-content: center;
-  min-height: 3.5rem;
+  flex-shrink: 0;
   min-width: 0;
+  position: relative;
+  z-index: 1;
 }
 
 .current-request-drawer-title {
   color: var(--color-text-primary);
-  font-size: 0.9375rem;
+  flex: 1 1 auto;
+  font-size: 0.875rem;
   font-weight: 600;
-  line-height: 1.25;
+  line-height: 1.2;
   margin: 0;
   min-width: 0;
   overflow: hidden;
@@ -1924,14 +2250,31 @@
   white-space: nowrap;
 }
 
+/* Out of flex flow so title/stepper pin to edges; true vertical center of the column. */
+.current-request-drawer-meta-row {
+  align-items: center;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.25rem 0.4rem;
+  left: 0;
+  min-width: 0;
+  overflow: hidden;
+  pointer-events: none;
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 0;
+}
+
 .current-request-drawer-source-pill {
-  align-self: flex-start;
   border-radius: 999px;
-  font-size: 0.6875rem;
+  flex-shrink: 0;
+  font-size: 0.625rem;
   font-weight: 700;
   letter-spacing: 0.02em;
   line-height: 1;
-  padding: 0.28rem 0.5rem;
+  padding: 0.2rem 0.4rem;
 }
 
 .current-request-drawer-source-pill-library {
@@ -1944,11 +2287,50 @@
   color: var(--color-warning-text);
 }
 
+.current-request-drawer-source-pill-custom {
+  background: color-mix(in srgb, var(--color-custom) 18%, transparent);
+  color: var(--color-custom-text);
+}
+
 .current-request-drawer-meta-line {
   color: var(--color-text-secondary);
-  font-size: 0.8125rem;
+  flex-shrink: 1;
+  font-size: 0.75rem;
   line-height: 1.2;
   margin: 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.current-request-drawer-stepper {
+  align-self: flex-start;
+  flex-shrink: 0;
+  grid-template-columns: 1.5rem minmax(1.75rem, auto) 1.5rem;
+  height: 1.75rem;
+  min-height: 1.75rem;
+  position: relative;
+  z-index: 1;
+}
+
+.current-request-drawer-stepper-qty {
+  align-items: center;
+  border-left: 1px solid var(--color-border);
+  border-right: 1px solid var(--color-border);
+  color: var(--color-text-primary);
+  display: inline-flex;
+  font-size: 0.75rem;
+  font-weight: 600;
+  justify-content: center;
+  min-width: 1.75rem;
+  padding: 0 0.25rem;
+  text-align: center;
+}
+
+.current-request-drawer-stepper .portal-request-item-stepper-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 
 .current-request-drawer-trash {
@@ -2026,6 +2408,18 @@
 
   .current-request-drawer {
     width: 100vw;
+  }
+
+  /* Hide native scrollbar chrome on open; touch/wheel scroll still works. */
+  .current-request-drawer-body {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .current-request-drawer-body::-webkit-scrollbar {
+    display: none;
+    height: 0;
+    width: 0;
   }
 }
 

@@ -1,23 +1,46 @@
 'use client';
 
-import { useEffect, useRef, useState, type ChangeEvent, type DragEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type ChangeEvent, type DragEvent } from 'react';
 
 import {
   CUSTOMER_UPLOAD_MAX_CONCURRENT_FINALIZE,
-  CUSTOMER_UPLOAD_MAX_SINGLE_IMAGE_BYTES,
-  CUSTOMER_UPLOAD_MAX_ZIP_COMPRESSED_BYTES,
 } from '@fresh-prints/shared/constants/customerUpload/customerUploadLimits.constants';
+import type { GetCustomerUploadDailyQuotaResponse } from '@fresh-prints/shared/types/customerUpload/customerUploadDailyQuota.types';
 import type { CustomerUploadPurpose } from '@fresh-prints/shared/types/customerUpload/customerUpload.enums';
 import { formatFileSize } from '@fresh-prints/shared/utils/formatFileSize';
-
+import {
+  formatWorkingRequestFullUploadOverlayBody,
+  formatWorkingRequestFullUploadOverlayTitle,
+  formatWorkingRequestUploadRoomHint,
+  resolveWorkingRequestLimitBannerTone,
+  type WorkingRequestLimitBannerTone,
+} from '@fresh-prints/shared/utils/printRequestWorkingRequestMax';
 import {
   ArrowLeftIcon,
   CircleHelpIcon,
   PlusIcon,
   XIcon,
 } from '../../shared/components/PortalIcons';
+import { useLiveQuotaRefresh } from '../../shared/hooks/useLiveQuotaRefresh';
+import { useAuth } from '../../auth/context/AuthContext';
+import { usePortalPrintRequests } from '../../print-requests/context/PortalPrintRequestContext';
 import { useCustomerUploadBatch } from '../hooks/useCustomerUploadBatch';
-import { customerUploadService } from '../services/customerUploadService';
+import {
+  customerUploadService,
+  defaultCustomerUploadSizeLimits,
+} from '../services/customerUploadService';
+import { formatCustomerUploadDailyQuota } from '../utils/formatCustomerUploadDailyQuota';
+import { resolveCustomerUploadAttachDisabledReason } from '../utils/resolveCustomerUploadAttachDisabledReason';
+
+function quotaToneClassName(tone: WorkingRequestLimitBannerTone): string {
+  if (tone === 'exhausted') {
+    return 'is-exhausted';
+  }
+  if (tone === 'warning') {
+    return 'is-warning';
+  }
+  return 'is-healthy';
+}
 
 interface CustomerUploadPanelProps {
   /** Print-request attach success (ignored when purpose is catalog_donation). */
@@ -38,6 +61,23 @@ export function CustomerUploadPanel({
   variant = 'modal',
 }: CustomerUploadPanelProps) {
   const isDonation = purpose === 'catalog_donation';
+  const { firebaseUser } = useAuth();
+  const { workingRequestLimit } = usePortalPrintRequests();
+  const isQuotaReady = isDonation || workingRequestLimit.isReady;
+  const isQuotaPending = !isDonation && !workingRequestLimit.isReady;
+  const isRequestFull =
+    !isDonation && workingRequestLimit.isReady && workingRequestLimit.isRequestFull;
+  const printSlotsRemaining =
+    !isDonation && workingRequestLimit.isReady && workingRequestLimit.limit != null
+      ? workingRequestLimit.roomRemaining
+      : null;
+  const [dailyQuota, setDailyQuota] = useState<GetCustomerUploadDailyQuotaResponse | null>(null);
+  const sizeLimits = dailyQuota
+    ? {
+        maxSingleImageBytes: dailyQuota.maxSingleImageBytes,
+        maxZipBytes: dailyQuota.maxZipBytes,
+      }
+    : defaultCustomerUploadSizeLimits(purpose);
   const {
     rows,
     isProcessing,
@@ -47,11 +87,11 @@ export function CustomerUploadPanel({
     setOwnershipConfirmed,
     setCatalogUseAcknowledged,
     bannerError,
+    batchNotes,
     readyCount,
     failedCount,
     uploadingCount,
     processingCount,
-    canAttach,
     addFiles,
     removeRow,
     retryFailed,
@@ -59,7 +99,11 @@ export function CustomerUploadPanel({
     submitDonation,
     respondToHalftone,
     reset,
-  } = useCustomerUploadBatch({ purpose });
+  } = useCustomerUploadBatch({
+    purpose,
+    sizeLimits,
+    maxImagesForRequest: printSlotsRemaining,
+  });
 
   const imageInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
@@ -67,8 +111,31 @@ export function CustomerUploadPanel({
   const [isDragging, setIsDragging] = useState(false);
   const [previewUrls, setPreviewUrls] = useState<Record<string, string | null>>({});
   const [isHalftoneHelpOpen, setIsHalftoneHelpOpen] = useState(false);
+  const wasProcessingRef = useRef(false);
 
   const isBusy = isProcessing || isAttaching;
+
+  const refreshDailyQuota = useCallback(async () => {
+    if (!firebaseUser) {
+      setDailyQuota(null);
+      return;
+    }
+    try {
+      const next = await customerUploadService.getDailyQuota(purpose);
+      setDailyQuota(next);
+    } catch {
+      // Soft-fail: do not block uploads if remaining display cannot load.
+    }
+  }, [firebaseUser, purpose]);
+
+  useLiveQuotaRefresh(refreshDailyQuota, { enabled: Boolean(firebaseUser) });
+
+  useEffect(() => {
+    if (wasProcessingRef.current && !isProcessing) {
+      void refreshDailyQuota();
+    }
+    wasProcessingRef.current = isProcessing;
+  }, [isProcessing, refreshDailyQuota]);
 
   useEffect(() => {
     if (variant !== 'modal' && !isHalftoneHelpOpen) {
@@ -122,6 +189,10 @@ export function CustomerUploadPanel({
   }, [rows]);
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    if (isRequestFull || isQuotaPending) {
+      event.target.value = '';
+      return;
+    }
     const files = event.target.files;
     if (files && files.length > 0) {
       void addFiles(files);
@@ -132,6 +203,9 @@ export function CustomerUploadPanel({
   const handleDrop = (event: DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     setIsDragging(false);
+    if (isRequestFull || isQuotaPending) {
+      return;
+    }
     if (event.dataTransfer.files?.length) {
       void addFiles(event.dataTransfer.files);
     }
@@ -160,35 +234,67 @@ export function CustomerUploadPanel({
     }
   };
 
+  const uploadBlocked = isBusy || isRequestFull || isQuotaPending;
+  const attachDisabledReason = resolveCustomerUploadAttachDisabledReason({
+    isDonation,
+    readyCount,
+    ownershipConfirmed,
+    catalogUseAcknowledged,
+    isProcessing,
+    isAttaching,
+    isQuotaReady,
+    isRequestFull,
+    canAddPrints: isDonation ? true : workingRequestLimit.canAddPrints,
+    exhaustedStatusText: workingRequestLimit.exhaustedStatusText,
+    maxImagesForRequest: printSlotsRemaining,
+  });
+  const isAttachDisabled = attachDisabledReason != null;
+  const needsOwnershipToAttach =
+    readyCount > 0 &&
+    !ownershipConfirmed &&
+    !isBusy &&
+    !isRequestFull &&
+    !isQuotaPending &&
+    (isDonation || workingRequestLimit.canAddPrints);
+  // When the full-request overlay is up, skip the footer hint — same copy would duplicate.
+  const showAttachDisabledHint =
+    isAttachDisabled &&
+    Boolean(attachDisabledReason) &&
+    !isAttaching &&
+    !isRequestFull &&
+    !isQuotaPending &&
+    (readyCount > 0 ||
+      (!isDonation && workingRequestLimit.isReady && !workingRequestLimit.canAddPrints));
+  const requestRoomTone =
+    !isDonation &&
+    printSlotsRemaining != null &&
+    workingRequestLimit.limit != null
+      ? resolveWorkingRequestLimitBannerTone(printSlotsRemaining, workingRequestLimit.limit)
+      : null;
+  const donateQuotaTone =
+    isDonation && dailyQuota
+      ? resolveWorkingRequestLimitBannerTone(dailyQuota.images.remaining, dailyQuota.images.limit)
+      : null;
+  const fullOverlayTitle =
+    workingRequestLimit.limit != null
+      ? formatWorkingRequestFullUploadOverlayTitle(workingRequestLimit.limit)
+      : 'This request is full';
+  const fullOverlayBody = formatWorkingRequestFullUploadOverlayBody();
+
   const panelBody = (
     <>
-        <header className="modal-header portal-customer-upload-modal-header">
-          <div>
-            <h2 id="portal-customer-upload-title">
-              {variant === 'embedded' ? 'Choose files' : isDonation ? 'Donate designs' : 'Upload artwork'}
-            </h2>
-            <p className="portal-muted">
-              {variant === 'embedded' ? (
-                <>
-                  PNG or WebP · up to {formatFileSize(CUSTOMER_UPLOAD_MAX_SINGLE_IMAGE_BYTES)} each ·
-                  ZIP up to {formatFileSize(CUSTOMER_UPLOAD_MAX_ZIP_COMPRESSED_BYTES)} (images are
-                  discovered and listed, then processed) ·{' '}
-                  {CUSTOMER_UPLOAD_MAX_CONCURRENT_FINALIZE} at a time
-                </>
-              ) : (
-                <>
-                  Add PNG or WebP files, a folder, or one ZIP. Images up to{' '}
-                  {formatFileSize(CUSTOMER_UPLOAD_MAX_SINGLE_IMAGE_BYTES)} each; ZIPs up to{' '}
-                  {formatFileSize(CUSTOMER_UPLOAD_MAX_ZIP_COMPRESSED_BYTES)}. Upload up to{' '}
-                  {CUSTOMER_UPLOAD_MAX_CONCURRENT_FINALIZE} images at a time.
-                  {isDonation
-                    ? ' Submitted donations go to Fresh Prints for review before any catalog listing.'
-                    : ' Passing technical checks only means your file can print — it is not added to our design library unless approved.'}
-                </>
-              )}
-            </p>
-          </div>
-          {variant === 'modal' ? (
+        {variant === 'modal' ? (
+          <header className="modal-header portal-customer-upload-modal-header">
+            <div>
+              <h2 id="portal-customer-upload-title">
+                {isDonation ? 'Donate designs' : 'Upload artwork'}
+              </h2>
+              <p className="portal-muted">
+                {isDonation
+                  ? 'Submitted donations go to Fresh Prints for review before any catalog listing.'
+                  : 'Passing technical checks only means your file can print. It is not added to our design library unless approved.'}
+              </p>
+            </div>
             <button
               aria-label="Close"
               className="modal-close-button"
@@ -198,13 +304,55 @@ export function CustomerUploadPanel({
             >
               <XIcon size={14} />
             </button>
-          ) : null}
-        </header>
+          </header>
+        ) : null}
 
-        <div className="modal-body portal-customer-upload-modal-body">
+        <div className="portal-customer-upload-interactive">
+          {isQuotaPending ? (
+            <div
+              aria-busy="true"
+              aria-live="polite"
+              className="portal-customer-upload-request-full-overlay portal-customer-upload-quota-pending-overlay"
+              role="status"
+            >
+              <div className="portal-customer-upload-quota-pending-card">
+                <p>Checking print limits…</p>
+              </div>
+            </div>
+          ) : null}
+          {isRequestFull ? (
+            <div
+              aria-describedby="portal-customer-upload-full-body"
+              aria-labelledby="portal-customer-upload-full-title"
+              aria-modal="true"
+              className="portal-customer-upload-request-full-overlay"
+              role="alertdialog"
+            >
+              <div className="portal-customer-upload-request-full-card">
+                <h2 id="portal-customer-upload-full-title">{fullOverlayTitle}</h2>
+                <p id="portal-customer-upload-full-body">{fullOverlayBody}</p>
+                <button
+                  className="portal-button portal-button-secondary portal-button-leading-icon"
+                  onClick={handleClose}
+                  type="button"
+                >
+                  <ArrowLeftIcon size={16} />
+                  {variant === 'embedded' ? 'Back' : 'Close'}
+                </button>
+              </div>
+            </div>
+          ) : null}
+
           <div
-            className={`portal-customer-upload-dropzone${isDragging ? ' is-dragging' : ''}`}
+            aria-hidden={isRequestFull || isQuotaPending ? true : undefined}
+            className={`modal-body portal-customer-upload-modal-body${isRequestFull || isQuotaPending ? ' is-request-full-blocked' : ''}`}
+          >
+          <div
+            className={`portal-customer-upload-dropzone${isDragging ? ' is-dragging' : ''}${isRequestFull || isQuotaPending ? ' is-disabled' : ''}`}
             onDragEnter={(event) => {
+              if (isRequestFull || isQuotaPending) {
+                return;
+              }
               event.preventDefault();
               setIsDragging(true);
             }}
@@ -212,14 +360,26 @@ export function CustomerUploadPanel({
               event.preventDefault();
               setIsDragging(false);
             }}
-            onDragOver={(event) => event.preventDefault()}
+            onDragOver={(event) => {
+              if (isRequestFull || isQuotaPending) {
+                return;
+              }
+              event.preventDefault();
+            }}
             onDrop={handleDrop}
           >
+            <p className="portal-customer-upload-file-limits">
+              PNG or WebP · up to {formatFileSize(sizeLimits.maxSingleImageBytes)} each · ZIP up to{' '}
+              {formatFileSize(sizeLimits.maxZipBytes)} (images are discovered and listed, then
+              processed) ·{' '}
+              {dailyQuota?.maxConcurrentFinalize ?? CUSTOMER_UPLOAD_MAX_CONCURRENT_FINALIZE} at a
+              time
+            </p>
             <p>Drop files here, or choose:</p>
             <div className="portal-customer-upload-actions">
               <button
                 className="portal-button portal-button-secondary"
-                disabled={isBusy}
+                disabled={uploadBlocked}
                 onClick={() => imageInputRef.current?.click()}
                 type="button"
               >
@@ -227,7 +387,7 @@ export function CustomerUploadPanel({
               </button>
               <button
                 className="portal-button portal-button-secondary"
-                disabled={isBusy}
+                disabled={uploadBlocked}
                 onClick={() => folderInputRef.current?.click()}
                 type="button"
               >
@@ -235,7 +395,7 @@ export function CustomerUploadPanel({
               </button>
               <button
                 className="portal-button portal-button-secondary"
-                disabled={isBusy}
+                disabled={uploadBlocked}
                 onClick={() => zipInputRef.current?.click()}
                 type="button"
               >
@@ -244,6 +404,7 @@ export function CustomerUploadPanel({
             </div>
             <input
               accept=".png,.webp,image/png,image/webp"
+              disabled={isRequestFull}
               hidden
               multiple
               onChange={handleFileChange}
@@ -252,6 +413,7 @@ export function CustomerUploadPanel({
             />
             <input
               accept=".png,.webp,image/png,image/webp"
+              disabled={isRequestFull}
               hidden
               // @ts-expect-error webkitdirectory is supported in Chromium browsers
               webkitdirectory=""
@@ -262,6 +424,7 @@ export function CustomerUploadPanel({
             />
             <input
               accept=".zip,application/zip"
+              disabled={isRequestFull}
               hidden
               onChange={handleFileChange}
               ref={zipInputRef}
@@ -273,6 +436,14 @@ export function CustomerUploadPanel({
             <p className="portal-error" role="alert">
               {bannerError}
             </p>
+          ) : null}
+
+          {batchNotes.length > 0 ? (
+            <ul className="portal-customer-upload-notes">
+              {batchNotes.map((note) => (
+                <li key={note}>{note}</li>
+              ))}
+            </ul>
           ) : null}
 
           {rows.length > 0 ? (
@@ -341,7 +512,7 @@ export function CustomerUploadPanel({
                       <label className="portal-customer-upload-halftone-label">
                         <input
                           checked={row.halftoneResponseDraft === 'yes'}
-                          disabled={isAttaching}
+                          disabled={isAttaching || isRequestFull}
                           onChange={(event) => {
                             respondToHalftone(
                               row.localId,
@@ -356,6 +527,7 @@ export function CustomerUploadPanel({
                         aria-haspopup="dialog"
                         aria-label="What is a halftone design?"
                         className="portal-customer-upload-halftone-help-toggle"
+                        disabled={isRequestFull}
                         onClick={() => {
                           setIsHalftoneHelpOpen(true);
                         }}
@@ -369,7 +541,7 @@ export function CustomerUploadPanel({
                         {row.halftoneResponseError}{' '}
                         <button
                           className="portal-customer-upload-halftone-retry"
-                          disabled={isAttaching}
+                          disabled={isAttaching || isRequestFull}
                           onClick={() => {
                             respondToHalftone(
                               row.localId,
@@ -389,7 +561,9 @@ export function CustomerUploadPanel({
                   <button
                     className="portal-button portal-button-secondary portal-customer-upload-file-remove"
                     disabled={
-                      isAttaching || (isProcessing && row.phase !== 'failed' && row.phase !== 'ready')
+                      isRequestFull ||
+                      isAttaching ||
+                      (isProcessing && row.phase !== 'failed' && row.phase !== 'ready')
                     }
                     onClick={() => removeRow(row.localId)}
                     type="button"
@@ -404,7 +578,7 @@ export function CustomerUploadPanel({
           {failedCount > 0 ? (
             <button
               className="portal-button portal-button-secondary"
-              disabled={isBusy}
+              disabled={uploadBlocked}
               onClick={() => void retryFailed()}
               type="button"
             >
@@ -412,37 +586,44 @@ export function CustomerUploadPanel({
             </button>
           ) : null}
 
-          <fieldset className="portal-customer-upload-confirmations">
+          <fieldset
+            className={`portal-customer-upload-confirmations${
+              needsOwnershipToAttach ? ' is-required-attention' : ''
+            }`}
+            disabled={isRequestFull}
+          >
             <legend>Confirmations</legend>
-            {variant === 'modal' && !isDonation ? (
+            {!isDonation ? (
               <p className="portal-muted portal-customer-upload-confirm-help">
-                Confirm you have the right to print this artwork. You can also allow Fresh Prints to
-                consider it for our shared design library.
+                Check that you have the right to print this artwork before adding it to your
+                request. Library use is optional.
               </p>
-            ) : null}
-            {isDonation ? (
+            ) : (
               <p className="portal-muted portal-customer-upload-confirm-help">
-                Donations are not added to Your Stash. Both confirmations are required to
+                Donations are not added to Current Request. Both confirmations are required to
                 submit.
               </p>
-            ) : null}
-            <label className="form-checkbox">
+            )}
+            <label
+              className={`form-checkbox${needsOwnershipToAttach ? ' is-required-attention' : ''}`}
+            >
               <input
                 checked={ownershipConfirmed}
-                disabled={isBusy}
+                disabled={uploadBlocked}
                 onChange={(event) => setOwnershipConfirmed(event.target.checked)}
                 type="checkbox"
               />
               <span>
                 {isDonation
                   ? 'I own this artwork or have permission to donate it for catalog use.'
-                  : 'I own this artwork or have permission to print it.'}
+                  : 'I own this artwork or have permission to print it.'}{' '}
+                <span className="portal-customer-upload-required-mark">(required)</span>
               </span>
             </label>
             <label className="form-checkbox">
               <input
                 checked={catalogUseAcknowledged}
-                disabled={isBusy}
+                disabled={uploadBlocked}
                 onChange={(event) => setCatalogUseAcknowledged(event.target.checked)}
                 type="checkbox"
               />
@@ -450,36 +631,78 @@ export function CustomerUploadPanel({
                 {isDonation
                   ? 'I understand I am donating these images to Fresh Prints. If approved, they may be listed in the Design Library for other customers to request.'
                   : 'Fresh Prints may use this artwork in our design library for other customers.'}
+                {isDonation ? (
+                  <>
+                    {' '}
+                    <span className="portal-customer-upload-required-mark">(required)</span>
+                  </>
+                ) : null}
               </span>
             </label>
           </fieldset>
+          </div>
         </div>
 
         <footer className="modal-footer portal-customer-upload-footer">
-          <button
-            className="portal-button portal-button-secondary portal-button-leading-icon"
-            disabled={isBusy}
-            onClick={handleClose}
-            type="button"
-          >
-            <ArrowLeftIcon size={16} />
-            {variant === 'embedded' ? 'Back' : 'Cancel'}
-          </button>
-          <button
-            className="portal-button portal-button-primary portal-button-leading-icon"
-            disabled={!canAttach}
-            onClick={() => void handleSubmit()}
-            type="button"
-          >
-            <PlusIcon size={16} />
-            {isDonation
-              ? isAttaching
-                ? 'Submitting…'
-                : 'Submit donation'
-              : isAttaching
-                ? 'Adding…'
-                : 'Add to Your Stash'}
-          </button>
+          {isDonation && dailyQuota && donateQuotaTone ? (
+            <p
+              className={`portal-customer-upload-quota ${quotaToneClassName(donateQuotaTone)}`}
+              role="status"
+            >
+              {formatCustomerUploadDailyQuota(dailyQuota)}
+            </p>
+          ) : null}
+          {!isDonation &&
+          !isRequestFull &&
+          workingRequestLimit.isReady &&
+          printSlotsRemaining != null &&
+          requestRoomTone ? (
+            <p
+              className={`portal-customer-upload-quota ${quotaToneClassName(requestRoomTone)}`}
+              role="status"
+            >
+              {formatWorkingRequestUploadRoomHint(printSlotsRemaining)}
+            </p>
+          ) : null}
+          <div className="portal-customer-upload-footer-actions">
+            <button
+              className="portal-button portal-button-secondary portal-button-leading-icon"
+              disabled={isBusy}
+              onClick={handleClose}
+              type="button"
+            >
+              <ArrowLeftIcon size={16} />
+              {variant === 'embedded' ? 'Back' : 'Cancel'}
+            </button>
+            <button
+              aria-describedby={
+                showAttachDisabledHint ? 'portal-customer-upload-attach-hint' : undefined
+              }
+              className="portal-button portal-button-primary portal-button-leading-icon"
+              disabled={isAttachDisabled}
+              onClick={() => void handleSubmit()}
+              title={attachDisabledReason ?? undefined}
+              type="button"
+            >
+              <PlusIcon size={16} />
+              {isDonation
+                ? isAttaching
+                  ? 'Submitting…'
+                  : 'Submit donation'
+                : isAttaching
+                  ? 'Adding…'
+                  : 'Add to Request'}
+            </button>
+          </div>
+          {showAttachDisabledHint ? (
+            <p
+              className="portal-muted portal-customer-upload-attach-hint"
+              id="portal-customer-upload-attach-hint"
+              role="status"
+            >
+              {attachDisabledReason}
+            </p>
+          ) : null}
         </footer>
     </>
   );
@@ -539,8 +762,8 @@ export function CustomerUploadPanel({
     return (
       <>
         <section
-          aria-labelledby="portal-customer-upload-title"
-          className="portal-customer-upload-embedded"
+          aria-label={isDonation ? 'Donate designs' : 'Upload artwork'}
+          className={`portal-customer-upload-embedded${isRequestFull ? ' is-request-full' : ''}${isQuotaPending ? ' is-quota-pending' : ''}`}
         >
           {panelBody}
         </section>

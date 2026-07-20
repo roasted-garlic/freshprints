@@ -26,10 +26,14 @@ export function useQueuePrintRequestToShow() {
     }
   }, []);
 
+  const clearError = useCallback(() => {
+    setError(null);
+  }, []);
+
   return {
     queueToShow,
     isSubmitting,
     error,
-    clearError: () => setError(null),
+    clearError,
   };
 }

@@ -2,13 +2,24 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useId, useState, type FormEvent } from 'react';
+import { useEffect, useId, useMemo, useState, type FormEvent } from 'react';
+
+import { PORTAL_BIDDING_ACKNOWLEDGMENT_VERSION } from '@fresh-prints/shared/constants/portal/portalBiddingAcknowledgment.constants';
+import { buildPortalBiddingAcknowledgmentSignupCopy } from '@fresh-prints/shared/utils/portalBiddingAcknowledgmentCopy';
 
 import { useAuth } from '../context/AuthContext';
 import { needsPortalCustomerProfileCompletion } from '../types/auth.types';
 import { UserPlusIcon } from '../../shared/components/PortalIcons';
+import { PortalBiddingAcknowledgmentModal } from '../../shared/components/PortalBiddingAcknowledgmentModal';
 import { AuthBusyOverlay } from './AuthBusyOverlay';
 import { GoogleAuthButton } from './GoogleAuthButton';
+
+interface PendingRegistration {
+  email: string;
+  password: string;
+  displayName: string;
+  username: string;
+}
 
 export function RegisterForm() {
   const router = useRouter();
@@ -25,11 +36,22 @@ export function RegisterForm() {
   } = useAuth();
   const [localError, setLocalError] = useState<string | null>(null);
   const [showEmailForm, setShowEmailForm] = useState(false);
+  const [pendingRegistration, setPendingRegistration] = useState<PendingRegistration | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const signupCopy = useMemo(() => buildPortalBiddingAcknowledgmentSignupCopy(), []);
 
   useEffect(() => {
     clearAuthError();
     setLocalError(null);
   }, [clearAuthError]);
+
+  useEffect(() => {
+    if (!error && !localError) {
+      return;
+    }
+
+    setIsSubmitting(false);
+  }, [error, localError]);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -42,7 +64,7 @@ export function RegisterForm() {
     }
   }, [bootstrapStatus, isAuthenticated, router]);
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLocalError(null);
 
@@ -58,21 +80,45 @@ export function RegisterForm() {
       return;
     }
 
-    await register({ email, password, displayName, username });
+    setPendingRegistration({ email, password, displayName, username });
+  }
+
+  async function handleAcknowledgeAndRegister() {
+    if (!pendingRegistration) {
+      return;
+    }
+
+    const credentials = pendingRegistration;
+    // Flip busy before closing the ack modal so the form never looks idle.
+    setIsSubmitting(true);
+    setPendingRegistration(null);
+    await register({
+      ...credentials,
+      biddingAcknowledgmentAccepted: true,
+      biddingAcknowledgmentVersion: PORTAL_BIDDING_ACKNOWLEDGMENT_VERSION,
+    });
+  }
+
+  async function handleGoogleSignUp() {
+    setIsSubmitting(true);
+    await loginWithGoogle();
   }
 
   const displayError = localError ?? error;
-  const isBusy = isAuthActionLoading || (bootstrapStatus === 'loading-profile' && Boolean(firebaseUser));
+  const isBusy =
+    isSubmitting ||
+    isAuthActionLoading ||
+    (bootstrapStatus === 'loading-profile' && Boolean(firebaseUser));
 
   return (
     <div className="portal-auth-stack portal-auth-stack-compact">
       <GoogleAuthButton
         disabled={isBusy}
-        isLoading={isAuthActionLoading}
+        isLoading={isBusy}
         label="Continue with Google"
-        loadingLabel="Connecting…"
+        loadingLabel="Creating account…"
         onClick={() => {
-          void loginWithGoogle();
+          void handleGoogleSignUp();
         }}
       />
 
@@ -152,6 +198,21 @@ export function RegisterForm() {
       <p className="portal-auth-footer">
         Already have an account? <Link href="/login">Sign in</Link>
       </p>
+
+      <PortalBiddingAcknowledgmentModal
+        confirmLabel="Create account"
+        copy={signupCopy}
+        isBusy={isBusy}
+        isOpen={pendingRegistration !== null}
+        onCancel={() => {
+          if (!isBusy) {
+            setPendingRegistration(null);
+          }
+        }}
+        onConfirm={() => {
+          void handleAcknowledgeAndRegister();
+        }}
+      />
 
       {isBusy ? (
         <AuthBusyOverlay

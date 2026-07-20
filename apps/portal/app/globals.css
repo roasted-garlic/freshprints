@@ -297,7 +297,8 @@ textarea::placeholder {
   position: fixed;
   right: 0;
   top: 0;
-  z-index: 80;
+  /* Above acknowledgment / confirm modals (--z-modal is 40). */
+  z-index: calc(var(--z-modal, 40) + 50);
 }
 
 .portal-auth-processing-card {

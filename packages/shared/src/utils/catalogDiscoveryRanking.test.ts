@@ -6,6 +6,7 @@ import {
   parseCatalogDiscoveryMode,
   rankCatalogDiscoveryDesigns,
   rankMostLiked,
+  rankNewestStudioFirst,
   rankNewThisWeek,
   rankPopular,
   rankRecentlyRequested,
@@ -62,6 +63,21 @@ describe("rankNewThisWeek", () => {
     assert.deepEqual(
       ranked.map((entry) => entry.id),
       ["new", "mid"],
+    );
+  });
+});
+
+describe("rankNewestStudioFirst", () => {
+  it("sorts by createdAt descending", () => {
+    const ranked = rankNewestStudioFirst([
+      design({ id: "old", createdAtMs: NOW - 5 * DAY, requestCount: 99 }),
+      design({ id: "new", createdAtMs: NOW - 1 * DAY, requestCount: 0 }),
+      design({ id: "mid", createdAtMs: NOW - 2 * DAY, requestCount: 50 }),
+    ]);
+
+    assert.deepEqual(
+      ranked.map((entry) => entry.id),
+      ["new", "mid", "old"],
     );
   });
 });
@@ -139,7 +155,7 @@ describe("takeCatalogDiscoveryRail", () => {
 });
 
 describe("selectTopPopularCategoryRails", () => {
-  it("keeps only the most popular categories with enough designs", () => {
+  it("picks popular categories but orders cards Studio-newest first", () => {
     const categories = [
       { id: "animals", name: "Animals" },
       { id: "holiday", name: "Holiday" },
@@ -149,15 +165,15 @@ describe("selectTopPopularCategoryRails", () => {
 
     const rails = selectTopPopularCategoryRails(
       [
-        design({ id: "a1", categoryId: "animals", requestCount: 5 }),
-        design({ id: "a2", categoryId: "animals", requestCount: 1 }),
-        design({ id: "a3", categoryId: "animals", requestCount: 0 }),
-        design({ id: "h1", categoryId: "holiday", requestCount: 20 }),
-        design({ id: "h2", categoryId: "holiday", requestCount: 2 }),
-        design({ id: "h3", categoryId: "holiday", requestCount: 1 }),
-        design({ id: "s1", categoryId: "sports", requestCount: 4 }),
-        design({ id: "s2", categoryId: "sports", requestCount: 4 }),
-        design({ id: "s3", categoryId: "sports", requestCount: 0 }),
+        design({ id: "a1", categoryId: "animals", requestCount: 5, createdAtMs: NOW - 3 * DAY }),
+        design({ id: "a2", categoryId: "animals", requestCount: 1, createdAtMs: NOW - 2 * DAY }),
+        design({ id: "a3", categoryId: "animals", requestCount: 0, createdAtMs: NOW - 1 * DAY }),
+        design({ id: "h1", categoryId: "holiday", requestCount: 20, createdAtMs: NOW - 5 * DAY }),
+        design({ id: "h2", categoryId: "holiday", requestCount: 2, createdAtMs: NOW - 1 * DAY }),
+        design({ id: "h3", categoryId: "holiday", requestCount: 1, createdAtMs: NOW - 2 * DAY }),
+        design({ id: "s1", categoryId: "sports", requestCount: 4, createdAtMs: NOW }),
+        design({ id: "s2", categoryId: "sports", requestCount: 4, createdAtMs: NOW - 1 * DAY }),
+        design({ id: "s3", categoryId: "sports", requestCount: 0, createdAtMs: NOW - 2 * DAY }),
         design({ id: "t1", categoryId: "thin", requestCount: 100 }),
         design({ id: "t2", categoryId: "thin", requestCount: 100 }),
         design({ id: "none", requestCount: 50 }),
@@ -170,9 +186,10 @@ describe("selectTopPopularCategoryRails", () => {
       rails.map((rail) => rail.categoryId),
       ["holiday", "sports"],
     );
+    // Cards: createdAt desc (not requestCount) — h2 newest, then h3, then h1.
     assert.deepEqual(
       rails[0]!.designs.map((entry) => entry.id),
-      ["h1", "h2", "h3"],
+      ["h2", "h3", "h1"],
     );
   });
 });

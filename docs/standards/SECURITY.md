@@ -110,6 +110,8 @@ Email / Password — Portal customers and Studio staff
 Google — Portal customers only (ADR-FP-081)
 ```
 
+Portal customers may reset password and change email via Firebase Auth client APIs when a password provider is present (verify-before-update for email; profile sync via Admin callable). Google-only accounts cannot change sign-in email in-app (tied to Google; least-resistance path is a new account). Account **deletion from the customer** is request-only (`accountDeletionRequests`); hard delete of a single user is owner-only on the allowlisted Test Data project (`ownerDeleteUser`, ADR-FP-104).
+
 Studio staff login and Studio customer invites must not expose Google. Additional providers require approval.
 
 ---
@@ -524,6 +526,7 @@ Firestore rules and `permissionService` should stay aligned:
 * Active staff (`owner`, `admin`, `helper`) may read `printRequests`, `printRequestItems`, and `customers`
 * Active staff may create and update `printRequests`
 * Active staff may create, update, and remove `printRequestItems`
+* Portal customers may **update size** on own editable `printRequestItems` but **must not create**, **change quantity**, or **delete** items client-side — those go through Admin callables so Cap A daily print-count charges/refunds cannot be bypassed (ADR-FP-096)
 * Active staff may create and update `customers`
 * Active staff may create/update/delete customer username reservation documents
 * Active staff may read/update the `counters/printRequests` internal request counter
@@ -723,13 +726,13 @@ must be protected (ADR-FP-073 — Phase 8 request artwork, not Phase 9 custom re
 * Customers access only their own uploads and their own print requests.
 * Other customers must not read unapproved artwork.
 * Staff access uses centralized Studio permissions.
-* Storage rules enforce: canonical path, owner (`userId == auth.uid`), max size (25 MB source / 50 MB ZIP), allowed source/ZIP types.
+* Storage rules enforce: canonical path, owner (`userId == auth.uid`), max size (80 MB source / 2 GB ZIP ceiling), allowed source/ZIP types.
 * Customers may write only `source` and `archive.zip`; derivatives are Admin SDK / Functions only.
 * Upload lifecycle / `technicalStatus` / path-to-doc binding are validated in **finalize callables**, not via complex Storage↔Firestore status coupling.
 * Ready-catalog derivative public-read patterns must **not** apply to unapproved customer uploads.
 * First-release formats: transparent PNG and static transparent WebP only. SVG deferred. JPEG and animated formats rejected.
 * ZIP: server-side extract only (`yauzl`); nested ZIPs rejected; customer limits ≪ staff import limits.
-* Portal customers clear Current Request via `clearPortalWorkingPrintRequest` (Admin SDK soft-archive); customer Firestore rules still lock `status` on direct updates.
+* Portal customers clear Current Request via `clearPortalWorkingPrintRequest` (Admin SDK deletes items, keeps `draft`/`editing`); customer Firestore rules still lock `status` on direct updates.
 * Owner/admin may run `archiveStaleWorkingPrintRequests` to soft-archive empty working carts older than 14 days.
   * Print-request: create batch **100** / finalize image **200** / finalize ZIP **5**
   * Catalog-donation: create batch **200** / finalize image **500** / finalize ZIP **20**
@@ -765,7 +768,7 @@ All uploads should enforce size limits.
 
 Large uploads should be rejected.
 
-Customer Portal limits (locked): single image 25 MB; batch 25 files / 100 MB; ZIP 50 MB compressed / 200 MB decompressed. Staff Studio import limits remain separate.
+Customer Portal limits: single image **80 MB** (`CUSTOMER_UPLOAD_MAX_SINGLE_IMAGE_BYTES`); batch up to 100 files / 2 GB uncompressed; ZIP compressed/decompressed purpose-scoped as `min(2 GB ceiling, images/day × 80 MB)` from Studio Settings (storage rules keep the 2 GB ceiling). Daily upload-start / image / ZIP count quotas are purpose-scoped (print-request vs donation) and owner-tunable via Studio Settings. Staff Studio import limits remain separate.
 
 ---
 

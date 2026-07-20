@@ -81,4 +81,87 @@ describe("customerUploadProcessing", () => {
     }
     assert.equal(result.code, "unsupported_format");
   });
+
+  it("accepts opaque PNG when skipCustomerQualityGates is set", async () => {
+    const bytes = await makeOpaquePng();
+    const result = await processCustomerUploadImageBytes(bytes, {
+      skipCustomerQualityGates: true,
+    });
+    assert.equal(result.ok, true);
+    if (!result.ok) {
+      return;
+    }
+    assert.equal(result.sourceFormat, "png");
+    assert.ok(result.productionPng.byteLength > 0);
+  });
+
+  it("accepts JPEG when skipCustomerQualityGates is set", async () => {
+    const bytes = await sharp({
+      create: {
+        width: 400,
+        height: 400,
+        channels: 3,
+        background: { r: 10, g: 20, b: 30 },
+      },
+    })
+      .jpeg()
+      .toBuffer();
+    const result = await processCustomerUploadImageBytes(bytes, {
+      skipCustomerQualityGates: true,
+    });
+    assert.equal(result.ok, true);
+    if (!result.ok) {
+      return;
+    }
+    assert.equal(result.sourceFormat, "png");
+    assert.ok(result.productionPng.byteLength > 0);
+  });
+
+  it("assistedProofFastIngest reuses PNG source and skips trim work", async () => {
+    const bytes = await makeOpaquePng(500, 500);
+    const result = await processCustomerUploadImageBytes(bytes, {
+      assistedProofFastIngest: true,
+    });
+    assert.equal(result.ok, true);
+    if (!result.ok) {
+      return;
+    }
+    assert.equal(result.productionReusedSource, true);
+    assert.equal(result.wasTrimmed, false);
+    assert.equal(result.wasUpscaled, false);
+    assert.ok(result.previewWebp.byteLength > 0);
+    assert.ok(result.thumbnailWebp.byteLength > 0);
+  });
+
+  it("skipCustomerQualityGates upscales small art like normal finalize (library ingest)", async () => {
+    // Opaque proof ~2.22" × 2.67" at 300 DPI → full path upscales toward ~12" width.
+    // (Transparent fixture would trim empty margins first and hit the 6× cap sooner.)
+    const bytes = await makeOpaquePng(666, 801);
+    const fast = await processCustomerUploadImageBytes(bytes, {
+      assistedProofFastIngest: true,
+    });
+    const full = await processCustomerUploadImageBytes(bytes, {
+      skipCustomerQualityGates: true,
+    });
+    assert.equal(fast.ok, true, "fast path should succeed");
+    assert.equal(full.ok, true, "full path should succeed");
+    if (!fast.ok || !full.ok) {
+      return;
+    }
+    assert.equal(fast.wasUpscaled, false);
+    assert.ok(
+      fast.approvedMaxPrintWidthInches < 3,
+      `fast approved max should stay native-ish, got ${fast.approvedMaxPrintWidthInches}`,
+    );
+    assert.equal(
+      full.wasUpscaled,
+      true,
+      `full path should upscale (w=${full.widthPx} aw=${full.approvedMaxPrintWidthInches})`,
+    );
+    assert.ok(
+      full.approvedMaxPrintWidthInches >= 11.5,
+      `full approved max should near 12", got ${full.approvedMaxPrintWidthInches}`,
+    );
+    assert.ok(full.widthPx > fast.widthPx);
+  });
 });

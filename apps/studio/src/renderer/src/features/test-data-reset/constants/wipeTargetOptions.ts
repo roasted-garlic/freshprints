@@ -59,6 +59,13 @@ export const OPERATIONAL_WIPE_TARGET_OPTIONS: OperationalWipeTargetOption[] = [
       "Deletes customer upload docs, batches, rate-limit/lease/idempotency collections, and Storage under customer-uploads/. Does not delete print requests or catalog designs. Select this to clear Portal artwork fixtures; promoted designs may retain sourceCustomerUploadId pointing at deleted uploads.",
   },
   {
+    id: "printRequestDesignDailyLimits",
+    label: "Print request daily limits",
+    summary: "Cap A counters only (prints added today). Keeps Current Request stash.",
+    description:
+      "Deletes printRequestDesignDailyLimits docs (Chicago calendar day counters for print copies added to print requests). Resets Cap A so customers can add prints again without wiping print requests or line items. Also cleared automatically when Print Requests is wiped.",
+  },
+  {
     id: "etsySearches",
     label: "Etsy",
     summary: "Searches, rate limits, overlays, suggestion requests, inert leftovers.",

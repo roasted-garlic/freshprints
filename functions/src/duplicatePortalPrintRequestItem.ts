@@ -2,6 +2,7 @@ import { FieldValue } from "firebase-admin/firestore";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 
 import { CUSTOMER_UPLOAD_COLLECTIONS } from "../../packages/shared/src/constants/customerUpload/customerUploadCollections.constants";
+import { resolveDuplicateInsertBeforeSortOrder } from "../../packages/shared/src/utils/printRequestItemDisplayOrder";
 import { formatPrintRequestItemSizeLabel } from "../../packages/shared/src/utils/printRequestItemSizing";
 import { shouldIncrementDesignRequestCount } from "../../packages/shared/src/utils/printRequestItemSource";
 
@@ -14,7 +15,12 @@ import {
   unauthenticated,
 } from "./lib/errors";
 import { withoutUndefinedFields } from "./lib/firestoreDocument";
+import { loadPrintRequestLimitSettings } from "./lib/loadPrintRequestLimitSettings";
 import { requirePortalCustomer } from "./lib/portalCustomer";
+import {
+  assertWorkingRequestAllowsPrintAdds,
+  sumWorkingRequestPrintQuantities,
+} from "./lib/printRequestWorkingRequestMax";
 
 export interface DuplicatePortalPrintRequestItemRequest {
   printRequestId: string;
@@ -47,11 +53,24 @@ function asPositiveInt(value: unknown): number {
   return Math.floor(n);
 }
 
+function createdAtMillis(value: unknown): number {
+  if (
+    value &&
+    typeof value === "object" &&
+    "toMillis" in value &&
+    typeof (value as { toMillis?: unknown }).toMillis === "function"
+  ) {
+    return (value as { toMillis: () => number }).toMillis();
+  }
+  return 0;
+}
+
 /**
  * Customer-authoritative duplicate for Portal print request items.
  * Upload-backed items are Admin-created (same customerUploadId, no Storage clone).
  * Catalog-backed items copy designId. Does not increment designs.requestCount for uploads
  * (onPrintRequestItemCreated already gates via shouldIncrementDesignRequestCount).
+ * New item is inserted immediately after the source in display order (to the right).
  */
 export const duplicatePortalPrintRequestItem = onCall(
   async (request): Promise<DuplicatePortalPrintRequestItemResponse> => {
@@ -75,11 +94,21 @@ export const duplicatePortalPrintRequestItem = onCall(
       let sourceType: "catalog_design" | "customer_upload" = "catalog_design";
       let designId: string | undefined;
       let customerUploadId: string | undefined;
+      const settings = await loadPrintRequestLimitSettings();
+      const maxPerRequest = settings.maxQuantityPerShowPerCustomer;
 
       await adminDb.runTransaction(async (tx) => {
         const requestRef = adminDb.collection("printRequests").doc(printRequestId);
         const itemRef = adminDb.collection("printRequestItems").doc(itemId);
-        const [requestSnap, itemSnap] = await Promise.all([tx.get(requestRef), tx.get(itemRef)]);
+        const siblingsQuery = adminDb
+          .collection("printRequestItems")
+          .where("printRequestId", "==", printRequestId);
+
+        const [requestSnap, itemSnap, siblingsSnap] = await Promise.all([
+          tx.get(requestRef),
+          tx.get(itemRef),
+          tx.get(siblingsQuery),
+        ]);
 
         if (!requestSnap.exists) {
           throw invalidArgument("Print request not found.");
@@ -109,10 +138,6 @@ export const duplicatePortalPrintRequestItem = onCall(
           typeof itemData.printWidthInches === "number" ? itemData.printWidthInches : undefined;
         const printHeightInches =
           typeof itemData.printHeightInches === "number" ? itemData.printHeightInches : undefined;
-        const sortOrder =
-          typeof itemData.sortOrder === "number" && Number.isFinite(itemData.sortOrder)
-            ? itemData.sortOrder + 0.5
-            : undefined;
         const notes =
           typeof itemData.notes === "string" && itemData.notes.trim()
             ? itemData.notes.trim()
@@ -122,17 +147,33 @@ export const duplicatePortalPrintRequestItem = onCall(
             ? itemData.titleSnapshot.trim()
             : undefined;
 
+        // Newest-first Portal display: insert-before = visual right of source.
+        const insertOrder = resolveDuplicateInsertBeforeSortOrder({
+          sourceItemId: itemId,
+          items: siblingsSnap.docs.map((siblingDoc) => {
+            const siblingData = siblingDoc.data() ?? {};
+            return {
+              id: siblingDoc.id,
+              sortOrder:
+                typeof siblingData.sortOrder === "number" && Number.isFinite(siblingData.sortOrder)
+                  ? siblingData.sortOrder
+                  : undefined,
+              createdAtMillis: createdAtMillis(siblingData.createdAt),
+            };
+          }),
+        });
+        const sortOrder = insertOrder.duplicateSortOrder;
+
         const isUpload =
           itemData.sourceType === "customer_upload" ||
           (typeof itemData.customerUploadId === "string" &&
             itemData.customerUploadId.trim().length > 0);
 
-        const newItemRef = adminDb.collection("printRequestItems").doc();
-        createdItemId = newItemRef.id;
-        const now = FieldValue.serverTimestamp();
+        let uploadId = "";
+        let catalogDesignId = "";
 
         if (isUpload) {
-          const uploadId =
+          uploadId =
             typeof itemData.customerUploadId === "string" ? itemData.customerUploadId.trim() : "";
           if (!uploadId) {
             throw failedPrecondition("Uploaded artwork is missing its source upload.");
@@ -152,7 +193,40 @@ export const duplicatePortalPrintRequestItem = onCall(
 
           sourceType = "customer_upload";
           customerUploadId = uploadId;
+        } else {
+          catalogDesignId =
+            typeof itemData.designId === "string" ? itemData.designId.trim() : "";
+          if (!catalogDesignId) {
+            throw failedPrecondition("Print request item is missing a design.");
+          }
 
+          const designSnap = await tx.get(adminDb.collection("designs").doc(catalogDesignId));
+          if (!designSnap.exists || designSnap.data()?.status !== "ready") {
+            throw failedPrecondition("Only approved catalog designs can be duplicated.");
+          }
+
+          sourceType = "catalog_design";
+          designId = catalogDesignId;
+        }
+
+        const newItemRef = adminDb.collection("printRequestItems").doc();
+        createdItemId = newItemRef.id;
+        const now = FieldValue.serverTimestamp();
+
+        assertWorkingRequestAllowsPrintAdds({
+          currentPrintCount: sumWorkingRequestPrintQuantities(
+            siblingsSnap.docs.map((docSnap) => {
+              const data = docSnap.data() ?? {};
+              return {
+                quantity: typeof data.quantity === "number" ? data.quantity : 1,
+              };
+            }),
+          ),
+          addCount: quantity,
+          maxPerRequest,
+        });
+
+        if (isUpload) {
           tx.set(
             newItemRef,
             withoutUndefinedFields({
@@ -177,20 +251,6 @@ export const duplicatePortalPrintRequestItem = onCall(
             }),
           );
         } else {
-          const catalogDesignId =
-            typeof itemData.designId === "string" ? itemData.designId.trim() : "";
-          if (!catalogDesignId) {
-            throw failedPrecondition("Print request item is missing a design.");
-          }
-
-          const designSnap = await tx.get(adminDb.collection("designs").doc(catalogDesignId));
-          if (!designSnap.exists || designSnap.data()?.status !== "ready") {
-            throw failedPrecondition("Only approved catalog designs can be duplicated.");
-          }
-
-          sourceType = "catalog_design";
-          designId = catalogDesignId;
-
           tx.set(
             newItemRef,
             withoutUndefinedFields({
@@ -212,6 +272,13 @@ export const duplicatePortalPrintRequestItem = onCall(
               updatedAt: now,
             }),
           );
+        }
+
+        if (insertOrder.sourceSortOrderUpdate !== undefined) {
+          tx.update(itemRef, {
+            sortOrder: insertOrder.sourceSortOrderUpdate,
+            updatedAt: now,
+          });
         }
 
         // Sanity: upload duplicates must never look like catalog increments.

@@ -20,8 +20,8 @@ export function internal(message = "An internal error occurred."): HttpsError {
   return new HttpsError("internal", message);
 }
 
-export function failedPrecondition(message: string): HttpsError {
-  return new HttpsError("failed-precondition", message);
+export function failedPrecondition(message: string, details?: unknown): HttpsError {
+  return new HttpsError("failed-precondition", message, details);
 }
 
 export function resourceExhausted(message: string, details?: unknown): HttpsError {

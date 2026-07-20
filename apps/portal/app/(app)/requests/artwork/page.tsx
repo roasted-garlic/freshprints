@@ -81,7 +81,7 @@ export default function RequestArtworkPage() {
           <ul className="request-artwork-success-notes">
             <li>
               <span className="request-artwork-success-note-dot is-ready" />
-              Ready to review in Your Stash
+              Ready to review in Current Request
             </li>
             <li>
               <span className="request-artwork-success-note-dot is-muted" />
@@ -113,7 +113,7 @@ export default function RequestArtworkPage() {
       <header className="portal-page-header request-artwork-page-header">
         <h1>Upload Designs</h1>
         <p className="portal-muted request-artwork-page-lead">
-          Add artwork to print with Your Stash.
+          Add artwork to print with Current Request.
           {!workingRequest
             ? ' A request is created when you attach ready files.'
             : null}

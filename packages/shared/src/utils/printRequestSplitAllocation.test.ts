@@ -3,12 +3,14 @@ import { test } from "node:test";
 
 import {
   applySplitSelectionToLineItems,
+  buildFillUpSplitQuantities,
   calculateSplitSelectionTotal,
   clampSplitItemQuantity,
   formatSplitNeededWarning,
   getTotalRemainingQuantity,
   isSplitAllocationComplete,
   shouldShowRemainingWording,
+  toPositiveSplitSelections,
   type SplitAllocationLineItem,
 } from "./printRequestSplitAllocation";
 
@@ -111,4 +113,36 @@ test("formatSplitNeededWarning: mentions both the split path and the pick-a-diff
 test("formatSplitNeededWarning: singular print wording", () => {
   const message = formatSplitNeededWarning({ fittingQuantity: 0, totalQuantity: 1 });
   assert.ok(message.startsWith("Only 0 of 1 print can be added"));
+});
+
+test("Cap B 25+25: fill-up queues 25 of design A only; B remains for another show", () => {
+  const entries = [
+    { itemId: "design-a", remainingQuantity: 25 },
+    { itemId: "design-b", remainingQuantity: 25 },
+  ];
+  const filled = buildFillUpSplitQuantities(entries, 25);
+  assert.deepEqual(filled, { "design-a": 25, "design-b": 0 });
+
+  const selections = toPositiveSplitSelections(filled);
+  assert.deepEqual(selections, [{ printRequestItemId: "design-a", quantity: 25 }]);
+  assert.equal(calculateSplitSelectionTotal(filled), 25);
+
+  const afterQueue = applySplitSelectionToLineItems(
+    [
+      { printRequestItemId: "design-a", designTitle: "Design A", remainingQuantity: 25 },
+      { printRequestItemId: "design-b", designTitle: "Design B", remainingQuantity: 25 },
+    ],
+    selections,
+  );
+  assert.equal(getTotalRemainingQuantity(afterQueue), 25);
+  assert.equal(afterQueue.find((row) => row.printRequestItemId === "design-a")?.remainingQuantity, 0);
+  assert.equal(afterQueue.find((row) => row.printRequestItemId === "design-b")?.remainingQuantity, 25);
+  assert.equal(isSplitAllocationComplete(afterQueue), false);
+});
+
+test("toPositiveSplitSelections: drops zero quantities", () => {
+  assert.deepEqual(toPositiveSplitSelections({ a: 10, b: 0, c: 5 }), [
+    { printRequestItemId: "a", quantity: 10 },
+    { printRequestItemId: "c", quantity: 5 },
+  ]);
 });

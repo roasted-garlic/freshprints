@@ -27,6 +27,17 @@ export interface PrintRequest {
   internalBaseName?: string;
   nameFormatVersion?: "legacy-v1" | "cr-ir-v1";
   notes?: string;
+  /**
+   * Binding public-bidding acknowledgment captured when the customer queued this
+   * request to a show via Portal (`queuePortalPrintRequestToShow`).
+   */
+  showQueueBiddingAcknowledgment?: {
+    accepted: true;
+    acceptedAt: Timestamp;
+    acceptedByUid: string;
+    version: string;
+    upcomingShowId: string;
+  };
   createdBy: string;
   updatedBy: string;
   createdAt: Timestamp;

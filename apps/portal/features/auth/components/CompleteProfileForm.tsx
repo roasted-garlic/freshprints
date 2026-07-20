@@ -1,12 +1,17 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
+
+import { PORTAL_BIDDING_ACKNOWLEDGMENT_VERSION } from '@fresh-prints/shared/constants/portal/portalBiddingAcknowledgment.constants';
+import { buildPortalBiddingAcknowledgmentSignupCopy } from '@fresh-prints/shared/utils/portalBiddingAcknowledgmentCopy';
 
 import { useAuth } from '../context/AuthContext';
 import { needsPortalCustomerProfileCompletion } from '../types/auth.types';
-import { buildPortalAuthHref, getPortalReturnToFromSearch } from '../utils/portalReturnUrl';
+import { buildPortalAuthHref, getPortalReturnToFromSearch, resolvePortalPostAuthPath } from '../utils/portalReturnUrl';
 import { UserPlusIcon } from '../../shared/components/PortalIcons';
+import { PortalBiddingAcknowledgmentModal } from '../../shared/components/PortalBiddingAcknowledgmentModal';
+import { AuthBusyOverlay } from './AuthBusyOverlay';
 
 const SETUP_PROGRESS_MESSAGES = [
   'Creating your customer account…',
@@ -14,6 +19,11 @@ const SETUP_PROGRESS_MESSAGES = [
   'Linking your Google sign-in…',
   'Finishing portal setup…',
 ] as const;
+
+interface PendingProfile {
+  displayName: string;
+  username: string;
+}
 
 export function CompleteProfileForm() {
   const router = useRouter();
@@ -32,7 +42,8 @@ export function CompleteProfileForm() {
   const [displayName, setDisplayName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [progressMessage, setProgressMessage] = useState<string>(SETUP_PROGRESS_MESSAGES[0]);
-  const [progressIndex, setProgressIndex] = useState(0);
+  const [pendingProfile, setPendingProfile] = useState<PendingProfile | null>(null);
+  const signupCopy = useMemo(() => buildPortalBiddingAcknowledgmentSignupCopy(), []);
 
   useEffect(() => {
     clearAuthError();
@@ -49,7 +60,9 @@ export function CompleteProfileForm() {
       return;
     }
 
-    const returnTo = getPortalReturnToFromSearch(window.location.search);
+    const returnTo = resolvePortalPostAuthPath(
+      getPortalReturnToFromSearch(window.location.search),
+    );
     if (isAuthenticated && !isSubmitting) {
       router.replace(returnTo);
       return;
@@ -65,18 +78,16 @@ export function CompleteProfileForm() {
       return;
     }
 
+    let step = 0;
     const intervalId = window.setInterval(() => {
-      setProgressIndex((current) => {
-        const next = Math.min(current + 1, SETUP_PROGRESS_MESSAGES.length - 1);
-        setProgressMessage(SETUP_PROGRESS_MESSAGES[next]);
-        return next;
-      });
+      step = Math.min(step + 1, SETUP_PROGRESS_MESSAGES.length - 1);
+      setProgressMessage(SETUP_PROGRESS_MESSAGES[step]);
     }, 2200);
 
     return () => window.clearInterval(intervalId);
   }, [isSubmitting]);
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLocalError(null);
 
@@ -89,15 +100,27 @@ export function CompleteProfileForm() {
       return;
     }
 
+    setPendingProfile({ displayName: nextDisplayName, username });
+  }
+
+  async function handleAcknowledgeAndComplete() {
+    if (!pendingProfile) {
+      return;
+    }
+
+    const profile = pendingProfile;
+    // Busy overlay first so the page never looks idle after checkbox confirm.
     setIsSubmitting(true);
-    setProgressIndex(0);
     setProgressMessage(SETUP_PROGRESS_MESSAGES[0]);
+    setPendingProfile(null);
 
     try {
       await completeCustomerProfile(
         {
-          displayName: nextDisplayName,
-          username,
+          displayName: profile.displayName,
+          username: profile.username,
+          biddingAcknowledgmentAccepted: true,
+          biddingAcknowledgmentVersion: PORTAL_BIDDING_ACKNOWLEDGMENT_VERSION,
         },
         {
           onProgress: (message) => {
@@ -112,18 +135,25 @@ export function CompleteProfileForm() {
     }
   }
 
+  const isBusy = isSubmitting || isAuthActionLoading;
+
   if (isInitialBootstrap || bootstrapStatus === 'initializing' || bootstrapStatus === 'loading-profile') {
-    if (!isSubmitting) {
+    if (!isBusy) {
       return <p className="portal-muted">Loading your account…</p>;
     }
+
+    return (
+      <div className="portal-complete-profile">
+        <AuthBusyOverlay message="This may take a moment." title="Setting up your account…" />
+      </div>
+    );
   }
 
-  if (!needsPortalCustomerProfileCompletion(bootstrapStatus) && !isAuthenticated && !isSubmitting) {
+  if (!needsPortalCustomerProfileCompletion(bootstrapStatus) && !isAuthenticated && !isBusy) {
     return <p className="portal-muted">Redirecting…</p>;
   }
 
   const displayError = localError ?? error;
-  const isBusy = isSubmitting || isAuthActionLoading;
 
   return (
     <div className="portal-complete-profile">
@@ -183,35 +213,23 @@ export function CompleteProfileForm() {
         </button>
       </form>
 
+      <PortalBiddingAcknowledgmentModal
+        confirmLabel="Continue"
+        copy={signupCopy}
+        isBusy={isBusy}
+        isOpen={pendingProfile !== null}
+        onCancel={() => {
+          if (!isBusy) {
+            setPendingProfile(null);
+          }
+        }}
+        onConfirm={() => {
+          void handleAcknowledgeAndComplete();
+        }}
+      />
+
       {isBusy ? (
-        <div
-          aria-busy="true"
-          aria-live="polite"
-          className="portal-auth-processing-overlay"
-          role="status"
-        >
-          <div className="portal-auth-processing-card">
-            <span aria-hidden="true" className="portal-loading-spinner portal-auth-processing-spinner" />
-            <h2 className="portal-auth-processing-title">Setting up your account</h2>
-            <p className="portal-auth-processing-copy">{progressMessage}</p>
-            <ol className="portal-auth-processing-steps">
-              {SETUP_PROGRESS_MESSAGES.map((message, index) => {
-                const isDone = index < progressIndex || progressMessage === 'Opening your portal…';
-                const isCurrent = index === progressIndex && progressMessage !== 'Opening your portal…';
-                return (
-                  <li
-                    className={`portal-auth-processing-step${isDone ? ' is-done' : ''}${
-                      isCurrent ? ' is-current' : ''
-                    }`}
-                    key={message}
-                  >
-                    {message}
-                  </li>
-                );
-              })}
-            </ol>
-          </div>
-        </div>
+        <AuthBusyOverlay message={progressMessage} title="Setting up your account…" />
       ) : null}
     </div>
   );

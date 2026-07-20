@@ -5,21 +5,34 @@ import type { CatalogDesign } from '../types/catalog.types';
 import { CatalogThumbnailPanel } from './CatalogThumbnailPanel';
 
 interface CatalogDesignCardProps {
+  /** When false, Add and qty-up are disabled (request full or Cap A exhausted). Qty-down stays enabled. */
+  canAddPrints?: boolean;
   currentRequestQuantity?: number;
   design: CatalogDesign;
+  exhaustedHelperText?: string | null;
+  /** Short status when Add is blocked (request-full or daily). */
+  exhaustedStatusText?: string | null;
   isBusy?: boolean;
   onAdjustQuantity: (design: CatalogDesign, delta: 1 | -1) => void;
   onSelect: (design: CatalogDesign) => void;
 }
 
 export function CatalogDesignCard({
+  canAddPrints = true,
   currentRequestQuantity = 0,
   design,
+  exhaustedHelperText: _exhaustedHelperText = null,
+  exhaustedStatusText = null,
   isBusy = false,
   onAdjustQuantity,
   onSelect,
 }: CatalogDesignCardProps) {
   const inRequest = currentRequestQuantity > 0;
+  const increaseDisabled = isBusy || !canAddPrints;
+  const statusText = exhaustedStatusText;
+  const requestFullLabel = !canAddPrints && statusText ? statusText : null;
+  const addLabel = isBusy ? 'Adding…' : requestFullLabel ?? 'Add';
+  const exhaustedTitle = requestFullLabel ?? undefined;
 
   return (
     <article className="design-card">
@@ -42,7 +55,7 @@ export function CatalogDesignCard({
           <h3 className="design-card-title">{design.title}</h3>
           {inRequest ? (
             <p className="design-card-request-qty">
-              In Your Stash · Qty {currentRequestQuantity}
+              In Current Request · Qty {currentRequestQuantity}
             </p>
           ) : null}
         </div>
@@ -65,8 +78,9 @@ export function CatalogDesignCard({
           <button
             aria-label={`Increase ${design.title} quantity`}
             className="design-card-qty-btn"
-            disabled={isBusy}
+            disabled={increaseDisabled}
             onClick={() => onAdjustQuantity(design, 1)}
+            title={exhaustedTitle}
             type="button"
           >
             <PlusIcon size={14} />
@@ -74,14 +88,17 @@ export function CatalogDesignCard({
         </div>
       ) : (
         <button
-          aria-label={`Add ${design.title} to Your Stash`}
-          className="portal-button portal-button-secondary portal-button-sm portal-button-leading-icon design-card-add-btn"
-          disabled={isBusy}
+          aria-label={requestFullLabel ?? `Add ${design.title} to Request`}
+          className={`portal-button portal-button-secondary portal-button-sm design-card-add-btn${
+            requestFullLabel ? ' is-request-full' : ' portal-button-leading-icon'
+          }`}
+          disabled={increaseDisabled}
           onClick={() => onAdjustQuantity(design, 1)}
+          title={exhaustedTitle}
           type="button"
         >
-          <PlusIcon size={14} />
-          {isBusy ? 'Adding…' : 'Add'}
+          {requestFullLabel ? null : <PlusIcon size={14} />}
+          {addLabel}
         </button>
       )}
     </article>

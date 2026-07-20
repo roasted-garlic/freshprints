@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react';
 
 import { CurrentRequestDrawer } from '../../print-requests/components/CurrentRequestDrawer';
+import { PortalWorkingRequestLimitBanner } from '../../print-requests/components/PortalWorkingRequestLimitBanner';
 import { PortalPrintRequestProvider } from '../../print-requests/context/PortalPrintRequestContext';
 import { FavoritesProvider } from '../../favorites/context/FavoritesProvider';
 import { PortalToastProvider } from '../../shared/context/PortalToastContext';
@@ -34,7 +35,10 @@ function PortalAppShellContent({ children }: PortalAppShellProps) {
 
       <div className="portal-app-main">
         <PortalScrollReset />
-        <PortalAppHeader />
+        <div className="portal-app-top">
+          <PortalAppHeader />
+          <PortalWorkingRequestLimitBanner />
+        </div>
         <div className="portal-app-content">{children}</div>
         <PortalBottomNav />
       </div>

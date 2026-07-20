@@ -11,22 +11,16 @@ import {
   type AssistedCreationStatus,
 } from '@fresh-prints/shared/constants/assistedCreation/assistedCreation.constants';
 import type { AssistedCreationRequest } from '@fresh-prints/shared/types/assistedCreation/assistedCreation.types';
-import {
-  evaluateAssistedCreationApprovedProofDownload,
-} from '@fresh-prints/shared/utils/assistedCreationApprovedProofRetention';
-
 import { CatalogPreviewLightbox } from '../../catalog/components/CatalogPreviewLightbox';
 import { PortalConfirmModal } from '../../shared/components/PortalConfirmModal';
 import { getPortalAuth } from '../../../lib/firebase/client';
 import { assistedCreationService } from '../services/assistedCreationService';
 import {
   assistedCreationStatusTone,
-  assistedCreationTimestampMillis,
 } from '../utils/assistedCreationDisplay';
 import { parseAssistedCreationLocation } from '../utils/assistedCreationUrlState';
 import { AssistedCreationActionsMenu } from './AssistedCreationActionsMenu';
 import {
-  AssistedApprovedDesignCard,
   AssistedCreationDetailTabs,
   ExpandableBlock,
   ProofNoteActions,
@@ -104,24 +98,6 @@ export function AssistedCreationStatusPanel({ onStartNew }: AssistedCreationStat
     [requests],
   );
   const latest = openRequest ?? requests[0] ?? null;
-  const approvedDownload = useMemo(() => {
-    if (!latest || latest.status !== 'approved') {
-      return null;
-    }
-    return evaluateAssistedCreationApprovedProofDownload({
-      status: latest.status,
-      approvedProofId: latest.approvedProofId,
-      approvedAtMillis: assistedCreationTimestampMillis(latest.approvedAt),
-      proofs: latest.proofs.map((proof) => ({
-        id: proof.id,
-        storagePath: proof.storagePath,
-        fileName: proof.fileName,
-        contentType: proof.contentType,
-        fullSizePurgedAtMillis: assistedCreationTimestampMillis(proof.fullSizePurgedAt),
-      })),
-      nowMs: Date.now(),
-    });
-  }, [latest]);
 
   useEffect(() => {
     let cancelled = false;
@@ -393,10 +369,6 @@ export function AssistedCreationStatusPanel({ onStartNew }: AssistedCreationStat
             </ExpandableBlock>
           </section>
         </div>
-      ) : null}
-
-      {latest.status === 'approved' && approvedDownload ? (
-        <AssistedApprovedDesignCard request={latest} />
       ) : null}
 
       <AssistedCreationDetailTabs

@@ -149,16 +149,31 @@
   column-gap: var(--space-4);
 }
 
-.test-data-reset-confirm-modal .form-field {
+.test-data-reset-confirm-modal .form-field,
+.owner-delete-user-modal .form-field {
   display: grid;
   gap: var(--space-2);
   margin-top: var(--space-3);
 }
 
 .test-data-reset-confirm-phrase-label {
-  display: inline-flex;
   align-items: center;
+  color: var(--color-text-secondary);
+  display: inline-flex;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
   gap: var(--space-2);
+}
+
+.test-data-reset-confirm-phrase-label code {
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xs);
+  color: var(--color-text-primary);
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: 600;
+  padding: 0.1em 0.4em;
 }
 
 @media (max-width: 64rem) {
@@ -175,4 +190,146 @@
   .test-data-reset-columns {
     grid-template-columns: 1fr;
   }
+}
+
+.owner-delete-user-modal.modal-panel,
+.modal-panel.owner-delete-user-modal {
+  /* Two-line card: padding + title + gap + meta + borders */
+  --owner-delete-user-card-height: calc(
+    (2 * var(--space-2))
+    + (var(--font-size-md) * var(--line-height-normal))
+    + 0.15rem
+    + (var(--font-size-sm) * var(--line-height-normal))
+    + 2px
+  );
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  max-height: min(90vh, calc(100vh - 2rem));
+  max-width: min(100%, 52rem);
+  overflow: hidden;
+  padding: 0;
+  width: 100%;
+}
+
+.owner-delete-user-modal > .modal-header,
+.owner-delete-user-modal > .modal-footer {
+  flex-shrink: 0;
+}
+
+.owner-delete-user-modal > .modal-body.owner-delete-user-body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-height: 0;
+  overflow: hidden;
+}
+
+.owner-delete-user-modal .user-directory-tab-bar {
+  flex-shrink: 0;
+  margin-top: 0;
+}
+
+.owner-delete-user-intro {
+  flex-shrink: 0;
+}
+
+.owner-delete-user-directory {
+  display: flex;
+  flex: 0 1 auto;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.owner-delete-user-directory .user-directory-search,
+.owner-delete-user-directory .auth-message,
+.owner-delete-user-directory > .test-data-reset-copy {
+  flex-shrink: 0;
+}
+
+.owner-delete-user-directory .user-directory-search {
+  max-width: none;
+  width: 100%;
+}
+
+.owner-delete-user-list {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex: 0 1 auto;
+  flex-direction: column;
+  gap: var(--space-1);
+  list-style: none;
+  margin: 0;
+  /* Visible height ≈ 5 cards; overflow scrolls inside the list only */
+  max-height: calc(
+    (2 * var(--space-2))
+    + (5 * var(--owner-delete-user-card-height))
+    + (4 * var(--space-1))
+    + 2px
+  );
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: var(--space-2);
+}
+
+.owner-delete-user-row {
+  align-items: flex-start;
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: inherit;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  font: inherit;
+  gap: 0.15rem;
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+  width: 100%;
+}
+
+.owner-delete-user-row:hover:not(:disabled) {
+  border-color: var(--color-accent-primary);
+}
+
+.owner-delete-user-row.is-selected {
+  border-color: var(--color-accent-primary);
+  box-shadow: inset 0 0 0 1px var(--color-accent-primary);
+}
+
+.owner-delete-user-row:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.owner-delete-user-row-title {
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  line-height: var(--line-height-normal);
+}
+
+.owner-delete-user-row-meta {
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+}
+
+.owner-delete-user-confirm {
+  flex-shrink: 0;
+  margin-top: 0;
+}
+
+.owner-delete-user-confirm .form-field {
+  margin-top: var(--space-2);
+}
+
+.owner-delete-user-modal > .owner-delete-user-body > .auth-message {
+  flex-shrink: 0;
 }

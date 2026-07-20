@@ -5,8 +5,13 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useId, useState, type FormEvent } from 'react';
 
 import { useAuth } from '../context/AuthContext';
+import { portalAuthService } from '../services/authService';
 import { needsPortalCustomerProfileCompletion } from '../types/auth.types';
-import { buildPortalAuthHref, getPortalReturnToFromSearch } from '../utils/portalReturnUrl';
+import {
+  buildPortalAuthHref,
+  getPortalReturnToFromSearch,
+  resolvePortalPostAuthPath,
+} from '../utils/portalReturnUrl';
 import { LogInIcon } from '../../shared/components/PortalIcons';
 import { AuthBusyOverlay } from './AuthBusyOverlay';
 import { GoogleAuthButton } from './GoogleAuthButton';
@@ -14,6 +19,7 @@ import { GoogleAuthButton } from './GoogleAuthButton';
 export function LoginForm() {
   const router = useRouter();
   const emailPanelId = useId();
+  const resetPanelId = useId();
   const {
     bootstrapStatus,
     clearAuthError,
@@ -25,13 +31,28 @@ export function LoginForm() {
     loginWithGoogle,
   } = useAuth();
   const [showEmailForm, setShowEmailForm] = useState(false);
+  const [showResetForm, setShowResetForm] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
+  const [resetMessage, setResetMessage] = useState<string | null>(null);
+  const [resetError, setResetError] = useState<string | null>(null);
 
   useEffect(() => {
     clearAuthError();
   }, [clearAuthError]);
 
   useEffect(() => {
-    const returnTo = getPortalReturnToFromSearch(window.location.search);
+    if (!error) {
+      return;
+    }
+
+    setIsSubmitting(false);
+  }, [error]);
+
+  useEffect(() => {
+    const returnTo = resolvePortalPostAuthPath(
+      getPortalReturnToFromSearch(window.location.search),
+    );
     if (isAuthenticated) {
       router.replace(returnTo);
       return;
@@ -44,6 +65,7 @@ export function LoginForm() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setIsSubmitting(true);
     const formData = new FormData(event.currentTarget);
     const email = String(formData.get('email') ?? '');
     const password = String(formData.get('password') ?? '');
@@ -51,19 +73,45 @@ export function LoginForm() {
     await login({ email, password });
   }
 
-  // Only treat session load as busy when Firebase already signed someone in.
-  // Cancelled Google popups must not leave buttons disabled via a stale loading-profile.
-  const isBusy = isAuthActionLoading || (bootstrapStatus === 'loading-profile' && Boolean(firebaseUser));
+  async function handleGoogleSignIn() {
+    setIsSubmitting(true);
+    await loginWithGoogle();
+  }
+
+  async function handleResetSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setIsResetting(true);
+    setResetError(null);
+    setResetMessage(null);
+    const formData = new FormData(event.currentTarget);
+    const email = String(formData.get('resetEmail') ?? '');
+
+    try {
+      const message = await portalAuthService.sendPasswordResetEmail(email);
+      setResetMessage(message);
+    } catch (sendError) {
+      setResetError(
+        sendError instanceof Error ? sendError.message : 'Unable to send a reset email right now.',
+      );
+    } finally {
+      setIsResetting(false);
+    }
+  }
+
+  const isBusy =
+    isSubmitting ||
+    isAuthActionLoading ||
+    (bootstrapStatus === 'loading-profile' && Boolean(firebaseUser));
 
   return (
     <div className="portal-auth-stack portal-auth-stack-compact">
       <GoogleAuthButton
-        disabled={isBusy}
-        isLoading={isAuthActionLoading}
+        disabled={isBusy || isResetting}
+        isLoading={isBusy}
         label="Continue with Google"
         loadingLabel="Signing in…"
         onClick={() => {
-          void loginWithGoogle();
+          void handleGoogleSignIn();
         }}
       />
 
@@ -75,7 +123,7 @@ export function LoginForm() {
         aria-controls={emailPanelId}
         aria-expanded={showEmailForm}
         className="portal-button portal-button-secondary"
-        disabled={isBusy}
+        disabled={isBusy || isResetting}
         onClick={() => setShowEmailForm((open) => !open)}
         type="button"
       >
@@ -98,11 +146,56 @@ export function LoginForm() {
 
           <button
             className="portal-button portal-button-primary portal-button-leading-icon"
-            disabled={isBusy}
+            disabled={isBusy || isResetting}
             type="submit"
           >
             <LogInIcon />
             {isBusy ? 'Signing in…' : 'Sign in'}
+          </button>
+
+          <button
+            aria-controls={resetPanelId}
+            aria-expanded={showResetForm}
+            className="portal-button portal-button-ghost portal-auth-forgot-password"
+            disabled={isBusy || isResetting}
+            onClick={() => {
+              setShowResetForm((open) => !open);
+              setResetError(null);
+              setResetMessage(null);
+            }}
+            type="button"
+          >
+            Forgot password?
+          </button>
+        </form>
+      ) : null}
+
+      {showEmailForm && showResetForm ? (
+        <form
+          className="portal-auth-form portal-auth-form-compact portal-auth-reset-form"
+          id={resetPanelId}
+          onSubmit={handleResetSubmit}
+        >
+          <p className="portal-muted">
+            Enter your account email. If it matches an account, we&apos;ll send a Firebase password
+            reset link.
+          </p>
+          <label className="portal-field">
+            <span>Account email</span>
+            <input autoComplete="email" name="resetEmail" required type="email" />
+          </label>
+          {resetError ? (
+            <p className="portal-form-error" role="alert">
+              {resetError}
+            </p>
+          ) : null}
+          {resetMessage ? (
+            <p className="portal-form-success" role="status">
+              {resetMessage}
+            </p>
+          ) : null}
+          <button className="portal-button portal-button-secondary" disabled={isResetting} type="submit">
+            {isResetting ? 'Sending…' : 'Send reset email'}
           </button>
         </form>
       ) : null}
@@ -112,10 +205,7 @@ export function LoginForm() {
       </p>
 
       {isBusy ? (
-        <AuthBusyOverlay
-          message="This may take a moment."
-          title="Signing you in…"
-        />
+        <AuthBusyOverlay message="This may take a moment." title="Signing you in…" />
       ) : null}
     </div>
   );

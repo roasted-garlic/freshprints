@@ -5,10 +5,16 @@ import { useCallback, useMemo, useRef, useState } from 'react';
 import { CUSTOMER_UPLOAD_TERMS_VERSION } from '@fresh-prints/shared/types/customerUpload/customerUpload.types';
 import type { CustomerUploadPurpose } from '@fresh-prints/shared/types/customerUpload/customerUpload.enums';
 import { getCustomerUploadProgressLabel } from '@fresh-prints/shared/utils/customerUploadProgressLabel';
+import {
+  formatWorkingRequestUploadRoomCapNote,
+  resolveUploadSessionImageCap,
+} from '@fresh-prints/shared/utils/printRequestWorkingRequestMax';
 
 import { useAuth } from '../../auth/context/AuthContext';
 import {
   customerUploadService,
+  defaultCustomerUploadSizeLimits,
+  type CustomerUploadSizeLimits,
   type FinalizeCustomerUploadResponse,
 } from '../services/customerUploadService';
 
@@ -85,10 +91,28 @@ function mapTechnicalStatusToPhase(
   }
 }
 
-export function useCustomerUploadBatch(options?: { purpose?: CustomerUploadPurpose }) {
+export function useCustomerUploadBatch(options?: {
+  purpose?: CustomerUploadPurpose;
+  sizeLimits?: CustomerUploadSizeLimits | null;
+  /**
+   * Print slots left on Current Request (ADR-FP-102). Caps how many images this
+   * session may select/attach. Omit or null for donation / limit-not-ready.
+   */
+  maxImagesForRequest?: number | null;
+}) {
   const purpose = options?.purpose ?? 'print_request';
   const isDonation = purpose === 'catalog_donation';
+  const maxImagesForRequest =
+    isDonation || options?.maxImagesForRequest == null
+      ? null
+      : Math.max(0, Math.floor(options.maxImagesForRequest));
   const { firebaseUser } = useAuth();
+  const sizeLimitsRef = useRef<CustomerUploadSizeLimits>(
+    options?.sizeLimits ?? defaultCustomerUploadSizeLimits(purpose),
+  );
+  sizeLimitsRef.current = options?.sizeLimits ?? defaultCustomerUploadSizeLimits(purpose);
+  const maxImagesForRequestRef = useRef(maxImagesForRequest);
+  maxImagesForRequestRef.current = maxImagesForRequest;
   const [rows, setRows] = useState<UploadRowState[]>([]);
   const [batchId, setBatchId] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -136,7 +160,8 @@ export function useCustomerUploadBatch(options?: { purpose?: CustomerUploadPurpo
     ownershipConfirmed &&
     (!isDonation || catalogUseAcknowledged) &&
     !isProcessing &&
-    !isAttaching;
+    !isAttaching &&
+    (maxImagesForRequest == null || readyRows.length <= maxImagesForRequest);
 
   const updateRow = useCallback((localId: string, patch: Partial<UploadRowState>) => {
     setRows((current) =>
@@ -163,7 +188,10 @@ export function useCustomerUploadBatch(options?: { purpose?: CustomerUploadPurpo
 
       setBannerError(null);
       const files = Array.from(fileList);
-      const { images, zips, rejected } = customerUploadService.classifyFiles(files);
+      const { images, zips, rejected } = customerUploadService.classifyFiles(
+        files,
+        sizeLimitsRef.current,
+      );
       setBatchNotes(rejected);
 
       if (images.length === 0 && zips.length === 0) {
@@ -183,6 +211,17 @@ export function useCustomerUploadBatch(options?: { purpose?: CustomerUploadPurpo
 
       try {
         if (zips.length === 1) {
+          const sessionCap = resolveUploadSessionImageCap({
+            maxFilesPerBatch: customerUploadService.maxFilesPerBatch,
+            maxImagesForRequest: maxImagesForRequestRef.current,
+          });
+          if (sessionCap < 1) {
+            setBannerError(
+              'This request has no print slots left for more uploads. Remove prints or add the request to a show first.',
+            );
+            return;
+          }
+
           const zip = zips[0];
           const zipRowId = makeLocalId();
           setRows([
@@ -258,13 +297,22 @@ export function useCustomerUploadBatch(options?: { purpose?: CustomerUploadPurpo
 
           try {
             const finalized = await customerUploadService.finalizeZip(created.batchId);
+            const cappedFiles = finalized.files.slice(0, sessionCap);
+            if (finalized.files.length > cappedFiles.length) {
+              setBannerError(
+                formatWorkingRequestUploadRoomCapNote(
+                  cappedFiles.length,
+                  finalized.files.length,
+                ),
+              );
+            }
             setRows((current) => {
               const byUploadId = new Map(
                 current
                   .filter((row) => row.uploadId)
                   .map((row) => [row.uploadId!, row] as const),
               );
-              return finalized.files.map((result) => {
+              return cappedFiles.map((result) => {
                 const existing = byUploadId.get(result.uploadId);
                 return {
                   localId: `zip_${result.uploadId}`,
@@ -281,7 +329,7 @@ export function useCustomerUploadBatch(options?: { purpose?: CustomerUploadPurpo
             customerUploadService.persistSession(
               firebaseUser.uid,
               created.batchId,
-              finalized.files.map((file) => file.uploadId),
+              cappedFiles.map((file) => file.uploadId),
             );
           } finally {
             unsubscribeBatch();
@@ -289,26 +337,40 @@ export function useCustomerUploadBatch(options?: { purpose?: CustomerUploadPurpo
           return;
         }
 
-        const activeRows = rowsRef.current.filter((row) => row.phase !== 'removed');
+        const activeRowsForCap = rowsRef.current.filter((row) => row.phase !== 'removed');
         const existingBatchId =
-          batchIdRef.current && activeRows.length > 0 ? batchIdRef.current : null;
+          batchIdRef.current && activeRowsForCap.length > 0 ? batchIdRef.current : null;
+        const sessionCap = resolveUploadSessionImageCap({
+          maxFilesPerBatch: customerUploadService.maxFilesPerBatch,
+          maxImagesForRequest: maxImagesForRequestRef.current,
+        });
         const remainingSlots = existingBatchId
-          ? Math.max(0, customerUploadService.maxFilesPerBatch - activeRows.length)
-          : customerUploadService.maxFilesPerBatch;
+          ? Math.max(0, sessionCap - activeRowsForCap.length)
+          : sessionCap;
 
-        if (existingBatchId && remainingSlots <= 0) {
+        if (remainingSlots <= 0) {
           setBannerError(
-            `This upload session already has ${customerUploadService.maxFilesPerBatch} images. Add them to your request first, or remove some.`,
+            maxImagesForRequestRef.current != null &&
+              maxImagesForRequestRef.current < customerUploadService.maxFilesPerBatch
+              ? 'This request has no print slots left for more uploads. Remove prints from Current Request, or remove images from this list first.'
+              : `This upload session already has ${customerUploadService.maxFilesPerBatch} images. Add them to your request first, or remove some.`,
           );
           return;
         }
 
         const limitedImages = images.slice(0, remainingSlots);
         if (images.length > limitedImages.length) {
-          setBatchNotes((notes) => [
-            ...notes,
-            `Only ${limitedImages.length} more image${limitedImages.length === 1 ? '' : 's'} could be added (max ${customerUploadService.maxFilesPerBatch} per session).`,
-          ]);
+          const isRequestRoomCap =
+            maxImagesForRequestRef.current != null &&
+            limitedImages.length <= maxImagesForRequestRef.current;
+          const note = isRequestRoomCap
+            ? formatWorkingRequestUploadRoomCapNote(limitedImages.length, images.length)
+            : `Only ${limitedImages.length} more image${limitedImages.length === 1 ? '' : 's'} could be added (max ${customerUploadService.maxFilesPerBatch} per session).`;
+          if (isRequestRoomCap) {
+            setBannerError(note);
+          } else {
+            setBatchNotes((notes) => [...notes, note]);
+          }
         }
 
         const pendingRows: UploadRowState[] = limitedImages.map((file) => ({
@@ -577,6 +639,19 @@ export function useCustomerUploadBatch(options?: { purpose?: CustomerUploadPurpo
 
   const attachToRequest = useCallback(async (): Promise<string | null> => {
     if (isDonation || !batchId || !canAttach) {
+      return null;
+    }
+
+    if (
+      maxImagesForRequestRef.current != null &&
+      readyRows.length > maxImagesForRequestRef.current
+    ) {
+      setBannerError(
+        formatWorkingRequestUploadRoomCapNote(
+          maxImagesForRequestRef.current,
+          readyRows.length,
+        ),
+      );
       return null;
     }
 

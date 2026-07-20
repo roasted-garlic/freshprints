@@ -33,14 +33,14 @@ describe("storage.rules alignment", () => {
       "storage.rules must include customer-uploads paths",
     );
     assert.ok(
-      rules.includes("100 * 1024 * 1024")
+      rules.includes("80 * 1024 * 1024")
         || rules.includes(`request.resource.size < ${CUSTOMER_UPLOAD_MAX_SINGLE_IMAGE_BYTES}`),
-      "storage.rules must cap customer source uploads at 100 MB",
+      "storage.rules must cap customer source uploads at 80 MB",
     );
     assert.ok(
       rules.includes("2 * 1024 * 1024 * 1024")
         || rules.includes(`request.resource.size < ${CUSTOMER_UPLOAD_MAX_ZIP_COMPRESSED_BYTES}`),
-      "storage.rules must cap customer ZIP uploads at 2 GB",
+      "storage.rules must cap customer ZIP uploads at the 2 GB ceiling",
     );
     assert.ok(
       rules.includes('fileName == "source"'),

@@ -1019,9 +1019,9 @@ storage.rules
 | `/originals/{designId}.png` | PNG | 150 MB | Active staff only |
 | `/thumbnails/{designId}.webp` | WebP | 10 MB | Active staff only (Phase 3C) |
 | `/previews/{designId}.webp` | WebP | 10 MB | Active staff only (Phase 3C) |
-| `/customer-uploads/{uid}/{uploadId}/source` | PNG/WebP | 100 MB | Owner customer write; owner/staff read |
+| `/customer-uploads/{uid}/{uploadId}/source` | PNG/WebP | 80 MB | Owner customer write; owner/staff read |
 | `/customer-uploads/{uid}/{uploadId}/production.png` (and preview/thumbnail) | PNG/WebP | n/a (Admin write) | Owner/staff read; customer write denied |
-| `/customer-uploads/{uid}/batches/{batchId}/archive.zip` | ZIP | 2 GB | Owner customer write; owner/staff read |
+| `/customer-uploads/{uid}/batches/{batchId}/archive.zip` | ZIP | Storage + Functions **2 GB** ceiling for print-request and donation | Owner customer write; owner/staff read |
 
 Customer access to **catalog** derivatives remains via ready-design helpers only. Unapproved customer uploads never use those public-read patterns.
 

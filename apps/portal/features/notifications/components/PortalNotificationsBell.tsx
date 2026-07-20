@@ -75,7 +75,9 @@ function PortalNotificationsPanel() {
         <p className="portal-notifications-enable-cta">
           <button
             className="portal-link-button"
-            onClick={openNotificationSettings}
+            onClick={() => {
+                      void openNotificationSettings();
+                    }}
             type="button"
           >
             Enable alerts

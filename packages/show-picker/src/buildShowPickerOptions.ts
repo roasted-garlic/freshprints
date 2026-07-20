@@ -2,6 +2,7 @@ import type { ShowProductionStatus } from "@fresh-prints/shared/types/upcomingSh
 import { assessShowCapacity } from "@fresh-prints/shared/utils/showCapacity";
 import {
   formatShowCapacitySlotLabel,
+  formatShowCapacitySlotLabelCompact,
   getCapacityFillLevel,
   getDerivedShowStatusDisplay,
   getShowCapacityPercent,
@@ -31,6 +32,17 @@ export interface BuildShowPickerOptionsInput {
   isPastScheduled?: (show: ShowPickerSource) => boolean;
   /** When false, show remains on the calendar but cannot be selected (full / done / past). */
   canSelectShow?: (show: ShowPickerSource) => boolean;
+  /**
+   * Portal queue cutoff passed — badge CLOSED; not selectable.
+   * Independent of Studio staff allocation eligibility.
+   */
+  isPastQueueCutoff?: (show: ShowPickerSource) => boolean;
+  /** Compact countdown / closed copy + urgency for the capacity meta row. */
+  getCutoffMeta?: (show: ShowPickerSource) =>
+    | { label: string; shortLabel?: string; urgency: "success" | "warning" | "danger" }
+    | undefined;
+  /** @deprecated Prefer `getCutoffMeta`. */
+  getCutoffMetaLabel?: (show: ShowPickerSource) => string | undefined;
   now?: Date;
 }
 
@@ -41,6 +53,9 @@ export function buildShowPickerOptions({
   pendingAllocatedByShowId,
   isPastScheduled,
   canSelectShow,
+  isPastQueueCutoff,
+  getCutoffMeta,
+  getCutoffMetaLabel,
 }: BuildShowPickerOptionsInput): ShowPickerOption[] {
   return shows.map((show) => {
     const extraAllocated = extraAllocatedByShowId?.get(show.id) ?? 0;
@@ -48,6 +63,7 @@ export function buildShowPickerOptions({
     const committedAllocated = show.allocatedQuantity + extraAllocated;
     const projectedAllocated = committedAllocated + pendingAllocated;
     const past = isPastScheduled?.(show) ?? false;
+    const pastCutoff = isPastQueueCutoff?.(show) ?? false;
 
     const committedCapacity = assessShowCapacity({
       maxTotalQuantity: show.maxTotalQuantity,
@@ -63,6 +79,10 @@ export function buildShowPickerOptions({
     const capacityPercent = getShowCapacityPercent(projectedCapacity);
     const committedCapacityPercent = getShowCapacityPercent(committedCapacity);
     const selectableByCaller = canSelectShow?.(show) ?? true;
+    const cutoffMeta = getCutoffMeta?.(show);
+    const cutoffMetaLabel = cutoffMeta?.label ?? getCutoffMetaLabel?.(show);
+    const cutoffMetaLabelShort = cutoffMeta?.shortLabel;
+    const cutoffMetaUrgency = cutoffMeta?.urgency;
 
     return {
       id: show.id,
@@ -72,12 +92,20 @@ export function buildShowPickerOptions({
       committedCapacityPercent:
         pendingAllocated > 0 ? committedCapacityPercent : undefined,
       capacityLabel: formatShowCapacitySlotLabel(projectedCapacity),
+      capacityLabelShort: formatShowCapacitySlotLabelCompact(projectedCapacity),
       fillLevel: getCapacityFillLevel(capacityPercent),
-      statusLabel: statusDisplay.label,
-      statusVariant: statusDisplay.variant,
+      statusLabel: pastCutoff && !past ? "CLOSED" : statusDisplay.label,
+      statusVariant: pastCutoff && !past ? "warning" : statusDisplay.variant,
       isFull: projectedCapacity.isFull,
       isOverCapacity: projectedCapacity.isOverCapacity,
-      isSelectable: !past && selectableByCaller,
+      isSelectable: !past && !pastCutoff && selectableByCaller,
+      ...(cutoffMetaLabel
+        ? {
+            cutoffMetaLabel,
+            ...(cutoffMetaLabelShort ? { cutoffMetaLabelShort } : {}),
+            ...(cutoffMetaUrgency ? { cutoffMetaUrgency } : {}),
+          }
+        : {}),
     };
   });
 }

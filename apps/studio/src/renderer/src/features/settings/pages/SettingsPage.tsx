@@ -12,6 +12,9 @@ import { useShellHeaderConfig } from "../../../shared/hooks/useShellHeaderConfig
 import { useAuth } from "../../auth/hooks/useAuth";
 import { permissionService } from "../../permissions/services/permissionService";
 import { EmailProviderSettingsSection } from "../components/EmailProviderSettingsSection";
+import { CustomerUploadQuotaSettingsSection } from "../components/CustomerUploadQuotaSettingsSection";
+import { PortalSocialMetaSettingsSection } from "../components/PortalSocialMetaSettingsSection";
+import { PrintRequestLimitSettingsSection } from "../components/PrintRequestLimitSettingsSection";
 import {
   AI_ENRICHMENT_APPROVED_CATEGORIES_PLACEHOLDER,
   AI_ENRICHMENT_APPROVED_CATEGORY_NAMES_PLACEHOLDER,
@@ -101,10 +104,48 @@ function isValidFirstCallJson(outputText: string): boolean {
   }
 }
 
+type SettingsPageTabId =
+  | "emailProviders"
+  | "uploadQuotas"
+  | "printRequestLimits"
+  | "socialSharing"
+  | "aiEnrichment";
+
+interface SettingsPageTab {
+  id: SettingsPageTabId;
+  label: string;
+}
+
 export function SettingsPage() {
   const { user } = useAuth();
   const isOwner = permissionService.isOwner(user);
   const canManageSettings = permissionService.canManageSettings(user);
+  const canManageEmailProviders = permissionService.canManageEmailProviders(user);
+  const canManageCustomerUploadQuotas = permissionService.canManageCustomerUploadQuotas(user);
+  const settingsTabs = useMemo((): SettingsPageTab[] => {
+    const tabs: SettingsPageTab[] = [];
+
+    if (canManageEmailProviders) {
+      tabs.push({ id: "emailProviders", label: "Email Providers" });
+    }
+
+    if (canManageCustomerUploadQuotas) {
+      tabs.push({ id: "uploadQuotas", label: "Upload quotas" });
+      tabs.push({ id: "printRequestLimits", label: "Print request limits" });
+    }
+
+    if (isOwner) {
+      tabs.push({ id: "socialSharing", label: "Social sharing" });
+    }
+
+    tabs.push({ id: "aiEnrichment", label: "AI Enrichment" });
+    return tabs;
+  }, [canManageCustomerUploadQuotas, canManageEmailProviders, isOwner]);
+  const [activeTab, setActiveTab] = useState<SettingsPageTabId | null>(null);
+  const resolvedTab: SettingsPageTabId =
+    activeTab && settingsTabs.some((tab) => tab.id === activeTab)
+      ? activeTab
+      : (settingsTabs[0]?.id ?? "aiEnrichment");
   const {
     additionalTagExclusions,
     error,
@@ -412,201 +453,271 @@ export function SettingsPage() {
         </p>
       ) : null}
 
-      {permissionService.canManageEmailProviders(user) ? (
-        <EmailProviderSettingsSection />
+      <div
+        aria-label="Settings sections"
+        className="settings-page-tab-bar"
+        role="tablist"
+      >
+        {settingsTabs.map((tab) => (
+          <button
+            aria-controls={`settings-tab-panel-${tab.id}`}
+            aria-selected={resolvedTab === tab.id}
+            className={`settings-page-tab${resolvedTab === tab.id ? " is-active" : ""}`}
+            id={`settings-tab-${tab.id}`}
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            role="tab"
+            type="button"
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {resolvedTab === "emailProviders" && canManageEmailProviders ? (
+        <div
+          aria-labelledby="settings-tab-emailProviders"
+          className="settings-page-tab-panel"
+          id="settings-tab-panel-emailProviders"
+          role="tabpanel"
+        >
+          <EmailProviderSettingsSection />
+        </div>
       ) : null}
 
-      <section aria-labelledby="ai-enrichment-settings-title" className="card settings-section">
-        <header className="settings-section-header">
-          <h2 className="settings-section-title" id="ai-enrichment-settings-title">
-            AI Enrichment
-          </h2>
-          <p className="settings-section-description">
-            Choose the Google AI vision model and team tag exclusions used for catalog title,
-            description, category, tags, and OCR. Applies on the next AI processing run.
-          </p>
-        </header>
+      {resolvedTab === "uploadQuotas" && canManageCustomerUploadQuotas ? (
+        <div
+          aria-labelledby="settings-tab-uploadQuotas"
+          className="settings-page-tab-panel"
+          id="settings-tab-panel-uploadQuotas"
+          role="tabpanel"
+        >
+          <CustomerUploadQuotaSettingsSection />
+        </div>
+      ) : null}
 
-        {isLoading ? (
-          <p className="settings-section-status">Loading AI enrichment settings…</p>
-        ) : (
-          <div className="settings-form-grid">
-            <div className="settings-control-grid">
-              <div className="settings-control-item">
-                <Select
-                  disabled={!canManageSettings || isSaving}
-                  label="Vision model"
-                  name="visionModelId"
-                  onChange={(event) => setDraftVisionModelId(event.target.value)}
-                  options={ALL_VISION_MODEL_OPTIONS.map((option) => ({
-                    label: option.label,
-                    value: option.value,
-                  }))}
-                  value={selectedVisionModelId}
-                />
+      {resolvedTab === "printRequestLimits" && canManageCustomerUploadQuotas ? (
+        <div
+          aria-labelledby="settings-tab-printRequestLimits"
+          className="settings-page-tab-panel"
+          id="settings-tab-panel-printRequestLimits"
+          role="tabpanel"
+        >
+          <PrintRequestLimitSettingsSection />
+        </div>
+      ) : null}
 
-                <p className="settings-field-hint">
-                  {ALL_VISION_MODEL_OPTIONS.find((option) => option.value === selectedVisionModelId)
-                    ?.hint ?? selectedVisionModelId}
-                </p>
-              </div>
+      {resolvedTab === "socialSharing" && isOwner ? (
+        <div
+          aria-labelledby="settings-tab-socialSharing"
+          className="settings-page-tab-panel"
+          id="settings-tab-panel-socialSharing"
+          role="tabpanel"
+        >
+          <PortalSocialMetaSettingsSection />
+        </div>
+      ) : null}
 
-              <div className="settings-control-item">
-                <Select
-                  disabled={!canManageSettings || isSaving}
-                  label="Tag reranker"
-                  name="tagRerankMode"
-                  onChange={(event) => setDraftTagRerankMode(event.target.value)}
-                  options={TAG_RERANK_MODE_OPTIONS.map((option) => ({
-                    label: option.label,
-                    value: option.value,
-                  }))}
-                  value={selectedTagRerankMode}
-                />
-
-                <p className="settings-field-hint">
-                  {TAG_RERANK_MODE_OPTIONS.find((option) => option.value === selectedTagRerankMode)
-                    ?.hint ?? selectedTagRerankMode}
-                </p>
-              </div>
-
-              <div className="settings-control-item">
-                <Select
-                  disabled={!canManageSettings || isSaving}
-                  label="Suggested new tags"
-                  name="suggestedNewTagsPolicy"
-                  onChange={(event) => setDraftSuggestedNewTagsPolicy(event.target.value)}
-                  options={SUGGESTED_NEW_TAGS_POLICY_OPTIONS.map((option) => ({
-                    label: option.label,
-                    value: option.value,
-                  }))}
-                  value={selectedSuggestedNewTagsPolicy}
-                />
-
-                <p className="settings-field-hint">
-                  {SUGGESTED_NEW_TAGS_POLICY_OPTIONS.find(
-                    (option) => option.value === selectedSuggestedNewTagsPolicy,
-                  )?.hint ?? selectedSuggestedNewTagsPolicy}
-                </p>
-              </div>
-
-              <div className="settings-control-item">
-                <Select
-                  disabled={!canManageSettings || isSaving}
-                  label="Suggested-tag writing"
-                  name="suggestionAuthorMode"
-                  onChange={(event) => setDraftSuggestionAuthorMode(event.target.value)}
-                  options={SUGGESTION_AUTHOR_MODE_OPTIONS.map((option) => ({
-                    label: option.label,
-                    value: option.value,
-                  }))}
-                  value={selectedSuggestionAuthorMode}
-                />
-
-                <p className="settings-field-hint">
-                  {SUGGESTION_AUTHOR_MODE_OPTIONS.find(
-                    (option) => option.value === selectedSuggestionAuthorMode,
-                  )?.hint ?? selectedSuggestionAuthorMode}
-                </p>
-              </div>
-            </div>
-
-            {isOwner ? (
-              <div className="settings-prompt-template-block settings-prompt-template-danger">
-                <div className="settings-prompt-template-summary">
-                  <div className="settings-prompt-template-copy">
-                    <h3 className="settings-subsection-title">AI Processing prompt</h3>
-                    <p className="settings-field-hint">
-                      This prompt drives live AI Processing output. Keep it collapsed unless you are
-                      intentionally changing the production prompt.
-                    </p>
-                  </div>
-
-                  <Button
-                    disabled={!canManageSettings || isSaving}
-                    id="settings-prompt-editor-open-button"
-                    onClick={handleOpenPromptTemplateEditor}
-                    variant="warning"
-                  >
-                    Edit prompt
-                  </Button>
-                </div>
-
-                {promptTemplateError ? (
-                  <p className="auth-message auth-message-error" role="alert">
-                    {promptTemplateError}
-                  </p>
-                ) : null}
-              </div>
-            ) : null}
-
-            {isOwner ? (
-              <div className="settings-prompt-template-block settings-prompt-template-danger">
-                <div className="settings-prompt-template-summary">
-                  <div className="settings-prompt-template-copy">
-                    <h3 className="settings-subsection-title">Tag rerank prompt</h3>
-                    <p className="settings-field-hint">
-                      Instructional rules for the optional second-call tag reranker. Only used when
-                      the tag reranker runs (see &quot;Tag reranker&quot; mode above).
-                    </p>
-                  </div>
-
-                  <Button
-                    disabled={!canManageSettings || isSaving}
-                    id="settings-tag-rerank-prompt-editor-open-button"
-                    onClick={handleOpenTagRerankPromptEditor}
-                    variant="warning"
-                  >
-                    Edit prompt
-                  </Button>
-                </div>
-              </div>
-            ) : null}
-
-            <div className="settings-tag-exclusions-block">
-              <div className="settings-tag-exclusions-copy">
-                <h3 className="settings-subsection-title">Tag exclusions</h3>
-                <p className="settings-field-hint">
-                  Built-in: {BASE_AI_TAG_EXCLUSIONS.length} | Additional:{" "}
-                  {selectedAdditionalTagExclusions.length}
-                </p>
-              </div>
-
-              <Button
-                disabled={!canManageSettings || isSaving}
-                onClick={() => setIsTagExclusionsModalOpen(true)}
-                variant="secondary"
-              >
-                Manage exclusions
-              </Button>
-            </div>
-
-            {canManageSettings ? (
-              <div className="settings-card-footer">
-                <div className="settings-form-actions">
-                  <Button
-                    disabled={!hasUnsavedChanges || isSaving || Boolean(promptTemplateError)}
-                    onClick={() => void handleSaveSettings()}
-                    variant="primary"
-                  >
-                    {isSaving ? "Saving…" : "Save AI enrichment settings"}
-                  </Button>
-                </div>
-
-                <div className="settings-card-aside">
-                  <Button onClick={() => setIsPlaygroundModalOpen(true)} variant="secondary">
-                    Open AI Playground
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <p className="settings-section-status">
-                Only owners and admins can change AI enrichment settings.
+      {resolvedTab === "aiEnrichment" ? (
+        <div
+          aria-labelledby="settings-tab-aiEnrichment"
+          className="settings-page-tab-panel"
+          id="settings-tab-panel-aiEnrichment"
+          role="tabpanel"
+        >
+          <section aria-labelledby="ai-enrichment-settings-title" className="card settings-section">
+            <header className="settings-section-header">
+              <h2 className="settings-section-title" id="ai-enrichment-settings-title">
+                AI Enrichment
+              </h2>
+              <p className="settings-section-description">
+                Choose the Google AI vision model and team tag exclusions used for catalog title,
+                description, category, tags, and OCR. Applies on the next AI processing run.
               </p>
+            </header>
+
+            {isLoading ? (
+              <p className="settings-section-status">Loading AI enrichment settings…</p>
+            ) : (
+              <div className="settings-form-grid">
+                <div className="settings-control-grid">
+                  <div className="settings-control-item">
+                    <Select
+                      disabled={!canManageSettings || isSaving}
+                      label="Vision model"
+                      name="visionModelId"
+                      onChange={(event) => setDraftVisionModelId(event.target.value)}
+                      options={ALL_VISION_MODEL_OPTIONS.map((option) => ({
+                        label: option.label,
+                        value: option.value,
+                      }))}
+                      value={selectedVisionModelId}
+                    />
+
+                    <p className="settings-field-hint">
+                      {ALL_VISION_MODEL_OPTIONS.find((option) => option.value === selectedVisionModelId)
+                        ?.hint ?? selectedVisionModelId}
+                    </p>
+                  </div>
+
+                  <div className="settings-control-item">
+                    <Select
+                      disabled={!canManageSettings || isSaving}
+                      label="Tag reranker"
+                      name="tagRerankMode"
+                      onChange={(event) => setDraftTagRerankMode(event.target.value)}
+                      options={TAG_RERANK_MODE_OPTIONS.map((option) => ({
+                        label: option.label,
+                        value: option.value,
+                      }))}
+                      value={selectedTagRerankMode}
+                    />
+
+                    <p className="settings-field-hint">
+                      {TAG_RERANK_MODE_OPTIONS.find((option) => option.value === selectedTagRerankMode)
+                        ?.hint ?? selectedTagRerankMode}
+                    </p>
+                  </div>
+
+                  <div className="settings-control-item">
+                    <Select
+                      disabled={!canManageSettings || isSaving}
+                      label="Suggested new tags"
+                      name="suggestedNewTagsPolicy"
+                      onChange={(event) => setDraftSuggestedNewTagsPolicy(event.target.value)}
+                      options={SUGGESTED_NEW_TAGS_POLICY_OPTIONS.map((option) => ({
+                        label: option.label,
+                        value: option.value,
+                      }))}
+                      value={selectedSuggestedNewTagsPolicy}
+                    />
+
+                    <p className="settings-field-hint">
+                      {SUGGESTED_NEW_TAGS_POLICY_OPTIONS.find(
+                        (option) => option.value === selectedSuggestedNewTagsPolicy,
+                      )?.hint ?? selectedSuggestedNewTagsPolicy}
+                    </p>
+                  </div>
+
+                  <div className="settings-control-item">
+                    <Select
+                      disabled={!canManageSettings || isSaving}
+                      label="Suggested-tag writing"
+                      name="suggestionAuthorMode"
+                      onChange={(event) => setDraftSuggestionAuthorMode(event.target.value)}
+                      options={SUGGESTION_AUTHOR_MODE_OPTIONS.map((option) => ({
+                        label: option.label,
+                        value: option.value,
+                      }))}
+                      value={selectedSuggestionAuthorMode}
+                    />
+
+                    <p className="settings-field-hint">
+                      {SUGGESTION_AUTHOR_MODE_OPTIONS.find(
+                        (option) => option.value === selectedSuggestionAuthorMode,
+                      )?.hint ?? selectedSuggestionAuthorMode}
+                    </p>
+                  </div>
+                </div>
+
+                {isOwner ? (
+                  <div className="settings-prompt-template-block settings-prompt-template-danger">
+                    <div className="settings-prompt-template-summary">
+                      <div className="settings-prompt-template-copy">
+                        <h3 className="settings-subsection-title">AI Processing prompt</h3>
+                        <p className="settings-field-hint">
+                          This prompt drives live AI Processing output. Keep it collapsed unless you are
+                          intentionally changing the production prompt.
+                        </p>
+                      </div>
+
+                      <Button
+                        disabled={!canManageSettings || isSaving}
+                        id="settings-prompt-editor-open-button"
+                        onClick={handleOpenPromptTemplateEditor}
+                        variant="warning"
+                      >
+                        Edit prompt
+                      </Button>
+                    </div>
+
+                    {promptTemplateError ? (
+                      <p className="auth-message auth-message-error" role="alert">
+                        {promptTemplateError}
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                {isOwner ? (
+                  <div className="settings-prompt-template-block settings-prompt-template-danger">
+                    <div className="settings-prompt-template-summary">
+                      <div className="settings-prompt-template-copy">
+                        <h3 className="settings-subsection-title">Tag rerank prompt</h3>
+                        <p className="settings-field-hint">
+                          Instructional rules for the optional second-call tag reranker. Only used when
+                          the tag reranker runs (see &quot;Tag reranker&quot; mode above).
+                        </p>
+                      </div>
+
+                      <Button
+                        disabled={!canManageSettings || isSaving}
+                        id="settings-tag-rerank-prompt-editor-open-button"
+                        onClick={handleOpenTagRerankPromptEditor}
+                        variant="warning"
+                      >
+                        Edit prompt
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
+
+                <div className="settings-tag-exclusions-block">
+                  <div className="settings-tag-exclusions-copy">
+                    <h3 className="settings-subsection-title">Tag exclusions</h3>
+                    <p className="settings-field-hint">
+                      Built-in: {BASE_AI_TAG_EXCLUSIONS.length} | Additional:{" "}
+                      {selectedAdditionalTagExclusions.length}
+                    </p>
+                  </div>
+
+                  <Button
+                    disabled={!canManageSettings || isSaving}
+                    onClick={() => setIsTagExclusionsModalOpen(true)}
+                    variant="secondary"
+                  >
+                    Manage exclusions
+                  </Button>
+                </div>
+
+                {canManageSettings ? (
+                  <div className="settings-card-footer">
+                    <div className="settings-form-actions">
+                      <Button
+                        disabled={!hasUnsavedChanges || isSaving || Boolean(promptTemplateError)}
+                        onClick={() => void handleSaveSettings()}
+                        variant="primary"
+                      >
+                        {isSaving ? "Saving…" : "Save AI enrichment settings"}
+                      </Button>
+                    </div>
+
+                    <div className="settings-card-aside">
+                      <Button onClick={() => setIsPlaygroundModalOpen(true)} variant="secondary">
+                        Open AI Playground
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="settings-section-status">
+                    Only owners and admins can change AI enrichment settings.
+                  </p>
+                )}
+              </div>
             )}
-          </div>
-        )}
-      </section>
+          </section>
+        </div>
+      ) : null}
 
       {isOwner && isPromptTemplateEditorOpen ? (
         <div className="modal-overlay modal-overlay-blur" onClick={handleClosePromptTemplateEditor}>

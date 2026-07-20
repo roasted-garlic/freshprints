@@ -2,7 +2,7 @@
 
 > Align all work with the current phase / active managed goal. Do not jump ahead.
 
-## Current status (2026-07-18)
+## Current status (2026-07-20)
 
 | Item | Status |
 |------|--------|
@@ -14,9 +14,12 @@
 | Phase 9 remaining | Create My Design with AI; design fee / Stripe; questionnaire branching — deferred |
 | Portal catalog image load caching | **Complete** (2026-07-14) — not an open next step |
 | Account linking (same email) | Firebase/Google console setting — not a custom app build |
+| Small Managed #5 show queue cutoff | **Done** — owner **PASS** 2026-07-20 (ADR-FP-103) |
+| Small Managed #6 design library newest first | **Done** — Portal `createdAt` desc already; owner **PASS** covered already 2026-07-20 |
+| Small Managed #7–#10 account auth + owner delete | **Done** — owner **PASS** 2026-07-20 (ADR-FP-104; Delete user modal polish included) |
 | Production Portal App Hosting | Pending human approval |
 
-**Active managed goal:** (none — idle after Brevo IP + wipe closeouts)
+**Active managed goal:** none (idle). **#11** OG/social sharing **Done** (owner PASS 2026-07-20, ADR-FP-105). Next queued: Small Managed **#12** library design share.
 
 ---
 

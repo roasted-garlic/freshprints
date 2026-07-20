@@ -2,6 +2,43 @@
   gap: var(--space-4);
 }
 
+.settings-page-tab-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  max-width: 62rem;
+  width: min(100%, 62rem);
+}
+
+.settings-page-tab {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full, 999px);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  padding: var(--space-2) var(--space-4);
+}
+
+.settings-page-tab:hover,
+.settings-page-tab:focus-visible {
+  color: var(--color-text-primary);
+  outline: none;
+}
+
+.settings-page-tab.is-active {
+  background: var(--color-accent-primary-soft);
+  border-color: var(--color-accent-primary);
+  color: var(--color-text-primary);
+}
+
+.settings-page-tab-panel {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
 .settings-section {
   display: grid;
   gap: var(--space-3);
@@ -44,6 +81,24 @@
   min-width: 0;
 }
 
+.settings-quota-fieldset {
+  background: color-mix(in srgb, var(--color-surface-elevated, var(--color-surface)) 55%, transparent);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  margin: 0;
+  min-inline-size: 0;
+  padding: var(--space-3);
+}
+
+.settings-quota-fieldset > legend {
+  color: var(--color-text-primary);
+  float: unset;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  margin-bottom: var(--space-1);
+  padding: 0 var(--space-1);
+}
+
 .settings-control-item .form-field {
   margin: 0;
 }
@@ -69,6 +124,48 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
+}
+
+.settings-field-label {
+  display: grid;
+  gap: var(--space-1);
+  font-size: var(--font-size-sm);
+  min-width: 0;
+}
+
+.settings-number-input {
+  background: var(--color-surface-elevated, var(--color-surface));
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm, 0.375rem);
+  color: var(--color-text-primary);
+  font: inherit;
+  max-width: 8.5rem;
+  padding: var(--space-2) var(--space-3);
+  width: 8.5rem;
+}
+
+.settings-text-input,
+.settings-textarea-input {
+  background: var(--color-surface-elevated, var(--color-surface));
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm, 0.375rem);
+  color: var(--color-text-primary);
+  font: inherit;
+  max-width: 40rem;
+  padding: var(--space-2) var(--space-3);
+  width: 100%;
+}
+
+.settings-textarea-input {
+  min-height: 6rem;
+  resize: vertical;
+}
+
+.settings-number-input:focus-visible,
+.settings-text-input:focus-visible,
+.settings-textarea-input:focus-visible {
+  outline: 2px solid var(--color-accent-primary);
+  outline-offset: 1px;
 }
 
 .settings-card-footer {

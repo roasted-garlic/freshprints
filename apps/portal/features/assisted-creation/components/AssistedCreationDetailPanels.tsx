@@ -17,7 +17,7 @@ import {
   isAssistedCreationProofPng,
   resolveAssistedCreationApprovedProofId,
 } from '@fresh-prints/shared/utils/assistedCreationApprovedProofRetention';
-
+import { evaluateAssistedApprovedProofAddToRequest } from '@fresh-prints/shared/utils/assistedCreationApprovedProofAddToRequest';
 import {
   joinLabeledValues,
   labelForComposition,
@@ -35,7 +35,13 @@ import {
   notesForProof,
 } from '../utils/assistedCreationDisplay';
 import { assistedCreationService } from '../services/assistedCreationService';
+import { usePortalPrintRequests } from '../../print-requests/context/PortalPrintRequestContext';
 import { AssistedCreationMediaThumbs } from './AssistedCreationMediaThumbs';
+import {
+  AssistedAddToRequestProgressModal,
+  type AssistedAddToRequestProgressPhase,
+} from './AssistedAddToRequestProgressModal';
+import { AssistedLibraryListingConsentModal } from './AssistedLibraryListingConsentModal';
 
 function proofCreatedAtMillis(value: unknown): number {
   if (value && typeof value === 'object' && 'toDate' in value && typeof value.toDate === 'function') {
@@ -214,12 +220,81 @@ function useApprovedProofDownload(request: AssistedCreationRequest) {
   }, [request]);
 }
 
-/** Compact approved preview + Download for Overview / status. */
+/** Compact approved preview + Download / Add to Request for Overview. */
 export function AssistedApprovedDesignCard({ request }: { request: AssistedCreationRequest }) {
   const approvedDownload = useApprovedProofDownload(request);
+  const {
+    openCurrentRequestDrawer,
+    reloadWorkingItems,
+    refreshRequests,
+    workingItems,
+    workingRequestLimit,
+  } = usePortalPrintRequests();
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [downloadBusy, setDownloadBusy] = useState(false);
-  const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [addBusy, setAddBusy] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [addSuccess, setAddSuccess] = useState<string | null>(null);
+  const [libraryConsentOpen, setLibraryConsentOpen] = useState(false);
+  const [addProgressOpen, setAddProgressOpen] = useState(false);
+  const [addProgressPhase, setAddProgressPhase] =
+    useState<AssistedAddToRequestProgressPhase>('preparing');
+  const [addProgressError, setAddProgressError] = useState<string | null>(null);
+
+  const ingestUploadId = request.printRequestIngest?.customerUploadId?.trim() || '';
+  const ingestItemId = request.printRequestIngest?.printRequestItemId?.trim() || '';
+
+  /**
+   * Live “Already in request” — derived from working Current Request line items,
+   * not sticky printRequestIngest on the assisted doc (ingest survives remove).
+   */
+  const alreadyInWorkingRequest = useMemo(() => {
+    if (!ingestUploadId && !ingestItemId) {
+      return false;
+    }
+    return workingItems.some((item) => {
+      const uploadId = item.customerUploadId?.trim() ?? '';
+      if (ingestUploadId && uploadId === ingestUploadId) {
+        return true;
+      }
+      return Boolean(ingestItemId && item.id === ingestItemId);
+    });
+  }, [ingestItemId, ingestUploadId, workingItems]);
+
+  useEffect(() => {
+    if (!alreadyInWorkingRequest && addSuccess) {
+      setAddSuccess(null);
+    }
+  }, [addSuccess, alreadyInWorkingRequest]);
+
+  const addEligibility = useMemo(() => {
+    const ingest = request.printRequestIngest;
+    return evaluateAssistedApprovedProofAddToRequest({
+      status: request.status,
+      approvedProofId: request.approvedProofId,
+      approvedAtMillis: assistedCreationTimestampMillis(request.approvedAt),
+      proofs: request.proofs.map((entry) => ({
+        id: entry.id,
+        storagePath: entry.storagePath,
+        fileName: entry.fileName,
+        contentType: entry.contentType,
+        fullSizePurgedAtMillis: assistedCreationTimestampMillis(entry.fullSizePurgedAt),
+      })),
+      printRequestIngest:
+        ingest &&
+        typeof ingest.customerUploadId === 'string' &&
+        typeof ingest.printRequestItemId === 'string' &&
+        typeof ingest.printRequestId === 'string'
+          ? {
+              customerUploadId: ingest.customerUploadId,
+              printRequestItemId: ingest.printRequestItemId,
+              printRequestId: ingest.printRequestId,
+              assistedProofId: ingest.assistedProofId,
+            }
+          : null,
+      nowMs: Date.now(),
+    });
+  }, [request]);
 
   const previewPath =
     approvedDownload?.eligible && approvedDownload.proof?.storagePath
@@ -249,9 +324,64 @@ export function AssistedApprovedDesignCard({ request }: { request: AssistedCreat
     };
   }, [approvedDownload?.proof?.fullSizePurgedAtMillis, previewPath]);
 
-  if (!approvedDownload) {
+  if (!approvedDownload && !addEligibility.eligible) {
     return null;
   }
+
+  const showDownload =
+    Boolean(approvedDownload?.eligible && approvedDownload.proof?.storagePath);
+  const showAdd = addEligibility.eligible;
+  const alreadyInRequest = alreadyInWorkingRequest;
+
+  const runAddToRequest = (catalogUseAcknowledged: boolean) => {
+    const requestId = request.id?.trim();
+    if (!requestId || addBusy || alreadyInRequest) {
+      return;
+    }
+    setLibraryConsentOpen(false);
+    setAddBusy(true);
+    setActionError(null);
+    setAddSuccess(null);
+    setAddProgressError(null);
+    setAddProgressPhase('preparing');
+    setAddProgressOpen(true);
+
+    const stageTimer = window.setTimeout(() => {
+      setAddProgressPhase((current) => (current === 'preparing' ? 'adding' : current));
+    }, 1200);
+
+    void assistedCreationService
+      .addApprovedProofToPrintRequest(requestId, { catalogUseAcknowledged })
+      .then(async (result) => {
+        window.clearTimeout(stageTimer);
+        setAddProgressPhase('adding');
+        setAddSuccess(
+          result.alreadyAttached
+            ? 'Already in your Current Request.'
+            : 'Added to your Current Request.',
+        );
+        await Promise.all([
+          refreshRequests({ silent: true, printRequestId: result.printRequestId }),
+          reloadWorkingItems({ silent: true, printRequestId: result.printRequestId }),
+        ]);
+        setAddProgressPhase('done');
+        window.setTimeout(() => {
+          setAddProgressOpen(false);
+          openCurrentRequestDrawer();
+        }, 700);
+      })
+      .catch((error: unknown) => {
+        window.clearTimeout(stageTimer);
+        const message =
+          error instanceof Error ? error.message : 'Unable to add to request.';
+        setAddProgressPhase('error');
+        setAddProgressError(message);
+        setActionError(message);
+      })
+      .finally(() => {
+        setAddBusy(false);
+      });
+  };
 
   return (
     <section
@@ -274,55 +404,121 @@ export function AssistedApprovedDesignCard({ request }: { request: AssistedCreat
       ) : (
         <div className="assisted-creation-proof-stage is-empty" aria-hidden="true" />
       )}
-      {approvedDownload.eligible && approvedDownload.proof?.storagePath ? (
-        <>
-          <p className="portal-muted assisted-creation-approved-card-meta">
-            Download your approved design within 14 days of approval
-            {approvedDownload.expiresAtMillis
-              ? ` (available until ${formatAssistedWhen(approvedDownload.expiresAtMillis)})`
-              : ''}
-            . Preview grey is display-only; PNG keeps transparency.
-          </p>
-          <button
-            aria-busy={downloadBusy || undefined}
-            className="portal-button portal-button-primary"
-            disabled={downloadBusy}
-            onClick={() => {
-              const requestId = request.id?.trim();
-              if (!requestId || downloadBusy) {
-                return;
-              }
-              setDownloadBusy(true);
-              setDownloadError(null);
-              void assistedCreationService
-                .downloadApprovedProof(requestId)
-                .catch((error: unknown) => {
-                  setDownloadError(
-                    error instanceof Error ? error.message : 'Unable to download.',
-                  );
-                })
-                .finally(() => {
-                  setDownloadBusy(false);
-                });
-            }}
-            type="button"
-          >
-            {downloadBusy
-              ? 'Downloading…'
-              : isAssistedCreationProofPng(approvedDownload.proof.contentType)
-                ? 'Download PNG'
-                : 'Download file'}
-          </button>
-        </>
+      {showDownload ? (
+        <p className="portal-muted assisted-creation-approved-card-meta">
+          Download your approved design within 14 days of approval
+          {approvedDownload?.expiresAtMillis
+            ? ` (available until ${formatAssistedWhen(approvedDownload.expiresAtMillis)})`
+            : ''}
+          . Preview grey is display-only; PNG keeps transparency. Add to Request to print.
+          That copy is kept after the download window ends.
+        </p>
+      ) : alreadyInRequest ? (
+        <p className="portal-muted assisted-creation-approved-card-meta">
+          This design is already in your Current Request. The full-resolution download window may
+          have ended.
+        </p>
       ) : (
         <p className="portal-muted">
-          {approvedDownload.reason === 'expired' ||
-          approvedDownload.reason === 'full_size_purged'
+          {approvedDownload?.reason === 'expired' ||
+          approvedDownload?.reason === 'full_size_purged'
             ? 'The 14-day download window has ended. The full-resolution file is no longer available.'
             : 'A full-resolution download is not available for this request.'}
         </p>
       )}
-      {downloadError ? <p className="portal-form-error">{downloadError}</p> : null}
+      {showDownload || showAdd ? (
+        <div className="assisted-creation-approved-card-actions">
+          {showDownload ? (
+            <button
+              aria-busy={downloadBusy || undefined}
+              className="portal-button portal-button-primary"
+              disabled={downloadBusy || addBusy}
+              onClick={() => {
+                const requestId = request.id?.trim();
+                if (!requestId || downloadBusy) {
+                  return;
+                }
+                setDownloadBusy(true);
+                setActionError(null);
+                void assistedCreationService
+                  .downloadApprovedProof(requestId)
+                  .catch((error: unknown) => {
+                    setActionError(
+                      error instanceof Error ? error.message : 'Unable to download.',
+                    );
+                  })
+                  .finally(() => {
+                    setDownloadBusy(false);
+                  });
+              }}
+              type="button"
+            >
+              {downloadBusy
+                ? 'Downloading…'
+                : isAssistedCreationProofPng(approvedDownload?.proof?.contentType)
+                  ? 'Download PNG'
+                  : 'Download file'}
+            </button>
+          ) : null}
+          {showAdd ? (
+            <button
+              aria-busy={addBusy || undefined}
+              className="portal-button portal-button-secondary"
+              disabled={addBusy || downloadBusy || alreadyInRequest || !workingRequestLimit.canAddPrints}
+              onClick={() => {
+                if (addBusy || alreadyInRequest || !workingRequestLimit.canAddPrints) {
+                  return;
+                }
+                setActionError(null);
+                setLibraryConsentOpen(true);
+              }}
+              title={
+                !workingRequestLimit.canAddPrints && workingRequestLimit.exhaustedHelperText
+                  ? workingRequestLimit.exhaustedStatusText ?? undefined
+                  : undefined
+              }
+              type="button"
+            >
+              {addBusy
+                ? 'Adding…'
+                : alreadyInRequest
+                  ? 'Already in request'
+                  : 'Add to Request'}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+      {!workingRequestLimit.canAddPrints && workingRequestLimit.exhaustedHelperText && showAdd && !alreadyInRequest ? (
+        <p className="portal-muted">
+          {workingRequestLimit.exhaustedStatusText}
+        </p>
+      ) : null}
+      {addSuccess ? <p className="portal-muted">{addSuccess}</p> : null}
+      {actionError ? <p className="portal-form-error">{actionError}</p> : null}
+      <AssistedLibraryListingConsentModal
+        isBusy={addBusy}
+        isOpen={libraryConsentOpen}
+        onAllow={() => runAddToRequest(true)}
+        onDecline={() => runAddToRequest(false)}
+        onDismiss={() => {
+          if (!addBusy) {
+            setLibraryConsentOpen(false);
+          }
+        }}
+      />
+      <AssistedAddToRequestProgressModal
+        errorMessage={addProgressError}
+        isOpen={addProgressOpen}
+        onDismiss={() => {
+          if (addProgressPhase === 'error' || addProgressPhase === 'done') {
+            setAddProgressOpen(false);
+            if (addProgressPhase === 'done') {
+              openCurrentRequestDrawer();
+            }
+          }
+        }}
+        phase={addProgressPhase}
+      />
     </section>
   );
 }

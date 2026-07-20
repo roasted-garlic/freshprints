@@ -1546,7 +1546,7 @@ export function AssistedCreationRequestsSection({
         </h2>
         <p className="settings-section-description">
           Review Portal briefs, upload proofs, and move requests through the assisted creation
-          workflow. To wipe test requests, use Test Data → Assisted Creation requests.
+          workflow.
         </p>
       </header>
 

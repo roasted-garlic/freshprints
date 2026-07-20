@@ -4,7 +4,9 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
+  useRef,
   useState,
   type Dispatch,
   type ReactNode,
@@ -20,6 +22,10 @@ import type { CurrentRequestAggregates } from '@fresh-prints/shared/utils/curren
 
 import { PortalStartPrintRequestModal } from '../../shared/components/PortalStartPrintRequestModal';
 import { useMyPrintRequests } from '../hooks/useMyPrintRequests';
+import {
+  usePortalWorkingRequestLimitState,
+  type PortalWorkingRequestLimitState,
+} from '../hooks/usePortalWorkingRequestLimitState';
 import { usePrintRequestCreationFlow } from '../hooks/usePrintRequestCreationFlow';
 import { useWorkingCurrentRequestItems } from '../hooks/useWorkingCurrentRequestItems';
 import { portalPrintRequestService } from '../services/portalPrintRequestService';
@@ -38,10 +44,18 @@ interface PortalPrintRequestContextValue {
     notes?: string,
     options?: { skipListReload?: boolean },
   ) => Promise<{ printRequestId: string }>;
+  /**
+   * Shared create-or-reuse for the single working Current Request.
+   * Concurrent callers await the same in-flight create; after success the id is
+   * cached until the list catches up so rapid adds never trigger a second create.
+   */
+  ensureWorkingPrintRequestId: () => Promise<string>;
   error: string | null;
   finishCreating: () => void;
   handleStartRequestClick: (options?: { from?: PortalRequestDetailFrom | null }) => void;
   isCreating: boolean;
+  /** True while the shared ensureWorkingPrintRequestId create callable is in flight. */
+  isEnsuringWorkingRequest: boolean;
   isCurrentRequestDrawerOpen: boolean;
   isLoading: boolean;
   isLoadingCurrentRequestItems: boolean;
@@ -49,6 +63,18 @@ interface PortalPrintRequestContextValue {
   closeCurrentRequestDrawer: () => void;
   /** Immediate local item patch for snappy qty/remove UI; reconcile with reloadWorkingItems. */
   patchWorkingItems: Dispatch<SetStateAction<PrintRequestItem[]>>;
+  /**
+   * Mark item ids as optimistically removed so silent list reloads cannot resurrect them
+   * while concurrent removes are still in flight.
+   */
+  beginPendingItemRemovals: (itemIds: string[]) => void;
+  /** Clear pending-remove marks after the callable settles (success or error rollback). */
+  endPendingItemRemovals: (itemIds: string[]) => void;
+  /**
+   * Working request id known locally before list reload (create just succeeded).
+   * Lets add-flow treat branch as "single" during the list lag window.
+   */
+  pendingWorkingRequestId: string | null;
   /** Seed drawer title/thumb from a known catalog design before Firestore summaries load. */
   seedDesignSummary: (
     designId: string,
@@ -58,10 +84,17 @@ interface PortalPrintRequestContextValue {
   ) => void;
   /** Fetch any missing design summaries for Current Request chrome. */
   ensureDesignSummaries: (designIds: string[]) => Promise<void>;
-  /** Soft-archive Current Request (clears items) so a new cart can start. */
+  /** Empty Current Request items; keeps the same open draft/editing request. */
   clearWorkingRequest: () => Promise<void>;
   isClearingWorkingRequest: boolean;
-  refreshRequests: (options?: { silent?: boolean; printRequestId?: string }) => Promise<void>;
+  /** Shared working-request limit L for disable gates and situational errors. */
+  workingRequestLimit: PortalWorkingRequestLimitState;
+  refreshRequests: (options?: {
+    silent?: boolean;
+    printRequestId?: string;
+    /** Skip items fetch — use after create-path flushes that already patched local cart. */
+    skipWorkingItems?: boolean;
+  }) => Promise<void>;
   reloadWorkingItems: (options?: { silent?: boolean; printRequestId?: string }) => Promise<void>;
   /** Immediate local cart clear (e.g. after queue-to-show before list reload finishes). */
   resetWorkingCart: () => void;
@@ -84,10 +117,31 @@ export function PortalPrintRequestProvider({ children }: { children: ReactNode }
   const printRequests = useMyPrintRequests();
   const [isCurrentRequestDrawerOpen, setIsCurrentRequestDrawerOpen] = useState(false);
   const [isClearingWorkingRequest, setIsClearingWorkingRequest] = useState(false);
+  const [isEnsuringWorkingRequest, setIsEnsuringWorkingRequest] = useState(false);
+  const [pendingWorkingRequestId, setPendingWorkingRequestId] = useState<string | null>(null);
+  /** In-flight create shared across all catalog/favorites add callers. */
+  const ensureWorkingPromiseRef = useRef<Promise<string> | null>(null);
+  /** Survives after create resolves until list reload exposes the working request. */
+  const ensuredWorkingRequestIdRef = useRef<string | null>(null);
 
   const workingRequest = printRequests.continuableRequests[0] ?? null;
   const isVirtualEmptyCurrentRequest =
     !printRequests.isLoading && printRequests.continuableRequests.length === 0;
+
+  const clearEnsuredWorkingRequest = useCallback(() => {
+    ensuredWorkingRequestIdRef.current = null;
+    ensureWorkingPromiseRef.current = null;
+    setPendingWorkingRequestId(null);
+    setIsEnsuringWorkingRequest(false);
+  }, []);
+
+  // Prefer list truth once it catches up; drop local pending id.
+  useEffect(() => {
+    if (workingRequest?.id) {
+      ensuredWorkingRequestIdRef.current = workingRequest.id;
+      setPendingWorkingRequestId(null);
+    }
+  }, [workingRequest?.id]);
 
   const {
     workingItems,
@@ -95,12 +149,63 @@ export function PortalPrintRequestProvider({ children }: { children: ReactNode }
     uploadSummaries,
     aggregates,
     isLoadingItems,
+    hydratedWorkingRequestId,
+    beginPendingItemRemovals,
+    endPendingItemRemovals,
     ensureDesignSummaries,
     patchWorkingItems,
     seedDesignSummary,
     reloadWorkingItems,
-    resetWorkingCart,
+    resetWorkingCart: resetWorkingCartItems,
   } = useWorkingCurrentRequestItems(workingRequest);
+
+  const workingRequestLimit = usePortalWorkingRequestLimitState(workingItems, {
+    isRequestsLoading: printRequests.isLoading,
+    isItemsLoading: isLoadingItems,
+    workingRequestId: workingRequest?.id ?? null,
+    hydratedWorkingRequestId,
+  });
+
+  const resetWorkingCart = useCallback(() => {
+    clearEnsuredWorkingRequest();
+    resetWorkingCartItems();
+  }, [clearEnsuredWorkingRequest, resetWorkingCartItems]);
+
+  const ensureWorkingPrintRequestId = useCallback(async (): Promise<string> => {
+    if (workingRequest?.id) {
+      ensuredWorkingRequestIdRef.current = workingRequest.id;
+      return workingRequest.id;
+    }
+
+    if (ensuredWorkingRequestIdRef.current) {
+      return ensuredWorkingRequestIdRef.current;
+    }
+
+    if (ensureWorkingPromiseRef.current) {
+      return ensureWorkingPromiseRef.current;
+    }
+
+    setIsEnsuringWorkingRequest(true);
+    const createPromise = printRequests
+      .createPrintRequest(undefined, { skipListReload: true })
+      .then((created) => {
+        ensuredWorkingRequestIdRef.current = created.printRequestId;
+        setPendingWorkingRequestId(created.printRequestId);
+        return created.printRequestId;
+      })
+      .catch((error: unknown) => {
+        ensuredWorkingRequestIdRef.current = null;
+        setPendingWorkingRequestId(null);
+        throw error;
+      })
+      .finally(() => {
+        ensureWorkingPromiseRef.current = null;
+        setIsEnsuringWorkingRequest(false);
+      });
+
+    ensureWorkingPromiseRef.current = createPromise;
+    return createPromise;
+  }, [printRequests.createPrintRequest, workingRequest?.id]);
 
   const {
     actionError,
@@ -115,13 +220,21 @@ export function PortalPrintRequestProvider({ children }: { children: ReactNode }
   } = usePrintRequestCreationFlow({
     continuableRequests: printRequests.continuableRequests,
     createPrintRequest: printRequests.createPrintRequest,
+    ensureWorkingPrintRequestId,
   });
 
   const reloadRequests = printRequests.reload;
 
   const refreshRequests = useCallback(
-    async (options?: { silent?: boolean; printRequestId?: string }) => {
+    async (options?: {
+      silent?: boolean;
+      printRequestId?: string;
+      skipWorkingItems?: boolean;
+    }) => {
       await reloadRequests(options);
+      if (options?.skipWorkingItems) {
+        return;
+      }
       // Only force a specific request id when callers pass it (first create).
       // After queue-to-show, workingRequestIdRef is already cleared via resetWorkingCart /
       // the working-request effect — do not reload the just-queued request into Stash.
@@ -146,16 +259,28 @@ export function PortalPrintRequestProvider({ children }: { children: ReactNode }
       return;
     }
 
+    const clearedRequestId = workingRequest.id;
     setIsClearingWorkingRequest(true);
     try {
-      await portalPrintRequestService.clearWorkingPrintRequest(workingRequest.id);
+      await portalPrintRequestService.clearWorkingPrintRequest(clearedRequestId);
+      // Keep ensure cache + pending id so next Add reuses this request during list lag.
+      // Do not call resetWorkingCart() — that clears the id (queue-to-show only).
+      ensuredWorkingRequestIdRef.current = clearedRequestId;
+      setPendingWorkingRequestId(clearedRequestId);
+      patchWorkingItems([]);
       await reloadRequests({ silent: true });
-      await reloadWorkingItems({ silent: true });
+      await reloadWorkingItems({ silent: true, printRequestId: clearedRequestId });
       setIsCurrentRequestDrawerOpen(false);
     } finally {
       setIsClearingWorkingRequest(false);
     }
-  }, [isClearingWorkingRequest, reloadRequests, reloadWorkingItems, workingRequest]);
+  }, [
+    isClearingWorkingRequest,
+    patchWorkingItems,
+    reloadRequests,
+    reloadWorkingItems,
+    workingRequest,
+  ]);
 
   const value: PortalPrintRequestContextValue = useMemo(
     () => ({
@@ -165,8 +290,12 @@ export function PortalPrintRequestProvider({ children }: { children: ReactNode }
       isVirtualEmptyCurrentRequest,
       continuableRequests: printRequests.continuableRequests,
       createPrintRequest: printRequests.createPrintRequest,
+      ensureWorkingPrintRequestId,
       clearWorkingRequest,
       isClearingWorkingRequest,
+      isEnsuringWorkingRequest,
+      pendingWorkingRequestId,
+      workingRequestLimit,
       error: printRequests.error,
       finishCreating,
       handleStartRequestClick,
@@ -177,6 +306,8 @@ export function PortalPrintRequestProvider({ children }: { children: ReactNode }
       openCurrentRequestDrawer,
       closeCurrentRequestDrawer,
       patchWorkingItems,
+      beginPendingItemRemovals,
+      endPendingItemRemovals,
       seedDesignSummary,
       ensureDesignSummaries,
       refreshRequests,
@@ -193,18 +324,23 @@ export function PortalPrintRequestProvider({ children }: { children: ReactNode }
     [
       actionError,
       aggregates,
+      beginPendingItemRemovals,
       clearWorkingRequest,
       closeCurrentRequestDrawer,
       designSummaries,
+      endPendingItemRemovals,
+      ensureWorkingPrintRequestId,
       finishCreating,
       handleStartRequestClick,
       isClearingWorkingRequest,
       isCreating,
       isCurrentRequestDrawerOpen,
+      isEnsuringWorkingRequest,
       isLoadingItems,
       isVirtualEmptyCurrentRequest,
       openCurrentRequestDrawer,
       patchWorkingItems,
+      pendingWorkingRequestId,
       seedDesignSummary,
       ensureDesignSummaries,
       printRequests.allocationTotalsByRequestId,
@@ -221,6 +357,7 @@ export function PortalPrintRequestProvider({ children }: { children: ReactNode }
       uploadSummaries,
       workingItems,
       workingRequest,
+      workingRequestLimit,
     ],
   );
 

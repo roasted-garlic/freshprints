@@ -158,6 +158,17 @@
   color: var(--color-success-text, var(--color-success, #3ecf8e));
 }
 
+/* Passed / non-selectable days: soft yellowish (overrides completed green). */
+.show-picker-day.has-shows.is-past-only:not(.is-selected) .show-picker-day-number {
+  box-shadow: inset 0 0 0 1.5px
+    color-mix(in srgb, var(--color-warning, #f5b942) 68%, var(--color-border-strong, #3a3f4b));
+  color: color-mix(
+    in srgb,
+    var(--color-warning-text, var(--color-warning, #f5b942)) 78%,
+    var(--color-text-secondary, #b8bec8)
+  );
+}
+
 .show-picker-day.is-selected.has-shows-full .show-picker-day-number {
   background: var(--color-warning, #f5b942);
   color: var(--color-text-on-accent, #171b24);
@@ -187,6 +198,14 @@
 
 .show-picker-day-dot--completed {
   background: var(--color-success, #3ecf8e);
+}
+
+.show-picker-day.has-shows.is-past-only .show-picker-day-dot {
+  background: color-mix(
+    in srgb,
+    var(--color-warning, #f5b942) 70%,
+    var(--color-text-muted, #7d8594)
+  );
 }
 
 .show-picker-day.is-selected .show-picker-day-dot {
@@ -294,6 +313,80 @@
   color: var(--color-text-primary, #f5f7fa);
 }
 
+.show-picker-slot-meta {
+  align-items: baseline;
+  display: flex;
+  gap: var(--space-2, 0.5rem);
+  justify-content: space-between;
+  min-width: 0;
+  width: 100%;
+}
+
+.show-picker-slot-capacity {
+  color: var(--color-text-secondary, #b8bec8);
+  flex: 1 1 auto;
+  font-size: var(--font-size-sm, 0.8125rem);
+  min-width: 0;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.show-picker-slot-cutoff {
+  color: var(--color-text-secondary, #b8bec8);
+  flex: 0 1 auto;
+  font-size: var(--font-size-xs, 0.75rem);
+  line-height: 1.25;
+  max-width: 58%;
+  min-width: 0;
+  overflow: hidden;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Dual full/short copy: desktop shows full; narrow viewports swap to short when present. */
+.show-picker-slot-copy-short {
+  display: none;
+}
+
+@media (max-width: 40rem) {
+  .show-picker-slot-capacity:has(.show-picker-slot-copy-short) .show-picker-slot-copy-full,
+  .show-picker-slot-cutoff:has(.show-picker-slot-copy-short) .show-picker-slot-copy-full {
+    display: none;
+  }
+
+  .show-picker-slot-copy-short {
+    display: inline;
+  }
+
+  .show-picker-slot-cutoff {
+    max-width: 48%;
+  }
+}
+
+.show-picker-slot-cutoff.is-success {
+  color: var(--color-success-text, var(--color-success, #3ecf8e));
+}
+
+.show-picker-slot-cutoff.is-warning {
+  color: var(--color-warning-text, var(--color-warning, #f5b942));
+}
+
+.show-picker-slot-cutoff.is-danger {
+  color: var(--color-danger-text, var(--color-danger, #ff5c5c));
+}
+
+.show-picker-slot.is-disabled {
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
+.show-picker-slot.is-disabled .show-picker-slot-cutoff.is-danger {
+  opacity: 1;
+}
+
 .show-picker-slot-bar-fill.is-low {
   background: var(--color-success, #3ecf8e);
 }
@@ -311,11 +404,6 @@
   .show-picker-slot-bar-fill {
     transition: none;
   }
-}
-
-.show-picker-slot-capacity {
-  color: var(--color-text-secondary, #b8bec8);
-  font-size: var(--font-size-sm, 0.8125rem);
 }
 
 .show-picker-badge {

@@ -62,7 +62,8 @@ export interface CustomerUploadIntakeRow {
   catalogReviewStatus: CustomerUploadCatalogReviewStatus;
   promotedDesignId: string | null;
   ownershipConfirmed: boolean;
-  catalogUseAcknowledged: boolean;
+  /** `null` when field missing on older docs (Studio shows Pending). */
+  catalogUseAcknowledged: boolean | null;
   purpose: CustomerUploadPurpose;
   createdAtMs: number | null;
   /** Set when exclude purged donation full-size files (thumbnail kept). */
@@ -75,6 +76,9 @@ export interface CustomerUploadIntakeRow {
   halftoneDetection: import("@fresh-prints/shared/types/halftone/halftone.types").HalftoneDetectionPersisted | null;
   halftoneSubmitterResponse: import("@fresh-prints/shared/types/halftone/halftone.types").HalftoneSubmitterResponsePersisted | null;
   halftoneStaffDecision: import("@fresh-prints/shared/types/halftone/halftone.types").HalftoneStaffDecisionPersisted | null;
+  /** Set when upload was server-copied from Assisted approved proof (ADR-FP-094). */
+  assistedCreationRequestId: string | null;
+  assistedProofId: string | null;
 }
 
 function asNumber(value: unknown): number | null {
@@ -231,7 +235,10 @@ export const customerUploadIntakeService = {
         catalogReviewStatus: data.catalogReviewStatus as CustomerUploadCatalogReviewStatus,
         promotedDesignId: asString(data.promotedDesignId),
         ownershipConfirmed: data.ownershipConfirmed === true,
-        catalogUseAcknowledged: data.catalogUseAcknowledged === true,
+        catalogUseAcknowledged:
+          typeof data.catalogUseAcknowledged === "boolean"
+            ? data.catalogUseAcknowledged
+            : null,
         purpose: resolveCustomerUploadPurpose(data.purpose),
         createdAtMs: timestampMs(data.createdAt),
         fullSizePurgedAtMs: timestampMs(data.fullSizePurgedAt),
@@ -252,6 +259,8 @@ export const customerUploadIntakeService = {
           data.halftoneStaffDecision && typeof data.halftoneStaffDecision === "object"
             ? (data.halftoneStaffDecision as CustomerUploadIntakeRow["halftoneStaffDecision"])
             : null,
+        assistedCreationRequestId: asString(data.assistedCreationRequestId),
+        assistedProofId: asString(data.assistedProofId),
       });
     }
 

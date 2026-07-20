@@ -8,8 +8,13 @@ import {
   filterShowsAvailableForAllocation,
   isPastScheduledShow,
 } from "../../packages/shared/src/utils/showScheduleGrouping";
+import {
+  getPortalQueueCutoffAt,
+  isPastPortalQueueCutoff,
+} from "../../packages/shared/src/utils/showQueueCutoff";
 import { adminDb } from "./lib/admin";
 import { internal, unauthenticated } from "./lib/errors";
+import { loadPortalQueueCutoffHours } from "./lib/loadPortalQueueCutoffHours";
 import { requirePortalCustomer } from "./lib/portalCustomer";
 
 /** Include past shows from the start of (current month − 2) for calendar highlights. */
@@ -64,10 +69,11 @@ export const listPortalAllocatableShows = onCall(async (request): Promise<ListPo
   }
 
   try {
-    await requirePortalCustomer(request.auth.uid);
+    const customer = await requirePortalCustomer(request.auth.uid);
 
     const now = new Date();
     const pastWindowStart = pastCalendarWindowStart(now);
+    const portalQueueCutoffHoursBeforeStart = await loadPortalQueueCutoffHours();
 
     // Bound scan to calendar window (avoids loading the entire historical collection).
     const snapshot = await adminDb
@@ -106,13 +112,21 @@ export const listPortalAllocatableShows = onCall(async (request): Promise<ListPo
       ];
     });
 
-    const allocatable = filterShowsAvailableForAllocation(shows, now).filter((show) =>
+    const capacityEligible = filterShowsAvailableForAllocation(shows, now).filter((show) =>
       canAcceptNewShowAllocations(show, now),
     );
+    const allocatable = capacityEligible.filter(
+      (show) => !isPastPortalQueueCutoff(show.scheduledStartAt, now, portalQueueCutoffHoursBeforeStart),
+    );
     const allocatableIds = new Set(allocatable.map((show) => show.id));
+    const pastCutoffUpcomingIds = new Set(
+      capacityEligible
+        .filter((show) => isPastPortalQueueCutoff(show.scheduledStartAt, now, portalQueueCutoffHoursBeforeStart))
+        .map((show) => show.id),
+    );
 
     const calendarShows = shows.filter((show) => {
-      if (allocatableIds.has(show.id)) {
+      if (allocatableIds.has(show.id) || pastCutoffUpcomingIds.has(show.id)) {
         return true;
       }
 
@@ -127,15 +141,49 @@ export const listPortalAllocatableShows = onCall(async (request): Promise<ListPo
       return show.scheduledStartAt.toDate().getTime() >= pastWindowStart.getTime();
     });
 
+    const customerQtyByShowId = new Map<string, number>();
+    if (calendarShows.length > 0) {
+      const customerAllocationsSnap = await adminDb
+        .collection("showAllocations")
+        .where("customerId", "==", customer.customerId)
+        .get();
+
+      for (const docSnap of customerAllocationsSnap.docs) {
+        const data = docSnap.data();
+        if (data.status === "canceled") {
+          continue;
+        }
+        const showId = typeof data.upcomingShowId === "string" ? data.upcomingShowId : "";
+        if (!showId) {
+          continue;
+        }
+        const qty =
+          typeof data.allocatedQuantity === "number" && Number.isFinite(data.allocatedQuantity)
+            ? Math.max(0, Math.floor(data.allocatedQuantity))
+            : 0;
+        if (qty <= 0) {
+          continue;
+        }
+        customerQtyByShowId.set(showId, (customerQtyByShowId.get(showId) ?? 0) + qty);
+      }
+    }
+
     const responseShows = calendarShows
-      .map((show) => ({
-        id: show.id,
-        scheduledStartAt: show.scheduledStartAtIso,
-        productionStatus: show.productionStatus,
-        maxTotalQuantity: show.maxTotalQuantity,
-        allocatedQuantity: show.allocatedQuantity,
-        isAllocatable: allocatableIds.has(show.id),
-      }))
+      .map((show) => {
+        const pastCutoff = pastCutoffUpcomingIds.has(show.id);
+        const cutoffAt = getPortalQueueCutoffAt(show.scheduledStartAt, portalQueueCutoffHoursBeforeStart);
+        return {
+          id: show.id,
+          scheduledStartAt: show.scheduledStartAtIso,
+          productionStatus: show.productionStatus,
+          maxTotalQuantity: show.maxTotalQuantity,
+          allocatedQuantity: show.allocatedQuantity,
+          customerAllocatedQuantity: customerQtyByShowId.get(show.id) ?? 0,
+          isAllocatable: allocatableIds.has(show.id),
+          isPastQueueCutoff: pastCutoff,
+          queueCutoffAt: cutoffAt ? cutoffAt.toISOString() : null,
+        };
+      })
       .sort((left, right) => {
         if (!left.scheduledStartAt && !right.scheduledStartAt) {
           return 0;
@@ -152,7 +200,10 @@ export const listPortalAllocatableShows = onCall(async (request): Promise<ListPo
         return left.scheduledStartAt.localeCompare(right.scheduledStartAt);
       });
 
-    return { shows: responseShows };
+    return {
+      shows: responseShows,
+      portalQueueCutoffHoursBeforeStart,
+    };
   } catch (error) {
     mapHttpsError(error);
   }

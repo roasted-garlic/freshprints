@@ -43,6 +43,7 @@ export function AccountArtworkGallery({
   const {
     continuableRequests,
     createPrintRequest,
+    currentRequestAggregates,
     refreshRequests,
     reloadWorkingItems,
   } = usePortalPrintRequests();
@@ -156,8 +157,15 @@ export function AccountArtworkGallery({
       />
 
       <CatalogDesignDetailsModal
+        canAddPrints={addDesignFlow.canAddPrints}
         design={selectedDesign}
+        exhaustedHelperText={addDesignFlow.exhaustedHelperText}
+        exhaustedStatusText={addDesignFlow.exhaustedStatusText}
         isAdding={selectedDesign !== null && addDesignFlow.addingDesignId === selectedDesign.id}
+        isInCurrentRequest={
+          selectedDesign !== null &&
+          (currentRequestAggregates.quantityByDesignId[selectedDesign.id] ?? 0) > 0
+        }
         isOpen={selectedDesign !== null}
         onAddToRequest={addDesignFlow.addDesign}
         onClose={() => setSelectedDesign(null)}

@@ -35,7 +35,7 @@ function formatPx(width: number | null, height: number | null): string {
   return `${width} × ${height} px`;
 }
 
-function formatCustomerResponse(row: CustomerUploadIntakeRow): string {
+function formatCustomerHalftone(row: CustomerUploadIntakeRow): string {
   const value = row.halftoneSubmitterResponse?.value;
   if (!value || value === "unanswered") {
     return "Unanswered";
@@ -47,6 +47,17 @@ function formatCustomerResponse(row: CustomerUploadIntakeRow): string {
     return "No";
   }
   return "Not sure";
+}
+
+/** Library consent from `catalogUseAcknowledged`. Missing on older rows → Pending. */
+function formatLibraryConsent(row: CustomerUploadIntakeRow): string {
+  if (row.catalogUseAcknowledged === true) {
+    return "Approved";
+  }
+  if (row.catalogUseAcknowledged === false) {
+    return "Denied";
+  }
+  return "Pending";
 }
 
 function DetailField({ label, value }: { label: string; value: string }) {
@@ -72,6 +83,7 @@ function IntakeDetail({
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const pendingAction = intake.pendingByUploadId[row.id] ?? null;
   const busy = Boolean(pendingAction);
+  const fromAssisted = Boolean(row.assistedCreationRequestId);
   const halftoneOn = resolveIntakeHalftoneStaffToggle({
     staffDecision: row.halftoneStaffDecision,
     submitterResponse: row.halftoneSubmitterResponse,
@@ -99,10 +111,17 @@ function IntakeDetail({
           </div>
         )}
         <div className="customer-upload-intake-detail-summary">
-          <h3>{row.originalFilename}</h3>
+          <h3 className="customer-upload-intake-detail-title">{row.originalFilename}</h3>
           <p className="customer-upload-intake-meta">
-            {row.customerDisplayName}
-            {isDonation ? " · donation" : ""} · {row.catalogReviewStatus.replace(/_/g, " ")}
+            <span>
+              {row.customerDisplayName}
+              {isDonation ? " · donation" : ""} · {row.catalogReviewStatus.replace(/_/g, " ")} ·
+            </span>
+            {fromAssisted ? (
+              <span className="customer-upload-intake-custom-badge">Custom</span>
+            ) : (
+              <span className="customer-upload-intake-uploaded-badge">Uploaded</span>
+            )}
           </p>
           <p className="customer-upload-intake-meta">
             Approved max {formatInches(row.approvedMaxPrintWidthInches, row.approvedMaxPrintHeightInches)}
@@ -117,12 +136,12 @@ function IntakeDetail({
 
       <div className="customer-upload-intake-primary-meta">
         <div>
-          <span className="customer-upload-intake-kicker">Customer selection</span>
-          <strong>{formatCustomerResponse(row)}</strong>
+          <span className="customer-upload-intake-kicker">Customer halftone</span>
+          <strong>{formatCustomerHalftone(row)}</strong>
         </div>
         <div>
-          <span className="customer-upload-intake-kicker">Staff decision</span>
-          <strong>{halftoneOn ? "Halftone" : "Not halftone"}</strong>
+          <span className="customer-upload-intake-kicker">Design Library</span>
+          <strong>{formatLibraryConsent(row)}</strong>
         </div>
       </div>
 
@@ -261,9 +280,17 @@ function IntakeDetail({
                     />
                     <DetailField label="Request status" value={row.printRequestStatus ?? "—"} />
                   </>
-                ) : (
-                  <DetailField label="Source" value="Catalog donation" />
-                )}
+                ) : null}
+                <DetailField
+                  label="Source"
+                  value={
+                    fromAssisted
+                      ? "Custom design (Assisted)"
+                      : isDonation
+                        ? "Catalog donation"
+                        : "Customer upload"
+                  }
+                />
                 <DetailField label="Uploaded" value={formatDate(row.createdAtMs)} />
                 <DetailField label="Format" value={row.sourceFormat ?? "—"} />
                 <DetailField
@@ -303,7 +330,7 @@ function IntakeDetail({
                       : "None"
                   }
                 />
-                <DetailField label="Customer halftone selection" value={formatCustomerResponse(row)} />
+                <DetailField label="Customer halftone" value={formatCustomerHalftone(row)} />
                 <DetailField
                   label="Staff halftone decision"
                   value={
@@ -323,16 +350,7 @@ function IntakeDetail({
                   label="Ownership confirmed"
                   value={row.ownershipConfirmed ? "Yes" : "No"}
                 />
-                <DetailField
-                  label={isDonation ? "Donation listing consent" : "Design Library permission"}
-                  value={
-                    row.catalogUseAcknowledged
-                      ? isDonation
-                        ? "Consented to catalog listing"
-                        : "Allowed"
-                      : "Declined"
-                  }
-                />
+                <DetailField label="Design Library" value={formatLibraryConsent(row)} />
                 {row.technicalFailureMessage ? (
                   <DetailField label="Failure details" value={row.technicalFailureMessage} />
                 ) : null}
@@ -430,6 +448,7 @@ export function CustomerUploadIntakeSection({
               <ul className="customer-upload-intake-list">
                 {intake.rows.map((row) => {
                   const customerMarked = row.halftoneSubmitterResponse?.value === "yes";
+                  const fromAssisted = Boolean(row.assistedCreationRequestId);
                   return (
                     <li key={row.id}>
                       <button
@@ -445,8 +464,15 @@ export function CustomerUploadIntakeSection({
                           {row.originalFilename}
                         </span>
                         <span className="customer-upload-intake-list-sub">
-                          {row.customerDisplayName} · {row.technicalStatus}
-                          {customerMarked ? " · customer: halftone" : ""}
+                          <span>
+                            {row.customerDisplayName} · {row.technicalStatus} ·
+                          </span>
+                          {fromAssisted ? (
+                            <span className="customer-upload-intake-custom-badge">Custom</span>
+                          ) : (
+                            <span className="customer-upload-intake-uploaded-badge">Uploaded</span>
+                          )}
+                          {customerMarked ? <span> · customer: halftone</span> : null}
                         </span>
                       </button>
                     </li>

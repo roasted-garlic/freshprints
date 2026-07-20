@@ -160,5 +160,24 @@ export interface CustomerGetAssistedCreationApprovedProofFileResponse {
   downloadExpiresAtMillis: number | null;
 }
 
+/** Customer: copy approved Assisted proof into Stash (working print request) as a private upload. */
+export interface CustomerAddAssistedApprovedProofToPrintRequestRequest {
+  requestId: string;
+  /**
+   * Customer consent for Design Library consideration.
+   * true → upload eligible for Studio intake (`pending_staff_review`); false → private only.
+   * Does not auto-publish to catalog.
+   */
+  catalogUseAcknowledged: boolean;
+}
+
+export interface CustomerAddAssistedApprovedProofToPrintRequestResponse {
+  printRequestId: string;
+  printRequestItemId: string;
+  customerUploadId: string;
+  /** True when an existing Stash line was returned (no duplicate created). */
+  alreadyAttached: boolean;
+}
+
 /** Payload shape accepted by submit after client builds answers. */
 export type SubmitAssistedCreationAnswers = AssistedCreationAnswers;

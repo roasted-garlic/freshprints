@@ -364,6 +364,15 @@
   display: grid;
   gap: 0.75rem;
   margin-top: 0;
+  position: relative;
+}
+
+.portal-customer-upload-embedded .portal-customer-upload-interactive {
+  min-height: 12rem;
+}
+
+.request-artwork-page .portal-customer-upload-request-full-overlay {
+  min-height: 14rem;
 }
 
 .request-artwork-page .portal-customer-upload-modal-header {
@@ -404,7 +413,11 @@
 }
 
 .request-artwork-page .portal-customer-upload-notes {
-  display: none;
+  color: var(--color-warning-text, #8a5a00);
+  display: block;
+  font-size: 0.8125rem;
+  margin: 0;
+  padding-left: 1.1rem;
 }
 
 .request-artwork-page .portal-customer-upload-summary {
@@ -440,9 +453,15 @@
 }
 
 .request-artwork-page .portal-customer-upload-footer {
+  align-items: center;
   gap: 0.5rem;
+  justify-content: space-between;
   margin-top: var(--space-2);
   padding: var(--space-5) 0 0;
+}
+
+.request-artwork-page .portal-customer-upload-footer-actions {
+  gap: 0.5rem;
 }
 
 .request-artwork-page .portal-customer-upload-footer .portal-button {
@@ -1774,12 +1793,33 @@
   min-height: 2.5rem;
 }
 
+.design-details-toolbar-start {
+  align-items: center;
+  display: flex;
+  flex: 1 1 auto;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
 .design-details-favorite-btn.catalog-favorite-button {
   flex-shrink: 0;
   height: 2.5rem;
   min-height: 2.5rem;
   min-width: 2.5rem;
   width: 2.5rem;
+}
+
+.design-details-share-btn {
+  flex-shrink: 0;
+}
+
+.design-details-request-full-label.is-request-full {
+  color: var(--color-danger-text, var(--color-text-muted));
+  flex: 1 1 auto;
+  font-size: var(--font-size-sm);
+  line-height: 1.3;
+  margin: 0;
+  min-width: 0;
 }
 
 .design-details-add-btn {
@@ -2358,15 +2398,49 @@
   word-break: break-word;
 }
 
+.design-selection-card-title-row {
+  align-items: center;
+  display: flex;
+  gap: var(--space-2);
+  min-width: 0;
+  width: 100%;
+}
+
 .design-selection-card-title-button {
   background: transparent;
   border: 0;
   cursor: pointer;
   display: block;
+  flex: 1 1 auto;
   margin: 0;
+  min-width: 0;
   padding: 0;
   text-align: left;
-  width: 100%;
+}
+
+.design-selection-card-share-btn {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  display: inline-flex;
+  flex-shrink: 0;
+  height: 2rem;
+  justify-content: center;
+  padding: 0;
+  width: 2rem;
+}
+
+.design-selection-card-share-btn:hover,
+.design-selection-card-share-btn:focus-visible {
+  color: var(--color-text-primary);
+  outline: none;
+}
+
+.design-selection-card-share-btn:focus-visible {
+  border-radius: var(--radius-sm);
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
 }
 
 .design-selection-card-title-button:focus-visible {

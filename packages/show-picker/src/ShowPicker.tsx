@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   SHOW_CALENDAR_NO_DATE_KEY,
@@ -16,6 +16,81 @@ import { getShowPickerDayMarker } from "./getShowPickerDayMarker";
 import type { ShowPickerOption, ShowPickerProps } from "./types";
 
 const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+/** Scroll selected slot / capacity detail into view after calendar layout settles. */
+function scheduleScrollSelectedSlotIntoView(
+  root: HTMLElement,
+  calendar: HTMLElement | null,
+): () => void {
+  let cancelled = false;
+  let rafId = 0;
+  let resizeRafId = 0;
+
+  const scrollSelectedIntoView = () => {
+    if (cancelled) {
+      return;
+    }
+
+    const target =
+      (root.querySelector(".show-picker-slot.is-selected") as HTMLElement | null) ??
+      (root.querySelector(".show-picker-slots") as HTMLElement | null);
+
+    if (target) {
+      // Prefer end so a taller month grid still leaves the capacity/progress bar in view.
+      target.scrollIntoView({ block: "end", inline: "nearest" });
+      return;
+    }
+
+    // No slot yet — reveal the bottom of the picker (where slots will land).
+    const scrollParent = findVerticalScrollParent(root);
+    if (scrollParent) {
+      scrollParent.scrollTop = scrollParent.scrollHeight;
+    }
+  };
+
+  rafId = window.requestAnimationFrame(() => {
+    rafId = window.requestAnimationFrame(scrollSelectedIntoView);
+  });
+
+  let observer: ResizeObserver | null = null;
+  if (calendar && typeof ResizeObserver !== "undefined") {
+    observer = new ResizeObserver(() => {
+      window.cancelAnimationFrame(resizeRafId);
+      resizeRafId = window.requestAnimationFrame(scrollSelectedIntoView);
+    });
+    observer.observe(calendar);
+  }
+
+  // Stop observing shortly after layout settles so window resize does not keep fighting the user.
+  const disconnectTimer = window.setTimeout(() => {
+    observer?.disconnect();
+    observer = null;
+  }, 400);
+
+  return () => {
+    cancelled = true;
+    window.cancelAnimationFrame(rafId);
+    window.cancelAnimationFrame(resizeRafId);
+    window.clearTimeout(disconnectTimer);
+    observer?.disconnect();
+  };
+}
+
+function findVerticalScrollParent(start: HTMLElement): HTMLElement | null {
+  let current: HTMLElement | null = start.parentElement;
+  while (current) {
+    const style = window.getComputedStyle(current);
+    const overflowY = style.overflowY;
+    if (
+      (overflowY === "auto" || overflowY === "scroll") &&
+      current.scrollHeight > current.clientHeight
+    ) {
+      return current;
+    }
+    current = current.parentElement;
+  }
+  return null;
+}
 
 function groupOptionsByDateKey(options: ShowPickerOption[]): Map<string, ShowPickerOption[]> {
   const groups = new Map<string, ShowPickerOption[]>();
@@ -82,10 +157,19 @@ function ShowTimeSlotOption({
     };
   }, [committedPercent, hasPendingPreview, option.id, projectedPercent]);
 
+  const isDisabled = option.isSelectable === false;
+
   return (
     <button
-      className={`show-picker-slot${isSelected ? " is-selected" : ""}${cardStateClass}${hasPendingPreview ? " has-pending-fill" : ""}`}
-      onClick={() => onSelect(option.id)}
+      aria-disabled={isDisabled}
+      className={`show-picker-slot${isSelected ? " is-selected" : ""}${cardStateClass}${hasPendingPreview ? " has-pending-fill" : ""}${isDisabled ? " is-disabled" : ""}`}
+      disabled={isDisabled}
+      onClick={() => {
+        if (isDisabled) {
+          return;
+        }
+        onSelect(option.id);
+      }}
       type="button"
     >
       <div className="show-picker-slot-main">
@@ -108,7 +192,33 @@ function ShowTimeSlotOption({
             style={{ width: `${committedPercent}%` }}
           />
         </div>
-        <span className="show-picker-slot-capacity">{option.capacityLabel}</span>
+        <div className="show-picker-slot-meta">
+          <span className="show-picker-slot-capacity" aria-label={option.capacityLabel}>
+            <span aria-hidden="true" className="show-picker-slot-copy-full">
+              {option.capacityLabel}
+            </span>
+            {option.capacityLabelShort ? (
+              <span aria-hidden="true" className="show-picker-slot-copy-short">
+                {option.capacityLabelShort}
+              </span>
+            ) : null}
+          </span>
+          {option.cutoffMetaLabel ? (
+            <span
+              aria-label={option.cutoffMetaLabel}
+              className={`show-picker-slot-cutoff${option.cutoffMetaUrgency ? ` is-${option.cutoffMetaUrgency}` : ""}`}
+            >
+              <span aria-hidden="true" className="show-picker-slot-copy-full">
+                {option.cutoffMetaLabel}
+              </span>
+              {option.cutoffMetaLabelShort ? (
+                <span aria-hidden="true" className="show-picker-slot-copy-short">
+                  {option.cutoffMetaLabelShort}
+                </span>
+              ) : null}
+            </span>
+          ) : null}
+        </div>
       </div>
       <span className={`show-picker-badge show-picker-badge--${option.statusVariant}`}>{option.statusLabel}</span>
     </button>
@@ -116,6 +226,8 @@ function ShowTimeSlotOption({
 }
 
 export function ShowPicker({ options, selectedId, onSelect, now = new Date(), className }: ShowPickerProps) {
+  const rootRef = useRef<HTMLDivElement>(null);
+  const calendarGridRef = useRef<HTMLDivElement>(null);
   const optionsByDateKey = useMemo(() => groupOptionsByDateKey(options), [options]);
   const showDateKeys = useMemo(
     () => new Set([...optionsByDateKey.keys()].filter((key) => key !== SHOW_CALENDAR_NO_DATE_KEY)),
@@ -127,7 +239,15 @@ export function ShowPicker({ options, selectedId, onSelect, now = new Date(), cl
       if (dateKey === SHOW_CALENDAR_NO_DATE_KEY) {
         continue;
       }
-      if (dayOptions.some((option) => option.isSelectable !== false)) {
+      // Selectable shows, or closed-for-add (cutoff) slots customers should still inspect.
+      if (
+        dayOptions.some(
+          (option) =>
+            option.isSelectable !== false ||
+            option.statusLabel === "CLOSED" ||
+            Boolean(option.cutoffMetaLabel),
+        )
+      ) {
         keys.add(dateKey);
       }
     }
@@ -214,12 +334,8 @@ export function ShowPicker({ options, selectedId, onSelect, now = new Date(), cl
     [now, showDateKeys, viewMonth, viewYear],
   );
   const monthLabel = useMemo(() => formatCalendarMonthLabel(viewYear, viewMonth).label, [viewMonth, viewYear]);
-  const slotsForSelectedDate = selectedDateKey
-    ? (optionsByDateKey.get(selectedDateKey) ?? []).filter((option) => option.isSelectable !== false)
-    : [];
-  const unscheduledOptions = (optionsByDateKey.get(SHOW_CALENDAR_NO_DATE_KEY) ?? []).filter(
-    (option) => option.isSelectable !== false,
-  );
+  const slotsForSelectedDate = selectedDateKey ? (optionsByDateKey.get(selectedDateKey) ?? []) : [];
+  const unscheduledOptions = optionsByDateKey.get(SHOW_CALENDAR_NO_DATE_KEY) ?? [];
 
   function handlePreviousMonth() {
     const next = shiftCalendarMonth(viewYear, viewMonth, -1);
@@ -238,7 +354,7 @@ export function ShowPicker({ options, selectedId, onSelect, now = new Date(), cl
       return;
     }
     setSelectedDateKey(dateKey);
-    const slots = (optionsByDateKey.get(dateKey) ?? []).filter((option) => option.isSelectable !== false);
+    const slots = optionsByDateKey.get(dateKey) ?? [];
     const defaultSlotId = getDefaultShowPickerOptionId(slots);
     if (defaultSlotId) {
       onSelect(defaultSlotId);
@@ -256,10 +372,21 @@ export function ShowPicker({ options, selectedId, onSelect, now = new Date(), cl
     }
   }, [onSelect, options, selectedId]);
 
+  // When a date/month selection grows the calendar (more weeks), keep the
+  // selected show's capacity/progress block visible in the scroll parent.
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) {
+      return;
+    }
+
+    return scheduleScrollSelectedSlotIntoView(root, calendarGridRef.current);
+  }, [selectedDateKey, selectedId, viewMonth, viewYear, weeks.length]);
+
   const rootClassName = className ? `show-picker ${className}` : "show-picker";
 
   return (
-    <div className={rootClassName}>
+    <div className={rootClassName} ref={rootRef}>
       <div className="show-picker-calendar">
         <div className="show-picker-calendar-header">
           <button
@@ -284,7 +411,12 @@ export function ShowPicker({ options, selectedId, onSelect, now = new Date(), cl
           ))}
         </div>
 
-        <div className="show-picker-grid" role="grid" aria-label={`${monthLabel} show calendar`}>
+        <div
+          aria-label={`${monthLabel} show calendar`}
+          className="show-picker-grid"
+          ref={calendarGridRef}
+          role="grid"
+        >
           {weeks.map((week, weekIndex) => (
             <div className="show-picker-week" key={`week-${weekIndex}`} role="row">
               {week.map((day) => {

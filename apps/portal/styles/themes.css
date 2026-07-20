@@ -22,6 +22,9 @@
   --color-warning: #d97706;
   --color-warning-text: #b45309;
 
+  --color-custom: #7c3aed;
+  --color-custom-text: #6d28d9;
+
   --color-danger: #dc3f56;
   --color-danger-text: #b4233a;
 
@@ -56,6 +59,9 @@
   --color-success-text: #86efac;
   --color-warning: #f59e0b;
   --color-warning-text: #fcd34d;
+
+  --color-custom: #8b5cf6;
+  --color-custom-text: #c4b5fd;
 
   --color-danger: #f05264;
   --color-danger-text: #fecdd3;

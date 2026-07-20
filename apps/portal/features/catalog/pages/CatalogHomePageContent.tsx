@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 
 import {
   CATALOG_DISCOVERY_MODES,
@@ -28,6 +28,7 @@ import { BookSearchIcon, GlobeIcon, SearchIcon } from '../../shared/components/P
 import { CatalogDesignDetailsModal } from '../components/CatalogDesignDetailsModal';
 import { CatalogDiscoveryCarousel } from '../components/CatalogDiscoveryCarousel';
 import { CatalogSelectionCard } from '../components/CatalogSelectionCard';
+import { useCatalogDesignDeepLink } from '../hooks/useCatalogDesignDeepLink';
 
 export function CatalogHomePageContent() {
   const router = useRouter();
@@ -45,9 +46,10 @@ export function CatalogHomePageContent() {
     reloadWorkingItems,
   } = usePortalPrintRequests();
 
-  const closeDesignDetails = useCallback(() => {
-    setSelectedDesign(null);
-  }, []);
+  const { closeDesignDetails, deepLinkError, openDesignDetails } = useCatalogDesignDeepLink({
+    selectedDesign,
+    setSelectedDesign,
+  });
 
   const addDesignFlow = useAddDesignToRequestFlow({
     continuableRequests,
@@ -149,7 +151,7 @@ export function CatalogHomePageContent() {
         ? 'Search 1 design, by title, tag or description'
         : `Search ${readyDesignCount.toLocaleString()} designs, by title, tag or description`;
 
-  const displayedActionError = creationActionError ?? addDesignFlow.actionError;
+  const displayedActionError = creationActionError ?? addDesignFlow.actionError ?? deepLinkError;
 
   return (
     <main
@@ -257,11 +259,14 @@ export function CatalogHomePageContent() {
                 return (
                   <div className="catalog-discovery-rail-item" key={design.id}>
                     <CatalogSelectionCard
+                      canAddPrints={addDesignFlow.canAddPrints}
                       design={design}
                       disabled={addDesignFlow.addingDesignId === design.id}
+                      exhaustedHelperText={addDesignFlow.exhaustedHelperText}
+                      exhaustedStatusText={addDesignFlow.exhaustedStatusText}
                       isSelected={isSelected}
                       onAdd={addDesignFlow.addDesign}
-                      onOpenDetails={setSelectedDesign}
+                      onOpenDetails={openDesignDetails}
                       onQuantityChange={addDesignFlow.setQuantity}
                       onRemove={addDesignFlow.removeDesign}
                       quantity={quantity > 0 ? quantity : 1}
@@ -275,8 +280,18 @@ export function CatalogHomePageContent() {
       )}
 
       <CatalogDesignDetailsModal
+        canAddPrints={addDesignFlow.canAddPrints}
         design={selectedDesign}
-        isAdding={selectedDesign !== null && addDesignFlow.addingDesignId === selectedDesign.id}
+        exhaustedHelperText={addDesignFlow.exhaustedHelperText}
+        exhaustedStatusText={addDesignFlow.exhaustedStatusText}
+        isAdding={
+          selectedDesign !== null &&
+          (addDesignFlow.addingDesignId === selectedDesign.id || addDesignFlow.isEnsuringWorkingRequest)
+        }
+        isInCurrentRequest={
+          selectedDesign !== null &&
+          (currentRequestAggregates.quantityByDesignId[selectedDesign.id] ?? 0) > 0
+        }
         isOpen={selectedDesign !== null}
         onAddToRequest={addDesignFlow.addDesign}
         onClose={closeDesignDetails}

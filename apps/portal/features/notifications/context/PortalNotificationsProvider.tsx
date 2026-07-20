@@ -52,7 +52,11 @@ interface PortalNotificationsContextValue {
   markAllRead: () => void;
   openHistory: () => void;
   openItem: (item: PortalCustomerNotification) => void;
-  openNotificationSettings: () => void;
+  /**
+   * Opens notification preferences. Pass `onBack` when nested under Account settings
+   * so the modal can return to the settings selections menu.
+   */
+  openNotificationSettings: (options?: { onBack?: () => void }) => void;
   /** Cleared alerts for the history modal (`readAt != null`). */
   readItems: PortalCustomerNotification[];
   refreshBrowserPushEnabled: () => void;
@@ -87,6 +91,9 @@ export function PortalNotificationsProvider({ children }: { children: ReactNode 
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isNotificationSettingsOpen, setIsNotificationSettingsOpen] = useState(false);
+  /** Reopen Account settings when Notifications was opened from the settings hub. */
+  const notificationSettingsOnBackRef = useRef<(() => void) | null>(null);
+  const [hasNotificationSettingsBack, setHasNotificationSettingsBack] = useState(false);
   const [isBrowserPushEnabled, setIsBrowserPushEnabled] = useState<boolean | null>(null);
   const [retryNonce, setRetryNonce] = useState(0);
   const [pushStatusNonce, setPushStatusNonce] = useState(0);
@@ -169,11 +176,24 @@ export function PortalNotificationsProvider({ children }: { children: ReactNode 
   const readItems = useMemo(() => items.filter((item) => item.readAt != null), [items]);
   const closePanel = useCallback(() => setIsPanelOpen(false), []);
   const closeHistory = useCallback(() => setIsHistoryOpen(false), []);
-  const closeNotificationSettings = useCallback(() => setIsNotificationSettingsOpen(false), []);
-  const openNotificationSettings = useCallback(() => {
+  const closeNotificationSettings = useCallback(() => {
+    notificationSettingsOnBackRef.current = null;
+    setHasNotificationSettingsBack(false);
+    setIsNotificationSettingsOpen(false);
+  }, []);
+  const openNotificationSettings = useCallback((options?: { onBack?: () => void }) => {
     setIsPanelOpen(false);
     setIsHistoryOpen(false);
+    notificationSettingsOnBackRef.current = options?.onBack ?? null;
+    setHasNotificationSettingsBack(Boolean(options?.onBack));
     setIsNotificationSettingsOpen(true);
+  }, []);
+  const handleNotificationSettingsBack = useCallback(() => {
+    const onBack = notificationSettingsOnBackRef.current;
+    notificationSettingsOnBackRef.current = null;
+    setHasNotificationSettingsBack(false);
+    setIsNotificationSettingsOpen(false);
+    onBack?.();
   }, []);
   const openHistory = useCallback(() => {
     setIsPanelOpen(false);
@@ -306,6 +326,7 @@ export function PortalNotificationsProvider({ children }: { children: ReactNode 
       {children}
       <AccountNotificationsModal
         isOpen={isNotificationSettingsOpen}
+        onBack={hasNotificationSettingsBack ? handleNotificationSettingsBack : undefined}
         onBrowserPushEnabled={refreshBrowserPushEnabled}
         onClose={closeNotificationSettings}
       />

@@ -14,6 +14,7 @@ import {
   DESIGNS_WIPE_PRESET_TARGETS,
   ETSY_WIPE_PRESET_TARGETS,
   EVERYTHING_EXCEPT_DESIGNS_WIPE_PRESET_TARGETS,
+  PRINT_REQUEST_DAILY_LIMITS_WIPE_PRESET_TARGETS,
   PRINT_REQUESTS_WIPE_PRESET_TARGETS,
 } from "@fresh-prints/shared/utils/operationalWipeTargets";
 
@@ -27,8 +28,10 @@ import {
   clearLegacyStaffInboxAckLocalStorage,
 } from "../../staff-inbox/services/staffInboxAckLegacyLocalStore";
 import { RetentionMaintenancePanel } from "../components/RetentionMaintenancePanel";
+import { OwnerDeleteUserModal } from "../components/OwnerDeleteUserModal";
 import { TestDataResetErrorBoundary } from "../components/TestDataResetErrorBoundary";
 import { OPERATIONAL_WIPE_TARGET_OPTIONS } from "../constants/wipeTargetOptions";
+import type { OwnerDeleteUserResponse } from "@fresh-prints/shared/types/account/portalAccountSettings.types";
 import { wipeOperationalTestData } from "../services/wipeOperationalTestDataService";
 import {
   getStudioFirebaseProjectId,
@@ -53,6 +56,10 @@ function TestDataResetPageContent() {
   const [error, setError] = useState<string | null>(null);
   const [lastResult, setLastResult] = useState<WipeOperationalTestDataResponse | null>(null);
   const [phraseCopied, setPhraseCopied] = useState(false);
+  const [isOwnerDeleteOpen, setIsOwnerDeleteOpen] = useState(false);
+  const [lastOwnerDeleteResult, setLastOwnerDeleteResult] = useState<OwnerDeleteUserResponse | null>(
+    null,
+  );
 
   const copyConfirmationPhrase = useCallback(async () => {
     try {
@@ -203,6 +210,32 @@ function TestDataResetPageContent() {
 
       <section className="card test-data-reset-section test-data-reset-danger">
         <header className="test-data-reset-header">
+          <h2 className="test-data-reset-title">Delete individual user</h2>
+          <p className="test-data-reset-copy">
+            Permanently remove one staff or customer identity (Auth, username, and associated records).
+            Separate from the bulk operational wipe below, which keeps accounts.
+          </p>
+        </header>
+        {lastOwnerDeleteResult ? (
+          <div className="test-data-reset-result" role="status">
+            <p className="test-data-reset-copy">
+              Deleted {lastOwnerDeleteResult.kind} <code>{lastOwnerDeleteResult.subjectId}</code>
+              {lastOwnerDeleteResult.authUidDeleted
+                ? ` (Auth ${lastOwnerDeleteResult.authUidDeleted})`
+                : " (no Auth user)"}
+              . Storage files: {lastOwnerDeleteResult.storageFilesDeleted}.
+            </p>
+          </div>
+        ) : null}
+        <div className="test-data-reset-actions">
+          <Button onClick={() => setIsOwnerDeleteOpen(true)} type="button" variant="danger">
+            Delete user…
+          </Button>
+        </div>
+      </section>
+
+      <section className="card test-data-reset-section test-data-reset-danger">
+        <header className="test-data-reset-header">
           <h2 className="test-data-reset-title">Operational wipe</h2>
           <p className="test-data-reset-copy">
             Project <code>{projectId}</code>. Permanently deletes selected operational data. Accounts,
@@ -225,7 +258,8 @@ function TestDataResetPageContent() {
             <div>
               <h3 className="test-data-reset-subtitle">Preset notes</h3>
               <ul className="test-data-reset-list">
-                <li>Print Requests — keeps upcoming shows; clears inbox acks</li>
+                <li>Print Requests — keeps upcoming shows; clears inbox acks + Cap A counters</li>
+                <li>Print request daily limits — Cap A counters only; keeps stash</li>
                 <li>Custom Requests — also clears acks, notifications, email jobs</li>
                 <li>Etsy — also clears overlays, suggestion requests, inert leftovers</li>
                 <li>Designs + prints — extra catalog confirm, then phrase</li>
@@ -263,6 +297,13 @@ function TestDataResetPageContent() {
             variant="secondary"
           >
             Customer Uploads
+          </Button>
+          <Button
+            onClick={() => setSelectedTargets([...PRINT_REQUEST_DAILY_LIMITS_WIPE_PRESET_TARGETS])}
+            type="button"
+            variant="secondary"
+          >
+            Print request daily limits
           </Button>
           <Button
             onClick={() => setSelectedTargets([...DESIGNS_WIPE_PRESET_TARGETS])}
@@ -519,6 +560,13 @@ function TestDataResetPageContent() {
           </Modal>
         </div>
       ) : null}
+
+      <OwnerDeleteUserModal
+        currentUserId={user?.id}
+        isOpen={isOwnerDeleteOpen}
+        onClose={() => setIsOwnerDeleteOpen(false)}
+        onDeleted={(result) => setLastOwnerDeleteResult(result)}
+      />
     </main>
   );
 }

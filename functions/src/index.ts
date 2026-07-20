@@ -1,3 +1,4 @@
+export { addPortalCatalogDesignToPrintRequest } from "./addPortalCatalogDesignToPrintRequest";
 export { cleanupAbandonedCustomerUploads } from "./cleanupAbandonedCustomerUploads";
 export { archiveStaleWorkingPrintRequests } from "./archiveStaleWorkingPrintRequests";
 export { clearPortalWorkingPrintRequest } from "./clearPortalWorkingPrintRequest";
@@ -10,6 +11,7 @@ export { duplicatePortalPrintRequestItem } from "./duplicatePortalPrintRequestIt
 export { excludeCustomerUploadFromCatalog } from "./excludeCustomerUploadFromCatalog";
 export { finalizeCustomerUpload } from "./finalizeCustomerUpload";
 export { finalizeCustomerUploadZip } from "./finalizeCustomerUploadZip";
+export { getCustomerUploadDailyQuota } from "./getCustomerUploadDailyQuota";
 export { promoteCustomerUploadToAiReview } from "./promoteCustomerUploadToAiReview";
 export { recordCustomerUploadHalftoneResponse } from "./recordCustomerUploadHalftoneResponse";
 export { recordCustomerUploadHalftoneStaffDecision } from "./recordCustomerUploadHalftoneStaffDecision";
@@ -18,6 +20,8 @@ export { retryCustomerUploadProcessing } from "./retryCustomerUploadProcessing";
 export { getPortalShowPrintProgress } from "./getPortalShowPrintProgress";
 export { listPortalAllocatableShows } from "./listPortalAllocatableShows";
 export { queuePortalPrintRequestToShow } from "./queuePortalPrintRequestToShow";
+export { removePortalPrintRequestItem } from "./removePortalPrintRequestItem";
+export { updatePortalPrintRequestItemQuantity } from "./updatePortalPrintRequestItemQuantity";
 export { createTeamUser } from "./createTeamUser";
 export { registerCustomer } from "./registerCustomer";
 export { updateCustomer } from "./updateCustomer";
@@ -50,13 +54,24 @@ export {
 } from "./assistedCreationRequests";
 export { customerGetAssistedCreationApprovedProofDownloadUrl } from "./customerGetAssistedCreationApprovedProofDownloadUrl";
 export { customerGetAssistedCreationApprovedProofFile } from "./customerGetAssistedCreationApprovedProofFile";
+export { customerAddAssistedApprovedProofToPrintRequest } from "./customerAddAssistedApprovedProofToPrintRequest";
 export { enqueueAiEnrichment } from "./enqueueAiEnrichment";
 export { resetAiEnrichmentForProcessing } from "./resetAiEnrichmentForProcessing";
 export { testAiEnrichmentPlayground } from "./testAiEnrichmentPlayground";
 export { testAiEnrichmentTagRerank } from "./testAiEnrichmentTagRerank";
 export { updateAiEnrichmentSettings } from "./updateAiEnrichmentSettings";
 export { updateEmailProviderSettings } from "./updateEmailProviderSettings";
+export { updateCustomerUploadQuotaSettings } from "./updateCustomerUploadQuotaSettings";
+export { updatePrintRequestLimitSettings } from "./updatePrintRequestLimitSettings";
+export { updatePortalSocialMetaSettings } from "./updatePortalSocialMetaSettings";
+export { getPortalDesignShareOpenGraph } from "./getPortalDesignShareOpenGraph";
 export { wipeOperationalTestData } from "./wipeOperationalTestData";
+export { ownerDeleteUser } from "./ownerDeleteUser";
+export { syncPortalAccountEmail } from "./syncPortalAccountEmail";
+export {
+  requestPortalAccountDeletion,
+  cancelPortalAccountDeletionRequest,
+} from "./requestPortalAccountDeletion";
 export { purgeArchivedDesignAssets } from "./purgeArchivedDesignAssets";
 export { archiveStaleRejectedDesigns } from "./archiveStaleRejectedDesigns";
 export { purgeIdleCustomerUploadFullSize } from "./purgeIdleCustomerUploadFullSize";

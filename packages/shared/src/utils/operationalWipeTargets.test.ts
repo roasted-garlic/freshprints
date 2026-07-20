@@ -10,6 +10,7 @@ import {
   EVERYTHING_EXCEPT_DESIGNS_WIPE_PRESET_TARGETS,
   expandOperationalWipePlan,
   getDesignsWipePrerequisiteError,
+  PRINT_REQUEST_DAILY_LIMITS_WIPE_PRESET_TARGETS,
   PRINT_REQUEST_RESET_PRESET_TARGETS,
   PRINT_REQUESTS_WIPE_PRESET_TARGETS,
 } from "./operationalWipeTargets";
@@ -24,10 +25,18 @@ describe("expandOperationalWipePlan", () => {
     assert.equal(plan.resetShowAllocationTotals, true);
     assert.ok(plan.deleteCollections.includes("printRequests"));
     assert.ok(plan.deleteCollections.includes("printRequestItems"));
+    assert.ok(plan.deleteCollections.includes("printRequestDesignDailyLimits"));
     assert.ok(plan.deleteCollections.includes("showAllocations"));
     assert.ok(plan.deleteCollections.includes("gangSheets"));
     assert.ok(!plan.deleteCollections.includes("upcomingShows"));
     assert.ok(!plan.deleteCollections.includes("designs"));
+  });
+
+  it("expands printRequestDesignDailyLimits alone without wiping print requests", () => {
+    const plan = expandOperationalWipePlan(["printRequestDesignDailyLimits"]);
+    assert.deepEqual(plan.deleteCollections, ["printRequestDesignDailyLimits"]);
+    assert.equal(plan.resetSequences, false);
+    assert.equal(plan.wipeDesignStorage, false);
   });
 
   it("resets sequences whenever printRequests is selected", () => {
@@ -161,6 +170,9 @@ describe("wipe presets", () => {
   it("named presets select expected targets", () => {
     assert.deepEqual(ETSY_WIPE_PRESET_TARGETS, ["etsySearches"]);
     assert.deepEqual(CUSTOM_REQUESTS_WIPE_PRESET_TARGETS, ["assistedCreationRequests"]);
+    assert.deepEqual(PRINT_REQUEST_DAILY_LIMITS_WIPE_PRESET_TARGETS, [
+      "printRequestDesignDailyLimits",
+    ]);
     assert.deepEqual(DESIGNS_WIPE_PRESET_TARGETS, ["printRequests", "sequences", "designs"]);
   });
 
@@ -172,6 +184,7 @@ describe("wipe presets", () => {
       "sequences",
       "designRequestStats",
       "customerUploads",
+      "printRequestDesignDailyLimits",
       "etsySearches",
       "assistedCreationRequests",
     ]);

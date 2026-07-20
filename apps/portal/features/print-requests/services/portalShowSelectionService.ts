@@ -11,23 +11,33 @@ import type {
   QueuePortalPrintRequestToShowRequest,
   QueuePortalPrintRequestToShowResponse,
 } from '@fresh-prints/shared/types/portal/queuePortalPrintRequestToShow.types';
+import { DEFAULT_PORTAL_QUEUE_CUTOFF_HOURS_BEFORE_START } from '@fresh-prints/shared/utils/showQueueCutoff';
 
 import { getPortalFunctions } from '../../../lib/firebase/client';
-import { portalAuthService } from '../../auth/services/authService';
+import { mapPortalPrintRequestCallableError } from '../utils/mapPortalPrintRequestCallableError';
 
 function mapCallableError(error: unknown): Error {
-  return new Error(portalAuthService.getCallableErrorMessage(error));
+  return mapPortalPrintRequestCallableError(error);
 }
 
 export const portalShowSelectionService = {
-  async listAllocatableShows(): Promise<PortalAllocatableShow[]> {
+  async listAllocatableShows(): Promise<{
+    shows: PortalAllocatableShow[];
+    portalQueueCutoffHoursBeforeStart: number;
+  }> {
     try {
       const listCallable = httpsCallable<Record<string, never>, ListPortalAllocatableShowsResponse>(
         getPortalFunctions(),
         'listPortalAllocatableShows',
       );
       const result = await listCallable({});
-      return result.data.shows;
+      return {
+        shows: result.data.shows,
+        portalQueueCutoffHoursBeforeStart:
+          typeof result.data.portalQueueCutoffHoursBeforeStart === 'number'
+            ? result.data.portalQueueCutoffHoursBeforeStart
+            : DEFAULT_PORTAL_QUEUE_CUTOFF_HOURS_BEFORE_START,
+      };
     } catch (error) {
       throw mapCallableError(error);
     }

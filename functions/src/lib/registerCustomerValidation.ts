@@ -1,4 +1,5 @@
 import { validateCustomerUsername } from "../../../packages/shared/src/utils/customerUsername";
+import { PORTAL_BIDDING_ACKNOWLEDGMENT_VERSION } from "../../../packages/shared/src/constants/portal/portalBiddingAcknowledgment.constants";
 import type { RegisterCustomerRequest } from "../../../packages/shared/src/types/auth/registerCustomer.types";
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -43,9 +44,22 @@ export function validateRegisterCustomerRequest(
     throw new Error("A verified email address is required.");
   }
 
+  if (payload.biddingAcknowledgmentAccepted !== true) {
+    throw new Error("Confirm that you understand show designs are available for public bidding.");
+  }
+
+  if (
+    typeof payload.biddingAcknowledgmentVersion !== "string" ||
+    payload.biddingAcknowledgmentVersion.trim() !== PORTAL_BIDDING_ACKNOWLEDGMENT_VERSION
+  ) {
+    throw new Error("Bidding acknowledgment is out of date. Refresh the page and try again.");
+  }
+
   return {
     displayName,
     username: usernameResult.username,
     email,
+    biddingAcknowledgmentAccepted: true,
+    biddingAcknowledgmentVersion: PORTAL_BIDDING_ACKNOWLEDGMENT_VERSION,
   };
 }

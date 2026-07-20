@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   getCatalogDiscoveryModeLabel,
@@ -13,6 +13,7 @@ import { CatalogDesignDetailsModal } from '../components/CatalogDesignDetailsMod
 import { CatalogFilterBar } from '../components/CatalogFilterBar';
 import { CatalogSelectionCard } from '../components/CatalogSelectionCard';
 import { CatalogTagFilterModal } from '../components/CatalogTagFilterModal';
+import { useCatalogDesignDeepLink } from '../hooks/useCatalogDesignDeepLink';
 import { useCatalogCategories } from '../hooks/useCatalogCategories';
 import {
   useCatalogCategoryOptions,
@@ -80,9 +81,10 @@ export function CatalogPageContent() {
     reloadWorkingItems,
   } = usePortalPrintRequests();
 
-  const closeDesignDetails = useCallback(() => {
-    setSelectedDesign(null);
-  }, []);
+  const { closeDesignDetails, deepLinkError, openDesignDetails } = useCatalogDesignDeepLink({
+    selectedDesign,
+    setSelectedDesign,
+  });
 
   const addDesignFlow = useAddDesignToRequestFlow({
     continuableRequests,
@@ -307,7 +309,8 @@ export function CatalogPageContent() {
     }
   }
 
-  const displayedActionError = creationActionError ?? addDesignFlow.actionError ?? selectionActionError;
+  const displayedActionError =
+    creationActionError ?? addDesignFlow.actionError ?? selectionActionError ?? deepLinkError;
   // Never keep the creating overlay once selection mode is active (query-param nav keeps this page mounted).
   const pageBusy = !selectionModeActive && isCreating;
 
@@ -495,10 +498,13 @@ export function CatalogPageContent() {
                     return (
                       <div key={design.id} role="listitem">
                         <CatalogSelectionCard
+                          canAddPrints={addDesignFlow.canAddPrints}
                           design={design}
+                          exhaustedHelperText={addDesignFlow.exhaustedHelperText}
+                          exhaustedStatusText={addDesignFlow.exhaustedStatusText}
                           isSelected={Boolean(selection)}
                           onAdd={selectionMode.addDesign}
-                          onOpenDetails={setSelectedDesign}
+                          onOpenDetails={openDesignDetails}
                           onQuantityChange={selectionMode.setQuantity}
                           onRemove={(designId) => void selectionMode.removeDesign(designId)}
                           quantity={selection?.quantity ?? 1}
@@ -516,11 +522,14 @@ export function CatalogPageContent() {
                   return (
                     <div key={design.id} role="listitem">
                       <CatalogSelectionCard
+                        canAddPrints={addDesignFlow.canAddPrints}
                         design={design}
                         disabled={addDesignFlow.addingDesignId === design.id}
+                        exhaustedHelperText={addDesignFlow.exhaustedHelperText}
+                        exhaustedStatusText={addDesignFlow.exhaustedStatusText}
                         isSelected={isSelected}
                         onAdd={addDesignFlow.addDesign}
-                        onOpenDetails={setSelectedDesign}
+                        onOpenDetails={openDesignDetails}
                         onQuantityChange={addDesignFlow.setQuantity}
                         onRemove={addDesignFlow.removeDesign}
                         quantity={quantity > 0 ? quantity : 1}
@@ -548,12 +557,22 @@ export function CatalogPageContent() {
       </section>
 
       <CatalogDesignDetailsModal
+        canAddPrints={addDesignFlow.canAddPrints}
         design={selectedDesign}
+        exhaustedHelperText={addDesignFlow.exhaustedHelperText}
+        exhaustedStatusText={addDesignFlow.exhaustedStatusText}
         isAdding={
           selectedDesign !== null &&
           (selectionModeActive
             ? false
-            : addDesignFlow.addingDesignId === selectedDesign.id)
+            : addDesignFlow.addingDesignId === selectedDesign.id ||
+              addDesignFlow.isEnsuringWorkingRequest)
+        }
+        isInCurrentRequest={
+          selectedDesign !== null &&
+          (selectionModeActive
+            ? Boolean(selectionMode.selectedDesigns[selectedDesign.id])
+            : (currentRequestAggregates.quantityByDesignId[selectedDesign.id] ?? 0) > 0)
         }
         isOpen={selectedDesign !== null}
         onAddToRequest={

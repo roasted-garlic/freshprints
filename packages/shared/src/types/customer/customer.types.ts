@@ -1,5 +1,6 @@
 import type { Timestamp } from "firebase/firestore";
 
+import type { CustomerAccountDeletionRequestMirror } from "../account/portalAccountSettings.types";
 import type { CustomerSignupSource } from "./customer.enums";
 
 export interface Customer {
@@ -27,6 +28,8 @@ export interface Customer {
   /** Missing means opted in (opt-out model). Browser / Web Push alerts. */
   assistedBrowserPushOptIn?: boolean;
   assistedBrowserPushOptInUpdatedAt?: Timestamp;
+  /** Mirrored from accountDeletionRequests for Portal UX (Admin SDK writes). */
+  accountDeletionRequest?: CustomerAccountDeletionRequestMirror;
   usernameUpdatedAt?: Timestamp;
   createdAt: Timestamp;
   updatedAt: Timestamp;

@@ -157,7 +157,10 @@ export function useCustomerUploadIntake(options?: {
             data.catalogReviewStatus as CustomerUploadIntakeRow["catalogReviewStatus"],
           promotedDesignId: asString(data.promotedDesignId),
           ownershipConfirmed: data.ownershipConfirmed === true,
-          catalogUseAcknowledged: data.catalogUseAcknowledged === true,
+          catalogUseAcknowledged:
+            typeof data.catalogUseAcknowledged === "boolean"
+              ? data.catalogUseAcknowledged
+              : null,
           purpose: resolveCustomerUploadPurpose(data.purpose),
           createdAtMs: timestampMs(data.createdAt),
           approvedMaxPrintWidthInches: asNumber(data.approvedMaxPrintWidthInches),
@@ -177,6 +180,8 @@ export function useCustomerUploadIntake(options?: {
             data.halftoneStaffDecision && typeof data.halftoneStaffDecision === "object"
               ? (data.halftoneStaffDecision as CustomerUploadIntakeRow["halftoneStaffDecision"])
               : null,
+          assistedCreationRequestId: asString(data.assistedCreationRequestId),
+          assistedProofId: asString(data.assistedProofId),
         });
       }
 
@@ -435,7 +440,6 @@ export function useCustomerUploadIntake(options?: {
             decidedBy: user?.id ?? null,
           },
         });
-        setNotice(value ? "Marked as halftone." : "Marked as not a halftone.");
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unable to save Halftone decision.");
       }

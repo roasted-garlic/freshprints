@@ -18,7 +18,7 @@ Processing / Needs Review / Rejected tabs; suggestions panel; approve/reject/ski
 Internal + customer requests; item qty/size autosave; DPI quality feedback; duplicate same design for other sizes; Design Library selection mode.
 
 ### Show Queue (`/show-queue`)
-Upcoming/Past shows; capacity; attach requests; Working/Queued/Printed; Whatnot assisted import; zip export @ 300 DPI; auto-nested gang sheet PNG; production timer; calendar picker. Manual gang-sheet builder deferred.
+Upcoming/Past shows; capacity; attach requests; Working/Queued/Printed; Whatnot assisted import; zip export @ 300 DPI; auto-nested gang sheet PNG; production timer; calendar picker; **Portal add-to-show cutoff hours** setting (`portalQueueCutoffHoursBeforeStart`, ADR-FP-103). Manual gang-sheet builder deferred.
 
 ### Customer Uploads (intake)
 Staff review of Portal customer artwork: Pending / Excluded tabs; Send to AI Review; exclude/restore; retry processing; surface library-permission declined (ADR-FP-074).
@@ -36,7 +36,7 @@ Team users + customer records; AI enrichment settings; show-queue settings; dash
 | Feature | Status |
 |---------|--------|
 | Customer register / login | ✅ Live (dev) |
-| Catalog Discover + Design Library | ✅ Live (dev) |
+| Catalog Discover + Design Library | ✅ Live (dev) — default browse `createdAt` desc (Studio-newest); metric modes keep metrics |
 | Collapsible “How print requests work” hint | ✅ Live |
 | Start / continue print request | ✅ Live (one working request — ADR-FP-071) |
 | Selection mode: add library designs with quantities | ✅ Live |
@@ -48,7 +48,7 @@ Team users + customer records; AI enrichment settings; show-queue settings; dash
 | Request item cards: qty, size, DPI badge; save blocked &lt; 200 DPI | ✅ Live |
 | Image quality sizing (`image-quality-v2`, ≤6× toward 12″) | ✅ Live (dev) — ADR-FP-080 |
 | Progress tabs (Working / Queued / Printing / Printed) | ✅ Live |
-| Add request to show (callable + calendar) | ✅ Live |
+| Add request to show (callable + calendar) | ✅ Live — Portal cutoff hours before start (ADR-FP-103); countdown on slots |
 | Assisted Creation brief + submitted-only updates | ✅ Live (dev) |
 | Assisted proof / revision / approval lifecycle | ✅ Live (dev) — owner QA `PASS` |
 | Production App Hosting | ⏸ Human approval |
@@ -73,7 +73,7 @@ Team users + customer records; AI enrichment settings; show-queue settings; dash
 |------|----------------------|
 | Team | `createTeamUser`, `updateTeamUser` |
 | AI | `enqueueAiEnrichment`, `onDesignAiEnrichmentQueued`, settings/playground |
-| Portal requests | `createPortalPrintRequest`, `duplicatePortalPrintRequestItem`, `listPortalAllocatableShows`, `queuePortalPrintRequestToShow` |
+| Portal requests | `createPortalPrintRequest`, `duplicatePortalPrintRequestItem`, `listPortalAllocatableShows`, `queuePortalPrintRequestToShow` (cutoff via `settings/showQueue.portalQueueCutoffHoursBeforeStart`) |
 | Customer uploads | `createCustomerUploadBatch`, `finalizeCustomerUpload`, `finalizeCustomerUploadZip`, `confirmCustomerUploadsAndAttachToRequest`, promote/exclude/restore/retry, cleanup/wipe helpers |
 | Assisted Creation | `submitAssistedCreationRequest`, `customerUpdateAssistedCreationRequest`, `cancelAssistedCreationRequest`, `staffUpdateAssistedCreationStatus`, `staffAddAssistedCreationProof`, `customerRespondToAssistedCreationProof` |
 

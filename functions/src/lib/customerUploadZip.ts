@@ -96,13 +96,20 @@ function openZipFromBuffer(buffer: Buffer): Promise<yauzl.ZipFile> {
 
 /**
  * Streams a ZIP buffer, validates safety limits, and returns accepted image entry bytes.
+ * @param maxDecompressedBytes Purpose-scoped cap (defaults to absolute ceiling).
  */
 export async function extractSafeCustomerUploadImagesFromZip(
   zipBytes: Buffer,
+  maxDecompressedBytes: number = CUSTOMER_UPLOAD_MAX_ZIP_DECOMPRESSED_BYTES,
 ): Promise<{ images: SafeZipImageEntry[]; scannedEntries: number }> {
   if (CUSTOMER_UPLOAD_MAX_NESTED_ZIP_DEPTH !== 0) {
     throw new Error("Nested ZIP depth must be 0 for customer uploads.");
   }
+
+  const safeMaxDecompressed =
+    Number.isFinite(maxDecompressedBytes) && maxDecompressedBytes > 0
+      ? Math.floor(maxDecompressedBytes)
+      : CUSTOMER_UPLOAD_MAX_ZIP_DECOMPRESSED_BYTES;
 
   const zipFile = await openZipFromBuffer(zipBytes);
   const images: SafeZipImageEntry[] = [];
@@ -199,7 +206,7 @@ export async function extractSafeCustomerUploadImagesFromZip(
             }
 
             decompressedTotal += uncompressed;
-            if (decompressedTotal > CUSTOMER_UPLOAD_MAX_ZIP_DECOMPRESSED_BYTES) {
+            if (decompressedTotal > safeMaxDecompressed) {
               fail("ZIP decompressed size exceeds the limit.", "archive_exceeds_limits");
               return;
             }

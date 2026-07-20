@@ -30,6 +30,9 @@ import {
   DEFAULT_GANG_SHEET_SIDE_MARGIN_INCHES,
   DEFAULT_GANG_SHEET_TOP_BOTTOM_MARGIN_INCHES,
   DEFAULT_GANG_SHEET_WIDTH_INCHES,
+  DEFAULT_PORTAL_QUEUE_CUTOFF_HOURS_BEFORE_START,
+  MAX_PORTAL_QUEUE_CUTOFF_HOURS_BEFORE_START,
+  MIN_PORTAL_QUEUE_CUTOFF_HOURS_BEFORE_START,
 } from "../services/showQueueSettingsService";
 import { useWhatnotShowImport, type WhatnotShowImportSummary } from "../hooks/useWhatnotShowImport";
 import { usePrintRequests } from "../../print-requests/hooks/usePrintRequests";
@@ -127,6 +130,7 @@ export function UpcomingShowsPage() {
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [defaultCapacityInput, setDefaultCapacityInput] = useState("");
   const [whatnotBaseUrlInput, setWhatnotBaseUrlInput] = useState("");
+  const [portalCutoffHoursInput, setPortalCutoffHoursInput] = useState("");
   const [gangSheetWidthInput, setGangSheetWidthInput] = useState("");
   const [gangSheetSideMarginInput, setGangSheetSideMarginInput] = useState("");
   const [gangSheetTopBottomMarginInput, setGangSheetTopBottomMarginInput] = useState("");
@@ -188,6 +192,12 @@ export function UpcomingShowsPage() {
     setActionError(null);
     setDefaultCapacityInput(showQueueSettings.settings.defaultMaxTotalQuantity?.toString() ?? "");
     setWhatnotBaseUrlInput(showQueueSettings.settings.whatnotShowBaseUrl ?? DEFAULT_WHATNOT_SHOW_BASE_URL);
+    setPortalCutoffHoursInput(
+      (
+        showQueueSettings.settings.portalQueueCutoffHoursBeforeStart ??
+        DEFAULT_PORTAL_QUEUE_CUTOFF_HOURS_BEFORE_START
+      ).toString(),
+    );
     setGangSheetWidthInput(
       (showQueueSettings.settings.gangSheetWidthInches ?? DEFAULT_GANG_SHEET_WIDTH_INCHES).toString(),
     );
@@ -217,6 +227,7 @@ export function UpcomingShowsPage() {
     showQueueSettings.settings.gangSheetSideMarginInches,
     showQueueSettings.settings.gangSheetTopBottomMarginInches,
     showQueueSettings.settings.gangSheetWidthInches,
+    showQueueSettings.settings.portalQueueCutoffHoursBeforeStart,
     showQueueSettings.settings.whatnotShowBaseUrl,
   ]);
 
@@ -621,6 +632,12 @@ export function UpcomingShowsPage() {
 
   const parsedWhatnotBaseUrl = parseWhatnotShowBaseUrl(whatnotBaseUrlInput);
   const isWhatnotBaseUrlValid = whatnotBaseUrlInput.trim() === "" || Boolean(parsedWhatnotBaseUrl);
+  const parsedPortalCutoffHours = Number(portalCutoffHoursInput.trim());
+  const isPortalCutoffHoursValid =
+    portalCutoffHoursInput.trim() !== "" &&
+    Number.isInteger(parsedPortalCutoffHours) &&
+    parsedPortalCutoffHours >= MIN_PORTAL_QUEUE_CUTOFF_HOURS_BEFORE_START &&
+    parsedPortalCutoffHours <= MAX_PORTAL_QUEUE_CUTOFF_HOURS_BEFORE_START;
   const parsedGangSheetWidth = Number(gangSheetWidthInput.trim());
   const isGangSheetWidthValid =
     gangSheetWidthInput.trim() !== "" &&
@@ -665,6 +682,7 @@ export function UpcomingShowsPage() {
       !user ||
       !permissionService.canManageUpcomingShows(user) ||
       !isWhatnotBaseUrlValid ||
+      !isPortalCutoffHoursValid ||
       !isGangSheetWidthValid ||
       !isGangSheetSideMarginValid ||
       !isGangSheetTopBottomMarginValid ||
@@ -684,6 +702,7 @@ export function UpcomingShowsPage() {
       await showQueueSettings.updateSettings({
         defaultMaxTotalQuantity: parsedDefault,
         whatnotShowBaseUrl: parsedWhatnotBaseUrl?.normalizedUrl,
+        portalQueueCutoffHoursBeforeStart: parsedPortalCutoffHours,
         gangSheetWidthInches: parsedGangSheetWidth,
         gangSheetSideMarginInches: parsedGangSheetSideMargin,
         gangSheetTopBottomMarginInches: parsedGangSheetTopBottomMargin,
@@ -1623,6 +1642,23 @@ export function UpcomingShowsPage() {
                           : "Must be a https://www.whatnot.com/user/<name>/shows URL."}
                       </p>
                     </div>
+
+                    <div className="show-queue-settings-field">
+                      <TextInput
+                        label="Portal add-to-show cutoff (hours before start)"
+                        min={MIN_PORTAL_QUEUE_CUTOFF_HOURS_BEFORE_START}
+                        max={MAX_PORTAL_QUEUE_CUTOFF_HOURS_BEFORE_START}
+                        name="portalQueueCutoffHoursBeforeStart"
+                        onChange={(event) => setPortalCutoffHoursInput(event.target.value)}
+                        type="number"
+                        value={portalCutoffHoursInput}
+                      />
+                      <p className="print-requests-modal-hint">
+                        {isPortalCutoffHoursValid
+                          ? `Portal customers cannot Add to Show within this many hours of show start (default ${DEFAULT_PORTAL_QUEUE_CUTOFF_HOURS_BEFORE_START}). Example: 5 → 8pm show closes at 3pm. Studio staff can still add after cutoff.`
+                          : `Enter a whole number from ${MIN_PORTAL_QUEUE_CUTOFF_HOURS_BEFORE_START} to ${MAX_PORTAL_QUEUE_CUTOFF_HOURS_BEFORE_START}.`}
+                      </p>
+                    </div>
                   </div>
                 </section>
 
@@ -1754,6 +1790,7 @@ export function UpcomingShowsPage() {
                 disabled={
                   isSavingSettings ||
                   !isWhatnotBaseUrlValid ||
+                  !isPortalCutoffHoursValid ||
                   !isGangSheetWidthValid ||
                   !isGangSheetSideMarginValid ||
                   !isGangSheetTopBottomMarginValid ||

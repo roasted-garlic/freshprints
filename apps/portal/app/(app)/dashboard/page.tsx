@@ -6,11 +6,11 @@ import type { Timestamp } from 'firebase/firestore';
 import { Settings } from 'lucide-react';
 
 import { AccountArtworkGallery } from '../../../features/account/components/AccountArtworkGallery';
+import { AccountSettingsModal } from '../../../features/account/components/AccountSettingsModal';
 import { getProfileInitials, resolvePortalDisplayName } from '../../../features/account/utils/profileDisplay';
 import { useAuth } from '../../../features/auth/context/AuthContext';
 import { useFavorites } from '../../../features/favorites/context/FavoritesProvider';
 import { PORTAL_FAVORITES_HREF } from '../../../features/navigation/constants/portalNavItems';
-import { usePortalNotifications } from '../../../features/notifications/context/PortalNotificationsProvider';
 import { usePortalPrintRequests } from '../../../features/print-requests/context/PortalPrintRequestContext';
 import {
   buildRequestArtworkHref,
@@ -28,9 +28,9 @@ export default function DashboardPage() {
   const { customer, firebaseUser, refreshCustomer, user } = useAuth();
   const { favoriteCount, isLoading: isFavoritesLoading } = useFavorites();
   const { isLoading: isRequestsLoading, refreshRequests, requests } = usePortalPrintRequests();
-  const { openNotificationSettings } = usePortalNotifications();
   const [uploadedDesignCount, setUploadedDesignCount] = useState<number | null>(null);
   const [donatedDesignCount, setDonatedDesignCount] = useState<number | null>(null);
+  const [isAccountSettingsOpen, setIsAccountSettingsOpen] = useState(false);
   const displayName = resolvePortalDisplayName(customer?.displayName, user?.displayName);
   const email = user?.email ?? customer?.email ?? '—';
   const username = customer?.username;
@@ -74,7 +74,7 @@ export default function DashboardPage() {
           <button
             aria-haspopup="dialog"
             className="portal-button portal-button-secondary portal-button-leading-icon portal-account-settings-button"
-            onClick={openNotificationSettings}
+            onClick={() => setIsAccountSettingsOpen(true)}
             type="button"
           >
             <Settings aria-hidden="true" size={16} strokeWidth={2} />
@@ -141,6 +141,11 @@ export default function DashboardPage() {
         </section>
       </div>
 
+      <AccountSettingsModal
+        isOpen={isAccountSettingsOpen}
+        onClose={() => setIsAccountSettingsOpen(false)}
+        onReopen={() => setIsAccountSettingsOpen(true)}
+      />
     </main>
   );
 }

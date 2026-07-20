@@ -4,7 +4,7 @@ import { FieldValue } from "firebase-admin/firestore";
 import { onCall } from "firebase-functions/v2/https";
 
 import { CUSTOMER_UPLOAD_COLLECTIONS } from "../../packages/shared/src/constants/customerUpload/customerUploadCollections.constants";
-import { CUSTOMER_UPLOAD_MAX_ZIP_COMPRESSED_BYTES } from "../../packages/shared/src/constants/customerUpload/customerUploadLimits.constants";
+import { computeCustomerUploadMaxZipBytes } from "../../packages/shared/src/constants/customerUpload/customerUploadLimits.constants";
 import {
   getCustomerUploadBatchZipStoragePath,
   getCustomerUploadPreviewStoragePath,
@@ -90,6 +90,8 @@ export const finalizeCustomerUploadZip = onCall(
     }
     const batchPurpose = resolveCustomerUploadPurpose(batch.purpose);
 
+    const maxZipBytes = computeCustomerUploadMaxZipBytes();
+
     if (batch.zipExtractionStatus === "complete") {
       const existing = await listBatchUploadResults(payload.batchId, customerUid);
       return {
@@ -138,7 +140,7 @@ export const finalizeCustomerUploadZip = onCall(
       }
 
       const [zipBytes] = await zipFile.download();
-      if (zipBytes.byteLength > CUSTOMER_UPLOAD_MAX_ZIP_COMPRESSED_BYTES) {
+      if (zipBytes.byteLength > maxZipBytes) {
         await batchRef.update({
           zipExtractionStatus: "failed",
           status: "failed",
@@ -149,7 +151,7 @@ export const finalizeCustomerUploadZip = onCall(
 
       let extracted;
       try {
-        extracted = await extractSafeCustomerUploadImagesFromZip(zipBytes);
+        extracted = await extractSafeCustomerUploadImagesFromZip(zipBytes, maxZipBytes);
       } catch (error) {
         const code = zipFailureCode(error);
         await batchRef.update({

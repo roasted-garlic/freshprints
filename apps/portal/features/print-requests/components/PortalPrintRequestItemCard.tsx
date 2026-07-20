@@ -8,7 +8,6 @@ import {
   calculateLockedHeightFromWidth,
   calculateLockedWidthFromHeight,
 } from '@fresh-prints/shared/utils/printRequestItemSizing';
-
 import { CatalogPreviewLightbox } from '../../catalog/components/CatalogPreviewLightbox';
 import { CatalogThumbnailPanel } from '../../catalog/components/CatalogThumbnailPanel';
 import { useCatalogDerivativeUrl } from '../../catalog/hooks/useCatalogDerivativeUrl';
@@ -39,6 +38,8 @@ interface PortalPrintRequestItemUpload {
   approvedMaxPrintWidthInches?: number | null;
   approvedMaxPrintHeightInches?: number | null;
   wasUpscaled?: boolean | null;
+  /** True when sourced from Assisted Creation approved proof (badge: Custom). */
+  fromAssistedCreation?: boolean;
 }
 
 interface PortalPrintRequestItemCardProps {
@@ -52,9 +53,18 @@ interface PortalPrintRequestItemCardProps {
    */
   catalogReuseDesign?: CatalogDesign | null;
   isAddingToRequest?: boolean;
+  /** When false, qty-up and Duplicate are disabled (request full or Cap A exhausted). Qty-down / remove stay enabled. */
+  canAddPrints?: boolean;
+  exhaustedHelperText?: string | null;
+  exhaustedStatusText?: string | null;
   onAddToRequest?: (design: CatalogDesign) => void;
   onDuplicate: (item: PrintRequestItem) => void;
   onRemove: (item: PrintRequestItem) => void;
+  /**
+   * Bump when a remove confirm is cancelled after qty was typed to 0,
+   * so the input restores to the saved item quantity.
+   */
+  quantityResetKey?: number;
   onUpdate: (
     item: PrintRequestItem,
     input: { quantity: number; printWidthInches: number; printHeightInches: number },
@@ -153,12 +163,17 @@ export function PortalPrintRequestItemCard({
   readOnly = false,
   catalogReuseDesign,
   isAddingToRequest = false,
+  canAddPrints = true,
+  exhaustedHelperText = null,
+  exhaustedStatusText = null,
   onAddToRequest,
   onDuplicate,
   onRemove,
+  quantityResetKey = 0,
   onUpdate,
   onAutosaveStateChange,
 }: PortalPrintRequestItemCardProps) {
+  const blockedStatusText = exhaustedStatusText;
   const isUploadItem =
     item.sourceType === 'customer_upload' || Boolean(item.customerUploadId);
   const catalogDesignId = item.designId?.trim() ?? '';
@@ -212,6 +227,13 @@ export function PortalPrintRequestItemCard({
     lastSavedSignatureRef.current = incomingSignature;
   }, [design, item, upload]);
 
+  useEffect(() => {
+    if (quantityResetKey < 1) {
+      return;
+    }
+    setQuantityInput(String(item.quantity));
+  }, [item.quantity, quantityResetKey]);
+
   const parsedQuantity = parsePositiveIntegerInput(quantityInput);
   const parsedPrintWidthInches = parsePositiveDecimalInput(printWidthInput);
   const parsedPrintHeightInches = parsePositiveDecimalInput(printHeightInput);
@@ -237,7 +259,14 @@ export function PortalPrintRequestItemCard({
   const isOptimisticItem = isOptimisticPrintRequestItemId(item.id);
   const canSave =
     !isOptimisticItem && (sizeAssessment?.canSave ?? true) && parsedQuantity !== null;
-  const editorsReadOnly = readOnly || isOptimisticItem;
+  /** Request submitted / non-editable — hide editors (catalog reuse path). */
+  const showItemEditors = !readOnly;
+  /**
+   * Size/qty stay editable while the duplicate is preparing; Duplicate/Remove stay locked
+   * until the real id exists (callables reject pending ids).
+   */
+  const actionsDisabled = isOptimisticItem;
+  const wasOptimisticRef = useRef(isOptimisticItem);
 
   useEffect(() => {
     return () => {
@@ -327,6 +356,14 @@ export function PortalPrintRequestItemCard({
     saveDraftRef.current = saveDraft;
   }, [saveDraft]);
 
+  useEffect(() => {
+    const wasOptimistic = wasOptimisticRef.current;
+    wasOptimisticRef.current = isOptimisticItem;
+    if (wasOptimistic && !isOptimisticItem) {
+      void saveDraftRef.current();
+    }
+  }, [isOptimisticItem]);
+
   function stepQuantity(nextQuantity: number) {
     if (!Number.isFinite(nextQuantity) || nextQuantity < 1) {
       setQuantityInput('');
@@ -366,12 +403,32 @@ export function PortalPrintRequestItemCard({
   }
 
   const handleFieldBlur = useCallback(() => {
-    if (editorsReadOnly || !canSave) {
+    if (!showItemEditors) {
+      return;
+    }
+
+    const trimmedQty = quantityInput.trim();
+    const parsedZero = Number.parseInt(trimmedQty, 10);
+    if (trimmedQty === '0' || (Number.isFinite(parsedZero) && parsedZero === 0)) {
+      if (saveDebounceRef.current !== null) {
+        window.clearTimeout(saveDebounceRef.current);
+        saveDebounceRef.current = null;
+      }
+      onRemove(item);
+      return;
+    }
+
+    if (parsedQuantity === null) {
+      setQuantityInput(String(item.quantity));
+      return;
+    }
+
+    if (!canSave) {
       return;
     }
 
     void saveDraft();
-  }, [canSave, editorsReadOnly, saveDraft]);
+  }, [canSave, item, onRemove, parsedQuantity, quantityInput, saveDraft, showItemEditors]);
 
   const handleFieldFocus = useCallback((event: FocusEvent<HTMLInputElement>) => {
     event.currentTarget.select();
@@ -414,7 +471,10 @@ export function PortalPrintRequestItemCard({
 
   return (
     <>
-      <article className="portal-request-item-editor-card">
+      <article
+        aria-busy={isOptimisticItem || undefined}
+        className={`portal-request-item-editor-card${isOptimisticItem ? ' is-preparing' : ''}`}
+      >
         <div className="portal-request-item-editor-header">
           <div className="portal-request-item-editor-thumb-wrap">
             <CatalogThumbnailPanel
@@ -427,9 +487,21 @@ export function PortalPrintRequestItemCard({
               loadingLabel="Loading preview"
               onImageClick={() => setIsLightboxOpen(true)}
             />
-            {isUploadItem ? (
-              <span className="portal-request-item-upload-badge">Uploaded</span>
-            ) : null}
+            <span
+              className={`portal-request-item-source-badge${
+                isUploadItem
+                  ? upload?.fromAssistedCreation
+                    ? ' is-custom'
+                    : ' is-uploaded'
+                  : ' is-library'
+              }`}
+            >
+              {isUploadItem
+                ? upload?.fromAssistedCreation
+                  ? 'Custom'
+                  : 'Uploaded'
+                : 'Library'}
+            </span>
             {sizeAssessment ? (
               <span
                 aria-label={`${sizeAssessment.qualityLabel}, ${sizeAssessment.effectiveDpi} DPI`}
@@ -448,7 +520,13 @@ export function PortalPrintRequestItemCard({
           <div className="portal-request-item-editor-body">
             <h2>{title}</h2>
 
-            {editorsReadOnly ? (
+            {isOptimisticItem ? (
+              <p className="portal-request-item-preparing" role="status">
+                Preparing duplicate… You can edit size and quantity now.
+              </p>
+            ) : null}
+
+            {!showItemEditors ? (
               <p className="portal-muted">Qty {item.quantity}</p>
             ) : null}
           </div>
@@ -457,14 +535,26 @@ export function PortalPrintRequestItemCard({
         {showCatalogReuse ? (
           <div className="portal-request-item-editor-actions portal-request-item-reuse-actions">
             {catalogReuseDesign ? (
-              <button
-                className="portal-button portal-button-primary portal-button-sm"
-                disabled={isAddingToRequest}
-                onClick={() => onAddToRequest?.(catalogReuseDesign)}
-                type="button"
-              >
-                {isAddingToRequest ? 'Adding…' : 'Add to request'}
-              </button>
+              <>
+                <button
+                  className="portal-button portal-button-primary portal-button-sm"
+                  disabled={isAddingToRequest || !canAddPrints}
+                  onClick={() => onAddToRequest?.(catalogReuseDesign)}
+                  title={
+                    !canAddPrints && blockedStatusText
+                      ? blockedStatusText
+                      : undefined
+                  }
+                  type="button"
+                >
+                  {isAddingToRequest ? 'Adding…' : 'Add to request'}
+                </button>
+                {!canAddPrints && blockedStatusText ? (
+                  <p className="portal-muted portal-request-item-quota-hint">
+                    {blockedStatusText}
+                  </p>
+                ) : null}
+              </>
             ) : (
               <p className="portal-muted portal-request-item-unavailable" role="status">
                 No longer in catalog
@@ -473,7 +563,7 @@ export function PortalPrintRequestItemCard({
           </div>
         ) : null}
 
-        {!editorsReadOnly ? (
+        {showItemEditors ? (
           <>
             <div className="portal-request-item-size-row">
               <label className="portal-request-item-field">
@@ -529,7 +619,7 @@ export function PortalPrintRequestItemCard({
           </>
         ) : null}
 
-        {!editorsReadOnly ? (
+        {showItemEditors ? (
           <div className="portal-request-item-editor-actions">
             <div className="portal-request-item-stepper portal-card-input-shell">
               <button
@@ -558,8 +648,14 @@ export function PortalPrintRequestItemCard({
               <button
                 aria-label={`Increase quantity for ${title}`}
                 className="portal-request-item-stepper-button"
+                disabled={!canAddPrints}
                 onClick={() => stepQuantity((parsedQuantity ?? 0) + 1)}
                 tabIndex={-1}
+                title={
+                  !canAddPrints && blockedStatusText
+                    ? blockedStatusText
+                    : undefined
+                }
                 type="button"
               >
                 +
@@ -568,8 +664,16 @@ export function PortalPrintRequestItemCard({
 
             <button
               className="portal-button portal-button-secondary portal-button-sm portal-button-leading-icon"
+              disabled={actionsDisabled || !canAddPrints}
               onClick={() => onDuplicate(item)}
               tabIndex={-1}
+              title={
+                actionsDisabled
+                  ? 'Preparing duplicate…'
+                  : !canAddPrints && blockedStatusText
+                    ? blockedStatusText
+                    : undefined
+              }
               type="button"
             >
               <CopyIcon size={14} />
@@ -578,8 +682,10 @@ export function PortalPrintRequestItemCard({
 
             <button
               className="portal-button portal-button-danger portal-button-sm portal-button-leading-icon"
+              disabled={actionsDisabled}
               onClick={() => onRemove(item)}
               tabIndex={-1}
+              title={actionsDisabled ? 'Preparing duplicate…' : undefined}
               type="button"
             >
               <TrashIcon size={14} />

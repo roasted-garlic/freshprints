@@ -3,16 +3,21 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { PortalAllocatableShow } from '@fresh-prints/shared/types/portal/listPortalAllocatableShows.types';
+import { DEFAULT_PORTAL_QUEUE_CUTOFF_HOURS_BEFORE_START } from '@fresh-prints/shared/utils/showQueueCutoff';
 
 import { portalShowSelectionService } from '../services/portalShowSelectionService';
 
 /** Keep last successful list warm across modal open/close in the same session. */
 let sessionCachedShows: PortalAllocatableShow[] | null = null;
+let sessionCachedCutoffHours = DEFAULT_PORTAL_QUEUE_CUTOFF_HOURS_BEFORE_START;
 let sessionCacheAtMs = 0;
 const SESSION_CACHE_TTL_MS = 60_000;
 
 export function usePortalAllocatableShows(enabled: boolean) {
   const [shows, setShows] = useState<PortalAllocatableShow[]>(() => sessionCachedShows ?? []);
+  const [portalQueueCutoffHoursBeforeStart, setPortalQueueCutoffHoursBeforeStart] = useState(
+    () => sessionCachedCutoffHours,
+  );
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const requestIdRef = useRef(0);
@@ -27,13 +32,15 @@ export function usePortalAllocatableShows(enabled: boolean) {
     setError(null);
 
     try {
-      const nextShows = await portalShowSelectionService.listAllocatableShows();
+      const result = await portalShowSelectionService.listAllocatableShows();
       if (requestId !== requestIdRef.current) {
         return;
       }
-      sessionCachedShows = nextShows;
+      sessionCachedShows = result.shows;
+      sessionCachedCutoffHours = result.portalQueueCutoffHoursBeforeStart;
       sessionCacheAtMs = Date.now();
-      setShows(nextShows);
+      setShows(result.shows);
+      setPortalQueueCutoffHoursBeforeStart(result.portalQueueCutoffHoursBeforeStart);
     } catch (loadError) {
       if (requestId !== requestIdRef.current) {
         return;
@@ -62,6 +69,7 @@ export function usePortalAllocatableShows(enabled: boolean) {
 
     if (hasFreshCache && sessionCachedShows) {
       setShows(sessionCachedShows);
+      setPortalQueueCutoffHoursBeforeStart(sessionCachedCutoffHours);
       setIsLoading(false);
       void reload({ silent: true });
       return;
@@ -69,6 +77,7 @@ export function usePortalAllocatableShows(enabled: boolean) {
 
     if (sessionCachedShows) {
       setShows(sessionCachedShows);
+      setPortalQueueCutoffHoursBeforeStart(sessionCachedCutoffHours);
     }
 
     void reload({ silent: Boolean(sessionCachedShows) });
@@ -76,6 +85,7 @@ export function usePortalAllocatableShows(enabled: boolean) {
 
   return {
     shows,
+    portalQueueCutoffHoursBeforeStart,
     isLoading,
     error,
     reload: () => reload(),

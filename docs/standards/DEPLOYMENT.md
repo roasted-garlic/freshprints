@@ -155,6 +155,46 @@ Expected exports include `enqueueAiEnrichment` and `onDesignAiEnrichmentQueued`.
 
 See `docs/architecture/FIREBASE.md`. Never commit secrets.
 
+### Portal Open Graph / social meta (2026-07-20)
+
+Portal site-wide OG / Twitter tags use Next.js `metadataBase` so image URLs are absolute.
+
+| Host | Origin used for absolute OG URLs |
+|------|----------------------------------|
+| Dev App Hosting | `https://myprintrequest.dev` when `NEXT_PUBLIC_FIREBASE_PROJECT_ID=fresh-prints-dev`, or set `NEXT_PUBLIC_PORTAL_ORIGIN` |
+| Production | Prefer `NEXT_PUBLIC_PORTAL_ORIGIN=https://myprintrequest.com` on App Hosting; non-dev project ids fall back to that host when `NODE_ENV=production` |
+| Local | `http://localhost:3100` (crawlers will not use this for real shares) |
+
+**Site-wide default OG image:** daily-rotated signed URL from a sample of ready library designs (fallback: `/brand/fresh-prints-request-portal-logo.png`).
+
+**Global OG title/description:** Studio → **Settings** → **Social sharing** (owner) writes `settings/portalSocialMeta` via `updatePortalSocialMetaSettings`. Portal Admin reads that doc for root / login / register meta (hourly revalidate).
+
+**Per-design share (expanded #11):**
+
+| Purpose | URL |
+|---------|-----|
+| Share / crawler OG | `/share/design/{designId}` — server `generateMetadata` via Firebase Admin (ready designs only); client navigates to catalog deep link (**no HTTP redirect**) |
+| Deep link (modal) | `/catalog?designId={designId}` (also honored on `/`) |
+
+Share controls: catalog design details modal (**Share**) and selection cards (icon; title truncates). Copies or Web-Shares the `/share/design/…` URL.
+
+**Soft-deploy (dev only):**
+
+```bash
+firebase deploy --only functions:updatePortalSocialMetaSettings,firestore:rules,apphosting --project fresh-prints-dev
+```
+
+**Verify after soft-deploy to fresh-prints-dev:**
+
+```bash
+curl -sL https://myprintrequest.dev/login | findstr /i "og:title og:image twitter:card"
+curl -sL https://myprintrequest.dev/share/design/READY_DESIGN_ID | findstr /i "og:title og:image og:description"
+```
+
+Or paste the share URL into [Facebook Sharing Debugger](https://developers.facebook.com/tools/debug/) / an Open Graph preview tool and refresh cache.
+
+App Hosting must provide Application Default Credentials so Admin can read Firestore designs/settings and sign Storage thumbnail URLs. Without ADC, pages fall back to brand defaults / logo.
+
 ---
 
 ## Production Release Checklist

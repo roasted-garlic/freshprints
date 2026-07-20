@@ -11,10 +11,22 @@ import {
 } from "./customerUploadRateLimitHelpers";
 
 describe("customerUploadRateLimit helpers", () => {
-  it("formats UTC day key and label", () => {
-    const date = new Date(Date.UTC(2026, 6, 11, 23, 30, 0));
+  it("formats America/Chicago day key and label (same calendar day in UTC and Central)", () => {
+    const date = new Date(Date.UTC(2026, 6, 11, 18, 30, 0));
     assert.equal(utcDayKey(date), "20260711");
     assert.equal(utcDayLabel(date), "2026-07-11");
+  });
+
+  it("uses Central midnight (not UTC) across the UTC day boundary", () => {
+    // 04:30 UTC on July 12 = 11:30 PM CDT on July 11
+    const lateCentralEvening = new Date(Date.UTC(2026, 6, 12, 4, 30, 0));
+    assert.equal(utcDayKey(lateCentralEvening), "20260711");
+    assert.equal(utcDayLabel(lateCentralEvening), "2026-07-11");
+
+    // 05:30 UTC on July 12 = 12:30 AM CDT on July 12
+    const afterCentralMidnight = new Date(Date.UTC(2026, 6, 12, 5, 30, 0));
+    assert.equal(utcDayKey(afterCentralMidnight), "20260712");
+    assert.equal(utcDayLabel(afterCentralMidnight), "2026-07-12");
   });
 
   it("builds rate-limit doc ids", () => {

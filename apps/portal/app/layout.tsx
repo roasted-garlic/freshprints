@@ -1,7 +1,8 @@
 import type { Metadata } from 'next'
 
 import { portalThemeInitScript } from '../features/theme/themeInitScript'
-import { PORTAL_APP_NAME } from '../features/brand/portalBrand'
+import { buildPortalRootMetadata } from '../features/brand/portalSiteMeta'
+import { loadPortalGlobalSocialMeta } from '../features/brand/portalGlobalSocialMetaService'
 import { Providers } from './providers'
 import './globals.css'
 import '../styles/catalog.css'
@@ -11,9 +12,16 @@ import '../styles/etsy-recommendations.css'
 import '../styles/assisted-creation.css'
 import '../styles/shell.css'
 
-export const metadata: Metadata = {
-  title: PORTAL_APP_NAME,
-  description: 'Customer print requests and design library',
+/** Refresh global OG settings / daily library image without force-dynamic on every page. */
+export const revalidate = 3600
+
+export async function generateMetadata(): Promise<Metadata> {
+  const social = await loadPortalGlobalSocialMeta()
+  return buildPortalRootMetadata(process.env, {
+    ogTitle: social.ogTitle,
+    ogDescription: social.ogDescription,
+    ogImageUrl: social.imageUrl,
+  })
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

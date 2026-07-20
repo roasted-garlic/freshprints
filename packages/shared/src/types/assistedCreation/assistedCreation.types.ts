@@ -115,8 +115,28 @@ export interface AssistedCreationRequest {
   approvedProofId?: string;
   /** Server Timestamp when the customer approved; starts the 14-day download window. */
   approvedAt?: unknown;
+  /**
+   * Set when the customer adds the approved proof to Current Request / Your Stash
+   * (server-copied into customer-upload storage). Survives assisted 14-day proof purge.
+   */
+  printRequestIngest?: AssistedCreationPrintRequestIngest | null;
   /** Server Timestamp or ISO string in DTOs. */
   createdAt: unknown;
   /** Server Timestamp or ISO string in DTOs. */
   updatedAt: unknown;
+}
+
+/** Denormalized Stash ingest pointer for Approved Design CTA / idempotency. */
+export interface AssistedCreationPrintRequestIngest {
+  customerUploadId: string;
+  printRequestItemId: string;
+  printRequestId: string;
+  assistedProofId: string;
+  /** Server Timestamp or ISO string in DTOs. */
+  ingestedAt: unknown;
+  /**
+   * Consent captured at first Add to Request (Design Library consideration).
+   * Optional on legacy ingest docs written before this field existed.
+   */
+  catalogUseAcknowledged?: boolean;
 }

@@ -1,13 +1,19 @@
 import { FirebaseError } from 'firebase/app';
 import {
+  EmailAuthProvider,
   GoogleAuthProvider,
   browserLocalPersistence,
   createUserWithEmailAndPassword,
   onAuthStateChanged,
+  reauthenticateWithCredential,
+  sendPasswordResetEmail,
   setPersistence,
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut,
+  updatePassword,
+  verifyBeforeUpdateEmail,
+  type ActionCodeSettings,
   type User as FirebaseUser,
 } from 'firebase/auth';
 
@@ -47,6 +53,10 @@ function getAuthErrorMessage(error: unknown): string {
       return 'An account already exists with this email using a different sign-in method. Sign in with email and password instead.';
     case 'auth/operation-not-allowed':
       return 'Google sign-in is not enabled yet. Contact support or try email and password.';
+    case 'auth/requires-recent-login':
+      return 'For security, enter your current password and try again.';
+    case 'auth/credential-already-in-use':
+      return 'That email is already linked to another account.';
     default:
       return 'Authentication failed. Please try again.';
   }
@@ -80,6 +90,22 @@ function getCallableErrorMessage(error: unknown): string {
     default:
       return error.message || 'Registration could not be completed. Please try again.';
   }
+}
+
+function buildAuthActionCodeSettings(): ActionCodeSettings {
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  return {
+    url: `${origin}/login`,
+    handleCodeInApp: false,
+  };
+}
+
+export function firebaseUserHasPasswordProvider(user: FirebaseUser | null | undefined): boolean {
+  return Boolean(user?.providerData.some((provider) => provider.providerId === 'password'));
+}
+
+export function firebaseUserHasGoogleProvider(user: FirebaseUser | null | undefined): boolean {
+  return Boolean(user?.providerData.some((provider) => provider.providerId === 'google.com'));
 }
 
 export const portalAuthService = {
@@ -121,9 +147,54 @@ export const portalAuthService = {
     }
   },
 
+  /** Always returns a generic success message to avoid email enumeration. */
+  async sendPasswordResetEmail(email: string): Promise<string> {
+    const trimmed = email.trim();
+    try {
+      await sendPasswordResetEmail(getPortalAuth(), trimmed, buildAuthActionCodeSettings());
+    } catch (error) {
+      if (error instanceof FirebaseError) {
+        if (error.code === 'auth/invalid-email' || error.code === 'auth/missing-email') {
+          throw new Error(getAuthErrorMessage(error));
+        }
+      }
+    }
+    return 'If an account exists for that email, a password reset link is on the way.';
+  },
+
+  async reauthenticateWithPassword(user: FirebaseUser, password: string): Promise<void> {
+    try {
+      const email = user.email;
+      if (!email) {
+        throw new Error('Your account does not have an email address.');
+      }
+      const credential = EmailAuthProvider.credential(email, password);
+      await reauthenticateWithCredential(user, credential);
+    } catch (error) {
+      throw new Error(getAuthErrorMessage(error));
+    }
+  },
+
+  async updatePassword(user: FirebaseUser, newPassword: string): Promise<void> {
+    try {
+      await updatePassword(user, newPassword);
+    } catch (error) {
+      throw new Error(getAuthErrorMessage(error));
+    }
+  },
+
+  async verifyBeforeUpdateEmail(user: FirebaseUser, newEmail: string): Promise<void> {
+    try {
+      await verifyBeforeUpdateEmail(user, newEmail.trim(), buildAuthActionCodeSettings());
+    } catch (error) {
+      throw new Error(getAuthErrorMessage(error));
+    }
+  },
+
   subscribeToAuthState(observer: AuthStateObserver): () => void {
     return onAuthStateChanged(getPortalAuth(), observer);
   },
 
   getCallableErrorMessage,
+  getAuthErrorMessage,
 };

@@ -11,14 +11,17 @@ import {
 } from '@fresh-prints/shared/utils/portalPrintRequestListTabs';
 import { resolvePortalPrintProgressStage } from '@fresh-prints/shared/utils/portalPrintProgressStage';
 import { sumPrintRequestItemQuantities } from '@fresh-prints/shared/utils/portalShowQueueCapacity';
-
+import {
+  sumAllocatedQuantityByItemId,
+  sumRemainingUnallocatedQuantity,
+} from '@fresh-prints/shared/utils/portalShowQueueFit';
+import { PortalPrintRequestItemCard } from '../../../../features/print-requests/components/PortalPrintRequestItemCard';
+import { PortalPrintRequestProgressPanel } from '../../../../features/print-requests/components/PortalPrintRequestProgressPanel';
+import { PortalQueueToShowModal, type PortalQueueToShowResult } from '../../../../features/print-requests/components/PortalQueueToShowModal';
+import { PrintRequestDetailGuide } from '../../../../features/print-requests/components/PrintRequestDetailGuide';
 import { catalogService } from '../../../../features/catalog/services/catalogService';
 import type { CatalogDesign } from '../../../../features/catalog/types/catalog.types';
 import { useAuth } from '../../../../features/auth/context/AuthContext';
-import { PortalPrintRequestItemCard } from '../../../../features/print-requests/components/PortalPrintRequestItemCard';
-import { PortalPrintRequestProgressPanel } from '../../../../features/print-requests/components/PortalPrintRequestProgressPanel';
-import { PortalQueueToShowModal } from '../../../../features/print-requests/components/PortalQueueToShowModal';
-import { PrintRequestDetailGuide } from '../../../../features/print-requests/components/PrintRequestDetailGuide';
 import { usePortalPrintRequests } from '../../../../features/print-requests/context/PortalPrintRequestContext';
 import { useAddDesignToRequestFlow } from '../../../../features/print-requests/hooks/useAddDesignToRequestFlow';
 import { usePrintRequestDetail } from '../../../../features/print-requests/hooks/usePrintRequestDetail';
@@ -28,7 +31,6 @@ import {
   printRequestItemHasCustomerUpload,
 } from '../../../../features/print-requests/services/portalPrintRequestService';
 import { buildCatalogLibraryHref, buildRequestArtworkHref } from '../../../../features/print-requests/utils/catalogSelectionNavigation';
-import { isOptimisticPrintRequestItemId } from '../../../../features/print-requests/utils/optimisticPrintRequestItemId';
 import {
   parsePortalRequestDetailFrom,
   resolvePortalRequestDetailBack,
@@ -80,10 +82,12 @@ export default function PrintRequestDetailView() {
   const printRequestId = params.id;
   const [actionError, setActionError] = useState<string | null>(null);
   const [autosaveState, setAutosaveState] = useState<AutosaveState>({ status: 'idle' });
-  const [hasAllocations, setHasAllocations] = useState(false);
+  const [unallocatedQuantity, setUnallocatedQuantity] = useState(0);
   const [isQueueModalOpen, setIsQueueModalOpen] = useState(false);
   const [itemPendingRemoval, setItemPendingRemoval] = useState<PrintRequestItem | null>(null);
   const [isRemovingItem, setIsRemovingItem] = useState(false);
+  /** Bumped per item id when remove confirm is cancelled so qty-0 input restores. */
+  const [quantityResetKeys, setQuantityResetKeys] = useState<Record<string, number>>({});
   const [catalogReuseByDesignId, setCatalogReuseByDesignId] = useState<Map<string, CatalogDesign>>(
     () => new Map(),
   );
@@ -99,6 +103,7 @@ export default function PrintRequestDetailView() {
     isEditable,
     updateItem,
     duplicateItem,
+    getItemClientKey,
     removeItem,
     reload,
   } = usePrintRequestDetail(printRequestId);
@@ -130,24 +135,31 @@ export default function PrintRequestDetailView() {
 
   const loadAllocationState = useCallback(async () => {
     if (!printRequestId) {
-      setHasAllocations(false);
+      setUnallocatedQuantity(0);
       return;
     }
 
     try {
-      const allocations = await portalPrintRequestService.listShowAllocationsForPrintRequests([
-        printRequestId,
+      const [allocations, requestItems] = await Promise.all([
+        portalPrintRequestService.listShowAllocationsForPrintRequests([printRequestId]),
+        portalPrintRequestService.listPrintRequestItems(printRequestId),
       ]);
-      const activeAllocations = allocations.filter((allocation) => allocation.status !== 'canceled');
-      setHasAllocations(activeAllocations.length > 0);
+      const allocatedByItemId = sumAllocatedQuantityByItemId(
+        allocations.map((allocation) => ({
+          printRequestItemId: allocation.printRequestItemId,
+          allocatedQuantity: allocation.allocatedQuantity,
+          status: allocation.status,
+        })),
+      );
+      setUnallocatedQuantity(sumRemainingUnallocatedQuantity(requestItems, allocatedByItemId));
     } catch {
-      setHasAllocations(false);
+      setUnallocatedQuantity(sumPrintRequestItemQuantities(items));
     }
-  }, [printRequestId]);
+  }, [items, printRequestId]);
 
   useEffect(() => {
     void loadAllocationState();
-  }, [loadAllocationState, printRequest?.status, printRequest?.itemCount]);
+  }, [loadAllocationState, printRequest?.status, printRequest?.itemCount, items]);
 
   const catalogDesignIdsKey = useMemo(
     () =>
@@ -226,6 +238,7 @@ export default function PrintRequestDetailView() {
       input: { quantity: number; printWidthInches: number; printHeightInches: number },
     ) => {
       setActionError(null);
+      // updateItem patches workingItems + Cap A optimistically; silent reload reconciles.
       await updateItem(item.id, input);
       void reloadWorkingItems({ silent: true });
     },
@@ -301,24 +314,28 @@ export default function PrintRequestDetailView() {
   const printProgress = usePortalShowPrintProgress(printRequestId, progressStage !== null);
   const hasAttachedDesigns = items.length > 0;
 
-  const handleQueuedToShow = useCallback(async () => {
-    // Clear Stash immediately — list reload can otherwise re-hydrate the just-queued request.
-    resetWorkingCart();
-    closeCurrentRequestDrawer();
-    await Promise.all([
-      reload({ silent: true }),
-      refreshRequests({ silent: true }),
-      refreshCustomer(),
-    ]);
-    await loadAllocationState();
-  }, [
-    closeCurrentRequestDrawer,
-    loadAllocationState,
-    refreshCustomer,
-    refreshRequests,
-    reload,
-    resetWorkingCart,
-  ]);
+  const handleQueuedToShow = useCallback(
+    async (_result: PortalQueueToShowResult) => {
+      // Clear Stash immediately — list reload can otherwise re-hydrate the just-queued request.
+      resetWorkingCart();
+      closeCurrentRequestDrawer();
+
+      await Promise.all([
+        reload({ silent: true }),
+        refreshRequests({ silent: true }),
+        refreshCustomer(),
+      ]);
+      await loadAllocationState();
+    },
+    [
+      closeCurrentRequestDrawer,
+      loadAllocationState,
+      refreshCustomer,
+      refreshRequests,
+      reload,
+      resetWorkingCart,
+    ],
+  );
 
   if (isLoading) {
     return (
@@ -348,8 +365,7 @@ export default function PrintRequestDetailView() {
 
   const designCountLabel = `${printRequest.itemCount} design${printRequest.itemCount === 1 ? '' : 's'}`;
   const printCountLabel = `${totalPrintCount} print${totalPrintCount === 1 ? '' : 's'}`;
-  const canQueueToShow =
-    isEditable && items.length > 0 && !hasAllocations;
+  const canQueueToShow = isEditable && items.length > 0 && unallocatedQuantity > 0;
 
   return (
     <main className="portal-page portal-request-detail-page">
@@ -507,7 +523,10 @@ export default function PrintRequestDetailView() {
 
             return (
               <PortalPrintRequestItemCard
+                canAddPrints={addDesignFlow.canAddPrints}
                 catalogReuseDesign={catalogReuseDesign}
+                exhaustedHelperText={addDesignFlow.exhaustedHelperText}
+                exhaustedStatusText={addDesignFlow.exhaustedStatusText}
                 design={
                   design
                     ? {
@@ -535,18 +554,20 @@ export default function PrintRequestDetailView() {
                         approvedMaxPrintWidthInches: upload?.approvedMaxPrintWidthInches,
                         approvedMaxPrintHeightInches: upload?.approvedMaxPrintHeightInches,
                         wasUpscaled: upload?.wasUpscaled,
+                        fromAssistedCreation: Boolean(upload?.assistedCreationRequestId),
                       }
                     : null
                 }
                 isAddingToRequest={isAddingThisDesign}
                 item={item}
-                key={item.id}
+                key={getItemClientKey(item.id)}
                 onAddToRequest={addDesignFlow.addDesign}
                 onDuplicate={(nextItem) => void handleDuplicateItem(nextItem)}
                 onRemove={(nextItem) => setItemPendingRemoval(nextItem)}
                 onUpdate={handleUpdateItem}
                 onAutosaveStateChange={updateAutosaveState}
-                readOnly={!isEditable || isOptimisticPrintRequestItemId(item.id)}
+                quantityResetKey={quantityResetKeys[item.id] ?? 0}
+                readOnly={!isEditable}
               />
             );
           })}
@@ -594,7 +615,14 @@ export default function PrintRequestDetailView() {
         isOpen={itemPendingRemoval !== null}
         onCancel={() => {
           if (!isRemovingItem) {
+            const pending = itemPendingRemoval;
             setItemPendingRemoval(null);
+            if (pending) {
+              setQuantityResetKeys((previous) => ({
+                ...previous,
+                [pending.id]: (previous[pending.id] ?? 0) + 1,
+              }));
+            }
           }
         }}
         onConfirm={() => {

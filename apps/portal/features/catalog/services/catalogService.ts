@@ -116,7 +116,7 @@ function mapCatalogDesign(designId: string, data: DesignDocumentData): CatalogDe
 }
 
 function resolveSortField(listQuery: CatalogDesignListQuery): CatalogDesignSortField {
-  return listQuery.sortField ?? 'updatedAt';
+  return listQuery.sortField ?? 'createdAt';
 }
 
 function getDesignSortValue(design: CatalogDesign, sortField: CatalogDesignSortField): number {
@@ -337,9 +337,8 @@ export const catalogService = {
    * Bounded pools for Discover home rails — not the full catalog.
    * Prefer library paging for browse-all.
    *
-   * While composite indexes for createdAt / requestCount / lastRequestedAt are
-   * still building, falls back to the existing status+updatedAt index so home
-   * stays usable.
+   * While composite indexes for requestCount / favoriteCount / lastRequestedAt are
+   * still building, falls back to status+createdAt (Studio-newest) so home stays usable.
    */
   async listHomeDiscoveryPool(): Promise<CatalogDesign[]> {
     const preferredQueries: CatalogDesignListQuery[] = [
@@ -388,7 +387,7 @@ export const catalogService = {
     if (indexBlocked || settled.some((result) => result.status === 'rejected')) {
       const fallback = await this.listReadyDesignsPage({
         limitCount: HOME_DISCOVERY_POOL_PAGE_SIZE,
-        sortField: 'updatedAt',
+        sortField: 'createdAt',
       });
       return fallback.designs;
     }
@@ -397,8 +396,8 @@ export const catalogService = {
   },
 
   /**
-   * Paged list with automatic fallback to `updatedAt` when a sort-specific
-   * composite index is missing or still building.
+   * Paged list with automatic fallback to `createdAt` (then `updatedAt`) when a
+   * sort-specific composite index is missing or still building.
    */
   async listReadyDesignsPageWithSortFallback(
     listQuery: CatalogDesignListQuery = {},
@@ -406,16 +405,28 @@ export const catalogService = {
     try {
       return await this.listReadyDesignsPage(listQuery);
     } catch (error) {
-      const sortField = listQuery.sortField ?? 'updatedAt';
+      const sortField = listQuery.sortField ?? 'createdAt';
 
-      if (!isFirestoreIndexNotReadyError(error) || sortField === 'updatedAt') {
+      if (!isFirestoreIndexNotReadyError(error)) {
+        throw error;
+      }
+
+      if (sortField === 'createdAt') {
+        return this.listReadyDesignsPage({
+          ...listQuery,
+          createdAfterMs: undefined,
+          sortField: 'updatedAt',
+        });
+      }
+
+      if (sortField === 'updatedAt') {
         throw error;
       }
 
       return this.listReadyDesignsPage({
         ...listQuery,
         createdAfterMs: undefined,
-        sortField: 'updatedAt',
+        sortField: 'createdAt',
       });
     }
   },
@@ -429,7 +440,7 @@ export const catalogService = {
       const page = await this.listReadyDesignsPage({
         cursor,
         limitCount: Math.min(48, maxDesigns - designs.length),
-        sortField: 'updatedAt',
+        sortField: 'createdAt',
       });
 
       designs.push(...page.designs);

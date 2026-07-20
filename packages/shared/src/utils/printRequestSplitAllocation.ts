@@ -81,6 +81,42 @@ export function clampSplitItemQuantity(rawQuantity: number, itemRemainingQuantit
   return Math.max(0, Math.min(itemRemainingQuantity, Math.floor(rawQuantity)));
 }
 
+/**
+ * Greedy fill for Cap B / capacity split pickers: walk remaining lines in order and assign as
+ * much as possible until the budget is spent. Later lines get 0 when the budget is exhausted.
+ */
+export function buildFillUpSplitQuantities(
+  entries: ReadonlyArray<{ itemId: string; remainingQuantity: number }>,
+  budget: number,
+): SplitPickerQuantities {
+  let left = Math.max(0, Math.floor(budget));
+  const quantities: SplitPickerQuantities = {};
+  for (const entry of entries) {
+    if (left <= 0) {
+      quantities[entry.itemId] = 0;
+      continue;
+    }
+    const take = Math.min(Math.max(0, Math.floor(entry.remainingQuantity)), left);
+    quantities[entry.itemId] = take;
+    left -= take;
+  }
+  return quantities;
+}
+
+/**
+ * Positive quantity rows for Studio staff split allocation and Portal Cap B choose-prints.
+ */
+export function toPositiveSplitSelections(
+  quantities: SplitPickerQuantities,
+): SplitAllocationSelection[] {
+  return Object.entries(quantities)
+    .filter(([, quantity]) => quantity > 0)
+    .map(([printRequestItemId, quantity]) => ({
+      printRequestItemId,
+      quantity: Math.floor(quantity),
+    }));
+}
+
 export interface SplitPickerWarningCopyInput {
   fittingQuantity: number;
   totalQuantity: number;

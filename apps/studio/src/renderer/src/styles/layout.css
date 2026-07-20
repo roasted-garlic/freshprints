@@ -245,11 +245,68 @@
 }
 
 .customer-upload-intake-list-title {
+  display: block;
   font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.customer-upload-intake-detail-title {
+  margin: 0;
+}
+
+/* Match Portal Custom purple (--color-custom / --color-custom-text). */
+.customer-upload-intake-custom-badge,
+.customer-upload-intake-uploaded-badge {
+  border-radius: var(--radius-full, 999px);
+  display: inline-block;
+  flex-shrink: 0;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  padding: 0.18rem 0.4rem;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+
+.customer-upload-intake-custom-badge {
+  background: color-mix(in srgb, #7c3aed 22%, var(--color-bg-secondary));
+  border: 1px solid color-mix(in srgb, #7c3aed 55%, transparent);
+  color: #6d28d9;
+}
+
+[data-theme="dark"] .customer-upload-intake-custom-badge {
+  background: color-mix(in srgb, #8b5cf6 22%, var(--color-bg-secondary));
+  border-color: color-mix(in srgb, #8b5cf6 55%, transparent);
+  color: #c4b5fd;
+}
+
+/* Match Portal Uploaded gold/amber (warning tokens / source-pill-upload). */
+.customer-upload-intake-uploaded-badge {
+  background: color-mix(in srgb, var(--color-warning, #b8860b) 18%, var(--color-bg-secondary));
+  border: 1px solid color-mix(in srgb, var(--color-warning, #b8860b) 45%, transparent);
+  color: var(--color-warning-text, #92400e);
+}
+
+[data-theme="dark"] .customer-upload-intake-uploaded-badge {
+  background: color-mix(in srgb, var(--color-warning, #c9961a) 22%, var(--color-bg-secondary));
+  border-color: color-mix(in srgb, var(--color-warning, #c9961a) 50%, transparent);
+  color: var(--color-warning-text, #fde68a);
 }
 
 .customer-upload-intake-list-sub,
-.customer-upload-intake-meta,
+.customer-upload-intake-meta {
+  align-items: center;
+  color: var(--color-text-secondary);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: var(--font-size-sm);
+  gap: 0.25rem;
+  margin: 0;
+}
+
 .customer-upload-intake-empty,
 .customer-upload-intake-notice {
   color: var(--color-text-secondary);
@@ -299,7 +356,7 @@
 }
 
 .customer-upload-intake-preview {
-  background: var(--color-bg-secondary);
+  background: var(--color-artwork-preview-bg);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   display: block;
@@ -319,6 +376,7 @@
 .customer-upload-intake-primary-meta {
   display: grid;
   gap: var(--space-2);
+  /* Keep 3 tracks so two cards stay at the old compact ~⅓ width (not full-bleed ½). */
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 

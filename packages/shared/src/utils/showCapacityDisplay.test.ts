@@ -5,6 +5,7 @@ import { assessShowCapacity } from "./showCapacity";
 import {
   formatCapacityUsedLabel,
   formatShowCapacitySlotLabel,
+  formatShowCapacitySlotLabelCompact,
   formatSpotsRemainingLabel,
   getCapacityFillLevel,
   getDerivedShowStatusDisplay,
@@ -113,6 +114,46 @@ test("formatShowCapacitySlotLabel: over max", () => {
 test("formatShowCapacitySlotLabel: uncapped with allocation", () => {
   const capacity = assessShowCapacity({ maxTotalQuantity: undefined, allocatedQuantity: 40 });
   assert.equal(formatShowCapacitySlotLabel(capacity), "40 taken · No limit");
+});
+
+test("formatShowCapacitySlotLabelCompact: empty show", () => {
+  const capacity = assessShowCapacity({ maxTotalQuantity: 200, allocatedQuantity: 0 });
+  assert.equal(formatShowCapacitySlotLabelCompact(capacity), "200 left · 0/200");
+});
+
+test("formatShowCapacitySlotLabelCompact: partial fill", () => {
+  const capacity = assessShowCapacity({ maxTotalQuantity: 200, allocatedQuantity: 175 });
+  assert.equal(formatShowCapacitySlotLabelCompact(capacity), "25 left · 175/200");
+});
+
+test("formatShowCapacitySlotLabelCompact: full and over", () => {
+  assert.equal(
+    formatShowCapacitySlotLabelCompact(
+      assessShowCapacity({ maxTotalQuantity: 200, allocatedQuantity: 200 }),
+    ),
+    "Full · 200/200",
+  );
+  assert.equal(
+    formatShowCapacitySlotLabelCompact(
+      assessShowCapacity({ maxTotalQuantity: 200, allocatedQuantity: 214 }),
+    ),
+    "14 over · 214/200",
+  );
+});
+
+test("formatShowCapacitySlotLabelCompact: uncapped", () => {
+  assert.equal(
+    formatShowCapacitySlotLabelCompact(
+      assessShowCapacity({ maxTotalQuantity: undefined, allocatedQuantity: 0 }),
+    ),
+    "No limit",
+  );
+  assert.equal(
+    formatShowCapacitySlotLabelCompact(
+      assessShowCapacity({ maxTotalQuantity: undefined, allocatedQuantity: 40 }),
+    ),
+    "40 taken",
+  );
 });
 
 test("getDerivedShowStatusDisplay: printing beats full capacity", () => {

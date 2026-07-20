@@ -13,6 +13,13 @@ No custom REST API for core ops. Business logic in app services + Cloud Function
 
 Deploy target for current work: **`fresh-prints-dev` only** unless human approves production.
 
+### Portal show-queue cutoff (ADR-FP-103)
+
+- Setting: `settings/showQueue.portalQueueCutoffHoursBeforeStart` (default 5, clamp 1–72)
+- `listPortalAllocatableShows` marks past-cutoff shows non-allocatable; `queuePortalPrintRequestToShow` rejects `SHOW_QUEUE_CUTOFF`
+- Studio staff allocation after cutoff still allowed
+- Shared util: `packages/shared/src/utils/showQueueCutoff.ts`
+
 ---
 
 ## Customer upload processing (Portal → Functions)

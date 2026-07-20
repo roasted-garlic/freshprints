@@ -6,12 +6,19 @@ import type { CatalogDesign } from '../types/catalog.types';
 import { CatalogFavoriteButton } from '../../favorites/components/CatalogFavoriteButton';
 import { useCatalogDerivativeUrl } from '../hooks/useCatalogDerivativeUrl';
 import { PlusIcon } from '../../shared/components/PortalIcons';
+import { CatalogDesignShareButton } from './CatalogDesignShareButton';
 import { CatalogPreviewLightbox } from './CatalogPreviewLightbox';
 import { CatalogThumbnailPanel } from './CatalogThumbnailPanel';
 
 interface CatalogDesignDetailsModalProps {
+  /** When false, Add to request is disabled (request full or Cap A exhausted). Favorite stays enabled. */
+  canAddPrints?: boolean;
   design: CatalogDesign | null;
+  exhaustedHelperText?: string | null;
+  exhaustedStatusText?: string | null;
   isAdding?: boolean;
+  /** When true, design is already on the Current Request (or selection) — hide the full-request label. */
+  isInCurrentRequest?: boolean;
   isOpen: boolean;
   onAddToRequest?: (design: CatalogDesign) => void;
   onClose: () => void;
@@ -26,18 +33,27 @@ function CloseIcon() {
 }
 
 export function CatalogDesignDetailsModal({
+  canAddPrints = true,
   design,
+  exhaustedHelperText: _exhaustedHelperText = null,
+  exhaustedStatusText = null,
   isAdding = false,
+  isInCurrentRequest = false,
   isOpen,
   onAddToRequest,
   onClose,
 }: CatalogDesignDetailsModalProps) {
   const [isPreviewLightboxOpen, setIsPreviewLightboxOpen] = useState(false);
+  const statusText = exhaustedStatusText;
+  const requestFullLabel =
+    !canAddPrints && statusText && !isInCurrentRequest ? statusText : null;
+  const exhaustedTitle = requestFullLabel ?? undefined;
   const previewPath = design?.previewPath ?? design?.thumbnailPath;
   const { url: previewUrl } = useCatalogDerivativeUrl(
     isOpen ? previewPath : undefined,
     design?.updatedAtMs,
   );
+  const addDisabled = isAdding || !canAddPrints;
 
   useEffect(() => {
     if (!isOpen) {
@@ -104,16 +120,23 @@ export function CatalogDesignDetailsModal({
 
           <div className="modal-body design-details-body">
             <div className="design-details-toolbar">
-              <CatalogFavoriteButton
-                className="design-details-favorite-btn"
-                designId={design.id}
-                designTitle={design.title}
-              />
+              <div className="design-details-toolbar-start">
+                <CatalogFavoriteButton
+                  className="design-details-favorite-btn"
+                  designId={design.id}
+                  designTitle={design.title}
+                />
+                <CatalogDesignShareButton design={design} variant="labeled" />
+                {requestFullLabel ? (
+                  <p className="design-details-request-full-label is-request-full">{requestFullLabel}</p>
+                ) : null}
+              </div>
               {onAddToRequest ? (
                 <button
                   className="portal-button portal-button-primary portal-button-sm portal-button-leading-icon design-details-add-btn"
-                  disabled={isAdding}
+                  disabled={addDisabled}
                   onClick={() => onAddToRequest(design)}
+                  title={exhaustedTitle}
                   type="button"
                 >
                   <PlusIcon size={14} />

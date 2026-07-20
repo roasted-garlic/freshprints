@@ -1,7 +1,10 @@
 import { FieldValue, type DocumentReference } from "firebase-admin/firestore";
 import { onCall } from "firebase-functions/v2/https";
 
-import { CUSTOMER_UPLOAD_MAX_FILES_PER_BATCH } from "../../packages/shared/src/constants/customerUpload/customerUploadLimits.constants";
+import {
+  CUSTOMER_UPLOAD_MAX_FILES_PER_BATCH,
+  computeCustomerUploadMaxZipBytes,
+} from "../../packages/shared/src/constants/customerUpload/customerUploadLimits.constants";
 import { CUSTOMER_UPLOAD_COLLECTIONS } from "../../packages/shared/src/constants/customerUpload/customerUploadCollections.constants";
 import {
   getCustomerUploadBatchZipStoragePath,
@@ -48,6 +51,13 @@ export const createCustomerUploadBatch = onCall(
       payload = validateCreateCustomerUploadBatchRequest(request.data);
     } catch (error) {
       throw invalidArgument(error instanceof Error ? error.message : "Invalid request.");
+    }
+
+    if (payload.mode === "zip") {
+      const maxZipBytes = computeCustomerUploadMaxZipBytes();
+      if ((payload.declaredZipSizeBytes ?? 0) > maxZipBytes) {
+        throw invalidArgument("ZIP exceeds the maximum compressed size.");
+      }
     }
 
     const portalCustomer = await requirePortalCustomer(request.auth.uid);

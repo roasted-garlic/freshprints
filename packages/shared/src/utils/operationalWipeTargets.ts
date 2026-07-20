@@ -19,6 +19,7 @@ export const OPERATIONAL_WIPE_DELETE_COLLECTION_ORDER = [
   "customerUploadIdempotency",
   "customerUploadFinalizeLeases",
   "customerUploadRateLimits",
+  "printRequestDesignDailyLimits",
   "customerUploads",
   "customerUploadBatches",
   "designs",
@@ -57,6 +58,7 @@ const PRINT_REQUEST_STACK_COLLECTIONS: OperationalWipeDeleteCollection[] = [
   "showAllocations",
   "printRequestItems",
   "printRequests",
+  "printRequestDesignDailyLimits",
 ];
 
 const SHOW_QUEUE_ATTACHMENT_COLLECTIONS: OperationalWipeDeleteCollection[] = [
@@ -133,6 +135,7 @@ const OPERATIONAL_WIPE_TARGETS_ORDER: OperationalWipeTarget[] = [
   "designRequestStats",
   "designs",
   "customerUploads",
+  "printRequestDesignDailyLimits",
   "etsySearches",
   "assistedCreationRequests",
 ];
@@ -143,6 +146,8 @@ const OPERATIONAL_WIPE_TARGETS_ORDER: OperationalWipeTarget[] = [
  * at deleted requests; `upcomingShows` docs themselves are only removed when that target is set.
  * `designs` deletes catalog docs and Storage originals/thumbnails/previews (requires printRequests).
  * `customerUploads` deletes upload docs/ops collections and `customer-uploads/` Storage.
+ * `printRequestDesignDailyLimits` deletes Cap A Chicago-day design-add counters only
+ * (keeps print requests / stash). Also cleared when `printRequests` is wiped.
  * `etsySearches` deletes Portal Find a design request docs, Open API rate-limit docs, inert
  * legacy Etsy cache/config / customRequest rate-limit leftovers, suggestion overlays, and
  * pending suggestion requests.
@@ -194,6 +199,11 @@ export function expandOperationalWipePlan(
       deleteSet.add("customerUploadRateLimits");
       deleteSet.add("customerUploads");
       deleteSet.add("customerUploadBatches");
+      continue;
+    }
+
+    if (target === "printRequestDesignDailyLimits") {
+      deleteSet.add("printRequestDesignDailyLimits");
       continue;
     }
 
@@ -256,6 +266,11 @@ export const CUSTOM_REQUESTS_WIPE_PRESET_TARGETS: OperationalWipeTarget[] = [
 
 export const CUSTOMER_UPLOADS_WIPE_PRESET_TARGETS: OperationalWipeTarget[] = ["customerUploads"];
 
+/** Cap A only: Chicago-day print-request design-add counters (keeps stash / requests). */
+export const PRINT_REQUEST_DAILY_LIMITS_WIPE_PRESET_TARGETS: OperationalWipeTarget[] = [
+  "printRequestDesignDailyLimits",
+];
+
 /** Designs wipe always requires print requests + sequences (same as toggle). */
 export const DESIGNS_WIPE_PRESET_TARGETS: OperationalWipeTarget[] = [
   "printRequests",
@@ -271,6 +286,7 @@ export const ALL_OPERATIONAL_WIPE_TARGETS: OperationalWipeTarget[] = [
   "designRequestStats",
   "designs",
   "customerUploads",
+  "printRequestDesignDailyLimits",
   "etsySearches",
   "assistedCreationRequests",
 ];

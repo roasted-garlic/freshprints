@@ -22,11 +22,14 @@ interface UsePrintRequestCreationFlowOptions {
     notes?: string,
     options?: { skipListReload?: boolean },
   ) => Promise<{ printRequestId: string }>;
+  /** Shared create mutex — prefer over raw createPrintRequest when starting a cart. */
+  ensureWorkingPrintRequestId?: () => Promise<string>;
 }
 
 export function usePrintRequestCreationFlow({
   continuableRequests,
   createPrintRequest,
+  ensureWorkingPrintRequestId,
 }: UsePrintRequestCreationFlowOptions) {
   const router = useRouter();
   const [isCreating, setIsCreating] = useState(false);
@@ -58,11 +61,13 @@ export function usePrintRequestCreationFlow({
       const from = returnFromRef.current;
 
       try {
-        const created = await createPrintRequest(undefined, { skipListReload: true });
+        const printRequestId = ensureWorkingPrintRequestId
+          ? await ensureWorkingPrintRequestId()
+          : (await createPrintRequest(undefined, { skipListReload: true })).printRequestId;
         const href =
           path === 'upload'
-            ? buildRequestUploadHref(created.printRequestId, { from })
-            : buildCatalogSelectionHref(created.printRequestId, { from: from ?? 'library' });
+            ? buildRequestUploadHref(printRequestId, { from })
+            : buildCatalogSelectionHref(printRequestId, { from: from ?? 'library' });
         router.replace(href);
         setIsConfirmModalOpen(false);
         setModalStep('confirm');
@@ -74,7 +79,7 @@ export function usePrintRequestCreationFlow({
         setIsCreating(false);
       }
     },
-    [createPrintRequest, router],
+    [createPrintRequest, ensureWorkingPrintRequestId, router],
   );
 
   const finishCreating = useCallback(() => {

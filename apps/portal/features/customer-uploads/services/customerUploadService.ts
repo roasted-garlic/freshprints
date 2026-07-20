@@ -6,7 +6,8 @@ import {
   CUSTOMER_UPLOAD_MAX_CONCURRENT_FINALIZE,
   CUSTOMER_UPLOAD_MAX_FILES_PER_BATCH,
   CUSTOMER_UPLOAD_MAX_SINGLE_IMAGE_BYTES,
-  CUSTOMER_UPLOAD_MAX_ZIP_COMPRESSED_BYTES,
+  CUSTOMER_UPLOAD_MAX_ZIP_BYTES_CEILING,
+  computeCustomerUploadMaxZipBytes,
 } from '@fresh-prints/shared/constants/customerUpload/customerUploadLimits.constants';
 import { CUSTOMER_UPLOAD_COLLECTIONS } from '@fresh-prints/shared/constants/customerUpload/customerUploadCollections.constants';
 import type {
@@ -17,6 +18,10 @@ import type {
   ConfirmCustomerUploadsForDonationRequest,
   ConfirmCustomerUploadsForDonationResponse,
 } from '@fresh-prints/shared/types/customerUpload/confirmCustomerUploadDonate.types';
+import type {
+  GetCustomerUploadDailyQuotaRequest,
+  GetCustomerUploadDailyQuotaResponse,
+} from '@fresh-prints/shared/types/customerUpload/customerUploadDailyQuota.types';
 import {
   CUSTOMER_UPLOAD_DONATE_TERMS_VERSION,
   CUSTOMER_UPLOAD_TERMS_VERSION,
@@ -108,6 +113,8 @@ export interface CustomerUploadDocSummary {
   wasUpscaled: boolean | null;
   ownershipConfirmed: boolean;
   catalogUseAcknowledged: boolean;
+  /** Set when this upload was copied from an Assisted Creation approved proof. */
+  assistedCreationRequestId: string | null;
 }
 
 export interface CustomerUploadLiveProgress {
@@ -149,22 +156,42 @@ function isZipFile(file: File): boolean {
 
 const FINALIZE_CALLABLE_TIMEOUT_MS = 540_000;
 
+export type CustomerUploadSizeLimits = {
+  maxSingleImageBytes: number;
+  maxZipBytes: number;
+};
+
+export function defaultCustomerUploadSizeLimits(
+  _purpose: CustomerUploadPurpose = 'print_request',
+): CustomerUploadSizeLimits {
+  return {
+    maxSingleImageBytes: CUSTOMER_UPLOAD_MAX_SINGLE_IMAGE_BYTES,
+    maxZipBytes: computeCustomerUploadMaxZipBytes(),
+  };
+}
+
 export const customerUploadService = {
   maxFilesPerBatch: CUSTOMER_UPLOAD_MAX_FILES_PER_BATCH,
   maxConcurrentFinalize: CUSTOMER_UPLOAD_MAX_CONCURRENT_FINALIZE,
   termsVersion: CUSTOMER_UPLOAD_TERMS_VERSION,
   donateTermsVersion: CUSTOMER_UPLOAD_DONATE_TERMS_VERSION,
 
-  classifyFiles(files: File[]): { images: File[]; zips: File[]; rejected: string[] } {
+  classifyFiles(
+    files: File[],
+    sizeLimits?: Partial<CustomerUploadSizeLimits>,
+  ): { images: File[]; zips: File[]; rejected: string[] } {
+    const maxSingleImageBytes =
+      sizeLimits?.maxSingleImageBytes ?? CUSTOMER_UPLOAD_MAX_SINGLE_IMAGE_BYTES;
+    const maxZipBytes = sizeLimits?.maxZipBytes ?? CUSTOMER_UPLOAD_MAX_ZIP_BYTES_CEILING;
     const images: File[] = [];
     const zips: File[] = [];
     const rejected: string[] = [];
 
     for (const file of files) {
       if (isZipFile(file) && file.name.toLowerCase().endsWith('.zip')) {
-        if (file.size > CUSTOMER_UPLOAD_MAX_ZIP_COMPRESSED_BYTES) {
+        if (file.size > maxZipBytes) {
           rejected.push(
-            `${file.name}: ZIP exceeds the ${formatFileSize(CUSTOMER_UPLOAD_MAX_ZIP_COMPRESSED_BYTES)} size limit.`,
+            `${file.name}: ZIP exceeds the ${formatFileSize(maxZipBytes)} size limit.`,
           );
           continue;
         }
@@ -173,9 +200,9 @@ export const customerUploadService = {
       }
 
       if (isAllowedImageFile(file)) {
-        if (file.size > CUSTOMER_UPLOAD_MAX_SINGLE_IMAGE_BYTES) {
+        if (file.size > maxSingleImageBytes) {
           rejected.push(
-            `${file.name}: image exceeds the ${formatFileSize(CUSTOMER_UPLOAD_MAX_SINGLE_IMAGE_BYTES)} size limit.`,
+            `${file.name}: image exceeds the ${formatFileSize(maxSingleImageBytes)} size limit.`,
           );
           continue;
         }
@@ -311,6 +338,21 @@ export const customerUploadService = {
     }
   },
 
+  async getDailyQuota(
+    purpose: CustomerUploadPurpose = 'print_request',
+  ): Promise<GetCustomerUploadDailyQuotaResponse> {
+    try {
+      const quotaCallable = httpsCallable<
+        GetCustomerUploadDailyQuotaRequest,
+        GetCustomerUploadDailyQuotaResponse
+      >(getPortalFunctions(), 'getCustomerUploadDailyQuota');
+      const response = await quotaCallable({ purpose });
+      return response.data;
+    } catch (error) {
+      throw new Error(portalAuthService.getCallableErrorMessage(error));
+    }
+  },
+
   async confirmAndAttach(
     input: ConfirmCustomerUploadsAndAttachToRequestRequest,
   ): Promise<ConfirmCustomerUploadsAndAttachToRequestResponse> {
@@ -378,6 +420,10 @@ export const customerUploadService = {
       wasUpscaled: typeof data.wasUpscaled === 'boolean' ? data.wasUpscaled : null,
       ownershipConfirmed: data.ownershipConfirmed === true,
       catalogUseAcknowledged: data.catalogUseAcknowledged === true,
+      assistedCreationRequestId:
+        typeof data.assistedCreationRequestId === 'string' && data.assistedCreationRequestId.trim()
+          ? data.assistedCreationRequestId.trim()
+          : null,
     };
   },
 
@@ -473,6 +519,11 @@ export const customerUploadService = {
           wasUpscaled: typeof data.wasUpscaled === 'boolean' ? data.wasUpscaled : null,
           ownershipConfirmed: data.ownershipConfirmed === true,
           catalogUseAcknowledged: data.catalogUseAcknowledged === true,
+          assistedCreationRequestId:
+            typeof data.assistedCreationRequestId === 'string' &&
+            data.assistedCreationRequestId.trim()
+              ? data.assistedCreationRequestId.trim()
+              : null,
         } satisfies CustomerUploadDocSummary;
       });
       onChange(uploads);

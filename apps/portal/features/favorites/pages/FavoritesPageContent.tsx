@@ -202,8 +202,11 @@ export function FavoritesPageContent() {
             return (
               <div key={design.id} role="listitem">
                 <CatalogSelectionCard
+                  canAddPrints={addDesignFlow.canAddPrints}
                   design={design}
                   disabled={addDesignFlow.addingDesignId === design.id}
+                  exhaustedHelperText={addDesignFlow.exhaustedHelperText}
+                  exhaustedStatusText={addDesignFlow.exhaustedStatusText}
                   isSelected={isSelected}
                   onAdd={addDesignFlow.addDesign}
                   onOpenDetails={setSelectedDesign}
@@ -218,9 +221,18 @@ export function FavoritesPageContent() {
       )}
 
       <CatalogDesignDetailsModal
+        canAddPrints={addDesignFlow.canAddPrints}
         design={selectedDesign}
+        exhaustedHelperText={addDesignFlow.exhaustedHelperText}
+        exhaustedStatusText={addDesignFlow.exhaustedStatusText}
         isAdding={
-          selectedDesign !== null && addDesignFlow.addingDesignId === selectedDesign.id
+          selectedDesign !== null &&
+          (addDesignFlow.addingDesignId === selectedDesign.id ||
+            addDesignFlow.isEnsuringWorkingRequest)
+        }
+        isInCurrentRequest={
+          selectedDesign !== null &&
+          (currentRequestAggregates.quantityByDesignId[selectedDesign.id] ?? 0) > 0
         }
         isOpen={selectedDesign !== null}
         onAddToRequest={addDesignFlow.addDesign}

@@ -159,6 +159,10 @@ export const permissionService = {
     return isOwner(user);
   },
 
+  canManageCustomerUploadQuotas(user: UserLike) {
+    return isOwner(user);
+  },
+
   /** Dev-only operational wipe; server also enforces owner + project allowlist. */
   canWipeOperationalTestData(user: UserLike) {
     return isOwner(user);

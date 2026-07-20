@@ -133,6 +133,23 @@ export function CopyIcon({ size }: PortalIconProps) {
   );
 }
 
+export function ShareIcon({ size }: PortalIconProps) {
+  return (
+    <IconSvg size={size}>
+      <circle cx="18" cy="5" fill="none" r="3" stroke="currentColor" strokeWidth="2" />
+      <circle cx="6" cy="12" fill="none" r="3" stroke="currentColor" strokeWidth="2" />
+      <circle cx="18" cy="19" fill="none" r="3" stroke="currentColor" strokeWidth="2" />
+      <path
+        d="M8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeWidth="2"
+      />
+    </IconSvg>
+  );
+}
+
 export function FilterIcon({ size }: PortalIconProps) {
   return (
     <IconSvg size={size}>

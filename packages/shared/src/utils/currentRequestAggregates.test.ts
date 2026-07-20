@@ -190,6 +190,38 @@ describe("assessCurrentRequestItemAttention", () => {
     );
   });
 
+  it("does not flag optimal DPI catalog items with valid size", () => {
+    const optimal = assessCurrentRequestItemAttention(
+      item({
+        id: "ok",
+        designId: "x",
+        sourceType: "catalog_design",
+        printWidthInches: 10,
+        printHeightInches: 10,
+        pixelWidth: 3000,
+        pixelHeight: 3000,
+      }),
+    );
+    assert.deepEqual(optimal, []);
+  });
+
+  it("never emits soft dpi_warning for Stash attention (queueable soft DPI is not attention)", () => {
+    // Over approved-max used to be able to land in “good” quality while !canSave —
+    // chrome must use dpi_below_minimum (or nothing), never soft dpi_warning.
+    const overApprovedMax = assessCurrentRequestItemAttention(
+      item({
+        id: "soft-path",
+        designId: "x",
+        sourceType: "catalog_design",
+        printWidthInches: 4,
+        printHeightInches: 4,
+        pixelWidth: 1000,
+        pixelHeight: 1000,
+      }),
+    );
+    assert.equal(overApprovedMax.includes("dpi_warning"), false);
+  });
+
   it("does not throw when tiny pixel dims would round approved max to 0", () => {
     assert.doesNotThrow(() => {
       assessCurrentRequestItemAttention(

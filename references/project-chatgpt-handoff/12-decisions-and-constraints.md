@@ -24,11 +24,13 @@
 | ADR | Summary |
 |-----|---------|
 | ADR-FP-071 | **One working print request** per Portal customer |
+| ADR-FP-103 | Portal add-to-show **cutoff hours** before show start (Studio Show Queue setting; Functions enforce; Studio staff exempt) |
 | ADR-FP-066 | Customers add to shows via callables only; single show; full request; no override/re-queue |
 | ADR-FP-065 | Shared `@fresh-prints/show-picker` |
 | ADR-FP-064 | Production timer drives customer Printing tab |
 | ADR-FP-075 | Standard item saves require **≥ 200 effective DPI**; 200–299 warn; ≥300 no warn |
 | ADR-FP-030 | `requestCount` / `lastRequestedAt` are lightweight metadata only |
+| — | Portal default catalog browse sorts **`createdAt` desc** (Studio-newest); Popular / Most Liked / Recently Requested keep metric sorts |
 
 ## Customer uploads (Phase 8 fast-follow)
 

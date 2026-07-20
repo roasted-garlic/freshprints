@@ -80,6 +80,19 @@ export type CustomerUploadProcessingResult =
 
 export interface ProcessCustomerUploadImageOptions {
   onStage?: (stage: CustomerUploadTechnicalProgressStage) => void | Promise<void>;
+  /**
+   * Staff-provided Assisted proofs: skip transparency / “good image” rejection gates.
+   * Still decodes, sizes, and builds production/preview/thumbnail derivatives.
+   * Also accepts JPEG (converted to PNG) because Assisted proofs allow JPEG.
+   */
+  skipCustomerQualityGates?: boolean;
+  /**
+   * Legacy fast path: skip trim + upscale; reuse PNG/WebP source as production.
+   * Do **not** use for Assisted → Design Library / upload intake — that path must use
+   * `skipCustomerQualityGates` so approvedMaxInches matches normal finalize/upscale.
+   * Implies skipCustomerQualityGates.
+   */
+  assistedProofFastIngest?: boolean;
 }
 
 function fail(
@@ -105,6 +118,19 @@ function detectFormat(metadata: Metadata): CustomerUploadSourceFormat | null {
   }
   if (metadata.format === "webp") {
     return "webp";
+  }
+  return null;
+}
+
+function detectFormatAllowingJpeg(
+  metadata: Metadata,
+): CustomerUploadSourceFormat | "jpeg" | null {
+  const base = detectFormat(metadata);
+  if (base) {
+    return base;
+  }
+  if (metadata.format === "jpeg" || metadata.format === "jpg") {
+    return "jpeg";
   }
   return null;
 }
@@ -346,6 +372,9 @@ export async function processCustomerUploadImageBytes(
     );
   }
 
+  const assistedFast = Boolean(options.assistedProofFastIngest);
+  const skipQualityGates = Boolean(options.skipCustomerQualityGates) || assistedFast;
+
   await reportStage(options.onStage, "checking_format");
 
   let metadata: Metadata;
@@ -355,9 +384,16 @@ export async function processCustomerUploadImageBytes(
     return fail("could_not_decode", "Could not decode image.");
   }
 
-  const sourceFormat = detectFormat(metadata);
-  if (!sourceFormat) {
-    return fail("unsupported_format", "Only transparent PNG and static WebP images are supported.");
+  const detected = skipQualityGates
+    ? detectFormatAllowingJpeg(metadata)
+    : detectFormat(metadata);
+  if (!detected) {
+    return fail(
+      "unsupported_format",
+      skipQualityGates
+        ? "Only JPEG, PNG, and static WebP images are supported."
+        : "Only transparent PNG and static WebP images are supported.",
+    );
   }
 
   if (isAnimated(metadata)) {
@@ -378,6 +414,103 @@ export async function processCustomerUploadImageBytes(
     return fail("image_exceeds_limits", "Image dimensions exceed the allowed limits.");
   }
 
+  // JPEG (staff proof path) is normalized to PNG; customer-upload sourceFormat stays png|webp.
+  const sourceFormat: CustomerUploadSourceFormat = detected === "jpeg" ? "png" : detected;
+
+  // Assisted ingest: skip transparency / trim / upscale. Copy-friendly production when PNG/WebP.
+  if (assistedFast) {
+    let productionPng: Buffer = sourceBytes;
+    let productionWidth = sourceWidthPx;
+    let productionHeight = sourceHeightPx;
+    let productionReusedSource = detected === "png" || detected === "webp";
+
+    if (detected === "jpeg") {
+      await reportStage(options.onStage, "converting_format");
+      try {
+        productionPng = await getSharp()(sourceBytes, { failOn: "error" })
+          .ensureAlpha()
+          .png()
+          .toBuffer();
+      } catch {
+        return fail("processing_failed", "Image processing failed.");
+      }
+      const normalizedMeta = await getSharp()(productionPng, { failOn: "error" }).metadata();
+      productionWidth = normalizedMeta.width ?? sourceWidthPx;
+      productionHeight = normalizedMeta.height ?? sourceHeightPx;
+      productionReusedSource = false;
+    }
+
+    await reportStage(options.onStage, "checking_print_size");
+    const assessmentResult = assessPrintSizeCapability(productionWidth, productionHeight);
+    if (!assessmentResult.success) {
+      return fail("image_exceeds_limits", assessmentResult.error);
+    }
+    const printFields = buildImportPrintSizeCreateFields({
+      pixelWidth: productionWidth,
+      pixelHeight: productionHeight,
+      assessment:
+        assessmentResult.assessment.acceptanceLevel === "reject"
+          ? { ...assessmentResult.assessment, acceptanceLevel: "accept" }
+          : assessmentResult.assessment,
+    });
+    if ("error" in printFields) {
+      return fail("processing_failed", printFields.error);
+    }
+
+    const sizingMeta = buildImageQualitySizingMetadata(productionWidth, productionHeight, {
+      wasUpscaled: false,
+      upscalePassCount: 0,
+      upscaleFactor: 1,
+    });
+
+    await reportStage(options.onStage, "creating_previews");
+    let previewWebp: Buffer;
+    let thumbnailWebp: Buffer;
+    try {
+      [previewWebp, thumbnailWebp] = await Promise.all([
+        encodeDerivative(
+          productionPng,
+          PREVIEW_MAX_WIDTH_PX,
+          PREVIEW_MAX_HEIGHT_PX,
+          PREVIEW_WEBP_QUALITY,
+        ),
+        encodeDerivative(
+          productionPng,
+          THUMBNAIL_MAX_WIDTH_PX,
+          THUMBNAIL_MAX_HEIGHT_PX,
+          THUMBNAIL_WEBP_QUALITY,
+        ),
+      ]);
+    } catch {
+      return fail("processing_failed", "Could not generate image previews.");
+    }
+
+    return {
+      ok: true,
+      sourceFormat,
+      sourceWidthPx,
+      sourceHeightPx,
+      widthPx: productionWidth,
+      heightPx: productionHeight,
+      wasUpscaled: false,
+      wasTrimmed: false,
+      upscaleFactor: sizingMeta.upscaleFactor,
+      upscalePassCount: sizingMeta.upscalePassCount,
+      approvedMaxPrintWidthInches: sizingMeta.approvedMaxPrintWidthInches,
+      approvedMaxPrintHeightInches: sizingMeta.approvedMaxPrintHeightInches,
+      sizingPolicyVersion: sizingMeta.sizingPolicyVersion,
+      productionReusedSource,
+      transparencyPassed: true,
+      transparentPixelRatio: 0,
+      productionPng,
+      previewWebp,
+      thumbnailWebp,
+      printWidthInches: printFields.printWidthInches,
+      printHeightInches: printFields.printHeightInches,
+      effectiveDpi: printFields.effectiveDpi,
+    };
+  }
+
   await reportStage(options.onStage, "checking_transparency");
 
   const hasAlphaMeta = Boolean(metadata.hasAlpha);
@@ -390,7 +523,7 @@ export async function processCustomerUploadImageBytes(
   });
 
   // Fast path: sample alpha on a downscaled copy (avoids full-resolution raw decode).
-  if (hasAlphaMeta) {
+  if (hasAlphaMeta && !skipQualityGates) {
     try {
       const sample = await countTransparentPixelsSampled(
         sourceBytes,
@@ -409,7 +542,7 @@ export async function processCustomerUploadImageBytes(
   }
 
   // Only run the expensive full trim when sampling did not already prove transparency.
-  if (!transparency.passed) {
+  if (!transparency.passed && !skipQualityGates) {
     await reportStage(options.onStage, "trimming");
     try {
       trimmedProbe = await trimTransparentEdges(sourceBytes);
@@ -436,8 +569,16 @@ export async function processCustomerUploadImageBytes(
     });
   }
 
-  if (!transparency.passed) {
+  if (!transparency.passed && !skipQualityGates) {
     return fail("background_not_transparent", "Background is not transparent.");
+  }
+
+  if (skipQualityGates && !transparency.passed) {
+    // Staff art may be opaque; treat as passed for persistence without failing the ingest.
+    transparency = {
+      passed: true,
+      transparentPixelRatio: transparency.transparentPixelRatio,
+    };
   }
 
   let productionBase: Buffer;
@@ -518,17 +659,20 @@ export async function processCustomerUploadImageBytes(
   if (!assessmentResult.success) {
     return fail("image_exceeds_limits", assessmentResult.error);
   }
-  if (assessmentResult.assessment.acceptanceLevel === "reject") {
+  if (assessmentResult.assessment.acceptanceLevel === "reject" && !skipQualityGates) {
     return fail(
       "image_exceeds_limits",
       "Image does not meet the minimum print quality requirements.",
     );
   }
 
-  const printFields = buildImportPrintSizeCreateFields({
+  let printFields = buildImportPrintSizeCreateFields({
     pixelWidth: upscaled.width,
     pixelHeight: upscaled.height,
-    assessment: assessmentResult.assessment,
+    assessment:
+      assessmentResult.assessment.acceptanceLevel === "reject" && skipQualityGates
+        ? { ...assessmentResult.assessment, acceptanceLevel: "accept" }
+        : assessmentResult.assessment,
   });
   if ("error" in printFields) {
     return fail("processing_failed", printFields.error);

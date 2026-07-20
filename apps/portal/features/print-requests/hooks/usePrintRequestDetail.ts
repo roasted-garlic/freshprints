@@ -1,10 +1,12 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { PrintRequest } from '@fresh-prints/shared/types/printRequest/printRequest.types';
 import type { PrintRequestItem } from '@fresh-prints/shared/types/printRequest/printRequest.types';
-import { sortPrintRequestItemsForDisplay } from '@fresh-prints/shared/utils/printRequestItemDisplayOrder';
+import { sumPrintRequestItemQuantities } from '@fresh-prints/shared/utils/portalShowQueueCapacity';
+import { clampItemQuantityToWorkingRequestMax } from '@fresh-prints/shared/utils/printRequestWorkingRequestMax';
+import { resolveDuplicateInsertBeforeSortOrder } from '@fresh-prints/shared/utils/printRequestItemDisplayOrder';
 import { formatPrintRequestItemSizeLabel } from '@fresh-prints/shared/utils/printRequestItemSizing';
 
 import { useAuth } from '../../auth/context/AuthContext';
@@ -12,14 +14,35 @@ import {
   portalPrintRequestService,
   printRequestItemHasCustomerUpload,
 } from '../services/portalPrintRequestService';
+import { usePortalPrintRequests } from '../context/PortalPrintRequestContext';
 import type { CustomerUploadDocSummary } from '../../customer-uploads/services/customerUploadService';
 import {
   isOptimisticPrintRequestItemId,
   OPTIMISTIC_PRINT_REQUEST_ITEM_ID_PREFIX,
 } from '../utils/optimisticPrintRequestItemId';
+import { sortWorkingCurrentRequestItems } from '../utils/sortWorkingCurrentRequestItems';
+
+function workingItemsSignature(items: PrintRequestItem[]): string {
+  return items
+    .map(
+      (item) =>
+        `${item.id}:${item.quantity}:${item.printWidthInches}x${item.printHeightInches}`,
+    )
+    .sort()
+    .join('|');
+}
 
 export function usePrintRequestDetail(printRequestId: string | undefined) {
   const { firebaseUser } = useAuth();
+  const {
+    isLoadingCurrentRequestItems,
+    patchWorkingItems,
+    pendingWorkingRequestId,
+    reloadWorkingItems,
+    workingItems,
+    workingRequest,
+    workingRequestLimit,
+  } = usePortalPrintRequests();
   const [printRequest, setPrintRequest] = useState<PrintRequest | null>(null);
   const [items, setItems] = useState<PrintRequestItem[]>([]);
   const [designSummaries, setDesignSummaries] = useState<
@@ -31,6 +54,13 @@ export function usePrintRequestDetail(printRequestId: string | undefined) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  /** Stable React keys across optimistic duplicate → real item id swap. */
+  const [itemClientKeyById, setItemClientKeyById] = useState<ReadonlyMap<string, string>>(
+    () => new Map(),
+  );
+  /** True while this detail page is (or was) the Current Request / Stash. */
+  const wasViewingWorkingRef = useRef(false);
+  const lastSyncedWorkingSignatureRef = useRef<string | null>(null);
 
   const reload = useCallback(async (options?: { silent?: boolean }) => {
     if (!printRequestId) {
@@ -58,7 +88,7 @@ export function usePrintRequestDetail(printRequestId: string | undefined) {
         portalPrintRequestService.getUploadSummariesForItems(nextItems),
       ]);
       setPrintRequest(nextRequest);
-      setItems(sortPrintRequestItemsForDisplay(nextItems));
+      setItems(sortWorkingCurrentRequestItems(nextItems));
       setDesignSummaries(nextSummaries);
       setUploadSummaries(nextUploadSummaries);
     } catch (loadError) {
@@ -71,8 +101,97 @@ export function usePrintRequestDetail(printRequestId: string | undefined) {
   }, [printRequestId]);
 
   useEffect(() => {
+    wasViewingWorkingRef.current = false;
+    lastSyncedWorkingSignatureRef.current = null;
+    setItemClientKeyById(new Map());
     void reload();
   }, [reload]);
+
+  useEffect(() => {
+    setItemClientKeyById((previous) => {
+      const liveIds = new Set(items.map((item) => item.id));
+      let changed = false;
+      const next = new Map(previous);
+      for (const itemId of next.keys()) {
+        if (!liveIds.has(itemId)) {
+          next.delete(itemId);
+          changed = true;
+        }
+      }
+      return changed ? next : previous;
+    });
+  }, [items]);
+
+  const getItemClientKey = useCallback(
+    (itemId: string) => itemClientKeyById.get(itemId) ?? itemId,
+    [itemClientKeyById],
+  );
+  const isViewingWorkingRequest = Boolean(
+    printRequestId &&
+      (workingRequest?.id === printRequestId || pendingWorkingRequestId === printRequestId),
+  );
+
+  const cartSignature = useMemo(
+    () => (isViewingWorkingRequest ? workingItemsSignature(workingItems) : null),
+    [isViewingWorkingRequest, workingItems],
+  );
+
+  // Keep detail items in sync with shared Stash (drawer clear / remove / qty).
+  // Apply workingItems locally so optimistic drawer patches show immediately —
+  // do not refetch here (server may still have the just-removed row).
+  useEffect(() => {
+    if (!printRequestId) {
+      return;
+    }
+
+    if (isViewingWorkingRequest) {
+      wasViewingWorkingRef.current = true;
+
+      if (cartSignature === null) {
+        return;
+      }
+
+      // Avoid clobbering a loaded detail with empty cart while Stash is still fetching.
+      if (
+        isLoadingCurrentRequestItems &&
+        cartSignature === '' &&
+        lastSyncedWorkingSignatureRef.current === null
+      ) {
+        return;
+      }
+
+      if (cartSignature === lastSyncedWorkingSignatureRef.current) {
+        return;
+      }
+
+      lastSyncedWorkingSignatureRef.current = cartSignature;
+      // Newest added first — same helper as Current Request drawer.
+      setItems(sortWorkingCurrentRequestItems(workingItems));
+      setPrintRequest((current) =>
+        current
+          ? {
+              ...current,
+              itemCount: workingItems.length,
+            }
+          : current,
+      );
+      return;
+    }
+
+    // Clear / queue removed this request from the working set while the page is open.
+    if (wasViewingWorkingRef.current) {
+      wasViewingWorkingRef.current = false;
+      lastSyncedWorkingSignatureRef.current = null;
+      void reload({ silent: true });
+    }
+  }, [
+    cartSignature,
+    isLoadingCurrentRequestItems,
+    isViewingWorkingRequest,
+    printRequestId,
+    reload,
+    workingItems,
+  ]);
 
   const addDesign = useCallback(
     async (designId: string, quantity = 1) => {
@@ -109,6 +228,45 @@ export function usePrintRequestDetail(printRequestId: string | undefined) {
         throw new Error('Wait for the duplicate to finish saving before editing.');
       }
 
+      const currentItem = items.find((item) => item.id === itemId);
+      const currentQuantity =
+        currentItem && Number.isFinite(currentItem.quantity) ? currentItem.quantity : 1;
+      const otherItemsPrintCount = sumPrintRequestItemQuantities(
+        items.filter((item) => item.id !== itemId),
+      );
+      const quantity =
+        workingRequestLimit.limit != null
+          ? clampItemQuantityToWorkingRequestMax({
+              requestedQuantity: input.quantity,
+              currentQuantity,
+              otherItemsPrintCount,
+              maxPerRequest: workingRequestLimit.limit,
+            })
+          : Math.max(1, Math.floor(input.quantity));
+
+      const sizeLabel = formatPrintRequestItemSizeLabel(
+        input.printWidthInches,
+        input.printHeightInches,
+      );
+      const applyLocalItemPatch = (currentItems: PrintRequestItem[]) =>
+        currentItems.map((item) =>
+          item.id === itemId
+            ? {
+                ...item,
+                quantity,
+                printWidthInches: input.printWidthInches,
+                printHeightInches: input.printHeightInches,
+                sizeLabel,
+              }
+            : item,
+        );
+
+      // Optimistic: cart aggregates + Cap A remaining update before the callable returns.
+      setItems(applyLocalItemPatch);
+      if (isViewingWorkingRequest) {
+        patchWorkingItems(applyLocalItemPatch);
+      }
+
       setIsSaving(true);
 
       try {
@@ -116,32 +274,30 @@ export function usePrintRequestDetail(printRequestId: string | undefined) {
           itemId,
           printRequestId,
           userId: firebaseUser.uid,
-          quantity: input.quantity,
+          quantity,
           printWidthInches: input.printWidthInches,
           printHeightInches: input.printHeightInches,
         });
-
-        setItems((currentItems) =>
-          currentItems.map((item) =>
-            item.id === itemId
-              ? {
-                  ...item,
-                  quantity: input.quantity,
-                  printWidthInches: input.printWidthInches,
-                  printHeightInches: input.printHeightInches,
-                  sizeLabel: formatPrintRequestItemSizeLabel(
-                    input.printWidthInches,
-                    input.printHeightInches,
-                  ),
-                }
-              : item,
-          ),
-        );
+      } catch (error) {
+        await reload({ silent: true });
+        if (isViewingWorkingRequest) {
+          await reloadWorkingItems({ silent: true });
+        }
+        throw error;
       } finally {
         setIsSaving(false);
       }
     },
-    [firebaseUser, printRequestId],
+    [
+      workingRequestLimit.limit,
+      firebaseUser,
+      isViewingWorkingRequest,
+      items,
+      patchWorkingItems,
+      printRequestId,
+      reload,
+      reloadWorkingItems,
+    ],
   );
 
   const duplicateItem = useCallback(
@@ -156,15 +312,40 @@ export function usePrintRequestDetail(printRequestId: string | undefined) {
       }
 
       const pendingId = `${OPTIMISTIC_PRINT_REQUEST_ITEM_ID_PREFIX}${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+      // Newest-first display: insert-before in ascending sort-space = visual right of source.
+      const insertOrder = resolveDuplicateInsertBeforeSortOrder({
+        sourceItemId: itemId,
+        items: items.map((item) => ({
+          id: item.id,
+          sortOrder: item.sortOrder,
+          createdAtMillis:
+            typeof item.createdAt?.toMillis === 'function' ? item.createdAt.toMillis() : 0,
+        })),
+      });
       const optimisticItem: PrintRequestItem = {
         ...sourceItem,
         id: pendingId,
-        sortOrder: (sourceItem.sortOrder ?? 0) + 0.5,
+        sortOrder: insertOrder.duplicateSortOrder,
       };
 
-      setItems((currentItems) =>
-        sortPrintRequestItemsForDisplay([...currentItems, optimisticItem]),
-      );
+      setItemClientKeyById((previous) => {
+        const next = new Map(previous);
+        next.set(pendingId, pendingId);
+        return next;
+      });
+
+      setItems((currentItems) => {
+        const withSourceAnchor =
+          insertOrder.sourceSortOrderUpdate !== undefined
+            ? currentItems.map((item) =>
+                item.id === itemId
+                  ? { ...item, sortOrder: insertOrder.sourceSortOrderUpdate }
+                  : item,
+              )
+            : currentItems;
+
+        return sortWorkingCurrentRequestItems([...withSourceAnchor, optimisticItem]);
+      });
       setPrintRequest((currentRequest) =>
         currentRequest
           ? {
@@ -191,8 +372,16 @@ export function usePrintRequestDetail(printRequestId: string | undefined) {
           customerUploadId: created.customerUploadId ?? sourceItem.customerUploadId,
         };
 
+        setItemClientKeyById((previous) => {
+          const next = new Map(previous);
+          const clientKey = next.get(pendingId) ?? pendingId;
+          next.delete(pendingId);
+          next.set(created.itemId, clientKey);
+          return next;
+        });
+
         setItems((currentItems) =>
-          sortPrintRequestItemsForDisplay(
+          sortWorkingCurrentRequestItems(
             currentItems.map((item) => (item.id === pendingId ? createdItem : item)),
           ),
         );
@@ -210,6 +399,11 @@ export function usePrintRequestDetail(printRequestId: string | undefined) {
           }
         }
       } catch (error) {
+        setItemClientKeyById((previous) => {
+          const next = new Map(previous);
+          next.delete(pendingId);
+          return next;
+        });
         setItems((currentItems) => currentItems.filter((item) => item.id !== pendingId));
         setPrintRequest((currentRequest) =>
           currentRequest
@@ -233,22 +427,40 @@ export function usePrintRequestDetail(printRequestId: string | undefined) {
         throw new Error('Unable to update item.');
       }
 
+      const currentItem = items.find((item) => item.id === itemId);
+      const currentQuantity =
+        currentItem && Number.isFinite(currentItem.quantity) ? currentItem.quantity : 1;
+      const otherItemsPrintCount = sumPrintRequestItemQuantities(
+        items.filter((item) => item.id !== itemId),
+      );
+      const nextQuantity =
+        workingRequestLimit.limit != null
+          ? clampItemQuantityToWorkingRequestMax({
+              requestedQuantity: quantity,
+              currentQuantity,
+              otherItemsPrintCount,
+              maxPerRequest: workingRequestLimit.limit,
+            })
+          : Math.max(1, Math.floor(quantity));
+
       setIsSaving(true);
       try {
         await portalPrintRequestService.updatePrintRequestItemQuantity({
           itemId,
           printRequestId,
-          quantity,
+          quantity: nextQuantity,
           userId: firebaseUser.uid,
         });
         setItems((currentItems) =>
-          currentItems.map((item) => (item.id === itemId ? { ...item, quantity } : item)),
+          currentItems.map((item) =>
+            item.id === itemId ? { ...item, quantity: nextQuantity } : item,
+          ),
         );
       } finally {
         setIsSaving(false);
       }
     },
-    [firebaseUser, printRequestId],
+    [workingRequestLimit.limit, firebaseUser, items, printRequestId],
   );
 
   const removeItem = useCallback(
@@ -301,6 +513,7 @@ export function usePrintRequestDetail(printRequestId: string | undefined) {
     addDesign,
     updateItem,
     duplicateItem,
+    getItemClientKey,
     updateItemQuantity,
     removeItem,
   };

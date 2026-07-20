@@ -245,7 +245,7 @@ export function EtsyResultsDashboard({
           <>
             <ol className="etsy-purchased-steps">
               <li>Download your PNG from Etsy (check your Etsy purchases or email).</li>
-              <li>Upload the file on the next screen. It attaches to Your Stash.</li>
+              <li>Upload the file on the next screen. It attaches to your Current Request.</li>
               <li>Review sizes and quantities before sending to a show.</li>
             </ol>
             <div className="etsy-purchased-actions">

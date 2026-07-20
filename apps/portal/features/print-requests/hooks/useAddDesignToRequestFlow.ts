@@ -5,23 +5,35 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { PrintRequest } from '@fresh-prints/shared/types/printRequest/printRequest.types';
 import type { PrintRequestItem } from '@fresh-prints/shared/types/printRequest/printRequest.types';
 import { resolveCatalogAddAction } from '@fresh-prints/shared/utils/currentRequestAggregates';
+import { sumPrintRequestItemQuantities } from '@fresh-prints/shared/utils/portalShowQueueCapacity';
+import { clampItemQuantityToWorkingRequestMax } from '@fresh-prints/shared/utils/printRequestWorkingRequestMax';
+import {
+  formatPrintRequestItemSizeLabel,
+  resolveInitialPrintRequestItemSize,
+} from '@fresh-prints/shared/utils/printRequestItemSizing';
 
 import { useAuth } from '../../auth/context/AuthContext';
 import type { CatalogDesign } from '../../catalog/types/catalog.types';
 import { usePortalToast } from '../../shared/context/PortalToastContext';
 import { usePortalPrintRequests } from '../context/PortalPrintRequestContext';
 import { portalPrintRequestService } from '../services/portalPrintRequestService';
+import { mapPortalPrintRequestCallableError } from '../utils/mapPortalPrintRequestCallableError';
 import { resolveAddDesignToRequestBranch } from '../utils/resolveAddDesignToRequestBranch';
 
 interface UseAddDesignToRequestFlowOptions {
   continuableRequests: PrintRequest[];
-  createPrintRequest: (
+  /** @deprecated Prefer context ensureWorkingPrintRequestId — kept for call-site compatibility. */
+  createPrintRequest?: (
     notes?: string,
     options?: { skipListReload?: boolean },
   ) => Promise<{ printRequestId: string }>;
   onBeforeNavigate?: () => void;
   /** Full request list + working items (use after creating a new request). */
-  refreshRequests: (options?: { silent?: boolean; printRequestId?: string }) => Promise<void>;
+  refreshRequests: (options?: {
+    silent?: boolean;
+    printRequestId?: string;
+    skipWorkingItems?: boolean;
+  }) => Promise<void>;
   /** Working-items-only sync for qty mutations (avoids full list flash). */
   reloadWorkingItems: (options?: { silent?: boolean; printRequestId?: string }) => Promise<void>;
 }
@@ -40,6 +52,35 @@ function toSeedDesignSummary(design: CatalogDesign) {
     printHeightInches: design.printHeightInches,
     updatedAtMs: design.updatedAtMs,
   };
+}
+
+function resolveOptimisticPrintSize(design: CatalogDesign): {
+  printWidthInches: number;
+  printHeightInches: number;
+  sizeLabel: string;
+} | null {
+  if (
+    !Number.isFinite(design.width) ||
+    design.width <= 1 ||
+    !Number.isFinite(design.height) ||
+    design.height <= 1
+  ) {
+    return null;
+  }
+  try {
+    const size = resolveInitialPrintRequestItemSize({
+      pixelWidth: design.width,
+      pixelHeight: design.height,
+      defaultPrintWidthInches: design.printWidthInches,
+    });
+    return {
+      printWidthInches: size.printWidthInches,
+      printHeightInches: size.printHeightInches,
+      sizeLabel: formatPrintRequestItemSizeLabel(size.printWidthInches, size.printHeightInches),
+    };
+  } catch {
+    return null;
+  }
 }
 
 function toActionLike(item: PrintRequestItem) {
@@ -86,15 +127,23 @@ function readPrimaryQuantity(items: PrintRequestItem[], designId: string): numbe
  */
 export function useAddDesignToRequestFlow({
   continuableRequests,
-  createPrintRequest,
+  createPrintRequest: _createPrintRequest,
   onBeforeNavigate,
   refreshRequests,
   reloadWorkingItems,
 }: UseAddDesignToRequestFlowOptions) {
   const { firebaseUser } = useAuth();
   const { showSuccess } = usePortalToast();
-  const { ensureDesignSummaries, patchWorkingItems, seedDesignSummary, workingItems } =
-    usePortalPrintRequests();
+  const {
+    ensureDesignSummaries,
+    ensureWorkingPrintRequestId,
+    isEnsuringWorkingRequest,
+    patchWorkingItems,
+    pendingWorkingRequestId,
+    seedDesignSummary,
+    workingItems,
+    workingRequestLimit,
+  } = usePortalPrintRequests();
   const [pendingDesign, setPendingDesign] = useState<CatalogDesign | null>(null);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
@@ -102,7 +151,7 @@ export function useAddDesignToRequestFlow({
   const adjustQuantityRef = useRef<(design: CatalogDesign, delta: 1 | -1) => void>(() => {});
 
   function announceDesignAdded(design: CatalogDesign) {
-    showSuccess(`Added “${design.title}” to Your Stash.`, {
+    showSuccess(`Added “${design.title}” to your Current Request.`, {
       action: {
         label: 'Undo',
         onClick: () => {
@@ -119,8 +168,6 @@ export function useAddDesignToRequestFlow({
   const qtyGenerationRef = useRef(new Map<string, number>());
   const flushTimersRef = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const flushingDesignIdsRef = useRef(new Set<string>());
-  /** Coalesce first-request creates so rapid taps share one create callable. */
-  const createRequestPromiseRef = useRef<Promise<string> | null>(null);
   /** Snapshot of working items for coalescing without waiting on React state. */
   const workingItemsSnapshotRef = useRef<PrintRequestItem[]>(workingItems);
 
@@ -131,7 +178,17 @@ export function useAddDesignToRequestFlow({
     }
   }, [workingItems]);
 
-  const isBusy = busyDesignId !== null;
+  const isBusy = busyDesignId !== null || isEnsuringWorkingRequest;
+
+  const resolveBranch = useCallback(() => {
+    const knownIds =
+      continuableRequests.length > 0
+        ? continuableRequests.map((request) => request.id)
+        : pendingWorkingRequestId
+          ? [pendingWorkingRequestId]
+          : [];
+    return resolveAddDesignToRequestBranch(knownIds);
+  }, [continuableRequests, pendingWorkingRequestId]);
 
   const resetTransientState = useCallback(() => {
     for (const timer of flushTimersRef.current.values()) {
@@ -141,7 +198,6 @@ export function useAddDesignToRequestFlow({
     desiredPrimaryQtyRef.current.clear();
     qtyGenerationRef.current.clear();
     flushingDesignIdsRef.current.clear();
-    createRequestPromiseRef.current = null;
     setBusyDesignId(null);
     setIsPickerOpen(false);
     setIsConfirmOpen(false);
@@ -151,21 +207,6 @@ export function useAddDesignToRequestFlow({
   const syncWorkingItems = useCallback(async () => {
     await reloadWorkingItems({ silent: true });
   }, [reloadWorkingItems]);
-
-  const ensureWorkingRequestId = useCallback(async (): Promise<string> => {
-    if (createRequestPromiseRef.current) {
-      return createRequestPromiseRef.current;
-    }
-
-    const createPromise = createPrintRequest(undefined, { skipListReload: true })
-      .then((created) => created.printRequestId)
-      .finally(() => {
-        createRequestPromiseRef.current = null;
-      });
-
-    createRequestPromiseRef.current = createPromise;
-    return createPromise;
-  }, [createPrintRequest]);
 
   const patchItemsAndSnapshot = useCallback(
     (updater: (items: PrintRequestItem[]) => PrintRequestItem[]) => {
@@ -185,6 +226,7 @@ export function useAddDesignToRequestFlow({
       printRequestId: string,
       userId: string,
       titleSnapshot?: string,
+      catalogDesign?: CatalogDesign,
     ) => {
       patchItemsAndSnapshot((items) => {
         if (nextQuantity < 1) {
@@ -203,6 +245,8 @@ export function useAddDesignToRequestFlow({
           toMillis: () => nowMs,
         } as PrintRequestItem['createdAt'];
 
+        const optimisticSize = catalogDesign ? resolveOptimisticPrintSize(catalogDesign) : null;
+
         const optimisticItem: PrintRequestItem = {
           id: `optimistic:${designId}`,
           printRequestId,
@@ -214,8 +258,16 @@ export function useAddDesignToRequestFlow({
           createdAt: optimisticStamp,
           updatedAt: optimisticStamp,
           ...(titleSnapshot?.trim() ? { titleSnapshot: titleSnapshot.trim() } : {}),
+          ...(optimisticSize
+            ? {
+                printWidthInches: optimisticSize.printWidthInches,
+                printHeightInches: optimisticSize.printHeightInches,
+                sizeLabel: optimisticSize.sizeLabel,
+              }
+            : {}),
         };
-        return [...items, optimisticItem];
+        // Newest first in the cart — prepend so B appears above A immediately.
+        return [optimisticItem, ...items];
       });
     },
     [patchItemsAndSnapshot],
@@ -270,7 +322,7 @@ export function useAddDesignToRequestFlow({
                   item.id === created.item.id ? { ...item, quantity: desired } : item,
                 );
               }
-              return [...withoutOptimistic, { ...created.item, quantity: desired }];
+              return [{ ...created.item, quantity: desired }, ...withoutOptimistic];
             });
             void ensureDesignSummaries?.([designId]);
           } else {
@@ -293,9 +345,7 @@ export function useAddDesignToRequestFlow({
       } catch (error: unknown) {
         if (qtyGenerationRef.current.get(designId) === generation) {
           desiredPrimaryQtyRef.current.delete(designId);
-          setActionError(
-            error instanceof Error ? error.message : 'Unable to update Your Stash quantity.',
-          );
+          setActionError(mapPortalPrintRequestCallableError(error).message);
           await syncWorkingItems();
         }
       } finally {
@@ -310,7 +360,11 @@ export function useAddDesignToRequestFlow({
         }
       }
     },
-    [ensureDesignSummaries, patchItemsAndSnapshot, syncWorkingItems],
+    [
+      ensureDesignSummaries,
+      patchItemsAndSnapshot,
+      syncWorkingItems,
+    ],
   );
 
   const scheduleQuantityFlush = useCallback(
@@ -362,6 +416,7 @@ export function useAddDesignToRequestFlow({
         input.printRequestId,
         input.userId,
         input.title ?? input.catalogDesign?.title,
+        input.catalogDesign,
       );
 
       if (input.announceAdd && wasAbsent && nextQuantity >= 1) {
@@ -370,7 +425,7 @@ export function useAddDesignToRequestFlow({
           announceDesignAdded(input.catalogDesign);
         } else {
           showSuccess(
-            title ? `Added “${title}” to Your Stash.` : 'Added to Your Stash.',
+            title ? `Added “${title}” to your Current Request.` : 'Added to your Current Request.',
           );
         }
       }
@@ -390,7 +445,15 @@ export function useAddDesignToRequestFlow({
     (design: CatalogDesign, delta: 1 | -1) => {
       setActionError(null);
 
-      const branch = resolveAddDesignToRequestBranch(continuableRequests.map((request) => request.id));
+      const branch = resolveBranch();
+
+      if (delta > 0 && !workingRequestLimit.canAddPrints) {
+        setActionError(
+          workingRequestLimit.exhaustedMessage ??
+            'This request is full. Add your Current Request to a show before adding more.',
+        );
+        return;
+      }
 
       if (delta < 0) {
         if (branch.kind === 'create') {
@@ -413,7 +476,7 @@ export function useAddDesignToRequestFlow({
           );
           const generation = (qtyGenerationRef.current.get(design.id) ?? 0) + 1;
           qtyGenerationRef.current.set(design.id, generation);
-          void ensureWorkingRequestId()
+          void ensureWorkingPrintRequestId()
             .then(async (printRequestId) => {
               patchItemsAndSnapshot((items) =>
                 items.map((item) =>
@@ -423,16 +486,15 @@ export function useAddDesignToRequestFlow({
                 ),
               );
               await flushDesiredQuantity(design.id, printRequestId, firebaseUser.uid, generation);
-              await refreshRequests({ silent: true, printRequestId });
+              // List only — cart already patched; item reload races wipe optimistic rows.
+              void refreshRequests({ silent: true, printRequestId, skipWorkingItems: true });
             })
             .catch((error: unknown) => {
               desiredPrimaryQtyRef.current.delete(design.id);
               patchItemsAndSnapshot((items) =>
                 items.filter((item) => !isCatalogDesignItem(item, design.id)),
               );
-              setActionError(
-                error instanceof Error ? error.message : 'Unable to update Your Stash.',
-              );
+              setActionError(mapPortalPrintRequestCallableError(error).message);
             });
           return;
         }
@@ -444,7 +506,7 @@ export function useAddDesignToRequestFlow({
         }
 
         if (!firebaseUser) {
-          setActionError('You must be signed in to update Your Stash.');
+          setActionError('You must be signed in to update your Current Request.');
           return;
         }
 
@@ -469,7 +531,7 @@ export function useAddDesignToRequestFlow({
 
       if (branch.kind === 'create') {
         if (!firebaseUser) {
-          setActionError('You must be signed in to update Your Stash.');
+          setActionError('You must be signed in to update your Current Request.');
           return;
         }
 
@@ -487,6 +549,7 @@ export function useAddDesignToRequestFlow({
           PENDING_WORKING_REQUEST_ID,
           firebaseUser.uid,
           design.title,
+          design,
         );
 
         if (wasAbsent) {
@@ -496,7 +559,7 @@ export function useAddDesignToRequestFlow({
         const generation = (qtyGenerationRef.current.get(design.id) ?? 0) + 1;
         qtyGenerationRef.current.set(design.id, generation);
 
-        void ensureWorkingRequestId()
+        void ensureWorkingPrintRequestId()
           .then(async (printRequestId) => {
             patchItemsAndSnapshot((items) =>
               items.map((item) =>
@@ -506,22 +569,22 @@ export function useAddDesignToRequestFlow({
               ),
             );
             await flushDesiredQuantity(design.id, printRequestId, firebaseUser.uid, generation);
-            await refreshRequests({ silent: true, printRequestId });
+            // List only — optimistic/real cart rows are already patched; a silent items
+            // reload here races concurrent first-adds and flashes highlight/drawer.
+            void refreshRequests({ silent: true, printRequestId, skipWorkingItems: true });
           })
           .catch((error: unknown) => {
             desiredPrimaryQtyRef.current.delete(design.id);
             patchItemsAndSnapshot((items) =>
               items.filter((item) => !isCatalogDesignItem(item, design.id)),
             );
-            setActionError(
-              error instanceof Error ? error.message : 'Unable to update Your Stash.',
-            );
+            setActionError(mapPortalPrintRequestCallableError(error).message);
           });
         return;
       }
 
       if (!firebaseUser) {
-        setActionError('You must be signed in to update Your Stash.');
+        setActionError('You must be signed in to update your Current Request.');
         return;
       }
 
@@ -540,16 +603,17 @@ export function useAddDesignToRequestFlow({
     },
     [
       applyDesiredPrimaryQuantity,
-      busyDesignId,
-      continuableRequests,
-      ensureWorkingRequestId,
+      ensureWorkingPrintRequestId,
       firebaseUser,
       flushDesiredQuantity,
       onBeforeNavigate,
       patchItemsAndSnapshot,
       queuePrimaryQuantity,
       refreshRequests,
+      resolveBranch,
       seedDesignSummary,
+      workingRequestLimit.canAddPrints,
+      workingRequestLimit.exhaustedMessage,
     ],
   );
 
@@ -574,19 +638,66 @@ export function useAddDesignToRequestFlow({
     (designId: string, quantity: number, options?: { title?: string; announce?: boolean }) => {
       setActionError(null);
 
-      const branch = resolveAddDesignToRequestBranch(continuableRequests.map((request) => request.id));
+      const branch = resolveBranch();
       if (branch.kind === 'create' || branch.kind === 'pick') {
         return;
       }
 
       if (!firebaseUser) {
-        setActionError('You must be signed in to update Your Stash.');
+        setActionError('You must be signed in to update your Current Request.');
+        return;
+      }
+
+      const floored = Math.floor(quantity);
+      if (!Number.isFinite(floored)) {
+        return;
+      }
+
+      // Typed 0 (or below) removes the design from Current Request.
+      if (floored < 1) {
+        if (floored === 0) {
+          queuePrimaryQuantity({
+            designId,
+            nextQuantity: 0,
+            printRequestId: branch.requestId,
+            userId: firebaseUser.uid,
+          });
+        }
+        return;
+      }
+
+      const requested = floored;
+      const snapshot = workingItemsSnapshotRef.current;
+      const current =
+        desiredPrimaryQtyRef.current.get(designId) ?? readPrimaryQuantity(snapshot, designId);
+      const primaryAction = resolveCatalogAddAction(snapshot.map(toActionLike), designId);
+      const primaryItemId = primaryAction.kind === 'increment' ? primaryAction.itemId : null;
+      const otherItemsPrintCount = sumPrintRequestItemQuantities(
+        primaryItemId ? snapshot.filter((item) => item.id !== primaryItemId) : snapshot,
+      );
+      const nextQuantity =
+        workingRequestLimit.limit != null
+          ? clampItemQuantityToWorkingRequestMax({
+              requestedQuantity: requested,
+              currentQuantity: Math.max(1, current),
+              otherItemsPrintCount,
+              maxPerRequest: workingRequestLimit.limit,
+            })
+          : requested;
+
+      if (nextQuantity === current) {
+        if (requested > current && !workingRequestLimit.canAddPrints) {
+          setActionError(
+            workingRequestLimit.exhaustedMessage ??
+              'This request is full. Add your Current Request to a show before adding more.',
+          );
+        }
         return;
       }
 
       queuePrimaryQuantity({
         designId,
-        nextQuantity: Math.max(1, Math.floor(quantity)),
+        nextQuantity,
         printRequestId: branch.requestId,
         userId: firebaseUser.uid,
         // Qty edits never toast; only true first-add paths may announce.
@@ -594,20 +705,27 @@ export function useAddDesignToRequestFlow({
         title: options?.title,
       });
     },
-    [continuableRequests, firebaseUser, queuePrimaryQuantity],
+    [
+      workingRequestLimit.canAddPrints,
+      workingRequestLimit.exhaustedMessage,
+      workingRequestLimit.limit,
+      firebaseUser,
+      queuePrimaryQuantity,
+      resolveBranch,
+    ],
   );
 
   const removeDesign = useCallback(
     (designId: string) => {
       setActionError(null);
 
-      const branch = resolveAddDesignToRequestBranch(continuableRequests.map((request) => request.id));
+      const branch = resolveBranch();
       if (branch.kind === 'create' || branch.kind === 'pick') {
         return;
       }
 
       if (!firebaseUser) {
-        setActionError('You must be signed in to update Your Stash.');
+        setActionError('You must be signed in to update your Current Request.');
         return;
       }
 
@@ -618,7 +736,7 @@ export function useAddDesignToRequestFlow({
         userId: firebaseUser.uid,
       });
     },
-    [continuableRequests, firebaseUser, queuePrimaryQuantity],
+    [firebaseUser, queuePrimaryQuantity, resolveBranch],
   );
 
   const closeConfirm = useCallback(() => {
@@ -663,12 +781,14 @@ export function useAddDesignToRequestFlow({
           designId: design.id,
           userId: firebaseUser.uid,
         })
-        .then(() => refreshRequests({ silent: true }))
+        .then(() => {
+          return refreshRequests({ silent: true });
+        })
         .then(() => {
           announceDesignAdded(design);
         })
         .catch((error: unknown) => {
-          setActionError(error instanceof Error ? error.message : 'Unable to add design to request.');
+          setActionError(mapPortalPrintRequestCallableError(error).message);
         })
         .finally(() => {
           setBusyDesignId(null);
@@ -683,15 +803,21 @@ export function useAddDesignToRequestFlow({
     addingDesignId: busyDesignId,
     addDesign,
     adjustQuantity,
+    /** False when the Current Request is full (no room below L). */
+    canAddPrints: workingRequestLimit.canAddPrints,
     closeConfirm,
     closePicker,
     confirmAddDesign,
     confirmMessage: pendingDesign
-      ? `Add “${pendingDesign.title}” to Your Stash?`
-      : 'Add this design to Your Stash?',
+      ? `Add “${pendingDesign.title}” to your Current Request?`
+      : 'Add this design to your Current Request?',
     confirmPickRequest,
+    exhaustedHelperText: workingRequestLimit.exhaustedHelperText,
+    exhaustedStatusText: workingRequestLimit.exhaustedStatusText,
     isAdding: isBusy,
     isConfirmOpen,
+    /** True while the shared working-request create is in flight (disable all Add buttons). */
+    isEnsuringWorkingRequest,
     isPickerOpen,
     pendingDesign,
     removeDesign,

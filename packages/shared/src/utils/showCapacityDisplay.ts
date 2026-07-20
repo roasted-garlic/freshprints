@@ -85,6 +85,32 @@ export function formatShowCapacitySlotLabel(capacity: ShowCapacityResult): strin
   return `${remaining} ${spotsWord} left · ${taken} of ${max} taken`;
 }
 
+/**
+ * Narrow-viewport capacity copy for show-picker slots (pairs with full label via CSS).
+ * Examples: `200 left · 0/200`, `Full · 200/200`, `14 over · 214/200`.
+ */
+export function formatShowCapacitySlotLabelCompact(capacity: ShowCapacityResult): string {
+  if (capacity.maxTotalQuantity === undefined) {
+    const taken = capacity.allocatedQuantity;
+    return taken === 0 ? "No limit" : `${taken} taken`;
+  }
+
+  const max = capacity.maxTotalQuantity;
+  const taken = capacity.allocatedQuantity;
+
+  if (capacity.isOverCapacity) {
+    const over = taken - max;
+    return `${over} over · ${taken}/${max}`;
+  }
+
+  if (capacity.isFull) {
+    return `Full · ${taken}/${max}`;
+  }
+
+  const remaining = Math.max(0, capacity.remainingQuantity ?? 0);
+  return `${remaining} left · ${taken}/${max}`;
+}
+
 export type DerivedShowStatusLabel =
   | "PRINTING"
   | "FULLY PRINTED"

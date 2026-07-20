@@ -1,6 +1,5 @@
 import {
   collection,
-  deleteDoc,
   deleteField,
   doc,
   getDoc,
@@ -8,7 +7,6 @@ import {
   orderBy,
   query,
   serverTimestamp,
-  setDoc,
   Timestamp,
   updateDoc,
   where,
@@ -16,6 +14,10 @@ import {
 } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 
+import type {
+  AddPortalCatalogDesignToPrintRequestRequest,
+  AddPortalCatalogDesignToPrintRequestResponse,
+} from '@fresh-prints/shared/types/printRequest/addPortalCatalogDesignToPrintRequest.types';
 import type {
   CreatePortalPrintRequestRequest,
   CreatePortalPrintRequestResponse,
@@ -31,7 +33,7 @@ import { resolveCatalogAddAction } from '@fresh-prints/shared/utils/currentReque
 
 import { getPortalDb, getPortalFunctions } from '../../../lib/firebase/client';
 import { resolveDesignDocumentTimestamps } from '../../firebase/utils/mapFirestoreTimestamp';
-import { portalAuthService } from '../../auth/services/authService';
+import { mapPortalPrintRequestCallableError } from '../utils/mapPortalPrintRequestCallableError';
 import { isOptimisticPrintRequestItemId } from '../utils/optimisticPrintRequestItemId';
 
 interface PrintRequestDocumentData extends DocumentData {
@@ -80,12 +82,14 @@ interface DesignDocumentData extends DocumentData {
 
 interface PortalShowAllocationRecord {
   printRequestId: string;
+  printRequestItemId: string;
   allocatedQuantity: number;
   status: ShowAllocationStatus;
 }
 
 interface ShowAllocationDocumentData extends DocumentData {
   printRequestId?: unknown;
+  printRequestItemId?: unknown;
   allocatedQuantity?: unknown;
   status?: unknown;
 }
@@ -103,6 +107,7 @@ function chunkValues<T>(values: T[], chunkSize: number): T[][] {
 function mapShowAllocationRecord(data: ShowAllocationDocumentData): PortalShowAllocationRecord {
   if (
     typeof data.printRequestId !== 'string' ||
+    typeof data.printRequestItemId !== 'string' ||
     typeof data.allocatedQuantity !== 'number' ||
     typeof data.status !== 'string'
   ) {
@@ -111,6 +116,7 @@ function mapShowAllocationRecord(data: ShowAllocationDocumentData): PortalShowAl
 
   return {
     printRequestId: data.printRequestId,
+    printRequestItemId: data.printRequestItemId,
     allocatedQuantity: data.allocatedQuantity,
     status: data.status as ShowAllocationStatus,
   };
@@ -241,7 +247,7 @@ export const portalPrintRequestService = {
       const response = await createCallable(input);
       return response.data;
     } catch (error) {
-      throw new Error(portalAuthService.getCallableErrorMessage(error));
+      throw mapPortalPrintRequestCallableError(error);
     }
   },
 
@@ -291,6 +297,25 @@ export const portalPrintRequestService = {
         return [];
       }
     });
+  },
+
+  async getPrintRequestItem(itemId: string): Promise<PrintRequestItem | null> {
+    const trimmed = itemId.trim();
+    if (!trimmed) {
+      return null;
+    }
+    const itemSnapshot = await getDoc(doc(getPortalDb(), 'printRequestItems', trimmed));
+    if (!itemSnapshot.exists()) {
+      return null;
+    }
+    try {
+      return mapPrintRequestItem(
+        itemSnapshot.id,
+        itemSnapshot.data() as PrintRequestItemDocumentData,
+      );
+    } catch {
+      return null;
+    }
   },
 
   async listPrintRequestItemsForRequests(printRequestIds: string[]): Promise<PrintRequestItem[]> {
@@ -433,6 +458,7 @@ export const portalPrintRequestService = {
   /**
    * Catalog browse add: create a new line, or increment the primary (earliest)
    * catalog-backed variant when the design is already on the request.
+   * New lines go through a callable so Cap A (daily designs) cannot be bypassed.
    */
   async addOrIncrementCatalogDesign(input: {
     printRequestId: string;
@@ -445,51 +471,46 @@ export const portalPrintRequestService = {
       throw new Error('Quantity must be at least 1.');
     }
 
-    const currentItems = await this.listPrintRequestItems(input.printRequestId);
-    const action = resolveCatalogAddAction(
-      currentItems.map((entry) => ({
-        id: entry.id,
-        designId: entry.designId,
-        customerUploadId: entry.customerUploadId,
-        sourceType: entry.sourceType,
-        quantity: entry.quantity,
-        createdAtMs:
-          entry.createdAt && typeof entry.createdAt.toMillis === 'function'
-            ? entry.createdAt.toMillis()
-            : 0,
-      })),
-      input.designId,
-    );
+    const callable = httpsCallable<
+      AddPortalCatalogDesignToPrintRequestRequest,
+      AddPortalCatalogDesignToPrintRequestResponse
+    >(getPortalFunctions(), 'addPortalCatalogDesignToPrintRequest');
 
-    if (action.kind === 'increment') {
-      const nextQuantity = action.nextQuantity + (delta - 1);
-      await this.updatePrintRequestItemQuantity({
-        itemId: action.itemId,
-        printRequestId: input.printRequestId,
-        quantity: nextQuantity,
-        userId: input.userId,
-      });
-      const items = await this.listPrintRequestItems(input.printRequestId);
-      const item = items.find((entry) => entry.id === action.itemId);
-      if (!item) {
-        throw new Error('Unable to update request item quantity.');
-      }
-      return { kind: 'incremented', item };
-    }
-
-    const item = await this.addPrintRequestItem({
+    const response = await callable({
       printRequestId: input.printRequestId,
       designId: input.designId,
-      quantity: delta,
-      userId: input.userId,
+      quantityDelta: delta,
     });
-    return { kind: 'created', item };
+
+    const result = response.data;
+    const item = await this.getPrintRequestItem(result.itemId);
+    if (!item) {
+      throw new Error('Unable to load the updated request item.');
+    }
+    return { kind: result.kind, item };
   },
 
   /**
-   * Decrease primary catalog variant qty by 1. Removes the primary line at qty 1.
-   * Duplicate size variants are left unchanged.
+   * @deprecated Portal catalog creates must use addOrIncrementCatalogDesign (callable).
+   * Kept for rare staff-adjacent tooling; customer rules no longer allow client create.
    */
+  async addPrintRequestItem(input: {
+    printRequestId: string;
+    designId: string;
+    quantity: number;
+    userId: string;
+    printWidthInches?: number;
+    printHeightInches?: number;
+    sortOrder?: number;
+  }): Promise<PrintRequestItem> {
+    const result = await this.addOrIncrementCatalogDesign({
+      printRequestId: input.printRequestId,
+      designId: input.designId,
+      userId: input.userId,
+      quantityDelta: input.quantity,
+    });
+    return result.item;
+  },
   async decrementPrimaryCatalogDesign(input: {
     printRequestId: string;
     designId: string;
@@ -509,7 +530,7 @@ export const portalPrintRequestService = {
     }));
     const action = resolveCatalogAddAction(likes, input.designId);
     if (action.kind !== 'increment') {
-      throw new Error('This design is not in Your Stash.');
+      throw new Error('This design is not in your Current Request.');
     }
 
     const primary = currentItems.find((entry) => entry.id === action.itemId);
@@ -560,7 +581,7 @@ export const portalPrintRequestService = {
     }));
     const action = resolveCatalogAddAction(likes, input.designId);
     if (action.kind !== 'increment') {
-      throw new Error('This design is not in Your Stash.');
+      throw new Error('This design is not in your Current Request.');
     }
 
     await this.updatePrintRequestItemQuantity({
@@ -600,72 +621,6 @@ export const portalPrintRequestService = {
     return { removedItemIds: toRemove.map((item) => item.id) };
   },
 
-  async addPrintRequestItem(input: {
-    printRequestId: string;
-    designId: string;
-    quantity: number;
-    userId: string;
-    printWidthInches?: number;
-    printHeightInches?: number;
-    sortOrder?: number;
-  }): Promise<PrintRequestItem> {
-    if (!Number.isFinite(input.quantity) || input.quantity < 1) {
-      throw new Error('Quantity must be at least 1.');
-    }
-
-    const [printRequest, design, currentItems] = await Promise.all([
-      this.getPrintRequest(input.printRequestId),
-      this.getReadyDesign(input.designId),
-      this.listPrintRequestItems(input.printRequestId),
-    ]);
-
-    if (!printRequest) {
-      throw new Error('Print request not found.');
-    }
-
-    if (printRequest.status !== 'draft' && printRequest.status !== 'editing') {
-      throw new Error('This print request can no longer be edited.');
-    }
-
-    const defaultSize = resolveInitialPrintRequestItemSize({
-      pixelWidth: design.width,
-      pixelHeight: design.height,
-      defaultPrintWidthInches: design.printWidthInches,
-    });
-    const printWidthInches = input.printWidthInches ?? defaultSize.printWidthInches;
-    const printHeightInches = input.printHeightInches ?? defaultSize.printHeightInches;
-
-    const itemRef = doc(collection(getPortalDb(), 'printRequestItems'));
-    const payload = {
-      id: itemRef.id,
-      printRequestId: input.printRequestId,
-      designId: design.id,
-      quantity: input.quantity,
-      printWidthInches,
-      printHeightInches,
-      sizeLabel: formatPrintRequestItemSizeLabel(printWidthInches, printHeightInches),
-      sortOrder: input.sortOrder ?? resolveNextSortOrder(currentItems),
-      status: 'pending' as const,
-      addedBy: input.userId,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    };
-
-    await setDoc(itemRef, payload);
-    await updateDoc(doc(getPortalDb(), 'printRequests', input.printRequestId), {
-      itemCount: printRequest.itemCount + 1,
-      updatedBy: input.userId,
-      updatedAt: serverTimestamp(),
-    });
-
-    const now = Timestamp.now();
-    return mapPrintRequestItem(itemRef.id, {
-      ...payload,
-      createdAt: now,
-      updatedAt: now,
-    });
-  },
-
   async addCustomerUploadPrintRequestItem(input: {
     printRequestId: string;
     customerUploadId: string;
@@ -676,65 +631,10 @@ export const portalPrintRequestService = {
     sortOrder?: number;
     titleSnapshot?: string;
   }): Promise<PrintRequestItem> {
-    if (!Number.isFinite(input.quantity) || input.quantity < 1) {
-      throw new Error('Quantity must be at least 1.');
-    }
-
-    const customerUploadId = input.customerUploadId.trim();
-    if (!customerUploadId) {
-      throw new Error('A customer upload is required.');
-    }
-
-    const [printRequest, currentItems] = await Promise.all([
-      this.getPrintRequest(input.printRequestId),
-      this.listPrintRequestItems(input.printRequestId),
-    ]);
-
-    if (!printRequest) {
-      throw new Error('Print request not found.');
-    }
-
-    if (printRequest.status !== 'draft' && printRequest.status !== 'editing') {
-      throw new Error('This print request can no longer be edited.');
-    }
-
-    const printWidthInches = input.printWidthInches;
-    const printHeightInches = input.printHeightInches;
-    const itemRef = doc(collection(getPortalDb(), 'printRequestItems'));
-    const payload = {
-      id: itemRef.id,
-      printRequestId: input.printRequestId,
-      sourceType: 'customer_upload' as const,
-      customerUploadId,
-      ...(typeof input.titleSnapshot === 'string' && input.titleSnapshot.trim()
-        ? { titleSnapshot: input.titleSnapshot.trim() }
-        : {}),
-      quantity: input.quantity,
-      ...(typeof printWidthInches === 'number' ? { printWidthInches } : {}),
-      ...(typeof printHeightInches === 'number' ? { printHeightInches } : {}),
-      ...(typeof printWidthInches === 'number' && typeof printHeightInches === 'number'
-        ? { sizeLabel: formatPrintRequestItemSizeLabel(printWidthInches, printHeightInches) }
-        : {}),
-      sortOrder: input.sortOrder ?? resolveNextSortOrder(currentItems),
-      status: 'pending' as const,
-      addedBy: input.userId,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    };
-
-    await setDoc(itemRef, payload);
-    await updateDoc(doc(getPortalDb(), 'printRequests', input.printRequestId), {
-      itemCount: printRequest.itemCount + 1,
-      updatedBy: input.userId,
-      updatedAt: serverTimestamp(),
-    });
-
-    const now = Timestamp.now();
-    return mapPrintRequestItem(itemRef.id, {
-      ...payload,
-      createdAt: now,
-      updatedAt: now,
-    });
+    void input;
+    throw new Error(
+      'Uploaded artwork must be added through the upload confirm flow (server-enforced limits).',
+    );
   },
 
   async updatePrintRequestItem(input: {
@@ -796,10 +696,27 @@ export const portalPrintRequestService = {
       );
     }
 
+    // Quantity changes charge/refund Cap A via callable; size-only updates stay client-side.
+    if (nextQuantity !== current.quantity) {
+      await this.updatePrintRequestItemQuantity({
+        itemId: input.itemId,
+        printRequestId: input.printRequestId,
+        quantity: nextQuantity,
+        userId: input.userId,
+      });
+    }
+
+    if (
+      nextWidth === current.printWidthInches &&
+      nextHeight === current.printHeightInches
+    ) {
+      return;
+    }
+
     // Item-only write (Studio parity). Do not bump parent printRequests here — customer
     // parent-update rules are stricter and were denying resize autosaves as permission-denied.
+    // Quantity is locked by rules for customers (Cap A callables own quantity changes).
     await updateDoc(doc(getPortalDb(), 'printRequestItems', input.itemId), {
-      quantity: nextQuantity,
       printWidthInches: nextWidth,
       printHeightInches: nextHeight,
       sizeLabel: formatPrintRequestItemSizeLabel(nextWidth, nextHeight),
@@ -938,42 +855,46 @@ export const portalPrintRequestService = {
     // Use parallel single-doc writes (not one writeBatch). Customer rules call get()/exists()
     // on the parent request, customer profile, and design per item; a multi-doc batch shares
     // one ~20 access budget and fails as "Missing or insufficient permissions."
-    await Promise.all([
-      ...quantityUpdates.map((update) =>
-        updateDoc(doc(db, 'printRequestItems', update.itemId), {
+    await Promise.all(
+      quantityUpdates.map((update) =>
+        this.updatePrintRequestItemQuantity({
+          itemId: update.itemId,
+          printRequestId: input.printRequestId,
           quantity: Math.floor(update.quantity),
-          printWidthInches: update.printWidthInches,
-          printHeightInches: update.printHeightInches,
-          sizeLabel: formatPrintRequestItemSizeLabel(update.printWidthInches, update.printHeightInches),
-          updatedAt: serverTimestamp(),
+          userId: input.userId,
         }),
       ),
-      ...itemCreates.map((create) => {
-        const itemRef = doc(collection(db, 'printRequestItems'));
-        return setDoc(itemRef, {
-          id: itemRef.id,
-          printRequestId: input.printRequestId,
-          designId: create.designId,
-          quantity: Math.floor(create.quantity),
-          printWidthInches: create.printWidthInches,
-          printHeightInches: create.printHeightInches,
-          sizeLabel: formatPrintRequestItemSizeLabel(create.printWidthInches, create.printHeightInches),
-          sortOrder: create.sortOrder,
-          status: 'pending' as const,
-          addedBy: input.userId,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        });
-      }),
-    ]);
+    );
 
-    await updateDoc(requestRef, {
-      ...(itemCreates.length > 0
-        ? { itemCount: printRequest.itemCount + itemCreates.length }
-        : {}),
-      updatedBy: input.userId,
-      updatedAt: serverTimestamp(),
-    });
+    // New lines must go through the Cap A callable (customer create is denied in rules).
+    for (const create of itemCreates) {
+      const callable = httpsCallable<
+        AddPortalCatalogDesignToPrintRequestRequest,
+        AddPortalCatalogDesignToPrintRequestResponse
+      >(getPortalFunctions(), 'addPortalCatalogDesignToPrintRequest');
+      await callable({
+        printRequestId: input.printRequestId,
+        designId: create.designId,
+        quantityDelta: create.quantity,
+        forceNewLine: true,
+        printWidthInches: create.printWidthInches,
+        printHeightInches: create.printHeightInches,
+        sortOrder: create.sortOrder,
+      });
+    }
+
+    if (itemCreates.length > 0) {
+      // itemCount is updated by the callable; refresh parent updatedAt for selection UX.
+      await updateDoc(requestRef, {
+        updatedBy: input.userId,
+        updatedAt: serverTimestamp(),
+      });
+    } else if (quantityUpdates.length > 0) {
+      await updateDoc(requestRef, {
+        updatedBy: input.userId,
+        updatedAt: serverTimestamp(),
+      });
+    }
   },
 
   async updatePrintRequestItemQuantity(input: {
@@ -982,11 +903,24 @@ export const portalPrintRequestService = {
     quantity: number;
     userId: string;
   }): Promise<void> {
-    await this.updatePrintRequestItem({
-      itemId: input.itemId,
+    if (isOptimisticPrintRequestItemId(input.itemId)) {
+      throw new Error('Wait for the duplicate to finish saving before editing.');
+    }
+
+    const quantity = Math.floor(input.quantity);
+    if (!Number.isFinite(quantity) || quantity < 1) {
+      throw new Error('Quantity must be at least 1.');
+    }
+
+    const callable = httpsCallable<
+      { printRequestId: string; itemId: string; quantity: number },
+      { itemId: string; printRequestId: string; quantity: number; charged: number; refunded: number }
+    >(getPortalFunctions(), 'updatePortalPrintRequestItemQuantity');
+
+    await callable({
       printRequestId: input.printRequestId,
-      userId: input.userId,
-      quantity: input.quantity,
+      itemId: input.itemId,
+      quantity,
     });
   },
 
@@ -995,28 +929,18 @@ export const portalPrintRequestService = {
     printRequestId: string;
     userId: string;
   }): Promise<void> {
-    const [printRequest, itemSnapshot] = await Promise.all([
-      this.getPrintRequest(input.printRequestId),
-      getDoc(doc(getPortalDb(), 'printRequestItems', input.itemId)),
-    ]);
-
-    if (!printRequest) {
-      throw new Error('Print request not found.');
+    if (isOptimisticPrintRequestItemId(input.itemId)) {
+      throw new Error('Wait for the duplicate to finish saving before removing.');
     }
 
-    if (printRequest.status !== 'draft' && printRequest.status !== 'editing') {
-      throw new Error('This print request can no longer be edited.');
-    }
+    const callable = httpsCallable<
+      { printRequestId: string; itemId: string },
+      { itemId: string; printRequestId: string; refunded: number; removed: boolean }
+    >(getPortalFunctions(), 'removePortalPrintRequestItem');
 
-    if (!itemSnapshot.exists()) {
-      return;
-    }
-
-    await deleteDoc(doc(getPortalDb(), 'printRequestItems', input.itemId));
-    await updateDoc(doc(getPortalDb(), 'printRequests', input.printRequestId), {
-      itemCount: Math.max(0, printRequest.itemCount - 1),
-      updatedBy: input.userId,
-      updatedAt: serverTimestamp(),
+    await callable({
+      printRequestId: input.printRequestId,
+      itemId: input.itemId,
     });
   },
 
@@ -1046,16 +970,18 @@ export const portalPrintRequestService = {
 
   async clearWorkingPrintRequest(printRequestId: string): Promise<{
     printRequestId: string;
+    status: 'draft' | 'editing';
     removedItemCount: number;
   }> {
     const callable = httpsCallable<
       { printRequestId: string },
-      { printRequestId: string; status: 'archived'; removedItemCount: number }
+      { printRequestId: string; status: 'draft' | 'editing'; removedItemCount: number }
     >(getPortalFunctions(), 'clearPortalWorkingPrintRequest');
 
     const result = await callable({ printRequestId });
     return {
       printRequestId: result.data.printRequestId,
+      status: result.data.status,
       removedItemCount: result.data.removedItemCount,
     };
   },

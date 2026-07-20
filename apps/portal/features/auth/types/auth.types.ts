@@ -13,11 +13,15 @@ export interface RegisterCredentials {
   password: string;
   displayName: string;
   username: string;
+  biddingAcknowledgmentAccepted: boolean;
+  biddingAcknowledgmentVersion: string;
 }
 
 export interface CompleteCustomerProfileInput {
   displayName: string;
   username: string;
+  biddingAcknowledgmentAccepted: boolean;
+  biddingAcknowledgmentVersion: string;
 }
 
 export interface CompleteCustomerProfileOptions {

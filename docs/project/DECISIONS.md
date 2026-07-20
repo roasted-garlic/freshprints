@@ -4,6 +4,359 @@
 
 ---
 
+### ADR-FP-105: Portal OG / social sharing meta
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-20 |
+| Status | accepted |
+| Related | Small Managed Items #11; `settings/portalSocialMeta` |
+
+**Decision**
+1. Per-design share URLs use `/share/design/{id}` with server `generateMetadata` (design title/description/image when Admin signing works; brand logo fallback).
+2. Non-design Portal URLs use owner-editable global OG title/description from Firestore `settings/portalSocialMeta` (Studio Settings Social sharing) plus a daily-rotated ready-library image.
+3. Cold catalog deep links (`?designId=`) must open the details modal after AuthGate / Strict Mode remount; clear in-flight deep-link guards on effect cleanup.
+
+**Consequences**
+- Callable `updatePortalSocialMetaSettings` is owner-only; client Firestore writes denied.
+- Live QA may use Cloudflare Tunnel to local Portal when App Hosting CLI backend binding is missing.
+
+---
+
+### ADR-FP-104: Portal account self-service + owner single-user hard delete
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-20 |
+| Status | accepted |
+| Related | Small Managed Items #7–#10; SECURITY.md Auth; Test Data wipe gates |
+| Target | Portal + Functions + Studio Test Data on fresh-prints-dev; production excluded |
+
+**Context**
+
+Customers need password reset, email change, and a way to request account removal. Owners need a thorough per-user wipe on the Test Data page (distinct from bulk operational wipe, which keeps Auth/`users`/`customers`/usernames).
+
+**Decision**
+
+1. **#7 Password reset:** Firebase `sendPasswordResetEmail` (neutral success copy). Optional signed-in change via reauth + `updatePassword`.
+2. **#8 Email change:** Password (or password+Google) accounts: `verifyBeforeUpdateEmail` after password reauth; then `syncPortalAccountEmail` copies Auth email → `users` + `customers` (Admin SDK; uniqueness checks). Google-only accounts: no in-app email change and no Sync-as-change-email UX — copy explains the sign-in email is tied to Google; least-resistance path is sign out → register a new account (optional: request deletion on the old account). Google unlink/relink deferred.
+3. **#9 Deletion request:** Customer callable creates `accountDeletionRequests/{uid}` + mirrors status on customer/user — **not** Auth delete.
+4. **#10 Owner delete user:** Studio Test Data modal (Staff/Customer tabs + search); callable `ownerDeleteUser` with phrase `DELETE USER`; same owner + `fresh-prints-dev` gates as wipe; hard-deletes Auth + identity + customer-owned operational graph + Storage prefixes for that uid; blocks self-delete and last active owner.
+
+**Consequences**
+
+- #9 and #10 are complementary: request vs owner hard purge.
+- Catalog designs are not globally deleted for a customer; customer uploads/assisted storage for that uid are.
+
+---
+
+### ADR-FP-103: Portal show-queue cutoff hours (Studio Show Queue setting)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-20 |
+| Status | accepted |
+| Related | Small Managed Items #5; ADR-FP-102 (queue rules unchanged); `settings/showQueue` |
+| Target | Portal + Functions + Studio Show Queue settings on fresh-prints-dev; production excluded |
+
+**Context**
+
+Customers were able to Add to Show until show start. Operations need a lead-time window (example: 5 hours — 8pm show closes adds at 3pm). The offset must be configurable in Studio on the Show Queue settings page, not hardcoded only to 5.
+
+**Decision**
+
+1. Persist `portalQueueCutoffHoursBeforeStart` on `settings/showQueue` (integer 1–72). Code default **5** when unset.
+2. **Portal only:** `listPortalAllocatableShows` marks shows past cutoff as not allocatable (still listed for calendar UX). `queuePortalPrintRequestToShow` rejects with `SHOW_QUEUE_CUTOFF` (re-checked in transaction).
+3. **Studio staff** allocation after cutoff remains allowed.
+4. Cutoff math: `scheduledStartAt − N hours` on absolute Timestamps. Display uses existing locale formatters; America/Chicago day buckets are unrelated.
+5. Portal Add-to-Show picker shows a **compact** countdown line on slots (`Add closes in …` / `Add cutoff passed` + CLOSED badge) without large banners; preserve capacity bar + scroll-to-progress.
+
+**Consequences**
+
+- Changing the Studio setting applies to all shows immediately (no per-show override in this phase).
+- Client clock skew may briefly disagree with server; server is authoritative.
+
+---
+
+### ADR-FP-102: One Portal print limit L — full request per show, no Cap A / remainder
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-19 |
+| Status | accepted |
+| Related | Supersedes Cap A half of ADR-FP-096; supersedes ADR-FP-100; supersedes remainder/choose-prints of ADR-FP-101 (preserves one-request↔one-show); ADR-FP-095 upload quotas unchanged |
+| Target | Portal + Functions + Studio Settings on fresh-prints-dev; production excluded |
+
+**Context**
+
+Dual Cap A (daily) + Cap B (per-show) with choose-prints and auto-remainder was too complex. Owner wants one limit: max prints on Current Request equals max prints per customer per show.
+
+**Decision**
+
+1. Sole enforced limit `L` = `settings/printRequestLimits.maxQuantityPerShowPerCustomer` (code default 20; QA may set 25 in Studio).
+2. Count = sum of `printRequestItems.quantity`. Enforce on all add / qty-up / duplicate / upload-attach / assisted paths via working-request max assert (Admin callables).
+3. `queuePortalPrintRequestToShow`: entire Continuable request → exactly one show atomically, or clean reject. No `selections`. No remainder request. Stale clients that send `selections` are **rejected** with soft-reload copy (never ignored).
+4. After successful queue: source request is `active`; Portal presents an empty Current Request (create on next add). Never auto-create a draft in the queue txn.
+5. One Portal print request per customer per show: reject if any non-canceled `showAllocations` already exist for that customer on the show.
+6. Cap A daily counters, charge/refund, `getPrintRequestDailyDesignQuota`, and Portal daily banner/gates are removed.
+7. **Settings write strategy (one release):** On owner save, mirror `L` into legacy `dailyDesignsAddedToRequestsLimit` for rollback compatibility. **Do not read or enforce** the legacy Cap A field. New code enforces only `L`.
+8. Signed-in clients may read `settings/printRequestLimits` (non-sensitive policy number) for Portal UX gates; writes remain Admin callable only.
+9. Upload quotas (ADR-FP-095) unchanged. Studio staff multi-show split tools unchanged.
+
+**Consequences**
+
+- Customers queue at most one full request per show under `L`.
+- Over-limit Continuable carts (e.g. built under old Cap A) can shrink/clear but cannot queue until `≤ L`.
+- Mid-deploy: soft-reload Portal with Functions; stale choose-prints clients get a clear reject.
+
+**Owner confirmation (2026-07-20)**
+
+- **Keep** one Continuable/queued Portal request per customer per show (Decision §5 / ADR-FP-102 uniqueness). Working well; do not change.
+- Optional follow-up **multi-request-under-L** is **won't do / keep current**.
+- Portal “spots used” / spots-exhausted callouts may remain as UX copy when `L` is exhausted; they do **not** imply relaxing uniqueness. Prior “Functions uniqueness vs callouts mismatch” note is **resolved** (callouts = print spots; uniqueness = one request per show — both intentional).
+
+---
+
+### ADR-FP-101: Portal Cap B — one request ↔ one show + auto remainder request
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-19 |
+| Status | superseded by ADR-FP-102 (remainder/choose-prints); one-request↔one-show carried forward |
+| Related | ADR-FP-096, ADR-FP-099 (superseded), ADR-FP-071, ADR-FP-102 |
+| Target | Portal + `queuePortalPrintRequestToShow` on fresh-prints-dev; production excluded |
+
+**Context**
+
+Owner rejects keeping unallocated remainder on the same Continuable request after a Cap B / capacity partial queue. Print request identity is tied to a show — one request must not span two shows.
+
+**Decision**
+
+1. `queuePortalPrintRequestToShow` accepts optional `selections`. Chosen qty finalizes the source request onto the selected show (`active`, fully allocated).
+2. Leftovers move to a new Continuable request for the same customer without Cap A re-charge.
+3. Portal navigates to the remainder request and prompts Add to show.
+4. Working-request max uses Cap A (daily); Cap B is enforced per show at queue.
+
+**Consequences**
+
+- Customers can build up to Cap A on one Current Request and split across shows via multiple one-show requests.
+- One-working-request invariant holds (only the remainder stays Continuable).
+- ADR-FP-099 (remainder on Current Request) and remove-first-only overflow are superseded.
+- **Superseded 2026-07-19 by ADR-FP-102:** no selections / remainder; sole limit `L`; one request per customer per show still required.
+
+---
+
+### ADR-FP-100: Contextual Cap A exhausted UX + block create when remaining is 0
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-18 |
+| Status | superseded by ADR-FP-102 |
+| Related | ADR-FP-096, ADR-FP-099, ADR-FP-102 |
+| Target | Portal + Cap A charge / create / queue callables on fresh-prints-dev; production excluded |
+
+**Context**
+
+Generic Cap A copy (“try again after midnight”) was wrong when the customer still had a full Current Request to queue to shows. Cap A is charged on add-to-request, not on queue.
+
+**Decision**
+
+1. Cap A exhausted copy is situation-aware: stash not queued → Add to show / split; partially queued → finish remainder on another show; empty stash → midnight / cannot create.
+
+2. Structured callable `details.code`: `DAILY_PRINT_LIMIT`, `SHOW_CUSTOMER_LIMIT`, `SHOW_CAPACITY` (+ optional `SHOW_ALLOCATION_BLOCKED`).
+3. Hard gate when Cap A remaining is 0: block create new working request and add/qty-up/duplicate; allow queue/split, remove, qty-down, browse.
+4. Server Cap A fallback message stays A3-safe (midnight); Portal rewrites with stash context when available.
+
+**Consequences**
+
+- Portal exposes shared Cap A remaining for disable gates across catalog, upload, assisted, and detail editors.
+- Soft deploy Cap A + create + queue Functions to `fresh-prints-dev` before owner QA.
+
+---
+
+### ADR-FP-099: Portal Cap B / capacity split keeps remainder on Current Request
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-18 |
+| Status | superseded by ADR-FP-101 |
+| Related | ADR-FP-096, ADR-FP-051 (Studio split reference only), ADR-FP-101 |
+| Target | Portal + queuePortalPrintRequestToShow / listPortalAllocatableShows on fresh-prints-dev; production excluded |
+
+**Context**
+
+Cap A (daily) and Cap B (per show per customer) make it common for a Current Request to exceed what one show can take (e.g. Cap A 50, Cap B 25, request has 50 prints). Hard-rejecting Cap B overflow forced customers to shrink the request. Studio has a multi-leg staff split flow; owner asked for the clearest Portal UX, not a Studio clone.
+
+**Decision**
+
+1. When Cap B remaining and/or show capacity cannot take the full unallocated remainder, Portal offers a split: choose prints/qty up to the allowed amount for this show.
+2. Remainder stays on the same Continuable request (draft/editing); status becomes active only when fully allocated.
+3. queuePortalPrintRequestToShow accepts optional selections; Cap B + capacity enforced on the batch server-side. listPortalAllocatableShows returns customerAllocatedQuantity.
+4. Bidding acknowledgment still required on each Add to show confirm. No staff override on Portal.
+
+**Consequences**
+
+- Primary acceptance: 50 prints / Cap B 25 queues 25 and keeps 25 on Current Request for another show.
+- Partial queue does not clear Stash; full queue still clears Continuable / Current Request.
+
+---
+
+### ADR-FP-098: Portal print-request item order — durable sortOrder + duplicate insert-right
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-18 |
+| Status | accepted |
+| Related | DATA_MODEL Print Request items; Studio duplicate insert-after |
+| Target | Portal + `duplicatePortalPrintRequestItem` on `fresh-prints-dev`; production excluded |
+
+**Context**
+
+Portal briefly sorted Current Request / detail items newest-first (`createdAt` desc). That placed new duplicates at the far left and fought the fractional `sortOrder` written by duplicate. Owner requires the copy immediately **to the right** of the source, and resize/qty/size edits must not reshuffle.
+
+**Decision**
+
+1. Portal Current Request **detail** and **cart** use shared `sortPrintRequestItemsNewestFirst` (highest `sortOrder` / newest `createdAt` first). Studio keeps ascending `sortPrintRequestItemsForDisplay`.
+2. Portal duplicate (callable + optimistic UI) uses `resolveDuplicateInsertBeforeSortOrder` so the copy lands **visually to the right** of the source under newest-first display (lower fractional `sortOrder`). Studio keeps insert-after with ascending display.
+3. Size/qty update paths must not write `sortOrder` or `createdAt`.
+4. New catalog/upload adds still append (highest `sortOrder`); newest-first presentation places them first without rewriting assign-on-add.
+
+**Consequences**
+
+- Portal detail and cart share last-added → first-added order.
+- Duplicate adjacency remains “to the right of source” on Portal via insert-before math.
+- Studio ascending + insert-after unchanged.
+- Redeploy `duplicatePortalPrintRequestItem` to `fresh-prints-dev` when insert helper changes.
+
+---
+
+### ADR-FP-097: Portal bidding acknowledgment (signup + Add to Show)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-18 |
+| Status | accepted |
+| Related | ADR-FP-049 (queue state), Portal show selection |
+| Target | Portal + Functions on `fresh-prints-dev`; production excluded |
+
+**Context**
+
+Customers need clear understanding that designs queued to a live show are public for bidding and not reserved. Owner requires acknowledgment before account creation and again before each queue-to-show.
+
+**Decision**
+
+1. **Signup:** After registration form submit (email or Google complete-profile), show acknowledgment modal with required checkbox. Cancel creates nothing. Only after confirm: Auth create (email) and/or `registerCustomer` with `biddingAcknowledgmentAccepted` + version. Persist `users/{uid}.portalBiddingAcknowledgments.signup`.
+2. **Add to Show:** Always require confirmation modal (even if signup ack exists). Callable `queuePortalPrintRequestToShow` rejects without accepted flag + known version. Persist binding ack on `printRequests.showQueueBiddingAcknowledgment` and `users.portalBiddingAcknowledgments.lastQueueToShow`.
+3. Shared version id `portal-bidding-ack-v3` (bumped from v2 when owner restored gang-sheet / funkyfreshprints.com exclusive-order note). Signup and Add to Show use distinct titles/body/checkbox strings plus shared exclusive-order paragraph linking `funkyfreshprints.com`. Unified wording covers singular and plural designs.
+
+**Consequences**
+
+- Signup ack is educational; queue ack is binding and re-required every queue.
+- No client writes to `users/{uid}` (Admin only).
+- Redeploy `registerCustomer` + `queuePortalPrintRequestToShow` to `fresh-prints-dev` when the version constant changes (server rejects unknown versions).
+
+---
+
+### ADR-FP-096: Print request daily print-count cap + per-show customer quantity cap
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-18 |
+| Status | superseded by ADR-FP-102 (Cap A removed; Cap B field retained as sole `L`) |
+| Related | ADR-FP-095, ADR-FP-102, Small Managed Items #3 |
+| Target | Repository + `fresh-prints-dev` Functions/rules; production excluded |
+
+**Context**
+
+Upload quotas do not stop flood → fill request → queue show → new request → repeat. Backlog #3 was only max qty per show per customer; owner expanded scope to also cap prints added to print requests per day.
+
+**Decision**
+
+1. Ship **both** caps under Studio Settings “Print request limits” (`settings/printRequestLimits`).
+2. **Cap A:** count by **print quantity** (`printRequestItems.quantity` sum), not by design/line. America/Chicago calendar day; default **20**. Charge on add (new item total qty), qty increase (delta), upload attach / assisted / duplicate / library. Refund on qty decrease (delta), item remove (item qty), and clear Current Request (sum of removed qty). Floor at 0. Enforce via Admin callables; customers cannot change quantity or delete items client-side.
+3. **Cap B:** on queue-to-show, existing non-canceled customer qty on that show + new request qty ≤ setting; default **20**.
+4. Firestore counter field remains `designsAddedCount` for compatibility; semantics are print count.
+
+**Consequences**
+
+- Cap A day key was America/Chicago; upload quotas historically used UTC — **upload quotas now also use America/Chicago** (ADR-FP-095 amendment 2026-07-20).
+- Soft deploy Functions + rules to `fresh-prints-dev` before manual QA.
+- After switching from line-based counters, wipe Cap A counters on `fresh-prints-dev` before re-test.
+
+---
+
+### ADR-FP-095: Customer upload daily quotas via Studio Settings
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-18 |
+| Status | accepted |
+| Related | ADR-FP-073, Small Managed Items #2 |
+| Target | Repository + `fresh-prints-dev` Functions/rules; production excluded |
+
+**Context**
+
+Print-request vs catalog-donation daily upload caps lived only in code constants. Owners needed lower request caps, higher donation caps, and live tuning without redeploying.
+
+**Decision**
+
+1. Code defaults: print-request **10** sessions / **20** images / **2** ZIPs per Central day; donation **400** / **1000** / **40**.
+2. Persist overrides in Firestore `settings/customerUploadQuotas`; missing doc → code defaults.
+3. Owner-only Studio Settings UI + callable `updateCustomerUploadQuotaSettings`; client write denied.
+4. `chargeDailyQuota` loads settings on each charge and enforces resolved limits.
+
+**Consequences**
+
+- Deploy update callable + quota-charging Functions (and rules for owner read) to `fresh-prints-dev` before live QA.
+- Byte-size / concurrent finalize limits unchanged; per-show qty + daily designs-added caps are ADR-FP-096.
+
+**Amendment (2026-07-19)**
+
+Customer-facing Portal UX no longer surfaces upload starts / ZIP day buckets. Functions `shouldChargeDailyQuota`:
+print-request charges **none** (Current Request `L` is the cap); donation charges **finalizeImage** only.
+Studio Settings still expose all six integers for ops / future use.
+
+**Amendment (2026-07-20)**
+
+1. Donate images/day day boundary is **America/Chicago** (CST/CDT midnight), matching Portal copy
+   `(resets at midnight CST)`. Upload Designs has **no** midnight/CST reset line (request-room only).
+2. ZIP byte max is a fixed **2 GB** ceiling for both Upload Designs and Donate (no longer
+   `min(2GB, images/day × 80MB)`). Storage rules ceiling unchanged.
+
+---
+
+### ADR-FP-094: Assisted approved proof → Current Request (private upload copy)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-18 |
+| Status | accepted |
+| Related | ADR-FP-073, ADR-FP-093, Small Managed Items #1 |
+| Target | Repository + `fresh-prints-dev` Functions; production excluded |
+
+**Context**
+
+After a customer approves an Assisted Creation proof, they could only download it for 14 days. There was no path into Current Request, and assisted proof Storage is purged after retention — so a print-ready copy must live outside assisted paths.
+
+**Decision**
+
+1. Portal CTA **Add to Request** beside **Download PNG** on the Overview Approved Design card (same wording as other add-to-request CTAs).
+2. Chrome cart pill / FAB aria / drawer title use **Current Request** (not “Your Stash”) so the CTA and chrome match.
+3. Callable `customerAddAssistedApprovedProofToPrintRequest` (owner customer only) **server-copies** proof bytes into `customer-uploads/{uid}/{uploadId}/…`, creates a ready `customerUploads` doc (`purpose: print_request`), and attaches a `customer_upload` print-request item (qty **1**, size from pixels) to the working request (lazy-create).
+4. Skip customer-upload PNG / transparency / “good image” rejection gates — artwork is staff-provided.
+5. Idempotent per assisted request via denormalized `printRequestIngest` on `assistedCreationRequests`.
+6. No new `sourceType`; no auto-attach on approve; working request only.
+7. **Residual (2026-07-18):** Before first Add to Request, Portal modal asks Design Library consent. **Allow** / **Don’t allow** both proceed with the add. Values reuse the print-upload / donate intake path: `catalogUseAcknowledged` + shared `buildCatalogIntakeConfirmationPatch` → always `catalogReviewStatus: pending_staff_review` (Studio custom-design intake). Do **not** invent a parallel consent field. No auto-publish to catalog.
+
+**Consequences**
+
+- Deploy the callable to `fresh-prints-dev` before Portal QA (redeploy when consent payload changes).
+- Copied upload assets survive assisted 14-day proof purge; idle upload purge rules still apply later.
+- Manual UI checkpoint required after implement.
+- Studio intake shows Assisted copies alongside uploads/donations; “Design Library permission” Allowed vs Declined mirrors upload checkbox.
+
+---
+
 ### ADR-FP-093: Assisted Creation approved proof download + 14-day full-res purge
 
 | Field | Value |
@@ -840,12 +1193,13 @@ Ecommerce-style one-open-request (ADR-FP-071) fills Studio Working with idle/emp
 1. Working triage chips: **Active** (default) / **Stale** / **Empty** / **All** — Active = `itemCount > 0` and `updatedAt` within 14 days.
 2. Soft-exclude `status: archived` from Studio list tabs.
 3. Client-side rail search on all Print Request tabs (name, id, customer fields).
-4. Portal **Clear request** → callable `clearPortalWorkingPrintRequest` deletes items and sets `archived`.
+4. Portal **Clear request** → callable `clearPortalWorkingPrintRequest` deletes items and sets `itemCount: 0`, **keeping** `draft`/`editing` so the next Add reuses the same open request (amended 2026-07-18; previously archived on clear).
 5. Owner/admin callable `archiveStaleWorkingPrintRequests` auto-archives **empty** working requests older than 14 days (`dryRun` supported). Stale carts with items stay filterable only.
 
 **Consequences**
 
 - Deploy Functions before Portal clear works in shared environments.
+- Empty open carts may linger in Studio Working **Empty** triage until stale archive or queue-to-show.
 - Optional Cloud Scheduler can invoke archive callable later with human approval.
 
 ---

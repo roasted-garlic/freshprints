@@ -46,6 +46,7 @@ export function useShowQueueSettings() {
     async (input: {
       defaultMaxTotalQuantity?: number;
       whatnotShowBaseUrl?: string;
+      portalQueueCutoffHoursBeforeStart?: number;
       gangSheetWidthInches?: number;
       gangSheetSideMarginInches?: number;
       gangSheetTopBottomMarginInches?: number;
