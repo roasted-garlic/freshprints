@@ -22,8 +22,8 @@ import {
 } from "./catalogTitleRules";
 
 describe("catalogTitleRules", () => {
-  it("uses prompt version v21", () => {
-    assert.equal(CATALOG_ENRICHMENT_PROMPT_VERSION, "catalog-enrich-v22");
+  it("uses prompt version v26", () => {
+    assert.equal(CATALOG_ENRICHMENT_PROMPT_VERSION, "catalog-enrich-v26");
   });
 
   it("keeps the JSON contract, OCR, canvas, and description rules in the trimmed prompt", () => {
@@ -358,7 +358,8 @@ describe("catalogTitleRules", () => {
         visibleText: ["Dee's Nuts"],
         artworkContainsText: true,
       }),
-      "Dee's Nuts Funny Phrase Humor",
+      // Style/mood tag words (funny, humor) must not be appended as supporting title words.
+      "Dee's Nuts Phrase",
     );
   });
 
@@ -382,44 +383,418 @@ describe("resolveLeanCatalogTitle", () => {
     );
   });
 
-  it("never derives an OCR fragment from the description (no description input at all)", () => {
-    // The lean resolver takes no description; a transcribed-quote description can no longer
-    // overwrite a good title.
+  it("keeps a good model title even when the description leads with a longer slogan", () => {
+    // Do not collapse mixed-content titles into an OCR fragment from the description.
     const title = resolveLeanCatalogTitle({
       candidateTitle: "Motherhood Skeleton Rock On",
       tags: ["motherhood"],
       uploadFileStem: "upload",
+      description:
+        "SOME DAYS I ROCK IT - SOME DAYS IT ROCKS ME - EITHER WAY WE'RE ROCKIN' / MOTHERHOOD. A skeleton throws a rock-on hand sign.",
     });
 
+    assert.equal(title, "Motherhood Skeleton Rock On");
     assert.ok(!/some days/i.test(title));
   });
 
-  it("falls back to tags (not the description) when the model title is generic", () => {
+  it("replaces style/tag-word titles with readable text from the description", () => {
+    assert.equal(
+      resolveLeanCatalogTitle({
+        candidateTitle: "Sarcastic Funny Attitude Statement Retro Distressed",
+        tags: ["sarcastic", "funny", "attitude", "statement", "retro", "distressed"],
+        uploadFileStem: "upload",
+        description:
+          '"Kinda Give A Damn Kinda Don\'t Care" in distressed lettering with decorative stars.',
+      }),
+      "Kinda Give A Damn Kinda Don't Care",
+    );
+  });
+
+  it("replaces partial tag-invented titles using description wording", () => {
+    assert.equal(
+      resolveLeanCatalogTitle({
+        candidateTitle: "Sarcastic Funny Attitude Dont Care Give",
+        tags: ["sarcastic", "funny", "attitude"],
+        uploadFileStem: "upload",
+        description:
+          "Kinda Give A Damn Kinda Don't Care. Distressed typography slogan on apparel.",
+      }),
+      "Kinda Give A Damn Kinda Don't Care",
+    );
+  });
+
+  it("prefers description wording over tags when the model title is generic", () => {
     assert.equal(
       resolveLeanCatalogTitle({
         candidateTitle: "Text",
         tags: ["cowgirl", "western"],
         uploadFileStem: "upload",
+        description: '"Western Cowgirl Sunset Ride" in bold script.',
       }),
-      "Cowgirl Western",
+      "Western Cowgirl Sunset Ride",
     );
   });
 
-  it("rejects a filename-like title and falls back to tags", () => {
+  it("rejects a filename-like title when description has no extractable readable wording", () => {
     const title = resolveLeanCatalogTitle({
       candidateTitle: "raw-upload-file",
       tags: ["floral"],
       uploadFileStem: "raw-upload-file",
+      description: "Floral highland cow wearing a leopard bow.",
     });
 
     assert.notEqual(title.toLowerCase(), "raw-upload-file");
-    assert.equal(title, "Floral");
+    // Visual-scene first sentences are not used as title wording (description-leakage harden).
+    assert.equal(title, "Artwork Design");
   });
 
-  it("falls back to Artwork Design when title and tags are unusable", () => {
+  it("never synthesizes a title by joining tags", () => {
+    assert.equal(
+      resolveLeanCatalogTitle({
+        candidateTitle: "Design",
+        tags: ["sarcastic", "funny", "attitude", "retro"],
+        uploadFileStem: "upload",
+      }),
+      "Artwork Design",
+    );
+  });
+
+  it("falls back to Artwork Design when title and description are unusable", () => {
     assert.equal(
       resolveLeanCatalogTitle({ candidateTitle: "Design", tags: [], uploadFileStem: "upload" }),
       "Artwork Design",
+    );
+  });
+
+  it("does not reduce a straight-apostrophe title to I", () => {
+    assert.equal(
+      resolveLeanCatalogTitle({
+        candidateTitle: "I",
+        tags: ["funny"],
+        uploadFileStem: "upload",
+        description: '"I\'m Fine The Rest of You Need Therapy" in bold lettering.',
+      }),
+      "I'm Fine The Rest Of You Need Therapy",
+    );
+  });
+
+  it("preserves a full straight-apostrophe model title", () => {
+    assert.equal(
+      resolveLeanCatalogTitle({
+        candidateTitle: "I'm Fine The Rest of You Need Therapy",
+        tags: ["funny"],
+        uploadFileStem: "upload",
+        description: '"I\'m Fine The Rest of You Need Therapy" in bold lettering.',
+      }),
+      "I'm Fine The Rest Of You Need Therapy",
+    );
+  });
+
+  it("preserves a full curly-apostrophe model title", () => {
+    const curly = "I\u2019m Fine The Rest of You Need Therapy";
+    assert.equal(
+      resolveLeanCatalogTitle({
+        candidateTitle: curly,
+        tags: ["funny"],
+        uploadFileStem: "upload",
+        description: `\u201C${curly}\u201D in bold lettering.`,
+      }),
+      "I\u2019m Fine The Rest Of You Need Therapy",
+    );
+  });
+
+  it("completes repeated-contraction titles from the description", () => {
+    assert.equal(
+      resolveLeanCatalogTitle({
+        candidateTitle: "I",
+        tags: ["funny"],
+        uploadFileStem: "upload",
+        description:
+          '"I\'m Not Arguing, I\'m Just Explaining Right" in bold stacked typography.',
+      }),
+      "I'm Not Arguing I'm Just Explaining Right",
+    );
+  });
+
+  it("completes a dominant-first-line title from the full readable phrase", () => {
+    assert.equal(
+      resolveLeanCatalogTitle({
+        candidateTitle: "Sarcasm",
+        tags: ["funny"],
+        uploadFileStem: "upload",
+        description: '"Sarcasm Just One of My Many Talents" in bold text.',
+      }),
+      "Sarcasm Just One Of My Many Talents",
+    );
+  });
+
+  it("joins separately quoted headline + continuation lines (Sarcasm multi-line narration)", () => {
+    // Gemini often narrates each line as its own quote; first-quote-only extraction
+    // previously left title "Sarcasm" looking complete.
+    assert.equal(
+      resolveLeanCatalogTitle({
+        candidateTitle: "Sarcasm",
+        tags: ["funny", "attitude"],
+        uploadFileStem: "upload",
+        description:
+          'Large bold text reads "Sarcasm". Below it, in smaller distressed lettering, it says "Just one of my many talents." Decorative stars surround the wording.',
+      }),
+      "Sarcasm Just One Of My Many Talents",
+    );
+  });
+
+  it("completes Sarcasm when only the headline is quoted and continuation is prose", () => {
+    assert.equal(
+      resolveLeanCatalogTitle({
+        candidateTitle: "Sarcasm",
+        tags: ["funny"],
+        uploadFileStem: "upload",
+        description:
+          'Large bold text reads "Sarcasm". Below it, in smaller distressed lettering, it says Just one of my many talents. Decorative stars surround the wording.',
+      }),
+      "Sarcasm Just One Of My Many Talents",
+    );
+  });
+
+  it("completes Sarcasm from slash-joined transcription without quotes", () => {
+    assert.equal(
+      resolveLeanCatalogTitle({
+        candidateTitle: "Sarcasm",
+        tags: ["funny"],
+        uploadFileStem: "upload",
+        description:
+          "Sarcasm / Just one of my many talents in bold stacked typography with decorative stars.",
+      }),
+      "Sarcasm Just One Of My Many Talents",
+    );
+  });
+
+  it("completes Sarcasm from a single full-phrase quote", () => {
+    assert.equal(
+      resolveLeanCatalogTitle({
+        candidateTitle: "Sarcasm",
+        tags: ["funny"],
+        uploadFileStem: "upload",
+        description: 'The design reads "Sarcasm Just one of my many talents" in two lines.',
+      }),
+      "Sarcasm Just One Of My Many Talents",
+    );
+  });
+
+  it("completes Sarcasm from unquoted stacked-line narration", () => {
+    assert.equal(
+      resolveLeanCatalogTitle({
+        candidateTitle: "Sarcasm",
+        tags: ["funny"],
+        uploadFileStem: "upload",
+        description:
+          "Sarcasm appears above a second line that reads Just one of my many talents with decorative sparkles.",
+      }),
+      "Sarcasm Just One Of My Many Talents",
+    );
+  });
+
+  it("does not expand Sarcasm when the design truly has only that word", () => {
+    assert.equal(
+      resolveLeanCatalogTitle({
+        candidateTitle: "Sarcasm",
+        tags: ["funny"],
+        uploadFileStem: "upload",
+        description: '"Sarcasm" in bold black lettering on apparel.',
+      }),
+      "Sarcasm",
+    );
+  });
+
+  it("does not treat style-word quotes as extra title segments", () => {
+    assert.equal(
+      resolveLeanCatalogTitle({
+        candidateTitle: "Faith Over Fear",
+        tags: ["faith"],
+        uploadFileStem: "upload",
+        description: 'The shirt says "Faith Over Fear" in a "bold" "distressed" style.',
+      }),
+      "Faith Over Fear",
+    );
+  });
+
+  it("completes partial first-line titles when description has a second readable line", () => {
+    assert.equal(
+      resolveLeanCatalogTitle({
+        candidateTitle: "Kinda Give A Damn",
+        tags: ["funny"],
+        uploadFileStem: "upload",
+        description:
+          '"Kinda Give A Damn" appears above a second line that reads "kinda don\'t care" with decorative stars.',
+      }),
+      "Kinda Give A Damn Kinda Don't Care",
+    );
+  });
+
+  it("keeps text-dominant titles with decorative icons (no style-word invent)", () => {
+    assert.equal(
+      resolveLeanCatalogTitle({
+        candidateTitle: "Kinda Give A Damn Kinda Don't Care",
+        tags: ["funny", "stars"],
+        uploadFileStem: "upload",
+        description:
+          '"Kinda Give A Damn Kinda Don\'t Care" in distressed lettering with decorative stars.',
+      }),
+      "Kinda Give A Damn Kinda Don't Care",
+    );
+  });
+
+  it("keeps text plus a meaningful visual noun", () => {
+    assert.equal(
+      resolveLeanCatalogTitle({
+        candidateTitle: "Just A Little Moody Cow",
+        tags: ["cow", "funny"],
+        uploadFileStem: "upload",
+        description: '"Just A Little Moody" with a prominent cow illustration.',
+      }),
+      "Just A Little Moody Cow",
+    );
+  });
+
+  it("keeps a useful no-text visual title", () => {
+    assert.equal(
+      resolveLeanCatalogTitle({
+        candidateTitle: "Floral Highland Cow Wearing Leopard Bow",
+        tags: ["cow", "floral"],
+        uploadFileStem: "upload",
+        description: "A floral highland cow wearing a leopard bow.",
+      }),
+      "Floral Highland Cow Wearing Leopard Bow",
+    );
+  });
+
+  it("does not expand a genuinely complete one-word title", () => {
+    assert.equal(
+      resolveLeanCatalogTitle({
+        candidateTitle: "Faith",
+        tags: ["faith"],
+        uploadFileStem: "upload",
+        description: '"Faith" in bold gold lettering on apparel.',
+      }),
+      "Faith",
+    );
+  });
+
+  it("extracts unquoted multi-contraction wording without apostrophe truncation", () => {
+    assert.equal(
+      extractPrimaryWordingFromDescription(
+        "I'm not arguing, I'm just explaining right. Bold stacked text.",
+        24,
+      ),
+      "I'm Not Arguing I'm Just Explaining Right",
+    );
+  });
+
+  it("rebuilds description-leakage titles from readable text + central subject", () => {
+    assert.equal(
+      resolveLeanCatalogTitle({
+        candidateTitle:
+          "The Design Features The Outline Of Mouse Ears With A Red And White Polka Dot Bow",
+        tags: ["christmas", "holiday"],
+        uploadFileStem: "upload",
+        readableTextLines: ["BEST CHRISTMAS EVER"],
+        centralSubject: "Mouse Ears",
+      }),
+      "Best Christmas Ever Mouse Ears",
+    );
+  });
+
+  it("does not use the first description sentence when Text reads identifies wording", () => {
+    assert.equal(
+      resolveLeanCatalogTitle({
+        candidateTitle: "Artwork Design",
+        tags: ["christmas"],
+        uploadFileStem: "upload",
+        description:
+          'The design features the outline of mouse ears with a red and white polka dot bow. Text reads "BEST CHRISTMAS EVER" in red and pink lettering.',
+        centralSubject: "Mouse Ears",
+      }),
+      "Best Christmas Ever Mouse Ears",
+    );
+  });
+
+  it("extracts single-quoted Text reads wording without using the design-features sentence", () => {
+    assert.equal(
+      resolveLeanCatalogTitle({
+        candidateTitle:
+          "The Design Features The Outline Of Mouse Ears With A Red And White Polka Dot Bow",
+        tags: ["christmas"],
+        uploadFileStem: "upload",
+        description:
+          "The design features the outline of mouse ears with a red and white polka dot bow. Inside the ears, a black silhouette of a castle with flags is prominent. Text reads 'BEST CHRISTMAS EVER' in red and pink lettering.",
+        centralSubject: "Mouse Ears",
+      }),
+      "Best Christmas Ever Mouse Ears",
+    );
+  });
+
+  it("rejects common description-boilerplate title openings", () => {
+    const openings = [
+      "The design features pink bubble lettering",
+      "The image shows green and red text",
+      "The artwork depicts a holiday scene",
+      "This graphic contains mouse ears",
+      "An illustration of mouse ears with a bow",
+    ];
+
+    for (const opening of openings) {
+      const title = resolveLeanCatalogTitle({
+        candidateTitle: opening,
+        tags: ["holiday"],
+        uploadFileStem: "upload",
+        readableTextLines: ["BEST CHRISTMAS EVER"],
+        centralSubject: "Mouse Ears",
+      });
+      assert.equal(title, "Best Christmas Ever Mouse Ears");
+      assert.ok(!/^the (design|image|artwork)\b/i.test(title));
+      assert.ok(!/^this graphic\b/i.test(title));
+      assert.ok(!/^an illustration\b/i.test(title));
+    }
+  });
+
+  it("excludes decorative style details from the appended subject", () => {
+    const title = resolveLeanCatalogTitle({
+      candidateTitle: "Design",
+      tags: ["christmas"],
+      uploadFileStem: "upload",
+      readableTextLines: ["BEST CHRISTMAS EVER"],
+      centralSubject: "Red And White Polka Dot Bow",
+    });
+
+    assert.equal(title, "Best Christmas Ever");
+    assert.ok(!/polka|bow|red and white/i.test(title));
+  });
+
+  it("preserves a correct model title that already includes readable wording + subject", () => {
+    assert.equal(
+      resolveLeanCatalogTitle({
+        candidateTitle: "Best Christmas Ever Mouse Ears",
+        tags: ["christmas"],
+        uploadFileStem: "upload",
+        readableTextLines: ["BEST CHRISTMAS EVER"],
+        centralSubject: "Mouse Ears",
+        description:
+          'Text reads "BEST CHRISTMAS EVER" above mouse ears with a polka dot bow.',
+      }),
+      "Best Christmas Ever Mouse Ears",
+    );
+  });
+
+  it("keeps a no-text mouse-ear visual title without forcing a text-based title", () => {
+    assert.equal(
+      resolveLeanCatalogTitle({
+        candidateTitle: "Mouse Ears With Holiday Bow",
+        tags: ["christmas"],
+        uploadFileStem: "upload",
+        readableTextLines: [],
+        description: "Mouse ears with a red and white polka dot bow and Christmas accents.",
+      }),
+      "Mouse Ears With Holiday Bow",
     );
   });
 });

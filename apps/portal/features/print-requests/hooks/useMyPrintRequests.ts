@@ -19,6 +19,8 @@ import type { PrintRequestItemSummary } from '@fresh-prints/shared/utils/printRe
 import { useAuth } from '../../auth/context/AuthContext';
 import { portalPrintRequestService } from '../services/portalPrintRequestService';
 
+export type MyPrintRequestsLoadScope = 'chrome' | 'full';
+
 export function useMyPrintRequests() {
   const { customer, firebaseUser, refreshCustomer } = useAuth();
   const [requests, setRequests] = useState<PrintRequest[]>([]);
@@ -28,8 +30,10 @@ export function useMyPrintRequests() {
   >({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [listScope, setListScope] = useState<MyPrintRequestsLoadScope>('chrome');
+  const listScopeRef = useRef<MyPrintRequestsLoadScope>('chrome');
 
-  const reload = useCallback(async (options?: { silent?: boolean }) => {
+  const reload = useCallback(async (options?: { silent?: boolean; scope?: MyPrintRequestsLoadScope }) => {
     if (!customer?.id) {
       setRequests([]);
       setSummariesByRequestId({});
@@ -38,22 +42,41 @@ export function useMyPrintRequests() {
       return;
     }
 
+    const scope = options?.scope ?? listScopeRef.current;
+    listScopeRef.current = scope;
+    setListScope(scope);
+
     if (!options?.silent) {
       setIsLoading(true);
     }
     setError(null);
 
     try {
-      const nextRequests = await portalPrintRequestService.listMyPrintRequests(customer.id);
-      const printRequestIds = nextRequests.map((request) => request.id);
-      const [items, allocations] = await Promise.all([
-        portalPrintRequestService.listPrintRequestItemsForRequests(printRequestIds),
-        portalPrintRequestService.listShowAllocationsForPrintRequests(printRequestIds).catch(() => []),
-      ]);
+      if (scope === 'chrome') {
+        const nextRequests = await portalPrintRequestService.listMyContinuablePrintRequests(
+          customer.id,
+        );
+        const printRequestIds = nextRequests.map((request) => request.id);
+        const items =
+          printRequestIds.length > 0
+            ? await portalPrintRequestService.listPrintRequestItemsForRequests(printRequestIds)
+            : [];
 
-      setRequests(nextRequests);
-      setSummariesByRequestId(buildPrintRequestItemSummaries(items));
-      setAllocationTotalsByRequestId(buildPrintRequestAllocationTotalsByRequestId(allocations));
+        setRequests(nextRequests);
+        setSummariesByRequestId(buildPrintRequestItemSummaries(items));
+        setAllocationTotalsByRequestId({});
+      } else {
+        const nextRequests = await portalPrintRequestService.listMyPrintRequests(customer.id);
+        const printRequestIds = nextRequests.map((request) => request.id);
+        const [items, allocations] = await Promise.all([
+          portalPrintRequestService.listPrintRequestItemsForRequests(printRequestIds),
+          portalPrintRequestService.listShowAllocationsForPrintRequests(printRequestIds).catch(() => []),
+        ]);
+
+        setRequests(nextRequests);
+        setSummariesByRequestId(buildPrintRequestItemSummaries(items));
+        setAllocationTotalsByRequestId(buildPrintRequestAllocationTotalsByRequestId(allocations));
+      }
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'Unable to load print requests.');
     } finally {
@@ -64,7 +87,7 @@ export function useMyPrintRequests() {
   }, [customer?.id]);
 
   useEffect(() => {
-    void reload();
+    void reload({ scope: 'chrome' });
   }, [reload]);
 
   const pathname = usePathname();
@@ -78,13 +101,16 @@ export function useMyPrintRequests() {
 
     if (previousPathnameRef.current !== null) {
       if (isRequestsList && !wasRequestsList) {
-        void reload({ silent: true });
+        void reload({ silent: true, scope: 'full' });
       }
 
       if (isDashboard && !wasDashboard) {
-        void reload({ silent: true });
+        void reload({ silent: true, scope: 'full' });
         void refreshCustomer();
       }
+    } else if (isRequestsList || isDashboard) {
+      // Cold open directly on list/dashboard — need full history for tabs.
+      void reload({ silent: true, scope: 'full' });
     }
 
     previousPathnameRef.current = pathname;
@@ -114,7 +140,7 @@ export function useMyPrintRequests() {
       const created = await portalPrintRequestService.createPrintRequest(notes ? { notes } : {});
 
       if (!options?.skipListReload) {
-        void reload({ silent: true });
+        void reload({ silent: true, scope: listScopeRef.current });
       }
 
       void refreshCustomer();
@@ -131,6 +157,7 @@ export function useMyPrintRequests() {
     continuableRequests,
     isLoading,
     error,
+    listScope,
     reload,
     createPrintRequest,
   };

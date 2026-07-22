@@ -1,11 +1,16 @@
 import type { ChangeEvent, ReactNode } from "react";
 
+import { syncHalftoneTagInList } from "@fresh-prints/shared/utils/halftoneReviewState";
+
 import { AutoResizeTextarea } from "../../../shared/components/AutoResizeTextarea";
 import { Select, type SelectOption } from "../../../shared/components/Select";
 import { TagChipInput } from "../../../shared/components/TagChipInput";
 import { TextInput } from "../../../shared/components/TextInput";
+import { Toggle } from "../../../shared/components/Toggle";
 import type { CatalogTag } from "../types/catalogTag.types";
 import type { DesignFormValues } from "../types/designForm.types";
+import { formatTagsInput, tryParseTagsInput } from "../utils/designFormMapper";
+import { ArtworkBackgroundFields } from "./ArtworkBackgroundFields";
 
 interface DesignFormFieldsProps {
   approvedTags: CatalogTag[];
@@ -28,10 +33,17 @@ export function DesignFormFields({
   isArchived = false,
   onChange,
 }: DesignFormFieldsProps) {
+  const parsedTags = tryParseTagsInput(formValues.tagsInput);
+  const isHalftone = parsedTags.some((tag) => tag.trim().toLowerCase() === "halftone");
+
   function handleFieldChange(field: keyof DesignFormValues) {
     return (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
       onChange(field, event.target.value);
     };
+  }
+
+  function handleHalftoneChange(checked: boolean) {
+    onChange("tagsInput", formatTagsInput(syncHalftoneTagInList(parsedTags, checked)));
   }
 
   return (
@@ -70,6 +82,30 @@ export function DesignFormFields({
         name="tagsInput"
         onChange={(nextValue) => onChange("tagsInput", nextValue)}
         value={formValues.tagsInput}
+      />
+
+      <div className="design-form-halftone-row">
+        <div className="design-form-halftone-copy">
+          <p className="design-form-halftone-label">Halftone</p>
+          <p className="design-form-hint">
+            Turns the canonical <code>halftone</code> tag on or off without typing it.
+          </p>
+        </div>
+        <Toggle
+          checked={isHalftone}
+          label="Halftone"
+          name="editDesignHalftone"
+          onChange={handleHalftoneChange}
+          tone="success"
+        />
+      </div>
+
+      <ArtworkBackgroundFields
+        onChange={onChange}
+        values={{
+          artworkBackgroundPreset: formValues.artworkBackgroundPreset,
+          artworkBackgroundCustomHex: formValues.artworkBackgroundCustomHex,
+        }}
       />
 
       {isArchived ? (

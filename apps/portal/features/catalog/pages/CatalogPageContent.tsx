@@ -9,6 +9,7 @@ import {
   type CatalogDiscoveryMode,
 } from '@fresh-prints/shared/utils/catalogDiscoveryRanking';
 
+import { useAuth } from '../../auth/context/AuthContext';
 import { CatalogDesignDetailsModal } from '../components/CatalogDesignDetailsModal';
 import { CatalogFilterBar } from '../components/CatalogFilterBar';
 import { CatalogSelectionCard } from '../components/CatalogSelectionCard';
@@ -52,6 +53,7 @@ import {
 
 export function CatalogPageContent() {
   const router = useRouter();
+  const { isAuthenticated } = useAuth();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const selectionModeActive = searchParams.get('mode') === 'request-selection';
@@ -528,10 +530,10 @@ export function CatalogPageContent() {
                         exhaustedHelperText={addDesignFlow.exhaustedHelperText}
                         exhaustedStatusText={addDesignFlow.exhaustedStatusText}
                         isSelected={isSelected}
-                        onAdd={addDesignFlow.addDesign}
+                        onAdd={isAuthenticated ? addDesignFlow.addDesign : undefined}
                         onOpenDetails={openDesignDetails}
-                        onQuantityChange={addDesignFlow.setQuantity}
-                        onRemove={addDesignFlow.removeDesign}
+                        onQuantityChange={isAuthenticated ? addDesignFlow.setQuantity : undefined}
+                        onRemove={isAuthenticated ? addDesignFlow.removeDesign : undefined}
                         quantity={quantity > 0 ? quantity : 1}
                       />
                     </div>
@@ -576,11 +578,13 @@ export function CatalogPageContent() {
         }
         isOpen={selectedDesign !== null}
         onAddToRequest={
-          selectionModeActive
-            ? (design) => {
-                addDesignToSelection(design);
-              }
-            : addDesignFlow.addDesign
+          !isAuthenticated
+            ? undefined
+            : selectionModeActive
+              ? (design) => {
+                  addDesignToSelection(design);
+                }
+              : addDesignFlow.addDesign
         }
         onClose={closeDesignDetails}
       />

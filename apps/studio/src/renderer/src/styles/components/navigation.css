@@ -64,15 +64,14 @@
 .sidebar-logo {
   display: block;
   flex-shrink: 0;
-  max-width: min(14rem, 100%);
+  /* Height comes from brand logo settings; width follows intrinsic AR. */
+  max-width: 100%;
   object-fit: contain;
+  width: auto;
 }
 
 .sidebar-logo-collapsed {
   border-radius: 999px;
-  height: 2.5rem;
-  max-width: 2.5rem;
-  width: 2.5rem;
 }
 
 .sidebar-nav {

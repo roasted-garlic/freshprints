@@ -17,6 +17,7 @@ export function PortalHeaderActions() {
   const isAccountActive = isPortalAccountRoute(pathname);
 
   const handleLogoutConfirm = () => {
+    setIsLogoutConfirmOpen(false);
     void logout();
   };
 
@@ -58,7 +59,8 @@ export function PortalHeaderActions() {
         title="Log out?"
       >
         <p className="portal-muted portal-confirm-modal-message">
-          You will need to sign in again to browse designs and manage your print requests.
+          You can still browse designs while signed out. Sign in again to manage print requests and
+          account actions.
         </p>
       </PortalConfirmModal>
     </>

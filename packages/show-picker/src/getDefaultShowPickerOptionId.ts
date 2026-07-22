@@ -4,25 +4,28 @@ type DefaultSelectableOption = Pick<ShowPickerOption, "id" | "isFull" | "isSelec
 
 /**
  * Picks a default show from an ordered picker list (soonest-first).
- * Skips non-selectable (e.g. past) options. Prefers the first option that can fit
- * the current request when `canFitById` is provided, then the first non-full selectable
- * option, then the first selectable option.
+ * Prefers selectable (queueable) options. When `allowInspectOnly` is true and nothing
+ * is selectable, falls back to the first option so closed/past days can still focus a slot.
+ * Prefers the first option that can fit when `canFitById` is provided, then the first
+ * non-full selectable option, then the first selectable option.
  */
 export function getDefaultShowPickerOptionId(
   options: readonly DefaultSelectableOption[],
   canFitById?: (id: string) => boolean,
+  allowInspectOnly = false,
 ): string | null {
   const selectable = options.filter((option) => option.isSelectable !== false);
-  if (selectable.length === 0) {
+  const pool = selectable.length > 0 ? selectable : allowInspectOnly ? [...options] : [];
+  if (pool.length === 0) {
     return null;
   }
 
-  if (canFitById) {
+  if (canFitById && selectable.length > 0) {
     const firstFitting = selectable.find((option) => canFitById(option.id));
     if (firstFitting) {
       return firstFitting.id;
     }
   }
 
-  return selectable.find((option) => !option.isFull)?.id ?? selectable[0]?.id ?? null;
+  return pool.find((option) => !option.isFull)?.id ?? pool[0]?.id ?? null;
 }

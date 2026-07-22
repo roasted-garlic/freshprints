@@ -1,7 +1,15 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildProofReadyEmail, escapeEmailHtml } from "./emailTemplates";
+import {
+  UNMONITORED_EMAIL_DISCLAIMER_TEXT,
+  appendUnmonitoredEmailFooter,
+  buildCatalogShareReadyEmail,
+  buildCustomerInvitationEmail,
+  buildProofReadyEmail,
+  buildTeamInvitationEmail,
+  escapeEmailHtml,
+} from "./emailTemplates";
 import { canClaimEmailJob, shouldRetryEmailFailure } from "./emailDeliveryPolicy";
 import { createProofEmailJobId } from "./emailJobIdentity";
 import {
@@ -26,6 +34,46 @@ test("email templates escape dynamic HTML", () => {
   });
   assert.match(message.html, /&lt;Customer&gt;/);
   assert.match(message.html, /x=1&amp;y=2/);
+});
+
+test("unmonitored disclaimer footer is shared and present on all templates", () => {
+  const withFooter = appendUnmonitoredEmailFooter("<p>body</p>");
+  assert.match(withFooter, /body/);
+  assert.match(withFooter, new RegExp(UNMONITORED_EMAIL_DISCLAIMER_TEXT.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+
+  const templates = [
+    buildTeamInvitationEmail({
+      from: "Fresh Prints <noreply@myprintrequest.com>",
+      to: "a@example.com",
+      displayName: "Ada",
+      role: "helper",
+      resetLink: "https://example.com/reset",
+    }),
+    buildCustomerInvitationEmail({
+      from: "Fresh Prints <noreply@myprintrequest.com>",
+      to: "b@example.com",
+      displayName: "Bea",
+      username: "bea",
+      resetLink: "https://example.com/reset",
+    }),
+    buildProofReadyEmail({
+      from: "Fresh Prints <noreply@myprintrequest.com>",
+      to: "c@example.com",
+      displayName: "Cy",
+      reviewUrl: "https://example.com/review",
+    }),
+    buildCatalogShareReadyEmail({
+      from: "Fresh Prints <noreply@myprintrequest.com>",
+      to: "d@example.com",
+      displayName: "Di",
+      reviewUrl: "https://example.com/review",
+    }),
+  ];
+
+  for (const message of templates) {
+    assert.match(message.html, /not monitored/);
+    assert.match(message.html, /do not reply/i);
+  }
 });
 
 test("portal URLs are mapped by project and unknown projects fail closed", () => {

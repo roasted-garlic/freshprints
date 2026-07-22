@@ -23,7 +23,7 @@ import type { LucideIcon } from "lucide-react";
 
 import { useAuth } from "../../features/auth/hooks/useAuth";
 import { useAssistedCreationActionableCount } from "../../features/customer-requests/hooks/useAssistedCreationActionableCount";
-import { usePendingCustomerUploadCount } from "../../features/customer-uploads/hooks/usePendingCustomerUploadCount";
+import { usePendingCustomerUploadCounts } from "../../features/customer-uploads/hooks/usePendingCustomerUploadCount";
 import { useStaffInboxContext } from "../../features/staff-inbox/context/staffInboxContext";
 import { permissionService } from "../../features/permissions/services/permissionService";
 import type { PermissionKey } from "../../features/permissions/types/permission.types";
@@ -33,6 +33,7 @@ import { useUploadActivity } from "../hooks/useUploadActivity";
 import { desktopAppService } from "../services/desktopAppService";
 import { isElectronDesktop } from "../utils/isElectronDesktop";
 import { AppLogo } from "./AppLogo";
+import { useStudioBrandLogoSettings } from "../../features/settings/hooks/useStudioBrandLogoSettings";
 import { Badge } from "./Badge";
 import { formatTeamUserRoleLabel, getTeamUserRoleBadgeVariant } from "../../features/users/utils/teamUserRoleDisplay";
 
@@ -171,9 +172,11 @@ export function Sidebar() {
   const { isOpen: isDrawerOpen, close: closeDrawer } = useSidebarDrawer();
   const { isUploadActive, requestLeaveConfirmation } = useUploadActivity();
   const staffInbox = useStaffInboxContext();
-  const pendingCustomerUploadCount = usePendingCustomerUploadCount("print_request");
-  const pendingDonatedDesignsCount = usePendingCustomerUploadCount("catalog_donation");
+  const pendingUploadCounts = usePendingCustomerUploadCounts();
+  const pendingCustomerUploadCount = pendingUploadCounts.printRequest;
+  const pendingDonatedDesignsCount = pendingUploadCounts.catalogDonation;
   const assistedActionableCount = useAssistedCreationActionableCount();
+  const brandLogoSettings = useStudioBrandLogoSettings();
 
   const inboxOpenCount = staffInbox.isEnabled ? staffInbox.badgeCounts.printRequests : 0;
 
@@ -363,11 +366,17 @@ export function Sidebar() {
             <AppLogo
               alt=""
               className="sidebar-logo sidebar-logo-collapsed"
+              heightPx={brandLogoSettings.studioSidebarCollapsed.heightPx}
               size="sm"
               variant="collapsed"
             />
           ) : (
-            <AppLogo alt="" className="sidebar-logo" size="md" />
+            <AppLogo
+              alt=""
+              className="sidebar-logo"
+              heightPx={brandLogoSettings.studioSidebar.heightPx}
+              size="md"
+            />
           )}
         </NavLink>
         <button

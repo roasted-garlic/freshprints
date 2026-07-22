@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { Download } from "lucide-react";
 
 import {
@@ -23,6 +23,19 @@ import {
   isAssistedCreationProofEmailSentEntry,
   latestAssistedCreationCustomerUpdateAtMs,
 } from "@fresh-prints/shared/utils/assistedCreationHistory";
+import {
+  ASSISTED_CREATION_STAGE_TABS,
+  stageForAssistedCreationStatus,
+  type AssistedCreationStageTab,
+} from "@fresh-prints/shared/utils/assistedCreationStageTab";
+import { buildAssistedCreationAnswerDisplayRows } from "@fresh-prints/shared/utils/assistedCreationAnswerDisplay";
+import { buildAssistedCreationReferenceImageLabel } from "@fresh-prints/shared/utils/assistedCreationAiContextProfile";
+import {
+  assistedCreationCatalogShareProofTitle,
+  chronologicalAssistedCreationImageProofNumber,
+  countAssistedCreationImageProofs,
+  isAssistedCreationCatalogShareProof,
+} from "@fresh-prints/shared/utils/assistedCreationProofKind";
 
 import { useAuth } from "../../auth/hooks/useAuth";
 import { Button } from "../../../shared/components/Button";
@@ -33,54 +46,120 @@ import {
   ModalHeader,
 } from "../../../shared/components/Modal";
 import { desktopAppService } from "../../../shared/services/desktopAppService";
+import { DesignThumbnailPanel } from "../../designs/components/DesignThumbnailPanel";
+import { getDesignLibraryPath } from "../../designs/constants/designLibraryFilters";
+import { designDerivativeUrlService } from "../../designs/services/designDerivativeUrlService";
 import { useAssistedCreationRequests } from "../hooks/useAssistedCreationRequests";
 import {
   assistedCreationRequestsService,
   type AssistedCreationRequestListItem,
 } from "../services/assistedCreationRequestsService";
 import { assistedCreationUpdateAckService } from "../services/assistedCreationUpdateAckService";
+import { AssistedCreationAiContextModal } from "./AssistedCreationAiContextModal";
 import { AssistedStaffOverflowMenu } from "./AssistedStaffOverflowMenu";
+import { AssistedCatalogDesignPickerModal } from "./AssistedCatalogDesignPickerModal";
 import {
   CUSTOMER_REQUEST_DETAIL_TAB_QUERY_PARAM,
   CUSTOMER_REQUEST_ID_QUERY_PARAM,
   isAssistedDetailRouteTab,
   type AssistedDetailRouteTab,
 } from "../constants/customerRequestRoutes";
-import {
-  joinLabeledValues,
-  labelForComposition,
-  labelForContainsText,
-  labelForExactRequirement,
-  labelForFlexibility,
-  labelForPersonalization,
-  labelForRequestType,
-  labelForStyle,
-} from "../utils/assistedCreationLabels";
 
-type AssistedStageTab = "new" | "in_progress" | "revisions" | "proof_ready" | "completed";
+function catalogShareCustomerStatusLabel(item: AssistedCreationRequestListItem): string {
+  if (item.approvedCatalogDesignId) {
+    return "Approved";
+  }
+  if (item.status === "revision_requested") {
+    return "Changes requested";
+  }
+  if (item.status === "proof_ready") {
+    return "Pending customer review";
+  }
+  return "Pending";
+}
+
+function resolveCatalogShareStaffSummary(item: AssistedCreationRequestListItem): {
+  designId: string;
+  previewPath: string;
+  title: string;
+} | null {
+  const suggestion = item.suggestedCatalogDesign;
+  const designId = suggestion?.designId?.trim() || item.approvedCatalogDesignId?.trim() || "";
+  if (!designId) {
+    return null;
+  }
+
+  const catalogProof = [...item.proofs]
+    .reverse()
+    .find(
+      (proof) =>
+        isAssistedCreationCatalogShareProof(proof) &&
+        (proof.catalogDesignId?.trim() || "") === designId,
+    );
+
+  const title =
+    suggestion?.title?.trim() || assistedCreationCatalogShareProofTitle(catalogProof);
+  const previewPath =
+    suggestion?.previewImageUrl?.trim() ||
+    catalogProof?.catalogPreviewImageUrl?.trim() ||
+    "";
+
+  return { designId, previewPath, title };
+}
+
+function AssistedCatalogShareStaffCard({ item }: { item: AssistedCreationRequestListItem }) {
+  const summary = resolveCatalogShareStaffSummary(item);
+  if (!summary) {
+    return null;
+  }
+
+  const statusLabel = catalogShareCustomerStatusLabel(item);
+  const libraryPath = getDesignLibraryPath({ search: summary.designId });
+
+  return (
+    <section className="customer-requests-assisted-panel customer-requests-assisted-catalog-share">
+      <h3 className="customer-requests-assisted-panel-title">Design Library suggestion</h3>
+      <p className="customer-requests-assisted-catalog-share-status">
+        Customer status: <strong>{statusLabel}</strong>
+      </p>
+      <div className="customer-requests-assisted-catalog-share-row">
+        <DesignThumbnailPanel
+          alt={`${summary.title} preview`}
+          catalogPath={summary.previewPath || undefined}
+          className="customer-requests-assisted-catalog-share-thumb"
+          fallbackLabel="Preview unavailable"
+          imageFit="cover"
+        />
+        <div className="customer-requests-assisted-catalog-share-body">
+          <p className="customer-requests-assisted-catalog-share-title">{summary.title}</p>
+          <Link className="link-button" to={libraryPath}>
+            Open in Design Library
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 type AssistedDetailTab = "overview" | "proofs" | "messages";
 
-const STAGE_TABS: ReadonlyArray<{ id: AssistedStageTab; label: string }> = [
-  { id: "new", label: "New" },
-  { id: "in_progress", label: "In progress" },
-  { id: "revisions", label: "Revisions" },
-  { id: "proof_ready", label: "Proof ready" },
-  { id: "completed", label: "Completed" },
-];
+type AssistedStageTab = AssistedCreationStageTab;
 
-const STAGE_STATUSES: Record<AssistedStageTab, readonly AssistedCreationStatus[]> = {
-  new: ["submitted"],
-  in_progress: ["in_progress"],
-  revisions: ["revision_requested"],
-  proof_ready: ["proof_ready"],
-  completed: ["approved", "rejected", "cancelled"],
-};
+const STAGE_TABS = ASSISTED_CREATION_STAGE_TABS;
+
+function stageForStatus(status: AssistedCreationStatus): AssistedStageTab {
+  return stageForAssistedCreationStatus(status);
+}
 
 interface AssistedMediaPreview {
   id: string;
   url: string;
   fileName: string;
   storagePath: string;
+  /** True when Storage URL could not be resolved. */
+  unavailable?: boolean;
+  /** True while bytes/URL are still loading (placeholder thumb). */
+  loading?: boolean;
 }
 
 interface AssistedProofPreview extends AssistedMediaPreview {
@@ -90,12 +169,123 @@ interface AssistedProofPreview extends AssistedMediaPreview {
   createdBy: string;
   /** Staff proof note + linked history notes (excludes email system noise). */
   notes: string[];
-  /** True when full-res Storage object is missing or purged. */
+  /** True when preview URL could not be resolved (purged or load failure). */
   unavailable: boolean;
+  /** True when full-res Storage object is missing or purged (not a transient load failure). */
+  purged?: boolean;
+  /** Design Library recommendation row (not a custom proof PNG). */
+  isCatalogShare: boolean;
+  catalogDesignId?: string;
+  catalogDesignTitle?: string;
+  /** Catalog derivative path for `catalog_share` thumbs (never assisted proof Storage). */
+  catalogPreviewImageUrl?: string;
 }
 
-async function downloadAssistedMediaFile(url: string, fileName: string): Promise<"saved" | "canceled"> {
-  return desktopAppService.downloadUrlToFile(url, fileName);
+function assistedMediaFingerprint(
+  entries: ReadonlyArray<{ id?: string; storagePath?: string }>,
+): string {
+  return entries
+    .map((entry) => `${String(entry.id ?? "").trim()}::${String(entry.storagePath ?? "").trim()}`)
+    .join("|");
+}
+
+function revokeAssistedMediaBlobUrls(entries: ReadonlyArray<{ url: string }>): void {
+  for (const entry of entries) {
+    if (entry.url.startsWith("blob:")) {
+      URL.revokeObjectURL(entry.url);
+    }
+  }
+}
+
+/**
+ * Electron save dialog only accepts Firebase Storage https URLs — not blob: object URLs.
+ * Preview may use blob: (authenticated getBytes); download always resolves via storagePath.
+ */
+async function downloadAssistedMediaFile(media: AssistedMediaPreview): Promise<"saved" | "canceled"> {
+  const path = media.storagePath?.trim() || "";
+  if (!path) {
+    throw new Error("This file is not available for download.");
+  }
+  const downloadUrl =
+    media.url.startsWith("blob:") || !media.url
+      ? await assistedCreationRequestsService.getDownloadUrl(path)
+      : media.url;
+  return desktopAppService.downloadUrlToFile(downloadUrl, media.fileName);
+}
+
+async function loadAssistedReferencePreview(
+  image: { id: string; storagePath: string; contentType?: string },
+  fileName: string,
+): Promise<AssistedMediaPreview> {
+  const storagePath = image.storagePath?.trim() || "";
+  if (!storagePath) {
+    return {
+      id: image.id,
+      url: "",
+      fileName,
+      storagePath: "",
+      unavailable: true,
+      loading: false,
+    };
+  }
+
+  // Prefer signed URL first (catalog thumbs use the same path successfully in Studio).
+  // getBytes is Electron-safe for CORS-sensitive cases but can hang without a timeout —
+  // service-level timeouts + this order keep thumbs from sticking on Loading forever.
+  try {
+    const url = await assistedCreationRequestsService.getDownloadUrl(storagePath);
+    if (url) {
+      return {
+        id: image.id,
+        url,
+        fileName,
+        storagePath,
+        unavailable: false,
+        loading: false,
+      };
+    }
+  } catch {
+    // Fall through to authenticated bytes.
+  }
+
+  try {
+    const bytes = await assistedCreationRequestsService.downloadBytes(storagePath);
+    const copy = new Uint8Array(bytes.byteLength);
+    copy.set(bytes);
+    const blob = new Blob([copy], {
+      type: image.contentType?.trim() || "application/octet-stream",
+    });
+    return {
+      id: image.id,
+      url: URL.createObjectURL(blob),
+      fileName,
+      storagePath,
+      unavailable: false,
+      loading: false,
+    };
+  } catch {
+    return {
+      id: image.id,
+      url: "",
+      fileName,
+      storagePath,
+      unavailable: true,
+      loading: false,
+    };
+  }
+}
+
+/** Same signed-URL-first strategy as references — proofs must not hang on getBytes. */
+async function loadAssistedProofImagePreview(
+  proof: { id: string; storagePath: string; contentType?: string },
+  fileName: string,
+): Promise<Pick<AssistedMediaPreview, "url" | "unavailable" | "loading">> {
+  const preview = await loadAssistedReferencePreview(proof, fileName);
+  return {
+    url: preview.url,
+    unavailable: preview.unavailable === true,
+    loading: false,
+  };
 }
 
 function formatCreatedAt(value: Date | null): string {
@@ -153,6 +343,7 @@ function statusTone(status: AssistedCreationStatus): string {
       return "is-submitted";
     case "in_progress":
     case "revision_requested":
+    case "final_source_needed":
       return "is-progress";
     case "proof_ready":
       return "is-proof";
@@ -164,22 +355,6 @@ function statusTone(status: AssistedCreationStatus): string {
     default:
       return "";
   }
-}
-
-function stageForStatus(status: AssistedCreationStatus): AssistedStageTab {
-  if (STAGE_STATUSES.new.includes(status)) {
-    return "new";
-  }
-  if (STAGE_STATUSES.in_progress.includes(status)) {
-    return "in_progress";
-  }
-  if (STAGE_STATUSES.revisions.includes(status)) {
-    return "revisions";
-  }
-  if (STAGE_STATUSES.proof_ready.includes(status)) {
-    return "proof_ready";
-  }
-  return "completed";
 }
 
 function relatedNotesForProof(
@@ -275,15 +450,28 @@ function AssistedMediaThumb({
   media: AssistedMediaPreview;
   onDownload: (media: AssistedMediaPreview) => void;
 }) {
+  const unavailable = !media.loading && (media.unavailable || !media.url);
   return (
     <div className="customer-requests-assisted-thumb">
-      <a href={media.url} rel="noreferrer" target="_blank" title="Open full size">
-        <img alt={media.fileName || "Reference"} src={media.url} />
-      </a>
+      {media.loading ? (
+        <div className="customer-requests-assisted-thumb-unavailable" title={media.fileName}>
+          <span>Loading…</span>
+          <span className="settings-field-hint">{media.fileName || "Reference"}</span>
+        </div>
+      ) : unavailable ? (
+        <div className="customer-requests-assisted-thumb-unavailable" title={media.fileName}>
+          <span>Preview unavailable</span>
+          <span className="settings-field-hint">{media.fileName || "Reference"}</span>
+        </div>
+      ) : (
+        <a href={media.url} rel="noreferrer" target="_blank" title="Open full size">
+          <img alt={media.fileName || "Reference"} src={media.url} />
+        </a>
+      )}
       <button
         aria-label={`Download ${media.fileName || "reference image"}`}
         className="customer-requests-assisted-thumb-download"
-        disabled={downloading}
+        disabled={downloading || unavailable || Boolean(media.loading)}
         onClick={() => onDownload(media)}
         type="button"
       >
@@ -414,6 +602,17 @@ function AssistedProofDetailModal({
 }) {
   const [notesOpen, setNotesOpen] = useState(false);
   const noteCount = proof.notes.length;
+  const title = proof.isCatalogShare
+    ? assistedCreationCatalogShareProofTitle({
+        catalogDesignTitle: proof.catalogDesignTitle,
+        fileName: proof.fileName,
+      })
+    : `Proof ${proof.number}${isLatest ? " (latest)" : ""}`;
+  const libraryPath =
+    proof.isCatalogShare && proof.catalogDesignId
+      ? getDesignLibraryPath({ search: proof.catalogDesignId })
+      : null;
+  const catalogPreviewPath = proof.catalogPreviewImageUrl?.trim() || "";
 
   return (
     <>
@@ -430,21 +629,63 @@ function AssistedProofDetailModal({
         >
           <ModalHeader>
             <h2 id="assisted-proof-detail-title">
-              Proof {proof.number}
-              {isLatest ? " (latest)" : ""}
+              {proof.isCatalogShare ? (
+                <>
+                  Design Library
+                  {isLatest ? " (latest)" : ""}
+                </>
+              ) : (
+                title
+              )}
             </h2>
           </ModalHeader>
           <ModalBody className="customer-requests-assisted-proof-modal-body">
-            {proof.unavailable || !proof.url ? (
-              <p className="settings-field-hint">Full-resolution file is no longer available.</p>
+            {proof.isCatalogShare ? (
+              catalogPreviewPath || proof.url ? (
+                <div className="customer-requests-assisted-proof-modal-image">
+                  {proof.url ? (
+                    <img alt={title} src={proof.url} />
+                  ) : (
+                    <DesignThumbnailPanel
+                      alt={title}
+                      catalogPath={catalogPreviewPath}
+                      className="customer-requests-assisted-proof-modal-catalog-thumb"
+                      fallbackLabel="Preview unavailable"
+                      imageFit="contain"
+                    />
+                  )}
+                </div>
+              ) : (
+                <p className="settings-field-hint">
+                  Preview is unavailable for this library design.
+                </p>
+              )
+            ) : proof.loading ? (
+              <p className="settings-field-hint">Loading proof…</p>
+            ) : proof.unavailable || !proof.url ? (
+              <p className="settings-field-hint">
+                {proof.purged
+                  ? "Full-resolution file is no longer available."
+                  : "Preview unavailable."}
+              </p>
             ) : (
               <div className="customer-requests-assisted-proof-modal-image">
-                <img alt={proof.fileName || `Proof ${proof.number}`} src={proof.url} />
+                <img alt={title} src={proof.url} />
               </div>
             )}
             <dl className="customer-requests-etsy-detail-summary">
-              {isApprovedProof ? <AnswerRow label="Status" value="Approved proof" /> : null}
-              <AnswerRow label="File" value={proof.fileName} />
+              {proof.isCatalogShare ? (
+                <>
+                  <AnswerRow label="Type" value="Design Library suggestion" />
+                  <AnswerRow label="Design" value={title} />
+                  {isApprovedProof ? <AnswerRow label="Customer status" value="Approved" /> : null}
+                </>
+              ) : (
+                <>
+                  {isApprovedProof ? <AnswerRow label="Status" value="Approved proof" /> : null}
+                  <AnswerRow label="File" value={proof.fileName} />
+                </>
+              )}
               <AnswerRow label="Submitted" value={formatHistoryAt(proof.createdAt)} />
               <AnswerRow
                 label="Submitted by"
@@ -452,6 +693,11 @@ function AssistedProofDetailModal({
               />
             </dl>
             <div className="customer-requests-assisted-proof-modal-actions">
+              {libraryPath ? (
+                <Link className="link-button" to={libraryPath}>
+                  Open in Design Library
+                </Link>
+              ) : null}
               {noteCount > 0 ? (
                 <Button onClick={() => setNotesOpen(true)} type="button" variant="secondary">
                   Notes
@@ -462,13 +708,15 @@ function AssistedProofDetailModal({
             </div>
           </ModalBody>
           <ModalFooter>
-            <Button
-              disabled={downloading || proof.unavailable || !proof.url}
-              onClick={() => onDownload(proof)}
-              variant="secondary"
-            >
-              Download
-            </Button>
+            {proof.isCatalogShare ? null : (
+              <Button
+                disabled={downloading || proof.unavailable || !proof.url}
+                onClick={() => onDownload(proof)}
+                variant="secondary"
+              >
+                Download
+              </Button>
+            )}
             <Button onClick={onClose} variant="secondary">
               Close
             </Button>
@@ -479,7 +727,11 @@ function AssistedProofDetailModal({
         <AssistedProofNotesModal
           notes={proof.notes}
           onClose={() => setNotesOpen(false)}
-          title={`Proof ${proof.number} · Notes`}
+          title={
+            proof.isCatalogShare
+              ? `Design Library · Notes`
+              : `Proof ${proof.number} · Notes`
+          }
         />
       ) : null}
     </>
@@ -491,6 +743,7 @@ function AssistedDetail({
   canRestore,
   initialDetailTab = "overview",
   item,
+  onFollowRequest,
   onMarkHistoryEntryRead,
   onToast,
   readThroughAtMs,
@@ -500,6 +753,7 @@ function AssistedDetail({
   canRestore: boolean;
   initialDetailTab?: AssistedDetailTab;
   item: AssistedCreationRequestListItem;
+  onFollowRequest: (requestId: string, status: AssistedCreationStatus) => void;
   onMarkHistoryEntryRead: (entryAtMs: number) => void;
   onToast: (message: string) => void;
   readThroughAtMs: number | null;
@@ -510,6 +764,8 @@ function AssistedDetail({
   const [error, setError] = useState<string | null>(null);
   const [proofNote, setProofNote] = useState("");
   const [staffNotes, setStaffNotes] = useState(item.staffNotes);
+  const [aiContextOpen, setAiContextOpen] = useState(false);
+  const [pendingFinalFile, setPendingFinalFile] = useState<File | null>(null);
   const [messageDraft, setMessageDraft] = useState("");
   const [sendingMessage, setSendingMessage] = useState(false);
   const [messageError, setMessageError] = useState<string | null>(null);
@@ -519,13 +775,19 @@ function AssistedDetail({
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [pendingProofFile, setPendingProofFile] = useState<File | null>(null);
   const [pendingProofPreviewUrl, setPendingProofPreviewUrl] = useState<string | null>(null);
+  const [catalogPickerOpen, setCatalogPickerOpen] = useState(false);
   const [reasonModal, setReasonModal] = useState<"reject" | "cancel" | "restore" | null>(null);
   const [actionReason, setActionReason] = useState("");
   const [activeDetailTab, setActiveDetailTab] = useState<AssistedDetailTab>("overview");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesPanelRef = useRef<HTMLSectionElement>(null);
   const messagesThreadRef = useRef<HTMLDivElement>(null);
+  const refMediaBlobRef = useRef<AssistedMediaPreview[]>([]);
+  const proofMediaBlobRef = useRef<AssistedProofPreview[]>([]);
   const answers = item.answers;
+
+  refMediaBlobRef.current = refMedia;
+  proofMediaBlobRef.current = proofMedia;
 
   useEffect(() => {
     setStaffNotes(item.staffNotes);
@@ -545,74 +807,351 @@ function AssistedDetail({
     };
   }, [pendingProofPreviewUrl]);
 
+  const refFingerprint = useMemo(
+    () => assistedMediaFingerprint(item.referenceImages),
+    [item.referenceImages],
+  );
+  const proofFingerprint = useMemo(
+    () => assistedMediaFingerprint(item.proofs),
+    [item.proofs],
+  );
+  const historyFingerprint = useMemo(() => {
+    const history = item.revisionHistory;
+    if (!Array.isArray(history) || history.length === 0) {
+      return "0";
+    }
+    const last = history[history.length - 1];
+    return `${history.length}:${assistedCreationRevisionAtMillis(last?.at)}`;
+  }, [item.revisionHistory]);
+
   useEffect(() => {
     let cancelled = false;
-    void (async () => {
-      const refs = await Promise.all(
-        item.referenceImages.map(async (image) => {
-          try {
-            const url = await assistedCreationRequestsService.getDownloadUrl(image.storagePath);
-            return {
-              id: image.id,
-              url,
-              fileName: image.fileName || `reference-${image.id}`,
-              storagePath: image.storagePath,
-            } satisfies AssistedMediaPreview;
-          } catch {
-            return null;
-          }
-        }),
-      );
-      const proofs = await Promise.all(
-        item.proofs.map(async (proof, index) => {
-          const base = {
-            id: proof.id,
-            fileName: proof.fileName || `proof-${proof.id}`,
-            storagePath: proof.storagePath,
-            number: index + 1,
-            ...(proof.note ? { note: proof.note } : {}),
-            createdAt: proof.createdAt,
-            createdBy: proof.createdBy,
-            notes: notesForProof(proof, item.proofs, item.revisionHistory),
-          };
-          if (proof.fullSizePurgedAt != null || !proof.storagePath?.trim()) {
-            return {
-              ...base,
-              url: "",
-              unavailable: true,
-            } satisfies AssistedProofPreview;
-          }
-          try {
-            const url = await assistedCreationRequestsService.getDownloadUrl(proof.storagePath);
-            return {
-              ...base,
-              url,
-              unavailable: false,
-            } satisfies AssistedProofPreview;
-          } catch {
-            return {
-              ...base,
-              url: "",
-              unavailable: true,
-            } satisfies AssistedProofPreview;
-          }
-        }),
-      );
-      if (!cancelled) {
-        setRefMedia(refs.filter((entry): entry is AssistedMediaPreview => entry != null));
-        setProofMedia(proofs);
+    const images = item.referenceImages;
+    /** Absolute safety: never leave Loading placeholders if a download hangs past service timeout. */
+    const safetyTimer = window.setTimeout(() => {
+      if (cancelled) {
+        return;
       }
-    })();
+      setRefMedia((previous) => {
+        let changed = false;
+        const next = previous.map((entry) => {
+          if (!entry.loading) {
+            return entry;
+          }
+          changed = true;
+          return {
+            ...entry,
+            url: "",
+            loading: false,
+            unavailable: true,
+          } satisfies AssistedMediaPreview;
+        });
+        return changed ? next : previous;
+      });
+    }, 28_000);
+
+    if (images.length === 0) {
+      setRefMedia((previous) => {
+        revokeAssistedMediaBlobUrls(previous);
+        return [];
+      });
+      return () => {
+        cancelled = true;
+        window.clearTimeout(safetyTimer);
+      };
+    }
+
+    // Seed placeholders immediately so we never flash "No reference images" while loading.
+    setRefMedia((previous) => {
+      const previousById = new Map(previous.map((entry) => [entry.id, entry]));
+      const next = images.map((image, index) => {
+        const fileName = buildAssistedCreationReferenceImageLabel(index);
+        const prior = previousById.get(image.id);
+        if (
+          prior &&
+          prior.storagePath === image.storagePath &&
+          prior.url &&
+          !prior.unavailable &&
+          !prior.loading
+        ) {
+          return { ...prior, fileName };
+        }
+        return {
+          id: image.id,
+          url: "",
+          fileName,
+          storagePath: image.storagePath,
+          loading: true,
+          unavailable: false,
+        } satisfies AssistedMediaPreview;
+      });
+      for (const entry of previous) {
+        if (!images.some((image) => image.id === entry.id) && entry.url.startsWith("blob:")) {
+          URL.revokeObjectURL(entry.url);
+        }
+      }
+      return next;
+    });
+
+    // Settle each thumb independently so one hung download cannot block the rest.
+    for (let index = 0; index < images.length; index += 1) {
+      const image = images[index];
+      if (!image) {
+        continue;
+      }
+      const fileName = buildAssistedCreationReferenceImageLabel(index);
+      void (async () => {
+        const preview = await loadAssistedReferencePreview(image, fileName);
+        if (cancelled) {
+          revokeAssistedMediaBlobUrls([preview]);
+          return;
+        }
+        setRefMedia((previous) => {
+          const prior = previous.find((entry) => entry.id === preview.id);
+          if (
+            prior &&
+            prior.storagePath === preview.storagePath &&
+            prior.url &&
+            !prior.unavailable &&
+            !prior.loading &&
+            prior.url === preview.url
+          ) {
+            revokeAssistedMediaBlobUrls([preview]);
+            return previous;
+          }
+          return previous.map((entry) => {
+            if (entry.id !== preview.id) {
+              return entry;
+            }
+            if (entry.url.startsWith("blob:") && entry.url !== preview.url) {
+              URL.revokeObjectURL(entry.url);
+            }
+            return { ...preview, loading: false };
+          });
+        });
+      })();
+    }
+
     return () => {
       cancelled = true;
+      window.clearTimeout(safetyTimer);
     };
-  }, [item.id, item.proofs, item.referenceImages, item.revisionHistory]);
+    // Fingerprint avoids cancel thrash from new array identities on every snapshot.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional stable dep
+  }, [item.id, refFingerprint]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const PROOF_LOAD_SAFETY_MS = 28_000;
+    const safetyTimer = window.setTimeout(() => {
+      if (cancelled) {
+        return;
+      }
+      setProofMedia((previous) =>
+        previous.map((entry) => {
+          if (!entry.loading) {
+            return entry;
+          }
+          return {
+            ...entry,
+            url: "",
+            loading: false,
+            unavailable: true,
+            purged: entry.purged === true,
+          };
+        }),
+      );
+    }, PROOF_LOAD_SAFETY_MS);
+
+    function buildProofBase(proof: (typeof item.proofs)[number]): Omit<
+      AssistedProofPreview,
+      "url" | "unavailable" | "loading" | "purged"
+    > {
+      const isCatalogShare = isAssistedCreationCatalogShareProof(proof);
+      const catalogTitle = assistedCreationCatalogShareProofTitle(proof);
+      const catalogPreviewPath = proof.catalogPreviewImageUrl?.trim() || "";
+      const imageNumber = chronologicalAssistedCreationImageProofNumber(item.proofs, proof.id);
+      return {
+        id: proof.id,
+        fileName: isCatalogShare ? catalogTitle : proof.fileName || `proof-${proof.id}`,
+        storagePath: isCatalogShare ? "" : proof.storagePath,
+        number: imageNumber,
+        ...(proof.note ? { note: proof.note } : {}),
+        createdAt: proof.createdAt,
+        createdBy: proof.createdBy,
+        notes: notesForProof(proof, item.proofs, item.revisionHistory),
+        isCatalogShare,
+        ...(isCatalogShare
+          ? {
+              catalogDesignId: proof.catalogDesignId?.trim() || "",
+              catalogDesignTitle: catalogTitle,
+              catalogPreviewImageUrl: catalogPreviewPath,
+            }
+          : {}),
+      };
+    }
+
+    // Seed placeholders immediately so Proofs tab updates on snapshot (do not wait for getBytes).
+    setProofMedia((previous) => {
+      const next = item.proofs.map((proof) => {
+        const base = buildProofBase(proof);
+        const isCatalogShare = base.isCatalogShare;
+        const catalogPreviewPath = base.catalogPreviewImageUrl?.trim() || "";
+        const purged =
+          !isCatalogShare &&
+          (proof.fullSizePurgedAt != null || !String(proof.storagePath ?? "").trim());
+        const prior = previous.find(
+          (entry) => entry.id === proof.id && entry.storagePath === base.storagePath,
+        );
+        if (prior && !prior.loading && (prior.url || prior.unavailable)) {
+          return {
+            ...base,
+            url: prior.url,
+            unavailable: prior.unavailable,
+            loading: false,
+            purged: prior.purged === true || purged,
+            fileName: isCatalogShare ? base.fileName : `Proof ${base.number}`,
+          } satisfies AssistedProofPreview;
+        }
+        return {
+          ...base,
+          url: "",
+          unavailable: purged || (isCatalogShare && !catalogPreviewPath),
+          loading: !(purged || (isCatalogShare && !catalogPreviewPath)),
+          purged,
+          fileName: isCatalogShare ? base.fileName : `Proof ${base.number}`,
+        } satisfies AssistedProofPreview;
+      });
+      for (const entry of previous) {
+        if (!item.proofs.some((proof) => proof.id === entry.id) && entry.url.startsWith("blob:")) {
+          URL.revokeObjectURL(entry.url);
+        }
+      }
+      return next;
+    });
+
+    for (const proof of item.proofs) {
+      void (async () => {
+        const base = buildProofBase(proof);
+        const isCatalogShare = base.isCatalogShare;
+        const catalogPreviewPath = base.catalogPreviewImageUrl?.trim() || "";
+        const displayName = isCatalogShare ? base.fileName : `Proof ${base.number}`;
+
+        let settled: AssistedProofPreview;
+
+        if (isCatalogShare) {
+          if (!catalogPreviewPath) {
+            settled = {
+              ...base,
+              fileName: displayName,
+              url: "",
+              unavailable: true,
+              loading: false,
+              purged: false,
+            };
+          } else {
+            try {
+              const url =
+                (await designDerivativeUrlService.getDownloadUrlForCatalogPath(
+                  catalogPreviewPath,
+                )) ?? "";
+              settled = {
+                ...base,
+                fileName: displayName,
+                url,
+                unavailable: !url,
+                loading: false,
+                purged: false,
+              };
+            } catch {
+              settled = {
+                ...base,
+                fileName: displayName,
+                url: "",
+                // List/modal can still render via DesignThumbnailPanel + catalog path.
+                unavailable: false,
+                loading: false,
+                purged: false,
+              };
+            }
+          }
+        } else if (proof.fullSizePurgedAt != null || !proof.storagePath?.trim()) {
+          settled = {
+            ...base,
+            fileName: displayName,
+            url: "",
+            unavailable: true,
+            loading: false,
+            purged: true,
+          };
+        } else {
+          const preview = await loadAssistedProofImagePreview(
+            {
+              id: proof.id,
+              storagePath: proof.storagePath,
+              contentType: proof.contentType,
+            },
+            displayName,
+          );
+          settled = {
+            ...base,
+            fileName: displayName,
+            url: preview.url,
+            unavailable: preview.unavailable,
+            loading: false,
+            purged: false,
+          };
+        }
+
+        if (cancelled) {
+          revokeAssistedMediaBlobUrls([settled]);
+          return;
+        }
+        setProofMedia((previous) => {
+          const prior = previous.find((entry) => entry.id === settled.id);
+          if (
+            prior &&
+            prior.storagePath === settled.storagePath &&
+            prior.url &&
+            !prior.unavailable &&
+            !prior.loading &&
+            prior.url === settled.url
+          ) {
+            revokeAssistedMediaBlobUrls([settled]);
+            return previous;
+          }
+          return previous.map((entry) => {
+            if (entry.id !== settled.id) {
+              return entry;
+            }
+            if (entry.url.startsWith("blob:") && entry.url !== settled.url) {
+              URL.revokeObjectURL(entry.url);
+            }
+            return settled;
+          });
+        });
+      })();
+    }
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(safetyTimer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional stable deps
+  }, [item.id, proofFingerprint, historyFingerprint]);
+
+  useEffect(() => {
+    return () => {
+      revokeAssistedMediaBlobUrls(refMediaBlobRef.current);
+      revokeAssistedMediaBlobUrls(proofMediaBlobRef.current);
+    };
+  }, []);
 
   async function handleDownload(media: AssistedMediaPreview): Promise<void> {
     setDownloadingId(media.id);
     setError(null);
     try {
-      const outcome = await downloadAssistedMediaFile(media.url, media.fileName);
+      const outcome = await downloadAssistedMediaFile(media);
       if (outcome === "saved") {
         onToast(`Saved ${media.fileName}`);
       }
@@ -624,15 +1163,18 @@ function AssistedDetail({
   }
 
   async function handleDownloadAllReferences(): Promise<void> {
-    if (refMedia.length === 0) {
+    const downloadable = refMedia.filter(
+      (media) => media.url && !media.unavailable && !media.loading,
+    );
+    if (downloadable.length === 0) {
       return;
     }
     setDownloadingId("all-refs");
     setError(null);
     try {
       let savedCount = 0;
-      for (const media of refMedia) {
-        const outcome = await downloadAssistedMediaFile(media.url, media.fileName);
+      for (const media of downloadable) {
+        const outcome = await downloadAssistedMediaFile(media);
         if (outcome === "saved") {
           savedCount += 1;
         }
@@ -640,7 +1182,7 @@ function AssistedDetail({
       if (savedCount > 0) {
         onToast(
           savedCount === 1
-            ? `Saved ${refMedia[0]?.fileName ?? "reference"}`
+            ? `Saved ${downloadable[0]?.fileName ?? "reference"}`
             : `Saved ${savedCount} reference images`,
         );
       }
@@ -682,6 +1224,13 @@ function AssistedDetail({
       onToast(`Updated to ${formatAssistedCreationStatus(statusLabel)}`);
       setReasonModal(null);
       setActionReason("");
+      if (action === "start_work" || action === "resume_work") {
+        onFollowRequest(item.id, "in_progress");
+      } else if (action === "restore") {
+        onFollowRequest(item.id, "submitted");
+      } else if (action === "reject" || action === "cancel") {
+        onFollowRequest(item.id, statusLabel);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to update status.");
     } finally {
@@ -731,13 +1280,56 @@ function AssistedDetail({
         requestId: item.id,
         customerUid: item.customerUid,
         file: pendingProofFile,
-        proofNumber: item.proofs.length + 1,
+        proofNumber: countAssistedCreationImageProofs(item.proofs) + 1,
         note: proofNote.trim() || undefined,
       });
       clearPendingProof();
       onToast("Proof submitted to customer");
+      onFollowRequest(item.id, "proof_ready");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to submit proof.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function submitPendingFinalSource(): Promise<void> {
+    if (!pendingFinalFile || !canMutate || item.status !== "final_source_needed") {
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      await assistedCreationRequestsService.uploadAndAttachFinalSource({
+        requestId: item.id,
+        customerUid: item.customerUid,
+        file: pendingFinalFile,
+      });
+      setPendingFinalFile(null);
+      onToast("Final artwork uploaded — request completed");
+      onFollowRequest(item.id, "approved");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to upload final artwork.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function submitCatalogSuggestion(designId: string): Promise<void> {
+    if (!canMutate) {
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      await assistedCreationRequestsService.suggestCatalogDesign({
+        requestId: item.id,
+        designId,
+      });
+      setCatalogPickerOpen(false);
+      onToast("Library design sent to customer");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to share library design.");
     } finally {
       setBusy(false);
     }
@@ -773,8 +1365,8 @@ function AssistedDetail({
   const description = answers?.rawDescription?.trim() || "No description";
   const isDownloading = downloadingId != null;
   const notesDirty = staffNotes.trim() !== item.staffNotes.trim();
-  const canReject =
-    canMutate && (item.status === "submitted" || item.status === "in_progress");
+  /** Reject only for New / submitted — after Start Work, staff may cancel instead. */
+  const canReject = canMutate && item.status === "submitted";
   const canCancelRequest =
     canMutate &&
     item.status !== "approved" &&
@@ -905,51 +1497,28 @@ function AssistedDetail({
         {activeDetailTab === "overview" ? (
           <div className="customer-requests-assisted-detail-main">
           <section className="customer-requests-assisted-panel">
-            <h3 className="customer-requests-assisted-panel-title">Brief</h3>
+            <div className="customer-requests-assisted-panel-header">
+              <h3 className="customer-requests-assisted-panel-title">Brief</h3>
+              <Button
+                aria-label="AI Context"
+                disabled={busy}
+                onClick={() => setAiContextOpen(true)}
+                size="sm"
+                type="button"
+                variant="secondary"
+              >
+                AI Context…
+              </Button>
+            </div>
             <p className="customer-requests-assisted-brief">{description}</p>
           </section>
 
           <section className="customer-requests-assisted-panel">
             <h3 className="customer-requests-assisted-panel-title">Request details</h3>
             <dl className="customer-requests-etsy-detail-summary">
-              <AnswerRow
-                label="Request type"
-                value={answers?.requestType ? labelForRequestType(answers.requestType) : ""}
-              />
-              <AnswerRow
-                label="Wording"
-                value={answers?.containsText ? labelForContainsText(answers.containsText) : ""}
-              />
-              <AnswerRow label="Exact text" value={answers?.exactText ?? ""} />
-              <AnswerRow label="Primary subject" value={answers?.primarySubject ?? ""} />
-              <AnswerRow label="Occasion" value={answers?.occasion ?? ""} />
-              <AnswerRow label="Audience" value={answers?.audience ?? ""} />
-              <AnswerRow
-                label="Personalization"
-                value={joinLabeledValues(answers?.personalizationTypes, labelForPersonalization)}
-              />
-              <AnswerRow
-                label="Flexibility"
-                value={
-                  answers?.flexibilityLevel ? labelForFlexibility(answers.flexibilityLevel) : ""
-                }
-              />
-              <AnswerRow
-                label="Must match references"
-                value={joinLabeledValues(answers?.exactRequirements, labelForExactRequirement)}
-              />
-              <AnswerRow
-                label="Styles"
-                value={joinLabeledValues(answers?.stylePreferences, labelForStyle)}
-              />
-              <AnswerRow label="Mood" value={answers?.mood ?? ""} />
-              <AnswerRow label="Colors include" value={answers?.includedColors ?? ""} />
-              <AnswerRow label="Colors avoid" value={answers?.excludedColors ?? ""} />
-              <AnswerRow label="Garment" value={answers?.garmentColor ?? ""} />
-              <AnswerRow
-                label="Composition"
-                value={answers?.composition ? labelForComposition(answers.composition) : ""}
-              />
+              {buildAssistedCreationAnswerDisplayRows(answers).map((row) => (
+                <AnswerRow key={row.label} label={row.label} value={row.value} />
+              ))}
             </dl>
           </section>
           </div>
@@ -998,6 +1567,9 @@ function AssistedDetail({
 
           {activeDetailTab === "overview" ? (
             <>
+              {item.suggestedCatalogDesign || item.approvedCatalogDesignId ? (
+                <AssistedCatalogShareStaffCard item={item} />
+              ) : null}
               {canMutate ? (
                 <section className="customer-requests-assisted-panel customer-requests-assisted-notes">
                   <h3 className="customer-requests-assisted-panel-title">
@@ -1055,6 +1627,7 @@ function AssistedDetail({
                   </div>
                 </section>
               ) : null}
+
             </>
           ) : null}
 
@@ -1065,17 +1638,36 @@ function AssistedDetail({
               <ul className="customer-requests-assisted-proof-list">
                 {proofMediaNewestFirst.map((proof, index) => {
                   const isLatest = index === 0;
-                  const isApprovedProof = item.approvedProofId === proof.id;
+                  const isApprovedProof =
+                    !proof.isCatalogShare && item.approvedProofId === proof.id;
+                  const isApprovedCatalog =
+                    proof.isCatalogShare &&
+                    Boolean(item.approvedCatalogDesignId) &&
+                    proof.catalogDesignId === item.approvedCatalogDesignId;
                   const metaBits: string[] = [];
-                  if (isApprovedProof) {
+                  if (proof.isCatalogShare) {
+                    metaBits.push("Design Library");
+                  }
+                  if (isApprovedProof || isApprovedCatalog) {
                     metaBits.push("Approved");
                   }
                   if (proof.unavailable) {
-                    metaBits.push("File removed");
+                    metaBits.push(
+                      proof.isCatalogShare || !proof.purged
+                        ? "Preview unavailable"
+                        : "File removed",
+                    );
                   }
                   if (proof.notes.length > 0) {
                     metaBits.push("Notes");
                   }
+                  const rowTitle = proof.isCatalogShare
+                    ? assistedCreationCatalogShareProofTitle({
+                        catalogDesignTitle: proof.catalogDesignTitle,
+                        fileName: proof.fileName,
+                      })
+                    : `Proof ${proof.number}${isLatest ? " (latest)" : ""}`;
+                  const catalogPreviewPath = proof.catalogPreviewImageUrl?.trim() || "";
                   return (
                     <li key={proof.id}>
                       <button
@@ -1083,21 +1675,49 @@ function AssistedDetail({
                         onClick={() => setSelectedProofId(proof.id)}
                         type="button"
                       >
-                        {proof.unavailable || !proof.url ? (
+                        {proof.isCatalogShare ? (
+                          catalogPreviewPath ? (
+                            <DesignThumbnailPanel
+                              alt=""
+                              catalogPath={catalogPreviewPath}
+                              className="customer-requests-assisted-proof-row-catalog-thumb"
+                              decorative
+                              fallbackLabel="Preview unavailable"
+                              imageFit="cover"
+                            />
+                          ) : proof.url ? (
+                            <img alt="" src={proof.url} />
+                          ) : (
+                            <span
+                              aria-hidden="true"
+                              className="customer-requests-assisted-proof-row-placeholder"
+                            />
+                          )
+                        ) : proof.loading ? (
+                          <span
+                            aria-label="Loading proof"
+                            className="customer-requests-assisted-proof-row-placeholder is-loading"
+                            role="status"
+                          />
+                        ) : proof.unavailable || !proof.url ? (
                           <span
                             aria-hidden="true"
                             className="customer-requests-assisted-proof-row-placeholder"
                           />
                         ) : (
-                          <img
-                            alt=""
-                            src={proof.url}
-                          />
+                          <img alt="" src={proof.url} />
                         )}
                         <span className="customer-requests-assisted-proof-row-body">
                           <span className="customer-requests-assisted-proof-row-title">
-                            Proof {proof.number}
-                            {isLatest ? " (latest)" : ""}
+                            {proof.isCatalogShare ? (
+                              <>
+                                Design Library
+                                {isLatest ? " (latest)" : ""}
+                                <span className="settings-field-hint"> · {rowTitle}</span>
+                              </>
+                            ) : (
+                              rowTitle
+                            )}
                           </span>
                           <span className="customer-requests-assisted-proof-row-meta">
                             {formatHistoryAt(proof.createdAt) || "Unknown time"}
@@ -1110,11 +1730,77 @@ function AssistedDetail({
                 })}
               </ul>
             ) : (
-              <p className="settings-field-hint">No proofs uploaded yet.</p>
+              <p className="settings-field-hint">No proofs yet.</p>
             )}
+
+            {canMutate && item.status === "final_source_needed" ? (
+              <div className="customer-requests-assisted-proof-upload">
+                <p className="settings-field-hint">
+                  Customer approved the proof. Upload the final high-resolution artwork to complete
+                  this request.
+                </p>
+                <input
+                  accept="image/jpeg,image/png,image/webp"
+                  className="visually-hidden"
+                  id={`assisted-final-source-${item.id}`}
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    event.target.value = "";
+                    if (!file) {
+                      return;
+                    }
+                    setPendingFinalFile(file);
+                    setError(null);
+                  }}
+                  type="file"
+                />
+                {!pendingFinalFile ? (
+                  <Button
+                    disabled={busy}
+                    onClick={() =>
+                      document.getElementById(`assisted-final-source-${item.id}`)?.click()
+                    }
+                  >
+                    Upload Final Artwork
+                  </Button>
+                ) : (
+                  <div className="customer-requests-assisted-proof-pending">
+                    <p className="customer-requests-assisted-proof-pending-name">
+                      {pendingFinalFile.name}
+                    </p>
+                    <div className="customer-requests-assisted-action-row">
+                      <Button
+                        disabled={busy}
+                        onClick={() => void submitPendingFinalSource()}
+                        type="button"
+                      >
+                        {busy ? "Uploading…" : "Submit final artwork"}
+                      </Button>
+                      <Button
+                        disabled={busy}
+                        onClick={() => setPendingFinalFile(null)}
+                        type="button"
+                        variant="secondary"
+                      >
+                        Clear
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : null}
 
             {canMutate && item.status === "in_progress" ? (
               <div className="customer-requests-assisted-proof-upload">
+                <div className="customer-requests-assisted-action-row">
+                  <Button
+                    disabled={busy}
+                    onClick={() => setCatalogPickerOpen(true)}
+                    variant="secondary"
+                  >
+                    Share library design…
+                  </Button>
+                </div>
                 <input
                   accept="image/jpeg,image/png,image/webp"
                   className="visually-hidden"
@@ -1340,7 +2026,12 @@ function AssistedDetail({
       {selectedProof ? (
         <AssistedProofDetailModal
           downloading={isDownloading}
-          isApprovedProof={item.approvedProofId === selectedProof.id}
+          isApprovedProof={
+            selectedProof.isCatalogShare
+              ? Boolean(item.approvedCatalogDesignId) &&
+                selectedProof.catalogDesignId === item.approvedCatalogDesignId
+              : item.approvedProofId === selectedProof.id
+          }
           isLatest={proofMediaNewestFirst[0]?.id === selectedProof.id}
           onClose={() => setSelectedProofId(null)}
           onDownload={(entry) => void handleDownload(entry)}
@@ -1395,6 +2086,31 @@ function AssistedDetail({
           title="Restore cancelled request"
         />
       ) : null}
+
+      {catalogPickerOpen ? (
+        <AssistedCatalogDesignPickerModal
+          busy={busy}
+          onCancel={() => {
+            if (!busy) {
+              setCatalogPickerOpen(false);
+            }
+          }}
+          onConfirm={(design) => {
+            void submitCatalogSuggestion(design.id);
+          }}
+        />
+      ) : null}
+
+      {aiContextOpen ? (
+        <AssistedCreationAiContextModal
+          answers={item.answers}
+          fulfillmentMode={item.fulfillmentMode}
+          onClose={() => setAiContextOpen(false)}
+          onToast={onToast}
+          referenceImages={item.referenceImages}
+          requestId={item.id}
+        />
+      ) : null}
     </div>
   );
 }
@@ -1413,6 +2129,15 @@ export function AssistedCreationRequestsSection({
   const { items, isLoading, error } = useAssistedCreationRequests();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [activeStage, setActiveStage] = useState<AssistedStageTab>("new");
+  /**
+   * After Start Work / status actions, the destination tab is selected before the Firestore
+   * snapshot moves the request. Hold the target so we do not clear selection (and unmount the
+   * detail panel mid reference-image load → stuck "Loading…").
+   */
+  const [followHold, setFollowHold] = useState<{
+    id: string;
+    stage: AssistedStageTab;
+  } | null>(null);
   const [ackByRequestId, setAckByRequestId] = useState<Record<string, number>>({});
   const [detailTabFromRoute, setDetailTabFromRoute] = useState<AssistedDetailRouteTab>("overview");
 
@@ -1477,6 +2202,7 @@ export function AssistedCreationRequestsSection({
       in_progress: 0,
       revisions: 0,
       proof_ready: 0,
+      final_source_needed: 0,
       completed: 0,
     };
     for (const item of items) {
@@ -1490,12 +2216,36 @@ export function AssistedCreationRequestsSection({
     [activeStage, items],
   );
 
-  const selected = useMemo(
-    () => visibleItems.find((item) => item.id === selectedId) ?? visibleItems[0] ?? null,
-    [selectedId, visibleItems],
-  );
+  useEffect(() => {
+    if (!followHold) {
+      return;
+    }
+    const match = items.find((item) => item.id === followHold.id);
+    if (match && stageForStatus(match.status) === followHold.stage) {
+      setFollowHold(null);
+      setSelectedId(followHold.id);
+      setActiveStage(followHold.stage);
+    }
+  }, [followHold, items]);
+
+  const selected = useMemo(() => {
+    if (selectedId) {
+      const inVisible = visibleItems.find((item) => item.id === selectedId);
+      if (inVisible) {
+        return inVisible;
+      }
+      // Keep the same detail panel mounted while waiting for the status snapshot.
+      if (followHold?.id === selectedId) {
+        return items.find((item) => item.id === selectedId) ?? null;
+      }
+    }
+    return visibleItems[0] ?? null;
+  }, [followHold, items, selectedId, visibleItems]);
 
   useEffect(() => {
+    if (followHold) {
+      return;
+    }
     if (visibleItems.length === 0) {
       setSelectedId(null);
       return;
@@ -1503,7 +2253,7 @@ export function AssistedCreationRequestsSection({
     if (!selectedId || !visibleItems.some((item) => item.id === selectedId)) {
       setSelectedId(visibleItems[0]?.id ?? null);
     }
-  }, [selectedId, visibleItems]);
+  }, [followHold, selectedId, visibleItems]);
 
   async function markRequestHistoryEntryRead(
     item: AssistedCreationRequestListItem,
@@ -1630,6 +2380,12 @@ export function AssistedCreationRequestsSection({
                     canRestore={canRestore}
                     initialDetailTab={detailTabFromRoute}
                     item={selected}
+                    onFollowRequest={(requestId, status) => {
+                      const stage = stageForStatus(status);
+                      setFollowHold({ id: requestId, stage });
+                      setActiveStage(stage);
+                      setSelectedId(requestId);
+                    }}
                     onMarkHistoryEntryRead={(entryAtMs) => {
                       void markRequestHistoryEntryRead(selected, entryAtMs);
                     }}

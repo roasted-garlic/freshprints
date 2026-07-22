@@ -1,6 +1,7 @@
-import { useEffect, useId, useState, type KeyboardEvent } from "react";
+import { useEffect, useId, useState, type CSSProperties, type KeyboardEvent } from "react";
 import { ImageIcon } from "lucide-react";
 
+import { resolveArtworkBackgroundHex } from "@fresh-prints/shared/constants/design/artworkBackground.constants";
 import { LoadingSpinner } from "../../../shared/components/LoadingSpinner";
 import { useDesignDerivativeUrl } from "../hooks/useDesignDerivativeUrl";
 
@@ -13,6 +14,8 @@ interface DesignThumbnailPanelProps {
   imageFit?: "contain" | "cover";
   interactive?: boolean;
   borderless?: boolean;
+  /** Optional per-design mat color (`#rrggbb`); overrides theme artwork preview bg. */
+  artworkBackgroundHex?: string;
   loadingLabel?: string;
   onImageClick?: (imageUrl: string) => void;
 }
@@ -32,6 +35,7 @@ export function DesignThumbnailPanel({
   imageFit = "contain",
   interactive = false,
   borderless = false,
+  artworkBackgroundHex,
   loadingLabel = "Loading preview",
   onImageClick,
 }: DesignThumbnailPanelProps) {
@@ -40,6 +44,11 @@ export function DesignThumbnailPanel({
   const { status, url } = useDesignDerivativeUrl(isDirectUrl ? undefined : trimmedPath || undefined);
   const [imageLoadFailed, setImageLoadFailed] = useState(false);
   const unavailableDescriptionId = useId();
+  const panelStyle: CSSProperties | undefined = artworkBackgroundHex
+    ? ({
+        ["--color-artwork-preview-bg" as string]: resolveArtworkBackgroundHex(artworkBackgroundHex),
+      } as CSSProperties)
+    : undefined;
 
   const resolvedUrl = isDirectUrl ? trimmedPath : url;
   const isResolvingUrl = !isDirectUrl && trimmedPath.length > 0 && status === "loading";
@@ -97,6 +106,7 @@ export function DesignThumbnailPanel({
       aria-busy={isResolvingUrl || undefined}
       className={panelClassName}
       role={!decorative && isUnavailable ? "img" : undefined}
+      style={panelStyle}
     >
       {hasResolvedUrl && resolvedUrl ? (
         <img

@@ -6,29 +6,46 @@ service firebase.storage {
       return request.auth != null;
     }
 
+    function callerUserExists() {
+      return isSignedIn()
+        && firestore.exists(/databases/(default)/documents/users/$(request.auth.uid));
+    }
+
     function callerUser() {
       return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data;
     }
 
     function isStaff() {
-      return isSignedIn()
+      return callerUserExists()
         && callerUser().isActive == true
         && callerUser().role in ["owner", "admin", "helper"];
     }
 
     function isCustomer() {
-      return isSignedIn()
+      return callerUserExists()
         && callerUser().isActive == true
         && callerUser().role == "customer";
+    }
+
+    // Leftover Anonymous Auth (no users/{uid} doc) must not break public catalog reads:
+    // isStaff()/isCustomer() used to call firestore.get unconditionally and fail the whole rule.
+    function isAnonymousAuth() {
+      return isSignedIn()
+        && request.auth.token.firebase.sign_in_provider == "anonymous";
+    }
+
+    function canAccessOwnCustomerUploadPath(userId) {
+      return (isCustomer() || isAnonymousAuth()) && userId == request.auth.uid;
     }
 
     function designIdFromDerivativeFileName(fileName) {
       return fileName.replace('.webp', '');
     }
 
+    // Public catalog browse (#13): ready thumbnails/previews readable without auth.
+    // Still requires canonical `{designId}.webp` and a ready design doc — originals stay staff-only.
     function isReadyDesignDerivative(fileName) {
-      return isCustomer()
-        && isCanonicalDerivativeFileName(fileName)
+      return isCanonicalDerivativeFileName(fileName)
         && firestore.exists(/databases/(default)/documents/designs/$(designIdFromDerivativeFileName(fileName)))
         && firestore.get(/databases/(default)/documents/designs/$(designIdFromDerivativeFileName(fileName))).data.status == "ready";
     }
@@ -104,7 +121,8 @@ service firebase.storage {
     }
 
     match /customer-uploads/{userId}/batches/{batchId}/archive.zip {
-      allow read: if isStaff() || (isCustomer() && userId == request.auth.uid);
+      allow read: if isStaff() || canAccessOwnCustomerUploadPath(userId);
+      // ZIP uploads remain registered-customer only (guests are images-only in callables).
       allow create, update: if isCustomer()
         && userId == request.auth.uid
         && isValidCustomerUploadZip();
@@ -112,10 +130,9 @@ service firebase.storage {
     }
 
     match /customer-uploads/{userId}/{uploadId}/{fileName} {
-      allow read: if isStaff() || (isCustomer() && userId == request.auth.uid);
+      allow read: if isStaff() || canAccessOwnCustomerUploadPath(userId);
 
-      allow create, update: if isCustomer()
-        && userId == request.auth.uid
+      allow create, update: if canAccessOwnCustomerUploadPath(userId)
         && fileName == "source"
         && isValidCustomerUploadSource();
 
@@ -157,6 +174,55 @@ service firebase.storage {
       allow read: if isStaff() || (isCustomer() && userId == request.auth.uid);
       allow create, update: if isOwnerOrAdmin() && isValidAssistedCreationProof();
       allow delete: if isOwnerOrAdmin();
+    }
+
+    // Final HR artwork after proof approval (ADR-FP-110). Same write policy as proofs.
+    match /assisted-creation/{userId}/{requestId}/final/{fileId} {
+      allow read: if isStaff() || (isCustomer() && userId == request.auth.uid);
+      allow create, update: if isOwnerOrAdmin() && isValidAssistedCreationProof();
+      allow delete: if isOwnerOrAdmin();
+    }
+
+    // Brand logos (Studio + Portal). Sync limits with brandLogoSettings.constants.ts
+    function isOwner() {
+      return isSignedIn()
+        && callerUserExists()
+        && callerUser().isActive == true
+        && callerUser().role == "owner";
+    }
+
+    function isBrandLogoApp(appId) {
+      return appId in ["studio", "portal"];
+    }
+
+    function isBrandLogoSlot(slotId) {
+      return slotId in ["full", "collapsed"];
+    }
+
+    function isBrandLogoFileName(fileName) {
+      return fileName.matches('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\\.png$');
+    }
+
+    function isValidBrandLogoUpload() {
+      return request.resource.size > 0
+        && request.resource.size <= 2 * 1024 * 1024
+        && request.resource.contentType == "image/png";
+    }
+
+    match /brand/{appId}/{slotId}/{fileName} {
+      allow read: if isBrandLogoApp(appId)
+        && isBrandLogoSlot(slotId)
+        && isBrandLogoFileName(fileName);
+      allow create: if isOwner()
+        && isBrandLogoApp(appId)
+        && isBrandLogoSlot(slotId)
+        && isBrandLogoFileName(fileName)
+        && isValidBrandLogoUpload();
+      allow update: if false;
+      allow delete: if isOwner()
+        && isBrandLogoApp(appId)
+        && isBrandLogoSlot(slotId)
+        && isBrandLogoFileName(fileName);
     }
 
     match /{allPaths=**} {

@@ -10,6 +10,10 @@ import {
   type WipeOperationalTestDataResponse,
 } from "../../packages/shared/src/types/admin/wipeOperationalTestData.types";
 import {
+  buildAiProcessingDesignStoragePaths,
+  isAiProcessingPageDesign,
+} from "../../packages/shared/src/utils/aiProcessingDesignWipeEligibility";
+import {
   CUSTOMER_UPLOAD_STORAGE_WIPE_PREFIXES,
   DESIGN_STORAGE_WIPE_PREFIXES,
   ASSISTED_CREATION_STORAGE_WIPE_PREFIXES,
@@ -244,7 +248,9 @@ async function resetDesignRequestStats(): Promise<number> {
     for (const document of snapshot.docs) {
       batch.update(document.ref, {
         requestCount: 0,
+        showAddCount: 0,
         lastRequestedAt: FieldValue.delete(),
+        lastAddedToShowAt: FieldValue.delete(),
         updatedAt: FieldValue.serverTimestamp(),
       });
     }
@@ -292,6 +298,108 @@ async function deleteDesignStorageAssets(): Promise<number> {
   return deleted;
 }
 
+async function deleteStorageObjects(paths: readonly string[]): Promise<number> {
+  if (paths.length === 0) {
+    return 0;
+  }
+
+  const bucket = adminStorage.bucket();
+  let deleted = 0;
+
+  for (let index = 0; index < paths.length; index += STORAGE_DELETE_BATCH) {
+    const batchPaths = paths.slice(index, index + STORAGE_DELETE_BATCH);
+    const results = await Promise.all(
+      batchPaths.map(async (objectPath) => {
+        try {
+          await bucket.file(objectPath).delete({ ignoreNotFound: true });
+          return 1;
+        } catch {
+          return 0;
+        }
+      }),
+    );
+    deleted += results.reduce<number>((sum, count) => sum + count, 0);
+  }
+
+  return deleted;
+}
+
+function collectAiProcessingDesignStoragePaths(
+  designId: string,
+  data: Record<string, unknown>,
+): string[] {
+  const paths = new Set<string>(buildAiProcessingDesignStoragePaths(designId));
+
+  for (const field of ["originalPath", "thumbnailPath", "previewPath"] as const) {
+    const value = data[field];
+    if (typeof value === "string" && value.trim()) {
+      paths.add(value.trim());
+    }
+  }
+
+  return [...paths];
+}
+
+/**
+ * Deletes designs that appear on the AI Processing page (any tab) and their Storage
+ * objects only. Never wipes entire originals/thumbnails/previews prefixes.
+ */
+async function wipeAiProcessingPageDesigns(): Promise<{
+  designsDeleted: number;
+  storageFilesDeleted: number;
+}> {
+  let designsDeleted = 0;
+  let storageFilesDeleted = 0;
+  let lastDocId: string | undefined;
+
+  for (;;) {
+    let query = adminDb.collection("designs").orderBy("__name__").limit(BATCH_LIMIT);
+    if (lastDocId) {
+      query = query.startAfter(lastDocId);
+    }
+
+    const snapshot = await query.get();
+    if (snapshot.empty) {
+      break;
+    }
+
+    const matchingDocs = snapshot.docs.filter((document) =>
+      isAiProcessingPageDesign({
+        status: document.data().status,
+        aiReviewStatus: document.data().aiReviewStatus,
+      }),
+    );
+
+    if (matchingDocs.length > 0) {
+      const storagePaths: string[] = [];
+      for (const document of matchingDocs) {
+        storagePaths.push(
+          ...collectAiProcessingDesignStoragePaths(
+            document.id,
+            document.data() as Record<string, unknown>,
+          ),
+        );
+      }
+
+      const batch = adminDb.batch();
+      for (const document of matchingDocs) {
+        batch.delete(document.ref);
+      }
+      await batch.commit();
+      designsDeleted += matchingDocs.length;
+      storageFilesDeleted += await deleteStorageObjects(storagePaths);
+    }
+
+    lastDocId = snapshot.docs[snapshot.docs.length - 1]?.id;
+
+    if (snapshot.size < BATCH_LIMIT) {
+      break;
+    }
+  }
+
+  return { designsDeleted, storageFilesDeleted };
+}
+
 async function deleteCustomerUploadStorageAssets(): Promise<number> {
   let deleted = 0;
 
@@ -337,6 +445,7 @@ export const wipeOperationalTestData = onCall(
       !plan.resetSequences &&
       !plan.resetDesignRequestStats &&
       !plan.wipeDesignStorage &&
+      !plan.wipeAiProcessingDesigns &&
       !plan.wipeCustomerUploadStorage &&
       !plan.wipeAssistedCreationStorage &&
       !plan.resetShowAllocationTotals
@@ -358,8 +467,14 @@ export const wipeOperationalTestData = onCall(
       ? await resetDesignRequestStats()
       : 0;
     let storageFilesDeleted = 0;
+    let aiProcessingDesignsDeleted = 0;
     if (plan.wipeDesignStorage) {
       storageFilesDeleted += await deleteDesignStorageAssets();
+    }
+    if (plan.wipeAiProcessingDesigns) {
+      const selective = await wipeAiProcessingPageDesigns();
+      aiProcessingDesignsDeleted = selective.designsDeleted;
+      storageFilesDeleted += selective.storageFilesDeleted;
     }
     if (plan.wipeCustomerUploadStorage) {
       storageFilesDeleted += await deleteCustomerUploadStorageAssets();
@@ -377,6 +492,7 @@ export const wipeOperationalTestData = onCall(
       designsRequestStatsReset,
       storageFilesDeleted,
       showsAllocationTotalsReset,
+      aiProcessingDesignsDeleted,
     };
   },
 );

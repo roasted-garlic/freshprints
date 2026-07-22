@@ -45,6 +45,30 @@ describe("extractJsonObject", () => {
     assert.deepEqual(extractJsonObject(raw), { title: "Hi", tags: ["a"] });
   });
 
+  it("preserves straight apostrophes inside double-quoted JSON strings", () => {
+    const raw = JSON.stringify({
+      title: "I'm Fine The Rest of You Need Therapy",
+      description: "x",
+      category: "Humor",
+      tags: ["funny"],
+    });
+    assert.equal(
+      extractJsonObject(raw).title,
+      "I'm Fine The Rest of You Need Therapy",
+    );
+  });
+
+  it("preserves curly apostrophes inside double-quoted JSON strings", () => {
+    const curly = "I\u2019m Fine The Rest of You Need Therapy";
+    const raw = JSON.stringify({
+      title: curly,
+      description: "x",
+      category: "Humor",
+      tags: ["funny"],
+    });
+    assert.equal(extractJsonObject(raw).title, curly);
+  });
+
   it("returns an empty object for unparseable content", () => {
     assert.deepEqual(extractJsonObject("not json at all"), {});
   });
@@ -277,6 +301,27 @@ describe("buildSimpleCatalogEnrichmentResult", () => {
 
     assert.equal(result.suggestions.title, "Motherhood Skeleton Rock On");
     assert.ok(!/some days it rocks me/i.test(result.suggestions.title ?? ""));
+  });
+
+  it("replaces style/tag-invented titles with readable text from the description", () => {
+    const parsed = normalizeSimpleCatalogEnrichment(
+      {
+        category: "Humor",
+        description:
+          '"Kinda Give A Damn Kinda Don\'t Care" in distressed lettering with decorative stars.',
+        title: "Sarcastic Funny Attitude Statement Retro Distressed",
+        tags: ["sarcastic", "funny", "attitude", "statement", "retro", "distressed"],
+      },
+      EXCLUSIONS,
+    );
+
+    const result = buildSimpleCatalogEnrichmentResult({
+      parsed,
+      enrichmentInput: enrichmentInput(),
+      modelId: "gemini-2.5-flash-lite",
+    });
+
+    assert.equal(result.suggestions.title, "Kinda Give A Damn Kinda Don't Care");
   });
 
   it("preserves the full transcribed visible text in the description", () => {

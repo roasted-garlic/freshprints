@@ -36,6 +36,7 @@ import {
   normalizeSuggestedTagKey,
 } from "../utils/suggestedNewTags";
 import {
+  resolveAdvanceIndexAfterInboxRemoval,
   resolveIsPinnedNeedsReviewDesign,
   resolvePendingCrossTabDesign,
   resolveRejectedReopenTargetTab,
@@ -145,6 +146,7 @@ export function useAiReviewInbox(
   const [baselineForm, setBaselineForm] = useState<AiReviewDraftForm | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [isActionLoading, setIsActionLoading] = useState(false);
+  const [isSavingArtworkBackground, setIsSavingArtworkBackground] = useState(false);
   const [isSendingBackToProcessing, setIsSendingBackToProcessing] = useState(false);
 
   const canManageCatalog = Boolean(user && permissionService.canEditAiReviewInbox(user));
@@ -341,17 +343,40 @@ export function useAiReviewInbox(
       return;
     }
 
-    const advanceFromIndex = pendingAdvanceIndexRef.current;
-    pendingAdvanceIndexRef.current = null;
-
     if (designs.length === 0) {
+      pendingAdvanceIndexRef.current = null;
       applySelection(null);
       return;
     }
 
-    const nextIndex = Math.min(Math.max(advanceFromIndex, 0), designs.length - 1);
-    applySelection(designs[nextIndex] ?? designs[0] ?? null);
-  }, [applySelection, designs, isLoading]);
+    const nextIndex = resolveAdvanceIndexAfterInboxRemoval(
+      designs.length,
+      pendingAdvanceIndexRef.current,
+    );
+
+    if (nextIndex === null) {
+      pendingAdvanceIndexRef.current = null;
+      applySelection(null);
+      return;
+    }
+
+    const nextDesign = designs[nextIndex] ?? null;
+
+    if (!nextDesign) {
+      pendingAdvanceIndexRef.current = null;
+      applySelection(null);
+      return;
+    }
+
+    // Keep pending until selection sticks so the retention effect cannot fall back to designs[0]
+    // in the same flush (selectedDesignId still points at the removed design until setState applies).
+    if (selectedDesignId === nextDesign.id) {
+      pendingAdvanceIndexRef.current = null;
+      return;
+    }
+
+    applySelection(nextDesign);
+  }, [applySelection, designs, isLoading, selectedDesignId]);
 
   useEffect(() => {
     const tabChanged = previousTabRef.current !== filters.tab;
@@ -545,6 +570,58 @@ export function useAiReviewInbox(
       });
     },
     [canEditSelected],
+  );
+
+  const canSaveArtworkBackground = Boolean(
+    user && permissionService.canEditDesigns(user) && selectedDesign,
+  );
+
+  const saveArtworkBackground = useCallback(
+    async (values: Pick<AiReviewDraftForm, "artworkBackgroundPreset" | "artworkBackgroundCustomHex">) => {
+      if (!user || !selectedDesign || !canSaveArtworkBackground) {
+        return;
+      }
+
+      setIsSavingArtworkBackground(true);
+      setActionError(null);
+
+      try {
+        const updated = await aiReviewInboxService.updateArtworkBackgroundFromInbox(
+          user,
+          selectedDesign.id,
+          values,
+        );
+        liveDesignRef.current = updated;
+        setLiveDesign(updated);
+        setDraftForm((currentDraft) =>
+          currentDraft
+            ? {
+                ...currentDraft,
+                artworkBackgroundPreset: values.artworkBackgroundPreset,
+                artworkBackgroundCustomHex: values.artworkBackgroundCustomHex,
+              }
+            : currentDraft,
+        );
+        setBaselineForm((currentBaseline) =>
+          currentBaseline
+            ? {
+                ...currentBaseline,
+                artworkBackgroundPreset: values.artworkBackgroundPreset,
+                artworkBackgroundCustomHex: values.artworkBackgroundCustomHex,
+              }
+            : currentBaseline,
+        );
+      } catch (saveError) {
+        setActionError(
+          saveError instanceof Error
+            ? saveError.message
+            : "Unable to save artwork background.",
+        );
+      } finally {
+        setIsSavingArtworkBackground(false);
+      }
+    },
+    [canSaveArtworkBackground, selectedDesign, user],
   );
 
   const runInboxAction = useCallback(
@@ -765,6 +842,7 @@ export function useAiReviewInbox(
     canApprove: canApproveSelected,
     canArchive: canArchiveSelected,
     canEdit: canEditSelected,
+    canSaveArtworkBackground,
     canReject: canRejectSelected,
     canReopen: canReopenSelected,
     canRerun: canRerunSelected,
@@ -782,6 +860,7 @@ export function useAiReviewInbox(
     filters,
     hasMore,
     isActionLoading,
+    isSavingArtworkBackground,
     isDraftDirty,
     isLoading,
     isLoadingMore,
@@ -806,6 +885,7 @@ export function useAiReviewInbox(
     retryProcessingSelected,
     approveSuggestedTag,
     ignoreSuggestedTag,
+    saveArtworkBackground,
     updateDraftField,
     processingQueue,
   };

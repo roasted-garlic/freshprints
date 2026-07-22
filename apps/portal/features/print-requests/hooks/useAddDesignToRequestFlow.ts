@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { PrintRequest } from '@fresh-prints/shared/types/printRequest/printRequest.types';
@@ -13,6 +14,7 @@ import {
 } from '@fresh-prints/shared/utils/printRequestItemSizing';
 
 import { useAuth } from '../../auth/context/AuthContext';
+import { redirectToPortalLogin } from '../../auth/utils/requirePortalLogin';
 import type { CatalogDesign } from '../../catalog/types/catalog.types';
 import { usePortalToast } from '../../shared/context/PortalToastContext';
 import { usePortalPrintRequests } from '../context/PortalPrintRequestContext';
@@ -48,6 +50,7 @@ function toSeedDesignSummary(design: CatalogDesign) {
     height: design.height,
     thumbnailPath: design.thumbnailPath,
     previewPath: design.previewPath,
+    artworkBackgroundHex: design.artworkBackgroundHex,
     printWidthInches: design.printWidthInches,
     printHeightInches: design.printHeightInches,
     updatedAtMs: design.updatedAtMs,
@@ -132,6 +135,7 @@ export function useAddDesignToRequestFlow({
   refreshRequests,
   reloadWorkingItems,
 }: UseAddDesignToRequestFlowOptions) {
+  const router = useRouter();
   const { firebaseUser } = useAuth();
   const { showSuccess } = usePortalToast();
   const {
@@ -149,6 +153,17 @@ export function useAddDesignToRequestFlow({
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [busyDesignId, setBusyDesignId] = useState<string | null>(null);
   const adjustQuantityRef = useRef<(design: CatalogDesign, delta: 1 | -1) => void>(() => {});
+
+  function requireSignedIn(designId?: string): boolean {
+    if (firebaseUser) {
+      return true;
+    }
+    const returnTo = designId
+      ? `/catalog?designId=${encodeURIComponent(designId)}`
+      : undefined;
+    redirectToPortalLogin(router, returnTo);
+    return false;
+  }
 
   function announceDesignAdded(design: CatalogDesign) {
     showSuccess(`Added “${design.title}” to your Current Request.`, {
@@ -457,7 +472,7 @@ export function useAddDesignToRequestFlow({
 
       if (delta < 0) {
         if (branch.kind === 'create') {
-          if (!firebaseUser) {
+          if (!requireSignedIn(design.id) || !firebaseUser) {
             return;
           }
           const current =
@@ -505,8 +520,7 @@ export function useAddDesignToRequestFlow({
           return;
         }
 
-        if (!firebaseUser) {
-          setActionError('You must be signed in to update your Current Request.');
+        if (!requireSignedIn(design.id) || !firebaseUser) {
           return;
         }
 
@@ -530,8 +544,7 @@ export function useAddDesignToRequestFlow({
       }
 
       if (branch.kind === 'create') {
-        if (!firebaseUser) {
-          setActionError('You must be signed in to update your Current Request.');
+        if (!requireSignedIn(design.id) || !firebaseUser) {
           return;
         }
 
@@ -583,8 +596,7 @@ export function useAddDesignToRequestFlow({
         return;
       }
 
-      if (!firebaseUser) {
-        setActionError('You must be signed in to update your Current Request.');
+      if (!requireSignedIn(design.id) || !firebaseUser) {
         return;
       }
 
@@ -611,6 +623,7 @@ export function useAddDesignToRequestFlow({
       queuePrimaryQuantity,
       refreshRequests,
       resolveBranch,
+      router,
       seedDesignSummary,
       workingRequestLimit.canAddPrints,
       workingRequestLimit.exhaustedMessage,
@@ -643,8 +656,7 @@ export function useAddDesignToRequestFlow({
         return;
       }
 
-      if (!firebaseUser) {
-        setActionError('You must be signed in to update your Current Request.');
+      if (!requireSignedIn(designId) || !firebaseUser) {
         return;
       }
 
@@ -712,6 +724,7 @@ export function useAddDesignToRequestFlow({
       firebaseUser,
       queuePrimaryQuantity,
       resolveBranch,
+      router,
     ],
   );
 
@@ -724,8 +737,7 @@ export function useAddDesignToRequestFlow({
         return;
       }
 
-      if (!firebaseUser) {
-        setActionError('You must be signed in to update your Current Request.');
+      if (!requireSignedIn(designId) || !firebaseUser) {
         return;
       }
 
@@ -736,7 +748,7 @@ export function useAddDesignToRequestFlow({
         userId: firebaseUser.uid,
       });
     },
-    [firebaseUser, queuePrimaryQuantity, resolveBranch],
+    [firebaseUser, queuePrimaryQuantity, resolveBranch, router],
   );
 
   const closeConfirm = useCallback(() => {
@@ -766,7 +778,10 @@ export function useAddDesignToRequestFlow({
 
   const confirmPickRequest = useCallback(
     (printRequestId: string) => {
-      if (!pendingDesign || isBusy || !firebaseUser) {
+      if (!pendingDesign || isBusy) {
+        return;
+      }
+      if (!requireSignedIn(pendingDesign.id) || !firebaseUser) {
         return;
       }
 
@@ -795,7 +810,7 @@ export function useAddDesignToRequestFlow({
           setPendingDesign(null);
         });
     },
-    [firebaseUser, isBusy, pendingDesign, refreshRequests],
+    [firebaseUser, isBusy, pendingDesign, refreshRequests, router],
   );
 
   return {

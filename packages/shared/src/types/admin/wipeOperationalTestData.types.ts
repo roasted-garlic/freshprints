@@ -12,6 +12,7 @@ export const OPERATIONAL_WIPE_TARGETS = [
   "sequences",
   "designRequestStats",
   "designs",
+  "aiProcessingDesigns",
   "customerUploads",
   "printRequestDesignDailyLimits",
   "etsySearches",
@@ -39,6 +40,11 @@ export interface WipeOperationalTestDataResponse {
   storageFilesDeleted: number;
   /** Upcoming shows whose allocatedQuantity was zeroed after attachment wipe (shows kept). */
   showsAllocationTotalsReset: number;
+  /**
+   * Designs matching AI Processing page tabs that were deleted by `aiProcessingDesigns`.
+   * 0 when that target was not used (or skipped because full `designs` wipe ran).
+   */
+  aiProcessingDesignsDeleted: number;
 }
 
 export function isOperationalWipeAllowedProjectId(projectId: string): boolean {

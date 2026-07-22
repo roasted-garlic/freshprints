@@ -14,6 +14,7 @@ import {
 } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 
+import { traceFirestoreRead } from '@fresh-prints/shared/utils/firestoreUsageTrace';
 import type {
   AddPortalCatalogDesignToPrintRequestRequest,
   AddPortalCatalogDesignToPrintRequestResponse,
@@ -29,6 +30,7 @@ import {
   MAX_STANDARD_PRINT_REQUEST_SIZE_INCHES,
   resolveInitialPrintRequestItemSize,
 } from '@fresh-prints/shared/utils/printRequestItemSizing';
+import { isPortalContinuablePrintRequestStatus } from '@fresh-prints/shared/utils/portalPrintRequestListTabs';
 import { resolveCatalogAddAction } from '@fresh-prints/shared/utils/currentRequestAggregates';
 
 import { getPortalDb, getPortalFunctions } from '../../../lib/firebase/client';
@@ -75,6 +77,7 @@ interface DesignDocumentData extends DocumentData {
   height?: unknown;
   thumbnailPath?: unknown;
   previewPath?: unknown;
+  artworkBackgroundHex?: unknown;
   printWidthInches?: unknown;
   printHeightInches?: unknown;
   updatedAt?: unknown;
@@ -252,6 +255,7 @@ export const portalPrintRequestService = {
   },
 
   async listMyPrintRequests(customerId: string): Promise<PrintRequest[]> {
+    traceFirestoreRead('getDocs', 'printRequests:mine:all');
     const snapshot = await getDocs(
       query(
         collection(getPortalDb(), 'printRequests'),
@@ -265,8 +269,40 @@ export const portalPrintRequestService = {
     );
   },
 
+  /**
+   * Shell / chrome load: only continuable (draft|editing) requests — uses existing
+   * customerId+status indexes (no new composite). Skips full history fan-out.
+   */
+  async listMyContinuablePrintRequests(customerId: string): Promise<PrintRequest[]> {
+    const statuses = ['draft', 'editing'] as const;
+    const snapshots = await Promise.all(
+      statuses.map(async (status) => {
+        traceFirestoreRead('getDocs', `printRequests:mine:status=${status}`);
+        return getDocs(
+          query(
+            collection(getPortalDb(), 'printRequests'),
+            where('customerId', '==', customerId),
+            where('status', '==', status),
+          ),
+        );
+      }),
+    );
+
+    const byId = new Map<string, PrintRequest>();
+    for (const snapshot of snapshots) {
+      for (const requestDoc of snapshot.docs) {
+        const mapped = mapPrintRequest(requestDoc.id, requestDoc.data() as PrintRequestDocumentData);
+        if (isPortalContinuablePrintRequestStatus(mapped.status)) {
+          byId.set(mapped.id, mapped);
+        }
+      }
+    }
+
+    return [...byId.values()].sort((left, right) => right.updatedAt.toMillis() - left.updatedAt.toMillis());
+  },
+
   async listEditablePrintRequests(customerId: string): Promise<PrintRequest[]> {
-    const requests = await this.listMyPrintRequests(customerId);
+    const requests = await this.listMyContinuablePrintRequests(customerId);
     return requests.filter((request) => request.status === 'draft' || request.status === 'editing');
   },
 
@@ -398,6 +434,8 @@ export const portalPrintRequestService = {
       height: data.height,
       thumbnailPath: typeof data.thumbnailPath === 'string' ? data.thumbnailPath : undefined,
       previewPath: typeof data.previewPath === 'string' ? data.previewPath : undefined,
+      artworkBackgroundHex:
+        typeof data.artworkBackgroundHex === 'string' ? data.artworkBackgroundHex : undefined,
       printWidthInches: typeof data.printWidthInches === 'number' ? data.printWidthInches : undefined,
       printHeightInches: typeof data.printHeightInches === 'number' ? data.printHeightInches : undefined,
       updatedAtMs:

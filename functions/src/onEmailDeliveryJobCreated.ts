@@ -18,7 +18,7 @@ import {
 } from "../../packages/shared/src/utils/assistedCreationHistory";
 import { adminDb } from "./lib/admin";
 import { sendEmail } from "./lib/email/emailRouter";
-import { buildProofReadyEmail } from "./lib/email/emailTemplates";
+import { buildCatalogShareReadyEmail, buildProofReadyEmail } from "./lib/email/emailTemplates";
 import { EmailDeliveryError } from "./lib/email/email.types";
 import {
   canClaimEmailJob,
@@ -34,8 +34,10 @@ const LEASE_MS = 2 * 60 * 1000;
 
 interface ClaimedProofJob {
   id: string;
+  kind: string;
   requestId: string;
   proofId: string;
+  designId: string;
   customerId: string;
   customerUid: string;
   provider: EmailProviderId;
@@ -76,8 +78,10 @@ async function claimJob(jobId: string): Promise<ClaimedProofJob | null> {
 
     const claimed: ClaimedProofJob = {
       id: jobId,
+      kind: typeof data.kind === "string" ? data.kind : "assisted_proof_ready",
       requestId: String(data.requestId ?? ""),
       proofId: String(data.proofId ?? ""),
+      designId: String(data.designId ?? ""),
       customerId: String(data.customerId ?? ""),
       customerUid: String(data.customerUid ?? ""),
       provider: data.provider,
@@ -148,6 +152,10 @@ async function appendProofEmailSentHistory(job: ClaimedProofJob): Promise<void> 
     return;
   }
   const docRef = adminDb.collection(ASSISTED_CREATION_COLLECTION).doc(job.requestId);
+  const note =
+    job.kind === "assisted_catalog_share_ready"
+      ? "Library-match email sent"
+      : ASSISTED_CREATION_PROOF_EMAIL_SENT_NOTE;
   await adminDb.runTransaction(async (tx) => {
     const snap = await tx.get(docRef);
     if (!snap.exists) {
@@ -165,7 +173,7 @@ async function appendProofEmailSentHistory(job: ClaimedProofJob): Promise<void> 
       revisionHistory: appendRevision(history, {
         byUid: "system",
         byRole: "system",
-        note: ASSISTED_CREATION_PROOF_EMAIL_SENT_NOTE,
+        note,
         fromStatus: status,
         toStatus: status,
         emailDeliveryJobId: job.id,
@@ -209,6 +217,21 @@ export const onEmailDeliveryJobCreated = onDocumentCreated(
       }
 
       const recipient = await resolveProofRecipient(job);
+      const reviewUrl = resolveProofReviewUrl();
+      const message =
+        job.kind === "assisted_catalog_share_ready"
+          ? buildCatalogShareReadyEmail({
+              from: proofNoticeFromEmail.value(),
+              to: recipient.email,
+              displayName: recipient.displayName,
+              reviewUrl,
+            })
+          : buildProofReadyEmail({
+              from: proofNoticeFromEmail.value(),
+              to: recipient.email,
+              displayName: recipient.displayName,
+              reviewUrl,
+            });
       const result = await sendEmail({
         provider: job.provider,
         apiKey: resolveEmailApiKey(job.provider, {
@@ -216,19 +239,16 @@ export const onEmailDeliveryJobCreated = onDocumentCreated(
           brevo: brevoApiKeySecret.value(),
         }),
         idempotencyKey: job.id,
-        message: buildProofReadyEmail({
-          from: proofNoticeFromEmail.value(),
-          to: recipient.email,
-          displayName: recipient.displayName,
-          reviewUrl: resolveProofReviewUrl(),
-        }),
+        message,
       });
       await markSent(job, result.providerMessageId);
       await appendProofEmailSentHistory(job);
       logger.info("Email delivery job sent.", {
         jobId: job.id,
+        kind: job.kind,
         requestId: job.requestId,
         proofId: job.proofId,
+        designId: job.designId,
         provider: job.provider,
       });
     } catch (unknownError) {

@@ -7,6 +7,7 @@ import {
   ASSISTED_CREATION_EXACT_REQUIREMENT_OPTIONS,
   ASSISTED_CREATION_FIELD_LIMITS,
   ASSISTED_CREATION_FLEXIBILITY_OPTIONS,
+  ASSISTED_CREATION_MAX_MOOD_ITEMS,
   ASSISTED_CREATION_MAX_STYLE_PREFERENCES,
   ASSISTED_CREATION_PERSONALIZATION_OPTIONS,
   ASSISTED_CREATION_REFERENCE_USAGE_OPTIONS,
@@ -15,15 +16,11 @@ import {
   type AssistedCreationPersonalizationType,
   type AssistedCreationWizardStepId,
 } from '@fresh-prints/shared/constants/assistedCreation/assistedCreation.constants';
+import { buildAssistedCreationAnswerDisplayRows } from '@fresh-prints/shared/utils/assistedCreationAnswerDisplay';
 
+import { EtsyMultiValueInput } from '../../etsy-recommendations/components/EtsyMultiValueInput';
 import { AssistedCreationReferenceUpload } from './AssistedCreationReferenceUpload';
-import {
-  labelForComposition,
-  labelForContainsText,
-  labelForFlexibility,
-  labelForRequestType,
-  labelForStyle,
-} from '../utils/assistedCreationLabels';
+import { applyContainsTextSelection } from '../utils/applyContainsTextSelection';
 
 interface AssistedCreationWizardStepFieldsProps {
   stepId: AssistedCreationWizardStepId;
@@ -132,11 +129,9 @@ export function AssistedCreationWizardStepFields({
                     checked={answers.containsText === option.value}
                     name="containsText"
                     onChange={() =>
-                      onAnswersChange((current) => ({
-                        ...current,
-                        containsText: option.value,
-                        exactText: option.value === 'exact_wording' ? current.exactText : '',
-                      }))
+                      onAnswersChange((current) =>
+                        applyContainsTextSelection(current, option.value),
+                      )
                     }
                     type="radio"
                   />
@@ -435,18 +430,23 @@ export function AssistedCreationWizardStepFields({
               })}
             </div>
           </fieldset>
-          <label className="portal-field">
-            <span>Mood or vibe (optional)</span>
-            <input
+          <div className="portal-field assisted-creation-multi-value-field">
+            <span id="assisted-creation-mood-label">Mood or vibe (optional)</span>
+            <EtsyMultiValueInput
+              ariaDescribedBy="assisted-creation-mood-hint"
+              ariaLabelledBy="assisted-creation-mood-label"
+              id="assisted-creation-mood"
+              maxItems={ASSISTED_CREATION_MAX_MOOD_ITEMS}
               maxLength={ASSISTED_CREATION_FIELD_LIMITS.shortText}
-              onChange={(event) =>
-                onAnswersChange((current) => ({ ...current, mood: event.target.value }))
-              }
+              onChange={(mood) => onAnswersChange((current) => ({ ...current, mood }))}
               placeholder="Example: playful, heartfelt, bold"
-              type="text"
               value={answers.mood}
             />
-          </label>
+            <p className="portal-muted assisted-creation-field-hint" id="assisted-creation-mood-hint">
+              Type a word and press Enter or comma. Optional — up to{' '}
+              {ASSISTED_CREATION_MAX_MOOD_ITEMS} vibes.
+            </p>
+          </div>
         </div>
       );
     }
@@ -593,105 +593,23 @@ export function AssistedCreationWizardStepFields({
             approve or revise.
           </p>
           <dl className="assisted-creation-review-list">
-            <div>
-              <dt>Description</dt>
-              <dd>{answers.rawDescription || '—'}</dd>
-            </div>
-            <div>
-              <dt>Request type</dt>
-              <dd>{labelForRequestType(answers.requestType)}</dd>
-            </div>
-            <div>
-              <dt>Words</dt>
-              <dd>
-                {labelForContainsText(answers.containsText)}
-                {answers.exactText ? ` — “${answers.exactText}”` : ''}
-              </dd>
-            </div>
-            {answers.primarySubject ? (
+            {answers.rawDescription.trim() ? (
               <div>
-                <dt>Primary subject</dt>
-                <dd>{answers.primarySubject}</dd>
+                <dt>Description</dt>
+                <dd>{answers.rawDescription}</dd>
               </div>
             ) : null}
-            {(answers.occasion || answers.audience) && (
-              <div>
-                <dt>Occasion & audience</dt>
-                <dd>
-                  {[answers.occasion, answers.audience].filter(Boolean).join(' · ') || '—'}
-                </dd>
+            {buildAssistedCreationAnswerDisplayRows(answers).map((row) => (
+              <div key={row.label}>
+                <dt>{row.label}</dt>
+                <dd>{row.value}</dd>
               </div>
-            )}
-            <div>
-              <dt>Personalization</dt>
-              <dd>
-                {answers.personalizationTypes
-                  .map(
-                    (value) =>
-                      ASSISTED_CREATION_PERSONALIZATION_OPTIONS.find((o) => o.value === value)
-                        ?.label ?? value,
-                  )
-                  .join(', ')}
-              </dd>
-            </div>
-            <div>
-              <dt>Flexibility</dt>
-              <dd>{labelForFlexibility(answers.flexibilityLevel)}</dd>
-            </div>
-            {answers.exactRequirements.length > 0 ? (
-              <div>
-                <dt>Must match references</dt>
-                <dd>
-                  {answers.exactRequirements
-                    .map(
-                      (value) =>
-                        ASSISTED_CREATION_EXACT_REQUIREMENT_OPTIONS.find((o) => o.value === value)
-                          ?.label ?? value,
-                    )
-                    .join(', ')}
-                </dd>
-              </div>
-            ) : null}
-            {answers.stylePreferences.length > 0 ? (
-              <div>
-                <dt>Styles</dt>
-                <dd>{answers.stylePreferences.map(labelForStyle).join(', ')}</dd>
-              </div>
-            ) : null}
-            {(answers.includedColors || answers.excludedColors || answers.garmentColor) && (
-              <div>
-                <dt>Colors & garment</dt>
-                <dd>
-                  {[
-                    answers.includedColors && `Include: ${answers.includedColors}`,
-                    answers.excludedColors && `Avoid: ${answers.excludedColors}`,
-                    answers.garmentColor && `Garment: ${answers.garmentColor}`,
-                  ]
-                    .filter(Boolean)
-                    .join(' · ')}
-                </dd>
-              </div>
-            )}
-            <div>
-              <dt>Composition</dt>
-              <dd>{labelForComposition(answers.composition)}</dd>
-            </div>
+            ))}
             <div>
               <dt>References</dt>
               <dd>
                 {answers.hasReferences
-                  ? `${referenceFiles.length} file(s) selected${
-                      answers.referenceUsage.length
-                        ? ` · ${answers.referenceUsage
-                            .map(
-                              (value) =>
-                                ASSISTED_CREATION_REFERENCE_USAGE_OPTIONS.find(
-                                  (o) => o.value === value,
-                                )?.label ?? value,
-                            )
-                            .join(', ')}`
-                        : ''
-                    }`
+                  ? `${referenceFiles.length} file(s) selected`
                   : 'None'}
               </dd>
             </div>

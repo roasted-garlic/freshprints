@@ -7,7 +7,7 @@ export const brevoApiKeySecret = defineSecret("BREVO_API_KEY");
 
 export const geminiApiKeySecret = defineSecret("GEMINI_API_KEY");
 
-/** Etsy Open API `x-api-key` value (`keystring:shared_secret`). Bound only to searchEtsyRecommendations. */
+/** Etsy Open API `x-api-key` value (`keystring:shared_secret`). Bound to searchEtsyRecommendations + staffSearchEtsyRecommendationApiResults. */
 export const etsyXApiKeySecret = defineSecret("ETSY_X_API_KEY");
 
 /**
@@ -15,10 +15,10 @@ export const etsyXApiKeySecret = defineSecret("ETSY_X_API_KEY");
  * See docs/workflow/setup/resend-email-setup.md and brevo-email-setup.md
  */
 export const invitationFromEmail = defineString("INVITATION_FROM_EMAIL", {
-  default: "Fresh Prints <team@funkyfreshprints.com>",
+  default: "Fresh Prints <noreply@myprintrequest.com>",
 });
 
 /** Must match a sender verified for the selected provider (Resend and/or Brevo). */
 export const proofNoticeFromEmail = defineString("PROOF_NOTICE_FROM_EMAIL", {
-  default: "Fresh Prints <team@funkyfreshprints.com>",
+  default: "Fresh Prints <noreply@myprintrequest.com>",
 });

@@ -1,7 +1,7 @@
 import { resolveAiReviewHalftoneStaffToggle } from "@fresh-prints/shared/utils/halftoneReviewState";
 
 import type { Design } from "../../designs/types/design.types";
-import { formatTagsInput } from "../../designs/utils/designFormMapper";
+import { formatTagsInput, mapArtworkBackgroundToForm } from "../../designs/utils/designFormMapper";
 import {
   formatTagsSanitizationNote,
   sanitizeDesignTagsForDisplay,
@@ -58,6 +58,7 @@ export function createAiReviewDraftFromDesign(design: Design): AiReviewDraftForm
       staffDecision: design.halftoneStaffDecision,
       submitterResponse: design.halftoneSubmitterResponse,
     }),
+    ...mapArtworkBackgroundToForm(design),
   };
 }
 
@@ -67,6 +68,8 @@ export function isAiReviewDraftDirty(baseline: AiReviewDraftForm, draft: AiRevie
     baseline.description !== draft.description ||
     baseline.categoryId !== draft.categoryId ||
     baseline.tagsInput !== draft.tagsInput ||
-    baseline.markAsHalftone !== draft.markAsHalftone
+    baseline.markAsHalftone !== draft.markAsHalftone ||
+    baseline.artworkBackgroundPreset !== draft.artworkBackgroundPreset ||
+    baseline.artworkBackgroundCustomHex !== draft.artworkBackgroundCustomHex
   );
 }

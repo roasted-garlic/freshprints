@@ -164,6 +164,7 @@ function AiReviewPageContent() {
             canApprove={inbox.canApprove}
             canApproveSuggestedTags={inbox.canApproveSuggestedTags}
             canEdit={inbox.canEdit}
+            canSaveArtworkBackground={inbox.canSaveArtworkBackground}
             canManageProcessingSettings={canManageProcessingSettings}
             canStopAutoQueue={inbox.processingQueue.canStopAutoQueue}
             canProcessSelected={inbox.processingQueue.canProcessSelected}
@@ -178,6 +179,7 @@ function AiReviewPageContent() {
             hasProcessingSettingsOverride={inbox.processingQueue.hasSessionOverride}
             draftForm={inbox.draftForm}
             isActionLoading={inbox.isActionLoading}
+            isSavingArtworkBackground={inbox.isSavingArtworkBackground}
             isAutoQueueRunning={inbox.processingQueue.isAutoQueueRunning}
             isQueueBusy={inbox.processingQueue.isQueueBusy}
             isOptimisticEnqueue={
@@ -202,6 +204,7 @@ function AiReviewPageContent() {
             onReopen={() => void inbox.reopenSelected()}
             onRerun={() => void inbox.rerunSelected()}
             onRetryProcessing={() => void inbox.retryProcessingSelected()}
+            onSaveArtworkBackground={(values) => void inbox.saveArtworkBackground(values)}
             onApplyProcessingSettings={inbox.processingQueue.applySessionSettings}
             onClearProcessingSettings={inbox.processingQueue.clearSessionSettings}
             onStartAutoQueue={inbox.processingQueue.startAutoQueue}

@@ -9,6 +9,7 @@ import {
   CUSTOMER_UPLOAD_DAILY_FINALIZE_ZIP_LIMIT,
   CUSTOMER_UPLOAD_DAILY_FINALIZE_ZIP_LIMIT_DONATION,
 } from "../../../packages/shared/src/constants/customerUpload/customerUploadLimits.constants";
+import { CUSTOMER_UPLOAD_DAILY_FINALIZE_IMAGE_LIMIT_DONATION_GUEST } from "../../../packages/shared/src/constants/customerUpload/customerUploadGuest.constants";
 
 import { quotaExhaustedMessage, resolveDailyQuotaTarget, shouldChargeDailyQuota } from "./customerUploadDailyQuota";
 
@@ -55,6 +56,13 @@ describe("resolveDailyQuotaTarget", () => {
       }),
       { field: "finalizeImageCount", limit: 3 },
     );
+  });
+
+  it("uses a stricter guest donation finalize-image cap", () => {
+    assert.deepEqual(resolveDailyQuotaTarget("finalizeImage", "catalog_donation", undefined, "guest"), {
+      field: "finalizeImageCountDonation",
+      limit: CUSTOMER_UPLOAD_DAILY_FINALIZE_IMAGE_LIMIT_DONATION_GUEST,
+    });
   });
 
   it("gives donations a higher finalize image allowance than print requests", () => {

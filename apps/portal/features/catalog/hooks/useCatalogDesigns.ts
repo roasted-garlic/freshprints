@@ -1,11 +1,12 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   CATALOG_NEW_THIS_WEEK_DAYS,
   type CatalogDiscoveryMode,
 } from '@fresh-prints/shared/utils/catalogDiscoveryRanking';
+import { traceFirestoreRead } from '@fresh-prints/shared/utils/firestoreUsageTrace';
 
 import { catalogService, DEFAULT_CATALOG_PAGE_SIZE } from '../services/catalogService';
 import type {
@@ -20,6 +21,7 @@ import {
   filterCatalogDesignsByTags,
   getPrimaryCatalogQueryTag,
 } from '../utils/catalogSearch';
+import { catalogNeedsFullClientHydrate } from '../utils/catalogNeedsFullClientHydrate';
 
 export interface UseCatalogDesignsQuery {
   categoryId?: string;
@@ -38,7 +40,7 @@ function sortFieldForDiscovery(mode: CatalogDiscoveryMode | null | undefined): C
     case 'mostLiked':
       return 'favoriteCount';
     case 'recent':
-      return 'lastRequestedAt';
+      return 'lastAddedToShowAt';
     default:
       // Browse-all / filters: Studio-newest first. Do not use updatedAt —
       // request/favorite counters bump updatedAt and would reshuffle the grid.
@@ -83,7 +85,7 @@ function toFriendlyCatalogError(error: unknown): string {
 }
 
 export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
-  /** Full hydrated set matching server filters (before client search windowing). */
+  /** Designs loaded for the current server filters (may be one page or fully hydrated). */
   catalogDesigns: CatalogDesign[];
   designs: CatalogDesign[];
   error: string | null;
@@ -99,13 +101,24 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
   const [visibleCount, setVisibleCount] = useState(pageSize);
   const [isLoading, setIsLoading] = useState(true);
   const [isHydrating, setIsHydrating] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [serverTotalCount, setServerTotalCount] = useState<number | null>(null);
+  const [nextCursor, setNextCursor] = useState<CatalogDesignListQuery['cursor']>(undefined);
+  const [serverHasMore, setServerHasMore] = useState(false);
+  const [isFullyHydrated, setIsFullyHydrated] = useState(false);
+  const hydrateGenerationRef = useRef(0);
+  const hydrateInFlightRef = useRef(false);
 
   const selectedTagsKey = useMemo(
     () => [...options.selectedTags].sort((left, right) => left.localeCompare(right)).join('\0'),
     [options.selectedTags],
   );
+
+  const needsFullHydrate = catalogNeedsFullClientHydrate({
+    searchQuery: options.searchQuery,
+    selectedTags: options.selectedTags,
+  });
 
   const serverListQuery = useMemo(
     () =>
@@ -114,7 +127,7 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
         discoveryMode: options.discoveryMode,
         selectedTags: options.selectedTags,
       }),
-    [options.categoryId, options.discoveryMode, options.selectedTags, selectedTagsKey],
+    [options.categoryId, options.discoveryMode, options.selectedTags],
   );
   const serverListQueryKey = useMemo(
     () => serializeServerListQuery(serverListQuery),
@@ -123,93 +136,58 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
 
   useEffect(() => {
     let isCancelled = false;
+    const generation = ++hydrateGenerationRef.current;
 
     async function loadCatalog() {
       setIsLoading(true);
-      setIsHydrating(true);
+      setIsHydrating(false);
+      setIsLoadingMore(false);
       setError(null);
       setAllDesigns([]);
       setVisibleCount(pageSize);
       setServerTotalCount(null);
+      setNextCursor(undefined);
+      setServerHasMore(false);
+      setIsFullyHydrated(false);
+      hydrateInFlightRef.current = false;
 
       try {
         const countPromise = catalogService
           .countReadyDesigns(serverListQuery)
           .then((count) => {
-            if (!isCancelled) {
+            if (!isCancelled && generation === hydrateGenerationRef.current) {
               setServerTotalCount(count);
             }
           })
           .catch(() => {
-            // Count is best-effort; matchingCount falls back after hydrate.
+            // Count is best-effort.
           });
 
+        traceFirestoreRead('getDocs', `designs:catalog:firstPage:${serverListQueryKey}`);
         const firstPage = await catalogService.listReadyDesignsPageWithSortFallback({
           ...serverListQuery,
           limitCount: pageSize,
         });
 
-        if (isCancelled) {
+        if (isCancelled || generation !== hydrateGenerationRef.current) {
           return;
         }
 
         setAllDesigns(firstPage.designs);
         setIsLoading(false);
-
+        setNextCursor(firstPage.nextCursor);
+        setServerHasMore(Boolean(firstPage.hasMore && firstPage.nextCursor));
         void countPromise;
 
         if (!firstPage.hasMore || !firstPage.nextCursor) {
-          setIsHydrating(false);
+          setIsFullyHydrated(true);
           setServerTotalCount((current) => current ?? firstPage.designs.length);
           return;
         }
 
-        const remaining = await catalogService.listAllMatchingReadyDesigns(
-          {
-            ...serverListQuery,
-            cursor: firstPage.nextCursor,
-          },
-          {
-            pageSize,
-            onPage: (pageDesigns) => {
-              if (isCancelled) {
-                return;
-              }
-
-              setAllDesigns((current) => {
-                const seen = new Set(current.map((design) => design.id));
-                const next = [...current];
-
-                for (const design of pageDesigns) {
-                  if (!seen.has(design.id)) {
-                    seen.add(design.id);
-                    next.push(design);
-                  }
-                }
-
-                return next;
-              });
-            },
-          },
-        );
-
-        if (isCancelled) {
-          return;
-        }
-
-        setAllDesigns((current) => {
-          const byId = new Map(current.map((design) => [design.id, design]));
-
-          for (const design of [...firstPage.designs, ...remaining]) {
-            byId.set(design.id, design);
-          }
-
-          return [...byId.values()];
-        });
-        setIsHydrating(false);
-        setServerTotalCount((current) => current ?? firstPage.designs.length + remaining.length);
+        // Remaining pages load via loadMore (browse) or deferred hydrate (search / multi-tag).
       } catch (loadError) {
-        if (!isCancelled) {
+        if (!isCancelled && generation === hydrateGenerationRef.current) {
           setError(toFriendlyCatalogError(loadError));
           setAllDesigns([]);
           setIsLoading(false);
@@ -224,7 +202,95 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
     return () => {
       isCancelled = true;
     };
+    // Server filter changes reset the page. Search / multi-tag hydrate is deferred below.
   }, [pageSize, serverListQuery, serverListQueryKey]);
+
+  useEffect(() => {
+    if (
+      !needsFullHydrate ||
+      isFullyHydrated ||
+      isLoading ||
+      !nextCursor ||
+      hydrateInFlightRef.current
+    ) {
+      return;
+    }
+
+    let isCancelled = false;
+    const generation = hydrateGenerationRef.current;
+    hydrateInFlightRef.current = true;
+
+    async function hydrateRemaining() {
+      setIsHydrating(true);
+      try {
+        traceFirestoreRead('getDocs', `designs:catalog:hydrate-deferred:${serverListQueryKey}`);
+        const remaining = await catalogService.listAllMatchingReadyDesigns(
+          {
+            ...serverListQuery,
+            cursor: nextCursor,
+          },
+          {
+            pageSize,
+            onPage: (pageDesigns) => {
+              if (isCancelled || generation !== hydrateGenerationRef.current) {
+                return;
+              }
+
+              setAllDesigns((current) => {
+                const seen = new Set(current.map((design) => design.id));
+                const next = [...current];
+                for (const design of pageDesigns) {
+                  if (!seen.has(design.id)) {
+                    seen.add(design.id);
+                    next.push(design);
+                  }
+                }
+                return next;
+              });
+            },
+          },
+        );
+
+        if (isCancelled || generation !== hydrateGenerationRef.current) {
+          return;
+        }
+
+        setAllDesigns((current) => {
+          const byId = new Map(current.map((design) => [design.id, design]));
+          for (const design of remaining) {
+            byId.set(design.id, design);
+          }
+          return [...byId.values()];
+        });
+        setNextCursor(undefined);
+        setServerHasMore(false);
+        setIsFullyHydrated(true);
+      } catch (loadError) {
+        if (!isCancelled && generation === hydrateGenerationRef.current) {
+          setError(toFriendlyCatalogError(loadError));
+        }
+      } finally {
+        hydrateInFlightRef.current = false;
+        if (!isCancelled && generation === hydrateGenerationRef.current) {
+          setIsHydrating(false);
+        }
+      }
+    }
+
+    void hydrateRemaining();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [
+    isFullyHydrated,
+    isLoading,
+    needsFullHydrate,
+    nextCursor,
+    pageSize,
+    serverListQuery,
+    serverListQueryKey,
+  ]);
 
   const filteredDesigns = useFilteredCatalogDesigns({
     designs: allDesigns,
@@ -235,36 +301,78 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
 
   useEffect(() => {
     setVisibleCount(pageSize);
-  }, [
-    options.searchQuery,
-    pageSize,
-    selectedTagsKey,
-    serverListQueryKey,
-  ]);
+  }, [options.searchQuery, pageSize, selectedTagsKey, serverListQueryKey]);
 
   const visibleDesigns = useMemo(
     () => filteredDesigns.slice(0, visibleCount),
     [filteredDesigns, visibleCount],
   );
 
-  const hasMore = visibleCount < filteredDesigns.length;
-  const needsFullCatalogForCount = Boolean(
-    (options.searchQuery ?? '').trim() || options.selectedTags.length > 1,
-  );
+  const clientWindowHasMore = visibleCount < filteredDesigns.length;
+  const hasMore = needsFullHydrate || isFullyHydrated ? clientWindowHasMore : serverHasMore;
   const matchingCount =
-    isHydrating && needsFullCatalogForCount
+    isHydrating && needsFullHydrate
       ? null
-      : isHydrating && !needsFullCatalogForCount
-        ? serverTotalCount
-        : filteredDesigns.length;
+      : needsFullHydrate || isFullyHydrated
+        ? filteredDesigns.length
+        : (serverTotalCount ?? filteredDesigns.length);
 
   const loadMoreDesigns = useCallback(() => {
-    if (!hasMore) {
+    if (needsFullHydrate || isFullyHydrated) {
+      if (!clientWindowHasMore) {
+        return;
+      }
+      setVisibleCount((current) => current + pageSize);
       return;
     }
 
-    setVisibleCount((current) => current + pageSize);
-  }, [hasMore, pageSize]);
+    if (!serverHasMore || !nextCursor || isLoadingMore) {
+      return;
+    }
+
+    void (async () => {
+      setIsLoadingMore(true);
+      try {
+        traceFirestoreRead('getDocs', `designs:catalog:nextPage:${serverListQueryKey}`);
+        const page = await catalogService.listReadyDesignsPageWithSortFallback({
+          ...serverListQuery,
+          cursor: nextCursor,
+          limitCount: pageSize,
+        });
+        setAllDesigns((current) => {
+          const seen = new Set(current.map((design) => design.id));
+          const next = [...current];
+          for (const design of page.designs) {
+            if (!seen.has(design.id)) {
+              seen.add(design.id);
+              next.push(design);
+            }
+          }
+          return next;
+        });
+        setNextCursor(page.nextCursor);
+        setServerHasMore(Boolean(page.hasMore && page.nextCursor));
+        if (!page.hasMore) {
+          setIsFullyHydrated(true);
+        }
+        setVisibleCount((current) => current + pageSize);
+      } catch (loadError) {
+        setError(toFriendlyCatalogError(loadError));
+      } finally {
+        setIsLoadingMore(false);
+      }
+    })();
+  }, [
+    clientWindowHasMore,
+    isFullyHydrated,
+    isLoadingMore,
+    needsFullHydrate,
+    nextCursor,
+    pageSize,
+    serverHasMore,
+    serverListQuery,
+    serverListQueryKey,
+  ]);
 
   return {
     catalogDesigns: allDesigns,
@@ -273,7 +381,7 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
     hasMore,
     isHydrating,
     isLoading,
-    isLoadingMore: false,
+    isLoadingMore,
     loadMoreDesigns,
     matchingCount,
   };
@@ -296,6 +404,7 @@ export function useCatalogHomeDesigns(): {
       setError(null);
 
       try {
+        traceFirestoreRead('getDocs', 'designs:catalog:homeDiscoveryPool');
         const nextDesigns = await catalogService.listHomeDiscoveryPool();
 
         if (!isCancelled) {

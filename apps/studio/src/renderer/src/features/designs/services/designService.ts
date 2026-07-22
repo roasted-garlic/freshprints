@@ -1,6 +1,7 @@
 import {
   deleteField,
   doc,
+  getCountFromServer,
   getDoc,
   getDocs,
   limit,
@@ -15,6 +16,8 @@ import {
   type QueryConstraint,
 } from "firebase/firestore";
 
+import { traceFirestoreRead } from "@fresh-prints/shared/utils/firestoreUsageTrace";
+
 import { getFirestoreErrorMessage } from "../../firebase/utils/firestoreErrorMessage";
 import {
   mapFirestoreTimestamp,
@@ -24,37 +27,36 @@ import { assertNoUndefinedFirestoreFields, withoutUndefinedFields } from "../../
 import { firestoreCollectionService } from "../../firebase/services/firestoreCollectionService";
 import { permissionService } from "../../permissions/services/permissionService";
 import type { User } from "../../users/types/user.types";
+import {
+  isDefaultArtworkBackgroundHex,
+  normalizeArtworkBackgroundHex,
+} from "@fresh-prints/shared/constants/design/artworkBackground.constants";
 import { isCanonicalDesignStoragePath } from "../constants/designStoragePaths";
 import type { CreateDesignInput, Design, UpdateDesignInput } from "../types/design.types";
 import type { AiReviewStateUpdate, CatalogApprovalUpdate } from "../types/aiReview.types";
 import { isAiReviewStatus } from "../types/aiReview.types";
-import type { DesignListPage, DesignListQuery, DesignListSortField } from "../types/designQuery.types";
+import type { DesignListPage, DesignListQuery, DesignListSortDirection, DesignListSortField } from "../types/designQuery.types";
 import { isDesignStatus, isWritableDesignStatus } from "../types/designStatus.types";
 import { normalizeDesignTags } from "../utils/designTagNormalizer";
 import { mergeDesignDocumentDataAfterWrite } from "../utils/designDocumentAfterWrite";
 import { mapDesignAiFields } from "../utils/designAiFieldsMapper";
 import { isOperationalDesignStatus, resolveRestoreStatus } from "../utils/designArchiveRestore";
+import { sortDesignsForListQuery } from "../utils/sortDesignsForListQuery";
 
 const DEFAULT_LIST_LIMIT = 100;
 export const DESIGN_LIST_PAGE_SIZE = DEFAULT_LIST_LIMIT;
 const MAX_TITLE_LENGTH = 200;
 
 function shouldApplyServerAiReviewFilter(listQuery: DesignListQuery): boolean {
-  return (
-    listQuery.aiReviewStatus !== undefined &&
-    listQuery.aiReviewStatus !== "pending"
-  );
+  return listQuery.aiReviewStatus !== undefined;
 }
 
 function getDesignSortMillis(design: Design, sortField: DesignListSortField): number {
   return sortField === "createdAt" ? design.createdAt.toMillis() : design.updatedAt.toMillis();
 }
 
-function buildDesignListConstraints(listQuery: DesignListQuery = {}): QueryConstraint[] {
+function buildDesignFilterConstraints(listQuery: DesignListQuery = {}): QueryConstraint[] {
   const constraints: QueryConstraint[] = [];
-  const pageSize = listQuery.limitCount ?? DEFAULT_LIST_LIMIT;
-  const sortField = listQuery.sortField ?? "updatedAt";
-  const sortDirection = listQuery.sortDirection ?? "desc";
 
   // Field order matches composite indexes in firestore.indexes.json:
   // categoryId → tags (array-contains) → status → aiReviewStatus → orderBy
@@ -79,6 +81,15 @@ function buildDesignListConstraints(listQuery: DesignListQuery = {}): QueryConst
   if (shouldApplyServerAiReviewFilter(listQuery)) {
     constraints.push(where("aiReviewStatus", "==", listQuery.aiReviewStatus));
   }
+
+  return constraints;
+}
+
+function buildDesignListConstraints(listQuery: DesignListQuery = {}): QueryConstraint[] {
+  const constraints = buildDesignFilterConstraints(listQuery);
+  const pageSize = listQuery.limitCount ?? DEFAULT_LIST_LIMIT;
+  const sortField = listQuery.sortField ?? "updatedAt";
+  const sortDirection = listQuery.sortDirection ?? "desc";
 
   constraints.push(orderBy(sortField, sortDirection));
   constraints.push(orderBy("__name__", sortDirection));
@@ -126,6 +137,7 @@ interface DesignDocumentData {
   originalPath?: unknown;
   thumbnailPath?: unknown;
   previewPath?: unknown;
+  artworkBackgroundHex?: unknown;
   width?: unknown;
   height?: unknown;
   dpi?: unknown;
@@ -203,6 +215,8 @@ function mapDesignDocument(designId: string, data: DesignDocumentData): Design {
     originalPath: data.originalPath,
     thumbnailPath: data.thumbnailPath,
     previewPath: typeof data.previewPath === "string" ? data.previewPath : undefined,
+    artworkBackgroundHex:
+      typeof data.artworkBackgroundHex === "string" ? data.artworkBackgroundHex : undefined,
     width: typeof data.width === "number" ? data.width : undefined,
     height: typeof data.height === "number" ? data.height : undefined,
     dpi: typeof data.dpi === "number" ? data.dpi : undefined,
@@ -378,6 +392,7 @@ function mergeDesignListPages(
   pages: DesignListPage[],
   pageSize: number,
   sortField: DesignListSortField = "updatedAt",
+  sortDirection: DesignListSortDirection = "desc",
 ): DesignListPage {
   const merged = new Map<string, Design>();
 
@@ -387,15 +402,7 @@ function mergeDesignListPages(
     }
   }
 
-  const sortedDesigns = [...merged.values()].sort((leftDesign, rightDesign) => {
-    const timeDifference = rightDesign.updatedAt.toMillis() - leftDesign.updatedAt.toMillis();
-
-    if (timeDifference !== 0) {
-      return timeDifference;
-    }
-
-    return rightDesign.id.localeCompare(leftDesign.id);
-  });
+  const sortedDesigns = sortDesignsForListQuery([...merged.values()], sortField, sortDirection);
 
   return buildDesignListPage(sortedDesigns, pageSize, sortField);
 }
@@ -411,6 +418,10 @@ async function fetchDesignListPage(
     firestoreCollectionService.getDesignsCollection(),
     ...buildDesignListConstraints(listQuery),
   );
+  traceFirestoreRead(
+    "getDocs",
+    `designs:list:${listQuery.status ?? listQuery.statusIn?.join(",") ?? "any"}:${listQuery.aiReviewStatus ?? "any"}`,
+  );
   const snapshot = await getDocs(designsQuery);
   const designs = snapshot.docs.flatMap((designDocument) => {
     try {
@@ -424,7 +435,14 @@ async function fetchDesignListPage(
     }
   });
 
-  return buildDesignListPage(designs, pageSize, listQuery.sortField ?? "updatedAt");
+  const sortField = listQuery.sortField ?? "updatedAt";
+  const sortDirection = listQuery.sortDirection ?? "desc";
+  // Re-sort locally so paging/merge quirks cannot surface oldest-first in the UI.
+  return buildDesignListPage(
+    sortDesignsForListQuery(designs, sortField, sortDirection),
+    pageSize,
+    sortField,
+  );
 }
 
 export const designService = {
@@ -457,7 +475,12 @@ export const designService = {
           ),
         );
 
-        return mergeDesignListPages(pages, pageSize, listQuery.sortField ?? "updatedAt");
+        return mergeDesignListPages(
+          pages,
+          pageSize,
+          listQuery.sortField ?? "updatedAt",
+          listQuery.sortDirection ?? "desc",
+        );
       }
 
       return await fetchDesignListPage(caller, listQuery);
@@ -481,7 +504,15 @@ export const designService = {
           filteredDesigns = filteredDesigns.filter((design) => design.status === listQuery.status);
         }
 
-        return buildDesignListPage(filteredDesigns, pageSize, listQuery.sortField ?? "updatedAt");
+        return buildDesignListPage(
+          sortDesignsForListQuery(
+            filteredDesigns,
+            listQuery.sortField ?? "updatedAt",
+            listQuery.sortDirection ?? "desc",
+          ),
+          pageSize,
+          listQuery.sortField ?? "updatedAt",
+        );
       }
 
       throw new Error(getFirestoreErrorMessage(error, "Unable to load designs. Please try again."));
@@ -491,6 +522,45 @@ export const designService = {
   async listDesigns(caller: User, listQuery: DesignListQuery = {}): Promise<Design[]> {
     const page = await this.listDesignsPage(caller, listQuery);
     return page.designs;
+  },
+
+  /**
+   * Aggregation count for the same filter shape as {@link listDesignsPage} (no document reads).
+   * Used by AI Review tab badges instead of fetching a full page solely for `.length`.
+   */
+  async countDesigns(caller: User, listQuery: DesignListQuery = {}): Promise<number> {
+    if (!permissionService.canViewDesigns(caller)) {
+      return 0;
+    }
+
+    try {
+      if (shouldSplitStatusQueries(listQuery)) {
+        const statuses = listQuery.statusIn ?? [];
+        const counts = await Promise.all(
+          statuses.map((status) =>
+            this.countDesigns(caller, {
+              ...listQuery,
+              status,
+              statusIn: undefined,
+            }),
+          ),
+        );
+        return counts.reduce((sum, count) => sum + count, 0);
+      }
+
+      const countQuery = query(
+        firestoreCollectionService.getDesignsCollection(),
+        ...buildDesignFilterConstraints(listQuery),
+      );
+      traceFirestoreRead(
+        "getCountFromServer",
+        `designs:count:${listQuery.status ?? listQuery.statusIn?.join(",") ?? "any"}:${listQuery.aiReviewStatus ?? "any"}`,
+      );
+      const snapshot = await getCountFromServer(countQuery);
+      return snapshot.data().count;
+    } catch (error) {
+      throw new Error(getFirestoreErrorMessage(error, "Unable to count designs. Please try again."));
+    }
   },
 
   async getDesignById(caller: User, designId: string): Promise<Design> {
@@ -654,6 +724,20 @@ export const designService = {
     if (input.previewPath !== undefined) {
       const previewPath = validateOptionalDerivativePath(input.previewPath, "previews", designId);
       updatePayload.previewPath = previewPath ?? deleteField();
+    }
+
+    if (input.artworkBackgroundHex !== undefined) {
+      if (input.artworkBackgroundHex === null || input.artworkBackgroundHex === "") {
+        updatePayload.artworkBackgroundHex = deleteField();
+      } else {
+        const normalized = normalizeArtworkBackgroundHex(input.artworkBackgroundHex);
+        if (!normalized) {
+          throw new Error("Artwork background must be a valid #RRGGBB color.");
+        }
+        updatePayload.artworkBackgroundHex = isDefaultArtworkBackgroundHex(normalized)
+          ? deleteField()
+          : normalized;
+      }
     }
 
     if (input.width !== undefined) {

@@ -2,6 +2,7 @@ export const CUSTOMER_NOTIFICATIONS_COLLECTION = "customerNotifications" as cons
 
 export const CUSTOMER_NOTIFICATION_KINDS = [
   "assisted_proof_ready",
+  "assisted_catalog_share_ready",
   "assisted_staff_message",
 ] as const;
 

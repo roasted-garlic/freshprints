@@ -38,6 +38,45 @@ describe("parseAssistedCreationAnswers", () => {
     );
   });
 
+  it("strips exactText on submit when wording mode is not exact_wording", () => {
+    const empty = createEmptyAssistedCreationAnswers();
+    const parsed = parseAssistedCreationAnswers({
+      ...empty,
+      rawDescription: "Help with wording",
+      requestType: "animal_object_character",
+      containsText: "need_help_with_wording",
+      // Draft may still hold prior exact-wording text after radio switches.
+      exactText: "preserved in draft only",
+    });
+    assert.equal(parsed.containsText, "need_help_with_wording");
+    assert.equal(parsed.exactText, "");
+  });
+
+  it("normalizes mood chip draft strings on submit", () => {
+    const empty = createEmptyAssistedCreationAnswers();
+    const parsed = parseAssistedCreationAnswers({
+      ...empty,
+      rawDescription: "Mood chips",
+      requestType: "animal_object_character",
+      containsText: "no_words",
+      // Chip UI draft encoding: committed tokens + trailing separator + in-progress draft.
+      mood: "playful, heartfelt, Bold, playful",
+    });
+    assert.equal(parsed.mood, "playful, heartfelt, Bold");
+  });
+
+  it("keeps empty mood optional after chip draft whitespace", () => {
+    const empty = createEmptyAssistedCreationAnswers();
+    const parsed = parseAssistedCreationAnswers({
+      ...empty,
+      rawDescription: "No mood",
+      requestType: "animal_object_character",
+      containsText: "no_words",
+      mood: "  ,  , ",
+    });
+    assert.equal(parsed.mood, "");
+  });
+
   it("rejects mixing no_personalization with other types", () => {
     const empty = createEmptyAssistedCreationAnswers();
     assert.throws(

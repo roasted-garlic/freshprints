@@ -156,6 +156,32 @@ export function AuthProvider({ children }: AuthProviderProps) {
           return;
         }
 
+        // Guest donate retired — clear leftover Anonymous Auth so Storage/public browse
+        // is not evaluated under a uid with no users/{uid} doc.
+        // Never sign out or clobber a registered customer if the session already flipped.
+        if (firebaseUser.isAnonymous) {
+          registrationInProgressRef.current = false;
+          const anonymousUid = firebaseUser.uid;
+          const liveUser = getPortalAuth().currentUser;
+          if (liveUser && (!liveUser.isAnonymous || liveUser.uid !== anonymousUid)) {
+            return;
+          }
+          void portalAuthService.clearAnonymousGuestSession();
+          setAuthState((currentState) =>
+            completeInitialBootstrap({
+              firebaseUser: null,
+              user: null,
+              customer: null,
+              bootstrapStatus: 'unauthenticated',
+              isInitialBootstrap: currentState.isInitialBootstrap,
+              isAuthActionLoading: false,
+              isAuthenticated: false,
+              error: null,
+            }),
+          );
+          return;
+        }
+
         if (registrationInProgressRef.current) {
           setAuthState((currentState) => ({
             ...currentState,

@@ -42,11 +42,16 @@ export interface EtsyRecommendationRequest {
   /** Full primary query used for the Etsy website search URL `q` param. */
   canonicalQuery: string;
   etsySearchUrl: string;
+  /**
+   * Last Open API listing search result (Portal search or staff refresh).
+   * Absent on legacy docs until the next search/fetch.
+   */
+  lastApiSearch?: EtsyRecommendationApiSearchSnapshot;
   createdAt: unknown;
   updatedAt: unknown;
 }
 
-/** Normalized listing card from Etsy Open API (ephemeral; not stored on the request). */
+/** Normalized listing card from Etsy Open API. */
 export interface EtsyRecommendationListing {
   listingId: number;
   title: string;
@@ -55,4 +60,15 @@ export interface EtsyRecommendationListing {
   shopName: string | null;
   priceAmount: string | null;
   currencyCode: string | null;
+}
+
+/** Last Open API search snapshot persisted on the request (Admin SDK; ADR-FP-087o). */
+export interface EtsyRecommendationApiSearchSnapshot {
+  /** Server timestamp when this snapshot was written. */
+  searchedAt: unknown;
+  status: "ok" | "empty" | "unavailable";
+  listings: EtsyRecommendationListing[];
+  /** Keywords actually sent to Open API (focused or fallback). */
+  apiKeywordsUsed?: string;
+  keywordStrategy?: "focused" | "fallback";
 }

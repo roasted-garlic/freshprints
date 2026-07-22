@@ -14,6 +14,7 @@ import { permissionService } from "../../permissions/services/permissionService"
 import { EmailProviderSettingsSection } from "../components/EmailProviderSettingsSection";
 import { CustomerUploadQuotaSettingsSection } from "../components/CustomerUploadQuotaSettingsSection";
 import { PortalSocialMetaSettingsSection } from "../components/PortalSocialMetaSettingsSection";
+import { BrandLogoSettingsSection } from "../components/BrandLogoSettingsSection";
 import { PrintRequestLimitSettingsSection } from "../components/PrintRequestLimitSettingsSection";
 import {
   AI_ENRICHMENT_APPROVED_CATEGORIES_PLACEHOLDER,
@@ -30,9 +31,11 @@ import {
   SUGGESTION_AUTHOR_MODE_OPTIONS,
   TAG_RERANK_MODE_OPTIONS,
   hasRequiredAiEnrichmentPromptPlaceholders,
+  resolveClientPromptTemplate,
   resolveClientSuggestedNewTagsPolicy,
   resolveClientSuggestionAuthorMode,
   resolveClientTagRerankMode,
+  resolveClientTagRerankPromptTemplate,
   resolveClientVisionModelId,
 } from "../constants/aiEnrichmentSettingsConstants";
 import { useAiEnrichmentPlayground } from "../hooks/useAiEnrichmentPlayground";
@@ -109,6 +112,7 @@ type SettingsPageTabId =
   | "uploadQuotas"
   | "printRequestLimits"
   | "socialSharing"
+  | "brandLogos"
   | "aiEnrichment";
 
 interface SettingsPageTab {
@@ -136,6 +140,7 @@ export function SettingsPage() {
 
     if (isOwner) {
       tabs.push({ id: "socialSharing", label: "Social sharing" });
+      tabs.push({ id: "brandLogos", label: "Brand logos" });
     }
 
     tabs.push({ id: "aiEnrichment", label: "AI Enrichment" });
@@ -232,9 +237,11 @@ export function SettingsPage() {
   );
   const hasUnsavedChanges =
     (draftVisionModelId !== null && draftVisionModelId !== visionModelId) ||
-    (draftPromptTemplate !== null && draftPromptTemplate !== promptTemplate) ||
+    (draftPromptTemplate !== null &&
+      resolveClientPromptTemplate(draftPromptTemplate) !== promptTemplate) ||
     (draftTagRerankPromptTemplate !== null &&
-      draftTagRerankPromptTemplate !== tagRerankPromptTemplate) ||
+      resolveClientTagRerankPromptTemplate(draftTagRerankPromptTemplate) !==
+        tagRerankPromptTemplate) ||
     (draftAdditionalTagExclusions !== null &&
       formatAdditionalTagExclusionsInput(draftAdditionalTagExclusions) !==
         formatAdditionalTagExclusionsInput(additionalTagExclusions)) ||
@@ -515,6 +522,17 @@ export function SettingsPage() {
           role="tabpanel"
         >
           <PortalSocialMetaSettingsSection />
+        </div>
+      ) : null}
+
+      {resolvedTab === "brandLogos" && isOwner ? (
+        <div
+          aria-labelledby="settings-tab-brandLogos"
+          className="settings-page-tab-panel"
+          id="settings-tab-panel-brandLogos"
+          role="tabpanel"
+        >
+          <BrandLogoSettingsSection />
         </div>
       ) : null}
 

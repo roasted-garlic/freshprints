@@ -365,7 +365,7 @@ Helpers may assign existing categories to designs but cannot manage category doc
 Helpers may view approved tags and use existing design tag strings, but cannot create, edit,
 archive, bulk import, or approve suggested tag records.
 
-Customers cannot access the desktop app and have no Firestore read access to `designs`, `categories`, or `tags` in the current rules.
+Customers cannot access the desktop app. Catalog Firestore reads for ready designs / active categories / approved tags are allowed for Portal guests and customers (see Fresh Prints Portal below). Non-ready designs and staff-only collections remain denied to customers.
 
 Category documents are readable by active staff. Category create/update/archive is restricted to `owner` and `admin`.
 
@@ -436,17 +436,27 @@ Hard deletes of `designs/{id}` documents are denied in Firestore rules.
 
 **Retention maintenance (ADR-FP-086):** `archiveStaleRejectedDesigns` and `purgeIdleCustomerUploadFullSize` are owner/admin callables (`dryRun` supported). Customer upload docs are client-immutable; full-size purge fields are Admin SDK only.
 
-## Fresh Prints Portal (Phase 8+)
+## Fresh Prints Portal (Phase 8+ / #13 public browse)
 
-Fresh Prints Portal will receive read access to approved catalog metadata only (for example `status: "ready"` designs and thumbnail paths).
+Fresh Prints Portal customers and **unauthenticated guests** may **read** approved catalog metadata only:
 
-Customers must not receive:
+* `designs/{id}` where `status == "ready"` (full document — same field surface authenticated customers already had)
+* `categories/{id}` where `isActive == true`
+* `tags/{id}` where `status == "approved"`
+* Storage `/thumbnails/{designId}.webp` and `/previews/{designId}.webp` when the matching design is `ready` (canonical filename + ready existence check; **no auth required**)
 
-* Original file paths or downloads
-* Internal pipeline metadata
-* Admin-only fields
+Guests may browse Portal `/`, `/catalog/**`, and `/donate` without a registered account. Other mutation-primary routes (`/requests/**`, `/favorites`, `/custom-designs/**`, `/dashboard` / account) redirect to `/login-required?returnTo=…` (then login/register). Mutation CTAs (add to request, favorites) redirect to login with `returnTo`. **Current Request** chrome is signed-in only.
 
-Fresh Prints Portal Firestore and Storage rules are not implemented in Phase 2A.
+**Guest catalog donations (#13 Addendum A):** Firebase Anonymous Auth supplies a UID for Storage path ownership and rate limits. Callables remain the Firestore write boundary. Attribution uses sentinels `uploaderType` / `customerId` / `createdBy` = `guest` (not a `customers` doc). Anonymous may write Storage `source` only under own UID; ZIP guest uploads are denied. Guest donation finalize-image daily cap is stricter than registered (default 20/Central day). Residual spam risk if anon UIDs are rotated — App Check is a follow-up. Enabling Anonymous Auth + deploying rules/Functions requires human approval.
+
+Customers / guests must not receive:
+
+* Original file downloads (`/originals/` stays staff-only)
+* Non-ready designs, inactive categories, non-approved tags
+* Public `shows` / upcoming-show reads (show selection stays behind login)
+* Unauthenticated (`auth == null`) Storage or Firestore writes for uploads
+
+**Deploy:** Firestore + Storage rules changes (public catalog read + guest upload predicates) and donation-related Functions require **human approval** before deploy to any shared Firebase project (`fresh-prints-dev` first; production separate). Also enable **Anonymous** sign-in in Firebase Auth console before guest donate can work in that project.
 
 ---
 
@@ -514,6 +524,13 @@ Admins and helpers may review requests based on permissions.
   delete expired approved full-res and orphan leftovers on rejected/cancelled.
 * Customers must not receive Storage paths for other customers’ proofs. Callables that set
   `approvedProofId` load ownership inside a transaction (`customerUid` match).
+* **Catalog share (ADR-FP-108):** `staffSuggestAssistedCreationCatalogDesign` is owner/admin only and
+  requires design `status === "ready"`. Customer approve uses the **server-stored**
+  `suggestedCatalogDesign.designId` only (ignores any client design id) and re-validates `ready`
+  (fail closed if archived/rejected). Proof download and proof-copy Add to Request callables fail
+  closed for `fulfillmentMode: catalog_share` / catalog-only approval. Attaching a public ready-design
+  share URL to a private Assisted request does not widen catalog ACL beyond existing ready-design
+  reads (#13 / ADR-FP-106).
 
 ---
 
@@ -935,9 +952,9 @@ Google AI (Gemini) **provider API key** for server-side AI enrichment:
 | Cloud Functions reading bound secrets | Desktop Settings page API-key fields |
 | Documented setup in `FIREBASE.md` / `DEPLOYMENT.md` | Renderer env vars, preload, or IPC exposing keys |
 
-`ETSY_X_API_KEY` is bound only to callable `searchEtsyRecommendations` via Firebase Secret Manager. Never put Open API keys in Portal client, Firestore, logs, or chat. Soft-fail to links-only if the secret is missing/empty.
+`ETSY_X_API_KEY` is bound only to callables `searchEtsyRecommendations` and `staffSearchEtsyRecommendationApiResults` via Firebase Secret Manager. Never put Open API keys in Portal client, Firestore, logs, or chat. Soft-fail to links-only if the secret is missing/empty.
 
-**Etsy recommendations (Phase 9A, ADR-FP-087l):** Portal builds website search URLs client-side; listing cards come from the secret-bound Open API callable. Website scrape remains forbidden (ADR-FP-087j). Purchases happen off-platform via listing/search URLs.
+**Etsy recommendations (Phase 9A, ADR-FP-087l / ADR-FP-087o):** Portal builds website search URLs client-side; listing cards come from the secret-bound Open API callable. The last normalized listing snapshot is stored on `etsyRecommendationRequests.lastApiSearch` (Admin SDK; public listing metadata only). Studio staff may refresh via `staffSearchEtsyRecommendationApiResults` (staff auth; no customer preview quota). Website scrape remains forbidden (ADR-FP-087j). Purchases happen off-platform via listing/search URLs.
 
 The Electron renderer may call `enqueueAiEnrichment` but must **never** receive the Gemini key. Development environments may run the heuristic provider without a real key; production Gemini vision requires Secret Manager configuration with human approval. As of ADR-FP-040, OpenAI is no longer used and `OPENAI_API_KEY` was removed from Cloud Function code.
 

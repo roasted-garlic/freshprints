@@ -4,6 +4,7 @@ import {
   computeCustomerUploadMaxZipBytes,
 } from "../../../packages/shared/src/constants/customerUpload/customerUploadLimits.constants";
 import type { GetCustomerUploadDailyQuotaResponse } from "../../../packages/shared/src/types/customerUpload/customerUploadDailyQuota.types";
+import type { CustomerUploadUploaderType } from "../../../packages/shared/src/constants/customerUpload/customerUploadGuest.constants";
 import type { CustomerUploadPurpose } from "../../../packages/shared/src/types/customerUpload/customerUpload.enums";
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 
@@ -41,6 +42,7 @@ export async function chargeDailyQuota(
   customerUid: string,
   kind: CustomerUploadQuotaKind,
   purpose: CustomerUploadPurpose = "print_request",
+  uploaderType: CustomerUploadUploaderType = "customer",
 ): Promise<void> {
   if (!shouldChargeDailyQuota(kind, purpose)) {
     return;
@@ -49,7 +51,7 @@ export async function chargeDailyQuota(
   const dayKey = utcDayKey();
   const ref = adminDb.collection("customerUploadRateLimits").doc(rateLimitDocId(customerUid, dayKey));
   const settings = await loadCustomerUploadQuotaSettings();
-  const { field, limit } = resolveDailyQuotaTarget(kind, purpose, settings);
+  const { field, limit } = resolveDailyQuotaTarget(kind, purpose, settings, uploaderType);
 
   await adminDb.runTransaction(async (tx) => {
     const snap = await tx.get(ref);
@@ -141,12 +143,13 @@ function toQuotaBucket(used: number, limit: number): {
 export async function readDailyQuota(
   customerUid: string,
   purpose: CustomerUploadPurpose = "print_request",
+  uploaderType: CustomerUploadUploaderType = "customer",
 ): Promise<GetCustomerUploadDailyQuotaResponse> {
   const dayKey = utcDayKey();
   const settings = await loadCustomerUploadQuotaSettings();
-  const uploadStartsTarget = resolveDailyQuotaTarget("createBatch", purpose, settings);
-  const imagesTarget = resolveDailyQuotaTarget("finalizeImage", purpose, settings);
-  const zipsTarget = resolveDailyQuotaTarget("finalizeZip", purpose, settings);
+  const uploadStartsTarget = resolveDailyQuotaTarget("createBatch", purpose, settings, uploaderType);
+  const imagesTarget = resolveDailyQuotaTarget("finalizeImage", purpose, settings, uploaderType);
+  const zipsTarget = resolveDailyQuotaTarget("finalizeZip", purpose, settings, uploaderType);
 
   const ref = adminDb.collection("customerUploadRateLimits").doc(rateLimitDocId(customerUid, dayKey));
   const snap = await ref.get();

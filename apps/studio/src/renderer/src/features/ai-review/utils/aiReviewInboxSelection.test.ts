@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 
 import type { Design } from "../../designs/types/design.types";
 import {
+  resolveAdvanceIndexAfterInboxRemoval,
   resolveIsPinnedNeedsReviewDesign,
   resolvePendingCrossTabDesign,
   resolveRejectedReopenTargetTab,
@@ -229,5 +230,15 @@ describe("aiReviewInboxSelection", () => {
       }),
       false,
     );
+  });
+
+  it("resolveAdvanceIndexAfterInboxRemoval keeps next-below index after removal", () => {
+    assert.equal(resolveAdvanceIndexAfterInboxRemoval(0, 3), null);
+    // Removed index 3 → former index 4 is now at 3
+    assert.equal(resolveAdvanceIndexAfterInboxRemoval(4, 3), 3);
+    // Removed last item (index 4 of 5) → clamp to new last (index 3)
+    assert.equal(resolveAdvanceIndexAfterInboxRemoval(4, 4), 3);
+    assert.equal(resolveAdvanceIndexAfterInboxRemoval(3, -1), 0);
+    assert.equal(resolveAdvanceIndexAfterInboxRemoval(3, 99), 2);
   });
 });

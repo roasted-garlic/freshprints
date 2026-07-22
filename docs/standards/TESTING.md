@@ -87,6 +87,15 @@ npm run typecheck --workspace @fresh-prints/portal
 npm run build:portal
 ```
 
+### Portal public browse (#13)
+
+```bash
+npx tsx --test apps/portal/features/auth/utils/*.test.ts packages/shared/src/constants/storageRulesAlignment.test.ts packages/shared/src/constants/firestoreRulesPublicCatalogAlignment.test.ts
+npm run typecheck --workspace @fresh-prints/portal
+```
+
+There is **no** `@firebase/rules-unit-testing` suite yet. After **human-approved** rules deploy to a confirmed project id (`fresh-prints-dev` first), record a manual permission matrix in the Test report: guest read ready design / active category / approved tag / ready thumbnail+preview **allow**; non-ready design, originals, upcomingShows, and guest writes **deny**. Manual UI QA: guest catalog browse + login CTAs + signed-in regression.
+
 Backend smoke (dev only):
 
 ```bash
@@ -138,8 +147,9 @@ Studio sidebar **Test Data** (`/test-data-reset`) — **owner** on `fresh-prints
    - **Etsy** — search docs + rate limits + suggestion overlays + pending suggestion requests + inert leftovers (`etsyRecommendationConfig`, `etsyWebsiteSearchCache`, `customRequestEtsySearchRateLimits`).
    - **Custom Requests** — Assisted Creation docs/Storage + `assistedCreationUpdateAcks`, `customerNotifications`, `emailDeliveryJobs`, legacy `customRequests`.
    - **Customer Uploads** — upload docs/ops + `customer-uploads/` Storage.
-   - **Designs + prints** — designs + print requests + sequences (extra catalog confirm).
-   - **All (-) Designs** — all ops targets except Designs (keeps catalog docs + design Storage; includes upcoming shows, uploads, Etsy, custom requests, etc.).
+   - **AI Processing** — selective delete of AI Processing page designs only (`aiProcessingDesigns`: imported/processing pending, needs review, rejected) + those designs’ Storage; **keeps** ready Design Library and archived designs. Does not require print-request wipe or catalog confirm modal.
+   - **Designs + prints** — designs + print requests + sequences (extra catalog confirm). Mutually exclusive with AI Processing in the UI toggle.
+   - **All (-) Designs** — all ops targets except full Designs (includes AI Processing selective wipe; keeps ready catalog docs + full design Storage prefixes).
 3. To wipe the catalog, use **Designs + prints** or select **Designs** → extra confirm modal → type `WIPE TEST DATA`.
 4. Type `WIPE TEST DATA` to confirm any wipe.
 5. Reload Studio and Portal pages so lists refresh; sequences restart at `…-CR001` / `…-IR001`.
@@ -148,8 +158,9 @@ Studio sidebar **Test Data** (`/test-data-reset`) — **owner** on `fresh-prints
 
 ### Portal Design Library discovery
 
-1. Deploy `onPrintRequestItemCreated` so Portal/Studio item creates update `requestCount` / `lastRequestedAt`.
-2. Browse `/catalog`: New This Week / Popular / Recently Requested rails; no My requests header button.
+1. Deploy `onPrintRequestItemCreated` so Portal/Studio item creates update `requestCount` / `lastRequestedAt` (Popular).
+2. Deploy `onShowAllocationCreated` so queue-to-show / Studio Add to Show sets `lastAddedToShowAt` / `showAddCount` (Recently Requested).
+3. Browse `/catalog`: New This Week / Popular / Recently Requested rails; no My requests header button.
 3. View all → `?discover=new|popular|recent` hides rails and sorts/filters the grid; Back to discovery clears it.
 4. Selection mode shows the same rails above the selection grid.
 
@@ -173,6 +184,7 @@ Local commands should mirror CI where possible.
 
 | Date | Summary |
 |------|---------|
+| 2026-07-21 | Test Data Reset: AI Processing selective designs wipe preset/target |
 | 2026-07-18 | Test Data Reset presets + short labels; Custom/Etsy wipe expand side leftovers (incl. overlays) |
 | 2026-07-18 | Test Data Reset preset: All (-) Designs |
 | 2026-07-10 | Staff inbox acks in Firestore; wipe clears staffInboxAcks |

@@ -124,14 +124,46 @@ describe("printRequestWorkingRequestMax", () => {
     assertCustomerSafe(formatWorkingRequestLimitBannerCopy(12, 25));
   });
 
-  it("help modal explains sole L model without daily jargon", () => {
+  it("help modal uses owner request/show limits copy with five×five for 25", () => {
     const lines = formatWorkingRequestLimitHelpModalCopy(25);
-    assert.equal(lines.length, 4);
-    assert.match(lines[0]!, /up to 25 prints/);
-    assert.match(lines[1]!, /one show/i);
-    assert.match(lines[2]!, /one print request per show/i);
-    assert.match(lines[3]!, /free room/i);
+    assert.equal(lines.length, 3);
+    assert.equal(
+      lines[0],
+      "Each request can include up to 25 prints. You may submit a request with fewer prints if needed, but you cannot exceed this limit within a single request.",
+    );
+    assert.equal(
+      lines[1],
+      "Each show can also hold up to 25 prints per customer and a max of 200. These prints can come from one request or multiple requests, such as five requests with five prints each.",
+    );
+    assert.equal(
+      lines[2],
+      "Once a show reaches its 25-print limit, any additional prints must be assigned to a different show. To add new designs to a full show, you will need to remove prints or reduce quantities to free up space.",
+    );
+    assert.doesNotMatch(lines.join(" "), /Current Request/i);
+    assert.doesNotMatch(lines.join(" "), /only one print request per show/i);
     for (const line of lines) {
+      assertCustomerSafe(line);
+    }
+  });
+
+  it("help modal interpolates live request and per-show limits with proportional example", () => {
+    const lines = formatWorkingRequestLimitHelpModalCopy(50, 25);
+    assert.equal(
+      lines[0],
+      "Each request can include up to 50 prints. You may submit a request with fewer prints if needed, but you cannot exceed this limit within a single request.",
+    );
+    assert.match(lines[1]!, /up to 25 prints per customer and a max of 200/);
+    assert.match(lines[1]!, /five requests with five prints each/);
+    assert.match(lines[2]!, /its 25-print limit/);
+    assert.doesNotMatch(lines.join(" "), /Current Request/i);
+    assert.doesNotMatch(lines.join(" "), /only one print request per show/i);
+
+    const fiftyShow = formatWorkingRequestLimitHelpModalCopy(50, 50);
+    assert.match(fiftyShow[1]!, /up to 50 prints per customer and a max of 200/);
+    assert.match(fiftyShow[1]!, /10 requests with 5 prints each/);
+    assert.doesNotMatch(fiftyShow[1]!, /five requests with five prints each/);
+
+    for (const line of [...lines, ...fiftyShow]) {
       assertCustomerSafe(line);
     }
   });

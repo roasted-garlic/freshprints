@@ -50,6 +50,7 @@ interface DesignDocumentData {
   status?: unknown;
   thumbnailPath?: unknown;
   previewPath?: unknown;
+  artworkBackgroundHex?: unknown;
   width?: unknown;
   height?: unknown;
   printWidthInches?: unknown;
@@ -59,6 +60,7 @@ interface DesignDocumentData {
   requestCount?: unknown;
   favoriteCount?: unknown;
   lastRequestedAt?: unknown;
+  lastAddedToShowAt?: unknown;
 }
 
 function timestampToMillis(value: unknown): number | undefined {
@@ -97,6 +99,8 @@ function mapCatalogDesign(designId: string, data: DesignDocumentData): CatalogDe
     tags,
     thumbnailPath: data.thumbnailPath,
     previewPath: typeof data.previewPath === 'string' ? data.previewPath : undefined,
+    artworkBackgroundHex:
+      typeof data.artworkBackgroundHex === 'string' ? data.artworkBackgroundHex : undefined,
     width: data.width,
     height: data.height,
     printWidthInches: typeof data.printWidthInches === 'number' ? data.printWidthInches : undefined,
@@ -112,6 +116,7 @@ function mapCatalogDesign(designId: string, data: DesignDocumentData): CatalogDe
         ? data.favoriteCount
         : 0,
     lastRequestedAtMs: timestampToMillis(data.lastRequestedAt),
+    lastAddedToShowAtMs: timestampToMillis(data.lastAddedToShowAt),
   };
 }
 
@@ -129,6 +134,8 @@ function getDesignSortValue(design: CatalogDesign, sortField: CatalogDesignSortF
       return design.favoriteCount;
     case 'lastRequestedAt':
       return design.lastRequestedAtMs ?? 0;
+    case 'lastAddedToShowAt':
+      return design.lastAddedToShowAtMs ?? 0;
     case 'updatedAt':
     default:
       return design.updatedAtMs ?? 0;
@@ -337,7 +344,7 @@ export const catalogService = {
    * Bounded pools for Discover home rails — not the full catalog.
    * Prefer library paging for browse-all.
    *
-   * While composite indexes for requestCount / favoriteCount / lastRequestedAt are
+   * While composite indexes for requestCount / favoriteCount / lastAddedToShowAt are
    * still building, falls back to status+createdAt (Studio-newest) so home stays usable.
    */
   async listHomeDiscoveryPool(): Promise<CatalogDesign[]> {
@@ -356,7 +363,7 @@ export const catalogService = {
       },
       {
         limitCount: HOME_DISCOVERY_POOL_PAGE_SIZE,
-        sortField: 'lastRequestedAt',
+        sortField: 'lastAddedToShowAt',
       },
     ];
 

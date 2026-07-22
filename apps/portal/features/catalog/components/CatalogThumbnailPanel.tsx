@@ -1,11 +1,14 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 
+import { resolveArtworkBackgroundHex } from '@fresh-prints/shared/constants/design/artworkBackground.constants';
 import { useCatalogDerivativeUrl } from '../hooks/useCatalogDerivativeUrl';
 
 interface CatalogThumbnailPanelProps {
   alt: string;
+  /** Optional per-design mat color; overrides theme artwork preview bg when set. */
+  artworkBackgroundHex?: string;
   catalogPath?: string;
   /** Design updatedAtMs (or similar) so replaced files miss the URL cache. */
   contentVersion?: number;
@@ -20,6 +23,7 @@ interface CatalogThumbnailPanelProps {
 
 export function CatalogThumbnailPanel({
   alt,
+  artworkBackgroundHex,
   catalogPath,
   contentVersion,
   className = '',
@@ -32,6 +36,11 @@ export function CatalogThumbnailPanel({
 }: CatalogThumbnailPanelProps) {
   const { isLoading, url } = useCatalogDerivativeUrl(catalogPath, contentVersion);
   const [imageLoadFailed, setImageLoadFailed] = useState(false);
+  const panelStyle: CSSProperties | undefined = artworkBackgroundHex
+    ? ({
+        ['--color-artwork-preview-bg' as string]: resolveArtworkBackgroundHex(artworkBackgroundHex),
+      } as CSSProperties)
+    : undefined;
 
   useEffect(() => {
     setImageLoadFailed(false);
@@ -70,6 +79,7 @@ export function CatalogThumbnailPanel({
       aria-label={!decorative && !isUnavailable && !isLoading ? alt : undefined}
       aria-busy={isLoading || undefined}
       className={panelClassName}
+      style={panelStyle}
     >
       {hasResolvedUrl && url ? (
         <img

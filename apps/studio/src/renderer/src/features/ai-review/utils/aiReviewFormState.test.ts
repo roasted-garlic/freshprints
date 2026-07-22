@@ -112,4 +112,21 @@ describe("createAiReviewDraftFromDesign", () => {
 
     assert.equal(draft.markAsHalftone, true);
   });
+
+  it("seeds artwork background from the design document", () => {
+    const defaultDraft = createAiReviewDraftFromDesign(createDesign());
+    assert.equal(defaultDraft.artworkBackgroundPreset, "grey");
+    assert.equal(defaultDraft.artworkBackgroundCustomHex, "");
+
+    const lightBlackDraft = createAiReviewDraftFromDesign(
+      createDesign({ artworkBackgroundHex: "#2C2D2D" }),
+    );
+    assert.equal(lightBlackDraft.artworkBackgroundPreset, "lightBlack");
+
+    const customDraft = createAiReviewDraftFromDesign(
+      createDesign({ artworkBackgroundHex: "#aabbcc" }),
+    );
+    assert.equal(customDraft.artworkBackgroundPreset, "custom");
+    assert.equal(customDraft.artworkBackgroundCustomHex, "#aabbcc");
+  });
 });

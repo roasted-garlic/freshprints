@@ -82,4 +82,15 @@ describe("getDefaultShowPickerOptionId", () => {
       null,
     );
   });
+
+  it("falls back to the first inspect-only option when allowed", () => {
+    assert.equal(
+      getDefaultShowPickerOptionId(
+        [{ id: "past", isFull: false, isSelectable: false }],
+        undefined,
+        true,
+      ),
+      "past",
+    );
+  });
 });

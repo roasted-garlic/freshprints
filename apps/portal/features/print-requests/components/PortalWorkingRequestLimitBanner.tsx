@@ -6,6 +6,7 @@ import {
   formatWorkingRequestLimitBannerCopy,
   formatWorkingRequestLimitHelpModalCopy,
   resolveWorkingRequestLimitBannerTone,
+  WORKING_REQUEST_LIMIT_HELP_MODAL_TITLE,
   type WorkingRequestLimitBannerTone,
 } from '@fresh-prints/shared/utils/printRequestWorkingRequestMax';
 
@@ -53,7 +54,8 @@ export function PortalWorkingRequestLimitBanner() {
   const remaining = workingRequestLimit.roomRemaining;
   const tone = resolveWorkingRequestLimitBannerTone(remaining, limit);
   const bannerCopy = formatWorkingRequestLimitBannerCopy(remaining, limit);
-  const helpLines = formatWorkingRequestLimitHelpModalCopy(limit);
+  // Sole limit L drives both request capacity and per-show cap (ADR-FP-102).
+  const helpLines = formatWorkingRequestLimitHelpModalCopy(limit, limit);
 
   return (
     <>
@@ -90,7 +92,9 @@ export function PortalWorkingRequestLimitBanner() {
             onClick={(event) => event.stopPropagation()}
           >
             <header className="modal-header">
-              <h2 id="portal-print-request-quota-help-title">Print limits</h2>
+              <h2 id="portal-print-request-quota-help-title">
+                {WORKING_REQUEST_LIMIT_HELP_MODAL_TITLE}
+              </h2>
               <button
                 aria-label="Close"
                 className="modal-close-button"

@@ -1,14 +1,17 @@
 import { Settings } from "lucide-react";
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import { Button } from "../../../shared/components/Button";
 import { LoadingSpinner } from "../../../shared/components/LoadingSpinner";
 import { Toggle } from "../../../shared/components/Toggle";
+import { ArtworkBackgroundPreviewControl } from "../../designs/components/ArtworkBackgroundPreviewControl";
+import type { ArtworkBackgroundFieldsValues } from "../../designs/components/ArtworkBackgroundFields";
 import { DesignPreviewLightbox } from "../../designs/components/DesignPreviewLightbox";
 import { DesignThumbnailPanel } from "../../designs/components/DesignThumbnailPanel";
 import { useDesignDerivativeUrl } from "../../designs/hooks/useDesignDerivativeUrl";
 import type { CatalogTag, CreateCatalogTagInput } from "../../designs/types/catalogTag.types";
 import type { Design } from "../../designs/types/design.types";
+import { mapArtworkBackgroundToForm, resolveFormArtworkBackgroundHex } from "../../designs/utils/designFormMapper";
 import type { AiProcessingQueueRunState } from "../hooks/useAiProcessingQueue";
 import type { AiReviewDraftForm, AiReviewInboxTab } from "../types/aiReviewInbox.types";
 import { resolveAiProcessingOutputStatus } from "../utils/aiProcessingOutput";
@@ -29,6 +32,7 @@ interface AiReviewWorkspaceProps {
   canApprove: boolean;
   canApproveSuggestedTags: boolean;
   canEdit: boolean;
+  canSaveArtworkBackground: boolean;
   canManageProcessingSettings: boolean;
   canStopAutoQueue: boolean;
   canProcessSelected: boolean;
@@ -43,6 +47,7 @@ interface AiReviewWorkspaceProps {
   hasProcessingSettingsOverride: boolean;
   draftForm: AiReviewDraftForm | null;
   isActionLoading: boolean;
+  isSavingArtworkBackground: boolean;
   isAutoQueueRunning: boolean;
   isQueueBusy: boolean;
   isOptimisticEnqueue?: boolean;
@@ -66,6 +71,7 @@ interface AiReviewWorkspaceProps {
   onRerun: () => void;
   onRerunAiSuggestions: () => void;
   onRetryProcessing: () => void;
+  onSaveArtworkBackground: (values: ArtworkBackgroundFieldsValues) => void;
   onApplyProcessingSettings: (visionModelId: string) => void;
   onClearProcessingSettings: () => void;
   onStartAutoQueue: () => void;
@@ -87,6 +93,7 @@ export function AiReviewWorkspace({
   canApprove,
   canApproveSuggestedTags,
   canEdit,
+  canSaveArtworkBackground,
   canManageProcessingSettings,
   canStopAutoQueue,
   canProcessSelected,
@@ -101,6 +108,7 @@ export function AiReviewWorkspace({
   hasProcessingSettingsOverride,
   draftForm,
   isActionLoading,
+  isSavingArtworkBackground,
   isAutoQueueRunning,
   isQueueBusy,
   isOptimisticEnqueue = false,
@@ -120,6 +128,7 @@ export function AiReviewWorkspace({
   onRerun,
   onRerunAiSuggestions,
   onRetryProcessing,
+  onSaveArtworkBackground,
   onApplyProcessingSettings,
   onClearProcessingSettings,
   onStartAutoQueue,
@@ -138,6 +147,27 @@ export function AiReviewWorkspace({
 
   const previewPath = selectedDesign?.previewPath ?? selectedDesign?.thumbnailPath ?? "";
   const { url: previewUrl } = useDesignDerivativeUrl(previewPath || undefined);
+
+  const artworkBackgroundValues = useMemo<ArtworkBackgroundFieldsValues>(() => {
+    if (draftForm) {
+      return {
+        artworkBackgroundPreset: draftForm.artworkBackgroundPreset,
+        artworkBackgroundCustomHex: draftForm.artworkBackgroundCustomHex,
+      };
+    }
+    if (selectedDesign) {
+      return mapArtworkBackgroundToForm(selectedDesign);
+    }
+    return { artworkBackgroundPreset: "grey", artworkBackgroundCustomHex: "" };
+  }, [draftForm, selectedDesign]);
+
+  const previewArtworkBackgroundHex = resolveFormArtworkBackgroundHex({
+    title: "",
+    description: "",
+    categoryId: "",
+    tagsInput: "",
+    ...artworkBackgroundValues,
+  });
 
   if (!selectedDesign) {
     return <AiReviewWorkspaceEmpty />;
@@ -167,9 +197,20 @@ export function AiReviewWorkspace({
   return (
     <div className="ai-review-workspace">
       <section aria-label="Design preview" className="ai-review-workspace-preview">
+        {canSaveArtworkBackground ? (
+          <div className="ai-review-preview-bg-control">
+            <ArtworkBackgroundPreviewControl
+              disabled={isActionLoading}
+              isSaving={isSavingArtworkBackground}
+              onChange={onSaveArtworkBackground}
+              values={artworkBackgroundValues}
+            />
+          </div>
+        ) : null}
         <div className="ai-review-preview-stage" ref={previewStageRef}>
           <DesignThumbnailPanel
             alt={`Preview for ${selectedDesign.title}`}
+            artworkBackgroundHex={previewArtworkBackgroundHex}
             borderless
             catalogPath={previewPath}
             className="ai-review-preview-image"
@@ -429,6 +470,7 @@ export function AiReviewWorkspace({
 
       <DesignPreviewLightbox
         alt={`Preview for ${selectedDesign.title}`}
+        artworkBackgroundHex={previewArtworkBackgroundHex}
         isOpen={isLightboxOpen}
         onClose={() => setIsLightboxOpen(false)}
         previewUrl={previewUrl}

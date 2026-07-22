@@ -17,6 +17,11 @@ export interface Design {
   originalPath: string;
   thumbnailPath: string;
   previewPath?: string;
+  /**
+   * Optional mat / OG letterbox background (`#rrggbb`).
+   * Missing → Portal/Studio artwork grey `#e5e7eb`.
+   */
+  artworkBackgroundHex?: string;
   /** Pixel width from the source PNG IHDR chunk. */
   width?: number;
   /** Pixel height from the source PNG IHDR chunk. */
@@ -159,4 +164,9 @@ export type UpdateDesignInput = Partial<
     | "requestedByCustomerId"
     | "halftoneStaffDecision"
   >
->;
+> & {
+  /**
+   * Set a normalized `#rrggbb`, or `null` / `""` to clear (default grey).
+   */
+  artworkBackgroundHex?: string | null;
+};

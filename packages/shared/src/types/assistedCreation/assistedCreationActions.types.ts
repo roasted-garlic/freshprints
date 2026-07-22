@@ -131,6 +131,38 @@ export interface StaffAddAssistedCreationProofResponse {
   proofId: string;
 }
 
+/** Staff: upload final HR artwork and complete (`final_source_needed` → `approved`). */
+export interface StaffAddAssistedCreationFinalSourceRequest {
+  requestId: string;
+  finalSource: {
+    id: string;
+    storagePath: string;
+    fileName: string;
+    contentType: string;
+    sizeBytes: number;
+  };
+}
+
+export interface StaffAddAssistedCreationFinalSourceResponse {
+  requestId: string;
+  status: "approved";
+  finalSourceId: string;
+}
+
+/** Staff: suggest a ready catalog design instead of uploading a custom proof. */
+export interface StaffSuggestAssistedCreationCatalogDesignRequest {
+  requestId: string;
+  designId: string;
+  /** Optional note shown in revision history / customer context. */
+  note?: string;
+}
+
+export interface StaffSuggestAssistedCreationCatalogDesignResponse {
+  requestId: string;
+  status: "proof_ready";
+  designId: string;
+}
+
 /** Customer: mint a short-lived signed URL for the approved proof full-res download. */
 export interface CustomerGetAssistedCreationApprovedProofDownloadUrlRequest {
   requestId: string;

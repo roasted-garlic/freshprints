@@ -6,6 +6,7 @@ import {
   ASSISTED_CREATION_EXACT_REQUIREMENT_OPTIONS,
   ASSISTED_CREATION_FIELD_LIMITS,
   ASSISTED_CREATION_FLEXIBILITY_OPTIONS,
+  ASSISTED_CREATION_MAX_MOOD_ITEMS,
   ASSISTED_CREATION_MAX_REFERENCE_BYTES,
   ASSISTED_CREATION_MAX_REFERENCE_IMAGES,
   ASSISTED_CREATION_MAX_STYLE_PREFERENCES,
@@ -78,6 +79,46 @@ function asTrimmedString(value: unknown, label: string, max: number, required: b
     throw new Error(`${label} must be ${max} characters or fewer.`);
   }
   return trimmed;
+}
+
+/**
+ * Normalize optional comma-separated chip/draft strings for storage/display.
+ * Splits on commas, trims, drops empties, de-dupes case-insensitively, rejoins with ", ".
+ */
+function asNormalizedCommaSeparatedOptional(
+  value: unknown,
+  label: string,
+  max: number,
+  maxItems: number,
+): string {
+  if (value == null || value === "") {
+    return "";
+  }
+  if (typeof value !== "string") {
+    throw new Error(`${label} must be text.`);
+  }
+  const seen = new Set<string>();
+  const parts: string[] = [];
+  for (const part of value.split(",")) {
+    const trimmed = part.trim();
+    if (!trimmed) {
+      continue;
+    }
+    const key = trimmed.toLowerCase();
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    parts.push(trimmed);
+    if (parts.length >= maxItems) {
+      break;
+    }
+  }
+  const joined = parts.join(", ");
+  if (joined.length > max) {
+    throw new Error(`${label} must be ${max} characters or fewer.`);
+  }
+  return joined;
 }
 
 function asBoolean(value: unknown, label: string, fallback: boolean): boolean {
@@ -305,11 +346,11 @@ export function parseAssistedCreationAnswers(raw: unknown): AssistedCreationAnsw
       STYLES,
       ASSISTED_CREATION_MAX_STYLE_PREFERENCES,
     ),
-    mood: asTrimmedString(
+    mood: asNormalizedCommaSeparatedOptional(
       data.mood,
       "Mood",
       ASSISTED_CREATION_FIELD_LIMITS.shortText,
-      false,
+      ASSISTED_CREATION_MAX_MOOD_ITEMS,
     ),
     includedColors: asTrimmedString(
       data.includedColors,

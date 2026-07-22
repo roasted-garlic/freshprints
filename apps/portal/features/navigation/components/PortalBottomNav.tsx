@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { User } from 'lucide-react';
 
+import { useAuth } from '../../auth/context/AuthContext';
+import { buildPortalLoginHref } from '../../auth/utils/requirePortalLogin';
 import { usePortalPrintRequests } from '../../print-requests/context/PortalPrintRequestContext';
 import { ShoppingBagIcon } from '../../shared/components/PortalIcons';
 import {
@@ -12,6 +14,7 @@ import {
   portalNavItems,
   resolveActivePortalNavItem,
   resolvePortalNavHref,
+  resolvePortalNavHrefForGuest,
   type PortalNavItemId,
 } from '../constants/portalNavItems';
 import { PortalNavIcon } from './PortalNavIcon';
@@ -35,6 +38,7 @@ function resolveBottomNavItem(entry: { id: PortalNavItemId; label: string }) {
 
 export function PortalBottomNav() {
   const pathname = usePathname();
+  const { isAuthenticated } = useAuth();
   const activeItemId = resolveActivePortalNavItem(pathname);
   const { currentRequestAggregates, openCurrentRequestDrawer } = usePortalPrintRequests();
 
@@ -45,11 +49,14 @@ export function PortalBottomNav() {
 
   function renderLink(item: ReturnType<typeof resolveBottomNavItem>) {
     const isActive = activeItemId === item.id;
+    const href = isAuthenticated
+      ? resolvePortalNavHref(item, pathname)
+      : resolvePortalNavHrefForGuest(item, pathname);
     return (
       <Link
         aria-current={isActive ? 'page' : undefined}
         className={`portal-bottom-nav-link${isActive ? ' portal-bottom-nav-link-active' : ''}`}
-        href={resolvePortalNavHref(item, pathname)}
+        href={href}
         key={item.id}
       >
         <PortalNavIcon itemId={item.id} size={20} />
@@ -59,33 +66,47 @@ export function PortalBottomNav() {
   }
 
   return (
-    <nav aria-label="Portal navigation" className="portal-bottom-nav">
+    <nav
+      aria-label="Portal navigation"
+      className={`portal-bottom-nav${isAuthenticated ? '' : ' portal-bottom-nav-guest'}`}
+    >
       <div className="portal-bottom-nav-bar">
         <div className="portal-bottom-nav-links">
           <div className="portal-bottom-nav-side">
-            <Link
-              aria-current={isAccountActive ? 'page' : undefined}
-              className={`portal-bottom-nav-link${isAccountActive ? ' portal-bottom-nav-link-active' : ''}`}
-              href={PORTAL_ACCOUNT_HREF}
-            >
-              <User aria-hidden size={20} strokeWidth={1.75} />
-              <span>Account</span>
-            </Link>
+            {isAuthenticated ? (
+              <Link
+                aria-current={isAccountActive ? 'page' : undefined}
+                className={`portal-bottom-nav-link${isAccountActive ? ' portal-bottom-nav-link-active' : ''}`}
+                href={PORTAL_ACCOUNT_HREF}
+              >
+                <User aria-hidden size={20} strokeWidth={1.75} />
+                <span>Account</span>
+              </Link>
+            ) : (
+              <Link className="portal-bottom-nav-link" href={buildPortalLoginHref()}>
+                <User aria-hidden size={20} strokeWidth={1.75} />
+                <span>Login / Signup</span>
+              </Link>
+            )}
             {leftItems.map(renderLink)}
           </div>
-          <div aria-hidden className="portal-bottom-nav-fab-spacer" />
+          {isAuthenticated ? <div aria-hidden className="portal-bottom-nav-fab-spacer" /> : null}
           <div className="portal-bottom-nav-side">{rightItems.map(renderLink)}</div>
         </div>
       </div>
 
-      <button
-        aria-label={`Open Current Request, ${totalPrints} total prints`}
-        className="portal-bottom-nav-fab"
-        onClick={openCurrentRequestDrawer}
-        type="button"
-      >
-        <ShoppingBagIcon size={22} />
-      </button>
+      {isAuthenticated ? (
+        <button
+          aria-label={`Open Current Request, ${totalPrints} total prints`}
+          className="portal-bottom-nav-fab"
+          onClick={() => {
+            openCurrentRequestDrawer();
+          }}
+          type="button"
+        >
+          <ShoppingBagIcon size={22} />
+        </button>
+      ) : null}
     </nav>
   );
 }

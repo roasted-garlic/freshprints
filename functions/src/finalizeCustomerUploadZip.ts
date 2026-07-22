@@ -37,6 +37,7 @@ import {
   unauthenticated,
 } from "./lib/errors";
 import { withoutUndefinedFields } from "./lib/firestoreDocument";
+import { isAnonymousAuthToken } from "./lib/catalogDonationUploader";
 import { requirePortalCustomer } from "./lib/portalCustomer";
 import { resolveCustomerUploadPurpose } from "../../packages/shared/src/utils/customerUploadPurpose";
 
@@ -71,6 +72,10 @@ export const finalizeCustomerUploadZip = onCall(
       throw invalidArgument(error instanceof Error ? error.message : "Invalid request.");
     }
 
+    const isGuest = isAnonymousAuthToken(request.auth.token);
+    if (isGuest) {
+      throw permissionDenied("Guest donations support image uploads only. Sign in to upload a ZIP.");
+    }
     const portalCustomer = await requirePortalCustomer(request.auth.uid);
     const customerUid = request.auth.uid;
     const batchRef = adminDb

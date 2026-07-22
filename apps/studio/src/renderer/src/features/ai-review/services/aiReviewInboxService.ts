@@ -2,7 +2,10 @@ import { catalogApprovalService } from "../../designs/services/catalogApprovalSe
 import { designService } from "../../designs/services/designService";
 import type { Design } from "../../designs/types/design.types";
 import type { DesignListPage, DesignListQuery } from "../../designs/types/designQuery.types";
-import { parseTagsInput } from "../../designs/utils/designFormMapper";
+import {
+  buildArtworkBackgroundUpdateValue,
+  parseTagsInput,
+} from "../../designs/utils/designFormMapper";
 import { filterDesignsByAiReviewStatus } from "../../designs/utils/designLibrarySearch";
 import { permissionService } from "../../permissions/services/permissionService";
 import type { User } from "../../users/types/user.types";
@@ -60,12 +63,17 @@ export const aiReviewInboxService = {
     assertCanApproveInbox(caller);
 
     const tags = syncHalftoneTagInList(parseTagsInput(draft.tagsInput), draft.markAsHalftone);
+    const artworkBackgroundHex = buildArtworkBackgroundUpdateValue(draft);
+    if (draft.artworkBackgroundPreset === "custom" && artworkBackgroundHex === undefined) {
+      throw new Error("Enter a valid 6-digit hex color (for example #2c2d2d).");
+    }
 
     await designService.updateDesign(caller, designId, {
       title: draft.title.trim(),
       description: draft.description.trim() || undefined,
       categoryId: draft.categoryId.trim() || undefined,
       tags,
+      artworkBackgroundHex: artworkBackgroundHex ?? null,
       halftoneStaffDecision: {
         value: draft.markAsHalftone,
         decidedBy: caller.id,
@@ -91,6 +99,29 @@ export const aiReviewInboxService = {
 
   async archiveFromInbox(caller: User, designId: string): Promise<Design> {
     return catalogApprovalService.archiveRejectedDesign(caller, designId);
+  },
+
+  /**
+   * Persist artwork background immediately (preview control / reprocess prep).
+   * Uses design-edit permission so Processing tab can save without Needs Review edit rights.
+   */
+  async updateArtworkBackgroundFromInbox(
+    caller: User,
+    designId: string,
+    values: Pick<AiReviewDraftForm, "artworkBackgroundPreset" | "artworkBackgroundCustomHex">,
+  ): Promise<Design> {
+    if (!permissionService.canEditDesigns(caller)) {
+      throw new Error("You do not have permission to update artwork background.");
+    }
+
+    const artworkBackgroundHex = buildArtworkBackgroundUpdateValue(values);
+    if (values.artworkBackgroundPreset === "custom" && artworkBackgroundHex === undefined) {
+      throw new Error("Enter a valid #RRGGBB custom background color.");
+    }
+
+    return designService.updateDesign(caller, designId, {
+      artworkBackgroundHex: artworkBackgroundHex ?? null,
+    });
   },
 
   async rerunAiFromInbox(

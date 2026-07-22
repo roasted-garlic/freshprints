@@ -1,5 +1,6 @@
 'use client';
 
+import { TriangleAlert } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 
@@ -12,6 +13,8 @@ import {
 } from '@fresh-prints/shared/constants/assistedCreation/assistedCreation.constants';
 import type { AssistedCreationRequest } from '@fresh-prints/shared/types/assistedCreation/assistedCreation.types';
 import { CatalogPreviewLightbox } from '../../catalog/components/CatalogPreviewLightbox';
+import { catalogStorageService } from '../../catalog/services/catalogStorageService';
+import { buildPortalDesignDeepLinkPath } from '../../catalog/utils/portalDesignShareUrls';
 import { PortalConfirmModal } from '../../shared/components/PortalConfirmModal';
 import { getPortalAuth } from '../../../lib/firebase/client';
 import { assistedCreationService } from '../services/assistedCreationService';
@@ -32,18 +35,32 @@ interface AssistedCreationStatusPanelProps {
   onStartNew?: () => void;
 }
 
-function statusMessage(status: AssistedCreationStatus): string {
+function statusMessage(
+  status: AssistedCreationStatus,
+  options?: { catalogShare?: boolean },
+): string {
+  const catalogShare = options?.catalogShare === true;
   switch (status) {
     case 'submitted':
       return 'Fresh Prints has your brief. You can still update details or add references until staff starts work.';
     case 'in_progress':
-      return 'Your design is being created. Additions are locked while staff works. We will send a proof here when it is ready.';
+      return catalogShare
+        ? 'Your design is being created. Additions are locked while staff works.'
+        : 'Your design is being created. Additions are locked while staff works. We will send a proof here when it is ready.';
     case 'proof_ready':
-      return 'Review the proof below. Approve it with an optional rating, or request changes with a short note.';
+      return catalogShare
+        ? 'We found a Library design that matches your request. Approve it or request changes with a short note.'
+        : 'Review the proof below. Approve it with an optional rating, or request changes with a short note.';
     case 'revision_requested':
-      return 'Your revision notes were sent. Staff will update the design and send a new proof.';
+      return catalogShare
+        ? 'Your change notes were sent. Staff will update the suggestion or send a custom proof.'
+        : 'Your revision notes were sent. Staff will update the design and send a new proof.';
+    case 'final_source_needed':
+      return 'Fresh Prints is preparing your final high-resolution artwork. We will let you know when it is ready to download.';
     case 'approved':
-      return 'This design is approved. Download the full-resolution file below while it is still available, or start a new assisted request anytime.';
+      return catalogShare
+        ? 'This library design is approved. Add it to your Current Request from Overview, or start a new assisted request anytime.'
+        : 'This design is approved. Download the final artwork below while it is still available, or start a new assisted request anytime.';
     case 'rejected':
       return 'This request was not approved. You can start a new assisted request anytime.';
     case 'cancelled':
@@ -69,6 +86,10 @@ export function AssistedCreationStatusPanel({ onStartNew }: AssistedCreationStat
     null,
   );
   const [proofUrl, setProofUrl] = useState<string | null>(null);
+  /** idle | loading | ready | unavailable — never leave UI on eternal “Loading…”. */
+  const [proofImageState, setProofImageState] = useState<
+    'idle' | 'loading' | 'ready' | 'unavailable'
+  >('idle');
   const [proofLightboxOpen, setProofLightboxOpen] = useState(false);
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
@@ -102,19 +123,84 @@ export function AssistedCreationStatusPanel({ onStartNew }: AssistedCreationStat
   useEffect(() => {
     let cancelled = false;
     async function loadProof() {
-      if (!latest || latest.status !== 'proof_ready' || latest.proofs.length === 0) {
-        setProofUrl(null);
+      if (
+        !latest ||
+        (latest.status !== 'proof_ready' && latest.status !== 'final_source_needed')
+      ) {
+        setProofImageState('idle');
+        setProofUrl((previous) => {
+          if (previous?.startsWith('blob:')) {
+            URL.revokeObjectURL(previous);
+          }
+          return null;
+        });
         return;
       }
-      const proof = latest.proofs[latest.proofs.length - 1];
+      if (latest.fulfillmentMode === 'catalog_share' && latest.status === 'proof_ready') {
+        const previewPath = latest.suggestedCatalogDesign?.previewImageUrl?.trim();
+        if (!previewPath) {
+          setProofUrl(null);
+          setProofImageState('unavailable');
+          return;
+        }
+        setProofImageState('loading');
+        try {
+          const url = await catalogStorageService.getDownloadUrlForCatalogPath(previewPath);
+          if (!cancelled) {
+            if (url) {
+              setProofUrl(url);
+              setProofImageState('ready');
+            } else {
+              setProofUrl(null);
+              setProofImageState('unavailable');
+            }
+          }
+        } catch {
+          if (!cancelled) {
+            setProofUrl(null);
+            setProofImageState('unavailable');
+          }
+        }
+        return;
+      }
+      const approvedId = latest.approvedProofId?.trim();
+      const proof =
+        latest.status === 'final_source_needed' && approvedId
+          ? latest.proofs.find((entry) => entry.id === approvedId) ?? null
+          : latest.proofs.length > 0
+            ? latest.proofs[latest.proofs.length - 1]
+            : null;
+      if (!proof?.storagePath?.trim() || proof.fullSizePurgedAt != null) {
+        setProofUrl(null);
+        setProofImageState('unavailable');
+        return;
+      }
+      setProofImageState('loading');
       try {
-        const url = await assistedCreationService.getDownloadUrl(proof.storagePath);
+        const url = await assistedCreationService.getPreviewObjectUrl(
+          proof.storagePath,
+          proof.contentType,
+        );
         if (!cancelled) {
-          setProofUrl(url);
+          setProofUrl((previous) => {
+            if (previous?.startsWith('blob:')) {
+              URL.revokeObjectURL(previous);
+            }
+            return url;
+          });
+          setProofImageState('ready');
+        } else if (url.startsWith('blob:')) {
+          URL.revokeObjectURL(url);
         }
       } catch {
         if (!cancelled) {
-          setProofUrl(null);
+          setProofUrl((previous) => {
+            if (previous?.startsWith('blob:')) {
+              URL.revokeObjectURL(previous);
+            }
+            return null;
+          });
+          setProofImageState('unavailable');
         }
       }
     }
@@ -163,8 +249,23 @@ export function AssistedCreationStatusPanel({ onStartNew }: AssistedCreationStat
   const canCancel = isAssistedCreationOpenStatus(latest.status);
   const canUpdate = canCustomerUpdateAssistedCreation(latest.status);
   const canRespond = latest.status === 'proof_ready';
+  const isCatalogShare =
+    latest.fulfillmentMode === 'catalog_share' &&
+    Boolean(latest.suggestedCatalogDesign?.designId);
+  const catalogShareForLead =
+    isCatalogShare ||
+    (latest.status === 'approved' && Boolean(latest.approvedCatalogDesignId));
+  const statusLead = statusMessage(latest.status, { catalogShare: catalogShareForLead });
+  const showCatalogShareReviewCallout =
+    latest.status === 'proof_ready' && catalogShareForLead;
   const latestProof =
-    latest.proofs.length > 0 ? latest.proofs[latest.proofs.length - 1] : null;
+    !isCatalogShare && latest.proofs.length > 0
+      ? latest.proofs[latest.proofs.length - 1]
+      : null;
+  const suggestedDesign = latest.suggestedCatalogDesign;
+  const libraryDeepLink = suggestedDesign?.designId
+    ? buildPortalDesignDeepLinkPath(suggestedDesign.designId)
+    : null;
 
   return (
     <section className="etsy-wizard-shell assisted-creation-status">
@@ -175,7 +276,9 @@ export function AssistedCreationStatusPanel({ onStartNew }: AssistedCreationStat
             <span
               className={`assisted-creation-status-badge ${assistedCreationStatusTone(latest.status)}`}
             >
-              {formatAssistedCreationStatus(latest.status)}
+              {latest.status === 'final_source_needed'
+                ? 'Proof approved'
+                : formatAssistedCreationStatus(latest.status)}
             </span>
             <AssistedCreationActionsMenu
               canCancel={canCancel}
@@ -193,13 +296,69 @@ export function AssistedCreationStatusPanel({ onStartNew }: AssistedCreationStat
           </div>
         </div>
         <h1 className="etsy-wizard-heading">Request status</h1>
-        <p className="portal-muted assisted-creation-status-lead">{statusMessage(latest.status)}</p>
+        {showCatalogShareReviewCallout ? (
+          <p
+            className="etsy-questionnaire-warning assisted-creation-status-lead"
+            role="note"
+          >
+            <TriangleAlert
+              aria-hidden
+              className="etsy-questionnaire-warning-icon"
+              size={16}
+              strokeWidth={2}
+            />
+            <span>{statusLead}</span>
+          </p>
+        ) : (
+          <p className="portal-muted assisted-creation-status-lead">{statusLead}</p>
+        )}
       </header>
 
       {canRespond ? (
         <div className="assisted-creation-proof-panel">
-          <h2 className="assisted-creation-proof-heading">Your proof is ready</h2>
-          {proofUrl ? (
+          <h2 className="assisted-creation-proof-heading">
+            {isCatalogShare ? 'Library design ready for review' : 'Your proof is ready'}
+          </h2>
+          {isCatalogShare && suggestedDesign ? (
+            <div className="assisted-creation-catalog-suggestion-card">
+              <p className="assisted-creation-catalog-suggestion-title">{suggestedDesign.title}</p>
+              {proofUrl ? (
+                <button
+                  aria-label={`Open preview of ${suggestedDesign.title}`}
+                  className="assisted-creation-proof-image-button assisted-creation-proof-stage"
+                  onClick={() => setProofLightboxOpen(true)}
+                  type="button"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    alt={suggestedDesign.title}
+                    className="assisted-creation-proof-stage-image"
+                    draggable={false}
+                    src={proofUrl}
+                  />
+                </button>
+              ) : (
+                <p className="portal-muted">
+                  {proofImageState === 'unavailable'
+                    ? 'Preview unavailable.'
+                    : 'Loading design preview…'}
+                </p>
+              )}
+              {libraryDeepLink ? (
+                <div className="assisted-creation-catalog-suggestion-links">
+                  <button
+                    className="portal-button portal-button-secondary"
+                    onClick={() => {
+                      router.push(libraryDeepLink);
+                    }}
+                    type="button"
+                  >
+                    View in library
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          ) : proofUrl ? (
             <button
               aria-label="Open proof preview"
               className="assisted-creation-proof-image-button assisted-creation-proof-stage"
@@ -210,11 +369,16 @@ export function AssistedCreationStatusPanel({ onStartNew }: AssistedCreationStat
               <img
                 alt="Design proof"
                 className="assisted-creation-proof-stage-image"
+                draggable={false}
                 src={proofUrl}
               />
             </button>
           ) : (
-            <p className="portal-muted">Loading proof image…</p>
+            <p className="portal-muted">
+              {proofImageState === 'unavailable'
+                ? 'Preview unavailable.'
+                : 'Loading proof image…'}
+            </p>
           )}
 
           {latestProof ? (
@@ -234,7 +398,7 @@ export function AssistedCreationStatusPanel({ onStartNew }: AssistedCreationStat
               className="assisted-creation-proof-response-heading"
               id="assisted-creation-respond-heading"
             >
-              Respond to proof
+              {isCatalogShare ? 'Respond to library design' : 'Respond to proof'}
             </h3>
 
             <ExpandableBlock title="Request revisions">
@@ -371,6 +535,38 @@ export function AssistedCreationStatusPanel({ onStartNew }: AssistedCreationStat
         </div>
       ) : null}
 
+      {latest.status === 'final_source_needed' ? (
+        <div className="assisted-creation-proof-panel">
+          <h2 className="assisted-creation-proof-heading">Proof approved</h2>
+          <p className="portal-muted">
+            Fresh Prints is preparing your final high-resolution artwork. We will let you know when
+            it is ready to download.
+          </p>
+          {proofUrl ? (
+            <button
+              aria-label="Open approved proof preview"
+              className="assisted-creation-proof-image-button assisted-creation-proof-stage"
+              onClick={() => setProofLightboxOpen(true)}
+              type="button"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                alt="Approved proof"
+                className="assisted-creation-proof-stage-image"
+                draggable={false}
+                src={proofUrl}
+              />
+            </button>
+          ) : (
+            <p className="portal-muted">
+              {proofImageState === 'unavailable'
+                ? 'Preview unavailable.'
+                : 'Loading approved proof…'}
+            </p>
+          )}
+        </div>
+      ) : null}
+
       <AssistedCreationDetailTabs
         activeTab={activeTab}
         onTabChange={setActiveTab}
@@ -455,7 +651,11 @@ export function AssistedCreationStatusPanel({ onStartNew }: AssistedCreationStat
       </PortalConfirmModal>
 
       <CatalogPreviewLightbox
-        alt="Design proof"
+        alt={
+          isCatalogShare && suggestedDesign
+            ? suggestedDesign.title
+            : 'Design proof'
+        }
         className="assisted-creation-lightbox"
         isOpen={proofLightboxOpen && proofUrl != null}
         onClose={() => setProofLightboxOpen(false)}

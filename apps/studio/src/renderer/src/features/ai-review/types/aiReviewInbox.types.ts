@@ -1,4 +1,5 @@
 import type { DesignListQuery } from "../../designs/types/designQuery.types";
+import type { ArtworkBackgroundPreset } from "../../designs/types/designForm.types";
 
 export type AiReviewInboxTab = "processing" | "needs_review" | "rejected";
 
@@ -15,6 +16,8 @@ export interface AiReviewDraftForm {
   tagsAdjustmentNote?: string;
   /** Staff Halftone toggle — authoritative on approve. */
   markAsHalftone: boolean;
+  artworkBackgroundPreset: ArtworkBackgroundPreset;
+  artworkBackgroundCustomHex: string;
 }
 
 export interface AiReviewInboxListQuery extends DesignListQuery {

@@ -4,6 +4,37 @@ import type { CatalogTag } from "../types/catalogTag.types";
 import type { Design } from "../types/design.types";
 import { resolveDesignAiReviewDisplay } from "./aiReviewState";
 
+/** Canonical design tag synced by staff Halftone confirmation (ADR-FP-080). */
+export const CANONICAL_HALFTONE_TAG = "halftone";
+
+export function isCanonicalHalftoneTag(tag: string): boolean {
+  return tag.trim().toLowerCase() === CANONICAL_HALFTONE_TAG;
+}
+
+export function selectedTagsIncludeHalftone(selectedTags: readonly string[]): boolean {
+  return selectedTags.some(isCanonicalHalftoneTag);
+}
+
+/** Non-halftone selected tags (for Tags button count / active chips). */
+export function visibleSelectedTags(selectedTags: readonly string[]): string[] {
+  return selectedTags.filter((tag) => !isCanonicalHalftoneTag(tag));
+}
+
+export function countVisibleSelectedTags(selectedTags: readonly string[]): number {
+  return visibleSelectedTags(selectedTags).length;
+}
+
+export function setHalftoneInSelectedTags(
+  selectedTags: readonly string[],
+  halftoneOn: boolean,
+): string[] {
+  const withoutHalftone = visibleSelectedTags(selectedTags);
+  if (!halftoneOn) {
+    return sortTagsAlphabetically(withoutHalftone);
+  }
+  return sortTagsAlphabetically([...withoutHalftone, CANONICAL_HALFTONE_TAG]);
+}
+
 export function filterDesignsBySearch(designs: Design[], searchQuery: string): Design[] {
   const normalizedQuery = searchQuery.trim().toLowerCase();
 
@@ -12,11 +43,12 @@ export function filterDesignsBySearch(designs: Design[], searchQuery: string): D
   }
 
   return designs.filter((design) => {
+    const idMatches = design.id.toLowerCase().includes(normalizedQuery);
     const titleMatches = design.title.toLowerCase().includes(normalizedQuery);
     const descriptionMatches = design.description?.toLowerCase().includes(normalizedQuery) ?? false;
     const tagMatches = design.tags.some((tag) => tag.includes(normalizedQuery));
 
-    return titleMatches || descriptionMatches || tagMatches;
+    return idMatches || titleMatches || descriptionMatches || tagMatches;
   });
 }
 
@@ -241,6 +273,11 @@ export function computeFacetedTagsForDraftSelection(params: {
   const faceted: FacetedTag[] = [];
 
   for (const tag of candidateTags) {
+    // Halftone is filtered via the dedicated dock toggle (same as Portal), not the tag modal.
+    if (isCanonicalHalftoneTag(tag)) {
+      continue;
+    }
+
     const isSelected = draftSelectedTags.includes(tag);
 
     // Count designs that match the selection plus this candidate tag.

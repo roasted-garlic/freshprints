@@ -1,0 +1,19 @@
+# Deploy to your EXISTING Worker named "coming-soon":
+#   npx wrangler deploy
+#
+# Then add the secret:
+#   npx wrangler secret put BREVO_API_KEY
+#
+# Optional list override (defaults to 2 in worker.js):
+#   BREVO_LIST_ID in wrangler.toml [vars] below
+
+name = "coming-soon"
+main = "worker.js"
+compatibility_date = "2026-07-18"
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
+[vars]
+BREVO_LIST_ID = "2"

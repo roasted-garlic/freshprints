@@ -42,6 +42,12 @@ export interface ExpandedOperationalWipePlan {
   resetSequences: boolean;
   resetDesignRequestStats: boolean;
   wipeDesignStorage: boolean;
+  /**
+   * Selectively delete AI Processing page designs (imported/processing/rejected inbox)
+   * and their Storage objects only. Skipped when full `wipeDesignStorage` / designs
+   * collection wipe is also selected.
+   */
+  wipeAiProcessingDesigns: boolean;
   wipeCustomerUploadStorage: boolean;
   wipeAssistedCreationStorage: boolean;
   /**
@@ -93,7 +99,9 @@ export function getDesignsWipePrerequisiteError(
 }
 
 /**
- * When enabling designs, also enable printRequests.
+ * When enabling designs, also enable printRequests and clear aiProcessingDesigns
+ * (full catalog wipe supersedes selective AI Processing wipe).
+ * When enabling aiProcessingDesigns, clear designs (selective vs full are mutually exclusive).
  * When enabling printRequests, also enable sequences (counter + customer sequences).
  * When disabling printRequests, disable designs.
  * Sequences cannot be cleared while printRequests remains selected.
@@ -110,6 +118,10 @@ export function applyOperationalWipeTargetToggle(
     if (target === "designs") {
       next.add("printRequests");
       next.add("sequences");
+      next.delete("aiProcessingDesigns");
+    }
+    if (target === "aiProcessingDesigns") {
+      next.delete("designs");
     }
     if (target === "printRequests") {
       next.add("sequences");
@@ -134,6 +146,7 @@ const OPERATIONAL_WIPE_TARGETS_ORDER: OperationalWipeTarget[] = [
   "sequences",
   "designRequestStats",
   "designs",
+  "aiProcessingDesigns",
   "customerUploads",
   "printRequestDesignDailyLimits",
   "etsySearches",
@@ -145,6 +158,8 @@ const OPERATIONAL_WIPE_TARGETS_ORDER: OperationalWipeTarget[] = [
  * `printRequests` always clears queue attachments/gang data so shows are not left pointing
  * at deleted requests; `upcomingShows` docs themselves are only removed when that target is set.
  * `designs` deletes catalog docs and Storage originals/thumbnails/previews (requires printRequests).
+ * `aiProcessingDesigns` selectively deletes AI Processing page designs + their Storage only
+ * (keeps ready/archived); skipped when full `designs` is also selected.
  * `customerUploads` deletes upload docs/ops collections and `customer-uploads/` Storage.
  * `printRequestDesignDailyLimits` deletes Cap A Chicago-day design-add counters only
  * (keeps print requests / stash). Also cleared when `printRequests` is wiped.
@@ -193,6 +208,11 @@ export function expandOperationalWipePlan(
       continue;
     }
 
+    if (target === "aiProcessingDesigns") {
+      // Selective wipe — handled via wipeAiProcessingDesigns flag, not full collection delete.
+      continue;
+    }
+
     if (target === "customerUploads") {
       deleteSet.add("customerUploadIdempotency");
       deleteSet.add("customerUploadFinalizeLeases");
@@ -231,6 +251,8 @@ export function expandOperationalWipePlan(
   const wipePrintRequests = uniqueTargets.includes("printRequests");
   const wipeCustomerUploads = uniqueTargets.includes("customerUploads");
   const wipeAssistedCreation = uniqueTargets.includes("assistedCreationRequests");
+  const wipeAiProcessingDesigns =
+    uniqueTargets.includes("aiProcessingDesigns") && !wipeDesigns;
   const deleteCollections = OPERATIONAL_WIPE_DELETE_COLLECTION_ORDER.filter((collectionName) =>
     deleteSet.has(collectionName),
   );
@@ -239,9 +261,10 @@ export function expandOperationalWipePlan(
     deleteCollections,
     // Wiping print requests always resets naming counters so the next request restarts at 001.
     resetSequences: uniqueTargets.includes("sequences") || wipePrintRequests,
-    // Stats reset is pointless if designs themselves are deleted.
+    // Stats reset is pointless if the entire designs collection is deleted.
     resetDesignRequestStats: uniqueTargets.includes("designRequestStats") && !wipeDesigns,
     wipeDesignStorage: wipeDesigns,
+    wipeAiProcessingDesigns,
     wipeCustomerUploadStorage: wipeCustomerUploads,
     wipeAssistedCreationStorage: wipeAssistedCreation,
     resetShowAllocationTotals:
@@ -278,6 +301,11 @@ export const DESIGNS_WIPE_PRESET_TARGETS: OperationalWipeTarget[] = [
   "designs",
 ];
 
+/** AI Processing inbox designs only (keeps ready / archived catalog). */
+export const AI_PROCESSING_DESIGNS_WIPE_PRESET_TARGETS: OperationalWipeTarget[] = [
+  "aiProcessingDesigns",
+];
+
 export const ALL_OPERATIONAL_WIPE_TARGETS: OperationalWipeTarget[] = [
   "printRequests",
   "showQueueAttachments",
@@ -285,6 +313,7 @@ export const ALL_OPERATIONAL_WIPE_TARGETS: OperationalWipeTarget[] = [
   "sequences",
   "designRequestStats",
   "designs",
+  "aiProcessingDesigns",
   "customerUploads",
   "printRequestDesignDailyLimits",
   "etsySearches",
@@ -292,9 +321,9 @@ export const ALL_OPERATIONAL_WIPE_TARGETS: OperationalWipeTarget[] = [
 ];
 
 /**
- * UI “All (-) Designs” preset: all operational wipe checkboxes except Designs
- * (keeps catalog docs + design Storage). Includes upcoming shows, queue
- * attachments, uploads, Etsy, custom requests, etc.
+ * UI “All (-) Designs” preset: all operational wipe checkboxes except full Designs
+ * (keeps ready catalog docs + design Storage prefixes). Still includes selective
+ * AI Processing wipe, upcoming shows, queue attachments, uploads, Etsy, custom requests, etc.
  */
 export const EVERYTHING_EXCEPT_DESIGNS_WIPE_PRESET_TARGETS: OperationalWipeTarget[] =
   ALL_OPERATIONAL_WIPE_TARGETS.filter((target) => target !== "designs");

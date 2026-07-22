@@ -2,6 +2,104 @@
 
 > Signed-off or largely complete work. External agents should not re-plan or duplicate this.
 
+## 2026-07-22 - Brand logo uploads (approved_with_notes)
+
+- Studio Settings four PNG slots (Studio/Portal × full/collapsed); Storage finalize + display-size callables; AR-locked W×H boxes; separate Portal header vs sidebar controls (defaults height 52)
+- Soft-deployed to `fresh-prints-dev` (incl. mid-session `updateBrandLogoDisplaySizes`); production deploy **not** done
+- Session polish: guest mobile Login hide, logo flash cache, height-only chrome sizing
+- Adjacent out-of-band: Studio Design Library `createdAt` desc enforcement
+- Owner **PASS** 2026-07-22; ADR-FP-114
+- Signoff: `docs/workflow/reviews/2026-07-22-brand-logo-uploads-signoff.md`
+- Next: idle — optional APPROVE production brand-logo Functions/rules; else await next goal
+
+## 2026-07-22 - Firestore usage efficiency (approved_with_notes)
+
+- Duplicate listener consolidation, AI Review counts, Portal library deferred hydrate, slim shell loads, bounded gallery, DEV tracer
+- B4 / Wave C deferred; no production/rules/Functions deploy
+- Owner **PASS** 2026-07-22
+- Signoff: `docs/workflow/reviews/2026-07-22-firestore-usage-efficiency-signoff.md`
+
+## 2026-07-21 - Studio design download + newest sort (approved)
+
+- Design details modal full-res Download (`originalPath`); Design Library default `createdAt` desc
+- AI Review sort unchanged; unit 8/8 + eslint pass; Studio `tsc` TS5103 pre-existing documented
+- Owner **PASS** 2026-07-21
+- Signoff: `docs/workflow/reviews/2026-07-21-studio-design-download-and-newest-sort-signoff.md`
+- Next: idle — await owner next managed goal
+
+## 2026-07-21 - AI text title completeness (approved)
+
+- Catalog titles keep full readable phrases; intermittency harden so reprocess stays stable
+- Prompt `catalog-enrich-v25` / ADR-FP-113 amendments; Functions title unit + build pass
+- Owner **PASS** (incl. soft-deploy + **3×** Sarcasm reprocess)
+- Signoff: `docs/workflow/reviews/2026-07-21-ai-text-title-completeness-signoff.md`
+
+## 2026-07-21 - #12/#13 Function redeploy leftovers PASS
+
+- Owner **PASS**: with #14 already soft-deployed, #12 (`staffSuggestAssistedCreationCatalogDesign`) and #13 donation-path Function leftovers treated as live on `fresh-prints-dev`
+- Small Managed **#1–#14** all Done; soft redeploy parked cleared
+
+## 2026-07-21 - PASS ALL batch (noreply + AI context + #14 + OG letterbox)
+
+- Owner **PASS ALL** closed four parked items
+- Signoffs: `noreply-myprintrequest-email-sender-signoff.md`, `custom-request-ai-context-and-final-source-workflow-signoff.md`, `portal-og-letterbox-and-global-image-toggles-signoff.md`
+- Soft-deploy: `onShowAllocationCreated` → `fresh-prints-dev` (exit 0); Small Managed **#14 Done**
+
+## 2026-07-21 - Assisted Creation proof preview hang (approved)
+
+- Studio + Portal proof thumbs hung on unbounded `getBytes` (ADR-FP-110); fixed signed-URL-first + timeouts (ADR-FP-112)
+- Owner **PASS**; signoff: `docs/workflow/reviews/2026-07-21-assisted-creation-proof-preview-hang-signoff.md`
+- Soft-deploy not required (client-only)
+
+## 2026-07-21 - Portal assisted resume + guest auth overlay (approved)
+
+- Assisted hub Reset/Continue mirrors Find; mobile Login required overlay raised above bottom nav
+- Owner **PASS**; soft-signoff: `docs/workflow/reviews/2026-07-21-portal-assisted-resume-and-auth-overlay-signoff.md`
+
+## 2026-07-21 - Custom request details parity + Addenda A–C (approved)
+
+- Shared answer display rows; exact-wording draft; mood chips; Review card parity
+- Owner **PASS** (checkpoint had been parked; PASS recorded with next-phase brief — not invented earlier)
+- Soft-signoff: `docs/workflow/reviews/2026-07-21-custom-request-details-parity-signoff.md`
+
+## 2026-07-21 - #12 Design Library proof-line (soft-signoff approved_with_notes)
+
+- Owner **PASS** on Design Library proof-line UX (believes already passed; recorded)
+- Soft-signoff: `docs/workflow/reviews/2026-07-21-library-design-sharing-proof-line-followup-signoff.md`
+- Functions soft-deploy leftovers later **PASS** 2026-07-21 (owner: live given #14)
+- Small Managed **#12 Done**
+
+## 2026-07-21 - #13 login-required donate product PASS
+
+- Owner: donation works great; login gate fine → product **PASS**
+- Donation Functions redeploy leftover later **PASS** 2026-07-21 (owner: live given #14)
+- ADR-FP-106
+
+## 2026-07-21 - Portal customer temporary artwork background preview (approved)
+
+- Compact **Background** swatch in design details → nested **Background Color** picker (16 shirt colors + custom hex); temporary local preview only
+- Unit 4/4 + Portal typecheck; owner **PASS** (incl. title copy); no Firestore/OG writes; no soft-deploy
+- Signoff: `docs/workflow/reviews/2026-07-21-portal-customer-temp-artwork-bg-preview-signoff.md`
+
+## 2026-07-21 - Studio tag footer + Design Library Halftone + AI Processing artwork bg (approved_with_notes)
+
+- Tag modal footer Clear left / Cancel+Apply right; Studio Design Library Halftone dock toggle; AI Needs Review artwork background on approve
+- Owner **PASS**; signoff: `docs/workflow/reviews/2026-07-21-studio-tag-footer-halftone-filter-ai-artwork-bg-signoff.md`
+
+## 2026-07-21 - Library OG rotation interval + per-design artwork backgrounds (approved_with_notes)
+
+- Configurable library OG intervals (daily→30s) + Pick next; `artworkBackgroundHex` mats + OG letterbox; Functions soft-deployed to fresh-prints-dev
+- Owner **PASS** (same “PASS on the previous work” covered this parked checkpoint); signoff: `docs/workflow/reviews/2026-07-21-library-og-rotation-interval-and-per-design-artwork-bg-signoff.md`
+
+## 2026-07-20 - #13 Public browse + guest chrome / overlay (approved_with_notes)
+
+- Public catalog browse without sign-in; guest chrome; in-shell dimmed auth overlay; login/register card styling
+- Addendum A guest donate in repo then retired same day (login required); print-request uploads stay portal-customer only
+- Owner UI **PASS** 2026-07-20; login-required donate product **PASS** 2026-07-21
+- Signoff: `docs/workflow/reviews/2026-07-20-portal-public-browse-login-gated-actions-signoff.md` (**approved_with_notes**); ADR-FP-106
+- Soft follow-up: donation Functions redeploy if guest-path retirement not live
+- Small Managed **#13 Done**; **#14** closed later same week (soft-deploy 2026-07-21)
+
 ## 2026-07-20 - Portal account auth (#7–#10) + owner delete user
 
 - **#7–#10** Portal reset password / change email / deletion request + Studio Test Data owner delete individual user; owner **PASS**

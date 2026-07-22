@@ -536,8 +536,10 @@ export default function PrintRequestDetailView() {
                         height: design.height,
                         thumbnailPath: design.thumbnailPath,
                         previewPath: design.previewPath,
+                        artworkBackgroundHex: design.artworkBackgroundHex,
                         printWidthInches: design.printWidthInches,
                         printHeightInches: design.printHeightInches,
+                        updatedAtMs: design.updatedAtMs,
                       }
                     : null
                 }

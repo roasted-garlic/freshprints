@@ -62,6 +62,21 @@ export interface SearchEtsyRecommendationsResponse {
   keywordStrategy?: "focused" | "fallback";
 }
 
+/** Studio: fetch/refresh Open API results for any request status (ADR-FP-087o). */
+export interface StaffSearchEtsyRecommendationApiResultsRequest {
+  requestId: string;
+}
+
+export interface StaffSearchEtsyRecommendationApiResultsResponse {
+  requestId: string;
+  canonicalQuery: string;
+  etsySearchUrl: string;
+  listings: EtsyRecommendationListing[];
+  status: SearchEtsyRecommendationsStatus;
+  apiKeywordsUsed?: string;
+  keywordStrategy?: "focused" | "fallback";
+}
+
 export type EtsyRecommendationSuggestionKind = "subject" | "style";
 
 export interface AddEtsyRecommendationSuggestionRequest {

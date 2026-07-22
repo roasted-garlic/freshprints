@@ -1,11 +1,30 @@
-import { useEffect, useMemo, useState } from "react";
-import { X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Check, Copy, X } from "lucide-react";
 
 import { PURGE_ARCHIVED_DESIGN_ASSETS_CONFIRMATION_PHRASE } from "@fresh-prints/shared/types/admin/purgeArchivedDesignAssets.types";
 
 import { Button } from "../../../shared/components/Button";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "../../../shared/components/Modal";
 import type { Design } from "../types/design.types";
+
+const COPY_FEEDBACK_MS = 2000;
+
+async function copyText(text: string): Promise<void> {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+
+  const area = document.createElement("textarea");
+  area.value = text;
+  area.setAttribute("readonly", "");
+  area.style.position = "fixed";
+  area.style.left = "-9999px";
+  document.body.appendChild(area);
+  area.select();
+  document.execCommand("copy");
+  document.body.removeChild(area);
+}
 
 interface PurgeArchivedDesignAssetsDialogProps {
   activeQueueDesignIds: string[];
@@ -28,6 +47,8 @@ export function PurgeArchivedDesignAssetsDialog({
 }: PurgeArchivedDesignAssetsDialogProps) {
   const [confirmationPhrase, setConfirmationPhrase] = useState("");
   const [acknowledgeActiveQueue, setAcknowledgeActiveQueue] = useState(false);
+  const [phraseCopied, setPhraseCopied] = useState(false);
+  const copyResetTimerRef = useRef<number | null>(null);
 
   const isBulk = designs.length > 1;
   const hasActiveQueue = activeQueueDesignIds.length > 0;
@@ -44,8 +65,37 @@ export function PurgeArchivedDesignAssetsDialog({
     if (!isOpen) {
       setConfirmationPhrase("");
       setAcknowledgeActiveQueue(false);
+      setPhraseCopied(false);
+      if (copyResetTimerRef.current !== null) {
+        window.clearTimeout(copyResetTimerRef.current);
+        copyResetTimerRef.current = null;
+      }
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    return () => {
+      if (copyResetTimerRef.current !== null) {
+        window.clearTimeout(copyResetTimerRef.current);
+      }
+    };
+  }, []);
+
+  const copyConfirmationPhrase = useCallback(async () => {
+    try {
+      await copyText(PURGE_ARCHIVED_DESIGN_ASSETS_CONFIRMATION_PHRASE);
+      setPhraseCopied(true);
+      if (copyResetTimerRef.current !== null) {
+        window.clearTimeout(copyResetTimerRef.current);
+      }
+      copyResetTimerRef.current = window.setTimeout(() => {
+        setPhraseCopied(false);
+        copyResetTimerRef.current = null;
+      }, COPY_FEEDBACK_MS);
+    } catch {
+      setPhraseCopied(false);
+    }
+  }, []);
 
   if (!isOpen || designs.length === 0) {
     return null;
@@ -60,7 +110,7 @@ export function PurgeArchivedDesignAssetsDialog({
     <div className="modal-overlay modal-overlay-blur">
       <Modal
         aria-labelledby="purge-archived-design-assets-title"
-        className="modal-panel modal-panel-md"
+        className="modal-panel modal-panel-lg"
         role="dialog"
       >
         <ModalHeader>
@@ -119,8 +169,36 @@ export function PurgeArchivedDesignAssetsDialog({
 
           {isBulk ? (
             <label className="purge-archived-confirm-label purge-archived-confirm-phrase">
-              <span>
-                Type <code>{PURGE_ARCHIVED_DESIGN_ASSETS_CONFIRMATION_PHRASE}</code> to confirm
+              <span className="purge-archived-confirm-phrase-prompt">
+                <span>
+                  Type <code>{PURGE_ARCHIVED_DESIGN_ASSETS_CONFIRMATION_PHRASE}</code> to confirm
+                </span>
+                <button
+                  aria-label={
+                    phraseCopied
+                      ? "Confirmation phrase copied"
+                      : `Copy ${PURGE_ARCHIVED_DESIGN_ASSETS_CONFIRMATION_PHRASE}`
+                  }
+                  className={`purge-archived-confirm-phrase-copy${phraseCopied ? " is-copied" : ""}`}
+                  disabled={isSubmitting}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    void copyConfirmationPhrase();
+                  }}
+                  type="button"
+                >
+                  {phraseCopied ? (
+                    <>
+                      <Check aria-hidden="true" size={14} strokeWidth={2.2} />
+                      Copied
+                    </>
+                  ) : (
+                    <>
+                      <Copy aria-hidden="true" size={14} strokeWidth={2.2} />
+                      Copy
+                    </>
+                  )}
+                </button>
               </span>
               <input
                 autoComplete="off"

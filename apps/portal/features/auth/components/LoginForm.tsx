@@ -42,6 +42,10 @@ export function LoginForm() {
   }, [clearAuthError]);
 
   useEffect(() => {
+    void portalAuthService.clearAnonymousGuestSession();
+  }, []);
+
+  useEffect(() => {
     if (!error) {
       return;
     }
@@ -109,7 +113,7 @@ export function LoginForm() {
         disabled={isBusy || isResetting}
         isLoading={isBusy}
         label="Continue with Google"
-        loadingLabel="Signing in…"
+        loadingLabel="Logging in…"
         onClick={() => {
           void handleGoogleSignIn();
         }}
@@ -127,7 +131,7 @@ export function LoginForm() {
         onClick={() => setShowEmailForm((open) => !open)}
         type="button"
       >
-        {showEmailForm ? 'Hide email sign-in' : 'Sign in with email'}
+        {showEmailForm ? 'Hide email login' : 'Login with email'}
       </button>
 
       {showEmailForm ? (
@@ -150,7 +154,7 @@ export function LoginForm() {
             type="submit"
           >
             <LogInIcon />
-            {isBusy ? 'Signing in…' : 'Sign in'}
+            {isBusy ? 'Logging in…' : 'Login'}
           </button>
 
           <button
@@ -201,11 +205,11 @@ export function LoginForm() {
       ) : null}
 
       <p className="portal-auth-footer">
-        New here? <Link href="/register">Create an account</Link>
+        New here? <Link href="/register">Signup</Link>
       </p>
 
       {isBusy ? (
-        <AuthBusyOverlay message="This may take a moment." title="Signing you in…" />
+        <AuthBusyOverlay message="This may take a moment." title="Logging you in…" />
       ) : null}
     </div>
   );

@@ -1,18 +1,10 @@
 import { cache } from 'react'
 
 import {
-  PORTAL_SOCIAL_META_SETTINGS_DOC_ID,
   resolvePortalSocialMetaSettings,
 } from '@fresh-prints/shared/constants/portal/portalSocialMetaSettings.constants'
 
-import { tryGetPortalAdminDb, tryGetPortalAdminStorage } from '../../lib/firebase/admin'
-import { PORTAL_FIRESTORE_COLLECTIONS } from '../../lib/firebase/collections'
-import {
-  pickDailyRotatedIndex,
-  PORTAL_GLOBAL_OG_LIBRARY_SAMPLE_SIZE,
-} from './pickDailyRotatedIndex'
-
-const SIGNED_URL_TTL_MS = 7 * 24 * 60 * 60 * 1000
+import { tryGetPortalAdminDb } from '../../lib/firebase/admin'
 
 export interface PortalGlobalSocialMeta {
   ogTitle: string
@@ -21,90 +13,101 @@ export interface PortalGlobalSocialMeta {
   imageUrl: string | null
 }
 
-function normalizeStorageObjectPath(path: string): string {
-  return path.trim().replace(/^\/+/, '')
+function defaultPortalGlobalSocialMeta(): PortalGlobalSocialMeta {
+  const defaults = resolvePortalSocialMetaSettings(undefined)
+  return {
+    ogTitle: defaults.ogTitle,
+    ogDescription: defaults.ogDescription,
+    imageUrl: null,
+  }
 }
 
-async function resolveSignedImageUrl(storagePath: string): Promise<string | null> {
-  const storage = tryGetPortalAdminStorage()
-  if (!storage) {
+function resolveGlobalOpenGraphFunctionUrl(): string | null {
+  const projectId =
+    process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID?.trim() ||
+    process.env.GCLOUD_PROJECT?.trim() ||
+    process.env.GOOGLE_CLOUD_PROJECT?.trim() ||
+    ''
+  if (!projectId) {
     return null
   }
+  return `https://us-central1-${projectId}.cloudfunctions.net/getPortalGlobalOpenGraph`
+}
 
-  const objectPath = normalizeStorageObjectPath(storagePath)
-  if (!objectPath) {
+async function loadPortalGlobalSocialMetaViaFunction(): Promise<PortalGlobalSocialMeta | null> {
+  const url = resolveGlobalOpenGraphFunctionUrl()
+  if (!url) {
     return null
   }
 
   try {
-    const file = storage.bucket().file(objectPath)
-    const [url] = await file.getSignedUrl({
-      action: 'read',
-      expires: Date.now() + SIGNED_URL_TTL_MS,
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+      cache: 'no-store',
     })
-    return url
-  } catch {
-    return null
-  }
-}
-
-async function loadDailyRotatedLibraryImageUrl(): Promise<string | null> {
-  const db = tryGetPortalAdminDb()
-  if (!db) {
-    return null
-  }
-
-  try {
-    const snapshot = await db
-      .collection(PORTAL_FIRESTORE_COLLECTIONS.designs)
-      .where('status', '==', 'ready')
-      .orderBy('createdAt', 'desc')
-      .limit(PORTAL_GLOBAL_OG_LIBRARY_SAMPLE_SIZE)
-      .get()
-
-    if (snapshot.empty) {
+    if (!response.ok) {
       return null
     }
-
-    const docs = snapshot.docs
-    const index = pickDailyRotatedIndex(docs.length)
-    const data = docs[index]?.data() ?? {}
-    const imagePath =
-      (typeof data.previewPath === 'string' && data.previewPath.trim()) ||
-      (typeof data.thumbnailPath === 'string' && data.thumbnailPath.trim()) ||
-      ''
-
-    return imagePath ? resolveSignedImageUrl(imagePath) : null
+    const payload = (await response.json()) as Partial<PortalGlobalSocialMeta>
+    if (
+      typeof payload.ogTitle !== 'string' ||
+      !payload.ogTitle.trim() ||
+      typeof payload.ogDescription !== 'string' ||
+      !payload.ogDescription.trim()
+    ) {
+      return null
+    }
+    return {
+      ogTitle: payload.ogTitle.trim(),
+      ogDescription: payload.ogDescription.trim(),
+      imageUrl:
+        typeof payload.imageUrl === 'string' && payload.imageUrl.trim()
+          ? payload.imageUrl.trim()
+          : null,
+    }
   } catch {
     return null
+  }
+}
+
+/**
+ * Optional Admin fallback only when Function is unavailable.
+ * Intentionally lightweight: settings title/description only — no library query
+ * (avoids the old 1.5s budget race that caused logo fallback).
+ */
+async function loadPortalGlobalSocialMetaViaAdminSettings(): Promise<PortalGlobalSocialMeta> {
+  const defaults = defaultPortalGlobalSocialMeta()
+  const db = tryGetPortalAdminDb()
+  if (!db) {
+    return defaults
+  }
+
+  try {
+    const settingsSnap = await db.collection('settings').doc('portalSocialMeta').get()
+    const resolved = resolvePortalSocialMetaSettings(settingsSnap.data())
+    return {
+      ogTitle: resolved.ogTitle,
+      ogDescription: resolved.ogDescription,
+      // Image requires Function (or compositor); do not re-query library here.
+      imageUrl: null,
+    }
+  } catch {
+    return defaults
   }
 }
 
 async function loadPortalGlobalSocialMetaUncached(): Promise<PortalGlobalSocialMeta> {
-  const defaults = resolvePortalSocialMetaSettings(undefined)
-  const db = tryGetPortalAdminDb()
-
-  let ogTitle = defaults.ogTitle
-  let ogDescription = defaults.ogDescription
-
-  if (db) {
-    try {
-      const settingsSnap = await db.collection('settings').doc(PORTAL_SOCIAL_META_SETTINGS_DOC_ID).get()
-      const resolved = resolvePortalSocialMetaSettings(settingsSnap.data())
-      ogTitle = resolved.ogTitle
-      ogDescription = resolved.ogDescription
-    } catch {
-      // Keep defaults when Admin/settings read fails.
-    }
+  const viaFunction = await loadPortalGlobalSocialMetaViaFunction()
+  if (viaFunction) {
+    return viaFunction
   }
 
-  const imageUrl = await loadDailyRotatedLibraryImageUrl()
-
-  return { ogTitle, ogDescription, imageUrl }
+  return loadPortalGlobalSocialMetaViaAdminSettings()
 }
 
 /**
- * Loads Studio-configured global OG title/description plus a daily-rotated
- * ready-library image. Deduped per request via React `cache`.
+ * Loads Studio-configured global OG title/description plus image URL from the
+ * public Cloud Function (hourly library or logo). Deduped per request via React `cache`.
  */
 export const loadPortalGlobalSocialMeta = cache(loadPortalGlobalSocialMetaUncached)

@@ -46,5 +46,47 @@ describe("storage.rules alignment", () => {
       rules.includes('fileName == "source"'),
       "customers may only write the source object name",
     );
+    assert.ok(
+      rules.includes("isAnonymousAuth") || rules.includes('sign_in_provider == "anonymous"'),
+      "storage.rules must allow anonymous guest donation source writes under own UID",
+    );
+  });
+
+  it("allows public read of ready design derivatives without requiring isCustomer()", async () => {
+    const rulesPath = path.join(REPO_ROOT, "storage.rules");
+    const rules = await readFile(rulesPath, "utf8");
+
+    const helperStart = rules.indexOf("function isReadyDesignDerivative");
+    assert.ok(helperStart >= 0, "storage.rules must define isReadyDesignDerivative");
+    const helperEnd = rules.indexOf("function isCanonicalOriginalFileName", helperStart);
+    const helper = rules.slice(helperStart, helperEnd > helperStart ? helperEnd : undefined);
+
+    assert.ok(
+      !helper.includes("isCustomer()"),
+      "isReadyDesignDerivative must not require isCustomer() (public catalog browse #13)",
+    );
+    assert.ok(
+      helper.includes('status == "ready"'),
+      "isReadyDesignDerivative must still require ready design status",
+    );
+    assert.ok(
+      helper.includes("isCanonicalDerivativeFileName"),
+      "isReadyDesignDerivative must still require canonical filename",
+    );
+  });
+
+  it("includes owner-writable public-readable brand logo paths at 2 MiB PNG", async () => {
+    const rulesPath = path.join(REPO_ROOT, "storage.rules");
+    const rules = await readFile(rulesPath, "utf8");
+
+    assert.ok(rules.includes("match /brand/{appId}/{slotId}/{fileName}"), "brand logo match path");
+    assert.ok(
+      rules.includes("2 * 1024 * 1024"),
+      "storage.rules must cap brand logos at 2 MiB",
+    );
+    assert.ok(
+      rules.includes('request.resource.contentType == "image/png"'),
+      "brand logos must require image/png",
+    );
   });
 });

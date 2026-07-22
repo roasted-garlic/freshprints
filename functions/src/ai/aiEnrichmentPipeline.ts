@@ -112,6 +112,7 @@ interface DesignRecord {
   title: string;
   previewPath?: string;
   thumbnailPath?: string;
+  artworkBackgroundHex?: string;
   aiRequestedVisionModelId?: string;
   aiProcessingStage?: string;
   aiReviewStatus?: string;
@@ -237,7 +238,7 @@ export async function runAiEnrichmentPipeline(
   try {
     await updateAiProcessingStage(designId, "preparing_image");
     const previewBytes = await downloadPreviewBytes(previewPath);
-    const analysisImage = await prepareAiAnalysisImage(previewBytes);
+    const analysisImage = await prepareAiAnalysisImage(previewBytes, data.artworkBackgroundHex);
     const categories = await loadCachedActiveCategories();
     const approvedTags = await loadCachedApprovedTags();
     phaseTimer.logPhase("analysis_image.prepared", {

@@ -8,6 +8,7 @@ import {
   reauthenticateWithCredential,
   sendPasswordResetEmail,
   setPersistence,
+  signInAnonymously,
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut,
@@ -145,6 +146,43 @@ export const portalAuthService = {
     } catch (error) {
       throw new Error(getAuthErrorMessage(error));
     }
+  },
+
+  /**
+   * Ensures a Firebase Anonymous Auth session for guest catalog donations.
+   * Does not create a portal customer profile. No-op if already signed in (anon or registered).
+   */
+  async ensureAnonymousGuestSession(): Promise<FirebaseUser> {
+    const auth = getPortalAuth();
+    if (auth.currentUser) {
+      return auth.currentUser;
+    }
+    try {
+      const result = await signInAnonymously(auth);
+      return result.user;
+    } catch (error) {
+      throw new Error(getAuthErrorMessage(error));
+    }
+  },
+
+  /**
+   * Clear leftover Anonymous Auth only. Never signs out a registered customer —
+   * re-check immediately before signOut so a hard-nav / remount race cannot
+   * wipe a real session that flipped in after the anonymous check.
+   */
+  async clearAnonymousGuestSession(): Promise<void> {
+    const auth = getPortalAuth();
+    const user = auth.currentUser;
+    if (!user?.isAnonymous) {
+      return;
+    }
+    const anonymousUid = user.uid;
+    // Re-read: registered login or user switch must win over stale clear.
+    const current = auth.currentUser;
+    if (!current || current.uid !== anonymousUid || !current.isAnonymous) {
+      return;
+    }
+    await signOut(auth);
   },
 
   /** Always returns a generic success message to avoid email enumeration. */

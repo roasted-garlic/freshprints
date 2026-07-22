@@ -73,7 +73,6 @@ export function buildPortalRootMetadata(
   env: PortalSiteEnv = process.env,
   social?: PortalSocialMetaOverrides,
 ): Metadata {
-  const origin = getPortalSiteOrigin(env)
   const metadataBase = getPortalMetadataBase(env)
   const title = social?.ogTitle?.trim() || PORTAL_APP_NAME
   const description = social?.ogDescription?.trim() || PORTAL_DEFAULT_DESCRIPTION
@@ -86,12 +85,29 @@ export function buildPortalRootMetadata(
       template: `%s · ${PORTAL_APP_NAME}`,
     },
     description,
+    // RealFaviconGenerator-style assets in `apps/portal/public/` only.
+    // Do not also place `app/favicon.ico` — Next.js treats that as a page route and
+    // conflicts with `public/favicon.ico` (HTTP 500: conflicting-public-file-page).
+    icons: {
+      icon: [
+        { url: '/favicon.ico', sizes: '48x48' },
+        { url: '/favicon.svg', type: 'image/svg+xml' },
+        { url: '/favicon-96x96.png', sizes: '96x96', type: 'image/png' },
+      ],
+      apple: [{ url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
+    },
+    manifest: '/site.webmanifest',
+    appleWebApp: {
+      capable: true,
+      title: PORTAL_APP_NAME,
+    },
     openGraph: {
       type: 'website',
       siteName: PORTAL_APP_NAME,
       title,
       description,
-      url: origin,
+      // Omit url so Next.js uses the request path. Hardcoding the site origin made
+      // deep links (e.g. /catalog, /requests/artwork) advertise og:url as home.
       images: [image],
     },
     twitter: {

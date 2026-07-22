@@ -3,6 +3,7 @@
 import { ChevronDown, Heart, TriangleAlert } from 'lucide-react';
 import { useEffect, useId, useState } from 'react';
 
+import { useAuth } from '../../auth/context/AuthContext';
 import {
   buildArtworkQualityModalSnoozeUntilIso,
   shouldOpenArtworkQualityModalOnMount,
@@ -41,8 +42,10 @@ function ArtworkQualityWarningCopy() {
 /**
  * Collapsed inline reminder + visit modal for print-quality guidance
  * on Upload Designs and Donate Designs.
+ * Hidden for guests so it does not stack under/over GuestAuthGateOverlay.
  */
 export function ArtworkQualityNotice({ purpose = 'print_request' }: ArtworkQualityNoticeProps) {
+  const { isAuthenticated } = useAuth();
   const panelId = useId();
   const snoozeCheckboxId = useId();
   const [isExpanded, setIsExpanded] = useState(false);
@@ -51,8 +54,12 @@ export function ArtworkQualityNotice({ purpose = 'print_request' }: ArtworkQuali
   const isDonation = purpose === 'catalog_donation';
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      setIsModalOpen(false);
+      return;
+    }
     setIsModalOpen(shouldOpenArtworkQualityModalOnMount());
-  }, []);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     if (!isModalOpen) {
@@ -75,6 +82,10 @@ export function ArtworkQualityNotice({ purpose = 'print_request' }: ArtworkQuali
     }
     setIsModalOpen(false);
   };
+
+  if (!isAuthenticated) {
+    return null;
+  }
 
   return (
     <>

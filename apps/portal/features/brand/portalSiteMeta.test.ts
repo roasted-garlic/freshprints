@@ -44,12 +44,17 @@ describe('getPortalSiteOrigin', () => {
 });
 
 describe('buildPortalRootMetadata', () => {
-  it('sets metadataBase and OG/Twitter image paths', () => {
+  it('sets metadataBase, favicons/manifest, and OG/Twitter image paths', () => {
     const meta = buildPortalRootMetadata({
       NEXT_PUBLIC_FIREBASE_PROJECT_ID: 'fresh-prints-dev',
     });
 
     assert.equal(meta.metadataBase?.toString(), 'https://myprintrequest.dev/');
+    assert.equal(meta.manifest, '/site.webmanifest');
+    assert.ok(meta.icons);
+    const icons = meta.icons && typeof meta.icons === 'object' && 'icon' in meta.icons ? meta.icons.icon : undefined;
+    assert.ok(Array.isArray(icons));
+    assert.ok(icons.some((entry) => typeof entry === 'object' && entry !== null && 'url' in entry && entry.url === '/favicon.svg'));
     assert.ok(meta.openGraph);
     assert.ok(meta.twitter);
     const ogImages = meta.openGraph && 'images' in meta.openGraph ? meta.openGraph.images : undefined;

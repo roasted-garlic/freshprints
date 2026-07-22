@@ -115,18 +115,26 @@ describe("rankMostLiked", () => {
 });
 
 describe("rankRecentlyRequested", () => {
-  it("sorts by lastRequestedAt then requestCount", () => {
+  it("only includes designs allocated to a show (lastAddedToShowAt)", () => {
     const ranked = rankRecentlyRequested([
+      design({ id: "cart-only", lastRequestedAtMs: NOW, requestCount: 99 }),
       design({ id: "never" }),
-      design({ id: "older", lastRequestedAtMs: NOW - 5 * DAY, requestCount: 99 }),
-      design({ id: "newer-low", lastRequestedAtMs: NOW - 1 * DAY, requestCount: 1 }),
-      design({ id: "newer-high", lastRequestedAtMs: NOW - 1 * DAY, requestCount: 5 }),
+      design({ id: "older", lastAddedToShowAtMs: NOW - 5 * DAY, requestCount: 99 }),
+      design({ id: "newer-low", lastAddedToShowAtMs: NOW - 1 * DAY, requestCount: 1 }),
+      design({ id: "newer-high", lastAddedToShowAtMs: NOW - 1 * DAY, requestCount: 5 }),
     ]);
 
     assert.deepEqual(
       ranked.map((entry) => entry.id),
       ["newer-high", "newer-low", "older"],
     );
+  });
+
+  it("ignores lastRequestedAt when lastAddedToShowAt is missing", () => {
+    const ranked = rankRecentlyRequested([
+      design({ id: "working-cart", lastRequestedAtMs: NOW, requestCount: 10 }),
+    ]);
+    assert.deepEqual(ranked, []);
   });
 });
 
@@ -139,6 +147,7 @@ describe("rankCatalogDiscoveryDesigns", () => {
         requestCount: 3,
         favoriteCount: 2,
         lastRequestedAtMs: NOW,
+        lastAddedToShowAtMs: NOW,
       }),
     ];
     assert.equal(rankCatalogDiscoveryDesigns(designs, "new", NOW).length, 1);

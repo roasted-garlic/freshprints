@@ -20,7 +20,13 @@ export interface CatalogDiscoveryDesign {
   createdAtMs?: number;
   requestCount: number;
   favoriteCount?: number;
+  /** Cart-add timestamp — Popular / analytics; not Recently Requested. */
   lastRequestedAtMs?: number;
+  /**
+   * Set when a catalog design is allocated to a show (`showAllocations` create).
+   * Gate for Recently Requested — Working-cart adds alone do not set this.
+   */
+  lastAddedToShowAtMs?: number;
 }
 
 /** Max category carousels on Discover (most popular only). */
@@ -130,15 +136,20 @@ export function rankMostLiked<T extends CatalogDiscoveryDesign>(designs: readonl
 }
 
 /**
- * Lightweight “recently requested” proxy (not true 7-day trending).
- * Phase 10 may replace this function’s body without changing the UI contract.
+ * Recently Requested = designs actually sent to a show (allocation created).
+ * Uses `lastAddedToShowAt` — not Working-cart `lastRequestedAt` / printRequestItems create.
+ * Phase 10 may refine ranking without changing this eligibility gate.
  */
+export function isEligibleForRecentlyRequested(design: CatalogDiscoveryDesign): boolean {
+  return design.lastAddedToShowAtMs !== undefined;
+}
+
 export function rankRecentlyRequested<T extends CatalogDiscoveryDesign>(designs: readonly T[]): T[] {
   return designs
-    .filter((design) => design.lastRequestedAtMs !== undefined)
+    .filter(isEligibleForRecentlyRequested)
     .slice()
     .sort((left, right) => {
-      const recentCompare = (right.lastRequestedAtMs ?? 0) - (left.lastRequestedAtMs ?? 0);
+      const recentCompare = (right.lastAddedToShowAtMs ?? 0) - (left.lastAddedToShowAtMs ?? 0);
       if (recentCompare !== 0) {
         return recentCompare;
       }

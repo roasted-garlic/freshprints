@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from "react";
 
 import { useAuth } from "../../auth/hooks/useAuth";
 import { designService } from "../../designs/services/designService";
-import { filterDesignsByAiReviewStatus } from "../../designs/utils/designLibrarySearch";
 import { buildAiReviewInboxListQuery } from "../constants/aiReviewInboxConstants";
 import type { AiReviewTabCounts } from "../components/AiReviewQueueStats";
 import type { AiReviewInboxTab } from "../types/aiReviewInbox.types";
@@ -34,20 +33,13 @@ export function useAiReviewTabCounts(refreshKey = 0) {
     try {
       const results = await Promise.all(
         AI_REVIEW_TABS.map(async (tab) => {
-          const page = await designService.listDesignsPage(
-            user,
-            buildAiReviewInboxListQuery({ tab }),
-          );
-
-          let designs = page.designs;
-
-          if (tab === "processing") {
-            designs = filterDesignsByAiReviewStatus(designs, "pending");
-          }
+          const listQuery = buildAiReviewInboxListQuery({ tab });
+          const count = await designService.countDesigns(user, listQuery);
 
           return {
-            count: designs.length,
-            hasMore: page.hasMore,
+            count,
+            // Aggregation returns the full matching count — no page-peek "+" needed.
+            hasMore: false,
             tab,
           };
         }),

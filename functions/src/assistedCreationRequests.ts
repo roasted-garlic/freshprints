@@ -24,20 +24,27 @@ import type {
   CustomerSendAssistedCreationMessageResponse,
   CustomerUpdateAssistedCreationRequestRequest,
   CustomerUpdateAssistedCreationRequestResponse,
+  StaffAddAssistedCreationFinalSourceRequest,
+  StaffAddAssistedCreationFinalSourceResponse,
   StaffAddAssistedCreationProofRequest,
   StaffAddAssistedCreationProofResponse,
   StaffSendAssistedCreationMessageRequest,
   StaffSendAssistedCreationMessageResponse,
+  StaffSuggestAssistedCreationCatalogDesignRequest,
+  StaffSuggestAssistedCreationCatalogDesignResponse,
   StaffUpdateAssistedCreationStatusRequest,
   StaffUpdateAssistedCreationStatusResponse,
   SubmitAssistedCreationRequestRequest,
   SubmitAssistedCreationRequestResponse,
 } from "../../packages/shared/src/types/assistedCreation/assistedCreationActions.types";
 import type {
+  AssistedCreationFinalSource,
   AssistedCreationProof,
   AssistedCreationReferenceImage,
   AssistedCreationRevisionEntry,
+  AssistedCreationSuggestedCatalogDesign,
 } from "../../packages/shared/src/types/assistedCreation/assistedCreation.types";
+import { buildAssistedCreationFinalArtworkDownloadFileName } from "../../packages/shared/src/utils/assistedCreationProofFileName";
 import { EMAIL_DELIVERY_JOBS_COLLECTION } from "../../packages/shared/src/constants/emailProviders.constants";
 import { formatAssistedCreationRequestUpdatedNote } from "../../packages/shared/src/utils/assistedCreationHistory";
 import {
@@ -56,6 +63,7 @@ import {
 
 import { adminDb } from "./lib/admin";
 import { purgeAssistedCreationProofsForTerminal } from "./lib/assistedCreationProofPurge";
+import { promoteAssistedCreationReferenceImages } from "./lib/assistedCreationReferencePromote";
 import { loadCallerProfile } from "./lib/caller";
 import {
   failedPrecondition,
@@ -67,14 +75,32 @@ import {
 } from "./lib/errors";
 import { requirePortalCustomer } from "./lib/etsy/requirePortalCustomer";
 import { loadEmailProviderSettings } from "./lib/email/emailSettings";
-import { createProofEmailJobId } from "./lib/email/emailJobIdentity";
+import {
+  createCatalogShareEmailJobId,
+  createProofEmailJobId,
+} from "./lib/email/emailJobIdentity";
 import { createCustomerNotification } from "./lib/customerNotifications/createCustomerNotification";
 import {
+  buildAssistedCatalogShareReadyNotificationId,
   buildAssistedProofReadyNotificationId,
   buildAssistedStaffMessageNotificationId,
   buildCustomerNotificationTitle,
+  CUSTOMER_NOTIFICATION_CATALOG_SHARE_BODY,
   CUSTOMER_NOTIFICATION_PROOF_BODY,
 } from "../../packages/shared/src/utils/customerNotifications";
+
+function isCatalogShareFulfillment(data: Record<string, unknown>): boolean {
+  return data.fulfillmentMode === "catalog_share";
+}
+
+function suggestedDesignId(data: Record<string, unknown>): string | null {
+  const suggestion = data.suggestedCatalogDesign;
+  if (!suggestion || typeof suggestion !== "object" || Array.isArray(suggestion)) {
+    return null;
+  }
+  const designId = (suggestion as { designId?: unknown }).designId;
+  return typeof designId === "string" && designId.trim() ? designId.trim() : null;
+}
 
 async function purgeProofsAfterTerminal(input: {
   requestId: string;
@@ -295,6 +321,24 @@ export const submitAssistedCreationRequest = onCall(
         updatedAt: FieldValue.serverTimestamp(),
       });
 
+      // Promote pending uploads into durable request-scoped Storage paths (DATA_MODEL).
+      if (referenceImages.length > 0) {
+        const promoted = await promoteAssistedCreationReferenceImages({
+          customerUid: portalCustomer.customerUid,
+          requestId: ref.id,
+          images: referenceImages,
+        });
+        const changed = promoted.some(
+          (image, index) => image.storagePath !== referenceImages[index]?.storagePath,
+        );
+        if (changed) {
+          await ref.update({
+            referenceImages: promoted,
+            updatedAt: FieldValue.serverTimestamp(),
+          });
+        }
+      }
+
       return { requestId: ref.id };
     } catch (error) {
       mapHttpsError(error, "Unable to submit your assisted creation request right now.");
@@ -466,6 +510,28 @@ export const customerUpdateAssistedCreationRequest = onCall(
           updatedAt: FieldValue.serverTimestamp(),
         });
       });
+
+      // Promote any new pending uploads added on this edit (create path does the same).
+      const snapAfter = await docRef.get();
+      const rawAfter = Array.isArray(snapAfter.data()?.referenceImages)
+        ? (snapAfter.data()!.referenceImages as AssistedCreationReferenceImage[])
+        : [];
+      if (rawAfter.length > 0) {
+        const promoted = await promoteAssistedCreationReferenceImages({
+          customerUid: portalCustomer.customerUid,
+          requestId,
+          images: rawAfter,
+        });
+        const changed = promoted.some(
+          (image, index) => image.storagePath !== rawAfter[index]?.storagePath,
+        );
+        if (changed) {
+          await docRef.update({
+            referenceImages: promoted,
+            updatedAt: FieldValue.serverTimestamp(),
+          });
+        }
+      }
 
       return { requestId, status: "submitted" };
     } catch (error) {
@@ -684,9 +750,6 @@ export const customerRespondToAssistedCreationProof = onCall(
         throw invalidArgument("Choose approve or request revision.");
       }
 
-      const toStatus: AssistedCreationStatus =
-        data.decision === "approve" ? "approved" : "revision_requested";
-
       let rating: ReturnType<typeof parseAssistedCreationApprovalRating>;
       let approvalNote: string | undefined;
       let revisionNote: string | undefined;
@@ -715,19 +778,10 @@ export const customerRespondToAssistedCreationProof = onCall(
         throw invalidArgument(error instanceof Error ? error.message : "Invalid proof response.");
       }
 
-      const historyNote =
-        toStatus === "approved"
-          ? [
-              "Customer approved proof",
-              rating != null ? `(rated ${rating}/5)` : null,
-              approvalNote ? `— ${approvalNote}` : null,
-            ]
-              .filter(Boolean)
-              .join(" ")
-          : (revisionNote ?? "");
-
       const docRef = adminDb.collection(ASSISTED_CREATION_COLLECTION).doc(requestId);
       let approvedProofId: string | null = null;
+      let resultStatus: AssistedCreationStatus = "revision_requested";
+      let shouldPurgeSiblingProofs = false;
       await adminDb.runTransaction(async (tx) => {
         const snap = await tx.get(docRef);
         if (!snap.exists) {
@@ -738,6 +792,17 @@ export const customerRespondToAssistedCreationProof = onCall(
           throw permissionDenied("You can only respond to your own proof.");
         }
         const fromStatus = current.status as AssistedCreationStatus;
+        const catalogShare = isCatalogShareFulfillment(current as Record<string, unknown>);
+        const serverDesignId = suggestedDesignId(current as Record<string, unknown>);
+        // Proof-image approve → Final Source Needed; catalog_share stays terminal approved (ADR-FP-108).
+        const toStatus: AssistedCreationStatus =
+          data.decision === "approve"
+            ? catalogShare
+              ? "approved"
+              : "final_source_needed"
+            : "revision_requested";
+        resultStatus = toStatus;
+        shouldPurgeSiblingProofs = toStatus === "final_source_needed" && !catalogShare;
         assertAssistedCreationTransition({
           fromStatus,
           toStatus,
@@ -745,6 +810,16 @@ export const customerRespondToAssistedCreationProof = onCall(
           revisionNote,
         });
         const history = Array.isArray(current.revisionHistory) ? current.revisionHistory : [];
+        const historyNote =
+          data.decision === "approve"
+            ? [
+                catalogShare ? "Customer approved library design" : "Customer approved proof",
+                rating != null ? `(rated ${rating}/5)` : null,
+                approvalNote ? `— ${approvalNote}` : null,
+              ]
+                .filter(Boolean)
+                .join(" ")
+            : (revisionNote ?? "");
         const update: Record<string, unknown> = {
           status: toStatus,
           revisionHistory: appendRevision(history, {
@@ -756,28 +831,55 @@ export const customerRespondToAssistedCreationProof = onCall(
           }),
           updatedAt: FieldValue.serverTimestamp(),
         };
-        if (toStatus === "approved") {
-          const proofs = Array.isArray(current.proofs)
-            ? (current.proofs as AssistedCreationProof[])
-            : [];
-          const latestProof = proofs.length > 0 ? proofs[proofs.length - 1] : null;
-          if (!latestProof?.id) {
-            throw failedPrecondition("There is no proof to approve.");
-          }
-          approvedProofId = latestProof.id;
-          update.approvedProofId = latestProof.id;
-          update.approvedAt = FieldValue.serverTimestamp();
-          if (rating != null) {
-            update.customerRating = rating;
-          }
-          if (approvalNote) {
-            update.customerApprovalNote = approvalNote;
+        if (data.decision === "approve") {
+          if (catalogShare) {
+            if (!serverDesignId) {
+              throw failedPrecondition("There is no library design suggestion to approve.");
+            }
+            const designSnap = await tx.get(adminDb.collection("designs").doc(serverDesignId));
+            if (!designSnap.exists) {
+              throw failedPrecondition(
+                "That library design is no longer available. Ask staff for a new suggestion or a custom proof.",
+              );
+            }
+            const designStatus = designSnap.data()?.status;
+            if (designStatus !== "ready") {
+              throw failedPrecondition(
+                "That library design is no longer available. Ask staff for a new suggestion or a custom proof.",
+              );
+            }
+            update.approvedCatalogDesignId = serverDesignId;
+            update.approvedAt = FieldValue.serverTimestamp();
+            if (rating != null) {
+              update.customerRating = rating;
+            }
+            if (approvalNote) {
+              update.customerApprovalNote = approvalNote;
+            }
+          } else {
+            const proofs = Array.isArray(current.proofs)
+              ? (current.proofs as AssistedCreationProof[])
+              : [];
+            const latestProof = proofs.length > 0 ? proofs[proofs.length - 1] : null;
+            if (!latestProof?.id) {
+              throw failedPrecondition("There is no proof to approve.");
+            }
+            approvedProofId = latestProof.id;
+            update.approvedProofId = latestProof.id;
+            update.approvedAt = FieldValue.serverTimestamp();
+            if (rating != null) {
+              update.customerRating = rating;
+            }
+            if (approvalNote) {
+              update.customerApprovalNote = approvalNote;
+            }
           }
         }
         tx.update(docRef, update);
       });
 
-      if (toStatus === "approved") {
+      // Sibling proof purge on proof-image approve (keeps approvedProofId); same as former terminal approve.
+      if (shouldPurgeSiblingProofs) {
         await purgeProofsAfterTerminal({
           requestId,
           terminalKind: "approved",
@@ -785,7 +887,7 @@ export const customerRespondToAssistedCreationProof = onCall(
         });
       }
 
-      return { requestId, status: toStatus };
+      return { requestId, status: resultStatus };
     } catch (error) {
       mapHttpsError(error, "Unable to save your proof response right now.");
     }
@@ -875,6 +977,12 @@ export const staffUpdateAssistedCreationStatus = onCall(
         }
         const current = snap.data()!;
         const fromStatus = current.status as AssistedCreationStatus;
+        // Fail closed: reject is New/submitted only — after Start Work use cancel.
+        if (data.action === "reject" && fromStatus !== "submitted") {
+          throw failedPrecondition(
+            "Only submitted (New) requests can be rejected. Cancel the request instead.",
+          );
+        }
         assertAssistedCreationTransition({
           fromStatus,
           toStatus,
@@ -917,6 +1025,11 @@ export const staffUpdateAssistedCreationStatus = onCall(
         };
         if (staffNotes !== undefined) {
           patch.staffNotes = staffNotes;
+        }
+        // Resume after revision: clear stale catalog suggestion so in_progress has no ghost card.
+        if (data.action === "resume_work") {
+          patch.suggestedCatalogDesign = null;
+          patch.fulfillmentMode = FieldValue.delete();
         }
         tx.update(docRef, patch);
       });
@@ -1039,6 +1152,8 @@ export const staffAddAssistedCreationProof = onCall(
         const history = Array.isArray(current.revisionHistory) ? current.revisionHistory : [];
         tx.update(docRef, {
           status: "proof_ready",
+          fulfillmentMode: "proof_image",
+          suggestedCatalogDesign: null,
           proofs: [...existingProofs, proof],
           revisionHistory: appendRevision(history, {
             byUid: caller.id,
@@ -1097,6 +1212,287 @@ export const staffAddAssistedCreationProof = onCall(
       return { requestId, status: "proof_ready", proofId };
     } catch (error) {
       mapHttpsError(error, "Unable to attach proof right now.");
+    }
+  },
+);
+
+export const staffSuggestAssistedCreationCatalogDesign = onCall(
+  async (request): Promise<StaffSuggestAssistedCreationCatalogDesignResponse> => {
+    if (!request.auth?.uid) {
+      throw unauthenticated();
+    }
+
+    try {
+      const caller = await loadCallerProfile(request.auth.uid);
+      assertOwnerAdminCaller(caller);
+      const data = (request.data ?? {}) as StaffSuggestAssistedCreationCatalogDesignRequest;
+      const requestId = typeof data.requestId === "string" ? data.requestId.trim() : "";
+      const designId = typeof data.designId === "string" ? data.designId.trim() : "";
+      if (!requestId) {
+        throw invalidArgument("Request id is required.");
+      }
+      if (!designId) {
+        throw invalidArgument("Design id is required.");
+      }
+      const note = asTrimmedOptional(
+        data.note,
+        ASSISTED_CREATION_FIELD_LIMITS.staffNote,
+        "Suggestion note",
+      );
+
+      const designSnap = await adminDb.collection("designs").doc(designId).get();
+      if (!designSnap.exists) {
+        throw notFound("Design not found.");
+      }
+      const designData = designSnap.data() ?? {};
+      if (designData.status !== "ready") {
+        throw failedPrecondition("Only ready Design Library designs can be suggested.");
+      }
+      const title =
+        typeof designData.title === "string" && designData.title.trim()
+          ? designData.title.trim()
+          : "Library design";
+      const previewPath =
+        (typeof designData.previewPath === "string" && designData.previewPath.trim()) ||
+        (typeof designData.thumbnailPath === "string" && designData.thumbnailPath.trim()) ||
+        "";
+
+      const emailSettings = await loadEmailProviderSettings();
+      const docRef = adminDb.collection(ASSISTED_CREATION_COLLECTION).doc(requestId);
+      const deliveryJobId = createCatalogShareEmailJobId(requestId, designId);
+      const deliveryJobRef = adminDb
+        .collection(EMAIL_DELIVERY_JOBS_COLLECTION)
+        .doc(deliveryJobId);
+      let notifyCustomerId = "";
+      let notifyCustomerUid = "";
+
+      await adminDb.runTransaction(async (tx) => {
+        const snap = await tx.get(docRef);
+        if (!snap.exists) {
+          throw notFound("Assisted creation request not found.");
+        }
+        const current = snap.data()!;
+        const fromStatus = current.status as AssistedCreationStatus;
+        const customerUid = String(current.customerUid ?? "");
+        const customerId = String(current.customerId ?? "");
+        if (!customerUid || !customerId) {
+          throw failedPrecondition("This request is missing its customer linkage.");
+        }
+        notifyCustomerId = customerId;
+        notifyCustomerUid = customerUid;
+
+        assertAssistedCreationTransition({
+          fromStatus,
+          toStatus: "proof_ready",
+          actor: "staff",
+          hasSuggestedCatalogDesign: true,
+        });
+
+        const suggestedAt = Timestamp.now();
+        const suggestion: AssistedCreationSuggestedCatalogDesign = {
+          designId,
+          title,
+          ...(previewPath ? { previewImageUrl: previewPath } : {}),
+          suggestedAt,
+          suggestedByUid: caller.id,
+        };
+
+        const existingProofs = Array.isArray(current.proofs)
+          ? (current.proofs as AssistedCreationProof[])
+          : [];
+        // Proofs-array line for Studio/Portal Proofs tab (Design Library, not a PNG).
+        // storagePath stays empty so terminal/expiry purge never touches catalog assets.
+        const catalogProof: AssistedCreationProof = {
+          id: `catalog-share-${designId}-${suggestedAt.toMillis()}`,
+          kind: "catalog_share",
+          storagePath: "",
+          fileName: title,
+          contentType: "",
+          sizeBytes: 0,
+          ...(note ? { note } : {}),
+          createdBy: caller.id,
+          createdAt: suggestedAt,
+          catalogDesignId: designId,
+          catalogDesignTitle: title,
+          ...(previewPath ? { catalogPreviewImageUrl: previewPath } : {}),
+        };
+
+        const history = Array.isArray(current.revisionHistory) ? current.revisionHistory : [];
+        const historyNote =
+          note ??
+          `Library design suggested: ${title}`;
+
+        tx.update(docRef, {
+          status: "proof_ready",
+          fulfillmentMode: "catalog_share",
+          suggestedCatalogDesign: suggestion,
+          proofs: [...existingProofs, catalogProof],
+          // Clear opposite fulfillment — catalog path does not use approvedProofId.
+          approvedProofId: FieldValue.delete(),
+          revisionHistory: appendRevision(history, {
+            byUid: caller.id,
+            byRole: "staff",
+            note: historyNote,
+            fromStatus,
+            toStatus: "proof_ready",
+          }),
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+        tx.create(deliveryJobRef, {
+          id: deliveryJobId,
+          kind: "assisted_catalog_share_ready",
+          requestId,
+          designId,
+          proofId: "",
+          customerId,
+          customerUid,
+          provider: emailSettings.proofNoticeProvider,
+          status: "pending",
+          attemptCount: 0,
+          maxAttempts: 5,
+          createdBy: caller.id,
+          createdAt: FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+      });
+
+      try {
+        const notificationId = buildAssistedCatalogShareReadyNotificationId(requestId, designId);
+        await createCustomerNotification({
+          id: notificationId,
+          customerId: notifyCustomerId,
+          customerUid: notifyCustomerUid,
+          kind: "assisted_catalog_share_ready",
+          title: buildCustomerNotificationTitle("assisted_catalog_share_ready"),
+          body: CUSTOMER_NOTIFICATION_CATALOG_SHARE_BODY,
+          requestId,
+        });
+        console.info("[staffSuggestAssistedCreationCatalogDesign] notification ok", {
+          requestId,
+          designId,
+          notificationId,
+          customerUid: notifyCustomerUid,
+        });
+      } catch (notifyError) {
+        console.error("[staffSuggestAssistedCreationCatalogDesign] notification failed", {
+          requestId,
+          designId,
+          customerUid: notifyCustomerUid,
+          customerId: notifyCustomerId,
+          error: notifyError,
+        });
+      }
+
+      return { requestId, status: "proof_ready", designId };
+    } catch (error) {
+      mapHttpsError(error, "Unable to suggest a library design right now.");
+    }
+  },
+);
+
+/**
+ * Staff: attach final high-resolution artwork and complete the request
+ * (`final_source_needed` → `approved`) in one write.
+ */
+export const staffAddAssistedCreationFinalSource = onCall(
+  async (request): Promise<StaffAddAssistedCreationFinalSourceResponse> => {
+    if (!request.auth?.uid) {
+      throw unauthenticated();
+    }
+
+    try {
+      const caller = await loadCallerProfile(request.auth.uid);
+      assertOwnerAdminCaller(caller);
+      const data = (request.data ?? {}) as StaffAddAssistedCreationFinalSourceRequest;
+      const requestId = typeof data.requestId === "string" ? data.requestId.trim() : "";
+      if (!requestId) {
+        throw invalidArgument("Request id is required.");
+      }
+      const sourceIn = data.finalSource;
+      if (!sourceIn || typeof sourceIn !== "object") {
+        throw invalidArgument("Final artwork details are required.");
+      }
+
+      const sourceId = typeof sourceIn.id === "string" ? sourceIn.id.trim() : "";
+      const storagePath =
+        typeof sourceIn.storagePath === "string" ? sourceIn.storagePath.trim() : "";
+      const contentType =
+        typeof sourceIn.contentType === "string" ? sourceIn.contentType.trim() : "";
+      const sizeBytes =
+        typeof sourceIn.sizeBytes === "number" && Number.isFinite(sourceIn.sizeBytes)
+          ? Math.floor(sourceIn.sizeBytes)
+          : -1;
+      const clientFileName =
+        typeof sourceIn.fileName === "string" ? sourceIn.fileName.trim() : "";
+
+      if (!sourceId || !storagePath || !contentType || sizeBytes <= 0) {
+        throw invalidArgument("Final artwork metadata is incomplete.");
+      }
+      if (!(ASSISTED_CREATION_ALLOWED_PROOF_TYPES as readonly string[]).includes(contentType)) {
+        throw invalidArgument("Final artwork must be JPEG, PNG, or WebP.");
+      }
+      if (sizeBytes > ASSISTED_CREATION_MAX_PROOF_BYTES) {
+        throw invalidArgument("Final artwork file is too large.");
+      }
+
+      const friendlyName =
+        clientFileName || buildAssistedCreationFinalArtworkDownloadFileName(contentType);
+
+      const docRef = adminDb.collection(ASSISTED_CREATION_COLLECTION).doc(requestId);
+      await adminDb.runTransaction(async (tx) => {
+        const snap = await tx.get(docRef);
+        if (!snap.exists) {
+          throw notFound("Assisted creation request not found.");
+        }
+        const current = snap.data()!;
+        const fromStatus = current.status as AssistedCreationStatus;
+        const customerUid = String(current.customerUid ?? "");
+        if (!customerUid) {
+          throw failedPrecondition("This request is missing its customer linkage.");
+        }
+        const expectedPrefix = `assisted-creation/${customerUid}/${requestId}/final/`;
+        if (!storagePath.startsWith(expectedPrefix)) {
+          throw invalidArgument("Invalid final artwork storage path.");
+        }
+        if (current.finalSource && typeof current.finalSource === "object") {
+          throw failedPrecondition("Final artwork was already attached.");
+        }
+
+        assertAssistedCreationTransition({
+          fromStatus,
+          toStatus: "approved",
+          actor: "staff",
+          hasFinalSource: true,
+        });
+
+        const finalSource: AssistedCreationFinalSource = {
+          id: sourceId,
+          storagePath,
+          fileName: friendlyName,
+          contentType,
+          sizeBytes,
+          uploadedByUid: caller.id,
+          uploadedAt: Timestamp.now(),
+        };
+
+        const history = Array.isArray(current.revisionHistory) ? current.revisionHistory : [];
+        tx.update(docRef, {
+          status: "approved",
+          finalSource,
+          revisionHistory: appendRevision(history, {
+            byUid: caller.id,
+            byRole: "staff",
+            note: "Final artwork uploaded",
+            fromStatus,
+            toStatus: "approved",
+          }),
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+      });
+
+      return { requestId, status: "approved", finalSourceId: sourceId };
+    } catch (error) {
+      mapHttpsError(error, "Unable to attach final artwork right now.");
     }
   },
 );

@@ -1,8 +1,18 @@
 import { onRequest } from "firebase-functions/v2/https";
 
+import {
+  PORTAL_OG_IMAGE_FIT_CONTAIN,
+  PORTAL_SOCIAL_META_SETTINGS_DOC_ID,
+  resolvePortalSocialMetaSettings,
+} from "../../packages/shared/src/constants/portal/portalSocialMetaSettings.constants";
 import { adminDb, adminStorage } from "./lib/admin";
+import {
+  buildPortalOgShareImageFunctionUrl,
+  isValidPortalOgDesignId,
+  normalizeStorageObjectPath,
+  resolveFirebaseProjectId,
+} from "./lib/portalOgUrls";
 
-const DESIGN_ID_PATTERN = /^[A-Za-z0-9_-]{1,128}$/;
 const SIGNED_URL_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 export interface PortalDesignShareOpenGraphResponse {
@@ -10,10 +20,7 @@ export interface PortalDesignShareOpenGraphResponse {
   title: string;
   description: string;
   imageUrl: string | null;
-}
-
-function normalizeStorageObjectPath(path: string): string {
-  return path.trim().replace(/^\/+/, "");
+  letterboxOgImages: boolean;
 }
 
 async function resolveShareImageUrl(storagePath: string): Promise<string | null> {
@@ -31,6 +38,18 @@ async function resolveShareImageUrl(storagePath: string): Promise<string | null>
     return url;
   } catch {
     return null;
+  }
+}
+
+async function loadLetterboxPreference(): Promise<boolean> {
+  try {
+    const settingsSnap = await adminDb
+      .collection("settings")
+      .doc(PORTAL_SOCIAL_META_SETTINGS_DOC_ID)
+      .get();
+    return resolvePortalSocialMetaSettings(settingsSnap.data()).letterboxOgImages;
+  } catch {
+    return true;
   }
 }
 
@@ -58,7 +77,7 @@ export const getPortalDesignShareOpenGraph = onRequest(
 
     const raw =
       typeof request.query.designId === "string" ? request.query.designId.trim() : "";
-    if (!raw || !DESIGN_ID_PATTERN.test(raw)) {
+    if (!raw || !isValidPortalOgDesignId(raw)) {
       response.status(400).json({ error: "invalid_design_id" });
       return;
     }
@@ -87,11 +106,31 @@ export const getPortalDesignShareOpenGraph = onRequest(
         (typeof data.thumbnailPath === "string" && data.thumbnailPath.trim()) ||
         "";
 
+      const letterboxOgImages = await loadLetterboxPreference();
+      let imageUrl: string | null = null;
+
+      if (imagePath) {
+        if (letterboxOgImages) {
+          const projectId = resolveFirebaseProjectId();
+          imageUrl = projectId
+            ? buildPortalOgShareImageFunctionUrl({
+                projectId,
+                designId: raw,
+                fit: PORTAL_OG_IMAGE_FIT_CONTAIN,
+                backgroundHex: data.artworkBackgroundHex,
+              })
+            : await resolveShareImageUrl(imagePath);
+        } else {
+          imageUrl = await resolveShareImageUrl(imagePath);
+        }
+      }
+
       const payload: PortalDesignShareOpenGraphResponse = {
         designId: raw,
         title,
         description,
-        imageUrl: imagePath ? await resolveShareImageUrl(imagePath) : null,
+        imageUrl,
+        letterboxOgImages,
       };
 
       response.set("Cache-Control", "public, max-age=300");

@@ -117,9 +117,9 @@ export function useCustomerUploadBatch(options?: {
   const [batchId, setBatchId] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isAttaching, setIsAttaching] = useState(false);
-  const [ownershipConfirmed, setOwnershipConfirmed] = useState(false);
-  // Print: library optional, default on. Donate: listing consent required, default off.
-  const [catalogUseAcknowledged, setCatalogUseAcknowledged] = useState(!isDonation);
+  const [ownershipConfirmed, setOwnershipConfirmed] = useState(true);
+  // Both flows default checked; user can uncheck. Donate still requires catalog consent to attach.
+  const [catalogUseAcknowledged, setCatalogUseAcknowledged] = useState(true);
   const [bannerError, setBannerError] = useState<string | null>(null);
   const [batchNotes, setBatchNotes] = useState<string[]>([]);
   const abortRef = useRef(false);
@@ -181,7 +181,8 @@ export function useCustomerUploadBatch(options?: {
 
   const addFiles = useCallback(
     async (fileList: FileList | File[]) => {
-      if (!firebaseUser) {
+      let uploadUser = firebaseUser;
+      if (!uploadUser) {
         setBannerError('Sign in to upload artwork.');
         return;
       }
@@ -203,6 +204,11 @@ export function useCustomerUploadBatch(options?: {
 
       if (zips.length > 1 || (zips.length === 1 && images.length > 0)) {
         setBannerError('Upload one ZIP by itself, or upload PNG/WebP files (including folders).');
+        return;
+      }
+
+      if (isDonation && uploadUser.isAnonymous && zips.length > 0) {
+        setBannerError('Guest donations support image uploads only. Sign in to upload a ZIP.');
         return;
       }
 
@@ -269,7 +275,7 @@ export function useCustomerUploadBatch(options?: {
 
           const unsubscribeBatch = customerUploadService.subscribeBatchUploads(
             created.batchId,
-            firebaseUser.uid,
+            uploadUser.uid,
             (uploads) => {
               if (uploads.length === 0) {
                 return;
@@ -327,7 +333,7 @@ export function useCustomerUploadBatch(options?: {
               });
             });
             customerUploadService.persistSession(
-              firebaseUser.uid,
+              uploadUser.uid,
               created.batchId,
               cappedFiles.map((file) => file.uploadId),
             );
@@ -416,7 +422,7 @@ export function useCustomerUploadBatch(options?: {
           return current.map((row) => byLocalId.get(row.localId) ?? row);
         });
         customerUploadService.persistSession(
-          firebaseUser.uid,
+          uploadUser.uid,
           created.batchId,
           [...(existingBatchId ? activeRows : []), ...newRows]
             .map((row) => row.uploadId)
@@ -537,7 +543,7 @@ export function useCustomerUploadBatch(options?: {
         setIsProcessing(false);
       }
     },
-    [firebaseUser, purpose, updateRow],
+    [firebaseUser, isDonation, purpose, updateRow],
   );
 
   const retryFailed = useCallback(async () => {

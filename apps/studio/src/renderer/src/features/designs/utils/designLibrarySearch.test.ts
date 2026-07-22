@@ -14,6 +14,9 @@ import {
   filterDesignsBySearch,
   filterDesignsByTags,
   filterTagsBySearch,
+  selectedTagsIncludeHalftone,
+  setHalftoneInSelectedTags,
+  visibleSelectedTags,
 } from "./designLibrarySearch";
 
 function createDesign(overrides: Partial<Design> = {}): Design {
@@ -80,6 +83,11 @@ describe("filterDesignsBySearch", () => {
 
   it("matches tags", () => {
     const result = filterDesignsBySearch(designs, "logo");
+    assert.equal(result.length, 1);
+  });
+
+  it("matches design ids", () => {
+    const result = filterDesignsBySearch(designs, "design-1");
     assert.equal(result.length, 1);
   });
 });
@@ -328,5 +336,26 @@ describe("computeFacetedTagsForDraftSelection", () => {
     });
 
     assert.deepEqual(result.map((tag) => tag.tag), ["summer"]);
+  });
+
+  it("excludes the canonical halftone tag from the modal facet list", () => {
+    const result = computeFacetedTagsForDraftSelection({
+      baseDesigns: [
+        createDesign({ id: "A", tags: ["summer", "halftone"] }),
+        createDesign({ id: "B", tags: ["halftone"] }),
+      ],
+      draftSelectedTags: ["halftone"],
+    });
+
+    assert.deepEqual(result.map((tag) => tag.tag), ["summer"]);
+  });
+});
+
+describe("halftone selected-tag helpers", () => {
+  it("toggles the canonical halftone tag in selected tags", () => {
+    assert.deepEqual(setHalftoneInSelectedTags(["ocean"], true), ["halftone", "ocean"]);
+    assert.deepEqual(setHalftoneInSelectedTags(["ocean", "halftone"], false), ["ocean"]);
+    assert.equal(selectedTagsIncludeHalftone(["Halftone"]), true);
+    assert.deepEqual(visibleSelectedTags(["ocean", "halftone"]), ["ocean"]);
   });
 });

@@ -11,6 +11,8 @@ export const ASSISTED_CREATION_DRAFT_STORAGE_KEY = "fp.assistedCreation.draft.v1
 export const ASSISTED_CREATION_MAX_REFERENCE_IMAGES = 8;
 export const ASSISTED_CREATION_MAX_REFERENCE_BYTES = 15 * 1024 * 1024;
 export const ASSISTED_CREATION_MAX_STYLE_PREFERENCES = 3;
+/** Max freeform mood/vibe chips on Style & mood step. */
+export const ASSISTED_CREATION_MAX_MOOD_ITEMS = 5;
 export const ASSISTED_CREATION_ALLOWED_REFERENCE_TYPES = [
   "image/jpeg",
   "image/png",
@@ -52,6 +54,7 @@ export type AssistedCreationStatus =
   | "in_progress"
   | "proof_ready"
   | "revision_requested"
+  | "final_source_needed"
   | "approved"
   | "rejected"
   | "cancelled";
@@ -61,6 +64,7 @@ export const ASSISTED_CREATION_OPEN_STATUSES: readonly AssistedCreationStatus[] 
   "in_progress",
   "proof_ready",
   "revision_requested",
+  "final_source_needed",
 ] as const;
 
 export const ASSISTED_CREATION_TERMINAL_STATUSES: readonly AssistedCreationStatus[] = [
@@ -323,6 +327,8 @@ export function formatAssistedCreationStatus(
       return "Proof ready";
     case "revision_requested":
       return "Revision requested";
+    case "final_source_needed":
+      return "Final Source Needed";
     case "approved":
       return variant === "list" ? "Approved" : "Completed";
     case "rejected":

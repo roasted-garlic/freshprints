@@ -39,6 +39,9 @@ export function proofsToRetentionViews(
     fileName: proof.fileName,
     contentType: proof.contentType,
     fullSizePurgedAtMillis: timestampMillis(proof.fullSizePurgedAt),
+    ...(proof.kind === "catalog_share" || proof.kind === "proof_image"
+      ? { kind: proof.kind }
+      : {}),
   }));
 }
 
@@ -84,6 +87,10 @@ export async function purgeAssistedCreationProofFullSizeByIds(input: {
   let storageFilesDeleted = 0;
   for (const proof of input.proofs) {
     if (!idSet.has(proof.id)) {
+      continue;
+    }
+    // Never delete catalog derivatives; catalog_share rows keep storagePath empty.
+    if (proof.kind === "catalog_share") {
       continue;
     }
     if (await deleteStorageIfPresent(proof.storagePath)) {

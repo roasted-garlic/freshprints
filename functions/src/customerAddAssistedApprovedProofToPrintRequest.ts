@@ -208,6 +208,17 @@ export const customerAddAssistedApprovedProofToPrintRequest = onCall(
         throw permissionDenied("You can only add your own approved design to a request.");
       }
 
+      if (
+        assisted.fulfillmentMode === "catalog_share" ||
+        (typeof assisted.approvedCatalogDesignId === "string" &&
+          assisted.approvedCatalogDesignId.trim() &&
+          !(typeof assisted.approvedProofId === "string" && assisted.approvedProofId.trim()))
+      ) {
+        throw failedPrecondition(
+          "This request was fulfilled with a Design Library match. Add that catalog design to your Current Request instead.",
+        );
+      }
+
       const proofs = Array.isArray(assisted.proofs)
         ? (assisted.proofs as AssistedCreationProof[])
         : [];
@@ -217,6 +228,13 @@ export const customerAddAssistedApprovedProofToPrintRequest = onCall(
         typeof assisted.approvedProofId === "string" && assisted.approvedProofId.trim()
           ? assisted.approvedProofId.trim()
           : "";
+      const hasFinalSource =
+        assisted.finalSource &&
+        typeof assisted.finalSource === "object" &&
+        typeof (assisted.finalSource as { storagePath?: unknown }).storagePath === "string" &&
+        Boolean(
+          ((assisted.finalSource as { storagePath: string }).storagePath ?? "").trim(),
+        );
 
       const eligibility = evaluateAssistedApprovedProofAddToRequest({
         status,
@@ -227,7 +245,9 @@ export const customerAddAssistedApprovedProofToPrintRequest = onCall(
         nowMs: Date.now(),
       });
 
-      if (!eligibility.eligible) {
+      // Prefer final source when present (ADR-FP-110); still allow legacy proof-only approvals.
+      const eligibleViaFinalSource = status === "approved" && hasFinalSource;
+      if (!eligibility.eligible && !eligibleViaFinalSource) {
         if (eligibility.reason === "not_approved") {
           throw failedPrecondition("This request is not approved yet.");
         }

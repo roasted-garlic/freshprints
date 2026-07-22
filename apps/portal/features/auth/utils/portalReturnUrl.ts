@@ -1,7 +1,7 @@
 const PORTAL_RETURN_TO_PARAM = 'returnTo';
 const PORTAL_RETURN_FALLBACK = '/';
 const PORTAL_VALIDATION_ORIGIN = 'https://portal.invalid';
-const AUTH_ROUTE_PATTERN = /^\/(?:login|register|complete-profile)(?:\/|$)/;
+const AUTH_ROUTE_PATTERN = /^\/(?:login|login-required|register|complete-profile)(?:\/|$)/;
 
 function hasControlCharacter(value: string): boolean {
   return Array.from(value).some((character) => {
@@ -65,7 +65,7 @@ export function getPortalReturnToFromSearch(search: string): string {
 }
 
 export function buildPortalAuthHref(
-  route: '/login' | '/complete-profile',
+  route: '/login' | '/login-required' | '/complete-profile',
   returnTo: string,
 ): string {
   const safeReturnTo = getSafePortalReturnTo(returnTo);

@@ -4,6 +4,322 @@
 
 ---
 
+### ADR-FP-114: Owner-uploaded Studio + Portal brand logos
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-22 |
+| Status | accepted |
+| Related | `settings/brandLogos`; Storage `brand/**`; Studio Settings; Portal shell/auth; `getPortalGlobalOpenGraph` |
+| Target | `fresh-prints-dev` then production after separate rules/Functions deploy approval |
+
+**Context**
+
+Studio and Portal logos lived as static PNGs in the repo (`assets/brand`, `public/brand`). Changing them required dropping files into folders and redeploying.
+
+**Decision**
+
+1. Owner uploads four PNG slots (Studio/Portal × full/collapsed) from Studio → **Brand logos**.
+2. Client writes objects to `brand/{app}/{slot}/{uuid}.png` (owner Storage create); `finalizeBrandLogoSlot` derives `contentType`, `byteSize`, and download URL from **Admin Storage metadata** (client metadata/URLs are not trusted).
+3. Owner-tunable **display boxes** (`widthPx` × `heightPx`) on the same settings doc via `updateBrandLogoDisplaySizes` — Portal header, expanded sidebar, sidebar collapsed, auth; Studio sidebar, collapsed, login. Header and expanded sidebar are **separate controls** that share the **same default** box (height 52). Aspect ratio is locked (changing width updates height and vice versa) using the uploaded asset AR when present, else the bundled logo AR.
+4. Firestore `settings/brandLogos` is publicly readable (URLs + sizes only); client writes denied. Bundled/`public` PNGs remain permanent fallbacks.
+5. Splash sites and favicons stay out of scope. Production rules/Functions deploy requires a separate human checkpoint.
+
+**Consequences**
+
+- Logo changes no longer need a Portal/Studio asset redeploy once rules/Functions are live.
+- Public brand Storage objects are intentional (guest Portal + OG).
+
+---
+
+### ADR-FP-113: AI catalog title completeness + contraction-safe wording extraction
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-21 |
+| Status | accepted |
+| Related | Phase 5 AI enrichment; ADR-FP-044 business-context prompt; lean `catalog-enrich-v*` pipeline |
+| Target | Cloud Functions + shared default prompt (`fresh-prints-dev` redeploy for live AI Review); production with normal release |
+
+**Context**
+
+Text-dominant designs sometimes received incomplete AI titles (`Sarcasm` instead of the full slogan; `I` instead of titles beginning with `I'm…`) even when the description already transcribed the full readable phrase. Investigation showed (1) model under-titling of the dominant first line / contraction start, and (2) post-model gaps: `resolveLeanCatalogTitle` trusted any non-generic short title, and `extractPrimaryWordingFromDescription` treated contraction apostrophes as quote delimiters.
+
+**Decision**
+
+1. Bump lean prompt to **`catalog-enrich-v25`**: description and title must agree on readable wording; text-dominant titles use the **complete** phrase (not only the largest/first line); contractions stay intact; decorative accents do not get an appended noun. Auto-upgrade prior shipped default (`v24`) via existing Settings previous-default recognition.
+2. Fix description wording extraction to use **double quotes only** (straight + curly), never single-quote / apostrophe pairs.
+3. Add narrow `isIncompleteTitleVsDescription` so suspiciously truncated titles fall back to description wording without rewriting good mixed-content or genuinely complete one-word titles.
+4. Do not change category/tag resolution, providers, or the `aiSuggestions` field contract.
+
+**Consequences**
+
+- Existing designs keep old titles until reprocessed.
+- Custom Studio prompts are not auto-rewritten (only prior shipped defaults).
+- Dev/production Functions deploy required before live AI Review uses the new code/prompt version.
+
+**Amendment (2026-07-21 — multi-segment descriptions)**
+
+Gemini often narrates each text line as a separate double-quoted phrase (`"Sarcasm"` … `"Just one of my many talents"`). First-quote-only extraction made incompleteness invisible. `extractPrimaryWordingFromDescription` now joins slogan-like quoted segments (filtering style/meta single-token quotes such as `"bold"`), so the existing completeness fallback expands headline-only titles. No prompt version bump; code-path fix only.
+
+**Amendment (2026-07-21 — intermittency / narration-shape hardening)**
+
+Owner reprocess showed titles flipping between full phrase and `Sarcasm` across runs. Cause: fallback only fired when Gemini used multi-quote (or single full-phrase) shapes; a single headline quote short-circuited extraction and ignored prose/slash continuations. Hardening merges (1) all slogan quotes, (2) prose “below it / smaller / second line says …” continuations, (3) slash-joined lead transcriptions, (4) optional trailing-slogan recovery after a short title token — shared via `resolveReadableWordingForTitle`. Style/product tails are cut so true one-word titles stay one word.
+
+**Amendment (2026-07-22 — description leakage / prose-title rejection)**
+
+Live regression: designs with clear readable wording (e.g. `BEST CHRISTMAS EVER`) received titles copied from description prose (`The Design Features The Outline Of Mouse Ears…`). Root cause on the lean path: (1) `extractPrimaryWordingFromDescription` fell back to the **first description sentence** when quotes were missing or single-quoted `Text reads '…'` was not extracted; (2) no rejection of description-boilerplate openings; (3) lean responses lacked structured readable-text evidence. Fix: bump lean prompt to **`catalog-enrich-v26`** with transient `readableTextLines` + `centralSubject` (not persisted on `aiSuggestions`); reject description-like titles; extract narrated single/double-quoted `reads`/`says` phrases; never use visual-scene or boilerplate first sentences as title wording; rebuild from readable lines + optional sanitized subject. Auto-upgrade prior shipped default (`v25`) via Settings previous-default recognition.
+
+---
+
+### ADR-FP-114: AI analysis canvas uses design artwork background when set
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-22 |
+| Status | accepted |
+| Related | `artworkBackgroundHex`; `prepareAiAnalysisImage`; AI Review preview control |
+| Target | Cloud Functions + Studio AI Review (`fresh-prints-dev` soft-deploy); production with normal release |
+
+**Context**
+
+Staff needed to change the mat behind artwork for reprocess (especially halftone) without changing first-pass auto-processing. Existing Artwork background controls only affected display/OG, while AI always composited onto hard-coded `#808080`.
+
+**Decision**
+
+1. Reuse `designs.artworkBackgroundHex` (no second color field).
+2. `prepareAiAnalysisImage` uses that hex when set; when unset, keep AI default `#808080`.
+3. Studio AI Review shows a top-right preview control that persists the field immediately; Needs Review form remains the same field; Library inherits unless changed in Review.
+4. Add white `#ffffff` as a first-class preset alongside grey and light black.
+
+**Consequences**
+
+- Auto-import AI behavior unchanged for designs without the field.
+- Soft-deploy enrichment Functions required before reprocess uses the new canvas.
+- Display/OG defaults remain `#e5e7eb` when the field is omitted.
+
+---
+
+### ADR-FP-112: Assisted Creation proof/reference preview — signed URL first
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-21 |
+| Status | accepted |
+| Related | ADR-FP-110 proof hardening; Studio ref-thumb hang hotfix |
+| Target | Studio + Portal clients (`fresh-prints-dev`); production with normal release |
+
+**Context**
+
+ADR-FP-110 required authenticated `getBytes` → blob URL for proof previews (opaque Storage names). In Electron/Studio and sometimes Portal, `getBytes` can hang indefinitely, so Proofs tabs stayed empty/gray, Studio labeled timeouts as “File removed”, and Portal showed eternal “Loading proof image…”. Reference thumbs hit the same hang and were fixed earlier; proofs were not.
+
+**Decision**
+
+1. Prefer timed Firebase **signed download URL** (`getDownloadURL`, ~12s timeout) for Assisted Creation proof and reference **previews**.
+2. Fall back to timed `getBytes` → object URL only if signed URL fails (e.g. CORS edge cases).
+3. Never leave infinite Loading; settle to “Preview unavailable” (reserve “File removed” for purged / missing path).
+4. Opaque Storage object names remain. Object URL revoke remains when blob fallback is used. No permanent public ACLs.
+5. Amends ADR-FP-110 item 4 preview strategy only; download callables and purge policy unchanged.
+
+**Consequences**
+
+- Client-only hotfix; Storage rules already allow customer/staff read on proof paths.
+- Soft-deploy Functions/Storage only if rules or callables drift (not required for this hang).
+
+---
+
+### ADR-FP-111: Transactional email from noreply@myprintrequest.com
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-21 |
+| Status | accepted |
+| Related | ADR email/provider work; `docs/workflow/setup/resend-email-setup.md` |
+| Target | Functions params + templates; soft-deploy `fresh-prints-dev` then production with human approval |
+
+**Context**
+
+Outbound mail defaulted to `Fresh Prints <team@funkyfreshprints.com>` while Portal hosts use
+`myprintrequest.com` / `myprintrequest.dev`. Owner requested Portal-domain sender identity and an
+explicit unmonitored disclaimer so customers do not expect replies to the from-address.
+
+**Decision**
+
+1. Default (and documented) from-address for invitations and proof notices:
+   `Fresh Prints <noreply@myprintrequest.com>`.
+2. All transactional HTML templates append a shared unmonitored disclaimer via
+   `appendUnmonitoredEmailFooter`.
+3. Provider domains (`myprintrequest.com`) must be verified in Resend and/or Brevo before live send.
+4. Project `.env.<projectId>` overrides must be updated when present; code defaults alone are
+   insufficient if dotenv still has the old sender.
+5. Marketing/bidding links to `funkyfreshprints.com` remain unchanged (not email senders).
+
+**Consequences**
+
+- Soft-deploy email Functions after domain verification + param/dotenv alignment.
+- Production sender/domain changes remain a separate human checkpoint.
+
+---
+
+### ADR-FP-110: Assisted Creation AI context copy + Final Source Needed
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-21 |
+| Status | accepted |
+| Related | ADR-FP-088, ADR-FP-093, ADR-FP-094, ADR-FP-108; Phase 9C |
+| Target | `fresh-prints-dev` Functions + Storage rules + Studio/Portal; production later with human approval |
+
+**Context**
+
+Staff needed a paste-ready AI design context without calling an AI API. Proof approval previously completed the request immediately, before final high-resolution artwork was ready. Proof previews exposed durable Storage URLs / human-readable object names via Save Image As.
+
+**Decision**
+
+1. **AI Context (Studio, copy-only):** Shared pure builders emit JSON profile + fixed DTF prompt (+ optional reference sentence). No AI provider keys, callables, or image bytes/URLs/PII in the JSON. Omit `title`. References labeled `REFERENCE_IMAGE_N` in staff array order. Studio reference-image downloads use the same basename (`REFERENCE_IMAGE_N`); Electron save may append a MIME-derived extension.
+2. **Final Source Needed:** New open nonterminal status `final_source_needed`. Proof-image customer approve → that status (sibling proof purge kept). Staff uploads `finalSource` via `staffAddAssistedCreationFinalSource` and only then → terminal `approved`. Catalog-share approve stays direct `approved` (ADR-FP-108). Force-complete without final is forbidden.
+3. **Add to Request / download:** Prefer `finalSource` when present; legacy approved-without-final still serves approved proof. Friendly download name only for authorized final download.
+4. **Proof hardening:** New proof Storage objects use opaque UUID keys (extensionless). Previews prefer timed signed download URLs, with timed `getBytes` → object URL as fallback (see ADR-FP-112). No proof Download button on preview surfaces. Honest browser limits (not DRM).
+5. **Studio navigation:** Shared `stageForAssistedCreationStatus`; Start Work / Resume follow the request onto the In progress tab. New stage tab **Final Source Needed**.
+6. **Notifications:** Final-ready email/push out of scope this phase.
+
+**Consequences**
+
+- Functions + Storage rules (`final/`) must deploy before clients write the new status/path on `fresh-prints-dev`.
+- In-flight `proof_ready` requests are unchanged until the customer responds.
+- Existing approved requests remain terminal and keep prior download behavior.
+
+---
+
+### ADR-FP-087o: Persist Etsy Open API search snapshot for Studio staff
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-20 |
+| Status | accepted |
+| Related | Phase 9A, ADR-FP-087l, ADR-FP-087n |
+| Target | `fresh-prints-dev` Functions + Studio; production later with human approval |
+
+**Context**
+
+Studio Custom Designs → Etsy showed questionnaire answers and public website search links, but not the Open API listing cards Portal customers see. Listing DTOs were ephemeral on `searchEtsyRecommendations` responses only.
+
+**Decision**
+
+1. Persist bounded `lastApiSearch` on `etsyRecommendationRequests` (Admin SDK) after Portal Open API search (ok / empty / unavailable). Cap listings at display limit (12). No API keys or raw HTTP payloads.
+2. Staff callable `staffSearchEtsyRecommendationApiResults` reuses the same keyword + search + normalize core; works for any request status; does **not** charge customer preview quota; denies custom search params; soft-fails when the secret is missing.
+3. Studio Etsy detail: **View API results** panel reads the snapshot; **Fetch / Refresh API results** calls the staff callable. Website browse cards remain unchanged.
+4. Client Firestore writes remain denied. Owning customers may read their own snapshot (same public listing metadata they already saw).
+
+**Consequences**
+
+- Legacy requests lack a snapshot until Portal search or staff fetch.
+- Functions deploy to the target Firebase project is required before Fetch works.
+- Live Etsy inventory may drift from a stored snapshot; Refresh updates it.
+
+---
+
+### ADR-FP-108: Assisted Creation catalog_share fulfillment
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-20 |
+| Status | approved |
+| Related | Small Managed #12; Assisted Creation; ADR-FP-093 / ADR-FP-094 (proof paths unchanged for `proof_image`); 2026-07-20 proof-line follow-up |
+
+**Context**
+
+Staff sometimes find a ready Design Library match for an Assisted Creation brief. Uploading a custom proof is unnecessary, but the customer still needs a structured approve / request-changes loop. ROADMAP wording about “mark complete without a proof” was ambiguous vs staff force-approve.
+
+**Decision**
+
+1. Reuse status `proof_ready` with additive `fulfillmentMode: "catalog_share" | "proof_image"` (omit ≡ `proof_image` for legacy docs).
+2. Staff suggest via `staffSuggestAssistedCreationCatalogDesign` (owner/admin): server loads design, requires `status === "ready"`, snapshots title/preview path, sets `suggestedCatalogDesign`, clears opposite proof-approval fields, notifies customer (`assisted_catalog_share_ready`), optional email outbox kind `assisted_catalog_share_ready`. **Also appends a `proofs[]` row** with `kind: "catalog_share"` (empty `storagePath`; catalog preview in `catalogPreviewImageUrl`) so Proofs lists show a Design Library line item.
+3. Customer must approve or request changes — **no staff force-approve**. Staff cancel closes without customer review.
+4. Catalog approve uses **server-stored** `suggestedCatalogDesign.designId` only; re-validates design still `ready` (fail closed if archived/rejected). Sets `approvedCatalogDesignId` + `approvedAt`; does **not** set `approvedProofId`; skips proof sibling purge / 14-day download semantics.
+5. After catalog approve, Portal Add to Request uses `addPortalCatalogDesignToPrintRequest` (catalog path), not proof Storage copy.
+6. Switching proof ↔ catalog clears the opposite fulfillment fields in the same write; Resume after revision clears `suggestedCatalogDesign`.
+7. Proof download / proof Add-to-Request callables fail closed when fulfillment is catalog_share / approved via catalog only.
+
+**Consequences**
+
+- Shared transitions allow `proof_ready` with `hasSuggestedCatalogDesign` without a proof asset.
+- Deploy Functions including `staffSuggestAssistedCreationCatalogDesign` + updated respond/email worker to `fresh-prints-dev` before live Studio/Portal use.
+- Share UX reuses `/share/design/{id}` and existing Portal deep links.
+- Proofs-tab Design Library rows require the suggest callable that appends `kind: "catalog_share"` (redeploy after 2026-07-20 proof-line follow-up).
+
+---
+
+### ADR-FP-107: Recently Requested requires show allocation
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-20 |
+| Status | accepted |
+| Related | Portal Discover; `showAllocations`; Small Managed #14 (parallel to #13) |
+
+**Context**
+
+Working-cart adds wrote `designs.lastRequestedAt` via `onPrintRequestItemCreated`. Recently Requested ranked on that field, so designs added then removed from a Working draft still appeared — including when the request never left the cart.
+
+**Decision**
+
+1. **Recently Requested** eligibility = design has `lastAddedToShowAt` (written by `onShowAllocationCreated` when a catalog `showAllocations` doc is created with `upcomingShowId`).
+2. Allocation create is the product gate (“sent to a show” / past Working draft). Allocation status may start as `pending` and later move to `queued` / `printing` / `printed` — create is enough.
+3. Working-cart `printRequestItems` create still updates `requestCount` / `lastRequestedAt` for **Popular** only.
+4. Customer-upload allocations do not bump catalog show-add metrics (same source gate as requestCount).
+
+**Consequences**
+
+- Client ranking / Portal sort for `discover=recent` uses `lastAddedToShowAt`.
+- Deploy Functions `onShowAllocationCreated` + Firestore indexes for `lastAddedToShowAt` before new queue-to-show events populate the rail.
+- Stale `lastRequestedAt`-only designs drop out of Recently Requested immediately after the client change (no data wipe required).
+
+---
+
+### ADR-FP-106: Portal public browse + login-gated actions
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-20 |
+| Status | accepted (amended Addendum A + overlay UX same day; signed off approved_with_notes 2026-07-20) |
+| Related | Small Managed Items #13; SECURITY.md Portal; `firestore.rules` / `storage.rules` |
+
+**Decision**
+1. Guests may **view** Portal home (`/`) and catalog (`/catalog/**`) without signing in. Share landing `/share/design/{id}` remains public and redirects into catalog deep links that guests can open.
+2. Mutation-primary routes stay hard-auth: `/requests/**`, `/favorites`, `/custom-designs/**`, `/dashboard` (account), **`/donate`**. Guests stay in the app shell; main content uses a **dimmed in-shell overlay** (Login / Signup) rather than navigating away to bare `/login-required` as the primary pattern. Bare `/login-required` remains for bookmarks/deep links.
+3. Mutation CTAs (add to request, favorites, etc.) and Current Request chrome (signed-in only) use login / overlay with validated `returnTo`. Guest chrome label: **Login / Signup**.
+4. Firestore **public read** only for `ready` designs, `isActive` categories, and `approved` tags. Storage **public read** only for ready `/thumbnails/` + `/previews/` with canonical `{designId}.webp` + ready design existence. No public `upcomingShows` reads.
+5. **Donations require a registered portal customer** (owner 2026-07-20). Anonymous guest donations retired — nicer overlay copy on `/donate` explains sign-in protects the library from spam/unwanted uploads without accusing the visitor. Print-request uploads remain portal-customer only.
+6. Document-level ready design fields remain the same surface authenticated customers already had; originals stay staff-only.
+7. Firestore/Storage rules + Functions deploys require human approval (project id confirmed in workflow state). Anonymous Auth is no longer required for Portal donate.
+
+**Amendment (2026-07-20, later same day)** — Owner: require login to donate; retire Addendum A guest/anonymous donation path; donate overlay copy frames account requirement as library protection (spam/unwanted uploads), kindly worded.
+
+**Consequences**
+- Scrapers can enumerate ready catalog metadata and derivative images — accepted product tradeoff.
+- Rules (not AuthGate) are the security boundary; UI gates are UX only.
+- Redeploy donation callables after retiring anonymous `requireCatalogDonationUploader` guest branch.
+---
+
+### ADR-FP-109: Library OG rotation intervals + per-design artwork backgrounds
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-21 |
+| Status | accepted |
+| Related | ADR-FP-105; `settings/portalSocialMeta`; `designs.artworkBackgroundHex` |
+
+**Decision**
+1. Global library OG rotation is owner-configurable: `daily` | `hourly` | `5min` | `1min` | `30s` (default `hourly`), plus Studio **Pick next** salt bump.
+2. **No “each share” / random-per-request mode** — Facebook/WhatsApp/Messenger cache Open Graph by page URL; sharing does not re-fetch a new image. Short intervals + Pick next are the practical alternatives.
+3. Optional per-design `artworkBackgroundHex` (`#rrggbb`) drives Studio/Portal artwork mats and OG letterbox margins (fallback `#e5e7eb`). Compositor paints from the design document; URL `bg=` is cache-bust only.
+
+**Consequences**
+- Soft-deploy touched OG Functions to fresh-prints-dev after changes; production deploy remains owner-gated.
+
+---
+
 ### ADR-FP-105: Portal OG / social sharing meta
 
 | Field | Value |
@@ -14,7 +330,7 @@
 
 **Decision**
 1. Per-design share URLs use `/share/design/{id}` with server `generateMetadata` (design title/description/image when Admin signing works; brand logo fallback).
-2. Non-design Portal URLs use owner-editable global OG title/description from Firestore `settings/portalSocialMeta` (Studio Settings Social sharing) plus a daily-rotated ready-library image.
+2. Non-design Portal URLs use owner-editable global OG title/description from Firestore `settings/portalSocialMeta` (Studio Settings Social sharing) plus an hourly-rotated ready-library image.
 3. Cold catalog deep links (`?designId=`) must open the details modal after AuthGate / Strict Mode remount; clear in-flight deep-link guards on effect cleanup.
 
 **Consequences**
@@ -1429,8 +1745,9 @@ Scratch QA of print requests → show queue required manual Firebase Console del
 **Decision**
 
 1. Dedicated Studio page `/test-data-reset` (sidebar **Test Data**), visible only for **owners** in **development Studio builds** when the client Firebase project is allowlisted (`fresh-prints-dev`). Production Studio builds do not expose the UI.
-2. Callable `wipeOperationalTestData` with selectable targets and presets, including **print-request reset (keep shows)** and optional **designs** wipe.
-3. **Designs** wipe requires **print requests** in the same run, an extra catalog confirm modal (`acknowledgeDesignCatalogWipe`), then the typed phrase. Deletes `designs` docs plus Storage `originals/`, `thumbnails/`, `previews/`.
+2. Callable `wipeOperationalTestData` with selectable targets and presets, including **print-request reset (keep shows)**, optional full **designs** wipe, and selective **`aiProcessingDesigns`** wipe (AI Processing page inbox only).
+3. **Designs** wipe requires **print requests** in the same run, an extra catalog confirm modal (`acknowledgeDesignCatalogWipe`), then the typed phrase. Deletes `designs` docs plus Storage `originals/`, `thumbnails/`, `previews/` prefixes.
+3b. **`aiProcessingDesigns`** (2026-07-21) deletes only designs that appear on Studio **AI Processing** (Processing / Needs Review / Rejected), regardless of `aiProcessingStage`, plus those designs’ Storage objects. Keeps ready Design Library and archived designs. Does **not** require print-request wipe or catalog confirm. Mutually exclusive with full Designs in the Studio toggle; if both are selected, full Designs wins and selective wipe is skipped.
 4. Server enforces **owner** (not admin) + project allowlist + typed confirm phrase `WIPE TEST DATA`.
 5. Sequences reset to **1** (not 0). Accounts, categories, tags, and settings are never wiped by this tool.
 6. When shows are **kept** but allocations are cleared, each show’s `allocatedQuantity` is zeroed, print
@@ -1492,9 +1809,11 @@ The Portal catalog was a flat searchable grid. Customers needed curated discover
 5. Do **not** add `favoriteCount` now — optional fields can land later without migration.
 6. Remove Design Library **My requests** header button (nav covers requests).
 
+**Amendment (2026-07-20, ADR-FP-107):** Recently Requested now uses `lastAddedToShowAt` (show allocation create), not Working-cart `lastRequestedAt`. Popular still uses `requestCount` from item create.
+
 **Consequences**
 
-- Deploy `onPrintRequestItemCreated` required for accurate Popular / Recently Requested after Portal adds.
+- Deploy `onPrintRequestItemCreated` required for accurate Popular after Portal adds; Recently Requested requires `onShowAllocationCreated` (ADR-FP-107).
 - No rolling analytics collections in this phase.
 - Signed off 2026-07-11 (`approved_with_notes`).
 

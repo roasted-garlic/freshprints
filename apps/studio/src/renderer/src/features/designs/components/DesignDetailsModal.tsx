@@ -10,6 +10,8 @@ import { useAuth } from "../../auth/hooks/useAuth";
 import { permissionService } from "../../permissions/services/permissionService";
 import type { Design } from "../types/design.types";
 import { useDesignDerivativeUrl } from "../hooks/useDesignDerivativeUrl";
+import { downloadDesignOriginal } from "../services/designOriginalDownloadService";
+import { canDownloadDesignOriginal } from "../utils/designOriginalDownload";
 import { formatDesignTimestamp } from "../utils/designDateDisplay";
 import { formatDesignStatusLabel, getDesignStatusBadgeVariant } from "../utils/designStatusDisplay";
 import { formatDesignPrintInches } from "../utils/designPrintSizeDisplay";
@@ -69,6 +71,8 @@ export function DesignDetailsModal({
   const { user } = useAuth();
   const [isPreviewLightboxOpen, setIsPreviewLightboxOpen] = useState(false);
   const [isMoreDetailsOpen, setIsMoreDetailsOpen] = useState(false);
+  const [isDownloadingOriginal, setIsDownloadingOriginal] = useState(false);
+  const [downloadOriginalError, setDownloadOriginalError] = useState<string | null>(null);
   const isAssetsPurged = Boolean(design?.assetsPurgedAt);
   const { url: previewUrl } = useDesignDerivativeUrl(
     isAssetsPurged ? design?.thumbnailPath : design?.previewPath,
@@ -88,9 +92,29 @@ export function DesignDetailsModal({
     permissionService.canPurgeArchivedDesignAssets(user) &&
     design.status === "archived" &&
     !design.assetsPurgedAt;
+  const canDownloadOriginal = canDownloadDesignOriginal(design);
 
   const printSize = resolveDesignPrintSizeForDisplay(design);
   const originLabel = resolveDesignOriginLabel(design);
+
+  async function handleDownloadOriginal(): Promise<void> {
+    if (!canDownloadOriginal || isDownloadingOriginal) {
+      return;
+    }
+
+    setDownloadOriginalError(null);
+    setIsDownloadingOriginal(true);
+
+    try {
+      await downloadDesignOriginal(design);
+    } catch (error) {
+      setDownloadOriginalError(
+        error instanceof Error ? error.message : "Unable to download the original image.",
+      );
+    } finally {
+      setIsDownloadingOriginal(false);
+    }
+  }
 
   return (
     <>
@@ -187,6 +211,16 @@ export function DesignDetailsModal({
         </div>
 
         <div className="design-details-footer-actions">
+          {canDownloadOriginal ? (
+            <Button
+              disabled={isDownloadingOriginal}
+              onClick={() => void handleDownloadOriginal()}
+              type="button"
+              variant="secondary"
+            >
+              {isDownloadingOriginal ? "Downloading…" : "Download"}
+            </Button>
+          ) : null}
           {canEdit && onEdit ? (
             <Button onClick={() => onEdit(design)} variant="secondary">
               Edit
@@ -196,6 +230,11 @@ export function DesignDetailsModal({
             Close
           </Button>
         </div>
+        {downloadOriginalError ? (
+          <p className="design-details-download-error" role="alert">
+            {downloadOriginalError}
+          </p>
+        ) : null}
       </ModalFooter>
       </DesignLibraryModal>
 

@@ -101,8 +101,18 @@ export function hasRequiredAiEnrichmentPromptPlaceholders(value: string): boolea
   );
 }
 
+/**
+ * Whitespace + typography normalize for comparing saved Studio prompts to shipped defaults.
+ * Word processors / chat paste often turn `'` into U+2019 and add a trailing newline; those
+ * must not look like a custom prompt or keep Save enabled after "Use current default".
+ */
 function normalizePromptForDefaultComparison(value: string): string {
-  return value.replace(/\s+/g, " ").trim();
+  return value
+    .replace(/\u2018|\u2019/g, "'")
+    .replace(/\u201C|\u201D/g, '"')
+    .replace(/\u00A0/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 /**
@@ -126,7 +136,178 @@ export function estimateVisionCostUsd(
   return (promptTokens * pricing.input + completionTokens * pricing.output) / 1_000_000;
 }
 
-export const DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE = `You catalog DTF transfer art for apparel. Choose title, category, and tags by the design's core subject, message, joke, buyer intent, occasion, role, or theme, not style alone. Fonts, colors, lashes, heels, school items, crosses, or other decorative elements only count when truly central.
+export const DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE = `You catalog DTF transfer art for apparel. Choose title, category, and tags by the design's main message, subject, buyer intent, occasion, role, or theme — not style alone. Decorative fonts, colors, distressing, stars, lines, sparkles, emojis, borders, and accents count only when truly central.
+
+Analyze the image and return only valid JSON.
+
+Return:
+title: a searchable catalog title following the title rules below.
+description: 1 to 2 sentences with all readable text exactly as shown, plus the main visuals, style, and colors.
+category: the best approved category, copied exactly. Use another name only if none genuinely fit.
+tags: up to 12 searchable tag candidates.
+readableTextLines: array of every distinct readable text line or phrase in natural reading order; use [] when there is no readable text.
+centralSubject: one short literal noun phrase for the main non-text subject when useful; otherwise "".
+
+Approved categories:
+{{approved_category_names}}
+
+Title rules:
+- First identify all readable text exactly as shown and put each line in readableTextLines.
+- Build the title from readableTextLines in reading order, then optionally append centralSubject.
+- Form the description with the same readable wording — description and title must agree on that wording.
+- If the design is all text or text-dominant, the title must be the complete readable phrase in natural reading order, not only the largest or first line.
+- Keep contractions intact (I'm, Don't, Can't, We're, It's, and curly-apostrophe forms).
+- If the design has readable text plus one meaningful person, animal, object, place, character, or scene, set centralSubject to one short literal noun phrase for that visual and include it in the title after the readable wording.
+- Only add that subject when the non-text visual is clearly important, not merely decorative (stars, sparkles, lines, bows, polka dots, arrows, hearts, speech bubbles, flourishes, outlines, shadows).
+- Never copy a description sentence as the title. Never begin the title with phrases like "The design features", "The image shows", "The artwork depicts", "An illustration of", or similar prose openings.
+- Never use colors, fonts, outlines, placement, or styling language in the title unless those words are visibly printed.
+- If there is no readable text, write a literal 5 to 7 word title describing the image and leave readableTextLines as [].
+- Never build the title from style words, mood words, category words, or inferred tag words.
+- Do not use words like funny, sarcastic, attitude, quote, retro, distressed, typography, text, statement, or design in the title unless they are actually part of the visible wording.
+
+Tag rules:
+- Tags may be words or short phrases because the server will match them later.
+- Use accurate terms for subjects, themes, audience, occasion, style, text, recognizable characters, brands, franchises, or properties.
+- Include style tags only when visually important and searchable.
+- Use halftone only for clear dot-screen shading, gradients, or texture, not normal noise or compression.
+- No filler tags: image, design, artwork, graphic, shirt, print, png, dtf.
+- Name recognizable characters, brands, logos, teams, shows, movies, games, celebrities, or known properties when clear.
+- Do not tag halloween for skeleton, skull, or bones alone — require additional Halloween cues.
+- Do not use these tag words: {{excluded_tags}}
+
+Return exactly this JSON and nothing else:
+{"title":"...","description":"...","category":"...","tags":["tag candidate"],"readableTextLines":["..."],"centralSubject":"..."}`;
+
+/**
+ * v25 shipped default (completeness / contraction clarifications; pre description-leakage harden).
+ * Saved Studio Settings copies of this text auto-upgrade to {@link DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE}
+ * via {@link isPreviousDefaultAiEnrichmentPromptTemplate}.
+ */
+export const PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V25 = `You catalog DTF transfer art for apparel. Choose title, category, and tags by the design's main message, subject, buyer intent, occasion, role, or theme — not style alone. Decorative fonts, colors, distressing, stars, lines, sparkles, emojis, borders, and accents count only when truly central.
+
+Analyze the image and return only valid JSON.
+
+Return:
+title: a searchable title following the title rules below.
+description: 1 to 2 sentences with all readable text exactly as shown, plus the main visuals, style, and colors.
+category: the best approved category, copied exactly. Use another name only if none genuinely fit.
+tags: up to 12 searchable tag candidates.
+
+Approved categories:
+{{approved_category_names}}
+
+Title rules:
+- First identify all readable text exactly as shown.
+- Form the description first, then derive the title from that same readable wording — description and title must agree.
+- If the design is all text or text-dominant, the title must be the complete readable phrase in natural reading order, not only the largest or first line.
+- Keep contractions intact (I'm, Don't, Can't, We're, It's, and curly-apostrophe forms).
+- If the design has readable text plus one meaningful person, animal, object, place, character, or scene, use the readable text plus one short literal noun for that visual.
+- Only add that extra noun when the non-text visual is clearly important to the design, not merely decorative (stars, sparkles, lines, arrows, hearts, speech bubbles, bandages, flourishes).
+- If there is no readable text, write a literal 5 to 7 word title describing the image.
+- Never build the title from style words, mood words, category words, or inferred tag words.
+- Do not use words like funny, sarcastic, attitude, quote, retro, distressed, typography, text, statement, or design in the title unless they are actually part of the visible wording.
+
+Tag rules:
+- Tags may be words or short phrases because the server will match them later.
+- Use accurate terms for subjects, themes, audience, occasion, style, text, recognizable characters, brands, franchises, or properties.
+- Include style tags only when visually important and searchable.
+- Use halftone only for clear dot-screen shading, gradients, or texture, not normal noise or compression.
+- No filler tags: image, design, artwork, graphic, shirt, print, png, dtf.
+- Name recognizable characters, brands, logos, teams, shows, movies, games, celebrities, or known properties when clear.
+- Do not tag halloween for skeleton, skull, or bones alone — require additional Halloween cues.
+- Do not use these tag words: {{excluded_tags}}
+
+Return exactly this JSON and nothing else:
+{"title":"...","description":"...","category":"...","tags":["tag candidate"]}`;
+
+/**
+ * v24 shipped default (description-first title rules; pre-completeness / contraction clarifications).
+ * Saved Studio Settings copies of this text auto-upgrade to {@link DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE}
+ * via {@link isPreviousDefaultAiEnrichmentPromptTemplate}.
+ */
+export const PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V24 = `You catalog DTF transfer art for apparel. Choose title, category, and tags by the design's main message, subject, buyer intent, occasion, role, or theme — not style alone. Decorative fonts, colors, distressing, stars, lines, sparkles, emojis, borders, and accents count only when truly central.
+
+Analyze the image and return only valid JSON.
+
+Return:
+title: a short searchable title.
+description: 1 to 2 sentences with all readable text exactly as shown, plus the main visuals, style, and colors.
+category: the best approved category, copied exactly. Use another name only if none genuinely fit.
+tags: up to 12 searchable tag candidates.
+
+Approved categories:
+{{approved_category_names}}
+
+Title rules:
+- First identify all readable text exactly as shown.
+- First form the description mentally, then derive the title from that same content.
+- If the design is all text or text-dominant, the title must be the full readable text in natural reading order.
+- If the design has readable text plus one meaningful person, animal, object, place, character, or scene, use the readable text plus one short literal noun for that visual.
+- Only add that extra noun when the non-text visual is clearly important to the design, not merely decorative.
+- If there is no readable text, write a literal 5 to 7 word title describing the image.
+- Never build the title from style words, mood words, category words, or inferred tag words.
+- Do not use words like funny, sarcastic, attitude, quote, retro, distressed, typography, text, statement, or design in the title unless they are actually part of the visible wording.
+
+Tag rules:
+- Tags may be words or short phrases because the server will match them later.
+- Use accurate terms for subjects, themes, audience, occasion, style, text, recognizable characters, brands, franchises, or properties.
+- Include style tags only when visually important and searchable.
+- Use halftone only for clear dot-screen shading, gradients, or texture, not normal noise or compression.
+- No filler tags: image, design, artwork, graphic, shirt, print, png, dtf.
+- Name recognizable characters, brands, logos, teams, shows, movies, games, celebrities, or known properties when clear.
+- Do not tag halloween for skeleton, skull, or bones alone — require additional Halloween cues.
+- Do not use these tag words: {{excluded_tags}}
+
+Return exactly this JSON and nothing else:
+{"title":"...","description":"...","category":"...","tags":["tag candidate"]}`;
+
+/**
+ * v23 shipped default (numbered title rules + examples). Saved Studio Settings copies of this
+ * text auto-upgrade to {@link DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE} via
+ * {@link isPreviousDefaultAiEnrichmentPromptTemplate}.
+ */
+export const PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V23 = `You catalog DTF transfer art for apparel. Identify the design's visible wording, main subject, message, buyer intent, occasion, role, and theme. Do not treat fonts, colors, distressing, decorative icons, or background accents as the main subject unless they are genuinely central.
+
+Analyze the image and return only valid JSON.
+
+Return:
+title: a searchable title following the title rules below.
+description: 1 to 2 sentences containing all readable text exactly as shown, followed by the main visuals, style, and colors.
+category: the best approved category, copied exactly. Use another category name only when none genuinely fit.
+tags: up to 12 accurate searchable tag candidates.
+
+Approved categories:
+{{approved_category_names}}
+
+Title rules:
+1. If the design is text-only or text-dominant, use all readable text as the title in natural reading order.
+2. Do not summarize, shorten, rewrite, correct, or add keywords to visible wording.
+3. Decorative stars, lines, borders, emojis, faces, flourishes, and typography effects do not make a design mixed-content.
+4. If readable text is combined with a meaningful person, animal, object, place, character, or scene, use the readable text followed by one concise word naming the dominant visual.
+5. Use only a concrete visual word such as Cow, Skeleton, Teacher, Truck, Beach, or Santa. Do not append tag-like words such as funny, sarcastic, quote, attitude, typography, distressed, or text.
+6. If there is no readable text, describe the main visual literally in about 5 to 7 words.
+7. Never build the title by combining inferred tags.
+
+Title examples:
+- Text-only: "Kinda Give A Damn Kinda Don't Care"
+- Text with a prominent cow: "Just A Little Moody Cow"
+- No text: "Floral Highland Cow Wearing Leopard Bow"
+
+Tag rules:
+- Tags may be words or short phrases because the server will match them later.
+- Use terms for the subject, theme, audience, occasion, style, recognizable property, and buyer intent.
+- Include style tags only when visually important and searchable.
+- Use halftone only for clear dot-screen shading, gradients, or texture, not ordinary noise or compression.
+- Do not use filler tags: image, design, artwork, graphic, shirt, print, png, dtf.
+- Name recognizable characters, brands, logos, teams, shows, movies, games, celebrities, or properties when clear.
+- Do not tag halloween for a skeleton, skull, or bones alone. Require additional Halloween cues such as a jack-o'-lantern, witch, haunted house, candy corn, visible Halloween wording, or a clear holiday scene.
+- Do not use these tag words: {{excluded_tags}}
+
+Return exactly this JSON and nothing else:
+{"title":"...","description":"...","category":"...","tags":["tag candidate"]}`;
+
+/** Pre-title-rules shipped default (halloween guard + halftone, short title field, no title rules block). */
+export const PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_PRE_TITLE_RULES = `You catalog DTF transfer art for apparel. Choose title, category, and tags by the design's core subject, message, joke, buyer intent, occasion, role, or theme, not style alone. Fonts, colors, lashes, heels, school items, crosses, or other decorative elements only count when truly central.
 
 Analyze the image and return only valid JSON.
 
@@ -232,7 +413,25 @@ export function isPreviousDefaultAiEnrichmentPromptTemplate(value: string): bool
     normalized ===
       normalizePromptForDefaultComparison(
         PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_PRE_HALLOWEEN_GUARD,
-      )
+      ) ||
+    normalized ===
+      normalizePromptForDefaultComparison(
+        PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_PRE_TITLE_RULES,
+      ) ||
+    normalized ===
+      normalizePromptForDefaultComparison(PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V23) ||
+    normalized ===
+      normalizePromptForDefaultComparison(PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V24) ||
+    normalized ===
+      normalizePromptForDefaultComparison(PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V25)
+  );
+}
+
+/** True when value matches the shipped default after whitespace/smart-quote normalization. */
+export function isDefaultAiEnrichmentPromptTemplate(value: string): boolean {
+  return (
+    normalizePromptForDefaultComparison(value) ===
+    normalizePromptForDefaultComparison(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE)
   );
 }
 
@@ -247,7 +446,8 @@ export function resolveAiEnrichmentPromptTemplate(raw: unknown): string {
     !trimmed ||
     trimmed.length > AI_ENRICHMENT_PROMPT_TEMPLATE_MAX_LENGTH ||
     !hasRequiredAiEnrichmentPromptPlaceholders(trimmed) ||
-    isPreviousDefaultAiEnrichmentPromptTemplate(trimmed)
+    isPreviousDefaultAiEnrichmentPromptTemplate(trimmed) ||
+    isDefaultAiEnrichmentPromptTemplate(trimmed)
   ) {
     return DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE;
   }

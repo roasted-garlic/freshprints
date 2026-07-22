@@ -22,6 +22,7 @@ interface PortalPrintRequestItemDesign {
   height: number;
   thumbnailPath?: string;
   previewPath?: string;
+  artworkBackgroundHex?: string;
   printWidthInches?: number;
   printHeightInches?: number;
   updatedAtMs?: number;
@@ -479,6 +480,7 @@ export function PortalPrintRequestItemCard({
           <div className="portal-request-item-editor-thumb-wrap">
             <CatalogThumbnailPanel
               alt={`${title} preview`}
+              artworkBackgroundHex={design?.artworkBackgroundHex}
               catalogPath={previewPath}
               className="design-card-thumbnail"
               contentVersion={design?.updatedAtMs}
@@ -697,6 +699,7 @@ export function PortalPrintRequestItemCard({
 
       <CatalogPreviewLightbox
         alt={`${title} preview`}
+        artworkBackgroundHex={design?.artworkBackgroundHex}
         isOpen={isLightboxOpen}
         onClose={() => setIsLightboxOpen(false)}
         previewUrl={previewUrl}
