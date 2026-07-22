@@ -97,11 +97,11 @@ export type DeprecatedDesignStatus = "queued" | "printed";
 export type DesignStatus = CatalogDesignStatus | DeprecatedDesignStatus;
 ```
 
-| Status | Meaning | Customer-visible (future) |
+| Status | Meaning | Customer-visible |
 | --- | --- | --- |
 | `imported` | Awaiting AI/staff review | No |
 | `processing` | Transient derivative or future AI job in flight | No |
-| `ready` | Catalog-approved; may be referenced by production items | Yes |
+| `ready` | Catalog-approved; may be referenced by production items | Yes — public Portal browse (#13); unauthenticated + customers may read full ready docs |
 | `rejected` | Catalog rejected; audit retention | No |
 | `archived` | Soft-hidden from default browse; Design Library **Archived catalog** toggle shows archived-only view | No |
 | `queued`, `printed` | **Deprecated on designs** — use queue items | No |
@@ -282,6 +282,15 @@ export interface Design {
 
   previewPath?: string;
 
+  /**
+   * Optional mat / OG letterbox / AI analysis canvas background (`#rrggbb`, lowercase).
+   * Missing or invalid → Portal/Studio artwork grey `#e5e7eb` for display and OG.
+   * Missing or invalid → AI analysis canvas mid-grey `#808080` (auto-processing default).
+   * When set, the same hex is used for Studio/Portal mats, OG letterbox, and AI analysis compositing.
+   * Presets: grey (omit field), light black `#2c2d2d`, white `#ffffff`, or custom hex from Studio.
+   */
+  artworkBackgroundHex?: string;
+
   width?: number;
   height?: number;
 
@@ -316,6 +325,7 @@ export interface Design {
   showAddCount?: number;
   printCount?: number;
   lastRequestedAt?: Timestamp;
+  /** Set when a catalog design is allocated to a show (`onShowAllocationCreated`). Gate for Recently Requested (ADR-FP-107). */
   lastAddedToShowAt?: Timestamp;
   lastPrintedAt?: Timestamp;
 
@@ -829,7 +839,7 @@ export interface CustomerFavorite {
 |---------|------|
 | Who writes | Owning Portal customer only (create/delete); no client updates |
 | Who reads | Owning customer; staff may read for support |
-| Design popularity | `requestCount` = print-request adds; `favoriteCount` = customer favorites (ADR-FP-083). Most Liked rail uses `favoriteCount`. |
+| Design popularity | `requestCount` / `lastRequestedAt` = Working-cart print-request item creates (Popular). `showAddCount` / `lastAddedToShowAt` = `showAllocations` create for catalog designs (Recently Requested; ADR-FP-107). `favoriteCount` = customer favorites (Most Liked; ADR-FP-083). |
 | Archived designs | Favorite doc may remain; Portal Liked page shows “No longer available” |
 
 No migration — additive empty subcollection.
@@ -1026,6 +1036,10 @@ Customer-provided artwork for **print requests** and **catalog donations** (ADR-
 
 **Purpose:** `print_request` | `catalog_donation` (missing on legacy docs ≡ `print_request`). Donations never set `printRequestId` or create `printRequestItems`.
 
+**Uploader attribution (#13 Addendum A):**
+- Registered Portal customers: `uploaderType: "customer"` (or omitted on legacy), `customerId` = real `customers/{id}`, `createdBy` = Auth UID, `customerUid` = Auth UID.
+- **Guest catalog donations:** Firebase Anonymous Auth session. Sentinel fields: `uploaderType: "guest"`, `customerId: "guest"`, `createdBy: "guest"` (string sentinel — **not** a `customers` document and **not** Studio staff `customers.isGuest`). `customerUid` remains the anonymous Auth UID for Storage path ownership (`/customer-uploads/{uid}/…`), rate limits, and leases. Guests may donate images only (ZIP blocked). Guest donation finalize-image daily cap is `CUSTOMER_UPLOAD_DAILY_FINALIZE_IMAGE_LIMIT_DONATION_GUEST` (default 20 / Central day per anon UID), stricter than registered donation settings.
+
 **Technical status:** `awaiting_upload` → `uploading` → `validating` → `processing` → `ready` | `failed`
 
 **Technical progress stage (optional, live during finalize):** `reading_upload` | `checking_format` | `checking_transparency` | `preparing_artwork` | `checking_print_size` | `creating_previews` | `saving` — written by finalize/retry callables; cleared (`null`) when `ready` or `failed`. Portal maps these to customer-facing labels via `getCustomerUploadProgressLabel`.
@@ -1086,7 +1100,7 @@ Server-only rate limits:
 etsyRecommendationRateLimits
 ```
 
-Phase 9A Etsy recommendations are **link-first + Open API listings** (ADR-FP-087l): Portal builds website search URLs from questionnaire answers; in-app listing cards come from `searchEtsyRecommendations` (Open API). Website scrape remains removed (ADR-FP-087j). Listing DTOs are ephemeral on the callable response (not stored on the request doc).
+Phase 9A Etsy recommendations are **link-first + Open API listings** (ADR-FP-087l): Portal builds website search URLs from questionnaire answers; in-app listing cards come from `searchEtsyRecommendations` (Open API). Website scrape remains removed (ADR-FP-087j). The **last** Open API result set is persisted on the request as `lastApiSearch` (ADR-FP-087o) so Studio can show staff what the API returned; older docs may omit the field until the next Portal search or staff fetch.
 
 ```ts
 export interface EtsyRecommendationRequest {
@@ -1110,6 +1124,25 @@ export interface EtsyRecommendationRequest {
   };
   canonicalQuery: string;
   etsySearchUrl: string;
+  /**
+   * Last Open API listing search (Portal `searchEtsyRecommendations` or Studio
+   * `staffSearchEtsyRecommendationApiResults`). Admin SDK write only. Max 12 listings.
+   */
+  lastApiSearch?: {
+    searchedAt: Timestamp;
+    status: "ok" | "empty" | "unavailable";
+    listings: Array<{
+      listingId: number;
+      title: string;
+      listingUrl: string;
+      imageUrl: string | null;
+      shopName: string | null;
+      priceAmount: string | null;
+      currencyCode: string | null;
+    }>;
+    apiKeywordsUsed?: string;
+    keywordStrategy?: "focused" | "fallback";
+  };
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }
@@ -1201,28 +1234,37 @@ Storage:
 
 ```txt
 assisted-creation/{customerUid}/pending/{fileId}
+assisted-creation/{customerUid}/{requestId}/references/{fileId}
 assisted-creation/{customerUid}/{requestId}/proofs/{fileId}
+assisted-creation/{customerUid}/{requestId}/final/{fileId}
 ```
 
-Proof objects are the **raw staff upload** (JPEG/PNG/WebP). There is no separate grey-background derivative — Portal/Studio grey is CSS only.
+Portal clients upload reference images to `pending/`. Callables `submitAssistedCreationRequest` and `customerUpdateAssistedCreationRequest` **promote** those objects into `{requestId}/references/{fileId}` (Admin copy + delete pending) and persist the durable `storagePath` on `referenceImages[]`. Legacy docs may still point at `pending/`; Studio/Portal can read both (staff or owning customer).
+Proof objects are the **raw staff upload** (JPEG/PNG/WebP). There is no separate grey-background derivative — Portal/Studio grey is CSS only. Final HR artwork lives under `final/` (ADR-FP-110), separate from `proofs[]`.
 
-**Proof object basename (ADR-FP-093 residual):** on Studio upload, `{fileId}` / `proof.fileName` is renamed to:
+**Fulfillment mode (ADR-FP-108 / #12):** optional `fulfillmentMode: "proof_image" | "catalog_share"` (omit ≡ `proof_image`). When staff suggest a ready catalog design instead of uploading a proof: `suggestedCatalogDesign` (`designId`, snapshot `title`, optional `previewImageUrl` storage path, `suggestedAt`, `suggestedByUid`), status `proof_ready`. The same suggest write also appends a `proofs[]` row with `kind: "catalog_share"` (`catalogDesignId`, `catalogDesignTitle`, optional `catalogPreviewImageUrl`, empty `storagePath`) so Studio/Portal Proofs lists show a clearly labeled **Design Library** line (preview + title), not a custom proof PNG. Customer approve sets `approvedCatalogDesignId` + `approvedAt` and does **not** set `approvedProofId`. Switching proof ↔ catalog clears the opposite fulfillment fields; Resume after revision clears `suggestedCatalogDesign` (historical catalog_share proof rows remain). Proof download / proof-copy Add to Request are gated off for catalog_share; Portal Add to Request uses the catalog attach callable. Terminal/expiry purge never deletes catalog derivatives (`kind: catalog_share` + empty `storagePath`).
+
+**Statuses (ADR-FP-110):** open = `submitted` | `in_progress` | `proof_ready` | `revision_requested` | `final_source_needed`. Terminal = `approved` | `rejected` | `cancelled`. Proof-image customer approve → `final_source_needed` (not completed); staff upload final artwork → `approved`. Catalog-share approve still goes directly to `approved` (ADR-FP-108).
+
+**Proof object basename (ADR-FP-110):** new Studio uploads use an opaque UUID Storage object id (**no extension**); `proof.fileName` stores the same opaque id; content type is set on the object. Legacy objects may still use:
 
 ```txt
 proof-{n}-{mmddyyyy}-{HHmm}.{ext}
 ```
 
-Example: `proof-6-10172026-2204.png` — `{n}` is chronological proof number (1-based), stamp is local wall-clock at upload (no seconds), `{ext}` is `png` | `jpg` | `webp`. Firestore `proof.id` remains a UUID. Portal customers never see the original creative filename; download uses the stored basename (or `proof-{n}.{ext}` for legacy proofs).
+Portal/Studio proof **previews** load via authenticated `getBytes` → object URL (not a durable signed URL in `img src`). Explicit customer download of final artwork uses a friendly basename (`Fresh-Prints-Final-Artwork.{ext}`) only after `approved` with `finalSource`.
 
-**Full-res retention (ADR-FP-093):** on customer **approve**, set `approvedProofId` + `approvedAt` and **physically delete** other proofs’ Storage objects (set per-proof `fullSizePurgedAt`). On terminal **without** an approved downloadable proof (`rejected` / `cancelled`), delete **all** proof full-res objects. The approved proof full-res remains downloadable for **14 days** (`ASSISTED_CREATION_APPROVED_PROOF_RETENTION_DAYS`), then `purgeExpiredAssistedCreationProofs` / scheduled job deletes it and sets `fullSizePurgedAt`. Legacy `approved` docs without `approvedProofId`/`approvedAt` fail closed (no download). Portal Download is on the Overview **Approved design** card (via Admin-streamed file callable). The Proofs list and modal title label the approved proof with an **Approved** badge.
+**Final source (ADR-FP-110):** optional `finalSource` (`id`, `storagePath`, friendly `fileName`, `contentType`, `sizeBytes`, `uploadedByUid`, `uploadedAt`). Staff callable `staffAddAssistedCreationFinalSource` attaches metadata and transitions `final_source_needed` → `approved` atomically. Force-complete without final source is forbidden.
 
-**Add to Request (ADR-FP-094):** Portal callable `customerAddAssistedApprovedProofToPrintRequest` server-copies the approved proof into `customer-uploads/...` (source + production + preview + thumbnail), creates a `customerUploads` doc (`purpose: print_request`, audit fields `assistedCreationRequestId` / `assistedProofId`), and attaches a `printRequestItems` row (`sourceType: customer_upload`, qty 1, size from pixels) to the working Current Request (lazy-create). Skips customer-upload transparency / quality rejection gates (staff-provided art). **Library listing consent (residual):** before add, Portal modal Allow / Don’t allow maps to `catalogUseAcknowledged: true | false` — the same field as print-upload attach and donate. Server applies shared `buildCatalogIntakeConfirmationPatch` so both choices set `catalogReviewStatus: pending_staff_review` (Studio Customer Uploads intake), plus `ownershipConfirmed`, `termsVersion`, `confirmedAt`. Allow → staff may promote later; Don’t allow → intake still sees the row with Design Library permission **Declined** (no auto-publish either way). Skip modal when already in working request. Denormalizes `printRequestIngest` (optional `catalogUseAcknowledged`) on the assisted request for idempotency and “Already in request” UX. Assisted 14-day proof purge does **not** delete the copied upload assets.
+**Full-res retention (ADR-FP-093):** on customer **approve** (proof_image → `final_source_needed`), set `approvedProofId` + `approvedAt` and **physically delete** other proofs’ Storage objects (set per-proof `fullSizePurgedAt`). On terminal **without** an approved downloadable proof (`rejected` / `cancelled`), delete **all** proof full-res objects. After staff completes with `finalSource`, Portal Download / Add to Request prefer the final artwork. The approved proof full-res remains within the **14-day** window (`ASSISTED_CREATION_APPROVED_PROOF_RETENTION_DAYS`), then `purgeExpiredAssistedCreationProofs` / scheduled job deletes it and sets `fullSizePurgedAt`. Legacy `approved` docs without `approvedProofId`/`approvedAt` fail closed (no download) unless `finalSource` is present. Portal Download is on the Overview **Approved design** card (via Admin-streamed file callable). The Proofs list and modal title label the approved proof with an **Approved** badge.
 
-One **open** request per customer (`submitted` | `in_progress` | `proof_ready` | `revision_requested`). Status machine supports staff proofing and customer approve / revision-with-notes until `approved` (also `rejected` / `cancelled`). While status is **`submitted`** only, the customer may update `answers` and `referenceImages` (callable `customerUpdateAssistedCreationRequest`); content updates are locked once staff marks `in_progress`. Customer cancel (`cancelAssistedCreationRequest`) requires a non-empty `reason` (max revision-note length); the server persists `customerCancelReason` and appends a status history note. Staff cancel/reject/restore still require a reason in history only (no `customerCancelReason`). Separately, `customerSendAssistedCreationMessage` and `staffSendAssistedCreationMessage` append text-only chat notes **only while the request is open** (`canSendAssistedCreationMessage`); terminal statuses (`approved` | `rejected` | `cancelled`) reject new sends with `failed-precondition` (“Messaging is closed for completed requests.”). Entries are same-status and never reopen or transition the request. Messages are trimmed, required, capped at 2,000 characters, and limited to one per actor role per request per 10 seconds. Customer update history notes use `Request updated` (optional staff-visible detail after an em dash). Chat rows use structural `kind: "customer_message"` or `kind: "staff_message"`; `AssistedCreationRevisionEntry.kind` is optional for legacy records and also supports `status`, `request_update`, and `proof_email_sent`. When a proof-ready email delivery job completes successfully, the worker appends a system history entry `Proof-ready email sent` (with optional `emailDeliveryJobId` for idempotency). On approve, customer may optionally set `customerRating` (1–5) and `customerApprovalNote` (short text), plus `approvedProofId` / `approvedAt`. Client Firestore writes denied; callables only. Helper may read; owner/admin mutate status, attach proofs, and send staff Messages on open requests (ADR-FP-088, ADR-FP-092, ADR-FP-093, ADR-FP-094). Owner wipe on `fresh-prints-dev` uses Test Data Reset target `assistedCreationRequests` (`wipeOperationalTestData`) and clears Storage under `assisted-creation/`.
+**Add to Request (ADR-FP-094 / ADR-FP-110):** Portal callable `customerAddAssistedApprovedProofToPrintRequest` server-copies the **final source when present**, else the approved proof, into `customer-uploads/...` (source + production + preview + thumbnail), creates a `customerUploads` doc (`purpose: print_request`, audit fields `assistedCreationRequestId` / `assistedProofId`), and attaches a `printRequestItems` row (`sourceType: customer_upload`, qty 1, size from pixels) to the working Current Request (lazy-create). Skips customer-upload transparency / quality rejection gates (staff-provided art). **Library listing consent (residual):** before add, Portal modal Allow / Don’t allow maps to `catalogUseAcknowledged: true | false` — the same field as print-upload attach and donate. Server applies shared `buildCatalogIntakeConfirmationPatch` so both choices set `catalogReviewStatus: pending_staff_review` (Studio Customer Uploads intake), plus `ownershipConfirmed`, `termsVersion`, `confirmedAt`. Allow → staff may promote later; Don’t allow → intake still sees the row with Design Library permission **Declined** (no auto-publish either way). Skip modal when already in working request. Denormalizes `printRequestIngest` (optional `catalogUseAcknowledged`) on the assisted request for idempotency and “Already in request” UX. Assisted 14-day proof purge does **not** delete the copied upload assets.
 
-Per-staff unread customer-update markers live in `assistedCreationUpdateAcks/{userId__requestId}` with `readThroughAt` (legacy submitted updates plus `kind: "customer_message"` in any status when `at > readThroughAt`). Studio header **Messages** inbox (alerts-style) lists unread previews and deep-links to Custom Designs → Assisted → Messages; opening a row advances `readThroughAt` for that entry. Stage-tab and list-card unread chips were removed in favor of the inbox. Studio detail tabs: **Overview** (brief + references + **Internal staff notes** with Save notes + primary Staff actions when Start work / Resume apply + Reject/Cancel/Restore in status-row ⋯; when status is `cancelled` and `customerCancelReason` is set, show **Customer cancel reason** under the status header) + **Proofs** (list + proof upload when `in_progress`), **Messages** (capped thread + Send a message compose only). In **Messages**, each unread customer row shows a **Read** control; clicking it advances `readThroughAt` to that entry’s `at` (monotonic). The Messages header keeps a count badge only. **Requires deployed Firestore rules** for this collection on the target project (`firebase deploy --only firestore:rules --project fresh-prints-dev`); until then Studio shows a toast on mark-read permission failures.
+One **open** request per customer (`submitted` | `in_progress` | `proof_ready` | `revision_requested` | `final_source_needed`). Status machine supports staff proofing, customer approve → Final Source Needed, staff final upload → `approved`, and revision-with-notes (also `rejected` / `cancelled`). **Staff reject** is allowed only from **`submitted`** (New tab / before Start Work); after Start Work, staff must **cancel** instead (shared `assertAssistedCreationTransition` + `staffUpdateAssistedCreationStatus` fail closed). Staff cancel remains available from open statuses; customer cancel and owner restore are unchanged. While status is **`submitted`** only, the customer may update `answers` and `referenceImages` (callable `customerUpdateAssistedCreationRequest`); content updates are locked once staff marks `in_progress`. Customer cancel (`cancelAssistedCreationRequest`) requires a non-empty `reason` (max revision-note length); the server persists `customerCancelReason` and appends a status history note. Staff cancel/reject/restore still require a reason in history only (no `customerCancelReason`). Separately, `customerSendAssistedCreationMessage` and `staffSendAssistedCreationMessage` append text-only chat notes **only while the request is open** (`canSendAssistedCreationMessage`); terminal statuses (`approved` | `rejected` | `cancelled`) reject new sends with `failed-precondition` (“Messaging is closed for completed requests.”). Entries are same-status and never reopen or transition the request. Messages are trimmed, required, capped at 2,000 characters, and limited to one per actor role per request per 10 seconds. Customer update history notes use `Request updated` (optional staff-visible detail after an em dash). Chat rows use structural `kind: "customer_message"` or `kind: "staff_message"`; `AssistedCreationRevisionEntry.kind` is optional for legacy records and also supports `status`, `request_update`, and `proof_email_sent`. When a proof-ready email delivery job completes successfully, the worker appends a system history entry `Proof-ready email sent` (with optional `emailDeliveryJobId` for idempotency). On approve, customer may optionally set `customerRating` (1–5) and `customerApprovalNote` (short text), plus `approvedProofId` / `approvedAt`. Client Firestore writes denied; callables only. Helper may read; owner/admin mutate status, attach proofs / final artwork, and send staff Messages on open requests (ADR-FP-088, ADR-FP-092, ADR-FP-093, ADR-FP-094, ADR-FP-110). Owner wipe on `fresh-prints-dev` uses Test Data Reset target `assistedCreationRequests` (`wipeOperationalTestData`) and clears Storage under `assisted-creation/` (including `final/`).
 
-Customer-facing in-app alerts live in `customerNotifications/{id}` (Admin SDK writes on proof attach and staff Messages; customer may set `readAt` only). Optional browser push tokens live in `customers/{customerId}/webPushSubscriptions/{id}` (callable `registerWebPushSubscription`). Preference `assistedBrowserPushOptIn` (default on) is separate from `assistedProofEmailOptIn`.
+Per-staff unread customer-update markers live in `assistedCreationUpdateAcks/{userId__requestId}` with `readThroughAt` (legacy submitted updates plus `kind: "customer_message"` in any status when `at > readThroughAt`). Studio header **Messages** inbox (alerts-style) lists unread previews and deep-links to Custom Designs → Assisted → Messages; opening a row advances `readThroughAt` for that entry. Stage-tab and list-card unread chips were removed in favor of the inbox. Studio detail tabs: **Overview** (brief + **Request details** listing every non-empty `AssistedCreationAnswers` field via shared `buildAssistedCreationAnswerDisplayRows` — including subject extras, exact-wording notes/checkboxes when applicable, and reference usage — plus references with unavailable placeholders when Storage URLs fail + **Internal staff notes** with Save notes + primary Staff actions when Start work / Resume apply + Reject (submitted/New only)/Cancel/Restore in status-row ⋯ + **AI Context** copy-only modal; when status is `cancelled` and `customerCancelReason` is set, show **Customer cancel reason** under the status header) + **Proofs** (list + proof upload when `in_progress` + **Upload Final Artwork** when `final_source_needed`), **Messages** (capped thread + Send a message compose only). Studio stage tabs: New → In progress → Revisions → Proof ready → **Final Source Needed** → Completed. Start Work / Resume follow-navigate to the In progress tab with the same request selected. In **Messages**, each unread customer row shows a **Read** control; clicking it advances `readThroughAt` to that entry’s `at` (monotonic). The Messages header keeps a count badge only. **Requires deployed Firestore rules** for this collection on the target project (`firebase deploy --only firestore:rules --project fresh-prints-dev`); until then Studio shows a toast on mark-read permission failures.
+
+Customer-facing in-app alerts live in `customerNotifications/{id}` (Admin SDK writes on proof attach, catalog-share suggest, and staff Messages; customer may set `readAt` only). Kinds include `assisted_proof_ready`, `assisted_catalog_share_ready`, and `assisted_staff_message`. Optional browser push tokens live in `customers/{customerId}/webPushSubscriptions/{id}` (callable `registerWebPushSubscription`). Preference `assistedBrowserPushOptIn` (default on) is separate from `assistedProofEmailOptIn`. Final-ready push/email is **out of scope** for ADR-FP-110 (Portal list refresh is sufficient).
 
 ---
 
@@ -1772,16 +1814,88 @@ Bounds: integers 1–10000.
 interface PortalSocialMetaSettings {
   ogTitle: string; // 1–120 chars
   ogDescription: string; // 1–300 chars
+  /** Letterbox designs onto 1200×630 for Facebook wide previews (default true). */
+  letterboxOgImages: boolean;
+  /** Non-design URLs: interval library rotation or brand logo (default "library"). */
+  globalOgImageSource: "library" | "logo";
+  /**
+   * UTC-aligned library OG rotation cadence (default "hourly").
+   * Values: "daily" | "hourly" | "5min" | "1min" | "30s".
+   * Not “every share” — Facebook/WhatsApp/Messenger cache OG by page URL.
+   */
+  libraryOgRotationInterval: "daily" | "hourly" | "5min" | "1min" | "30s";
+  /**
+   * Shifts the library pick (default 0). Studio “Pick next library preview” bumps this
+   * so testing can change the image without waiting for the next interval bucket.
+   */
+  libraryOgRotationSalt: number; // 0–1_000_000
   updatedAt: Timestamp;
   updatedBy: string;
 }
 ```
 
-Owner-editable global Open Graph title/description for Portal non-design URLs (home, login,
-register, etc.). Studio **Settings → Social sharing**. Writes via `updatePortalSocialMetaSettings`
-(owner-only callable). Client reads: owners only; Portal App Hosting uses Admin for meta
-generation. Missing doc resolves to brand defaults. Preview image is **not** stored here — Portal
-picks a daily-rotated ready-library design image (fallback brand logo).
+Owner-editable global Open Graph for Portal non-design URLs (home, catalog, login, etc.).
+Studio **Settings → Social sharing**. Writes via `updatePortalSocialMetaSettings` (owner-only
+callable). Client reads: owners only. Portal prefers public Function `getPortalGlobalOpenGraph`
+for crawler meta (title/description/image); Admin settings-only is a fallback. Missing doc
+resolves to brand defaults (`letterboxOgImages: true`, `globalOgImageSource: "library"`,
+`libraryOgRotationInterval: "hourly"`, `libraryOgRotationSalt: 0`). Library image index is
+stable for the selected UTC interval bucket (`pickLibraryOgRotatedIndex` + salt) — Facebook
+Scrape Again alone does not change it until the bucket advances.
+When letterbox is on, design and library `og:image` URLs point at public Function
+`getPortalOgShareImage` (composed JPEG using the design’s `artworkBackgroundHex`, fallback
+`#e5e7eb`) with query `fit=contain&bg=<hex>` (`bg` is a Facebook/CDN cache-bust; Function
+paints from the design document, not the query). When off, signed Storage preview/thumbnail
+URLs are used.
+
+### `settings/brandLogos`
+
+```ts
+interface BrandLogoSlot {
+  storagePath: string; // brand/{studio|portal}/{full|collapsed}/{uuid}.png
+  downloadUrl: string; // HTTPS Firebase download URL (server-authored)
+  contentType: "image/png";
+  byteSize: number;
+  aspectRatio?: number; // width/height from upload (display linking)
+  updatedAt: Timestamp;
+  updatedBy: string;
+}
+
+interface BrandLogoDisplayBox {
+  widthPx: number; // 16–400
+  heightPx: number; // 16–400
+}
+
+interface BrandLogoSettings {
+  studioFull?: BrandLogoSlot | null;
+  studioCollapsed?: BrandLogoSlot | null;
+  portalFull?: BrandLogoSlot | null;
+  portalCollapsed?: BrandLogoSlot | null;
+  portalHeader: BrandLogoDisplayBox;
+  portalSidebar: BrandLogoDisplayBox; // expanded sidebar; defaults match portalHeader
+  portalSidebarCollapsed: BrandLogoDisplayBox;
+  portalAuth: BrandLogoDisplayBox;
+  studioSidebar: BrandLogoDisplayBox;
+  studioSidebarCollapsed: BrandLogoDisplayBox;
+  studioLogin: BrandLogoDisplayBox;
+  updatedAt: Timestamp;
+  updatedBy: string;
+}
+```
+
+Owner-editable Studio + Portal brand logos (full + collapsed). Studio **Settings → Brand logos**.
+Client uploads PNG to Storage `brand/…` (owner create); `finalizeBrandLogoSlot` (owner-only
+callable) verifies the object via Admin metadata, writes `contentType` / `byteSize` /
+`downloadUrl` from Storage (does not trust client file metadata), optionally stores validated
+`aspectRatio`, and deletes the prior object on replace/clear. Display boxes
+(`widthPx` × `heightPx`, aspect ratio locked in Studio UI) are owner-editable via
+`updateBrandLogoDisplaySizes`. Portal **header** (`portalHeader`) and **expanded
+sidebar** (`portalSidebar`) are separate owner controls that default to the same
+box (height 52). Collapsed sidebar remains `portalSidebarCollapsed`. Firestore:
+**public read**, client writes denied. Missing
+slots → apps use bundled/`public/brand` static fallbacks. When
+`portalSocialMeta.globalOgImageSource === "logo"`, `getPortalGlobalOpenGraph` prefers
+`portalFull.downloadUrl` when set.
 
 ### `emailDeliveryJobs`
 
@@ -1791,7 +1905,7 @@ cannot introduce Firestore path separators.
 
 | Field | Purpose |
 |-------|---------|
-| `id`, `kind` | Stable identity; kind is `assisted_proof_ready` |
+| `id`, `kind` | Stable identity; kind is `assisted_proof_ready` or `assisted_catalog_share_ready` |
 | `requestId`, `proofId` | Source proof identity |
 | `customerId`, `customerUid` | Trusted recipient linkage; no recipient email copy |
 | `provider` | Provider snapshot (`resend` \| `brevo`) |

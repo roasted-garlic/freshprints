@@ -49,7 +49,14 @@ export const OPERATIONAL_WIPE_TARGET_OPTIONS: OperationalWipeTargetOption[] = [
     label: "Designs",
     summary: "Catalog docs + Storage originals/thumbnails/previews.",
     description:
-      "Deletes all design documents and Storage originals/thumbnails/previews. Automatically includes Print Requests. Categories, tags, accounts, and settings are kept. Requires an extra confirmation modal. Catalog designs may keep sourceCustomerUploadId even if Customer Uploads are wiped — select Customer Uploads to clear upload docs/Storage.",
+      "Deletes all design documents and Storage originals/thumbnails/previews. Automatically includes Print Requests. Categories, tags, accounts, and settings are kept. Requires an extra confirmation modal. Catalog designs may keep sourceCustomerUploadId even if Customer Uploads are wiped — select Customer Uploads to clear upload docs/Storage. Mutually exclusive with AI Processing (selective inbox wipe).",
+  },
+  {
+    id: "aiProcessingDesigns",
+    label: "AI Processing",
+    summary: "Imported / needs review / rejected designs + their Storage; keeps ready library.",
+    description:
+      "Deletes only designs that appear on the AI Processing page (Processing, Needs Review, and Rejected tabs), regardless of pipeline stage, plus those designs’ Storage originals/thumbnails/previews. Keeps ready Design Library designs and archived designs. Does not wipe print requests or customer uploads. Mutually exclusive with full Designs wipe.",
   },
   {
     id: "customerUploads",
@@ -77,6 +84,6 @@ export const OPERATIONAL_WIPE_TARGET_OPTIONS: OperationalWipeTargetOption[] = [
     label: "Custom Requests",
     summary: "Assisted requests, acks, notifications, email jobs, legacy customRequests.",
     description:
-      "Deletes Assisted Creation docs (assistedCreationRequests) and Storage under assisted-creation/, plus staff update acks, customerNotifications, emailDeliveryJobs, and legacy customRequests. Does not affect Etsy searches.",
+      "Deletes Assisted Creation docs (assistedCreationRequests) and Storage under assisted-creation/ (references, proofs, and final artwork), plus staff update acks, customerNotifications, emailDeliveryJobs, and legacy customRequests. Does not affect Etsy searches.",
   },
 ];

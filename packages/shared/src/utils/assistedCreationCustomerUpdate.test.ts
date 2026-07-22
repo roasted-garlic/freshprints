@@ -58,6 +58,38 @@ describe("parseAssistedCreationReferenceImageUpdateInputs", () => {
     assert.equal(result[1]?.id, "ref-2");
   });
 
+  it("retains an existing request-scoped references path", () => {
+    const existingOnRequest = [
+      {
+        id: "ref-1",
+        storagePath: "assisted-creation/uid-1/req-abc/references/ref-1",
+        fileName: "a.png",
+        contentType: "image/png",
+        sizeBytes: 100,
+      },
+    ];
+    const result = parseAssistedCreationReferenceImageUpdateInputs(
+      [
+        existingOnRequest[0],
+        {
+          id: "ref-2",
+          storagePath: "assisted-creation/uid-1/pending/ref-2",
+          fileName: "b.jpg",
+          contentType: "image/jpeg",
+          sizeBytes: 200,
+        },
+      ],
+      {
+        customerUid: "uid-1",
+        requireCloneUpload: false,
+        existingImages: existingOnRequest,
+      },
+    );
+    assert.equal(result.length, 2);
+    assert.equal(result[0]?.storagePath, existingOnRequest[0]?.storagePath);
+    assert.equal(result[1]?.id, "ref-2");
+  });
+
   it("rejects paths that are neither existing nor pending for the caller", () => {
     assert.throws(
       () =>

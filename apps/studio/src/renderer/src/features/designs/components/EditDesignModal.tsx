@@ -36,6 +36,7 @@ export function EditDesignModal({
   const { user } = useAuth();
   const { clearError, error, isSubmitting, updateDesign } = useUpdateDesign();
   const [formValues, setFormValues] = useState<DesignFormValues>(emptyDesignFormValues);
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   const categoryOptions = useMemo<SelectOption[]>(
     () => [
@@ -54,6 +55,7 @@ export function EditDesignModal({
 
     setFormValues(mapDesignToFormValues(design));
     clearError();
+    setValidationError(null);
   }, [clearError, design, isOpen]);
 
   if (!user || !design || !permissionService.canEditDesigns(user)) {
@@ -61,6 +63,7 @@ export function EditDesignModal({
   }
 
   function handleFieldChange(field: keyof DesignFormValues, value: string) {
+    setValidationError(null);
     setFormValues((currentValues) => ({
       ...currentValues,
       [field]: value,
@@ -70,9 +73,16 @@ export function EditDesignModal({
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     clearError();
+    setValidationError(null);
+
+    const updateInput = buildEditDesignUpdateInput(formValues);
+    if (!updateInput) {
+      setValidationError("Enter a valid custom background color as #RRGGBB.");
+      return;
+    }
 
     try {
-      await updateDesign(design!.id, buildEditDesignUpdateInput(formValues));
+      await updateDesign(design!.id, updateInput);
       await onUpdated();
       onClose();
     } catch {
@@ -105,7 +115,7 @@ export function EditDesignModal({
             approvedTags={approvedTags}
             categoryOptions={categoryOptions}
             designId={design.id}
-            error={error}
+            error={validationError ?? error}
             formValues={formValues}
             isArchived={design.status === "archived"}
             onChange={handleFieldChange}

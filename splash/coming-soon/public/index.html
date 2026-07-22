@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="MyPrintRequest.com — Fresh Prints Request Portal. Coming soon."
+    />
+    <meta name="theme-color" content="#050508" />
+    <title>MyPrintRequest — Coming Soon</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css?v=13" />
+  </head>
+  <body>
+    <div class="atmosphere" aria-hidden="true">
+      <div class="orb orb-pink"></div>
+      <div class="orb orb-cyan"></div>
+      <div class="grid"></div>
+      <div class="scanlines"></div>
+      <div class="vignette"></div>
+      <div class="cursor-glow" id="cursor-glow"></div>
+    </div>
+
+    <main class="stage">
+      <div class="brand">
+        <img
+          class="logo"
+          src="assets/fresh-prints-request-portal-logo.png"
+          width="1200"
+          height="484"
+          alt="Fresh Prints Request Portal"
+        />
+      </div>
+
+      <h1 class="headline">Coming Soon</h1>
+      <p class="lede">
+        Custom print requests are almost ready. Hang tight — we're finishing the
+        press.
+      </p>
+
+      <button
+        type="button"
+        class="notify-trigger"
+        id="notify-open"
+        aria-haspopup="dialog"
+        aria-controls="notify-dialog"
+      >
+        Notify me
+      </button>
+      <p class="notify-hint">
+        We'll email you when MyPrintRequest goes live.
+      </p>
+
+      <p class="domain">myprintrequest.com</p>
+    </main>
+
+    <div
+      class="notify-backdrop"
+      id="notify-backdrop"
+      hidden
+      data-notify-close
+    ></div>
+
+    <div
+      class="notify-dialog"
+      id="notify-dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="notify-title"
+      hidden
+    >
+      <div class="notify-dialog-chrome">
+        <button
+          type="button"
+          class="notify-close"
+          id="notify-close"
+          aria-label="Close"
+          data-notify-close
+        >
+          ×
+        </button>
+
+        <form class="notify-form" id="notify-form" novalidate>
+          <h2 class="notify-title" id="notify-title">Get launch updates</h2>
+          <p class="notify-sub">
+            Drop your email (and phone if you want a text). We’ll email you when
+            MyPrintRequest goes live.
+          </p>
+
+          <!-- Honeypot — browsers should not autofill; JS never forwards a filled value -->
+          <label class="hp" aria-hidden="true">
+            Leave blank
+            <input
+              type="text"
+              name="website_url_hp"
+              id="notify-honeypot"
+              tabindex="-1"
+              autocomplete="off"
+              autocapitalize="off"
+              spellcheck="false"
+              inputmode="none"
+              value=""
+            />
+          </label>
+
+          <label class="notify-field" for="notify-email">
+            <span class="notify-label">Email</span>
+            <input
+              class="notify-input"
+              type="email"
+              id="notify-email"
+              name="email"
+              autocomplete="email"
+              inputmode="email"
+              required
+              placeholder="you@email.com"
+            />
+          </label>
+
+          <label class="notify-field" for="notify-phone">
+            <span class="notify-label"
+              >Phone <span class="optional">(optional)</span></span
+            >
+            <input
+              class="notify-input"
+              type="tel"
+              id="notify-phone"
+              name="phone"
+              autocomplete="tel"
+              inputmode="tel"
+              placeholder="555 555 5555"
+            />
+          </label>
+
+          <p class="notify-status" id="notify-status" role="status" hidden></p>
+
+          <button type="submit" class="notify-submit" id="notify-submit">
+            Notify me
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <div
+      class="success-dialog"
+      id="success-dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="success-title"
+      hidden
+    >
+      <div class="success-dialog-chrome">
+        <button
+          type="button"
+          class="notify-close"
+          id="success-close"
+          aria-label="Close"
+          data-success-close
+        >
+          ×
+        </button>
+        <div class="success-panel">
+          <div class="success-mark" aria-hidden="true">
+            <svg class="success-svg" viewBox="0 0 72 72">
+              <circle class="success-ring" cx="36" cy="36" r="32" />
+              <path
+                class="success-check"
+                d="M22 37.5 L31.5 47 L51 26"
+              />
+            </svg>
+          </div>
+          <h2 class="success-title" id="success-title">You're on the list</h2>
+          <p class="success-sub">
+            We'll ping you when MyPrintRequest goes live.
+          </p>
+          <button type="button" class="success-done" data-success-close>
+            Awesome
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div
+      class="already-dialog"
+      id="already-dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="already-title"
+      hidden
+    >
+      <div class="already-dialog-chrome">
+        <button
+          type="button"
+          class="notify-close"
+          id="already-close"
+          aria-label="Close"
+          data-already-close
+        >
+          ×
+        </button>
+        <div class="already-panel">
+          <div class="already-mark" aria-hidden="true">
+            <svg class="already-svg" viewBox="0 0 72 72">
+              <circle class="already-ring" cx="36" cy="36" r="32" />
+              <path class="already-check" d="M22 37.5 L31.5 47 L51 26" />
+            </svg>
+          </div>
+          <h2 class="already-title" id="already-title">Already on the list</h2>
+          <p class="already-sub">
+            You're all set — we'll still ping you when we go live.
+          </p>
+          <button type="button" class="already-done" data-already-close>
+            Got it
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script src="script.js?v=13" defer></script>
+  </body>
+</html>

@@ -566,6 +566,7 @@ export function CurrentRequestDrawer() {
                       {catalogPath ? (
                         <CatalogThumbnailPanel
                           alt=""
+                          artworkBackgroundHex={design?.artworkBackgroundHex}
                           catalogPath={catalogPath}
                           className="current-request-drawer-thumb"
                           contentVersion={design?.updatedAtMs}

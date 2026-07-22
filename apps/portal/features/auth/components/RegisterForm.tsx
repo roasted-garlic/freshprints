@@ -8,6 +8,7 @@ import { PORTAL_BIDDING_ACKNOWLEDGMENT_VERSION } from '@fresh-prints/shared/cons
 import { buildPortalBiddingAcknowledgmentSignupCopy } from '@fresh-prints/shared/utils/portalBiddingAcknowledgmentCopy';
 
 import { useAuth } from '../context/AuthContext';
+import { portalAuthService } from '../services/authService';
 import { needsPortalCustomerProfileCompletion } from '../types/auth.types';
 import { UserPlusIcon } from '../../shared/components/PortalIcons';
 import { PortalBiddingAcknowledgmentModal } from '../../shared/components/PortalBiddingAcknowledgmentModal';
@@ -44,6 +45,10 @@ export function RegisterForm() {
     clearAuthError();
     setLocalError(null);
   }, [clearAuthError]);
+
+  useEffect(() => {
+    void portalAuthService.clearAnonymousGuestSession();
+  }, []);
 
   useEffect(() => {
     if (!error && !localError) {
@@ -138,7 +143,7 @@ export function RegisterForm() {
         onClick={() => setShowEmailForm((open) => !open)}
         type="button"
       >
-        {showEmailForm ? 'Hide email sign-up' : 'Sign up with email'}
+        {showEmailForm ? 'Hide email signup' : 'Signup with email'}
       </button>
 
       {showEmailForm ? (
@@ -190,17 +195,17 @@ export function RegisterForm() {
             type="submit"
           >
             <UserPlusIcon />
-            {isBusy ? 'Creating account…' : 'Create account'}
+            {isBusy ? 'Signing up…' : 'Signup'}
           </button>
         </form>
       ) : null}
 
       <p className="portal-auth-footer">
-        Already have an account? <Link href="/login">Sign in</Link>
+        Already have an account? <Link href="/login">Login</Link>
       </p>
 
       <PortalBiddingAcknowledgmentModal
-        confirmLabel="Create account"
+        confirmLabel="Signup"
         copy={signupCopy}
         isBusy={isBusy}
         isOpen={pendingRegistration !== null}
@@ -217,7 +222,7 @@ export function RegisterForm() {
       {isBusy ? (
         <AuthBusyOverlay
           message="This may take a moment."
-          title="Creating your account…"
+          title="Signing you up…"
         />
       ) : null}
     </div>

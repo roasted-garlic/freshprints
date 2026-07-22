@@ -17,7 +17,7 @@ be used as the product email API key. See `docs/workflow/setup/brevo-mcp-setup.m
 - Owner access to the Brevo dashboard and Firebase project
 - Sender domain or address verified in Brevo for the from-address used by
   `INVITATION_FROM_EMAIL` / `PROOF_NOTICE_FROM_EMAIL` (default
-  `Fresh Prints <team@funkyfreshprints.com>`)
+  `Fresh Prints <noreply@myprintrequest.com>`)
 
 ## Step-by-step
 

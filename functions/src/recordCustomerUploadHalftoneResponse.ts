@@ -14,7 +14,9 @@ import {
   permissionDenied,
   unauthenticated,
 } from "./lib/errors";
+import { isAnonymousAuthToken } from "./lib/catalogDonationUploader";
 import { requirePortalCustomer } from "./lib/portalCustomer";
+import { resolveCustomerUploadPurpose } from "../../packages/shared/src/utils/customerUploadPurpose";
 
 const ALLOWED = new Set(["yes", "no"] as const);
 
@@ -40,7 +42,10 @@ export const recordCustomerUploadHalftoneResponse = onCall(
       throw unauthenticated();
     }
 
-    await requirePortalCustomer(request.auth.uid);
+    const isGuest = isAnonymousAuthToken(request.auth.token);
+    if (!isGuest) {
+      await requirePortalCustomer(request.auth.uid);
+    }
 
     let payload: RecordCustomerUploadHalftoneResponseRequest;
     try {
@@ -64,6 +69,10 @@ export const recordCustomerUploadHalftoneResponse = onCall(
     const data = snap.data() ?? {};
     if (data.customerUid !== request.auth.uid) {
       throw permissionDenied("You can only update your own uploads.");
+    }
+
+    if (isGuest && resolveCustomerUploadPurpose(data.purpose) !== "catalog_donation") {
+      throw permissionDenied("Sign in to update print-request uploads.");
     }
 
     if (data.technicalStatus !== "ready") {

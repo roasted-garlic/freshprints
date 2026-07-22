@@ -37,6 +37,7 @@ export function DesignCard({
       <button className="card design-card" onClick={() => onSelect(design)} type="button">
         <DesignThumbnailPanel
           alt={`${design.title} thumbnail`}
+          artworkBackgroundHex={design.artworkBackgroundHex}
           catalogPath={design.thumbnailPath}
           className="design-card-thumbnail"
           decorative

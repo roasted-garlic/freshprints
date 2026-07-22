@@ -12,7 +12,7 @@ import '../styles/etsy-recommendations.css'
 import '../styles/assisted-creation.css'
 import '../styles/shell.css'
 
-/** Refresh global OG settings / daily library image without force-dynamic on every page. */
+/** Refresh global OG settings / hourly library image without force-dynamic on every page. */
 export const revalidate = 3600
 
 export async function generateMetadata(): Promise<Metadata> {

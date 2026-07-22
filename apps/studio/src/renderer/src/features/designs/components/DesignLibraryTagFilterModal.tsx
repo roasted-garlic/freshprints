@@ -5,7 +5,11 @@ import { Button } from "../../../shared/components/Button";
 import { Checkbox } from "../../../shared/components/Checkbox";
 import { ModalBody, ModalFooter, ModalHeader } from "../../../shared/components/Modal";
 import { TextInput } from "../../../shared/components/TextInput";
-import { computeFacetedTagsForDraftSelection, sortTagsAlphabetically } from "../utils/designLibrarySearch";
+import {
+  computeFacetedTagsForDraftSelection,
+  countVisibleSelectedTags,
+  sortTagsAlphabetically,
+} from "../utils/designLibrarySearch";
 import type { CatalogTag } from "../types/catalogTag.types";
 import type { Design } from "../types/design.types";
 import { DesignLibraryModal } from "./DesignLibraryModal";
@@ -103,6 +107,8 @@ export function DesignLibraryTagFilterModal({
       ? "No tags match your search."
       : null;
 
+  const visibleDraftTagCount = countVisibleSelectedTags(draftSelectedTags);
+
   return (
     <DesignLibraryModal
       ariaLabelledBy="design-library-tag-filter-title"
@@ -175,13 +181,15 @@ export function DesignLibraryTagFilterModal({
             Clear filters
           </Button>
         </div>
+        {/* Spacer so Cancel/Apply land in the right grid column (shared 3-col footer). */}
+        <div aria-hidden="true" className="design-details-footer-center" />
         <div className="design-details-footer-actions">
           <Button onClick={onClose} type="button" variant="secondary">
             Cancel
           </Button>
           <Button onClick={handleApply} type="button" variant="primary">
             Apply tags
-            {draftSelectedTags.length > 0 ? ` (${draftSelectedTags.length})` : ""}
+            {visibleDraftTagCount > 0 ? ` (${visibleDraftTagCount})` : ""}
           </Button>
         </div>
       </ModalFooter>

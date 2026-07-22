@@ -10,9 +10,11 @@ interface DesignLibraryFilterControlsProps {
   archivedChecked?: boolean;
   categoryFilter: string;
   categoryOptions: SelectOption[];
+  halftoneFilterOn?: boolean;
   showArchivedToggle?: boolean;
   onCategoryChange: (value: string) => void;
   onArchivedChange?: (checked: boolean) => void;
+  onHalftoneFilterChange?: (on: boolean) => void;
   onOpenTags: () => void;
   onSearchChange: (value: string) => void;
   searchQuery: string;
@@ -21,16 +23,18 @@ interface DesignLibraryFilterControlsProps {
 }
 
 /**
- * Presentational filter controls (search, category, tags).
+ * Presentational filter controls (search, category, tags, optional Halftone).
  * Renders UI only — all state lives in the page so the fixed dock and URL filters stay in sync.
  */
 export function DesignLibraryFilterControls({
   archivedChecked = false,
   categoryFilter,
   categoryOptions,
+  halftoneFilterOn = false,
   showArchivedToggle = false,
   onArchivedChange,
   onCategoryChange,
+  onHalftoneFilterChange,
   onOpenTags,
   onSearchChange,
   searchQuery,
@@ -56,6 +60,16 @@ export function DesignLibraryFilterControls({
         options={categoryOptions}
         value={categoryFilter}
       />
+
+      {onHalftoneFilterChange ? (
+        <Toggle
+          checked={halftoneFilterOn}
+          label="Halftone"
+          name="designLibraryHalftoneFilter"
+          onChange={onHalftoneFilterChange}
+          tone="success"
+        />
+      ) : null}
 
       <Button className="button-leading-icon" onClick={onOpenTags} size="sm" variant="secondary">
         <ListFilter aria-hidden="true" size={16} strokeWidth={2} />

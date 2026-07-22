@@ -55,3 +55,11 @@ export function resolvePortalNavHref(item: PortalNavItem, pathname: string): str
 
   return buildRequestArtworkHref({ returnTo });
 }
+
+/**
+ * Guest menu links stay on the real soft-auth routes inside the app shell.
+ * AuthGate no longer redirects away; PortalAppShell shows a content overlay.
+ */
+export function resolvePortalNavHrefForGuest(item: PortalNavItem, pathname: string): string {
+  return resolvePortalNavHref(item, pathname);
+}

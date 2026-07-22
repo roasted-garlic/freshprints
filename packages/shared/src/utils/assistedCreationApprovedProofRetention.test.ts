@@ -158,6 +158,26 @@ describe("selectAssistedCreationProofIdsToPurgeOnTerminal", () => {
       ["p2"],
     );
   });
+
+  it("skips catalog_share rows even when storagePath is set", () => {
+    assert.deepEqual(
+      selectAssistedCreationProofIdsToPurgeOnTerminal({
+        terminalKind: "rejected_or_cancelled",
+        proofs: [
+          proofs[0]!,
+          {
+            id: "c1",
+            kind: "catalog_share",
+            storagePath: "previews/should-not-purge.webp",
+            fileName: "Library design",
+            contentType: "",
+            fullSizePurgedAtMillis: null,
+          },
+        ],
+      }),
+      ["p1"],
+    );
+  });
 });
 
 describe("isAssistedCreationProofPng", () => {

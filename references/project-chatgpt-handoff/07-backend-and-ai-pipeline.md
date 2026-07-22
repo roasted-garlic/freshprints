@@ -13,6 +13,21 @@ No custom REST API for core ops. Business logic in app services + Cloud Function
 
 Deploy target for current work: **`fresh-prints-dev` only** unless human approves production.
 
+### Brand logos (ADR-FP-114)
+
+- Firestore `settings/brandLogos` (public read; client writes denied)
+- Storage `brand/{studio|portal}/{full|collapsed}/…` (owner create; PNG ≤ 2 MiB)
+- Callables: `finalizeBrandLogoSlot` (Admin-derived metadata/URL), `updateBrandLogoDisplaySizes` (AR-locked boxes; separate Portal header vs sidebar; defaults height 52)
+- Soft-deployed to **fresh-prints-dev** 2026-07-22; **production** Functions/rules/storage still need explicit APPROVE
+- Splash / favicons out of scope
+
+### Portal public browse + guest donate (ADR-FP-106)
+
+- Guests may read ready catalog (home + `/catalog/**`); gated routes use in-shell overlay
+- Guest donate: Firebase **Anonymous Auth** + existing donation callables; attribution `guest`; no unauthenticated Storage/Firestore writes
+- **Deploy follow-up (owner):** enable Anonymous Auth; deploy Firestore/Storage rules + Functions before relying on cloud guest donate / public catalog rules
+- **#14 Done:** `onShowAllocationCreated` soft-deployed to `fresh-prints-dev` 2026-07-21 (Recently Requested / `lastAddedToShowAt`, ADR-FP-107)
+
 ### Portal show-queue cutoff (ADR-FP-103)
 
 - Setting: `settings/showQueue.portalQueueCutoffHoursBeforeStart` (default 5, clamp 1–72)

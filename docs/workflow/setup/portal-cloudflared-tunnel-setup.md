@@ -94,9 +94,13 @@ See Cloudflare docs: [Create a locally-managed tunnel](https://developers.cloudf
 |---------|-----|
 | `502` / connection error | Confirm `npm run dev:portal` is running on port 3100 |
 | `500 Internal Server Error` after route/code changes | Stop dev server, delete `apps/portal/.next`, restart `npm run dev:portal` |
+| `500` on `/favicon.ico` | Do **not** keep both `apps/portal/app/favicon.ico` and `apps/portal/public/favicon.ico`. Next.js App Router treats `app/favicon.ico` as a page route → **conflicting-public-file-page**. Keep icons in `public/` + `portalSiteMeta` `icons` only. |
 | Firebase auth fails on tunnel URL | Add tunnel hostname to Authorized domains |
 | New tunnel URL after restart | Re-add hostname (quick tunnel) or use named tunnel |
 | Page loads but API errors | Confirm `apps/portal/.env.local` points at `fresh-prints-dev` |
+| Console: `WebSocket … /_next/webpack-hmr` failed | **Expected / harmless** for tunnel QA. Cloudflare Tunnel often does not reliably upgrade Next.js HMR WebSockets. Hot reload may not work on `myprintrequest.dev`; use `http://localhost:3100` for HMR. No tunnel config change required for normal remote testing. |
+| Console: `Cross-Origin-Opener-Policy` would block `window.closed` / `window.close` | **Usually harmless** browser noise from Firebase `signInWithPopup` / Google Identity. Portal does not set COOP headers. Ignore if Google sign-in still completes; only revisit headers if auth is actually broken. |
+| Facebook Sharing Debugger **HTTP 403** / empty OG on `myprintrequest.dev` | Usually **not** Portal AuthGate (client redirect, not 403). With tunnel + Portal up, `/share/design/{id}` returns **200** and full `og:*` tags. Likely cause: Cloudflare **Bot Fight Mode** / WAF / Access challenge, or tunnel/origin down when Facebook crawled. Check Cloudflare Security → Bots / WAF for the zone; allow or skip challenges for `facebookexternalhit`. Keep Portal + named tunnel running during scrape. `robots.txt` is currently **404** (no disallow); optional later: explicit allow for social crawlers — does not fix 403 by itself. Re-scrape in Debugger after CF/tunnel is healthy. See `docs/workflow/reviews/2026-07-20-facebook-share-og-403-findings.md`. |
 
 ## Completion checklist
 
@@ -104,3 +108,14 @@ See Cloudflare docs: [Create a locally-managed tunnel](https://developers.cloudf
 - [ ] Tunnel running and URL copied
 - [ ] Tunnel hostname added to Firebase Authorized domains
 - [ ] Remote device can sign in and browse catalog
+- [ ] `/favicon.ico` returns **200** (not 500) after hard refresh
+
+## Console triage note (2026-07-20)
+
+Owner reported three console issues on `myprintrequest.dev`:
+
+| Error | Worry? | Resolution |
+|-------|--------|------------|
+| `/favicon.ico` 500 | Yes | Fixed — removed duplicate `app/favicon.ico` that conflicted with `public/favicon.ico` |
+| HMR WebSocket failed | No | Expected over tunnel; use localhost for HMR |
+| COOP `window.closed` / `window.close` | No (if auth works) | Firebase popup noise; no Portal COOP headers |

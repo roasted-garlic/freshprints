@@ -71,6 +71,83 @@ export function clearAssistedCreationDraft(): void {
   window.localStorage.removeItem(ASSISTED_CREATION_DRAFT_STORAGE_KEY);
 }
 
+/**
+ * True when a local wizard draft has progress worth Resume/Reset on the hub
+ * (mirrors Find's `hasResumableEtsyRecommendationDraft`).
+ */
+export function hasResumableAssistedCreationDraft(
+  draft: AssistedCreationDraft | null = readAssistedCreationDraft(),
+): boolean {
+  if (!draft) {
+    return false;
+  }
+  if (draft.stepIndex > 0) {
+    return true;
+  }
+  const empty = createEmptyAssistedCreationAnswers();
+  const { answers } = draft;
+  const stringKeys = [
+    'rawDescription',
+    'exactText',
+    'textCapitalizationNotes',
+    'textPunctuationNotes',
+    'primarySubject',
+    'additionalSubjects',
+    'subjectAction',
+    'props',
+    'setting',
+    'occasion',
+    'audience',
+    'mood',
+    'includedColors',
+    'excludedColors',
+    'garmentColor',
+  ] as const;
+  for (const key of stringKeys) {
+    if (answers[key].trim().length > 0) {
+      return true;
+    }
+  }
+  if (answers.requestType !== empty.requestType) {
+    return true;
+  }
+  if (answers.containsText !== empty.containsText) {
+    return true;
+  }
+  if (answers.flexibilityLevel !== empty.flexibilityLevel) {
+    return true;
+  }
+  if (answers.composition !== empty.composition) {
+    return true;
+  }
+  if (answers.hasReferences !== empty.hasReferences) {
+    return true;
+  }
+  if (answers.textLineBreaksExact !== empty.textLineBreaksExact) {
+    return true;
+  }
+  if (answers.textLayoutFlexible !== empty.textLayoutFlexible) {
+    return true;
+  }
+  if (answers.exactRequirements.length > 0) {
+    return true;
+  }
+  if (answers.stylePreferences.length > 0) {
+    return true;
+  }
+  if (answers.referenceUsage.length > 0) {
+    return true;
+  }
+  const personalization = answers.personalizationTypes;
+  if (
+    personalization.length !== 1 ||
+    personalization[0] !== 'no_personalization'
+  ) {
+    return true;
+  }
+  return false;
+}
+
 export function stepIndexForId(stepId: AssistedCreationWizardStepId): number {
   const index = ASSISTED_CREATION_WIZARD_STEPS.findIndex((step) => step.id === stepId);
   return index >= 0 ? index : 0;

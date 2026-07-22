@@ -31,6 +31,7 @@ export interface CompleteCustomerProfileOptions {
 export type PortalAuthBootstrapStatus =
   | 'initializing'
   | 'unauthenticated'
+  | 'anonymous-guest'
   | 'loading-profile'
   | 'ready'
   | 'inactive'

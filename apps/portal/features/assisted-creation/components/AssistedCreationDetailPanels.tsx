@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 
@@ -19,15 +20,11 @@ import {
 } from '@fresh-prints/shared/utils/assistedCreationApprovedProofRetention';
 import { evaluateAssistedApprovedProofAddToRequest } from '@fresh-prints/shared/utils/assistedCreationApprovedProofAddToRequest';
 import {
-  joinLabeledValues,
-  labelForComposition,
-  labelForContainsText,
-  labelForExactRequirement,
-  labelForFlexibility,
-  labelForPersonalization,
-  labelForRequestType,
-  labelForStyle,
-} from '../utils/assistedCreationLabels';
+  assistedCreationCatalogShareProofTitle,
+  chronologicalAssistedCreationImageProofNumber,
+  isAssistedCreationCatalogShareProof,
+} from '@fresh-prints/shared/utils/assistedCreationProofKind';
+import { buildAssistedCreationAnswerDisplayRows } from '@fresh-prints/shared/utils/assistedCreationAnswerDisplay';
 import {
   assistedCreationTimestampMillis,
   buildAssistedHistoryEntries,
@@ -35,7 +32,11 @@ import {
   notesForProof,
 } from '../utils/assistedCreationDisplay';
 import { assistedCreationService } from '../services/assistedCreationService';
+import { catalogStorageService } from '../../catalog/services/catalogStorageService';
+import { buildPortalDesignDeepLinkPath } from '../../catalog/utils/portalDesignShareUrls';
+import { portalPrintRequestService } from '../../print-requests/services/portalPrintRequestService';
 import { usePortalPrintRequests } from '../../print-requests/context/PortalPrintRequestContext';
+import { getPortalAuth } from '../../../lib/firebase/client';
 import { AssistedCreationMediaThumbs } from './AssistedCreationMediaThumbs';
 import {
   AssistedAddToRequestProgressModal,
@@ -56,13 +57,210 @@ function proofCreatedAtMillis(value: unknown): number {
   return 0;
 }
 
-/** Chronological proof number (1 = oldest). Independent of Proofs-tab display sort. */
+/** Chronological proof number among image proofs only (1 = oldest). */
 function chronologicalProofNumber(
   proofsAsc: AssistedCreationProof[],
   proofId: string,
 ): number {
-  const index = proofsAsc.findIndex((proof) => proof.id === proofId);
-  return index >= 0 ? index + 1 : 0;
+  return chronologicalAssistedCreationImageProofNumber(proofsAsc, proofId);
+}
+
+/** Compact approved catalog design + Add to Request (catalog attach path). */
+function AssistedApprovedCatalogDesignCard({ request }: { request: AssistedCreationRequest }) {
+  const router = useRouter();
+  const designId = request.approvedCatalogDesignId?.trim() || '';
+  const {
+    ensureWorkingPrintRequestId,
+    openCurrentRequestDrawer,
+    reloadWorkingItems,
+    refreshRequests,
+    workingItems,
+    workingRequestLimit,
+  } = usePortalPrintRequests();
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [addBusy, setAddBusy] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [addSuccess, setAddSuccess] = useState<string | null>(null);
+  const [addProgressOpen, setAddProgressOpen] = useState(false);
+  const [addProgressPhase, setAddProgressPhase] =
+    useState<AssistedAddToRequestProgressPhase>('preparing');
+  const [addProgressError, setAddProgressError] = useState<string | null>(null);
+
+  const title =
+    request.suggestedCatalogDesign?.title?.trim() || 'Approved library design';
+  const previewPath = request.suggestedCatalogDesign?.previewImageUrl?.trim() || '';
+
+  const alreadyInWorkingRequest = useMemo(() => {
+    if (!designId) {
+      return false;
+    }
+    return workingItems.some((item) => item.designId?.trim() === designId);
+  }, [designId, workingItems]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!previewPath) {
+      setPreviewUrl(null);
+      return;
+    }
+    void catalogStorageService
+      .getDownloadUrlForCatalogPath(previewPath)
+      .then((next) => {
+        if (!cancelled) {
+          setPreviewUrl(next);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setPreviewUrl(null);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [previewPath]);
+
+  if (!designId || request.status !== 'approved') {
+    return null;
+  }
+
+  const libraryDeepLink = buildPortalDesignDeepLinkPath(designId);
+
+  const runCatalogAddToRequest = () => {
+    const uid = getPortalAuth().currentUser?.uid;
+    if (!uid || addBusy || alreadyInWorkingRequest || !workingRequestLimit.canAddPrints) {
+      return;
+    }
+    setAddBusy(true);
+    setActionError(null);
+    setAddSuccess(null);
+    setAddProgressError(null);
+    setAddProgressPhase('preparing');
+    setAddProgressOpen(true);
+
+    const stageTimer = window.setTimeout(() => {
+      setAddProgressPhase((current) => (current === 'preparing' ? 'adding' : current));
+    }, 1200);
+
+    void ensureWorkingPrintRequestId()
+      .then((printRequestId) =>
+        portalPrintRequestService.addOrIncrementCatalogDesign({
+          printRequestId,
+          designId,
+          userId: uid,
+          quantityDelta: 1,
+        }),
+      )
+      .then(async (result) => {
+        window.clearTimeout(stageTimer);
+        setAddProgressPhase('adding');
+        setAddSuccess(
+          result.kind === 'incremented'
+            ? 'Already in your Current Request (quantity updated).'
+            : 'Added to your Current Request.',
+        );
+        await Promise.all([
+          refreshRequests({ silent: true, printRequestId: result.item.printRequestId }),
+          reloadWorkingItems({ silent: true, printRequestId: result.item.printRequestId }),
+        ]);
+        setAddProgressPhase('done');
+        window.setTimeout(() => {
+          setAddProgressOpen(false);
+          openCurrentRequestDrawer();
+        }, 700);
+      })
+      .catch((error: unknown) => {
+        window.clearTimeout(stageTimer);
+        const message =
+          error instanceof Error ? error.message : 'Unable to add to request.';
+        setAddProgressPhase('error');
+        setAddProgressError(message);
+        setActionError(message);
+      })
+      .finally(() => {
+        setAddBusy(false);
+      });
+  };
+
+  return (
+    <section
+      aria-label="Approved library design"
+      className="assisted-creation-approved-card"
+    >
+      <div className="assisted-creation-approved-card-heading">
+        <h3 className="assisted-creation-detail-block-title">Approved library design</h3>
+        <span className="assisted-creation-status-badge is-approved">Approved</span>
+      </div>
+      <p className="assisted-creation-catalog-suggestion-title">{title}</p>
+      {previewUrl ? (
+        <div className="assisted-creation-proof-stage">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            alt={title}
+            className="assisted-creation-proof-stage-image"
+            src={previewUrl}
+          />
+        </div>
+      ) : (
+        <div className="assisted-creation-proof-stage is-empty" aria-hidden="true" />
+      )}
+      <p className="portal-muted assisted-creation-approved-card-meta">
+        This request used a Design Library match — there is no custom proof download. Add the
+        catalog design to your Current Request to print.
+      </p>
+      <div className="assisted-creation-catalog-suggestion-links">
+        <button
+          className="portal-button portal-button-secondary"
+          onClick={() => {
+            router.push(libraryDeepLink);
+          }}
+          type="button"
+        >
+          View in library
+        </button>
+      </div>
+      <div className="assisted-creation-approved-card-actions">
+        <button
+          aria-busy={addBusy || undefined}
+          className="portal-button portal-button-primary"
+          disabled={addBusy || alreadyInWorkingRequest || !workingRequestLimit.canAddPrints}
+          onClick={runCatalogAddToRequest}
+          title={
+            !workingRequestLimit.canAddPrints && workingRequestLimit.exhaustedHelperText
+              ? workingRequestLimit.exhaustedStatusText ?? undefined
+              : undefined
+          }
+          type="button"
+        >
+          {addBusy
+            ? 'Adding…'
+            : alreadyInWorkingRequest
+              ? 'Already in request'
+              : 'Add to Request'}
+        </button>
+      </div>
+      {!workingRequestLimit.canAddPrints &&
+      workingRequestLimit.exhaustedHelperText &&
+      !alreadyInWorkingRequest ? (
+        <p className="portal-muted">{workingRequestLimit.exhaustedStatusText}</p>
+      ) : null}
+      {addSuccess ? <p className="portal-muted">{addSuccess}</p> : null}
+      {actionError ? <p className="portal-form-error">{actionError}</p> : null}
+      <AssistedAddToRequestProgressModal
+        errorMessage={addProgressError}
+        isOpen={addProgressOpen}
+        onDismiss={() => {
+          if (addProgressPhase === 'error' || addProgressPhase === 'done') {
+            setAddProgressOpen(false);
+            if (addProgressPhase === 'done') {
+              openCurrentRequestDrawer();
+            }
+          }
+        }}
+        phase={addProgressPhase}
+      />
+    </section>
+  );
 }
 
 function DetailRow({ label, value }: { label: string; value: string }) {
@@ -192,7 +390,11 @@ export function ProofNoteActions({
         <ProofNotesModal
           notes={notes}
           onClose={() => setOpen(false)}
-          title={`Proof ${proofNumber} · Notes`}
+          title={
+            isAssistedCreationCatalogShareProof(proof)
+              ? 'Design Library · Notes'
+              : `Proof ${proofNumber} · Notes`
+          }
         />
       ) : null}
     </>
@@ -297,21 +499,43 @@ export function AssistedApprovedDesignCard({ request }: { request: AssistedCreat
   }, [request]);
 
   const previewPath =
-    approvedDownload?.eligible && approvedDownload.proof?.storagePath
-      ? approvedDownload.proof.storagePath
-      : approvedDownload?.proof?.storagePath;
+    request.status === 'approved' && request.finalSource?.storagePath
+      ? request.finalSource.storagePath
+      : approvedDownload?.eligible && approvedDownload.proof?.storagePath
+        ? approvedDownload.proof.storagePath
+        : approvedDownload?.proof?.storagePath;
+
+  const previewContentType =
+    request.status === 'approved' && request.finalSource?.contentType
+      ? request.finalSource.contentType
+      : approvedDownload?.proof?.contentType;
 
   useEffect(() => {
     let cancelled = false;
-    if (!previewPath?.trim() || approvedDownload?.proof?.fullSizePurgedAtMillis != null) {
-      setPreviewUrl(null);
+    if (
+      !previewPath?.trim() ||
+      (approvedDownload?.proof?.fullSizePurgedAtMillis != null && !request.finalSource)
+    ) {
+      setPreviewUrl((previous) => {
+        if (previous?.startsWith('blob:')) {
+          URL.revokeObjectURL(previous);
+        }
+        return null;
+      });
       return;
     }
     void assistedCreationService
-      .getDownloadUrl(previewPath)
+      .getPreviewObjectUrl(previewPath, previewContentType)
       .then((next) => {
         if (!cancelled) {
-          setPreviewUrl(next);
+          setPreviewUrl((previous) => {
+            if (previous?.startsWith('blob:')) {
+              URL.revokeObjectURL(previous);
+            }
+            return next;
+          });
+        } else if (next.startsWith('blob:')) {
+          URL.revokeObjectURL(next);
         }
       })
       .catch(() => {
@@ -322,16 +546,23 @@ export function AssistedApprovedDesignCard({ request }: { request: AssistedCreat
     return () => {
       cancelled = true;
     };
-  }, [approvedDownload?.proof?.fullSizePurgedAtMillis, previewPath]);
+  }, [
+    approvedDownload?.proof?.fullSizePurgedAtMillis,
+    previewContentType,
+    previewPath,
+    request.finalSource,
+  ]);
 
-  if (!approvedDownload && !addEligibility.eligible) {
-    return null;
-  }
-
+  const hasFinalSource = Boolean(request.finalSource?.storagePath);
   const showDownload =
-    Boolean(approvedDownload?.eligible && approvedDownload.proof?.storagePath);
+    Boolean(approvedDownload?.eligible && approvedDownload.proof?.storagePath) ||
+    (request.status === 'approved' && hasFinalSource);
   const showAdd = addEligibility.eligible;
   const alreadyInRequest = alreadyInWorkingRequest;
+
+  if (!approvedDownload && !addEligibility.eligible && !hasFinalSource) {
+    return null;
+  }
 
   const runAddToRequest = (catalogUseAcknowledged: boolean) => {
     const requestId = request.id?.trim();
@@ -398,6 +629,7 @@ export function AssistedApprovedDesignCard({ request }: { request: AssistedCreat
           <img
             alt="Approved design"
             className="assisted-creation-proof-stage-image"
+            draggable={false}
             src={previewUrl}
           />
         </div>
@@ -406,7 +638,9 @@ export function AssistedApprovedDesignCard({ request }: { request: AssistedCreat
       )}
       {showDownload ? (
         <p className="portal-muted assisted-creation-approved-card-meta">
-          Download your approved design within 14 days of approval
+          {hasFinalSource
+            ? 'Download your final artwork within 14 days of approval'
+            : 'Download your approved design within 14 days of approval'}
           {approvedDownload?.expiresAtMillis
             ? ` (available until ${formatAssistedWhen(approvedDownload.expiresAtMillis)})`
             : ''}
@@ -455,9 +689,11 @@ export function AssistedApprovedDesignCard({ request }: { request: AssistedCreat
             >
               {downloadBusy
                 ? 'Downloading…'
-                : isAssistedCreationProofPng(approvedDownload?.proof?.contentType)
-                  ? 'Download PNG'
-                  : 'Download file'}
+                : hasFinalSource
+                  ? 'Download Final Artwork'
+                  : isAssistedCreationProofPng(approvedDownload?.proof?.contentType)
+                    ? 'Download PNG'
+                    : 'Download file'}
             </button>
           ) : null}
           {showAdd ? (
@@ -529,7 +765,13 @@ export function AssistedCreationBriefAndDetails({ request }: { request: Assisted
 
   return (
     <div className="assisted-creation-detail-stack assisted-creation-detail-stack--dense">
-      {request.status === 'approved' ? <AssistedApprovedDesignCard request={request} /> : null}
+      {request.status === 'approved' ? (
+        request.approvedCatalogDesignId ? (
+          <AssistedApprovedCatalogDesignCard request={request} />
+        ) : (
+          <AssistedApprovedDesignCard request={request} />
+        )
+      ) : null}
 
       <ExpandableBlock defaultOpen={request.status !== 'approved'} title="Brief">
         <p className="assisted-creation-detail-brief">{description}</p>
@@ -537,46 +779,9 @@ export function AssistedCreationBriefAndDetails({ request }: { request: Assisted
 
       <ExpandableBlock title="Request details">
         <dl className="assisted-creation-detail-rows">
-          <DetailRow
-            label="Request type"
-            value={answers?.requestType ? labelForRequestType(answers.requestType) : ''}
-          />
-          <DetailRow
-            label="Wording"
-            value={answers?.containsText ? labelForContainsText(answers.containsText) : ''}
-          />
-          <DetailRow label="Exact text" value={answers?.exactText?.trim() ?? ''} />
-          <DetailRow label="Primary subject" value={answers?.primarySubject?.trim() ?? ''} />
-          <DetailRow label="Additional subjects" value={answers?.additionalSubjects?.trim() ?? ''} />
-          <DetailRow label="Action" value={answers?.subjectAction?.trim() ?? ''} />
-          <DetailRow label="Props" value={answers?.props?.trim() ?? ''} />
-          <DetailRow label="Setting" value={answers?.setting?.trim() ?? ''} />
-          <DetailRow label="Occasion" value={answers?.occasion?.trim() ?? ''} />
-          <DetailRow label="Audience" value={answers?.audience?.trim() ?? ''} />
-          <DetailRow
-            label="Personalization"
-            value={joinLabeledValues(answers?.personalizationTypes, labelForPersonalization)}
-          />
-          <DetailRow
-            label="Flexibility"
-            value={answers?.flexibilityLevel ? labelForFlexibility(answers.flexibilityLevel) : ''}
-          />
-          <DetailRow
-            label="Must match references"
-            value={joinLabeledValues(answers?.exactRequirements, labelForExactRequirement)}
-          />
-          <DetailRow
-            label="Styles"
-            value={joinLabeledValues(answers?.stylePreferences, labelForStyle)}
-          />
-          <DetailRow label="Mood" value={answers?.mood?.trim() ?? ''} />
-          <DetailRow label="Colors include" value={answers?.includedColors?.trim() ?? ''} />
-          <DetailRow label="Colors avoid" value={answers?.excludedColors?.trim() ?? ''} />
-          <DetailRow label="Garment" value={answers?.garmentColor?.trim() ?? ''} />
-          <DetailRow
-            label="Composition"
-            value={answers?.composition ? labelForComposition(answers.composition) : ''}
-          />
+          {buildAssistedCreationAnswerDisplayRows(answers).map((row) => (
+            <DetailRow key={row.label} label={row.label} value={row.value} />
+          ))}
           {request.customerRating != null ? (
             <DetailRow label="Your rating" value={`${request.customerRating} / 5`} />
           ) : null}
@@ -608,14 +813,24 @@ function ProofDetailModal({
   proofNumber: number;
   request: AssistedCreationRequest;
 }) {
+  const router = useRouter();
+  const isCatalogShare = isAssistedCreationCatalogShareProof(proof);
+  const catalogTitle = assistedCreationCatalogShareProofTitle(proof);
+  const catalogDesignId = proof.catalogDesignId?.trim() || '';
+  const catalogPreviewPath = proof.catalogPreviewImageUrl?.trim() || '';
   const [url, setUrl] = useState<string | null>(null);
   const [imageUnavailable, setImageUnavailable] = useState(false);
   const [canPortal, setCanPortal] = useState(false);
   const [downloadBusy, setDownloadBusy] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
 
+  const isApprovedCatalog =
+    isCatalogShare &&
+    Boolean(request.approvedCatalogDesignId) &&
+    catalogDesignId === request.approvedCatalogDesignId?.trim();
+
   const approvedDownload = useMemo(() => {
-    if (request.status !== 'approved') {
+    if (isCatalogShare || request.status !== 'approved') {
       return null;
     }
     const result = evaluateAssistedCreationApprovedProofDownload({
@@ -628,6 +843,9 @@ function ProofDetailModal({
         fileName: entry.fileName,
         contentType: entry.contentType,
         fullSizePurgedAtMillis: assistedCreationTimestampMillis(entry.fullSizePurgedAt),
+        ...(entry.kind === 'catalog_share' || entry.kind === 'proof_image'
+          ? { kind: entry.kind }
+          : {}),
       })),
       nowMs: Date.now(),
     });
@@ -639,7 +857,7 @@ function ProofDetailModal({
       return null;
     }
     return result;
-  }, [proof.id, request]);
+  }, [isCatalogShare, proof.id, request]);
 
   useEffect(() => {
     setCanPortal(true);
@@ -647,6 +865,31 @@ function ProofDetailModal({
 
   useEffect(() => {
     let cancelled = false;
+    if (isCatalogShare) {
+      if (!catalogPreviewPath) {
+        setUrl(null);
+        setImageUnavailable(true);
+        return;
+      }
+      setImageUnavailable(false);
+      void catalogStorageService
+        .getDownloadUrlForCatalogPath(catalogPreviewPath)
+        .then((next) => {
+          if (!cancelled) {
+            setUrl(next);
+            setImageUnavailable(!next);
+          }
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setUrl(null);
+            setImageUnavailable(true);
+          }
+        });
+      return () => {
+        cancelled = true;
+      };
+    }
     if (proof.fullSizePurgedAt != null || !proof.storagePath?.trim()) {
       setUrl(null);
       setImageUnavailable(true);
@@ -654,10 +897,17 @@ function ProofDetailModal({
     }
     setImageUnavailable(false);
     void assistedCreationService
-      .getDownloadUrl(proof.storagePath)
+      .getPreviewObjectUrl(proof.storagePath, proof.contentType)
       .then((next) => {
         if (!cancelled) {
-          setUrl(next);
+          setUrl((previous) => {
+            if (typeof previous === 'string' && previous.startsWith('blob:')) {
+              URL.revokeObjectURL(previous);
+            }
+            return next;
+          });
+        } else if (next.startsWith('blob:')) {
+          URL.revokeObjectURL(next);
         }
       })
       .catch(() => {
@@ -669,7 +919,17 @@ function ProofDetailModal({
     return () => {
       cancelled = true;
     };
-  }, [proof.fullSizePurgedAt, proof.storagePath]);
+  }, [
+    catalogPreviewPath,
+    isCatalogShare,
+    proof.contentType,
+    proof.fullSizePurgedAt,
+    proof.storagePath,
+  ]);
+
+  const libraryDeepLink = catalogDesignId
+    ? buildPortalDesignDeepLinkPath(catalogDesignId)
+    : '';
 
   const node = (
     <div
@@ -683,8 +943,10 @@ function ProofDetailModal({
         onClick={(event) => event.stopPropagation()}
       >
         <header className="modal-header assisted-creation-proof-modal-header">
-          <h2 id="assisted-creation-proof-modal-title">Proof {proofNumber}</h2>
-          {approvedDownload ? (
+          <h2 id="assisted-creation-proof-modal-title">
+            {isCatalogShare ? 'Design Library' : `Proof ${proofNumber}`}
+          </h2>
+          {approvedDownload || isApprovedCatalog ? (
             <span className="assisted-creation-status-badge is-approved">Approved</span>
           ) : null}
         </header>
@@ -693,22 +955,48 @@ function ProofDetailModal({
             <div className="assisted-creation-proof-stage">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                alt={`Proof ${proofNumber}`}
+                alt={isCatalogShare ? catalogTitle : `Proof ${proofNumber}`}
                 className="assisted-creation-proof-stage-image"
                 src={url}
               />
             </div>
           ) : (
             <p className="portal-muted">
-              {imageUnavailable ? 'This proof file is no longer available.' : 'Loading proof…'}
+              {imageUnavailable
+                ? isCatalogShare
+                  ? 'Preview is unavailable for this library design.'
+                  : proof.fullSizePurgedAt != null || !proof.storagePath?.trim()
+                    ? 'This proof file is no longer available.'
+                    : 'Preview unavailable.'
+                : isCatalogShare
+                  ? 'Loading library design…'
+                  : 'Loading proof…'}
             </p>
           )}
           <dl className="assisted-creation-proof-summary">
-            {approvedDownload ? (
+            {isCatalogShare ? (
+              <>
+                <DetailRow label="Type" value="Design Library recommendation" />
+                <DetailRow label="Design" value={catalogTitle} />
+              </>
+            ) : approvedDownload ? (
               <DetailRow label="Status" value="Approved proof" />
             ) : null}
             <DetailRow label="Sent" value={formatAssistedWhen(proof.createdAt)} />
           </dl>
+          {isCatalogShare && libraryDeepLink ? (
+            <div className="assisted-creation-catalog-suggestion-links">
+              <button
+                className="portal-button portal-button-secondary"
+                onClick={() => {
+                  router.push(libraryDeepLink);
+                }}
+                type="button"
+              >
+                View in library
+              </button>
+            </div>
+          ) : null}
           <div className="assisted-creation-proof-modal-actions">
             <ProofNoteActions
               proof={proof}
@@ -717,7 +1005,7 @@ function ProofDetailModal({
               revisionHistory={request.revisionHistory}
             />
           </div>
-          {approvedDownload?.eligible && approvedDownload.proof?.storagePath ? (
+          {!isCatalogShare && approvedDownload?.eligible && approvedDownload.proof?.storagePath ? (
             <p className="portal-muted assisted-creation-proof-download-hint">
               Download within 14 days of approval
               {approvedDownload.expiresAtMillis
@@ -726,7 +1014,8 @@ function ProofDetailModal({
               . Preview grey is display-only; PNG keeps transparency.
             </p>
           ) : null}
-          {approvedDownload &&
+          {!isCatalogShare &&
+          approvedDownload &&
           !approvedDownload.eligible &&
           (approvedDownload.reason === 'expired' ||
             approvedDownload.reason === 'full_size_purged') ? (
@@ -740,7 +1029,10 @@ function ProofDetailModal({
           <button className="portal-button portal-button-secondary" onClick={onClose} type="button">
             Close
           </button>
-          {approvedDownload?.eligible && approvedDownload.proof?.storagePath ? (
+          {!isCatalogShare &&
+          request.status === 'approved' &&
+          (Boolean(request.finalSource?.storagePath) ||
+            (approvedDownload?.eligible && approvedDownload.proof?.storagePath)) ? (
             <button
               aria-busy={downloadBusy || undefined}
               className="portal-button portal-button-primary"
@@ -767,9 +1059,11 @@ function ProofDetailModal({
             >
               {downloadBusy
                 ? 'Downloading…'
-                : isAssistedCreationProofPng(approvedDownload.proof.contentType)
-                  ? 'Download PNG'
-                  : 'Download file'}
+                : request.finalSource?.storagePath
+                  ? 'Download Final Artwork'
+                  : isAssistedCreationProofPng(approvedDownload?.proof?.contentType)
+                    ? 'Download PNG'
+                    : 'Download file'}
             </button>
           ) : null}
         </footer>
@@ -782,7 +1076,11 @@ function ProofDetailModal({
 
 function ProofListThumb({ proof }: { proof: AssistedCreationProof }) {
   const [url, setUrl] = useState<string | null>(null);
-  const unavailable = proof.fullSizePurgedAt != null || !proof.storagePath?.trim();
+  const isCatalogShare = isAssistedCreationCatalogShareProof(proof);
+  const catalogPreviewPath = proof.catalogPreviewImageUrl?.trim() || '';
+  const unavailable = isCatalogShare
+    ? !catalogPreviewPath
+    : proof.fullSizePurgedAt != null || !proof.storagePath?.trim();
 
   useEffect(() => {
     let cancelled = false;
@@ -790,11 +1088,35 @@ function ProofListThumb({ proof }: { proof: AssistedCreationProof }) {
       setUrl(null);
       return;
     }
+    if (isCatalogShare) {
+      void catalogStorageService
+        .getDownloadUrlForCatalogPath(catalogPreviewPath)
+        .then((next) => {
+          if (!cancelled) {
+            setUrl(next);
+          }
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setUrl(null);
+          }
+        });
+      return () => {
+        cancelled = true;
+      };
+    }
     void assistedCreationService
-      .getDownloadUrl(proof.storagePath)
+      .getPreviewObjectUrl(proof.storagePath, proof.contentType)
       .then((next) => {
         if (!cancelled) {
-          setUrl(next);
+          setUrl((previous) => {
+            if (typeof previous === 'string' && previous.startsWith('blob:')) {
+              URL.revokeObjectURL(previous);
+            }
+            return next;
+          });
+        } else if (next.startsWith('blob:')) {
+          URL.revokeObjectURL(next);
         }
       })
       .catch(() => {
@@ -805,7 +1127,7 @@ function ProofListThumb({ proof }: { proof: AssistedCreationProof }) {
     return () => {
       cancelled = true;
     };
-  }, [proof.storagePath, unavailable]);
+  }, [catalogPreviewPath, isCatalogShare, proof.contentType, proof.storagePath, unavailable]);
 
   if (unavailable || !url) {
     return (
@@ -854,8 +1176,15 @@ export function AssistedCreationProofsPanel({ request }: { request: AssistedCrea
         ) : (
           <ul className="assisted-creation-proof-list">
             {proofsNewestFirst.map((proof, index) => {
+              const isCatalogShare = isAssistedCreationCatalogShareProof(proof);
               const proofNumber = chronologicalProofNumber(proofsAsc, proof.id);
-              const isApprovedProof = Boolean(approvedProofId) && proof.id === approvedProofId;
+              const isApprovedProof =
+                !isCatalogShare && Boolean(approvedProofId) && proof.id === approvedProofId;
+              const isApprovedCatalog =
+                isCatalogShare &&
+                Boolean(request.approvedCatalogDesignId) &&
+                proof.catalogDesignId?.trim() === request.approvedCatalogDesignId?.trim();
+              const catalogTitle = assistedCreationCatalogShareProofTitle(proof);
               return (
                 <li key={proof.id}>
                   <button
@@ -867,16 +1196,27 @@ export function AssistedCreationProofsPanel({ request }: { request: AssistedCrea
                     <span className="assisted-creation-proof-row-body">
                       <span className="assisted-creation-proof-row-title">
                         <span>
-                          Proof {proofNumber}
-                          {index === 0 ? ' (latest)' : ''}
+                          {isCatalogShare ? (
+                            <>
+                              Design Library
+                              {index === 0 ? ' (latest)' : ''}
+                              <span className="portal-muted"> · {catalogTitle}</span>
+                            </>
+                          ) : (
+                            <>
+                              Proof {proofNumber}
+                              {index === 0 ? ' (latest)' : ''}
+                            </>
+                          )}
                         </span>
-                        {isApprovedProof ? (
+                        {isApprovedProof || isApprovedCatalog ? (
                           <span className="assisted-creation-status-badge is-approved">
                             Approved
                           </span>
                         ) : null}
                       </span>
                       <span className="assisted-creation-proof-row-meta">
+                        {isCatalogShare ? 'Design Library · ' : ''}
                         {formatAssistedWhen(proof.createdAt) || 'Sent'}
                         {notesForProof(proof, proofsAsc, request.revisionHistory).length > 0
                           ? ' · Notes'

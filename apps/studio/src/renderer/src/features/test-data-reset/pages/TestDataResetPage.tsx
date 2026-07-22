@@ -8,6 +8,7 @@ import {
 } from "@fresh-prints/shared/types/admin/wipeOperationalTestData.types";
 import {
   ALL_OPERATIONAL_WIPE_TARGETS,
+  AI_PROCESSING_DESIGNS_WIPE_PRESET_TARGETS,
   applyOperationalWipeTargetToggle,
   CUSTOM_REQUESTS_WIPE_PRESET_TARGETS,
   CUSTOMER_UPLOADS_WIPE_PRESET_TARGETS,
@@ -263,7 +264,8 @@ function TestDataResetPageContent() {
                 <li>Custom Requests — also clears acks, notifications, email jobs</li>
                 <li>Etsy — also clears overlays, suggestion requests, inert leftovers</li>
                 <li>Designs + prints — extra catalog confirm, then phrase</li>
-                <li>All (-) Designs — all ops targets; keeps catalog + design Storage</li>
+                <li>AI Processing — imported / needs review / rejected only; keeps ready library</li>
+                <li>All (-) Designs — all ops targets; keeps ready catalog + design Storage prefixes</li>
               </ul>
             </div>
           </div>
@@ -311,6 +313,13 @@ function TestDataResetPageContent() {
             variant="secondary"
           >
             Designs + prints
+          </Button>
+          <Button
+            onClick={() => setSelectedTargets([...AI_PROCESSING_DESIGNS_WIPE_PRESET_TARGETS])}
+            type="button"
+            variant="secondary"
+          >
+            AI Processing
           </Button>
           <Button
             onClick={() => setSelectedTargets([...EVERYTHING_EXCEPT_DESIGNS_WIPE_PRESET_TARGETS])}
@@ -408,6 +417,14 @@ function TestDataResetPageContent() {
               {(lastResult.designsRequestStatsReset ?? 0) > 0 ? (
                 <li>Design request stats reset: {lastResult.designsRequestStatsReset}</li>
               ) : null}
+              {(lastResult.aiProcessingDesignsDeleted ?? 0) > 0 ||
+              (Array.isArray(lastResult.targets) ? lastResult.targets : []).includes(
+                "aiProcessingDesigns",
+              ) ? (
+                <li>
+                  AI Processing designs deleted: {lastResult.aiProcessingDesignsDeleted ?? 0}
+                </li>
+              ) : null}
               {(lastResult.showsAllocationTotalsReset ?? 0) > 0 ||
               (Array.isArray(lastResult.targets) ? lastResult.targets : []).includes(
                 "printRequests",
@@ -424,6 +441,9 @@ function TestDataResetPageContent() {
               ) : null}
               {(lastResult.storageFilesDeleted ?? 0) > 0 ||
               (Array.isArray(lastResult.targets) ? lastResult.targets : []).includes("designs") ||
+              (Array.isArray(lastResult.targets) ? lastResult.targets : []).includes(
+                "aiProcessingDesigns",
+              ) ||
               (Array.isArray(lastResult.targets) ? lastResult.targets : []).includes(
                 "customerUploads",
               ) ? (

@@ -49,26 +49,34 @@ docs/architecture/FIREBASE.md
 
 ### Step 2: Add And Verify Your Sending Domain
 
-Invitation emails must come from a verified domain.
+Invitation emails must come from a verified domain. Fresh Prints sends as
+`Fresh Prints <noreply@myprintrequest.com>` — verify **`myprintrequest.com`** in Resend (not
+`funkyfreshprints.com`).
 
 1. In Resend, open **Domains**.
 2. Click **Add Domain**.
-3. Enter the domain you want to send from, for example:
+3. Enter:
 
 ```txt
-yourcompany.com
+myprintrequest.com
 ```
 
-4. Add the DNS records Resend provides to your domain provider.
-5. Wait until Resend marks the domain as verified.
+4. Add the DNS records Resend provides (typically SPF, DKIM, and optionally MX/DMARC guidance) at
+   your DNS host for `myprintrequest.com` (Cloudflare, etc.).
+5. In Resend, click **Verify** / wait until the domain status is **Verified**.
+6. Optional: send a Resend dashboard test from `noreply@myprintrequest.com` before relying on
+   Cloud Functions.
 
-Recommended sender format:
+Recommended sender format (must match Functions params):
 
 ```txt
-Fresh Prints <team@funkyfreshprints.com>
+Fresh Prints <noreply@myprintrequest.com>
 ```
 
-Fresh Prints uses `team@funkyfreshprints.com` as the default invitation sender. Ensure `funkyfreshprints.com` is verified in Resend.
+**Param override warning:** Code defaults use the noreply address above. If
+`functions/.env.fresh-prints-dev` (or `.env.<projectId>`) still lists
+`team@funkyfreshprints.com`, update both `INVITATION_FROM_EMAIL` and `PROOF_NOTICE_FROM_EMAIL`
+there before deploy — dotenv values override defaults.
 
 ### Step 3: Create A Resend API Key
 
@@ -97,14 +105,16 @@ When prompted, paste the Resend API key.
 Invitation emails are sent from:
 
 ```txt
-Fresh Prints <team@funkyfreshprints.com>
+Fresh Prints <noreply@myprintrequest.com>
 ```
 
 Proof notices use the same confirmed sender:
 
 ```txt
-PROOF_NOTICE_FROM_EMAIL=Fresh Prints <team@funkyfreshprints.com>
+PROOF_NOTICE_FROM_EMAIL=Fresh Prints <noreply@myprintrequest.com>
 ```
+
+All transactional HTML templates include an unmonitored-mailbox disclaimer (do not reply).
 
 Canonical Portal hosts are resolved by Firebase project, not from a browser request:
 
@@ -247,7 +257,8 @@ Firebase Functions secret only
 
 ### Using An Unverified Sender Address
 
-Resend rejects or fails sends when `team@funkyfreshprints.com` is not on a verified domain.
+Resend rejects or fails sends when `noreply@myprintrequest.com` is not on a verified domain
+(`myprintrequest.com` must be Verified in Resend).
 
 ### Expecting Firebase To Send The Invitation Email
 
@@ -279,7 +290,7 @@ If you test only against deployed functions, local emulator secret setup is opti
 Check:
 
 1. `RESEND_API_KEY` is set correctly
-2. `funkyfreshprints.com` is verified in Resend
+2. `myprintrequest.com` is verified in Resend
 3. Resend dashboard logs for rejected sends
 4. Spam or promotions folder
 5. Function logs:
@@ -299,13 +310,15 @@ Confirm the signed-in caller is an active `owner` or `admin` with a valid Firest
 ## Completion Checklist
 
 - [ ] Resend account created
-- [ ] Sending domain verified
+- [ ] Sending domain verified (`myprintrequest.com`)
 - [ ] Resend API key created
 - [ ] `RESEND_API_KEY` stored in Firebase secrets
-- [ ] `funkyfreshprints.com` verified in Resend for `team@funkyfreshprints.com`
+- [ ] `myprintrequest.com` verified in Resend for `noreply@myprintrequest.com`
+- [ ] `INVITATION_FROM_EMAIL` / `PROOF_NOTICE_FROM_EMAIL` set to noreply (defaults or `.env.<projectId>`)
 - [ ] Functions built successfully
 - [ ] Functions deployed
 - [ ] Owner can create admin and helper with email delivery
 - [ ] Admin can create helper with email delivery
 - [ ] Invited user can set password and sign in
 - [ ] Email failure path shows warning and keeps created user
+- [ ] Received invite shows unmonitored disclaimer in body

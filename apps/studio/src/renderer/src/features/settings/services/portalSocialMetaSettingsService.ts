@@ -5,6 +5,7 @@ import {
   PORTAL_SOCIAL_META_SETTINGS_DOC_ID,
   resolvePortalSocialMetaSettings,
   type PortalSocialMetaSettings,
+  type PortalSocialMetaSettingsInput,
 } from "@fresh-prints/shared/constants/portal/portalSocialMetaSettings.constants";
 import { db, functions } from "../../../config/firebase";
 
@@ -20,14 +21,17 @@ export const portalSocialMetaSettingsService = {
     );
   },
 
-  async update(settings: Pick<PortalSocialMetaSettings, "ogTitle" | "ogDescription">): Promise<PortalSocialMetaSettings> {
-    const callable = httpsCallable<
-      { ogTitle: string; ogDescription: string },
-      PortalSocialMetaSettings
-    >(functions, "updatePortalSocialMetaSettings");
+  async update(settings: PortalSocialMetaSettingsInput): Promise<PortalSocialMetaSettings> {
+    const callable = httpsCallable<PortalSocialMetaSettingsInput, PortalSocialMetaSettings>(
+      functions,
+      "updatePortalSocialMetaSettings",
+    );
     const response = await callable({
       ogTitle: settings.ogTitle,
       ogDescription: settings.ogDescription,
+      letterboxOgImages: settings.letterboxOgImages,
+      globalOgImageSource: settings.globalOgImageSource,
+      libraryOgRotationSalt: settings.libraryOgRotationSalt,
     });
     return resolvePortalSocialMetaSettings(response.data);
   },

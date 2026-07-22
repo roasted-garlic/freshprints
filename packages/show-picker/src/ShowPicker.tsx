@@ -157,17 +157,13 @@ function ShowTimeSlotOption({
     };
   }, [committedPercent, hasPendingPreview, option.id, projectedPercent]);
 
-  const isDisabled = option.isSelectable === false;
+  const isClosedForAdd = option.isSelectable === false;
 
   return (
     <button
-      aria-disabled={isDisabled}
-      className={`show-picker-slot${isSelected ? " is-selected" : ""}${cardStateClass}${hasPendingPreview ? " has-pending-fill" : ""}${isDisabled ? " is-disabled" : ""}`}
-      disabled={isDisabled}
+      aria-disabled={isClosedForAdd}
+      className={`show-picker-slot${isSelected ? " is-selected" : ""}${cardStateClass}${hasPendingPreview ? " has-pending-fill" : ""}${isClosedForAdd ? " is-disabled" : ""}`}
       onClick={() => {
-        if (isDisabled) {
-          return;
-        }
         onSelect(option.id);
       }}
       type="button"
@@ -239,15 +235,8 @@ export function ShowPicker({ options, selectedId, onSelect, now = new Date(), cl
       if (dateKey === SHOW_CALENDAR_NO_DATE_KEY) {
         continue;
       }
-      // Selectable shows, or closed-for-add (cutoff) slots customers should still inspect.
-      if (
-        dayOptions.some(
-          (option) =>
-            option.isSelectable !== false ||
-            option.statusLabel === "CLOSED" ||
-            Boolean(option.cutoffMetaLabel),
-        )
-      ) {
+      // Any day with shows is inspectable (open, cutoff-closed, or past).
+      if (dayOptions.length > 0) {
         keys.add(dateKey);
       }
     }
@@ -355,7 +344,7 @@ export function ShowPicker({ options, selectedId, onSelect, now = new Date(), cl
     }
     setSelectedDateKey(dateKey);
     const slots = optionsByDateKey.get(dateKey) ?? [];
-    const defaultSlotId = getDefaultShowPickerOptionId(slots);
+    const defaultSlotId = getDefaultShowPickerOptionId(slots, undefined, true);
     if (defaultSlotId) {
       onSelect(defaultSlotId);
     }
@@ -366,7 +355,7 @@ export function ShowPicker({ options, selectedId, onSelect, now = new Date(), cl
       return;
     }
 
-    const defaultOptionId = getDefaultShowPickerOptionId(options);
+    const defaultOptionId = getDefaultShowPickerOptionId(options, undefined, true);
     if (defaultOptionId) {
       onSelect(defaultOptionId);
     }
@@ -425,12 +414,15 @@ export function ShowPicker({ options, selectedId, onSelect, now = new Date(), cl
                 const isDisabled = !day.hasShows || !dayHasSelectableShows;
                 const dayMarker = dayMarkerByDateKey.get(day.dateKey);
                 const markerClass = dayMarker ? `has-shows-${dayMarker}` : day.hasShows ? "has-shows-open" : "";
+                const dayHasOnlyClosedShows =
+                  day.hasShows &&
+                  (optionsByDateKey.get(day.dateKey) ?? []).every((option) => option.isSelectable === false);
                 const dayClassName = [
                   "show-picker-day",
                   day.isCurrentMonth ? "" : "is-outside-month",
                   day.isToday ? "is-today" : "",
                   day.hasShows ? "has-shows" : "",
-                  day.hasShows && !dayHasSelectableShows ? "is-past-only" : "",
+                  dayHasOnlyClosedShows ? "is-past-only" : "",
                   markerClass,
                   isSelected ? "is-selected" : "",
                 ]
@@ -442,8 +434,8 @@ export function ShowPicker({ options, selectedId, onSelect, now = new Date(), cl
                     ? ", full shows"
                     : dayMarker === "completed"
                       ? ", completed shows"
-                      : day.hasShows && !dayHasSelectableShows
-                        ? ", past shows"
+                      : dayHasOnlyClosedShows
+                        ? ", closed shows"
                         : day.hasShows
                           ? ", has shows"
                           : ", no shows";

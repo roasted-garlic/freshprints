@@ -34,16 +34,42 @@ service cloud.firestore {
       return callerIsActive() && callerRole() == "customer";
     }
 
+    // #13 Addendum A — anonymous guest donation progress listeners (own docs only).
+    function isAnonymousAuth() {
+      return isSignedIn()
+        && request.auth.token.firebase.sign_in_provider == "anonymous";
+    }
+
+    function isOwnGuestUpload() {
+      return isAnonymousAuth()
+        && resource.data.customerUid == request.auth.uid
+        && resource.data.uploaderType == "guest";
+    }
+
+    // Public catalog browse (#13): unauthenticated read of ready/active/approved only.
+    // Same field surface authenticated customers already had; originals stay Storage staff-only.
+    function isPublicCatalogDesign() {
+      return resource.data.status == "ready";
+    }
+
+    function isPublicCatalogCategory() {
+      return resource.data.isActive == true;
+    }
+
+    function isPublicCatalogTag() {
+      return resource.data.status == "approved";
+    }
+
     function isCustomerReadableDesign() {
-      return isCustomer() && resource.data.status == "ready";
+      return isCustomer() && isPublicCatalogDesign();
     }
 
     function isCustomerReadableCategory() {
-      return isCustomer() && resource.data.isActive == true;
+      return isCustomer() && isPublicCatalogCategory();
     }
 
     function isCustomerReadableTag() {
-      return isCustomer() && resource.data.status == "approved";
+      return isCustomer() && isPublicCatalogTag();
     }
 
     function customerOwnsCustomerDoc(customerId) {
@@ -772,7 +798,7 @@ service cloud.firestore {
     }
 
     match /designs/{designId} {
-      allow read: if isStaff() || isCustomerReadableDesign();
+      allow read: if isStaff() || isPublicCatalogDesign();
 
       allow create: if isStaff()
         && designRequiredFieldsValid(request.resource.data)
@@ -799,7 +825,7 @@ service cloud.firestore {
     }
 
     match /categories/{categoryId} {
-      allow read: if isStaff() || isCustomerReadableCategory();
+      allow read: if isStaff() || isPublicCatalogCategory();
 
       allow create: if isOwnerOrAdmin()
         && categoryRequiredFieldsValid(request.resource.data)
@@ -819,7 +845,7 @@ service cloud.firestore {
     }
 
     match /tags/{tagId} {
-      allow read: if isStaff() || isCustomerReadableTag();
+      allow read: if isStaff() || isPublicCatalogTag();
 
       allow create: if isOwnerOrAdmin()
         && tagRequiredFieldsValid(request.resource.data)
@@ -1347,6 +1373,12 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Public brand logo download URLs (Studio + Portal). Writes via finalizeBrandLogoSlot only.
+    match /settings/brandLogos {
+      allow read: if true;
+      allow write: if false;
+    }
+
     match /settings/{settingId} {
       allow read: if isStaff() && settingId == "aiEnrichment";
       allow write: if false;
@@ -1540,13 +1572,15 @@ service cloud.firestore {
     // Customer uploads (ADR-FP-073) — Admin SDK / callables own all writes.
     match /customerUploads/{uploadId} {
       allow read: if isStaff()
-        || (isCustomer() && resource.data.customerUid == request.auth.uid);
+        || (isCustomer() && resource.data.customerUid == request.auth.uid)
+        || isOwnGuestUpload();
       allow create, update, delete: if false;
     }
 
     match /customerUploadBatches/{batchId} {
       allow read: if isStaff()
-        || (isCustomer() && resource.data.customerUid == request.auth.uid);
+        || (isCustomer() && resource.data.customerUid == request.auth.uid)
+        || isOwnGuestUpload();
       allow create, update, delete: if false;
     }
 

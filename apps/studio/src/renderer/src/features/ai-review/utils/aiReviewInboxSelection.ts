@@ -136,3 +136,19 @@ export function shouldPrependPinnedDesignToInbox(input: {
       !input.sortedDesignIds.includes(input.liveDesign.id),
   );
 }
+
+/**
+ * After a design is removed from the inbox list (approve/reject/archive), pick the index
+ * of the item that was immediately below it. Once the row is gone, that item sits at the
+ * same index; when the removed item was last, clamp to the new last row.
+ */
+export function resolveAdvanceIndexAfterInboxRemoval(
+  listLength: number,
+  removedIndex: number,
+): number | null {
+  if (listLength <= 0) {
+    return null;
+  }
+
+  return Math.min(Math.max(removedIndex, 0), listLength - 1);
+}

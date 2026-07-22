@@ -4,17 +4,12 @@ import { logger } from "firebase-functions";
 import {
   ETSY_RECOMMENDATION_COLLECTION,
   ETSY_RECOMMENDATION_ROUTE,
-  ETSY_RECOMMENDATION_SEARCH_FETCH_LIMIT,
 } from "../../packages/shared/src/constants/etsyRecommendation/etsyRecommendation.constants";
 import type {
   SearchEtsyRecommendationsRequest,
   SearchEtsyRecommendationsResponse,
 } from "../../packages/shared/src/types/etsyRecommendation/etsyRecommendationActions.types";
-import {
-  buildEtsyRecommendationApiKeywords,
-  buildEtsyRecommendationApiKeywordsFallback,
-  buildEtsyRecommendationSearchUrl,
-} from "../../packages/shared/src/utils/etsyRecommendationQueryBuilder";
+import { buildEtsyRecommendationSearchUrl } from "../../packages/shared/src/utils/etsyRecommendationQueryBuilder";
 import {
   assertEtsyRecommendationSchemaVersion,
   parseEtsyRecommendationAnswers,
@@ -30,15 +25,19 @@ import {
   unauthenticated,
   unavailable,
 } from "./lib/errors";
-import { etsyXApiKeySecret } from "./lib/secrets";
-import type { EtsyClient, EtsyRawListing } from "./lib/etsy/etsyClient.types";
+import {
+  assertNoCustomEtsySearchParams,
+  executeEtsyRecommendationApiSearch,
+  persistEtsyRecommendationApiSearchSnapshot,
+} from "./lib/etsy/etsyRecommendationApiSearchCore";
+import type { EtsyClient } from "./lib/etsy/etsyClient.types";
 import { createLiveEtsyClient, EtsyHttpError } from "./lib/etsy/liveEtsyClient";
 import {
-  mergeHydratedListings,
-  normalizeEtsyListings,
-} from "./lib/etsy/normalizeEtsyListings";
-import { chargeEtsyRecommendationSearchQuota, readEtsyRecommendationSearchQuota } from "./lib/etsy/etsyRecommendationRateLimit";
+  chargeEtsyRecommendationSearchQuota,
+  readEtsyRecommendationSearchQuota,
+} from "./lib/etsy/etsyRecommendationRateLimit";
 import { requirePortalCustomer } from "./lib/etsy/requirePortalCustomer";
+import { etsyXApiKeySecret } from "./lib/secrets";
 
 function mapHttpsError(error: unknown): never {
   if (error instanceof HttpsError) {
@@ -58,38 +57,6 @@ function mapHttpsError(error: unknown): never {
     throw invalidArgument(error.message);
   }
   throw internal("Unable to search for designs right now.");
-}
-
-async function searchAndNormalize(
-  client: EtsyClient,
-  keywords: string,
-): Promise<{ listings: ReturnType<typeof normalizeEtsyListings>; rawCount: number }> {
-  const search = await client.searchActiveListings({
-    keywords,
-    limit: ETSY_RECOMMENDATION_SEARCH_FETCH_LIMIT,
-    sortOn: "score",
-  });
-  const searchRows = search.results;
-
-  const listingIds = searchRows
-    .map((row) => Number(row.listing_id))
-    .filter((id) => Number.isInteger(id) && id > 0)
-    .slice(0, ETSY_RECOMMENDATION_SEARCH_FETCH_LIMIT);
-
-  let merged: EtsyRawListing[] = searchRows;
-  if (listingIds.length > 0) {
-    try {
-      const hydrated = await client.hydrateListings(listingIds);
-      merged = mergeHydratedListings(searchRows, hydrated);
-    } catch {
-      merged = searchRows;
-    }
-  }
-
-  return {
-    listings: normalizeEtsyListings(merged),
-    rawCount: searchRows.length,
-  };
 }
 
 /** Test seam: inject a mock client so unit tests never hit the network. */
@@ -156,17 +123,20 @@ export async function runSearchEtsyRecommendations(input: {
     requestId,
   });
 
-  const emptyBase: SearchEtsyRecommendationsResponse = {
-    requestId,
-    canonicalQuery,
-    etsySearchUrl,
-    listings: [],
-    status: "unavailable",
-    previewQuota: previewQuotaSnapshot,
-  };
-
   if (!input.client) {
-    logger.warn("etsy.search.unavailable", { requestId, reason: "missing_api_key" });
+    const emptyBase: SearchEtsyRecommendationsResponse = {
+      requestId,
+      canonicalQuery,
+      etsySearchUrl,
+      listings: [],
+      status: "unavailable",
+      previewQuota: previewQuotaSnapshot,
+    };
+    await persistEtsyRecommendationApiSearchSnapshot({
+      requestId,
+      status: "unavailable",
+      listings: [],
+    });
     return emptyBase;
   }
 
@@ -175,38 +145,30 @@ export async function runSearchEtsyRecommendations(input: {
     requestId,
   });
 
-  const focusedKeywords = buildEtsyRecommendationApiKeywords(answers);
-  let keywordStrategy: "focused" | "fallback" = "focused";
-  let apiKeywordsUsed = focusedKeywords;
-  let { listings, rawCount } = await searchAndNormalize(input.client, focusedKeywords);
-
-  if (listings.length === 0) {
-    const fallbackKeywords = buildEtsyRecommendationApiKeywordsFallback(answers);
-    if (fallbackKeywords !== focusedKeywords) {
-      keywordStrategy = "fallback";
-      apiKeywordsUsed = fallbackKeywords;
-      const fallback = await searchAndNormalize(input.client, fallbackKeywords);
-      listings = fallback.listings;
-      rawCount = fallback.rawCount;
-    }
-  }
-
-  logger.info("etsy.search.completed", {
+  const executed = await executeEtsyRecommendationApiSearch({
+    client: input.client,
+    answers,
     requestId,
-    keywordStrategy,
-    rawCount,
-    normalizedCount: listings.length,
+    logPrefix: "etsy.search",
+  });
+
+  await persistEtsyRecommendationApiSearchSnapshot({
+    requestId,
+    status: executed.status,
+    listings: executed.listings,
+    apiKeywordsUsed: executed.apiKeywordsUsed,
+    keywordStrategy: executed.keywordStrategy,
   });
 
   return {
     requestId,
     canonicalQuery,
     etsySearchUrl,
-    listings,
-    status: listings.length === 0 ? "empty" : "ok",
+    listings: executed.listings,
+    status: executed.status,
     previewQuota,
-    apiKeywordsUsed,
-    keywordStrategy,
+    apiKeywordsUsed: executed.apiKeywordsUsed,
+    keywordStrategy: executed.keywordStrategy,
   };
 }
 
@@ -221,15 +183,12 @@ export const searchEtsyRecommendations = onCall(
       const data = (request.data ?? {}) as SearchEtsyRecommendationsRequest &
         Record<string, unknown>;
 
-      if (
-        data.keywords != null ||
-        data.query != null ||
-        data.limit != null ||
-        data.offset != null ||
-        data.sort != null ||
-        data.sort_on != null
-      ) {
-        throw invalidArgument("Custom search parameters are not allowed.");
+      try {
+        assertNoCustomEtsySearchParams(data);
+      } catch (error) {
+        throw invalidArgument(
+          error instanceof Error ? error.message : "Custom search parameters are not allowed.",
+        );
       }
 
       let client: EtsyClient | null = etsyClientOverride;

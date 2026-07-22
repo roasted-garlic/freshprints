@@ -126,6 +126,102 @@ textarea::placeholder {
   padding-bottom: 2rem;
 }
 
+/* Shared auth card (login-required interstitial, login, register, guest overlay) */
+.portal-auth-card,
+.portal-login-required-card {
+  background: color-mix(in srgb, var(--color-accent-primary) 3.5%, var(--color-bg-secondary));
+  border: 1px solid color-mix(in srgb, var(--color-accent-primary) 14%, var(--color-border));
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  display: grid;
+  gap: 0;
+  max-width: 24rem;
+  overflow: hidden;
+  padding: 2.35rem 1.75rem 2rem;
+  position: relative;
+  width: 100%;
+}
+
+.portal-auth-card::before,
+.portal-login-required-card::before {
+  background: var(--color-accent-primary);
+  content: '';
+  height: 3px;
+  left: 0;
+  position: absolute;
+  right: 0;
+  top: 0;
+}
+
+.portal-login-required {
+  align-items: center;
+  display: flex;
+  justify-content: center;
+  min-height: min(100dvh, 40rem);
+  padding-block: 2.5rem 2rem;
+  padding-inline: 1.25rem;
+}
+
+.portal-auth-card-brand,
+.portal-login-required-brand {
+  gap: 0.45rem;
+  margin-bottom: 0;
+}
+
+.portal-auth-card-copy,
+.portal-login-required-copy {
+  display: grid;
+  gap: 0.8rem;
+  margin-top: 1.55rem;
+  text-align: center;
+}
+
+.portal-login-required-lead {
+  color: var(--color-text-primary);
+  font-size: var(--font-size-md);
+  line-height: 1.55;
+  margin-bottom: 0;
+}
+
+.portal-login-required-muted {
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+}
+
+.portal-auth-card-body {
+  margin-top: 1.55rem;
+}
+
+.portal-auth-card-actions,
+.portal-login-required-actions {
+  display: grid;
+  gap: 0.8rem;
+  margin-top: 2.65rem;
+  padding-top: 0.15rem;
+}
+
+.portal-auth-card-actions .portal-button,
+.portal-login-required-actions .portal-button {
+  justify-content: center;
+  min-height: 2.75rem;
+  text-align: center;
+  width: 100%;
+}
+
+.portal-auth-card-actions .portal-button-primary,
+.portal-login-required-actions .portal-button-primary {
+  font-weight: 600;
+}
+
+.portal-auth-card .portal-auth-stack {
+  width: 100%;
+}
+
+.portal-auth-card .portal-button {
+  justify-content: center;
+  width: 100%;
+}
+
 .portal-auth-brand {
   display: grid;
   gap: 0.35rem;
@@ -141,6 +237,17 @@ textarea::placeholder {
 .portal-auth-brand h1 {
   margin: 0;
   font-size: var(--font-size-lg);
+}
+
+.portal-auth-card-brand h1,
+.portal-auth-card-brand h2,
+.portal-login-required-brand h1,
+.portal-login-required-brand h2 {
+  margin: 0;
+  font-size: var(--font-size-xl);
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: var(--line-height-tight);
 }
 
 .portal-auth-brand .portal-lead,

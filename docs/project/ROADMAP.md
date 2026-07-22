@@ -106,9 +106,11 @@ Phase 7 Studio MVP and Phase 8 Portal MVP are complete in the dev environment.
 
 Current Goal:
 
-**Small Managed Items Backlog:** #5-#11 **Done**. Next: **#12** library design share on custom requests - see [Small Managed Items Backlog](#small-managed-items-backlog-2026-07-18) below.
+**Small Managed Items Backlog:** #5–**#14** **Done** (2026-07-21: #14 soft-deployed; #12/#13 Function redeploy leftovers owner **PASS**). See [Small Managed Items Backlog](#small-managed-items-backlog-2026-07-18) below.
 
-Phase 9 Custom Designs remains **largely complete in `fresh-prints-dev`**: 9A Etsy recommendations and 9C Assisted Creation shipped with owner PASS; polish + proof-ready email (Resend + Brevo) closed. Brevo IP/blocklist deliverability **PASS** 2026-07-18. Studio Test Data Reset presets + wipe expansion **PASS** / signed off **approved_with_notes** 2026-07-18. Still deferred inside Phase 9: Create My Design with AI, staff design-fee / Stripe, assisted questionnaire request-type branching. Production Portal / production Google / production email release remain separate human approvals.
+**Active managed goal:** none (idle). Last closed **2026-07-22:** `portal-add-to-show-inspect-closed-days` (**approved** — owner PASS). Same day: `ai-analysis-background-preview` (**approved_with_notes**), `ai-text-title-completeness-regression` (**approved**), `brand-logo-uploads` (**approved_with_notes**), soft-deploy enrichment Functions to `fresh-prints-dev`. Session polish: Design Library `updatedAt` sort; purge Deselect all + Copy phrase; Custom BG Apply UX; Portal artwork BG on cart/request/cards.
+
+Phase 9 Custom Designs remains **largely complete in `fresh-prints-dev`**: 9A Etsy recommendations and 9C Assisted Creation shipped with owner PASS; polish + proof-ready email (Resend + Brevo) closed. Brevo IP/blocklist deliverability **PASS** 2026-07-18. Studio Test Data Reset presets + wipe expansion **PASS** / signed off **approved_with_notes** 2026-07-18. AI Processing selective designs wipe (`aiProcessingDesigns`) **PASS** / signed off **approved** 2026-07-21. Library OG rotation intervals + per-design artwork backgrounds **PASS** / signed off **approved_with_notes** 2026-07-21. Studio tag footer + Design Library Halftone + AI Processing artwork bg **PASS** / signed off **approved_with_notes** 2026-07-21. Portal customer temporary shirt-color preview (nested **Background Color** picker) **PASS** / signed off **approved** 2026-07-21. Small Managed **#12** library design sharing proof-line owner **PASS** / soft-signoff **approved_with_notes** 2026-07-21. Portal assisted Reset/Continue + mobile auth overlay **PASS** / soft-signoff **approved** 2026-07-21. Custom request details parity (+ Addenda A–C) **PASS** / soft-signoff **approved** 2026-07-21. Assisted Creation proof preview hang hotfix **PASS** / signed off **approved** 2026-07-21. Still deferred inside Phase 9: Create My Design with AI (product AI integration), staff design-fee / Stripe, assisted questionnaire request-type branching. Production Portal / production Google / production email release remain separate human approvals. **#14** Recently Requested CF (`onShowAllocationCreated`) soft-deploy still open.
 
 Phase 7 Show Queue is complete for Studio MVP: foundation, staff-assisted Whatnot import,
 production-file export (zip, multiply-by-qty, auto-nested gang sheet PNG) signed off 2026-07-07,
@@ -155,11 +157,13 @@ Owner-directed ordered checklist of smaller todos. Work **one by one** via manag
 | 9 | **User request account deletion** — Customer-initiated **request** (not immediate hard delete) | **Done** | Same batch. Owner hard-delete is #10. |
 | 10 | **Owner delete users** — On **Test Data** page (not bulk): button → modal with **search**, **Staff** and **Customer** tabs; hard-delete **one** user + Auth + username + all associated records | **Done** | Same batch; owner-only; fresh-prints-dev. |
 | 11 | **OG / social sharing meta** - Open Graph / social meta (image, title, description) for link previews when sharing | **Done** | Owner **PASS** 2026-07-20 (deep-link remount fix included). Signoff: `docs/workflow/reviews/2026-07-20-portal-og-social-sharing-meta-signoff.md`. |
-| 12 | **Library design sharing on custom design requests** — When a catalog design already matches a customer’s custom/assisted request: instead of a proof image, cancel the request **or** mark complete **without a proof**; in place of the proof, send a **link to the catalog design** (image preview + title). Customer can **approve** it or **ask for it to be changed** to meet their needs | Queued | Studio Custom Requests / messaging + Portal review UX. |
+| 12 | **Library design sharing on custom design requests** — When a catalog design already matches a customer’s custom/assisted request: instead of a proof image, cancel the request **or** mark complete **without a proof**; in place of the proof, send a **link to the catalog design** (image preview + title). Customer can **approve** it or **ask for it to be changed** to meet their needs | **Done** | Soft-signoff **approved_with_notes** 2026-07-21 (owner proof-line **PASS**). ADR-FP-108. Functions soft-deploy leftovers **PASS** 2026-07-21 (owner: live given #14 already deployed). |
+| 13 | **Public browse + login-gated actions** — Anyone can **view** designs and browse the Portal (catalog, design details, share/landing pages) without signing in. Login required for mutating/account actions including **donate**. Guest chrome + in-shell overlay; donate overlay explains library protection kindly. | **Done** | Owner UI **PASS** 2026-07-20. Signoff: `…-signoff.md` (**approved_with_notes**). Login-required donate product **PASS** 2026-07-21. Donation Functions redeploy leftovers **PASS** 2026-07-21 (owner: live given #14 already deployed). ADR-FP-106. |
+| 14 | **Recently Requested = queued-to-show only** — Discover rail must not show designs only added to / removed from a Working cart | Done (2026-07-21) | Owner product rule 2026-07-20 during #13. Gate: `lastAddedToShowAt` via `onShowAllocationCreated`. ADR-FP-107. Soft-deployed to `fresh-prints-dev` 2026-07-21 (`functions:onShowAllocationCreated`). |
 
-**Active item:** **#12** library design share on custom requests.
+**Active item:** none (Small Managed #1–**#14** Done).
 
-**Just completed:** #11 - Portal OG / social sharing meta (owner **PASS** 2026-07-20, including deep-link remount fix). Prior: #7-#10 account auth + owner delete user.
+**Just completed:** #14 CF soft-deploy + #12/#13 Function redeploy leftovers owner **PASS** 2026-07-21.
 
 ---
 
@@ -1136,6 +1140,7 @@ Phase 9 Custom Designs: Etsy recommendations (9A) and Assisted Creation / Custom
 * **Link-first results:** Primary + Broader search link cards above Open API listing grid (ADR-FP-087l)
 * Admin-managed Subject/Tone suggestion overlays (ADR-FP-087k)
 * Studio **Custom Designs**: **Etsy** tab (saved searches) + **Suggestions** tab (pending queue + live lists) — owner **PASS** 2026-07-16
+* Studio **View / Fetch API results** (`lastApiSearch` + `staffSearchEtsyRecommendationApiResults`) — owner **PASS** 2026-07-20 on `fresh-prints-dev`. Signoff: `docs/workflow/reviews/2026-07-20-studio-etsy-api-results-view-signoff.md`
 * Minimal `etsyRecommendationRequests` lifecycle (submit / Done / Cancel)
 * Signoff: `docs/workflow/reviews/2026-07-15-phase-9a-etsy-website-first-api-rip-signoff.md`; Studio closeout `docs/workflow/reviews/2026-07-16-studio-custom-designs-etsy-signoff.md`
 

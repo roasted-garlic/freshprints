@@ -22,6 +22,14 @@ export interface SimpleCatalogEnrichmentParsed {
   title: string;
   tags: string[];
   /**
+   * Transient readable slogan lines from the model response (not persisted on aiSuggestions).
+   */
+  readableTextLines?: string[];
+  /**
+   * Transient central non-text subject phrase (not persisted on aiSuggestions).
+   */
+  centralSubject?: string;
+  /**
    * Raw model tag strings (lightly cleaned, not tokenized into single words). Multi-word
    * tags/aliases like "rock and roll" are preserved so the catalog tag resolver can match
    * them against approved names and aliases before falling back to suggestions.
@@ -78,6 +86,20 @@ export function extractJsonObject(raw: string): Record<string, unknown> {
 
 function coerceString(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function normalizeReadableTextLines(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+
+  const lines = value
+    .filter((item): item is string => typeof item === "string")
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .slice(0, 12);
+
+  return lines.length > 0 ? lines : undefined;
 }
 
 function assertRequiredField(value: string, fieldName: string): void {
@@ -235,6 +257,8 @@ export function normalizeSimpleCatalogEnrichment(
     title,
     tags: guardedTags,
     rawTags: guardedRawTags,
+    readableTextLines: normalizeReadableTextLines(raw.readableTextLines),
+    centralSubject: coerceString(raw.centralSubject) || undefined,
   };
 }
 
@@ -251,13 +275,16 @@ export function buildSimpleCatalogEnrichmentResult(input: {
 }): AiEnrichmentResult {
   const { parsed, enrichmentInput, modelId, providerId, promptTokens, completionTokens } = input;
 
-  // v17 lean schema: trust the model's title. Only normalize non-destructively and fall back to
-  // tags (never the description) when the model title is empty/filename-like/generic. This avoids
-  // collapsing a good title into an OCR fragment derived from the transcribed-quote description.
+  // Lean schema: trust a good model title. Reject style/tag-invented and description-prose
+  // titles; prefer structured readable lines or guarded description wording. Never synthesize
+  // a title by joining tags. Transient readableTextLines / centralSubject are not persisted.
   const title = resolveLeanCatalogTitle({
     candidateTitle: parsed.title,
     tags: parsed.tags,
     uploadFileStem: enrichmentInput.uploadFileStem,
+    description: parsed.description,
+    readableTextLines: parsed.readableTextLines,
+    centralSubject: parsed.centralSubject,
   });
 
   // Preserve the model's description. It is required-non-empty by normalizeSimpleCatalogEnrichment,

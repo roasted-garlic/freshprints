@@ -43,6 +43,7 @@ export function DesignSelectionCard({
         <div className="design-selection-card-image-wrap">
           <DesignThumbnailPanel
             alt={`${design.title} thumbnail`}
+            artworkBackgroundHex={design.artworkBackgroundHex}
             catalogPath={design.thumbnailPath}
             className="design-card-thumbnail"
             decorative={false}
@@ -129,6 +130,7 @@ export function DesignSelectionCard({
 
       <DesignPreviewLightbox
         alt={`${design.title} preview`}
+        artworkBackgroundHex={design.artworkBackgroundHex}
         isOpen={isLightboxOpen}
         onClose={() => setIsLightboxOpen(false)}
         previewUrl={previewUrl ?? null}

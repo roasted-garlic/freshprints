@@ -43,6 +43,7 @@ export function CatalogDesignCard({
       >
         <CatalogThumbnailPanel
           alt={`${design.title} thumbnail`}
+          artworkBackgroundHex={design.artworkBackgroundHex}
           catalogPath={design.thumbnailPath}
           className="design-card-thumbnail"
           contentVersion={design.updatedAtMs}

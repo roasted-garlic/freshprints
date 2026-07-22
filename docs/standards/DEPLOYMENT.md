@@ -93,8 +93,15 @@ firebase deploy --only functions:createTeamUser,functions:createCustomerWithPort
 
 Prerequisites: existing `RESEND_API_KEY`; optional `BREVO_API_KEY` when using Brevo (see
 `docs/workflow/setup/brevo-email-setup.md`); verified sender
-`Fresh Prints <team@funkyfreshprints.com>` for both sender parameters in the selected provider;
-canonical dev Portal URL `https://myprintrequest.dev`. Secret/parameter changes and every
+`Fresh Prints <noreply@myprintrequest.com>` for both sender parameters in the selected provider;
+canonical dev Portal URL `https://myprintrequest.dev`.
+
+**From-address params (ADR-FP-111):** Code defaults are
+`Fresh Prints <noreply@myprintrequest.com>`. If a project-specific
+`functions/.env.<projectId>` (e.g. `.env.fresh-prints-dev`) still sets the old
+`team@funkyfreshprints.com` values, those override defaults on deploy — update both lines to
+the noreply sender before soft-deploy, then redeploy. Do not invent alternate CLI param-set
+commands; use dotenv files per Firebase parameterized config. Secret/parameter changes and every
 production action require a separate human checkpoint.
 
 ### Gitignored build outputs (2026-06-24, paths updated 2026-07-08 for `apps/studio/` move)
@@ -155,9 +162,11 @@ Expected exports include `enqueueAiEnrichment` and `onDesignAiEnrichmentQueued`.
 
 See `docs/architecture/FIREBASE.md`. Never commit secrets.
 
-### Portal Open Graph / social meta (2026-07-20)
+### Portal Open Graph / social meta (2026-07-20; updated 2026-07-21)
 
-Portal site-wide OG / Twitter tags use Next.js `metadataBase` so image URLs are absolute.
+Portal site-wide OG / Twitter tags use Next.js `metadataBase` so image URLs are absolute. Root
+metadata omits a hard-coded `og:url` so Next.js uses the request path (deep links no longer
+advertise the home origin as `og:url`).
 
 | Host | Origin used for absolute OG URLs |
 |------|----------------------------------|
@@ -165,35 +174,57 @@ Portal site-wide OG / Twitter tags use Next.js `metadataBase` so image URLs are 
 | Production | Prefer `NEXT_PUBLIC_PORTAL_ORIGIN=https://myprintrequest.com` on App Hosting; non-dev project ids fall back to that host when `NODE_ENV=production` |
 | Local | `http://localhost:3100` (crawlers will not use this for real shares) |
 
-**Site-wide default OG image:** daily-rotated signed URL from a sample of ready library designs (fallback: `/brand/fresh-prints-request-portal-logo.png`).
+**Site-wide default OG image:** Studio toggle `globalOgImageSource`:
+- `library` (default) — interval-rotated ready design via `getPortalGlobalOpenGraph`
+- `logo` — uploaded Portal full logo (`settings/brandLogos.portalFull.downloadUrl`) when set; else `/brand/fresh-prints-request-portal-logo.png`
 
-**Global OG title/description:** Studio → **Settings** → **Social sharing** (owner) writes `settings/portalSocialMeta` via `updatePortalSocialMetaSettings`. Portal Admin reads that doc for root / login / register meta (hourly revalidate).
+**Letterbox (`letterboxOgImages`, default on):** `og:image` points at
+`getPortalOgShareImage?designId=…&fit=contain&bg=<hex>` (1200×630 JPEG). Canvas color comes from
+the design’s `artworkBackgroundHex` (fallback Portal artwork grey `#e5e7eb`). The `bg` query is a
+Facebook/CDN cache-bust; the Function paints from the design document. When off, signed Storage
+preview URLs.
 
-**Per-design share (expanded #11):**
+**Library rotation:** Global library OG picks a ready design via `pickLibraryOgRotatedIndex` using
+`libraryOgRotationInterval` (`daily` | `hourly` | `5min` | `1min` | `30s`, default `hourly`).
+Studio **Pick next library preview** bumps `libraryOgRotationSalt` to force a different design
+without waiting for the next interval bucket; then **Scrape Again** in Facebook Debugger.
+There is no “every share” mode — social apps cache OG by page URL.
+
+**Global OG title/description:** Studio → **Settings** → **Social sharing** →
+`updatePortalSocialMetaSettings` → `settings/portalSocialMeta`. Portal prefers
+`getPortalGlobalOpenGraph` (hourly revalidate on root layout).
+
+**Per-design share:**
 
 | Purpose | URL |
 |---------|-----|
-| Share / crawler OG | `/share/design/{designId}` — server `generateMetadata` via Firebase Admin (ready designs only); client navigates to catalog deep link (**no HTTP redirect**) |
+| Share / crawler OG | `/share/design/{designId}` — `getPortalDesignShareOpenGraph` (+ letterbox image URL when enabled) |
 | Deep link (modal) | `/catalog?designId={designId}` (also honored on `/`) |
 
-Share controls: catalog design details modal (**Share**) and selection cards (icon; title truncates). Copies or Web-Shares the `/share/design/…` URL.
+**Facebook Debugger note:** “This URL hasn't been shared on Facebook before” means Facebook has no
+cache yet — click **Fetch new information**. Non-root app paths (e.g. `/requests/artwork`,
+`/catalog`) already emit the same global OG tags as home (HTTP 200); they are not auth-blocked for
+crawlers.
 
 **Soft-deploy (dev only):**
 
 ```bash
-firebase deploy --only functions:updatePortalSocialMetaSettings,firestore:rules,apphosting --project fresh-prints-dev
+firebase deploy --only functions:updatePortalSocialMetaSettings,functions:getPortalDesignShareOpenGraph,functions:getPortalGlobalOpenGraph,functions:getPortalOgShareImage,functions:finalizeBrandLogoSlot,functions:updateBrandLogoDisplaySizes,firestore:rules,storage --project fresh-prints-dev
 ```
+
+Brand logos also need Firestore + Storage rules for `settings/brandLogos` and `brand/**` (same soft-deploy command). Production rules/Functions still require separate owner approval.
 
 **Verify after soft-deploy to fresh-prints-dev:**
 
 ```bash
 curl -sL https://myprintrequest.dev/login | findstr /i "og:title og:image twitter:card"
+curl -sL https://myprintrequest.dev/catalog | findstr /i "og:title og:image"
 curl -sL https://myprintrequest.dev/share/design/READY_DESIGN_ID | findstr /i "og:title og:image og:description"
+curl -sL "https://us-central1-fresh-prints-dev.cloudfunctions.net/getPortalGlobalOpenGraph"
 ```
 
-Or paste the share URL into [Facebook Sharing Debugger](https://developers.facebook.com/tools/debug/) / an Open Graph preview tool and refresh cache.
-
-App Hosting must provide Application Default Credentials so Admin can read Firestore designs/settings and sign Storage thumbnail URLs. Without ADC, pages fall back to brand defaults / logo.
+Or paste URLs into [Facebook Sharing Debugger](https://developers.facebook.com/tools/debug/) and
+**Scrape Again** after toggle changes (`fit=contain` separates letterbox cache from raw images).
 
 ---
 

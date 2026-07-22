@@ -12,6 +12,7 @@ import {
   type CatalogDiscoveryMode,
 } from '@fresh-prints/shared/utils/catalogDiscoveryRanking';
 
+import { useAuth } from '../../auth/context/AuthContext';
 import { useCatalogCategories } from '../hooks/useCatalogCategories';
 import { useCatalogHomeDesigns } from '../hooks/useCatalogDesigns';
 import { catalogService } from '../services/catalogService';
@@ -32,6 +33,7 @@ import { useCatalogDesignDeepLink } from '../hooks/useCatalogDesignDeepLink';
 
 export function CatalogHomePageContent() {
   const router = useRouter();
+  const { isAuthenticated } = useAuth();
   const [landingSearch, setLandingSearch] = useState('');
   const [selectedDesign, setSelectedDesign] = useState<CatalogDesign | null>(null);
   const [readyDesignCount, setReadyDesignCount] = useState<number | null>(null);
@@ -265,10 +267,10 @@ export function CatalogHomePageContent() {
                       exhaustedHelperText={addDesignFlow.exhaustedHelperText}
                       exhaustedStatusText={addDesignFlow.exhaustedStatusText}
                       isSelected={isSelected}
-                      onAdd={addDesignFlow.addDesign}
+                      onAdd={isAuthenticated ? addDesignFlow.addDesign : undefined}
                       onOpenDetails={openDesignDetails}
-                      onQuantityChange={addDesignFlow.setQuantity}
-                      onRemove={addDesignFlow.removeDesign}
+                      onQuantityChange={isAuthenticated ? addDesignFlow.setQuantity : undefined}
+                      onRemove={isAuthenticated ? addDesignFlow.removeDesign : undefined}
                       quantity={quantity > 0 ? quantity : 1}
                     />
                   </div>
@@ -293,7 +295,7 @@ export function CatalogHomePageContent() {
           (currentRequestAggregates.quantityByDesignId[selectedDesign.id] ?? 0) > 0
         }
         isOpen={selectedDesign !== null}
-        onAddToRequest={addDesignFlow.addDesign}
+        onAddToRequest={isAuthenticated ? addDesignFlow.addDesign : undefined}
         onClose={closeDesignDetails}
       />
 

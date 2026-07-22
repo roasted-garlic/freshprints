@@ -6,7 +6,7 @@
 Login/logout, profile bootstrap, protected routes via permissions.
 
 ### Design Library (`/designs`)
-Approved catalog grid; search; category + tag filters; archive toggle; details/edit; request-selection mode for staff print requests; print-size / DPI display.
+Approved catalog grid; search; category + tag filters; archive toggle; details/edit; request-selection mode for staff print requests; print-size / DPI display; default list **newest uploads first** (`createdAt` desc); Design details modal **full-res Download** of Storage original.
 
 ### Imports (`/imports`)
 ZIP/folder import; PNG validation; trim + upscale (ADR-FP-080 ≤6× toward 12″); thumbnails/previews; Storage upload; AI enqueue; batch progress. No import-time halftone interrupt.
@@ -27,7 +27,7 @@ Staff review of Portal customer artwork: Pending / Excluded tabs; Send to AI Rev
 Assisted inbox with stage tabs, request details, audited start/cancel/reject/restore actions, proof staging, and customer-revision visibility. Etsy searches and Suggestions management remain separate tabs.
 
 ### Users / Settings / Dev
-Team users + customer records; AI enrichment settings; show-queue settings; dashboard scaffold.
+Team users + customer records; AI enrichment settings; show-queue settings; dashboard scaffold; **Brand logos** (owner upload Studio/Portal full+collapsed PNGs + display sizes — ADR-FP-114; soft-deployed fresh-prints-dev).
 
 ---
 
@@ -36,13 +36,15 @@ Team users + customer records; AI enrichment settings; show-queue settings; dash
 | Feature | Status |
 |---------|--------|
 | Customer register / login | ✅ Live (dev) |
+| **Public browse (guest)** | ✅ Repo + UI PASS (ADR-FP-106) — catalog/home without sign-in; cloud rules deploy deferred |
+| Guest auth overlay (gated routes) | ✅ Live (UI) — in-shell dimmed overlay; Sign in / Register / Browse designs |
 | Catalog Discover + Design Library | ✅ Live (dev) — default browse `createdAt` desc (Studio-newest); metric modes keep metrics |
 | Collapsible “How print requests work” hint | ✅ Live |
 | Start / continue print request | ✅ Live (one working request — ADR-FP-071) |
 | Selection mode: add library designs with quantities | ✅ Live |
 | **Upload artwork** (modal; PNG/WebP/folder/ZIP) | ✅ Live (dev) — `/requests/artwork`; optional halftone checkbox (ADR-FP-080) |
-| Persistent Current Request / basket drawer | ✅ Live (dev) |
-| Donate designs (`/donate`) | ✅ Live (dev) — ADR-FP-078 |
+| Persistent Current Request / basket drawer | ✅ Live (dev) — hidden for guests |
+| Donate designs (`/donate`) | ✅ Live (dev) — ADR-FP-078; guest donate in repo (Anonymous Auth) — cloud deploy deferred |
 | Confirm ownership (required) + library permission (optional, default on) | ✅ Live |
 | Attach ready uploads to working request | ✅ Live |
 | Request item cards: qty, size, DPI badge; save blocked &lt; 200 DPI | ✅ Live |
@@ -76,6 +78,7 @@ Team users + customer records; AI enrichment settings; show-queue settings; dash
 | Portal requests | `createPortalPrintRequest`, `duplicatePortalPrintRequestItem`, `listPortalAllocatableShows`, `queuePortalPrintRequestToShow` (cutoff via `settings/showQueue.portalQueueCutoffHoursBeforeStart`) |
 | Customer uploads | `createCustomerUploadBatch`, `finalizeCustomerUpload`, `finalizeCustomerUploadZip`, `confirmCustomerUploadsAndAttachToRequest`, promote/exclude/restore/retry, cleanup/wipe helpers |
 | Assisted Creation | `submitAssistedCreationRequest`, `customerUpdateAssistedCreationRequest`, `cancelAssistedCreationRequest`, `staffUpdateAssistedCreationStatus`, `staffAddAssistedCreationProof`, `customerRespondToAssistedCreationProof` |
+| Brand logos (ADR-FP-114) | `finalizeBrandLogoSlot`, `updateBrandLogoDisplaySizes`; OG via `getPortalGlobalOpenGraph` — soft-deployed **fresh-prints-dev**; production gated |
 
 ---
 

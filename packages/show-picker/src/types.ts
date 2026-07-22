@@ -22,7 +22,7 @@ export interface ShowPickerOption {
   statusVariant: ShowPickerStatusVariant;
   isFull: boolean;
   isOverCapacity: boolean;
-  /** False for past (or otherwise non-allocatable) shows — calendar highlight only. */
+  /** False when the show cannot be queued to (past / cutoff / ineligible) — still inspectable in the calendar. */
   isSelectable: boolean;
   /**
    * Compact Portal queue-cutoff hint on the capacity row (right-aligned).

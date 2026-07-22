@@ -1,10 +1,12 @@
-import { useEffect } from "react";
+import { useEffect, type CSSProperties } from "react";
 import { X } from "lucide-react";
 
+import { resolveArtworkBackgroundHex } from "@fresh-prints/shared/constants/design/artworkBackground.constants";
 import { Button } from "../../../shared/components/Button";
 
 interface DesignPreviewLightboxProps {
   alt: string;
+  artworkBackgroundHex?: string;
   isOpen: boolean;
   onClose: () => void;
   previewUrl: string | null;
@@ -12,6 +14,7 @@ interface DesignPreviewLightboxProps {
 
 export function DesignPreviewLightbox({
   alt,
+  artworkBackgroundHex,
   isOpen,
   onClose,
   previewUrl,
@@ -34,6 +37,13 @@ export function DesignPreviewLightbox({
   if (!isOpen || !previewUrl) {
     return null;
   }
+
+  const imageStyle: CSSProperties | undefined = artworkBackgroundHex
+    ? ({
+        ["--color-artwork-preview-bg" as string]: resolveArtworkBackgroundHex(artworkBackgroundHex),
+        backgroundColor: resolveArtworkBackgroundHex(artworkBackgroundHex),
+      } as CSSProperties)
+    : undefined;
 
   return (
     <div
@@ -63,6 +73,7 @@ export function DesignPreviewLightbox({
           className="design-preview-lightbox-image"
           decoding="async"
           src={previewUrl}
+          style={imageStyle}
         />
       </div>
     </div>

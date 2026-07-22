@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+import { resolveArtworkBackgroundHex } from '@fresh-prints/shared/constants/design/artworkBackground.constants';
+
 import { useCatalogDerivativeUrl } from '../../catalog/hooks/useCatalogDerivativeUrl';
 import type { CatalogDesign } from '../../catalog/types/catalog.types';
 import type { AccountArtworkKind } from '../../customer-uploads/services/customerUploadService';
@@ -35,11 +37,13 @@ function ReusableTile({
   onSelect: (design: CatalogDesign) => void;
 }) {
   const { url } = useCatalogDerivativeUrl(design.thumbnailPath, design.updatedAtMs);
+  const artworkBg = resolveArtworkBackgroundHex(design.artworkBackgroundHex);
 
   return (
     <button
       className="portal-account-gallery-tile"
       onClick={() => onSelect(design)}
+      style={{ backgroundColor: artworkBg }}
       type="button"
     >
       {url ? (

@@ -93,9 +93,9 @@
 .portal-logo {
   display: block;
   flex-shrink: 0;
-  height: auto;
   max-width: 100%;
   object-fit: contain;
+  width: auto;
 }
 
 .portal-sidebar-brand-link {
@@ -112,13 +112,12 @@
 }
 
 .portal-sidebar-brand-logo {
-  max-width: min(14rem, 100%);
+  /* Height comes from brand logo settings; width follows intrinsic AR. */
+  max-width: 100%;
 }
 
 .portal-sidebar-brand-logo-collapsed {
   border-radius: 999px;
-  max-width: 2.5rem;
-  width: 2.5rem;
 }
 
 .portal-sidebar-edge-tab {
@@ -399,12 +398,19 @@
   justify-content: center;
   min-height: 2rem;
   padding: 0 var(--space-3);
+  text-decoration: none;
   transition:
     background var(--transition-fast),
     border-color var(--transition-fast),
     color var(--transition-fast),
     opacity var(--transition-fast);
   width: 100%;
+}
+
+a.portal-sidebar-sign-out:hover {
+  background: var(--color-bg-tertiary);
+  border-color: var(--color-border-strong);
+  color: var(--color-text-primary);
 }
 
 .portal-sidebar-sign-out:hover:not(:disabled) {
@@ -790,6 +796,56 @@
 .portal-app-content {
   flex: 1;
   min-width: 0;
+  position: relative;
+}
+
+.portal-app-content.has-guest-auth-overlay {
+  min-height: 16rem;
+}
+
+.portal-app-content-inert {
+  pointer-events: none;
+  user-select: none;
+}
+
+.portal-guest-auth-overlay {
+  align-items: center;
+  backdrop-filter: blur(1.5px);
+  background: color-mix(in srgb, var(--color-bg-primary) 58%, transparent);
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+  left: 0;
+  overflow: auto;
+  padding: 1.5rem 1.25rem 2rem;
+  position: absolute;
+  right: 0;
+  top: 0;
+  z-index: calc(var(--z-sticky, 30) + 2);
+}
+
+.portal-guest-auth-overlay .portal-auth-card {
+  margin-block: auto;
+}
+
+@media (max-width: 47.99rem) {
+  /*
+   * Content area includes bottom-nav padding, so true vertical center sits too low.
+   * Extra bottom padding + modest top offset keeps the card in the upper-mid viewport.
+   */
+  .portal-guest-auth-overlay {
+    align-items: flex-start;
+    justify-content: center;
+    padding-bottom: calc(
+      var(--portal-bottom-nav-height, 3.25rem) + var(--portal-bottom-nav-fab-size, 3.5rem) / 2 +
+        env(safe-area-inset-bottom, 0) + 1.25rem
+    );
+    padding-top: clamp(1.25rem, 10vh, 3.5rem);
+  }
+
+  .portal-guest-auth-overlay .portal-auth-card {
+    margin-block: 0;
+  }
 }
 
 /* Mobile bottom navigation */
@@ -920,6 +976,12 @@
 .portal-bottom-nav-fab:disabled {
   cursor: wait;
   opacity: 0.75;
+}
+
+/* Guest (logged out): continuous bar — no cart FAB notch/spacer. */
+.portal-bottom-nav-guest .portal-bottom-nav-bar {
+  -webkit-mask-image: none;
+  mask-image: none;
 }
 
 .portal-page {
@@ -1649,8 +1711,23 @@
     );
   }
 
+  /* Guest: no FAB overhang — only bar height + safe area. */
+  .portal-app-shell:has(.portal-bottom-nav-guest) .portal-app-content {
+    padding-bottom: calc(
+      var(--portal-bottom-nav-height, 3.25rem) + env(safe-area-inset-bottom, 0)
+    );
+  }
+
   .portal-bottom-nav {
     display: block;
+  }
+
+  /*
+   * Mobile guests use bottom-nav Login / Signup — hide duplicate header CTA.
+   * Must beat `a.portal-button { display: inline-flex }` in globals.css (0,1,1).
+   */
+  a.portal-button.portal-app-header-guest-login {
+    display: none;
   }
 
   .portal-sidebar {
@@ -1777,6 +1854,7 @@
 
   .portal-app-header-brand {
     left: 50%;
+    /* Menu (~2.5rem) + Current Request / notifications on the right. */
     max-width: min(17rem, calc(100% - 8.5rem));
     pointer-events: none;
     position: absolute;
@@ -1784,6 +1862,11 @@
     top: 50%;
     transform: translate(-50%, -50%);
     width: max-content;
+  }
+
+  /* Guest: header Login CTA is hidden — only menu reserved on the left. */
+  .portal-app-shell:has(.portal-bottom-nav-guest) .portal-app-header-brand {
+    max-width: min(17rem, calc(100% - 4.5rem));
   }
 
   .portal-app-header-actions {

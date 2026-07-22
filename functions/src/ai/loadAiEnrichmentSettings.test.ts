@@ -7,8 +7,10 @@ import {
   DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
   DEFAULT_TAG_RERANK_PROMPT_TEMPLATE,
   PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_PRE_HALLOWEEN_GUARD,
+  PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_PRE_TITLE_RULES,
   PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V20,
   PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V21,
+  PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V23,
 } from "../../../packages/shared/src/constants/aiEnrichment.constants";
 import {
   resolveAiPromptTemplate,
@@ -96,6 +98,20 @@ describe("resolveAiPromptTemplate", () => {
   it("resolves a saved copy of the pre-halloween-guard default to the current default", () => {
     assert.equal(
       resolveAiPromptTemplate(PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_PRE_HALLOWEEN_GUARD),
+      DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
+    );
+  });
+
+  it("resolves a saved copy of the pre-title-rules default to the current default", () => {
+    assert.equal(
+      resolveAiPromptTemplate(PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_PRE_TITLE_RULES),
+      DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
+    );
+  });
+
+  it("resolves a saved copy of the previous v23 default to the current default", () => {
+    assert.equal(
+      resolveAiPromptTemplate(PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V23),
       DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
     );
   });

@@ -1,8 +1,8 @@
 # Fresh Prints - Current State Snapshot
 
 > **Refresh before every external AI session.**
-> Source: `.cursor/workflow/state.md` (authoritative)
-> Last updated: **2026-07-20** (#11 OG/social sharing signed off)
+> Source: `.cursor/workflow/state.md` (authoritative) + `docs/project/ROADMAP.md`
+> Last updated: **2026-07-22** (`brand-logo-uploads` signed off; idle)
 
 ---
 
@@ -11,31 +11,42 @@
 | Field | Value |
 |-------|-------|
 | **Active managed goal** | none (idle) |
-| **Phase** | **signoff** complete - **DONE: yes** |
-| **Backlog** | **#5-#11 Done** (owner PASS); next **#12** library design share on custom requests |
-| **Tests** | Automated + owner PASS (#11 includes deep-link remount fix) |
-| **Signoff** | #11 **approved** |
-| **Deployment** | Dev Functions/rules for social meta. **No production.** |
-| **DONE** | yes |
+| **Phase** | **idle** (signoff complete) |
+| **Human checkpoint** | **no** |
+| **Prior goal** | `brand-logo-uploads` — **DONE** / signoff **approved_with_notes** |
+| **DONE** | **yes** |
 
 ---
 
-## #11 closed (PASS)
+## Workflow Snapshot
 
-Owner **PASS** 2026-07-20 - Portal OG / social sharing: share deep links, per-design OG, Studio Social sharing global meta, deep-link remount fix (`loadingIdRef` cleanup).
-Signoff: `docs/workflow/reviews/2026-07-20-portal-og-social-sharing-meta-signoff.md` (**approved**)
+```txt
+Mode:           managed-phase
+Closed:         brand-logo-uploads (approved_with_notes)
+Goal:           (none — idle)
+Phase:          idle
+Human:          no
+Next:           await owner next managed goal
+                optional: APPROVE production brand-logo Functions/rules/storage
+```
 
 ---
 
-## #7-#10 closed (PASS)
+## Just closed
 
-Owner **PASS** 2026-07-20 - Portal password reset / change email / deletion request + Studio owner delete user.
-Signoff: `docs/workflow/reviews/2026-07-20-portal-account-auth-settings-7-10-signoff.md` (**approved**)
-ADR-FP-104
+- **Goal:** `brand-logo-uploads`
+- **Signoff:** `docs/workflow/reviews/2026-07-22-brand-logo-uploads-signoff.md` (**approved_with_notes**)
+- Owner **PASS** 2026-07-22 — Studio + Portal brand logos, display sizes, guest chrome
+- Soft-deployed to **fresh-prints-dev** (`finalizeBrandLogoSlot`, `updateBrandLogoDisplaySizes`, OG, rules); **production deploy not done**
+- ADR-FP-114
 
----
+### Prior closed (same day)
 
-## Next
+- `firestore-usage-efficiency` — **approved_with_notes**; owner PASS; B4/Wave C deferred; no deploys
 
-1. **#12** - Library design sharing on custom design requests
-2. Production Portal (separate approval)
+### Parked / follow-ups
+
+- Brand-logo **production** Functions + Firestore/Storage rules — needs explicit APPROVE
+- B4 / Wave C Firestore efficiency
+- Production Portal App Hosting / Google / email gates unchanged
+- Pre-existing Studio `tsc` TS5103

@@ -10,8 +10,12 @@ import {
   DEFAULT_TAG_RERANK_PROMPT_TEMPLATE,
   DEFAULT_VISION_MODEL_ID,
   GEMINI_VISION_MODEL_OPTIONS,
+  PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_PRE_TITLE_RULES,
   PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V20,
   PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V21,
+  PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V23,
+  PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V24,
+  PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V25,
   SUGGESTED_NEW_TAGS_POLICY_OPTIONS,
   SUGGESTION_AUTHOR_MODE_OPTIONS,
   hasRequiredAiEnrichmentPromptPlaceholders,
@@ -58,24 +62,35 @@ describe("aiEnrichmentSettingsConstants", () => {
     assert.ok(hasRequiredAiEnrichmentPromptPlaceholders(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE));
   });
 
-  it("v22: opens with DTF/apparel business-context framing that judges by subject over style", () => {
+  it("v25: description/title agreement, complete phrases, and contraction rules", () => {
     // ADR-FP-044: without this framing the model free-associated from visual style (e.g. elegant
     // script + lash imagery) toward a fashion/luxury category for a design that was actually a
     // sarcastic joke — see docs/workflow/plans/2026-07-02-ai-business-context-prompt-plan.md.
-    // v22 (2026-07-03) shortened the wording while preserving the same rule: judge by subject over
-    // style, and only count decorative elements when truly central.
+    // v25 clarifies completeness: title agrees with description wording; contractions stay intact.
     assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /catalog DTF transfer art for apparel/);
     assert.match(
       DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
-      /core subject, message, joke, buyer intent, occasion, role, or theme/,
+      /main message, subject, buyer intent, occasion, role, or theme/,
     );
-    assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /not style alone/);
     assert.match(
       DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
-      /only count when truly central/,
+      /count only when truly central/,
     );
-    // The business-context framing must come before the field instructions, not after — it needs
-    // to frame every subsequent judgment, not read as an afterthought rule.
+    assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /Title rules:/);
+    assert.match(
+      DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
+      /complete readable phrase in natural reading order/,
+    );
+    assert.match(
+      DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
+      /description and title must agree/,
+    );
+    assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /Keep contractions intact/);
+    assert.match(
+      DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
+      /Never build the title from style words, mood words, category words, or inferred tag words/,
+    );
+    // Framing must come before the field instructions, not after.
     const contextIndex = DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE.indexOf("catalog DTF transfer art");
     const returnFieldsIndex = DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE.indexOf("Return:");
     assert.ok(contextIndex >= 0 && returnFieldsIndex >= 0 && contextIndex < returnFieldsIndex);
@@ -84,7 +99,7 @@ describe("aiEnrichmentSettingsConstants", () => {
   it("includes style/halftone tagging guidance in the default prompt", () => {
     assert.match(
       DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
-      /Include style tags when visually important and searchable/,
+      /Include style tags only when visually important and searchable/,
     );
     assert.match(
       DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
@@ -106,6 +121,34 @@ describe("aiEnrichmentSettingsConstants", () => {
     );
   });
 
+  it("resolves a saved copy of the pre-title-rules default to the current default", () => {
+    assert.equal(
+      resolveClientPromptTemplate(PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_PRE_TITLE_RULES),
+      DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
+    );
+  });
+
+  it("resolves a saved copy of the previous v23 default to the current default", () => {
+    assert.equal(
+      resolveClientPromptTemplate(PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V23),
+      DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
+    );
+  });
+
+  it("resolves a saved copy of the previous v24 default to the current default", () => {
+    assert.equal(
+      resolveClientPromptTemplate(PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V24),
+      DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
+    );
+  });
+
+  it("resolves a saved copy of the previous v25 default to the current default", () => {
+    assert.equal(
+      resolveClientPromptTemplate(PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V25),
+      DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
+    );
+  });
+
   it("resolves previous v20 default with line-ending/spacing drift to the current default", () => {
     const savedWithDifferentWhitespace = PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V20
       .replace(/\n/g, "\r\n")
@@ -115,6 +158,18 @@ describe("aiEnrichmentSettingsConstants", () => {
       resolveClientPromptTemplate(savedWithDifferentWhitespace),
       DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
     );
+  });
+
+  it("resolves a current-default paste with curly apostrophe / trailing newline to the shipped default", () => {
+    // Chat/docs paste often uses U+2019 in "design's" and adds a final newline — that must not
+    // look like a custom prompt (Save after paste, then Save again after Use current default).
+    const pastedLikeDocs = DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE.replace(
+      "design's",
+      "design\u2019s",
+    ).concat("\n");
+
+    assert.notEqual(pastedLikeDocs, DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE);
+    assert.equal(resolveClientPromptTemplate(pastedLikeDocs), DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE);
   });
 
   it("preserves a valid custom prompt instead of silently replacing it", () => {

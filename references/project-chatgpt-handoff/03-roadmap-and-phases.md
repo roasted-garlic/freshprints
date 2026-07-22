@@ -2,7 +2,7 @@
 
 > Align all work with the current phase / active managed goal. Do not jump ahead.
 
-## Current status (2026-07-20)
+## Current status (2026-07-22)
 
 | Item | Status |
 |------|--------|
@@ -17,9 +17,13 @@
 | Small Managed #5 show queue cutoff | **Done** — owner **PASS** 2026-07-20 (ADR-FP-103) |
 | Small Managed #6 design library newest first | **Done** — Portal `createdAt` desc already; owner **PASS** covered already 2026-07-20 |
 | Small Managed #7–#10 account auth + owner delete | **Done** — owner **PASS** 2026-07-20 (ADR-FP-104; Delete user modal polish included) |
+| Small Managed #11 OG / social sharing | **Done** — owner **PASS** 2026-07-20 (ADR-FP-105) |
+| Small Managed #13 public browse + guest overlay | **Done** — owner UI **PASS** 2026-07-20; signoff **approved_with_notes** (ADR-FP-106); Anonymous Auth + rules/Functions deploy deferred |
+| Small Managed #14 Recently Requested CF | **Done** — soft-deployed `onShowAllocationCreated` to `fresh-prints-dev` 2026-07-21 (ADR-FP-107); #12/#13 Function redeploy leftovers owner **PASS** same day |
 | Production Portal App Hosting | Pending human approval |
+| Brand logo uploads (ADR-FP-114) | **Done in repo + fresh-prints-dev** (owner PASS 2026-07-22); production Functions/rules/storage still gated |
 
-**Active managed goal:** none (idle). **#11** OG/social sharing **Done** (owner PASS 2026-07-20, ADR-FP-105). Next queued: Small Managed **#12** library design share.
+**Active managed goal:** none (idle). Small Managed **#1–#14** Done. Last closed: `brand-logo-uploads` (**approved_with_notes**, owner PASS 2026-07-22). Prior same day: `firestore-usage-efficiency`. Await owner next goal (or APPROVE production brand-logo deploy).
 
 ---
 

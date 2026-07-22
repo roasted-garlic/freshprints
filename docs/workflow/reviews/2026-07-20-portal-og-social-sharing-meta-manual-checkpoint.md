@@ -71,6 +71,14 @@ Edit **Title** + **Description** → **Save social sharing**.
 | 2026-07-20 | **FAIL** | Shared link lands on `/catalog?designId=Ab2dBnwdAmWG6ivXpzIC` but modal stays closed. In-app open/close URL sync OK. |
 | 2026-07-20 | fix shipped (local) | `useCatalogDesignDeepLink`: clear stuck `loadingIdRef` on effect cleanup so Strict Mode / AuthGate remount retries open. |
 | 2026-07-20 | **PASS** | Owner PASS. Deep-link remount fix included — cold `/catalog?designId=` opens modal; close clears param. |
+| 2026-07-20 | **FAIL (OG)** | WhatsApp share showed description + URL only (no rich title/image). Cause: local Portal Admin had no ADC so `generateMetadata` fell back to site defaults. |
+| 2026-07-20 | fix shipped | Public Function `getPortalDesignShareOpenGraph` + Portal fetch for share meta; share sheet uses title (not long description) as text. |
+
+### OG / WhatsApp note
+
+You do **not** need a separate Open Graph site. WhatsApp/Facebook scrape `https://myprintrequest.dev/share/design/{id}`.
+
+After the Function deploy, that HTML includes design `og:title`, `og:description`, and `og:image` (signed Storage URL). **Re-share** the link (or scrape-refresh in [Facebook Sharing Debugger](https://developers.facebook.com/tools/debug/)) — messengers cache previews aggressively.
 
 ### Re-verify (example id)
 

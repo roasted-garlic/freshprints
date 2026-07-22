@@ -14,6 +14,8 @@ export interface CustomerUploadBatch {
   id: string;
   customerUid: string;
   customerId: string;
+  /** `guest` for anonymous Portal donations (#13 Addendum A); omit/customer for registered. */
+  uploaderType?: import("../../constants/customerUpload/customerUploadGuest.constants").CustomerUploadUploaderType;
   /** Missing on legacy docs — treat as print_request. */
   purpose?: CustomerUploadPurpose;
   printRequestId: string | null;
@@ -35,6 +37,8 @@ export interface CustomerUpload {
   batchId: string;
   customerUid: string;
   customerId: string;
+  /** `guest` for anonymous Portal donations (#13 Addendum A); omit/customer for registered. */
+  uploaderType?: import("../../constants/customerUpload/customerUploadGuest.constants").CustomerUploadUploaderType;
   /** Missing on legacy docs — treat as print_request. */
   purpose?: CustomerUploadPurpose;
   printRequestId: string | null;

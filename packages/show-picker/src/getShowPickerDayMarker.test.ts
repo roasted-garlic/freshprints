@@ -22,13 +22,17 @@ describe("getShowPickerDayMarker", () => {
     );
   });
 
-  it("returns completed for fully printed / completed shows", () => {
+  it("returns completed for fully printed / completed / closed shows", () => {
     assert.equal(
       getShowPickerDayMarker([{ isFull: false, isOverCapacity: false, statusLabel: "FULLY PRINTED" }]),
       "completed",
     );
     assert.equal(
       getShowPickerDayMarker([{ isFull: false, isOverCapacity: false, statusLabel: "COMPLETED" }]),
+      "completed",
+    );
+    assert.equal(
+      getShowPickerDayMarker([{ isFull: false, isOverCapacity: false, statusLabel: "CLOSED" }]),
       "completed",
     );
   });

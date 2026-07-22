@@ -6,7 +6,9 @@ import { shouldIncrementDesignRequestCount } from "../../packages/shared/src/uti
 import { adminDb } from "./lib/admin";
 
 /**
- * Keeps design popularity metadata honest for Portal + Studio adds.
+ * Keeps cart-add popularity (`requestCount` / `lastRequestedAt`) for Popular.
+ * Recently Requested uses `lastAddedToShowAt` via onShowAllocationCreated instead —
+ * Working-draft adds alone must not appear there.
  * Single source of truth — Studio must not also client-increment these fields.
  * Customer-upload items must not increment catalog requestCount.
  */

@@ -10,6 +10,7 @@ export interface AssistedMediaItem {
   id: string;
   storagePath: string;
   fileName?: string;
+  contentType?: string;
   note?: string;
   createdAt?: unknown;
 }
@@ -26,6 +27,7 @@ export function AssistedCreationMediaThumbs({
   variant = 'reference',
 }: AssistedCreationMediaThumbsProps) {
   const [urls, setUrls] = useState<Record<string, string>>({});
+  const [failedIds, setFailedIds] = useState<Record<string, true>>({});
   const [lightbox, setLightbox] = useState<{ alt: string; url: string } | null>(null);
   const [canPortal, setCanPortal] = useState(false);
 
@@ -36,29 +38,56 @@ export function AssistedCreationMediaThumbs({
   useEffect(() => {
     let cancelled = false;
     async function load() {
-      const next: Record<string, string> = {};
+      if (items.length === 0) {
+        setUrls((previous) => {
+          for (const url of Object.values(previous)) {
+            if (url.startsWith('blob:')) {
+              URL.revokeObjectURL(url);
+            }
+          }
+          return {};
+        });
+        setFailedIds({});
+        return;
+      }
+      setFailedIds({});
+      // Settle each thumb independently so one hung download cannot block the rest.
       await Promise.all(
         items.map(async (item) => {
           try {
-            next[item.id] = await assistedCreationService.getDownloadUrl(item.storagePath);
+            const nextUrl =
+              variant === 'proof'
+                ? await assistedCreationService.getPreviewObjectUrl(
+                    item.storagePath,
+                    item.contentType,
+                  )
+                : await assistedCreationService.getDownloadUrl(item.storagePath);
+            if (cancelled) {
+              if (nextUrl.startsWith('blob:')) {
+                URL.revokeObjectURL(nextUrl);
+              }
+              return;
+            }
+            setUrls((previous) => {
+              const prior = previous[item.id];
+              if (prior?.startsWith('blob:') && prior !== nextUrl) {
+                URL.revokeObjectURL(prior);
+              }
+              return { ...previous, [item.id]: nextUrl };
+            });
           } catch {
-            // Leave missing; UI shows placeholder.
+            if (!cancelled) {
+              setFailedIds((previous) => ({ ...previous, [item.id]: true }));
+            }
           }
         }),
       );
-      if (!cancelled) {
-        setUrls(next);
-      }
-    }
-    if (items.length === 0) {
-      setUrls({});
-      return;
     }
     void load();
     return () => {
       cancelled = true;
     };
-  }, [items]);
+  }, [items, variant]);
 
   if (items.length === 0) {
     return <p className="portal-muted assisted-creation-media-empty">{emptyLabel}</p>;
@@ -79,6 +108,7 @@ export function AssistedCreationMediaThumbs({
       <ul className={`assisted-creation-media-thumbs assisted-creation-media-thumbs--${variant}`}>
         {items.map((item) => {
           const url = urls[item.id];
+          const failed = failedIds[item.id] === true;
           // Do not surface original proof filenames to customers.
           const alt =
             variant === 'proof' ? 'Proof' : item.fileName?.trim() || 'Reference image';
@@ -92,11 +122,14 @@ export function AssistedCreationMediaThumbs({
                   type="button"
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img alt={alt} decoding="async" src={url} />
+                  <img alt={alt} decoding="async" draggable={false} src={url} />
                 </button>
               ) : (
-                <div className="assisted-creation-media-thumb is-loading" role="status">
-                  Loading…
+                <div
+                  className={`assisted-creation-media-thumb ${failed ? '' : 'is-loading'}`}
+                  role="status"
+                >
+                  {failed ? 'Preview unavailable' : 'Loading…'}
                 </div>
               )}
               {item.note?.trim() ? (

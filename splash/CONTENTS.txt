@@ -1,0 +1,16 @@
+splash/ — MyPrintRequest.com Cloudflare pages
+=============================================
+
+Upload / deploy ONE of these folders at a time (folder = site root):
+
+  coming-soon/
+    Pre-launch page + Notify me form (Brevo via Worker API)
+    Deploy with:  npx wrangler deploy   (NOT pages deploy)
+    See coming-soon/DEPLOY.txt
+
+  maintenance/
+    Temporary “Under Maintenance” page (static HTML/CSS/JS only)
+
+coming-soon layout:
+  worker.js + wrangler.toml  → /api/notify + Brevo
+  public/                    → site files (html/css/js/logo)

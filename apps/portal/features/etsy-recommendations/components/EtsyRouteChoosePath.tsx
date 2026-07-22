@@ -23,6 +23,9 @@ interface EtsyRouteChoosePathProps {
   onResetFindDesign?: () => void;
   hasResumableFindDraft?: boolean;
   onAssistedCreation?: () => void;
+  onContinueAssistedCreation?: () => void;
+  onResetAssistedCreation?: () => void;
+  hasResumableAssistedDraft?: boolean;
 }
 
 function openRequestBadgeClass(status: AssistedCreationStatus): string {
@@ -46,6 +49,9 @@ export function EtsyRouteChoosePath({
   onResetFindDesign,
   hasResumableFindDraft = false,
   onAssistedCreation,
+  onContinueAssistedCreation,
+  onResetAssistedCreation,
+  hasResumableAssistedDraft = false,
 }: EtsyRouteChoosePathProps) {
   const router = useRouter();
   const assistedEnabled = typeof onAssistedCreation === 'function';
@@ -53,6 +59,8 @@ export function EtsyRouteChoosePath({
     null,
   );
   const hasOpenAssistedRequest = openAssistedStatus != null;
+  const showAssistedResume =
+    assistedEnabled && !hasOpenAssistedRequest && hasResumableAssistedDraft;
 
   useEffect(() => {
     if (!assistedEnabled) {
@@ -157,38 +165,56 @@ export function EtsyRouteChoosePath({
             <p className="etsy-route-card-description">
               {hasOpenAssistedRequest
                 ? 'You already have an assisted request open. View its status, or cancel it before starting a new one.'
-                : 'Send Fresh Prints the details for a design you would like us to help create.'}
+                : showAssistedResume
+                  ? 'You have a request in progress. Continue where you left off, or reset to start over.'
+                  : 'Send Fresh Prints the details for a design you would like us to help create.'}
             </p>
           </div>
-          <button
-            aria-disabled={assistedEnabled ? undefined : true}
-            className={`portal-button etsy-route-card-action${
-              !assistedEnabled
-                ? ' portal-button-secondary'
-                : hasOpenAssistedRequest
-                  ? ' portal-button-secondary'
-                  : ' portal-button-primary'
-            }`}
-            disabled={!assistedEnabled}
-            onClick={
-              assistedEnabled
-                ? () => {
-                    if (hasOpenAssistedRequest) {
-                      router.push(buildAssistedCreationHref({ mode: 'status' }));
-                      return;
-                    }
-                    onAssistedCreation?.();
-                  }
-                : undefined
-            }
-            type="button"
-          >
-            {!assistedEnabled
-              ? 'Coming soon'
-              : hasOpenAssistedRequest
-                ? 'View request status'
-                : 'Start assisted request'}
-          </button>
+          {!assistedEnabled ? (
+            <button
+              aria-disabled="true"
+              className="portal-button portal-button-secondary etsy-route-card-action"
+              disabled
+              type="button"
+            >
+              Coming soon
+            </button>
+          ) : hasOpenAssistedRequest ? (
+            <button
+              className="portal-button portal-button-secondary etsy-route-card-action"
+              onClick={() => {
+                router.push(buildAssistedCreationHref({ mode: 'status' }));
+              }}
+              type="button"
+            >
+              View request status
+            </button>
+          ) : showAssistedResume ? (
+            <div className="etsy-route-card-actions">
+              <button
+                className="portal-button portal-button-secondary etsy-route-card-action"
+                onClick={onResetAssistedCreation ?? onAssistedCreation}
+                type="button"
+              >
+                Reset request
+              </button>
+              <button
+                className="portal-button portal-button-primary etsy-route-card-action"
+                onClick={onContinueAssistedCreation ?? onAssistedCreation}
+                type="button"
+              >
+                Continue request
+              </button>
+            </div>
+          ) : (
+            <button
+              className="portal-button portal-button-primary etsy-route-card-action"
+              onClick={onAssistedCreation}
+              type="button"
+            >
+              Start assisted request
+            </button>
+          )}
         </article>
 
         {assistedEnabled ? (

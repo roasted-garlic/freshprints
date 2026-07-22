@@ -9,7 +9,7 @@ import {
   type Unsubscribe,
 } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
-import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
+import { getBytes, getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 
 import {
   ASSISTED_CREATION_ALLOWED_REFERENCE_TYPES,
@@ -37,13 +37,77 @@ import type {
 } from '@fresh-prints/shared/types/assistedCreation/assistedCreationActions.types';
 import type {
   AssistedCreationAnswers,
+  AssistedCreationFinalSource,
+  AssistedCreationFulfillmentMode,
   AssistedCreationPrintRequestIngest,
   AssistedCreationReferenceImage,
   AssistedCreationRequest,
+  AssistedCreationSuggestedCatalogDesign,
 } from '@fresh-prints/shared/types/assistedCreation/assistedCreation.types';
+import { buildAssistedCreationFinalArtworkDownloadFileName } from '@fresh-prints/shared/utils/assistedCreationProofFileName';
 
 import { getPortalAuth, getPortalDb, getPortalFunctions, getPortalStorage } from '../../../lib/firebase/client';
 import { portalAuthService } from '../../auth/services/authService';
+
+/** Firebase getBytes can hang; never leave UI on “Loading proof image…” forever. */
+const STORAGE_DOWNLOAD_TIMEOUT_MS = 12_000;
+
+function normalizeStoragePath(storagePath: string): string {
+  return storagePath.replace(/^\//, '').trim();
+}
+
+function storagePathPrefixForLog(storagePath: string): string {
+  const parts = normalizeStoragePath(storagePath).split('/').filter(Boolean);
+  if (parts.length === 0) {
+    return '(empty)';
+  }
+  if (parts[0] === 'assisted-creation' && parts.length >= 2) {
+    const rest = parts.slice(2).join('/');
+    return rest ? `assisted-creation/<uid>/${rest}` : 'assisted-creation/<uid>';
+  }
+  return parts.slice(0, Math.min(3, parts.length)).join('/');
+}
+
+function storageErrorCode(error: unknown): string {
+  if (error && typeof error === 'object' && 'code' in error) {
+    const code = (error as { code?: unknown }).code;
+    if (typeof code === 'string' && code.trim()) {
+      return code.trim();
+    }
+  }
+  if (error instanceof Error && error.message.trim()) {
+    return error.message.trim().slice(0, 80);
+  }
+  return 'unknown';
+}
+
+function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(message));
+    }, ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error: unknown) => {
+        clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+}
+
+function logAssistedStorageFailure(
+  operation: 'downloadBytes' | 'getDownloadUrl',
+  storagePath: string,
+  error: unknown,
+): void {
+  console.warn(
+    `[assistedCreation] ${operation} failed path=${storagePathPrefixForLog(storagePath)} code=${storageErrorCode(error)}`,
+  );
+}
 
 function base64ToBlob(base64: string, contentType: string): Blob {
   const binary = atob(base64);
@@ -177,10 +241,79 @@ function parseRequestDoc(
       typeof data.approvedProofId === 'string' && data.approvedProofId.trim()
         ? data.approvedProofId.trim()
         : undefined,
+    finalSource: parseFinalSource(data.finalSource),
+    fulfillmentMode:
+      data.fulfillmentMode === 'catalog_share' || data.fulfillmentMode === 'proof_image'
+        ? (data.fulfillmentMode as AssistedCreationFulfillmentMode)
+        : undefined,
+    suggestedCatalogDesign: parseSuggestedCatalogDesign(data.suggestedCatalogDesign),
+    approvedCatalogDesignId:
+      typeof data.approvedCatalogDesignId === 'string' && data.approvedCatalogDesignId.trim()
+        ? data.approvedCatalogDesignId.trim()
+        : undefined,
     approvedAt: data.approvedAt ?? undefined,
     printRequestIngest: parsePrintRequestIngest(data.printRequestIngest),
     createdAt: data.createdAt ?? null,
     updatedAt: data.updatedAt ?? null,
+  };
+}
+
+function parseSuggestedCatalogDesign(
+  value: unknown,
+): AssistedCreationSuggestedCatalogDesign | null | undefined {
+  if (value == null) {
+    return value === null ? null : undefined;
+  }
+  if (typeof value !== 'object' || Array.isArray(value)) {
+    return undefined;
+  }
+  const record = value as Record<string, unknown>;
+  const designId = typeof record.designId === 'string' ? record.designId.trim() : '';
+  const title = typeof record.title === 'string' ? record.title.trim() : '';
+  if (!designId || !title) {
+    return undefined;
+  }
+  return {
+    designId,
+    title,
+    ...(typeof record.previewImageUrl === 'string' && record.previewImageUrl.trim()
+      ? { previewImageUrl: record.previewImageUrl.trim() }
+      : {}),
+    suggestedAt: record.suggestedAt ?? null,
+    suggestedByUid:
+      typeof record.suggestedByUid === 'string' ? record.suggestedByUid.trim() : '',
+  };
+}
+
+function parseFinalSource(value: unknown): AssistedCreationFinalSource | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return undefined;
+  }
+  const record = value as Record<string, unknown>;
+  const id = typeof record.id === 'string' ? record.id.trim() : '';
+  const storagePath = typeof record.storagePath === 'string' ? record.storagePath.trim() : '';
+  const contentType = typeof record.contentType === 'string' ? record.contentType.trim() : '';
+  const sizeBytes =
+    typeof record.sizeBytes === 'number' && Number.isFinite(record.sizeBytes)
+      ? Math.floor(record.sizeBytes)
+      : 0;
+  const uploadedByUid =
+    typeof record.uploadedByUid === 'string' ? record.uploadedByUid.trim() : '';
+  if (!id || !storagePath || !contentType || sizeBytes <= 0) {
+    return undefined;
+  }
+  const fileName =
+    typeof record.fileName === 'string' && record.fileName.trim()
+      ? record.fileName.trim()
+      : buildAssistedCreationFinalArtworkDownloadFileName(contentType);
+  return {
+    id,
+    storagePath,
+    fileName,
+    contentType,
+    sizeBytes,
+    uploadedByUid,
+    uploadedAt: record.uploadedAt ?? null,
   };
 }
 
@@ -347,7 +480,56 @@ export const assistedCreationService = {
   },
 
   async getDownloadUrl(storagePath: string): Promise<string> {
-    return getDownloadURL(ref(getPortalStorage(), storagePath.replace(/^\//, '')));
+    const path = normalizeStoragePath(storagePath);
+    if (!path) {
+      throw new Error('Missing storage path');
+    }
+    try {
+      return await withTimeout(
+        getDownloadURL(ref(getPortalStorage(), path)),
+        STORAGE_DOWNLOAD_TIMEOUT_MS,
+        'Storage download URL timed out',
+      );
+    } catch (error) {
+      logAssistedStorageFailure('getDownloadUrl', path, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Proof/final preview URL for `<img src>`.
+   * Prefer timed signed download URL (fast); fall back to timed getBytes → blob URL.
+   * Never hang forever — callers must surface Preview unavailable on throw.
+   */
+  async getPreviewObjectUrl(
+    storagePath: string,
+    contentType?: string | null,
+  ): Promise<string> {
+    const path = normalizeStoragePath(storagePath);
+    if (!path) {
+      throw new Error('Missing storage path');
+    }
+
+    try {
+      return await this.getDownloadUrl(path);
+    } catch {
+      // Fall through to authenticated bytes.
+    }
+
+    try {
+      const bytes = await withTimeout(
+        getBytes(ref(getPortalStorage(), path)),
+        STORAGE_DOWNLOAD_TIMEOUT_MS,
+        'Storage download timed out',
+      );
+      const blob = new Blob([bytes], {
+        type: (contentType ?? '').trim() || 'image/png',
+      });
+      return URL.createObjectURL(blob);
+    } catch (error) {
+      logAssistedStorageFailure('downloadBytes', path, error);
+      throw error;
+    }
   },
 
   /**

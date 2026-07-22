@@ -1,5 +1,5 @@
 # Current Goal
-Idle - #11 Portal OG / social sharing signed off (owner PASS)
+(none — idle)
 
 ## Current Mode
 managed-phase
@@ -17,7 +17,7 @@ approved
 complete
 
 ## Test Status
-passed_with_notes
+passed
 
 ## Signoff Status
 approved
@@ -29,37 +29,41 @@ no
 (none)
 
 ## Allowed Actions
-Idle; start next managed phase (#12) when directed
+Start next managed phase when owner names a goal; answer clarifying questions. No production deploy without explicit approval.
 
 ## Forbidden Actions
-Production deploy without approval; silent scope expansion
+Production deploy without human approval.
 
 ## Next Required Step
-Await owner direction for **#12** library design share on custom requests (or other goal)
+Idle — await next goal.
 
 ## DONE
 yes
 
 ## Last Completed Step
-2026-07-20 - Owner PASS on #11 OG/social sharing (deep-link remount fix included). Signoff approved. ROADMAP #11 Done.
+2026-07-22 - Owner PASS on portal-add-to-show-inspect-closed-days; signed off approved. Soft-deploy BG enrichment earlier. Session polish committed with branch.
 
 ## Plan Path
-docs/workflow/plans/2026-07-20-portal-og-social-sharing-meta-plan.md
+- docs/workflow/plans/2026-07-22-portal-add-to-show-inspect-closed-days-plan.md
 
 ## Review Path
-docs/workflow/reviews/2026-07-20-portal-og-social-sharing-meta-review.md
+- docs/workflow/reviews/2026-07-22-portal-add-to-show-inspect-closed-days-review.md
 
 ## Test Report Path
-docs/workflow/reviews/2026-07-20-portal-og-social-sharing-meta-test-report.md
+- docs/workflow/reviews/2026-07-22-portal-add-to-show-inspect-closed-days-test-report.md
 
 ## Signoff Path
-docs/workflow/reviews/2026-07-20-portal-og-social-sharing-meta-signoff.md
+- docs/workflow/reviews/2026-07-22-portal-add-to-show-inspect-closed-days-signoff.md
+
+## Manual Checkpoint Path
+- docs/workflow/reviews/2026-07-22-portal-add-to-show-inspect-closed-days-manual-checkpoint.md (PASS)
 
 ## Files Modified
-useCatalogDesignDeepLink (loadingIdRef cleanup); ShareDesignClientRedirect; portalReturnUrl; admin.ts; CatalogDesignShareButton; CatalogSelectionCard; CatalogDesignDetailsModal; catalog.css; portalSiteMeta; portalGlobalSocialMetaService; pickDailyRotatedIndex; layout/login/register generateMetadata; Studio PortalSocialMetaSettingsSection; updatePortalSocialMetaSettings; shared constants; docs + signoff
+(see commit)
+
+## Parked Work
+(none)
 
 ## Decision Log
-- 2026-07-20 - Owner **PASS** on #11 OG/social sharing. Deep-link remount fix (loadingIdRef clear on cleanup) included. Signoff approved; ROADMAP #11 Done; next #12.
-- 2026-07-20 - Owner FAIL then fix: shared /catalog?designId= left param but modal closed. Root cause: loadingIdRef stuck after effect cleanup; remount hit in-flight guard. Fix: clear loadingIdRef on cleanup.
-- 2026-07-20 - Share open: window.location.replace to /catalog?designId=. Close: dismiss guard + history.replaceState clear designId.
-- 2026-07-20 - Studio Settings Social sharing; global OG from settings/portalSocialMeta + daily-rotated library image; callable + rules on fresh-prints-dev. QA host myprintrequest.dev = Cloudflare Tunnel to local next dev :3100.
+- 2026-07-22 - Owner PASS on portal-add-to-show-inspect-closed-days; commit + push requested.
+- 2026-07-22 - Owner APPROVE SOFT-DEPLOY → enrichment Functions on fresh-prints-dev.

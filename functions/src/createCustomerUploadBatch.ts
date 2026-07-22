@@ -24,6 +24,7 @@ import {
   unauthenticated,
 } from "./lib/errors";
 import { withoutUndefinedFields } from "./lib/firestoreDocument";
+import { requireCatalogDonationUploader } from "./lib/catalogDonationUploader";
 import { requirePortalCustomer } from "./lib/portalCustomer";
 import { resolveCustomerUploadPurpose } from "../../packages/shared/src/utils/customerUploadPurpose";
 
@@ -60,8 +61,33 @@ export const createCustomerUploadBatch = onCall(
       }
     }
 
-    const portalCustomer = await requirePortalCustomer(request.auth.uid);
-    const customerUid = request.auth.uid;
+    const purpose = payload.purpose;
+    let customerUid: string;
+    let customerId: string;
+    let createdBy: string;
+    let uploaderType: "customer" | "guest";
+
+    if (purpose === "catalog_donation") {
+      const uploader = await requireCatalogDonationUploader({
+        uid: request.auth.uid,
+        token: request.auth.token,
+      });
+      customerUid = uploader.customerUid;
+      customerId = uploader.customerId;
+      createdBy = uploader.createdBy;
+      uploaderType = uploader.uploaderType;
+    } else {
+      const portalCustomer = await requirePortalCustomer(request.auth.uid);
+      customerUid = request.auth.uid;
+      customerId = portalCustomer.customerId;
+      createdBy = request.auth.uid;
+      uploaderType = "customer";
+    }
+
+    if (uploaderType === "guest" && payload.mode === "zip") {
+      throw invalidArgument("Guest donations support image uploads only. Sign in to upload a ZIP.");
+    }
+
     const idempotencyId = `${customerUid}_${payload.clientRequestId}`;
     const idempotencyRef = adminDb.collection("customerUploadIdempotency").doc(idempotencyId);
 
@@ -109,7 +135,8 @@ export const createCustomerUploadBatch = onCall(
     if (payload.mode === "direct_images" && payload.existingBatchId) {
       return appendToExistingBatch({
         customerUid,
-        customerId: portalCustomer.customerId,
+        customerId,
+        uploaderType,
         existingBatchId: payload.existingBatchId,
         purpose: payload.purpose,
         files: payload.files ?? [],
@@ -118,7 +145,7 @@ export const createCustomerUploadBatch = onCall(
       });
     }
 
-    await chargeDailyQuota(customerUid, "createBatch", payload.purpose);
+    await chargeDailyQuota(customerUid, "createBatch", payload.purpose, uploaderType);
 
     const batchRef = adminDb.collection(CUSTOMER_UPLOAD_COLLECTIONS.customerUploadBatches).doc();
     const batchId = batchRef.id;
@@ -132,7 +159,7 @@ export const createCustomerUploadBatch = onCall(
           withoutUndefinedFields({
             id: batchId,
             customerUid,
-            customerId: portalCustomer.customerId,
+            customerId,
             purpose: payload.purpose,
             printRequestId: null,
             status: "open",
@@ -147,7 +174,8 @@ export const createCustomerUploadBatch = onCall(
             zipStoragePath,
             zipExtractionStatus: "pending",
             quotaChargedCreate: true,
-            createdBy: customerUid,
+            uploaderType,
+            createdBy,
             createdAt: now,
             updatedAt: now,
           }),
@@ -187,7 +215,7 @@ export const createCustomerUploadBatch = onCall(
         withoutUndefinedFields({
           id: batchId,
           customerUid,
-          customerId: portalCustomer.customerId,
+          customerId,
           purpose: payload.purpose,
           printRequestId: null,
           status: "open",
@@ -200,7 +228,8 @@ export const createCustomerUploadBatch = onCall(
           termsVersion: null,
           confirmedAt: null,
           quotaChargedCreate: true,
-          createdBy: customerUid,
+          uploaderType,
+          createdBy,
           createdAt: now,
           updatedAt: now,
         }),
@@ -213,7 +242,7 @@ export const createCustomerUploadBatch = onCall(
             id: upload.uploadId,
             batchId,
             customerUid,
-            customerId: portalCustomer.customerId,
+            customerId,
             purpose: payload.purpose,
             printRequestId: null,
             originalFilename: upload.originalFilename,
@@ -238,6 +267,7 @@ export const createCustomerUploadBatch = onCall(
             termsVersion: null,
             confirmedAt: null,
             quotaChargedFinalize: false,
+            uploaderType,
             createdAt: now,
             updatedAt: now,
           }),
@@ -271,6 +301,7 @@ export const createCustomerUploadBatch = onCall(
 async function appendToExistingBatch(input: {
   customerUid: string;
   customerId: string;
+  uploaderType: "customer" | "guest";
   existingBatchId: string;
   purpose: "print_request" | "catalog_donation";
   files: Array<{ originalFilename: string; declaredSizeBytes: number }>;
@@ -368,6 +399,7 @@ async function appendToExistingBatch(input: {
           termsVersion: null,
           confirmedAt: null,
           quotaChargedFinalize: false,
+          uploaderType: input.uploaderType,
           createdAt: now,
           updatedAt: now,
         }),

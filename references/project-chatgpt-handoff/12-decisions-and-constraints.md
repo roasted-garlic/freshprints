@@ -10,6 +10,12 @@
 | ADR-FP-009 | Three Studio design workspaces: Imports, AI Review, Design Library |
 | No native mobile | Portal is responsive web |
 
+## Brand / Settings (recent)
+
+| ADR | Summary |
+|-----|---------|
+| ADR-FP-114 | Owner-uploaded Studio + Portal brand logos (`settings/brandLogos`, Storage `brand/**`); finalize + display-size callables; AR-locked boxes; separate Portal header/sidebar controls (defaults height 52); soft-deployed fresh-prints-dev; production deploy gated |
+
 ## Catalog lifecycle
 
 | Rule | Detail |
@@ -24,6 +30,8 @@
 | ADR | Summary |
 |-----|---------|
 | ADR-FP-071 | **One working print request** per Portal customer |
+| ADR-FP-106 | **Public browse** + login-gated actions; guest overlay; guest catalog donate via Anonymous Auth + `guest` attribution (rules/Functions/Auth deploy human-gated) |
+| ADR-FP-107 | Recently Requested = `lastAddedToShowAt` via `onShowAllocationCreated` (soft-deployed fresh-prints-dev 2026-07-21) |
 | ADR-FP-103 | Portal add-to-show **cutoff hours** before show start (Studio Show Queue setting; Functions enforce; Studio staff exempt) |
 | ADR-FP-066 | Customers add to shows via callables only; single show; full request; no override/re-queue |
 | ADR-FP-065 | Shared `@fresh-prints/show-picker` |

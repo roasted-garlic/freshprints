@@ -16,7 +16,7 @@ import {
   permissionDenied,
   unauthenticated,
 } from "./lib/errors";
-import { requirePortalCustomer } from "./lib/portalCustomer";
+import { requireCatalogDonationUploader } from "./lib/catalogDonationUploader";
 
 function mapHttpsError(error: unknown): never {
   if (error instanceof HttpsError) {
@@ -35,9 +35,12 @@ export const confirmCustomerUploadsForDonation = onCall(
     }
 
     try {
-      await requirePortalCustomer(request.auth.uid);
+      const uploader = await requireCatalogDonationUploader({
+        uid: request.auth.uid,
+        token: request.auth.token,
+      });
       const payload = validateConfirmCustomerUploadsForDonationRequest(request.data);
-      const customerUid = request.auth.uid;
+      const customerUid = uploader.customerUid;
 
       const batchRef = adminDb
         .collection(CUSTOMER_UPLOAD_COLLECTIONS.customerUploadBatches)

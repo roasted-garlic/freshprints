@@ -17,14 +17,15 @@ interface CatalogSelectionCardProps {
   exhaustedStatusText?: string | null;
   isSelected: boolean;
   quantity: number;
-  onAdd: (design: CatalogDesign) => void;
+  /** Omit for guests — hides Add to request / qty controls. */
+  onAdd?: (design: CatalogDesign) => void;
   onOpenDetails: (design: CatalogDesign) => void;
-  onQuantityChange: (
+  onQuantityChange?: (
     designId: string,
     quantity: number,
     meta?: { title?: string; announce?: boolean },
   ) => void;
-  onRemove: (designId: string) => void;
+  onRemove?: (designId: string) => void;
 }
 
 function ClearSelectionIcon() {
@@ -57,12 +58,16 @@ export function CatalogSelectionCard({
 }: CatalogSelectionCardProps) {
   const [rawInput, setRawInput] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const showRequestActions = typeof onAdd === 'function';
   const increaseDisabled = disabled || !canAddPrints;
   const statusText = exhaustedStatusText;
   const requestFullLabel = !canAddPrints && statusText ? statusText : null;
   const exhaustedTitle = requestFullLabel ?? undefined;
 
   function commitQuantity(value: string) {
+    if (!onQuantityChange || !onRemove) {
+      return;
+    }
     const parsed = Number.parseInt(value, 10);
     if (Number.isFinite(parsed) && parsed === 0) {
       onRemove(design.id);
@@ -93,10 +98,15 @@ export function CatalogSelectionCard({
   }
 
   return (
-    <div className={`design-selection-card${isSelected ? ' is-selected' : ''}`}>
+    <div
+      className={`design-selection-card${isSelected && showRequestActions ? ' is-selected' : ''}${
+        showRequestActions ? '' : ' is-browse-only'
+      }`}
+    >
       <div className="design-selection-card-image-wrap">
         <CatalogThumbnailPanel
           alt={`${design.title} thumbnail`}
+          artworkBackgroundHex={design.artworkBackgroundHex}
           catalogPath={design.thumbnailPath}
           className="design-card-thumbnail"
           contentVersion={design.updatedAtMs}
@@ -113,7 +123,7 @@ export function CatalogSelectionCard({
           designTitle={design.title}
         />
 
-        {isSelected ? (
+        {showRequestActions && isSelected && onRemove ? (
           <button
             aria-label={`Remove ${design.title} from selection`}
             className="design-selection-card-remove-btn"
@@ -138,7 +148,7 @@ export function CatalogSelectionCard({
           <CatalogDesignShareButton design={design} variant="icon" />
         </div>
 
-        {isSelected ? (
+        {showRequestActions && isSelected && onQuantityChange && onRemove ? (
           <div className="design-selection-card-qty-controls portal-request-item-stepper portal-card-input-shell">
             <button
               aria-label={quantity <= 1 ? `Remove ${design.title}` : `Decrease quantity for ${design.title}`}
@@ -188,21 +198,23 @@ export function CatalogSelectionCard({
               <PlusIcon />
             </button>
           </div>
-        ) : (
+        ) : null}
+
+        {showRequestActions && !isSelected ? (
           <button
             aria-label={requestFullLabel ?? `Add ${design.title} to request`}
             className={`portal-button portal-button-secondary portal-button-sm design-selection-card-add-btn${
               requestFullLabel ? ' is-request-full' : ' portal-button-leading-icon'
             }`}
             disabled={increaseDisabled}
-            onClick={() => onAdd(design)}
+            onClick={() => onAdd?.(design)}
             title={exhaustedTitle}
             type="button"
           >
             {requestFullLabel ? null : <PlusIcon size={14} />}
             {requestFullLabel ?? 'Add to request'}
           </button>
-        )}
+        ) : null}
       </div>
     </div>
   );

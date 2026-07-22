@@ -28,6 +28,7 @@ export { updateCustomer } from "./updateCustomer";
 export { updateTeamUser } from "./updateTeamUser";
 export { submitEtsyRecommendationRequest } from "./submitEtsyRecommendationRequest";
 export { searchEtsyRecommendations } from "./searchEtsyRecommendations";
+export { staffSearchEtsyRecommendationApiResults } from "./staffSearchEtsyRecommendationApiResults";
 export { getEtsyRecommendationSearchQuota } from "./getEtsyRecommendationSearchQuota";
 export {
   completeEtsyRecommendationRequest,
@@ -51,6 +52,8 @@ export {
   staffSendAssistedCreationMessage,
   staffUpdateAssistedCreationStatus,
   staffAddAssistedCreationProof,
+  staffAddAssistedCreationFinalSource,
+  staffSuggestAssistedCreationCatalogDesign,
 } from "./assistedCreationRequests";
 export { customerGetAssistedCreationApprovedProofDownloadUrl } from "./customerGetAssistedCreationApprovedProofDownloadUrl";
 export { customerGetAssistedCreationApprovedProofFile } from "./customerGetAssistedCreationApprovedProofFile";
@@ -64,7 +67,11 @@ export { updateEmailProviderSettings } from "./updateEmailProviderSettings";
 export { updateCustomerUploadQuotaSettings } from "./updateCustomerUploadQuotaSettings";
 export { updatePrintRequestLimitSettings } from "./updatePrintRequestLimitSettings";
 export { updatePortalSocialMetaSettings } from "./updatePortalSocialMetaSettings";
+export { finalizeBrandLogoSlot } from "./finalizeBrandLogoSlot";
+export { updateBrandLogoDisplaySizes } from "./updateBrandLogoDisplaySizes";
 export { getPortalDesignShareOpenGraph } from "./getPortalDesignShareOpenGraph";
+export { getPortalGlobalOpenGraph } from "./getPortalGlobalOpenGraph";
+export { getPortalOgShareImage } from "./getPortalOgShareImage";
 export { wipeOperationalTestData } from "./wipeOperationalTestData";
 export { ownerDeleteUser } from "./ownerDeleteUser";
 export { syncPortalAccountEmail } from "./syncPortalAccountEmail";
@@ -81,6 +88,7 @@ export {
   purgeExpiredAssistedCreationProofsScheduled,
 } from "./purgeExpiredAssistedCreationProofs";
 export { onPrintRequestItemCreated } from "./onPrintRequestItemCreated";
+export { onShowAllocationCreated } from "./onShowAllocationCreated";
 export {
   onCustomerFavoriteCreated,
   onCustomerFavoriteDeleted,

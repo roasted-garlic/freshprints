@@ -5,6 +5,7 @@ import { permissionService } from "../../permissions/services/permissionService"
 import { designService } from "../services/designService";
 import type { Design } from "../types/design.types";
 import type { DesignListCursor, DesignListQuery } from "../types/designQuery.types";
+import { sortDesignsForListQuery } from "../utils/sortDesignsForListQuery";
 
 interface DesignsState {
   designs: Design[];
@@ -105,8 +106,13 @@ export function useDesigns(listQuery: DesignListQuery, options?: UseDesignsOptio
             return;
           }
 
+          const sortField = listQuery.sortField ?? "updatedAt";
+          const sortDirection = listQuery.sortDirection ?? "desc";
+          // loadAll concatenates pages; enforce final order so oldest-first never sticks.
+          const designs = sortDesignsForListQuery(collected, sortField, sortDirection);
+
           setState({
-            designs: collected,
+            designs,
             error: null,
             hasMore: Boolean(cursor) && hasMore,
             isLoading: false,

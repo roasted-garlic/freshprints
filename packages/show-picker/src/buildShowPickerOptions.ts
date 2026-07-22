@@ -83,6 +83,11 @@ export function buildShowPickerOptions({
     const cutoffMetaLabel = cutoffMeta?.label ?? getCutoffMetaLabel?.(show);
     const cutoffMetaLabelShort = cutoffMeta?.shortLabel;
     const cutoffMetaUrgency = cutoffMeta?.urgency;
+    // Past shows and Portal add-cutoff locks both surface as CLOSED for inspect-only calendar UX.
+    // Lifecycle labels (PRINTING / COMPLETED / …) from statusDisplay remain when not PAST.
+    const statusLabel =
+      pastCutoff || statusDisplay.label === "PAST" ? "CLOSED" : statusDisplay.label;
+    const statusVariant = statusLabel === "CLOSED" ? "warning" : statusDisplay.variant;
 
     return {
       id: show.id,
@@ -94,8 +99,8 @@ export function buildShowPickerOptions({
       capacityLabel: formatShowCapacitySlotLabel(projectedCapacity),
       capacityLabelShort: formatShowCapacitySlotLabelCompact(projectedCapacity),
       fillLevel: getCapacityFillLevel(capacityPercent),
-      statusLabel: pastCutoff && !past ? "CLOSED" : statusDisplay.label,
-      statusVariant: pastCutoff && !past ? "warning" : statusDisplay.variant,
+      statusLabel,
+      statusVariant,
       isFull: projectedCapacity.isFull,
       isOverCapacity: projectedCapacity.isOverCapacity,
       isSelectable: !past && !pastCutoff && selectableByCaller,

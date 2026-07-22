@@ -37,6 +37,7 @@ Fresh Prints uses **Firebase** as the primary backend platform for authenticatio
 | Local dev auth | Firebase emulators or project dev credentials — see `docs/workflow/setup/` |
 | Portal account self-service (2026-07-20) | Password reset + verify-before-update email + deletion **request** callables (`syncPortalAccountEmail`, `requestPortalAccountDeletion`, `cancelPortalAccountDeletionRequest`). ADR-FP-104. |
 | Owner single-user delete (2026-07-20) | Studio Test Data → `ownerDeleteUser` (owner + fresh-prints-dev only). Hard-deletes one staff or customer identity + associated records. Not bulk wipe. |
+| Operational wipe — AI Processing (2026-07-21) | Test Data Reset target `aiProcessingDesigns` via `wipeOperationalTestData`: deletes AI Processing inbox designs (any tab/stage) + their Storage only; keeps ready/archived catalog. Dev allowlist + owner only. |
 
 **Portal post-auth return (2026-07-17):** When `AuthGate` sends a signed-out customer to `/login`,
 it includes the protected Portal path and query string in `returnTo`. Email/password and Google login
@@ -45,7 +46,9 @@ First-time Google users carry the same target through `/complete-profile`. `retu
 Portal accepts same-origin relative application paths only, rejects external/protocol-relative,
 backslash/control-character, malformed, and auth-loop destinations, and falls back to `/`.
 This is client navigation only; it does not change Firebase providers, tokens, rules, Functions,
-environment variables, or secrets.
+environment variables, or secrets. Helper: `portalReturnUrl.ts`.
+
+**Portal public browse (#13 + Addendum A, 2026-07-20):** Guests may view `/`, `/catalog/**`, and `/donate` without a registered account. Soft-auth destinations use `/login-required?returnTo=…`. Firestore/Storage allow unauthenticated **read** of ready designs / active categories / approved tags and ready thumbnail/preview objects. **Guest donations:** Firebase Anonymous Auth + donation callables; attribution sentinels `uploaderType`/`customerId`/`createdBy` = `guest`; anonymous may write Storage `source` under own UID only (ZIP blocked for guests). Deploy rules/Functions and enable Anonymous Auth only with human approval (`firebase deploy --only firestore:rules,storage,functions` after confirming project id). No public `shows` / `upcomingShows` reads.
 
 ---
 
@@ -66,7 +69,7 @@ See `DATA_MODEL.md` for entities.
 | Topic | Value |
 |-------|-------|
 | Provider | Firebase Cloud Storage |
-| Public vs private | Staff-only paths for originals, thumbnails, previews |
+| Public vs private | **Public read:** ready-design `/thumbnails/` + `/previews/` (canonical `{designId}.webp` + ready design existence); brand logos under `/brand/{studio\|portal}/{full\|collapsed}/`. **Staff-only:** `/originals/` and most writes. Brand logo create/delete: **owner only**. Customer upload / assisted paths remain owner-customer or staff. |
 | Access control | Storage security rules — see `FIREBASE.md` and `docs/workflow/setup/firebase-storage-setup.md` |
 
 ---
@@ -87,7 +90,7 @@ Fresh Prints does not expose a separate REST API for core operations. Business l
 | Resend | Team/customer invitations and Assisted proof-ready notices | API key (Functions / Secret Manager) | `docs/workflow/setup/resend-email-setup.md` |
 | Google AI (Gemini) | AI design enrichment | API key (Functions / Secret Manager only) | `FIREBASE.md` — **not** Firestore or renderer |
 
-**Etsy (Phase 9A — Open API + link-first — ADR-FP-087l):** Portal builds official website search URLs (Primary + Broader). In-app listing cards come from Etsy Open API via callable `searchEtsyRecommendations` (Secret Manager `ETSY_X_API_KEY`, bound to that callable only). Website scrape remains removed (ADR-FP-087j). Soft-fail to links-only if the secret is missing or search returns empty. Purchases stay off-platform via listing/search URLs. `SCRAPERAPI_API_KEY` / `FIRECRAWL_API_KEY` are not used by product code.
+**Etsy (Phase 9A — Open API + link-first — ADR-FP-087l / ADR-FP-087o):** Portal builds official website search URLs (Primary + Broader). In-app listing cards come from Etsy Open API via callable `searchEtsyRecommendations` (Secret Manager `ETSY_X_API_KEY`, bound to that callable and `staffSearchEtsyRecommendationApiResults` only). Successful/empty/unavailable searches persist a bounded `lastApiSearch` snapshot on `etsyRecommendationRequests` (Admin SDK). Studio staff may refresh via `staffSearchEtsyRecommendationApiResults` (any request status; does not charge customer preview quota). Website scrape remains removed (ADR-FP-087j). Soft-fail to links-only if the secret is missing or search returns empty. Purchases stay off-platform via listing/search URLs. `SCRAPERAPI_API_KEY` / `FIRECRAWL_API_KEY` are not used by product code.
 
 **Custom Designs Portal routes (ADR-FP-087m, amended 2026-07-16):** Choose at `/custom-designs`; Find wizard at `/custom-designs?flow=find&step={subject|style|wording|review}`; results at `/custom-designs?flow=find&step=results&requestId=…`; Assisted at `/custom-designs?flow=assisted&step=…`. Legacy path URLs and bare `?step=` (no flow) rewrite to the canonical query forms. In-progress questionnaire answers use localStorage drafts; free-text is not placed in the URL.
 
@@ -112,30 +115,39 @@ per-request cooldown per actor role. New rows use `kind: "customer_message"` or
 history remains compatible; no backfill, Firestore rules, Storage rules, or index change is
 required. Studio tab layout: Overview holds Internal staff notes (explicit Save notes via
 `staffUpdateAssistedCreationStatus` action `update_notes`), primary Staff actions when Start work /
-Resume revision apply, and Reject/Cancel/Restore in a status-row ⋯ menu (Portal-parity overflow);
+Resume revision apply, and Reject (submitted/New only)/Cancel/Restore in a status-row ⋯ menu (Portal-parity overflow);
 Proofs holds proof upload; Messages is thread + compose only while open (Portal parity).
 Deploy the updated send callables after owner approval:
 `firebase deploy --only functions:customerSendAssistedCreationMessage,functions:staffSendAssistedCreationMessage --project fresh-prints-dev`.
 
-**Assisted proof download retention (ADR-FP-093):** Proofs are raw uploads at
-`assisted-creation/{uid}/{requestId}/proofs/{fileId}` where new uploads use basename
-`proof-{n}-{mmddyyyy}-{HHmm}.{ext}` (Studio local clock; Firestore `proof.id` stays a UUID; no grey derivative). On approve,
-`customerRespondToAssistedCreationProof` sets `approvedProofId`/`approvedAt` and deletes sibling
-full-res objects. Customer cancel and staff reject/cancel delete all proof full-res.
-`purgeExpiredAssistedCreationProofs` (callable, `dryRun`) and
+**Assisted proof download retention (ADR-FP-093 / ADR-FP-110):** Proofs are raw uploads at
+`assisted-creation/{uid}/{requestId}/proofs/{fileId}` where **new** uploads use an opaque UUID
+object id (no extension; content type on the object). Legacy objects may still use basename
+`proof-{n}-{mmddyyyy}-{HHmm}.{ext}`. Final HR artwork lives at
+`assisted-creation/{uid}/{requestId}/final/{fileId}` (same owner/admin write + customer/staff read
+policy as proofs). On proof-image approve,
+`customerRespondToAssistedCreationProof` moves status to `final_source_needed`, sets
+`approvedProofId`/`approvedAt`, and deletes sibling full-res objects. Catalog-share approve still
+goes directly to `approved` (ADR-FP-108). Staff `staffAddAssistedCreationFinalSource` attaches
+`finalSource` and completes to `approved`. Customer cancel and staff reject/cancel delete all
+proof full-res. `purgeExpiredAssistedCreationProofs` (callable, `dryRun`) and
 `purgeExpiredAssistedCreationProofsScheduled` (daily) delete approved full-res after 14 days and
 orphan leftovers on rejected/cancelled. Portal download uses callable
 `customerGetAssistedCreationApprovedProofFile` (Admin Storage download → base64 in
-callable response; AuthZ: owning customer + shared eligibility). Portal decodes to a
+callable response; AuthZ: owning customer + shared eligibility; **prefers `finalSource` when
+present**). Portal decodes to a
 blob and triggers `<a download>` so PNGs save as files (GCS signed-URL navigate often
 opens in-tab; raw HTTPS Function fetch hit CORS / “Failed to fetch” from Portal).
+Proof **previews** use client `getBytes` → object URL (not durable signed URLs in `img src`).
 Legacy callable `customerGetAssistedCreationApprovedProofDownloadUrl` (signed URL) is
 deprecated for Portal UI. Deploy (dev):
-`firebase deploy --only functions:customerGetAssistedCreationApprovedProofFile --project fresh-prints-dev`.
+`firebase deploy --only functions:customerRespondToAssistedCreationProof,functions:staffAddAssistedCreationFinalSource,functions:customerGetAssistedCreationApprovedProofFile,functions:customerAddAssistedApprovedProofToPrintRequest --project fresh-prints-dev`
+plus Storage rules for `final/`.
 Optional Storage CORS backup: `docs/workflow/setup/firebase-storage-cors.md`.
 
-**Assisted proof → Current Request (ADR-FP-094):** Portal callable
-`customerAddAssistedApprovedProofToPrintRequest` copies the approved proof into customer-upload
+**Assisted proof → Current Request (ADR-FP-094 / ADR-FP-110):** Portal callable
+`customerAddAssistedApprovedProofToPrintRequest` copies the **final source when present**, else the
+approved proof, into customer-upload
 Storage, creates a private ready upload, and attaches it to the working print request (qty 1,
 pixel sizing). Skips customer transparency/quality gates. Idempotent via
 `assistedCreationRequests.printRequestIngest`. Deploy (dev):
@@ -181,7 +193,7 @@ Cursor MCP token (`BREVO_MCP_TOKEN`).
 
 **Settings AI playground:** Owner/admin users can call `testAiEnrichmentPlayground` from `/settings` for one-off text + image tests. The callable validates model, prompt length, and image type/size; keeps the Gemini call server-side; does not write to `designs`; and fails safely if `GEMINI_API_KEY` is missing.
 
-As of ADR-FP-039/ADR-FP-040, **AI Processing is a single playground-style call** (prompt version `catalog-enrich-v19`): the saved Settings prompt template is sent with `{{excluded_tags}}` replaced server-side (approved category/tag context is resolved server-side, not injected into the prompt). The model is asked for catalog fields (`description`, a raw `category` candidate, `title`, up to 8 tag candidates) plus optional complete `suggestedNewTags` objects when no approved tag name or alias is relevant enough, and the default prompt explicitly requires full-image text inspection plus exact readable-text inclusion in the description when text is present. It does **not** send `response_format: { type: "json_object" }`; the server extracts JSON tolerantly (`extractJsonObject`, handling fenced/prose-wrapped output). One normal call per success — no empty-output retry and no quality retry; only the 429/5xx network retry remains. Server-side normalization resolves AI tags against approved global `tags` documents by name/alias, persists matches to `aiSuggestions.tags`, and stores unmatched tokens or valid nonmatching `suggestedNewTags` as `aiSuggestions.suggestedNewTags` for owner/admin review. AI never creates approved tag documents. Category resolution runs server-side after tag resolution (`catalogThemeCategoryResolver.ts`), using the raw model category candidate only as one scoring signal alongside title/description/visible text/matched tags — never persisted directly. The server-side image input keeps `detail: "high"` for both catalog enrichment and the Settings playground. Empty `message.content` responses still log usage and surface a clean `failed` state (`vision_empty_output`) for manual re-run.
+As of ADR-FP-039/ADR-FP-040 / ADR-FP-113, **AI Processing is a single playground-style call** (prompt version `catalog-enrich-v26`): the saved Settings prompt template is sent with `{{excluded_tags}}` replaced server-side (approved category/tag context is resolved server-side, not injected into the prompt). The model is asked for catalog fields (`description`, a raw `category` candidate, `title`, up to 8 tag candidates, plus transient `readableTextLines` / `centralSubject` used only for title finalization and not persisted on `aiSuggestions`) plus optional complete `suggestedNewTags` objects when no approved tag name or alias is relevant enough, and the default prompt requires full-image text inspection, exact readable-text inclusion in the description, and **complete text-dominant titles** that agree with that wording (contractionsions preserved; description-prose openings rejected; incomplete titles may be completed server-side from structured readable lines or guarded description wording — never the first description sentence). It does **not** send `response_format: { type: "json_object" }`; the server extracts JSON tolerantly (`extractJsonObject`, handling fenced/prose-wrapped output). One normal call per success — no empty-output retry and no quality retry; only the 429/5xx network retry remains. Server-side normalization resolves AI tags against approved global `tags` documents by name/alias, persists matches to `aiSuggestions.tags`, and stores unmatched tokens or valid nonmatching `suggestedNewTags` as `aiSuggestions.suggestedNewTags` for owner/admin review. AI never creates approved tag documents. Category resolution runs server-side after tag resolution (`catalogThemeCategoryResolver.ts`), using the raw model category candidate only as one scoring signal alongside title/description/visible text/matched tags — never persisted directly. The server-side image input keeps `detail: "high"` for both catalog enrichment and the Settings playground. Empty `message.content` responses still log usage and surface a clean `failed` state (`vision_empty_output`) for manual re-run.
 
 ---
 
@@ -219,34 +231,35 @@ As of ADR-FP-039/ADR-FP-040, **AI Processing is a single playground-style call**
 | `getPortalShowPrintProgress` | Callable | Portal: show print progress for customer |
 | `listPortalAllocatableShows` | Callable | Portal: list upcoming shows + `customerAllocatedQuantity` (usage per show under `L`); includes past-cutoff shows as non-allocatable with cutoff meta; returns `portalQueueCutoffHoursBeforeStart` (ADR-FP-103) |
 | `queuePortalPrintRequestToShow` | Callable | Portal: allocate **entire** Continuable request to **one** show atomically or reject; one request per customer per show; rejects past Portal queue cutoff; rejects stale `selections`; no remainder; bidding ack + version (ADR-FP-102 / ADR-FP-103) |
+| `submitEtsyRecommendationRequest` | Callable | Portal: create/replace one active Etsy recommendation request; returns website search URL |
+| `searchEtsyRecommendations` | Callable | Portal: Open API listing search for an owned active request (`ETSY_X_API_KEY`); persists `lastApiSearch` |
+| `staffSearchEtsyRecommendationApiResults` | Callable | Studio: staff Open API search/refresh for any request status; persists `lastApiSearch`; no customer quota charge (`ETSY_X_API_KEY`) |
 | `completeEtsyRecommendationRequest` | Callable | Portal: mark own active Etsy recommendation request completed |
 | `cancelEtsyRecommendationRequest` | Callable | Portal: cancel own active Etsy recommendation request |
-| `submitEtsyRecommendationRequest` | Callable | Portal: create/replace one active Etsy recommendation request; returns website search URL |
-| `searchEtsyRecommendations` | Callable | Portal: Open API listing search for an owned active request (`ETSY_X_API_KEY`) |
-| `completeEtsyRecommendationRequest` | Callable | Portal: mark active recommendation request completed |
-| `cancelEtsyRecommendationRequest` | Callable | Portal: cancel active recommendation request |
 | `addEtsyRecommendationSuggestion` | Callable | Studio: owner/admin add Subject or Tone autocomplete overlay |
 | `deactivateEtsyRecommendationSuggestion` | Callable | Studio: owner/admin soft-deactivate an overlay (`active: false`) |
 | `submitEtsySuggestionRequest` | Callable | Portal: customer submits pending Subject/Tone suggestion for review |
 | `approveEtsySuggestionRequest` | Callable | Studio: owner/admin approve pending suggestion → live overlay |
 | `rejectEtsySuggestionRequest` | Callable | Studio: owner/admin reject pending suggestion |
-| `submitAssistedCreationRequest` | Callable | Portal: submit assisted creation brief (one open) |
+| `submitAssistedCreationRequest` | Callable | Portal: submit assisted creation brief (one open); promotes reference uploads from `pending/` → `{requestId}/references/` |
 | `cancelAssistedCreationRequest` | Callable | Portal: cancel own open assisted request |
-| `customerUpdateAssistedCreationRequest` | Callable | Portal: update answers/references while status is `submitted` only |
+| `customerUpdateAssistedCreationRequest` | Callable | Portal: update answers/references while status is `submitted` only; promotes new `pending/` refs to `{requestId}/references/` |
 | `customerSendAssistedCreationMessage` | Callable | Portal: append text-only message to own Assisted request while open; rejects terminal; preserves status |
 | `staffSendAssistedCreationMessage` | Callable | Studio: owner/admin append staff chat message while open; rejects terminal; preserves status |
-| `customerRespondToAssistedCreationProof` | Callable | Portal: approve proof (optional 1–5 rating + short note; sets `approvedProofId`/`approvedAt`; purges sibling proof full-res) or request revision with note |
-| `customerGetAssistedCreationApprovedProofFile` | Callable | Portal: Admin-streamed approved proof bytes (base64) for blob file download (ownership + 14-day/legacy eligibility; ADR-FP-093) |
-| `customerGetAssistedCreationApprovedProofDownloadUrl` | Callable | Legacy: mint short-lived signed URL (deprecated for Portal UI; ADR-FP-093) |
-| `customerAddAssistedApprovedProofToPrintRequest` | Callable | Portal: copy approved Assisted proof → private customer upload + attach to Current Request / working request (skips upload quality gates; ADR-FP-094) |
-| `staffUpdateAssistedCreationStatus` | Callable | Studio: owner/admin start/resume/reject/cancel/restore, or `update_notes` (notes only, no status/history change); reject/cancel purge all proof full-res |
-| `staffAddAssistedCreationProof` | Callable | Studio: owner/admin attach proof → `proof_ready` |
+| `customerRespondToAssistedCreationProof` | Callable | Portal: approve / request revision for proof **or** catalog_share review; proof-image approve → `final_source_needed` + `approvedProofId`/`approvedAt` + sibling purge (ADR-FP-110); catalog approve → `approved` + `approvedCatalogDesignId`/`approvedAt` from server-stored suggestion (re-validates design `ready`) and never sets `approvedProofId` (ADR-FP-108) |
+| `customerGetAssistedCreationApprovedProofFile` | Callable | Portal: Admin-streamed final artwork or approved proof bytes (base64) for blob file download (ownership + 14-day/legacy eligibility; prefers `finalSource`; ADR-FP-093/110); fails closed for catalog_share |
+| `customerGetAssistedCreationApprovedProofDownloadUrl` | Callable | Legacy: mint short-lived signed URL (deprecated for Portal UI; ADR-FP-093); fails closed for catalog_share |
+| `customerAddAssistedApprovedProofToPrintRequest` | Callable | Portal: copy final source (preferred) or approved Assisted proof → private customer upload + attach to Current Request / working request (skips upload quality gates; ADR-FP-094/110); fails closed for catalog_share (use catalog Add to Request) |
+| `staffUpdateAssistedCreationStatus` | Callable | Studio: owner/admin start/resume/reject/cancel/restore, or `update_notes` (notes only, no status/history change); **reject only when current status is `submitted`** (fail closed after Start Work); resume clears catalog suggestion; reject/cancel purge all proof full-res |
+| `staffAddAssistedCreationProof` | Callable | Studio: owner/admin attach proof → `proof_ready` (`fulfillmentMode: proof_image`; clears catalog suggestion) |
+| `staffAddAssistedCreationFinalSource` | Callable | Studio: owner/admin attach final HR artwork under `final/` and complete `final_source_needed` → `approved` (ADR-FP-110) |
+| `staffSuggestAssistedCreationCatalogDesign` | Callable | Studio: owner/admin suggest ready catalog design → `proof_ready` (`fulfillmentMode: catalog_share`); in-app notification + optional email outbox (ADR-FP-108) |
 | `purgeExpiredAssistedCreationProofs` | Callable | Owner/admin: purge approved proof full-res after 14 days + orphan full-res on rejected/cancelled (`dryRun` supported; ADR-FP-093) |
 | `purgeExpiredAssistedCreationProofsScheduled` | Scheduled (daily) | Same purge logic as the callable (ADR-FP-093) |
 | `updateEmailProviderSettings` | Callable | Studio owner: select invitation and proof-notice providers (`resend` \| `brevo`) |
 | `updateCustomerUploadQuotaSettings` | Callable | Studio owner: set America/Chicago daily print-request vs donation upload caps (`settings/customerUploadQuotas`; ADR-FP-095) |
 | `updatePrintRequestLimitSettings` | Callable | Studio owner: set sole limit `L` (`maxQuantityPerShowPerCustomer`); mirrors into legacy Cap A field for one-release rollback (ADR-FP-102) |
-| `onEmailDeliveryJobCreated` | Firestore create | Deliver a proof-ready notice from the durable outbox |
+| `onEmailDeliveryJobCreated` | Firestore create | Deliver a proof-ready or catalog-share notice from the durable outbox |
 | `enqueueAiEnrichment` | Callable | Run imported design through direct AI processing |
 | `resetAiEnrichmentForProcessing` | Callable | Return Needs Review or Rejected design to Processing for a staff-started re-run |
 | `updateAiEnrichmentSettings` | Callable | Owner/admin: set team vision model, prompt template, and tag exclusions |
@@ -268,7 +281,7 @@ See `FIREBASE.md` and `docs/workflow/setup/` for Firebase, Resend, and Brevo con
 Email Functions use Secret Manager `RESEND_API_KEY` and `BREVO_API_KEY` (both bound on invitation
 and proof-delivery Functions; runtime selection by `settings/emailProviders`), parameter defaults
 `INVITATION_FROM_EMAIL` / `PROOF_NOTICE_FROM_EMAIL` (`Fresh Prints
-<team@funkyfreshprints.com>`), and a fail-closed project map for Portal URLs:
+<noreply@myprintrequest.com>`), and a fail-closed project map for Portal URLs:
 `fresh-prints-dev` → `https://myprintrequest.dev`; production mapping →
 `https://myprintrequest.com`. That map drives both proof-notice review CTAs and
 Portal invite Firebase Auth password create/reset **continue** URLs
@@ -278,15 +291,30 @@ values and deployments require a human checkpoint. Firebase Authentication
 **Authorized domains** must include the Portal hosts (`myprintrequest.dev`,
 `myprintrequest.com`); `localhost` is for local Portal only.
 
-**Portal Open Graph absolute URLs (2026-07-20):** The Next.js Portal uses the same customer hosts
-for `metadataBase` / OG image resolution via optional `NEXT_PUBLIC_PORTAL_ORIGIN`, else
-`NEXT_PUBLIC_FIREBASE_PROJECT_ID=fresh-prints-dev` → `https://myprintrequest.dev`, else
-production non-dev project → `https://myprintrequest.com`, else `http://localhost:3100`.
-Per-design share pages at `/share/design/{id}` use **Firebase Admin** (ADC on App Hosting) to
-read ready catalog title/description and sign a Storage image URL for crawlers—without opening
-Firestore/Storage client rules to anonymous users. Non-design URLs load `settings/portalSocialMeta`
-(owner-editable via Studio **Settings → Social sharing** / `updatePortalSocialMetaSettings`) plus a
-daily-rotated ready-library image. See `docs/standards/DEPLOYMENT.md` (Portal Open Graph section).
+**Transactional from-address (ADR-FP-111):** Changing code defaults alone does **not** update a
+project if Firebase params were previously set. On each target project, set both params to
+`Fresh Prints <noreply@myprintrequest.com>` (CLI or Console) and redeploy the email Functions.
+All transactional templates include an unmonitored-mailbox disclaimer. Verify
+`myprintrequest.com` (or `noreply@myprintrequest.com`) in Resend and/or Brevo before live send.
+
+**Portal Open Graph absolute URLs (2026-07-20; letterbox/toggles 2026-07-21):** The Next.js Portal
+uses the same customer hosts for `metadataBase` / OG image resolution via optional
+`NEXT_PUBLIC_PORTAL_ORIGIN`, else `NEXT_PUBLIC_FIREBASE_PROJECT_ID=fresh-prints-dev` →
+`https://myprintrequest.dev`, else production non-dev project → `https://myprintrequest.com`, else
+`http://localhost:3100`.
+
+| Function | Role |
+|----------|------|
+| `getPortalDesignShareOpenGraph` | Public JSON for `/share/design/{id}` title/description/`imageUrl` |
+| `getPortalGlobalOpenGraph` | Public JSON for non-design URLs (settings + library/logo image) |
+| `getPortalOgShareImage` | Public JPEG letterbox compositor (`designId` + `fit=contain`) |
+| `updatePortalSocialMetaSettings` | Owner callable for title/description + letterbox + global image source |
+| `finalizeBrandLogoSlot` | Owner callable: finalize/clear Studio+Portal brand logo slots from Admin Storage metadata |
+| `updateBrandLogoDisplaySizes` | Owner callable: set Portal/Studio logo display heights (px) on `settings/brandLogos` |
+
+Portal metadata prefers these Functions (no App Hosting Admin ADC required for crawlers). Studio
+**Settings → Social sharing** toggles letterbox and library-vs-logo. Studio **Settings → Brand logos**
+uploads PNGs to Storage `brand/**` + `settings/brandLogos`. See `DEPLOYMENT.md` and ADR-FP-114.
 
 ---
 

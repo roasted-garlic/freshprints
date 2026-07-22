@@ -24,6 +24,8 @@ export interface AssistedCreationProofRetentionView {
   fileName?: string | null;
   contentType?: string | null;
   fullSizePurgedAtMillis?: number | null;
+  /** When `catalog_share`, never purge Storage (no assisted proof object). */
+  kind?: "proof_image" | "catalog_share";
 }
 
 export interface AssistedCreationApprovedProofDownloadInput {
@@ -209,6 +211,9 @@ export function selectAssistedCreationProofIdsToPurgeOnTerminal(input: {
   return input.proofs
     .filter((proof) => {
       if (!proof.id?.trim()) {
+        return false;
+      }
+      if (proof.kind === "catalog_share") {
         return false;
       }
       if (keepId && proof.id === keepId) {

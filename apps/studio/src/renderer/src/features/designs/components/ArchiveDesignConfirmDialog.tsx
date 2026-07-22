@@ -27,7 +27,7 @@ export function ArchiveDesignConfirmDialog({
 
   return (
     <div className="modal-overlay modal-overlay-blur">
-      <Modal aria-labelledby="archive-design-title" className="modal-panel modal-panel-md" role="dialog">
+      <Modal aria-labelledby="archive-design-title" className="modal-panel modal-panel-lg" role="dialog">
         <ModalHeader>
           <div>
             <p className="eyebrow">Confirm archive</p>

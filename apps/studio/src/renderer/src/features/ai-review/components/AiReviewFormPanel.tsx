@@ -4,6 +4,7 @@ import { Select, type SelectOption } from "../../../shared/components/Select";
 import { TagChipInput } from "../../../shared/components/TagChipInput";
 import { TextInput } from "../../../shared/components/TextInput";
 import { Toggle } from "../../../shared/components/Toggle";
+import { ArtworkBackgroundFields } from "../../designs/components/ArtworkBackgroundFields";
 import type { CatalogTag } from "../../designs/types/catalogTag.types";
 import type { Design } from "../../designs/types/design.types";
 import type { AiReviewDraftForm } from "../types/aiReviewInbox.types";
@@ -142,6 +143,16 @@ export function AiReviewFormPanel({
           with toggle on adds the canonical halftone tag; off removes it.
         </p>
       </div>
+
+      <ArtworkBackgroundFields
+        disabled={!canEdit}
+        namePrefix="aiReviewArtworkBackground"
+        onChange={(field, value) => onChange(field, value)}
+        values={{
+          artworkBackgroundPreset: draftForm.artworkBackgroundPreset,
+          artworkBackgroundCustomHex: draftForm.artworkBackgroundCustomHex,
+        }}
+      />
     </div>
   );
 }

@@ -2,10 +2,13 @@
 
 import { useEffect, useState } from 'react';
 
+import { resolveArtworkBackgroundHex } from '@fresh-prints/shared/constants/design/artworkBackground.constants';
+
 import type { CatalogDesign } from '../types/catalog.types';
 import { CatalogFavoriteButton } from '../../favorites/components/CatalogFavoriteButton';
 import { useCatalogDerivativeUrl } from '../hooks/useCatalogDerivativeUrl';
 import { PlusIcon } from '../../shared/components/PortalIcons';
+import { CatalogArtworkBackgroundPreviewPicker } from './CatalogArtworkBackgroundPreviewPicker';
 import { CatalogDesignShareButton } from './CatalogDesignShareButton';
 import { CatalogPreviewLightbox } from './CatalogPreviewLightbox';
 import { CatalogThumbnailPanel } from './CatalogThumbnailPanel';
@@ -44,6 +47,9 @@ export function CatalogDesignDetailsModal({
   onClose,
 }: CatalogDesignDetailsModalProps) {
   const [isPreviewLightboxOpen, setIsPreviewLightboxOpen] = useState(false);
+  const [previewBgHex, setPreviewBgHex] = useState(() =>
+    resolveArtworkBackgroundHex(design?.artworkBackgroundHex),
+  );
   const statusText = exhaustedStatusText;
   const requestFullLabel =
     !canAddPrints && statusText && !isInCurrentRequest ? statusText : null;
@@ -54,12 +60,15 @@ export function CatalogDesignDetailsModal({
     design?.updatedAtMs,
   );
   const addDisabled = isAdding || !canAddPrints;
+  const designDefaultBgHex = resolveArtworkBackgroundHex(design?.artworkBackgroundHex);
 
   useEffect(() => {
     if (!isOpen) {
       setIsPreviewLightboxOpen(false);
+      return;
     }
-  }, [isOpen]);
+    setPreviewBgHex(resolveArtworkBackgroundHex(design?.artworkBackgroundHex));
+  }, [isOpen, design?.id, design?.artworkBackgroundHex]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -95,9 +104,16 @@ export function CatalogDesignDetailsModal({
           onClick={(event) => event.stopPropagation()}
           role="presentation"
         >
-          <div className="design-details-hero">
+          <div
+            className="design-details-hero"
+            style={{
+              ['--color-artwork-preview-bg' as string]: previewBgHex,
+              backgroundColor: previewBgHex,
+            }}
+          >
             <CatalogThumbnailPanel
               alt={`${design.title} preview`}
+              artworkBackgroundHex={previewBgHex}
               catalogPath={previewPath}
               className="design-details-hero-media"
               contentVersion={design.updatedAtMs}
@@ -127,6 +143,11 @@ export function CatalogDesignDetailsModal({
                   designTitle={design.title}
                 />
                 <CatalogDesignShareButton design={design} variant="labeled" />
+                <CatalogArtworkBackgroundPreviewPicker
+                  designDefaultHex={designDefaultBgHex}
+                  onPreviewHexChange={setPreviewBgHex}
+                  previewHex={previewBgHex}
+                />
                 {requestFullLabel ? (
                   <p className="design-details-request-full-label is-request-full">{requestFullLabel}</p>
                 ) : null}
@@ -171,6 +192,7 @@ export function CatalogDesignDetailsModal({
 
       <CatalogPreviewLightbox
         alt={design.title}
+        artworkBackgroundHex={previewBgHex}
         isOpen={isPreviewLightboxOpen}
         onClose={() => setIsPreviewLightboxOpen(false)}
         previewUrl={previewUrl}

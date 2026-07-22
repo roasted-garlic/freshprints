@@ -163,8 +163,14 @@ export function PortalQueueToShowModal({
           if (!match) {
             return undefined;
           }
-          // Past-cutoff upcoming shows, or still-open shows that are allocatable.
-          if (match.isPastQueueCutoff !== true && match.isAllocatable === false) {
+          // Past shows, past-cutoff upcoming shows, and still-open allocatable shows.
+          const isPast =
+            show.scheduledAt.getTime() <= countdownNowMs;
+          if (
+            match.isPastQueueCutoff !== true &&
+            match.isAllocatable === false &&
+            !isPast
+          ) {
             return undefined;
           }
           return (

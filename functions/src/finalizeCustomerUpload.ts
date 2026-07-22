@@ -34,6 +34,7 @@ import {
   unauthenticated,
 } from "./lib/errors";
 import { withoutUndefinedFields } from "./lib/firestoreDocument";
+import { isAnonymousAuthToken } from "./lib/catalogDonationUploader";
 import { requirePortalCustomer } from "./lib/portalCustomer";
 
 export interface FinalizeCustomerUploadResponse {
@@ -64,8 +65,12 @@ export const finalizeCustomerUpload = onCall(
       throw invalidArgument(error instanceof Error ? error.message : "Invalid request.");
     }
 
-    await requirePortalCustomer(request.auth.uid);
+    const isGuest = isAnonymousAuthToken(request.auth.token);
+    if (!isGuest) {
+      await requirePortalCustomer(request.auth.uid);
+    }
     const customerUid = request.auth.uid;
+    const uploaderType = isGuest ? ("guest" as const) : ("customer" as const);
 
     const uploadRef = adminDb
       .collection(CUSTOMER_UPLOAD_COLLECTIONS.customerUploads)
@@ -81,6 +86,11 @@ export const finalizeCustomerUpload = onCall(
     }
     if (upload.batchId !== payload.batchId) {
       throw invalidArgument("Upload does not belong to this batch.");
+    }
+
+    const uploadPurpose = resolveCustomerUploadPurpose(upload.purpose);
+    if (isGuest && uploadPurpose !== "catalog_donation") {
+      throw permissionDenied("Sign in to upload artwork for print requests.");
     }
 
     if (upload.technicalStatus === "ready") {
@@ -104,11 +114,7 @@ export const finalizeCustomerUpload = onCall(
       });
 
       if (!upload.quotaChargedFinalize) {
-        await chargeDailyQuota(
-          customerUid,
-          "finalizeImage",
-          resolveCustomerUploadPurpose(upload.purpose),
-        );
+        await chargeDailyQuota(customerUid, "finalizeImage", uploadPurpose, uploaderType);
         await uploadRef.update({
           quotaChargedFinalize: true,
           updatedAt: FieldValue.serverTimestamp(),

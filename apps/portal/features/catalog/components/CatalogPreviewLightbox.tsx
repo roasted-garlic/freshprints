@@ -1,9 +1,12 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, type CSSProperties } from 'react';
+
+import { resolveArtworkBackgroundHex } from '@fresh-prints/shared/constants/design/artworkBackground.constants';
 
 interface CatalogPreviewLightboxProps {
   alt: string;
+  artworkBackgroundHex?: string;
   className?: string;
   isOpen: boolean;
   onClose: () => void;
@@ -20,6 +23,7 @@ function CloseIcon() {
 
 export function CatalogPreviewLightbox({
   alt,
+  artworkBackgroundHex,
   className,
   isOpen,
   onClose,
@@ -45,6 +49,13 @@ export function CatalogPreviewLightbox({
     return null;
   }
 
+  const imageStyle: CSSProperties | undefined = artworkBackgroundHex
+    ? ({
+        ['--color-artwork-preview-bg' as string]: resolveArtworkBackgroundHex(artworkBackgroundHex),
+        backgroundColor: resolveArtworkBackgroundHex(artworkBackgroundHex),
+      } as CSSProperties)
+    : undefined;
+
   return (
     <div
       aria-label={`${alt} enlarged preview`}
@@ -63,7 +74,13 @@ export function CatalogPreviewLightbox({
           <CloseIcon />
         </button>
 
-        <img alt={alt} className="design-preview-lightbox-image" decoding="async" src={previewUrl} />
+        <img
+          alt={alt}
+          className="design-preview-lightbox-image"
+          decoding="async"
+          src={previewUrl}
+          style={imageStyle}
+        />
       </div>
     </div>
   );

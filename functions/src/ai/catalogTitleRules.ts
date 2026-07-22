@@ -24,8 +24,8 @@ function hasTrailingTitlePunctuation(rawTitle: string): boolean {
   return TRAILING_TITLE_PUNCTUATION.test(rawTitle.trim());
 }
 
-export const CATALOG_ENRICHMENT_PROMPT_VERSION = "catalog-enrich-v22";
-export const DEVELOPMENT_CATALOG_ENRICHMENT_PROMPT_VERSION = "catalog-enrich-dev-v22";
+export const CATALOG_ENRICHMENT_PROMPT_VERSION = "catalog-enrich-v26";
+export const DEVELOPMENT_CATALOG_ENRICHMENT_PROMPT_VERSION = "catalog-enrich-dev-v26";
 
 /**
  * Prompt version for the optional text-only tag reranker second call. Independent of
@@ -402,7 +402,14 @@ export function filterBackgroundColorsFromPalette(
   return filtered.length > 0 ? filtered : undefined;
 }
 
-export function normalizeCatalogTitle(rawTitle: string): string {
+/** Default word cap for OCR-era title normalization. Lean titles pass a higher cap. */
+const DEFAULT_CATALOG_TITLE_MAX_WORDS = 6;
+const LEAN_CATALOG_TITLE_MAX_WORDS = 24;
+
+export function normalizeCatalogTitle(
+  rawTitle: string,
+  maxWords: number = DEFAULT_CATALOG_TITLE_MAX_WORDS,
+): string {
   const cleaned = rawTitle
     .replace(/\.[a-z0-9]{2,5}$/i, "")
     .replace(VERSION_PATTERN, "")
@@ -418,7 +425,7 @@ export function normalizeCatalogTitle(rawTitle: string): string {
     .split(" ")
     .map(stripTitleTokenPunctuation)
     .filter((word) => word && !isPunctuationOnlyTitleToken(word))
-    .slice(0, 6);
+    .slice(0, Math.max(1, maxWords));
 
   if (words.length === 0) {
     return "";
@@ -526,24 +533,761 @@ export function isGenericCatalogTitle(title: string): boolean {
   return false;
 }
 
-export function extractPrimaryWordingFromDescription(description: string | undefined): string {
+/** Case-insensitive description-prose openings that must never become catalog titles. */
+const DESCRIPTION_LIKE_TITLE_OPENINGS = [
+  "the design features",
+  "the design shows",
+  "the design depicts",
+  "the image features",
+  "the image shows",
+  "the image depicts",
+  "the artwork features",
+  "the artwork shows",
+  "the artwork depicts",
+  "the graphic features",
+  "the graphic shows",
+  "the graphic depicts",
+  "this design features",
+  "this design depicts",
+  "this design shows",
+  "this image contains",
+  "this image shows",
+  "this graphic contains",
+  "an illustration of",
+  "an image of",
+  "a design with",
+  "a design of",
+  "a graphic of",
+  "an artwork of",
+] as const;
+
+const VISUAL_SCENE_DESCRIPTION_PATTERN =
+  /\b(?:wearing|featuring|standing|holding|sitting|outline of|silhouette of|surrounded by|set against|polka\s*dot|lettering|typography)\b/i;
+
+const DECORATIVE_SUBJECT_TOKENS = new Set([
+  "polka",
+  "dot",
+  "dots",
+  "bow",
+  "bows",
+  "starburst",
+  "starbursts",
+  "sparkle",
+  "sparkles",
+  "outline",
+  "outlines",
+  "shadow",
+  "shadows",
+  "snowflake",
+  "snowflakes",
+  "decorative",
+  "decoration",
+  "decorations",
+  "accent",
+  "accents",
+  "flourish",
+  "flourishes",
+  "red",
+  "white",
+  "black",
+  "pink",
+  "blue",
+  "green",
+  "gold",
+  "silver",
+]);
+
+/**
+ * True when a title (or extracted phrase) reads like description prose rather than a
+ * searchable catalog title. Matches known boilerplate openings and common prose shapes.
+ */
+export function isDescriptionLikeCatalogTitle(title: string): boolean {
+  const trimmed = title.trim().replace(/^[\s"'“”‘’]+/u, "").trim();
+
+  if (!trimmed) {
+    return false;
+  }
+
+  const lower = trimmed.toLowerCase().replace(/\s+/g, " ");
+
+  if (DESCRIPTION_LIKE_TITLE_OPENINGS.some((opening) => lower.startsWith(opening))) {
+    return true;
+  }
+
+  if (/^(?:the|this|an|a)\s+(?:design|image|artwork|graphic|illustration)\b/i.test(trimmed)) {
+    return true;
+  }
+
+  // Prose sentences that describe composition rather than naming the design.
+  if (
+    /\b(?:features|shows|depicts|contains)\s+(?:the|a|an)\b/i.test(lower) &&
+    VISUAL_SCENE_DESCRIPTION_PATTERN.test(lower)
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * True when a leading description sentence looks like a no-text visual scene, not readable slogan copy.
+ */
+function isVisualSceneDescriptionSentence(sentence: string): boolean {
+  const trimmed = sentence.trim();
+
+  if (!trimmed || isDescriptionLikeCatalogTitle(trimmed)) {
+    return true;
+  }
+
+  return VISUAL_SCENE_DESCRIPTION_PATTERN.test(trimmed);
+}
+
+/**
+ * Guarded leading-sentence recovery for unquoted slogan transcriptions only.
+ * Never returns description boilerplate or visual-scene prose.
+ */
+function extractSloganLikeLeadingTranscription(description: string): string {
+  const firstSentence = description.split(/[.!?]/)[0]?.trim() ?? "";
+
+  if (!firstSentence || isDescriptionLikeCatalogTitle(firstSentence)) {
+    return "";
+  }
+
+  if (isVisualSceneDescriptionSentence(firstSentence)) {
+    return "";
+  }
+
+  // Prefer explicit narration elsewhere when the lead is not itself a clear slogan line.
+  if (
+    /\b(?:text\s+)?(?:reads|says|reading)\b/i.test(description) &&
+    !/\b(?:text\s+)?(?:reads|says|reading)\b/i.test(firstSentence)
+  ) {
+    return "";
+  }
+
+  return normalizeCatalogTitle(firstSentence, LEAN_CATALOG_TITLE_MAX_WORDS);
+}
+
+/**
+ * Strip decorative detail tokens from a subject phrase (bow, polka, sparkles, colors, etc.).
+ */
+export function sanitizeCentralSubjectPhrase(subject: string | undefined): string {
+  if (!subject?.trim()) {
+    return "";
+  }
+
+  if (isDescriptionLikeCatalogTitle(subject) || isGenericCatalogTitle(subject)) {
+    return "";
+  }
+
+  const words = normalizeCatalogTitle(subject, LEAN_CATALOG_TITLE_MAX_WORDS)
+    .split(/\s+/)
+    .filter(Boolean)
+    .filter((word) => {
+      const comparable = normalizeComparableTitle(word);
+      return (
+        Boolean(comparable) &&
+        !DECORATIVE_SUBJECT_TOKENS.has(comparable) &&
+        !TITLE_CONTENT_STOPWORDS.has(comparable)
+      );
+    });
+
+  if (words.length === 0) {
+    return "";
+  }
+
+  const cleaned = words.join(" ");
+
+  if (isStyleWordHeavyTitle(cleaned) || isGenericCatalogTitle(cleaned)) {
+    return "";
+  }
+
+  return stripTrailingTitlePunctuation(cleaned);
+}
+
+/**
+ * Join readable text lines into a title foundation without paraphrasing.
+ */
+export function buildTitleFromReadableTextLines(
+  lines: readonly string[] | undefined,
+  centralSubject?: string,
+  maxWords: number = LEAN_CATALOG_TITLE_MAX_WORDS,
+): string {
+  if (!lines?.length) {
+    return "";
+  }
+
+  const segments: string[] = [];
+  appendUniqueSloganPhrases(
+    segments,
+    lines.map((line) => line.trim()).filter(Boolean),
+  );
+
+  if (segments.length === 0) {
+    return "";
+  }
+
+  const foundation = normalizeCatalogTitle(segments.join(" "), maxWords);
+
+  if (!foundation || isDescriptionLikeCatalogTitle(foundation) || isGenericCatalogTitle(foundation)) {
+    return "";
+  }
+
+  const subject = sanitizeCentralSubjectPhrase(centralSubject);
+
+  if (!subject) {
+    return stripTrailingTitlePunctuation(foundation);
+  }
+
+  const foundationComparable = normalizeComparableTitle(foundation);
+  const subjectComparable = normalizeComparableTitle(subject);
+
+  if (
+    !subjectComparable ||
+    foundationComparable.includes(subjectComparable) ||
+    subjectComparable.includes(foundationComparable)
+  ) {
+    return stripTrailingTitlePunctuation(foundation);
+  }
+
+  return stripTrailingTitlePunctuation(
+    normalizeCatalogTitle(`${foundation} ${subject}`, maxWords),
+  );
+}
+
+function isSloganLikeQuotedPhrase(phrase: string): boolean {
+  const comparable = normalizeComparableTitle(phrase);
+  const words = comparable.split(" ").filter(Boolean);
+
+  if (words.length === 0) {
+    return false;
+  }
+
+  // Drop meta/style fragments often quoted in prose ("bold", "distressed", "text").
+  if (words.length === 1) {
+    const word = words[0] ?? "";
+    if (BANNED_TITLE_STYLE_WORDS.has(word) || GENERIC_CATALOG_TITLE_TOKENS.has(word)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function phraseAlreadyCovered(existing: readonly string[], candidate: string): boolean {
+  const candidateComparable = normalizeComparableTitle(candidate);
+
+  if (!candidateComparable) {
+    return true;
+  }
+
+  return existing.some((phrase) => {
+    const existingComparable = normalizeComparableTitle(phrase);
+    return (
+      existingComparable === candidateComparable ||
+      existingComparable.includes(candidateComparable) ||
+      candidateComparable.includes(existingComparable)
+    );
+  });
+}
+
+function appendUniqueSloganPhrases(target: string[], candidates: readonly string[]): void {
+  for (const candidate of candidates) {
+    const trimmed = candidate.trim();
+    if (!trimmed || !isSloganLikeQuotedPhrase(trimmed) || phraseAlreadyCovered(target, trimmed)) {
+      continue;
+    }
+    target.push(trimmed);
+  }
+}
+
+/**
+ * Collect double-quoted readable slogan segments in description order.
+ * Straight quotes first; curly double quotes only when no straight quotes exist.
+ * Never treats contraction apostrophes as delimiters.
+ */
+export function extractQuotedReadablePhrases(description: string): string[] {
+  const straight: string[] = [];
+  const straightPattern = /"([^"]+)"/g;
+  let match: RegExpExecArray | null;
+
+  while ((match = straightPattern.exec(description)) !== null) {
+    const phrase = match[1]?.trim() ?? "";
+    if (phrase && isSloganLikeQuotedPhrase(phrase)) {
+      straight.push(phrase);
+    }
+  }
+
+  if (straight.length > 0) {
+    return straight;
+  }
+
+  const curly: string[] = [];
+  const curlyPattern = /\u201C([^\u201C\u201D]+)\u201D/g;
+
+  while ((match = curlyPattern.exec(description)) !== null) {
+    const phrase = match[1]?.trim() ?? "";
+    if (phrase && isSloganLikeQuotedPhrase(phrase)) {
+      curly.push(phrase);
+    }
+  }
+
+  return curly;
+}
+
+/**
+ * Readable wording introduced by narration such as `Text reads '…'` / `says "…"`.
+ * Allows single quotes only when tied to reads/says so contractions are never quote delimiters.
+ */
+export function extractNarratedReadablePhrases(description: string): string[] {
+  const phrases: string[] = [];
+  const patterns: RegExp[] = [
+    /\b(?:text\s+)?(?:reads|says|reading)\s*[:\s]*"([^"]{1,160})"/gi,
+    /\b(?:text\s+)?(?:reads|says|reading)\s*[:\s]*\u201C([^\u201C\u201D]{1,160})\u201D/gi,
+    /\b(?:text\s+)?(?:reads|says|reading)\s*[:\s]*'([^']{1,160})'/gi,
+    /\b(?:text\s+)?(?:reads|says|reading)\s*[:\s]*\u2018([^\u2018\u2019]{1,160})\u2019/gi,
+  ];
+
+  for (const pattern of patterns) {
+    pattern.lastIndex = 0;
+    let match: RegExpExecArray | null;
+    while ((match = pattern.exec(description)) !== null) {
+      const phrase = (match[1] ?? "").replace(/\s+/g, " ").trim();
+      if (phrase && isSloganLikeQuotedPhrase(phrase) && !isDescriptionLikeCatalogTitle(phrase)) {
+        appendUniqueSloganPhrases(phrases, [phrase]);
+      }
+    }
+  }
+
+  return phrases;
+}
+
+/**
+ * Continuation lines narrated in prose without a second quote, e.g.
+ * `"Sarcasm". Below it, in smaller lettering, it says Just one of my many talents.`
+ */
+export function extractProseContinuationPhrases(description: string): string[] {
+  const patterns: RegExp[] = [
+    /\b(?:below|under|underneath|beneath)\s+(?:it|that|this|the\s+word|the\s+text)?[^.]{0,120}?\b(?:says|reads|reading)\s*[:\s]*["\u201C]?([^"\u201D\n.!?]{3,120})/gi,
+    /\bsmaller\s+(?:text|lettering|type|font|words?)[^.]{0,100}?\b(?:says|reads|reading)\s*[:\s]*["\u201C]?([^"\u201D\n.!?]{3,120})/gi,
+    /\b(?:second|lower|bottom|continuation)\s+line\s+(?:that\s+)?(?:says|reads|reading)\s*[:\s]*["\u201C]?([^"\u201D\n.!?]{3,120})/gi,
+    /\bappears\s+above\s+(?:a\s+)?(?:second\s+)?line\s+(?:that\s+)?(?:reads|says)\s*[:\s]*["\u201C]?([^"\u201D\n.!?]{3,120})/gi,
+    /\b(?:followed\s+by|then|and\s+then)\s+(?:the\s+)?(?:line|text|phrase|words?)\s*[:\s]*["\u201C]?([^"\u201D\n.!?]{3,120})/gi,
+  ];
+
+  const styleCutWords = new Set([
+    "in",
+    "with",
+    "featuring",
+    "using",
+    "on",
+    "decorative",
+    "bold",
+    "stacked",
+    "distressed",
+    "typography",
+    "lettering",
+    "font",
+    "style",
+    "sparkles",
+    "sparkle",
+    "stars",
+    "star",
+  ]);
+
+  const phrases: string[] = [];
+
+  for (const pattern of patterns) {
+    pattern.lastIndex = 0;
+    let match: RegExpExecArray | null;
+    while ((match = pattern.exec(description)) !== null) {
+      const words = (match[1] ?? "").replace(/\s+/g, " ").trim().split(/\s+/).filter(Boolean);
+      const kept: string[] = [];
+      for (const word of words) {
+        if (styleCutWords.has(word.toLowerCase()) && kept.length >= 2) {
+          break;
+        }
+        kept.push(word);
+      }
+      const raw = kept.join(" ").trim();
+      if (raw) {
+        appendUniqueSloganPhrases(phrases, [raw]);
+      }
+    }
+  }
+
+  return phrases;
+}
+
+/**
+ * Slash- or pipe-joined transcriptions in the leading description text
+ * (`Sarcasm / Just one of my many talents`).
+ */
+export function extractSlashJoinedReadableSegments(description: string): string[] {
+  const lead = description.split(/[.!?]/)[0] ?? description;
+  if (!/\s[|/]\s/.test(lead)) {
+    return [];
+  }
+
+  const styleCutWords = new Set([
+    "in",
+    "with",
+    "featuring",
+    "using",
+    "on",
+    "decorative",
+    "bold",
+    "stacked",
+    "distressed",
+    "typography",
+    "lettering",
+    "font",
+    "style",
+  ]);
+
+  return lead
+    .split(/\s[|/]\s/)
+    .map((segment) => {
+      const words = segment.trim().split(/\s+/).filter(Boolean);
+      const kept: string[] = [];
+      for (const word of words) {
+        if (styleCutWords.has(word.toLowerCase()) && kept.length >= 2) {
+          break;
+        }
+        kept.push(word);
+      }
+      return kept.join(" ").trim();
+    })
+    .filter((segment) => isSloganLikeQuotedPhrase(segment));
+}
+
+/**
+ * Build the best readable wording phrase from a catalog description.
+ * Merges quoted segments, narrated reads/says phrases, prose continuations, and slash-joined
+ * lines so intermittent Gemini narration styles still yield the full text-dominant slogan.
+ * Never uses a description-boilerplate or visual-scene first sentence as the title wording.
+ */
+export function extractPrimaryWordingFromDescription(
+  description: string | undefined,
+  maxWords: number = DEFAULT_CATALOG_TITLE_MAX_WORDS,
+): string {
   if (!description?.trim()) {
     return "";
   }
 
-  const quotedMatch = description.match(/"([^"]+)"|'([^']+)'/);
+  const quoted = extractQuotedReadablePhrases(description);
+  const narrated = extractNarratedReadablePhrases(description);
+  const continuations = extractProseContinuationPhrases(description);
+  const slashSegments = extractSlashJoinedReadableSegments(description);
 
-  if (quotedMatch) {
-    return normalizeCatalogTitle((quotedMatch[1] ?? quotedMatch[2] ?? "").trim());
+  const segments: string[] = [];
+  appendUniqueSloganPhrases(segments, quoted);
+  appendUniqueSloganPhrases(segments, narrated);
+  appendUniqueSloganPhrases(segments, continuations);
+  appendUniqueSloganPhrases(segments, slashSegments);
+
+  // Continuation-only narration ("appears above a second line that reads …") often omits the
+  // headline from the capture group — prepend a leading quoted/single-token headline when present.
+  if (continuations.length > 0 && quoted.length === 0 && narrated.length === 0 && slashSegments.length === 0) {
+    const leadMatch = description.match(
+      /^[\s\S]{0,80}?\b([A-Za-z][A-Za-z0-9'\u2019]{1,24})\b(?=\s+(?:appears|sits|reads|says|above|over|in\b))/i,
+    );
+    const lead = leadMatch?.[1]?.trim() ?? "";
+    if (lead && isSloganLikeQuotedPhrase(lead) && !phraseAlreadyCovered(segments, lead)) {
+      segments.unshift(lead);
+    }
   }
 
-  const firstSentence = description.split(/[.!?]/)[0]?.trim() ?? "";
+  if (segments.length > 0) {
+    const joined = normalizeCatalogTitle(segments.join(" "), maxWords);
+    return isDescriptionLikeCatalogTitle(joined) ? "" : joined;
+  }
 
-  if (!firstSentence) {
+  const sloganLead = extractSloganLikeLeadingTranscription(description);
+  return isDescriptionLikeCatalogTitle(sloganLead) ? "" : sloganLead;
+}
+
+const EXTRA_NON_SLOGAN_TRAILING_WORDS = [
+  "black",
+  "white",
+  "gold",
+  "silver",
+  "red",
+  "blue",
+  "green",
+  "pink",
+  "purple",
+  "yellow",
+  "orange",
+  "brown",
+  "gray",
+  "grey",
+  "apparel",
+  "shirt",
+  "tee",
+  "clothing",
+  "garment",
+  "print",
+  "ink",
+  "color",
+  "colour",
+  "colors",
+  "colours",
+] as const;
+
+function isNonSloganTrailingWord(word: string): boolean {
+  const lower = word.toLowerCase();
+  return BANNED_TITLE_STYLE_WORDS.has(lower) || EXTRA_NON_SLOGAN_TRAILING_WORDS.includes(lower as (typeof EXTRA_NON_SLOGAN_TRAILING_WORDS)[number]);
+}
+
+/**
+ * When the title is a short headline token, find extra slogan wording later in the
+ * description that is not merely style/canvas narration (covers unquoted continuations).
+ */
+function extractTrailingSloganAfterTitle(description: string, title: string): string {
+  const titleComparable = normalizeComparableTitle(title);
+  const titleWords = titleComparable.split(" ").filter(Boolean);
+
+  if (titleWords.length === 0 || titleWords.length > 3) {
     return "";
   }
 
-  return normalizeCatalogTitle(firstSentence);
+  const escaped = titleWords.map((word) => word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("\\s+");
+  const afterTitle = new RegExp(`${escaped}\\b([\\s\\S]{0,200})`, "i");
+  const match = description.match(afterTitle);
+
+  if (!match?.[1]) {
+    return "";
+  }
+
+  const remainder = match[1]
+    .replace(/["\u201C\u201D]/g, " ")
+    .replace(/\b(?:below|under|underneath|beneath|smaller|larger|bold|distressed|lettering|typography|decorative|stars?|sparkles?|lines?|borders?|appears|above|reads?|says?|reading|text|in|the|a|an|with|and|it|that|this|line|second|on|apparel)\b/gi, " ")
+    .replace(/[^a-zA-Z0-9'\u2019]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!remainder) {
+    return "";
+  }
+
+  const remainderWords = remainder
+    .split(" ")
+    .filter(Boolean)
+    .filter((word) => !isNonSloganTrailingWord(word));
+
+  // Need a real continuation phrase, not leftover color/product adjectives.
+  if (remainderWords.length < 3) {
+    return "";
+  }
+
+  const sloganTail = remainderWords.slice(0, 16).join(" ");
+  if (!isSloganLikeQuotedPhrase(sloganTail)) {
+    return "";
+  }
+
+  return normalizeCatalogTitle(`${title} ${sloganTail}`, LEAN_CATALOG_TITLE_MAX_WORDS);
+}
+
+/**
+ * Best-effort full readable wording for comparing/replacing an incomplete model title.
+ * Prefer structured quotes/continuations/slashes; if those still equal the short title,
+ * recover unquoted trailing slogan words after the title token.
+ */
+export function resolveReadableWordingForTitle(
+  description: string | undefined,
+  candidateTitle: string | undefined,
+  maxWords: number = LEAN_CATALOG_TITLE_MAX_WORDS,
+): string {
+  const primary = extractPrimaryWordingFromDescription(description, maxWords);
+
+  if (!description?.trim() || !candidateTitle?.trim()) {
+    return primary;
+  }
+
+  const titleComparable = normalizeComparableTitle(candidateTitle);
+  const primaryComparable = normalizeComparableTitle(primary);
+
+  if (primaryComparable && titleComparable && primaryComparable !== titleComparable) {
+    return primary;
+  }
+
+  const recovered = extractTrailingSloganAfterTitle(description, candidateTitle);
+  return recovered || primary;
+}
+
+/**
+ * True when the model title looks like a truncated fragment of the description's readable phrase
+ * (dominant first line / apostrophe clip / first of several lines), not a genuinely
+ * complete short title.
+ */
+export function isIncompleteTitleVsDescription(
+  title: string,
+  description: string | undefined,
+): boolean {
+  if (!title.trim() || !description?.trim()) {
+    return false;
+  }
+
+  const wording = resolveReadableWordingForTitle(description, title, LEAN_CATALOG_TITLE_MAX_WORDS);
+  const titleComparable = normalizeComparableTitle(title);
+  const wordingComparable = normalizeComparableTitle(wording);
+
+  if (!titleComparable || !wordingComparable || titleComparable === wordingComparable) {
+    return false;
+  }
+
+  const titleWords = titleComparable.split(" ").filter(Boolean);
+  const wordingWords = wordingComparable.split(" ").filter(Boolean);
+
+  if (wordingWords.length < 3) {
+    return false;
+  }
+
+  // One short token (or OCR clip of "I'm" → "I") while description has a multiword phrase.
+  if (titleWords.length === 1 && wordingComparable.startsWith(`${titleComparable} `)) {
+    return true;
+  }
+
+  // Title is a proper prefix of the readable phrase with meaningful remaining wording.
+  if (
+    wordingComparable.startsWith(`${titleComparable} `) &&
+    wordingWords.length >= titleWords.length + 2
+  ) {
+    return true;
+  }
+
+  // Title matches only the first quoted/slash segment while additional slogan segments exist.
+  const segments: string[] = [];
+  appendUniqueSloganPhrases(segments, extractQuotedReadablePhrases(description));
+  appendUniqueSloganPhrases(segments, extractNarratedReadablePhrases(description));
+  appendUniqueSloganPhrases(segments, extractProseContinuationPhrases(description));
+  appendUniqueSloganPhrases(segments, extractSlashJoinedReadableSegments(description));
+
+  if (segments.length >= 2) {
+    const firstComparable = normalizeComparableTitle(segments[0] ?? "");
+    if (firstComparable && titleComparable === firstComparable) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Style / mood / meta words that must not form a catalog title unless they appear in the
+ * design's visible wording. Used to reject tag-invented titles like
+ * "Sarcastic Funny Attitude Statement Retro Distressed".
+ */
+export const BANNED_TITLE_STYLE_WORDS = new Set([
+  "funny",
+  "sarcastic",
+  "attitude",
+  "quote",
+  "retro",
+  "distressed",
+  "typography",
+  "text",
+  "statement",
+  "design",
+  "humor",
+  "humorous",
+  "mood",
+  "edgy",
+  "vintage",
+  "bold",
+  "graphic",
+  "artwork",
+  "slogan",
+  "saying",
+  "lettering",
+  "font",
+  "type",
+  "caption",
+  "words",
+  "word",
+  "aesthetic",
+  "vibe",
+  "vibes",
+]);
+
+const TITLE_CONTENT_STOPWORDS = new Set([
+  "a",
+  "an",
+  "and",
+  "or",
+  "the",
+  "of",
+  "to",
+  "for",
+  "with",
+  "in",
+  "on",
+  "at",
+]);
+
+/**
+ * True when most content words in the title are banned style/mood/meta terms (tag-like invention).
+ */
+export function isStyleWordHeavyTitle(title: string): boolean {
+  const words = normalizeComparableTitle(title)
+    .split(" ")
+    .filter(Boolean)
+    .filter((word) => !TITLE_CONTENT_STOPWORDS.has(word));
+
+  if (words.length === 0) {
+    return false;
+  }
+
+  const styleWordCount = words.filter((word) => BANNED_TITLE_STYLE_WORDS.has(word)).length;
+
+  if (styleWordCount >= 3) {
+    return true;
+  }
+
+  return words.length >= 2 && styleWordCount / words.length >= 0.5;
+}
+
+/**
+ * True when the candidate title shares little wording with the description's readable text
+ * (quoted phrase or first sentence), suggesting the title was invented from tags/style instead.
+ */
+export function titleLacksDescriptionReadableOverlap(
+  title: string,
+  description: string | undefined,
+): boolean {
+  if (!description?.trim() || !title.trim()) {
+    return false;
+  }
+
+  const wording = extractPrimaryWordingFromDescription(description, LEAN_CATALOG_TITLE_MAX_WORDS);
+  const wordingComparable = normalizeComparableTitle(wording);
+
+  if (!wordingComparable) {
+    return false;
+  }
+
+  const wordingWords = wordingComparable
+    .split(" ")
+    .filter((word) => word.length > 2 && !TITLE_CONTENT_STOPWORDS.has(word));
+
+  if (wordingWords.length < 3) {
+    return false;
+  }
+
+  const titleWords = new Set(
+    normalizeComparableTitle(title)
+      .split(" ")
+      .filter((word) => word.length > 2 && !TITLE_CONTENT_STOPWORDS.has(word)),
+  );
+
+  if (titleWords.size === 0) {
+    return true;
+  }
+
+  const overlap = wordingWords.filter((word) => titleWords.has(word)).length;
+
+  return overlap / wordingWords.length < 0.35;
 }
 
 export function isFilenameLikeTitle(suggestedTitle: string, uploadFileStem: string): boolean {
@@ -575,6 +1319,10 @@ export function isFilenameLikeTitle(suggestedTitle: string, uploadFileStem: stri
   return overlapRatio >= 0.75 && uploadTokens.length >= 2;
 }
 
+/**
+ * @deprecated Do not use for catalog titles. Kept only for legacy test references; resolvers
+ * must never synthesize titles by joining tags.
+ */
 export function buildTitleFromTags(tags: string[]): string {
   const words = tags
     .flatMap((tag) => tag.split(/\s+/))
@@ -637,7 +1385,12 @@ function buildSupportingTitleWords(input: {
     for (const word of normalized.split(/\s+/)) {
       const comparableWord = normalizeComparableTitle(word);
 
-      if (!comparableWord || visibleTokens.has(comparableWord) || isGenericCatalogTitle(word)) {
+      if (
+        !comparableWord ||
+        visibleTokens.has(comparableWord) ||
+        isGenericCatalogTitle(word) ||
+        BANNED_TITLE_STYLE_WORDS.has(comparableWord)
+      ) {
         continue;
       }
 
@@ -839,16 +1592,14 @@ export function resolveCatalogTitle(input: {
     }
   }
 
-  const candidates = [
-    sanitizedCandidate,
-    input.primarySubject,
-    buildTitleFromTags(input.tags ?? []),
-  ].filter((value): value is string => Boolean(value?.trim()));
+  const candidates = [sanitizedCandidate, input.primarySubject].filter(
+    (value): value is string => Boolean(value?.trim()),
+  );
 
   for (const candidate of candidates) {
     const normalized = normalizeCatalogTitle(candidate);
 
-    if (!normalized || isGenericCatalogTitle(normalized)) {
+    if (!normalized || isGenericCatalogTitle(normalized) || isStyleWordHeavyTitle(normalized)) {
       continue;
     }
 
@@ -857,44 +1608,111 @@ export function resolveCatalogTitle(input: {
     }
   }
 
-  const fallback = buildTitleFromTags(input.tags ?? []);
-
-  if (fallback && !isGenericCatalogTitle(fallback)) {
-    return appendTextColorSuffix(fallback, input.visibleTextColor, input.textOnlyArtwork);
-  }
-
   return appendTextColorSuffix("Artwork Design", input.visibleTextColor, input.textOnlyArtwork);
 }
 
 /**
- * Lean-schema title resolution for the v17 playground-style contract.
+ * Lean-schema title resolution for the playground-style contract.
  *
- * Unlike {@link resolveCatalogTitle}, this trusts the model's title and applies only
- * non-destructive normalization. It NEVER derives a title from the description (which in v17
- * leads with the full transcribed quote and would otherwise collapse a good title such as
- * "Motherhood Skeleton Rock On" into an OCR fragment like "Some Days I Rock It"). It only falls
- * back — to tags, never to the description — when the model title is empty, filename-like, or a
- * purely generic word such as "Text" or "Design".
+ * Prefers structured readable-text lines when present. Trusts a good model title with light
+ * normalization (no 6-word OCR truncate). When the model title is empty, filename-like, generic,
+ * style/tag-word heavy, description-like prose, or suspiciously incomplete versus the
+ * description's readable phrase, prefers readable wording (structured lines or guarded
+ * description extraction — never a description first-sentence copy). Optionally appends one
+ * concise central subject. Never synthesizes a title by joining tags.
+ *
+ * Intentionally does not replace a non-style title merely because it differs from the
+ * description's leading transcription (e.g. keep "Motherhood Skeleton Rock On" when the
+ * description leads with a longer slogan).
  */
 export function resolveLeanCatalogTitle(input: {
   candidateTitle?: string;
   tags?: string[];
   uploadFileStem: string;
+  description?: string;
+  readableTextLines?: string[];
+  centralSubject?: string;
 }): string {
-  const normalizedCandidate = normalizeCatalogTitle(input.candidateTitle ?? "");
+  const fromReadableLines = buildTitleFromReadableTextLines(
+    input.readableTextLines,
+    input.centralSubject,
+    LEAN_CATALOG_TITLE_MAX_WORDS,
+  );
 
-  if (
-    normalizedCandidate &&
-    !isGenericCatalogTitle(normalizedCandidate) &&
-    !isFilenameLikeTitle(normalizedCandidate, input.uploadFileStem)
-  ) {
+  const readablePhraseOnly = buildTitleFromReadableTextLines(
+    input.readableTextLines,
+    undefined,
+    LEAN_CATALOG_TITLE_MAX_WORDS,
+  );
+
+  const normalizedCandidate = normalizeCatalogTitle(
+    input.candidateTitle ?? "",
+    LEAN_CATALOG_TITLE_MAX_WORDS,
+  );
+
+  const candidateUnusable =
+    !normalizedCandidate ||
+    isGenericCatalogTitle(normalizedCandidate) ||
+    isFilenameLikeTitle(normalizedCandidate, input.uploadFileStem) ||
+    isStyleWordHeavyTitle(normalizedCandidate) ||
+    isDescriptionLikeCatalogTitle(normalizedCandidate) ||
+    isIncompleteTitleVsDescription(normalizedCandidate, input.description);
+
+  if (fromReadableLines) {
+    const candidateIncludesReadable =
+      Boolean(readablePhraseOnly) &&
+      Boolean(normalizedCandidate) &&
+      normalizeComparableTitle(normalizedCandidate).includes(
+        normalizeComparableTitle(readablePhraseOnly),
+      );
+
+    if (
+      !candidateUnusable &&
+      candidateIncludesReadable &&
+      !isDescriptionLikeCatalogTitle(normalizedCandidate)
+    ) {
+      return stripTrailingTitlePunctuation(normalizedCandidate);
+    }
+
+    return fromReadableLines;
+  }
+
+  if (!candidateUnusable) {
     return stripTrailingTitlePunctuation(normalizedCandidate);
   }
 
-  const fromTags = buildTitleFromTags(input.tags ?? []);
+  const fromDescription = resolveReadableWordingForTitle(
+    input.description,
+    normalizedCandidate,
+    LEAN_CATALOG_TITLE_MAX_WORDS,
+  );
 
-  if (fromTags && !isGenericCatalogTitle(fromTags)) {
-    return stripTrailingTitlePunctuation(fromTags);
+  const fromDescriptionWithSubject = fromDescription
+    ? buildTitleFromReadableTextLines(
+        [fromDescription],
+        input.centralSubject,
+        LEAN_CATALOG_TITLE_MAX_WORDS,
+      ) || fromDescription
+    : "";
+
+  if (
+    fromDescriptionWithSubject &&
+    !isGenericCatalogTitle(fromDescriptionWithSubject) &&
+    !isStyleWordHeavyTitle(fromDescriptionWithSubject) &&
+    !isDescriptionLikeCatalogTitle(fromDescriptionWithSubject)
+  ) {
+    return stripTrailingTitlePunctuation(fromDescriptionWithSubject);
+  }
+
+  // Incomplete candidate still beats Artwork Design when description wording is unusable.
+  if (
+    normalizedCandidate &&
+    !isGenericCatalogTitle(normalizedCandidate) &&
+    !isFilenameLikeTitle(normalizedCandidate, input.uploadFileStem) &&
+    !isStyleWordHeavyTitle(normalizedCandidate) &&
+    !isDescriptionLikeCatalogTitle(normalizedCandidate)
+  ) {
+    return stripTrailingTitlePunctuation(normalizedCandidate);
   }
 
   return "Artwork Design";

@@ -9,18 +9,35 @@ import {
   type Timestamp,
   type Unsubscribe,
 } from "firebase/firestore";
+import { httpsCallable } from "firebase/functions";
 
 import { ETSY_RECOMMENDATION_COLLECTION } from "@fresh-prints/shared/constants/etsyRecommendation/etsyRecommendation.constants";
-import type { EtsyRecommendationAnswers } from "@fresh-prints/shared/types/etsyRecommendation/etsyRecommendation.types";
+import type {
+  EtsyRecommendationAnswers,
+  EtsyRecommendationListing,
+} from "@fresh-prints/shared/types/etsyRecommendation/etsyRecommendation.types";
 import type { EtsyRecommendationStatus } from "@fresh-prints/shared/types/etsyRecommendation/etsyRecommendation.enums";
+import type {
+  SearchEtsyRecommendationsStatus,
+  StaffSearchEtsyRecommendationApiResultsRequest,
+  StaffSearchEtsyRecommendationApiResultsResponse,
+} from "@fresh-prints/shared/types/etsyRecommendation/etsyRecommendationActions.types";
 import {
   buildEtsyRecommendationBroaderQuery,
   buildEtsyRecommendationSearchUrl,
 } from "@fresh-prints/shared/utils/etsyRecommendationQueryBuilder";
 
-import { db } from "../../../config/firebase";
+import { db, functions } from "../../../config/firebase";
 
 const LIST_LIMIT = 100;
+
+export interface EtsyRecommendationApiSearchSnapshotView {
+  searchedAt: Date | null;
+  status: SearchEtsyRecommendationsStatus;
+  listings: EtsyRecommendationListing[];
+  apiKeywordsUsed: string;
+  keywordStrategy: "focused" | "fallback" | null;
+}
 
 export interface EtsyRecommendationRequestListItem {
   id: string;
@@ -34,6 +51,7 @@ export interface EtsyRecommendationRequestListItem {
   canonicalQuery: string;
   etsySearchUrl: string;
   broaderSearchUrl: string;
+  lastApiSearch: EtsyRecommendationApiSearchSnapshotView | null;
   createdAt: Date | null;
 }
 
@@ -67,6 +85,55 @@ function stylesFromAnswers(answers: Record<string, unknown> | null): string {
     .filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0)
     .map((entry) => entry.trim())
     .join(", ");
+}
+
+function mapListing(raw: unknown): EtsyRecommendationListing | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return null;
+  }
+  const row = raw as Record<string, unknown>;
+  const listingId = typeof row.listingId === "number" ? row.listingId : Number(row.listingId);
+  if (!Number.isInteger(listingId) || listingId <= 0) {
+    return null;
+  }
+  if (typeof row.title !== "string" || !row.title.trim()) {
+    return null;
+  }
+  if (typeof row.listingUrl !== "string" || !row.listingUrl.trim()) {
+    return null;
+  }
+  return {
+    listingId,
+    title: row.title.trim(),
+    listingUrl: row.listingUrl.trim(),
+    imageUrl: typeof row.imageUrl === "string" ? row.imageUrl : null,
+    shopName: typeof row.shopName === "string" ? row.shopName : null,
+    priceAmount: typeof row.priceAmount === "string" ? row.priceAmount : null,
+    currencyCode: typeof row.currencyCode === "string" ? row.currencyCode : null,
+  };
+}
+
+function mapLastApiSearch(raw: unknown): EtsyRecommendationApiSearchSnapshotView | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return null;
+  }
+  const data = raw as Record<string, unknown>;
+  if (data.status !== "ok" && data.status !== "empty" && data.status !== "unavailable") {
+    return null;
+  }
+  const listings = Array.isArray(data.listings)
+    ? data.listings.map(mapListing).filter((entry): entry is EtsyRecommendationListing => entry != null)
+    : [];
+  return {
+    searchedAt: asTimestampDate(data.searchedAt),
+    status: data.status,
+    listings,
+    apiKeywordsUsed: typeof data.apiKeywordsUsed === "string" ? data.apiKeywordsUsed.trim() : "",
+    keywordStrategy:
+      data.keywordStrategy === "focused" || data.keywordStrategy === "fallback"
+        ? data.keywordStrategy
+        : null,
+  };
 }
 
 function mapDoc(
@@ -119,6 +186,7 @@ function mapDoc(
     canonicalQuery: data.canonicalQuery.trim(),
     etsySearchUrl: data.etsySearchUrl.trim(),
     broaderSearchUrl,
+    lastApiSearch: mapLastApiSearch(data.lastApiSearch),
     createdAt: asTimestampDate(data.createdAt),
   };
 }
@@ -152,6 +220,19 @@ async function resolveCustomerDisplayNames(
   );
 
   return names;
+}
+
+function callableErrorMessage(error: unknown, fallback: string): string {
+  if (error && typeof error === "object" && "message" in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === "string" && message.trim()) {
+      return message.trim();
+    }
+  }
+  if (error instanceof Error && error.message.trim()) {
+    return error.message.trim();
+  }
+  return fallback;
 }
 
 export const etsyRecommendationRequestsService = {
@@ -193,5 +274,22 @@ export const etsyRecommendationRequestsService = {
         onError(error.message || "Unable to load Etsy searches.");
       },
     );
+  },
+
+  async fetchApiResults(
+    requestId: string,
+  ): Promise<StaffSearchEtsyRecommendationApiResultsResponse> {
+    const callable = httpsCallable<
+      StaffSearchEtsyRecommendationApiResultsRequest,
+      StaffSearchEtsyRecommendationApiResultsResponse
+    >(functions, "staffSearchEtsyRecommendationApiResults");
+    try {
+      const result = await callable({ requestId });
+      return result.data;
+    } catch (error) {
+      throw new Error(
+        callableErrorMessage(error, "Unable to fetch Etsy API results for this search."),
+      );
+    }
   },
 };

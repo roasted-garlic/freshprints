@@ -1,3 +1,4 @@
+import type { DesignListSortDirection, DesignListSortField } from "../types/designQuery.types";
 import type { DesignStatus } from "../types/designStatus.types";
 
 export const DESIGN_LIBRARY_SEARCH_QUERY_PARAM = "search";
@@ -149,17 +150,25 @@ export function getAiReviewPath(): string {
   return AI_REVIEW_PATH;
 }
 
+/** Design Library default: most recently processed/updated first (AI completion bumps updatedAt). */
+export const DESIGN_LIBRARY_DEFAULT_SORT_FIELD: DesignListSortField = "updatedAt";
+export const DESIGN_LIBRARY_DEFAULT_SORT_DIRECTION: DesignListSortDirection = "desc";
+
 export function buildCatalogDesignListQuery(options: {
   archived: boolean;
   categoryId?: string;
   tags: string[];
 }): {
   categoryId?: string;
+  sortDirection: DesignListSortDirection;
+  sortField: DesignListSortField;
   statusIn: DesignStatus[];
   tag?: string;
 } {
   return {
     categoryId: options.categoryId,
+    sortDirection: DESIGN_LIBRARY_DEFAULT_SORT_DIRECTION,
+    sortField: DESIGN_LIBRARY_DEFAULT_SORT_FIELD,
     statusIn: options.archived
       ? [...DESIGN_LIBRARY_ARCHIVED_STATUSES]
       : [...DESIGN_LIBRARY_CATALOG_STATUSES],

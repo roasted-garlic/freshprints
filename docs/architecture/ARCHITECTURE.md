@@ -141,18 +141,19 @@ Users: Customers (`role: customer` only)
 
 Responsible for:
 
-* Browse approved design catalog
+* Browse approved design catalog (**guests and signed-in customers** — #13 / ADR-FP-106)
 * Search, categories, tags
-* Create and track Print Requests
-* Submit Custom Requests (Phase 9)
-* Manage customer account
-* Favorites (`customers/{customerId}/favorites` — Portal only; no design `favoriteCount`)
+* Create and track Print Requests (**auth required**)
+* Submit Custom Requests (Phase 9) (**auth required**)
+* Manage customer account (**auth required**)
+* Favorites (`customers/{customerId}/favorites` — Portal only; no design `favoriteCount`) (**auth required**)
 
+**Auth boundary (2026-07-20, #13):** Portal `(app)` shell softens AuthGate for public browse paths (`/`, `/catalog/**`). Mutation-primary routes redirect guests to login. Firestore/Storage rules allow unauthenticated read of ready catalog docs and thumbnail/preview derivatives; callables and writes remain auth-gated. Studio unchanged.
 **Catalog loading (2026-07-14):** Library shows a fast first page (**40** designs) then **hydrates the full matching catalog** in the background so search and multi-tag filters cover every ready design. The header count is the real matching total (Firestore aggregate while browsing; exact filtered length after hydrate). Load more only windows the already-matched results. Discover home still uses a **bounded** pool, not a full-catalog download.
 
 **Catalog image URL cache (2026-07-14):** Portal caches Storage download URLs in memory keyed by `path@updatedAtMs`. Failed lookups are not sticky. After catalog load, entries for paths no longer in the ready set are pruned. Membership always comes from live Firestore — never a persisted design list or image blob cache across visits.
 
-**Discover rails:** New This Week (`createdAt`), Popular (`requestCount` / print-request adds), **Most Liked** (`favoriteCount` / customer favorites), Recently Requested (`lastRequestedAt`).
+**Discover rails:** New This Week (`createdAt`), Popular (`requestCount` / Working-cart print-request adds), **Most Liked** (`favoriteCount` / customer favorites), Recently Requested (`lastAddedToShowAt` / show allocation created — not Working-cart adds alone; ADR-FP-107).
 
 **Default library / non-metric browse (2026-07-18):** Browse-all, category/tag/search filters, and Discover category rail *cards* sort by `createdAt` descending (most recently added from Studio first). Request/favorite counters bump `updatedAt` / metrics — those must not reshuffle the default grid. Only Popular, Most Liked, and Recently Requested (and similar metric collections) sort by their metrics.
 

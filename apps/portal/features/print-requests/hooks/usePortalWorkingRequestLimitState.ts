@@ -81,7 +81,11 @@ export function usePortalWorkingRequestLimitState(
     [firebaseUser],
   );
 
-  useLiveQuotaRefresh(refreshLimit, { enabled: Boolean(firebaseUser) });
+  useLiveQuotaRefresh(refreshLimit, {
+    enabled: Boolean(firebaseUser),
+    // Listener below is authoritative; avoid duplicate getDoc polling while live.
+    intervalMs: 0,
+  });
 
   useEffect(() => {
     if (!firebaseUser) {
@@ -114,8 +118,11 @@ export function usePortalWorkingRequestLimitState(
       isReady && limit != null
         ? workingRequestPrintRoomRemaining(workingPrintCount, limit)
         : 0;
-    // Conservative while unknown: do not treat missing data as "full room".
-    const canAddPrints = isReady && limit != null && roomRemaining > 0;
+    // Guests: keep Add CTAs enabled so clicks can redirect to login (#13).
+    // Signed-in: conservative while unknown — do not treat missing data as "full room".
+    const canAddPrints = !firebaseUser
+      ? true
+      : isReady && limit != null && roomRemaining > 0;
 
     let exhaustedMessage: string | null = null;
     let exhaustedStatusText: string | null = null;
@@ -138,5 +145,5 @@ export function usePortalWorkingRequestLimitState(
       exhaustedHelperText,
       canAddPrints,
     };
-  }, [isReady, limit, workingPrintCount]);
+  }, [firebaseUser, isReady, limit, workingPrintCount]);
 }

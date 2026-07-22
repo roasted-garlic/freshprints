@@ -15,6 +15,50 @@ import { buildAssistedCreationUpdateAckDocId } from "@fresh-prints/shared/utils/
 
 import { firestoreCollectionService } from "../../firebase/services/firestoreCollectionService";
 import { mapFirestoreTimestamp } from "../../firebase/utils/firestoreTimestamp";
+import { createSharedFirestoreSubscription } from "../../firebase/utils/createSharedFirestoreSubscription";
+
+const sharedAckSubscriptions = new Map<
+  string,
+  ReturnType<typeof createSharedFirestoreSubscription<AssistedCreationUpdateAckRecord[]>>
+>();
+
+function getSharedAckSubscription(userId: string) {
+  const existing = sharedAckSubscriptions.get(userId);
+  if (existing) {
+    return existing;
+  }
+
+  const shared = createSharedFirestoreSubscription<AssistedCreationUpdateAckRecord[]>({
+    traceKey: `assistedCreationUpdateAcks:userId=${userId}`,
+    start: ({ next, error }) => {
+      const acksQuery = query(
+        firestoreCollectionService.getAssistedCreationUpdateAcksCollection(),
+        where("userId", "==", userId),
+      );
+
+      return onSnapshot(
+        acksQuery,
+        (snapshot) => {
+          const records: AssistedCreationUpdateAckRecord[] = [];
+          for (const document of snapshot.docs) {
+            const mapped = mapAckRecord(document.data());
+            if (mapped) {
+              records.push(mapped);
+            }
+          }
+          next(records);
+        },
+        (snapshotError) => {
+          error(snapshotError.message);
+          next([]);
+        },
+      );
+    },
+  });
+
+  sharedAckSubscriptions.set(userId, shared);
+  return shared;
+}
 
 export interface AssistedCreationUpdateAckRecord {
   userId: string;
@@ -43,28 +87,7 @@ export const assistedCreationUpdateAckService = {
     onChange: (records: AssistedCreationUpdateAckRecord[]) => void,
     onError?: (message: string) => void,
   ): Unsubscribe {
-    const acksQuery = query(
-      firestoreCollectionService.getAssistedCreationUpdateAcksCollection(),
-      where("userId", "==", userId),
-    );
-
-    return onSnapshot(
-      acksQuery,
-      (snapshot) => {
-        const records: AssistedCreationUpdateAckRecord[] = [];
-        for (const document of snapshot.docs) {
-          const mapped = mapAckRecord(document.data());
-          if (mapped) {
-            records.push(mapped);
-          }
-        }
-        onChange(records);
-      },
-      (error) => {
-        onError?.(error.message);
-        onChange([]);
-      },
-    );
+    return getSharedAckSubscription(userId).subscribe(onChange, onError);
   },
 
   /**

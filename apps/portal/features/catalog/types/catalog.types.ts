@@ -18,6 +18,11 @@ export interface CatalogDesign {
   tags: string[];
   thumbnailPath: string;
   previewPath?: string;
+  /**
+   * Optional mat / OG letterbox background (`#rrggbb`).
+   * Missing → Portal artwork grey.
+   */
+  artworkBackgroundHex?: string;
   /** Production pixel width from the design document. */
   width: number;
   /** Production pixel height from the design document. */
@@ -27,8 +32,13 @@ export interface CatalogDesign {
   /** Milliseconds since epoch; omitted when missing on legacy docs. */
   createdAtMs?: number;
   requestCount: number;
-  /** Milliseconds since epoch; omitted when never requested. */
+  /** Milliseconds since epoch; omitted when never added to a Working cart / request item. */
   lastRequestedAtMs?: number;
+  /**
+   * Milliseconds since epoch when last allocated to a show.
+   * Gate for Recently Requested — Working-cart adds alone do not set this.
+   */
+  lastAddedToShowAtMs?: number;
   /** Customer favorites count (Most Liked). */
   favoriteCount: number;
   /**
@@ -41,13 +51,14 @@ export interface CatalogDesign {
 /**
  * Firestore orderBy field for ready-catalog paging.
  * Default browse uses `createdAt` (Studio-newest). Metric discover modes use
- * requestCount / favoriteCount / lastRequestedAt.
+ * requestCount / favoriteCount / lastAddedToShowAt (Recently Requested).
  */
 export type CatalogDesignSortField =
   | 'updatedAt'
   | 'createdAt'
   | 'requestCount'
   | 'lastRequestedAt'
+  | 'lastAddedToShowAt'
   | 'favoriteCount';
 
 export interface CatalogDesignListCursor {

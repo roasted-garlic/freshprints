@@ -1,21 +1,49 @@
 /**
  * Staff proof Storage object + download basename.
  *
- * Pattern: `proof-{n}-{mmddyyyy}-{HHmm}.{ext}`
+ * **New uploads (opaque):** Storage object id is a cryptographically random UUID
+ * with no extension (`buildAssistedCreationOpaqueProofObjectId`). Firestore
+ * `proof.fileName` stores the same opaque id; content type is set on the object.
+ *
+ * **Legacy pattern (still readable):** `proof-{n}-{mmddyyyy}-{HHmm}.{ext}`
  * Example: `proof-6-10172026-2204.png`
  *
- * - `{n}` — chronological proof number on the request (1 = first uploaded)
- * - `{mmddyyyy}` / `{HHmm}` — local wall-clock at Studio upload (no seconds)
- * - `{ext}` — `png` | `jpg` | `webp` from content type (fallback: original name)
- *
- * Storage path: `assisted-creation/{customerUid}/{requestId}/proofs/{fileName}`
- * Firestore `proof.id` remains a UUID; `proof.fileName` matches the object basename.
+ * Storage path: `assisted-creation/{customerUid}/{requestId}/proofs/{objectId}`
+ * Firestore `proof.id` remains a UUID; new uploads use opaque object basenames.
  */
 
 const STORED_PROOF_FILE_NAME_RE = /^proof-\d+-\d{8}-\d{4}\.(png|jpg|webp)$/i;
+const OPAQUE_PROOF_OBJECT_ID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export function isAssistedCreationStoredProofFileName(fileName: string | null | undefined): boolean {
   return STORED_PROOF_FILE_NAME_RE.test((fileName ?? "").trim());
+}
+
+/** True when the Storage basename looks like an opaque UUID object id (no extension). */
+export function isAssistedCreationOpaqueProofObjectId(fileName: string | null | undefined): boolean {
+  return OPAQUE_PROOF_OBJECT_ID_RE.test((fileName ?? "").trim());
+}
+
+/**
+ * Cryptographically opaque Storage object id for new proof uploads (no extension).
+ * Uses `crypto.randomUUID` when available.
+ */
+export function buildAssistedCreationOpaqueProofObjectId(
+  randomUuid: () => string = () => crypto.randomUUID(),
+): string {
+  return randomUuid().trim().toLowerCase();
+}
+
+/**
+ * Friendly download basename for final artwork (authorized download only).
+ * Never used as the Storage object key.
+ */
+export function buildAssistedCreationFinalArtworkDownloadFileName(
+  contentType?: string | null,
+): string {
+  const ext = assistedCreationProofFileExtension(contentType);
+  return `Fresh-Prints-Final-Artwork.${ext}`;
 }
 
 export function assistedCreationProofFileExtension(

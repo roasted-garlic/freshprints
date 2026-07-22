@@ -1,4 +1,4 @@
-import { collection, doc, getDoc, getDocs, onSnapshot, query, where, type Unsubscribe } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query, where, type Unsubscribe } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { getDownloadURL, ref, uploadBytesResumable, type UploadMetadata } from 'firebase/storage';
 
@@ -34,6 +34,7 @@ import type {
 import { formatFileSize } from '@fresh-prints/shared/utils/formatFileSize';
 import { getCustomerUploadProgressLabel } from '@fresh-prints/shared/utils/customerUploadProgressLabel';
 import { resolveCustomerUploadPurpose } from '@fresh-prints/shared/utils/customerUploadPurpose';
+import { traceFirestoreRead } from '@fresh-prints/shared/utils/firestoreUsageTrace';
 
 import { getPortalDb, getPortalFunctions, getPortalStorage } from '../../../lib/firebase/client';
 import { portalAuthService } from '../../auth/services/authService';
@@ -590,12 +591,19 @@ export const customerUploadService = {
    * Confirmed print-request uploads and catalog donations only — processing must have finished
    * (`technicalStatus: ready`) and the customer must have submitted the batch
    * (`ownershipConfirmed`, set by confirm callables). In-progress or abandoned drafts stay out.
+   *
+   * Bounded by recent `createdAt` (existing customerUid+createdAt index) so abandoned drafts
+   * do not force a full collection read. Cap is high enough for account gallery + reusable designs.
    */
   async listAccountArtworkGallery(customerUid: string): Promise<AccountArtworkGalleryItem[]> {
+    const ACCOUNT_GALLERY_FETCH_LIMIT = 150;
+    traceFirestoreRead('getDocs', `customerUploads:accountGallery:uid=${customerUid}`);
     const snapshot = await getDocs(
       query(
         collection(getPortalDb(), CUSTOMER_UPLOAD_COLLECTIONS.customerUploads),
         where('customerUid', '==', customerUid),
+        orderBy('createdAt', 'desc'),
+        limit(ACCOUNT_GALLERY_FETCH_LIMIT),
       ),
     );
 

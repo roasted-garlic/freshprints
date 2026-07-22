@@ -24,7 +24,7 @@ export const updatePortalSocialMetaSettings = onCall(
     const parsed = parsePortalSocialMetaSettingsInput(request.data);
     if (!parsed) {
       throw invalidArgument(
-        "ogTitle and ogDescription are required within allowed length limits.",
+        "ogTitle, ogDescription, and valid image toggles are required within allowed limits.",
       );
     }
 

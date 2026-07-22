@@ -80,6 +80,7 @@ export function assistedCreationStatusTone(status: AssistedCreationStatus): stri
       return 'is-submitted';
     case 'in_progress':
     case 'revision_requested':
+    case 'final_source_needed':
       return 'is-progress';
     case 'proof_ready':
       return 'is-proof';

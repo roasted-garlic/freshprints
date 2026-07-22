@@ -1,7 +1,11 @@
 'use client';
 
+import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 
+import { GuestAuthGateOverlay } from '../../auth/components/GuestAuthGateOverlay';
+import { useAuth } from '../../auth/context/AuthContext';
+import { isPortalPublicBrowsePath } from '../../auth/utils/portalPublicBrowsePath';
 import { CurrentRequestDrawer } from '../../print-requests/components/CurrentRequestDrawer';
 import { PortalWorkingRequestLimitBanner } from '../../print-requests/components/PortalWorkingRequestLimitBanner';
 import { PortalPrintRequestProvider } from '../../print-requests/context/PortalPrintRequestContext';
@@ -18,8 +22,18 @@ interface PortalAppShellProps {
   children: ReactNode;
 }
 
+function isGuestBrowseSession(bootstrapStatus: string): boolean {
+  return bootstrapStatus === 'unauthenticated' || bootstrapStatus === 'anonymous-guest';
+}
+
 function PortalAppShellContent({ children }: PortalAppShellProps) {
+  const pathname = usePathname();
+  const { bootstrapStatus, isAuthenticated } = useAuth();
   const { closeDrawer, isDrawerOpen } = usePortalDrawer();
+  const showGuestAuthOverlay =
+    !isAuthenticated &&
+    isGuestBrowseSession(bootstrapStatus) &&
+    !isPortalPublicBrowsePath(pathname);
 
   return (
     <div className="portal-app-shell">
@@ -39,7 +53,15 @@ function PortalAppShellContent({ children }: PortalAppShellProps) {
           <PortalAppHeader />
           <PortalWorkingRequestLimitBanner />
         </div>
-        <div className="portal-app-content">{children}</div>
+        <div className={`portal-app-content${showGuestAuthOverlay ? ' has-guest-auth-overlay' : ''}`}>
+          <div
+            aria-hidden={showGuestAuthOverlay || undefined}
+            className={showGuestAuthOverlay ? 'portal-app-content-inert' : undefined}
+          >
+            {children}
+          </div>
+          {showGuestAuthOverlay ? <GuestAuthGateOverlay /> : null}
+        </div>
         <PortalBottomNav />
       </div>
 

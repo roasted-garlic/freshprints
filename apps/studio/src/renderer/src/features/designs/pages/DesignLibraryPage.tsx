@@ -23,6 +23,8 @@ import { TagManagementModal } from "../components/TagManagementModal";
 import {
   buildCatalogDesignListQuery,
   buildDesignLibrarySearchParams,
+  DESIGN_LIBRARY_DEFAULT_SORT_DIRECTION,
+  DESIGN_LIBRARY_DEFAULT_SORT_FIELD,
   getLegacyDesignLibraryRedirectPath,
   parseDesignLibraryUrlFilters,
 } from "../constants/designLibraryFilters";
@@ -38,10 +40,15 @@ import { findDesignIdsOnActiveShowQueue } from "../services/purgeArchivedDesignA
 import type { Design } from "../types/design.types";
 import {
   buildCategoryFilterOptions,
+  countVisibleSelectedTags,
   filterDesignsByCategory,
   filterDesignsBySearch,
   filterDesignsByTags,
+  selectedTagsIncludeHalftone,
+  setHalftoneInSelectedTags,
+  visibleSelectedTags,
 } from "../utils/designLibrarySearch";
+import { sortDesignsForListQuery } from "../utils/sortDesignsForListQuery";
 
 const ALL_FILTER_VALUE = "all";
 
@@ -250,10 +257,19 @@ export function DesignLibraryPage() {
     [categories, categoryFilter, searchMatchedDesigns, selectedTags],
   );
 
-  const filteredDesigns = useMemo(
-    () => filterDesignsByTags(categoryFilteredDesigns, selectedTags),
-    [categoryFilteredDesigns, selectedTags],
-  );
+  const filteredDesigns = useMemo(() => {
+    const tagged = filterDesignsByTags(categoryFilteredDesigns, selectedTags);
+    // Hard guarantee: Design Library grid is most recently processed/updated first (updatedAt desc).
+    return sortDesignsForListQuery(
+      tagged,
+      DESIGN_LIBRARY_DEFAULT_SORT_FIELD,
+      DESIGN_LIBRARY_DEFAULT_SORT_DIRECTION,
+    );
+  }, [categoryFilteredDesigns, selectedTags]);
+
+  const visibleTags = useMemo(() => visibleSelectedTags(selectedTags), [selectedTags]);
+  const visibleTagCount = useMemo(() => countVisibleSelectedTags(selectedTags), [selectedTags]);
+  const halftoneFilterOn = selectedTagsIncludeHalftone(selectedTags);
 
   const hasActiveFilters =
     searchQuery.trim().length > 0 ||
@@ -278,6 +294,10 @@ export function DesignLibraryPage() {
 
   const removeSelectedTag = useCallback((tagToRemove: string) => {
     setSelectedTags((currentTags) => currentTags.filter((tag) => tag !== tagToRemove));
+  }, []);
+
+  const handleHalftoneFilterChange = useCallback((halftoneOn: boolean) => {
+    setSelectedTags((currentTags) => setHalftoneInSelectedTags(currentTags, halftoneOn));
   }, []);
 
   const refreshCatalog = useCallback(async () => {
@@ -650,20 +670,29 @@ export function DesignLibraryPage() {
                 !selectionModeActive &&
                 canPurgeArchivedDesignAssets &&
                 selectedPurgeIds.length > 0 ? (
-                  <Button
-                    className="button-leading-icon"
-                    onClick={() => {
-                      const selected = filteredDesigns.filter((design) =>
-                        selectedPurgeIds.includes(design.id),
-                      );
-                      void openPurgeDesigns(selected);
-                    }}
-                    size="sm"
-                    variant="danger"
-                  >
-                    <Trash2 aria-hidden="true" size={14} strokeWidth={2} />
-                    Delete images ({selectedPurgeIds.length})
-                  </Button>
+                  <>
+                    <Button
+                      onClick={() => setSelectedPurgeIds([])}
+                      size="sm"
+                      variant="ghost"
+                    >
+                      Deselect all
+                    </Button>
+                    <Button
+                      className="button-leading-icon"
+                      onClick={() => {
+                        const selected = filteredDesigns.filter((design) =>
+                          selectedPurgeIds.includes(design.id),
+                        );
+                        void openPurgeDesigns(selected);
+                      }}
+                      size="sm"
+                      variant="danger"
+                    >
+                      <Trash2 aria-hidden="true" size={14} strokeWidth={2} />
+                      Delete images ({selectedPurgeIds.length})
+                    </Button>
+                  </>
                 ) : null}
                 {hasActiveFilters ? (
                   <Button onClick={clearFilters} size="sm" variant="ghost">
@@ -676,18 +705,20 @@ export function DesignLibraryPage() {
             <DesignLibraryFilterControls
               categoryFilter={categoryFilter}
               categoryOptions={categoryFilterOptions}
+              halftoneFilterOn={halftoneFilterOn}
               onCategoryChange={setCategoryFilter}
+              onHalftoneFilterChange={handleHalftoneFilterChange}
               onOpenTags={() => setIsTagFilterModalOpen(true)}
               onSearchChange={setSearchQuery}
               searchQuery={searchQuery}
-              selectedTagCount={selectedTags.length}
+              selectedTagCount={visibleTagCount}
             />
           </div>
 
-          {selectedTags.length > 0 ? (
+          {visibleTags.length > 0 ? (
             <div className="design-library-active-tags" aria-label="Active tag filters">
               <span className="design-library-active-tags-label">Tags:</span>
-              {selectedTags.map((tag) => (
+              {visibleTags.map((tag) => (
                 <span className="design-library-active-tag" key={tag}>
                   <span>{tag}</span>
                   <button

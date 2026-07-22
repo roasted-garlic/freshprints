@@ -124,9 +124,9 @@
   opacity: 0.4;
 }
 
-.show-picker-day.has-shows.is-past-only:disabled {
-  cursor: default;
-  opacity: 0.85;
+.show-picker-day.has-shows.is-past-only:not(:disabled) {
+  cursor: pointer;
+  opacity: 0.95;
 }
 
 .show-picker-day-number {
@@ -379,8 +379,8 @@
 }
 
 .show-picker-slot.is-disabled {
-  cursor: not-allowed;
-  opacity: 0.72;
+  cursor: pointer;
+  opacity: 0.85;
 }
 
 .show-picker-slot.is-disabled .show-picker-slot-cutoff.is-danger {

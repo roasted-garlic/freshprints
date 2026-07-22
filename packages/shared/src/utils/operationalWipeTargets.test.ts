@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 
 import {
   ALL_OPERATIONAL_WIPE_TARGETS,
+  AI_PROCESSING_DESIGNS_WIPE_PRESET_TARGETS,
   applyOperationalWipeTargetToggle,
   CUSTOM_REQUESTS_WIPE_PRESET_TARGETS,
   DESIGNS_WIPE_PRESET_TARGETS,
@@ -108,8 +109,25 @@ describe("expandOperationalWipePlan", () => {
     assert.ok(plan.deleteCollections.includes("etsyRecommendationRateLimits"));
     assert.ok(plan.deleteCollections.includes("assistedCreationRequests"));
     assert.equal(plan.wipeDesignStorage, true);
+    // Full designs wipe supersedes selective AI Processing wipe.
+    assert.equal(plan.wipeAiProcessingDesigns, false);
     assert.equal(plan.wipeCustomerUploadStorage, true);
     assert.equal(plan.wipeAssistedCreationStorage, true);
+  });
+
+  it("expands aiProcessingDesigns as selective wipe without deleting designs collection", () => {
+    const plan = expandOperationalWipePlan(["aiProcessingDesigns"]);
+    assert.deepEqual(plan.deleteCollections, []);
+    assert.equal(plan.wipeAiProcessingDesigns, true);
+    assert.equal(plan.wipeDesignStorage, false);
+    assert.equal(plan.resetSequences, false);
+  });
+
+  it("skips selective AI Processing wipe when full designs is also selected", () => {
+    const plan = expandOperationalWipePlan(["printRequests", "designs", "aiProcessingDesigns"]);
+    assert.equal(plan.wipeDesignStorage, true);
+    assert.equal(plan.wipeAiProcessingDesigns, false);
+    assert.ok(plan.deleteCollections.includes("designs"));
   });
 
   it("expands customerUploads independently", () => {
@@ -174,23 +192,15 @@ describe("wipe presets", () => {
       "printRequestDesignDailyLimits",
     ]);
     assert.deepEqual(DESIGNS_WIPE_PRESET_TARGETS, ["printRequests", "sequences", "designs"]);
+    assert.deepEqual(AI_PROCESSING_DESIGNS_WIPE_PRESET_TARGETS, ["aiProcessingDesigns"]);
   });
 
-  it("All (-) Designs excludes designs and design Storage", () => {
-    assert.deepEqual(EVERYTHING_EXCEPT_DESIGNS_WIPE_PRESET_TARGETS, [
-      "printRequests",
-      "showQueueAttachments",
-      "upcomingShows",
-      "sequences",
-      "designRequestStats",
-      "customerUploads",
-      "printRequestDesignDailyLimits",
-      "etsySearches",
-      "assistedCreationRequests",
-    ]);
+  it("All (-) Designs excludes full designs but includes AI Processing selective wipe", () => {
+    assert.ok(EVERYTHING_EXCEPT_DESIGNS_WIPE_PRESET_TARGETS.includes("aiProcessingDesigns"));
     assert.ok(!EVERYTHING_EXCEPT_DESIGNS_WIPE_PRESET_TARGETS.includes("designs"));
     const plan = expandOperationalWipePlan(EVERYTHING_EXCEPT_DESIGNS_WIPE_PRESET_TARGETS);
     assert.equal(plan.wipeDesignStorage, false);
+    assert.equal(plan.wipeAiProcessingDesigns, true);
     assert.ok(!plan.deleteCollections.includes("designs"));
   });
 });
@@ -199,6 +209,7 @@ describe("getDesignsWipePrerequisiteError", () => {
   it("requires printRequests when wiping designs", () => {
     assert.equal(typeof getDesignsWipePrerequisiteError(["designs"]), "string");
     assert.equal(getDesignsWipePrerequisiteError(["printRequests", "designs"]), null);
+    assert.equal(getDesignsWipePrerequisiteError(["aiProcessingDesigns"]), null);
   });
 });
 
@@ -209,6 +220,24 @@ describe("applyOperationalWipeTargetToggle", () => {
       "sequences",
       "designs",
     ]);
+  });
+
+  it("clears aiProcessingDesigns when enabling full designs", () => {
+    assert.deepEqual(
+      applyOperationalWipeTargetToggle(["aiProcessingDesigns"], "designs", true),
+      ["printRequests", "sequences", "designs"],
+    );
+  });
+
+  it("clears designs when enabling aiProcessingDesigns", () => {
+    assert.deepEqual(
+      applyOperationalWipeTargetToggle(
+        ["printRequests", "sequences", "designs"],
+        "aiProcessingDesigns",
+        true,
+      ),
+      ["printRequests", "sequences", "aiProcessingDesigns"],
+    );
   });
 
   it("auto-selects sequences when enabling printRequests", () => {

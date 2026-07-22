@@ -4,12 +4,25 @@ import { useRouter } from 'next/navigation';
 
 import { ASSISTED_CREATION_WIZARD_STEPS } from '@fresh-prints/shared/constants/assistedCreation/assistedCreation.constants';
 
-import { readAssistedCreationDraft } from '../../assisted-creation/utils/assistedCreationDraftStorage';
+import {
+  clearAssistedCreationDraft,
+  hasResumableAssistedCreationDraft,
+  readAssistedCreationDraft,
+} from '../../assisted-creation/utils/assistedCreationDraftStorage';
 import { buildAssistedCreationHref } from '../../assisted-creation/utils/assistedCreationUrlState';
 import { EtsyQuestionnaire } from '../components/EtsyQuestionnaire';
 import { EtsyResultsDashboard } from '../components/EtsyResultsDashboard';
 import { EtsyRouteChoosePath } from '../components/EtsyRouteChoosePath';
 import { useEtsyRecommendationWizard } from '../hooks/useEtsyRecommendationWizard';
+
+function startOrContinueAssistedCreation(router: ReturnType<typeof useRouter>): void {
+  const draft = readAssistedCreationDraft();
+  const stepId =
+    draft != null
+      ? (ASSISTED_CREATION_WIZARD_STEPS[draft.stepIndex]?.id ?? 'description')
+      : 'description';
+  router.push(buildAssistedCreationHref({ mode: 'wizard', stepId }));
+}
 
 export function EtsyRecommendationsPageContent() {
   const router = useRouter();
@@ -28,17 +41,20 @@ export function EtsyRecommendationsPageContent() {
       {wizard.view === 'choose' ? (
         <EtsyRouteChoosePath
           headingRef={wizard.focusHeadingRef}
+          hasResumableAssistedDraft={hasResumableAssistedCreationDraft()}
           hasResumableFindDraft={wizard.hasResumableFindDraft}
           onAssistedCreation={() => {
-            const draft = readAssistedCreationDraft();
-            const stepId =
-              draft != null
-                ? (ASSISTED_CREATION_WIZARD_STEPS[draft.stepIndex]?.id ?? 'description')
-                : 'description';
-            router.push(buildAssistedCreationHref({ mode: 'wizard', stepId }));
+            startOrContinueAssistedCreation(router);
+          }}
+          onContinueAssistedCreation={() => {
+            startOrContinueAssistedCreation(router);
           }}
           onContinueFindDesign={wizard.continueFindDesign}
           onFindDesign={wizard.beginFindDesign}
+          onResetAssistedCreation={() => {
+            clearAssistedCreationDraft();
+            router.push(buildAssistedCreationHref({ mode: 'wizard', stepId: 'description' }));
+          }}
           onResetFindDesign={wizard.resetFindDesign}
         />
       ) : null}

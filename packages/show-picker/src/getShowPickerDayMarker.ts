@@ -9,7 +9,8 @@ function isCompletedStatus(statusLabel: string): boolean {
     statusLabel === "FULLY PRINTED" ||
     statusLabel === "COMPLETED" ||
     statusLabel === "ARCHIVED" ||
-    statusLabel === "PAST"
+    statusLabel === "PAST" ||
+    statusLabel === "CLOSED"
   );
 }
 

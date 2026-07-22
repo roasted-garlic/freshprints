@@ -51,8 +51,24 @@ export interface AssistedCreationReferenceImage {
   uploadedAt: unknown;
 }
 
+/**
+ * How a proofs-array row was created.
+ * Omit / `proof_image` = classic staff-uploaded proof image.
+ * `catalog_share` = Design Library recommendation (ADR-FP-108 follow-up).
+ */
+export type AssistedCreationProofKind = "proof_image" | "catalog_share";
+
 export interface AssistedCreationProof {
   id: string;
+  /**
+   * Omit or `proof_image` for classic uploads.
+   * `catalog_share` rows are Design Library recommendations — not Storage proof PNGs.
+   */
+  kind?: AssistedCreationProofKind;
+  /**
+   * Assisted proof Storage path for image proofs.
+   * Empty for `catalog_share` (never point at shared catalog derivatives — purge safety).
+   */
   storagePath: string;
   fileName: string;
   contentType: string;
@@ -64,8 +80,18 @@ export interface AssistedCreationProof {
   /**
    * Set when the full-resolution Storage object was physically deleted
    * (sibling purge on approve, terminal purge, or 14-day expiry).
+   * Not used for `catalog_share` rows.
    */
   fullSizePurgedAt?: unknown;
+  /** Present when `kind === "catalog_share"`. */
+  catalogDesignId?: string;
+  /** Snapshot title at suggest time. */
+  catalogDesignTitle?: string;
+  /**
+   * Catalog thumbnail/preview Storage path snapshot (not a signed URL).
+   * Distinct from `storagePath` so purge never deletes catalog assets.
+   */
+  catalogPreviewImageUrl?: string;
 }
 
 export type AssistedCreationRevisionKind =
@@ -91,6 +117,43 @@ export interface AssistedCreationRevisionEntry {
 
 export type AssistedCreationCustomerRating = 1 | 2 | 3 | 4 | 5;
 
+/**
+ * Staff-uploaded final high-resolution artwork after proof approval
+ * (`final_source_needed` → `approved`). Separate from `proofs[]`.
+ */
+export interface AssistedCreationFinalSource {
+  id: string;
+  storagePath: string;
+  /** Friendly basename used only for authorized customer downloads. */
+  fileName: string;
+  contentType: string;
+  sizeBytes: number;
+  uploadedByUid: string;
+  /** Server Timestamp or ISO string in DTOs. */
+  uploadedAt: unknown;
+}
+
+/**
+ * How the customer is asked to review staff output.
+ * Omitted / legacy docs behave as `proof_image`.
+ */
+export type AssistedCreationFulfillmentMode = "proof_image" | "catalog_share";
+
+/** Ready catalog design offered instead of a custom proof image. */
+export interface AssistedCreationSuggestedCatalogDesign {
+  designId: string;
+  /** Snapshot at suggest time for history / offline-ish UI. */
+  title: string;
+  /**
+   * Catalog thumbnail or preview Storage path snapshot (not a signed URL).
+   * Live UI may re-resolve from the ready design when available.
+   */
+  previewImageUrl?: string;
+  /** Server Timestamp or ISO string in DTOs. */
+  suggestedAt: unknown;
+  suggestedByUid: string;
+}
+
 export interface AssistedCreationRequest {
   id: string;
   schemaVersion: 1;
@@ -113,11 +176,26 @@ export interface AssistedCreationRequest {
   customerApprovalNote?: string;
   /** Proof id approved by the customer (latest proof at approve time). */
   approvedProofId?: string;
+  /**
+   * Final HR artwork after `final_source_needed` (proof_image path).
+   * Absent on catalog_share completions and legacy approvals.
+   */
+  finalSource?: AssistedCreationFinalSource | null;
+  /**
+   * How the customer reviews staff output. Omit = proof_image for legacy docs.
+   * Mutually exclusive attach: proof upload clears catalog suggestion and vice versa.
+   */
+  fulfillmentMode?: AssistedCreationFulfillmentMode;
+  /** Ready catalog design offered instead of a custom proof (catalog_share mode). */
+  suggestedCatalogDesign?: AssistedCreationSuggestedCatalogDesign | null;
+  /** Set when the customer approves a catalog_share suggestion. */
+  approvedCatalogDesignId?: string;
   /** Server Timestamp when the customer approved; starts the 14-day download window. */
   approvedAt?: unknown;
   /**
    * Set when the customer adds the approved proof to Current Request / Your Stash
    * (server-copied into customer-upload storage). Survives assisted 14-day proof purge.
+   * Not used for catalog_share approvals (Add to Request uses catalog attach).
    */
   printRequestIngest?: AssistedCreationPrintRequestIngest | null;
   /** Server Timestamp or ISO string in DTOs. */

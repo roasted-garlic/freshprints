@@ -19,10 +19,38 @@ function readAdminFirebaseConfig(): { projectId: string; storageBucket: string }
 }
 
 /**
+ * True when this process is likely to resolve Google credentials without a long
+ * GCE metadata-server probe (which hangs ~10–20s on local `next dev` without ADC).
+ */
+function canUsePortalAdminCredentials(): boolean {
+  if (process.env.PORTAL_ADMIN_FORCE?.trim() === '1') {
+    return true
+  }
+  if (process.env.GOOGLE_APPLICATION_CREDENTIALS?.trim()) {
+    return true
+  }
+  // App Hosting / Cloud Run / Cloud Functions — metadata credentials available.
+  if (
+    process.env.K_SERVICE ||
+    process.env.FUNCTION_TARGET ||
+    process.env.FIREBASE_CONFIG ||
+    process.env.GAE_SERVICE
+  ) {
+    return true
+  }
+
+  return false
+}
+
+/**
  * Firebase Admin for server-only Portal routes (e.g. design share OG meta).
  * Prefer bare `initializeApp({ projectId, storageBucket })` so App Hosting /
  * Cloud Run metadata credentials work (explicit applicationDefault() failed on
- * myprintrequest.dev). Returns null when init is impossible (local without ADC).
+ * myprintrequest.dev).
+ *
+ * Returns null when project env is missing, or when local/dev would create an app
+ * that hangs on the first Firestore/Storage RPC without ADC. Opt in locally with
+ * `GOOGLE_APPLICATION_CREDENTIALS` or `PORTAL_ADMIN_FORCE=1`.
  */
 export function tryGetPortalAdminApp(): App | null {
   if (adminInitFailed) {
@@ -42,6 +70,11 @@ export function tryGetPortalAdminApp(): App | null {
 
     const config = readAdminFirebaseConfig()
     if (!config) {
+      adminInitFailed = true
+      return null
+    }
+
+    if (!canUsePortalAdminCredentials()) {
       adminInitFailed = true
       return null
     }

@@ -7,6 +7,8 @@ import {
   CUSTOMER_UPLOAD_DAILY_FINALIZE_ZIP_LIMIT,
   CUSTOMER_UPLOAD_DAILY_FINALIZE_ZIP_LIMIT_DONATION,
 } from "../../../packages/shared/src/constants/customerUpload/customerUploadLimits.constants";
+import { CUSTOMER_UPLOAD_DAILY_FINALIZE_IMAGE_LIMIT_DONATION_GUEST } from "../../../packages/shared/src/constants/customerUpload/customerUploadGuest.constants";
+import type { CustomerUploadUploaderType } from "../../../packages/shared/src/constants/customerUpload/customerUploadGuest.constants";
 import type { CustomerUploadPurpose } from "../../../packages/shared/src/types/customerUpload/customerUpload.enums";
 
 export type CustomerUploadQuotaKind = "createBatch" | "finalizeImage" | "finalizeZip";
@@ -54,6 +56,7 @@ export function resolveDailyQuotaTarget(
   kind: CustomerUploadQuotaKind,
   purpose: CustomerUploadPurpose,
   limits: CustomerUploadQuotaLimits = CODE_DEFAULT_LIMITS,
+  uploaderType: CustomerUploadUploaderType = "customer",
 ): { field: string; limit: number } {
   if (purpose === "catalog_donation") {
     switch (kind) {
@@ -65,7 +68,10 @@ export function resolveDailyQuotaTarget(
       case "finalizeImage":
         return {
           field: "finalizeImageCountDonation",
-          limit: limits.donationFinalizeImageLimit,
+          limit:
+            uploaderType === "guest"
+              ? CUSTOMER_UPLOAD_DAILY_FINALIZE_IMAGE_LIMIT_DONATION_GUEST
+              : limits.donationFinalizeImageLimit,
         };
       case "finalizeZip":
         return {

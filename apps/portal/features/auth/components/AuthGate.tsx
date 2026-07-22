@@ -12,6 +12,19 @@ interface AuthGateProps {
   children: ReactNode;
 }
 
+function isGuestBrowseSession(bootstrapStatus: string): boolean {
+  return bootstrapStatus === 'unauthenticated' || bootstrapStatus === 'anonymous-guest';
+}
+
+/**
+ * App-shell gate for `(app)` routes.
+ *
+ * Guests may stay in the shell on any route (including formerly hard-gated paths).
+ * Public browse (`/`, `/catalog/**`) renders content normally;
+ * other `(app)` routes stay in-shell with a guest auth overlay.
+ * gated routes get a content overlay from `PortalAppShell` instead of leaving the shell
+ * for a bare `/login-required` interstitial.
+ */
 export function AuthGate({ children }: AuthGateProps) {
   const router = useRouter();
   const { bootstrapStatus, error, isInitialBootstrap, isAuthenticated, logout } = useAuth();
@@ -21,14 +34,12 @@ export function AuthGate({ children }: AuthGateProps) {
       return;
     }
 
-    const returnTo = getCurrentPortalPath(window.location);
-
-    if (bootstrapStatus === 'unauthenticated') {
-      router.replace(buildPortalAuthHref('/login', returnTo));
+    if (isGuestBrowseSession(bootstrapStatus)) {
       return;
     }
 
     if (needsPortalCustomerProfileCompletion(bootstrapStatus)) {
+      const returnTo = getCurrentPortalPath(window.location);
       router.replace(buildPortalAuthHref('/complete-profile', returnTo));
     }
   }, [bootstrapStatus, isInitialBootstrap, router]);
@@ -50,12 +61,8 @@ export function AuthGate({ children }: AuthGateProps) {
   }
 
   if (!isAuthenticated) {
-    if (bootstrapStatus === 'unauthenticated') {
-      return (
-        <main className="portal-shell">
-          <p className="portal-muted">Redirecting to sign in…</p>
-        </main>
-      );
+    if (isGuestBrowseSession(bootstrapStatus)) {
+      return <>{children}</>;
     }
 
     return (

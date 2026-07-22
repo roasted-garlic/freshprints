@@ -1,0 +1,36 @@
+Coming Soon — Cloudflare Worker + Brevo
+=======================================
+
+Why Pages said “project does not exist”
+---------------------------------------
+Your site is a Cloudflare WORKER named "coming-soon"
+(coming-soon.fresh-prints.workers.dev + myprintrequest.com).
+
+  wrangler pages deploy  → looks for Pages projects only
+  wrangler deploy        → updates your existing Worker  ← use this
+
+Deploy (from this folder)
+-------------------------
+  npx wrangler deploy
+
+Add Brevo API key (enables Variables/Secrets)
+---------------------------------------------
+After the Worker script deploys once, secrets work:
+
+  npx wrangler secret put BREVO_API_KEY
+
+Paste your Brevo API key when prompted.
+
+Or: Dashboard → Workers → coming-soon → Settings → Variables and secrets
+→ add BREVO_API_KEY (Secret). BREVO_LIST_ID is already set to 2 in wrangler.toml.
+
+Test
+----
+Open myprintrequest.com → Notify me → submit a test email
+→ contact should appear on Brevo list ID 2.
+
+Layout
+------
+  worker.js       API (/api/notify) + asset pass-through
+  public/         index.html, styles.css, script.js, assets/, _headers
+  wrangler.toml   name = "coming-soon"
