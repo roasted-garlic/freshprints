@@ -5,6 +5,7 @@ import { resolveIntakeHalftoneStaffToggle } from "@fresh-prints/shared/utils/hal
 
 import { Button } from "../../../shared/components/Button";
 import { Card } from "../../../shared/components/Card";
+import { DangerOverflowMenu } from "../../../shared/components/DangerOverflowMenu";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "../../../shared/components/Modal";
 import { Toggle } from "../../../shared/components/Toggle";
 import { DesignPreviewLightbox } from "../../designs/components/DesignPreviewLightbox";
@@ -253,6 +254,23 @@ function IntakeDetail({
           >
             Open AI Processing
           </Button>
+        ) : null}
+
+        {intake.canDeleteEligible && !row.promotedDesignId ? (
+          <DangerOverflowMenu
+            ariaLabel="Upload destructive actions"
+            disabled={busy}
+            items={[
+              {
+                id: "delete-upload",
+                label: pendingAction === "delete" ? "Deleting…" : "Delete unused upload…",
+                disabled: busy || pendingAction === "delete",
+                onSelect: () => {
+                  void intake.deleteEligible(row.id);
+                },
+              },
+            ]}
+          />
         ) : null}
       </div>
 

@@ -74,6 +74,29 @@ export { getPortalGlobalOpenGraph } from "./getPortalGlobalOpenGraph";
 export { getPortalOgShareImage } from "./getPortalOgShareImage";
 export { wipeOperationalTestData } from "./wipeOperationalTestData";
 export { ownerDeleteUser } from "./ownerDeleteUser";
+export {
+  previewCustomerAccountDeletion,
+  tombstoneCustomerAccount,
+} from "./tombstoneCustomerAccount";
+export {
+  previewPrintRequestDeletion,
+  deleteEligiblePrintRequest,
+  archivePrintRequest,
+} from "./deleteEligiblePrintRequest";
+export {
+  previewUpcomingShowDeletion,
+  deleteEligibleUpcomingShow,
+} from "./deleteEligibleUpcomingShow";
+export {
+  previewCustomerUploadDeletion,
+  deleteEligibleCustomerUpload,
+} from "./deleteEligibleCustomerUpload";
+export {
+  previewCategoryArchive,
+  archiveCategoryWithGuards,
+  previewTagArchive,
+  archiveTagWithGuards,
+} from "./archiveTaxonomyWithGuards";
 export { syncPortalAccountEmail } from "./syncPortalAccountEmail";
 export {
   requestPortalAccountDeletion,

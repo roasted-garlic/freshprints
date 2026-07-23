@@ -781,12 +781,10 @@ export const printRequestService = {
     return mapPrintRequestData(updatedSnapshot.id, updatedSnapshot.data() as PrintRequestDocumentData);
   },
 
-  async deletePrintRequest(caller: User, printRequestId: string): Promise<void> {
-    if (!permissionService.canManagePrintRequests(caller)) {
-      throw new Error("You do not have permission to delete print requests.");
-    }
-
-    await deleteDoc(doc(firestoreCollectionService.getPrintRequestsCollection(), printRequestId));
+  async deletePrintRequest(_caller: User, _printRequestId: string): Promise<void> {
+    throw new Error(
+      "Direct print request deletion is disabled. Use the Print Requests delete action (server-validated).",
+    );
   },
 
   async addPrintRequestItem(

@@ -211,10 +211,11 @@ function TestDataResetPageContent() {
 
       <section className="card test-data-reset-section test-data-reset-danger">
         <header className="test-data-reset-header">
-          <h2 className="test-data-reset-title">Delete individual user</h2>
+          <h2 className="test-data-reset-title">Delete individual user (scratch)</h2>
           <p className="test-data-reset-copy">
-            Permanently remove one staff or customer identity (Auth, username, and associated records).
-            Separate from the bulk operational wipe below, which keeps accounts.
+            Dev-only hard delete on the allowlisted project. Permanently removes Auth, identity, and
+            associated scratch records (including history). This is not the product deletion path —
+            use Users → Disable customer account to tombstone and keep history.
           </p>
         </header>
         {lastOwnerDeleteResult ? (

@@ -21,16 +21,25 @@ export async function findCustomerByUserId(userId: string) {
 
 export async function requirePortalCustomer(userId: string): Promise<PortalCustomerContext> {
   const userSnapshot = await adminDb.collection("users").doc(userId).get();
-  const role = userSnapshot.data()?.role;
+  const userData = userSnapshot.data();
+  const role = userData?.role;
 
   if (!userSnapshot.exists || role !== "customer") {
     throw permissionDenied("Only portal customers can use this action.");
+  }
+
+  if (userData?.isActive === false || userData?.isDeleted === true) {
+    throw permissionDenied("This customer account has been deleted and can no longer sign in or create activity.");
   }
 
   const customer = await findCustomerByUserId(userId);
 
   if (!customer) {
     throw permissionDenied("No customer profile is linked to this account.");
+  }
+
+  if (customer.data.isDeleted === true) {
+    throw permissionDenied("This customer account has been deleted and can no longer sign in or create activity.");
   }
 
   const username = typeof customer.data.username === "string" ? customer.data.username.trim() : "";

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../../auth/hooks/useAuth";
 import { permissionService } from "../../permissions/services/permissionService";
 import { catalogTagService } from "../services/catalogTagService";
+import { taxonomyArchiveGuardsService } from "../services/taxonomyArchiveGuardsService";
 import type {
   CatalogTag,
   CreateCatalogTagInput,
@@ -109,7 +110,13 @@ export function useCatalogTags(options: { includeArchived?: boolean } = {}) {
         throw new Error("You must be signed in to manage tags.");
       }
 
-      return runAction(() => catalogTagService.archiveTag(user, tagId));
+      return runAction(async () => {
+        const result = await taxonomyArchiveGuardsService.archiveTag(tagId);
+        if (result.outcome === "blocked") {
+          throw new Error(result.blockers?.[0]?.message ?? result.message);
+        }
+        return result;
+      });
     },
     [runAction, user],
   );

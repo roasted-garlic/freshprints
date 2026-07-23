@@ -6,6 +6,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Badge } from "../../../shared/components/Badge";
 import { Button } from "../../../shared/components/Button";
 import { Card } from "../../../shared/components/Card";
+import { DangerOverflowMenu } from "../../../shared/components/DangerOverflowMenu";
 import { DismissibleSuccessAlert } from "../../../shared/components/DismissibleSuccessAlert";
 import { EmptyState } from "../../../shared/components/EmptyState";
 import { ErrorState } from "../../../shared/components/ErrorState";
@@ -19,6 +20,7 @@ import { desktopAppService } from "../../../shared/services/desktopAppService";
 import { useAuth } from "../../auth/hooks/useAuth";
 import { permissionService } from "../../permissions/services/permissionService";
 import { upcomingShowService } from "../services/upcomingShowService";
+import { UpcomingShowDeletionDialog } from "../components/UpcomingShowDeletionDialog";
 import { useUpcomingShows } from "../hooks/useUpcomingShows";
 import { useShowAllocations } from "../hooks/useShowAllocations";
 import { useShowProductionTimer } from "../hooks/useShowProductionTimer";
@@ -126,6 +128,7 @@ export function UpcomingShowsPage() {
 
   const [isAddRequestModalOpen, setIsAddRequestModalOpen] = useState(false);
   const [addRequestId, setAddRequestId] = useState("");
+  const [isDeletionDialogOpen, setIsDeletionDialogOpen] = useState(false);
 
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [defaultCapacityInput, setDefaultCapacityInput] = useState("");
@@ -1011,6 +1014,18 @@ export function UpcomingShowsPage() {
                         )}
                         {exportGangSheetPngState.hasGeneratedCache ? "Export Gang Sheet" : "Generate"}
                       </Button>
+                      {permissionService.canDeleteEligibleUpcomingShow(user) ? (
+                        <DangerOverflowMenu
+                          ariaLabel="Show destructive actions"
+                          items={[
+                            {
+                              id: "delete-show",
+                              label: "Delete show…",
+                              onSelect: () => setIsDeletionDialogOpen(true),
+                            },
+                          ]}
+                        />
+                      ) : null}
                     </div>
                   ) : null}
                 </div>
@@ -1846,6 +1861,20 @@ export function UpcomingShowsPage() {
           </Card>
         </div>
       ) : null}
+
+      <UpcomingShowDeletionDialog
+        isOpen={isDeletionDialogOpen}
+        onCancel={() => setIsDeletionDialogOpen(false)}
+        onCompleted={(message) => {
+          setIsDeletionDialogOpen(false);
+          setSuccessMessage(message);
+          setSuccessAlertSeed((current) => current + 1);
+          setSelectedShowId(null);
+          void reloadUpcomingShows();
+        }}
+        showLabel={selectedShow ? formatUpcomingShowTitle(selectedShow) : "Show"}
+        upcomingShowId={selectedShow?.id ?? null}
+      />
     </main>
   );
 }

@@ -927,6 +927,60 @@
   width: min(100%, 32rem);
 }
 
+.tombstone-customer-modal {
+  gap: var(--space-4);
+  max-width: min(100%, 40rem);
+  padding: var(--space-6);
+  width: min(100%, 40rem);
+}
+
+.tombstone-customer-modal-body {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.tombstone-customer-modal-summary {
+  margin: 0;
+  max-width: 36rem;
+}
+
+.tombstone-customer-impact-grid {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0;
+}
+
+.tombstone-customer-impact-grid > div {
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md, 0.5rem);
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3);
+}
+
+.tombstone-customer-impact-grid dt {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs, 0.75rem);
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.tombstone-customer-impact-grid dd {
+  font-size: var(--font-size-md, 1rem);
+  font-weight: 650;
+  margin: 0;
+}
+
+@media (max-width: 40rem) {
+  .tombstone-customer-impact-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .user-management-modal-shell-lg {
   width: min(100%, 52rem);
 }

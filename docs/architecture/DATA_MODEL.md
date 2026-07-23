@@ -785,6 +785,15 @@ export interface Customer {
     updatedAt: Timestamp;
   };
 
+  /**
+   * Product tombstone (ADR-FP-115). Account cannot sign in or create new activity;
+   * historical print requests remain. Canonical username unchanged.
+   */
+  isDeleted?: boolean;
+  deletedAt?: Timestamp;
+  deletedBy?: string;
+  deletionSource?: "studio_owner" | "portal_request";
+
   usernameUpdatedAt?: Timestamp;
 
   createdAt: Timestamp;
@@ -792,13 +801,13 @@ export interface Customer {
 }
 ```
 
-### Account deletion requests (Portal #9 / owner #10)
+### Account deletion requests (Portal #9 / owner fulfill)
 
 ```txt
 accountDeletionRequests/{userId}
 ```
 
-Customer-initiated **request** docs (`status: pending | cancelled | fulfilled`). Client writes denied; customers may read own doc. Owner hard-delete via Test Data `ownerDeleteUser` removes Auth + cascades associated records (ADR-FP-104).
+Customer-initiated **request** docs (`status: pending | cancelled | fulfilled`). Client writes denied; customers may read own doc. Studio owners fulfill via `tombstoneCustomerAccount` (Auth **disable**, retain `customers` / `users` / `customerUsernames`, keep all print requests). Destructive cascade `ownerDeleteUser` remains a quarantined internal callable only — not exposed in Studio UI (ADR-FP-115).
 
 Customer usernames are required for new customer create/edit saves in Studio. Existing dev/test
 records without usernames may remain readable, but customer Print Request creation is blocked until
@@ -812,7 +821,7 @@ customerUsernames/{username}
 ```
 
 Usernames are normalized lowercase, 3-32 characters, use only `a-z`, `0-9`, `_`, and `-`, and must
-start and end with a letter or number. Reserved operational usernames are blocked.
+start and end with a letter or number. Reserved operational usernames are blocked. **Product tombstone never deletes the reservation** — the username stays permanently unavailable. Present deleted customers as `username (Deleted)` in UI only (`formatCustomerUsernameForDisplay`).
 
 ---
 
@@ -2193,7 +2202,7 @@ into, but are not required by the current unfiltered/single-field queries.
 
 Prefer:
 
-```ts id="m9zpn7"
+```ts
 status: "archived"
 ```
 
@@ -2201,11 +2210,13 @@ instead of permanent deletion.
 
 Applies to:
 
-* Designs
-* Requests
-* Queues
+* Designs (archive + optional owner asset purge; no hard delete in current phase)
+* Print requests with production history (archive; eligible unused working requests may hard-delete via callable)
+* Shows with production/past history (archive/cancel; empty upcoming shows may hard-delete via callable)
+* Categories / tags (soft archive; blocked while designs reference them)
+* Customer accounts (**tombstone**: `isDeleted` + Auth disable; never cascade-delete history)
 
-whenever practical.
+Hard delete is policy-based, server-authoritative, and never a silent cascade (ADR-FP-115).
 
 ---
 

@@ -1,6 +1,7 @@
 import type { Timestamp } from "firebase/firestore";
 
 import type { CustomerAccountDeletionRequestMirror } from "../account/portalAccountSettings.types";
+import type { CustomerAccountDeletionSource } from "../deletion/deletion.types";
 import type { CustomerSignupSource } from "./customer.enums";
 
 export interface Customer {
@@ -30,6 +31,14 @@ export interface Customer {
   assistedBrowserPushOptInUpdatedAt?: Timestamp;
   /** Mirrored from accountDeletionRequests for Portal UX (Admin SDK writes). */
   accountDeletionRequest?: CustomerAccountDeletionRequestMirror;
+  /**
+   * Product tombstone: account disabled for sign-in/new activity; history retained.
+   * Canonical username stays unchanged; append "(Deleted)" only in presentation.
+   */
+  isDeleted?: boolean;
+  deletedAt?: Timestamp;
+  deletedBy?: string;
+  deletionSource?: CustomerAccountDeletionSource;
   usernameUpdatedAt?: Timestamp;
   createdAt: Timestamp;
   updatedAt: Timestamp;

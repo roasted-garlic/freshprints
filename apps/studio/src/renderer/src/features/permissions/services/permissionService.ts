@@ -172,6 +172,26 @@ export const permissionService = {
     return isOwner(user);
   },
 
+  /** Owner-only product tombstone for customers (Auth disable + retain history). */
+  canTombstoneCustomerAccount(user: UserLike) {
+    return isOwner(user);
+  },
+
+  /** Owner-only hard delete of unattached, unpromoted customer uploads. */
+  canDeleteEligibleCustomerUpload(user: UserLike) {
+    return isOwner(user);
+  },
+
+  /** Owner-only for this phase (extra safeguard). */
+  canDeleteEligiblePrintRequest(user: UserLike) {
+    return isOwner(user);
+  },
+
+  /** Owner-only for this phase (extra safeguard). */
+  canDeleteEligibleUpcomingShow(user: UserLike) {
+    return isOwner(user);
+  },
+
   canManageDesigns(user: UserLike) {
     return this.canViewDesigns(user);
   },

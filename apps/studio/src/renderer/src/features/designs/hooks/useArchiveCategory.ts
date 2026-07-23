@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 
 import { useAuth } from "../../auth/hooks/useAuth";
 import { categoryService } from "../services/categoryService";
+import { taxonomyArchiveGuardsService } from "../services/taxonomyArchiveGuardsService";
 import type { Category } from "../types/category.types";
 
 interface ArchiveCategoryState {
@@ -27,7 +28,13 @@ export function useArchiveCategory() {
       setState({ isSubmitting: true, error: null });
 
       try {
-        const category = await categoryService.archiveCategory(user, categoryId);
+        const result = await taxonomyArchiveGuardsService.archiveCategory(categoryId);
+        if (result.outcome === "blocked") {
+          const message = result.blockers?.[0]?.message ?? result.message;
+          setState({ isSubmitting: false, error: message });
+          throw new Error(message);
+        }
+        const category = await categoryService.getCategoryById(user, categoryId);
         setState({ isSubmitting: false, error: null });
         return category;
       } catch (error) {

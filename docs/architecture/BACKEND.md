@@ -36,7 +36,12 @@ Fresh Prints uses **Firebase** as the primary backend platform for authenticatio
 | Session / token | Firebase client SDK session |
 | Local dev auth | Firebase emulators or project dev credentials — see `docs/workflow/setup/` |
 | Portal account self-service (2026-07-20) | Password reset + verify-before-update email + deletion **request** callables (`syncPortalAccountEmail`, `requestPortalAccountDeletion`, `cancelPortalAccountDeletionRequest`). ADR-FP-104. |
-| Owner single-user delete (2026-07-20) | Studio Test Data → `ownerDeleteUser` (owner + fresh-prints-dev only). Hard-deletes one staff or customer identity + associated records. Not bulk wipe. |
+| Owner single-user delete (legacy) | Callable `ownerDeleteUser` remains **quarantined** (no Studio UI). Product path is `tombstoneCustomerAccount` (Users page). |
+| Customer account tombstone (2026-07-22) | Studio Users → `previewCustomerAccountDeletion` / `tombstoneCustomerAccount`. Auth disable; retain identity + username reservation + all print requests. Owner only. |
+| Eligible print request delete/archive | `previewPrintRequestDeletion` / `deleteEligiblePrintRequest` / `archivePrintRequest` — staff; server dependency recheck. |
+| Eligible upcoming show delete | `previewUpcomingShowDeletion` / `deleteEligibleUpcomingShow` — staff; empty upcoming only. |
+| Eligible customer upload delete | `previewCustomerUploadDeletion` / `deleteEligibleCustomerUpload` — owner only; Storage cleanup server-side. |
+| Category/tag archive guards | `previewCategoryArchive` / `archiveCategoryWithGuards` / `previewTagArchive` / `archiveTagWithGuards` — owner/admin; block while designs reference. |
 | Operational wipe — AI Processing (2026-07-21) | Test Data Reset target `aiProcessingDesigns` via `wipeOperationalTestData`: deletes AI Processing inbox designs (any tab/stage) + their Storage only; keeps ready/archived catalog. Dev allowlist + owner only. |
 
 **Portal post-auth return (2026-07-17):** When `AuthGate` sends a signed-out customer to `/login`,

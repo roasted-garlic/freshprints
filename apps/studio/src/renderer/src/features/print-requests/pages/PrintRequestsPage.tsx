@@ -5,6 +5,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 import { Button } from "../../../shared/components/Button";
 import { Card } from "../../../shared/components/Card";
+import { DangerOverflowMenu } from "../../../shared/components/DangerOverflowMenu";
 import { DismissibleSuccessAlert } from "../../../shared/components/DismissibleSuccessAlert";
 import { EmptyState } from "../../../shared/components/EmptyState";
 import { ErrorState } from "../../../shared/components/ErrorState";
@@ -25,8 +26,10 @@ import { usePrintRequestAllocationTotals } from "../hooks/usePrintRequestAllocat
 import { useReadyDesignsForSelection } from "../hooks/useReadyDesignsForSelection";
 import { PrintRequestItemCard } from "../components/PrintRequestItemCard";
 import { AddToShowModal } from "../components/AddToShowModal";
+import { PrintRequestDeletionDialog } from "../components/PrintRequestDeletionDialog";
 import type { PrintRequest, PrintRequestItem } from "@fresh-prints/shared/types/printRequest/printRequest.types";
 import type { Customer } from "@fresh-prints/shared/types/customer/customer.types";
+import { formatCustomerUsernameForDisplay } from "@fresh-prints/shared/utils/formatCustomerUsernameForDisplay";
 import type { ShowAllocation } from "@fresh-prints/shared/types/showAllocation/showAllocation.types";
 import { formatInternalPrintRequestName } from "@fresh-prints/shared/utils/printRequestNaming";
 import { getPrintRequestOriginBadgeLabel } from "@fresh-prints/shared/utils/printRequestOrigin";
@@ -104,7 +107,18 @@ function getPrintRequestCustomerLabel(printRequest: PrintRequest | null, custome
   }
 
   if (printRequest.customerId) {
-    return customers.find((customer) => customer.id === printRequest.customerId)?.displayName ?? printRequest.customerId;
+    const customer = customers.find((entry) => entry.id === printRequest.customerId);
+    if (!customer) {
+      return (
+        printRequest.customerUsernameSnapshot
+          ? formatCustomerUsernameForDisplay(printRequest.customerUsernameSnapshot)
+          : printRequest.customerId
+      );
+    }
+    const username = formatCustomerUsernameForDisplay(customer.username, {
+      isDeleted: customer.isDeleted === true,
+    });
+    return `${customer.displayName} (${username})`;
   }
 
   return "Unassigned";
@@ -242,6 +256,7 @@ export function PrintRequestsPage() {
   const [isConfirmingShowQueueRemoval, setIsConfirmingShowQueueRemoval] = useState(false);
   const [isRemovingFromShowQueue, setIsRemovingFromShowQueue] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isDeletionDialogOpen, setIsDeletionDialogOpen] = useState(false);
   const selectedRequestIdParam = searchParams.get(PRINT_REQUEST_ID_QUERY_PARAM);
   const tabParam = searchParams.get(PRINT_REQUEST_TAB_QUERY_PARAM);
 
@@ -1293,14 +1308,29 @@ export function PrintRequestsPage() {
                         </div>
                       </div>
                     ) : (
-                      <Button
-                        onClick={() => setIsRequestDetailExpanded(true)}
-                        size="sm"
-                        type="button"
-                        variant="secondary"
-                      >
-                        Edit
-                      </Button>
+                      <>
+                        <Button
+                          onClick={() => setIsRequestDetailExpanded(true)}
+                          size="sm"
+                          type="button"
+                          variant="secondary"
+                        >
+                          Edit
+                        </Button>
+                        {permissionService.canDeleteEligiblePrintRequest(user) &&
+                        visibleSelectedRequest.status !== "archived" ? (
+                          <DangerOverflowMenu
+                            ariaLabel="Print request destructive actions"
+                            items={[
+                              {
+                                id: "delete-or-archive",
+                                label: "Delete or archive…",
+                                onSelect: () => setIsDeletionDialogOpen(true),
+                              },
+                            ]}
+                          />
+                        ) : null}
+                      </>
                     )}
                   </div>
                 )}
@@ -1539,6 +1569,20 @@ export function PrintRequestsPage() {
           printRequest={visibleSelectedRequest}
         />
       ) : null}
+
+      <PrintRequestDeletionDialog
+        isOpen={isDeletionDialogOpen}
+        onCancel={() => setIsDeletionDialogOpen(false)}
+        onCompleted={(message) => {
+          setIsDeletionDialogOpen(false);
+          setSuccessMessage(message);
+          setSuccessAlertSeed((current) => current + 1);
+          void reloadPrintRequests();
+          navigate(getPrintRequestsPath({ tab: activeListTab }));
+        }}
+        printRequestId={visibleSelectedRequest?.id ?? null}
+        printRequestName={visibleSelectedRequest?.name ?? "Print request"}
+      />
 
       {autosaveState.status !== "idle" ? (
         <div className={`print-requests-autosave-indicator is-${autosaveState.status}`} role="status">

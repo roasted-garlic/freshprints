@@ -11,7 +11,7 @@ signoff
 complete
 
 ## Review Status
-approved
+approved_with_changes
 
 ## Implementation Status
 complete
@@ -41,22 +41,22 @@ Idle — await next goal.
 yes
 
 ## Last Completed Step
-2026-07-22 - Owner PASS on portal-add-to-show-inspect-closed-days; signed off approved. Soft-deploy BG enrichment earlier. Session polish committed with branch.
+2026-07-22 - Owner PASS on studio-contextual-safe-deletion; signed off approved; commit + push requested.
 
 ## Plan Path
-- docs/workflow/plans/2026-07-22-portal-add-to-show-inspect-closed-days-plan.md
+- docs/workflow/plans/2026-07-22-studio-contextual-safe-deletion-plan.md
 
 ## Review Path
-- docs/workflow/reviews/2026-07-22-portal-add-to-show-inspect-closed-days-review.md
+- docs/workflow/reviews/2026-07-22-studio-contextual-safe-deletion-review.md
 
 ## Test Report Path
-- docs/workflow/reviews/2026-07-22-portal-add-to-show-inspect-closed-days-test-report.md
+- docs/workflow/reviews/2026-07-22-studio-contextual-safe-deletion-test-report.md
 
 ## Signoff Path
-- docs/workflow/reviews/2026-07-22-portal-add-to-show-inspect-closed-days-signoff.md
+- docs/workflow/reviews/2026-07-22-studio-contextual-safe-deletion-signoff.md
 
 ## Manual Checkpoint Path
-- docs/workflow/reviews/2026-07-22-portal-add-to-show-inspect-closed-days-manual-checkpoint.md (PASS)
+- docs/workflow/reviews/2026-07-22-studio-contextual-safe-deletion-manual-checkpoint.md (PASS)
 
 ## Files Modified
 (see commit)
@@ -65,5 +65,8 @@ yes
 (none)
 
 ## Decision Log
-- 2026-07-22 - Owner PASS on portal-add-to-show-inspect-closed-days; commit + push requested.
-- 2026-07-22 - Owner APPROVE SOFT-DEPLOY → enrichment Functions on fresh-prints-dev.
+- 2026-07-22 - Owner started Managed Phase: studio-contextual-safe-deletion.
+- 2026-07-22 - Review approved_with_changes; owner decisions 1–7 recorded; Implement authorized.
+- 2026-07-22 - Owner: all Studio deletion actions owner-only; ⋯ overflow menus.
+- 2026-07-22 - Owner: restore Test Data ownerDeleteUser for fresh-prints-dev scratch; Users stays tombstone-only.
+- 2026-07-22 - Owner PASS; signoff approved; commit + push.

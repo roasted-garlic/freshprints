@@ -23,12 +23,14 @@ import {
   type CustomerUploadIntakeFilter,
   type CustomerUploadIntakeRow,
 } from "../services/customerUploadIntakeService";
+import { customerUploadDeletionService } from "../services/customerUploadDeletionService";
 
 export type CustomerUploadIntakePendingAction =
   | "promote"
   | "exclude"
   | "restore"
-  | "retry";
+  | "retry"
+  | "delete";
 
 function asString(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value : null;
@@ -63,6 +65,7 @@ export function useCustomerUploadIntake(options?: {
   const canExclude = Boolean(user && permissionService.canExcludeCustomerUploadFromCatalog(user));
   const canPromote = Boolean(user && permissionService.canPromoteCustomerUploadToAiReview(user));
   const canRetry = Boolean(user && permissionService.canRetryCustomerUploadProcessing(user));
+  const canDeleteEligible = Boolean(user && permissionService.canDeleteEligibleCustomerUpload(user));
 
   const [filter, setFilter] = useState<CustomerUploadIntakeFilter>("pending_staff_review");
   const [rows, setRows] = useState<CustomerUploadIntakeRow[]>([]);
@@ -333,6 +336,7 @@ export function useCustomerUploadIntake(options?: {
     canExclude,
     canPromote,
     canRetry,
+    canDeleteEligible,
     filter,
     setFilter,
     rows,
@@ -428,6 +432,37 @@ export function useCustomerUploadIntake(options?: {
           });
         },
         "Technical processing retry succeeded.",
+      ),
+    deleteEligible: (uploadId: string) =>
+      runMutation(
+        uploadId,
+        "delete",
+        async () => {
+          const preview = await customerUploadDeletionService.preview(uploadId);
+          if (preview.outcome === "blocked") {
+            throw new Error(preview.blockers[0]?.message ?? "This upload cannot be deleted.");
+          }
+          if (preview.outcome === "already_done") {
+            return;
+          }
+          const phrase = window.prompt(
+            `Type ${customerUploadDeletionService.confirmationPhrase} to permanently delete this unused upload.`,
+          );
+          if (phrase?.trim() !== customerUploadDeletionService.confirmationPhrase) {
+            throw new Error("Deletion cancelled.");
+          }
+          const result = await customerUploadDeletionService.deleteEligible(
+            uploadId,
+            customerUploadDeletionService.confirmationPhrase,
+          );
+          if (result.outcome === "blocked") {
+            throw new Error(result.blockers?.[0]?.message ?? result.message);
+          }
+        },
+        "Unused customer upload deleted.",
+        () => {
+          removeRowLocally(uploadId);
+        },
       ),
     setHalftoneDecision: async (uploadId: string, value: boolean) => {
       setError(null);

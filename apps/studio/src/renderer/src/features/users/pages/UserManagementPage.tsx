@@ -10,6 +10,7 @@ import { AddUserModal, type AddUserModalCreatedPayload } from "../components/Add
 import { CustomerDirectoryTable } from "../components/CustomerDirectoryTable";
 import { EditCustomerModal } from "../components/EditCustomerModal";
 import { EditUserModal } from "../components/EditUserModal";
+import { TombstoneCustomerConfirmDialog } from "../components/TombstoneCustomerConfirmDialog";
 import { UserAuditTrailModal } from "../components/UserAuditTrailModal";
 import { UserDirectoryTable } from "../components/UserDirectoryTable";
 import type { AuditTrailSubject } from "../types/auditTrail.types";
@@ -40,6 +41,7 @@ export function UserManagementPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+  const [tombstoneCustomer, setTombstoneCustomer] = useState<Customer | null>(null);
   const [auditTrailSubject, setAuditTrailSubject] = useState<AuditTrailSubject | null>(null);
   const [pageSuccessMessage, setPageSuccessMessage] = useState<string | null>(null);
   const [successAlertSeed, setSuccessAlertSeed] = useState(0);
@@ -54,6 +56,7 @@ export function UserManagementPage() {
   );
 
   const canManageUsers = permissionService.canManageUsers(user);
+  const canTombstoneCustomer = permissionService.canTombstoneCustomerAccount(user);
   const openAddUserModal = useCallback(() => {
     setIsAddModalOpen(true);
   }, []);
@@ -179,10 +182,12 @@ export function UserManagementPage() {
             </label>
 
             <CustomerDirectoryTable
+              canTombstoneCustomer={canTombstoneCustomer}
               customers={filteredCustomers}
               error={customersError}
               isLoading={isCustomersLoading}
               onEditCustomer={(customer) => setEditingCustomer(customer)}
+              onTombstoneCustomer={(customer) => setTombstoneCustomer(customer)}
               onViewAuditTrail={(customer) => setAuditTrailSubject({ kind: "customer", customer })}
               searchQuery={customerSearchQuery}
             />
@@ -214,6 +219,18 @@ export function UserManagementPage() {
         onUpdated={async (message) => {
           await reloadCustomers();
           setPageSuccessMessage(message);
+          setSuccessAlertSeed((current) => current + 1);
+        }}
+      />
+
+      <TombstoneCustomerConfirmDialog
+        customer={tombstoneCustomer}
+        isOpen={tombstoneCustomer !== null}
+        onCancel={() => setTombstoneCustomer(null)}
+        onDeleted={() => {
+          setTombstoneCustomer(null);
+          void reloadCustomers();
+          setPageSuccessMessage("Customer account disabled. History and username are preserved.");
           setSuccessAlertSeed((current) => current + 1);
         }}
       />

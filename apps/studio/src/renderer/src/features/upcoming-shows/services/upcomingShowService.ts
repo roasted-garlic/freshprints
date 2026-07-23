@@ -516,12 +516,10 @@ export const upcomingShowService = {
     return this.getUpcomingShowById(caller, upcomingShowId);
   },
 
-  async deleteUpcomingShow(caller: User, upcomingShowId: string): Promise<void> {
-    if (!permissionService.canManageUpcomingShows(caller)) {
-      throw new Error("You do not have permission to manage upcoming shows.");
-    }
-
-    await deleteDoc(doc(firestoreCollectionService.getUpcomingShowsCollection(), upcomingShowId));
+  async deleteUpcomingShow(_caller: User, _upcomingShowId: string): Promise<void> {
+    throw new Error(
+      "Direct show deletion is disabled. Use the Show Queue delete action (server-validated).",
+    );
   },
 
   async listShowAllocations(caller: User, upcomingShowId: string): Promise<ShowAllocation[]> {

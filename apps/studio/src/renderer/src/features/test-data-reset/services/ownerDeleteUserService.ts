@@ -21,6 +21,11 @@ function getCallableErrorMessage(error: unknown, fallbackMessage: string): strin
   return fallbackMessage;
 }
 
+/**
+ * Development-only hard-delete utility for Test Data Reset on the allowlisted project.
+ * Server still enforces owner + fresh-prints-dev. Product customer deletion uses
+ * `tombstoneCustomerAccount` on the Users page (history preserved).
+ */
 export async function ownerDeleteUser(
   input: OwnerDeleteUserRequest,
 ): Promise<OwnerDeleteUserResponse> {

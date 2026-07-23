@@ -47,6 +47,10 @@ interface CustomerDocumentData extends DocumentData {
   totalRequests?: unknown;
   totalApprovedRequests?: unknown;
   usernameUpdatedAt?: unknown;
+  isDeleted?: unknown;
+  deletedAt?: unknown;
+  deletedBy?: unknown;
+  deletionSource?: unknown;
   createdAt?: unknown;
   updatedAt?: unknown;
 }
@@ -85,6 +89,13 @@ function mapCustomerData(customerId: string, data: CustomerDocumentData): Custom
     totalApprovedRequests:
       typeof data.totalApprovedRequests === "number" ? data.totalApprovedRequests : undefined,
     usernameUpdatedAt: resolveRequiredTimestamp(data.usernameUpdatedAt),
+    isDeleted: data.isDeleted === true ? true : undefined,
+    deletedAt: resolveRequiredTimestamp(data.deletedAt),
+    deletedBy: typeof data.deletedBy === "string" ? data.deletedBy : undefined,
+    deletionSource:
+      data.deletionSource === "studio_owner" || data.deletionSource === "portal_request"
+        ? data.deletionSource
+        : undefined,
     createdAt,
     updatedAt,
   };

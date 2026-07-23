@@ -2,6 +2,7 @@ import { BadgeInfo, FileText, Pencil } from "lucide-react";
 
 import { Badge } from "../../../shared/components/Badge";
 import { Card } from "../../../shared/components/Card";
+import { DangerOverflowMenu } from "../../../shared/components/DangerOverflowMenu";
 import { EmptyState } from "../../../shared/components/EmptyState";
 import { ErrorState } from "../../../shared/components/ErrorState";
 import { IconButton } from "../../../shared/components/IconButton";
@@ -11,12 +12,15 @@ import {
   getCustomerSignupSourceBadgeLabel,
   getCustomerSignupSourceBadgeVariant,
 } from "@fresh-prints/shared/utils/customerSignupSource";
+import { formatCustomerUsernameForDisplay } from "@fresh-prints/shared/utils/formatCustomerUsernameForDisplay";
 
 interface CustomerDirectoryTableProps {
   customers: Customer[];
   error: string | null;
   isLoading: boolean;
+  canTombstoneCustomer?: boolean;
   onEditCustomer: (customer: Customer) => void;
+  onTombstoneCustomer?: (customer: Customer) => void;
   onViewAuditTrail: (customer: Customer) => void;
   searchQuery: string;
 }
@@ -25,7 +29,9 @@ export function CustomerDirectoryTable({
   customers,
   error,
   isLoading,
+  canTombstoneCustomer = false,
   onEditCustomer,
+  onTombstoneCustomer,
   onViewAuditTrail,
   searchQuery,
 }: CustomerDirectoryTableProps) {
@@ -74,43 +80,65 @@ export function CustomerDirectoryTable({
             </tr>
           </thead>
           <tbody>
-            {customers.map((customer) => (
-              <tr key={customer.id}>
-                <td className="user-directory-name">{customer.displayName}</td>
-                <td>{customer.username ?? "Needs username"}</td>
-                <td>{customer.email ?? "—"}</td>
-                <td>
-                  <Badge variant={getCustomerSignupSourceBadgeVariant(customer)}>
-                    {getCustomerSignupSourceBadgeLabel(customer)}
-                  </Badge>
-                </td>
-                <td className="user-directory-notes-cell">
-                  <span
-                    aria-label={customer.notes?.trim() ? "Customer has notes" : "Customer has no notes"}
-                    className={`customer-notes-indicator${customer.notes?.trim() ? " has-notes" : ""}`}
-                    title={customer.notes?.trim() ? "Customer has notes" : "Customer has no notes"}
-                  >
-                    <FileText aria-hidden="true" size={15} strokeWidth={2} />
-                  </span>
-                </td>
-                <td className="user-directory-info-cell">
-                  <IconButton
-                    label="View user info"
-                    onClick={() => onViewAuditTrail(customer)}
-                    variant="outline"
-                  >
-                    <BadgeInfo aria-hidden="true" size={15} strokeWidth={2} />
-                  </IconButton>
-                </td>
-                <td className="user-directory-actions-cell">
-                  <div className="user-directory-actions">
-                    <IconButton label="Edit Customer" onClick={() => onEditCustomer(customer)} variant="outline">
-                      <Pencil aria-hidden="true" size={15} strokeWidth={2} />
+            {customers.map((customer) => {
+              const isDeleted = customer.isDeleted === true;
+              return (
+                <tr key={customer.id}>
+                  <td className="user-directory-name">{customer.displayName}</td>
+                  <td>{formatCustomerUsernameForDisplay(customer.username, { isDeleted })}</td>
+                  <td>{customer.email ?? "—"}</td>
+                  <td>
+                    <Badge variant={getCustomerSignupSourceBadgeVariant(customer)}>
+                      {getCustomerSignupSourceBadgeLabel(customer)}
+                    </Badge>
+                    {isDeleted ? <Badge variant="warning">Deleted</Badge> : null}
+                  </td>
+                  <td className="user-directory-notes-cell">
+                    <span
+                      aria-label={
+                        customer.notes?.trim() ? "Customer has notes" : "Customer has no notes"
+                      }
+                      className={`customer-notes-indicator${customer.notes?.trim() ? " has-notes" : ""}`}
+                      title={customer.notes?.trim() ? "Customer has notes" : "Customer has no notes"}
+                    >
+                      <FileText aria-hidden="true" size={15} strokeWidth={2} />
+                    </span>
+                  </td>
+                  <td className="user-directory-info-cell">
+                    <IconButton
+                      label="View user info"
+                      onClick={() => onViewAuditTrail(customer)}
+                      variant="outline"
+                    >
+                      <BadgeInfo aria-hidden="true" size={15} strokeWidth={2} />
                     </IconButton>
-                  </div>
-                </td>
-              </tr>
-            ))}
+                  </td>
+                  <td className="user-directory-actions-cell">
+                    <div className="user-directory-actions">
+                      <IconButton
+                        label="Edit Customer"
+                        onClick={() => onEditCustomer(customer)}
+                        variant="outline"
+                      >
+                        <Pencil aria-hidden="true" size={15} strokeWidth={2} />
+                      </IconButton>
+                      {canTombstoneCustomer && !isDeleted && onTombstoneCustomer ? (
+                        <DangerOverflowMenu
+                          ariaLabel={`Customer actions for ${customer.displayName}`}
+                          items={[
+                            {
+                              id: "disable-customer",
+                              label: "Disable customer account…",
+                              onSelect: () => onTombstoneCustomer(customer),
+                            },
+                          ]}
+                        />
+                      ) : null}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

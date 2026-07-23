@@ -4,6 +4,38 @@
 
 ---
 
+### ADR-FP-115: Contextual safe deletion and customer tombstones
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-22 |
+| Status | accepted |
+| Related | Users; Print Requests; Show Queue; Customer Uploads; categories/tags; `tombstoneCustomerAccount`; supersedes product use of ADR-FP-104 cascade |
+| Target | `fresh-prints-dev` (no production deploy in this phase) |
+
+**Context**
+
+Hard deletion lived mainly in Test Data (`ownerDeleteUser` cascade, operational wipe). Product needs entity-page actions with dependency checks, no silent cascades, and historical retention for customers.
+
+**Decision**
+
+1. **Customer accounts:** Tombstone with `isDeleted`, `deletedAt`, `deletedBy`, `deletionSource`; set `users.isActive: false`; **Auth disable** (never Auth delete); **retain** `customerUsernames` and all print requests. Display `username (Deleted)` in UI only.
+2. **Staff:** Deactivate only on Users page; no hard delete UI.
+3. **Print requests / shows:** Domain callables with server recheck; hard delete only when eligible; otherwise archive or block with relational warnings.
+4. **Designs:** Archive + existing asset purge only (ADR-FP-084); no hard delete this phase.
+5. **Customer uploads:** Owner-only eligible hard delete when unattached and unpromoted; server Storage cleanup.
+6. **Categories/tags:** Soft archive via guarded callables; block while designs reference; no silent mass reassignment.
+7. **`ownerDeleteUser`:** Quarantined — not in Studio UI. Operational wipe remains Test Data only.
+8. No generic unrestricted delete endpoint.
+
+**Consequences**
+
+- Portal deletion requests can be fulfilled without destroying history.
+- Username collision after “delete” is prevented.
+- Orphan client `deletePrintRequest` / `deleteUpcomingShow` paths are disabled in favor of callables.
+
+---
+
 ### ADR-FP-114: Owner-uploaded Studio + Portal brand logos
 
 | Field | Value |
