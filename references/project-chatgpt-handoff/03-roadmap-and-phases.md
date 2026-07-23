@@ -2,7 +2,7 @@
 
 > Align all work with the current phase / active managed goal. Do not jump ahead.
 
-## Current status (2026-07-22)
+## Current status (2026-07-23)
 
 | Item | Status |
 |------|--------|
@@ -22,8 +22,12 @@
 | Small Managed #14 Recently Requested CF | **Done** — soft-deployed `onShowAllocationCreated` to `fresh-prints-dev` 2026-07-21 (ADR-FP-107); #12/#13 Function redeploy leftovers owner **PASS** same day |
 | Production Portal App Hosting | Pending human approval |
 | Brand logo uploads (ADR-FP-114) | **Done in repo + fresh-prints-dev** (owner PASS 2026-07-22); production Functions/rules/storage still gated |
+| Portal SEO foundations (ADR-FP-116) | **Done** (owner PASS 2026-07-22; approved_with_notes) |
+| Portal FAQ and How To (ADR-FP-117/118) | **Done** (owner PASS 2026-07-23; approved_with_notes) |
 
-**Active managed goal:** none (idle). Small Managed **#1–#14** Done. Last closed: `brand-logo-uploads` (**approved_with_notes**, owner PASS 2026-07-22). Prior same day: `firestore-usage-efficiency`. Await owner next goal (or APPROVE production brand-logo deploy).
+**Pre-production sequence:** (1) SEO foundations **Done** → (2) `portal-how-to-faq` **Done** 2026-07-23 → (3) `portal-google-analytics` **queued** → (4) production-release.
+
+**Active managed goal:** none (idle). Last closed: `portal-how-to-faq` (**approved_with_notes**, owner PASS 2026-07-23). Next queued: `portal-google-analytics`.
 
 ---
 
@@ -106,3 +110,4 @@ If not, postpone it.
 ## Out of scope
 
 Ecommerce checkout, shipping, order payment, marketplace, native mobile apps, customer access to Studio, multi-tenant SaaS, custom REST API for core ops.
+

@@ -314,6 +314,7 @@ uses the same customer hosts for `metadataBase` / OG image resolution via option
 | `getPortalGlobalOpenGraph` | Public JSON for non-design URLs (settings + library/logo image) |
 | `getPortalOgShareImage` | Public JPEG letterbox compositor (`designId` + `fit=contain`) |
 | `updatePortalSocialMetaSettings` | Owner callable for title/description + letterbox + global image source |
+| `updatePortalHelpSettings` | Owner/admin callable for Portal FAQ and How To (`settings/portalHelp`) |
 | `finalizeBrandLogoSlot` | Owner callable: finalize/clear Studio+Portal brand logo slots from Admin Storage metadata |
 | `updateBrandLogoDisplaySizes` | Owner callable: set Portal/Studio logo display heights (px) on `settings/brandLogos` |
 

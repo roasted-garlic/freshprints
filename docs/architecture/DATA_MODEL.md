@@ -1817,6 +1817,42 @@ chosen show (capacity + one request per customer per show). Missing `L` resolves
 Signed-in users may read; writes use `updatePrintRequestLimitSettings` (mirrors `L` into legacy Cap A).
 Bounds: integers 1–10000.
 
+### `settings/portalHelp`
+
+```ts
+interface PortalHelpTextFaq {
+  id: string; // 1–64 chars, [\w.-]+
+  question: string; // 1–200 chars
+  answer: string; // 1–4000 chars, plain text (newlines OK; no HTML)
+  order: number; // dense 0..n-1 after save
+}
+
+interface PortalHelpVideoItem {
+  id: string;
+  title: string; // 1–160 chars
+  description?: string; // ≤500 chars
+  videoUrl: string; // HTTPS YouTube or Vimeo only (required on save)
+  order: number;
+}
+
+interface PortalHelpSettings {
+  faqs: PortalHelpTextFaq[]; // max 50
+  videos: PortalHelpVideoItem[]; // max 20
+  updatedAt: Timestamp;
+  updatedBy: string;
+}
+```
+
+Owner/admin-editable Portal FAQ and How To content. Studio **Settings → FAQ and How To**.
+Writes via `updatePortalHelpSettings` (callable; client writes denied). Firestore:
+**public read**. Missing doc **or empty saved `faqs`** → Portal uses bundled
+`portalHelpContent.ts` FAQ defaults. Empty / missing `videos` → Coming soon UI (no dummy
+video slots). Path remains `/help`;
+page H1/SEO title **FAQ and How To**; sidebar nav label **Help** (ADR-FP-118).
+On **`fresh-prints-dev`**, initial FAQ list may be seeded with
+`npx tsx functions/scripts/seed-portal-help-faqs.ts` (`videos: []`) so Studio shows
+editable saved items matching bundled defaults (ADR-FP-118).
+
 ### `settings/portalSocialMeta`
 
 ```ts

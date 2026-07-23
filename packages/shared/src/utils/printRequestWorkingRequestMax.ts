@@ -243,8 +243,8 @@ export function formatWorkingRequestLimitHelpModalCopy(
     ? `one request or multiple requests, ${multiExample}`
     : "one request or multiple requests";
   return [
-    `Each request can include up to ${requestMax} prints. You may submit a request with fewer prints if needed, but you cannot exceed this limit within a single request.`,
-    `Each show can also hold up to ${showMax} prints per customer and a max of 200. These prints can come from ${multiClause}.`,
+    `Print requests are for Fresh Prints Whatnot shows (live shopping). Each request can include up to ${requestMax} prints. You may submit a request with fewer prints if needed, but you cannot exceed this limit within a single request.`,
+    `Each Whatnot show can also hold up to ${showMax} prints per customer and a max of 200. These prints can come from ${multiClause}.`,
     `Once a show reaches its ${showMax}-print limit, any additional prints must be assigned to a different show. To add new designs to a full show, you will need to remove prints or reduce quantities to free up space.`,
   ];
 }

@@ -162,7 +162,24 @@ Expected exports include `enqueueAiEnrichment` and `onDesignAiEnrichmentQueued`.
 
 See `docs/architecture/FIREBASE.md`. Never commit secrets.
 
-### Portal Open Graph / social meta (2026-07-20; updated 2026-07-21)
+### Portal SEO foundations (2026-07-22)
+
+| Endpoint | Purpose |
+|----------|---------|
+| `/robots.txt` | Crawl rules. **Fail closed:** `Disallow: /` unless origin host is `myprintrequest.com` (or `www.`). Dev (`myprintrequest.dev`) and localhost stay non-indexable but the file is still fetchable for testing. |
+| `/sitemap.xml` | Static public URLs (`/`, `/catalog`, `/catalog/library`, `/help`) + one `/share/design/{id}` per **ready** design. Revalidates every **3600s (1 hour)** so newly approved designs appear within about an hour when Admin credentials are available. Without Admin (typical local), returns HTTP **200** with static URLs only. |
+| `/share/design/{id}` | Canonical **SSR** design landing (image, title, description, category/tags, CTAs). Not meta-only; no automatic client redirect. |
+| `/help` | Public **FAQ and How To** (text accordion + How To videos). Content from Firestore `settings/portalHelp` (Studio Settings, owner/admin callable `updatePortalHelpSettings`); missing/empty FAQs → bundled Portal FAQ defaults; empty videos → Coming soon. Guest-browsable under the Portal shell. Indexed only when the production indexing gate is on. |
+
+**Indexing gate:** `isPortalSearchIndexingEnabled()` — only `myprintrequest.com`. Do not enable indexing on `.dev` via env alone. When indexing is enabled, `robots.txt` allow includes `/`, `/catalog`, `/help`, `/share/design`.
+
+**Set on App Hosting:** `NEXT_PUBLIC_PORTAL_ORIGIN=https://myprintrequest.com` (prod) or `https://myprintrequest.dev` (dev) so robots/sitemap/canonical absolute URLs match the public host.
+
+**Crawler image URLs:** Page + OG images use public Function `getPortalOgShareImage` (no auth, no short-lived signed Storage URLs). Do not put signed Storage URLs in sitemap or social meta.
+
+**Search Console:** Deferred to `production-release` for the production domain.
+
+### Portal Open Graph / social meta (2026-07-20; updated 2026-07-22)
 
 Portal site-wide OG / Twitter tags use Next.js `metadataBase` so image URLs are absolute. Root
 metadata omits a hard-coded `og:url` so Next.js uses the request path (deep links no longer
@@ -178,11 +195,11 @@ advertise the home origin as `og:url`).
 - `library` (default) — interval-rotated ready design via `getPortalGlobalOpenGraph`
 - `logo` — uploaded Portal full logo (`settings/brandLogos.portalFull.downloadUrl`) when set; else `/brand/fresh-prints-request-portal-logo.png`
 
-**Letterbox (`letterboxOgImages`, default on):** `og:image` points at
+**Letterbox / crawler images:** Design share and SEO `og:image` / landing `<img>` always use public
 `getPortalOgShareImage?designId=…&fit=contain&bg=<hex>` (1200×630 JPEG). Canvas color comes from
 the design’s `artworkBackgroundHex` (fallback Portal artwork grey `#e5e7eb`). The `bg` query is a
-Facebook/CDN cache-bust; the Function paints from the design document. When off, signed Storage
-preview URLs.
+Facebook/CDN cache-bust; the Function paints from the design document. Short-lived signed Storage
+URLs are not used for crawler-facing share/SEO images.
 
 **Library rotation:** Global library OG picks a ready design via `pickLibraryOgRotatedIndex` using
 `libraryOgRotationInterval` (`daily` | `hourly` | `5min` | `1min` | `30s`, default `hourly`).
@@ -194,12 +211,11 @@ There is no “every share” mode — social apps cache OG by page URL.
 `updatePortalSocialMetaSettings` → `settings/portalSocialMeta`. Portal prefers
 `getPortalGlobalOpenGraph` (hourly revalidate on root layout).
 
-**Per-design share:**
-
-| Purpose | URL |
-|---------|-----|
-| Share / crawler OG | `/share/design/{designId}` — `getPortalDesignShareOpenGraph` (+ letterbox image URL when enabled) |
-| Deep link (modal) | `/catalog?designId={designId}` (also honored on `/`) |
+**Per-design share / SEO landing:** `/share/design/{id}` lives under the Portal `(app)` shell
+(header, sidebar, drawer). Guests may browse it without login; signed-in customers get **Add to
+request** (same flow as catalog). Guests see **Sign in to add to a request**. After login, return
+maps share URLs to `/catalog?designId=` so the design opens in-library. Already-authenticated users
+hitting `/login` or `/login-required` are redirected to returnTo or Discover (`/`).
 
 **Facebook Debugger note:** “This URL hasn't been shared on Facebook before” means Facebook has no
 cache yet — click **Fetch new information**. Non-root app paths (e.g. `/requests/artwork`,
@@ -209,10 +225,10 @@ crawlers.
 **Soft-deploy (dev only):**
 
 ```bash
-firebase deploy --only functions:updatePortalSocialMetaSettings,functions:getPortalDesignShareOpenGraph,functions:getPortalGlobalOpenGraph,functions:getPortalOgShareImage,functions:finalizeBrandLogoSlot,functions:updateBrandLogoDisplaySizes,firestore:rules,storage --project fresh-prints-dev
+firebase deploy --only functions:updatePortalSocialMetaSettings,functions:updatePortalHelpSettings,functions:getPortalDesignShareOpenGraph,functions:getPortalGlobalOpenGraph,functions:getPortalOgShareImage,functions:finalizeBrandLogoSlot,functions:updateBrandLogoDisplaySizes,firestore:rules,storage --project fresh-prints-dev
 ```
 
-Brand logos also need Firestore + Storage rules for `settings/brandLogos` and `brand/**` (same soft-deploy command). Production rules/Functions still require separate owner approval.
+Brand logos also need Firestore + Storage rules for `settings/brandLogos` and `brand/**` (same soft-deploy command). FAQ/How To needs `settings/portalHelp` rules + `updatePortalHelpSettings`. Production rules/Functions still require separate owner approval.
 
 **Verify after soft-deploy to fresh-prints-dev:**
 

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { ChevronLeft, ChevronRight, HeartHandshake, LogIn, LogOut, User } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CircleHelp, HeartHandshake, LogIn, LogOut, User } from 'lucide-react';
 
 import { resolvePortalDisplayName, getProfileInitials } from '../../account/utils/profileDisplay';
 import { useAuth } from '../../auth/context/AuthContext';
@@ -162,6 +162,21 @@ export function PortalSidebar() {
           <div className="portal-sidebar-spacer" />
 
           <div className="portal-sidebar-footer">
+            <Link
+              aria-current={pathname === '/help' || pathname.startsWith('/help/') ? 'page' : undefined}
+              className={`portal-sidebar-help-link${
+                pathname === '/help' || pathname.startsWith('/help/') ? ' is-active' : ''
+              }`}
+              href="/help"
+              onClick={closeDrawer}
+              title="Help"
+            >
+              <span className="portal-sidebar-help-link-main">
+                <CircleHelp aria-hidden size={18} strokeWidth={1.75} />
+                <span className="portal-sidebar-help-link-label">Help</span>
+              </span>
+            </Link>
+
             <Link
               aria-current={pathname === '/donate' || pathname.startsWith('/donate/') ? 'page' : undefined}
               className={`portal-sidebar-donate-link${

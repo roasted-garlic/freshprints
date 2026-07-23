@@ -6,11 +6,14 @@ import { AuthProvider } from '../features/auth/context/AuthProvider';
 import { PortalChrome } from '../features/theme/components/PortalChrome';
 import { ThemeProvider } from '../features/theme/context/ThemeProvider';
 
+/** Routes that render PortalAppShell (sidebar theme toggle) — hide floating PortalChrome. */
 function isAuthenticatedAppRoute(pathname: string): boolean {
   return (
     pathname === '/' ||
     pathname.startsWith('/dashboard') ||
     pathname.startsWith('/catalog') ||
+    pathname.startsWith('/share/design') ||
+    pathname.startsWith('/help') ||
     pathname.startsWith('/favorites') ||
     pathname.startsWith('/requests') ||
     pathname.startsWith('/donate') ||

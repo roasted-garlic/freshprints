@@ -20,7 +20,7 @@ function isGuestBrowseSession(bootstrapStatus: string): boolean {
  * App-shell gate for `(app)` routes.
  *
  * Guests may stay in the shell on any route (including formerly hard-gated paths).
- * Public browse (`/`, `/catalog/**`) renders content normally;
+ * Public browse (`/`, `/catalog/**`, `/help`, `/share/design/**`) renders content normally;
  * other `(app)` routes stay in-shell with a guest auth overlay.
  * gated routes get a content overlay from `PortalAppShell` instead of leaving the shell
  * for a bare `/login-required` interstitial.

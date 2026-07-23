@@ -4,11 +4,15 @@ import { describe, it } from 'node:test';
 import { isPortalPublicBrowsePath } from './portalPublicBrowsePath';
 
 describe('isPortalPublicBrowsePath', () => {
-  it('allows home and catalog browse paths', () => {
+  it('allows home, catalog, help, and design share browse paths', () => {
     assert.equal(isPortalPublicBrowsePath('/'), true);
     assert.equal(isPortalPublicBrowsePath('/catalog'), true);
     assert.equal(isPortalPublicBrowsePath('/catalog/library'), true);
     assert.equal(isPortalPublicBrowsePath('/catalog/anything'), true);
+    assert.equal(isPortalPublicBrowsePath('/help'), true);
+    assert.equal(isPortalPublicBrowsePath('/help/'), true);
+    assert.equal(isPortalPublicBrowsePath('/share/design/abc123'), true);
+    assert.equal(isPortalPublicBrowsePath('/share/design'), true);
   });
 
   it('rejects donate and mutation-primary routes (donate requires login)', () => {

@@ -4,6 +4,94 @@
 
 ---
 
+### ADR-FP-118: Studio-managed Portal FAQ and How To settings
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-23 |
+| Status | accepted |
+| Related | ADR-FP-117 (amended); ADR-FP-116; `portal-how-to-faq` |
+| Target | Studio Settings; Portal App Hosting; Firestore `settings/portalHelp` |
+
+**Context**
+
+ADR-FP-117 shipped `/help` with a typed TS content module so layout could land without a CMS. Owner now needs to add/edit FAQ and How To video entries without a Portal redeploy, using Studio Settings like other Portal-facing config.
+
+**Decision**
+
+1. Persist FAQ + How To content in Firestore **`settings/portalHelp`** (public read; client writes denied).
+2. Owner/admin updates via Admin callable **`updatePortalHelpSettings`** with shared parse/validate (HTTPS YouTube/Vimeo only for video URLs; plain-text FAQ answers).
+3. Studio **Settings → FAQ and How To** provides add / edit / reorder / remove for text FAQs and video items.
+4. Portal `/help` loads live settings (client subscribe); missing doc **or empty saved `faqs`** → bundled FAQ defaults from `portalHelpContent.ts`. **Empty / missing `videos`** → empty list + **Coming soon** UI (no bundled dummy video slots). Partial Studio content: non-empty FAQ list stays from Firestore. *(Owner 2026-07-23: real FAQ fallbacks; videos stay Coming soon until Studio has real embeds.)*
+5. Page H1 / SEO title: **FAQ and How To**; sidebar/nav link label: **Help** (path remains `/help`). *(Owner clarification 2026-07-23: nav = Help; page/SEO keep FAQ and How To.)*
+6. Studio FAQ / How To item editors are **collapsed by default**; all item sections collapse again after a successful Save.
+7. **Buy-yourself messaging (owner 2026-07-23):** FAQ copy must make clear that print requests are for the customer’s own Whatnot purchases — not suggestions for other shoppers. Dedicated FAQ `request-what-you-will-buy` plus short weaves in print-request / submit / limits FAQs. Avoid em dashes (—) and en-dash prose substitutes in FAQ Q/A.
+8. **Dev seed:** Bundled FAQ defaults were written to Firestore `settings/portalHelp` on **`fresh-prints-dev`** via `functions/scripts/seed-portal-help-faqs.ts` so Studio Settings shows them as saved editable items (`videos: []`). Re-run that script after copy changes if Studio should match bundled defaults without manual paste. **No production seed.**
+
+**Consequences**
+
+- Copy/video changes apply without Portal redeploy once Functions + rules are deployed.
+- Public FAQ copy is readable by anyone with the project; do not store secrets or PII in this doc.
+- ADR-FP-117 remains historical for the initial `/help` route + SEO wiring; content source of truth is now Studio settings (this ADR).
+- On `fresh-prints-dev`, seeded FAQs override empty-list fallback until the owner clears or edits them in Studio.
+
+---
+
+### ADR-FP-117: Portal How To / FAQ content module (not CMS)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-23 |
+| Status | amended (see ADR-FP-118) |
+| Related | ADR-FP-116 (SEO); ADR-FP-118; `portal-how-to-faq` |
+| Target | Portal App Hosting |
+
+**Context**
+
+Portal needs a public How To / FAQ surface for trust and SEO before production. A Firestore CMS or Studio editor would add schema, rules, and UI for v1 copy that may still change.
+
+**Decision**
+
+1. Ship `/help` as a public browse route under the Portal app shell (sidebar label **Help**; page H1/SEO **FAQ and How To** per ADR-FP-118 amendment).
+2. Store FAQ + video entries in a typed TypeScript module (`apps/portal/features/help/portalHelpContent.ts`). Owner edits by PR / deploy — no CMS in this phase. *(Amended: Studio-managed Firestore settings are source of truth — ADR-FP-118. Module retained as missing-doc fallback.)*
+3. Render FAQ answers as plain text (line breaks only). Video iframes only from validated YouTube/Vimeo URLs.
+4. Reuse ADR-FP-116 fail-closed indexing; include `/help` in robots allow + sitemap static paths.
+
+**Consequences**
+
+- Original: copy/video URL changes required a Portal redeploy.
+- Amended by ADR-FP-118: live Studio edits via `settings/portalHelp`.
+
+---
+
+### ADR-FP-116: Portal SEO foundations (fail-closed indexing + SSR share landing)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-22 |
+| Status | accepted |
+| Related | ADR-FP-105 (OG share); ADR-FP-106 (public browse); `portal-seo-foundations` |
+| Target | Portal App Hosting (`fresh-prints-dev` first); production indexing only on `myprintrequest.com` |
+
+**Context**
+
+Portal needed robots.txt, a ready-design sitemap, and indexable per-design pages before production. Dev (`myprintrequest.dev`) must remain testable without being indexed. Share URLs previously auto-redirected humans to the catalog after serving meta only.
+
+**Decision**
+
+1. **Fail-closed indexing:** `robots.txt` and page `robots` meta allow indexing only when the Portal origin hostname is `myprintrequest.com` (optional `www.`). `.dev`, localhost, and unknown hosts use `Disallow: /` / `noindex`.
+2. **Canonical design URL:** `/share/design/{id}` remains canonical and lives under the Portal app shell (header/sidebar). Guests browse without login; signed-in users get **Add to request**; guests get **Sign in to add**. Post-login return maps share → `/catalog?designId=`. Already-signed-in visits to `/login` / `/login-required` redirect to returnTo or Discover.
+3. **Sitemap:** Lists `/`, `/catalog`, `/catalog/library`, and ready `/share/design/{id}` entries. Revalidate **1 hour**. Admin unavailable → static URLs only (HTTP 200). Ready-only; no gated paths; no signed Storage URLs or PII.
+4. **Stable crawler images:** Page and social meta use public `getPortalOgShareImage` Function URLs (no auth, no short-lived signed Storage). GenerateMetadata remains on the share route for OG/crawlers.
+
+**Consequences**
+
+- SEO can be verified on `.dev` without risking search index pollution.
+- Crawlers and humans see real design content on the share URL.
+- Soft-deploy `getPortalDesignShareOpenGraph` after this change so Function payloads always return the public image URL + category/tags.
+
+---
+
 ### ADR-FP-115: Contextual safe deletion and customer tombstones
 
 | Field | Value |

@@ -106,9 +106,18 @@ Phase 7 Studio MVP and Phase 8 Portal MVP are complete in the dev environment.
 
 Current Goal:
 
-**Small Managed Items Backlog:** #5–**#14** **Done** (2026-07-21: #14 soft-deployed; #12/#13 Function redeploy leftovers owner **PASS**). See [Small Managed Items Backlog](#small-managed-items-backlog-2026-07-18) below.
+**Pre-production sequence (owner 2026-07-22):** work one managed phase at a time.
 
-**Active managed goal:** none (idle). Last closed **2026-07-22:** `portal-add-to-show-inspect-closed-days` (**approved** — owner PASS). Same day: `ai-analysis-background-preview` (**approved_with_notes**), `ai-text-title-completeness-regression` (**approved**), `brand-logo-uploads` (**approved_with_notes**), soft-deploy enrichment Functions to `fresh-prints-dev`. Session polish: Design Library `updatedAt` sort; purge Deselect all + Copy phrase; Custom BG Apply UX; Portal artwork BG on cart/request/cards.
+| # | Goal | Status |
+|---|------|--------|
+| 1 | `portal-seo-foundations` — robots.txt, sitemap, design page SEO | **Done** (2026-07-22, approved_with_notes) |
+| 2 | `portal-how-to-faq` - FAQ and How To (Studio Settings CMS + Portal `/help`) | **Done** (2026-07-23, approved_with_notes) |
+| 3 | `portal-google-analytics` — GA4 on Portal | Queued |
+| 4 | `production-release` — prod Firebase / App Hosting / Google / email | Queued |
+
+**Small Managed Items Backlog:** #5–**#14** **Done** (2026-07-21). See [Small Managed Items Backlog](#small-managed-items-backlog-2026-07-18) below.
+
+**Active managed goal:** none (idle). Last closed: **2026-07-23** `portal-how-to-faq` (**approved_with_notes**). Next queued: `portal-google-analytics`.
 
 Phase 9 Custom Designs remains **largely complete in `fresh-prints-dev`**: 9A Etsy recommendations and 9C Assisted Creation shipped with owner PASS; polish + proof-ready email (Resend + Brevo) closed. Brevo IP/blocklist deliverability **PASS** 2026-07-18. Studio Test Data Reset presets + wipe expansion **PASS** / signed off **approved_with_notes** 2026-07-18. AI Processing selective designs wipe (`aiProcessingDesigns`) **PASS** / signed off **approved** 2026-07-21. Library OG rotation intervals + per-design artwork backgrounds **PASS** / signed off **approved_with_notes** 2026-07-21. Studio tag footer + Design Library Halftone + AI Processing artwork bg **PASS** / signed off **approved_with_notes** 2026-07-21. Portal customer temporary shirt-color preview (nested **Background Color** picker) **PASS** / signed off **approved** 2026-07-21. Small Managed **#12** library design sharing proof-line owner **PASS** / soft-signoff **approved_with_notes** 2026-07-21. Portal assisted Reset/Continue + mobile auth overlay **PASS** / soft-signoff **approved** 2026-07-21. Custom request details parity (+ Addenda A–C) **PASS** / soft-signoff **approved** 2026-07-21. Assisted Creation proof preview hang hotfix **PASS** / signed off **approved** 2026-07-21. Still deferred inside Phase 9: Create My Design with AI (product AI integration), staff design-fee / Stripe, assisted questionnaire request-type branching. Production Portal / production Google / production email release remain separate human approvals. **#14** Recently Requested CF (`onShowAllocationCreated`) soft-deploy still open.
 
@@ -1277,4 +1286,5 @@ Fresh Prints succeeds when:
 * The platform remains maintainable for years.
 
 Every feature should move the project toward these goals.
+
 

@@ -2,6 +2,21 @@
 
 > Signed-off or largely complete work. External agents should not re-plan or duplicate this.
 
+## 2026-07-23 - Portal FAQ and How To (approved_with_notes)
+
+- Public `/help` + Studio Settings CMS (`settings/portalHelp`); nav **Help** vs H1 **FAQ and How To**; Coming soon videos; seeded 8 FAQs on fresh-prints-dev
+- Buy-yourself FAQ + Whatnot limits copy; no em dashes; theme picker hidden on `/help`
+- Owner manual **PASS** 2026-07-23; ADR-FP-117 / ADR-FP-118
+- Signoff: `docs/workflow/reviews/2026-07-23-portal-how-to-faq-signoff.md`
+- Next queued: `portal-google-analytics` (not started)
+## 2026-07-22 - Portal SEO foundations (approved_with_notes)
+
+- Fail-closed robots (prod host only), sitemap + 1h revalidate, SSR `/share/design/{id}` in Portal shell, stable public OG images (ADR-FP-116)
+- Guest Sign in CTA on catalog modal; share landing centering + theme picker polish
+- Automated 20/20 + Portal typecheck/build pass; owner manual **PASS** 2026-07-22
+- Signoff: `docs/workflow/reviews/2026-07-22-portal-seo-foundations-signoff.md`
+- Next: `portal-how-to-faq` (plan + review ready; await APPROVE IMPLEMENTATION)
+
 ## 2026-07-22 - Brand logo uploads (approved_with_notes)
 
 - Studio Settings four PNG slots (Studio/Portal × full/collapsed); Storage finalize + display-size callables; AR-locked W×H boxes; separate Portal header vs sidebar controls (defaults height 52)
@@ -263,4 +278,6 @@ Portal empty-state / stash; image quality ADR-FP-080; catalog donate; Working tr
 - `studio-apps-folder-monorepo-normalization`
 
 See `CURRENT-STATE.md` for live status.
+
+
 

@@ -126,6 +126,57 @@
   gap: var(--space-2);
 }
 
+.settings-help-item {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm, 0.375rem);
+  margin-block: var(--space-3);
+  padding: var(--space-3);
+}
+
+.settings-help-item-summary {
+  cursor: pointer;
+  list-style: none;
+  min-width: 0;
+  user-select: none;
+}
+
+.settings-help-item-summary::-webkit-details-marker {
+  display: none;
+}
+
+.settings-help-item-summary::before {
+  color: var(--color-text-tertiary);
+  content: "▸";
+  display: inline-block;
+  margin-inline-end: var(--space-2);
+  transition: transform 0.12s ease;
+}
+
+.settings-help-item[open] > .settings-help-item-summary::before {
+  transform: rotate(90deg);
+}
+
+.settings-help-item-summary-label {
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.settings-help-item-body {
+  display: grid;
+  gap: var(--space-3);
+  margin-block-start: var(--space-3);
+}
+
+.settings-help-item-toolbar {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  justify-content: space-between;
+}
+
 .settings-field-label {
   display: grid;
   gap: var(--space-1);

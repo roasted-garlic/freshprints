@@ -10,6 +10,7 @@ import '../styles/requests.css'
 import '../styles/customer-uploads.css'
 import '../styles/etsy-recommendations.css'
 import '../styles/assisted-creation.css'
+import '../styles/help.css'
 import '../styles/shell.css'
 
 /** Refresh global OG settings / hourly library image without force-dynamic on every page. */

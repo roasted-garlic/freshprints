@@ -2,7 +2,7 @@
 
 > **Refresh before every external AI session.**
 > Source: `.cursor/workflow/state.md` (authoritative) + `docs/project/ROADMAP.md`
-> Last updated: **2026-07-22** (`brand-logo-uploads` signed off; idle)
+> Last updated: **2026-07-23** (`portal-how-to-faq` **DONE** / approved_with_notes; next queued `portal-google-analytics` not started)
 
 ---
 
@@ -10,43 +10,41 @@
 
 | Field | Value |
 |-------|-------|
-| **Active managed goal** | none (idle) |
-| **Phase** | **idle** (signoff complete) |
+| **Active managed goal** | none (idle) — last closed `portal-how-to-faq` |
+| **Phase** | signoff complete |
 | **Human checkpoint** | **no** |
-| **Prior goal** | `brand-logo-uploads` — **DONE** / signoff **approved_with_notes** |
-| **DONE** | **yes** |
+| **Prior goals** | `portal-seo-foundations` DONE; `portal-how-to-faq` DONE |
+| **DONE** | **yes** (how-to-faq closed) |
 
 ---
 
 ## Workflow Snapshot
 
 ```txt
-Mode:           managed-phase
-Closed:         brand-logo-uploads (approved_with_notes)
-Goal:           (none — idle)
-Phase:          idle
+Mode:           managed-phase (idle between goals)
+Closed:         portal-how-to-faq (approved_with_notes, owner PASS 2026-07-23)
+Prior closed:   portal-seo-foundations (approved_with_notes)
 Human:          no
-Next:           await owner next managed goal
-                optional: APPROVE production brand-logo Functions/rules/storage
+Next:           portal-google-analytics (queued — plan when owner starts; do not implement yet)
+Queued after:   production-release
 ```
 
 ---
 
-## Just closed
+## Just closed: portal-how-to-faq
 
-- **Goal:** `brand-logo-uploads`
-- **Signoff:** `docs/workflow/reviews/2026-07-22-brand-logo-uploads-signoff.md` (**approved_with_notes**)
-- Owner **PASS** 2026-07-22 — Studio + Portal brand logos, display sizes, guest chrome
-- Soft-deployed to **fresh-prints-dev** (`finalizeBrandLogoSlot`, `updateBrandLogoDisplaySizes`, OG, rules); **production deploy not done**
-- ADR-FP-114
-
-### Prior closed (same day)
-
-- `firestore-usage-efficiency` — **approved_with_notes**; owner PASS; B4/Wave C deferred; no deploys
+- Public `/help`: H1 / SEO **FAQ and How To**; nav **Help**; guest browse; Coming soon videos when empty
+- Studio Settings CMS → Firestore `settings/portalHelp`; `updatePortalHelpSettings`; seed on **fresh-prints-dev** (8 FAQs)
+- Buy-yourself FAQ + Whatnot limits copy; no em dashes; theme picker hidden on `/help`
+- Owner manual **PASS** 2026-07-23; signoff `docs/workflow/reviews/2026-07-23-portal-how-to-faq-signoff.md`
+- ADRs: FP-117 / FP-118
 
 ### Parked / follow-ups
 
-- Brand-logo **production** Functions + Firestore/Storage rules — needs explicit APPROVE
+- Add real How To video URLs in Studio when ready
+- Production seed of `settings/portalHelp` at `production-release`
+- Optional soft-deploy SEO Functions leftovers (prior goal)
+- Brand-logo **production** Functions + rules (separate APPROVE)
 - B4 / Wave C Firestore efficiency
-- Production Portal App Hosting / Google / email gates unchanged
-- Pre-existing Studio `tsc` TS5103
+- Production Portal / Google / email gates unchanged
+

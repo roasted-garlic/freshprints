@@ -67,6 +67,7 @@ export { updateEmailProviderSettings } from "./updateEmailProviderSettings";
 export { updateCustomerUploadQuotaSettings } from "./updateCustomerUploadQuotaSettings";
 export { updatePrintRequestLimitSettings } from "./updatePrintRequestLimitSettings";
 export { updatePortalSocialMetaSettings } from "./updatePortalSocialMetaSettings";
+export { updatePortalHelpSettings } from "./updatePortalHelpSettings";
 export { finalizeBrandLogoSlot } from "./finalizeBrandLogoSlot";
 export { updateBrandLogoDisplaySizes } from "./updateBrandLogoDisplaySizes";
 export { getPortalDesignShareOpenGraph } from "./getPortalDesignShareOpenGraph";

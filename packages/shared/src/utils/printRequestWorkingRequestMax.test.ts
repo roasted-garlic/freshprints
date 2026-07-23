@@ -129,11 +129,11 @@ describe("printRequestWorkingRequestMax", () => {
     assert.equal(lines.length, 3);
     assert.equal(
       lines[0],
-      "Each request can include up to 25 prints. You may submit a request with fewer prints if needed, but you cannot exceed this limit within a single request.",
+      "Print requests are for Fresh Prints Whatnot shows (live shopping). Each request can include up to 25 prints. You may submit a request with fewer prints if needed, but you cannot exceed this limit within a single request.",
     );
     assert.equal(
       lines[1],
-      "Each show can also hold up to 25 prints per customer and a max of 200. These prints can come from one request or multiple requests, such as five requests with five prints each.",
+      "Each Whatnot show can also hold up to 25 prints per customer and a max of 200. These prints can come from one request or multiple requests, such as five requests with five prints each.",
     );
     assert.equal(
       lines[2],
@@ -150,9 +150,9 @@ describe("printRequestWorkingRequestMax", () => {
     const lines = formatWorkingRequestLimitHelpModalCopy(50, 25);
     assert.equal(
       lines[0],
-      "Each request can include up to 50 prints. You may submit a request with fewer prints if needed, but you cannot exceed this limit within a single request.",
+      "Print requests are for Fresh Prints Whatnot shows (live shopping). Each request can include up to 50 prints. You may submit a request with fewer prints if needed, but you cannot exceed this limit within a single request.",
     );
-    assert.match(lines[1]!, /up to 25 prints per customer and a max of 200/);
+    assert.match(lines[1]!, /Each Whatnot show can also hold up to 25 prints per customer and a max of 200/);
     assert.match(lines[1]!, /five requests with five prints each/);
     assert.match(lines[2]!, /its 25-print limit/);
     assert.doesNotMatch(lines.join(" "), /Current Request/i);

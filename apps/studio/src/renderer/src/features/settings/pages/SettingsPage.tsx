@@ -14,6 +14,7 @@ import { permissionService } from "../../permissions/services/permissionService"
 import { EmailProviderSettingsSection } from "../components/EmailProviderSettingsSection";
 import { CustomerUploadQuotaSettingsSection } from "../components/CustomerUploadQuotaSettingsSection";
 import { PortalSocialMetaSettingsSection } from "../components/PortalSocialMetaSettingsSection";
+import { PortalHelpSettingsSection } from "../components/PortalHelpSettingsSection";
 import { BrandLogoSettingsSection } from "../components/BrandLogoSettingsSection";
 import { PrintRequestLimitSettingsSection } from "../components/PrintRequestLimitSettingsSection";
 import {
@@ -112,6 +113,7 @@ type SettingsPageTabId =
   | "uploadQuotas"
   | "printRequestLimits"
   | "socialSharing"
+  | "faqHowTo"
   | "brandLogos"
   | "aiEnrichment";
 
@@ -143,9 +145,13 @@ export function SettingsPage() {
       tabs.push({ id: "brandLogos", label: "Brand logos" });
     }
 
+    if (canManageSettings) {
+      tabs.push({ id: "faqHowTo", label: "FAQ and How To" });
+    }
+
     tabs.push({ id: "aiEnrichment", label: "AI Enrichment" });
     return tabs;
-  }, [canManageCustomerUploadQuotas, canManageEmailProviders, isOwner]);
+  }, [canManageCustomerUploadQuotas, canManageEmailProviders, canManageSettings, isOwner]);
   const [activeTab, setActiveTab] = useState<SettingsPageTabId | null>(null);
   const resolvedTab: SettingsPageTabId =
     activeTab && settingsTabs.some((tab) => tab.id === activeTab)
@@ -522,6 +528,17 @@ export function SettingsPage() {
           role="tabpanel"
         >
           <PortalSocialMetaSettingsSection />
+        </div>
+      ) : null}
+
+      {resolvedTab === "faqHowTo" && canManageSettings ? (
+        <div
+          aria-labelledby="settings-tab-faqHowTo"
+          className="settings-page-tab-panel"
+          id="settings-tab-panel-faqHowTo"
+          role="tabpanel"
+        >
+          <PortalHelpSettingsSection />
         </div>
       ) : null}
 
