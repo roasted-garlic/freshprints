@@ -17,7 +17,7 @@ import {
 } from '@fresh-prints/shared/utils/portalShowQueueFit';
 import { PortalPrintRequestItemCard } from '../../../../features/print-requests/components/PortalPrintRequestItemCard';
 import { PortalPrintRequestProgressPanel } from '../../../../features/print-requests/components/PortalPrintRequestProgressPanel';
-import { PortalQueueToShowModal, type PortalQueueToShowResult } from '../../../../features/print-requests/components/PortalQueueToShowModal';
+import { PortalQueueToShowModal } from '../../../../features/print-requests/components/PortalQueueToShowModal';
 import { PrintRequestDetailGuide } from '../../../../features/print-requests/components/PrintRequestDetailGuide';
 import { catalogService } from '../../../../features/catalog/services/catalogService';
 import type { CatalogDesign } from '../../../../features/catalog/types/catalog.types';
@@ -314,8 +314,7 @@ export default function PrintRequestDetailView() {
   const printProgress = usePortalShowPrintProgress(printRequestId, progressStage !== null);
   const hasAttachedDesigns = items.length > 0;
 
-  const handleQueuedToShow = useCallback(
-    async (_result: PortalQueueToShowResult) => {
+  const handleQueuedToShow = useCallback(async () => {
       // Clear Stash immediately — list reload can otherwise re-hydrate the just-queued request.
       resetWorkingCart();
       closeCurrentRequestDrawer();

@@ -1,7 +1,9 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
+import { PORTAL_HELP_PATH } from '@fresh-prints/shared/constants/portal/portalHelpSettings.constants';
 import {
   formatWorkingRequestLimitBannerCopy,
   formatWorkingRequestLimitHelpModalCopy,
@@ -111,6 +113,15 @@ export function PortalWorkingRequestLimitBanner() {
                 </p>
               ))}
             </div>
+            <footer className="modal-footer portal-print-request-quota-help-footer">
+              <Link
+                className="portal-button portal-button-primary"
+                href={PORTAL_HELP_PATH}
+                onClick={() => setIsHelpOpen(false)}
+              >
+                FAQ and How To
+              </Link>
+            </footer>
           </div>
         </div>
       ) : null}

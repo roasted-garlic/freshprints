@@ -702,6 +702,14 @@ a.portal-sidebar-sign-out:hover {
   margin-top: 0.75rem;
 }
 
+.portal-print-request-quota-help-footer {
+  justify-content: flex-end;
+}
+
+.portal-print-request-quota-help-footer .portal-button {
+  width: auto;
+}
+
 .design-selection-card-quota-hint,
 .design-card-quota-hint,
 .design-details-quota-hint {

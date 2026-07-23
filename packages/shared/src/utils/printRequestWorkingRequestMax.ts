@@ -230,7 +230,8 @@ function formatShowMultiRequestExample(showMax: number): string | null {
  * (same sole `L` today; both args so copy stays correct if they diverge).
  * Customers may queue multiple requests to the same show until they hit Y prints.
  * Show-wide capacity ("a max of 200") is illustrative owner wording, not live per-show maxTotalQuantity.
- * No Cap A/B jargon; no em dashes.
+ * Includes owner note that building/submitting a request does not cost money up front
+ * (payment is on the Whatnot show). No Cap A/B jargon; no em dashes.
  */
 export function formatWorkingRequestLimitHelpModalCopy(
   maxPerRequest: number,
@@ -244,6 +245,7 @@ export function formatWorkingRequestLimitHelpModalCopy(
     : "one request or multiple requests";
   return [
     `Print requests are for Fresh Prints Whatnot shows (live shopping). Each request can include up to ${requestMax} prints. You may submit a request with fewer prints if needed, but you cannot exceed this limit within a single request.`,
+    "Building and submitting a print request does not cost any money up front. Payment happens when you buy on the Fresh Prints Whatnot show.",
     `Each Whatnot show can also hold up to ${showMax} prints per customer and a max of 200. These prints can come from ${multiClause}.`,
     `Once a show reaches its ${showMax}-print limit, any additional prints must be assigned to a different show. To add new designs to a full show, you will need to remove prints or reduce quantities to free up space.`,
   ];
