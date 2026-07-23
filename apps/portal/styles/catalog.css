@@ -1757,6 +1757,33 @@
   position: relative;
 }
 
+/*
+ * Compound selector beats `.portal-page` in shell.css (imported later; same 0,1,0
+ * specificity would otherwise keep max-width: 88rem and leave the column full-bleed).
+ */
+.portal-page.portal-share-design-page {
+  margin-inline: auto;
+  max-width: 42rem;
+  width: 100%;
+}
+
+.portal-share-design-panel {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  width: 100%;
+}
+
+.design-details-hero-fallback-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: clamp(14rem, 36vw, 18rem);
+  object-fit: contain;
+  background: var(--color-artwork-preview-bg, #e5e7eb);
+}
+
 .design-details-hero {
   background: var(--color-artwork-preview-bg);
   border-bottom: 1px solid var(--color-border);

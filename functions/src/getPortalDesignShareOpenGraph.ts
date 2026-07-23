@@ -5,15 +5,12 @@ import {
   PORTAL_SOCIAL_META_SETTINGS_DOC_ID,
   resolvePortalSocialMetaSettings,
 } from "../../packages/shared/src/constants/portal/portalSocialMetaSettings.constants";
-import { adminDb, adminStorage } from "./lib/admin";
+import { adminDb } from "./lib/admin";
 import {
   buildPortalOgShareImageFunctionUrl,
   isValidPortalOgDesignId,
-  normalizeStorageObjectPath,
   resolveFirebaseProjectId,
 } from "./lib/portalOgUrls";
-
-const SIGNED_URL_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 export interface PortalDesignShareOpenGraphResponse {
   designId: string;
@@ -21,24 +18,8 @@ export interface PortalDesignShareOpenGraphResponse {
   description: string;
   imageUrl: string | null;
   letterboxOgImages: boolean;
-}
-
-async function resolveShareImageUrl(storagePath: string): Promise<string | null> {
-  const objectPath = normalizeStorageObjectPath(storagePath);
-  if (!objectPath) {
-    return null;
-  }
-
-  try {
-    const file = adminStorage.bucket().file(objectPath);
-    const [url] = await file.getSignedUrl({
-      action: "read",
-      expires: Date.now() + SIGNED_URL_TTL_MS,
-    });
-    return url;
-  } catch {
-    return null;
-  }
+  categoryName: string | null;
+  tags: string[];
 }
 
 async function loadLetterboxPreference(): Promise<boolean> {
@@ -53,11 +34,29 @@ async function loadLetterboxPreference(): Promise<boolean> {
   }
 }
 
+function normalizeTags(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  const out: string[] = [];
+  for (const tag of value) {
+    if (typeof tag !== "string") {
+      continue;
+    }
+    const trimmed = tag.trim();
+    if (trimmed && !out.includes(trimmed)) {
+      out.push(trimmed);
+    }
+  }
+  return out.slice(0, 24);
+}
+
 /**
  * Public GET for Portal share-page Open Graph. Crawlers (and local Portal without ADC)
  * need title / description / image without Firebase Admin on the Next.js host.
  *
  * Query: `?designId=`
+ * `imageUrl` is always the public `getPortalOgShareImage` Function (stable; no signed Storage).
  */
 export const getPortalDesignShareOpenGraph = onRequest(
   {
@@ -108,20 +107,28 @@ export const getPortalDesignShareOpenGraph = onRequest(
 
       const letterboxOgImages = await loadLetterboxPreference();
       let imageUrl: string | null = null;
-
       if (imagePath) {
-        if (letterboxOgImages) {
-          const projectId = resolveFirebaseProjectId();
-          imageUrl = projectId
-            ? buildPortalOgShareImageFunctionUrl({
-                projectId,
-                designId: raw,
-                fit: PORTAL_OG_IMAGE_FIT_CONTAIN,
-                backgroundHex: data.artworkBackgroundHex,
-              })
-            : await resolveShareImageUrl(imagePath);
-        } else {
-          imageUrl = await resolveShareImageUrl(imagePath);
+        const projectId = resolveFirebaseProjectId();
+        imageUrl = projectId
+          ? buildPortalOgShareImageFunctionUrl({
+              projectId,
+              designId: raw,
+              fit: PORTAL_OG_IMAGE_FIT_CONTAIN,
+              backgroundHex: data.artworkBackgroundHex,
+            })
+          : null;
+      }
+
+      let categoryName: string | null = null;
+      if (typeof data.categoryId === "string" && data.categoryId.trim()) {
+        try {
+          const catSnap = await adminDb.collection("categories").doc(data.categoryId.trim()).get();
+          const name = catSnap.data()?.name;
+          if (typeof name === "string" && name.trim()) {
+            categoryName = name.trim();
+          }
+        } catch {
+          categoryName = null;
         }
       }
 
@@ -131,6 +138,8 @@ export const getPortalDesignShareOpenGraph = onRequest(
         description,
         imageUrl,
         letterboxOgImages,
+        categoryName,
+        tags: normalizeTags(data.tags),
       };
 
       response.set("Cache-Control", "public, max-age=300");

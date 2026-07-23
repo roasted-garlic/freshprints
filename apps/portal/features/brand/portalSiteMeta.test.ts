@@ -50,6 +50,7 @@ describe('buildPortalRootMetadata', () => {
     });
 
     assert.equal(meta.metadataBase?.toString(), 'https://myprintrequest.dev/');
+    assert.deepEqual(meta.robots, { index: false, follow: true });
     assert.equal(meta.manifest, '/site.webmanifest');
     assert.ok(meta.icons);
     const icons = meta.icons && typeof meta.icons === 'object' && 'icon' in meta.icons ? meta.icons.icon : undefined;
@@ -63,6 +64,13 @@ describe('buildPortalRootMetadata', () => {
       (ogImages[0] as { url: string }).url,
       PORTAL_OG_IMAGE_PATH,
     );
+  });
+
+  it('indexes when origin is production customer host', () => {
+    const meta = buildPortalRootMetadata({
+      NEXT_PUBLIC_PORTAL_ORIGIN: 'https://myprintrequest.com',
+    });
+    assert.deepEqual(meta.robots, { index: true, follow: true });
   });
 
   it('applies Studio social overrides for title, description, and image', () => {

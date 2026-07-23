@@ -1,13 +1,17 @@
 'use client';
 
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 import { resolveArtworkBackgroundHex } from '@fresh-prints/shared/constants/design/artworkBackground.constants';
 
-import type { CatalogDesign } from '../types/catalog.types';
+import { useAuth } from '../../auth/context/AuthContext';
+import { redirectToPortalLogin } from '../../auth/utils/requirePortalLogin';
 import { CatalogFavoriteButton } from '../../favorites/components/CatalogFavoriteButton';
-import { useCatalogDerivativeUrl } from '../hooks/useCatalogDerivativeUrl';
 import { PlusIcon } from '../../shared/components/PortalIcons';
+import { useCatalogDerivativeUrl } from '../hooks/useCatalogDerivativeUrl';
+import type { CatalogDesign } from '../types/catalog.types';
+import { PORTAL_DESIGN_DEEP_LINK_PARAM } from '../utils/portalDesignShareUrls';
 import { CatalogArtworkBackgroundPreviewPicker } from './CatalogArtworkBackgroundPreviewPicker';
 import { CatalogDesignShareButton } from './CatalogDesignShareButton';
 import { CatalogPreviewLightbox } from './CatalogPreviewLightbox';
@@ -23,6 +27,7 @@ interface CatalogDesignDetailsModalProps {
   /** When true, design is already on the Current Request (or selection) — hide the full-request label. */
   isInCurrentRequest?: boolean;
   isOpen: boolean;
+  /** When omitted for guests, modal shows Sign in to add to a request CTA. */
   onAddToRequest?: (design: CatalogDesign) => void;
   onClose: () => void;
 }
@@ -46,6 +51,10 @@ export function CatalogDesignDetailsModal({
   onAddToRequest,
   onClose,
 }: CatalogDesignDetailsModalProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const { isAuthenticated } = useAuth();
   const [isPreviewLightboxOpen, setIsPreviewLightboxOpen] = useState(false);
   const [previewBgHex, setPreviewBgHex] = useState(() =>
     resolveArtworkBackgroundHex(design?.artworkBackgroundHex),
@@ -61,6 +70,17 @@ export function CatalogDesignDetailsModal({
   );
   const addDisabled = isAdding || !canAddPrints;
   const designDefaultBgHex = resolveArtworkBackgroundHex(design?.artworkBackgroundHex);
+  const showGuestSignInCta = !onAddToRequest && !isAuthenticated;
+
+  function buildSignInReturnTo(designId: string): string {
+    const next = new URLSearchParams(searchParams.toString());
+    next.set(PORTAL_DESIGN_DEEP_LINK_PARAM, designId);
+    return `${pathname}?${next.toString()}`;
+  }
+
+  function handleGuestSignIn(designId: string) {
+    redirectToPortalLogin(router, buildSignInReturnTo(designId));
+  }
 
   useEffect(() => {
     if (!isOpen) {
@@ -162,6 +182,14 @@ export function CatalogDesignDetailsModal({
                 >
                   <PlusIcon size={14} />
                   {isAdding ? 'Adding…' : 'Add to request'}
+                </button>
+              ) : showGuestSignInCta ? (
+                <button
+                  className="portal-button portal-button-primary portal-button-sm"
+                  onClick={() => handleGuestSignIn(design.id)}
+                  type="button"
+                >
+                  Sign in to add to a request
                 </button>
               ) : null}
             </div>

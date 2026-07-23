@@ -3,12 +3,12 @@ import type { Metadata } from 'next'
 import {
   buildPortalDesignShareMetadata,
   loadPortalDesignShareMeta,
-} from '../../../../features/catalog/services/portalDesignShareMetaService'
-import { isValidPortalDesignShareId } from '../../../../features/catalog/utils/portalDesignShareUrls'
-import { getPortalMetadataBase } from '../../../../features/brand/portalSiteMeta'
-import { ShareDesignClientRedirect } from './ShareDesignClientRedirect'
+} from '../../../../../features/catalog/services/portalDesignShareMetaService'
+import { ShareDesignPortalPageContent } from '../../../../../features/catalog/pages/ShareDesignPortalPageContent'
+import { isValidPortalDesignShareId } from '../../../../../features/catalog/utils/portalDesignShareUrls'
+import { getPortalMetadataBase } from '../../../../../features/brand/portalSiteMeta'
 
-/** Share meta must run per request (Admin + signed image URLs). */
+/** Share meta runs per request (Admin / Function). */
 export const dynamic = 'force-dynamic'
 
 interface ShareDesignPageProps {
@@ -33,19 +33,6 @@ export default async function ShareDesignPage({ params }: ShareDesignPageProps) 
   const designId = decodeURIComponent(rawId).trim()
   const safeId = isValidPortalDesignShareId(designId) ? designId : ''
 
-  if (!safeId) {
-    return (
-      <main className="portal-shell portal-shell-narrow">
-        <h1>Design not found</h1>
-        <p className="portal-muted">This share link is invalid.</p>
-        <p>
-          <a className="portal-link-button" href="/catalog">
-            Go to design library
-          </a>
-        </p>
-      </main>
-    )
-  }
-
-  return <ShareDesignClientRedirect designId={safeId} />
+  const meta = safeId ? await loadPortalDesignShareMeta(safeId) : null
+  return <ShareDesignPortalPageContent designId={safeId || designId || 'invalid'} initialMeta={meta} />
 }

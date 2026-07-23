@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 
 import { PORTAL_APP_NAME } from './portalBrand'
+import { isPortalSearchIndexingEnabled } from './portalSearchIndexing'
 
 /** Assumed default social / SEO description until marketing copy is finalized. */
 export const PORTAL_DEFAULT_DESCRIPTION =
@@ -78,6 +79,8 @@ export function buildPortalRootMetadata(
   const description = social?.ogDescription?.trim() || PORTAL_DEFAULT_DESCRIPTION
   const image = resolveOgImage(social)
 
+  const indexingEnabled = isPortalSearchIndexingEnabled(env)
+
   return {
     metadataBase,
     title: {
@@ -85,6 +88,9 @@ export function buildPortalRootMetadata(
       template: `%s · ${PORTAL_APP_NAME}`,
     },
     description,
+    robots: indexingEnabled
+      ? { index: true, follow: true }
+      : { index: false, follow: true },
     // RealFaviconGenerator-style assets in `apps/portal/public/` only.
     // Do not also place `app/favicon.ico` — Next.js treats that as a page route and
     // conflicts with `public/favicon.ico` (HTTP 500: conflicting-public-file-page).

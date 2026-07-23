@@ -650,6 +650,85 @@ a.portal-button-danger {
   font-size: var(--font-size-md);
 }
 
+/* Canonical /share/design/{id} landing (SSR SEO) */
+.portal-share-landing {
+  max-width: 36rem;
+}
+
+.portal-share-landing-eyebrow {
+  margin: 0 0 1rem;
+  font-size: var(--font-size-sm);
+}
+
+.portal-share-landing-eyebrow a {
+  color: var(--color-text-secondary);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.portal-share-landing-figure {
+  margin: 0 0 1.25rem;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-secondary);
+}
+
+.portal-share-landing-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  background: #e5e7eb;
+}
+
+.portal-share-landing-title {
+  margin: 0 0 0.5rem;
+  font-size: clamp(1.5rem, 4vw, 2rem);
+  line-height: 1.2;
+}
+
+.portal-share-landing-category {
+  margin: 0 0 0.75rem;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-md);
+}
+
+.portal-share-landing-description {
+  margin: 0 0 1rem;
+  color: var(--color-text-primary);
+  line-height: 1.5;
+}
+
+.portal-share-landing-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  list-style: none;
+  margin: 0 0 1.5rem;
+  padding: 0;
+}
+
+.portal-share-landing-tags li {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  padding: 0.2rem 0.55rem;
+  color: var(--color-text-secondary);
+}
+
+.portal-share-landing-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.portal-share-landing-secondary {
+  background: transparent;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-primary);
+}
+
 @media (min-width: 48rem) {
   .portal-shell,
   .portal-shell-narrow {

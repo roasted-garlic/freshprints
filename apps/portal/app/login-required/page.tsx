@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
 
 import { PortalAuthBrandLogo } from '../../features/brand/components/PortalAuthBrandLogo';
+import { RedirectAuthenticatedFromAuthPages } from '../../features/auth/components/RedirectAuthenticatedFromAuthPages';
 import { resolveGuestAuthGateLead } from '../../features/auth/utils/guestAuthGateCopy';
 import { buildPortalLoginHref } from '../../features/auth/utils/requirePortalLogin';
 import { getPortalReturnToFromSearch } from '../../features/auth/utils/portalReturnUrl';
@@ -21,6 +22,7 @@ function LoginRequiredContent() {
 
   return (
     <main className="portal-shell portal-shell-narrow portal-shell-auth portal-login-required">
+      <RedirectAuthenticatedFromAuthPages />
       <div className="portal-auth-card portal-login-required-card">
         <div className="portal-auth-brand portal-auth-card-brand portal-login-required-brand">
           <PortalAuthBrandLogo />
