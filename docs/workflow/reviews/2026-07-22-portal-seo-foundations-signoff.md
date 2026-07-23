@@ -123,3 +123,28 @@ Delivered Portal crawl foundations: fail-closed `robots.txt`, ready-design sitem
 - [x] `references/project-chatgpt-handoff/13-recent-completed-work.md` updated
 
 **Recommended next action for user:** Start / continue `portal-how-to-faq` (plan + review → **APPROVE IMPLEMENTATION**).
+
+---
+
+## Reaffirmation (2026-07-23)
+
+Owner asked to re-audit and close SEO if still ship-ready. Prior verdict **approved_with_notes** remains accurate.
+
+| Check | Result |
+|-------|--------|
+| Fail-closed `robots.ts` | Present; local `/robots.txt` → `Disallow: /` (host not `myprintrequest.com`) |
+| `sitemap.ts` | Static `/`, `/catalog`, `/catalog/library`, `/help` + dynamic ready `/share/design/{id}`; `revalidate = 3600` |
+| Dynamic designs in sitemap | Code loads Admin `status == 'ready'`; local probe returned static-only (Admin unavailable — expected soft-fail HTTP 200) |
+| Share landing | In-shell SSR route at `app/(app)/share/design/[id]` with `generateMetadata` + stable public OG image URLs |
+| Meta / OG | Index only when production host + ready design; Function prefers `getPortalOgShareImage` |
+
+**Ship commits (pushed to `master` 2026-07-23):**
+
+- `63140a5` — SEO leftovers (robots, share landing under Portal shell, OG helper, guest Sign-in CTA, SEO workflow docs)
+- `846dc07` — unrelated but queued polish: limits modal FAQ CTA + no-cost-up-front copy
+
+**Public visibility caveat:** indexing remains fail-closed until production host `myprintrequest.com` (+ `production-release`). Do not claim live Google indexing from `.dev` / local evidence.
+
+**Handoff:** `references/project-chatgpt-handoff/` is not present in this repo; skipped. `.cursor/workflow/state.md` updated to reaffirm SEO DONE.
+
+**Final status (reaffirmed):** **approved_with_notes** — signoff OK; next queued goal remains `portal-google-analytics` (not started).

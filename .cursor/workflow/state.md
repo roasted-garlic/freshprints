@@ -32,7 +32,7 @@ no
 Idle / pointer only: prepare to plan `portal-google-analytics` when owner starts it. Read docs; update handoff if needed. No GA implementation until new goal + plan + review.
 
 ## Forbidden Actions
-Start `portal-google-analytics` implementation without plan/review; production Firebase deploy; claim Studio typecheck passed; reopen how-to-faq scope without new phase.
+Start `portal-google-analytics` implementation without plan/review; production Firebase deploy; claim Studio typecheck passed; reopen how-to-faq or SEO scope without new phase.
 
 ## Next Required Step
 When ready: start `portal-google-analytics` (Plan → Review → APPROVE IMPLEMENTATION). Do not implement GA until then.
@@ -41,7 +41,7 @@ When ready: start `portal-google-analytics` (Plan → Review → APPROVE IMPLEME
 yes
 
 ## Last Completed Step
-2026-07-23 - Owner **PASS** on portal-how-to-faq manual QA; signoff **approved_with_notes**; commit and push authorized. Seeded Studio FAQs on fresh-prints-dev; Coming soon videos; nav Help vs H1 FAQ and How To.
+2026-07-23 - Owner SEO reaffirmation: audited foundations, committed/pushed SEO leftovers (`63140a5`) + limits-modal polish (`846dc07`); SEO signoff remains **approved_with_notes**.
 
 ## Plan Path
 - docs/workflow/plans/2026-07-22-portal-how-to-faq-plan.md
@@ -57,7 +57,7 @@ yes
 - docs/workflow/reviews/2026-07-23-portal-how-to-faq-signoff.md
 
 ## Prior Goal Signoff
-- docs/workflow/reviews/2026-07-22-portal-seo-foundations-signoff.md (**approved_with_notes**)
+- docs/workflow/reviews/2026-07-22-portal-seo-foundations-signoff.md (**approved_with_notes**; reaffirmed 2026-07-23 after ship commit `63140a5`)
 
 ## Manual Checkpoint Path
 - docs/workflow/reviews/2026-07-23-portal-how-to-faq-manual-checkpoint.md (**PASS** owner 2026-07-23)
@@ -68,6 +68,7 @@ yes
 - `DRY_RUN=1 npx tsx functions/scripts/seed-portal-help-faqs.ts` → exit 0 (parse + dash check)
 - `npx tsx functions/scripts/seed-portal-help-faqs.ts` → exit 0; wrote `settings/portalHelp` on **fresh-prints-dev** (faqCount=8, videoCount=0)
 - Manual QA → owner **PASS** 2026-07-23
+- 2026-07-23 SEO reaffirm: `npx tsx --test` portalSearchIndexing + portalSiteMeta + portalDesignShareMetaService + portalOgShareImageUrl → 21/21 pass; local curl `/robots.txt` Disallow:/; `/sitemap.xml` static URLs 200 (designs empty without Admin — expected)
 
 ## Files Created
 - apps/portal/app/(app)/help/page.tsx
@@ -109,7 +110,7 @@ yes
 - apps/studio/src/renderer/src/features/settings/components/PortalHelpSettingsSection.tsx (hints + collapsible)
 - apps/studio/src/renderer/src/features/settings/hooks/usePortalHelpSettings.ts (save returns boolean)
 - apps/studio/src/renderer/src/styles/components/settings.css
-- packages/shared/src/utils/printRequestWorkingRequestMax.ts (+ Whatnot in limits modal)
+- packages/shared/src/utils/printRequestWorkingRequestMax.ts (+ Whatnot in limits modal; no-cost copy 2026-07-23)
 - packages/shared/src/utils/printRequestWorkingRequestMax.test.ts
 - packages/shared/src/constants/portal/portalHelpSettings.constants.ts (intro)
 - firestore.rules
@@ -123,17 +124,20 @@ yes
 - docs/workflow/plans/2026-07-22-portal-how-to-faq-plan.md (addendum)
 - docs/workflow/reviews/2026-07-23-portal-how-to-faq-manual-checkpoint.md
 - docs/workflow/reviews/2026-07-23-portal-how-to-faq-test-report.md
+- docs/workflow/reviews/2026-07-22-portal-seo-foundations-signoff.md (2026-07-23 reaffirmation)
 
 ## Parked Work
 (none — owner **PASS** 2026-07-23 on mobile header badge polish + toast-under-banner. Follow-up 2026-07-23: bell badge hides at 0; cart badge remains always visible incl. 0.)
 
 ## Queued Goals (owner 2026-07-22)
-1. portal-seo-foundations - **DONE** (approved_with_notes)
+1. portal-seo-foundations - **DONE** (approved_with_notes; reaffirmed 2026-07-23; ship commit `63140a5`)
 2. portal-how-to-faq - **DONE** (approved_with_notes 2026-07-23)
 3. portal-google-analytics - queued (next)
 4. production-release - queued
 
 ## Decision Log
+- 2026-07-23 - Owner SEO close-out: audit OK; commit+push SEO leftovers; reaffirm prior SEO signoff **approved_with_notes**. Local sitemap static-only without Admin (expected). Indexing still fail-closed off `myprintrequest.com`. GA not started.
+- 2026-07-23 - Owner-directed (not GA): Request and Show Limits modal adds (1) copy that building/submitting a request does not cost money up front (payment on Whatnot show) and (2) primary **FAQ and How To** button → `/help` (closes modal on navigate). Limit numbers stay dynamic. Unit tests updated (12 pass). Shipped as `846dc07`.
 - 2026-07-23 - Owner: hide notification bell badge when unread count is 0; cart badge stays always visible (incl. 0).
 - 2026-07-23 - Owner **PASS** on header cart/bell corner badges + Request label + toast-under-banner. Bell badge always shows (incl. 0, muted empty) with same orientation as cart (`translate(40%, -30%)` on circular action).
 - 2026-07-23 - Owner toast polish: position portal toasts below sticky header stack (header + quota banner) using measured `--portal-sticky-top-offset` (not safe-area top over logo bar). Undo/dismiss unchanged.
@@ -154,4 +158,3 @@ yes
 - 2026-07-23 - Owner follow-up (implement during open checkpoint): (1) Replace `[TBD]` FAQ defaults with real customer copy; Whatnot only where relevant. (2) Empty videos → Coming soon (never dummy video slots); FAQ empty still → bundled FAQs. (3) Request and Show Limits modal mentions Whatnot shows. (4) Hide floating theme picker on `/help`. Soft-amend ADR-FP-118 / docs; refresh manual checkpoint; leave open for PASS / FAIL / PASS WITH NOTES. Note: if Firestore already has non-empty old `[TBD]` FAQs, clear list + Save or replace copy in Studio (no seed-from-defaults button).
 - 2026-07-23 - Owner follow-up #2: (A) Remove em dashes from FAQ Q/A; buy-yourself dedicated FAQ + weaves in print-request/submit/limits. (B) Update bundled `portalHelpContent.ts` and **seed** same list to Firestore `settings/portalHelp` on **fresh-prints-dev** (`faqs`×8, `videos: []`) via `functions/scripts/seed-portal-help-faqs.ts` (Firebase CLI OAuth + Firestore REST). Seed **succeeded**. Soft-amend ADR-FP-118 + DATA_MODEL; refresh manual checkpoint (verify Studio saved items + edit propagates + buy-yourself + no em dashes). No production.
 - 2026-07-23 - Owner **PASS** on portal-how-to-faq manual QA ("I think we can PASS commit and push"); signoff **approved_with_notes**; human checkpoint cleared. Next queued: `portal-google-analytics` (not started).
-

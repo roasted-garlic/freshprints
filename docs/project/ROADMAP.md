@@ -110,7 +110,7 @@ Current Goal:
 
 | # | Goal | Status |
 |---|------|--------|
-| 1 | `portal-seo-foundations` — robots.txt, sitemap, design page SEO | **Done** (2026-07-22, approved_with_notes) |
+| 1 | `portal-seo-foundations` — robots.txt, sitemap, design page SEO | **Done** (2026-07-22, approved_with_notes; leftovers committed/pushed 2026-07-23 `63140a5`, reaffirmed) |
 | 2 | `portal-how-to-faq` - FAQ and How To (Studio Settings CMS + Portal `/help`) | **Done** (2026-07-23, approved_with_notes) |
 | 3 | `portal-google-analytics` — GA4 on Portal | Queued |
 | 4 | `production-release` — prod Firebase / App Hosting / Google / email | Queued |
