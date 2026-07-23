@@ -170,17 +170,23 @@ export function PortalNotificationsBell() {
           onClick={togglePanel}
           type="button"
         >
-          <Bell aria-hidden size={18} strokeWidth={2} />
+          <span className="portal-app-header-action-icon">
+            <Bell aria-hidden size={18} strokeWidth={2} />
+            {error ? (
+              <span aria-hidden className="portal-notifications-bell-badge is-error">
+                !
+              </span>
+            ) : (
+              <span
+                aria-hidden
+                className="portal-notifications-bell-badge"
+                data-empty={unreadCount === 0 ? 'true' : 'false'}
+              >
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </span>
           <span className="portal-app-header-action-label">Alerts</span>
-          {error ? (
-            <span aria-hidden className="portal-notifications-bell-badge is-error">
-              !
-            </span>
-          ) : unreadCount > 0 ? (
-            <span aria-hidden className="portal-notifications-bell-badge">
-              {unreadCount > 9 ? '9+' : unreadCount}
-            </span>
-          ) : null}
         </button>
         {isPanelOpen ? <PortalNotificationsPanel /> : null}
       </div>

@@ -125,7 +125,7 @@ yes
 - docs/workflow/reviews/2026-07-23-portal-how-to-faq-test-report.md
 
 ## Parked Work
-(none)
+(none — owner **PASS** 2026-07-23 on mobile header badge polish + toast-under-banner; bell badge always visible incl. 0, same `translate(40%, -30%)` as cart.)
 
 ## Queued Goals (owner 2026-07-22)
 1. portal-seo-foundations - **DONE** (approved_with_notes)
@@ -134,6 +134,11 @@ yes
 4. production-release - queued
 
 ## Decision Log
+- 2026-07-23 - Owner **PASS** on header cart/bell corner badges + Request label + toast-under-banner. Bell badge always shows (incl. 0, muted empty) with same orientation as cart (`translate(40%, -30%)` on circular action).
+- 2026-07-23 - Owner toast polish: position portal toasts below sticky header stack (header + quota banner) using measured `--portal-sticky-top-offset` (not safe-area top over logo bar). Undo/dismiss unchanged.
+- 2026-07-23 - Owner badge/label follow-up: cart badge always visible (incl. 0); corner badges `translate(40%, -30%)` on circular button; header cart label → **Request**.
+- 2026-07-23 - Owner follow-up: count chips still crowded logo. Switched cart/notification counts to absolute corner badges (Studio-style bubble); keep right action cluster.
+- 2026-07-23 - Owner-directed UI polish (not GA): mobile `/help` header logo overlapping bell. Recommendation: do not move bell left of logo; keep right action cluster and constrain logo via equal side grid tracks. Implemented in PortalAppHeader + shell.css.
 - 2026-07-22 - Owner PASS on portal-seo-foundations manual QA; signoff approved_with_notes.
 - 2026-07-22 - Started portal-how-to-faq; plan ready; review approved_with_changes; stop for APPROVE IMPLEMENTATION.
 - 2026-07-22 - Plan defaults if unanswered: path `/help`, nav label Help, typed TS content module, YouTube+Vimeo embeds, `[TBD]` placeholder copy allowed for layout QA.

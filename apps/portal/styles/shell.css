@@ -576,10 +576,12 @@ a.portal-sidebar-sign-out:hover {
   align-items: center;
   background: var(--color-bg-primary);
   border-bottom: 1px solid var(--color-border);
-  display: none;
+  /* Equal side tracks keep a centered logo from invading menu / bell+cart. */
+  display: grid;
   flex-shrink: 0;
-  gap: var(--space-3);
-  /* Vertical padding drives header band height; brand/logo is absolute-centered and out of flow. */
+  gap: var(--space-2);
+  grid-template-columns: minmax(0, 1fr) minmax(0, auto) minmax(0, 1fr);
+  overflow: visible;
   padding: var(--space-4) var(--space-4);
   position: relative;
   top: auto;
@@ -724,6 +726,7 @@ a.portal-sidebar-sign-out:hover {
   align-items: center;
   display: flex;
   gap: var(--space-3);
+  justify-self: start;
   min-width: 0;
 }
 
@@ -758,11 +761,18 @@ a.portal-sidebar-sign-out:hover {
 }
 
 .portal-app-header-brand {
+  justify-self: center;
+  max-width: 100%;
   min-width: 0;
+  overflow: hidden;
+  pointer-events: none;
+  text-align: center;
 }
 
 .portal-app-header-brand-link {
   display: inline-flex;
+  max-width: 100%;
+  min-width: 0;
   pointer-events: auto;
   text-decoration: none;
 }
@@ -776,6 +786,7 @@ a.portal-sidebar-sign-out:hover {
 .portal-app-header-logo {
   display: block;
   max-width: min(17rem, 100%);
+  min-width: 0;
 }
 
 .portal-app-header-title {
@@ -1832,9 +1843,12 @@ a.portal-sidebar-sign-out:hover {
     width: 2.25rem;
   }
 
+  /*
+   * Reserve equal side room so a wide wordmark cannot crowd bell + cart.
+   * Icon-only pills (~2.25rem each) + gap; corner badges do not add layout width.
+   */
   .portal-app-header {
-    display: flex;
-    justify-content: space-between;
+    grid-template-columns: minmax(5rem, 1fr) minmax(0, auto) minmax(5rem, 1fr);
     position: relative;
     top: auto;
   }
@@ -1842,6 +1856,8 @@ a.portal-sidebar-sign-out:hover {
   .portal-app-header-start {
     align-items: center;
     display: flex;
+    justify-self: start;
+    min-width: 0;
     position: static;
     width: auto;
   }
@@ -1853,23 +1869,25 @@ a.portal-sidebar-sign-out:hover {
   }
 
   .portal-app-header-brand {
-    left: 50%;
-    /* Menu (~2.5rem) + Current Request / notifications on the right. */
-    max-width: min(17rem, calc(100% - 8.5rem));
+    justify-self: center;
+    max-width: 100%;
+    min-width: 0;
+    overflow: hidden;
     pointer-events: none;
-    position: absolute;
+    position: static;
     text-align: center;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    width: max-content;
+    transform: none;
+    width: auto;
   }
 
   /* Guest: header Login CTA is hidden — only menu reserved on the left. */
-  .portal-app-shell:has(.portal-bottom-nav-guest) .portal-app-header-brand {
-    max-width: min(17rem, calc(100% - 4.5rem));
+  .portal-app-shell:has(.portal-bottom-nav-guest) .portal-app-header {
+    grid-template-columns: minmax(2.75rem, 1fr) minmax(0, auto) minmax(2.75rem, 1fr);
   }
 
   .portal-app-header-actions {
+    justify-self: end;
+    min-width: 0;
     position: relative;
     z-index: 1;
   }
@@ -1886,23 +1904,22 @@ a.portal-sidebar-sign-out:hover {
   }
 
   .portal-app-header {
-    display: flex;
     position: relative;
   }
 
   .portal-app-header-brand {
-    left: 50%;
-    max-width: min(18rem, calc(100% - 16rem));
+    justify-self: center;
+    max-width: min(18rem, 100%);
+    min-width: 0;
     pointer-events: none;
-    position: absolute;
+    position: static;
     text-align: center;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    width: max-content;
+    transform: none;
+    width: auto;
   }
 
   .portal-app-header-actions {
-    margin-left: auto;
+    justify-self: end;
     position: relative;
     z-index: 1;
   }
@@ -1927,15 +1944,18 @@ a.portal-sidebar-sign-out:hover {
 /* Current Request header + drawer */
 .portal-app-header {
   align-items: center;
-  display: flex;
-  gap: var(--space-3);
-  justify-content: space-between;
+  gap: var(--space-2);
 }
 
 .portal-app-header-actions {
   align-items: center;
   display: flex;
+  flex-shrink: 0;
   gap: var(--space-2);
+  justify-self: end;
+  /* Corner badges hang outside the icon; keep them visible past the header edge. */
+  overflow: visible;
+  padding-right: 0.55rem;
 }
 
 .portal-app-header-action {
@@ -1947,7 +1967,9 @@ a.portal-sidebar-sign-out:hover {
   display: inline-flex;
   gap: 0.35rem;
   min-height: 2.25rem;
+  overflow: visible;
   padding: 0.35rem 0.7rem;
+  position: relative;
   text-decoration: none;
 }
 
@@ -1965,26 +1987,70 @@ a.portal-sidebar-sign-out:hover {
   font-weight: 600;
 }
 
+.portal-app-header-action-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  line-height: 0;
+  /* Badge positions against the circular .portal-app-header-action, not the glyph. */
+  overflow: visible;
+}
+
 .portal-app-header-basket {
   cursor: pointer;
-  position: relative;
+  overflow: visible;
+}
+
+.portal-notifications-bell,
+.portal-notifications-bell-button {
+  overflow: visible;
+}
+
+/*
+ * Classic corner badge on the circular action button: top-right with
+ * more overlap on the circle (less float above).
+ */
+.portal-app-header-basket-badge,
+.portal-notifications-bell-badge {
+  align-items: center;
+  border: 2px solid var(--color-bg-primary);
+  border-radius: 999px;
+  box-sizing: border-box;
+  color: #fff;
+  display: inline-flex;
+  font-size: 0.625rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  height: 1.125rem;
+  justify-content: center;
+  line-height: 1;
+  min-width: 1.125rem;
+  padding: 0 0.2rem;
+  pointer-events: none;
+  position: absolute;
+  right: 0;
+  top: 0;
+  transform: translate(40%, -30%);
+  z-index: 1;
 }
 
 .portal-app-header-basket-badge {
-  align-items: center;
   background: var(--color-accent, #1f6b4f);
-  border-radius: 999px;
-  color: #fff;
-  display: inline-flex;
-  font-size: 0.7rem;
-  font-weight: 700;
-  justify-content: center;
-  min-width: 1.25rem;
-  padding: 0.1rem 0.35rem;
 }
 
 .portal-app-header-basket-badge[data-empty='true'] {
-  background: var(--text-muted, #888);
+  background: var(--color-text-tertiary, #888);
+}
+
+.portal-notifications-bell-badge {
+  background: var(--color-danger, #c62828);
+}
+
+.portal-notifications-bell-badge[data-empty='true'] {
+  background: var(--color-text-tertiary, #888);
+}
+
+.portal-notifications-bell-badge.is-error {
+  background: var(--color-danger, #c62828);
 }
 
 .current-request-drawer-root {
@@ -2483,10 +2549,12 @@ a.portal-sidebar-sign-out:hover {
     display: none;
   }
 
-  .portal-app-header-basket {
-    display: inline-flex;
+  .portal-app-header-action.portal-app-header-basket,
+  .portal-app-header-action.portal-notifications-bell-button {
+    justify-content: center;
+    min-height: 2.25rem;
     min-width: 2.25rem;
-    padding-inline: 0.55rem;
+    padding: 0.35rem;
   }
 
   .current-request-drawer {
@@ -2506,7 +2574,7 @@ a.portal-sidebar-sign-out:hover {
   }
 }
 
-/* Global cart / action toast — fixed so it appears on any page */
+/* Global cart / action toast — below sticky header stack (header + optional quota banner) */
 .portal-toast-viewport {
   display: flex;
   justify-content: center;
@@ -2515,7 +2583,7 @@ a.portal-sidebar-sign-out:hover {
   pointer-events: none;
   position: fixed;
   right: 0;
-  top: calc(0.85rem + env(safe-area-inset-top, 0px));
+  top: calc(var(--portal-sticky-top-offset, 4.5rem) + 0.5rem);
   z-index: 90;
 }
 
@@ -2628,29 +2696,6 @@ a.portal-sidebar-sign-out:hover {
 
 .portal-notifications-bell-button.is-error {
   border-color: var(--color-danger, #c62828);
-}
-
-.portal-notifications-bell-badge {
-  align-items: center;
-  background: var(--color-danger, #c62828);
-  border-radius: 999px;
-  box-sizing: border-box;
-  color: #fff;
-  display: inline-flex;
-  /* Sized under Studio .staff-inbox-bell-bubble so it sits lightly inside the Alerts pill */
-  font-size: 0.55rem;
-  font-variant-numeric: tabular-nums;
-  font-weight: 700;
-  height: 0.95rem;
-  justify-content: center;
-  line-height: 1;
-  min-width: 0.95rem;
-  /* Tight X padding: single digits stay circular; 9+ can grow into a short pill */
-  padding: 0 0.15rem;
-}
-
-.portal-notifications-bell-badge.is-error {
-  background: var(--color-danger, #c62828);
 }
 
 .portal-notifications-error {

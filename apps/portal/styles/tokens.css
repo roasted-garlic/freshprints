@@ -24,6 +24,8 @@
 
   --portal-sidebar-width: 15.5rem;
   --portal-sidebar-width-collapsed: 4.75rem;
+  /* Measured by PortalAppShell (header + optional quota banner); fallback ≈ header. */
+  --portal-sticky-top-offset: 4.5rem;
 
   --shadow-sm: 0 4px 12px rgb(0 0 0 / 0.14);
 

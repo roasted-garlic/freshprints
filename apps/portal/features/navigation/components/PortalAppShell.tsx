@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import type { ReactNode } from 'react';
+import { useLayoutEffect, useRef, type ReactNode, type RefObject } from 'react';
 
 import { GuestAuthGateOverlay } from '../../auth/components/GuestAuthGateOverlay';
 import { useAuth } from '../../auth/context/AuthContext';
@@ -22,14 +22,47 @@ interface PortalAppShellProps {
   children: ReactNode;
 }
 
+const STICKY_TOP_OFFSET_VAR = '--portal-sticky-top-offset';
+
 function isGuestBrowseSession(bootstrapStatus: string): boolean {
   return bootstrapStatus === 'unauthenticated' || bootstrapStatus === 'anonymous-guest';
+}
+
+/**
+ * Keep fixed toasts below the sticky header stack (header + optional prints-left banner).
+ * When the banner is absent, offset is header-only.
+ */
+function useSyncPortalStickyTopOffset(topRef: RefObject<HTMLDivElement | null>) {
+  useLayoutEffect(() => {
+    const el = topRef.current;
+    if (!el || typeof window === 'undefined') {
+      return;
+    }
+
+    const sync = () => {
+      const height = Math.ceil(el.getBoundingClientRect().height);
+      document.documentElement.style.setProperty(STICKY_TOP_OFFSET_VAR, `${height}px`);
+    };
+
+    sync();
+    const resizeObserver = new ResizeObserver(sync);
+    resizeObserver.observe(el);
+    window.addEventListener('resize', sync);
+
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener('resize', sync);
+      document.documentElement.style.removeProperty(STICKY_TOP_OFFSET_VAR);
+    };
+  }, [topRef]);
 }
 
 function PortalAppShellContent({ children }: PortalAppShellProps) {
   const pathname = usePathname();
   const { bootstrapStatus, isAuthenticated } = useAuth();
   const { closeDrawer, isDrawerOpen } = usePortalDrawer();
+  const stickyTopRef = useRef<HTMLDivElement>(null);
+  useSyncPortalStickyTopOffset(stickyTopRef);
   const showGuestAuthOverlay =
     !isAuthenticated &&
     isGuestBrowseSession(bootstrapStatus) &&
@@ -49,7 +82,7 @@ function PortalAppShellContent({ children }: PortalAppShellProps) {
 
       <div className="portal-app-main">
         <PortalScrollReset />
-        <div className="portal-app-top">
+        <div className="portal-app-top" ref={stickyTopRef}>
           <PortalAppHeader />
           <PortalWorkingRequestLimitBanner />
         </div>

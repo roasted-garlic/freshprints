@@ -33,19 +33,20 @@ export function PortalAppHeader() {
         >
           <Menu aria-hidden size={20} strokeWidth={2} />
         </button>
-        <div className="portal-app-header-brand">
-          <Link
-            aria-label="Go to Fresh Prints home"
-            className="portal-app-header-brand-link"
-            href={CATALOG_HOME_PATH}
-          >
-            <PortalLogo
-              alt="Fresh Prints Request Portal"
-              className="portal-app-header-logo"
-              heightPx={brandLogoSettings.portalHeader.heightPx}
-            />
-          </Link>
-        </div>
+      </div>
+
+      <div className="portal-app-header-brand">
+        <Link
+          aria-label="Go to Fresh Prints home"
+          className="portal-app-header-brand-link"
+          href={CATALOG_HOME_PATH}
+        >
+          <PortalLogo
+            alt="Fresh Prints Request Portal"
+            className="portal-app-header-logo"
+            heightPx={brandLogoSettings.portalHeader.heightPx}
+          />
+        </Link>
       </div>
 
       <div className="portal-app-header-actions">
@@ -61,7 +62,7 @@ export function PortalAppHeader() {
         ) : null}
         {isAuthenticated ? (
           <button
-            aria-label={`Current Request, ${totalPrints} total prints${
+            aria-label={`Request, ${totalPrints} total prints${
               attentionCount > 0 ? `, ${attentionCount} need attention` : ''
             }`}
             className="portal-app-header-action portal-app-header-basket"
@@ -70,14 +71,17 @@ export function PortalAppHeader() {
             }}
             type="button"
           >
-            <ShoppingBagIcon size={18} />
-            <span className="portal-app-header-action-label">Current Request</span>
-            <span
-              className="portal-app-header-basket-badge"
-              data-empty={totalPrints === 0 ? 'true' : 'false'}
-            >
-              {totalPrints}
+            <span className="portal-app-header-action-icon">
+              <ShoppingBagIcon size={18} />
+              <span
+                aria-hidden
+                className="portal-app-header-basket-badge"
+                data-empty={totalPrints === 0 ? 'true' : 'false'}
+              >
+                {totalPrints > 99 ? '99+' : totalPrints}
+              </span>
             </span>
+            <span className="portal-app-header-action-label">Request</span>
           </button>
         ) : null}
       </div>
