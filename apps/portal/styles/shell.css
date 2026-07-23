@@ -2045,10 +2045,6 @@ a.portal-sidebar-sign-out:hover {
   background: var(--color-danger, #c62828);
 }
 
-.portal-notifications-bell-badge[data-empty='true'] {
-  background: var(--color-text-tertiary, #888);
-}
-
 .portal-notifications-bell-badge.is-error {
   background: var(--color-danger, #c62828);
 }

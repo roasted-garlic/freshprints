@@ -125,7 +125,7 @@ yes
 - docs/workflow/reviews/2026-07-23-portal-how-to-faq-test-report.md
 
 ## Parked Work
-(none — owner **PASS** 2026-07-23 on mobile header badge polish + toast-under-banner; bell badge always visible incl. 0, same `translate(40%, -30%)` as cart.)
+(none — owner **PASS** 2026-07-23 on mobile header badge polish + toast-under-banner. Follow-up 2026-07-23: bell badge hides at 0; cart badge remains always visible incl. 0.)
 
 ## Queued Goals (owner 2026-07-22)
 1. portal-seo-foundations - **DONE** (approved_with_notes)
@@ -134,6 +134,7 @@ yes
 4. production-release - queued
 
 ## Decision Log
+- 2026-07-23 - Owner: hide notification bell badge when unread count is 0; cart badge stays always visible (incl. 0).
 - 2026-07-23 - Owner **PASS** on header cart/bell corner badges + Request label + toast-under-banner. Bell badge always shows (incl. 0, muted empty) with same orientation as cart (`translate(40%, -30%)` on circular action).
 - 2026-07-23 - Owner toast polish: position portal toasts below sticky header stack (header + quota banner) using measured `--portal-sticky-top-offset` (not safe-area top over logo bar). Undo/dismiss unchanged.
 - 2026-07-23 - Owner badge/label follow-up: cart badge always visible (incl. 0); corner badges `translate(40%, -30%)` on circular button; header cart label → **Request**.

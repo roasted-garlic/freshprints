@@ -176,15 +176,11 @@ export function PortalNotificationsBell() {
               <span aria-hidden className="portal-notifications-bell-badge is-error">
                 !
               </span>
-            ) : (
-              <span
-                aria-hidden
-                className="portal-notifications-bell-badge"
-                data-empty={unreadCount === 0 ? 'true' : 'false'}
-              >
+            ) : unreadCount > 0 ? (
+              <span aria-hidden className="portal-notifications-bell-badge">
                 {unreadCount > 9 ? '9+' : unreadCount}
               </span>
-            )}
+            ) : null}
           </span>
           <span className="portal-app-header-action-label">Alerts</span>
         </button>
