@@ -246,26 +246,20 @@ own separate, later, explicitly-approved checkpoint.
    --project fresh-prints-prod`, exit 0, "Deploy complete!" — the first-ever Fresh Prints
    production Storage Rules deployment. Verify in Console: `fresh-prints-prod` → Build → Storage →
    Rules tab → "Last published" timestamp.
-3. 🔧 **Firestore indexes deployment** ← **remediation MERGED to `production`, redeploy retry
-   pending (2026-07-30).** First deploy attempt exited 1 (HTTP 409 "index already exists") caused
-   by a genuine duplicate index definition in `firestore.indexes.json` (`customerUploads`
-   `purpose`+`catalogReviewStatus`, defined twice, byte-identical — traced via `git blame` to
-   commit `cbba4ca` 2026-07-14, an accidental re-addition of the original `043f38a` 2026-07-13
-   definition). 50 of 66 indexes were created on `fresh-prints-prod` before the batch aborted.
-   **Remediation merged:** Plan + independent Formal Review both `approved`
-   (`docs/workflow/plans/2026-07-30-firestore-index-duplicate-remediation-plan.md`,
-   `docs/workflow/reviews/2026-07-30-firestore-index-duplicate-remediation-review.md`); corrected
-   file (65 unique definitions, 0 duplicates) plus a new deterministic duplicate-validation test
+3. ✅🔍 **Firestore indexes deployment** — **DEPLOYED 2026-07-30, awaiting owner readiness
+   confirmation.** First deploy attempt exited 1 (HTTP 409 "index already exists") caused by a
+   genuine duplicate index definition, remediated via Plan + Formal Review (both `approved`) and
    merged to `production` via PR #5 (merge commit `21f036fab2ff6cb0a4d934ef5e5c9e465b21e293`,
-   tagged `v1.0.0-rc3`). Verified on the merged commit: full verification suite passing
-   (validator 4/4, Rules 48/48, lint clean, diff-check clean); `firestore.rules`/`storage.rules`/
-   Functions allowlist all confirmed unchanged; remote state confirmed still 50 indexes, 0 field
-   overrides, untouched. **Awaiting a separate owner approval to retry**
-   `firebase deploy --only firestore:indexes --project fresh-prints-prod`. The 50 already-created
-   indexes remain untouched throughout — this remains an additive-only redeploy when it happens,
-   not a delete-and-recreate. Do not retry with `--force`. Do not manually edit/delete indexes via
-   Console. Every one of the 65 index definitions must reach `Enabled`/ready state in Firebase
-   Console before this step is complete.
+   tagged `v1.0.0-rc3`). **Redeploy succeeded:** `firebase deploy --only firestore:indexes
+   --project fresh-prints-prod`, exit 0, "Deploy complete!" / "firestore: deployed indexes ...
+   successfully for (default) database" — no deletion prompt. Post-deploy remote check: **65
+   indexes, 0 field overrides**, all 16 collection groups represented; precise canonical-identity
+   comparison (accounting for Firestore's server-auto-appended `__name__` field) confirmed **0
+   missing, 0 unexpected** — every local definition present remotely with matching content.
+   **Remaining step:** the Firebase CLI's `firestore:indexes` command reports only definitions, not
+   per-index build status — verify in Console: `fresh-prints-prod` → Firestore Database → Indexes
+   → confirm every index shows `Enabled` (not `Building` or `Error`) before considering this step
+   fully complete.
 4. Secret Manager population (`GEMINI_API_KEY`, `RESEND_API_KEY`, `ETSY_X_API_KEY`, `BREVO_API_KEY` if selected)
 5. Cloud Functions deployment (approved explicit 99-function allowlist — see
    `docs/workflow/reviews/2026-07-30-production-release-functions-allowlist-report.md`)

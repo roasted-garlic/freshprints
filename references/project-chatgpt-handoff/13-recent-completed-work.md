@@ -2,6 +2,18 @@
 
 > Signed-off or largely complete work. External agents should not re-plan or duplicate this.
 
+## 2026-07-30 - production-release: Firestore indexes deployed to fresh-prints-prod (deployment-order step 3 of 12)
+
+- Redeployed `firebase deploy --only firestore:indexes --project fresh-prints-prod` on the
+  verified corrected `production` commit (merge `21f036f`) — exit 0, "Deploy complete!", no
+  deletion prompt
+- Post-deploy remote state: 65 indexes, 0 field overrides, all 16 collection groups represented
+- Precise canonical-identity comparison confirmed 0 missing / 0 unexpected — every local
+  definition present remotely with matching content
+- Remaining: owner Console confirmation that every index shows `Enabled` (not obtainable from CLI
+  output alone)
+- **No other Firebase component deployed; production received no Git commit; `master` untouched**
+
 ## 2026-07-30 - production-release: Firestore index duplicate remediated (Plan + Formal Review approved, committed to development, PR prepared)
 
 - Canonical duplicate audit of `firestore.indexes.json` found exactly one duplicate group:

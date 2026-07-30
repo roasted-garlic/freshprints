@@ -5,16 +5,17 @@ Current Mode: managed-phase
 Current Phase: implement
 Plan Status: complete
 Review Status: complete (`approved_with_notes`)
-Implement Status: in_progress — **Firestore index duplicate remediation MERGED to `production`**
-via PR #5 (merge commit `21f036fab2ff6cb0a4d934ef5e5c9e465b21e293`). Verified on the exact merged
-commit: `firestore.indexes.json` corrected (65 total, 65 unique, 0 duplicates, 0 field overrides,
-new hash `e3c15380f538c3e1e6ccf5197c82f1b2ad63b5e5`); `firestore.rules`/`storage.rules` unchanged
-from already-deployed versions; Functions allowlist unchanged (105/99/6). Full verification suite
-passed on `production` (validator 4/4, Rules 48/48, lint clean, diff-check clean). Remote state
-confirmed unchanged (50 indexes, 0 field overrides — untouched). **`v1.0.0-rc3` tagged and pushed**
-on the verified merge commit; `v1.0.0-rc1`/`v1.0.0-rc2` unchanged. Stopped at the Firestore
-indexes **redeployment** approval checkpoint — the correction is live on `production` but the
-actual index deploy has not been retried.
+Implement Status: in_progress — **Firestore indexes deployment (step 3 of 12) SUCCEEDED.**
+`firebase deploy --only firestore:indexes --project fresh-prints-prod` on the verified corrected
+commit `21f036fab2ff6cb0a4d934ef5e5c9e465b21e293` — exit 0, "Deploy complete!", "firestore:
+deployed indexes in firestore.indexes.json successfully for (default) database." No deletion
+prompt occurred. Post-deploy remote check confirms **all 65 local index definitions present
+remotely** (0 missing, 0 unexpected, verified via canonical structural-identity comparison
+accounting for Firestore's auto-appended `__name__` tiebreaker field), spanning all 16 collection
+groups including the 7 that previously had zero indexes. **Remaining verification: owner must
+confirm every index shows `Enabled` (not `Building`) in Firebase Console** — the CLI's
+`firestore:indexes` output does not expose per-index build status, only definitions, so this
+final confirmation cannot be obtained from the CLI alone.
 Test Status: pending
 Signoff Status: pending
 DONE: no
@@ -68,27 +69,28 @@ No GA4 or Search Console configuration occurred. `production` was not modified. 
 deleted. No force-push occurred anywhere in this pass** (only file writes and doc/state commits to
 `development`, still pending push at the time this state was written — see the response for the
 final documentation commit hash).
-Human Checkpoint Required: yes — **Firestore indexes redeployment approval.** The duplicate-fix
-merge to `production` is verified complete; the actual `firebase deploy --only firestore:indexes
---project fresh-prints-prod` retry has not been executed. Owner must separately approve that
-retry before Firestore indexes (deployment-order step 3 of 12) can be considered complete.
-Blocked: no (not blocked; paused at the Firestore indexes redeployment approval checkpoint by
-explicit instruction)
-Allowed Actions: none beyond this pass; awaiting explicit owner approval to retry
-`firebase deploy --only firestore:indexes --project fresh-prints-prod`
+Human Checkpoint Required: yes — **owner Console confirmation that all 65 Firestore indexes show
+`Enabled`.** The redeploy command itself succeeded (exit 0) and all 65 definitions are confirmed
+present remotely with correct content — but the Firebase CLI's `firestore:indexes` output does
+not expose per-index build status, only definitions, so per-index `Enabled`-vs-`Building`
+confirmation requires the owner to check Firebase Console directly:
+`fresh-prints-prod` → Firestore Database → Indexes. Once confirmed, deployment-order step 3 of 12
+is complete and step 4 (Secret Manager) becomes the next checkpoint.
+Blocked: no (not blocked; paused at the index-readiness confirmation checkpoint by explicit
+instruction — the deploy itself succeeded)
+Allowed Actions: none beyond this pass; awaiting owner Console confirmation of index readiness,
+then approval to begin the Secret Manager checkpoint
 Forbidden Actions: deleting `master` (local or remote); modifying `production` directly (only via
-PR); running any `firebase deploy` command of any kind (including the indexes retry itself,
-without separate approval); using `--force` on any Firestore command; manually deleting or
-editing production indexes via Console; triggering an App Hosting release/rollout; any
-Functions/secret/DNS/Auth-config/GA4/Search-Console action; invoking `rebuildCatalogSnapshots`;
-building or distributing a production Studio installer; touching production data; force-pushing
-any branch; rewriting Git history; configuring `core.hooksPath` without separate owner approval;
-changing repository visibility
-Next Required Step: **STOP.** Await explicit owner approval to retry
-`firebase deploy --only firestore:indexes --project fresh-prints-prod` on the verified corrected
-`production` commit (`21f036fab2ff6cb0a4d934ef5e5c9e465b21e293`). Once every one of the 65 index
-definitions reaches `Enabled`/ready state in Firebase Console, deployment-order step 3 is
-complete and step 4 (Secret Manager) becomes the next checkpoint.
+PR); running any `firebase deploy` command of any kind without separate approval; using `--force`
+on any Firestore command; manually deleting or editing production indexes via Console; triggering
+an App Hosting release/rollout; any Functions/secret/DNS/Auth-config/GA4/Search-Console action;
+invoking `rebuildCatalogSnapshots`; building or distributing a production Studio installer;
+touching production data; force-pushing any branch; rewriting Git history; configuring
+`core.hooksPath` without separate owner approval; changing repository visibility
+Next Required Step: **STOP.** Await owner confirmation (via Firebase Console →
+`fresh-prints-prod` → Firestore Database → Indexes) that all 65 indexes show `Enabled`, not
+`Building` or `Error`. Once confirmed, the next checkpoint is Secret Manager inventory, value
+collection, and production secret population approval.
 
 Plan:
 `docs/workflow/plans/2026-07-29-preproduction-static-analysis-cleanup-plan.md`.
@@ -5730,3 +5732,62 @@ Next: **STOP.** Await explicit owner approval to retry
 `production` commit. Every one of the 65 index definitions must reach `Enabled`/ready state in
 Firebase Console before deployment-order step 3 is considered complete and step 4 (Secret
 Manager) becomes the next checkpoint.
+
+## 2026-07-30 — Goal #13 `production-release` — Firestore indexes DEPLOYED to `fresh-prints-prod` (deployment-order step 3 of 12 succeeded); awaiting owner Console readiness confirmation
+
+Owner approved via `APPROVE FIRESTORE INDEXES REDEPLOYMENT`, authorizing exactly
+`firebase deploy --only firestore:indexes --project fresh-prints-prod` and no other component.
+
+**Pre-deploy verification, all matched exactly:** `git fetch origin`, clean tree confirmed;
+`git switch production` + `git pull --ff-only origin production` (already up to date); confirmed
+branch `production`, `HEAD` = `origin/production` =
+`21f036fab2ff6cb0a4d934ef5e5c9e465b21e293`, clean tree, `firestore.indexes.json` hash
+`e3c15380f538c3e1e6ccf5197c82f1b2ad63b5e5` — all exact matches to the required values.
+
+**Re-ran validation, all exit 0:** duplicate validator (4/4 pass), JSON validity, canonical audit
+(65 total/65 unique/0 duplicates/0 field overrides — reconfirmed), `npm run test:rules` (48/48,
+portable JDK 21), `npm run lint`, `git diff --check`.
+
+**Captured remote baseline (read-only):** `firebase firestore:indexes --project fresh-prints-prod`
+— exit 0, 50 indexes, 0 field overrides — matched the expected pre-deploy baseline exactly.
+
+**Deployed:** `firebase deploy --only firestore:indexes --project fresh-prints-prod` — **exit 0.**
+Firebase CLI: "Deploy complete!" / "firestore: deployed indexes in firestore.indexes.json
+successfully for (default) database." **No deletion prompt occurred.** Same pre-existing,
+non-blocking Firestore Rules compilation warnings appeared (unrelated to indexes, unchanged from
+every prior deploy in this goal). No `--force` was used. Target project confirmed
+`fresh-prints-prod`, default database.
+
+**Post-deployment remote state:** `firebase firestore:indexes --project fresh-prints-prod` — exit
+0, **65 indexes, 0 field overrides**, spanning all 16 collection groups (including the 7 that
+previously had zero indexes: `assistedCreationRequests` 4, `customerNotifications` 1,
+`customerUploadBatches` 1, `customerUploadFinalizeLeases` 1, `etsyRecommendationRequests` 1,
+`etsyRecommendationSuggestions` 1, `etsySuggestionRequests` 2).
+
+**Precise set comparison performed** (canonical structural identity: collectionGroup + queryScope
++ fields, correctly excluding Firestore's server-auto-appended `__name__` tiebreaker field, which
+an initial naive comparison had mistakenly flagged as 37 false-positive mismatches before being
+corrected): **0 local definitions missing remotely, 0 unexpected remote definitions.** Every one
+of the 65 local index definitions is present remotely with matching content.
+
+**Remaining verification not obtainable from the CLI:** the Firebase CLI's `firestore:indexes`
+command returns only index *definitions*, not per-index build *status*
+(`Enabled`/`Building`/`Error`). Per explicit instruction, this final confirmation requires the
+owner to check Firebase Console → `fresh-prints-prod` → Firestore Database → Indexes directly.
+**This checkpoint is not fully closed until that owner confirmation is provided** — the deploy
+itself succeeded and all definitions are present, but "reached Enabled/Ready" per index cannot be
+self-certified by this coding agent from available tooling.
+
+**Returned to `development`:** `git switch development` → `git pull --ff-only origin development`
+(already up to date) → confirmed branch `development`, clean tree. `origin/production` confirmed
+unchanged at `21f036fab2ff6cb0a4d934ef5e5c9e465b21e293` — this deployment added no Git commit to
+`production`, only the Firebase indexes release.
+
+**No other Firebase component was deployed.** No Firestore Rules or Storage Rules redeployment
+(both remain correctly deployed from earlier, unaffected). No Secret Manager, Functions, App
+Hosting, DNS, production data, `rebuildCatalogSnapshots`, Studio distribution, or GA4/Search
+Console action occurred. `master` was not deleted.
+
+Next: **STOP.** Await owner confirmation via Firebase Console that all 65 indexes show `Enabled`.
+Once confirmed, deployment-order step 3 of 12 is complete and step 4 (Secret Manager inventory,
+value collection, and production secret population approval) becomes the next checkpoint.

@@ -1,5 +1,42 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-07-30 — Goal #13 "production-release" — Firestore indexes DEPLOYED to fresh-prints-prod (step 3 of 12 succeeded); awaiting owner Console readiness confirmation
+
+Owner approved via `APPROVE FIRESTORE INDEXES REDEPLOYMENT`. Pre-deploy verification re-confirmed
+exact matches on `production` (`HEAD`/`origin/production` = `21f036fab2ff6cb0a4d934ef5e5c9e465b21e293`,
+`firestore.indexes.json` hash `e3c15380f538c3e1e6ccf5197c82f1b2ad63b5e5`, clean tree). Re-ran full
+validation — all exit 0: duplicate validator (4/4), canonical audit (65 total/65 unique/0
+duplicates/0 field overrides), `npm run test:rules` (48/48), lint, `git diff --check`. Captured
+remote baseline read-only: 50 indexes, 0 field overrides, matched expected.
+
+**Deployed:** `firebase deploy --only firestore:indexes --project fresh-prints-prod` — **exit 0.**
+"Deploy complete!" / "firestore: deployed indexes in firestore.indexes.json successfully for
+(default) database." **No deletion prompt occurred.** No `--force` used.
+
+**Post-deployment remote state:** 65 indexes, 0 field overrides — all 16 collection groups
+represented, including the 7 that previously had zero. Precise canonical-identity comparison
+(correctly excluding Firestore's server-auto-appended `__name__` tiebreaker field, which an
+initial pass had mistakenly flagged as 37 false-positive mismatches before being corrected)
+confirmed **0 missing, 0 unexpected** — every one of the 65 local index definitions is present
+remotely with matching content.
+
+**Remaining verification not obtainable from the CLI:** `firestore:indexes` reports only
+definitions, not per-index build status. **This checkpoint is not fully closed until the owner
+confirms via Firebase Console** (`fresh-prints-prod` → Firestore Database → Indexes) that every
+index shows `Enabled`, not `Building` or `Error`.
+
+Returned to `development` (already in sync, no back-merge needed). `origin/production` confirmed
+unchanged — this deployment added no Git commit, only the Firebase indexes release.
+
+**No other Firebase component was deployed.** Firestore Rules and Storage Rules remain correctly
+deployed, unaffected. No Secret Manager, Functions, App Hosting, DNS, production data,
+`rebuildCatalogSnapshots`, Studio distribution, or GA4/Search Console action occurred. `master`
+was not deleted.
+
+**Active managed goal:** `production-release` (Goal #13) — awaiting owner Console confirmation
+that all 65 indexes show `Enabled`. Once confirmed, the next checkpoint is Secret Manager
+inventory, value collection, and production secret population approval.
+
 ## 2026-07-30 — Goal #13 "production-release" — Firestore index remediation MERGED to production via PR #5; v1.0.0-rc3 tagged; stopped at indexes-redeployment approval checkpoint
 
 **PR #5 merge verified via GitHub API:** `merged: true`, merge commit
