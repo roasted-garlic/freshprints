@@ -2,6 +2,321 @@
 
 > Signed-off or largely complete work. External agents should not re-plan or duplicate this.
 
+## 2026-07-30 - production-release: production project confirmed, Functions allowlist finalized, working tree reconciled (not yet implemented/deployed)
+
+- Owner confirmed production Firebase project **`fresh-prints-prod`** (created, Blaze billing
+  active, zero configuration); verified `functions/src/lib/email/portalUrlResolver.ts` already
+  maps this exact id — no code change needed
+- Finalized the 5 previously-flagged Functions: excluded `testAiEnrichmentPlayground`,
+  `testAiEnrichmentTagRerank`, `ownerDeleteUser`, `backfillPrintRequestQueueTab`; included
+  `rebuildCatalogSnapshots` after full six-condition source verification (owner/admin-gated,
+  non-destructive, project-agnostic, documented catalog-snapshot publication mechanism)
+- **Final Functions allowlist (programmatically re-verified from fresh source): 105 total exports,
+  99 include, 6 exclude** — exact future deploy command prepared, not executed
+- Reconciled the 541-entry working tree: classified into real completed/approved product work
+  (~10 named goals), Goal #13 docs, retained Goal #12 dev-only tooling, and one unrelated
+  uncertain-provenance deletion (left untouched, flagged for separate owner decision); removed
+  exactly one proven-debris scratch script (`functions/test-admin-auth.mjs`); confirmed zero
+  secret-bearing or build-output files in the changed set; confirmed dev-only Studio gates
+  (Test Data Reset, Catalog Storage Inventory, Firebase Debug window) remain build-time-gated
+  regardless of target project
+- Proposed release-source strategy: reconcile on `master` in ~11 goal-sized commits, no new branch
+  (repo has no release-branch precedent; owner already decided against a new branch policy)
+- Prepared, not applied, an additive `.firebaserc` production alias
+- Verification (read-only/local only): Functions build, Portal/Studio typecheck, Portal build,
+  Studio build, repo lint, `git diff --check` — all exit 0; no `firebase deploy` command run
+- **No production resource was created, configured, modified, or deployed; no commit or branch
+  created**
+- Artifacts: `docs/workflow/reviews/2026-07-30-production-release-working-tree-reconciliation-report.md`,
+  `docs/workflow/reviews/2026-07-30-production-release-functions-allowlist-report.md`,
+  `docs/workflow/reviews/2026-07-30-production-release-source-and-allowlist-checkpoint.md`
+
+## 2026-07-30 - customer-upload-early-transparency-format-validation (Goal #14, approved)
+
+- Narrow, separately-scoped follow-up run alongside the paused `production-release` (Goal #13);
+  did not touch #13's state or checkpoint.
+- Root cause: `processCustomerUploadImageBytes` (`functions/src/lib/customerUploadProcessing.ts`)
+  entered the `trimming` progress stage before its validation-time transparency trim *probe*'s
+  pass/fail verdict was known, so a rejected upload (corrupt, unsupported format, or not meaningfully
+  transparent) could transiently show the Portal's "Trimming transparent edges…" label before failing.
+- Fix: removed the premature `stageTimer.enter("trimming")` call ahead of the probe — it now stays
+  attributed to the existing `checking_transparency` stage (validation, not production trimming).
+  Production trimming for valid images is unchanged.
+- Applies uniformly to Customer Upload, Donate Design, retry, and ZIP processing — confirmed via
+  source that all four share this one function with no caller-specific branching; no caller-side code
+  changed.
+- Confirmed accepted-format policy (PNG + static WebP) and transparency thresholds unchanged/out of
+  scope; format detection was already decode-driven, not filename/MIME-driven.
+- 23/23 automated tests pass (4 new + 2 extended, using an `onStage` spy to assert `trimming` is never
+  observed for a rejected upload); Functions build clean; repo lint clean; `git diff --check` clean.
+  Portal typecheck/build omitted — no Portal/shared UI files touched.
+- Owner deployed this change to `fresh-prints-dev` and ran manual QA directly, confirming **PASS**
+  across all 5 goal-brief scenarios.
+- Artifacts: `docs/workflow/plans/2026-07-30-customer-upload-early-transparency-format-validation-plan.md`
+  and sibling `-review.md`/`-test-report.md`/`-signoff.md` (`approved`) of the same date/slug.
+
+## 2026-07-30 - production-release Implementation-readiness checkpoint (stopped at project-creation checkpoint)
+
+- Owner recorded 18 binding production decisions (separate project, exclusion list, canonical
+  domain + www redirect, deploy-process continuity, GA4 gating, monitoring approach, allowlist
+  discipline)
+- Resolved every `[NEEDS REPO CHECK]` from the approved Plan by reading current source fresh, not
+  reusing an earlier session's memory:
+  - Full current Functions export list re-enumerated (89 recommended include / 2 explicit exclude
+    `wipeOperationalTestData` + `inventoryCatalogImageStorage` / 5 flagged for owner classification)
+  - Full 61-index `firestore.indexes.json` read end-to-end — no duplicates or dev-only indexes found
+  - Found `functions/src/lib/email/portalUrlResolver.ts` as the exact production-URL-mapping file —
+    **flagged that it already assumes project id `fresh-prints-prod`**, requiring correction if the
+    owner picks a different id
+  - Traced Studio's Firebase config as build-time Vite env (`apps/studio/.env.local`), packaged by
+    electron-builder — production installer needs a separate build with swapped env values
+  - Confirmed zero error-tracking/monitoring dependencies exist in any package.json
+  - Audited the live 542-entry working tree — not yet in a clean, committable state for a
+    production build source (unrelated to this goal's own scope)
+  - Classified cold-start Firestore settings (categories recommended first; most settings have safe
+    code defaults; email provider should be explicitly chosen before first transactional send)
+  - Prepared the secrets/provider checklist (`GEMINI_API_KEY`, `RESEND_API_KEY`, `BREVO_API_KEY` if
+    selected, `ETSY_X_API_KEY`, Authorized Domains, sender verification) without exposing any value
+- Wrote beginner-friendly Firebase Console project-creation instructions and the exact 4-item
+  return checklist (project ID, creation confirmation, billing/Blaze status, no-deployment
+  confirmation)
+- Verification (read-only/local only): Functions build, Portal typecheck, Portal build, Studio
+  build, repo lint, `git diff --check` — no `firebase deploy` command of any kind was run
+- **No production resource was created, configured, modified, or deployed in this pass**
+- Artifact: `docs/workflow/reviews/2026-07-30-production-release-implementation-readiness-checkpoint.md`
+
+## 2026-07-30 - production-release Plan + independent Formal Review (approved_with_notes, not yet implemented)
+
+- Wrote `docs/workflow/plans/2026-07-30-production-release-plan.md`: confirmed via direct source
+  read that no production Firebase project exists anywhere in the repo (`.firebaserc` has only
+  `fresh-prints-dev`) — this is a first-time production launch, not a promotion
+- Plan covers: exact ship/exclude scope (Test Data Reset UI and `inventoryCatalogImageStorage` are
+  both already excluded from production Studio builds by existing code-level gates, not just
+  policy), Functions deployment allowlist approach, Rules/Indexes/App-Hosting scope, env-var +
+  Secret Manager inventory (`GEMINI_API_KEY`, `RESEND_API_KEY`, `BREVO_API_KEY`, `ETSY_X_API_KEY`),
+  production domain (`myprintrequest.com`) and Authorized Domains requirement, GA4 go-live
+  5-step sequence (deferred from the `portal-google-analytics` goal), SEO readiness (already
+  fail-closed and code-complete per that goal's signoff), branch/release strategy (repo has no
+  CI/CD or release-branch convention — recommends continuing current direct-to-master pattern),
+  cold-start migration determination (no data to migrate), 10-item post-deploy smoke test,
+  per-component rollback strategy, and a 10-checkpoint human-approval sequence
+- Wrote `docs/workflow/reviews/2026-07-30-production-release-review.md`: independent verification
+  against direct source reads (not the Plan's own prose); verdict **approved_with_notes** — no
+  fabricated file/API/mechanism found, four minor scoping gaps flagged as first Implementation
+  sub-steps (not blocking)
+- 12 `[NEEDS OWNER INPUT]` items and 7 `[NEEDS REPO CHECK]` items consolidated in the Plan for
+  owner review before Implementation begins
+- **No implementation, deployment, migration, secret, or production action occurred in this pass**
+
+## 2026-07-30 - Catalog image derivative Storage consolidation (closed_by_owner_after_inventory)
+
+- Investigated consolidating catalog thumbnails (320×320 WebP Q80) and previews (1280×1280 WebP
+  Q85) into one shared display derivative; two rounds of owner sample review (real UI-rendering
+  measurement + a synthetic contact sheet showing exact browser upscale factors at the shared
+  lightbox) converged on **1024×1024 WebP Q82, no separate thumbnail**
+- Built, independently security-reviewed, and deployed a dry-run-only, owner/admin-restricted
+  `inventoryCatalogImageStorage` Cloud Function to `fresh-prints-dev`; added a dev-only Studio
+  "Run Catalog Storage Inventory" panel after direct DevTools-console invocation proved impossible
+  (bare npm imports don't resolve in the Electron renderer console)
+- **Owner ran the real inventory**: 87 designs; originals 81 objects / 980,807,863 bytes (**97.66%
+  of catalog Storage**); thumbnails 87 objects / 2,820,654 bytes; previews 81 objects /
+  20,676,202 bytes; display derivatives 0; zero orphans, zero missing objects, zero promotion-
+  cool-off duplicates, zero purge-policy violations
+- **Owner decided to close the goal before implementation** — an evidence-based decision: the
+  addressable byte pool (existing thumbnails+previews combined, ~22.4 MB, ~2.3% of total) was too
+  small relative to the required backfill, Portal/Studio consumer cutover, and accepted grid-
+  bandwidth increase (~86 KB vs ~23 KB per typical 8-card grid) to justify completing the
+  migration, since production originals (97.66% of Storage) must remain unchanged regardless
+- The migration was **never implemented**: no `displayPath` was populated on any design, no
+  consumer was migrated, no backfill ran, no thumbnail/preview was deleted, no production
+  original was modified, no cleanup/deletion tooling was built (none was justified — the real
+  inventory found zero candidates)
+- Interrupted mid-Implement scaffolding (`displayPath` type fields, migration-only constants, an
+  unused Storage-path helper, and their dedicated tests) was inspected file-by-file against
+  baseline and removed narrowly; zero unrelated pre-existing work (from other in-progress or
+  already-signed-off goals sharing this working tree) was touched or reverted
+- Retained as dev-only diagnostic tooling: the read-only inventory callable, its pure
+  classification logic, and the Studio invocation panel — explicitly excluded from any future
+  production deployment unless separately reviewed and approved
+- Functions build, Portal typecheck, Studio build, repo lint, changed-file lint, `git diff --check`
+  all exit 0; 53/53 retained focused tests pass
+- No migration, backfill, deletion, or production action occurred at any point; production
+  untouched throughout
+- Signoff:
+  `docs/workflow/reviews/2026-07-30-catalog-image-derivative-storage-consolidation-signoff.md`
+- Unblocks `production-release` (Goal #13) — Goals #9–#12 are now all signed off/closed; Goal #13's
+  Plan + Formal Review phase started immediately after this closure
+
+## 2026-07-30 - Customer-upload oversized-pixel normalization and processing-timeout followup (approved_with_notes)
+
+- Fixed the exact root cause of oversized-canvas transparent PNGs being permanently rejected: the
+  dimension/pixel-ceiling check ran on raw source metadata **before** any trim attempt; reordered
+  to bounded-decode → trim → normalize-if-still-oversized so a trimmable oversized canvas is
+  accepted at full fidelity
+- Caught and fixed a real design flaw during implementation itself, via a failing test: binding the
+  decoder's `limitInputPixels` to the app-level 100M-pixel ceiling would have rejected the decode
+  before trim could ever run, defeating the entire fix — corrected to sharp's own built-in decoder
+  default (~268.4M px)
+- New downscale-only normalization pass (`normalizeForDimensionCeiling`, strictest-of-three-
+  ceilings-wins), structurally independent of the existing controlled-upscale pass — new
+  `wasNormalizedForDimensions` field, explicitly documented as independent of `wasUpscaled`
+- Eliminated 2 of 3 redundant full-resolution decodes in `trimTransparentEdges`
+- New pure, directly-testable stage watchdog (`customerUploadFinalizeWatchdog.ts`, mirroring
+  `withTimeout.ts`'s precedent) wired into `finalizeCustomerUpload`/`retryCustomerUploadProcessing`
+  at 480s — writes an explicit `processing_timed_out` failure (new, retryable) before the platform's
+  own 540s timeout can silently leave an upload stuck at `processing` forever
+- Sanitized per-stage timing instrumentation added; new ADR-FP-125 (narrow ADR-FP-080 downsampling
+  exception) recorded
+- 80 MB vs. 100 MB: no enforced value changed; four stale handoff docs corrected
+- 28 new/updated tests, all passing; Goal #9 ZIP regression + byte-limit-alignment tests re-run
+  unmodified, 12/12 pass; Functions build, Portal typecheck/build, repo lint all exit 0
+- Independent Implementation Review: **approved_with_changes** (one documentation-precision note,
+  applied)
+- Deployed to `fresh-prints-dev`: `finalizeCustomerUpload`, `retryCustomerUploadProcessing` only —
+  both "Successful update operation," exit 0; no Storage/Firestore Rules, indexes, App Hosting, or
+  other Functions touched
+- Owner QA: **PASS WITH NOTES** — all functional behavior correct; oversized-canvas uploads take
+  proportionally longer at the trim stage (expected, given pixel-count/transparency-workload
+  scaling) but always complete, never stuck
+- No migration, Storage cleanup, or production action at any point; production untouched
+- Signoff:
+  `docs/workflow/reviews/2026-07-30-customer-upload-oversized-pixel-normalization-and-processing-timeout-followup-signoff.md`
+
+## 2026-07-29 - Assisted Creation reference-image MB limit increase (approved)
+
+- Owner selected **40 MB per file** (Option 3), **8 files unchanged**, and a **320 MB combined
+  pre-upload ceiling** (= 8 × 40 MB exactly)
+- All four per-file enforcement layers updated to 40 MB: Portal client validation, submit-path and
+  update-path trusted-server parsers, and `storage.rules`; a pre-existing Storage Rules boundary bug
+  (`<` exclusive vs. the TS validators' inclusive semantics) was found and corrected to `<=`
+- New 320 MB combined ceiling enforced client-side before any upload begins, correctly excluding
+  removed/replaced kept-reference bytes; server-side parsers as defense-in-depth only
+- New ADR-FP-124 records the decision, architecture, cost/risk analysis, and deployment checkpoints
+- **First owner QA pass returned FAIL**: a reference image between 15 MB and 40 MB was accepted by
+  the Portal picker but rejected at Submit with the stale "15 MB" message. Root-cause investigation
+  confirmed this was a **Cloud Functions deployment gap, not a source-code defect** — Storage Rules
+  had been deployed for this goal, but `submitAssistedCreationRequest`/
+  `customerUpdateAssistedCreationRequest` had not, so the live callables were still running
+  pre-goal compiled code
+- **Amendment 1**: added 9 targeted regression tests proving the exact 15–40 MB boundary and that
+  error messages never mention "15 MB"; confirmed (Formal Review binding condition) that a scoped
+  Functions redeploy would carry only this goal's change, no unrelated in-flight Functions work
+- Owner approved; deployed exactly
+  `firebase deploy --only functions:submitAssistedCreationRequest,functions:customerUpdateAssistedCreationRequest`
+  — both functions "Successful update operation," exit 0
+- Reduced 5-step owner re-QA: **PASS**
+- No customer-upload artwork, Goal #9 code, or catalog-derivative code touched; no new dependency
+- Functions build, repository lint, Portal typecheck/build, Studio build, changed-file lint,
+  `git diff --check` all exit `0` across both the original Implement and Amendment 1 passes; 53/53
+  combined focused tests pass
+- Two independent Implementation Reviews (original + Amendment 1): both **APPROVED**, no residual
+  defects
+- No migration, Storage cleanup, or production action at any point; production untouched
+- Signoff:
+  `docs/workflow/reviews/2026-07-29-assisted-creation-reference-image-mb-limit-increase-signoff.md`
+- **Queue reconciliation (documentation-only):** per owner instruction, added a new Goal #11,
+  `customer-upload-oversized-pixel-normalization-and-processing-timeout-followup` (not started, no
+  Plan yet), pushing `catalog-image-derivative-storage-consolidation` to Goal #12 and
+  `production-release` to Goal #13 (blocked until #9–#12 all sign off)
+- Next queued: Goal #11, `customer-upload-oversized-pixel-normalization-and-processing-timeout-followup`
+  (not started)
+
+## 2026-07-29 - Customer-upload oversized-image processing performance, Workstream A (approved)
+
+- Root cause: `finalizeCustomerUploadZip.ts` processed every image in an uploaded ZIP
+  **sequentially** — up to 100 images, each up to 100 megapixels, inside one 540s/2GiB `onCall`
+- Replaced with bounded concurrency of 3 (`CUSTOMER_UPLOAD_ZIP_IMAGE_PROCESSING_CONCURRENCY`),
+  aggregating `readyCount`/`failedCount`/`fileResults` deterministically after every task settles —
+  never from a counter mutated inside a concurrently-running callback
+- Evaluated the existing `DerivativeConcurrencyQueue` (Studio Electron) semaphore pattern first;
+  confirmed it cannot be imported directly into Functions (`functions/tsconfig.json` excludes
+  `apps/studio/electron`), so its mechanism was relocated — not forked — into a new shared
+  `packages/shared/src/utils/boundedConcurrencyQueue.ts`
+- New ADR-FP-123 records full worst-case memory arithmetic (100M-pixel decode ≈381.5 MiB, 2GiB
+  function memory, 461.5 MiB per-image peak, concurrency-3 budget with a documented 25.1% safety
+  margin; concurrency-4 correctly rejected at ~0.1% margin), separating proven constants from
+  estimates requiring runtime validation
+- `processCustomerUploadImageBytes` (the actual image-processing logic) was not modified; its
+  existing 8-test suite passes unmodified — no processing-logic drift
+- No accepted format, size/pixel limit, transparency rule, upscale policy, or the 200-DPI Print
+  Request save floor changed; no Storage Rules, dependency, schema, or Function memory/timeout
+  configuration changed
+- Functions build, repository lint, changed-file lint, `git diff --check` all exit `0`; 31/31
+  focused tests pass
+- Independent Implementation Review against the real final diff: **APPROVED**, no residual defects
+- No deployment, migration, Storage cleanup, or production action; owner QA not required
+- This goal covers Workstream A only, per an owner-directed decision to keep three image-related
+  goals separate and coordinated rather than merged (zero file overlap between them)
+- Signoff:
+  `docs/workflow/reviews/2026-07-29-customer-upload-oversized-image-normalization-and-processing-performance-signoff.md`
+- Next queued (at the time): Goal #10, "Increase the MB limit for custom-request reference images"
+  — now also **Done**, see entry above
+
+## 2026-07-29 - Pre-production static-analysis cleanup (approved)
+
+- `npm run build:studio` and `npm run lint` both exit `0` — all 29 reproduced Studio/shared
+  TypeScript diagnostics and all 41 reproduced lint findings (31 errors, 10 warnings) resolved
+- Satisfied all three Formal Review binding conditions: bounded Show Queue read across
+  Working/Queued/Printing tabs (`useShowQueuePrintRequests`), a `createRequire`-based lazy `sharp`
+  loader with a new compiled-output discovery-time proof test
+  (`functions/src/lib/lazySharpDeployDiscovery.test.ts`), and stable-ref/destructure fixes with
+  dedicated tests for all 10 React hook `exhaustive-deps` warnings
+- Corrected one stale test-fixture assertion (`assistedCreationAnswerDisplay.test.ts`) whose regex
+  still targeted a removed enum literal's semantics after the fixture value itself had already been
+  updated
+- No product behavior, architecture boundary, Firebase Rule, dependency, or configuration changed;
+  Portal typecheck/build, Functions build, `git diff --check`, and 101/101 focused tests all pass
+- Independent Implementation Review against the real final diff: **APPROVED**, no residual defects
+- No deployment, migration, or production action; owner QA not required
+- Signoff:
+  `docs/workflow/reviews/2026-07-29-preproduction-static-analysis-cleanup-signoff.md`
+- Next queued (at the time): `customer-upload-oversized-image-normalization-and-processing-performance`
+  — now also **Done** (Workstream A), see entry above
+
+## 2026-07-29 - Studio Test Data legacy print-limit counter cleanup (approved)
+
+- Owner QA **PASS**: preset/target label, truthful legacy/unenforced copy, exact preset selection,
+  broad-preset inclusion, and cancel-without-wipe confirmation all passed
+- Stable `printRequestDesignDailyLimits` target and exact delete behavior preserved; no active
+  limit `L`, Current Request room, show capacity, security, or backend behavior changed
+- Focused 28/28 and changed-file lint pass; documented Studio 29-error and repository 41-finding
+  baselines remain for the next queued cleanup goal
+- No wipe, deployment, migration, or production action
+- Signoff:
+  `docs/workflow/reviews/2026-07-29-studio-test-data-print-limit-wipe-audit-signoff.md`
+- Next queued (at the time): `preproduction-static-analysis-cleanup` — now also **Done**, see entry
+  above
+
+## 2026-07-29 - Portal print-request pre-launch stability (approved)
+
+- Owner QA v18 **PASS**: Start, Pause, Resume, Finish, Studio completed placement/locking, dynamic
+  Portal Printed state, and navigation reconstruction all work
+- No `request_write (permission-denied)` error, false Retry warning, or Retry button remains
+- Amendment 16 aligned Firestore's whole-document schema with current server-maintained `queueTab`
+  and `showQueueBiddingAcknowledgment` fields while preserving client immutability and an exact
+  completion-only transition
+- Rules 48/48, focused 61/61, affected regression 143/143; known Studio build/lint baselines remain
+- Owner reported the dev Rules deployment complete; missing CLI/ruleset evidence remains
+  `[NEEDS OWNER CONFIRMATION]`; no redeploy or production action
+- Signoff:
+  `docs/workflow/reviews/2026-07-29-portal-print-request-prelaunch-stability-signoff.md`
+- Next queued: `studio-test-data-print-limit-wipe-audit` (not started)
+
+## 2026-07-27 - Firestore usage efficiency Wave C (PASS WITH NOTES)
+
+- Bounded Firestore (queueTab-maintained, server-paginated, exact `getCountFromServer` counts) is
+  now the sole, permanent Print Requests path for Studio and Portal
+- Explored and then fully abandoned a private Storage-backed print-request JSON read-model cache
+  (Studio staff-only + Portal customer-scoped) after a controlled real-publication test proved it
+  didn't eliminate the read/latency cost it was built to remove — ADR-FP-121
+- Every abandoned artifact (source, 3 Cloud Functions, Storage objects, Storage Rules, 2 Firestore
+  indexes) fully removed from source and `fresh-prints-dev`
+- Generated catalog/Design Library architecture (`generated/catalog-reference/**`,
+  `generated/portal-catalog/**`) unaffected, remains active
+- Owner **PASS** on both final Studio and Portal smoke tests 2026-07-27
+- Signoff: `docs/workflow/reviews/2026-07-27-firestore-usage-efficiency-wave-c-signoff.md`
+- Next queued: `portal-google-analytics` (not started)
+
 ## 2026-07-23 - Portal FAQ and How To (approved_with_notes)
 
 - Public `/help` + Studio Settings CMS (`settings/portalHelp`); nav **Help** vs H1 **FAQ and How To**; Coming soon videos; seeded 8 FAQs on fresh-prints-dev

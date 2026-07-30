@@ -11,6 +11,10 @@ import {
   clampSplitItemQuantity,
   type SplitPickerQuantities,
 } from "@fresh-prints/shared/utils/printRequestSplitAllocation";
+import {
+  getSplitPickerDesign,
+  getSplitPickerItemTitle,
+} from "../utils/splitDesignPickerItemPresentation";
 
 export interface SplitDesignPickerEntry {
   item: PrintRequestItem;
@@ -24,10 +28,6 @@ interface SplitDesignPickerModalProps {
   showRemainingCapacity?: number;
   onCancel: () => void;
   onConfirm: (quantities: SplitPickerQuantities) => void;
-}
-
-function getDesignTitle(item: PrintRequestItem, designById?: Map<string, Design>): string {
-  return designById?.get(item.designId)?.title ?? item.sizeLabel ?? `Item ${item.id.slice(0, 6)}`;
 }
 
 /**
@@ -125,8 +125,8 @@ export function SplitDesignPickerModal({
 
           <div className="split-picker-card-list">
             {entries.map((entry) => {
-              const design = designById?.get(entry.item.designId);
-              const title = getDesignTitle(entry.item, designById);
+              const design = getSplitPickerDesign(entry.item, designById);
+              const title = getSplitPickerItemTitle(entry.item, designById);
               const quantityInputValue = quantityInputs[entry.item.id] ?? "";
               const alreadyAssigned = entry.item.quantity - entry.remainingQuantity;
 

@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import { FieldValue } from "firebase-admin/firestore";
 
 import type { DesignAiAnalysis, DesignAiSuggestions } from "../../../packages/shared/src/types/ai/aiProcessing.types";
@@ -12,6 +14,7 @@ import {
   loadCachedActiveCategories,
   loadCachedApprovedTags,
   loadCachedAiEnrichmentSettings,
+  type AiEnrichmentReadDiagnosticContext,
 } from "./aiEnrichmentRuntimeCache";
 import { PipelinePhaseTimer } from "./pipelineTiming";
 import {
@@ -189,13 +192,17 @@ async function markAiSuccess(
   });
 }
 
-export async function runAiEnrichmentPipeline(
+const activeDesignInvocations = new Map<string, number>();
+
+async function runAiEnrichmentPipelineInternal(
   designId: string,
-  geminiApiKey?: string,
+  geminiApiKey: string | undefined,
+  diagnosticContext: AiEnrichmentReadDiagnosticContext,
 ): Promise<void> {
   const designSnapshot = await adminDb.collection("designs").doc(designId).get();
 
   if (!designSnapshot.exists) {
+    logPipelineEvent("pipeline.skipped", { ...diagnosticContext, reason: "design_missing" });
     return;
   }
 
@@ -203,10 +210,20 @@ export async function runAiEnrichmentPipeline(
   data.id = designId;
 
   if (data.aiProcessingStage !== "queued") {
+    logPipelineEvent("pipeline.skipped", {
+      ...diagnosticContext,
+      reason: "stage_not_queued",
+      currentStage: data.aiProcessingStage ?? null,
+    });
     return;
   }
 
   if (data.aiReviewStatus && data.aiReviewStatus !== "pending") {
+    logPipelineEvent("pipeline.skipped", {
+      ...diagnosticContext,
+      reason: "review_not_pending",
+      currentReviewStatus: data.aiReviewStatus,
+    });
     return;
   }
 
@@ -214,11 +231,16 @@ export async function runAiEnrichmentPipeline(
 
   if (!previewPath) {
     await markAiFailure(designId, new Error("Preview image is not available for AI processing."));
+    logPipelineEvent("pipeline.terminal", {
+      ...diagnosticContext,
+      result: "failed",
+      reason: "preview_missing",
+    });
     return;
   }
 
   const phaseTimer = new PipelinePhaseTimer();
-  const enrichmentSettings = await loadCachedAiEnrichmentSettings();
+  const enrichmentSettings = await loadCachedAiEnrichmentSettings(diagnosticContext);
   const requestedVisionModelId = data.aiRequestedVisionModelId?.trim();
   const provider = resolveAiEnrichmentProvider(
     geminiApiKey,
@@ -239,8 +261,8 @@ export async function runAiEnrichmentPipeline(
     await updateAiProcessingStage(designId, "preparing_image");
     const previewBytes = await downloadPreviewBytes(previewPath);
     const analysisImage = await prepareAiAnalysisImage(previewBytes, data.artworkBackgroundHex);
-    const categories = await loadCachedActiveCategories();
-    const approvedTags = await loadCachedApprovedTags();
+    const categories = await loadCachedActiveCategories(diagnosticContext);
+    const approvedTags = await loadCachedApprovedTags(diagnosticContext);
     phaseTimer.logPhase("analysis_image.prepared", {
       designId,
       contentType: analysisImage.contentType,
@@ -556,12 +578,58 @@ export async function runAiEnrichmentPipeline(
       approvedTagCount: suggestions.tags?.length ?? 0,
       suggestedNewTagCount: suggestions.suggestedNewTags?.length ?? 0,
     });
+    logPipelineEvent("pipeline.terminal", {
+      ...diagnosticContext,
+      result: "completed",
+    });
   } catch (error) {
     phaseTimer.logPhase("pipeline.failed", {
       designId,
       providerId: provider.providerId,
       message: error instanceof Error ? error.message : "unknown_error",
     });
+    logPipelineEvent("pipeline.terminal", {
+      ...diagnosticContext,
+      result: "failed",
+      reason: error instanceof Error ? error.name : "unknown_error",
+    });
     await markAiFailure(designId, error, provider.providerId);
+  }
+}
+
+export async function runAiEnrichmentPipeline(
+  designId: string,
+  geminiApiKey?: string,
+): Promise<void> {
+  const invocationId = randomUUID();
+  const activeForDesign = activeDesignInvocations.get(designId) ?? 0;
+  const diagnosticContext: AiEnrichmentReadDiagnosticContext = {
+    functionName: "runAiEnrichmentPipeline",
+    invocationId,
+    designId,
+  };
+
+  activeDesignInvocations.set(designId, activeForDesign + 1);
+  logPipelineEvent("pipeline.invocation.started", {
+    ...diagnosticContext,
+    duplicateDesignInvocation: activeForDesign > 0,
+    activeInvocationCountForDesign: activeForDesign + 1,
+  });
+
+  try {
+    await runAiEnrichmentPipelineInternal(designId, geminiApiKey, diagnosticContext);
+  } finally {
+    const remaining = (activeDesignInvocations.get(designId) ?? 1) - 1;
+
+    if (remaining > 0) {
+      activeDesignInvocations.set(designId, remaining);
+    } else {
+      activeDesignInvocations.delete(designId);
+    }
+
+    logPipelineEvent("pipeline.invocation.finished", {
+      ...diagnosticContext,
+      activeInvocationCountForDesign: Math.max(remaining, 0),
+    });
   }
 }

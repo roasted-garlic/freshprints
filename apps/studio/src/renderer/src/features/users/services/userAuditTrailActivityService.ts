@@ -220,27 +220,26 @@ async function listDesignUploadActivity(caller: User, uploadedBy: string): Promi
     query(firestoreCollectionService.getDesignsCollection(), where("uploadedBy", "==", uploadedBy)),
   );
 
-  return snapshot.docs
-    .map((designDoc) => {
-      const data = designDoc.data();
-      const title = typeof data.title === "string" ? data.title : "Untitled design";
-      const createdAt = mapFirestoreTimestamp(data.createdAt);
+  const entries: AuditTrailEntry[] = [];
+  for (const designDoc of snapshot.docs) {
+    const data = designDoc.data();
+    const createdAt = mapFirestoreTimestamp(data.createdAt);
+    if (!createdAt) {
+      continue;
+    }
 
-      if (!createdAt) {
-        return null;
-      }
+    const title = typeof data.title === "string" ? data.title : "Untitled design";
+    const status = typeof data.status === "string" ? data.status : "unknown";
+    entries.push({
+      id: `design:${designDoc.id}:uploaded`,
+      label: "Design uploaded",
+      detail: `${title} · ${status}`,
+      occurredAtMillis: createdAt.toMillis(),
+      actorUserId: uploadedBy,
+    });
+  }
 
-      const status = typeof data.status === "string" ? data.status : "unknown";
-
-      return {
-        id: `design:${designDoc.id}:uploaded`,
-        label: "Design uploaded",
-        detail: `${title} · ${status}`,
-        occurredAtMillis: createdAt.toMillis(),
-        actorUserId: uploadedBy,
-      } satisfies AuditTrailEntry;
-    })
-    .filter((entry): entry is AuditTrailEntry => entry !== null)
+  return entries
     .sort((left, right) => right.occurredAtMillis - left.occurredAtMillis)
     .slice(0, DESIGN_ACTIVITY_LIMIT);
 }
@@ -251,9 +250,7 @@ export const userAuditTrailActivityService = {
       return listCustomerShowAllocationActivity(caller, customer.id);
     }
 
-    const requests = await printRequestService.listPrintRequests(caller, {
-      customerId: customer.id,
-    });
+    const requests = await printRequestService.listPrintRequestsByCustomer(caller, customer.id);
 
     const sortedRequests = [...requests]
       .sort(

@@ -55,6 +55,37 @@ On Windows PowerShell, run tests per directory or use the repo's documented swee
 
 There is **no** root `npm test` script — invoke `npx tsx --test` explicitly.
 
+### Firestore read diagnostics (development only)
+
+The Studio and Portal client tracer is disabled by default. In the browser or Electron renderer
+console, enable it and reload:
+
+```js
+localStorage.setItem('FP_FIRESTORE_TRACE', '1')
+```
+
+Inspect the safe metadata-only trace with:
+
+```js
+window.__fpFirestoreTrace.summary()
+window.__fpFirestoreTrace.dump()
+```
+
+The trace includes query signatures, route/source ownership, trigger reasons, listener lifecycle,
+one-shot counts, and returned-document totals. It must never include document bodies, customer
+data, prompts, tokens, or secrets. Disable it with
+`localStorage.removeItem('FP_FIRESTORE_TRACE')` and reload.
+
+Focused regression command:
+
+```bash
+npx tsx --test packages/shared/src/utils/firestoreUsageTrace.test.ts apps/studio/src/renderer/src/features/firebase/utils/createSharedFirestoreSubscription.test.ts
+```
+
+AI enrichment reference-read diagnostics are structured Functions logs only. Correlate
+`pipeline.invocation.*`, `pipeline.terminal`, `reference_cache.*`, and `reference_query.*` by
+`invocationId`; do not add Firestore reads solely to produce diagnostics.
+
 ### Etsy recommendations (Phase 9A)
 
 ```bash
@@ -147,6 +178,10 @@ Studio sidebar **Test Data** (`/test-data-reset`) — **owner** on `fresh-prints
    - **Etsy** — search docs + rate limits + suggestion overlays + pending suggestion requests + inert leftovers (`etsyRecommendationConfig`, `etsyWebsiteSearchCache`, `customRequestEtsySearchRateLimits`).
    - **Custom Requests** — Assisted Creation docs/Storage + `assistedCreationUpdateAcks`, `customerNotifications`, `emailDeliveryJobs`, legacy `customRequests`.
    - **Customer Uploads** — upload docs/ops + `customer-uploads/` Storage.
+   - **Legacy print-limit counters** — optional cleanup of `printRequestDesignDailyLimits`. These
+     counters are no longer written or enforced; deleting them does not change current limit `L`,
+     customer room, or show capacity. Print Requests, Select all, and All (-) Designs continue to
+     include this cleanup target.
    - **AI Processing** — selective delete of AI Processing page designs only (`aiProcessingDesigns`: imported/processing pending, needs review, rejected) + those designs’ Storage; **keeps** ready Design Library and archived designs. Does not require print-request wipe or catalog confirm modal.
    - **Designs + prints** — designs + print requests + sequences (extra catalog confirm). Mutually exclusive with AI Processing in the UI toggle.
    - **All (-) Designs** — all ops targets except full Designs (includes AI Processing selective wipe; keeps ready catalog docs + full design Storage prefixes).
@@ -178,12 +213,37 @@ Studio sidebar **Test Data** (`/test-data-reset`) — **owner** on `fresh-prints
 
 Local commands should mirror CI where possible.
 
+### Wave C snapshot and rules verification
+
+```bash
+npx tsx --test functions/src/catalogSnapshots/snapshotBuilders.test.ts packages/shared/src/catalog-snapshots/catalogSnapshot.parsers.test.ts apps/portal/features/catalog/services/catalogDesignByIdCache.test.ts apps/portal/features/print-requests/utils/portalPrintProgressPolling.test.ts
+npm run build --prefix functions
+npm run typecheck --workspace @fresh-prints/portal
+npm run test:rules
+```
+
+`npm run test:rules` uses the official `@firebase/rules-unit-testing` harness and Firestore/Storage
+emulators. Java must be installed and on `PATH`; inability to spawn Java is an environment failure,
+not a rules pass. Snapshot tests must cover projection parity/no AI guidance in client output,
+schema rejection, deterministic versions, asset budgets, manifest-last behavior, bounded generated
+pages, cache dedupe/rejection eviction/invalidation, and polling stop/backoff.
+
+**Java version:** Firebase CLI 15.x requires **Java 21 or newer** to run the emulators
+(`firebase-tools no longer supports Java version before 21` on older JDKs). If a machine has no
+system Java and no admin rights are available, a user-scoped portable JDK works without any system
+changes: download an Eclipse Temurin 21 build for the platform, extract it to a user-writable
+directory (e.g. `%USERPROFILE%\.local-jdk` on Windows), and set `JAVA_HOME`/prepend `PATH` for the
+current shell only — no installer, no registry changes, no elevation. Confirm with `java -version`
+before running `npm run test:rules`.
+
 ---
 
 ## Revision History
 
 | Date | Summary |
 |------|---------|
+| 2026-07-29 | Test Data Reset: relabeled obsolete Cap A data as optional Legacy print-limit counters cleanup; active limit `L`, customer room, and show capacity are unaffected |
+| 2026-07-23 | `npm run test:rules` requires Java 21+ (Firebase CLI 15.x); documented user-scoped portable-JDK setup with no admin rights |
 | 2026-07-21 | Test Data Reset: AI Processing selective designs wipe preset/target |
 | 2026-07-18 | Test Data Reset presets + short labels; Custom/Etsy wipe expand side leftovers (incl. overlays) |
 | 2026-07-18 | Test Data Reset preset: All (-) Designs |

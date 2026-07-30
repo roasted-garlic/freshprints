@@ -32,14 +32,23 @@ import {
 } from "../../../packages/shared/src/utils/customerUploadTransparency";
 
 import { storageObjectPath } from "./storageObjectPath";
+import { getSharp } from "./lazySharp";
 
 export { storageObjectPath };
 
-/** Lazy-load native sharp — keep deploy discovery off the cold native require path. */
-function getSharp(): typeof import("sharp") {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  return require("sharp") as typeof import("sharp");
-}
+/**
+ * Decoder-time pixel bound passed to every `getSharp()(...)` call in this module. Deliberately
+ * set to **sharp's own built-in decoder default** (`0x3FFF * 0x3FFF` = 268,435,456 px, ~1.0 GiB
+ * max RGBA buffer — well within the 2 GiB function memory budget), not to
+ * {@link CUSTOMER_UPLOAD_MAX_TOTAL_PIXELS}. Binding this to the app-level 100,000,000-pixel
+ * ceiling would reject the *decode itself* for any oversized-but-trimmable canvas before trim
+ * ever runs — exactly the bug this Plan (ADR-FP-125) exists to fix. This bound exists only to
+ * cap the pathological/adversarial case (a maliciously or accidentally enormous source) at a
+ * memory-safe ceiling; the actual product-level ceiling
+ * (`CUSTOMER_UPLOAD_MAX_DIMENSION_PX`/`CUSTOMER_UPLOAD_MAX_TOTAL_PIXELS`) is enforced afterward,
+ * against post-trim dimensions, by `processCustomerUploadImageBytes` itself.
+ */
+export const CUSTOMER_UPLOAD_DECODE_MAX_INPUT_PIXELS = 0x3fff * 0x3fff;
 
 export interface CustomerUploadProcessingSuccess {
   ok: true;
@@ -50,6 +59,17 @@ export interface CustomerUploadProcessingSuccess {
   heightPx: number;
   wasUpscaled: boolean;
   wasTrimmed: boolean;
+  /**
+   * True only when the downscale-only dimension-ceiling normalization pass ran (ADR-FP-125).
+   * Independent of, and not mutually exclusive with, `wasUpscaled` — both are separate booleans
+   * for separate, opposite-direction operations; a future scenario could in principle have both
+   * true, even though today's policy makes that combination unreachable in practice (normalization
+   * only fires on still-oversized images, which are never also upscale candidates).
+   */
+  wasNormalizedForDimensions: boolean;
+  /** Source dimensions before this pass's normalization; equal to widthPx/heightPx when normalization did not run. */
+  preNormalizationWidthPx: number;
+  preNormalizationHeightPx: number;
   upscaleFactor: number;
   upscalePassCount: 0 | 1;
   approvedMaxPrintWidthInches: number;
@@ -66,6 +86,13 @@ export interface CustomerUploadProcessingSuccess {
   printWidthInches: number;
   printHeightInches: number;
   effectiveDpi: number;
+  /**
+   * Sanitized per-stage duration (ms), keyed by progress-stage name. Contains only stage names
+   * and numbers — no artwork content, filenames, or customer identifiers. Callers (finalize/retry
+   * callables) are responsible for attaching this to a structured log entry; this library
+   * function never logs directly, keeping it a pure, directly-testable unit.
+   */
+  stageTimingsMs: Partial<Record<CustomerUploadTechnicalProgressStage, number>>;
 }
 
 export interface CustomerUploadProcessingFailure {
@@ -102,14 +129,39 @@ function fail(
   return { ok: false, code, message };
 }
 
-async function reportStage(
-  onStage: ProcessCustomerUploadImageOptions["onStage"],
-  stage: CustomerUploadTechnicalProgressStage,
-): Promise<void> {
-  if (!onStage) {
-    return;
+/**
+ * Tracks sanitized per-stage wall-clock duration alongside the existing `onStage` progress
+ * callback. `enter(stage)` closes out the previous stage's elapsed time (if any) before invoking
+ * `onStage` for the new one; call `finish()` once at the end to close out the final open stage.
+ */
+class StageTimer {
+  private readonly timingsMs: Partial<Record<CustomerUploadTechnicalProgressStage, number>> = {};
+  private currentStage: CustomerUploadTechnicalProgressStage | null = null;
+  private currentStageStartedAt = 0;
+
+  constructor(private readonly onStage: ProcessCustomerUploadImageOptions["onStage"]) {}
+
+  async enter(stage: CustomerUploadTechnicalProgressStage): Promise<void> {
+    this.closeCurrentStage();
+    this.currentStage = stage;
+    this.currentStageStartedAt = Date.now();
+    if (this.onStage) {
+      await this.onStage(stage);
+    }
   }
-  await onStage(stage);
+
+  finish(): Partial<Record<CustomerUploadTechnicalProgressStage, number>> {
+    this.closeCurrentStage();
+    return this.timingsMs;
+  }
+
+  private closeCurrentStage(): void {
+    if (!this.currentStage) {
+      return;
+    }
+    const elapsed = Date.now() - this.currentStageStartedAt;
+    this.timingsMs[this.currentStage] = (this.timingsMs[this.currentStage] ?? 0) + elapsed;
+  }
 }
 
 function detectFormat(metadata: Metadata): CustomerUploadSourceFormat | null {
@@ -204,7 +256,10 @@ async function probeNeedsTransparentEdgeTrim(
   const maxSide = Math.max(sourceWidth, sourceHeight);
   const sampleMax = 512;
   try {
-    let pipeline = getSharp()(input, { failOn: "error" }).ensureAlpha();
+    let pipeline = getSharp()(input, {
+      failOn: "error",
+      limitInputPixels: CUSTOMER_UPLOAD_DECODE_MAX_INPUT_PIXELS,
+    }).ensureAlpha();
     if (maxSide > sampleMax) {
       pipeline = pipeline.resize({
         width: sourceWidth >= sourceHeight ? sampleMax : undefined,
@@ -241,7 +296,19 @@ async function probeNeedsTransparentEdgeTrim(
   }
 }
 
-async function trimTransparentEdges(input: Buffer): Promise<{
+/**
+ * Trims transparent margins at full resolution. Callers must already know `originalWidth`/
+ * `originalHeight` (from an earlier bounded metadata read) and pass them in — this function
+ * never re-derives them via a separate `.metadata()` decode. The trim's own
+ * `.toBuffer({ resolveWithObject: true })` call returns `info.width`/`info.height` from the same
+ * operation that produced the trimmed bytes, eliminating what was previously a third full-
+ * resolution decode. Net: one full-resolution decode total (the trim itself), not three.
+ */
+async function trimTransparentEdges(
+  input: Buffer,
+  originalWidth: number,
+  originalHeight: number,
+): Promise<{
   bytes: Buffer;
   width: number;
   height: number;
@@ -249,20 +316,18 @@ async function trimTransparentEdges(input: Buffer): Promise<{
   originalWidth: number;
   originalHeight: number;
 }> {
-  const originalMeta = await getSharp()(input, { failOn: "error" }).metadata();
-  const originalWidth = originalMeta.width ?? 0;
-  const originalHeight = originalMeta.height ?? 0;
-
   try {
-    const trimmedBytes = await getSharp()(input, { failOn: "error" })
+    const { data: _data, info } = await getSharp()(input, {
+      failOn: "error",
+      limitInputPixels: CUSTOMER_UPLOAD_DECODE_MAX_INPUT_PIXELS,
+    })
       .ensureAlpha()
       .trim({ background: { r: 0, g: 0, b: 0, alpha: 0 } })
       .png()
-      .toBuffer();
+      .toBuffer({ resolveWithObject: true });
 
-    const trimmedMeta = await getSharp()(trimmedBytes, { failOn: "error" }).metadata();
-    const width = trimmedMeta.width ?? originalWidth;
-    const height = trimmedMeta.height ?? originalHeight;
+    const width = info.width ?? originalWidth;
+    const height = info.height ?? originalHeight;
     const wasTrimmed = width !== originalWidth || height !== originalHeight;
 
     if (!wasTrimmed) {
@@ -277,7 +342,7 @@ async function trimTransparentEdges(input: Buffer): Promise<{
     }
 
     return {
-      bytes: trimmedBytes,
+      bytes: Buffer.from(_data),
       width,
       height,
       wasTrimmed: true,
@@ -297,6 +362,75 @@ async function trimTransparentEdges(input: Buffer): Promise<{
   }
 }
 
+
+/**
+ * Downscale-only normalization for a still-oversized (post-trim) image. Strictly separate from
+ * {@link upscaleIfNeeded} (ADR-FP-080's controlled-upscale pass, opposite direction) — this
+ * function only ever shrinks, never enlarges. Triggered only when trimmed dimensions still exceed
+ * {@link CUSTOMER_UPLOAD_MAX_DIMENSION_PX} per side or {@link CUSTOMER_UPLOAD_MAX_TOTAL_PIXELS} in
+ * total (see ADR-FP-125's narrow amendment to ADR-FP-080 item 2). Resizes proportionally
+ * (`fit: "inside"`, no crop/stretch/distort) by the *strictest* of the three possible constraints
+ * — whichever of width-ceiling, height-ceiling, or sqrt(total-pixel-ceiling) implies the smallest
+ * scale factor wins, so the result satisfies all three ceilings simultaneously, not just one.
+ * The caller (`wasNormalizedForDimensions`) and `wasUpscaled` are independent, non-mutually-
+ * exclusive booleans — this pass never sets `wasUpscaled`, and `upscaleIfNeeded` never sets
+ * `wasNormalizedForDimensions`; nothing in the type system couples them, so downstream code must
+ * not assume only one can ever be true.
+ */
+async function normalizeForDimensionCeiling(
+  pngBytes: Buffer,
+  width: number,
+  height: number,
+): Promise<{
+  bytes: Buffer;
+  width: number;
+  height: number;
+  wasNormalizedForDimensions: boolean;
+  preNormalizationWidthPx: number;
+  preNormalizationHeightPx: number;
+}> {
+  const exceedsDimension =
+    width > CUSTOMER_UPLOAD_MAX_DIMENSION_PX || height > CUSTOMER_UPLOAD_MAX_DIMENSION_PX;
+  const exceedsTotalPixels = width * height > CUSTOMER_UPLOAD_MAX_TOTAL_PIXELS;
+
+  if (!exceedsDimension && !exceedsTotalPixels) {
+    return {
+      bytes: pngBytes,
+      width,
+      height,
+      wasNormalizedForDimensions: false,
+      preNormalizationWidthPx: width,
+      preNormalizationHeightPx: height,
+    };
+  }
+
+  // Strictest-wins: compute the scale factor implied by each ceiling independently, then use the
+  // smallest (most restrictive) one so every ceiling is satisfied at once.
+  const widthScale = CUSTOMER_UPLOAD_MAX_DIMENSION_PX / width;
+  const heightScale = CUSTOMER_UPLOAD_MAX_DIMENSION_PX / height;
+  const totalPixelScale = Math.sqrt(CUSTOMER_UPLOAD_MAX_TOTAL_PIXELS / (width * height));
+  const scale = Math.min(1, widthScale, heightScale, totalPixelScale);
+
+  const targetWidth = Math.max(1, Math.floor(width * scale));
+  const targetHeight = Math.max(1, Math.floor(height * scale));
+
+  const { data: _data, info } = await getSharp()(pngBytes, {
+    failOn: "error",
+    limitInputPixels: CUSTOMER_UPLOAD_DECODE_MAX_INPUT_PIXELS,
+  })
+    .resize(targetWidth, targetHeight, { fit: "inside", withoutEnlargement: true })
+    .png()
+    .toBuffer({ resolveWithObject: true });
+
+  return {
+    bytes: Buffer.from(_data),
+    width: info.width ?? targetWidth,
+    height: info.height ?? targetHeight,
+    wasNormalizedForDimensions: true,
+    preNormalizationWidthPx: width,
+    preNormalizationHeightPx: height,
+  };
+}
 
 async function upscaleIfNeeded(
   pngBytes: Buffer,
@@ -374,12 +508,16 @@ export async function processCustomerUploadImageBytes(
 
   const assistedFast = Boolean(options.assistedProofFastIngest);
   const skipQualityGates = Boolean(options.skipCustomerQualityGates) || assistedFast;
+  const stageTimer = new StageTimer(options.onStage);
 
-  await reportStage(options.onStage, "checking_format");
+  await stageTimer.enter("checking_format");
 
   let metadata: Metadata;
   try {
-    metadata = await getSharp()(sourceBytes, { failOn: "error" }).metadata();
+    metadata = await getSharp()(sourceBytes, {
+      failOn: "error",
+      limitInputPixels: CUSTOMER_UPLOAD_DECODE_MAX_INPUT_PIXELS,
+    }).metadata();
   } catch {
     return fail("could_not_decode", "Could not decode image.");
   }
@@ -406,26 +544,28 @@ export async function processCustomerUploadImageBytes(
     return fail("could_not_decode", "Could not decode image dimensions.");
   }
 
-  if (
-    sourceWidthPx > CUSTOMER_UPLOAD_MAX_DIMENSION_PX ||
-    sourceHeightPx > CUSTOMER_UPLOAD_MAX_DIMENSION_PX ||
-    sourceWidthPx * sourceHeightPx > CUSTOMER_UPLOAD_MAX_TOTAL_PIXELS
-  ) {
-    return fail("image_exceeds_limits", "Image dimensions exceed the allowed limits.");
-  }
-
   // JPEG (staff proof path) is normalized to PNG; customer-upload sourceFormat stays png|webp.
   const sourceFormat: CustomerUploadSourceFormat = detected === "jpeg" ? "png" : detected;
 
   // Assisted ingest: skip transparency / trim / upscale. Copy-friendly production when PNG/WebP.
+  // No trim-based rescue is attempted on this path, so the dimension/pixel ceiling is still
+  // evaluated against the raw source here (unlike the main path below, which defers this check
+  // until after a trim attempt has had a chance to bring an oversized-canvas image back in range).
   if (assistedFast) {
+    if (
+      sourceWidthPx > CUSTOMER_UPLOAD_MAX_DIMENSION_PX ||
+      sourceHeightPx > CUSTOMER_UPLOAD_MAX_DIMENSION_PX ||
+      sourceWidthPx * sourceHeightPx > CUSTOMER_UPLOAD_MAX_TOTAL_PIXELS
+    ) {
+      return fail("image_exceeds_limits", "Image dimensions exceed the allowed limits.");
+    }
     let productionPng: Buffer = sourceBytes;
     let productionWidth = sourceWidthPx;
     let productionHeight = sourceHeightPx;
     let productionReusedSource = detected === "png" || detected === "webp";
 
     if (detected === "jpeg") {
-      await reportStage(options.onStage, "converting_format");
+      await stageTimer.enter("converting_format");
       try {
         productionPng = await getSharp()(sourceBytes, { failOn: "error" })
           .ensureAlpha()
@@ -440,7 +580,7 @@ export async function processCustomerUploadImageBytes(
       productionReusedSource = false;
     }
 
-    await reportStage(options.onStage, "checking_print_size");
+    await stageTimer.enter("checking_print_size");
     const assessmentResult = assessPrintSizeCapability(productionWidth, productionHeight);
     if (!assessmentResult.success) {
       return fail("image_exceeds_limits", assessmentResult.error);
@@ -463,7 +603,7 @@ export async function processCustomerUploadImageBytes(
       upscaleFactor: 1,
     });
 
-    await reportStage(options.onStage, "creating_previews");
+    await stageTimer.enter("creating_previews");
     let previewWebp: Buffer;
     let thumbnailWebp: Buffer;
     try {
@@ -494,6 +634,9 @@ export async function processCustomerUploadImageBytes(
       heightPx: productionHeight,
       wasUpscaled: false,
       wasTrimmed: false,
+      wasNormalizedForDimensions: false,
+      preNormalizationWidthPx: productionWidth,
+      preNormalizationHeightPx: productionHeight,
       upscaleFactor: sizingMeta.upscaleFactor,
       upscalePassCount: sizingMeta.upscalePassCount,
       approvedMaxPrintWidthInches: sizingMeta.approvedMaxPrintWidthInches,
@@ -508,10 +651,11 @@ export async function processCustomerUploadImageBytes(
       printWidthInches: printFields.printWidthInches,
       printHeightInches: printFields.printHeightInches,
       effectiveDpi: printFields.effectiveDpi,
+      stageTimingsMs: stageTimer.finish(),
     };
   }
 
-  await reportStage(options.onStage, "checking_transparency");
+  await stageTimer.enter("checking_transparency");
 
   const hasAlphaMeta = Boolean(metadata.hasAlpha);
   let trimmedProbe: Awaited<ReturnType<typeof trimTransparentEdges>> | null = null;
@@ -541,11 +685,13 @@ export async function processCustomerUploadImageBytes(
     }
   }
 
-  // Only run the expensive full trim when sampling did not already prove transparency.
+  // Only run the expensive full trim when sampling did not already prove transparency. This is
+  // still validation, not production trimming, so it deliberately stays inside the
+  // checking_transparency stage rather than entering "trimming" — otherwise a rejected upload
+  // could show "Trimming transparent edges…" moments before being rejected.
   if (!transparency.passed && !skipQualityGates) {
-    await reportStage(options.onStage, "trimming");
     try {
-      trimmedProbe = await trimTransparentEdges(sourceBytes);
+      trimmedProbe = await trimTransparentEdges(sourceBytes, sourceWidthPx, sourceHeightPx);
     } catch {
       return fail("transparency_check_failed", "Could not validate image transparency.");
     }
@@ -600,8 +746,8 @@ export async function processCustomerUploadImageBytes(
       sourceHeightPx,
     );
     if (needsTrim) {
-      await reportStage(options.onStage, "trimming");
-      const trimmed = await trimTransparentEdges(sourceBytes);
+      await stageTimer.enter("trimming");
+      const trimmed = await trimTransparentEdges(sourceBytes, sourceWidthPx, sourceHeightPx);
       productionBase = trimmed.bytes;
       productionWidth = trimmed.width;
       productionHeight = trimmed.height;
@@ -615,29 +761,86 @@ export async function processCustomerUploadImageBytes(
       productionReusedSource = true;
     }
   } else {
-    await reportStage(options.onStage, "converting_format");
+    await stageTimer.enter("converting_format");
+    let convertedWidth: number;
+    let convertedHeight: number;
     try {
-      productionBase = await getSharp()(sourceBytes, { failOn: "error" }).ensureAlpha().png().toBuffer();
+      const { data: _convertedData, info: convertedInfo } = await getSharp()(sourceBytes, {
+        failOn: "error",
+        limitInputPixels: CUSTOMER_UPLOAD_DECODE_MAX_INPUT_PIXELS,
+      })
+        .ensureAlpha()
+        .png()
+        .toBuffer({ resolveWithObject: true });
+      productionBase = Buffer.from(_convertedData);
+      convertedWidth = convertedInfo.width ?? sourceWidthPx;
+      convertedHeight = convertedInfo.height ?? sourceHeightPx;
     } catch {
       return fail("processing_failed", "Image processing failed.");
     }
-    const normalizedMeta = await getSharp()(productionBase, { failOn: "error" }).metadata();
-    productionWidth = normalizedMeta.width ?? sourceWidthPx;
-    productionHeight = normalizedMeta.height ?? sourceHeightPx;
+    productionWidth = convertedWidth;
+    productionHeight = convertedHeight;
     wasTrimmed = false;
 
-    await reportStage(options.onStage, "trimming");
-    const trimmed = await trimTransparentEdges(productionBase);
+    await stageTimer.enter("trimming");
+    const trimmed = await trimTransparentEdges(productionBase, convertedWidth, convertedHeight);
     productionBase = trimmed.bytes;
     productionWidth = trimmed.width;
     productionHeight = trimmed.height;
     wasTrimmed = trimmed.wasTrimmed;
   }
 
+  // Downscale-only normalization (ADR-FP-125): only reached when the trimmed image still exceeds
+  // the technical ceiling. Runs before the upscale check below so upscale never operates on an
+  // already-oversized image; the two passes are mutually unreachable in today's policy (a
+  // just-normalized image is, by construction, at or under the ceiling and therefore not itself an
+  // upscale candidate), but the fields they set (`wasNormalizedForDimensions`/`wasUpscaled`) remain
+  // independent booleans, not structurally coupled.
+  let normalization: Awaited<ReturnType<typeof normalizeForDimensionCeiling>>;
+  if (
+    productionWidth > CUSTOMER_UPLOAD_MAX_DIMENSION_PX ||
+    productionHeight > CUSTOMER_UPLOAD_MAX_DIMENSION_PX ||
+    productionWidth * productionHeight > CUSTOMER_UPLOAD_MAX_TOTAL_PIXELS
+  ) {
+    await stageTimer.enter("checking_print_size");
+    try {
+      normalization = await normalizeForDimensionCeiling(
+        productionBase,
+        productionWidth,
+        productionHeight,
+      );
+    } catch {
+      return fail("image_exceeds_limits", "Image dimensions exceed the allowed limits.");
+    }
+    productionBase = normalization.bytes;
+    productionWidth = normalization.width;
+    productionHeight = normalization.height;
+    productionReusedSource = false;
+
+    // Still over the ceiling after normalizing to the technical maximum — a genuine reject case,
+    // not a silent quality loss (the Plan's "reject only when normalization cannot safely succeed").
+    if (
+      productionWidth > CUSTOMER_UPLOAD_MAX_DIMENSION_PX ||
+      productionHeight > CUSTOMER_UPLOAD_MAX_DIMENSION_PX ||
+      productionWidth * productionHeight > CUSTOMER_UPLOAD_MAX_TOTAL_PIXELS
+    ) {
+      return fail("image_exceeds_limits", "Image dimensions exceed the allowed limits.");
+    }
+  } else {
+    normalization = {
+      bytes: productionBase,
+      width: productionWidth,
+      height: productionHeight,
+      wasNormalizedForDimensions: false,
+      preNormalizationWidthPx: productionWidth,
+      preNormalizationHeightPx: productionHeight,
+    };
+  }
+
   const upscaleTarget = resolveImportUpscaleTargetPx(productionWidth, productionHeight);
   let upscaled: Awaited<ReturnType<typeof upscaleIfNeeded>>;
   if (upscaleTarget) {
-    await reportStage(options.onStage, "upscaling");
+    await stageTimer.enter("upscaling");
     upscaled = await upscaleIfNeeded(productionBase, productionWidth, productionHeight);
     productionReusedSource = false;
   } else {
@@ -653,7 +856,7 @@ export async function processCustomerUploadImageBytes(
     };
   }
 
-  await reportStage(options.onStage, "checking_print_size");
+  await stageTimer.enter("checking_print_size");
 
   const assessmentResult = assessPrintSizeCapability(upscaled.width, upscaled.height);
   if (!assessmentResult.success) {
@@ -666,7 +869,7 @@ export async function processCustomerUploadImageBytes(
     );
   }
 
-  let printFields = buildImportPrintSizeCreateFields({
+  const printFields = buildImportPrintSizeCreateFields({
     pixelWidth: upscaled.width,
     pixelHeight: upscaled.height,
     assessment:
@@ -688,7 +891,7 @@ export async function processCustomerUploadImageBytes(
       | undefined,
   });
 
-  await reportStage(options.onStage, "creating_previews");
+  await stageTimer.enter("creating_previews");
 
   let previewWebp: Buffer;
   let thumbnailWebp: Buffer;
@@ -720,6 +923,9 @@ export async function processCustomerUploadImageBytes(
     heightPx: upscaled.height,
     wasUpscaled: upscaled.wasUpscaled,
     wasTrimmed,
+    wasNormalizedForDimensions: normalization.wasNormalizedForDimensions,
+    preNormalizationWidthPx: normalization.preNormalizationWidthPx,
+    preNormalizationHeightPx: normalization.preNormalizationHeightPx,
     upscaleFactor: sizingMeta.upscaleFactor,
     upscalePassCount: sizingMeta.upscalePassCount,
     approvedMaxPrintWidthInches: sizingMeta.approvedMaxPrintWidthInches,
@@ -728,7 +934,11 @@ export async function processCustomerUploadImageBytes(
     ...(sizingMeta.sizingWarningCode
       ? { sizingWarningCode: sizingMeta.sizingWarningCode }
       : {}),
-    productionReusedSource: productionReusedSource && !upscaled.wasUpscaled && !wasTrimmed,
+    productionReusedSource:
+      productionReusedSource &&
+      !upscaled.wasUpscaled &&
+      !wasTrimmed &&
+      !normalization.wasNormalizedForDimensions,
     transparencyPassed: true,
     transparentPixelRatio: transparency.transparentPixelRatio,
     productionPng: upscaled.bytes,
@@ -737,6 +947,7 @@ export async function processCustomerUploadImageBytes(
     printWidthInches: printFields.printWidthInches,
     printHeightInches: printFields.printHeightInches,
     effectiveDpi: printFields.effectiveDpi,
+    stageTimingsMs: stageTimer.finish(),
   };
 }
 

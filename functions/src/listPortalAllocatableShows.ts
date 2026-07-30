@@ -4,10 +4,7 @@ import { onCall } from "firebase-functions/v2/https";
 import type { ListPortalAllocatableShowsResponse } from "../../packages/shared/src/types/portal/listPortalAllocatableShows.types";
 import type { ShowProductionStatus } from "../../packages/shared/src/types/upcomingShow/upcomingShow.enums";
 import { canAcceptNewShowAllocations } from "../../packages/shared/src/utils/showAllocationEligibility";
-import {
-  filterShowsAvailableForAllocation,
-  isPastScheduledShow,
-} from "../../packages/shared/src/utils/showScheduleGrouping";
+import { filterShowsAvailableForAllocation } from "../../packages/shared/src/utils/showScheduleGrouping";
 import {
   getPortalQueueCutoffAt,
   isPastPortalQueueCutoff,
@@ -15,6 +12,7 @@ import {
 import { adminDb } from "./lib/admin";
 import { internal, unauthenticated } from "./lib/errors";
 import { loadPortalQueueCutoffHours } from "./lib/loadPortalQueueCutoffHours";
+import { shouldIncludePortalCalendarShow } from "./lib/portalCalendarShowVisibility";
 import { requirePortalCustomer } from "./lib/portalCustomer";
 
 /** Include past shows from the start of (current month − 2) for calendar highlights. */
@@ -69,6 +67,7 @@ export const listPortalAllocatableShows = onCall(async (request): Promise<ListPo
   }
 
   try {
+    const startedAtMs = Date.now();
     const customer = await requirePortalCustomer(request.auth.uid);
 
     const now = new Date();
@@ -80,6 +79,7 @@ export const listPortalAllocatableShows = onCall(async (request): Promise<ListPo
       .collection("upcomingShows")
       .where("scheduledStartAt", ">=", Timestamp.fromDate(pastWindowStart))
       .get();
+    const showDocumentsReturned = snapshot.size;
 
     const shows: InternalAllocatableShow[] = snapshot.docs.flatMap((showDoc) => {
       const data = showDoc.data();
@@ -125,28 +125,24 @@ export const listPortalAllocatableShows = onCall(async (request): Promise<ListPo
         .map((show) => show.id),
     );
 
-    const calendarShows = shows.filter((show) => {
-      if (allocatableIds.has(show.id) || pastCutoffUpcomingIds.has(show.id)) {
-        return true;
-      }
-
-      if (!show.scheduledStartAt) {
-        return false;
-      }
-
-      if (!isPastScheduledShow(show, now)) {
-        return false;
-      }
-
-      return show.scheduledStartAt.toDate().getTime() >= pastWindowStart.getTime();
-    });
+    const calendarShows = shows.filter((show) =>
+      shouldIncludePortalCalendarShow({
+        show,
+        allocatableIds,
+        pastCutoffUpcomingIds,
+        now,
+        pastWindowStart,
+      }),
+    );
 
     const customerQtyByShowId = new Map<string, number>();
+    let allocationDocumentsReturned = 0;
     if (calendarShows.length > 0) {
       const customerAllocationsSnap = await adminDb
         .collection("showAllocations")
         .where("customerId", "==", customer.customerId)
         .get();
+      allocationDocumentsReturned = customerAllocationsSnap.size;
 
       for (const docSnap of customerAllocationsSnap.docs) {
         const data = docSnap.data();
@@ -200,10 +196,34 @@ export const listPortalAllocatableShows = onCall(async (request): Promise<ListPo
         return left.scheduledStartAt.localeCompare(right.scheduledStartAt);
       });
 
-    return {
+    const result = {
       shows: responseShows,
       portalQueueCutoffHoursBeforeStart,
     };
+    if (process.env.GCLOUD_PROJECT === "fresh-prints-dev") {
+      const allocationQueryRan = calendarShows.length > 0;
+      console.info("portal-allocatable-shows-accounting", {
+        functionName: "listPortalAllocatableShows",
+        eventClassification: "explicit-show-picker-open",
+        readOperations: 4 + (allocationQueryRan ? 1 : 0),
+        documentsReturned: 3 + showDocumentsReturned + allocationDocumentsReturned,
+        approximateBillableReads:
+          3 +
+          Math.max(1, showDocumentsReturned) +
+          (allocationQueryRan ? Math.max(1, allocationDocumentsReturned) : 0),
+        showDocumentsReturned,
+        allocationDocumentsReturned,
+        writes: 0,
+        deletes: 0,
+        transactionAttempts: 0,
+        batchSize: 0,
+        retryNumber: 0,
+        duplicateSkip: false,
+        durationMs: Date.now() - startedAtMs,
+        outcome: "success",
+      });
+    }
+    return result;
   } catch (error) {
     mapHttpsError(error);
   }

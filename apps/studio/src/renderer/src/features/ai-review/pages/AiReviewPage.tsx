@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { ConfirmLeaveDialog } from "../../../shared/components/ConfirmLeaveDialog";
 import type { SelectOption } from "../../../shared/components/Select";
 import { useShellHeaderConfig } from "../../../shared/hooks/useShellHeaderConfig";
-import { useCategories } from "../../designs/hooks/useCategories";
+import { useGeneratedDesignLibraryTaxonomy } from "../../designs/hooks/useGeneratedDesignLibraryTaxonomy";
 import {
   AI_PROCESSING_PAGE_DESCRIPTION,
   AI_PROCESSING_PAGE_TITLE,
@@ -31,12 +31,16 @@ function AiReviewPageContent() {
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [isInputFocused, setIsInputFocused] = useState(false);
-  const [statsRefreshKey, setStatsRefreshKey] = useState(0);
   const filters = useMemo(() => parseAiReviewInboxFilters(searchParams), [searchParams]);
-  const wasInboxLoadingRef = useRef(true);
   const canManageProcessingSettings = permissionService.canManageSettings(user);
 
-  const { categories } = useCategories();
+  // Read-only, active-only filter dropdown data — reuses the same zero-Firestore-read generated
+  // client-safe taxonomy snapshot the Design Library already consumes (Wave C amendment,
+  // 2026-07-24), instead of the Firestore-backed `useCategories()`. The snapshot only ever contains
+  // active categories, matching the `isActive` filter this page already applied. A failed snapshot
+  // load must be visible (never a silently-empty dropdown) — required by the 2026-07-25 independent
+  // review; there is no Firestore fallback here by design (fail closed).
+  const { categories, status: taxonomyStatus } = useGeneratedDesignLibraryTaxonomy(user);
 
   const categoryOptions = useMemo<SelectOption[]>(
     () =>
@@ -46,7 +50,7 @@ function AiReviewPageContent() {
     [categories],
   );
 
-  const tabCounts = useAiReviewTabCounts(statsRefreshKey);
+  const tabCounts = useAiReviewTabCounts();
   const enrichmentSettings = useAiEnrichmentSettings();
   const { layoutStyle, mainPanelRef } = useAiReviewMainPanelHeight();
 
@@ -72,14 +76,6 @@ function AiReviewPageContent() {
   );
 
   useShellHeaderConfig(shellHeaderConfig);
-
-  useEffect(() => {
-    if (wasInboxLoadingRef.current && !inbox.isLoading) {
-      setStatsRefreshKey((currentKey) => currentKey + 1);
-    }
-
-    wasInboxLoadingRef.current = inbox.isLoading;
-  }, [inbox.isLoading]);
 
   useAiReviewKeyboardShortcuts({
     canApprove: inbox.canApprove,
@@ -112,6 +108,12 @@ function AiReviewPageContent() {
           message={inbox.error}
           onRetry={() => void inbox.reloadDesigns()}
         />
+      ) : null}
+
+      {taxonomyStatus === "failed" ? (
+        <p className="form-error" role="alert">
+          Category filters are temporarily unavailable.
+        </p>
       ) : null}
 
       <div className="ai-review-layout" style={layoutStyle}>

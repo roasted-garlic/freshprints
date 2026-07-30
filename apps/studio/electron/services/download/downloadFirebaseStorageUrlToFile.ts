@@ -3,35 +3,10 @@ import path from "node:path";
 
 import { BrowserWindow, dialog } from "electron";
 
-const ALLOWED_DOWNLOAD_URL_HOSTS = new Set([
-  "firebasestorage.googleapis.com",
-  "storage.googleapis.com",
-]);
+import { isAllowedFirebaseStorageDownloadUrl } from "./firebaseStorageDownloadUrl";
+import { sanitizeDownloadFileName } from "./downloadFileName";
 
-function isAllowedFirebaseStorageDownloadUrl(value: string): boolean {
-  try {
-    const parsed = new URL(value);
-    if (parsed.protocol !== "https:") {
-      return false;
-    }
-    if (ALLOWED_DOWNLOAD_URL_HOSTS.has(parsed.host)) {
-      return true;
-    }
-    // Newer Firebase Storage hostnames: <bucket>.firebasestorage.app
-    return parsed.host.endsWith(".firebasestorage.app");
-  } catch {
-    return false;
-  }
-}
-
-function sanitizeDownloadFileName(raw: string): string {
-  const base = path.basename(raw.trim() || "download");
-  const cleaned = base.replace(/[<>:"/\\|?*\u0000-\u001f]/g, "_").replace(/\s+/g, " ").trim();
-  if (!cleaned || cleaned === "." || cleaned === "..") {
-    return "download.bin";
-  }
-  return cleaned.slice(0, 180);
-}
+export { isAllowedFirebaseStorageDownloadUrl } from "./firebaseStorageDownloadUrl";
 
 function extensionFromContentType(contentType: string | null): string | null {
   if (!contentType) {

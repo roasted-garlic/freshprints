@@ -22,7 +22,7 @@ interface EditDesignModalProps {
   design: Design | null;
   isOpen: boolean;
   onClose: () => void;
-  onUpdated: () => Promise<void> | void;
+  onUpdated: (design: Design) => Promise<void> | void;
 }
 
 export function EditDesignModal({
@@ -82,8 +82,8 @@ export function EditDesignModal({
     }
 
     try {
-      await updateDesign(design!.id, updateInput);
-      await onUpdated();
+      const updatedDesign = await updateDesign(design!.id, updateInput);
+      await onUpdated(updatedDesign);
       onClose();
     } catch {
       // Error handled in hook.

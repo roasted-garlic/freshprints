@@ -7,12 +7,11 @@ const STAGES: PortalPrintProgressStage[] = ['queued', 'printing', 'done'];
 
 interface PortalPrintRequestProgressPanelProps {
   activeStage: PortalPrintProgressStage;
-  formattedElapsed?: string;
   isLive?: boolean;
   isLoading?: boolean;
   isPaused?: boolean;
   showElapsed?: boolean;
-  /** Shown instead of the timer while the request is queued / not yet printing. */
+  /** Status copy shown while the request is queued / not yet printing. */
   waitingLabel?: string;
 }
 
@@ -39,7 +38,6 @@ function getStatusChipLabel(input: {
 
 export function PortalPrintRequestProgressPanel({
   activeStage,
-  formattedElapsed = '0:00',
   isLive = false,
   isLoading = false,
   isPaused = false,
@@ -52,11 +50,7 @@ export function PortalPrintRequestProgressPanel({
     !showElapsed && !isRunning && !isPaused && activeStage !== 'done' && !isLoading;
   const statusChip = getStatusChipLabel({ activeStage, isRunning, isLoading, isPaused });
   const showPulse = isRunning && activeStage === 'printing';
-  const readoutText = showWaitingCopy
-    ? waitingLabel
-    : isLoading
-      ? '…'
-      : formattedElapsed;
+  const statusText = showWaitingCopy ? waitingLabel : null;
 
   return (
     <section
@@ -84,17 +78,9 @@ export function PortalPrintRequestProgressPanel({
           <span className="portal-print-progress-status-chip">{statusChip}</span>
         </div>
 
-        <p
-          className={[
-            'portal-print-progress-elapsed',
-            showWaitingCopy ? 'is-waiting' : '',
-            isLoading ? 'is-pending' : '',
-          ]
-            .filter(Boolean)
-            .join(' ')}
-        >
-          {readoutText}
-        </p>
+        {statusText ? (
+          <p className="portal-print-progress-elapsed is-waiting">{statusText}</p>
+        ) : null}
       </div>
 
       <div className="portal-print-progress-side">

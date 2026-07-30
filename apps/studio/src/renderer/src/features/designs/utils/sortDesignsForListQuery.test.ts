@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import type { Design } from "../types/design.types";
-import { sortDesignsForListQuery } from "./sortDesignsForListQuery";
+import {
+  sortDesignsForListQuery,
+  sortListItemsByExplicitMillis,
+} from "./sortDesignsForListQuery";
 
 function createDesign(id: string, createdAtMs: number, updatedAtMs: number): Design {
   return {
@@ -58,6 +61,61 @@ describe("sortDesignsForListQuery", () => {
     assert.deepEqual(
       sorted.map((design) => design.id),
       ["older", "newer"],
+    );
+  });
+
+  it("orders generated list entries by explicit createdAtMs desc", () => {
+    const entries = [
+      { id: "older", createdAtMs: 100 },
+      { id: "newer", createdAtMs: 200 },
+    ];
+
+    const sorted = sortListItemsByExplicitMillis(entries, (entry) => entry.createdAtMs, "desc");
+
+    assert.deepEqual(
+      sorted.map((entry) => entry.id),
+      ["newer", "older"],
+    );
+  });
+
+  it("uses ID desc when explicit creation times are equal", () => {
+    const entries = [
+      { id: "design-a", createdAtMs: 100 },
+      { id: "design-z", createdAtMs: 100 },
+    ];
+
+    const sorted = sortListItemsByExplicitMillis(entries, (entry) => entry.createdAtMs, "desc");
+
+    assert.deepEqual(
+      sorted.map((entry) => entry.id),
+      ["design-z", "design-a"],
+    );
+  });
+
+  it("places missing explicit sort data last without throwing", () => {
+    const entries = [
+      { id: "missing", createdAtMs: undefined },
+      { id: "present", createdAtMs: 100 },
+    ];
+
+    const sorted = sortListItemsByExplicitMillis(entries, (entry) => entry.createdAtMs, "desc");
+
+    assert.deepEqual(
+      sorted.map((entry) => entry.id),
+      ["present", "missing"],
+    );
+  });
+
+  it("does not throw when a Firestore-backed value is unexpectedly missing", () => {
+    const missing = createDesign("missing", 100, 100);
+    missing.createdAt = undefined as unknown as Design["createdAt"];
+    const present = createDesign("present", 200, 200);
+
+    const sorted = sortDesignsForListQuery([missing, present], "createdAt", "desc");
+
+    assert.deepEqual(
+      sorted.map((design) => design.id),
+      ["present", "missing"],
     );
   });
 });

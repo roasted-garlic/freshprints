@@ -42,6 +42,28 @@ describe("validateAddEtsyRecommendationSuggestion", () => {
       (error: unknown) => error instanceof HttpsError && error.code === "invalid-argument",
     );
   });
+
+  it("rejects ASCII control boundaries in labels and search tokens while accepting U+0080", () => {
+    for (const control of ["\u0000", "\u001f", "\u007f"]) {
+      assert.throws(
+        () => validateAddEtsyRecommendationSuggestion({ kind: "style", label: `A${control}B` }),
+        (error: unknown) => error instanceof HttpsError && error.code === "invalid-argument",
+      );
+      assert.throws(
+        () =>
+          validateAddEtsyRecommendationSuggestion({
+            kind: "subject",
+            label: "Valid",
+            apiToken: `A${control}B`,
+          }),
+        (error: unknown) => error instanceof HttpsError && error.code === "invalid-argument",
+      );
+    }
+    assert.equal(
+      validateAddEtsyRecommendationSuggestion({ kind: "style", label: "A\u0080B" }).label,
+      "A\u0080B",
+    );
+  });
 });
 
 describe("assertNoSuggestionCollision", () => {

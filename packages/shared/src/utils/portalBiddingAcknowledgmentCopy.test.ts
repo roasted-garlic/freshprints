@@ -10,7 +10,7 @@ import {
 
 describe("buildPortalBiddingAcknowledgmentCopy", () => {
   it("uses Add to Show Print Run title, queue checkbox, and exclusive note", () => {
-    const copy = buildPortalBiddingAcknowledgmentCopy(1);
+    const copy = buildPortalBiddingAcknowledgmentCopy();
     assert.equal(copy.title, "Add to Show Print Run");
     assert.equal(
       copy.checkboxLabel,
@@ -26,8 +26,8 @@ describe("buildPortalBiddingAcknowledgmentCopy", () => {
   });
 
   it("keeps the same wording regardless of item count", () => {
-    const singular = buildPortalBiddingAcknowledgmentCopy(1);
-    const plural = buildPortalBiddingAcknowledgmentCopy(3);
+    const singular = buildPortalBiddingAcknowledgmentCopy();
+    const plural = buildPortalBiddingAcknowledgmentCopy();
     assert.deepEqual(singular.paragraphs, plural.paragraphs);
     assert.equal(singular.checkboxLabel, plural.checkboxLabel);
   });

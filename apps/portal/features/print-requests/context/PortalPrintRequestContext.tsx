@@ -31,6 +31,7 @@ import { useWorkingCurrentRequestItems } from '../hooks/useWorkingCurrentRequest
 import { portalPrintRequestService } from '../services/portalPrintRequestService';
 import type { PortalRequestDetailFrom } from '../utils/portalRequestDetailReturn';
 import type { CustomerUploadDocSummary } from '../../customer-uploads/services/customerUploadService';
+import type { PortalRequestDesignSummary } from '../hooks/useWorkingCurrentRequestItems';
 
 interface PortalPrintRequestContextValue {
   actionError: string | null;
@@ -78,9 +79,7 @@ interface PortalPrintRequestContextValue {
   /** Seed drawer title/thumb from a known catalog design before Firestore summaries load. */
   seedDesignSummary: (
     designId: string,
-    summary: Awaited<
-      ReturnType<typeof import('../services/portalPrintRequestService').portalPrintRequestService.getReadyDesign>
-    >,
+    summary: PortalRequestDesignSummary,
   ) => void;
   /** Fetch any missing design summaries for Current Request chrome. */
   ensureDesignSummaries: (designIds: string[]) => Promise<void>;
@@ -98,13 +97,17 @@ interface PortalPrintRequestContextValue {
   reloadWorkingItems: (options?: { silent?: boolean; printRequestId?: string }) => Promise<void>;
   /** Immediate local cart clear (e.g. after queue-to-show before list reload finishes). */
   resetWorkingCart: () => void;
+  reconcileQueuedRequest: (
+    printRequestId: string,
+    allocationResult?: { totalAllocatedQuantity: number },
+  ) => void;
   requests: PrintRequest[];
   requestsByTab: Record<PortalPrintRequestListTab, PrintRequest[]>;
   summariesByRequestId: Record<string, PrintRequestItemSummary>;
   uploadSummariesById: Map<string, CustomerUploadDocSummary | null>;
   designSummariesById: Map<
     string,
-    Awaited<ReturnType<typeof import('../services/portalPrintRequestService').portalPrintRequestService.getReadyDesign>>
+    PortalRequestDesignSummary
   >;
   /** The single working request, or null when virtual empty. */
   workingRequest: PrintRequest | null;
@@ -115,6 +118,7 @@ const PortalPrintRequestContext = createContext<PortalPrintRequestContextValue |
 
 export function PortalPrintRequestProvider({ children }: { children: ReactNode }) {
   const printRequests = useMyPrintRequests();
+  const createPrintRequest = printRequests.createPrintRequest;
   const [isCurrentRequestDrawerOpen, setIsCurrentRequestDrawerOpen] = useState(false);
   const [isClearingWorkingRequest, setIsClearingWorkingRequest] = useState(false);
   const [isEnsuringWorkingRequest, setIsEnsuringWorkingRequest] = useState(false);
@@ -151,6 +155,7 @@ export function PortalPrintRequestProvider({ children }: { children: ReactNode }
     isLoadingItems,
     hydratedWorkingRequestId,
     beginPendingItemRemovals,
+    discardPendingWorkingItemLoads,
     endPendingItemRemovals,
     ensureDesignSummaries,
     patchWorkingItems,
@@ -186,8 +191,7 @@ export function PortalPrintRequestProvider({ children }: { children: ReactNode }
     }
 
     setIsEnsuringWorkingRequest(true);
-    const createPromise = printRequests
-      .createPrintRequest(undefined, { skipListReload: true })
+    const createPromise = createPrintRequest(undefined, { skipListReload: true })
       .then((created) => {
         ensuredWorkingRequestIdRef.current = created.printRequestId;
         setPendingWorkingRequestId(created.printRequestId);
@@ -205,7 +209,7 @@ export function PortalPrintRequestProvider({ children }: { children: ReactNode }
 
     ensureWorkingPromiseRef.current = createPromise;
     return createPromise;
-  }, [printRequests.createPrintRequest, workingRequest?.id]);
+  }, [createPrintRequest, workingRequest?.id]);
 
   const {
     actionError,
@@ -224,6 +228,7 @@ export function PortalPrintRequestProvider({ children }: { children: ReactNode }
   });
 
   const reloadRequests = printRequests.reload;
+  const reconcileClearedRequest = printRequests.reconcileClearedRequest;
 
   const refreshRequests = useCallback(
     async (options?: {
@@ -262,23 +267,28 @@ export function PortalPrintRequestProvider({ children }: { children: ReactNode }
     const clearedRequestId = workingRequest.id;
     setIsClearingWorkingRequest(true);
     try {
-      await portalPrintRequestService.clearWorkingPrintRequest(clearedRequestId);
+      const result = await portalPrintRequestService.clearWorkingPrintRequest(clearedRequestId);
       // Keep ensure cache + pending id so next Add reuses this request during list lag.
       // Do not call resetWorkingCart() — that clears the id (queue-to-show only).
       ensuredWorkingRequestIdRef.current = clearedRequestId;
       setPendingWorkingRequestId(clearedRequestId);
+      // Post-clear state is fully known from the callable: reconcile locally with zero refetch
+      // reads, and invalidate any pre-clear in-flight item load so a late resolve cannot
+      // resurrect the cleared rows (owner live-test evidence: cart/detail stayed full until a
+      // browser refresh — the 30s read cache had been serving the pre-clear items back to the
+      // silent reloads this block previously awaited).
+      discardPendingWorkingItemLoads();
       patchWorkingItems([]);
-      await reloadRequests({ silent: true });
-      await reloadWorkingItems({ silent: true, printRequestId: clearedRequestId });
+      reconcileClearedRequest(clearedRequestId, result.status);
       setIsCurrentRequestDrawerOpen(false);
     } finally {
       setIsClearingWorkingRequest(false);
     }
   }, [
+    discardPendingWorkingItemLoads,
     isClearingWorkingRequest,
     patchWorkingItems,
-    reloadRequests,
-    reloadWorkingItems,
+    reconcileClearedRequest,
     workingRequest,
   ]);
 
@@ -313,6 +323,7 @@ export function PortalPrintRequestProvider({ children }: { children: ReactNode }
       refreshRequests,
       reloadWorkingItems,
       resetWorkingCart,
+      reconcileQueuedRequest: printRequests.reconcileQueuedRequest,
       requests: printRequests.requests,
       requestsByTab: printRequests.requestsByTab,
       summariesByRequestId: printRequests.summariesByRequestId,
@@ -350,6 +361,7 @@ export function PortalPrintRequestProvider({ children }: { children: ReactNode }
       printRequests.isLoading,
       printRequests.requests,
       printRequests.requestsByTab,
+      printRequests.reconcileQueuedRequest,
       printRequests.summariesByRequestId,
       refreshRequests,
       reloadWorkingItems,

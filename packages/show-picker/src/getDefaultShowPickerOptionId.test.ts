@@ -11,8 +11,8 @@ describe("getDefaultShowPickerOptionId", () => {
   it("returns the first option when none are full", () => {
     assert.equal(
       getDefaultShowPickerOptionId([
-        { id: "a", isFull: false, isSelectable: true },
-        { id: "b", isFull: false, isSelectable: true },
+        { id: "a", isFull: false, canAllocate: true },
+        { id: "b", isFull: false, canAllocate: true },
       ]),
       "a",
     );
@@ -21,9 +21,9 @@ describe("getDefaultShowPickerOptionId", () => {
   it("skips a full soonest show for the next open show", () => {
     assert.equal(
       getDefaultShowPickerOptionId([
-        { id: "full", isFull: true, isSelectable: true },
-        { id: "open", isFull: false, isSelectable: true },
-        { id: "later", isFull: false, isSelectable: true },
+        { id: "full", isFull: true, canAllocate: true },
+        { id: "open", isFull: false, canAllocate: true },
+        { id: "later", isFull: false, canAllocate: true },
       ]),
       "open",
     );
@@ -32,8 +32,8 @@ describe("getDefaultShowPickerOptionId", () => {
   it("falls back to the first option when every show is full", () => {
     assert.equal(
       getDefaultShowPickerOptionId([
-        { id: "a", isFull: true, isSelectable: true },
-        { id: "b", isFull: true, isSelectable: true },
+        { id: "a", isFull: true, canAllocate: true },
+        { id: "b", isFull: true, canAllocate: true },
       ]),
       "a",
     );
@@ -43,9 +43,9 @@ describe("getDefaultShowPickerOptionId", () => {
     assert.equal(
       getDefaultShowPickerOptionId(
         [
-          { id: "tight", isFull: false, isSelectable: true },
-          { id: "fits", isFull: false, isSelectable: true },
-          { id: "later", isFull: false, isSelectable: true },
+          { id: "tight", isFull: false, canAllocate: true },
+          { id: "fits", isFull: false, canAllocate: true },
+          { id: "later", isFull: false, canAllocate: true },
         ],
         (id) => id === "fits",
       ),
@@ -57,8 +57,8 @@ describe("getDefaultShowPickerOptionId", () => {
     assert.equal(
       getDefaultShowPickerOptionId(
         [
-          { id: "full", isFull: true, isSelectable: true },
-          { id: "open", isFull: false, isSelectable: true },
+          { id: "full", isFull: true, canAllocate: true },
+          { id: "open", isFull: false, canAllocate: true },
         ],
         () => false,
       ),
@@ -69,8 +69,8 @@ describe("getDefaultShowPickerOptionId", () => {
   it("skips non-selectable past shows", () => {
     assert.equal(
       getDefaultShowPickerOptionId([
-        { id: "past", isFull: false, isSelectable: false },
-        { id: "open", isFull: false, isSelectable: true },
+        { id: "past", isFull: false, canAllocate: false },
+        { id: "open", isFull: false, canAllocate: true },
       ]),
       "open",
     );
@@ -78,7 +78,7 @@ describe("getDefaultShowPickerOptionId", () => {
 
   it("returns null when every option is non-selectable", () => {
     assert.equal(
-      getDefaultShowPickerOptionId([{ id: "past", isFull: false, isSelectable: false }]),
+      getDefaultShowPickerOptionId([{ id: "past", isFull: false, canAllocate: false }]),
       null,
     );
   });
@@ -86,7 +86,7 @@ describe("getDefaultShowPickerOptionId", () => {
   it("falls back to the first inspect-only option when allowed", () => {
     assert.equal(
       getDefaultShowPickerOptionId(
-        [{ id: "past", isFull: false, isSelectable: false }],
+        [{ id: "past", isFull: false, canAllocate: false }],
         undefined,
         true,
       ),

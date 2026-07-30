@@ -8,6 +8,8 @@ export interface CatalogCategory {
 export interface CatalogTagOption {
   id: string;
   name: string;
+  /** Ready-design count for this tag. Absent when the count is not known (e.g. legacy fallback). */
+  count?: number;
 }
 
 export interface CatalogDesign {

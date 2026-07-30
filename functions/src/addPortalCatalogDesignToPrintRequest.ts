@@ -61,12 +61,47 @@ function resolveNextSortOrder(
   return max + 1;
 }
 
+export function buildPortalCatalogAddAccounting(
+  kind: "created" | "incremented",
+  metrics: {
+    transactionAttempts: number;
+    transactionDocumentsReturned: number;
+    durationMs: number;
+    outcome: "success" | "failure";
+  },
+) {
+  const itemWrites = 1;
+  const parentRequestWrites = 1;
+  const designAnalyticsWrites = kind === "created" ? 1 : 0;
+  return {
+    itemWrites,
+    parentRequestWrites,
+    designAnalyticsWrites,
+    idempotencyWrites: 0,
+    otherWrites: 0,
+    totalWrites: itemWrites + parentRequestWrites + designAnalyticsWrites,
+    itemOutcome: kind,
+    readOperations: 4 + (metrics.transactionAttempts * 2),
+    documentsReturned: 4 + metrics.transactionDocumentsReturned,
+    transactionAttempts: metrics.transactionAttempts,
+    batchSize: 0,
+    deletes: 0,
+    duplicateSkip: false,
+    durationMs: metrics.durationMs,
+    outcome: metrics.outcome,
+  };
+}
+
 export const addPortalCatalogDesignToPrintRequest = onCall(
   async (request): Promise<AddPortalCatalogDesignToPrintRequestResponse> => {
     if (!request.auth?.uid) {
       throw unauthenticated();
     }
 
+    const startedAtMs = Date.now();
+    let transactionAttempts = 0;
+    let transactionDocumentsReturned = 0;
+    let accountingKind: "created" | "incremented" = "created";
     try {
       const portalCustomer = await requirePortalCustomer(request.auth.uid);
       const data = request.data as AddPortalCatalogDesignToPrintRequestRequest;
@@ -115,8 +150,10 @@ export const addPortalCatalogDesignToPrintRequest = onCall(
       let kind: "created" | "incremented" = "created";
       let itemId = "";
       let quantity = quantityDelta;
+      let responseItem!: AddPortalCatalogDesignToPrintRequestResponse["item"];
 
       await adminDb.runTransaction(async (tx) => {
+        transactionAttempts += 1;
         const requestRef = adminDb.collection("printRequests").doc(printRequestId);
         const itemsQuery = adminDb
           .collection("printRequestItems")
@@ -126,6 +163,7 @@ export const addPortalCatalogDesignToPrintRequest = onCall(
           tx.get(requestRef),
           tx.get(itemsQuery),
         ]);
+        transactionDocumentsReturned += (requestSnap.exists ? 1 : 0) + itemsSnap.size;
 
         if (!requestSnap.exists) {
           throw invalidArgument("Print request not found.");
@@ -156,6 +194,10 @@ export const addPortalCatalogDesignToPrintRequest = onCall(
             quantity: typeof itemData.quantity === "number" ? itemData.quantity : 1,
             createdAtMs: createdAtMillis(itemData.createdAt),
             sortOrder: typeof itemData.sortOrder === "number" ? itemData.sortOrder : undefined,
+            printWidthInches: typeof itemData.printWidthInches === "number" ? itemData.printWidthInches : undefined,
+            printHeightInches: typeof itemData.printHeightInches === "number" ? itemData.printHeightInches : undefined,
+            sizeLabel: typeof itemData.sizeLabel === "string" ? itemData.sizeLabel : undefined,
+            addedBy: typeof itemData.addedBy === "string" ? itemData.addedBy : customerUid,
           };
         });
 
@@ -184,6 +226,21 @@ export const addPortalCatalogDesignToPrintRequest = onCall(
           kind = "incremented";
           itemId = action.itemId;
           quantity = nextQuantity;
+          const currentItem = itemLikes.find((item) => item.id === action.itemId)!;
+          responseItem = {
+            id: action.itemId,
+            printRequestId,
+            designId,
+            quantity: nextQuantity,
+            printWidthInches: currentItem.printWidthInches,
+            printHeightInches: currentItem.printHeightInches,
+            sizeLabel: currentItem.sizeLabel,
+            sortOrder: currentItem.sortOrder,
+            status: "pending",
+            addedBy: currentItem.addedBy,
+            createdAtMs: currentItem.createdAtMs,
+            updatedAtMs: Date.now(),
+          };
           return;
         }
 
@@ -229,7 +286,34 @@ export const addPortalCatalogDesignToPrintRequest = onCall(
         kind = "created";
         itemId = newItemRef.id;
         quantity = quantityDelta;
+        responseItem = {
+          id: newItemRef.id,
+          printRequestId,
+          designId,
+          quantity: quantityDelta,
+          printWidthInches,
+          printHeightInches,
+          sizeLabel: formatPrintRequestItemSizeLabel(printWidthInches, printHeightInches),
+          sortOrder: requestedSortOrder ?? resolveNextSortOrder(itemLikes),
+          status: "pending",
+          addedBy: customerUid,
+          createdAtMs: Date.now(),
+          updatedAtMs: Date.now(),
+        };
       });
+      accountingKind = kind;
+
+      if (process.env.GCLOUD_PROJECT === "fresh-prints-dev") {
+        console.info(
+          "portal-catalog-add-accounting",
+          buildPortalCatalogAddAccounting(kind, {
+            transactionAttempts,
+            transactionDocumentsReturned,
+            durationMs: Date.now() - startedAtMs,
+            outcome: "success",
+          }),
+        );
+      }
 
       return {
         kind,
@@ -237,8 +321,24 @@ export const addPortalCatalogDesignToPrintRequest = onCall(
         printRequestId,
         designId,
         quantity,
+        item: responseItem,
       };
     } catch (error) {
+      if (process.env.GCLOUD_PROJECT === "fresh-prints-dev") {
+        console.info("portal-catalog-add-accounting", {
+          ...buildPortalCatalogAddAccounting(accountingKind, {
+            transactionAttempts,
+            transactionDocumentsReturned,
+            durationMs: Date.now() - startedAtMs,
+            outcome: "failure",
+          }),
+          itemWrites: 0,
+          parentRequestWrites: 0,
+          designAnalyticsWrites: 0,
+          totalWrites: 0,
+          failureCode: "add-failed",
+        });
+      }
       mapHttpsError(error);
     }
   },

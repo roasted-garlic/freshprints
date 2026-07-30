@@ -11,7 +11,7 @@ import {
   EVERYTHING_EXCEPT_DESIGNS_WIPE_PRESET_TARGETS,
   expandOperationalWipePlan,
   getDesignsWipePrerequisiteError,
-  PRINT_REQUEST_DAILY_LIMITS_WIPE_PRESET_TARGETS,
+  LEGACY_PRINT_LIMIT_COUNTERS_WIPE_PRESET_TARGETS,
   PRINT_REQUEST_RESET_PRESET_TARGETS,
   PRINT_REQUESTS_WIPE_PRESET_TARGETS,
 } from "./operationalWipeTargets";
@@ -33,11 +33,18 @@ describe("expandOperationalWipePlan", () => {
     assert.ok(!plan.deleteCollections.includes("designs"));
   });
 
-  it("expands printRequestDesignDailyLimits alone without wiping print requests", () => {
+  it("expands legacy print-limit counters alone without any other wipe effect", () => {
     const plan = expandOperationalWipePlan(["printRequestDesignDailyLimits"]);
-    assert.deepEqual(plan.deleteCollections, ["printRequestDesignDailyLimits"]);
-    assert.equal(plan.resetSequences, false);
-    assert.equal(plan.wipeDesignStorage, false);
+    assert.deepEqual(plan, {
+      deleteCollections: ["printRequestDesignDailyLimits"],
+      resetSequences: false,
+      resetDesignRequestStats: false,
+      wipeDesignStorage: false,
+      wipeAiProcessingDesigns: false,
+      wipeCustomerUploadStorage: false,
+      wipeAssistedCreationStorage: false,
+      resetShowAllocationTotals: false,
+    });
   });
 
   it("resets sequences whenever printRequests is selected", () => {
@@ -183,25 +190,45 @@ describe("wipe presets", () => {
       "sequences",
       "designRequestStats",
     ]);
+    assert.ok(
+      expandOperationalWipePlan(PRINT_REQUESTS_WIPE_PRESET_TARGETS).deleteCollections.includes(
+        "printRequestDesignDailyLimits",
+      ),
+    );
   });
 
   it("named presets select expected targets", () => {
     assert.deepEqual(ETSY_WIPE_PRESET_TARGETS, ["etsySearches"]);
     assert.deepEqual(CUSTOM_REQUESTS_WIPE_PRESET_TARGETS, ["assistedCreationRequests"]);
-    assert.deepEqual(PRINT_REQUEST_DAILY_LIMITS_WIPE_PRESET_TARGETS, [
+    assert.deepEqual(LEGACY_PRINT_LIMIT_COUNTERS_WIPE_PRESET_TARGETS, [
       "printRequestDesignDailyLimits",
     ]);
     assert.deepEqual(DESIGNS_WIPE_PRESET_TARGETS, ["printRequests", "sequences", "designs"]);
     assert.deepEqual(AI_PROCESSING_DESIGNS_WIPE_PRESET_TARGETS, ["aiProcessingDesigns"]);
   });
 
-  it("All (-) Designs excludes full designs but includes AI Processing selective wipe", () => {
+  it("Select all retains the legacy print-limit counter target", () => {
+    assert.ok(ALL_OPERATIONAL_WIPE_TARGETS.includes("printRequestDesignDailyLimits"));
+    assert.ok(
+      expandOperationalWipePlan(ALL_OPERATIONAL_WIPE_TARGETS).deleteCollections.includes(
+        "printRequestDesignDailyLimits",
+      ),
+    );
+  });
+
+  it("All (-) Designs excludes full designs but retains legacy counters and AI Processing", () => {
     assert.ok(EVERYTHING_EXCEPT_DESIGNS_WIPE_PRESET_TARGETS.includes("aiProcessingDesigns"));
+    assert.ok(
+      EVERYTHING_EXCEPT_DESIGNS_WIPE_PRESET_TARGETS.includes(
+        "printRequestDesignDailyLimits",
+      ),
+    );
     assert.ok(!EVERYTHING_EXCEPT_DESIGNS_WIPE_PRESET_TARGETS.includes("designs"));
     const plan = expandOperationalWipePlan(EVERYTHING_EXCEPT_DESIGNS_WIPE_PRESET_TARGETS);
     assert.equal(plan.wipeDesignStorage, false);
     assert.equal(plan.wipeAiProcessingDesigns, true);
     assert.ok(!plan.deleteCollections.includes("designs"));
+    assert.ok(plan.deleteCollections.includes("printRequestDesignDailyLimits"));
   });
 });
 

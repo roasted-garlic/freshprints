@@ -112,12 +112,64 @@ Current Goal:
 |---|------|--------|
 | 1 | `portal-seo-foundations` — robots.txt, sitemap, design page SEO | **Done** (2026-07-22, approved_with_notes; leftovers committed/pushed 2026-07-23 `63140a5`, reaffirmed) |
 | 2 | `portal-how-to-faq` - FAQ and How To (Studio Settings CMS + Portal `/help`) | **Done** (2026-07-23, approved_with_notes) |
-| 3 | `portal-google-analytics` — GA4 on Portal | Queued |
-| 4 | `production-release` — prod Firebase / App Hosting / Google / email | Queued |
+| 3 | `firestore-usage-efficiency-wave-c` — idle-read containment + snapshots | **Done** (2026-07-27, PASS WITH NOTES; owner PASS) |
+| 4 | `studio-inbox-default-landing` — Studio home opens Inbox | **Done** (2026-07-23, approved; owner PASS) |
+| 5 | `portal-google-analytics` — GA4 on Portal | **Done** (2026-07-27, signed off PASS — inert architecture merged, no real Measurement ID/GA4 property configured) |
+| 6 | `portal-print-request-prelaunch-stability` — complete Studio/Portal request lifecycle and pre-launch reconciliation hardening | **Done** (2026-07-29, approved; owner QA v18 PASS) |
+| 7 | `studio-test-data-print-limit-wipe-audit` — relabel obsolete daily-counter wipe as truthful legacy cleanup | **Done** (2026-07-29, approved; owner PASS) |
+| 8 | `preproduction-static-analysis-cleanup` — resolve documented TypeScript/lint baseline | **Done** (2026-07-29, approved; owner QA not required) |
+| 9 | `customer-upload-oversized-image-normalization-and-processing-performance` (Workstream A) | **Done** (2026-07-29, approved; owner QA not required; bounded-concurrency ZIP processing, ADR-FP-123) |
+| 10 | Increase the MB limit for custom-request reference images | **Done** (2026-07-29, approved) — 40 MB/file live in `fresh-prints-dev` at every enforcement layer, 8 files unchanged, 320 MB combined ceiling active; owner QA FAIL (stale 15 MB deployed Cloud Functions) → Amendment 1 root-caused and fixed via scoped Functions redeploy → owner re-QA PASS |
+| 11 | `customer-upload-oversized-pixel-normalization-and-processing-timeout-followup` | **Done** (2026-07-30, approved_with_notes; owner QA PASS WITH NOTES — see signoff) |
+| 12 | `catalog-image-derivative-storage-consolidation` | **Done — closed_by_owner_after_inventory** (2026-07-30). Real dev inventory measured originals at ~97.66% of catalog Storage (980.8 MB of 1,004.3 MB); thumbnails+previews combined only 23.5 MB; zero orphans/duplicates/violations found. Owner decided the migration's small addressable Storage win did not justify the required backfill/consumer-cutover/bandwidth-increase — closed before implementation, an evidence-based decision. Retained as dev-only tooling: the read-only `inventoryCatalogImageStorage` callable and its Studio invocation panel. |
+| 13 | `production-release` — prod Firebase / App Hosting / Google / email | **Active** — production project **confirmed** (`fresh-prints-prod`, created, Blaze active); Functions allowlist **finalized** (105 total exports, 99 include, 6 exclude); working tree **reconciled** (541 entries classified, one debris file removed); **stopped at the release-source commit-boundary + `.firebaserc` alias human checkpoint**; no longer blocked (#9–#12 all signed off/closed); production approval required before any implementation or deployment |
+| 14 | `customer-upload-early-transparency-format-validation` — reject invalid customer artwork before the trimming stage is shown | **Done** (2026-07-30, approved; automated verification 23/23 pass, clean build/lint; owner deployed to `fresh-prints-dev` and confirmed manual QA PASS across all 5 goal-brief scenarios). Separate narrow follow-up run alongside the paused `production-release` (#13), which this goal did not modify. See `docs/workflow/plans/2026-07-30-customer-upload-early-transparency-format-validation-plan.md`. |
 
 **Small Managed Items Backlog:** #5–**#14** **Done** (2026-07-21). See [Small Managed Items Backlog](#small-managed-items-backlog-2026-07-18) below.
 
-**Active managed goal:** none (idle). Last closed: **2026-07-23** `portal-how-to-faq` (**approved_with_notes**). Next queued: `portal-google-analytics`.
+**Active managed goal:** `production-release` (Goal #13) — Plan + independent Formal Review complete
+2026-07-30 (`approved_with_notes`); owner recorded 18 production decisions; Implementation-readiness
+checkpoint resolved every Plan/Review repo-check; owner then **confirmed the production Firebase
+project (`fresh-prints-prod`, created, Blaze billing active, zero configuration)** and finalized the
+5 previously-flagged Functions decisions. `functions/src/lib/email/portalUrlResolver.ts` was
+verified to already map `fresh-prints-prod` correctly — no code change needed. Final Functions
+allowlist (fresh re-enumeration, programmatically verified): **105 total exports, 99 include, 6
+exclude** (`inventoryCatalogImageStorage`, `wipeOperationalTestData`, `testAiEnrichmentPlayground`,
+`testAiEnrichmentTagRerank`, `ownerDeleteUser`, `backfillPrintRequestQueueTab`);
+`rebuildCatalogSnapshots` included after full six-condition source verification. Working tree
+reconciled: 541 remaining changed entries classified (the vast majority trace cleanly to specific
+already-signed-off or approved goals), one proven-debris scratch script removed
+(`functions/test-admin-auth.mjs`), one unrelated-provenance deletion found and left untouched
+pending its own owner decision. Proposed release-source strategy: reconcile directly on `master` in
+~11 goal-sized commit boundaries — no new branch, consistent with the owner's no-new-branch-policy
+decision. See `docs/workflow/plans/2026-07-30-production-release-plan.md`,
+`docs/workflow/reviews/2026-07-30-production-release-review.md`,
+`docs/workflow/reviews/2026-07-30-production-release-implementation-readiness-checkpoint.md`,
+`docs/workflow/reviews/2026-07-30-production-release-working-tree-reconciliation-report.md`,
+`docs/workflow/reviews/2026-07-30-production-release-functions-allowlist-report.md`, and
+`docs/workflow/reviews/2026-07-30-production-release-source-and-allowlist-checkpoint.md`.
+**Stopped at the release-source commit-boundary + `.firebaserc` alias human checkpoint** — awaiting
+owner approval. No longer blocked: Goals #9–#12
+(`catalog-image-derivative-storage-consolidation`) closed **2026-07-30**,
+**closed_by_owner_after_inventory** — the real dev Storage inventory measured originals at
+~97.66% of catalog Storage (980,807,863 of 1,004,304,719 bytes across 87 designs), with existing
+thumbnails+previews combined using only 23,496,856 bytes and zero orphan/duplicate/violation
+findings; the owner decided the migration's small addressable Storage win (~2.3% of total) did not
+justify the required backfill, consumer cutover, and accepted grid-bandwidth increase, and closed
+the goal before implementation — an evidence-based decision, not a failed one. The dry-run-only
+`inventoryCatalogImageStorage` callable and its dev-only Studio invocation panel are retained as
+diagnostic tooling (deployed to `fresh-prints-dev` only, explicitly excluded from production scope
+unless separately reviewed). Signoff:
+`docs/workflow/reviews/2026-07-30-catalog-image-derivative-storage-consolidation-signoff.md`.
+
+**Owner queue decision (2026-07-29):** goals #9–#12 (the four image-related goals) may be coordinated
+or worked in parallel where their product/security boundaries allow, but `production-release` (#13)
+stays blocked until all four are signed off. Goals #9, #10, #11, and #12 are now all closed; #13
+(`production-release`) is active (Plan + Formal Review phase; implementation and deployment not
+started). See
+`docs/workflow/plans/2026-07-29-customer-upload-oversized-image-normalization-and-processing-performance-plan.md`
+for the originally-recommended coordination-structure rationale, which now extends to #11 and #12 as
+well.
 
 Phase 9 Custom Designs remains **largely complete in `fresh-prints-dev`**: 9A Etsy recommendations and 9C Assisted Creation shipped with owner PASS; polish + proof-ready email (Resend + Brevo) closed. Brevo IP/blocklist deliverability **PASS** 2026-07-18. Studio Test Data Reset presets + wipe expansion **PASS** / signed off **approved_with_notes** 2026-07-18. AI Processing selective designs wipe (`aiProcessingDesigns`) **PASS** / signed off **approved** 2026-07-21. Library OG rotation intervals + per-design artwork backgrounds **PASS** / signed off **approved_with_notes** 2026-07-21. Studio tag footer + Design Library Halftone + AI Processing artwork bg **PASS** / signed off **approved_with_notes** 2026-07-21. Portal customer temporary shirt-color preview (nested **Background Color** picker) **PASS** / signed off **approved** 2026-07-21. Small Managed **#12** library design sharing proof-line owner **PASS** / soft-signoff **approved_with_notes** 2026-07-21. Portal assisted Reset/Continue + mobile auth overlay **PASS** / soft-signoff **approved** 2026-07-21. Custom request details parity (+ Addenda A–C) **PASS** / soft-signoff **approved** 2026-07-21. Assisted Creation proof preview hang hotfix **PASS** / signed off **approved** 2026-07-21. Still deferred inside Phase 9: Create My Design with AI (product AI integration), staff design-fee / Stripe, assisted questionnaire request-type branching. Production Portal / production Google / production email release remain separate human approvals. **#14** Recently Requested CF (`onShowAllocationCreated`) soft-deploy still open.
 
@@ -498,7 +550,9 @@ Phase 3 complete when:
 * Imports completion messaging and links point to AI Review
 * Legacy `status=imported` library URLs redirect to AI Review
 
-**Addendum (2026-06-24):** Show archived control is a toggle switch; **Design Library** is the default authenticated landing page (`/designs`).
+**Addendum (2026-06-24):** Show archived control is a toggle switch; Design Library was the default authenticated landing page (`/designs`) until superseded by ADR-FP-119.
+
+**Addendum (2026-07-23; ADR-FP-119):** Authenticated Studio default landing is **Staff Inbox** (`/inbox`) — root, catch-all, post-login, and sidebar brand. Design Library remains a sidebar destination. Signoff: `docs/workflow/reviews/2026-07-23-studio-inbox-default-landing-signoff.md`.
 
 **Addendum (2026-06-29):** Dev Dashboard page removed; **Dev Tools** sidebar button opens Electron DevTools in development builds (staff only).
 

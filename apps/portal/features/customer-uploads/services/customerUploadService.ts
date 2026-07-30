@@ -2,6 +2,8 @@ import { collection, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query, wh
 import { httpsCallable } from 'firebase/functions';
 import { getDownloadURL, ref, uploadBytesResumable, type UploadMetadata } from 'firebase/storage';
 
+import { runTracedCallable } from '@fresh-prints/shared/utils/firestoreUsageTrace';
+
 import {
   CUSTOMER_UPLOAD_MAX_CONCURRENT_FINALIZE,
   CUSTOMER_UPLOAD_MAX_FILES_PER_BATCH,
@@ -34,10 +36,21 @@ import type {
 import { formatFileSize } from '@fresh-prints/shared/utils/formatFileSize';
 import { getCustomerUploadProgressLabel } from '@fresh-prints/shared/utils/customerUploadProgressLabel';
 import { resolveCustomerUploadPurpose } from '@fresh-prints/shared/utils/customerUploadPurpose';
-import { traceFirestoreRead } from '@fresh-prints/shared/utils/firestoreUsageTrace';
+import {
+  traceFirestoreListenerAttach,
+  traceFirestoreListenerEmission,
+  traceFirestoreOneShotComplete,
+  traceFirestoreOneShotStart,
+  traceWrappedUnsubscribe,
+} from '@fresh-prints/shared/utils/firestoreUsageTrace';
 
-import { getPortalDb, getPortalFunctions, getPortalStorage } from '../../../lib/firebase/client';
+import { getPortalAuth, getPortalDb, getPortalFunctions, getPortalStorage } from '../../../lib/firebase/client';
+import { callTracedFunction } from '../../../lib/firebase/tracedCallable';
 import { portalAuthService } from '../../auth/services/authService';
+import {
+  invalidateCustomerUploadQuota,
+  loadCustomerUploadQuotaCached,
+} from './customerUploadQuotaCache';
 
 export interface CreateCustomerUploadBatchResponse {
   batchId: string;
@@ -165,6 +178,7 @@ export type CustomerUploadSizeLimits = {
 export function defaultCustomerUploadSizeLimits(
   _purpose: CustomerUploadPurpose = 'print_request',
 ): CustomerUploadSizeLimits {
+  void _purpose;
   return {
     maxSingleImageBytes: CUSTOMER_UPLOAD_MAX_SINGLE_IMAGE_BYTES,
     maxZipBytes: computeCustomerUploadMaxZipBytes(),
@@ -222,7 +236,7 @@ export const customerUploadService = {
     options?: { existingBatchId?: string; purpose?: CustomerUploadPurpose },
   ): Promise<CreateCustomerUploadBatchResponse> {
     try {
-      const createCallable = httpsCallable<
+      return await callTracedFunction<
         {
           mode: 'direct_images';
           clientRequestId: string;
@@ -231,9 +245,9 @@ export const customerUploadService = {
           existingBatchId?: string;
         },
         CreateCustomerUploadBatchResponse
-      >(getPortalFunctions(), 'createCustomerUploadBatch');
-
-      const response = await createCallable({
+      >('createCustomerUploadBatch', {
+        source: 'customerUploadService.createDirectImageBatch',
+      })({
         mode: 'direct_images',
         clientRequestId: newClientRequestId(),
         purpose: options?.purpose ?? 'print_request',
@@ -243,7 +257,6 @@ export const customerUploadService = {
         })),
         existingBatchId: options?.existingBatchId,
       });
-      return response.data;
     } catch (error) {
       throw new Error(portalAuthService.getCallableErrorMessage(error));
     }
@@ -254,7 +267,7 @@ export const customerUploadService = {
     options?: { purpose?: CustomerUploadPurpose },
   ): Promise<CreateCustomerUploadBatchResponse> {
     try {
-      const createCallable = httpsCallable<
+      return await callTracedFunction<
         {
           mode: 'zip';
           clientRequestId: string;
@@ -262,15 +275,14 @@ export const customerUploadService = {
           declaredZipSizeBytes: number;
         },
         CreateCustomerUploadBatchResponse
-      >(getPortalFunctions(), 'createCustomerUploadBatch');
-
-      const response = await createCallable({
+      >('createCustomerUploadBatch', {
+        source: 'customerUploadService.createZipBatch',
+      })({
         mode: 'zip',
         clientRequestId: newClientRequestId(),
         purpose: options?.purpose ?? 'print_request',
         declaredZipSizeBytes: file.size,
       });
-      return response.data;
     } catch (error) {
       throw new Error(portalAuthService.getCallableErrorMessage(error));
     }
@@ -312,14 +324,20 @@ export const customerUploadService = {
 
   async finalizeImage(uploadId: string, batchId: string): Promise<FinalizeCustomerUploadResponse> {
     try {
-      const finalizeCallable = httpsCallable<
+      return await runTracedCallable<
         { uploadId: string; batchId: string },
         FinalizeCustomerUploadResponse
-      >(getPortalFunctions(), 'finalizeCustomerUpload', {
-        timeout: FINALIZE_CALLABLE_TIMEOUT_MS,
-      });
-      const response = await finalizeCallable({ uploadId, batchId });
-      return response.data;
+      >(
+        'finalizeCustomerUpload',
+        (req) =>
+          httpsCallable<{ uploadId: string; batchId: string }, FinalizeCustomerUploadResponse>(
+            getPortalFunctions(),
+            'finalizeCustomerUpload',
+            { timeout: FINALIZE_CALLABLE_TIMEOUT_MS },
+          )(req),
+        { uploadId, batchId },
+        { app: 'portal', source: 'customerUploadService.finalizeImage' },
+      );
     } catch (error) {
       throw new Error(portalAuthService.getCallableErrorMessage(error));
     }
@@ -327,13 +345,17 @@ export const customerUploadService = {
 
   async finalizeZip(batchId: string): Promise<FinalizeCustomerUploadZipResponse> {
     try {
-      const finalizeCallable = httpsCallable<{ batchId: string }, FinalizeCustomerUploadZipResponse>(
-        getPortalFunctions(),
+      return await runTracedCallable<{ batchId: string }, FinalizeCustomerUploadZipResponse>(
         'finalizeCustomerUploadZip',
-        { timeout: FINALIZE_CALLABLE_TIMEOUT_MS },
+        (req) =>
+          httpsCallable<{ batchId: string }, FinalizeCustomerUploadZipResponse>(
+            getPortalFunctions(),
+            'finalizeCustomerUploadZip',
+            { timeout: FINALIZE_CALLABLE_TIMEOUT_MS },
+          )(req),
+        { batchId },
+        { app: 'portal', source: 'customerUploadService.finalizeZip' },
       );
-      const response = await finalizeCallable({ batchId });
-      return response.data;
     } catch (error) {
       throw new Error(portalAuthService.getCallableErrorMessage(error));
     }
@@ -343,27 +365,35 @@ export const customerUploadService = {
     purpose: CustomerUploadPurpose = 'print_request',
   ): Promise<GetCustomerUploadDailyQuotaResponse> {
     try {
-      const quotaCallable = httpsCallable<
-        GetCustomerUploadDailyQuotaRequest,
-        GetCustomerUploadDailyQuotaResponse
-      >(getPortalFunctions(), 'getCustomerUploadDailyQuota');
-      const response = await quotaCallable({ purpose });
-      return response.data;
+      const key = `${getPortalAuth().currentUser?.uid ?? 'signed-out'}:${purpose}`;
+      return await loadCustomerUploadQuotaCached(key, () =>
+        callTracedFunction<
+          GetCustomerUploadDailyQuotaRequest,
+          GetCustomerUploadDailyQuotaResponse
+        >('getCustomerUploadDailyQuota', {
+          source: 'customerUploadService.getDailyQuota',
+        })({ purpose }),
+      );
     } catch (error) {
       throw new Error(portalAuthService.getCallableErrorMessage(error));
     }
+  },
+
+  invalidateDailyQuota(): void {
+    const uid = getPortalAuth().currentUser?.uid;
+    invalidateCustomerUploadQuota(uid ? `${uid}:` : undefined);
   },
 
   async confirmAndAttach(
     input: ConfirmCustomerUploadsAndAttachToRequestRequest,
   ): Promise<ConfirmCustomerUploadsAndAttachToRequestResponse> {
     try {
-      const attachCallable = httpsCallable<
+      return await callTracedFunction<
         ConfirmCustomerUploadsAndAttachToRequestRequest,
         ConfirmCustomerUploadsAndAttachToRequestResponse
-      >(getPortalFunctions(), 'confirmCustomerUploadsAndAttachToRequest');
-      const response = await attachCallable(input);
-      return response.data;
+      >('confirmCustomerUploadsAndAttachToRequest', {
+        source: 'customerUploadService.confirmAndAttach',
+      })(input);
     } catch (error) {
       throw new Error(portalAuthService.getCallableErrorMessage(error));
     }
@@ -373,21 +403,30 @@ export const customerUploadService = {
     input: ConfirmCustomerUploadsForDonationRequest,
   ): Promise<ConfirmCustomerUploadsForDonationResponse> {
     try {
-      const donateCallable = httpsCallable<
+      return await callTracedFunction<
         ConfirmCustomerUploadsForDonationRequest,
         ConfirmCustomerUploadsForDonationResponse
-      >(getPortalFunctions(), 'confirmCustomerUploadsForDonation');
-      const response = await donateCallable(input);
-      return response.data;
+      >('confirmCustomerUploadsForDonation', {
+        source: 'customerUploadService.confirmForDonation',
+      })(input);
     } catch (error) {
       throw new Error(portalAuthService.getCallableErrorMessage(error));
     }
   },
 
   async getUpload(uploadId: string): Promise<CustomerUploadDocSummary | null> {
+    const traceMetadata = {
+      app: 'portal' as const,
+      collection: CUSTOMER_UPLOAD_COLLECTIONS.customerUploads,
+      documentPathPattern: `${CUSTOMER_UPLOAD_COLLECTIONS.customerUploads}/{workingRequestUploadId}`,
+      source: 'customerUploadService.getUpload',
+      triggerReason: 'authentication' as const,
+    };
+    traceFirestoreOneShotStart('getDoc', traceMetadata);
     const snapshot = await getDoc(
       doc(getPortalDb(), CUSTOMER_UPLOAD_COLLECTIONS.customerUploads, uploadId),
     );
+    traceFirestoreOneShotComplete('getDoc', traceMetadata, snapshot.exists() ? 1 : 0);
     if (!snapshot.exists()) {
       return null;
     }
@@ -433,11 +472,12 @@ export const customerUploadService = {
     value: 'yes' | 'no',
   ): Promise<void> {
     try {
-      const callable = httpsCallable<
+      await callTracedFunction<
         { uploadId: string; value: 'yes' | 'no' },
         { uploadId: string; value: string }
-      >(getPortalFunctions(), 'recordCustomerUploadHalftoneResponse');
-      await callable({ uploadId, value });
+      >('recordCustomerUploadHalftoneResponse', {
+        source: 'customerUploadService.recordHalftoneResponse',
+      })({ uploadId, value });
     } catch (error) {
       throw new Error(portalAuthService.getCallableErrorMessage(error));
     }
@@ -447,9 +487,18 @@ export const customerUploadService = {
     uploadId: string,
     onProgress: (progress: CustomerUploadLiveProgress) => void,
   ): Unsubscribe {
-    return onSnapshot(
+    const traceMetadata = {
+      app: 'portal' as const,
+      collection: CUSTOMER_UPLOAD_COLLECTIONS.customerUploads,
+      documentPathPattern: `${CUSTOMER_UPLOAD_COLLECTIONS.customerUploads}/{uploadId}`,
+      source: 'customerUploadService.subscribeUploadProgress',
+      triggerReason: 'route' as const,
+    };
+    traceFirestoreListenerAttach(traceMetadata);
+    const unsubscribe = onSnapshot(
       doc(getPortalDb(), CUSTOMER_UPLOAD_COLLECTIONS.customerUploads, uploadId),
       (snapshot) => {
+        traceFirestoreListenerEmission(traceMetadata, snapshot.exists() ? 1 : 0);
         if (!snapshot.exists()) {
           return;
         }
@@ -473,6 +522,7 @@ export const customerUploadService = {
         });
       },
     );
+    return traceWrappedUnsubscribe(traceMetadata, unsubscribe);
   },
 
   subscribeBatchUploads(
@@ -486,7 +536,16 @@ export const customerUploadService = {
       where('customerUid', '==', customerUid),
     );
 
-    return onSnapshot(uploadsQuery, (snapshot) => {
+    const traceMetadata = {
+      app: 'portal' as const,
+      collection: CUSTOMER_UPLOAD_COLLECTIONS.customerUploads,
+      constraints: ['batchId==currentBatch', 'customerUid==currentUser'],
+      source: 'customerUploadService.subscribeBatchUploads',
+      triggerReason: 'route' as const,
+    };
+    traceFirestoreListenerAttach(traceMetadata);
+    const unsubscribe = onSnapshot(uploadsQuery, (snapshot) => {
+      traceFirestoreListenerEmission(traceMetadata, snapshot.size);
       const uploads = snapshot.docs.map((document) => {
         const data = document.data();
         return {
@@ -529,6 +588,7 @@ export const customerUploadService = {
       });
       onChange(uploads);
     });
+    return traceWrappedUnsubscribe(traceMetadata, unsubscribe);
   },
 
   async getDownloadUrl(storagePath: string | null | undefined): Promise<string | null> {
@@ -597,7 +657,16 @@ export const customerUploadService = {
    */
   async listAccountArtworkGallery(customerUid: string): Promise<AccountArtworkGalleryItem[]> {
     const ACCOUNT_GALLERY_FETCH_LIMIT = 150;
-    traceFirestoreRead('getDocs', `customerUploads:accountGallery:uid=${customerUid}`);
+    const traceMetadata = {
+      app: 'portal' as const,
+      collection: CUSTOMER_UPLOAD_COLLECTIONS.customerUploads,
+      constraints: ['customerUid==currentUser'],
+      orderBy: ['createdAt desc'],
+      limit: ACCOUNT_GALLERY_FETCH_LIMIT,
+      source: 'customerUploadService.listAccountArtworkGallery',
+      triggerReason: 'route' as const,
+    };
+    traceFirestoreOneShotStart('getDocs', traceMetadata);
     const snapshot = await getDocs(
       query(
         collection(getPortalDb(), CUSTOMER_UPLOAD_COLLECTIONS.customerUploads),
@@ -606,6 +675,7 @@ export const customerUploadService = {
         limit(ACCOUNT_GALLERY_FETCH_LIMIT),
       ),
     );
+    traceFirestoreOneShotComplete('getDocs', traceMetadata, snapshot.size);
 
     const items: AccountArtworkGalleryItem[] = [];
 

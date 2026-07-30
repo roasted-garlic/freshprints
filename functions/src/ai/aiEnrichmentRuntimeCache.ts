@@ -1,6 +1,13 @@
+import { randomUUID } from "node:crypto";
+
 import { loadAiEnrichmentSettings, type AiEnrichmentSettingsLoaded } from "./loadAiEnrichmentSettings";
 import type { CatalogTag } from "../../../packages/shared/src/types/catalogTag.types";
-import { adminDb } from "../lib/admin";
+import { logPipelineEvent } from "../lib/pipelineLog";
+import {
+  aiSnapshotTagsToCatalogTags,
+  clearAiCatalogReferenceSnapshotCache,
+  loadAiCatalogReferenceSnapshot,
+} from "./loadAiCatalogReferenceSnapshot";
 
 const CACHE_TTL_MS = 60_000;
 
@@ -22,26 +29,97 @@ let categoriesCache: CacheEntry<{
   idsByName: Record<string, string>;
 }> | null = null;
 let tagsCache: CacheEntry<CatalogTag[]> | null = null;
+const runtimeInstanceId = randomUUID();
+let isColdStart = true;
+const activeMisses: Record<"settings" | "categories" | "tags", number> = {
+  settings: 0,
+  categories: 0,
+  tags: 0,
+};
+
+export interface AiEnrichmentReadDiagnosticContext {
+  functionName: string;
+  invocationId: string;
+  designId?: string;
+}
+
+function logReferenceRead(
+  event: string,
+  resource: keyof typeof activeMisses,
+  context?: AiEnrichmentReadDiagnosticContext,
+  extra: Record<string, unknown> = {},
+): void {
+  logPipelineEvent(event, {
+    resource,
+    runtimeInstanceId,
+    coldStart: isColdStart,
+    functionName: context?.functionName ?? "unknown",
+    invocationId: context?.invocationId ?? "unknown",
+    designId: context?.designId ?? null,
+    ...extra,
+  });
+  isColdStart = false;
+}
+
+async function traceCacheMiss<T>(
+  resource: keyof typeof activeMisses,
+  context: AiEnrichmentReadDiagnosticContext | undefined,
+  load: () => Promise<T>,
+  returnedCount: (value: T) => number,
+): Promise<T> {
+  const concurrentMissOverlap = activeMisses[resource] > 0;
+  activeMisses[resource] += 1;
+  logReferenceRead("reference_cache.miss", resource, context, { concurrentMissOverlap });
+  logReferenceRead("reference_query.started", resource, context);
+
+  try {
+    const value = await load();
+    logReferenceRead("reference_query.completed", resource, context, {
+      returnedDocumentCount: returnedCount(value),
+      concurrentMissOverlap,
+    });
+    return value;
+  } catch (error) {
+    logReferenceRead("reference_query.failed", resource, context, {
+      reason: error instanceof Error ? error.name : "unknown_error",
+      concurrentMissOverlap,
+    });
+    throw error;
+  } finally {
+    activeMisses[resource] -= 1;
+  }
+}
 
 export function clearAiEnrichmentRuntimeCache(): void {
   settingsCache = null;
   categoriesCache = null;
   tagsCache = null;
+  clearAiCatalogReferenceSnapshotCache();
 }
 
-export async function loadCachedAiEnrichmentSettings(): Promise<AiEnrichmentSettingsLoaded> {
+export async function loadCachedAiEnrichmentSettings(
+  context?: AiEnrichmentReadDiagnosticContext,
+): Promise<AiEnrichmentSettingsLoaded> {
   const now = Date.now();
 
   if (settingsCache && settingsCache.expiresAtMs > now) {
+    logReferenceRead("reference_cache.hit", "settings", context);
     return settingsCache.value;
   }
 
-  const value = await loadAiEnrichmentSettings();
+  const value = await traceCacheMiss(
+    "settings",
+    context,
+    loadAiEnrichmentSettings,
+    () => 1,
+  );
   settingsCache = { value, expiresAtMs: now + CACHE_TTL_MS };
   return value;
 }
 
-export async function loadCachedActiveCategories(): Promise<{
+export async function loadCachedActiveCategories(
+  context?: AiEnrichmentReadDiagnosticContext,
+): Promise<{
   categories: CachedCategory[];
   names: string[];
   idsByName: Record<string, string>;
@@ -49,67 +127,43 @@ export async function loadCachedActiveCategories(): Promise<{
   const now = Date.now();
 
   if (categoriesCache && categoriesCache.expiresAtMs > now) {
+    logReferenceRead("reference_cache.hit", "categories", context);
     return categoriesCache.value;
   }
 
-  const snapshot = await adminDb.collection("categories").where("isActive", "==", true).get();
-  const categories: CachedCategory[] = [];
-  const names: string[] = [];
-  const idsByName: Record<string, string> = {};
-
-  snapshot.forEach((doc) => {
-    const data = doc.data();
-    const name = data.name;
-
-    if (typeof name === "string" && name.trim()) {
-      const trimmedName = name.trim();
-      const description = typeof data.description === "string" ? data.description.trim() : "";
-      categories.push({
-        id: doc.id,
-        name: trimmedName,
-        ...(description ? { description } : {}),
-      });
-      names.push(trimmedName);
-      idsByName[trimmedName.toLowerCase()] = doc.id;
-    }
-  });
-
-  const value = { categories, names, idsByName };
+  const value = await traceCacheMiss(
+    "categories",
+    context,
+    async () => {
+      const snapshot = await loadAiCatalogReferenceSnapshot();
+      return {
+        categories: snapshot.categories,
+        names: snapshot.categoryNames,
+        idsByName: snapshot.categoryIdsByName,
+      };
+    },
+    (result) => result.categories.length,
+  );
   categoriesCache = { value, expiresAtMs: now + CACHE_TTL_MS };
   return value;
 }
 
-export async function loadCachedApprovedTags(): Promise<CatalogTag[]> {
+export async function loadCachedApprovedTags(
+  context?: AiEnrichmentReadDiagnosticContext,
+): Promise<CatalogTag[]> {
   const now = Date.now();
 
   if (tagsCache && tagsCache.expiresAtMs > now) {
+    logReferenceRead("reference_cache.hit", "tags", context);
     return tagsCache.value;
   }
 
-  const snapshot = await adminDb.collection("tags").where("status", "==", "approved").get();
-  const tags: CatalogTag[] = [];
-
-  snapshot.forEach((doc) => {
-    const data = doc.data();
-
-    if (
-      typeof data.name === "string" &&
-      Array.isArray(data.aliases) &&
-      typeof data.preferredWhen === "string"
-    ) {
-      tags.push({
-        aliases: data.aliases.filter((alias): alias is string => typeof alias === "string"),
-        createdAt: data.createdAt,
-        createdBy: typeof data.createdBy === "string" ? data.createdBy : "",
-        id: doc.id,
-        name: data.name,
-        preferredWhen: data.preferredWhen,
-        status: "approved",
-        updatedAt: data.updatedAt,
-        updatedBy: typeof data.updatedBy === "string" ? data.updatedBy : "",
-      });
-    }
-  });
+  const tags = await traceCacheMiss(
+    "tags",
+    context,
+    async () => aiSnapshotTagsToCatalogTags(await loadAiCatalogReferenceSnapshot()),
+    (result) => result.length,
+  );
 
   tagsCache = { value: tags, expiresAtMs: now + CACHE_TTL_MS };
   return tags;

@@ -1,6 +1,5 @@
 import { FirebaseError } from 'firebase/app';
 import { doc, getDoc, onSnapshot, type Unsubscribe } from 'firebase/firestore';
-import { httpsCallable } from 'firebase/functions';
 
 import { ETSY_RECOMMENDATION_COLLECTION } from '@fresh-prints/shared/constants/etsyRecommendation/etsyRecommendation.constants';
 import type {
@@ -18,8 +17,16 @@ import type {
   EtsyRecommendationAnswers,
   EtsyRecommendationRequest,
 } from '@fresh-prints/shared/types/etsyRecommendation/etsyRecommendation.types';
+import {
+  traceFirestoreListenerAttach,
+  traceFirestoreListenerEmission,
+  traceFirestoreOneShotComplete,
+  traceFirestoreOneShotStart,
+  traceWrappedUnsubscribe,
+} from '@fresh-prints/shared/utils/firestoreUsageTrace';
 
-import { getPortalDb, getPortalFunctions } from '../../../lib/firebase/client';
+import { getPortalDb } from '../../../lib/firebase/client';
+import { callTracedFunction } from '../../../lib/firebase/tracedCallable';
 import { portalAuthService } from '../../auth/services/authService';
 
 export class EtsyRecommendationCallableError extends Error {
@@ -133,12 +140,12 @@ export const etsyRecommendationService = {
     input: SubmitEtsyRecommendationRequestRequest,
   ): Promise<SubmitEtsyRecommendationRequestResponse> {
     try {
-      const callable = httpsCallable<
+      return await callTracedFunction<
         SubmitEtsyRecommendationRequestRequest,
         SubmitEtsyRecommendationRequestResponse
-      >(getPortalFunctions(), 'submitEtsyRecommendationRequest');
-      const result = await callable(input);
-      return result.data;
+      >('submitEtsyRecommendationRequest', {
+        source: 'etsyRecommendationService.submitRequest',
+      })(input);
     } catch (error) {
       throw mapCallableError(error);
     }
@@ -146,12 +153,12 @@ export const etsyRecommendationService = {
 
   async completeRequest(requestId: string): Promise<EtsyRecommendationRequestIdResponse> {
     try {
-      const callable = httpsCallable<
+      return await callTracedFunction<
         EtsyRecommendationRequestIdRequest,
         EtsyRecommendationRequestIdResponse
-      >(getPortalFunctions(), 'completeEtsyRecommendationRequest');
-      const result = await callable({ requestId });
-      return result.data;
+      >('completeEtsyRecommendationRequest', {
+        source: 'etsyRecommendationService.completeRequest',
+      })({ requestId });
     } catch (error) {
       throw mapCallableError(error);
     }
@@ -159,12 +166,12 @@ export const etsyRecommendationService = {
 
   async cancelRequest(requestId: string): Promise<EtsyRecommendationRequestIdResponse> {
     try {
-      const callable = httpsCallable<
+      return await callTracedFunction<
         EtsyRecommendationRequestIdRequest,
         EtsyRecommendationRequestIdResponse
-      >(getPortalFunctions(), 'cancelEtsyRecommendationRequest');
-      const result = await callable({ requestId });
-      return result.data;
+      >('cancelEtsyRecommendationRequest', {
+        source: 'etsyRecommendationService.cancelRequest',
+      })({ requestId });
     } catch (error) {
       throw mapCallableError(error);
     }
@@ -172,12 +179,12 @@ export const etsyRecommendationService = {
 
   async searchListings(requestId: string): Promise<SearchEtsyRecommendationsResponse> {
     try {
-      const callable = httpsCallable<
+      return await callTracedFunction<
         SearchEtsyRecommendationsRequest,
         SearchEtsyRecommendationsResponse
-      >(getPortalFunctions(), 'searchEtsyRecommendations');
-      const result = await callable({ requestId });
-      return result.data;
+      >('searchEtsyRecommendations', {
+        source: 'etsyRecommendationService.searchListings',
+      })({ requestId });
     } catch (error) {
       throw mapCallableError(error);
     }
@@ -185,12 +192,12 @@ export const etsyRecommendationService = {
 
   async getSearchQuota(requestId: string): Promise<GetEtsyRecommendationSearchQuotaResponse> {
     try {
-      const callable = httpsCallable<
+      return await callTracedFunction<
         GetEtsyRecommendationSearchQuotaRequest,
         GetEtsyRecommendationSearchQuotaResponse
-      >(getPortalFunctions(), 'getEtsyRecommendationSearchQuota');
-      const result = await callable({ requestId });
-      return result.data;
+      >('getEtsyRecommendationSearchQuota', {
+        source: 'etsyRecommendationService.getSearchQuota',
+      })({ requestId });
     } catch (error) {
       throw mapCallableError(error);
     }
@@ -199,7 +206,16 @@ export const etsyRecommendationService = {
   async getRequest(requestId: string): Promise<EtsyRecommendationRequest | null> {
     try {
       const ref = doc(getPortalDb(), ETSY_RECOMMENDATION_COLLECTION, requestId.trim());
+      const traceMetadata = {
+        app: 'portal' as const,
+        collection: ETSY_RECOMMENDATION_COLLECTION,
+        documentPathPattern: `${ETSY_RECOMMENDATION_COLLECTION}/{requestId}`,
+        source: 'etsyRecommendationService.getRequest',
+        triggerReason: 'route' as const,
+      };
+      traceFirestoreOneShotStart('getDoc', traceMetadata);
       const snapshot = await getDoc(ref);
+      traceFirestoreOneShotComplete('getDoc', traceMetadata, snapshot.exists() ? 1 : 0);
       if (!snapshot.exists()) {
         return null;
       }
@@ -215,9 +231,18 @@ export const etsyRecommendationService = {
     onError?: (error: Error) => void,
   ): Unsubscribe {
     const ref = doc(getPortalDb(), ETSY_RECOMMENDATION_COLLECTION, requestId);
-    return onSnapshot(
+    const traceMetadata = {
+      app: 'portal' as const,
+      collection: ETSY_RECOMMENDATION_COLLECTION,
+      documentPathPattern: `${ETSY_RECOMMENDATION_COLLECTION}/{requestId}`,
+      source: 'etsyRecommendationService.listenToRequest',
+      triggerReason: 'route' as const,
+    };
+    traceFirestoreListenerAttach(traceMetadata);
+    const unsubscribe = onSnapshot(
       ref,
       (snapshot) => {
+        traceFirestoreListenerEmission(traceMetadata, snapshot.exists() ? 1 : 0);
         if (!snapshot.exists()) {
           onUpdate(null);
           return;
@@ -228,5 +253,6 @@ export const etsyRecommendationService = {
         onError?.(new Error(portalAuthService.getCallableErrorMessage(error)));
       },
     );
+    return traceWrappedUnsubscribe(traceMetadata, unsubscribe);
   },
 };

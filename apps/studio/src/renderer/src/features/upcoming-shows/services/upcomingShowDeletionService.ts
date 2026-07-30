@@ -1,12 +1,10 @@
-import { httpsCallable } from "firebase/functions";
-
 import {
   DELETE_UPCOMING_SHOW_CONFIRMATION_PHRASE,
   type DeleteEligibleUpcomingShowResponse,
   type PreviewUpcomingShowDeletionResponse,
 } from "@fresh-prints/shared/types/deletion/deletion.types";
 
-import { functions } from "../../../config/firebase";
+import { callTracedFunction } from "../../../config/tracedCallable";
 
 function getCallableErrorMessage(error: unknown, fallbackMessage: string): string {
   if (
@@ -26,12 +24,10 @@ export const upcomingShowDeletionService = {
 
   async preview(upcomingShowId: string): Promise<PreviewUpcomingShowDeletionResponse> {
     try {
-      const callable = httpsCallable<{ upcomingShowId: string }, PreviewUpcomingShowDeletionResponse>(
-        functions,
+      return await callTracedFunction<{ upcomingShowId: string }, PreviewUpcomingShowDeletionResponse>(
         "previewUpcomingShowDeletion",
-      );
-      const response = await callable({ upcomingShowId });
-      return response.data;
+        { source: "upcomingShowDeletionService.preview" },
+      )({ upcomingShowId });
     } catch (error) {
       throw new Error(
         getCallableErrorMessage(error, "Unable to preview show deletion. Please try again."),
@@ -44,12 +40,12 @@ export const upcomingShowDeletionService = {
     confirmationPhrase: string,
   ): Promise<DeleteEligibleUpcomingShowResponse> {
     try {
-      const callable = httpsCallable<
+      return await callTracedFunction<
         { upcomingShowId: string; confirmationPhrase: string },
         DeleteEligibleUpcomingShowResponse
-      >(functions, "deleteEligibleUpcomingShow");
-      const response = await callable({ upcomingShowId, confirmationPhrase });
-      return response.data;
+      >("deleteEligibleUpcomingShow", {
+        source: "upcomingShowDeletionService.deleteEligible",
+      })({ upcomingShowId, confirmationPhrase });
     } catch (error) {
       throw new Error(getCallableErrorMessage(error, "Unable to delete the show. Please try again."));
     }

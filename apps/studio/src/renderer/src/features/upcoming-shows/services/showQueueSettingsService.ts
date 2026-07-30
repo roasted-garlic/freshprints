@@ -1,5 +1,7 @@
 import { doc, getDoc, serverTimestamp, setDoc, Timestamp } from "firebase/firestore";
 
+import { runTracedWrite } from "@fresh-prints/shared/utils/firestoreUsageTrace";
+
 import {
   DEFAULT_PORTAL_QUEUE_CUTOFF_HOURS_BEFORE_START,
   MAX_PORTAL_QUEUE_CUTOFF_HOURS_BEFORE_START,
@@ -230,7 +232,16 @@ export const showQueueSettingsService = {
     });
 
     assertNoUndefinedFirestoreFields(payload, "Show Queue settings payload");
-    await setDoc(doc(db, "settings", SHOW_QUEUE_SETTINGS_DOC_ID), payload, { merge: true });
+    await runTracedWrite(
+      "setDoc",
+      () => setDoc(doc(db, "settings", SHOW_QUEUE_SETTINGS_DOC_ID), payload, { merge: true }),
+      {
+        app: "studio",
+        collection: "settings",
+        documentPathPattern: "settings/showQueue",
+        source: "showQueueSettingsService.updateSettings",
+      },
+    );
 
     return this.getSettings();
   },
@@ -256,7 +267,16 @@ export const showQueueSettingsService = {
     });
 
     assertNoUndefinedFirestoreFields(payload, "Whatnot assisted import result payload");
-    await setDoc(doc(db, "settings", SHOW_QUEUE_SETTINGS_DOC_ID), payload, { merge: true });
+    await runTracedWrite(
+      "setDoc",
+      () => setDoc(doc(db, "settings", SHOW_QUEUE_SETTINGS_DOC_ID), payload, { merge: true }),
+      {
+        app: "studio",
+        collection: "settings",
+        documentPathPattern: "settings/showQueue",
+        source: "showQueueSettingsService.recordWhatnotAssistedImportResult",
+      },
+    );
 
     return this.getSettings();
   },

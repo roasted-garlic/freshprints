@@ -12,7 +12,7 @@ interface PrintRequestDeletionDialogProps {
   printRequestId: string | null;
   printRequestName: string;
   onCancel: () => void;
-  onCompleted: (message: string) => void;
+  onCompleted: (result: { message: string; printRequestId: string; outcome: "deleted" | "archived" }) => void;
 }
 
 export function PrintRequestDeletionDialog({
@@ -195,7 +195,11 @@ export function PrintRequestDeletionDialog({
                       setError(result.blockers?.[0]?.message ?? result.message);
                       return;
                     }
-                    onCompleted(result.message);
+                    onCompleted({
+                      message: result.message,
+                      printRequestId,
+                      outcome: isArchive ? "archived" : "deleted",
+                    });
                   } catch (submitError: unknown) {
                     setError(
                       submitError instanceof Error

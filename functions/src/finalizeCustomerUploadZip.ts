@@ -1,10 +1,16 @@
 import { createHash } from "node:crypto";
 
 import { FieldValue } from "firebase-admin/firestore";
+import { logger } from "firebase-functions";
 import { onCall } from "firebase-functions/v2/https";
 
 import { CUSTOMER_UPLOAD_COLLECTIONS } from "../../packages/shared/src/constants/customerUpload/customerUploadCollections.constants";
-import { computeCustomerUploadMaxZipBytes } from "../../packages/shared/src/constants/customerUpload/customerUploadLimits.constants";
+import {
+  computeCustomerUploadMaxZipBytes,
+  CUSTOMER_UPLOAD_ZIP_IMAGE_PROCESSING_CONCURRENCY,
+} from "../../packages/shared/src/constants/customerUpload/customerUploadLimits.constants";
+import { mapWithConcurrency } from "../../packages/shared/src/utils/boundedConcurrencyQueue";
+import { aggregateZipProcessingResults } from "./lib/finalizeCustomerUploadZipAggregation";
 import {
   getCustomerUploadBatchZipStoragePath,
   getCustomerUploadPreviewStoragePath,
@@ -278,111 +284,148 @@ export const finalizeCustomerUploadZip = onCall(
         updatedAt: FieldValue.serverTimestamp(),
       });
 
-      // Processing phase: validate and prepare each discovered image.
-      for (const image of pendingImages) {
-        if (image.alreadyReady) {
-          continue;
-        }
+      // Processing phase: validate and prepare each discovered image with bounded concurrency.
+      // Each task returns a typed per-image outcome; batch counters are aggregated in one
+      // deterministic pass after every task has settled (never mutated from within a concurrently-
+      // running callback) — see ADR-FP-123.
+      const imagesToProcess = pendingImages.filter((image) => !image.alreadyReady);
+      const processingStartedAtMs = Date.now();
 
+      const settled = await mapWithConcurrency(
+        imagesToProcess,
+        CUSTOMER_UPLOAD_ZIP_IMAGE_PROCESSING_CONCURRENCY,
+        async (image): Promise<FinalizeCustomerUploadZipFileResult> => {
+          const uploadRef = adminDb
+            .collection(CUSTOMER_UPLOAD_COLLECTIONS.customerUploads)
+            .doc(image.uploadId);
+
+          await uploadRef.update({
+            technicalStatus: "validating",
+            technicalProgressStage: "checking_format",
+            updatedAt: FieldValue.serverTimestamp(),
+          });
+
+          const processed = await processCustomerUploadImageBytes(image.bytes, {
+            onStage: async (stage) => {
+              await uploadRef.update({
+                technicalStatus: "processing",
+                technicalProgressStage: stage,
+                updatedAt: FieldValue.serverTimestamp(),
+              });
+            },
+          });
+
+          if (!processed.ok) {
+            await uploadRef.update({
+              technicalStatus: "failed",
+              technicalProgressStage: null,
+              technicalFailureCode: processed.code,
+              technicalFailureMessage: processed.message,
+              updatedAt: FieldValue.serverTimestamp(),
+            });
+            return {
+              uploadId: image.uploadId,
+              entryName: image.entryName,
+              technicalStatus: "failed",
+              technicalFailureCode: processed.code,
+              technicalFailureMessage: processed.message,
+            };
+          }
+
+          await uploadRef.update({
+            technicalStatus: "processing",
+            technicalProgressStage: "saving",
+            updatedAt: FieldValue.serverTimestamp(),
+          });
+
+          const productionStoragePath = getCustomerUploadProductionStoragePath(
+            customerUid,
+            image.uploadId,
+          );
+          const previewStoragePath = getCustomerUploadPreviewStoragePath(
+            customerUid,
+            image.uploadId,
+          );
+          const thumbnailStoragePath = getCustomerUploadThumbnailStoragePath(
+            customerUid,
+            image.uploadId,
+          );
+
+          await saveCustomerUploadProcessedOutputs({
+            bucket,
+            sourceObjectPath: storageObjectPath(image.sourceStoragePath),
+            productionObjectPath: storageObjectPath(productionStoragePath),
+            previewObjectPath: storageObjectPath(previewStoragePath),
+            thumbnailObjectPath: storageObjectPath(thumbnailStoragePath),
+            processed,
+          });
+
+          await uploadRef.update(
+            withoutUndefinedFields({
+              technicalStatus: "ready",
+              technicalProgressStage: null,
+              technicalFailureCode: null,
+              technicalFailureMessage: null,
+              sourceFormat: processed.sourceFormat,
+              sourceWidthPx: processed.sourceWidthPx,
+              sourceHeightPx: processed.sourceHeightPx,
+              widthPx: processed.widthPx,
+              heightPx: processed.heightPx,
+              wasUpscaled: processed.wasUpscaled,
+              wasTrimmed: processed.wasTrimmed,
+              transparencyPassed: true,
+              transparentPixelRatio: processed.transparentPixelRatio,
+              productionStoragePath,
+              previewStoragePath,
+              thumbnailStoragePath,
+              printWidthInches: processed.printWidthInches,
+              printHeightInches: processed.printHeightInches,
+              effectiveDpi: processed.effectiveDpi,
+              catalogReviewStatus: "not_eligible",
+              updatedAt: FieldValue.serverTimestamp(),
+            }),
+          );
+
+          return {
+            uploadId: image.uploadId,
+            entryName: image.entryName,
+            technicalStatus: "ready",
+          };
+        },
+      );
+
+      // Deterministic post-settlement aggregation — every task has already resolved or rejected
+      // by this point, so this pass never races with in-flight processing. See ADR-FP-123.
+      const aggregation = aggregateZipProcessingResults(imagesToProcess, settled);
+      fileResults.push(...aggregation.fileResults);
+      readyCount += aggregation.readyCount;
+      failedCount += aggregation.failedCount;
+
+      // Persist the failure for any task that rejected unexpectedly (processCustomerUploadImageBytes
+      // itself returns a typed failure result rather than throwing, so this is an unexpected-error
+      // path) — the per-image Firestore doc still needs its final status written.
+      for (const { image, reason } of aggregation.unexpectedRejections) {
+        const message = reason instanceof Error ? reason.message : "Image processing failed.";
         const uploadRef = adminDb
           .collection(CUSTOMER_UPLOAD_COLLECTIONS.customerUploads)
           .doc(image.uploadId);
-
         await uploadRef.update({
-          technicalStatus: "validating",
-          technicalProgressStage: "checking_format",
+          technicalStatus: "failed",
+          technicalProgressStage: null,
+          technicalFailureCode: "processing_failed",
+          technicalFailureMessage: message,
           updatedAt: FieldValue.serverTimestamp(),
-        });
-
-        const processed = await processCustomerUploadImageBytes(image.bytes, {
-          onStage: async (stage) => {
-            await uploadRef.update({
-              technicalStatus: "processing",
-              technicalProgressStage: stage,
-              updatedAt: FieldValue.serverTimestamp(),
-            });
-          },
-        });
-        if (!processed.ok) {
-          failedCount += 1;
-          await uploadRef.update({
-            technicalStatus: "failed",
-            technicalProgressStage: null,
-            technicalFailureCode: processed.code,
-            technicalFailureMessage: processed.message,
-            updatedAt: FieldValue.serverTimestamp(),
-          });
-          fileResults.push({
-            uploadId: image.uploadId,
-            entryName: image.entryName,
-            technicalStatus: "failed",
-            technicalFailureCode: processed.code,
-            technicalFailureMessage: processed.message,
-          });
-          continue;
-        }
-
-        await uploadRef.update({
-          technicalStatus: "processing",
-          technicalProgressStage: "saving",
-          updatedAt: FieldValue.serverTimestamp(),
-        });
-
-        const productionStoragePath = getCustomerUploadProductionStoragePath(
-          customerUid,
-          image.uploadId,
-        );
-        const previewStoragePath = getCustomerUploadPreviewStoragePath(
-          customerUid,
-          image.uploadId,
-        );
-        const thumbnailStoragePath = getCustomerUploadThumbnailStoragePath(
-          customerUid,
-          image.uploadId,
-        );
-
-        await saveCustomerUploadProcessedOutputs({
-          bucket,
-          sourceObjectPath: storageObjectPath(image.sourceStoragePath),
-          productionObjectPath: storageObjectPath(productionStoragePath),
-          previewObjectPath: storageObjectPath(previewStoragePath),
-          thumbnailObjectPath: storageObjectPath(thumbnailStoragePath),
-          processed,
-        });
-
-        await uploadRef.update(
-          withoutUndefinedFields({
-            technicalStatus: "ready",
-            technicalProgressStage: null,
-            technicalFailureCode: null,
-            technicalFailureMessage: null,
-            sourceFormat: processed.sourceFormat,
-            sourceWidthPx: processed.sourceWidthPx,
-            sourceHeightPx: processed.sourceHeightPx,
-            widthPx: processed.widthPx,
-            heightPx: processed.heightPx,
-            wasUpscaled: processed.wasUpscaled,
-            wasTrimmed: processed.wasTrimmed,
-            transparencyPassed: true,
-            transparentPixelRatio: processed.transparentPixelRatio,
-            productionStoragePath,
-            previewStoragePath,
-            thumbnailStoragePath,
-            printWidthInches: processed.printWidthInches,
-            printHeightInches: processed.printHeightInches,
-            effectiveDpi: processed.effectiveDpi,
-            catalogReviewStatus: "not_eligible",
-            updatedAt: FieldValue.serverTimestamp(),
-          }),
-        );
-
-        readyCount += 1;
-        fileResults.push({
-          uploadId: image.uploadId,
-          entryName: image.entryName,
-          technicalStatus: "ready",
         });
       }
+
+      const processingDurationMs = Date.now() - processingStartedAtMs;
+      logger.info("finalizeCustomerUploadZip.processingBatch", {
+        imageCount: imagesToProcess.length,
+        concurrency: CUSTOMER_UPLOAD_ZIP_IMAGE_PROCESSING_CONCURRENCY,
+        processingDurationMs,
+        readyCount,
+        failedCount,
+      });
 
       const manifestHash = createHash("sha256")
         .update(JSON.stringify(manifest))

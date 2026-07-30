@@ -12,9 +12,12 @@ import {
   where,
   type DocumentData,
 } from 'firebase/firestore';
-import { httpsCallable } from 'firebase/functions';
 
-import { traceFirestoreRead } from '@fresh-prints/shared/utils/firestoreUsageTrace';
+import {
+  runTracedWrite,
+  traceFirestoreOneShotComplete,
+  traceFirestoreOneShotStart,
+} from '@fresh-prints/shared/utils/firestoreUsageTrace';
 import type {
   AddPortalCatalogDesignToPrintRequestRequest,
   AddPortalCatalogDesignToPrintRequestResponse,
@@ -33,10 +36,21 @@ import {
 import { isPortalContinuablePrintRequestStatus } from '@fresh-prints/shared/utils/portalPrintRequestListTabs';
 import { resolveCatalogAddAction } from '@fresh-prints/shared/utils/currentRequestAggregates';
 
-import { getPortalDb, getPortalFunctions } from '../../../lib/firebase/client';
+import { getPortalAuth, getPortalDb } from '../../../lib/firebase/client';
+import { callTracedFunction } from '../../../lib/firebase/tracedCallable';
 import { resolveDesignDocumentTimestamps } from '../../firebase/utils/mapFirestoreTimestamp';
 import { mapPortalPrintRequestCallableError } from '../utils/mapPortalPrintRequestCallableError';
 import { isOptimisticPrintRequestItemId } from '../utils/optimisticPrintRequestItemId';
+import {
+  clearPortalPrintRequestReadCache,
+  loadPortalPrintRequestReadCached,
+  primePortalPrintRequestReadCache,
+} from './portalPrintRequestReadCache';
+import { enqueuePortalPrintRequestMutation } from './portalPrintRequestMutationQueue';
+
+function readCacheKey(kind: string, value: string): string {
+  return `${getPortalAuth().currentUser?.uid ?? 'signed-out'}:${kind}:${value}`;
+}
 
 interface PrintRequestDocumentData extends DocumentData {
   name?: unknown;
@@ -243,19 +257,27 @@ function requestedSizesMatch(
 export const portalPrintRequestService = {
   async createPrintRequest(input: CreatePortalPrintRequestRequest = {}): Promise<CreatePortalPrintRequestResponse> {
     try {
-      const createCallable = httpsCallable<
+      return await callTracedFunction<
         CreatePortalPrintRequestRequest,
         CreatePortalPrintRequestResponse
-      >(getPortalFunctions(), 'createPortalPrintRequest');
-      const response = await createCallable(input);
-      return response.data;
+      >('createPortalPrintRequest', {
+        source: 'portalPrintRequestService.createPrintRequest',
+      })(input);
     } catch (error) {
       throw mapPortalPrintRequestCallableError(error);
     }
   },
 
   async listMyPrintRequests(customerId: string): Promise<PrintRequest[]> {
-    traceFirestoreRead('getDocs', 'printRequests:mine:all');
+    const traceMetadata = {
+      app: 'portal' as const,
+      collection: 'printRequests',
+      constraints: ['customerId==currentCustomer'],
+      orderBy: ['updatedAt desc'],
+      source: 'portalPrintRequestService.listMyPrintRequests',
+      triggerReason: 'route' as const,
+    };
+    traceFirestoreOneShotStart('getDocs', traceMetadata);
     const snapshot = await getDocs(
       query(
         collection(getPortalDb(), 'printRequests'),
@@ -263,6 +285,7 @@ export const portalPrintRequestService = {
         orderBy('updatedAt', 'desc'),
       ),
     );
+    traceFirestoreOneShotComplete('getDocs', traceMetadata, snapshot.size);
 
     return snapshot.docs.map((requestDoc) =>
       mapPrintRequest(requestDoc.id, requestDoc.data() as PrintRequestDocumentData),
@@ -274,17 +297,29 @@ export const portalPrintRequestService = {
    * customerId+status indexes (no new composite). Skips full history fan-out.
    */
   async listMyContinuablePrintRequests(customerId: string): Promise<PrintRequest[]> {
+    return loadPortalPrintRequestReadCached(
+      readCacheKey('continuable', customerId),
+      async () => {
     const statuses = ['draft', 'editing'] as const;
     const snapshots = await Promise.all(
       statuses.map(async (status) => {
-        traceFirestoreRead('getDocs', `printRequests:mine:status=${status}`);
-        return getDocs(
+        const traceMetadata = {
+          app: 'portal' as const,
+          collection: 'printRequests',
+          constraints: [`customerId==currentCustomer`, `status==${status}`],
+          source: 'portalPrintRequestService.listMyContinuablePrintRequests',
+          triggerReason: 'authentication' as const,
+        };
+        traceFirestoreOneShotStart('getDocs', traceMetadata);
+        const snapshot = await getDocs(
           query(
             collection(getPortalDb(), 'printRequests'),
             where('customerId', '==', customerId),
             where('status', '==', status),
           ),
         );
+        traceFirestoreOneShotComplete('getDocs', traceMetadata, snapshot.size);
+        return snapshot;
       }),
     );
 
@@ -298,7 +333,15 @@ export const portalPrintRequestService = {
       }
     }
 
-    return [...byId.values()].sort((left, right) => right.updatedAt.toMillis() - left.updatedAt.toMillis());
+    const requests = [...byId.values()].sort(
+      (left, right) => right.updatedAt.toMillis() - left.updatedAt.toMillis(),
+    );
+    for (const request of requests) {
+      primePortalPrintRequestReadCache(readCacheKey('request', request.id), request);
+    }
+    return requests;
+      },
+    );
   },
 
   async listEditablePrintRequests(customerId: string): Promise<PrintRequest[]> {
@@ -307,16 +350,42 @@ export const portalPrintRequestService = {
   },
 
   async getPrintRequest(printRequestId: string): Promise<PrintRequest | null> {
+    return loadPortalPrintRequestReadCached(
+      readCacheKey('request', printRequestId),
+      async () => {
+    const traceMetadata = {
+      app: 'portal' as const,
+      collection: 'printRequests',
+      documentPathPattern: 'printRequests/{printRequestId}',
+      source: 'portalPrintRequestService.getPrintRequest',
+      triggerReason: 'route' as const,
+    };
+    traceFirestoreOneShotStart('getDoc', traceMetadata);
     const snapshot = await getDoc(doc(getPortalDb(), 'printRequests', printRequestId));
+    traceFirestoreOneShotComplete('getDoc', traceMetadata, snapshot.exists() ? 1 : 0);
 
-    if (!snapshot.exists()) {
-      return null;
-    }
+        if (!snapshot.exists()) {
+          return null;
+        }
 
-    return mapPrintRequest(snapshot.id, snapshot.data() as PrintRequestDocumentData);
+        return mapPrintRequest(snapshot.id, snapshot.data() as PrintRequestDocumentData);
+      },
+    );
   },
 
   async listPrintRequestItems(printRequestId: string): Promise<PrintRequestItem[]> {
+    return loadPortalPrintRequestReadCached(
+      readCacheKey('items', printRequestId),
+      async () => {
+    const traceMetadata = {
+      app: 'portal' as const,
+      collection: 'printRequestItems',
+      constraints: ['printRequestId==workingRequest'],
+      orderBy: ['updatedAt desc'],
+      source: 'portalPrintRequestService.listPrintRequestItems',
+      triggerReason: 'authentication' as const,
+    };
+    traceFirestoreOneShotStart('getDocs', traceMetadata);
     const snapshot = await getDocs(
       query(
         collection(getPortalDb(), 'printRequestItems'),
@@ -324,6 +393,7 @@ export const portalPrintRequestService = {
         orderBy('updatedAt', 'desc'),
       ),
     );
+    traceFirestoreOneShotComplete('getDocs', traceMetadata, snapshot.size);
 
     return snapshot.docs.flatMap((itemDoc) => {
       try {
@@ -333,6 +403,8 @@ export const portalPrintRequestService = {
         return [];
       }
     });
+      },
+    );
   },
 
   async getPrintRequestItem(itemId: string): Promise<PrintRequestItem | null> {
@@ -340,7 +412,16 @@ export const portalPrintRequestService = {
     if (!trimmed) {
       return null;
     }
+    const traceMetadata = {
+      app: 'portal' as const,
+      collection: 'printRequestItems',
+      documentPathPattern: 'printRequestItems/{itemId}',
+      source: 'portalPrintRequestService.getPrintRequestItem',
+      triggerReason: 'route' as const,
+    };
+    traceFirestoreOneShotStart('getDoc', traceMetadata);
     const itemSnapshot = await getDoc(doc(getPortalDb(), 'printRequestItems', trimmed));
+    traceFirestoreOneShotComplete('getDoc', traceMetadata, itemSnapshot.exists() ? 1 : 0);
     if (!itemSnapshot.exists()) {
       return null;
     }
@@ -361,14 +442,26 @@ export const portalPrintRequestService = {
       return [];
     }
 
+    return loadPortalPrintRequestReadCached(
+      readCacheKey('items-for-requests', uniquePrintRequestIds.slice().sort().join('|')),
+      async () => {
     const itemLists = await Promise.all(
       chunkValues(uniquePrintRequestIds, 10).map(async (printRequestIdChunk) => {
+        const traceMetadata = {
+          app: 'portal' as const,
+          collection: 'printRequestItems',
+          constraints: ['printRequestId in {currentRequestChunk<=10}'],
+          source: 'portalPrintRequestService.listPrintRequestItemsForRequests',
+          triggerReason: 'authentication' as const,
+        };
+        traceFirestoreOneShotStart('getDocs', traceMetadata);
         const snapshot = await getDocs(
           query(
             collection(getPortalDb(), 'printRequestItems'),
             where('printRequestId', 'in', printRequestIdChunk),
           ),
         );
+        traceFirestoreOneShotComplete('getDocs', traceMetadata, snapshot.size);
 
         return snapshot.docs.flatMap((itemDoc) => {
           try {
@@ -380,7 +473,16 @@ export const portalPrintRequestService = {
       }),
     );
 
-    return itemLists.flat();
+    const items = itemLists.flat();
+    for (const requestId of uniquePrintRequestIds) {
+      primePortalPrintRequestReadCache(
+        readCacheKey('items', requestId),
+        items.filter((item) => item.printRequestId === requestId),
+      );
+    }
+    return items;
+      },
+    );
   },
 
   async listShowAllocationsForPrintRequests(
@@ -392,14 +494,26 @@ export const portalPrintRequestService = {
       return [];
     }
 
+    return loadPortalPrintRequestReadCached(
+      readCacheKey('allocations', uniquePrintRequestIds.slice().sort().join('|')),
+      async () => {
     const allocationLists = await Promise.all(
       chunkValues(uniquePrintRequestIds, 10).map(async (printRequestIdChunk) => {
+        const traceMetadata = {
+          app: 'portal' as const,
+          collection: 'showAllocations',
+          constraints: ['printRequestId in {requestChunk<=10}'],
+          source: 'portalPrintRequestService.listShowAllocationsForPrintRequests',
+          triggerReason: 'authentication' as const,
+        };
+        traceFirestoreOneShotStart('getDocs', traceMetadata);
         const snapshot = await getDocs(
           query(
             collection(getPortalDb(), 'showAllocations'),
             where('printRequestId', 'in', printRequestIdChunk),
           ),
         );
+        traceFirestoreOneShotComplete('getDocs', traceMetadata, snapshot.size);
 
         return snapshot.docs.map((allocationDoc) =>
           mapShowAllocationRecord(allocationDoc.data() as ShowAllocationDocumentData),
@@ -408,10 +522,21 @@ export const portalPrintRequestService = {
     );
 
     return allocationLists.flat();
+      },
+    );
   },
 
   async getReadyDesign(designId: string) {
+    const traceMetadata = {
+      app: 'portal' as const,
+      collection: 'designs',
+      documentPathPattern: 'designs/{workingRequestDesignId}',
+      source: 'portalPrintRequestService.getReadyDesign',
+      triggerReason: 'authentication' as const,
+    };
+    traceFirestoreOneShotStart('getDoc', traceMetadata);
     const snapshot = await getDoc(doc(getPortalDb(), 'designs', designId));
+    traceFirestoreOneShotComplete('getDoc', traceMetadata, snapshot.exists() ? 1 : 0);
 
     if (!snapshot.exists()) {
       throw new Error('Design not found.');
@@ -451,18 +576,14 @@ export const portalPrintRequestService = {
           .filter((designId): designId is string => Boolean(designId)),
       ),
     ];
-    const summaries = await Promise.all(
-      uniqueDesignIds.map(async (designId) => {
-        try {
-          const design = await this.getReadyDesign(designId);
-          return [designId, design] as const;
-        } catch {
-          return [designId, null] as const;
-        }
-      }),
-    );
+    if (uniqueDesignIds.length === 0) {
+      return new Map();
+    }
 
-    return new Map(summaries);
+    const { catalogService } = await import('../../catalog/services/catalogService');
+    const designs = await catalogService.getReadyDesignsByIds(uniqueDesignIds);
+    const byId = new Map(designs.map((design) => [design.id, design]));
+    return new Map(uniqueDesignIds.map((designId) => [designId, byId.get(designId) ?? null]));
   },
 
   async getUploadSummariesForItems(items: PrintRequestItem[]) {
@@ -509,22 +630,25 @@ export const portalPrintRequestService = {
       throw new Error('Quantity must be at least 1.');
     }
 
-    const callable = httpsCallable<
+    const result = await enqueuePortalPrintRequestMutation(input.printRequestId, () =>
+      callTracedFunction<
       AddPortalCatalogDesignToPrintRequestRequest,
       AddPortalCatalogDesignToPrintRequestResponse
-    >(getPortalFunctions(), 'addPortalCatalogDesignToPrintRequest');
-
-    const response = await callable({
+    >('addPortalCatalogDesignToPrintRequest', {
+      source: 'portalPrintRequestService.addOrIncrementCatalogDesign',
+    })({
       printRequestId: input.printRequestId,
       designId: input.designId,
       quantityDelta: delta,
-    });
+    }),
+    );
 
-    const result = response.data;
-    const item = await this.getPrintRequestItem(result.itemId);
-    if (!item) {
-      throw new Error('Unable to load the updated request item.');
-    }
+    clearPortalPrintRequestReadCache();
+    const item: PrintRequestItem = {
+      ...result.item,
+      createdAt: Timestamp.fromMillis(result.item.createdAtMs),
+      updatedAt: Timestamp.fromMillis(result.item.updatedAtMs),
+    };
     return { kind: result.kind, item };
   },
 
@@ -682,7 +806,7 @@ export const portalPrintRequestService = {
     quantity?: number;
     printWidthInches?: number;
     printHeightInches?: number;
-  }): Promise<void> {
+  }): Promise<{ quantity: number }> {
     if (isOptimisticPrintRequestItemId(input.itemId)) {
       throw new Error('Wait for the duplicate to finish saving before editing.');
     }
@@ -697,7 +821,16 @@ export const portalPrintRequestService = {
       throw new Error('This print request can no longer be edited.');
     }
 
+    const itemTraceMetadata = {
+      app: 'portal' as const,
+      collection: 'printRequestItems',
+      documentPathPattern: 'printRequestItems/{itemId}',
+      source: 'portalPrintRequestService.updatePrintRequestItem',
+      triggerReason: 'explicit-refresh' as const,
+    };
+    traceFirestoreOneShotStart('getDoc', itemTraceMetadata);
     const itemSnapshot = await getDoc(doc(getPortalDb(), 'printRequestItems', input.itemId));
+    traceFirestoreOneShotComplete('getDoc', itemTraceMetadata, itemSnapshot.exists() ? 1 : 0);
 
     if (!itemSnapshot.exists()) {
       throw new Error('Print request item not found.');
@@ -735,31 +868,48 @@ export const portalPrintRequestService = {
     }
 
     // Quantity changes charge/refund Cap A via callable; size-only updates stay client-side.
+    // The callable's response carries the server-authoritative (transaction-clamped) quantity,
+    // which may differ from the requested nextQuantity — that value, not the request, must be
+    // returned to the caller (Root Cause 2, Plan Section 20.2/20.4).
+    let authoritativeQuantity = current.quantity;
     if (nextQuantity !== current.quantity) {
-      await this.updatePrintRequestItemQuantity({
+      const quantityResult = await this.updatePrintRequestItemQuantity({
         itemId: input.itemId,
         printRequestId: input.printRequestId,
         quantity: nextQuantity,
         userId: input.userId,
       });
+      authoritativeQuantity = quantityResult.quantity;
     }
 
     if (
       nextWidth === current.printWidthInches &&
       nextHeight === current.printHeightInches
     ) {
-      return;
+      return { quantity: authoritativeQuantity };
     }
 
     // Item-only write (Studio parity). Do not bump parent printRequests here — customer
     // parent-update rules are stricter and were denying resize autosaves as permission-denied.
     // Quantity is locked by rules for customers (Cap A callables own quantity changes).
-    await updateDoc(doc(getPortalDb(), 'printRequestItems', input.itemId), {
-      printWidthInches: nextWidth,
-      printHeightInches: nextHeight,
-      sizeLabel: formatPrintRequestItemSizeLabel(nextWidth, nextHeight),
-      updatedAt: serverTimestamp(),
-    });
+    await runTracedWrite(
+      'updateDoc',
+      () => updateDoc(doc(getPortalDb(), 'printRequestItems', input.itemId), {
+        printWidthInches: nextWidth,
+        printHeightInches: nextHeight,
+        sizeLabel: formatPrintRequestItemSizeLabel(nextWidth, nextHeight),
+        updatedAt: serverTimestamp(),
+      }),
+      {
+        app: 'portal',
+        collection: 'printRequestItems',
+        documentPathPattern: 'printRequestItems/{itemId}',
+        source: 'portalPrintRequestService.updatePrintRequestItem.size',
+        triggerReason: 'explicit-refresh',
+      },
+    );
+
+    return { quantity: authoritativeQuantity };
   },
 
   async duplicatePrintRequestItem(input: {
@@ -773,7 +923,7 @@ export const portalPrintRequestService = {
     designId?: string;
     customerUploadId?: string;
   }> {
-    const callable = httpsCallable<
+    return callTracedFunction<
       { printRequestId: string; itemId: string },
       {
         itemId: string;
@@ -782,14 +932,12 @@ export const portalPrintRequestService = {
         designId?: string;
         customerUploadId?: string;
       }
-    >(getPortalFunctions(), 'duplicatePortalPrintRequestItem');
-
-    const response = await callable({
+    >('duplicatePortalPrintRequestItem', {
+      source: 'portalPrintRequestService.duplicatePrintRequestItem',
+    })({
       printRequestId: input.printRequestId,
       itemId: input.itemId,
     });
-
-    return response.data;
   },
 
   async savePrintRequestDesignSelections(input: {
@@ -906,11 +1054,12 @@ export const portalPrintRequestService = {
 
     // New lines must go through the Cap A callable (customer create is denied in rules).
     for (const create of itemCreates) {
-      const callable = httpsCallable<
+      await callTracedFunction<
         AddPortalCatalogDesignToPrintRequestRequest,
         AddPortalCatalogDesignToPrintRequestResponse
-      >(getPortalFunctions(), 'addPortalCatalogDesignToPrintRequest');
-      await callable({
+      >('addPortalCatalogDesignToPrintRequest', {
+        source: 'portalPrintRequestService.savePrintRequestDesignSelections',
+      })({
         printRequestId: input.printRequestId,
         designId: create.designId,
         quantityDelta: create.quantity,
@@ -921,17 +1070,22 @@ export const portalPrintRequestService = {
       });
     }
 
-    if (itemCreates.length > 0) {
+    if (itemCreates.length > 0 || quantityUpdates.length > 0) {
       // itemCount is updated by the callable; refresh parent updatedAt for selection UX.
-      await updateDoc(requestRef, {
-        updatedBy: input.userId,
-        updatedAt: serverTimestamp(),
-      });
-    } else if (quantityUpdates.length > 0) {
-      await updateDoc(requestRef, {
-        updatedBy: input.userId,
-        updatedAt: serverTimestamp(),
-      });
+      await runTracedWrite(
+        'updateDoc',
+        () => updateDoc(requestRef, {
+          updatedBy: input.userId,
+          updatedAt: serverTimestamp(),
+        }),
+        {
+          app: 'portal',
+          collection: 'printRequests',
+          documentPathPattern: 'printRequests/{printRequestId}',
+          source: 'portalPrintRequestService.savePrintRequestDesignSelections',
+          triggerReason: 'explicit-refresh',
+        },
+      );
     }
   },
 
@@ -940,7 +1094,7 @@ export const portalPrintRequestService = {
     printRequestId: string;
     quantity: number;
     userId: string;
-  }): Promise<void> {
+  }): Promise<{ itemId: string; printRequestId: string; quantity: number; charged: number; refunded: number }> {
     if (isOptimisticPrintRequestItemId(input.itemId)) {
       throw new Error('Wait for the duplicate to finish saving before editing.');
     }
@@ -950,16 +1104,24 @@ export const portalPrintRequestService = {
       throw new Error('Quantity must be at least 1.');
     }
 
-    const callable = httpsCallable<
+    const result = await callTracedFunction<
       { printRequestId: string; itemId: string; quantity: number },
       { itemId: string; printRequestId: string; quantity: number; charged: number; refunded: number }
-    >(getPortalFunctions(), 'updatePortalPrintRequestItemQuantity');
-
-    await callable({
+    >('updatePortalPrintRequestItemQuantity', {
+      source: 'portalPrintRequestService.updatePrintRequestItemQuantity',
+    })({
       printRequestId: input.printRequestId,
       itemId: input.itemId,
       quantity,
     });
+    // The transaction-backed callable independently re-derives the authoritative
+    // otherItemsPrintCount and clamps server-side — the returned `quantity` may differ from what
+    // was requested and MUST be treated as the accepted value by every caller (Root Cause 2, Plan
+    // Section 20.2/20.4). Also invalidate the 30s detail-route read cache so a remount's reload()
+    // cannot serve the pre-mutation quantity back (Root Cause 1, mirrors
+    // addOrIncrementCatalogDesign's/clearWorkingPrintRequest's existing invalidation).
+    clearPortalPrintRequestReadCache();
+    return result;
   },
 
   async removePrintRequestItem(input: {
@@ -971,15 +1133,19 @@ export const portalPrintRequestService = {
       throw new Error('Wait for the duplicate to finish saving before removing.');
     }
 
-    const callable = httpsCallable<
+    await callTracedFunction<
       { printRequestId: string; itemId: string },
       { itemId: string; printRequestId: string; refunded: number; removed: boolean }
-    >(getPortalFunctions(), 'removePortalPrintRequestItem');
-
-    await callable({
+    >('removePortalPrintRequestItem', {
+      source: 'portalPrintRequestService.removePrintRequestItem',
+    })({
       printRequestId: input.printRequestId,
       itemId: input.itemId,
     });
+    // The removal mutated request + items server-side: the 30s read cache must not serve the
+    // pre-remove list/items back to any reload (Root Cause 1, Plan Section 20.1/20.4 — same class
+    // of defect already fixed once for clearWorkingPrintRequest, now extended here).
+    clearPortalPrintRequestReadCache();
   },
 
   async updatePrintRequestNotes(input: {
@@ -999,11 +1165,21 @@ export const portalPrintRequestService = {
 
     const notes = input.notes.trim();
 
-    await updateDoc(doc(getPortalDb(), 'printRequests', input.printRequestId), {
-      notes: notes ? notes : deleteField(),
-      updatedBy: input.userId,
-      updatedAt: serverTimestamp(),
-    });
+    await runTracedWrite(
+      'updateDoc',
+      () => updateDoc(doc(getPortalDb(), 'printRequests', input.printRequestId), {
+        notes: notes ? notes : deleteField(),
+        updatedBy: input.userId,
+        updatedAt: serverTimestamp(),
+      }),
+      {
+        app: 'portal',
+        collection: 'printRequests',
+        documentPathPattern: 'printRequests/{printRequestId}',
+        source: 'portalPrintRequestService.updatePrintRequestNotes',
+        triggerReason: 'explicit-refresh',
+      },
+    );
   },
 
   async clearWorkingPrintRequest(printRequestId: string): Promise<{
@@ -1011,16 +1187,20 @@ export const portalPrintRequestService = {
     status: 'draft' | 'editing';
     removedItemCount: number;
   }> {
-    const callable = httpsCallable<
+    const result = await callTracedFunction<
       { printRequestId: string },
       { printRequestId: string; status: 'draft' | 'editing'; removedItemCount: number }
-    >(getPortalFunctions(), 'clearPortalWorkingPrintRequest');
-
-    const result = await callable({ printRequestId });
+    >('clearPortalWorkingPrintRequest', {
+      source: 'portalPrintRequestService.clearWorkingPrintRequest',
+    })({ printRequestId });
+    // The clear mutated request + items server-side: the 30s read cache must not serve the
+    // pre-clear list/items back to any reload (owner live-test evidence: cleared items stayed
+    // visible until a browser refresh). Mirrors addOrIncrementCatalogDesign's invalidation.
+    clearPortalPrintRequestReadCache();
     return {
-      printRequestId: result.data.printRequestId,
-      status: result.data.status,
-      removedItemCount: result.data.removedItemCount,
+      printRequestId: result.printRequestId,
+      status: result.status,
+      removedItemCount: result.removedItemCount,
     };
   },
 };

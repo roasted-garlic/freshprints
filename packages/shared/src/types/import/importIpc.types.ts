@@ -1,7 +1,9 @@
 import type { FreshPrintsAppApi } from "../app/appIpc.types";
+import type { FreshPrintsCatalogAssetApi } from "../catalogAsset/catalogAssetIpc.types";
 import type { FreshPrintsInboxAlertApi } from "../inboxAlert/inboxAlertIpc.types";
 import type { FreshPrintsExportApi } from "../export/showExportIpc.types";
 import type { FreshPrintsWhatnotImportApi } from "../whatnotImport/whatnotImport.types";
+import type { FreshPrintsFirebaseDebugApi } from "../firebaseDebug/firebaseDebugIpc.types";
 import type { PrintSizeAssessment } from "../printSize/printSize.types";
 import type {
   BatchDiscoveryCompleteEvent,
@@ -292,6 +294,8 @@ export interface FreshPrintsImportsApi {
 
 export interface FreshPrintsPreloadApi {
   app: FreshPrintsAppApi;
+  catalogAsset: FreshPrintsCatalogAssetApi;
+  firebaseDebug: FreshPrintsFirebaseDebugApi;
   imports: FreshPrintsImportsApi;
   inboxAlert: FreshPrintsInboxAlertApi;
   whatnotImport: FreshPrintsWhatnotImportApi;

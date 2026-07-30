@@ -8,14 +8,10 @@ import {
   where,
   type Unsubscribe,
 } from 'firebase/firestore';
-import { httpsCallable } from 'firebase/functions';
 import { getBytes, getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 
 import {
-  ASSISTED_CREATION_ALLOWED_REFERENCE_TYPES,
   ASSISTED_CREATION_COLLECTION,
-  ASSISTED_CREATION_MAX_REFERENCE_BYTES,
-  ASSISTED_CREATION_MAX_REFERENCE_IMAGES,
   ASSISTED_CREATION_OPEN_STATUSES,
   type AssistedCreationStatus,
 } from '@fresh-prints/shared/constants/assistedCreation/assistedCreation.constants';
@@ -44,10 +40,18 @@ import type {
   AssistedCreationRequest,
   AssistedCreationSuggestedCatalogDesign,
 } from '@fresh-prints/shared/types/assistedCreation/assistedCreation.types';
+import {
+  traceFirestoreListenerAttach,
+  traceFirestoreListenerEmission,
+  traceWrappedUnsubscribe,
+} from '@fresh-prints/shared/utils/firestoreUsageTrace';
 import { buildAssistedCreationFinalArtworkDownloadFileName } from '@fresh-prints/shared/utils/assistedCreationProofFileName';
+import { withTimeout } from '@fresh-prints/shared/utils/withTimeout';
 
-import { getPortalAuth, getPortalDb, getPortalFunctions, getPortalStorage } from '../../../lib/firebase/client';
+import { getPortalAuth, getPortalDb, getPortalStorage } from '../../../lib/firebase/client';
+import { callTracedFunction } from '../../../lib/firebase/tracedCallable';
 import { portalAuthService } from '../../auth/services/authService';
+import { validateAssistedCreationReferenceFiles } from '../utils/assistedCreationReferenceFilesValidation';
 
 /** Firebase getBytes can hang; never leave UI on “Loading proof image…” forever. */
 const STORAGE_DOWNLOAD_TIMEOUT_MS = 12_000;
@@ -79,24 +83,6 @@ function storageErrorCode(error: unknown): string {
     return error.message.trim().slice(0, 80);
   }
   return 'unknown';
-}
-
-function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(() => {
-      reject(new Error(message));
-    }, ms);
-    promise.then(
-      (value) => {
-        clearTimeout(timer);
-        resolve(value);
-      },
-      (error: unknown) => {
-        clearTimeout(timer);
-        reject(error);
-      },
-    );
-  });
 }
 
 function logAssistedStorageFailure(
@@ -318,19 +304,16 @@ function parseFinalSource(value: unknown): AssistedCreationFinalSource | undefin
 }
 
 export const assistedCreationService = {
-  validateReferenceFiles(files: File[]): string | null {
-    if (files.length > ASSISTED_CREATION_MAX_REFERENCE_IMAGES) {
-      return `Upload up to ${ASSISTED_CREATION_MAX_REFERENCE_IMAGES} reference images.`;
-    }
-    for (const file of files) {
-      if (!(ASSISTED_CREATION_ALLOWED_REFERENCE_TYPES as readonly string[]).includes(file.type)) {
-        return 'Reference images must be JPEG, PNG, or WebP.';
-      }
-      if (file.size <= 0 || file.size > ASSISTED_CREATION_MAX_REFERENCE_BYTES) {
-        return `Each reference image must be ${ASSISTED_CREATION_MAX_REFERENCE_BYTES / (1024 * 1024)} MB or smaller.`;
-      }
-    }
-    return null;
+  /**
+   * Pure pre-upload gate — called before any file is uploaded. `existingRetainedBytes` is the sum
+   * of already-saved reference images the caller intends to keep (0 for a brand-new submission;
+   * the sum of `keptReferences[].sizeBytes` for an update where some existing images are retained).
+   * Removed/replaced images must already be excluded from `existingRetainedBytes` by the caller —
+   * this function only sums what it is given. Delegates to the pure, directly-testable
+   * `validateAssistedCreationReferenceFiles` (no Firebase dependency).
+   */
+  validateReferenceFiles(files: File[], existingRetainedBytes = 0): string | null {
+    return validateAssistedCreationReferenceFiles(files, existingRetainedBytes);
   },
 
   async uploadPendingReferences(files: File[]): Promise<
@@ -382,12 +365,12 @@ export const assistedCreationService = {
         : [];
 
     try {
-      const callable = httpsCallable<
+      return await callTracedFunction<
         SubmitAssistedCreationRequestRequest,
         SubmitAssistedCreationRequestResponse
-      >(getPortalFunctions(), 'submitAssistedCreationRequest');
-      const result = await callable({ answers, referenceImages });
-      return result.data;
+      >('submitAssistedCreationRequest', {
+        source: 'assistedCreationService.submitRequest',
+      })({ answers, referenceImages });
     } catch (error) {
       throw mapCallableError(error);
     }
@@ -398,12 +381,12 @@ export const assistedCreationService = {
     reason: string,
   ): Promise<CancelAssistedCreationRequestResponse> {
     try {
-      const callable = httpsCallable<
+      return await callTracedFunction<
         CancelAssistedCreationRequestRequest,
         CancelAssistedCreationRequestResponse
-      >(getPortalFunctions(), 'cancelAssistedCreationRequest');
-      const result = await callable({ requestId, reason });
-      return result.data;
+      >('cancelAssistedCreationRequest', {
+        source: 'assistedCreationService.cancelRequest',
+      })({ requestId, reason });
     } catch (error) {
       throw mapCallableError(error);
     }
@@ -433,17 +416,17 @@ export const assistedCreationService = {
     ];
 
     try {
-      const callable = httpsCallable<
+      return await callTracedFunction<
         CustomerUpdateAssistedCreationRequestRequest,
         CustomerUpdateAssistedCreationRequestResponse
-      >(getPortalFunctions(), 'customerUpdateAssistedCreationRequest');
-      const result = await callable({
+      >('customerUpdateAssistedCreationRequest', {
+        source: 'assistedCreationService.updateRequest',
+      })({
         requestId: input.requestId,
         answers: input.answers,
         referenceImages,
         updateNote: input.updateNote,
       });
-      return result.data;
     } catch (error) {
       throw mapCallableError(error, 'update');
     }
@@ -453,12 +436,12 @@ export const assistedCreationService = {
     input: CustomerRespondToAssistedCreationProofRequest,
   ): Promise<CustomerRespondToAssistedCreationProofResponse> {
     try {
-      const callable = httpsCallable<
+      return await callTracedFunction<
         CustomerRespondToAssistedCreationProofRequest,
         CustomerRespondToAssistedCreationProofResponse
-      >(getPortalFunctions(), 'customerRespondToAssistedCreationProof');
-      const result = await callable(input);
-      return result.data;
+      >('customerRespondToAssistedCreationProof', {
+        source: 'assistedCreationService.respondToProof',
+      })(input);
     } catch (error) {
       throw mapCallableError(error);
     }
@@ -468,12 +451,12 @@ export const assistedCreationService = {
     input: CustomerSendAssistedCreationMessageRequest,
   ): Promise<CustomerSendAssistedCreationMessageResponse> {
     try {
-      const callable = httpsCallable<
+      return await callTracedFunction<
         CustomerSendAssistedCreationMessageRequest,
         CustomerSendAssistedCreationMessageResponse
-      >(getPortalFunctions(), 'customerSendAssistedCreationMessage');
-      const result = await callable(input);
-      return result.data;
+      >('customerSendAssistedCreationMessage', {
+        source: 'assistedCreationService.sendMessage',
+      })(input);
     } catch (error) {
       throw mapCallableError(error);
     }
@@ -542,12 +525,13 @@ export const assistedCreationService = {
       throw new Error('Request id is required.');
     }
     try {
-      const callable = httpsCallable<
+      const result = await callTracedFunction<
         CustomerGetAssistedCreationApprovedProofFileRequest,
         CustomerGetAssistedCreationApprovedProofFileResponse
-      >(getPortalFunctions(), 'customerGetAssistedCreationApprovedProofFile');
-      const result = await callable({ requestId: trimmedId });
-      const { contentBase64, contentType, fileName } = result.data;
+      >('customerGetAssistedCreationApprovedProofFile', {
+        source: 'assistedCreationService.downloadApprovedProof',
+      })({ requestId: trimmedId });
+      const { contentBase64, contentType, fileName } = result;
       if (!contentBase64?.trim()) {
         throw new Error('Unable to download.');
       }
@@ -571,15 +555,15 @@ export const assistedCreationService = {
       throw new Error('Request id is required.');
     }
     try {
-      const callable = httpsCallable<
+      return await callTracedFunction<
         CustomerAddAssistedApprovedProofToPrintRequestRequest,
         CustomerAddAssistedApprovedProofToPrintRequestResponse
-      >(getPortalFunctions(), 'customerAddAssistedApprovedProofToPrintRequest');
-      const result = await callable({
+      >('customerAddAssistedApprovedProofToPrintRequest', {
+        source: 'assistedCreationService.addApprovedProofToPrintRequest',
+      })({
         requestId: trimmedId,
         catalogUseAcknowledged: options.catalogUseAcknowledged === true,
       });
-      return result.data;
     } catch (error) {
       throw mapCallableError(error);
     }
@@ -610,9 +594,19 @@ export const assistedCreationService = {
       where('status', 'in', [...ASSISTED_CREATION_OPEN_STATUSES]),
       limit(5),
     );
-    return onSnapshot(
+    const traceMetadata = {
+      app: 'portal' as const,
+      collection: ASSISTED_CREATION_COLLECTION,
+      constraints: ['customerUid==currentUser', 'status in openStatuses'],
+      limit: 5,
+      source: 'assistedCreationService.subscribeOpenRequests',
+      triggerReason: 'authentication' as const,
+    };
+    traceFirestoreListenerAttach(traceMetadata);
+    const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
+        traceFirestoreListenerEmission(traceMetadata, snapshot.size);
         const items = snapshot.docs
           .map((docSnap) => parseRequestDoc(docSnap.id, docSnap.data() as Record<string, unknown>))
           .filter((item): item is AssistedCreationRequest => item != null);
@@ -622,6 +616,7 @@ export const assistedCreationService = {
         onError?.(error);
       },
     );
+    return traceWrappedUnsubscribe(traceMetadata, unsubscribe);
   },
 
   subscribeRecentRequestsForCustomer(
@@ -635,9 +630,20 @@ export const assistedCreationService = {
       orderBy('createdAt', 'desc'),
       limit(10),
     );
-    return onSnapshot(
+    const traceMetadata = {
+      app: 'portal' as const,
+      collection: ASSISTED_CREATION_COLLECTION,
+      constraints: ['customerUid==currentUser'],
+      orderBy: ['createdAt desc'],
+      limit: 10,
+      source: 'assistedCreationService.subscribeRecentRequests',
+      triggerReason: 'authentication' as const,
+    };
+    traceFirestoreListenerAttach(traceMetadata);
+    const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
+        traceFirestoreListenerEmission(traceMetadata, snapshot.size);
         const items = snapshot.docs
           .map((docSnap) => parseRequestDoc(docSnap.id, docSnap.data() as Record<string, unknown>))
           .filter((item): item is AssistedCreationRequest => item != null);
@@ -647,5 +653,6 @@ export const assistedCreationService = {
         onError?.(error);
       },
     );
+    return traceWrappedUnsubscribe(traceMetadata, unsubscribe);
   },
 };

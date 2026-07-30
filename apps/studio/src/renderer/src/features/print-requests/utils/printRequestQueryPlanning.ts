@@ -1,5 +1,6 @@
 import type { PrintRequestItemStatus } from "@fresh-prints/shared/types/printRequest/printRequest.enums";
 import type { PrintRequest, PrintRequestItem } from "@fresh-prints/shared/types/printRequest/printRequest.types";
+import type { PrintRequestListTab } from "@fresh-prints/shared/utils/printRequestListGrouping";
 
 export type QueryFilterOperator = "==";
 export type QueryOrderDirection = "asc" | "desc";
@@ -15,15 +16,30 @@ export interface QueryOrderDescriptor {
   direction: QueryOrderDirection;
 }
 
+/** Cursor for `updatedAt DESC, __name__ DESC` pagination, mirroring the Design Library's
+ * existing last-doc-id + last-sort-value cursor convention. */
+export interface PrintRequestListCursor {
+  requestId: string;
+  updatedAtMillis: number;
+}
+
 export interface PrintRequestQueryPlan {
   filters: QueryFilterDescriptor[];
   orderBy: QueryOrderDescriptor[];
+  limitCount?: number;
+  cursor?: PrintRequestListCursor;
 }
+
+export const PRINT_REQUEST_LIST_PAGE_SIZE = 50;
 
 export interface PrintRequestListQueryOptions {
   status?: PrintRequest["status"];
   customerId?: string;
   isInternal?: boolean;
+  /** Server-maintained tab mirror — filters by `queueTab` (Wave C hydration remediation). */
+  queueTab?: PrintRequestListTab;
+  limitCount?: number;
+  cursor?: PrintRequestListCursor;
 }
 
 export interface PrintRequestItemListQueryOptions {
@@ -40,7 +56,9 @@ export interface PrintRequestItemSummary {
 }
 
 function countDefinedRequestFilters(options: PrintRequestListQueryOptions): number {
-  return [options.status, options.customerId, options.isInternal].filter((value) => value !== undefined).length;
+  return [options.status, options.customerId, options.isInternal, options.queueTab].filter(
+    (value) => value !== undefined,
+  ).length;
 }
 
 export function buildPrintRequestListQueryPlan(
@@ -64,9 +82,21 @@ export function buildPrintRequestListQueryPlan(
     filters.push({ field: "isInternal", operator: "==", value: options.isInternal });
   }
 
+  if (options.queueTab !== undefined) {
+    filters.push({ field: "queueTab", operator: "==", value: options.queueTab });
+  }
+
   return {
     filters,
-    orderBy: [{ field: "updatedAt", direction: "desc" }],
+    // `__name__` (document ID) tiebreaker makes updatedAt-desc pagination stable when multiple
+    // requests share an updatedAt millisecond — mirrors the Design Library's existing cursor
+    // convention.
+    orderBy: [
+      { field: "updatedAt", direction: "desc" },
+      { field: "__name__", direction: "desc" },
+    ],
+    limitCount: options.limitCount,
+    cursor: options.cursor,
   };
 }
 
@@ -165,7 +195,9 @@ export function buildPrintRequestItemSummaries(
       designIdsByRequestId.set(item.printRequestId, new Set<string>());
     }
 
-    designIdsByRequestId.get(item.printRequestId)?.add(item.designId);
+    designIdsByRequestId
+      .get(item.printRequestId)
+      ?.add(getPrintRequestItemSummaryIdentity(item));
 
     const quantity = Number.isFinite(item.quantity) ? item.quantity : 0;
     totalQuantityByRequestId.set(
@@ -183,4 +215,14 @@ export function buildPrintRequestItemSummaries(
       },
     ]),
   );
+}
+
+export function getPrintRequestItemSummaryIdentity(item: PrintRequestItem): string {
+  if (item.sourceType === "customer_upload") {
+    const customerUploadId = item.customerUploadId?.trim();
+    return customerUploadId ? `upload:${customerUploadId}` : `item:${item.id}`;
+  }
+
+  const designId = item.designId?.trim();
+  return designId ? `design:${designId}` : `item:${item.id}`;
 }

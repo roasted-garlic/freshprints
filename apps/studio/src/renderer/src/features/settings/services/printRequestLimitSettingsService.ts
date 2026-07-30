@@ -1,12 +1,12 @@
 import { doc, onSnapshot, type Unsubscribe } from "firebase/firestore";
-import { httpsCallable } from "firebase/functions";
 
 import {
   PRINT_REQUEST_LIMIT_SETTINGS_DOC_ID,
   resolvePrintRequestLimitSettings,
   type PrintRequestLimitSettings,
 } from "@fresh-prints/shared/constants/printRequest/printRequestLimitSettings.constants";
-import { db, functions } from "../../../config/firebase";
+import { db } from "../../../config/firebase";
+import { callTracedFunction } from "../../../config/tracedCallable";
 
 export const printRequestLimitSettingsService = {
   subscribe(
@@ -21,14 +21,15 @@ export const printRequestLimitSettingsService = {
   },
 
   async update(settings: PrintRequestLimitSettings): Promise<PrintRequestLimitSettings> {
-    const callable = httpsCallable<
+    // Server mirrors L into legacy Cap A for one-release rollback.
+    const response = await callTracedFunction<
       { maxQuantityPerShowPerCustomer: number },
       PrintRequestLimitSettings
-    >(functions, "updatePrintRequestLimitSettings");
-    // Server mirrors L into legacy Cap A for one-release rollback.
-    const response = await callable({
+    >("updatePrintRequestLimitSettings", {
+      source: "printRequestLimitSettingsService.update",
+    })({
       maxQuantityPerShowPerCustomer: settings.maxQuantityPerShowPerCustomer,
     });
-    return resolvePrintRequestLimitSettings(response.data);
+    return resolvePrintRequestLimitSettings(response);
   },
 };

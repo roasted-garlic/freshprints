@@ -31,6 +31,11 @@ import { useQueuePrintRequestToShow } from '../hooks/useQueuePrintRequestToShow'
 import { PortalLoadingPanel } from '../../shared/components/PortalLoadingPanel';
 import { portalPrintRequestService } from '../services/portalPrintRequestService';
 import { usePortalPrintRequests } from '../context/PortalPrintRequestContext';
+import { resolveSelectedPortalPersonalShowUsage } from '../utils/portalPersonalShowUsage';
+import {
+  canSubmitPortalShowDestination,
+  resolvePortalShowInspectionActivation,
+} from '../utils/portalHistoricalShowInspection';
 
 function waitForCapacityBarAnimation(): Promise<void> {
   return new Promise((resolve) => {
@@ -74,9 +79,17 @@ export function PortalQueueToShowModal({
     portalQueueCutoffHoursBeforeStart,
     isLoading,
     error: loadError,
+    hasConfirmedFreshness,
   } = usePortalAllocatableShows(isOpen);
-  const { queueToShow, isSubmitting, error: submitError, clearError } = useQueuePrintRequestToShow();
+  const {
+    queueToShow,
+    isSubmitting,
+    error: submitError,
+    errorShowId: submitErrorShowId,
+    clearError,
+  } = useQueuePrintRequestToShow();
   const [selectedShowId, setSelectedShowId] = useState<string | null>(null);
+  const [inspectedShowId, setInspectedShowId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [pendingAllocatedByShowId, setPendingAllocatedByShowId] = useState<ReadonlyMap<string, number> | undefined>();
   const [isCelebratingSave, setIsCelebratingSave] = useState(false);
@@ -123,8 +136,8 @@ export function PortalQueueToShowModal({
   );
 
   const acknowledgmentCopy = useMemo(
-    () => buildPortalBiddingAcknowledgmentCopy(Math.max(1, remainingEntries.length)),
-    [remainingEntries.length],
+    () => buildPortalBiddingAcknowledgmentCopy(),
+    [],
   );
 
   const showPickerOptions = useMemo(
@@ -212,15 +225,25 @@ export function PortalQueueToShowModal({
     [perShowLimit, showPickerOptions, shows, totalRemainingQuantity],
   );
 
-  const effectiveSelectedId = selectedShowId ?? (!isLoading && !isLoadingAllocations ? defaultShowId : null);
+  const effectiveSelectedId = selectedShowId;
+  const effectiveInspectedId = inspectedShowId ?? effectiveSelectedId;
 
   const effectiveSelectedShow = useMemo(
     () => shows.find((show) => show.id === effectiveSelectedId) ?? null,
     [effectiveSelectedId, shows],
   );
+  const inspectedShow = useMemo(
+    () => shows.find((show) => show.id === effectiveInspectedId) ?? null,
+    [effectiveInspectedId, shows],
+  );
 
   const effectiveFit = useMemo(() => {
-    if (!effectiveSelectedShow || perShowLimit === null) {
+    // Plan Section 30.4 — `shows` can be serving a stale, cache-warm `isAllocatable`/capacity for a
+    // show that has since become historical server-side. Never compute a capacity decision (the
+    // exhausted-capacity banner, or whether submission is allowed) against that data until this
+    // enable's own reload has confirmed it's current — this only defers the decision briefly on a
+    // cache-warm open, it never suppresses a genuinely open show's real capacity-exhausted state.
+    if (!effectiveSelectedShow || perShowLimit === null || !hasConfirmedFreshness) {
       return null;
     }
     const capacity = assessShowCapacity({
@@ -235,7 +258,15 @@ export function PortalQueueToShowModal({
         perShowLimit,
       ),
     });
-  }, [effectiveSelectedShow, perShowLimit, totalRemainingQuantity]);
+  }, [effectiveSelectedShow, hasConfirmedFreshness, perShowLimit, totalRemainingQuantity]);
+  const personalUsage = useMemo(() => {
+    return resolveSelectedPortalPersonalShowUsage({
+      shows,
+      selectedShowId: effectiveInspectedId,
+      limit: perShowLimit,
+      pendingSuccessfulByShowId: pendingAllocatedByShowId,
+    });
+  }, [effectiveInspectedId, pendingAllocatedByShowId, perShowLimit, shows]);
 
   const showDoesNotFitEntirely = Boolean(
     effectiveFit && !effectiveFit.fitsEntirely && !effectiveFit.isBlocked,
@@ -258,6 +289,7 @@ export function PortalQueueToShowModal({
     if (!isOpen) {
       if (wasOpenRef.current) {
         setSelectedShowId(null);
+        setInspectedShowId(null);
         setActionError(null);
         setPendingAllocatedByShowId(undefined);
         setIsCelebratingSave(false);
@@ -308,11 +340,19 @@ export function PortalQueueToShowModal({
   }, [clearError, isOpen, printRequest.id]);
 
   useEffect(() => {
-    if (!isOpen || isLoading || isLoadingAllocations || selectedShowId || !defaultShowId) {
+    if (
+      !isOpen ||
+      isLoading ||
+      isLoadingAllocations ||
+      selectedShowId ||
+      inspectedShowId ||
+      !defaultShowId
+    ) {
       return;
     }
     setSelectedShowId(defaultShowId);
-  }, [defaultShowId, isLoading, isLoadingAllocations, isOpen, selectedShowId]);
+    setInspectedShowId(defaultShowId);
+  }, [defaultShowId, inspectedShowId, isLoading, isLoadingAllocations, isOpen, selectedShowId]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -330,7 +370,8 @@ export function PortalQueueToShowModal({
   }, [isAckOpen, isBusy, isOpen, onClose]);
 
   const handleRequestAddToShow = () => {
-    if (isBlocked || !effectiveSelectedId || !canConfirmFull) {
+    const destination = shows.find((show) => show.id === effectiveSelectedId);
+    if (isBlocked || !canSubmitPortalShowDestination(destination ?? null, canConfirmFull)) {
       return;
     }
     setActionError(null);
@@ -338,9 +379,11 @@ export function PortalQueueToShowModal({
   };
 
   const handleConfirmAcknowledgment = async () => {
-    if (!effectiveSelectedId || !canConfirmFull) {
+    const destination = shows.find((show) => show.id === effectiveSelectedId);
+    if (!canSubmitPortalShowDestination(destination ?? null, canConfirmFull)) {
       return;
     }
+    const destinationId = destination!.id;
 
     setActionError(null);
     setIsAckOpen(false);
@@ -351,12 +394,12 @@ export function PortalQueueToShowModal({
       );
       const result = await queueToShow({
         printRequestId: printRequest.id,
-        upcomingShowId: effectiveSelectedId,
+        upcomingShowId: destinationId,
         biddingAcknowledgmentAccepted: true,
         biddingAcknowledgmentVersion: PORTAL_BIDDING_ACKNOWLEDGMENT_VERSION,
       });
       setIsCelebratingSave(true);
-      setPendingAllocatedByShowId(new Map([[effectiveSelectedId, totalRemainingQuantity]]));
+      setPendingAllocatedByShowId(new Map([[destinationId, totalRemainingQuantity]]));
       await waitForNextPaint();
       await waitForCapacityBarAnimation();
       onClose();
@@ -366,15 +409,14 @@ export function PortalQueueToShowModal({
         totalAllocatedQuantity: result.totalAllocatedQuantity,
         upcomingShowId: result.upcomingShowId,
       });
-    } catch (queueError) {
+    } catch {
+      // Do not also set actionError here — useQueuePrintRequestToShow's own `error` (already
+      // scoped to the show id this attempt was for, Plan Section 23) is the sole source of truth
+      // for a queue-submission failure. Duplicating the message into unscoped `actionError` would
+      // let it survive a show switch even after the scoped `submitError` correctly clears.
       setPendingAllocatedByShowId(undefined);
       setIsCelebratingSave(false);
       setAllocatedBaselineByShowId(undefined);
-      setActionError(
-        queueError instanceof Error
-          ? queueError.message
-          : "Unable to add request to a show's print run.",
-      );
     }
   };
 
@@ -450,16 +492,63 @@ export function PortalQueueToShowModal({
                 ) : null}
                 <ShowPicker
                   className="portal-show-picker"
+                  onClearSelection={() => {
+                    setActionError(null);
+                    clearError();
+                    setSelectedShowId(null);
+                  }}
+                  inspectedId={effectiveInspectedId}
+                  onInspect={(showId) => {
+                    const show = shows.find((candidate) => candidate.id === showId);
+                    if (!show) return;
+                    const activation = resolvePortalShowInspectionActivation(show);
+                    setActionError(null);
+                    clearError();
+                    setInspectedShowId(activation.inspectedShowId);
+                    setSelectedShowId(activation.destinationShowId);
+                    if (activation.clearSubmissionState) {
+                      setPendingAllocatedByShowId(undefined);
+                    }
+                  }}
                   onSelect={
                     isBusy || isAckOpen
                       ? () => undefined
                       : (showId) => {
+                          // Plan Section 23 (Amendment 5): a capacity/submit error is scoped to the
+                          // show it happened for — selecting a different show must clear it
+                          // immediately, not leave Show A's stale error visible while Show B is
+                          // being evaluated.
+                          setActionError(null);
+                          clearError();
                           setSelectedShowId(showId);
+                          setInspectedShowId(showId);
                         }
                   }
                   options={showPickerOptions}
                   selectedId={effectiveSelectedId}
                 />
+                {inspectedShow?.isAllocatable === false ? (
+                  <div className="portal-queue-fit-callout" role="status">
+                    <div className="portal-queue-fit-callout-copy">
+                      <p className="portal-queue-fit-callout-text">
+                        This show has already been printed, so no new print requests can be added.
+                      </p>
+                      <p className="portal-muted">
+                        You can still review your print activity for this show.
+                      </p>
+                    </div>
+                  </div>
+                ) : null}
+                {personalUsage ? (
+                  <div className="portal-queue-fit-callout" role="status">
+                    <div className="portal-queue-fit-callout-copy">
+                      <p className="portal-queue-fit-callout-text">{personalUsage.usedLabel}</p>
+                      {personalUsage.remainingLabel ? (
+                        <p className="portal-muted">{personalUsage.remainingLabel}</p>
+                      ) : null}
+                    </div>
+                  </div>
+                ) : null}
               </>
             )}
           </div>
@@ -490,11 +579,20 @@ export function PortalQueueToShowModal({
               </div>
             ) : null}
 
-            {submitError || actionError ? (
-              <p className="portal-error portal-queue-to-show-alert" role="alert">
-                {submitError ?? actionError}
-              </p>
-            ) : null}
+            {(() => {
+              // Defense-in-depth (Plan Section 23, Amendment 5): even if some future code path
+              // sets selectedShowId without calling clearError(), a submit error only ever
+              // displays when it still matches the currently effective show — a stale error for a
+              // show the customer is no longer looking at can never render.
+              const scopedSubmitError =
+                submitError && submitErrorShowId === effectiveSelectedId ? submitError : null;
+              const displayError = scopedSubmitError ?? actionError;
+              return displayError ? (
+                <p className="portal-error portal-queue-to-show-alert" role="alert">
+                  {displayError}
+                </p>
+              ) : null;
+            })()}
           </div>
 
           <footer className="modal-footer portal-queue-to-show-footer">

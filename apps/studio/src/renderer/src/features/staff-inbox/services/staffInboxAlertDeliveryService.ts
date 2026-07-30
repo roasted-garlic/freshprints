@@ -14,6 +14,7 @@ import {
   type StaffInboxAlertDelivery,
   type StaffInboxAlertDeliveryKind,
 } from "@fresh-prints/shared/staffInbox/staffInboxAlertDelivery.types";
+import { runTracedWrite } from "@fresh-prints/shared/utils/firestoreUsageTrace";
 
 import { firestoreCollectionService } from "../../firebase/services/firestoreCollectionService";
 import { mapFirestoreTimestamp } from "../../firebase/utils/firestoreTimestamp";
@@ -75,18 +76,28 @@ export const staffInboxAlertDeliveryService = {
   }): Promise<void> {
     const docId = buildStaffInboxAlertDeliveryDocId(input.userId, input.itemId);
     const ref = doc(firestoreCollectionService.getStaffInboxAlertDeliveriesCollection(), docId);
-    await setDoc(
-      ref,
+    await runTracedWrite(
+      "setDoc",
+      () =>
+        setDoc(
+          ref,
+          {
+            userId: input.userId,
+            itemId: input.itemId,
+            kind: input.kind,
+            occurredAtMillis: input.occurredAtMillis,
+            soundPlayedAt: serverTimestamp(),
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true },
+        ),
       {
-        userId: input.userId,
-        itemId: input.itemId,
-        kind: input.kind,
-        occurredAtMillis: input.occurredAtMillis,
-        soundPlayedAt: serverTimestamp(),
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
+        app: "studio",
+        collection: "staffInboxAlertDeliveries",
+        documentPathPattern: "staffInboxAlertDeliveries/{staffInboxAlertDeliveryId}",
+        source: "staffInboxAlertDeliveryService.markSoundPlayed",
       },
-      { merge: true },
     );
   },
 };

@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useAuth } from "../../auth/hooks/useAuth";
 import { designDocumentSubscriptionService } from "../../designs/services/designDocumentSubscriptionService";
-import { useCatalogTags } from "../../designs/hooks/useCatalogTags";
+import { catalogTagService } from "../../designs/services/catalogTagService";
+import { useGeneratedDesignLibraryTaxonomy } from "../../designs/hooks/useGeneratedDesignLibraryTaxonomy";
 import type { CreateCatalogTagInput } from "../../designs/types/catalogTag.types";
 import { permissionService } from "../../permissions/services/permissionService";
 import type { Design } from "../../designs/types/design.types";
@@ -75,7 +76,13 @@ export function useAiReviewInbox(
     loadMoreDesigns,
     reloadDesigns,
   } = useDesigns(listQuery);
-  const catalogTags = useCatalogTags({ includeArchived: true });
+  // Approved-tag display/autocomplete for normal review needs only id/name/aliases/status — the
+  // generated client-safe taxonomy covers that with zero Firestore reads. The previous
+  // `useCatalogTags({ includeArchived: true })` paged the entire ~1,122-doc tag corpus on every
+  // AI Review mount (owner live-test evidence, 2026-07-25). Tag management keeps its own
+  // Firestore-backed hooks; a tag approved mid-session enters the draft via the callable's own
+  // returned name and appears in this list after the next snapshot republish.
+  const generatedTaxonomy = useGeneratedDesignLibraryTaxonomy(user);
 
   const [selectedDesignId, setSelectedDesignId] = useState<string | null>(null);
   const [liveDesign, setLiveDesign] = useState<Design | null>(null);
@@ -812,7 +819,8 @@ export function useAiReviewInbox(
       setActionError(null);
 
       try {
-        const approvedTag = await catalogTags.approveSuggestedTag(input);
+        // Lazy, on-demand mutation — does not require the tag corpus to be preloaded.
+        const approvedTag = await catalogTagService.approveSuggestedTag(user, input);
         ignoreSuggestedTag(sourceName);
 
         if (addToDraft) {
@@ -828,7 +836,7 @@ export function useAiReviewInbox(
         setIsActionLoading(false);
       }
     },
-    [canApproveSuggestedTags, catalogTags, ignoreSuggestedTag, user],
+    [canApproveSuggestedTags, ignoreSuggestedTag, user],
   );
 
   const ignoredSuggestedTagNames = selectedDesignId
@@ -837,7 +845,7 @@ export function useAiReviewInbox(
 
   return {
     actionError,
-    approvedTags: catalogTags.tags,
+    approvedTags: generatedTaxonomy.tags,
     baselineForm,
     canApprove: canApproveSelected,
     canArchive: canArchiveSelected,

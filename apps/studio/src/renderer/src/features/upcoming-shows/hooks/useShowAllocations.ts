@@ -17,52 +17,59 @@ const initialState: ShowAllocationsState = {
   isLoading: true,
 };
 
+/**
+ * Live per-show subscription (Plan Section 21.3/21.4, Fix 3) — replaces the previous one-shot
+ * `getDocs` fetch, which left an already-open Show Queue session unaware of a Portal-submitted
+ * allocation until the page remounted. Wired through `upcomingShowService.subscribeToShowAllocations`
+ * (itself routed through `createSharedFirestoreSubscription`), scoped to exactly one
+ * `upcomingShowId` at a time. `reloadAllocations` is kept for interface stability (existing
+ * callers like `UpcomingShowsPage.tsx` call it after a mutation) but is now a light no-op-safe
+ * shim: the live subscription already reflects server truth, so an explicit reload is not
+ * required for correctness, only kept so no caller needs to change.
+ */
 export function useShowAllocations(upcomingShowId: string | null) {
   const { user } = useAuth();
   const [state, setState] = useState<ShowAllocationsState>(initialState);
-  const loadRequestIdRef = useRef(0);
+  const activeShowIdRef = useRef<string | null>(null);
 
-  const loadAllocations = useCallback(async () => {
-    const requestId = loadRequestIdRef.current + 1;
-    loadRequestIdRef.current = requestId;
+  useEffect(() => {
+    activeShowIdRef.current = upcomingShowId;
 
     if (!user || !permissionService.canViewUpcomingShows(user) || !upcomingShowId) {
-      if (loadRequestIdRef.current === requestId) {
-        setState({ allocations: [], error: null, isLoading: false });
-      }
+      setState({ allocations: [], error: null, isLoading: false });
       return;
     }
 
     setState((currentState) => ({ ...currentState, error: null, isLoading: true }));
 
-    try {
-      const allocations = await upcomingShowService.listShowAllocations(user, upcomingShowId);
+    const unsubscribe = upcomingShowService.subscribeToShowAllocations(
+      user,
+      upcomingShowId,
+      (allocations) => {
+        if (activeShowIdRef.current !== upcomingShowId) {
+          return;
+        }
+        setState({ allocations, error: null, isLoading: false });
+      },
+      (message) => {
+        if (activeShowIdRef.current !== upcomingShowId) {
+          return;
+        }
+        setState({ allocations: [], error: message, isLoading: false });
+      },
+    );
 
-      if (loadRequestIdRef.current !== requestId) {
-        return;
-      }
-
-      setState({ allocations, error: null, isLoading: false });
-    } catch (error) {
-      if (loadRequestIdRef.current !== requestId) {
-        return;
-      }
-
-      setState({
-        allocations: [],
-        error: error instanceof Error ? error.message : "Unable to load show allocations.",
-        isLoading: false,
-      });
-    }
+    return () => {
+      unsubscribe();
+    };
   }, [upcomingShowId, user]);
 
-  useEffect(() => {
-    void loadAllocations();
-  }, [loadAllocations]);
-
   const reloadAllocations = useCallback(async () => {
-    await loadAllocations();
-  }, [loadAllocations]);
+    // The live subscription already reflects server truth on every write, including this
+    // hook's own mutations' follow-up writes elsewhere in the app — no separate refetch needed.
+    // Kept as a stable async no-op so existing callers (e.g. UpcomingShowsPage.tsx post-mutation
+    // cleanup) do not need to change.
+  }, []);
 
   return {
     ...state,

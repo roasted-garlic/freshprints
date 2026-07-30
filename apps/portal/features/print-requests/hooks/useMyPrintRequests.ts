@@ -21,6 +21,29 @@ import { portalPrintRequestService } from '../services/portalPrintRequestService
 
 export type MyPrintRequestsLoadScope = 'chrome' | 'full';
 
+/**
+ * Pure merge used by reconcileQueuedRequest (item 7): patches one request's allocation totals
+ * from the queue-to-show callable's own authoritative response, preserving any already-known
+ * in-progress/printed totals for that request. Exported/pure for direct testing per this repo's
+ * hook-testing convention (docs/standards/TESTING.md) — useMyPrintRequests itself is a stateful
+ * React hook and is not DOM-rendered in tests.
+ */
+export function mergeQueuedAllocationTotal(
+  current: Record<string, PrintRequestAllocationTotals>,
+  printRequestId: string,
+  allocationResult: { totalAllocatedQuantity: number },
+): Record<string, PrintRequestAllocationTotals> {
+  const existing = current[printRequestId];
+  return {
+    ...current,
+    [printRequestId]: {
+      totalAllocatedQuantity: allocationResult.totalAllocatedQuantity,
+      totalInProgressQuantity: existing?.totalInProgressQuantity ?? 0,
+      totalPrintedQuantity: existing?.totalPrintedQuantity ?? 0,
+    },
+  };
+}
+
 export function useMyPrintRequests() {
   const { customer, firebaseUser, refreshCustomer } = useAuth();
   const [requests, setRequests] = useState<PrintRequest[]>([]);
@@ -58,7 +81,9 @@ export function useMyPrintRequests() {
         );
         const printRequestIds = nextRequests.map((request) => request.id);
         const items =
-          printRequestIds.length > 0
+          printRequestIds.length === 1
+            ? await portalPrintRequestService.listPrintRequestItems(printRequestIds[0]!)
+            : printRequestIds.length > 0
             ? await portalPrintRequestService.listPrintRequestItemsForRequests(printRequestIds)
             : [];
 
@@ -143,10 +168,67 @@ export function useMyPrintRequests() {
         void reload({ silent: true, scope: listScopeRef.current });
       }
 
-      void refreshCustomer();
+      // Do not reread the customer profile here: the callable's transaction only bumps
+      // `customers.nextPrintRequestSequence`/`totalPrintRequests`, and the one UI reader of
+      // `totalPrintRequests` (the dashboard request-count tile) only uses it as a loading-state
+      // fallback before `requests.length` (from the reload above) takes over — see the Wave C
+      // comprehensive-audit amendment, 2026-07-24.
       return created;
     },
-    [firebaseUser, refreshCustomer, reload],
+    [firebaseUser, reload],
+  );
+
+  /**
+   * Queue-to-show success is fully known from the callable's own authoritative response
+   * (`queuePortalPrintRequestToShow` already returns `totalAllocatedQuantity`, etc.) — patch both
+   * the request status and its allocation totals locally instead of waiting for the `'full'`-scope
+   * reload (gated on a `/requests` or `/dashboard` pathname transition) to populate
+   * `allocationTotalsByRequestId`. This lets `derivePrintRequestListTab` render the Queued tracker
+   * immediately on the still-open detail route, with zero new reads and zero full reload.
+   */
+  const reconcileQueuedRequest = useCallback(
+    (
+      printRequestId: string,
+      allocationResult?: {
+        totalAllocatedQuantity: number;
+      },
+    ) => {
+      setRequests((current) =>
+        current.map((request) =>
+          request.id === printRequestId ? { ...request, status: 'active' } : request,
+        ),
+      );
+
+      if (!allocationResult) {
+        return;
+      }
+
+      setAllocationTotalsByRequestId((current) =>
+        mergeQueuedAllocationTotal(current, printRequestId, allocationResult),
+      );
+    },
+    [],
+  );
+
+  // Clear Request success is fully known from the callable response — patch the list entry and
+  // zero its item summary locally instead of refetching (owner live-test remediation, 2026-07-25).
+  const reconcileClearedRequest = useCallback(
+    (printRequestId: string, status: 'draft' | 'editing') => {
+      setRequests((current) =>
+        current.map((request) =>
+          request.id === printRequestId ? { ...request, status, itemCount: 0 } : request,
+        ),
+      );
+      setSummariesByRequestId((current) => {
+        if (!(printRequestId in current)) {
+          return current;
+        }
+        const next = { ...current };
+        delete next[printRequestId];
+        return next;
+      });
+    },
+    [],
   );
 
   return {
@@ -160,6 +242,8 @@ export function useMyPrintRequests() {
     listScope,
     reload,
     createPrintRequest,
+    reconcileQueuedRequest,
+    reconcileClearedRequest,
   };
 }
 

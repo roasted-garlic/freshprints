@@ -4,10 +4,23 @@ import { collection, onSnapshot, query, where } from "firebase/firestore";
 import {
   ASSISTED_CREATION_COLLECTION,
 } from "@fresh-prints/shared/constants/assistedCreation/assistedCreation.constants";
+import {
+  traceFirestoreListenerAttach,
+  traceFirestoreListenerEmission,
+  traceWrappedUnsubscribe,
+} from "@fresh-prints/shared/utils/firestoreUsageTrace";
 
 import { db } from "../../../config/firebase";
 import { useAuth } from "../../auth/hooks/useAuth";
 import { permissionService } from "../../permissions/services/permissionService";
+
+const ACTIONABLE_COUNT_TRACE = {
+  app: "studio" as const,
+  collection: ASSISTED_CREATION_COLLECTION,
+  constraints: ["status in [submitted,revision_requested]"],
+  source: "useAssistedCreationActionableCount",
+  triggerReason: "authentication" as const,
+};
 
 /**
  * Live count of Assisted Creation requests that need staff attention:
@@ -29,9 +42,11 @@ export function useAssistedCreationActionableCount(): number {
       where("status", "in", ["submitted", "revision_requested"]),
     );
 
+    traceFirestoreListenerAttach(ACTIONABLE_COUNT_TRACE);
     const unsubscribe = onSnapshot(
       actionableQuery,
       (snapshot) => {
+        traceFirestoreListenerEmission(ACTIONABLE_COUNT_TRACE, snapshot.size);
         setCount(snapshot.size);
       },
       (error) => {
@@ -40,9 +55,7 @@ export function useAssistedCreationActionableCount(): number {
       },
     );
 
-    return () => {
-      unsubscribe();
-    };
+    return traceWrappedUnsubscribe(ACTIONABLE_COUNT_TRACE, unsubscribe);
   }, [canView]);
 
   return count;

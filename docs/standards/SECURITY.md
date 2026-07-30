@@ -1083,3 +1083,68 @@ If a feature conflicts with security:
 Security wins.
 
 Always.
+
+## Storage bucket CORS vs Storage Rules (2026-07-24)
+
+Storage Rules and bucket CORS are separate controls and must not be confused:
+
+- **Storage Rules** (`storage.rules`) decide *who may read/write an object* (public, staff-only,
+  owner-only, denied). This is the security boundary.
+- **Bucket CORS** (`storage.cors.json`, applied via `gcloud storage buckets update --cors-file=...`)
+  decides *which browser page origins may read the response body* of an object a browser's JS already
+  fetched. CORS does not grant or widen read access by itself — an object still denied by Storage
+  Rules stays denied regardless of CORS.
+
+Do not add CORS entries for `generated/catalog-reference/ai/**` (private, Admin-SDK-only) — that
+path must remain unreadable by any client regardless of bucket CORS configuration. Only
+already-public paths (per Storage Rules) should ever appear in a CORS config, and only with the
+minimum methods (`GET`/`HEAD` for read-only asset fetch — no write methods from a browser origin
+without a separate, security-reviewed upload design) and minimum exposed response headers the
+consuming code actually needs. See `docs/workflow/setup/firebase-storage-cors.md` for the current
+dev configuration and the exact bucket name (confirmed live: `fresh-prints-dev.firebasestorage.app`
+— an earlier, unrelated CORS effort mistakenly targeted the nonexistent `.appspot.com` alias).
+
+## Generated catalog snapshot boundary
+
+- `generated/catalog-reference/ai/**`: all client reads/writes denied; Admin SDK only.
+- `generated/catalog-reference/manifest.json` and `client/**`: public read, client write denied.
+- `generated/portal-catalog/**`: public read, client write denied.
+- `snapshotPublicationState/**`: all client reads/writes denied.
+- Public snapshot builders use explicit allowlists. AI guidance (`preferredWhen`, category
+  descriptions), processing metadata, notes, raw model output, owner fields, and secrets are absent
+  from client projections.
+- Publication validates schema, version parity, byte budgets, content type, and object size before
+  manifest replacement. Secret Manager and AI settings are not copied into public assets.
+- The committed `tests/firebase/catalogSnapshot.rules.test.ts` emulator suite proves: guest and
+  authenticated public-asset reads succeed; every role's read/write of `generated/catalog-reference/ai/**`
+  is denied; client writes are denied on every generated prefix including the AI prefix; guest/customer
+  reads of `originals/**` stay denied; `snapshotPublicationState/*` denies client read, create, update,
+  and delete for every role; and unrelated existing Firestore access (ready-design reads,
+  default-deny on undeclared collections) is unchanged. Run with `npm run test:rules` on a
+  Java 21+-equipped machine (Firebase CLI 15.x requires Java 21+, not 17).
+
+## Dependency audit disposition (2026-07-23, Wave C dev deployment checkpoint)
+
+`npm audit` reported 24 findings (1 critical, 13 high, 10 moderate) at Wave C's dev deployment
+checkpoint. The package-lock diff for this goal added only `@firebase/rules-unit-testing` (dev-only,
+Review-approved); none of the 24 findings were introduced by Wave C.
+
+- Critical/high findings in `tar`, `app-builder-lib`, `dmg-builder`, `electron-builder*`,
+  `js-yaml`, `shell-quote`, `brace-expansion`, `concurrently`, `vite`, `postcss` are build/dev/Electron-packaging
+  tooling only — not shipped in Portal or Functions runtime code, not reachable via customer/staff input.
+- `next` (high, Server Actions DoS/SSRF, Image Optimization DoS) — reviewed: Portal uses no
+  `"use server"` actions, no `next.config` `rewrites()`, no `next/image`, and no custom server
+  (standard `next start`). The advisory's preconditions are not present in the current app.
+- `electron` (high, several use-after-free CVEs) — Studio desktop runtime; requires local attacker
+  control of the desktop process, not remotely triggered; Studio is staff-only.
+- `sharp` (high, libvips CVEs) — **runtime-reachable**: `functions/src/lib/customerUploadProcessing.ts`
+  calls `sharp(...).metadata()` on customer-uploaded PNG/WEBP bytes. Of the four bundled CVEs, three
+  are confined to VIPS-native/32-bit-GIF/TIFF paths not used here; the fourth (EXIF tag-group null-pointer,
+  DoS-only, no memory disclosure/RCE) is reachable via a malformed EXIF block in a customer upload.
+  Tracked as `docs/project/RISK_REGISTER.md` R-012. Fix (`sharp@0.35.3`) is semver-major across
+  `functions` and `apps/studio` and requires its own reviewed upgrade, not an in-place bump — not a
+  Wave C deployment blocker because it pre-dates this goal and is DoS-bounded (Functions auto-restart).
+- Moderate findings (`@google-cloud/*`, `firebase-admin`, `gaxios`, `google-gax`, `protobufjs`,
+  `retry-request`, `teeny-request`, `uuid`) are transitive Firebase Admin/Google Cloud client library
+  dependencies; documented as a known dependency-risk note, not individually blocking.
+- No `npm audit fix` or `npm audit fix --force` was run. No dependency was upgraded.

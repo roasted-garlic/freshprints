@@ -1,5 +1,4 @@
 import { doc, onSnapshot, type Unsubscribe } from "firebase/firestore";
-import { httpsCallable } from "firebase/functions";
 
 import type {
   AllowedVisionModelId,
@@ -7,7 +6,8 @@ import type {
   SuggestionAuthorMode,
   TagRerankMode,
 } from "@fresh-prints/shared/constants/aiEnrichment.constants";
-import { db, functions } from "../../../config/firebase";
+import { db } from "../../../config/firebase";
+import { callTracedFunction } from "../../../config/tracedCallable";
 import {
   ADDITIONAL_TAG_EXCLUSION_PATTERN,
   AI_ENRICHMENT_SETTINGS_DOC_ID,
@@ -155,12 +155,12 @@ export const aiEnrichmentSettingsService = {
     suggestionAuthorMode: SuggestionAuthorMode;
     suggestedNewTagsPolicy: SuggestedNewTagsPolicy;
   }): Promise<AiEnrichmentSettingsSnapshot> {
-    const updateCallable = httpsCallable<
+    const response = await callTracedFunction<
       UpdateAiEnrichmentSettingsInput,
       UpdateAiEnrichmentSettingsResult
-    >(functions, "updateAiEnrichmentSettings");
-
-    const response = await updateCallable({
+    >("updateAiEnrichmentSettings", {
+      source: "aiEnrichmentSettingsService.updateSettings",
+    })({
       visionModelId: resolveClientVisionModelId(input.visionModelId),
       promptTemplate: resolveClientPromptTemplate(input.promptTemplate),
       tagRerankPromptTemplate: resolveClientAiTagRerankPromptTemplate(input.tagRerankPromptTemplate),
@@ -171,21 +171,21 @@ export const aiEnrichmentSettingsService = {
     });
 
     return {
-      visionModelId: resolveClientVisionModelId(response.data.visionModelId),
-      promptTemplate: resolveClientPromptTemplate(response.data.promptTemplate),
+      visionModelId: resolveClientVisionModelId(response.visionModelId),
+      promptTemplate: resolveClientPromptTemplate(response.promptTemplate),
       tagRerankPromptTemplate: resolveClientAiTagRerankPromptTemplate(
-        response.data.tagRerankPromptTemplate,
+        response.tagRerankPromptTemplate,
       ),
       additionalTagExclusions: resolveClientAdditionalTagExclusions(
-        response.data.additionalTagExclusions,
+        response.additionalTagExclusions,
       ),
       effectiveTagExclusions: mergeClientTagExclusions(
-        resolveClientAdditionalTagExclusions(response.data.additionalTagExclusions),
+        resolveClientAdditionalTagExclusions(response.additionalTagExclusions),
       ),
-      tagRerankMode: resolveClientTagRerankMode(response.data.tagRerankMode),
-      suggestionAuthorMode: resolveClientSuggestionAuthorMode(response.data.suggestionAuthorMode),
+      tagRerankMode: resolveClientTagRerankMode(response.tagRerankMode),
+      suggestionAuthorMode: resolveClientSuggestionAuthorMode(response.suggestionAuthorMode),
       suggestedNewTagsPolicy: resolveClientSuggestedNewTagsPolicy(
-        response.data.suggestedNewTagsPolicy,
+        response.suggestedNewTagsPolicy,
       ),
     };
   },

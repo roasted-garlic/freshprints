@@ -67,10 +67,10 @@ export const OPERATIONAL_WIPE_TARGET_OPTIONS: OperationalWipeTargetOption[] = [
   },
   {
     id: "printRequestDesignDailyLimits",
-    label: "Print request daily limits",
-    summary: "Cap A counters only (prints added today). Keeps Current Request stash.",
+    label: "Legacy print-limit counters",
+    summary: "Legacy cleanup only; no effect on current limits, room, or show capacity.",
     description:
-      "Deletes printRequestDesignDailyLimits docs (Chicago calendar day counters for print copies added to print requests). Resets Cap A so customers can add prints again without wiping print requests or line items. Also cleared automatically when Print Requests is wiped.",
+      "Deletes legacy printRequestDesignDailyLimits documents. These counters are no longer written or enforced. Deleting them does not change the current limit L, a customer’s remaining room, or per-show capacity. Keeps print requests and line items; also cleared automatically when Print Requests is wiped.",
   },
   {
     id: "etsySearches",

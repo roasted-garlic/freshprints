@@ -166,8 +166,48 @@ async function loadItemHardDeleteBlockers(printRequestId: string): Promise<{
   return { itemCount: items.size, hasProductionHistory, blockers };
 }
 
-async function buildPreview(printRequestId: string): Promise<PreviewPrintRequestDeletionResponse> {
+interface PreviewReadAccounting {
+  readOperations: number;
+  documentsReturned: number;
+}
+
+function logDeletionAccounting(
+  functionName: string,
+  outcome: string,
+  accounting: PreviewReadAccounting & {
+    deletes?: number;
+    writes?: number;
+    batchSize?: number;
+    durationMs: number;
+  },
+): void {
+  if (process.env.GCLOUD_PROJECT !== "fresh-prints-dev") {
+    return;
+  }
+  console.info("print-request-deletion-accounting", {
+    functionName,
+    outcome,
+    readOperations: accounting.readOperations,
+    documentsReturned: accounting.documentsReturned,
+    writes: accounting.writes ?? 0,
+    deletes: accounting.deletes ?? 0,
+    batchSize: accounting.batchSize ?? 0,
+    durationMs: accounting.durationMs,
+  });
+}
+
+async function buildPreview(
+  printRequestId: string,
+  accounting?: PreviewReadAccounting,
+): Promise<PreviewPrintRequestDeletionResponse> {
+  const track = (reads: number, documents: number) => {
+    if (accounting) {
+      accounting.readOperations += reads;
+      accounting.documentsReturned += documents;
+    }
+  };
   const snap = await adminDb.collection("printRequests").doc(printRequestId).get();
+  track(1, snap.exists ? 1 : 0);
   if (!snap.exists) {
     return {
       outcome: "already_done",
@@ -187,8 +227,13 @@ async function buildPreview(printRequestId: string): Promise<PreviewPrintRequest
   const status = data.status;
   const { allocationCount, blockers: allocationBlockers } =
     await loadAllocationBlockers(printRequestId);
+  // One allocations query (allocationCount docs) plus one upcomingShows get per resolved label.
+  track(1, allocationCount);
+  const showLabelReads = allocationBlockers[0]?.labels?.length ?? 0;
+  track(showLabelReads, showLabelReads);
   const { itemCount, hasProductionHistory, blockers: itemBlockers } =
     await loadItemHardDeleteBlockers(printRequestId);
+  track(1, itemCount);
 
   if (allocationBlockers.length > 0) {
     return {
@@ -246,7 +291,10 @@ async function buildPreview(printRequestId: string): Promise<PreviewPrintRequest
   };
 }
 
-async function deleteItemsForRequest(printRequestId: string): Promise<number> {
+async function deleteItemsForRequest(
+  printRequestId: string,
+  accounting?: PreviewReadAccounting,
+): Promise<number> {
   let deleted = 0;
   for (;;) {
     const snapshot = await adminDb
@@ -254,6 +302,10 @@ async function deleteItemsForRequest(printRequestId: string): Promise<number> {
       .where("printRequestId", "==", printRequestId)
       .limit(BATCH_LIMIT)
       .get();
+    if (accounting) {
+      accounting.readOperations += 1;
+      accounting.documentsReturned += snapshot.size;
+    }
     if (snapshot.empty) {
       break;
     }
@@ -275,11 +327,26 @@ export const previewPrintRequestDeletion = onCall(
     if (!request.auth?.uid) {
       throw unauthenticated();
     }
+    const startedAtMs = Date.now();
+    // Caller-profile read is the first tracked operation.
+    const accounting: PreviewReadAccounting = { readOperations: 1, documentsReturned: 1 };
     try {
       const caller = await loadCallerProfile(request.auth.uid);
       assertOwnerCaller(caller);
-      return await buildPreview(parsePrintRequestId(request.data as PreviewPrintRequestDeletionRequest));
+      const preview = await buildPreview(
+        parsePrintRequestId(request.data as PreviewPrintRequestDeletionRequest),
+        accounting,
+      );
+      logDeletionAccounting("previewPrintRequestDeletion", preview.outcome, {
+        ...accounting,
+        durationMs: Date.now() - startedAtMs,
+      });
+      return preview;
     } catch (error) {
+      logDeletionAccounting("previewPrintRequestDeletion", "error", {
+        ...accounting,
+        durationMs: Date.now() - startedAtMs,
+      });
       mapHttpsError(error);
     }
   },
@@ -290,14 +357,27 @@ export const deleteEligiblePrintRequest = onCall(
     if (!request.auth?.uid) {
       throw unauthenticated();
     }
+    const startedAtMs = Date.now();
+    const accounting: PreviewReadAccounting = { readOperations: 1, documentsReturned: 1 };
+    let deletes = 0;
     try {
       const caller = await loadCallerProfile(request.auth.uid);
       assertOwnerCaller(caller);
       const printRequestId = parsePrintRequestId(request.data);
       requirePhrase(request.data, DELETE_PRINT_REQUEST_CONFIRMATION_PHRASE);
 
-      const preview = await buildPreview(printRequestId);
-      if (preview.outcome === "already_done") {
+      // Single freshness check immediately before mutate. The client already fetched a preview via
+      // `previewPrintRequestDeletion` to render the confirmation dialog moments earlier; rechecking
+      // here (not also before this recheck) preserves the TOCTOU-safety intent — dependencies could
+      // have changed between dialog-open and confirm — while dropping the redundant third
+      // `buildPreview()` execution this callable previously ran (Wave C comprehensive-audit
+      // amendment, 2026-07-24: reads dropped from 3x to 2x base preview cost for this flow).
+      const recheck = await buildPreview(printRequestId, accounting);
+      if (recheck.outcome === "already_done") {
+        logDeletionAccounting("deleteEligiblePrintRequest", "already_done", {
+          ...accounting,
+          durationMs: Date.now() - startedAtMs,
+        });
         return {
           outcome: "already_done",
           message: "Print request already deleted.",
@@ -306,20 +386,11 @@ export const deleteEligiblePrintRequest = onCall(
           deletedItemCount: 0,
         };
       }
-      if (preview.outcome !== "allowed_hard_delete") {
-        return {
-          outcome: preview.outcome,
-          blockers: preview.blockers,
-          message: preview.blockers[0]?.message ?? "This print request cannot be deleted.",
-          entityId: printRequestId,
-          printRequestId,
-          deletedItemCount: 0,
-        };
-      }
-
-      // Recheck immediately before mutate
-      const recheck = await buildPreview(printRequestId);
       if (recheck.outcome !== "allowed_hard_delete") {
+        logDeletionAccounting("deleteEligiblePrintRequest", recheck.outcome, {
+          ...accounting,
+          durationMs: Date.now() - startedAtMs,
+        });
         return {
           outcome: recheck.outcome,
           blockers: recheck.blockers,
@@ -330,9 +401,16 @@ export const deleteEligiblePrintRequest = onCall(
         };
       }
 
-      const deletedItemCount = await deleteItemsForRequest(printRequestId);
+      const deletedItemCount = await deleteItemsForRequest(printRequestId, accounting);
       await adminDb.collection("printRequests").doc(printRequestId).delete();
+      deletes = deletedItemCount + 1;
 
+      logDeletionAccounting("deleteEligiblePrintRequest", "allowed_hard_delete", {
+        ...accounting,
+        deletes,
+        batchSize: deletedItemCount,
+        durationMs: Date.now() - startedAtMs,
+      });
       return {
         outcome: "allowed_hard_delete",
         message: "Unused print request deleted.",
@@ -341,6 +419,11 @@ export const deleteEligiblePrintRequest = onCall(
         deletedItemCount,
       };
     } catch (error) {
+      logDeletionAccounting("deleteEligiblePrintRequest", "error", {
+        ...accounting,
+        deletes,
+        durationMs: Date.now() - startedAtMs,
+      });
       mapHttpsError(error);
     }
   },

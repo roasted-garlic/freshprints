@@ -24,6 +24,7 @@ import {
   type CustomerUploadIntakeRow,
 } from "../services/customerUploadIntakeService";
 import { customerUploadDeletionService } from "../services/customerUploadDeletionService";
+import { mapCustomerUploadPurgeTimestamp } from "../utils/customerUploadPurgeTimestamp";
 
 export type CustomerUploadIntakePendingAction =
   | "promote"
@@ -166,6 +167,7 @@ export function useCustomerUploadIntake(options?: {
               : null,
           purpose: resolveCustomerUploadPurpose(data.purpose),
           createdAtMs: timestampMs(data.createdAt),
+          fullSizePurgedAtMs: mapCustomerUploadPurgeTimestamp(data.fullSizePurgedAt),
           approvedMaxPrintWidthInches: asNumber(data.approvedMaxPrintWidthInches),
           approvedMaxPrintHeightInches: asNumber(data.approvedMaxPrintHeightInches),
           wasUpscaled: typeof data.wasUpscaled === "boolean" ? data.wasUpscaled : null,

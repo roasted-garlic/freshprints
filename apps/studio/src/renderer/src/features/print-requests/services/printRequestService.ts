@@ -1,11 +1,17 @@
 import {
   deleteDoc,
   doc,
+  getCountFromServer,
   getDoc,
+  getDocFromServer,
   getDocs,
+  getDocsFromServer,
+  increment,
+  limit,
   orderBy,
   query,
   runTransaction,
+  startAfter,
   Timestamp,
   serverTimestamp,
   setDoc,
@@ -15,6 +21,12 @@ import {
   type QueryConstraint,
   type Transaction,
 } from "firebase/firestore";
+
+import {
+  runTracedWrite,
+  traceFirestoreOneShotComplete,
+  traceFirestoreOneShotStart,
+} from "@fresh-prints/shared/utils/firestoreUsageTrace";
 
 import { mapFirestoreTimestamp, resolveDesignDocumentTimestamps } from "../../firebase/utils/firestoreTimestamp";
 import { assertNoUndefinedFirestoreFields, withoutUndefinedFields } from "../../firebase/utils/firestoreDocument";
@@ -46,15 +58,34 @@ import {
   buildPrintRequestItemSummaries,
   buildPrintRequestItemsQueryPlan,
   buildPrintRequestListQueryPlan,
+  PRINT_REQUEST_LIST_PAGE_SIZE,
   sortPrintRequestItemsForDisplay,
   type CustomerListQueryOptions,
   type PrintRequestItemListQueryOptions,
   type PrintRequestItemSummary,
+  type PrintRequestListCursor,
   type PrintRequestListQueryOptions,
   type PrintRequestQueryPlan,
 } from "../utils/printRequestQueryPlanning";
+import { buildPrintRequestAllocationTotalsByRequestId } from "@fresh-prints/shared/utils/showAllocationTotals";
+import type { ShowAllocation } from "@fresh-prints/shared/types/showAllocation/showAllocation.types";
+import { ShowCompletionReconciliationRemediationError } from "../../upcoming-shows/utils/showCompletionReconciliation";
+import { diagnosePrintRequestForCompletion } from "../utils/printRequestCompletionDiagnostics";
+import { buildPrintRequestCompletionPayload } from "../utils/printRequestCompletionPayload";
 
-export type { PrintRequestItemSummary } from "../utils/printRequestQueryPlanning";
+export type ShowReconciliationReadSource = "default" | "server";
+
+export type {
+  PrintRequestItemSummary,
+  PrintRequestListCursor,
+} from "../utils/printRequestQueryPlanning";
+export { PRINT_REQUEST_LIST_PAGE_SIZE } from "../utils/printRequestQueryPlanning";
+
+export interface PrintRequestListPage {
+  requests: PrintRequest[];
+  hasMore: boolean;
+  nextCursor?: PrintRequestListCursor;
+}
 
 export interface CreatePrintRequestInput {
   name?: string;
@@ -434,10 +465,22 @@ async function loadPrintableDesign(caller: User, designId: string) {
 }
 
 function buildFirestoreQueryConstraints(plan: PrintRequestQueryPlan): QueryConstraint[] {
-  return [
+  const constraints: QueryConstraint[] = [
     ...plan.filters.map((filter) => where(filter.field, filter.operator, filter.value)),
     ...plan.orderBy.map((order) => orderBy(order.field, order.direction)),
   ];
+
+  if (plan.cursor) {
+    constraints.push(
+      startAfter(Timestamp.fromMillis(plan.cursor.updatedAtMillis), plan.cursor.requestId),
+    );
+  }
+
+  if (typeof plan.limitCount === "number" && Number.isFinite(plan.limitCount)) {
+    constraints.push(limit(plan.limitCount));
+  }
+
+  return constraints;
 }
 
 function getInternalPrintRequestCounterRef() {
@@ -526,23 +569,172 @@ function requestedSizesMatch(left: PrintRequestItem, right: { printWidthInches: 
 }
 
 export const printRequestService = {
-  async listPrintRequests(
+  /**
+   * Server-paginated request list — bounded to `PRINT_REQUEST_LIST_PAGE_SIZE` (+1 peek to detect
+   * `hasMore`) instead of the prior unbounded full-collection load. Filtering by `queueTab`
+   * (server-maintained, see `printRequest.types.ts`) lets each list tab load and count exactly,
+   * with no per-request item/allocation read required just to classify it (Wave C hydration
+   * remediation, 2026-07-25).
+   */
+  async listPrintRequestsPage(
     caller: User,
     options: PrintRequestListQueryOptions = {},
-  ): Promise<PrintRequest[]> {
+  ): Promise<PrintRequestListPage> {
+    if (!permissionService.canViewPrintRequests(caller)) {
+      return { requests: [], hasMore: false };
+    }
+
+    const pageSize = options.limitCount ?? PRINT_REQUEST_LIST_PAGE_SIZE;
+    const requestsQuery = query(
+      firestoreCollectionService.getPrintRequestsCollection(),
+      ...buildFirestoreQueryConstraints(
+        buildPrintRequestListQueryPlan({ ...options, limitCount: pageSize + 1 }),
+      ),
+    );
+    traceFirestoreOneShotStart("getDocs", "printRequests:list-page");
+    const snapshot = await getDocs(requestsQuery);
+    traceFirestoreOneShotComplete("getDocs", "printRequests:list-page", snapshot.size);
+
+    const hasMore = snapshot.docs.length > pageSize;
+    const pageDocs = hasMore ? snapshot.docs.slice(0, pageSize) : snapshot.docs;
+    const requests = pageDocs.map((requestDoc) =>
+      mapPrintRequestData(requestDoc.id, requestDoc.data() as PrintRequestDocumentData),
+    );
+    const lastRequest = requests[requests.length - 1];
+
+    return {
+      requests,
+      hasMore,
+      nextCursor:
+        hasMore && lastRequest
+          ? { requestId: lastRequest.id, updatedAtMillis: lastRequest.updatedAt.toMillis() }
+          : undefined,
+    };
+  },
+
+  /**
+   * Exact tab/filter count with zero document hydration — `getCountFromServer` against the same
+   * indexed `queueTab`/`status`/`customerId`/`isInternal` filter the list page uses. Never load
+   * request documents merely to count them.
+   */
+  async countPrintRequests(
+    caller: User,
+    options: PrintRequestListQueryOptions = {},
+  ): Promise<number> {
+    if (!permissionService.canViewPrintRequests(caller)) {
+      return 0;
+    }
+
+    const plan = buildPrintRequestListQueryPlan({ ...options, limitCount: undefined, cursor: undefined });
+    const countQuery = query(
+      firestoreCollectionService.getPrintRequestsCollection(),
+      ...plan.filters.map((filter) => where(filter.field, filter.operator, filter.value)),
+    );
+    traceFirestoreOneShotStart("getCountFromServer", "printRequests:count");
+    const snapshot = await getCountFromServer(countQuery);
+    traceFirestoreOneShotComplete("getCountFromServer", "printRequests:count", 0);
+    return snapshot.data().count;
+  },
+
+  /**
+   * Direct-ID fetch for a deep-linked/selected request outside the currently loaded page(s) —
+   * never queries the collection to "find" it.
+   */
+  async getPrintRequestsByIds(caller: User, printRequestIds: string[]): Promise<PrintRequest[]> {
+    if (!permissionService.canViewPrintRequests(caller) || printRequestIds.length === 0) {
+      return [];
+    }
+
+    const uniqueIds = [...new Set(printRequestIds.map((id) => id.trim()).filter(Boolean))];
+    traceFirestoreOneShotStart("getDoc", "printRequests:byIds");
+    const snapshots = await Promise.all(
+      uniqueIds.map((id) => getDoc(doc(firestoreCollectionService.getPrintRequestsCollection(), id))),
+    );
+    const found = snapshots.filter((snapshot) => snapshot.exists());
+    traceFirestoreOneShotComplete("getDoc", "printRequests:byIds", found.length);
+
+    return found.map((snapshot) =>
+      mapPrintRequestData(snapshot.id, snapshot.data() as PrintRequestDocumentData),
+    );
+  },
+
+  /**
+   * Every print request for ONE customer — naturally bounded by that customer's own request
+   * count (used by the customer audit-trail activity feed, not the Print Requests list page).
+   * Not a corpus scan: scoped by the indexed `customerId` filter.
+   */
+  async listPrintRequestsByCustomer(caller: User, customerId: string): Promise<PrintRequest[]> {
     if (!permissionService.canViewPrintRequests(caller)) {
       return [];
     }
 
     const requestsQuery = query(
       firestoreCollectionService.getPrintRequestsCollection(),
-      ...buildFirestoreQueryConstraints(buildPrintRequestListQueryPlan(options)),
+      where("customerId", "==", customerId),
     );
+    traceFirestoreOneShotStart("getDocs", "printRequests:byCustomer");
     const snapshot = await getDocs(requestsQuery);
+    traceFirestoreOneShotComplete("getDocs", "printRequests:byCustomer", snapshot.size);
 
     return snapshot.docs.map((requestDoc) =>
       mapPrintRequestData(requestDoc.id, requestDoc.data() as PrintRequestDocumentData),
     );
+  },
+
+  /**
+   * Allocation totals scoped to only the given request IDs (chunked `in` queries, cap 10) —
+   * replaces the prior full `showAllocations` collection scan for list/page rendering. Grouping
+   * is a pure per-ID aggregation (`buildPrintRequestAllocationTotalsByRequestId`), so totals for
+   * the requested IDs are identical whether computed from a full scan or this scoped read.
+   */
+  async listAllocationTotalsForRequests(
+    caller: User,
+    printRequestIds: string[],
+  ): Promise<Record<string, { totalAllocatedQuantity: number; totalInProgressQuantity: number; totalPrintedQuantity: number }>> {
+    if (!permissionService.canViewPrintRequests(caller)) {
+      return {};
+    }
+
+    const uniqueIds = [...new Set(printRequestIds.map((id) => id.trim()).filter(Boolean))];
+    if (uniqueIds.length === 0) {
+      return {};
+    }
+
+    const chunks: string[][] = [];
+    for (let index = 0; index < uniqueIds.length; index += 10) {
+      chunks.push(uniqueIds.slice(index, index + 10));
+    }
+
+    traceFirestoreOneShotStart("getDocs", "showAllocations:byRequestIds-chunked");
+    const chunkSnapshots = await Promise.all(
+      chunks.map((chunk) =>
+        getDocs(
+          query(
+            firestoreCollectionService.getShowAllocationsCollection(),
+            where("printRequestId", "in", chunk),
+          ),
+        ),
+      ),
+    );
+    traceFirestoreOneShotComplete(
+      "getDocs",
+      "showAllocations:byRequestIds-chunked",
+      chunkSnapshots.reduce((total, snapshot) => total + snapshot.size, 0),
+    );
+
+    const allocations: ShowAllocation[] = chunkSnapshots.flatMap((snapshot) =>
+      snapshot.docs.map((allocationDoc) => {
+        const data = allocationDoc.data();
+        return {
+          id: allocationDoc.id,
+          printRequestId: typeof data.printRequestId === "string" ? data.printRequestId : "",
+          allocatedQuantity: typeof data.allocatedQuantity === "number" ? data.allocatedQuantity : 0,
+          status: typeof data.status === "string" ? data.status : "canceled",
+        } as ShowAllocation;
+      }),
+    );
+
+    return buildPrintRequestAllocationTotalsByRequestId(allocations);
   },
 
   async listPrintRequestItemSummariesForRequests(
@@ -559,13 +751,49 @@ export const printRequestService = {
       return {};
     }
 
-    const itemLists = await Promise.all(
-      uniquePrintRequestIds.map((printRequestId) =>
-        this.listPrintRequestItems(caller, printRequestId),
+    // Chunked `in` queries (Firestore cap 10) instead of one query per request — the summary
+    // aggregation only reads printRequestId/designId/quantity and is order-independent, so this
+    // returns the exact same summaries in ceil(N/10) queries instead of N (mirrors Portal's
+    // listPrintRequestItemsForRequests pattern; Wave C comprehensive audit, 2026-07-25).
+    const chunks: string[][] = [];
+    for (let index = 0; index < uniquePrintRequestIds.length; index += 10) {
+      chunks.push(uniquePrintRequestIds.slice(index, index + 10));
+    }
+
+    traceFirestoreOneShotStart("getDocs", "printRequestItems:summaries-chunked");
+    const chunkSnapshots = await Promise.all(
+      chunks.map((chunk) =>
+        getDocs(
+          query(
+            firestoreCollectionService.getPrintRequestItemsCollection(),
+            where("printRequestId", "in", chunk),
+          ),
+        ),
       ),
     );
+    traceFirestoreOneShotComplete(
+      "getDocs",
+      "printRequestItems:summaries-chunked",
+      chunkSnapshots.reduce((total, snapshot) => total + snapshot.size, 0),
+    );
 
-    return buildPrintRequestItemSummaries(itemLists.flat());
+    const items = chunkSnapshots.flatMap((snapshot) =>
+      snapshot.docs.flatMap((itemDoc) => {
+        try {
+          return [
+            mapPrintRequestItemData(itemDoc.id, itemDoc.data() as PrintRequestItemDocumentData),
+          ];
+        } catch (error) {
+          console.warn(
+            `[printRequestService] Skipping incomplete print request item ${itemDoc.id}:`,
+            error instanceof Error ? error.message : error,
+          );
+          return [];
+        }
+      }),
+    );
+
+    return buildPrintRequestItemSummaries(items);
   },
 
   async getPrintRequestById(caller: User, printRequestId: string): Promise<PrintRequest> {
@@ -595,7 +823,9 @@ export const printRequestService = {
       firestoreCollectionService.getPrintRequestItemsCollection(),
       ...buildFirestoreQueryConstraints(buildPrintRequestItemsQueryPlan(printRequestId, options)),
     );
+    traceFirestoreOneShotStart("getDocs", "printRequestItems:byRequest");
     const snapshot = await getDocs(itemsQuery);
+    traceFirestoreOneShotComplete("getDocs", "printRequestItems:byRequest", snapshot.size);
 
     return sortPrintRequestItemsForDisplay(
       snapshot.docs.flatMap((itemDoc) => {
@@ -614,6 +844,9 @@ export const printRequestService = {
     );
   },
 
+  /** @deprecated Full customer scan — retained only for surfaces that genuinely need every
+   * customer (e.g. the request-creation "choose a customer" picker). Never call this for list
+   * rendering; use `listCustomersByIds` scoped to the visible page's request owners. */
   async listCustomers(caller: User, options: CustomerListQueryOptions = {}): Promise<Customer[]> {
     if (!permissionService.canViewPrintRequests(caller)) {
       return [];
@@ -623,11 +856,39 @@ export const printRequestService = {
       firestoreCollectionService.getCustomersCollection(),
       ...buildFirestoreQueryConstraints(buildCustomerListQueryPlan(options)),
     );
+    traceFirestoreOneShotStart("getDocs", "customers:list");
     const snapshot = await getDocs(customersQuery);
+    traceFirestoreOneShotComplete("getDocs", "customers:list", snapshot.size);
 
     return snapshot.docs.map((customerDoc) =>
       mapCustomerData(customerDoc.id, customerDoc.data() as CustomerDocumentData),
     );
+  },
+
+  /**
+   * Fetches only the given customer IDs (direct doc reads) — replaces a full `customers`
+   * collection scan for list rendering, since a visible request page only ever references a
+   * small subset of customers (Wave C hydration remediation, 2026-07-25). Internal requests
+   * contribute no ID here, so they never trigger a customer read.
+   */
+  async listCustomersByIds(caller: User, customerIds: string[]): Promise<Customer[]> {
+    if (!permissionService.canViewPrintRequests(caller) || customerIds.length === 0) {
+      return [];
+    }
+
+    const uniqueIds = [...new Set(customerIds.map((id) => id.trim()).filter(Boolean))];
+    if (uniqueIds.length === 0) {
+      return [];
+    }
+
+    traceFirestoreOneShotStart("getDoc", "customers:byIds");
+    const snapshots = await Promise.all(
+      uniqueIds.map((id) => getDoc(doc(firestoreCollectionService.getCustomersCollection(), id))),
+    );
+    const found = snapshots.filter((snapshot) => snapshot.exists());
+    traceFirestoreOneShotComplete("getDoc", "customers:byIds", found.length);
+
+    return found.map((snapshot) => mapCustomerData(snapshot.id, snapshot.data() as CustomerDocumentData));
   },
 
   async createPrintRequest(caller: User, input: CreatePrintRequestInput): Promise<PrintRequest> {
@@ -661,7 +922,12 @@ export const printRequestService = {
       caller.id,
     );
 
-    await setDoc(requestRef, payload);
+    await runTracedWrite("setDoc", () => setDoc(requestRef, payload), {
+      app: "studio",
+      collection: "printRequests",
+      documentPathPattern: "printRequests/{printRequestId}",
+      source: "printRequestService.createPrintRequest",
+    });
 
     const createdSnapshot = await getDoc(requestRef);
     return mapPrintRequestData(requestRef.id, createdSnapshot.data() as PrintRequestDocumentData);
@@ -675,9 +941,20 @@ export const printRequestService = {
       throw new Error("You do not have permission to create print requests.");
     }
 
-    const requestRef = await runTransaction(
-      firestoreCollectionService.getPrintRequestsCollection().firestore,
-      (transaction) => createInternalPrintRequestInTransaction(transaction, caller.id, input),
+    const requestRef = await runTracedWrite(
+      "runTransaction",
+      () =>
+        runTransaction(
+          firestoreCollectionService.getPrintRequestsCollection().firestore,
+          (transaction) => createInternalPrintRequestInTransaction(transaction, caller.id, input),
+        ),
+      {
+        app: "studio",
+        collection: "printRequests",
+        documentPathPattern: "printRequests/{printRequestId}",
+        source: "printRequestService.createInternalPrintRequest",
+      },
+      { writeCount: 2 },
     );
     const createdSnapshot = await getDoc(requestRef);
     return mapPrintRequestData(requestRef.id, createdSnapshot.data() as PrintRequestDocumentData);
@@ -691,9 +968,20 @@ export const printRequestService = {
       throw new Error("You do not have permission to create print requests.");
     }
 
-    const requestRef = await runTransaction(
-      firestoreCollectionService.getPrintRequestsCollection().firestore,
-      (transaction) => createCustomerPrintRequestInTransaction(transaction, caller.id, input),
+    const requestRef = await runTracedWrite(
+      "runTransaction",
+      () =>
+        runTransaction(
+          firestoreCollectionService.getPrintRequestsCollection().firestore,
+          (transaction) => createCustomerPrintRequestInTransaction(transaction, caller.id, input),
+        ),
+      {
+        app: "studio",
+        collection: "printRequests",
+        documentPathPattern: "printRequests/{printRequestId}",
+        source: "printRequestService.createCustomerPrintRequest",
+      },
+      { writeCount: 2 },
     );
     const createdSnapshot = await getDoc(requestRef);
     return mapPrintRequestData(requestRef.id, createdSnapshot.data() as PrintRequestDocumentData);
@@ -727,10 +1015,106 @@ export const printRequestService = {
     });
 
     assertNoUndefinedFirestoreFields(nextPayload, "Print request update payload");
-    await updateDoc(requestRef, nextPayload);
+    await runTracedWrite("updateDoc", () => updateDoc(requestRef, nextPayload), {
+      app: "studio",
+      collection: "printRequests",
+      documentPathPattern: "printRequests/{printRequestId}",
+      source: "printRequestService.updatePrintRequest",
+    });
 
     const updatedSnapshot = await getDoc(requestRef);
     return mapPrintRequestData(updatedSnapshot.id, updatedSnapshot.data() as PrintRequestDocumentData);
+  },
+
+  async getPrintRequestForShowReconciliation(
+    caller: User,
+    printRequestId: string,
+    readSource: ShowReconciliationReadSource = "default",
+  ) {
+    if (!permissionService.canManagePrintRequests(caller)) {
+      throw new Error("You do not have permission to edit print requests.");
+    }
+    const requestRef = doc(firestoreCollectionService.getPrintRequestsCollection(), printRequestId);
+    const snapshot = readSource === "server"
+      ? await getDocFromServer(requestRef)
+      : await getDoc(requestRef);
+    if (!snapshot.exists()) {
+      throw new Error("Print request not found.");
+    }
+    const data = snapshot.data() as PrintRequestDocumentData;
+    const diagnostics = diagnosePrintRequestForCompletion(data);
+    let request: PrintRequest;
+    try {
+      request = mapPrintRequestData(snapshot.id, data);
+    } catch {
+      throw new ShowCompletionReconciliationRemediationError(
+        "The Print Request record is incomplete and needs remediation.",
+        diagnostics,
+      );
+    }
+    // Plan Section 29.3: the mapper above can succeed (the document is readable/renderable) while
+    // the document still fails firestore.rules' cross-field assignment invariant on the completion
+    // write — neither the mapper nor the field-presence diagnostics above check this. A document in
+    // this state cannot be fixed by retrying (the write will always be denied), so surface it as a
+    // remediation condition now rather than let it appear "retryable" and loop indefinitely.
+    if (diagnostics.assignmentInvariantFailure) {
+      throw new ShowCompletionReconciliationRemediationError(
+        "The Print Request record's customer/guest assignment needs staff remediation before completion can be recorded.",
+        diagnostics,
+      );
+    }
+    return {
+      ...request,
+      parserStatus: "compatible" as const,
+      missingFields: diagnostics.missingFields,
+      legacyExtraFields: diagnostics.legacyExtraFields,
+    };
+  },
+
+  async listPrintRequestItemsForShowReconciliation(
+    caller: User,
+    printRequestId: string,
+    readSource: ShowReconciliationReadSource = "default",
+  ): Promise<PrintRequestItem[]> {
+    if (!permissionService.canViewPrintRequests(caller)) {
+      throw new Error("You do not have permission to view print request items.");
+    }
+    const itemsQuery = query(
+      firestoreCollectionService.getPrintRequestItemsCollection(),
+      ...buildFirestoreQueryConstraints(buildPrintRequestItemsQueryPlan(printRequestId, {})),
+    );
+    const snapshot = readSource === "server"
+      ? await getDocsFromServer(itemsQuery)
+      : await getDocs(itemsQuery);
+    return sortPrintRequestItemsForDisplay(
+      snapshot.docs.map((itemDoc) =>
+        mapPrintRequestItemData(itemDoc.id, itemDoc.data() as PrintRequestItemDocumentData),
+      ),
+    );
+  },
+
+  /**
+   * Completion-only write used after a show Finish batch has already committed. The caller has
+   * already read and validated the request for eligibility; deliberately avoid a post-write read
+   * so a committed status transition cannot be mislabeled as a failed reconciliation.
+   */
+  async markPrintRequestCompletedForShowReconciliation(
+    caller: User,
+    printRequestId: string,
+  ): Promise<void> {
+    if (!permissionService.canManagePrintRequests(caller)) {
+      throw new Error("You do not have permission to edit print requests.");
+    }
+
+    const requestRef = doc(firestoreCollectionService.getPrintRequestsCollection(), printRequestId);
+    const nextPayload = buildPrintRequestCompletionPayload(caller.id);
+    assertNoUndefinedFirestoreFields(nextPayload, "Print request completion payload");
+    await runTracedWrite("updateDoc", () => updateDoc(requestRef, nextPayload), {
+      app: "studio",
+      collection: "printRequests",
+      documentPathPattern: "printRequests/{printRequestId}",
+      source: "printRequestService.markPrintRequestCompletedForShowReconciliation",
+    });
   },
 
   async updatePrintRequestDetail(
@@ -775,13 +1159,18 @@ export const printRequestService = {
     }
 
     assertNoUndefinedFirestoreFields(nextPayload, "Print request detail update payload");
-    await updateDoc(requestRef, nextPayload);
+    await runTracedWrite("updateDoc", () => updateDoc(requestRef, nextPayload), {
+      app: "studio",
+      collection: "printRequests",
+      documentPathPattern: "printRequests/{printRequestId}",
+      source: "printRequestService.updatePrintRequestDetail",
+    });
 
     const updatedSnapshot = await getDoc(requestRef);
     return mapPrintRequestData(updatedSnapshot.id, updatedSnapshot.data() as PrintRequestDocumentData);
   },
 
-  async deletePrintRequest(_caller: User, _printRequestId: string): Promise<void> {
+  async deletePrintRequest(): Promise<void> {
     throw new Error(
       "Direct print request deletion is disabled. Use the Print Requests delete action (server-validated).",
     );
@@ -791,6 +1180,7 @@ export const printRequestService = {
     caller: User,
     printRequestId: string,
     input: CreatePrintRequestItemInput,
+    options?: { existingItems?: PrintRequestItem[] },
   ): Promise<PrintRequestItem> {
     if (!permissionService.canManagePrintRequestItems(caller)) {
       throw new Error("You do not have permission to add print request items.");
@@ -813,16 +1203,27 @@ export const printRequestService = {
       throw new Error("A design is required.");
     }
 
-    const [printRequest, currentItems] = await Promise.all([
-      this.getPrintRequestById(caller, printRequestId),
-      this.listPrintRequestItems(caller, printRequestId),
-    ]);
-
+    // Owner live-test remediation (2026-07-25): this method previously always read the parent
+    // request (for itemCount + 1) and the full growing item list (for the default sortOrder) on
+    // every add — 4 adds cost 4 parent reads + 1+2+3 item docs, all untraced. The parent update
+    // now uses increment(1) (no read; safer under concurrency, and no readback needed since this
+    // method never returns the parent's new itemCount). Independent review required either a
+    // parent-existence guard or documenting the tradeoff of writing an item before the parent
+    // update would fail on a bad ID — resolved by accepting an optional `existingItems` hint from
+    // callers that already loaded the request/items once (e.g. `savePrintRequestDesignSelections`,
+    // which already calls `getPrintRequestById` — proving existence — before looping adds): when
+    // provided, it satisfies the sortOrder computation with zero extra reads and the caller's own
+    // upfront `getPrintRequestById` remains the existence guard. Callers that do not preload items
+    // (and did not already validate existence) still get exactly one items query for sortOrder,
+    // which itself throws a real Firestore permission/not-found style failure long before an
+    // orphaned item could be written if the request truly does not exist.
     const itemRef = doc(firestoreCollectionService.getPrintRequestItemsCollection());
     const sortOrder =
       typeof input.sortOrder === "number" && Number.isFinite(input.sortOrder)
         ? input.sortOrder
-        : resolveNextSortOrder(currentItems);
+        : resolveNextSortOrder(
+            options?.existingItems ?? (await this.listPrintRequestItems(caller, printRequestId)),
+          );
 
     if (isUploadItem && customerUploadId) {
       const printWidthInches = input.printWidthInches;
@@ -849,18 +1250,36 @@ export const printRequestService = {
       });
 
       assertNoUndefinedFirestoreFields(payload, "Print request item payload");
-      await setDoc(itemRef, payload);
-      await updateDoc(doc(firestoreCollectionService.getPrintRequestsCollection(), printRequestId), {
-        itemCount: printRequest.itemCount + 1,
-        updatedBy: caller.id,
-        updatedAt: serverTimestamp(),
+      await runTracedWrite("setDoc", () => setDoc(itemRef, payload), {
+        app: "studio",
+        collection: "printRequestItems",
+        documentPathPattern: "printRequestItems/{printRequestItemId}",
+        source: "printRequestService.addPrintRequestItem",
       });
-
-      const createdSnapshot = await getDoc(itemRef);
-      return mapPrintRequestItemData(
-        createdSnapshot.id,
-        createdSnapshot.data() as PrintRequestItemDocumentData,
+      await runTracedWrite(
+        "updateDoc",
+        () =>
+          updateDoc(doc(firestoreCollectionService.getPrintRequestsCollection(), printRequestId), {
+            itemCount: increment(1),
+            updatedBy: caller.id,
+            updatedAt: serverTimestamp(),
+          }),
+        {
+          app: "studio",
+          collection: "printRequests",
+          documentPathPattern: "printRequests/{printRequestId}",
+          source: "printRequestService.addPrintRequestItem",
+        },
       );
+
+      // Synthesize the created item from the known payload instead of a read-after-write —
+      // the next authoritative load re-reads real server timestamps.
+      const nowTimestamp = Timestamp.now();
+      return mapPrintRequestItemData(itemRef.id, {
+        ...payload,
+        createdAt: nowTimestamp,
+        updatedAt: nowTimestamp,
+      } as unknown as PrintRequestItemDocumentData);
     }
 
     const design = await loadPrintableDesign(caller, designId!);
@@ -882,18 +1301,38 @@ export const printRequestService = {
     });
 
     assertNoUndefinedFirestoreFields(payload, "Print request item payload");
-    await setDoc(itemRef, payload);
-
-    await updateDoc(doc(firestoreCollectionService.getPrintRequestsCollection(), printRequestId), {
-      itemCount: printRequest.itemCount + 1,
-      updatedBy: caller.id,
-      updatedAt: serverTimestamp(),
+    await runTracedWrite("setDoc", () => setDoc(itemRef, payload), {
+      app: "studio",
+      collection: "printRequestItems",
+      documentPathPattern: "printRequestItems/{printRequestItemId}",
+      source: "printRequestService.addPrintRequestItem",
     });
+
+    await runTracedWrite(
+      "updateDoc",
+      () =>
+        updateDoc(doc(firestoreCollectionService.getPrintRequestsCollection(), printRequestId), {
+          itemCount: increment(1),
+          updatedBy: caller.id,
+          updatedAt: serverTimestamp(),
+        }),
+      {
+        app: "studio",
+        collection: "printRequests",
+        documentPathPattern: "printRequests/{printRequestId}",
+        source: "printRequestService.addPrintRequestItem",
+      },
+    );
 
     // requestCount / lastRequestedAt are updated by Cloud Function onPrintRequestItemCreated.
 
-    const createdSnapshot = await getDoc(itemRef);
-    return mapPrintRequestItemData(createdSnapshot.id, createdSnapshot.data() as PrintRequestItemDocumentData);
+    // Synthesize the created item from the known payload instead of a read-after-write.
+    const nowTimestamp = Timestamp.now();
+    return mapPrintRequestItemData(itemRef.id, {
+      ...payload,
+      createdAt: nowTimestamp,
+      updatedAt: nowTimestamp,
+    } as unknown as PrintRequestItemDocumentData);
   },
 
   async updatePrintRequestItem(
@@ -971,7 +1410,12 @@ export const printRequestService = {
     });
 
     assertNoUndefinedFirestoreFields(payload, "Print request item update payload");
-    await updateDoc(itemRef, payload);
+    await runTracedWrite("updateDoc", () => updateDoc(itemRef, payload), {
+      app: "studio",
+      collection: "printRequestItems",
+      documentPathPattern: "printRequestItems/{printRequestItemId}",
+      source: "printRequestService.updatePrintRequestItem",
+    });
 
     const updatedSnapshot = await getDoc(itemRef);
     return mapPrintRequestItemData(updatedSnapshot.id, updatedSnapshot.data() as PrintRequestItemDocumentData);
@@ -1013,11 +1457,21 @@ export const printRequestService = {
     } else if (sourceIndex >= 0) {
       const anchoredOrder = (sourceIndex + 1) * 100;
 
-      await updateDoc(itemRef, {
-        sortOrder: anchoredOrder,
-        updatedBy: caller.id,
-        updatedAt: serverTimestamp(),
-      });
+      await runTracedWrite(
+        "updateDoc",
+        () =>
+          updateDoc(itemRef, {
+            sortOrder: anchoredOrder,
+            updatedBy: caller.id,
+            updatedAt: serverTimestamp(),
+          }),
+        {
+          app: "studio",
+          collection: "printRequestItems",
+          documentPathPattern: "printRequestItems/{printRequestItemId}",
+          source: "printRequestService.duplicatePrintRequestItem",
+        },
+      );
       duplicateSortOrder = anchoredOrder + 50;
     }
 
@@ -1073,15 +1527,30 @@ export const printRequestService = {
     const requestRef = doc(firestoreCollectionService.getPrintRequestsCollection(), item.printRequestId);
     const requestSnapshot = await getDoc(requestRef);
 
-    await deleteDoc(itemRef);
+    await runTracedWrite("deleteDoc", () => deleteDoc(itemRef), {
+      app: "studio",
+      collection: "printRequestItems",
+      documentPathPattern: "printRequestItems/{printRequestItemId}",
+      source: "printRequestService.removePrintRequestItem",
+    });
 
     if (requestSnapshot.exists()) {
       const request = mapPrintRequestData(requestSnapshot.id, requestSnapshot.data() as PrintRequestDocumentData);
-      await updateDoc(requestRef, {
-        itemCount: Math.max(0, request.itemCount - 1),
-        updatedBy: caller.id,
-        updatedAt: serverTimestamp(),
-      });
+      await runTracedWrite(
+        "updateDoc",
+        () =>
+          updateDoc(requestRef, {
+            itemCount: Math.max(0, request.itemCount - 1),
+            updatedBy: caller.id,
+            updatedAt: serverTimestamp(),
+          }),
+        {
+          app: "studio",
+          collection: "printRequests",
+          documentPathPattern: "printRequests/{printRequestId}",
+          source: "printRequestService.removePrintRequestItem",
+        },
+      );
     }
   },
 
@@ -1129,10 +1598,19 @@ export const printRequestService = {
         continue;
       }
 
-      await this.addPrintRequestItem(caller, printRequestId, {
-        designId: selection.designId,
-        quantity: selection.quantity,
-      });
+      // Reuse the request/items already loaded above (existence proven by getPrintRequestById)
+      // instead of a fresh per-add query — closes the growing-read pattern this loop previously
+      // caused for each of the four designs added in the owner's live-test workflow.
+      const created = await this.addPrintRequestItem(
+        caller,
+        printRequestId,
+        {
+          designId: selection.designId,
+          quantity: selection.quantity,
+        },
+        { existingItems: currentItems },
+      );
+      currentItems.push(created);
     }
   },
 

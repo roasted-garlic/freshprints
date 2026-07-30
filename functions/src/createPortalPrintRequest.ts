@@ -78,6 +78,18 @@ export const createPortalPrintRequest = onCall(async (request): Promise<CreatePo
       createdName = created.name;
     });
 
+    if (process.env.GCLOUD_PROJECT === "fresh-prints-dev") {
+      console.info("portal-print-request-create-write-accounting", {
+        itemWrites: 0,
+        parentRequestWrites: 1,
+        designAnalyticsWrites: 0,
+        idempotencyWrites: 0,
+        otherWrites: 1,
+        totalWrites: 2,
+        otherWriteClass: "customer-sequence",
+      });
+    }
+
     return {
       printRequestId,
       name: createdName,

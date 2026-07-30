@@ -194,7 +194,6 @@ function AssistedApprovedCatalogDesignCard({ request }: { request: AssistedCreat
       <p className="assisted-creation-catalog-suggestion-title">{title}</p>
       {previewUrl ? (
         <div className="assisted-creation-proof-stage">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             alt={title}
             className="assisted-creation-proof-stage-image"
@@ -625,7 +624,6 @@ export function AssistedApprovedDesignCard({ request }: { request: AssistedCreat
       </div>
       {previewUrl ? (
         <div className="assisted-creation-proof-stage">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             alt="Approved design"
             className="assisted-creation-proof-stage-image"
@@ -953,7 +951,6 @@ function ProofDetailModal({
         <div className="modal-body assisted-creation-proof-modal-body">
           {url ? (
             <div className="assisted-creation-proof-stage">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 alt={isCatalogShare ? catalogTitle : `Proof ${proofNumber}`}
                 className="assisted-creation-proof-stage-image"
@@ -1136,7 +1133,6 @@ function ProofListThumb({ proof }: { proof: AssistedCreationProof }) {
   }
 
   return (
-    // eslint-disable-next-line @next/next/no-img-element
     <img alt="" className="assisted-creation-proof-row-thumb" src={url} />
   );
 }

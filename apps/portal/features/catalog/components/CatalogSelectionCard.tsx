@@ -47,7 +47,6 @@ export function CatalogSelectionCard({
   canAddPrints = true,
   design,
   disabled = false,
-  exhaustedHelperText: _exhaustedHelperText = null,
   exhaustedStatusText = null,
   isSelected,
   quantity,

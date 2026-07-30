@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { describe, it } from "node:test";
 
 import { MAX_SINGLE_PNG_SIZE_BYTES } from "../constants/importValidation.constants";
+import { ASSISTED_CREATION_MAX_REFERENCE_BYTES } from "./assistedCreation/assistedCreation.constants";
 import {
   CUSTOMER_UPLOAD_MAX_SINGLE_IMAGE_BYTES,
   CUSTOMER_UPLOAD_MAX_ZIP_COMPRESSED_BYTES,
@@ -72,6 +73,40 @@ describe("storage.rules alignment", () => {
     assert.ok(
       helper.includes("isCanonicalDerivativeFileName"),
       "isReadyDesignDerivative must still require canonical filename",
+    );
+  });
+
+  it("matches ASSISTED_CREATION_MAX_REFERENCE_BYTES exactly — fails if either drifts independently", async () => {
+    const rulesPath = path.join(REPO_ROOT, "storage.rules");
+    const rules = await readFile(rulesPath, "utf8");
+
+    const helperStart = rules.indexOf("function isValidAssistedCreationImage");
+    assert.ok(helperStart >= 0, "storage.rules must define isValidAssistedCreationImage");
+    const helperEnd = rules.indexOf("function isValidAssistedCreationProof", helperStart);
+    const helper = rules.slice(helperStart, helperEnd > helperStart ? helperEnd : undefined);
+
+    // storage.rules writes byte ceilings as an arithmetic expression (e.g. "40 * 1024 * 1024"),
+    // not a pre-computed literal — extract the actual expression the Rules file enforces and
+    // multiply its factors the same way, so this test fails if either side drifts independently
+    // rather than duplicating a second handwritten "40" that could silently go stale.
+    const sizeCheckMatch = helper.match(/request\.resource\.size\s*<=\s*([0-9*\s]+?)\s*&&/);
+    assert.ok(
+      sizeCheckMatch,
+      `storage.rules isValidAssistedCreationImage() must contain a "request.resource.size <= <expr> &&" check (helper text: ${helper})`,
+    );
+    const rulesBytes = sizeCheckMatch![1]
+      .split("*")
+      .map((factor) => Number(factor.trim()))
+      .reduce((product, factor) => product * factor, 1);
+    assert.equal(
+      rulesBytes,
+      ASSISTED_CREATION_MAX_REFERENCE_BYTES,
+      `storage.rules enforces ${rulesBytes} bytes but ASSISTED_CREATION_MAX_REFERENCE_BYTES is ` +
+        `${ASSISTED_CREATION_MAX_REFERENCE_BYTES} — these must match exactly`,
+    );
+    assert.ok(
+      helper.includes('"image/jpeg", "image/png", "image/webp"'),
+      "isValidAssistedCreationImage must still require the three allowed reference-image types",
     );
   });
 

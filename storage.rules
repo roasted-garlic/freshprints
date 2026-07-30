@@ -148,7 +148,7 @@ service firebase.storage {
     }
 
     function isValidAssistedCreationImage() {
-      return request.resource.size < 15 * 1024 * 1024
+      return request.resource.size <= 40 * 1024 * 1024
         && request.resource.contentType in ["image/jpeg", "image/png", "image/webp"];
     }
 
@@ -223,6 +223,27 @@ service firebase.storage {
         && isBrandLogoApp(appId)
         && isBrandLogoSlot(slotId)
         && isBrandLogoFileName(fileName);
+    }
+
+    // Generated catalog snapshots are written only by Admin SDK publication
+    // functions. The AI projection is intentionally not client-readable.
+    match /generated/catalog-reference/ai/{fileName} {
+      allow read, write: if false;
+    }
+
+    match /generated/catalog-reference/manifest.json {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /generated/catalog-reference/client/{fileName} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /generated/portal-catalog/{allPaths=**} {
+      allow read: if true;
+      allow write: if false;
     }
 
     match /{allPaths=**} {

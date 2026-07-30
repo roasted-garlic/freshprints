@@ -1,5 +1,4 @@
 import { doc, onSnapshot, type Unsubscribe } from "firebase/firestore";
-import { httpsCallable } from "firebase/functions";
 import { ref, uploadBytes } from "firebase/storage";
 
 import {
@@ -14,7 +13,8 @@ import {
   type BrandLogoSettings,
   type BrandLogoSlotKind,
 } from "@fresh-prints/shared/constants/brand/brandLogoSettings.constants";
-import { db, functions, storage } from "../../../config/firebase";
+import { db, storage } from "../../../config/firebase";
+import { callTracedFunction } from "../../../config/tracedCallable";
 
 function newObjectId(): string {
   return crypto.randomUUID();
@@ -75,29 +75,26 @@ export const brandLogoSettingsService = {
         ? { app: params.app, slot: params.slot, storagePath }
         : { app: params.app, slot: params.slot, storagePath, aspectRatio };
 
-    const callable = httpsCallable<BrandLogoFinalizeInput, BrandLogoSettings>(
-      functions,
+    const response = await callTracedFunction<BrandLogoFinalizeInput, BrandLogoSettings>(
       "finalizeBrandLogoSlot",
-    );
-    const response = await callable(payload);
-    return resolveBrandLogoSettings(response.data);
+      { source: "brandLogoSettingsService.uploadAndFinalize" },
+    )(payload);
+    return resolveBrandLogoSettings(response);
   },
 
   async clearSlot(app: BrandLogoApp, slot: BrandLogoSlotKind): Promise<BrandLogoSettings> {
-    const callable = httpsCallable<BrandLogoFinalizeInput, BrandLogoSettings>(
-      functions,
+    const response = await callTracedFunction<BrandLogoFinalizeInput, BrandLogoSettings>(
       "finalizeBrandLogoSlot",
-    );
-    const response = await callable({ app, slot, clear: true });
-    return resolveBrandLogoSettings(response.data);
+      { source: "brandLogoSettingsService.clearSlot" },
+    )({ app, slot, clear: true });
+    return resolveBrandLogoSettings(response);
   },
 
   async updateDisplaySizes(sizes: BrandLogoDisplaySizesInput): Promise<BrandLogoSettings> {
-    const callable = httpsCallable<BrandLogoDisplaySizesInput, BrandLogoSettings>(
-      functions,
+    const response = await callTracedFunction<BrandLogoDisplaySizesInput, BrandLogoSettings>(
       "updateBrandLogoDisplaySizes",
-    );
-    const response = await callable(sizes);
-    return resolveBrandLogoSettings(response.data);
+      { source: "brandLogoSettingsService.updateDisplaySizes" },
+    )(sizes);
+    return resolveBrandLogoSettings(response);
   },
 };

@@ -12,6 +12,7 @@ export { excludeCustomerUploadFromCatalog } from "./excludeCustomerUploadFromCat
 export { finalizeCustomerUpload } from "./finalizeCustomerUpload";
 export { finalizeCustomerUploadZip } from "./finalizeCustomerUploadZip";
 export { getCustomerUploadDailyQuota } from "./getCustomerUploadDailyQuota";
+export { inventoryCatalogImageStorage } from "./inventoryCatalogImageStorage";
 export { promoteCustomerUploadToAiReview } from "./promoteCustomerUploadToAiReview";
 export { recordCustomerUploadHalftoneResponse } from "./recordCustomerUploadHalftoneResponse";
 export { recordCustomerUploadHalftoneStaffDecision } from "./recordCustomerUploadHalftoneStaffDecision";
@@ -114,8 +115,19 @@ export {
 export { onPrintRequestItemCreated } from "./onPrintRequestItemCreated";
 export { onShowAllocationCreated } from "./onShowAllocationCreated";
 export {
+  onPrintRequestItemQueueTabInputWritten,
+  onShowAllocationQueueTabInputWritten,
+} from "./onPrintRequestQueueTabInputsWritten";
+export { backfillPrintRequestQueueTab } from "./backfillPrintRequestQueueTab";
+export {
   onCustomerFavoriteCreated,
   onCustomerFavoriteDeleted,
 } from "./onCustomerFavoriteChanged";
 export { onEmailDeliveryJobCreated } from "./onEmailDeliveryJobCreated";
 export { registerWebPushSubscription } from "./registerWebPushSubscription";
+export {
+  onCategorySnapshotSourceWritten,
+  onPortalCatalogSnapshotSourceWritten,
+  onTagSnapshotSourceWritten,
+  rebuildCatalogSnapshots,
+} from "./catalogSnapshots/publishCatalogSnapshots";

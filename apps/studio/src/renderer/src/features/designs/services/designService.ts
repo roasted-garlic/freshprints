@@ -16,7 +16,16 @@ import {
   type QueryConstraint,
 } from "firebase/firestore";
 
-import { traceFirestoreRead } from "@fresh-prints/shared/utils/firestoreUsageTrace";
+import {
+  runTracedWrite,
+  traceFirestoreCacheEvent,
+  traceFirestoreOneShotComplete,
+  traceFirestoreOneShotStart,
+  traceFirestoreWriteComplete,
+  traceFirestoreWriteStart,
+  type FirestoreTraceMetadata,
+} from "@fresh-prints/shared/utils/firestoreUsageTrace";
+import { createBoundedAsyncCache } from "@fresh-prints/shared/utils/boundedAsyncCache";
 
 import { getFirestoreErrorMessage } from "../../firebase/utils/firestoreErrorMessage";
 import {
@@ -46,6 +55,79 @@ import { sortDesignsForListQuery } from "../utils/sortDesignsForListQuery";
 const DEFAULT_LIST_LIMIT = 100;
 export const DESIGN_LIST_PAGE_SIZE = DEFAULT_LIST_LIMIT;
 const MAX_TITLE_LENGTH = 200;
+const designPageCache = createBoundedAsyncCache<DesignListPage>({
+  maxEntries: 64,
+  onEvent: (event) => traceFirestoreCacheEvent(
+    event === "hit" ? "cacheHit" : event === "retry" ? "retry" : "cacheMiss",
+    {
+      app: "studio",
+      collection: "designs",
+      source: "designService.pageCache",
+      triggerReason: "route",
+    },
+  ),
+  ttlMs: 15 * 1000,
+});
+const designCountCache = createBoundedAsyncCache<number>({
+  maxEntries: 16,
+  onEvent: (event) => traceFirestoreCacheEvent(
+    event === "hit" ? "cacheHit" : event === "retry" ? "retry" : "cacheMiss",
+    {
+      app: "studio",
+      collection: "designs",
+      source: "designService.countCache",
+      triggerReason: "route",
+    },
+  ),
+  ttlMs: 15 * 1000,
+});
+const designDocumentCache = createBoundedAsyncCache<Design>({
+  maxEntries: 256,
+  onEvent: (event) => traceFirestoreCacheEvent(
+    event === "hit" ? "cacheHit" : event === "retry" ? "retry" : "cacheMiss",
+    {
+      app: "studio",
+      collection: "designs",
+      documentPathPattern: "designs/{designId}",
+      source: "designService.documentCache",
+      triggerReason: "route",
+    },
+  ),
+  ttlMs: 15 * 1000,
+});
+
+function getDesignQueryCacheKey(listQuery: DesignListQuery = {}): string {
+  const normalizedStatus =
+    listQuery.statusIn?.length === 1 ? listQuery.statusIn[0] : listQuery.status;
+  const normalizedStatusIn =
+    listQuery.statusIn && listQuery.statusIn.length > 1
+      ? [...listQuery.statusIn].sort()
+      : undefined;
+
+  return JSON.stringify({
+    aiReviewStatus: listQuery.aiReviewStatus,
+    categoryId: listQuery.categoryId,
+    cursor: listQuery.cursor
+      ? [listQuery.cursor.designId, listQuery.cursor.sortMillis]
+      : undefined,
+    limitCount: listQuery.limitCount ?? DEFAULT_LIST_LIMIT,
+    sortDirection: listQuery.sortDirection ?? "desc",
+    sortField: listQuery.sortField ?? "updatedAt",
+    status: normalizedStatus,
+    statusIn: normalizedStatusIn,
+    tag: listQuery.tag?.trim().toLowerCase(),
+  });
+}
+
+function invalidateDesignReadCaches(designId?: string): void {
+  designPageCache.clear();
+  designCountCache.clear();
+  if (designId) {
+    designDocumentCache.invalidate(designId);
+  } else {
+    designDocumentCache.clear();
+  }
+}
 
 function shouldApplyServerAiReviewFilter(listQuery: DesignListQuery): boolean {
   return listQuery.aiReviewStatus !== undefined;
@@ -388,6 +470,31 @@ function filterDesignsByTag(designs: Design[], tag: string): Design[] {
   return designs.filter((design) => design.tags.includes(normalizedTag));
 }
 
+function designListTraceMetadata(
+  listQuery: DesignListQuery,
+  source: string,
+): FirestoreTraceMetadata {
+  const constraints = [
+    listQuery.status ? `status==${listQuery.status}` : "",
+    listQuery.statusIn?.length ? `status in ${[...listQuery.statusIn].sort().join(",")}` : "",
+    listQuery.aiReviewStatus ? `aiReviewStatus==${listQuery.aiReviewStatus}` : "",
+    listQuery.categoryId ? "categoryId=={categoryId}" : "",
+    listQuery.tag ? "tags array-contains {tag}" : "",
+  ].filter(Boolean);
+  const sortField = listQuery.sortField ?? "updatedAt";
+  const sortDirection = listQuery.sortDirection ?? "desc";
+
+  return {
+    app: "studio",
+    collection: "designs",
+    constraints,
+    limit: (listQuery.limitCount ?? DEFAULT_LIST_LIMIT) + 1,
+    orderBy: [`${sortField}:${sortDirection}`, `__name__:${sortDirection}`],
+    source,
+    triggerReason: "route",
+  };
+}
+
 function mergeDesignListPages(
   pages: DesignListPage[],
   pageSize: number,
@@ -409,7 +516,7 @@ function mergeDesignListPages(
 
 const TAG_FILTER_FALLBACK_LIMIT = 500;
 
-async function fetchDesignListPage(
+async function fetchDesignListPageUncached(
   _caller: User,
   listQuery: DesignListQuery,
 ): Promise<DesignListPage> {
@@ -418,11 +525,13 @@ async function fetchDesignListPage(
     firestoreCollectionService.getDesignsCollection(),
     ...buildDesignListConstraints(listQuery),
   );
-  traceFirestoreRead(
-    "getDocs",
-    `designs:list:${listQuery.status ?? listQuery.statusIn?.join(",") ?? "any"}:${listQuery.aiReviewStatus ?? "any"}`,
+  const traceMetadata = designListTraceMetadata(
+    listQuery,
+    "designService.listDesignsPage",
   );
+  traceFirestoreOneShotStart("getDocs", traceMetadata);
   const snapshot = await getDocs(designsQuery);
+  traceFirestoreOneShotComplete("getDocs", traceMetadata, snapshot.size);
   const designs = snapshot.docs.flatMap((designDocument) => {
     try {
       return [mapDesignDocument(designDocument.id, designDocument.data())];
@@ -443,6 +552,22 @@ async function fetchDesignListPage(
     pageSize,
     sortField,
   );
+}
+
+async function fetchDesignListPage(
+  caller: User,
+  listQuery: DesignListQuery,
+): Promise<DesignListPage> {
+  const page = await designPageCache.get(
+    getDesignQueryCacheKey(listQuery),
+    () => fetchDesignListPageUncached(caller, listQuery),
+  );
+
+  return {
+    ...page,
+    designs: [...page.designs],
+    nextCursor: page.nextCursor ? { ...page.nextCursor } : undefined,
+  };
 }
 
 export const designService = {
@@ -548,16 +673,32 @@ export const designService = {
         return counts.reduce((sum, count) => sum + count, 0);
       }
 
-      const countQuery = query(
-        firestoreCollectionService.getDesignsCollection(),
-        ...buildDesignFilterConstraints(listQuery),
-      );
-      traceFirestoreRead(
-        "getCountFromServer",
-        `designs:count:${listQuery.status ?? listQuery.statusIn?.join(",") ?? "any"}:${listQuery.aiReviewStatus ?? "any"}`,
-      );
-      const snapshot = await getCountFromServer(countQuery);
-      return snapshot.data().count;
+      return await designCountCache.get(getDesignQueryCacheKey(listQuery), async () => {
+        const countQuery = query(
+          firestoreCollectionService.getDesignsCollection(),
+          ...buildDesignFilterConstraints(listQuery),
+        );
+        const traceMetadata = designListTraceMetadata(
+          { ...listQuery, limitCount: undefined },
+          "designService.countDesigns",
+        );
+        traceFirestoreOneShotStart("getCountFromServer", {
+          ...traceMetadata,
+          limit: undefined,
+          orderBy: undefined,
+        });
+        const snapshot = await getCountFromServer(countQuery);
+        traceFirestoreOneShotComplete(
+          "getCountFromServer",
+          {
+            ...traceMetadata,
+            limit: undefined,
+            orderBy: undefined,
+          },
+          0,
+        );
+        return snapshot.data().count;
+      });
     } catch (error) {
       throw new Error(getFirestoreErrorMessage(error, "Unable to count designs. Please try again."));
     }
@@ -569,15 +710,26 @@ export const designService = {
     }
 
     try {
-      const designSnapshot = await getDoc(
-        doc(firestoreCollectionService.getDesignsCollection(), designId),
-      );
+      return await designDocumentCache.get(designId, async () => {
+        const traceMetadata: FirestoreTraceMetadata = {
+          app: "studio",
+          collection: "designs",
+          documentPathPattern: "designs/{designId}",
+          source: "designService.getDesignById",
+          triggerReason: "explicit-refresh",
+        };
+        traceFirestoreOneShotStart("getDoc", traceMetadata);
+        const designSnapshot = await getDoc(
+          doc(firestoreCollectionService.getDesignsCollection(), designId),
+        );
+        traceFirestoreOneShotComplete("getDoc", traceMetadata, designSnapshot.exists() ? 1 : 0);
 
-      if (!designSnapshot.exists()) {
-        throw new Error("The requested design was not found.");
-      }
+        if (!designSnapshot.exists()) {
+          throw new Error("The requested design was not found.");
+        }
 
-      return mapDesignDocument(designSnapshot.id, designSnapshot.data());
+        return mapDesignDocument(designSnapshot.id, designSnapshot.data());
+      });
     } catch (error) {
       if (error instanceof Error && error.message === "The requested design was not found.") {
         throw error;
@@ -646,7 +798,13 @@ export const designService = {
     });
 
     try {
-      await setDoc(designRef, designRecord);
+      await runTracedWrite("setDoc", () => setDoc(designRef, designRecord), {
+        app: "studio",
+        collection: "designs",
+        documentPathPattern: "designs/{designId}",
+        source: "designService.createDesign",
+      });
+      invalidateDesignReadCaches(designRef.id);
       const createdSnapshot = await getDoc(designRef);
 
       if (!createdSnapshot.exists()) {
@@ -788,7 +946,17 @@ export const designService = {
       }
 
       assertNoUndefinedFirestoreFields(updatePayload, "Design update payload");
+      const writeTraceMetadata: FirestoreTraceMetadata = {
+        app: "studio",
+        collection: "designs",
+        documentPathPattern: "designs/{designId}",
+        source: "designService.updateDesign",
+        triggerReason: "explicit-refresh",
+      };
+      traceFirestoreWriteStart("updateDoc", writeTraceMetadata);
       await updateDoc(designRef, updatePayload);
+      traceFirestoreWriteComplete("updateDoc", writeTraceMetadata, { writeCount: 1 });
+      invalidateDesignReadCaches(designId);
 
       return mapDesignDocument(
         designId,
@@ -870,7 +1038,13 @@ export const designService = {
       }
 
       assertNoUndefinedFirestoreFields(updatePayload, "Design AI review update payload");
-      await updateDoc(designRef, updatePayload);
+      await runTracedWrite("updateDoc", () => updateDoc(designRef, updatePayload), {
+        app: "studio",
+        collection: "designs",
+        documentPathPattern: "designs/{designId}",
+        source: "designService.applyAiReviewUpdate",
+      });
+      invalidateDesignReadCaches(designId);
 
       return mapDesignDocument(
         designId,
@@ -949,7 +1123,13 @@ export const designService = {
       }
 
       assertNoUndefinedFirestoreFields(updatePayload, "Design catalog approval update payload");
-      await updateDoc(designRef, updatePayload);
+      await runTracedWrite("updateDoc", () => updateDoc(designRef, updatePayload), {
+        app: "studio",
+        collection: "designs",
+        documentPathPattern: "designs/{designId}",
+        source: "designService.applyCatalogApprovalUpdate",
+      });
+      invalidateDesignReadCaches(designId);
 
       return mapDesignDocument(
         designId,
@@ -1017,7 +1197,13 @@ export const designService = {
       }
 
       assertNoUndefinedFirestoreFields(updatePayload, "Design reopen update payload");
-      await updateDoc(designRef, updatePayload);
+      await runTracedWrite("updateDoc", () => updateDoc(designRef, updatePayload), {
+        app: "studio",
+        collection: "designs",
+        documentPathPattern: "designs/{designId}",
+        source: "designService.applyReopenFromRejectedUpdate",
+      });
+      invalidateDesignReadCaches(designId);
 
       const merged = mergeDesignDocumentDataAfterWrite(
         existingData as Record<string, unknown>,
@@ -1074,7 +1260,13 @@ export const designService = {
       };
 
       assertNoUndefinedFirestoreFields(updatePayload, "Design archive payload");
-      await updateDoc(designRef, updatePayload);
+      await runTracedWrite("updateDoc", () => updateDoc(designRef, updatePayload), {
+        app: "studio",
+        collection: "designs",
+        documentPathPattern: "designs/{designId}",
+        source: "designService.archiveDesign",
+      });
+      invalidateDesignReadCaches(designId);
 
       const updatedSnapshot = await getDoc(designRef);
 
@@ -1127,7 +1319,13 @@ export const designService = {
       };
 
       assertNoUndefinedFirestoreFields(updatePayload, "Design restore payload");
-      await updateDoc(designRef, updatePayload);
+      await runTracedWrite("updateDoc", () => updateDoc(designRef, updatePayload), {
+        app: "studio",
+        collection: "designs",
+        documentPathPattern: "designs/{designId}",
+        source: "designService.restoreDesign",
+      });
+      invalidateDesignReadCaches(designId);
 
       const updatedSnapshot = await getDoc(designRef);
 

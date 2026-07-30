@@ -7,7 +7,6 @@ import {
   buildCatalogUrlCacheKey,
   catalogPathFromUrlCacheKey,
   normalizeCatalogStoragePath,
-  type CatalogStoragePathRef,
 } from '../utils/catalogUrlCacheKey';
 
 /** On-demand memo only — no background prefetch (prefetch fought soft navigation). */
@@ -94,7 +93,7 @@ export const catalogStorageService = {
   },
 
   /** No-op: background prefetch made soft nav feel sticky; thumbs load on demand. */
-  prefetchCatalogPaths(_pathRefs: CatalogStoragePathRef[], _limit = 32): void {
+  prefetchCatalogPaths(): void {
     // intentionally empty
   },
 

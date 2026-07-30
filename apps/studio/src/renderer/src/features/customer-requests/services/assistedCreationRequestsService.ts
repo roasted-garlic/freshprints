@@ -9,7 +9,6 @@ import {
   type Timestamp,
   type Unsubscribe,
 } from "firebase/firestore";
-import { httpsCallable } from "firebase/functions";
 import { getBytes, getDownloadURL, ref, uploadBytes } from "firebase/storage";
 
 import {
@@ -44,11 +43,22 @@ import {
   buildAssistedCreationFinalArtworkDownloadFileName,
   buildAssistedCreationOpaqueProofObjectId,
 } from "@fresh-prints/shared/utils/assistedCreationProofFileName";
+import { traceFirestoreListenerEmission } from "@fresh-prints/shared/utils/firestoreUsageTrace";
+import { withTimeout } from "@fresh-prints/shared/utils/withTimeout";
 
-import { db, functions, storage } from "../../../config/firebase";
+import { db, storage } from "../../../config/firebase";
+import { callTracedFunction } from "../../../config/tracedCallable";
 import { createSharedFirestoreSubscription } from "../../firebase/utils/createSharedFirestoreSubscription";
 
 const LIST_LIMIT = 100;
+const RECENT_REQUESTS_TRACE = {
+  app: "studio" as const,
+  collection: ASSISTED_CREATION_COLLECTION,
+  limit: LIST_LIMIT,
+  orderBy: ["createdAt desc"],
+  source: "assistedCreationRequestsService.subscribeRecent",
+  triggerReason: "authentication" as const,
+};
 
 /** Electron/Firebase getBytes can hang indefinitely; never leave UI on Loading forever. */
 const STORAGE_DOWNLOAD_TIMEOUT_MS = 12_000;
@@ -81,24 +91,6 @@ function storageErrorCode(error: unknown): string {
     return error.message.trim().slice(0, 80);
   }
   return "unknown";
-}
-
-function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(() => {
-      reject(new Error(message));
-    }, ms);
-    promise.then(
-      (value) => {
-        clearTimeout(timer);
-        resolve(value);
-      },
-      (error: unknown) => {
-        clearTimeout(timer);
-        reject(error);
-      },
-    );
-  });
 }
 
 function logAssistedStorageFailure(
@@ -312,6 +304,7 @@ async function resolveDisplayNames(
 
 const sharedRecentSubscription = createSharedFirestoreSubscription<AssistedCreationRequestListItem[]>({
   traceKey: "assistedCreationRequests:recent",
+  traceMetadata: RECENT_REQUESTS_TRACE,
   start: ({ next, error }) => {
     const recentQuery = query(
       collection(db, ASSISTED_CREATION_COLLECTION),
@@ -321,6 +314,7 @@ const sharedRecentSubscription = createSharedFirestoreSubscription<AssistedCreat
     return onSnapshot(
       recentQuery,
       (snapshot) => {
+        traceFirestoreListenerEmission(RECENT_REQUESTS_TRACE, snapshot.size);
         void (async () => {
           const mapped = snapshot.docs
             .map((docSnap) => mapDoc(docSnap.id, docSnap.data() as Record<string, unknown>))
@@ -350,23 +344,23 @@ export const assistedCreationRequestsService = {
   async updateStatus(
     input: StaffUpdateAssistedCreationStatusRequest,
   ): Promise<StaffUpdateAssistedCreationStatusResponse> {
-    const callable = httpsCallable<
+    return callTracedFunction<
       StaffUpdateAssistedCreationStatusRequest,
       StaffUpdateAssistedCreationStatusResponse
-    >(functions, "staffUpdateAssistedCreationStatus");
-    const result = await callable(input);
-    return result.data;
+    >("staffUpdateAssistedCreationStatus", {
+      source: "assistedCreationRequestsService.updateStatus",
+    })(input);
   },
 
   async sendMessage(
     input: StaffSendAssistedCreationMessageRequest,
   ): Promise<StaffSendAssistedCreationMessageResponse> {
-    const callable = httpsCallable<
+    return callTracedFunction<
       StaffSendAssistedCreationMessageRequest,
       StaffSendAssistedCreationMessageResponse
-    >(functions, "staffSendAssistedCreationMessage");
-    const result = await callable(input);
-    return result.data;
+    >("staffSendAssistedCreationMessage", {
+      source: "assistedCreationRequestsService.sendMessage",
+    })(input);
   },
 
   async uploadAndAttachProof(input: {
@@ -391,11 +385,12 @@ export const assistedCreationRequestsService = {
     const storagePath = `assisted-creation/${input.customerUid}/${input.requestId}/proofs/${objectId}`;
     await uploadBytes(ref(storage, storagePath), input.file, { contentType: input.file.type });
 
-    const callable = httpsCallable<
+    return callTracedFunction<
       StaffAddAssistedCreationProofRequest,
       StaffAddAssistedCreationProofResponse
-    >(functions, "staffAddAssistedCreationProof");
-    const result = await callable({
+    >("staffAddAssistedCreationProof", {
+      source: "assistedCreationRequestsService.uploadAndAttachProof",
+    })({
       requestId: input.requestId,
       proof: {
         id: proofId,
@@ -406,7 +401,6 @@ export const assistedCreationRequestsService = {
         note: input.note,
       },
     });
-    return result.data;
   },
 
   async uploadAndAttachFinalSource(input: {
@@ -427,11 +421,12 @@ export const assistedCreationRequestsService = {
     const storagePath = `assisted-creation/${input.customerUid}/${input.requestId}/final/${objectId}`;
     await uploadBytes(ref(storage, storagePath), input.file, { contentType: input.file.type });
 
-    const callable = httpsCallable<
+    return callTracedFunction<
       StaffAddAssistedCreationFinalSourceRequest,
       StaffAddAssistedCreationFinalSourceResponse
-    >(functions, "staffAddAssistedCreationFinalSource");
-    const result = await callable({
+    >("staffAddAssistedCreationFinalSource", {
+      source: "assistedCreationRequestsService.uploadAndAttachFinalSource",
+    })({
       requestId: input.requestId,
       finalSource: {
         id: sourceId,
@@ -441,7 +436,6 @@ export const assistedCreationRequestsService = {
         sizeBytes: input.file.size,
       },
     });
-    return result.data;
   },
 
   async suggestCatalogDesign(input: {
@@ -449,16 +443,16 @@ export const assistedCreationRequestsService = {
     designId: string;
     note?: string;
   }): Promise<StaffSuggestAssistedCreationCatalogDesignResponse> {
-    const callable = httpsCallable<
+    return callTracedFunction<
       StaffSuggestAssistedCreationCatalogDesignRequest,
       StaffSuggestAssistedCreationCatalogDesignResponse
-    >(functions, "staffSuggestAssistedCreationCatalogDesign");
-    const result = await callable({
+    >("staffSuggestAssistedCreationCatalogDesign", {
+      source: "assistedCreationRequestsService.suggestCatalogDesign",
+    })({
       requestId: input.requestId,
       designId: input.designId,
       note: input.note,
     });
-    return result.data;
   },
 
   async getDownloadUrl(storagePath: string): Promise<string> {

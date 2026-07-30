@@ -59,7 +59,7 @@ describe("assistedCreationProofKind", () => {
       assistedCreationCatalogShareProofTitle({ fileName: "  Snapshot title  " }),
       "Snapshot title",
     );
-    assert.equal(assistedCreationCatalogShareProofTitle({}), "Design Library");
+    assert.equal(assistedCreationCatalogShareProofTitle({ fileName: "" }), "Design Library");
     assert.equal(assistedCreationCatalogShareProofTitle(undefined), "Design Library");
   });
 });

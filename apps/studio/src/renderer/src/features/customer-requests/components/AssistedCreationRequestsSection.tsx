@@ -780,7 +780,7 @@ function AssistedDetail({
   const [actionReason, setActionReason] = useState("");
   const [activeDetailTab, setActiveDetailTab] = useState<AssistedDetailTab>("overview");
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const messagesPanelRef = useRef<HTMLSectionElement>(null);
+  const messagesPanelRef = useRef<HTMLElement>(null);
   const messagesThreadRef = useRef<HTMLDivElement>(null);
   const refMediaBlobRef = useRef<AssistedMediaPreview[]>([]);
   const proofMediaBlobRef = useRef<AssistedProofPreview[]>([]);
@@ -1097,7 +1097,7 @@ function AssistedDetail({
             ...base,
             fileName: displayName,
             url: preview.url,
-            unavailable: preview.unavailable,
+            unavailable: preview.unavailable === true,
             loading: false,
             purged: false,
           };

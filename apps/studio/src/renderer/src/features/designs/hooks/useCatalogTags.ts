@@ -27,7 +27,7 @@ const initialState: CatalogTagsState = {
   tags: [],
 };
 
-export function useCatalogTags(options: { includeArchived?: boolean } = {}) {
+export function useCatalogTags(options: { enabled?: boolean; includeArchived?: boolean } = {}) {
   const { user } = useAuth();
   const [state, setState] = useState<CatalogTagsState>(initialState);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -37,7 +37,7 @@ export function useCatalogTags(options: { includeArchived?: boolean } = {}) {
   }, []);
 
   const loadTags = useCallback(async () => {
-    if (!user || !permissionService.canViewDesigns(user)) {
+    if (options.enabled === false || !user || !permissionService.canViewDesigns(user)) {
       setState({ error: null, isLoading: false, tags: [] });
       return;
     }
@@ -56,7 +56,7 @@ export function useCatalogTags(options: { includeArchived?: boolean } = {}) {
         tags: [],
       });
     }
-  }, [options.includeArchived, user]);
+  }, [options.enabled, options.includeArchived, user]);
 
   useEffect(() => {
     void loadTags();

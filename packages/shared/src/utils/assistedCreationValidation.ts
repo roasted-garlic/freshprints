@@ -9,6 +9,7 @@ import {
   ASSISTED_CREATION_MAX_MOOD_ITEMS,
   ASSISTED_CREATION_MAX_REFERENCE_BYTES,
   ASSISTED_CREATION_MAX_REFERENCE_IMAGES,
+  ASSISTED_CREATION_MAX_REFERENCE_TOTAL_BYTES,
   ASSISTED_CREATION_MAX_STYLE_PREFERENCES,
   ASSISTED_CREATION_PERSONALIZATION_OPTIONS,
   ASSISTED_CREATION_RATING_MAX,
@@ -394,6 +395,24 @@ export interface ParsedAssistedCreationReferenceImageInput {
 }
 
 /**
+ * Defense-in-depth total-request ceiling check. The client (`assistedCreationService.validateReferenceFiles`)
+ * is the primary pre-upload gate; this asserts the same ceiling server-side against the final
+ * resolved reference-image list (kept + newly uploaded, for the update path; newly uploaded only,
+ * for the submit path) so a client bypass cannot silently exceed it. Storage Rules cannot enforce
+ * this — each Rules evaluation only sees one object's size, never a cross-object sum.
+ */
+function assertReferenceImageTotalWithinCeiling(
+  images: readonly ParsedAssistedCreationReferenceImageInput[],
+): void {
+  const totalBytes = images.reduce((sum, image) => sum + image.sizeBytes, 0);
+  if (totalBytes > ASSISTED_CREATION_MAX_REFERENCE_TOTAL_BYTES) {
+    throw new Error(
+      `Reference images must total ${ASSISTED_CREATION_MAX_REFERENCE_TOTAL_BYTES / (1024 * 1024)} MB or less.`,
+    );
+  }
+}
+
+/**
  * Resolve a customer update reference list: each entry must already exist on the
  * request (id + storagePath) or be a new pending upload under the caller's prefix.
  */
@@ -472,6 +491,8 @@ export function parseAssistedCreationReferenceImageUpdateInputs(
     out.push({ id, storagePath, fileName, contentType, sizeBytes });
   }
 
+  assertReferenceImageTotalWithinCeiling(out);
+
   return out;
 }
 
@@ -534,6 +555,8 @@ export function parseAssistedCreationReferenceImageInputs(
 
     out.push({ id, storagePath, fileName, contentType, sizeBytes });
   }
+
+  assertReferenceImageTotalWithinCeiling(out);
 
   return out;
 }

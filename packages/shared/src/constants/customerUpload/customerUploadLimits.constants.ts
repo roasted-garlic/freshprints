@@ -14,6 +14,15 @@ export const CUSTOMER_UPLOAD_MAX_TOTAL_PIXELS = 100_000_000;
 export const CUSTOMER_UPLOAD_MAX_CONCURRENT_FINALIZE = 8;
 
 /**
+ * Max images processed simultaneously *within one* `finalizeCustomerUploadZip` invocation.
+ * Bounded by the function's 2 GiB memory allocation against the worst-case per-image decode
+ * buffer at {@link CUSTOMER_UPLOAD_MAX_TOTAL_PIXELS}. See ADR-FP-123 for the full memory
+ * arithmetic. Orthogonal to {@link CUSTOMER_UPLOAD_MAX_CONCURRENT_FINALIZE}, which bounds
+ * concurrent *callable invocations* per customer, not work done inside one invocation.
+ */
+export const CUSTOMER_UPLOAD_ZIP_IMAGE_PROCESSING_CONCURRENCY = 3;
+
+/**
  * Per-UID daily caps (America/Chicago calendar day, CST/CDT) — enforced in callables.
  * Print-request and catalog-donation use **separate** counters so a large donate day
  * does not exhaust print-request quota (and vice versa).

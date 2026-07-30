@@ -123,12 +123,12 @@ describe("copy", () => {
   it("blocked messages", () => {
     assert.match(
       formatPortalShowQueueBlockedMessage("customer_limit", 25),
-      /You've used all 25 print spots on this show/i,
+      /You've used all 25 of your print spots on this show/i,
     );
     assert.match(formatPortalShowQueueBlockedMessage("customer_limit", 25), /Choose another show for more designs/);
     assert.match(
       formatPortalShowQueueBlockedMessage("customer_limit"),
-      /You've used all 25 print spots on this show/i,
+      /You've used all 25 of your print spots on this show/i,
     );
     assert.match(formatPortalShowQueueBlockedMessage("show_capacity"), /full/i);
   });

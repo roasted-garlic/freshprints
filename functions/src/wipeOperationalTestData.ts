@@ -147,15 +147,25 @@ async function resetCustomerSequences(): Promise<number> {
     }
 
     const batch = adminDb.batch();
+    let batchWrites = 0;
     for (const document of snapshot.docs) {
+      // No-op skip: rewriting an already-reset customer only burns a write and bumps updatedAt.
+      // A repeat wipe over already-reset data must cost reads only (Wave C comprehensive audit).
+      const data = document.data();
+      if (data.nextPrintRequestSequence === 1 && data.totalPrintRequests === 0) {
+        continue;
+      }
       batch.update(document.ref, {
         nextPrintRequestSequence: 1,
         totalPrintRequests: 0,
         updatedAt: FieldValue.serverTimestamp(),
       });
+      batchWrites += 1;
     }
-    await batch.commit();
-    resetCount += snapshot.size;
+    if (batchWrites > 0) {
+      await batch.commit();
+    }
+    resetCount += batchWrites;
     lastDocId = snapshot.docs[snapshot.docs.length - 1]?.id;
 
     if (snapshot.size < BATCH_LIMIT) {
@@ -197,8 +207,24 @@ async function resetUpcomingShowAllocationTotals(): Promise<number> {
     }
 
     const batch = adminDb.batch();
+    let batchWrites = 0;
     for (const document of snapshot.docs) {
       const data = document.data();
+      const needsStatusReset =
+        typeof data.productionStatus === "string" &&
+        SHOW_PRODUCTION_STATUSES_RESET_TO_OPEN.has(data.productionStatus);
+
+      // No-op skip: a show already at zero totals with no active print and no resettable
+      // status needs no write on a repeat wipe (Wave C comprehensive audit).
+      if (
+        !needsStatusReset &&
+        (data.allocatedQuantity ?? 0) === 0 &&
+        (data.accumulatedPrintMs ?? 0) === 0 &&
+        data.activePrintStartedAt === undefined
+      ) {
+        continue;
+      }
+
       const patch: Record<string, unknown> = {
         allocatedQuantity: 0,
         accumulatedPrintMs: 0,
@@ -208,17 +234,17 @@ async function resetUpcomingShowAllocationTotals(): Promise<number> {
 
       // After wiping allocations, re-open queueable production states so shows can accept
       // new requests. Leave archived/canceled alone — those are intentional schedule hides.
-      if (
-        typeof data.productionStatus === "string" &&
-        SHOW_PRODUCTION_STATUSES_RESET_TO_OPEN.has(data.productionStatus)
-      ) {
+      if (needsStatusReset) {
         patch.productionStatus = "open";
       }
 
       batch.update(document.ref, patch);
+      batchWrites += 1;
     }
-    await batch.commit();
-    resetCount += snapshot.size;
+    if (batchWrites > 0) {
+      await batch.commit();
+    }
+    resetCount += batchWrites;
     lastDocId = snapshot.docs[snapshot.docs.length - 1]?.id;
 
     if (snapshot.size < BATCH_LIMIT) {
@@ -245,7 +271,20 @@ async function resetDesignRequestStats(): Promise<number> {
     }
 
     const batch = adminDb.batch();
+    let batchWrites = 0;
     for (const document of snapshot.docs) {
+      // No-op skip: an already-reset design needs no write — and skipping also avoids bumping
+      // updatedAt, which would fire one onPortalCatalogSnapshotSourceWritten invocation per
+      // design on every repeat wipe (Wave C comprehensive audit).
+      const data = document.data();
+      if (
+        (data.requestCount ?? 0) === 0 &&
+        (data.showAddCount ?? 0) === 0 &&
+        data.lastRequestedAt === undefined &&
+        data.lastAddedToShowAt === undefined
+      ) {
+        continue;
+      }
       batch.update(document.ref, {
         requestCount: 0,
         showAddCount: 0,
@@ -253,9 +292,12 @@ async function resetDesignRequestStats(): Promise<number> {
         lastAddedToShowAt: FieldValue.delete(),
         updatedAt: FieldValue.serverTimestamp(),
       });
+      batchWrites += 1;
     }
-    await batch.commit();
-    resetCount += snapshot.size;
+    if (batchWrites > 0) {
+      await batch.commit();
+    }
+    resetCount += batchWrites;
     lastDocId = snapshot.docs[snapshot.docs.length - 1]?.id;
 
     if (snapshot.size < BATCH_LIMIT) {

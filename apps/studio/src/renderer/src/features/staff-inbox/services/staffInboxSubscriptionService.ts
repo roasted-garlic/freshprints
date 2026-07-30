@@ -1,5 +1,7 @@
 import {
+  limit,
   onSnapshot,
+  orderBy,
   query,
   where,
   type DocumentData,
@@ -8,6 +10,12 @@ import {
 } from "firebase/firestore";
 
 import { isPrintRequestOrigin } from "@fresh-prints/shared/utils/printRequestOrigin";
+import {
+  traceFirestoreListenerAttach,
+  traceFirestoreListenerEmission,
+  traceWrappedUnsubscribe,
+  type FirestoreTraceMetadata,
+} from "@fresh-prints/shared/utils/firestoreUsageTrace";
 import type {
   StaffInboxPortalAllocationSnapshot,
   StaffInboxPortalRequestSnapshot,
@@ -15,6 +23,10 @@ import type {
 import type { StaffInboxShowSnapshot } from "@fresh-prints/shared/staffInbox/staffInboxShowSnapshots";
 import { firestoreCollectionService } from "../../firebase/services/firestoreCollectionService";
 import { mapFirestoreTimestamp } from "../../firebase/utils/firestoreTimestamp";
+
+const STAFF_INBOX_REQUEST_LIMIT = 200;
+const STAFF_INBOX_ALLOCATION_LIMIT = 400;
+const STAFF_INBOX_SHOW_LIMIT = 100;
 
 export interface StaffInboxSubscribedShow {
   snapshot: StaffInboxShowSnapshot;
@@ -33,6 +45,35 @@ export interface StaffInboxSubscriptionState {
   allocationError: string | null;
   showError: string | null;
 }
+
+const REQUESTS_TRACE: FirestoreTraceMetadata = {
+  app: "studio",
+  collection: "printRequests",
+  constraints: ["requestOrigin==portal_customer"],
+  limit: STAFF_INBOX_REQUEST_LIMIT,
+  orderBy: ["updatedAt desc"],
+  source: "staffInboxSubscriptionService.requests",
+  triggerReason: "authentication",
+};
+
+const ALLOCATIONS_TRACE: FirestoreTraceMetadata = {
+  app: "studio",
+  collection: "showAllocations",
+  constraints: ["requestOriginSnapshot==portal_customer"],
+  limit: STAFF_INBOX_ALLOCATION_LIMIT,
+  orderBy: ["updatedAt desc"],
+  source: "staffInboxSubscriptionService.allocations",
+  triggerReason: "authentication",
+};
+
+const SHOWS_TRACE: FirestoreTraceMetadata = {
+  app: "studio",
+  collection: "upcomingShows",
+  limit: STAFF_INBOX_SHOW_LIMIT,
+  orderBy: ["updatedAt desc"],
+  source: "staffInboxSubscriptionService.shows",
+  triggerReason: "authentication",
+};
 
 function mapPortalRequestSnapshot(
   printRequestId: string,
@@ -191,16 +232,22 @@ export const staffInboxSubscriptionService = {
     const requestsQuery = query(
       firestoreCollectionService.getPrintRequestsCollection(),
       where("requestOrigin", "==", "portal_customer"),
+      orderBy("updatedAt", "desc"),
+      limit(STAFF_INBOX_REQUEST_LIMIT),
     );
 
     const allocationsQuery = query(
       firestoreCollectionService.getShowAllocationsCollection(),
       where("requestOriginSnapshot", "==", "portal_customer"),
+      orderBy("updatedAt", "desc"),
+      limit(STAFF_INBOX_ALLOCATION_LIMIT),
     );
 
+    traceFirestoreListenerAttach(REQUESTS_TRACE);
     const unsubscribeRequests = onSnapshot(
       requestsQuery,
       (querySnapshot) => {
+        traceFirestoreListenerEmission(REQUESTS_TRACE, querySnapshot.size);
         portalRequests = mapRequestSnapshot(querySnapshot);
         requestError = null;
         hasRequestSnapshot = true;
@@ -213,9 +260,11 @@ export const staffInboxSubscriptionService = {
       },
     );
 
+    traceFirestoreListenerAttach(ALLOCATIONS_TRACE);
     const unsubscribeAllocations = onSnapshot(
       allocationsQuery,
       (querySnapshot) => {
+        traceFirestoreListenerEmission(ALLOCATIONS_TRACE, querySnapshot.size);
         portalAllocations = mapAllocationSnapshot(querySnapshot);
         allocationError = null;
         hasAllocationSnapshot = true;
@@ -228,11 +277,17 @@ export const staffInboxSubscriptionService = {
       },
     );
 
-    const showsQuery = firestoreCollectionService.getUpcomingShowsCollection();
+    const showsQuery = query(
+      firestoreCollectionService.getUpcomingShowsCollection(),
+      orderBy("updatedAt", "desc"),
+      limit(STAFF_INBOX_SHOW_LIMIT),
+    );
 
+    traceFirestoreListenerAttach(SHOWS_TRACE);
     const unsubscribeShows = onSnapshot(
       showsQuery,
       (querySnapshot) => {
+        traceFirestoreListenerEmission(SHOWS_TRACE, querySnapshot.size);
         shows = mapShowSnapshot(querySnapshot);
         showError = null;
         hasShowSnapshot = true;
@@ -245,10 +300,20 @@ export const staffInboxSubscriptionService = {
       },
     );
 
+    const tracedUnsubscribeRequests = traceWrappedUnsubscribe(
+      REQUESTS_TRACE,
+      unsubscribeRequests,
+    );
+    const tracedUnsubscribeAllocations = traceWrappedUnsubscribe(
+      ALLOCATIONS_TRACE,
+      unsubscribeAllocations,
+    );
+    const tracedUnsubscribeShows = traceWrappedUnsubscribe(SHOWS_TRACE, unsubscribeShows);
+
     return () => {
-      unsubscribeRequests();
-      unsubscribeAllocations();
-      unsubscribeShows();
+      tracedUnsubscribeRequests();
+      tracedUnsubscribeAllocations();
+      tracedUnsubscribeShows();
     };
   },
 };

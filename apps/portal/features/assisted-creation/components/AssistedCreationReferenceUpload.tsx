@@ -74,7 +74,6 @@ export function AssistedCreationReferenceUpload({
         <ul className="assisted-creation-reference-preview-list">
           {previews.map((preview, index) => (
             <li key={`${preview.file.name}-${preview.file.size}-${index}`}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img alt="" src={preview.url} />
               <button
                 className="portal-button portal-button-secondary"

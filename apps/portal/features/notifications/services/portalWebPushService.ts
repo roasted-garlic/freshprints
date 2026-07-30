@@ -117,6 +117,7 @@ async function clearExistingPushSubscription(
 
 async function obtainAndRegisterToken(options: {
   forceRefresh: boolean;
+  reason: 'user-enable' | 'session-sync';
 }): Promise<string> {
   const vapidKey = getVapidKey();
   if (!vapidKey) {
@@ -134,7 +135,7 @@ async function obtainAndRegisterToken(options: {
   if (!token) {
     throw new Error('Unable to create a push token for this browser.');
   }
-  await customerNotificationsService.registerWebPushToken(token, true);
+  await customerNotificationsService.registerWebPushToken(token, true, options.reason);
   return token;
 }
 
@@ -189,7 +190,7 @@ export async function enablePortalBrowserPush(): Promise<{ ok: boolean; message:
   try {
     // Always force a fresh FCM token on enable so we do not re-save a token
     // FCM already marked UNREGISTERED / invalid.
-    await obtainAndRegisterToken({ forceRefresh: true });
+    await obtainAndRegisterToken({ forceRefresh: true, reason: 'user-enable' });
     startPortalForegroundPushListener();
     // Local OS smoke test (no FCM). If this toast is missing, Windows/Chrome
     // notification settings are blocking — not the server send path.
@@ -210,9 +211,8 @@ export async function enablePortalBrowserPush(): Promise<{ ok: boolean; message:
 }
 
 /**
- * Once per tab session: if permission is already granted, force-refresh and
- * re-register the FCM token. Heals the stuck "UI enabled / server tokens disabled"
- * state after FCM UNREGISTERED without requiring the user to find a Refresh control.
+ * Once per tab session: reuse FCM's current token when permission is already granted and reconcile
+ * it server-side. Explicit Enable remains the force-refresh recovery path for stale tokens.
  */
 export async function syncPortalBrowserPushTokenIfGranted(): Promise<void> {
   if (typeof window === 'undefined' || typeof Notification === 'undefined') {
@@ -226,7 +226,7 @@ export async function syncPortalBrowserPushTokenIfGranted(): Promise<void> {
     return;
   }
   try {
-    await obtainAndRegisterToken({ forceRefresh: true });
+    await obtainAndRegisterToken({ forceRefresh: false, reason: 'session-sync' });
     startPortalForegroundPushListener();
   } catch (error) {
     console.warn('[portalWebPush] token sync failed', error);

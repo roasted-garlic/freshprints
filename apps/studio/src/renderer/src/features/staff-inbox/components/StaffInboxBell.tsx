@@ -9,7 +9,7 @@ import { StaffInboxItemRow } from "./StaffInboxItemRow";
 const DROPDOWN_PREVIEW_LIMIT = 5;
 
 interface StaffInboxPanelProps {
-  panelRef?: RefObject<HTMLElement | null>;
+  panelRef?: RefObject<HTMLElement>;
 }
 
 export function StaffInboxPanel({ panelRef }: StaffInboxPanelProps) {

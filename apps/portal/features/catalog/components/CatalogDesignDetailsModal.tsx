@@ -43,7 +43,6 @@ function CloseIcon() {
 export function CatalogDesignDetailsModal({
   canAddPrints = true,
   design,
-  exhaustedHelperText: _exhaustedHelperText = null,
   exhaustedStatusText = null,
   isAdding = false,
   isInCurrentRequest = false,

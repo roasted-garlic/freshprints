@@ -14,16 +14,31 @@ import {
   type Timestamp,
   type Unsubscribe,
 } from 'firebase/firestore';
-import { httpsCallable } from 'firebase/functions';
 
 import { CUSTOMER_NOTIFICATIONS_COLLECTION } from '@fresh-prints/shared/types/customerNotifications/customerNotifications.types';
 import type { CustomerNotificationKind } from '@fresh-prints/shared/types/customerNotifications/customerNotifications.types';
 import { isCustomerNotificationKind } from '@fresh-prints/shared/types/customerNotifications/customerNotifications.types';
+import {
+  runTracedWrite,
+  traceFirestoreListenerAttach,
+  traceFirestoreListenerEmission,
+  traceWrappedUnsubscribe,
+} from '@fresh-prints/shared/utils/firestoreUsageTrace';
 
-import { getPortalDb, getPortalFunctions } from '../../../lib/firebase/client';
+import { getPortalDb } from '../../../lib/firebase/client';
+import { callTracedFunction } from '../../../lib/firebase/tracedCallable';
 
 /** Newest-first cap for live Alerts + notification history modal. */
 export const CUSTOMER_NOTIFICATIONS_QUERY_LIMIT = 50;
+const NOTIFICATIONS_TRACE = {
+  app: 'portal' as const,
+  collection: CUSTOMER_NOTIFICATIONS_COLLECTION,
+  constraints: ['customerUid==currentUser'],
+  limit: CUSTOMER_NOTIFICATIONS_QUERY_LIMIT,
+  orderBy: ['createdAt desc'],
+  source: 'customerNotificationsService.subscribeRecent',
+  triggerReason: 'authentication' as const,
+};
 
 export interface PortalCustomerNotification {
   id: string;
@@ -90,9 +105,11 @@ export const customerNotificationsService = {
       limit(CUSTOMER_NOTIFICATIONS_QUERY_LIMIT),
     );
 
-    return onSnapshot(
+    traceFirestoreListenerAttach(NOTIFICATIONS_TRACE);
+    const unsubscribe = onSnapshot(
       notificationsQuery,
       (snapshot) => {
+        traceFirestoreListenerEmission(NOTIFICATIONS_TRACE, snapshot.size);
         const items: PortalCustomerNotification[] = [];
         let skipped = 0;
         for (const document of snapshot.docs) {
@@ -116,13 +133,24 @@ export const customerNotificationsService = {
         // Keep prior items visible; clearing made failures look like "all caught up".
       },
     );
+    return traceWrappedUnsubscribe(NOTIFICATIONS_TRACE, unsubscribe);
   },
 
   async markRead(notificationId: string): Promise<void> {
-    await updateDoc(doc(getPortalDb(), CUSTOMER_NOTIFICATIONS_COLLECTION, notificationId), {
-      readAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    });
+    await runTracedWrite(
+      'updateDoc',
+      () => updateDoc(doc(getPortalDb(), CUSTOMER_NOTIFICATIONS_COLLECTION, notificationId), {
+        readAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      }),
+      {
+        app: 'portal',
+        collection: CUSTOMER_NOTIFICATIONS_COLLECTION,
+        documentPathPattern: `${CUSTOMER_NOTIFICATIONS_COLLECTION}/{notificationId}`,
+        source: 'customerNotificationsService.markRead',
+        triggerReason: 'explicit-refresh',
+      },
+    );
   },
 
   /** Mark many notifications read (same fields as `markRead`). No-op when empty. */
@@ -144,20 +172,43 @@ export const customerNotificationsService = {
         updatedAt: now,
       });
     }
-    await batch.commit();
+    await runTracedWrite(
+      'writeBatch',
+      () => batch.commit(),
+      {
+        app: 'portal',
+        collection: CUSTOMER_NOTIFICATIONS_COLLECTION,
+        documentPathPattern: `${CUSTOMER_NOTIFICATIONS_COLLECTION}/{notificationId}`,
+        source: 'customerNotificationsService.markReadMany',
+        triggerReason: 'explicit-refresh',
+      },
+      { writeCount: uniqueIds.length },
+    );
   },
 
 
-  async registerWebPushToken(token: string, enabled = true): Promise<void> {
-    const callable = httpsCallable<
-      { token: string; enabled: boolean; userAgent?: string; origin?: string },
+  async registerWebPushToken(
+    token: string,
+    enabled = true,
+    reason: 'user-enable' | 'session-sync' = 'user-enable',
+  ): Promise<void> {
+    await callTracedFunction<
+      {
+        token: string;
+        enabled: boolean;
+        userAgent?: string;
+        origin?: string;
+        reason: 'user-enable' | 'session-sync';
+      },
       { subscriptionId: string; enabled: boolean }
-    >(getPortalFunctions(), 'registerWebPushSubscription');
-    await callable({
+    >('registerWebPushSubscription', {
+      source: 'customerNotificationsService.registerWebPushToken',
+    })({
       token,
       enabled,
       userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
       origin: typeof window !== 'undefined' ? window.location.origin : undefined,
+      reason,
     });
   },
 };

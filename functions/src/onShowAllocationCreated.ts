@@ -14,7 +14,8 @@ export const onShowAllocationCreated = onDocumentCreated(
   "showAllocations/{allocationId}",
   async (event) => {
     const data = event.data?.data();
-    if (!data) {
+    const allocationRef = event.data?.ref;
+    if (!data || !allocationRef) {
       return;
     }
 
@@ -41,15 +42,27 @@ export const onShowAllocationCreated = onDocumentCreated(
 
     const designId = String(data.designId).trim();
     const designRef = adminDb.collection("designs").doc(designId);
-    const designSnapshot = await designRef.get();
-    if (!designSnapshot.exists) {
-      return;
-    }
 
-    await designRef.update({
-      showAddCount: FieldValue.increment(1),
-      lastAddedToShowAt: FieldValue.serverTimestamp(),
-      updatedAt: FieldValue.serverTimestamp(),
+    // Cheap redelivery guard mirroring onPrintRequestItemCreated: mark the small triggering
+    // allocation document itself so a redelivered CloudEvent for the same allocation cannot
+    // double-count `showAddCount` (Wave C comprehensive-audit amendment, 2026-07-24).
+    await adminDb.runTransaction(async (transaction) => {
+      const [designSnapshot, allocationSnapshot] = await Promise.all([
+        transaction.get(designRef),
+        transaction.get(allocationRef),
+      ]);
+      if (!designSnapshot.exists) {
+        return;
+      }
+      if (allocationSnapshot.data()?.showAddCountApplied === true) {
+        return;
+      }
+      transaction.update(designRef, {
+        showAddCount: FieldValue.increment(1),
+        lastAddedToShowAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+      transaction.update(allocationRef, { showAddCountApplied: true });
     });
   },
 );

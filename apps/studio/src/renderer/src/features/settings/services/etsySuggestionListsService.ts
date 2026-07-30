@@ -6,7 +6,6 @@ import {
   type Unsubscribe,
 } from "firebase/firestore";
 import { FirebaseError } from "firebase/app";
-import { httpsCallable } from "firebase/functions";
 
 import { ETSY_RECOMMENDATION_SUGGESTIONS_COLLECTION } from "@fresh-prints/shared/constants/etsyRecommendation/etsyRecommendation.constants";
 import type { AdminSuggestionOverlay } from "@fresh-prints/shared/constants/etsyRecommendation/etsyRecommendationSuggestionLists";
@@ -18,7 +17,8 @@ import type {
   EtsyRecommendationSuggestionKind,
 } from "@fresh-prints/shared/types/etsyRecommendation/etsyRecommendationActions.types";
 
-import { db, functions } from "../../../config/firebase";
+import { db } from "../../../config/firebase";
+import { callTracedFunction } from "../../../config/tracedCallable";
 
 function mapOverlay(
   id: string,
@@ -142,12 +142,12 @@ export const etsySuggestionListsService = {
     input: AddEtsyRecommendationSuggestionRequest,
   ): Promise<AddEtsyRecommendationSuggestionResponse> {
     try {
-      const callable = httpsCallable<
+      return await callTracedFunction<
         AddEtsyRecommendationSuggestionRequest,
         AddEtsyRecommendationSuggestionResponse
-      >(functions, "addEtsyRecommendationSuggestion");
-      const response = await callable(input);
-      return response.data;
+      >("addEtsyRecommendationSuggestion", {
+        source: "etsySuggestionListsService.addSuggestion",
+      })(input);
     } catch (error) {
       throw mapCallableError(error);
     }
@@ -155,11 +155,12 @@ export const etsySuggestionListsService = {
 
   async deactivateSuggestion(suggestionId: string): Promise<void> {
     try {
-      const callable = httpsCallable<
+      await callTracedFunction<
         DeactivateEtsyRecommendationSuggestionRequest,
         DeactivateEtsyRecommendationSuggestionResponse
-      >(functions, "deactivateEtsyRecommendationSuggestion");
-      await callable({ suggestionId });
+      >("deactivateEtsyRecommendationSuggestion", {
+        source: "etsySuggestionListsService.deactivateSuggestion",
+      })({ suggestionId });
     } catch (error) {
       throw mapCallableError(error);
     }

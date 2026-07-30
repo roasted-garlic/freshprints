@@ -3,9 +3,8 @@ import type {
   CreateCustomerWithPortalInviteResponse,
 } from "@fresh-prints/shared/types/customer/createCustomerWithPortalInvite.types";
 import { FirebaseError } from "firebase/app";
-import { httpsCallable } from "firebase/functions";
 
-import { functions } from "../../../config/firebase";
+import { callTracedFunction } from "../../../config/tracedCallable";
 
 function getCallableErrorMessage(error: unknown, fallbackMessage: string): string {
   if (!(error instanceof FirebaseError)) {
@@ -35,12 +34,12 @@ export const customerPortalInviteService = {
     input: CreateCustomerWithPortalInviteRequest,
   ): Promise<CreateCustomerWithPortalInviteResponse> {
     try {
-      const callable = httpsCallable<
+      return await callTracedFunction<
         CreateCustomerWithPortalInviteRequest,
         CreateCustomerWithPortalInviteResponse
-      >(functions, "createCustomerWithPortalInvite");
-      const response = await callable(input);
-      return response.data;
+      >("createCustomerWithPortalInvite", {
+        source: "customerPortalInviteService.createCustomerWithPortalInvite",
+      })(input);
     } catch (error) {
       throw new Error(
         getCallableErrorMessage(error, "Unable to create the customer. Please try again."),

@@ -1,5 +1,3 @@
-import { httpsCallable } from 'firebase/functions';
-
 import type { ListPortalAllocatableShowsResponse } from '@fresh-prints/shared/types/portal/listPortalAllocatableShows.types';
 import type { PortalAllocatableShow } from '@fresh-prints/shared/types/portal/listPortalAllocatableShows.types';
 import type {
@@ -13,8 +11,10 @@ import type {
 } from '@fresh-prints/shared/types/portal/queuePortalPrintRequestToShow.types';
 import { DEFAULT_PORTAL_QUEUE_CUTOFF_HOURS_BEFORE_START } from '@fresh-prints/shared/utils/showQueueCutoff';
 
-import { getPortalFunctions } from '../../../lib/firebase/client';
+import { callTracedFunction } from '../../../lib/firebase/tracedCallable';
+import { getPortalAuth } from '../../../lib/firebase/client';
 import { mapPortalPrintRequestCallableError } from '../utils/mapPortalPrintRequestCallableError';
+import { sharePortalShowQueueSubmission } from './portalShowQueueSubmissionOwner';
 
 function mapCallableError(error: unknown): Error {
   return mapPortalPrintRequestCallableError(error);
@@ -26,16 +26,15 @@ export const portalShowSelectionService = {
     portalQueueCutoffHoursBeforeStart: number;
   }> {
     try {
-      const listCallable = httpsCallable<Record<string, never>, ListPortalAllocatableShowsResponse>(
-        getPortalFunctions(),
+      const result = await callTracedFunction<Record<string, never>, ListPortalAllocatableShowsResponse>(
         'listPortalAllocatableShows',
-      );
-      const result = await listCallable({});
+        { source: 'portalShowSelectionService.listAllocatableShows' },
+      )({});
       return {
-        shows: result.data.shows,
+        shows: result.shows,
         portalQueueCutoffHoursBeforeStart:
-          typeof result.data.portalQueueCutoffHoursBeforeStart === 'number'
-            ? result.data.portalQueueCutoffHoursBeforeStart
+          typeof result.portalQueueCutoffHoursBeforeStart === 'number'
+            ? result.portalQueueCutoffHoursBeforeStart
             : DEFAULT_PORTAL_QUEUE_CUTOFF_HOURS_BEFORE_START,
       };
     } catch (error) {
@@ -45,12 +44,13 @@ export const portalShowSelectionService = {
 
   async getShowPrintProgress(printRequestId: string): Promise<PortalShowPrintProgress[]> {
     try {
-      const progressCallable = httpsCallable<
+      const result = await callTracedFunction<
         GetPortalShowPrintProgressRequest,
         GetPortalShowPrintProgressResponse
-      >(getPortalFunctions(), 'getPortalShowPrintProgress');
-      const result = await progressCallable({ printRequestId });
-      return result.data.shows;
+      >('getPortalShowPrintProgress', {
+        source: 'portalShowSelectionService.getShowPrintProgress',
+      })({ printRequestId });
+      return result.shows;
     } catch (error) {
       throw mapCallableError(error);
     }
@@ -60,12 +60,19 @@ export const portalShowSelectionService = {
     input: QueuePortalPrintRequestToShowRequest,
   ): Promise<QueuePortalPrintRequestToShowResponse> {
     try {
-      const queueCallable = httpsCallable<
-        QueuePortalPrintRequestToShowRequest,
-        QueuePortalPrintRequestToShowResponse
-      >(getPortalFunctions(), 'queuePortalPrintRequestToShow');
-      const result = await queueCallable(input);
-      return result.data;
+      const key = [
+        getPortalAuth().currentUser?.uid ?? 'signed-out',
+        input.printRequestId,
+        input.upcomingShowId,
+      ].join(':');
+      return await sharePortalShowQueueSubmission(key, () =>
+        callTracedFunction<
+          QueuePortalPrintRequestToShowRequest,
+          QueuePortalPrintRequestToShowResponse
+        >('queuePortalPrintRequestToShow', {
+          source: 'portalShowSelectionService.queuePrintRequestToShow',
+        })(input),
+      );
     } catch (error) {
       throw mapCallableError(error);
     }

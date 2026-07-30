@@ -13,7 +13,6 @@ import {
 } from '@fresh-prints/shared/utils/printRequestWorkingRequestMax';
 
 import { useAuth } from '../../auth/context/AuthContext';
-import { useLiveQuotaRefresh } from '../../shared/hooks/useLiveQuotaRefresh';
 import { portalPrintRequestLimitService } from '../services/portalPrintRequestLimitService';
 
 export interface PortalWorkingRequestLimitHydration {
@@ -65,27 +64,6 @@ export function usePortalWorkingRequestLimitState(
   const { firebaseUser } = useAuth();
   const [limit, setLimit] = useState<number | null>(null);
   const [isLimitReady, setIsLimitReady] = useState(false);
-
-  const refreshLimit = useMemo(
-    () => async () => {
-      if (!firebaseUser) {
-        setLimit(null);
-        setIsLimitReady(true);
-        return;
-      }
-
-      const nextLimit = await portalPrintRequestLimitService.readLimit();
-      setLimit(nextLimit);
-      setIsLimitReady(true);
-    },
-    [firebaseUser],
-  );
-
-  useLiveQuotaRefresh(refreshLimit, {
-    enabled: Boolean(firebaseUser),
-    // Listener below is authoritative; avoid duplicate getDoc polling while live.
-    intervalMs: 0,
-  });
 
   useEffect(() => {
     if (!firebaseUser) {

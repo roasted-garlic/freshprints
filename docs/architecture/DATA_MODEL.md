@@ -1564,7 +1564,7 @@ appears in the list.
 
 # Show Allocations Collection (Phase 7)
 
-> **Portal one request per show (ADR-FP-102):** Sole limit `L` = `settings/printRequestLimits.maxQuantityPerShowPerCustomer` (max Current Request prints = max per customer per show). `queuePortalPrintRequestToShow` allocates the **entire** Continuable request to exactly one show atomically, or cleanly rejects (no `selections`, no remainder request). One Portal request per customer per show. Studio staff split across shows remains separate.
+> **Portal per-customer-per-show limit (ADR-FP-102, uniqueness superseded by ADR-FP-122):** Sole limit `L` = `settings/printRequestLimits.maxQuantityPerShowPerCustomer` (max Current Request prints = max per customer per show). `queuePortalPrintRequestToShow` allocates the **entire** Continuable request to exactly one show atomically, or cleanly rejects (no `selections`, no remainder request). A customer may submit **multiple separate print requests** to the same show, accumulating toward `L` (ADR-FP-122) — exactly `L` is allowed, more than `L` is blocked. Studio staff split across shows remains separate.
 
 Allocates some or all of a Print Request item's quantity to a show. A Print Request may be split across
 multiple shows when it exceeds a single show's remaining capacity — the same `printRequestItemId` can
@@ -1813,7 +1813,8 @@ interface PrintRequestLimitSettings {
 
 Portal sole print limit `L` (ADR-FP-102). Count = sum of `printRequestItems.quantity`.
 Working-request adds clamp/reject at `L`; queue requires entire request ≤ `L` and full fit on the
-chosen show (capacity + one request per customer per show). Missing `L` resolves to default **20**.
+chosen show (show capacity + this customer's cumulative allocated quantity on that show, which may
+now span multiple separate requests — ADR-FP-122). Missing `L` resolves to default **20**.
 Signed-in users may read; writes use `updatePrintRequestLimitSettings` (mirrors `L` into legacy Cap A).
 Bounds: integers 1–10000.
 

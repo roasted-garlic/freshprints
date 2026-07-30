@@ -3,6 +3,7 @@ import type { Unsubscribe } from "firebase/firestore";
 import {
   traceFirestoreListenerAttach,
   traceWrappedUnsubscribe,
+  type FirestoreTraceMetadata,
 } from "@fresh-prints/shared/utils/firestoreUsageTrace";
 
 type SharedListener<T> = {
@@ -15,6 +16,7 @@ type SharedListener<T> = {
  */
 export function createSharedFirestoreSubscription<T>(options: {
   traceKey: string;
+  traceMetadata?: FirestoreTraceMetadata;
   start: (emit: {
     next: (value: T) => void;
     error: (message: string) => void;
@@ -52,9 +54,10 @@ export function createSharedFirestoreSubscription<T>(options: {
       }
 
       if (!firebaseUnsubscribe) {
-        traceFirestoreListenerAttach(options.traceKey);
+        const traceInput = options.traceMetadata ?? options.traceKey;
+        traceFirestoreListenerAttach(traceInput);
         firebaseUnsubscribe = options.start({ next: emitNext, error: emitError });
-        wrappedUnsubscribe = traceWrappedUnsubscribe(options.traceKey, () => {
+        wrappedUnsubscribe = traceWrappedUnsubscribe(traceInput, () => {
           firebaseUnsubscribe?.();
           firebaseUnsubscribe = null;
           wrappedUnsubscribe = null;

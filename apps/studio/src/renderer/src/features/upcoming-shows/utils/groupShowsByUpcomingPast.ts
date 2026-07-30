@@ -7,5 +7,6 @@ export {
   getShowScheduleTab,
   isPastScheduledShow,
   PAST_SHOW_READ_ONLY_MESSAGE,
+  resolveScheduleTabForStillExistingSelection,
   resolveVisibleShowSelection,
 } from "@fresh-prints/shared/utils/showScheduleGrouping";

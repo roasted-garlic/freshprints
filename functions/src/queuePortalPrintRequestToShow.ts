@@ -42,6 +42,7 @@ import { loadPortalQueueCutoffHours } from "./lib/loadPortalQueueCutoffHours";
 import { loadPrintRequestLimitSettings } from "./lib/loadPrintRequestLimitSettings";
 import { requirePortalCustomer } from "./lib/portalCustomer";
 import { validateQueuePortalPrintRequestToShowRequest } from "./lib/queuePortalPrintRequestToShowValidation";
+import { getPortalQueueTransactionBlockReason } from "./lib/portalQueueTransactionEligibility";
 
 function mapHttpsError(error: unknown): never {
   if (error instanceof Error && "code" in error) {
@@ -63,6 +64,49 @@ export const queuePortalPrintRequestToShow = onCall(async (request): Promise<Que
   }
 
   const userId = request.auth.uid;
+  const startedAtMs = Date.now();
+  let validationStage = "authorization";
+  let requestItemsReturned = 0;
+  let requestItemQueryRan = false;
+  let requestAllocationsReturned = 0;
+  let showAllocationsReturned = 0;
+  let uploadDocumentsReturned = 0;
+  let transactionAttempts = 0;
+  let transactionDocumentsReturned = 0;
+  let totalWrites = 0;
+  const logAccounting = (outcome: "success" | "failure", failureCode?: string) => {
+    if (process.env.GCLOUD_PROJECT !== "fresh-prints-dev") return;
+    logger.info("portal-show-queue-accounting", {
+      functionName: "queuePortalPrintRequestToShow",
+      eventClassification: "explicit-customer-submit",
+      validationStage,
+      authorizationReads: 2,
+      requestReads: 1,
+      requestItemQueryOperations: requestItemQueryRan ? 1 : 0,
+      requestItemsReturned,
+      showReads: 1,
+      existingAllocationReads: requestAllocationsReturned,
+      customerAllocationReads: showAllocationsReturned,
+      limitSettingsReads: 2,
+      uploadDocumentsReturned,
+      transactionAttempts,
+      transactionRetries: Math.max(0, transactionAttempts - 1),
+      transactionDocumentsReturned,
+      allocationWrites: totalWrites > 0 ? Math.max(0, totalWrites - 3) : 0,
+      requestWrites: totalWrites > 0 ? 1 : 0,
+      requestItemWrites: 0,
+      counterWrites: totalWrites > 0 ? 2 : 0,
+      idempotencyWrites: 0,
+      totalWrites,
+      documentsReturned:
+        5 + requestItemsReturned + requestAllocationsReturned +
+        showAllocationsReturned + uploadDocumentsReturned + transactionDocumentsReturned,
+      durationMs: Date.now() - startedAtMs,
+      outcome,
+      duplicateSkip: false,
+      ...(failureCode ? { failureCode } : {}),
+    });
+  };
 
   try {
     const customer = await requirePortalCustomer(userId);
@@ -70,30 +114,51 @@ export const queuePortalPrintRequestToShow = onCall(async (request): Promise<Que
     const now = new Date();
     const portalQueueCutoffHours = await loadPortalQueueCutoffHours();
 
-    const [requestSnap, showSnap, itemsSnap, allocationsSnap] = await Promise.all([
-      adminDb.collection("printRequests").doc(payload.printRequestId).get(),
-      adminDb.collection("upcomingShows").doc(payload.upcomingShowId).get(),
-      adminDb.collection("printRequestItems").where("printRequestId", "==", payload.printRequestId).get(),
-      adminDb.collection("showAllocations").where("printRequestId", "==", payload.printRequestId).get(),
-    ]);
+    validationStage = "request-eligibility";
+    const requestSnap = await adminDb.collection("printRequests").doc(payload.printRequestId).get();
 
     if (!requestSnap.exists) {
+      validationStage = "request-not-found";
       throw invalidArgument("Print request not found.");
     }
 
     const requestData = requestSnap.data()!;
 
     if (requestData.customerId !== customer.customerId) {
+      validationStage = "request-ownership";
       throw failedPrecondition("You can only queue your own print requests.");
     }
 
     if (requestData.requestOrigin !== "portal_customer" || requestData.isInternal === true) {
+      validationStage = "request-not-portal";
       throw failedPrecondition("This request cannot be queued from the portal.");
     }
 
     if (!CONTINUABLE_STATUSES.has(String(requestData.status))) {
+      validationStage = "request-not-working";
       throw failedPrecondition("This request can no longer be queued to a show.");
     }
+
+    validationStage = "show-eligibility";
+    const showSnap = await adminDb.collection("upcomingShows").doc(payload.upcomingShowId).get();
+    if (!showSnap.exists) {
+      validationStage = "show-not-found";
+      throw invalidArgument("Show not found.");
+    }
+    const showData = showSnap.data()!;
+    if (showData.isArchived === true) {
+      validationStage = "show-not-allocatable";
+      throw failedPrecondition("This show is no longer available.");
+    }
+
+    validationStage = "request-items-and-existing-allocation";
+    const [itemsSnap, allocationsSnap] = await Promise.all([
+      adminDb.collection("printRequestItems").where("printRequestId", "==", payload.printRequestId).get(),
+      adminDb.collection("showAllocations").where("printRequestId", "==", payload.printRequestId).get(),
+    ]);
+    requestItemQueryRan = true;
+    requestItemsReturned = itemsSnap.size;
+    requestAllocationsReturned = allocationsSnap.size;
 
     const items = itemsSnap.docs.map((itemDoc) => {
       const data = itemDoc.data();
@@ -128,6 +193,7 @@ export const queuePortalPrintRequestToShow = onCall(async (request): Promise<Que
     });
 
     if (items.length === 0) {
+      validationStage = "request-has-no-items";
       throw failedPrecondition("Add at least one design before queuing to a show.");
     }
 
@@ -145,6 +211,7 @@ export const queuePortalPrintRequestToShow = onCall(async (request): Promise<Que
 
     const hasExistingAllocation = [...allocatedByItemId.values()].some((qty) => qty > 0);
     if (hasExistingAllocation) {
+      validationStage = "request-already-queued";
       throw failedPrecondition(
         "This request is already tied to a show. Each print request can only be added to one show.",
       );
@@ -162,6 +229,7 @@ export const queuePortalPrintRequestToShow = onCall(async (request): Promise<Que
 
     const totalRemaining = sumRemainingUnallocatedQuantity(items, allocatedByItemId);
     if (totalRemaining <= 0) {
+      validationStage = "request-fully-queued";
       throw failedPrecondition("This request is already fully queued to shows.");
     }
 
@@ -169,21 +237,12 @@ export const queuePortalPrintRequestToShow = onCall(async (request): Promise<Que
     const L = settings.maxQuantityPerShowPerCustomer;
 
     if (totalRemaining > L) {
+      validationStage = "working-request-over-limit";
       throw failedPrecondition(formatWorkingRequestOverLimitForQueueMessage(L), {
         code: PRINT_REQUEST_QUOTA_ERROR_CODES.WORKING_REQUEST_PRINT_LIMIT,
         cap: L,
         limit: L,
       });
-    }
-
-    if (!showSnap.exists) {
-      throw invalidArgument("Show not found.");
-    }
-
-    const showData = showSnap.data()!;
-
-    if (showData.isArchived === true) {
-      throw failedPrecondition("This show is no longer available.");
     }
 
     const scheduledStartAt = showData.scheduledStartAt as { toDate: () => Date } | undefined;
@@ -207,12 +266,14 @@ export const queuePortalPrintRequestToShow = onCall(async (request): Promise<Que
     );
 
     if (blockReason) {
+      validationStage = "show-allocation-blocked";
       throw failedPrecondition(formatShowAllocationBlockedMessage(blockReason), {
         code: PRINT_REQUEST_QUOTA_ERROR_CODES.SHOW_ALLOCATION_BLOCKED,
       });
     }
 
     if (isPastPortalQueueCutoff(scheduledStartAt, now, portalQueueCutoffHours)) {
+      validationStage = "queue-cutoff-passed";
       throw failedPrecondition(PORTAL_QUEUE_CUTOFF_PASSED_MESSAGE, {
         code: PRINT_REQUEST_QUOTA_ERROR_CODES.SHOW_QUEUE_CUTOFF,
       });
@@ -222,6 +283,7 @@ export const queuePortalPrintRequestToShow = onCall(async (request): Promise<Que
       .collection("showAllocations")
       .where("upcomingShowId", "==", payload.upcomingShowId)
       .get();
+    showAllocationsReturned = showAllocationsForShow.size;
 
     const customerShowAllocations = showAllocationsForShow.docs
       .map((docSnap) => {
@@ -236,18 +298,13 @@ export const queuePortalPrintRequestToShow = onCall(async (request): Promise<Que
       })
       .filter((row) => row.customerId === customer.customerId);
 
+    // ADR-FP-122 (2026-07-27): a customer may submit multiple separate print requests to the
+    // same show, accumulating toward the shared per-customer-per-show limit `L` — the prior
+    // unconditional "any existing allocation blocks" uniqueness rule (ADR-FP-102 Decision §5) is
+    // removed. `existingOnShowQty` remains needed below for the actual quantity-cap math
+    // (`remainingPerShowCustomerCap`/`planPortalShowQueueFit`), which already correctly sums
+    // non-canceled allocations across however many separate requests this customer has here.
     const existingOnShowQty = sumCustomerQuantityOnShow(customerShowAllocations);
-
-    // One Portal request per customer per show: any existing non-canceled allocation blocks.
-    if (existingOnShowQty > 0) {
-      throw failedPrecondition(
-        "You already have a print request on this show. Each customer can queue only one request per show.",
-        {
-          code: PRINT_REQUEST_QUOTA_ERROR_CODES.SHOW_CUSTOMER_LIMIT,
-          cap: L,
-        },
-      );
-    }
 
     const showRemainingCapacity =
       maxTotalQuantity === undefined ? undefined : Math.max(0, maxTotalQuantity - allocatedQuantity);
@@ -259,6 +316,7 @@ export const queuePortalPrintRequestToShow = onCall(async (request): Promise<Que
     });
 
     if (!fit.fitsEntirely) {
+      validationStage = "show-fit";
       const code =
         fit.limitingFactor === "show_capacity"
           ? PRINT_REQUEST_QUOTA_ERROR_CODES.SHOW_CAPACITY
@@ -295,8 +353,6 @@ export const queuePortalPrintRequestToShow = onCall(async (request): Promise<Que
 
     logger.info("queuePortalPrintRequestToShow.plan", {
       marker: "simple-request-per-show-v1",
-      printRequestId: payload.printRequestId,
-      upcomingShowId: payload.upcomingShowId,
       batchQuantity,
       totalRemaining,
       limitL: L,
@@ -316,6 +372,7 @@ export const queuePortalPrintRequestToShow = onCall(async (request): Promise<Que
         adminDb.collection(CUSTOMER_UPLOAD_COLLECTIONS.customerUploads).doc(id).get(),
       ),
     );
+    uploadDocumentsReturned = uploadSnaps.filter((snap) => snap.exists).length;
     const uploadById = new Map(
       uploadSnaps.map((snap) => [snap.id, snap.exists ? snap.data() : null] as const),
     );
@@ -384,6 +441,7 @@ export const queuePortalPrintRequestToShow = onCall(async (request): Promise<Que
     const timestamp = FieldValue.serverTimestamp();
 
     await adminDb.runTransaction(async (transaction) => {
+      transactionAttempts += 1;
       allocationIds.length = 0;
       allocatedTotal = 0;
 
@@ -399,6 +457,11 @@ export const queuePortalPrintRequestToShow = onCall(async (request): Promise<Que
           .collection("showAllocations")
           .where("printRequestId", "==", payload.printRequestId),
       );
+      transactionDocumentsReturned +=
+        (freshShowSnap.exists ? 1 : 0) +
+        (freshRequestSnap.exists ? 1 : 0) +
+        freshShowAllocationsSnap.size +
+        freshRequestAllocationsSnap.size;
 
       if (!freshShowSnap.exists || !freshRequestSnap.exists) {
         throw invalidArgument("Print request or show no longer exists.");
@@ -425,12 +488,8 @@ export const queuePortalPrintRequestToShow = onCall(async (request): Promise<Que
         const qty = typeof data.allocatedQuantity === "number" ? data.allocatedQuantity : 0;
         return status !== "canceled" && qty > 0;
       });
-      if (freshRequestHasAllocation) {
-        throw failedPrecondition(
-          "This request is already tied to a show. Each print request can only be added to one show.",
-        );
-      }
-
+      // ADR-FP-122: no uniqueness block here either — freshCustomerOnShowQty (re-verified under
+      // transaction lock) feeds only the actual quantity-cap check below (capRemaining).
       const freshCustomerOnShowQty = sumCustomerQuantityOnShow(
         freshShowAllocationsSnap.docs
           .map((docSnap) => docSnap.data())
@@ -441,13 +500,15 @@ export const queuePortalPrintRequestToShow = onCall(async (request): Promise<Que
             status: typeof data.status === "string" ? data.status : "canceled",
           })),
       );
-      if (freshCustomerOnShowQty > 0) {
+      const transactionBlockReason = getPortalQueueTransactionBlockReason({
+        requestHasExistingAllocation: freshRequestHasAllocation,
+        existingCustomerQuantityOnShow: freshCustomerOnShowQty,
+        newRequestQuantity: batchQuantity,
+        customerShowCap: L,
+      });
+      if (transactionBlockReason === "request_already_allocated") {
         throw failedPrecondition(
-          "You already have a print request on this show. Each customer can queue only one request per show.",
-          {
-            code: PRINT_REQUEST_QUOTA_ERROR_CODES.SHOW_CUSTOMER_LIMIT,
-            cap: L,
-          },
+          "This request is already tied to a show. Each print request can only be added to one show.",
         );
       }
 
@@ -489,8 +550,7 @@ export const queuePortalPrintRequestToShow = onCall(async (request): Promise<Que
         });
       }
 
-      const capRemaining = remainingPerShowCustomerCap(freshCustomerOnShowQty, L);
-      if (batchQuantity > capRemaining) {
+      if (transactionBlockReason === "customer_show_cap_exceeded") {
         throw failedPrecondition(
           perShowCustomerCapExceededMessage({
             cap: L,
@@ -584,6 +644,9 @@ export const queuePortalPrintRequestToShow = onCall(async (request): Promise<Que
         updatedBy: userId,
       });
     });
+    totalWrites = allocationIds.length + 3;
+    validationStage = "complete";
+    logAccounting("success");
 
     return {
       printRequestId: payload.printRequestId,
@@ -594,6 +657,23 @@ export const queuePortalPrintRequestToShow = onCall(async (request): Promise<Que
       remainingUnallocatedQuantity: 0,
     };
   } catch (error) {
+    logAccounting(
+      "failure",
+      error instanceof Error && "code" in error
+        ? String((error as { code?: unknown }).code ?? "queue-failed")
+        : "queue-failed",
+    );
+    // Surface the sanitized validation stage to the client so Portal's debug report never shows
+    // failureStage: null again (owner live-test evidence, 2026-07-25). Stage names are generic
+    // pipeline labels — no customer/request/show data.
+    if (error instanceof Error && "code" in error) {
+      const carrier = error as { details?: unknown };
+      const existingDetails =
+        carrier.details && typeof carrier.details === "object"
+          ? (carrier.details as Record<string, unknown>)
+          : {};
+      carrier.details = { ...existingDetails, failureStage: validationStage };
+    }
     mapHttpsError(error);
   }
 });

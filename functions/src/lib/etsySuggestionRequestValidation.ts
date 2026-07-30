@@ -7,6 +7,7 @@ import {
 import { normalizeSuggestionLabelKey } from "../../../packages/shared/src/constants/etsyRecommendation/etsyRecommendationSuggestionLists";
 
 import { invalidArgument } from "./errors";
+import { hasAsciiControlCharacter } from "./asciiControlCharacters";
 
 export interface ValidatedEtsySuggestionRequestInput {
   kind: EtsyRecommendationSuggestionKind;
@@ -34,7 +35,7 @@ export function validateEtsySuggestionRequestInput(data: unknown): ValidatedEtsy
   if (!label) {
     throw invalidArgument("A label is required.");
   }
-  if (/[\u0000-\u001f\u007f]/.test(label)) {
+  if (hasAsciiControlCharacter(label)) {
     throw invalidArgument("Label cannot include control characters.");
   }
   const maxLen =

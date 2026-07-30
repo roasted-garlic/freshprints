@@ -17,6 +17,7 @@ import {
   type CustomerUploadSizeLimits,
   type FinalizeCustomerUploadResponse,
 } from '../services/customerUploadService';
+import { buildPersistedUploadSessionIds } from '../utils/uploadSessionRows';
 
 export type UploadRowPhase =
   | 'queued'
@@ -181,7 +182,7 @@ export function useCustomerUploadBatch(options?: {
 
   const addFiles = useCallback(
     async (fileList: FileList | File[]) => {
-      let uploadUser = firebaseUser;
+      const uploadUser = firebaseUser;
       if (!uploadUser) {
         setBannerError('Sign in to upload artwork.');
         return;
@@ -424,9 +425,10 @@ export function useCustomerUploadBatch(options?: {
         customerUploadService.persistSession(
           uploadUser.uid,
           created.batchId,
-          [...(existingBatchId ? activeRows : []), ...newRows]
-            .map((row) => row.uploadId)
-            .filter((id): id is string => Boolean(id)),
+          buildPersistedUploadSessionIds([
+            ...(existingBatchId ? activeRowsForCap : []),
+            ...newRows,
+          ]),
         );
 
         await runWithConcurrency(

@@ -1,6 +1,6 @@
 import type { ShowPickerOption } from "./types";
 
-type DefaultSelectableOption = Pick<ShowPickerOption, "id" | "isFull" | "isSelectable">;
+type DefaultSelectableOption = Pick<ShowPickerOption, "id" | "isFull" | "canAllocate">;
 
 /**
  * Picks a default show from an ordered picker list (soonest-first).
@@ -14,7 +14,7 @@ export function getDefaultShowPickerOptionId(
   canFitById?: (id: string) => boolean,
   allowInspectOnly = false,
 ): string | null {
-  const selectable = options.filter((option) => option.isSelectable !== false);
+  const selectable = options.filter((option) => option.canAllocate);
   const pool = selectable.length > 0 ? selectable : allowInspectOnly ? [...options] : [];
   if (pool.length === 0) {
     return null;

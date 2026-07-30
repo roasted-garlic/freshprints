@@ -47,7 +47,6 @@ function ReusableTile({
       type="button"
     >
       {url ? (
-        // eslint-disable-next-line @next/next/no-img-element -- signed Storage URLs
         <img alt="" className="portal-account-gallery-tile-image" decoding="async" src={url} />
       ) : null}
       <span className="portal-account-gallery-tile-badge is-reusable">Catalog</span>
@@ -211,7 +210,6 @@ export function AccountArtworkGalleryModal({
                 type="button"
               >
                 {item.imageUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element -- signed Storage URLs
                   <img
                     alt=""
                     className="portal-account-gallery-tile-image"

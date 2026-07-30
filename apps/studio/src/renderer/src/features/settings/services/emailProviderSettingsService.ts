@@ -1,12 +1,12 @@
 import { doc, onSnapshot, type Unsubscribe } from "firebase/firestore";
-import { httpsCallable } from "firebase/functions";
 
 import {
   EMAIL_PROVIDER_SETTINGS_DOC_ID,
   resolveEmailProviderSettings,
   type EmailProviderSettings,
 } from "@fresh-prints/shared/constants/emailProviders.constants";
-import { db, functions } from "../../../config/firebase";
+import { db } from "../../../config/firebase";
+import { callTracedFunction } from "../../../config/tracedCallable";
 
 export const emailProviderSettingsService = {
   subscribe(
@@ -21,11 +21,10 @@ export const emailProviderSettingsService = {
   },
 
   async update(settings: EmailProviderSettings): Promise<EmailProviderSettings> {
-    const callable = httpsCallable<EmailProviderSettings, EmailProviderSettings>(
-      functions,
+    const response = await callTracedFunction<EmailProviderSettings, EmailProviderSettings>(
       "updateEmailProviderSettings",
-    );
-    const response = await callable(settings);
-    return resolveEmailProviderSettings(response.data);
+      { source: "emailProviderSettingsService.update" },
+    )(settings);
+    return resolveEmailProviderSettings(response);
   },
 };

@@ -1,11 +1,10 @@
 import { FirebaseError } from "firebase/app";
-import { httpsCallable } from "firebase/functions";
 
 import type {
   AiEnrichmentPlaygroundRequest,
   AiEnrichmentPlaygroundResponse,
 } from "@fresh-prints/shared/types/ai/aiEnrichmentPlayground.types";
-import { functions } from "../../../config/firebase";
+import { callTracedFunction } from "../../../config/tracedCallable";
 import { resolveClientVisionModelId } from "../constants/aiEnrichmentSettingsConstants";
 
 export const aiEnrichmentPlaygroundService = {
@@ -13,17 +12,15 @@ export const aiEnrichmentPlaygroundService = {
     input: AiEnrichmentPlaygroundRequest,
   ): Promise<AiEnrichmentPlaygroundResponse> {
     try {
-      const runCallable = httpsCallable<
+      return await callTracedFunction<
         AiEnrichmentPlaygroundRequest,
         AiEnrichmentPlaygroundResponse
-      >(functions, "testAiEnrichmentPlayground");
-
-      const response = await runCallable({
+      >("testAiEnrichmentPlayground", {
+        source: "aiEnrichmentPlaygroundService.runPlayground",
+      })({
         ...input,
         visionModelId: resolveClientVisionModelId(input.visionModelId),
       });
-
-      return response.data;
     } catch (error) {
       throw new Error(resolveAiEnrichmentPlaygroundErrorMessage(error));
     }

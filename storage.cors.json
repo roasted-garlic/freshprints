@@ -5,13 +5,11 @@
       "http://localhost:3100",
       "http://127.0.0.1:3100"
     ],
-    "method": ["GET", "HEAD", "OPTIONS"],
+    "method": ["GET", "HEAD"],
     "responseHeader": [
       "Content-Type",
-      "Authorization",
-      "x-goog-resumable",
-      "x-firebase-storage-version",
-      "x-goog-meta-*"
+      "Cache-Control",
+      "ETag"
     ],
     "maxAgeSeconds": 3600
   }

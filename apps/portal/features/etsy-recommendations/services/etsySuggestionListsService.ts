@@ -7,8 +7,6 @@ import {
   type Unsubscribe,
   onSnapshot,
 } from 'firebase/firestore';
-import { httpsCallable } from 'firebase/functions';
-
 import {
   ETSY_RECOMMENDATION_SUGGESTIONS_CLIENT_CACHE_TTL_MS,
   ETSY_RECOMMENDATION_SUGGESTIONS_COLLECTION,
@@ -19,8 +17,16 @@ import type {
   AddEtsyRecommendationSuggestionRequest,
   AddEtsyRecommendationSuggestionResponse,
 } from '@fresh-prints/shared/types/etsyRecommendation/etsyRecommendationActions.types';
+import {
+  traceFirestoreListenerAttach,
+  traceFirestoreListenerEmission,
+  traceFirestoreOneShotComplete,
+  traceFirestoreOneShotStart,
+  traceWrappedUnsubscribe,
+} from '@fresh-prints/shared/utils/firestoreUsageTrace';
 
-import { getPortalDb, getPortalFunctions } from '../../../lib/firebase/client';
+import { getPortalDb } from '../../../lib/firebase/client';
+import { callTracedFunction } from '../../../lib/firebase/tracedCallable';
 
 interface CacheEntry {
   overlays: AdminSuggestionOverlay[];
@@ -72,12 +78,21 @@ function mapOverlayDoc(
 }
 
 async function fetchActiveOverlays(): Promise<AdminSuggestionOverlay[]> {
+  const traceMetadata = {
+    app: 'portal' as const,
+    collection: ETSY_RECOMMENDATION_SUGGESTIONS_COLLECTION,
+    constraints: ['active==true'],
+    source: 'etsySuggestionListsService.fetchActiveOverlays',
+    triggerReason: 'route' as const,
+  };
+  traceFirestoreOneShotStart('getDocs', traceMetadata);
   const snapshot = await getDocs(
     query(
       collection(getPortalDb(), ETSY_RECOMMENDATION_SUGGESTIONS_COLLECTION),
       where('active', '==', true),
     ),
   );
+  traceFirestoreOneShotComplete('getDocs', traceMetadata, snapshot.size);
   const overlays: AdminSuggestionOverlay[] = [];
   for (const docSnap of snapshot.docs) {
     const mapped = mapOverlayDoc(docSnap.id, docSnap.data() as Record<string, unknown>);
@@ -149,13 +164,14 @@ export async function addEtsyRecommendationSuggestion(
   input: AddEtsyRecommendationSuggestionRequest,
 ): Promise<AddEtsyRecommendationSuggestionResponse> {
   try {
-    const callable = httpsCallable<
+    const response = await callTracedFunction<
       AddEtsyRecommendationSuggestionRequest,
       AddEtsyRecommendationSuggestionResponse
-    >(getPortalFunctions(), 'addEtsyRecommendationSuggestion');
-    const response = await callable(input);
+    >('addEtsyRecommendationSuggestion', {
+      source: 'etsySuggestionListsService.addEtsyRecommendationSuggestion',
+    })(input);
     invalidateSuggestionCache();
-    return response.data;
+    return response;
   } catch (error) {
     throw mapCallableError(error);
   }
@@ -165,12 +181,21 @@ export function subscribeActiveEtsySuggestionOverlays(
   onChange: (overlays: AdminSuggestionOverlay[]) => void,
   onError?: (error: Error) => void,
 ): Unsubscribe {
-  return onSnapshot(
+  const traceMetadata = {
+    app: 'portal' as const,
+    collection: ETSY_RECOMMENDATION_SUGGESTIONS_COLLECTION,
+    constraints: ['active==true'],
+    source: 'etsySuggestionListsService.subscribeActiveEtsySuggestionOverlays',
+    triggerReason: 'route' as const,
+  };
+  traceFirestoreListenerAttach(traceMetadata);
+  const unsubscribe = onSnapshot(
     query(
       collection(getPortalDb(), ETSY_RECOMMENDATION_SUGGESTIONS_COLLECTION),
       where('active', '==', true),
     ),
     (snapshot) => {
+      traceFirestoreListenerEmission(traceMetadata, snapshot.size);
       const overlays: AdminSuggestionOverlay[] = [];
       for (const docSnap of snapshot.docs) {
         const mapped = mapOverlayDoc(docSnap.id, docSnap.data() as Record<string, unknown>);
@@ -185,4 +210,5 @@ export function subscribeActiveEtsySuggestionOverlays(
       onError?.(error);
     },
   );
+  return traceWrappedUnsubscribe(traceMetadata, unsubscribe);
 }

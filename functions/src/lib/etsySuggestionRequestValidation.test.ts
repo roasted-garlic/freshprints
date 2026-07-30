@@ -42,6 +42,23 @@ describe("validateEtsySuggestionRequestInput", () => {
       (error: unknown) => error instanceof HttpsError && error.code === "invalid-argument",
     );
   });
+
+  it("preserves whitespace normalization and rejects remaining ASCII control boundaries", () => {
+    assert.equal(
+      validateEtsySuggestionRequestInput({ kind: "style", label: "A\tB\nC" }).label,
+      "A B C",
+    );
+    for (const control of ["\u0000", "\u001f", "\u007f"]) {
+      assert.throws(
+        () => validateEtsySuggestionRequestInput({ kind: "style", label: `A${control}B` }),
+        (error: unknown) => error instanceof HttpsError && error.code === "invalid-argument",
+      );
+    }
+    assert.equal(
+      validateEtsySuggestionRequestInput({ kind: "style", label: "A\u0080B" }).label,
+      "A\u0080B",
+    );
+  });
 });
 
 describe("validateSuggestionRequestId", () => {

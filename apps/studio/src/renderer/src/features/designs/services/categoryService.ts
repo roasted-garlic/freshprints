@@ -11,6 +11,15 @@ import {
   writeBatch,
 } from "firebase/firestore";
 
+import {
+  runTracedWrite,
+  traceFirestoreCacheEvent,
+  traceFirestoreOneShotComplete,
+  traceFirestoreOneShotStart,
+  type FirestoreTraceMetadata,
+} from "@fresh-prints/shared/utils/firestoreUsageTrace";
+import { createBoundedAsyncCache } from "@fresh-prints/shared/utils/boundedAsyncCache";
+
 import { db } from "../../../config/firebase";
 import { getFirestoreErrorMessage } from "../../firebase/utils/firestoreErrorMessage";
 import { assertNoUndefinedFirestoreFields, withoutUndefinedFields } from "../../firebase/utils/firestoreDocument";
@@ -29,9 +38,42 @@ import {
   moveCategoryToOrder,
   normalizeCategoryOrder,
 } from "../utils/categoryOrder";
-
 const MAX_CATEGORY_NAME_LENGTH = 80;
 const DEFAULT_CATEGORY_LIST_LIMIT = 200;
+const TAXONOMY_CACHE_TTL_MS = 12 * 60 * 60 * 1000;
+const categoryListCache = createBoundedAsyncCache<Category[]>({
+  maxEntries: 8,
+  onEvent: (event, key) => traceFirestoreCacheEvent(
+    event === "hit" ? "cacheHit" : event === "retry" ? "retry" : "cacheMiss",
+    categoryTraceMetadata(`categoryService.listCategoriesCache.${key.endsWith(":all") ? "all" : "active"}`),
+  ),
+  ttlMs: TAXONOMY_CACHE_TTL_MS,
+});
+
+function getCategoryListCacheKey(caller: User, options: CategoryListOptions = {}): string {
+  return `${db.app.options.projectId ?? "unknown-project"}:${caller.id}:${
+    options.includeInactive ? "all" : "active"
+  }`;
+}
+
+export function invalidateCategoryListCache(): void {
+  categoryListCache.clear();
+}
+
+function categoryTraceMetadata(
+  source: string,
+  options?: { activeOnly?: boolean; document?: boolean; limit?: number },
+): FirestoreTraceMetadata {
+  return {
+    app: "studio",
+    collection: "categories",
+    constraints: options?.activeOnly ? ["isActive==true"] : undefined,
+    documentPathPattern: options?.document ? "categories/{categoryId}" : undefined,
+    limit: options?.limit,
+    source,
+    triggerReason: "route",
+  };
+}
 
 interface CategoryDocumentData {
   id?: unknown;
@@ -221,7 +263,10 @@ async function getAllCategories(): Promise<{
   categoryDocumentsById: Map<string, CategoryDocumentData>;
 }> {
   const categoriesCollection = firestoreCollectionService.getCategoriesCollection();
+  const traceMetadata = categoryTraceMetadata("categoryService.getAllCategories");
+  traceFirestoreOneShotStart("getDocs", traceMetadata);
   const categoriesSnapshot = await getDocs(query(categoriesCollection));
+  traceFirestoreOneShotComplete("getDocs", traceMetadata, categoriesSnapshot.size);
   const categoryDocumentsById = new Map<string, CategoryDocumentData>();
 
   const allCategories = categoriesSnapshot.docs.map((categoryDocument) => {
@@ -250,12 +295,27 @@ async function commitCategoryPayloads(
     batch.update(doc(firestoreCollectionService.getCategoriesCollection(), categoryId), payload);
   });
 
-  await batch.commit();
+  await runTracedWrite(
+    "writeBatch",
+    () => batch.commit(),
+    {
+      app: "studio",
+      collection: "categories",
+      documentPathPattern: "categories/{categoryId}",
+      source: "categoryService.commitCategoryPayloads",
+    },
+    { writeCount: payloadById.size },
+  );
 }
 
 async function readCategoryAfterWrite(categoryId: string): Promise<Category> {
   const categoryRef = doc(firestoreCollectionService.getCategoriesCollection(), categoryId);
+  const traceMetadata = categoryTraceMetadata("categoryService.readCategoryAfterWrite", {
+    document: true,
+  });
+  traceFirestoreOneShotStart("getDoc", traceMetadata);
   const categorySnapshot = await getDoc(categoryRef);
+  traceFirestoreOneShotComplete("getDoc", traceMetadata, categorySnapshot.exists() ? 1 : 0);
 
   if (!categorySnapshot.exists()) {
     throw new Error("The category record was not found.");
@@ -271,17 +331,27 @@ export const categoryService = {
     }
 
     try {
-      const categoriesQuery = query(
-        firestoreCollectionService.getCategoriesCollection(),
-        ...buildCategoryListConstraints(options),
-      );
-      const snapshot = await getDocs(categoriesQuery);
+      const categories = await categoryListCache.get(getCategoryListCacheKey(caller, options), async () => {
+        const categoriesQuery = query(
+          firestoreCollectionService.getCategoriesCollection(),
+          ...buildCategoryListConstraints(options),
+        );
+        const traceMetadata = categoryTraceMetadata("categoryService.listCategories", {
+          activeOnly: !options.includeInactive,
+          limit: DEFAULT_CATEGORY_LIST_LIMIT,
+        });
+        traceFirestoreOneShotStart("getDocs", traceMetadata);
+        const snapshot = await getDocs(categoriesQuery);
+        traceFirestoreOneShotComplete("getDocs", traceMetadata, snapshot.size);
 
-      const categories = snapshot.docs.map((categoryDocument) =>
-        mapCategoryDocument(categoryDocument.id, categoryDocument.data()),
-      );
+        return normalizeCategoriesForRead(
+          snapshot.docs.map((categoryDocument) =>
+            mapCategoryDocument(categoryDocument.id, categoryDocument.data()),
+          ),
+        );
+      });
 
-      return normalizeCategoriesForRead(categories);
+      return [...categories];
     } catch (error) {
       throw new Error(getFirestoreErrorMessage(error, "Unable to load categories. Please try again."));
     }
@@ -293,9 +363,14 @@ export const categoryService = {
     }
 
     try {
+      const traceMetadata = categoryTraceMetadata("categoryService.getCategoryById", {
+        document: true,
+      });
+      traceFirestoreOneShotStart("getDoc", traceMetadata);
       const categorySnapshot = await getDoc(
         doc(firestoreCollectionService.getCategoriesCollection(), categoryId),
       );
+      traceFirestoreOneShotComplete("getDoc", traceMetadata, categorySnapshot.exists() ? 1 : 0);
 
       if (!categorySnapshot.exists()) {
         throw new Error("The requested category was not found.");
@@ -360,9 +435,20 @@ export const categoryService = {
       });
 
       batch.set(categoryRef, categoryRecord);
-      await batch.commit();
-
-      return await readCategoryAfterWrite(categoryId);
+      await runTracedWrite(
+        "writeBatch",
+        () => batch.commit(),
+        {
+          app: "studio",
+          collection: "categories",
+          documentPathPattern: "categories/{categoryId}",
+          source: "categoryService.createCategory",
+        },
+        { writeCount: payloadById.size + 1 },
+      );
+      const category = await readCategoryAfterWrite(categoryId);
+      invalidateCategoryListCache();
+      return category;
     } catch (error) {
       if (error instanceof Error && error.message.includes("category")) {
         throw error;
@@ -402,8 +488,9 @@ export const categoryService = {
       );
 
       await commitCategoryPayloads(payloadById);
-
-      return await readCategoryAfterWrite(categoryId);
+      const category = await readCategoryAfterWrite(categoryId);
+      invalidateCategoryListCache();
+      return category;
     } catch (error) {
       if (error instanceof Error && error.message.includes("category")) {
         throw error;
@@ -526,8 +613,9 @@ export const categoryService = {
       }
 
       await commitCategoryPayloads(payloadById);
-
-      return await readCategoryAfterWrite(categoryId);
+      const category = await readCategoryAfterWrite(categoryId);
+      invalidateCategoryListCache();
+      return category;
     } catch (error) {
       if (
         error instanceof Error &&

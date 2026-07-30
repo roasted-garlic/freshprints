@@ -1,12 +1,12 @@
 import { doc, onSnapshot, type Unsubscribe } from "firebase/firestore";
-import { httpsCallable } from "firebase/functions";
 
 import {
   CUSTOMER_UPLOAD_QUOTA_SETTINGS_DOC_ID,
   resolveCustomerUploadQuotaSettings,
   type CustomerUploadQuotaSettings,
 } from "@fresh-prints/shared/constants/customerUpload/customerUploadQuotaSettings.constants";
-import { db, functions } from "../../../config/firebase";
+import { db } from "../../../config/firebase";
+import { callTracedFunction } from "../../../config/tracedCallable";
 
 export const customerUploadQuotaSettingsService = {
   subscribe(
@@ -21,11 +21,10 @@ export const customerUploadQuotaSettingsService = {
   },
 
   async update(settings: CustomerUploadQuotaSettings): Promise<CustomerUploadQuotaSettings> {
-    const callable = httpsCallable<CustomerUploadQuotaSettings, CustomerUploadQuotaSettings>(
-      functions,
+    const response = await callTracedFunction<CustomerUploadQuotaSettings, CustomerUploadQuotaSettings>(
       "updateCustomerUploadQuotaSettings",
-    );
-    const response = await callable({
+      { source: "customerUploadQuotaSettingsService.update" },
+    )({
       printRequestCreateBatchLimit: settings.printRequestCreateBatchLimit,
       printRequestFinalizeImageLimit: settings.printRequestFinalizeImageLimit,
       printRequestFinalizeZipLimit: settings.printRequestFinalizeZipLimit,
@@ -33,6 +32,6 @@ export const customerUploadQuotaSettingsService = {
       donationFinalizeImageLimit: settings.donationFinalizeImageLimit,
       donationFinalizeZipLimit: settings.donationFinalizeZipLimit,
     });
-    return resolveCustomerUploadQuotaSettings(response.data);
+    return resolveCustomerUploadQuotaSettings(response);
   },
 };

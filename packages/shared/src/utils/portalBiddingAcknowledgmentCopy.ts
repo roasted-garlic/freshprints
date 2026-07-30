@@ -12,9 +12,7 @@ export const PORTAL_BIDDING_ACK_EXCLUSIVE_PARAGRAPH =
   "Need a design printed exclusively for you that won't be on the show? Submit a custom gang sheet order at funkyfreshprints.com instead.";
 
 /** Add to Show / queue-to-show confirmation copy (owner authoritative). */
-export function buildPortalBiddingAcknowledgmentCopy(
-  _itemCount = 1,
-): PortalBiddingAcknowledgmentCopy {
+export function buildPortalBiddingAcknowledgmentCopy(): PortalBiddingAcknowledgmentCopy {
   return {
     title: "Add to Show Print Run",
     paragraphs: [

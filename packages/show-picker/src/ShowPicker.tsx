@@ -11,7 +11,7 @@ import {
   toLocalDateKey,
 } from "@fresh-prints/shared/utils/showCalendarGrid";
 
-import { getDefaultShowPickerOptionId } from "./getDefaultShowPickerOptionId";
+import { canActivateShowPickerOption, resolveShowPickerSelection } from "./resolveShowPickerSelection";
 import { getShowPickerDayMarker } from "./getShowPickerDayMarker";
 import type { ShowPickerOption, ShowPickerProps } from "./types";
 
@@ -120,11 +120,11 @@ function groupOptionsByDateKey(options: ShowPickerOption[]): Map<string, ShowPic
 function ShowTimeSlotOption({
   option,
   isSelected,
-  onSelect,
+  onActivate,
 }: {
   option: ShowPickerOption;
   isSelected: boolean;
-  onSelect: (id: string) => void;
+  onActivate: (option: ShowPickerOption) => void;
 }) {
   const cardStateClass = option.isOverCapacity ? " is-over-capacity" : option.isFull ? " is-full" : "";
   const projectedPercent = Math.min(100, option.capacityPercent ?? 0);
@@ -157,14 +157,17 @@ function ShowTimeSlotOption({
     };
   }, [committedPercent, hasPendingPreview, option.id, projectedPercent]);
 
-  const isClosedForAdd = option.isSelectable === false;
+  const isClosedForAdd = option.canAllocate === false;
+  const isInspectable = option.canInspect !== false;
 
   return (
     <button
-      aria-disabled={isClosedForAdd}
+      aria-disabled={!isInspectable}
+      aria-description={isClosedForAdd ? "This show has already been printed. Not available for adding." : undefined}
       className={`show-picker-slot${isSelected ? " is-selected" : ""}${cardStateClass}${hasPendingPreview ? " has-pending-fill" : ""}${isClosedForAdd ? " is-disabled" : ""}`}
+      disabled={!isInspectable}
       onClick={() => {
-        onSelect(option.id);
+        if (canActivateShowPickerOption(option)) onActivate(option);
       }}
       type="button"
     >
@@ -221,7 +224,16 @@ function ShowTimeSlotOption({
   );
 }
 
-export function ShowPicker({ options, selectedId, onSelect, now = new Date(), className }: ShowPickerProps) {
+export function ShowPicker({
+  options,
+  selectedId,
+  onSelect,
+  onInspect,
+  inspectedId,
+  onClearSelection,
+  now = new Date(),
+  className,
+}: ShowPickerProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const calendarGridRef = useRef<HTMLDivElement>(null);
   const optionsByDateKey = useMemo(() => groupOptionsByDateKey(options), [options]);
@@ -344,22 +356,38 @@ export function ShowPicker({ options, selectedId, onSelect, now = new Date(), cl
     }
     setSelectedDateKey(dateKey);
     const slots = optionsByDateKey.get(dateKey) ?? [];
-    const defaultSlotId = getDefaultShowPickerOptionId(slots, undefined, true);
-    if (defaultSlotId) {
-      onSelect(defaultSlotId);
+    const resolution = resolveShowPickerSelection(slots);
+    if (resolution.destinationId) {
+      onSelect(resolution.destinationId);
+    } else {
+      onClearSelection?.();
+      // Plan Section 29.6: a date with no allocatable destination but exactly one historical/
+      // non-allocatable show should show its read-only details immediately, without requiring a
+      // second click — never guessed when multiple shows exist for the date.
+      if (resolution.autoInspectId && onInspect) {
+        onInspect(resolution.autoInspectId);
+      }
     }
   }
 
   useEffect(() => {
+    if (inspectedId && options.some((option) => option.id === inspectedId)) {
+      return;
+    }
     if (selectedId && options.some((option) => option.id === selectedId)) {
       return;
     }
 
-    const defaultOptionId = getDefaultShowPickerOptionId(options, undefined, true);
-    if (defaultOptionId) {
-      onSelect(defaultOptionId);
+    const resolution = resolveShowPickerSelection(options);
+    if (resolution.destinationId) {
+      onSelect(resolution.destinationId);
+    } else {
+      onClearSelection?.();
+      if (resolution.autoInspectId && onInspect) {
+        onInspect(resolution.autoInspectId);
+      }
     }
-  }, [onSelect, options, selectedId]);
+  }, [inspectedId, onClearSelection, onInspect, onSelect, options, selectedId]);
 
   // When a date/month selection grows the calendar (more weeks), keep the
   // selected show's capacity/progress block visible in the scroll parent.
@@ -416,7 +444,7 @@ export function ShowPicker({ options, selectedId, onSelect, now = new Date(), cl
                 const markerClass = dayMarker ? `has-shows-${dayMarker}` : day.hasShows ? "has-shows-open" : "";
                 const dayHasOnlyClosedShows =
                   day.hasShows &&
-                  (optionsByDateKey.get(day.dateKey) ?? []).every((option) => option.isSelectable === false);
+                  (optionsByDateKey.get(day.dateKey) ?? []).every((option) => !option.canAllocate);
                 const dayClassName = [
                   "show-picker-day",
                   day.isCurrentMonth ? "" : "is-outside-month",
@@ -469,9 +497,16 @@ export function ShowPicker({ options, selectedId, onSelect, now = new Date(), cl
           <div className="show-picker-slots-list">
             {slotsForSelectedDate.map((option) => (
               <ShowTimeSlotOption
-                isSelected={option.id === selectedId}
+                isSelected={option.id === (inspectedId ?? selectedId)}
                 key={option.id}
-                onSelect={onSelect}
+                onActivate={(activated) => {
+                  if (onInspect) {
+                    onInspect(activated.id);
+                    if (activated.canAllocate) onSelect(activated.id);
+                  } else if (activated.canAllocate) {
+                    onSelect(activated.id);
+                  }
+                }}
                 option={option}
               />
             ))}
@@ -485,9 +520,16 @@ export function ShowPicker({ options, selectedId, onSelect, now = new Date(), cl
           <div className="show-picker-slots-list">
             {unscheduledOptions.map((option) => (
               <ShowTimeSlotOption
-                isSelected={option.id === selectedId}
+                isSelected={option.id === (inspectedId ?? selectedId)}
                 key={option.id}
-                onSelect={onSelect}
+                onActivate={(activated) => {
+                  if (onInspect) {
+                    onInspect(activated.id);
+                    if (activated.canAllocate) onSelect(activated.id);
+                  } else if (activated.canAllocate) {
+                    onSelect(activated.id);
+                  }
+                }}
                 option={option}
               />
             ))}

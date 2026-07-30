@@ -195,11 +195,17 @@ export function AssistedCreationUpdateModal({
                       <button
                         className="portal-button portal-button-secondary"
                         disabled={busy}
-                        onClick={() =>
-                          setKeptReferences((current) =>
-                            current.filter((item) => item.id !== image.id),
-                          )
-                        }
+                        onClick={() => {
+                          const nextKept = keptReferences.filter((item) => item.id !== image.id);
+                          setKeptReferences(nextKept);
+                          const nextKeptBytes = nextKept.reduce(
+                            (sum, item) => sum + item.sizeBytes,
+                            0,
+                          );
+                          setUploadError(
+                            assistedCreationService.validateReferenceFiles(newFiles, nextKeptBytes),
+                          );
+                        }}
                         type="button"
                       >
                         Remove
@@ -218,7 +224,8 @@ export function AssistedCreationUpdateModal({
                 files={newFiles}
                 onChange={(files) => {
                   const next = files.slice(0, remainingSlots);
-                  const validation = assistedCreationService.validateReferenceFiles(next);
+                  const keptBytes = keptReferences.reduce((sum, image) => sum + image.sizeBytes, 0);
+                  const validation = assistedCreationService.validateReferenceFiles(next, keptBytes);
                   setUploadError(validation);
                   setNewFiles(next);
                 }}

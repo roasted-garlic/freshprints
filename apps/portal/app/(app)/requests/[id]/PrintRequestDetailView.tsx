@@ -2,14 +2,18 @@
 
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { PrintRequestItem } from '@fresh-prints/shared/types/printRequest/printRequest.types';
 import { derivePrintRequestListTab } from '@fresh-prints/shared/utils/printRequestListGrouping';
 import {
   type PortalPrintRequestListTab,
 } from '@fresh-prints/shared/utils/portalPrintRequestListTabs';
-import { resolvePortalPrintProgressStage } from '@fresh-prints/shared/utils/portalPrintProgressStage';
+import {
+  resolvePortalMountedProgressAuthority,
+  resolvePortalPrintProgressStage,
+  type PortalPrintProgressStage,
+} from '@fresh-prints/shared/utils/portalPrintProgressStage';
 import { sumPrintRequestItemQuantities } from '@fresh-prints/shared/utils/portalShowQueueCapacity';
 import {
   sumAllocatedQuantityByItemId,
@@ -17,11 +21,11 @@ import {
 } from '@fresh-prints/shared/utils/portalShowQueueFit';
 import { PortalPrintRequestItemCard } from '../../../../features/print-requests/components/PortalPrintRequestItemCard';
 import { PortalPrintRequestProgressPanel } from '../../../../features/print-requests/components/PortalPrintRequestProgressPanel';
-import { PortalQueueToShowModal } from '../../../../features/print-requests/components/PortalQueueToShowModal';
+import {
+  PortalQueueToShowModal,
+  type PortalQueueToShowResult,
+} from '../../../../features/print-requests/components/PortalQueueToShowModal';
 import { PrintRequestDetailGuide } from '../../../../features/print-requests/components/PrintRequestDetailGuide';
-import { catalogService } from '../../../../features/catalog/services/catalogService';
-import type { CatalogDesign } from '../../../../features/catalog/types/catalog.types';
-import { useAuth } from '../../../../features/auth/context/AuthContext';
 import { usePortalPrintRequests } from '../../../../features/print-requests/context/PortalPrintRequestContext';
 import { useAddDesignToRequestFlow } from '../../../../features/print-requests/hooks/useAddDesignToRequestFlow';
 import { usePrintRequestDetail } from '../../../../features/print-requests/hooks/usePrintRequestDetail';
@@ -68,7 +72,6 @@ export default function PrintRequestDetailView() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { refreshCustomer } = useAuth();
   const {
     allocationTotalsByRequestId,
     closeCurrentRequestDrawer,
@@ -76,6 +79,7 @@ export default function PrintRequestDetailView() {
     createPrintRequest,
     refreshRequests,
     reloadWorkingItems,
+    reconcileQueuedRequest,
     resetWorkingCart,
     summariesByRequestId,
   } = usePortalPrintRequests();
@@ -88,10 +92,6 @@ export default function PrintRequestDetailView() {
   const [isRemovingItem, setIsRemovingItem] = useState(false);
   /** Bumped per item id when remove confirm is cancelled so qty-0 input restores. */
   const [quantityResetKeys, setQuantityResetKeys] = useState<Record<string, number>>({});
-  const [catalogReuseByDesignId, setCatalogReuseByDesignId] = useState<Map<string, CatalogDesign>>(
-    () => new Map(),
-  );
-  const [catalogReuseReady, setCatalogReuseReady] = useState(false);
 
   const {
     printRequest,
@@ -105,7 +105,7 @@ export default function PrintRequestDetailView() {
     duplicateItem,
     getItemClientKey,
     removeItem,
-    reload,
+    reconcileQueued,
   } = usePrintRequestDetail(printRequestId);
 
   const addDesignFlow = useAddDesignToRequestFlow({
@@ -133,6 +133,13 @@ export default function PrintRequestDetailView() {
     );
   }, [isLoading, printRequestId, router, searchParams]);
 
+  // Queue success fully allocates the request and the handler already applies the authoritative
+  // post-queue state locally (unallocated = 0). The status flip it causes must not re-run the
+  // allocation query — that was the +N allocation reread the owner traced after queue success
+  // (Wave C comprehensive-audit pass 2, 2026-07-25). One-shot suppression; explicit refresh and
+  // fresh navigation stay authoritative.
+  const skipAllocationLoadAfterQueueRef = useRef(false);
+
   const loadAllocationState = useCallback(async () => {
     if (!printRequestId) {
       setUnallocatedQuantity(0);
@@ -140,10 +147,8 @@ export default function PrintRequestDetailView() {
     }
 
     try {
-      const [allocations, requestItems] = await Promise.all([
-        portalPrintRequestService.listShowAllocationsForPrintRequests([printRequestId]),
-        portalPrintRequestService.listPrintRequestItems(printRequestId),
-      ]);
+      const allocations =
+        await portalPrintRequestService.listShowAllocationsForPrintRequests([printRequestId]);
       const allocatedByItemId = sumAllocatedQuantityByItemId(
         allocations.map((allocation) => ({
           printRequestItemId: allocation.printRequestItemId,
@@ -151,63 +156,19 @@ export default function PrintRequestDetailView() {
           status: allocation.status,
         })),
       );
-      setUnallocatedQuantity(sumRemainingUnallocatedQuantity(requestItems, allocatedByItemId));
+      setUnallocatedQuantity(sumRemainingUnallocatedQuantity(items, allocatedByItemId));
     } catch {
       setUnallocatedQuantity(sumPrintRequestItemQuantities(items));
     }
   }, [items, printRequestId]);
 
   useEffect(() => {
-    void loadAllocationState();
-  }, [loadAllocationState, printRequest?.status, printRequest?.itemCount, items]);
-
-  const catalogDesignIdsKey = useMemo(
-    () =>
-      [
-        ...new Set(
-          items
-            .map((item) => item.designId?.trim())
-            .filter((designId): designId is string => Boolean(designId)),
-        ),
-      ]
-        .sort()
-        .join('|'),
-    [items],
-  );
-
-  useEffect(() => {
-    if (!catalogDesignIdsKey || isEditable) {
-      setCatalogReuseByDesignId(new Map());
-      setCatalogReuseReady(true);
+    if (skipAllocationLoadAfterQueueRef.current) {
+      skipAllocationLoadAfterQueueRef.current = false;
       return;
     }
-
-    let cancelled = false;
-    setCatalogReuseReady(false);
-
-    void (async () => {
-      try {
-        const designIds = catalogDesignIdsKey.split('|').filter(Boolean);
-        const designs = await catalogService.getReadyDesignsByIds(designIds);
-        if (cancelled) {
-          return;
-        }
-        setCatalogReuseByDesignId(new Map(designs.map((design) => [design.id, design])));
-      } catch {
-        if (!cancelled) {
-          setCatalogReuseByDesignId(new Map());
-        }
-      } finally {
-        if (!cancelled) {
-          setCatalogReuseReady(true);
-        }
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [catalogDesignIdsKey, isEditable]);
+    void loadAllocationState();
+  }, [loadAllocationState, printRequest?.status, printRequest?.itemCount, items]);
 
   const updateAutosaveState = useCallback(
     (status: Exclude<AutosaveStatus, 'idle'>, message?: string, retry?: () => Promise<void>) => {
@@ -236,13 +197,18 @@ export default function PrintRequestDetailView() {
     async (
       item: PrintRequestItem,
       input: { quantity: number; printWidthInches: number; printHeightInches: number },
-    ) => {
+    ): Promise<{ quantity: number }> => {
       setActionError(null);
-      // updateItem patches workingItems + Cap A optimistically; silent reload reconciles.
-      await updateItem(item.id, input);
-      void reloadWorkingItems({ silent: true });
+      // updateItem already synchronously reconciles both local items and shared workingItems
+      // (patchWorkingItems) on success — a follow-up reloadWorkingItems here was a redundant,
+      // unguarded server refetch that raced this reconciliation and could resurrect stale
+      // pre-save data (owner runtime QA FAIL, Plan Section 19.1/19.2).
+      // The server-accepted quantity is returned (not discarded) so the requesting
+      // PortalPrintRequestItemCard can reconcile its own local draft directly on success
+      // (Plan Section 21.4 point 1 — this middle layer must not silently drop the value).
+      return updateItem(item.id, input);
     },
-    [reloadWorkingItems, updateItem],
+    [updateItem],
   );
 
   const handleDuplicateItem = useCallback(
@@ -250,15 +216,16 @@ export default function PrintRequestDetailView() {
       setActionError(null);
 
       try {
+        // duplicateItem already synchronously reconciles both local items and workingItems for
+        // its optimistic insert and its real-id swap — no follow-up reload needed (Section 19.2).
         await duplicateItem(item.id);
-        void reloadWorkingItems({ silent: true });
       } catch (duplicateError) {
         setActionError(
           duplicateError instanceof Error ? duplicateError.message : 'Unable to duplicate item.',
         );
       }
     },
-    [duplicateItem, reloadWorkingItems],
+    [duplicateItem],
   );
 
   const handleRemoveItem = useCallback(
@@ -267,16 +234,18 @@ export default function PrintRequestDetailView() {
       setIsRemovingItem(true);
 
       try {
+        // removeItem already synchronously filters both local items and workingItems on success
+        // (plus its own beginPendingItemRemovals/endPendingItemRemovals guard) — no follow-up
+        // reload needed; it was the actual source of the resurrection defect (Section 19.2).
         await removeItem(item.id);
         setItemPendingRemoval(null);
-        void reloadWorkingItems({ silent: true });
       } catch (removeError) {
         setActionError(removeError instanceof Error ? removeError.message : 'Unable to remove item.');
       } finally {
         setIsRemovingItem(false);
       }
     },
-    [reloadWorkingItems, removeItem],
+    [removeItem],
   );
 
   const pendingRemovalTitle =
@@ -310,28 +279,50 @@ export default function PrintRequestDetailView() {
 
   const returnFrom = parsePortalRequestDetailFrom(searchParams.get('from'));
   const { href: backHref, label: backLabel } = resolvePortalRequestDetailBack(returnFrom, listTab);
-  const progressStage = resolvePortalPrintProgressStage(listTab);
-  const printProgress = usePortalShowPrintProgress(printRequestId, progressStage !== null);
+  const progressWatermarkRef = useRef<{
+    printRequestId: string;
+    stage: PortalPrintProgressStage | null;
+  }>({ printRequestId, stage: null });
+  if (progressWatermarkRef.current.printRequestId !== printRequestId) {
+    progressWatermarkRef.current = { printRequestId, stage: null };
+  }
+  const persistedProgressStage = resolvePortalPrintProgressStage(listTab);
+  const preLiveAuthority = resolvePortalMountedProgressAuthority(
+    progressWatermarkRef.current.stage,
+    persistedProgressStage,
+  );
+  const printProgress = usePortalShowPrintProgress(printRequestId, preLiveAuthority.pollingEnabled);
+  const mountedAuthority = resolvePortalMountedProgressAuthority(
+    preLiveAuthority.stage,
+    persistedProgressStage,
+    printProgress.primaryShow?.productionStatus,
+  );
+  const progressStage = mountedAuthority.stage;
+  progressWatermarkRef.current.stage = progressStage;
   const hasAttachedDesigns = items.length > 0;
 
-  const handleQueuedToShow = useCallback(async () => {
+  const handleQueuedToShow = useCallback(
+    async (result: PortalQueueToShowResult) => {
       // Clear Stash immediately — list reload can otherwise re-hydrate the just-queued request.
+      // Suppress the status-change allocation reread before reconciling: the request is now fully
+      // allocated and unallocated quantity is authoritatively 0 from the callable outcome.
+      skipAllocationLoadAfterQueueRef.current = true;
+      reconcileQueued();
+      // Pass the callable's own authoritative result through so allocationTotalsByRequestId is
+      // patched locally (zero new reads) — this is what lets derivePrintRequestListTab return
+      // 'queued' immediately, without waiting for the /requests or /dashboard 'full'-scope reload.
+      reconcileQueuedRequest(printRequestId, {
+        totalAllocatedQuantity: result.totalAllocatedQuantity,
+      });
+      setUnallocatedQuantity(0);
       resetWorkingCart();
       closeCurrentRequestDrawer();
-
-      await Promise.all([
-        reload({ silent: true }),
-        refreshRequests({ silent: true }),
-        refreshCustomer(),
-      ]);
-      await loadAllocationState();
     },
     [
       closeCurrentRequestDrawer,
-      loadAllocationState,
-      refreshCustomer,
-      refreshRequests,
-      reload,
+      printRequestId,
+      reconcileQueued,
+      reconcileQueuedRequest,
       resetWorkingCart,
     ],
   );
@@ -450,7 +441,6 @@ export default function PrintRequestDetailView() {
       {progressStage ? (
         <PortalPrintRequestProgressPanel
           activeStage={progressStage}
-          formattedElapsed={printProgress.formattedElapsed}
           isLive={printProgress.isRunning}
           isLoading={printProgress.isLoading}
           isPaused={printProgress.isPaused}
@@ -511,11 +501,7 @@ export default function PrintRequestDetailView() {
             const upload = item.customerUploadId
               ? uploadSummaries.get(item.customerUploadId)
               : null;
-            const catalogDesignId = item.designId?.trim() ?? '';
-            const catalogReuseDesign =
-              !isEditable && catalogReuseReady && catalogDesignId
-                ? (catalogReuseByDesignId.get(catalogDesignId) ?? null)
-                : undefined;
+            const catalogReuseDesign = !isEditable ? (design ?? null) : undefined;
             const isAddingThisDesign =
               Boolean(catalogReuseDesign) &&
               addDesignFlow.addingDesignId === catalogReuseDesign?.id;

@@ -9,7 +9,6 @@ import {
   where,
 } from "firebase/firestore";
 import { getDownloadURL, ref } from "firebase/storage";
-import { httpsCallable } from "firebase/functions";
 
 import { CUSTOMER_UPLOAD_COLLECTIONS } from "@fresh-prints/shared/constants/customerUpload/customerUploadCollections.constants";
 import type {
@@ -26,7 +25,8 @@ import type {
 } from "@fresh-prints/shared/types/customerUpload/customerUploadStaffActions.types";
 import { resolveCustomerUploadPurpose } from "@fresh-prints/shared/utils/customerUploadPurpose";
 
-import { db, functions, storage } from "../../../config/firebase";
+import { db, storage } from "../../../config/firebase";
+import { callTracedFunction } from "../../../config/tracedCallable";
 import { permissionService } from "../../permissions/services/permissionService";
 import type { User } from "../../users/types/user.types";
 
@@ -268,50 +268,44 @@ export const customerUploadIntakeService = {
   },
 
   async promote(uploadId: string): Promise<PromoteCustomerUploadToAiReviewResponse> {
-    const callable = httpsCallable<{ uploadId: string }, PromoteCustomerUploadToAiReviewResponse>(
-      functions,
+    return callTracedFunction<{ uploadId: string }, PromoteCustomerUploadToAiReviewResponse>(
       "promoteCustomerUploadToAiReview",
-    );
-    const response = await callable({ uploadId });
-    return response.data;
+      { source: "customerUploadIntakeService.promote" },
+    )({ uploadId });
   },
 
   async exclude(uploadId: string): Promise<ExcludeCustomerUploadFromCatalogResponse> {
-    const callable = httpsCallable<{ uploadId: string }, ExcludeCustomerUploadFromCatalogResponse>(
-      functions,
+    return callTracedFunction<{ uploadId: string }, ExcludeCustomerUploadFromCatalogResponse>(
       "excludeCustomerUploadFromCatalog",
-    );
-    const response = await callable({ uploadId });
-    return response.data;
+      { source: "customerUploadIntakeService.exclude" },
+    )({ uploadId });
   },
 
   async restore(uploadId: string): Promise<RestoreCustomerUploadCatalogEligibilityResponse> {
-    const callable = httpsCallable<
+    return callTracedFunction<
       { uploadId: string },
       RestoreCustomerUploadCatalogEligibilityResponse
-    >(functions, "restoreCustomerUploadCatalogEligibility");
-    const response = await callable({ uploadId });
-    return response.data;
+    >("restoreCustomerUploadCatalogEligibility", {
+      source: "customerUploadIntakeService.restore",
+    })({ uploadId });
   },
 
   async retry(uploadId: string): Promise<RetryCustomerUploadProcessingResponse> {
-    const callable = httpsCallable<{ uploadId: string }, RetryCustomerUploadProcessingResponse>(
-      functions,
+    return callTracedFunction<{ uploadId: string }, RetryCustomerUploadProcessingResponse>(
       "retryCustomerUploadProcessing",
-    );
-    const response = await callable({ uploadId });
-    return response.data;
+      { source: "customerUploadIntakeService.retry" },
+    )({ uploadId });
   },
 
   async recordHalftoneStaffDecision(
     uploadId: string,
     value: boolean,
   ): Promise<{ uploadId: string; value: boolean }> {
-    const callable = httpsCallable<
+    return callTracedFunction<
       { uploadId: string; value: boolean },
       { uploadId: string; value: boolean }
-    >(functions, "recordCustomerUploadHalftoneStaffDecision");
-    const response = await callable({ uploadId, value });
-    return response.data;
+    >("recordCustomerUploadHalftoneStaffDecision", {
+      source: "customerUploadIntakeService.recordHalftoneStaffDecision",
+    })({ uploadId, value });
   },
 };

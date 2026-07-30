@@ -1,8 +1,59 @@
 import type { Design } from "../types/design.types";
 import type { DesignListSortDirection, DesignListSortField } from "../types/designQuery.types";
 
-function getDesignSortMillis(design: Design, sortField: DesignListSortField): number {
-  return sortField === "createdAt" ? design.createdAt.toMillis() : design.updatedAt.toMillis();
+type ListTimestamp = { toMillis: () => number };
+
+function readTimestampMillis(value: unknown): number | undefined {
+  if (
+    typeof value !== "object" ||
+    value === null ||
+    typeof (value as Partial<ListTimestamp>).toMillis !== "function"
+  ) {
+    return undefined;
+  }
+
+  const millis = (value as ListTimestamp).toMillis();
+  return Number.isFinite(millis) ? millis : undefined;
+}
+
+function getDesignSortMillis(
+  design: Design,
+  sortField: DesignListSortField,
+): number | undefined {
+  return readTimestampMillis(sortField === "createdAt" ? design.createdAt : design.updatedAt);
+}
+
+function compareOptionalMillis(
+  leftMillis: number | undefined,
+  rightMillis: number | undefined,
+  sortDirection: DesignListSortDirection,
+): number {
+  if (leftMillis === undefined) return rightMillis === undefined ? 0 : 1;
+  if (rightMillis === undefined) return -1;
+  return sortDirection === "desc" ? rightMillis - leftMillis : leftMillis - rightMillis;
+}
+
+/**
+ * Sorts a list representation by an explicit numeric timestamp without requiring the item to
+ * masquerade as a persisted Firestore model. Missing timestamps sort after valid timestamps.
+ */
+export function sortListItemsByExplicitMillis<T extends { id: string }>(
+  items: readonly T[],
+  getMillis: (item: T) => number | undefined,
+  sortDirection: DesignListSortDirection = "desc",
+): T[] {
+  return [...items].sort((leftItem, rightItem) => {
+    const timeDifference = compareOptionalMillis(
+      getMillis(leftItem),
+      getMillis(rightItem),
+      sortDirection,
+    );
+    if (timeDifference !== 0) return timeDifference;
+
+    return sortDirection === "desc"
+      ? rightItem.id.localeCompare(leftItem.id)
+      : leftItem.id.localeCompare(rightItem.id);
+  });
 }
 
 /**
@@ -17,8 +68,7 @@ export function compareDesignsForListSort(
 ): number {
   const leftMillis = getDesignSortMillis(leftDesign, sortField);
   const rightMillis = getDesignSortMillis(rightDesign, sortField);
-  const timeDifference =
-    sortDirection === "desc" ? rightMillis - leftMillis : leftMillis - rightMillis;
+  const timeDifference = compareOptionalMillis(leftMillis, rightMillis, sortDirection);
 
   if (timeDifference !== 0) {
     return timeDifference;

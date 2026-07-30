@@ -14,6 +14,7 @@ import {
 import type { AddEtsyRecommendationSuggestionRequest } from "../../../packages/shared/src/types/etsyRecommendation/etsyRecommendationActions.types";
 
 import { invalidArgument } from "./errors";
+import { hasAsciiControlCharacter } from "./asciiControlCharacters";
 
 export interface ValidatedAddEtsyRecommendationSuggestion {
   kind: EtsyRecommendationSuggestionKind;
@@ -32,7 +33,7 @@ function assertKind(raw: unknown): EtsyRecommendationSuggestionKind {
 }
 
 function assertNoControlChars(value: string, fieldLabel: string): void {
-  if (/[\u0000-\u001f\u007f]/.test(value)) {
+  if (hasAsciiControlCharacter(value)) {
     throw invalidArgument(`${fieldLabel} cannot include control characters.`);
   }
 }

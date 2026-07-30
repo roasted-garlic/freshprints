@@ -12,6 +12,7 @@ import {
 
 import { buildStaffInboxAckDocId } from "@fresh-prints/shared/staffInbox/staffInboxAck.types";
 import type { StaffInboxCompletedItem, StaffInboxItem } from "@fresh-prints/shared/staffInbox/staffInbox.types";
+import { runTracedWrite } from "@fresh-prints/shared/utils/firestoreUsageTrace";
 
 import { firestoreCollectionService } from "../../firebase/services/firestoreCollectionService";
 import { mapFirestoreTimestamp } from "../../firebase/utils/firestoreTimestamp";
@@ -128,22 +129,32 @@ export const staffInboxAckService = {
         ? options.displayName.trim()
         : undefined;
 
-    await setDoc(ackRef, {
-      userId,
-      itemId: item.id,
-      kind: item.kind,
-      title: item.title,
-      subtitle: item.subtitle,
-      ...(item.printRequestId ? { printRequestId: item.printRequestId } : {}),
-      ...(item.upcomingShowId ? { upcomingShowId: item.upcomingShowId } : {}),
-      ...(item.printRequestTab ? { printRequestTab: item.printRequestTab } : {}),
-      occurredAtMillis: item.occurredAtMillis,
-      acknowledgedByUserId: userId,
-      ...(displayName ? { acknowledgedByDisplayName: displayName } : {}),
-      acknowledgedAt: serverTimestamp(),
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    });
+    await runTracedWrite(
+      "setDoc",
+      () =>
+        setDoc(ackRef, {
+          userId,
+          itemId: item.id,
+          kind: item.kind,
+          title: item.title,
+          subtitle: item.subtitle,
+          ...(item.printRequestId ? { printRequestId: item.printRequestId } : {}),
+          ...(item.upcomingShowId ? { upcomingShowId: item.upcomingShowId } : {}),
+          ...(item.printRequestTab ? { printRequestTab: item.printRequestTab } : {}),
+          occurredAtMillis: item.occurredAtMillis,
+          acknowledgedByUserId: userId,
+          ...(displayName ? { acknowledgedByDisplayName: displayName } : {}),
+          acknowledgedAt: serverTimestamp(),
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        }),
+      {
+        app: "studio",
+        collection: "staffInboxAcks",
+        documentPathPattern: "staffInboxAcks/{staffInboxAckId}",
+        source: "staffInboxAckService.acknowledge",
+      },
+    );
   },
 
   async restore(userId: string, itemId: string): Promise<void> {
@@ -151,7 +162,12 @@ export const staffInboxAckService = {
       firestoreCollectionService.getStaffInboxAcksCollection(),
       buildStaffInboxAckDocId(userId, itemId),
     );
-    await deleteDoc(ackRef);
+    await runTracedWrite("deleteDoc", () => deleteDoc(ackRef), {
+      app: "studio",
+      collection: "staffInboxAcks",
+      documentPathPattern: "staffInboxAcks/{staffInboxAckId}",
+      source: "staffInboxAckService.restore",
+    });
   },
 
   async pruneResolvedShowQueueFull(

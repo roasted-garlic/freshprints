@@ -57,6 +57,15 @@ export interface CustomerUpload {
   effectiveDpi: number | null;
   wasUpscaled?: boolean;
   wasTrimmed?: boolean;
+  /**
+   * True only when the downscale-only dimension-ceiling normalization pass ran (ADR-FP-125).
+   * Independent of `wasUpscaled` — the two are separate, opposite-direction operations and are
+   * not mutually exclusive by type; do not assume only one can ever be true.
+   */
+  wasNormalizedForDimensions?: boolean;
+  /** Source pixel dimensions before normalization; present only when wasNormalizedForDimensions is true. */
+  preNormalizationWidthPx?: number | null;
+  preNormalizationHeightPx?: number | null;
   upscaleFactor?: number | null;
   upscalePassCount?: 0 | 1 | null;
   approvedMaxPrintWidthInches?: number | null;

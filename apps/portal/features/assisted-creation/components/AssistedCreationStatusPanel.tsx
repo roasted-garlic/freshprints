@@ -329,7 +329,6 @@ export function AssistedCreationStatusPanel({ onStartNew }: AssistedCreationStat
                   onClick={() => setProofLightboxOpen(true)}
                   type="button"
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     alt={suggestedDesign.title}
                     className="assisted-creation-proof-stage-image"
@@ -365,7 +364,6 @@ export function AssistedCreationStatusPanel({ onStartNew }: AssistedCreationStat
               onClick={() => setProofLightboxOpen(true)}
               type="button"
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 alt="Design proof"
                 className="assisted-creation-proof-stage-image"
@@ -549,7 +547,6 @@ export function AssistedCreationStatusPanel({ onStartNew }: AssistedCreationStat
               onClick={() => setProofLightboxOpen(true)}
               type="button"
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 alt="Approved proof"
                 className="assisted-creation-proof-stage-image"

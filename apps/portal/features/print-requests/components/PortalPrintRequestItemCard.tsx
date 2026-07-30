@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState, type FocusEvent, type KeyboardEvent } from 'react';
+import { Repeat } from 'lucide-react';
 
 import type { PrintRequestItem } from '@fresh-prints/shared/types/printRequest/printRequest.types';
 import {
@@ -14,6 +15,8 @@ import { useCatalogDerivativeUrl } from '../../catalog/hooks/useCatalogDerivativ
 import type { CatalogDesign } from '../../catalog/types/catalog.types';
 import { CopyIcon, TrashIcon } from '../../shared/components/PortalIcons';
 import { isOptimisticPrintRequestItemId } from '../utils/optimisticPrintRequestItemId';
+import { shouldAcceptIncomingItemProp } from '../utils/itemPropSyncGuard';
+import { resolveSavedDraftReconciliation } from './resolveSavedDraftReconciliation';
 
 interface PortalPrintRequestItemDesign {
   id: string;
@@ -66,10 +69,15 @@ interface PortalPrintRequestItemCardProps {
    * so the input restores to the saved item quantity.
    */
   quantityResetKey?: number;
+  /**
+   * Resolves to the server-accepted quantity (not necessarily the requested `input.quantity` —
+   * the server may clamp it). `saveDraft` uses the returned value, not the locally typed one, to
+   * reconcile its own draft state (Plan Section 21.1/21.4, Fix 1).
+   */
   onUpdate: (
     item: PrintRequestItem,
     input: { quantity: number; printWidthInches: number; printHeightInches: number },
-  ) => Promise<void>;
+  ) => Promise<{ quantity: number }>;
   onAutosaveStateChange: (
     status: 'saving' | 'saved' | 'failed',
     message?: string,
@@ -157,6 +165,12 @@ function buildItemSignature(quantity: number, width: number, height: number): st
   });
 }
 
+/** Monotonic ms marker for a prop update, so a stale reload can be told apart from a genuine
+ * newer external edit even when both carry a signature that differs from the last saved one. */
+function resolveItemUpdatedAtMs(item: PrintRequestItem): number | null {
+  return typeof item.updatedAt?.toMillis === 'function' ? item.updatedAt.toMillis() : null;
+}
+
 export function PortalPrintRequestItemCard({
   design,
   upload,
@@ -165,7 +179,6 @@ export function PortalPrintRequestItemCard({
   catalogReuseDesign,
   isAddingToRequest = false,
   canAddPrints = true,
-  exhaustedHelperText = null,
   exhaustedStatusText = null,
   onAddToRequest,
   onDuplicate,
@@ -191,7 +204,22 @@ export function PortalPrintRequestItemCard({
     upload?.previewPath ??
     upload?.thumbnailPath ??
     undefined;
-  const [quantityInput, setQuantityInput] = useState(String(item.quantity));
+  const [quantityInput, setQuantityInputState] = useState(String(item.quantity));
+  /**
+   * Live mirror of `quantityInput`, updated synchronously on every change (Plan Section 22.2,
+   * Amendment 4, Fix 1 revised). `saveDraft`'s success handler previously read `quantityInput` only
+   * via its own closure — the value captured when THAT invocation started — so a newer edit issued
+   * while an earlier save was still in flight could be silently overwritten when the earlier
+   * (superseded) save completed and unconditionally wrote back its own accepted value. This ref lets
+   * a completing save recognize whether the input it is about to write back is still live/current,
+   * or has already been superseded by a newer edit — see `setQuantityInput` below and its use in
+   * `saveDraft`'s success handler.
+   */
+  const quantityInputRef = useRef(String(item.quantity));
+  function setQuantityInput(value: string) {
+    quantityInputRef.current = value;
+    setQuantityInputState(value);
+  }
   const [printWidthInput, setPrintWidthInput] = useState(
     formatEditableNumber(resolveInitialWidth(item, design, upload)),
   );
@@ -207,6 +235,16 @@ export function PortalPrintRequestItemCard({
       resolveInitialHeight(item, design, upload),
     ),
   );
+  /**
+   * Newest `item.updatedAt` this card has accepted (from a save's own success branch or a
+   * genuinely newer incoming prop). A separate, unguarded `reloadWorkingItems` elsewhere in the
+   * app (e.g. CurrentRequestDrawer's own remove/error-path reloads) can still deliver a stale
+   * prop — carrying a pre-save `updatedAt` — for this same item after this card already saved a
+   * newer value. Comparing against this monotonic timestamp (not just the value signature) lets
+   * the effect below tell "stale reload of pre-save data" apart from "genuine newer external
+   * edit" (Plan Section 19.2 item 2 / 19.1 second contributing cause).
+   */
+  const lastAcceptedUpdatedAtMsRef = useRef(resolveItemUpdatedAtMs(item));
   const saveDraftRef = useRef<() => Promise<void>>(async () => undefined);
   const saveDebounceRef = useRef<number | null>(null);
   const saveInFlightRef = useRef(false);
@@ -217,7 +255,23 @@ export function PortalPrintRequestItemCard({
     const nextHeight = resolveInitialHeight(item, design, upload);
     const incomingSignature = buildItemSignature(item.quantity, nextWidth, nextHeight);
 
-    if (incomingSignature === lastSavedSignatureRef.current) {
+    // A signature mismatch alone doesn't prove this is a genuinely newer external change — a
+    // stale reload (e.g. from a different mounted consumer's own reloadWorkingItems call) can
+    // deliver a prop carrying pre-save values with a signature that also differs from the last
+    // saved one. shouldAcceptIncomingItemProp distinguishes "stale reload of pre-save data" from
+    // "genuine newer external edit" via a monotonic updatedAt comparison (Plan Section 19.2 item
+    // 2 / 19.1 second contributing cause); falls back to signature-only behavior when either
+    // side lacks updatedAt (e.g. optimistic rows).
+    const incomingUpdatedAtMs = resolveItemUpdatedAtMs(item);
+    const lastAcceptedUpdatedAtMs = lastAcceptedUpdatedAtMsRef.current;
+    if (
+      !shouldAcceptIncomingItemProp({
+        incomingSignature,
+        lastSavedSignature: lastSavedSignatureRef.current,
+        incomingUpdatedAtMs,
+        lastAcceptedUpdatedAtMs,
+      })
+    ) {
       return;
     }
 
@@ -226,6 +280,9 @@ export function PortalPrintRequestItemCard({
     setPrintHeightInput(formatEditableNumber(nextHeight));
     setIsLightboxOpen(false);
     lastSavedSignatureRef.current = incomingSignature;
+    if (incomingUpdatedAtMs !== null) {
+      lastAcceptedUpdatedAtMsRef.current = incomingUpdatedAtMs;
+    }
   }, [design, item, upload]);
 
   useEffect(() => {
@@ -321,16 +378,64 @@ export function PortalPrintRequestItemCard({
       return;
     }
 
+    // The exact quantity-input string THIS invocation is submitting (Plan Section 22.2, Amendment
+    // 4) — captured here, not read again later, so the completing save's success handler can tell
+    // whether the field still reflects what it originally sent, or has since been superseded by a
+    // newer edit issued while this call was in flight.
+    const submittedQuantityInput = quantityInput;
+
     saveInFlightRef.current = true;
     onAutosaveStateChange('saving');
 
     try {
-      await onUpdate(item, {
+      const { quantity: acceptedQuantity } = await onUpdate(item, {
         quantity: parsedQuantity,
         printWidthInches: parsedPrintWidthInches,
         printHeightInches: parsedPrintHeightInches,
       });
-      lastSavedSignatureRef.current = draftSignature;
+
+      // Reconcile against the server-ACCEPTED quantity, not the locally typed/requested value —
+      // closes the "server clamped 7 down to 5 but the field kept showing 7" gap (Plan Section
+      // 21.1). This is applied directly and synchronously here, by the very component that
+      // requested the save, instead of relying on the async prop-sync effect to carry the
+      // correction for this card's own in-flight edit.
+      //
+      // Plan Section 22.2 (Amendment 4): only apply this write if the field still shows what THIS
+      // save submitted (`quantityInputRef.current === submittedQuantityInput`). If the user has
+      // typed/stepped a newer value while this save was awaiting its server round trip, that newer
+      // value is live in `quantityInputRef` already, and it has its own save either in flight or
+      // about to be scheduled — this (now-superseded) save's job is only to record its own accepted
+      // value in `lastSavedSignatureRef` bookkeeping, never to overwrite a newer, still-pending edit
+      // the user has since made.
+      const isStillLive = quantityInputRef.current === submittedQuantityInput;
+      if (isStillLive) {
+        const reconciliation = resolveSavedDraftReconciliation({
+          acceptedQuantity,
+          printWidthInches: parsedPrintWidthInches,
+          printHeightInches: parsedPrintHeightInches,
+          currentQuantityInput: quantityInputRef.current,
+          buildSignature: buildItemSignature,
+        });
+        if (reconciliation.quantityInput !== quantityInputRef.current) {
+          setQuantityInput(reconciliation.quantityInput);
+        }
+        lastSavedSignatureRef.current = reconciliation.lastSavedSignature;
+      } else {
+        // A newer edit superseded this save before it resolved — only record that THIS save's own
+        // submitted value was accepted, without touching the (newer, still-live) visible input.
+        lastSavedSignatureRef.current = buildItemSignature(
+          acceptedQuantity,
+          parsedPrintWidthInches,
+          parsedPrintHeightInches,
+        );
+      }
+      // This save's own correction was just applied directly above (not via the prop-sync
+      // effect), so the timestamp stamped here only needs to prevent a genuinely STALE prop
+      // (older than this save) from later overwriting it — it does not need to, and must not,
+      // block the corrected `item` prop this same save produces from eventually landing (that
+      // prop will carry a real server updatedAt newer than whatever this card last accepted
+      // before this save, so a stale-reload rejection here does not create a new stuck state).
+      lastAcceptedUpdatedAtMsRef.current = Date.now();
       onAutosaveStateChange('saved');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unable to save item changes.';
@@ -351,6 +456,7 @@ export function PortalPrintRequestItemCard({
     parsedPrintHeightInches,
     parsedPrintWidthInches,
     parsedQuantity,
+    quantityInput,
   ]);
 
   useEffect(() => {
@@ -539,7 +645,8 @@ export function PortalPrintRequestItemCard({
             {catalogReuseDesign ? (
               <>
                 <button
-                  className="portal-button portal-button-primary portal-button-sm"
+                  aria-label={`Request ${title} Again`}
+                  className="portal-button portal-button-primary portal-button-sm portal-button-leading-icon"
                   disabled={isAddingToRequest || !canAddPrints}
                   onClick={() => onAddToRequest?.(catalogReuseDesign)}
                   title={
@@ -549,7 +656,14 @@ export function PortalPrintRequestItemCard({
                   }
                   type="button"
                 >
-                  {isAddingToRequest ? 'Adding…' : 'Add to request'}
+                  {isAddingToRequest ? (
+                    'Adding…'
+                  ) : (
+                    <>
+                      <Repeat aria-hidden size={14} />
+                      Request Again
+                    </>
+                  )}
                 </button>
                 {!canAddPrints && blockedStatusText ? (
                   <p className="portal-muted portal-request-item-quota-hint">

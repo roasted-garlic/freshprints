@@ -1,5 +1,4 @@
 import { doc, onSnapshot, type Unsubscribe } from "firebase/firestore";
-import { httpsCallable } from "firebase/functions";
 
 import {
   PORTAL_HELP_SETTINGS_DOC_ID,
@@ -7,7 +6,8 @@ import {
   type PortalHelpSettings,
   type PortalHelpSettingsInput,
 } from "@fresh-prints/shared/constants/portal/portalHelpSettings.constants";
-import { db, functions } from "../../../config/firebase";
+import { db } from "../../../config/firebase";
+import { callTracedFunction } from "../../../config/tracedCallable";
 
 export type PortalHelpSettingsLoad =
   | { status: "missing"; settings: PortalHelpSettings }
@@ -38,14 +38,13 @@ export const portalHelpSettingsService = {
   },
 
   async update(settings: PortalHelpSettingsInput): Promise<PortalHelpSettings> {
-    const callable = httpsCallable<PortalHelpSettingsInput, PortalHelpSettings>(
-      functions,
+    const response = await callTracedFunction<PortalHelpSettingsInput, PortalHelpSettings>(
       "updatePortalHelpSettings",
-    );
-    const response = await callable({
+      { source: "portalHelpSettingsService.update" },
+    )({
       faqs: settings.faqs,
       videos: settings.videos,
     });
-    return resolvePortalHelpSettings(response.data);
+    return resolvePortalHelpSettings(response);
   },
 };

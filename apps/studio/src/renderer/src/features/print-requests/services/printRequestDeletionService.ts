@@ -1,5 +1,3 @@
-import { httpsCallable } from "firebase/functions";
-
 import {
   ARCHIVE_PRINT_REQUEST_CONFIRMATION_PHRASE,
   DELETE_PRINT_REQUEST_CONFIRMATION_PHRASE,
@@ -8,7 +6,7 @@ import {
   type PreviewPrintRequestDeletionResponse,
 } from "@fresh-prints/shared/types/deletion/deletion.types";
 
-import { functions } from "../../../config/firebase";
+import { callTracedFunction } from "../../../config/tracedCallable";
 
 function getCallableErrorMessage(error: unknown, fallbackMessage: string): string {
   if (
@@ -29,12 +27,10 @@ export const printRequestDeletionService = {
 
   async preview(printRequestId: string): Promise<PreviewPrintRequestDeletionResponse> {
     try {
-      const callable = httpsCallable<{ printRequestId: string }, PreviewPrintRequestDeletionResponse>(
-        functions,
+      return await callTracedFunction<{ printRequestId: string }, PreviewPrintRequestDeletionResponse>(
         "previewPrintRequestDeletion",
-      );
-      const response = await callable({ printRequestId });
-      return response.data;
+        { source: "printRequestDeletionService.preview" },
+      )({ printRequestId });
     } catch (error) {
       throw new Error(
         getCallableErrorMessage(error, "Unable to preview print request deletion. Please try again."),
@@ -47,12 +43,12 @@ export const printRequestDeletionService = {
     confirmationPhrase: string,
   ): Promise<DeleteEligiblePrintRequestResponse> {
     try {
-      const callable = httpsCallable<
+      return await callTracedFunction<
         { printRequestId: string; confirmationPhrase: string },
         DeleteEligiblePrintRequestResponse
-      >(functions, "deleteEligiblePrintRequest");
-      const response = await callable({ printRequestId, confirmationPhrase });
-      return response.data;
+      >("deleteEligiblePrintRequest", {
+        source: "printRequestDeletionService.deleteEligible",
+      })({ printRequestId, confirmationPhrase });
     } catch (error) {
       throw new Error(
         getCallableErrorMessage(error, "Unable to delete the print request. Please try again."),
@@ -65,12 +61,12 @@ export const printRequestDeletionService = {
     confirmationPhrase: string,
   ): Promise<ArchivePrintRequestResponse> {
     try {
-      const callable = httpsCallable<
+      return await callTracedFunction<
         { printRequestId: string; confirmationPhrase: string },
         ArchivePrintRequestResponse
-      >(functions, "archivePrintRequest");
-      const response = await callable({ printRequestId, confirmationPhrase });
-      return response.data;
+      >("archivePrintRequest", {
+        source: "printRequestDeletionService.archive",
+      })({ printRequestId, confirmationPhrase });
     } catch (error) {
       throw new Error(
         getCallableErrorMessage(error, "Unable to archive the print request. Please try again."),

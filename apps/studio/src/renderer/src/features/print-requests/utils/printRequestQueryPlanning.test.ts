@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { Timestamp } from "firebase/firestore";
 
 import type { PrintRequestItem } from "@fresh-prints/shared/types/printRequest/printRequest.types";
 import {
@@ -11,7 +12,10 @@ import {
 } from "./printRequestQueryPlanning";
 
 function buildItem(
-  input: Pick<PrintRequestItem, "id" | "printRequestId" | "designId" | "quantity"> & {
+  input: Pick<
+    PrintRequestItem,
+    "id" | "printRequestId" | "designId" | "customerUploadId" | "sourceType" | "quantity"
+  > & {
     createdAtMillis?: number;
     sortOrder?: number;
   },
@@ -22,20 +26,27 @@ function buildItem(
     id: input.id,
     printRequestId: input.printRequestId,
     designId: input.designId,
+    customerUploadId: input.customerUploadId,
+    sourceType: input.sourceType,
     quantity: input.quantity,
     sortOrder: input.sortOrder,
     status: "pending",
     addedBy: "staff-1",
-    createdAt: { toMillis: () => createdAtMillis, toDate: () => new Date(createdAtMillis) } as PrintRequestItem["createdAt"],
-    updatedAt: { toMillis: () => 1, toDate: () => new Date(1) } as PrintRequestItem["updatedAt"],
+    createdAt: Timestamp.fromMillis(createdAtMillis),
+    updatedAt: Timestamp.fromMillis(1),
   };
 }
 
 describe("print request query planning", () => {
-  it("orders default request reads by updatedAt descending", () => {
+  it("orders default request reads by updatedAt descending with a document-id tiebreaker", () => {
     assert.deepEqual(buildPrintRequestListQueryPlan(), {
       filters: [],
-      orderBy: [{ field: "updatedAt", direction: "desc" }],
+      orderBy: [
+        { field: "updatedAt", direction: "desc" },
+        { field: "__name__", direction: "desc" },
+      ],
+      limitCount: undefined,
+      cursor: undefined,
     });
   });
 
@@ -49,6 +60,9 @@ describe("print request query planning", () => {
     assert.deepEqual(buildPrintRequestListQueryPlan({ isInternal: true }).filters, [
       { field: "isInternal", operator: "==", value: true },
     ]);
+    assert.deepEqual(buildPrintRequestListQueryPlan({ queueTab: "working" }).filters, [
+      { field: "queueTab", operator: "==", value: "working" },
+    ]);
   });
 
   it("rejects unindexed request filter combinations", () => {
@@ -56,6 +70,17 @@ describe("print request query planning", () => {
       () => buildPrintRequestListQueryPlan({ status: "active", customerId: "customer-1" }),
       /Only one print request list filter/,
     );
+    assert.throws(
+      () => buildPrintRequestListQueryPlan({ queueTab: "working", customerId: "customer-1" }),
+      /Only one print request list filter/,
+    );
+  });
+
+  it("passes through limitCount and cursor unchanged for pagination", () => {
+    const cursor = { requestId: "request-9", updatedAtMillis: 12345 };
+    const plan = buildPrintRequestListQueryPlan({ queueTab: "queued", limitCount: 51, cursor });
+    assert.equal(plan.limitCount, 51);
+    assert.deepEqual(plan.cursor, cursor);
   });
 
   it("plans request-scoped item reads with optional status", () => {
@@ -92,6 +117,32 @@ describe("print request item summaries", () => {
     assert.deepEqual(summaries, {
       "request-1": { totalQuantity: 9, uniqueDesignCount: 2 },
       "request-2": { totalQuantity: 1, uniqueDesignCount: 1 },
+    });
+  });
+
+  it("uses non-colliding stable identities for catalog, upload, and malformed legacy items", () => {
+    const summaries = buildPrintRequestItemSummaries([
+      buildItem({ id: "catalog-1", printRequestId: "request-1", designId: "same", quantity: 1 }),
+      buildItem({
+        id: "upload-1",
+        printRequestId: "request-1",
+        customerUploadId: "same",
+        sourceType: "customer_upload",
+        quantity: 2,
+      }),
+      buildItem({
+        id: "upload-duplicate",
+        printRequestId: "request-1",
+        customerUploadId: "same",
+        sourceType: "customer_upload",
+        quantity: 3,
+      }),
+      buildItem({ id: "legacy-missing", printRequestId: "request-1", quantity: 4 }),
+    ]);
+
+    assert.deepEqual(summaries["request-1"], {
+      totalQuantity: 10,
+      uniqueDesignCount: 3,
     });
   });
 });

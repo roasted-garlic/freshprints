@@ -93,13 +93,13 @@ describe("buildAssistedCreationAnswerDisplayRows", () => {
 
   it("includes selected enums, multi-selects, and reference usage", () => {
     const answers = createEmptyAssistedCreationAnswers();
-    answers.requestType = "quote_text";
-    answers.containsText = "flexible_wording";
-    answers.flexibilityLevel = "somewhat_flexible";
-    answers.composition = "centered";
-    answers.personalizationTypes = ["name", "date"];
+    answers.requestType = "phrase_or_saying";
+    answers.containsText = "need_help_with_wording";
+    answers.flexibilityLevel = "close_match_fine";
+    answers.composition = "centered_main_subject";
+    answers.personalizationTypes = ["name", "date_or_year"];
     answers.stylePreferences = ["funny", "bold"];
-    answers.exactRequirements = ["colors"];
+    answers.exactRequirements = ["specific_colors"];
     answers.referenceUsage = ["style_inspiration", "clone_with_subtle_changes"];
     answers.includedColors = "teal";
     answers.excludedColors = "neon";
@@ -112,9 +112,9 @@ describe("buildAssistedCreationAnswerDisplayRows", () => {
       buildAssistedCreationAnswerDisplayRows(answers).map((row) => [row.label, row.value]),
     );
 
-    assert.match(byLabel["Request type"] ?? "", /quote|text/i);
-    assert.match(byLabel.Wording ?? "", /flexible/i);
-    assert.match(byLabel.Flexibility ?? "", /somewhat/i);
+    assert.match(byLabel["Request type"] ?? "", /phrase|saying/i);
+    assert.match(byLabel.Wording ?? "", /need help/i);
+    assert.match(byLabel.Flexibility ?? "", /close match/i);
     assert.match(byLabel.Composition ?? "", /center/i);
     assert.match(byLabel.Personalization ?? "", /name/i);
     assert.match(byLabel.Styles ?? "", /Funny/);

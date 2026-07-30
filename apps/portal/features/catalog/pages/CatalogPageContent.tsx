@@ -108,7 +108,7 @@ export function CatalogPageContent() {
     : null;
 
   const { categories } = useCatalogCategories();
-  const { tags: approvedTags } = useCatalogTags();
+  const { tags: approvedTags, error: approvedTagsError } = useCatalogTags();
   const {
     catalogDesigns,
     designs: displayedDesigns,
@@ -611,6 +611,7 @@ export function CatalogPageContent() {
 
       <CatalogTagFilterModal
         approvedTags={approvedTags}
+        error={approvedTagsError}
         isOpen={isTagFilterModalOpen}
         onApply={(nextTags) => setSelectedTags(sortCatalogTags(nextTags))}
         onClose={() => setIsTagFilterModalOpen(false)}

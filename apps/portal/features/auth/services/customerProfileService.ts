@@ -2,9 +2,22 @@ import { collection, getDocs, limit, query, where, type DocumentData } from 'fir
 
 import type { Customer } from '@fresh-prints/shared/types/customer/customer.types';
 import { parseCustomerSignupSource } from '@fresh-prints/shared/utils/customerSignupSource';
+import {
+  traceFirestoreOneShotComplete,
+  traceFirestoreOneShotStart,
+} from '@fresh-prints/shared/utils/firestoreUsageTrace';
 
 import { getPortalDb } from '../../../lib/firebase/client';
 import { mapFirestoreTimestamp } from '../../firebase/utils/mapFirestoreTimestamp';
+
+const CUSTOMER_PROFILE_TRACE = {
+  app: 'portal' as const,
+  collection: 'customers',
+  constraints: ['userId==currentUser'],
+  limit: 1,
+  source: 'customerProfileService.getCustomerByUserId',
+  triggerReason: 'authentication' as const,
+};
 
 interface CustomerDocumentData extends DocumentData {
   userId?: unknown;
@@ -70,9 +83,11 @@ function mapCustomer(customerId: string, data: CustomerDocumentData): Customer {
 
 export const customerProfileService = {
   async getCustomerByUserId(userId: string): Promise<Customer | null> {
+    traceFirestoreOneShotStart('getDocs', CUSTOMER_PROFILE_TRACE);
     const snapshot = await getDocs(
       query(collection(getPortalDb(), 'customers'), where('userId', '==', userId), limit(1)),
     );
+    traceFirestoreOneShotComplete('getDocs', CUSTOMER_PROFILE_TRACE, snapshot.size);
 
     if (snapshot.empty) {
       return null;

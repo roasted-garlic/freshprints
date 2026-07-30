@@ -242,7 +242,7 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
       toastQueueRef.current.push({
         alertKind: alert.alertKind,
         title: alert.title,
-        subtitle: alert.subtitle,
+        message: alert.message,
         navigationPath: alert.navigationPath,
         id: `staff-inbox-toast-${toastSequenceRef.current}`,
       });

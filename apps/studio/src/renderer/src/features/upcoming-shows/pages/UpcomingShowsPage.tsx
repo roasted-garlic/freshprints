@@ -37,7 +37,7 @@ import {
   MIN_PORTAL_QUEUE_CUTOFF_HOURS_BEFORE_START,
 } from "../services/showQueueSettingsService";
 import { useWhatnotShowImport, type WhatnotShowImportSummary } from "../hooks/useWhatnotShowImport";
-import { usePrintRequests } from "../../print-requests/hooks/usePrintRequests";
+import { useShowQueuePrintRequests } from "../hooks/useShowQueuePrintRequests";
 import { usePrintRequestAllocationTotals } from "../../print-requests/hooks/usePrintRequestAllocationTotals";
 import { usePrintRequestDetails } from "../../print-requests/hooks/usePrintRequestDetails";
 import { getPrintRequestsPath } from "../../print-requests/constants/printRequestRoutes";
@@ -56,6 +56,7 @@ import {
   getShowScheduleTab,
   isPastScheduledShow,
   PAST_SHOW_READ_ONLY_MESSAGE,
+  resolveScheduleTabForStillExistingSelection,
   resolveVisibleShowSelection,
   type ShowScheduleTab,
 } from "../utils/groupShowsByUpcomingPast";
@@ -69,8 +70,9 @@ import {
   getShowCapacityPercent,
 } from "@fresh-prints/shared/utils/showCapacityDisplay";
 import { canRemoveRequestFromShow } from "@fresh-prints/shared/utils/showQueueEditability";
-import { isPrintRequestFullyPrinted } from "@fresh-prints/shared/utils/printRequestQueueState";
 import { derivePrintRequestListTab } from "@fresh-prints/shared/utils/printRequestListGrouping";
+import { buildShowQueuePrintRequestOptions } from "../utils/showQueuePrintRequestSources";
+import { refreshSelectedShowGangSheetCache } from "../utils/gangSheetCacheRefresh";
 import { parseDateTimeInputToTimestamp } from "../utils/upcomingShowDateTimeInput";
 import {
   formatUpcomingShowTimestampLabel,
@@ -110,12 +112,14 @@ export function UpcomingShowsPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
-  const { shows, error: loadError, isLoading, reloadUpcomingShows } = useUpcomingShows();
-  const { requests, summariesByRequestId } = usePrintRequests();
+  const [selectedShowId, setSelectedShowId] = useState<string | null>(null);
+  // Plan Section 22.5 (Amendment 4, Fix 3 extended): live-subscribe only the currently selected
+  // show's own document, so its `allocatedQuantity`/capacity fields reflect a Portal-submitted
+  // allocation without a remount — bounded to one show, never the whole collection.
+  const { shows, error: loadError, isLoading, reloadUpcomingShows } = useUpcomingShows(selectedShowId);
   const { totalsByRequestId: allocationTotalsByRequestId } = usePrintRequestAllocationTotals();
   const showQueueSettings = useShowQueueSettings();
 
-  const [selectedShowId, setSelectedShowId] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [createForm, setCreateForm] = useState<CreateShowFormState>(DEFAULT_CREATE_SHOW_FORM);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -322,6 +326,26 @@ export function UpcomingShowsPage() {
       return;
     }
 
+    // Plan Section 29.4: a still-existing selected show can silently drop out of the ACTIVE tab's
+    // visible list purely because its schedule-tab classification changed (e.g. its scheduled start
+    // time passed "now" between a Finish action and this effect's own post-Finish refresh) — not
+    // because the owner navigated away from it. Auto-switching the tab to wherever that show now
+    // lives preserves the owner's view of it (and any in-progress retry warning/state keyed on its
+    // id) instead of silently falling back to a different show. This mirrors the query-param path
+    // above (lines 307-312), which already does exactly this when arriving via a direct link;
+    // this extends the same behavior to the general case.
+    const reclassifiedTab = resolveScheduleTabForStillExistingSelection(
+      shows,
+      selectedShowId,
+      activeScheduleTab,
+      new Date(),
+    );
+    if (reclassifiedTab) {
+      hasHydratedFromQueryRef.current = true;
+      setActiveScheduleTab(reclassifiedTab);
+      return;
+    }
+
     hasHydratedFromQueryRef.current = true;
 
     const nextSelectedShowId = resolveVisibleShowSelection(visibleShows, selectedShowId);
@@ -420,6 +444,17 @@ export function UpcomingShowsPage() {
 
   const { allocations, reloadAllocations } = useShowAllocations(selectedShowId);
   const requestGroups = useMemo(() => groupAllocationsByRequest(allocations), [allocations]);
+  const attachedRequestIds = useMemo(
+    () => [...new Set(allocations.map((allocation) => allocation.printRequestId))],
+    [allocations],
+  );
+  const {
+    requests,
+    summariesByRequestId,
+    hasMore: hasMoreShowQueueRequests,
+    isLoadingMore: isLoadingMoreShowQueueRequests,
+    loadMore: loadMoreShowQueueRequests,
+  } = useShowQueuePrintRequests(attachedRequestIds);
 
   useEffect(() => {
     if (!highlightedRequestIdParam || requestGroups.length === 0) {
@@ -527,6 +562,12 @@ export function UpcomingShowsPage() {
 
   const [isExportGangSheetModalOpen, setIsExportGangSheetModalOpen] = useState(false);
   const exportGangSheetPngState = useExportGangSheetPng();
+  const {
+    clearCacheForShow: clearGangSheetCacheForShow,
+    hasGeneratedCache: hasGeneratedGangSheetCache,
+    refreshCacheStatus: refreshGangSheetCacheStatus,
+    reset: resetGangSheetExport,
+  } = exportGangSheetPngState;
   const gangSheetLayoutSettings = useMemo(
     () => ({
       sheetWidthInches: showQueueSettings.settings.gangSheetWidthInches ?? DEFAULT_GANG_SHEET_WIDTH_INCHES,
@@ -551,20 +592,22 @@ export function UpcomingShowsPage() {
   );
 
   useEffect(() => {
-    if (!selectedShow) {
-      exportGangSheetPngState.reset();
-      return;
-    }
-
-    if (isSelectedShowPast) {
-      void exportGangSheetPngState.clearCacheForShow(selectedShow.id);
-      return;
-    }
-
-    void exportGangSheetPngState.refreshCacheStatus(selectedShow, gangSheetLayoutSettings);
-    // Intentionally keyed to show/settings identity, not the whole hook object.
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- stable show/settings triggers only
-  }, [selectedShow?.id, isSelectedShowPast, gangSheetLayoutSettings]);
+    void refreshSelectedShowGangSheetCache({
+      show: selectedShow,
+      isPast: isSelectedShowPast,
+      settings: gangSheetLayoutSettings,
+      reset: resetGangSheetExport,
+      clearForShow: clearGangSheetCacheForShow,
+      refresh: refreshGangSheetCacheStatus,
+    });
+  }, [
+    clearGangSheetCacheForShow,
+    gangSheetLayoutSettings,
+    isSelectedShowPast,
+    refreshGangSheetCacheStatus,
+    resetGangSheetExport,
+    selectedShow,
+  ]);
 
   const openExportGangSheetModal = useCallback(() => {
     if (isSelectedShowPast || !selectedShow) {
@@ -573,16 +616,16 @@ export function UpcomingShowsPage() {
 
     void (async () => {
       // Ensure cache status is loaded before opening so Export skips the generate prompt.
-      if (!exportGangSheetPngState.hasGeneratedCache) {
-        await exportGangSheetPngState.refreshCacheStatus(selectedShow, gangSheetLayoutSettings);
+      if (!hasGeneratedGangSheetCache) {
+        await refreshGangSheetCacheStatus(selectedShow, gangSheetLayoutSettings);
       }
       setIsExportGangSheetModalOpen(true);
     })();
   }, [
-    exportGangSheetPngState.hasGeneratedCache,
-    exportGangSheetPngState.refreshCacheStatus,
     gangSheetLayoutSettings,
+    hasGeneratedGangSheetCache,
     isSelectedShowPast,
+    refreshGangSheetCacheStatus,
     selectedShow,
   ]);
 
@@ -802,28 +845,13 @@ export function UpcomingShowsPage() {
   );
 
   const requestOptions = useMemo(
-    () => [
-      { label: "Choose a request", value: "" },
-      ...requests
-        .filter((request) => !printRequestIdsAlreadyOnSelectedShow.has(request.id))
-        .filter((request) => {
-          const summary = summariesByRequestId[request.id];
-          const allocationTotals = allocationTotalsByRequestId[request.id] ?? {
-            totalAllocatedQuantity: 0,
-            totalInProgressQuantity: 0,
-            totalPrintedQuantity: 0,
-          };
-
-          return !isPrintRequestFullyPrinted({
-            status: request.status,
-            totalRequestedQuantity: summary?.totalQuantity ?? 0,
-            totalAllocatedQuantity: allocationTotals.totalAllocatedQuantity,
-            totalInProgressQuantity: allocationTotals.totalInProgressQuantity,
-            totalPrintedQuantity: allocationTotals.totalPrintedQuantity,
-          });
-        })
-        .map((request) => ({ label: request.name, value: request.id })),
-    ],
+    () =>
+      buildShowQueuePrintRequestOptions({
+        requests,
+        summariesByRequestId,
+        allocationTotalsByRequestId,
+        requestIdsAlreadyOnShow: printRequestIdsAlreadyOnSelectedShow,
+      }),
     [allocationTotalsByRequestId, printRequestIdsAlreadyOnSelectedShow, requests, summariesByRequestId],
   );
 
@@ -1147,6 +1175,25 @@ export function UpcomingShowsPage() {
                       <p className="print-requests-error show-production-timer-error" role="alert">
                         {productionTimer.actionError}
                       </p>
+                    ) : null}
+                    {productionTimer.reconciliationRetryUiState !== "none" ? (
+                      <div role="status">
+                        <p className="show-production-timer-copy">
+                          {productionTimer.reconciliationRetryUiState === "finalizing"
+                            ? "Finalizing request updates…"
+                            : productionTimer.actionWarning}
+                        </p>
+                        {productionTimer.reconciliationRetryUiState === "retryable" ? (
+                          <Button
+                            disabled={productionTimer.retryButtonDisabled}
+                            onClick={() => void productionTimer.retryReconciliation()}
+                            size="sm"
+                            variant="secondary"
+                          >
+                            {productionTimer.retryButtonLabel}
+                          </Button>
+                        ) : null}
+                      </div>
                     ) : null}
                   </Card>
                 ) : null}
@@ -1530,6 +1577,16 @@ export function UpcomingShowsPage() {
                 options={requestOptions}
                 value={addRequestId}
               />
+              {hasMoreShowQueueRequests ? (
+                <Button
+                  disabled={isLoadingMoreShowQueueRequests}
+                  onClick={() => void loadMoreShowQueueRequests()}
+                  size="sm"
+                  variant="secondary"
+                >
+                  {isLoadingMoreShowQueueRequests ? "Loading…" : "Load more requests"}
+                </Button>
+              ) : null}
 
               {actionError ? (
                 <p className="auth-message auth-message-error" role="alert">

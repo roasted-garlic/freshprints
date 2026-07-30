@@ -3,9 +3,8 @@ import type {
   UpdateCustomerResponse,
 } from "@fresh-prints/shared/types/customer/updateCustomer.types";
 import { FirebaseError } from "firebase/app";
-import { httpsCallable } from "firebase/functions";
 
-import { functions } from "../../../config/firebase";
+import { callTracedFunction } from "../../../config/tracedCallable";
 
 function getCallableErrorMessage(error: unknown, fallbackMessage: string): string {
   if (!(error instanceof FirebaseError)) {
@@ -33,12 +32,10 @@ function getCallableErrorMessage(error: unknown, fallbackMessage: string): strin
 export const customerUpdateService = {
   async updateCustomer(input: UpdateCustomerRequest): Promise<UpdateCustomerResponse> {
     try {
-      const callable = httpsCallable<UpdateCustomerRequest, UpdateCustomerResponse>(
-        functions,
+      return await callTracedFunction<UpdateCustomerRequest, UpdateCustomerResponse>(
         "updateCustomer",
-      );
-      const response = await callable(input);
-      return response.data;
+        { source: "customerUpdateService.updateCustomer" },
+      )(input);
     } catch (error) {
       throw new Error(getCallableErrorMessage(error, "Unable to update the customer. Please try again."));
     }

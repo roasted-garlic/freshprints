@@ -19,4 +19,18 @@ export interface AddPortalCatalogDesignToPrintRequestResponse {
   printRequestId: string;
   designId: string;
   quantity: number;
+  item: {
+    id: string;
+    printRequestId: string;
+    designId: string;
+    quantity: number;
+    printWidthInches?: number;
+    printHeightInches?: number;
+    sizeLabel?: string;
+    sortOrder?: number;
+    status: "pending";
+    addedBy: string;
+    createdAtMs: number;
+    updatedAtMs: number;
+  };
 }

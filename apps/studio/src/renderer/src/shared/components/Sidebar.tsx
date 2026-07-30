@@ -356,11 +356,11 @@ export function Sidebar() {
       />
       <div className="sidebar-brand">
         <NavLink
-          aria-label="Go to Design Library home"
+          aria-label="Go to Inbox home"
           className="sidebar-brand-link"
           end
-          title="Design Library"
-          to="/designs"
+          title="Inbox"
+          to="/inbox"
         >
           {isCollapsed ? (
             <AppLogo

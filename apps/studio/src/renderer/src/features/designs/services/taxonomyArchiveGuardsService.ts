@@ -1,5 +1,3 @@
-import { httpsCallable } from "firebase/functions";
-
 import type {
   ArchiveCategoryWithGuardsResponse,
   ArchiveTagWithGuardsResponse,
@@ -7,7 +5,7 @@ import type {
   PreviewTagArchiveResponse,
 } from "@fresh-prints/shared/types/deletion/deletion.types";
 
-import { functions } from "../../../config/firebase";
+import { callTracedFunction } from "../../../config/tracedCallable";
 
 function getCallableErrorMessage(error: unknown, fallbackMessage: string): string {
   if (
@@ -25,12 +23,10 @@ function getCallableErrorMessage(error: unknown, fallbackMessage: string): strin
 export const taxonomyArchiveGuardsService = {
   async previewCategory(categoryId: string): Promise<PreviewCategoryArchiveResponse> {
     try {
-      const callable = httpsCallable<{ categoryId: string }, PreviewCategoryArchiveResponse>(
-        functions,
+      return await callTracedFunction<{ categoryId: string }, PreviewCategoryArchiveResponse>(
         "previewCategoryArchive",
-      );
-      const response = await callable({ categoryId });
-      return response.data;
+        { source: "taxonomyArchiveGuardsService.previewCategory" },
+      )({ categoryId });
     } catch (error) {
       throw new Error(
         getCallableErrorMessage(error, "Unable to preview category archive. Please try again."),
@@ -40,12 +36,10 @@ export const taxonomyArchiveGuardsService = {
 
   async archiveCategory(categoryId: string): Promise<ArchiveCategoryWithGuardsResponse> {
     try {
-      const callable = httpsCallable<{ categoryId: string }, ArchiveCategoryWithGuardsResponse>(
-        functions,
+      return await callTracedFunction<{ categoryId: string }, ArchiveCategoryWithGuardsResponse>(
         "archiveCategoryWithGuards",
-      );
-      const response = await callable({ categoryId });
-      return response.data;
+        { source: "taxonomyArchiveGuardsService.archiveCategory" },
+      )({ categoryId });
     } catch (error) {
       throw new Error(
         getCallableErrorMessage(error, "Unable to archive the category. Please try again."),
@@ -55,12 +49,10 @@ export const taxonomyArchiveGuardsService = {
 
   async previewTag(tagId: string): Promise<PreviewTagArchiveResponse> {
     try {
-      const callable = httpsCallable<{ tagId: string }, PreviewTagArchiveResponse>(
-        functions,
+      return await callTracedFunction<{ tagId: string }, PreviewTagArchiveResponse>(
         "previewTagArchive",
-      );
-      const response = await callable({ tagId });
-      return response.data;
+        { source: "taxonomyArchiveGuardsService.previewTag" },
+      )({ tagId });
     } catch (error) {
       throw new Error(getCallableErrorMessage(error, "Unable to preview tag archive. Please try again."));
     }
@@ -68,12 +60,10 @@ export const taxonomyArchiveGuardsService = {
 
   async archiveTag(tagId: string): Promise<ArchiveTagWithGuardsResponse> {
     try {
-      const callable = httpsCallable<{ tagId: string }, ArchiveTagWithGuardsResponse>(
-        functions,
+      return await callTracedFunction<{ tagId: string }, ArchiveTagWithGuardsResponse>(
         "archiveTagWithGuards",
-      );
-      const response = await callable({ tagId });
-      return response.data;
+        { source: "taxonomyArchiveGuardsService.archiveTag" },
+      )({ tagId });
     } catch (error) {
       throw new Error(getCallableErrorMessage(error, "Unable to archive the tag. Please try again."));
     }

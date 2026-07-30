@@ -1,11 +1,10 @@
 import { FirebaseError } from "firebase/app";
-import { httpsCallable } from "firebase/functions";
 
 import type {
   AiEnrichmentTagRerankPlaygroundRequest,
   AiEnrichmentTagRerankPlaygroundResponse,
 } from "@fresh-prints/shared/types/ai/aiEnrichmentPlayground.types";
-import { functions } from "../../../config/firebase";
+import { callTracedFunction } from "../../../config/tracedCallable";
 import { resolveClientVisionModelId } from "../constants/aiEnrichmentSettingsConstants";
 
 export const aiEnrichmentTagRerankPlaygroundService = {
@@ -13,17 +12,15 @@ export const aiEnrichmentTagRerankPlaygroundService = {
     input: AiEnrichmentTagRerankPlaygroundRequest,
   ): Promise<AiEnrichmentTagRerankPlaygroundResponse> {
     try {
-      const runCallable = httpsCallable<
+      return await callTracedFunction<
         AiEnrichmentTagRerankPlaygroundRequest,
         AiEnrichmentTagRerankPlaygroundResponse
-      >(functions, "testAiEnrichmentTagRerank");
-
-      const response = await runCallable({
+      >("testAiEnrichmentTagRerank", {
+        source: "aiEnrichmentTagRerankPlaygroundService.runTagRerank",
+      })({
         ...input,
         visionModelId: resolveClientVisionModelId(input.visionModelId),
       });
-
-      return response.data;
     } catch (error) {
       throw new Error(resolveTagRerankPlaygroundErrorMessage(error));
     }

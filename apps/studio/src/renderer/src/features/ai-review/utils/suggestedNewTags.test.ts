@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import type { SuggestedNewTag } from "@fresh-prints/shared/types/catalogTag.types";
+import type { AiReviewDraftForm } from "../types/aiReviewInbox.types";
 import { addApprovedSuggestedTagToDraftTags, filterIgnoredSuggestedTags } from "./suggestedNewTags";
 
 const suggestedTags: SuggestedNewTag[] = [
@@ -28,9 +29,12 @@ describe("suggestedNewTags", () => {
   });
 
   it("adds an approved suggestion to draft tags without duplicating", () => {
-    const draft = {
+    const draft: AiReviewDraftForm = {
+      artworkBackgroundCustomHex: "",
+      artworkBackgroundPreset: "grey",
       categoryId: "",
       description: "",
+      markAsHalftone: false,
       tagsInput: "summer",
       title: "",
     };

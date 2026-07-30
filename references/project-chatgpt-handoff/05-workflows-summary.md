@@ -110,7 +110,16 @@ Attach print requests / allocations
 Production timer → Printing tab for customers
     ↓
 Export zip (300 DPI) and/or auto-nested gang sheet PNGs
+    ↓
+Finish → terminal allocations + exact request completion
+    ↓
+Studio locks/places completed requests; Portal shows Printed
 ```
+
+The post-Finish reconciliation is bounded to the selected show's exact related request/allocation
+IDs. Persisted completion shows no Retry action; genuine retryable and remediation-only outcomes
+remain distinct. Owner QA v18 passed immediate completion and navigation reconstruction on
+2026-07-29.
 
 Gang sheet **manual builder** canvas is deferred (post-MVP).
 

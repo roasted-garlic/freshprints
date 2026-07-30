@@ -4,13 +4,15 @@ import { RefreshCw } from "lucide-react";
 import { useShellHeaderConfig } from "../../../shared/hooks/useShellHeaderConfig";
 import { CustomerUploadIntakeSection } from "../components/CustomerUploadIntakeSection";
 import { useCustomerUploadIntake } from "../hooks/useCustomerUploadIntake";
+import { invokeCustomerUploadRefresh } from "../utils/customerUploadRefreshAction";
 
 export function DonatedDesignsPage() {
   const intake = useCustomerUploadIntake({ purposeScope: "catalog_donation" });
+  const { canView, refresh } = intake;
 
   const handleRefresh = useCallback(() => {
-    void intake.refresh();
-  }, [intake.refresh]);
+    invokeCustomerUploadRefresh(refresh);
+  }, [refresh]);
 
   useShellHeaderConfig(
     useMemo(
@@ -19,7 +21,7 @@ export function DonatedDesignsPage() {
         description:
           "Customer donations for the shared Design Library. Review here, then send to AI Processing or exclude.",
         search: null,
-        actions: intake.canView
+        actions: canView
           ? [
               {
                 icon: <RefreshCw aria-hidden="true" size={16} strokeWidth={2} />,
@@ -30,7 +32,7 @@ export function DonatedDesignsPage() {
           : null,
         primaryAction: null,
       }),
-      [handleRefresh, intake.canView],
+      [canView, handleRefresh],
     ),
   );
 

@@ -61,4 +61,6 @@ export type CustomerUploadTechnicalFailureCode =
   | "processing_failed"
   | "upload_missing"
   | "path_mismatch"
-  | "animated_rejected";
+  | "animated_rejected"
+  /** In-invocation stage watchdog tripped before the platform's own timeout could (ADR-FP-125). */
+  | "processing_timed_out";

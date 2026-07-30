@@ -6,7 +6,7 @@ import type { CustomerUploadPurpose } from "@fresh-prints/shared/types/customerU
 import { resolveCustomerUploadPurpose } from "@fresh-prints/shared/utils/customerUploadPurpose";
 import {
   traceFirestoreListenerAttach,
-  traceFirestoreRead,
+  traceFirestoreListenerEmission,
   traceWrappedUnsubscribe,
 } from "@fresh-prints/shared/utils/firestoreUsageTrace";
 
@@ -14,7 +14,13 @@ import { db } from "../../../config/firebase";
 import { useAuth } from "../../auth/hooks/useAuth";
 import { permissionService } from "../../permissions/services/permissionService";
 
-const TRACE_KEY = "customerUploads:catalogReviewStatus=pending_staff_review";
+const TRACE_METADATA = {
+  app: "studio" as const,
+  collection: CUSTOMER_UPLOAD_COLLECTIONS.customerUploads,
+  constraints: ["catalogReviewStatus==pending_staff_review"],
+  source: "usePendingCustomerUploadCounts",
+  triggerReason: "authentication" as const,
+};
 
 export interface PendingCustomerUploadCounts {
   catalogDonation: number;
@@ -46,11 +52,11 @@ export function usePendingCustomerUploadCounts(): PendingCustomerUploadCounts {
       where("catalogReviewStatus", "==", "pending_staff_review"),
     );
 
-    traceFirestoreListenerAttach(TRACE_KEY);
+    traceFirestoreListenerAttach(TRACE_METADATA);
     const unsubscribe = onSnapshot(
       pendingQuery,
       (snapshot) => {
-        traceFirestoreRead("onSnapshotEmit", TRACE_KEY);
+        traceFirestoreListenerEmission(TRACE_METADATA, snapshot.size);
         let printRequest = 0;
         let catalogDonation = 0;
 
@@ -71,7 +77,7 @@ export function usePendingCustomerUploadCounts(): PendingCustomerUploadCounts {
       },
     );
 
-    return traceWrappedUnsubscribe(TRACE_KEY, unsubscribe);
+    return traceWrappedUnsubscribe(TRACE_METADATA, unsubscribe);
   }, [canView]);
 
   return counts;

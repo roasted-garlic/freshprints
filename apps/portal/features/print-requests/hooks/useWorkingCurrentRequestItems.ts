@@ -13,6 +13,7 @@ import {
 import {
   portalPrintRequestService,
 } from '../services/portalPrintRequestService';
+import { catalogService } from '../../catalog/services/catalogService';
 import type { CustomerUploadDocSummary } from '../../customer-uploads/services/customerUploadService';
 import { mergeServerWorkingItemsWithLocal } from '../utils/mergeServerWorkingItemsWithLocal';
 import { sortWorkingCurrentRequestItems } from '../utils/sortWorkingCurrentRequestItems';
@@ -64,7 +65,7 @@ function toItemLike(
 export function useWorkingCurrentRequestItems(workingRequest: PrintRequest | null) {
   const [items, setItems] = useState<PrintRequestItem[]>([]);
   const [designSummaries, setDesignSummaries] = useState<
-    Map<string, Awaited<ReturnType<typeof portalPrintRequestService.getReadyDesign>>>
+    Map<string, PortalRequestDesignSummary>
   >(new Map());
   const designSummariesRef = useRef(designSummaries);
   designSummariesRef.current = designSummaries;
@@ -275,7 +276,17 @@ export function useWorkingCurrentRequestItems(workingRequest: PrintRequest | nul
     });
   }, []);
 
-  type DesignSummary = Awaited<ReturnType<typeof portalPrintRequestService.getReadyDesign>>;
+  /**
+   * Invalidates any in-flight item load without fetching or clearing local state — a mutation
+   * (e.g. Clear Request) that has already reconciled items locally uses this so a pre-mutation
+   * read resolving late cannot resurrect stale rows (owner live-test evidence, 2026-07-25).
+   */
+  const discardPendingWorkingItemLoads = useCallback(() => {
+    reloadEpochRef.current += 1;
+    setIsLoadingItems(false);
+  }, []);
+
+  type DesignSummary = PortalRequestDesignSummary;
 
   const seedDesignSummary = useCallback((designId: string, summary: DesignSummary) => {
     const trimmed = designId.trim();
@@ -307,20 +318,13 @@ export function useWorkingCurrentRequestItems(workingRequest: PrintRequest | nul
       return;
     }
 
-    const fetched = await Promise.all(
-      missingIds.map(async (designId) => {
-        try {
-          const design = await portalPrintRequestService.getReadyDesign(designId);
-          return [designId, design] as const;
-        } catch {
-          return [designId, null] as const;
-        }
-      }),
-    );
+    const designs = await catalogService.getReadyDesignsByIds(missingIds);
+    const fetched = new Map(designs.map((design) => [design.id, design]));
 
     setDesignSummaries((previous) => {
       const next = new Map(previous);
-      for (const [designId, design] of fetched) {
+      for (const designId of missingIds) {
+        const design = fetched.get(designId);
         if (design) {
           next.set(designId, design);
         }
@@ -342,6 +346,7 @@ export function useWorkingCurrentRequestItems(workingRequest: PrintRequest | nul
     hydratedWorkingRequestId,
     itemsError,
     beginPendingItemRemovals,
+    discardPendingWorkingItemLoads,
     endPendingItemRemovals,
     ensureDesignSummaries,
     patchWorkingItems,
@@ -349,4 +354,16 @@ export function useWorkingCurrentRequestItems(workingRequest: PrintRequest | nul
     reloadWorkingItems,
     resetWorkingCart,
   };
+}
+export interface PortalRequestDesignSummary {
+  id: string;
+  title: string;
+  width: number;
+  height: number;
+  thumbnailPath?: string;
+  previewPath?: string;
+  artworkBackgroundHex?: string;
+  printWidthInches?: number;
+  printHeightInches?: number;
+  updatedAtMs?: number;
 }

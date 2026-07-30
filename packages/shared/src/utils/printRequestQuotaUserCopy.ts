@@ -16,5 +16,5 @@ function finitePositive(value: number | null | undefined): number | null {
  */
 export function formatShowCustomerLimitUserMessage(cap?: number | null): string {
   const safeCap = finitePositive(cap) ?? 25;
-  return `You've used all ${safeCap} print spots on this show. Choose another show for more designs.`;
+  return `You've used all ${safeCap} of your print spots on this show. Choose another show for more designs.`;
 }

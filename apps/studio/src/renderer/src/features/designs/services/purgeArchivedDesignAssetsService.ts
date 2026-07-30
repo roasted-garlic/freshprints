@@ -1,13 +1,13 @@
 import { FirebaseError } from "firebase/app";
 import { collection, getDocs, query, where } from "firebase/firestore";
-import { httpsCallable } from "firebase/functions";
 
 import type {
   PurgeArchivedDesignAssetsRequest,
   PurgeArchivedDesignAssetsResponse,
 } from "@fresh-prints/shared/types/admin/purgeArchivedDesignAssets.types";
 
-import { db, functions } from "../../../config/firebase";
+import { db } from "../../../config/firebase";
+import { callTracedFunction } from "../../../config/tracedCallable";
 
 const ACTIVE_ALLOCATION_STATUSES = new Set(["pending", "queued", "in_progress"]);
 
@@ -80,12 +80,10 @@ export async function purgeArchivedDesignAssets(
   input: PurgeArchivedDesignAssetsRequest,
 ): Promise<PurgeArchivedDesignAssetsResponse> {
   try {
-    const callable = httpsCallable<PurgeArchivedDesignAssetsRequest, PurgeArchivedDesignAssetsResponse>(
-      functions,
+    return await callTracedFunction<PurgeArchivedDesignAssetsRequest, PurgeArchivedDesignAssetsResponse>(
       "purgeArchivedDesignAssets",
-    );
-    const response = await callable(input);
-    return response.data;
+      { source: "purgeArchivedDesignAssetsService.purgeArchivedDesignAssets" },
+    )(input);
   } catch (error) {
     throw new Error(
       getCallableErrorMessage(error, "Unable to delete archived design images. Please try again."),

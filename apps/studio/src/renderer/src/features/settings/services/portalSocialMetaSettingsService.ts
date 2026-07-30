@@ -1,5 +1,4 @@
 import { doc, onSnapshot, type Unsubscribe } from "firebase/firestore";
-import { httpsCallable } from "firebase/functions";
 
 import {
   PORTAL_SOCIAL_META_SETTINGS_DOC_ID,
@@ -7,7 +6,21 @@ import {
   type PortalSocialMetaSettings,
   type PortalSocialMetaSettingsInput,
 } from "@fresh-prints/shared/constants/portal/portalSocialMetaSettings.constants";
-import { db, functions } from "../../../config/firebase";
+import { db } from "../../../config/firebase";
+import { callTracedFunction } from "../../../config/tracedCallable";
+
+export function buildPortalSocialMetaSettingsPayload(
+  settings: PortalSocialMetaSettingsInput,
+): PortalSocialMetaSettingsInput {
+  return {
+    ogTitle: settings.ogTitle,
+    ogDescription: settings.ogDescription,
+    letterboxOgImages: settings.letterboxOgImages,
+    globalOgImageSource: settings.globalOgImageSource,
+    libraryOgRotationInterval: settings.libraryOgRotationInterval,
+    libraryOgRotationSalt: settings.libraryOgRotationSalt,
+  };
+}
 
 export const portalSocialMetaSettingsService = {
   subscribe(
@@ -22,17 +35,10 @@ export const portalSocialMetaSettingsService = {
   },
 
   async update(settings: PortalSocialMetaSettingsInput): Promise<PortalSocialMetaSettings> {
-    const callable = httpsCallable<PortalSocialMetaSettingsInput, PortalSocialMetaSettings>(
-      functions,
+    const response = await callTracedFunction<PortalSocialMetaSettingsInput, PortalSocialMetaSettings>(
       "updatePortalSocialMetaSettings",
-    );
-    const response = await callable({
-      ogTitle: settings.ogTitle,
-      ogDescription: settings.ogDescription,
-      letterboxOgImages: settings.letterboxOgImages,
-      globalOgImageSource: settings.globalOgImageSource,
-      libraryOgRotationSalt: settings.libraryOgRotationSalt,
-    });
-    return resolvePortalSocialMetaSettings(response.data);
+      { source: "portalSocialMetaSettingsService.update" },
+    )(buildPortalSocialMetaSettingsPayload(settings));
+    return resolvePortalSocialMetaSettings(response);
   },
 };

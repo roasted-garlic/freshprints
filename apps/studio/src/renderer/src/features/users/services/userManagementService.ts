@@ -5,9 +5,8 @@ import type {
   UpdateTeamUserResult,
 } from "../types/userManagement.types";
 import { FirebaseError } from "firebase/app";
-import { httpsCallable } from "firebase/functions";
 
-import { functions } from "../../../config/firebase";
+import { callTracedFunction } from "../../../config/tracedCallable";
 
 const genericCallableMessages = new Set([
   "internal",
@@ -64,12 +63,10 @@ function getCallableErrorMessage(error: unknown, fallbackMessage: string): strin
 export const userManagementService = {
   async createTeamUser(input: CreateTeamUserInput): Promise<CreateTeamUserResult> {
     try {
-      const createTeamUserCallable = httpsCallable<CreateTeamUserInput, CreateTeamUserResult>(
-        functions,
+      return await callTracedFunction<CreateTeamUserInput, CreateTeamUserResult>(
         "createTeamUser",
-      );
-      const response = await createTeamUserCallable(input);
-      return response.data;
+        { source: "userManagementService.createTeamUser" },
+      )(input);
     } catch (error) {
       throw new Error(getCallableErrorMessage(error, "Unable to create the user. Please try again."));
     }
@@ -77,12 +74,10 @@ export const userManagementService = {
 
   async updateTeamUser(input: UpdateTeamUserInput): Promise<UpdateTeamUserResult> {
     try {
-      const updateTeamUserCallable = httpsCallable<UpdateTeamUserInput, UpdateTeamUserResult>(
-        functions,
+      return await callTracedFunction<UpdateTeamUserInput, UpdateTeamUserResult>(
         "updateTeamUser",
-      );
-      const response = await updateTeamUserCallable(input);
-      return response.data;
+        { source: "userManagementService.updateTeamUser" },
+      )(input);
     } catch (error) {
       throw new Error(
         getCallableErrorMessage(error, "Unable to update the user. Please try again."),

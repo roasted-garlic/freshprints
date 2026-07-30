@@ -9,6 +9,7 @@ import {
   filterShowsByScheduleTab,
   getShowScheduleTab,
   isPastScheduledShow,
+  resolveScheduleTabForStillExistingSelection,
   resolveVisibleShowSelection,
 } from "./showScheduleGrouping";
 
@@ -141,5 +142,62 @@ describe("resolveVisibleShowSelection", () => {
 
   it("clears the selection when the active tab has no shows", () => {
     assert.equal(resolveVisibleShowSelection([], "show-1"), null);
+  });
+});
+
+describe("resolveScheduleTabForStillExistingSelection (Plan Section 29.4)", () => {
+  const now = new Date("2026-07-05T12:00:00Z");
+
+  it("returns null when the selection is still classified in the active tab", () => {
+    const shows = [buildShow({ id: "show-1", scheduledStartAt: timestamp("2026-08-01T00:00:00Z") })];
+    assert.equal(
+      resolveScheduleTabForStillExistingSelection(shows, "show-1", "upcoming", now),
+      null,
+    );
+  });
+
+  it("returns the show's new tab when it reclassified out of the active tab (the Finish scenario)", () => {
+    // Models exactly the owner's repro: a show scheduled for earlier today was "upcoming" when
+    // selected/Finished, but by the time the post-Finish refresh's `now` is evaluated, its
+    // scheduled time has passed — it now classifies as "past" while the active tab is still
+    // "upcoming".
+    const shows = [buildShow({ id: "show-1", scheduledStartAt: timestamp("2026-07-05T10:00:00Z") })];
+    assert.equal(
+      resolveScheduleTabForStillExistingSelection(shows, "show-1", "upcoming", now),
+      "past",
+    );
+  });
+
+  it("returns null when the selected show no longer exists at all (genuinely gone, not just reclassified)", () => {
+    const shows = [buildShow({ id: "show-2", scheduledStartAt: timestamp("2026-08-01T00:00:00Z") })];
+    assert.equal(
+      resolveScheduleTabForStillExistingSelection(shows, "show-1", "upcoming", now),
+      null,
+    );
+  });
+
+  it("returns null when there is no current selection", () => {
+    const shows = [buildShow({ id: "show-1" })];
+    assert.equal(
+      resolveScheduleTabForStillExistingSelection(shows, null, "upcoming", now),
+      null,
+    );
+  });
+
+  it("does not resurrect a selection the owner genuinely navigated away from — only reclassification is handled here, not general fallback", () => {
+    // This function only answers "did THIS show's own tab change" — it must not be used to
+    // override an explicit navigation the owner performed via handleScheduleTabChange/
+    // handleSelectShow, which set selectedShowId/activeScheduleTab together and are unaffected by
+    // this function's logic (that scenario is not modeled here since this function has no
+    // knowledge of "explicit navigation" at all — it exists only to detect automatic
+    // reclassification, and the calling component is responsible for not invoking it after an
+    // explicit selection change already updated both selectedShowId and activeScheduleTab
+    // consistently).
+    const shows = [buildShow({ id: "show-1", scheduledStartAt: timestamp("2026-08-01T00:00:00Z") })];
+    assert.equal(
+      resolveScheduleTabForStillExistingSelection(shows, "show-1", "upcoming", now),
+      null,
+      "no reclassification occurred, so this must be a no-op regardless of navigation history",
+    );
   });
 });

@@ -9,7 +9,17 @@ export const ASSISTED_CREATION_ANSWERS_VERSION = 1 as const;
 export const ASSISTED_CREATION_DRAFT_STORAGE_KEY = "fp.assistedCreation.draft.v1";
 
 export const ASSISTED_CREATION_MAX_REFERENCE_IMAGES = 8;
-export const ASSISTED_CREATION_MAX_REFERENCE_BYTES = 15 * 1024 * 1024;
+export const ASSISTED_CREATION_MAX_REFERENCE_BYTES = 40 * 1024 * 1024;
+/**
+ * Combined pre-upload ceiling across all reference images attached to one request (existing
+ * retained images + newly selected files). Intentionally equals
+ * `ASSISTED_CREATION_MAX_REFERENCE_IMAGES * ASSISTED_CREATION_MAX_REFERENCE_BYTES` so all 8 allowed
+ * files may each be at the per-file maximum. Enforced client-side before any upload begins; the
+ * server-side parsers enforce it as defense-in-depth. Storage Rules cannot enforce this (each Rules
+ * evaluation only sees one object), so this ceiling is application-layer only — see ADR-FP-124.
+ */
+export const ASSISTED_CREATION_MAX_REFERENCE_TOTAL_BYTES =
+  ASSISTED_CREATION_MAX_REFERENCE_IMAGES * ASSISTED_CREATION_MAX_REFERENCE_BYTES;
 export const ASSISTED_CREATION_MAX_STYLE_PREFERENCES = 3;
 /** Max freeform mood/vibe chips on Style & mood step. */
 export const ASSISTED_CREATION_MAX_MOOD_ITEMS = 5;

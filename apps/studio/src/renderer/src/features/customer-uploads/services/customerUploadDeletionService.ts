@@ -1,12 +1,10 @@
-import { httpsCallable } from "firebase/functions";
-
 import {
   DELETE_CUSTOMER_UPLOAD_CONFIRMATION_PHRASE,
   type DeleteEligibleCustomerUploadResponse,
   type PreviewCustomerUploadDeletionResponse,
 } from "@fresh-prints/shared/types/deletion/deletion.types";
 
-import { functions } from "../../../config/firebase";
+import { callTracedFunction } from "../../../config/tracedCallable";
 
 function getCallableErrorMessage(error: unknown, fallbackMessage: string): string {
   if (
@@ -26,12 +24,12 @@ export const customerUploadDeletionService = {
 
   async preview(customerUploadId: string): Promise<PreviewCustomerUploadDeletionResponse> {
     try {
-      const callable = httpsCallable<
+      return await callTracedFunction<
         { customerUploadId: string },
         PreviewCustomerUploadDeletionResponse
-      >(functions, "previewCustomerUploadDeletion");
-      const response = await callable({ customerUploadId });
-      return response.data;
+      >("previewCustomerUploadDeletion", {
+        source: "customerUploadDeletionService.preview",
+      })({ customerUploadId });
     } catch (error) {
       throw new Error(
         getCallableErrorMessage(error, "Unable to preview upload deletion. Please try again."),
@@ -44,12 +42,12 @@ export const customerUploadDeletionService = {
     confirmationPhrase: string,
   ): Promise<DeleteEligibleCustomerUploadResponse> {
     try {
-      const callable = httpsCallable<
+      return await callTracedFunction<
         { customerUploadId: string; confirmationPhrase: string },
         DeleteEligibleCustomerUploadResponse
-      >(functions, "deleteEligibleCustomerUpload");
-      const response = await callable({ customerUploadId, confirmationPhrase });
-      return response.data;
+      >("deleteEligibleCustomerUpload", {
+        source: "customerUploadDeletionService.deleteEligible",
+      })({ customerUploadId, confirmationPhrase });
     } catch (error) {
       throw new Error(
         getCallableErrorMessage(error, "Unable to delete the customer upload. Please try again."),

@@ -125,14 +125,32 @@ describe('halftone filter helpers', () => {
     assert.equal(getPrimaryCatalogQueryTag([]), undefined);
   });
 
-  it('lists approved tags without design counts', () => {
+  it('lists approved tags without design counts when none are supplied', () => {
     assert.deepEqual(
       buildApprovedCatalogTagOptions(
         [{ name: 'sunset' }, { name: 'ocean' }, { name: 'halftone' }],
         ['ocean'],
         'o',
       ),
-      [{ tag: 'ocean', isSelected: true }],
+      [{ tag: 'ocean', count: undefined, isSelected: true }],
+    );
+  });
+
+  it('carries each tag design count through to the modal option list', () => {
+    assert.deepEqual(
+      buildApprovedCatalogTagOptions(
+        [
+          { name: 'sunset', count: 12 },
+          { name: 'ocean', count: 3 },
+          { name: 'halftone', count: 99 },
+        ],
+        [],
+        '',
+      ),
+      [
+        { tag: 'ocean', count: 3, isSelected: false },
+        { tag: 'sunset', count: 12, isSelected: false },
+      ],
     );
   });
 });

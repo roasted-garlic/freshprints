@@ -14,6 +14,11 @@ import {
   STUDIO_MIN_WINDOW_HEIGHT,
   STUDIO_MIN_WINDOW_WIDTH,
 } from './window/studioWindowConstraints'
+import { registerCatalogAssetIpcHandlers } from './ipc/catalogAsset/catalogAssetIpcHandlers'
+import {
+  closeFirebaseDebugWindow,
+  registerFirebaseDebugIpcHandlers,
+} from './ipc/firebaseDebug/firebaseDebugIpcHandlers'
 import { registerExportIpcHandlers } from './ipc/export/exportIpcHandlers'
 import { registerImportIpcHandlers } from './ipc/import/importIpcHandlers'
 import { registerInboxAlertIpcHandlers } from './ipc/inboxAlert/inboxAlertIpcHandlers'
@@ -230,6 +235,10 @@ function createWindow() {
 
   win.on('resize', () => scheduleWindowStateSave(win as BrowserWindow))
   win.on('move', () => scheduleWindowStateSave(win as BrowserWindow))
+  win.on('closed', () => {
+    closeFirebaseDebugWindow()
+    win = null
+  })
   win.on('close', (event) => {
     // Window bounds persistence must keep firing on every close attempt regardless of whether the
     // close is later blocked/confirmed by the upload guard below.
@@ -240,6 +249,7 @@ function createWindow() {
     }
 
     if (!getUploadActive()) {
+      closeFirebaseDebugWindow()
       return
     }
 
@@ -289,6 +299,14 @@ app.whenReady().then(() => {
   app.setName(appName)
   Menu.setApplicationMenu(null)
   registerAppIpcHandlers()
+  registerCatalogAssetIpcHandlers()
+  registerFirebaseDebugIpcHandlers({
+    getMainWindow: () => win,
+    getPreloadPath: () => path.join(__dirname, 'preload.mjs'),
+    getRendererDist: () => RENDERER_DIST,
+    getDevServerUrl: () => VITE_DEV_SERVER_URL,
+    isPackaged: () => app.isPackaged,
+  })
   registerImportIpcHandlers()
   registerInboxAlertIpcHandlers()
   registerWhatnotImportIpcHandlers()

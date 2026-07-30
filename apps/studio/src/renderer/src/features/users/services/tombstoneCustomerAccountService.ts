@@ -1,12 +1,10 @@
-import { httpsCallable } from "firebase/functions";
-
 import {
   TOMBSTONE_CUSTOMER_CONFIRMATION_PHRASE,
   type PreviewCustomerAccountDeletionResponse,
   type TombstoneCustomerAccountResponse,
 } from "@fresh-prints/shared/types/deletion/deletion.types";
 
-import { functions } from "../../../config/firebase";
+import { callTracedFunction } from "../../../config/tracedCallable";
 
 function getCallableErrorMessage(error: unknown, fallbackMessage: string): string {
   if (
@@ -27,12 +25,10 @@ export const tombstoneCustomerAccountService = {
 
   async preview(customerId: string): Promise<PreviewCustomerAccountDeletionResponse> {
     try {
-      const callable = httpsCallable<{ customerId: string }, PreviewCustomerAccountDeletionResponse>(
-        functions,
+      return await callTracedFunction<{ customerId: string }, PreviewCustomerAccountDeletionResponse>(
         "previewCustomerAccountDeletion",
-      );
-      const response = await callable({ customerId });
-      return response.data;
+        { source: "tombstoneCustomerAccountService.preview" },
+      )({ customerId });
     } catch (error) {
       throw new Error(
         getCallableErrorMessage(error, "Unable to preview customer deletion. Please try again."),
@@ -42,12 +38,12 @@ export const tombstoneCustomerAccountService = {
 
   async tombstone(customerId: string, confirmationPhrase: string): Promise<TombstoneCustomerAccountResponse> {
     try {
-      const callable = httpsCallable<
+      return await callTracedFunction<
         { customerId: string; confirmationPhrase: string },
         TombstoneCustomerAccountResponse
-      >(functions, "tombstoneCustomerAccount");
-      const response = await callable({ customerId, confirmationPhrase });
-      return response.data;
+      >("tombstoneCustomerAccount", {
+        source: "tombstoneCustomerAccountService.tombstone",
+      })({ customerId, confirmationPhrase });
     } catch (error) {
       throw new Error(
         getCallableErrorMessage(error, "Unable to delete the customer account. Please try again."),

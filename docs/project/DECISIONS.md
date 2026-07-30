@@ -4,6 +4,526 @@
 
 ---
 
+### ADR-FP-125: Customer-upload oversized-pixel normalization, narrow ADR-FP-080 downsampling exception, and processing-timeout watchdog
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-30 |
+| Status | accepted; dev Functions deployment pending separate owner approval |
+| Related | `customer-upload-oversized-pixel-normalization-and-processing-timeout-followup` (Goal #11) |
+| Target | `functions/src/lib/customerUploadProcessing.ts`, `functions/src/finalizeCustomerUpload.ts`, `functions/src/retryCustomerUploadProcessing.ts`, shared constants/types |
+
+**Context**
+
+Owner-observed evidence: technically-oversized-but-otherwise-valid transparent PNGs (~7–14 MB,
+well under the 80 MB byte ceiling) were permanently rejected with "Image dimensions exceed the
+allowed limits." — root-caused to `customerUploadProcessing.ts`'s dimension/pixel-ceiling check
+running on raw source metadata *before* any trim attempt, making the reject-vs-rescue decision
+structurally unreachable from a trim-based fix. Separately, large (~43–54 MB) transparent PNGs
+were observed stuck indefinitely at `"Trimming transparent edges…"` — root-caused to
+`trimTransparentEdges` performing three full-resolution decodes (two provably redundant) plus the
+absence of any in-invocation watchdog, so a platform-terminated `onCall` invocation (540s ceiling)
+left the Firestore document at `technicalStatus: "processing"` forever with no failure ever
+written. A separate, pre-existing "100 MB" figure was also found only in stale handoff
+documentation — not in enforced source, Storage Rules, or Portal copy, all of which already agreed
+on 80 MB — and traced to a likely conflation with `CUSTOMER_UPLOAD_MAX_TOTAL_PIXELS = 100_000_000`
+(a pixel count, not a byte size).
+
+**Decision**
+
+1. **Processing order changed to bounded-decode → trim → normalize-if-still-oversized.** The
+   dimension/pixel-ceiling check (`CUSTOMER_UPLOAD_MAX_DIMENSION_PX` /
+   `CUSTOMER_UPLOAD_MAX_TOTAL_PIXELS`) now evaluates *post-trim* dimensions, not raw source
+   metadata — an oversized-canvas image with trimmable transparent margins that lands under the
+   ceiling after trim is accepted at full fidelity, exactly as if it had never exceeded the
+   ceiling. Every decode site uses `limitInputPixels` set to sharp's own built-in decoder default
+   (`0x3FFF * 0x3FFF` ≈ 268.4M px, ~1.0 GiB max RGBA buffer — `CUSTOMER_UPLOAD_DECODE_MAX_INPUT_PIXELS`),
+   **not** the lower app-level ceiling — binding the decode bound to the app ceiling would reject
+   the decode itself before trim ever runs, defeating the fix. This bound exists only to cap the
+   pathological/adversarial-source case at a memory-safe ceiling; the real product-level ceiling is
+   enforced afterward against actual post-trim/post-normalize pixels.
+2. **Narrow downsampling exception to ADR-FP-080 item 2** ("never downsample production assets"):
+   when a customer-upload source's pixel dimensions still exceed the technical ceiling *after*
+   transparent-edge trimming, the pipeline may downscale proportionally — exactly enough to fit the
+   ceiling, aspect-ratio-preserving, `fit: "inside"`, no crop/stretch/distortion, never upscaling —
+   to produce a normalized `production` derivative (`normalizeForDimensionCeiling`, strictest-of-
+   three-ceilings-wins: width, height, and total-pixel scale factors are each computed and the
+   smallest applied). This exception applies **only** to this one technical-safety scenario; it
+   does not authorize general-purpose downsampling, does not apply to catalog import, and does not
+   apply to any image already within the technical ceiling. The original uploaded source is never
+   modified or deleted regardless of whether normalization runs. All other ADR-FP-080 provisions
+   (upscale ceiling, halftone policy, no automatic classification, shared sizing code) are
+   unaffected.
+3. **New additive fields**, independent of and not mutually exclusive with the existing
+   `wasUpscaled`/opposite-direction upscale pass: `wasNormalizedForDimensions: boolean`,
+   `preNormalizationWidthPx`/`preNormalizationHeightPx: number | null` (the source's dimensions
+   before normalization; equal to the post-processing dimensions when normalization did not run).
+   All derived metadata (`widthPx`/`heightPx`, `printWidthInches`/`printHeightInches`,
+   `effectiveDpi`) is recomputed from the actual normalized bytes, never from the original's
+   now-inapplicable dimensions — the existing 200-effective-DPI Print Request save floor
+   (ADR-FP-075) is preserved unchanged, since it evaluates the already-honestly-recomputed DPI.
+4. **Redundant full-resolution decodes eliminated.** `trimTransparentEdges` now takes the caller's
+   already-known source dimensions as parameters instead of re-deriving them via a fresh
+   `.metadata()` decode, and uses `.toBuffer({ resolveWithObject: true })`'s returned
+   `info.width`/`info.height` instead of a third decode of the trimmed result — reducing the
+   function from three full-resolution decodes to one. The `converting_format` call site
+   (non-PNG-alpha branch) was similarly consolidated from a separate convert-then-`.metadata()`
+   pair into one `resolveWithObject` call.
+5. **In-invocation stage watchdog** (`packages/shared/src/utils/customerUploadFinalizeWatchdog.ts`,
+   `withCustomerUploadFinalizeWatchdog`) — a pure, directly-testable `Promise.race`-based helper
+   mirroring `withTimeout.ts`'s exact clearTimeout-on-settle cleanup precedent (Goal #10) — wraps
+   the trim/normalize/preview-generation region in both `finalizeCustomerUpload.ts` and
+   `retryCustomerUploadProcessing.ts`. Set to 480s, 60s under the 540s `onCall` platform ceiling
+   (`FINALIZE_CUSTOMER_UPLOAD_STAGE_WATCHDOG_MS` / `RETRY_CUSTOMER_UPLOAD_STAGE_WATCHDOG_MS`) — a
+   fixed safety margin, not derived from a specific worst-case pipeline measurement (a synthetic
+   local benchmark cannot reproduce Cloud Functions cold-start/memory-pressure conditions). If the
+   watchdog trips, it writes an explicit `technicalStatus: "failed"` /
+   `technicalFailureCode: "processing_timed_out"` update *before* the platform can silently
+   terminate the invocation — closing the exact "stuck at Trimming forever, no failure ever
+   recorded" gap. New failure code `processing_timed_out` added to
+   `CustomerUploadTechnicalFailureCode` and to `retryCustomerUploadProcessing.ts`'s
+   `RETRYABLE_FAILURE_CODES`, so a timed-out upload is retryable like any other recoverable
+   failure.
+6. **Sanitized per-stage timing instrumentation.** `processCustomerUploadImageBytes` now returns
+   `stageTimingsMs: Partial<Record<CustomerUploadTechnicalProgressStage, number>>` (stage names and
+   millisecond durations only — no artwork content, filenames, or customer identifiers), collected
+   via an internal `StageTimer` wrapping the existing `onStage` progress callback. The library
+   function itself never logs directly (preserving its pure/testable shape); `finalizeCustomerUpload.ts`
+   and `retryCustomerUploadProcessing.ts` each emit one `logger.info("<scope>.stageTimings", {...})`
+   structured log per invocation, matching the existing `finalizeCustomerUploadZip.processingBatch`
+   convention (Goal #9).
+7. **80 MB vs. 100 MB reconciled as documentation-only.** No enforced value changed —
+   `CUSTOMER_UPLOAD_MAX_SINGLE_IMAGE_BYTES = 80 MB` already matched exactly across the shared
+   constant, `storage.rules`, and Portal UI copy. Four stale handoff docs
+   (`03-roadmap-and-phases.md`, `CURRENT-STATE.md`, `04-features-inventory.md`,
+   `07-backend-and-ai-pipeline.md`) corrected from "100 MB" to "80 MB," with one clarifying
+   sentence added distinguishing the byte ceiling from the unrelated 100,000,000-pixel total-pixel
+   ceiling.
+8. **Donate Design and Customer Uploads share this fix automatically** — both purposes call the
+   same `processCustomerUploadImageBytes`; no purpose-conditional branching exists or was added.
+   Goal #9's bounded-ZIP-concurrency orchestration (`finalizeCustomerUploadZip.ts`,
+   `boundedConcurrencyQueue.ts`, `aggregateZipProcessingResults`) and Goal #10's Assisted Creation
+   reference-image work are untouched — both call `processCustomerUploadImageBytes` as an opaque
+   per-image unit and inherit this fix without any change to their own code.
+
+**Consequences**
+
+- A previously-permanent oversized-canvas rejection becomes either a transparent success
+  (normalized) or, for the genuine still-too-large-after-trim case, the same
+  `image_exceeds_limits` rejection as before — never a silent quality loss.
+- No Function memory/timeout **configuration** changed — 540s/2GiB remain; the watchdog operates
+  within that existing budget, not by extending it.
+- Functions deploy required (`finalizeCustomerUpload`, `retryCustomerUploadProcessing`) for any of
+  this to take effect in `fresh-prints-dev`; production deploy remains a separate owner checkpoint.
+  No Storage Rules deployment required (80 MB byte limit unchanged).
+- New Firestore fields are additive/optional; no migration or backfill of historical
+  `customerUploads` documents.
+
+---
+
+### ADR-FP-124: Assisted Creation reference-image limit raised to 40 MB/file, 320 MB/request
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-29 |
+| Status | accepted; dev Storage Rules deployment pending separate owner approval |
+| Related | `assisted-creation-reference-image-mb-limit-increase` (Goal #10) |
+| Target | Portal, Studio, `storage.rules`, shared constants/validators |
+
+**Decision**
+
+1. `ASSISTED_CREATION_MAX_REFERENCE_BYTES` raised from **15 MB to 40 MB** per file
+   (`packages/shared/src/constants/assistedCreation/assistedCreation.constants.ts`) — an explicit
+   owner decision, not a Plan default. `ASSISTED_CREATION_MAX_REFERENCE_IMAGES` remains **8 files**,
+   unchanged.
+2. A new **320 MB combined pre-upload ceiling**
+   (`ASSISTED_CREATION_MAX_REFERENCE_TOTAL_BYTES = ASSISTED_CREATION_MAX_REFERENCE_IMAGES *
+   ASSISTED_CREATION_MAX_REFERENCE_BYTES`) is enforced across all reference images attached to one
+   request — existing retained images plus newly selected files, excluding removed/replaced images.
+   This intentionally equals 8 × 40 MB exactly, so all 8 allowed files may each be at the per-file
+   maximum; the ceiling exists to bound the *update* path (where retained-plus-new bytes are not
+   otherwise capped by the per-array 8-file/40 MB checks alone) rather than to restrict the
+   already-bounded submit path.
+3. All **four** per-file enforcement layers were updated to the same 40 MB value: Portal client
+   validation, the submit-path trusted-server parser, the update-path trusted-server parser, and
+   `storage.rules`. A pre-existing boundary inconsistency was also corrected: `storage.rules` used
+   `request.resource.size < N` (exclusive — a file exactly at the old 15 MB limit was rejected) while
+   the TS validators used `sizeBytes > N` (inclusive — a file exactly at the limit was accepted).
+   `storage.rules` now uses `<= 40 * 1024 * 1024`, matching the TS validators' inclusive semantics
+   exactly: a file exactly at 40 MB is accepted at every layer; a file one byte over is rejected at
+   every layer.
+4. The combined ceiling is an **application-layer-only** control (client pre-upload check, plus the
+   trusted-server parsers as defense-in-depth). Storage Rules cannot enforce it — each Rules
+   evaluation only ever sees one object's `request.resource.size`, never a cross-object sum. It must
+   never be described as a substitute for the per-file Storage Rules limit, which remains the sole
+   authoritative, unspoofable byte gate.
+5. The client-side total check runs **before any upload begins** for both the submit path
+   (`useAssistedCreationWizard.setReferenceFiles`, always starts from 0 existing bytes) and the
+   update path (`AssistedCreationUpdateModal`, sums `keptReferences[].sizeBytes` + newly selected
+   `File[].size`). Removing a kept reference or replacing a file correctly excludes the
+   removed/replaced bytes from the calculation — verified by dedicated tests
+   (`assistedCreationValidation.test.ts`, `assistedCreationReferenceFilesValidation.test.ts`).
+6. Mandatory drift protection: `packages/shared/src/constants/storageRulesAlignment.test.ts` gained
+   a test that extracts the actual `request.resource.size <= <expr> &&` arithmetic from
+   `storage.rules`, evaluates its numeric factors, and asserts the result equals
+   `ASSISTED_CREATION_MAX_REFERENCE_BYTES` exactly — it fails if either value changes independently,
+   not merely if both happen to still contain the substring `"40"`.
+7. Direct-to-Storage architecture is unchanged: reference-image bytes never transit a callable body
+   (client `uploadBytes` writes directly to Storage; all 10 Assisted Creation callables use v2
+   platform defaults, no `memory`/`timeoutSeconds` override, confirmed still irrelevant to this
+   change). Upload remains single-shot `uploadBytes`, not resumable — no redesign was made or
+   authorized.
+8. Preview/download timeout protection (`getDownloadURL()`-first, 12-second-bounded `getBytes()`
+   fallback, settle-to-"Preview unavailable" rather than hang) is unchanged in behavior. The
+   duplicated `withTimeout` helper (previously defined identically in both
+   `apps/portal/features/assisted-creation/services/assistedCreationService.ts` and
+   `apps/studio/.../assistedCreationRequestsService.ts`) was consolidated into
+   `packages/shared/src/utils/withTimeout.ts`, both call sites now import the shared version — a
+   pure refactor with no behavior change, done specifically to make the "fallback remains
+   timeout-bounded regardless of payload size" property directly testable rather than duplicated and
+   untested. The 12-second bound is time-based, not size-based, so it protects a 40 MB fallback
+   exactly as it protected a 15 MB one; this is proven, not merely asserted, by
+   `withTimeout.test.ts`'s "never settles" case.
+
+**Cost and slow-network risk**
+
+- Worst-case Storage bytes per fully-loaded request rise from 120 MB to 320 MB (2.67×). No evidence
+  in this goal's research indicated this is a materially significant Storage/egress cost change for
+  current traffic volume; if usage patterns change materially, that is a future measurement question,
+  not a blocker for this decision.
+- A larger file increases the wall-clock duration a slow connection's `getBytes()` fallback needs to
+  complete within the unchanged 12-second window, raising the probability of falling into the
+  (already-safe, non-hanging) "Preview unavailable" state on slow/cellular connections. This is a
+  bounded UX-degradation risk, not a reintroduction of the previously-fixed indefinite-hang bug — the
+  historical hang (`docs/project/DECISIONS.md`, "Studio ref-thumb hang hotfix," 2026-07-21) was a
+  network/CORS timing defect independent of file size, already fixed by the time-bounded design this
+  ADR leaves unchanged.
+- Direct empirical precedent: `ASSISTED_CREATION_MAX_PROOF_BYTES = 25 MB` already runs successfully
+  in production today through the identical download architecture (staff proof uploads), supporting
+  that 40 MB is a reasonable extension of already-proven behavior rather than untested territory.
+
+**Consequences**
+
+- No new dependency, no accepted-format change, no 8-file count change, no customer-upload artwork
+  or catalog-derivative code touched.
+- `storage.rules` changed — this requires a separate dev-environment deployment approval before the
+  new limit takes effect anywhere outside local/emulated testing; the code-level change alone does
+  not raise the limit in any deployed environment.
+- Rollback: revert the constant value, the `storage.rules` literal (and its `<`/`<=` boundary fix,
+  if the boundary correction itself is not desired to persist — though it is recommended to keep,
+  since it closes a genuine pre-existing inconsistency), and the total-ceiling constant/checks. No
+  data migration exists to roll back — existing reference images at or under the prior 15 MB limit
+  remain valid and unaffected regardless of this ADR's direction.
+- Development deployment checkpoint (`docs/standards/DEPLOYMENT.md`): `firebase use fresh-prints-dev`
+  then `firebase deploy --only storage` (default project is already `fresh-prints-dev` per
+  `.firebaserc`), targeting **only** Storage Rules in `fresh-prints-dev`. Requires explicit owner
+  approval per this Plan's Human Checkpoint — not performed as part of Implementation. Deployed
+  status cannot be confirmed from the repo alone; verify in Firebase Console → Storage → Rules
+  (last published time vs. repo) after deployment.
+
+---
+
+### ADR-FP-123: Bounded concurrency (3) for `finalizeCustomerUploadZip` in-batch image processing
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-29 |
+| Status | accepted |
+| Related | `customer-upload-oversized-image-normalization-and-processing-performance` (Workstream A) |
+| Target | `functions/src/finalizeCustomerUploadZip.ts`, `packages/shared/src/utils/boundedConcurrencyQueue.ts` |
+
+**Context**
+
+`finalizeCustomerUploadZip` (`onCall({ timeoutSeconds: 540, memory: "2GiB" }, ...)`) processed every
+image in an uploaded ZIP **sequentially** — a plain `for...of` loop with `await
+processCustomerUploadImageBytes(...)` inside, no `Promise.all` or concurrency control
+(`finalizeCustomerUploadZip.ts:282-330`, pre-change). A ZIP may contain up to
+`CUSTOMER_UPLOAD_MAX_ZIP_ENTRIES = 100` images, each up to `CUSTOMER_UPLOAD_MAX_TOTAL_PIXELS =
+100,000,000` pixels. Each image's processing pipeline (`processCustomerUploadImageBytes`,
+`functions/src/lib/customerUploadProcessing.ts`) can include a full-resolution decode, a
+full-resolution transparent-edge trim (`ensureAlpha().trim().png()`), a single upscale pass, and two
+parallel WebP derivative encodes. Running this fully in series for a large, valid batch is real,
+measured latency that can approach the function's 540-second timeout; it was identified as the
+concrete root cause investigated under the `customer-upload-oversized-image-normalization-and-processing-performance`
+Plan (Workstream A).
+
+**Decision**
+
+1. The in-batch image-processing loop now runs with **bounded concurrency of 3**
+   (`CUSTOMER_UPLOAD_ZIP_IMAGE_PROCESSING_CONCURRENCY = 3`,
+   `packages/shared/src/constants/customerUpload/customerUploadLimits.constants.ts`), via a new
+   general-purpose `mapWithConcurrency` helper
+   (`packages/shared/src/utils/boundedConcurrencyQueue.ts`).
+2. The helper's semaphore mechanism (`BoundedConcurrencyQueue`: `acquire`/`release`/wait-queue, permit
+   always released in a `finally` block) is adapted from the existing
+   `apps/studio/electron/services/import/derivativeConcurrencyQueue.ts` pattern rather than
+   reinvented. That file could not be imported directly — `functions/tsconfig.json`'s `include` is
+   `["src", "../packages/shared/src"]` only, and `apps/studio/electron` is an Electron-main-process
+   tree outside that boundary — so the pattern was relocated to `packages/shared/src/utils/`, which
+   both Studio and Functions can import, instead of forking the logic with drift risk.
+3. Every per-image task returns a typed `ZipImageFileResult` (`ready` or `failed`, with the same
+   failure code/message shape the sequential loop already produced) rather than throwing on an
+   expected image failure. `readyCount`/`failedCount`/`fileResults` are aggregated in one
+   deterministic pass (`aggregateZipProcessingResults`,
+   `functions/src/lib/finalizeCustomerUploadZipAggregation.ts`) **after** every task has settled via
+   `Promise.allSettled`-equivalent semantics — never by mutating a shared counter from inside a
+   concurrently-running callback.
+4. An unexpected thrown error (a task rejection, as opposed to `processCustomerUploadImageBytes`'s
+   normal typed-failure return) is folded into the aggregation as a failed image with
+   `technicalFailureCode: "processing_failed"`, preserving the pre-existing "one bad entry does not
+   cancel the rest of the batch" behavior for this path too.
+5. No accepted format, size/pixel limit, transparency rule, upscale policy (ADR-FP-080), or the
+   Print Request 200-effective-DPI save floor (ADR-FP-075) changed. This decision is scoped
+   entirely to the caller's iteration strategy in `finalizeCustomerUploadZip.ts`;
+   `processCustomerUploadImageBytes` itself is unmodified (its existing 8/8 test suite passes
+   unmodified — see the goal's test report).
+6. The function's `2GiB` memory / `540s` timeout configuration is **unchanged**. The memory
+   arithmetic below shows headroom is sufficient for concurrency 3 without a config change; no
+   Human Checkpoint for a Function configuration change was required.
+
+**Memory arithmetic**
+
+*Proven constants (from source, not estimated):*
+
+| Constant | Value | Source |
+|---|---|---|
+| Function memory allocation | 2 GiB = 2048 MiB | `finalizeCustomerUploadZip.ts` `onCall` options |
+| `CUSTOMER_UPLOAD_MAX_TOTAL_PIXELS` | 100,000,000 px | `customerUploadLimits.constants.ts` |
+| `CUSTOMER_UPLOAD_MAX_SINGLE_IMAGE_BYTES` | 80 MiB (83,886,080 bytes) | `customerUploadLimits.constants.ts` |
+| RGBA decode: bytes/pixel | 4 | `sharp`/libvips raw RGBA raster |
+| `AUTOMATED_UPSCALE_TARGET_WIDTH_INCHES` | 12″ | `printSize.constants.ts` |
+| `TARGET_PRINT_DPI` | 300 | `printSize.constants.ts` |
+| `MAX_APPROVED_PRINT_HEIGHT_INCHES` | 16.5″ | `printSize.constants.ts` |
+
+*Derived (arithmetic, not estimated):*
+
+- Decoded RGBA raster at the pixel ceiling: `100,000,000 px × 4 bytes = 400,000,000 bytes ≈ 381.5
+  MiB`. This is the single largest in-memory buffer any one image's pipeline holds — every
+  processing stage (transparency sample, trim probe, full trim, upscale, derivative encode) operates
+  on a buffer at or below this size, since none of those stages *increase* total pixel count beyond
+  the source (the upscale stage only runs when the source is *smaller* than the target — see below —
+  and derivative encodes are explicitly capped at 1280×1280 / 320×320, both far smaller).
+- Upscale output ceiling: `3,600px (12″×300dpi) × 4,950px (16.5″×300dpi) ≈ 17.82M px × 4 bytes ≈
+  68 MiB` — small and mutually exclusive with the 100M-pixel worst case (an image already at the
+  pixel ceiling exceeds the upscale target and never enters the upscale branch).
+- Reserved runtime/Node/Admin-SDK overhead: **200 MiB** (conservative estimate, not empirically
+  measured in this environment — Cloud Functions Node 20 runtime baseline, `firebase-admin` SDK
+  connection/client state, V8 heap baseline).
+- Usable memory after reserve: `2048 − 200 = 1848 MiB`.
+- Per-image peak footprint: compressed source buffer (worst case 80 MiB, held as the input `Buffer`
+  for the duration of that image's task) **+** one decoded RGBA raster at the pixel ceiling (381.5
+  MiB) = **461.5 MiB per concurrently-active image**. This treats decode/trim/encode as operating on
+  one raster-sized buffer at a time within a single image's pipeline (sequential stages within one
+  image, not concurrent with each other) rather than assuming multiple full-size buffers are alive
+  simultaneously for one image — libvips processes the trim/resize/encode pipeline in a streamed,
+  stage-by-stage manner, and V8/Node's garbage collector reclaims a completed stage's buffer before
+  the next stage's is likely to be forced to coexist at peak size for long. This is a conservative
+  estimate, not a proven constant, and is the one figure this ADR flags as benefiting from real
+  runtime validation (see "Assumptions requiring runtime validation" below).
+- Concurrency budget table (worst case: every concurrently-active image simultaneously at the
+  100M-pixel ceiling):
+
+  | Concurrency | Worst-case total | Remaining margin (of 1848 MiB usable) |
+  |---|---|---|
+  | 1 | 461.5 MiB | 1386.5 MiB (75.0%) |
+  | **2** | **922.9 MiB** | **925.1 MiB (50.1%)** |
+  | **3 (selected)** | **1384.4 MiB** | **463.6 MiB (25.1%)** |
+  | 4 | 1845.9 MiB | 2.1 MiB (0.1% — rejected, no usable margin) |
+
+**Selected value: concurrency = 3.** It provides a documented 25.1% safety margin even under the
+absolute worst case (every one of the 3 concurrently-running images simultaneously at the 100M-pixel
+ceiling, which is itself an unlikely coincidence for a real customer ZIP), while giving a real
+3× reduction in worst-case serial processing time for large batches. Concurrency 4 leaves
+effectively zero margin (0.1%) and was rejected as unsafe.
+
+**Assumptions requiring runtime validation**
+
+- The "461.5 MiB per image" per-image peak model assumes sequential, non-overlapping buffer
+  lifetimes *within* one image's own multi-stage pipeline (decode → trim → upscale → encode), not
+  that all stages' buffers are simultaneously resident. This is standard libvips/sharp streaming
+  behavior but has not been empirically profiled against a real 100M-pixel worst-case fixture in
+  this environment. If a future dev-environment invocation (which requires its own owner approval —
+  not performed as part of this Plan/Implementation) shows materially higher real memory use, this
+  ADR's concurrency value should be revisited before assuming it remains safe at scale.
+- The 200 MiB runtime/SDK/GC-baseline reserve is a conservative estimate based on general Cloud
+  Functions Node 20 + `firebase-admin` guidance, not a value measured from this project's actual
+  cold-start/warm-instance memory profile.
+- The "one raster at a time" assumption does not account for a pathological case where Node's GC is
+  delayed under memory pressure and multiple stage buffers momentarily coexist; the 25.1% margin at
+  concurrency 3 is the safety buffer against exactly this kind of estimation error.
+
+**Consequences**
+
+- `finalizeCustomerUploadZip`'s worst-case fully-serial processing time for a maximum batch is
+  reduced by up to ~3× (bounded by task duration variance and the fixed discovery-phase cost, which
+  remains sequential and unchanged).
+- `CUSTOMER_UPLOAD_MAX_CONCURRENT_FINALIZE` (the existing per-customer cross-invocation lease, `8`)
+  is unaffected — it bounds concurrent *callable invocations*, not in-function work, and remains
+  exactly as before.
+- No Firestore schema, Storage path, Storage Rules, dependency, or deployment configuration changed.
+- `boundedConcurrencyQueue.ts` is now a general-purpose, dependency-free utility available to any
+  future Functions or Studio code needing bounded concurrency, without needing to duplicate the
+  semaphore pattern again.
+- If a future measured/real-world finding shows the 461.5 MiB per-image estimate was too optimistic,
+  reducing concurrency back toward 2 or 1 is a narrow, reversible config-constant change requiring no
+  further architecture rework.
+
+---
+
+### ADR-FP-121: Private print-request JSON read model abandoned — bounded Firestore is the permanent path
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-26 |
+| Status | accepted; superseded implementation removed from source, not yet deployed/deleted from Firebase |
+| Related | `firestore-usage-efficiency-wave-c` |
+| Target | Functions, Storage, Studio print-requests, Portal print-requests |
+
+**Decision**
+
+The private, generated Studio (staff-only) and Portal (customer-scoped) print-request JSON
+read-model caches — introduced to eliminate Firestore reads on the Print Requests list — are
+**permanently abandoned and removed from source**, not disabled behind a flag. Bounded Firestore
+(pass 5's `listPrintRequestsPage`/`countPrintRequests`, cursor pagination, exact
+`getCountFromServer` tab counts) is the sole, permanent read path for Print Requests in both apps.
+
+**Why**
+
+The architecture was implemented correctly by the end of this effort — including surviving two real
+defect corrections (a manifest/page path-orphaning bug from a shared mutable "version directory,"
+then an immutability violation the owner caught in the first attempted fix, resolved with a
+content-addressed per-page path architecture) — but a controlled real-publication test proved it
+never actually delivered the benefit it was built for. The final measured runtime: ~10 seconds
+before Print Requests became visible, a ~5.29-second manifest callable, a ~333ms page callable, and
+**4 Firestore count queries + 1 item query + 4 catalog design document reads still executing** —
+roughly 12 client-side billable reads remained despite the read model being live, correct, and
+successfully serving valid data. The added complexity (two Cloud Functions, a staff-only read
+callable, immutable-path publisher logic, manifest swap-retry, Studio/Portal consumer branching,
+two Firestore composite indexes) was not justified by a benefit that, in practice, did not manifest.
+
+**Consequences**
+
+- All private read-model source (shared types/builders, Functions publisher/callable/read-callable,
+  Studio and Portal consumer services, the Studio dev-console publish bridge, and the two
+  `printRequests` `queueTab+createdAt` composite indexes) was deleted or edited out of the
+  application entirely — no feature flag, no commented-out code, no compatibility shim.
+- `printRequests.queueTab` and its two maintenance triggers
+  (`onPrintRequestItemQueueTabInputWritten`, `onShowAllocationQueueTabInputWritten`) are fully
+  preserved — this decision only reverses the read-model publication side effect layered on top of
+  them, never queueTab computation itself.
+- The unrelated, successful generated catalog/Design Library read-model system (ADR-FP-120, above)
+  is a completely separate feature and is entirely unaffected by this decision.
+- `storage.rules`' explicit private-prefix rules for both abandoned Storage paths are deliberately
+  retained (not yet removed) until the old dev Storage objects under them are confirmed deleted in a
+  separate, later owner-approved checkpoint — a private object must never become publicly readable
+  during cleanup, even transiently.
+- This ADR does not reopen the question of whether a print-request cache is worth building — if a
+  future need reintroduces the idea, it should start from this decision's measured evidence (the
+  benefit did not manifest at this data scale/access pattern) rather than assuming the prior
+  architecture's approach was simply mis-executed.
+- Historical plans, reviews, and workflow-state entries documenting the read model's implementation,
+  corrections, and deployment remain in place as accurate historical record — the work was real and
+  technically successful; it was abandoned for cost/complexity reasons, not because it was broken.
+
+---
+
+### ADR-FP-120: Versioned generated catalog read models
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-23 (amended 2026-07-24: AI budget and targeted card overrides) |
+| Status | accepted; dev deployment/initial publication pending owner approval |
+| Related | `firestore-usage-efficiency-wave-c` |
+| Target | Functions, Storage, Portal catalog, AI enrichment |
+
+**Decision**
+
+1. Firestore remains canonical; Functions project taxonomy and ready-design data into immutable,
+   versioned Storage JSON and replace short-lived manifests only after every object validates.
+2. AI taxonomy is Admin-only. The client taxonomy and Portal catalog projections are public
+   read-only and contain allowlisted customer-safe fields.
+3. Two denied-to-clients coordination documents fence and coalesce rebuilds. Relevant mutation
+   triggers debounce 15 seconds, lease for 10 minutes, and run at most two passes.
+4. AI enrichment consumes one parsed snapshot per warm instance/version, with one shared,
+   five-minute Firestore fallback when an asset is absent or invalid.
+5. Portal Discover uses one generated object. Search/multi-tag uses generated ID shards and only
+   the card buckets for the current 40-card page. Normal browse remains a 40-card Firestore cursor.
+6. Manifest generation preconditions and retained previous content versions provide rollback.
+7. Card-only edits publish one content-addressed override asset from the trigger event payload and
+   atomically add its reference to the manifest. They perform no ready-design/category/tag query.
+   Concurrent card edits merge through bounded optimistic manifest retries.
+8. Index/filter changes keep the leased full publisher. Request/favorite/show/update metadata alone
+   does not publish.
+9. Studio holds an authenticated-session, memory-only card override until generated public fields
+   match, preventing route remount or manifest TTL from restoring stale card visuals.
+
+**Consequences**
+
+- Snapshot deployment and first publication are coordinated dev checkpoints, not implicit app
+  startup work.
+- Public projections and size budgets are security/reliability contracts and must remain tested.
+- Production deployment remains a separate owner-approved phase.
+
+**Amendment 2026-07-23 — AI-private reference snapshot budget: 256 KiB → 512 KiB (R-013)**
+
+The first real `fresh-prints-dev` `rebuildCatalogSnapshots` invocation failed twice
+(`snapshot-asset-budget-exceeded:generated/catalog-reference/ai/v{N}.json`) because the AI-private
+reference snapshot (`generated/catalog-reference/ai/**`) exceeded its original 256 KiB ceiling at
+Fresh Prints Dev's real approved-tag corpus (~1,122 tags, 18 categories), measuring **295,152 bytes
+(~288.2 KB)** uncompressed. The owner approved raising **only** this AI-private ceiling to **512 KiB
+(524,288 bytes)**:
+
+- Applies to `generated/catalog-reference/ai/**` only — a private, server-only asset consumed
+  through a bounded module-level Functions cache, never delivered to a browser or mobile client.
+- Every other budget from Decision item 5/6 above is unchanged: the public client-safe taxonomy
+  (256 KiB), the manifest (32 KiB), and every Portal catalog asset ceiling (Discover 512 KiB,
+  filters/search shards 256 KiB, card buckets 32 KiB, browse pages 2 MiB).
+- No sharding was introduced for the AI snapshot; it remains one immutable object per content
+  version. Sharding is explicitly deferred until a new non-blocking diagnostic warning (fires at 80%
+  of 512 KiB / 409,600 bytes, structured log only, no taxonomy content) signals it is needed. The
+  current measured payload is 56.3% of the new ceiling.
+- No AI taxonomy field was removed or truncated to fit; full `preferredWhen` guidance, aliases, and
+  category descriptions remain in the AI snapshot.
+- No manifest field, coordination document, generated path, consumer, or security boundary changed.
+  `storage.rules` still denies all client read/write of `generated/catalog-reference/ai/**`;
+  confirmed by the unmodified rules suite still passing 6/6.
+- The already-implemented safe error mapping (`rebuildCatalogSnapshots` returns a stable
+  `failed-precondition`/`snapshot/payload-budget-exceeded` error instead of opaque `INTERNAL`) is
+  preserved and applies to the new, higher ceiling identically.
+
+See `docs/project/RISK_REGISTER.md` R-013 and
+`docs/workflow/reviews/2026-07-23-firestore-usage-efficiency-wave-c-dev-deployment-checkpoint.md`
+for the full measurement, diagnosis, and test evidence.
+
+---
+
+### ADR-FP-119: Studio default landing is Staff Inbox
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-23 |
+| Status | accepted |
+| Related | `studio-inbox-default-landing` |
+| Target | Studio renderer routes + sidebar brand |
+
+**Context**
+
+Studio previously opened Design Library (`/designs`) after launch, post-login, unknown routes, and sidebar brand clicks. Staff day-to-day work starts with operational alerts in Inbox.
+
+**Decision**
+
+1. Authenticated default landing is **Staff Inbox** (`/inbox`).
+2. Redirects that define “home”: route `/`, catch-all `*`, authenticated `/login` bounce, and sidebar brand link.
+3. Design Library (`/designs`) stays available via sidebar; no workspace semantics change.
+4. Inbox remains gated by existing `viewPrintRequests` (staff-only, same population as Design Library view).
+
+**Consequences**
+
+- Launch and login land on the operational queue first.
+- Agents must not reintroduce `/designs` as the Studio home redirect without a new ADR.
+
+---
+
 ### ADR-FP-118: Studio-managed Portal FAQ and How To settings
 
 | Field | Value |
@@ -551,9 +1071,65 @@ Dual Cap A (daily) + Cap B (per-show) with choose-prints and auto-remainder was 
 - Optional follow-up **multi-request-under-L** is **won't do / keep current**.
 - Portal “spots used” / spots-exhausted callouts may remain as UX copy when `L` is exhausted; they do **not** imply relaxing uniqueness. Prior “Functions uniqueness vs callouts mismatch” note is **resolved** (callouts = print spots; uniqueness = one request per show — both intentional).
 
+**Superseded by ADR-FP-122 (2026-07-27) — see below.** Decision §5's uniqueness rule (reject any
+second Portal request to a show the customer already has a non-canceled allocation on) is reversed:
+a customer may now submit multiple separate print requests to the same show, accumulating toward the
+same per-customer-per-show limit `L`. Every other part of this ADR (sole limit `L`, atomic
+full-request-per-show allocation, no `selections`/remainder, Cap A removal, settings write strategy)
+remains unchanged and in effect.
+
 ---
 
-### ADR-FP-101: Portal Cap B — one request ↔ one show + auto remainder request
+### ADR-FP-122: Multiple Portal print requests per customer per show, accumulating to limit `L`
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-07-27 |
+| Status | accepted |
+| Related | Supersedes ADR-FP-102 Decision §5 and its 2026-07-20 owner-confirmation addendum only; every other part of ADR-FP-102 (sole limit `L`, atomic full-request-per-show allocation, no `selections`/remainder, Cap A removal) remains in effect and unchanged |
+| Target | Portal + Functions on `fresh-prints-dev`; production excluded |
+
+**Context**
+
+A customer queued a first print request (23 prints) to a show, then — after that request left the
+working-request slot and a new working request was built — attempted to queue a second, separate
+request (2 prints) to the **same** show. ADR-FP-102 Decision §5's uniqueness rule ("reject if any
+non-canceled `showAllocations` already exist for that customer on the show") blocked this
+unconditionally, before the request ever reached the capacity math — regardless of whether `L` had
+room remaining. The owner reviewed this behavior against the actual reported repro (23 existing + 2
+new = 25, at the cap, should be allowed) and made an explicit product decision to reverse the
+uniqueness rule rather than keep it.
+
+**Decision**
+
+1. A customer **may** submit multiple separate print requests to the same show. Each request is still
+   atomically allocated to exactly one show (ADR-FP-102 §3 unchanged) — this decision only removes the
+   restriction on how many *separate* requests one customer may direct at the *same* show.
+2. The customer may continue submitting separate requests to that show until their cumulative
+   allocated quantity on it reaches `L`. Exactly `L` is allowed; any amount over `L` is blocked.
+   Boundary: `existingOnShowQty + newRequestQty <= L` → allow; `> L` → block.
+3. The one-**working**-request-at-a-time rule (a customer can only be actively building one
+   non-queued draft/editing request at a time) is unrelated and unchanged.
+4. The same already-queued print request still cannot be queued a second time (ADR-FP-102's
+   `hasExistingAllocation`/`freshRequestHasAllocation` per-request structural check is unrelated to
+   this decision and remains in effect).
+5. `queuePortalPrintRequestToShow`'s pre-transaction and in-transaction uniqueness blocks
+   (`existingOnShowQty > 0` / `freshCustomerOnShowQty > 0`, both throwing "You already have a print
+   request on this show...") are removed. The existing quantity-cap math
+   (`sumCustomerQuantityOnShow`, `wouldExceedPerShowCustomerCap`, `remainingPerShowCustomerCap`,
+   `planPortalShowQueueFit`) is unchanged — it already correctly sums non-canceled allocations across
+   however many separate requests a customer has on a show, so relaxing the uniqueness gate is
+   sufficient; no new accounting logic is required.
+6. `listPortalAllocatableShows` already does not exclude a show from the picker based on prior
+   allocation (confirmed by source read) — no change required there.
+
+**Consequences**
+
+- A customer's Add-to-Show picker will show a partially-consumed show as still selectable (subject to
+  remaining `L`/show-capacity room), even if they already have a prior request there.
+- The exact copy previously reserved for the uniqueness block ("You already have a print request on
+  this show...") is now dead — removed rather than left unreachable.
+- Existing quantity-cap enforcement, error copy, and show-capacity accounting are otherwise unaffected.
 
 | Field | Value |
 |-------|-------|

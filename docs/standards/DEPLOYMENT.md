@@ -119,6 +119,23 @@ These paths are **not tracked** and should not be committed:
 
 `apps/studio/electron-builder.json5` references `icon.ico` (Windows) and `icon.png` (Linux), resolved relative to `apps/studio/`. As of 2026-07-08 neither file exists in the repo (never tracked in git) — electron-builder falls back to its default Electron icon. If custom icons are added, place them at `apps/studio/icon.ico` / `apps/studio/icon.png` or under `apps/studio/build/` (gitignored) `[INFERRED]`.
 
+### Firebase Storage bucket CORS (browser fetch of public generated assets)
+
+Public-read Storage objects (e.g. `generated/portal-catalog/**`, `generated/catalog-reference/manifest.json`/`client/**`)
+still need bucket CORS before a browser `fetch`/`getDownloadURL` read from a Portal origin succeeds —
+Storage Rules control **who can read an object**; CORS controls **which browser page origins may read
+the response body** once fetched. A missing CORS entry surfaces as a browser-console
+`Access-Control-Allow-Origin` error even though the same URL succeeds via `curl`/a Node script (no
+`Origin` header, not subject to CORS).
+
+Exact dev bucket: `gs://fresh-prints-dev.firebasestorage.app` (confirmed via
+`NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` in `apps/portal/.env.local`, and by direct HTTPS request — the
+legacy `fresh-prints-dev.appspot.com` alias 404s the same object path). See
+`docs/workflow/setup/firebase-storage-cors.md` and repo-root `storage.cors.json` for the current
+config, inspect/apply/verify commands, and history (an earlier CORS effort mistakenly targeted the
+`.appspot.com` alias, which had no effect). Applying a bucket CORS change requires human approval
+(bucket-config change) — see `docs/workflow/setup/firebase-storage-cors.md` for the exact command.
+
 ### Firebase Storage rules deploy
 
 Rules file: `storage.rules` (referenced in `firebase.json`).
@@ -195,6 +212,15 @@ advertise the home origin as `og:url`).
 - `library` (default) — interval-rotated ready design via `getPortalGlobalOpenGraph`
 - `logo` — uploaded Portal full logo (`settings/brandLogos.portalFull.downloadUrl`) when set; else `/brand/fresh-prints-request-portal-logo.png`
 
+**Global metadata freshness/read policy (2026-07-24):** all root/Login/Register/Help metadata callers
+share one global, non-user-specific result for the existing 3600-second revalidation window. Portal
+uses a one-entry bounded in-memory cache plus Next fetch revalidation; concurrent requests share one
+in-flight load and rejected loads are evicted. `getPortalGlobalOpenGraph` applies the same one-hour
+warm-instance cache. Library rotation reads the already-published newest-card page
+`generated/portal-catalog/**/recent/page-0.json`, preserving the newest-40 rotation candidate set
+without a Firestore design query. Expected measurable Firestore document reads: cache hit 0;
+library miss 1 (`settings/portalSocialMeta`); logo miss 2 (social metadata + brand-logo settings).
+
 **Letterbox / crawler images:** Design share and SEO `og:image` / landing `<img>` always use public
 `getPortalOgShareImage?designId=…&fit=contain&bg=<hex>` (1200×630 JPEG). Canvas color comes from
 the design’s `artworkBackgroundHex` (fallback Portal artwork grey `#e5e7eb`). The `bg` query is a
@@ -245,6 +271,43 @@ Or paste URLs into [Facebook Sharing Debugger](https://developers.facebook.com/t
 ---
 
 ## Production Release Checklist
+
+### Wave C dev snapshot checkpoint
+
+Do not run these commands without the owner’s explicit dev approval:
+
+```bash
+firebase deploy --only functions:rebuildCatalogSnapshots,functions:enqueueAiEnrichment,functions:testAiEnrichmentPlayground,functions:testAiEnrichmentTagRerank --project fresh-prints-dev
+firebase deploy --only firestore:rules --project fresh-prints-dev
+firebase deploy --only storage --project fresh-prints-dev
+```
+
+No Firestore index change is required. After those deployments, initialize and publish only with a
+separate explicit approval. Start Studio in development against `fresh-prints-dev`, sign in as an
+owner/admin, open renderer DevTools, and run:
+
+```js
+await window.freshPrintsDev.rebuildCatalogSnapshots()
+```
+
+The callable creates/updates exactly the two coordination documents and publishes both initial
+manifests; no manual Firestore document creation is needed.
+
+Only after both manifests validate, deploy mutation triggers:
+
+```bash
+firebase deploy --only functions:onCategorySnapshotSourceWritten,functions:onTagSnapshotSourceWritten,functions:onPortalCatalogSnapshotSourceWritten --project fresh-prints-dev
+```
+
+Verify both coordination documents, both manifests, version parity, Storage metadata, and a Portal
+Discover/search smoke before importing designs.
+
+Rollback: set `NEXT_PUBLIC_USE_GENERATED_CATALOG_SNAPSHOTS=false` for a Portal rebuild and
+`AI_CATALOG_SNAPSHOT_ENABLED=false` for the Functions revision, or revert the consuming
+app/Functions revision. Both flags select bounded Firestore fallbacks. Alternatively restore each
+manifest to its recorded `previousContentVersion` using the prior immutable paths.
+If trigger behavior is suspect, redeploy the previous Functions revision before changing
+coordination state. Do not delete immutable versions during incident rollback.
 
 - [ ] Human approval obtained
 - [ ] `npm run lint` passed

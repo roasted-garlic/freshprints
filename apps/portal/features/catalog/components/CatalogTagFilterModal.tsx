@@ -1,19 +1,23 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import type { CatalogTagOption } from '../types/catalog.types';
+import { catalogService } from '../services/catalogService';
 import {
   buildApprovedCatalogTagOptions,
   countVisibleSelectedTags,
   isCanonicalHalftoneTag,
   sortCatalogTags,
+  visibleSelectedTags,
 } from '../utils/catalogSearch';
 
 import { CheckIcon, XIcon } from '../../shared/components/PortalIcons';
 
 interface CatalogTagFilterModalProps {
   approvedTags: CatalogTagOption[];
+  /** Set when the generated tag-facet asset could not load. No Firestore fallback exists by design. */
+  error?: string | null;
   isOpen: boolean;
   onApply: (selectedTags: string[]) => void;
   onClose: () => void;
@@ -22,6 +26,7 @@ interface CatalogTagFilterModalProps {
 
 export function CatalogTagFilterModal({
   approvedTags,
+  error,
   isOpen,
   onApply,
   onClose,
@@ -29,6 +34,9 @@ export function CatalogTagFilterModal({
 }: CatalogTagFilterModalProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [draftSelectedTags, setDraftSelectedTags] = useState<string[]>(selectedTags);
+  const [narrowedTags, setNarrowedTags] = useState<CatalogTagOption[] | null>(null);
+  const [narrowError, setNarrowError] = useState<string | null>(null);
+  const narrowGenerationRef = useRef(0);
 
   useEffect(() => {
     if (!isOpen) {
@@ -39,10 +47,61 @@ export function CatalogTagFilterModal({
     setDraftSelectedTags(selectedTags);
   }, [isOpen, selectedTags]);
 
-  const facetedTags = useMemo(
-    () => buildApprovedCatalogTagOptions(approvedTags, draftSelectedTags, searchQuery),
-    [approvedTags, draftSelectedTags, searchQuery],
+  const draftTagsForNarrowing = visibleSelectedTags(draftSelectedTags);
+  const draftTagsKey = useMemo(
+    () => [...draftTagsForNarrowing].sort((left, right) => left.localeCompare(right)).join('\0'),
+    [draftTagsForNarrowing],
   );
+
+  // Recomputes only from generated assets already required for search/filtering (per-tag design-ID
+  // lists + card buckets covering the matching set) — no new generated asset, no Firestore read, no
+  // fetch per candidate tag. See `portalCatalogAssetService.listNarrowedTagFacets`.
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    if (!draftTagsKey) {
+      setNarrowedTags(null);
+      setNarrowError(null);
+      return;
+    }
+
+    let isCancelled = false;
+    const generation = ++narrowGenerationRef.current;
+    const tags = draftTagsKey.split('\0');
+
+    setNarrowError(null);
+
+    void catalogService
+      .listNarrowedApprovedTags(tags)
+      .then((result) => {
+        if (isCancelled || generation !== narrowGenerationRef.current) return;
+        setNarrowedTags(result);
+      })
+      .catch((narrowLoadError: unknown) => {
+        if (isCancelled || generation !== narrowGenerationRef.current) return;
+        const message =
+          narrowLoadError instanceof Error ? narrowLoadError.message : 'Unable to load tags.';
+        setNarrowError(message);
+        setNarrowedTags(null);
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [draftTagsKey, isOpen]);
+
+  const activeTagSource = draftTagsKey ? narrowedTags : approvedTags;
+  const activeError = draftTagsKey ? (narrowError ?? error) : error;
+  const facetedTags = useMemo(
+    () =>
+      activeTagSource
+        ? buildApprovedCatalogTagOptions(activeTagSource, draftSelectedTags, searchQuery)
+        : [],
+    [activeTagSource, draftSelectedTags, searchQuery],
+  );
+  const isNarrowLoading = Boolean(draftTagsKey) && narrowedTags === null && !narrowError;
   const visibleDraftTagCount = countVisibleSelectedTags(draftSelectedTags);
 
   if (!isOpen) {
@@ -99,7 +158,13 @@ export function CatalogTagFilterModal({
             />
           </label>
 
-          {facetedTags.length === 0 ? (
+          {activeError ? (
+            <p className="design-library-tag-filter-empty" role="alert">
+              Tag filters are unavailable right now. Please try again in a moment.
+            </p>
+          ) : isNarrowLoading ? (
+            <p className="design-library-tag-filter-empty">Updating tags…</p>
+          ) : facetedTags.length === 0 ? (
             <p className="design-library-tag-filter-empty">No tags match your search.</p>
           ) : (
             <div aria-label="Tag filters" className="design-library-tag-filter-list" role="group">
@@ -110,7 +175,12 @@ export function CatalogTagFilterModal({
                     onChange={() => toggleTag(facetedTag.tag)}
                     type="checkbox"
                   />
-                  <span>{facetedTag.tag}</span>
+                  <span>
+                    {facetedTag.tag}
+                    {typeof facetedTag.count === 'number' ? (
+                      <span className="tag-filter-option-count"> ({facetedTag.count})</span>
+                    ) : null}
+                  </span>
                 </label>
               ))}
             </div>

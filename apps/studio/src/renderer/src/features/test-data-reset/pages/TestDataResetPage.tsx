@@ -15,7 +15,7 @@ import {
   DESIGNS_WIPE_PRESET_TARGETS,
   ETSY_WIPE_PRESET_TARGETS,
   EVERYTHING_EXCEPT_DESIGNS_WIPE_PRESET_TARGETS,
-  PRINT_REQUEST_DAILY_LIMITS_WIPE_PRESET_TARGETS,
+  LEGACY_PRINT_LIMIT_COUNTERS_WIPE_PRESET_TARGETS,
   PRINT_REQUESTS_WIPE_PRESET_TARGETS,
 } from "@fresh-prints/shared/utils/operationalWipeTargets";
 
@@ -28,6 +28,7 @@ import { permissionService } from "../../permissions/services/permissionService"
 import {
   clearLegacyStaffInboxAckLocalStorage,
 } from "../../staff-inbox/services/staffInboxAckLegacyLocalStore";
+import { CatalogImageStorageInventoryPanel } from "../components/CatalogImageStorageInventoryPanel";
 import { RetentionMaintenancePanel } from "../components/RetentionMaintenancePanel";
 import { OwnerDeleteUserModal } from "../components/OwnerDeleteUserModal";
 import { TestDataResetErrorBoundary } from "../components/TestDataResetErrorBoundary";
@@ -207,6 +208,8 @@ function TestDataResetPageContent() {
 
   return (
     <main className="page-layout page-layout-shell test-data-reset-page">
+      <CatalogImageStorageInventoryPanel />
+
       <RetentionMaintenancePanel />
 
       <section className="card test-data-reset-section test-data-reset-danger">
@@ -260,8 +263,14 @@ function TestDataResetPageContent() {
             <div>
               <h3 className="test-data-reset-subtitle">Preset notes</h3>
               <ul className="test-data-reset-list">
-                <li>Print Requests — keeps upcoming shows; clears inbox acks + Cap A counters</li>
-                <li>Print request daily limits — Cap A counters only; keeps stash</li>
+                <li>
+                  Print Requests — keeps upcoming shows; clears inbox acks + legacy print-limit
+                  counters
+                </li>
+                <li>
+                  Legacy print-limit counters — no longer written or enforced; deleting them does
+                  not change current limit L, customer room, or show capacity
+                </li>
                 <li>Custom Requests — also clears acks, notifications, email jobs</li>
                 <li>Etsy — also clears overlays, suggestion requests, inert leftovers</li>
                 <li>Designs + prints — extra catalog confirm, then phrase</li>
@@ -302,11 +311,13 @@ function TestDataResetPageContent() {
             Customer Uploads
           </Button>
           <Button
-            onClick={() => setSelectedTargets([...PRINT_REQUEST_DAILY_LIMITS_WIPE_PRESET_TARGETS])}
+            onClick={() =>
+              setSelectedTargets([...LEGACY_PRINT_LIMIT_COUNTERS_WIPE_PRESET_TARGETS])
+            }
             type="button"
             variant="secondary"
           >
-            Print request daily limits
+            Legacy print-limit counters
           </Button>
           <Button
             onClick={() => setSelectedTargets([...DESIGNS_WIPE_PRESET_TARGETS])}

@@ -132,6 +132,7 @@ export function CustomerUploadPanel({
 
   useEffect(() => {
     if (wasProcessingRef.current && !isProcessing) {
+      customerUploadService.invalidateDailyQuota();
       void refreshDailyQuota();
     }
     wasProcessingRef.current = isProcessing;

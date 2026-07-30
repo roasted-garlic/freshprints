@@ -19,6 +19,8 @@ interface DesignsState {
 }
 
 interface UseDesignsOptions {
+  /** When false, keep the hook mounted without starting a Firestore query. */
+  enabled?: boolean;
   /**
    * When true, pages the (indexed) query to completion on load so the caller holds the
    * full scope in memory — required for client-side search/tag faceting across the whole
@@ -61,15 +63,18 @@ export function useDesigns(listQuery: DesignListQuery, options?: UseDesignsOptio
   const nextCursorRef = useRef<DesignListCursor | undefined>(undefined);
   const listQueryKey = useMemo(() => serializeDesignListQuery(listQuery), [listQuery]);
   const listQueryKeyRef = useRef(listQueryKey);
+  const listQueryRef = useRef(listQuery);
   listQueryKeyRef.current = listQueryKey;
+  listQueryRef.current = listQuery;
   const loadAll = options?.loadAll ?? false;
+  const enabled = options?.enabled ?? true;
   const maxLoadAll = options?.maxLoadAll ?? DEFAULT_MAX_LOAD_ALL;
 
   const loadDesigns = useCallback(
     async (loadOptions?: { append?: boolean }) => {
       const requestQueryKey = listQueryKeyRef.current;
 
-      if (!user || !permissionService.canViewDesigns(user)) {
+      if (!enabled || !user || !permissionService.canViewDesigns(user)) {
         nextCursorRef.current = undefined;
         setState({ ...initialState, isLoading: false, loadedQueryKey: requestQueryKey });
         return;
@@ -87,13 +92,14 @@ export function useDesigns(listQuery: DesignListQuery, options?: UseDesignsOptio
       }));
 
       try {
+        const requestListQuery = listQueryRef.current;
         if (loadAll && !append) {
           const collected: Design[] = [];
           let cursor: DesignListCursor | undefined = undefined;
           let hasMore = false;
 
           do {
-            const page = await designService.listDesignsPage(user, { ...listQuery, cursor });
+            const page = await designService.listDesignsPage(user, { ...requestListQuery, cursor });
             collected.push(...page.designs);
             cursor = page.nextCursor;
             hasMore = page.hasMore;
@@ -106,8 +112,8 @@ export function useDesigns(listQuery: DesignListQuery, options?: UseDesignsOptio
             return;
           }
 
-          const sortField = listQuery.sortField ?? "updatedAt";
-          const sortDirection = listQuery.sortDirection ?? "desc";
+          const sortField = requestListQuery.sortField ?? "updatedAt";
+          const sortDirection = requestListQuery.sortDirection ?? "desc";
           // loadAll concatenates pages; enforce final order so oldest-first never sticks.
           const designs = sortDesignsForListQuery(collected, sortField, sortDirection);
 
@@ -124,7 +130,7 @@ export function useDesigns(listQuery: DesignListQuery, options?: UseDesignsOptio
         }
 
         const page = await designService.listDesignsPage(user, {
-          ...listQuery,
+          ...requestListQuery,
           cursor: append ? nextCursorRef.current : undefined,
         });
 
@@ -160,7 +166,7 @@ export function useDesigns(listQuery: DesignListQuery, options?: UseDesignsOptio
         });
       }
     },
-    [listQuery, loadAll, maxLoadAll, user],
+    [enabled, loadAll, maxLoadAll, user],
   );
 
   useEffect(() => {

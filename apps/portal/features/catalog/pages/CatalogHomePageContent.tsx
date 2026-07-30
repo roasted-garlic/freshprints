@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useMemo, useState } from 'react';
 
 import {
   CATALOG_DISCOVERY_MODES,
@@ -15,7 +15,6 @@ import {
 import { useAuth } from '../../auth/context/AuthContext';
 import { useCatalogCategories } from '../hooks/useCatalogCategories';
 import { useCatalogHomeDesigns } from '../hooks/useCatalogDesigns';
-import { catalogService } from '../services/catalogService';
 import type { CatalogDesign } from '../types/catalog.types';
 import { usePortalPrintRequests } from '../../print-requests/context/PortalPrintRequestContext';
 import { useAddDesignToRequestFlow } from '../../print-requests/hooks/useAddDesignToRequestFlow';
@@ -36,7 +35,6 @@ export function CatalogHomePageContent() {
   const { isAuthenticated } = useAuth();
   const [landingSearch, setLandingSearch] = useState('');
   const [selectedDesign, setSelectedDesign] = useState<CatalogDesign | null>(null);
-  const [readyDesignCount, setReadyDesignCount] = useState<number | null>(null);
 
   const {
     actionError: creationActionError,
@@ -64,29 +62,7 @@ export function CatalogHomePageContent() {
   const { categories } = useCatalogCategories();
   const { designs, error, isLoading } = useCatalogHomeDesigns();
 
-  useEffect(() => {
-    let isCancelled = false;
-
-    async function loadReadyDesignCount() {
-      try {
-        const count = await catalogService.countReadyDesigns();
-
-        if (!isCancelled) {
-          setReadyDesignCount(count);
-        }
-      } catch {
-        if (!isCancelled) {
-          setReadyDesignCount(null);
-        }
-      }
-    }
-
-    void loadReadyDesignCount();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, []);
+  const readyDesignCount = designs.length || null;
 
   const discoveryRails = useMemo(
     () =>

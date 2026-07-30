@@ -5,8 +5,21 @@ import {
   resolvePortalHelpSettings,
   type PortalHelpSettings,
 } from '@fresh-prints/shared/constants/portal/portalHelpSettings.constants'
+import {
+  traceFirestoreListenerAttach,
+  traceFirestoreListenerEmission,
+  traceWrappedUnsubscribe,
+} from '@fresh-prints/shared/utils/firestoreUsageTrace'
 
 import { getPortalDb } from '../../../lib/firebase/client'
+
+const HELP_SETTINGS_TRACE = {
+  app: 'portal' as const,
+  collection: 'settings',
+  documentPathPattern: `settings/${PORTAL_HELP_SETTINGS_DOC_ID}`,
+  source: 'portalHelpSettingsService.subscribe',
+  triggerReason: 'route' as const,
+}
 
 export type PortalHelpSettingsLoad =
   | { status: 'missing'; settings: PortalHelpSettings }
@@ -17,9 +30,11 @@ export const portalHelpSettingsService = {
     onData: (load: PortalHelpSettingsLoad) => void,
     onError: (message: string) => void,
   ): Unsubscribe {
-    return onSnapshot(
+    traceFirestoreListenerAttach(HELP_SETTINGS_TRACE)
+    const unsubscribe = onSnapshot(
       doc(getPortalDb(), 'settings', PORTAL_HELP_SETTINGS_DOC_ID),
       (snapshot) => {
+        traceFirestoreListenerEmission(HELP_SETTINGS_TRACE, snapshot.exists() ? 1 : 0)
         if (!snapshot.exists()) {
           onData({
             status: 'missing',
@@ -34,5 +49,6 @@ export const portalHelpSettingsService = {
       },
       (error) => onError(error.message),
     )
+    return traceWrappedUnsubscribe(HELP_SETTINGS_TRACE, unsubscribe)
   },
 }

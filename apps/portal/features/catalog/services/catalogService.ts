@@ -14,6 +14,13 @@ import {
 } from 'firebase/firestore';
 import { FirebaseError } from 'firebase/app';
 
+import {
+  traceGeneratedFallbackActivation,
+  traceFirestoreOneShotComplete,
+  traceFirestoreOneShotStart,
+  type FirestoreTraceMetadata,
+} from '@fresh-prints/shared/utils/firestoreUsageTrace';
+
 import { PORTAL_FIRESTORE_COLLECTIONS } from '../../../lib/firebase/collections';
 import { getPortalDb } from '../../../lib/firebase/client';
 import type {
@@ -25,6 +32,12 @@ import type {
   CatalogTagOption,
 } from '../types/catalog.types';
 import { filterCatalogDesignsBySearch } from '../utils/catalogSearch';
+import { portalCatalogAssetService } from './portalCatalogAssetService';
+import { generatedPortalCatalogEnabled } from './catalogSnapshotFlags';
+import {
+  invalidateCatalogDesignById,
+  loadCatalogDesignByIdCached,
+} from './catalogDesignByIdCache';
 
 export const DEFAULT_CATALOG_PAGE_SIZE = 40;
 export const HOME_DISCOVERY_POOL_PAGE_SIZE = 80;
@@ -210,27 +223,41 @@ function buildDesignListPage(
   };
 }
 
-function mapCategoryDocument(categoryId: string, data: Record<string, unknown>): CatalogCategory | null {
-  if (typeof data.name !== 'string' || data.isActive !== true) {
-    return null;
-  }
-
-  return {
-    id: categoryId,
-    name: data.name,
-    description: typeof data.description === 'string' ? data.description : undefined,
-    sortOrder: typeof data.sortOrder === 'number' ? data.sortOrder : 0,
-  };
+/**
+ * Exact set of requested design ids not present in a generated-manifest response. A
+ * successful-but-incomplete response (a manifest cold-start gap) omits designs without
+ * throwing — this is what getReadyDesignsByIds uses to bound its per-doc fallback retry to
+ * exactly the missing subset, never the full requested set. Pure/exported for direct testing
+ * per this repo's hook/service testing convention (docs/standards/TESTING.md).
+ */
+export function resolveMissingDesignIds(
+  requestedIds: readonly string[],
+  foundDesigns: readonly Pick<CatalogDesign, 'id'>[],
+): string[] {
+  const foundIds = new Set(foundDesigns.map((design) => design.id));
+  return requestedIds.filter((id) => !foundIds.has(id));
 }
 
-function mapTagDocument(tagId: string, data: Record<string, unknown>): CatalogTagOption | null {
-  if (typeof data.name !== 'string' || data.status !== 'approved') {
-    return null;
-  }
+function catalogListTraceMetadata(
+  listQuery: CatalogDesignListQuery,
+  source: string,
+): FirestoreTraceMetadata {
+  const sortField = resolveSortField(listQuery);
+  const constraints = [
+    'status==ready',
+    listQuery.categoryId?.trim() ? 'categoryId=={categoryId}' : '',
+    listQuery.tag?.trim() ? 'tags array-contains {tag}' : '',
+    typeof listQuery.createdAfterMs === 'number' ? 'createdAt>={timestamp}' : '',
+  ].filter(Boolean);
 
   return {
-    id: tagId,
-    name: data.name,
+    app: 'portal',
+    collection: PORTAL_FIRESTORE_COLLECTIONS.designs,
+    constraints,
+    limit: (listQuery.limitCount ?? DEFAULT_CATALOG_PAGE_SIZE) + 1,
+    orderBy: [`${sortField}:desc`, '__name__:desc'],
+    source,
+    triggerReason: 'route',
   };
 }
 
@@ -242,7 +269,13 @@ export const catalogService = {
       collection(getPortalDb(), PORTAL_FIRESTORE_COLLECTIONS.designs),
       ...buildDesignListConstraints(listQuery),
     );
+    const traceMetadata = catalogListTraceMetadata(
+      listQuery,
+      'catalogService.listReadyDesignsPage',
+    );
+    traceFirestoreOneShotStart('getDocs', traceMetadata);
     const snapshot = await getDocs(designsQuery);
+    traceFirestoreOneShotComplete('getDocs', traceMetadata, snapshot.size);
 
     const designs = snapshot.docs
       .map((designSnapshot) => mapCatalogDesign(designSnapshot.id, designSnapshot.data() as DesignDocumentData))
@@ -267,14 +300,56 @@ export const catalogService = {
       return [];
     }
 
+    let generatedDesigns: CatalogDesign[] = [];
+    let missingIds = uniqueIds;
+
+    if (generatedPortalCatalogEnabled()) {
+      try {
+        generatedDesigns = await portalCatalogAssetService.getDesignsByIds(uniqueIds);
+        missingIds = resolveMissingDesignIds(uniqueIds, generatedDesigns);
+
+        // Fully successful — every requested design was in the generated snapshot.
+        // Zero extra reads: do not fall through to the per-doc fallback below.
+        if (missingIds.length === 0) {
+          return generatedDesigns;
+        }
+
+        // Successful-but-incomplete: a manifest cold-start gap (just-approved design not yet
+        // reflected in the cached snapshot) can omit a design without throwing. Retry only the
+        // exact missing subset via the per-doc fallback — never the full requested set.
+        traceGeneratedFallbackActivation(
+          'portal-catalog/request-card',
+          'generated-card-partial-result',
+          { app: 'portal', triggerReason: 'route' },
+        );
+      } catch {
+        traceGeneratedFallbackActivation(
+          'portal-catalog/request-card',
+          'generated-card-resolution-failed',
+          { app: 'portal', triggerReason: 'route' },
+        );
+      }
+    }
+
     // Per-doc reads: archived/non-ready designs deny customer read and must not
     // fail the whole Favorites page (batch `in` queries are rules-unsafe here).
-    const designs = await Promise.all(
-      uniqueIds.map(async (designId) => {
+    // Bounded to `missingIds` — the exact subset not already resolved above.
+    const fallbackDesigns = await Promise.all(
+      missingIds.map((designId) =>
+        loadCatalogDesignByIdCached(designId, async () => {
         try {
+          const traceMetadata: FirestoreTraceMetadata = {
+            app: 'portal',
+            collection: PORTAL_FIRESTORE_COLLECTIONS.designs,
+            documentPathPattern: 'designs/{designId}',
+            source: 'catalogService.getReadyDesignsByIds',
+            triggerReason: 'route',
+          };
+          traceFirestoreOneShotStart('getDoc', traceMetadata);
           const snapshot = await getDoc(
             doc(getPortalDb(), PORTAL_FIRESTORE_COLLECTIONS.designs, designId),
           );
+          traceFirestoreOneShotComplete('getDoc', traceMetadata, snapshot.exists() ? 1 : 0);
 
           if (!snapshot.exists()) {
             return null;
@@ -288,10 +363,18 @@ export const catalogService = {
 
           return null;
         }
-      }),
+        }),
+      ),
     );
 
-    return designs.filter((design): design is CatalogDesign => design !== null);
+    return [
+      ...generatedDesigns,
+      ...fallbackDesigns.filter((design): design is CatalogDesign => design !== null),
+    ];
+  },
+
+  invalidateReadyDesignById(designId: string): void {
+    invalidateCatalogDesignById(designId);
   },
 
   /** Exact count of ready designs matching category / primary tag / new-this-week bounds. */
@@ -300,44 +383,15 @@ export const catalogService = {
       collection(getPortalDb(), PORTAL_FIRESTORE_COLLECTIONS.designs),
       ...buildDesignFilterConstraints(listQuery),
     );
+    const traceMetadata = {
+      ...catalogListTraceMetadata(listQuery, 'catalogService.countReadyDesigns'),
+      limit: undefined,
+      orderBy: undefined,
+    };
+    traceFirestoreOneShotStart('getCountFromServer', traceMetadata);
     const snapshot = await getCountFromServer(countQuery);
+    traceFirestoreOneShotComplete('getCountFromServer', traceMetadata, 0);
     return snapshot.data().count;
-  },
-
-  /**
-   * Fetches every ready design matching the server filters (paged under the hood).
-   * Used so library search/tags can run across the full matching set.
-   */
-  async listAllMatchingReadyDesigns(
-    listQuery: CatalogDesignListQuery = {},
-    options?: {
-      onPage?: (designs: CatalogDesign[]) => void;
-      pageSize?: number;
-    },
-  ): Promise<CatalogDesign[]> {
-    const designs: CatalogDesign[] = [];
-    let cursor: CatalogDesignListQuery['cursor'] = listQuery.cursor;
-    const pageSize = options?.pageSize ?? DEFAULT_CATALOG_PAGE_SIZE;
-
-    for (;;) {
-      const page = await this.listReadyDesignsPageWithSortFallback({
-        ...listQuery,
-        cursor,
-        limitCount: pageSize,
-        search: undefined,
-      });
-
-      designs.push(...page.designs);
-      options?.onPage?.(page.designs);
-
-      if (!page.hasMore || !page.nextCursor) {
-        break;
-      }
-
-      cursor = page.nextCursor;
-    }
-
-    return designs;
   },
 
   /**
@@ -463,38 +517,63 @@ export const catalogService = {
   },
 
   async listActiveCategories(): Promise<CatalogCategory[]> {
-    const categoriesQuery = query(
+    if (generatedPortalCatalogEnabled()) {
+      try {
+        const snapshot = await portalCatalogAssetService.loadClientTaxonomy();
+        return snapshot.categories;
+      } catch {
+        // Bounded rollout/rollback fallback while a valid manifest is unavailable.
+      }
+    }
+    const traceMetadata: FirestoreTraceMetadata = {
+      app: 'portal',
+      collection: PORTAL_FIRESTORE_COLLECTIONS.categories,
+      constraints: ['isActive==true'],
+      source: 'catalogService.listActiveCategories.fallback',
+      triggerReason: 'route',
+    };
+    traceFirestoreOneShotStart('getDocs', traceMetadata);
+    const snapshot = await getDocs(query(
       collection(getPortalDb(), PORTAL_FIRESTORE_COLLECTIONS.categories),
       where('isActive', '==', true),
-    );
-    const snapshot = await getDocs(categoriesQuery);
-
-    return snapshot.docs
-      .map((categorySnapshot) =>
-        mapCategoryDocument(categorySnapshot.id, categorySnapshot.data() as Record<string, unknown>),
-      )
-      .filter((category): category is CatalogCategory => category !== null)
-      .sort((left, right) => {
-        const orderCompare = left.sortOrder - right.sortOrder;
-
-        if (orderCompare !== 0) {
-          return orderCompare;
-        }
-
-        return left.name.localeCompare(right.name);
-      });
+    ));
+    traceFirestoreOneShotComplete('getDocs', traceMetadata, snapshot.size);
+    return snapshot.docs.flatMap((document) => {
+      const data = document.data();
+      if (typeof data.name !== 'string') return [];
+      return [{
+        id: document.id,
+        name: data.name,
+        ...(typeof data.description === 'string' ? { description: data.description } : {}),
+        sortOrder: typeof data.sortOrder === 'number' ? data.sortOrder : 0,
+      }];
+    }).sort((left, right) => left.sortOrder - right.sortOrder || left.name.localeCompare(right.name));
   },
 
+  /**
+   * Tags for the Portal tag modal: only tags with at least one ready design, each with its
+   * ready-design count — never the full approved-tag taxonomy. Sourced exclusively from the
+   * compact generated tag-facet asset (`portalCatalogAssetService.listTagFacets`).
+   *
+   * No Firestore fallback exists deliberately: the only way to derive a *complete* "tags with
+   * counts" shape from Firestore alone is either a full-collection scan (unbounded — the exact
+   * defect this asset exists to remove) or one `getCountFromServer` call per approved tag
+   * (~1,122 network round trips, worse). Rather than ship an incomplete/inaccurate bounded
+   * fallback, this throws when the generated asset is unavailable; `useCatalogTags` surfaces that
+   * as an "unavailable" state so the caller never silently under- or over-counts. Owner-approved
+   * 2026-07-24 (see the Wave C dev deployment checkpoint's "Blocking Issue 2" resolution).
+   */
   async listApprovedTags(): Promise<CatalogTagOption[]> {
-    const tagsQuery = query(
-      collection(getPortalDb(), PORTAL_FIRESTORE_COLLECTIONS.tags),
-      where('status', '==', 'approved'),
-    );
-    const snapshot = await getDocs(tagsQuery);
+    return portalCatalogAssetService.listTagFacets();
+  },
 
-    return snapshot.docs
-      .map((tagSnapshot) => mapTagDocument(tagSnapshot.id, tagSnapshot.data() as Record<string, unknown>))
-      .filter((tag): tag is CatalogTagOption => tag !== null)
-      .sort((left, right) => left.name.localeCompare(right.name));
+  /**
+   * Same contract as `listApprovedTags`, narrowed to designs matching every tag in
+   * `selectedTags` (AND semantics) — powers dynamic tag-modal narrowing (selecting a tag hides
+   * unrelated tags and recalculates remaining counts). Same no-Firestore-fallback rule applies;
+   * see `portalCatalogAssetService.listNarrowedTagFacets` for how this stays bounded.
+   */
+  async listNarrowedApprovedTags(selectedTags: string[]): Promise<CatalogTagOption[]> {
+    return portalCatalogAssetService.listNarrowedTagFacets(selectedTags);
   },
 };

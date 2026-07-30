@@ -3,6 +3,7 @@ import type { Metadata } from 'next'
 import { portalThemeInitScript } from '../features/theme/themeInitScript'
 import { buildPortalRootMetadata } from '../features/brand/portalSiteMeta'
 import { loadPortalGlobalSocialMeta } from '../features/brand/portalGlobalSocialMetaService'
+import { resolvePortalAnalyticsConfig } from '../features/analytics/services/portalAnalyticsConfig'
 import { Providers } from './providers'
 import './globals.css'
 import '../styles/catalog.css'
@@ -26,13 +27,15 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const analyticsConfig = resolvePortalAnalyticsConfig(process.env)
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: portalThemeInitScript }} />
       </head>
       <body suppressHydrationWarning>
-        <Providers>{children}</Providers>
+        <Providers analyticsConfig={analyticsConfig}>{children}</Providers>
       </body>
     </html>
   )

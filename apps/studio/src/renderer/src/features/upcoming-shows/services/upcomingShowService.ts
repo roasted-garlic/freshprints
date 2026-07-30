@@ -4,6 +4,8 @@ import {
   doc,
   getDoc,
   getDocs,
+  getDocsFromServer,
+  onSnapshot,
   query,
   serverTimestamp,
   setDoc,
@@ -11,13 +13,20 @@ import {
   where,
   writeBatch,
   type DocumentData,
+  type Unsubscribe,
 } from "firebase/firestore";
+
+import { runTracedWrite,
+  traceFirestoreListenerEmission,
+  traceFirestoreOneShotComplete,
+  traceFirestoreOneShotStart } from "@fresh-prints/shared/utils/firestoreUsageTrace";
 
 import { db } from "../../../config/firebase";
 
 import { mapFirestoreTimestamp } from "../../firebase/utils/firestoreTimestamp";
 import { assertNoUndefinedFirestoreFields, withoutUndefinedFields } from "../../firebase/utils/firestoreDocument";
 import { firestoreCollectionService } from "../../firebase/services/firestoreCollectionService";
+import { createSharedFirestoreSubscription } from "../../firebase/utils/createSharedFirestoreSubscription";
 import { permissionService } from "../../permissions/services/permissionService";
 import type { User } from "../../users/types/user.types";
 import { isPrintRequestOrigin } from "@fresh-prints/shared/utils/printRequestOrigin";
@@ -31,6 +40,7 @@ import { canRemoveRequestFromShow } from "@fresh-prints/shared/utils/showQueueEd
 import { computeElapsedPrintMs } from "@fresh-prints/shared/utils/showPrintTimer";
 import { buildShowAllocationSourceFields } from "@fresh-prints/shared/utils/showAllocationSourceFields";
 import { printRequestService } from "../../print-requests/services/printRequestService";
+import type { ShowReconciliationReadSource } from "../../print-requests/services/printRequestService";
 import type {
   ShowProductionStatus,
   UpcomingShowSource,
@@ -43,7 +53,39 @@ import type { ShowAllocation } from "@fresh-prints/shared/types/showAllocation/s
 import { findMatchingUpcomingShow } from "../utils/upcomingShowUpsert";
 import { canStartShowPrinting, canAllocatePrintRequestToShow, PAST_SHOW_READ_ONLY_MESSAGE } from "../utils/groupShowsByUpcomingPast";
 import { sortUpcomingShowsForDisplay } from "../utils/upcomingShowListSort";
+import {
+  diagnoseShowAllocationForTimer,
+  diagnoseUpcomingShowForTimer,
+} from "../utils/productionTimerDiagnostics";
+import {
+  reconcileCompletedPrintRequest,
+  ShowCompletionReconciliationRemediationError,
+  summarizeShowCompletionReconciliation,
+  type ShowCompletionReconciliationResult,
+} from "../utils/showCompletionReconciliation";
 import { showQueueSettingsService } from "./showQueueSettingsService";
+import { ProductionDiagnosticWarningDeduper } from "../utils/productionDiagnosticWarningDeduper";
+import { reconcileShowCompletionWithCommittedVerification } from "../utils/postFinishCommittedVerification";
+
+function hashShowIdForPostFinishVerification(showId: string): string {
+  let hash = 2166136261;
+  for (const character of showId) {
+    hash ^= character.charCodeAt(0);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(16).padStart(8, "0");
+}
+
+function classifyReconciliationResults(
+  results: readonly ShowCompletionReconciliationResult[],
+): "complete" | "retryable" | "remediation_only" | "mixed" {
+  const { failedRequestIds, remediationRequestIds } =
+    summarizeShowCompletionReconciliation(results);
+  if (failedRequestIds.length > 0 && remediationRequestIds.length > 0) return "mixed";
+  if (failedRequestIds.length > 0) return "retryable";
+  if (remediationRequestIds.length > 0) return "remediation_only";
+  return "complete";
+}
 
 export interface CreateUpcomingShowInput {
   source: UpcomingShowSource;
@@ -113,7 +155,7 @@ interface UpcomingShowDocumentData extends DocumentData {
   updatedAt?: unknown;
 }
 
-interface ShowAllocationDocumentData extends DocumentData {
+export interface ShowAllocationDocumentData extends DocumentData {
   id?: unknown;
   upcomingShowId?: unknown;
   printRequestId?: unknown;
@@ -178,7 +220,6 @@ const PRINTED_ALLOCATION_STATUSES: ShowAllocationStatus[] = ["printed", "done"];
 const STARTABLE_ALLOCATION_STATUSES: ShowAllocationStatus[] = ["pending", "queued"];
 const FINISHABLE_ALLOCATION_STATUSES: ShowAllocationStatus[] = ["pending", "queued", "in_progress"];
 const STARTABLE_SHOW_PRODUCTION_STATUSES: ShowProductionStatus[] = ["open", "full"];
-
 function isUpcomingShowSource(value: unknown): value is UpcomingShowSource {
   return typeof value === "string" && VALID_SOURCES.includes(value as UpcomingShowSource);
 }
@@ -197,6 +238,17 @@ function isShowProductionStatus(value: unknown): value is ShowProductionStatus {
 
 function isShowAllocationStatus(value: unknown): value is ShowAllocationStatus {
   return typeof value === "string" && VALID_ALLOCATION_STATUSES.includes(value as ShowAllocationStatus);
+}
+
+export interface ShowTimerActionResult {
+  reconciliation?: {
+    affectedRequestCount: number;
+    failedRequestCount: number;
+    failedRequestIds: string[];
+    remediationRequestCount: number;
+    remediationRequestIds: string[];
+    results: ShowCompletionReconciliationResult[];
+  };
 }
 
 function mapUpcomingShowData(showId: string, data: UpcomingShowDocumentData): UpcomingShow {
@@ -251,7 +303,12 @@ function mapUpcomingShowData(showId: string, data: UpcomingShowDocumentData): Up
   };
 }
 
-function mapShowAllocationData(allocationId: string, data: ShowAllocationDocumentData): ShowAllocation {
+/**
+ * Exported so `useShowAllocations`'s live `onSnapshot` subscription (Plan Section 21.3/21.4, Fix
+ * 3) can reuse the exact same document -> ShowAllocation mapping this service's own one-shot
+ * `listShowAllocations` already uses, instead of duplicating it.
+ */
+export function mapShowAllocationData(allocationId: string, data: ShowAllocationDocumentData): ShowAllocation {
   const createdAt = mapFirestoreTimestamp(data.createdAt);
   const updatedAt = mapFirestoreTimestamp(data.updatedAt);
 
@@ -329,6 +386,163 @@ function mapShowAllocationData(allocationId: string, data: ShowAllocationDocumen
   };
 }
 
+/**
+ * One shared, ref-counted `onSnapshot` per `upcomingShowId`, keyed lazily on first subscribe
+ * (Plan Section 21.3/21.4, Fix 3). Mirrors the `assistedCreationRequestsService.ts` /
+ * `assistedCreationUpdateAckService.ts` pattern — the actual real consumers of
+ * `createSharedFirestoreSubscription` in this codebase (not `staffInboxSubscriptionService.ts`,
+ * which hand-rolls its own `onSnapshot` composition without this wrapper). Scoped strictly to one
+ * show at a time via `where("upcomingShowId", "==", upcomingShowId)` — never a collection-wide
+ * listener.
+ */
+const showAllocationsSubscriptionsByShowId = new Map<
+  string,
+  ReturnType<typeof createSharedFirestoreSubscription<ShowAllocation[]>>
+>();
+const productionDiagnosticWarningDeduper = new ProductionDiagnosticWarningDeduper();
+
+function warnProductionDiagnosticOnce(
+  documentPath: string,
+  missingFields: readonly string[],
+  legacyExtraFields: readonly string[],
+): void {
+  if (!productionDiagnosticWarningDeduper.shouldEmit(
+    documentPath,
+    missingFields,
+    legacyExtraFields,
+  )) return;
+  console.warn("[upcomingShowService] excluded invalid production record", {
+    documentPath,
+    missingOrInvalidFields: [...missingFields],
+    legacyExtraFields: [...legacyExtraFields],
+  });
+}
+
+function getOrCreateShowAllocationsSubscription(upcomingShowId: string) {
+  const existing = showAllocationsSubscriptionsByShowId.get(upcomingShowId);
+  if (existing) {
+    return existing;
+  }
+
+  const traceMetadata = {
+    app: "studio" as const,
+    collection: "showAllocations",
+    constraints: [`upcomingShowId == ${upcomingShowId}`],
+    source: "upcomingShowService.subscribeToShowAllocations",
+    triggerReason: "route" as const,
+  };
+
+  const shared = createSharedFirestoreSubscription<ShowAllocation[]>({
+    traceKey: `showAllocations:${upcomingShowId}`,
+    traceMetadata,
+    start: ({ next, error }) => {
+      const allocationsQuery = query(
+        firestoreCollectionService.getShowAllocationsCollection(),
+        where("upcomingShowId", "==", upcomingShowId),
+      );
+      return onSnapshot(
+        allocationsQuery,
+        (snapshot) => {
+          traceFirestoreListenerEmission(traceMetadata, snapshot.size);
+          const mapped = snapshot.docs.flatMap((allocationDoc) => {
+            const rawData = allocationDoc.data() as ShowAllocationDocumentData;
+            try {
+              return [
+                mapShowAllocationData(
+                  allocationDoc.id,
+                  rawData,
+                ),
+              ];
+            } catch {
+              const diagnostic = diagnoseShowAllocationForTimer(rawData);
+              warnProductionDiagnosticOnce(
+                `showAllocations/${allocationDoc.id}`,
+                diagnostic.missingRequiredFields,
+                diagnostic.legacyExtraFields,
+              );
+              return [];
+            }
+          });
+          next(mapped);
+        },
+        (snapshotError) => {
+          error(snapshotError instanceof Error ? snapshotError.message : "Unable to load show allocations.");
+        },
+      );
+    },
+  });
+
+  showAllocationsSubscriptionsByShowId.set(upcomingShowId, shared);
+  return shared;
+}
+
+/**
+ * One shared, ref-counted `onSnapshot` per `upcomingShowId`, for the show DOCUMENT itself (Plan
+ * Section 22.4/22.5, Amendment 4, Fix 3 extended). `useShowAllocations`'s live subscription (above)
+ * only ever supplied the allocation LIST for the selected show — the show-level `capacity`/summary
+ * fields the Show Queue page renders (`allocatedQuantity`, etc.) are a SEPARATE Firestore document,
+ * still only ever loaded via `listUpcomingShows`' one-shot fetch, so a Portal-submitted allocation
+ * (which updates `allocatedQuantity` on this very document, see the allocation-add path below) never
+ * appeared on an already-open Show Queue session. Mirrors
+ * `getOrCreateShowAllocationsSubscription`'s exact shape, but as a single-document listener (no
+ * query/where clause — there is exactly one document to watch), reusing `mapUpcomingShowData` so no
+ * mapping logic is duplicated.
+ */
+const upcomingShowSubscriptionsByShowId = new Map<
+  string,
+  ReturnType<typeof createSharedFirestoreSubscription<UpcomingShow | null>>
+>();
+
+function getOrCreateUpcomingShowSubscription(upcomingShowId: string) {
+  const existing = upcomingShowSubscriptionsByShowId.get(upcomingShowId);
+  if (existing) {
+    return existing;
+  }
+
+  const traceMetadata = {
+    app: "studio" as const,
+    collection: "upcomingShows",
+    constraints: [`id == ${upcomingShowId}`],
+    source: "upcomingShowService.subscribeToUpcomingShow",
+    triggerReason: "route" as const,
+  };
+
+  const shared = createSharedFirestoreSubscription<UpcomingShow | null>({
+    traceKey: `upcomingShow:${upcomingShowId}`,
+    traceMetadata,
+    start: ({ next, error }) => {
+      const showRef = doc(firestoreCollectionService.getUpcomingShowsCollection(), upcomingShowId);
+      return onSnapshot(
+        showRef,
+        (snapshot) => {
+          traceFirestoreListenerEmission(traceMetadata, snapshot.exists() ? 1 : 0);
+          if (!snapshot.exists()) {
+            next(null);
+            return;
+          }
+          const rawData = snapshot.data() as UpcomingShowDocumentData;
+          try {
+            next(mapUpcomingShowData(snapshot.id, rawData));
+          } catch {
+            const diagnostic = diagnoseUpcomingShowForTimer(rawData);
+            warnProductionDiagnosticOnce(
+              `upcomingShows/${snapshot.id}`,
+              diagnostic.missingRequiredFields,
+              diagnostic.legacyExtraFields,
+            );
+          }
+        },
+        (snapshotError) => {
+          error(snapshotError instanceof Error ? snapshotError.message : "Unable to load upcoming show.");
+        },
+      );
+    },
+  });
+
+  upcomingShowSubscriptionsByShowId.set(upcomingShowId, shared);
+  return shared;
+}
+
 export const upcomingShowService = {
   /**
    * Lists all non-archived local shows. Reads the full collection and sorts client-side by
@@ -341,7 +555,9 @@ export const upcomingShowService = {
       return [];
     }
 
+    traceFirestoreOneShotStart("getDocs", "upcomingShows:list");
     const snapshot = await getDocs(firestoreCollectionService.getUpcomingShowsCollection());
+    traceFirestoreOneShotComplete("getDocs", "upcomingShows:list", snapshot.size);
     const shows = snapshot.docs.flatMap((showDoc) => {
       try {
         return [mapUpcomingShowData(showDoc.id, showDoc.data() as UpcomingShowDocumentData)];
@@ -369,6 +585,46 @@ export const upcomingShowService = {
     }
 
     return mapUpcomingShowData(snapshot.id, snapshot.data() as UpcomingShowDocumentData);
+  },
+
+  /**
+   * Direct-ID fetch for the small set of shows referenced by a selected request's own
+   * allocations — replaces loading the entire `upcomingShows` collection merely to look up a
+   * title/date for whichever shows the current selection happens to reference (Wave C hydration
+   * remediation, 2026-07-25). Full show history/schedule remains available via
+   * `listUpcomingShows` for surfaces that genuinely manage the whole show queue.
+   */
+  async getUpcomingShowsByIds(caller: User, upcomingShowIds: string[]): Promise<UpcomingShow[]> {
+    if (!permissionService.canViewUpcomingShows(caller) || upcomingShowIds.length === 0) {
+      return [];
+    }
+
+    const uniqueIds = [...new Set(upcomingShowIds.map((id) => id.trim()).filter(Boolean))];
+    if (uniqueIds.length === 0) {
+      return [];
+    }
+
+    traceFirestoreOneShotStart("getDoc", "upcomingShows:byIds");
+    const snapshots = await Promise.all(
+      uniqueIds.map((id) => getDoc(doc(firestoreCollectionService.getUpcomingShowsCollection(), id))),
+    );
+    const shows = snapshots.flatMap((snapshot) => {
+      if (!snapshot.exists()) {
+        return [];
+      }
+      try {
+        return [mapUpcomingShowData(snapshot.id, snapshot.data() as UpcomingShowDocumentData)];
+      } catch (error) {
+        console.warn(
+          `[upcomingShowService] Skipping incomplete upcoming show ${snapshot.id}:`,
+          error instanceof Error ? error.message : error,
+        );
+        return [];
+      }
+    });
+    traceFirestoreOneShotComplete("getDoc", "upcomingShows:byIds", shows.length);
+
+    return shows;
   },
 
   /**
@@ -408,7 +664,20 @@ export const upcomingShowService = {
       });
 
       assertNoUndefinedFirestoreFields(updatePayload, "Upcoming show update payload");
-      await updateDoc(doc(firestoreCollectionService.getUpcomingShowsCollection(), existingShow.id), updatePayload);
+      await runTracedWrite(
+        "updateDoc",
+        () =>
+          updateDoc(
+            doc(firestoreCollectionService.getUpcomingShowsCollection(), existingShow.id),
+            updatePayload,
+          ),
+        {
+          app: "studio",
+          collection: "upcomingShows",
+          documentPathPattern: "upcomingShows/{upcomingShowId}",
+          source: "upcomingShowService.upsertUpcomingShow",
+        },
+      );
 
       return this.getUpcomingShowById(caller, existingShow.id);
     }
@@ -440,7 +709,12 @@ export const upcomingShowService = {
     });
 
     assertNoUndefinedFirestoreFields(createPayload, "Upcoming show create payload");
-    await setDoc(showRef, createPayload);
+    await runTracedWrite("setDoc", () => setDoc(showRef, createPayload), {
+      app: "studio",
+      collection: "upcomingShows",
+      documentPathPattern: "upcomingShows/{upcomingShowId}",
+      source: "upcomingShowService.upsertUpcomingShow",
+    });
 
     return this.getUpcomingShowById(caller, showRef.id);
   },
@@ -473,7 +747,12 @@ export const upcomingShowService = {
     });
 
     assertNoUndefinedFirestoreFields(payload, "Upcoming show update payload");
-    await updateDoc(showRef, payload);
+    await runTracedWrite("updateDoc", () => updateDoc(showRef, payload), {
+      app: "studio",
+      collection: "upcomingShows",
+      documentPathPattern: "upcomingShows/{upcomingShowId}",
+      source: "upcomingShowService.updateUpcomingShow",
+    });
 
     return this.getUpcomingShowById(caller, upcomingShowId);
   },
@@ -511,15 +790,63 @@ export const upcomingShowService = {
     });
 
     assertNoUndefinedFirestoreFields(payload, "Show max quantity payload");
-    await updateDoc(showRef, payload);
+    await runTracedWrite("updateDoc", () => updateDoc(showRef, payload), {
+      app: "studio",
+      collection: "upcomingShows",
+      documentPathPattern: "upcomingShows/{upcomingShowId}",
+      source: "upcomingShowService.setShowMaxQuantity",
+    });
 
     return this.getUpcomingShowById(caller, upcomingShowId);
   },
 
-  async deleteUpcomingShow(_caller: User, _upcomingShowId: string): Promise<void> {
+  async deleteUpcomingShow(): Promise<void> {
     throw new Error(
       "Direct show deletion is disabled. Use the Show Queue delete action (server-validated).",
     );
+  },
+
+  /**
+   * Live, ref-counted, per-show subscription — replaces a one-shot `listShowAllocations` fetch
+   * for consumers (Show Queue) that need cross-client updates (e.g. a Portal-submitted
+   * allocation) reflected without a remount (Plan Section 21.3/21.4, Fix 3). Bounded to exactly
+   * one show via the identical `where("upcomingShowId", "==", upcomingShowId)` filter
+   * `listShowAllocations` already uses — no new index, no wider scope.
+   */
+  subscribeToShowAllocations(
+    caller: User,
+    upcomingShowId: string,
+    onChange: (allocations: ShowAllocation[]) => void,
+    onError: (message: string) => void,
+  ): Unsubscribe {
+    if (!permissionService.canViewUpcomingShows(caller)) {
+      onChange([]);
+      return () => undefined;
+    }
+
+    return getOrCreateShowAllocationsSubscription(upcomingShowId).subscribe(onChange, onError);
+  },
+
+  /**
+   * Live, ref-counted, single-document subscription for exactly one upcoming show (Plan Section
+   * 22.4/22.5, Amendment 4, Fix 3 extended) — supplies the show-level `capacity`/summary fields
+   * (`allocatedQuantity`, `productionStatus`, etc.) that `subscribeToShowAllocations` (above) never
+   * covered, so the currently-selected Show Queue show reflects a Portal-submitted allocation's
+   * `allocatedQuantity` bump without a remount. Bounded to exactly one document; does not convert
+   * `listUpcomingShows`'s full-collection fetch into a live listener.
+   */
+  subscribeToUpcomingShow(
+    caller: User,
+    upcomingShowId: string,
+    onChange: (show: UpcomingShow | null) => void,
+    onError: (message: string) => void,
+  ): Unsubscribe {
+    if (!permissionService.canViewUpcomingShows(caller)) {
+      onChange(null);
+      return () => undefined;
+    }
+
+    return getOrCreateUpcomingShowSubscription(upcomingShowId).subscribe(onChange, onError);
   },
 
   async listShowAllocations(caller: User, upcomingShowId: string): Promise<ShowAllocation[]> {
@@ -580,7 +907,9 @@ export const upcomingShowService = {
       return [];
     }
 
+    traceFirestoreOneShotStart("getDocs", "showAllocations:all");
     const snapshot = await getDocs(firestoreCollectionService.getShowAllocationsCollection());
+    traceFirestoreOneShotComplete("getDocs", "showAllocations:all", snapshot.size);
 
     return snapshot.docs.flatMap((allocationDoc) => {
       try {
@@ -698,13 +1027,28 @@ export const upcomingShowService = {
     });
 
     assertNoUndefinedFirestoreFields(payload, "Show allocation payload");
-    await setDoc(allocationRef, payload);
-
-    await updateDoc(doc(firestoreCollectionService.getUpcomingShowsCollection(), upcomingShowId), {
-      allocatedQuantity: show.allocatedQuantity + requestedQuantity,
-      updatedBy: caller.id,
-      updatedAt: serverTimestamp(),
+    await runTracedWrite("setDoc", () => setDoc(allocationRef, payload), {
+      app: "studio",
+      collection: "showAllocations",
+      documentPathPattern: "showAllocations/{showAllocationId}",
+      source: "upcomingShowService.allocatePrintRequestItem",
     });
+
+    await runTracedWrite(
+      "updateDoc",
+      () =>
+        updateDoc(doc(firestoreCollectionService.getUpcomingShowsCollection(), upcomingShowId), {
+          allocatedQuantity: show.allocatedQuantity + requestedQuantity,
+          updatedBy: caller.id,
+          updatedAt: serverTimestamp(),
+        }),
+      {
+        app: "studio",
+        collection: "upcomingShows",
+        documentPathPattern: "upcomingShows/{upcomingShowId}",
+        source: "upcomingShowService.allocatePrintRequestItem",
+      },
+    );
 
     if (printRequest.status === "draft" || printRequest.status === "editing") {
       await printRequestService.updatePrintRequest(caller, printRequest.id, { status: "active" });
@@ -749,7 +1093,12 @@ export const upcomingShowService = {
     });
 
     assertNoUndefinedFirestoreFields(payload, "Show allocation status update payload");
-    await updateDoc(allocationRef, payload);
+    await runTracedWrite("updateDoc", () => updateDoc(allocationRef, payload), {
+      app: "studio",
+      collection: "showAllocations",
+      documentPathPattern: "showAllocations/{showAllocationId}",
+      source: "upcomingShowService.updateShowAllocationStatus",
+    });
 
     const updatedSnapshot = await getDoc(allocationRef);
     const updatedAllocation = mapShowAllocationData(updatedSnapshot.id, updatedSnapshot.data() as ShowAllocationDocumentData);
@@ -761,15 +1110,48 @@ export const upcomingShowService = {
     return updatedAllocation;
   },
 
-  async startShowPrinting(caller: User, upcomingShowId: string): Promise<UpcomingShow> {
+  async startShowPrinting(caller: User, upcomingShowId: string): Promise<ShowTimerActionResult> {
     if (!permissionService.canManageUpcomingShows(caller)) {
       throw new Error("You do not have permission to manage show printing.");
     }
 
-    const [show, allocations] = await Promise.all([
-      this.getUpcomingShowById(caller, upcomingShowId),
-      this.listShowAllocations(caller, upcomingShowId),
+    const showRef = doc(firestoreCollectionService.getUpcomingShowsCollection(), upcomingShowId);
+    const allocationsQuery = query(
+      firestoreCollectionService.getShowAllocationsCollection(),
+      where("upcomingShowId", "==", upcomingShowId),
+    );
+    // Same two reads as the prior getUpcomingShowById + listShowAllocations path, retained here so
+    // the timer manifest can describe the exact raw documents that actually enter the batch.
+    const [showSnapshot, allocationSnapshot] = await Promise.all([
+      getDoc(showRef),
+      getDocs(allocationsQuery),
     ]);
+    if (!showSnapshot.exists()) {
+      throw new Error("Upcoming show not found.");
+    }
+    const showData = showSnapshot.data() as UpcomingShowDocumentData;
+    const showDiagnostic = diagnoseUpcomingShowForTimer(showData);
+    if (showDiagnostic.parserStatus === "incomplete") {
+      throw new Error(
+        `This show cannot start printing because required fields are missing or invalid: ${showDiagnostic.missingRequiredFields.join(", ")}.`,
+      );
+    }
+    const show = mapUpcomingShowData(showSnapshot.id, showData);
+    const allocationRecords = allocationSnapshot.docs.flatMap((allocationDoc) => {
+      const data = allocationDoc.data() as ShowAllocationDocumentData;
+      const diagnostic = diagnoseShowAllocationForTimer(data);
+      try {
+        return [{
+          allocation: mapShowAllocationData(allocationDoc.id, data),
+          diagnostic,
+        }];
+      } catch (error) {
+        console.warn(
+          `[upcomingShowService] Skipping incomplete show allocation ${allocationDoc.id}; missing or invalid fields: ${diagnostic.missingRequiredFields.join(", ") || "unknown"}.`,
+        );
+        return [];
+      }
+    });
 
     if (!STARTABLE_SHOW_PRODUCTION_STATUSES.includes(show.productionStatus)) {
       throw new Error("This show is not ready to start printing.");
@@ -779,8 +1161,8 @@ export const upcomingShowService = {
       throw new Error(PAST_SHOW_READ_ONLY_MESSAGE);
     }
 
-    const allocationsToStart = allocations.filter(
-      (allocation) =>
+    const allocationsToStart = allocationRecords.filter(
+      ({ allocation }) =>
         allocation.status !== "canceled" && STARTABLE_ALLOCATION_STATUSES.includes(allocation.status),
     );
 
@@ -789,7 +1171,54 @@ export const upcomingShowService = {
     }
 
     const batch = writeBatch(db);
-    const showRef = doc(firestoreCollectionService.getUpcomingShowsCollection(), upcomingShowId);
+    const operationManifest = {
+      actionName: "start",
+      phase: "mutation",
+      projectId: db.app.options.projectId ?? "unknown-project",
+      staffRole: caller.role,
+      isActive: caller.isActive,
+      showId: upcomingShowId,
+      operationCount: allocationsToStart.length + 1,
+      operations: [
+        {
+          operationIndex: 1,
+          type: "update",
+          pathTemplate: "upcomingShows/{upcomingShowId}",
+          documentId: upcomingShowId,
+          changedFields: [
+            "productionStatus",
+            "activePrintStartedAt",
+            "printStartedAt",
+            "printPausedAt",
+            "updatedBy",
+            "updatedAt",
+          ],
+          parserStatus: showDiagnostic.parserStatus,
+          missingRequiredFields: showDiagnostic.missingRequiredFields,
+          legacyExtraFields: showDiagnostic.legacyExtraFields,
+        },
+        ...allocationsToStart.map(({ allocation, diagnostic }, index) => ({
+          operationIndex: index + 2,
+          type: "update",
+          pathTemplate: "showAllocations/{showAllocationId}",
+          documentId: allocation.id,
+          changedFields: ["status", "updatedBy", "updatedAt"],
+          existingProductionStatus: allocation.status,
+          proposedProductionStatus: "in_progress",
+          parserStatus: diagnostic.parserStatus,
+          missingRequiredFields: diagnostic.missingRequiredFields,
+          legacyExtraFields: diagnostic.legacyExtraFields,
+        })),
+      ],
+      currentProductionStatus: show.productionStatus,
+      proposedProductionStatus: "printing",
+      includesRequestDocuments: false,
+      includesAllocationDocuments: true,
+    } as const;
+
+    if (import.meta.env.DEV) {
+      console.info("[upcomingShowService] production timer operation manifest", operationManifest);
+    }
 
     batch.update(showRef, {
       productionStatus: "printing",
@@ -800,7 +1229,7 @@ export const upcomingShowService = {
       updatedAt: serverTimestamp(),
     });
 
-    for (const allocation of allocationsToStart) {
+    for (const { allocation } of allocationsToStart) {
       batch.update(doc(firestoreCollectionService.getShowAllocationsCollection(), allocation.id), {
         status: "in_progress",
         updatedBy: caller.id,
@@ -808,16 +1237,85 @@ export const upcomingShowService = {
       });
     }
 
-    await batch.commit();
-    return this.getUpcomingShowById(caller, upcomingShowId);
+    try {
+      await runTracedWrite(
+        "writeBatch",
+        () => batch.commit(),
+        {
+          app: "studio",
+          collection: "upcomingShows",
+          documentPathPattern: "upcomingShows/{upcomingShowId}",
+          source: "upcomingShowService.startShowPrinting",
+        },
+        { writeCount: allocationsToStart.length + 1 },
+      );
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error("[upcomingShowService] production timer operation denied", {
+          ...operationManifest,
+          firebaseErrorCode:
+            error && typeof error === "object" && "code" in error
+              ? String((error as { code: unknown }).code)
+              : "unknown",
+        });
+      }
+      throw error;
+    }
+    return {};
   },
 
-  async pauseShowPrinting(caller: User, upcomingShowId: string): Promise<UpcomingShow> {
+  async listShowAllocationsForPrintRequestForReconciliation(
+    caller: User,
+    printRequestId: string,
+    readSource: ShowReconciliationReadSource = "default",
+  ): Promise<ShowAllocation[]> {
+    if (!permissionService.canViewUpcomingShows(caller)) {
+      throw new Error("You do not have permission to view show allocations.");
+    }
+    const allocationsQuery = query(
+      firestoreCollectionService.getShowAllocationsCollection(),
+      where("printRequestId", "==", printRequestId),
+    );
+    const snapshot = readSource === "server"
+      ? await getDocsFromServer(allocationsQuery)
+      : await getDocs(allocationsQuery);
+    return snapshot.docs.map((allocationDoc) => {
+      const rawData = allocationDoc.data() as ShowAllocationDocumentData;
+      const diagnostics = diagnoseShowAllocationForTimer(rawData);
+      try {
+        return mapShowAllocationData(
+          allocationDoc.id,
+          rawData,
+        );
+      } catch (error) {
+        throw new ShowCompletionReconciliationRemediationError(
+          `Show allocation ${allocationDoc.id} is incomplete and needs remediation.`,
+          {
+            missingFields: diagnostics.missingRequiredFields,
+            legacyExtraFields: diagnostics.legacyExtraFields,
+          },
+        );
+      }
+    });
+  },
+
+  async pauseShowPrinting(caller: User, upcomingShowId: string): Promise<ShowTimerActionResult> {
     if (!permissionService.canManageUpcomingShows(caller)) {
       throw new Error("You do not have permission to manage show printing.");
     }
 
-    const show = await this.getUpcomingShowById(caller, upcomingShowId);
+    const showSnapshot = await getDoc(
+      doc(firestoreCollectionService.getUpcomingShowsCollection(), upcomingShowId),
+    );
+    if (!showSnapshot.exists()) throw new Error("Upcoming show not found.");
+    const showData = showSnapshot.data() as UpcomingShowDocumentData;
+    const showDiagnostic = diagnoseUpcomingShowForTimer(showData);
+    if (showDiagnostic.parserStatus === "incomplete") {
+      throw new Error(
+        `This show cannot pause printing because required fields are missing or invalid: ${showDiagnostic.missingRequiredFields.join(", ")}.`,
+      );
+    }
+    const show = mapUpcomingShowData(showSnapshot.id, showData);
 
     if (show.productionStatus !== "printing" || show.activePrintStartedAt === undefined) {
       throw new Error("Printing is not running on this show.");
@@ -829,54 +1327,195 @@ export const upcomingShowService = {
       nowMs: Date.now(),
     });
 
-    await updateDoc(doc(firestoreCollectionService.getUpcomingShowsCollection(), upcomingShowId), {
-      accumulatedPrintMs: foldedMs,
-      activePrintStartedAt: deleteField(),
-      printPausedAt: serverTimestamp(),
-      updatedBy: caller.id,
-      updatedAt: serverTimestamp(),
-    });
-
-    return this.getUpcomingShowById(caller, upcomingShowId);
+    const operationManifest = {
+      actionName: "pause",
+      phase: "mutation",
+      projectId: db.app.options.projectId ?? "unknown-project",
+      staffRole: caller.role,
+      isActive: caller.isActive,
+      showId: upcomingShowId,
+      operationCount: 1,
+      operations: [{
+        operationIndex: 1,
+        type: "update",
+        pathTemplate: "upcomingShows/{upcomingShowId}",
+        documentId: upcomingShowId,
+        changedFields: ["accumulatedPrintMs", "activePrintStartedAt", "printPausedAt", "updatedBy", "updatedAt"],
+        existingProductionStatus: show.productionStatus,
+        proposedProductionStatus: "printing",
+        parserStatus: showDiagnostic.parserStatus,
+        missingRequiredFields: showDiagnostic.missingRequiredFields,
+        legacyExtraFields: showDiagnostic.legacyExtraFields,
+      }],
+    } as const;
+    if (import.meta.env.DEV) {
+      console.info("[upcomingShowService] production timer operation manifest", operationManifest);
+    }
+    try {
+      await runTracedWrite(
+        "updateDoc",
+        () => updateDoc(doc(firestoreCollectionService.getUpcomingShowsCollection(), upcomingShowId), {
+          accumulatedPrintMs: foldedMs,
+          activePrintStartedAt: deleteField(),
+          printPausedAt: serverTimestamp(),
+          updatedBy: caller.id,
+          updatedAt: serverTimestamp(),
+        }),
+      {
+        app: "studio",
+        collection: "upcomingShows",
+        documentPathPattern: "upcomingShows/{upcomingShowId}",
+        source: "upcomingShowService.pauseShowPrinting",
+        },
+      );
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error("[upcomingShowService] production timer operation denied", {
+          ...operationManifest,
+          firebaseErrorCode: error && typeof error === "object" && "code" in error
+            ? String((error as { code: unknown }).code) : "unknown",
+        });
+      }
+      throw error;
+    }
+    return {};
   },
 
-  async resumeShowPrinting(caller: User, upcomingShowId: string): Promise<UpcomingShow> {
+  async resumeShowPrinting(caller: User, upcomingShowId: string): Promise<ShowTimerActionResult> {
     if (!permissionService.canManageUpcomingShows(caller)) {
       throw new Error("You do not have permission to manage show printing.");
     }
 
-    const show = await this.getUpcomingShowById(caller, upcomingShowId);
+    const showSnapshot = await getDoc(
+      doc(firestoreCollectionService.getUpcomingShowsCollection(), upcomingShowId),
+    );
+    if (!showSnapshot.exists()) throw new Error("Upcoming show not found.");
+    const showData = showSnapshot.data() as UpcomingShowDocumentData;
+    const showDiagnostic = diagnoseUpcomingShowForTimer(showData);
+    if (showDiagnostic.parserStatus === "incomplete") {
+      throw new Error(
+        `This show cannot resume printing because required fields are missing or invalid: ${showDiagnostic.missingRequiredFields.join(", ")}.`,
+      );
+    }
+    const show = mapUpcomingShowData(showSnapshot.id, showData);
 
     if (show.productionStatus !== "printing" || show.printPausedAt === undefined || show.activePrintStartedAt !== undefined) {
       throw new Error("Printing is not paused on this show.");
     }
 
-    await updateDoc(doc(firestoreCollectionService.getUpcomingShowsCollection(), upcomingShowId), {
-      activePrintStartedAt: serverTimestamp(),
-      printPausedAt: deleteField(),
-      updatedBy: caller.id,
-      updatedAt: serverTimestamp(),
-    });
-
-    return this.getUpcomingShowById(caller, upcomingShowId);
+    const operationManifest = {
+      actionName: "resume",
+      phase: "mutation",
+      projectId: db.app.options.projectId ?? "unknown-project",
+      staffRole: caller.role,
+      isActive: caller.isActive,
+      showId: upcomingShowId,
+      operationCount: 1,
+      operations: [{
+        operationIndex: 1,
+        type: "update",
+        pathTemplate: "upcomingShows/{upcomingShowId}",
+        documentId: upcomingShowId,
+        changedFields: ["activePrintStartedAt", "printPausedAt", "updatedBy", "updatedAt"],
+        existingProductionStatus: show.productionStatus,
+        proposedProductionStatus: "printing",
+        parserStatus: showDiagnostic.parserStatus,
+        missingRequiredFields: showDiagnostic.missingRequiredFields,
+        legacyExtraFields: showDiagnostic.legacyExtraFields,
+      }],
+    } as const;
+    if (import.meta.env.DEV) {
+      console.info("[upcomingShowService] production timer operation manifest", operationManifest);
+    }
+    try {
+      await runTracedWrite(
+        "updateDoc",
+        () => updateDoc(doc(firestoreCollectionService.getUpcomingShowsCollection(), upcomingShowId), {
+          activePrintStartedAt: serverTimestamp(),
+          printPausedAt: deleteField(),
+          updatedBy: caller.id,
+          updatedAt: serverTimestamp(),
+        }),
+      {
+        app: "studio",
+        collection: "upcomingShows",
+        documentPathPattern: "upcomingShows/{upcomingShowId}",
+        source: "upcomingShowService.resumeShowPrinting",
+        },
+      );
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error("[upcomingShowService] production timer operation denied", {
+          ...operationManifest,
+          firebaseErrorCode: error && typeof error === "object" && "code" in error
+            ? String((error as { code: unknown }).code) : "unknown",
+        });
+      }
+      throw error;
+    }
+    return {};
   },
 
-  async markShowPrintingFinished(caller: User, upcomingShowId: string): Promise<UpcomingShow> {
+  async markShowPrintingFinished(caller: User, upcomingShowId: string): Promise<ShowTimerActionResult> {
     if (!permissionService.canManageUpcomingShows(caller)) {
       throw new Error("You do not have permission to manage show printing.");
     }
 
-    const [show, allocations] = await Promise.all([
-      this.getUpcomingShowById(caller, upcomingShowId),
-      this.listShowAllocations(caller, upcomingShowId),
+    const showRef = doc(firestoreCollectionService.getUpcomingShowsCollection(), upcomingShowId);
+    const allocationsQuery = query(
+      firestoreCollectionService.getShowAllocationsCollection(),
+      where("upcomingShowId", "==", upcomingShowId),
+    );
+    const [showSnapshot, allocationSnapshot] = await Promise.all([
+      getDoc(showRef),
+      getDocs(allocationsQuery),
     ]);
+    if (!showSnapshot.exists()) {
+      throw new Error("Upcoming show not found.");
+    }
+    const showData = showSnapshot.data() as UpcomingShowDocumentData;
+    const showDiagnostic = diagnoseUpcomingShowForTimer(showData);
+    if (showDiagnostic.parserStatus === "incomplete") {
+      throw new Error(
+        `This show cannot be marked finished because required fields are missing or invalid: ${showDiagnostic.missingRequiredFields.join(", ")}.`,
+      );
+    }
+    const show = mapUpcomingShowData(showSnapshot.id, showData);
+    const invalidAllocationDiagnostics: Array<{ id: string; fields: string[] }> = [];
+    const allocationRecords = allocationSnapshot.docs.flatMap((allocationDoc) => {
+      const data = allocationDoc.data() as ShowAllocationDocumentData;
+      const diagnostic = diagnoseShowAllocationForTimer(data);
+      try {
+        return [{ allocation: mapShowAllocationData(allocationDoc.id, data), diagnostic }];
+      } catch {
+        invalidAllocationDiagnostics.push({
+          id: allocationDoc.id,
+          fields: diagnostic.missingRequiredFields,
+        });
+        return [];
+      }
+    });
+    if (invalidAllocationDiagnostics.length > 0) {
+      if (import.meta.env.DEV) {
+        console.warn("[upcomingShowService] selected Finish blocked by invalid allocations", {
+          showId: upcomingShowId,
+          allocations: invalidAllocationDiagnostics,
+        });
+      }
+      const fields = [
+        ...new Set(invalidAllocationDiagnostics.flatMap((diagnostic) => diagnostic.fields)),
+      ];
+      throw new Error(
+        `This show cannot be marked finished until ${invalidAllocationDiagnostics.length} allocation record(s) are remediated. Missing or invalid fields: ${fields.join(", ") || "unknown"}.`,
+      );
+    }
 
     if (show.productionStatus !== "printing") {
       throw new Error("Start printing on this show before marking it finished.");
     }
 
-    const allocationsToFinish = allocations.filter(
-      (allocation) =>
+    const allocationsToFinish = allocationRecords.filter(
+      ({ allocation }) =>
         allocation.status !== "canceled" && FINISHABLE_ALLOCATION_STATUSES.includes(allocation.status),
     );
 
@@ -891,7 +1530,45 @@ export const upcomingShowService = {
     });
 
     const batch = writeBatch(db);
-    const showRef = doc(firestoreCollectionService.getUpcomingShowsCollection(), upcomingShowId);
+    const operationManifest = {
+      actionName: "finish",
+      phase: "mutation",
+      projectId: db.app.options.projectId ?? "unknown-project",
+      staffRole: caller.role,
+      isActive: caller.isActive,
+      showId: upcomingShowId,
+      operationCount: allocationsToFinish.length + 1,
+      operations: [
+        {
+          operationIndex: 1,
+          type: "update",
+          pathTemplate: "upcomingShows/{upcomingShowId}",
+          documentId: upcomingShowId,
+          changedFields: ["productionStatus", "accumulatedPrintMs", "activePrintStartedAt", "printPausedAt",
+            "printFinishedAt", "printFinishedBy", "updatedBy", "updatedAt"],
+          existingProductionStatus: show.productionStatus,
+          proposedProductionStatus: "completed",
+          parserStatus: showDiagnostic.parserStatus,
+          missingRequiredFields: showDiagnostic.missingRequiredFields,
+          legacyExtraFields: showDiagnostic.legacyExtraFields,
+        },
+        ...allocationsToFinish.map(({ allocation, diagnostic }, index) => ({
+          operationIndex: index + 2,
+          type: "update",
+          pathTemplate: "showAllocations/{showAllocationId}",
+          documentId: allocation.id,
+          changedFields: ["status", "completedAt", "completedBy", "updatedBy", "updatedAt"],
+          existingProductionStatus: allocation.status,
+          proposedProductionStatus: "done",
+          parserStatus: diagnostic.parserStatus,
+          missingRequiredFields: diagnostic.missingRequiredFields,
+          legacyExtraFields: diagnostic.legacyExtraFields,
+        })),
+      ],
+    } as const;
+    if (import.meta.env.DEV) {
+      console.info("[upcomingShowService] production timer operation manifest", operationManifest);
+    }
 
     batch.update(showRef, {
       productionStatus: "completed",
@@ -906,7 +1583,7 @@ export const upcomingShowService = {
 
     const affectedPrintRequestIds = new Set<string>();
 
-    for (const allocation of allocationsToFinish) {
+    for (const { allocation } of allocationsToFinish) {
       affectedPrintRequestIds.add(allocation.printRequestId);
       batch.update(doc(firestoreCollectionService.getShowAllocationsCollection(), allocation.id), {
         status: "done",
@@ -917,15 +1594,113 @@ export const upcomingShowService = {
       });
     }
 
-    await batch.commit();
+    try {
+      await runTracedWrite(
+        "writeBatch",
+        () => batch.commit(),
+        {
+          app: "studio",
+          collection: "upcomingShows",
+          documentPathPattern: "upcomingShows/{upcomingShowId}",
+          source: "upcomingShowService.markShowPrintingFinished",
+        },
+        { writeCount: allocationsToFinish.length + 1 },
+      );
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error("[upcomingShowService] production timer operation denied", {
+          ...operationManifest,
+          firebaseErrorCode:
+            error && typeof error === "object" && "code" in error
+              ? String((error as { code: unknown }).code)
+              : "unknown",
+        });
+      }
+      throw error;
+    }
 
-    await Promise.all(
-      [...affectedPrintRequestIds].map((printRequestId) =>
-        this.markPrintRequestCompletedIfFullyPrinted(caller, printRequestId),
+    // Plan Section 32 (Amendment 14) — Amendment 13 repeated the same default-source reads and could
+    // therefore receive the same latency-compensated representation twice. The Finish batch commit
+    // above is already backend-acknowledged; the missing guarantee was the read source. Verify only
+    // the provisional failed IDs once with server-only request/item/allocation reads.
+    const committedVerification = await reconcileShowCompletionWithCommittedVerification(
+      [...affectedPrintRequestIds],
+      (printRequestId, readSource) =>
+        this.markPrintRequestCompletedIfFullyPrinted(caller, printRequestId, readSource),
+    );
+    const firstPassReconciliation = committedVerification.provisionalResults;
+    const reconciliation = committedVerification.results;
+    const failedRequestIds = committedVerification.failedRequestIds;
+    const remediationRequestIds = committedVerification.remediationRequestIds;
+
+    if (committedVerification.candidateRequestIds.length > 0) {
+      if (import.meta.env.DEV) {
+        console.info("[upcomingShowService] post-Finish committed-state verification", {
+          postFinishVerification: true,
+          showIdHash: hashShowIdForPostFinishVerification(upcomingShowId),
+          candidateRequestCount: committedVerification.candidateRequestIds.length,
+          verificationAttempt: 1,
+          readSource: "server",
+          fromCache: "unknown",
+          hasPendingWrites: "unknown",
+          timestampSettled: committedVerification.candidateRequestIds.every((candidateId) => {
+            const result = reconciliation.find((entry) => entry.printRequestId === candidateId);
+            return result !== undefined
+              && result.outcome !== "failed"
+              && !result.missingFields.includes("updatedAt");
+          }),
+          initialClassification: classifyReconciliationResults(firstPassReconciliation),
+          verifiedClassification: classifyReconciliationResults(reconciliation),
+          warningRendered:
+            failedRequestIds.length > 0 || remediationRequestIds.length > 0,
+        });
+      }
+    }
+
+    const reconciliationFailures = failedRequestIds.length;
+    if (reconciliationFailures > 0 || remediationRequestIds.length > 0) {
+      console.warn("[upcomingShowService] show printing finished; request reconciliation needs retry", {
+        actionName: "finish",
+        phase: "post_commit_reconciliation",
+        showIdHash: hashShowIdForPostFinishVerification(upcomingShowId),
+        affectedRequestCount: affectedPrintRequestIds.size,
+        failedRequestCount: reconciliationFailures,
+        remediationRequestCount: remediationRequestIds.length,
+      });
+    }
+
+    return {
+      reconciliation: {
+        affectedRequestCount: affectedPrintRequestIds.size,
+        failedRequestCount: reconciliationFailures,
+        failedRequestIds,
+        remediationRequestCount: remediationRequestIds.length,
+        remediationRequestIds,
+        results: reconciliation,
+      },
+    };
+  },
+
+  async retryShowCompletionReconciliation(
+    caller: User,
+    printRequestIds: readonly string[],
+  ): Promise<NonNullable<ShowTimerActionResult["reconciliation"]>> {
+    const affectedPrintRequestIds = [...new Set(printRequestIds)];
+    const results = await Promise.all(
+      affectedPrintRequestIds.map((printRequestId) =>
+        this.markPrintRequestCompletedIfFullyPrinted(caller, printRequestId, "server"),
       ),
     );
-
-    return this.getUpcomingShowById(caller, upcomingShowId);
+    const { failedRequestIds, remediationRequestIds } =
+      summarizeShowCompletionReconciliation(results);
+    return {
+      affectedRequestCount: affectedPrintRequestIds.length,
+      failedRequestCount: failedRequestIds.length,
+      failedRequestIds,
+      remediationRequestCount: remediationRequestIds.length,
+      remediationRequestIds,
+      results,
+    };
   },
 
   /**
@@ -933,26 +1708,26 @@ export const upcomingShowService = {
    * has been allocated and printed across all its show allocations. Only ever moves the request
    * forward to `completed`; never touches `designs.status` or reverses a manual `archived` state.
    */
-  async markPrintRequestCompletedIfFullyPrinted(caller: User, printRequestId: string): Promise<void> {
-    const [printRequest, requestItems, allocations] = await Promise.all([
-      printRequestService.getPrintRequestById(caller, printRequestId),
-      printRequestService.listPrintRequestItems(caller, printRequestId),
-      this.listShowAllocationsForPrintRequest(caller, printRequestId),
-    ]);
-
-    if (printRequest.status === "completed" || printRequest.status === "archived") {
-      return;
-    }
-
-    const totalRequestedQuantity = requestItems.reduce((sum, item) => sum + item.quantity, 0);
-    const activeAllocations = allocations.filter((allocation) => allocation.status !== "canceled");
-    const totalPrintedQuantity = activeAllocations
-      .filter((allocation) => isPrintedAllocationStatus(allocation.status))
-      .reduce((sum, allocation) => sum + allocation.allocatedQuantity, 0);
-
-    if (totalRequestedQuantity > 0 && totalPrintedQuantity >= totalRequestedQuantity) {
-      await printRequestService.updatePrintRequest(caller, printRequestId, { status: "completed" });
-    }
+  async markPrintRequestCompletedIfFullyPrinted(
+    caller: User,
+    printRequestId: string,
+    readSource: ShowReconciliationReadSource = "default",
+  ): Promise<ShowCompletionReconciliationResult> {
+    return reconcileCompletedPrintRequest(printRequestId, {
+      readRequest: () =>
+        printRequestService.getPrintRequestForShowReconciliation(caller, printRequestId, readSource),
+      readItems: () =>
+        printRequestService.listPrintRequestItemsForShowReconciliation(
+          caller,
+          printRequestId,
+          readSource,
+        ),
+      readAllocations: () =>
+        this.listShowAllocationsForPrintRequestForReconciliation(caller, printRequestId, readSource),
+      writeCompleted: () =>
+        printRequestService.markPrintRequestCompletedForShowReconciliation(caller, printRequestId),
+      isPrintedStatus: (status) => isPrintedAllocationStatus(status as ShowAllocationStatus),
+    });
   },
 
   async removeShowAllocation(caller: User, allocationId: string): Promise<void> {
@@ -974,7 +1749,12 @@ export const upcomingShowService = {
       throw new Error("This show has already started printing. Removing allocations requires an admin correction.");
     }
 
-    await deleteDoc(allocationRef);
+    await runTracedWrite("deleteDoc", () => deleteDoc(allocationRef), {
+      app: "studio",
+      collection: "showAllocations",
+      documentPathPattern: "showAllocations/{showAllocationId}",
+      source: "upcomingShowService.removeShowAllocation",
+    });
     await this.recalculateShowAllocatedQuantity(caller, allocation.upcomingShowId);
     await this.markPrintRequestEditingIfNoActiveAllocations(caller, allocation.printRequestId);
   },
@@ -1003,7 +1783,16 @@ export const upcomingShowService = {
 
     await Promise.all(
       allocationsForRequest.map((allocation) =>
-        deleteDoc(doc(firestoreCollectionService.getShowAllocationsCollection(), allocation.id)),
+        runTracedWrite(
+          "deleteDoc",
+          () => deleteDoc(doc(firestoreCollectionService.getShowAllocationsCollection(), allocation.id)),
+          {
+            app: "studio",
+            collection: "showAllocations",
+            documentPathPattern: "showAllocations/{showAllocationId}",
+            source: "upcomingShowService.removeShowAllocationsForRequest",
+          },
+        ),
       ),
     );
 
@@ -1054,11 +1843,21 @@ export const upcomingShowService = {
       .filter((allocation) => allocation.status !== "canceled")
       .reduce((sum, allocation) => sum + allocation.allocatedQuantity, 0);
 
-    await updateDoc(doc(firestoreCollectionService.getUpcomingShowsCollection(), upcomingShowId), {
-      allocatedQuantity: recalculatedTotal,
-      updatedBy: caller.id,
-      updatedAt: serverTimestamp(),
-    });
+    await runTracedWrite(
+      "updateDoc",
+      () =>
+        updateDoc(doc(firestoreCollectionService.getUpcomingShowsCollection(), upcomingShowId), {
+          allocatedQuantity: recalculatedTotal,
+          updatedBy: caller.id,
+          updatedAt: serverTimestamp(),
+        }),
+      {
+        app: "studio",
+        collection: "upcomingShows",
+        documentPathPattern: "upcomingShows/{upcomingShowId}",
+        source: "upcomingShowService.recalculateShowAllocatedQuantity",
+      },
+    );
   },
 
   /**

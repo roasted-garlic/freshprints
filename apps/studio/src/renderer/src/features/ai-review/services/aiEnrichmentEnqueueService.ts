@@ -1,7 +1,6 @@
 import { FirebaseError } from "firebase/app";
-import { httpsCallable } from "firebase/functions";
 
-import { functions } from "../../../config/firebase";
+import { callTracedFunction } from "../../../config/tracedCallable";
 import { logPipelineEvent } from "../../../shared/utils/pipelineLog";
 
 interface EnqueueAiEnrichmentInput {
@@ -41,12 +40,10 @@ async function enqueueAiEnrichment(
   },
 ): Promise<EnqueueAiEnrichmentResult> {
   try {
-    const enqueueCallable = httpsCallable<EnqueueAiEnrichmentInput, EnqueueAiEnrichmentResult>(
-      functions,
+    const response = await callTracedFunction<EnqueueAiEnrichmentInput, EnqueueAiEnrichmentResult>(
       "enqueueAiEnrichment",
-    );
-
-    const response = await enqueueCallable({
+      { source: "aiEnrichmentEnqueueService.enqueueAiEnrichment" },
+    )({
       designId,
       rerunRejected: options?.rerunRejected,
       rerunFromReview: options?.rerunFromReview,
@@ -55,16 +52,16 @@ async function enqueueAiEnrichment(
 
     logPipelineEvent("enqueue.callable.completed", {
       designId,
-      queued: response.data.queued,
-      completed: response.data.completed ?? null,
-      aiProcessingStage: response.data.aiProcessingStage ?? null,
-      reason: response.data.reason ?? null,
+      queued: response.queued,
+      completed: response.completed ?? null,
+      aiProcessingStage: response.aiProcessingStage ?? null,
+      reason: response.reason ?? null,
       rerunRejected: options?.rerunRejected ?? false,
       rerunFromReview: options?.rerunFromReview ?? false,
       visionModelIdOverride: options?.visionModelIdOverride ?? null,
     });
 
-    return response.data;
+    return response;
   } catch (error) {
     throw new Error(resolveAiEnrichmentCallableErrorMessage(error));
   }
@@ -138,19 +135,17 @@ export const aiEnrichmentEnqueueService = {
 
   async resetForProcessing(designId: string): Promise<ResetAiEnrichmentResult> {
     try {
-      const resetCallable = httpsCallable<ResetAiEnrichmentInput, ResetAiEnrichmentResult>(
-        functions,
+      const response = await callTracedFunction<ResetAiEnrichmentInput, ResetAiEnrichmentResult>(
         "resetAiEnrichmentForProcessing",
-      );
-
-      const response = await resetCallable({ designId });
+        { source: "aiEnrichmentEnqueueService.resetForProcessing" },
+      )({ designId });
 
       logPipelineEvent("ai.reset_for_processing.completed", {
         designId,
-        reset: response.data.reset,
+        reset: response.reset,
       });
 
-      return response.data;
+      return response;
     } catch (error) {
       throw new Error(resolveAiEnrichmentCallableErrorMessage(error));
     }

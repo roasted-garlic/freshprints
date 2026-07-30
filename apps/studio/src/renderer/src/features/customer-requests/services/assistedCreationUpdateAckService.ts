@@ -12,6 +12,7 @@ import {
 } from "firebase/firestore";
 
 import { buildAssistedCreationUpdateAckDocId } from "@fresh-prints/shared/utils/assistedCreationHistory";
+import { traceFirestoreListenerEmission } from "@fresh-prints/shared/utils/firestoreUsageTrace";
 
 import { firestoreCollectionService } from "../../firebase/services/firestoreCollectionService";
 import { mapFirestoreTimestamp } from "../../firebase/utils/firestoreTimestamp";
@@ -28,8 +29,16 @@ function getSharedAckSubscription(userId: string) {
     return existing;
   }
 
+  const traceMetadata = {
+    app: "studio" as const,
+    collection: "assistedCreationUpdateAcks",
+    constraints: ["userId==currentUser"],
+    source: "assistedCreationUpdateAckService.subscribe",
+    triggerReason: "authentication" as const,
+  };
   const shared = createSharedFirestoreSubscription<AssistedCreationUpdateAckRecord[]>({
     traceKey: `assistedCreationUpdateAcks:userId=${userId}`,
+    traceMetadata,
     start: ({ next, error }) => {
       const acksQuery = query(
         firestoreCollectionService.getAssistedCreationUpdateAcksCollection(),
@@ -39,6 +48,7 @@ function getSharedAckSubscription(userId: string) {
       return onSnapshot(
         acksQuery,
         (snapshot) => {
+          traceFirestoreListenerEmission(traceMetadata, snapshot.size);
           const records: AssistedCreationUpdateAckRecord[] = [];
           for (const document of snapshot.docs) {
             const mapped = mapAckRecord(document.data());

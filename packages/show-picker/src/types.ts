@@ -22,8 +22,8 @@ export interface ShowPickerOption {
   statusVariant: ShowPickerStatusVariant;
   isFull: boolean;
   isOverCapacity: boolean;
-  /** False when the show cannot be queued to (past / cutoff / ineligible) — still inspectable in the calendar. */
-  isSelectable: boolean;
+  canInspect: boolean;
+  canAllocate: boolean;
   /**
    * Compact Portal queue-cutoff hint on the capacity row (right-aligned).
    * Omitted when not applicable.
@@ -39,6 +39,10 @@ export interface ShowPickerProps {
   options: ShowPickerOption[];
   selectedId: string | null;
   onSelect: (id: string) => void;
+  onInspect?: (id: string) => void;
+  inspectedId?: string | null;
+  /** Clears an allocation destination while a display-only historical date is inspected. */
+  onClearSelection?: () => void;
   now?: Date;
   className?: string;
 }

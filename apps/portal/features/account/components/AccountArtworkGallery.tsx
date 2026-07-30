@@ -117,7 +117,6 @@ export function AccountArtworkGallery({
               type="button"
             >
               {item.imageUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element -- signed Storage URLs
                 <img
                   alt=""
                   className="portal-account-gallery-tile-image"

@@ -20,7 +20,8 @@ describe("buildShowPickerOptions", () => {
     });
 
     assert.equal(option?.statusLabel, "CLOSED");
-    assert.equal(option?.isSelectable, false);
+    assert.equal(option?.canInspect, true);
+    assert.equal(option?.canAllocate, false);
     assert.match(option?.capacityLabel ?? "", /spots left|of 200 taken|Full/i);
   });
 
@@ -40,7 +41,8 @@ describe("buildShowPickerOptions", () => {
     });
 
     assert.equal(option?.statusLabel, "CLOSED");
-    assert.equal(option?.isSelectable, false);
+    assert.equal(option?.canInspect, true);
+    assert.equal(option?.canAllocate, false);
   });
 
   it("keeps open upcoming shows OPEN and selectable", () => {
@@ -59,6 +61,26 @@ describe("buildShowPickerOptions", () => {
     });
 
     assert.equal(option?.statusLabel, "OPEN");
-    assert.equal(option?.isSelectable, true);
+    assert.equal(option?.canInspect, true);
+    assert.equal(option?.canAllocate, true);
+  });
+
+  it("keeps a just-finished future show visible but terminal and non-selectable", () => {
+    const [option] = buildShowPickerOptions({
+      shows: [{
+        id: "just-finished-show",
+        scheduledAt: new Date("2026-07-30T20:00:00"),
+        productionStatus: "completed",
+        maxTotalQuantity: 200,
+        allocatedQuantity: 25,
+      }],
+      isPastScheduled: () => false,
+      isPastQueueCutoff: () => false,
+      canSelectShow: () => false,
+    });
+
+    assert.equal(option?.statusLabel, "COMPLETED");
+    assert.equal(option?.canInspect, true, "a finished show remains inspectable");
+    assert.equal(option?.canAllocate, false, "a finished show is never an allocation destination");
   });
 });

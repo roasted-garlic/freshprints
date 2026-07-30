@@ -1,6 +1,7 @@
 import type { Timestamp } from "firebase/firestore";
 
 import type { PrintRequestItemStatus, PrintRequestStatus } from "./printRequest.enums";
+import type { PrintRequestListTab } from "../../utils/printRequestListGrouping";
 
 export type PrintRequestOrigin =
   | "studio_internal"
@@ -21,6 +22,17 @@ export interface PrintRequest {
   requestOrigin?: PrintRequestOrigin;
   status: PrintRequestStatus;
   itemCount: number;
+  /**
+   * Server-maintained mirror of `derivePrintRequestListTab`'s output, kept in sync by
+   * `onPrintRequestQueueStatusInputsWritten` whenever this request's items or allocations change.
+   * Exists so the Studio Print Requests list can filter/count exactly (`where(queueTab==X)` +
+   * `getCountFromServer`) without scanning every request's items/allocations on every page load
+   * (Wave C hydration remediation, 2026-07-25). Never authoritative for production/queue status
+   * shown elsewhere — `derivePrintRequestListTab` over live data remains the source of truth;
+   * this field is a read-optimization mirror, recomputed, never hand-edited.
+   * Absent on pre-migration documents until the one-time backfill runs.
+   */
+  queueTab?: PrintRequestListTab;
   requestSequenceNumber?: number;
   customerUsernameSnapshot?: string;
   customerDisplayNameSnapshot?: string;

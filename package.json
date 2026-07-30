@@ -16,9 +16,11 @@
     "tunnel:portal": "cloudflared tunnel --url http://localhost:3100",
     "build:studio": "npm run build --workspace @fresh-prints/studio",
     "build:portal": "npm run build --workspace @fresh-prints/portal",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "test:rules": "firebase emulators:exec --only firestore,storage \"npx tsx --test tests/firebase/catalogSnapshot.rules.test.ts tests/firebase/studioProductionTimer.rules.test.ts tests/firebase/printRequestCompletion.rules.test.ts\""
   },
   "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.1",
     "@typescript-eslint/eslint-plugin": "^7.1.1",
     "@typescript-eslint/parser": "^7.1.1",
     "concurrently": "^9.2.3",

@@ -28,6 +28,10 @@ import {
   WHATNOT_IMPORT_IPC_CHANNELS,
   isAllowedWhatnotImportIpcChannel,
 } from "./ipc/whatnotImport/whatnotImportIpcChannels";
+import {
+  CATALOG_ASSET_IPC_CHANNELS,
+  isAllowedCatalogAssetIpcChannel,
+} from "./ipc/catalogAsset/catalogAssetIpcChannels";
 import type {
   ClearInboxAlertSoundRequest,
   ClearInboxAlertSoundResult,
@@ -84,6 +88,19 @@ import type {
   ExportShowZipResult,
   ShowExportProgressEvent,
 } from "@fresh-prints/shared/types/export/showExportIpc.types";
+import type {
+  FetchCatalogAssetJsonRequest,
+  FetchCatalogAssetJsonIpcResult,
+} from "@fresh-prints/shared/types/catalogAsset/catalogAssetIpc.types";
+import type {
+  FirebaseDebugCommand,
+  OpenFirebaseDebugWindowRequest,
+} from "@fresh-prints/shared/types/firebaseDebug/firebaseDebugIpc.types";
+import type { FirestoreTraceSnapshot } from "@fresh-prints/shared/utils/firestoreUsageTrace";
+import {
+  FIREBASE_DEBUG_IPC_CHANNELS,
+  isAllowedFirebaseDebugIpcChannel,
+} from "./ipc/firebaseDebug/firebaseDebugIpcChannels";
 import type {
   ClearGangSheetCacheRequest,
   DownloadCachedGangSheetRequest,
@@ -237,6 +254,61 @@ function subscribeImportEvent<T>(
 }
 
 contextBridge.exposeInMainWorld("freshPrints", {
+  firebaseDebug: {
+    open(request: OpenFirebaseDebugWindowRequest): Promise<{ opened: boolean }> {
+      if (!isAllowedFirebaseDebugIpcChannel(FIREBASE_DEBUG_IPC_CHANNELS.OPEN)) {
+        return Promise.resolve({ opened: false });
+      }
+      return ipcRenderer.invoke(FIREBASE_DEBUG_IPC_CHANNELS.OPEN, request);
+    },
+    publishSnapshot(snapshot: FirestoreTraceSnapshot): void {
+      ipcRenderer.send(FIREBASE_DEBUG_IPC_CHANNELS.PUBLISH_SNAPSHOT, snapshot);
+    },
+    getSnapshot(): Promise<FirestoreTraceSnapshot | null> {
+      return ipcRenderer.invoke(FIREBASE_DEBUG_IPC_CHANNELS.GET_SNAPSHOT);
+    },
+    onSnapshot(callback: (snapshot: FirestoreTraceSnapshot) => void): () => void {
+      const listener = (_event: Electron.IpcRendererEvent, snapshot: FirestoreTraceSnapshot) =>
+        callback(snapshot);
+      ipcRenderer.on(FIREBASE_DEBUG_IPC_CHANNELS.SNAPSHOT, listener);
+      return () => ipcRenderer.removeListener(FIREBASE_DEBUG_IPC_CHANNELS.SNAPSHOT, listener);
+    },
+    onCommand(callback: (command: FirebaseDebugCommand) => void): () => void {
+      const listener = (_event: Electron.IpcRendererEvent, command: FirebaseDebugCommand) =>
+        callback(command);
+      ipcRenderer.on(FIREBASE_DEBUG_IPC_CHANNELS.COMMAND, listener);
+      return () => ipcRenderer.removeListener(FIREBASE_DEBUG_IPC_CHANNELS.COMMAND, listener);
+    },
+    sendCommand(command: FirebaseDebugCommand): void {
+      ipcRenderer.send(FIREBASE_DEBUG_IPC_CHANNELS.COMMAND, command);
+    },
+    close(): void {
+      ipcRenderer.send(FIREBASE_DEBUG_IPC_CHANNELS.CLOSE);
+    },
+  },
+
+  catalogAsset: {
+    fetchJson(
+      request: FetchCatalogAssetJsonRequest,
+    ): Promise<FetchCatalogAssetJsonIpcResult> {
+      if (!isAllowedCatalogAssetIpcChannel(CATALOG_ASSET_IPC_CHANNELS.FETCH_JSON)) {
+        return Promise.resolve({
+          success: false,
+          error: {
+            code: "INVALID_INPUT",
+            message: "The requested catalog asset operation is not allowed.",
+            diagnostics: {
+              durationMs: 0,
+              failureCode: "ipc-channel-denied",
+              failureStage: "electron-ipc",
+            },
+          },
+        });
+      }
+      return ipcRenderer.invoke(CATALOG_ASSET_IPC_CHANNELS.FETCH_JSON, request);
+    },
+  },
+
   app: {
     openDevTools(): Promise<ImportIpcResult<OpenDevToolsResult>> {
       return invokeAppChannel<OpenDevToolsResult>(APP_IPC_CHANNELS.OPEN_DEV_TOOLS);

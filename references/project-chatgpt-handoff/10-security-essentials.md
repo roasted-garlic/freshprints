@@ -39,6 +39,15 @@ Use Studio `permissionService` — never scatter role checks in components.
 
 Auth provider changes, relaxing rules, new public sensitive endpoints, secret rotation, production deploys.
 
+## Print-request completion authorization
+
+- Staff completion updates only `status`, authenticated `updatedBy`, and server `updatedAt`.
+- Firestore validates the full current request shape, including optional server-maintained
+  `queueTab` and `showQueueBiddingAcknowledgment`.
+- Those server-maintained fields remain client-immutable.
+- Only the exact staff `active|editing -> completed` transition uses the completion branch;
+  completed regressions remain denied except the established forward archive path.
+
 ## AI-specific
 
 - Model calls only from Cloud Functions  

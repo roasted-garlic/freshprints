@@ -8,7 +8,6 @@ import {
   type Unsubscribe,
 } from "firebase/firestore";
 import { FirebaseError } from "firebase/app";
-import { httpsCallable } from "firebase/functions";
 
 import { ETSY_SUGGESTION_REQUESTS_COLLECTION } from "@fresh-prints/shared/constants/etsyRecommendation/etsyRecommendation.constants";
 import type {
@@ -19,7 +18,8 @@ import type {
   ResolveEtsySuggestionRequestRequest,
 } from "@fresh-prints/shared/types/etsyRecommendation/etsyRecommendationActions.types";
 
-import { db, functions } from "../../../config/firebase";
+import { db } from "../../../config/firebase";
+import { callTracedFunction } from "../../../config/tracedCallable";
 
 export interface EtsySuggestionRequestItem {
   id: string;
@@ -111,12 +111,12 @@ export const etsySuggestionRequestsService = {
 
   async approve(requestId: string): Promise<ApproveEtsySuggestionRequestResponse> {
     try {
-      const callable = httpsCallable<
+      return await callTracedFunction<
         ResolveEtsySuggestionRequestRequest,
         ApproveEtsySuggestionRequestResponse
-      >(functions, "approveEtsySuggestionRequest");
-      const response = await callable({ requestId });
-      return response.data;
+      >("approveEtsySuggestionRequest", {
+        source: "etsySuggestionRequestsService.approve",
+      })({ requestId });
     } catch (error) {
       throw mapCallableError(error);
     }
@@ -124,15 +124,15 @@ export const etsySuggestionRequestsService = {
 
   async reject(requestId: string, rejectReason?: string): Promise<RejectEtsySuggestionRequestResponse> {
     try {
-      const callable = httpsCallable<
+      return await callTracedFunction<
         ResolveEtsySuggestionRequestRequest,
         RejectEtsySuggestionRequestResponse
-      >(functions, "rejectEtsySuggestionRequest");
-      const response = await callable({
+      >("rejectEtsySuggestionRequest", {
+        source: "etsySuggestionRequestsService.reject",
+      })({
         requestId,
         ...(rejectReason?.trim() ? { rejectReason: rejectReason.trim() } : {}),
       });
-      return response.data;
     } catch (error) {
       throw mapCallableError(error);
     }

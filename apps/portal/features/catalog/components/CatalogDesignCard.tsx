@@ -21,7 +21,6 @@ export function CatalogDesignCard({
   canAddPrints = true,
   currentRequestQuantity = 0,
   design,
-  exhaustedHelperText: _exhaustedHelperText = null,
   exhaustedStatusText = null,
   isBusy = false,
   onAdjustQuantity,

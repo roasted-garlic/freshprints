@@ -109,6 +109,10 @@ Users: Owner, Admin, Helper
 
 Fresh Prints Studio is **never customer-facing**. Users with `role: customer` do not access Studio.
 
+### Studio default landing (2026-07-23; ADR-FP-119)
+
+Authenticated Studio home is **Staff Inbox** (`/inbox`): root `/`, unknown routes, post-login redirect, and the sidebar brand link all navigate there. Design Library (`/designs`) remains a normal sidebar destination and is unchanged as a workspace.
+
 ### Studio workspaces (official)
 
 Fresh Prints Studio is organized into **three independent design-lifecycle workspaces**:
@@ -479,6 +483,27 @@ Root scripts: `dev:studio`, `dev:portal`, `build:studio`, `build:portal`.
 
 # Electron Architecture
 
+## Development-only Firebase Debug window
+
+Studio's Firebase Debug UI is a separate Electron `BrowserWindow`, available only in an unpackaged
+development runtime against project `fresh-prints-dev`. The main Studio renderer owns the trace
+session. Its service-layer tracer publishes sanitized snapshots through an allowlisted preload IPC
+surface to Electron main, which brokers the latest snapshot to the singleton debug renderer. Reset
+and tracing enable/disable commands return through main to the authoritative main renderer.
+
+Electron main validates the retained main window as the snapshot/open sender, owns singleton
+focus/restore/close/reopen behavior, and closes the debug window with the main app. The debug renderer
+does not mount normal Studio routes and therefore cannot replace main-window route/action context.
+Only safe trace metadata crosses IPC; Firebase payloads, document contents, signed URLs, raw errors,
+tokens, secrets, and customer data are forbidden.
+
+Portal uses the same ownership rule with browser-native transport. The normal Portal tab owns and
+starts the eligible development trace session; a named `/firebase-debug` popup is display/control
+only. Sanitized snapshots and fixed Reset/enable/disable commands cross a same-origin
+`BroadcastChannel` after an opaque owner-token handshake. Direct debug-route access, stale owner
+sessions, production builds, and projects other than `fresh-prints-dev` fail closed. The debug route
+bypasses Portal auth/data providers so it cannot create a second set of Firebase activity.
+
 The project uses **Vite + vite-plugin-electron** with main process code under `apps/studio/electron/` (not `src/main/`). `[INFERRED]` from repository layout.
 
 ```txt
@@ -757,3 +782,24 @@ Fresh Prints should be:
 * Easy for AI agents to understand
 
 Every architectural decision should move the project closer to those goals.
+
+## Generated catalog read models
+
+Firestore is the write authority. `functions/src/catalogSnapshots/` publishes versioned JSON under
+`generated/catalog-reference/**` and `generated/portal-catalog/**`; manifests are the only mutable
+pointers and are written last with Storage generation preconditions. The immediately prior content
+version remains addressable.
+
+AI Functions read the private taxonomy projection through Admin Storage. Portal services—not React
+components—read public-safe taxonomy, Discover, search/tag/category IDs, and bounded card buckets.
+Normal Portal browsing remains Firestore cursor pagination. Coordination lives only in
+`snapshotPublicationState/catalog-reference` and `snapshotPublicationState/portal-catalog`, both
+denied to clients. See ADR-FP-120.
+
+Card-only design edits use an additive immutable override asset referenced by the Portal manifest.
+The trigger maps the Firestore event payload directly, merges it with the prior override asset, and
+uses a Storage generation-preconditioned manifest swap; it does not query ready designs or
+taxonomy. Studio additionally keeps a memory-only, authenticated-session override so its card stays
+authoritatively updated during the manifest's documented 30-second cache window and across route
+unmounts. Full index/filter changes still rebuild the full catalog; operational-only metadata does
+not publish. Consumers overlay overrides in services, never React components.

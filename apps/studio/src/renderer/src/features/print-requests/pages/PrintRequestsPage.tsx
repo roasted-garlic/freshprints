@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 
 import { ExternalLink, ImagePlus, Plus, RefreshCw, Search, X } from "lucide-react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 
 import { Button } from "../../../shared/components/Button";
 import { Card } from "../../../shared/components/Card";
@@ -19,10 +19,8 @@ import { useShellHeaderConfig } from "../../../shared/hooks/useShellHeaderConfig
 import { useAuth } from "../../auth/hooks/useAuth";
 import { permissionService } from "../../permissions/services/permissionService";
 import { printRequestService, type UpdatePrintRequestItemInput } from "../services/printRequestService";
-import { useCustomers } from "../hooks/useCustomers";
 import { usePrintRequestDetails } from "../hooks/usePrintRequestDetails";
 import { usePrintRequests } from "../hooks/usePrintRequests";
-import { usePrintRequestAllocationTotals } from "../hooks/usePrintRequestAllocationTotals";
 import { useReadyDesignsForSelection } from "../hooks/useReadyDesignsForSelection";
 import { PrintRequestItemCard } from "../components/PrintRequestItemCard";
 import { AddToShowModal } from "../components/AddToShowModal";
@@ -35,15 +33,10 @@ import { formatInternalPrintRequestName } from "@fresh-prints/shared/utils/print
 import { getPrintRequestOriginBadgeLabel } from "@fresh-prints/shared/utils/printRequestOrigin";
 import { getPrintRequestTabHelperCopy } from "@fresh-prints/shared/staffInbox/printRequestTabHelperCopy";
 import { derivePrintRequestQueueState, isPrintRequestFullyPrinted } from "@fresh-prints/shared/utils/printRequestQueueState";
-import { derivePrintRequestListTab, type PrintRequestListTab } from "@fresh-prints/shared/utils/printRequestListGrouping";
-import {
-  findPrintRequestListTabForRequestId,
-  resolveSelectedRequestIdForTab,
-} from "@fresh-prints/shared/utils/printRequestTabSelection";
+import type { PrintRequestListTab } from "@fresh-prints/shared/utils/printRequestListGrouping";
 import {
   getPrintRequestWorkingTriageLabel,
   isPrintRequestIncludedInListTabs,
-  matchesPrintRequestWorkingTriageFilter,
   PRINT_REQUEST_WORKING_TRIAGE_FILTERS,
   resolvePrintRequestWorkingTriageBucket,
   type PrintRequestWorkingTriageFilter,
@@ -52,10 +45,20 @@ import { groupAllocationsByShow } from "@fresh-prints/shared/utils/groupAllocati
 import { canRemoveRequestFromShow } from "@fresh-prints/shared/utils/showQueueEditability";
 import { getPrintRequestQueueStateBadgeLabel, getPrintRequestQueueStateBadgeVariant } from "../utils/printRequestQueueBadge";
 import { filterPrintRequestsByListSearch } from "../utils/printRequestListSearch";
-import { PRINT_REQUEST_ID_QUERY_PARAM, PRINT_REQUEST_TAB_QUERY_PARAM, getPrintRequestsPath, isPrintRequestRouteTab } from "../constants/printRequestRoutes";
+import {
+  PRINT_REQUEST_ID_QUERY_PARAM,
+  PRINT_REQUEST_TAB_QUERY_PARAM,
+  PRINT_REQUEST_WORKING_FILTER_QUERY_PARAM,
+  getPrintRequestsPath,
+  isPrintRequestRouteTab,
+  isPrintRequestWorkingFilter,
+  resolveCanonicalPrintRequestsRoute,
+  resolveWorkingFilterClick,
+  shouldReplacePrintRequestsPath,
+} from "../constants/printRequestRoutes";
 import { getDesignLibraryPath } from "../../designs/constants/designLibraryFilters";
-import { useUpcomingShows } from "../../upcoming-shows/hooks/useUpcomingShows";
 import { upcomingShowService } from "../../upcoming-shows/services/upcomingShowService";
+import type { UpcomingShow } from "@fresh-prints/shared/types/upcomingShow/upcomingShow.types";
 import { formatUpcomingShowTitle } from "../../upcoming-shows/utils/upcomingShowDisplay";
 import { formatShowDateTimeLabel } from "@fresh-prints/shared/utils/showDateTimeDisplay";
 import { getUpcomingShowsPath } from "../../upcoming-shows/constants/upcomingShowRoutes";
@@ -97,7 +100,10 @@ function formatTimestampLabel(value: { toDate: () => Date } | undefined): string
   return value.toDate().toLocaleString();
 }
 
-function getPrintRequestCustomerLabel(printRequest: PrintRequest | null, customers: Customer[]): string {
+function getPrintRequestCustomerLabel(
+  printRequest: PrintRequest | null,
+  customersById: ReadonlyMap<string, Customer>,
+): string {
   if (!printRequest) {
     return "No request selected";
   }
@@ -107,7 +113,7 @@ function getPrintRequestCustomerLabel(printRequest: PrintRequest | null, custome
   }
 
   if (printRequest.customerId) {
-    const customer = customers.find((entry) => entry.id === printRequest.customerId);
+    const customer = customersById.get(printRequest.customerId);
     if (!customer) {
       return (
         printRequest.customerUsernameSnapshot
@@ -191,46 +197,103 @@ function isRequestDetailDirty(printRequest: PrintRequest, notes: string, interna
 }
 
 export function PrintRequestsPage() {
+  const location = useLocation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
-  const { customers, isLoading: isCustomersLoading, reloadCustomers } = useCustomers();
+  const tabParam = searchParams.get(PRINT_REQUEST_TAB_QUERY_PARAM);
+  const selectedRequestIdParam = searchParams.get(PRINT_REQUEST_ID_QUERY_PARAM);
+  const workingFilterParam = searchParams.get(PRINT_REQUEST_WORKING_FILTER_QUERY_PARAM);
+  const activeListTab: PrintRequestListTab = isPrintRequestRouteTab(tabParam)
+    ? tabParam
+    : "working";
+  const workingTriageFilter: PrintRequestWorkingTriageFilter =
+    isPrintRequestWorkingFilter(workingFilterParam) ? workingFilterParam : "active";
+  const selectedRequestId = selectedRequestIdParam;
+  const commitPrintRequestsRoute = useCallback(
+    (
+      options: {
+        requestId?: string;
+        tab: PrintRequestListTab;
+        workingFilter?: PrintRequestWorkingTriageFilter;
+      },
+      history: "push" | "replace" = "replace",
+    ) => {
+      const target = getPrintRequestsPath(options);
+      const current = `${location.pathname}${location.search}`;
+      if (!shouldReplacePrintRequestsPath(
+        {
+          requestId: selectedRequestIdParam,
+          tab: tabParam,
+          workingFilter: workingFilterParam,
+        },
+        options,
+      ) && current === target) {
+        return;
+      }
+
+      navigate(target, { replace: history === "replace" });
+    },
+    [
+      location.pathname,
+      location.search,
+      navigate,
+      selectedRequestIdParam,
+      tabParam,
+      workingFilterParam,
+    ],
+  );
+  const [listSearchQuery, setListSearchQuery] = useState("");
+
+  const {
+    allocationTotalsByRequestId,
+    countsByTab,
+    customersById,
+    ensureRequestLoaded,
+    error: requestsError,
+    hasMore: hasMoreRequests,
+    insertCreatedRequestLocally,
+    isLoading: isRequestsLoading,
+    isLoadingMore: isLoadingMoreRequests,
+    loadMore: loadMoreRequests,
+    patchRequestLocally,
+    patchSummaryLocally,
+    reconcileDeletedOrArchivedRequest,
+    reloadPrintRequests,
+    requests,
+    summariesByRequestId,
+  } = usePrintRequests(activeListTab);
+
+  // Deep-linked/selected requests outside the currently loaded page are fetched by direct ID —
+  // never by widening the page query (Wave C hydration remediation, 2026-07-25).
+  useEffect(() => {
+    if (selectedRequestId) {
+      void ensureRequestLoaded(selectedRequestId);
+    }
+  }, [ensureRequestLoaded, selectedRequestId]);
+
+  // Full customer directory is only needed for the "create request for a customer" picker —
+  // loaded lazily when that form is actually shown, never on page mount.
+  const [customerDirectory, setCustomerDirectory] = useState<Customer[]>([]);
+  const [isCustomerDirectoryLoading, setIsCustomerDirectoryLoading] = useState(false);
+
+  const requestDetails = usePrintRequestDetails(selectedRequestId);
+  const isLoadedSelectedRequest = requestDetails.loadedRequestId === selectedRequestId;
+  const selectedRequest = isLoadedSelectedRequest ? requestDetails.printRequest : null;
+  const requestItems = useMemo(
+    () => isLoadedSelectedRequest ? requestDetails.items : [],
+    [isLoadedSelectedRequest, requestDetails.items],
+  );
+  const selectedDesignIds = useMemo(
+    () =>
+      requestItems.flatMap((item) => item.designId ? [item.designId] : []),
+    [requestItems],
+  );
   const {
     designs: readyDesigns,
     isLoading: isReadyDesignsLoading,
     reloadDesigns: reloadReadyDesigns,
-  } = useReadyDesignsForSelection();
-  const {
-    error: requestsError,
-    isLoading: isRequestsLoading,
-    reloadPrintRequests,
-    requests,
-    summariesByRequestId,
-  } = usePrintRequests();
-  const {
-    totalsByRequestId: allocationTotalsByRequestId,
-    isLoading: isAllocationTotalsLoading,
-    reload: reloadAllocationTotals,
-  } = usePrintRequestAllocationTotals();
-  const { shows: upcomingShows } = useUpcomingShows();
-  const initialTabParam = searchParams.get(PRINT_REQUEST_TAB_QUERY_PARAM);
-  const initialRequestIdParam = searchParams.get(PRINT_REQUEST_ID_QUERY_PARAM);
-  const [activeListTab, setActiveListTab] = useState<PrintRequestListTab>(() =>
-    isPrintRequestRouteTab(initialTabParam) ? initialTabParam : "working",
-  );
-  const [listSearchQuery, setListSearchQuery] = useState("");
-  const [workingTriageFilter, setWorkingTriageFilter] =
-    useState<PrintRequestWorkingTriageFilter>("active");
-
-  // Seed from the URL so Show Queue → Print Request deep links are not overwritten by the
-  // "select first visible card" sync before tab/request hydration finishes.
-  const [selectedRequestId, setSelectedRequestId] = useState<string | null>(
-    () => initialRequestIdParam,
-  );
-  const requestDetails = usePrintRequestDetails(selectedRequestId);
-  const isLoadedSelectedRequest = requestDetails.loadedRequestId === selectedRequestId;
-  const selectedRequest = isLoadedSelectedRequest ? requestDetails.printRequest : null;
-  const requestItems = isLoadedSelectedRequest ? requestDetails.items : [];
+  } = useReadyDesignsForSelection(selectedDesignIds);
   const uploadSummariesById = isLoadedSelectedRequest ? requestDetails.uploadSummaries : new Map();
   const requestError = isLoadedSelectedRequest ? requestDetails.error : null;
   const isRequestLoading = requestDetails.isLoading || (Boolean(selectedRequestId) && !isLoadedSelectedRequest);
@@ -257,8 +320,6 @@ export function PrintRequestsPage() {
   const [isRemovingFromShowQueue, setIsRemovingFromShowQueue] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isDeletionDialogOpen, setIsDeletionDialogOpen] = useState(false);
-  const selectedRequestIdParam = searchParams.get(PRINT_REQUEST_ID_QUERY_PARAM);
-  const tabParam = searchParams.get(PRINT_REQUEST_TAB_QUERY_PARAM);
 
   const reloadSelectedRequestAllocations = useCallback(async () => {
     if (!user || !visibleSelectedRequest) {
@@ -283,34 +344,59 @@ export function PrintRequestsPage() {
     [selectedRequestAllocations],
   );
 
+  // Only the shows the selected request is actually queued to — direct-ID reads, never the full
+  // upcomingShows collection (Wave C hydration remediation, 2026-07-25).
+  const [selectedRequestShowsById, setSelectedRequestShowsById] = useState<Map<string, UpcomingShow>>(
+    new Map(),
+  );
+  const showGroupIdsKey = selectedRequestShowGroups.map((group) => group.upcomingShowId).sort().join("|");
+  useEffect(() => {
+    if (!user || !showGroupIdsKey) {
+      setSelectedRequestShowsById(new Map());
+      return;
+    }
+    let cancelled = false;
+    void upcomingShowService
+      .getUpcomingShowsByIds(user, showGroupIdsKey.split("|"))
+      .then((shows) => {
+        if (cancelled) return;
+        setSelectedRequestShowsById(new Map(shows.map((show) => [show.id, show])));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [showGroupIdsKey, user]);
+
   /**
    * Mirrors the Show Detail page's removal gate (`canRemoveRequestFromShow`): once any show the
    * request is queued to has started printing or further along, removal must go through an admin
    * correction instead of this normal remove-from-here flow.
    */
   const canRemoveSelectedRequestFromShowQueue = selectedRequestShowGroups.every((group) => {
-    const show = upcomingShows.find((candidate) => candidate.id === group.upcomingShowId);
+    const show = selectedRequestShowsById.get(group.upcomingShowId);
     return !show || canRemoveRequestFromShow(show.productionStatus);
   });
 
   /**
    * Allocating/removing from a show can flip the print request's persisted `status` (e.g.
-   * `editing` -> `active` on re-add), so this must also reload the request itself and the list —
-   * otherwise the detail panel and sidebar badge keep showing the stale status object held from
-   * before the write, even though Firestore already has the correct value.
-   *
-   * Prefer `{ silent: true }` after Add to Show so the detail panel is not blanked by loading
-   * flags while tab/selection catch up to Queued.
+   * `editing` -> `active` on re-add) and its server-maintained `queueTab` (via the
+   * `onShowAllocationQueueTabInputWritten` trigger). The request detail's own reload remains
+   * authoritative for the open selection; the visible list is reconciled by refetching just this
+   * one request by ID and patching it locally — never a full-list/allocation-totals scan (Wave C
+   * hydration remediation, 2026-07-25).
    */
   const reloadAllAllocationData = useCallback(async (options?: { silent?: boolean }) => {
     const silent = options?.silent === true;
-    await Promise.all([
-      reloadAllocationTotals(silent ? { silent: true } : undefined),
+    const requestId = visibleSelectedRequest?.id;
+    const [, , [refreshedRequest]] = await Promise.all([
       reloadPrintRequest(silent ? { silent: true } : undefined),
-      reloadPrintRequests(silent ? { silent: true } : undefined),
       reloadSelectedRequestAllocations(),
+      requestId && user ? printRequestService.getPrintRequestsByIds(user, [requestId]) : Promise.resolve([]),
     ]);
-  }, [reloadAllocationTotals, reloadPrintRequest, reloadPrintRequests, reloadSelectedRequestAllocations]);
+    if (refreshedRequest) {
+      patchRequestLocally(refreshedRequest.id, refreshedRequest);
+    }
+  }, [patchRequestLocally, reloadPrintRequest, reloadSelectedRequestAllocations, user, visibleSelectedRequest?.id]);
 
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
@@ -319,7 +405,6 @@ export function PrintRequestsPage() {
     try {
       await Promise.all([
         reloadPrintRequests({ silent: true }),
-        reloadAllocationTotals({ silent: true }),
         reloadReadyDesigns({ silent: true }),
         reloadPrintRequest({ silent: true }),
         reloadSelectedRequestAllocations(),
@@ -330,7 +415,6 @@ export function PrintRequestsPage() {
       setIsRefreshing(false);
     }
   }, [
-    reloadAllocationTotals,
     reloadPrintRequest,
     reloadPrintRequests,
     reloadReadyDesigns,
@@ -353,15 +437,13 @@ export function PrintRequestsPage() {
       setIsConfirmingShowQueueRemoval(false);
       const requestId = visibleSelectedRequest.id;
       await reloadAllAllocationData({ silent: true });
-      setActiveListTab("working");
-      setSelectedRequestId(requestId);
-      navigate(getPrintRequestsPath({ requestId, tab: "working" }), { replace: true });
+      commitPrintRequestsRoute({ requestId, tab: "working" });
     } catch (error) {
       setActionError(error instanceof Error ? error.message : "Unable to remove this request from the show queue.");
     } finally {
       setIsRemovingFromShowQueue(false);
     }
-  }, [navigate, reloadAllAllocationData, selectedRequestShowGroups, user, visibleSelectedRequest]);
+  }, [commitPrintRequestsRoute, reloadAllAllocationData, selectedRequestShowGroups, user, visibleSelectedRequest]);
 
   const resetCreateRequestForm = useCallback(() => {
     setCreateRequestForm(DEFAULT_REQUEST_FORM);
@@ -372,7 +454,16 @@ export function PrintRequestsPage() {
     setSuccessMessage(null);
     resetCreateRequestForm();
     setIsCreateModalOpen(true);
-  }, [resetCreateRequestForm]);
+    // Lazy full customer directory load — only needed once the create form's "customer" picker
+    // is actually shown, never on page mount (Wave C hydration remediation, 2026-07-25).
+    if (user && customerDirectory.length === 0) {
+      setIsCustomerDirectoryLoading(true);
+      void printRequestService
+        .listCustomers(user)
+        .then(setCustomerDirectory)
+        .finally(() => setIsCustomerDirectoryLoading(false));
+    }
+  }, [customerDirectory.length, resetCreateRequestForm, user]);
 
   const closeCreateModal = useCallback(() => {
     setIsCreateModalOpen(false);
@@ -380,29 +471,15 @@ export function PrintRequestsPage() {
     setActionError(null);
   }, [resetCreateRequestForm]);
 
-  const updateSelectedRequestPath = useCallback(
-    (requestId: string, tab: PrintRequestListTab = activeListTab) => {
-      navigate(getPrintRequestsPath({ requestId, tab }), { replace: true });
-    },
-    [activeListTab, navigate],
-  );
-
-  /**
-   * After Add to Show, keep this request’s detail open on Queued. Navigate *before* reload so
-   * tab-selection sync sees a URL `requestId` while totals catch up — otherwise Working-tab
-   * fallback can clear the detail before hydration follows the request.
-   */
+  /** After Add to Show, reload persisted allocation state before committing the canonical route. */
   const handleAddedToShow = useCallback(async () => {
     const requestId = visibleSelectedRequest?.id;
 
-    if (requestId) {
-      setSelectedRequestId(requestId);
-      setActiveListTab("queued");
-      navigate(getPrintRequestsPath({ requestId, tab: "queued" }), { replace: true });
-    }
-
     await reloadAllAllocationData({ silent: true });
-  }, [navigate, reloadAllAllocationData, visibleSelectedRequest?.id]);
+    if (requestId) {
+      commitPrintRequestsRoute({ requestId, tab: "queued" });
+    }
+  }, [commitPrintRequestsRoute, reloadAllAllocationData, visibleSelectedRequest?.id]);
 
   useShellHeaderConfig(
     useMemo(
@@ -429,302 +506,156 @@ export function PrintRequestsPage() {
     ),
   );
 
-  const hasAppliedInitialUrlSelectionRef = useRef(false);
-  /** Last list tab we derived for the URL `requestId` — used to follow Add-to-Show moves without fighting intentional tab clicks. */
-  const previousLinkedListTabRef = useRef<PrintRequestListTab | null>(null);
-  /** Last URL `requestId` we hydrated — deep links / new ids still force tab + triage reveal. */
-  const previousSelectedRequestIdParamRef = useRef<string | null>(null);
-
   useEffect(() => {
     setIsRequestDetailExpanded(false);
   }, [selectedRequestId]);
-
-  const customerOptions = useMemo(
-    () =>
-      customers.filter((customer) => !customer.isGuest).map((customer) => ({
-        label: customer.username ? `${customer.displayName} (${customer.username})` : `${customer.displayName} (needs username)`,
-        value: customer.id,
-      })),
-    [customers],
-  );
 
   const designById = useMemo(
     () => new Map(readyDesigns.map((design) => [design.id, design])),
     [readyDesigns],
   );
 
-  const customersById = useMemo(() => {
-    const map = new Map<string, Customer>();
-    for (const customer of customers) {
-      map.set(customer.id, customer);
-    }
-    return map;
-  }, [customers]);
+  // Search/display needs a Map; the hook returns a Record keyed by customer ID (only customers
+  // referenced by the currently loaded page, not a full directory).
+  const customersByIdMap = useMemo(
+    () => new Map(Object.entries(customersById)),
+    [customersById],
+  );
 
-  const requestsByListTab = useMemo(() => {
-    const grouped: Record<PrintRequestListTab, PrintRequest[]> = {
-      working: [],
-      queued: [],
-      printing: [],
-      printed: [],
+  const customerOptions = useMemo(
+    () =>
+      customerDirectory
+        .filter((customer) => !customer.isGuest)
+        .map((customer) => ({
+          label: customer.username
+            ? `${customer.displayName} (${customer.username})`
+            : `${customer.displayName} (needs username)`,
+          value: customer.id,
+        })),
+    [customerDirectory],
+  );
+
+  // `requests` already IS the current tab's bounded, server-filtered page (filtered by the
+  // server-maintained `queueTab` field) — no client-side re-derivation/grouping across tabs is
+  // needed or possible anymore, since only the active tab's page is loaded (Wave C hydration
+  // remediation, 2026-07-25). Archived requests are excluded server-side by the callers that
+  // build tab query options.
+  const activeTabRequests = useMemo(
+    () => requests.filter((request) => isPrintRequestIncludedInListTabs(request.status)),
+    [requests],
+  );
+
+  const workingRequestsByFilter = useMemo(() => {
+    const grouped: Record<PrintRequestWorkingTriageFilter, PrintRequest[]> = {
+      active: [],
+      stale: [],
+      empty: [],
+      all: [...activeTabRequests],
     };
-
-    for (const request of requests) {
-      if (!isPrintRequestIncludedInListTabs(request.status)) {
-        continue;
-      }
-
-      const summary = summariesByRequestId[request.id] ?? { totalQuantity: 0, uniqueDesignCount: 0 };
-      const allocationTotals = allocationTotalsByRequestId[request.id] ?? {
-        totalAllocatedQuantity: 0,
-        totalInProgressQuantity: 0,
-        totalPrintedQuantity: 0,
-      };
-      const tab = derivePrintRequestListTab({
-        totalRequestedQuantity: summary.totalQuantity,
-        totalAllocatedQuantity: allocationTotals.totalAllocatedQuantity,
-        totalInProgressQuantity: allocationTotals.totalInProgressQuantity,
-        totalPrintedQuantity: allocationTotals.totalPrintedQuantity,
-        status: request.status,
-      });
-
-      grouped[tab].push(request);
+    if (activeListTab !== "working") {
+      return grouped;
     }
-
-    return grouped;
-  }, [allocationTotalsByRequestId, requests, summariesByRequestId]);
-
-  const workingTriageCounts = useMemo(() => {
-    const counts = { active: 0, stale: 0, empty: 0, all: 0 };
     const nowMs = Date.now();
-    for (const request of requestsByListTab.working) {
+    for (const request of activeTabRequests) {
       const bucket = resolvePrintRequestWorkingTriageBucket({
         itemCount: request.itemCount,
         updatedAtMillis: request.updatedAt.toMillis(),
         nowMs,
       });
-      counts[bucket] += 1;
-      counts.all += 1;
+      grouped[bucket].push(request);
     }
-    return counts;
-  }, [requestsByListTab.working]);
+    return grouped;
+  }, [activeListTab, activeTabRequests]);
+
+  // Triage chip counts reflect the currently loaded Working page, not the full corpus — an exact
+  // whole-database Active/Stale count would require a second maintained field kept in sync purely
+  // by time passing (no write event to trigger off), a materially larger mechanism than this
+  // secondary in-page filter chip warrants. The primary tab counts (`countsByTab`) remain exact
+  // via `getCountFromServer`.
+  const workingTriageCounts = useMemo(
+    () => ({
+      active: workingRequestsByFilter.active.length,
+      stale: workingRequestsByFilter.stale.length,
+      empty: workingRequestsByFilter.empty.length,
+      all: workingRequestsByFilter.all.length,
+    }),
+    [workingRequestsByFilter],
+  );
+
+  const routeEligibleRequests = useMemo(
+    () =>
+      activeListTab === "working" ? workingRequestsByFilter[workingTriageFilter] : activeTabRequests,
+    [activeListTab, activeTabRequests, workingRequestsByFilter, workingTriageFilter],
+  );
 
   const visibleRequests = useMemo(() => {
-    let list = requestsByListTab[activeListTab];
-
-    if (activeListTab === "working") {
-      const nowMs = Date.now();
-      list = list.filter((request) => {
-        const bucket = resolvePrintRequestWorkingTriageBucket({
-          itemCount: request.itemCount,
-          updatedAtMillis: request.updatedAt.toMillis(),
-          nowMs,
-        });
-        return matchesPrintRequestWorkingTriageFilter(bucket, workingTriageFilter);
-      });
-    }
-
-    return filterPrintRequestsByListSearch(list, listSearchQuery, customersById);
+    return filterPrintRequestsByListSearch(routeEligibleRequests, listSearchQuery, customersByIdMap);
   }, [
-    activeListTab,
-    customersById,
+    customersByIdMap,
     listSearchQuery,
-    requestsByListTab,
-    workingTriageFilter,
+    routeEligibleRequests,
   ]);
 
+  // A deep-linked/selected request outside the currently loaded page is never treated as
+  // "route-illegal" — `ensureRequestLoaded` (above) fetches it directly by ID, and once loaded it
+  // participates in `eligibleRequestIds` like any other loaded row.
+  const canonicalRoute = useMemo(
+    () =>
+      resolveCanonicalPrintRequestsRoute({
+        dataReady: !isRequestsLoading,
+        eligibleRequestIds: routeEligibleRequests.map((request) => request.id),
+        requestedRequestId: selectedRequestIdParam,
+        requestedTab: tabParam,
+        requestedWorkingFilter: workingFilterParam,
+        requestsByTab: {
+          working: activeListTab === "working" ? activeTabRequests : [],
+          queued: activeListTab === "queued" ? activeTabRequests : [],
+          printing: activeListTab === "printing" ? activeTabRequests : [],
+          printed: activeListTab === "printed" ? activeTabRequests : [],
+        },
+      }),
+    [
+      activeListTab,
+      activeTabRequests,
+      isRequestsLoading,
+      routeEligibleRequests,
+      selectedRequestIdParam,
+      tabParam,
+      workingFilterParam,
+    ],
+  );
+
+  /** The only effect allowed to normalize the Print Requests URL. */
   useEffect(() => {
-    if (isRequestsLoading || isAllocationTotalsLoading) {
+    if (canonicalRoute) {
+      commitPrintRequestsRoute(canonicalRoute);
+    }
+  }, [canonicalRoute, commitPrintRequestsRoute]);
+
+  /** Reveal a valid routed selection hidden only by local search; never change its route filter. */
+  useEffect(() => {
+    if (
+      !selectedRequestId ||
+      isRequestsLoading ||
+      !routeEligibleRequests.some((request) => request.id === selectedRequestId) ||
+      visibleRequests.some((request) => request.id === selectedRequestId)
+    ) {
       return;
     }
 
-    if (selectedRequestIdParam) {
-      const linkedRequestTab = findPrintRequestListTabForRequestId(
-        selectedRequestIdParam,
-        requestsByListTab,
-      );
-
-      if (!linkedRequestTab) {
-        return;
-      }
-
-      const isInitialHydration = !hasAppliedInitialUrlSelectionRef.current;
-      const requestIdChanged = previousSelectedRequestIdParamRef.current !== selectedRequestIdParam;
-      const linkedTabChanged =
-        previousLinkedListTabRef.current !== null &&
-        previousLinkedListTabRef.current !== linkedRequestTab;
-
-      hasAppliedInitialUrlSelectionRef.current = true;
-      previousSelectedRequestIdParamRef.current = selectedRequestIdParam;
-      previousLinkedListTabRef.current = linkedRequestTab;
-
-      /**
-       * Follow the URL request onto its stage tab only for deep links, a new requestId, or when
-       * allocations move the same request (Add to Show). If the user already switched
-       * `activeListTab` while a stale requestId is still in the URL (common race on the first
-       * stage-tab click), strip the requestId instead of snapping the tab back.
-       */
-      if (activeListTab !== linkedRequestTab) {
-        const shouldFollowRequest =
-          isInitialHydration || requestIdChanged || linkedTabChanged;
-
-        if (shouldFollowRequest) {
-          setActiveListTab(linkedRequestTab);
-        } else {
-          navigate(getPrintRequestsPath({ tab: activeListTab }), { replace: true });
-          return;
-        }
-      }
-
-      if (selectedRequestId !== selectedRequestIdParam) {
-        setSelectedRequestId(selectedRequestIdParam);
-      }
-
-      /**
-       * Reveal a deep-linked Working request once. Do not reset triage on later filter clicks —
-       * that caused Active/Stale/Empty/All to flash then snap back to All.
-       */
-      if (
-        (isInitialHydration || requestIdChanged) &&
-        linkedRequestTab === "working" &&
-        workingTriageFilter !== "all"
-      ) {
-        const isHiddenByTriage = !requestsByListTab.working
-          .filter((request) => {
-            const bucket = resolvePrintRequestWorkingTriageBucket({
-              itemCount: request.itemCount,
-              updatedAtMillis: request.updatedAt.toMillis(),
-            });
-            return matchesPrintRequestWorkingTriageFilter(bucket, workingTriageFilter);
-          })
-          .some((request) => request.id === selectedRequestIdParam);
-
-        if (isHiddenByTriage) {
-          setWorkingTriageFilter("all");
-        }
-      }
-
-      if ((isInitialHydration || requestIdChanged) && listSearchQuery.trim()) {
-        const matchesSearch = filterPrintRequestsByListSearch(
-          requestsByListTab[linkedRequestTab],
-          listSearchQuery,
-          customersById,
-        ).some((request) => request.id === selectedRequestIdParam);
-
-        if (!matchesSearch) {
-          setListSearchQuery("");
-        }
-      }
-
-      if (tabParam !== linkedRequestTab && (isInitialHydration || requestIdChanged || linkedTabChanged)) {
-        navigate(
-          getPrintRequestsPath({ requestId: selectedRequestIdParam, tab: linkedRequestTab }),
-          { replace: true },
-        );
-      }
-
-      return;
-    }
-
-    previousSelectedRequestIdParamRef.current = null;
-    previousLinkedListTabRef.current = null;
-
-    if (!hasAppliedInitialUrlSelectionRef.current && isPrintRequestRouteTab(tabParam)) {
-      hasAppliedInitialUrlSelectionRef.current = true;
-      setActiveListTab(tabParam);
+    if (listSearchQuery.trim()) {
+      setListSearchQuery("");
     }
   }, [
-    activeListTab,
-    customersById,
-    isAllocationTotalsLoading,
     isRequestsLoading,
     listSearchQuery,
-    navigate,
-    requestsByListTab,
+    routeEligibleRequests,
     selectedRequestId,
-    selectedRequestIdParam,
-    tabParam,
-    workingTriageFilter,
-  ]);
-
-  /**
-   * Keeps the selected request in sync with the active tab. When a URL `requestId` still exists but
-   * now lives on another tab (Add to Show → Queued), keep that selection and let URL hydration move
-   * the tab — never clear the detail mid-follow. When the user switches tabs or triage/search hides
-   * the URL selection, fall back to that tab’s first visible request (or empty).
-   */
-  useEffect(() => {
-    if (isRequestsLoading || isAllocationTotalsLoading) {
-      return;
-    }
-
-    if (selectedRequestIdParam) {
-      const tabForParam = findPrintRequestListTabForRequestId(selectedRequestIdParam, requestsByListTab);
-
-      if (tabForParam) {
-        if (activeListTab !== tabForParam) {
-          if (selectedRequestId !== selectedRequestIdParam) {
-            setSelectedRequestId(selectedRequestIdParam);
-          }
-          return;
-        }
-
-        const isVisibleUnderCurrentFilters = visibleRequests.some(
-          (request) => request.id === selectedRequestIdParam,
-        );
-
-        if (isVisibleUnderCurrentFilters) {
-          if (selectedRequestId !== selectedRequestIdParam) {
-            setSelectedRequestId(selectedRequestIdParam);
-          }
-          return;
-        }
-
-        // Same stage tab, but triage/search hid the URL selection — pick a visible card instead
-        // of forcing triage/search back open (which caused the two-click flash).
-      } else if (selectedRequestId === selectedRequestIdParam) {
-        // Brief gap while totals/list reload — keep selection instead of bouncing to empty.
-        return;
-      }
-    }
-
-    const visibleRequestIds = visibleRequests.map((request) => request.id);
-    const nextSelectedRequestId = resolveSelectedRequestIdForTab(selectedRequestId, visibleRequestIds);
-
-    if (nextSelectedRequestId === selectedRequestId) {
-      if (
-        selectedRequestIdParam &&
-        nextSelectedRequestId &&
-        selectedRequestIdParam !== nextSelectedRequestId
-      ) {
-        updateSelectedRequestPath(nextSelectedRequestId);
-      } else if (selectedRequestIdParam && !nextSelectedRequestId) {
-        navigate(getPrintRequestsPath({ tab: activeListTab }), { replace: true });
-      }
-      return;
-    }
-
-    setSelectedRequestId(nextSelectedRequestId);
-
-    if (nextSelectedRequestId) {
-      updateSelectedRequestPath(nextSelectedRequestId);
-    } else if (selectedRequestIdParam) {
-      navigate(getPrintRequestsPath({ tab: activeListTab }), { replace: true });
-    }
-  }, [
-    activeListTab,
-    isAllocationTotalsLoading,
-    isRequestsLoading,
-    navigate,
-    requestsByListTab,
-    selectedRequestId,
-    selectedRequestIdParam,
-    updateSelectedRequestPath,
     visibleRequests,
   ]);
 
   useEffect(() => {
-    if (!selectedRequestId || isRequestsLoading || isAllocationTotalsLoading) {
+    if (!selectedRequestId || isRequestsLoading) {
       return;
     }
 
@@ -736,11 +667,11 @@ export function PrintRequestsPage() {
     });
 
     return () => window.cancelAnimationFrame(frame);
-  }, [isAllocationTotalsLoading, isRequestsLoading, selectedRequestId, visibleRequests]);
+  }, [isRequestsLoading, selectedRequestId, visibleRequests]);
 
   const selectedCreateCustomer = useMemo(
-    () => customers.find((customer) => customer.id === createRequestForm.customerId),
-    [createRequestForm.customerId, customers],
+    () => customerDirectory.find((customer) => customer.id === createRequestForm.customerId),
+    [createRequestForm.customerId, customerDirectory],
   );
   const isCreateSubmitDisabled =
     createRequestForm.customerMode === "customer" && !createRequestForm.customerId;
@@ -784,10 +715,6 @@ export function PrintRequestsPage() {
     setInternalBaseNameDraft(getInternalBaseNameDraft(visibleSelectedRequest));
   }, [visibleSelectedRequest]);
 
-  async function reloadAll() {
-    await Promise.all([reloadPrintRequests(), reloadCustomers(), reloadReadyDesigns(), reloadPrintRequest()]);
-  }
-
   async function handleCreateRequest(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -811,11 +738,17 @@ export function PrintRequestsPage() {
       setSuccessMessage(`Print request "${result.name}" created.`);
       setSuccessAlertSeed((current) => current + 1);
       closeCreateModal();
-      setActiveListTab("working");
-      setWorkingTriageFilter("empty");
-      setSelectedRequestId(result.id);
-      navigate(getPrintRequestsPath({ requestId: result.id, tab: "working" }), { replace: true });
-      await reloadAll();
+      // A brand-new request is always Working/Empty (no items, no allocations yet) — insert it
+      // locally instead of reloading the list, and select it directly (Wave C hydration
+      // remediation, 2026-07-25).
+      if (activeListTab === "working") {
+        insertCreatedRequestLocally(result);
+      }
+      commitPrintRequestsRoute({
+        requestId: result.id,
+        tab: "working",
+        workingFilter: "empty",
+      });
     } catch (error) {
       setActionError(formatWriteErrorMessage(error));
     }
@@ -832,8 +765,21 @@ export function PrintRequestsPage() {
     setActionError(null);
     const updatedItem = await printRequestService.updatePrintRequestItem(user, item.id, input);
     replaceRequestItem(updatedItem);
-    await reloadPrintRequests();
-  }, [reloadPrintRequests, replaceRequestItem, user]);
+    // Only this item's quantity changed — recompute the one affected row's summary locally
+    // instead of a full-list reload (Wave C hydration remediation, 2026-07-25).
+    if (visibleSelectedRequest) {
+      const nextItems = requestItems.map((existing) =>
+        existing.id === updatedItem.id ? updatedItem : existing,
+      );
+      const uniqueDesignIds = new Set(
+        nextItems.flatMap((existing) => (existing.designId ? [existing.designId] : [])),
+      );
+      patchSummaryLocally(visibleSelectedRequest.id, {
+        totalQuantity: nextItems.reduce((sum, existing) => sum + existing.quantity, 0),
+        uniqueDesignCount: uniqueDesignIds.size,
+      });
+    }
+  }, [patchSummaryLocally, requestItems, replaceRequestItem, user, visibleSelectedRequest]);
 
   async function handleSaveRequestDetail() {
     if (!user || !visibleSelectedRequest || !permissionService.canManagePrintRequests(user)) {
@@ -856,9 +802,9 @@ export function PrintRequestsPage() {
       );
 
       replaceSelectedRequest(updatedRequest);
+      patchRequestLocally(updatedRequest.id, updatedRequest);
       setSuccessMessage("Request detail saved.");
       setSuccessAlertSeed((current) => current + 1);
-      await reloadPrintRequests();
     } catch (error) {
       setActionError(formatWriteErrorMessage(error));
     } finally {
@@ -875,7 +821,19 @@ export function PrintRequestsPage() {
       setActionError(null);
       await printRequestService.removePrintRequestItem(user, item.id);
       removeRequestItem(item.id);
-      await reloadPrintRequests();
+      if (visibleSelectedRequest) {
+        const nextItems = requestItems.filter((existing) => existing.id !== item.id);
+        const uniqueDesignIds = new Set(
+          nextItems.flatMap((existing) => (existing.designId ? [existing.designId] : [])),
+        );
+        patchSummaryLocally(visibleSelectedRequest.id, {
+          totalQuantity: nextItems.reduce((sum, existing) => sum + existing.quantity, 0),
+          uniqueDesignCount: uniqueDesignIds.size,
+        });
+        patchRequestLocally(visibleSelectedRequest.id, {
+          itemCount: Math.max(0, visibleSelectedRequest.itemCount - 1),
+        });
+      }
     } catch (error) {
       setActionError(formatWriteErrorMessage(error));
     }
@@ -890,7 +848,19 @@ export function PrintRequestsPage() {
       setActionError(null);
       const createdItem = await printRequestService.duplicatePrintRequestItem(user, item.id);
       insertRequestItemAfter(item.id, createdItem);
-      await reloadPrintRequests();
+      if (visibleSelectedRequest) {
+        const nextItems = [...requestItems, createdItem];
+        const uniqueDesignIds = new Set(
+          nextItems.flatMap((existing) => (existing.designId ? [existing.designId] : [])),
+        );
+        patchSummaryLocally(visibleSelectedRequest.id, {
+          totalQuantity: nextItems.reduce((sum, existing) => sum + existing.quantity, 0),
+          uniqueDesignCount: uniqueDesignIds.size,
+        });
+        patchRequestLocally(visibleSelectedRequest.id, {
+          itemCount: visibleSelectedRequest.itemCount + 1,
+        });
+      }
     } catch (error) {
       setActionError(formatWriteErrorMessage(error));
     }
@@ -914,7 +884,7 @@ export function PrintRequestsPage() {
     navigate("/users");
   }, [closeCreateModal, navigate]);
 
-  const isLoading = isRequestsLoading || isCustomersLoading || isReadyDesignsLoading;
+  const isLoading = isRequestsLoading || isReadyDesignsLoading;
   const loadError = requestsError ?? requestError;
   /**
    * Derived from `allocationTotalsByRequestId` (loaded once for every request and stable across
@@ -984,26 +954,22 @@ export function PrintRequestsPage() {
                 className={`print-requests-tab-button${activeListTab === tab ? " is-active" : ""}`}
                 key={tab}
                 onClick={() => {
-                  setActiveListTab(tab);
+                  // The destination tab's own requests aren't loaded yet (only the active tab's
+                  // page is loaded — Wave C hydration remediation, 2026-07-25); when switching to
+                  // the CURRENT tab (re-clicking Working while already on Working) the existing
+                  // selection can be preserved locally. Switching to a different tab always
+                  // navigates with no explicit request — the canonical-route effect selects the
+                  // destination tab's first loaded request once its page arrives.
                   const selectionStillInTab =
+                    tab === activeListTab &&
                     Boolean(selectedRequestId) &&
-                    requestsByListTab[tab].some((request) => request.id === selectedRequestId);
+                    routeEligibleRequests.some((request) => request.id === selectedRequestId);
 
-                  if (selectionStillInTab && selectedRequestId) {
-                    navigate(
-                      getPrintRequestsPath({
-                        tab,
-                        requestId: selectedRequestId,
-                      }),
-                      { replace: true },
-                    );
-                    return;
-                  }
-
-                  // Clear selection immediately so URL hydration cannot snap the stage tab back
-                  // during the brief window where `requestId` is still in the search params.
-                  setSelectedRequestId(null);
-                  navigate(getPrintRequestsPath({ tab }), { replace: true });
+                  commitPrintRequestsRoute({
+                    tab,
+                    workingFilter: tab === "working" ? workingTriageFilter : undefined,
+                    requestId: selectionStillInTab ? (selectedRequestId ?? undefined) : undefined,
+                  });
                 }}
                 type="button"
               >
@@ -1014,7 +980,7 @@ export function PrintRequestsPage() {
                     : tab === "printing"
                       ? "Printing"
                       : "Printed"}{" "}
-                ({requestsByListTab[tab].length})
+                ({countsByTab[tab]})
               </button>
             ))}
           </div>
@@ -1039,7 +1005,18 @@ export function PrintRequestsPage() {
                       workingTriageFilter === filter ? " is-active" : ""
                     }`}
                     key={filter}
-                    onClick={() => setWorkingTriageFilter(filter)}
+                    onClick={() => {
+                      commitPrintRequestsRoute(
+                        resolveWorkingFilterClick({
+                          currentRequestId: selectedRequestId,
+                          destinationFilter: filter,
+                          destinationRequestIds: workingRequestsByFilter[filter].map(
+                            (request) => request.id,
+                          ),
+                        }),
+                        "push",
+                      );
+                    }}
                     type="button"
                   >
                     {getPrintRequestWorkingTriageLabel(filter)}
@@ -1080,10 +1057,12 @@ export function PrintRequestsPage() {
                     className={`print-requests-request-card${isSelected ? " is-selected" : ""}`}
                     data-print-request-id={request.id}
                     key={request.id}
-                    onClick={() => {
-                      setSelectedRequestId(request.id);
-                      updateSelectedRequestPath(request.id);
-                    }}
+                    onClick={() => commitPrintRequestsRoute({
+                      requestId: request.id,
+                      tab: activeListTab,
+                      workingFilter:
+                        activeListTab === "working" ? workingTriageFilter : undefined,
+                    })}
                     type="button"
                   >
                     <div className="print-requests-request-card-title-row">
@@ -1096,7 +1075,7 @@ export function PrintRequestsPage() {
                     <p className="print-requests-request-card-subtitle">
                       {request.isInternal
                         ? request.notes?.trim() || "No notes"
-                        : getPrintRequestCustomerLabel(request, customers)}
+                        : getPrintRequestCustomerLabel(request, customersByIdMap)}
                     </p>
                     <div className="print-requests-request-card-counts">
                       <span>{formatDesignCountLabel(requestSummary.uniqueDesignCount)}</span>
@@ -1106,6 +1085,18 @@ export function PrintRequestsPage() {
                 );
               })
             )}
+            {!isLoading && hasMoreRequests && !listSearchQuery.trim() ? (
+              <Button
+                className="print-requests-load-more"
+                disabled={isLoadingMoreRequests}
+                onClick={() => void loadMoreRequests()}
+                size="sm"
+                type="button"
+                variant="secondary"
+              >
+                {isLoadingMoreRequests ? "Loading…" : "Load more"}
+              </Button>
+            ) : null}
           </div>
         </aside>
 
@@ -1236,7 +1227,7 @@ export function PrintRequestsPage() {
                         <div className="print-requests-show-queue-row">
                           <div className="print-requests-show-queue-links">
                             {selectedRequestShowGroups.map((group) => {
-                              const show = upcomingShows.find((candidate) => candidate.id === group.upcomingShowId);
+                              const show = selectedRequestShowsById.get(group.upcomingShowId);
                               const groupQuantity = group.allocations.reduce(
                                 (sum, allocation) => sum + allocation.allocatedQuantity,
                                 0,
@@ -1462,7 +1453,8 @@ export function PrintRequestsPage() {
 
                   {createRequestForm.customerMode === "customer" ? (
                     <Select
-                      label="Customer"
+                      disabled={isCustomerDirectoryLoading}
+                      label={isCustomerDirectoryLoading ? "Customer (loading…)" : "Customer"}
                       name="customerId"
                       onChange={(event) =>
                         setCreateRequestForm((current) => ({
@@ -1573,12 +1565,15 @@ export function PrintRequestsPage() {
       <PrintRequestDeletionDialog
         isOpen={isDeletionDialogOpen}
         onCancel={() => setIsDeletionDialogOpen(false)}
-        onCompleted={(message) => {
+        onCompleted={({ message, printRequestId, outcome }) => {
           setIsDeletionDialogOpen(false);
           setSuccessMessage(message);
           setSuccessAlertSeed((current) => current + 1);
-          void reloadPrintRequests();
-          navigate(getPrintRequestsPath({ tab: activeListTab }));
+          reconcileDeletedOrArchivedRequest(printRequestId, outcome);
+          commitPrintRequestsRoute({
+            tab: activeListTab,
+            workingFilter: activeListTab === "working" ? workingTriageFilter : undefined,
+          });
         }}
         printRequestId={visibleSelectedRequest?.id ?? null}
         printRequestName={visibleSelectedRequest?.name ?? "Print request"}

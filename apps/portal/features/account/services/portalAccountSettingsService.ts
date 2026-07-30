@@ -1,5 +1,3 @@
-import { httpsCallable } from 'firebase/functions';
-
 import type {
   CancelPortalAccountDeletionRequestResponse,
   RequestPortalAccountDeletionRequest,
@@ -7,18 +5,16 @@ import type {
   SyncPortalAccountEmailResponse,
 } from '@fresh-prints/shared/types/account/portalAccountSettings.types';
 
-import { getPortalFunctions } from '../../../lib/firebase/client';
+import { callTracedFunction } from '../../../lib/firebase/tracedCallable';
 import { portalAuthService } from '../../auth/services/authService';
 
 export const portalAccountSettingsService = {
   async syncAccountEmail(): Promise<SyncPortalAccountEmailResponse> {
     try {
-      const callable = httpsCallable<Record<string, never>, SyncPortalAccountEmailResponse>(
-        getPortalFunctions(),
+      return await callTracedFunction<Record<string, never>, SyncPortalAccountEmailResponse>(
         'syncPortalAccountEmail',
-      );
-      const response = await callable({});
-      return response.data;
+        { source: 'portalAccountSettingsService.syncAccountEmail' },
+      )({});
     } catch (error) {
       throw new Error(portalAuthService.getCallableErrorMessage(error));
     }
@@ -26,12 +22,12 @@ export const portalAccountSettingsService = {
 
   async requestAccountDeletion(confirmation: string): Promise<RequestPortalAccountDeletionResponse> {
     try {
-      const callable = httpsCallable<
+      return await callTracedFunction<
         RequestPortalAccountDeletionRequest,
         RequestPortalAccountDeletionResponse
-      >(getPortalFunctions(), 'requestPortalAccountDeletion');
-      const response = await callable({ confirmation });
-      return response.data;
+      >('requestPortalAccountDeletion', {
+        source: 'portalAccountSettingsService.requestAccountDeletion',
+      })({ confirmation });
     } catch (error) {
       throw new Error(portalAuthService.getCallableErrorMessage(error));
     }
@@ -39,12 +35,12 @@ export const portalAccountSettingsService = {
 
   async cancelAccountDeletionRequest(): Promise<CancelPortalAccountDeletionRequestResponse> {
     try {
-      const callable = httpsCallable<
+      return await callTracedFunction<
         Record<string, never>,
         CancelPortalAccountDeletionRequestResponse
-      >(getPortalFunctions(), 'cancelPortalAccountDeletionRequest');
-      const response = await callable({});
-      return response.data;
+      >('cancelPortalAccountDeletionRequest', {
+        source: 'portalAccountSettingsService.cancelAccountDeletionRequest',
+      })({});
     } catch (error) {
       throw new Error(portalAuthService.getCallableErrorMessage(error));
     }

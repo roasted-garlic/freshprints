@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import type {
   AiEnrichmentPlaygroundRequest,
   AiEnrichmentPlaygroundResponse,
@@ -28,6 +30,7 @@ import {
   loadCachedActiveCategories,
   loadCachedAiEnrichmentSettings,
   loadCachedApprovedTags,
+  type AiEnrichmentReadDiagnosticContext,
 } from "./aiEnrichmentRuntimeCache";
 import {
   buildSimpleCatalogEnrichmentSystemPrompt,
@@ -221,11 +224,15 @@ export async function runAiEnrichmentPlayground(
     );
   }
 
+  const diagnosticContext: AiEnrichmentReadDiagnosticContext = {
+    functionName: "runAiEnrichmentPlayground",
+    invocationId: randomUUID(),
+  };
   const [preparedImage, categories, approvedTags, enrichmentSettings] = await Promise.all([
     validatedRequest.imageBytes ? prepareAiAnalysisImage(validatedRequest.imageBytes) : null,
-    loadCachedActiveCategories(),
-    loadCachedApprovedTags(),
-    loadCachedAiEnrichmentSettings(),
+    loadCachedActiveCategories(diagnosticContext),
+    loadCachedApprovedTags(diagnosticContext),
+    loadCachedAiEnrichmentSettings(diagnosticContext),
   ]);
 
   const expandedPrompt = buildSimpleCatalogEnrichmentUserPrompt({
@@ -342,10 +349,14 @@ export async function runAiEnrichmentTagRerankPlayground(
     );
   }
 
+  const diagnosticContext: AiEnrichmentReadDiagnosticContext = {
+    functionName: "runAiEnrichmentTagRerankPlayground",
+    invocationId: randomUUID(),
+  };
   const [approvedTags, categories, enrichmentSettings] = await Promise.all([
-    loadCachedApprovedTags(),
-    loadCachedActiveCategories(),
-    loadCachedAiEnrichmentSettings(),
+    loadCachedApprovedTags(diagnosticContext),
+    loadCachedActiveCategories(diagnosticContext),
+    loadCachedAiEnrichmentSettings(diagnosticContext),
   ]);
 
   const raw = extractJsonObject(validatedRequest.firstResponseOutputText);

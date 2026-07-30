@@ -18,7 +18,12 @@ Processing / Needs Review / Rejected tabs; suggestions panel; approve/reject/ski
 Internal + customer requests; item qty/size autosave; DPI quality feedback; duplicate same design for other sizes; Design Library selection mode.
 
 ### Show Queue (`/show-queue`)
-Upcoming/Past shows; capacity; attach requests; Working/Queued/Printed; Whatnot assisted import; zip export @ 300 DPI; auto-nested gang sheet PNG; production timer; calendar picker; **Portal add-to-show cutoff hours** setting (`portalQueueCutoffHoursBeforeStart`, ADR-FP-103). Manual gang-sheet builder deferred.
+Upcoming/Past shows; capacity; attach requests; Working/Queued/Printing/Printed; Whatnot assisted
+import; zip export @ 300 DPI; auto-nested gang sheet PNG; Start/Pause/Resume/Finish production
+timer; terminal request reconciliation and completed locking; calendar picker; **Portal add-to-show
+cutoff hours** setting (`portalQueueCutoffHoursBeforeStart`, ADR-FP-103). Owner QA v18 passed the
+full Studio lifecycle and dynamic Portal Printed state on 2026-07-29. Manual gang-sheet builder
+deferred.
 
 ### Customer Uploads (intake)
 Staff review of Portal customer artwork: Pending / Excluded tabs; Send to AI Review; exclude/restore; retry processing; surface library-permission declined (ADR-FP-074).
@@ -27,7 +32,10 @@ Staff review of Portal customer artwork: Pending / Excluded tabs; Send to AI Rev
 Assisted inbox with stage tabs, request details, audited start/cancel/reject/restore actions, proof staging, and customer-revision visibility. Etsy searches and Suggestions management remain separate tabs.
 
 ### Users / Settings / Dev
-Team users + customer records; AI enrichment settings; show-queue settings; dashboard scaffold; **Brand logos** (owner upload Studio/Portal full+collapsed PNGs + display sizes — ADR-FP-114; soft-deployed fresh-prints-dev).
+Team users + customer records; AI enrichment settings; show-queue settings; dashboard scaffold;
+**Brand logos** (owner upload Studio/Portal full+collapsed PNGs + display sizes — ADR-FP-114;
+soft-deployed fresh-prints-dev); owner/dev-only **Test Data Reset**, including truthful **Legacy
+print-limit counters** cleanup for retired, unenforced Cap A documents.
 
 ---
 
@@ -60,7 +68,7 @@ Team users + customer records; AI enrichment settings; show-queue settings; dash
 | Limit | Value |
 |-------|-------|
 | Files per batch | 100 |
-| Single image | 100 MB |
+| Single image | 80 MB |
 | Batch uncompressed / ZIP | 2 GB |
 | Concurrent finalize | 8 |
 | Daily finalize images | 200 |

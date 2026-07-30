@@ -41,17 +41,19 @@ export function getPrimaryCatalogQueryTag(selectedTags: readonly string[]): stri
 }
 
 export function buildApprovedCatalogTagOptions(
-  approvedTags: readonly { name: string }[],
+  approvedTags: readonly { name: string; count?: number }[],
   selectedTags: string[],
   tagSearchQuery: string,
-): Array<{ tag: string; isSelected: boolean }> {
+): Array<{ tag: string; count?: number; isSelected: boolean }> {
   const normalizedSearch = tagSearchQuery.trim().toLowerCase();
+  const countByName = new Map(approvedTags.map((tag) => [tag.name, tag.count]));
 
   return sortCatalogTags(approvedTags.map((tag) => tag.name))
     .filter((tag) => !isCanonicalHalftoneTag(tag))
     .filter((tag) => !normalizedSearch || tag.toLowerCase().includes(normalizedSearch))
     .map((tag) => ({
       tag,
+      count: countByName.get(tag),
       isSelected: selectedTags.includes(tag),
     }));
 }

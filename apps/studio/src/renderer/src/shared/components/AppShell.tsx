@@ -1,5 +1,7 @@
-import { useCallback, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState, type ReactNode } from "react";
 import { useLocation } from "react-router-dom";
+
+import { setFirestoreUsageTraceContext } from "@fresh-prints/shared/utils/firestoreUsageTrace";
 
 import { SidebarDrawerContext } from "../context/sidebarDrawerContext";
 import { ShellHeaderProvider } from "../context/ShellHeaderProvider";
@@ -7,6 +9,9 @@ import { UploadActivityProvider } from "../context/UploadActivityProvider";
 import { StaffInboxProvider } from "../../features/staff-inbox/components/StaffInboxProvider";
 import { StaffInboxToastHost } from "../../features/staff-inbox/components/StaffInboxToastHost";
 import { AssistedMessagesProvider } from "../../features/customer-requests/components/AssistedMessagesProvider";
+import { installCatalogSnapshotAdminConsole } from "../../features/designs/services/catalogSnapshotAdminService";
+import { installPrintRequestQueueTabBackfillAdminConsole } from "../../features/print-requests/services/printRequestQueueTabBackfillAdminService";
+import { FirebaseDebugPanelMount } from "../../features/firebase-debug/components/FirebaseDebugPanelMount";
 import { AppHeader } from "./AppHeader";
 import { Sidebar } from "./Sidebar";
 
@@ -17,6 +22,16 @@ interface AppShellProps {
 function AppShellContent({ children }: AppShellProps) {
   const location = useLocation();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+
+  // useLayoutEffect (not useEffect) so the route context updates before any child route's
+  // mount/data-fetch effects run — otherwise their trace events would misattribute to the
+  // previous route.
+  useLayoutEffect(() => {
+    setFirestoreUsageTraceContext({ app: "studio", route: location.pathname });
+  }, [location.pathname]);
+
+  useEffect(() => installCatalogSnapshotAdminConsole(), []);
+  useEffect(() => installPrintRequestQueueTabBackfillAdminConsole(), []);
 
   const openDrawer = useCallback(() => setIsDrawerOpen(true), []);
   const closeDrawer = useCallback(() => setIsDrawerOpen(false), []);
@@ -55,6 +70,7 @@ function AppShellContent({ children }: AppShellProps) {
           <div className={pageContentClassName}>{children}</div>
         </div>
       </div>
+      <FirebaseDebugPanelMount />
     </SidebarDrawerContext.Provider>
   );
 }

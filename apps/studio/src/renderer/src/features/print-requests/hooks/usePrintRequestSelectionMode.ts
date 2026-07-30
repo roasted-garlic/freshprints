@@ -5,7 +5,11 @@ import { permissionService } from "../../permissions/services/permissionService"
 import { printRequestService } from "../services/printRequestService";
 import { usePrintRequestDetails } from "./usePrintRequestDetails";
 import type { Design } from "../../designs/types/design.types";
-import type { PrintRequest } from "@fresh-prints/shared/types/printRequest/printRequest.types";
+import type {
+  PrintRequest,
+  PrintRequestItem,
+} from "@fresh-prints/shared/types/printRequest/printRequest.types";
+import { isCatalogDesignPrintRequestItem } from "@fresh-prints/shared/utils/printRequestItemSource";
 
 interface SelectedDesignSelection {
   quantity: number;
@@ -32,10 +36,14 @@ interface UsePrintRequestSelectionModeResult {
   setQuantity: (designId: string, quantity: number) => void;
 }
 
-function buildSelectionStateFromRequestItems(items: Array<{ designId: string; id: string; quantity: number }>) {
+export function buildSelectionStateFromRequestItems(items: PrintRequestItem[]) {
   const nextState: SelectionState = {};
 
   for (const item of items) {
+    if (!isCatalogDesignPrintRequestItem(item) || !item.designId) {
+      continue;
+    }
+
     nextState[item.designId] = {
       quantity: item.quantity,
       existingItemId: item.id,
@@ -46,8 +54,16 @@ function buildSelectionStateFromRequestItems(items: Array<{ designId: string; id
   return nextState;
 }
 
-function buildSelectionSignature(items: Array<{ designId: string; id: string; quantity: number }>): string {
-  return items.map((item) => `${item.id}:${item.designId}:${item.quantity}`).join("|");
+function buildSelectionSignature(items: PrintRequestItem[]): string {
+  return items
+    .map((item) => {
+      const sourceKey =
+        item.sourceType === "customer_upload"
+          ? `upload:${item.customerUploadId ?? item.id}`
+          : `catalog:${item.designId ?? item.id}`;
+      return `${item.id}:${sourceKey}:${item.quantity}`;
+    })
+    .join("|");
 }
 
 export function usePrintRequestSelectionMode(printRequestId: string | null): UsePrintRequestSelectionModeResult {

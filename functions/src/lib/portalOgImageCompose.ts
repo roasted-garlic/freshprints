@@ -1,12 +1,7 @@
 import {
   artworkBackgroundHexToRgb,
 } from "../../../packages/shared/src/constants/design/artworkBackground.constants";
-
-/** Lazy-load native sharp — avoid cold require during Functions deploy discovery. */
-function getSharp(): typeof import("sharp") {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  return require("sharp") as typeof import("sharp");
-}
+import { getSharp } from "./lazySharp";
 
 /** Facebook large link preview target (≈1.91:1). */
 export const PORTAL_OG_CANVAS_WIDTH = 1200;

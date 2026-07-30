@@ -121,7 +121,6 @@ export function AssistedCreationMediaThumbs({
                   onClick={() => setLightbox({ alt, url })}
                   type="button"
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img alt={alt} decoding="async" draggable={false} src={url} />
                 </button>
               ) : (

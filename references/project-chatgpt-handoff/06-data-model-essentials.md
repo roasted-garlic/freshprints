@@ -56,6 +56,7 @@ Do **not** increment `designs.requestCount` for customer-upload-only items.
 |---------|----------------|
 | Technical pipeline | `technicalStatus`: awaiting_upload → uploading → validating → processing → ready \| failed |
 | Progress stages | reading, format, transparency, converting, trimming, upscaling, DPI, previews, saving |
+| Oversized-canvas normalization | Trim-then-normalize: an oversized source is trimmed first; if still over the technical pixel ceiling, a downscale-only `production` derivative is generated (`wasNormalizedForDimensions`, independent of `wasUpscaled`) instead of permanently rejecting. Original source untouched. Bounded stage watchdog (`processing_timed_out`, retryable) prevents indefinite `processing` (ADR-FP-125). |
 | Catalog eligibility | `catalogReviewStatus`: not_eligible / pending_staff_review / sent_to_ai_review / excluded… |
 | Permissions | `ownershipAcknowledged` required to attach; `catalogUseAcknowledged` optional (ADR-FP-074) |
 | Formats | PNG / static WebP with meaningful transparency |

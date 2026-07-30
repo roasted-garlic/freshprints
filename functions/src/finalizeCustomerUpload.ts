@@ -1,5 +1,6 @@
 import { FieldValue } from "firebase-admin/firestore";
 import type { DocumentReference } from "firebase-admin/firestore";
+import { logger } from "firebase-functions";
 import { onCall } from "firebase-functions/v2/https";
 
 import { CUSTOMER_UPLOAD_MAX_SINGLE_IMAGE_BYTES } from "../../packages/shared/src/constants/customerUpload/customerUploadLimits.constants";
@@ -12,9 +13,11 @@ import {
 } from "../../packages/shared/src/constants/customerUpload/customerUploadStoragePaths";
 import type { CustomerUploadTechnicalProgressStage } from "../../packages/shared/src/types/customerUpload/customerUpload.enums";
 import type { CustomerUploadTechnicalStatus } from "../../packages/shared/src/types/customerUpload/customerUpload.enums";
+import type { CustomerUploadTechnicalFailureCode } from "../../packages/shared/src/types/customerUpload/customerUpload.enums";
 import { formatFileSize } from "../../packages/shared/src/utils/formatFileSize";
 
 import { resolveCustomerUploadPurpose } from "../../packages/shared/src/utils/customerUploadPurpose";
+import { withCustomerUploadFinalizeWatchdog } from "../../packages/shared/src/utils/customerUploadFinalizeWatchdog";
 
 import { adminDb, adminStorage } from "./lib/admin";
 import {
@@ -36,6 +39,21 @@ import {
 import { withoutUndefinedFields } from "./lib/firestoreDocument";
 import { isAnonymousAuthToken } from "./lib/catalogDonationUploader";
 import { requirePortalCustomer } from "./lib/portalCustomer";
+
+/**
+ * Stage watchdog duration for the trim/normalize/preview-generation region of finalize. Set to
+ * 480s, 60s under the 540s `onCall` platform timeout — enough headroom that this watchdog's
+ * explicit `technicalStatus: "failed"` write always has time to complete and commit before the
+ * platform silently terminates the invocation (which otherwise leaves the document stuck at
+ * `"processing"` forever, with no failure ever recorded — the exact "stuck at Trimming" symptom
+ * this ADR-FP-125 fix addresses). Not derived from a specific worst-case measurement of this
+ * pipeline (a synthetic local benchmark cannot reproduce Cloud Functions cold-start/memory-
+ * pressure conditions); chosen as a fixed, generous safety margin under the platform ceiling
+ * instead. If evidence in production shows legitimate large uploads routinely approach 480s,
+ * that is a Function-config/product conversation for a future goal, not a reason to silently
+ * raise this value.
+ */
+const FINALIZE_CUSTOMER_UPLOAD_STAGE_WATCHDOG_MS = 480_000;
 
 export interface FinalizeCustomerUploadResponse {
   uploadId: string;
@@ -167,18 +185,62 @@ export const finalizeCustomerUpload = onCall(
         updatedAt: FieldValue.serverTimestamp(),
       });
 
-      const processed = await processCustomerUploadImageBytes(sourceBytes, {
-        onStage: async (stage) => {
-          await uploadRef.update({
-            technicalStatus: "processing",
-            technicalProgressStage: stage,
-            updatedAt: FieldValue.serverTimestamp(),
-          });
-        },
-      });
+      let watchdogTripped = false;
+      let processed: Awaited<ReturnType<typeof processCustomerUploadImageBytes>>;
+      try {
+        processed = await withCustomerUploadFinalizeWatchdog(
+          processCustomerUploadImageBytes(sourceBytes, {
+            onStage: async (stage) => {
+              await uploadRef.update({
+                technicalStatus: "processing",
+                technicalProgressStage: stage,
+                updatedAt: FieldValue.serverTimestamp(),
+              });
+            },
+          }),
+          FINALIZE_CUSTOMER_UPLOAD_STAGE_WATCHDOG_MS,
+          async () => {
+            watchdogTripped = true;
+            await uploadRef.update({
+              technicalStatus: "failed",
+              technicalProgressStage: null,
+              technicalFailureCode: "processing_timed_out" satisfies CustomerUploadTechnicalFailureCode,
+              technicalFailureMessage:
+                "Processing took too long and was stopped. Please retry.",
+              updatedAt: FieldValue.serverTimestamp(),
+            });
+          },
+          "processing_timed_out",
+        );
+      } catch (error) {
+        if (watchdogTripped) {
+          return {
+            uploadId: payload.uploadId,
+            batchId: payload.batchId,
+            technicalStatus: "failed",
+            alreadyReady: false,
+            technicalFailureCode: "processing_timed_out",
+            technicalFailureMessage: "Processing took too long and was stopped. Please retry.",
+          };
+        }
+        throw error;
+      }
       if (!processed.ok) {
         return await markFailed(uploadRef, payload, processed.code, processed.message);
       }
+
+      logger.info("finalizeCustomerUpload.stageTimings", {
+        uploadId: payload.uploadId,
+        stageTimingsMs: processed.stageTimingsMs,
+        sourceWidthPx: processed.sourceWidthPx,
+        sourceHeightPx: processed.sourceHeightPx,
+        widthPx: processed.widthPx,
+        heightPx: processed.heightPx,
+        sourceBytes: sourceBytes.byteLength,
+        wasTrimmed: processed.wasTrimmed,
+        wasNormalizedForDimensions: processed.wasNormalizedForDimensions,
+        wasUpscaled: processed.wasUpscaled,
+      });
 
       await uploadRef.update({
         technicalStatus: "processing",
@@ -229,6 +291,9 @@ export const finalizeCustomerUpload = onCall(
             heightPx: processed.heightPx,
             wasUpscaled: processed.wasUpscaled,
             wasTrimmed: processed.wasTrimmed,
+            wasNormalizedForDimensions: processed.wasNormalizedForDimensions,
+            preNormalizationWidthPx: processed.preNormalizationWidthPx,
+            preNormalizationHeightPx: processed.preNormalizationHeightPx,
             upscaleFactor: processed.upscaleFactor,
             upscalePassCount: processed.upscalePassCount,
             approvedMaxPrintWidthInches: processed.approvedMaxPrintWidthInches,

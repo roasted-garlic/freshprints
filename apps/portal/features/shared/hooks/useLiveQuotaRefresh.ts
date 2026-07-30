@@ -2,6 +2,8 @@
 
 import { useEffect, useRef } from 'react';
 
+import { traceFirestoreCacheEvent } from '@fresh-prints/shared/utils/firestoreUsageTrace';
+
 const DEFAULT_POLL_INTERVAL_MS = 45_000;
 
 /**
@@ -29,22 +31,28 @@ export function useLiveQuotaRefresh(
 
     let cancelled = false;
 
-    const run = () => {
+    const run = (triggerReason: 'initial-mount' | 'focus' | 'visibility' | 'timer') => {
       if (cancelled) {
         return;
       }
+      traceFirestoreCacheEvent('retry', {
+        app: 'portal',
+        collection: 'settings',
+        source: 'useLiveQuotaRefresh',
+        triggerReason,
+      });
       void refreshRef.current();
     };
 
-    run();
+    run('initial-mount');
 
     const onVisibility = () => {
       if (document.visibilityState === 'visible') {
-        run();
+        run('visibility');
       }
     };
     const onFocus = () => {
-      run();
+      run('focus');
     };
 
     document.addEventListener('visibilitychange', onVisibility);
@@ -54,7 +62,7 @@ export function useLiveQuotaRefresh(
       intervalMs > 0
         ? window.setInterval(() => {
             if (document.visibilityState === 'visible') {
-              run();
+              run('timer');
             }
           }, intervalMs)
         : null;

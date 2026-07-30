@@ -1,5 +1,6 @@
 import { FieldValue } from "firebase-admin/firestore";
 import type { DocumentReference } from "firebase-admin/firestore";
+import { logger } from "firebase-functions";
 import { onCall } from "firebase-functions/v2/https";
 
 import { CUSTOMER_UPLOAD_MAX_SINGLE_IMAGE_BYTES } from "../../packages/shared/src/constants/customerUpload/customerUploadLimits.constants";
@@ -26,6 +27,10 @@ import {
 } from "./lib/customerUploadStaffAuth";
 import { failedPrecondition, invalidArgument, unauthenticated } from "./lib/errors";
 import { withoutUndefinedFields } from "./lib/firestoreDocument";
+import { withCustomerUploadFinalizeWatchdog } from "../../packages/shared/src/utils/customerUploadFinalizeWatchdog";
+
+/** Mirrors FINALIZE_CUSTOMER_UPLOAD_STAGE_WATCHDOG_MS in finalizeCustomerUpload.ts — see that constant's doc comment for the 480s/540s rationale. */
+const RETRY_CUSTOMER_UPLOAD_STAGE_WATCHDOG_MS = 480_000;
 
 const RETRYABLE_FAILURE_CODES = new Set([
   "could_not_decode",
@@ -37,6 +42,7 @@ const RETRYABLE_FAILURE_CODES = new Set([
   "image_exceeds_limits",
   "animated_rejected",
   "unsupported_format",
+  "processing_timed_out",
 ]);
 
 export const retryCustomerUploadProcessing = onCall(
@@ -144,18 +150,61 @@ export const retryCustomerUploadProcessing = onCall(
       updatedAt: FieldValue.serverTimestamp(),
     });
 
-    const processed = await processCustomerUploadImageBytes(sourceBytes, {
-      onStage: async (stage) => {
-        await uploadRef.update({
-          technicalStatus: "processing",
-          technicalProgressStage: stage,
-          updatedAt: FieldValue.serverTimestamp(),
-        });
-      },
-    });
+    let watchdogTripped = false;
+    let processed: Awaited<ReturnType<typeof processCustomerUploadImageBytes>>;
+    try {
+      processed = await withCustomerUploadFinalizeWatchdog(
+        processCustomerUploadImageBytes(sourceBytes, {
+          onStage: async (stage) => {
+            await uploadRef.update({
+              technicalStatus: "processing",
+              technicalProgressStage: stage,
+              updatedAt: FieldValue.serverTimestamp(),
+            });
+          },
+        }),
+        RETRY_CUSTOMER_UPLOAD_STAGE_WATCHDOG_MS,
+        async () => {
+          watchdogTripped = true;
+          await uploadRef.update({
+            technicalStatus: "failed",
+            technicalProgressStage: null,
+            technicalFailureCode: "processing_timed_out",
+            technicalFailureMessage: "Processing took too long and was stopped. Please retry.",
+            updatedAt: FieldValue.serverTimestamp(),
+          });
+        },
+        "processing_timed_out",
+      );
+    } catch (error) {
+      if (watchdogTripped) {
+        return {
+          uploadId,
+          batchId,
+          technicalStatus: "failed",
+          technicalFailureCode: "processing_timed_out",
+          technicalFailureMessage: "Processing took too long and was stopped. Please retry.",
+        };
+      }
+      throw error;
+    }
     if (!processed.ok) {
       return await markFailed(uploadRef, uploadId, batchId, processed.code, processed.message);
     }
+
+    logger.info("retryCustomerUploadProcessing.stageTimings", {
+      uploadId,
+      stageTimingsMs: processed.stageTimingsMs,
+      sourceWidthPx: processed.sourceWidthPx,
+      sourceHeightPx: processed.sourceHeightPx,
+      widthPx: processed.widthPx,
+      heightPx: processed.heightPx,
+      sourceBytes: sourceBytes.byteLength,
+      wasTrimmed: processed.wasTrimmed,
+      wasNormalizedForDimensions: processed.wasNormalizedForDimensions,
+      wasUpscaled: processed.wasUpscaled,
+      previousFailureCode: failureCode || null,
+    });
 
     await uploadRef.update({
       technicalStatus: "processing",
@@ -197,6 +246,9 @@ export const retryCustomerUploadProcessing = onCall(
           heightPx: processed.heightPx,
           wasUpscaled: processed.wasUpscaled,
           wasTrimmed: processed.wasTrimmed,
+          wasNormalizedForDimensions: processed.wasNormalizedForDimensions,
+          preNormalizationWidthPx: processed.preNormalizationWidthPx,
+          preNormalizationHeightPx: processed.preNormalizationHeightPx,
           transparencyPassed: true,
           transparentPixelRatio: processed.transparentPixelRatio,
           productionStoragePath,

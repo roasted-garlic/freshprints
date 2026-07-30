@@ -12,6 +12,7 @@ import type { Design } from "../types/design.types";
 import { useDesignDerivativeUrl } from "../hooks/useDesignDerivativeUrl";
 import { downloadDesignOriginal } from "../services/designOriginalDownloadService";
 import { canDownloadDesignOriginal } from "../utils/designOriginalDownload";
+import { canStartDesignOriginalDownload } from "../utils/designOriginalDownloadGuard";
 import { formatDesignTimestamp } from "../utils/designDateDisplay";
 import { formatDesignStatusLabel, getDesignStatusBadgeVariant } from "../utils/designStatusDisplay";
 import { formatDesignPrintInches } from "../utils/designPrintSizeDisplay";
@@ -98,7 +99,9 @@ export function DesignDetailsModal({
   const originLabel = resolveDesignOriginLabel(design);
 
   async function handleDownloadOriginal(): Promise<void> {
-    if (!canDownloadOriginal || isDownloadingOriginal) {
+    if (
+      !canStartDesignOriginalDownload(design, canDownloadOriginal, isDownloadingOriginal)
+    ) {
       return;
     }
 

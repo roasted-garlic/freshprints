@@ -103,7 +103,8 @@ export function buildShowPickerOptions({
       statusVariant,
       isFull: projectedCapacity.isFull,
       isOverCapacity: projectedCapacity.isOverCapacity,
-      isSelectable: !past && !pastCutoff && selectableByCaller,
+      canInspect: true,
+      canAllocate: !past && !pastCutoff && selectableByCaller,
       ...(cutoffMetaLabel
         ? {
             cutoffMetaLabel,

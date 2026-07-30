@@ -66,7 +66,7 @@ Staff callables: `promoteCustomerUploadToAiReview`, `excludeCustomerUploadFromCa
 
 Granular `technicalProgressStage` values power Portal progress labels (checking transparency, converting, trimming, upscaling, checking DPI, creating previews, saving).
 
-Limits (shared constants): 100 files/batch, 100 MB/image, 2 GB batch/ZIP, concurrency **8**, daily finalize **200**, daily create-batch **100**.
+Limits (shared constants): 100 files/batch, 80 MB/image (`CUSTOMER_UPLOAD_MAX_SINGLE_IMAGE_BYTES`; distinct from the separate 100,000,000-pixel total-pixel ceiling, `CUSTOMER_UPLOAD_MAX_TOTAL_PIXELS`), 2 GB batch/ZIP, concurrency **8**, daily finalize **200**, daily create-batch **100**.
 
 ---
 

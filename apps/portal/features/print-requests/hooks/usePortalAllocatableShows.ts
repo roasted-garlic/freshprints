@@ -20,6 +20,12 @@ export function usePortalAllocatableShows(enabled: boolean) {
   );
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Plan Section 30.4 — false from the moment a cache-warm mount starts until the reload for THIS
+  // enable has settled at least once. A cache-warm `shows` list can be serving a stale `isAllocatable`
+  // for a show that has since become historical server-side; callers that gate a capacity decision
+  // (not just a display) on `shows` must wait for this to be true first, not trust the cache at face
+  // value.
+  const [hasConfirmedFreshness, setHasConfirmedFreshness] = useState(false);
   const requestIdRef = useRef(0);
 
   const reload = useCallback(async (options?: { silent?: boolean }) => {
@@ -41,6 +47,7 @@ export function usePortalAllocatableShows(enabled: boolean) {
       sessionCacheAtMs = Date.now();
       setShows(result.shows);
       setPortalQueueCutoffHoursBeforeStart(result.portalQueueCutoffHoursBeforeStart);
+      setHasConfirmedFreshness(true);
     } catch (loadError) {
       if (requestId !== requestIdRef.current) {
         return;
@@ -60,8 +67,11 @@ export function usePortalAllocatableShows(enabled: boolean) {
     if (!enabled) {
       setError(null);
       setIsLoading(false);
+      setHasConfirmedFreshness(false);
       return;
     }
+
+    setHasConfirmedFreshness(false);
 
     const cacheAgeMs = Date.now() - sessionCacheAtMs;
     const hasFreshCache =
@@ -88,6 +98,7 @@ export function usePortalAllocatableShows(enabled: boolean) {
     portalQueueCutoffHoursBeforeStart,
     isLoading,
     error,
+    hasConfirmedFreshness,
     reload: () => reload(),
   };
 }

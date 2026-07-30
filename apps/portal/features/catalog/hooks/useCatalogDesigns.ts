@@ -4,11 +4,16 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   CATALOG_NEW_THIS_WEEK_DAYS,
+  rankCatalogDiscoveryDesigns,
   type CatalogDiscoveryMode,
 } from '@fresh-prints/shared/utils/catalogDiscoveryRanking';
-import { traceFirestoreRead } from '@fresh-prints/shared/utils/firestoreUsageTrace';
-
+import {
+  traceGeneratedAssetOutcome,
+  traceGeneratedFallbackActivation,
+} from '@fresh-prints/shared/utils/firestoreUsageTrace';
 import { catalogService, DEFAULT_CATALOG_PAGE_SIZE } from '../services/catalogService';
+import { portalCatalogAssetService } from '../services/portalCatalogAssetService';
+import { generatedPortalCatalogEnabled } from '../services/catalogSnapshotFlags';
 import type {
   CatalogCategory,
   CatalogDesign,
@@ -84,6 +89,15 @@ function toFriendlyCatalogError(error: unknown): string {
   return rawMessage;
 }
 
+export function allowsBoundedCatalogFirestoreFallback(options: UseCatalogDesignsQuery): boolean {
+  return (
+    !options.categoryId?.trim() &&
+    !options.searchQuery?.trim() &&
+    options.selectedTags.length === 0 &&
+    !options.discoveryMode
+  );
+}
+
 export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
   /** Designs loaded for the current server filters (may be one page or fully hydrated). */
   catalogDesigns: CatalogDesign[];
@@ -100,25 +114,30 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
   const [allDesigns, setAllDesigns] = useState<CatalogDesign[]>([]);
   const [visibleCount, setVisibleCount] = useState(pageSize);
   const [isLoading, setIsLoading] = useState(true);
-  const [isHydrating, setIsHydrating] = useState(false);
+  const isHydrating = false;
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [serverTotalCount, setServerTotalCount] = useState<number | null>(null);
   const [nextCursor, setNextCursor] = useState<CatalogDesignListQuery['cursor']>(undefined);
   const [serverHasMore, setServerHasMore] = useState(false);
   const [isFullyHydrated, setIsFullyHydrated] = useState(false);
+  const [isGeneratedQuery, setIsGeneratedQuery] = useState(false);
   const hydrateGenerationRef = useRef(0);
-  const hydrateInFlightRef = useRef(false);
 
   const selectedTagsKey = useMemo(
     () => [...options.selectedTags].sort((left, right) => left.localeCompare(right)).join('\0'),
     [options.selectedTags],
+  );
+  const selectedTagsForAssets = useMemo(
+    () => (selectedTagsKey ? selectedTagsKey.split('\0') : []),
+    [selectedTagsKey],
   );
 
   const needsFullHydrate = catalogNeedsFullClientHydrate({
     searchQuery: options.searchQuery,
     selectedTags: options.selectedTags,
   });
+  const allowsFirestoreFallback = allowsBoundedCatalogFirestoreFallback(options);
 
   const serverListQuery = useMemo(
     () =>
@@ -140,7 +159,6 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
 
     async function loadCatalog() {
       setIsLoading(true);
-      setIsHydrating(false);
       setIsLoadingMore(false);
       setError(null);
       setAllDesigns([]);
@@ -149,21 +167,76 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
       setNextCursor(undefined);
       setServerHasMore(false);
       setIsFullyHydrated(false);
-      hydrateInFlightRef.current = false;
+      setIsGeneratedQuery(false);
 
       try {
-        const countPromise = catalogService
-          .countReadyDesigns(serverListQuery)
-          .then((count) => {
-            if (!isCancelled && generation === hydrateGenerationRef.current) {
-              setServerTotalCount(count);
+        if (generatedPortalCatalogEnabled()) {
+          try {
+            const isUnfilteredBrowse =
+              !options.categoryId?.trim() &&
+              !options.searchQuery?.trim() &&
+              selectedTagsForAssets.length === 0;
+            const generatedPage = await (isUnfilteredBrowse
+              ? portalCatalogAssetService.listDiscoverDesigns().then((designs) => ({
+                    designs: options.discoveryMode
+                      ? rankCatalogDiscoveryDesigns(designs, options.discoveryMode)
+                      : designs.slice().sort(
+                          (left, right) =>
+                            (right.createdAtMs ?? 0) - (left.createdAtMs ?? 0) ||
+                            right.id.localeCompare(left.id),
+                        ),
+                    total: null,
+                  }))
+              : portalCatalogAssetService.listMatchingDesigns(
+                  options.searchQuery ?? '',
+                  selectedTagsForAssets,
+                  { categoryId: options.categoryId, limit: pageSize },
+                ));
+            if (isCancelled || generation !== hydrateGenerationRef.current) return;
+            traceGeneratedAssetOutcome(
+              'success',
+              'portal-catalog-query@generated-first-r015',
+              { app: 'portal', triggerReason: 'route' },
+            );
+            setAllDesigns(generatedPage.designs);
+            setServerTotalCount(generatedPage.total ?? generatedPage.designs.length);
+            setIsFullyHydrated(
+              generatedPage.total === null || generatedPage.designs.length >= generatedPage.total,
+            );
+            setIsGeneratedQuery(true);
+            setIsLoading(false);
+            return;
+          } catch {
+            traceGeneratedAssetOutcome(
+              'failure',
+              'portal-catalog-query@generated-first-r015',
+              { app: 'portal', triggerReason: 'route' },
+            );
+            if (!allowsFirestoreFallback) {
+              if (!isCancelled && generation === hydrateGenerationRef.current) {
+                setError('Catalog filters are temporarily unavailable. Please try again in a moment.');
+                setAllDesigns([]);
+                setIsLoading(false);
+                setServerTotalCount(null);
+              }
+              return;
             }
-          })
-          .catch(() => {
-            // Count is best-effort.
-          });
+            traceGeneratedFallbackActivation(
+              'portal-ready-design-bounded-page@generated-first-r015',
+              'generated-catalog-terminal-failure',
+              { app: 'portal', triggerReason: 'route' },
+            );
+          }
+        } else if (!allowsFirestoreFallback) {
+            if (!isCancelled && generation === hydrateGenerationRef.current) {
+              setError('Catalog search is temporarily unavailable. Please try again in a moment.');
+              setAllDesigns([]);
+              setIsLoading(false);
+              setServerTotalCount(null);
+            }
+            return;
+        }
 
-        traceFirestoreRead('getDocs', `designs:catalog:firstPage:${serverListQueryKey}`);
         const firstPage = await catalogService.listReadyDesignsPageWithSortFallback({
           ...serverListQuery,
           limitCount: pageSize,
@@ -177,7 +250,7 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
         setIsLoading(false);
         setNextCursor(firstPage.nextCursor);
         setServerHasMore(Boolean(firstPage.hasMore && firstPage.nextCursor));
-        void countPromise;
+        setServerTotalCount(firstPage.designs.length);
 
         if (!firstPage.hasMore || !firstPage.nextCursor) {
           setIsFullyHydrated(true);
@@ -185,13 +258,12 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
           return;
         }
 
-        // Remaining pages load via loadMore (browse) or deferred hydrate (search / multi-tag).
+        // Remaining normal-browse pages load only via the bounded cursor.
       } catch (loadError) {
         if (!isCancelled && generation === hydrateGenerationRef.current) {
           setError(toFriendlyCatalogError(loadError));
           setAllDesigns([]);
           setIsLoading(false);
-          setIsHydrating(false);
           setServerTotalCount(null);
         }
       }
@@ -202,92 +274,16 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
     return () => {
       isCancelled = true;
     };
-    // Server filter changes reset the page. Search / multi-tag hydrate is deferred below.
-  }, [pageSize, serverListQuery, serverListQueryKey]);
-
-  useEffect(() => {
-    if (
-      !needsFullHydrate ||
-      isFullyHydrated ||
-      isLoading ||
-      !nextCursor ||
-      hydrateInFlightRef.current
-    ) {
-      return;
-    }
-
-    let isCancelled = false;
-    const generation = hydrateGenerationRef.current;
-    hydrateInFlightRef.current = true;
-
-    async function hydrateRemaining() {
-      setIsHydrating(true);
-      try {
-        traceFirestoreRead('getDocs', `designs:catalog:hydrate-deferred:${serverListQueryKey}`);
-        const remaining = await catalogService.listAllMatchingReadyDesigns(
-          {
-            ...serverListQuery,
-            cursor: nextCursor,
-          },
-          {
-            pageSize,
-            onPage: (pageDesigns) => {
-              if (isCancelled || generation !== hydrateGenerationRef.current) {
-                return;
-              }
-
-              setAllDesigns((current) => {
-                const seen = new Set(current.map((design) => design.id));
-                const next = [...current];
-                for (const design of pageDesigns) {
-                  if (!seen.has(design.id)) {
-                    seen.add(design.id);
-                    next.push(design);
-                  }
-                }
-                return next;
-              });
-            },
-          },
-        );
-
-        if (isCancelled || generation !== hydrateGenerationRef.current) {
-          return;
-        }
-
-        setAllDesigns((current) => {
-          const byId = new Map(current.map((design) => [design.id, design]));
-          for (const design of remaining) {
-            byId.set(design.id, design);
-          }
-          return [...byId.values()];
-        });
-        setNextCursor(undefined);
-        setServerHasMore(false);
-        setIsFullyHydrated(true);
-      } catch (loadError) {
-        if (!isCancelled && generation === hydrateGenerationRef.current) {
-          setError(toFriendlyCatalogError(loadError));
-        }
-      } finally {
-        hydrateInFlightRef.current = false;
-        if (!isCancelled && generation === hydrateGenerationRef.current) {
-          setIsHydrating(false);
-        }
-      }
-    }
-
-    void hydrateRemaining();
-
-    return () => {
-      isCancelled = true;
-    };
+    // Server or generated-filter changes reset the page.
   }, [
-    isFullyHydrated,
-    isLoading,
+    allowsFirestoreFallback,
     needsFullHydrate,
-    nextCursor,
+    options.categoryId,
+    options.discoveryMode,
+    options.searchQuery,
     pageSize,
+    selectedTagsForAssets,
+    selectedTagsKey,
     serverListQuery,
     serverListQueryKey,
   ]);
@@ -309,16 +305,54 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
   );
 
   const clientWindowHasMore = visibleCount < filteredDesigns.length;
-  const hasMore = needsFullHydrate || isFullyHydrated ? clientWindowHasMore : serverHasMore;
+  const generatedHasMore =
+    isGeneratedQuery && serverTotalCount !== null && allDesigns.length < serverTotalCount;
+  const hasMore = isGeneratedQuery
+    ? generatedHasMore || clientWindowHasMore
+    : isFullyHydrated
+      ? clientWindowHasMore
+      : serverHasMore;
   const matchingCount =
     isHydrating && needsFullHydrate
       ? null
-      : needsFullHydrate || isFullyHydrated
-        ? filteredDesigns.length
+      : isGeneratedQuery
+        ? (serverTotalCount ?? filteredDesigns.length)
+        : isFullyHydrated
+          ? filteredDesigns.length
         : (serverTotalCount ?? filteredDesigns.length);
 
   const loadMoreDesigns = useCallback(() => {
-    if (needsFullHydrate || isFullyHydrated) {
+    if (isGeneratedQuery) {
+      if (generatedHasMore && !isLoadingMore) {
+        void (async () => {
+          setIsLoadingMore(true);
+          try {
+            const page = await portalCatalogAssetService.listMatchingDesigns(
+              options.searchQuery ?? '',
+              selectedTagsForAssets,
+              {
+                categoryId: options.categoryId,
+                limit: pageSize,
+                offset: allDesigns.length,
+              },
+            );
+            setAllDesigns((current) => [...current, ...page.designs]);
+            setServerTotalCount(page.total);
+            setVisibleCount((current) => current + pageSize);
+            setIsFullyHydrated(allDesigns.length + page.designs.length >= page.total);
+          } catch (loadError) {
+            setError(toFriendlyCatalogError(loadError));
+          } finally {
+            setIsLoadingMore(false);
+          }
+        })();
+        return;
+      }
+      if (clientWindowHasMore) setVisibleCount((current) => current + pageSize);
+      return;
+    }
+
+    if (isFullyHydrated) {
       if (!clientWindowHasMore) {
         return;
       }
@@ -333,7 +367,6 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
     void (async () => {
       setIsLoadingMore(true);
       try {
-        traceFirestoreRead('getDocs', `designs:catalog:nextPage:${serverListQueryKey}`);
         const page = await catalogService.listReadyDesignsPageWithSortFallback({
           ...serverListQuery,
           cursor: nextCursor,
@@ -363,15 +396,19 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
       }
     })();
   }, [
+    allDesigns.length,
     clientWindowHasMore,
+    generatedHasMore,
     isFullyHydrated,
+    isGeneratedQuery,
     isLoadingMore,
-    needsFullHydrate,
     nextCursor,
+    options.categoryId,
+    options.searchQuery,
     pageSize,
+    selectedTagsForAssets,
     serverHasMore,
     serverListQuery,
-    serverListQueryKey,
   ]);
 
   return {
@@ -404,8 +441,26 @@ export function useCatalogHomeDesigns(): {
       setError(null);
 
       try {
-        traceFirestoreRead('getDocs', 'designs:catalog:homeDiscoveryPool');
-        const nextDesigns = await catalogService.listHomeDiscoveryPool();
+        let nextDesigns: CatalogDesign[];
+        if (generatedPortalCatalogEnabled()) {
+          try {
+            nextDesigns = await portalCatalogAssetService.listDiscoverDesigns();
+            traceGeneratedAssetOutcome(
+              'success',
+              'portal-catalog-discover@generated-first-r015',
+              { app: 'portal', triggerReason: 'route' },
+            );
+          } catch {
+            traceGeneratedAssetOutcome(
+              'failure',
+              'portal-catalog-discover@generated-first-r015',
+              { app: 'portal', triggerReason: 'route' },
+            );
+            throw new Error('Catalog discovery is temporarily unavailable.');
+          }
+        } else {
+          throw new Error('Catalog discovery is temporarily unavailable.');
+        }
 
         if (!isCancelled) {
           setDesigns(nextDesigns);

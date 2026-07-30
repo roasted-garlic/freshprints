@@ -365,6 +365,29 @@ service cloud.firestore {
       return origin in ["studio_internal", "studio_customer", "portal_customer"];
     }
 
+    function isValidPrintRequestQueueTab(queueTab) {
+      return queueTab in ["working", "queued", "printing", "printed"];
+    }
+
+    function isValidShowQueueBiddingAcknowledgment(acknowledgment) {
+      return acknowledgment is map
+        && acknowledgment.keys().hasOnly([
+          "accepted",
+          "acceptedAt",
+          "acceptedByUid",
+          "version",
+          "upcomingShowId"
+        ])
+        && acknowledgment.accepted == true
+        && acknowledgment.acceptedAt is timestamp
+        && acknowledgment.acceptedByUid is string
+        && acknowledgment.acceptedByUid.size() > 0
+        && acknowledgment.version is string
+        && acknowledgment.version.size() > 0
+        && acknowledgment.upcomingShowId is string
+        && acknowledgment.upcomingShowId.size() > 0;
+    }
+
     function isValidPrintRequestItemStatus(status) {
       return status in ["pending", "queued", "in_progress", "printed", "done", "canceled"];
     }
@@ -431,12 +454,14 @@ service cloud.firestore {
           "requestOrigin",
           "status",
           "itemCount",
+          "queueTab",
           "requestSequenceNumber",
           "customerUsernameSnapshot",
           "customerDisplayNameSnapshot",
           "internalBaseName",
           "nameFormatVersion",
           "notes",
+          "showQueueBiddingAcknowledgment",
           "createdBy",
           "updatedBy",
           "createdAt",
@@ -453,18 +478,36 @@ service cloud.firestore {
         && isValidPrintRequestStatus(data.status)
         && data.itemCount is int
         && data.itemCount >= 0
+        && (!("queueTab" in data)
+          || (data.queueTab is string && isValidPrintRequestQueueTab(data.queueTab)))
         && isOptionalNumber(data, "requestSequenceNumber")
         && isOptionalString(data, "customerUsernameSnapshot")
         && isOptionalString(data, "customerDisplayNameSnapshot")
         && isOptionalString(data, "internalBaseName")
         && isOptionalString(data, "nameFormatVersion")
         && isOptionalString(data, "notes")
+        && (!("showQueueBiddingAcknowledgment" in data)
+          || isValidShowQueueBiddingAcknowledgment(data.showQueueBiddingAcknowledgment))
         && data.createdBy is string
         && data.updatedBy is string
         && data.createdAt is timestamp
         && data.updatedAt is timestamp
         && isValidPrintRequestAssignment(data)
         && isValidPrintRequestOriginAssignment(data);
+    }
+
+    function staffCanCompletePrintRequest() {
+      return resource.data.status in ["active", "editing"]
+        && request.resource.data.status == "completed"
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(["status", "updatedBy", "updatedAt"]);
+    }
+
+    function staffCanPerformGeneralPrintRequestUpdate() {
+      return request.resource.data.status != "completed"
+        && (resource.data.status != "completed" || request.resource.data.status == "archived")
+        && optionalFieldUnchanged("queueTab")
+        && optionalFieldUnchanged("showQueueBiddingAcknowledgment");
     }
 
     function isCatalogPrintRequestItem(data) {
@@ -695,6 +738,48 @@ service cloud.firestore {
         && data.updatedAt is timestamp;
     }
 
+    function showProductionStatusTransitionValid() {
+      return request.resource.data.productionStatus == resource.data.productionStatus
+        || (
+          resource.data.productionStatus in ["open", "full"]
+          && request.resource.data.productionStatus == "printing"
+        )
+        || (
+          resource.data.productionStatus == "printing"
+          && request.resource.data.productionStatus == "completed"
+        );
+    }
+
+    // Timer-only compatibility path for older show documents that may retain fields outside the
+    // current full-document allowlist. The legacy field is preserved, never introduced or changed:
+    // only the exact production-timer fields below may differ.
+    function staffCanUpdateShowProductionTimerOnLegacyDocument() {
+      return isStaff()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "productionStatus",
+          "accumulatedPrintMs",
+          "activePrintStartedAt",
+          "printStartedAt",
+          "printPausedAt",
+          "printFinishedAt",
+          "printFinishedBy",
+          "updatedBy",
+          "updatedAt"
+        ])
+        && showProductionStatusTransitionValid()
+        && isValidShowProductionStatus(request.resource.data.productionStatus)
+        && isOptionalNumber(request.resource.data, "accumulatedPrintMs")
+        && (!("accumulatedPrintMs" in request.resource.data)
+          || request.resource.data.accumulatedPrintMs >= 0)
+        && isOptionalTimestamp(request.resource.data, "activePrintStartedAt")
+        && isOptionalTimestamp(request.resource.data, "printStartedAt")
+        && isOptionalTimestamp(request.resource.data, "printPausedAt")
+        && isOptionalTimestamp(request.resource.data, "printFinishedAt")
+        && isOptionalString(request.resource.data, "printFinishedBy")
+        && request.resource.data.updatedBy == request.auth.uid
+        && request.resource.data.updatedAt is timestamp;
+    }
+
     function isValidShowAllocationStatus(status) {
       return status in ["pending", "queued", "in_progress", "printed", "done", "canceled"];
     }
@@ -787,6 +872,39 @@ service cloud.firestore {
             && data.customerUploadId.size() > 0
           )
         );
+    }
+
+    // Start-printing compatibility for parsed historical allocations that preserve fields outside
+    // today's full-document allowlist. Only the exact timer transition may differ; legacy fields
+    // are preserved but cannot be introduced or changed.
+    function staffCanStartLegacyShowAllocation() {
+      return isStaff()
+        && resource.data.status in ["pending", "queued"]
+        && request.resource.data.status == "in_progress"
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "status",
+          "updatedBy",
+          "updatedAt"
+        ])
+        && request.resource.data.updatedBy == request.auth.uid
+        && request.resource.data.updatedAt is timestamp;
+    }
+
+    function staffCanFinishLegacyShowAllocation() {
+      return isStaff()
+        && resource.data.status in ["pending", "queued", "in_progress"]
+        && request.resource.data.status == "done"
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "status",
+          "completedAt",
+          "completedBy",
+          "updatedBy",
+          "updatedAt"
+        ])
+        && request.resource.data.completedBy == request.auth.uid
+        && request.resource.data.updatedBy == request.auth.uid
+        && request.resource.data.completedAt is timestamp
+        && request.resource.data.updatedAt is timestamp;
     }
 
     match /users/{userId} {
@@ -960,6 +1078,7 @@ service cloud.firestore {
         && request.resource.data.createdBy == resource.data.createdBy
         && request.resource.data.createdAt == resource.data.createdAt
         && request.resource.data.updatedBy == request.auth.uid
+        && (staffCanCompletePrintRequest() || staffCanPerformGeneralPrintRequestUpdate())
         || customerCanUpdatePrintRequest()
         && printRequestRequiredFieldsValid(request.resource.data);
 
@@ -1082,13 +1201,16 @@ service cloud.firestore {
         && upcomingShowRequiredFieldsValid(request.resource.data)
         && request.resource.data.updatedBy == request.auth.uid;
 
-      allow update: if isStaff()
-        && upcomingShowRequiredFieldsValid(request.resource.data)
-        && request.resource.data.source == resource.data.source
-        && request.resource.data.whatnotShowId == resource.data.whatnotShowId
-        && (!("createdBy" in resource.data) || request.resource.data.createdBy == resource.data.createdBy)
-        && request.resource.data.createdAt == resource.data.createdAt
-        && request.resource.data.updatedBy == request.auth.uid;
+      allow update: if (
+          isStaff()
+          && upcomingShowRequiredFieldsValid(request.resource.data)
+          && request.resource.data.source == resource.data.source
+          && request.resource.data.whatnotShowId == resource.data.whatnotShowId
+          && (!("createdBy" in resource.data) || request.resource.data.createdBy == resource.data.createdBy)
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.updatedBy == request.auth.uid
+        )
+        || staffCanUpdateShowProductionTimerOnLegacyDocument();
 
       allow delete: if isStaff();
     }
@@ -1284,15 +1406,29 @@ service cloud.firestore {
         && request.resource.data.addedBy == request.auth.uid
         && request.resource.data.updatedBy == request.auth.uid;
 
-      allow update: if isStaff()
-        && showAllocationRequiredFieldsValid(request.resource.data)
-        && request.resource.data.upcomingShowId == resource.data.upcomingShowId
-        && request.resource.data.printRequestId == resource.data.printRequestId
-        && request.resource.data.printRequestItemId == resource.data.printRequestItemId
-        && showAllocationSourceIdentityUnchanged()
-        && request.resource.data.addedBy == resource.data.addedBy
-        && request.resource.data.createdAt == resource.data.createdAt
-        && request.resource.data.updatedBy == request.auth.uid;
+      allow update: if (
+          isStaff()
+          && showAllocationRequiredFieldsValid(request.resource.data)
+          && request.resource.data.upcomingShowId == resource.data.upcomingShowId
+          && request.resource.data.printRequestId == resource.data.printRequestId
+          && request.resource.data.printRequestItemId == resource.data.printRequestItemId
+          && showAllocationSourceIdentityUnchanged()
+          && request.resource.data.addedBy == resource.data.addedBy
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.updatedBy == request.auth.uid
+          // Timer-start transitions must use the narrow compatibility branch below so both current
+          // and legacy allocation shapes preserve every field except the three timer-owned fields.
+          && !(
+            resource.data.status in ["pending", "queued"]
+            && request.resource.data.status == "in_progress"
+          )
+          && !(
+            resource.data.status in ["pending", "queued", "in_progress"]
+            && request.resource.data.status == "done"
+          )
+        )
+        || staffCanStartLegacyShowAllocation()
+        || staffCanFinishLegacyShowAllocation();
 
       allow delete: if isStaff();
     }
@@ -1649,6 +1785,11 @@ service cloud.firestore {
     match /accountDeletionRequests/{userId} {
       allow read: if isStaff() || (isCustomer() && request.auth.uid == userId);
       allow create, update, delete: if false;
+    }
+
+    // Server-only lease/generation state for manifest-last snapshot publication.
+    match /snapshotPublicationState/{snapshotId} {
+      allow read, write: if false;
     }
 
     match /{document=**} {

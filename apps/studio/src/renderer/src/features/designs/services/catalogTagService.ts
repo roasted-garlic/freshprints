@@ -14,6 +14,16 @@ import {
   type QueryConstraint,
 } from "firebase/firestore";
 
+import {
+  runTracedWrite,
+  traceFirestoreCacheEvent,
+  traceFirestoreOneShotComplete,
+  traceFirestoreOneShotStart,
+  type FirestoreTraceMetadata,
+} from "@fresh-prints/shared/utils/firestoreUsageTrace";
+import { createBoundedAsyncCache } from "@fresh-prints/shared/utils/boundedAsyncCache";
+
+import { db } from "../../../config/firebase";
 import { getFirestoreErrorMessage } from "../../firebase/utils/firestoreErrorMessage";
 import { assertNoUndefinedFirestoreFields, withoutUndefinedFields } from "../../firebase/utils/firestoreDocument";
 import { firestoreCollectionService } from "../../firebase/services/firestoreCollectionService";
@@ -33,6 +43,50 @@ import {
 } from "../utils/catalogTagNormalizer";
 
 const TAG_LIST_PAGE_SIZE = 500;
+const TAXONOMY_CACHE_TTL_MS = 12 * 60 * 60 * 1000;
+let tagCorpusLoadSequence = 0;
+const tagListCache = createBoundedAsyncCache<CatalogTag[]>({
+  maxEntries: 8,
+  onEvent: (event, key) => traceFirestoreCacheEvent(
+    event === "hit" ? "cacheHit" : event === "retry" ? "retry" : "cacheMiss",
+    tagTraceMetadata(`catalogTagService.listTagsCache.${key.endsWith(":all") ? "all" : "approved"}`),
+  ),
+  ttlMs: TAXONOMY_CACHE_TTL_MS,
+});
+
+function getTagListCacheKey(caller: User, options: CatalogTagListOptions = {}): string {
+  return `${db.app.options.projectId ?? "unknown-project"}:${caller.id}:${
+    options.includeArchived ? "all" : "approved"
+  }`;
+}
+
+export function invalidateCatalogTagListCache(): void {
+  tagListCache.clear();
+}
+
+function tagTraceMetadata(
+  source: string,
+  options?: {
+    approvedOnly?: boolean;
+    correlationId?: string;
+    document?: boolean;
+    limit?: number;
+    page?: number;
+  },
+): FirestoreTraceMetadata {
+  return {
+    app: "studio",
+    collection: "tags",
+    constraints: options?.approvedOnly ? ["status==approved"] : undefined,
+    correlationId: options?.correlationId,
+    documentPathPattern: options?.document ? "tags/{tagId}" : undefined,
+    limit: options?.limit,
+    logicalOperation: options?.correlationId ? "catalogTagService.listTags" : undefined,
+    page: options?.page,
+    source,
+    triggerReason: "route",
+  };
+}
 
 interface CatalogTagDocumentData {
   id?: unknown;
@@ -96,6 +150,8 @@ function buildTagListFilterConstraints(options: CatalogTagListOptions = {}): Que
 
 async function listTagPage(
   options: CatalogTagListOptions,
+  correlationId: string,
+  pageNumber: number,
   cursor?: QueryDocumentSnapshot<DocumentData>,
 ): Promise<{
   cursor?: QueryDocumentSnapshot<DocumentData>;
@@ -111,7 +167,15 @@ async function listTagPage(
 
   pageConstraints.push(limit(TAG_LIST_PAGE_SIZE));
 
+  const traceMetadata = tagTraceMetadata("catalogTagService.listTagPage", {
+    approvedOnly: !options.includeArchived,
+    correlationId,
+    limit: TAG_LIST_PAGE_SIZE,
+    page: pageNumber,
+  });
+  traceFirestoreOneShotStart("getDocs", traceMetadata);
   const snapshot = await getDocs(query(firestoreCollectionService.getTagsCollection(), ...pageConstraints));
+  traceFirestoreOneShotComplete("getDocs", traceMetadata, snapshot.size);
   const tags = snapshot.docs.map((tagDocument) =>
     mapCatalogTagDocument(tagDocument.id, tagDocument.data()),
   );
@@ -126,26 +190,38 @@ async function listTagPage(
   };
 }
 
-async function listAllTags(options: CatalogTagListOptions = {}): Promise<CatalogTag[]> {
-  const tags: CatalogTag[] = [];
-  let cursor: QueryDocumentSnapshot<DocumentData> | undefined;
+async function listAllTags(caller: User, options: CatalogTagListOptions = {}): Promise<CatalogTag[]> {
+  const tags = await tagListCache.get(getTagListCacheKey(caller, options), async () => {
+    const loadedTags: CatalogTag[] = [];
+    let cursor: QueryDocumentSnapshot<DocumentData> | undefined;
+    const correlationId = `tag-corpus-${++tagCorpusLoadSequence}`;
+    let pageNumber = 1;
 
-  do {
-    const page = await listTagPage(options, cursor);
+    do {
+      const page = await listTagPage(options, correlationId, pageNumber, cursor);
 
-    tags.push(...page.tags);
-    cursor = page.cursor;
-  } while (cursor);
+      loadedTags.push(...page.tags);
+      cursor = page.cursor;
+      pageNumber += 1;
+    } while (cursor);
 
-  return sortCatalogTags(tags);
+    return sortCatalogTags(loadedTags);
+  });
+
+  return [...tags];
 }
 
-async function getAllTags(): Promise<CatalogTag[]> {
-  return listAllTags({ includeArchived: true });
+async function getAllTags(caller: User): Promise<CatalogTag[]> {
+  return listAllTags(caller, { includeArchived: true });
 }
 
 async function readTagAfterWrite(tagId: string): Promise<CatalogTag> {
+  const traceMetadata = tagTraceMetadata("catalogTagService.readTagAfterWrite", {
+    document: true,
+  });
+  traceFirestoreOneShotStart("getDoc", traceMetadata);
   const tagSnapshot = await getDoc(doc(firestoreCollectionService.getTagsCollection(), tagId));
+  traceFirestoreOneShotComplete("getDoc", traceMetadata, tagSnapshot.exists() ? 1 : 0);
 
   if (!tagSnapshot.exists()) {
     throw new Error("The tag record was not found.");
@@ -163,9 +239,9 @@ export const catalogTagService = {
       throw new Error("You do not have permission to manage tags.");
     }
 
-    const existingTags = await getAllTags();
+    const existingTags = await getAllTags(caller);
 
-    return Promise.all(
+    const results = await Promise.all(
       inputs.map(async (input) => {
         try {
           const normalizedInput = normalizeCatalogTagInput(input);
@@ -187,7 +263,12 @@ export const catalogTagService = {
           });
 
           assertNoUndefinedFirestoreFields(tagRecord, "Tag create payload");
-          await setDoc(tagRef, tagRecord);
+          await runTracedWrite("setDoc", () => setDoc(tagRef, tagRecord), {
+            app: "studio",
+            collection: "tags",
+            documentPathPattern: "tags/{tagId}",
+            source: "catalogTagService.bulkCreateTags",
+          });
           const tag = await readTagAfterWrite(tagId);
           return { tag };
         } catch (error) {
@@ -201,6 +282,8 @@ export const catalogTagService = {
         }
       }),
     );
+    invalidateCatalogTagListCache();
+    return results;
   },
 
   async listTags(caller: User, options: CatalogTagListOptions = {}): Promise<CatalogTag[]> {
@@ -209,7 +292,7 @@ export const catalogTagService = {
     }
 
     try {
-      return await listAllTags(options);
+      return await listAllTags(caller, options);
     } catch (error) {
       throw new Error(getFirestoreErrorMessage(error, "Unable to load tags. Please try again."));
     }
@@ -225,7 +308,7 @@ export const catalogTagService = {
     const tagRef = doc(firestoreCollectionService.getTagsCollection(), tagId);
 
     try {
-      const existingTags = await getAllTags();
+      const existingTags = await getAllTags(caller);
       assertCatalogTagAvailable(normalizedInput, existingTags);
 
       const tagRecord = withoutUndefinedFields({
@@ -241,8 +324,15 @@ export const catalogTagService = {
       });
 
       assertNoUndefinedFirestoreFields(tagRecord, "Tag create payload");
-      await setDoc(tagRef, tagRecord);
-      return await readTagAfterWrite(tagId);
+      await runTracedWrite("setDoc", () => setDoc(tagRef, tagRecord), {
+        app: "studio",
+        collection: "tags",
+        documentPathPattern: "tags/{tagId}",
+        source: "catalogTagService.createTag",
+      });
+      const tag = await readTagAfterWrite(tagId);
+      invalidateCatalogTagListCache();
+      return tag;
     } catch (error) {
       if (error instanceof Error && /tag|alias|preferred/i.test(error.message)) {
         throw error;
@@ -262,7 +352,7 @@ export const catalogTagService = {
     }
 
     try {
-      const existingTags = await getAllTags();
+      const existingTags = await getAllTags(caller);
       const existingTag = existingTags.find((tag) => tag.id === tagId);
 
       if (!existingTag) {
@@ -287,8 +377,19 @@ export const catalogTagService = {
       });
 
       assertNoUndefinedFirestoreFields(updatePayload, "Tag update payload");
-      await updateDoc(doc(firestoreCollectionService.getTagsCollection(), tagId), updatePayload);
-      return await readTagAfterWrite(tagId);
+      await runTracedWrite(
+        "updateDoc",
+        () => updateDoc(doc(firestoreCollectionService.getTagsCollection(), tagId), updatePayload),
+        {
+          app: "studio",
+          collection: "tags",
+          documentPathPattern: "tags/{tagId}",
+          source: "catalogTagService.updateTag",
+        },
+      );
+      const tag = await readTagAfterWrite(tagId);
+      invalidateCatalogTagListCache();
+      return tag;
     } catch (error) {
       if (error instanceof Error && /tag|alias|preferred|changes/.test(error.message.toLowerCase())) {
         throw error;

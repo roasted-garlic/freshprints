@@ -29,6 +29,7 @@ import {
 import { formatCurrentRequestDrawerItemSize } from '../utils/formatCurrentRequestDrawerItemMeta';
 import { buildRequestDetailHref } from '../utils/portalRequestDetailReturn';
 import { resolveCurrentRequestReviewId } from '../utils/resolveCurrentRequestReviewId';
+import { clearOwnedFlushTimers } from '../utils/flushTimerOwnership';
 
 export function CurrentRequestDrawer() {
   const pathname = usePathname();
@@ -86,11 +87,9 @@ export function CurrentRequestDrawer() {
   }, [workingItems]);
 
   useEffect(() => {
+    const ownedFlushTimers = flushTimersRef.current;
     return () => {
-      for (const timer of flushTimersRef.current.values()) {
-        clearTimeout(timer);
-      }
-      flushTimersRef.current.clear();
+      clearOwnedFlushTimers(ownedFlushTimers, clearTimeout);
     };
   }, []);
 
@@ -575,7 +574,6 @@ export function CurrentRequestDrawer() {
                           loadingLabel=""
                         />
                       ) : uploadUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element -- signed Storage URL
                         <img alt="" className="current-request-drawer-thumb-img" src={uploadUrl} />
                       ) : (
                         <div aria-hidden className="current-request-drawer-thumb" />

@@ -22,6 +22,36 @@ export interface ClearPortalWorkingPrintRequestResponse {
   refundedPrints: number;
 }
 
+export function buildClearPortalWorkingPrintRequestAccounting(input: {
+  allocationDocumentsReturned: number;
+  durationMs: number;
+  itemDocumentsReturned: number;
+  outcome: "success" | "failure";
+  parentWrites: number;
+}) {
+  const itemQueryBillableReads = Math.max(1, input.itemDocumentsReturned);
+  const allocationQueryRan = input.itemDocumentsReturned > 0;
+  const allocationBillableReads = allocationQueryRan
+    ? Math.max(1, input.allocationDocumentsReturned)
+    : 0;
+  return {
+    functionName: "clearPortalWorkingPrintRequest",
+    eventClassification: input.itemDocumentsReturned === 0 ? "empty-no-op" : "clear-items",
+    readOperations: 4 + (allocationQueryRan ? 1 : 0),
+    documentsReturned:
+      3 + input.itemDocumentsReturned + input.allocationDocumentsReturned,
+    approximateBillableReads: 3 + itemQueryBillableReads + allocationBillableReads,
+    writes: input.parentWrites,
+    deletes: input.itemDocumentsReturned,
+    transactionAttempts: 0,
+    batchSize: input.parentWrites + input.itemDocumentsReturned,
+    retryNumber: 0,
+    duplicateSkip: input.itemDocumentsReturned === 0,
+    durationMs: input.durationMs,
+    outcome: input.outcome,
+  };
+}
+
 function parseRequest(data: unknown): ClearPortalWorkingPrintRequestRequest {
   if (data == null || typeof data !== "object") {
     throw invalidArgument("Request data must be an object.");
@@ -47,6 +77,25 @@ export const clearPortalWorkingPrintRequest = onCall(
       throw unauthenticated();
     }
 
+    const startedAtMs = Date.now();
+    let itemDocumentsReturned = 0;
+    let allocationDocumentsReturned = 0;
+    let parentWrites = 0;
+    const logAccounting = (outcome: "success" | "failure", failureCode?: string) => {
+      if (process.env.GCLOUD_PROJECT !== "fresh-prints-dev") return;
+      console.info("portal-clear-working-request-accounting", {
+        ...buildClearPortalWorkingPrintRequestAccounting({
+          allocationDocumentsReturned,
+          durationMs: Date.now() - startedAtMs,
+          itemDocumentsReturned,
+          outcome,
+          parentWrites,
+        }),
+        ...(failureCode ? { failureCode } : {}),
+      });
+    };
+
+    try {
     const portalCustomer = await requirePortalCustomer(request.auth.uid);
     const payload = parseRequest(request.data);
     const customerUid = request.auth.uid;
@@ -68,11 +117,28 @@ export const clearPortalWorkingPrintRequest = onCall(
     }
     const preservedStatus: "draft" | "editing" = status;
 
+    const itemsSnap = await adminDb
+      .collection("printRequestItems")
+      .where("printRequestId", "==", payload.printRequestId)
+      .get();
+    itemDocumentsReturned = itemsSnap.size;
+
+    if (itemsSnap.empty) {
+      logAccounting("success");
+      return {
+        printRequestId: payload.printRequestId,
+        status: preservedStatus,
+        removedItemCount: 0,
+        refundedPrints: 0,
+      };
+    }
+
     const allocationsSnap = await adminDb
       .collection("showAllocations")
       .where("printRequestId", "==", payload.printRequestId)
       .limit(25)
       .get();
+    allocationDocumentsReturned = allocationsSnap.size;
 
     const hasActiveAllocation = allocationsSnap.docs.some((docSnap) => {
       const allocationStatus = docSnap.data()?.status;
@@ -89,11 +155,6 @@ export const clearPortalWorkingPrintRequest = onCall(
       );
     }
 
-    const itemsSnap = await adminDb
-      .collection("printRequestItems")
-      .where("printRequestId", "==", payload.printRequestId)
-      .get();
-
     let refundedPrints = 0;
     for (const itemDoc of itemsSnap.docs) {
       const qty = Math.floor(Number(itemDoc.data()?.quantity ?? 0));
@@ -106,7 +167,7 @@ export const clearPortalWorkingPrintRequest = onCall(
     let ops = 0;
     let removedItemCount = 0;
 
-    async function commitIfNeeded(force = false): Promise<void> {
+    const commitIfNeeded = async (force = false): Promise<void> => {
       if (ops === 0) {
         return;
       }
@@ -116,7 +177,7 @@ export const clearPortalWorkingPrintRequest = onCall(
       await batch.commit();
       batch = adminDb.batch();
       ops = 0;
-    }
+    };
 
     for (const itemDoc of itemsSnap.docs) {
       batch.delete(itemDoc.ref);
@@ -131,13 +192,19 @@ export const clearPortalWorkingPrintRequest = onCall(
       updatedBy: customerUid,
     });
     ops += 1;
+    parentWrites = 1;
     await commitIfNeeded(true);
 
+    logAccounting("success");
     return {
       printRequestId: payload.printRequestId,
       status: preservedStatus,
       removedItemCount,
       refundedPrints,
     };
+    } catch (error) {
+      logAccounting("failure", "clear-failed");
+      throw error;
+    }
   },
 );

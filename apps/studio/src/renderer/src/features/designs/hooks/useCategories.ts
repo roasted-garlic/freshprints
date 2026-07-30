@@ -17,12 +17,12 @@ const initialState: CategoriesState = {
   isLoading: true,
 };
 
-export function useCategories() {
+export function useCategories(options: { enabled?: boolean } = {}) {
   const { user } = useAuth();
   const [state, setState] = useState<CategoriesState>(initialState);
 
   const loadCategories = useCallback(async () => {
-    if (!user || !permissionService.canViewDesigns(user)) {
+    if (options.enabled === false || !user || !permissionService.canViewDesigns(user)) {
       setState({ categories: [], error: null, isLoading: false });
       return;
     }
@@ -47,7 +47,7 @@ export function useCategories() {
         isLoading: false,
       });
     }
-  }, [user]);
+  }, [options.enabled, user]);
 
   useEffect(() => {
     void loadCategories();

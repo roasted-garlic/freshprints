@@ -50,7 +50,7 @@ describe("printRequestPerShowCustomerCap", () => {
       existingOnShowQty: 25,
       newRequestQty: 10,
     });
-    assert.match(msg, /You've used all 25 print spots on this show/i);
+    assert.match(msg, /You've used all 25 of your print spots on this show/i);
     assert.match(msg, /Choose another show for more designs/);
     assert.doesNotMatch(msg, /already have a (print )?request/i);
     assert.doesNotMatch(msg, /—/);
@@ -64,5 +64,51 @@ describe("printRequestPerShowCustomerCap", () => {
     });
     assert.match(msg, /room for only 15 of your 20/);
     assert.doesNotMatch(msg, /already have a (print )?request/i);
+  });
+
+  describe("ADR-FP-122 — multiple separate requests accumulating to L (exact owner boundary)", () => {
+    it("0 + 23 = 23 -> allow (well under cap)", () => {
+      assert.equal(wouldExceedPerShowCustomerCap(0, 23, 25), false);
+    });
+
+    it("22 + 3 = 25 -> allow (owner live boundary)", () => {
+      assert.equal(wouldExceedPerShowCustomerCap(22, 3, 25), false);
+    });
+
+    it("22 + 4 = 26 -> block", () => {
+      assert.equal(wouldExceedPerShowCustomerCap(22, 4, 25), true);
+    });
+
+    it("23 + 2 = 25 -> allow (exactly at cap)", () => {
+      assert.equal(wouldExceedPerShowCustomerCap(23, 2, 25), false);
+    });
+
+    it("23 + 3 = 26 -> block (one over cap)", () => {
+      assert.equal(wouldExceedPerShowCustomerCap(23, 3, 25), true);
+    });
+
+    it("24 + 1 = 25 -> allow (exactly at cap)", () => {
+      assert.equal(wouldExceedPerShowCustomerCap(24, 1, 25), false);
+    });
+
+    it("24 + 2 = 26 -> block", () => {
+      assert.equal(wouldExceedPerShowCustomerCap(24, 2, 25), true);
+    });
+
+    it("25 + 1 = 26 -> block (already at cap, any additional quantity blocks)", () => {
+      assert.equal(wouldExceedPerShowCustomerCap(25, 1, 25), true);
+    });
+
+    it("a second separate request's quantity is not double-counted: summing two requests' allocations equals their simple sum", () => {
+      // Models two SEPARATE printRequestId values both allocating to the same show for the same
+      // customer — sumCustomerQuantityOnShow must count each exactly once regardless of how many
+      // distinct requests contributed to the total (ADR-FP-122 explicitly allows multiple requests
+      // on one show now).
+      const total = sumCustomerQuantityOnShow([
+        { allocatedQuantity: 23, status: "pending" }, // request A
+        { allocatedQuantity: 2, status: "pending" }, // request B, separate printRequestId
+      ]);
+      assert.equal(total, 25, "each request's allocation must be counted exactly once, total 25");
+    });
   });
 });

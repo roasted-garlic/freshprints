@@ -2,7 +2,7 @@
 
 > Align all work with the current phase / active managed goal. Do not jump ahead.
 
-## Current status (2026-07-23)
+## Current status (2026-07-29)
 
 | Item | Status |
 |------|--------|
@@ -24,10 +24,33 @@
 | Brand logo uploads (ADR-FP-114) | **Done in repo + fresh-prints-dev** (owner PASS 2026-07-22); production Functions/rules/storage still gated |
 | Portal SEO foundations (ADR-FP-116) | **Done** (owner PASS 2026-07-22; approved_with_notes) |
 | Portal FAQ and How To (ADR-FP-117/118) | **Done** (owner PASS 2026-07-23; approved_with_notes) |
+| Firestore usage efficiency Wave C (ADR-FP-121) | **Done** (owner PASS 2026-07-27; PASS WITH NOTES) — bounded Firestore permanent for Print Requests; private read-model explored and abandoned |
+| Portal print-request pre-launch stability | **Done** (owner QA v18 PASS 2026-07-29; approved) — complete Studio lifecycle, Portal Printed progress, terminal reconciliation, and current-schema completion authorization |
+| Studio Test Data legacy print-limit cleanup | **Done** (owner PASS 2026-07-29; approved) — retired Cap A counters are truthfully labeled optional legacy cleanup; target and safety behavior unchanged |
+| Pre-production static-analysis cleanup | **Done** (2026-07-29; approved; owner QA not required) — `npm run build:studio` and `npm run lint` both exit 0; no product behavior change |
+| Customer-upload oversized-image processing performance (Workstream A, ADR-FP-123) | **Done** (2026-07-29; approved; owner QA not required) — bounded concurrency (3) for ZIP batch processing; `finalizeCustomerUploadZip` timeout/root-cause fix; no format/limit/quality change |
+| Assisted Creation reference-image MB limit increase (ADR-FP-124) | **Done** (2026-07-29; approved) — 40 MB/file (owner-selected), 8 files unchanged, 320 MB combined ceiling, all live in `fresh-prints-dev`; owner QA FAIL (stale 15 MB deployed Cloud Functions) → Amendment 1 root-caused and fixed via scoped Functions redeploy → owner re-QA PASS |
 
-**Pre-production sequence:** (1) SEO foundations **Done** → (2) `portal-how-to-faq` **Done** 2026-07-23 → (3) `portal-google-analytics` **queued** → (4) production-release.
+**Pre-production sequence (owner queue decision, 2026-07-29):** completed foundations include SEO,
+Help/FAQ, GA4 architecture, Firestore efficiency Wave C, `portal-print-request-prelaunch-stability`,
+`preproduction-static-analysis-cleanup`,
+`customer-upload-oversized-image-normalization-and-processing-performance` (Workstream A only), and
+`assisted-creation-reference-image-mb-limit-increase`. Remaining managed order: (1)
+`customer-upload-oversized-pixel-normalization-and-processing-timeout-followup` (next queued, not
+started, no Plan yet) → (2) `catalog-image-derivative-storage-consolidation` → (3)
+`production-release` (blocked until the prior two sign off). The image-related goals may be
+coordinated or worked in parallel where their product/security boundaries allow — see
+`docs/workflow/plans/2026-07-29-customer-upload-oversized-image-normalization-and-processing-performance-plan.md`
+for the originally-recommended coordination-structure rationale.
 
-**Active managed goal:** none (idle). Last closed: `portal-how-to-faq` (**approved_with_notes**, owner PASS 2026-07-23). Next queued: `portal-google-analytics`.
+**Active managed goal:** none (idle). Last closed:
+`assisted-creation-reference-image-mb-limit-increase` (Goal #10 — **approved**, 2026-07-29; signoff
+`docs/workflow/reviews/2026-07-29-assisted-creation-reference-image-mb-limit-increase-signoff.md`).
+No migration or Storage cleanup occurred; production untouched throughout. Exact next queued: Goal
+#11, `customer-upload-oversized-pixel-normalization-and-processing-timeout-followup` (not started;
+no Plan yet — scope covers pixel-dimension rejection handling, proportional normalized production
+derivatives, the `Trimming transparent edges...` timeout/retry investigation, the 80 MB vs. 100 MB
+limit discrepancy, and the narrow ADR-FP-080 technical-safety downscaling exception).
 
 ---
 
@@ -62,7 +85,7 @@ Sub-phases A–G + remediations r2–r7 on `fresh-prints-dev`:
 - Trusted upload finalize (PNG/WebP/ZIP)
 - Portal upload UI + attach-to-request
 - Studio Customer Uploads intake (promote / exclude / retry)
-- Limits (100 files, 100 MB/image, 2 GB batch, concurrency 8)
+- Limits (100 files, 80 MB/image, 2 GB batch, concurrency 8)
 - Optional library permission (default on); ownership required
 - Request item save floor **≥ 200 DPI**
 

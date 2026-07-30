@@ -25,7 +25,7 @@ export function AppRoutes() {
       <Routes>
         <Route path="/login" element={<LoginRoute />} />
         <Route element={<AuthenticatedLayout />}>
-          <Route path="/" element={<Navigate replace to="/designs" />} />
+          <Route path="/" element={<Navigate replace to="/inbox" />} />
           <Route
             path="/designs"
             element={
@@ -134,7 +134,7 @@ export function AppRoutes() {
             </AuthenticatedRouteGate>
           }
         />
-        <Route path="*" element={<Navigate replace to="/designs" />} />
+        <Route path="*" element={<Navigate replace to="/inbox" />} />
       </Routes>
     </AuthBootstrapGate>
   );

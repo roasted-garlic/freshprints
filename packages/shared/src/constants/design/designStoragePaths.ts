@@ -2,6 +2,16 @@ export const DESIGN_STORAGE_ROOTS = {
   originals: "originals",
   thumbnails: "thumbnails",
   previews: "previews",
+  /**
+   * Goal #12 (`catalog-image-derivative-storage-consolidation`) evaluated a shared display
+   * derivative under this prefix; the owner closed that goal without implementing it after the
+   * real dev Storage inventory showed only a small addressable byte reduction (originals dominate
+   * catalog Storage; see the Goal #12 closeout signoff). Retained here only because the
+   * already-deployed, dev-only `inventoryCatalogImageStorage` callable scans this family name —
+   * removing it would desync the deployed function's family list from this shared source. No
+   * production code writes to this prefix and no Storage object exists under it.
+   */
+  display: "display",
 } as const;
 
 export type DesignStorageRoot = (typeof DESIGN_STORAGE_ROOTS)[keyof typeof DESIGN_STORAGE_ROOTS];

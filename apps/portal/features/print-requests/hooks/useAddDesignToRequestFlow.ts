@@ -21,6 +21,10 @@ import { usePortalPrintRequests } from '../context/PortalPrintRequestContext';
 import { portalPrintRequestService } from '../services/portalPrintRequestService';
 import { mapPortalPrintRequestCallableError } from '../utils/mapPortalPrintRequestCallableError';
 import { resolveAddDesignToRequestBranch } from '../utils/resolveAddDesignToRequestBranch';
+import {
+  announceCurrentDesignAdded,
+  requireCurrentSignedIn,
+} from '../utils/addDesignRuntime';
 
 interface UseAddDesignToRequestFlowOptions {
   continuableRequests: PrintRequest[];
@@ -130,7 +134,6 @@ function readPrimaryQuantity(items: PrintRequestItem[], designId: string): numbe
  */
 export function useAddDesignToRequestFlow({
   continuableRequests,
-  createPrintRequest: _createPrintRequest,
   onBeforeNavigate,
   refreshRequests,
   reloadWorkingItems,
@@ -153,28 +156,32 @@ export function useAddDesignToRequestFlow({
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [busyDesignId, setBusyDesignId] = useState<string | null>(null);
   const adjustQuantityRef = useRef<(design: CatalogDesign, delta: 1 | -1) => void>(() => {});
+  const firebaseUserRef = useRef(firebaseUser);
+  const routerRef = useRef(router);
+  const showSuccessRef = useRef(showSuccess);
 
-  function requireSignedIn(designId?: string): boolean {
-    if (firebaseUser) {
-      return true;
-    }
-    const returnTo = designId
-      ? `/catalog?designId=${encodeURIComponent(designId)}`
-      : undefined;
-    redirectToPortalLogin(router, returnTo);
-    return false;
-  }
+  firebaseUserRef.current = firebaseUser;
+  routerRef.current = router;
+  showSuccessRef.current = showSuccess;
 
-  function announceDesignAdded(design: CatalogDesign) {
-    showSuccess(`Added “${design.title}” to your Current Request.`, {
-      action: {
-        label: 'Undo',
-        onClick: () => {
-          adjustQuantityRef.current(design, -1);
-        },
+  const requireSignedIn = useCallback((designId?: string): boolean => {
+    return requireCurrentSignedIn({
+      userRef: firebaseUserRef,
+      routerRef,
+      designId,
+      redirect: redirectToPortalLogin,
+    });
+  }, []);
+
+  const announceDesignAdded = useCallback((design: CatalogDesign) => {
+    announceCurrentDesignAdded({
+      title: design.title,
+      showSuccessRef,
+      onUndo: () => {
+        adjustQuantityRef.current(design, -1);
       },
     });
-  }
+  }, []);
   const [actionError, setActionError] = useState<string | null>(null);
 
   /** Latest desired primary qty per design (0 = remove). */
@@ -449,6 +456,7 @@ export function useAddDesignToRequestFlow({
     },
     [
       applyDesiredPrimaryQuantity,
+      announceDesignAdded,
       ensureDesignSummaries,
       scheduleQuantityFlush,
       seedDesignSummary,
@@ -615,6 +623,7 @@ export function useAddDesignToRequestFlow({
     },
     [
       applyDesiredPrimaryQuantity,
+      announceDesignAdded,
       ensureWorkingPrintRequestId,
       firebaseUser,
       flushDesiredQuantity,
@@ -622,8 +631,8 @@ export function useAddDesignToRequestFlow({
       patchItemsAndSnapshot,
       queuePrimaryQuantity,
       refreshRequests,
+      requireSignedIn,
       resolveBranch,
-      router,
       seedDesignSummary,
       workingRequestLimit.canAddPrints,
       workingRequestLimit.exhaustedMessage,
@@ -723,8 +732,8 @@ export function useAddDesignToRequestFlow({
       workingRequestLimit.limit,
       firebaseUser,
       queuePrimaryQuantity,
+      requireSignedIn,
       resolveBranch,
-      router,
     ],
   );
 
@@ -748,7 +757,7 @@ export function useAddDesignToRequestFlow({
         userId: firebaseUser.uid,
       });
     },
-    [firebaseUser, queuePrimaryQuantity, resolveBranch, router],
+    [firebaseUser, queuePrimaryQuantity, requireSignedIn, resolveBranch],
   );
 
   const closeConfirm = useCallback(() => {
@@ -810,7 +819,14 @@ export function useAddDesignToRequestFlow({
           setPendingDesign(null);
         });
     },
-    [firebaseUser, isBusy, pendingDesign, refreshRequests, router],
+    [
+      announceDesignAdded,
+      firebaseUser,
+      isBusy,
+      pendingDesign,
+      refreshRequests,
+      requireSignedIn,
+    ],
   );
 
   return {

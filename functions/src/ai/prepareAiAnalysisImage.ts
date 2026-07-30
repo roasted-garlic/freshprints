@@ -1,14 +1,9 @@
 import { resolveAiAnalysisBackground } from "../../../packages/shared/src/constants/design/artworkBackground.constants";
+import { getSharp } from "../lib/lazySharp";
 
 const ANALYSIS_CANVAS_SIZE_PX = 1024;
 const ANALYSIS_PADDING_PX = 64;
 const ANALYSIS_ARTWORK_SIZE_PX = ANALYSIS_CANVAS_SIZE_PX - ANALYSIS_PADDING_PX * 2;
-
-/** Lazy-load native sharp — avoid cold require during Functions deploy discovery. */
-function getSharp(): typeof import("sharp") {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  return require("sharp") as typeof import("sharp");
-}
 
 export interface PreparedAiAnalysisImage {
   bytes: Buffer;

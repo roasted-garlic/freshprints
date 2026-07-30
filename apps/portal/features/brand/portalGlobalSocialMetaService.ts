@@ -1,8 +1,7 @@
-import { cache } from 'react'
-
 import {
   resolvePortalSocialMetaSettings,
 } from '@fresh-prints/shared/constants/portal/portalSocialMetaSettings.constants'
+import { createBoundedAsyncCache } from '@fresh-prints/shared/utils/boundedAsyncCache'
 
 import { tryGetPortalAdminDb } from '../../lib/firebase/admin'
 
@@ -12,6 +11,12 @@ export interface PortalGlobalSocialMeta {
   /** Absolute HTTPS image URL for crawlers, or null to use brand logo path. */
   imageUrl: string | null
 }
+
+export const PORTAL_GLOBAL_SOCIAL_META_REVALIDATE_SECONDS = 3600
+const socialMetaCache = createBoundedAsyncCache<PortalGlobalSocialMeta>({
+  maxEntries: 1,
+  ttlMs: PORTAL_GLOBAL_SOCIAL_META_REVALIDATE_SECONDS * 1000,
+})
 
 function defaultPortalGlobalSocialMeta(): PortalGlobalSocialMeta {
   const defaults = resolvePortalSocialMetaSettings(undefined)
@@ -44,7 +49,7 @@ async function loadPortalGlobalSocialMetaViaFunction(): Promise<PortalGlobalSoci
     const response = await fetch(url, {
       method: 'GET',
       headers: { Accept: 'application/json' },
-      cache: 'no-store',
+      next: { revalidate: PORTAL_GLOBAL_SOCIAL_META_REVALIDATE_SECONDS },
     })
     if (!response.ok) {
       return null
@@ -99,15 +104,20 @@ async function loadPortalGlobalSocialMetaViaAdminSettings(): Promise<PortalGloba
 
 async function loadPortalGlobalSocialMetaUncached(): Promise<PortalGlobalSocialMeta> {
   const viaFunction = await loadPortalGlobalSocialMetaViaFunction()
-  if (viaFunction) {
-    return viaFunction
-  }
-
-  return loadPortalGlobalSocialMetaViaAdminSettings()
+  if (!viaFunction) throw new Error('portal-global-social-meta-unavailable')
+  return viaFunction
 }
 
 /**
  * Loads Studio-configured global OG title/description plus image URL from the
- * public Cloud Function (hourly library or logo). Deduped per request via React `cache`.
+ * public Cloud Function. One bounded one-hour cache is shared by every metadata caller in this
+ * server process; Next's fetch cache provides the same one-hour revalidation across processes.
+ * Failed Function loads are evicted and use the lightweight Admin/default fallback for that call.
  */
-export const loadPortalGlobalSocialMeta = cache(loadPortalGlobalSocialMetaUncached)
+export async function loadPortalGlobalSocialMeta(): Promise<PortalGlobalSocialMeta> {
+  try {
+    return await socialMetaCache.get('global', loadPortalGlobalSocialMetaUncached)
+  } catch {
+    return loadPortalGlobalSocialMetaViaAdminSettings()
+  }
+}

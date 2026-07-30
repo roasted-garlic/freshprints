@@ -9,8 +9,6 @@ import {
   type Timestamp,
   type Unsubscribe,
 } from "firebase/firestore";
-import { httpsCallable } from "firebase/functions";
-
 import { ETSY_RECOMMENDATION_COLLECTION } from "@fresh-prints/shared/constants/etsyRecommendation/etsyRecommendation.constants";
 import type {
   EtsyRecommendationAnswers,
@@ -27,7 +25,8 @@ import {
   buildEtsyRecommendationSearchUrl,
 } from "@fresh-prints/shared/utils/etsyRecommendationQueryBuilder";
 
-import { db, functions } from "../../../config/firebase";
+import { db } from "../../../config/firebase";
+import { callTracedFunction } from "../../../config/tracedCallable";
 
 const LIST_LIMIT = 100;
 
@@ -279,13 +278,13 @@ export const etsyRecommendationRequestsService = {
   async fetchApiResults(
     requestId: string,
   ): Promise<StaffSearchEtsyRecommendationApiResultsResponse> {
-    const callable = httpsCallable<
-      StaffSearchEtsyRecommendationApiResultsRequest,
-      StaffSearchEtsyRecommendationApiResultsResponse
-    >(functions, "staffSearchEtsyRecommendationApiResults");
     try {
-      const result = await callable({ requestId });
-      return result.data;
+      return await callTracedFunction<
+        StaffSearchEtsyRecommendationApiResultsRequest,
+        StaffSearchEtsyRecommendationApiResultsResponse
+      >("staffSearchEtsyRecommendationApiResults", {
+        source: "etsyRecommendationRequestsService.fetchApiResults",
+      })({ requestId });
     } catch (error) {
       throw new Error(
         callableErrorMessage(error, "Unable to fetch Etsy API results for this search."),

@@ -161,8 +161,10 @@ const OPERATIONAL_WIPE_TARGETS_ORDER: OperationalWipeTarget[] = [
  * `aiProcessingDesigns` selectively deletes AI Processing page designs + their Storage only
  * (keeps ready/archived); skipped when full `designs` is also selected.
  * `customerUploads` deletes upload docs/ops collections and `customer-uploads/` Storage.
- * `printRequestDesignDailyLimits` deletes Cap A Chicago-day design-add counters only
- * (keeps print requests / stash). Also cleared when `printRequests` is wiped.
+ * `printRequestDesignDailyLimits` deletes obsolete Cap A Chicago-day counter leftovers only.
+ * Those counters are no longer written or enforced, and cleanup does not affect current limit L,
+ * customer room, or show capacity. Keeps print requests / stash and is also cleared when
+ * `printRequests` is wiped.
  * `etsySearches` deletes Portal Find a design request docs, Open API rate-limit docs, inert
  * legacy Etsy cache/config / customRequest rate-limit leftovers, suggestion overlays, and
  * pending suggestion requests.
@@ -289,8 +291,8 @@ export const CUSTOM_REQUESTS_WIPE_PRESET_TARGETS: OperationalWipeTarget[] = [
 
 export const CUSTOMER_UPLOADS_WIPE_PRESET_TARGETS: OperationalWipeTarget[] = ["customerUploads"];
 
-/** Cap A only: Chicago-day print-request design-add counters (keeps stash / requests). */
-export const PRINT_REQUEST_DAILY_LIMITS_WIPE_PRESET_TARGETS: OperationalWipeTarget[] = [
+/** Optional cleanup of obsolete, unenforced print-limit counters (keeps stash / requests). */
+export const LEGACY_PRINT_LIMIT_COUNTERS_WIPE_PRESET_TARGETS: OperationalWipeTarget[] = [
   "printRequestDesignDailyLimits",
 ];
 
