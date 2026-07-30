@@ -1,5 +1,45 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-07-30 — Goal #13 "production-release" — Permanent `production`/`development` branches created and pushed; v1.0.0-rc1 tagged; stopped at GitHub-settings checkpoint
+
+Owner committed and pushed the full consolidated, approved release candidate directly to
+`master`/`origin/master`: commit `b45542ab66a9f6fafb1142201b29fc6d7a969376`. Verified before any
+action: `git rev-parse HEAD` matched `git rev-parse origin/master` exactly, working tree clean,
+commit message matched verbatim, remote confirmed `origin`.
+
+Checked `.firebaserc` as actually committed in `b45542ab` (`git show b45542ab:.firebaserc`) —
+confirmed the `production` alias was missing. Added exactly `"production": "fresh-prints-prod"`
+(preserving `"default": "fresh-prints-dev"` unchanged), validated as JSON, committed narrowly as
+`aa570aa` ("chore: add production Firebase project alias"), pushed to `origin/master` (clean
+fast-forward, no force).
+
+**Branch-point commit: `aa570aa875d20ba85fd405480a47e6eda59f85b0`.** Created and pushed
+`production` from that exact commit (`git switch -c production` + `git push -u origin production`).
+Created and pushed `development` from the identical commit
+(`git switch -c development` + `git push -u origin development`); left the repository checked out
+on `development`. Verified via `git fetch origin` that `origin/master`, `origin/production`, and
+`origin/development` all resolve to the same hash; confirmed tracking and a clean working tree.
+
+Confirmed `v1.0.0-rc1` did not already exist locally or remotely, then created an annotated tag on
+the exact branch-point commit and pushed it to `origin`. **This is the release-candidate tag only —
+the final `v1.0.0` tag is deferred until after production deployment and smoke testing pass.**
+
+Updated `docs/standards/DEPLOYMENT.md` with a new permanent Branch Model section (development
+workflow, production-release workflow, hotfix workflow), explicitly marking the previous
+direct-to-`master` policy as superseded. This entry, `.cursor/workflow/state.md`,
+`docs/project/ROADMAP.md`, and the recent-completed-work handoff were all updated to record this
+transition — committed to **`development` only**, not merged into `production` this pass.
+
+**`master` was NOT deleted** — retained as the required temporary transition fallback; its deletion
+remains a separate, later, explicitly-approved checkpoint. No Firebase product was enabled, no
+secret was set, no Rules/indexes/Functions/App-Hosting/DNS/Auth/GA4/Search-Console configuration
+occurred, the active Firebase CLI project was never switched, and no production Studio installer
+was built. **No force-push occurred at any point.**
+
+**Active managed goal:** `production-release` (Goal #13) — STOPPED at the GitHub default-branch +
+`production` branch-protection checkpoint per explicit instruction; awaiting the owner to perform
+those GitHub UI steps and confirm back.
+
 ## 2026-07-30 — Goal #13 "production-release" — Production project CONFIRMED; Functions allowlist FINALIZED; working tree RECONCILED; stopped at release-source checkpoint
 
 Owner confirmed the production Firebase project: **`fresh-prints-prod`**, created, Blaze billing

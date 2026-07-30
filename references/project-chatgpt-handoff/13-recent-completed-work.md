@@ -2,6 +2,30 @@
 
 > Signed-off or largely complete work. External agents should not re-plan or duplicate this.
 
+## 2026-07-30 - production-release: permanent `production`/`development` branches created, v1.0.0-rc1 tagged (not yet deployed)
+
+- Verified the owner-pushed release candidate before any git action: `master`/`origin/master` both
+  at `b45542ab66a9f6fafb1142201b29fc6d7a969376`, clean working tree, matching commit message
+- Confirmed via `git show b45542ab:.firebaserc` that the `production` alias was missing from the
+  pushed commit; added it in a narrow follow-up commit `aa570aa` ("chore: add production Firebase
+  project alias"), pushed to `origin/master`
+- **Branch-point commit: `aa570aa875d20ba85fd405480a47e6eda59f85b0`**
+- Created and pushed permanent branch `production` from that exact commit (no additional commits
+  added to it)
+- Created and pushed permanent branch `development` from the identical commit; repository left
+  checked out on `development`
+- Verified `origin/master`, `origin/production`, `origin/development` all resolve to the same hash
+  after `git fetch origin`; confirmed upstream tracking and clean working tree
+- Created and pushed annotated tag `v1.0.0-rc1` on the branch-point commit (confirmed it didn't
+  already exist first) — release-candidate only; final `v1.0.0` tag deferred until after production
+  deployment + smoke tests pass
+- Updated `docs/standards/DEPLOYMENT.md` with a permanent Branch Model section (development /
+  production-release / hotfix workflows), superseding the previous direct-to-`master` policy
+- `master` was **not** deleted — retained as a temporary transition fallback; deletion is a
+  separate future checkpoint
+- **No force-push occurred; no Firebase product enabled; no secret set; no production
+  configuration of any kind occurred**
+
 ## 2026-07-30 - production-release: production project confirmed, Functions allowlist finalized, working tree reconciled (not yet implemented/deployed)
 
 - Owner confirmed production Firebase project **`fresh-prints-prod`** (created, Blaze billing

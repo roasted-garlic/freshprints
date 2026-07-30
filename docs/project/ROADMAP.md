@@ -122,7 +122,7 @@ Current Goal:
 | 10 | Increase the MB limit for custom-request reference images | **Done** (2026-07-29, approved) — 40 MB/file live in `fresh-prints-dev` at every enforcement layer, 8 files unchanged, 320 MB combined ceiling active; owner QA FAIL (stale 15 MB deployed Cloud Functions) → Amendment 1 root-caused and fixed via scoped Functions redeploy → owner re-QA PASS |
 | 11 | `customer-upload-oversized-pixel-normalization-and-processing-timeout-followup` | **Done** (2026-07-30, approved_with_notes; owner QA PASS WITH NOTES — see signoff) |
 | 12 | `catalog-image-derivative-storage-consolidation` | **Done — closed_by_owner_after_inventory** (2026-07-30). Real dev inventory measured originals at ~97.66% of catalog Storage (980.8 MB of 1,004.3 MB); thumbnails+previews combined only 23.5 MB; zero orphans/duplicates/violations found. Owner decided the migration's small addressable Storage win did not justify the required backfill/consumer-cutover/bandwidth-increase — closed before implementation, an evidence-based decision. Retained as dev-only tooling: the read-only `inventoryCatalogImageStorage` callable and its Studio invocation panel. |
-| 13 | `production-release` — prod Firebase / App Hosting / Google / email | **Active** — production project **confirmed** (`fresh-prints-prod`, created, Blaze active); Functions allowlist **finalized** (105 total exports, 99 include, 6 exclude); working tree **reconciled** (541 entries classified, one debris file removed); **stopped at the release-source commit-boundary + `.firebaserc` alias human checkpoint**; no longer blocked (#9–#12 all signed off/closed); production approval required before any implementation or deployment |
+| 13 | `production-release` — prod Firebase / App Hosting / Google / email | **Active** — owner committed and pushed the consolidated release candidate to `master`; permanent `production` and `development` branches created and pushed from verified commit `aa570aa` (`.firebaserc` production alias added); `v1.0.0-rc1` release-candidate tag pushed; **stopped at the GitHub default-branch + `production` branch-protection human checkpoint**; no longer blocked (#9–#12 all signed off/closed); production approval required before any implementation or deployment |
 | 14 | `customer-upload-early-transparency-format-validation` — reject invalid customer artwork before the trimming stage is shown | **Done** (2026-07-30, approved; automated verification 23/23 pass, clean build/lint; owner deployed to `fresh-prints-dev` and confirmed manual QA PASS across all 5 goal-brief scenarios). Separate narrow follow-up run alongside the paused `production-release` (#13), which this goal did not modify. See `docs/workflow/plans/2026-07-30-customer-upload-early-transparency-format-validation-plan.md`. |
 
 **Small Managed Items Backlog:** #5–**#14** **Done** (2026-07-21). See [Small Managed Items Backlog](#small-managed-items-backlog-2026-07-18) below.
@@ -140,16 +140,31 @@ exclude** (`inventoryCatalogImageStorage`, `wipeOperationalTestData`, `testAiEnr
 reconciled: 541 remaining changed entries classified (the vast majority trace cleanly to specific
 already-signed-off or approved goals), one proven-debris scratch script removed
 (`functions/test-admin-auth.mjs`), one unrelated-provenance deletion found and left untouched
-pending its own owner decision. Proposed release-source strategy: reconcile directly on `master` in
-~11 goal-sized commit boundaries — no new branch, consistent with the owner's no-new-branch-policy
-decision. See `docs/workflow/plans/2026-07-30-production-release-plan.md`,
+pending its own owner decision. **Owner then committed and pushed the full consolidated release
+candidate directly to `master`/`origin/master`** (commit `b45542ab`, verified via matching
+`git rev-parse HEAD`/`origin/master`) and **approved a permanent two-branch model**: `development`
+(default working branch, tests against `fresh-prints-dev`) and `production` (exact code deployed to
+`fresh-prints-prod`, receives reviewed releases from `development` only — supersedes the previous
+direct-to-`master` policy). Verified `.firebaserc` in `b45542ab` still lacked the `production`
+alias; added it in a small follow-up commit `aa570aa` ("chore: add production Firebase project
+alias"), pushed to `origin/master`. Created and pushed both `production` and `development` from
+that exact verified commit (`aa570aa875d20ba85fd405480a47e6eda59f85b0`), confirmed via
+`git fetch origin` that `origin/master`/`origin/production`/`origin/development` all resolve to the
+identical hash. Created and pushed the annotated release-candidate tag `v1.0.0-rc1` on that same
+commit (the **final** `v1.0.0` tag is deferred until after production deployment and smoke testing
+pass). Updated `docs/standards/DEPLOYMENT.md` with the new permanent Branch Model section
+(development / production-release / hotfix workflows). See
+`docs/workflow/plans/2026-07-30-production-release-plan.md`,
 `docs/workflow/reviews/2026-07-30-production-release-review.md`,
 `docs/workflow/reviews/2026-07-30-production-release-implementation-readiness-checkpoint.md`,
 `docs/workflow/reviews/2026-07-30-production-release-working-tree-reconciliation-report.md`,
-`docs/workflow/reviews/2026-07-30-production-release-functions-allowlist-report.md`, and
-`docs/workflow/reviews/2026-07-30-production-release-source-and-allowlist-checkpoint.md`.
-**Stopped at the release-source commit-boundary + `.firebaserc` alias human checkpoint** — awaiting
-owner approval. No longer blocked: Goals #9–#12
+`docs/workflow/reviews/2026-07-30-production-release-functions-allowlist-report.md`,
+`docs/workflow/reviews/2026-07-30-production-release-source-and-allowlist-checkpoint.md`, and
+`docs/standards/DEPLOYMENT.md`'s Branch Model section.
+**Stopped at the GitHub default-branch + `production` branch-protection human checkpoint** —
+awaiting owner action in the GitHub UI. `master` was **not** deleted (retained as a temporary
+transition fallback; its eventual deletion is a separate, later checkpoint). No longer blocked:
+Goals #9–#12
 (`catalog-image-derivative-storage-consolidation`) closed **2026-07-30**,
 **closed_by_owner_after_inventory** — the real dev Storage inventory measured originals at
 ~97.66% of catalog Storage (980,807,863 of 1,004,304,719 bytes across 87 designs), with existing

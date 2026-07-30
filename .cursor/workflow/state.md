@@ -5,47 +5,50 @@ Current Mode: managed-phase
 Current Phase: implement
 Plan Status: complete
 Review Status: complete (`approved_with_notes`)
-Implement Status: in_progress — production project checkpoint CONFIRMED
-(`fresh-prints-prod`, created, Blaze active); Functions allowlist FINALIZED (99 include / 6
-exclude); working tree RECONCILED (one debris file removed); stopped at the release-source +
-first-production-infrastructure-configuration human checkpoint
+Implement Status: in_progress — permanent branch model created and pushed
+(`production`/`development` from verified commit `aa570aa`); release-candidate tag
+`v1.0.0-rc1` pushed; stopped at the GitHub default-branch/branch-protection human checkpoint
 Test Status: pending
 Signoff Status: pending
 DONE: no
-Last Completed Step: Recorded owner confirmation of production project `fresh-prints-prod`
-(created, Blaze billing active, zero configuration performed) and verified
-`functions/src/lib/email/portalUrlResolver.ts` already maps that exact project id — no resolver
-edit needed. Recorded owner decisions finalizing the 5 previously-flagged Functions: excluded
-`testAiEnrichmentPlayground`, `testAiEnrichmentTagRerank`, `ownerDeleteUser`,
-`backfillPrintRequestQueueTab`; included `rebuildCatalogSnapshots` after verifying (fresh from
-source) it is owner/admin-gated, non-destructive, project-agnostic, and the documented catalog-
-snapshot publication mechanism. Final allowlist: 105 total exports, 99 include, 6 exclude — exact
-future deploy command prepared, not executed. Reconciled the working tree: classified all 541
-remaining changed entries (534 real completed/approved product work across ~10 named goals, 6
-Goal #13 docs, 4 retained dev-only Goal #12 tooling, 1 uncertain-provenance deletion left
-untouched); removed exactly one proven-debris scratch script
-(`functions/test-admin-auth.mjs`); confirmed zero secret-bearing or build-output files appear in
-the changed set; confirmed dev-only Studio gates (Test Data Reset, Catalog Storage Inventory,
-Firebase Debug window) remain build-time-gated regardless of target project. Proposed
-release-source strategy: reconcile directly on `master` in ~11 goal-sized commit boundaries — no
-new branch (per owner decisions #7/#8 from the prior pass forbidding a new branch policy).
-Prepared (not applied) an additive `.firebaserc` alias adding `"production": "fresh-prints-prod"`
-alongside the untouched `"default": "fresh-prints-dev"`.
-Human Checkpoint Required: yes — release-source commit-boundary plan approval; disposition of the
-unrelated `useCustomers.ts` deletion; approval to apply the additive `.firebaserc` alias. See
-`docs/workflow/reviews/2026-07-30-production-release-source-and-allowlist-checkpoint.md`.
-Blocked: no (not blocked; paused at the required release-source/allowlist human checkpoint by
-explicit instruction)
-Allowed Actions: none beyond this pass; awaiting owner decisions on the release-source
-commit-boundary plan, the `useCustomers.ts` deletion, and the `.firebaserc` alias
-Forbidden Actions: creating/configuring/deploying/migrating/modifying any production resource;
-setting any secret, env var, DNS, or Auth configuration; enabling any Firebase product; building
-or distributing a production Studio installer; seeding or migrating production data; any
-GA4/Search Console property creation; public announcement; broad/blanket commits; branch creation
-Next Required Step: **STOP.** Await owner decisions on: (1) the release-source commit-boundary
-plan (§"Decision 1"), (2) the `useCustomers.ts` deletion disposition (§"Decision 2"), (3) applying
-the additive `.firebaserc` production alias (§"Decision 3"). See
-`docs/workflow/reviews/2026-07-30-production-release-source-and-allowlist-checkpoint.md`.
+Last Completed Step: Owner approved and pushed the consolidated release candidate directly to
+`master`/`origin/master` (commit `b45542ab`, verified via `git rev-parse HEAD` /
+`git rev-parse origin/master` matching exactly, clean working tree, matching commit message).
+Verified `.firebaserc` as committed in `b45542ab` still lacked the `production` alias — added
+`"production": "fresh-prints-prod"` (preserving `"default": "fresh-prints-dev"` unchanged),
+validated as JSON, committed as `aa570aa` ("chore: add production Firebase project alias"), pushed
+to `origin/master`. Used `aa570aa875d20ba85fd405480a47e6eda59f85b0` as the exact branch-point
+commit (since the alias was missing from `b45542ab`). Created and pushed `production` from that
+exact commit (`git switch -c production aa570aa...` + `git push -u origin production`,
+tracking set). Created and pushed `development` from the same exact commit
+(`git switch -c development aa570aa...` + `git push -u origin development`, tracking set;
+repository left checked out on `development`). Verified `origin/master`, `origin/production`, and
+`origin/development` all resolve to the identical commit `aa570aa875d20ba85fd405480a47e6eda59f85b0`
+after `git fetch origin`; working tree clean; `git branch -vv` confirms all tracking. Confirmed
+`v1.0.0-rc1` did not previously exist locally or remotely; created an annotated tag on the exact
+branch-point commit and pushed it to `origin`. Updated `docs/standards/DEPLOYMENT.md` with a new
+"Branch Model" section recording the permanent `development`/`production` model (development
+workflow, production release workflow, hotfix workflow) and marking the previous direct-to-`master`
+policy superseded; updated the Environments table's Branch/trigger column accordingly. **`master`
+was not deleted** — retained as the required temporary transition fallback. No Firebase product
+was enabled, no secret was set, no Rules/indexes/Functions/App Hosting/DNS/Auth/GA4/Search Console
+configuration occurred, and the active Firebase CLI project was never switched.
+Human Checkpoint Required: yes — GitHub default-branch change (`master` → `development`),
+`production` branch protection (block force-push, block deletion, require PR/merge), and
+confirmation no GitHub integration still assumes `master`, before `master` can later be considered
+for deletion (a separate, still-future checkpoint).
+Blocked: no (not blocked; paused at the required GitHub-settings human checkpoint by explicit
+instruction)
+Allowed Actions: none beyond this pass; awaiting the owner to perform the GitHub UI steps below and
+confirm back
+Forbidden Actions: deleting `master` (local or remote); any Firebase product enablement,
+Rules/indexes/Functions/App-Hosting/secret/DNS/Auth/GA4/Search-Console configuration; building or
+distributing a production Studio installer; touching production data; switching the active
+Firebase CLI project; force-pushing any branch; adding new commits to `production`
+Next Required Step: **STOP.** Await the owner performing the GitHub default-branch change and
+`production` branch-protection configuration (exact steps in this pass's response / signoff
+artifact), then confirming back so `master`'s eventual deletion can become its own separate,
+explicit checkpoint.
 
 Plan:
 `docs/workflow/plans/2026-07-29-preproduction-static-analysis-cleanup-plan.md`.
@@ -4839,3 +4842,60 @@ created. No commit made. Production remains the empty, Blaze-billed, unconfigure
 Next: **STOP.** Await owner decisions on the release-source commit-boundary plan, the
 `useCustomers.ts` deletion disposition, and the `.firebaserc` alias application, per
 `docs/workflow/reviews/2026-07-30-production-release-source-and-allowlist-checkpoint.md`.
+
+## 2026-07-30 — Goal #13 `production-release` — Permanent branch model created: `production` + `development` pushed from verified commit; v1.0.0-rc1 tagged; stopped at GitHub-settings checkpoint
+
+Verified the owner-reported already-pushed release candidate before touching anything: `git
+branch --show-current` = `master`; `git status --short` = clean; `git rev-parse HEAD` =
+`b45542ab66a9f6fafb1142201b29fc6d7a969376`, exactly matching `git rev-parse origin/master`; commit
+message matched verbatim; remote confirmed `origin` ->
+`https://github.com/roasted-garlic/freshprints.git`. Did not recreate, amend, recommit, or
+force-push anything.
+
+Checked `.firebaserc` as actually committed in `b45542ab` via `git show b45542ab:.firebaserc` —
+confirmed the `production` alias was **not** present (only `"default": "fresh-prints-dev"`).
+Added exactly `"production": "fresh-prints-prod"`, preserved the default unchanged, validated as
+JSON, committed narrowly (only `.firebaserc` staged) as `aa570aa` ("chore: add production Firebase
+project alias"), pushed to `origin/master` (fast-forward, no force).
+
+**Branch-point commit: `aa570aa875d20ba85fd405480a47e6eda59f85b0`** (used instead of `b45542ab`
+since the alias was missing).
+
+Created `production` from that exact commit (`git switch -c production aa570aa...`), pushed with
+`git push -u origin production` (tracking set, no new commits added to it). Created `development`
+from the identical commit (`git switch -c development aa570aa...`), pushed with `git push -u
+origin development` (tracking set); left the repository checked out on `development` as required.
+
+Verified via `git fetch origin` + `git rev-parse` that `origin/master`, `origin/production`, and
+`origin/development` all resolve to the exact same hash `aa570aa875d20ba85fd405480a47e6eda59f85b0`.
+`git branch -vv` confirmed `development` tracks `origin/development` and `production` tracks
+`origin/production`; `git status` confirmed a clean working tree on `development`.
+
+Confirmed `v1.0.0-rc1` did not exist locally or on `origin` (`git tag -l` + `git ls-remote --tags`
+both empty for that name) before creating it. Created an annotated tag on the exact branch-point
+commit (`git tag -a v1.0.0-rc1 aa570aa... -m "Fresh Prints initial production release
+candidate"`), verified via `git show v1.0.0-rc1 --no-patch` that it points to `aa570aa` exactly,
+and pushed it to `origin`. **This is the release-candidate tag only — the final `v1.0.0` tag is
+not created until after production deployment and smoke testing pass**, per explicit instruction.
+
+Updated `docs/standards/DEPLOYMENT.md` with a new "Branch Model" section (development workflow,
+production release workflow, hotfix workflow) recording the owner-approved permanent
+`development`/`production` structure and explicitly marking the previous direct-to-`master` policy
+as superseded; updated the Environments table's Branch/trigger column to reference the new
+branches. This state.md entry, `docs/project/ROADMAP.md`, `CURRENT-STATE.md`, and the
+recent-completed-work handoff were also updated to record this transition — all committed to
+**`development` only**, per explicit instruction (not merged into `production` this pass).
+
+**`master` was NOT deleted** (local or remote) — retained as the required temporary transition
+fallback per explicit instruction. No Firebase product was enabled. No Firestore Rules, Storage
+Rules, indexes, Functions, secrets, App Hosting, DNS, Authentication, GA4, or Search Console
+configuration occurred. No production Studio installer was built or distributed. No production
+data was touched. The active Firebase CLI project was never switched (no `firebase use` command
+of any kind was run). **No force-push occurred at any point** — every push in this pass was a
+clean fast-forward or new-branch push.
+
+Next: **STOP.** Await the owner performing the GitHub UI steps to (1) change the default branch
+from `master` to `development`, (2) add branch protection to `production` (block force-push, block
+deletion, require PR/merge where supported), and (3) confirm no GitHub integration still assumes
+`master` — then confirm back. `master`'s eventual deletion remains its own separate, explicit
+future checkpoint, gated on those confirmations plus explicit owner approval to delete.

@@ -19,8 +19,57 @@ Fresh Prints consists of:
 | Environment | Purpose | URL | Branch / trigger |
 |-------------|---------|-----|------------------|
 | Local | Development | Studio: Electron dev; Portal: `localhost:3100` | `npm run dev` (both), or `dev:studio` / `dev:portal` |
-| Firebase dev | Development backend | `fresh-prints-dev` (`.firebaserc`) | local / manual deploy |
-| Production | Live users | Portal App Hosting `[TBD]` | human approval required |
+| Firebase dev | Development backend | `fresh-prints-dev` (`.firebaserc`) | `development` branch; local / manual deploy |
+| Production | Live users | Portal App Hosting on `fresh-prints-prod` (`.firebaserc` `production` alias); domain `[TBD — pending DNS connection]` | `production` branch; human approval required for every deploy |
+
+---
+
+## Branch Model (2026-07-30 — supersedes the previous direct-to-`master` policy)
+
+Fresh Prints uses two permanent branches:
+
+| Branch | Purpose |
+|--------|---------|
+| `development` | Default working branch. All ongoing features, bug fixes, experiments, and development testing happen here. Normally tested against `fresh-prints-dev`. |
+| `production` | Exact code approved and deployed to `fresh-prints-prod`. Receives reviewed releases from `development` only — no routine feature development directly on this branch. |
+
+`master` is a **temporary transition fallback** retained after the branch split
+(`production-release`, Goal #13) and is not used for ordinary work going forward. It is not deleted
+automatically — deletion is its own separate, explicit owner checkpoint (see
+`.cursor/workflow/state.md`).
+
+**Previous policy (superseded):** prior to 2026-07-30, all work committed directly to `master` with
+no release-branch or CI/CD convention. That policy is superseded by this permanent
+`development`/`production` model.
+
+### Development workflow
+
+1. Start all ordinary work on `development`.
+2. Test normal work against `fresh-prints-dev`.
+3. Commit and push ongoing work to `development`.
+4. Do not perform ordinary feature work on `production`.
+
+### Production release workflow
+
+1. Finish and verify work on `development`.
+2. Merge reviewed `development` into `production`.
+3. Check out `production`.
+4. Run the full production-release verification suite (see `docs/standards/TESTING.md`).
+5. Deploy only from `production`.
+6. Perform production smoke tests.
+7. Create the final production tag (`v1.0.0`, or the next appropriate version) only after owner
+   signoff on the smoke tests — not before. The release-candidate tag `v1.0.0-rc1` marks the
+   branch-point commit shared by `master`/`production`/`development` at the moment of the branch
+   split; it is not the final production tag.
+
+### Hotfix workflow
+
+1. Create a temporary hotfix branch from `production`.
+2. Make and test the smallest necessary fix.
+3. Merge the hotfix into `production`.
+4. Deploy and verify.
+5. Merge the same hotfix into `development`.
+6. Delete the temporary hotfix branch after both merges.
 
 ---
 
