@@ -208,12 +208,40 @@ after **all** of the following are satisfied:
 7. `development` and `production` are both backed up on `origin`.
 8. The owner gives a separate, explicit deletion approval.
 
-### Next checkpoint — Firebase product enablement in `fresh-prints-prod` (owner action required)
+### Firebase product enablement in `fresh-prints-prod` — CONFIRMED COMPLETE (2026-07-30)
 
-The production Firebase project (`fresh-prints-prod`) currently exists with Blaze billing active
-and **zero products enabled**. Before any Rules/Functions/App Hosting deploy can occur, the owner
-must enable the following in the Firebase Console — **this coding agent does not perform Firebase
-Console actions or run Firebase commands on the owner's behalf. Instructions only.**
+The owner has completed the initial product-enablement checkpoint. Verified (read-only, this
+coding agent performed no Console action or Firebase command):
+
+| Item | Status |
+|---|---|
+| Firestore | Created, Native mode, location `nam5` |
+| Cloud Storage | Default bucket created, `us-central1` |
+| Authentication | Enabled; Email/Password + Google providers enabled |
+| Production Web App | Registered as `Fresh Prints Portal Production`; classic Firebase Hosting **not** enabled during registration |
+| Production web config | Recorded locally in `apps/portal/.env.production.local` — confirmed gitignored (`git check-ignore -v` matches `.gitignore:24`'s `.env.*.local` pattern), confirmed untracked (`git ls-files` empty), confirmed absent from default `git status` output; **no value read or printed by this coding agent** |
+| Web Push VAPID key | Generated and recorded in the same local file |
+| GA4 | Confirmed still disabled; `NEXT_PUBLIC_GA_MEASUREMENT_ID` remains unset |
+| Production data | None created — no user, collection, document, or Storage object |
+| **App Hosting backend** | **Created** (`fresh-prints-portal`, `us-central1`, connected to `roasted-garlic/freshprints`, branch `production`, root `apps/portal`) via the Console's "Finish" action — **backend configuration only; no rollout was triggered by this action** |
+| First App Hosting release/deployment | **Not performed** — backend shows "Waiting for your first release" |
+| Production Portal traffic | **None** |
+| Rules/indexes/Functions/Portal/Studio deployment | None occurred |
+
+**Distinction to keep clear going forward:** App Hosting *backend configuration* (repository
+connection, branch selection, root directory, region) is a separate, already-completed step from
+triggering an actual *release/rollout* (which builds and deploys Portal code and would put
+something live). The backend currently existing with no release does not mean Portal is deployed
+or reachable — it means the backend object exists and is correctly pointed at the right
+repository/branch/root, with nothing built or served yet. Triggering the first release remains its
+own separate, later, explicitly-approved checkpoint.
+
+### Original enablement instructions (retained for reference)
+
+The production Firebase project (`fresh-prints-prod`) originally had **zero products enabled**.
+Before any Rules/Functions/App Hosting deploy can occur, the owner needed to enable the following
+in the Firebase Console — **this coding agent does not perform Firebase Console actions or run
+Firebase commands on the owner's behalf. Instructions only.**
 
 #### 1. Firestore
 
@@ -325,34 +353,29 @@ real customer traffic exists, even though it is technically rotatable.
 
 **Do not create any push subscriptions or send any push notification in this step.**
 
-#### 6. App Hosting backend preparation
+#### 6. App Hosting backend preparation — CONFIRMED COMPLETE, no rollout triggered
 
-1. Left sidebar → **Build** → **App Hosting** → **Get started** (requires Blaze, already active).
-2. When prompted to connect a GitHub repository, connect to this repository
-   (`roasted-garlic/freshprints`).
-3. Select **`production`** as the branch App Hosting should build and deploy from — confirmed from
-   this goal's own branch-model decision; never `development` or `master` for the production
-   backend.
-4. Root directory: **`./apps/portal`** — confirmed directly from this repository's own
-   `firebase.json` (`"apphosting": [{ "backendId": "fresh-prints-portal", "rootDir": "./apps/portal", ... }]`),
-   not guessed.
-5. Backend ID: Firebase Console may let the owner choose a custom backend ID, or may default to one
-   derived from the repository/app name. **Recommend using exactly `fresh-prints-portal`** to match
-   the `backendId` already declared in `firebase.json` — using a different ID would create a
-   mismatch between the Console-created backend and what this repository's config expects for
-   future CLI-based deploys.
+**Resolved (2026-07-30):** the owner completed backend creation using the Console's **Finish**
+action. Confirmed values, matching this repository's configuration exactly:
 
-**Whether backend creation itself triggers an automatic first rollout: `[NEEDS REPO CHECK]` — not
-provable from current repository source or documentation.** No file in this repository documents
-Firebase App Hosting's exact backend-creation behavior for this Firebase CLI/Console version, and
-this is an external product behavior this coding agent cannot verify without performing the Console
-action itself (which is out of scope for this pass). **Stop after connecting the repository,
-selecting the branch, and confirming the root directory — do not click through any "Deploy now" or
-equivalent final confirmation step if one appears, until the owner has confirmed whether that step
-triggers a live rollout.** If the Console's backend-creation flow reaches a point where the only
-remaining action is an explicit "Deploy"/"Finish"-style button described as triggering a build and
-release, treat that specific button as its own separate deployment checkpoint requiring explicit
-owner approval — not an automatic continuation of backend registration.
+| Setting | Confirmed value | Source |
+|---|---|---|
+| Firebase project | `fresh-prints-prod` | Owner-confirmed production project |
+| GitHub repository | `roasted-garlic/freshprints` | Confirmed connected |
+| Live branch | `production` | Matches this goal's branch-model decision |
+| Application root | `apps/portal` | Matches `firebase.json`'s `apphosting[0].rootDir: "./apps/portal"` |
+| Backend ID | `fresh-prints-portal` | Matches `firebase.json`'s `apphosting[0].backendId` exactly |
+| Region | `us-central1` | Owner-confirmed |
+
+**Whether backend creation itself triggers an automatic first rollout — now empirically resolved:
+no.** The owner completed backend creation via "Finish" and the backend shows **"Waiting for your
+first release"** — confirming backend registration and the first release/rollout are genuinely
+separate steps in this Firebase Console/CLI version. Backend *configuration* (repository
+connection, branch, root, region) is complete; no build, deploy, or release has occurred; Portal
+production traffic remains at zero.
+
+**Triggering the first release remains its own separate, later, explicitly-approved checkpoint** —
+not performed in this pass, not authorized by this document.
 
 **Permanent / difficult-to-change choices requiring extra care:**
 - Firestore mode (Native vs Datastore) — permanent.

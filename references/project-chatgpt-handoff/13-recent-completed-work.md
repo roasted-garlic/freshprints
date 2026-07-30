@@ -2,6 +2,25 @@
 
 > Signed-off or largely complete work. External agents should not re-plan or duplicate this.
 
+## 2026-07-30 - production-release: Firebase products enabled in fresh-prints-prod, App Hosting backend created with no rollout (not yet deployed)
+
+- Verified (read-only) owner-reported Firebase product enablement: Firestore Native mode `nam5`,
+  Storage `us-central1`, Authentication (Email/Password + Google), Web App
+  `Fresh Prints Portal Production` registered (classic Hosting skipped), VAPID key generated, GA4
+  still disabled, zero production data created
+- Confirmed `apps/portal/.env.production.local` is gitignored, untracked, and absent from `git
+  status` — no file content read or printed
+- Confirmed App Hosting values (`fresh-prints-portal` backend ID, `apps/portal` root) against
+  `firebase.json` — match exactly
+- Owner clarified the App Hosting backend was created via Finish-only, `us-central1`, and shows
+  "Waiting for your first release" — no rollout occurred
+- **Empirically resolved** the open question of whether backend creation triggers an automatic
+  rollout: confirmed no — backend configuration and first release/deploy are separate steps
+- Updated `docs/standards/DEPLOYMENT.md` with a status table distinguishing backend configuration
+  (complete) from an actual release/deployment (not performed; zero production traffic)
+- **No Firebase deployment, secret configuration, DNS configuration, or production data creation
+  occurred; `master`/`production` untouched**
+
 ## 2026-07-30 - production-release: email findings redacted from current tree, history rewrite declined, Firebase enablement instructions finalized (not yet deployed)
 
 - Redacted both email findings from the prior audit pass from the current tracked tree (3 files,

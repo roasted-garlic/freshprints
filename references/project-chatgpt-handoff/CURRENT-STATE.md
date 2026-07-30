@@ -1,5 +1,45 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-07-30 — Goal #13 "production-release" — Firebase product enablement CONFIRMED COMPLETE; App Hosting backend created with no rollout; stopped at App Hosting first-release checkpoint
+
+Re-verified branch/tag state directly from Git (unchanged): `master`/`production` both at
+`aa570aa875d20ba85fd405480a47e6eda59f85b0`, `v1.0.0-rc1` unchanged. **`master` and `production`
+were not touched this pass.**
+
+Verified (read-only) the owner's reported Firebase product-enablement completion for
+`fresh-prints-prod`: Firestore created in Native mode, location `nam5` (matches this session's own
+evidence-based recommendation exactly); Cloud Storage default bucket in `us-central1` (matches
+exactly); Authentication enabled with Email/Password + Google providers; production Web App
+registered as `Fresh Prints Portal Production` with classic Firebase Hosting correctly not
+enabled; production web configuration recorded locally in `apps/portal/.env.production.local` —
+confirmed gitignored (`git check-ignore -v` matches the `.env.*.local` rule), confirmed untracked
+(`git ls-files` empty), confirmed absent from default `git status` output; **no file content was
+read or printed at any point**; Web Push VAPID key generated and recorded in the same local file;
+GA4 confirmed still disabled; zero production data created.
+
+Confirmed the App Hosting configuration values against current repository source
+(`firebase.json`'s `apphosting[0]`: `backendId: "fresh-prints-portal"`,
+`rootDir: "./apps/portal"`) — matched the owner's reported values exactly.
+
+**Owner clarification received:** the App Hosting backend `fresh-prints-portal` was created via
+the Console's **Finish** action only, is in `us-central1`, and shows **"Waiting for your first
+release."** No deployment or rollout occurred. **This empirically resolves the prior pass's open
+question** of whether backend creation triggers an automatic rollout — confirmed **no**: backend
+configuration and the first release/deploy are genuinely separate steps in this Firebase
+Console/CLI version. Backend configuration is complete; nothing has been built, deployed, or
+served; Portal production traffic remains at zero.
+
+Updated `docs/standards/DEPLOYMENT.md` with a clear status table distinguishing backend
+configuration (complete) from an actual release/deployment (not performed).
+
+**No Firebase deployment, secret configuration, DNS configuration, or production data creation
+occurred in this pass. `rebuildCatalogSnapshots` was not invoked. `master` and `production` remain
+untouched.**
+
+**Active managed goal:** `production-release` (Goal #13) — STOPPED at the App Hosting
+first-release checkpoint per explicit instruction; awaiting explicit, separate owner approval
+before triggering any release/rollout.
+
 ## 2026-07-30 — Goal #13 "production-release" — Both email findings REDACTED from current tree; owner declined Git-history rewrite; stopped at Firebase product-enablement checkpoint
 
 Re-verified branch/tag state directly from Git (unchanged): `master`/`production` both at

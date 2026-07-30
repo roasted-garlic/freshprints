@@ -5,10 +5,12 @@ Current Mode: managed-phase
 Current Phase: implement
 Plan Status: complete
 Review Status: complete (`approved_with_notes`)
-Implement Status: in_progress — both email findings REDACTED from the current tree (owner
-declined a Git-history rewrite); security audit verdict remains PASS; stopped at the Firebase
-product-enablement human checkpoint with evidence-based Firestore/Storage location
-recommendations documented
+Implement Status: in_progress — Firebase product enablement CONFIRMED COMPLETE (Firestore
+`nam5`, Storage `us-central1`, Auth Email/Password + Google, Web App registered, local prod env
+file confirmed gitignored/untracked, VAPID generated, GA4 still disabled); App Hosting backend
+`fresh-prints-portal` CONFIRMED CREATED (`us-central1`, connected, branch `production`, root
+`apps/portal`) via Finish-only — **no rollout triggered**, backend shows "Waiting for your first
+release"; stopped at the App Hosting first-release human checkpoint
 Test Status: pending
 Signoff Status: pending
 DONE: no
@@ -62,27 +64,24 @@ No GA4 or Search Console configuration occurred. `production` was not modified. 
 deleted. No force-push occurred anywhere in this pass** (only file writes and doc/state commits to
 `development`, still pending push at the time this state was written — see the response for the
 final documentation commit hash).
-Human Checkpoint Required: yes — (1) complete the beginner Firebase Console steps in
-`docs/standards/DEPLOYMENT.md`'s "Next checkpoint" subsection to enable Firestore (location `nam5`,
-evidence-based recommendation)/Storage (location `us-central1`)/Authentication, register the Web
-App, generate the Web Push certificate, and prepare (not complete) the App Hosting backend; (2)
-confirm whether App Hosting backend creation triggers an automatic first rollout — `[NEEDS REPO
-CHECK]`, not provable from repo source, must be confirmed against actual Console behavior before
-that step; (3) decide whether/when to approve running `git config core.hooksPath .githooks` to
-activate the now-optional local pre-push safeguard.
-Blocked: no (not blocked; paused at the Firebase product-enablement human checkpoint by explicit
+Human Checkpoint Required: yes — the App Hosting **first release/rollout** is the next distinct
+checkpoint (backend configuration is already complete and confirmed; triggering an actual
+build+deploy of Portal to `fresh-prints-prod` is a separate, later, explicitly-approved action);
+plus Rules/indexes/Functions deploys, Secret Manager population, DNS/domain configuration, and the
+production Studio installer all remain separate future checkpoints; (2) decide whether/when to
+approve running `git config core.hooksPath .githooks` to activate the now-optional local pre-push
+safeguard.
+Blocked: no (not blocked; paused at the App Hosting first-release human checkpoint by explicit
 instruction)
-Allowed Actions: none beyond this pass; awaiting the owner to complete the Firebase Console steps
-and report back
-Forbidden Actions: deleting `master` (local or remote); modifying `production`; any Firebase
-Rules/indexes/Functions/App-Hosting-rollout/secret/DNS/Auth-config/GA4/Search-Console action;
-building or distributing a production Studio installer; touching production data; force-pushing
-any branch; rewriting Git history; configuring `core.hooksPath` without separate owner approval;
-changing repository visibility
-Next Required Step: **STOP.** Await the owner completing the Firebase product-enablement steps
-(Firestore, Storage, Authentication, Web App registration, Web Push certificate, App Hosting
-backend preparation), per `docs/standards/DEPLOYMENT.md`'s "Next checkpoint — Firebase product
-enablement" subsection.
+Allowed Actions: none beyond this pass; awaiting explicit owner approval before any deployment step
+Forbidden Actions: deleting `master` (local or remote); modifying `production`; triggering an App
+Hosting release/rollout; any Firebase Rules/indexes/Functions/secret/DNS/Auth-config/GA4/
+Search-Console action; invoking `rebuildCatalogSnapshots`; building or distributing a production
+Studio installer; touching production data; force-pushing any branch; rewriting Git history;
+configuring `core.hooksPath` without separate owner approval; changing repository visibility
+Next Required Step: **STOP.** Await explicit owner approval before triggering the App Hosting
+first release/rollout, or before proceeding to any subsequent deployment checkpoint
+(Rules/indexes/Functions/secrets/DNS).
 
 Plan:
 `docs/workflow/plans/2026-07-29-preproduction-static-analysis-cleanup-plan.md`.
@@ -5168,3 +5167,56 @@ remain untouched.**
 Next: **STOP.** Await the owner completing the documented Firebase Console product-enablement
 steps and reporting back, in particular confirming whether App Hosting backend creation triggers
 an automatic rollout before that specific sub-step proceeds.
+
+## 2026-07-30 — Goal #13 `production-release` — Firebase product enablement CONFIRMED COMPLETE; App Hosting backend CONFIRMED CREATED with no rollout; stopped at App Hosting first-release checkpoint
+
+Re-verified branch/tag state directly from Git before any action (unchanged): current branch
+`development`, clean tree; `origin/master`/`origin/production` both at
+`aa570aa875d20ba85fd405480a47e6eda59f85b0`; `v1.0.0-rc1` unchanged. **`master` and `production`
+were not touched this pass.**
+
+Verified (read-only) the owner's reported Firebase product-enablement completion:
+- Firestore: created, Native mode, location `nam5` — matches this session's own evidence-based
+  recommendation exactly.
+- Cloud Storage: default bucket created, `us-central1` — matches the recommendation exactly.
+- Authentication: enabled with Email/Password + Google providers.
+- Production Web App registered as `Fresh Prints Portal Production`; classic Firebase Hosting
+  correctly **not** enabled during registration (this repo uses App Hosting, a distinct product).
+- Production web configuration recorded locally in `apps/portal/.env.production.local`. Verified
+  via `git check-ignore -v` that this exact path matches `.gitignore:24`'s `.env.*.local` pattern
+  (ignored); via `git ls-files` that it is not tracked (empty result); via
+  `git status --porcelain --ignored` that it shows the `!!` ignored marker; and via plain
+  `git status --short` that it does not appear at all in the default status view. **No file
+  content was read or printed at any point** — verification was existence + ignore-status only.
+- Web Push VAPID key generated and recorded in the same local file.
+- GA4 confirmed still disabled; `NEXT_PUBLIC_GA_MEASUREMENT_ID` remains unset.
+- No production user, collection, document, or Storage object was created.
+
+Confirmed the App Hosting configuration values against current repository source
+(`firebase.json`'s `apphosting[0]`: `backendId: "fresh-prints-portal"`,
+`rootDir: "./apps/portal"`) — both match the owner-reported values exactly, not guessed.
+
+**Owner clarification received and recorded:** the App Hosting backend `fresh-prints-portal` has
+been created in `fresh-prints-prod` using the Console's **Finish** action only. The backend is in
+`us-central1` and shows **"Waiting for your first release."** No deployment or rollout occurred.
+
+**This empirically resolves the prior pass's open `[NEEDS REPO CHECK]` question** ("does backend
+creation itself trigger an automatic first rollout?") — confirmed **no**: backend
+configuration (repository connection, branch, root directory, region) and the first
+release/rollout (an actual build+deploy of Portal code) are genuinely separate steps in this
+Firebase Console/CLI version. Backend configuration is complete; nothing has been built, deployed,
+or served; Portal production traffic remains at zero.
+
+Updated `docs/standards/DEPLOYMENT.md`'s Firebase-enablement and App-Hosting subsections to record
+this confirmed-complete status with a clear status table, and resolved the previously-open
+rollout-trigger question with the owner's empirical result rather than leaving it flagged
+`[NEEDS REPO CHECK]` indefinitely.
+
+**No Firebase deployment, secret configuration, DNS configuration, or production data creation
+occurred in this pass.** No Rules, Storage Rules, indexes, Functions, or App Hosting release were
+deployed. `rebuildCatalogSnapshots` was not invoked. `master` and `production` remain untouched.
+
+Next: **STOP.** Await explicit, separate owner approval before triggering the App Hosting first
+release/rollout — this is its own distinct checkpoint, not implied by backend creation having
+completed. Subsequent checkpoints (Rules, indexes, Functions, Secret Manager, DNS) all remain
+separately gated as well.
