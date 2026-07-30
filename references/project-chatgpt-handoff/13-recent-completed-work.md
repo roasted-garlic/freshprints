@@ -2,6 +2,25 @@
 
 > Signed-off or largely complete work. External agents should not re-plan or duplicate this.
 
+## 2026-07-30 - production-release: corrected deployment-order framing, prepared Firestore Rules deployment checkpoint (not yet deployed)
+
+- Corrected a prior pass's misleading framing that implied the App Hosting first release was the
+  immediate next step — restated the approved 12-step deployment order (Rules → Storage Rules →
+  indexes → secrets → Functions → App Hosting env vars → first release → Studio build → settings →
+  domain → smoke tests → GA4), with Firestore Rules deployment as the actual current checkpoint
+- Restated accurately: `fresh-prints-prod`'s products and App Hosting backend are configured (not
+  empty), but no Rules/indexes/Functions/Portal release have been deployed
+- Compared `firestore.rules` between `development` and `production` — identical Git blob hash on
+  both, confirming no merge is needed before deploying Rules
+- Ran the real `npm run test:rules` Firestore/Storage emulator suite (documented portable JDK 21
+  workaround) — 48/48 pass
+- Confirmed this would be the first-ever Rules deployment to `fresh-prints-prod` (no prior version
+  to roll back to on this project); documented the rollback method for future changes
+- Prepared, but did not execute, `firebase deploy --only firestore:rules --project
+  fresh-prints-prod`
+- **No deploy command run; no Rules/indexes/Functions deployed; no secret set; no production data
+  touched; `production` untouched**
+
 ## 2026-07-30 - production-release: Firebase products enabled in fresh-prints-prod, App Hosting backend created with no rollout (not yet deployed)
 
 - Verified (read-only) owner-reported Firebase product enablement: Firestore Native mode `nam5`,

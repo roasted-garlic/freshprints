@@ -122,7 +122,7 @@ Current Goal:
 | 10 | Increase the MB limit for custom-request reference images | **Done** (2026-07-29, approved) — 40 MB/file live in `fresh-prints-dev` at every enforcement layer, 8 files unchanged, 320 MB combined ceiling active; owner QA FAIL (stale 15 MB deployed Cloud Functions) → Amendment 1 root-caused and fixed via scoped Functions redeploy → owner re-QA PASS |
 | 11 | `customer-upload-oversized-pixel-normalization-and-processing-timeout-followup` | **Done** (2026-07-30, approved_with_notes; owner QA PASS WITH NOTES — see signoff) |
 | 12 | `catalog-image-derivative-storage-consolidation` | **Done — closed_by_owner_after_inventory** (2026-07-30). Real dev inventory measured originals at ~97.66% of catalog Storage (980.8 MB of 1,004.3 MB); thumbnails+previews combined only 23.5 MB; zero orphans/duplicates/violations found. Owner decided the migration's small addressable Storage win did not justify the required backfill/consumer-cutover/bandwidth-increase — closed before implementation, an evidence-based decision. Retained as dev-only tooling: the read-only `inventoryCatalogImageStorage` callable and its Studio invocation panel. |
-| 13 | `production-release` — prod Firebase / App Hosting / Google / email | **Active** — repository public, ruleset active, security audit PASS, email findings redacted; **Firebase products enabled in `fresh-prints-prod`** (Firestore `nam5`, Storage `us-central1`, Auth, Web App, VAPID — all confirmed); **App Hosting backend `fresh-prints-portal` created** (`us-central1`, connected, branch `production`) via Finish-only — **no rollout triggered, "Waiting for your first release"**; **stopped at the App Hosting first-release human checkpoint**; no longer blocked (#9–#12 all signed off/closed); production approval required before any implementation or deployment |
+| 13 | `production-release` — prod Firebase / App Hosting / Google / email | **Active** — repository public, ruleset active, security audit PASS; **`fresh-prints-prod` products/App-Hosting-backend configured** (not empty) but **no Rules/indexes/Functions/Portal release deployed yet**; approved 12-step deployment order restored (Rules → Storage Rules → indexes → secrets → Functions → App Hosting env vars → first release → Studio build → settings → domain → smoke tests → GA4); `firestore.rules` verified byte-identical between `development`/`production`, 48/48 Rules-emulator tests pass; **stopped at the Firestore Rules deployment approval checkpoint** (step 1 — App Hosting's first release is step 7, not next); no longer blocked (#9–#12 all signed off/closed); production approval required before any implementation or deployment |
 | 14 | `customer-upload-early-transparency-format-validation` — reject invalid customer artwork before the trimming stage is shown | **Done** (2026-07-30, approved; automated verification 23/23 pass, clean build/lint; owner deployed to `fresh-prints-dev` and confirmed manual QA PASS across all 5 goal-brief scenarios). Separate narrow follow-up run alongside the paused `production-release` (#13), which this goal did not modify. See `docs/workflow/plans/2026-07-30-customer-upload-early-transparency-format-validation-plan.md`. |
 
 **Small Managed Items Backlog:** #5–**#14** **Done** (2026-07-21). See [Small Managed Items Backlog](#small-managed-items-backlog-2026-07-18) below.
@@ -220,10 +220,24 @@ configuration and the first release/deploy are separate steps. Updated
 `docs/standards/DEPLOYMENT.md` to record both confirmations with a clear before/after status
 table, distinguishing backend configuration (complete) from an actual release/deployment (not
 performed; zero production Portal traffic).
-**Stopped at the App Hosting first-release human checkpoint** — awaiting explicit, separate owner
-approval before triggering any App Hosting release/rollout. `master` was **not** deleted (retained
-as a temporary transition fallback; its eventual deletion is a separate, later checkpoint). No
-longer blocked: Goals #9–#12
+**Correction (same day, later pass):** the prior framing above ("stopped at the App Hosting
+first-release checkpoint") incorrectly implied the Portal release was the immediate next action.
+The owner clarified the approved deployment order places 6 steps before it: (1) Firestore Rules,
+(2) Storage Rules, (3) Firestore indexes, (4) Secret Manager, (5) Cloud Functions (approved
+99-function allowlist), (6) App Hosting env vars — **then** (7) first Portal release, (8) Studio
+build, (9) settings/reference data, (10) domain/Authorized Domains, (11) smoke tests, (12)
+GA4/Search Console. Restated accurately: `fresh-prints-prod`'s products and App Hosting backend
+are **configured** (not empty), but no Rules, indexes, Functions, or Portal release have been
+deployed; no secrets set; no production data seeded; no domain configured; no production traffic
+exists. Compared `firestore.rules` between `development` and `production` — identical Git blob
+hash (`d4d754e22090a75ec9fa1c7fc38bbf2101822131`) on both, confirming no merge is needed before
+deploying Rules. Ran the real `npm run test:rules` emulator suite (using the documented portable
+JDK 21 workaround) — **48/48 pass.** Prepared, but did not execute, the exact command
+`firebase deploy --only firestore:rules --project fresh-prints-prod`.
+**Stopped at the Firestore Rules deployment approval checkpoint** — awaiting explicit owner
+approval to run that exact command. `master` was **not** deleted (retained as a temporary
+transition fallback; its eventual deletion is a separate, later checkpoint). No longer blocked:
+Goals #9–#12
 (`catalog-image-derivative-storage-consolidation`) closed **2026-07-30**,
 **closed_by_owner_after_inventory** — the real dev Storage inventory measured originals at
 ~97.66% of catalog Storage (980,807,863 of 1,004,304,719 bytes across 87 designs), with existing

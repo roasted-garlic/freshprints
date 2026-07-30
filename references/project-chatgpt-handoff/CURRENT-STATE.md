@@ -1,5 +1,59 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-07-30 — Goal #13 "production-release" — CORRECTED: App Hosting first release is NOT next; approved deployment order restored; stopped at Firestore Rules deployment checkpoint
+
+**Correction:** a prior pass's log entry title ("stopped at App Hosting first-release checkpoint")
+incorrectly implied the Portal release was the immediate next action. The owner clarified the
+approved order places 6 steps before it. Restated accurately: `fresh-prints-prod`'s Firebase
+products (Firestore Native/`nam5`, Storage `us-central1`, Authentication, Web App, VAPID key) and
+its App Hosting backend (`fresh-prints-portal`, connected, branch `production`, root
+`apps/portal`, `us-central1`, "Waiting for your first release") are all **configured** —
+production is not empty. But **no Firestore Rules, Storage Rules, indexes, or Functions have been
+deployed; no secrets set; no production data seeded; no domain configured; no production traffic
+exists.**
+
+**Approved deployment order (do not skip):** (1) Firestore Rules, (2) Storage Rules, (3) Firestore
+indexes, (4) Secret Manager, (5) Cloud Functions (approved 99-function allowlist), (6) App Hosting
+env vars, (7) first Portal release, (8) Studio build, (9) settings/reference data, (10) domain/
+Authorized Domains, (11) smoke tests, (12) GA4/Search Console.
+
+Re-verified branch/tag state directly from Git: current branch `development`, clean tree;
+`origin/production` = `aa570aa875d20ba85fd405480a47e6eda59f85b0` (unchanged). **`production` was
+not modified this pass.**
+
+Compared `firestore.rules` between `development` and `production`: identical Git blob hash
+(`d4d754e22090a75ec9fa1c7fc38bbf2101822131`) on both branches, confirmed via
+`git rev-parse <ref>:firestore.rules` and cross-checked with an empty `git diff --stat` between
+the two refs on that path. Local working-tree copy also matches (`git hash-object`). **No
+`development → production` merge is required before deploying Rules.**
+
+Ran the real Firestore/Storage Rules emulator test suite (`npm run test:rules`, using
+`@firebase/rules-unit-testing`, requiring the documented portable JDK 21 workaround since no
+system Java is present — set `JAVA_HOME`/`PATH` for this command only): **48/48 tests pass, exit
+0.**
+
+Rollback preparation: this is the first Rules deployment ever made to `fresh-prints-prod` (no
+prior deployed version exists on this project to roll back to). For any future Rules change,
+rollback is redeploying the prior commit's `firestore.rules` via the same deploy command, or
+restoring from Firebase Console's own Rules version history (independent of git).
+
+**Exact prepared command (NOT executed):**
+```
+firebase deploy --only firestore:rules --project fresh-prints-prod
+```
+
+Updated `docs/standards/DEPLOYMENT.md` with an explicit ordered deployment-sequence list marking
+the current position (step 1, Firestore Rules) and clarifying the App Hosting backend's existing
+"Waiting for your first release" status does not change that order.
+
+**No `firebase deploy` command of any kind was run. No Rules, indexes, or Functions were deployed.
+No secret was set. No production data was touched. `production` was not modified. `master` was
+not deleted.**
+
+**Active managed goal:** `production-release` (Goal #13) — STOPPED at the Firestore Rules
+deployment approval checkpoint; awaiting explicit owner approval to run the exact prepared
+command.
+
 ## 2026-07-30 — Goal #13 "production-release" — Firebase product enablement CONFIRMED COMPLETE; App Hosting backend created with no rollout; stopped at App Hosting first-release checkpoint
 
 Re-verified branch/tag state directly from Git (unchanged): `master`/`production` both at

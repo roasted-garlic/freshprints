@@ -236,6 +236,27 @@ or reachable — it means the backend object exists and is correctly pointed at 
 repository/branch/root, with nothing built or served yet. Triggering the first release remains its
 own separate, later, explicitly-approved checkpoint.
 
+### Approved production deployment order (do not skip ahead)
+
+1. **Firestore Rules deployment** ← current checkpoint
+2. Storage Rules deployment
+3. Firestore indexes deployment
+4. Secret Manager population (`GEMINI_API_KEY`, `RESEND_API_KEY`, `ETSY_X_API_KEY`, `BREVO_API_KEY` if selected)
+5. Cloud Functions deployment (approved explicit 99-function allowlist — see
+   `docs/workflow/reviews/2026-07-30-production-release-functions-allowlist-report.md`)
+6. App Hosting environment-variable configuration (`NEXT_PUBLIC_FIREBASE_*`, `NEXT_PUBLIC_PORTAL_ORIGIN`; `NEXT_PUBLIC_GA_MEASUREMENT_ID` stays unset)
+7. First App Hosting Portal release
+8. Production Studio build
+9. Initial settings and reference-data setup (categories, email provider selection, `rebuildCatalogSnapshots`)
+10. Domain and Authorized Domains configuration
+11. Smoke tests
+12. GA4 and Search Console (separate later checkpoints)
+
+**The App Hosting backend existing with status "Waiting for your first release" does not change
+this order.** Backend configuration (already complete) is not the same as step 7 (the first
+release) — six steps come first. Each step requires its own separate, explicit owner approval;
+none of this order authorizes skipping ahead.
+
 ### Original enablement instructions (retained for reference)
 
 The production Firebase project (`fresh-prints-prod`) originally had **zero products enabled**.
