@@ -2,6 +2,20 @@
 
 > Signed-off or largely complete work. External agents should not re-plan or duplicate this.
 
+## 2026-07-30 - production-release: Firestore Rules DEPLOYED to fresh-prints-prod (first production Firebase deployment of this goal)
+
+- Owner approved via `APPROVE FIRESTORE RULES DEPLOY`; ran the full pre-deploy safety sequence
+  (switch to `production`, fast-forward-only pull, verified `HEAD`/`origin/production`/
+  `firestore.rules` hash all exact matches to required values)
+- Deployed exactly `firebase deploy --only firestore:rules --project fresh-prints-prod` — **exit
+  0, "Deploy complete!"** — the first-ever Fresh Prints production Firestore Rules deployment
+- No other Firebase component touched (no Storage Rules, indexes, Functions, App Hosting,
+  secrets, DNS, production data, Studio build, GA4/Search Console)
+- Returned to `development` (clean, fast-forward pull); confirmed `origin/production` received no
+  Git commit from this pass — only the Firebase Rules release occurred
+- Provided owner Console verification steps (Rules tab, "Last published" timestamp)
+- Deployment-order step 1 of 12 now complete; step 2 (Storage Rules) is the next checkpoint
+
 ## 2026-07-30 - production-release: corrected deployment-order framing, prepared Firestore Rules deployment checkpoint (not yet deployed)
 
 - Corrected a prior pass's misleading framing that implied the App Hosting first release was the

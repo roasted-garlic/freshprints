@@ -1,5 +1,39 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-07-30 — Goal #13 "production-release" — Firestore Rules DEPLOYED to fresh-prints-prod (deployment-order step 1 of 12 complete)
+
+**First production Firebase deployment of this goal.** Owner approved via
+`APPROVE FIRESTORE RULES DEPLOY`, authorizing exactly `firebase deploy --only firestore:rules
+--project fresh-prints-prod` and nothing else.
+
+Ran the full pre-deploy safety sequence: confirmed clean tree on `development`; `git fetch
+origin`; `git switch production`; `git pull --ff-only origin production` (already up to date, no
+divergence); verified local `HEAD` = `origin/production` =
+`aa570aa875d20ba85fd405480a47e6eda59f85b0` and `firestore.rules` blob hash =
+`d4d754e22090a75ec9fa1c7fc38bbf2101822131` — both exact matches to the required values. Confirmed
+target project `fresh-prints-prod` in the command.
+
+**Deployed:** `firebase deploy --only firestore:rules --project fresh-prints-prod` — **exit 0,
+"Deploy complete!"** Rules compiled successfully (pre-existing non-blocking lint warnings about
+unused/shadowed function names, not errors) and were released to `cloud.firestore`. Console URL
+confirmed `fresh-prints-prod` as the deployed project. **This is the first-ever Fresh Prints
+production Firestore Rules deployment** — no prior Rules history existed on this project.
+
+Provided owner Console verification instructions: `fresh-prints-prod` → Firestore Database → Rules
+tab → confirm "Last published" timestamp and compare displayed content against local
+`firestore.rules`.
+
+Returned to `development` (`git switch development`, `git pull --ff-only`, clean tree confirmed).
+**`origin/production` confirmed unchanged** at `aa570aa875d20ba85fd405480a47e6eda59f85b0` — this
+deployment added no Git commit to `production`, only a Firebase Rules release.
+
+**No other Firebase component was deployed.** No Storage Rules, indexes, Functions, App Hosting
+release, secrets, DNS, production data, Studio build, or GA4/Search Console configuration
+occurred. `master` was not deleted.
+
+**Active managed goal:** `production-release` (Goal #13) — STOPPED at the Storage Rules deployment
+approval checkpoint (deployment-order step 2); awaiting explicit owner approval.
+
 ## 2026-07-30 — Goal #13 "production-release" — CORRECTED: App Hosting first release is NOT next; approved deployment order restored; stopped at Firestore Rules deployment checkpoint
 
 **Correction:** a prior pass's log entry title ("stopped at App Hosting first-release checkpoint")

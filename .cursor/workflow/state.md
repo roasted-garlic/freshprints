@@ -5,16 +5,12 @@ Current Mode: managed-phase
 Current Phase: implement
 Plan Status: complete
 Review Status: complete (`approved_with_notes`)
-Implement Status: in_progress — **corrected status:** `fresh-prints-prod` products/backend are
-CONFIGURED (Firestore Native/`nam5`, Storage `us-central1`, Auth Email/Password+Google, Web App,
-VAPID, App Hosting backend `fresh-prints-portal` connected to `production`/`apps/portal`,
-"Waiting for your first release") — production is **not** empty/unconfigured, but **no Rules,
-indexes, Functions, or Portal release has been deployed yet**. Approved deployment order restored:
-(1) Firestore Rules → (2) Storage Rules → (3) indexes → (4) secrets → (5) Functions → (6) App
-Hosting env vars → (7) first Portal release → (8) Studio build → (9) settings/reference data →
-(10) domain/Authorized Domains → (11) smoke tests → (12) GA4/Search Console. **App Hosting first
-release is NOT the next step** — stopped at the Firestore Rules deployment approval checkpoint
-(step 1)
+Implement Status: in_progress — **Firestore Rules DEPLOYED to `fresh-prints-prod`** (step 1 of 12
+complete, first-ever Rules deployment to this project, exit 0, "Deploy complete!"). Approved
+deployment order: (1) Firestore Rules ✅ DONE → (2) Storage Rules → (3) indexes → (4) secrets →
+(5) Functions → (6) App Hosting env vars → (7) first Portal release → (8) Studio build → (9)
+settings/reference data → (10) domain/Authorized Domains → (11) smoke tests → (12) GA4/Search
+Console. Stopped at the Storage Rules deployment approval checkpoint (step 2)
 Test Status: pending
 Signoff Status: pending
 DONE: no
@@ -68,31 +64,26 @@ No GA4 or Search Console configuration occurred. `production` was not modified. 
 deleted. No force-push occurred anywhere in this pass** (only file writes and doc/state commits to
 `development`, still pending push at the time this state was written — see the response for the
 final documentation commit hash).
-Human Checkpoint Required: yes — **Firestore Rules deployment (deployment-order step 1)** is the
-immediate next checkpoint, per the approved order: Firestore Rules → Storage Rules → indexes →
-Secret Manager → Functions (approved 99-function allowlist) → App Hosting env vars → first App
-Hosting Portal release → production Studio build → settings/reference-data setup → domain/
-Authorized Domains → smoke tests → GA4/Search Console. **App Hosting's first release is step 7,
-not the next step.** `firestore.rules` is verified byte-identical between `development` and
-`production` (git blob hash `d4d754e22090a75ec9fa1c7fc38bbf2101822131` on both) — no
-`development → production` merge is required before this deploy. The full `npm run test:rules`
-emulator suite (48/48) passes against this exact file. Separately, decide whether/when to approve
-running `git config core.hooksPath .githooks` to activate the now-optional local pre-push
+Human Checkpoint Required: yes — **Storage Rules deployment (deployment-order step 2)** is the
+immediate next checkpoint, per the approved order: Firestore Rules ✅ DONE → Storage Rules →
+indexes → Secret Manager → Functions (approved 99-function allowlist) → App Hosting env vars →
+first App Hosting Portal release → production Studio build → settings/reference-data setup →
+domain/Authorized Domains → smoke tests → GA4/Search Console. Separately, decide whether/when to
+approve running `git config core.hooksPath .githooks` to activate the now-optional local pre-push
 safeguard.
-Blocked: no (not blocked; paused at the Firestore Rules deployment approval checkpoint by explicit
+Blocked: no (not blocked; paused at the Storage Rules deployment approval checkpoint by explicit
 instruction)
-Allowed Actions: none beyond this pass; awaiting explicit owner approval to run
-`firebase deploy --only firestore:rules --project fresh-prints-prod`
+Allowed Actions: none beyond this pass; awaiting explicit owner approval to run the equivalent
+Storage Rules deploy command
 Forbidden Actions: deleting `master` (local or remote); modifying `production`; running any
-`firebase deploy` command; triggering an App Hosting release/rollout; any Storage
-Rules/indexes/Functions/secret/DNS/Auth-config/GA4/Search-Console action; invoking
+`firebase deploy` command; triggering an App Hosting release/rollout; any
+indexes/Functions/secret/DNS/Auth-config/GA4/Search-Console action; invoking
 `rebuildCatalogSnapshots`; building or distributing a production Studio installer; touching
 production data; force-pushing any branch; rewriting Git history; configuring `core.hooksPath`
 without separate owner approval; changing repository visibility
-Next Required Step: **STOP.** Await explicit owner approval to run
-`firebase deploy --only firestore:rules --project fresh-prints-prod`. Do not proceed to Storage
-Rules, indexes, secrets, Functions, or the App Hosting first release until Firestore Rules
-deployment is approved, executed, and verified.
+Next Required Step: **STOP.** Await explicit owner approval to deploy Storage Rules to
+`fresh-prints-prod`. Do not proceed to indexes, secrets, Functions, or the App Hosting first
+release until Storage Rules deployment is approved, executed, and verified.
 
 Plan:
 `docs/workflow/plans/2026-07-29-preproduction-static-analysis-cleanup-plan.md`.
@@ -5305,3 +5296,64 @@ modified. `master` was not deleted.**
 Next: **STOP.** Await explicit owner approval to run
 `firebase deploy --only firestore:rules --project fresh-prints-prod`. Do not skip ahead to Storage
 Rules, indexes, secrets, Functions, or the App Hosting first release.
+
+## 2026-07-30 — Goal #13 `production-release` — Firestore Rules DEPLOYED to `fresh-prints-prod` (deployment-order step 1 of 12 complete)
+
+**First production Firebase deployment of this goal.** Owner explicitly approved via
+`APPROVE FIRESTORE RULES DEPLOY`, authorizing exactly
+`firebase deploy --only firestore:rules --project fresh-prints-prod` and no other component.
+
+**Pre-deploy safety sequence, run exactly as specified:**
+1. Confirmed working tree clean on `development` before switching.
+2. `git fetch origin`.
+3. `git switch production`.
+4. `git pull --ff-only origin production` — already up to date, no-op (fast-forward-only,
+   confirming no divergence).
+5. Verified: current branch `production`; local `HEAD` = `origin/production` =
+   `aa570aa875d20ba85fd405480a47e6eda59f85b0` (exact match); `firestore.rules` blob hash =
+   `d4d754e22090a75ec9fa1c7fc38bbf2101822131` (exact match to the value specified in the approval).
+6. Confirmed target project in the command is exactly `fresh-prints-prod`.
+
+All verifications matched exactly — proceeded to deploy.
+
+**Deployment command:** `firebase deploy --only firestore:rules --project fresh-prints-prod`
+**Exit code:** 0
+**Firebase CLI result:** "Deploy complete!" — rules file compiled successfully, uploaded, and
+released to `cloud.firestore`. Console URL confirmed:
+`https://console.firebase.google.com/project/fresh-prints-prod/overview` (confirming
+`fresh-prints-prod` as the deployed project). The compiler emitted several pre-existing
+warning-level advisories (unused/shadowed rule-function names in `firestore.rules`) — these are
+non-blocking lint-level notices, not errors, and did not affect compilation or deployment success.
+No credential or environment value was printed by this command or captured in this record.
+
+**This is the first Fresh Prints production Firestore Rules deployment** — `fresh-prints-prod` had
+no prior Rules deployment history before this action.
+
+**Owner Console verification instructions (provided, not yet confirmed by owner):** Firebase
+Console → select project `fresh-prints-prod` → Firestore Database → Rules tab → confirm the
+"Last published" timestamp reflects this deployment's completion time → visually compare the
+displayed Rules content against the local `firestore.rules` file where practical. Firebase may
+retain the previous (default, unpublished-by-us) initial Production-mode Rules version in the
+Console's Rules history — this is expected and not a concern; the newly deployed version is now
+the live, active ruleset.
+
+**Post-deployment branch return:** `git switch development` → `git pull --ff-only origin
+development` (already up to date, no-op) → confirmed current branch `development`, working tree
+clean.
+
+**`production` received zero Git commits from this pass** — only the Firebase Rules deployment
+itself occurred; `origin/production` remains at `aa570aa875d20ba85fd405480a47e6eda59f85b0`
+(reconfirmed via `git fetch origin` + `git rev-parse` after returning to `development`).
+
+**No other Firebase component was deployed or configured.** No Storage Rules, no Firestore
+indexes, no Functions, no App Hosting release, no Secret Manager values, no DNS/domain
+configuration, no production data, no Studio production build, no GA4/Search Console setup.
+`master` was not deleted.
+
+Updated `.cursor/workflow/state.md` (this entry + status block), `docs/project/ROADMAP.md`,
+`docs/standards/DEPLOYMENT.md`, and the two handoff files on `development` only, marking
+deployment-order step 1 (Firestore Rules) as done and step 2 (Storage Rules) as the new current
+checkpoint.
+
+Next: **STOP.** Await explicit owner approval for Storage Rules deployment (deployment-order step
+2). Do not proceed to indexes, secrets, Functions, or the App Hosting first release before that.
