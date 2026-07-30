@@ -122,7 +122,7 @@ Current Goal:
 | 10 | Increase the MB limit for custom-request reference images | **Done** (2026-07-29, approved) — 40 MB/file live in `fresh-prints-dev` at every enforcement layer, 8 files unchanged, 320 MB combined ceiling active; owner QA FAIL (stale 15 MB deployed Cloud Functions) → Amendment 1 root-caused and fixed via scoped Functions redeploy → owner re-QA PASS |
 | 11 | `customer-upload-oversized-pixel-normalization-and-processing-timeout-followup` | **Done** (2026-07-30, approved_with_notes; owner QA PASS WITH NOTES — see signoff) |
 | 12 | `catalog-image-derivative-storage-consolidation` | **Done — closed_by_owner_after_inventory** (2026-07-30). Real dev inventory measured originals at ~97.66% of catalog Storage (980.8 MB of 1,004.3 MB); thumbnails+previews combined only 23.5 MB; zero orphans/duplicates/violations found. Owner decided the migration's small addressable Storage win did not justify the required backfill/consumer-cutover/bandwidth-increase — closed before implementation, an evidence-based decision. Retained as dev-only tooling: the read-only `inventoryCatalogImageStorage` callable and its Studio invocation panel. |
-| 13 | `production-release` — prod Firebase / App Hosting / Google / email | **Active — BLOCKED at step 3** — Firestore indexes deployment attempt **failed partially** (exit 1, HTTP 409) due to a genuine duplicate index definition in `firestore.indexes.json` (`customerUploads` purpose+catalogReviewStatus, defined twice); 50 of 66 indexes created on `fresh-prints-prod`, **7 collection groups have zero indexes**; Rules (steps 1–2) unaffected and still correctly deployed; **requires a reviewed `firestore.indexes.json` correction on `development`, promoted via PR, before redeployment can be reattempted**; production approval required before any further implementation or deployment |
+| 13 | `production-release` — prod Firebase / App Hosting / Google / email | **Active** — Firestore index duplicate (`customerUploads` purpose+catalogReviewStatus, provenance-traced to commit `cbba4ca`) **remediated**: Plan + independent Formal Review both `approved`; corrected file (65 unique/0 duplicates) + new deterministic duplicate-validation test committed to `development`, all verification passing; **stopped at the development-to-production PR merge checkpoint**; the 50 indexes already on `fresh-prints-prod` remain untouched, redeployment itself remains a separate future checkpoint; Rules (steps 1–2) unaffected and still correctly deployed; production approval required before any further implementation or deployment |
 | 14 | `customer-upload-early-transparency-format-validation` — reject invalid customer artwork before the trimming stage is shown | **Done** (2026-07-30, approved; automated verification 23/23 pass, clean build/lint; owner deployed to `fresh-prints-dev` and confirmed manual QA PASS across all 5 goal-brief scenarios). Separate narrow follow-up run alongside the paused `production-release` (#13), which this goal did not modify. See `docs/workflow/plans/2026-07-30-customer-upload-early-transparency-format-validation-plan.md`. |
 
 **Small Managed Items Backlog:** #5–**#14** **Done** (2026-07-21). See [Small Managed Items Backlog](#small-managed-items-backlog-2026-07-18) below.
@@ -288,9 +288,26 @@ indexes** (`assistedCreationRequests`, `customerNotifications`, `customerUploadB
 50 present indexes exactly match the reviewed file. **Did not retry blindly, did not use
 `--force`, did not touch Console.** Firestore Rules (step 1) and Storage Rules (step 2) remain
 correctly deployed, unaffected.
-**BLOCKED — requires owner decision** on removing the duplicate index entry from
-`firestore.indexes.json` (small, reviewed correction on `development`, promoted via PR, then
-separately approved for redeployment) before this checkpoint can close.
+**Since then (same day, later pass):** performed a canonical duplicate audit (deterministic
+structural identity by collectionGroup+queryScope+fields), confirming exactly the expected single
+duplicate group (`customerUploads` purpose+catalogReviewStatus at array positions 44 and 50,
+byte-identical) with no other duplicate anywhere in the file, and confirming the legitimate
+two-field/three-field pair (positions 44/43) are structurally distinct. Traced provenance via
+`git blame`: position 44 (kept) is the original definition from commit `043f38a` (2026-07-13,
+donate-designs), position 50 (removed) is a later accidental re-addition from commit `cbba4ca`
+(2026-07-14, unrelated design-asset-purge/permission-gates commit). Wrote and independently
+reviewed a narrow remediation Plan (`docs/workflow/plans/2026-07-30-firestore-index-duplicate-remediation-plan.md`,
+verdict `approved`) — the Review independently re-ran the audit and provenance trace from scratch
+and confirmed both matched. Implemented the exact, narrow correction (removed only the 14-line
+duplicate block; zero other changes), added deterministic duplicate-validation test coverage
+(`packages/shared/src/constants/firestoreIndexesDuplicateValidation.test.ts`, following the
+existing `storageRulesAlignment.test.ts` convention, 4/4 pass), and ran full verification (JSON
+valid, validator 4/4, Rules 48/48, lint clean, diff-check clean) — all exit 0. Committed narrowly
+(only the 4 intended files) and pushed to `origin/development`. Prepared (did not merge — no `gh`
+CLI available) the `development → production` pull request.
+**Stopped at the production PR merge checkpoint.** The 50 indexes already created on
+`fresh-prints-prod` were not touched; redeployment itself remains a separate, later, explicitly
+approved checkpoint after this PR merges.
 `master` was **not** deleted (retained as a temporary transition fallback; its eventual deletion
 is a separate, later checkpoint). No longer blocked: Goals #9–#12
 (`catalog-image-derivative-storage-consolidation`) closed **2026-07-30**,

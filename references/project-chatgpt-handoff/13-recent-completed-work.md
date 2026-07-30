@@ -2,6 +2,30 @@
 
 > Signed-off or largely complete work. External agents should not re-plan or duplicate this.
 
+## 2026-07-30 - production-release: Firestore index duplicate remediated (Plan + Formal Review approved, committed to development, PR prepared)
+
+- Canonical duplicate audit of `firestore.indexes.json` found exactly one duplicate group:
+  `customerUploads` `purpose ASC + catalogReviewStatus ASC` at array positions 44 and 50,
+  byte-identical; confirmed the legitimate two-field/three-field prefix pair remained distinct
+- Provenance traced via `git blame`: kept copy from commit `043f38a` (2026-07-13, donate-designs
+  feature, deliberate pair with the three-field index); removed copy from commit `cbba4ca`
+  (2026-07-14, unrelated feature commit, accidental re-addition)
+- Confirmed remote `fresh-prints-prod` state unchanged (50 indexes, 0 field overrides) — nothing
+  touched remotely
+- Wrote and independently reviewed a narrow remediation Plan — Formal Review independently
+  re-derived the audit and provenance from scratch, verdict **approved**
+- Implemented the exact, narrow correction (removed only the 14-line duplicate block; zero other
+  changes); corrected file: 65 unique definitions, 0 duplicates
+- Added deterministic duplicate-validation test
+  (`packages/shared/src/constants/firestoreIndexesDuplicateValidation.test.ts`, matching the
+  existing `storageRulesAlignment.test.ts` convention) — 4/4 pass
+- Full verification: JSON valid, validator 4/4, Rules 48/48, lint clean, diff-check clean — all
+  exit 0
+- Committed narrowly (4 files) to `development`, pushed; production PR prepared (not merged — no
+  `gh` CLI available)
+- **The 50 indexes already on `fresh-prints-prod` were not touched; no `firebase deploy` command
+  of any kind was run; `production` received no Git commit; `master` untouched**
+
 ## 2026-07-30 - production-release: Storage Rules DEPLOYED to fresh-prints-prod (deployment-order step 2 of 12)
 
 - Owner approved via `APPROVE STORAGE RULES DEPLOYMENT`; ran the full pre-deploy safety sequence

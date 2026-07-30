@@ -1,5 +1,61 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-07-30 — Goal #13 "production-release" — Firestore index duplicate REMEDIATED on development (Plan + Formal Review approved); stopped at production PR checkpoint
+
+Performed a canonical duplicate audit of `firestore.indexes.json` (deterministic structural
+identity by collectionGroup+queryScope+ordered fields, not raw JSON formatting). Confirmed exactly
+one duplicate group: `customerUploads` `purpose ASC + catalogReviewStatus ASC` at array positions
+44 and 50, byte-identical. Confirmed the legitimate `customerUploads` two-field/three-field pair
+(positions 44/43) are structurally distinct — the three-field prefix-extension index was correctly
+protected, not conflated with the duplicate.
+
+**Provenance traced via `git blame`:** position 44 (kept) originates from commit
+`043f38a1adc4a62a727e5a4a1ee30fd4d1900c81` (2026-07-13, "Add Portal donate-designs uploads and
+Studio donated designs intake") — the original, deliberate pair with the three-field index.
+Position 50 (removed) originates from commit `cbba4ca858d76da5514389a67e187612761240fd`
+(2026-07-14, "Add design asset purge, helper permission gates, and Portal account artwork
+upgrades") — an unrelated feature commit, one day later, that accidentally re-added an identical
+index.
+
+**Confirmed remote state unchanged:** `firebase firestore:indexes --project fresh-prints-prod` —
+50 indexes, 0 field overrides, same 7 collection groups with zero indexes as before. Nothing was
+touched remotely at any point.
+
+**Wrote and independently reviewed a narrow remediation Plan**
+(`docs/workflow/plans/2026-07-30-firestore-index-duplicate-remediation-plan.md`) — the Formal
+Review (`docs/workflow/reviews/2026-07-30-firestore-index-duplicate-remediation-review.md`)
+independently re-ran the audit and provenance trace from scratch and confirmed both matched.
+**Verdict: approved**, no unresolved blocker.
+
+**Implemented the exact, narrow correction:** removed only the 14-line duplicate block (array
+position 50); zero other changes (`git diff --stat`: 1 file, 14 deletions only). Corrected file:
+65 unique definitions, 0 duplicates, 0 field overrides.
+
+**Added deterministic duplicate-validation test coverage:**
+`packages/shared/src/constants/firestoreIndexesDuplicateValidation.test.ts`, following the
+existing `storageRulesAlignment.test.ts` convention (no new dependency) — proves the real file has
+zero duplicates, a fixture with an exact duplicate is detected, and a two-field/three-field prefix
+pair is correctly not flagged. 4/4 tests pass.
+
+**Full verification, all exit 0:** JSON validity, the new validator test, `npm run test:rules`
+(48/48), `npm run lint`, `git diff --check`.
+
+Committed narrowly (only the 4 intended files: the index fix, the new test, the Plan, and the
+Formal Review) and pushed to `origin/development`. Prepared the `development → production` pull
+request — did not merge (no `gh` CLI available in this environment) — exact pre-filled compare URL
+provided to the owner.
+
+**The 50 indexes already created on `fresh-prints-prod` were not touched, edited, or deleted at
+any point.** No `firebase deploy` command of any kind was run. Firestore Rules and Storage Rules
+remain correctly deployed, unaffected. No Secret Manager, Functions, App Hosting, DNS, production
+data, `rebuildCatalogSnapshots`, Studio distribution, or GA4/Search Console action occurred.
+`production` received no Git commit — only `development` advanced. `master` was not touched.
+
+**Active managed goal:** `production-release` (Goal #13) — STOPPED at the production PR merge
+checkpoint; awaiting the owner to review and merge the remediation pull request. After merge:
+production verification, `v1.0.0-rc3` tag, then a **separate** owner approval before retrying the
+Firestore indexes deployment.
+
 ## 2026-07-30 — Goal #13 "production-release" — Firestore indexes deployment BLOCKED (duplicate index caused partial failure); human checkpoint required
 
 Owner approved via the Firestore-indexes deployment instruction, authorizing exactly
