@@ -2,6 +2,66 @@
 
 > Signed-off or largely complete work. External agents should not re-plan or duplicate this.
 
+## 2026-07-30 - production-release: Cloud Functions deployment complete (deployment-order step 5 of 12)
+
+- Phase A non-secret Functions configuration audit found no source change required
+  (`portalUrlResolver.ts`, `.firebaserc`, email-sender defaults all already matched owner intent)
+- Fresh programmatic re-enumeration on the verified `production` commit reconfirmed 105 total
+  exports / 99 include / 6 exclude, byte-identical to the previously approved allowlist
+- Created `functions/.env.fresh-prints-prod` (gitignored, matching the existing repo convention)
+  to resolve two non-secret `defineString` params under non-interactive CLI deploy mode
+- Owner approved `--force` for one specific, reviewed reason: `onEmailDeliveryJobCreated` has a
+  pre-existing, intentional `retry: true` trigger option
+- First deploy attempt landed 84 of 99 functions; 15 failed with transient quota/Eventarc-
+  propagation errors expected on a brand-new project's first bulk 2nd-gen deploy — verified via
+  authoritative `firebase functions:list --json` that all 84 were correctly on the allowlist
+  before retrying
+- Scoped retry of exactly the 15 missing functions succeeded, ending in an explicit "Deploy
+  complete!"
+- **Final verification: exactly 99 functions deployed, byte-identical to the approved allowlist
+  (zero drift), 0 of the 6 excluded functions present, all in `us-central1`, no function in a
+  non-ACTIVE state, `rebuildCatalogSnapshots` present** (deployed, not yet invoked)
+- **No secret value was ever accessed, printed, or logged. No excluded Function deployed. No App
+  Hosting, Portal, DNS, Auth, or production-data action occurred; `production` received no Git
+  commit**
+- Next checkpoint: App Hosting environment-variable configuration and first Portal release
+  (deployment-order step 6 of 12)
+
+## 2026-07-30 - production-release: Firestore indexes checkpoint closed; Secret Manager population complete (deployment-order steps 3-4 of 12)
+
+- Owner confirmed via Firebase Console that all 65 of 65 composite indexes on `fresh-prints-prod`
+  show `Enabled` — 0 `Building`, 0 `Error`. Deployment-order step 3 of 12 closed.
+- Source-level audit of `functions/src/lib/secrets.ts` on the verified `production` commit found
+  exactly 4 required secrets: `GEMINI_API_KEY`, `RESEND_API_KEY`, `BREVO_API_KEY`,
+  `ETSY_X_API_KEY` — cross-referenced against the approved 99-function allowlist with no
+  inconsistency; confirmed zero `OPENAI_API_KEY` references anywhere in source
+- Confirmed from source (not guessed) that the email-provider system defaults to Resend and does
+  not fail closed on a missing `settings/emailProviders` document; owner selected both Resend and
+  Brevo for launch flexibility
+- Owner confirmed all four external provider credentials AVAILABLE and sender
+  domains/access VERIFIED — no blocker identified
+- Pre-population metadata check confirmed all four secrets absent (no overwrite risk); owner
+  populated all four via `firebase functions:secrets:set` in their own terminal (this tool cannot
+  host an interactive value prompt); post-population metadata confirmed all four at version 1,
+  state ENABLED
+- **No secret value was ever printed, logged, or exposed at any point. No secret created in
+  `fresh-prints-dev`. No Cloud Functions, App Hosting, or other Firebase component deployed;
+  production received no Git commit; `master` untouched**
+- Next checkpoint: owner approval to deploy Cloud Functions (approved 99-function allowlist),
+  deployment-order step 5 of 12
+
+## 2026-07-30 - production-release: Firestore indexes deployed to fresh-prints-prod (deployment-order step 3 of 12)
+
+- Redeployed `firebase deploy --only firestore:indexes --project fresh-prints-prod` on the
+  verified corrected `production` commit (merge `21f036f`) — exit 0, "Deploy complete!", no
+  deletion prompt
+- Post-deploy remote state: 65 indexes, 0 field overrides, all 16 collection groups represented
+- Precise canonical-identity comparison confirmed 0 missing / 0 unexpected — every local
+  definition present remotely with matching content
+- Remaining: owner Console confirmation that every index shows `Enabled` (not obtainable from CLI
+  output alone)
+- **No other Firebase component deployed; production received no Git commit; `master` untouched**
+
 ## 2026-07-30 - production-release: Firestore index duplicate remediated (Plan + Formal Review approved, committed to development, PR prepared)
 
 - Canonical duplicate audit of `firestore.indexes.json` found exactly one duplicate group:

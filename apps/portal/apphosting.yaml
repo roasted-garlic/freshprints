@@ -4,3 +4,48 @@ runConfig:
   minInstances: 0
   maxInstances: 10
   concurrency: 80
+
+# Production (fresh-prints-prod) Portal web config. All NEXT_PUBLIC_* values here are
+# browser-exposed by design, not secrets. NEXT_PUBLIC_GA_MEASUREMENT_ID is deliberately
+# omitted — GA4 go-live is its own separate, later production-release checkpoint.
+env:
+  - variable: NEXT_PUBLIC_FIREBASE_API_KEY
+    value: AIzaSyBE9IAFfLwmnanQ4yUxuTtgIT3yTleIvYc
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+    value: fresh-prints-prod.firebaseapp.com
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+    value: fresh-prints-prod
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+    value: fresh-prints-prod.firebasestorage.app
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+    value: "473623863375"
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_APP_ID
+    value: "1:473623863375:web:524ec1a63f547e4d85ca3a"
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_VAPID_KEY
+    value: BKQeXm_CCwq82lELOIw1pgZMVwsS-ppyw3_E4ChxeQbTpQik3ffHCRhch1zqd36ipvkAIX-peh6JWgireT1ANPU
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_PORTAL_ORIGIN
+    value: https://myprintrequest.com
+    availability:
+      - BUILD
+      - RUNTIME

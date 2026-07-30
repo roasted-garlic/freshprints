@@ -122,7 +122,7 @@ Current Goal:
 | 10 | Increase the MB limit for custom-request reference images | **Done** (2026-07-29, approved) — 40 MB/file live in `fresh-prints-dev` at every enforcement layer, 8 files unchanged, 320 MB combined ceiling active; owner QA FAIL (stale 15 MB deployed Cloud Functions) → Amendment 1 root-caused and fixed via scoped Functions redeploy → owner re-QA PASS |
 | 11 | `customer-upload-oversized-pixel-normalization-and-processing-timeout-followup` | **Done** (2026-07-30, approved_with_notes; owner QA PASS WITH NOTES — see signoff) |
 | 12 | `catalog-image-derivative-storage-consolidation` | **Done — closed_by_owner_after_inventory** (2026-07-30). Real dev inventory measured originals at ~97.66% of catalog Storage (980.8 MB of 1,004.3 MB); thumbnails+previews combined only 23.5 MB; zero orphans/duplicates/violations found. Owner decided the migration's small addressable Storage win did not justify the required backfill/consumer-cutover/bandwidth-increase — closed before implementation, an evidence-based decision. Retained as dev-only tooling: the read-only `inventoryCatalogImageStorage` callable and its Studio invocation panel. |
-| 13 | `production-release` — prod Firebase / App Hosting / Google / email | **Active** — Firestore index duplicate (`customerUploads` purpose+catalogReviewStatus, provenance-traced to commit `cbba4ca`) **remediated**: Plan + independent Formal Review both `approved`; corrected file (65 unique/0 duplicates) + new deterministic duplicate-validation test committed to `development`, all verification passing; **stopped at the development-to-production PR merge checkpoint**; the 50 indexes already on `fresh-prints-prod` remain untouched, redeployment itself remains a separate future checkpoint; Rules (steps 1–2) unaffected and still correctly deployed; production approval required before any further implementation or deployment |
+| 13 | `production-release` — prod Firebase / App Hosting / Google / email | **Active** — deployment-order **steps 1-5 of 12 all complete**: Firestore Rules ✅, Storage Rules ✅, Firestore indexes ✅ (owner-confirmed all 65 `Enabled`), Secret Manager ✅ (`GEMINI_API_KEY`/`RESEND_API_KEY`/`BREVO_API_KEY`/`ETSY_X_API_KEY` all confirmed version 1 ENABLED on `fresh-prints-prod`, set directly by the owner, no value ever exposed), **Cloud Functions ✅** (99 of 99 approved functions deployed and authoritatively verified via `firebase functions:list --json`, 0 of 6 excluded functions present, `rebuildCatalogSnapshots` deployed but not yet invoked); **now proceeding into Phase C** (App Hosting environment configuration + first Portal release, step 6 of 12) under the active Continue Workflow's already-granted multi-phase authorization |
 | 14 | `customer-upload-early-transparency-format-validation` — reject invalid customer artwork before the trimming stage is shown | **Done** (2026-07-30, approved; automated verification 23/23 pass, clean build/lint; owner deployed to `fresh-prints-dev` and confirmed manual QA PASS across all 5 goal-brief scenarios). Separate narrow follow-up run alongside the paused `production-release` (#13), which this goal did not modify. See `docs/workflow/plans/2026-07-30-customer-upload-early-transparency-format-validation-plan.md`. |
 
 **Small Managed Items Backlog:** #5–**#14** **Done** (2026-07-21). See [Small Managed Items Backlog](#small-managed-items-backlog-2026-07-18) below.
@@ -305,11 +305,84 @@ existing `storageRulesAlignment.test.ts` convention, 4/4 pass), and ran full ver
 valid, validator 4/4, Rules 48/48, lint clean, diff-check clean) — all exit 0. Committed narrowly
 (only the 4 intended files) and pushed to `origin/development`. Prepared (did not merge — no `gh`
 CLI available) the `development → production` pull request.
-**Stopped at the production PR merge checkpoint.** The 50 indexes already created on
-`fresh-prints-prod` were not touched; redeployment itself remains a separate, later, explicitly
-approved checkpoint after this PR merges.
-`master` was **not** deleted (retained as a temporary transition fallback; its eventual deletion
-is a separate, later checkpoint). No longer blocked: Goals #9–#12
+**Since then (same day, later pass):** owner merged GitHub PR #5 — confirmed via GitHub API
+(`merged: true`, merge commit `21f036fab2ff6cb0a4d934ef5e5c9e465b21e293`, 9 files, +1129/-43,
+matching this goal's own pre-merge verification exactly). Switched to `production`, fast-forward
+pulled, verified the corrected index file on the exact merged commit: 65 unique/0
+duplicates/0 field overrides (new hash `e3c15380f...`); `firestore.rules`/`storage.rules`
+confirmed unchanged from already-deployed versions; Functions allowlist re-confirmed unchanged
+(105/99/6). Full verification suite passed (validator 4/4, Rules 48/48, lint clean, diff-check
+clean). Captured remote state read-only — 50 indexes, 0 field overrides, unchanged, untouched.
+Confirmed `v1.0.0-rc1`/`v1.0.0-rc2` unchanged; created and pushed annotated tag `v1.0.0-rc3` on
+the verified merge commit. Returned to `development` (already in sync, no back-merge needed).
+**Since then (same day, later pass):** owner approved the redeploy via
+`APPROVE FIRESTORE INDEXES REDEPLOYMENT`. Full pre-deploy verification re-confirmed exact matches
+(`HEAD`/`origin/production`/`firestore.indexes.json` hash; validator 4/4; canonical audit
+65/65/0/0; Rules 48/48; lint clean; diff-check clean; remote baseline 50/0 confirmed). Ran
+`firebase deploy --only firestore:indexes --project fresh-prints-prod` — **exit 0**, "Deploy
+complete!", "firestore: deployed indexes ... successfully for (default) database" — no deletion
+prompt. Post-deploy remote check: **65 indexes, 0 field overrides**, all 16 collection groups
+represented. Precise canonical-identity comparison (correctly excluding Firestore's
+server-auto-appended `__name__` tiebreaker field) confirmed **0 missing, 0 unexpected** — every
+local definition present remotely with matching content. Returned to `development` (already in
+sync). **The CLI cannot report per-index build status** (`Enabled`/`Building`/`Error`), only
+definitions — so full closure of this checkpoint awaited owner confirmation via Firebase Console.
+
+**Since then (same day, later pass):** owner confirmed via Firebase Console that all 65 of 65
+indexes show `Enabled` — **Firestore indexes (step 3) fully closed.** Immediately continued to
+Secret Manager (step 4, `APPROVE SECRET MANAGER INVENTORY AND PRODUCTION POPULATION`). Performed
+a source-level secret audit on the verified `production` commit: exactly 4 secrets defined in
+`functions/src/lib/secrets.ts` (`GEMINI_API_KEY`, `RESEND_API_KEY`, `BREVO_API_KEY`,
+`ETSY_X_API_KEY`), each mapped to its exact binding Functions, all binding Functions confirmed
+included in the approved 99-function allowlist (only the dev-only-excluded
+`testAiEnrichmentPlayground`/`testAiEnrichmentTagRerank` also reference `GEMINI_API_KEY`).
+Confirmed zero `OPENAI_API_KEY` references anywhere in source. Confirmed from source
+(`DEFAULT_EMAIL_PROVIDER_SETTINGS`) that the system defaults to Resend and does not fail closed
+when `settings/emailProviders` doesn't exist. Owner selected both Resend and Brevo for launch
+flexibility; confirmed all four external-provider credentials available and both email-provider
+sender domains verified, Etsy application access available — no blocker. Pre-population metadata
+check confirmed all four secrets absent from `fresh-prints-prod` (no existing-secret conflict).
+**This coding agent's tool environment cannot host a genuinely interactive terminal prompt** for
+secret entry, so per the hard security rules, the owner correctly ran
+`firebase functions:secrets:set` for all four names directly in their own terminal. Post-
+population metadata verification (read-only, no values accessed) confirmed all four secrets at
+version 1, state ENABLED. Confirmed no `OPENAI_API_KEY` created; confirmed no secret created in
+`fresh-prints-dev`. **No secret value was ever printed, logged, or exposed at any point.**
+**Stopped at the Functions deployment approval checkpoint** (step 5 of 12 — approved 99-function
+allowlist). `master` was **not** deleted (retained as a temporary transition fallback; its
+eventual deletion is a separate, later checkpoint).
+
+**Since then (same day, later pass):** owner issued a multi-phase `Continue Workflow` instruction
+authorizing Phase A (non-secret Functions configuration audit) through Phase H (final signoff) in
+sequence, pausing only at specific named checkpoints. Phase A found no source change required —
+`portalUrlResolver.ts`, `.firebaserc`, and the `INVITATION_FROM_EMAIL`/`PROOF_NOTICE_FROM_EMAIL`
+code defaults already matched owner intent exactly. Reverification on the fast-forward-verified
+`production` commit (`21f036f`) passed cleanly (build/lint/diff-check all exit 0); fresh
+programmatic re-enumeration reconfirmed 105 total/99 include/6 exclude, byte-identical to the
+approved allowlist, with zero drift. Ran the exact reviewed 99-function deploy command against
+`fresh-prints-prod`. First attempt failed before creating anything (`--non-interactive` mode needed
+explicit values for the `defineString` params) — fixed by creating `functions/.env.fresh-prints-prod`
+(gitignored, same convention as the existing dev file, containing only the two non-secret
+sender-address defaults). Second attempt failed requiring `--force` because
+`onEmailDeliveryJobCreated` has a pre-existing, intentional `retry: true` trigger option — surfaced
+to the owner via a structured question rather than applied unilaterally; **owner approved `--force`
+for this specific reason.** Third attempt deployed 84 of 99 functions; 15 failed with transient
+`429 Quota exceeded` (expected on a brand-new project's first bulk 2nd-gen deploy) plus Eventarc
+permission-propagation delays. Verified via authoritative `firebase functions:list --json` (not
+log-parsing) that all 84 deployed functions were correctly on the approved allowlist — the partial
+failure was purely quota/propagation-related, not a configuration defect. Waited ~2.5 minutes, then
+retried with an explicit allowlist scoped to exactly the 15 missing names (same owner-approved
+`--force`) — all 15 succeeded, log ended with an explicit "Deploy complete!". **Final authoritative
+verification: exactly 99 functions deployed, byte-identical to the approved allowlist (zero drift),
+0 of the 6 excluded functions present, all in `us-central1`, no function in a non-ACTIVE state,
+`rebuildCatalogSnapshots` confirmed present** (deployed but not invoked — that remains its own
+Phase D checkpoint). Deploy log directly confirmed the `GEMINI_API_KEY` secret-accessor role was
+granted to the Functions service account during this deploy, direct evidence secret bindings are
+live. **No secret value was ever accessed, printed, or logged.** **Deployment-order step 5 (Cloud
+Functions) is now closed; proceeding into Phase C** (App Hosting environment configuration and
+first Portal release, step 6 of 12) under the same multi-phase authorization.
+
+No longer blocked: Goals #9–#12
 (`catalog-image-derivative-storage-consolidation`) closed **2026-07-30**,
 **closed_by_owner_after_inventory** — the real dev Storage inventory measured originals at
 ~97.66% of catalog Storage (980,807,863 of 1,004,304,719 bytes across 87 designs), with existing
