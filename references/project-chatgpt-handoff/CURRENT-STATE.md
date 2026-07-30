@@ -1,5 +1,37 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-07-30 — Goal #13 "production-release" — Firestore index remediation MERGED to production via PR #5; v1.0.0-rc3 tagged; stopped at indexes-redeployment approval checkpoint
+
+**PR #5 merge verified via GitHub API:** `merged: true`, merge commit
+`21f036fab2ff6cb0a4d934ef5e5c9e465b21e293`, base `production` (was `a8b02c9`) ← head
+`development` (`03d16b0`), 9 files, +1129/-43 — exactly matching this goal's own pre-merge
+verification. `origin/production` advanced accordingly; `master` unchanged.
+
+Switched to `production`, fast-forward pulled, confirmed branch/HEAD/clean tree. **Verified the
+corrected index configuration on the exact merged commit:** `firestore.indexes.json` new hash
+`e3c15380f538c3e1e6ccf5197c82f1b2ad63b5e5`; canonical duplicate audit — **65 total, 65 unique, 0
+duplicate groups, 0 field overrides**; both the two-field and three-field `customerUploads`
+indexes confirmed present and distinct. `firestore.rules` and `storage.rules` confirmed
+**unchanged** from already-deployed versions. Fresh Functions export enumeration: **105
+total, 99 include, 6 exclude** — allowlist unchanged.
+
+**Full verification suite, all exit 0:** duplicate validator (4/4), JSON validity, `npm run
+test:rules` (48/48), `npm run lint`, `git diff --check`.
+
+**Remote state captured read-only:** `firebase firestore:indexes --project fresh-prints-prod` —
+50 indexes, 0 field overrides — **unchanged, untouched.**
+
+Confirmed `v1.0.0-rc1` and `v1.0.0-rc2` unchanged; created and pushed annotated tag **`v1.0.0-rc3`**
+on the verified merge commit. Returned to `development` (already in sync — no back-merge needed).
+
+**No Firebase deployment, secret configuration, DNS configuration, or production data creation
+occurred in this pass.** The 50 already-created remote indexes were not touched, edited, or
+deleted. `master` was not deleted.
+
+**Active managed goal:** `production-release` (Goal #13) — STOPPED at the Firestore indexes
+**redeployment** approval checkpoint; awaiting explicit owner approval to retry
+`firebase deploy --only firestore:indexes --project fresh-prints-prod`.
+
 ## 2026-07-30 — Goal #13 "production-release" — Firestore index duplicate REMEDIATED on development (Plan + Formal Review approved); stopped at production PR checkpoint
 
 Performed a canonical duplicate audit of `firestore.indexes.json` (deterministic structural

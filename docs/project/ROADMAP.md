@@ -122,7 +122,7 @@ Current Goal:
 | 10 | Increase the MB limit for custom-request reference images | **Done** (2026-07-29, approved) — 40 MB/file live in `fresh-prints-dev` at every enforcement layer, 8 files unchanged, 320 MB combined ceiling active; owner QA FAIL (stale 15 MB deployed Cloud Functions) → Amendment 1 root-caused and fixed via scoped Functions redeploy → owner re-QA PASS |
 | 11 | `customer-upload-oversized-pixel-normalization-and-processing-timeout-followup` | **Done** (2026-07-30, approved_with_notes; owner QA PASS WITH NOTES — see signoff) |
 | 12 | `catalog-image-derivative-storage-consolidation` | **Done — closed_by_owner_after_inventory** (2026-07-30). Real dev inventory measured originals at ~97.66% of catalog Storage (980.8 MB of 1,004.3 MB); thumbnails+previews combined only 23.5 MB; zero orphans/duplicates/violations found. Owner decided the migration's small addressable Storage win did not justify the required backfill/consumer-cutover/bandwidth-increase — closed before implementation, an evidence-based decision. Retained as dev-only tooling: the read-only `inventoryCatalogImageStorage` callable and its Studio invocation panel. |
-| 13 | `production-release` — prod Firebase / App Hosting / Google / email | **Active** — Firestore index duplicate (`customerUploads` purpose+catalogReviewStatus, provenance-traced to commit `cbba4ca`) **remediated**: Plan + independent Formal Review both `approved`; corrected file (65 unique/0 duplicates) + new deterministic duplicate-validation test committed to `development`, all verification passing; **stopped at the development-to-production PR merge checkpoint**; the 50 indexes already on `fresh-prints-prod` remain untouched, redeployment itself remains a separate future checkpoint; Rules (steps 1–2) unaffected and still correctly deployed; production approval required before any further implementation or deployment |
+| 13 | `production-release` — prod Firebase / App Hosting / Google / email | **Active** — Firestore index duplicate-remediation **merged to `production`** via PR #5 (merge commit `21f036f`); verified on the exact merged commit (65 unique/0 duplicates, Rules/Storage-Rules/Functions-allowlist all unchanged, full verification suite passing); **`v1.0.0-rc3` tagged**; the 50 indexes already on `fresh-prints-prod` remain untouched; **stopped at the Firestore indexes redeployment approval checkpoint** (step 3 of 12 — correction is live, the actual redeploy has not been retried); production approval required before any further implementation or deployment |
 | 14 | `customer-upload-early-transparency-format-validation` — reject invalid customer artwork before the trimming stage is shown | **Done** (2026-07-30, approved; automated verification 23/23 pass, clean build/lint; owner deployed to `fresh-prints-dev` and confirmed manual QA PASS across all 5 goal-brief scenarios). Separate narrow follow-up run alongside the paused `production-release` (#13), which this goal did not modify. See `docs/workflow/plans/2026-07-30-customer-upload-early-transparency-format-validation-plan.md`. |
 
 **Small Managed Items Backlog:** #5–**#14** **Done** (2026-07-21). See [Small Managed Items Backlog](#small-managed-items-backlog-2026-07-18) below.
@@ -305,9 +305,19 @@ existing `storageRulesAlignment.test.ts` convention, 4/4 pass), and ran full ver
 valid, validator 4/4, Rules 48/48, lint clean, diff-check clean) — all exit 0. Committed narrowly
 (only the 4 intended files) and pushed to `origin/development`. Prepared (did not merge — no `gh`
 CLI available) the `development → production` pull request.
-**Stopped at the production PR merge checkpoint.** The 50 indexes already created on
-`fresh-prints-prod` were not touched; redeployment itself remains a separate, later, explicitly
-approved checkpoint after this PR merges.
+**Since then (same day, later pass):** owner merged GitHub PR #5 — confirmed via GitHub API
+(`merged: true`, merge commit `21f036fab2ff6cb0a4d934ef5e5c9e465b21e293`, 9 files, +1129/-43,
+matching this goal's own pre-merge verification exactly). Switched to `production`, fast-forward
+pulled, verified the corrected index file on the exact merged commit: 65 unique/0
+duplicates/0 field overrides (new hash `e3c15380f...`); `firestore.rules`/`storage.rules`
+confirmed unchanged from already-deployed versions; Functions allowlist re-confirmed unchanged
+(105/99/6). Full verification suite passed (validator 4/4, Rules 48/48, lint clean, diff-check
+clean). Captured remote state read-only — 50 indexes, 0 field overrides, unchanged, untouched.
+Confirmed `v1.0.0-rc1`/`v1.0.0-rc2` unchanged; created and pushed annotated tag `v1.0.0-rc3` on
+the verified merge commit. Returned to `development` (already in sync, no back-merge needed).
+**Stopped at the Firestore indexes redeployment approval checkpoint.** The 50 indexes already on
+`fresh-prints-prod` remain untouched; the actual index-deploy retry has not been executed and
+remains its own separate, explicitly approved checkpoint.
 `master` was **not** deleted (retained as a temporary transition fallback; its eventual deletion
 is a separate, later checkpoint). No longer blocked: Goals #9–#12
 (`catalog-image-derivative-storage-consolidation`) closed **2026-07-30**,
