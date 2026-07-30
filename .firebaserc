@@ -1,5 +1,6 @@
 {
   "projects": {
-    "default": "fresh-prints-dev"
+    "default": "fresh-prints-dev",
+    "production": "fresh-prints-prod"
   }
 }
