@@ -5,12 +5,18 @@ Current Mode: managed-phase
 Current Phase: implement
 Plan Status: complete
 Review Status: complete (`approved_with_notes`)
-Implement Status: in_progress — **Firestore Rules DEPLOYED to `fresh-prints-prod`** (step 1 of 12
-complete, first-ever Rules deployment to this project, exit 0, "Deploy complete!"). Approved
-deployment order: (1) Firestore Rules ✅ DONE → (2) Storage Rules → (3) indexes → (4) secrets →
-(5) Functions → (6) App Hosting env vars → (7) first Portal release → (8) Studio build → (9)
-settings/reference data → (10) domain/Authorized Domains → (11) smoke tests → (12) GA4/Search
-Console. Stopped at the Storage Rules deployment approval checkpoint (step 2)
+Implement Status: in_progress — **Firestore index duplicate REMEDIATED on `development`** (Plan +
+independent Formal Review `approved`; exact duplicate `customerUploads` two-field index at array
+position 50, introduced by commit `cbba4ca` 2026-07-14, removed — traced via `git blame` to be a
+later, accidental re-addition of the original `043f38a` 2026-07-13 definition at position 44,
+which is preserved; the distinct three-field prefix-extension index at position 43 confirmed
+untouched). File now has 65 unique definitions, 0 duplicates, 0 field overrides. Added
+deterministic duplicate-validation test
+(`packages/shared/src/constants/firestoreIndexesDuplicateValidation.test.ts`, 4/4 pass). Full
+verification suite passed. **Not yet promoted to `production` — stopped at the
+development-to-production PR checkpoint.** The 50 indexes already created on `fresh-prints-prod`
+remain untouched; Firestore indexes deployment itself has not been retried. Firestore Rules
+(step 1) and Storage Rules (step 2) remain correctly deployed and unaffected throughout.
 Test Status: pending
 Signoff Status: pending
 DONE: no
@@ -64,26 +70,30 @@ No GA4 or Search Console configuration occurred. `production` was not modified. 
 deleted. No force-push occurred anywhere in this pass** (only file writes and doc/state commits to
 `development`, still pending push at the time this state was written — see the response for the
 final documentation commit hash).
-Human Checkpoint Required: yes — **Storage Rules deployment (deployment-order step 2)** is the
-immediate next checkpoint, per the approved order: Firestore Rules ✅ DONE → Storage Rules →
-indexes → Secret Manager → Functions (approved 99-function allowlist) → App Hosting env vars →
-first App Hosting Portal release → production Studio build → settings/reference-data setup →
-domain/Authorized Domains → smoke tests → GA4/Search Console. Separately, decide whether/when to
-approve running `git config core.hooksPath .githooks` to activate the now-optional local pre-push
-safeguard.
-Blocked: no (not blocked; paused at the Storage Rules deployment approval checkpoint by explicit
-instruction)
-Allowed Actions: none beyond this pass; awaiting explicit owner approval to run the equivalent
-Storage Rules deploy command
-Forbidden Actions: deleting `master` (local or remote); modifying `production`; running any
-`firebase deploy` command; triggering an App Hosting release/rollout; any
-indexes/Functions/secret/DNS/Auth-config/GA4/Search-Console action; invoking
+Human Checkpoint Required: yes — **development-to-production PR merge for the Firestore index
+duplicate remediation.** The remediation is fully implemented, reviewed (Plan + independent
+Formal Review both `approved`), verified (validator 4/4, Rules 48/48, lint clean, diff-check
+clean), committed, and pushed to `development`. A pull request (`production` ← `development`) is
+prepared per the established protected-branch workflow. Owner must review and merge it, after
+which a **separate** future checkpoint (its own explicit approval) is required to retry the
+Firestore indexes deployment itself — merging this PR does not authorize a redeploy.
+Blocked: no (not blocked; paused at the production PR merge checkpoint by explicit instruction —
+the remediation itself is complete on `development`)
+Allowed Actions: none beyond this pass; awaiting the owner to review and merge the remediation PR
+Forbidden Actions: deleting `master` (local or remote); modifying `production` directly (only via
+the PR); running any `firebase deploy` command of any kind; using `--force` on any Firestore
+command; manually deleting or editing production indexes via Console; merging `production` back
+into `development` (not needed — this is a `development`-originated fix); triggering an App
+Hosting release/rollout; any Functions/secret/DNS/Auth-config/GA4/Search-Console action; invoking
 `rebuildCatalogSnapshots`; building or distributing a production Studio installer; touching
 production data; force-pushing any branch; rewriting Git history; configuring `core.hooksPath`
 without separate owner approval; changing repository visibility
-Next Required Step: **STOP.** Await explicit owner approval to deploy Storage Rules to
-`fresh-prints-prod`. Do not proceed to indexes, secrets, Functions, or the App Hosting first
-release until Storage Rules deployment is approved, executed, and verified.
+Next Required Step: **STOP.** Await the owner reviewing and merging the
+`development` → `production` remediation pull request
+(`https://github.com/roasted-garlic/freshprints/compare/production...development?expand=1`).
+After merge: production verification, `v1.0.0-rc3` tag, then a **separate** owner approval before
+retrying the Firestore indexes deployment. Do not proceed to Secret Manager, Functions, or the App
+Hosting first release until Firestore indexes reach a fully verified `Enabled`/ready state.
 
 Plan:
 `docs/workflow/plans/2026-07-29-preproduction-static-analysis-cleanup-plan.md`.
@@ -5357,3 +5367,307 @@ checkpoint.
 
 Next: **STOP.** Await explicit owner approval for Storage Rules deployment (deployment-order step
 2). Do not proceed to indexes, secrets, Functions, or the App Hosting first release before that.
+
+## 2026-07-30 — Goal #13 `production-release` — Studio tsconfig fix committed; development promoted to production via PR #3; full verification passed; v1.0.0-rc2 tagged
+
+**Studio TypeScript fix:** owner confirmed the local `apps/studio/tsconfig.json` diff (removal of
+`"ignoreDeprecations": "5.0"` and `"baseUrl": "."`) was intentional — fixes a TypeScript 5.9.3
+compatibility issue (`"5.0"` is no longer a valid `ignoreDeprecations` value on this version;
+`baseUrl` was dead configuration, unused by `moduleResolution: "bundler"` with all-relative
+`paths`). Config-only, no runtime behavior change. Verified: Studio typecheck (0), Studio build
+incl. electron-builder packaging (0), repo lint (0), `git diff --check` (0). Committed to
+`development` as `dd05ef25ebeb2512ee1a56da031b6118acb01498a`
+("fix(studio): resolve production TypeScript configuration error"), pushed.
+
+**Promotion diff verified before PR:** `origin/production..origin/development` = 8 commits, 9
+files (+1535/-53) — the tsconfig fix, `.githooks/pre-push` (new), and 7 documentation/redaction
+files. `firestore.rules`, `storage.rules`, `firestore.indexes.json`, and `functions/src/index.ts`
+all confirmed byte-identical between branches (no behavioral difference). No secret, local env
+file, or generated output present.
+
+**PR #3** ("Release: promote verified development state to production"):
+`https://github.com/roasted-garlic/freshprints/pull/3` — owner created and merged (confirmed via
+GitHub API: `merged: true`, `merge_commit_sha: a8b02c9ee736eb1c619b8dc5fd7530f32cd0fb56`, base
+`production` was at `aa570aa`, head `development` at `dd05ef2`, 8 commits, 9 files,
++1535/-53 — exactly matching this session's own pre-merge diff). `origin/production` advanced
+`aa570aa..a8b02c9`.
+
+**Local production verification:** `git switch production` → `git pull --ff-only origin
+production` (fast-forward, no conflicts) → confirmed branch `production`, `HEAD` =
+`origin/production` = `a8b02c9ee736eb1c619b8dc5fd7530f32cd0fb56`, clean tree.
+
+**Full release verification suite on the exact merged commit — all pass:**
+| Check | Command | Exit |
+|---|---|---|
+| Functions build | `cd functions && npm run build` | 0 |
+| Portal typecheck | `npm run typecheck --workspace @fresh-prints/portal` | 0 |
+| Studio typecheck | `npx tsc --noEmit -p apps/studio/tsconfig.json` | 0 |
+| Portal build | `npm run build:portal` | 0 |
+| Studio build | `npm run build:studio` | 0 |
+| Repo lint | `npm run lint` | 0 |
+| Firebase Rules tests | `npm run test:rules` (portable JDK 21) | 0 (48/48 pass) |
+| `git diff --check` | — | 0 (clean tree) |
+| Fresh Functions export enumeration | programmatic parse of `functions/src/index.ts` | 105 total, 99 include, 6 exclude, `rebuildCatalogSnapshots` included — **unchanged, matches the approved allowlist exactly** |
+
+**Deployment file hashes on the merged `production` commit** (all confirmed unchanged from the
+already-verified/deployed versions):
+- `firestore.rules`: `d4d754e22090a75ec9fa1c7fc38bbf2101822131` — matches the already-deployed
+  version; **no redeployment required**.
+- `storage.rules`: `3f1dd48e9f37afacb972ade3dc21c2818038a6fe` — reviewed production version.
+- `firestore.indexes.json`: `b67e711bed1a2881767b94ac369fed59346301be` — reviewed production
+  version.
+
+**Tag:** confirmed `v1.0.0-rc1` unchanged at `aa570aa875d20ba85fd405480a47e6eda59f85b0`. Confirmed
+`v1.0.0-rc2` did not already exist. Created annotated tag `v1.0.0-rc2` on the exact verified
+merge commit (`a8b02c9ee736eb1c619b8dc5fd7530f32cd0fb56`), message "Fresh Prints production
+release candidate 2", pushed to `origin` — `* [new tag] v1.0.0-rc2 -> v1.0.0-rc2`.
+
+**Returned to `development`:** `git switch development` → `git pull --ff-only origin development`
+— fast-forwarded 2 additional commits (`dd05ef2..1066f57`), the second being PR #4, a benign
+production→development sync-back merge (GitHub-suggested branch-alignment merge; content-identical,
+introduces nothing new since `production`'s content was already fully derived from `development`).
+Confirmed final branch `development`, clean tree, and `origin/production` still exactly at
+`a8b02c9ee736eb1c619b8dc5fd7530f32cd0fb56` (unaffected by the sync-back).
+
+**No Firebase deployment of any kind occurred in this pass.** No Storage Rules, indexes,
+Functions, App Hosting, secrets, DNS, or production data action occurred. `master` was not
+deleted. No branch protection was bypassed — the promotion went entirely through the GitHub PR
+workflow, no emergency override was used, no force-push occurred anywhere.
+
+Next: **STOP.** Await explicit owner approval to deploy Storage Rules
+(`firebase deploy --only storage --project fresh-prints-prod`) to `fresh-prints-prod`
+(deployment-order step 2).
+
+## 2026-07-30 — Goal #13 `production-release` — Storage Rules DEPLOYED to `fresh-prints-prod` (deployment-order step 2 of 12 complete)
+
+Owner explicitly approved via `APPROVE STORAGE RULES DEPLOYMENT`, authorizing exactly
+`firebase deploy --only storage --project fresh-prints-prod` and no other component.
+
+**Pre-deploy safety sequence, run exactly as specified:**
+1. Confirmed main working tree clean on `development` before switching.
+2. `git fetch origin`.
+3. `git switch production`.
+4. `git pull --ff-only origin production` — already up to date, no-op.
+5. Verified: current branch `production`; local `HEAD` = `origin/production` =
+   `a8b02c9ee736eb1c619b8dc5fd7530f32cd0fb56` (exact match); working tree clean; `storage.rules`
+   blob hash = `3f1dd48e9f37afacb972ade3dc21c2818038a6fe` (exact match to the required value).
+6. Confirmed target project `fresh-prints-prod` in the command.
+7. Ran `npm run test:rules` (portable JDK 21 workaround, no system Java present) — **48/48 pass,
+   exit 0.**
+8. Ran `git diff --check` — exit 0 (clean).
+
+All verifications matched exactly — proceeded to deploy.
+
+**Deployment command:** `firebase deploy --only storage --project fresh-prints-prod`
+**Exit code:** 0
+**Firebase CLI result:** "Deploy complete!" — Storage Rules compiled successfully with no errors
+or warnings, uploaded, and released to `firebase.storage`. Console URL confirmed:
+`https://console.firebase.google.com/project/fresh-prints-prod/overview`. No credential or
+environment value was printed by this command or captured in this record.
+
+**This is the first Fresh Prints production Storage Rules deployment** — `fresh-prints-prod` had
+no prior Storage Rules deployment history before this action. Firebase Console may retain the
+project's original default bucket rules in its version history alongside the newly deployed
+version.
+
+**Owner Console verification instructions (provided, not yet confirmed by owner):** Firebase
+Console → `fresh-prints-prod` → Build → Storage → Rules tab → confirm the "Last published"
+timestamp reflects this deployment's completion time → confirm the displayed Rules content
+matches the reviewed production `storage.rules`.
+
+**Rollback preparation (for any future need, not performed this pass):** since this is the first
+Storage Rules deployment on this project, there is no earlier Fresh Prints production commit to
+restore. For a future rollback: check out the previously deployed production commit, then deploy
+that commit's `storage.rules` via the same command
+(`firebase deploy --only storage --project fresh-prints-prod`). Firebase Console's Rules history
+may also retain the original Firebase-generated default rules version.
+
+**Post-deployment branch return:** `git switch development` → `git pull --ff-only origin
+development` (already up to date, no-op) → confirmed current branch `development`, working tree
+clean.
+
+**`production` received zero Git commits from this pass** — only the Firebase Storage Rules
+deployment itself occurred; `origin/production` remains at
+`a8b02c9ee736eb1c619b8dc5fd7530f32cd0fb56` (reconfirmed via `git fetch origin` +
+`git rev-parse` after returning to `development`).
+
+**No other Firebase component was deployed or configured.** No Firestore Rules redeployment
+(unnecessary — already correctly deployed and unchanged), no Firestore indexes, no Functions, no
+App Hosting release, no Secret Manager values, no DNS/domain configuration, no production data,
+no `rebuildCatalogSnapshots` invocation, no Studio distribution, no GA4/Search Console
+configuration. `master` was not deleted.
+
+Next: **STOP.** Await explicit owner approval for Firestore indexes deployment (deployment-order
+step 3). Do not proceed to secrets, Functions, or the App Hosting first release before that.
+
+## 2026-07-30 — Goal #13 `production-release` — Firestore indexes deployment BLOCKED: duplicate index definition caused partial deploy failure; human checkpoint required before retry
+
+Owner approved via `APPROVE FIRESTORE INDEXES DEPLOYMENT`-equivalent instruction, authorizing
+exactly `firebase deploy --only firestore:indexes --project fresh-prints-prod` and no other
+component.
+
+**Pre-deploy safety sequence, run exactly as specified:** confirmed `origin/master` = `aa570aa`,
+`origin/production` = `a8b02c9`, clean tree; switched to `production`, fast-forward pull
+(already up to date); verified `HEAD` = `origin/production` = `a8b02c9ee736eb1c619b8dc5fd7530f32cd0fb56`,
+clean tree.
+
+**Verified the index configuration:** `git rev-parse HEAD:firestore.indexes.json` and
+`git hash-object firestore.indexes.json` both = `b67e711bed1a2881767b94ac369fed59346301be` (exact
+match). `git diff --exit-code origin/production:firestore.indexes.json
+origin/development:firestore.indexes.json` = exit 0 (identical). JSON validation: exit 0, **66
+composite index definitions, 0 field overrides.**
+
+**Full file inspection (as explicitly required) found one real issue:** a byte-for-byte duplicate
+index definition on `customerUploads` (`purpose` ASC + `catalogReviewStatus` ASC), appearing
+twice at two separate positions in the `indexes` array. No hardcoded project IDs, no malformed
+field definitions, no dev-only collection names, no destructive field overrides (array is empty)
+— confirmed via direct source inspection, not assumed. This duplicate was flagged but, since it
+appeared harmless (not destructive, not unsafe) rather than an obvious hard-stop condition,
+verification proceeded to capture remote state and attempt the deploy — where it in fact caused a
+real failure, described below.
+
+**Captured remote pre-deployment state:** `firebase firestore:indexes --project fresh-prints-prod`
+— exit 0, returned `{"indexes": [], "fieldOverrides": []}`. Confirmed empty — genuinely the first
+index deployment attempt on this project, no pre-existing custom indexes to conflict with.
+
+**Deployment attempted:** `firebase deploy --only firestore:indexes --project fresh-prints-prod`
+— **exit 1.** Firebase CLI output:
+`Error: Request to https://firestore.googleapis.com/v1/projects/fresh-prints-prod/databases/(default)/collectionGroups/customerUploads/indexes had HTTP Error: 409, index already exists with index ID = CICAgLiT6IEJ`
+— the CLI submitted the duplicate `customerUploads` index definition twice within the same batch;
+the second submission's own duplicate triggered the 409, aborting the remaining batch.
+
+**Post-failure remote state captured:** `firebase firestore:indexes --project fresh-prints-prod`
+— exit 0, **50 of 66 indexes now exist** on `fresh-prints-prod`, spanning `categories` (2),
+`customers` (1), `customerUploads` (7), `designs` (26), `gangSheetItems` (1), `gangSheets` (1),
+`printRequestItems` (3), `printRequests` (6), `showAllocations` (3). **Zero indexes exist** for 7
+collection groups that appear later in the file's array order:
+`assistedCreationRequests`, `customerNotifications`, `customerUploadBatches`,
+`customerUploadFinalizeLeases`, `etsyRecommendationRequests`, `etsyRecommendationSuggestions`,
+`etsySuggestionRequests`. The CLI's `firestore:indexes` JSON output does not expose per-index
+build-state (`Enabled`/`Building`/`Error`) — only definitions — so per-index Console verification
+by the owner is still required for the 50 that were submitted, in addition to the 7 collection
+groups needing their indexes created at all.
+
+**No data was corrupted, no unexpected index was created, nothing was deleted.** The 50 created
+indexes exactly match their corresponding entries in the local, reviewed `firestore.indexes.json`
+— confirmed via direct comparison of the returned index definitions against the source file.
+
+**Per explicit instruction, this pass did not retry blindly, did not use `--force`, and did not
+edit or delete anything in Console.** Confirmed `git status` remained clean throughout (no
+accidental local edit to `firestore.indexes.json`). Switched to `development` (fast-forward pull,
+clean) solely to record this blocked state — the deployment workflow itself did not "complete,"
+so this is a status record, not a completed-step commit.
+
+**Firestore Rules (step 1) and Storage Rules (step 2) remain correctly deployed and completely
+unaffected by this failure** — this pass touched only `firestore:indexes`.
+
+**Required remediation (not performed this pass, needs owner decision):**
+1. Remove the exact duplicate `customerUploads` `purpose`+`catalogReviewStatus` index entry from
+   `firestore.indexes.json` (one of the two identical blocks) on `development`.
+2. Commit and push the correction to `development`.
+3. Promote via a new GitHub pull request (`development` → `production`), per the established
+   protected-branch workflow.
+4. Obtain separate, explicit owner approval before reattempting
+   `firebase deploy --only firestore:indexes --project fresh-prints-prod`.
+5. After a successful redeploy, verify all 66 unique index definitions (65 once the duplicate is
+   removed) reach `Enabled`/ready state in Firebase Console before closing this checkpoint.
+
+**No production data was touched. No secret was configured. No Functions, App Hosting, DNS, or
+Studio action occurred. `master` was not deleted.**
+
+Next: **STOP.** This is a human checkpoint requiring an owner decision on the
+`firestore.indexes.json` duplicate-entry correction before Firestore indexes deployment can be
+reattempted. Do not proceed to Secret Manager or any later deployment-order step until indexes
+reach a fully ready, verified state.
+
+## 2026-07-30 — Goal #13 `production-release` — Firestore index duplicate REMEDIATED (Plan + Formal Review approved, implemented, verified, pushed to development); stopped at production PR checkpoint
+
+Re-verified branch/tag state directly from Git before any action: current branch `development`,
+clean tree; `origin/master` = `aa570aa`, `origin/production` = `a8b02c9`,
+`origin/development` = `3c2b748` — all matching expected values.
+
+**Step 2 — Canonical duplicate audit:** parsed `firestore.indexes.json` programmatically with a
+deterministic structural identity (collectionGroup + queryScope + ordered fields with
+fieldPath/order/arrayConfig). Confirmed exactly the expected result: 66 total definitions, 65
+unique, **one duplicate group** — `customerUploads` `purpose ASC + catalogReviewStatus ASC` at
+array positions 44 and 50, confirmed byte-identical via direct `JSON.stringify` comparison. No
+other duplicate exists anywhere in the file.
+
+**Step 3 — Legitimate pair protection:** confirmed array position 43
+(`purpose+catalogReviewStatus+createdAt`, three-field) is structurally distinct from positions 44
+and 50 (two-field only) — not byte-equal, has an additional `createdAt DESCENDING` field. The
+three-field prefix-extension index was correctly identified as untouched by this remediation.
+
+**Step 4 — Provenance:** traced via `git blame` on the exact line ranges of both duplicate blocks.
+Position 44 (lines 828–840, the original, kept definition) traces to commit
+`043f38a1adc4a62a727e5a4a1ee30fd4d1900c81` (2026-07-13, "Add Portal donate-designs uploads and
+Studio donated designs intake") — this commit introduced both the three-field and two-field
+indexes together, deliberately. Position 50 (lines 912–924, the removed definition) traces to
+commit `cbba4ca858d76da5514389a67e187612761240fd` (2026-07-14, "Add design asset purge, helper
+permission gates, and Portal account artwork upgrades") — one day later, an unrelated feature
+commit that accidentally re-added an identical index. A later pure-reformatting commit
+(`0317a6db536b682ad0eb97ffa569b2be5c133ac6`, 2026-07-22) touched both blocks' inner field
+formatting with zero content change, confirmed via diff — does not alter this provenance.
+
+**Step 5 — Remote state (read-only):** `firebase firestore:indexes --project fresh-prints-prod` —
+exit 0, unchanged from the prior pass: 50 indexes, 0 field overrides, same 7 collection groups
+with zero indexes. Nothing was touched remotely.
+
+**Step 6 — Plan and independent Formal Review:** wrote
+`docs/workflow/plans/2026-07-30-firestore-index-duplicate-remediation-plan.md` (full audit,
+provenance, exact correction, query-coverage-impact analysis, validator approach, Git promotion
+path, remote-handling, and explicit non-goals). Wrote
+`docs/workflow/reviews/2026-07-30-firestore-index-duplicate-remediation-review.md` — independently
+re-ran the duplicate audit and the `git blame` provenance trace from scratch (not copied from the
+Plan's own prose), confirmed both matched exactly, confirmed no code depends on index array
+position/count, confirmed the validator pattern matches the existing
+`storageRulesAlignment.test.ts` convention. **Verdict: approved**, no unresolved blocker.
+
+**Step 7 — Implementation (after approval):** removed exactly the 14-line block at array position
+50 (`firestore.indexes.json` lines 911–924) — the later, redundant `cbba4ca` copy. Preserved the
+original `043f38a` two-field definition and the distinct three-field prefix index untouched. Zero
+insertions, only the one deletion (`git diff --stat`: `1 file changed, 14 deletions(-)`).
+Re-ran the canonical audit on the corrected file: **65 total, 65 unique, 0 duplicate groups.**
+
+**Step 8 — Deterministic validation added:**
+`packages/shared/src/constants/firestoreIndexesDuplicateValidation.test.ts` — follows the exact
+existing convention from `storageRulesAlignment.test.ts` (`node:test`, `node:assert/strict`,
+direct repo-root file read, zero new dependency). Proves: (1) the file parses as valid JSON, (2)
+the real corrected file has zero duplicate structural identities (failure output would include
+exact collection group, field sequence, and array positions), (3) a fixture with an exact
+duplicate is correctly detected, (4) a two-field index and its three-field prefix-extension are
+correctly **not** flagged as duplicates — directly proving the historical-caution requirement is
+enforced by the same logic protecting the real file.
+
+**Step 9 — Verification, all commands and exit codes:**
+
+| Command | Exit code |
+|---|---|
+| `node -e "JSON.parse(...)"` (JSON validity) | 0 |
+| `npx tsx --test packages/shared/src/constants/firestoreIndexesDuplicateValidation.test.ts` | 0 (4/4 pass) |
+| `npm run test:rules` (portable JDK 21) | 0 (48/48 pass) |
+| `npm run lint` | 0 |
+| `git diff --check` | 0 |
+
+**Step 10 — Committed to `development` with narrow staging:** staged only
+`firestore.indexes.json`, the new validator test, the Plan, and the Formal Review (confirmed via
+`git status --short` before staging — exactly 4 files, no broad staging). Committed as
+"fix(firebase): remove duplicate Firestore index definition", pushed to `origin/development`.
+
+**Step 11 — Production PR prepared, not executed by this coding agent** (no `gh` CLI available in
+this environment, consistent with the parent goal's earlier PR #3): exact pre-filled compare URL
+and description prepared for the owner (see response). **Did not merge `production` back into
+`development`** — correctly identified as unnecessary for this `development`-originated fix with
+no production-only content (the PR #4 back-merge earlier in this goal was specific to a different
+situation: syncing a just-merged `production` state after that merge, not a general requirement).
+
+**The 50 already-created remote indexes on `fresh-prints-prod` were not touched, edited, or
+deleted at any point.** No `firebase deploy` command of any kind was run. No Firestore Rules or
+Storage Rules redeployment occurred (both remain correctly deployed, unaffected). No Secret
+Manager, Functions, App Hosting, DNS, production data, `rebuildCatalogSnapshots`, Studio
+distribution, or GA4/Search Console action occurred. `production` received no Git commit — only
+`development` was advanced. `master` was not touched.
+
+Next: **STOP.** Await the owner reviewing and merging the `development → production` remediation
+pull request. After merge: production verification, `v1.0.0-rc3` tag, then a **separate** owner
+approval before retrying the Firestore indexes deployment itself.

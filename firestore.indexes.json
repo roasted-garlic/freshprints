@@ -909,20 +909,6 @@
       ]
     },
     {
-      "collectionGroup": "customerUploads",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "purpose",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "catalogReviewStatus",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
       "collectionGroup": "customerUploadBatches",
       "queryScope": "COLLECTION",
       "fields": [

@@ -122,7 +122,7 @@ Current Goal:
 | 10 | Increase the MB limit for custom-request reference images | **Done** (2026-07-29, approved) — 40 MB/file live in `fresh-prints-dev` at every enforcement layer, 8 files unchanged, 320 MB combined ceiling active; owner QA FAIL (stale 15 MB deployed Cloud Functions) → Amendment 1 root-caused and fixed via scoped Functions redeploy → owner re-QA PASS |
 | 11 | `customer-upload-oversized-pixel-normalization-and-processing-timeout-followup` | **Done** (2026-07-30, approved_with_notes; owner QA PASS WITH NOTES — see signoff) |
 | 12 | `catalog-image-derivative-storage-consolidation` | **Done — closed_by_owner_after_inventory** (2026-07-30). Real dev inventory measured originals at ~97.66% of catalog Storage (980.8 MB of 1,004.3 MB); thumbnails+previews combined only 23.5 MB; zero orphans/duplicates/violations found. Owner decided the migration's small addressable Storage win did not justify the required backfill/consumer-cutover/bandwidth-increase — closed before implementation, an evidence-based decision. Retained as dev-only tooling: the read-only `inventoryCatalogImageStorage` callable and its Studio invocation panel. |
-| 13 | `production-release` — prod Firebase / App Hosting / Google / email | **Active** — **Firestore Rules DEPLOYED to `fresh-prints-prod`** (deployment-order step 1 of 12, exit 0, first-ever Rules deployment on this project); 12-step deployment order in effect (Rules ✅ → Storage Rules → indexes → secrets → Functions → App Hosting env vars → first release → Studio build → settings → domain → smoke tests → GA4); **stopped at the Storage Rules deployment approval checkpoint** (step 2); no longer blocked (#9–#12 all signed off/closed); production approval required before any further implementation or deployment |
+| 13 | `production-release` — prod Firebase / App Hosting / Google / email | **Active** — Firestore index duplicate (`customerUploads` purpose+catalogReviewStatus, provenance-traced to commit `cbba4ca`) **remediated**: Plan + independent Formal Review both `approved`; corrected file (65 unique/0 duplicates) + new deterministic duplicate-validation test committed to `development`, all verification passing; **stopped at the development-to-production PR merge checkpoint**; the 50 indexes already on `fresh-prints-prod` remain untouched, redeployment itself remains a separate future checkpoint; Rules (steps 1–2) unaffected and still correctly deployed; production approval required before any further implementation or deployment |
 | 14 | `customer-upload-early-transparency-format-validation` — reject invalid customer artwork before the trimming stage is shown | **Done** (2026-07-30, approved; automated verification 23/23 pass, clean build/lint; owner deployed to `fresh-prints-dev` and confirmed manual QA PASS across all 5 goal-brief scenarios). Separate narrow follow-up run alongside the paused `production-release` (#13), which this goal did not modify. See `docs/workflow/plans/2026-07-30-customer-upload-early-transparency-format-validation-plan.md`. |
 
 **Small Managed Items Backlog:** #5–**#14** **Done** (2026-07-21). See [Small Managed Items Backlog](#small-managed-items-backlog-2026-07-18) below.
@@ -244,7 +244,70 @@ complete!"** — the first-ever Fresh Prints production Firestore Rules deployme
 Firebase component was touched. Returned to `development` (`git pull --ff-only`, clean tree).
 `origin/production` confirmed unchanged at the same commit — this deployment added no Git commit
 to `production`, only a Firebase Rules release.
-**Stopped at the Storage Rules deployment approval checkpoint** (deployment-order step 2).
+**Since then (same day, later pass):** owner confirmed the local `apps/studio/tsconfig.json`
+change was an intentional TypeScript 5.9.3 compatibility fix (removed invalid
+`ignoreDeprecations: "5.0"` and unused `baseUrl`); verified (typecheck/build/lint/diff-check all
+0) and committed to `development` as `dd05ef2`. Verified the full promotion diff
+(8 commits, 9 files, no behavioral file changed) before the owner created and merged GitHub PR #3
+("Release: promote verified development state to production") — confirmed via GitHub API
+(`merged: true`, `merge_commit_sha: a8b02c9`). Switched to `production`, fast-forward pulled,
+ran the complete release verification suite on the exact merged commit (Functions build, Portal/
+Studio typecheck, Portal/Studio build, lint, 48/48 Firebase Rules emulator tests, `git diff
+--check` — all exit 0; fresh Functions export enumeration re-confirmed 105 total/99 include/6
+exclude, `rebuildCatalogSnapshots` included, unchanged). Confirmed `firestore.rules`/
+`storage.rules`/`firestore.indexes.json` hashes unchanged by the merge — Firestore Rules remain
+correctly deployed, no redeployment needed. Confirmed `v1.0.0-rc1` unchanged at `aa570aa`; created
+and pushed annotated tag `v1.0.0-rc2` on the verified merge commit `a8b02c9`. Returned to
+`development` (fast-forwarded through a benign GitHub-suggested production→development sync-back
+merge, PR #4, content-identical). **The entire promotion went through the protected GitHub PR
+workflow — no branch protection was bypassed, no emergency override used, no force-push
+anywhere.**
+**Since then (same day, later pass):** owner approved via `APPROVE STORAGE RULES DEPLOYMENT`. Ran
+the full pre-deploy safety sequence — switched to `production`, `git pull --ff-only` (already up
+to date), verified local `HEAD` = `origin/production` = `a8b02c9ee736eb1c619b8dc5fd7530f32cd0fb56`
+and `storage.rules` blob hash = `3f1dd48e9f37afacb972ade3dc21c2818038a6fe`, both exact matches;
+48/48 Rules-emulator tests passed; `git diff --check` clean. Ran exactly
+`firebase deploy --only storage --project fresh-prints-prod` — **exit 0, "Deploy complete!"** —
+the first-ever Fresh Prints production Storage Rules deployment. No other Firebase component was
+touched. Returned to `development` (`git pull --ff-only`, clean tree). `origin/production`
+confirmed unchanged — this deployment added no Git commit to `production`, only a Firebase
+Storage Rules release.
+**Since then (same day, later pass):** owner approved Firestore indexes deployment. Full
+pre-deploy verification passed (`HEAD`/`origin/production`/`firestore.indexes.json` hash all
+exact matches; production/development index files identical; JSON valid, 66 indexes/0 field
+overrides; remote pre-deployment state confirmed empty). Full-file inspection (as required) found
+one genuine duplicate index definition — `customerUploads` `purpose`+`catalogReviewStatus`,
+defined twice, byte-identical. Ran `firebase deploy --only firestore:indexes --project
+fresh-prints-prod` — **exit 1**, HTTP 409 "index already exists," caused by the CLI submitting
+the duplicate entry twice in one batch. Post-failure remote check: **50 of 66 indexes created**
+(`categories`, `customers`, `customerUploads`, `designs`, `gangSheetItems`, `gangSheets`,
+`printRequestItems`, `printRequests`, `showAllocations`); **7 collection groups have zero
+indexes** (`assistedCreationRequests`, `customerNotifications`, `customerUploadBatches`,
+`customerUploadFinalizeLeases`, `etsyRecommendationRequests`, `etsyRecommendationSuggestions`,
+`etsySuggestionRequests`). No data corrupted, nothing deleted, no unexpected index created — the
+50 present indexes exactly match the reviewed file. **Did not retry blindly, did not use
+`--force`, did not touch Console.** Firestore Rules (step 1) and Storage Rules (step 2) remain
+correctly deployed, unaffected.
+**Since then (same day, later pass):** performed a canonical duplicate audit (deterministic
+structural identity by collectionGroup+queryScope+fields), confirming exactly the expected single
+duplicate group (`customerUploads` purpose+catalogReviewStatus at array positions 44 and 50,
+byte-identical) with no other duplicate anywhere in the file, and confirming the legitimate
+two-field/three-field pair (positions 44/43) are structurally distinct. Traced provenance via
+`git blame`: position 44 (kept) is the original definition from commit `043f38a` (2026-07-13,
+donate-designs), position 50 (removed) is a later accidental re-addition from commit `cbba4ca`
+(2026-07-14, unrelated design-asset-purge/permission-gates commit). Wrote and independently
+reviewed a narrow remediation Plan (`docs/workflow/plans/2026-07-30-firestore-index-duplicate-remediation-plan.md`,
+verdict `approved`) — the Review independently re-ran the audit and provenance trace from scratch
+and confirmed both matched. Implemented the exact, narrow correction (removed only the 14-line
+duplicate block; zero other changes), added deterministic duplicate-validation test coverage
+(`packages/shared/src/constants/firestoreIndexesDuplicateValidation.test.ts`, following the
+existing `storageRulesAlignment.test.ts` convention, 4/4 pass), and ran full verification (JSON
+valid, validator 4/4, Rules 48/48, lint clean, diff-check clean) — all exit 0. Committed narrowly
+(only the 4 intended files) and pushed to `origin/development`. Prepared (did not merge — no `gh`
+CLI available) the `development → production` pull request.
+**Stopped at the production PR merge checkpoint.** The 50 indexes already created on
+`fresh-prints-prod` were not touched; redeployment itself remains a separate, later, explicitly
+approved checkpoint after this PR merges.
 `master` was **not** deleted (retained as a temporary transition fallback; its eventual deletion
 is a separate, later checkpoint). No longer blocked: Goals #9–#12
 (`catalog-image-derivative-storage-consolidation`) closed **2026-07-30**,

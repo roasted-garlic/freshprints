@@ -242,8 +242,30 @@ own separate, later, explicitly-approved checkpoint.
    firestore:rules --project fresh-prints-prod`, exit 0, "Deploy complete!" — the first-ever Fresh
    Prints production Firestore Rules deployment. Verify in Console: `fresh-prints-prod` → Firestore
    Database → Rules tab → "Last published" timestamp.
-2. **Storage Rules deployment** ← current checkpoint
-3. Firestore indexes deployment
+2. ✅ **Storage Rules deployment** — **DEPLOYED 2026-07-30.** `firebase deploy --only storage
+   --project fresh-prints-prod`, exit 0, "Deploy complete!" — the first-ever Fresh Prints
+   production Storage Rules deployment. Verify in Console: `fresh-prints-prod` → Build → Storage →
+   Rules tab → "Last published" timestamp.
+3. 🔧 **Firestore indexes deployment** ← **remediation READY on `development`, awaiting PR merge
+   (2026-07-30).** First deploy attempt exited 1 (HTTP 409 "index already exists") caused by a
+   genuine duplicate index definition in `firestore.indexes.json` (`customerUploads`
+   `purpose`+`catalogReviewStatus`, defined twice, byte-identical — traced via `git blame` to
+   commit `cbba4ca` 2026-07-14, an accidental re-addition of the original `043f38a` 2026-07-13
+   definition). 50 of 66 indexes were created on `fresh-prints-prod` before the batch aborted; 7
+   collection groups (`assistedCreationRequests`, `customerNotifications`,
+   `customerUploadBatches`, `customerUploadFinalizeLeases`, `etsyRecommendationRequests`,
+   `etsyRecommendationSuggestions`, `etsySuggestionRequests`) have zero indexes. **Remediation
+   complete:** narrow Plan + independent Formal Review both `approved`
+   (`docs/workflow/plans/2026-07-30-firestore-index-duplicate-remediation-plan.md`,
+   `docs/workflow/reviews/2026-07-30-firestore-index-duplicate-remediation-review.md`); corrected
+   file (65 unique definitions, 0 duplicates) plus a new deterministic duplicate-validation test
+   (`packages/shared/src/constants/firestoreIndexesDuplicateValidation.test.ts`) committed and
+   pushed to `development`; full verification passing (JSON valid, validator 4/4, Rules 48/48,
+   lint clean, diff-check clean). **Awaiting owner PR merge** (`development → production`), then a
+   **separate** future approval to redeploy `firebase deploy --only firestore:indexes --project
+   fresh-prints-prod`. The 50 already-created indexes remain untouched throughout — this remains
+   an additive-only redeploy when it happens, not a delete-and-recreate. Do not retry with
+   `--force`. Do not manually edit/delete indexes via Console.
 4. Secret Manager population (`GEMINI_API_KEY`, `RESEND_API_KEY`, `ETSY_X_API_KEY`, `BREVO_API_KEY` if selected)
 5. Cloud Functions deployment (approved explicit 99-function allowlist — see
    `docs/workflow/reviews/2026-07-30-production-release-functions-allowlist-report.md`)
@@ -257,8 +279,8 @@ own separate, later, explicitly-approved checkpoint.
 
 **The App Hosting backend existing with status "Waiting for your first release" does not change
 this order.** Backend configuration (already complete) is not the same as step 7 (the first
-release) — five more steps come first after Rules. Each step requires its own separate, explicit
-owner approval; none of this order authorizes skipping ahead.
+release) — four more steps come first after Rules/Storage Rules. Each step requires its own
+separate, explicit owner approval; none of this order authorizes skipping ahead.
 
 ### Original enablement instructions (retained for reference)
 

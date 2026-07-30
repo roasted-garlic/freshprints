@@ -2,6 +2,66 @@
 
 > Signed-off or largely complete work. External agents should not re-plan or duplicate this.
 
+## 2026-07-30 - production-release: Firestore index duplicate remediated (Plan + Formal Review approved, committed to development, PR prepared)
+
+- Canonical duplicate audit of `firestore.indexes.json` found exactly one duplicate group:
+  `customerUploads` `purpose ASC + catalogReviewStatus ASC` at array positions 44 and 50,
+  byte-identical; confirmed the legitimate two-field/three-field prefix pair remained distinct
+- Provenance traced via `git blame`: kept copy from commit `043f38a` (2026-07-13, donate-designs
+  feature, deliberate pair with the three-field index); removed copy from commit `cbba4ca`
+  (2026-07-14, unrelated feature commit, accidental re-addition)
+- Confirmed remote `fresh-prints-prod` state unchanged (50 indexes, 0 field overrides) — nothing
+  touched remotely
+- Wrote and independently reviewed a narrow remediation Plan — Formal Review independently
+  re-derived the audit and provenance from scratch, verdict **approved**
+- Implemented the exact, narrow correction (removed only the 14-line duplicate block; zero other
+  changes); corrected file: 65 unique definitions, 0 duplicates
+- Added deterministic duplicate-validation test
+  (`packages/shared/src/constants/firestoreIndexesDuplicateValidation.test.ts`, matching the
+  existing `storageRulesAlignment.test.ts` convention) — 4/4 pass
+- Full verification: JSON valid, validator 4/4, Rules 48/48, lint clean, diff-check clean — all
+  exit 0
+- Committed narrowly (4 files) to `development`, pushed; production PR prepared (not merged — no
+  `gh` CLI available)
+- **The 50 indexes already on `fresh-prints-prod` were not touched; no `firebase deploy` command
+  of any kind was run; `production` received no Git commit; `master` untouched**
+
+## 2026-07-30 - production-release: Storage Rules DEPLOYED to fresh-prints-prod (deployment-order step 2 of 12)
+
+- Owner approved via `APPROVE STORAGE RULES DEPLOYMENT`; ran the full pre-deploy safety sequence
+  (switch to `production`, fast-forward-only pull, verified `HEAD`/`origin/production`/
+  `storage.rules` hash all exact matches, 48/48 Rules tests, clean `git diff --check`)
+- Deployed exactly `firebase deploy --only storage --project fresh-prints-prod` — **exit 0,
+  "Deploy complete!"** — the first-ever Fresh Prints production Storage Rules deployment
+- No other Firebase component touched (no Firestore Rules redeployment, indexes, Functions, App
+  Hosting, secrets, DNS, production data, `rebuildCatalogSnapshots`, Studio distribution,
+  GA4/Search Console)
+- Returned to `development` (clean, fast-forward pull); confirmed `origin/production` received no
+  Git commit from this pass — only the Firebase Storage Rules release occurred
+- Provided owner Console verification steps (Storage Rules tab, "Last published" timestamp)
+- Deployment-order step 2 of 12 now complete; step 3 (Firestore indexes) is the next checkpoint
+
+## 2026-07-30 - production-release: development promoted to production via GitHub PR #3, v1.0.0-rc2 tagged
+
+- Committed the owner-confirmed intentional Studio TypeScript fix (`apps/studio/tsconfig.json`,
+  TS 5.9.3 compatibility, no runtime change) to `development` as `dd05ef2`, pushed
+- Verified the full 8-commit/9-file promotion diff before the PR — no behavioral file changed, no
+  secret/env leak
+- Owner created and merged GitHub PR #3 ("Release: promote verified development state to
+  production") — confirmed via GitHub API, merge commit `a8b02c9`
+- Ran the complete release verification suite on the exact merged `production` commit: Functions
+  build, Portal/Studio typecheck, Portal/Studio build, repo lint, 48/48 Firebase Rules emulator
+  tests, `git diff --check` — all exit 0
+- Fresh Functions export enumeration re-confirmed 105 total/99 include/6 exclude,
+  `rebuildCatalogSnapshots` included — approved allowlist unchanged
+- Confirmed `firestore.rules`/`storage.rules`/`firestore.indexes.json` hashes unchanged —
+  Firestore Rules remain correctly deployed, no redeployment needed
+- Created and pushed annotated tag `v1.0.0-rc2` on the verified merge commit;
+  confirmed `v1.0.0-rc1` unchanged
+- Returned to `development`, clean tree, `production` confirmed at the verified commit
+- **Entire promotion went through the protected GitHub PR workflow — no bypass, no force-push, no
+  Firebase deployment occurred**
+
 ## 2026-07-30 - production-release: Firestore Rules DEPLOYED to fresh-prints-prod (first production Firebase deployment of this goal)
 
 - Owner approved via `APPROVE FIRESTORE RULES DEPLOY`; ran the full pre-deploy safety sequence
