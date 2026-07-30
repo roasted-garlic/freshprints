@@ -122,7 +122,7 @@ Current Goal:
 | 10 | Increase the MB limit for custom-request reference images | **Done** (2026-07-29, approved) — 40 MB/file live in `fresh-prints-dev` at every enforcement layer, 8 files unchanged, 320 MB combined ceiling active; owner QA FAIL (stale 15 MB deployed Cloud Functions) → Amendment 1 root-caused and fixed via scoped Functions redeploy → owner re-QA PASS |
 | 11 | `customer-upload-oversized-pixel-normalization-and-processing-timeout-followup` | **Done** (2026-07-30, approved_with_notes; owner QA PASS WITH NOTES — see signoff) |
 | 12 | `catalog-image-derivative-storage-consolidation` | **Done — closed_by_owner_after_inventory** (2026-07-30). Real dev inventory measured originals at ~97.66% of catalog Storage (980.8 MB of 1,004.3 MB); thumbnails+previews combined only 23.5 MB; zero orphans/duplicates/violations found. Owner decided the migration's small addressable Storage win did not justify the required backfill/consumer-cutover/bandwidth-increase — closed before implementation, an evidence-based decision. Retained as dev-only tooling: the read-only `inventoryCatalogImageStorage` callable and its Studio invocation panel. |
-| 13 | `production-release` — prod Firebase / App Hosting / Google / email | **Active** — **Storage Rules DEPLOYED to `fresh-prints-prod`** (deployment-order step 2 of 12, exit 0, first-ever Storage Rules deployment on this project); 12-step deployment order in effect (Rules ✅ → Storage Rules ✅ → indexes → secrets → Functions → App Hosting env vars → first release → Studio build → settings → domain → smoke tests → GA4); **stopped at the Firestore indexes deployment approval checkpoint** (step 3); no longer blocked (#9–#12 all signed off/closed); production approval required before any further implementation or deployment |
+| 13 | `production-release` — prod Firebase / App Hosting / Google / email | **Active — BLOCKED at step 3** — Firestore indexes deployment attempt **failed partially** (exit 1, HTTP 409) due to a genuine duplicate index definition in `firestore.indexes.json` (`customerUploads` purpose+catalogReviewStatus, defined twice); 50 of 66 indexes created on `fresh-prints-prod`, **7 collection groups have zero indexes**; Rules (steps 1–2) unaffected and still correctly deployed; **requires a reviewed `firestore.indexes.json` correction on `development`, promoted via PR, before redeployment can be reattempted**; production approval required before any further implementation or deployment |
 | 14 | `customer-upload-early-transparency-format-validation` — reject invalid customer artwork before the trimming stage is shown | **Done** (2026-07-30, approved; automated verification 23/23 pass, clean build/lint; owner deployed to `fresh-prints-dev` and confirmed manual QA PASS across all 5 goal-brief scenarios). Separate narrow follow-up run alongside the paused `production-release` (#13), which this goal did not modify. See `docs/workflow/plans/2026-07-30-customer-upload-early-transparency-format-validation-plan.md`. |
 
 **Small Managed Items Backlog:** #5–**#14** **Done** (2026-07-21). See [Small Managed Items Backlog](#small-managed-items-backlog-2026-07-18) below.
@@ -272,7 +272,25 @@ the first-ever Fresh Prints production Storage Rules deployment. No other Fireba
 touched. Returned to `development` (`git pull --ff-only`, clean tree). `origin/production`
 confirmed unchanged — this deployment added no Git commit to `production`, only a Firebase
 Storage Rules release.
-**Stopped at the Firestore indexes deployment approval checkpoint** (deployment-order step 3).
+**Since then (same day, later pass):** owner approved Firestore indexes deployment. Full
+pre-deploy verification passed (`HEAD`/`origin/production`/`firestore.indexes.json` hash all
+exact matches; production/development index files identical; JSON valid, 66 indexes/0 field
+overrides; remote pre-deployment state confirmed empty). Full-file inspection (as required) found
+one genuine duplicate index definition — `customerUploads` `purpose`+`catalogReviewStatus`,
+defined twice, byte-identical. Ran `firebase deploy --only firestore:indexes --project
+fresh-prints-prod` — **exit 1**, HTTP 409 "index already exists," caused by the CLI submitting
+the duplicate entry twice in one batch. Post-failure remote check: **50 of 66 indexes created**
+(`categories`, `customers`, `customerUploads`, `designs`, `gangSheetItems`, `gangSheets`,
+`printRequestItems`, `printRequests`, `showAllocations`); **7 collection groups have zero
+indexes** (`assistedCreationRequests`, `customerNotifications`, `customerUploadBatches`,
+`customerUploadFinalizeLeases`, `etsyRecommendationRequests`, `etsyRecommendationSuggestions`,
+`etsySuggestionRequests`). No data corrupted, nothing deleted, no unexpected index created — the
+50 present indexes exactly match the reviewed file. **Did not retry blindly, did not use
+`--force`, did not touch Console.** Firestore Rules (step 1) and Storage Rules (step 2) remain
+correctly deployed, unaffected.
+**BLOCKED — requires owner decision** on removing the duplicate index entry from
+`firestore.indexes.json` (small, reviewed correction on `development`, promoted via PR, then
+separately approved for redeployment) before this checkpoint can close.
 `master` was **not** deleted (retained as a temporary transition fallback; its eventual deletion
 is a separate, later checkpoint). No longer blocked: Goals #9–#12
 (`catalog-image-derivative-storage-consolidation`) closed **2026-07-30**,

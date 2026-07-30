@@ -246,7 +246,18 @@ own separate, later, explicitly-approved checkpoint.
    --project fresh-prints-prod`, exit 0, "Deploy complete!" — the first-ever Fresh Prints
    production Storage Rules deployment. Verify in Console: `fresh-prints-prod` → Build → Storage →
    Rules tab → "Last published" timestamp.
-3. **Firestore indexes deployment** ← current checkpoint
+3. ⚠️ **Firestore indexes deployment** ← **BLOCKED (2026-07-30).** Deploy attempt exited 1 (HTTP
+   409 "index already exists") caused by a genuine duplicate index definition in
+   `firestore.indexes.json` (`customerUploads` `purpose`+`catalogReviewStatus`, defined twice,
+   byte-identical). **50 of 66 indexes were created** on `fresh-prints-prod` before the batch
+   aborted; **7 collection groups have zero indexes**: `assistedCreationRequests`,
+   `customerNotifications`, `customerUploadBatches`, `customerUploadFinalizeLeases`,
+   `etsyRecommendationRequests`, `etsyRecommendationSuggestions`, `etsySuggestionRequests`. No
+   data was corrupted; the 50 created indexes exactly match the reviewed file. **Required before
+   retry:** remove the duplicate entry from `firestore.indexes.json` on `development`, promote via
+   the normal `development → production` PR workflow, then obtain separate owner approval to
+   redeploy `firebase deploy --only firestore:indexes --project fresh-prints-prod`. Do not retry
+   with `--force`. Do not manually edit/delete indexes via Console.
 4. Secret Manager population (`GEMINI_API_KEY`, `RESEND_API_KEY`, `ETSY_X_API_KEY`, `BREVO_API_KEY` if selected)
 5. Cloud Functions deployment (approved explicit 99-function allowlist — see
    `docs/workflow/reviews/2026-07-30-production-release-functions-allowlist-report.md`)

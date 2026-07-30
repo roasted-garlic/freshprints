@@ -1,5 +1,55 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-07-30 — Goal #13 "production-release" — Firestore indexes deployment BLOCKED (duplicate index caused partial failure); human checkpoint required
+
+Owner approved via the Firestore-indexes deployment instruction, authorizing exactly
+`firebase deploy --only firestore:indexes --project fresh-prints-prod`.
+
+**Pre-deploy verification passed in full:** `origin/master`/`origin/production` confirmed
+unchanged (`aa570aa`/`a8b02c9`); switched to `production`, fast-forward pulled, confirmed `HEAD` =
+`origin/production` = `a8b02c9ee736eb1c619b8dc5fd7530f32cd0fb56`, clean tree;
+`firestore.indexes.json` committed hash, working-tree hash, and production-vs-development
+comparison all matched exactly (`b67e711bed1a2881767b94ac369fed59346301be`, identical between
+branches); JSON validated (66 composite indexes, 0 field overrides, exit 0); remote
+pre-deployment state confirmed empty (`{"indexes": [], "fieldOverrides": []}`).
+
+**Full-file inspection (as explicitly required) found one real issue:** a byte-for-byte duplicate
+index definition on `customerUploads` (`purpose` ASC + `catalogReviewStatus` ASC), present twice
+at two separate array positions. No hardcoded project IDs, no malformed fields, no dev-only
+collection names, no destructive field overrides found otherwise.
+
+**Deployment attempted:** `firebase deploy --only firestore:indexes --project fresh-prints-prod`
+— **exit 1.** Firebase CLI reported `HTTP Error: 409, index already exists` on the
+`customerUploads` collection group — the CLI submitted the duplicate entry twice within the same
+batch, and the second submission's own duplicate triggered the failure, aborting the remaining
+batch.
+
+**Post-failure remote state:** 50 of 66 indexes now exist on `fresh-prints-prod`
+(`categories`, `customers`, `customerUploads`, `designs`, `gangSheetItems`, `gangSheets`,
+`printRequestItems`, `printRequests`, `showAllocations`). **7 collection groups have zero
+indexes**: `assistedCreationRequests`, `customerNotifications`, `customerUploadBatches`,
+`customerUploadFinalizeLeases`, `etsyRecommendationRequests`, `etsyRecommendationSuggestions`,
+`etsySuggestionRequests`. No data was corrupted, nothing was deleted, and no unexpected index was
+created — the 50 present indexes exactly match their corresponding entries in the reviewed
+`firestore.indexes.json`.
+
+**Per explicit instruction: did not retry blindly, did not use `--force`, did not manually
+edit/delete anything in Console.** Firestore Rules (step 1) and Storage Rules (step 2) remain
+correctly deployed and are completely unaffected by this failure.
+
+**Required remediation (owner decision needed, not performed this pass):** remove the exact
+duplicate index entry from `firestore.indexes.json` on `development`, commit, promote via a new
+GitHub pull request to `production`, then obtain separate explicit owner approval before
+reattempting the Firestore indexes deployment. After a successful redeploy, every unique index
+definition must be verified `Enabled`/ready in Firebase Console before this checkpoint can close.
+
+**No production data was touched. No secret was configured. No Functions, App Hosting, DNS, or
+Studio action occurred. `master` was not deleted.**
+
+**Active managed goal:** `production-release` (Goal #13) — **BLOCKED** at the Firestore indexes
+deployment checkpoint (deployment-order step 3); awaiting owner decision on the
+`firestore.indexes.json` duplicate-entry correction.
+
 ## 2026-07-30 — Goal #13 "production-release" — Storage Rules DEPLOYED to fresh-prints-prod (deployment-order step 2 of 12 complete)
 
 Owner approved via `APPROVE STORAGE RULES DEPLOYMENT`, authorizing exactly
