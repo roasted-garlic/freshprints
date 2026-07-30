@@ -49,3 +49,14 @@ env:
     availability:
       - BUILD
       - RUNTIME
+
+# This repo is an npm-workspaces monorepo (single package-lock.json at the repo root; apps/portal
+# has no lock file of its own, which is correct npm-workspace behavior). Firebase App Hosting's
+# buildpack only has first-class monorepo support for Nx/Turborepo and expects a lock file inside
+# rootDir, so the default build fails with "Missing dependency lock file". buildCommand/runCommand
+# both execute from /workspace (the full repo checkout), not rootDir, so they can install/build
+# from the actual workspace root. NOTE: setting buildCommand disables the Next.js framework
+# adapter's automatic optimizations for this backend — an accepted, deliberate tradeoff to unblock
+# deployment on this repo's monorepo layout.
+buildCommand: npm ci && npm run build --workspace=apps/portal
+runCommand: npm run start --workspace=apps/portal
