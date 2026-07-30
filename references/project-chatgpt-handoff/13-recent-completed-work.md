@@ -2,6 +2,150 @@
 
 > Signed-off or largely complete work. External agents should not re-plan or duplicate this.
 
+## 2026-07-30 - production-release: Firestore Rules DEPLOYED to fresh-prints-prod (first production Firebase deployment of this goal)
+
+- Owner approved via `APPROVE FIRESTORE RULES DEPLOY`; ran the full pre-deploy safety sequence
+  (switch to `production`, fast-forward-only pull, verified `HEAD`/`origin/production`/
+  `firestore.rules` hash all exact matches to required values)
+- Deployed exactly `firebase deploy --only firestore:rules --project fresh-prints-prod` — **exit
+  0, "Deploy complete!"** — the first-ever Fresh Prints production Firestore Rules deployment
+- No other Firebase component touched (no Storage Rules, indexes, Functions, App Hosting,
+  secrets, DNS, production data, Studio build, GA4/Search Console)
+- Returned to `development` (clean, fast-forward pull); confirmed `origin/production` received no
+  Git commit from this pass — only the Firebase Rules release occurred
+- Provided owner Console verification steps (Rules tab, "Last published" timestamp)
+- Deployment-order step 1 of 12 now complete; step 2 (Storage Rules) is the next checkpoint
+
+## 2026-07-30 - production-release: corrected deployment-order framing, prepared Firestore Rules deployment checkpoint (not yet deployed)
+
+- Corrected a prior pass's misleading framing that implied the App Hosting first release was the
+  immediate next step — restated the approved 12-step deployment order (Rules → Storage Rules →
+  indexes → secrets → Functions → App Hosting env vars → first release → Studio build → settings →
+  domain → smoke tests → GA4), with Firestore Rules deployment as the actual current checkpoint
+- Restated accurately: `fresh-prints-prod`'s products and App Hosting backend are configured (not
+  empty), but no Rules/indexes/Functions/Portal release have been deployed
+- Compared `firestore.rules` between `development` and `production` — identical Git blob hash on
+  both, confirming no merge is needed before deploying Rules
+- Ran the real `npm run test:rules` Firestore/Storage emulator suite (documented portable JDK 21
+  workaround) — 48/48 pass
+- Confirmed this would be the first-ever Rules deployment to `fresh-prints-prod` (no prior version
+  to roll back to on this project); documented the rollback method for future changes
+- Prepared, but did not execute, `firebase deploy --only firestore:rules --project
+  fresh-prints-prod`
+- **No deploy command run; no Rules/indexes/Functions deployed; no secret set; no production data
+  touched; `production` untouched**
+
+## 2026-07-30 - production-release: Firebase products enabled in fresh-prints-prod, App Hosting backend created with no rollout (not yet deployed)
+
+- Verified (read-only) owner-reported Firebase product enablement: Firestore Native mode `nam5`,
+  Storage `us-central1`, Authentication (Email/Password + Google), Web App
+  `Fresh Prints Portal Production` registered (classic Hosting skipped), VAPID key generated, GA4
+  still disabled, zero production data created
+- Confirmed `apps/portal/.env.production.local` is gitignored, untracked, and absent from `git
+  status` — no file content read or printed
+- Confirmed App Hosting values (`fresh-prints-portal` backend ID, `apps/portal` root) against
+  `firebase.json` — match exactly
+- Owner clarified the App Hosting backend was created via Finish-only, `us-central1`, and shows
+  "Waiting for your first release" — no rollout occurred
+- **Empirically resolved** the open question of whether backend creation triggers an automatic
+  rollout: confirmed no — backend configuration and first release/deploy are separate steps
+- Updated `docs/standards/DEPLOYMENT.md` with a status table distinguishing backend configuration
+  (complete) from an actual release/deployment (not performed; zero production traffic)
+- **No Firebase deployment, secret configuration, DNS configuration, or production data creation
+  occurred; `master`/`production` untouched**
+
+## 2026-07-30 - production-release: email findings redacted from current tree, history rewrite declined, Firebase enablement instructions finalized (not yet deployed)
+
+- Redacted both email findings from the prior audit pass from the current tracked tree (3 files,
+  non-real placeholders used); confirmed via `git grep` zero occurrences of either original
+  address remain
+- Owner explicitly declined a Git-history rewrite (neither finding a credential, no third-party
+  customer data, disproportionate remediation risk) — historical commits touching the affected
+  files still contain the original addresses; a future history-rewrite Plan remains available if
+  the owner later decides it's necessary
+- Security audit verdict remains **PASS**
+- Ran the focused unit test for the modified test file (3/3 pass), repo lint (clean),
+  `git diff --check` (clean)
+- Finalized Firebase product-enablement instructions with evidence-based location
+  recommendations: Firestore `nam5`, Storage `us-central1` — both sourced directly from this
+  repository's own dev-setup documentation, cross-checked against the confirmed `us-central1`
+  Functions region
+- Confirmed App Hosting backend ID (`fresh-prints-portal`) and root directory (`./apps/portal`)
+  directly from `firebase.json`
+- Flagged `[NEEDS REPO CHECK]`: whether App Hosting backend creation triggers an automatic first
+  rollout (unprovable from repo source), and the exact production env file naming convention (not
+  yet established, though any `.env.*.local` name is safely gitignored)
+- **No repository visibility change, no Git history rewrite, no force-push, no Firebase action, no
+  production configuration of any kind; `master`/`production` untouched**
+
+## 2026-07-30 - production-release: repository made public, production ruleset confirmed active, full security audit PASS (not yet deployed)
+
+- Re-verified branch/tag state directly from Git (unchanged: `master`/`production` both at
+  `aa570aa`, `development` advanced by prior documentation commits, `v1.0.0-rc1` unchanged) —
+  `master`/`production` untouched this pass
+- Independently confirmed via the live GitHub API (not just owner report) that the repository is
+  genuinely public and the `production` ruleset is genuinely active with restrict-deletions,
+  block-force-pushes, and require-PR-before-merge rules all present — supersedes the prior
+  "not enforced" report
+- Performed the full public-repository security audit: current tree + all 131 reachable commits
+  across all 17 refs scanned for credentials, private keys, service-account files, PEM keys,
+  common token prefixes, and personal/customer data
+- **Result: PASS** — no probable real credential, private key, service-account file, or
+  third-party customer/financial/legal/personnel data found anywhere
+- One non-blocking finding: the owner's own real personal email address in one internal
+  dev-debugging workflow document — `[NEEDS OWNER DECISION]` on redaction, not a release blocker
+- Reviewed public non-secret content (architecture, workflow artifacts, deployment docs, project
+  IDs, Functions allowlist) — all classified acceptable for a public repository
+- Re-documented the local pre-push hook as optional defense-in-depth now that the GitHub ruleset
+  provides confirmed server-side protection
+- **No repository visibility change made this pass (already public); no Git history rewritten; no
+  force-push; no Firebase action; `master`/`production` untouched**
+
+## 2026-07-30 - production-release: GitHub ruleset limitation recorded, local pre-push safeguard added (not yet deployed)
+
+- Re-verified all branch/tag facts directly from Git (not assumed): `development` current branch,
+  clean tree, `origin/master`/`origin/production` both at `aa570aa`, `origin/development` advanced
+  with the prior documentation commit, `v1.0.0-rc1` unchanged — `master`/`production` untouched
+  this pass
+- Recorded the GitHub `production` ruleset accurately: created, targets `production`, but **not
+  enforced** on this private repository per GitHub's own message, pending an organization plan
+  upgrade the owner isn't doing this pass; documented the intended settings as future-ready
+  configuration only, not a present guarantee
+- Checked for existing hook conventions (none found) and added `.githooks/pre-push` — a tested
+  local safeguard blocking direct pushes to `production` with an `ALLOW_DIRECT_PRODUCTION_PUSH=1`
+  emergency override; left inert (`core.hooksPath` unconfigured) pending separate owner approval
+- Substantially expanded `docs/standards/DEPLOYMENT.md`: ruleset status, safeguard docs, refined
+  PR-based promotion workflow, Firebase branch/project-separation rules, and beginner-friendly
+  Firebase product-enablement instructions (Firestore mode/location flagged permanent, Storage,
+  Auth, Web App registration with config kept local/uncommitted, Web Push cert, App Hosting backend
+  preparation without its first rollout)
+- **No Firebase Console action performed on the owner's behalf; `production` not modified;
+  `master` not deleted; no force-push occurred**
+
+## 2026-07-30 - production-release: permanent `production`/`development` branches created, v1.0.0-rc1 tagged (not yet deployed)
+
+- Verified the owner-pushed release candidate before any git action: `master`/`origin/master` both
+  at `b45542ab66a9f6fafb1142201b29fc6d7a969376`, clean working tree, matching commit message
+- Confirmed via `git show b45542ab:.firebaserc` that the `production` alias was missing from the
+  pushed commit; added it in a narrow follow-up commit `aa570aa` ("chore: add production Firebase
+  project alias"), pushed to `origin/master`
+- **Branch-point commit: `aa570aa875d20ba85fd405480a47e6eda59f85b0`**
+- Created and pushed permanent branch `production` from that exact commit (no additional commits
+  added to it)
+- Created and pushed permanent branch `development` from the identical commit; repository left
+  checked out on `development`
+- Verified `origin/master`, `origin/production`, `origin/development` all resolve to the same hash
+  after `git fetch origin`; confirmed upstream tracking and clean working tree
+- Created and pushed annotated tag `v1.0.0-rc1` on the branch-point commit (confirmed it didn't
+  already exist first) — release-candidate only; final `v1.0.0` tag deferred until after production
+  deployment + smoke tests pass
+- Updated `docs/standards/DEPLOYMENT.md` with a permanent Branch Model section (development /
+  production-release / hotfix workflows), superseding the previous direct-to-`master` policy
+- `master` was **not** deleted — retained as a temporary transition fallback; deletion is a
+  separate future checkpoint
+- **No force-push occurred; no Firebase product enabled; no secret set; no production
+  configuration of any kind occurred**
+
 ## 2026-07-30 - production-release: production project confirmed, Functions allowlist finalized, working tree reconciled (not yet implemented/deployed)
 
 - Owner confirmed production Firebase project **`fresh-prints-prod`** (created, Blaze billing

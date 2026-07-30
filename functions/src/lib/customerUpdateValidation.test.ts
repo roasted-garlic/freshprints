@@ -9,7 +9,7 @@ describe("validateUpdateCustomerRequest", () => {
       customerId: "customer-1",
       displayName: "Ion Supply",
       username: "ionsupply",
-      email: "ionsupplyllc@gmail.com",
+      email: "test-user@example.com",
       notes: "VIP",
     });
 
@@ -17,7 +17,7 @@ describe("validateUpdateCustomerRequest", () => {
       customerId: "customer-1",
       displayName: "Ion Supply",
       username: "ionsupply",
-      email: "ionsupplyllc@gmail.com",
+      email: "test-user@example.com",
       notes: "VIP",
     });
   });

@@ -122,7 +122,7 @@ Current Goal:
 | 10 | Increase the MB limit for custom-request reference images | **Done** (2026-07-29, approved) — 40 MB/file live in `fresh-prints-dev` at every enforcement layer, 8 files unchanged, 320 MB combined ceiling active; owner QA FAIL (stale 15 MB deployed Cloud Functions) → Amendment 1 root-caused and fixed via scoped Functions redeploy → owner re-QA PASS |
 | 11 | `customer-upload-oversized-pixel-normalization-and-processing-timeout-followup` | **Done** (2026-07-30, approved_with_notes; owner QA PASS WITH NOTES — see signoff) |
 | 12 | `catalog-image-derivative-storage-consolidation` | **Done — closed_by_owner_after_inventory** (2026-07-30). Real dev inventory measured originals at ~97.66% of catalog Storage (980.8 MB of 1,004.3 MB); thumbnails+previews combined only 23.5 MB; zero orphans/duplicates/violations found. Owner decided the migration's small addressable Storage win did not justify the required backfill/consumer-cutover/bandwidth-increase — closed before implementation, an evidence-based decision. Retained as dev-only tooling: the read-only `inventoryCatalogImageStorage` callable and its Studio invocation panel. |
-| 13 | `production-release` — prod Firebase / App Hosting / Google / email | **Active** — production project **confirmed** (`fresh-prints-prod`, created, Blaze active); Functions allowlist **finalized** (105 total exports, 99 include, 6 exclude); working tree **reconciled** (541 entries classified, one debris file removed); **stopped at the release-source commit-boundary + `.firebaserc` alias human checkpoint**; no longer blocked (#9–#12 all signed off/closed); production approval required before any implementation or deployment |
+| 13 | `production-release` — prod Firebase / App Hosting / Google / email | **Active** — **Firestore Rules DEPLOYED to `fresh-prints-prod`** (deployment-order step 1 of 12, exit 0, first-ever Rules deployment on this project); 12-step deployment order in effect (Rules ✅ → Storage Rules → indexes → secrets → Functions → App Hosting env vars → first release → Studio build → settings → domain → smoke tests → GA4); **stopped at the Storage Rules deployment approval checkpoint** (step 2); no longer blocked (#9–#12 all signed off/closed); production approval required before any further implementation or deployment |
 | 14 | `customer-upload-early-transparency-format-validation` — reject invalid customer artwork before the trimming stage is shown | **Done** (2026-07-30, approved; automated verification 23/23 pass, clean build/lint; owner deployed to `fresh-prints-dev` and confirmed manual QA PASS across all 5 goal-brief scenarios). Separate narrow follow-up run alongside the paused `production-release` (#13), which this goal did not modify. See `docs/workflow/plans/2026-07-30-customer-upload-early-transparency-format-validation-plan.md`. |
 
 **Small Managed Items Backlog:** #5–**#14** **Done** (2026-07-21). See [Small Managed Items Backlog](#small-managed-items-backlog-2026-07-18) below.
@@ -140,16 +140,113 @@ exclude** (`inventoryCatalogImageStorage`, `wipeOperationalTestData`, `testAiEnr
 reconciled: 541 remaining changed entries classified (the vast majority trace cleanly to specific
 already-signed-off or approved goals), one proven-debris scratch script removed
 (`functions/test-admin-auth.mjs`), one unrelated-provenance deletion found and left untouched
-pending its own owner decision. Proposed release-source strategy: reconcile directly on `master` in
-~11 goal-sized commit boundaries — no new branch, consistent with the owner's no-new-branch-policy
-decision. See `docs/workflow/plans/2026-07-30-production-release-plan.md`,
+pending its own owner decision. **Owner then committed and pushed the full consolidated release
+candidate directly to `master`/`origin/master`** (commit `b45542ab`, verified via matching
+`git rev-parse HEAD`/`origin/master`) and **approved a permanent two-branch model**: `development`
+(default working branch, tests against `fresh-prints-dev`) and `production` (exact code deployed to
+`fresh-prints-prod`, receives reviewed releases from `development` only — supersedes the previous
+direct-to-`master` policy). Verified `.firebaserc` in `b45542ab` still lacked the `production`
+alias; added it in a small follow-up commit `aa570aa` ("chore: add production Firebase project
+alias"), pushed to `origin/master`. Created and pushed both `production` and `development` from
+that exact verified commit (`aa570aa875d20ba85fd405480a47e6eda59f85b0`), confirmed via
+`git fetch origin` that `origin/master`/`origin/production`/`origin/development` all resolve to the
+identical hash. Created and pushed the annotated release-candidate tag `v1.0.0-rc1` on that same
+commit (the **final** `v1.0.0` tag is deferred until after production deployment and smoke testing
+pass). Updated `docs/standards/DEPLOYMENT.md` with the new permanent Branch Model section
+(development / production-release / hotfix workflows). See
+`docs/workflow/plans/2026-07-30-production-release-plan.md`,
 `docs/workflow/reviews/2026-07-30-production-release-review.md`,
 `docs/workflow/reviews/2026-07-30-production-release-implementation-readiness-checkpoint.md`,
 `docs/workflow/reviews/2026-07-30-production-release-working-tree-reconciliation-report.md`,
-`docs/workflow/reviews/2026-07-30-production-release-functions-allowlist-report.md`, and
-`docs/workflow/reviews/2026-07-30-production-release-source-and-allowlist-checkpoint.md`.
-**Stopped at the release-source commit-boundary + `.firebaserc` alias human checkpoint** — awaiting
-owner approval. No longer blocked: Goals #9–#12
+`docs/workflow/reviews/2026-07-30-production-release-functions-allowlist-report.md`,
+`docs/workflow/reviews/2026-07-30-production-release-source-and-allowlist-checkpoint.md`, and
+`docs/standards/DEPLOYMENT.md`'s Branch Model section. **Since then:** re-verified all branch/tag
+facts directly from Git (unchanged: `origin/master`/`origin/production` both at `aa570aa`,
+`origin/development` advanced to `e2d6cde` with the documentation commit, `v1.0.0-rc1` still at
+`aa570aa`); recorded the GitHub `production` ruleset as **created but not enforced** — GitHub's own
+message confirms rulesets don't apply on this private repository until the organization moves to a
+GitHub Team plan (owner not upgrading this pass), so `production` is **not currently protected at
+the server level**; documented the full intended ruleset configuration as future-ready
+documentation only. Checked for existing hook conventions (none found — no conflict) and added
+`.githooks/pre-push`, a tested, executable local safeguard that blocks a direct push to
+`production` (with a clear message and an `ALLOW_DIRECT_PRODUCTION_PUSH=1` emergency override),
+left **inert** pending separate owner approval to run `git config core.hooksPath .githooks`.
+Substantially expanded `docs/standards/DEPLOYMENT.md`'s Branch Model section: ruleset
+status/intended settings, safeguard documentation, refined PR-based promotion workflow, Firebase
+branch/project-separation rules, and a new beginner-friendly "Next checkpoint — Firebase product
+enablement" subsection (Firestore Native-mode + location choices flagged permanent, Storage,
+Authentication, Email/Password + Google sign-in, Web App registration with config recorded locally
+— never committed, Web Push certificate, and preparing but not completing the App Hosting backend).
+**No Firebase Console action was performed on the owner's behalf; `production` was not modified;
+`master` was not deleted; no force-push occurred.**
+
+**Since then (same day, later pass):** the owner changed the repository from private to public,
+which resolved the GitHub organization-plan limitation. Independently confirmed via the live GitHub
+API (not just the owner's report) that the repository is genuinely `"visibility": "public"` and
+that the `production` ruleset is genuinely `"enforcement": "active"` with restrict-deletions,
+block-force-pushes, and require-PR-before-merge rules all present — **the prior "created but not
+enforced" statement above is now superseded.** Performed the previously-missing full
+public-repository security audit: scanned the current working tree and all 131 commits reachable
+across all branches/tags/remotes for credentials, private keys, service-account files, and personal
+data — **PASS**, with one non-blocking finding (a real personal email address, the owner's own,
+in one internal debugging document — `[NEEDS OWNER DECISION]` on redaction, not a release
+blocker). Re-documented the local pre-push hook as optional defense-in-depth now that the GitHub
+ruleset provides confirmed server-side protection. Updated `docs/standards/DEPLOYMENT.md`'s ruleset
+section to reflect the confirmed-active status and audit result.
+**Since then (same day, later pass):** owner approved redacting both email findings from the
+current repository state and explicitly decided **against** rewriting Git history (neither finding
+was a credential, no third-party customer data was found, history rewriting would change the
+established `master`/`production`/`v1.0.0-rc1` hashes and require force-pushing public branches —
+disproportionate to the finding). Replaced both addresses with non-real placeholders
+(`owner@example.com`, `test-user@example.com`) in the two current-tree files; confirmed via
+`git grep` that zero occurrences of either original address remain anywhere in the current tracked
+tree. **Historical commits still contain the original addresses** — a complete historical purge
+remains available only through a separately approved history-rewrite Plan if the owner later
+decides it is necessary. Ran the focused unit test for the modified test file (3/3 pass), repo
+lint (clean), and `git diff --check` (clean) before committing.
+**Since then (same day, later pass):** owner completed and reported the Firebase product-enablement
+checkpoint — verified (read-only): Firestore Native mode/`nam5`, Storage `us-central1`,
+Authentication with Email/Password + Google, Web App registered as
+`Fresh Prints Portal Production` (classic Hosting correctly skipped), production web config
+recorded in `apps/portal/.env.production.local` (confirmed gitignored via `git check-ignore -v`,
+confirmed untracked via `git ls-files`, confirmed absent from `git status` — no value read or
+printed), VAPID key generated, GA4 still disabled, zero production data created. Owner then
+reported the App Hosting backend `fresh-prints-portal` was created via **Finish only**
+(`us-central1`, connected to `roasted-garlic/freshprints`, branch `production`, root
+`apps/portal` — all confirmed matching `firebase.json` exactly) and **shows "Waiting for your
+first release" — no rollout occurred.** This empirically resolved the prior pass's open question
+of whether backend creation itself triggers an automatic rollout: confirmed **no** — backend
+configuration and the first release/deploy are separate steps. Updated
+`docs/standards/DEPLOYMENT.md` to record both confirmations with a clear before/after status
+table, distinguishing backend configuration (complete) from an actual release/deployment (not
+performed; zero production Portal traffic).
+**Correction (same day, later pass):** the prior framing above ("stopped at the App Hosting
+first-release checkpoint") incorrectly implied the Portal release was the immediate next action.
+The owner clarified the approved deployment order places 6 steps before it: (1) Firestore Rules,
+(2) Storage Rules, (3) Firestore indexes, (4) Secret Manager, (5) Cloud Functions (approved
+99-function allowlist), (6) App Hosting env vars — **then** (7) first Portal release, (8) Studio
+build, (9) settings/reference data, (10) domain/Authorized Domains, (11) smoke tests, (12)
+GA4/Search Console. Restated accurately: `fresh-prints-prod`'s products and App Hosting backend
+are **configured** (not empty), but no Rules, indexes, Functions, or Portal release have been
+deployed; no secrets set; no production data seeded; no domain configured; no production traffic
+exists. Compared `firestore.rules` between `development` and `production` — identical Git blob
+hash (`d4d754e22090a75ec9fa1c7fc38bbf2101822131`) on both, confirming no merge is needed before
+deploying Rules. Ran the real `npm run test:rules` emulator suite (using the documented portable
+JDK 21 workaround) — **48/48 pass.** Prepared, but did not execute, the exact command
+`firebase deploy --only firestore:rules --project fresh-prints-prod`.
+**Since then (same day, later pass):** owner approved via `APPROVE FIRESTORE RULES DEPLOY`. Ran
+the full pre-deploy safety sequence — switched to `production`, `git pull --ff-only` (already
+up to date), verified local `HEAD` = `origin/production` =
+`aa570aa875d20ba85fd405480a47e6eda59f85b0` and `firestore.rules` blob hash =
+`d4d754e22090a75ec9fa1c7fc38bbf2101822131`, both exact matches. Ran exactly
+`firebase deploy --only firestore:rules --project fresh-prints-prod` — **exit 0, "Deploy
+complete!"** — the first-ever Fresh Prints production Firestore Rules deployment. No other
+Firebase component was touched. Returned to `development` (`git pull --ff-only`, clean tree).
+`origin/production` confirmed unchanged at the same commit — this deployment added no Git commit
+to `production`, only a Firebase Rules release.
+**Stopped at the Storage Rules deployment approval checkpoint** (deployment-order step 2).
+`master` was **not** deleted (retained as a temporary transition fallback; its eventual deletion
+is a separate, later checkpoint). No longer blocked: Goals #9–#12
 (`catalog-image-derivative-storage-consolidation`) closed **2026-07-30**,
 **closed_by_owner_after_inventory** — the real dev Storage inventory measured originals at
 ~97.66% of catalog Storage (980,807,863 of 1,004,304,719 bytes across 87 designs), with existing

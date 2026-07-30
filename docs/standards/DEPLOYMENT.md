@@ -19,8 +19,402 @@ Fresh Prints consists of:
 | Environment | Purpose | URL | Branch / trigger |
 |-------------|---------|-----|------------------|
 | Local | Development | Studio: Electron dev; Portal: `localhost:3100` | `npm run dev` (both), or `dev:studio` / `dev:portal` |
-| Firebase dev | Development backend | `fresh-prints-dev` (`.firebaserc`) | local / manual deploy |
-| Production | Live users | Portal App Hosting `[TBD]` | human approval required |
+| Firebase dev | Development backend | `fresh-prints-dev` (`.firebaserc`) | `development` branch; local / manual deploy |
+| Production | Live users | Portal App Hosting on `fresh-prints-prod` (`.firebaserc` `production` alias); domain `[TBD — pending DNS connection]` | `production` branch; human approval required for every deploy |
+
+---
+
+## Branch Model (2026-07-30 — supersedes the previous direct-to-`master` policy)
+
+Fresh Prints uses two permanent branches:
+
+| Branch | Purpose |
+|--------|---------|
+| `development` | Default working branch. All ongoing features, bug fixes, experiments, and development testing happen here. Normally tested against `fresh-prints-dev`. |
+| `production` | Exact code approved and deployed to `fresh-prints-prod`. Receives reviewed releases from `development` only — no routine feature development directly on this branch. |
+
+`master` is a **temporary transition fallback** retained after the branch split
+(`production-release`, Goal #13) and is not used for ordinary work going forward. It is not deleted
+automatically — deletion is its own separate, explicit owner checkpoint (see
+`.cursor/workflow/state.md`).
+
+**Previous policy (superseded):** prior to 2026-07-30, all work committed directly to `master` with
+no release-branch or CI/CD convention. That policy is superseded by this permanent
+`development`/`production` model.
+
+**Branch state as of 2026-07-30 (verified via `git rev-parse`):** `origin/master` and
+`origin/production` both point to `aa570aa875d20ba85fd405480a47e6eda59f85b0`; `origin/development`
+has since advanced with documentation-only commits; annotated tag `v1.0.0-rc1` marks
+`aa570aa875d20ba85fd405480a47e6eda59f85b0` as the release-candidate branch point (not the final
+production tag).
+
+### GitHub `production` ruleset status — CONFIRMED ACTIVE (2026-07-30)
+
+**Superseded:** an earlier version of this document reported the ruleset as not enforced because
+the repository was private ("Your rulesets won't be enforced on this private repository until you
+move to GitHub Team organization account"). **The repository has since been changed to public**,
+which resolved that limitation. This was independently verified against the live GitHub API (not
+just the owner's report):
+
+```bash
+curl https://api.github.com/repos/roasted-garlic/freshprints/rulesets
+curl https://api.github.com/repos/roasted-garlic/freshprints/rulesets/<id>
+```
+
+confirmed `"enforcement": "active"` for the `production` ruleset, targeting `refs/heads/production`,
+with `deletion` (restrict deletions), `non_fast_forward` (block force pushes), and `pull_request`
+(`required_approving_review_count: 0` — require PR before merge) rules all present. No status-check,
+signed-commit, or linear-history rule is present (correctly disabled); no bypass actors are
+configured (empty bypass list).
+
+**Actual, confirmed ruleset configuration:**
+
+| Setting | Value |
+|---|---|
+| Enforcement status | **Active** (confirmed via GitHub API) |
+| Target branch pattern | `production` |
+| Restrict deletions | Enabled |
+| Block force pushes | Enabled |
+| Require a pull request before merging | Enabled |
+| Required approvals | 0 |
+| Required status checks | Disabled (no CI exists yet) |
+| Required signed commits | Disabled |
+| Required linear history | Disabled |
+| Bypass list | Empty |
+
+`production` is now genuinely protected at the GitHub server level: direct pushes, force-pushes, and
+deletion of `production` are rejected by GitHub itself, independent of any local safeguard.
+
+### Public-repository security audit (2026-07-30) — PASS
+
+Because the repository is now public, a full audit was performed across the current working tree
+and the complete reachable Git history (all branches, tags, and remotes — 131 total commits) for
+credentials, private keys, service-account files, and personal/customer data. **Result: PASS.** No
+probable real credential, private key, service-account file, or third-party customer/financial/
+legal/personnel data was found anywhere in the current tree or in any historical commit. One
+non-blocking finding: a real personal email address (the repository owner's own, used in an
+internal dev-debugging note) appears in one workflow document
+(`docs/workflow/reviews/2026-07-17-portal-notifications-alert-missing-investigation.md`) —
+`[NEEDS OWNER DECISION]` on whether to redact it; it is not a credential and does not block
+production release. Full audit method and findings:
+`.cursor/workflow/state.md`'s 2026-07-30 log entry for this pass.
+
+### Local pre-push safeguard against direct `production` pushes — now optional (defense-in-depth)
+
+Now that the GitHub ruleset is confirmed active and enforcing at the server level, the local
+pre-push hook below is **optional defense-in-depth**, not the primary protection it was documented
+as before the ruleset became enforceable.
+
+`.githooks/pre-push` (repository-committed, not a global hook) blocks any local `git push` that
+targets `refs/heads/production`, printing a message that points to the pull-request promotion
+workflow below. It does **not** block pushes to `development` or to any other branch (feature,
+hotfix, etc.). An explicit emergency override exists via the `ALLOW_DIRECT_PRODUCTION_PUSH=1`
+environment variable, e.g.:
+
+```bash
+ALLOW_DIRECT_PRODUCTION_PUSH=1 git push origin production
+```
+
+**This hook only takes effect once `core.hooksPath` is configured to point at `.githooks/`** — that
+one-time local configuration step requires separate owner approval (it changes local Git behavior
+for this clone) and is not applied automatically by cloning or pulling the repository:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+Each contributor's clone must run this once. Contains no secret or credential. Works under Git for
+Windows (the hook is a POSIX shell script executed by the `sh.exe` bundled with Git for Windows,
+the same mechanism Git uses for all hook scripts on Windows).
+
+### Development workflow
+
+1. Start all ordinary work on `development`.
+2. Test normal work against `fresh-prints-dev`.
+3. Commit and push ongoing work to `origin/development`.
+4. Do not perform ordinary feature work on `production`.
+
+### Production release workflow (promotion via pull request, not direct push)
+
+1. Confirm `development` is clean and fully verified.
+2. Push `development` (`git push origin development`).
+3. Open a GitHub pull request — base: `production`, compare: `development`.
+4. Review the complete Files Changed view.
+5. Merge the pull request.
+6. Check out local `production` (`git switch production`).
+7. Pull `origin/production` using fast-forward-only behavior: `git pull --ff-only origin production`.
+8. Run the complete release verification suite (see `docs/standards/TESTING.md`) on `production`.
+9. Deploy only from `production`.
+10. Explicitly target `fresh-prints-prod` in every Firebase production command — see "Firebase
+    branch and project separation" below.
+11. Perform production smoke testing.
+12. Tag the final deployed commit (e.g. `v1.0.0`) only after smoke-test signoff — not before.
+13. Return the local working branch to `development` (`git switch development`).
+
+**Do not use direct local pushes to `production` for ordinary releases** — the pre-push safeguard
+above blocks this by default; the pull-request path is the only intended promotion mechanism.
+
+### Hotfix workflow
+
+1. Create a temporary hotfix branch from `production`.
+2. Make and test the smallest necessary fix.
+3. Merge the hotfix into `production`.
+4. Deploy and verify.
+5. Merge the same hotfix into `development`.
+6. Delete the temporary hotfix branch after both merges.
+
+### Firebase branch and project separation
+
+| | Source branch | Firebase project | Every deploy command must include |
+|---|---|---|---|
+| Development | `development` | `fresh-prints-dev` | `--project fresh-prints-dev` |
+| Production | `production` | `fresh-prints-prod` | `--project fresh-prints-prod` |
+
+`.firebaserc` mapping:
+
+```json
+{
+  "projects": {
+    "default": "fresh-prints-dev",
+    "production": "fresh-prints-prod"
+  }
+}
+```
+
+The safer default remains `fresh-prints-dev`. **Do not use `firebase use production` as the normal
+workflow** — always pass `--project fresh-prints-prod` explicitly on production commands instead of
+relying on the CLI's currently-active project, which can silently drift.
+
+**Production Functions deployment remains restricted to the approved explicit allowlist** (99
+functions; see `docs/workflow/reviews/2026-07-30-production-release-functions-allowlist-report.md`
+for the full list and exact command). Excluded from production: `inventoryCatalogImageStorage`,
+`wipeOperationalTestData`, `testAiEnrichmentPlayground`, `testAiEnrichmentTagRerank`,
+`ownerDeleteUser`, `backfillPrintRequestQueueTab`. `rebuildCatalogSnapshots` remains included.
+**Never** use a bare `firebase deploy --only functions` — always the full explicit
+`--only functions:name1,functions:name2,...` list.
+
+### `master` deletion policy (reminder)
+
+`master` must remain until after the first production smoke test passes. It may be deleted only
+after **all** of the following are satisfied:
+
+1. GitHub default branch is confirmed as `development`.
+2. `production` is confirmed as the live release branch.
+3. The first production deployment succeeds.
+4. The full production smoke test passes.
+5. No Firebase App Hosting setting depends on `master`.
+6. No GitHub integration, script, documentation, automation, or external service depends on
+   `master`.
+7. `development` and `production` are both backed up on `origin`.
+8. The owner gives a separate, explicit deletion approval.
+
+### Firebase product enablement in `fresh-prints-prod` — CONFIRMED COMPLETE (2026-07-30)
+
+The owner has completed the initial product-enablement checkpoint. Verified (read-only, this
+coding agent performed no Console action or Firebase command):
+
+| Item | Status |
+|---|---|
+| Firestore | Created, Native mode, location `nam5` |
+| Cloud Storage | Default bucket created, `us-central1` |
+| Authentication | Enabled; Email/Password + Google providers enabled |
+| Production Web App | Registered as `Fresh Prints Portal Production`; classic Firebase Hosting **not** enabled during registration |
+| Production web config | Recorded locally in `apps/portal/.env.production.local` — confirmed gitignored (`git check-ignore -v` matches `.gitignore:24`'s `.env.*.local` pattern), confirmed untracked (`git ls-files` empty), confirmed absent from default `git status` output; **no value read or printed by this coding agent** |
+| Web Push VAPID key | Generated and recorded in the same local file |
+| GA4 | Confirmed still disabled; `NEXT_PUBLIC_GA_MEASUREMENT_ID` remains unset |
+| Production data | None created — no user, collection, document, or Storage object |
+| **App Hosting backend** | **Created** (`fresh-prints-portal`, `us-central1`, connected to `roasted-garlic/freshprints`, branch `production`, root `apps/portal`) via the Console's "Finish" action — **backend configuration only; no rollout was triggered by this action** |
+| First App Hosting release/deployment | **Not performed** — backend shows "Waiting for your first release" |
+| Production Portal traffic | **None** |
+| Rules/indexes/Functions/Portal/Studio deployment | None occurred |
+
+**Distinction to keep clear going forward:** App Hosting *backend configuration* (repository
+connection, branch selection, root directory, region) is a separate, already-completed step from
+triggering an actual *release/rollout* (which builds and deploys Portal code and would put
+something live). The backend currently existing with no release does not mean Portal is deployed
+or reachable — it means the backend object exists and is correctly pointed at the right
+repository/branch/root, with nothing built or served yet. Triggering the first release remains its
+own separate, later, explicitly-approved checkpoint.
+
+### Approved production deployment order (do not skip ahead)
+
+1. ✅ **Firestore Rules deployment** — **DEPLOYED 2026-07-30.** `firebase deploy --only
+   firestore:rules --project fresh-prints-prod`, exit 0, "Deploy complete!" — the first-ever Fresh
+   Prints production Firestore Rules deployment. Verify in Console: `fresh-prints-prod` → Firestore
+   Database → Rules tab → "Last published" timestamp.
+2. **Storage Rules deployment** ← current checkpoint
+3. Firestore indexes deployment
+4. Secret Manager population (`GEMINI_API_KEY`, `RESEND_API_KEY`, `ETSY_X_API_KEY`, `BREVO_API_KEY` if selected)
+5. Cloud Functions deployment (approved explicit 99-function allowlist — see
+   `docs/workflow/reviews/2026-07-30-production-release-functions-allowlist-report.md`)
+6. App Hosting environment-variable configuration (`NEXT_PUBLIC_FIREBASE_*`, `NEXT_PUBLIC_PORTAL_ORIGIN`; `NEXT_PUBLIC_GA_MEASUREMENT_ID` stays unset)
+7. First App Hosting Portal release
+8. Production Studio build
+9. Initial settings and reference-data setup (categories, email provider selection, `rebuildCatalogSnapshots`)
+10. Domain and Authorized Domains configuration
+11. Smoke tests
+12. GA4 and Search Console (separate later checkpoints)
+
+**The App Hosting backend existing with status "Waiting for your first release" does not change
+this order.** Backend configuration (already complete) is not the same as step 7 (the first
+release) — five more steps come first after Rules. Each step requires its own separate, explicit
+owner approval; none of this order authorizes skipping ahead.
+
+### Original enablement instructions (retained for reference)
+
+The production Firebase project (`fresh-prints-prod`) originally had **zero products enabled**.
+Before any Rules/Functions/App Hosting deploy can occur, the owner needed to enable the following
+in the Firebase Console — **this coding agent does not perform Firebase Console actions or run
+Firebase commands on the owner's behalf. Instructions only.**
+
+#### 1. Firestore
+
+1. Firebase Console → select project **`fresh-prints-prod`** (top-left project switcher).
+2. Left sidebar → **Build** → **Firestore Database**.
+3. Click **Create database**.
+4. Choose **Native mode** — **do not** choose Datastore mode. **This choice is permanent** —
+   Datastore mode cannot later be converted to Native mode.
+5. Choose the location: **`nam5`**.
+
+**Recommended location and evidence:** `nam5` (a US multi-region location). This is not a guess —
+it is sourced directly from this repository's own `docs/workflow/setup/firestore-setup.md`
+(Step 2: "Recommended starting location: `nam5`"), the documented setup path already used for
+`fresh-prints-dev`. `nam5` includes `us-central1` as one of its constituent regions, and
+`functions/src/lib/portalOgUrls.ts:39` hardcodes `us-central1` into every constructed Cloud
+Functions URL — confirming the entire deployed Functions fleet runs in `us-central1` (the Cloud
+Functions default region) regardless of project. Using `nam5` for production keeps the same
+region relationship to Functions as the existing dev environment while providing Firestore's
+higher multi-region availability. **This is proven from current repository documentation and
+source, not guessed — no further owner confirmation is required to proceed with `nam5`,** though
+the owner may override it if a different location is preferred for other reasons.
+
+6. **This location choice is permanent for the life of the database** — changing it later requires
+   exporting all data and recreating the database from scratch.
+7. Click **Create**.
+
+**What success looks like:** the Firestore Database page shows an empty database in Native mode,
+location `nam5`, with the default `(default)` database name.
+
+#### 2. Cloud Storage
+
+1. Left sidebar → **Build** → **Storage**.
+2. Click **Get started**.
+3. Review the billing prompt (Blaze is already active for this project — this is expected, not a
+   new charge trigger by itself).
+4. Choose the Storage location: **`us-central1`**, per this repository's own
+   `docs/workflow/setup/firebase-storage-setup.md` (Step 2: "Recommended starting location:
+   `us-central1`") — the same documented recommendation already used for `fresh-prints-dev`, and
+   the region that directly matches the Functions region above, avoiding Storage-to-Functions
+   cross-region latency for derivative generation and file processing.
+5. Accept the default (locked-down) security rules prompt if shown — real Storage Rules are
+   deployed later, in their own separate checkpoint; this default is a safe placeholder.
+6. Click **Done**.
+
+**What success looks like:** the Storage page shows an empty default bucket
+(`fresh-prints-prod.firebasestorage.app` or similar) in region `us-central1`, with no objects.
+
+#### 3. Authentication
+
+1. Left sidebar → **Build** → **Authentication** → **Get started**.
+2. **Sign-in method** tab → **Email/Password** → click it → toggle **Enable** → **Save**.
+3. **Sign-in method** tab → **Google** → click it → toggle **Enable** → select a **support email**
+   (use an email the owner controls; this is shown to users during Google sign-in) → **Save**.
+4. Google sign-in may prompt Firebase to configure a default OAuth consent screen automatically for
+   typical projects — accept the default unless the owner has a specific reason to customize it
+   further (custom OAuth consent branding is not required for this checkpoint and is not permanent
+   in the sense that it can be edited later in Google Cloud Console → APIs & Services → OAuth
+   consent screen, though changes there can affect already-signed-in users).
+5. **Leave Authorized Domains unchanged** for now — do not add `myprintrequest.com` yet. Firebase
+   automatically includes `localhost` and the project's own default `*.firebaseapp.com`/
+   `*.web.app` domains; the production customer domain is added in the separate, later DNS/domain
+   checkpoint (per `docs/architecture/BACKEND.md`: "Firebase Authentication Authorized domains must
+   include the Portal hosts").
+
+**Do not create any production user accounts in this step.**
+
+#### 4. Production Web App registration
+
+1. Project settings (gear icon, top of left sidebar) → **General** tab.
+2. Scroll to **Your apps** → click the Web icon (`</>`).
+3. App nickname: **`Fresh Prints Portal Production`**.
+4. **Firebase Hosting checkbox: leave unchecked / skip.** This repository uses **Firebase App
+   Hosting** (a distinct product from classic Firebase Hosting) for Portal, configured via
+   `firebase.json`'s `apphosting` block and deployed separately (App Hosting checkpoint, step 6
+   below) — the classic Hosting setup offered during Web App registration is not used by this
+   project and would create an unused Hosting site if enabled.
+5. Click **Register app**.
+6. Firebase displays a config object with these field names: `apiKey`, `authDomain`, `projectId`,
+   `storageBucket`, `messagingSenderId`, `appId`.
+
+**Where to record these values — do not paste them into chat, commit messages, or any committed
+file.** These are public client-side identifiers, not private credentials by Firebase's own design
+(they are safe to embed in a shipped web bundle), but this repository's established convention
+keeps all project-specific values — secret or not — out of git via `.env.local`-pattern files
+(confirmed: `apps/portal/.env.local` and `apps/studio/.env.local` both already exist, gitignored,
+holding the equivalent `fresh-prints-dev` values today).
+
+**`[NEEDS REPO CHECK]` — no `.env.production.local` file exists yet; this exact path is a proposed
+convention, not an already-established one.** Recommended (not yet proven in use):
+`apps/portal/.env.production.local` for Portal, and a temporary `apps/studio/.env.production.local`
+for the one-off production Studio build described earlier in this document. Both filenames match
+the root `.gitignore`'s `.env.*.local` pattern (confirmed present at `.gitignore:24`), so either
+name is safe from being committed. The owner may choose a different local filename as long as it
+matches that gitignore pattern.
+
+#### 5. Web Push certificate
+
+1. Project settings → **Cloud Messaging** tab.
+2. Scroll to **Web configuration** → **Web Push certificates**.
+3. If none exists yet, click **Generate key pair**.
+4. Copy the resulting key into the same local production env file as
+   `NEXT_PUBLIC_FIREBASE_VAPID_KEY`.
+
+The public VAPID key is not a private server secret — it is meant to be shipped to the browser —
+but store it only in the same local/App-Hosting-configuration location as the rest of the web
+config, not in a committed file. **Regenerating this key later invalidates every existing push
+subscription** for users who already subscribed, so treat the first generated key as durable once
+real customer traffic exists, even though it is technically rotatable.
+
+**Do not create any push subscriptions or send any push notification in this step.**
+
+#### 6. App Hosting backend preparation — CONFIRMED COMPLETE, no rollout triggered
+
+**Resolved (2026-07-30):** the owner completed backend creation using the Console's **Finish**
+action. Confirmed values, matching this repository's configuration exactly:
+
+| Setting | Confirmed value | Source |
+|---|---|---|
+| Firebase project | `fresh-prints-prod` | Owner-confirmed production project |
+| GitHub repository | `roasted-garlic/freshprints` | Confirmed connected |
+| Live branch | `production` | Matches this goal's branch-model decision |
+| Application root | `apps/portal` | Matches `firebase.json`'s `apphosting[0].rootDir: "./apps/portal"` |
+| Backend ID | `fresh-prints-portal` | Matches `firebase.json`'s `apphosting[0].backendId` exactly |
+| Region | `us-central1` | Owner-confirmed |
+
+**Whether backend creation itself triggers an automatic first rollout — now empirically resolved:
+no.** The owner completed backend creation via "Finish" and the backend shows **"Waiting for your
+first release"** — confirming backend registration and the first release/rollout are genuinely
+separate steps in this Firebase Console/CLI version. Backend *configuration* (repository
+connection, branch, root, region) is complete; no build, deploy, or release has occurred; Portal
+production traffic remains at zero.
+
+**Triggering the first release remains its own separate, later, explicitly-approved checkpoint** —
+not performed in this pass, not authorized by this document.
+
+**Permanent / difficult-to-change choices requiring extra care:**
+- Firestore mode (Native vs Datastore) — permanent.
+- Firestore location/region (`nam5`, recommended above) — permanent.
+- Storage location/region (`us-central1`, recommended above) — effectively permanent.
+- Web Push certificate — technically rotatable, but rotating invalidates all existing subscriptions
+  once real users exist.
+- App Hosting backend ID — not confirmed changeable later without recreating the backend;
+  recommend getting it right the first time (`fresh-prints-portal`).
+
+**Not performed by this pass, and not authorized:** Firestore Rules deploy, Storage Rules deploy,
+Firestore indexes deploy, Functions deploy, App Hosting's first rollout/deploy, Portal deploy,
+Secret Manager configuration, DNS configuration, GA4 configuration, Search Console configuration,
+production user/category/show creation, production data seeding, invoking `rebuildCatalogSnapshots`,
+the production Studio installer build, any modification to `production`, and deletion of `master`.
 
 ---
 
