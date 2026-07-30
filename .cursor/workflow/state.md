@@ -31,12 +31,57 @@ throughout this pass.**
 Test Status: pending
 Signoff Status: pending
 DONE: no
-Last Completed Step: Re-verified all branch/tag facts from Git before relying on them: current
+Last Completed Step: **Deployment-order step 5 (Cloud Functions) CONFIRMED COMPLETE.** Phase A
+non-secret configuration audit found no source change required: `portalUrlResolver.ts` already maps
+`fresh-prints-prod` → `https://myprintrequest.com`; `.firebaserc` already has the `production` alias;
+`INVITATION_FROM_EMAIL`/`PROOF_NOTICE_FROM_EMAIL` code defaults already match owner intent exactly;
+`PORTAL_BASE_URL` correctly stays unset (emulator-only). Created
+`functions/.env.fresh-prints-prod` (gitignored, untracked, same convention as the existing
+`.env.fresh-prints-dev`) containing only the two non-secret sender-address defaults, required
+because the Firebase CLI's non-interactive mode cannot resolve `defineString` params without a
+dotenv file present. Reverification on the fast-forward-verified `production` commit
+(`21f036fab2ff6cb0a4d934ef5e5c9e465b21e293`) all passed: Functions build, repo lint, `git diff
+--check` all exit 0; fresh programmatic enumeration of `functions/src/index.ts` reconfirmed 105
+total exports, 99 included / 6 excluded, byte-identical to the approved allowlist report; all four
+secrets reconfirmed Version 1/ENABLED via metadata-only checks.
+
+Ran the exact reviewed 99-function `firebase deploy --only functions:...` command against
+`fresh-prints-prod`. First attempt failed before creating anything: `--non-interactive` mode
+required explicit values for the `defineString` params (fixed via the `.env.fresh-prints-prod` file
+above). Second attempt failed with `Error: Pass the --force option to deploy functions with a
+failure policy` — `onEmailDeliveryJobCreated` has a pre-existing, intentional `retry: true` trigger
+option (idempotent email-job worker, `functions/src/onEmailDeliveryJobCreated.ts:189`), not a new or
+accidental change. Per the workflow's `--force` safety rule, this was surfaced to the owner via a
+structured question rather than applied unilaterally; **owner approved `--force` for this specific,
+reviewed reason.** Third attempt (with `--force`) partially succeeded: 84 of 99 functions deployed
+successfully; 15 failed with transient `429 Quota exceeded` (`Per project mutation requests per
+minute per region`, expected on a brand-new project's first bulk 2nd-gen Functions deploy) and two
+Eventarc service-agent permission-propagation errors. Verified via authoritative
+`firebase functions:list --project fresh-prints-prod --json` (not log-parsing) that all 84 deployed
+functions were correctly on the approved allowlist — zero excluded functions and zero unexpected
+functions present, confirming the partial failure was purely quota/propagation-related, not a
+configuration defect. Waited ~2.5 minutes for the per-minute quota window to reset and Eventarc
+propagation to finish, then retried with an explicit `--only functions:` allowlist scoped to
+exactly the 15 missing names (same owner-approved `--force`). Retry log ended with an explicit
+**"Deploy complete!"** — all 15 succeeded (one, `onTagSnapshotSourceWritten`, hit one more transient
+429 but the CLI's own internal retry succeeded before the deploy finished).
+
+**Final authoritative verification** (`firebase functions:list --project fresh-prints-prod --json`,
+not log output): **exactly 99 functions deployed, byte-identical diff against the approved 99-name
+allowlist (zero drift), 0 of the 6 excluded functions present, all functions in `us-central1`, no
+function in a non-`ACTIVE` state, `rebuildCatalogSnapshots` confirmed present.** Deploy log directly
+confirmed the `GEMINI_API_KEY` secret-accessor role was granted to the Functions service account
+during this deploy (the other three secrets' accessor roles were granted during the first partial
+deploy) — direct evidence secret bindings are live, not merely configured. **No secret value was
+ever accessed, printed, or logged.** No excluded Function was deployed. No App Hosting, Portal,
+DNS, Auth, or production-data action occurred this pass. `rebuildCatalogSnapshots` was deployed
+(on the allowlist) but not invoked (that remains its own separate checkpoint per Phase D).
+
+Re-verified all branch/tag facts from Git before relying on them: current
 branch `development`; working tree clean; `origin/master` = `aa570aa875d20ba85fd405480a47e6eda59f85b0`;
-`origin/production` = `aa570aa875d20ba85fd405480a47e6eda59f85b0`; `origin/development` =
-`e2d6cde99c72a8d0c3966861b1e1460d520bc9cb` (later documentation commit); `v1.0.0-rc1` still points
-to `aa570aa875d20ba85fd405480a47e6eda59f85b0`. **Did not modify `master` or `production` this
-pass.**
+`origin/production` = `21f036fab2ff6cb0a4d934ef5e5c9e465b21e293`; `origin/development` =
+`067f39fdbc158a1292e5ce1f24f67c4aef201729`. **Did not modify `master` or `production` (no Git
+commit) this pass — only the Firebase Cloud Functions deployment occurred.**
 
 Recorded the GitHub `production` ruleset accurately: created by the owner, targets `production`,
 but GitHub displayed "Your rulesets won't be enforced on this private repository until you move to
@@ -74,21 +119,22 @@ recording its config into a local gitignored file (never committed), creating th
 certificate, and preparing (not completing) the App Hosting backend — explicitly stopping before
 its first rollout/deploy.
 
-**No Firebase Console action was performed on the owner's behalf. No Rules, Storage Rules,
-indexes, Functions, App Hosting rollout, or Portal deploy occurred. No secret, DNS, production
-user, or production data was configured/created/seeded. No production Studio installer was built.
-No GA4 or Search Console configuration occurred. `production` was not modified. `master` was not
-deleted. No force-push occurred anywhere in this pass** (only file writes and doc/state commits to
-`development`, still pending push at the time this state was written — see the response for the
-final documentation commit hash).
-Human Checkpoint Required: yes — **Functions deployment approval.** Deployment-order steps 1-4 of
-12 are all complete (Firestore Rules, Storage Rules, Firestore indexes, Secret Manager). Owner
-must separately approve deploying the approved explicit 99-function allowlist to
-`fresh-prints-prod` before Functions (step 5) can proceed.
-Blocked: no (not blocked; paused at the Functions deployment approval checkpoint by explicit
-instruction — steps 1-4 are all confirmed complete)
-Allowed Actions: none beyond this pass; awaiting explicit owner approval to deploy the approved
-99-function allowlist
+**Deployment-order step 5 (Cloud Functions) is now CLOSED.** 99 of 99 approved functions deployed
+and verified on `fresh-prints-prod`; 0 of 6 excluded functions present. No App Hosting rollout or
+Portal deploy occurred. No secret value was accessed, printed, or logged. No DNS, production user,
+or production data was configured/created/seeded. No production Studio installer was built. No GA4
+or Search Console configuration occurred. `production` was not modified by Git (Functions deploy is
+a Firebase action, not a commit). `master` was not deleted. No force-push occurred anywhere in this
+pass.
+Human Checkpoint Required: no — Phase A and Phase B (Functions non-secret config audit + approved
+99-function deployment) are both complete per explicit prior authorization in the active `Continue
+Workflow` instruction. Proceeding into Phase C (App Hosting production environment configuration
+and first Portal release) under that same authorization; the first App Hosting *release* trigger
+itself remains its own checkpoint per that instruction's explicit conditions.
+Blocked: no
+Allowed Actions: continue Phase C — App Hosting environment audit, environment-variable
+configuration, and (once confirmed ready) the first App Hosting release, per the active Continue
+Workflow instruction's already-granted authorization
 Forbidden Actions: deleting `master` (local or remote); modifying `production` directly (only via
 PR); running any `firebase deploy` command of any kind without separate approval (including the
 Functions deploy itself); accessing, printing, or logging any secret value; setting or rotating
@@ -98,10 +144,9 @@ release/rollout; any DNS/Auth-config/GA4/Search-Console action; invoking
 `rebuildCatalogSnapshots`; building or distributing a production Studio installer; touching
 production data; force-pushing any branch; rewriting Git history; configuring `core.hooksPath`
 without separate owner approval; changing repository visibility
-Next Required Step: **STOP.** Await explicit owner approval to deploy Cloud Functions to
-`fresh-prints-prod` using the approved explicit 99-function allowlist (see
-`docs/workflow/reviews/2026-07-30-production-release-functions-allowlist-report.md` for the exact
-prepared command). This is deployment-order step 5 of 12.
+Next Required Step: Continue into Phase C — App Hosting production environment configuration and
+first Portal release (deployment-order step 6 of 12), per the active `Continue Workflow`
+instruction's already-granted authorization for this phase.
 
 Plan:
 `docs/workflow/plans/2026-07-29-preproduction-static-analysis-cleanup-plan.md`.

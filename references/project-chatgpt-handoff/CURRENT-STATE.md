@@ -1,5 +1,53 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-07-30 — Goal #13 "production-release" — Cloud Functions deployment COMPLETE (deployment-order steps 1-5 of 12 done); proceeding into App Hosting/Portal release
+
+**Cloud Functions (step 5) confirmed complete.** Owner issued a multi-phase `Continue Workflow`
+instruction authorizing Phase A through Phase H in sequence, pausing only at named checkpoints.
+Phase A (non-secret Functions configuration audit) found no source change required —
+`portalUrlResolver.ts`, `.firebaserc`, and the `INVITATION_FROM_EMAIL`/`PROOF_NOTICE_FROM_EMAIL`
+code defaults already matched owner intent exactly. Reverification on the fast-forward-verified
+`production` commit passed cleanly (build/lint/diff-check all exit 0); fresh programmatic
+re-enumeration reconfirmed 105 total exports / 99 include / 6 exclude, byte-identical to the
+previously approved allowlist, zero drift.
+
+Deployed the exact reviewed 99-function allowlist to `fresh-prints-prod`. First attempt failed
+before creating anything (CLI non-interactive mode needed explicit values for two non-secret
+`defineString` params) — fixed by creating `functions/.env.fresh-prints-prod` (gitignored,
+following the exact existing repo convention, containing only the two non-secret sender-address
+defaults already present as code defaults). Second attempt required `--force` because
+`onEmailDeliveryJobCreated` has a pre-existing, intentional `retry: true` trigger option (not a new
+or accidental change) — surfaced to the owner via a structured question rather than applied
+unilaterally; **owner approved `--force` for this specific, reviewed reason.**
+
+Third attempt deployed 84 of 99 functions; 15 failed with transient `429 Quota exceeded` (expected
+on a brand-new project's first bulk 2nd-gen Functions deploy) plus Eventarc service-agent
+permission-propagation delay for newly-enabled trigger infrastructure. Verified via authoritative
+`firebase functions:list --project fresh-prints-prod --json` (not log-parsing) that all 84 deployed
+functions were correctly on the approved allowlist — zero excluded and zero unexpected functions —
+confirming the partial failure was purely quota/propagation-related, not a configuration defect.
+Waited for the per-minute quota window to reset, then retried with an explicit allowlist scoped to
+exactly the 15 missing function names (same owner-approved `--force`); all 15 succeeded, log ended
+with an explicit "Deploy complete!".
+
+**Final authoritative verification:** exactly 99 functions deployed, byte-identical diff against
+the approved 99-name allowlist (zero drift), 0 of the 6 excluded functions present
+(`inventoryCatalogImageStorage`, `wipeOperationalTestData`, `testAiEnrichmentPlayground`,
+`testAiEnrichmentTagRerank`, `ownerDeleteUser`, `backfillPrintRequestQueueTab`), all functions in
+`us-central1`, no function in a non-`ACTIVE` state, `rebuildCatalogSnapshots` confirmed present
+(deployed but not yet invoked — invocation remains its own separate Phase D checkpoint). Deploy log
+directly confirmed the `GEMINI_API_KEY` secret-accessor role was granted to the Functions service
+account during this deploy — direct evidence secret bindings are live, not merely configured.
+
+**No secret value was ever accessed, printed, or logged at any point in this pass.** No excluded
+Function was deployed. No App Hosting, Portal, DNS, Auth, or production-data action occurred.
+`production` received no Git commit (Functions deploy is a Firebase action, not a repository
+change).
+
+**Active managed goal:** `production-release` (Goal #13) — deployment-order steps 1-5 of 12 all
+complete. Proceeding into Phase C (App Hosting environment configuration and first Portal release,
+step 6 of 12) under the same multi-phase authorization already granted by the owner.
+
 ## 2026-07-30 — Goal #13 "production-release" — Firestore indexes CLOSED (owner confirmed all 65 Enabled); Secret Manager population COMPLETE (deployment-order steps 1-4 of 12 done)
 
 **Firestore indexes checkpoint closed:** owner confirmed via Firebase Console that all 65 of 65

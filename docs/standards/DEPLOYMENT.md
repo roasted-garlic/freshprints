@@ -273,9 +273,24 @@ own separate, later, explicitly-approved checkpoint.
    population metadata verification (read-only) confirmed all four secrets: version 1, state
    ENABLED. No secret value was ever printed, logged, or exposed. No secret was created in
    `fresh-prints-dev`.
-5. Cloud Functions deployment ← **current checkpoint** (approved explicit 99-function allowlist —
-   see `docs/workflow/reviews/2026-07-30-production-release-functions-allowlist-report.md`)
-6. App Hosting environment-variable configuration (`NEXT_PUBLIC_FIREBASE_*`, `NEXT_PUBLIC_PORTAL_ORIGIN`; `NEXT_PUBLIC_GA_MEASUREMENT_ID` stays unset)
+5. ✅ **Cloud Functions deployment** — **COMPLETE 2026-07-30.** Deployed the exact reviewed
+   99-function allowlist (see
+   `docs/workflow/reviews/2026-07-30-production-release-functions-allowlist-report.md`) to
+   `fresh-prints-prod`. Phase A non-secret configuration audit found no source change required.
+   Created `functions/.env.fresh-prints-prod` (gitignored, same convention as the existing dev
+   file) so the CLI's non-interactive mode could resolve the `INVITATION_FROM_EMAIL`/
+   `PROOF_NOTICE_FROM_EMAIL` `defineString` params. Owner approved `--force` for one specific,
+   reviewed reason: `onEmailDeliveryJobCreated` has a pre-existing, intentional `retry: true`
+   trigger option. First bulk-deploy attempt landed 84 of 99 functions; 15 failed with transient
+   `429 Quota exceeded` (expected on a brand-new project's first 2nd-gen Functions deploy) plus
+   Eventarc permission-propagation delay — verified via authoritative `firebase functions:list
+   --json` that all 84 were correctly on the allowlist before retrying. A scoped retry of exactly
+   the 15 missing functions succeeded. **Final verification: exactly 99 functions deployed,
+   byte-identical to the approved allowlist (zero drift), 0 of the 6 excluded functions present,
+   all in `us-central1`, no function in a non-`ACTIVE` state, `rebuildCatalogSnapshots` present**
+   (deployed but not yet invoked — invocation is its own Phase D checkpoint). No secret value was
+   ever accessed, printed, or logged.
+6. App Hosting environment-variable configuration ← **current checkpoint** (`NEXT_PUBLIC_FIREBASE_*`, `NEXT_PUBLIC_PORTAL_ORIGIN`; `NEXT_PUBLIC_GA_MEASUREMENT_ID` stays unset)
 7. First App Hosting Portal release
 8. Production Studio build
 9. Initial settings and reference-data setup (categories, email provider selection, `rebuildCatalogSnapshots`)

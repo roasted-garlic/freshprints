@@ -2,6 +2,31 @@
 
 > Signed-off or largely complete work. External agents should not re-plan or duplicate this.
 
+## 2026-07-30 - production-release: Cloud Functions deployment complete (deployment-order step 5 of 12)
+
+- Phase A non-secret Functions configuration audit found no source change required
+  (`portalUrlResolver.ts`, `.firebaserc`, email-sender defaults all already matched owner intent)
+- Fresh programmatic re-enumeration on the verified `production` commit reconfirmed 105 total
+  exports / 99 include / 6 exclude, byte-identical to the previously approved allowlist
+- Created `functions/.env.fresh-prints-prod` (gitignored, matching the existing repo convention)
+  to resolve two non-secret `defineString` params under non-interactive CLI deploy mode
+- Owner approved `--force` for one specific, reviewed reason: `onEmailDeliveryJobCreated` has a
+  pre-existing, intentional `retry: true` trigger option
+- First deploy attempt landed 84 of 99 functions; 15 failed with transient quota/Eventarc-
+  propagation errors expected on a brand-new project's first bulk 2nd-gen deploy — verified via
+  authoritative `firebase functions:list --json` that all 84 were correctly on the allowlist
+  before retrying
+- Scoped retry of exactly the 15 missing functions succeeded, ending in an explicit "Deploy
+  complete!"
+- **Final verification: exactly 99 functions deployed, byte-identical to the approved allowlist
+  (zero drift), 0 of the 6 excluded functions present, all in `us-central1`, no function in a
+  non-ACTIVE state, `rebuildCatalogSnapshots` present** (deployed, not yet invoked)
+- **No secret value was ever accessed, printed, or logged. No excluded Function deployed. No App
+  Hosting, Portal, DNS, Auth, or production-data action occurred; `production` received no Git
+  commit**
+- Next checkpoint: App Hosting environment-variable configuration and first Portal release
+  (deployment-order step 6 of 12)
+
 ## 2026-07-30 - production-release: Firestore indexes checkpoint closed; Secret Manager population complete (deployment-order steps 3-4 of 12)
 
 - Owner confirmed via Firebase Console that all 65 of 65 composite indexes on `fresh-prints-prod`
