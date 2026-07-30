@@ -1,5 +1,51 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-07-30 — Goal #13 "production-release" — Both email findings REDACTED from current tree; owner declined Git-history rewrite; stopped at Firebase product-enablement checkpoint
+
+Re-verified branch/tag state directly from Git (unchanged): `master`/`production` both at
+`aa570aa875d20ba85fd405480a47e6eda59f85b0`, `v1.0.0-rc1` unchanged. **`master` and `production`
+were not touched this pass.**
+
+Owner approved redacting the two email findings from the prior audit from the current repository
+state. Replaced both with non-real placeholders across every current-tree occurrence (3 files,
+including this coding agent's own prior audit-log text in `.cursor/workflow/state.md`, which had
+quoted both addresses verbatim while documenting the finding). Confirmed via `git grep` that zero
+occurrences of either original address remain anywhere in the current tracked tree.
+
+**Owner explicitly declined a Git-history rewrite** — neither finding was a credential, no
+third-party customer data was found, and rewriting would change the established
+`master`/`production`/`v1.0.0-rc1` hashes and require force-pushing public branches, a
+disproportionate remediation for the finding. **Historical commits touching either affected file
+still contain the original addresses** — a complete historical purge remains available only
+through a separately approved history-rewrite Plan if the owner later decides it is necessary.
+Security audit verdict remains **PASS**.
+
+Ran the focused unit test for the modified test file (3/3 pass), repo lint (clean), and
+`git diff --check` (clean) before committing.
+
+Substantially expanded `docs/standards/DEPLOYMENT.md`'s Firebase product-enablement instructions
+with evidence-based location recommendations: Firestore `nam5` and Storage `us-central1`, both
+sourced directly from this repository's own `docs/workflow/setup/firestore-setup.md` and
+`firebase-storage-setup.md` (the same recommendations already used for `fresh-prints-dev`), cross-
+checked against the confirmed `us-central1` Functions region
+(`functions/src/lib/portalOgUrls.ts:39`). Confirmed the App Hosting backend ID
+(`fresh-prints-portal`) and root directory (`./apps/portal`) directly from `firebase.json`.
+Flagged `[NEEDS REPO CHECK]` on two points that could not be proven from repository source: whether
+creating an App Hosting backend triggers an automatic first rollout (external product behavior,
+must be confirmed against actual Console behavior before that step), and the exact production env
+file naming convention (no `.env.production.local` file exists yet — a proposed, not established,
+convention; both proposed names are confirmed covered by the root `.gitignore`'s `.env.*.local`
+pattern regardless).
+
+**No repository visibility change was made. No Git history was rewritten. No force-push occurred.
+No Firebase product was enabled, no secret was set, no production configuration of any kind
+occurred, no `rebuildCatalogSnapshots` invocation occurred. `master` and `production` remain
+untouched.**
+
+**Active managed goal:** `production-release` (Goal #13) — STOPPED at the Firebase
+product-enablement checkpoint per explicit instruction; awaiting the owner to complete the
+documented Firebase Console steps and report back.
+
 ## 2026-07-30 — Goal #13 "production-release" — Repository made PUBLIC; production ruleset CONFIRMED ACTIVE; full security audit PASS; stopped at production-security checkpoint
 
 Re-verified branch/tag state directly from Git (unchanged): current branch `development`, clean

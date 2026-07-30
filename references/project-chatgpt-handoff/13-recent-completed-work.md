@@ -2,6 +2,30 @@
 
 > Signed-off or largely complete work. External agents should not re-plan or duplicate this.
 
+## 2026-07-30 - production-release: email findings redacted from current tree, history rewrite declined, Firebase enablement instructions finalized (not yet deployed)
+
+- Redacted both email findings from the prior audit pass from the current tracked tree (3 files,
+  non-real placeholders used); confirmed via `git grep` zero occurrences of either original
+  address remain
+- Owner explicitly declined a Git-history rewrite (neither finding a credential, no third-party
+  customer data, disproportionate remediation risk) — historical commits touching the affected
+  files still contain the original addresses; a future history-rewrite Plan remains available if
+  the owner later decides it's necessary
+- Security audit verdict remains **PASS**
+- Ran the focused unit test for the modified test file (3/3 pass), repo lint (clean),
+  `git diff --check` (clean)
+- Finalized Firebase product-enablement instructions with evidence-based location
+  recommendations: Firestore `nam5`, Storage `us-central1` — both sourced directly from this
+  repository's own dev-setup documentation, cross-checked against the confirmed `us-central1`
+  Functions region
+- Confirmed App Hosting backend ID (`fresh-prints-portal`) and root directory (`./apps/portal`)
+  directly from `firebase.json`
+- Flagged `[NEEDS REPO CHECK]`: whether App Hosting backend creation triggers an automatic first
+  rollout (unprovable from repo source), and the exact production env file naming convention (not
+  yet established, though any `.env.*.local` name is safely gitignored)
+- **No repository visibility change, no Git history rewrite, no force-push, no Firebase action, no
+  production configuration of any kind; `master`/`production` untouched**
+
 ## 2026-07-30 - production-release: repository made public, production ruleset confirmed active, full security audit PASS (not yet deployed)
 
 - Re-verified branch/tag state directly from Git (unchanged: `master`/`production` both at

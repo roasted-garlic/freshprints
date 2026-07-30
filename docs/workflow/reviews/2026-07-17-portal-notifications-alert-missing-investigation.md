@@ -70,7 +70,7 @@
 
 ### In-app Alerts (must pass without VAPID)
 
-1. Hard-refresh Portal as customer `hawkins.m.chris@gmail.com` (or matching uid above)
+1. Hard-refresh Portal as customer `owner@example.com` (or matching uid above)
 2. Open **Alerts** — existing test message should appear unread (doc already in Firestore)
 3. From Studio, send a new staff message → badge increments; open → Messages tab
 4. If Alerts shows `!`, open panel → **Try again** (or refocus window)

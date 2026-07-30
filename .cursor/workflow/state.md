@@ -5,12 +5,10 @@ Current Mode: managed-phase
 Current Phase: implement
 Plan Status: complete
 Review Status: complete (`approved_with_notes`)
-Implement Status: in_progress — repository visibility changed to PUBLIC; `production` ruleset
-CONFIRMED ACTIVE via direct GitHub API verification (supersedes the prior private-repo warning);
-full public-repository security audit (current tree + complete 131-commit reachable history
-across all 17 refs) completed — **PASS**, with one real personal-email finding requiring owner
-review, not a blocking credential/secret exposure; stopped at the production-security checkpoint
-before Firebase product enablement
+Implement Status: in_progress — both email findings REDACTED from the current tree (owner
+declined a Git-history rewrite); security audit verdict remains PASS; stopped at the Firebase
+product-enablement human checkpoint with evidence-based Firestore/Storage location
+recommendations documented
 Test Status: pending
 Signoff Status: pending
 DONE: no
@@ -64,28 +62,27 @@ No GA4 or Search Console configuration occurred. `production` was not modified. 
 deleted. No force-push occurred anywhere in this pass** (only file writes and doc/state commits to
 `development`, still pending push at the time this state was written — see the response for the
 final documentation commit hash).
-Human Checkpoint Required: yes — (1) owner should review/redact the one real personal-email
-finding (`hawkins.m.chris@gmail.com` in
-`docs/workflow/reviews/2026-07-17-portal-notifications-alert-missing-investigation.md`, present
-across many historical commits) — a `[NEEDS OWNER DECISION]`, not a release blocker; (2) perform
-the beginner Firebase Console steps in `docs/standards/DEPLOYMENT.md`'s "Next checkpoint"
-subsection to enable Firestore/Storage/Auth, register the Web App, and prepare (not complete) the
-App Hosting backend; (3) decide whether/when to approve running
-`git config core.hooksPath .githooks` to activate the now-optional local pre-push safeguard
-(defense-in-depth alongside the confirmed-active GitHub ruleset).
-Blocked: no (not blocked; paused at the production-security checkpoint by explicit instruction —
-audit result is PASS, not BLOCKED)
-Allowed Actions: none beyond this pass; awaiting the owner's decision on the personal-email finding
-and completion of the Firebase Console steps
+Human Checkpoint Required: yes — (1) complete the beginner Firebase Console steps in
+`docs/standards/DEPLOYMENT.md`'s "Next checkpoint" subsection to enable Firestore (location `nam5`,
+evidence-based recommendation)/Storage (location `us-central1`)/Authentication, register the Web
+App, generate the Web Push certificate, and prepare (not complete) the App Hosting backend; (2)
+confirm whether App Hosting backend creation triggers an automatic first rollout — `[NEEDS REPO
+CHECK]`, not provable from repo source, must be confirmed against actual Console behavior before
+that step; (3) decide whether/when to approve running `git config core.hooksPath .githooks` to
+activate the now-optional local pre-push safeguard.
+Blocked: no (not blocked; paused at the Firebase product-enablement human checkpoint by explicit
+instruction)
+Allowed Actions: none beyond this pass; awaiting the owner to complete the Firebase Console steps
+and report back
 Forbidden Actions: deleting `master` (local or remote); modifying `production`; any Firebase
 Rules/indexes/Functions/App-Hosting-rollout/secret/DNS/Auth-config/GA4/Search-Console action;
 building or distributing a production Studio installer; touching production data; force-pushing
 any branch; rewriting Git history; configuring `core.hooksPath` without separate owner approval;
 changing repository visibility
-Next Required Step: **STOP.** Await the owner's decision on the personal-email finding, then
-completion of the Firebase product-enablement steps (Firestore, Storage, Authentication, Web App
-registration, Web Push certificate, App Hosting backend preparation), per
-`docs/standards/DEPLOYMENT.md`'s "Next checkpoint — Firebase product enablement" subsection.
+Next Required Step: **STOP.** Await the owner completing the Firebase product-enablement steps
+(Firestore, Storage, Authentication, Web App registration, Web Push certificate, App Hosting
+backend preparation), per `docs/standards/DEPLOYMENT.md`'s "Next checkpoint — Firebase product
+enablement" subsection.
 
 Plan:
 `docs/workflow/plans/2026-07-29-preproduction-static-analysis-cleanup-plan.md`.
@@ -5036,17 +5033,17 @@ file-move as part of the `apps/studio` monorepo-restructure commit, not a real s
 Checked every file ever added across all history for `.env.local` or `firebase-adminsdk*.json`
 patterns — **zero matches**.
 
-**One real finding, not a credential/secret exposure:** the real personal email address
-`hawkins.m.chris@gmail.com` (the repository owner's own address, used as a real dev/test account
-reference) appears in
+**One real finding, not a credential/secret exposure:** a real personal email address (the
+repository owner's own address, used as a real dev/test account reference) appeared in
 `docs/workflow/reviews/2026-07-17-portal-notifications-alert-missing-investigation.md`, present
 consistently across every historical commit touching that file (not something later hidden or
-scrubbed). This is personal data now exposed in a public repository, but it is the owner's own
-address in an internal debugging note, not a third-party customer's PII and not a credential.
-Classified as `[NEEDS OWNER DECISION]` — recommend the owner redact it if they prefer, but it does
-not block production release. A second, lower-concern email
-(`ionsupplyllc@gmail.com` in `functions/src/lib/customerUpdateValidation.test.ts`) is a test
-fixture value in a unit test, not confirmed real customer data — flagged for owner awareness only.
+scrubbed). This was personal data exposed in a public repository, but it was the owner's own
+address in an internal debugging note, not a third-party customer's PII and not a credential. A
+second, lower-concern email (a test fixture value in
+`functions/src/lib/customerUpdateValidation.test.ts`) was not confirmed real customer data.
+**Update (2026-07-30, later pass): owner approved redaction of both from the current tree — see
+that pass's log entry below for the resolution. History was not rewritten; both original
+addresses may still exist in historical commits.**
 
 **Audit verdict: PASS.** No probable real credential, private key, service-account file, or
 third-party customer/financial/legal/personnel data was found in the current tree or anywhere in
@@ -5081,3 +5078,93 @@ remain untouched.
 
 Next: **STOP.** Await the owner's decision on the personal-email finding, then completion of the
 Firebase product-enablement checkpoint already documented in `docs/standards/DEPLOYMENT.md`.
+
+## 2026-07-30 — Goal #13 `production-release` — Both email findings REDACTED from current tree (owner declined history rewrite); Firebase product-enablement instructions finalized with evidence-based location recommendations
+
+Re-verified branch/tag state directly from Git before any action (unchanged): current branch
+`development`, clean tree; `origin/master`/`origin/production` both at
+`aa570aa875d20ba85fd405480a47e6eda59f85b0`; `v1.0.0-rc1` unchanged. **`master` and `production`
+were not touched this pass.**
+
+Owner approved redacting the two email findings from the prior audit pass from the current
+repository state. Located every current-tree occurrence via `git grep` (not the working `grep`,
+which hung traversing `node_modules`): the personal owner-email finding appeared in
+`docs/workflow/reviews/2026-07-17-portal-notifications-alert-missing-investigation.md` (1
+occurrence) and in this very `state.md` file's own prior audit-log text (2 occurrences, since the
+prior pass quoted the address verbatim while documenting the finding); the test-fixture email
+appeared in `functions/src/lib/customerUpdateValidation.test.ts` (2 occurrences) and this file's
+own prior audit-log text (1 occurrence). Replaced every occurrence with the specified non-real
+placeholders (`owner@example.com`, `test-user@example.com`) and rewrote this file's own prior
+audit-log paragraphs to describe both findings without repeating the original addresses.
+
+**Owner decision recorded: do not rewrite Git history.** Reasoning (recorded verbatim per
+instruction): neither finding is a credential; no third-party customer data was found; history
+rewriting would change the established `master`/`production`/`v1.0.0-rc1` hashes; it would require
+force-pushing public branches and retagging the release candidate; the remediation risk is
+disproportionate to the finding. **Historical commits touching either file still contain the
+original addresses** — confirmed present across every commit that ever touched those two files
+(from the prior pass's full-history scan). A complete historical purge remains available only
+through a separately approved history-rewrite Plan if the owner later decides it is necessary.
+
+Verified via `git grep` (both patterns) that zero occurrences of either original address remain
+anywhere in the current tracked tree — exit 1 (no match) for both searches.
+
+Ran the focused unit test for the modified test file: `npx tsx --test
+functions/src/lib/customerUpdateValidation.test.ts` — 3/3 pass, exit 0. Ran repo-wide lint
+(`npm run lint`) — exit 0. Ran `git diff --check` — exit 0 (only benign LF/CRLF advisory
+warnings, no real issues).
+
+**Determined the Firestore and Storage production location recommendations from concrete repo
+evidence, not guesses:**
+- Firestore: **`nam5`** — sourced directly from this repository's own
+  `docs/workflow/setup/firestore-setup.md` ("Recommended starting location: `nam5`"), the
+  documented setup path already used for `fresh-prints-dev`. `nam5` (a US multi-region) includes
+  `us-central1`, and `functions/src/lib/portalOgUrls.ts:39` hardcodes `us-central1` into every
+  constructed Cloud Functions URL, confirming the deployed Functions fleet runs in `us-central1`
+  regardless of project — `nam5` avoids cross-region latency with Functions while providing
+  Firestore's higher multi-region availability, and matches the existing dev environment's
+  documented choice.
+- Storage: **`us-central1`** — sourced directly from
+  `docs/workflow/setup/firebase-storage-setup.md` ("Recommended starting location:
+  `us-central1`"), the same documented dev-setup recommendation, and directly matches the
+  confirmed Functions region.
+- Both recommendations are evidence-based and did not require stopping for owner confirmation
+  before documenting them (though the owner may still override either if preferred for other
+  reasons) — this differs from the App Hosting rollout-trigger question below, which genuinely
+  could not be resolved from repository source.
+
+Confirmed the App Hosting backend ID (`fresh-prints-portal`) and root directory (`./apps/portal`)
+directly from `firebase.json`, not guessed. **Could not determine from repository source or
+documentation whether creating an App Hosting backend via Console triggers an automatic first
+rollout** — no file documents this specific product behavior for this Firebase CLI/Console
+version. Marked `[NEEDS REPO CHECK]` and instructed stopping before any final
+"Deploy"/"Finish"-style Console button that might trigger a live release, treating that as its own
+separate deployment checkpoint rather than assuming either way.
+
+Confirmed no `.env.production.local` file exists yet in this repository (only `.env.example` and
+`.env.local` exist for both Portal and Studio) — the previously-suggested
+`apps/portal/.env.production.local` / `apps/studio/.env.production.local` naming is a **proposed
+convention, not an already-established one**, marked `[NEEDS REPO CHECK]` per instruction; both
+proposed names are confirmed covered by the root `.gitignore`'s `.env.*.local` pattern
+(`.gitignore:24`), so either is safe from being committed regardless of exact naming.
+
+Substantially rewrote `docs/standards/DEPLOYMENT.md`'s "Next checkpoint — Firebase product
+enablement" subsection with the exact, evidence-grounded Console navigation steps for Firestore,
+Storage, Authentication (explicitly leaving Authorized Domains unchanged until the separate domain
+checkpoint), Web App registration (explicit App-Hosting-vs-classic-Hosting distinction), Web Push
+certificate, and App Hosting backend preparation (stopping before any rollout-triggering step).
+
+Updated `.cursor/workflow/state.md` (this entry), `docs/project/ROADMAP.md`, and the
+`references/project-chatgpt-handoff/` handoff files to record: redaction completed in the current
+tree, no history rewrite performed, historical commits may still contain the prior addresses,
+security audit verdict remains PASS, and the Firebase product-enablement checkpoint is next.
+
+**No repository visibility change was made. No Git history was rewritten. No force-push occurred.
+No Firebase product was enabled, no secret was set, no Rules/indexes/Functions/App-Hosting/DNS/
+Auth/GA4/Search-Console configuration occurred, no production Studio installer was built, no
+production data was touched, `rebuildCatalogSnapshots` was not invoked. `master` and `production`
+remain untouched.**
+
+Next: **STOP.** Await the owner completing the documented Firebase Console product-enablement
+steps and reporting back, in particular confirming whether App Hosting backend creation triggers
+an automatic rollout before that specific sub-step proceeds.

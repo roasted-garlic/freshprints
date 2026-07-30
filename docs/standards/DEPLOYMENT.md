@@ -213,69 +213,161 @@ after **all** of the following are satisfied:
 The production Firebase project (`fresh-prints-prod`) currently exists with Blaze billing active
 and **zero products enabled**. Before any Rules/Functions/App Hosting deploy can occur, the owner
 must enable the following in the Firebase Console — **this coding agent does not perform Firebase
-Console actions on the owner's behalf.**
+Console actions or run Firebase commands on the owner's behalf. Instructions only.**
 
-1. **Enable Firestore in Native mode** — Firebase Console → build → Firestore Database → Create
-   database → select **Native mode** (not Datastore mode — Datastore mode cannot be changed to
-   Native mode later; this choice is **permanent**).
-2. **Select the correct Firestore location** — choose a region. **This is permanent for the life of
-   the database** — it cannot be changed later without exporting and recreating the entire
-   database. Prefer a region close to the expected customer base (`us-central1` matches the
-   existing Functions region documented for `fresh-prints-dev`, which avoids cross-region latency
-   between Functions and Firestore, but the owner should confirm this against real expected
-   customer geography before choosing).
-3. **Enable Cloud Storage** — Console → build → Storage → Get started → accept the default
-   security rules prompt (real rules are deployed later, in their own checkpoint) → choose the same
-   region chosen for Firestore, if offered, to avoid cross-region latency.
-4. **Enable Authentication** — Console → build → Authentication → Get started.
-5. **Enable Email/Password sign-in** — Authentication → Sign-in method → Email/Password → Enable.
-6. **Enable Google sign-in** — Authentication → Sign-in method → Google → Enable → select a support
-   email → Save. Google sign-in requires an OAuth consent configuration; Firebase configures a
-   reasonable default automatically for typical projects. **Not permanent** — can be reconfigured
-   later, but customers who signed in before a change may be affected, so early correct
-   configuration is preferable.
-7. **Register the production Firebase Web App** — Console → Project settings (gear icon) →
-   General tab → scroll to "Your apps" → click the Web icon (`</>`) → give it a name (e.g.
-   "Fresh Prints Portal") → **do not** check "Also set up Firebase Hosting" (App Hosting is
-   configured separately, in its own later checkpoint) → Register app.
-8. **Record the production web-app Firebase configuration — without committing it.** After
-   registering, Firebase displays a config object (`apiKey`, `authDomain`, `projectId`,
-   `storageBucket`, `messagingSenderId`, `appId`). Copy these values into a **local, gitignored**
-   file only — e.g. `apps/portal/.env.production.local` (mirroring the existing
-   `apps/portal/.env.local` convention) and, for Studio, a temporary
-   `apps/studio/.env.production.local` per the build-time config mechanism documented earlier in
-   this goal. **Do not paste these values into any committed file, chat log, or workflow
-   artifact.** These are not secret in the security sense (Firebase web config is not a credential
-   by design) but this repository's convention keeps all project-specific config out of git via
-   `.env.local` patterns — follow that same convention for production.
-9. **Create or locate the production Web Push certificate** — Project settings → Cloud Messaging
-   tab → Web configuration → Web Push certificates → Generate key pair (if none exists yet). Copy
-   the resulting VAPID key into the same local production env file as
-   `NEXT_PUBLIC_FIREBASE_VAPID_KEY`. Regenerating this key later **invalidates existing push
-   subscriptions** for any user who had already subscribed — treat the first key as durable once
-   real users exist, though it can technically be rotated.
-10. **Prepare the App Hosting backend** — Console → Build → App Hosting → Get started → this
-    requires the Blaze plan (already active) and a connected GitHub repository. When prompted,
-    connect to this repository and select **`production`** as the branch App Hosting should build
-    from (never `development` or `master` for the production backend) → set the root directory to
-    `apps/portal` (matching the existing `firebase.json` `apphosting.rootDir` convention) → **stop
-    before completing the first rollout/deploy** — actually creating the first live rollout is a
-    separate, later checkpoint requiring its own explicit approval, not part of backend
-    registration.
+#### 1. Firestore
+
+1. Firebase Console → select project **`fresh-prints-prod`** (top-left project switcher).
+2. Left sidebar → **Build** → **Firestore Database**.
+3. Click **Create database**.
+4. Choose **Native mode** — **do not** choose Datastore mode. **This choice is permanent** —
+   Datastore mode cannot later be converted to Native mode.
+5. Choose the location: **`nam5`**.
+
+**Recommended location and evidence:** `nam5` (a US multi-region location). This is not a guess —
+it is sourced directly from this repository's own `docs/workflow/setup/firestore-setup.md`
+(Step 2: "Recommended starting location: `nam5`"), the documented setup path already used for
+`fresh-prints-dev`. `nam5` includes `us-central1` as one of its constituent regions, and
+`functions/src/lib/portalOgUrls.ts:39` hardcodes `us-central1` into every constructed Cloud
+Functions URL — confirming the entire deployed Functions fleet runs in `us-central1` (the Cloud
+Functions default region) regardless of project. Using `nam5` for production keeps the same
+region relationship to Functions as the existing dev environment while providing Firestore's
+higher multi-region availability. **This is proven from current repository documentation and
+source, not guessed — no further owner confirmation is required to proceed with `nam5`,** though
+the owner may override it if a different location is preferred for other reasons.
+
+6. **This location choice is permanent for the life of the database** — changing it later requires
+   exporting all data and recreating the database from scratch.
+7. Click **Create**.
+
+**What success looks like:** the Firestore Database page shows an empty database in Native mode,
+location `nam5`, with the default `(default)` database name.
+
+#### 2. Cloud Storage
+
+1. Left sidebar → **Build** → **Storage**.
+2. Click **Get started**.
+3. Review the billing prompt (Blaze is already active for this project — this is expected, not a
+   new charge trigger by itself).
+4. Choose the Storage location: **`us-central1`**, per this repository's own
+   `docs/workflow/setup/firebase-storage-setup.md` (Step 2: "Recommended starting location:
+   `us-central1`") — the same documented recommendation already used for `fresh-prints-dev`, and
+   the region that directly matches the Functions region above, avoiding Storage-to-Functions
+   cross-region latency for derivative generation and file processing.
+5. Accept the default (locked-down) security rules prompt if shown — real Storage Rules are
+   deployed later, in their own separate checkpoint; this default is a safe placeholder.
+6. Click **Done**.
+
+**What success looks like:** the Storage page shows an empty default bucket
+(`fresh-prints-prod.firebasestorage.app` or similar) in region `us-central1`, with no objects.
+
+#### 3. Authentication
+
+1. Left sidebar → **Build** → **Authentication** → **Get started**.
+2. **Sign-in method** tab → **Email/Password** → click it → toggle **Enable** → **Save**.
+3. **Sign-in method** tab → **Google** → click it → toggle **Enable** → select a **support email**
+   (use an email the owner controls; this is shown to users during Google sign-in) → **Save**.
+4. Google sign-in may prompt Firebase to configure a default OAuth consent screen automatically for
+   typical projects — accept the default unless the owner has a specific reason to customize it
+   further (custom OAuth consent branding is not required for this checkpoint and is not permanent
+   in the sense that it can be edited later in Google Cloud Console → APIs & Services → OAuth
+   consent screen, though changes there can affect already-signed-in users).
+5. **Leave Authorized Domains unchanged** for now — do not add `myprintrequest.com` yet. Firebase
+   automatically includes `localhost` and the project's own default `*.firebaseapp.com`/
+   `*.web.app` domains; the production customer domain is added in the separate, later DNS/domain
+   checkpoint (per `docs/architecture/BACKEND.md`: "Firebase Authentication Authorized domains must
+   include the Portal hosts").
+
+**Do not create any production user accounts in this step.**
+
+#### 4. Production Web App registration
+
+1. Project settings (gear icon, top of left sidebar) → **General** tab.
+2. Scroll to **Your apps** → click the Web icon (`</>`).
+3. App nickname: **`Fresh Prints Portal Production`**.
+4. **Firebase Hosting checkbox: leave unchecked / skip.** This repository uses **Firebase App
+   Hosting** (a distinct product from classic Firebase Hosting) for Portal, configured via
+   `firebase.json`'s `apphosting` block and deployed separately (App Hosting checkpoint, step 6
+   below) — the classic Hosting setup offered during Web App registration is not used by this
+   project and would create an unused Hosting site if enabled.
+5. Click **Register app**.
+6. Firebase displays a config object with these field names: `apiKey`, `authDomain`, `projectId`,
+   `storageBucket`, `messagingSenderId`, `appId`.
+
+**Where to record these values — do not paste them into chat, commit messages, or any committed
+file.** These are public client-side identifiers, not private credentials by Firebase's own design
+(they are safe to embed in a shipped web bundle), but this repository's established convention
+keeps all project-specific values — secret or not — out of git via `.env.local`-pattern files
+(confirmed: `apps/portal/.env.local` and `apps/studio/.env.local` both already exist, gitignored,
+holding the equivalent `fresh-prints-dev` values today).
+
+**`[NEEDS REPO CHECK]` — no `.env.production.local` file exists yet; this exact path is a proposed
+convention, not an already-established one.** Recommended (not yet proven in use):
+`apps/portal/.env.production.local` for Portal, and a temporary `apps/studio/.env.production.local`
+for the one-off production Studio build described earlier in this document. Both filenames match
+the root `.gitignore`'s `.env.*.local` pattern (confirmed present at `.gitignore:24`), so either
+name is safe from being committed. The owner may choose a different local filename as long as it
+matches that gitignore pattern.
+
+#### 5. Web Push certificate
+
+1. Project settings → **Cloud Messaging** tab.
+2. Scroll to **Web configuration** → **Web Push certificates**.
+3. If none exists yet, click **Generate key pair**.
+4. Copy the resulting key into the same local production env file as
+   `NEXT_PUBLIC_FIREBASE_VAPID_KEY`.
+
+The public VAPID key is not a private server secret — it is meant to be shipped to the browser —
+but store it only in the same local/App-Hosting-configuration location as the rest of the web
+config, not in a committed file. **Regenerating this key later invalidates every existing push
+subscription** for users who already subscribed, so treat the first generated key as durable once
+real customer traffic exists, even though it is technically rotatable.
+
+**Do not create any push subscriptions or send any push notification in this step.**
+
+#### 6. App Hosting backend preparation
+
+1. Left sidebar → **Build** → **App Hosting** → **Get started** (requires Blaze, already active).
+2. When prompted to connect a GitHub repository, connect to this repository
+   (`roasted-garlic/freshprints`).
+3. Select **`production`** as the branch App Hosting should build and deploy from — confirmed from
+   this goal's own branch-model decision; never `development` or `master` for the production
+   backend.
+4. Root directory: **`./apps/portal`** — confirmed directly from this repository's own
+   `firebase.json` (`"apphosting": [{ "backendId": "fresh-prints-portal", "rootDir": "./apps/portal", ... }]`),
+   not guessed.
+5. Backend ID: Firebase Console may let the owner choose a custom backend ID, or may default to one
+   derived from the repository/app name. **Recommend using exactly `fresh-prints-portal`** to match
+   the `backendId` already declared in `firebase.json` — using a different ID would create a
+   mismatch between the Console-created backend and what this repository's config expects for
+   future CLI-based deploys.
+
+**Whether backend creation itself triggers an automatic first rollout: `[NEEDS REPO CHECK]` — not
+provable from current repository source or documentation.** No file in this repository documents
+Firebase App Hosting's exact backend-creation behavior for this Firebase CLI/Console version, and
+this is an external product behavior this coding agent cannot verify without performing the Console
+action itself (which is out of scope for this pass). **Stop after connecting the repository,
+selecting the branch, and confirming the root directory — do not click through any "Deploy now" or
+equivalent final confirmation step if one appears, until the owner has confirmed whether that step
+triggers a live rollout.** If the Console's backend-creation flow reaches a point where the only
+remaining action is an explicit "Deploy"/"Finish"-style button described as triggering a build and
+release, treat that specific button as its own separate deployment checkpoint requiring explicit
+owner approval — not an automatic continuation of backend registration.
 
 **Permanent / difficult-to-change choices requiring extra care:**
 - Firestore mode (Native vs Datastore) — permanent.
-- Firestore location/region — permanent.
-- Storage location/region — effectively permanent (tied to the Firestore-adjacent bucket setup for
-  most projects).
+- Firestore location/region (`nam5`, recommended above) — permanent.
+- Storage location/region (`us-central1`, recommended above) — effectively permanent.
 - Web Push certificate — technically rotatable, but rotating invalidates all existing subscriptions
   once real users exist.
+- App Hosting backend ID — not confirmed changeable later without recreating the backend;
+  recommend getting it right the first time (`fresh-prints-portal`).
 
 **Not performed by this pass, and not authorized:** Firestore Rules deploy, Storage Rules deploy,
 Firestore indexes deploy, Functions deploy, App Hosting's first rollout/deploy, Portal deploy,
-secret configuration, DNS configuration, production user creation, production data seeding, the
-production Studio installer build, GA4 configuration, Search Console configuration, any
-modification to `production`, and deletion of `master`.
+Secret Manager configuration, DNS configuration, GA4 configuration, Search Console configuration,
+production user/category/show creation, production data seeding, invoking `rebuildCatalogSnapshots`,
+the production Studio installer build, any modification to `production`, and deletion of `master`.
 
 ---
 
