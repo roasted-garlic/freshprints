@@ -5,50 +5,81 @@ Current Mode: managed-phase
 Current Phase: implement
 Plan Status: complete
 Review Status: complete (`approved_with_notes`)
-Implement Status: in_progress — permanent branch model created and pushed
-(`production`/`development` from verified commit `aa570aa`); release-candidate tag
-`v1.0.0-rc1` pushed; stopped at the GitHub default-branch/branch-protection human checkpoint
+Implement Status: in_progress — branch model verified stable; GitHub `production` ruleset
+recorded as created-but-NOT-enforced (private-repo plan limitation); local pre-push safeguard
+added (inert until `core.hooksPath` is configured, which itself needs separate owner approval);
+stopped at the Firebase product-enablement human checkpoint for `fresh-prints-prod`
 Test Status: pending
 Signoff Status: pending
 DONE: no
-Last Completed Step: Owner approved and pushed the consolidated release candidate directly to
-`master`/`origin/master` (commit `b45542ab`, verified via `git rev-parse HEAD` /
-`git rev-parse origin/master` matching exactly, clean working tree, matching commit message).
-Verified `.firebaserc` as committed in `b45542ab` still lacked the `production` alias — added
-`"production": "fresh-prints-prod"` (preserving `"default": "fresh-prints-dev"` unchanged),
-validated as JSON, committed as `aa570aa` ("chore: add production Firebase project alias"), pushed
-to `origin/master`. Used `aa570aa875d20ba85fd405480a47e6eda59f85b0` as the exact branch-point
-commit (since the alias was missing from `b45542ab`). Created and pushed `production` from that
-exact commit (`git switch -c production aa570aa...` + `git push -u origin production`,
-tracking set). Created and pushed `development` from the same exact commit
-(`git switch -c development aa570aa...` + `git push -u origin development`, tracking set;
-repository left checked out on `development`). Verified `origin/master`, `origin/production`, and
-`origin/development` all resolve to the identical commit `aa570aa875d20ba85fd405480a47e6eda59f85b0`
-after `git fetch origin`; working tree clean; `git branch -vv` confirms all tracking. Confirmed
-`v1.0.0-rc1` did not previously exist locally or remotely; created an annotated tag on the exact
-branch-point commit and pushed it to `origin`. Updated `docs/standards/DEPLOYMENT.md` with a new
-"Branch Model" section recording the permanent `development`/`production` model (development
-workflow, production release workflow, hotfix workflow) and marking the previous direct-to-`master`
-policy superseded; updated the Environments table's Branch/trigger column accordingly. **`master`
-was not deleted** — retained as the required temporary transition fallback. No Firebase product
-was enabled, no secret was set, no Rules/indexes/Functions/App Hosting/DNS/Auth/GA4/Search Console
-configuration occurred, and the active Firebase CLI project was never switched.
-Human Checkpoint Required: yes — GitHub default-branch change (`master` → `development`),
-`production` branch protection (block force-push, block deletion, require PR/merge), and
-confirmation no GitHub integration still assumes `master`, before `master` can later be considered
-for deletion (a separate, still-future checkpoint).
-Blocked: no (not blocked; paused at the required GitHub-settings human checkpoint by explicit
-instruction)
-Allowed Actions: none beyond this pass; awaiting the owner to perform the GitHub UI steps below and
-confirm back
-Forbidden Actions: deleting `master` (local or remote); any Firebase product enablement,
-Rules/indexes/Functions/App-Hosting/secret/DNS/Auth/GA4/Search-Console configuration; building or
-distributing a production Studio installer; touching production data; switching the active
-Firebase CLI project; force-pushing any branch; adding new commits to `production`
-Next Required Step: **STOP.** Await the owner performing the GitHub default-branch change and
-`production` branch-protection configuration (exact steps in this pass's response / signoff
-artifact), then confirming back so `master`'s eventual deletion can become its own separate,
-explicit checkpoint.
+Last Completed Step: Re-verified all branch/tag facts from Git before relying on them: current
+branch `development`; working tree clean; `origin/master` = `aa570aa875d20ba85fd405480a47e6eda59f85b0`;
+`origin/production` = `aa570aa875d20ba85fd405480a47e6eda59f85b0`; `origin/development` =
+`e2d6cde99c72a8d0c3966861b1e1460d520bc9cb` (later documentation commit); `v1.0.0-rc1` still points
+to `aa570aa875d20ba85fd405480a47e6eda59f85b0`. **Did not modify `master` or `production` this
+pass.**
+
+Recorded the GitHub `production` ruleset accurately: created by the owner, targets `production`,
+but GitHub displayed "Your rulesets won't be enforced on this private repository until you move to
+GitHub Team organization account" — **`production` is NOT currently protected at the GitHub server
+level.** The owner is not upgrading the org this pass. Documented the intended ruleset
+configuration (Active enforcement, target `production`, restrict deletions, block force pushes,
+require PR before merge, 0 required approvals, status checks/signed commits/linear history all
+disabled, empty bypass list) as future-ready documentation, not an active guarantee.
+
+Checked for existing hook conventions before adding anything: no `.githooks/` directory, no
+`core.hooksPath` configured, no existing `pre-push` hook, no hook-management package
+(husky/etc.) in any `package.json`. No conflict found. Added
+`.githooks/pre-push` (POSIX shell script, executable) that blocks a direct push to
+`refs/heads/production` with a clear message pointing to the PR-based promotion workflow, allows
+an explicit `ALLOW_DIRECT_PRODUCTION_PUSH=1` emergency override, and does not touch `development`
+or any other branch. Tested all four cases directly (blocked-without-override,
+allowed-with-override, development-untouched, feature-branch-untouched) — all behaved correctly.
+**The hook is present but inert** — `core.hooksPath` was deliberately left unconfigured in this
+pass, since wiring it in requires its own separate owner approval per instruction; each
+contributor's clone must run `git config core.hooksPath .githooks` once it is approved.
+
+Rewrote `docs/standards/DEPLOYMENT.md`'s Branch Model section extensively: GitHub ruleset status
+(not enforced) and intended settings table; local pre-push safeguard documentation (behavior,
+override, activation command); refined development/production-release/hotfix workflows (PR-based
+promotion, fast-forward-only pull on `production`, explicit `--project` flags); a new
+"Firebase branch and project separation" subsection (development → `fresh-prints-dev`, production
+→ `fresh-prints-prod`, every command must explicitly pass `--project`, never rely on
+`firebase use production`); restated the production Functions allowlist/exclusion list and the
+"never bare `--only functions`" rule; restated the `master` deletion policy's 8 conditions
+verbatim. Added a new "Next checkpoint — Firebase product enablement" subsection with
+beginner-friendly, numbered Firebase Console instructions for enabling Firestore (Native mode —
+permanent choice), selecting the Firestore location (permanent), enabling Storage, enabling
+Authentication, enabling Email/Password and Google sign-in, registering the production Web App,
+recording its config into a local gitignored file (never committed), creating the Web Push
+certificate, and preparing (not completing) the App Hosting backend — explicitly stopping before
+its first rollout/deploy.
+
+**No Firebase Console action was performed on the owner's behalf. No Rules, Storage Rules,
+indexes, Functions, App Hosting rollout, or Portal deploy occurred. No secret, DNS, production
+user, or production data was configured/created/seeded. No production Studio installer was built.
+No GA4 or Search Console configuration occurred. `production` was not modified. `master` was not
+deleted. No force-push occurred anywhere in this pass** (only file writes and doc/state commits to
+`development`, still pending push at the time this state was written — see the response for the
+final documentation commit hash).
+Human Checkpoint Required: yes — (1) perform the beginner Firebase Console steps in
+`docs/standards/DEPLOYMENT.md`'s "Next checkpoint" subsection to enable Firestore/Storage/Auth,
+register the Web App, and prepare (not complete) the App Hosting backend; (2) decide whether/when
+to approve running `git config core.hooksPath .githooks` to activate the local pre-push safeguard;
+(3) the GitHub organization plan upgrade remains the owner's own separate decision, not required
+for this goal to continue.
+Blocked: no (not blocked; paused at the required Firebase product-enablement human checkpoint by
+explicit instruction)
+Allowed Actions: none beyond this pass; awaiting the owner to perform the Firebase Console steps
+and report back the recorded (not committed) production web-app config location
+Forbidden Actions: deleting `master` (local or remote); modifying `production`; any Firebase
+Rules/indexes/Functions/App-Hosting-rollout/secret/DNS/Auth-config/GA4/Search-Console action;
+building or distributing a production Studio installer; touching production data; force-pushing
+any branch; configuring `core.hooksPath` without separate owner approval
+Next Required Step: **STOP.** Await the owner completing the Firebase product-enablement steps
+(Firestore, Storage, Authentication, Web App registration, Web Push certificate, App Hosting
+backend preparation) and reporting back, per
+`docs/standards/DEPLOYMENT.md`'s "Next checkpoint — Firebase product enablement" subsection.
 
 Plan:
 `docs/workflow/plans/2026-07-29-preproduction-static-analysis-cleanup-plan.md`.
@@ -4899,3 +4930,50 @@ from `master` to `development`, (2) add branch protection to `production` (block
 deletion, require PR/merge where supported), and (3) confirm no GitHub integration still assumes
 `master` — then confirm back. `master`'s eventual deletion remains its own separate, explicit
 future checkpoint, gated on those confirmations plus explicit owner approval to delete.
+
+## 2026-07-30 — Goal #13 `production-release` — GitHub ruleset limitation recorded; local pre-push safeguard added; stopped at Firebase product-enablement checkpoint
+
+Re-verified from Git (not assumed) before any action: `git branch --show-current` = `development`;
+`git status` clean; `git fetch origin` then `git rev-parse` confirmed `origin/master` =
+`aa570aa875d20ba85fd405480a47e6eda59f85b0`, `origin/production` =
+`aa570aa875d20ba85fd405480a47e6eda59f85b0`, `origin/development` =
+`e2d6cde99c72a8d0c3966861b1e1460d520bc9cb` (the prior documentation commit), and
+`v1.0.0-rc1` still resolves to `aa570aa875d20ba85fd405480a47e6eda59f85b0`. `master` and
+`production` were not touched this pass.
+
+Recorded the GitHub ruleset status accurately, as instructed: created, targets `production`, but
+GitHub's own message confirms it is not enforced on this private repository until the organization
+moves to a GitHub Team (or equivalent) plan — the owner is not upgrading this pass. Documented the
+full intended ruleset configuration as future-ready documentation only, not a present guarantee.
+
+Checked for existing hook conventions first: no `.githooks/`, no `core.hooksPath`, no `pre-push`
+hook, no husky/hook-management package anywhere in the repo's `package.json` files — no conflict.
+Added `.githooks/pre-push`, a POSIX shell script (executable) that blocks a direct push to
+`refs/heads/production` (clear message pointing to the PR-promotion workflow), permits an explicit
+`ALLOW_DIRECT_PRODUCTION_PUSH=1` emergency override, and leaves `development` and every other
+branch untouched. Directly tested all four cases (blocked, override-allowed,
+development-untouched, feature-branch-untouched) — all passed. Left `core.hooksPath`
+unconfigured/inert, since activating it is its own separate owner-approval step per instruction;
+documented the exact one-time `git config core.hooksPath .githooks` command each clone must run
+once approved.
+
+Substantially expanded `docs/standards/DEPLOYMENT.md`'s Branch Model section: GitHub ruleset
+status/intended-settings table; pre-push safeguard documentation; refined
+development/production-release/hotfix workflows (PR-based promotion only, fast-forward-only pull
+on `production`, explicit `--project` flags on every Firebase command); new "Firebase branch and
+project separation" table; restated Functions allowlist/exclusion list and the never-bare-allowlist
+rule; restated the 8-condition `master` deletion policy verbatim; and a new beginner-friendly
+"Next checkpoint — Firebase product enablement" subsection (Firestore Native-mode + location
+choices flagged permanent, Storage, Authentication, Email/Password + Google sign-in, Web App
+registration, recording its config into a local gitignored file rather than committing it, the Web
+Push certificate, and preparing but not completing the App Hosting backend).
+
+**No Firebase Console action was performed on the owner's behalf this pass.** No Rules, Storage
+Rules, indexes, Functions, App Hosting rollout, or Portal deploy occurred. No secret, DNS,
+production user, or production data was configured/created/seeded. No production Studio installer
+was built. No GA4 or Search Console configuration occurred. `production` was not modified.
+`master` was not deleted. **No force-push occurred.**
+
+Next: **STOP.** Await the owner performing the Firebase Console product-enablement steps and
+reporting back (in particular, confirming the production web-app config was recorded locally and
+not committed), per `docs/standards/DEPLOYMENT.md`'s "Next checkpoint" subsection.

@@ -1,0 +1,30 @@
+#!/bin/sh
+# Blocks direct local pushes to production. Promote development -> production
+# through a reviewed GitHub pull request instead (see docs/standards/DEPLOYMENT.md).
+#
+# Emergency override (use only when you intend a direct push to production and
+# understand the risk): set ALLOW_DIRECT_PRODUCTION_PUSH=1 for the single push command, e.g.
+#   ALLOW_DIRECT_PRODUCTION_PUSH=1 git push origin production
+#
+# This hook only inspects the refs being pushed; it contains no secret or project credential.
+
+remote="$1"
+
+while read -r local_ref local_sha remote_ref remote_sha; do
+  case "$remote_ref" in
+    refs/heads/production)
+      if [ "$ALLOW_DIRECT_PRODUCTION_PUSH" != "1" ]; then
+        echo "" >&2
+        echo "Blocked: direct push to 'production' (remote: $remote)." >&2
+        echo "Promote 'development' into 'production' via a reviewed GitHub pull request instead." >&2
+        echo "See docs/standards/DEPLOYMENT.md -> Branch Model -> Production release workflow." >&2
+        echo "" >&2
+        echo "Emergency override only: ALLOW_DIRECT_PRODUCTION_PUSH=1 git push $remote production" >&2
+        echo "" >&2
+        exit 1
+      fi
+      ;;
+  esac
+done
+
+exit 0

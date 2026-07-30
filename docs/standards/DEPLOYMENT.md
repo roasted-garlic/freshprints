@@ -42,25 +42,90 @@ automatically — deletion is its own separate, explicit owner checkpoint (see
 no release-branch or CI/CD convention. That policy is superseded by this permanent
 `development`/`production` model.
 
+**Branch state as of 2026-07-30 (verified via `git rev-parse`):** `origin/master` and
+`origin/production` both point to `aa570aa875d20ba85fd405480a47e6eda59f85b0`; `origin/development`
+has since advanced with documentation-only commits; annotated tag `v1.0.0-rc1` marks
+`aa570aa875d20ba85fd405480a47e6eda59f85b0` as the release-candidate branch point (not the final
+production tag).
+
+### GitHub `production` ruleset status — NOT currently enforced
+
+A GitHub repository ruleset targeting the `production` branch has been **created** by the owner,
+but GitHub displayed: *"Your rulesets won't be enforced on this private repository until you move
+to GitHub Team organization account."* **`production` is therefore not currently protected by
+GitHub at the server level** — the ruleset exists as configuration only, not as an active
+guarantee, until the organization plan is upgraded (not part of this goal). Do not rely on GitHub
+alone to prevent a direct push, force-push, or deletion of `production` until that upgrade happens
+and the ruleset shows **Active** in GitHub's UI.
+
+**Intended ruleset configuration (documented now, enforced later once the plan supports it):**
+
+| Setting | Value |
+|---|---|
+| Enforcement status | Active (currently blocked by plan — see above) |
+| Target branch pattern | `production` |
+| Restrict deletions | Enabled |
+| Block force pushes | Enabled |
+| Require a pull request before merging | Enabled |
+| Required approvals | 0 |
+| Required status checks | Disabled (no CI exists yet) |
+| Required signed commits | Disabled |
+| Required linear history | Disabled |
+| Bypass list | Empty, unless GitHub requires an owner/admin entry |
+
+Until the plan upgrade, the **local pre-push safeguard** below is the only working protection
+against an accidental direct push to `production`.
+
+### Local pre-push safeguard against direct `production` pushes
+
+`.githooks/pre-push` (repository-committed, not a global hook) blocks any local `git push` that
+targets `refs/heads/production`, printing a message that points to the pull-request promotion
+workflow below. It does **not** block pushes to `development` or to any other branch (feature,
+hotfix, etc.). An explicit emergency override exists via the `ALLOW_DIRECT_PRODUCTION_PUSH=1`
+environment variable, e.g.:
+
+```bash
+ALLOW_DIRECT_PRODUCTION_PUSH=1 git push origin production
+```
+
+**This hook only takes effect once `core.hooksPath` is configured to point at `.githooks/`** — that
+one-time local configuration step requires separate owner approval (it changes local Git behavior
+for this clone) and is not applied automatically by cloning or pulling the repository:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+Each contributor's clone must run this once. Contains no secret or credential. Works under Git for
+Windows (the hook is a POSIX shell script executed by the `sh.exe` bundled with Git for Windows,
+the same mechanism Git uses for all hook scripts on Windows).
+
 ### Development workflow
 
 1. Start all ordinary work on `development`.
 2. Test normal work against `fresh-prints-dev`.
-3. Commit and push ongoing work to `development`.
+3. Commit and push ongoing work to `origin/development`.
 4. Do not perform ordinary feature work on `production`.
 
-### Production release workflow
+### Production release workflow (promotion via pull request, not direct push)
 
-1. Finish and verify work on `development`.
-2. Merge reviewed `development` into `production`.
-3. Check out `production`.
-4. Run the full production-release verification suite (see `docs/standards/TESTING.md`).
-5. Deploy only from `production`.
-6. Perform production smoke tests.
-7. Create the final production tag (`v1.0.0`, or the next appropriate version) only after owner
-   signoff on the smoke tests — not before. The release-candidate tag `v1.0.0-rc1` marks the
-   branch-point commit shared by `master`/`production`/`development` at the moment of the branch
-   split; it is not the final production tag.
+1. Confirm `development` is clean and fully verified.
+2. Push `development` (`git push origin development`).
+3. Open a GitHub pull request — base: `production`, compare: `development`.
+4. Review the complete Files Changed view.
+5. Merge the pull request.
+6. Check out local `production` (`git switch production`).
+7. Pull `origin/production` using fast-forward-only behavior: `git pull --ff-only origin production`.
+8. Run the complete release verification suite (see `docs/standards/TESTING.md`) on `production`.
+9. Deploy only from `production`.
+10. Explicitly target `fresh-prints-prod` in every Firebase production command — see "Firebase
+    branch and project separation" below.
+11. Perform production smoke testing.
+12. Tag the final deployed commit (e.g. `v1.0.0`) only after smoke-test signoff — not before.
+13. Return the local working branch to `development` (`git switch development`).
+
+**Do not use direct local pushes to `production` for ordinary releases** — the pre-push safeguard
+above blocks this by default; the pull-request path is the only intended promotion mechanism.
 
 ### Hotfix workflow
 
@@ -70,6 +135,120 @@ no release-branch or CI/CD convention. That policy is superseded by this permane
 4. Deploy and verify.
 5. Merge the same hotfix into `development`.
 6. Delete the temporary hotfix branch after both merges.
+
+### Firebase branch and project separation
+
+| | Source branch | Firebase project | Every deploy command must include |
+|---|---|---|---|
+| Development | `development` | `fresh-prints-dev` | `--project fresh-prints-dev` |
+| Production | `production` | `fresh-prints-prod` | `--project fresh-prints-prod` |
+
+`.firebaserc` mapping:
+
+```json
+{
+  "projects": {
+    "default": "fresh-prints-dev",
+    "production": "fresh-prints-prod"
+  }
+}
+```
+
+The safer default remains `fresh-prints-dev`. **Do not use `firebase use production` as the normal
+workflow** — always pass `--project fresh-prints-prod` explicitly on production commands instead of
+relying on the CLI's currently-active project, which can silently drift.
+
+**Production Functions deployment remains restricted to the approved explicit allowlist** (99
+functions; see `docs/workflow/reviews/2026-07-30-production-release-functions-allowlist-report.md`
+for the full list and exact command). Excluded from production: `inventoryCatalogImageStorage`,
+`wipeOperationalTestData`, `testAiEnrichmentPlayground`, `testAiEnrichmentTagRerank`,
+`ownerDeleteUser`, `backfillPrintRequestQueueTab`. `rebuildCatalogSnapshots` remains included.
+**Never** use a bare `firebase deploy --only functions` — always the full explicit
+`--only functions:name1,functions:name2,...` list.
+
+### `master` deletion policy (reminder)
+
+`master` must remain until after the first production smoke test passes. It may be deleted only
+after **all** of the following are satisfied:
+
+1. GitHub default branch is confirmed as `development`.
+2. `production` is confirmed as the live release branch.
+3. The first production deployment succeeds.
+4. The full production smoke test passes.
+5. No Firebase App Hosting setting depends on `master`.
+6. No GitHub integration, script, documentation, automation, or external service depends on
+   `master`.
+7. `development` and `production` are both backed up on `origin`.
+8. The owner gives a separate, explicit deletion approval.
+
+### Next checkpoint — Firebase product enablement in `fresh-prints-prod` (owner action required)
+
+The production Firebase project (`fresh-prints-prod`) currently exists with Blaze billing active
+and **zero products enabled**. Before any Rules/Functions/App Hosting deploy can occur, the owner
+must enable the following in the Firebase Console — **this coding agent does not perform Firebase
+Console actions on the owner's behalf.**
+
+1. **Enable Firestore in Native mode** — Firebase Console → build → Firestore Database → Create
+   database → select **Native mode** (not Datastore mode — Datastore mode cannot be changed to
+   Native mode later; this choice is **permanent**).
+2. **Select the correct Firestore location** — choose a region. **This is permanent for the life of
+   the database** — it cannot be changed later without exporting and recreating the entire
+   database. Prefer a region close to the expected customer base (`us-central1` matches the
+   existing Functions region documented for `fresh-prints-dev`, which avoids cross-region latency
+   between Functions and Firestore, but the owner should confirm this against real expected
+   customer geography before choosing).
+3. **Enable Cloud Storage** — Console → build → Storage → Get started → accept the default
+   security rules prompt (real rules are deployed later, in their own checkpoint) → choose the same
+   region chosen for Firestore, if offered, to avoid cross-region latency.
+4. **Enable Authentication** — Console → build → Authentication → Get started.
+5. **Enable Email/Password sign-in** — Authentication → Sign-in method → Email/Password → Enable.
+6. **Enable Google sign-in** — Authentication → Sign-in method → Google → Enable → select a support
+   email → Save. Google sign-in requires an OAuth consent configuration; Firebase configures a
+   reasonable default automatically for typical projects. **Not permanent** — can be reconfigured
+   later, but customers who signed in before a change may be affected, so early correct
+   configuration is preferable.
+7. **Register the production Firebase Web App** — Console → Project settings (gear icon) →
+   General tab → scroll to "Your apps" → click the Web icon (`</>`) → give it a name (e.g.
+   "Fresh Prints Portal") → **do not** check "Also set up Firebase Hosting" (App Hosting is
+   configured separately, in its own later checkpoint) → Register app.
+8. **Record the production web-app Firebase configuration — without committing it.** After
+   registering, Firebase displays a config object (`apiKey`, `authDomain`, `projectId`,
+   `storageBucket`, `messagingSenderId`, `appId`). Copy these values into a **local, gitignored**
+   file only — e.g. `apps/portal/.env.production.local` (mirroring the existing
+   `apps/portal/.env.local` convention) and, for Studio, a temporary
+   `apps/studio/.env.production.local` per the build-time config mechanism documented earlier in
+   this goal. **Do not paste these values into any committed file, chat log, or workflow
+   artifact.** These are not secret in the security sense (Firebase web config is not a credential
+   by design) but this repository's convention keeps all project-specific config out of git via
+   `.env.local` patterns — follow that same convention for production.
+9. **Create or locate the production Web Push certificate** — Project settings → Cloud Messaging
+   tab → Web configuration → Web Push certificates → Generate key pair (if none exists yet). Copy
+   the resulting VAPID key into the same local production env file as
+   `NEXT_PUBLIC_FIREBASE_VAPID_KEY`. Regenerating this key later **invalidates existing push
+   subscriptions** for any user who had already subscribed — treat the first key as durable once
+   real users exist, though it can technically be rotated.
+10. **Prepare the App Hosting backend** — Console → Build → App Hosting → Get started → this
+    requires the Blaze plan (already active) and a connected GitHub repository. When prompted,
+    connect to this repository and select **`production`** as the branch App Hosting should build
+    from (never `development` or `master` for the production backend) → set the root directory to
+    `apps/portal` (matching the existing `firebase.json` `apphosting.rootDir` convention) → **stop
+    before completing the first rollout/deploy** — actually creating the first live rollout is a
+    separate, later checkpoint requiring its own explicit approval, not part of backend
+    registration.
+
+**Permanent / difficult-to-change choices requiring extra care:**
+- Firestore mode (Native vs Datastore) — permanent.
+- Firestore location/region — permanent.
+- Storage location/region — effectively permanent (tied to the Firestore-adjacent bucket setup for
+  most projects).
+- Web Push certificate — technically rotatable, but rotating invalidates all existing subscriptions
+  once real users exist.
+
+**Not performed by this pass, and not authorized:** Firestore Rules deploy, Storage Rules deploy,
+Firestore indexes deploy, Functions deploy, App Hosting's first rollout/deploy, Portal deploy,
+secret configuration, DNS configuration, production user creation, production data seeding, the
+production Studio installer build, GA4 configuration, Search Console configuration, any
+modification to `production`, and deletion of `master`.
 
 ---
 

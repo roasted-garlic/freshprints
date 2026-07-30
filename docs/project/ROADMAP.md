@@ -122,7 +122,7 @@ Current Goal:
 | 10 | Increase the MB limit for custom-request reference images | **Done** (2026-07-29, approved) — 40 MB/file live in `fresh-prints-dev` at every enforcement layer, 8 files unchanged, 320 MB combined ceiling active; owner QA FAIL (stale 15 MB deployed Cloud Functions) → Amendment 1 root-caused and fixed via scoped Functions redeploy → owner re-QA PASS |
 | 11 | `customer-upload-oversized-pixel-normalization-and-processing-timeout-followup` | **Done** (2026-07-30, approved_with_notes; owner QA PASS WITH NOTES — see signoff) |
 | 12 | `catalog-image-derivative-storage-consolidation` | **Done — closed_by_owner_after_inventory** (2026-07-30). Real dev inventory measured originals at ~97.66% of catalog Storage (980.8 MB of 1,004.3 MB); thumbnails+previews combined only 23.5 MB; zero orphans/duplicates/violations found. Owner decided the migration's small addressable Storage win did not justify the required backfill/consumer-cutover/bandwidth-increase — closed before implementation, an evidence-based decision. Retained as dev-only tooling: the read-only `inventoryCatalogImageStorage` callable and its Studio invocation panel. |
-| 13 | `production-release` — prod Firebase / App Hosting / Google / email | **Active** — owner committed and pushed the consolidated release candidate to `master`; permanent `production` and `development` branches created and pushed from verified commit `aa570aa` (`.firebaserc` production alias added); `v1.0.0-rc1` release-candidate tag pushed; **stopped at the GitHub default-branch + `production` branch-protection human checkpoint**; no longer blocked (#9–#12 all signed off/closed); production approval required before any implementation or deployment |
+| 13 | `production-release` — prod Firebase / App Hosting / Google / email | **Active** — GitHub `production` ruleset created but **NOT enforced** (private-repo plan limitation); local pre-push safeguard added (`.githooks/pre-push`, inert until `core.hooksPath` is approved/configured); beginner Firebase product-enablement instructions documented; **stopped at the Firebase product-enablement human checkpoint** (`fresh-prints-prod` still empty/unconfigured); no longer blocked (#9–#12 all signed off/closed); production approval required before any implementation or deployment |
 | 14 | `customer-upload-early-transparency-format-validation` — reject invalid customer artwork before the trimming stage is shown | **Done** (2026-07-30, approved; automated verification 23/23 pass, clean build/lint; owner deployed to `fresh-prints-dev` and confirmed manual QA PASS across all 5 goal-brief scenarios). Separate narrow follow-up run alongside the paused `production-release` (#13), which this goal did not modify. See `docs/workflow/plans/2026-07-30-customer-upload-early-transparency-format-validation-plan.md`. |
 
 **Small Managed Items Backlog:** #5–**#14** **Done** (2026-07-21). See [Small Managed Items Backlog](#small-managed-items-backlog-2026-07-18) below.
@@ -160,11 +160,29 @@ pass). Updated `docs/standards/DEPLOYMENT.md` with the new permanent Branch Mode
 `docs/workflow/reviews/2026-07-30-production-release-working-tree-reconciliation-report.md`,
 `docs/workflow/reviews/2026-07-30-production-release-functions-allowlist-report.md`,
 `docs/workflow/reviews/2026-07-30-production-release-source-and-allowlist-checkpoint.md`, and
-`docs/standards/DEPLOYMENT.md`'s Branch Model section.
-**Stopped at the GitHub default-branch + `production` branch-protection human checkpoint** —
-awaiting owner action in the GitHub UI. `master` was **not** deleted (retained as a temporary
-transition fallback; its eventual deletion is a separate, later checkpoint). No longer blocked:
-Goals #9–#12
+`docs/standards/DEPLOYMENT.md`'s Branch Model section. **Since then:** re-verified all branch/tag
+facts directly from Git (unchanged: `origin/master`/`origin/production` both at `aa570aa`,
+`origin/development` advanced to `e2d6cde` with the documentation commit, `v1.0.0-rc1` still at
+`aa570aa`); recorded the GitHub `production` ruleset as **created but not enforced** — GitHub's own
+message confirms rulesets don't apply on this private repository until the organization moves to a
+GitHub Team plan (owner not upgrading this pass), so `production` is **not currently protected at
+the server level**; documented the full intended ruleset configuration as future-ready
+documentation only. Checked for existing hook conventions (none found — no conflict) and added
+`.githooks/pre-push`, a tested, executable local safeguard that blocks a direct push to
+`production` (with a clear message and an `ALLOW_DIRECT_PRODUCTION_PUSH=1` emergency override),
+left **inert** pending separate owner approval to run `git config core.hooksPath .githooks`.
+Substantially expanded `docs/standards/DEPLOYMENT.md`'s Branch Model section: ruleset
+status/intended settings, safeguard documentation, refined PR-based promotion workflow, Firebase
+branch/project-separation rules, and a new beginner-friendly "Next checkpoint — Firebase product
+enablement" subsection (Firestore Native-mode + location choices flagged permanent, Storage,
+Authentication, Email/Password + Google sign-in, Web App registration with config recorded locally
+— never committed, Web Push certificate, and preparing but not completing the App Hosting backend).
+**No Firebase Console action was performed on the owner's behalf; `production` was not modified;
+`master` was not deleted; no force-push occurred.**
+**Stopped at the Firebase product-enablement human checkpoint** — awaiting the owner to complete
+the Firebase Console steps documented in `docs/standards/DEPLOYMENT.md` and report back. `master`
+was **not** deleted (retained as a temporary transition fallback; its eventual deletion is a
+separate, later checkpoint). No longer blocked: Goals #9–#12
 (`catalog-image-derivative-storage-consolidation`) closed **2026-07-30**,
 **closed_by_owner_after_inventory** — the real dev Storage inventory measured originals at
 ~97.66% of catalog Storage (980,807,863 of 1,004,304,719 bytes across 87 designs), with existing

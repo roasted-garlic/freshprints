@@ -2,6 +2,27 @@
 
 > Signed-off or largely complete work. External agents should not re-plan or duplicate this.
 
+## 2026-07-30 - production-release: GitHub ruleset limitation recorded, local pre-push safeguard added (not yet deployed)
+
+- Re-verified all branch/tag facts directly from Git (not assumed): `development` current branch,
+  clean tree, `origin/master`/`origin/production` both at `aa570aa`, `origin/development` advanced
+  with the prior documentation commit, `v1.0.0-rc1` unchanged — `master`/`production` untouched
+  this pass
+- Recorded the GitHub `production` ruleset accurately: created, targets `production`, but **not
+  enforced** on this private repository per GitHub's own message, pending an organization plan
+  upgrade the owner isn't doing this pass; documented the intended settings as future-ready
+  configuration only, not a present guarantee
+- Checked for existing hook conventions (none found) and added `.githooks/pre-push` — a tested
+  local safeguard blocking direct pushes to `production` with an `ALLOW_DIRECT_PRODUCTION_PUSH=1`
+  emergency override; left inert (`core.hooksPath` unconfigured) pending separate owner approval
+- Substantially expanded `docs/standards/DEPLOYMENT.md`: ruleset status, safeguard docs, refined
+  PR-based promotion workflow, Firebase branch/project-separation rules, and beginner-friendly
+  Firebase product-enablement instructions (Firestore mode/location flagged permanent, Storage,
+  Auth, Web App registration with config kept local/uncommitted, Web Push cert, App Hosting backend
+  preparation without its first rollout)
+- **No Firebase Console action performed on the owner's behalf; `production` not modified;
+  `master` not deleted; no force-push occurred**
+
 ## 2026-07-30 - production-release: permanent `production`/`development` branches created, v1.0.0-rc1 tagged (not yet deployed)
 
 - Verified the owner-pushed release candidate before any git action: `master`/`origin/master` both
