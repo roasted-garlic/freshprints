@@ -246,23 +246,35 @@ own separate, later, explicitly-approved checkpoint.
    --project fresh-prints-prod`, exit 0, "Deploy complete!" — the first-ever Fresh Prints
    production Storage Rules deployment. Verify in Console: `fresh-prints-prod` → Build → Storage →
    Rules tab → "Last published" timestamp.
-3. ✅🔍 **Firestore indexes deployment** — **DEPLOYED 2026-07-30, awaiting owner readiness
-   confirmation.** First deploy attempt exited 1 (HTTP 409 "index already exists") caused by a
-   genuine duplicate index definition, remediated via Plan + Formal Review (both `approved`) and
-   merged to `production` via PR #5 (merge commit `21f036fab2ff6cb0a4d934ef5e5c9e465b21e293`,
-   tagged `v1.0.0-rc3`). **Redeploy succeeded:** `firebase deploy --only firestore:indexes
-   --project fresh-prints-prod`, exit 0, "Deploy complete!" / "firestore: deployed indexes ...
-   successfully for (default) database" — no deletion prompt. Post-deploy remote check: **65
-   indexes, 0 field overrides**, all 16 collection groups represented; precise canonical-identity
-   comparison (accounting for Firestore's server-auto-appended `__name__` field) confirmed **0
-   missing, 0 unexpected** — every local definition present remotely with matching content.
-   **Remaining step:** the Firebase CLI's `firestore:indexes` command reports only definitions, not
-   per-index build status — verify in Console: `fresh-prints-prod` → Firestore Database → Indexes
-   → confirm every index shows `Enabled` (not `Building` or `Error`) before considering this step
-   fully complete.
-4. Secret Manager population (`GEMINI_API_KEY`, `RESEND_API_KEY`, `ETSY_X_API_KEY`, `BREVO_API_KEY` if selected)
-5. Cloud Functions deployment (approved explicit 99-function allowlist — see
-   `docs/workflow/reviews/2026-07-30-production-release-functions-allowlist-report.md`)
+3. ✅ **Firestore indexes deployment** — **DEPLOYED 2026-07-30, owner-confirmed Enabled.**
+   Remediated via Plan + Formal Review (both `approved`), merged via PR #5 (merge commit
+   `21f036fab2ff6cb0a4d934ef5e5c9e465b21e293`, tagged `v1.0.0-rc3`), deployed via
+   `firebase deploy --only firestore:indexes --project fresh-prints-prod` (exit 0). All 65 index
+   definitions confirmed present remotely with matching content; **owner confirmed via Firebase
+   Console that all 65 indexes show `Enabled`** — 0 `Building`, 0 `Error`, 0 field overrides. Step
+   complete.
+4. ✅ **Secret Manager population** — **COMPLETE 2026-07-30.** Source-level audit of
+   `functions/src/lib/secrets.ts` confirmed exactly 4 required secrets: `GEMINI_API_KEY`
+   (`enqueueAiEnrichment`), `RESEND_API_KEY` + `BREVO_API_KEY` (both bound by
+   `createCustomerWithPortalInvite`/`createTeamUser`/`onEmailDeliveryJobCreated`, per Firebase
+   Functions v2's deploy-time secret-declaration requirement — `resolveEmailApiKey()` reads only
+   the selected provider's value at runtime), `ETSY_X_API_KEY`
+   (`searchEtsyRecommendations`/`staffSearchEtsyRecommendationApiResults`). Confirmed zero
+   `OPENAI_API_KEY` references anywhere in source. Confirmed from source that
+   `DEFAULT_EMAIL_PROVIDER_SETTINGS` defaults both provider fields to `resend` and does not fail
+   closed when `settings/emailProviders` is absent. Owner selected **both** Resend and Brevo for
+   launch flexibility; confirmed all four provider credentials available, both email-provider
+   sender domains verified, Etsy application access available. Pre-population metadata check
+   confirmed all four secrets absent from `fresh-prints-prod` (no overwrite risk). **Owner set all
+   four secrets directly via their own terminal** (`firebase functions:secrets:set <NAME>
+   --project fresh-prints-prod`, using the command's genuine interactive hidden-value prompt —
+   this coding agent's tool environment cannot host that kind of interactive session, so entry was
+   correctly handed to the owner rather than attempted through an unsafe workaround). Post-
+   population metadata verification (read-only) confirmed all four secrets: version 1, state
+   ENABLED. No secret value was ever printed, logged, or exposed. No secret was created in
+   `fresh-prints-dev`.
+5. Cloud Functions deployment ← **current checkpoint** (approved explicit 99-function allowlist —
+   see `docs/workflow/reviews/2026-07-30-production-release-functions-allowlist-report.md`)
 6. App Hosting environment-variable configuration (`NEXT_PUBLIC_FIREBASE_*`, `NEXT_PUBLIC_PORTAL_ORIGIN`; `NEXT_PUBLIC_GA_MEASUREMENT_ID` stays unset)
 7. First App Hosting Portal release
 8. Production Studio build

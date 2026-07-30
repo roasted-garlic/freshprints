@@ -2,6 +2,29 @@
 
 > Signed-off or largely complete work. External agents should not re-plan or duplicate this.
 
+## 2026-07-30 - production-release: Firestore indexes checkpoint closed; Secret Manager population complete (deployment-order steps 3-4 of 12)
+
+- Owner confirmed via Firebase Console that all 65 of 65 composite indexes on `fresh-prints-prod`
+  show `Enabled` — 0 `Building`, 0 `Error`. Deployment-order step 3 of 12 closed.
+- Source-level audit of `functions/src/lib/secrets.ts` on the verified `production` commit found
+  exactly 4 required secrets: `GEMINI_API_KEY`, `RESEND_API_KEY`, `BREVO_API_KEY`,
+  `ETSY_X_API_KEY` — cross-referenced against the approved 99-function allowlist with no
+  inconsistency; confirmed zero `OPENAI_API_KEY` references anywhere in source
+- Confirmed from source (not guessed) that the email-provider system defaults to Resend and does
+  not fail closed on a missing `settings/emailProviders` document; owner selected both Resend and
+  Brevo for launch flexibility
+- Owner confirmed all four external provider credentials AVAILABLE and sender
+  domains/access VERIFIED — no blocker identified
+- Pre-population metadata check confirmed all four secrets absent (no overwrite risk); owner
+  populated all four via `firebase functions:secrets:set` in their own terminal (this tool cannot
+  host an interactive value prompt); post-population metadata confirmed all four at version 1,
+  state ENABLED
+- **No secret value was ever printed, logged, or exposed at any point. No secret created in
+  `fresh-prints-dev`. No Cloud Functions, App Hosting, or other Firebase component deployed;
+  production received no Git commit; `master` untouched**
+- Next checkpoint: owner approval to deploy Cloud Functions (approved 99-function allowlist),
+  deployment-order step 5 of 12
+
 ## 2026-07-30 - production-release: Firestore indexes deployed to fresh-prints-prod (deployment-order step 3 of 12)
 
 - Redeployed `firebase deploy --only firestore:indexes --project fresh-prints-prod` on the

@@ -1,5 +1,59 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-07-30 — Goal #13 "production-release" — Firestore indexes CLOSED (owner confirmed all 65 Enabled); Secret Manager population COMPLETE (deployment-order steps 1-4 of 12 done)
+
+**Firestore indexes checkpoint closed:** owner confirmed via Firebase Console that all 65 of 65
+composite indexes on `fresh-prints-prod` show `Enabled` — 0 `Building`, 0 `Error`, 0 field
+overrides.
+
+**Secret Manager (step 4) confirmed complete.** Source-level audit of
+`functions/src/lib/secrets.ts` on the verified `production` commit found exactly 4 required
+secrets: `GEMINI_API_KEY` (bound by `enqueueAiEnrichment`, included in the approved allowlist —
+also referenced by `testAiEnrichmentPlayground`/`testAiEnrichmentTagRerank`, both correctly
+excluded), `RESEND_API_KEY` and `BREVO_API_KEY` (both bound by `createCustomerWithPortalInvite`/
+`createTeamUser`/`onEmailDeliveryJobCreated` per Firebase Functions v2's deploy-time
+secret-declaration requirement — `resolveEmailApiKey()` only reads the value for the actually
+selected provider at runtime), `ETSY_X_API_KEY` (bound by `searchEtsyRecommendations`/
+`staffSearchEtsyRecommendationApiResults`). **Confirmed zero `OPENAI_API_KEY` references anywhere
+in source** — Gemini-only architecture confirmed current.
+
+**Email-provider default confirmed from source, not guessed:**
+`DEFAULT_EMAIL_PROVIDER_SETTINGS` (both `inviteProvider` and `proofNoticeProvider`) defaults to
+`"resend"`; the system does not fail closed when `settings/emailProviders` doesn't exist —
+cold-start-safe. **Owner selected both Resend and Brevo** for launch flexibility.
+
+**External-provider readiness, owner-confirmed (status-only, no credential values shared):**
+Gemini AVAILABLE; Resend AVAILABLE, sender domain VERIFIED; Brevo AVAILABLE, sender domain
+VERIFIED; Etsy credential AVAILABLE, application access AVAILABLE. **No blocker identified.**
+
+**Pre-population metadata check** (read-only, no values accessed) confirmed all four secrets
+absent from `fresh-prints-prod` before population — no existing-secret overwrite risk.
+
+**Secret population method:** this coding agent's tool environment cannot host a genuinely
+interactive terminal session that a human can type a value into mid-command. Per the hard
+security rules (never pass a value as a command argument, never use a plaintext file, never
+fabricate an interactive session), population was correctly handed to the owner: **the owner ran
+`firebase functions:secrets:set <NAME> --project fresh-prints-prod` directly in their own
+terminal for all four secret names**, using that command's genuine interactive hidden-value
+prompt.
+
+**Post-population metadata verification** (read-only, no values accessed) confirmed all four
+secrets: version 1, state ENABLED. Confirmed no `OPENAI_API_KEY` was created. Confirmed no secret
+was created in `fresh-prints-dev` (a single read-only informational check of that project's own
+pre-existing, unrelated `GEMINI_API_KEY` was performed for context, not a modification).
+
+**No secret value was ever printed, echoed, logged, displayed, copied to a file, or included in
+any command argument, output, or workflow record throughout this entire pass.**
+
+**No Cloud Functions, App Hosting, Portal, or any other Firebase component was deployed. No
+production data was created. `rebuildCatalogSnapshots` was not invoked. DNS was not touched.
+`master` was not deleted. `production` received no Git commit** — this pass performed only
+Secret Manager configuration on `fresh-prints-prod`, not a repository change.
+
+**Active managed goal:** `production-release` (Goal #13) — deployment-order steps 1-4 of 12 all
+complete. STOPPED at the Functions deployment approval checkpoint (step 5 of 12 — approved
+99-function allowlist).
+
 ## 2026-07-30 — Goal #13 "production-release" — Firestore indexes DEPLOYED to fresh-prints-prod (step 3 of 12 succeeded); awaiting owner Console readiness confirmation
 
 Owner approved via `APPROVE FIRESTORE INDEXES REDEPLOYMENT`. Pre-deploy verification re-confirmed

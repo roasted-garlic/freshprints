@@ -5,17 +5,29 @@ Current Mode: managed-phase
 Current Phase: implement
 Plan Status: complete
 Review Status: complete (`approved_with_notes`)
-Implement Status: in_progress — **Firestore indexes deployment (step 3 of 12) SUCCEEDED.**
-`firebase deploy --only firestore:indexes --project fresh-prints-prod` on the verified corrected
-commit `21f036fab2ff6cb0a4d934ef5e5c9e465b21e293` — exit 0, "Deploy complete!", "firestore:
-deployed indexes in firestore.indexes.json successfully for (default) database." No deletion
-prompt occurred. Post-deploy remote check confirms **all 65 local index definitions present
-remotely** (0 missing, 0 unexpected, verified via canonical structural-identity comparison
-accounting for Firestore's auto-appended `__name__` tiebreaker field), spanning all 16 collection
-groups including the 7 that previously had zero indexes. **Remaining verification: owner must
-confirm every index shows `Enabled` (not `Building`) in Firebase Console** — the CLI's
-`firestore:indexes` output does not expose per-index build status, only definitions, so this
-final confirmation cannot be obtained from the CLI alone.
+Implement Status: in_progress — **Deployment-order step 3 (Firestore indexes) CLOSED** — owner
+confirmed via Firebase Console all 65 of 65 composite indexes show `Enabled`, none `Building` or
+`Error`, 0 field overrides. **Step 4 (Secret Manager) CONFIRMED COMPLETE.** Source-level secret
+audit performed on the verified `production` commit: exactly 4 secrets defined in
+`functions/src/lib/secrets.ts` (`geminiApiKeySecret`→`GEMINI_API_KEY`,
+`resendApiKeySecret`→`RESEND_API_KEY`, `brevoApiKeySecret`→`BREVO_API_KEY`,
+`etsyXApiKeySecret`→`ETSY_X_API_KEY`); confirmed zero `OPENAI_API_KEY` references anywhere in
+`functions/src`. Confirmed `DEFAULT_EMAIL_PROVIDER_SETTINGS` (both `inviteProvider` and
+`proofNoticeProvider`) defaults to `resend` when `settings/emailProviders` doesn't exist —
+cold-start-safe, does not fail closed. Owner selected **both** Resend and Brevo for launch
+flexibility. Owner confirmed all four external-provider credentials `AVAILABLE`, Resend sender
+domain `VERIFIED`, Brevo sender domain `VERIFIED`, Etsy application access `AVAILABLE` — no
+blockers. Pre-population metadata check confirmed all four expected secrets absent from
+`fresh-prints-prod` (clean 404s, no existing-secret conflict). **Owner set all four secrets
+directly via their own terminal** (this coding agent cannot host a genuinely interactive hidden
+prompt within its tool-call model, so secret entry was correctly handed to the owner rather than
+attempted through an unsafe workaround). Post-population metadata verification: all four secrets
+— `GEMINI_API_KEY`, `RESEND_API_KEY`, `BREVO_API_KEY`, `ETSY_X_API_KEY` — confirmed **version 1,
+state ENABLED** on `fresh-prints-prod`. Confirmed no `OPENAI_API_KEY` was created. Confirmed no
+secret was created in `fresh-prints-dev` (only a pre-existing, unrelated read-only check of that
+project's own already-existing `GEMINI_API_KEY` was performed, not a modification). **No secret
+value was ever printed, logged, or stored in any output, document, or command argument
+throughout this pass.**
 Test Status: pending
 Signoff Status: pending
 DONE: no
@@ -69,28 +81,27 @@ No GA4 or Search Console configuration occurred. `production` was not modified. 
 deleted. No force-push occurred anywhere in this pass** (only file writes and doc/state commits to
 `development`, still pending push at the time this state was written — see the response for the
 final documentation commit hash).
-Human Checkpoint Required: yes — **owner Console confirmation that all 65 Firestore indexes show
-`Enabled`.** The redeploy command itself succeeded (exit 0) and all 65 definitions are confirmed
-present remotely with correct content — but the Firebase CLI's `firestore:indexes` output does
-not expose per-index build status, only definitions, so per-index `Enabled`-vs-`Building`
-confirmation requires the owner to check Firebase Console directly:
-`fresh-prints-prod` → Firestore Database → Indexes. Once confirmed, deployment-order step 3 of 12
-is complete and step 4 (Secret Manager) becomes the next checkpoint.
-Blocked: no (not blocked; paused at the index-readiness confirmation checkpoint by explicit
-instruction — the deploy itself succeeded)
-Allowed Actions: none beyond this pass; awaiting owner Console confirmation of index readiness,
-then approval to begin the Secret Manager checkpoint
+Human Checkpoint Required: yes — **Functions deployment approval.** Deployment-order steps 1-4 of
+12 are all complete (Firestore Rules, Storage Rules, Firestore indexes, Secret Manager). Owner
+must separately approve deploying the approved explicit 99-function allowlist to
+`fresh-prints-prod` before Functions (step 5) can proceed.
+Blocked: no (not blocked; paused at the Functions deployment approval checkpoint by explicit
+instruction — steps 1-4 are all confirmed complete)
+Allowed Actions: none beyond this pass; awaiting explicit owner approval to deploy the approved
+99-function allowlist
 Forbidden Actions: deleting `master` (local or remote); modifying `production` directly (only via
-PR); running any `firebase deploy` command of any kind without separate approval; using `--force`
-on any Firestore command; manually deleting or editing production indexes via Console; triggering
-an App Hosting release/rollout; any Functions/secret/DNS/Auth-config/GA4/Search-Console action;
-invoking `rebuildCatalogSnapshots`; building or distributing a production Studio installer;
-touching production data; force-pushing any branch; rewriting Git history; configuring
-`core.hooksPath` without separate owner approval; changing repository visibility
-Next Required Step: **STOP.** Await owner confirmation (via Firebase Console →
-`fresh-prints-prod` → Firestore Database → Indexes) that all 65 indexes show `Enabled`, not
-`Building` or `Error`. Once confirmed, the next checkpoint is Secret Manager inventory, value
-collection, and production secret population approval.
+PR); running any `firebase deploy` command of any kind without separate approval (including the
+Functions deploy itself); accessing, printing, or logging any secret value; setting or rotating
+any secret without separate owner approval; using `--force` on any Firestore command; manually
+deleting or editing production indexes/secrets via Console; triggering an App Hosting
+release/rollout; any DNS/Auth-config/GA4/Search-Console action; invoking
+`rebuildCatalogSnapshots`; building or distributing a production Studio installer; touching
+production data; force-pushing any branch; rewriting Git history; configuring `core.hooksPath`
+without separate owner approval; changing repository visibility
+Next Required Step: **STOP.** Await explicit owner approval to deploy Cloud Functions to
+`fresh-prints-prod` using the approved explicit 99-function allowlist (see
+`docs/workflow/reviews/2026-07-30-production-release-functions-allowlist-report.md` for the exact
+prepared command). This is deployment-order step 5 of 12.
 
 Plan:
 `docs/workflow/plans/2026-07-29-preproduction-static-analysis-cleanup-plan.md`.
@@ -5791,3 +5802,104 @@ Console action occurred. `master` was not deleted.
 Next: **STOP.** Await owner confirmation via Firebase Console that all 65 indexes show `Enabled`.
 Once confirmed, deployment-order step 3 of 12 is complete and step 4 (Secret Manager inventory,
 value collection, and production secret population approval) becomes the next checkpoint.
+
+## 2026-07-30 — Goal #13 `production-release` — Firestore indexes checkpoint CLOSED (owner confirmed all 65 Enabled); Secret Manager population CONFIRMED COMPLETE (deployment-order step 4 of 12)
+
+**Firestore indexes checkpoint closed:** owner confirmed via direct Firebase Console inspection
+that all 65 of 65 composite indexes on `fresh-prints-prod` show `Enabled` — none `Building`, none
+`Error` — with 0 field overrides. Deployment-order step 3 of 12 is now fully complete (no
+redeployment performed this pass; this is a confirmation-only closure).
+
+**Step 1 — Git/source verification, all matched exactly:** `git fetch origin`, clean tree
+confirmed; `git switch production` + `git pull --ff-only origin production` (already up to date);
+confirmed branch `production`, `HEAD` = `origin/production` =
+`21f036fab2ff6cb0a4d934ef5e5c9e465b21e293`, clean tree.
+
+**Step 3 — Source-level secret audit performed on this exact commit:** found exactly one
+secret-definition file, `functions/src/lib/secrets.ts`, defining 4 secrets via `defineSecret`:
+
+| Secret name | Constant | Bound by (production-allowlist Functions) |
+|---|---|---|
+| `GEMINI_API_KEY` | `geminiApiKeySecret` | `enqueueAiEnrichment` (included). Also bound by `testAiEnrichmentPlayground`/`testAiEnrichmentTagRerank`, both explicitly excluded from the approved 99-function allowlist. |
+| `RESEND_API_KEY` | `resendApiKeySecret` | `createCustomerWithPortalInvite`, `createTeamUser`, `onEmailDeliveryJobCreated` (all included) |
+| `BREVO_API_KEY` | `brevoApiKeySecret` | Same three Functions as above — both provider secrets are bound together in each Function's `{ secrets: [...] }` options per Firebase Functions v2's requirement that secrets be declared at deploy time; `resolveEmailApiKey()` only reads the value for whichever provider is actually selected at runtime |
+| `ETSY_X_API_KEY` | `etsyXApiKeySecret` | `searchEtsyRecommendations`, `staffSearchEtsyRecommendationApiResults` (both included). Expected shape per source's own doc comment: `keystring:shared_secret`, used as the `x-api-key` HTTP header value. |
+
+**Confirmed zero `OPENAI_API_KEY` references anywhere in `functions/src`** — the Gemini-only
+architecture (ADR-FP-040) is current; no stale OpenAI code path exists to require that secret.
+
+**Step 5 — Email-provider default behavior, confirmed from source, not guessed:**
+`packages/shared/src/constants/emailProviders.constants.ts`'s `DEFAULT_EMAIL_PROVIDER_SETTINGS`
+sets both `inviteProvider` and `proofNoticeProvider` to `"resend"`; `resolveEmailProviderId()`
+falls back to this default for any missing or invalid stored value. **The system defaults to
+Resend and does not fail closed** when `settings/emailProviders` doesn't exist — confirmed
+cold-start-safe.
+
+**Owner decision (via structured question, not guessed):** selected **both** Resend and Brevo
+providers for launch flexibility — both secrets to be populated even though Resend remains the
+active default until `settings/emailProviders` is explicitly configured post-launch.
+
+**Step 6 — External-provider readiness, owner-confirmed status-only (no credential values shared
+at any point):**
+
+| Provider | Credential status | Domain/access verification |
+|---|---|---|
+| Gemini | AVAILABLE | N/A |
+| Resend | AVAILABLE | VERIFIED (`myprintrequest.com`/`noreply@myprintrequest.com`) |
+| Brevo | AVAILABLE | VERIFIED |
+| Etsy | AVAILABLE | AVAILABLE (application access confirmed) |
+
+**No blocker identified** — all required and conditional provider credentials are available and
+verified.
+
+**Step 4 — Non-secret configuration confirmed separately:** `PORTAL_BASE_URL` confirmed
+source-gated to `FUNCTIONS_EMULATOR === "true"` only (never read in production) — verified in
+`functions/src/lib/email/portalUrlResolver.ts:33`. `INVITATION_FROM_EMAIL`/
+`PROOF_NOTICE_FROM_EMAIL` confirmed to be Firebase Functions parameterized-config `defineString`
+values (not Secret Manager entries) — their absence from Secret Manager (confirmed via a
+metadata-only `functions:secrets:get` 404) is correct and expected, not a gap; they carry code
+defaults of `Fresh Prints <noreply@myprintrequest.com>`. Portal `NEXT_PUBLIC_*` values, the Web
+App config, and the VAPID key remain out of scope for this checkpoint (App Hosting env-var
+checkpoint, later).
+
+**Step 7 — Pre-population metadata check (read-only, no values accessed):**
+`firebase functions:secrets:get <NAME> --project fresh-prints-prod` for all four names returned a
+clean HTTP 404 ("Secret ... not found") for each — confirming all four were genuinely absent
+before population, with **zero risk of overwriting an existing secret.**
+
+**Step 8 — Secret population.** This coding agent's tool environment cannot host a genuinely
+interactive terminal session that a human can type into mid-command — each command executes
+non-interactively and returns its complete output. Per the hard security rules (never pass a
+value as a command argument, never use a plaintext file, never fabricate an interactive session),
+population was correctly handed to the owner: **the owner ran
+`firebase functions:secrets:set <NAME> --project fresh-prints-prod` directly in their own
+terminal for all four secret names**, using that command's genuine interactive hidden-value
+prompt. No value was ever entered into, displayed by, or transmitted through this coding agent's
+tool calls.
+
+**Step 9 — Post-population metadata verification (read-only, no values accessed):**
+`firebase functions:secrets:get <NAME> --project fresh-prints-prod` for all four names:
+
+| Secret | Version | State |
+|---|---|---|
+| `GEMINI_API_KEY` | 1 | ENABLED |
+| `RESEND_API_KEY` | 1 | ENABLED |
+| `BREVO_API_KEY` | 1 | ENABLED |
+| `ETSY_X_API_KEY` | 1 | ENABLED |
+
+Confirmed no `OPENAI_API_KEY` was created (404, as expected). Confirmed no secret was created in
+`fresh-prints-dev` by this pass — a single informational, read-only metadata check of that
+project's own pre-existing `GEMINI_API_KEY` was performed for context only, not a modification;
+that project's secret is entirely separate from and unaffected by anything done to
+`fresh-prints-prod` in this pass.
+
+**No secret value was ever printed, echoed, logged, displayed, copied to a file, or included in
+any command argument, output, or workflow record throughout this entire pass.**
+
+**No Cloud Functions, App Hosting, Portal, or any other Firebase component was deployed.** No
+production data was created. `rebuildCatalogSnapshots` was not invoked. DNS was not touched.
+`master` was not deleted. `production` received no Git commit — this pass performed only
+Secret Manager configuration on `fresh-prints-prod`, not a repository change.
+
+Next: **STOP.** Await explicit owner approval to deploy Cloud Functions to `fresh-prints-prod`
+using the approved explicit 99-function allowlist — deployment-order step 5 of 12.
