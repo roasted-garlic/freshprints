@@ -2,6 +2,21 @@
 
 > Signed-off or largely complete work. External agents should not re-plan or duplicate this.
 
+## 2026-07-30 - production-release: Storage Rules DEPLOYED to fresh-prints-prod (deployment-order step 2 of 12)
+
+- Owner approved via `APPROVE STORAGE RULES DEPLOYMENT`; ran the full pre-deploy safety sequence
+  (switch to `production`, fast-forward-only pull, verified `HEAD`/`origin/production`/
+  `storage.rules` hash all exact matches, 48/48 Rules tests, clean `git diff --check`)
+- Deployed exactly `firebase deploy --only storage --project fresh-prints-prod` — **exit 0,
+  "Deploy complete!"** — the first-ever Fresh Prints production Storage Rules deployment
+- No other Firebase component touched (no Firestore Rules redeployment, indexes, Functions, App
+  Hosting, secrets, DNS, production data, `rebuildCatalogSnapshots`, Studio distribution,
+  GA4/Search Console)
+- Returned to `development` (clean, fast-forward pull); confirmed `origin/production` received no
+  Git commit from this pass — only the Firebase Storage Rules release occurred
+- Provided owner Console verification steps (Storage Rules tab, "Last published" timestamp)
+- Deployment-order step 2 of 12 now complete; step 3 (Firestore indexes) is the next checkpoint
+
 ## 2026-07-30 - production-release: development promoted to production via GitHub PR #3, v1.0.0-rc2 tagged
 
 - Committed the owner-confirmed intentional Studio TypeScript fix (`apps/studio/tsconfig.json`,

@@ -1,5 +1,39 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-07-30 — Goal #13 "production-release" — Storage Rules DEPLOYED to fresh-prints-prod (deployment-order step 2 of 12 complete)
+
+Owner approved via `APPROVE STORAGE RULES DEPLOYMENT`, authorizing exactly
+`firebase deploy --only storage --project fresh-prints-prod` and nothing else.
+
+Ran the full pre-deploy safety sequence: confirmed clean tree on `development`; `git fetch
+origin`; `git switch production`; `git pull --ff-only origin production` (already up to date, no
+divergence); verified local `HEAD` = `origin/production` =
+`a8b02c9ee736eb1c619b8dc5fd7530f32cd0fb56` and `storage.rules` blob hash =
+`3f1dd48e9f37afacb972ade3dc21c2818038a6fe` — both exact matches to the required values. Ran
+`npm run test:rules` (48/48 pass, exit 0) and `git diff --check` (exit 0, clean).
+
+**Deployed:** `firebase deploy --only storage --project fresh-prints-prod` — **exit 0, "Deploy
+complete!"** Rules compiled successfully with no errors or warnings and were released to
+`firebase.storage`. Console URL confirmed `fresh-prints-prod` as the deployed project. **This is
+the first-ever Fresh Prints production Storage Rules deployment** — no prior Storage Rules
+history existed on this project.
+
+Provided owner Console verification instructions: `fresh-prints-prod` → Build → Storage → Rules
+tab → confirm "Last published" timestamp and compare displayed content against local
+`storage.rules`.
+
+Returned to `development` (`git switch development`, `git pull --ff-only`, clean tree confirmed).
+**`origin/production` confirmed unchanged** at `a8b02c9ee736eb1c619b8dc5fd7530f32cd0fb56` — this
+deployment added no Git commit to `production`, only a Firebase Storage Rules release.
+
+**No other Firebase component was deployed.** No Firestore Rules redeployment (unnecessary,
+already correctly deployed), no Firestore indexes, no Functions, no App Hosting release, no
+secrets, no DNS, no production data, no `rebuildCatalogSnapshots`, no Studio distribution, no
+GA4/Search Console configuration. `master` was not deleted.
+
+**Active managed goal:** `production-release` (Goal #13) — STOPPED at the Firestore indexes
+deployment approval checkpoint (deployment-order step 3); awaiting explicit owner approval.
+
 ## 2026-07-30 — Goal #13 "production-release" — development promoted to production via GitHub PR #3; v1.0.0-rc2 tagged; stopped at Storage Rules checkpoint
 
 Owner confirmed a local `apps/studio/tsconfig.json` change (removed `ignoreDeprecations: "5.0"`

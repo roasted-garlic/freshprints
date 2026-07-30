@@ -122,7 +122,7 @@ Current Goal:
 | 10 | Increase the MB limit for custom-request reference images | **Done** (2026-07-29, approved) — 40 MB/file live in `fresh-prints-dev` at every enforcement layer, 8 files unchanged, 320 MB combined ceiling active; owner QA FAIL (stale 15 MB deployed Cloud Functions) → Amendment 1 root-caused and fixed via scoped Functions redeploy → owner re-QA PASS |
 | 11 | `customer-upload-oversized-pixel-normalization-and-processing-timeout-followup` | **Done** (2026-07-30, approved_with_notes; owner QA PASS WITH NOTES — see signoff) |
 | 12 | `catalog-image-derivative-storage-consolidation` | **Done — closed_by_owner_after_inventory** (2026-07-30). Real dev inventory measured originals at ~97.66% of catalog Storage (980.8 MB of 1,004.3 MB); thumbnails+previews combined only 23.5 MB; zero orphans/duplicates/violations found. Owner decided the migration's small addressable Storage win did not justify the required backfill/consumer-cutover/bandwidth-increase — closed before implementation, an evidence-based decision. Retained as dev-only tooling: the read-only `inventoryCatalogImageStorage` callable and its Studio invocation panel. |
-| 13 | `production-release` — prod Firebase / App Hosting / Google / email | **Active** — **`development` promoted to `production` via GitHub PR #3** (merge commit `a8b02c9`, includes the Studio TypeScript fix + all prior release docs); full verification suite passed on the merged commit; **`v1.0.0-rc2` tagged and pushed**; Firestore Rules (step 1 of 12) remains deployed, no redeployment needed; **stopped at the Storage Rules deployment approval checkpoint** (step 2); no longer blocked (#9–#12 all signed off/closed); production approval required before any further implementation or deployment |
+| 13 | `production-release` — prod Firebase / App Hosting / Google / email | **Active** — **Storage Rules DEPLOYED to `fresh-prints-prod`** (deployment-order step 2 of 12, exit 0, first-ever Storage Rules deployment on this project); 12-step deployment order in effect (Rules ✅ → Storage Rules ✅ → indexes → secrets → Functions → App Hosting env vars → first release → Studio build → settings → domain → smoke tests → GA4); **stopped at the Firestore indexes deployment approval checkpoint** (step 3); no longer blocked (#9–#12 all signed off/closed); production approval required before any further implementation or deployment |
 | 14 | `customer-upload-early-transparency-format-validation` — reject invalid customer artwork before the trimming stage is shown | **Done** (2026-07-30, approved; automated verification 23/23 pass, clean build/lint; owner deployed to `fresh-prints-dev` and confirmed manual QA PASS across all 5 goal-brief scenarios). Separate narrow follow-up run alongside the paused `production-release` (#13), which this goal did not modify. See `docs/workflow/plans/2026-07-30-customer-upload-early-transparency-format-validation-plan.md`. |
 
 **Small Managed Items Backlog:** #5–**#14** **Done** (2026-07-21). See [Small Managed Items Backlog](#small-managed-items-backlog-2026-07-18) below.
@@ -262,7 +262,17 @@ and pushed annotated tag `v1.0.0-rc2` on the verified merge commit `a8b02c9`. Re
 merge, PR #4, content-identical). **The entire promotion went through the protected GitHub PR
 workflow — no branch protection was bypassed, no emergency override used, no force-push
 anywhere.**
-**Stopped at the Storage Rules deployment approval checkpoint** (deployment-order step 2).
+**Since then (same day, later pass):** owner approved via `APPROVE STORAGE RULES DEPLOYMENT`. Ran
+the full pre-deploy safety sequence — switched to `production`, `git pull --ff-only` (already up
+to date), verified local `HEAD` = `origin/production` = `a8b02c9ee736eb1c619b8dc5fd7530f32cd0fb56`
+and `storage.rules` blob hash = `3f1dd48e9f37afacb972ade3dc21c2818038a6fe`, both exact matches;
+48/48 Rules-emulator tests passed; `git diff --check` clean. Ran exactly
+`firebase deploy --only storage --project fresh-prints-prod` — **exit 0, "Deploy complete!"** —
+the first-ever Fresh Prints production Storage Rules deployment. No other Firebase component was
+touched. Returned to `development` (`git pull --ff-only`, clean tree). `origin/production`
+confirmed unchanged — this deployment added no Git commit to `production`, only a Firebase
+Storage Rules release.
+**Stopped at the Firestore indexes deployment approval checkpoint** (deployment-order step 3).
 `master` was **not** deleted (retained as a temporary transition fallback; its eventual deletion
 is a separate, later checkpoint). No longer blocked: Goals #9–#12
 (`catalog-image-derivative-storage-consolidation`) closed **2026-07-30**,

@@ -242,8 +242,11 @@ own separate, later, explicitly-approved checkpoint.
    firestore:rules --project fresh-prints-prod`, exit 0, "Deploy complete!" — the first-ever Fresh
    Prints production Firestore Rules deployment. Verify in Console: `fresh-prints-prod` → Firestore
    Database → Rules tab → "Last published" timestamp.
-2. **Storage Rules deployment** ← current checkpoint
-3. Firestore indexes deployment
+2. ✅ **Storage Rules deployment** — **DEPLOYED 2026-07-30.** `firebase deploy --only storage
+   --project fresh-prints-prod`, exit 0, "Deploy complete!" — the first-ever Fresh Prints
+   production Storage Rules deployment. Verify in Console: `fresh-prints-prod` → Build → Storage →
+   Rules tab → "Last published" timestamp.
+3. **Firestore indexes deployment** ← current checkpoint
 4. Secret Manager population (`GEMINI_API_KEY`, `RESEND_API_KEY`, `ETSY_X_API_KEY`, `BREVO_API_KEY` if selected)
 5. Cloud Functions deployment (approved explicit 99-function allowlist — see
    `docs/workflow/reviews/2026-07-30-production-release-functions-allowlist-report.md`)
@@ -257,8 +260,8 @@ own separate, later, explicitly-approved checkpoint.
 
 **The App Hosting backend existing with status "Waiting for your first release" does not change
 this order.** Backend configuration (already complete) is not the same as step 7 (the first
-release) — five more steps come first after Rules. Each step requires its own separate, explicit
-owner approval; none of this order authorizes skipping ahead.
+release) — four more steps come first after Rules/Storage Rules. Each step requires its own
+separate, explicit owner approval; none of this order authorizes skipping ahead.
 
 ### Original enablement instructions (retained for reference)
 
