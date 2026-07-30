@@ -5,12 +5,13 @@ Current Mode: managed-phase
 Current Phase: implement
 Plan Status: complete
 Review Status: complete (`approved_with_notes`)
-Implement Status: in_progress — **Firestore Rules DEPLOYED to `fresh-prints-prod`** (step 1 of 12
-complete, first-ever Rules deployment to this project, exit 0, "Deploy complete!"). Approved
-deployment order: (1) Firestore Rules ✅ DONE → (2) Storage Rules → (3) indexes → (4) secrets →
-(5) Functions → (6) App Hosting env vars → (7) first Portal release → (8) Studio build → (9)
-settings/reference data → (10) domain/Authorized Domains → (11) smoke tests → (12) GA4/Search
-Console. Stopped at the Storage Rules deployment approval checkpoint (step 2)
+Implement Status: in_progress — **`development` promoted to `production` via GitHub PR #3**
+(merge commit `a8b02c9ee736eb1c619b8dc5fd7530f32cd0fb56`, includes the Studio tsconfig fix + all
+prior doc/redaction commits); full release verification suite passed on the merged commit;
+**`v1.0.0-rc2` tagged and pushed** on the verified merge commit; `v1.0.0-rc1` unchanged at
+`aa570aa`. Firestore Rules step (1 of 12) remains deployed and requires no redeployment
+(`firestore.rules` hash unchanged by the merge). Stopped at the Storage Rules deployment approval
+checkpoint (step 2)
 Test Status: pending
 Signoff Status: pending
 DONE: no
@@ -5357,3 +5358,73 @@ checkpoint.
 
 Next: **STOP.** Await explicit owner approval for Storage Rules deployment (deployment-order step
 2). Do not proceed to indexes, secrets, Functions, or the App Hosting first release before that.
+
+## 2026-07-30 — Goal #13 `production-release` — Studio tsconfig fix committed; development promoted to production via PR #3; full verification passed; v1.0.0-rc2 tagged
+
+**Studio TypeScript fix:** owner confirmed the local `apps/studio/tsconfig.json` diff (removal of
+`"ignoreDeprecations": "5.0"` and `"baseUrl": "."`) was intentional — fixes a TypeScript 5.9.3
+compatibility issue (`"5.0"` is no longer a valid `ignoreDeprecations` value on this version;
+`baseUrl` was dead configuration, unused by `moduleResolution: "bundler"` with all-relative
+`paths`). Config-only, no runtime behavior change. Verified: Studio typecheck (0), Studio build
+incl. electron-builder packaging (0), repo lint (0), `git diff --check` (0). Committed to
+`development` as `dd05ef25ebeb2512ee1a56da031b6118acb01498a`
+("fix(studio): resolve production TypeScript configuration error"), pushed.
+
+**Promotion diff verified before PR:** `origin/production..origin/development` = 8 commits, 9
+files (+1535/-53) — the tsconfig fix, `.githooks/pre-push` (new), and 7 documentation/redaction
+files. `firestore.rules`, `storage.rules`, `firestore.indexes.json`, and `functions/src/index.ts`
+all confirmed byte-identical between branches (no behavioral difference). No secret, local env
+file, or generated output present.
+
+**PR #3** ("Release: promote verified development state to production"):
+`https://github.com/roasted-garlic/freshprints/pull/3` — owner created and merged (confirmed via
+GitHub API: `merged: true`, `merge_commit_sha: a8b02c9ee736eb1c619b8dc5fd7530f32cd0fb56`, base
+`production` was at `aa570aa`, head `development` at `dd05ef2`, 8 commits, 9 files,
++1535/-53 — exactly matching this session's own pre-merge diff). `origin/production` advanced
+`aa570aa..a8b02c9`.
+
+**Local production verification:** `git switch production` → `git pull --ff-only origin
+production` (fast-forward, no conflicts) → confirmed branch `production`, `HEAD` =
+`origin/production` = `a8b02c9ee736eb1c619b8dc5fd7530f32cd0fb56`, clean tree.
+
+**Full release verification suite on the exact merged commit — all pass:**
+| Check | Command | Exit |
+|---|---|---|
+| Functions build | `cd functions && npm run build` | 0 |
+| Portal typecheck | `npm run typecheck --workspace @fresh-prints/portal` | 0 |
+| Studio typecheck | `npx tsc --noEmit -p apps/studio/tsconfig.json` | 0 |
+| Portal build | `npm run build:portal` | 0 |
+| Studio build | `npm run build:studio` | 0 |
+| Repo lint | `npm run lint` | 0 |
+| Firebase Rules tests | `npm run test:rules` (portable JDK 21) | 0 (48/48 pass) |
+| `git diff --check` | — | 0 (clean tree) |
+| Fresh Functions export enumeration | programmatic parse of `functions/src/index.ts` | 105 total, 99 include, 6 exclude, `rebuildCatalogSnapshots` included — **unchanged, matches the approved allowlist exactly** |
+
+**Deployment file hashes on the merged `production` commit** (all confirmed unchanged from the
+already-verified/deployed versions):
+- `firestore.rules`: `d4d754e22090a75ec9fa1c7fc38bbf2101822131` — matches the already-deployed
+  version; **no redeployment required**.
+- `storage.rules`: `3f1dd48e9f37afacb972ade3dc21c2818038a6fe` — reviewed production version.
+- `firestore.indexes.json`: `b67e711bed1a2881767b94ac369fed59346301be` — reviewed production
+  version.
+
+**Tag:** confirmed `v1.0.0-rc1` unchanged at `aa570aa875d20ba85fd405480a47e6eda59f85b0`. Confirmed
+`v1.0.0-rc2` did not already exist. Created annotated tag `v1.0.0-rc2` on the exact verified
+merge commit (`a8b02c9ee736eb1c619b8dc5fd7530f32cd0fb56`), message "Fresh Prints production
+release candidate 2", pushed to `origin` — `* [new tag] v1.0.0-rc2 -> v1.0.0-rc2`.
+
+**Returned to `development`:** `git switch development` → `git pull --ff-only origin development`
+— fast-forwarded 2 additional commits (`dd05ef2..1066f57`), the second being PR #4, a benign
+production→development sync-back merge (GitHub-suggested branch-alignment merge; content-identical,
+introduces nothing new since `production`'s content was already fully derived from `development`).
+Confirmed final branch `development`, clean tree, and `origin/production` still exactly at
+`a8b02c9ee736eb1c619b8dc5fd7530f32cd0fb56` (unaffected by the sync-back).
+
+**No Firebase deployment of any kind occurred in this pass.** No Storage Rules, indexes,
+Functions, App Hosting, secrets, DNS, or production data action occurred. `master` was not
+deleted. No branch protection was bypassed — the promotion went entirely through the GitHub PR
+workflow, no emergency override was used, no force-push occurred anywhere.
+
+Next: **STOP.** Await explicit owner approval to deploy Storage Rules
+(`firebase deploy --only storage --project fresh-prints-prod`) to `fresh-prints-prod`
+(deployment-order step 2).

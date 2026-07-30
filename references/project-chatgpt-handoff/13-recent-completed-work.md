@@ -2,6 +2,27 @@
 
 > Signed-off or largely complete work. External agents should not re-plan or duplicate this.
 
+## 2026-07-30 - production-release: development promoted to production via GitHub PR #3, v1.0.0-rc2 tagged
+
+- Committed the owner-confirmed intentional Studio TypeScript fix (`apps/studio/tsconfig.json`,
+  TS 5.9.3 compatibility, no runtime change) to `development` as `dd05ef2`, pushed
+- Verified the full 8-commit/9-file promotion diff before the PR — no behavioral file changed, no
+  secret/env leak
+- Owner created and merged GitHub PR #3 ("Release: promote verified development state to
+  production") — confirmed via GitHub API, merge commit `a8b02c9`
+- Ran the complete release verification suite on the exact merged `production` commit: Functions
+  build, Portal/Studio typecheck, Portal/Studio build, repo lint, 48/48 Firebase Rules emulator
+  tests, `git diff --check` — all exit 0
+- Fresh Functions export enumeration re-confirmed 105 total/99 include/6 exclude,
+  `rebuildCatalogSnapshots` included — approved allowlist unchanged
+- Confirmed `firestore.rules`/`storage.rules`/`firestore.indexes.json` hashes unchanged —
+  Firestore Rules remain correctly deployed, no redeployment needed
+- Created and pushed annotated tag `v1.0.0-rc2` on the verified merge commit;
+  confirmed `v1.0.0-rc1` unchanged
+- Returned to `development`, clean tree, `production` confirmed at the verified commit
+- **Entire promotion went through the protected GitHub PR workflow — no bypass, no force-push, no
+  Firebase deployment occurred**
+
 ## 2026-07-30 - production-release: Firestore Rules DEPLOYED to fresh-prints-prod (first production Firebase deployment of this goal)
 
 - Owner approved via `APPROVE FIRESTORE RULES DEPLOY`; ran the full pre-deploy safety sequence

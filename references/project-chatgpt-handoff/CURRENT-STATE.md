@@ -1,5 +1,51 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-07-30 — Goal #13 "production-release" — development promoted to production via GitHub PR #3; v1.0.0-rc2 tagged; stopped at Storage Rules checkpoint
+
+Owner confirmed a local `apps/studio/tsconfig.json` change (removed `ignoreDeprecations: "5.0"`
+and `baseUrl: "."`) was an intentional TypeScript 5.9.3 compatibility fix — no runtime behavior
+change. Verified (typecheck, build incl. electron-builder, lint, diff-check all exit 0) and
+committed to `development` as `dd05ef25ebeb2512ee1a56da031b6118acb01498a`, pushed.
+
+Verified the full promotion diff before the PR: 8 commits, 9 files, +1535/-53 between
+`origin/production` and `origin/development` — the tsconfig fix, the pre-push hook, and 7
+documentation/redaction files. `firestore.rules`, `storage.rules`, `firestore.indexes.json`, and
+`functions/src/index.ts` all confirmed byte-identical between branches — no behavioral change, no
+secret, no local env file.
+
+**Owner created and merged GitHub PR #3** ("Release: promote verified development state to
+production") — confirmed via GitHub API: `merged: true`, merge commit
+`a8b02c9ee736eb1c619b8dc5fd7530f32cd0fb56`, base `production` (`aa570aa`) ← head `development`
+(`dd05ef2`), 8 commits, 9 files, +1535/-53 — exactly matching this session's own pre-merge
+verification.
+
+Switched to `production`, fast-forward pulled (`aa570aa..a8b02c9`, no conflicts), confirmed
+branch/HEAD/clean tree. **Ran the complete release verification suite on the exact merged
+commit** — Functions build, Portal typecheck, Studio typecheck, Portal build, Studio build
+(incl. electron-builder), repo lint, Firebase Rules emulator tests (48/48), `git diff --check`:
+**all exit 0.** Fresh Cloud Functions export enumeration re-confirmed 105 total exports, 99
+included, 6 excluded, `rebuildCatalogSnapshots` included — the approved allowlist unchanged by
+the merge.
+
+Confirmed `firestore.rules` (`d4d754e2...`), `storage.rules` (`3f1dd48e...`), and
+`firestore.indexes.json` (`b67e711b...`) hashes all unchanged from the already-verified/deployed
+versions — Firestore Rules remain correctly deployed, **no redeployment required**.
+
+Confirmed `v1.0.0-rc1` unchanged at `aa570aa875d20ba85fd405480a47e6eda59f85b0`. Created and pushed
+annotated tag **`v1.0.0-rc2`** on the verified merge commit `a8b02c9ee736eb1c619b8dc5fd7530f32cd0fb56`.
+
+Returned to `development` (fast-forward pull, which also picked up a benign GitHub-suggested
+production→development sync-back merge, PR #4 — content-identical, introduces nothing new).
+Confirmed final branch `development`, clean tree, `origin/production` still exactly at the
+verified merge commit.
+
+**The entire promotion went through the protected GitHub PR workflow** — no branch protection was
+bypassed, no emergency override used, no force-push anywhere. **No Firebase deployment of any
+kind occurred in this pass.**
+
+**Active managed goal:** `production-release` (Goal #13) — STOPPED at the Storage Rules
+deployment approval checkpoint (deployment-order step 2); awaiting explicit owner approval.
+
 ## 2026-07-30 — Goal #13 "production-release" — Firestore Rules DEPLOYED to fresh-prints-prod (deployment-order step 1 of 12 complete)
 
 **First production Firebase deployment of this goal.** Owner approved via
