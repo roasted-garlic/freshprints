@@ -48,21 +48,30 @@ has since advanced with documentation-only commits; annotated tag `v1.0.0-rc1` m
 `aa570aa875d20ba85fd405480a47e6eda59f85b0` as the release-candidate branch point (not the final
 production tag).
 
-### GitHub `production` ruleset status — NOT currently enforced
+### GitHub `production` ruleset status — CONFIRMED ACTIVE (2026-07-30)
 
-A GitHub repository ruleset targeting the `production` branch has been **created** by the owner,
-but GitHub displayed: *"Your rulesets won't be enforced on this private repository until you move
-to GitHub Team organization account."* **`production` is therefore not currently protected by
-GitHub at the server level** — the ruleset exists as configuration only, not as an active
-guarantee, until the organization plan is upgraded (not part of this goal). Do not rely on GitHub
-alone to prevent a direct push, force-push, or deletion of `production` until that upgrade happens
-and the ruleset shows **Active** in GitHub's UI.
+**Superseded:** an earlier version of this document reported the ruleset as not enforced because
+the repository was private ("Your rulesets won't be enforced on this private repository until you
+move to GitHub Team organization account"). **The repository has since been changed to public**,
+which resolved that limitation. This was independently verified against the live GitHub API (not
+just the owner's report):
 
-**Intended ruleset configuration (documented now, enforced later once the plan supports it):**
+```bash
+curl https://api.github.com/repos/roasted-garlic/freshprints/rulesets
+curl https://api.github.com/repos/roasted-garlic/freshprints/rulesets/<id>
+```
+
+confirmed `"enforcement": "active"` for the `production` ruleset, targeting `refs/heads/production`,
+with `deletion` (restrict deletions), `non_fast_forward` (block force pushes), and `pull_request`
+(`required_approving_review_count: 0` — require PR before merge) rules all present. No status-check,
+signed-commit, or linear-history rule is present (correctly disabled); no bypass actors are
+configured (empty bypass list).
+
+**Actual, confirmed ruleset configuration:**
 
 | Setting | Value |
 |---|---|
-| Enforcement status | Active (currently blocked by plan — see above) |
+| Enforcement status | **Active** (confirmed via GitHub API) |
 | Target branch pattern | `production` |
 | Restrict deletions | Enabled |
 | Block force pushes | Enabled |
@@ -71,12 +80,30 @@ and the ruleset shows **Active** in GitHub's UI.
 | Required status checks | Disabled (no CI exists yet) |
 | Required signed commits | Disabled |
 | Required linear history | Disabled |
-| Bypass list | Empty, unless GitHub requires an owner/admin entry |
+| Bypass list | Empty |
 
-Until the plan upgrade, the **local pre-push safeguard** below is the only working protection
-against an accidental direct push to `production`.
+`production` is now genuinely protected at the GitHub server level: direct pushes, force-pushes, and
+deletion of `production` are rejected by GitHub itself, independent of any local safeguard.
 
-### Local pre-push safeguard against direct `production` pushes
+### Public-repository security audit (2026-07-30) — PASS
+
+Because the repository is now public, a full audit was performed across the current working tree
+and the complete reachable Git history (all branches, tags, and remotes — 131 total commits) for
+credentials, private keys, service-account files, and personal/customer data. **Result: PASS.** No
+probable real credential, private key, service-account file, or third-party customer/financial/
+legal/personnel data was found anywhere in the current tree or in any historical commit. One
+non-blocking finding: a real personal email address (the repository owner's own, used in an
+internal dev-debugging note) appears in one workflow document
+(`docs/workflow/reviews/2026-07-17-portal-notifications-alert-missing-investigation.md`) —
+`[NEEDS OWNER DECISION]` on whether to redact it; it is not a credential and does not block
+production release. Full audit method and findings:
+`.cursor/workflow/state.md`'s 2026-07-30 log entry for this pass.
+
+### Local pre-push safeguard against direct `production` pushes — now optional (defense-in-depth)
+
+Now that the GitHub ruleset is confirmed active and enforcing at the server level, the local
+pre-push hook below is **optional defense-in-depth**, not the primary protection it was documented
+as before the ruleset became enforceable.
 
 `.githooks/pre-push` (repository-committed, not a global hook) blocks any local `git push` that
 targets `refs/heads/production`, printing a message that points to the pull-request promotion

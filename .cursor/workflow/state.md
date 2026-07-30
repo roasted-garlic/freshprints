@@ -5,10 +5,12 @@ Current Mode: managed-phase
 Current Phase: implement
 Plan Status: complete
 Review Status: complete (`approved_with_notes`)
-Implement Status: in_progress — branch model verified stable; GitHub `production` ruleset
-recorded as created-but-NOT-enforced (private-repo plan limitation); local pre-push safeguard
-added (inert until `core.hooksPath` is configured, which itself needs separate owner approval);
-stopped at the Firebase product-enablement human checkpoint for `fresh-prints-prod`
+Implement Status: in_progress — repository visibility changed to PUBLIC; `production` ruleset
+CONFIRMED ACTIVE via direct GitHub API verification (supersedes the prior private-repo warning);
+full public-repository security audit (current tree + complete 131-commit reachable history
+across all 17 refs) completed — **PASS**, with one real personal-email finding requiring owner
+review, not a blocking credential/secret exposure; stopped at the production-security checkpoint
+before Firebase product enablement
 Test Status: pending
 Signoff Status: pending
 DONE: no
@@ -62,23 +64,27 @@ No GA4 or Search Console configuration occurred. `production` was not modified. 
 deleted. No force-push occurred anywhere in this pass** (only file writes and doc/state commits to
 `development`, still pending push at the time this state was written — see the response for the
 final documentation commit hash).
-Human Checkpoint Required: yes — (1) perform the beginner Firebase Console steps in
-`docs/standards/DEPLOYMENT.md`'s "Next checkpoint" subsection to enable Firestore/Storage/Auth,
-register the Web App, and prepare (not complete) the App Hosting backend; (2) decide whether/when
-to approve running `git config core.hooksPath .githooks` to activate the local pre-push safeguard;
-(3) the GitHub organization plan upgrade remains the owner's own separate decision, not required
-for this goal to continue.
-Blocked: no (not blocked; paused at the required Firebase product-enablement human checkpoint by
-explicit instruction)
-Allowed Actions: none beyond this pass; awaiting the owner to perform the Firebase Console steps
-and report back the recorded (not committed) production web-app config location
+Human Checkpoint Required: yes — (1) owner should review/redact the one real personal-email
+finding (`hawkins.m.chris@gmail.com` in
+`docs/workflow/reviews/2026-07-17-portal-notifications-alert-missing-investigation.md`, present
+across many historical commits) — a `[NEEDS OWNER DECISION]`, not a release blocker; (2) perform
+the beginner Firebase Console steps in `docs/standards/DEPLOYMENT.md`'s "Next checkpoint"
+subsection to enable Firestore/Storage/Auth, register the Web App, and prepare (not complete) the
+App Hosting backend; (3) decide whether/when to approve running
+`git config core.hooksPath .githooks` to activate the now-optional local pre-push safeguard
+(defense-in-depth alongside the confirmed-active GitHub ruleset).
+Blocked: no (not blocked; paused at the production-security checkpoint by explicit instruction —
+audit result is PASS, not BLOCKED)
+Allowed Actions: none beyond this pass; awaiting the owner's decision on the personal-email finding
+and completion of the Firebase Console steps
 Forbidden Actions: deleting `master` (local or remote); modifying `production`; any Firebase
 Rules/indexes/Functions/App-Hosting-rollout/secret/DNS/Auth-config/GA4/Search-Console action;
 building or distributing a production Studio installer; touching production data; force-pushing
-any branch; configuring `core.hooksPath` without separate owner approval
-Next Required Step: **STOP.** Await the owner completing the Firebase product-enablement steps
-(Firestore, Storage, Authentication, Web App registration, Web Push certificate, App Hosting
-backend preparation) and reporting back, per
+any branch; rewriting Git history; configuring `core.hooksPath` without separate owner approval;
+changing repository visibility
+Next Required Step: **STOP.** Await the owner's decision on the personal-email finding, then
+completion of the Firebase product-enablement steps (Firestore, Storage, Authentication, Web App
+registration, Web Push certificate, App Hosting backend preparation), per
 `docs/standards/DEPLOYMENT.md`'s "Next checkpoint — Firebase product enablement" subsection.
 
 Plan:
@@ -4977,3 +4983,101 @@ was built. No GA4 or Search Console configuration occurred. `production` was not
 Next: **STOP.** Await the owner performing the Firebase Console product-enablement steps and
 reporting back (in particular, confirming the production web-app config was recorded locally and
 not committed), per `docs/standards/DEPLOYMENT.md`'s "Next checkpoint" subsection.
+
+## 2026-07-30 — Goal #13 `production-release` — Repository made PUBLIC; production ruleset CONFIRMED ACTIVE via GitHub API; full public-repository security audit PASS (one owner-review finding); stopped at production-security checkpoint
+
+Re-verified branch/tag state directly from Git before any action (unchanged from the prior pass):
+current branch `development`, clean tree; `origin/master` = `aa570aa875d20ba85fd405480a47e6eda59f85b0`;
+`origin/production` = `aa570aa875d20ba85fd405480a47e6eda59f85b0`; `origin/development` =
+`07d134a9124733e1698f31a5aec92fe51770dd54`; `v1.0.0-rc1` still resolves to
+`aa570aa875d20ba85fd405480a47e6eda59f85b0`. **`master` and `production` were not touched.**
+
+**Independently confirmed (not just owner-reported) that the repository is now public** via the
+public, unauthenticated GitHub API: `curl https://api.github.com/repos/roasted-garlic/freshprints`
+returned `"private": false, "visibility": "public"`.
+
+**Independently confirmed the `production` ruleset is genuinely active** via
+`curl https://api.github.com/repos/roasted-garlic/freshprints/rulesets` and the ruleset detail
+endpoint — real GitHub API data, not owner say-so: `"enforcement": "active"`, target
+`refs/heads/production`, rules present for `deletion` (restrict deletions), `non_fast_forward`
+(block force pushes), and `pull_request` with `required_approving_review_count: 0` (require PR
+before merge, 0 required approvals) — exactly the intended configuration. No status-check,
+signed-commit, or linear-history rule present (correctly absent); no bypass actors present (empty
+bypass list). **The prior "not enforced — private repo plan limitation" statement is now
+superseded and confirmed resolved.**
+
+**Performed the full public-repository security audit** (previously missing, now required before
+any production secret/credential/Firebase configuration):
+
+*Current working tree* — `git ls-files` scanned for secret-shaped filenames (only `.env.example`
+templates and `functions/src/lib/secrets.ts`, which only declares secret *names* via Firebase
+`defineSecret`/`defineString`, never values); `git grep` scanned tracked file contents for Google
+API key pattern, PEM private-key headers, `service_account` JSON structure, AWS/OpenAI/Slack/
+GitHub/GitLab token prefixes, X.509 certificates, and hardcoded password assignments — **zero
+matches** for all. Confirmed `functions/.env.fresh-prints-dev` exists on disk but is genuinely
+untracked (`git show HEAD:...` fails; `git check-ignore -v` confirms `functions/.gitignore`
+correctly excludes it) — not exposed. `.cursor/mcp.json` uses `${env:VAR_NAME}` interpolation only,
+never a literal credential. `storage.cors.json` contains only public dev domain names. Reviewed
+all tracked binary files (`*.png/.jpg/.zip/.pdf` etc.) — only two legitimate PWA manifest icons
+found, no customer artwork or data exports. Reviewed all tracked `*.csv/.json/.sqlite/.bak/.dump`
+files — only ordinary repo config files (`hooks.json`, `mcp.json`, `version.json`,
+`storage.cors.json`), no data export format found.
+
+*Complete reachable Git history* — confirmed all 17 refs (5 local branches, 5 remote-tracking
+branches, 1 tag, plus 3 local-only `refs/original/refs/heads/*` history-rewrite backup refs and 3
+local-only `refs/codex/turn-diffs/*` checkpoint refs — the latter six confirmed via `git ls-remote
+origin` to NOT exist on GitHub, i.e. not part of the public exposure surface, but still included in
+the `--all` scan for thoroughness) across 131 total reachable commits. Scanned every historical
+tree via `git rev-list --all | xargs git grep` for the same patterns as the current-tree scan
+(Google API keys, PEM headers, service-account JSON, common token prefixes, AWS keys) — **zero
+matches in any historical commit**. Checked every file ever deleted across all history for
+secret-shaped filenames — only `.env.example` was ever "deleted," and that was a same-content
+file-move as part of the `apps/studio` monorepo-restructure commit, not a real secret removal.
+Checked every file ever added across all history for `.env.local` or `firebase-adminsdk*.json`
+patterns — **zero matches**.
+
+**One real finding, not a credential/secret exposure:** the real personal email address
+`hawkins.m.chris@gmail.com` (the repository owner's own address, used as a real dev/test account
+reference) appears in
+`docs/workflow/reviews/2026-07-17-portal-notifications-alert-missing-investigation.md`, present
+consistently across every historical commit touching that file (not something later hidden or
+scrubbed). This is personal data now exposed in a public repository, but it is the owner's own
+address in an internal debugging note, not a third-party customer's PII and not a credential.
+Classified as `[NEEDS OWNER DECISION]` — recommend the owner redact it if they prefer, but it does
+not block production release. A second, lower-concern email
+(`ionsupplyllc@gmail.com` in `functions/src/lib/customerUpdateValidation.test.ts`) is a test
+fixture value in a unit test, not confirmed real customer data — flagged for owner awareness only.
+
+**Audit verdict: PASS.** No probable real credential, private key, service-account file, or
+third-party customer/financial/legal/personnel data was found in the current tree or anywhere in
+reachable Git history. Production credential creation is not blocked by this audit, though the
+owner should decide on the one personal-email finding before or independently of continuing.
+
+**Public non-secret content reviewed and classified:** architecture/data-model/backend docs,
+workflow plans/reviews/signoffs, `docs/standards/DEPLOYMENT.md`'s operational deployment
+instructions, `docs/project/ROADMAP.md`, project IDs (`fresh-prints-dev`, `fresh-prints-prod` —
+project IDs are not secrets by Firebase design), the production Functions deployment allowlist, and
+internal business/workflow procedure descriptions are all **acceptable for a public repository** —
+they describe engineering process and architecture, not credentials or private business data. No
+private customer, financial, legal, personnel, or vendor-account information was found anywhere in
+this review.
+
+Documented the local pre-push hook (`.githooks/pre-push`) as an **optional defense-in-depth
+safeguard** now that the GitHub ruleset provides confirmed server-side protection — left unaltered
+and still inert (`core.hooksPath` not configured), per instruction not to activate it this pass.
+
+Updated `.cursor/workflow/state.md`, `docs/project/ROADMAP.md`, `docs/standards/DEPLOYMENT.md`,
+`references/project-chatgpt-handoff/CURRENT-STATE.md`, and
+`references/project-chatgpt-handoff/13-recent-completed-work.md` to record: public visibility,
+the superseded private-plan ruleset warning, the confirmed-active ruleset configuration, the full
+audit result (PASS + the one owner-review finding), and the now-optional pre-push hook status. All
+committed to **`development` only**.
+
+**No repository visibility change was made** (already public, per owner action, not this pass). No
+Git history was rewritten. No force-push occurred. No Firebase product was enabled, no secret was
+set, no Rules/indexes/Functions/App-Hosting/DNS/Auth/GA4/Search-Console configuration occurred, no
+production Studio installer was built, no production data was touched. `master` and `production`
+remain untouched.
+
+Next: **STOP.** Await the owner's decision on the personal-email finding, then completion of the
+Firebase product-enablement checkpoint already documented in `docs/standards/DEPLOYMENT.md`.

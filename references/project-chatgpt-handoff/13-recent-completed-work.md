@@ -2,6 +2,29 @@
 
 > Signed-off or largely complete work. External agents should not re-plan or duplicate this.
 
+## 2026-07-30 - production-release: repository made public, production ruleset confirmed active, full security audit PASS (not yet deployed)
+
+- Re-verified branch/tag state directly from Git (unchanged: `master`/`production` both at
+  `aa570aa`, `development` advanced by prior documentation commits, `v1.0.0-rc1` unchanged) —
+  `master`/`production` untouched this pass
+- Independently confirmed via the live GitHub API (not just owner report) that the repository is
+  genuinely public and the `production` ruleset is genuinely active with restrict-deletions,
+  block-force-pushes, and require-PR-before-merge rules all present — supersedes the prior
+  "not enforced" report
+- Performed the full public-repository security audit: current tree + all 131 reachable commits
+  across all 17 refs scanned for credentials, private keys, service-account files, PEM keys,
+  common token prefixes, and personal/customer data
+- **Result: PASS** — no probable real credential, private key, service-account file, or
+  third-party customer/financial/legal/personnel data found anywhere
+- One non-blocking finding: the owner's own real personal email address in one internal
+  dev-debugging workflow document — `[NEEDS OWNER DECISION]` on redaction, not a release blocker
+- Reviewed public non-secret content (architecture, workflow artifacts, deployment docs, project
+  IDs, Functions allowlist) — all classified acceptable for a public repository
+- Re-documented the local pre-push hook as optional defense-in-depth now that the GitHub ruleset
+  provides confirmed server-side protection
+- **No repository visibility change made this pass (already public); no Git history rewritten; no
+  force-push; no Firebase action; `master`/`production` untouched**
+
 ## 2026-07-30 - production-release: GitHub ruleset limitation recorded, local pre-push safeguard added (not yet deployed)
 
 - Re-verified all branch/tag facts directly from Git (not assumed): `development` current branch,

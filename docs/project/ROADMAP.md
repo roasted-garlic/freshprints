@@ -122,7 +122,7 @@ Current Goal:
 | 10 | Increase the MB limit for custom-request reference images | **Done** (2026-07-29, approved) — 40 MB/file live in `fresh-prints-dev` at every enforcement layer, 8 files unchanged, 320 MB combined ceiling active; owner QA FAIL (stale 15 MB deployed Cloud Functions) → Amendment 1 root-caused and fixed via scoped Functions redeploy → owner re-QA PASS |
 | 11 | `customer-upload-oversized-pixel-normalization-and-processing-timeout-followup` | **Done** (2026-07-30, approved_with_notes; owner QA PASS WITH NOTES — see signoff) |
 | 12 | `catalog-image-derivative-storage-consolidation` | **Done — closed_by_owner_after_inventory** (2026-07-30). Real dev inventory measured originals at ~97.66% of catalog Storage (980.8 MB of 1,004.3 MB); thumbnails+previews combined only 23.5 MB; zero orphans/duplicates/violations found. Owner decided the migration's small addressable Storage win did not justify the required backfill/consumer-cutover/bandwidth-increase — closed before implementation, an evidence-based decision. Retained as dev-only tooling: the read-only `inventoryCatalogImageStorage` callable and its Studio invocation panel. |
-| 13 | `production-release` — prod Firebase / App Hosting / Google / email | **Active** — GitHub `production` ruleset created but **NOT enforced** (private-repo plan limitation); local pre-push safeguard added (`.githooks/pre-push`, inert until `core.hooksPath` is approved/configured); beginner Firebase product-enablement instructions documented; **stopped at the Firebase product-enablement human checkpoint** (`fresh-prints-prod` still empty/unconfigured); no longer blocked (#9–#12 all signed off/closed); production approval required before any implementation or deployment |
+| 13 | `production-release` — prod Firebase / App Hosting / Google / email | **Active** — repository changed to public; GitHub `production` ruleset **CONFIRMED ACTIVE** via direct GitHub API verification (restrict deletions, block force pushes, require PR before merge); full public-repository security audit (current tree + 131-commit reachable history) **PASS**, one owner-review-only personal-email finding; **stopped at the production-security checkpoint** before Firebase product enablement (`fresh-prints-prod` still empty/unconfigured); no longer blocked (#9–#12 all signed off/closed); production approval required before any implementation or deployment |
 | 14 | `customer-upload-early-transparency-format-validation` — reject invalid customer artwork before the trimming stage is shown | **Done** (2026-07-30, approved; automated verification 23/23 pass, clean build/lint; owner deployed to `fresh-prints-dev` and confirmed manual QA PASS across all 5 goal-brief scenarios). Separate narrow follow-up run alongside the paused `production-release` (#13), which this goal did not modify. See `docs/workflow/plans/2026-07-30-customer-upload-early-transparency-format-validation-plan.md`. |
 
 **Small Managed Items Backlog:** #5–**#14** **Done** (2026-07-21). See [Small Managed Items Backlog](#small-managed-items-backlog-2026-07-18) below.
@@ -179,10 +179,24 @@ Authentication, Email/Password + Google sign-in, Web App registration with confi
 — never committed, Web Push certificate, and preparing but not completing the App Hosting backend).
 **No Firebase Console action was performed on the owner's behalf; `production` was not modified;
 `master` was not deleted; no force-push occurred.**
-**Stopped at the Firebase product-enablement human checkpoint** — awaiting the owner to complete
-the Firebase Console steps documented in `docs/standards/DEPLOYMENT.md` and report back. `master`
-was **not** deleted (retained as a temporary transition fallback; its eventual deletion is a
-separate, later checkpoint). No longer blocked: Goals #9–#12
+
+**Since then (same day, later pass):** the owner changed the repository from private to public,
+which resolved the GitHub organization-plan limitation. Independently confirmed via the live GitHub
+API (not just the owner's report) that the repository is genuinely `"visibility": "public"` and
+that the `production` ruleset is genuinely `"enforcement": "active"` with restrict-deletions,
+block-force-pushes, and require-PR-before-merge rules all present — **the prior "created but not
+enforced" statement above is now superseded.** Performed the previously-missing full
+public-repository security audit: scanned the current working tree and all 131 commits reachable
+across all branches/tags/remotes for credentials, private keys, service-account files, and personal
+data — **PASS**, with one non-blocking finding (a real personal email address, the owner's own,
+in one internal debugging document — `[NEEDS OWNER DECISION]` on redaction, not a release
+blocker). Re-documented the local pre-push hook as optional defense-in-depth now that the GitHub
+ruleset provides confirmed server-side protection. Updated `docs/standards/DEPLOYMENT.md`'s ruleset
+section to reflect the confirmed-active status and audit result.
+**Stopped at the production-security checkpoint** — awaiting the owner's decision on the
+personal-email finding, then completion of the Firebase Console steps documented in
+`docs/standards/DEPLOYMENT.md`. `master` was **not** deleted (retained as a temporary transition
+fallback; its eventual deletion is a separate, later checkpoint). No longer blocked: Goals #9–#12
 (`catalog-image-derivative-storage-consolidation`) closed **2026-07-30**,
 **closed_by_owner_after_inventory** — the real dev Storage inventory measured originals at
 ~97.66% of catalog Storage (980,807,863 of 1,004,304,719 bytes across 87 designs), with existing

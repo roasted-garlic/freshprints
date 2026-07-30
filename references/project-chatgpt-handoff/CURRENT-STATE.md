@@ -1,5 +1,44 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-07-30 — Goal #13 "production-release" — Repository made PUBLIC; production ruleset CONFIRMED ACTIVE; full security audit PASS; stopped at production-security checkpoint
+
+Re-verified branch/tag state directly from Git (unchanged): current branch `development`, clean
+tree, `origin/master`/`origin/production` both at `aa570aa875d20ba85fd405480a47e6eda59f85b0`,
+`origin/development` at `07d134a9124733e1698f31a5aec92fe51770dd54`, `v1.0.0-rc1` unchanged.
+**`master` and `production` were not touched.**
+
+The repository was changed from private to public by the owner. Independently confirmed via the
+live, unauthenticated GitHub API (not just the owner's report) that visibility is genuinely
+`"public"`, and that the `production` ruleset is genuinely `"enforcement": "active"` with
+restrict-deletions, block-force-pushes, and require-PR-before-merge (0 required approvals) rules
+all present. **The prior "not enforced — private repo plan limitation" report is now superseded
+and resolved.**
+
+Performed the full public-repository security audit (previously missing): scanned the current
+working tree and all 131 commits reachable across all 17 refs (branches, tags, remotes) for
+credentials, private keys, service-account files, PEM keys, common API-token prefixes, and personal/
+customer data. **Result: PASS.** No probable real credential, private key, service-account file, or
+third-party customer/financial/legal/personnel data was found anywhere. One non-blocking finding: a
+real personal email address (the repository owner's own, from an internal dev-debugging note) in
+`docs/workflow/reviews/2026-07-17-portal-notifications-alert-missing-investigation.md`, present
+across every historical commit touching that file — `[NEEDS OWNER DECISION]` on redaction, not a
+release blocker.
+
+Reviewed public non-secret content (architecture docs, workflow artifacts, deployment instructions,
+project IDs, the Functions allowlist) — all classified acceptable for a public repository; no
+private business/customer/financial/legal/personnel data found in this category either.
+
+Re-documented the local pre-push hook (`.githooks/pre-push`) as optional defense-in-depth now that
+the GitHub ruleset provides confirmed server-side protection — left inert, unaltered.
+
+**No repository visibility change was made this pass** (already public, per owner action). No Git
+history was rewritten. No force-push occurred. No Firebase product was enabled, no secret was set,
+no production configuration of any kind occurred. `master` and `production` remain untouched.
+
+**Active managed goal:** `production-release` (Goal #13) — STOPPED at the production-security
+checkpoint per explicit instruction; awaiting the owner's decision on the personal-email finding,
+then completion of the documented Firebase product-enablement steps.
+
 ## 2026-07-30 — Goal #13 "production-release" — GitHub ruleset limitation recorded; local pre-push safeguard added; stopped at Firebase product-enablement checkpoint
 
 Re-verified all branch/tag facts directly from Git before relying on them (not assumed from a
