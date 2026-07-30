@@ -19,8 +19,6 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-    "ignoreDeprecations": "5.0",
-    "baseUrl": ".",
     "paths": {
       "@fresh-prints/shared/*": ["../../packages/shared/src/*"],
       "@fresh-prints/show-picker": ["../../packages/show-picker/src/index.ts"],
