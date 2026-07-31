@@ -290,10 +290,27 @@ own separate, later, explicitly-approved checkpoint.
    all in `us-central1`, no function in a non-`ACTIVE` state, `rebuildCatalogSnapshots` present**
    (deployed but not yet invoked — invocation is its own Phase D checkpoint). No secret value was
    ever accessed, printed, or logged.
-6. App Hosting environment-variable configuration ← **current checkpoint** (`NEXT_PUBLIC_FIREBASE_*`, `NEXT_PUBLIC_PORTAL_ORIGIN`; `NEXT_PUBLIC_GA_MEASUREMENT_ID` stays unset)
-7. First App Hosting Portal release
+6. ✅ **App Hosting environment-variable configuration** — **COMPLETE 2026-07-30.** Added an `env:`
+   block to `apps/portal/apphosting.yaml` with the 7 required `NEXT_PUBLIC_FIREBASE_*` values plus
+   `NEXT_PUBLIC_PORTAL_ORIGIN=https://myprintrequest.com`, sourced from the owner's gitignored
+   `apps/portal/.env.production.local`. `NEXT_PUBLIC_GA_MEASUREMENT_ID` deliberately stays unset —
+   GA4 go-live remains its own separate, later checkpoint. Promoted via PR #6 (merge `9437d4b`).
+7. ✅ **First App Hosting Portal release** — **COMPLETE 2026-07-30.** The first-ever Fresh Prints
+   production Portal deployment. Two rollout attempts failed with `Missing dependency lock file at
+   path '/workspace/apps/portal'` — root cause: Firebase App Hosting's buildpack has official
+   monorepo support only for Nx/Turborepo, not this repo's npm-workspaces layout. A first
+   hypothesis (`buildCommand`/`runCommand` overrides) was disproven by direct Cloud Build log
+   evidence (monorepo detection runs before `buildCommand`). Fixed via a narrow Plan + Formal
+   Review (`docs/workflow/plans/2026-07-30-production-release-turborepo-app-hosting-fix-plan.md`)
+   adding minimal officially-documented Turborepo support (`turbo` devDependency, root
+   `turbo.json`, `packageManager` field), keeping the single root lock file and `rootDir`
+   unchanged. Promoted via PR #8 (merge `11ed4ef`). Retried: **"✔ Successfully created a new
+   rollout!"** Verified live at
+   `https://fresh-prints-portal--fresh-prints-prod.us-central1.hosted.app` — homepage HTTP 200,
+   correct title, `robots.txt` allow-variant confirming correct host resolution, no dev-project
+   strings in served HTML. Automatic rollouts remain disabled.
 8. Production Studio build
-9. Initial settings and reference-data setup (categories, email provider selection, `rebuildCatalogSnapshots`)
+9. Initial settings and reference-data setup (categories, email provider selection, `rebuildCatalogSnapshots`) ← **current checkpoint**
 10. Domain and Authorized Domains configuration
 11. Smoke tests
 12. GA4 and Search Console (separate later checkpoints)

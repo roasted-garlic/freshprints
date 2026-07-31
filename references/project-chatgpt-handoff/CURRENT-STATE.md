@@ -1,5 +1,54 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-07-30 — Goal #13 "production-release" — First App Hosting Portal release COMPLETE (deployment-order steps 1-7 of 12 done); proceeding into settings/bootstrap inventory
+
+**The first-ever Fresh Prints production Portal deployment succeeded.** App Hosting
+environment-variable configuration (step 6) added an `env:` block to
+`apps/portal/apphosting.yaml` with the 7 required `NEXT_PUBLIC_FIREBASE_*` values plus
+`NEXT_PUBLIC_PORTAL_ORIGIN=https://myprintrequest.com`, sourced from the owner's gitignored
+`.env.production.local`. `NEXT_PUBLIC_GA_MEASUREMENT_ID` was deliberately omitted even though a
+real value already exists in that local file — GA4 go-live remains a separate, later checkpoint.
+Promoted to `production` via GitHub PR #6.
+
+**First rollout attempt failed:** Cloud Build error `Missing dependency lock file at path
+'/workspace/apps/portal'`. Root cause: Fresh Prints is an npm-workspaces monorepo (single root
+`package-lock.json`; `apps/portal` correctly has none of its own), but Firebase App Hosting's
+buildpack has official first-class monorepo support only for Nx/Turborepo.
+
+**Second attempt (first fix hypothesis):** added `buildCommand`/`runCommand` overrides to
+`apphosting.yaml`. **This was accidentally committed directly to `production`** during
+implementation — caught immediately before pushing (the stray commit never reached GitHub, zero
+remote impact), corrected by resetting the local `production` branch pointer and reapplying the
+identical change properly via `development` → PR #7. The retry still failed with the byte-identical
+error. The owner opened the real Cloud Build Console log and confirmed App Hosting's
+monorepo-detection step runs *before* `buildCommand` executes — disproving the first hypothesis
+with direct evidence, not assumption.
+
+**Third attempt (root-cause fix):** the owner directed a narrow Plan + independent Formal Review
+(both `approved`) to add the minimum officially-documented Turborepo support instead: `turbo` as a
+root devDependency, a root `turbo.json` with a single `build` task (no `dependsOn` — the shared
+workspace packages have no `build` script; Next.js `transpilePackages` handles them directly), a
+`packageManager: "npm@10.8.2"` field (required for turbo's own workspace resolution, discovered
+during implementation, within approved scope), removed the now-confirmed-ineffective build-command
+override, kept the single root `package-lock.json` and `rootDir: ./apps/portal` unchanged per
+explicit owner instruction. Verified locally: `npm ci`, `npx turbo run build
+--filter=@fresh-prints/portal` (1/1 tasks successful), Portal typecheck, `npm run build:portal`,
+repo lint, YAML validation, `git diff --check` — all exit 0. Promoted via PR #8.
+
+**Retried the rollout: "✔ Successfully created a new rollout!"** Verified the backend live at
+`https://fresh-prints-portal--fresh-prints-prod.us-central1.hosted.app` (Enabled, `nodejs24`,
+`us-central1`). Homepage returns HTTP 200 with the correct `<title>Fresh Prints Request
+Portal</title>`; `robots.txt` returns the **allow** variant (not the fail-closed default),
+confirming `NEXT_PUBLIC_PORTAL_ORIGIN`/host resolution is correctly live in production; no
+`fresh-prints-dev` string found anywhere in the served HTML. Automatic rollouts remain **disabled**
+for this backend — each future release requires its own explicit trigger.
+
+**Active managed goal:** `production-release` (Goal #13) — deployment-order steps 1-7 of 12 all
+complete. Proceeding into Phase D (production settings and bootstrap inventory, step 9 of 12) under
+the same multi-phase authorization already granted by the owner. No production Firestore data has
+been written; a consolidated bootstrap list requires its own separate owner approval before any
+write occurs.
+
 ## 2026-07-30 — Goal #13 "production-release" — Cloud Functions deployment COMPLETE (deployment-order steps 1-5 of 12 done); proceeding into App Hosting/Portal release
 
 **Cloud Functions (step 5) confirmed complete.** Owner issued a multi-phase `Continue Workflow`

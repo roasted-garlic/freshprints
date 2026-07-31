@@ -2,6 +2,29 @@
 
 > Signed-off or largely complete work. External agents should not re-plan or duplicate this.
 
+## 2026-07-30 - production-release: First App Hosting Portal release complete (deployment-order steps 6-7 of 12)
+
+- Added App Hosting `env:` block (7 `NEXT_PUBLIC_FIREBASE_*` values + `NEXT_PUBLIC_PORTAL_ORIGIN`)
+  sourced from the owner's gitignored `.env.production.local`; `NEXT_PUBLIC_GA_MEASUREMENT_ID`
+  deliberately omitted (separate GA4 checkpoint); promoted via PR #6
+- First rollout attempt failed: `Missing dependency lock file at path '/workspace/apps/portal'` —
+  root cause is a genuine gap in Firebase App Hosting's monorepo support (Nx/Turborepo only, not
+  plain npm workspaces, which this repo uses)
+- First fix hypothesis (`buildCommand`/`runCommand` overrides) was accidentally committed directly
+  to `production` during implementation — caught before pushing, zero remote impact, corrected by
+  resetting the local branch and reapplying properly via `development` → PR #7; retry failed
+  identically, and owner-inspected Cloud Build logs disproved the hypothesis with direct evidence
+- Root-cause fix (owner-directed, narrow Plan + Formal Review both approved): added minimal
+  officially-documented Turborepo support (`turbo` devDependency, root `turbo.json`, required
+  `packageManager` field), removed the ineffective override, kept the single root lock file and
+  `rootDir` unchanged; verified locally across 7 checks, all exit 0; promoted via PR #8
+- Retried the rollout: **"✔ Successfully created a new rollout!"** — the first-ever Fresh Prints
+  production Portal deployment succeeded
+- Verified live: homepage HTTP 200 with correct title, `robots.txt` allow-variant confirming
+  correct production host resolution, no dev-project strings in served HTML
+- Automatic rollouts remain disabled; next checkpoint is production settings/bootstrap inventory
+  (deployment-order step 9 of 12)
+
 ## 2026-07-30 - production-release: Cloud Functions deployment complete (deployment-order step 5 of 12)
 
 - Phase A non-secret Functions configuration audit found no source change required

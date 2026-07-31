@@ -122,7 +122,7 @@ Current Goal:
 | 10 | Increase the MB limit for custom-request reference images | **Done** (2026-07-29, approved) — 40 MB/file live in `fresh-prints-dev` at every enforcement layer, 8 files unchanged, 320 MB combined ceiling active; owner QA FAIL (stale 15 MB deployed Cloud Functions) → Amendment 1 root-caused and fixed via scoped Functions redeploy → owner re-QA PASS |
 | 11 | `customer-upload-oversized-pixel-normalization-and-processing-timeout-followup` | **Done** (2026-07-30, approved_with_notes; owner QA PASS WITH NOTES — see signoff) |
 | 12 | `catalog-image-derivative-storage-consolidation` | **Done — closed_by_owner_after_inventory** (2026-07-30). Real dev inventory measured originals at ~97.66% of catalog Storage (980.8 MB of 1,004.3 MB); thumbnails+previews combined only 23.5 MB; zero orphans/duplicates/violations found. Owner decided the migration's small addressable Storage win did not justify the required backfill/consumer-cutover/bandwidth-increase — closed before implementation, an evidence-based decision. Retained as dev-only tooling: the read-only `inventoryCatalogImageStorage` callable and its Studio invocation panel. |
-| 13 | `production-release` — prod Firebase / App Hosting / Google / email | **Active** — deployment-order **steps 1-5 of 12 all complete**: Firestore Rules ✅, Storage Rules ✅, Firestore indexes ✅ (owner-confirmed all 65 `Enabled`), Secret Manager ✅ (`GEMINI_API_KEY`/`RESEND_API_KEY`/`BREVO_API_KEY`/`ETSY_X_API_KEY` all confirmed version 1 ENABLED on `fresh-prints-prod`, set directly by the owner, no value ever exposed), **Cloud Functions ✅** (99 of 99 approved functions deployed and authoritatively verified via `firebase functions:list --json`, 0 of 6 excluded functions present, `rebuildCatalogSnapshots` deployed but not yet invoked); **now proceeding into Phase C** (App Hosting environment configuration + first Portal release, step 6 of 12) under the active Continue Workflow's already-granted multi-phase authorization |
+| 13 | `production-release` — prod Firebase / App Hosting / Google / email | **Active** — deployment-order **steps 1-7 of 12 all complete**: Firestore Rules ✅, Storage Rules ✅, Firestore indexes ✅, Secret Manager ✅, Cloud Functions ✅ (99 of 99 approved functions deployed, verified), **App Hosting environment config ✅ and first Portal release ✅** — the first-ever Fresh Prints production Portal deployment succeeded at `https://fresh-prints-portal--fresh-prints-prod.us-central1.hosted.app` (HTTP 200, correct title, `robots.txt` allow-variant confirming correct host resolution) after diagnosing and fixing a genuine App Hosting + npm-workspaces monorepo incompatibility (added minimal Turborepo support per Firebase's documented path, via its own narrow Plan + Formal Review); **now proceeding into Phase D** (production settings/bootstrap inventory, step 9 of 12) under the active Continue Workflow's already-granted multi-phase authorization — no production Firestore data written yet, pending consolidated owner approval |
 | 14 | `customer-upload-early-transparency-format-validation` — reject invalid customer artwork before the trimming stage is shown | **Done** (2026-07-30, approved; automated verification 23/23 pass, clean build/lint; owner deployed to `fresh-prints-dev` and confirmed manual QA PASS across all 5 goal-brief scenarios). Separate narrow follow-up run alongside the paused `production-release` (#13), which this goal did not modify. See `docs/workflow/plans/2026-07-30-customer-upload-early-transparency-format-validation-plan.md`. |
 
 **Small Managed Items Backlog:** #5–**#14** **Done** (2026-07-21). See [Small Managed Items Backlog](#small-managed-items-backlog-2026-07-18) below.
@@ -381,6 +381,40 @@ granted to the Functions service account during this deploy, direct evidence sec
 live. **No secret value was ever accessed, printed, or logged.** **Deployment-order step 5 (Cloud
 Functions) is now closed; proceeding into Phase C** (App Hosting environment configuration and
 first Portal release, step 6 of 12) under the same multi-phase authorization.
+
+**Since then (same day, later pass):** completed Phase C (App Hosting environment configuration and
+first Portal release) — the first-ever Fresh Prints production Portal deployment. Added an `env:`
+block to `apps/portal/apphosting.yaml` with the 7 required `NEXT_PUBLIC_FIREBASE_*` values plus
+`NEXT_PUBLIC_PORTAL_ORIGIN`, sourced from the owner's gitignored `.env.production.local`;
+deliberately omitted `NEXT_PUBLIC_GA_MEASUREMENT_ID` even though a real value already exists in
+that file, since GA4 go-live remains its own separate checkpoint. Promoted via PR #6.
+
+First rollout attempt (`firebase apphosting:rollouts:create ... --force`) failed at the Cloud Build
+stage: `Missing dependency lock file at path '/workspace/apps/portal'`. Root cause: Fresh Prints is
+an npm-workspaces monorepo with a single root lock file, but Firebase App Hosting's buildpack has
+official first-class monorepo support only for Nx/Turborepo. A second attempt added
+`buildCommand`/`runCommand` overrides to `apphosting.yaml` as a first hypothesis — **accidentally
+committed directly to `production`** in the process, caught immediately before pushing (no remote
+impact; the stray commit never reached GitHub), corrected by resetting the local `production`
+branch and reapplying the identical change properly via `development` → PR #7. That retry failed
+identically; the owner opened the real Cloud Build Console log and confirmed App Hosting's
+monorepo-detection step runs *before* `buildCommand` executes, disproving the first hypothesis with
+direct evidence.
+
+Owner directed a narrow Plan + independent Formal Review (both `approved`) to add the minimum
+officially-documented Turborepo support instead: `turbo` as a root devDependency, a root
+`turbo.json` with a single `build` task, a `packageManager` field required for turbo's own
+workspace resolution (discovered during implementation, within approved scope), removed the
+now-confirmed-ineffective build-command override, kept the single root lock file and `rootDir`
+unchanged. Verified locally (`npm ci`, `turbo run build --filter`, typecheck, Portal build, lint,
+YAML validation, diff-check — all exit 0), promoted via PR #8. Retried the rollout pinned to the
+merged commit: **"✔ Successfully created a new rollout!"** Verified the hosted backend live at
+`https://fresh-prints-portal--fresh-prints-prod.us-central1.hosted.app` — homepage HTTP 200,
+correct `<title>`, `robots.txt` returns the allow variant (confirming correct host resolution in
+production), no dev-project strings found in served HTML. Automatic rollouts remain disabled.
+**Deployment-order steps 6-7 of 12 now closed; proceeding into Phase D** (production settings and
+bootstrap inventory, step 9 of 12) — no production Firestore data written yet, pending a
+consolidated owner-approved bootstrap list.
 
 No longer blocked: Goals #9–#12
 (`catalog-image-derivative-storage-consolidation`) closed **2026-07-30**,

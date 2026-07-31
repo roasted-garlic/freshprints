@@ -31,7 +31,65 @@ throughout this pass.**
 Test Status: pending
 Signoff Status: pending
 DONE: no
-Last Completed Step: **Deployment-order step 5 (Cloud Functions) CONFIRMED COMPLETE.** Phase A
+Last Completed Step: **Deployment-order step 7 (first App Hosting Portal release) CONFIRMED
+COMPLETE — the first-ever Fresh Prints production Portal deployment succeeded.**
+
+**Step 6 (App Hosting environment configuration) summary:** added an `env:` block to
+`apps/portal/apphosting.yaml` with the 7 required `NEXT_PUBLIC_FIREBASE_*` values +
+`NEXT_PUBLIC_PORTAL_ORIGIN=https://myprintrequest.com`, sourced from the owner's
+`apps/portal/.env.production.local` (gitignored, never committed, never printed).
+`NEXT_PUBLIC_GA_MEASUREMENT_ID` was deliberately omitted even though a real value already exists
+in that local file — GA4 go-live remains its own separate, later checkpoint per owner decisions
+#11/#12. Committed to `development`, promoted to `production` via GitHub PR #6 (merge `9437d4b`).
+
+**Step 7 (first App Hosting release) — three rollout attempts, root cause found and fixed:**
+
+*Attempt 1* (commit `9437d4b`, no build override): `firebase apphosting:rollouts:create
+fresh-prints-portal --project fresh-prints-prod --git-commit 9437d4b --force` failed at the Cloud
+Build stage: `Missing dependency lock file at path '/workspace/apps/portal'`. Root cause: Fresh
+Prints is an npm-workspaces monorepo (single root `package-lock.json`; `apps/portal` correctly has
+none of its own), but Firebase App Hosting's buildpack has official first-class monorepo support
+only for Nx/Turborepo.
+
+*Attempt 2* (commit `35ef8e1`): added `buildCommand`/`runCommand` overrides to `apphosting.yaml`
+(both execute from `/workspace`, so they could install/build from the actual workspace root) as a
+first hypothesis. **Committed this directly to `production` by mistake** — caught immediately
+before pushing, corrected by resetting the local `production` branch pointer back to
+`origin/production` (no remote impact — the stray commit never reached GitHub) and reapplying the
+identical change properly on `development`, then promoting via PR #7 (merge `35ef8e1`). The retry
+still failed with the byte-identical lock-file error. Owner opened the real Cloud Build Console log
+and confirmed: App Hosting's framework/monorepo detection runs **before** `buildCommand` executes
+and checks `rootDir` for a lock file regardless of any override — the attempt-2 hypothesis was
+disproven by direct evidence, not assumption.
+
+*Attempt 3* (commit `11ed4ef`): owner directed a narrow Plan + independent Formal Review (both
+`approved`) to add the minimum officially-documented Turborepo support instead —
+`docs/workflow/plans/2026-07-30-production-release-turborepo-app-hosting-fix-plan.md` /
+`...-turborepo-app-hosting-fix-review.md`. Added `turbo` as a root devDependency, a root
+`turbo.json` with a single `build` task (current `tasks` schema, no `dependsOn` since
+`@fresh-prints/shared`/`@fresh-prints/show-picker` have no `build` script — Next.js
+`transpilePackages` handles them directly), a `packageManager: "npm@10.8.2"` field in root
+`package.json` (required for turbo's own workspace resolution, discovered during implementation,
+within the Plan's approved scope), removed the now-confirmed-ineffective `buildCommand`/
+`runCommand` override, and gitignored `.turbo/`. Kept `rootDir: ./apps/portal` unchanged and the
+single root `package-lock.json` as the sole lockfile, per explicit owner instruction. Verified
+locally: `npm ci`, `npx turbo run build --filter=@fresh-prints/portal` (1/1 tasks successful),
+Portal typecheck, `npm run build:portal`, repo lint, YAML validation, `git diff --check` — all
+exit 0. Committed to `development`, promoted via PR #8 (merge `11ed4ef`).
+
+Retried the rollout pinned to `11ed4ef`: **"✔ Successfully created a new rollout!"** — first-ever
+Fresh Prints production Portal deployment succeeded. Verified backend live at
+`https://fresh-prints-portal--fresh-prints-prod.us-central1.hosted.app` (Enabled, `nodejs24`,
+`us-central1`, updated timestamp matches this rollout). Initial hosted.app verification: homepage
+returns HTTP 200 with correct `<title>Fresh Prints Request Portal</title>`; `robots.txt` returns
+the **allow** variant (not the fail-closed `Disallow: /` default), confirming
+`NEXT_PUBLIC_PORTAL_ORIGIN`/host resolution is correctly live in production; no `fresh-prints-dev`
+string found anywhere in the served HTML.
+
+Automatic rollouts remain **disabled** for this backend (never enabled this pass, per owner
+decision — each future release requires its own explicit `rollouts:create` command).
+
+Original step-5 summary (Cloud Functions) below, preserved unchanged: Phase A
 non-secret configuration audit found no source change required: `portalUrlResolver.ts` already maps
 `fresh-prints-prod` → `https://myprintrequest.com`; `.firebaserc` already has the `production` alias;
 `INVITATION_FROM_EMAIL`/`PROOF_NOTICE_FROM_EMAIL` code defaults already match owner intent exactly;
@@ -126,27 +184,29 @@ or production data was configured/created/seeded. No production Studio installer
 or Search Console configuration occurred. `production` was not modified by Git (Functions deploy is
 a Firebase action, not a commit). `master` was not deleted. No force-push occurred anywhere in this
 pass.
-Human Checkpoint Required: no — Phase A and Phase B (Functions non-secret config audit + approved
-99-function deployment) are both complete per explicit prior authorization in the active `Continue
-Workflow` instruction. Proceeding into Phase C (App Hosting production environment configuration
-and first Portal release) under that same authorization; the first App Hosting *release* trigger
-itself remains its own checkpoint per that instruction's explicit conditions.
+Human Checkpoint Required: no — Phase C (App Hosting environment configuration + first Portal
+release) is complete per explicit prior authorization in the active `Continue Workflow`
+instruction. Proceeding into Phase D (production settings and bootstrap inventory) under that same
+authorization; the consolidated bootstrap-data list itself remains its own separate checkpoint
+requiring explicit owner approval before any Firestore write occurs.
 Blocked: no
-Allowed Actions: continue Phase C — App Hosting environment audit, environment-variable
-configuration, and (once confirmed ready) the first App Hosting release, per the active Continue
-Workflow instruction's already-granted authorization
+Allowed Actions: continue Phase D — inspect current source and release docs to prepare the exact
+minimum production bootstrap inventory (categories, `settings/emailProviders`, etc.); present the
+consolidated list for owner approval; do not write any production Firestore data until approved
 Forbidden Actions: deleting `master` (local or remote); modifying `production` directly (only via
-PR); running any `firebase deploy` command of any kind without separate approval (including the
-Functions deploy itself); accessing, printing, or logging any secret value; setting or rotating
-any secret without separate owner approval; using `--force` on any Firestore command; manually
-deleting or editing production indexes/secrets via Console; triggering an App Hosting
-release/rollout; any DNS/Auth-config/GA4/Search-Console action; invoking
-`rebuildCatalogSnapshots`; building or distributing a production Studio installer; touching
-production data; force-pushing any branch; rewriting Git history; configuring `core.hooksPath`
-without separate owner approval; changing repository visibility
-Next Required Step: Continue into Phase C — App Hosting production environment configuration and
-first Portal release (deployment-order step 6 of 12), per the active `Continue Workflow`
-instruction's already-granted authorization for this phase.
+PR); running any `firebase deploy`/`apphosting:rollouts:create` command without separate approval;
+accessing, printing, or logging any secret value; setting or rotating any secret without separate
+owner approval; using `--force` on any Firestore command; manually deleting or editing production
+indexes/secrets via Console; enabling automatic App Hosting rollouts without owner approval; any
+DNS/Auth-config/GA4/Search-Console action; invoking `rebuildCatalogSnapshots` (deployed, not yet
+invoked — invocation is its own Phase D checkpoint); writing any production Firestore data before
+the consolidated bootstrap list is approved; building or distributing a production Studio
+installer; force-pushing any branch; rewriting Git history; configuring `core.hooksPath` without
+separate owner approval; changing repository visibility
+Next Required Step: Continue into Phase D — production settings and bootstrap inventory
+(deployment-order step 9 of 12), per the active `Continue Workflow` instruction's already-granted
+authorization for this phase. Prepare the consolidated owner approval request; do not write
+production data until approved.
 
 Plan:
 `docs/workflow/plans/2026-07-29-preproduction-static-analysis-cleanup-plan.md`.
