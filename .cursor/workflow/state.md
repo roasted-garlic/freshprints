@@ -2,35 +2,34 @@
 `production-release` (Goal #13)
 
 Current Mode: managed-phase
-Current Phase: signoff — **registration loading-ownership remediation closed (approved_with_notes)**
-Plan Status: complete
-Review Status: approved
-Implement Status: complete and deployed (`58aa0da`)
-Test Status: automated passed; hosted.app owner QA **PASS WITH NOTES**
-Signoff Status: **approved_with_notes** —
-`docs/workflow/reviews/2026-07-31-production-portal-registration-loading-ownership-signoff.md`
-DONE: no (Goal #13 `production-release` continues; registration blocker closed)
-Human Checkpoint Required: no
-Human Checkpoint Reason: none
-Blocked: no
-Blocker: none
-Allowed Actions: plan next Goal #13 slice (branding / Stage 2 / etc.) when owner directs
-Forbidden Actions: Auth user delete without approval; domain cutover without approval; unrelated
-Firebase deploys without approval
-Next Required Step: Owner directs next Goal #13 work (e.g. bundled-brand implementation,
-Stage 2 smoke, or `portal-username-html-pattern-fix` follow-up).
+Current Phase: implement — **bundled brand approved; blocked on owner source files**
+Plan Status: complete —
+`docs/workflow/plans/2026-07-31-production-studio-storage-unauthorized-and-bundled-brand-plan.md` Part B
+Review Status: Formal Review approved_with_changes (brand gates satisfied for implement once files exist)
+Implement Status: **blocked** — awaiting five source assets in
+`docs/workflow/setup/brand-asset-sources/`
+Test Status: n/a until assets land
+Signoff Status: n/a for brand slice
+DONE: no
+Human Checkpoint Required: yes
+Human Checkpoint Reason: Drop the five approved brand source files into
+`docs/workflow/setup/brand-asset-sources/` (see README), then reply `Brand sources ready`.
+Blocked: yes
+Blocker: Owner brand source files missing (cannot replace bundled defaults without them)
+Allowed Actions: docs; wait for sources; read-only inspect when files appear
+Forbidden Actions: invent/replace brand binaries without sources; Studio rebuild / Portal branding
+rollout without later release approvals; Stage 2 until branding path clarified
+Next Required Step: Owner drops five source files → `Brand sources ready`
 
 Decision Log:
-- 2026-07-31 — Owner QA **PASS WITH NOTES** on loading-ownership rollout: Google registration
-  succeeded; interactive complete-profile; Portal loaded. Notes: invalid username HTML
-  `pattern` (TD-029); async-listener = extension noise; COOP non-blocking.
-- 2026-07-31 — `APPROVE PRODUCTION PORTAL APP HOSTING ROLLOUT: LOADING-OWNERSHIP FIX` →
-  PR #13 / `58aa0da` live.
-- 2026-07-31 — Prior FAIL on `8943d17` remediated by loading-ownership fix.
+- 2026-07-31 — `APPROVE BUNDLED BRAND ASSET IMPLEMENTATION` received; paused for missing sources
+  (checkpoint `docs/workflow/reviews/2026-07-31-production-bundled-brand-implementation-checkpoint.md`).
+- 2026-07-31 — Portal registration loading-ownership **PASS WITH NOTES** / signoff closed.
+- 2026-07-31 — Brand mapping previously approved (five sources; 8% padding).
 
-Last Completed Step: **Registration loading-ownership signoff (approved_with_notes).**
+Last Completed Step: **Recorded brand implement approval; created source drop zone.**
 
-Prior: App Hosting rollout; owner QA PASS WITH NOTES.
+Prior: Registration remediation signed off.
 
 **Corrected `users/{uid}` field list for any future manual bootstrap:** `id` (string, same as
 document ID / Auth UID), `email` (string), `displayName` (string), `role` (string, `"owner"` for
