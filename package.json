@@ -5,6 +5,7 @@
   "description": "Fresh Prints — Studio + Portal monorepo",
   "author": "Fresh Prints",
   "type": "module",
+  "packageManager": "npm@10.8.2",
   "workspaces": [
     "apps/*",
     "packages/*"
@@ -27,6 +28,7 @@
     "eslint": "^8.57.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.5",
+    "turbo": "^2.10.7",
     "typescript": "^5.2.2"
   },
   "dependencies": {
