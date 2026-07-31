@@ -31,13 +31,15 @@ throughout this pass.**
 Test Status: pending
 Signoff Status: pending
 DONE: no
-Last Completed Step: **Owner Discover retest PASS after production Storage CORS.** CORS applied to
-`gs://fresh-prints-prod.firebasestorage.app` (`storage.cors.production.json`); ACAO verified;
-owner confirmed empty-catalog Discover loads without “Catalog discovery is temporarily
-unavailable.” Checkpoint:
-`docs/workflow/reviews/2026-07-31-production-portal-catalog-cors-checkpoint.md`. Catalog
-bootstrap blocker for Portal Discover is **closed**. No rebuild / Rules / Functions / App Hosting
-action for this fix.
+Last Completed Step: **Synced `origin/production` into `development` for CORS promotion PR.**
+Clean merge `0a8f8ab` (`merge: sync origin/production into development for CORS promotion PR`);
+no conflicts. Final promotion diff is docs/config + handoff only (10 files); no app/Functions
+runtime source. CORS JSON validated. Lint and `git diff --check` exit 0. **No bucket CORS
+reapply, no Firebase/App Hosting deploy, no snapshot rebuild.** PR to `production` prepared;
+await owner merge.
+
+Prior: Owner Discover retest PASS after production Storage CORS on
+`gs://fresh-prints-prod.firebasestorage.app`.
 
 **Corrected `users/{uid}` field list for any future manual bootstrap:** `id` (string, same as
 document ID / Auth UID), `email` (string), `displayName` (string), `role` (string, `"owner"` for
@@ -381,26 +383,25 @@ or production data was configured/created/seeded. No production Studio installer
 or Search Console configuration occurred. `production` was not modified by Git (Functions deploy is
 a Firebase action, not a commit). `master` was not deleted. No force-push occurred anywhere in this
 pass.
-Human Checkpoint Required: no — catalog-CORS Discover retest **PASS** recorded. Phase G broader
-smoke testing and remaining production-release checkpoints (custom domain, full §3.16 smoke,
-email-provider settings via Studio, GA4 later) may continue; each production external action still
-needs its own approval.
+Human Checkpoint Required: yes — **merge the `development` → `production` PR** that records the
+already-applied production Storage CORS configuration. Merging does **not** redeploy CORS.
 Blocked: no
-Allowed Actions: continue Phase G / production-release remaining checklist; prepare next
-human-gated steps (custom domain, smoke items that need real customer/email/upload flows)
-Forbidden Actions: deleting `master`; modifying `production` directly without PR; Firebase
-deploys/rollouts without separate approval; GA4 go-live without separate approval; force-push;
-printing secrets; wiping production data
-Next Required Step: Continue Phase G production smoke (§3.16) and remaining bootstrap items —
-notably custom-domain / Authorized domains (apex still Coming Soon), Studio
-`settings/emailProviders` if not set, and the live end-to-end smoke items that still need owner
-execution. Say `Continue Workflow` with a focus area, or run the remaining smoke checklist below.
+Allowed Actions: push sync to `origin/development`; open/update PR base `production` head
+`development`; await owner merge; after merge, fast-forward local `production` only if owner
+requests
+Forbidden Actions: merging the PR without owner action; force-push; rebase of shared branches;
+direct commits to `production`; reapplying bucket CORS; Firebase/Rules/Functions/App Hosting
+deploys; `rebuildCatalogSnapshots`; deleting `master`; creating `v1.0.0` tag
+Next Required Step: Owner reviews and merges the CORS recording PR into `production`. Do not merge
+from the agent.
 
 Decision Log:
 - 2026-07-31 — Owner `APPROVE PRODUCTION STORAGE CORS`. Applied `storage.cors.production.json` to
   `gs://fresh-prints-prod.firebasestorage.app` (was `cors: null`). Post-apply ACAO probe: all three
   configured origins echo correctly on portal-catalog manifest GET.
 - 2026-07-31 — Owner Discover retest **PASS** on hosted.app empty catalog after CORS apply.
+- 2026-07-31 — Merged `origin/production` (`c644935`) into `development` (sync merge `0a8f8ab`);
+  prepared development→production PR to record live CORS config in the protected branch.
 
 Plan:
 `docs/workflow/plans/2026-07-29-preproduction-static-analysis-cleanup-plan.md`.
