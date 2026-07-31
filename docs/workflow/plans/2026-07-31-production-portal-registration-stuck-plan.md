@@ -232,10 +232,9 @@ See Owner QA checklist below.
 - [x] Bounded timeout (45s), stage instrumentation, terminal error, retry, sign-out, duplicate guard
 - [x] `APPROVE PRODUCTION PORTAL APP HOSTING ROLLOUT` → `8943d17` live
 - [x] Owner QA → **FAIL** (timeout/error never appeared; no Firestore provisioning)
-- [ ] Post-rollout loading-ownership fix — **implemented on development**; Implementation Review
-  approved; await
-  `APPROVE PRODUCTION PORTAL APP HOSTING ROLLOUT: LOADING-OWNERSHIP FIX`
-  (`docs/workflow/plans/2026-07-31-production-portal-registration-post-rollout-amendment.md`)
+- [x] Post-rollout loading-ownership fix — **deployed** App Hosting (`58aa0da` / PR #13); await
+  owner QA
+  (`docs/workflow/reviews/2026-07-31-production-portal-registration-loading-ownership-app-hosting-rollout-checkpoint.md`)
 
 ### Phase 3 — Partial-account handling (updated)
 
