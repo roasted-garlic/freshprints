@@ -1,5 +1,62 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-07-30 — Goal #13 "production-release" — Production Studio white-screen incident diagnosed and fixed; replacement installer built, awaiting owner retest
+
+**Incident:** the owner installed the first production Studio installer
+(`Fresh Prints-Windows-0.0.0-Setup.exe`) and reported a permanent white screen — window opens,
+sign-in UI never appears, no recovery. This sandboxed environment could not reproduce the failure
+directly: the packaged `.exe` exits silently within seconds across multiple launch methods (a
+genuine environment limitation — no Windows Event Viewer crash entry either, confirmed via several
+attempts), separate from the actual bug. Asked the owner to launch the installed executable with
+`--enable-logging` on their own machine; they captured the real error:
+`Uncaught TypeError: Cannot read properties of undefined (reading 'createContext')` in the packaged
+vendor chunk, plus a secondary warning about a missing image asset.
+
+**Ruled out with direct evidence:** Firebase environment injection — extracted the actual packaged
+`app.asar` via `npx asar extract` and confirmed the embedded config correctly resolved to
+`fresh-prints-prod` with a valid, non-empty API key (the `fresh-prints-dev` string also found in
+the same bundle was an unrelated allowlist constant and debug label, not the active config).
+Packaged asset paths — the packaged `index.html` used correct relative script/link references.
+
+**Confirmed root cause:** `apps/studio/vite.config.ts`'s Rollup `manualChunks` function used a bare
+substring match (`id.includes('node_modules/react')`) instead of a package-boundary match. This
+correctly caught `react`/`react-dom` but not `scheduler` (react-dom's own runtime dependency, whose
+path contains no "react" substring), which fell into the generic `vendor` chunk instead of
+`react-vendor`. The original build had already logged a warning — `Circular chunk: vendor ->
+react-vendor -> vendor` — but Rollup treats this as a warning, not a build failure, so the broken
+build shipped with an exit-0 status. This class of bug only reproduces in packaged production
+builds, since Vite's dev server never applies `manualChunks` splitting — `npm run dev:studio` was
+structurally incapable of catching it.
+
+**Fix** (narrow Plan + independent Formal Review, both `approved`): corrected the chunk-matching
+condition to exact package-boundary paths and explicitly included `scheduler` alongside
+`react`/`react-dom`. Added a `rollupOptions.onwarn` hook that fails the build on any future
+`CIRCULAR_CHUNK` warning — the real process gap this incident exposed was that nothing in the
+existing verification suite inspected build warnings or launched the packaged output; this closes
+that gap for this specific, now-understood failure class. Also removed a dead favicon `<link>`
+reference to an asset that never existed anywhere in this repo's Git history (unrelated to the
+crash, found during the same evidence-gathering pass, fixed as a zero-risk one-line correction).
+
+**Verification:** direct `asar` extraction of the rebuilt bundle confirmed `scheduler` now lives in
+`react-vendor`, not `vendor`; the circular-chunk warning no longer appears; Studio typecheck,
+`vite build`, full `electron-builder` packaging, repo lint, and `git diff --check` all exit 0.
+Promoted via GitHub PR #9 (merge `daaafc1`), tagged `v1.0.0-rc4`. Built the replacement installer
+from that exact verified commit using the same safest env-file-swap procedure (backup dev env →
+temporary production values → build → restore).
+
+**Replacement installer:** `Fresh Prints-Windows-0.0.0-Setup-v1.0.0-rc4.exe`,
+`apps/studio/release/0.0.0/`, ~102.3 MB, SHA-256
+`a0be8e956108bc786fe3ea629f7dc356bb0e28ed09b60d740c31a64c1bf177ed` — **deliberately different**
+from the original failed installer's checksum
+(`c4ef01b57b7b01c89d94102d4b3af4cf22988a1b1640c62950c55983d58e0720`), confirming genuinely new
+packaged content, not a no-op rebuild. Unsigned, same as the original. Not uploaded or distributed
+publicly.
+
+**Active managed goal:** `production-release` (Goal #13) — deployment-order steps 1-7 of 12 remain
+complete; step 8 (Studio) blocked on the owner's install/launch/login retest of the replacement
+installer. Phase G smoke testing does not resume until that retest reports `PASS` or
+`PASS WITH NOTES: ...`.
+
 ## 2026-07-30 — Goal #13 "production-release" — Production Studio installer built, first owner account bootstrapped (deployment-order steps 1-8 of 12 done); awaiting owner installation and smoke testing
 
 **First production owner account bootstrapped.** Presented a consolidated Phase D bootstrap list

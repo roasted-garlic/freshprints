@@ -2,6 +2,28 @@
 
 > Signed-off or largely complete work. External agents should not re-plan or duplicate this.
 
+## 2026-07-30 - production-release: Production Studio white-screen incident diagnosed and fixed; replacement installer built (deployment-order step 8 of 12, blocked on owner retest)
+
+- First production Studio installer white-screened on the owner's machine; this sandboxed
+  environment could not reproduce it directly (packaged `.exe` exits silently, a genuine
+  environment limitation), so requested owner-captured runtime evidence via `--enable-logging`
+- Ruled out Firebase environment injection and packaged asset paths with direct `asar` extraction
+  evidence, not guesses
+- Confirmed root cause: `vite.config.ts`'s `manualChunks` used a substring match that missed
+  `scheduler` (react-dom's runtime dependency), producing a circular chunk dependency that Rollup
+  only warned about (didn't fail the build) and crashed on `React.createContext` in packaged
+  builds only — never reproducible via `npm run dev`
+- Fixed via narrow Plan + independent Formal Review (both approved): package-boundary chunk match,
+  explicit `scheduler` inclusion, a build-failing `onwarn` hook for future `CIRCULAR_CHUNK`
+  warnings, and an unrelated dead favicon reference removed
+- Verified via direct extraction that `scheduler` now lives in `react-vendor`; full
+  build/typecheck/lint/diff-check all exit 0; promoted via PR #9, tagged `v1.0.0-rc4`
+- Built and verified the replacement installer (`Fresh Prints-Windows-0.0.0-Setup-v1.0.0-rc4.exe`,
+  SHA-256 `a0be8e956108bc786fe3ea629f7dc356bb0e28ed09b60d740c31a64c1bf177ed`, deliberately different
+  from the original failed checksum)
+- **Blocked on owner install/launch/login retest** — Phase G smoke testing does not resume until
+  that retest passes
+
 ## 2026-07-30 - production-release: Production Studio installer built, first owner account bootstrapped (deployment-order step 8 of 12)
 
 - Presented consolidated Phase D bootstrap list for owner approval before any Firestore write:
