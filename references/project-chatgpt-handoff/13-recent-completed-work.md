@@ -2,6 +2,74 @@
 
 > Signed-off or largely complete work. External agents should not re-plan or duplicate this.
 
+## 2026-07-31 - production-release: Portal registration loading-state fix implemented (not deployed)
+
+- Root cause: post-Auth client stall before `registerCustomer` + hang UX; 400 historical only
+- 45s timeout, stages, terminal error, retry/sign-out, duplicate guards; Implementation Review approved
+- Next: `APPROVE PRODUCTION PORTAL APP HOSTING ROLLOUT`
+
+## 2026-07-31 - production-release: Portal registration Auth inventory amended (docs only)
+
+- Success GetAccountInfoResponse is not the 400 body; inventory prefixes drifted over time
+- Superseded for remediation by loading-state implement section above
+
+## 2026-07-31 - production-release: Portal registration stuck diagnosed (docs only)
+
+- Google Auth-only orphan; `accounts:lookup` HTTP 400; `registerCustomer` not invoked
+- Plan + Formal Review `approved_with_changes`; branding/Stage 2 paused; Stage 1 untouched
+- Inventory later amended (see section above)
+
+## 2026-07-31 - production-release: Stage 1 fixtures complete (1B + 1C)
+
+- 1B: two Whatnot-imported shows recorded (Friday primary + Saturday); PASS WITH NOTES on titles
+- 1C: QA design reused; remains complete (registration incident did not reopen)
+
+## 2026-07-31 - production-release: Stage 1C catalog fixture recorded (no duplicate import)
+
+- Reused Class D QA design `s9Yi7i8uq2ZddERyDuNT` (ready + published to portal-catalog gen 7)
+- Stage 1B later completed via Whatnot import (see section above)
+
+## 2026-07-31 - production-release: Class D Storage closed (PASS WITH NOTES)
+
+- Owner: warning gone; design + brand uploads authorized; Design Library + brand OK
+- Note only: brief catalog-image delay = publisher debounce/snapshot/refresh
+- Next was Stage 1 fixtures (1C now recorded)
+
+## 2026-07-31 - production-release: Class D cross-service IAM enabled (owner QA pending)
+
+- Granted Firebase Rules Firestore Service Agent to Storage SA — **closed by PASS WITH NOTES**
+
+## 2026-07-31 - production-release: Class D cross-service permission identified (docs only)
+
+- Console warning proves Storage Rules cannot execute `firestore.get`/`exists`
+- Class D selected; prior Formal Review preserved; amendment review **approved**
+- Brand asset mapping approved (five sources); implement still gated
+- Awaiting `APPROVE PRODUCTION STORAGE CROSS-SERVICE PERMISSION ENABLEMENT` — no IAM change yet
+  (**superseded** by IAM enablement section above)
+
+## 2026-07-31 - production-release: Studio Storage unauthorized diagnosed (docs only; blocked)
+
+- Ruled out wrong packaged bucket/project, live Rules drift, App Check, CORS
+- Confirmed brand Settings error is failed upload (empty `brand/`, no `settings/brandLogos`)
+- Plan + Formal Review `approved_with_changes`; later superseded to Class D by Console warning
+- No deploy / rebuild / DNS / domain action
+
+## 2026-07-31 - production-release: Stage 1 partial (infra/DNS); customer invite deferred; Stage 2 checklist prepared
+
+- Verified owner/taxonomy/Functions/indexes/CORS/hosted.app/Coming Soon without DNS changes
+- Deferred `createCustomerWithPortalInvite` until domain cutover (continue URL is `.com`)
+- Prepared hosted.app Stage 2 checklist; awaiting owner show + design fixtures before smoke
+
+## 2026-07-31 - production-release: domain-last sequencing amendment (docs only, Formal Review approved)
+
+- Owner: keep Coming Soon on `myprintrequest.com` until domain-independent setup + hosted.app
+  smoke + readiness gate complete; connect custom domain only after
+  `APPROVE MYPRINTREQUEST.COM CUTOVER`
+- Plan §7 + DEPLOYMENT remaining steps 9–12 rewritten; Formal Review **approved**
+- No DNS, Authorized Domains, OAuth, App Hosting, Firebase deploy, CORS reapply, or snapshot
+  rebuild
+- Immediate next: Stage 1 domain-independent setup (emailProviders first if unset)
+
 ## 2026-07-30 - production-release: v1.0.0-rc5 owner retest PASS WITH NOTES; production Studio complete (deployment-order step 8 of 12 closed)
 
 - Owner reported `PASS WITH NOTES` on `v1.0.0-rc5`: launches without a white screen, correct icon

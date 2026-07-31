@@ -1,5 +1,81 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-07-31 — Goal #13 Portal registration loading-state fix **implemented** (not deployed)
+
+- Root cause amended: post-Auth complete-profile client stall before `registerCustomer` + hang UX
+- Historical `accounts:lookup` 400 = non-reproducible; no Auth Console remediation
+- Client fix on `development`: 45s timeout, stages `[fp-portal-auth]`, terminal error, retry,
+  sign-out, duplicate guards, explicit `getIdToken(true)` before callable
+- Implementation Review **approved**; automated tests/typecheck/lint/build **pass**
+- **Next:** `APPROVE PRODUCTION PORTAL APP HOSTING ROLLOUT` then hosted.app QA
+- Branding + Stage 2 still paused; Stage 1 + Class D untouched
+- Note: post-fix Auth list had **no** Google user (`L3jjfWJG…` absent); agents did not delete
+
+## 2026-07-31 — Goal #13 registration stuck: Auth inventory amended
+
+- Superseded in part by loading-state implement section above
+
+## 2026-07-31 — Goal #13 Stage 1 fixtures **COMPLETE** (1B + 1C)
+
+- Remains PASS WITH NOTES
+
+## 2026-07-31 — Goal #13 Class D **CLOSED**
+
+- Remains closed
+
+## 2026-07-31 — Goal #13 Class D: Storage cross-service permission **IAM applied** (superseded)
+
+- Granted `roles/firebaserules.firestoreServiceAgent` to
+  `service-473623863375@gcp-sa-firebasestorage.iam.gserviceaccount.com`
+- No Storage Rules deploy / Studio rebuild — **closed by PASS WITH NOTES above**
+
+## 2026-07-31 — Goal #13 Class D: Storage cross-service permission (awaiting Fix issue)
+
+- **Superseded** — IAM + owner QA closed the incident
+
+## 2026-07-31 — Goal #13 BLOCKED: Studio Storage `storage/unauthorized`
+
+- **Superseded / closed** — Class D IAM + PASS WITH NOTES
+
+## 2026-07-31 — Goal #13: Stage 1 partial — infra/DNS recorded; fixtures pending owner
+
+- Read-only: owner profile OK; 18 categories / 1,122 tags; 99 Functions; 65 indexes; CORS OK;
+  hosted.app 200; Coming Soon still on apex (Cloudflare)
+- Portal-invite test customer **deferred** (continue URL → `myprintrequest.com/login`)
+- Stage 2 hosted.app smoke checklist prepared, **not executed**
+- Owner next: create upcoming show + one ready catalog design in production Studio
+  (**Storage unblocked** — proceed with fixtures)
+
+## 2026-07-31 — Goal #13: production `settings/emailProviders` PASS
+
+Owner set production Studio email providers:
+
+- `inviteProvider: "resend"`
+- `proofNoticeProvider: "brevo"`
+
+Stage 1 email-provider item closed. Next: remaining Stage 1 fixtures (upcoming show, minimum
+approved test data as needed, Coming Soon DNS/rollback recorded without changing DNS), then
+Stage 2 hosted.app smoke. Custom domain still deferred until `APPROVE MYPRINTREQUEST.COM CUTOVER`.
+
+## 2026-07-31 — Goal #13 production-release: domain-last sequencing amendment approved
+
+**Owner decision:** do **not** point `myprintrequest.com` at App Hosting yet. Coming Soon remains
+live until all domain-independent production setup and hosted.app smoke testing are complete.
+Custom domain is the final launch switch after readiness gate
+`APPROVE MYPRINTREQUEST.COM CUTOVER`.
+
+**Revised remaining stages:** (1) domain-independent setup → (2) smoke on
+`https://fresh-prints-portal--fresh-prints-prod.us-central1.hosted.app` → (3) readiness gate →
+(4) domain cutover + domain-dependent smoke. GA4 / Search Console stay later.
+
+**Immediate next task:** Stage 1 — Studio `settings/emailProviders` (Resend invite / Brevo proof)
+if unset, then remaining domain-independent fixtures. **Do not connect the custom domain.**
+
+Artifacts: Plan §7 in `docs/workflow/plans/2026-07-30-production-release-plan.md`; Formal Review
+`docs/workflow/reviews/2026-07-31-production-release-domain-last-sequencing-review.md`
+(**approved**). Git: `development`/`production` at `bfa42ef` (PR #11 CORS recording merged) before
+this docs amendment.
+
 ## 2026-07-30 — Goal #13 "production-release" — v1.0.0-rc5 owner retest PASS WITH NOTES; production Studio (step 8 of 12) fully closed; proceeding into Phase G smoke testing
 
 **Owner retest result: `PASS WITH NOTES`.** `v1.0.0-rc5` (the installer including both the

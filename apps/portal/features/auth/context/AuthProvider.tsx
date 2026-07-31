@@ -23,6 +23,13 @@ import type {
   PortalAuthState,
   RegisterCredentials,
 } from '../types/auth.types';
+import {
+  CompleteProfileInProgressError,
+  type CompleteProfileStage,
+  reportCompleteProfileStage,
+  userFacingMessageForCompleteProfileError,
+  withCompleteProfileTimeout,
+} from '../utils/completeProfileProvisioning';
 
 const initialAuthState: PortalAuthState = {
   firebaseUser: null,
@@ -326,7 +333,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, []);
 
   const register = useCallback(async (credentials: RegisterCredentials) => {
+    if (registrationInProgressRef.current) {
+      setAuthState((currentState) => ({
+        ...currentState,
+        error: new CompleteProfileInProgressError().message,
+        isAuthActionLoading: false,
+      }));
+      return;
+    }
+
     registrationInProgressRef.current = true;
+    let lastStage: CompleteProfileStage = 'submission_started';
 
     setAuthState((currentState) => ({
       ...currentState,
@@ -335,22 +352,74 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }));
 
     try {
-      await portalAuthService.register(credentials);
-      await registerCustomerService.provisionCustomerProfile({
-        displayName: credentials.displayName,
-        username: credentials.username,
-        biddingAcknowledgmentAccepted: credentials.biddingAcknowledgmentAccepted,
-        biddingAcknowledgmentVersion: credentials.biddingAcknowledgmentVersion,
-      });
+      await withCompleteProfileTimeout(
+        (async () => {
+          reportCompleteProfileStage('submission_started', 'email_register');
+          lastStage = 'submission_started';
 
-      const firebaseUser = getPortalAuth().currentUser;
+          await portalAuthService.register(credentials);
 
-      if (!firebaseUser) {
-        throw new Error('Registration succeeded but the signed-in user could not be loaded.');
-      }
+          const firebaseUser = getPortalAuth().currentUser;
+          if (!firebaseUser || firebaseUser.isAnonymous) {
+            throw new Error('Registration succeeded but the signed-in user could not be loaded.');
+          }
 
-      const nextState = await loadPortalSession(firebaseUser);
-      setAuthState(nextState);
+          lastStage = 'auth_user_confirmed';
+          reportCompleteProfileStage('auth_user_confirmed', 'email_register');
+
+          lastStage = 'id_token_started';
+          reportCompleteProfileStage('id_token_started');
+          try {
+            await firebaseUser.getIdToken(true);
+            lastStage = 'id_token_succeeded';
+            reportCompleteProfileStage('id_token_succeeded');
+          } catch {
+            lastStage = 'id_token_failed';
+            reportCompleteProfileStage('id_token_failed');
+            throw new Error('Could not verify your sign-in session. Please try again.');
+          }
+
+          lastStage = 'callable_ref_created';
+          reportCompleteProfileStage('callable_ref_created', 'registerCustomer');
+          lastStage = 'callable_started';
+          reportCompleteProfileStage('callable_started', 'registerCustomer');
+          try {
+            await registerCustomerService.provisionCustomerProfile({
+              displayName: credentials.displayName,
+              username: credentials.username,
+              biddingAcknowledgmentAccepted: credentials.biddingAcknowledgmentAccepted,
+              biddingAcknowledgmentVersion: credentials.biddingAcknowledgmentVersion,
+            });
+            lastStage = 'callable_succeeded';
+            reportCompleteProfileStage('callable_succeeded', 'registerCustomer');
+          } catch (error) {
+            lastStage = 'callable_failed';
+            reportCompleteProfileStage('callable_failed', 'registerCustomer');
+            throw error;
+          }
+
+          const signedInUser = getPortalAuth().currentUser;
+          if (!signedInUser) {
+            throw new Error('Registration succeeded but the signed-in user could not be loaded.');
+          }
+
+          lastStage = 'session_reload_started';
+          reportCompleteProfileStage('session_reload_started');
+          try {
+            const nextState = await loadPortalSession(signedInUser);
+            lastStage = 'session_reload_succeeded';
+            reportCompleteProfileStage('session_reload_succeeded');
+            setAuthState(nextState);
+            lastStage = 'completed';
+            reportCompleteProfileStage('completed', 'email_register');
+          } catch (error) {
+            lastStage = 'session_reload_failed';
+            reportCompleteProfileStage('session_reload_failed');
+            throw error;
+          }
+        })(),
+        () => lastStage,
+      );
     } catch (error) {
       if (getPortalAuth().currentUser) {
         try {
@@ -369,7 +438,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           isInitialBootstrap: false,
           isAuthActionLoading: false,
           isAuthenticated: false,
-          error: error instanceof Error ? error.message : 'Unable to complete registration.',
+          error: userFacingMessageForCompleteProfileError(error),
         }),
       );
     } finally {
@@ -379,7 +448,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const completeCustomerProfile = useCallback(
     async (input: CompleteCustomerProfileInput, options?: CompleteCustomerProfileOptions) => {
+      if (registrationInProgressRef.current) {
+        const inProgress = new CompleteProfileInProgressError();
+        setAuthState((currentState) => ({
+          ...currentState,
+          error: inProgress.message,
+          isAuthActionLoading: false,
+        }));
+        throw inProgress;
+      }
+
       registrationInProgressRef.current = true;
+      let lastStage: CompleteProfileStage = 'submission_started';
 
       setAuthState((currentState) => ({
         ...currentState,
@@ -388,30 +468,85 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }));
 
       try {
-        options?.onProgress?.('Creating your account and reserving your username…');
-        await registerCustomerService.provisionCustomerProfile({
-          displayName: input.displayName,
-          username: input.username,
-          biddingAcknowledgmentAccepted: input.biddingAcknowledgmentAccepted,
-          biddingAcknowledgmentVersion: input.biddingAcknowledgmentVersion,
-        });
+        await withCompleteProfileTimeout(
+          (async () => {
+            lastStage = 'submission_started';
+            reportCompleteProfileStage('submission_started', 'complete_profile');
+            options?.onProgress?.('Creating your customer account…');
 
-        const firebaseUser = getPortalAuth().currentUser;
+            const firebaseUser = getPortalAuth().currentUser;
+            if (!firebaseUser || firebaseUser.isAnonymous) {
+              throw new Error('Sign-in is required to finish registration.');
+            }
 
-        if (!firebaseUser) {
-          throw new Error('Signed-in user could not be loaded after profile setup.');
-        }
+            lastStage = 'auth_user_confirmed';
+            reportCompleteProfileStage('auth_user_confirmed');
 
-        options?.onProgress?.('Loading your portal…');
-        const nextState = await loadPortalSession(firebaseUser);
-        setAuthState({
-          ...nextState,
-          isAuthActionLoading: nextState.isAuthenticated ? false : true,
-        });
+            lastStage = 'id_token_started';
+            reportCompleteProfileStage('id_token_started');
+            options?.onProgress?.('Verifying your sign-in…');
+            try {
+              await firebaseUser.getIdToken(true);
+              lastStage = 'id_token_succeeded';
+              reportCompleteProfileStage('id_token_succeeded');
+            } catch {
+              lastStage = 'id_token_failed';
+              reportCompleteProfileStage('id_token_failed');
+              throw new Error(
+                'Could not verify your sign-in session. Try again or use a different account.',
+              );
+            }
+
+            lastStage = 'callable_ref_created';
+            reportCompleteProfileStage('callable_ref_created', 'registerCustomer');
+            options?.onProgress?.('Creating your account and reserving your username…');
+            lastStage = 'callable_started';
+            reportCompleteProfileStage('callable_started', 'registerCustomer');
+            try {
+              await registerCustomerService.provisionCustomerProfile({
+                displayName: input.displayName,
+                username: input.username,
+                biddingAcknowledgmentAccepted: input.biddingAcknowledgmentAccepted,
+                biddingAcknowledgmentVersion: input.biddingAcknowledgmentVersion,
+              });
+              lastStage = 'callable_succeeded';
+              reportCompleteProfileStage('callable_succeeded', 'registerCustomer');
+            } catch (error) {
+              lastStage = 'callable_failed';
+              reportCompleteProfileStage('callable_failed', 'registerCustomer');
+              throw error;
+            }
+
+            const signedInUser = getPortalAuth().currentUser;
+            if (!signedInUser) {
+              throw new Error('Signed-in user could not be loaded after profile setup.');
+            }
+
+            lastStage = 'session_reload_started';
+            reportCompleteProfileStage('session_reload_started');
+            options?.onProgress?.('Loading your portal…');
+            try {
+              const nextState = await loadPortalSession(signedInUser);
+              lastStage = 'session_reload_succeeded';
+              reportCompleteProfileStage('session_reload_succeeded');
+              setAuthState({
+                ...nextState,
+                isAuthActionLoading: nextState.isAuthenticated ? false : true,
+              });
+              lastStage = 'completed';
+              reportCompleteProfileStage('completed', 'complete_profile');
+            } catch (error) {
+              lastStage = 'session_reload_failed';
+              reportCompleteProfileStage('session_reload_failed');
+              throw error;
+            }
+          })(),
+          () => lastStage,
+        );
       } catch (error) {
         setAuthState((currentState) => ({
           ...currentState,
-          error: error instanceof Error ? error.message : 'Unable to finish setting up your account.',
+          error: userFacingMessageForCompleteProfileError(error),
           isAuthActionLoading: false,
         }));
         throw error;

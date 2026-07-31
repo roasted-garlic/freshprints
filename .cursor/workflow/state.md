@@ -2,44 +2,36 @@
 `production-release` (Goal #13)
 
 Current Mode: managed-phase
-Current Phase: implement
-Plan Status: complete
-Review Status: complete (`approved_with_notes`)
-Implement Status: in_progress — **Deployment-order step 3 (Firestore indexes) CLOSED** — owner
-confirmed via Firebase Console all 65 of 65 composite indexes show `Enabled`, none `Building` or
-`Error`, 0 field overrides. **Step 4 (Secret Manager) CONFIRMED COMPLETE.** Source-level secret
-audit performed on the verified `production` commit: exactly 4 secrets defined in
-`functions/src/lib/secrets.ts` (`geminiApiKeySecret`→`GEMINI_API_KEY`,
-`resendApiKeySecret`→`RESEND_API_KEY`, `brevoApiKeySecret`→`BREVO_API_KEY`,
-`etsyXApiKeySecret`→`ETSY_X_API_KEY`); confirmed zero `OPENAI_API_KEY` references anywhere in
-`functions/src`. Confirmed `DEFAULT_EMAIL_PROVIDER_SETTINGS` (both `inviteProvider` and
-`proofNoticeProvider`) defaults to `resend` when `settings/emailProviders` doesn't exist —
-cold-start-safe, does not fail closed. Owner selected **both** Resend and Brevo for launch
-flexibility. Owner confirmed all four external-provider credentials `AVAILABLE`, Resend sender
-domain `VERIFIED`, Brevo sender domain `VERIFIED`, Etsy application access `AVAILABLE` — no
-blockers. Pre-population metadata check confirmed all four expected secrets absent from
-`fresh-prints-prod` (clean 404s, no existing-secret conflict). **Owner set all four secrets
-directly via their own terminal** (this coding agent cannot host a genuinely interactive hidden
-prompt within its tool-call model, so secret entry was correctly handed to the owner rather than
-attempted through an unsafe workaround). Post-population metadata verification: all four secrets
-— `GEMINI_API_KEY`, `RESEND_API_KEY`, `BREVO_API_KEY`, `ETSY_X_API_KEY` — confirmed **version 1,
-state ENABLED** on `fresh-prints-prod`. Confirmed no `OPENAI_API_KEY` was created. Confirmed no
-secret was created in `fresh-prints-dev` (only a pre-existing, unrelated read-only check of that
-project's own already-existing `GEMINI_API_KEY` was performed, not a modification). **No secret
-value was ever printed, logged, or stored in any output, document, or command argument
-throughout this pass.**
-Test Status: pending
-Signoff Status: pending
+Current Phase: implement/test **complete** — Portal registration loading-state fix on `development`;
+**stop before App Hosting rollout**
+Plan Status: complete (root cause amended; Phase 1 implemented) —
+`docs/workflow/plans/2026-07-31-production-portal-registration-stuck-plan.md`
+Review Status: Formal Review **approved_with_changes**; Implementation Review **approved** —
+`docs/workflow/reviews/2026-07-31-production-portal-registration-loading-state-implementation-review.md`
+Implement Status: **complete** (client-only; not deployed)
+Test Status: **passed** (automated) —
+`docs/workflow/reviews/2026-07-31-production-portal-registration-loading-state-test-report.md`
+Signoff Status: pending rollout + hosted QA
 DONE: no
-Last Completed Step: **Synced `origin/production` into `development` for CORS promotion PR.**
-Clean merge `0a8f8ab` (`merge: sync origin/production into development for CORS promotion PR`);
-no conflicts. Final promotion diff is docs/config + handoff only (10 files); no app/Functions
-runtime source. CORS JSON validated. Lint and `git diff --check` exit 0. **No bucket CORS
-reapply, no Firebase/App Hosting deploy, no snapshot rebuild.** PR to `production` prepared;
-await owner merge.
+Human Checkpoint Required: yes
+Human Checkpoint Reason: Await `APPROVE PRODUCTION PORTAL APP HOSTING ROLLOUT`. Branding + Stage 2
+remain paused. Stage 1 fixtures remain complete.
+Blocked: yes (awaiting production Portal rollout)
+Blocker: Loading-state fix not yet on App Hosting; registration still broken in production until rollout
+Allowed Actions: docs; await rollout approval; read-only verify
+Forbidden Actions: App Hosting rollout without phrase; Auth/data repair; Auth Console remediations
+from historical 400; Functions/Rules changes; branding; Stage 2; alter Stage 1 fixtures
+Next Required Step: Owner sends `APPROVE PRODUCTION PORTAL APP HOSTING ROLLOUT`, then hosted.app QA.
 
-Prior: Owner Discover retest PASS after production Storage CORS on
-`gs://fresh-prints-prod.firebasestorage.app`.
+Decision Log:
+- 2026-07-31 — Historical `accounts:lookup` 400 classified non-reproducible; root cause amended to
+  post-Auth client stall before `registerCustomer` + permanent-loading defect.
+- 2026-07-31 — `APPROVE PORTAL REGISTRATION LOADING-STATE FIX IMPLEMENTATION` → client fix landed;
+  Implementation Review **approved**; no deploy.
+
+Last Completed Step: **Loading-state client fix + tests + Implementation Review** (no rollout).
+
+Prior: Inventory amendment; Formal Review approved_with_changes.
 
 **Corrected `users/{uid}` field list for any future manual bootstrap:** `id` (string, same as
 document ID / Auth UID), `email` (string), `displayName` (string), `role` (string, `"owner"` for
@@ -383,17 +375,19 @@ or production data was configured/created/seeded. No production Studio installer
 or Search Console configuration occurred. `production` was not modified by Git (Functions deploy is
 a Firebase action, not a commit). `master` was not deleted. No force-push occurred anywhere in this
 pass.
-Human Checkpoint Required: yes — **merge the `development` → `production` PR** that records the
-already-applied production Storage CORS configuration. Merging does **not** redeploy CORS.
+Human Checkpoint Required: yes — **owner create Stage 1B upcoming show + Stage 1C catalog design
+fixtures** in production Studio (see Stage 1 checkpoint). Do not create Portal-invite customers
+yet.
 Blocked: no
-Allowed Actions: push sync to `origin/development`; open/update PR base `production` head
-`development`; await owner merge; after merge, fast-forward local `production` only if owner
-requests
-Forbidden Actions: merging the PR without owner action; force-push; rebase of shared branches;
-direct commits to `production`; reapplying bucket CORS; Firebase/Rules/Functions/App Hosting
-deploys; `rebuildCatalogSnapshots`; deleting `master`; creating `v1.0.0` tag
-Next Required Step: Owner reviews and merges the CORS recording PR into `production`. Do not merge
-from the agent.
+Allowed Actions: document Stage 1 progress; await owner fixture IDs; after fixtures, begin Stage 2
+hosted.app smoke under explicit continue
+Forbidden Actions: connecting `myprintrequest.com`; DNS/Cloudflare edits; Authorized Domains;
+Google OAuth domain changes; App Hosting rollout; Functions/Rules deploys; CORS reapply;
+`rebuildCatalogSnapshots` without separate review; `createCustomerWithPortalInvite` before
+cutover; Stage 2 execution before fixtures; `firebase functions:secrets:access` for readiness
+checks; printing secrets
+Next Required Step: Owner creates `Production Smoke Test Show` and one approved ready catalog
+design fixture; reply with IDs/`PASS`. Then execute Stage 2 checklist on hosted.app.
 
 Decision Log:
 - 2026-07-31 — Owner `APPROVE PRODUCTION STORAGE CORS`. Applied `storage.cors.production.json` to
@@ -403,6 +397,13 @@ Decision Log:
 - 2026-07-31 — Merged `origin/production` (`c644935`) into `development` (sync merge `0a8f8ab`);
   opened PR #11 (`development` → `production`) to record live CORS config:
   https://github.com/roasted-garlic/freshprints/pull/11 — **not merged by agent**.
+- 2026-07-31 — PR #11 merged (`bfa42ef`); `development` fast-forwarded to match `production`.
+- 2026-07-31 — Owner domain-last decision recorded; Plan §7 + Formal Review **approved**. Custom
+  domain remains final cutover after `APPROVE MYPRINTREQUEST.COM CUTOVER`.
+- 2026-07-31 — Owner **PASS**: production Studio `settings/emailProviders` =
+  `inviteProvider: "resend"`, `proofNoticeProvider: "brevo"`.
+- 2026-07-31 — Stage 1 partial: infra/DNS/owner/taxonomy verified; customer invite deferred;
+  Stage 2 checklist prepared; awaiting owner show + design fixtures.
 
 Plan:
 `docs/workflow/plans/2026-07-29-preproduction-static-analysis-cleanup-plan.md`.

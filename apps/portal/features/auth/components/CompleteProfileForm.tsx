@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 
 import { PORTAL_BIDDING_ACKNOWLEDGMENT_VERSION } from '@fresh-prints/shared/constants/portal/portalBiddingAcknowledgment.constants';
 import { buildPortalBiddingAcknowledgmentSignupCopy } from '@fresh-prints/shared/utils/portalBiddingAcknowledgmentCopy';
@@ -15,8 +15,8 @@ import { AuthBusyOverlay } from './AuthBusyOverlay';
 
 const SETUP_PROGRESS_MESSAGES = [
   'Creating your customer account…',
+  'Verifying your sign-in…',
   'Reserving your username…',
-  'Linking your Google sign-in…',
   'Finishing portal setup…',
 ] as const;
 
@@ -40,9 +40,12 @@ export function CompleteProfileForm() {
   } = useAuth();
   const [localError, setLocalError] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState('');
+  const [username, setUsername] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [progressMessage, setProgressMessage] = useState<string>(SETUP_PROGRESS_MESSAGES[0]);
   const [pendingProfile, setPendingProfile] = useState<PendingProfile | null>(null);
+  const [lastAttempt, setLastAttempt] = useState<PendingProfile | null>(null);
+  const submitLockRef = useRef(false);
   const signupCopy = useMemo(() => buildPortalBiddingAcknowledgmentSignupCopy(), []);
 
   useEffect(() => {
@@ -93,26 +96,30 @@ export function CompleteProfileForm() {
 
     const formData = new FormData(event.currentTarget);
     const nextDisplayName = String(formData.get('displayName') ?? '').trim();
-    const username = String(formData.get('username') ?? '').trim();
+    const nextUsername = String(formData.get('username') ?? '').trim();
 
     if (!nextDisplayName) {
       setLocalError('Enter a display name.');
       return;
     }
 
-    setPendingProfile({ displayName: nextDisplayName, username });
+    setUsername(nextUsername);
+    setPendingProfile({ displayName: nextDisplayName, username: nextUsername });
   }
 
-  async function handleAcknowledgeAndComplete() {
-    if (!pendingProfile) {
+  async function runCompleteProfile(profile: PendingProfile) {
+    if (submitLockRef.current || isSubmitting) {
+      setLocalError('Account setup is already in progress.');
       return;
     }
 
-    const profile = pendingProfile;
-    // Busy overlay first so the page never looks idle after checkbox confirm.
+    submitLockRef.current = true;
     setIsSubmitting(true);
     setProgressMessage(SETUP_PROGRESS_MESSAGES[0]);
     setPendingProfile(null);
+    setLocalError(null);
+    clearAuthError();
+    setLastAttempt(profile);
 
     try {
       await completeCustomerProfile(
@@ -132,10 +139,31 @@ export function CompleteProfileForm() {
       router.replace(getPortalReturnToFromSearch(window.location.search));
     } catch {
       setIsSubmitting(false);
+    } finally {
+      submitLockRef.current = false;
     }
   }
 
+  async function handleAcknowledgeAndComplete() {
+    if (!pendingProfile) {
+      return;
+    }
+
+    await runCompleteProfile(pendingProfile);
+  }
+
+  async function handleRetry() {
+    if (!lastAttempt) {
+      setLocalError('Enter your display name and username, then try again.');
+      return;
+    }
+
+    await runCompleteProfile(lastAttempt);
+  }
+
   const isBusy = isSubmitting || isAuthActionLoading;
+  const displayError = localError ?? error;
+  const showTerminalFailure = Boolean(displayError) && !isBusy;
 
   if (isInitialBootstrap || bootstrapStatus === 'initializing' || bootstrapStatus === 'loading-profile') {
     if (!isBusy) {
@@ -152,8 +180,6 @@ export function CompleteProfileForm() {
   if (!needsPortalCustomerProfileCompletion(bootstrapStatus) && !isAuthenticated && !isBusy) {
     return <p className="portal-muted">Redirecting…</p>;
   }
-
-  const displayError = localError ?? error;
 
   return (
     <div className="portal-complete-profile">
@@ -182,28 +208,43 @@ export function CompleteProfileForm() {
             autoComplete="username"
             disabled={isBusy}
             name="username"
+            onChange={(event) => setUsername(event.target.value)}
             pattern="[a-z0-9][a-z0-9_-]{1,30}[a-z0-9]"
             required
             spellCheck={false}
             type="text"
+            value={username}
           />
           <span className="portal-field-hint">Lowercase letters, numbers, underscores, or hyphens.</span>
         </label>
 
-        {displayError && !isBusy ? <p className="portal-form-error">{displayError}</p> : null}
+        {showTerminalFailure ? <p className="portal-form-error">{displayError}</p> : null}
 
-        <button
-          className="portal-button portal-button-primary portal-button-leading-icon"
-          disabled={isBusy}
-          type="submit"
-        >
-          <UserPlusIcon />
-          {isBusy ? 'Setting up…' : 'Continue'}
-        </button>
+        {showTerminalFailure ? (
+          <button
+            className="portal-button portal-button-primary portal-button-leading-icon"
+            onClick={() => {
+              void handleRetry();
+            }}
+            type="button"
+          >
+            <UserPlusIcon />
+            Retry setup
+          </button>
+        ) : (
+          <button
+            className="portal-button portal-button-primary portal-button-leading-icon"
+            disabled={isBusy}
+            type="submit"
+          >
+            <UserPlusIcon />
+            {isBusy ? 'Setting up…' : 'Continue'}
+          </button>
+        )}
 
         <button
           className="portal-button portal-button-secondary"
-          disabled={isBusy}
+          disabled={false}
           onClick={() => {
             void logout();
           }}

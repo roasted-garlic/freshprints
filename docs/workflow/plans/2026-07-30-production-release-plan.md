@@ -2,11 +2,12 @@
 
 | Field | Value |
 |-------|-------|
-| Date | 2026-07-30 |
+| Date | 2026-07-30 (amended 2026-07-31) |
 | Author | Planning Agent |
-| Phase | Plan (pre-Formal Review) |
+| Phase | Plan (amended — domain-last sequencing) |
 | Depends on | Goals #9–#12 all signed off/closed (confirmed in `.cursor/workflow/state.md`) |
-| Scope of this phase | **Plan and Formal Review only.** No implementation, deployment, migration, secret, or production action occurs in this pass. |
+| Scope of this phase | **Plan and Formal Review only for this amendment.** No custom-domain, DNS, Auth Authorized Domains, OAuth, App Hosting, Firebase deploy, CORS reapply, or production-data action is authorized by the 2026-07-31 sequencing amendment. |
+| Related amendment review | `docs/workflow/reviews/2026-07-31-production-release-domain-last-sequencing-review.md` |
 
 ---
 
@@ -306,6 +307,12 @@ deployed — not a cached/stale result from an earlier session.
 
 ### 3.16 Production smoke-test checklist (post-deploy, pre-announcement)
 
+> **Superseded for remaining work by §7 (2026-07-31 domain-last sequencing amendment).**
+> Keep this historical checklist for provenance. New work must classify each check as
+> **domain-independent** (run on the production hosted App Hosting URL) or **domain-dependent**
+> (deferred until after `APPROVE MYPRINTREQUEST.COM CUTOVER`). Do not treat a hosted.app pass as a
+> canonical-domain pass.
+
 Not exhaustive rules-unit-testing (no `@firebase/rules-unit-testing` production run is proposed —
 rules are identical to already-tested dev rules); this is a live-traffic sanity pass:
 
@@ -355,17 +362,21 @@ pre-existing production data at risk.
 4. **Secret Manager population** (§3.7) — human approval required per repo-wide secrets policy.
 5. **Functions deploy** (explicit allowlist, §3.3) — human approval required.
 6. **App Hosting env var configuration + Portal deploy** — human approval required.
-7. **Custom domain + Authorized domains configuration** — human approval required (external DNS +
-   Console action).
-8. **Production smoke test** (§3.16) — human execution/observation recommended even though this
-   agent can run some of the read-only checks (e.g. curl robots.txt) itself once the domain is live.
-9. **GA4 go-live checkpoint** (§3.6) — separate, explicit human approval, sequenced after Portal is
-   otherwise confirmed stable in production.
-10. **Public announcement / DNS cutover if a soft-launch period is desired** — entirely an owner
-    business decision, not a technical step this plan can define further. `[NEEDS OWNER INPUT]`.
+7. ~~**Custom domain + Authorized domains configuration** before smoke testing~~ — **SUPERSEDED
+   2026-07-31** by §7. Custom domain is now the **final** production setup action, only after
+   domain-independent setup + smoke + readiness gate. Approval phrase:
+   `APPROVE MYPRINTREQUEST.COM CUTOVER`.
+8. ~~**Production smoke test** as a single pre-domain block~~ — **SUPERSEDED 2026-07-31** by §7
+   Stages 2 and 4 (domain-independent vs domain-dependent).
+9. **GA4 go-live checkpoint** (§3.6) — separate, explicit human approval, sequenced **after**
+   Portal is otherwise confirmed stable on the canonical domain (still after domain cutover +
+   domain-dependent smoke).
+10. **Public announcement / soft-launch** — entirely an owner business decision
+    (`[NEEDS OWNER INPUT]`).
 
-Every one of these remains **unauthorized by this Plan/Formal Review pass**. This pass produces
-only the Plan and Review artifacts themselves.
+Every one of these remains **unauthorized by this Plan/Formal Review pass** unless a later
+owner approval phrase is recorded. The 2026-07-31 sequencing amendment authorizes **documentation
+only**.
 
 ### 3.19 Post-launch monitoring checklist
 
@@ -427,3 +438,163 @@ only the Plan and Review artifacts themselves.
 6. Whether any error-tracking dependency exists that was missed in this pass's dependency scan
    (§3.19).
 7. Working-tree/dependency-closure audit (§3.14) — deliberately deferred to deploy time.
+
+---
+
+## 7. Amendment (2026-07-31): Domain-last production sequencing
+
+### 7.1 Owner decision (authoritative)
+
+The owner does **not** want `myprintrequest.com` pointed at App Hosting yet.
+
+The existing Coming Soon page must remain live until every production setup and verification that
+can be completed **without** the custom domain is finished.
+
+Connecting `myprintrequest.com` is the **final launch switch** before domain-dependent smoke
+testing.
+
+This decision **supersedes** any earlier Plan/DEPLOYMENT wording that implied the custom domain
+should be connected before completing available production readiness checks.
+
+### 7.2 Why production already works on hosted.app
+
+- Production Portal is live at
+  `https://fresh-prints-portal--fresh-prints-prod.us-central1.hosted.app`.
+- Production Storage CORS and empty-catalog Discover are owner-tested **PASS**.
+- `storage.cors.production.json` documents the live bucket CORS; Git does not control the already
+  applied bucket config.
+- Apex `myprintrequest.com` still serves Coming Soon and must remain unchanged until Stage 4.
+
+### 7.3 Previous remaining order (superseded)
+
+From `DEPLOYMENT.md` / original §3.18 remaining intent:
+
+1. Initial settings / reference data (categories, email providers, catalog bootstrap)
+2. **Domain + Authorized Domains**
+3. **Smoke tests (mixed / mostly written against the canonical domain)**
+4. GA4 / Search Console (later)
+
+### 7.4 Revised remaining order (required)
+
+| Stage | Name | Domain change? |
+|-------|------|----------------|
+| **1** | Complete production setup **without** changing the public domain | No |
+| **2** | Domain-independent production smoke tests on hosted.app | No |
+| **3** | Final pre-domain readiness gate (`APPROVE MYPRINTREQUEST.COM CUTOVER`) | No |
+| **4** | Domain cutover + domain-dependent smoke tests | Yes — only after exact approval |
+| Later | GA4 go-live; Search Console | Separate checkpoints after Stage 4 |
+
+### 7.5 Stage 1 — Domain-independent production setup
+
+Complete or verify (no DNS / App Hosting custom-domain / Authorized Domains changes):
+
+- [x] Studio `settings/emailProviders`: invitation **Resend**, proof-notice **Brevo**
+  (owner PASS 2026-07-31)
+- [x] Production owner account + role verification (read-only: 1 owner, `isActive`, timestamps)
+- [x] 18 active categories; 1,122 approved tags
+- [ ] Minimum production catalog / workflow data approved for testing (as needed) — **owner:
+  Stage 1C design fixture**
+- [ ] One upcoming production show for workflow testing — **owner: Stage 1B**
+- [x] Minimum test customer — **deferred**: Portal invite emails continue to
+  `https://myprintrequest.com/login` (`portalUrlResolver`); create after cutover
+- [x] Rules, indexes, Functions, secrets, Storage, App Hosting configuration verification
+  (indexes 65; Functions 99; CORS ok; hosted.app 200; secrets: Console metadata only — never
+  `secrets:access` for checks)
+- [x] Production Storage CORS verification (hosted.app + apex + www origins present)
+- [x] Production App Hosting build/config verification (hosted.app stable; backend Enabled)
+- [x] Rollback instructions + current Coming Soon DNS/configuration **recorded** (not changed)
+  — `docs/workflow/setup/production-coming-soon-dns-rollback.md`
+- [ ] Resend + Brevo sender-domain verification status (dashboard) — owner confirm if needed
+- [ ] Gemini + Etsy API availability — confirm during Stage 2 callable smoke
+- [x] Valid catalog-reference + portal-catalog manifests usable (prior CORS/empty-catalog PASS)
+
+Checkpoint: `docs/workflow/reviews/2026-07-31-production-stage-1-domain-independent-setup-checkpoint.md`  
+Stage 2 checklist (not executed):
+`docs/workflow/reviews/2026-07-31-production-stage-2-hosted-app-smoke-checklist.md`
+
+### 7.6 Stage 2 — Domain-independent smoke tests
+
+Run on `https://fresh-prints-portal--fresh-prints-prod.us-central1.hosted.app` (and production
+Studio). Classify each item: **runnable now** / **domain-dependent deferred** / **blocked**.
+
+Domain-independent examples (run when fixtures exist; do not fake a canonical-domain pass):
+
+- Portal loads from hosted.app; project is `fresh-prints-prod`; no `fresh-prints-dev` UI/leaks
+- Studio production sign-in/permissions; workspaces load; no Test Data Reset in production build
+- Catalog browse / Discover; empty or populated catalog behavior
+- Catalog import / AI enrichment / review / ready-state (when approved test data exists)
+- Upcoming show create/manage; print-request create/edit where hosted-domain auth supports it
+- 200 effective-DPI save blocking; request qty limit 25; show qty limit 25
+- Customer upload + Donate Design processing; transparency/format validation; Studio intake
+- Add to Show / Show Queue; Start / Pause / Resume / Finish production
+- Storage asset access; CORS from hosted.app Origin
+- Resend/Brevo **configuration presence** without requiring canonical-domain email links
+- Gemini / Etsy callable behavior
+- No unexpected Firestore fallback or production errors
+
+**Deferred as domain-dependent (Stage 4):** apex/www HTTPS/redirects; Auth on canonical host;
+Google sign-in on canonical host; invitation/proof-notice **links** using
+`https://myprintrequest.com`; `robots.txt`/`sitemap.xml`/`share` canonical checks against apex;
+no Coming Soon on apex; no hosted.app leaks in user-facing canonical links.
+
+### 7.7 Stage 3 — Final pre-domain readiness gate
+
+Documented owner checkpoint before any DNS change. Required proof:
+
+- [ ] All domain-independent smoke tests passed or have explicitly accepted notes
+- [ ] No unresolved production blockers
+- [ ] Hosted Portal URL stable; Studio stable
+- [ ] Production data needed for final smoke exists
+- [ ] Email providers selected; sender domains verified
+- [ ] Production Storage CORS correct
+- [ ] Exact Firebase App Hosting custom-domain DNS records known
+- [ ] Current Cloudflare Coming Soon DNS configuration recorded
+- [ ] Rollback path to restore Coming Soon documented
+- [ ] Firebase Auth Authorized Domains steps prepared (not applied)
+- [ ] Google sign-in configuration steps prepared (not applied)
+- [ ] Domain-dependent smoke checklist prepared
+- [ ] Owner explicitly approves cutover
+
+**Required approval phrase:** `APPROVE MYPRINTREQUEST.COM CUTOVER`
+
+Forbidden before that phrase: DNS, App Hosting custom domains, Cloudflare changes, Firebase
+Authorized Domains, Google OAuth configuration changes.
+
+### 7.8 Stage 4 — Domain cutover + domain-dependent smoke
+
+Only after `APPROVE MYPRINTREQUEST.COM CUTOVER`:
+
+1. Connect `myprintrequest.com` to `fresh-prints-portal` App Hosting backend
+2. Configure approved `www.myprintrequest.com` redirect behavior
+3. Replace Coming Soon DNS **only** with exact Firebase-provided records
+4. Wait for domain verification + SSL readiness
+5. Add `myprintrequest.com` to Firebase Auth Authorized Domains
+6. Add `www.myprintrequest.com` only if connected/used in the approved redirect
+7. Verify Google sign-in for the canonical domain
+8. Verify Storage CORS from apex (and www if it serves the app)
+9. Run domain-dependent smoke immediately
+
+Domain-dependent smoke must include: apex loads production Portal; valid HTTPS; HTTP→HTTPS;
+approved www redirect; no loop; canonical host correct; registration/login/logout/session on
+canonical domain; Google sign-in on canonical domain; Resend invitation delivered + opens
+canonical Portal; Brevo proof-notice delivered; all email links use
+`https://myprintrequest.com`; password-reset/Auth links correct where applicable; production
+`robots.txt` allow variant; `/sitemap.xml` correct; `/share/design/{id}` metadata from canonical
+domain; Storage assets without CORS errors from apex (and www if applicable); print-request +
+customer upload on canonical domain; no hosted.app leaks where canonical URL is required; no
+Coming Soon on apex; no development project identifiers.
+
+### 7.9 Rollback (before Stage 4 DNS change)
+
+Record the exact Cloudflare Coming Soon DNS records before cutover. If cutover fails, restore
+those records and Coming Soon configuration rather than improvising. Do not leave the apex on a
+broken App Hosting binding.
+
+### 7.10 Immediate next production task (after this amendment is reviewed)
+
+**Stage 1 remaining domain-independent setup**, starting with Studio
+`settings/emailProviders` (`inviteProvider: resend`, `proofNoticeProvider: brevo`) if not already
+set, then remaining Stage 1 fixtures (show + minimum test catalog/customer data as needed), then
+Stage 2 hosted.app smoke.
+
+**Do not connect `myprintrequest.com`.**
