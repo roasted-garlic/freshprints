@@ -31,8 +31,94 @@ throughout this pass.**
 Test Status: pending
 Signoff Status: pending
 DONE: no
-Last Completed Step: **Production Studio white-screen incident diagnosed, fixed, and a replacement
-installer built — awaiting owner retest before Phase G smoke testing resumes.**
+Last Completed Step: **Synced `origin/production` into `development` for CORS promotion PR.**
+Clean merge `0a8f8ab` (`merge: sync origin/production into development for CORS promotion PR`);
+no conflicts. Final promotion diff is docs/config + handoff only (10 files); no app/Functions
+runtime source. CORS JSON validated. Lint and `git diff --check` exit 0. **No bucket CORS
+reapply, no Firebase/App Hosting deploy, no snapshot rebuild.** PR to `production` prepared;
+await owner merge.
+
+Prior: Owner Discover retest PASS after production Storage CORS on
+`gs://fresh-prints-prod.firebasestorage.app`.
+
+**Corrected `users/{uid}` field list for any future manual bootstrap:** `id` (string, same as
+document ID / Auth UID), `email` (string), `displayName` (string), `role` (string, `"owner"` for
+the first account), `isActive` (boolean, `true`), `createdAt` (timestamp — any non-empty value
+satisfies the client mapper's falsy check, though a real Firestore `Timestamp` is correct for
+consistency with server-created user documents), `updatedAt` (timestamp, same). `createdBy`/
+`updatedBy` are optional (`mapUserDocument` only casts them if present as strings, no throw if
+absent).
+
+Studio's Studio deployment-order step 8 of 12 is now **fully closed** — both installer defects
+(white screen, missing icon) are confirmed fixed by the owner's own retest, not merely built and
+assumed correct.
+
+**Owner request:** use the exact icon shown at the top of the collapsed Studio sidebar as the
+official Windows application icon throughout the packaged installer.
+
+**Source of truth (traced through the actual render path, not guessed):**
+`Sidebar.tsx:365-372` renders `<AppLogo variant="collapsed">` when collapsed;
+`AppLogo.tsx:2,42` resolves that variant's fallback to
+`src/assets/brand/fresh-prints-studio-logo-collapsed.png` — confirmed via this session's own
+earlier Phase D bootstrap-inventory research that `settings/brandLogos` is unset on the cold-start
+`fresh-prints-prod` project (code defaults apply), so this bundled asset is what actually renders,
+not a hypothetical fallback. Confirmed via `sharp` metadata: 6387×6405px RGBA with alpha
+(transparent background). Visually confirmed as the circular "FP Request" mark. Correctly excluded
+every item on the owner's explicit exclusion list (full wordmark, the never-existed
+`fresh-prints-logo.svg`, any redesigned/generic/gear/Portal icon).
+
+**Existing packaging gap (confirmed, not assumed):** `electron-builder.json5` already referenced
+`win.icon: "icon.ico"` / `linux.icon: "icon.png"`, but neither file existed — matching the
+"default Electron icon is used" line seen in every prior Studio build log this session.
+
+**Fix (narrow Plan + independent Formal Review, both `approved`):**
+`docs/workflow/plans/2026-07-30-production-release-studio-icon-plan.md` /
+`...-studio-icon-review.md`. Measured the source asset's actual opaque-pixel bounds via `sharp`
+`.trim()` and found they already extend to the canvas edges (no built-in margin), so wrote a
+one-time asset-generation script (`apps/studio/scripts/generate-app-icon.mjs`, using `sharp` +
+the new `png-to-ico` devDependency — researched and selected for being pure-JS, no native
+binaries, actively maintained, MIT-licensed) that pads and resizes the source into a
+7-resolution `.ico` (16/24/32/48/64/128/256, exactly matching the requested minimum set) and a
+512px `icon.png`, written to the exact paths the existing config already expected. Researched
+(Electron's own docs + a corroborating GitHub issue) and confirmed `BrowserWindow.icon` is
+redundant for the **packaged Windows taskbar** (Windows reads the icon embedded in the exe's
+resources via electron-builder's `rcedit` step, not this runtime option) but genuinely matters in
+**dev mode**, where `main.ts` was pointing at the same nonexistent `fresh-prints-logo.svg` found
+during the white-screen investigation — corrected to the new `app-icon.png` (added under a new
+`apps/studio/public/` directory so both dev mode and the packaged `dist/` copy resolve it
+correctly).
+
+**Verification — confirmed directly in this environment, not deferred to the owner:** generated
+`.ico` parsed and confirmed to contain exactly the 7 requested resolutions; visual inspection at
+16×16, 32×32, and 256×256 confirmed no clipping and legible mark at small sizes; Studio typecheck,
+`vite build` (confirmed the white-screen fix's `onwarn`/circular-chunk protection still intact, no
+regression), full `electron-builder` packaging, repo lint, `git diff --check` — all exit 0; build
+log's "default Electron icon is used" line is gone. **Extracted the actual embedded icon from both
+the packaged `.exe` and the installer `.exe` via Windows' own
+`System.Drawing.Icon.ExtractAssociatedIcon` API and visually confirmed both show the correct Fresh
+Prints mark** — direct proof, not inference from an absent warning line. Re-confirmed via `asar`
+extraction that `scheduler` remains correctly chunked with `react-vendor` (white-screen fix
+regression check) on this exact build.
+
+Committed to `development` (`24933d4`), promoted via PR #10 (merge `c644935`). Created and pushed
+annotated tag `v1.0.0-rc5` on that verified commit. Re-ran lint/typecheck on the tagged commit (both
+exit 0), then built the second replacement installer using the same safest env-file-swap procedure.
+Build exit 0. **Directly verified on this exact production-configured build:** embedded icon
+correct (via the same Windows icon-extraction method), `firebaseConfig.projectId` resolves to
+`fresh-prints-prod` (via `asar` extraction), `scheduler` still correctly chunked with
+`react-vendor`.
+
+**Second replacement installer:** `Fresh Prints-Windows-0.0.0-Setup-v1.0.0-rc5.exe` (also present
+as `Fresh Prints-Windows-0.0.0-Setup.exe`, byte-identical), location `apps/studio/release/0.0.0/`,
+size 107,748,796 bytes, SHA-256
+`e07914692ad2ff507bce279522852acf4bd9e89eb75d04da2221e3f05c17d011` — different from both the
+original failed installer's checksum and the `v1.0.0-rc4` white-screen-fix installer's checksum,
+confirming genuinely new packaged content. The `v1.0.0-rc4` installer
+(`Fresh Prints-Windows-0.0.0-Setup-v1.0.0-rc4.exe`) remains preserved on disk, untouched, for the
+incident record. Unsigned. Not uploaded or distributed publicly — awaiting owner installation and
+retest (icon + white-screen fix + sign-in, together).
+
+Original white-screen-fix summary below, preserved unchanged as historical record:
 
 **Failure:** owner installed the first production Studio installer
 (`Fresh Prints-Windows-0.0.0-Setup.exe`, SHA-256
@@ -297,33 +383,26 @@ or production data was configured/created/seeded. No production Studio installer
 or Search Console configuration occurred. `production` was not modified by Git (Functions deploy is
 a Firebase action, not a commit). `master` was not deleted. No force-push occurred anywhere in this
 pass.
-Human Checkpoint Required: yes — **owner retest of the replacement Studio installer.** The first
-production Studio installer white-screened; root cause confirmed and fixed (React/`scheduler`
-chunk-splitting bug); a replacement installer (`v1.0.0-rc4`) is built and awaiting the owner's
-install/launch/login retest before Phase G smoke testing may resume.
-Blocked: yes — do not resume the broader Phase G smoke test until the owner confirms the
-replacement installer reaches the sign-in screen and login succeeds
-Allowed Actions: provide the owner the exact replacement installer path, checksum, and retest
-steps; await the owner's `PASS` / `PASS WITH NOTES: ...` / `FAIL: ...` report
-Forbidden Actions: deleting `master` (local or remote); modifying `production` directly (only via
-PR); running any `firebase deploy`/`apphosting:rollouts:create` command without separate approval;
-accessing, printing, or logging any secret value; setting or rotating any secret without separate
-owner approval; using `--force` on any Firestore command; manually deleting or editing production
-indexes/secrets via Console; enabling automatic App Hosting rollouts without owner approval; any
-DNS/Auth-config/GA4/Search-Console action; invoking `rebuildCatalogSnapshots` (deployed, not yet
-invoked — invocation remains its own deliberate step once real catalog data exists); writing any
-production Firestore data directly (categories/email-provider settings are the owner's own Studio
-action, not this agent's); uploading or distributing the Studio installer publicly before smoke
-testing passes; resuming the broader Phase G smoke test before the replacement installer retest
-passes; force-pushing any branch; rewriting Git history; configuring `core.hooksPath` without
-separate owner approval; changing repository visibility
-Next Required Step: Owner installs the replacement `Fresh Prints-Windows-0.0.0-Setup-v1.0.0-rc4.exe`
-from `apps/studio/release/0.0.0/` (fully quitting the failed build first if still running),
-launches it, confirms the sign-in screen appears, logs in with the production owner account
-already bootstrapped on `fresh-prints-prod`, and reports `PASS` / `PASS WITH NOTES: ...` /
-`FAIL: ...`. Only after that passes does the broader Phase G smoke test and Phase D's remaining
-remaining items (categories, `settings/emailProviders` via Studio UI) and consider
-production data until approved.
+Human Checkpoint Required: yes — **merge the `development` → `production` PR** that records the
+already-applied production Storage CORS configuration. Merging does **not** redeploy CORS.
+Blocked: no
+Allowed Actions: push sync to `origin/development`; open/update PR base `production` head
+`development`; await owner merge; after merge, fast-forward local `production` only if owner
+requests
+Forbidden Actions: merging the PR without owner action; force-push; rebase of shared branches;
+direct commits to `production`; reapplying bucket CORS; Firebase/Rules/Functions/App Hosting
+deploys; `rebuildCatalogSnapshots`; deleting `master`; creating `v1.0.0` tag
+Next Required Step: Owner reviews and merges the CORS recording PR into `production`. Do not merge
+from the agent.
+
+Decision Log:
+- 2026-07-31 — Owner `APPROVE PRODUCTION STORAGE CORS`. Applied `storage.cors.production.json` to
+  `gs://fresh-prints-prod.firebasestorage.app` (was `cors: null`). Post-apply ACAO probe: all three
+  configured origins echo correctly on portal-catalog manifest GET.
+- 2026-07-31 — Owner Discover retest **PASS** on hosted.app empty catalog after CORS apply.
+- 2026-07-31 — Merged `origin/production` (`c644935`) into `development` (sync merge `0a8f8ab`);
+  opened PR #11 (`development` → `production`) to record live CORS config:
+  https://github.com/roasted-garlic/freshprints/pull/11 — **not merged by agent**.
 
 Plan:
 `docs/workflow/plans/2026-07-29-preproduction-static-analysis-cleanup-plan.md`.
