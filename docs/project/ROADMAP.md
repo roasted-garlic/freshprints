@@ -122,13 +122,19 @@ Current Goal:
 | 10 | Increase the MB limit for custom-request reference images | **Done** (2026-07-29, approved) — 40 MB/file live in `fresh-prints-dev` at every enforcement layer, 8 files unchanged, 320 MB combined ceiling active; owner QA FAIL (stale 15 MB deployed Cloud Functions) → Amendment 1 root-caused and fixed via scoped Functions redeploy → owner re-QA PASS |
 | 11 | `customer-upload-oversized-pixel-normalization-and-processing-timeout-followup` | **Done** (2026-07-30, approved_with_notes; owner QA PASS WITH NOTES — see signoff) |
 | 12 | `catalog-image-derivative-storage-consolidation` | **Done — closed_by_owner_after_inventory** (2026-07-30). Real dev inventory measured originals at ~97.66% of catalog Storage (980.8 MB of 1,004.3 MB); thumbnails+previews combined only 23.5 MB; zero orphans/duplicates/violations found. Owner decided the migration's small addressable Storage win did not justify the required backfill/consumer-cutover/bandwidth-increase — closed before implementation, an evidence-based decision. Retained as dev-only tooling: the read-only `inventoryCatalogImageStorage` callable and its Studio invocation panel. |
-| 13 | `production-release` — prod Firebase / App Hosting / Google / email | **Active** — steps 1–8 complete (Rules/Storage/indexes/secrets/Functions/App Hosting/Portal/Studio `v1.0.0-rc5` owner PASS WITH NOTES). Catalog CORS closed (PR #11). **2026-07-31 sequencing amendment (approved):** `myprintrequest.com` stays on Coming Soon until domain-independent setup + hosted.app smoke + readiness gate; cutover only after `APPROVE MYPRINTREQUEST.COM CUTOVER`. Remaining: Stage 1 setup (emailProviders, fixtures) → Stage 2 hosted.app smoke → Stage 3 gate → Stage 4 domain + domain-dependent smoke. GA4/Search Console later. Plan §7 + `…-domain-last-sequencing-review.md`. |
+| 13 | `production-release` — prod Firebase / App Hosting / Google / email | **Active — BLOCKED** on production Studio Storage `storage/unauthorized` (design import + brand upload). Steps 1–8 + CORS + emailProviders + DNS rollback recorded; Stage 2 checklist prepared but not run. Incident + remediation Plan + Review (`approved_with_changes`) 2026-07-31. Domain-last sequencing still applies. Do not start Stage 2 until Storage writes work and Stage 1 fixtures exist. |
 | 14 | `customer-upload-early-transparency-format-validation` — reject invalid customer artwork before the trimming stage is shown | **Done** (2026-07-30, approved; automated verification 23/23 pass, clean build/lint; owner deployed to `fresh-prints-dev` and confirmed manual QA PASS across all 5 goal-brief scenarios). Separate narrow follow-up run alongside the paused `production-release` (#13), which this goal did not modify. See `docs/workflow/plans/2026-07-30-customer-upload-early-transparency-format-validation-plan.md`. |
 
 **Small Managed Items Backlog:** #5–**#14** **Done** (2026-07-21). See [Small Managed Items Backlog](#small-managed-items-backlog-2026-07-18) below.
 
-**Active managed goal:** `production-release` (Goal #13) — **domain-last sequencing amendment
-approved 2026-07-31.** Steps 1–8 complete; CORS closed (PR #11). Remaining: Stage 1
+**Active managed goal:** `production-release` (Goal #13) — **blocked on Studio Storage writes**
+(2026-07-31 incident). Domain-last sequencing still approved. Steps 1–8 complete; CORS closed
+(PR #11). Remaining after Storage fix: Stage 1 fixtures → Stage 2 hosted.app smoke → Stage 3
+gate → Stage 4 domain. See
+`docs/workflow/reviews/2026-07-31-production-studio-storage-unauthorized-incident.md`.
+
+**Prior note (superseded by Storage blocker):** domain-last sequencing amendment approved
+2026-07-31. Steps 1–8 complete; CORS closed (PR #11). Remaining: Stage 1
 domain-independent setup → Stage 2 hosted.app smoke → Stage 3
 `APPROVE MYPRINTREQUEST.COM CUTOVER` → Stage 4 domain + domain-dependent smoke. Coming Soon
 stays on apex until Stage 4. See Plan §7.

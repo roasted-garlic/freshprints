@@ -2,6 +2,13 @@
 
 > Signed-off or largely complete work. External agents should not re-plan or duplicate this.
 
+## 2026-07-31 - production-release: Studio Storage unauthorized diagnosed (docs only; blocked)
+
+- Ruled out wrong packaged bucket/project, live Rules drift, App Check, CORS
+- Confirmed brand Settings error is failed upload (empty `brand/`, no `settings/brandLogos`)
+- Plan + Formal Review `approved_with_changes`; awaiting diagnostic gate + brand asset mapping
+- No deploy / rebuild / DNS / domain action
+
 ## 2026-07-31 - production-release: Stage 1 partial (infra/DNS); customer invite deferred; Stage 2 checklist prepared
 
 - Verified owner/taxonomy/Functions/indexes/CORS/hosted.app/Coming Soon without DNS changes

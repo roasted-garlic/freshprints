@@ -2,42 +2,40 @@
 `production-release` (Goal #13)
 
 Current Mode: managed-phase
-Current Phase: implement
-Plan Status: complete
-Review Status: complete (`approved_with_notes`)
-Implement Status: in_progress — **Deployment-order step 3 (Firestore indexes) CLOSED** — owner
-confirmed via Firebase Console all 65 of 65 composite indexes show `Enabled`, none `Building` or
-`Error`, 0 field overrides. **Step 4 (Secret Manager) CONFIRMED COMPLETE.** Source-level secret
-audit performed on the verified `production` commit: exactly 4 secrets defined in
-`functions/src/lib/secrets.ts` (`geminiApiKeySecret`→`GEMINI_API_KEY`,
-`resendApiKeySecret`→`RESEND_API_KEY`, `brevoApiKeySecret`→`BREVO_API_KEY`,
-`etsyXApiKeySecret`→`ETSY_X_API_KEY`); confirmed zero `OPENAI_API_KEY` references anywhere in
-`functions/src`. Confirmed `DEFAULT_EMAIL_PROVIDER_SETTINGS` (both `inviteProvider` and
-`proofNoticeProvider`) defaults to `resend` when `settings/emailProviders` doesn't exist —
-cold-start-safe, does not fail closed. Owner selected **both** Resend and Brevo for launch
-flexibility. Owner confirmed all four external-provider credentials `AVAILABLE`, Resend sender
-domain `VERIFIED`, Brevo sender domain `VERIFIED`, Etsy application access `AVAILABLE` — no
-blockers. Pre-population metadata check confirmed all four expected secrets absent from
-`fresh-prints-prod` (clean 404s, no existing-secret conflict). **Owner set all four secrets
-directly via their own terminal** (this coding agent cannot host a genuinely interactive hidden
-prompt within its tool-call model, so secret entry was correctly handed to the owner rather than
-attempted through an unsafe workaround). Post-population metadata verification: all four secrets
-— `GEMINI_API_KEY`, `RESEND_API_KEY`, `BREVO_API_KEY`, `ETSY_X_API_KEY` — confirmed **version 1,
-state ENABLED** on `fresh-prints-prod`. Confirmed no `OPENAI_API_KEY` was created. Confirmed no
-secret was created in `fresh-prints-dev` (only a pre-existing, unrelated read-only check of that
-project's own already-existing `GEMINI_API_KEY` was performed, not a modification). **No secret
-value was ever printed, logged, or stored in any output, document, or command argument
-throughout this pass.**
+Current Phase: plan / review complete — **blocked before implement**
+Plan Status: complete — `docs/workflow/plans/2026-07-31-production-studio-storage-unauthorized-and-bundled-brand-plan.md`
+Review Status: complete (`approved_with_changes`) —
+`docs/workflow/reviews/2026-07-31-production-studio-storage-unauthorized-and-bundled-brand-review.md`
+Implement Status: **blocked** — production Studio Storage `storage/unauthorized` on design import +
+brand logo upload; Stage 1 catalog fixture cannot proceed; Stage 2 must not start
 Test Status: pending
 Signoff Status: pending
 DONE: no
-Last Completed Step: **Stage 1 domain-independent setup advanced (partial).** Read-only verified
-owner (1 active with timestamps), taxonomy 18/1122, Functions 99, indexes 65, CORS, hosted.app
-200, Coming Soon still on apex. DNS/rollback recorded. Portal-invite **test customer deferred**
-(invite continue URL is `myprintrequest.com`). Stage 2 hosted.app checklist prepared (not run).
-**Owner still must create Stage 1B show + Stage 1C design fixtures in Studio.**
+Human Checkpoint Required: yes
+Human Checkpoint Reason: (1) Storage write diagnostic gate — Console Rules Playground + Studio
+Network evidence to select remediation class A/B/C; (2) Brand asset mapping approval before
+accepting owner replacement files. No Storage Rules deploy / Studio rebuild / App Check / DNS /
+domain actions until the matching approval phrase.
+Blocked: yes
+Blocker: Production Studio authenticated Storage creates denied (`storage/unauthorized`) despite
+correct packaged `fresh-prints-prod` / `fresh-prints-prod.firebasestorage.app` config and live
+Storage Rules byte-identical to repo. Brand error is failed upload (no `settings/brandLogos`,
+empty `brand/`), not public read of an existing object.
+Allowed Actions: read docs; record owner diagnostic/mapping replies; amend Plan class selection;
+update workflow docs
+Forbidden Actions: implement/deploy Storage Rules; App Check changes; Studio rebuild; Portal
+rollout; DNS/domain/Auth/OAuth; CORS; snapshot rebuild; asset file replacement; Stage 2 smoke;
+committing unrelated dirty working-tree app/PNG edits
+Next Required Step: Owner runs Storage diagnostic (or replies `APPROVE PRODUCTION STORAGE WRITE
+DIAGNOSTIC` for assisted Console steps) and/or `APPROVE BRAND ASSET MAPPING`; do not implement yet.
 
-Prior: Owner PASS on `settings/emailProviders` (Resend invite / Brevo proof).
+Last Completed Step: **Storage unauthorized incident diagnosed (docs only).** Packaged Studio
+config correct; live Rules SHA match; App Check not enforced; brand object/settings absent;
+originals/brand prefixes empty. Remediation Plan + Formal Review (`approved_with_changes`)
+prepared with separate bundled-brand inventory/mapping. No production change performed.
+
+Prior: Stage 1 partial (emailProviders PASS; DNS rollback recorded; show/design fixtures pending;
+invite customer deferred). Owner PASS on `settings/emailProviders` (Resend invite / Brevo proof).
 
 **Corrected `users/{uid}` field list for any future manual bootstrap:** `id` (string, same as
 document ID / Auth UID), `email` (string), `displayName` (string), `role` (string, `"owner"` for

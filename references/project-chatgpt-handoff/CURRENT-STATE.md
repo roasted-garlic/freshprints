@@ -1,5 +1,22 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-07-31 — Goal #13 BLOCKED: Studio Storage `storage/unauthorized`
+
+- Design import + Brand Logos upload fail with `storage/unauthorized` on production Studio
+- Diagnosis: packaged config = `fresh-prints-prod` / `fresh-prints-prod.firebasestorage.app`;
+  live Storage Rules **byte-identical** to repo; App Check **not** enforced; CORS not involved
+- Brand error is **failed upload** (no `settings/brandLogos`; `brand/` empty), not public read
+- `originals/` / `thumbnails/` / `previews/` / `brand/` all empty on prod
+- Plan + Formal Review (`approved_with_changes`): storage remediation classes A/B/C after
+  diagnostic gate; separate bundled-brand asset mapping
+- **Do not** redeploy identical Rules; **do not** Stage 2 until fixed + fixtures exist
+- Artifacts:
+  - `docs/workflow/reviews/2026-07-31-production-studio-storage-unauthorized-incident.md`
+  - `docs/workflow/plans/2026-07-31-production-studio-storage-unauthorized-and-bundled-brand-plan.md`
+  - `docs/workflow/reviews/2026-07-31-production-studio-storage-unauthorized-and-bundled-brand-review.md`
+- Owner next: Storage diagnostic (`APPROVE PRODUCTION STORAGE WRITE DIAGNOSTIC`) and/or
+  `APPROVE BRAND ASSET MAPPING`
+
 ## 2026-07-31 — Goal #13: Stage 1 partial — infra/DNS recorded; fixtures pending owner
 
 - Read-only: owner profile OK; 18 categories / 1,122 tags; 99 Functions; 65 indexes; CORS OK;
@@ -7,6 +24,7 @@
 - Portal-invite test customer **deferred** (continue URL → `myprintrequest.com/login`)
 - Stage 2 hosted.app smoke checklist prepared, **not executed**
 - Owner next: create upcoming show + one ready catalog design in production Studio
+  (**blocked** until Storage unauthorized is resolved)
 
 ## 2026-07-31 — Goal #13: production `settings/emailProviders` PASS
 
