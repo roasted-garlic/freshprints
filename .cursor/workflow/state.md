@@ -401,7 +401,8 @@ Decision Log:
   configured origins echo correctly on portal-catalog manifest GET.
 - 2026-07-31 — Owner Discover retest **PASS** on hosted.app empty catalog after CORS apply.
 - 2026-07-31 — Merged `origin/production` (`c644935`) into `development` (sync merge `0a8f8ab`);
-  prepared development→production PR to record live CORS config in the protected branch.
+  opened PR #11 (`development` → `production`) to record live CORS config:
+  https://github.com/roasted-garlic/freshprints/pull/11 — **not merged by agent**.
 
 Plan:
 `docs/workflow/plans/2026-07-29-preproduction-static-analysis-cleanup-plan.md`.
