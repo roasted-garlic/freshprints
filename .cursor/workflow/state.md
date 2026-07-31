@@ -2,34 +2,32 @@
 `production-release` (Goal #13)
 
 Current Mode: managed-phase
-Current Phase: implement — **bundled brand approved; blocked on owner source files**
-Plan Status: complete —
-`docs/workflow/plans/2026-07-31-production-studio-storage-unauthorized-and-bundled-brand-plan.md` Part B
-Review Status: Formal Review approved_with_changes (brand gates satisfied for implement once files exist)
-Implement Status: **blocked** — awaiting five source assets in
-`docs/workflow/setup/brand-asset-sources/`
-Test Status: n/a until assets land
-Signoff Status: n/a for brand slice
+Current Phase: test — **bundled brand assets implemented on development; await visual QA + release approvals**
+Plan Status: complete — Part B branding implemented
+Review Status: Formal Review satisfied for implement; release still gated
+Implement Status: **complete** on `development` (logos, icons, favicons, onError, aspect defaults)
+Test Status: automated **passed** (brand constants, lint, typechecks, build:portal); owner visual QA pending
+Signoff Status: pending visual QA + Studio/Portal release approvals
 DONE: no
 Human Checkpoint Required: yes
-Human Checkpoint Reason: Drop the five approved brand source files into
-`docs/workflow/setup/brand-asset-sources/` (see README), then reply `Brand sources ready`.
-Blocked: yes
-Blocker: Owner brand source files missing (cannot replace bundled defaults without them)
-Allowed Actions: docs; wait for sources; read-only inspect when files appear
-Forbidden Actions: invent/replace brand binaries without sources; Studio rebuild / Portal branding
-rollout without later release approvals; Stage 2 until branding path clarified
-Next Required Step: Owner drops five source files → `Brand sources ready`
+Human Checkpoint Reason: Owner visual QA of new bundled branding (Studio + Portal local). Then
+separate production Studio installer and/or Portal App Hosting branding rollout approvals.
+Blocked: no (implement done; releases gated)
+Blocker: none for implement
+Allowed Actions: record visual QA; docs; prepare release PRs when approved
+Forbidden Actions: Studio rebuild / Portal App Hosting branding rollout without explicit release
+phrases; Stage 2 until branding release path complete (or owner resequences)
+Next Required Step: Owner visual QA → `PASS` / `PASS WITH NOTES` / `FAIL`; then release phrases
 
 Decision Log:
-- 2026-07-31 — `APPROVE BUNDLED BRAND ASSET IMPLEMENTATION` received; paused for missing sources
-  (checkpoint `docs/workflow/reviews/2026-07-31-production-bundled-brand-implementation-checkpoint.md`).
-- 2026-07-31 — Portal registration loading-ownership **PASS WITH NOTES** / signoff closed.
-- 2026-07-31 — Brand mapping previously approved (five sources; 8% padding).
+- 2026-07-31 — `Brand sources ready` → inspected five sources; replaced bundled logos; regenerated
+  Studio icons (8% pad) + Portal favicons; AppLogo/PortalLogo onError; aspect defaults updated.
+- 2026-07-31 — `APPROVE BUNDLED BRAND ASSET IMPLEMENTATION` received.
+- 2026-07-31 — Portal registration loading-ownership PASS WITH NOTES closed.
 
-Last Completed Step: **Recorded brand implement approval; created source drop zone.**
+Last Completed Step: **Bundled brand asset implementation on development.**
 
-Prior: Registration remediation signed off.
+Prior: Awaiting brand source drop.
 
 **Corrected `users/{uid}` field list for any future manual bootstrap:** `id` (string, same as
 document ID / Auth UID), `email` (string), `displayName` (string), `role` (string, `"owner"` for

@@ -4,7 +4,7 @@
 |-------|-------|
 | Date | 2026-07-31 |
 | Author | Planning Agent |
-| Status | amended — Class D **closed**; brand implement **approved** but **blocked on owner source files** |
+| Status | amended — Class D closed; bundled brand **implemented on development**; visual QA + releases gated |
 | Workflow | managed-phase (`production-release` Goal #13) |
 | Related | Incident `docs/workflow/reviews/2026-07-31-production-studio-storage-unauthorized-incident.md`; prior Formal Review `…-bundled-brand-review.md` (**preserved**); amendment `docs/workflow/reviews/2026-07-31-production-storage-cross-service-permission-review-amendment.md` (**approved**) |
 
@@ -335,6 +335,7 @@ needs its own App Hosting rollout approval.
 - [x] Post-fix: warning gone; Studio restart; design + brand upload QA — **PASS WITH NOTES**
   (catalog image delay = publisher debounce/snapshot; not auth)
 - [x] `APPROVE BUNDLED BRAND ASSET IMPLEMENTATION` received (2026-07-31)
-- [ ] Owner provides five brand source files in `docs/workflow/setup/brand-asset-sources/` —
-  **blocking** (see `docs/workflow/reviews/2026-07-31-production-bundled-brand-implementation-checkpoint.md`)
+- [x] Owner provided five brand source files in `docs/workflow/setup/brand-asset-sources/`
+- [x] Assets replaced + icons/favicons generated + `onError` fallback (on `development`)
+- [ ] Owner visual QA
 - [ ] Do not rebuild Studio / roll out Portal branding without later release approvals

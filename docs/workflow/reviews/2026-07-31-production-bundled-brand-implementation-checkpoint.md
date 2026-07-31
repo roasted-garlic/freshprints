@@ -1,50 +1,48 @@
-# Checkpoint: Bundled brand asset implementation — awaiting source files
+# Checkpoint: Bundled brand asset implementation complete (await visual + release)
 
 | Field | Value |
 |-------|-------|
 | Date | 2026-07-31 |
-| Approval received | `APPROVE BUNDLED BRAND ASSET IMPLEMENTATION` |
-| Mapping | Previously approved (`APPROVE BRAND ASSET MAPPING` — five sources; 8% app-icon padding) |
-| Plan | `docs/workflow/plans/2026-07-31-production-studio-storage-unauthorized-and-bundled-brand-plan.md` Part B |
-| Status | **Paused — owner source files not present** |
+| Approval | `APPROVE BUNDLED BRAND ASSET IMPLEMENTATION` + `Brand sources ready` |
+| Status | **Implemented on `development`** — not Studio-rebuilt / not Portal-rolled-out |
 
-## Why paused
+## Source inspection
 
-Implementation approval is recorded, but the five owner source assets are **not** available to
-copy from:
+| # | File | Result |
+|---|------|--------|
+| 1 | `01-studio-full-wordmark.png` | PNG 10800×2851 alpha 1.26 MB |
+| 2 | `02-studio-collapsed-square.png` | PNG 5400×5400 alpha |
+| 3 | `03-portal-full-wordmark.png` | PNG 9940×2430 alpha 1.07 MB (&lt;2 MB upload) |
+| 4 | `04-portal-collapsed-square.png` | PNG 5400×5400 alpha |
+| 5 | `05-favicon-app-mark.png` | PNG 5400×5400 — **byte-identical** to #2 (explicit source #5) |
 
-- No drop-folder sources in the repo
-- Downloads / Desktop had no matching recent brand PNGs
-- Working-tree brand/favicon/icon binaries currently **match git HEAD** (no pending replace)
-- Earlier uncommitted local brand WIP was lost during a pre-rollout hard reset and was **not**
-  recoverable from Cursor local history
+## Delivered
 
-Agents will **not** invent or silently reuse unrelated artwork as the new defaults.
+- Replaced Studio/Portal bundled logos at mapped paths
+- Regenerated Studio `icon.ico` / `icon.png` / `public/app-icon.png` via `generate-app-icon.mjs` (**8% padding**)
+- Regenerated Portal favicon/manifest set via `apps/portal/scripts/generate-portal-favicons.mjs`
+- `AppLogo` / `PortalLogo` `onError` → bundled fallback
+- Updated display default aspect ratios for new Studio/Portal wordmarks
 
-## Drop zone (created)
+## Automated checks
 
-`docs/workflow/setup/brand-asset-sources/` — see README there for suggested filenames.
+| Check | Result |
+|-------|--------|
+| `brandLogoSettings.constants` tests | pass |
+| Portal typecheck | pass |
+| Studio `tsc --noEmit` | pass |
+| `npm run lint` | pass |
+| `npm run build:portal` | (recorded in implement session) |
 
-| # | Suggested filename | Destination |
-|---|--------------------|-------------|
-| 1 | `01-studio-full-wordmark.png` | Studio full bundled logo |
-| 2 | `02-studio-collapsed-square.png` | Studio collapsed + `generate-app-icon.mjs` (8% pad) |
-| 3 | `03-portal-full-wordmark.png` | Portal full bundled logo |
-| 4 | `04-portal-collapsed-square.png` | Portal collapsed |
-| 5 | `05-favicon-app-mark.png` (or `.svg`) | Portal favicon + manifest set |
+## Still gated (separate approvals)
 
-## After files are dropped
+| Next | Phrase / action |
+|------|-----------------|
+| Owner visual QA | Studio sidebar/login + Portal chrome/favicon (local or after releases) |
+| Studio installer | Separate production Studio rebuild approval |
+| Portal App Hosting | Separate Portal branding rollout approval |
+| Stage 2 smoke | After branding releases as sequenced |
 
-Reply e.g. `Brand sources ready` (or restate the implementation approval). Agent will then:
+## Sources retained
 
-1. Inspect format / dimensions / alpha; stop on mismatch
-2. Replace four logo paths; generate Studio icons; generate Portal favicon/manifest set
-3. Add `AppLogo` / `PortalLogo` `onError` → bundled default
-4. Run lint / typecheck / builds; stop for visual QA and separate Studio installer / Portal App Hosting release approvals
-
-## Not started this pass
-
-- Asset file replacement
-- Icon / favicon generation
-- `onError` fallback (deferred until assets are in hand so one coherent implement pass)
-- Studio rebuild / Portal App Hosting branding rollout
+`docs/workflow/setup/brand-asset-sources/` kept for provenance.
