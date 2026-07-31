@@ -2,31 +2,29 @@
 `production-release` (Goal #13)
 
 Current Mode: managed-phase
-Current Phase: implement — **Stage 1C fixture recorded; Stage 1B show pending**
+Current Phase: implement — **Stage 1 fixtures complete; bundled brand next (before Stage 2)**
 Plan Status: complete (amended Class D) —
 `docs/workflow/plans/2026-07-31-production-studio-storage-unauthorized-and-bundled-brand-plan.md`
-Review Status: prior Formal Review preserved; Class D amendment **approved**; checkpoint
-`docs/workflow/reviews/2026-07-31-production-storage-cross-service-permission-checkpoint.md`
-(**PASS WITH NOTES**)
-Implement Status: Class D complete; Stage 1C complete (QA design reused); Stage 1B open; brand
-asset replacement still gated
-Test Status: Class D **PASS WITH NOTES**; Stage 1C recorded; Stage 1B pending
+Review Status: prior Formal Review preserved; Class D amendment **approved**; Stage 1 checkpoint
+updated
+Implement Status: Class D + Stage 1B/1C complete; brand asset replacement still gated
+Test Status: Class D **PASS WITH NOTES**; Stage 1B **PASS WITH NOTES**; Stage 1C recorded
 Signoff Status: pending (goal #13 not closed)
 DONE: no
 Human Checkpoint Required: yes
-Human Checkpoint Reason: Owner create Stage 1B `Production Smoke Test Show` in production Studio.
-After both Stage 1 fixtures are recorded, stop for Stage 1 fixture completion confirmation — then
-bundled-brand (`APPROVE BUNDLED BRAND ASSET IMPLEMENTATION`) **before** Stage 2 smoke.
+Human Checkpoint Reason: Stage 1 fixtures complete. Next: provide brand asset files and
+`APPROVE BUNDLED BRAND ASSET IMPLEMENTATION` before Stage 2 hosted.app smoke. Do not start Stage 2
+yet.
 Blocked: no
-Blocker: Stage 1B show fixture not yet created (named smoke-test show absent)
-Allowed Actions: read-only re-inspect/record Stage 1B after owner creates show; docs updates;
-prepare brand implement only after explicit approval phrase
-Forbidden Actions: duplicate catalog design import; Stage 2 smoke; further IAM; Rules deploy;
-Studio rebuild; App Check; CORS; snapshot rebuild; asset replacement without brand approval;
-DNS/domain; Portal-invite customer (deferred to Stage 4)
-Next Required Step: Owner creates `Production Smoke Test Show` (future, active,
-Portal-allocatable, normal 25-per-show limit, not completed). Reply when done so agent can
-record show ID/schedule/status via read-only inspection. Do **not** start Stage 2.
+Blocker: none for Stage 1; Stage 2 waits on bundled-brand sequence per owner
+Allowed Actions: docs updates; await brand assets + `APPROVE BUNDLED BRAND ASSET IMPLEMENTATION`;
+read-only verification
+Forbidden Actions: Stage 2 smoke until after brand implement sequence; duplicate design import;
+further IAM; Rules deploy; Studio rebuild without brand approval; App Check; CORS; snapshot
+rebuild; DNS/domain; Portal-invite customer (deferred to Stage 4)
+Next Required Step: Owner supplies brand assets and sends
+`APPROVE BUNDLED BRAND ASSET IMPLEMENTATION`. After brand work + any required Studio/Portal rollout
+approvals, then Stage 2 hosted.app smoke.
 
 Decision Log:
 - 2026-07-31 — `APPROVE BRAND ASSET MAPPING` (five-source map; preserve 8% app-icon padding).
@@ -34,15 +32,15 @@ Decision Log:
   `roles/firebaserules.firestoreServiceAgent` to
   `service-473623863375@gcp-sa-firebasestorage.iam.gserviceaccount.com` on `fresh-prints-prod`
   (IAM API; Storage Rules file not redeployed).
-- 2026-07-31 — Owner Class D post-fix QA **PASS WITH NOTES**: warning gone; design + brand
-  uploads authorized; Design Library + brand display OK; brief catalog-image delay attributed to
-  publisher 15s debounce / snapshot / refresh (not auth failure).
-- 2026-07-31 — Stage 1C: QA design `s9Yi7i8uq2ZddERyDuNT` qualifies (ready + published); no
-  duplicate import. Stage 1B still pending named show.
+- 2026-07-31 — Owner Class D post-fix QA **PASS WITH NOTES**.
+- 2026-07-31 — Stage 1C: QA design `s9Yi7i8uq2ZddERyDuNT` qualifies; no duplicate import.
+- 2026-07-31 — Stage 1B: owner Whatnot-imported Friday + Saturday shows recorded
+  (`kmpnyHAvKaesidMrlFkU`, `p8ooWvYU01wX1Nug53bp`); **PASS WITH NOTES** (live titles, not
+  placeholder name). Stage 1 fixtures **complete**. Stage 2 not started.
 
-Last Completed Step: **Stage 1C catalog fixture recorded** (reuse QA design; read-only verified).
+Last Completed Step: **Stage 1 fixture completion confirmed** (1B + 1C).
 
-Prior: Class D closed PASS WITH NOTES.
+Prior: Stage 1C recorded; awaiting 1B.
 
 **Corrected `users/{uid}` field list for any future manual bootstrap:** `id` (string, same as
 document ID / Auth UID), `email` (string), `displayName` (string), `role` (string, `"owner"` for

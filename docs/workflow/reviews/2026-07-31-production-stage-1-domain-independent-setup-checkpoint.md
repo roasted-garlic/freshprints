@@ -5,16 +5,18 @@
 | Date | 2026-07-31 |
 | Goal | `production-release` (Goal #13) |
 | Phase | Phase G / Stage 1 |
-| Status | **partial — Stage 1C recorded; Stage 1B show fixture still required** |
+| Status | **Stage 1B + 1C fixtures recorded — Stage 1 fixtures complete** |
 
-**Unblocked 2026-07-31:** Storage cross-service IAM + owner upload QA **PASS WITH NOTES**
-(`…-production-storage-cross-service-permission-checkpoint.md`). Catalog design import and brand
-logo upload work again.
+**Unblocked 2026-07-31:** Storage cross-service IAM + owner upload QA **PASS WITH NOTES**.
 
-**Stage 1C (2026-07-31 read-only):** QA design **qualifies** — no duplicate import. See § Stage 1C
-recorded values below. **Stage 1B** still awaiting owner-created `Production Smoke Test Show`
-(existing Whatnot shows are not this named fixture). **Do not start Stage 2** until both fixtures
-are recorded; owner intends bundled-brand implementation next, before Stage 2 smoke.
+**Stage 1C (2026-07-31):** QA design qualifies — recorded below.
+
+**Stage 1B (2026-07-31):** Owner imported **two** Whatnot shows via Studio import (worked). Both
+qualify functionally; recorded below (**PASS WITH NOTES** — titles are live Whatnot titles, not
+the placeholder name `Production Smoke Test Show`).
+
+**Stage 1 fixture completion:** **confirmed.** Do **not** start Stage 2. Next per owner: bundled
+brand implementation (`APPROVE BUNDLED BRAND ASSET IMPLEMENTATION`) before Stage 2 smoke.
 
 ---
 
@@ -44,29 +46,46 @@ re-run in this agent session. Owner should reconfirm when creating Stage 1B/1C f
 
 ## Stage 1B — Upcoming show
 
-**Status:** **pending owner creation** (read-only 2026-07-31).
+**Status:** **PASS WITH NOTES** (read-only 2026-07-31 after owner Whatnot import).
 
-`upcomingShows` currently has **2** Whatnot-synced shows (Friday/Saturday DTF titles,
-`maxTotalQuantity: 200`). **Neither** is titled `Production Smoke Test Show`. Do **not** treat
-those as the Stage 1B named fixture.
+Owner created **two** shows via Studio Whatnot import (confirmed working). Placeholder name
+`Production Smoke Test Show` was **not** used; live Whatnot titles are the fixtures. Functional
+requirements met for both.
 
-### Manual fixture checkpoint
+`settings/printRequestLimits` is **unset** on prod → platform default per-customer-per-show limit
+applies (`PRINT_REQUEST_MAX_QUANTITY_PER_SHOW_PER_CUSTOMER` = **20** in code). Show capacity
+`maxTotalQuantity: 200` is Whatnot show capacity, not that per-customer limit. Zero
+`showAllocations` for either show.
 
-**Name:** `Production Smoke Test Show`  
-**Requirements:** future schedule; active / Portal-allocatable; normal 25-per-show limit; not
-completed; no customer requests required.
+### Primary fixture (owner screenshot / Friday)
 
-Please create in production Studio, then reply (or ask agent to re-inspect) with:
+| Field | Value |
+|-------|-------|
+| show ID (Firestore) | `kmpnyHAvKaesidMrlFkU` |
+| Whatnot show ID | `3fc20124-605d-4db2-a2ff-90ae10f32982` |
+| name | 🔥FRIDAY EVENING DTF Transfer show \| Low Starts • Bundle & Save • Press Ready 👕🖨️ |
+| scheduled date/time | **Jul 31, 2026, 8:00 PM CDT** (`2026-08-01T01:00:00.000Z`) |
+| timezone | America/Chicago (CDT) — derived from schedule + Studio UI |
+| status | `scheduled` / production `open` / not archived |
+| Portal-allocatable | **yes** — future schedule; `canAllocatePrintRequestToShow` true (not past); `productionStatus: open`; capacity 0/200; no allocations |
 
-- show ID
-- name
-- scheduled date and time
-- timezone
-- status
-- Portal-allocatable confirmation
+### Secondary fixture (Saturday)
 
-Agent will record via read-only Admin SDK after creation. **Do not begin Stage 2** after this
-alone — wait for Stage 1 fixture completion confirmation, then bundled-brand before Stage 2.
+| Field | Value |
+|-------|-------|
+| show ID (Firestore) | `p8ooWvYU01wX1Nug53bp` |
+| Whatnot show ID | `ca5fe015-6945-40f6-83e1-0b06e88aae74` |
+| name | 🔥SATURDAY EVENING DTF Transfer show \| Low Starts • Bundle & Save • Press Ready 👕🖨️ |
+| scheduled date/time | **Aug 1, 2026, 8:00 PM CDT** (`2026-08-02T01:00:00.000Z`) |
+| timezone | America/Chicago (CDT) |
+| status | `scheduled` / production `open` / not archived |
+| Portal-allocatable | **yes** — same criteria as primary |
+
+### Notes
+
+- Import path validated on production Studio.
+- Do **not** require renaming to `Production Smoke Test Show` unless Stage 2 smoke needs a
+  distinctive label (not required for fixture completeness).
 
 ---
 
@@ -178,8 +197,8 @@ Manager as a precaution.
 
 Checklist: `docs/workflow/reviews/2026-07-31-production-stage-2-hosted-app-smoke-checklist.md`
 
-Status: **prepared — not executed**. Blocked on Stage 1B fixture (1C complete); owner will run
-bundled-brand implementation before Stage 2; customer/invite tests deferred to Stage 4.
+Status: **prepared — not executed**. Stage 1B/1C fixtures recorded. Owner sequence: bundled-brand
+implementation next, then Stage 2; customer/invite tests deferred to Stage 4.
 
 ---
 

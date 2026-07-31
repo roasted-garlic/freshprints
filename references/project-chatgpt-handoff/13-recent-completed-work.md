@@ -2,10 +2,15 @@
 
 > Signed-off or largely complete work. External agents should not re-plan or duplicate this.
 
+## 2026-07-31 - production-release: Stage 1 fixtures complete (1B + 1C)
+
+- 1B: two Whatnot-imported shows recorded (Friday primary + Saturday); PASS WITH NOTES on titles
+- 1C: QA design reused; Stage 2 not started; next = bundled brand approval/implement
+
 ## 2026-07-31 - production-release: Stage 1C catalog fixture recorded (no duplicate import)
 
 - Reused Class D QA design `s9Yi7i8uq2ZddERyDuNT` (ready + published to portal-catalog gen 7)
-- Stage 1B `Production Smoke Test Show` still pending; Stage 2 not started; brand before Stage 2
+- Stage 1B later completed via Whatnot import (see section above)
 
 ## 2026-07-31 - production-release: Class D Storage closed (PASS WITH NOTES)
 

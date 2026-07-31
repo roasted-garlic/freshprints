@@ -1,16 +1,20 @@
 # Fresh Prints - Current State Snapshot
 
-## 2026-07-31 — Goal #13 Stage 1C fixture **recorded** (QA design reused); Stage 1B pending
+## 2026-07-31 — Goal #13 Stage 1 fixtures **COMPLETE** (1B + 1C)
 
-- Design ID `s9Yi7i8uq2ZddERyDuNT` — title “Funky Fresh Print - Steph - Running Noooooowww”
-- Category Occupations; tags `funny`, `sarcastic`; `status: ready` / `aiReviewStatus: approved`
-- Storage prefixes `/originals/`, `/thumbnails/`, `/previews/` (objects present)
-- Studio Design Library: yes; hosted Portal discover (gen `7-e79c4f86583f1428`): yes
-- **Do not** import a duplicate design
-- Stage 1B `Production Smoke Test Show` **not** present yet (2 other Whatnot shows exist)
-- **Do not** start Stage 2. After 1B recorded → confirm Stage 1 fixtures complete → bundled brand
-  before Stage 2 (`APPROVE BUNDLED BRAND ASSET IMPLEMENTATION`)
+- **1C:** design `s9Yi7i8uq2ZddERyDuNT` (ready + published) — no duplicate
+- **1B:** two Whatnot-imported shows — PASS WITH NOTES (live titles)
+  - Primary Friday: Firestore `kmpnyHAvKaesidMrlFkU` / Whatnot `3fc20124-605d-4db2-a2ff-90ae10f32982`
+    — Jul 31, 2026 8:00 PM CDT; `scheduled`/`open`; Portal-allocatable yes
+  - Saturday: Firestore `p8ooWvYU01wX1Nug53bp` / Whatnot `ca5fe015-6945-40f6-83e1-0b06e88aae74`
+    — Aug 1, 2026 8:00 PM CDT; same status criteria
+- **Do not** start Stage 2
+- **Next:** bundled brand — owner assets + `APPROVE BUNDLED BRAND ASSET IMPLEMENTATION`
 - Checkpoint: `docs/workflow/reviews/2026-07-31-production-stage-1-domain-independent-setup-checkpoint.md`
+
+## 2026-07-31 — Goal #13 Stage 1C fixture recorded (QA design reused); Stage 1B pending
+
+- **Superseded** — Stage 1B recorded; Stage 1 fixtures complete (see section above)
 
 ## 2026-07-31 — Goal #13 Class D **CLOSED**: Storage uploads PASS WITH NOTES
 
