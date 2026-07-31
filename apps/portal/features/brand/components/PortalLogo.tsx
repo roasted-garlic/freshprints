@@ -1,5 +1,7 @@
 'use client'
 
+import { useState } from 'react'
+
 import { usePortalBrandLogoSettingsReady } from '../hooks/usePortalBrandLogoSettings'
 import { usePortalBrandLogoSrc } from '../hooks/usePortalBrandLogoSrc'
 
@@ -38,7 +40,9 @@ export function PortalLogo({
   const fallback = variant === 'collapsed' ? PORTAL_LOGO_COLLAPSED_SRC : PORTAL_LOGO_SRC
   const resolvedFromSettings = usePortalBrandLogoSrc(variant, fallback)
   const logosReady = usePortalBrandLogoSettingsReady()
-  const src = srcOverride ?? resolvedFromSettings
+  const preferredSrc = srcOverride ?? resolvedFromSettings
+  const [failedSrc, setFailedSrc] = useState<string | null>(null)
+  const src = failedSrc && preferredSrc === failedSrc ? fallback : preferredSrc
   // Hide until cache/Firestore resolve so bundled defaults do not flash over custom uploads.
   const showLogo = Boolean(srcOverride) || logosReady
 
@@ -48,6 +52,11 @@ export function PortalLogo({
       aria-hidden={alt ? undefined : true}
       className={`portal-logo ${className}`.trim()}
       height={height}
+      onError={() => {
+        if (preferredSrc && preferredSrc !== fallback) {
+          setFailedSrc(preferredSrc)
+        }
+      }}
       src={showLogo ? src : LOGO_PLACEHOLDER_SRC}
       style={
         width !== undefined

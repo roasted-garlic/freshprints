@@ -2,38 +2,33 @@
 `production-release` (Goal #13)
 
 Current Mode: managed-phase
-Current Phase: test — **loading-ownership fix implemented on development; await App Hosting rollout approval**
-Plan Status: complete —
-parent + `docs/workflow/plans/2026-07-31-production-portal-registration-post-rollout-amendment.md`
-Review Status: Formal Review approved; Implementation Review **approved** —
-`docs/workflow/reviews/2026-07-31-production-portal-registration-loading-ownership-implementation-review.md`
-Implement Status: **complete** on `development` (not yet rolled out to App Hosting)
-Test Status: automated **passed** (27/27 auth-focused); hosted.app owner QA pending rollout
-Signoff Status: pending App Hosting rollout + owner QA
-DONE: no
+Current Phase: signoff — **bundled brand implement + visual QA PASS; await production release phrases**
+Plan Status: complete — Part B branding implemented
+Review Status: implement signed off (approved); production releases pending
+Implement Status: complete on `development` (`f0f555a`)
+Test Status: automated passed; owner visual QA **PASS**
+Signoff Status: **approved** (dev implement) —
+`docs/workflow/reviews/2026-07-31-production-bundled-brand-implementation-signoff.md`
+DONE: no (Goal #13 continues; Studio/Portal branding not yet in production)
 Human Checkpoint Required: yes
-Human Checkpoint Reason: Await
-`APPROVE PRODUCTION PORTAL APP HOSTING ROLLOUT: LOADING-OWNERSHIP FIX`. Branding + Stage 2 remain
-paused. Do not delete Auth users.
-Blocked: no (implementation ready; rollout gated)
-Blocker: none for implement; production registration still broken until new App Hosting rollout
-Allowed Actions: docs; await rollout approval; read-only verify
-Forbidden Actions: production merge / App Hosting rollout until phrase; Auth user delete;
-Firestore repair; Auth/API-key/domain/OAuth; Functions/Rules deploy; branding; Stage 2; domain
-cutover
-Next Required Step: Owner sends
-`APPROVE PRODUCTION PORTAL APP HOSTING ROLLOUT: LOADING-OWNERSHIP FIX`
+Human Checkpoint Reason: Await production release approval(s):
+`APPROVE PRODUCTION STUDIO INSTALLER: BUNDLED BRAND ASSETS` and/or
+`APPROVE PRODUCTION PORTAL APP HOSTING ROLLOUT: BUNDLED BRAND ASSETS`
+Blocked: no
+Blocker: none
+Allowed Actions: docs; prepare releases when phrases received
+Forbidden Actions: Studio rebuild / Portal branding App Hosting rollout without phrases; Stage 2
+until branding production path complete (or owner resequences)
+Next Required Step: Owner sends Studio installer and/or Portal App Hosting branding rollout phrase(s)
 
 Decision Log:
-- 2026-07-31 — `APPROVE PORTAL REGISTRATION LOADING-OWNERSHIP FIX IMPLEMENTATION` → implemented
-  on development; Implementation Review approved; automated tests 27/27.
-- 2026-07-31 — Owner QA **FAIL** after prior `8943d17` rollout (sticky `isAuthActionLoading`).
-- 2026-07-31 — Prior `APPROVE PRODUCTION PORTAL APP HOSTING ROLLOUT` → `8943d17` / `b882e5c`
-  (insufficient; superseded by loading-ownership fix).
+- 2026-07-31 — Owner bundled-brand visual QA **PASS**.
+- 2026-07-31 — Brand sources applied on `development` (`f0f555a`).
+- 2026-07-31 — `APPROVE BUNDLED BRAND ASSET IMPLEMENTATION` + `Brand sources ready`.
 
-Last Completed Step: **Loading-ownership fix implemented + Implementation Review approved.**
+Last Completed Step: **Bundled brand visual QA PASS / implement signoff.**
 
-Prior: Post-rollout FAIL diagnosis; amendment Formal Review approved.
+Prior: Brand assets implemented on development.
 
 **Corrected `users/{uid}` field list for any future manual bootstrap:** `id` (string, same as
 document ID / Auth UID), `email` (string), `displayName` (string), `role` (string, `"owner"` for

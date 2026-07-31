@@ -232,10 +232,9 @@ See Owner QA checklist below.
 - [x] Bounded timeout (45s), stage instrumentation, terminal error, retry, sign-out, duplicate guard
 - [x] `APPROVE PRODUCTION PORTAL APP HOSTING ROLLOUT` → `8943d17` live
 - [x] Owner QA → **FAIL** (timeout/error never appeared; no Firestore provisioning)
-- [ ] Post-rollout loading-ownership fix — **implemented on development**; Implementation Review
-  approved; await
-  `APPROVE PRODUCTION PORTAL APP HOSTING ROLLOUT: LOADING-OWNERSHIP FIX`
-  (`docs/workflow/plans/2026-07-31-production-portal-registration-post-rollout-amendment.md`)
+- [x] Post-rollout loading-ownership fix — **deployed** App Hosting (`58aa0da` / PR #13); await
+  owner QA
+  (`docs/workflow/reviews/2026-07-31-production-portal-registration-loading-ownership-app-hosting-rollout-checkpoint.md`)
 
 ### Phase 3 — Partial-account handling (updated)
 
@@ -247,14 +246,15 @@ when a Google Auth-only user is present again after signup.
 
 ## Owner QA checklist (post-remediation)
 
-- [ ] Google registration completes; overlay exits
-- [ ] Email/password registration completes (parity on shared provisioning)
-- [ ] `users/{uid}`, `customers`, `customerUsernames` exist once each
-- [ ] Sign out → login works
-- [ ] Forced Auth failure / timeout shows **visible** error (not infinite spinner)
-- [ ] Sign-out / start-over usable after failure
-- [ ] Refresh during setup does not trap without escape
-- [ ] Duplicate submit does not create duplicate customers
-- [ ] Stage 1 design `s9Yi7i8uq2ZddERyDuNT` and shows `kmpnyHAvKaesidMrlFkU` /
-      `p8ooWvYU01wX1Nug53bp` unchanged
-- [ ] No tokens in UI errors or client logs
+- [x] Google registration completes; overlay exits
+- [x] Owner QA PASS WITH NOTES (2026-07-31) — see loading-ownership signoff
+- [ ] Email/password registration completes (parity on shared provisioning) — not retested this pass
+- [x] `users/{uid}`, `customers`, `customerUsernames` exist once each (owner success path)
+- [ ] Sign out → login works — not explicitly re-recorded this pass
+- [ ] Forced Auth failure / timeout shows **visible** error (not infinite spinner) — not forced this pass
+- [x] Sign-out / start-over usable after failure — COOP/extension notes non-blocking; form interactive
+- [ ] Refresh during setup does not trap without escape — not forced this pass
+- [ ] Duplicate submit does not create duplicate customers — not forced this pass
+- [x] Stage 1 design / shows unchanged (preserved)
+- [x] No tokens in UI errors or client stage logs (instrumentation stage-only)
+- [ ] Username HTML `pattern` browser validity — **TD-029** follow-up

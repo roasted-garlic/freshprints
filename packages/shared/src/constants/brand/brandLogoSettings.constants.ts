@@ -20,8 +20,15 @@ export const BRAND_LOGO_CONTENT_TYPE = "image/png";
 /** Max upload size (2 MiB) — keep in sync with storage.rules. */
 export const BRAND_LOGO_MAX_BYTES = 2 * 1024 * 1024;
 
-/** Width/height of bundled full wordmarks (10800×4358). */
-export const BRAND_LOGO_FULL_ASPECT_RATIO = 10800 / 4358;
+/** Width/height of bundled Studio full wordmark (10800×2851). */
+export const BRAND_LOGO_STUDIO_FULL_ASPECT_RATIO = 10800 / 2851;
+/** Width/height of bundled Portal full wordmark (9940×2430). */
+export const BRAND_LOGO_PORTAL_FULL_ASPECT_RATIO = 9940 / 2430;
+/**
+ * Default full-wordmark AR when app is unknown — Studio bundled ratio.
+ * Prefer {@link BRAND_LOGO_STUDIO_FULL_ASPECT_RATIO} / {@link BRAND_LOGO_PORTAL_FULL_ASPECT_RATIO}.
+ */
+export const BRAND_LOGO_FULL_ASPECT_RATIO = BRAND_LOGO_STUDIO_FULL_ASPECT_RATIO;
 /** Collapsed marks are effectively square. */
 export const BRAND_LOGO_COLLAPSED_ASPECT_RATIO = 1;
 
@@ -89,13 +96,13 @@ function boxFromHeight(heightPx: number, aspectRatio: number): BrandLogoDisplayB
  * match out of the box; each remains an independent owner-tunable control.
  */
 export const DEFAULT_BRAND_LOGO_DISPLAY_SIZES = {
-  portalHeader: boxFromHeight(52, BRAND_LOGO_FULL_ASPECT_RATIO),
-  portalSidebar: boxFromHeight(52, BRAND_LOGO_FULL_ASPECT_RATIO),
+  portalHeader: boxFromHeight(52, BRAND_LOGO_PORTAL_FULL_ASPECT_RATIO),
+  portalSidebar: boxFromHeight(52, BRAND_LOGO_PORTAL_FULL_ASPECT_RATIO),
   portalSidebarCollapsed: boxFromHeight(36, BRAND_LOGO_COLLAPSED_ASPECT_RATIO),
-  portalAuth: boxFromHeight(64, BRAND_LOGO_FULL_ASPECT_RATIO),
-  studioSidebar: boxFromHeight(52, BRAND_LOGO_FULL_ASPECT_RATIO),
+  portalAuth: boxFromHeight(64, BRAND_LOGO_PORTAL_FULL_ASPECT_RATIO),
+  studioSidebar: boxFromHeight(52, BRAND_LOGO_STUDIO_FULL_ASPECT_RATIO),
   studioSidebarCollapsed: boxFromHeight(36, BRAND_LOGO_COLLAPSED_ASPECT_RATIO),
-  studioLogin: boxFromHeight(72, BRAND_LOGO_FULL_ASPECT_RATIO),
+  studioLogin: boxFromHeight(72, BRAND_LOGO_STUDIO_FULL_ASPECT_RATIO),
 } as const satisfies Record<BrandLogoDisplayPlacementKey, BrandLogoDisplayBox>;
 
 export type BrandLogoDisplaySizesInput = {
@@ -126,8 +133,16 @@ export function brandLogoFieldKey(app: BrandLogoApp, slot: BrandLogoSlotKind): B
   return "portalCollapsed";
 }
 
-export function defaultBrandLogoAspectRatio(slot: BrandLogoSlotKind): number {
-  return slot === "collapsed" ? BRAND_LOGO_COLLAPSED_ASPECT_RATIO : BRAND_LOGO_FULL_ASPECT_RATIO;
+export function defaultBrandLogoAspectRatio(
+  slot: BrandLogoSlotKind,
+  app: BrandLogoApp = "studio",
+): number {
+  if (slot === "collapsed") {
+    return BRAND_LOGO_COLLAPSED_ASPECT_RATIO;
+  }
+  return app === "portal"
+    ? BRAND_LOGO_PORTAL_FULL_ASPECT_RATIO
+    : BRAND_LOGO_STUDIO_FULL_ASPECT_RATIO;
 }
 
 export function parseBrandLogoAspectRatio(value: unknown): number | null {
@@ -153,7 +168,7 @@ export function resolveBrandLogoAspectRatio(
   if (typeof stored === "number" && Number.isFinite(stored) && stored > 0) {
     return stored;
   }
-  return defaultBrandLogoAspectRatio(slot);
+  return defaultBrandLogoAspectRatio(slot, app);
 }
 
 /** Placement → which logo slot supplies aspect ratio for linked width/height edits. */
@@ -394,10 +409,14 @@ export function resolveBrandLogoSettings(raw: unknown): BrandLogoSettings {
   const portalFull = parseBrandLogoSlotRecord(data.portalFull);
   const portalCollapsed = parseBrandLogoSlotRecord(data.portalCollapsed);
 
-  const fullAr = (slot: BrandLogoSlotRecord | null | undefined, fallbackSlot: BrandLogoSlotKind) =>
+  const fullAr = (
+    slot: BrandLogoSlotRecord | null | undefined,
+    app: BrandLogoApp,
+    fallbackSlot: BrandLogoSlotKind,
+  ) =>
     typeof slot?.aspectRatio === "number" && slot.aspectRatio > 0
       ? slot.aspectRatio
-      : defaultBrandLogoAspectRatio(fallbackSlot);
+      : defaultBrandLogoAspectRatio(fallbackSlot, app);
 
   return {
     studioFull,
@@ -408,38 +427,43 @@ export function resolveBrandLogoSettings(raw: unknown): BrandLogoSettings {
       data,
       "portalHeader",
       "portalHeaderPx",
-      fullAr(portalFull, "full"),
+      fullAr(portalFull, "portal", "full"),
     ),
     portalSidebar: resolvePlacementBox(
       data,
       "portalSidebar",
       "portalSidebarPx",
-      fullAr(portalFull, "full"),
+      fullAr(portalFull, "portal", "full"),
     ),
     portalSidebarCollapsed: resolvePlacementBox(
       data,
       "portalSidebarCollapsed",
       "portalSidebarCollapsedPx",
-      fullAr(portalCollapsed, "collapsed"),
+      fullAr(portalCollapsed, "portal", "collapsed"),
     ),
-    portalAuth: resolvePlacementBox(data, "portalAuth", "portalAuthPx", fullAr(portalFull, "full")),
+    portalAuth: resolvePlacementBox(
+      data,
+      "portalAuth",
+      "portalAuthPx",
+      fullAr(portalFull, "portal", "full"),
+    ),
     studioSidebar: resolvePlacementBox(
       data,
       "studioSidebar",
       "studioSidebarPx",
-      fullAr(studioFull, "full"),
+      fullAr(studioFull, "studio", "full"),
     ),
     studioSidebarCollapsed: resolvePlacementBox(
       data,
       "studioSidebarCollapsed",
       "studioSidebarCollapsedPx",
-      fullAr(studioCollapsed, "collapsed"),
+      fullAr(studioCollapsed, "studio", "collapsed"),
     ),
     studioLogin: resolvePlacementBox(
       data,
       "studioLogin",
       "studioLoginPx",
-      fullAr(studioFull, "full"),
+      fullAr(studioFull, "studio", "full"),
     ),
     updatedAt: data.updatedAt,
     updatedBy: typeof data.updatedBy === "string" ? data.updatedBy : undefined,

@@ -35,6 +35,7 @@ See field definitions in template. Fixes require approved Managed Phases — **n
 | TD-026 | Create My Design with AI deferred after Phase 9A | feature gap | medium | Portal Custom Designs cards | Coming-soon card only in 9A | Separate managed phase after 9A signoff | `phase-9b-create-with-ai` | open |
 | TD-027 | Fresh Prints Assisted Creation deferred after Phase 9A | feature gap | medium | Portal Custom Designs cards | MVP implemented (Phase 9C); awaiting `fresh-prints-dev` deploy + manual QA | Close after 9C signoff | `phase-9c-assisted-creation` | in_progress |
 | TD-028 | `functions/.gitignore` previously matched any `lib/` and hid `functions/src/lib` from git | deployment | **high** | `functions/.gitignore` | Source helpers were local-only / not on origin | Changed to `/lib/`; commit `functions/src/lib` (exclude archived orphans) | `phase-9a-etsy-recommendations-foundation` | in progress |
+| TD-029 | Portal username HTML `pattern` invalid in browser | ui/validation | low | `CompleteProfileForm.tsx`, `RegisterForm.tsx` `pattern="[a-z0-9][a-z0-9_-]{1,30}[a-z0-9]"` | Browser reports invalid character class; may disable native constraint validation (server-side still enforces). Noted in loading-ownership owner QA PASS WITH NOTES | Put `-` at start/end of class or escape; align with server username rules; add regression | `portal-username-html-pattern-fix` | open |
 
 ---
 

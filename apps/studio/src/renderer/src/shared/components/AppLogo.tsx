@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 import studioLogoUrl from "../../../../assets/brand/fresh-prints-studio-logo.png";
 import studioLogoCollapsedUrl from "../../../../assets/brand/fresh-prints-studio-logo-collapsed.png";
 import { useStudioBrandLogoSettingsReady } from "../../features/settings/hooks/useStudioBrandLogoSettings";
@@ -42,7 +44,10 @@ export function AppLogo({
   const fallback = variant === "collapsed" ? studioLogoCollapsedUrl : studioLogoUrl;
   const resolvedFromSettings = useStudioBrandLogoSrc(variant, fallback);
   const logosReady = useStudioBrandLogoSettingsReady();
-  const src = srcOverride ?? resolvedFromSettings;
+  const preferredSrc = srcOverride ?? resolvedFromSettings;
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  const src =
+    failedSrc && preferredSrc === failedSrc ? fallback : preferredSrc;
   // Hide until cache/Firestore resolve so bundled defaults do not flash over custom uploads.
   const showLogo = Boolean(srcOverride) || logosReady;
 
@@ -52,6 +57,11 @@ export function AppLogo({
       aria-hidden={alt ? undefined : true}
       className={`app-logo ${className}`.trim()}
       height={height}
+      onError={() => {
+        if (preferredSrc && preferredSrc !== fallback) {
+          setFailedSrc(preferredSrc);
+        }
+      }}
       src={showLogo ? src : LOGO_PLACEHOLDER_SRC}
       style={
         width !== undefined

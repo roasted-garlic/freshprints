@@ -4,7 +4,7 @@
 |-------|-------|
 | Date | 2026-07-31 |
 | Author | Planning Agent |
-| Status | amended — Class D **closed** (IAM + owner QA PASS WITH NOTES); brand implement still gated |
+| Status | amended — Class D closed; bundled brand **implemented on development**; visual QA + releases gated |
 | Workflow | managed-phase (`production-release` Goal #13) |
 | Related | Incident `docs/workflow/reviews/2026-07-31-production-studio-storage-unauthorized-incident.md`; prior Formal Review `…-bundled-brand-review.md` (**preserved**); amendment `docs/workflow/reviews/2026-07-31-production-storage-cross-service-permission-review-amendment.md` (**approved**) |
 
@@ -334,5 +334,9 @@ needs its own App Hosting rollout approval.
   `service-473623863375@gcp-sa-firebasestorage.iam.gserviceaccount.com`)
 - [x] Post-fix: warning gone; Studio restart; design + brand upload QA — **PASS WITH NOTES**
   (catalog image delay = publisher debounce/snapshot; not auth)
-- [ ] Owner provides brand asset files; then `APPROVE BUNDLED BRAND ASSET IMPLEMENTATION` before replacing files
-- [ ] Do not rebuild Studio / roll out Portal branding without later release approvals
+- [x] `APPROVE BUNDLED BRAND ASSET IMPLEMENTATION` received (2026-07-31)
+- [x] Owner provided five brand source files in `docs/workflow/setup/brand-asset-sources/`
+- [x] Assets replaced + icons/favicons generated + `onError` fallback (on `development`)
+- [x] Owner visual QA — **PASS** (2026-07-31)
+- [ ] `APPROVE PRODUCTION STUDIO INSTALLER: BUNDLED BRAND ASSETS`
+- [ ] `APPROVE PRODUCTION PORTAL APP HOSTING ROLLOUT: BUNDLED BRAND ASSETS`

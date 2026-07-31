@@ -89,11 +89,14 @@ describe("brandLogoSettings.constants", () => {
 
     const empty = resolveBrandLogoSettings(null);
     assert.equal(empty.portalHeader.heightPx, 52);
-    assert.equal(empty.portalHeader.widthPx, fromHeight.widthPx);
-    // Matching defaults only — header and expanded sidebar are separate controls.
+    assert.equal(
+      empty.portalHeader.widthPx,
+      Math.round(52 * (9940 / 2430)),
+    );
     assert.equal(empty.portalSidebar.heightPx, 52);
     assert.equal(empty.portalSidebar.widthPx, empty.portalHeader.widthPx);
     assert.deepEqual(empty.portalSidebar, empty.portalHeader);
+    assert.equal(empty.studioSidebar.widthPx, Math.round(52 * BRAND_LOGO_FULL_ASPECT_RATIO));
 
     const parsed = parseBrandLogoDisplaySizesInput({
       portalHeader: { widthPx: 130, heightPx: 52 },
@@ -109,7 +112,7 @@ describe("brandLogoSettings.constants", () => {
 
     const legacy = resolveBrandLogoSettings({ portalHeaderPx: 40 });
     assert.equal(legacy.portalHeader.heightPx, 40);
-    assert.equal(legacy.portalHeader.widthPx, Math.round(40 * BRAND_LOGO_FULL_ASPECT_RATIO));
+    assert.equal(legacy.portalHeader.widthPx, Math.round(40 * (9940 / 2430)));
   });
 });
 
