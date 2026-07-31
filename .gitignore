@@ -13,6 +13,7 @@ dist-ssr
 dist-electron/
 release/
 functions/lib
+.turbo
 functions/node_modules
 packages/shared/src/**/*.js
 packages/shared/src/**/*.js.map
