@@ -31,15 +31,13 @@ throughout this pass.**
 Test Status: pending
 Signoff Status: pending
 DONE: no
-Last Completed Step: **Domain-last sequencing amendment documented and Formal Review
-`approved`.** Owner decision: keep Coming Soon on `myprintrequest.com` until all
-domain-independent production setup + hosted.app smoke + readiness gate complete; connect
-custom domain only after `APPROVE MYPRINTREQUEST.COM CUTOVER`. Plan §7 +
-`docs/workflow/reviews/2026-07-31-production-release-domain-last-sequencing-review.md`.
-`development` fast-forwarded to `origin/production` (`bfa42ef`, PR #11 merge). **No DNS /
-Authorized Domains / OAuth / App Hosting / Firebase deploy / CORS reapply / snapshot rebuild.**
+Last Completed Step: **Stage 1 domain-independent setup advanced (partial).** Read-only verified
+owner (1 active with timestamps), taxonomy 18/1122, Functions 99, indexes 65, CORS, hosted.app
+200, Coming Soon still on apex. DNS/rollback recorded. Portal-invite **test customer deferred**
+(invite continue URL is `myprintrequest.com`). Stage 2 hosted.app checklist prepared (not run).
+**Owner still must create Stage 1B show + Stage 1C design fixtures in Studio.**
 
-Prior: Owner Discover retest PASS after production Storage CORS; PR #11 merged recording CORS.
+Prior: Owner PASS on `settings/emailProviders` (Resend invite / Brevo proof).
 
 **Corrected `users/{uid}` field list for any future manual bootstrap:** `id` (string, same as
 document ID / Auth UID), `email` (string), `displayName` (string), `role` (string, `"owner"` for
@@ -383,18 +381,19 @@ or production data was configured/created/seeded. No production Studio installer
 or Search Console configuration occurred. `production` was not modified by Git (Functions deploy is
 a Firebase action, not a commit). `master` was not deleted. No force-push occurred anywhere in this
 pass.
-Human Checkpoint Required: no — sequencing amendment reviewed (`approved`). Domain cutover remains
-blocked until later readiness gate.
+Human Checkpoint Required: yes — **owner create Stage 1B upcoming show + Stage 1C catalog design
+fixtures** in production Studio (see Stage 1 checkpoint). Do not create Portal-invite customers
+yet.
 Blocked: no
-Allowed Actions: Stage 1 domain-independent production setup (Studio emailProviders, fixtures,
-verification); Stage 2 hosted.app smoke when fixtures ready; docs updates for readiness gate
-Forbidden Actions: connecting `myprintrequest.com`; Cloudflare DNS changes; Firebase Authorized
-Domains; Google OAuth changes; App Hosting custom-domain binding; GA4/Search Console go-live;
-Functions/Rules deploys without separate approval; CORS reapply; `rebuildCatalogSnapshots`;
-deleting `master`; force-push; creating `v1.0.0` tag
-Next Required Step: **Stage 1** — complete domain-independent setup starting with Studio
-`settings/emailProviders` (`inviteProvider: resend`, `proofNoticeProvider: brevo`) if not already
-set, then remaining Stage 1 checklist items. Do **not** connect the custom domain.
+Allowed Actions: document Stage 1 progress; await owner fixture IDs; after fixtures, begin Stage 2
+hosted.app smoke under explicit continue
+Forbidden Actions: connecting `myprintrequest.com`; DNS/Cloudflare edits; Authorized Domains;
+Google OAuth domain changes; App Hosting rollout; Functions/Rules deploys; CORS reapply;
+`rebuildCatalogSnapshots` without separate review; `createCustomerWithPortalInvite` before
+cutover; Stage 2 execution before fixtures; `firebase functions:secrets:access` for readiness
+checks; printing secrets
+Next Required Step: Owner creates `Production Smoke Test Show` and one approved ready catalog
+design fixture; reply with IDs/`PASS`. Then execute Stage 2 checklist on hosted.app.
 
 Decision Log:
 - 2026-07-31 — Owner `APPROVE PRODUCTION STORAGE CORS`. Applied `storage.cors.production.json` to
@@ -407,6 +406,10 @@ Decision Log:
 - 2026-07-31 — PR #11 merged (`bfa42ef`); `development` fast-forwarded to match `production`.
 - 2026-07-31 — Owner domain-last decision recorded; Plan §7 + Formal Review **approved**. Custom
   domain remains final cutover after `APPROVE MYPRINTREQUEST.COM CUTOVER`.
+- 2026-07-31 — Owner **PASS**: production Studio `settings/emailProviders` =
+  `inviteProvider: "resend"`, `proofNoticeProvider: "brevo"`.
+- 2026-07-31 — Stage 1 partial: infra/DNS/owner/taxonomy verified; customer invite deferred;
+  Stage 2 checklist prepared; awaiting owner show + design fixtures.
 
 Plan:
 `docs/workflow/plans/2026-07-29-preproduction-static-analysis-cleanup-plan.md`.

@@ -1,5 +1,24 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-07-31 — Goal #13: Stage 1 partial — infra/DNS recorded; fixtures pending owner
+
+- Read-only: owner profile OK; 18 categories / 1,122 tags; 99 Functions; 65 indexes; CORS OK;
+  hosted.app 200; Coming Soon still on apex (Cloudflare)
+- Portal-invite test customer **deferred** (continue URL → `myprintrequest.com/login`)
+- Stage 2 hosted.app smoke checklist prepared, **not executed**
+- Owner next: create upcoming show + one ready catalog design in production Studio
+
+## 2026-07-31 — Goal #13: production `settings/emailProviders` PASS
+
+Owner set production Studio email providers:
+
+- `inviteProvider: "resend"`
+- `proofNoticeProvider: "brevo"`
+
+Stage 1 email-provider item closed. Next: remaining Stage 1 fixtures (upcoming show, minimum
+approved test data as needed, Coming Soon DNS/rollback recorded without changing DNS), then
+Stage 2 hosted.app smoke. Custom domain still deferred until `APPROVE MYPRINTREQUEST.COM CUTOVER`.
+
 ## 2026-07-31 — Goal #13 production-release: domain-last sequencing amendment approved
 
 **Owner decision:** do **not** point `myprintrequest.com` at App Hosting yet. Coming Soon remains

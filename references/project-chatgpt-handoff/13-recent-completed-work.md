@@ -2,6 +2,12 @@
 
 > Signed-off or largely complete work. External agents should not re-plan or duplicate this.
 
+## 2026-07-31 - production-release: Stage 1 partial (infra/DNS); customer invite deferred; Stage 2 checklist prepared
+
+- Verified owner/taxonomy/Functions/indexes/CORS/hosted.app/Coming Soon without DNS changes
+- Deferred `createCustomerWithPortalInvite` until domain cutover (continue URL is `.com`)
+- Prepared hosted.app Stage 2 checklist; awaiting owner show + design fixtures before smoke
+
 ## 2026-07-31 - production-release: domain-last sequencing amendment (docs only, Formal Review approved)
 
 - Owner: keep Coming Soon on `myprintrequest.com` until domain-independent setup + hosted.app

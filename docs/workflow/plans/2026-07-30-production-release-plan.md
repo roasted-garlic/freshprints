@@ -488,19 +488,29 @@ From `DEPLOYMENT.md` / original §3.18 remaining intent:
 
 Complete or verify (no DNS / App Hosting custom-domain / Authorized Domains changes):
 
-- [ ] Studio `settings/emailProviders`: invitation **Resend**, proof-notice **Brevo**
-- [ ] Production owner account + role verification
-- [ ] 18 active categories; 1,122 approved tags
-- [ ] Valid catalog-reference + portal-catalog manifests; Studio + Portal generated catalog usable
-- [ ] Minimum production catalog / workflow data approved for testing (as needed)
-- [ ] One upcoming production show for workflow testing
-- [ ] Minimum test customer data required for smoke testing
-- [ ] Rules, indexes, Functions, secrets, Storage, App Hosting configuration verification
-- [ ] Resend + Brevo sender-domain verification status (dashboard; no live customer email required)
-- [ ] Gemini + Etsy API availability verification
-- [ ] Production App Hosting build/config verification (hosted.app stable)
-- [ ] Production Storage CORS verification (hosted.app Origin)
-- [ ] Rollback instructions + current Coming Soon DNS/configuration **recorded** (not changed)
+- [x] Studio `settings/emailProviders`: invitation **Resend**, proof-notice **Brevo**
+  (owner PASS 2026-07-31)
+- [x] Production owner account + role verification (read-only: 1 owner, `isActive`, timestamps)
+- [x] 18 active categories; 1,122 approved tags
+- [ ] Minimum production catalog / workflow data approved for testing (as needed) — **owner:
+  Stage 1C design fixture**
+- [ ] One upcoming production show for workflow testing — **owner: Stage 1B**
+- [x] Minimum test customer — **deferred**: Portal invite emails continue to
+  `https://myprintrequest.com/login` (`portalUrlResolver`); create after cutover
+- [x] Rules, indexes, Functions, secrets, Storage, App Hosting configuration verification
+  (indexes 65; Functions 99; CORS ok; hosted.app 200; secrets: Console metadata only — never
+  `secrets:access` for checks)
+- [x] Production Storage CORS verification (hosted.app + apex + www origins present)
+- [x] Production App Hosting build/config verification (hosted.app stable; backend Enabled)
+- [x] Rollback instructions + current Coming Soon DNS/configuration **recorded** (not changed)
+  — `docs/workflow/setup/production-coming-soon-dns-rollback.md`
+- [ ] Resend + Brevo sender-domain verification status (dashboard) — owner confirm if needed
+- [ ] Gemini + Etsy API availability — confirm during Stage 2 callable smoke
+- [x] Valid catalog-reference + portal-catalog manifests usable (prior CORS/empty-catalog PASS)
+
+Checkpoint: `docs/workflow/reviews/2026-07-31-production-stage-1-domain-independent-setup-checkpoint.md`  
+Stage 2 checklist (not executed):
+`docs/workflow/reviews/2026-07-31-production-stage-2-hosted-app-smoke-checklist.md`
 
 ### 7.6 Stage 2 — Domain-independent smoke tests
 

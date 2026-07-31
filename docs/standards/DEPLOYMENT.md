@@ -363,13 +363,10 @@ own separate, later, explicitly-approved checkpoint.
    bootstrapped `users/{uid}` document (`userService.ts`'s `mapUserDocument()` requires both) — a
    gap in the earlier manual bootstrap instructions (step 9 below), not a code defect; corrected
    field list recorded in `.cursor/workflow/state.md`. **Step 8 of 12 fully closed.**
-9. ✅ / ⏳ **Domain-independent production setup** — continue without touching the public domain.
-   First owner account bootstrapped; taxonomy present (18 categories / 1,122 approved tags);
-   catalog snapshots published; Portal Discover empty-catalog CORS owner **PASS**. Remaining:
-   Studio `settings/emailProviders` (invite Resend / proof Brevo) if unset; upcoming show;
-   minimum approved test catalog/customer fixtures as needed; verify sender-domain /
-   Gemini / Etsy / App Hosting / CORS status; **record** Coming Soon DNS + rollback (do not
-   change DNS).
+9. ✅ / ⏳ **Domain-independent production setup** — emailProviders PASS; owner/taxonomy/infra/CORS/
+   Coming Soon DNS rollback recorded. **Remaining owner Studio fixtures:** upcoming show + one
+   ready catalog design. Portal-invite test customer **deferred** until domain cutover. Stage 2
+   hosted.app checklist prepared (not executed).
 10. ⏳ **Domain-independent smoke tests** on
     `https://fresh-prints-portal--fresh-prints-prod.us-central1.hosted.app` (+ production Studio).
     Classify each check domain-independent vs domain-dependent. Do **not** treat hosted.app
