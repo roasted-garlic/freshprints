@@ -31,9 +31,31 @@ throughout this pass.**
 Test Status: pending
 Signoff Status: pending
 DONE: no
-Last Completed Step: **Studio desktop icon alignment complete — packaged app now uses the exact
-collapsed-sidebar mark instead of the default Electron icon. A second replacement installer
-(`v1.0.0-rc5`) is built, verified, and awaiting owner retest alongside the white-screen fix.**
+Last Completed Step: **Owner retest of `v1.0.0-rc5` reported `PASS WITH NOTES`.** Studio launches
+without a white screen and the production owner account can sign in successfully. One note: sign-in
+initially failed until `createdAt` and `updatedAt` timestamp fields were added to the manually
+bootstrapped `users/{uid}` document — traced to
+`apps/studio/src/renderer/src/features/users/services/userService.ts:19-29`'s `mapUserDocument()`,
+which throws `"A user profile is incomplete."` if either field is falsy. **This is a documentation
+gap in the manual first-owner-bootstrap instructions given earlier this goal (Phase D), not a code
+defect** — the instructions listed `id`, `email`, `displayName`, `role`, `isActive` but omitted
+`createdAt`/`updatedAt`, which this client-side mapper strictly requires. The owner has already
+added both fields and confirmed access works; this is recorded here so the corrected field list is
+available for any future manual first-owner bootstrap (e.g. after a project reset). **Both the
+white-screen fix (`scheduler`/`react-vendor` chunking) and the icon alignment are now
+owner-confirmed working on `v1.0.0-rc5`. Phase G broader smoke testing may now resume.**
+
+**Corrected `users/{uid}` field list for any future manual bootstrap:** `id` (string, same as
+document ID / Auth UID), `email` (string), `displayName` (string), `role` (string, `"owner"` for
+the first account), `isActive` (boolean, `true`), `createdAt` (timestamp — any non-empty value
+satisfies the client mapper's falsy check, though a real Firestore `Timestamp` is correct for
+consistency with server-created user documents), `updatedAt` (timestamp, same). `createdBy`/
+`updatedBy` are optional (`mapUserDocument` only casts them if present as strings, no throw if
+absent).
+
+Studio's Studio deployment-order step 8 of 12 is now **fully closed** — both installer defects
+(white screen, missing icon) are confirmed fixed by the owner's own retest, not merely built and
+assumed correct.
 
 **Owner request:** use the exact icon shown at the top of the collapsed Studio sidebar as the
 official Windows application icon throughout the packaged installer.
@@ -365,36 +387,31 @@ or production data was configured/created/seeded. No production Studio installer
 or Search Console configuration occurred. `production` was not modified by Git (Functions deploy is
 a Firebase action, not a commit). `master` was not deleted. No force-push occurred anywhere in this
 pass.
-Human Checkpoint Required: yes — **owner retest of the second replacement Studio installer
-(`v1.0.0-rc5`).** The first production Studio installer white-screened; root cause confirmed and
-fixed (React/`scheduler` chunk-splitting bug). The owner then requested the desktop icon match the
-collapsed-sidebar mark instead of the default Electron icon — also implemented, verified, and
-built into a new installer. `v1.0.0-rc5` supersedes `v1.0.0-rc4` for retest purposes (it includes
-both the white-screen fix and the icon fix); `v1.0.0-rc4` remains preserved on disk for the
-incident record but the owner should install `rc5`, not `rc4`.
-Blocked: yes — do not resume the broader Phase G smoke test until the owner confirms `v1.0.0-rc5`
-reaches the sign-in screen, login succeeds, and the icon appears correctly
-Allowed Actions: provide the owner the exact replacement installer path, checksum, and retest
-steps; await the owner's `PASS` / `PASS WITH NOTES: ...` / `FAIL: ...` report
+Human Checkpoint Required: no — **owner reported `PASS WITH NOTES` on `v1.0.0-rc5`.** Studio
+launches without a white screen, the correct icon is confirmed in place, and the production owner
+account signs in successfully (after the owner added missing `createdAt`/`updatedAt` fields to the
+manually bootstrapped `users/{uid}` document — a documentation gap in the earlier Phase D bootstrap
+instructions, now corrected in this file, not a code defect). Deployment-order step 8 of 12 is
+fully closed. Proceeding into the broader Phase G smoke test (Portal + installed Studio + backend
+checks) under the same multi-phase `Continue Workflow` authorization already granted.
+Blocked: no
+Allowed Actions: continue Phase G — the consolidated Portal + installed Studio + backend smoke-test
+checklist; resume Phase D's remaining owner-driven Studio setup (categories,
+`settings/emailProviders`) now that the owner has working Studio access
 Forbidden Actions: deleting `master` (local or remote); modifying `production` directly (only via
 PR); running any `firebase deploy`/`apphosting:rollouts:create` command without separate approval;
 accessing, printing, or logging any secret value; setting or rotating any secret without separate
 owner approval; using `--force` on any Firestore command; manually deleting or editing production
 indexes/secrets via Console; enabling automatic App Hosting rollouts without owner approval; any
-DNS/Auth-config/GA4/Search-Console action; invoking `rebuildCatalogSnapshots` (deployed, not yet
-invoked — invocation remains its own deliberate step once real catalog data exists); writing any
-production Firestore data directly (categories/email-provider settings are the owner's own Studio
-action, not this agent's); uploading or distributing the Studio installer publicly before smoke
-testing passes; resuming the broader Phase G smoke test before the replacement installer retest
-passes; force-pushing any branch; rewriting Git history; configuring `core.hooksPath` without
-separate owner approval; changing repository visibility
-Next Required Step: Owner installs `Fresh Prints-Windows-0.0.0-Setup-v1.0.0-rc5.exe` from
-`apps/studio/release/0.0.0/` (fully quitting any prior Studio build first if still running;
-account for Windows icon-cache staleness if reusing an old install location — a clean install or
-icon-cache refresh may be needed to see the new icon), launches it, confirms the sign-in screen
-appears (no white screen), confirms the correct "FP Request" icon appears on the executable,
-shortcuts, taskbar, and Installed Apps entry, logs in with the production owner account already
-bootstrapped on `fresh-prints-prod`, and reports `PASS` / `PASS WITH NOTES: ...` /
+DNS/Auth-config/GA4/Search-Console action; invoking `rebuildCatalogSnapshots` before real catalog
+data exists and its invocation is separately listed in an approved bootstrap action; writing
+production Firestore data beyond what the owner has explicitly approved (categories/
+email-provider settings remain the owner's own Studio action unless separately delegated); using
+smoke-test dev-only wipe tooling; force-pushing any branch; rewriting Git history; configuring
+`core.hooksPath` without separate owner approval; changing repository visibility
+Next Required Step: Begin Phase G — provide the owner a concise smoke-test checklist (Portal
+checks, installed Studio checks, backend checks per the production-release task's consolidated
+list) and await results reported as `PASS` / `PASS WITH NOTES: ...` /
 `FAIL: ...`. Only after that passes does the broader Phase G smoke test and Phase D's remaining
 remaining items (categories, `settings/emailProviders` via Studio UI) and consider
 production data until approved.

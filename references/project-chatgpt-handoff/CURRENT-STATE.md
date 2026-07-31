@@ -1,5 +1,31 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-07-30 — Goal #13 "production-release" — v1.0.0-rc5 owner retest PASS WITH NOTES; production Studio (step 8 of 12) fully closed; proceeding into Phase G smoke testing
+
+**Owner retest result: `PASS WITH NOTES`.** `v1.0.0-rc5` (the installer including both the
+white-screen fix and the desktop icon alignment) launches without a white screen, the correct
+"FP Request" icon is confirmed in place, and the production owner account signs in successfully.
+
+**The note:** sign-in initially failed until the owner added `createdAt` and `updatedAt` timestamp
+fields to the manually bootstrapped `users/{uid}` Firestore document. Traced to
+`apps/studio/src/renderer/src/features/users/services/userService.ts`'s `mapUserDocument()`,
+which throws `"A user profile is incomplete."` if either field is falsy. **This was a gap in the
+manual first-owner-bootstrap instructions given earlier this goal (Phase D) — the given field list
+omitted these two fields — not a code defect.** Corrected field list for any future manual
+first-owner bootstrap: `id` (string), `email` (string), `displayName` (string), `role` (string,
+`"owner"` for the first account), `isActive` (boolean, `true`), `createdAt` (timestamp),
+`updatedAt` (timestamp); `createdBy`/`updatedBy` are optional.
+
+**Deployment-order step 8 of 12 (production Studio) is now fully closed** — both installer defects
+found during this goal (the white screen and the missing/wrong desktop icon) are owner-confirmed
+fixed via a real retest, not merely built and assumed correct.
+
+**Active managed goal:** `production-release` (Goal #13) — deployment-order steps 1-8 of 12 all
+complete and owner-confirmed. Proceeding into Phase G (Portal + installed Studio + backend smoke
+testing, step 11 of 12) under the same multi-phase authorization already granted. Phase D's
+remaining owner-driven Studio setup (categories, `settings/emailProviders`) is unblocked now that
+the owner has working Studio access.
+
 ## 2026-07-30 — Goal #13 "production-release" — Studio desktop icon aligned with collapsed-sidebar mark; second replacement installer (v1.0.0-rc5) built, awaiting owner retest
 
 **Owner request:** use the exact icon shown at the top of the collapsed Studio sidebar as the

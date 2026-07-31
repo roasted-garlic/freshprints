@@ -122,7 +122,7 @@ Current Goal:
 | 10 | Increase the MB limit for custom-request reference images | **Done** (2026-07-29, approved) — 40 MB/file live in `fresh-prints-dev` at every enforcement layer, 8 files unchanged, 320 MB combined ceiling active; owner QA FAIL (stale 15 MB deployed Cloud Functions) → Amendment 1 root-caused and fixed via scoped Functions redeploy → owner re-QA PASS |
 | 11 | `customer-upload-oversized-pixel-normalization-and-processing-timeout-followup` | **Done** (2026-07-30, approved_with_notes; owner QA PASS WITH NOTES — see signoff) |
 | 12 | `catalog-image-derivative-storage-consolidation` | **Done — closed_by_owner_after_inventory** (2026-07-30). Real dev inventory measured originals at ~97.66% of catalog Storage (980.8 MB of 1,004.3 MB); thumbnails+previews combined only 23.5 MB; zero orphans/duplicates/violations found. Owner decided the migration's small addressable Storage win did not justify the required backfill/consumer-cutover/bandwidth-increase — closed before implementation, an evidence-based decision. Retained as dev-only tooling: the read-only `inventoryCatalogImageStorage` callable and its Studio invocation panel. |
-| 13 | `production-release` — prod Firebase / App Hosting / Google / email | **Active — blocked on owner retest** — deployment-order steps 1-7 of 12 complete; step 8 (production Studio) hit a real white-screen incident (root cause: a `manualChunks` substring-match bug split React's `scheduler` dependency into the wrong Rollup chunk — fixed via Plan + Formal Review, PR #9, tagged `v1.0.0-rc4`). Owner then requested the packaged desktop icon match the collapsed-sidebar mark instead of the default Electron icon — traced to `src/assets/brand/fresh-prints-studio-logo-collapsed.png`, generated a proper 7-resolution `.ico`, fixed via a second Plan + Formal Review, PR #10, tagged `v1.0.0-rc5`. **Both fixes directly verified in this environment** (not deferred): extracted the packaged `.exe`'s actual embedded icon via Windows' own icon-extraction API and confirmed it matches; re-confirmed `scheduler` correctly chunked and Firebase config correctly resolves to `fresh-prints-prod` on the exact `rc5` build. **`v1.0.0-rc5` installer built and awaiting the owner's install/launch/login retest** (icon + white-screen fix + sign-in, together) before Phase G smoke testing may resume. First production owner account already bootstrapped (the one genuine gap found — no automated first-owner path exists in this codebase). No production Firestore data written directly by this agent |
+| 13 | `production-release` — prod Firebase / App Hosting / Google / email | **Active** — deployment-order **steps 1-8 of 12 all complete and owner-confirmed**: Rules/Storage Rules/indexes/secrets/Functions/App Hosting/Portal release ✅; production Studio ✅ (`v1.0.0-rc5`, after fixing a real white-screen incident — a `manualChunks` chunk-splitting bug — and a missing desktop icon, both diagnosed via direct evidence and fixed through narrow Plan + Formal Review pairs, PR #9 and PR #10). **Owner retest reported `PASS WITH NOTES`**: Studio launches correctly, icon is correct, sign-in succeeds — the one note was a documentation gap in the manual first-owner-bootstrap instructions (missing `createdAt`/`updatedAt` on the `users/{uid}` document; corrected in `.cursor/workflow/state.md` for future reference, not a code defect). **Now proceeding into Phase G** (Portal + installed Studio + backend smoke testing, step 11 of 12) under the same multi-phase authorization |
 | 14 | `customer-upload-early-transparency-format-validation` — reject invalid customer artwork before the trimming stage is shown | **Done** (2026-07-30, approved; automated verification 23/23 pass, clean build/lint; owner deployed to `fresh-prints-dev` and confirmed manual QA PASS across all 5 goal-brief scenarios). Separate narrow follow-up run alongside the paused `production-release` (#13), which this goal did not modify. See `docs/workflow/plans/2026-07-30-customer-upload-early-transparency-format-validation-plan.md`. |
 
 **Small Managed Items Backlog:** #5–**#14** **Done** (2026-07-21). See [Small Managed Items Backlog](#small-managed-items-backlog-2026-07-18) below.
@@ -510,6 +510,20 @@ config resolving to `fresh-prints-prod`, white-screen fix intact. **Produced
 original failed installer's and `v1.0.0-rc4`'s checksums). `v1.0.0-rc4` remains preserved on disk
 for the incident record. **`v1.0.0-rc5` is now the installer awaiting the owner's
 install/launch/login/icon retest** (supersedes `rc4` for retest purposes — includes both fixes).
+
+**Since then (same day, later pass) — owner retest result:** owner reported
+**`PASS WITH NOTES`**: `v1.0.0-rc5` launches without a white screen, the correct desktop icon is
+confirmed in place, and the production owner account can sign in successfully. Sign-in initially
+failed until the owner added `createdAt` and `updatedAt` timestamp fields to the manually
+bootstrapped `users/{uid}` document — traced to
+`apps/studio/src/renderer/src/features/users/services/userService.ts`'s `mapUserDocument()`, which
+throws if either field is falsy. **This was a gap in the earlier Phase D manual bootstrap
+instructions (missing two fields from the given field list), not a code defect** — the corrected
+full field list (`id`, `email`, `displayName`, `role`, `isActive`, `createdAt`, `updatedAt`, with
+optional `createdBy`/`updatedBy`) is now recorded in `.cursor/workflow/state.md` for any future
+manual first-owner bootstrap. **Deployment-order step 8 of 12 is now fully closed — both installer
+defects (white screen, missing icon) are owner-confirmed fixed, not merely built and assumed
+correct. Proceeding into Phase G** (Portal + installed Studio + backend smoke testing).
 
 No longer blocked: Goals #9–#12
 (`catalog-image-derivative-storage-consolidation`) closed **2026-07-30**,

@@ -2,6 +2,18 @@
 
 > Signed-off or largely complete work. External agents should not re-plan or duplicate this.
 
+## 2026-07-30 - production-release: v1.0.0-rc5 owner retest PASS WITH NOTES; production Studio complete (deployment-order step 8 of 12 closed)
+
+- Owner reported `PASS WITH NOTES` on `v1.0.0-rc5`: launches without a white screen, correct icon
+  confirmed, production owner account signs in successfully
+- Note: sign-in initially failed until `createdAt`/`updatedAt` were added to the manually
+  bootstrapped `users/{uid}` document — a gap in the earlier manual bootstrap instructions
+  (missing two required fields), not a code defect; corrected field list recorded for future
+  reference
+- **Deployment-order step 8 of 12 (production Studio) fully closed** — both installer defects
+  found this goal (white screen, missing icon) owner-confirmed fixed via real retest
+- Proceeding into Phase G (Portal + installed Studio + backend smoke testing)
+
 ## 2026-07-30 - production-release: Studio desktop icon aligned with collapsed-sidebar mark; v1.0.0-rc5 installer built (deployment-order step 8 of 12, blocked on owner retest)
 
 - Traced the collapsed-sidebar icon to its exact source (`AppLogo variant="collapsed"` →

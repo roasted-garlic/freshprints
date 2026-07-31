@@ -355,12 +355,17 @@ own separate, later, explicitly-approved checkpoint.
    fixes):** `Fresh Prints-Windows-0.0.0-Setup-v1.0.0-rc5.exe`, `apps/studio/release/0.0.0/`,
    ~102.7 MB, SHA-256 `e07914692ad2ff507bce279522852acf4bd9e89eb75d04da2221e3f05c17d011`
    (different from both prior checksums). Re-confirmed on this exact build: correct icon, Firebase
-   config resolves to `fresh-prints-prod`, white-screen fix intact. Unsigned. **`v1.0.0-rc5`
-   awaiting owner install/launch/login/icon retest** — supersedes `rc4` for retest purposes
-   ← **current checkpoint**
-9. Initial settings and reference-data setup (categories, email provider selection, `rebuildCatalogSnapshots`) — **partially complete: first owner account bootstrapped** (owner completed a manual two-part Console procedure since no automated first-owner path exists in this codebase); categories and `settings/emailProviders` remain the owner's own Studio-UI action, pending a successful Studio installer retest
+   config resolves to `fresh-prints-prod`, white-screen fix intact. Unsigned.
+
+   ✅ **Owner retest: `PASS WITH NOTES`.** `v1.0.0-rc5` launches without a white screen, correct
+   icon confirmed in place, production owner account signs in successfully. Sign-in initially
+   failed until the owner added `createdAt`/`updatedAt` timestamp fields to the manually
+   bootstrapped `users/{uid}` document (`userService.ts`'s `mapUserDocument()` requires both) — a
+   gap in the earlier manual bootstrap instructions (step 9 below), not a code defect; corrected
+   field list recorded in `.cursor/workflow/state.md`. **Step 8 of 12 fully closed.**
+9. Initial settings and reference-data setup (categories, email provider selection, `rebuildCatalogSnapshots`) — **partially complete: first owner account bootstrapped** (owner completed a manual two-part Console procedure since no automated first-owner path exists in this codebase — corrected field list: `id`, `email`, `displayName`, `role`, `isActive`, `createdAt`, `updatedAt`, optional `createdBy`/`updatedBy`); categories and `settings/emailProviders` remain the owner's own Studio-UI action, now that Studio access works
 10. Domain and Authorized Domains configuration
-11. Smoke tests
+11. Smoke tests ← **current checkpoint**
 12. GA4 and Search Console (separate later checkpoints)
 
 **The App Hosting backend existing with status "Waiting for your first release" does not change
