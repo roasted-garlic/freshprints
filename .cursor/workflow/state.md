@@ -2,45 +2,38 @@
 `production-release` (Goal #13)
 
 Current Mode: managed-phase
-Current Phase: review — **post-rollout FAIL diagnosed; amendment Formal Review approved; stop before implement**
+Current Phase: test — **loading-ownership fix implemented on development; await App Hosting rollout approval**
 Plan Status: complete —
-parent `docs/workflow/plans/2026-07-31-production-portal-registration-stuck-plan.md` +
-amendment `docs/workflow/plans/2026-07-31-production-portal-registration-post-rollout-amendment.md`
-Review Status: **approved** —
-`docs/workflow/reviews/2026-07-31-production-portal-registration-post-rollout-amendment-review.md`
-Implement Status: prior `b882e5c` / `8943d17` live; **loading-ownership fix not started**
-Test Status: prior automated passed; hosted.app owner QA **FAIL**
-Signoff Status: blocked on remediation + re-QA
+parent + `docs/workflow/plans/2026-07-31-production-portal-registration-post-rollout-amendment.md`
+Review Status: Formal Review approved; Implementation Review **approved** —
+`docs/workflow/reviews/2026-07-31-production-portal-registration-loading-ownership-implementation-review.md`
+Implement Status: **complete** on `development` (not yet rolled out to App Hosting)
+Test Status: automated **passed** (27/27 auth-focused); hosted.app owner QA pending rollout
+Signoff Status: pending App Hosting rollout + owner QA
 DONE: no
 Human Checkpoint Required: yes
 Human Checkpoint Reason: Await
-`APPROVE PORTAL REGISTRATION LOADING-OWNERSHIP FIX IMPLEMENTATION`. Branding + Stage 2 remain
-paused. Do not reuse prior App Hosting rollout phrase until new implement review.
-Blocked: yes (product registration still broken on hosted.app)
-Blocker: Permanent complete-profile overlay after Google Auth; timeout never starts when
-`isAuthActionLoading` sticky on missing-profile; `registerCustomer` not invoked
-Allowed Actions: docs; wait for implementation approval; read-only verify
-Forbidden Actions: implement/runtime source until approval phrase; App Hosting rollout;
-Auth user delete; Firestore repair; Auth/API-key/domain/OAuth changes; Functions/Rules deploy;
-branding; Stage 2; domain cutover
+`APPROVE PRODUCTION PORTAL APP HOSTING ROLLOUT: LOADING-OWNERSHIP FIX`. Branding + Stage 2 remain
+paused. Do not delete Auth users.
+Blocked: no (implementation ready; rollout gated)
+Blocker: none for implement; production registration still broken until new App Hosting rollout
+Allowed Actions: docs; await rollout approval; read-only verify
+Forbidden Actions: production merge / App Hosting rollout until phrase; Auth user delete;
+Firestore repair; Auth/API-key/domain/OAuth; Functions/Rules deploy; branding; Stage 2; domain
+cutover
 Next Required Step: Owner sends
-`APPROVE PORTAL REGISTRATION LOADING-OWNERSHIP FIX IMPLEMENTATION` (then implement → test →
-implement review → new App Hosting phrase).
+`APPROVE PRODUCTION PORTAL APP HOSTING ROLLOUT: LOADING-OWNERSHIP FIX`
 
 Decision Log:
-- 2026-07-31 — Owner QA **FAIL** (exact): Google Auth succeeds, but complete-profile remains
-  permanently stuck after the production rollout. No Firestore user/customer/username records
-  are created, and the expected 45-second timeout/error/retry state never appears.
-- 2026-07-31 — Post-rollout root cause: sticky `isAuthActionLoading` on missing-profile mounts
-  fixed provision overlay without entering `completeCustomerProfile` / 45s timeout. Served build
-  still `8943d17`/`b882e5c`. Formal Review of loading-ownership amendment **approved**.
-- 2026-07-31 — `APPROVE PRODUCTION PORTAL APP HOSTING ROLLOUT` → PR #12 merge `8943d17`;
-  `apphosting:rollouts:create` pinned to `8943d17` succeeded; `[fp-portal-auth]` verified live.
-- 2026-07-31 — Source fix `b882e5c` is ancestor of production tip `8943d17`.
+- 2026-07-31 — `APPROVE PORTAL REGISTRATION LOADING-OWNERSHIP FIX IMPLEMENTATION` → implemented
+  on development; Implementation Review approved; automated tests 27/27.
+- 2026-07-31 — Owner QA **FAIL** after prior `8943d17` rollout (sticky `isAuthActionLoading`).
+- 2026-07-31 — Prior `APPROVE PRODUCTION PORTAL APP HOSTING ROLLOUT` → `8943d17` / `b882e5c`
+  (insufficient; superseded by loading-ownership fix).
 
-Last Completed Step: **Post-rollout FAIL diagnosis → plan amendment → Formal Review (approved).**
+Last Completed Step: **Loading-ownership fix implemented + Implementation Review approved.**
 
-Prior: App Hosting rollout of Phase 1 loading-state fix; owner QA FAIL.
+Prior: Post-rollout FAIL diagnosis; amendment Formal Review approved.
 
 **Corrected `users/{uid}` field list for any future manual bootstrap:** `id` (string, same as
 document ID / Auth UID), `email` (string), `displayName` (string), `role` (string, `"owner"` for

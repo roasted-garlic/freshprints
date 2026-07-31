@@ -4,7 +4,7 @@
 |-------|-------|
 | Date | 2026-07-31 |
 | Author | Planning Agent |
-| Status | ready_for_review |
+| Status | amended — loading-ownership fix **implemented on development**; await App Hosting rollout phrase |
 | Workflow | managed-phase (`production-release` Goal #13) |
 | Parent plan | `docs/workflow/plans/2026-07-31-production-portal-registration-stuck-plan.md` |
 | Related | Incident + rollout checkpoint FAIL; Formal Review (this pass) |
