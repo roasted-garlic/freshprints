@@ -1,19 +1,28 @@
 # Fresh Prints - Current State Snapshot
 
-## 2026-07-31 — Goal #13 Portal registration loading-state fix **implemented** (not deployed)
+## 2026-07-31 — Goal #13 Portal registration owner QA **FAIL** after App Hosting rollout
 
-- Root cause amended: post-Auth complete-profile client stall before `registerCustomer` + hang UX
-- Historical `accounts:lookup` 400 = non-reproducible; no Auth Console remediation
-- Client fix on `development`: 45s timeout, stages `[fp-portal-auth]`, terminal error, retry,
-  sign-out, duplicate guards, explicit `getIdToken(true)` before callable
-- Implementation Review **approved**; automated tests/typecheck/lint/build **pass**
-- **Next:** `APPROVE PRODUCTION PORTAL APP HOSTING ROLLOUT` then hosted.app QA
-- Branding + Stage 2 still paused; Stage 1 + Class D untouched
-- Note: post-fix Auth list had **no** Google user (`L3jjfWJG…` absent); agents did not delete
+Exact FAIL:
 
-## 2026-07-31 — Goal #13 registration stuck: Auth inventory amended
+> FAIL: Google Auth succeeds, but complete-profile remains permanently stuck after the production rollout. No Firestore user/customer/username records are created, and the expected 45-second timeout/error/retry state never appears.
 
-- Superseded in part by loading-state implement section above
+- Build still live: PR #12 / `8943d17` (includes `b882e5c`); automatic rollouts disabled; **no new deploy** this pass
+- Root cause: sticky `isAuthActionLoading` on `missing-profile` mounts fixed provision overlay without entering `completeCustomerProfile` (45s timeout never starts); `registerCustomer` not invoked
+- Amendment: `docs/workflow/plans/2026-07-31-production-portal-registration-post-rollout-amendment.md`
+- Formal Review: **approved** —
+  `docs/workflow/reviews/2026-07-31-production-portal-registration-post-rollout-amendment-review.md`
+- **Owner next:** `APPROVE PORTAL REGISTRATION LOADING-OWNERSHIP FIX IMPLEMENTATION`
+- Do **not** reuse `APPROVE PRODUCTION PORTAL APP HOSTING ROLLOUT` until new implement review
+- Branding + Stage 2 still paused; Stage 1 + Class D untouched; no Auth deletes
+- Auth inventory at diagnosis: only owner password `7v3SLjRN…` (no Google Auth-only present)
+
+## 2026-07-31 — Goal #13 Portal registration fix **LIVE on App Hosting** — owner QA pending
+
+- **Superseded** — owner QA FAIL (see section above)
+
+## 2026-07-31 — Goal #13 Portal registration loading-state fix implemented (not deployed)
+
+- **Superseded** — deployed then FAIL
 
 ## 2026-07-31 — Goal #13 Stage 1 fixtures **COMPLETE** (1B + 1C)
 

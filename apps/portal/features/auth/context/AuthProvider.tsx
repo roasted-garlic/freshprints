@@ -24,6 +24,10 @@ import type {
   RegisterCredentials,
 } from '../types/auth.types';
 import {
+  resolveAuthActionLoadingAfterBootstrap,
+  resolveBootstrapStatusAfterProvisionFailure,
+} from '../utils/completeProfileLoadingOwnership';
+import {
   CompleteProfileInProgressError,
   type CompleteProfileStage,
   reportCompleteProfileStage,
@@ -190,13 +194,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }
 
         if (registrationInProgressRef.current) {
+          // Provision in flight — keep existing bootstrap status so complete-profile
+          // stays mounted; do not flip to loading-profile (that traps behind overlay).
           setAuthState((currentState) => ({
             ...currentState,
             firebaseUser,
-            bootstrapStatus: 'loading-profile',
-            isAuthActionLoading: true,
             isAuthenticated: false,
-            error: null,
           }));
           return;
         }
@@ -207,7 +210,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           user: currentState.user?.id === firebaseUser.uid ? currentState.user : null,
           customer: currentState.customer?.userId === firebaseUser.uid ? currentState.customer : null,
           bootstrapStatus: 'loading-profile',
-          // Keep intentional sign-in/sign-up busy through profile bootstrap so overlays stay up.
+          // Keep intentional sign-in/sign-up busy through profile bootstrap on login/register.
           isAuthActionLoading: currentState.isAuthActionLoading,
           isAuthenticated: false,
           error: null,
@@ -219,20 +222,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
               return;
             }
 
-            setAuthState((currentState) => {
-              // Google first-login still needs complete-profile; keep busy until that page mounts.
-              if (
-                currentState.isAuthActionLoading &&
-                (nextState.bootstrapStatus === 'missing-profile' ||
-                  nextState.bootstrapStatus === 'missing-customer')
-              ) {
-                return {
-                  ...nextState,
-                  isAuthActionLoading: true,
-                };
-              }
-
-              return nextState;
+            setAuthState({
+              ...nextState,
+              isAuthActionLoading: resolveAuthActionLoadingAfterBootstrap(
+                nextState.bootstrapStatus,
+              ),
             });
           })
           .catch((error: unknown) => {
@@ -246,22 +240,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 : 'Unable to load your portal profile. Contact support.';
             const isMissingProfile = message.includes('No Fresh Prints user profile');
 
-            setAuthState((currentState) => {
-              const blocked = getBlockedState(
-                firebaseUser,
-                isMissingProfile ? 'missing-profile' : 'error',
-                // Missing profile is the normal Google first-login path — no error banner.
-                isMissingProfile ? null : message,
-              );
+            const blocked = getBlockedState(
+              firebaseUser,
+              isMissingProfile ? 'missing-profile' : 'error',
+              // Missing profile is the normal Google first-login path — no error banner.
+              isMissingProfile ? null : message,
+            );
 
-              if (currentState.isAuthActionLoading && isMissingProfile) {
-                return {
-                  ...blocked,
-                  isAuthActionLoading: true,
-                };
-              }
-
-              return blocked;
+            setAuthState({
+              ...blocked,
+              isAuthActionLoading: resolveAuthActionLoadingAfterBootstrap(
+                blocked.bootstrapStatus,
+              ),
             });
           });
       });
@@ -531,7 +521,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
               reportCompleteProfileStage('session_reload_succeeded');
               setAuthState({
                 ...nextState,
-                isAuthActionLoading: nextState.isAuthenticated ? false : true,
+                isAuthActionLoading: false,
               });
               lastStage = 'completed';
               reportCompleteProfileStage('completed', 'complete_profile');
@@ -544,11 +534,24 @@ export function AuthProvider({ children }: AuthProviderProps) {
           () => lastStage,
         );
       } catch (error) {
-        setAuthState((currentState) => ({
-          ...currentState,
-          error: userFacingMessageForCompleteProfileError(error),
-          isAuthActionLoading: false,
-        }));
+        setAuthState((currentState) => {
+          const stillSignedIn = Boolean(getPortalAuth().currentUser ?? currentState.firebaseUser);
+          const bootstrapStatus = resolveBootstrapStatusAfterProvisionFailure(
+            currentState.bootstrapStatus,
+            stillSignedIn,
+          );
+
+          return {
+            ...currentState,
+            firebaseUser: stillSignedIn
+              ? (getPortalAuth().currentUser ?? currentState.firebaseUser)
+              : null,
+            bootstrapStatus,
+            isAuthenticated: false,
+            error: userFacingMessageForCompleteProfileError(error),
+            isAuthActionLoading: false,
+          };
+        });
         throw error;
       } finally {
         registrationInProgressRef.current = false;

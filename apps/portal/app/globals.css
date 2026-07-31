@@ -408,6 +408,14 @@ textarea::placeholder {
   z-index: calc(var(--z-modal, 40) + 50);
 }
 
+.portal-auth-processing-footer {
+  display: grid;
+  gap: var(--space-2);
+  justify-items: stretch;
+  margin-top: var(--space-2);
+  width: min(100%, 16rem);
+}
+
 .portal-auth-processing-card {
   align-items: center;
   background: var(--color-bg-secondary);

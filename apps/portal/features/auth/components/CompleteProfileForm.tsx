@@ -8,6 +8,11 @@ import { buildPortalBiddingAcknowledgmentSignupCopy } from '@fresh-prints/shared
 
 import { useAuth } from '../context/AuthContext';
 import { needsPortalCustomerProfileCompletion } from '../types/auth.types';
+import {
+  isCompleteProfileFormInteractive,
+  resolveCompleteProfileUiMode,
+  shouldShowCompleteProfileProvisionOverlay,
+} from '../utils/completeProfileLoadingOwnership';
 import { buildPortalAuthHref, getPortalReturnToFromSearch, resolvePortalPostAuthPath } from '../utils/portalReturnUrl';
 import { UserPlusIcon } from '../../shared/components/PortalIcons';
 import { PortalBiddingAcknowledgmentModal } from '../../shared/components/PortalBiddingAcknowledgmentModal';
@@ -161,23 +166,24 @@ export function CompleteProfileForm() {
     await runCompleteProfile(lastAttempt);
   }
 
-  const isBusy = isSubmitting || isAuthActionLoading;
   const displayError = localError ?? error;
-  const showTerminalFailure = Boolean(displayError) && !isBusy;
+  const uiMode = resolveCompleteProfileUiMode({
+    bootstrapStatus,
+    isInitialBootstrap,
+    isAuthenticated,
+    isSubmitting,
+    isAuthActionLoading,
+    displayError,
+  });
+  const showProvisionOverlay = shouldShowCompleteProfileProvisionOverlay(uiMode);
+  const formInteractive = isCompleteProfileFormInteractive(uiMode);
+  const showTerminalFailure = uiMode === 'terminal-failure';
 
-  if (isInitialBootstrap || bootstrapStatus === 'initializing' || bootstrapStatus === 'loading-profile') {
-    if (!isBusy) {
-      return <p className="portal-muted">Loading your account…</p>;
-    }
-
-    return (
-      <div className="portal-complete-profile">
-        <AuthBusyOverlay message="This may take a moment." title="Setting up your account…" />
-      </div>
-    );
+  if (uiMode === 'bootstrap-loading') {
+    return <p className="portal-muted">Loading your account…</p>;
   }
 
-  if (!needsPortalCustomerProfileCompletion(bootstrapStatus) && !isAuthenticated && !isBusy) {
+  if (uiMode === 'redirecting' && !needsPortalCustomerProfileCompletion(bootstrapStatus)) {
     return <p className="portal-muted">Redirecting…</p>;
   }
 
@@ -193,7 +199,7 @@ export function CompleteProfileForm() {
           <span>Display name</span>
           <input
             autoComplete="name"
-            disabled={isBusy}
+            disabled={!formInteractive}
             name="displayName"
             onChange={(event) => setDisplayName(event.target.value)}
             required
@@ -206,7 +212,7 @@ export function CompleteProfileForm() {
           <span>Username</span>
           <input
             autoComplete="username"
-            disabled={isBusy}
+            disabled={!formInteractive}
             name="username"
             onChange={(event) => setUsername(event.target.value)}
             pattern="[a-z0-9][a-z0-9_-]{1,30}[a-z0-9]"
@@ -234,11 +240,11 @@ export function CompleteProfileForm() {
         ) : (
           <button
             className="portal-button portal-button-primary portal-button-leading-icon"
-            disabled={isBusy}
+            disabled={!formInteractive}
             type="submit"
           >
             <UserPlusIcon />
-            {isBusy ? 'Setting up…' : 'Continue'}
+            Continue
           </button>
         )}
 
@@ -257,10 +263,10 @@ export function CompleteProfileForm() {
       <PortalBiddingAcknowledgmentModal
         confirmLabel="Continue"
         copy={signupCopy}
-        isBusy={isBusy}
+        isBusy={isSubmitting}
         isOpen={pendingProfile !== null}
         onCancel={() => {
-          if (!isBusy) {
+          if (!isSubmitting) {
             setPendingProfile(null);
           }
         }}
@@ -269,8 +275,22 @@ export function CompleteProfileForm() {
         }}
       />
 
-      {isBusy ? (
-        <AuthBusyOverlay message={progressMessage} title="Setting up your account…" />
+      {showProvisionOverlay ? (
+        <AuthBusyOverlay
+          footer={
+            <button
+              className="portal-button portal-button-secondary"
+              onClick={() => {
+                void logout();
+              }}
+              type="button"
+            >
+              Use a different account
+            </button>
+          }
+          message={progressMessage}
+          title="Setting up your account…"
+        />
       ) : null}
     </div>
   );

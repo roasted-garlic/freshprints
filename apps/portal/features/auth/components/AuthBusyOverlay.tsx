@@ -1,9 +1,13 @@
+import type { ReactNode } from 'react';
+
 interface AuthBusyOverlayProps {
   title: string;
   message?: string;
+  /** Optional recovery actions rendered inside the overlay (escape from full-screen busy). */
+  footer?: ReactNode;
 }
 
-export function AuthBusyOverlay({ title, message }: AuthBusyOverlayProps) {
+export function AuthBusyOverlay({ title, message, footer }: AuthBusyOverlayProps) {
   return (
     <div
       aria-busy="true"
@@ -15,6 +19,7 @@ export function AuthBusyOverlay({ title, message }: AuthBusyOverlayProps) {
         <span aria-hidden="true" className="portal-loading-spinner portal-auth-processing-spinner" />
         <h2 className="portal-auth-processing-title">{title}</h2>
         {message ? <p className="portal-auth-processing-copy">{message}</p> : null}
+        {footer ? <div className="portal-auth-processing-footer">{footer}</div> : null}
       </div>
     </div>
   );

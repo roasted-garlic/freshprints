@@ -2,36 +2,38 @@
 `production-release` (Goal #13)
 
 Current Mode: managed-phase
-Current Phase: implement/test **complete** — Portal registration loading-state fix on `development`;
-**stop before App Hosting rollout**
-Plan Status: complete (root cause amended; Phase 1 implemented) —
-`docs/workflow/plans/2026-07-31-production-portal-registration-stuck-plan.md`
-Review Status: Formal Review **approved_with_changes**; Implementation Review **approved** —
-`docs/workflow/reviews/2026-07-31-production-portal-registration-loading-state-implementation-review.md`
-Implement Status: **complete** (client-only; not deployed)
-Test Status: **passed** (automated) —
-`docs/workflow/reviews/2026-07-31-production-portal-registration-loading-state-test-report.md`
-Signoff Status: pending rollout + hosted QA
+Current Phase: test — **loading-ownership fix implemented on development; await App Hosting rollout approval**
+Plan Status: complete —
+parent + `docs/workflow/plans/2026-07-31-production-portal-registration-post-rollout-amendment.md`
+Review Status: Formal Review approved; Implementation Review **approved** —
+`docs/workflow/reviews/2026-07-31-production-portal-registration-loading-ownership-implementation-review.md`
+Implement Status: **complete** on `development` (not yet rolled out to App Hosting)
+Test Status: automated **passed** (27/27 auth-focused); hosted.app owner QA pending rollout
+Signoff Status: pending App Hosting rollout + owner QA
 DONE: no
 Human Checkpoint Required: yes
-Human Checkpoint Reason: Await `APPROVE PRODUCTION PORTAL APP HOSTING ROLLOUT`. Branding + Stage 2
-remain paused. Stage 1 fixtures remain complete.
-Blocked: yes (awaiting production Portal rollout)
-Blocker: Loading-state fix not yet on App Hosting; registration still broken in production until rollout
+Human Checkpoint Reason: Await
+`APPROVE PRODUCTION PORTAL APP HOSTING ROLLOUT: LOADING-OWNERSHIP FIX`. Branding + Stage 2 remain
+paused. Do not delete Auth users.
+Blocked: no (implementation ready; rollout gated)
+Blocker: none for implement; production registration still broken until new App Hosting rollout
 Allowed Actions: docs; await rollout approval; read-only verify
-Forbidden Actions: App Hosting rollout without phrase; Auth/data repair; Auth Console remediations
-from historical 400; Functions/Rules changes; branding; Stage 2; alter Stage 1 fixtures
-Next Required Step: Owner sends `APPROVE PRODUCTION PORTAL APP HOSTING ROLLOUT`, then hosted.app QA.
+Forbidden Actions: production merge / App Hosting rollout until phrase; Auth user delete;
+Firestore repair; Auth/API-key/domain/OAuth; Functions/Rules deploy; branding; Stage 2; domain
+cutover
+Next Required Step: Owner sends
+`APPROVE PRODUCTION PORTAL APP HOSTING ROLLOUT: LOADING-OWNERSHIP FIX`
 
 Decision Log:
-- 2026-07-31 — Historical `accounts:lookup` 400 classified non-reproducible; root cause amended to
-  post-Auth client stall before `registerCustomer` + permanent-loading defect.
-- 2026-07-31 — `APPROVE PORTAL REGISTRATION LOADING-STATE FIX IMPLEMENTATION` → client fix landed;
-  Implementation Review **approved**; no deploy.
+- 2026-07-31 — `APPROVE PORTAL REGISTRATION LOADING-OWNERSHIP FIX IMPLEMENTATION` → implemented
+  on development; Implementation Review approved; automated tests 27/27.
+- 2026-07-31 — Owner QA **FAIL** after prior `8943d17` rollout (sticky `isAuthActionLoading`).
+- 2026-07-31 — Prior `APPROVE PRODUCTION PORTAL APP HOSTING ROLLOUT` → `8943d17` / `b882e5c`
+  (insufficient; superseded by loading-ownership fix).
 
-Last Completed Step: **Loading-state client fix + tests + Implementation Review** (no rollout).
+Last Completed Step: **Loading-ownership fix implemented + Implementation Review approved.**
 
-Prior: Inventory amendment; Formal Review approved_with_changes.
+Prior: Post-rollout FAIL diagnosis; amendment Formal Review approved.
 
 **Corrected `users/{uid}` field list for any future manual bootstrap:** `id` (string, same as
 document ID / Auth UID), `email` (string), `displayName` (string), `role` (string, `"owner"` for
