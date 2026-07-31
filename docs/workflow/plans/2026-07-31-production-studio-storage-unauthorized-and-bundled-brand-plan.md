@@ -337,5 +337,6 @@ needs its own App Hosting rollout approval.
 - [x] `APPROVE BUNDLED BRAND ASSET IMPLEMENTATION` received (2026-07-31)
 - [x] Owner provided five brand source files in `docs/workflow/setup/brand-asset-sources/`
 - [x] Assets replaced + icons/favicons generated + `onError` fallback (on `development`)
-- [ ] Owner visual QA
-- [ ] Do not rebuild Studio / roll out Portal branding without later release approvals
+- [x] Owner visual QA — **PASS** (2026-07-31)
+- [ ] `APPROVE PRODUCTION STUDIO INSTALLER: BUNDLED BRAND ASSETS`
+- [ ] `APPROVE PRODUCTION PORTAL APP HOSTING ROLLOUT: BUNDLED BRAND ASSETS`

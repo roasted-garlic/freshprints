@@ -4,7 +4,7 @@
 |-------|-------|
 | Date | 2026-07-31 |
 | Approval | `APPROVE BUNDLED BRAND ASSET IMPLEMENTATION` + `Brand sources ready` |
-| Status | **Implemented on `development`** — not Studio-rebuilt / not Portal-rolled-out |
+| Status | **Visual QA PASS** — implemented on `development` (`f0f555a`); production releases gated |
 
 ## Source inspection
 
@@ -34,14 +34,18 @@
 | `npm run lint` | pass |
 | `npm run build:portal` | (recorded in implement session) |
 
+## Owner visual QA — **PASS** (2026-07-31)
+
+Local Studio/Portal bundled branding accepted. Signoff:
+`docs/workflow/reviews/2026-07-31-production-bundled-brand-implementation-signoff.md`.
+
 ## Still gated (separate approvals)
 
-| Next | Phrase / action |
-|------|-----------------|
-| Owner visual QA | Studio sidebar/login + Portal chrome/favicon (local or after releases) |
-| Studio installer | Separate production Studio rebuild approval |
-| Portal App Hosting | Separate Portal branding rollout approval |
-| Stage 2 smoke | After branding releases as sequenced |
+| Next | Phrase |
+|------|--------|
+| Studio installer | `APPROVE PRODUCTION STUDIO INSTALLER: BUNDLED BRAND ASSETS` |
+| Portal App Hosting | `APPROVE PRODUCTION PORTAL APP HOSTING ROLLOUT: BUNDLED BRAND ASSETS` |
+| Stage 2 smoke | After branding releases (or owner resequences) |
 
 ## Sources retained
 

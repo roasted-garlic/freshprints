@@ -2,32 +2,33 @@
 `production-release` (Goal #13)
 
 Current Mode: managed-phase
-Current Phase: test — **bundled brand assets implemented on development; await visual QA + release approvals**
+Current Phase: signoff — **bundled brand implement + visual QA PASS; await production release phrases**
 Plan Status: complete — Part B branding implemented
-Review Status: Formal Review satisfied for implement; release still gated
-Implement Status: **complete** on `development` (logos, icons, favicons, onError, aspect defaults)
-Test Status: automated **passed** (brand constants, lint, typechecks, build:portal); owner visual QA pending
-Signoff Status: pending visual QA + Studio/Portal release approvals
-DONE: no
+Review Status: implement signed off (approved); production releases pending
+Implement Status: complete on `development` (`f0f555a`)
+Test Status: automated passed; owner visual QA **PASS**
+Signoff Status: **approved** (dev implement) —
+`docs/workflow/reviews/2026-07-31-production-bundled-brand-implementation-signoff.md`
+DONE: no (Goal #13 continues; Studio/Portal branding not yet in production)
 Human Checkpoint Required: yes
-Human Checkpoint Reason: Owner visual QA of new bundled branding (Studio + Portal local). Then
-separate production Studio installer and/or Portal App Hosting branding rollout approvals.
-Blocked: no (implement done; releases gated)
-Blocker: none for implement
-Allowed Actions: record visual QA; docs; prepare release PRs when approved
-Forbidden Actions: Studio rebuild / Portal App Hosting branding rollout without explicit release
-phrases; Stage 2 until branding release path complete (or owner resequences)
-Next Required Step: Owner visual QA → `PASS` / `PASS WITH NOTES` / `FAIL`; then release phrases
+Human Checkpoint Reason: Await production release approval(s):
+`APPROVE PRODUCTION STUDIO INSTALLER: BUNDLED BRAND ASSETS` and/or
+`APPROVE PRODUCTION PORTAL APP HOSTING ROLLOUT: BUNDLED BRAND ASSETS`
+Blocked: no
+Blocker: none
+Allowed Actions: docs; prepare releases when phrases received
+Forbidden Actions: Studio rebuild / Portal branding App Hosting rollout without phrases; Stage 2
+until branding production path complete (or owner resequences)
+Next Required Step: Owner sends Studio installer and/or Portal App Hosting branding rollout phrase(s)
 
 Decision Log:
-- 2026-07-31 — `Brand sources ready` → inspected five sources; replaced bundled logos; regenerated
-  Studio icons (8% pad) + Portal favicons; AppLogo/PortalLogo onError; aspect defaults updated.
-- 2026-07-31 — `APPROVE BUNDLED BRAND ASSET IMPLEMENTATION` received.
-- 2026-07-31 — Portal registration loading-ownership PASS WITH NOTES closed.
+- 2026-07-31 — Owner bundled-brand visual QA **PASS**.
+- 2026-07-31 — Brand sources applied on `development` (`f0f555a`).
+- 2026-07-31 — `APPROVE BUNDLED BRAND ASSET IMPLEMENTATION` + `Brand sources ready`.
 
-Last Completed Step: **Bundled brand asset implementation on development.**
+Last Completed Step: **Bundled brand visual QA PASS / implement signoff.**
 
-Prior: Awaiting brand source drop.
+Prior: Brand assets implemented on development.
 
 **Corrected `users/{uid}` field list for any future manual bootstrap:** `id` (string, same as
 document ID / Auth UID), `email` (string), `displayName` (string), `role` (string, `"owner"` for
