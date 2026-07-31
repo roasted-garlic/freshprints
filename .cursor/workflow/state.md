@@ -31,15 +31,15 @@ throughout this pass.**
 Test Status: pending
 Signoff Status: pending
 DONE: no
-Last Completed Step: **Synced `origin/production` into `development` for CORS promotion PR.**
-Clean merge `0a8f8ab` (`merge: sync origin/production into development for CORS promotion PR`);
-no conflicts. Final promotion diff is docs/config + handoff only (10 files); no app/Functions
-runtime source. CORS JSON validated. Lint and `git diff --check` exit 0. **No bucket CORS
-reapply, no Firebase/App Hosting deploy, no snapshot rebuild.** PR to `production` prepared;
-await owner merge.
+Last Completed Step: **Domain-last sequencing amendment documented and Formal Review
+`approved`.** Owner decision: keep Coming Soon on `myprintrequest.com` until all
+domain-independent production setup + hosted.app smoke + readiness gate complete; connect
+custom domain only after `APPROVE MYPRINTREQUEST.COM CUTOVER`. Plan §7 +
+`docs/workflow/reviews/2026-07-31-production-release-domain-last-sequencing-review.md`.
+`development` fast-forwarded to `origin/production` (`bfa42ef`, PR #11 merge). **No DNS /
+Authorized Domains / OAuth / App Hosting / Firebase deploy / CORS reapply / snapshot rebuild.**
 
-Prior: Owner Discover retest PASS after production Storage CORS on
-`gs://fresh-prints-prod.firebasestorage.app`.
+Prior: Owner Discover retest PASS after production Storage CORS; PR #11 merged recording CORS.
 
 **Corrected `users/{uid}` field list for any future manual bootstrap:** `id` (string, same as
 document ID / Auth UID), `email` (string), `displayName` (string), `role` (string, `"owner"` for
@@ -383,17 +383,18 @@ or production data was configured/created/seeded. No production Studio installer
 or Search Console configuration occurred. `production` was not modified by Git (Functions deploy is
 a Firebase action, not a commit). `master` was not deleted. No force-push occurred anywhere in this
 pass.
-Human Checkpoint Required: yes — **merge the `development` → `production` PR** that records the
-already-applied production Storage CORS configuration. Merging does **not** redeploy CORS.
+Human Checkpoint Required: no — sequencing amendment reviewed (`approved`). Domain cutover remains
+blocked until later readiness gate.
 Blocked: no
-Allowed Actions: push sync to `origin/development`; open/update PR base `production` head
-`development`; await owner merge; after merge, fast-forward local `production` only if owner
-requests
-Forbidden Actions: merging the PR without owner action; force-push; rebase of shared branches;
-direct commits to `production`; reapplying bucket CORS; Firebase/Rules/Functions/App Hosting
-deploys; `rebuildCatalogSnapshots`; deleting `master`; creating `v1.0.0` tag
-Next Required Step: Owner reviews and merges the CORS recording PR into `production`. Do not merge
-from the agent.
+Allowed Actions: Stage 1 domain-independent production setup (Studio emailProviders, fixtures,
+verification); Stage 2 hosted.app smoke when fixtures ready; docs updates for readiness gate
+Forbidden Actions: connecting `myprintrequest.com`; Cloudflare DNS changes; Firebase Authorized
+Domains; Google OAuth changes; App Hosting custom-domain binding; GA4/Search Console go-live;
+Functions/Rules deploys without separate approval; CORS reapply; `rebuildCatalogSnapshots`;
+deleting `master`; force-push; creating `v1.0.0` tag
+Next Required Step: **Stage 1** — complete domain-independent setup starting with Studio
+`settings/emailProviders` (`inviteProvider: resend`, `proofNoticeProvider: brevo`) if not already
+set, then remaining Stage 1 checklist items. Do **not** connect the custom domain.
 
 Decision Log:
 - 2026-07-31 — Owner `APPROVE PRODUCTION STORAGE CORS`. Applied `storage.cors.production.json` to
@@ -403,6 +404,9 @@ Decision Log:
 - 2026-07-31 — Merged `origin/production` (`c644935`) into `development` (sync merge `0a8f8ab`);
   opened PR #11 (`development` → `production`) to record live CORS config:
   https://github.com/roasted-garlic/freshprints/pull/11 — **not merged by agent**.
+- 2026-07-31 — PR #11 merged (`bfa42ef`); `development` fast-forwarded to match `production`.
+- 2026-07-31 — Owner domain-last decision recorded; Plan §7 + Formal Review **approved**. Custom
+  domain remains final cutover after `APPROVE MYPRINTREQUEST.COM CUTOVER`.
 
 Plan:
 `docs/workflow/plans/2026-07-29-preproduction-static-analysis-cleanup-plan.md`.

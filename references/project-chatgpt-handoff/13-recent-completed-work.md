@@ -2,6 +2,16 @@
 
 > Signed-off or largely complete work. External agents should not re-plan or duplicate this.
 
+## 2026-07-31 - production-release: domain-last sequencing amendment (docs only, Formal Review approved)
+
+- Owner: keep Coming Soon on `myprintrequest.com` until domain-independent setup + hosted.app
+  smoke + readiness gate complete; connect custom domain only after
+  `APPROVE MYPRINTREQUEST.COM CUTOVER`
+- Plan §7 + DEPLOYMENT remaining steps 9–12 rewritten; Formal Review **approved**
+- No DNS, Authorized Domains, OAuth, App Hosting, Firebase deploy, CORS reapply, or snapshot
+  rebuild
+- Immediate next: Stage 1 domain-independent setup (emailProviders first if unset)
+
 ## 2026-07-30 - production-release: v1.0.0-rc5 owner retest PASS WITH NOTES; production Studio complete (deployment-order step 8 of 12 closed)
 
 - Owner reported `PASS WITH NOTES` on `v1.0.0-rc5`: launches without a white screen, correct icon

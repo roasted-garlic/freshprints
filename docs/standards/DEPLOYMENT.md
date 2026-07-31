@@ -363,15 +363,38 @@ own separate, later, explicitly-approved checkpoint.
    bootstrapped `users/{uid}` document (`userService.ts`'s `mapUserDocument()` requires both) — a
    gap in the earlier manual bootstrap instructions (step 9 below), not a code defect; corrected
    field list recorded in `.cursor/workflow/state.md`. **Step 8 of 12 fully closed.**
-9. Initial settings and reference-data setup (categories, email provider selection, `rebuildCatalogSnapshots`) — **partially complete: first owner account bootstrapped** (owner completed a manual two-part Console procedure since no automated first-owner path exists in this codebase — corrected field list: `id`, `email`, `displayName`, `role`, `isActive`, `createdAt`, `updatedAt`, optional `createdBy`/`updatedBy`); categories and `settings/emailProviders` remain the owner's own Studio-UI action, now that Studio access works
-10. Domain and Authorized Domains configuration
-11. Smoke tests ← **current checkpoint**
-12. GA4 and Search Console (separate later checkpoints)
+9. ✅ / ⏳ **Domain-independent production setup** — continue without touching the public domain.
+   First owner account bootstrapped; taxonomy present (18 categories / 1,122 approved tags);
+   catalog snapshots published; Portal Discover empty-catalog CORS owner **PASS**. Remaining:
+   Studio `settings/emailProviders` (invite Resend / proof Brevo) if unset; upcoming show;
+   minimum approved test catalog/customer fixtures as needed; verify sender-domain /
+   Gemini / Etsy / App Hosting / CORS status; **record** Coming Soon DNS + rollback (do not
+   change DNS).
+10. ⏳ **Domain-independent smoke tests** on
+    `https://fresh-prints-portal--fresh-prints-prod.us-central1.hosted.app` (+ production Studio).
+    Classify each check domain-independent vs domain-dependent. Do **not** treat hosted.app
+    results as canonical-domain passes. See Plan §7.6.
+11. ⏳ **Final pre-domain readiness gate** — documented proof + exact owner phrase
+    `APPROVE MYPRINTREQUEST.COM CUTOVER`. Coming Soon remains live until this gate passes.
+12. ⏳ **Custom domain cutover + domain-dependent smoke** — **only after** the Stage 11 approval.
+    Connect `myprintrequest.com` (and approved www behavior), Authorized Domains, Google sign-in
+    for the canonical host, then run domain-dependent smoke immediately. Rollback to Coming Soon
+    if cutover fails. **GA4 and Search Console remain separate later checkpoints after Stage 12.**
+
+> **2026-07-31 owner sequencing decision:** do **not** point `myprintrequest.com` at App Hosting
+> until Stages 9–11 are complete. This supersedes earlier wording that placed “Domain and
+> Authorized Domains” before finishing available production readiness checks. Full detail:
+> `docs/workflow/plans/2026-07-30-production-release-plan.md` §7 and
+> `docs/workflow/reviews/2026-07-31-production-release-domain-last-sequencing-review.md`.
+
+**Historical note (superseded order):** steps were previously numbered as (9) settings/reference
+data, (10) domain/Authorized Domains, (11) smoke tests, (12) GA4/Search Console. Domain is now
+the final production setup action before domain-dependent smoke.
 
 **The App Hosting backend existing with status "Waiting for your first release" does not change
 this order.** Backend configuration (already complete) is not the same as step 7 (the first
-release) — four more steps come first after Rules/Storage Rules. Each step requires its own
-separate, explicit owner approval; none of this order authorizes skipping ahead.
+release). Each remaining stage still requires its own explicit owner approval where noted; none
+of this order authorizes skipping ahead to domain cutover.
 
 ### Original enablement instructions (retained for reference)
 

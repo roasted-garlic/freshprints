@@ -1,5 +1,24 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-07-31 — Goal #13 production-release: domain-last sequencing amendment approved
+
+**Owner decision:** do **not** point `myprintrequest.com` at App Hosting yet. Coming Soon remains
+live until all domain-independent production setup and hosted.app smoke testing are complete.
+Custom domain is the final launch switch after readiness gate
+`APPROVE MYPRINTREQUEST.COM CUTOVER`.
+
+**Revised remaining stages:** (1) domain-independent setup → (2) smoke on
+`https://fresh-prints-portal--fresh-prints-prod.us-central1.hosted.app` → (3) readiness gate →
+(4) domain cutover + domain-dependent smoke. GA4 / Search Console stay later.
+
+**Immediate next task:** Stage 1 — Studio `settings/emailProviders` (Resend invite / Brevo proof)
+if unset, then remaining domain-independent fixtures. **Do not connect the custom domain.**
+
+Artifacts: Plan §7 in `docs/workflow/plans/2026-07-30-production-release-plan.md`; Formal Review
+`docs/workflow/reviews/2026-07-31-production-release-domain-last-sequencing-review.md`
+(**approved**). Git: `development`/`production` at `bfa42ef` (PR #11 CORS recording merged) before
+this docs amendment.
+
 ## 2026-07-30 — Goal #13 "production-release" — v1.0.0-rc5 owner retest PASS WITH NOTES; production Studio (step 8 of 12) fully closed; proceeding into Phase G smoke testing
 
 **Owner retest result: `PASS WITH NOTES`.** `v1.0.0-rc5` (the installer including both the
