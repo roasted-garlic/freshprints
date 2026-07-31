@@ -2,11 +2,16 @@
 
 > Signed-off or largely complete work. External agents should not re-plan or duplicate this.
 
+## 2026-07-31 - production-release: Stage 1C catalog fixture recorded (no duplicate import)
+
+- Reused Class D QA design `s9Yi7i8uq2ZddERyDuNT` (ready + published to portal-catalog gen 7)
+- Stage 1B `Production Smoke Test Show` still pending; Stage 2 not started; brand before Stage 2
+
 ## 2026-07-31 - production-release: Class D Storage closed (PASS WITH NOTES)
 
 - Owner: warning gone; design + brand uploads authorized; Design Library + brand OK
 - Note only: brief catalog-image delay = publisher debounce/snapshot/refresh
-- Next: Stage 1B show + Stage 1C catalog fixture; then Stage 2 hosted.app smoke
+- Next was Stage 1 fixtures (1C now recorded)
 
 ## 2026-07-31 - production-release: Class D cross-service IAM enabled (owner QA pending)
 

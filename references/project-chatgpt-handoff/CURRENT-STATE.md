@@ -1,5 +1,17 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-07-31 — Goal #13 Stage 1C fixture **recorded** (QA design reused); Stage 1B pending
+
+- Design ID `s9Yi7i8uq2ZddERyDuNT` — title “Funky Fresh Print - Steph - Running Noooooowww”
+- Category Occupations; tags `funny`, `sarcastic`; `status: ready` / `aiReviewStatus: approved`
+- Storage prefixes `/originals/`, `/thumbnails/`, `/previews/` (objects present)
+- Studio Design Library: yes; hosted Portal discover (gen `7-e79c4f86583f1428`): yes
+- **Do not** import a duplicate design
+- Stage 1B `Production Smoke Test Show` **not** present yet (2 other Whatnot shows exist)
+- **Do not** start Stage 2. After 1B recorded → confirm Stage 1 fixtures complete → bundled brand
+  before Stage 2 (`APPROVE BUNDLED BRAND ASSET IMPLEMENTATION`)
+- Checkpoint: `docs/workflow/reviews/2026-07-31-production-stage-1-domain-independent-setup-checkpoint.md`
+
 ## 2026-07-31 — Goal #13 Class D **CLOSED**: Storage uploads PASS WITH NOTES
 
 - Owner QA: Console warning gone; design + brand uploads authorized after Studio restart
@@ -8,8 +20,6 @@
   (not an auth failure)
 - Checkpoint:
   `docs/workflow/reviews/2026-07-31-production-storage-cross-service-permission-checkpoint.md`
-- **Owner next:** Stage 1B `Production Smoke Test Show` + Stage 1C ready catalog design fixture;
-  reply with IDs/`PASS`. Then Stage 2 hosted.app smoke. Portal-invite customer still Stage 4.
 
 ## 2026-07-31 — Goal #13 Class D: Storage cross-service permission **IAM applied** (superseded)
 

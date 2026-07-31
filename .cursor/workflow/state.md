@@ -2,31 +2,31 @@
 `production-release` (Goal #13)
 
 Current Mode: managed-phase
-Current Phase: implement — **Class D closed (PASS WITH NOTES); Stage 1B/1C fixtures next**
+Current Phase: implement — **Stage 1C fixture recorded; Stage 1B show pending**
 Plan Status: complete (amended Class D) —
 `docs/workflow/plans/2026-07-31-production-studio-storage-unauthorized-and-bundled-brand-plan.md`
 Review Status: prior Formal Review preserved; Class D amendment **approved**; checkpoint
 `docs/workflow/reviews/2026-07-31-production-storage-cross-service-permission-checkpoint.md`
 (**PASS WITH NOTES**)
-Implement Status: **Class D Storage remediation complete**; Stage 1 fixtures still open; brand
+Implement Status: Class D complete; Stage 1C complete (QA design reused); Stage 1B open; brand
 asset replacement still gated
-Test Status: Class D owner QA **PASS WITH NOTES**; Stage 1B/1C fixture QA pending
+Test Status: Class D **PASS WITH NOTES**; Stage 1C recorded; Stage 1B pending
 Signoff Status: pending (goal #13 not closed)
 DONE: no
 Human Checkpoint Required: yes
-Human Checkpoint Reason: Owner create Stage 1B upcoming show + Stage 1C catalog design fixtures in
-production Studio. Brand asset implementation still gated separately
-(`APPROVE BUNDLED BRAND ASSET IMPLEMENTATION`).
+Human Checkpoint Reason: Owner create Stage 1B `Production Smoke Test Show` in production Studio.
+After both Stage 1 fixtures are recorded, stop for Stage 1 fixture completion confirmation — then
+bundled-brand (`APPROVE BUNDLED BRAND ASSET IMPLEMENTATION`) **before** Stage 2 smoke.
 Blocked: no
-Blocker: none for Storage; Stage 1 fixtures still required before Stage 2 smoke
-Allowed Actions: document Stage 1 progress; await owner fixture IDs; after fixtures, begin Stage 2
-hosted.app smoke checklist; docs updates
-Forbidden Actions: further IAM changes without new approval; modifying `storage.rules`; deploying
-Rules; Studio rebuild; App Check; CORS; snapshot rebuild; asset replacement without brand implement
-approval; Stage 2 smoke before fixtures; DNS/domain; Portal-invite customer (deferred to Stage 4)
-Next Required Step: Owner creates `Production Smoke Test Show` (Stage 1B) and one approved ready
-catalog design fixture (Stage 1C); reply with IDs/`PASS`. Then execute Stage 2 checklist on
-hosted.app.
+Blocker: Stage 1B show fixture not yet created (named smoke-test show absent)
+Allowed Actions: read-only re-inspect/record Stage 1B after owner creates show; docs updates;
+prepare brand implement only after explicit approval phrase
+Forbidden Actions: duplicate catalog design import; Stage 2 smoke; further IAM; Rules deploy;
+Studio rebuild; App Check; CORS; snapshot rebuild; asset replacement without brand approval;
+DNS/domain; Portal-invite customer (deferred to Stage 4)
+Next Required Step: Owner creates `Production Smoke Test Show` (future, active,
+Portal-allocatable, normal 25-per-show limit, not completed). Reply when done so agent can
+record show ID/schedule/status via read-only inspection. Do **not** start Stage 2.
 
 Decision Log:
 - 2026-07-31 — `APPROVE BRAND ASSET MAPPING` (five-source map; preserve 8% app-icon padding).
@@ -37,10 +37,12 @@ Decision Log:
 - 2026-07-31 — Owner Class D post-fix QA **PASS WITH NOTES**: warning gone; design + brand
   uploads authorized; Design Library + brand display OK; brief catalog-image delay attributed to
   publisher 15s debounce / snapshot / refresh (not auth failure).
+- 2026-07-31 — Stage 1C: QA design `s9Yi7i8uq2ZddERyDuNT` qualifies (ready + published); no
+  duplicate import. Stage 1B still pending named show.
 
-Last Completed Step: **Class D closed** — IAM grant + owner Studio upload QA PASS WITH NOTES.
+Last Completed Step: **Stage 1C catalog fixture recorded** (reuse QA design; read-only verified).
 
-Prior: Class D IAM applied; brand mapping approved.
+Prior: Class D closed PASS WITH NOTES.
 
 **Corrected `users/{uid}` field list for any future manual bootstrap:** `id` (string, same as
 document ID / Auth UID), `email` (string), `displayName` (string), `role` (string, `"owner"` for

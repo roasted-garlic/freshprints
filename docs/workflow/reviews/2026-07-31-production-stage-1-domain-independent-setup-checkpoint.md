@@ -5,11 +5,16 @@
 | Date | 2026-07-31 |
 | Goal | `production-release` (Goal #13) |
 | Phase | Phase G / Stage 1 |
-| Status | **partial — Storage Class D closed; Stage 1B/1C fixtures still required** |
+| Status | **partial — Stage 1C recorded; Stage 1B show fixture still required** |
 
 **Unblocked 2026-07-31:** Storage cross-service IAM + owner upload QA **PASS WITH NOTES**
 (`…-production-storage-cross-service-permission-checkpoint.md`). Catalog design import and brand
-logo upload work again. Proceed with Stage 1B/1C fixtures below.
+logo upload work again.
+
+**Stage 1C (2026-07-31 read-only):** QA design **qualifies** — no duplicate import. See § Stage 1C
+recorded values below. **Stage 1B** still awaiting owner-created `Production Smoke Test Show`
+(existing Whatnot shows are not this named fixture). **Do not start Stage 2** until both fixtures
+are recorded; owner intends bundled-brand implementation next, before Stage 2 smoke.
 
 ---
 
@@ -39,41 +44,55 @@ re-run in this agent session. Owner should reconfirm when creating Stage 1B/1C f
 
 ## Stage 1B — Upcoming show
 
-**Not created by the agent** (requires production Studio UI).
+**Status:** **pending owner creation** (read-only 2026-07-31).
+
+`upcomingShows` currently has **2** Whatnot-synced shows (Friday/Saturday DTF titles,
+`maxTotalQuantity: 200`). **Neither** is titled `Production Smoke Test Show`. Do **not** treat
+those as the Stage 1B named fixture.
 
 ### Manual fixture checkpoint
 
 **Name:** `Production Smoke Test Show`  
-**Requirements:** future schedule; active / Portal-allocatable; default 25-per-show limit; not
-completed; no customer orders yet.
+**Requirements:** future schedule; active / Portal-allocatable; normal 25-per-show limit; not
+completed; no customer requests required.
 
-Please create in production Studio, then reply with:
+Please create in production Studio, then reply (or ask agent to re-inspect) with:
 
 - show ID
-- display name
-- scheduled date/time + timezone
-- status/active fields
-- `PASS` or `FAIL: …`
+- name
+- scheduled date and time
+- timezone
+- status
+- Portal-allocatable confirmation
+
+Agent will record via read-only Admin SDK after creation. **Do not begin Stage 2** after this
+alone — wait for Stage 1 fixture completion confirmation, then bundled-brand before Stage 2.
 
 ---
 
 ## Stage 1C — Catalog design fixture
 
-**Not created by the agent** (requires production Studio import → AI Review → ready).
+**Status:** **PASS — QA design qualifies** (read-only inspection 2026-07-31). **Do not import a
+duplicate.**
 
-### Manual fixture checkpoint
+The single production design created during Class D Storage QA already satisfies Stage 1C.
 
-Import one owner-approved, non-sensitive design; complete normal enrichment/review/ready path.
-Do **not** manually edit generated JSON. Do **not** invoke `rebuildCatalogSnapshots` unless the
-normal publisher fails and a separate review says so.
+### Recorded values (read-only)
 
-Please reply with:
+| Field | Value |
+|-------|-------|
+| design ID | `s9Yi7i8uq2ZddERyDuNT` |
+| title | Funky Fresh Print - Steph - Running Noooooowww |
+| category | Occupations (`categoryId` `syIPl9aShj2pdz8ajM2p`, `isActive: true`) |
+| tags | `funny`, `sarcastic` |
+| ready status | `status: ready`, `aiReviewStatus: approved` |
+| Storage path prefixes | `/originals/`, `/thumbnails/`, `/previews/` |
+| Storage object paths (no signed URLs) | `/originals/s9Yi7i8uq2ZddERyDuNT.png`, `/thumbnails/s9Yi7i8uq2ZddERyDuNT.webp`, `/previews/s9Yi7i8uq2ZddERyDuNT.webp` |
+| Studio Design Library visibility | **yes** — in current studio ready-index (`catalogVersion` `7-e79c4f86583f1428`); owner also confirmed Design Library in Class D QA |
+| hosted Portal visibility after normal publication | **yes** — present in live `generated/portal-catalog/manifest.json` → generation `7-e79c4f86583f1428` `discover.json` / `recent/page-0.json` / category page; anonymous `getDownloadURL` + Origin `hosted.app` fetch **200** with CORS ACAO |
 
-- design ID, title, category, tags
-- ready/catalog confirmation
-- Storage path prefixes only (no signed URLs)
-- Studio Design Library visible: yes/no
-- hosted Portal visible after normal publication: yes/no
+Publication was via the normal catalog publisher (manifest `generatedAt` `2026-07-31T19:30:26.977Z`);
+no manual JSON edit and no `rebuildCatalogSnapshots` in this fixture pass.
 
 ---
 
@@ -159,8 +178,8 @@ Manager as a precaution.
 
 Checklist: `docs/workflow/reviews/2026-07-31-production-stage-2-hosted-app-smoke-checklist.md`
 
-Status: **prepared — not executed**. Blocked on Stage 1B/1C owner fixtures for several items;
-customer/invite tests deferred to Stage 4.
+Status: **prepared — not executed**. Blocked on Stage 1B fixture (1C complete); owner will run
+bundled-brand implementation before Stage 2; customer/invite tests deferred to Stage 4.
 
 ---
 
