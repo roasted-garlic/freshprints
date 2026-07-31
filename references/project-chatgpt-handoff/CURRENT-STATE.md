@@ -1,18 +1,28 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-07-31 — Goal #13 Portal registration owner QA **FAIL** after App Hosting rollout
+
+Exact FAIL:
+
+> FAIL: Google Auth succeeds, but complete-profile remains permanently stuck after the production rollout. No Firestore user/customer/username records are created, and the expected 45-second timeout/error/retry state never appears.
+
+- Build still live: PR #12 / `8943d17` (includes `b882e5c`); automatic rollouts disabled; **no new deploy** this pass
+- Root cause: sticky `isAuthActionLoading` on `missing-profile` mounts fixed provision overlay without entering `completeCustomerProfile` (45s timeout never starts); `registerCustomer` not invoked
+- Amendment: `docs/workflow/plans/2026-07-31-production-portal-registration-post-rollout-amendment.md`
+- Formal Review: **approved** —
+  `docs/workflow/reviews/2026-07-31-production-portal-registration-post-rollout-amendment-review.md`
+- **Owner next:** `APPROVE PORTAL REGISTRATION LOADING-OWNERSHIP FIX IMPLEMENTATION`
+- Do **not** reuse `APPROVE PRODUCTION PORTAL APP HOSTING ROLLOUT` until new implement review
+- Branding + Stage 2 still paused; Stage 1 + Class D untouched; no Auth deletes
+- Auth inventory at diagnosis: only owner password `7v3SLjRN…` (no Google Auth-only present)
+
 ## 2026-07-31 — Goal #13 Portal registration fix **LIVE on App Hosting** — owner QA pending
 
-- PR #12 merged to `production` (`8943d17`); includes fix commit `b882e5c`
-- Rollout: `firebase apphosting:rollouts:create fresh-prints-portal --project fresh-prints-prod --git-commit 8943d17 --force` → success
-- Verified: `/complete-profile` 200; `[fp-portal-auth]` present in served JS (no tokens/emails/UIDs)
-- Automatic rollouts remain disabled
-- Checkpoint: `docs/workflow/reviews/2026-07-31-production-portal-registration-app-hosting-rollout-checkpoint.md`
-- **Owner next:** hosted.app Google → complete-profile QA; reply `PASS` / `PASS WITH NOTES` / `FAIL`
-- Branding + Stage 2 still paused; Stage 1 + Class D untouched; no Auth deletes
+- **Superseded** — owner QA FAIL (see section above)
 
 ## 2026-07-31 — Goal #13 Portal registration loading-state fix implemented (not deployed)
 
-- **Superseded** — now deployed (see section above)
+- **Superseded** — deployed then FAIL
 
 ## 2026-07-31 — Goal #13 Stage 1 fixtures **COMPLETE** (1B + 1C)
 

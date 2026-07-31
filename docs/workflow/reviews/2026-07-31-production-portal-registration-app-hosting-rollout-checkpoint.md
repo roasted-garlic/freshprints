@@ -29,21 +29,40 @@
 | `[fp-portal-auth]` in served JS | **present** (layout chunk); stage-only logging, no tokens/emails/UIDs in marker vicinity |
 | Homepage | 200 with Fresh Prints Request Portal title |
 
-## Not done
+## Owner QA result — **FAIL** (2026-07-31)
 
-- No Auth user delete
+Exact recorded result:
+
+> FAIL: Google Auth succeeds, but complete-profile remains permanently stuck after the production rollout. No Firestore user/customer/username records are created, and the expected 45-second timeout/error/retry state never appears.
+
+| Observation | Status |
+|-------------|--------|
+| Google Authentication | Succeeds |
+| Reproducible `accounts:lookup` 400 | **No** |
+| COOP `window.closed` | Still present — **not** classified as root cause without direct evidence |
+| Setup spinner | Permanent |
+| 45s timeout → terminal error / Retry | **Never appears** |
+| Firestore `users` / customer / username | **Not created** |
+| Portal as authenticated customer | **No** |
+
+## Post-FAIL disposition
+
+- Rollout of `8943d17` / `b882e5c` **remains** in place (no rollback this pass; automatic rollouts stay disabled)
+- Diagnosis + plan amendment + Formal Review completed — **no** further runtime deploy this pass
+- Next implementation phrase:
+  `APPROVE PORTAL REGISTRATION LOADING-OWNERSHIP FIX IMPLEMENTATION`
+- Do **not** reuse `APPROVE PRODUCTION PORTAL APP HOSTING ROLLOUT` until the new implementation is reviewed
+
+See:
+
+- `docs/workflow/plans/2026-07-31-production-portal-registration-post-rollout-amendment.md`
+- `docs/workflow/reviews/2026-07-31-production-portal-registration-post-rollout-amendment-review.md`
+- Updated incident
+
+## Not done (still)
+
+- No Auth user delete/disable
 - No branding implement
 - No Stage 2 smoke
-- Owner registration QA **pending**
-
-## Owner QA — reply format
-
-Reply `PASS`, `PASS WITH NOTES: …`, or `FAIL: …` after:
-
-1. Open hosted.app `/register` → Continue with Google (same account OK).
-2. Complete profile (display name + username + bidding ack).
-3. Confirm overlay exits and portal loads (not permanent “Setting up…”).
-4. DevTools Console: `[fp-portal-auth]` stages through `callable_*` / `completed` (or timeout/error with Retry / Use a different account).
-5. Confirm no tokens/emails/UIDs in those log lines.
-6. Optional: force a failure path or wait for timeout messaging once if easy.
-7. Stage 1 fixtures unchanged; do not start branding/Stage 2 until PASS.
+- No custom-domain cutover
+- No post-FAIL runtime fix deploy yet

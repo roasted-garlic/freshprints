@@ -2,33 +2,45 @@
 `production-release` (Goal #13)
 
 Current Mode: managed-phase
-Current Phase: test — **App Hosting rollout complete; owner registration QA pending**
+Current Phase: review — **post-rollout FAIL diagnosed; amendment Formal Review approved; stop before implement**
 Plan Status: complete —
-`docs/workflow/plans/2026-07-31-production-portal-registration-stuck-plan.md`
-Review Status: Formal + Implementation Review approved; rollout checkpoint recorded
-Implement Status: complete and **deployed** to production App Hosting
-Test Status: automated **passed**; hosted.app owner QA **pending**
-Signoff Status: pending owner QA
+parent `docs/workflow/plans/2026-07-31-production-portal-registration-stuck-plan.md` +
+amendment `docs/workflow/plans/2026-07-31-production-portal-registration-post-rollout-amendment.md`
+Review Status: **approved** —
+`docs/workflow/reviews/2026-07-31-production-portal-registration-post-rollout-amendment-review.md`
+Implement Status: prior `b882e5c` / `8943d17` live; **loading-ownership fix not started**
+Test Status: prior automated passed; hosted.app owner QA **FAIL**
+Signoff Status: blocked on remediation + re-QA
 DONE: no
 Human Checkpoint Required: yes
-Human Checkpoint Reason: Owner hosted.app registration QA after App Hosting rollout. Reply
-`PASS` / `PASS WITH NOTES: …` / `FAIL: …`. Branding + Stage 2 remain paused until PASS.
-Blocked: no (rollout done; product QA open)
-Blocker: none for deploy; registration QA outstanding
-Allowed Actions: record owner QA; docs; read-only verify
-Forbidden Actions: Auth user delete; branding implement; Stage 2 smoke before QA PASS; unrelated
-Firebase deploys; domain cutover
-Next Required Step: Owner runs hosted.app complete-profile QA (see rollout checkpoint); reply PASS /
-PASS WITH NOTES / FAIL.
+Human Checkpoint Reason: Await
+`APPROVE PORTAL REGISTRATION LOADING-OWNERSHIP FIX IMPLEMENTATION`. Branding + Stage 2 remain
+paused. Do not reuse prior App Hosting rollout phrase until new implement review.
+Blocked: yes (product registration still broken on hosted.app)
+Blocker: Permanent complete-profile overlay after Google Auth; timeout never starts when
+`isAuthActionLoading` sticky on missing-profile; `registerCustomer` not invoked
+Allowed Actions: docs; wait for implementation approval; read-only verify
+Forbidden Actions: implement/runtime source until approval phrase; App Hosting rollout;
+Auth user delete; Firestore repair; Auth/API-key/domain/OAuth changes; Functions/Rules deploy;
+branding; Stage 2; domain cutover
+Next Required Step: Owner sends
+`APPROVE PORTAL REGISTRATION LOADING-OWNERSHIP FIX IMPLEMENTATION` (then implement → test →
+implement review → new App Hosting phrase).
 
 Decision Log:
+- 2026-07-31 — Owner QA **FAIL** (exact): Google Auth succeeds, but complete-profile remains
+  permanently stuck after the production rollout. No Firestore user/customer/username records
+  are created, and the expected 45-second timeout/error/retry state never appears.
+- 2026-07-31 — Post-rollout root cause: sticky `isAuthActionLoading` on missing-profile mounts
+  fixed provision overlay without entering `completeCustomerProfile` / 45s timeout. Served build
+  still `8943d17`/`b882e5c`. Formal Review of loading-ownership amendment **approved**.
 - 2026-07-31 — `APPROVE PRODUCTION PORTAL APP HOSTING ROLLOUT` → PR #12 merge `8943d17`;
   `apphosting:rollouts:create` pinned to `8943d17` succeeded; `[fp-portal-auth]` verified live.
 - 2026-07-31 — Source fix `b882e5c` is ancestor of production tip `8943d17`.
 
-Last Completed Step: **Production Portal App Hosting rollout of registration loading-state fix.**
+Last Completed Step: **Post-rollout FAIL diagnosis → plan amendment → Formal Review (approved).**
 
-Prior: Client fix on development; Implementation Review approved.
+Prior: App Hosting rollout of Phase 1 loading-state fix; owner QA FAIL.
 
 **Corrected `users/{uid}` field list for any future manual bootstrap:** `id` (string, same as
 document ID / Auth UID), `email` (string), `displayName` (string), `role` (string, `"owner"` for

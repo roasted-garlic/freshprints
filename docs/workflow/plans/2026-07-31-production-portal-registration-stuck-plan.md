@@ -4,7 +4,7 @@
 |-------|-------|
 | Date | 2026-07-31 |
 | Author | Planning Agent |
-| Status | amended — root cause = post-Auth client stall before `registerCustomer` + loading UX; Phase 1 implemented on development; App Hosting rollout gated |
+| Status | amended — Phase 1 deployed (`8943d17`); owner QA **FAIL**; see post-rollout amendment for loading-ownership root cause |
 | Workflow | managed-phase (`production-release` Goal #13) |
 | Related | Incident `docs/workflow/reviews/2026-07-31-production-portal-registration-stuck-incident.md` |
 
@@ -227,16 +227,21 @@ See Owner QA checklist below.
 - [x] No Auth Console remediation selected from historical 400
 - [x] `APPROVE PORTAL REGISTRATION LOADING-STATE FIX IMPLEMENTATION` received
 
-### Phase 1 — Permanent-loading prevention — **implemented on development**
+### Phase 1 — Permanent-loading prevention — **deployed; owner QA FAIL**
 
 - [x] Bounded timeout (45s), stage instrumentation, terminal error, retry, sign-out, duplicate guard
-- [ ] `APPROVE PRODUCTION PORTAL APP HOSTING ROLLOUT` — **next**
+- [x] `APPROVE PRODUCTION PORTAL APP HOSTING ROLLOUT` → `8943d17` live
+- [x] Owner QA → **FAIL** (timeout/error never appeared; no Firestore provisioning)
+- [ ] Post-rollout loading-ownership fix — see
+  `docs/workflow/plans/2026-07-31-production-portal-registration-post-rollout-amendment.md`
+  (Formal Review **approved**; await
+  `APPROVE PORTAL REGISTRATION LOADING-OWNERSHIP FIX IMPLEMENTATION`)
 
 ### Phase 3 — Partial-account handling (updated)
 
-Re-read Auth before any delete. Post-implement inventory (2026-07-31): Google orphans including
-`L3jjfWJG…` were **absent**; only owner Auth user listed. Agents did not delete. Resume when a
-Google Auth-only user is present again after signup.
+Re-read Auth before any delete. Post-FAIL diagnosis inventory (2026-07-31): **only** owner
+password Auth user `7v3SLjRN…`; no Google Auth-only user listed. Agents did not delete. Resume
+when a Google Auth-only user is present again after signup.
 
 ---
 

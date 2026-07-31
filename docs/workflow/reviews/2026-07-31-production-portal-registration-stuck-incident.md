@@ -5,7 +5,7 @@
 | Date | 2026-07-31 |
 | Goal | `production-release` (Goal #13) |
 | Phase | Phase G — after Stage 1 fixtures; **before** bundled brand / Stage 2 |
-| Status | **Client fix implemented on `development`** — awaiting App Hosting rollout approval; 400 historical |
+| Status | **Owner QA FAIL after App Hosting rollout** — post-rollout amendment approved; await loading-ownership implementation |
 | Environment | `https://fresh-prints-portal--fresh-prints-prod.us-central1.hosted.app` |
 | Related Plan | `docs/workflow/plans/2026-07-31-production-portal-registration-stuck-plan.md` |
 | Inventory amendment | `docs/workflow/reviews/2026-07-31-production-portal-registration-stuck-inventory-amendment.md` |
@@ -19,7 +19,7 @@
 | Stage 1B / 1C fixtures | **Remain complete** (`PASS WITH NOTES`) — not reopened |
 | Class D Storage IAM | **Remains closed** — not modified |
 | Branding / Stage 2 | **Paused** by this incident — not started |
-| Runtime source / deploys / Auth config / data repair | **Not performed** in this pass |
+| Runtime source / deploys / Auth config / data repair | **Not performed** in post-rollout diagnosis pass (prior rollout of `8943d17` preserved) |
 
 ---
 
@@ -79,11 +79,12 @@ Auth listener → `loadPortalSession` → missing `users/{uid}` throws
 | UI string | Owner |
 |-----------|--------|
 | Title `Setting up your account…` | `CompleteProfileForm` → `AuthBusyOverlay` |
-| Message `Creating your customer account…` | `SETUP_PROGRESS_MESSAGES[0]` while `isSubmitting` |
-| Async owner | `completeCustomerProfile` → `registerCustomerService.provisionCustomerProfile` → `httpsCallable('registerCustomer')` (requires Auth ID token) |
+| Message `Creating your customer account…` | `SETUP_PROGRESS_MESSAGES[0]` default / while submitting — **also shown when only `isAuthActionLoading` is true** |
+| Async owner (intended) | `completeCustomerProfile` → `registerCustomerService.provisionCustomerProfile` → `httpsCallable('registerCustomer')` |
 
-`isBusy = isSubmitting \|\| isAuthActionLoading`. While busy, **Use a different account**
-(`logout`) is **disabled**. No client timeout around provisioning.
+`isBusy = isSubmitting \|\| isAuthActionLoading`. After `b882e5c`, sign-out control is
+`disabled={false}`, but the **fixed** busy overlay still covers the viewport and blocks
+interaction. Timeout exists only inside `completeCustomerProfile`.
 
 ### Callable / data writes (server)
 
@@ -297,41 +298,150 @@ Remediation must include terminal error UX, timeout, and usable sign-out/retry �
 
 ---
 
-## Root cause (current — amended after loading-state implement approval)
+## Owner QA result (post App Hosting rollout — FAIL)
 
-**Selected root cause:**
+Exact recorded result:
 
-Production Google Authentication succeeds, but the Portal complete-profile client pipeline
-stalls or fails after Auth session establishment and before `registerCustomer` invocation.
-The Portal also had a confirmed permanent-loading defect (no bounded timeout / usable escape).
+> FAIL: Google Auth succeeds, but complete-profile remains permanently stuck after the production rollout. No Firestore user/customer/username records are created, and the expected 45-second timeout/error/retry state never appears.
 
-**Historical / non-selected:**
+Preserved: Stage 1 fixtures; Class D Storage closed; PR #12 / merge `8943d17`; fix commit
+`b882e5c`; completed App Hosting rollout; automatic rollouts disabled. Branding + Stage 2 +
+domain cutover remain paused. Agents must not delete/disable Auth users.
 
-- `accounts:lookup` HTTP 400 — **non-reproducible** as of owner retest (all observed lookups
-  HTTP 200 / `GetAccountInfoResponse`). Keep as transient/stale/historical evidence only.
-  **Do not** select Auth Console, API-key, Authorized Domain, OAuth, or provider remediation
-  from it. Further owner attempts to capture that 400 are **not required**.
+Artifacts:
 
-**Client fix (implemented, not yet rolled out to App Hosting):** staged ID-token → callable
-pipeline with 45s timeout, terminal error, retry, always-available sign-out, duplicate guards,
-sanitized `[fp-portal-auth]` stage logs.
-
-**UID history:** Portal source has **no** `deleteUser` / failed-registration Auth cleanup.
-Functions `deleteUser` exists only on staff invite/team/owner-delete paths — not
-`registerCustomer`. Changing Google Firebase UIDs for “the same Google account” implies
-**Auth user delete + recreate** outside this Portal client path — **`[NEEDS OWNER CONFIRMATION]`**
-(Console delete). Post-implement read-only list showed **only** the owner Auth user;
-`L3jjfWJG…` was **absent** (agents did not delete).
+- Rollout checkpoint (FAIL section)
+- Plan amendment:
+  `docs/workflow/plans/2026-07-31-production-portal-registration-post-rollout-amendment.md`
+- Formal Review:
+  `docs/workflow/reviews/2026-07-31-production-portal-registration-post-rollout-amendment-review.md`
 
 ---
 
-## Actions explicitly not taken
+## Post-rollout diagnosis (2026-07-31)
 
+### Deployed revision (read-only)
+
+| Check | Result |
+|-------|--------|
+| `origin/production` tip | `8943d17` |
+| `b882e5c` ancestor of production | **yes** |
+| App Hosting backend updated | 2026-07-31 15:36:10 (prior rollout; no new rollout this pass) |
+| Served JS markers | `[fp-portal-auth]`, `CompleteProfileTimeoutError`, timeout `45e3`, `getIdToken`, complete-profile overlay copy |
+| Stale prior build | **ruled out** for marker presence |
+
+### Loading authorities that can keep `AuthBusyOverlay` visible
+
+| Authority | Source | Clears when |
+|-----------|--------|-------------|
+| `isSubmitting` | `CompleteProfileForm` local state | Form catch/finally after `completeCustomerProfile` settles |
+| `isAuthActionLoading` | `AuthProvider` | Login/register/provision catch paths; logout; unauthenticated |
+| Early return `bootstrapStatus === 'loading-profile'` + busy | Form + Auth listener | Only when status leaves `loading-profile` and `!isBusy` |
+
+`isBusy = isSubmitting || isAuthActionLoading`. Terminal error:
+`showTerminalFailure = Boolean(displayError) && !isBusy`. Overlay CSS:
+`.portal-auth-processing-overlay` is **position: fixed** full viewport above modals — blocks
+clicks on controls underneath.
+
+### Timeout boundary (`completeCustomerProfile`)
+
+`withCompleteProfileTimeout` races the full async IIFE: Auth user → `getIdToken(true)` →
+callable ref → `registerCustomer` → `loadPortalSession`. Constant `45e3` present in served
+bundle. **Does not** start until `completeCustomerProfile` is entered.
+
+### Did timeout fire? Was terminal error hidden?
+
+| Question | Verdict |
+|----------|---------|
+| Timeout fired in owner attempt | **Not observed**; stage capture incomplete. **Strong source explanation:** sticky Google `isAuthActionLoading` shows provision overlay **without** entering the helper — timeout never starts |
+| Terminal error created but hidden | **Design-confirmed risk** whenever `isBusy` stays true; sticky loading alone never sets an error |
+
+### `registerCustomer` invoked?
+
+| Source | Result |
+|--------|--------|
+| Cloud Run `registercustomer` logs (from ~18:00Z diagnosis window) | **0** entries |
+| Firestore customers / usernames / customer users | still **0** |
+
+**Interpretation:** callable **was not invoked** (or never reached Cloud Run) on post-rollout
+attempts sampled — consistent with hang/overlay before provision.
+
+### Auth-only inventory (read-only, diagnosis time)
+
+| uidPrefix | Providers | Disabled | `users/{uid}` | customer | username |
+|-----------|-----------|----------|---------------|----------|----------|
+| `7v3SLjRN…` | `password` | false | owner | n/a | n/a |
+
+**Auth total: 1.** No Google Auth-only user present at diagnosis time (agents did not delete).
+Owner reported a Google Auth user during FAIL — treat as time-sensitive / Console observation
+gap; **re-inventory before any delete**. Prefer resume when a Google Auth-only uid reappears.
+
+### Stage logs
+
+`console.info('[fp-portal-auth]', …)` **is** in the production bundle. Last stage during FAIL
+**not captured**. If Info level is disabled in DevTools, stages are hidden. Optional owner
+capture (Info on, filter `fp-portal-auth`) only if still needed after ownership fix.
+
+### Network (post-rollout FAIL — from owner + server)
+
+| Request | Finding |
+|---------|---------|
+| Secure Token refresh | Not proven pending from this pass |
+| `accounts:lookup` 400 | Owner: **not reproducible** |
+| `registerCustomer` HTTP | No Cloud Run evidence of invocation |
+| Firestore profile writes | None (no docs) |
+| COOP `window.closed` | Present; **not** root cause without direct evidence |
+
+---
+
+## Hypothesis matrix (post-rollout)
+
+| # | Hypothesis | Verdict | Evidence |
+|---|------------|---------|----------|
+| 1 | New build not served | **ruled out** | `8943d17` / markers / `45e3` in layout chunk |
+| 2 | Browser/App Hosting cache serves stale JS | **ruled out** for marker presence | Live chunk contains fix strings |
+| 3 | New helper never entered | **still possible** / **primary mechanism** | Sticky `isAuthActionLoading` overlay without `completeCustomerProfile`; 0 callable logs |
+| 4 | Info-level stage logs merely hidden | **still possible** | `console.info` in bundle; DevTools Info may be off |
+| 5 | `getIdToken(true)` never settles | **still possible** if helper entered | Would be covered by 45s race if entered |
+| 6 | Timeout excludes Auth-token wait | **ruled out** | Race wraps full IIFE including `getIdToken` |
+| 7 | Timeout fires but `isAuthActionLoading` keeps overlay | **still possible** as secondary | Source allows sticky/listener re-busy; not proven fired |
+| 8 | Timeout fires but terminal error hidden behind `isBusy` | **still possible** as secondary | `showTerminalFailure` requires `!isBusy` |
+| 9 | `registrationInProgressRef` remains locked | **still possible** if provision entered and never `finally` | Not needed for sticky Google path |
+| 10 | `submitLockRef` remains locked | **still possible** if form await never settles | Cleared in `finally` when `runCompleteProfile` returns |
+| 11 | Auth listener suppression blocks recovery | **still possible** during provision | Listener skips `loadPortalSession` while ref true |
+| 12 | `registerCustomer` request never sent | **confirmed** for sampled window | 0 Cloud Run entries; no Firestore rows |
+| 13 | `registerCustomer` sent but rejected | **ruled out** for sampled window | No invocation logs |
+| 14 | Callable region/config mismatch | **still possible** only after client sends | Not reached yet |
+| 15 | Firestore Rules deny post-call session reads | **not applicable** yet | No callable |
+| 16 | Callable succeeds but `loadPortalSession` hangs | **ruled out** for these attempts | No docs created; no callable |
+| 17 | COOP warnings unrelated popup noise | **still possible** | Auth succeeded; no proof COOP blocks provision |
+| 18 | Auth-only user can safely resume after remediation | **still possible** if Google Auth-only reappears | Diagnosis inventory: Google Auth-only **absent**; resume preferred when present |
+
+---
+
+## Root cause (current — post-rollout)
+
+**Selected:** Google Auth succeeds and lands on `/complete-profile` with
+`isAuthActionLoading` held **true** for `missing-profile` / `missing-customer`. The form mounts
+a fixed provision overlay using default copy **Creating your customer account…** without
+entering `completeCustomerProfile`, so the 45s timeout / terminal error / Retry path never
+runs, and recovery controls under the overlay are not usable. `registerCustomer` is never
+invoked.
+
+**Prior Phase 1 (`b882e5c`) remains valuable** for when provision is entered, but **did not
+address sticky Google loading ownership** — hence owner QA FAIL after rollout.
+
+**Historical / non-selected:** `accounts:lookup` 400; COOP as root cause.
+
+---
+
+## Actions explicitly not taken (post-rollout diagnosis pass)
+
+- No runtime source changes
+- No App Hosting / Functions / Rules deploy
 - No Auth user delete/disable
 - No Firestore create/delete
 - No Authorized Domains / OAuth / API-key / Identity Toolkit config changes
-- No Rules / Functions / App Hosting / env changes
-- No source changes
 - No branding or Stage 2 work
 - No fixture changes
 - No secret access
