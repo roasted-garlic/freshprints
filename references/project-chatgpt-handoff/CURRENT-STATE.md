@@ -1,29 +1,30 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-07-31 — Goal #13 BLOCKED: Portal registration stuck (`accounts:lookup` 400)
+
+- Stuck UI: `CompleteProfileForm` — “Setting up your account…” / “Creating your customer account…”
+- Method: Google popup → complete-profile (Auth-only orphan `uidPrefix=Pl3ODnKm…`)
+- `registerCustomer` ACTIVE but **not invoked** 2026-07-31; no Firestore customer/user/username
+- Deployed Portal = `fresh-prints-prod`; hosted.app **is** Authorized Domain
+- Exact Identity Toolkit error body: **`[NEEDS OWNER RESPONSE CAPTURE]`**
+- Formal Review **approved_with_changes**; **no implement/deploy yet**
+- Branding + Stage 2 **paused**; Stage 1 fixtures + Class D Storage **unchanged/complete**
+- Artifacts:
+  - `docs/workflow/reviews/2026-07-31-production-portal-registration-stuck-incident.md`
+  - `docs/workflow/plans/2026-07-31-production-portal-registration-stuck-plan.md`
+  - `docs/workflow/reviews/2026-07-31-production-portal-registration-stuck-review.md`
+- Next: owner paste sanitized lookup error; then
+  `APPROVE PORTAL REGISTRATION LOADING-STATE FIX IMPLEMENTATION`
+
 ## 2026-07-31 — Goal #13 Stage 1 fixtures **COMPLETE** (1B + 1C)
 
-- **1C:** design `s9Yi7i8uq2ZddERyDuNT` (ready + published) — no duplicate
-- **1B:** two Whatnot-imported shows — PASS WITH NOTES (live titles)
-  - Primary Friday: Firestore `kmpnyHAvKaesidMrlFkU` / Whatnot `3fc20124-605d-4db2-a2ff-90ae10f32982`
-    — Jul 31, 2026 8:00 PM CDT; `scheduled`/`open`; Portal-allocatable yes
-  - Saturday: Firestore `p8ooWvYU01wX1Nug53bp` / Whatnot `ca5fe015-6945-40f6-83e1-0b06e88aae74`
-    — Aug 1, 2026 8:00 PM CDT; same status criteria
-- **Do not** start Stage 2
-- **Next:** bundled brand — owner assets + `APPROVE BUNDLED BRAND ASSET IMPLEMENTATION`
-- Checkpoint: `docs/workflow/reviews/2026-07-31-production-stage-1-domain-independent-setup-checkpoint.md`
-
-## 2026-07-31 — Goal #13 Stage 1C fixture recorded (QA design reused); Stage 1B pending
-
-- **Superseded** — Stage 1B recorded; Stage 1 fixtures complete (see section above)
+- Remains recorded **PASS WITH NOTES** — not reopened by registration incident
+- 1C `s9Yi7i8uq2ZddERyDuNT`; 1B Friday `kmpnyHAvKaesidMrlFkU` + Saturday `p8ooWvYU01wX1Nug53bp`
 
 ## 2026-07-31 — Goal #13 Class D **CLOSED**: Storage uploads PASS WITH NOTES
 
-- Owner QA: Console warning gone; design + brand uploads authorized after Studio restart
-- Design: Imports → AI Review → Design Library; brand logo persisted/displayed
-- Note: brief delay before approved catalog image — publisher 15s debounce + snapshot + refresh
-  (not an auth failure)
-- Checkpoint:
-  `docs/workflow/reviews/2026-07-31-production-storage-cross-service-permission-checkpoint.md`
+- Remains closed — not modified by registration incident
+- IAM: `roles/firebaserules.firestoreServiceAgent` → Storage SA `service-473623863375@…`
 
 ## 2026-07-31 — Goal #13 Class D: Storage cross-service permission **IAM applied** (superseded)
 

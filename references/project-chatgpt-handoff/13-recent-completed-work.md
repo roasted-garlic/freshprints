@@ -2,10 +2,16 @@
 
 > Signed-off or largely complete work. External agents should not re-plan or duplicate this.
 
+## 2026-07-31 - production-release: Portal registration stuck diagnosed (docs only)
+
+- Google Auth-only orphan; `accounts:lookup` HTTP 400; `registerCustomer` not invoked
+- Plan + Formal Review `approved_with_changes`; branding/Stage 2 paused; Stage 1 untouched
+- Awaiting owner error capture + `APPROVE PORTAL REGISTRATION LOADING-STATE FIX IMPLEMENTATION`
+
 ## 2026-07-31 - production-release: Stage 1 fixtures complete (1B + 1C)
 
 - 1B: two Whatnot-imported shows recorded (Friday primary + Saturday); PASS WITH NOTES on titles
-- 1C: QA design reused; Stage 2 not started; next = bundled brand approval/implement
+- 1C: QA design reused; remains complete (registration incident did not reopen)
 
 ## 2026-07-31 - production-release: Stage 1C catalog fixture recorded (no duplicate import)
 

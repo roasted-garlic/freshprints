@@ -2,45 +2,43 @@
 `production-release` (Goal #13)
 
 Current Mode: managed-phase
-Current Phase: implement — **Stage 1 fixtures complete; bundled brand next (before Stage 2)**
-Plan Status: complete (amended Class D) —
-`docs/workflow/plans/2026-07-31-production-studio-storage-unauthorized-and-bundled-brand-plan.md`
-Review Status: prior Formal Review preserved; Class D amendment **approved**; Stage 1 checkpoint
-updated
-Implement Status: Class D + Stage 1B/1C complete; brand asset replacement still gated
-Test Status: Class D **PASS WITH NOTES**; Stage 1B **PASS WITH NOTES**; Stage 1C recorded
+Current Phase: plan/review **complete** — Portal registration stuck; **implement blocked** pending
+approvals + owner `accounts:lookup` error capture
+Plan Status: complete —
+`docs/workflow/plans/2026-07-31-production-portal-registration-stuck-plan.md`
+Review Status: **approved_with_changes** —
+`docs/workflow/reviews/2026-07-31-production-portal-registration-stuck-review.md`
+Implement Status: **not started** (this pass diagnosis/plan/review only)
+Test Status: pending (post-implement)
 Signoff Status: pending (goal #13 not closed)
 DONE: no
 Human Checkpoint Required: yes
-Human Checkpoint Reason: Stage 1 fixtures complete. Next: provide brand asset files and
-`APPROVE BUNDLED BRAND ASSET IMPLEMENTATION` before Stage 2 hosted.app smoke. Do not start Stage 2
-yet.
-Blocked: no
-Blocker: none for Stage 1; Stage 2 waits on bundled-brand sequence per owner
-Allowed Actions: docs updates; await brand assets + `APPROVE BUNDLED BRAND ASSET IMPLEMENTATION`;
-read-only verification
-Forbidden Actions: Stage 2 smoke until after brand implement sequence; duplicate design import;
-further IAM; Rules deploy; Studio rebuild without brand approval; App Check; CORS; snapshot
-rebuild; DNS/domain; Portal-invite customer (deferred to Stage 4)
-Next Required Step: Owner supplies brand assets and sends
-`APPROVE BUNDLED BRAND ASSET IMPLEMENTATION`. After brand work + any required Studio/Portal rollout
-approvals, then Stage 2 hosted.app smoke.
+Human Checkpoint Reason: (1) Owner capture sanitized Identity Toolkit `accounts:lookup` Response
+error code/message. (2) Then `APPROVE PORTAL REGISTRATION LOADING-STATE FIX IMPLEMENTATION` before
+any source change. Branding + Stage 2 remain paused. Stage 1 fixtures remain complete.
+Blocked: yes (registration blocker; brand/Stage 2 paused — Stage 1 not reopened)
+Blocker: Production Portal registration stuck — Auth-only Google orphan; `accounts:lookup` HTTP 400;
+`registerCustomer` not invoked; exact error body unmet
+Allowed Actions: docs updates; record owner error capture; await approval phrases; read-only verify
+Forbidden Actions: implement/deploy without approvals; Auth/data repair; delete Auth user; change
+Authorized Domains/API keys/OAuth; Rules/Functions/App Hosting changes; branding implement; Stage 2
+smoke; alter Stage 1 fixtures; reopen Class D Storage
+Next Required Step: Owner pastes sanitized `accounts:lookup` error JSON fields, then send
+`APPROVE PORTAL REGISTRATION LOADING-STATE FIX IMPLEMENTATION` to start Phase 1 client resilience.
 
 Decision Log:
 - 2026-07-31 — `APPROVE BRAND ASSET MAPPING` (five-source map; preserve 8% app-icon padding).
-- 2026-07-31 — `APPROVE PRODUCTION STORAGE CROSS-SERVICE PERMISSION ENABLEMENT` → granted
-  `roles/firebaserules.firestoreServiceAgent` to
-  `service-473623863375@gcp-sa-firebasestorage.iam.gserviceaccount.com` on `fresh-prints-prod`
-  (IAM API; Storage Rules file not redeployed).
+- 2026-07-31 — `APPROVE PRODUCTION STORAGE CROSS-SERVICE PERMISSION ENABLEMENT` → Class D closed.
 - 2026-07-31 — Owner Class D post-fix QA **PASS WITH NOTES**.
-- 2026-07-31 — Stage 1C: QA design `s9Yi7i8uq2ZddERyDuNT` qualifies; no duplicate import.
-- 2026-07-31 — Stage 1B: owner Whatnot-imported Friday + Saturday shows recorded
-  (`kmpnyHAvKaesidMrlFkU`, `p8ooWvYU01wX1Nug53bp`); **PASS WITH NOTES** (live titles, not
-  placeholder name). Stage 1 fixtures **complete**. Stage 2 not started.
+- 2026-07-31 — Stage 1C + Stage 1B fixtures **complete** (PASS WITH NOTES) — remain recorded.
+- 2026-07-31 — Portal registration stuck incident diagnosed; Plan ready; Formal Review
+  **approved_with_changes**. Branding/`APPROVE BUNDLED BRAND ASSET IMPLEMENTATION` + Stage 2
+  **paused**.
 
-Last Completed Step: **Stage 1 fixture completion confirmed** (1B + 1C).
+Last Completed Step: **Registration-stuck diagnosis + Plan + Formal Review** (no runtime/config
+changes).
 
-Prior: Stage 1C recorded; awaiting 1B.
+Prior: Stage 1 fixtures complete; branding was next (now paused).
 
 **Corrected `users/{uid}` field list for any future manual bootstrap:** `id` (string, same as
 document ID / Auth UID), `email` (string), `displayName` (string), `role` (string, `"owner"` for

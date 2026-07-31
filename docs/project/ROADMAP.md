@@ -122,14 +122,15 @@ Current Goal:
 | 10 | Increase the MB limit for custom-request reference images | **Done** (2026-07-29, approved) — 40 MB/file live in `fresh-prints-dev` at every enforcement layer, 8 files unchanged, 320 MB combined ceiling active; owner QA FAIL (stale 15 MB deployed Cloud Functions) → Amendment 1 root-caused and fixed via scoped Functions redeploy → owner re-QA PASS |
 | 11 | `customer-upload-oversized-pixel-normalization-and-processing-timeout-followup` | **Done** (2026-07-30, approved_with_notes; owner QA PASS WITH NOTES — see signoff) |
 | 12 | `catalog-image-derivative-storage-consolidation` | **Done — closed_by_owner_after_inventory** (2026-07-30). Real dev inventory measured originals at ~97.66% of catalog Storage (980.8 MB of 1,004.3 MB); thumbnails+previews combined only 23.5 MB; zero orphans/duplicates/violations found. Owner decided the migration's small addressable Storage win did not justify the required backfill/consumer-cutover/bandwidth-increase — closed before implementation, an evidence-based decision. Retained as dev-only tooling: the read-only `inventoryCatalogImageStorage` callable and its Studio invocation panel. |
-| 13 | `production-release` — prod Firebase / App Hosting / Google / email | **Active** — Stage 1 fixtures complete (1B Whatnot imports + 1C design). Class D closed. Next: bundled brand before Stage 2. |
+| 13 | `production-release` — prod Firebase / App Hosting / Google / email | **Active — BLOCKED** on Portal registration stuck (`accounts:lookup` 400; Auth-only Google orphan). Stage 1 fixtures complete; Class D closed. Brand + Stage 2 paused. Plan/Review ready; no implement yet. |
 | 14 | `customer-upload-early-transparency-format-validation` — reject invalid customer artwork before the trimming stage is shown | **Done** (2026-07-30, approved; automated verification 23/23 pass, clean build/lint; owner deployed to `fresh-prints-dev` and confirmed manual QA PASS across all 5 goal-brief scenarios). Separate narrow follow-up run alongside the paused `production-release` (#13), which this goal did not modify. See `docs/workflow/plans/2026-07-30-customer-upload-early-transparency-format-validation-plan.md`. |
 
 **Small Managed Items Backlog:** #5–**#14** **Done** (2026-07-21). See [Small Managed Items Backlog](#small-managed-items-backlog-2026-07-18) below.
 
-**Active managed goal:** `production-release` (Goal #13) — Stage 1 fixtures **complete**. Next:
-bundled-brand implement (gated on `APPROVE BUNDLED BRAND ASSET IMPLEMENTATION`) **before** Stage 2
-hosted.app smoke → Stage 3 gate → Stage 4 domain. See Stage 1 checkpoint.
+**Active managed goal:** `production-release` (Goal #13) — **blocked** on Portal registration
+stuck incident (2026-07-31). Stage 1 fixtures remain complete; Class D Storage remains closed.
+Bundled brand + Stage 2 **paused** until registration remediation is approved and verified. See
+`…-production-portal-registration-stuck-incident.md`.
 
 **Prior note (superseded — Class D closed):** blocked on Storage↔Firestore cross-service
 permission (Class D). IAM applied; owner upload QA PASS WITH NOTES closed the incident.
