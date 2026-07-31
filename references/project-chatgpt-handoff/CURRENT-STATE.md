@@ -1,19 +1,18 @@
 # Fresh Prints - Current State Snapshot
 
-## 2026-07-31 — Goal #13 Portal registration loading-state fix **implemented** (not deployed)
+## 2026-07-31 — Goal #13 Portal registration fix **LIVE on App Hosting** — owner QA pending
 
-- Root cause amended: post-Auth complete-profile client stall before `registerCustomer` + hang UX
-- Historical `accounts:lookup` 400 = non-reproducible; no Auth Console remediation
-- Client fix on `development`: 45s timeout, stages `[fp-portal-auth]`, terminal error, retry,
-  sign-out, duplicate guards, explicit `getIdToken(true)` before callable
-- Implementation Review **approved**; automated tests/typecheck/lint/build **pass**
-- **Next:** `APPROVE PRODUCTION PORTAL APP HOSTING ROLLOUT` then hosted.app QA
-- Branding + Stage 2 still paused; Stage 1 + Class D untouched
-- Note: post-fix Auth list had **no** Google user (`L3jjfWJG…` absent); agents did not delete
+- PR #12 merged to `production` (`8943d17`); includes fix commit `b882e5c`
+- Rollout: `firebase apphosting:rollouts:create fresh-prints-portal --project fresh-prints-prod --git-commit 8943d17 --force` → success
+- Verified: `/complete-profile` 200; `[fp-portal-auth]` present in served JS (no tokens/emails/UIDs)
+- Automatic rollouts remain disabled
+- Checkpoint: `docs/workflow/reviews/2026-07-31-production-portal-registration-app-hosting-rollout-checkpoint.md`
+- **Owner next:** hosted.app Google → complete-profile QA; reply `PASS` / `PASS WITH NOTES` / `FAIL`
+- Branding + Stage 2 still paused; Stage 1 + Class D untouched; no Auth deletes
 
-## 2026-07-31 — Goal #13 registration stuck: Auth inventory amended
+## 2026-07-31 — Goal #13 Portal registration loading-state fix implemented (not deployed)
 
-- Superseded in part by loading-state implement section above
+- **Superseded** — now deployed (see section above)
 
 ## 2026-07-31 — Goal #13 Stage 1 fixtures **COMPLETE** (1B + 1C)
 

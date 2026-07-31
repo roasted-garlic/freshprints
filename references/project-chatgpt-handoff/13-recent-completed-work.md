@@ -2,11 +2,15 @@
 
 > Signed-off or largely complete work. External agents should not re-plan or duplicate this.
 
+## 2026-07-31 - production-release: Portal registration fix rolled out to App Hosting
+
+- PR #12 → `8943d17`; rollout create succeeded; `[fp-portal-auth]` verified live
+- Owner QA pending; branding/Stage 2 still paused
+
 ## 2026-07-31 - production-release: Portal registration loading-state fix implemented (not deployed)
 
 - Root cause: post-Auth client stall before `registerCustomer` + hang UX; 400 historical only
-- 45s timeout, stages, terminal error, retry/sign-out, duplicate guards; Implementation Review approved
-- Next: `APPROVE PRODUCTION PORTAL APP HOSTING ROLLOUT`
+- **Superseded** by App Hosting rollout section above
 
 ## 2026-07-31 - production-release: Portal registration Auth inventory amended (docs only)
 
