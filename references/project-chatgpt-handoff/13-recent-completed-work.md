@@ -2,11 +2,18 @@
 
 > Signed-off or largely complete work. External agents should not re-plan or duplicate this.
 
+## 2026-07-31 - production-release: Class D cross-service permission identified (docs only)
+
+- Console warning proves Storage Rules cannot execute `firestore.get`/`exists`
+- Class D selected; prior Formal Review preserved; amendment review **approved**
+- Brand asset mapping approved (five sources); implement still gated
+- Awaiting `APPROVE PRODUCTION STORAGE CROSS-SERVICE PERMISSION ENABLEMENT` — no IAM change yet
+
 ## 2026-07-31 - production-release: Studio Storage unauthorized diagnosed (docs only; blocked)
 
 - Ruled out wrong packaged bucket/project, live Rules drift, App Check, CORS
 - Confirmed brand Settings error is failed upload (empty `brand/`, no `settings/brandLogos`)
-- Plan + Formal Review `approved_with_changes`; awaiting diagnostic gate + brand asset mapping
+- Plan + Formal Review `approved_with_changes`; later superseded to Class D by Console warning
 - No deploy / rebuild / DNS / domain action
 
 ## 2026-07-31 - production-release: Stage 1 partial (infra/DNS); customer invite deferred; Stage 2 checklist prepared

@@ -1,5 +1,17 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-07-31 — Goal #13 Class D: Storage cross-service permission (awaiting Fix issue)
+
+- Console warning: cross-service database calls not configured for Storage Rules
+- Root cause: `firestore.get`/`exists` in `isStaff`/`isOwner` cannot run without enablement
+- Remediation: Console **Fix issue** only — no Rules edit/deploy, no Studio rebuild
+- Approval phrase: `APPROVE PRODUCTION STORAGE CROSS-SERVICE PERMISSION ENABLEMENT`
+- Brand mapping **approved** (five sources, 8% padding); do not replace assets until
+  `APPROVE BUNDLED BRAND ASSET IMPLEMENTATION`
+- Amendment review (**approved**):
+  `docs/workflow/reviews/2026-07-31-production-storage-cross-service-permission-review-amendment.md`
+- No IAM/Firebase change performed yet
+
 ## 2026-07-31 — Goal #13 BLOCKED: Studio Storage `storage/unauthorized`
 
 - Design import + Brand Logos upload fail with `storage/unauthorized` on production Studio
@@ -7,15 +19,15 @@
   live Storage Rules **byte-identical** to repo; App Check **not** enforced; CORS not involved
 - Brand error is **failed upload** (no `settings/brandLogos`; `brand/` empty), not public read
 - `originals/` / `thumbnails/` / `previews/` / `brand/` all empty on prod
-- Plan + Formal Review (`approved_with_changes`): storage remediation classes A/B/C after
-  diagnostic gate; separate bundled-brand asset mapping
+- **Mechanism updated to Class D** (cross-service permission) — see section above
+- Prior Formal Review `approved_with_changes` preserved; Class D amendment approved
 - **Do not** redeploy identical Rules; **do not** Stage 2 until fixed + fixtures exist
 - Artifacts:
   - `docs/workflow/reviews/2026-07-31-production-studio-storage-unauthorized-incident.md`
   - `docs/workflow/plans/2026-07-31-production-studio-storage-unauthorized-and-bundled-brand-plan.md`
   - `docs/workflow/reviews/2026-07-31-production-studio-storage-unauthorized-and-bundled-brand-review.md`
-- Owner next: Storage diagnostic (`APPROVE PRODUCTION STORAGE WRITE DIAGNOSTIC`) and/or
-  `APPROVE BRAND ASSET MAPPING`
+- Owner next: `APPROVE PRODUCTION STORAGE CROSS-SERVICE PERMISSION ENABLEMENT` then Console Fix
+  issue (Playground/Network path stopped)
 
 ## 2026-07-31 — Goal #13: Stage 1 partial — infra/DNS recorded; fixtures pending owner
 

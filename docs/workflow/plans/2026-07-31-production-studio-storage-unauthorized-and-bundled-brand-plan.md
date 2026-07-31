@@ -4,9 +4,9 @@
 |-------|-------|
 | Date | 2026-07-31 |
 | Author | Planning Agent |
-| Status | ready_for_review |
+| Status | amended — Class D cross-service permission selected; awaiting owner Fix-issue approval |
 | Workflow | managed-phase (`production-release` Goal #13) |
-| Related | Incident `docs/workflow/reviews/2026-07-31-production-studio-storage-unauthorized-incident.md`; Review `docs/workflow/reviews/2026-07-31-production-studio-storage-unauthorized-and-bundled-brand-review.md` |
+| Related | Incident `docs/workflow/reviews/2026-07-31-production-studio-storage-unauthorized-incident.md`; prior Formal Review `…-bundled-brand-review.md` (**preserved**); amendment `docs/workflow/reviews/2026-07-31-production-storage-cross-service-permission-review-amendment.md` (**approved**) |
 
 ---
 
@@ -41,18 +41,20 @@ Separately, the owner will supply new default branding assets. Runtime upload ar
 
 ### In Scope
 
-#### Storage remediation (after diagnostic gate)
+#### Storage remediation (Class D — selected)
 
-- Owner Console Rules Playground + Studio DevTools Network evidence (read-only)
-- Evidence-selected remediation only (see §Remediation classes)
-- Docs / workflow updates; owner retest of design import + brand upload
+- Firebase Console Storage Rules **“Fix issue”** to enable Storage↔Firestore cross-service calls
+- Record IAM principal/role from Console after enablement
+- Owner retest: design import + ≤2 MB brand upload; Studio restart
+- Resume Playground/Network **only if** post-fix uploads still fail
 
-#### Bundled brand defaults (Plan + asset mapping only this pass)
+#### Bundled brand defaults (Plan + asset mapping; implement gated)
 
 - Inventory of bundled logo/favicon/app-icon consumers
-- Exact owner asset map and technical requirements
+- Exact owner asset map and technical requirements — **mapping approved**
+  (`APPROVE BRAND ASSET MAPPING`, five-source map, preserve 8% app-icon padding)
 - Preserve runtime override + Clear → new bundled default
-- Future implementation after `APPROVE BUNDLED BRAND ASSET IMPLEMENTATION`
+- Future implementation only after `APPROVE BUNDLED BRAND ASSET IMPLEMENTATION`
 
 ### Out of Scope (this pass and unless separately approved)
 
@@ -69,87 +71,80 @@ Separately, the owner will supply new default branding assets. Runtime upload ar
 
 ## Part A — Storage incident
 
-### Exact root cause (current)
+### Exact root cause (confirmed 2026-07-31)
 
-**Confirmed:** authenticated Storage **creates** denied on production for Studio owner uploads
-(`originals/**`, `brand/**`) despite correct packaged config and live Rules matching source.
+Production Storage Rules use `firestore.exists()` / `firestore.get()` for `isStaff()` /
+`isOwner()`, but the project is **not configured to execute cross-service database calls**
+(Firebase Console Storage Rules warning). Cross-service lookups fail closed →
+`storage/unauthorized` on authenticated staff/owner creates.
 
-**Unresolved mechanism (must close before choosing fix):** Rules `firestore.get(users/{uid})`
-evaluation failure vs missing Auth on Storage requests vs brand-only &gt;2 MB upload.
+Packaged Studio config and live Rules content remain correct; the missing piece is the
+cross-service IAM enablement, not a Rules source bug or Studio rebuild.
 
-### Remediation classes (select exactly one after diagnostic gate)
+### Remediation class selected: **D**
 
-| Class | When | Changes |
-|-------|------|---------|
-| **A — Claims/Rules evaluation fix** | Playground DENIES owner create with known owner UID | Likely Storage Rules and/or Auth custom claims / user-doc shape so `isStaff`/`isOwner` succeed; may require Functions to set claims |
-| **B — Studio Auth→Storage client fix** | Playground ALLOWS; Network shows upload without Auth / 403 from rules despite signed-in UI | Studio renderer fix (token refresh / upload gating); **new Studio installer** |
-| **C — Brand size-only** | Design import works after A/B; brand still fails and file &gt;2 MB | Owner supplies ≤2 MB PNG; no Rules change unless product raises limit (separate decision) |
-| **D — Other evidence-backed** | New proven cause | Document and re-review |
+| Class | Status |
+|-------|--------|
+| A — Claims/Rules text fix | **Not selected** (Rules text correct; Console proves config gap) |
+| B — Studio Auth→Storage client fix | **Not selected** |
+| C — Brand size-only | **Not selected** (design import also fails) |
+| **D — Storage↔Firestore cross-service permission enablement** | **Selected** |
 
-**Explicitly rejected without new evidence:** redeploying identical `storage.rules`; App Check
-changes; bucket renames; CORS reapplication; snapshot rebuild.
+### Exact Firebase action proposed
 
-### Diagnostic gate (required before implementation)
+1. Open Firebase Console → project `fresh-prints-prod` → Build → Storage → **Rules**
+2. Confirm the cross-service warning is still present
+3. After `APPROVE PRODUCTION STORAGE CROSS-SERVICE PERMISSION ENABLEMENT`, click **Fix issue**
+   (or the Console’s equivalent enable-permissions control)
+4. If an IAM preview is shown, record principal + role **before** confirming
+5. After success: confirm warning gone; record granted principal + role from IAM if not shown
+   earlier
 
-Owner (or agent with Console access under approval) must record:
+### IAM expectation
 
-1. Firebase Console → Storage → Rules → Playground:
-   - Authenticated as production owner UID
-   - `create` on `originals/{testId}.png` with `image/png` size 1024
-   - `create` on `brand/studio/full/{uuid}.png` with `image/png` size 1024
-   - Result ALLOW/DENY + any evaluation debug
-2. Production Studio DevTools Network on one failed design upload:
-   - Request host/path
-   - Whether `Authorization: Bearer` (Firebase ID token) is present (**do not paste token**)
-   - Response status / Firebase error payload summary
-3. Optional: Auth → Users → confirm UID matches `users/{uid}`
+| Item | Value |
+|------|-------|
+| Role (Firebase docs) | Firebase Rules Firestore Service Agent (`roles/firebaserules.firestoreServiceAgent`) |
+| Principal | **[NEEDS CONSOLE CONFIRMATION]** — do not invent; record after Fix issue / from preview |
 
-### Files / settings that may change (after class selection)
-
-| Class | Likely touch points |
-|-------|---------------------|
-| A | `storage.rules` and/or Functions claims writer; possibly `users/{uid}` fields; **Storage Rules deploy** |
-| B | Studio upload services / auth bootstrap; **Studio rebuild/installer** |
-| C | None in repo (owner asset) |
-
-### Rebuild / deploy flags
+### Rebuild / deploy flags (Class D)
 
 | Action | Required? |
 |--------|-----------|
-| Studio rebuild | **Only if class B** (or shared with branding release after B) |
-| Storage Rules deploy | **Only if class A changes rules** |
-| App Check change | **No** (ruled out) |
-| App Hosting rollout | **No** for Storage-only fix |
+| Studio rebuild | **No** |
+| Storage Rules deploy / `storage.rules` edit | **No** |
+| App Check change | **No** |
+| Custom claims | **No** |
+| App Hosting rollout | **No** (Storage fix) |
 
 ### Rollback
 
-| Class | Rollback |
-|-------|----------|
-| A | Redeploy prior ruleset / remove claims writer; keep prior installer |
-| B | Reinstall prior `v1.0.0-rc5` installer |
-| C | N/A |
+Revoke the cross-service grant via Google Cloud IAM (remove Firebase Rules Firestore Service
+Agent from the granted principal) **only after** removing cross-service calls from Rules if
+disabling permanently — see Firebase docs. For launch recovery: re-enable via Console if
+accidentally revoked.
 
-### Automated verification (future implement)
+### Owner manual QA (after Fix issue)
 
-- Rules unit tests if Rules change
-- Studio typecheck/lint for client fix
-- No production deploy without approval phrase below
+See incident post-fix verification checklist (design import + brand upload + Studio restart).
 
-### Owner manual QA (after fix)
+### Production approval phrase (Class D)
 
-1. Sign in production Studio as owner
-2. Import a small/owner-approved PNG (&lt;150 MB) — expect upload success past Storage step
-3. Brand Logos → upload Studio full PNG ≤2 MB — expect success; Clear restores bundled default
-4. Confirm no Test Data Reset / Catalog Storage Inventory / Firebase Debug UI regressions
+`APPROVE PRODUCTION STORAGE CROSS-SERVICE PERMISSION ENABLEMENT`
 
-### Production approval phrases
+### Superseded diagnostic gate
 
-| Step | Phrase |
-|------|--------|
-| Run diagnostic gate only | `APPROVE PRODUCTION STORAGE WRITE DIAGNOSTIC` |
-| After class A selected | `APPROVE PRODUCTION STORAGE RULES/CLAIMS REMEDIATION` |
-| After class B selected | `APPROVE PRODUCTION STUDIO STORAGE AUTH FIX REBUILD` |
-| Combined Studio rebuild with branding (only if Formal Review allows) | Must list exact contents; do not use a blanket phrase |
+The earlier Playground/Network gate is **stopped**. Do not continue that path unless post-fix
+uploads still fail.
+
+### Historical remediation classes (reference only)
+
+| Class | When | Changes |
+|-------|------|---------|
+| A — Claims/Rules evaluation fix | Was candidate before Console warning | Not used |
+| B — Studio Auth→Storage client fix | Was candidate before Console warning | Not used |
+| C — Brand size-only | Partial only | Not used |
+| D — Cross-service permission | **Proven** | Console Fix issue |
 
 ---
 
@@ -315,6 +310,7 @@ needs its own App Hosting rollout approval.
 | Favicon from wordmark | Require explicit owner mapping |
 | Dirty local PNG edits committed accidentally | Stage docs only until brand implementation approval |
 | Portal full &gt;2 MB cannot be re-uploaded via Settings | Bundled path OK; runtime upload still ≤2 MB |
+| Cross-service Fix issue grants unexpected IAM | Record principal/role from Console; role expected per Firebase docs |
 
 ---
 
@@ -332,7 +328,8 @@ needs its own App Hosting rollout approval.
 
 ## Open questions / checkpoints
 
-- [ ] Owner completes Storage diagnostic gate → reply with Playground + Network summaries
-- [ ] Owner replies `APPROVE BRAND ASSET MAPPING` (or requested mapping changes)
-- [ ] Owner provides asset files after mapping approval
-- [ ] Do not implement until Formal Review verdict + relevant approval phrases
+- [x] Brand asset mapping approved (`APPROVE BRAND ASSET MAPPING`) — five sources; 8% padding preserved
+- [ ] `APPROVE PRODUCTION STORAGE CROSS-SERVICE PERMISSION ENABLEMENT` → owner clicks Console Fix issue
+- [ ] Post-fix: warning gone; IAM principal/role recorded; Studio restart; design + brand upload QA
+- [ ] Owner provides brand asset files; then `APPROVE BUNDLED BRAND ASSET IMPLEMENTATION` before replacing files
+- [ ] Do not rebuild Studio / roll out Portal branding without later release approvals

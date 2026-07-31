@@ -2,40 +2,46 @@
 `production-release` (Goal #13)
 
 Current Mode: managed-phase
-Current Phase: plan / review complete — **blocked before implement**
-Plan Status: complete — `docs/workflow/plans/2026-07-31-production-studio-storage-unauthorized-and-bundled-brand-plan.md`
-Review Status: complete (`approved_with_changes`) —
-`docs/workflow/reviews/2026-07-31-production-studio-storage-unauthorized-and-bundled-brand-review.md`
-Implement Status: **blocked** — production Studio Storage `storage/unauthorized` on design import +
-brand logo upload; Stage 1 catalog fixture cannot proceed; Stage 2 must not start
+Current Phase: plan / review complete — **blocked on Class D Console Fix issue**
+Plan Status: complete (amended Class D) —
+`docs/workflow/plans/2026-07-31-production-studio-storage-unauthorized-and-bundled-brand-plan.md`
+Review Status: prior Formal Review preserved (`approved_with_changes`); Class D amendment
+`docs/workflow/reviews/2026-07-31-production-storage-cross-service-permission-review-amendment.md`
+(**approved**)
+Implement Status: **blocked** — awaiting owner `APPROVE PRODUCTION STORAGE CROSS-SERVICE
+PERMISSION ENABLEMENT` then Console “Fix issue”; Stage 1 catalog fixture still blocked; Stage 2
+must not start
 Test Status: pending
 Signoff Status: pending
 DONE: no
 Human Checkpoint Required: yes
-Human Checkpoint Reason: (1) Storage write diagnostic gate — Console Rules Playground + Studio
-Network evidence to select remediation class A/B/C; (2) Brand asset mapping approval before
-accepting owner replacement files. No Storage Rules deploy / Studio rebuild / App Check / DNS /
-domain actions until the matching approval phrase.
+Human Checkpoint Reason: Owner must approve and click Firebase Console Storage Rules **Fix issue**
+to enable Storage↔Firestore cross-service calls. Brand mapping already approved; brand asset
+implementation still gated separately. No Rules deploy, Studio rebuild, App Check, claims, DNS,
+or domain actions.
 Blocked: yes
-Blocker: Production Studio authenticated Storage creates denied (`storage/unauthorized`) despite
-correct packaged `fresh-prints-prod` / `fresh-prints-prod.firebasestorage.app` config and live
-Storage Rules byte-identical to repo. Brand error is failed upload (no `settings/brandLogos`,
-empty `brand/`), not public read of an existing object.
-Allowed Actions: read docs; record owner diagnostic/mapping replies; amend Plan class selection;
-update workflow docs
-Forbidden Actions: implement/deploy Storage Rules; App Check changes; Studio rebuild; Portal
-rollout; DNS/domain/Auth/OAuth; CORS; snapshot rebuild; asset file replacement; Stage 2 smoke;
-committing unrelated dirty working-tree app/PNG edits
-Next Required Step: Owner runs Storage diagnostic (or replies `APPROVE PRODUCTION STORAGE WRITE
-DIAGNOSTIC` for assisted Console steps) and/or `APPROVE BRAND ASSET MAPPING`; do not implement yet.
+Blocker: Production Storage Rules use `firestore.get`/`exists` but project is not configured for
+cross-service database calls (Console warning). Causes `storage/unauthorized` on owner/staff
+uploads.
+Allowed Actions: record owner Fix-issue approval and post-fix results; docs updates; await brand
+asset files (no replace until implement approval)
+Forbidden Actions: clicking Fix issue without approval phrase; modifying `storage.rules`; deploying
+Rules; custom claims; Studio rebuild; App Check; CORS; snapshot rebuild; asset replacement; Stage 2
+smoke; DNS/domain/Auth/OAuth; committing unrelated dirty working-tree app/PNG edits
+Next Required Step: Owner replies `APPROVE PRODUCTION STORAGE CROSS-SERVICE PERMISSION ENABLEMENT`
+then clicks Console Fix issue; record IAM principal/role; run post-fix Studio QA checklist.
 
-Last Completed Step: **Storage unauthorized incident diagnosed (docs only).** Packaged Studio
-config correct; live Rules SHA match; App Check not enforced; brand object/settings absent;
-originals/brand prefixes empty. Remediation Plan + Formal Review (`approved_with_changes`)
-prepared with separate bundled-brand inventory/mapping. No production change performed.
+Decision Log:
+- 2026-07-31 — `APPROVE BRAND ASSET MAPPING` (five-source map; preserve 8% app-icon padding).
+  Implementation still requires `APPROVE BUNDLED BRAND ASSET IMPLEMENTATION`.
+- 2026-07-31 — `APPROVE PRODUCTION STORAGE WRITE DIAGNOSTIC` superseded by Console cross-service
+  warning; Playground/Network path stopped; Class D selected.
 
-Prior: Stage 1 partial (emailProviders PASS; DNS rollback recorded; show/design fixtures pending;
-invite customer deferred). Owner PASS on `settings/emailProviders` (Resend invite / Brevo proof).
+Last Completed Step: **Class D root cause confirmed from Console warning.** Incident + Plan
+amended; review amendment approved. Brand mapping approved. No IAM/Firebase change performed yet.
+
+Prior: Storage unauthorized incident diagnosed (config/rules/App Check ruled out). Stage 1 partial
+(emailProviders PASS; DNS rollback recorded; fixtures pending).
 
 **Corrected `users/{uid}` field list for any future manual bootstrap:** `id` (string, same as
 document ID / Auth UID), `email` (string), `displayName` (string), `role` (string, `"owner"` for

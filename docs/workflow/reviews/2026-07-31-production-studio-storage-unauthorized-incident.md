@@ -5,8 +5,62 @@
 | Date | 2026-07-31 |
 | Goal | `production-release` (Goal #13) |
 | Phase | Phase G / Stage 1 — **blocked** on catalog fixture |
-| Status | Diagnosed; remediation Plan + Formal Review prepared; **no fix deployed** |
-| Related | Plan `docs/workflow/plans/2026-07-31-production-studio-storage-unauthorized-and-bundled-brand-plan.md` |
+| Status | **Root cause confirmed (Class D).** Awaiting owner Console “Fix issue” approval. **No IAM/fix applied yet.** |
+| Related | Plan `docs/workflow/plans/2026-07-31-production-studio-storage-unauthorized-and-bundled-brand-plan.md`; prior Formal Review preserved; amendment `docs/workflow/reviews/2026-07-31-production-storage-cross-service-permission-review-amendment.md` (**approved**) |
+
+---
+
+## Decisive root-cause update (2026-07-31, later)
+
+Firebase Console → `fresh-prints-prod` → Storage → Rules shows:
+
+> “Your rules make use of cross-service database calls, but your project is not configured to execute those calls.”
+
+### Revised exact root cause
+
+Production Cloud Storage Security Rules call `firestore.exists()` / `firestore.get()` on
+`users/{request.auth.uid}` inside `isStaff()` / `isOwner()`. The production project **has not been
+configured** with the required Storage↔Firestore **cross-service permission**, so those lookups cannot
+execute. Rule predicates that depend on them evaluate as deny → client `storage/unauthorized` for
+authenticated staff/owner writes (design originals + brand logo creates).
+
+Public-read paths that do **not** need Firestore cross-service calls (e.g. generated catalog,
+brand path validators without user lookup) continue to behave normally — consistent with earlier
+probes.
+
+### Revised remediation class
+
+**Class D — Production Storage-to-Firestore cross-service permission enablement**
+
+Expected action: Firebase Console Storage Rules **“Fix issue”** (enable cross-service permissions).
+Do **not** modify or redeploy `storage.rules`, add custom claims, rebuild Studio, or change App Check
+unless post-fix uploads still fail.
+
+### IAM expectation (docs-backed; confirm in Console)
+
+| Item | Value |
+|------|-------|
+| Role (Firebase docs) | **Firebase Rules Firestore Service Agent** (`roles/firebaserules.firestoreServiceAgent`) — see [Manage permissions for cross-service Cloud Storage Security Rules](https://firebase.google.com/docs/rules/manage-deploy#manage_permissions_for_cross-service) |
+| Principal granted by “Fix issue” | **[NEEDS CONSOLE CONFIRMATION]** — record exact service account after the owner runs Fix issue / from IAM preview before clicking if shown |
+
+### Approval phrase (stop here until granted)
+
+`APPROVE PRODUCTION STORAGE CROSS-SERVICE PERMISSION ENABLEMENT`
+
+### Post-fix verification (after Fix issue)
+
+1. Console warning disappears
+2. Record exact IAM principal + role granted (no credentials)
+3. Fully close and reopen production Studio
+4. Import one approved PNG &lt;150 MB
+5. Upload one brand-logo PNG ≤2 MB
+6. Both pass Storage authorization
+7. Design completes Imports → AI Review → Design Library
+8. Brand logo persists and displays
+9. Confirm no Rules deploy / App Check / claims / Studio rebuild was required
+10. Resume Playground/Network **only if** either upload still fails
+
+Playground/Network diagnostic path from the earlier gate is **stopped** unless step 10 applies.
 
 ---
 
