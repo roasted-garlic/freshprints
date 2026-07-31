@@ -31,19 +31,13 @@ throughout this pass.**
 Test Status: pending
 Signoff Status: pending
 DONE: no
-Last Completed Step: **Owner retest of `v1.0.0-rc5` reported `PASS WITH NOTES`.** Studio launches
-without a white screen and the production owner account can sign in successfully. One note: sign-in
-initially failed until `createdAt` and `updatedAt` timestamp fields were added to the manually
-bootstrapped `users/{uid}` document — traced to
-`apps/studio/src/renderer/src/features/users/services/userService.ts:19-29`'s `mapUserDocument()`,
-which throws `"A user profile is incomplete."` if either field is falsy. **This is a documentation
-gap in the manual first-owner-bootstrap instructions given earlier this goal (Phase D), not a code
-defect** — the instructions listed `id`, `email`, `displayName`, `role`, `isActive` but omitted
-`createdAt`/`updatedAt`, which this client-side mapper strictly requires. The owner has already
-added both fields and confirmed access works; this is recorded here so the corrected field list is
-available for any future manual first-owner bootstrap (e.g. after a project reset). **Both the
-white-screen fix (`scheduler`/`react-vendor` chunking) and the icon alignment are now
-owner-confirmed working on `v1.0.0-rc5`. Phase G broader smoke testing may now resume.**
+Last Completed Step: **Owner Discover retest PASS after production Storage CORS.** CORS applied to
+`gs://fresh-prints-prod.firebasestorage.app` (`storage.cors.production.json`); ACAO verified;
+owner confirmed empty-catalog Discover loads without “Catalog discovery is temporarily
+unavailable.” Checkpoint:
+`docs/workflow/reviews/2026-07-31-production-portal-catalog-cors-checkpoint.md`. Catalog
+bootstrap blocker for Portal Discover is **closed**. No rebuild / Rules / Functions / App Hosting
+action for this fix.
 
 **Corrected `users/{uid}` field list for any future manual bootstrap:** `id` (string, same as
 document ID / Auth UID), `email` (string), `displayName` (string), `role` (string, `"owner"` for
@@ -387,34 +381,26 @@ or production data was configured/created/seeded. No production Studio installer
 or Search Console configuration occurred. `production` was not modified by Git (Functions deploy is
 a Firebase action, not a commit). `master` was not deleted. No force-push occurred anywhere in this
 pass.
-Human Checkpoint Required: no — **owner reported `PASS WITH NOTES` on `v1.0.0-rc5`.** Studio
-launches without a white screen, the correct icon is confirmed in place, and the production owner
-account signs in successfully (after the owner added missing `createdAt`/`updatedAt` fields to the
-manually bootstrapped `users/{uid}` document — a documentation gap in the earlier Phase D bootstrap
-instructions, now corrected in this file, not a code defect). Deployment-order step 8 of 12 is
-fully closed. Proceeding into the broader Phase G smoke test (Portal + installed Studio + backend
-checks) under the same multi-phase `Continue Workflow` authorization already granted.
+Human Checkpoint Required: no — catalog-CORS Discover retest **PASS** recorded. Phase G broader
+smoke testing and remaining production-release checkpoints (custom domain, full §3.16 smoke,
+email-provider settings via Studio, GA4 later) may continue; each production external action still
+needs its own approval.
 Blocked: no
-Allowed Actions: continue Phase G — the consolidated Portal + installed Studio + backend smoke-test
-checklist; resume Phase D's remaining owner-driven Studio setup (categories,
-`settings/emailProviders`) now that the owner has working Studio access
-Forbidden Actions: deleting `master` (local or remote); modifying `production` directly (only via
-PR); running any `firebase deploy`/`apphosting:rollouts:create` command without separate approval;
-accessing, printing, or logging any secret value; setting or rotating any secret without separate
-owner approval; using `--force` on any Firestore command; manually deleting or editing production
-indexes/secrets via Console; enabling automatic App Hosting rollouts without owner approval; any
-DNS/Auth-config/GA4/Search-Console action; invoking `rebuildCatalogSnapshots` before real catalog
-data exists and its invocation is separately listed in an approved bootstrap action; writing
-production Firestore data beyond what the owner has explicitly approved (categories/
-email-provider settings remain the owner's own Studio action unless separately delegated); using
-smoke-test dev-only wipe tooling; force-pushing any branch; rewriting Git history; configuring
-`core.hooksPath` without separate owner approval; changing repository visibility
-Next Required Step: Begin Phase G — provide the owner a concise smoke-test checklist (Portal
-checks, installed Studio checks, backend checks per the production-release task's consolidated
-list) and await results reported as `PASS` / `PASS WITH NOTES: ...` /
-`FAIL: ...`. Only after that passes does the broader Phase G smoke test and Phase D's remaining
-remaining items (categories, `settings/emailProviders` via Studio UI) and consider
-production data until approved.
+Allowed Actions: continue Phase G / production-release remaining checklist; prepare next
+human-gated steps (custom domain, smoke items that need real customer/email/upload flows)
+Forbidden Actions: deleting `master`; modifying `production` directly without PR; Firebase
+deploys/rollouts without separate approval; GA4 go-live without separate approval; force-push;
+printing secrets; wiping production data
+Next Required Step: Continue Phase G production smoke (§3.16) and remaining bootstrap items —
+notably custom-domain / Authorized domains (apex still Coming Soon), Studio
+`settings/emailProviders` if not set, and the live end-to-end smoke items that still need owner
+execution. Say `Continue Workflow` with a focus area, or run the remaining smoke checklist below.
+
+Decision Log:
+- 2026-07-31 — Owner `APPROVE PRODUCTION STORAGE CORS`. Applied `storage.cors.production.json` to
+  `gs://fresh-prints-prod.firebasestorage.app` (was `cors: null`). Post-apply ACAO probe: all three
+  configured origins echo correctly on portal-catalog manifest GET.
+- 2026-07-31 — Owner Discover retest **PASS** on hosted.app empty catalog after CORS apply.
 
 Plan:
 `docs/workflow/plans/2026-07-29-preproduction-static-analysis-cleanup-plan.md`.

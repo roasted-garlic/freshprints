@@ -1,0 +1,16 @@
+[
+  {
+    "origin": [
+      "https://fresh-prints-portal--fresh-prints-prod.us-central1.hosted.app",
+      "https://myprintrequest.com",
+      "https://www.myprintrequest.com"
+    ],
+    "method": ["GET", "HEAD"],
+    "responseHeader": [
+      "Content-Type",
+      "Cache-Control",
+      "ETag"
+    ],
+    "maxAgeSeconds": 3600
+  }
+]

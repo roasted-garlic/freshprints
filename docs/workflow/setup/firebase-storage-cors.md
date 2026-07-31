@@ -93,3 +93,52 @@ Admin-SDK-only; unaffected by and unrelated to this change).
 Do not apply production CORS changes without an explicit human production approval checkpoint.
 `https://myprintrequest.com` is intentionally **not** included in the current dev bucket CORS config
 above — production CORS is its own deployment checkpoint against the production bucket, not this one.
+
+**Exact production bucket:** `gs://fresh-prints-prod.firebasestorage.app`
+
+**Config file:** `storage.cors.production.json` (repo root) — GET/HEAD only for:
+
+- `https://fresh-prints-portal--fresh-prints-prod.us-central1.hosted.app` (current App Hosting URL)
+- `https://myprintrequest.com`
+- `https://www.myprintrequest.com`
+
+Do **not** add localhost origins to the production bucket.
+
+### Why production needs this (2026-07-31 diagnosis)
+
+After `rebuildCatalogSnapshots` published a valid empty portal-catalog (generation 1,
+contentVersion `1-4f53cda18c2baa0c`), anonymous `getDownloadURL` + Node `fetch` succeeded for
+`generated/portal-catalog/manifest.json` and `discover.json`, but browser GETs with a Portal
+`Origin` returned **no** `Access-Control-Allow-Origin`. The same probe against the **dev** bucket
+returned `Access-Control-Allow-Origin: https://myprintrequest.dev`. Portal Discover therefore
+threw inside `portalCatalogAssetService.fetchJson` and surfaced
+`Catalog discovery is temporarily unavailable.` — the same browser-only failure class as
+2026-07-24 on `fresh-prints-dev`.
+
+### Apply (human — needs production approval)
+
+Approval phrase: `APPROVE PRODUCTION STORAGE CORS`
+
+1. Inspect current config:
+
+```bash
+gcloud storage buckets describe gs://fresh-prints-prod.firebasestorage.app --format="default(cors_config)"
+```
+
+2. Apply:
+
+```bash
+gcloud storage buckets update gs://fresh-prints-prod.firebasestorage.app --cors-file=storage.cors.production.json
+```
+
+3. Verify describe output lists the three production origins above.
+
+4. Confirm a tokenized manifest GET with
+   `Origin: https://fresh-prints-portal--fresh-prints-prod.us-central1.hosted.app`
+   returns `Access-Control-Allow-Origin` echoing that origin.
+
+5. Owner retests Discover on the **hosted.app** URL (apex may still show Coming Soon until
+   custom-domain work — out of scope for the CORS checkpoint).
+
+**Not required for this fix:** Storage Rules redeploy, Functions deploy, App Hosting rollout, or
+another `rebuildCatalogSnapshots` run.

@@ -643,6 +643,15 @@ config, inspect/apply/verify commands, and history (an earlier CORS effort mista
 `.appspot.com` alias, which had no effect). Applying a bucket CORS change requires human approval
 (bucket-config change) — see `docs/workflow/setup/firebase-storage-cors.md` for the exact command.
 
+**Production (2026-07-31):** CORS **applied** to `gs://fresh-prints-prod.firebasestorage.app` after
+`APPROVE PRODUCTION STORAGE CORS`. Config: `storage.cors.production.json` (GET/HEAD for hosted.app,
+`myprintrequest.com`, `www.myprintrequest.com`). Pre-apply `cors` was null; post-apply ACAO probe
+confirmed matching `Access-Control-Allow-Origin` for all three origins on the portal-catalog
+manifest download URL. **Owner Discover retest: PASS** (empty catalog loads; unavailable message
+gone) — see
+`docs/workflow/reviews/2026-07-31-production-portal-catalog-cors-checkpoint.md`. This is separate
+from Storage Rules deployment (step 2 above); Rules already allowed public read.
+
 ### Firebase Storage rules deploy
 
 Rules file: `storage.rules` (referenced in `firebase.json`).
