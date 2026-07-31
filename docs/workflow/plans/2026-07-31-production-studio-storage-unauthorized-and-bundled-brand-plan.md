@@ -4,7 +4,7 @@
 |-------|-------|
 | Date | 2026-07-31 |
 | Author | Planning Agent |
-| Status | amended — Class D cross-service permission selected; awaiting owner Fix-issue approval |
+| Status | amended — Class D **closed** (IAM + owner QA PASS WITH NOTES); brand implement still gated |
 | Workflow | managed-phase (`production-release` Goal #13) |
 | Related | Incident `docs/workflow/reviews/2026-07-31-production-studio-storage-unauthorized-incident.md`; prior Formal Review `…-bundled-brand-review.md` (**preserved**); amendment `docs/workflow/reviews/2026-07-31-production-storage-cross-service-permission-review-amendment.md` (**approved**) |
 
@@ -332,6 +332,7 @@ needs its own App Hosting rollout approval.
 - [x] `APPROVE PRODUCTION STORAGE CROSS-SERVICE PERMISSION ENABLEMENT` → IAM grant applied
   (`roles/firebaserules.firestoreServiceAgent` →
   `service-473623863375@gcp-sa-firebasestorage.iam.gserviceaccount.com`)
-- [ ] Post-fix: warning gone; Studio restart; design + brand upload QA (owner)
+- [x] Post-fix: warning gone; Studio restart; design + brand upload QA — **PASS WITH NOTES**
+  (catalog image delay = publisher debounce/snapshot; not auth)
 - [ ] Owner provides brand asset files; then `APPROVE BUNDLED BRAND ASSET IMPLEMENTATION` before replacing files
 - [ ] Do not rebuild Studio / roll out Portal branding without later release approvals

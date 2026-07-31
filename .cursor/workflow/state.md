@@ -2,29 +2,31 @@
 `production-release` (Goal #13)
 
 Current Mode: managed-phase
-Current Phase: implement — **Class D IAM applied; owner Studio QA pending**
+Current Phase: implement — **Class D closed (PASS WITH NOTES); Stage 1B/1C fixtures next**
 Plan Status: complete (amended Class D) —
 `docs/workflow/plans/2026-07-31-production-studio-storage-unauthorized-and-bundled-brand-plan.md`
 Review Status: prior Formal Review preserved; Class D amendment **approved**; checkpoint
 `docs/workflow/reviews/2026-07-31-production-storage-cross-service-permission-checkpoint.md`
-Implement Status: **in_progress** — cross-service IAM grant applied after
-`APPROVE PRODUCTION STORAGE CROSS-SERVICE PERMISSION ENABLEMENT`; awaiting owner Studio post-fix
-QA (restart + design import + brand upload)
-Test Status: pending — owner manual QA
-Signoff Status: pending
+(**PASS WITH NOTES**)
+Implement Status: **Class D Storage remediation complete**; Stage 1 fixtures still open; brand
+asset replacement still gated
+Test Status: Class D owner QA **PASS WITH NOTES**; Stage 1B/1C fixture QA pending
+Signoff Status: pending (goal #13 not closed)
 DONE: no
 Human Checkpoint Required: yes
-Human Checkpoint Reason: Owner post-fix QA after cross-service IAM enablement (Console warning
-gone; Studio restart; design import; brand upload ≤2 MB). Brand asset implementation still gated
-separately.
-Blocked: no (IAM applied; product QA open)
-Blocker: none for IAM; Stage 1 fixtures still depend on successful owner upload QA
-Allowed Actions: record owner QA result; continue Stage 1 fixtures after PASS; docs updates
+Human Checkpoint Reason: Owner create Stage 1B upcoming show + Stage 1C catalog design fixtures in
+production Studio. Brand asset implementation still gated separately
+(`APPROVE BUNDLED BRAND ASSET IMPLEMENTATION`).
+Blocked: no
+Blocker: none for Storage; Stage 1 fixtures still required before Stage 2 smoke
+Allowed Actions: document Stage 1 progress; await owner fixture IDs; after fixtures, begin Stage 2
+hosted.app smoke checklist; docs updates
 Forbidden Actions: further IAM changes without new approval; modifying `storage.rules`; deploying
 Rules; Studio rebuild; App Check; CORS; snapshot rebuild; asset replacement without brand implement
-approval; Stage 2 smoke before fixtures; DNS/domain
-Next Required Step: Owner confirms Console warning gone, restarts Studio, imports PNG + uploads
-brand logo ≤2 MB; reply PASS / PASS WITH NOTES / FAIL.
+approval; Stage 2 smoke before fixtures; DNS/domain; Portal-invite customer (deferred to Stage 4)
+Next Required Step: Owner creates `Production Smoke Test Show` (Stage 1B) and one approved ready
+catalog design fixture (Stage 1C); reply with IDs/`PASS`. Then execute Stage 2 checklist on
+hosted.app.
 
 Decision Log:
 - 2026-07-31 — `APPROVE BRAND ASSET MAPPING` (five-source map; preserve 8% app-icon padding).
@@ -32,11 +34,13 @@ Decision Log:
   `roles/firebaserules.firestoreServiceAgent` to
   `service-473623863375@gcp-sa-firebasestorage.iam.gserviceaccount.com` on `fresh-prints-prod`
   (IAM API; Storage Rules file not redeployed).
+- 2026-07-31 — Owner Class D post-fix QA **PASS WITH NOTES**: warning gone; design + brand
+  uploads authorized; Design Library + brand display OK; brief catalog-image delay attributed to
+  publisher 15s debounce / snapshot / refresh (not auth failure).
 
-Last Completed Step: **Class D cross-service IAM grant applied and verified present.** Owner Studio
-upload QA not yet recorded.
+Last Completed Step: **Class D closed** — IAM grant + owner Studio upload QA PASS WITH NOTES.
 
-Prior: Class D root cause confirmed from Console warning; brand mapping approved.
+Prior: Class D IAM applied; brand mapping approved.
 
 **Corrected `users/{uid}` field list for any future manual bootstrap:** `id` (string, same as
 document ID / Auth UID), `email` (string), `displayName` (string), `role` (string, `"owner"` for

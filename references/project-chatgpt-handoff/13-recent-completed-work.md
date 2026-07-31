@@ -2,11 +2,15 @@
 
 > Signed-off or largely complete work. External agents should not re-plan or duplicate this.
 
+## 2026-07-31 - production-release: Class D Storage closed (PASS WITH NOTES)
+
+- Owner: warning gone; design + brand uploads authorized; Design Library + brand OK
+- Note only: brief catalog-image delay = publisher debounce/snapshot/refresh
+- Next: Stage 1B show + Stage 1C catalog fixture; then Stage 2 hosted.app smoke
+
 ## 2026-07-31 - production-release: Class D cross-service IAM enabled (owner QA pending)
 
-- Approved phrase received; granted Firebase Rules Firestore Service Agent to Storage service
-  account `service-473623863375@gcp-sa-firebasestorage.iam.gserviceaccount.com`
-- No Rules file deploy; awaiting owner Studio upload retest
+- Granted Firebase Rules Firestore Service Agent to Storage SA — **closed by PASS WITH NOTES**
 
 ## 2026-07-31 - production-release: Class D cross-service permission identified (docs only)
 

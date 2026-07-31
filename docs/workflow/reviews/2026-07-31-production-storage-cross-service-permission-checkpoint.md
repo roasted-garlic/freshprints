@@ -7,7 +7,7 @@
 | Approval | `APPROVE PRODUCTION STORAGE CROSS-SERVICE PERMISSION ENABLEMENT` |
 | Plan | `docs/workflow/plans/2026-07-31-production-studio-storage-unauthorized-and-bundled-brand-plan.md` |
 | Amendment review | `docs/workflow/reviews/2026-07-31-production-storage-cross-service-permission-review-amendment.md` |
-| Status | **IAM grant applied** — owner Studio post-fix QA required |
+| Status | **PASS WITH NOTES** — Storage authorization restored; Class D closed |
 
 ---
 
@@ -40,14 +40,28 @@ No credentials or tokens recorded.
 
 ---
 
-## Owner post-fix QA (required)
+## Owner post-fix QA — **PASS WITH NOTES** (2026-07-31)
 
-1. Confirm Console Storage Rules cross-service warning is **gone** (refresh Rules page).
-2. Fully **close and reopen** production Studio.
-3. Import one approved PNG under 150 MB → Storage authorization must succeed.
-4. Upload one brand-logo PNG ≤2 MB → Storage authorization must succeed.
-5. Design completes Imports → AI Review → Design Library.
-6. Brand logo persists and displays.
-7. Reply `PASS` / `PASS WITH NOTES: …` / `FAIL: …`
+| Check | Result |
+|-------|--------|
+| Console cross-service warning gone | yes |
+| Studio fully restarted | yes |
+| Catalog design upload authorized | yes |
+| Brand-logo upload authorized | yes |
+| Design: Imports → AI Review → Design Library | yes |
+| Brand logo persisted and displayed | yes |
+| Remaining upload/authorization failures | none |
 
-Resume Playground/Network diagnosis **only if** either upload still fails.
+**Notes:** Brief delay before the newly approved catalog image appeared — consistent with the
+generated catalog publisher’s bounded 15-second debounce plus snapshot publication and client
+refresh time. Not an authorization failure.
+
+Playground/Network diagnosis **not resumed** (uploads succeeded).
+
+---
+
+## Follow-on (not part of this checkpoint)
+
+- Stage 1B upcoming show + Stage 1C catalog fixture (owner Studio) — now unblocked
+- Brand asset file replacement still gated on `APPROVE BUNDLED BRAND ASSET IMPLEMENTATION`
+- Stage 2 hosted.app smoke still waits on Stage 1B/1C fixtures

@@ -5,7 +5,7 @@
 | Date | 2026-07-31 |
 | Goal | `production-release` (Goal #13) |
 | Phase | Phase G / Stage 1 — **blocked** on catalog fixture |
-| Status | **Class D IAM applied** after approval. Owner Studio post-fix QA pending. |
+| Status | **CLOSED — Class D** — IAM applied; owner QA **PASS WITH NOTES** (2026-07-31). |
 | Related | Plan `docs/workflow/plans/2026-07-31-production-studio-storage-unauthorized-and-bundled-brand-plan.md`; prior Formal Review preserved; amendment `docs/workflow/reviews/2026-07-31-production-storage-cross-service-permission-review-amendment.md`; checkpoint `docs/workflow/reviews/2026-07-31-production-storage-cross-service-permission-checkpoint.md` |
 
 ---
@@ -47,7 +47,10 @@ unless post-fix uploads still fail.
 
 `APPROVE PRODUCTION STORAGE CROSS-SERVICE PERMISSION ENABLEMENT`
 
-**Granted 2026-07-31.** IAM applied (see checkpoint). Owner Studio QA still required.
+**Granted 2026-07-31.** IAM applied (see checkpoint). Owner Studio QA **PASS WITH NOTES**
+(2026-07-31): Console warning gone; design + brand uploads authorized; Design Library + brand
+persist OK; brief catalog-image delay = publisher debounce/snapshot/refresh, not auth failure.
+Incident closed.
 
 ### IAM result (recorded after enablement)
 

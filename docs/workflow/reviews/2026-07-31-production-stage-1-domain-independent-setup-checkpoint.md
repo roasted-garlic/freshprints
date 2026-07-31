@@ -5,7 +5,11 @@
 | Date | 2026-07-31 |
 | Goal | `production-release` (Goal #13) |
 | Phase | Phase G / Stage 1 |
-| Status | **partial — owner Studio fixtures still required** |
+| Status | **partial — Storage Class D closed; Stage 1B/1C fixtures still required** |
+
+**Unblocked 2026-07-31:** Storage cross-service IAM + owner upload QA **PASS WITH NOTES**
+(`…-production-storage-cross-service-permission-checkpoint.md`). Catalog design import and brand
+logo upload work again. Proceed with Stage 1B/1C fixtures below.
 
 ---
 

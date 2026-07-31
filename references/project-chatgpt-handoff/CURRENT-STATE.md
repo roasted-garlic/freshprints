@@ -1,43 +1,29 @@
 # Fresh Prints - Current State Snapshot
 
-## 2026-07-31 — Goal #13 Class D: Storage cross-service permission **IAM applied**
+## 2026-07-31 — Goal #13 Class D **CLOSED**: Storage uploads PASS WITH NOTES
 
-- Owner approved `APPROVE PRODUCTION STORAGE CROSS-SERVICE PERMISSION ENABLEMENT`
-- Granted `roles/firebaserules.firestoreServiceAgent` to
-  `service-473623863375@gcp-sa-firebasestorage.iam.gserviceaccount.com`
-- No Storage Rules deploy / Studio rebuild
+- Owner QA: Console warning gone; design + brand uploads authorized after Studio restart
+- Design: Imports → AI Review → Design Library; brand logo persisted/displayed
+- Note: brief delay before approved catalog image — publisher 15s debounce + snapshot + refresh
+  (not an auth failure)
 - Checkpoint:
   `docs/workflow/reviews/2026-07-31-production-storage-cross-service-permission-checkpoint.md`
-- **Owner next:** confirm Console warning gone; restart Studio; import PNG + brand ≤2 MB; reply PASS
+- **Owner next:** Stage 1B `Production Smoke Test Show` + Stage 1C ready catalog design fixture;
+  reply with IDs/`PASS`. Then Stage 2 hosted.app smoke. Portal-invite customer still Stage 4.
+
+## 2026-07-31 — Goal #13 Class D: Storage cross-service permission **IAM applied** (superseded)
+
+- Granted `roles/firebaserules.firestoreServiceAgent` to
+  `service-473623863375@gcp-sa-firebasestorage.iam.gserviceaccount.com`
+- No Storage Rules deploy / Studio rebuild — **closed by PASS WITH NOTES above**
 
 ## 2026-07-31 — Goal #13 Class D: Storage cross-service permission (awaiting Fix issue)
 
-- Console warning: cross-service database calls not configured for Storage Rules
-- Root cause: `firestore.get`/`exists` in `isStaff`/`isOwner` cannot run without enablement
-- Remediation: Console **Fix issue** only — no Rules edit/deploy, no Studio rebuild
-- Approval phrase: `APPROVE PRODUCTION STORAGE CROSS-SERVICE PERMISSION ENABLEMENT`
-  (**completed** — see section above)
-- Brand mapping **approved** (five sources, 8% padding); do not replace assets until
-  `APPROVE BUNDLED BRAND ASSET IMPLEMENTATION`
-- Amendment review (**approved**):
-  `docs/workflow/reviews/2026-07-31-production-storage-cross-service-permission-review-amendment.md`
+- **Superseded** — IAM + owner QA closed the incident
 
 ## 2026-07-31 — Goal #13 BLOCKED: Studio Storage `storage/unauthorized`
 
-- Design import + Brand Logos upload fail with `storage/unauthorized` on production Studio
-- Diagnosis: packaged config = `fresh-prints-prod` / `fresh-prints-prod.firebasestorage.app`;
-  live Storage Rules **byte-identical** to repo; App Check **not** enforced; CORS not involved
-- Brand error is **failed upload** (no `settings/brandLogos`; `brand/` empty), not public read
-- `originals/` / `thumbnails/` / `previews/` / `brand/` all empty on prod
-- **Mechanism updated to Class D** (cross-service permission) — see section above
-- Prior Formal Review `approved_with_changes` preserved; Class D amendment approved
-- **Do not** redeploy identical Rules; **do not** Stage 2 until fixed + fixtures exist
-- Artifacts:
-  - `docs/workflow/reviews/2026-07-31-production-studio-storage-unauthorized-incident.md`
-  - `docs/workflow/plans/2026-07-31-production-studio-storage-unauthorized-and-bundled-brand-plan.md`
-  - `docs/workflow/reviews/2026-07-31-production-studio-storage-unauthorized-and-bundled-brand-review.md`
-- Owner next: `APPROVE PRODUCTION STORAGE CROSS-SERVICE PERMISSION ENABLEMENT` then Console Fix
-  issue (Playground/Network path stopped)
+- **Superseded / closed** — Class D IAM + PASS WITH NOTES
 
 ## 2026-07-31 — Goal #13: Stage 1 partial — infra/DNS recorded; fixtures pending owner
 
@@ -46,7 +32,7 @@
 - Portal-invite test customer **deferred** (continue URL → `myprintrequest.com/login`)
 - Stage 2 hosted.app smoke checklist prepared, **not executed**
 - Owner next: create upcoming show + one ready catalog design in production Studio
-  (**blocked** until Storage unauthorized is resolved)
+  (**Storage unblocked** — proceed with fixtures)
 
 ## 2026-07-31 — Goal #13: production `settings/emailProviders` PASS
 
