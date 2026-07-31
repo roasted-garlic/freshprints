@@ -5,7 +5,7 @@
 | Date | 2026-07-31 |
 | Goal | `production-release` (Goal #13) |
 | Phase | Phase G — after Stage 1 fixtures; **before** bundled brand / Stage 2 |
-| Status | **Loading-ownership fix LIVE on App Hosting** (`58aa0da`); owner QA pending |
+| Status | **CLOSED — owner QA PASS WITH NOTES**; loading-ownership live (`58aa0da`); see signoff |
 | Environment | `https://fresh-prints-portal--fresh-prints-prod.us-central1.hosted.app` |
 | Related Plan | `docs/workflow/plans/2026-07-31-production-portal-registration-stuck-plan.md` |
 | Inventory amendment | `docs/workflow/reviews/2026-07-31-production-portal-registration-stuck-inventory-amendment.md` |

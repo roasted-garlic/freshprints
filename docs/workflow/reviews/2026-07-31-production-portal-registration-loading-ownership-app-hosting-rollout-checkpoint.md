@@ -37,13 +37,21 @@
 - No custom-domain cutover
 - Owner registration QA **pending**
 
-## Owner QA — reply format
+## Owner QA result — **PASS WITH NOTES** (2026-07-31)
 
-Reply `PASS`, `PASS WITH NOTES: …`, or `FAIL: …` after:
+Exact recorded result:
 
-1. Open hosted.app `/register` → Continue with Google (same Google account OK; do not require a new account).
-2. Confirm `/complete-profile` is **interactive** (form usable; no permanent “Creating your customer account…” before Continue).
-3. Complete profile (display name + username + bidding ack).
-4. Confirm overlay exits and portal loads as customer — **or** terminal error ≤ ~45s with Retry + Use a different account usable.
-5. Optional DevTools: Console → enable **Info** → filter `fp-portal-auth` → stage names only (no tokens/emails/UIDs).
-6. Stage 1 fixtures unchanged; do not start branding/Stage 2 until PASS.
+> PASS WITH NOTES: Google registration completed successfully. The complete-profile form was interactive before Continue, submission completed, and the Portal loaded normally with no stuck spinner.
+
+Non-blocking notes:
+
+1. Username HTML `pattern` `[a-z0-9][a-z0-9_-]{1,30}[a-z0-9]` reported invalid by browser (may disable native validation) — narrow follow-up / tech debt.
+2. Asynchronous-listener console message — extension noise; no Portal failure.
+3. COOP `window.closed` during Google popup — non-blocking; Auth + provisioning succeeded.
+
+Signoff: `docs/workflow/reviews/2026-07-31-production-portal-registration-loading-ownership-signoff.md`
+(**approved_with_notes**).
+
+## Owner QA — reply format (closed)
+
+Superseded by PASS WITH NOTES above.

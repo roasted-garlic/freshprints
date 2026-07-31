@@ -2,35 +2,35 @@
 `production-release` (Goal #13)
 
 Current Mode: managed-phase
-Current Phase: test — **loading-ownership App Hosting rollout complete; owner registration QA pending**
-Plan Status: complete —
-parent + `docs/workflow/plans/2026-07-31-production-portal-registration-post-rollout-amendment.md`
-Review Status: Formal + Implementation Review approved; loading-ownership rollout checkpoint recorded
-Implement Status: complete and **deployed** to production App Hosting (`58aa0da` / `7a88e6b`)
-Test Status: automated **passed**; hosted.app owner QA **pending**
-Signoff Status: pending owner QA
-DONE: no
-Human Checkpoint Required: yes
-Human Checkpoint Reason: Owner hosted.app registration QA after loading-ownership App Hosting
-rollout. Reply `PASS` / `PASS WITH NOTES: …` / `FAIL: …`. Branding + Stage 2 remain paused.
-Blocked: no (rollout done; product QA open)
-Blocker: none for deploy; registration QA outstanding
-Allowed Actions: record owner QA; docs; read-only verify
-Forbidden Actions: Auth user delete; branding implement; Stage 2 smoke before QA PASS; unrelated
-Firebase deploys; domain cutover
-Next Required Step: Owner runs hosted.app complete-profile QA (see loading-ownership rollout
-checkpoint); reply PASS / PASS WITH NOTES / FAIL.
+Current Phase: signoff — **registration loading-ownership remediation closed (approved_with_notes)**
+Plan Status: complete
+Review Status: approved
+Implement Status: complete and deployed (`58aa0da`)
+Test Status: automated passed; hosted.app owner QA **PASS WITH NOTES**
+Signoff Status: **approved_with_notes** —
+`docs/workflow/reviews/2026-07-31-production-portal-registration-loading-ownership-signoff.md`
+DONE: no (Goal #13 `production-release` continues; registration blocker closed)
+Human Checkpoint Required: no
+Human Checkpoint Reason: none
+Blocked: no
+Blocker: none
+Allowed Actions: plan next Goal #13 slice (branding / Stage 2 / etc.) when owner directs
+Forbidden Actions: Auth user delete without approval; domain cutover without approval; unrelated
+Firebase deploys without approval
+Next Required Step: Owner directs next Goal #13 work (e.g. bundled-brand implementation,
+Stage 2 smoke, or `portal-username-html-pattern-fix` follow-up).
 
 Decision Log:
-- 2026-07-31 — `APPROVE PRODUCTION PORTAL APP HOSTING ROLLOUT: LOADING-OWNERSHIP FIX` → PR #13
-  merge `58aa0da`; `apphosting:rollouts:create` pinned to `58aa0da` succeeded; served layout
-  chunk refreshed; automatic rollouts remain disabled.
-- 2026-07-31 — `APPROVE PORTAL REGISTRATION LOADING-OWNERSHIP FIX IMPLEMENTATION` → `7a88e6b`.
-- 2026-07-31 — Prior owner QA FAIL after `8943d17` (sticky `isAuthActionLoading`).
+- 2026-07-31 — Owner QA **PASS WITH NOTES** on loading-ownership rollout: Google registration
+  succeeded; interactive complete-profile; Portal loaded. Notes: invalid username HTML
+  `pattern` (TD-029); async-listener = extension noise; COOP non-blocking.
+- 2026-07-31 — `APPROVE PRODUCTION PORTAL APP HOSTING ROLLOUT: LOADING-OWNERSHIP FIX` →
+  PR #13 / `58aa0da` live.
+- 2026-07-31 — Prior FAIL on `8943d17` remediated by loading-ownership fix.
 
-Last Completed Step: **Production Portal App Hosting rollout of loading-ownership fix.**
+Last Completed Step: **Registration loading-ownership signoff (approved_with_notes).**
 
-Prior: Loading-ownership fix on development; Implementation Review approved.
+Prior: App Hosting rollout; owner QA PASS WITH NOTES.
 
 **Corrected `users/{uid}` field list for any future manual bootstrap:** `id` (string, same as
 document ID / Auth UID), `email` (string), `displayName` (string), `role` (string, `"owner"` for
