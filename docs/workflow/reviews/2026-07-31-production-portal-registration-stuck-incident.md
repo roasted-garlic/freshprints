@@ -5,9 +5,10 @@
 | Date | 2026-07-31 |
 | Goal | `production-release` (Goal #13) |
 | Phase | Phase G — after Stage 1 fixtures; **before** bundled brand / Stage 2 |
-| Status | **Diagnosed (docs only)** — remediation Plan + Formal Review required; no implement |
+| Status | **Amended inventory (docs only)** — successful GetAccountInfoResponse recorded; failed 400 body still unmet; no implement |
 | Environment | `https://fresh-prints-portal--fresh-prints-prod.us-central1.hosted.app` |
 | Related Plan | `docs/workflow/plans/2026-07-31-production-portal-registration-stuck-plan.md` |
+| Inventory amendment | `docs/workflow/reviews/2026-07-31-production-portal-registration-stuck-inventory-amendment.md` |
 
 ---
 
@@ -109,46 +110,71 @@ Email/password path **not** indicated for this attempt.
 
 | Item | Value |
 |------|-------|
-| HTTP status | **400** (owner Network evidence) |
-| Error code / message | **`[NEEDS OWNER RESPONSE CAPTURE]`** |
+| HTTP status (failed request) | **400** (owner Network / console evidence) |
+| Failed Response error code / message | **`[NEEDS OWNER RESPONSE CAPTURE]`** — must be taken from the **failed** (red) Network row only |
 
-Probe without a token (agent, empty body) returns `MISSING_ID_TOKEN` — proves the API key can
-reach Identity Toolkit, **not** the live session failure mode.
+### Owner capture correction (2026-07-31)
 
-### Owner capture steps (beginner-friendly)
+A Response body with `kind: identitytoolkit#GetAccountInfoResponse`, Google user
+`localId` prefix **`MXeK…`**, and `lastRefreshAt: 2026-07-31T20:06:27.801Z` was captured, but that
+was a **successful** lookup — **not** the 400 error body. Email/provider details from that
+response are **not** recorded here.
+
+**Allowed use of that success:** proves Identity Toolkit lookup **can succeed** for at least one
+Auth session. **Must not** drive Auth configuration remediation. Console still showed a separate
+`accounts:lookup` HTTP 400.
+
+### Owner capture steps (failed row only)
 
 1. Open Chrome DevTools → **Network**.
-2. Reproduce or refresh while stuck (or use the existing failed request).
-3. Click the failed **`accounts:lookup`** request.
-4. Open **Response**.
-5. Copy **only** the JSON `error.code` / `error.message` (and nested `errors[].message` if present).
-6. Do **not** copy Request Payload, Authorization, cookies, or tokens.
+2. Find the `accounts:lookup` request with status **400** (red).
+3. Open **Response** for that row only.
+4. Copy **only** `error.message` / nested error message (and numeric `error.code` if present).
+5. Do **not** copy Request Payload, tokens, or a green/`GetAccountInfoResponse` body.
 
 ---
 
 ## Production partial-state inventory (read-only, sanitized)
 
+### First diagnosis snapshot (historical)
+
 | Store | Finding |
 |-------|---------|
-| Firebase Auth | **2** users: owner (`password`, has `users/{uid}` role `owner`); **1 Google orphan** `uidPrefix=Pl3ODnKm…` created 19:46:06Z, `emailVerified=true`, `disabled=false`, providers=`google.com` |
-| `users/{uid}` for orphan | **Absent** |
-| `customers` | **0** documents |
-| `customerUsernames` | **0** documents |
-| Notifications / other bootstrap | No customer provisioning records found |
+| Firebase Auth | Owner + Google orphan **`Pl3ODnKm…`** (created ~19:46:06Z) — Auth-only at that time |
 
-**Classification: Auth user only** (Google signup succeeded; Firestore provisioning did not).
+### Amendment re-inventory (2026-07-31, after owner success-response report)
+
+| uidPrefix | Providers | Created | Last sign-in | Disabled | `users/{uid}` | customer | username reservation |
+|-----------|-----------|---------|--------------|----------|---------------|----------|----------------------|
+| `L3jjfWJG…` | `google.com` | 20:10:37Z | 20:10:37Z | false | **absent** | **absent** | **absent** |
+| `7v3SLjRN…` | `password` | 03:05:35Z | 14:10:50Z | false | owner | n/a | n/a |
+| `Pl3ODnKm…` | — | — | — | — | **Auth user gone** | none | none |
+| `MXeK…` | — | (seen in success lookup ~20:06:27Z) | — | — | **Auth user gone** | none | none |
+
+**Collection totals:** `customers` = 0; `customerUsernames` = 0; `users` role `customer` = 0.
+
+**Classification (current):** **Auth user only** — current Google orphan `L3jjfWJG…`. Prior
+`Pl3ODnKm…` / `MXeK…` prefixes are **stale** (no longer in Auth). Multiple Google Auth-only
+attempts likely; whether different Google accounts vs delete-and-retry is
+`[NEEDS OWNER CONFIRMATION]`.
+
+**`registerCustomer`:** still **not invoked** on 2026-07-31 (including ~20:06Z window).
+
+See full amendment:
+`docs/workflow/reviews/2026-07-31-production-portal-registration-stuck-inventory-amendment.md`.
 
 ### Retry risk if registration is repeated without repair
 
 | Risk | Assessment |
 |------|------------|
-| email-already-in-use (email/password) | N/A for this Google orphan unless same email uses password signup |
-| Google sign-in again | Same Auth uid likely resumes to `/complete-profile` |
+| email-already-in-use (email/password) | N/A for Google orphans unless same email uses password signup |
+| Google sign-in again | May create **another** Auth-only uid if prior Auth users were removed |
 | username-already-reserved | **No** reservation exists yet |
 | duplicate customer / users | **No** Firestore rows yet |
-| Orphan worsens | Possible if more Auth users are created without completing profile |
+| Orphan worsens | **Yes** — pattern already shows multiple Google Auth-only users over time |
 
-**Do not delete** the Auth user without a separate reviewed approval phrase.
+**Do not delete** Auth users without a separate reviewed approval phrase after a **fresh**
+read-only inventory (do not target vanished prefixes).
 
 ---
 
@@ -246,40 +272,45 @@ Remediation must include terminal error UX, timeout, and usable sign-out/retry �
 
 | # | Hypothesis | Verdict | Evidence |
 |---|------------|---------|----------|
-| 1 | Auth account creation failed before user existed | **ruled out** | Google Auth user exists (`Pl3ODnKm…`) |
-| 2 | Auth user exists but `accounts:lookup` rejects its token | **still possible** | 400 observed; exact code `[NEEDS OWNER RESPONSE CAPTURE]`; callable never hit |
+| 1 | Auth account creation failed before user existed | **ruled out** | Multiple Google Auth users created over time; current `L3jjfWJG…` |
+| 2 | Auth user exists but `accounts:lookup` rejects its token | **still possible** | Console still shows 400; success `GetAccountInfoResponse` also observed — capture failed row only |
 | 3 | Hosted Portal Firebase values from wrong project | **ruled out** | Deployed chunk = `fresh-prints-prod` |
 | 4 | Auth and Firestore use different Firebase apps | **ruled out** | Single app in `client.ts` |
 | 5 | Deployed API key wrong project | **ruled out** | Key prefix matches prod `apphosting.yaml` / messaging sender `473623863375` |
 | 6 | API-key restrictions block Identity Toolkit | **ruled out** | `identitytoolkit` in `apiTargets`; empty referrer allowlist |
-| 7 | Identity Toolkit API unavailable/disabled | **ruled out** | API responds; Google user created; empty lookup returns structured 400 |
+| 7 | Identity Toolkit API unavailable/disabled | **ruled out** | Successful `GetAccountInfoResponse` observed; Google users created |
 | 8 | hosted.app not authorized for Auth | **ruled out** | Domain present in Authorized Domains |
 | 9 | Deferred `.com` incorrectly required by code | **ruled out** for this failure | Auth uses Firebase SDK + `authDomain` firebaseapp.com; hosted.app authorized |
 | 10 | Google popup/redirect fails due to COOP | **still possible** as secondary only | Popup Auth succeeded; COOP warnings common; not proven to cause lookup 400 |
-| 11 | Email/password Auth OK but profile provisioning fails | **not applicable** | Attempt is Google Auth-only orphan |
-| 12 | Google Auth OK but profile provisioning fails | **confirmed** (provisioning never completed) | Auth yes; Firestore no; callable not invoked |
+| 11 | Email/password Auth OK but profile provisioning fails | **not applicable** | Attempts are Google Auth-only orphans |
+| 12 | Google Auth OK but profile provisioning fails | **confirmed** | Auth-only Google users; Firestore empty; callable not invoked |
 | 13 | Required callable missing | **ruled out** | `registerCustomer` ACTIVE |
 | 14 | Callable deployed but misconfigured | **still possible** only after client reaches it | No invocation logs yet |
-| 15 | Firestore Rules deny profile R/W | **not applicable** yet | Client never reached server transaction; Rules not exercised by this attempt |
-| 16 | Username reservation fails | **ruled out** for this attempt | No username docs; callable not invoked |
-| 17 | Auth + partial Firestore | **ruled out** | Auth only |
+| 15 | Firestore Rules deny profile R/W | **not applicable** yet | Client never reached server transaction |
+| 16 | Username reservation fails | **ruled out** for these attempts | No username docs; callable not invoked |
+| 17 | Auth + partial Firestore | **ruled out** | Auth only (current + historical orphans) |
 | 18 | All records exist; client fails to leave loading | **ruled out** | No Firestore customer/user |
 | 19 | Setup error swallowed; no terminal UI | **still possible** / **confirmed risk** | Hang path has no timeout; busy disables logout |
 | 20 | Strict Mode / listener lifecycle stale pending | **still possible** | `registrationInProgressRef` skips listener load during provision; not proven primary |
-| 21 | Extension async-listener errors unrelated | **still possible** → treat as **likely noise** | Wording matches extensions; not in Portal auth source |
-| 22 | Repeating registration worsens orphan state | **still possible** | Additional Auth-only users if new Google accounts used; same uid may resume |
+| 21 | Extension async-listener errors unrelated | **likely noise** | Wording matches extensions; not in Portal auth source |
+| 22 | Repeating registration worsens orphan state | **confirmed risk** | `Pl3ODnKm…` → `MXeK…` → `L3jjfWJG…`; still zero Firestore customers |
 
 ---
 
-## Root cause (current)
+## Root cause (current — amended)
 
 **Evidence-backed mechanism:**
 
-1. **Primary:** After Google sign-in, `/complete-profile` provisioning cannot obtain a usable Auth
-   session for `registerCustomer` — manifested as Identity Toolkit **`accounts:lookup` HTTP 400**.
-   Exact Firebase error string is still **`[NEEDS OWNER RESPONSE CAPTURE]`**.
-2. **Confirmed consequence:** `registerCustomer` never ran; state = **Auth user only**.
-3. **Confirmed product defect:** Permanent busy overlay with no timeout and disabled escape while
+1. Google sign-in repeatedly creates Auth users; `/complete-profile` still does not reach
+   `registerCustomer` (no Cloud Run invocations on 2026-07-31). Current state = **Auth user only**
+   (`L3jjfWJG…`). Prior prefixes `Pl3ODnKm…` / `MXeK…` are **stale** (absent from Auth).
+2. Browser shows **both** successful Identity Toolkit `GetAccountInfoResponse` lookups **and**
+   separate `accounts:lookup` **HTTP 400** failures. The 400 body is still
+   **`[NEEDS OWNER RESPONSE CAPTURE]`** from the failed Network row only. Success responses must
+   **not** drive Auth configuration remediations.
+3. Earlier primary wording that treated lookup as uniformly failing is **too strong** and is
+   amended by the inventory amendment doc.
+4. **Confirmed product defect:** Permanent busy overlay with no timeout and disabled escape while
    busy.
 
 **Not the root cause (this pass):** Storage Class D, Stage 1 fixtures, missing Authorized Domain

@@ -23,9 +23,12 @@ remediation.
 ## Background
 
 After Stage 1 fixture completion, production hosted.app registration stuck on
-`CompleteProfileForm` busy overlay. Google Auth user `uidPrefix=Pl3ODnKm…` exists; no Firestore
+`CompleteProfileForm` busy overlay. Google Auth-only orphans appeared without Firestore
 provisioning; `registerCustomer` Cloud Run shows **no** 2026-07-31 invocations; Network shows
-`accounts:lookup` **HTTP 400**. Exact Identity Toolkit error body still needs owner capture.
+`accounts:lookup` **HTTP 400** alongside at least one successful `GetAccountInfoResponse`.
+Exact failed Identity Toolkit error body still needs owner capture from the **red** Network row.
+Auth uid inventory is time-sensitive — see inventory amendment (`L3jjfWJG…` current;
+`Pl3ODnKm…` / `MXeK…` stale).
 
 Branding and Stage 2 remain paused until this blocker clears.
 
@@ -137,15 +140,23 @@ allowed on the browser key.
 
 ### Phase 3 — Partial-account handling
 
-Existing Google orphan `uidPrefix=Pl3ODnKm…`:
+Google Auth-only orphans (inventory is time-sensitive — re-read Auth before any delete):
 
-1. **Preferred:** User signs in with the same Google account → `/complete-profile` →
-   `registerCustomer` (idempotent / first provision).
-2. **If resume impossible:** Owner-approved Auth user delete only via
-   `APPROVE PRODUCTION AUTH ORPHAN USER DELETION: Pl3ODnKm` (exact phrase; confirm full uid in
-   Console privately — docs keep prefix only).
+| Prefix | Status at amendment |
+|--------|---------------------|
+| `Pl3ODnKm…` | **Gone** from Auth |
+| `MXeK…` | Seen in success lookup ~20:06:27Z; **gone** from Auth at re-inventory |
+| `L3jjfWJG…` | **Current** Auth-only Google orphan (as of amendment re-inventory) |
+
+1. **Preferred:** User signs in with the same Google account still present in Auth →
+   `/complete-profile` → `registerCustomer` (idempotent / first provision).
+2. **If resume impossible:** Owner-approved Auth user delete only after fresh inventory, e.g.
+   `APPROVE PRODUCTION AUTH ORPHAN USER DELETION: L3jjfWJG` (confirm full uid in Console
+   privately — docs keep prefix only). **Do not** approve deletion of already-absent prefixes.
 3. Never delete merely to ease testing if resume works.
 4. No username reservation exists to release.
+5. Owner confirmation requested whether prior Auth users were manually deleted and whether
+   multiple Google accounts were used.
 
 ### Phase 4 — Production release
 
@@ -179,7 +190,7 @@ See Owner QA checklist below.
 | (none — paste) Owner Response capture of `accounts:lookup` error | Before Auth-config remediations |
 | `APPROVE PORTAL REGISTRATION LOADING-STATE FIX IMPLEMENTATION` | Phase 1 source work |
 | `APPROVE PRODUCTION PORTAL APP HOSTING ROLLOUT` | Deploy Portal fix |
-| `APPROVE PRODUCTION AUTH ORPHAN USER DELETION: Pl3ODnKm` | Only if resume fails |
+| `APPROVE PRODUCTION AUTH ORPHAN USER DELETION: L3jjfWJG` | Only if resume fails **and** fresh inventory still shows that prefix |
 | `APPROVE PRODUCTION API KEY RESTRICTION CHANGE` | Only if evidence requires |
 | `APPROVE PRODUCTION AUTHORIZED DOMAINS CHANGE` | Only if evidence requires |
 | `APPROVE PRODUCTION FUNCTION DEPLOY: registerCustomer` | Only if Functions change required |
@@ -212,8 +223,9 @@ See Owner QA checklist below.
 
 ## Open questions / checkpoints
 
-- [ ] Owner captures sanitized `accounts:lookup` error message/code
-- [ ] Formal Review verdict
+- [ ] Owner captures sanitized **failed** `accounts:lookup` error message/code (not GetAccountInfoResponse)
+- [ ] Owner confirms whether prior Auth orphans were deleted and whether multiple Google accounts were used
+- [ ] Formal Review verdict (parent `approved_with_changes`; inventory amendment recorded)
 - [ ] `APPROVE PORTAL REGISTRATION LOADING-STATE FIX IMPLEMENTATION` before Phase 1 code
 - [ ] Production rollouts only with separate phrases above
 - [ ] Branding / Stage 2 remain paused until registration PASS

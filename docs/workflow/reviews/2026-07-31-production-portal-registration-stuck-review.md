@@ -80,13 +80,16 @@ approval phrase are satisfied; Auth Console / data actions remain separately gat
 
 **Findings:**
 
-- Classification **Auth user only** independently consistent with Admin SDK listing
-  (Google uid prefix `Pl3ODnKm`, zero `customers` / `customerUsernames`, no `users/{uid}` for orphan).
-- `registerCustomer` transaction model supports resume without schema migration.
+- Classification **Auth user only** was correct at first diagnosis for `Pl3ODnKm…`.
+- Inventory amendment (2026-07-31): that prefix and success-lookup `MXeK…` are **gone**; current
+  orphan is `L3jjfWJG…`. See
+  `…-production-portal-registration-stuck-inventory-amendment.md`.
+- `registerCustomer` transaction model still supports resume without schema migration.
 
 **Required changes:**
 
-- [ ] None.
+- [x] Any orphan-deletion approval must use a **fresh** Auth inventory prefix (not stale
+  `Pl3ODnKm` / `MXeK`).
 
 ---
 

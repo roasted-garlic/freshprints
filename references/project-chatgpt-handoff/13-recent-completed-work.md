@@ -2,11 +2,17 @@
 
 > Signed-off or largely complete work. External agents should not re-plan or duplicate this.
 
+## 2026-07-31 - production-release: Portal registration Auth inventory amended (docs only)
+
+- Success GetAccountInfoResponse (`MXeK…`) is not the 400 body; failed 400 still unmet
+- Current Auth-only orphan `L3jjfWJG…`; prior `Pl3ODnKm…`/`MXeK…` gone; registerCustomer still unused
+- No implement / no prod changes
+
 ## 2026-07-31 - production-release: Portal registration stuck diagnosed (docs only)
 
 - Google Auth-only orphan; `accounts:lookup` HTTP 400; `registerCustomer` not invoked
 - Plan + Formal Review `approved_with_changes`; branding/Stage 2 paused; Stage 1 untouched
-- Awaiting owner error capture + `APPROVE PORTAL REGISTRATION LOADING-STATE FIX IMPLEMENTATION`
+- Inventory later amended (see section above)
 
 ## 2026-07-31 - production-release: Stage 1 fixtures complete (1B + 1C)
 

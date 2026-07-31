@@ -1,30 +1,29 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-07-31 — Goal #13 registration stuck: Auth inventory **amended** (docs only)
+
+- Owner success Response was `GetAccountInfoResponse` (`MXeK…`, lastRefreshAt 20:06:27Z) — **not** the 400 body
+- Failed `accounts:lookup` 400 body still **`[NEEDS OWNER RESPONSE CAPTURE]`** (red Network row only)
+- Re-inventory: `Pl3ODnKm…` and `MXeK…` **absent**; current Google Auth-only orphan **`L3jjfWJG…`**
+  (created 20:10:37Z); owner password user unchanged; still **0** customers / usernames / customer users
+- `registerCustomer` still **not invoked** on 2026-07-31
+- Amendment: `docs/workflow/reviews/2026-07-31-production-portal-registration-stuck-inventory-amendment.md`
+- No implement; branding + Stage 2 paused; Stage 1 + Class D untouched
+- Next: capture **failed** 400 error fields; then
+  `APPROVE PORTAL REGISTRATION LOADING-STATE FIX IMPLEMENTATION`
+
 ## 2026-07-31 — Goal #13 BLOCKED: Portal registration stuck (`accounts:lookup` 400)
 
-- Stuck UI: `CompleteProfileForm` — “Setting up your account…” / “Creating your customer account…”
-- Method: Google popup → complete-profile (Auth-only orphan `uidPrefix=Pl3ODnKm…`)
-- `registerCustomer` ACTIVE but **not invoked** 2026-07-31; no Firestore customer/user/username
-- Deployed Portal = `fresh-prints-prod`; hosted.app **is** Authorized Domain
-- Exact Identity Toolkit error body: **`[NEEDS OWNER RESPONSE CAPTURE]`**
-- Formal Review **approved_with_changes**; **no implement/deploy yet**
-- Branding + Stage 2 **paused**; Stage 1 fixtures + Class D Storage **unchanged/complete**
-- Artifacts:
-  - `docs/workflow/reviews/2026-07-31-production-portal-registration-stuck-incident.md`
-  - `docs/workflow/plans/2026-07-31-production-portal-registration-stuck-plan.md`
-  - `docs/workflow/reviews/2026-07-31-production-portal-registration-stuck-review.md`
-- Next: owner paste sanitized lookup error; then
-  `APPROVE PORTAL REGISTRATION LOADING-STATE FIX IMPLEMENTATION`
+- See inventory amendment above for current Auth prefixes
+- Artifacts: incident + plan + Formal Review `approved_with_changes`
 
 ## 2026-07-31 — Goal #13 Stage 1 fixtures **COMPLETE** (1B + 1C)
 
-- Remains recorded **PASS WITH NOTES** — not reopened by registration incident
-- 1C `s9Yi7i8uq2ZddERyDuNT`; 1B Friday `kmpnyHAvKaesidMrlFkU` + Saturday `p8ooWvYU01wX1Nug53bp`
+- Remains recorded **PASS WITH NOTES** — not reopened
 
 ## 2026-07-31 — Goal #13 Class D **CLOSED**: Storage uploads PASS WITH NOTES
 
-- Remains closed — not modified by registration incident
-- IAM: `roles/firebaserules.firestoreServiceAgent` → Storage SA `service-473623863375@…`
+- Remains closed — not modified
 
 ## 2026-07-31 — Goal #13 Class D: Storage cross-service permission **IAM applied** (superseded)
 

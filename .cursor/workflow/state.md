@@ -2,43 +2,43 @@
 `production-release` (Goal #13)
 
 Current Mode: managed-phase
-Current Phase: plan/review **complete** — Portal registration stuck; **implement blocked** pending
-approvals + owner `accounts:lookup` error capture
-Plan Status: complete —
+Current Phase: plan/review **complete** (inventory **amended**) — Portal registration stuck;
+**implement blocked** pending failed-400 capture + approvals
+Plan Status: complete (orphan handling amended) —
 `docs/workflow/plans/2026-07-31-production-portal-registration-stuck-plan.md`
-Review Status: **approved_with_changes** —
-`docs/workflow/reviews/2026-07-31-production-portal-registration-stuck-review.md`
-Implement Status: **not started** (this pass diagnosis/plan/review only)
+Review Status: **approved_with_changes** (parent) + inventory amendment recorded —
+`docs/workflow/reviews/2026-07-31-production-portal-registration-stuck-inventory-amendment.md`
+Implement Status: **not started**
 Test Status: pending (post-implement)
 Signoff Status: pending (goal #13 not closed)
 DONE: no
 Human Checkpoint Required: yes
-Human Checkpoint Reason: (1) Owner capture sanitized Identity Toolkit `accounts:lookup` Response
-error code/message. (2) Then `APPROVE PORTAL REGISTRATION LOADING-STATE FIX IMPLEMENTATION` before
-any source change. Branding + Stage 2 remain paused. Stage 1 fixtures remain complete.
-Blocked: yes (registration blocker; brand/Stage 2 paused — Stage 1 not reopened)
-Blocker: Production Portal registration stuck — Auth-only Google orphan; `accounts:lookup` HTTP 400;
-`registerCustomer` not invoked; exact error body unmet
-Allowed Actions: docs updates; record owner error capture; await approval phrases; read-only verify
+Human Checkpoint Reason: (1) Capture sanitized **failed** `accounts:lookup` 400 Response (not
+GetAccountInfoResponse). (2) Confirm whether prior Auth users were deleted / multiple Google
+accounts used. (3) Then `APPROVE PORTAL REGISTRATION LOADING-STATE FIX IMPLEMENTATION`. Branding +
+Stage 2 paused. Stage 1 complete.
+Blocked: yes
+Blocker: Portal registration stuck — current Auth-only Google orphan `L3jjfWJG…`;
+`registerCustomer` never invoked; failed 400 body unmet; prior prefixes stale
+Allowed Actions: docs updates; record owner captures/confirmations; await approval phrases;
+read-only verify
 Forbidden Actions: implement/deploy without approvals; Auth/data repair; delete Auth user; change
-Authorized Domains/API keys/OAuth; Rules/Functions/App Hosting changes; branding implement; Stage 2
-smoke; alter Stage 1 fixtures; reopen Class D Storage
-Next Required Step: Owner pastes sanitized `accounts:lookup` error JSON fields, then send
-`APPROVE PORTAL REGISTRATION LOADING-STATE FIX IMPLEMENTATION` to start Phase 1 client resilience.
+Authorized Domains/API keys/OAuth; Rules/Functions/App Hosting; branding; Stage 2; alter Stage 1
+fixtures; reopen Class D Storage; treat successful lookup as 400 body
+Next Required Step: Owner pastes **failed** `accounts:lookup` error fields only; optionally
+confirm Auth deletions / Google account(s); then
+`APPROVE PORTAL REGISTRATION LOADING-STATE FIX IMPLEMENTATION`.
 
 Decision Log:
-- 2026-07-31 — `APPROVE BRAND ASSET MAPPING` (five-source map; preserve 8% app-icon padding).
-- 2026-07-31 — `APPROVE PRODUCTION STORAGE CROSS-SERVICE PERMISSION ENABLEMENT` → Class D closed.
-- 2026-07-31 — Owner Class D post-fix QA **PASS WITH NOTES**.
-- 2026-07-31 — Stage 1C + Stage 1B fixtures **complete** (PASS WITH NOTES) — remain recorded.
-- 2026-07-31 — Portal registration stuck incident diagnosed; Plan ready; Formal Review
-  **approved_with_changes**. Branding/`APPROVE BUNDLED BRAND ASSET IMPLEMENTATION` + Stage 2
-  **paused**.
+- 2026-07-31 — Stage 1 fixtures complete; Class D closed; branding was next then paused.
+- 2026-07-31 — Portal registration stuck diagnosed; Formal Review **approved_with_changes**.
+- 2026-07-31 — Inventory amendment: success GetAccountInfoResponse (`MXeK…`) is not the 400 body;
+  `Pl3ODnKm…`/`MXeK…` absent; current orphan `L3jjfWJG…`; still zero Firestore customers;
+  `registerCustomer` still not invoked.
 
-Last Completed Step: **Registration-stuck diagnosis + Plan + Formal Review** (no runtime/config
-changes).
+Last Completed Step: **Registration-stuck inventory amendment** (docs only; no prod changes).
 
-Prior: Stage 1 fixtures complete; branding was next (now paused).
+Prior: Registration diagnosis + Plan + Formal Review.
 
 **Corrected `users/{uid}` field list for any future manual bootstrap:** `id` (string, same as
 document ID / Auth UID), `email` (string), `displayName` (string), `role` (string, `"owner"` for
