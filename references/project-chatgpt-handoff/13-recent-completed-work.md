@@ -2,12 +2,19 @@
 
 > Signed-off or largely complete work. External agents should not re-plan or duplicate this.
 
+## 2026-07-31 - production-release: Class D cross-service IAM enabled (owner QA pending)
+
+- Approved phrase received; granted Firebase Rules Firestore Service Agent to Storage service
+  account `service-473623863375@gcp-sa-firebasestorage.iam.gserviceaccount.com`
+- No Rules file deploy; awaiting owner Studio upload retest
+
 ## 2026-07-31 - production-release: Class D cross-service permission identified (docs only)
 
 - Console warning proves Storage Rules cannot execute `firestore.get`/`exists`
 - Class D selected; prior Formal Review preserved; amendment review **approved**
 - Brand asset mapping approved (five sources); implement still gated
 - Awaiting `APPROVE PRODUCTION STORAGE CROSS-SERVICE PERMISSION ENABLEMENT` — no IAM change yet
+  (**superseded** by IAM enablement section above)
 
 ## 2026-07-31 - production-release: Studio Storage unauthorized diagnosed (docs only; blocked)
 

@@ -1,16 +1,26 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-07-31 — Goal #13 Class D: Storage cross-service permission **IAM applied**
+
+- Owner approved `APPROVE PRODUCTION STORAGE CROSS-SERVICE PERMISSION ENABLEMENT`
+- Granted `roles/firebaserules.firestoreServiceAgent` to
+  `service-473623863375@gcp-sa-firebasestorage.iam.gserviceaccount.com`
+- No Storage Rules deploy / Studio rebuild
+- Checkpoint:
+  `docs/workflow/reviews/2026-07-31-production-storage-cross-service-permission-checkpoint.md`
+- **Owner next:** confirm Console warning gone; restart Studio; import PNG + brand ≤2 MB; reply PASS
+
 ## 2026-07-31 — Goal #13 Class D: Storage cross-service permission (awaiting Fix issue)
 
 - Console warning: cross-service database calls not configured for Storage Rules
 - Root cause: `firestore.get`/`exists` in `isStaff`/`isOwner` cannot run without enablement
 - Remediation: Console **Fix issue** only — no Rules edit/deploy, no Studio rebuild
 - Approval phrase: `APPROVE PRODUCTION STORAGE CROSS-SERVICE PERMISSION ENABLEMENT`
+  (**completed** — see section above)
 - Brand mapping **approved** (five sources, 8% padding); do not replace assets until
   `APPROVE BUNDLED BRAND ASSET IMPLEMENTATION`
 - Amendment review (**approved**):
   `docs/workflow/reviews/2026-07-31-production-storage-cross-service-permission-review-amendment.md`
-- No IAM/Firebase change performed yet
 
 ## 2026-07-31 — Goal #13 BLOCKED: Studio Storage `storage/unauthorized`
 

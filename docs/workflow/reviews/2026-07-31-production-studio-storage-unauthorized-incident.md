@@ -5,8 +5,8 @@
 | Date | 2026-07-31 |
 | Goal | `production-release` (Goal #13) |
 | Phase | Phase G / Stage 1 — **blocked** on catalog fixture |
-| Status | **Root cause confirmed (Class D).** Awaiting owner Console “Fix issue” approval. **No IAM/fix applied yet.** |
-| Related | Plan `docs/workflow/plans/2026-07-31-production-studio-storage-unauthorized-and-bundled-brand-plan.md`; prior Formal Review preserved; amendment `docs/workflow/reviews/2026-07-31-production-storage-cross-service-permission-review-amendment.md` (**approved**) |
+| Status | **Class D IAM applied** after approval. Owner Studio post-fix QA pending. |
+| Related | Plan `docs/workflow/plans/2026-07-31-production-studio-storage-unauthorized-and-bundled-brand-plan.md`; prior Formal Review preserved; amendment `docs/workflow/reviews/2026-07-31-production-storage-cross-service-permission-review-amendment.md`; checkpoint `docs/workflow/reviews/2026-07-31-production-storage-cross-service-permission-checkpoint.md` |
 
 ---
 
@@ -46,6 +46,17 @@ unless post-fix uploads still fail.
 ### Approval phrase (stop here until granted)
 
 `APPROVE PRODUCTION STORAGE CROSS-SERVICE PERMISSION ENABLEMENT`
+
+**Granted 2026-07-31.** IAM applied (see checkpoint). Owner Studio QA still required.
+
+### IAM result (recorded after enablement)
+
+| Item | Value |
+|------|-------|
+| Role | `roles/firebaserules.firestoreServiceAgent` (Firebase Rules Firestore Service Agent) |
+| Principal | `service-473623863375@gcp-sa-firebasestorage.iam.gserviceaccount.com` |
+| Method | Cloud IAM `setIamPolicy` (Console Fix-issue equivalent) |
+| Rules deploy | **No** |
 
 ### Post-fix verification (after Fix issue)
 

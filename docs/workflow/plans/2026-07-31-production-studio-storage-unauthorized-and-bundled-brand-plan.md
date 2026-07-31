@@ -329,7 +329,9 @@ needs its own App Hosting rollout approval.
 ## Open questions / checkpoints
 
 - [x] Brand asset mapping approved (`APPROVE BRAND ASSET MAPPING`) — five sources; 8% padding preserved
-- [ ] `APPROVE PRODUCTION STORAGE CROSS-SERVICE PERMISSION ENABLEMENT` → owner clicks Console Fix issue
-- [ ] Post-fix: warning gone; IAM principal/role recorded; Studio restart; design + brand upload QA
+- [x] `APPROVE PRODUCTION STORAGE CROSS-SERVICE PERMISSION ENABLEMENT` → IAM grant applied
+  (`roles/firebaserules.firestoreServiceAgent` →
+  `service-473623863375@gcp-sa-firebasestorage.iam.gserviceaccount.com`)
+- [ ] Post-fix: warning gone; Studio restart; design + brand upload QA (owner)
 - [ ] Owner provides brand asset files; then `APPROVE BUNDLED BRAND ASSET IMPLEMENTATION` before replacing files
 - [ ] Do not rebuild Studio / roll out Portal branding without later release approvals

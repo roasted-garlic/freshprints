@@ -2,46 +2,41 @@
 `production-release` (Goal #13)
 
 Current Mode: managed-phase
-Current Phase: plan / review complete — **blocked on Class D Console Fix issue**
+Current Phase: implement — **Class D IAM applied; owner Studio QA pending**
 Plan Status: complete (amended Class D) —
 `docs/workflow/plans/2026-07-31-production-studio-storage-unauthorized-and-bundled-brand-plan.md`
-Review Status: prior Formal Review preserved (`approved_with_changes`); Class D amendment
-`docs/workflow/reviews/2026-07-31-production-storage-cross-service-permission-review-amendment.md`
-(**approved**)
-Implement Status: **blocked** — awaiting owner `APPROVE PRODUCTION STORAGE CROSS-SERVICE
-PERMISSION ENABLEMENT` then Console “Fix issue”; Stage 1 catalog fixture still blocked; Stage 2
-must not start
-Test Status: pending
+Review Status: prior Formal Review preserved; Class D amendment **approved**; checkpoint
+`docs/workflow/reviews/2026-07-31-production-storage-cross-service-permission-checkpoint.md`
+Implement Status: **in_progress** — cross-service IAM grant applied after
+`APPROVE PRODUCTION STORAGE CROSS-SERVICE PERMISSION ENABLEMENT`; awaiting owner Studio post-fix
+QA (restart + design import + brand upload)
+Test Status: pending — owner manual QA
 Signoff Status: pending
 DONE: no
 Human Checkpoint Required: yes
-Human Checkpoint Reason: Owner must approve and click Firebase Console Storage Rules **Fix issue**
-to enable Storage↔Firestore cross-service calls. Brand mapping already approved; brand asset
-implementation still gated separately. No Rules deploy, Studio rebuild, App Check, claims, DNS,
-or domain actions.
-Blocked: yes
-Blocker: Production Storage Rules use `firestore.get`/`exists` but project is not configured for
-cross-service database calls (Console warning). Causes `storage/unauthorized` on owner/staff
-uploads.
-Allowed Actions: record owner Fix-issue approval and post-fix results; docs updates; await brand
-asset files (no replace until implement approval)
-Forbidden Actions: clicking Fix issue without approval phrase; modifying `storage.rules`; deploying
-Rules; custom claims; Studio rebuild; App Check; CORS; snapshot rebuild; asset replacement; Stage 2
-smoke; DNS/domain/Auth/OAuth; committing unrelated dirty working-tree app/PNG edits
-Next Required Step: Owner replies `APPROVE PRODUCTION STORAGE CROSS-SERVICE PERMISSION ENABLEMENT`
-then clicks Console Fix issue; record IAM principal/role; run post-fix Studio QA checklist.
+Human Checkpoint Reason: Owner post-fix QA after cross-service IAM enablement (Console warning
+gone; Studio restart; design import; brand upload ≤2 MB). Brand asset implementation still gated
+separately.
+Blocked: no (IAM applied; product QA open)
+Blocker: none for IAM; Stage 1 fixtures still depend on successful owner upload QA
+Allowed Actions: record owner QA result; continue Stage 1 fixtures after PASS; docs updates
+Forbidden Actions: further IAM changes without new approval; modifying `storage.rules`; deploying
+Rules; Studio rebuild; App Check; CORS; snapshot rebuild; asset replacement without brand implement
+approval; Stage 2 smoke before fixtures; DNS/domain
+Next Required Step: Owner confirms Console warning gone, restarts Studio, imports PNG + uploads
+brand logo ≤2 MB; reply PASS / PASS WITH NOTES / FAIL.
 
 Decision Log:
 - 2026-07-31 — `APPROVE BRAND ASSET MAPPING` (five-source map; preserve 8% app-icon padding).
-  Implementation still requires `APPROVE BUNDLED BRAND ASSET IMPLEMENTATION`.
-- 2026-07-31 — `APPROVE PRODUCTION STORAGE WRITE DIAGNOSTIC` superseded by Console cross-service
-  warning; Playground/Network path stopped; Class D selected.
+- 2026-07-31 — `APPROVE PRODUCTION STORAGE CROSS-SERVICE PERMISSION ENABLEMENT` → granted
+  `roles/firebaserules.firestoreServiceAgent` to
+  `service-473623863375@gcp-sa-firebasestorage.iam.gserviceaccount.com` on `fresh-prints-prod`
+  (IAM API; Storage Rules file not redeployed).
 
-Last Completed Step: **Class D root cause confirmed from Console warning.** Incident + Plan
-amended; review amendment approved. Brand mapping approved. No IAM/Firebase change performed yet.
+Last Completed Step: **Class D cross-service IAM grant applied and verified present.** Owner Studio
+upload QA not yet recorded.
 
-Prior: Storage unauthorized incident diagnosed (config/rules/App Check ruled out). Stage 1 partial
-(emailProviders PASS; DNS rollback recorded; fixtures pending).
+Prior: Class D root cause confirmed from Console warning; brand mapping approved.
 
 **Corrected `users/{uid}` field list for any future manual bootstrap:** `id` (string, same as
 document ID / Auth UID), `email` (string), `displayName` (string), `role` (string, `"owner"` for
