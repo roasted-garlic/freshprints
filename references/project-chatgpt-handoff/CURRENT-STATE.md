@@ -1,5 +1,40 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-07-30 — Goal #13 "production-release" — Production Studio installer built, first owner account bootstrapped (deployment-order steps 1-8 of 12 done); awaiting owner installation and smoke testing
+
+**First production owner account bootstrapped.** Presented a consolidated Phase D bootstrap list
+for owner approval before any Firestore write: `settings/emailProviders` (approved — owner will
+set `inviteProvider: "resend"`, `proofNoticeProvider: "brevo"` via Studio UI once logged in,
+matching their decision, since the code default is Resend for both), at least one category
+(approved — owner will create via Studio UI). The most significant finding: **no automated way
+exists anywhere in this codebase to create the first owner account** — the normal user-creation
+callable requires an existing owner caller, and Firestore Rules block all client writes to
+`users/*`, a genuine chicken-and-egg gap for a cold-start project. Walked the owner through the
+exact manual two-part Console procedure (Firebase Auth → Add user → copy UID; Firestore Console →
+`users/{uid}` document with `role: "owner"`, `isActive: true`). **Owner confirmed both parts
+complete.** `rebuildCatalogSnapshots` confirmed source-safe on a fully empty catalog but
+deliberately held until real catalog data exists — invocation remains its own separate step.
+
+**Production Studio Windows installer built.** Owner chose to prioritize Studio access before
+finishing Phase D's remaining Studio-dependent setup. Source audit confirmed Studio's Firebase
+config is entirely build-time/Vite-env-file-based with no hardcoded Portal URL, and the Test Data
+Reset UI is excluded from production builds by three independent layers (a build-time
+`import.meta.env.DEV` gate, a `fresh-prints-dev`-only project allowlist, and the underlying
+callable not being deployed to production at all). Backed up the dev env file, temporarily wrote
+production Firebase Web config values, ran the full build/package on the verified `production`
+commit, immediately restored the dev file. Build + packaging: exit 0.
+
+**Installer:** `Fresh Prints-Windows-0.0.0-Setup.exe`, `apps/studio/release/0.0.0/`, ~102.3 MB,
+SHA-256 `c4ef01b57b7b01c89d94102d4b3af4cf22988a1b1640c62950c55983d58e0720`, **unsigned** (Windows
+will show the expected unrecognized-publisher SmartScreen warning on first run). Not uploaded or
+distributed publicly — awaiting owner installation and Phase G smoke testing.
+
+**Active managed goal:** `production-release` (Goal #13) — deployment-order steps 1-8 of 12 all
+complete. Next: owner installs the Studio `.exe` and begins the consolidated Portal + installed
+Studio + backend smoke-test checklist, reporting `PASS` / `PASS WITH NOTES: ...` / `FAIL: ...`.
+Once Studio is installed and the owner is signed in, Phase D's remaining items (categories,
+`settings/emailProviders`) resume as the owner's own Studio-UI action.
+
 ## 2026-07-30 — Goal #13 "production-release" — First App Hosting Portal release COMPLETE (deployment-order steps 1-7 of 12 done); proceeding into settings/bootstrap inventory
 
 **The first-ever Fresh Prints production Portal deployment succeeded.** App Hosting

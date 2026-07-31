@@ -2,6 +2,28 @@
 
 > Signed-off or largely complete work. External agents should not re-plan or duplicate this.
 
+## 2026-07-30 - production-release: Production Studio installer built, first owner account bootstrapped (deployment-order step 8 of 12)
+
+- Presented consolidated Phase D bootstrap list for owner approval before any Firestore write:
+  `settings/emailProviders` (approved, owner will set via Studio UI) and at least one category
+  (approved, owner will create via Studio UI)
+- Found a genuine gap: no automated way exists in this codebase to create the first owner
+  account (normal user-creation requires an existing owner caller; Rules block client writes to
+  `users/*`) — walked the owner through the exact manual two-part Console procedure; **owner
+  confirmed the first production owner account now exists**
+- Confirmed `rebuildCatalogSnapshots` is source-safe on a fully empty catalog but deliberately
+  held until real catalog data exists
+- Studio source audit confirmed triple-layered protection against the Test Data Reset UI ever
+  shipping to production; no hardcoded Portal URL or other dev-only assumption found
+- Built the production Studio installer following the recommended safest env-file-swap approach
+  (backup → temporary production values → build → restore) on the verified `production` commit;
+  build + packaging exit 0
+- **Produced `Fresh Prints-Windows-0.0.0-Setup.exe`** (~102.3 MB, SHA-256
+  `c4ef01b57b7b01c89d94102d4b3af4cf22988a1b1640c62950c55983d58e0720`, unsigned); not uploaded or
+  distributed publicly
+- Next: owner installs and runs Phase G smoke testing (Portal + installed Studio + backend
+  checklist), then Phase D's remaining owner-driven Studio setup resumes
+
 ## 2026-07-30 - production-release: First App Hosting Portal release complete (deployment-order steps 6-7 of 12)
 
 - Added App Hosting `env:` block (7 `NEXT_PUBLIC_FIREBASE_*` values + `NEXT_PUBLIC_PORTAL_ORIGIN`)

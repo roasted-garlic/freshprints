@@ -31,8 +31,44 @@ throughout this pass.**
 Test Status: pending
 Signoff Status: pending
 DONE: no
-Last Completed Step: **Deployment-order step 7 (first App Hosting Portal release) CONFIRMED
-COMPLETE — the first-ever Fresh Prints production Portal deployment succeeded.**
+Last Completed Step: **Deployment-order step 8 (production Studio build) CONFIRMED COMPLETE —
+first production Studio Windows installer packaged.**
+
+**Phase D (production settings/bootstrap inventory) — partial, owner-driven, no automated
+Firestore write:** researched and presented a consolidated bootstrap list for owner approval
+before any write: (1) `settings/emailProviders` (owner approved — will set via Studio UI once
+logged in: `inviteProvider: "resend"`, `proofNoticeProvider: "brevo"`, matching the owner's
+decision, since the code default is Resend for both and would silently misroute proof-notice email
+if left unset); (2) at least one category (owner approved — will create via Studio UI, Design
+Library → Manage Categories, not required for the app to function but needed for meaningful
+cataloging); (3) **first owner account bootstrap — the one genuine gap found**: no automated path
+exists anywhere in this codebase to create the first owner (`createTeamUser` requires an existing
+owner caller; Firestore Rules block all client writes to `users/*`). Walked the owner through the
+exact two-part manual Console procedure: (A) Firebase Console → Authentication → Add user, copy the
+UID; (B) Firestore Console → `users/{uid}` document with `id`, `email`, `displayName`,
+`role: "owner"` (string), `isActive: true` (boolean). **Owner confirmed both parts complete — the
+first production owner account now exists on `fresh-prints-prod`.** `rebuildCatalogSnapshots`
+confirmed safe to invoke on a fully empty catalog (source-verified: no length/emptiness assertions
+in either `publishReference()` or `publishPortal()`; only Storage budget/precondition errors could
+fail, irrelevant at empty scale) but deliberately **not yet invoked** — held until real catalog
+data exists, per the task's own instruction to treat invocation as its own deliberate step. No
+production Firestore data was written directly by this coding agent at any point — every write
+either goes through the owner's own Studio session (once Studio is available) or was a manual
+Console action the owner performed themselves.
+
+**Phase F (production Studio Windows installer) — COMPLETE.** Source audit confirmed: `getFunctions(app)` uses no explicit region (defaults to `us-central1`, matching all deployed Functions); Test Data Reset UI gate (`isOperationalWipeUiEnabled()`) is `import.meta.env.DEV && isOperationalWipeAllowedProjectId(...)` — a genuine, non-bypassable-by-config guarantee that a production build (`import.meta.env.DEV === false`) never renders this UI regardless of project id; `OPERATIONAL_WIPE_ALLOWED_PROJECT_IDS = ["fresh-prints-dev"]` confirms `fresh-prints-prod` would fail this check even if a dev build somehow pointed at it — and `wipeOperationalTestData` is not deployed to production at all (excluded from the 99-function allowlist), so the guarantee is triple-layered. No hardcoded Portal URL or other dev-only assumption found anywhere in Studio source. Studio's Firebase configuration is entirely build-time/Vite-env-file-based (`apps/studio/src/renderer/src/config/env.ts`'s `validateFirebaseEnv()`), confirming the readiness checkpoint's earlier finding.
+
+Followed the recommended safest approach: backed up the existing dev `apps/studio/.env.local` to a temporary file, wrote the production `VITE_FIREBASE_*` values (same production Web App config already verified for the Portal, `VITE_` prefix instead of `NEXT_PUBLIC_`) into `.env.local` for exactly one build invocation, ran the full production build (`npm run build:studio` = `tsc && vite build && electron-builder`) on the verified `production` commit (`11ed4ef`), then **immediately restored the dev `.env.local`** before any other action — confirmed via `git status`/`git diff --check` that the working tree returned to exactly its prior clean state (env files are gitignored either way, so no accidental commit risk existed, but the restore still matters for local working-directory correctness). Studio typecheck (`npx tsc --noEmit`) passed clean before the build. Build + electron-builder packaging: **exit 0.**
+
+**Installer produced:** `Fresh Prints-Windows-0.0.0-Setup.exe`, location
+`apps/studio/release/0.0.0/`, size 107,274,796 bytes (~102.3 MB), SHA-256
+`c4ef01b57b7b01c89d94102d4b3af4cf22988a1b1640c62950c55983d58e0720`. **Unsigned** — no
+`certificateFile`/code-signing configuration exists in `electron-builder.json5` and no signing step
+ran; Windows SmartScreen will show an "unrecognized publisher" warning on first run, expected for
+an unsigned installer. Installer was **not** uploaded or distributed publicly this pass, per
+instruction — only the local build artifact exists, awaiting owner installation and smoke testing.
+
+Original step-5/6-7 summaries (Cloud Functions, App Hosting) below, preserved unchanged:
 
 **Step 6 (App Hosting environment configuration) summary:** added an `env:` block to
 `apps/portal/apphosting.yaml` with the 7 required `NEXT_PUBLIC_FIREBASE_*` values +
@@ -184,28 +220,34 @@ or production data was configured/created/seeded. No production Studio installer
 or Search Console configuration occurred. `production` was not modified by Git (Functions deploy is
 a Firebase action, not a commit). `master` was not deleted. No force-push occurred anywhere in this
 pass.
-Human Checkpoint Required: no — Phase C (App Hosting environment configuration + first Portal
-release) is complete per explicit prior authorization in the active `Continue Workflow`
-instruction. Proceeding into Phase D (production settings and bootstrap inventory) under that same
-authorization; the consolidated bootstrap-data list itself remains its own separate checkpoint
-requiring explicit owner approval before any Firestore write occurs.
+Human Checkpoint Required: no — Phase F (production Studio Windows installer) is complete per
+explicit prior authorization in the active `Continue Workflow` instruction (owner chose to jump
+ahead to Phase F before finishing Phase D's owner-driven category/email-provider setup, since that
+setup itself requires Studio to be usable). Proceeding into Phase G (installed Portal and Studio
+smoke testing) under that same authorization once the owner has installed and can exercise the
+installer; the smoke test itself and its PASS/FAIL reporting remain the owner's own action per the
+task's explicit smoke-test reporting requirement.
 Blocked: no
-Allowed Actions: continue Phase D — inspect current source and release docs to prepare the exact
-minimum production bootstrap inventory (categories, `settings/emailProviders`, etc.); present the
-consolidated list for owner approval; do not write any production Firestore data until approved
+Allowed Actions: provide the owner the exact local installer path and installation steps; await
+owner installation and smoke-test execution (Phase G); resume Phase D's remaining owner-driven
+Studio configuration (categories, email providers, `rebuildCatalogSnapshots`) once the owner has
+Studio access and reports readiness
 Forbidden Actions: deleting `master` (local or remote); modifying `production` directly (only via
 PR); running any `firebase deploy`/`apphosting:rollouts:create` command without separate approval;
 accessing, printing, or logging any secret value; setting or rotating any secret without separate
 owner approval; using `--force` on any Firestore command; manually deleting or editing production
 indexes/secrets via Console; enabling automatic App Hosting rollouts without owner approval; any
 DNS/Auth-config/GA4/Search-Console action; invoking `rebuildCatalogSnapshots` (deployed, not yet
-invoked — invocation is its own Phase D checkpoint); writing any production Firestore data before
-the consolidated bootstrap list is approved; building or distributing a production Studio
-installer; force-pushing any branch; rewriting Git history; configuring `core.hooksPath` without
+invoked — invocation remains its own deliberate step once real catalog data exists); writing any
+production Firestore data directly (categories/email-provider settings are the owner's own Studio
+action, not this agent's); uploading or distributing the Studio installer publicly before smoke
+testing; force-pushing any branch; rewriting Git history; configuring `core.hooksPath` without
 separate owner approval; changing repository visibility
-Next Required Step: Continue into Phase D — production settings and bootstrap inventory
-(deployment-order step 9 of 12), per the active `Continue Workflow` instruction's already-granted
-authorization for this phase. Prepare the consolidated owner approval request; do not write
+Next Required Step: Owner installs `Fresh Prints-Windows-0.0.0-Setup.exe` from
+`apps/studio/release/0.0.0/` and begins Phase G smoke testing (Portal + installed Studio + backend
+checks per the task's consolidated checklist), reporting results as `PASS` / `PASS WITH NOTES: ...`
+/ `FAIL: ...`. Once Studio is installed and the owner is signed in as owner, resume Phase D's
+remaining items (categories, `settings/emailProviders` via Studio UI) and consider
 production data until approved.
 
 Plan:

@@ -309,8 +309,19 @@ own separate, later, explicitly-approved checkpoint.
    `https://fresh-prints-portal--fresh-prints-prod.us-central1.hosted.app` — homepage HTTP 200,
    correct title, `robots.txt` allow-variant confirming correct host resolution, no dev-project
    strings in served HTML. Automatic rollouts remain disabled.
-8. Production Studio build
-9. Initial settings and reference-data setup (categories, email provider selection, `rebuildCatalogSnapshots`) ← **current checkpoint**
+8. ✅ **Production Studio build** — **COMPLETE 2026-07-30.** Source audit confirmed Studio's Firebase
+   config is entirely build-time/Vite-env-file-based, no hardcoded Portal URL, and the Test Data
+   Reset UI is excluded from production builds by three independent layers: the
+   `import.meta.env.DEV` build-time gate, the `OPERATIONAL_WIPE_ALLOWED_PROJECT_IDS =
+   ["fresh-prints-dev"]` allowlist, and `wipeOperationalTestData` not being deployed to production
+   at all. Backed up the dev `apps/studio/.env.local`, temporarily wrote production
+   `VITE_FIREBASE_*` values (same production Web App config as the Portal), ran the full
+   `npm run build:studio` (`tsc && vite build && electron-builder`) on the verified `production`
+   commit `11ed4ef`, immediately restored the dev env file. Build + packaging: exit 0. **Installer:**
+   `Fresh Prints-Windows-0.0.0-Setup.exe`, `apps/studio/release/0.0.0/`, ~102.3 MB, SHA-256
+   `c4ef01b57b7b01c89d94102d4b3af4cf22988a1b1640c62950c55983d58e0720`, **unsigned**. Not uploaded or
+   distributed publicly — awaiting owner installation and smoke testing.
+9. Initial settings and reference-data setup (categories, email provider selection, `rebuildCatalogSnapshots`) — **partially complete: first owner account bootstrapped** (owner completed a manual two-part Console procedure since no automated first-owner path exists in this codebase); categories and `settings/emailProviders` remain the owner's own Studio-UI action, pending Studio installation ← **current checkpoint (Phase G smoke testing, then resume this step)**
 10. Domain and Authorized Domains configuration
 11. Smoke tests
 12. GA4 and Search Console (separate later checkpoints)
