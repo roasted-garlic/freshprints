@@ -31,8 +31,85 @@ throughout this pass.**
 Test Status: pending
 Signoff Status: pending
 DONE: no
-Last Completed Step: **Deployment-order step 8 (production Studio build) CONFIRMED COMPLETE —
-first production Studio Windows installer packaged.**
+Last Completed Step: **Production Studio white-screen incident diagnosed, fixed, and a replacement
+installer built — awaiting owner retest before Phase G smoke testing resumes.**
+
+**Failure:** owner installed the first production Studio installer
+(`Fresh Prints-Windows-0.0.0-Setup.exe`, SHA-256
+`c4ef01b57b7b01c89d94102d4b3af4cf22988a1b1640c62950c55983d58e0720`) and reported a permanent white
+screen — window opens, sign-in UI never appears, no recovery.
+
+**Reproduction attempt:** this sandboxed environment cannot host a real Electron/Chromium GUI
+process — the packaged `.exe` exits silently within seconds across multiple launch methods (direct
+invocation, PowerShell `Start-Process` with output redirection, with and without `--enable-logging`),
+exit code 0, zero output, no Windows Event Viewer entry. Confirmed this is a genuine environment
+limitation, not the bug, by requesting the owner run the installed executable directly with
+`--enable-logging` on their own machine.
+
+**Owner-captured runtime evidence:** `Uncaught TypeError: Cannot read properties of undefined
+(reading 'createContext')` at `.../resources/app.asar/dist/assets/vendor-9Mud9pNT.js:65`, plus a
+secondary packaging warning about a missing `fresh-prints-logo.svg` image.
+
+**Ruled out with direct evidence (not guessed):** Firebase environment injection — extracted the
+actual packaged `app.asar` via `npx asar extract` and confirmed the embedded `firebaseConfig`
+correctly resolved to `PROJECT_ID:"fresh-prints-prod"`, correct `AUTH_DOMAIN`, and a non-empty,
+correctly-prefixed API key; the two `fresh-prints-dev` string occurrences in the same bundle were
+unrelated (the `OPERATIONAL_WIPE_ALLOWED_PROJECT_IDS` allowlist constant and a debug-UI label).
+Packaged asset paths — the packaged `dist/index.html` correctly used relative script/link paths.
+
+**Confirmed root cause:** `apps/studio/vite.config.ts`'s `manualChunks` function used
+`id.includes('node_modules/react')` — a bare substring match, not a package-boundary match. This
+correctly caught `react`/`react-dom` but not `scheduler` (react-dom's runtime dependency; no
+"react" substring in its own path), which fell through to the generic `vendor` chunk instead of
+`react-vendor`. Direct extraction confirmed `scheduler` present in `vendor`, absent from
+`react-vendor`. The original build log had already warned `Circular chunk: vendor -> react-vendor
+-> vendor. Please adjust the manual chunk logic for these chunks.` — Rollup treats this as a
+warning, not a build failure, so the broken build shipped with an exit-0 status. `react-dom`
+requiring `scheduler` at module-init time, split across two chunks with a circular load-order
+dependency, produced exactly the observed `createContext`-on-undefined crash — a permanent
+renderer-side failure before `ReactDOM.createRoot(...).render(...)` ever executes, i.e. a white
+screen with zero DOM fallback. Confirmed this only reproduces in packaged production builds:
+Vite's dev server never applies Rollup's `manualChunks` splitting, so `npm run dev:studio` was
+never capable of catching this class of bug.
+
+**Fix (narrow Plan + independent Formal Review, both `approved`):**
+`docs/workflow/plans/2026-07-30-production-release-studio-white-screen-fix-plan.md` /
+`...-studio-white-screen-fix-review.md`. Changed the chunk-matching condition to exact
+package-boundary paths (trailing `/`) and explicitly included `scheduler` alongside
+`react`/`react-dom`. Added a `rollupOptions.onwarn` hook that throws (failing the build) on any
+future `CIRCULAR_CHUNK` warning — the real process gap this incident exposed was that nothing in
+the existing verification suite inspected build warnings or launched the packaged output; this
+closes that gap for this specific, now-understood failure class. Also removed a dead `<link
+rel="icon" href="/fresh-prints-logo.svg">` reference — that asset never existed anywhere in this
+repo's Git history; a genuinely separate, non-fatal bug found during the same evidence-gathering
+pass, confirmed not to cause the white screen, fixed in the same narrow pass since it was a
+one-line, zero-risk correction.
+
+**Verification:** Studio typecheck, `vite build` (confirmed the circular-chunk warning no longer
+appears, and direct extraction reconfirmed `scheduler` now lives in `react-vendor`), full
+`electron-builder` packaging, repo lint, `git diff --check` — all exit 0. The unpacked-launch
+verification step could not be completed in this sandboxed environment (same limitation as the
+reproduction attempt) — this remains the owner's own real-machine verification, per the Plan's own
+acknowledgment of this constraint.
+
+Committed to `development` (`b9bdb35`), promoted via PR #9 (merge `daaafc1`). Created and pushed
+annotated tag `v1.0.0-rc4` on that verified commit. Re-ran the full verification suite on the
+tagged `production` commit (lint, typecheck — both exit 0), then built the replacement installer
+using the same safest env-file-swap procedure as the original build (backed up dev `.env.local`,
+temporarily wrote production values, built, immediately restored dev file). Build + packaging:
+**exit 0, no circular chunk warning.**
+
+**Replacement installer:** `Fresh Prints-Windows-0.0.0-Setup-v1.0.0-rc4.exe` (also present as
+`Fresh Prints-Windows-0.0.0-Setup.exe`, byte-identical — electron-builder's default output
+filename does not embed a version since `package.json`'s `version` field is `0.0.0`), location
+`apps/studio/release/0.0.0/`, size 107,272,128 bytes, SHA-256
+`a0be8e956108bc786fe3ea629f7dc356bb0e28ed09b60d740c31a64c1bf177ed` — **different from the original
+failed installer's checksum** (`c4ef01b57b7b01c89d94102d4b3af4cf22988a1b1640c62950c55983d58e0720`),
+confirming this is genuinely new packaged content, not a no-op rebuild. Unsigned, same as the
+original. Not uploaded or distributed publicly — awaiting owner installation and retest.
+
+Original step-8 (Studio build) summary below, preserved unchanged as historical record of the
+first (failed) installer:
 
 **Phase D (production settings/bootstrap inventory) — partial, owner-driven, no automated
 Firestore write:** researched and presented a consolidated bootstrap list for owner approval
@@ -220,18 +297,14 @@ or production data was configured/created/seeded. No production Studio installer
 or Search Console configuration occurred. `production` was not modified by Git (Functions deploy is
 a Firebase action, not a commit). `master` was not deleted. No force-push occurred anywhere in this
 pass.
-Human Checkpoint Required: no — Phase F (production Studio Windows installer) is complete per
-explicit prior authorization in the active `Continue Workflow` instruction (owner chose to jump
-ahead to Phase F before finishing Phase D's owner-driven category/email-provider setup, since that
-setup itself requires Studio to be usable). Proceeding into Phase G (installed Portal and Studio
-smoke testing) under that same authorization once the owner has installed and can exercise the
-installer; the smoke test itself and its PASS/FAIL reporting remain the owner's own action per the
-task's explicit smoke-test reporting requirement.
-Blocked: no
-Allowed Actions: provide the owner the exact local installer path and installation steps; await
-owner installation and smoke-test execution (Phase G); resume Phase D's remaining owner-driven
-Studio configuration (categories, email providers, `rebuildCatalogSnapshots`) once the owner has
-Studio access and reports readiness
+Human Checkpoint Required: yes — **owner retest of the replacement Studio installer.** The first
+production Studio installer white-screened; root cause confirmed and fixed (React/`scheduler`
+chunk-splitting bug); a replacement installer (`v1.0.0-rc4`) is built and awaiting the owner's
+install/launch/login retest before Phase G smoke testing may resume.
+Blocked: yes — do not resume the broader Phase G smoke test until the owner confirms the
+replacement installer reaches the sign-in screen and login succeeds
+Allowed Actions: provide the owner the exact replacement installer path, checksum, and retest
+steps; await the owner's `PASS` / `PASS WITH NOTES: ...` / `FAIL: ...` report
 Forbidden Actions: deleting `master` (local or remote); modifying `production` directly (only via
 PR); running any `firebase deploy`/`apphosting:rollouts:create` command without separate approval;
 accessing, printing, or logging any secret value; setting or rotating any secret without separate
@@ -241,12 +314,14 @@ DNS/Auth-config/GA4/Search-Console action; invoking `rebuildCatalogSnapshots` (d
 invoked — invocation remains its own deliberate step once real catalog data exists); writing any
 production Firestore data directly (categories/email-provider settings are the owner's own Studio
 action, not this agent's); uploading or distributing the Studio installer publicly before smoke
-testing; force-pushing any branch; rewriting Git history; configuring `core.hooksPath` without
+testing passes; resuming the broader Phase G smoke test before the replacement installer retest
+passes; force-pushing any branch; rewriting Git history; configuring `core.hooksPath` without
 separate owner approval; changing repository visibility
-Next Required Step: Owner installs `Fresh Prints-Windows-0.0.0-Setup.exe` from
-`apps/studio/release/0.0.0/` and begins Phase G smoke testing (Portal + installed Studio + backend
-checks per the task's consolidated checklist), reporting results as `PASS` / `PASS WITH NOTES: ...`
-/ `FAIL: ...`. Once Studio is installed and the owner is signed in as owner, resume Phase D's
+Next Required Step: Owner installs the replacement `Fresh Prints-Windows-0.0.0-Setup-v1.0.0-rc4.exe`
+from `apps/studio/release/0.0.0/` (fully quitting the failed build first if still running),
+launches it, confirms the sign-in screen appears, logs in with the production owner account
+already bootstrapped on `fresh-prints-prod`, and reports `PASS` / `PASS WITH NOTES: ...` /
+`FAIL: ...`. Only after that passes does the broader Phase G smoke test and Phase D's remaining
 remaining items (categories, `settings/emailProviders` via Studio UI) and consider
 production data until approved.
 

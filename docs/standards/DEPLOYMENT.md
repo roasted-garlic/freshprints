@@ -309,19 +309,33 @@ own separate, later, explicitly-approved checkpoint.
    `https://fresh-prints-portal--fresh-prints-prod.us-central1.hosted.app` — homepage HTTP 200,
    correct title, `robots.txt` allow-variant confirming correct host resolution, no dev-project
    strings in served HTML. Automatic rollouts remain disabled.
-8. ✅ **Production Studio build** — **COMPLETE 2026-07-30.** Source audit confirmed Studio's Firebase
-   config is entirely build-time/Vite-env-file-based, no hardcoded Portal URL, and the Test Data
-   Reset UI is excluded from production builds by three independent layers: the
-   `import.meta.env.DEV` build-time gate, the `OPERATIONAL_WIPE_ALLOWED_PROJECT_IDS =
-   ["fresh-prints-dev"]` allowlist, and `wipeOperationalTestData` not being deployed to production
-   at all. Backed up the dev `apps/studio/.env.local`, temporarily wrote production
-   `VITE_FIREBASE_*` values (same production Web App config as the Portal), ran the full
-   `npm run build:studio` (`tsc && vite build && electron-builder`) on the verified `production`
-   commit `11ed4ef`, immediately restored the dev env file. Build + packaging: exit 0. **Installer:**
-   `Fresh Prints-Windows-0.0.0-Setup.exe`, `apps/studio/release/0.0.0/`, ~102.3 MB, SHA-256
-   `c4ef01b57b7b01c89d94102d4b3af4cf22988a1b1640c62950c55983d58e0720`, **unsigned**. Not uploaded or
-   distributed publicly — awaiting owner installation and smoke testing.
-9. Initial settings and reference-data setup (categories, email provider selection, `rebuildCatalogSnapshots`) — **partially complete: first owner account bootstrapped** (owner completed a manual two-part Console procedure since no automated first-owner path exists in this codebase); categories and `settings/emailProviders` remain the owner's own Studio-UI action, pending Studio installation ← **current checkpoint (Phase G smoke testing, then resume this step)**
+8. ⚠️ **Production Studio build** — **first installer white-screened; root cause fixed, replacement
+   built 2026-07-30, awaiting owner retest.** Original build (source audit confirmed correct
+   Firebase config, triple-layered Test Data Reset exclusion, no hardcoded Portal URL): built
+   `Fresh Prints-Windows-0.0.0-Setup.exe` from commit `11ed4ef` — owner installed it and reported a
+   permanent white screen. Diagnosed via owner-captured runtime evidence
+   (`Cannot read properties of undefined (reading 'createContext')`) since this sandboxed
+   environment cannot host a real Electron GUI process. **Confirmed root cause:**
+   `apps/studio/vite.config.ts`'s `manualChunks` used a bare substring match
+   (`id.includes('node_modules/react')`) that caught `react`/`react-dom` but not `scheduler`
+   (react-dom's runtime dependency), producing a circular chunk dependency (Rollup warned but did
+   not fail the build) that crashes on `React.createContext` in packaged builds only — never
+   reproducible via `npm run dev`, since Vite's dev server never applies `manualChunks`. Fixed via
+   narrow Plan + Formal Review (both `approved`):
+   `docs/workflow/plans/2026-07-30-production-release-studio-white-screen-fix-plan.md`. Corrected
+   the chunk match to exact package-boundary paths plus explicit `scheduler` inclusion; added a
+   `rollupOptions.onwarn` hook that fails the build on any future `CIRCULAR_CHUNK` warning (closing
+   the actual gap that let the broken build ship with exit 0); removed an unrelated dead favicon
+   reference found in the same evidence-gathering pass. Verified: no more circular-chunk warning,
+   `scheduler` directly confirmed via `asar` extraction to now live in `react-vendor`, full
+   build/typecheck/lint/diff-check all exit 0. Promoted via PR #9 (merge `daaafc1`), tagged
+   `v1.0.0-rc4`. **Replacement installer:**
+   `Fresh Prints-Windows-0.0.0-Setup-v1.0.0-rc4.exe`, `apps/studio/release/0.0.0/`, ~102.3 MB,
+   SHA-256 `a0be8e956108bc786fe3ea629f7dc356bb0e28ed09b60d740c31a64c1bf177ed` (deliberately
+   different from the original failed checksum
+   `c4ef01b57b7b01c89d94102d4b3af4cf22988a1b1640c62950c55983d58e0720`, confirming new content),
+   unsigned. **Awaiting owner install/launch/login retest** ← **current checkpoint**
+9. Initial settings and reference-data setup (categories, email provider selection, `rebuildCatalogSnapshots`) — **partially complete: first owner account bootstrapped** (owner completed a manual two-part Console procedure since no automated first-owner path exists in this codebase); categories and `settings/emailProviders` remain the owner's own Studio-UI action, pending a successful Studio installer retest
 10. Domain and Authorized Domains configuration
 11. Smoke tests
 12. GA4 and Search Console (separate later checkpoints)

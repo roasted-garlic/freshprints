@@ -122,7 +122,7 @@ Current Goal:
 | 10 | Increase the MB limit for custom-request reference images | **Done** (2026-07-29, approved) — 40 MB/file live in `fresh-prints-dev` at every enforcement layer, 8 files unchanged, 320 MB combined ceiling active; owner QA FAIL (stale 15 MB deployed Cloud Functions) → Amendment 1 root-caused and fixed via scoped Functions redeploy → owner re-QA PASS |
 | 11 | `customer-upload-oversized-pixel-normalization-and-processing-timeout-followup` | **Done** (2026-07-30, approved_with_notes; owner QA PASS WITH NOTES — see signoff) |
 | 12 | `catalog-image-derivative-storage-consolidation` | **Done — closed_by_owner_after_inventory** (2026-07-30). Real dev inventory measured originals at ~97.66% of catalog Storage (980.8 MB of 1,004.3 MB); thumbnails+previews combined only 23.5 MB; zero orphans/duplicates/violations found. Owner decided the migration's small addressable Storage win did not justify the required backfill/consumer-cutover/bandwidth-increase — closed before implementation, an evidence-based decision. Retained as dev-only tooling: the read-only `inventoryCatalogImageStorage` callable and its Studio invocation panel. |
-| 13 | `production-release` — prod Firebase / App Hosting / Google / email | **Active** — deployment-order **steps 1-8 of 12 all complete**: Firestore Rules ✅, Storage Rules ✅, Firestore indexes ✅, Secret Manager ✅, Cloud Functions ✅, App Hosting environment config ✅, first Portal release ✅ (live at `https://fresh-prints-portal--fresh-prints-prod.us-central1.hosted.app`), **production Studio Windows installer ✅** (`Fresh Prints-Windows-0.0.0-Setup.exe`, unsigned, built from verified `production` commit, Test Data Reset UI confirmed triple-layer-excluded from production builds); **first production owner account bootstrapped** (the one genuine gap found — no automated first-owner path exists in this codebase, so the owner completed a manual two-part Firebase/Firestore Console procedure); **now awaiting owner installation and Phase G smoke testing**, after which Phase D's remaining owner-driven Studio setup (categories, `settings/emailProviders`) resumes — no production Firestore data written directly by this agent |
+| 13 | `production-release` — prod Firebase / App Hosting / Google / email | **Active — blocked on owner retest** — deployment-order steps 1-7 of 12 complete; step 8 (production Studio) hit a **real incident**: the first installer white-screened on the owner's machine (root cause confirmed via owner-captured runtime evidence: a `manualChunks` substring-match bug split React's `scheduler` dependency into the wrong Rollup chunk, producing a circular chunk dependency that crashed on `React.createContext` in packaged builds only — never reproducible via `npm run dev`). Fixed via narrow Plan + Formal Review (both `approved`), promoted through PR #9, tagged `v1.0.0-rc4`; replacement installer built and verified clean (no circular-chunk warning, `scheduler` confirmed correctly co-located with `react-vendor` via direct `asar` extraction) — **now awaiting the owner's install/launch/login retest** before Phase G smoke testing may resume. First production owner account already bootstrapped (the one genuine gap found — no automated first-owner path exists in this codebase). No production Firestore data written directly by this agent |
 | 14 | `customer-upload-early-transparency-format-validation` — reject invalid customer artwork before the trimming stage is shown | **Done** (2026-07-30, approved; automated verification 23/23 pass, clean build/lint; owner deployed to `fresh-prints-dev` and confirmed manual QA PASS across all 5 goal-brief scenarios). Separate narrow follow-up run alongside the paused `production-release` (#13), which this goal did not modify. See `docs/workflow/plans/2026-07-30-customer-upload-early-transparency-format-validation-plan.md`. |
 
 **Small Managed Items Backlog:** #5–**#14** **Done** (2026-07-21). See [Small Managed Items Backlog](#small-managed-items-backlog-2026-07-18) below.
@@ -445,6 +445,41 @@ file. Build + electron-builder packaging: exit 0. **Produced
 will show the expected unrecognized-publisher warning). Not uploaded or distributed publicly.
 **Deployment-order step 8 of 12 now closed. Awaiting owner installation and Phase G smoke
 testing**, after which Phase D's remaining owner-driven Studio setup resumes.
+
+**Since then (same day, later pass) — production Studio white-screen incident:** owner installed
+the first production Studio installer and reported a permanent white screen (window opens, sign-in
+UI never appears). This sandboxed environment could not reproduce the packaged failure directly —
+the `.exe` exits silently within seconds across multiple launch methods, a genuine environment
+limitation confirmed via multiple attempts (Event Viewer showed no crash entry either). Requested
+the owner run the installed executable with `--enable-logging` on their own machine; they captured
+the real error: `Uncaught TypeError: Cannot read properties of undefined (reading 'createContext')`
+in the packaged vendor chunk.
+
+Ruled out Firebase environment injection and packaged asset paths with direct evidence — extracted
+the actual `app.asar` via `npx asar extract` and confirmed the embedded Firebase config correctly
+resolved to `fresh-prints-prod` with a valid API key, and the packaged `index.html` used correct
+relative asset paths. **Confirmed root cause:** `apps/studio/vite.config.ts`'s `manualChunks`
+function used a bare substring match (`id.includes('node_modules/react')`) instead of a
+package-boundary match — this caught `react`/`react-dom` but not `scheduler` (react-dom's runtime
+dependency), which fell into the wrong chunk. The original build log had already warned `Circular
+chunk: vendor -> react-vendor -> vendor` — Rollup treats this as a warning, not a build failure, so
+the broken build shipped with exit 0. This only reproduces in packaged production builds since
+Vite's dev server never applies `manualChunks`.
+
+Fixed via narrow Plan + Formal Review (both `approved`): corrected the chunk-matching condition to
+exact package-boundary paths and explicitly included `scheduler`; added a `rollupOptions.onwarn`
+hook that fails the build on any future `CIRCULAR_CHUNK` warning, closing the actual process gap
+this incident exposed (nothing in the existing verification suite inspected build warnings or
+launched packaged output); also removed a dead favicon reference to an asset that never existed in
+this repo's history (unrelated, found in the same evidence-gathering pass). Verified: no more
+circular-chunk warning, `scheduler` directly confirmed via extraction to now live in `react-vendor`,
+full build/typecheck/lint/diff-check all exit 0. Promoted via PR #9 (merge `daaafc1`), tagged
+`v1.0.0-rc4`. Built the replacement installer from that exact verified commit using the same
+safest env-file-swap procedure. **Produced
+`Fresh Prints-Windows-0.0.0-Setup-v1.0.0-rc4.exe`** (~102.3 MB, SHA-256
+`a0be8e956108bc786fe3ea629f7dc356bb0e28ed09b60d740c31a64c1bf177ed` — deliberately different from
+the original failed installer's checksum, confirming genuinely new packaged content). **Awaiting
+owner install/launch/login retest before Phase G smoke testing resumes.**
 
 No longer blocked: Goals #9–#12
 (`catalog-image-derivative-storage-consolidation`) closed **2026-07-30**,
