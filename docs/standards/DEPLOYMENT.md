@@ -329,12 +329,35 @@ own separate, later, explicitly-approved checkpoint.
    reference found in the same evidence-gathering pass. Verified: no more circular-chunk warning,
    `scheduler` directly confirmed via `asar` extraction to now live in `react-vendor`, full
    build/typecheck/lint/diff-check all exit 0. Promoted via PR #9 (merge `daaafc1`), tagged
-   `v1.0.0-rc4`. **Replacement installer:**
+   `v1.0.0-rc4`. **Installer:**
    `Fresh Prints-Windows-0.0.0-Setup-v1.0.0-rc4.exe`, `apps/studio/release/0.0.0/`, ~102.3 MB,
    SHA-256 `a0be8e956108bc786fe3ea629f7dc356bb0e28ed09b60d740c31a64c1bf177ed` (deliberately
    different from the original failed checksum
    `c4ef01b57b7b01c89d94102d4b3af4cf22988a1b1640c62950c55983d58e0720`, confirming new content),
-   unsigned. **Awaiting owner install/launch/login retest** ← **current checkpoint**
+   unsigned; preserved on disk for the incident record.
+
+   **Desktop icon alignment (same day, later pass).** Owner requested the packaged icon match the
+   collapsed Studio sidebar's mark. Traced `Sidebar.tsx` → `AppLogo variant="collapsed"` →
+   `src/assets/brand/fresh-prints-studio-logo-collapsed.png` (confirmed via this session's Phase D
+   research to be what actually renders on cold-start `fresh-prints-prod`). Found
+   `electron-builder.json5` already referenced `icon.ico`/`icon.png` that never existed. Fixed via
+   a second narrow Plan + Formal Review (both `approved`):
+   `docs/workflow/plans/2026-07-30-production-release-studio-icon-plan.md`. Generated a padded
+   7-resolution `.ico` (16-256px) and a 512px `icon.png` via a one-time script
+   (`apps/studio/scripts/generate-app-icon.mjs`, `sharp` + the new `png-to-ico` devDependency);
+   corrected `main.ts`'s `BrowserWindow.icon` (previously pointing at the same nonexistent
+   `fresh-prints-logo.svg` found during the white-screen investigation — confirmed via Electron's
+   docs this only matters for dev mode, not the packaged Windows taskbar). **Verified directly**:
+   extracted the actual embedded icon from both the packaged `.exe` and installer `.exe` via
+   Windows' own `System.Drawing.Icon.ExtractAssociatedIcon` API and visually confirmed the correct
+   mark on both; no clipping at 16/32/256px; white-screen fix's chunk placement re-confirmed
+   intact. Promoted via PR #10 (merge `c644935`), tagged `v1.0.0-rc5`. **Installer (includes both
+   fixes):** `Fresh Prints-Windows-0.0.0-Setup-v1.0.0-rc5.exe`, `apps/studio/release/0.0.0/`,
+   ~102.7 MB, SHA-256 `e07914692ad2ff507bce279522852acf4bd9e89eb75d04da2221e3f05c17d011`
+   (different from both prior checksums). Re-confirmed on this exact build: correct icon, Firebase
+   config resolves to `fresh-prints-prod`, white-screen fix intact. Unsigned. **`v1.0.0-rc5`
+   awaiting owner install/launch/login/icon retest** — supersedes `rc4` for retest purposes
+   ← **current checkpoint**
 9. Initial settings and reference-data setup (categories, email provider selection, `rebuildCatalogSnapshots`) — **partially complete: first owner account bootstrapped** (owner completed a manual two-part Console procedure since no automated first-owner path exists in this codebase); categories and `settings/emailProviders` remain the owner's own Studio-UI action, pending a successful Studio installer retest
 10. Domain and Authorized Domains configuration
 11. Smoke tests

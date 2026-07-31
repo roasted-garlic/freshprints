@@ -2,6 +2,27 @@
 
 > Signed-off or largely complete work. External agents should not re-plan or duplicate this.
 
+## 2026-07-30 - production-release: Studio desktop icon aligned with collapsed-sidebar mark; v1.0.0-rc5 installer built (deployment-order step 8 of 12, blocked on owner retest)
+
+- Traced the collapsed-sidebar icon to its exact source (`AppLogo variant="collapsed"` →
+  `fresh-prints-studio-logo-collapsed.png`), confirmed via prior Phase D research this is what
+  actually renders on cold-start `fresh-prints-prod`
+- Found `electron-builder.json5` already referenced `icon.ico`/`icon.png` that never existed —
+  matching the "default Electron icon is used" line in every prior build log
+- Fixed via narrow Plan + independent Formal Review (both approved): generated a padded
+  7-resolution `.ico` via a one-time script (`sharp` + new `png-to-ico` devDependency), corrected
+  `main.ts`'s `BrowserWindow.icon` (was pointing at the same nonexistent file found during the
+  white-screen investigation)
+- **Verified directly, not deferred**: extracted the actual embedded icon from the packaged `.exe`
+  and installer `.exe` via Windows' own icon-extraction API and visually confirmed the correct
+  mark on both; re-confirmed white-screen fix and Firebase config intact on the same build
+- Promoted via PR #10, tagged `v1.0.0-rc5`; built and verified the second replacement installer
+  (`Fresh Prints-Windows-0.0.0-Setup-v1.0.0-rc5.exe`, SHA-256
+  `e07914692ad2ff507bce279522852acf4bd9e89eb75d04da2221e3f05c17d011`, different from both prior
+  checksums); `v1.0.0-rc4` preserved on disk for the incident record
+- **`v1.0.0-rc5` supersedes `rc4` for owner retest** (includes both fixes) — Phase G smoke testing
+  does not resume until that retest passes
+
 ## 2026-07-30 - production-release: Production Studio white-screen incident diagnosed and fixed; replacement installer built (deployment-order step 8 of 12, blocked on owner retest)
 
 - First production Studio installer white-screened on the owner's machine; this sandboxed

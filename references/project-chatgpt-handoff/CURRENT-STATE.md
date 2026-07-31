@@ -1,5 +1,64 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-07-30 — Goal #13 "production-release" — Studio desktop icon aligned with collapsed-sidebar mark; second replacement installer (v1.0.0-rc5) built, awaiting owner retest
+
+**Owner request:** use the exact icon shown at the top of the collapsed Studio sidebar as the
+official packaged Windows application icon.
+
+**Source of truth**, traced through the actual render path: `Sidebar.tsx` renders `<AppLogo
+variant="collapsed">` when the sidebar is collapsed; `AppLogo.tsx` resolves that variant's fallback
+to `src/assets/brand/fresh-prints-studio-logo-collapsed.png`. Confirmed via this session's earlier
+Phase D bootstrap-inventory research that `settings/brandLogos` is unset on the cold-start
+`fresh-prints-prod` project, so this bundled asset is genuinely what renders, not a hypothetical
+fallback. Visually confirmed as the circular "FP Request" mark; `sharp` metadata confirmed
+6387×6405px RGBA with alpha. Correctly excluded every item on the owner's exclusion list (full
+wordmark, the never-existed `fresh-prints-logo.svg`, any redesigned/generic icon).
+
+**Existing gap found:** `electron-builder.json5` already referenced `win.icon: "icon.ico"` /
+`linux.icon: "icon.png"`, but neither file existed anywhere in the repo — matching the "default
+Electron icon is used" line seen in every prior Studio build log this session.
+
+**Fix** (second narrow Plan + independent Formal Review, both `approved`): measured the source
+asset's opaque-pixel bounds via `sharp .trim()` and found they already extend to the canvas edges
+(no built-in margin), so wrote a one-time asset-generation script
+(`apps/studio/scripts/generate-app-icon.mjs`) using `sharp` plus a newly-added `png-to-ico`
+devDependency (researched and selected: pure JS, no native binaries, actively maintained, MIT) to
+pad and resize the source into a 7-resolution `.ico` (16/24/32/48/64/128/256px) and a 512px PNG,
+written to the exact paths the existing config already expected. Also corrected `main.ts`'s
+`BrowserWindow.icon`, previously pointing at the same nonexistent `fresh-prints-logo.svg` found
+during the white-screen investigation — researched via Electron's own docs and confirmed this
+option is redundant for the packaged Windows taskbar (Windows reads the icon embedded in the exe's
+resources via electron-builder's `rcedit` step) but genuinely affects the dev-mode window icon.
+
+**Verified directly in this environment, not deferred to the owner:** the generated `.ico` parsed
+to confirm exactly the 7 requested resolutions; visual inspection at 16×16/32×32/256×256 confirmed
+no clipping and a legible mark at small sizes; Studio typecheck, `vite build` (confirmed the
+white-screen fix's circular-chunk protection remained intact), full `electron-builder` packaging,
+repo lint, `git diff --check` all exit 0; the "default Electron icon is used" build-log line no
+longer appears. **Extracted the actual embedded icon from both the packaged `.exe` and the
+installer `.exe` via Windows' own `System.Drawing.Icon.ExtractAssociatedIcon` API and visually
+confirmed both show the correct Fresh Prints mark** — direct proof, not inference. Re-confirmed via
+`asar` extraction that `scheduler` remains correctly chunked with `react-vendor`.
+
+Promoted via GitHub PR #10 (merge `c644935`), tagged `v1.0.0-rc5`. Re-ran lint/typecheck on the
+tagged commit (both exit 0), built the second replacement installer using the same safest
+env-file-swap procedure. **Directly re-confirmed on this exact production-configured build:**
+correct embedded icon (same extraction method), `firebaseConfig.projectId` resolves to
+`fresh-prints-prod` (via `asar` extraction), `scheduler` still correctly chunked.
+
+**Second replacement installer:** `Fresh Prints-Windows-0.0.0-Setup-v1.0.0-rc5.exe` (also present
+as `Fresh Prints-Windows-0.0.0-Setup.exe`, byte-identical), `apps/studio/release/0.0.0/`, ~102.7
+MB, SHA-256 `e07914692ad2ff507bce279522852acf4bd9e89eb75d04da2221e3f05c17d011` — different from
+both the original failed installer's checksum and `v1.0.0-rc4`'s checksum, confirming genuinely
+new packaged content. `v1.0.0-rc4` (the white-screen-only fix) remains preserved on disk,
+untouched, for the incident record. Unsigned. Not uploaded or distributed publicly.
+
+**Active managed goal:** `production-release` (Goal #13) — deployment-order steps 1-7 of 12 remain
+complete; step 8 (Studio) blocked on the owner's install/launch/login/icon retest of
+`v1.0.0-rc5` — which supersedes `rc4` for retest purposes since it includes both the white-screen
+fix and the icon fix. Phase G smoke testing does not resume until that retest reports `PASS` or
+`PASS WITH NOTES: ...`.
+
 ## 2026-07-30 — Goal #13 "production-release" — Production Studio white-screen incident diagnosed and fixed; replacement installer built, awaiting owner retest
 
 **Incident:** the owner installed the first production Studio installer
