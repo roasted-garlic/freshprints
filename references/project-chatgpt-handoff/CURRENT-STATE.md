@@ -1,29 +1,27 @@
 # Fresh Prints - Current State Snapshot
 
-## 2026-07-31 — Goal #13 registration stuck: Auth inventory **amended** (docs only)
+## 2026-07-31 — Goal #13 Portal registration loading-state fix **implemented** (not deployed)
 
-- Owner success Response was `GetAccountInfoResponse` (`MXeK…`, lastRefreshAt 20:06:27Z) — **not** the 400 body
-- Failed `accounts:lookup` 400 body still **`[NEEDS OWNER RESPONSE CAPTURE]`** (red Network row only)
-- Re-inventory: `Pl3ODnKm…` and `MXeK…` **absent**; current Google Auth-only orphan **`L3jjfWJG…`**
-  (created 20:10:37Z); owner password user unchanged; still **0** customers / usernames / customer users
-- `registerCustomer` still **not invoked** on 2026-07-31
-- Amendment: `docs/workflow/reviews/2026-07-31-production-portal-registration-stuck-inventory-amendment.md`
-- No implement; branding + Stage 2 paused; Stage 1 + Class D untouched
-- Next: capture **failed** 400 error fields; then
-  `APPROVE PORTAL REGISTRATION LOADING-STATE FIX IMPLEMENTATION`
+- Root cause amended: post-Auth complete-profile client stall before `registerCustomer` + hang UX
+- Historical `accounts:lookup` 400 = non-reproducible; no Auth Console remediation
+- Client fix on `development`: 45s timeout, stages `[fp-portal-auth]`, terminal error, retry,
+  sign-out, duplicate guards, explicit `getIdToken(true)` before callable
+- Implementation Review **approved**; automated tests/typecheck/lint/build **pass**
+- **Next:** `APPROVE PRODUCTION PORTAL APP HOSTING ROLLOUT` then hosted.app QA
+- Branding + Stage 2 still paused; Stage 1 + Class D untouched
+- Note: post-fix Auth list had **no** Google user (`L3jjfWJG…` absent); agents did not delete
 
-## 2026-07-31 — Goal #13 BLOCKED: Portal registration stuck (`accounts:lookup` 400)
+## 2026-07-31 — Goal #13 registration stuck: Auth inventory amended
 
-- See inventory amendment above for current Auth prefixes
-- Artifacts: incident + plan + Formal Review `approved_with_changes`
+- Superseded in part by loading-state implement section above
 
 ## 2026-07-31 — Goal #13 Stage 1 fixtures **COMPLETE** (1B + 1C)
 
-- Remains recorded **PASS WITH NOTES** — not reopened
+- Remains PASS WITH NOTES
 
-## 2026-07-31 — Goal #13 Class D **CLOSED**: Storage uploads PASS WITH NOTES
+## 2026-07-31 — Goal #13 Class D **CLOSED**
 
-- Remains closed — not modified
+- Remains closed
 
 ## 2026-07-31 — Goal #13 Class D: Storage cross-service permission **IAM applied** (superseded)
 

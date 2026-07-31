@@ -4,7 +4,7 @@
 |-------|-------|
 | Date | 2026-07-31 |
 | Author | Planning Agent |
-| Status | ready_for_review |
+| Status | amended — root cause = post-Auth client stall before `registerCustomer` + loading UX; Phase 1 implemented on development; App Hosting rollout gated |
 | Workflow | managed-phase (`production-release` Goal #13) |
 | Related | Incident `docs/workflow/reviews/2026-07-31-production-portal-registration-stuck-incident.md` |
 
@@ -221,14 +221,22 @@ See Owner QA checklist below.
 
 ---
 
-## Open questions / checkpoints
+### Phase 0 — Evidence gate
 
-- [ ] Owner captures sanitized **failed** `accounts:lookup` error message/code (not GetAccountInfoResponse)
-- [ ] Owner confirms whether prior Auth orphans were deleted and whether multiple Google accounts were used
-- [ ] Formal Review verdict (parent `approved_with_changes`; inventory amendment recorded)
-- [ ] `APPROVE PORTAL REGISTRATION LOADING-STATE FIX IMPLEMENTATION` before Phase 1 code
-- [ ] Production rollouts only with separate phrases above
-- [ ] Branding / Stage 2 remain paused until registration PASS
+- [x] Owner confirmed lookups now HTTP 200 / `GetAccountInfoResponse`; prior 400 **non-reproducible**
+- [x] No Auth Console remediation selected from historical 400
+- [x] `APPROVE PORTAL REGISTRATION LOADING-STATE FIX IMPLEMENTATION` received
+
+### Phase 1 — Permanent-loading prevention — **implemented on development**
+
+- [x] Bounded timeout (45s), stage instrumentation, terminal error, retry, sign-out, duplicate guard
+- [ ] `APPROVE PRODUCTION PORTAL APP HOSTING ROLLOUT` — **next**
+
+### Phase 3 — Partial-account handling (updated)
+
+Re-read Auth before any delete. Post-implement inventory (2026-07-31): Google orphans including
+`L3jjfWJG…` were **absent**; only owner Auth user listed. Agents did not delete. Resume when a
+Google Auth-only user is present again after signup.
 
 ---
 

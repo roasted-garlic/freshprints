@@ -2,43 +2,36 @@
 `production-release` (Goal #13)
 
 Current Mode: managed-phase
-Current Phase: plan/review **complete** (inventory **amended**) — Portal registration stuck;
-**implement blocked** pending failed-400 capture + approvals
-Plan Status: complete (orphan handling amended) —
+Current Phase: implement/test **complete** — Portal registration loading-state fix on `development`;
+**stop before App Hosting rollout**
+Plan Status: complete (root cause amended; Phase 1 implemented) —
 `docs/workflow/plans/2026-07-31-production-portal-registration-stuck-plan.md`
-Review Status: **approved_with_changes** (parent) + inventory amendment recorded —
-`docs/workflow/reviews/2026-07-31-production-portal-registration-stuck-inventory-amendment.md`
-Implement Status: **not started**
-Test Status: pending (post-implement)
-Signoff Status: pending (goal #13 not closed)
+Review Status: Formal Review **approved_with_changes**; Implementation Review **approved** —
+`docs/workflow/reviews/2026-07-31-production-portal-registration-loading-state-implementation-review.md`
+Implement Status: **complete** (client-only; not deployed)
+Test Status: **passed** (automated) —
+`docs/workflow/reviews/2026-07-31-production-portal-registration-loading-state-test-report.md`
+Signoff Status: pending rollout + hosted QA
 DONE: no
 Human Checkpoint Required: yes
-Human Checkpoint Reason: (1) Capture sanitized **failed** `accounts:lookup` 400 Response (not
-GetAccountInfoResponse). (2) Confirm whether prior Auth users were deleted / multiple Google
-accounts used. (3) Then `APPROVE PORTAL REGISTRATION LOADING-STATE FIX IMPLEMENTATION`. Branding +
-Stage 2 paused. Stage 1 complete.
-Blocked: yes
-Blocker: Portal registration stuck — current Auth-only Google orphan `L3jjfWJG…`;
-`registerCustomer` never invoked; failed 400 body unmet; prior prefixes stale
-Allowed Actions: docs updates; record owner captures/confirmations; await approval phrases;
-read-only verify
-Forbidden Actions: implement/deploy without approvals; Auth/data repair; delete Auth user; change
-Authorized Domains/API keys/OAuth; Rules/Functions/App Hosting; branding; Stage 2; alter Stage 1
-fixtures; reopen Class D Storage; treat successful lookup as 400 body
-Next Required Step: Owner pastes **failed** `accounts:lookup` error fields only; optionally
-confirm Auth deletions / Google account(s); then
-`APPROVE PORTAL REGISTRATION LOADING-STATE FIX IMPLEMENTATION`.
+Human Checkpoint Reason: Await `APPROVE PRODUCTION PORTAL APP HOSTING ROLLOUT`. Branding + Stage 2
+remain paused. Stage 1 fixtures remain complete.
+Blocked: yes (awaiting production Portal rollout)
+Blocker: Loading-state fix not yet on App Hosting; registration still broken in production until rollout
+Allowed Actions: docs; await rollout approval; read-only verify
+Forbidden Actions: App Hosting rollout without phrase; Auth/data repair; Auth Console remediations
+from historical 400; Functions/Rules changes; branding; Stage 2; alter Stage 1 fixtures
+Next Required Step: Owner sends `APPROVE PRODUCTION PORTAL APP HOSTING ROLLOUT`, then hosted.app QA.
 
 Decision Log:
-- 2026-07-31 — Stage 1 fixtures complete; Class D closed; branding was next then paused.
-- 2026-07-31 — Portal registration stuck diagnosed; Formal Review **approved_with_changes**.
-- 2026-07-31 — Inventory amendment: success GetAccountInfoResponse (`MXeK…`) is not the 400 body;
-  `Pl3ODnKm…`/`MXeK…` absent; current orphan `L3jjfWJG…`; still zero Firestore customers;
-  `registerCustomer` still not invoked.
+- 2026-07-31 — Historical `accounts:lookup` 400 classified non-reproducible; root cause amended to
+  post-Auth client stall before `registerCustomer` + permanent-loading defect.
+- 2026-07-31 — `APPROVE PORTAL REGISTRATION LOADING-STATE FIX IMPLEMENTATION` → client fix landed;
+  Implementation Review **approved**; no deploy.
 
-Last Completed Step: **Registration-stuck inventory amendment** (docs only; no prod changes).
+Last Completed Step: **Loading-state client fix + tests + Implementation Review** (no rollout).
 
-Prior: Registration diagnosis + Plan + Formal Review.
+Prior: Inventory amendment; Formal Review approved_with_changes.
 
 **Corrected `users/{uid}` field list for any future manual bootstrap:** `id` (string, same as
 document ID / Auth UID), `email` (string), `displayName` (string), `role` (string, `"owner"` for

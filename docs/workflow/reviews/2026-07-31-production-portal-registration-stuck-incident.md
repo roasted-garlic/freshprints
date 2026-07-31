@@ -5,7 +5,7 @@
 | Date | 2026-07-31 |
 | Goal | `production-release` (Goal #13) |
 | Phase | Phase G — after Stage 1 fixtures; **before** bundled brand / Stage 2 |
-| Status | **Amended inventory (docs only)** — successful GetAccountInfoResponse recorded; failed 400 body still unmet; no implement |
+| Status | **Client fix implemented on `development`** — awaiting App Hosting rollout approval; 400 historical |
 | Environment | `https://fresh-prints-portal--fresh-prints-prod.us-central1.hosted.app` |
 | Related Plan | `docs/workflow/plans/2026-07-31-production-portal-registration-stuck-plan.md` |
 | Inventory amendment | `docs/workflow/reviews/2026-07-31-production-portal-registration-stuck-inventory-amendment.md` |
@@ -111,7 +111,7 @@ Email/password path **not** indicated for this attempt.
 | Item | Value |
 |------|-------|
 | HTTP status (failed request) | **400** (owner Network / console evidence) |
-| Failed Response error code / message | **`[NEEDS OWNER RESPONSE CAPTURE]`** — must be taken from the **failed** (red) Network row only |
+| Failed Response error code / message | **Not required** — 400 **non-reproducible** (owner 2026-07-31). Historical only. |
 
 ### Owner capture correction (2026-07-31)
 
@@ -297,25 +297,31 @@ Remediation must include terminal error UX, timeout, and usable sign-out/retry �
 
 ---
 
-## Root cause (current — amended)
+## Root cause (current — amended after loading-state implement approval)
 
-**Evidence-backed mechanism:**
+**Selected root cause:**
 
-1. Google sign-in repeatedly creates Auth users; `/complete-profile` still does not reach
-   `registerCustomer` (no Cloud Run invocations on 2026-07-31). Current state = **Auth user only**
-   (`L3jjfWJG…`). Prior prefixes `Pl3ODnKm…` / `MXeK…` are **stale** (absent from Auth).
-2. Browser shows **both** successful Identity Toolkit `GetAccountInfoResponse` lookups **and**
-   separate `accounts:lookup` **HTTP 400** failures. The 400 body is still
-   **`[NEEDS OWNER RESPONSE CAPTURE]`** from the failed Network row only. Success responses must
-   **not** drive Auth configuration remediations.
-3. Earlier primary wording that treated lookup as uniformly failing is **too strong** and is
-   amended by the inventory amendment doc.
-4. **Confirmed product defect:** Permanent busy overlay with no timeout and disabled escape while
-   busy.
+Production Google Authentication succeeds, but the Portal complete-profile client pipeline
+stalls or fails after Auth session establishment and before `registerCustomer` invocation.
+The Portal also had a confirmed permanent-loading defect (no bounded timeout / usable escape).
 
-**Not the root cause (this pass):** Storage Class D, Stage 1 fixtures, missing Authorized Domain
-for hosted.app, wrong Firebase project in the deployed Portal bundle, missing `registerCustomer`
-deploy, username collision.
+**Historical / non-selected:**
+
+- `accounts:lookup` HTTP 400 — **non-reproducible** as of owner retest (all observed lookups
+  HTTP 200 / `GetAccountInfoResponse`). Keep as transient/stale/historical evidence only.
+  **Do not** select Auth Console, API-key, Authorized Domain, OAuth, or provider remediation
+  from it. Further owner attempts to capture that 400 are **not required**.
+
+**Client fix (implemented, not yet rolled out to App Hosting):** staged ID-token → callable
+pipeline with 45s timeout, terminal error, retry, always-available sign-out, duplicate guards,
+sanitized `[fp-portal-auth]` stage logs.
+
+**UID history:** Portal source has **no** `deleteUser` / failed-registration Auth cleanup.
+Functions `deleteUser` exists only on staff invite/team/owner-delete paths — not
+`registerCustomer`. Changing Google Firebase UIDs for “the same Google account” implies
+**Auth user delete + recreate** outside this Portal client path — **`[NEEDS OWNER CONFIRMATION]`**
+(Console delete). Post-implement read-only list showed **only** the owner Auth user;
+`L3jjfWJG…` was **absent** (agents did not delete).
 
 ---
 

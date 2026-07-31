@@ -2,11 +2,16 @@
 
 > Signed-off or largely complete work. External agents should not re-plan or duplicate this.
 
+## 2026-07-31 - production-release: Portal registration loading-state fix implemented (not deployed)
+
+- Root cause: post-Auth client stall before `registerCustomer` + hang UX; 400 historical only
+- 45s timeout, stages, terminal error, retry/sign-out, duplicate guards; Implementation Review approved
+- Next: `APPROVE PRODUCTION PORTAL APP HOSTING ROLLOUT`
+
 ## 2026-07-31 - production-release: Portal registration Auth inventory amended (docs only)
 
-- Success GetAccountInfoResponse (`MXeK…`) is not the 400 body; failed 400 still unmet
-- Current Auth-only orphan `L3jjfWJG…`; prior `Pl3ODnKm…`/`MXeK…` gone; registerCustomer still unused
-- No implement / no prod changes
+- Success GetAccountInfoResponse is not the 400 body; inventory prefixes drifted over time
+- Superseded for remediation by loading-state implement section above
 
 ## 2026-07-31 - production-release: Portal registration stuck diagnosed (docs only)
 
