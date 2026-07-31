@@ -31,7 +31,101 @@ throughout this pass.**
 Test Status: pending
 Signoff Status: pending
 DONE: no
-Last Completed Step: **Deployment-order step 5 (Cloud Functions) CONFIRMED COMPLETE.** Phase A
+Last Completed Step: **Deployment-order step 8 (production Studio build) CONFIRMED COMPLETE —
+first production Studio Windows installer packaged.**
+
+**Phase D (production settings/bootstrap inventory) — partial, owner-driven, no automated
+Firestore write:** researched and presented a consolidated bootstrap list for owner approval
+before any write: (1) `settings/emailProviders` (owner approved — will set via Studio UI once
+logged in: `inviteProvider: "resend"`, `proofNoticeProvider: "brevo"`, matching the owner's
+decision, since the code default is Resend for both and would silently misroute proof-notice email
+if left unset); (2) at least one category (owner approved — will create via Studio UI, Design
+Library → Manage Categories, not required for the app to function but needed for meaningful
+cataloging); (3) **first owner account bootstrap — the one genuine gap found**: no automated path
+exists anywhere in this codebase to create the first owner (`createTeamUser` requires an existing
+owner caller; Firestore Rules block all client writes to `users/*`). Walked the owner through the
+exact two-part manual Console procedure: (A) Firebase Console → Authentication → Add user, copy the
+UID; (B) Firestore Console → `users/{uid}` document with `id`, `email`, `displayName`,
+`role: "owner"` (string), `isActive: true` (boolean). **Owner confirmed both parts complete — the
+first production owner account now exists on `fresh-prints-prod`.** `rebuildCatalogSnapshots`
+confirmed safe to invoke on a fully empty catalog (source-verified: no length/emptiness assertions
+in either `publishReference()` or `publishPortal()`; only Storage budget/precondition errors could
+fail, irrelevant at empty scale) but deliberately **not yet invoked** — held until real catalog
+data exists, per the task's own instruction to treat invocation as its own deliberate step. No
+production Firestore data was written directly by this coding agent at any point — every write
+either goes through the owner's own Studio session (once Studio is available) or was a manual
+Console action the owner performed themselves.
+
+**Phase F (production Studio Windows installer) — COMPLETE.** Source audit confirmed: `getFunctions(app)` uses no explicit region (defaults to `us-central1`, matching all deployed Functions); Test Data Reset UI gate (`isOperationalWipeUiEnabled()`) is `import.meta.env.DEV && isOperationalWipeAllowedProjectId(...)` — a genuine, non-bypassable-by-config guarantee that a production build (`import.meta.env.DEV === false`) never renders this UI regardless of project id; `OPERATIONAL_WIPE_ALLOWED_PROJECT_IDS = ["fresh-prints-dev"]` confirms `fresh-prints-prod` would fail this check even if a dev build somehow pointed at it — and `wipeOperationalTestData` is not deployed to production at all (excluded from the 99-function allowlist), so the guarantee is triple-layered. No hardcoded Portal URL or other dev-only assumption found anywhere in Studio source. Studio's Firebase configuration is entirely build-time/Vite-env-file-based (`apps/studio/src/renderer/src/config/env.ts`'s `validateFirebaseEnv()`), confirming the readiness checkpoint's earlier finding.
+
+Followed the recommended safest approach: backed up the existing dev `apps/studio/.env.local` to a temporary file, wrote the production `VITE_FIREBASE_*` values (same production Web App config already verified for the Portal, `VITE_` prefix instead of `NEXT_PUBLIC_`) into `.env.local` for exactly one build invocation, ran the full production build (`npm run build:studio` = `tsc && vite build && electron-builder`) on the verified `production` commit (`11ed4ef`), then **immediately restored the dev `.env.local`** before any other action — confirmed via `git status`/`git diff --check` that the working tree returned to exactly its prior clean state (env files are gitignored either way, so no accidental commit risk existed, but the restore still matters for local working-directory correctness). Studio typecheck (`npx tsc --noEmit`) passed clean before the build. Build + electron-builder packaging: **exit 0.**
+
+**Installer produced:** `Fresh Prints-Windows-0.0.0-Setup.exe`, location
+`apps/studio/release/0.0.0/`, size 107,274,796 bytes (~102.3 MB), SHA-256
+`c4ef01b57b7b01c89d94102d4b3af4cf22988a1b1640c62950c55983d58e0720`. **Unsigned** — no
+`certificateFile`/code-signing configuration exists in `electron-builder.json5` and no signing step
+ran; Windows SmartScreen will show an "unrecognized publisher" warning on first run, expected for
+an unsigned installer. Installer was **not** uploaded or distributed publicly this pass, per
+instruction — only the local build artifact exists, awaiting owner installation and smoke testing.
+
+Original step-5/6-7 summaries (Cloud Functions, App Hosting) below, preserved unchanged:
+
+**Step 6 (App Hosting environment configuration) summary:** added an `env:` block to
+`apps/portal/apphosting.yaml` with the 7 required `NEXT_PUBLIC_FIREBASE_*` values +
+`NEXT_PUBLIC_PORTAL_ORIGIN=https://myprintrequest.com`, sourced from the owner's
+`apps/portal/.env.production.local` (gitignored, never committed, never printed).
+`NEXT_PUBLIC_GA_MEASUREMENT_ID` was deliberately omitted even though a real value already exists
+in that local file — GA4 go-live remains its own separate, later checkpoint per owner decisions
+#11/#12. Committed to `development`, promoted to `production` via GitHub PR #6 (merge `9437d4b`).
+
+**Step 7 (first App Hosting release) — three rollout attempts, root cause found and fixed:**
+
+*Attempt 1* (commit `9437d4b`, no build override): `firebase apphosting:rollouts:create
+fresh-prints-portal --project fresh-prints-prod --git-commit 9437d4b --force` failed at the Cloud
+Build stage: `Missing dependency lock file at path '/workspace/apps/portal'`. Root cause: Fresh
+Prints is an npm-workspaces monorepo (single root `package-lock.json`; `apps/portal` correctly has
+none of its own), but Firebase App Hosting's buildpack has official first-class monorepo support
+only for Nx/Turborepo.
+
+*Attempt 2* (commit `35ef8e1`): added `buildCommand`/`runCommand` overrides to `apphosting.yaml`
+(both execute from `/workspace`, so they could install/build from the actual workspace root) as a
+first hypothesis. **Committed this directly to `production` by mistake** — caught immediately
+before pushing, corrected by resetting the local `production` branch pointer back to
+`origin/production` (no remote impact — the stray commit never reached GitHub) and reapplying the
+identical change properly on `development`, then promoting via PR #7 (merge `35ef8e1`). The retry
+still failed with the byte-identical lock-file error. Owner opened the real Cloud Build Console log
+and confirmed: App Hosting's framework/monorepo detection runs **before** `buildCommand` executes
+and checks `rootDir` for a lock file regardless of any override — the attempt-2 hypothesis was
+disproven by direct evidence, not assumption.
+
+*Attempt 3* (commit `11ed4ef`): owner directed a narrow Plan + independent Formal Review (both
+`approved`) to add the minimum officially-documented Turborepo support instead —
+`docs/workflow/plans/2026-07-30-production-release-turborepo-app-hosting-fix-plan.md` /
+`...-turborepo-app-hosting-fix-review.md`. Added `turbo` as a root devDependency, a root
+`turbo.json` with a single `build` task (current `tasks` schema, no `dependsOn` since
+`@fresh-prints/shared`/`@fresh-prints/show-picker` have no `build` script — Next.js
+`transpilePackages` handles them directly), a `packageManager: "npm@10.8.2"` field in root
+`package.json` (required for turbo's own workspace resolution, discovered during implementation,
+within the Plan's approved scope), removed the now-confirmed-ineffective `buildCommand`/
+`runCommand` override, and gitignored `.turbo/`. Kept `rootDir: ./apps/portal` unchanged and the
+single root `package-lock.json` as the sole lockfile, per explicit owner instruction. Verified
+locally: `npm ci`, `npx turbo run build --filter=@fresh-prints/portal` (1/1 tasks successful),
+Portal typecheck, `npm run build:portal`, repo lint, YAML validation, `git diff --check` — all
+exit 0. Committed to `development`, promoted via PR #8 (merge `11ed4ef`).
+
+Retried the rollout pinned to `11ed4ef`: **"✔ Successfully created a new rollout!"** — first-ever
+Fresh Prints production Portal deployment succeeded. Verified backend live at
+`https://fresh-prints-portal--fresh-prints-prod.us-central1.hosted.app` (Enabled, `nodejs24`,
+`us-central1`, updated timestamp matches this rollout). Initial hosted.app verification: homepage
+returns HTTP 200 with correct `<title>Fresh Prints Request Portal</title>`; `robots.txt` returns
+the **allow** variant (not the fail-closed `Disallow: /` default), confirming
+`NEXT_PUBLIC_PORTAL_ORIGIN`/host resolution is correctly live in production; no `fresh-prints-dev`
+string found anywhere in the served HTML.
+
+Automatic rollouts remain **disabled** for this backend (never enabled this pass, per owner
+decision — each future release requires its own explicit `rollouts:create` command).
+
+Original step-5 summary (Cloud Functions) below, preserved unchanged: Phase A
 non-secret configuration audit found no source change required: `portalUrlResolver.ts` already maps
 `fresh-prints-prod` → `https://myprintrequest.com`; `.firebaserc` already has the `production` alias;
 `INVITATION_FROM_EMAIL`/`PROOF_NOTICE_FROM_EMAIL` code defaults already match owner intent exactly;
@@ -126,27 +220,35 @@ or production data was configured/created/seeded. No production Studio installer
 or Search Console configuration occurred. `production` was not modified by Git (Functions deploy is
 a Firebase action, not a commit). `master` was not deleted. No force-push occurred anywhere in this
 pass.
-Human Checkpoint Required: no — Phase A and Phase B (Functions non-secret config audit + approved
-99-function deployment) are both complete per explicit prior authorization in the active `Continue
-Workflow` instruction. Proceeding into Phase C (App Hosting production environment configuration
-and first Portal release) under that same authorization; the first App Hosting *release* trigger
-itself remains its own checkpoint per that instruction's explicit conditions.
+Human Checkpoint Required: no — Phase F (production Studio Windows installer) is complete per
+explicit prior authorization in the active `Continue Workflow` instruction (owner chose to jump
+ahead to Phase F before finishing Phase D's owner-driven category/email-provider setup, since that
+setup itself requires Studio to be usable). Proceeding into Phase G (installed Portal and Studio
+smoke testing) under that same authorization once the owner has installed and can exercise the
+installer; the smoke test itself and its PASS/FAIL reporting remain the owner's own action per the
+task's explicit smoke-test reporting requirement.
 Blocked: no
-Allowed Actions: continue Phase C — App Hosting environment audit, environment-variable
-configuration, and (once confirmed ready) the first App Hosting release, per the active Continue
-Workflow instruction's already-granted authorization
+Allowed Actions: provide the owner the exact local installer path and installation steps; await
+owner installation and smoke-test execution (Phase G); resume Phase D's remaining owner-driven
+Studio configuration (categories, email providers, `rebuildCatalogSnapshots`) once the owner has
+Studio access and reports readiness
 Forbidden Actions: deleting `master` (local or remote); modifying `production` directly (only via
-PR); running any `firebase deploy` command of any kind without separate approval (including the
-Functions deploy itself); accessing, printing, or logging any secret value; setting or rotating
-any secret without separate owner approval; using `--force` on any Firestore command; manually
-deleting or editing production indexes/secrets via Console; triggering an App Hosting
-release/rollout; any DNS/Auth-config/GA4/Search-Console action; invoking
-`rebuildCatalogSnapshots`; building or distributing a production Studio installer; touching
-production data; force-pushing any branch; rewriting Git history; configuring `core.hooksPath`
-without separate owner approval; changing repository visibility
-Next Required Step: Continue into Phase C — App Hosting production environment configuration and
-first Portal release (deployment-order step 6 of 12), per the active `Continue Workflow`
-instruction's already-granted authorization for this phase.
+PR); running any `firebase deploy`/`apphosting:rollouts:create` command without separate approval;
+accessing, printing, or logging any secret value; setting or rotating any secret without separate
+owner approval; using `--force` on any Firestore command; manually deleting or editing production
+indexes/secrets via Console; enabling automatic App Hosting rollouts without owner approval; any
+DNS/Auth-config/GA4/Search-Console action; invoking `rebuildCatalogSnapshots` (deployed, not yet
+invoked — invocation remains its own deliberate step once real catalog data exists); writing any
+production Firestore data directly (categories/email-provider settings are the owner's own Studio
+action, not this agent's); uploading or distributing the Studio installer publicly before smoke
+testing; force-pushing any branch; rewriting Git history; configuring `core.hooksPath` without
+separate owner approval; changing repository visibility
+Next Required Step: Owner installs `Fresh Prints-Windows-0.0.0-Setup.exe` from
+`apps/studio/release/0.0.0/` and begins Phase G smoke testing (Portal + installed Studio + backend
+checks per the task's consolidated checklist), reporting results as `PASS` / `PASS WITH NOTES: ...`
+/ `FAIL: ...`. Once Studio is installed and the owner is signed in as owner, resume Phase D's
+remaining items (categories, `settings/emailProviders` via Studio UI) and consider
+production data until approved.
 
 Plan:
 `docs/workflow/plans/2026-07-29-preproduction-static-analysis-cleanup-plan.md`.

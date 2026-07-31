@@ -1,5 +1,89 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-07-30 — Goal #13 "production-release" — Production Studio installer built, first owner account bootstrapped (deployment-order steps 1-8 of 12 done); awaiting owner installation and smoke testing
+
+**First production owner account bootstrapped.** Presented a consolidated Phase D bootstrap list
+for owner approval before any Firestore write: `settings/emailProviders` (approved — owner will
+set `inviteProvider: "resend"`, `proofNoticeProvider: "brevo"` via Studio UI once logged in,
+matching their decision, since the code default is Resend for both), at least one category
+(approved — owner will create via Studio UI). The most significant finding: **no automated way
+exists anywhere in this codebase to create the first owner account** — the normal user-creation
+callable requires an existing owner caller, and Firestore Rules block all client writes to
+`users/*`, a genuine chicken-and-egg gap for a cold-start project. Walked the owner through the
+exact manual two-part Console procedure (Firebase Auth → Add user → copy UID; Firestore Console →
+`users/{uid}` document with `role: "owner"`, `isActive: true`). **Owner confirmed both parts
+complete.** `rebuildCatalogSnapshots` confirmed source-safe on a fully empty catalog but
+deliberately held until real catalog data exists — invocation remains its own separate step.
+
+**Production Studio Windows installer built.** Owner chose to prioritize Studio access before
+finishing Phase D's remaining Studio-dependent setup. Source audit confirmed Studio's Firebase
+config is entirely build-time/Vite-env-file-based with no hardcoded Portal URL, and the Test Data
+Reset UI is excluded from production builds by three independent layers (a build-time
+`import.meta.env.DEV` gate, a `fresh-prints-dev`-only project allowlist, and the underlying
+callable not being deployed to production at all). Backed up the dev env file, temporarily wrote
+production Firebase Web config values, ran the full build/package on the verified `production`
+commit, immediately restored the dev file. Build + packaging: exit 0.
+
+**Installer:** `Fresh Prints-Windows-0.0.0-Setup.exe`, `apps/studio/release/0.0.0/`, ~102.3 MB,
+SHA-256 `c4ef01b57b7b01c89d94102d4b3af4cf22988a1b1640c62950c55983d58e0720`, **unsigned** (Windows
+will show the expected unrecognized-publisher SmartScreen warning on first run). Not uploaded or
+distributed publicly — awaiting owner installation and Phase G smoke testing.
+
+**Active managed goal:** `production-release` (Goal #13) — deployment-order steps 1-8 of 12 all
+complete. Next: owner installs the Studio `.exe` and begins the consolidated Portal + installed
+Studio + backend smoke-test checklist, reporting `PASS` / `PASS WITH NOTES: ...` / `FAIL: ...`.
+Once Studio is installed and the owner is signed in, Phase D's remaining items (categories,
+`settings/emailProviders`) resume as the owner's own Studio-UI action.
+
+## 2026-07-30 — Goal #13 "production-release" — First App Hosting Portal release COMPLETE (deployment-order steps 1-7 of 12 done); proceeding into settings/bootstrap inventory
+
+**The first-ever Fresh Prints production Portal deployment succeeded.** App Hosting
+environment-variable configuration (step 6) added an `env:` block to
+`apps/portal/apphosting.yaml` with the 7 required `NEXT_PUBLIC_FIREBASE_*` values plus
+`NEXT_PUBLIC_PORTAL_ORIGIN=https://myprintrequest.com`, sourced from the owner's gitignored
+`.env.production.local`. `NEXT_PUBLIC_GA_MEASUREMENT_ID` was deliberately omitted even though a
+real value already exists in that local file — GA4 go-live remains a separate, later checkpoint.
+Promoted to `production` via GitHub PR #6.
+
+**First rollout attempt failed:** Cloud Build error `Missing dependency lock file at path
+'/workspace/apps/portal'`. Root cause: Fresh Prints is an npm-workspaces monorepo (single root
+`package-lock.json`; `apps/portal` correctly has none of its own), but Firebase App Hosting's
+buildpack has official first-class monorepo support only for Nx/Turborepo.
+
+**Second attempt (first fix hypothesis):** added `buildCommand`/`runCommand` overrides to
+`apphosting.yaml`. **This was accidentally committed directly to `production`** during
+implementation — caught immediately before pushing (the stray commit never reached GitHub, zero
+remote impact), corrected by resetting the local `production` branch pointer and reapplying the
+identical change properly via `development` → PR #7. The retry still failed with the byte-identical
+error. The owner opened the real Cloud Build Console log and confirmed App Hosting's
+monorepo-detection step runs *before* `buildCommand` executes — disproving the first hypothesis
+with direct evidence, not assumption.
+
+**Third attempt (root-cause fix):** the owner directed a narrow Plan + independent Formal Review
+(both `approved`) to add the minimum officially-documented Turborepo support instead: `turbo` as a
+root devDependency, a root `turbo.json` with a single `build` task (no `dependsOn` — the shared
+workspace packages have no `build` script; Next.js `transpilePackages` handles them directly), a
+`packageManager: "npm@10.8.2"` field (required for turbo's own workspace resolution, discovered
+during implementation, within approved scope), removed the now-confirmed-ineffective build-command
+override, kept the single root `package-lock.json` and `rootDir: ./apps/portal` unchanged per
+explicit owner instruction. Verified locally: `npm ci`, `npx turbo run build
+--filter=@fresh-prints/portal` (1/1 tasks successful), Portal typecheck, `npm run build:portal`,
+repo lint, YAML validation, `git diff --check` — all exit 0. Promoted via PR #8.
+
+**Retried the rollout: "✔ Successfully created a new rollout!"** Verified the backend live at
+`https://fresh-prints-portal--fresh-prints-prod.us-central1.hosted.app` (Enabled, `nodejs24`,
+`us-central1`). Homepage returns HTTP 200 with the correct `<title>Fresh Prints Request
+Portal</title>`; `robots.txt` returns the **allow** variant (not the fail-closed default),
+confirming `NEXT_PUBLIC_PORTAL_ORIGIN`/host resolution is correctly live in production; no
+`fresh-prints-dev` string found anywhere in the served HTML. Automatic rollouts remain **disabled**
+for this backend — each future release requires its own explicit trigger.
+
+**Active managed goal:** `production-release` (Goal #13) — deployment-order steps 1-7 of 12 all
+complete. Proceeding into Phase D (production settings and bootstrap inventory, step 9 of 12) under
+the same multi-phase authorization already granted by the owner. No production Firestore data has
+been written; a consolidated bootstrap list requires its own separate owner approval before any
+write occurs.
+
 ## 2026-07-30 — Goal #13 "production-release" — Cloud Functions deployment COMPLETE (deployment-order steps 1-5 of 12 done); proceeding into App Hosting/Portal release
 
 **Cloud Functions (step 5) confirmed complete.** Owner issued a multi-phase `Continue Workflow`

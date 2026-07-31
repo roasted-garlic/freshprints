@@ -54,13 +54,34 @@ export default defineConfig({
   },
   build: {
     rollupOptions: {
+      // A circular chunk dependency created by manualChunks (e.g. splitting `scheduler` away
+      // from `react`/`react-dom`) only warns by default — Rollup still exits 0 — so a broken
+      // packaged build can silently ship. Fail the build instead of warning for this specific
+      // failure class; this is what actually shipped the white-screen production Studio build.
+      onwarn(warning, warn) {
+        if (warning.code === 'CIRCULAR_CHUNK') {
+          throw new Error(`[build] Circular chunk detected: ${warning.message}`)
+        }
+        warn(warning)
+      },
       output: {
         manualChunks(id) {
           if (!id.includes('node_modules')) {
             return undefined
           }
 
-          if (id.includes('node_modules/react') || id.includes('node_modules/react-dom')) {
+          // Package-boundary match (trailing '/'), not a bare substring match — a substring
+          // match against 'node_modules/react' also matches unrelated packages like
+          // react-router-dom while failing to catch `scheduler`, which react-dom requires at
+          // module-init time. Splitting scheduler away from react/react-dom produces a circular
+          // chunk dependency (vendor -> react-vendor -> vendor) that crashes on
+          // `React.createContext` in packaged production builds only (Vite's dev server never
+          // applies manualChunks, so this never reproduces via `npm run dev`).
+          if (
+            id.includes('node_modules/react/') ||
+            id.includes('node_modules/react-dom/') ||
+            id.includes('node_modules/scheduler/')
+          ) {
             return 'react-vendor'
           }
 
