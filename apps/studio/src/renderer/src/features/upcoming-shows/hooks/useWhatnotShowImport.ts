@@ -106,17 +106,31 @@ export function useWhatnotShowImport(existingShows: UpcomingShow[], onImported: 
                 continue;
               }
 
-              await upcomingShowService.upsertUpcomingShow(user, {
-                source: "whatnot",
-                whatnotShowId: entry.candidate.whatnotShowId!,
-                whatnotUrl: entry.candidate.whatnotUrl,
-                title: entry.candidate.title,
-                scheduledStartAt: entry.candidate.scheduledStartAt
-                  ? Timestamp.fromDate(entry.candidate.scheduledStartAt)
-                  : undefined,
-                sourceBaseUrlSnapshot: event.baseUrl,
-                fromAssistedImport: true,
-              });
+              const scheduledStartAt = entry.candidate.scheduledStartAt
+                ? Timestamp.fromDate(entry.candidate.scheduledStartAt)
+                : undefined;
+
+              if (entry.action === "update") {
+                await upcomingShowService.updateUpcomingShowFromWhatnotImport(user, {
+                  existingShowId: entry.existingShowId ?? "",
+                  expectedWhatnotShowId: entry.candidate.whatnotShowId ?? "",
+                  whatnotUrl: entry.candidate.whatnotUrl,
+                  title: entry.candidate.title,
+                  scheduledStartAt,
+                  sourceBaseUrlSnapshot: event.baseUrl,
+                  candidateStatus: entry.candidate.status === "live" ? "live" : "ready",
+                });
+              } else {
+                await upcomingShowService.upsertUpcomingShow(user, {
+                  source: "whatnot",
+                  whatnotShowId: entry.candidate.whatnotShowId!,
+                  whatnotUrl: entry.candidate.whatnotUrl,
+                  title: entry.candidate.title,
+                  scheduledStartAt,
+                  sourceBaseUrlSnapshot: event.baseUrl,
+                  fromAssistedImport: true,
+                });
+              }
 
               if (entry.action === "create") {
                 summary.created += 1;
