@@ -1,5 +1,14 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-08-01 - Goal #13 customer schedule + dual-limit Portal LIVE; owner QA pending
+
+- Manual App Hosting rollout pinned to production merge `11960852f45f948e37a1a5aeb3b09699882cd1fd`.
+- Build/rollout `build-2026-08-01-001`; revision `fresh-prints-portal-build-2026-08-01-001`; READY/backend update `2026-08-01T15:00:47Z`.
+- Hosted URL returns HTTP 200; schedule client chunk and static brand assets verified; unauthenticated callable probe returns expected 401.
+- Automatic rollouts remain disabled. Owner/customer authenticated QA is pending.
+- No Functions, Rules/indexes, Studio, settings/data, Auth/secrets, Stage 2, DNS/domain, analytics, snapshots, or tag action occurred.
+- Next: `CONTINUE WORKFLOW: PRODUCTION OWNER QA CUSTOMER SHOW SCHEDULE VISIBILITY`.
+
 ## 2026-08-01 - Goal #13 customer schedule + dual-limit Functions DEPLOYED to production
 
 - Production source: PR #17 merge `11960852f45f948e37a1a5aeb3b09699882cd1fd`.

@@ -4,7 +4,7 @@
 `portal-print-request-and-customer-show-limit-settings` (source workflow)
 
 Current Mode: managed-phase
-Current Phase: production Functions deployed; Portal rollout checkpoint
+Current Phase: production Portal rollout complete; owner QA checkpoint
 Plan Status: complete —
 `docs/workflow/plans/2026-07-31-production-portal-show-schedule-and-limit-settings-amendment-1-plan.md`
 Review Status: **approved_with_changes** —
@@ -12,20 +12,22 @@ Review Status: **approved_with_changes** —
 Implement Status: complete
 Test Status: **passed** — `docs/workflow/reviews/2026-07-31-production-portal-show-schedule-and-limit-settings-amendment-1-test-report.md`
 Implementation Review: **approved** — `docs/workflow/reviews/2026-07-31-production-portal-show-schedule-and-limit-settings-amendment-1-implementation-review.md`
-Ship Status: PR #17 merged; exact nine-Function production deployment **passed**
+Ship Status: Functions + Portal App Hosting rollout **passed** (`build-2026-08-01-001`)
 Signoff Status: pending owner QA after rollouts
 Implementation Review: **approved** —
 `docs/workflow/reviews/2026-07-31-production-portal-show-schedule-and-limit-settings-implementation-review.md`
 DONE: no (Goal #13 continues; Stage 2 paused)
 Human Checkpoint Required: yes
-Human Checkpoint Reason: production Portal App Hosting rollout requires separate explicit approval
+Human Checkpoint Reason: authenticated production owner QA required; Studio/settings remain separate
 Blocked: no
 Blocker: none
-Allowed Actions: docs; wait for Portal App Hosting approval
+Allowed Actions: docs; owner QA guidance; read-only verification
 Forbidden Actions: further deploys; production actions; Rules/index/data/settings changes; Stage 2; domain
-Next Required Step: Await `APPROVE PRODUCTION PORTAL APP HOSTING ROLLOUT: CUSTOMER SHOW SCHEDULE AND DUAL LIMITS`
+Next Required Step: Await `CONTINUE WORKFLOW: PRODUCTION OWNER QA CUSTOMER SHOW SCHEDULE VISIBILITY`
 
 Decision Log:
+- 2026-08-01 — Portal commit `1196085` rolled out manually to production App Hosting as
+  `build-2026-08-01-001`; hosted HTTP/assets/client schedule chunk verified; auto rollouts disabled; owner QA pending.
 - 2026-08-01 — Production merge `1196085` verified; approved nine-Function allowlist deployed to
   `fresh-prints-prod` (exit 0; all ACTIVE; hash `7eedfc2`; no unrelated Function update). Portal not rolled out.
 - 2026-07-31 — Amendment 1 commits `c4c8b38` + `c96755c` pushed; draft PR #17 opened
