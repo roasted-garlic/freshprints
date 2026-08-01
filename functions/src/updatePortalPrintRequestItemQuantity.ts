@@ -40,7 +40,7 @@ function mapHttpsError(error: unknown): never {
 }
 
 /**
- * Portal quantity change clamped to working request max (`L` = maxQuantityPerShowPerCustomer).
+ * Portal quantity change clamped to working request max (`maxQuantityPerPrintRequest`).
  */
 export const updatePortalPrintRequestItemQuantity = onCall(
   async (request): Promise<UpdatePortalPrintRequestItemQuantityResponse> => {
@@ -65,7 +65,7 @@ export const updatePortalPrintRequestItemQuantity = onCall(
 
       const customerUid = request.auth.uid;
       const settings = await loadPrintRequestLimitSettings();
-      const maxPerRequest = settings.maxQuantityPerShowPerCustomer;
+      const maxPerRequest = settings.maxQuantityPerPrintRequest;
       let quantity = nextQuantity;
 
       await adminDb.runTransaction(async (tx) => {

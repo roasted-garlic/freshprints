@@ -9,71 +9,106 @@ import {
   DEFAULT_PRINT_REQUEST_LIMIT_SETTINGS,
   parsePrintRequestLimitSettingsInput,
   printRequestLimitL,
+  printRequestLimitPerCustomerPerShow,
+  printRequestLimitPerRequest,
   resolvePrintRequestLimitSettings,
 } from "./printRequestLimitSettings.constants";
 
 describe("printRequestLimitSettings", () => {
-  it("defaults match code constants; L is maxQuantityPerShowPerCustomer", () => {
+  it("defaults are linked with equal request and customer-show limits", () => {
     assert.equal(
       DEFAULT_PRINT_REQUEST_LIMIT_SETTINGS.maxQuantityPerShowPerCustomer,
       PRINT_REQUEST_MAX_QUANTITY_PER_SHOW_PER_CUSTOMER,
     );
     assert.equal(
+      DEFAULT_PRINT_REQUEST_LIMIT_SETTINGS.maxQuantityPerPrintRequest,
+      PRINT_REQUEST_MAX_QUANTITY_PER_SHOW_PER_CUSTOMER,
+    );
+    assert.equal(DEFAULT_PRINT_REQUEST_LIMIT_SETTINGS.linkPrintRequestAndCustomerShowLimits, true);
+    assert.equal(
       DEFAULT_PRINT_REQUEST_LIMIT_SETTINGS.dailyDesignsAddedToRequestsLimit,
       PRINT_REQUEST_DAILY_DESIGNS_ADDED_LIMIT,
     );
-    assert.equal(PRINT_REQUEST_MAX_QUANTITY_PER_SHOW_PER_CUSTOMER, 20);
     assert.equal(printRequestLimitL(DEFAULT_PRINT_REQUEST_LIMIT_SETTINGS), 20);
+    assert.equal(printRequestLimitPerRequest(DEFAULT_PRINT_REQUEST_LIMIT_SETTINGS), 20);
   });
 
-  it("resolve uses L from maxQuantityPerShowPerCustomer; Cap A is not required for L", () => {
+  it("missing new fields fall back to linked sole-L behavior", () => {
     const resolved = resolvePrintRequestLimitSettings({
+      maxQuantityPerShowPerCustomer: 30,
+    });
+    assert.equal(resolved.maxQuantityPerShowPerCustomer, 30);
+    assert.equal(resolved.maxQuantityPerPrintRequest, 30);
+    assert.equal(resolved.linkPrintRequestAndCustomerShowLimits, true);
+    assert.equal(resolved.dailyDesignsAddedToRequestsLimit, 30);
+  });
+
+  it("resolves independent values when unlinked fields are present", () => {
+    const resolved = resolvePrintRequestLimitSettings({
+      maxQuantityPerPrintRequest: 25,
+      maxQuantityPerShowPerCustomer: 30,
+      linkPrintRequestAndCustomerShowLimits: false,
+    });
+    assert.equal(printRequestLimitPerRequest(resolved), 25);
+    assert.equal(printRequestLimitPerCustomerPerShow(resolved), 30);
+    assert.equal(resolved.linkPrintRequestAndCustomerShowLimits, false);
+  });
+
+  it("parse linked save persists equal numerics and mirrors Cap A from request limit", () => {
+    const ok = parsePrintRequestLimitSettingsInput({
+      maxQuantityPerPrintRequest: 25,
+      maxQuantityPerShowPerCustomer: 99,
+      linkPrintRequestAndCustomerShowLimits: true,
+    });
+    assert.deepEqual(ok, {
+      maxQuantityPerPrintRequest: 25,
+      maxQuantityPerShowPerCustomer: 25,
+      linkPrintRequestAndCustomerShowLimits: true,
+      dailyDesignsAddedToRequestsLimit: 25,
+    });
+  });
+
+  it("parse legacy sole-L shape remains valid and linked", () => {
+    const ok = parsePrintRequestLimitSettingsInput({
       maxQuantityPerShowPerCustomer: 25,
     });
-    assert.equal(resolved.maxQuantityPerShowPerCustomer, 25);
-    // Missing Cap A mirrors L for compat display.
-    assert.equal(resolved.dailyDesignsAddedToRequestsLimit, 25);
-    assert.equal(printRequestLimitL(resolved), 25);
-  });
-
-  it("resolve falls back invalid L; keeps valid Cap A only as legacy field", () => {
-    const resolved = resolvePrintRequestLimitSettings({
-      dailyDesignsAddedToRequestsLimit: 40,
-      maxQuantityPerShowPerCustomer: "nope",
+    assert.deepEqual(ok, {
+      maxQuantityPerPrintRequest: 25,
+      maxQuantityPerShowPerCustomer: 25,
+      linkPrintRequestAndCustomerShowLimits: true,
+      dailyDesignsAddedToRequestsLimit: 25,
     });
-    assert.equal(resolved.dailyDesignsAddedToRequestsLimit, 40);
-    assert.equal(
-      resolved.maxQuantityPerShowPerCustomer,
-      PRINT_REQUEST_MAX_QUANTITY_PER_SHOW_PER_CUSTOMER,
-    );
-    assert.equal(printRequestLimitL(resolved), PRINT_REQUEST_MAX_QUANTITY_PER_SHOW_PER_CUSTOMER);
   });
 
-  it("parse requires only L and mirrors into legacy Cap A", () => {
-    assert.equal(parsePrintRequestLimitSettingsInput(null), null);
+  it("parse unlinked requires both fields and preserves independence", () => {
     assert.equal(
       parsePrintRequestLimitSettingsInput({
-        maxQuantityPerShowPerCustomer: 0,
+        maxQuantityPerPrintRequest: 25,
+        linkPrintRequestAndCustomerShowLimits: false,
       }),
       null,
     );
     const ok = parsePrintRequestLimitSettingsInput({
-      maxQuantityPerShowPerCustomer: 25,
+      maxQuantityPerPrintRequest: 25,
+      maxQuantityPerShowPerCustomer: 30,
+      linkPrintRequestAndCustomerShowLimits: false,
     });
     assert.deepEqual(ok, {
-      maxQuantityPerShowPerCustomer: 25,
+      maxQuantityPerPrintRequest: 25,
+      maxQuantityPerShowPerCustomer: 30,
+      linkPrintRequestAndCustomerShowLimits: false,
       dailyDesignsAddedToRequestsLimit: 25,
     });
   });
 
-  it("parse ignores mismatched Cap A and mirrors L", () => {
-    const ok = parsePrintRequestLimitSettingsInput({
-      dailyDesignsAddedToRequestsLimit: 99,
+  it("linked equal values preserve pre-change sole-L enforcement accessors", () => {
+    const resolved = resolvePrintRequestLimitSettings({
+      maxQuantityPerPrintRequest: 25,
       maxQuantityPerShowPerCustomer: 25,
+      linkPrintRequestAndCustomerShowLimits: true,
     });
-    assert.deepEqual(ok, {
-      maxQuantityPerShowPerCustomer: 25,
-      dailyDesignsAddedToRequestsLimit: 25,
-    });
+    assert.equal(printRequestLimitL(resolved), 25);
+    assert.equal(printRequestLimitPerRequest(resolved), 25);
+    assert.equal(printRequestLimitPerCustomerPerShow(resolved), 25);
   });
 });

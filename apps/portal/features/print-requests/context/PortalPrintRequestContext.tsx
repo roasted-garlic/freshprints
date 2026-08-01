@@ -18,6 +18,7 @@ import type { PrintRequestItem } from '@fresh-prints/shared/types/printRequest/p
 import type { PortalPrintRequestListTab } from '@fresh-prints/shared/utils/portalPrintRequestListTabs';
 import type { PrintRequestAllocationTotals } from '@fresh-prints/shared/utils/showAllocationTotals';
 import type { PrintRequestItemSummary } from '@fresh-prints/shared/utils/printRequestItemSummaries';
+import type { PortalCustomerShowSchedule } from '@fresh-prints/shared/utils/portalCustomerShowSchedule';
 import type { CurrentRequestAggregates } from '@fresh-prints/shared/utils/currentRequestAggregates';
 
 import { PortalStartPrintRequestModal } from '../../shared/components/PortalStartPrintRequestModal';
@@ -36,6 +37,7 @@ import type { PortalRequestDesignSummary } from '../hooks/useWorkingCurrentReque
 interface PortalPrintRequestContextValue {
   actionError: string | null;
   allocationTotalsByRequestId: Record<string, PrintRequestAllocationTotals>;
+  schedulesByRequestId: Record<string, PortalCustomerShowSchedule[]>;
   /** Aggregates for the working Current Request (includes optimistic first-add items). */
   currentRequestAggregates: CurrentRequestAggregates;
   /** True when authenticated customer has no working Firestore request yet. */
@@ -86,7 +88,7 @@ interface PortalPrintRequestContextValue {
   /** Empty Current Request items; keeps the same open draft/editing request. */
   clearWorkingRequest: () => Promise<void>;
   isClearingWorkingRequest: boolean;
-  /** Shared working-request limit L for disable gates and situational errors. */
+  /** Shared working-request limit for disable gates and situational errors. */
   workingRequestLimit: PortalWorkingRequestLimitState;
   refreshRequests: (options?: {
     silent?: boolean;
@@ -296,6 +298,7 @@ export function PortalPrintRequestProvider({ children }: { children: ReactNode }
     () => ({
       actionError,
       allocationTotalsByRequestId: printRequests.allocationTotalsByRequestId,
+      schedulesByRequestId: printRequests.schedulesByRequestId,
       currentRequestAggregates: aggregates,
       isVirtualEmptyCurrentRequest,
       continuableRequests: printRequests.continuableRequests,
@@ -355,6 +358,7 @@ export function PortalPrintRequestProvider({ children }: { children: ReactNode }
       seedDesignSummary,
       ensureDesignSummaries,
       printRequests.allocationTotalsByRequestId,
+      printRequests.schedulesByRequestId,
       printRequests.continuableRequests,
       printRequests.createPrintRequest,
       printRequests.error,

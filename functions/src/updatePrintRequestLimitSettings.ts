@@ -24,7 +24,7 @@ export const updatePrintRequestLimitSettings = onCall(
     const parsed = parsePrintRequestLimitSettingsInput(request.data);
     if (!parsed) {
       throw invalidArgument(
-        "maxQuantityPerShowPerCustomer must be a positive integer within allowed bounds.",
+        "Print request limits must include valid maxQuantityPerPrintRequest and maxQuantityPerShowPerCustomer values within allowed bounds.",
       );
     }
 
@@ -33,7 +33,11 @@ export const updatePrintRequestLimitSettings = onCall(
       updatedBy: request.auth.uid,
     };
     await adminDb.collection("settings").doc(PRINT_REQUEST_LIMIT_SETTINGS_DOC_ID).set({
-      ...settings,
+      maxQuantityPerPrintRequest: settings.maxQuantityPerPrintRequest,
+      maxQuantityPerShowPerCustomer: settings.maxQuantityPerShowPerCustomer,
+      linkPrintRequestAndCustomerShowLimits: settings.linkPrintRequestAndCustomerShowLimits,
+      dailyDesignsAddedToRequestsLimit: settings.dailyDesignsAddedToRequestsLimit,
+      updatedBy: settings.updatedBy,
       updatedAt: FieldValue.serverTimestamp(),
     });
     return resolvePrintRequestLimitSettings(settings);

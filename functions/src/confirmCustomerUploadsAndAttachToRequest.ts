@@ -132,7 +132,7 @@ export const confirmCustomerUploadsAndAttachToRequest = onCall(
       const reusedItemIds: string[] = [];
       let printRequestId = "";
       const settings = await loadPrintRequestLimitSettings();
-      const maxPerRequest = settings.maxQuantityPerShowPerCustomer;
+      const maxPerRequest = settings.maxQuantityPerPrintRequest;
 
       await adminDb.runTransaction(async (tx) => {
         const resolved = await resolveOrCreateWorkingPrintRequestInTransaction(tx, {

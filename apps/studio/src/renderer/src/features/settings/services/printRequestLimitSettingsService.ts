@@ -21,14 +21,19 @@ export const printRequestLimitSettingsService = {
   },
 
   async update(settings: PrintRequestLimitSettings): Promise<PrintRequestLimitSettings> {
-    // Server mirrors L into legacy Cap A for one-release rollback.
     const response = await callTracedFunction<
-      { maxQuantityPerShowPerCustomer: number },
+      {
+        maxQuantityPerPrintRequest: number;
+        maxQuantityPerShowPerCustomer: number;
+        linkPrintRequestAndCustomerShowLimits: boolean;
+      },
       PrintRequestLimitSettings
     >("updatePrintRequestLimitSettings", {
       source: "printRequestLimitSettingsService.update",
     })({
+      maxQuantityPerPrintRequest: settings.maxQuantityPerPrintRequest,
       maxQuantityPerShowPerCustomer: settings.maxQuantityPerShowPerCustomer,
+      linkPrintRequestAndCustomerShowLimits: settings.linkPrintRequestAndCustomerShowLimits,
     });
     return resolvePrintRequestLimitSettings(response);
   },

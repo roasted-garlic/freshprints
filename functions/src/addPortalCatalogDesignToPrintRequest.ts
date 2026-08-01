@@ -146,7 +146,7 @@ export const addPortalCatalogDesignToPrintRequest = onCall(
       }
 
       const customerUid = request.auth.uid;
-      const maxPerRequest = settings.maxQuantityPerShowPerCustomer;
+      const maxPerRequest = settings.maxQuantityPerPrintRequest;
       let kind: "created" | "incremented" = "created";
       let itemId = "";
       let quantity = quantityDelta;

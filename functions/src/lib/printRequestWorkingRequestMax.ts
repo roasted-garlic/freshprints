@@ -9,8 +9,9 @@ import { failedPrecondition } from "./errors";
 import { logger } from "firebase-functions";
 
 /**
- * Reject when adding `addCount` would push this working request over `L`
- * (`maxQuantityPerShowPerCustomer`). Same `L` is enforced per customer per show at queue time.
+ * Reject when adding `addCount` would push this working request over
+ * `maxQuantityPerPrintRequest`. Per-customer-per-show cap uses
+ * `maxQuantityPerShowPerCustomer` at queue time.
  */
 export function assertWorkingRequestAllowsPrintAdds(input: {
   currentPrintCount: number;

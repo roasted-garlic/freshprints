@@ -1571,7 +1571,7 @@ appears in the list.
 
 # Show Allocations Collection (Phase 7)
 
-> **Portal per-customer-per-show limit (ADR-FP-102, uniqueness superseded by ADR-FP-122):** Sole limit `L` = `settings/printRequestLimits.maxQuantityPerShowPerCustomer` (max Current Request prints = max per customer per show). `queuePortalPrintRequestToShow` allocates the **entire** Continuable request to exactly one show atomically, or cleanly rejects (no `selections`, no remainder request). A customer may submit **multiple separate print requests** to the same show, accumulating toward `L` (ADR-FP-122) — exactly `L` is allowed, more than `L` is blocked. Studio staff split across shows remains separate.
+> **Portal print limits (ADR-FP-102, amended 2026-07-31; uniqueness superseded by ADR-FP-122):** Working-request max = `maxQuantityPerPrintRequest`; per-customer-per-show cap = `maxQuantityPerShowPerCustomer` (linked by default). `queuePortalPrintRequestToShow` allocates the **entire** Continuable request to exactly one show atomically, or cleanly rejects (no `selections`, no remainder request). A customer may submit **multiple separate print requests** to the same show, accumulating toward the customer-show cap (ADR-FP-122). Studio staff split across shows remains separate.
 
 Allocates some or all of a Print Request item's quantity to a show. A Print Request may be split across
 multiple shows when it exceeds a single show's remaining capacity — the same `printRequestItemId` can
@@ -1806,10 +1806,17 @@ Cutoff math uses absolute Timestamps (`cutoffAt = scheduledStartAt − N hours`)
 
 ```ts
 interface PrintRequestLimitSettings {
-  /** Sole enforced limit L (max Current Request = max per customer per show). */
+  /** Max prints contained in one working print request. */
+  maxQuantityPerPrintRequest: number;
+  /** Max prints one customer may place into one show (sum across their requests). */
   maxQuantityPerShowPerCustomer: number;
   /**
-   * Legacy Cap A field. Mirrored = L on owner save for one-release rollback.
+   * When true (default / absent), both numeric limits stay equal (sole-`L` compat).
+   * Studio may unlink for independent caps.
+   */
+  linkPrintRequestAndCustomerShowLimits: boolean;
+  /**
+   * Legacy Cap A field. Mirrored from request limit on owner save for one-release rollback.
    * Not read or enforced (ADR-FP-102).
    */
   dailyDesignsAddedToRequestsLimit: number;
@@ -1818,11 +1825,13 @@ interface PrintRequestLimitSettings {
 }
 ```
 
-Portal sole print limit `L` (ADR-FP-102). Count = sum of `printRequestItems.quantity`.
-Working-request adds clamp/reject at `L`; queue requires entire request ≤ `L` and full fit on the
-chosen show (show capacity + this customer's cumulative allocated quantity on that show, which may
-now span multiple separate requests — ADR-FP-122). Missing `L` resolves to default **20**.
-Signed-in users may read; writes use `updatePrintRequestLimitSettings` (mirrors `L` into legacy Cap A).
+Portal print limits (ADR-FP-102, amended 2026-07-31). Count = sum of `printRequestItems.quantity`.
+Working-request adds clamp/reject at `maxQuantityPerPrintRequest`; queue requires entire request ≤
+request limit and full fit on the chosen show (show capacity + this customer's cumulative allocated
+quantity on that show against `maxQuantityPerShowPerCustomer`, which may span multiple separate
+requests — ADR-FP-122). Missing fields resolve via `resolvePrintRequestLimitSettings` (default **20**;
+request limit falls back to customer-show when absent).
+Signed-in users may read; writes use `updatePrintRequestLimitSettings` (mirrors request limit into legacy Cap A).
 Bounds: integers 1–10000.
 
 ### `settings/portalHelp`

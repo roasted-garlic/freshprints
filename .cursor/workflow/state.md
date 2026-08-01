@@ -1,41 +1,40 @@
 # Current Goal
-`production-release` (Goal #13) — Stage 2 paused; Assisted library design search slice **SIGNED OFF**
+`production-release` (Goal #13) — Phase G; slice
+`portal-customer-queued-show-schedule-visibility` +
+`portal-print-request-and-customer-show-limit-settings` (source workflow)
 
 Current Mode: managed-phase
-Current Phase: slice signoff complete — await owner direction (Stage 2 or next priority)
+Current Phase: git promote (source)
 Plan Status: complete —
-`docs/workflow/plans/2026-07-31-production-studio-assisted-library-design-search-empty-plan.md`
-Review Status: **approved** —
-`docs/workflow/reviews/2026-07-31-production-studio-assisted-library-design-search-empty-review.md`
+`docs/workflow/plans/2026-07-31-production-portal-show-schedule-and-limit-settings-plan.md`
+Review Status: **approved_with_changes** —
+`docs/workflow/reviews/2026-07-31-production-portal-show-schedule-and-limit-settings-review.md`
 Implement Status: **complete**
-Test Status: **passed**
-Ship Status: **complete**
-Signoff Status: **approved** —
-`docs/workflow/reviews/2026-07-31-production-studio-assisted-library-design-search-empty-signoff.md`
+Test Status: **passed** —
+`docs/workflow/reviews/2026-07-31-production-portal-show-schedule-and-limit-settings-test-report.md`
+Ship Status: pending protected PR (no deploys)
+Signoff Status: pending owner QA after rollouts
+Implementation Review: **approved** —
+`docs/workflow/reviews/2026-07-31-production-portal-show-schedule-and-limit-settings-implementation-review.md`
 DONE: no (Goal #13 continues; Stage 2 paused)
 Human Checkpoint Required: yes
-Human Checkpoint Reason: Await owner authorization for Stage 2 hosted.app smoke, or next Goal #13
-priority. Do not start Stage 2 or domain cutover until authorized.
+Human Checkpoint Reason: Merge protected production PR if agent merge blocked; then authorize rollouts
+  (Functions / Portal App Hosting / Studio installer / settings save) separately. No Stage 2.
 Blocked: no
 Blocker: none
-Allowed Actions: docs; wait for owner direction on Stage 2 / next priority
-Forbidden Actions: resume Stage 2; domain cutover; silent production changes
-Next Required Step: Owner authorizes Stage 2 hosted.app smoke (checklist prepared) or states next
-priority
+Allowed Actions: commit development; open protected PR; docs; wait for owner merge/rollout phrases
+Forbidden Actions: App Hosting / Functions / Rules / index / data deploys; Stage 2; domain; reopen prior PASSes
+Next Required Step: Commit + push development; open protected PR to production; stop for owner merge if needed
 
 Decision Log:
-- 2026-07-31 — Owner authorized production branch promotion via protected PR. Opened
-  https://github.com/roasted-garlic/freshprints/pull/15 (`development` → `production`,
-  MERGEABLE/CLEAN). Agent `gh pr merge` blocked by Cursor production hook — owner must merge
-  PR #15 in GitHub UI to finish branch sync (no new Firebase deploy in this PR).
-- 2026-07-31 — Git cleanup: committed remediations as `7a5c593`, pushed `origin/development`,
-  dropped obsolete stash `wip-before-branding-release`. Working tree clean.
-- 2026-07-31 — Assisted library design search slice **SIGNED OFF** (owner Studio QA **PASS**).
-- 2026-07-31 — Production Studio installer built (SHA-256 `998E875E…C0B7`; embeds `fresh-prints-prod`).
-- 2026-07-31 — Implement complete: browse hook on generated ready-index; Wave C Print Request hook unchanged.
-- 2026-07-31 — Tag-removal / resize / branding / registration slices remain signed off.
+- 2026-07-31 — Implement + tests + Implementation Review **approved** for show-schedule + dual limits.
+  Production `30` was sole `L`; request `25` was cart qty. No separate customer-show field before.
+- 2026-07-31 — Owner authorized full source workflow (no deploys). PR #15 already merged.
+- 2026-07-31 — Formal Review **approved_with_changes**; required changes incorporated.
+- 2026-07-31 — Assisted library / tag-removal / resize / branding / registration PASSes unchanged.
+- 2026-07-31 — Stage 2 / domain remain deferred.
 
-Last Completed Step: **Signoff approved** for Assisted library design search empty slice.
+Last Completed Step: Implementation Review **approved**; automated tests passed.
 
 **Corrected `users/{uid}` field list for any future manual bootstrap:** `id` (string, same as
 document ID / Auth UID), `email` (string), `displayName` (string), `role` (string, `"owner"` for

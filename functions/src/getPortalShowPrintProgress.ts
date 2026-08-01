@@ -131,6 +131,14 @@ export const getPortalShowPrintProgress = onCall(
             ? data.accumulatedPrintMs
             : 0;
 
+        const scheduledStartAt =
+          data.scheduledStartAt &&
+          typeof data.scheduledStartAt === "object" &&
+          "toDate" in data.scheduledStartAt &&
+          typeof (data.scheduledStartAt as { toDate: unknown }).toDate === "function"
+            ? (data.scheduledStartAt as { toDate: () => Date }).toDate().toISOString()
+            : null;
+
         return [
           {
             showId: showSnap.id,
@@ -139,6 +147,7 @@ export const getPortalShowPrintProgress = onCall(
             activePrintStartedAtMs: toMillis(data.activePrintStartedAt),
             printPausedAtMs: toMillis(data.printPausedAt),
             printFinishedAtMs: toMillis(data.printFinishedAt),
+            scheduledStartAt,
           },
         ];
       });

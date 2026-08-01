@@ -19,6 +19,7 @@ export { recordCustomerUploadHalftoneStaffDecision } from "./recordCustomerUploa
 export { restoreCustomerUploadCatalogEligibility } from "./restoreCustomerUploadCatalogEligibility";
 export { retryCustomerUploadProcessing } from "./retryCustomerUploadProcessing";
 export { getPortalShowPrintProgress } from "./getPortalShowPrintProgress";
+export { getPortalPrintRequestShowSchedules } from "./getPortalPrintRequestShowSchedules";
 export { listPortalAllocatableShows } from "./listPortalAllocatableShows";
 export { queuePortalPrintRequestToShow } from "./queuePortalPrintRequestToShow";
 export { removePortalPrintRequestItem } from "./removePortalPrintRequestItem";

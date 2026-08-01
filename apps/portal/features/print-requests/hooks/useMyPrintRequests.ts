@@ -15,9 +15,11 @@ import {
   type PrintRequestAllocationTotals,
 } from '@fresh-prints/shared/utils/showAllocationTotals';
 import type { PrintRequestItemSummary } from '@fresh-prints/shared/utils/printRequestItemSummaries';
+import type { PortalCustomerShowSchedule } from '@fresh-prints/shared/utils/portalCustomerShowSchedule';
 
 import { useAuth } from '../../auth/context/AuthContext';
 import { portalPrintRequestService } from '../services/portalPrintRequestService';
+import { portalShowSelectionService } from '../services/portalShowSelectionService';
 
 export type MyPrintRequestsLoadScope = 'chrome' | 'full';
 
@@ -51,6 +53,9 @@ export function useMyPrintRequests() {
   const [allocationTotalsByRequestId, setAllocationTotalsByRequestId] = useState<
     Record<string, PrintRequestAllocationTotals>
   >({});
+  const [schedulesByRequestId, setSchedulesByRequestId] = useState<
+    Record<string, PortalCustomerShowSchedule[]>
+  >({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [listScope, setListScope] = useState<MyPrintRequestsLoadScope>('chrome');
@@ -61,6 +66,7 @@ export function useMyPrintRequests() {
       setRequests([]);
       setSummariesByRequestId({});
       setAllocationTotalsByRequestId({});
+      setSchedulesByRequestId({});
       setIsLoading(false);
       return;
     }
@@ -90,17 +96,22 @@ export function useMyPrintRequests() {
         setRequests(nextRequests);
         setSummariesByRequestId(buildPrintRequestItemSummaries(items));
         setAllocationTotalsByRequestId({});
+        setSchedulesByRequestId({});
       } else {
         const nextRequests = await portalPrintRequestService.listMyPrintRequests(customer.id);
         const printRequestIds = nextRequests.map((request) => request.id);
-        const [items, allocations] = await Promise.all([
+        const [items, allocations, schedulesByRequestIdResult] = await Promise.all([
           portalPrintRequestService.listPrintRequestItemsForRequests(printRequestIds),
           portalPrintRequestService.listShowAllocationsForPrintRequests(printRequestIds).catch(() => []),
+          portalShowSelectionService
+            .getPrintRequestShowSchedules(printRequestIds)
+            .catch(() => ({} as Record<string, PortalCustomerShowSchedule[]>)),
         ]);
 
         setRequests(nextRequests);
         setSummariesByRequestId(buildPrintRequestItemSummaries(items));
         setAllocationTotalsByRequestId(buildPrintRequestAllocationTotalsByRequestId(allocations));
+        setSchedulesByRequestId(schedulesByRequestIdResult);
       }
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'Unable to load print requests.');
@@ -236,6 +247,7 @@ export function useMyPrintRequests() {
     requestsByTab,
     summariesByRequestId,
     allocationTotalsByRequestId,
+    schedulesByRequestId,
     continuableRequests,
     isLoading,
     error,

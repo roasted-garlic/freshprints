@@ -1,5 +1,17 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-07-31 - Goal #13 show-schedule visibility + dual limit settings — **SOURCE COMPLETE**; await PR merge / rollouts
+
+- Slices: `portal-customer-queued-show-schedule-visibility` +
+  `portal-print-request-and-customer-show-limit-settings`
+- Plan + Formal Review (`approved_with_changes`) + Implementation Review (**approved**)
+- Source: customer schedule via ownership-bounded callables; dual settings with link checkbox
+- **No deploys this pass** (Functions / Portal App Hosting / Studio installer / Rules / settings save gated)
+- Next after production branch merge:
+  `APPROVE PRODUCTION PORTAL APP HOSTING ROLLOUT: CUSTOMER SHOW SCHEDULE VISIBILITY`
+  (plus separate Functions / Studio / settings phrases)
+- Prior PASSes unchanged; Stage 2 / domain still deferred
+
 ## 2026-07-31 - Goal #13 Assisted library design search slice **SIGNED OFF** (owner QA PASS)
 
 - Owner QA: **PASS** (Share a library design empty search on production Studio)
