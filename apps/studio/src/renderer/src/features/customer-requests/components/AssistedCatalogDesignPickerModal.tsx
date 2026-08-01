@@ -7,7 +7,8 @@ import { TextInput } from "../../../shared/components/TextInput";
 import { DesignLibraryModal } from "../../designs/components/DesignLibraryModal";
 import { DesignThumbnailPanel } from "../../designs/components/DesignThumbnailPanel";
 import type { Design } from "../../designs/types/design.types";
-import { useReadyDesignsForSelection } from "../../print-requests/hooks/useReadyDesignsForSelection";
+import { useReadyDesignsForAssistedCatalogPicker } from "../hooks/useReadyDesignsForAssistedCatalogPicker";
+import { assistedCatalogPickerEmptyMessage } from "../utils/assistedCatalogDesignPickerSearch";
 
 interface AssistedCatalogDesignPickerModalProps {
   busy?: boolean;
@@ -17,28 +18,30 @@ interface AssistedCatalogDesignPickerModalProps {
 
 /**
  * Ready-design picker for Assisted library-share — Design Library modal shell + thumbnails.
+ * Browse source: generated Studio ready-index (ADR-FP-120), not ID-only Print Request hook.
  */
 export function AssistedCatalogDesignPickerModal({
   busy = false,
   onCancel,
   onConfirm,
 }: AssistedCatalogDesignPickerModalProps) {
-  const { designs, error, isLoading } = useReadyDesignsForSelection();
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const { designs, catalogCount, error, isLoading, isUnavailable } =
+    useReadyDesignsForAssistedCatalogPicker(query);
 
-  const filtered = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-    if (!needle) {
-      return designs;
-    }
-    return designs.filter((design) => {
-      const title = design.title?.toLowerCase() ?? "";
-      const id = design.id.toLowerCase();
-      return title.includes(needle) || id.includes(needle);
-    });
-  }, [designs, query]);
+  const emptyMessage = useMemo(
+    () =>
+      assistedCatalogPickerEmptyMessage({
+        isLoading,
+        isUnavailable,
+        catalogCount,
+        filteredCount: designs.length,
+        searchQuery: query,
+      }),
+    [catalogCount, designs.length, isLoading, isUnavailable, query],
+  );
 
   const selected = selectedId ? designs.find((design) => design.id === selectedId) : undefined;
 
@@ -106,16 +109,15 @@ export function AssistedCatalogDesignPickerModal({
             {error}
           </p>
         ) : null}
-        {isLoading ? <p className="design-library-tag-filter-empty">Loading ready designs…</p> : null}
-        {!isLoading && filtered.length === 0 ? (
-          <p className="design-library-tag-filter-empty">No ready designs match that search.</p>
+        {emptyMessage && !error ? (
+          <p className="design-library-tag-filter-empty">{emptyMessage}</p>
         ) : null}
 
         <ul
           aria-label="Ready catalog designs"
           className="customer-requests-assisted-catalog-picker-list"
         >
-          {filtered.slice(0, 80).map((design) => {
+          {designs.map((design) => {
             const isSelected = design.id === selectedId;
             return (
               <li key={design.id}>

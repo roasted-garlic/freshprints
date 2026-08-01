@@ -18,7 +18,7 @@
     "build:studio": "npm run build --workspace @fresh-prints/studio",
     "build:portal": "npm run build --workspace @fresh-prints/portal",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "test:rules": "firebase emulators:exec --only firestore,storage \"npx tsx --test tests/firebase/catalogSnapshot.rules.test.ts tests/firebase/studioProductionTimer.rules.test.ts tests/firebase/printRequestCompletion.rules.test.ts\""
+    "test:rules": "firebase emulators:exec --only firestore,storage \"npx tsx --test tests/firebase/catalogSnapshot.rules.test.ts tests/firebase/studioProductionTimer.rules.test.ts tests/firebase/printRequestCompletion.rules.test.ts tests/firebase/printRequestItemResize.rules.test.ts\""
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^5.0.1",

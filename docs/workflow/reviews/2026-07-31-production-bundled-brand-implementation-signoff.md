@@ -36,8 +36,8 @@ checkpoints.
 | `APPROVE BRAND ASSET MAPPING` | obtained (prior) |
 | `APPROVE BUNDLED BRAND ASSET IMPLEMENTATION` | obtained |
 | Owner visual QA | **PASS** |
-| Production Studio installer | **pending** |
-| Production Portal App Hosting branding | **pending** |
+| Production Studio installer | **executed** 2026-07-31 — see release checkpoint |
+| Production Portal App Hosting branding | **executed** 2026-07-31 — see release checkpoint |
 
 ---
 

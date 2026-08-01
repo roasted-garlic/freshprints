@@ -431,9 +431,9 @@ two Firestore composite indexes) was not justified by a benefit that, in practic
 
 | Field | Value |
 |-------|-------|
-| Date | 2026-07-23 (amended 2026-07-24: AI budget and targeted card overrides) |
-| Status | accepted; dev deployment/initial publication pending owner approval |
-| Related | `firestore-usage-efficiency-wave-c` |
+| Date | 2026-07-23 (amended 2026-07-24: AI budget and targeted card overrides; amended 2026-07-31: failed-publish recovery) |
+| Status | accepted; production Functions recovery deploy pending owner approval |
+| Related | `firestore-usage-efficiency-wave-c`; `production-portal-catalog-tag-removal-publication` |
 | Target | Functions, Storage, Portal catalog, AI enrichment |
 
 **Decision**
@@ -443,7 +443,9 @@ two Firestore composite indexes) was not justified by a benefit that, in practic
 2. AI taxonomy is Admin-only. The client taxonomy and Portal catalog projections are public
    read-only and contain allowlisted customer-safe fields.
 3. Two denied-to-clients coordination documents fence and coalesce rebuilds. Relevant mutation
-   triggers debounce 15 seconds, lease for 10 minutes, and run at most two passes.
+   triggers debounce 15 seconds, lease for 10 minutes, and run a bounded catch-up loop (default
+   three passes) that continues through lease-busy and transient Storage/`FetchError` failures
+   instead of abandoning a higher `requestedGeneration`.
 4. AI enrichment consumes one parsed snapshot per warm instance/version, with one shared,
    five-minute Firestore fallback when an asset is absent or invalid.
 5. Portal Discover uses one generated object. Search/multi-tag uses generated ID shards and only
@@ -494,6 +496,26 @@ Fresh Prints Dev's real approved-tag corpus (~1,122 tags, 18 categories), measur
 See `docs/project/RISK_REGISTER.md` R-013 and
 `docs/workflow/reviews/2026-07-23-firestore-usage-efficiency-wave-c-dev-deployment-checkpoint.md`
 for the full measurement, diagnosis, and test evidence.
+
+**Amendment 2026-07-31 — Durable recovery for failed portal-catalog publication (R-017)**
+
+Production evidence showed a ready-design tag removal correctly dirtied portal-catalog generation 9
+(`index-filter`), but Storage/`FetchError` left `requestedGeneration=9` / `publishedGeneration=8` /
+`status=failed`. Portal kept serving generation 8 assets that still listed the removed tag. Category
+looked correct only because generation 8 already reflected the new category.
+
+Recovery (preserving ADR-FP-120 architecture — no Portal Firestore catalog workaround):
+
+1. Bounded retries with backoff on transient Storage I/O (`FetchError`, common network codes).
+2. Catch-up loop no longer early-returns on `snapshot-publication-lease-active`; lease-busy and
+   transient failures continue until the pass limit or a fatal error.
+3. Owner/admin callable `retryPortalCatalogPublication` drains an existing dirty watermark **without**
+   bumping `requestedGeneration` (narrower than `rebuildCatalogSnapshots`).
+4. Tag/category edits remain `index-filter` full republish; card-only path stays forbidden for those
+   fields.
+
+See `docs/project/RISK_REGISTER.md` R-017 and
+`docs/workflow/reviews/2026-07-31-production-portal-catalog-tag-removal-publication-implement-checkpoint.md`.
 
 ---
 

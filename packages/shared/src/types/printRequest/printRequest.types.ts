@@ -84,4 +84,9 @@ export interface PrintRequestItem {
   completedAt?: Timestamp;
   createdAt: Timestamp;
   updatedAt: Timestamp;
+  /**
+   * Server-only Wave C idempotency marker (`onPrintRequestItemCreated`).
+   * Clients must not set or clear it. Not production status.
+   */
+  requestCountApplied?: boolean;
 }

@@ -1,5 +1,188 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-07-31 - Goal #13 Assisted library design search slice **SIGNED OFF** (owner QA PASS)
+
+- Owner QA: **PASS** (Share a library design empty search on production Studio)
+- Signoff: `docs/workflow/reviews/2026-07-31-production-studio-assisted-library-design-search-empty-signoff.md` (**approved**)
+- Installer: `Fresh Prints-Windows-0.0.0-Setup-assisted-library-search.exe` (SHA-256 `998E875E…C0B7`)
+- Goal #13 continues — **do not** start Stage 2 or custom-domain cutover until owner authorizes
+- Next: owner authorizes Stage 2 hosted.app smoke (checklist prepared) or states next priority
+- Tag-removal + resize + branding + registration PASSes unchanged; Stage 1 + Class D unchanged
+
+## 2026-07-31 - Goal #13 Assisted library design search — installer **BUILT**; await owner QA
+
+- Phrase: `APPROVE PRODUCTION STUDIO INSTALLER: ASSISTED LIBRARY DESIGN SEARCH FIX`
+- Installer: `apps/studio/release/0.0.0/Fresh Prints-Windows-0.0.0-Setup-assisted-library-search.exe`
+- Size 106,242,754 bytes; SHA-256 `998E875E885D2BCE7D96A0C16FE69092960DE6520D13B4E55EBC791651FDC0B7`
+- Embeds `fresh-prints-prod` (verified in asar); `.env.local` remains `fresh-prints-dev`
+- Checkpoint: `docs/workflow/reviews/2026-07-31-production-studio-assisted-library-design-search-empty-installer-checkpoint.md`
+- **Owner next:** install + QA Share-a-library-design → `PASS` / `FAIL: …` / `PASS WITH NOTES: …`
+- Stage 2 still separately gated
+
+## 2026-07-31 - Goal #13 Assisted library design search — **IMPLEMENTED** (repo); await Studio ship
+
+- Slice: `production-studio-assisted-library-design-search-empty`
+- Owner phrase: `APPROVE STUDIO ASSISTED LIBRARY DESIGN SEARCH FIX IMPLEMENTATION`
+- Fix: picker uses `useReadyDesignsForAssistedCatalogPicker` (generated ready-index + fallback);
+  no longer calls ID-less `useReadyDesignsForSelection`
+- Tests: 20/20; eslint clean on touched files; Studio build exit 0 (local only)
+- Checkpoint: `docs/workflow/reviews/2026-07-31-production-studio-assisted-library-design-search-empty-implement-checkpoint.md`
+- **Owner next:** `APPROVE PRODUCTION STUDIO INSTALLER: ASSISTED LIBRARY DESIGN SEARCH FIX`
+- Then owner Studio QA; Stage 2 still separately gated
+- Tag-removal / resize / branding / registration PASSes unchanged
+
+## 2026-07-31 - Goal #13 Assisted library design search empty — Plan + Formal Review **approved**
+
+- Slice: `production-studio-assisted-library-design-search-empty`
+- Root cause: Wave C narrowed `useReadyDesignsForSelection` to selected IDs only;
+  `AssistedCatalogDesignPickerModal` still calls it with **no IDs** → always empty list
+  (including empty search → “No ready designs match that search.”)
+- Not: missing ready designs, suggest callable, indexes, or catalog rebuild
+- Prod ready design exists (prefix `s9Yi7i8u…`); `staffSuggestAssistedCreationCatalogDesign` is live but is **send-only**
+- Incident: `docs/workflow/reviews/2026-07-31-production-studio-assisted-library-design-search-empty-incident.md`
+- Plan: `docs/workflow/plans/2026-07-31-production-studio-assisted-library-design-search-empty-plan.md`
+- Formal Review: **approved** —
+  `docs/workflow/reviews/2026-07-31-production-studio-assisted-library-design-search-empty-review.md`
+- **Owner next:** `APPROVE STUDIO ASSISTED LIBRARY DESIGN SEARCH FIX IMPLEMENTATION`
+- Do **not** implement/deploy/modify production data/resume Stage 2 until that phrase
+- Tag-removal / resize / branding / registration PASSes unchanged
+
+## 2026-07-31 - Goal #13 catalog tag-removal publication slice **SIGNED OFF** (owner QA PASS)
+
+- Owner QA: **PASS** (Portal tag-removal surfaces after generation-9 catch-up)
+- Signoff: `docs/workflow/reviews/2026-07-31-production-portal-catalog-tag-removal-publication-signoff.md` (**approved**)
+- Production: Functions live; catch-up published portal-catalog gen **9**; R-017 closed
+- Goal #13 continues — **do not** start Stage 2 or custom-domain cutover until owner authorizes
+- Next: owner authorizes Stage 2 hosted.app smoke (checklist prepared) or states next priority
+- Resize + branding + registration PASSes unchanged; Stage 1 + Class D unchanged
+
+## 2026-07-31 - Goal #13 catalog tag-removal publication — catch-up **COMPLETE**; await Portal QA
+
+- Slice: `production-portal-catalog-tag-removal-publication`
+- Phrase: `APPROVE PRODUCTION PORTAL CATALOG PUBLICATION CATCH-UP: RETRY` — executed
+- Callable `retryPortalCatalogPublication` on `fresh-prints-prod` →
+  `publishedGeneration=9`, `requestedGeneration=9`, `status=idle` (~5.8s)
+- Live assets: manifest gen **9** (`9-ebbc2bff6074f3c5`); discover tags **`funny` only**;
+  sarcastic filter 404 / facet funny-only
+- Checkpoint: `docs/workflow/reviews/2026-07-31-production-portal-catalog-tag-removal-publication-catchup-checkpoint.md`
+- **Owner next:** Portal QA → `PASS` / `FAIL: …` / `PASS WITH NOTES: …`
+- Stage 2 still separately gated
+
+## 2026-07-31 - Goal #13 catalog tag-removal publication — Functions **LIVE** (dev + prod); await catch-up
+
+- Slice: `production-portal-catalog-tag-removal-publication`
+- Phrases: both Functions deploy approvals received and executed
+- Deployed (scoped): `onCategorySnapshotSourceWritten`, `onPortalCatalogSnapshotSourceWritten`,
+  `onTagSnapshotSourceWritten`, `rebuildCatalogSnapshots`, **`retryPortalCatalogPublication` (created)**
+- Projects: `fresh-prints-dev` + `fresh-prints-prod` — both exit 0
+- Checkpoint: `docs/workflow/reviews/2026-07-31-production-portal-catalog-tag-removal-publication-functions-deploy-checkpoint.md`
+- **Owner next:** `APPROVE PRODUCTION PORTAL CATALOG PUBLICATION CATCH-UP: RETRY`
+  (fallback: `APPROVE PRODUCTION PORTAL CATALOG PUBLICATION CATCH-UP: REBUILD`)
+- Then owner Portal QA; Stage 2 still separately gated
+- Prod coordination still expected stuck until catch-up succeeds
+
+## 2026-07-31 - Goal #13 catalog tag-removal publication — **IMPLEMENTED** (repo); await Functions deploy
+
+- Slice: `production-portal-catalog-tag-removal-publication`
+- Owner phrase received: `APPROVE PORTAL CATALOG TAG REMOVAL PUBLICATION FIX IMPLEMENTATION`
+- Code: Storage I/O retries; catch-up loop continues on lease-busy/transient `FetchError`;
+  callable `retryPortalCatalogPublication` (no dirty bump); ADR-FP-120 amendment; R-017
+- Tests: `publicationRecovery.test.ts` + classifier suite — 19/19; `functions` build exit 0
+- Checkpoint: `docs/workflow/reviews/2026-07-31-production-portal-catalog-tag-removal-publication-implement-checkpoint.md`
+- Test report: `docs/workflow/reviews/2026-07-31-production-portal-catalog-tag-removal-publication-test-report.md`
+- **Owner next:** `APPROVE PRODUCTION FUNCTIONS DEPLOY: PORTAL CATALOG TAG REMOVAL PUBLICATION FIX`
+  (optional: `APPROVE DEV FUNCTIONS DEPLOY: PORTAL CATALOG TAG REMOVAL PUBLICATION FIX` first)
+- Then catch-up: prefer `APPROVE PRODUCTION PORTAL CATALOG PUBLICATION CATCH-UP: RETRY`
+  (fallback rebuild phrase in checkpoint — not silent)
+- Then owner Portal QA; Stage 2 still separately gated
+- Prod coordination remains stuck until deploy + catch-up
+
+## 2026-07-31 - Goal #13 catalog tag-removal publication — Plan + Formal Review **approved**
+
+- Slice: `production-portal-catalog-tag-removal-publication`
+- Root cause: Studio/Firestore tag removal succeeded; portal-catalog **generation 9 republish failed**
+  (`FetchError`, `status=failed`, `requestedGeneration=9` / `publishedGeneration=8`) so Portal still
+  serves generation 8 cards/filters/facets/search containing the removed tag. Category looked correct
+  because gen 8 already had the new category.
+- Incident: `docs/workflow/reviews/2026-07-31-production-portal-catalog-tag-removal-publication-incident.md`
+- Plan: `docs/workflow/plans/2026-07-31-production-portal-catalog-tag-removal-publication-plan.md`
+- Formal Review: **approved** —
+  `docs/workflow/reviews/2026-07-31-production-portal-catalog-tag-removal-publication-review.md`
+- **Owner next:** `APPROVE PORTAL CATALOG TAG REMOVAL PUBLICATION FIX IMPLEMENTATION`
+- Do **not** implement/deploy/`rebuildCatalogSnapshots`/resume Stage 2 until that phrase
+- Note: prod portal-catalog coordination remains **failed/stuck** until post-implement catch-up republish
+
+## 2026-07-31 - Goal #13 resize permission slice **SIGNED OFF** (owner QA PASS)
+
+- Owner QA: **PASS** (Studio + Portal catalog item resize after Rules deploy)
+- Signoff: `docs/workflow/reviews/2026-07-31-production-portal-request-item-resize-permission-signoff.md` (**approved**)
+- Production Rules live on `fresh-prints-prod` (`requestCountApplied` allowlisted + immutable)
+- Goal #13 continues — **do not** start Stage 2 or custom-domain cutover until owner authorizes
+- Next: owner authorizes Stage 2 hosted.app smoke (checklist prepared) or states next priority
+- Branding + registration PASSes unchanged; Stage 1 + Class D unchanged
+
+## 2026-07-31 - Goal #13 resize permission Rules **LIVE on production** — owner QA pending
+
+- Deploy: `firebase deploy --only firestore:rules --project fresh-prints-prod` → **released**
+- Approval: `APPROVE PRODUCTION FIRESTORE RULES DEPLOY: REQUEST ITEM RESIZE PERMISSION`
+- Checkpoint: `docs/workflow/reviews/2026-07-31-production-portal-request-item-resize-permission-rules-deploy-checkpoint.md`
+- **Owner next:** QA catalog item width/height autosave on **Studio and Portal** → `PASS` / `FAIL` / `PASS WITH NOTES`
+- Stage 2 still paused; domain deferred; branding + registration PASSes unchanged
+
+## 2026-07-31 - Goal #13 resize permission **IMPLEMENTED** (repo) — await Rules deploy
+
+- `requestCountApplied` added to `printRequestItemRequiredFieldsValid` + client-immutable on staff/customer updates
+- Automated: alignment 4/4; `npm run test:rules` 56/56
+- Checkpoint: `docs/workflow/reviews/2026-07-31-production-portal-request-item-resize-permission-implement-checkpoint.md`
+- **Owner next:** `APPROVE PRODUCTION FIRESTORE RULES DEPLOY: REQUEST ITEM RESIZE PERMISSION`
+  (optional: `APPROVE DEV FIRESTORE RULES DEPLOY: REQUEST ITEM RESIZE PERMISSION` first)
+- Then owner QA Studio + Portal catalog item resize; Stage 2 still paused until separately authorized
+- No Portal/Studio runtime change; no Functions change; no data migration
+
+## 2026-07-31 - Goal #13 resize permission slice — Plan + Formal Review **approved** (Studio + Portal)
+
+- Slice: `production-portal-request-item-resize-permission`
+- Root cause: catalog `printRequestItems` stamped with `requestCountApplied: true` by
+  `onPrintRequestItemCreated`, but `firestore.rules` `printRequestItemRequiredFieldsValid`
+  `keys().hasOnly` omits that field → staff (Studio) and customer (Portal) size `updateDoc` deny
+- Plan: `docs/workflow/plans/2026-07-31-production-portal-request-item-resize-permission-plan.md`
+- Formal Review: **approved** —
+  `docs/workflow/reviews/2026-07-31-production-portal-request-item-resize-permission-review.md`
+- **Owner next:** `APPROVE PORTAL REQUEST ITEM RESIZE PERMISSION FIX IMPLEMENTATION`
+- Do **not** implement/deploy/resume Stage 2 until that phrase
+- Branding + registration PASSes unchanged; Stage 1 + Class D unchanged; domain deferred
+
+## 2026-07-31 - Goal #13 bundled brand production slice **SIGNED OFF** (owner QA PASS)
+
+- Owner QA: **PASS** (Studio installer + hosted Portal branding)
+- Signoff: docs/workflow/reviews/2026-07-31-production-bundled-brand-studio-and-portal-release-signoff.md (**approved**)
+- Production: PR #14 / c837b5; Portal rollout uild-2026-07-31-005; revision resh-prints-portal-build-2026-07-31-005
+- Installer: Fresh Prints-Windows-0.0.0-Setup-bundled-brand.exe (SHA-256 E47B1776…8D65)
+- Automatic App Hosting rollouts remain **disabled**
+- Goal #13 continues — **do not** start Stage 2 or custom-domain cutover until owner authorizes
+- Next: owner authorizes Stage 2 hosted.app smoke (checklist prepared) or states next priority
+
+## 2026-07-31 - Goal #13 bundled brand **LIVE** (Studio installer + Portal) — owner QA pending
+
+Dual production release executed after both owner phrases:
+
+- `APPROVE PRODUCTION STUDIO INSTALLER: BUNDLED BRAND ASSETS`
+- `APPROVE PRODUCTION PORTAL APP HOSTING ROLLOUT: BUNDLED BRAND ASSETS`
+
+| Item | Value |
+|------|-------|
+| Implement | `f0f555a` |
+| Production merge | PR #14 → `ac837b5d6a69237b68b91d8ed837d465fc94d2af` |
+| Studio installer | `Fresh Prints-Windows-0.0.0-Setup-bundled-brand.exe` in `apps/studio/release/0.0.0/`; 106,245,714 bytes; SHA-256 `E47B1776C6FA2FBA489094DB11EDA93BAD86C15AC9D8432F264291A6B3898D65`; embeds `fresh-prints-prod` |
+| Portal rollout | `build-2026-07-31-005` **SUCCEEDED**; revision `fresh-prints-portal-build-2026-07-31-005` |
+| Hosted URL | https://fresh-prints-portal--fresh-prints-prod.us-central1.hosted.app |
+| Automatic rollouts | remain **disabled** |
+| Checkpoint | `docs/workflow/reviews/2026-07-31-production-bundled-brand-studio-and-portal-release-checkpoint.md` |
+
+Confirmed unchanged this pass: Functions, Rules, indexes, Auth, Storage, production data, DNS, custom domain.
+
+**Owner next:** QA both products → `PASS` / `FAIL` / `PASS WITH NOTES`. Do **not** start Stage 2 or custom-domain cutover until branding QA clears (or owner resequences).
+
 ## 2026-07-31 — Goal #13 Portal registration owner QA **FAIL** after App Hosting rollout
 
 Exact FAIL:

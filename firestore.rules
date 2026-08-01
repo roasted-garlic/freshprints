@@ -144,7 +144,9 @@ service cloud.firestore {
         && request.resource.data.createdAt == resource.data.createdAt
         && optionalFieldUnchanged("printedAt")
         && optionalFieldUnchanged("printedBy")
-        && optionalFieldUnchanged("completedAt");
+        && optionalFieldUnchanged("completedAt")
+        // Wave C Admin idempotency marker — clients must not set/clear it.
+        && optionalFieldUnchanged("requestCountApplied");
     }
 
     function isOwnerOrAdmin() {
@@ -538,7 +540,9 @@ service cloud.firestore {
           "printedBy",
           "completedAt",
           "createdAt",
-          "updatedAt"
+          "updatedAt",
+          // Server-only Wave C idempotency marker (onPrintRequestItemCreated).
+          "requestCountApplied"
         ])
         && data.id is string
         && data.id.size() > 0
@@ -560,6 +564,7 @@ service cloud.firestore {
         && isOptionalTimestamp(data, "completedAt")
         && data.createdAt is timestamp
         && data.updatedAt is timestamp
+        && isOptionalBool(data, "requestCountApplied")
         && (
           (
             isCatalogPrintRequestItem(data)
@@ -1171,6 +1176,7 @@ service cloud.firestore {
         && request.resource.data.addedBy == resource.data.addedBy
         && request.resource.data.createdAt == resource.data.createdAt
         && request.resource.data.updatedAt is timestamp
+        && optionalFieldUnchanged("requestCountApplied")
         && printRequestParentExists(request.resource.data.printRequestId)
         && (
           isUploadPrintRequestItem(resource.data)
