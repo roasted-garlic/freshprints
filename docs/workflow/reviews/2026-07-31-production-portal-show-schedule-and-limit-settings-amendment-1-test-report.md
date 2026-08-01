@@ -18,4 +18,3 @@
 The first build attempt encountered `.next/trace` locked by the running development Portal. Only the verified Portal dev processes were stopped; the same build then passed. No backend source changed, so no Functions rebuild or deployment was required for Amendment 1.
 
 Authenticated owner-request browser E2E remains unclaimed because no browser session was available.
-

@@ -21,4 +21,3 @@ The defect is demonstrated by current source, not inferred from the predeploymen
 ## Verdict rationale
 
 **approved_with_changes**. Implementation may proceed only with the five requirements above. No backend authorization, Rules, or production action is approved.
-
