@@ -24,10 +24,12 @@ Next Required Step: Owner authorizes Stage 2 hosted.app smoke (checklist prepare
 priority
 
 Decision Log:
+- 2026-07-31 — Owner authorized production branch promotion via protected PR. Opened
+  https://github.com/roasted-garlic/freshprints/pull/15 (`development` → `production`,
+  MERGEABLE/CLEAN). Agent `gh pr merge` blocked by Cursor production hook — owner must merge
+  PR #15 in GitHub UI to finish branch sync (no new Firebase deploy in this PR).
 - 2026-07-31 — Git cleanup: committed remediations as `7a5c593`, pushed `origin/development`,
-  dropped obsolete stash `wip-before-branding-release`. Working tree clean. Production branch
-  promote (`development` → `production` / `origin/production`) blocked by Cursor production
-  hook — needs explicit owner authorization to merge/push.
+  dropped obsolete stash `wip-before-branding-release`. Working tree clean.
 - 2026-07-31 — Assisted library design search slice **SIGNED OFF** (owner Studio QA **PASS**).
 - 2026-07-31 — Production Studio installer built (SHA-256 `998E875E…C0B7`; embeds `fresh-prints-prod`).
 - 2026-07-31 — Implement complete: browse hook on generated ready-index; Wave C Print Request hook unchanged.
