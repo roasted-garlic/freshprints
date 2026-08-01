@@ -1,5 +1,12 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-08-01 - Production Studio dual-limit Settings installer READY
+
+- Built from exact production commit `11960852f45f948e37a1a5aeb3b09699882cd1fd`.
+- Installer: `apps/studio/release/0.0.0/Fresh Prints-Windows-0.0.0-Setup-dual-limit-settings.exe`; 106,249,514 bytes; SHA-256 `294EC213F811010D61EA4028ACF9185BC8DDEA3426530F242346ED9FC3AB0BE9`.
+- Focused tests 38/38, Studio TypeScript, lint, production build/packaging, branding/icon/config/dev-only gates, and whitespace checks passed.
+- Not installed; production settings and all deployment surfaces unchanged. Next: `CONTINUE WORKFLOW: PRODUCTION OWNER QA DUAL LIMIT SETTINGS`.
+
 ## 2026-08-01 - Customer show-schedule visibility SIGNED OFF (owner QA PASS)
 
 - Production build `build-2026-08-01-001`, revision `fresh-prints-portal-build-2026-08-01-001`, commit `11960852f45f948e37a1a5aeb3b09699882cd1fd`.

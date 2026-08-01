@@ -1073,3 +1073,9 @@ See `CURRENT-STATE.md` for live status.
 - Owner QA tests 1–9: **PASS** on App Hosting build `build-2026-08-01-001` / revision `fresh-prints-portal-build-2026-08-01-001`.
 - Cards, tabs, lifecycle details, refresh/navigation, queue refresh, multi-show, privacy, and limit-callout sanity passed.
 - Slice signoff approved; dual-limit Studio Settings and production settings save remain separate checkpoints.
+
+# 2026-08-01 — Production Studio dual-limit Settings installer
+
+- Exact production source `11960852f45f948e37a1a5aeb3b09699882cd1fd`; focused tests 38/38 and Studio production package passed.
+- Verified production Firebase config, dual-limit UI, official branding/icons, and production exclusion gates for Test Data Reset / Catalog Storage Inventory.
+- Installer ready at `apps/studio/release/0.0.0/Fresh Prints-Windows-0.0.0-Setup-dual-limit-settings.exe`; owner QA pending; no settings change.

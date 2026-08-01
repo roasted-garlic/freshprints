@@ -4,7 +4,7 @@
 `portal-print-request-and-customer-show-limit-settings` (source workflow)
 
 Current Mode: managed-phase
-Current Phase: production Studio installer build for dual-limit Settings
+Current Phase: production owner QA for dual-limit Studio Settings
 Plan Status: complete —
 `docs/workflow/plans/2026-07-31-production-portal-show-schedule-and-limit-settings-amendment-1-plan.md`
 Review Status: **approved_with_changes** —
@@ -17,14 +17,16 @@ Signoff Status: customer schedule visibility **approved**; dual-limit Studio/set
 Implementation Review: **approved** —
 `docs/workflow/reviews/2026-07-31-production-portal-show-schedule-and-limit-settings-implementation-review.md`
 DONE: no (Goal #13 continues; Stage 2 paused)
-Human Checkpoint Required: no (owner authorized installer build only; installation/settings save remain gated)
+Human Checkpoint Required: yes
+Human Checkpoint Reason: owner must install and QA the verified Studio installer; settings save remains separately gated
 Blocked: no
 Blocker: none
-Allowed Actions: build/verify one production Studio installer; docs; no install
+Allowed Actions: docs; owner installation/QA guidance; read-only verification
 Forbidden Actions: further deploys; production actions; Rules/index/data/settings changes; Stage 2; domain
-Next Required Step: Build and verify production Studio installer from `1196085`; stop before installation/settings save
+Next Required Step: Await `CONTINUE WORKFLOW: PRODUCTION OWNER QA DUAL LIMIT SETTINGS`
 
 Decision Log:
+- 2026-08-01 — Production Studio installer built from exact `1196085`; tests/build/icon/branding/prod config/dev-only UI gates verified. Owner QA pending; settings unchanged.
 - 2026-08-01 — Owner QA tests 1–9 PASS; customer schedule visibility slice signed off **approved**.
   Automatic rollouts disabled; domain deferred; dual-limit Studio/settings remain pending.
 - 2026-08-01 — Portal commit `1196085` rolled out manually to production App Hosting as
