@@ -14,10 +14,7 @@ import {
   resolvePortalPrintProgressStage,
   type PortalPrintProgressStage,
 } from '@fresh-prints/shared/utils/portalPrintProgressStage';
-import {
-  buildPortalCustomerShowSchedulesFromAllocations,
-  formatPortalCustomerShowScheduleLabel,
-} from '@fresh-prints/shared/utils/portalCustomerShowSchedule';
+import { formatPortalCustomerShowScheduleLabel } from '@fresh-prints/shared/utils/portalCustomerShowSchedule';
 import { sumPrintRequestItemQuantities } from '@fresh-prints/shared/utils/portalShowQueueCapacity';
 import {
   sumAllocatedQuantityByItemId,
@@ -25,6 +22,7 @@ import {
 } from '@fresh-prints/shared/utils/portalShowQueueFit';
 import { PortalPrintRequestItemCard } from '../../../../features/print-requests/components/PortalPrintRequestItemCard';
 import { PortalPrintRequestProgressPanel } from '../../../../features/print-requests/components/PortalPrintRequestProgressPanel';
+import { PortalPrintRequestScheduleSection } from '../../../../features/print-requests/components/PortalPrintRequestScheduleSection';
 import {
   PortalQueueToShowModal,
   type PortalQueueToShowResult,
@@ -34,6 +32,7 @@ import { usePortalPrintRequests } from '../../../../features/print-requests/cont
 import { useAddDesignToRequestFlow } from '../../../../features/print-requests/hooks/useAddDesignToRequestFlow';
 import { usePrintRequestDetail } from '../../../../features/print-requests/hooks/usePrintRequestDetail';
 import { usePortalShowPrintProgress } from '../../../../features/print-requests/hooks/usePortalShowPrintProgress';
+import { usePortalPrintRequestShowSchedules } from '../../../../features/print-requests/hooks/usePortalPrintRequestShowSchedules';
 import {
   portalPrintRequestService,
   printRequestItemHasCustomerUpload,
@@ -296,6 +295,10 @@ export default function PrintRequestDetailView() {
     persistedProgressStage,
   );
   const printProgress = usePortalShowPrintProgress(printRequestId, preLiveAuthority.pollingEnabled);
+  const {
+    reload: reloadRequestSchedules,
+    schedules: requestSchedules,
+  } = usePortalPrintRequestShowSchedules(printRequestId);
   const mountedAuthority = resolvePortalMountedProgressAuthority(
     preLiveAuthority.stage,
     persistedProgressStage,
@@ -305,20 +308,8 @@ export default function PrintRequestDetailView() {
   progressWatermarkRef.current.stage = progressStage;
   const scheduledShowLabels = useMemo(
     () =>
-      buildPortalCustomerShowSchedulesFromAllocations(
-        printProgress.shows.map((show) => ({
-          upcomingShowId: show.showId,
-          allocatedQuantity: 1,
-          status: 'queued',
-        })),
-        new Map(
-          printProgress.shows.map((show) => [
-            show.showId,
-            { scheduledStartAt: show.scheduledStartAt },
-          ]),
-        ),
-      ).map((schedule) => formatPortalCustomerShowScheduleLabel(schedule)),
-    [printProgress.shows],
+      requestSchedules.map((schedule) => formatPortalCustomerShowScheduleLabel(schedule)),
+    [requestSchedules],
   );
   const hasAttachedDesigns = items.length > 0;
 
@@ -335,6 +326,7 @@ export default function PrintRequestDetailView() {
       reconcileQueuedRequest(printRequestId, {
         totalAllocatedQuantity: result.totalAllocatedQuantity,
       });
+      void reloadRequestSchedules();
       setUnallocatedQuantity(0);
       resetWorkingCart();
       closeCurrentRequestDrawer();
@@ -345,6 +337,7 @@ export default function PrintRequestDetailView() {
       reconcileQueued,
       reconcileQueuedRequest,
       resetWorkingCart,
+      reloadRequestSchedules,
     ],
   );
 
@@ -473,6 +466,10 @@ export default function PrintRequestDetailView() {
           }
           waitingLabel={printProgress.statusHeadline}
         />
+      ) : scheduledShowLabels.length > 0 ? (
+        <section className="portal-panel" aria-label="Scheduled shows">
+          <PortalPrintRequestScheduleSection labels={scheduledShowLabels} />
+        </section>
       ) : null}
 
       {isEditable ? <PrintRequestDetailGuide /> : null}
