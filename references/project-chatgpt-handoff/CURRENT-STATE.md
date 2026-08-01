@@ -1,5 +1,12 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-08-01 - Customer show-schedule visibility SIGNED OFF (owner QA PASS)
+
+- Production build `build-2026-08-01-001`, revision `fresh-prints-portal-build-2026-08-01-001`, commit `11960852f45f948e37a1a5aeb3b09699882cd1fd`.
+- Owner reported tests 1–9 PASS across cards/tabs/statuses/details, navigation persistence, queue lifecycle, multi-show behavior, privacy, and limit-callout sanity.
+- Signoff: `docs/workflow/reviews/2026-08-01-production-customer-show-schedule-visibility-signoff.md` (**approved**, schedule slice only).
+- Automatic rollouts disabled; domain deferred. Dual-limit Studio Settings installer/QA and production settings save remain pending.
+
 ## 2026-08-01 - Goal #13 customer schedule + dual-limit Portal LIVE; owner QA pending
 
 - Manual App Hosting rollout pinned to production merge `11960852f45f948e37a1a5aeb3b09699882cd1fd`.

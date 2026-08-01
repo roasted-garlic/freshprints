@@ -4,7 +4,7 @@
 `portal-print-request-and-customer-show-limit-settings` (source workflow)
 
 Current Mode: managed-phase
-Current Phase: production Portal rollout complete; owner QA checkpoint
+Current Phase: production Studio installer build for dual-limit Settings
 Plan Status: complete —
 `docs/workflow/plans/2026-07-31-production-portal-show-schedule-and-limit-settings-amendment-1-plan.md`
 Review Status: **approved_with_changes** —
@@ -13,19 +13,20 @@ Implement Status: complete
 Test Status: **passed** — `docs/workflow/reviews/2026-07-31-production-portal-show-schedule-and-limit-settings-amendment-1-test-report.md`
 Implementation Review: **approved** — `docs/workflow/reviews/2026-07-31-production-portal-show-schedule-and-limit-settings-amendment-1-implementation-review.md`
 Ship Status: Functions + Portal App Hosting rollout **passed** (`build-2026-08-01-001`)
-Signoff Status: pending owner QA after rollouts
+Signoff Status: customer schedule visibility **approved**; dual-limit Studio/settings pending
 Implementation Review: **approved** —
 `docs/workflow/reviews/2026-07-31-production-portal-show-schedule-and-limit-settings-implementation-review.md`
 DONE: no (Goal #13 continues; Stage 2 paused)
-Human Checkpoint Required: yes
-Human Checkpoint Reason: authenticated production owner QA required; Studio/settings remain separate
+Human Checkpoint Required: no (owner authorized installer build only; installation/settings save remain gated)
 Blocked: no
 Blocker: none
-Allowed Actions: docs; owner QA guidance; read-only verification
+Allowed Actions: build/verify one production Studio installer; docs; no install
 Forbidden Actions: further deploys; production actions; Rules/index/data/settings changes; Stage 2; domain
-Next Required Step: Await `CONTINUE WORKFLOW: PRODUCTION OWNER QA CUSTOMER SHOW SCHEDULE VISIBILITY`
+Next Required Step: Build and verify production Studio installer from `1196085`; stop before installation/settings save
 
 Decision Log:
+- 2026-08-01 — Owner QA tests 1–9 PASS; customer schedule visibility slice signed off **approved**.
+  Automatic rollouts disabled; domain deferred; dual-limit Studio/settings remain pending.
 - 2026-08-01 — Portal commit `1196085` rolled out manually to production App Hosting as
   `build-2026-08-01-001`; hosted HTTP/assets/client schedule chunk verified; auto rollouts disabled; owner QA pending.
 - 2026-08-01 — Production merge `1196085` verified; approved nine-Function allowlist deployed to

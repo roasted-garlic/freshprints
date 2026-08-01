@@ -1068,3 +1068,8 @@ See `CURRENT-STATE.md` for live status.
 
 
 
+# 2026-08-01 — Production customer show-schedule visibility
+
+- Owner QA tests 1–9: **PASS** on App Hosting build `build-2026-08-01-001` / revision `fresh-prints-portal-build-2026-08-01-001`.
+- Cards, tabs, lifecycle details, refresh/navigation, queue refresh, multi-show, privacy, and limit-callout sanity passed.
+- Slice signoff approved; dual-limit Studio Settings and production settings save remain separate checkpoints.
