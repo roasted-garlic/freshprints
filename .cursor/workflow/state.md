@@ -4,27 +4,25 @@
 `portal-print-request-and-customer-show-limit-settings` (source workflow)
 
 Current Mode: managed-phase
-Current Phase: git promote (source)
+Current Phase: git ship (Amendment 1)
 Plan Status: complete —
-`docs/workflow/plans/2026-07-31-production-portal-show-schedule-and-limit-settings-plan.md`
+`docs/workflow/plans/2026-07-31-production-portal-show-schedule-and-limit-settings-amendment-1-plan.md`
 Review Status: **approved_with_changes** —
-`docs/workflow/reviews/2026-07-31-production-portal-show-schedule-and-limit-settings-review.md`
-Implement Status: **complete**
-Test Status: **passed** —
-`docs/workflow/reviews/2026-07-31-production-portal-show-schedule-and-limit-settings-test-report.md`
-Ship Status: pending protected PR (no deploys)
+`docs/workflow/reviews/2026-07-31-production-portal-show-schedule-and-limit-settings-amendment-1-review.md`
+Implement Status: complete
+Test Status: **passed** — `docs/workflow/reviews/2026-07-31-production-portal-show-schedule-and-limit-settings-amendment-1-test-report.md`
+Implementation Review: **approved** — `docs/workflow/reviews/2026-07-31-production-portal-show-schedule-and-limit-settings-amendment-1-implementation-review.md`
+Ship Status: development Functions deployed; source amendment pending
 Signoff Status: pending owner QA after rollouts
 Implementation Review: **approved** —
 `docs/workflow/reviews/2026-07-31-production-portal-show-schedule-and-limit-settings-implementation-review.md`
 DONE: no (Goal #13 continues; Stage 2 paused)
-Human Checkpoint Required: yes
-Human Checkpoint Reason: Merge protected production PR if agent merge blocked; then authorize rollouts
-  (Functions / Portal App Hosting / Studio installer / settings save) separately. No Stage 2.
+Human Checkpoint Required: no (development-only Amendment 1 implementation is formally approved)
 Blocked: no
 Blocker: none
-Allowed Actions: commit development; open protected PR; docs; wait for owner merge/rollout phrases
-Forbidden Actions: App Hosting / Functions / Rules / index / data deploys; Stage 2; domain; reopen prior PASSes
-Next Required Step: Commit + push development; open protected PR to production; stop for owner merge if needed
+Allowed Actions: commit/push Amendment 1 to development; docs; stop
+Forbidden Actions: further deploys; production actions; Rules/index/data/settings changes; Stage 2; domain
+Next Required Step: Commit and push Amendment 1 to development; stop before any rollout or production action
 
 Decision Log:
 - 2026-07-31 — Development commit `b144903` pushed; protected PR #16 opened

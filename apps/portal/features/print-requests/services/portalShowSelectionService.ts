@@ -9,7 +9,10 @@ import type {
   GetPortalPrintRequestShowSchedulesRequest,
   GetPortalPrintRequestShowSchedulesResponse,
 } from '@fresh-prints/shared/types/portal/getPortalPrintRequestShowSchedules.types';
-import type { PortalCustomerShowSchedule } from '@fresh-prints/shared/utils/portalCustomerShowSchedule';
+import {
+  PORTAL_PRINT_REQUEST_SHOW_SCHEDULE_BATCH_MAX,
+  type PortalCustomerShowSchedule,
+} from '@fresh-prints/shared/utils/portalCustomerShowSchedule';
 import type {
   QueuePortalPrintRequestToShowRequest,
   QueuePortalPrintRequestToShowResponse,
@@ -24,6 +27,45 @@ import { sharePortalShowQueueSubmission } from './portalShowQueueSubmissionOwner
 
 function mapCallableError(error: unknown): Error {
   return mapPortalPrintRequestCallableError(error);
+}
+
+type ScheduleBatchLoader = (
+  printRequestIds: string[],
+) => Promise<GetPortalPrintRequestShowSchedulesResponse>;
+
+export async function loadPortalPrintRequestShowSchedulesInBatches(
+  printRequestIds: readonly string[],
+  loadBatch: ScheduleBatchLoader,
+): Promise<Record<string, PortalCustomerShowSchedule[]>> {
+  const uniqueIds = [...new Set(printRequestIds.map((id) => id.trim()).filter(Boolean))];
+  const batches: string[][] = [];
+  for (let index = 0; index < uniqueIds.length; index += PORTAL_PRINT_REQUEST_SHOW_SCHEDULE_BATCH_MAX) {
+    batches.push(uniqueIds.slice(index, index + PORTAL_PRINT_REQUEST_SHOW_SCHEDULE_BATCH_MAX));
+  }
+  if (batches.length === 0) return {};
+
+  const results = await Promise.allSettled(batches.map((batch) => loadBatch(batch)));
+  const schedulesByRequestId: Record<string, PortalCustomerShowSchedule[]> = {};
+  let successfulBatchCount = 0;
+  let firstFailure: unknown;
+
+  for (const result of results) {
+    if (result.status === 'rejected') {
+      firstFailure ??= result.reason;
+      continue;
+    }
+    successfulBatchCount += 1;
+    for (const entry of result.value.requests) {
+      schedulesByRequestId[entry.printRequestId] = entry.shows.map((show) => ({
+        upcomingShowId: show.upcomingShowId,
+        scheduledStartAt: show.scheduledStartAt,
+        ...(show.missingShow ? { missingShow: true } : {}),
+      }));
+    }
+  }
+
+  if (successfulBatchCount === 0 && firstFailure) throw firstFailure;
+  return schedulesByRequestId;
 }
 
 export const portalShowSelectionService = {
@@ -70,24 +112,16 @@ export const portalShowSelectionService = {
     }
 
     try {
-      const result = await sharePortalPrintRequestScheduleLoad(printRequestIds, () =>
-        callTracedFunction<
+      return await sharePortalPrintRequestScheduleLoad(printRequestIds, () =>
+        loadPortalPrintRequestShowSchedulesInBatches(printRequestIds, (batchIds) =>
+          callTracedFunction<
           GetPortalPrintRequestShowSchedulesRequest,
           GetPortalPrintRequestShowSchedulesResponse
-        >('getPortalPrintRequestShowSchedules', {
-          source: 'portalShowSelectionService.getPrintRequestShowSchedules',
-        })({ printRequestIds }),
+          >('getPortalPrintRequestShowSchedules', {
+            source: 'portalShowSelectionService.getPrintRequestShowSchedules',
+          })({ printRequestIds: batchIds }),
+        ),
       );
-
-      const schedulesByRequestId: Record<string, PortalCustomerShowSchedule[]> = {};
-      for (const entry of result.requests) {
-        schedulesByRequestId[entry.printRequestId] = entry.shows.map((show) => ({
-          upcomingShowId: show.upcomingShowId,
-          scheduledStartAt: show.scheduledStartAt,
-          ...(show.missingShow ? { missingShow: true } : {}),
-        }));
-      }
-      return schedulesByRequestId;
     } catch (error) {
       throw mapCallableError(error);
     }

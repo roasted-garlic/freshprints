@@ -1,6 +1,22 @@
 # Fresh Prints - Current State Snapshot
 
-## 2026-07-31 - Goal #13 show-schedule visibility + dual limit settings — **SOURCE COMPLETE**; await PR merge / rollouts
+## 2026-07-31 - Goal #13 schedule Functions deployed to dev; all-status Amendment 1 approved
+
+- PR #16 merge verified at `215ded9`; development remains clean at `9be408e` before workflow artifacts.
+- Exact nine-Function allowlist deployed to `fresh-prints-dev`: exit 0, 9 deployed, all ACTIVE on hash `fa4555f063eb5668c5dea4a8950739ddc24bdeb5`; no unrelated Function updated.
+- Authenticated browser session was unavailable, so owner-request UI/callable E2E is not claimed.
+- Postdeploy source audit found a real details-path defect: schedule loading is disabled with print-progress polling for terminal/null stages. List card source uses one shared branch, but list schedule loading also needs client batching above the callable's 50-request cap.
+- Amendment 1 Plan + Formal Review (`approved_with_changes`) created; implementation is next. No production action, Rules/index/data/settings change, Studio rebuild, Stage 2, or domain work occurred.
+
+### Amendment 1 implementation completion
+
+- Details schedules now load independently of timer polling and render in both progress and no-progress layouts.
+- Full request histories are chunked at the callable's 50-request cap with deterministic partial-success merging.
+- Queue success refreshes the detail schedule without enabling terminal polling.
+- Focused tests 22/22, Portal typecheck, production build, repository lint, and `git diff --check` all pass.
+- Implementation Review: **approved**. Authenticated development owner-request E2E remains pending because no browser session was available.
+
+## 2026-07-31 - Goal #13 show-schedule visibility + dual limit settings — source complete; PR #16 merged
 
 - Slices: `portal-customer-queued-show-schedule-visibility` +
   `portal-print-request-and-customer-show-limit-settings`
