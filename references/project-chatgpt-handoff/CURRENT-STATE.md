@@ -1,5 +1,15 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-08-01 - Goal #13 customer schedule + dual-limit Functions DEPLOYED to production
+
+- Production source: PR #17 merge `11960852f45f948e37a1a5aeb3b09699882cd1fd`.
+- Exact reviewed nine-Function allowlist deployed to `fresh-prints-prod`: exit 0, 9 deployed, 0 errors/aborts.
+- All nine ACTIVE in `us-central1`, shared source hash `7eedfc2475a356e21eb4aeac8e9cd45ea232fbed`; no unrelated Function updated.
+- Initial attempt stopped before mutation on the default 10-second local discovery timeout; same command succeeded with a local 30-second discovery timeout.
+- Focused tests 50/50, Functions build, applicable lint, and whitespace checks passed.
+- No Portal/Rules/index/Auth/secret/settings/data/Studio/domain/analytics/Stage 2/catalog-snapshot action occurred.
+- Next gated phrase: `APPROVE PRODUCTION PORTAL APP HOSTING ROLLOUT: CUSTOMER SHOW SCHEDULE AND DUAL LIMITS`.
+
 ## 2026-07-31 - Goal #13 Amendment 1 promoted as draft PR #17; awaiting owner merge
 
 - Draft PR #17: `development` → `production`, title “Fix customer show schedules across all request states”.

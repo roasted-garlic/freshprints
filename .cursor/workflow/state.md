@@ -4,7 +4,7 @@
 `portal-print-request-and-customer-show-limit-settings` (source workflow)
 
 Current Mode: managed-phase
-Current Phase: protected PR (Amendment 1)
+Current Phase: production Functions deployed; Portal rollout checkpoint
 Plan Status: complete —
 `docs/workflow/plans/2026-07-31-production-portal-show-schedule-and-limit-settings-amendment-1-plan.md`
 Review Status: **approved_with_changes** —
@@ -12,20 +12,22 @@ Review Status: **approved_with_changes** —
 Implement Status: complete
 Test Status: **passed** — `docs/workflow/reviews/2026-07-31-production-portal-show-schedule-and-limit-settings-amendment-1-test-report.md`
 Implementation Review: **approved** — `docs/workflow/reviews/2026-07-31-production-portal-show-schedule-and-limit-settings-amendment-1-implementation-review.md`
-Ship Status: Amendment 1 draft PR #17 open (`development` → `production`); merge pending
+Ship Status: PR #17 merged; exact nine-Function production deployment **passed**
 Signoff Status: pending owner QA after rollouts
 Implementation Review: **approved** —
 `docs/workflow/reviews/2026-07-31-production-portal-show-schedule-and-limit-settings-implementation-review.md`
 DONE: no (Goal #13 continues; Stage 2 paused)
 Human Checkpoint Required: yes
-Human Checkpoint Reason: owner review and merge of protected PR #17; all rollouts remain separately gated
+Human Checkpoint Reason: production Portal App Hosting rollout requires separate explicit approval
 Blocked: no
 Blocker: none
-Allowed Actions: docs; inspect PR #17; wait for owner merge
+Allowed Actions: docs; wait for Portal App Hosting approval
 Forbidden Actions: further deploys; production actions; Rules/index/data/settings changes; Stage 2; domain
-Next Required Step: Owner reviews and merges draft PR #17 with Create a merge commit; then verify production branch and stop before rollout
+Next Required Step: Await `APPROVE PRODUCTION PORTAL APP HOSTING ROLLOUT: CUSTOMER SHOW SCHEDULE AND DUAL LIMITS`
 
 Decision Log:
+- 2026-08-01 — Production merge `1196085` verified; approved nine-Function allowlist deployed to
+  `fresh-prints-prod` (exit 0; all ACTIVE; hash `7eedfc2`; no unrelated Function update). Portal not rolled out.
 - 2026-07-31 — Amendment 1 commits `c4c8b38` + `c96755c` pushed; draft PR #17 opened
   (`development` → `production`). No merge or deployment.
 - 2026-07-31 — Development commit `b144903` pushed; protected PR #16 opened
