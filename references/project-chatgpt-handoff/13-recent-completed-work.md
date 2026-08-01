@@ -1079,3 +1079,8 @@ See `CURRENT-STATE.md` for live status.
 - Exact production source `11960852f45f948e37a1a5aeb3b09699882cd1fd`; focused tests 38/38 and Studio production package passed.
 - Verified production Firebase config, dual-limit UI, official branding/icons, and production exclusion gates for Test Data Reset / Catalog Storage Inventory.
 - Installer ready at `apps/studio/release/0.0.0/Fresh Prints-Windows-0.0.0-Setup-dual-limit-settings.exe`; owner QA pending; no settings change.
+
+# 2026-08-01 — Production Studio dual-limit Settings UI owner QA
+
+- Tests 1–7: **PASS**. Both controls, default linkage, bidirectional linked editing, independent editing, relinking, and leaving without save passed; retired daily-limit control absent.
+- UI signoff approved. Production settings were not saved during QA; linked 25/25 persistence remains the active checkpoint.

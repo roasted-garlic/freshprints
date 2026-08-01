@@ -4,7 +4,7 @@
 `portal-print-request-and-customer-show-limit-settings` (source workflow)
 
 Current Mode: managed-phase
-Current Phase: production owner QA for dual-limit Studio Settings
+Current Phase: authorized production linked-limit settings save and verification
 Plan Status: complete —
 `docs/workflow/plans/2026-07-31-production-portal-show-schedule-and-limit-settings-amendment-1-plan.md`
 Review Status: **approved_with_changes** —
@@ -13,19 +13,20 @@ Implement Status: complete
 Test Status: **passed** — `docs/workflow/reviews/2026-07-31-production-portal-show-schedule-and-limit-settings-amendment-1-test-report.md`
 Implementation Review: **approved** — `docs/workflow/reviews/2026-07-31-production-portal-show-schedule-and-limit-settings-amendment-1-implementation-review.md`
 Ship Status: Functions + Portal App Hosting rollout **passed** (`build-2026-08-01-001`)
-Signoff Status: customer schedule visibility **approved**; dual-limit Studio/settings pending
+Signoff Status: customer schedule visibility + dual-limit Studio UI **approved**; 25/25 settings persistence pending
 Implementation Review: **approved** —
 `docs/workflow/reviews/2026-07-31-production-portal-show-schedule-and-limit-settings-implementation-review.md`
 DONE: no (Goal #13 continues; Stage 2 paused)
 Human Checkpoint Required: yes
-Human Checkpoint Reason: owner must install and QA the verified Studio installer; settings save remains separately gated
+Human Checkpoint Reason: owner must perform the single authorized Studio save and report its visible result/reload state
 Blocked: no
 Blocker: none
-Allowed Actions: docs; owner installation/QA guidance; read-only verification
+Allowed Actions: save only linked 25/25 through installed production Studio; docs; read-only verification
 Forbidden Actions: further deploys; production actions; Rules/index/data/settings changes; Stage 2; domain
-Next Required Step: Await `CONTINUE WORKFLOW: PRODUCTION OWNER QA DUAL LIMIT SETTINGS`
+Next Required Step: Owner saves linked 25/25 once, verifies Studio reload/restart, and reports result for Portal verification
 
 Decision Log:
+- 2026-08-01 — Owner QA Tests 1–7 PASS; dual-limit Studio Settings UI signed off. No settings were saved during QA.
 - 2026-08-01 — Production Studio installer built from exact `1196085`; tests/build/icon/branding/prod config/dev-only UI gates verified. Owner QA pending; settings unchanged.
 - 2026-08-01 — Owner QA tests 1–9 PASS; customer schedule visibility slice signed off **approved**.
   Automatic rollouts disabled; domain deferred; dual-limit Studio/settings remain pending.

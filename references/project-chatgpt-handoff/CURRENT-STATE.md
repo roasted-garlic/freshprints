@@ -1,5 +1,11 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-08-01 - Production Studio dual-limit Settings UI SIGNED OFF
+
+- Owner QA Tests 1–7 PASS using `Fresh Prints-Windows-0.0.0-Setup-dual-limit-settings.exe` from production commit `11960852f45f948e37a1a5aeb3b09699882cd1fd`.
+- Both fields, linked editing, independent editing, relinking, persistence-safe exit, and retired-control absence passed.
+- No production setting was saved during UI QA. Separate linked 25/25 save is now explicitly authorized but not yet confirmed performed.
+
 ## 2026-08-01 - Production Studio dual-limit Settings installer READY
 
 - Built from exact production commit `11960852f45f948e37a1a5aeb3b09699882cd1fd`.
