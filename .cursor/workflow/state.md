@@ -4,7 +4,7 @@
 `portal-print-request-and-customer-show-limit-settings` (source workflow)
 
 Current Mode: managed-phase
-Current Phase: git ship (Amendment 1)
+Current Phase: protected PR (Amendment 1)
 Plan Status: complete —
 `docs/workflow/plans/2026-07-31-production-portal-show-schedule-and-limit-settings-amendment-1-plan.md`
 Review Status: **approved_with_changes** —
@@ -12,19 +12,22 @@ Review Status: **approved_with_changes** —
 Implement Status: complete
 Test Status: **passed** — `docs/workflow/reviews/2026-07-31-production-portal-show-schedule-and-limit-settings-amendment-1-test-report.md`
 Implementation Review: **approved** — `docs/workflow/reviews/2026-07-31-production-portal-show-schedule-and-limit-settings-amendment-1-implementation-review.md`
-Ship Status: development Functions deployed; source amendment pending
+Ship Status: Amendment 1 draft PR #17 open (`development` → `production`); merge pending
 Signoff Status: pending owner QA after rollouts
 Implementation Review: **approved** —
 `docs/workflow/reviews/2026-07-31-production-portal-show-schedule-and-limit-settings-implementation-review.md`
 DONE: no (Goal #13 continues; Stage 2 paused)
-Human Checkpoint Required: no (development-only Amendment 1 implementation is formally approved)
+Human Checkpoint Required: yes
+Human Checkpoint Reason: owner review and merge of protected PR #17; all rollouts remain separately gated
 Blocked: no
 Blocker: none
-Allowed Actions: commit/push Amendment 1 to development; docs; stop
+Allowed Actions: docs; inspect PR #17; wait for owner merge
 Forbidden Actions: further deploys; production actions; Rules/index/data/settings changes; Stage 2; domain
-Next Required Step: Commit and push Amendment 1 to development; stop before any rollout or production action
+Next Required Step: Owner reviews and merges draft PR #17 with Create a merge commit; then verify production branch and stop before rollout
 
 Decision Log:
+- 2026-07-31 — Amendment 1 commits `c4c8b38` + `c96755c` pushed; draft PR #17 opened
+  (`development` → `production`). No merge or deployment.
 - 2026-07-31 — Development commit `b144903` pushed; protected PR #16 opened
   (`development` → `production`): https://github.com/roasted-garlic/freshprints/pull/16
   Agent merge likely hook-blocked — owner merges with Create a merge commit. No deploys.

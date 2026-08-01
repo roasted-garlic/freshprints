@@ -1,5 +1,13 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-07-31 - Goal #13 Amendment 1 promoted as draft PR #17; awaiting owner merge
+
+- Draft PR #17: `development` → `production`, title “Fix customer show schedules across all request states”.
+- Exact reviewed implementation commits: `c4c8b38` and `c96755c`; PR head verified against `origin/development` before the promotion-state update.
+- Validation remains: focused tests 22/22, Portal typecheck/build, repository lint, and `git diff --check` pass.
+- No merge, Functions/App Hosting rollout, Rules/index/data/settings change, Studio rebuild, Stage 2, or domain action occurred.
+- Next: owner reviews and merges PR #17 using Create a merge commit; production verification and any rollout require later separate checkpoints.
+
 ## 2026-07-31 - Goal #13 schedule Functions deployed to dev; all-status Amendment 1 approved
 
 - PR #16 merge verified at `215ded9`; development remains clean at `9be408e` before workflow artifacts.
