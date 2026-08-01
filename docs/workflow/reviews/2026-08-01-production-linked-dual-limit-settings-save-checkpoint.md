@@ -10,8 +10,8 @@
 | `maxQuantityPerShowPerCustomer` | `30` |
 | `linkPrintRequestAndCustomerShowLimits` | `true` |
 | Studio save/persistence | **PASS** |
-| Portal verification | **PENDING — no authenticated browser backend available** |
-| Overall verdict | **PENDING** |
+| Portal verification | **PASS — owner confirmed checks 1–12** |
+| Overall verdict | **PASS** |
 
 ## Studio evidence supplied by owner
 
@@ -22,11 +22,18 @@
 
 The owner intentionally selected linked 30/30 as the production target. This supersedes the earlier proposed 25/25 target. No further settings write was performed by the coding agent.
 
-## Portal verification status
+## Portal verification
 
-Authenticated hosted-Portal verification could not be performed in this session because neither the in-app browser nor Chrome backend was available. No Portal result is claimed for request limit, customer-show limit, usage/capacity copy, warning attribution, stale-session refresh, or retired daily-limit behavior.
+The owner confirmed production hosted Portal checks 1–12 **PASS** after refresh/refocus:
 
-The settings write changes the two configured limits and linkage preference only at the product level; no show-capacity edit was requested or reported. Direct Portal confirmation that overall capacity remains independent is still required before this checkpoint can be marked PASS and Stage 2 can resume.
+- Working-request maximum, remaining-count copy, quantity controls, and validation use 30 and reject totals above 30.
+- Add Request to Show uses the 30-print per-customer-per-show allowance; customer usage displays `X of 30` and remaining uses 30 minus existing customer allocations.
+- Overall show usage and capacity remain independent and continue using the selected show's own `maxTotalQuantity`; request quantity is not mislabeled as customer-show usage.
+- Limiting warnings correctly distinguish customer allotment, overall capacity, and equal-limit neutral copy.
+- No retired daily-limit copy or enforcement appears.
+- Refresh/refocus/retry gives stale sessions the current server-authoritative 30/30 behavior.
+
+No show-capacity value was changed. The production linked dual-limit settings checkpoint is **PASS** and is ready for the separate Stage 2 hosted Portal smoke resume checkpoint.
 
 ## Non-actions
 

@@ -1089,3 +1089,8 @@ See `CURRENT-STATE.md` for live status.
 
 - Owner intentionally saved linked 30/30 (superseding proposed 25/25); success message, reopen, and restart persistence all PASS with no errors.
 - Hosted Portal verification remains pending because no authenticated browser backend was available. No deployment, capacity change, or Stage 2 action occurred.
+
+# 2026-08-01 — Production linked 30/30 Portal verification
+
+- Owner confirmed all 12 hosted Portal checks PASS: request limit, customer-show allowance/usage, capacity separation, warning attribution, retired daily-limit absence, and stale-session refresh.
+- Production linked dual-limit settings checkpoint closed PASS. No deployment, domain, capacity, or unrelated production action occurred; Stage 2 awaits explicit resume.

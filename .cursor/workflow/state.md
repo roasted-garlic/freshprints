@@ -4,7 +4,7 @@
 `portal-print-request-and-customer-show-limit-settings` (source workflow)
 
 Current Mode: managed-phase
-Current Phase: production linked 30/30 Portal verification
+Current Phase: Stage 2 hosted Portal smoke resume checkpoint
 Plan Status: complete —
 `docs/workflow/plans/2026-07-31-production-portal-show-schedule-and-limit-settings-amendment-1-plan.md`
 Review Status: **approved_with_changes** —
@@ -13,19 +13,20 @@ Implement Status: complete
 Test Status: **passed** — `docs/workflow/reviews/2026-07-31-production-portal-show-schedule-and-limit-settings-amendment-1-test-report.md`
 Implementation Review: **approved** — `docs/workflow/reviews/2026-07-31-production-portal-show-schedule-and-limit-settings-amendment-1-implementation-review.md`
 Ship Status: Functions + Portal App Hosting rollout **passed** (`build-2026-08-01-001`)
-Signoff Status: customer schedule visibility + dual-limit Studio UI **approved**; linked 30/30 Studio persistence PASS; Portal verification pending
+Signoff Status: customer schedule visibility + dual-limit Studio UI + linked 30/30 production settings **approved**
 Implementation Review: **approved** —
 `docs/workflow/reviews/2026-07-31-production-portal-show-schedule-and-limit-settings-implementation-review.md`
 DONE: no (Goal #13 continues; Stage 2 paused)
 Human Checkpoint Required: yes
-Human Checkpoint Reason: authenticated production Portal verification is required; no browser backend is connected to this session
+Human Checkpoint Reason: Stage 2 remains paused until the owner explicitly resumes hosted Portal smoke
 Blocked: no
 Blocker: none
-Allowed Actions: docs; read-only Portal verification; normal reversible QA with existing smoke fixtures
+Allowed Actions: docs; prepare Stage 2 hosted Portal smoke checklist
 Forbidden Actions: further deploys; production actions; Rules/index/data/settings changes; Stage 2; domain
-Next Required Step: Owner completes the 12-point hosted Portal linked-30/30 verification and reports results
+Next Required Step: Await `CONTINUE WORKFLOW: RESUME STAGE 2 HOSTED PORTAL SMOKE`
 
 Decision Log:
+- 2026-08-01 — Owner confirmed production Portal checks 1–12 PASS for linked 30/30; request/customer-show limits, capacity separation, warnings, no daily limit, and stale-session refresh verified.
 - 2026-08-01 — Owner intentionally saved linked 30/30; Studio success/reopen/restart PASS. Portal verification pending because no authenticated browser backend was available.
 - 2026-08-01 — Owner QA Tests 1–7 PASS; dual-limit Studio Settings UI signed off. No settings were saved during QA.
 - 2026-08-01 — Production Studio installer built from exact `1196085`; tests/build/icon/branding/prod config/dev-only UI gates verified. Owner QA pending; settings unchanged.

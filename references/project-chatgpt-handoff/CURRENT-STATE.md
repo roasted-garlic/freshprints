@@ -1,10 +1,11 @@
 # Fresh Prints - Current State Snapshot
 
-## 2026-08-01 - Production linked limits SAVED 30/30; Portal verification pending
+## 2026-08-01 - Production linked limits 30/30 VERIFIED — PASS
 
 - Owner intentionally changed linked values from 25/25 to 30/30 and received `Print request limits saved.`
 - Reopen and full Studio restart both reloaded 30/30 with linkage checked; no errors. Studio persistence PASS.
-- Authenticated Portal verification remains unclaimed because no browser backend was available in the coding session. Overall checkpoint remains pending; Stage 2 has not resumed.
+- Owner confirmed hosted Portal checks 1–12 PASS: request max/copy/validation, customer-show allowance and usage, independent overall capacity, limiting-warning attribution, retired daily-limit absence, and stale-session refresh all use current 30/30 behavior.
+- Checkpoint PASS. No capacity/deployment/domain action occurred. Stage 2 remains paused pending explicit resume phrase.
 
 ## 2026-08-01 - Production Studio dual-limit Settings UI SIGNED OFF
 
