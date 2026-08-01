@@ -1099,3 +1099,9 @@ See `CURRENT-STATE.md` for live status.
 
 - Read-only infrastructure sanity passed: hosted Portal and Coming Soon both HTTP 200; backend manual rollout configuration unchanged; all 101 Functions ACTIVE; nine release Functions match approved hash; 65 indexes present.
 - Interactive Stage 2 tests remain pending owner execution because no authenticated browser/Studio control session was available. No production mutation or domain action occurred.
+
+# 2026-08-01 — Whatnot existing-show update remediation implemented
+
+- Fixed update execution to reuse the scanner-matched Firestore ID, verify Whatnot identity, and avoid strict post-write remapping/generic incomplete-record failures.
+- Exact external-field allowlist preserves capacity, allocations, production/lifecycle state, notes, and metadata. Known missing identity/title/time errors are specific.
+- Automated suite 59/59 plus Studio typecheck/build, lint, whitespace PASS. Manual development Studio QA remains pending; no production/domain action.

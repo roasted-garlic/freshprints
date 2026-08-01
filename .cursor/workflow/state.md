@@ -4,28 +4,29 @@
 `portal-print-request-and-customer-show-limit-settings` (source workflow)
 
 Current Mode: managed-phase
-Current Phase: Stage 2 hosted Portal smoke — interactive owner execution
+Current Phase: Goal #13 remediation — Whatnot show update development owner QA
 Plan Status: complete —
-`docs/workflow/plans/2026-07-31-production-portal-show-schedule-and-limit-settings-amendment-1-plan.md`
+`docs/workflow/plans/2026-08-01-whatnot-show-import-update-incomplete-record-plan.md`
 Review Status: **approved_with_changes** —
-`docs/workflow/reviews/2026-07-31-production-portal-show-schedule-and-limit-settings-amendment-1-review.md`
-Implement Status: complete
-Test Status: **passed** — `docs/workflow/reviews/2026-07-31-production-portal-show-schedule-and-limit-settings-amendment-1-test-report.md`
-Implementation Review: **approved** — `docs/workflow/reviews/2026-07-31-production-portal-show-schedule-and-limit-settings-amendment-1-implementation-review.md`
+`docs/workflow/reviews/2026-08-01-whatnot-show-import-update-incomplete-record-review.md`
+Implement Status: complete (development)
+Test Status: **automated passed; manual development QA pending** — `docs/workflow/reviews/2026-08-01-whatnot-show-import-update-incomplete-record-test-report.md`
+Implementation Review: **approved_with_note** — `docs/workflow/reviews/2026-08-01-whatnot-show-import-update-incomplete-record-implementation-review.md`
 Ship Status: Functions + Portal App Hosting rollout **passed** (`build-2026-08-01-001`)
 Signoff Status: customer schedule visibility + dual-limit Studio UI + linked 30/30 production settings **approved**
 Implementation Review: **approved** —
 `docs/workflow/reviews/2026-07-31-production-portal-show-schedule-and-limit-settings-implementation-review.md`
-DONE: no (Goal #13 continues; Stage 2 active)
+DONE: no (Goal #13 continues; Stage 2 paused on importer defect)
 Human Checkpoint Required: yes
-Human Checkpoint Reason: remaining Stage 2 lifecycle/intake/sizing/upload/catalog/guest/Studio/Etsy checks require authenticated owner UI execution
+Human Checkpoint Reason: owner must run the specified development Studio importer QA before production promotion
 Blocked: no
 Blocker: none
-Allowed Actions: approved production smoke interactions with existing fixtures; docs; read-only infrastructure checks
+Allowed Actions: development Studio QA with approved fixture; docs; read-only verification
 Forbidden Actions: further deploys; production actions; Rules/index/data/settings changes; Stage 2; domain
-Next Required Step: Owner executes remaining Stage 2 tests 1–8 and returns PASS/notes/fail per area
+Next Required Step: Owner verifies existing-show update/no duplicate/capacity+allocation preservation/rescan/error copy in development
 
 Decision Log:
+- 2026-08-01 — Stage 2 paused: existing Whatnot update loses matched document identity and reuses strict generic pre-merge mapper. Narrow Plan reviewed `approved_with_changes`.
 - 2026-08-01 — Stage 2 resumed. Read-only infrastructure sanity PASS; authenticated Portal/Studio tests pending because no UI-control backend was available.
 - 2026-08-01 — Owner confirmed production Portal checks 1–12 PASS for linked 30/30; request/customer-show limits, capacity separation, warnings, no daily limit, and stale-session refresh verified.
 - 2026-08-01 — Owner intentionally saved linked 30/30; Studio success/reopen/restart PASS. Portal verification pending because no authenticated browser backend was available.

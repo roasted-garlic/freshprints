@@ -1,5 +1,12 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-08-01 - Whatnot existing-show update remediation implemented on development
+
+- Root cause: scanner retained `existingShowId`, but executor discarded it and reused strict rematching/upsert; ten mapper failures collapsed to `An upcoming show record is incomplete.`
+- Dedicated direct-ID update now verifies Whatnot identity and writes only upstream-owned fields plus audit/import timestamps. Internal capacity, allocations, lifecycle/production state, notes, and metadata are preserved.
+- Focused tests 59/59, Studio typecheck/build/package, lint, and whitespace checks PASS. Implementation Review `approved_with_note`.
+- Manual development Studio QA pending because no authenticated UI-control session was available. Stage 2 and domain cutover remain paused; no production action occurred.
+
 ## 2026-08-01 - Stage 2 hosted Portal smoke RESUMED; interactive tests pending
 
 - Read-only infrastructure PASS: hosted Portal HTTP 200; Coming Soon remains on `myprintrequest.com`; App Hosting manual-policy backend unchanged; 101/101 Functions ACTIVE; nine release Functions on approved hash; 65 indexes/0 overrides.

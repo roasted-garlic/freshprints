@@ -66,6 +66,10 @@ import {
 import { showQueueSettingsService } from "./showQueueSettingsService";
 import { ProductionDiagnosticWarningDeduper } from "../utils/productionDiagnosticWarningDeduper";
 import { reconcileShowCompletionWithCommittedVerification } from "../utils/postFinishCommittedVerification";
+import {
+  planWhatnotImportExistingShowUpdate,
+  type WhatnotImportUpdateInput,
+} from "../utils/whatnotShowImportUpdate";
 
 function hashShowIdForPostFinishVerification(showId: string): string {
   let hash = 2166136261;
@@ -717,6 +721,46 @@ export const upcomingShowService = {
     });
 
     return this.getUpcomingShowById(caller, showRef.id);
+  },
+
+  async updateUpcomingShowFromWhatnotImport(
+    caller: User,
+    input: WhatnotImportUpdateInput,
+  ): Promise<void> {
+    if (!permissionService.canImportWhatnotShows(caller)) {
+      throw new Error("You do not have permission to import shows from Whatnot.");
+    }
+
+    const targetId = input.existingShowId.trim();
+    if (!targetId) {
+      throw new Error("The matched upcoming show could not be resolved.");
+    }
+
+    const showRef = doc(firestoreCollectionService.getUpcomingShowsCollection(), targetId);
+    const snapshot = await getDoc(showRef);
+    const plan = planWhatnotImportExistingShowUpdate(
+      snapshot.exists() ? (snapshot.data() as UpcomingShowDocumentData) : null,
+      input,
+    );
+    const updatePayload = {
+      ...plan.payload,
+      lastSeenAt: serverTimestamp(),
+      lastSeenInAssistedImportAt: serverTimestamp(),
+      updatedBy: caller.id,
+      updatedAt: serverTimestamp(),
+    };
+
+    assertNoUndefinedFirestoreFields(updatePayload, "Whatnot upcoming show update payload");
+    await runTracedWrite(
+      "updateDoc",
+      () => updateDoc(showRef, updatePayload),
+      {
+        app: "studio",
+        collection: "upcomingShows",
+        documentPathPattern: "upcomingShows/{upcomingShowId}",
+        source: "upcomingShowService.updateUpcomingShowFromWhatnotImport",
+      },
+    );
   },
 
   async updateUpcomingShow(
