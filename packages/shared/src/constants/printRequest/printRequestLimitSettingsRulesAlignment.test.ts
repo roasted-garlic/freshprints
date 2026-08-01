@@ -38,3 +38,23 @@ test("customers cannot change quantity or delete printRequestItems (Admin callab
     /allow delete: if isStaff\(\);\s*\/\/ Customer deletes go through Admin callables/,
   );
 });
+
+test("printRequestItems recognize immutable requestCountApplied Wave C marker", async () => {
+  const rules = await readFile(path.join(REPO_ROOT, "firestore.rules"), "utf8");
+  assert.match(
+    rules,
+    /function printRequestItemRequiredFieldsValid\(data\)[\s\S]*?"requestCountApplied"/,
+  );
+  assert.match(
+    rules,
+    /function printRequestItemRequiredFieldsValid\(data\)[\s\S]*?isOptionalBool\(data, "requestCountApplied"\)/,
+  );
+  assert.match(
+    rules,
+    /function customerCanUpdatePrintRequestItem\(\)[\s\S]*?optionalFieldUnchanged\("requestCountApplied"\)/,
+  );
+  assert.match(
+    rules,
+    /match \/printRequestItems\/\{printRequestItemId\}[\s\S]*?allow update: if isStaff\(\)[\s\S]*?optionalFieldUnchanged\("requestCountApplied"\)/,
+  );
+});

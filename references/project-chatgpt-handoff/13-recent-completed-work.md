@@ -2,6 +2,33 @@
 
 > Signed-off or largely complete work. External agents should not re-plan or duplicate this.
 
+## 2026-07-31 - production-release: Studio Assisted library design search empty signed off
+
+- Root cause: Wave C ID-only `useReadyDesignsForSelection`; picker called with no IDs → always empty
+- Fix: `useReadyDesignsForAssistedCatalogPicker` (generated ready-index + fallback); Print Request hook unchanged
+- Installer: `Fresh Prints-Windows-0.0.0-Setup-assisted-library-search.exe` (SHA-256 `998E875E…C0B7`)
+- Owner Studio QA **PASS**; signoff **approved**
+- Stage 2 / domain still deferred until owner authorizes
+
+## 2026-07-31 - production-release: portal catalog tag-removal publication signed off
+
+- Root cause: failed portal-catalog republish (`FetchError`) left gen 9 stuck; Portal served stale gen 8 tags
+- Fix: Storage retries + catch-up loop + `retryPortalCatalogPublication`; Functions deploy; catch-up gen 9
+- Owner Portal QA **PASS**; R-017 closed; signoff **approved**
+- Stage 2 / domain still deferred until owner authorizes
+
+## 2026-07-31 - production-release: print-request item resize permission (Studio + Portal) signed off
+
+- Root cause: `requestCountApplied` missing from `printRequestItemRequiredFieldsValid` allowlist
+- Production Rules deploy + owner QA **PASS**; signoff **approved**
+- Stage 2 / domain still deferred until owner authorizes
+
+## 2026-07-31 - production-release: bundled brand live + owner QA PASS (signed off)
+
+- PR #14 → c837b5; Studio installer Fresh Prints-Windows-0.0.0-Setup-bundled-brand.exe; Portal rollout uild-2026-07-31-005 SUCCEEDED
+- Owner production branding QA **PASS**; signoff **approved**
+- Stage 2 / domain still deferred until owner authorizes
+
 ## 2026-07-31 - production-release: Portal registration fix rolled out to App Hosting
 
 - PR #12 → `8943d17`; rollout create succeeded; `[fp-portal-auth]` verified live

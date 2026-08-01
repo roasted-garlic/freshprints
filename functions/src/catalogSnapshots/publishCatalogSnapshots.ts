@@ -42,6 +42,14 @@ import {
   hasMatchingPortalCardOverride,
   mergePortalCardOverrides,
 } from "./portalCatalogChangeClassifier";
+import {
+  LEASE_BUSY_RETRY_DELAY_MS,
+  PUBLICATION_PASS_LIMIT,
+  publicationNeedsCatchUp,
+  shouldRetryPublicationPass,
+  TRANSIENT_STORAGE_RETRY_BASE_DELAY_MS,
+  withTransientStorageRetry,
+} from "./publicationRecovery";
 
 const COORDINATION_COLLECTION = "snapshotPublicationState";
 const LEASE_MS = 10 * 60_000;
@@ -114,19 +122,21 @@ async function saveJson(
   if (Buffer.byteLength(body, "utf8") > maxBytes) {
     throw new Error(`snapshot-asset-budget-exceeded:${path}`);
   }
-  onStorageOperation?.("write");
-  await adminStorage.bucket().file(path).save(body, {
-    resumable: false,
-    metadata: { contentType: JSON_CONTENT_TYPE, cacheControl },
-    ...(ifGenerationMatch !== undefined
-      ? { preconditionOpts: { ifGenerationMatch } }
-      : {}),
+  await withTransientStorageRetry(async () => {
+    onStorageOperation?.("write");
+    await adminStorage.bucket().file(path).save(body, {
+      resumable: false,
+      metadata: { contentType: JSON_CONTENT_TYPE, cacheControl },
+      ...(ifGenerationMatch !== undefined
+        ? { preconditionOpts: { ifGenerationMatch } }
+        : {}),
+    });
+    onStorageOperation?.("metadata");
+    const [metadata] = await adminStorage.bucket().file(path).getMetadata();
+    if (metadata.contentType !== JSON_CONTENT_TYPE || Number(metadata.size) !== Buffer.byteLength(body)) {
+      throw new Error(`snapshot-asset-metadata-verification-failed:${path}`);
+    }
   });
-  onStorageOperation?.("metadata");
-  const [metadata] = await adminStorage.bucket().file(path).getMetadata();
-  if (metadata.contentType !== JSON_CONTENT_TYPE || Number(metadata.size) !== Buffer.byteLength(body)) {
-    throw new Error(`snapshot-asset-metadata-verification-failed:${path}`);
-  }
 }
 
 export function warnIfApproachingAiReferenceBudget(
@@ -155,13 +165,15 @@ async function existingManifest<T extends { contentVersion: string }>(
 ): Promise<{ generationMatch: number; value: T | null }> {
   const file = adminStorage.bucket().file(path);
   try {
-    onStorageOperation?.("download");
-    onStorageOperation?.("metadata");
-    const [[bytes], [metadata]] = await Promise.all([file.download(), file.getMetadata()]);
-    return {
-      generationMatch: Number(metadata.generation),
-      value: JSON.parse(bytes.toString("utf8")) as T,
-    };
+    return await withTransientStorageRetry(async () => {
+      onStorageOperation?.("download");
+      onStorageOperation?.("metadata");
+      const [[bytes], [metadata]] = await Promise.all([file.download(), file.getMetadata()]);
+      return {
+        generationMatch: Number(metadata.generation),
+        value: JSON.parse(bytes.toString("utf8")) as T,
+      };
+    });
   } catch (error) {
     const code = (error as { code?: number }).code;
     if (code === 404) return { generationMatch: 0, value: null };
@@ -173,9 +185,11 @@ async function loadJsonAsset<T>(
   path: string,
   onStorageOperation?: (operation: StorageOperation) => void,
 ): Promise<T> {
-  onStorageOperation?.("download");
-  const [bytes] = await adminStorage.bucket().file(path).download();
-  return JSON.parse(bytes.toString("utf8")) as T;
+  return withTransientStorageRetry(async () => {
+    onStorageOperation?.("download");
+    const [bytes] = await adminStorage.bucket().file(path).download();
+    return JSON.parse(bytes.toString("utf8")) as T;
+  });
 }
 
 function isStoragePreconditionFailure(error: unknown): boolean {
@@ -731,10 +745,13 @@ async function markAndPublishAfterDebounce(kind: SnapshotKind): Promise<void> {
   await markDirty(kind);
   await new Promise<void>((resolve) => setTimeout(resolve, DEBOUNCE_MS));
 
-  for (let pass = 0; pass < 2; pass += 1) {
-    try {
-      const published = await publishKind(kind);
+  await runPublicationCatchUpLoop({
+    publish: () => publishKind(kind),
+    readRequestedGeneration: async () => {
       const latest = await adminDb.collection(COORDINATION_COLLECTION).doc(kind).get();
+      return latest.data()?.requestedGeneration;
+    },
+    onSuccess: async (published, pass) => {
       if (
         kind === "portal-catalog" &&
         published.accounting &&
@@ -744,32 +761,88 @@ async function markAndPublishAfterDebounce(kind: SnapshotKind): Promise<void> {
           mode: "full",
           classification: "index-filter",
           publicationReason: "design-write",
-          pass: pass + 1,
+          pass,
           ...published.accounting,
           coordinationDocumentsRead: 2,
-          coordinationDocumentsWritten: pass === 0 ? 3 : 2,
+          coordinationDocumentsWritten: pass === 1 ? 3 : 2,
           durationMs: Date.now() - startedAtMs,
           outcome: "success",
         });
       }
-      const requested = latest.data()?.requestedGeneration;
-      if (typeof requested !== "number" || requested <= published.generation) return;
-    } catch (error) {
-      if (error instanceof Error && error.message === "snapshot-publication-lease-active") return;
+    },
+    onFailure: async (error, pass, retryKind) => {
       if (kind === "portal-catalog" && process.env.GCLOUD_PROJECT === "fresh-prints-dev") {
         logger.error("portal-catalog-publication-accounting", {
           mode: "full",
           classification: "index-filter",
           publicationReason: "design-write",
-          pass: pass + 1,
+          pass,
           durationMs: Date.now() - startedAtMs,
           outcome: "failure",
-          failureCode: "full-publication-failed",
+          failureCode:
+            retryKind === "lease-busy"
+              ? "lease-active-retrying"
+              : retryKind === "transient"
+                ? "transient-storage-retrying"
+                : "full-publication-failed",
         });
+      }
+    },
+  });
+}
+
+/**
+ * Drains `requestedGeneration` ahead of `publishedGeneration` with bounded retries.
+ * Exported for unit tests of the tag-removal stuck-publish recovery behavior.
+ */
+export async function runPublicationCatchUpLoop(options: {
+  publish: () => Promise<{ generation: number; accounting?: PortalPublicationAccounting }>;
+  readRequestedGeneration: () => Promise<unknown>;
+  passLimit?: number;
+  sleep?: (ms: number) => Promise<void>;
+  onSuccess?: (
+    published: { generation: number; accounting?: PortalPublicationAccounting },
+    pass: number,
+  ) => Promise<void>;
+  onFailure?: (
+    error: unknown,
+    pass: number,
+    retryKind: ReturnType<typeof shouldRetryPublicationPass>,
+  ) => Promise<void>;
+}): Promise<void> {
+  const passLimit = options.passLimit ?? PUBLICATION_PASS_LIMIT;
+  const sleep =
+    options.sleep ??
+    ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
+
+  let lastError: unknown;
+  for (let pass = 0; pass < passLimit; pass += 1) {
+    try {
+      const published = await options.publish();
+      await options.onSuccess?.(published, pass + 1);
+      const requested = await options.readRequestedGeneration();
+      if (!publicationNeedsCatchUp(requested, published.generation)) {
+        return;
+      }
+      lastError = undefined;
+    } catch (error) {
+      lastError = error;
+      const retryKind = shouldRetryPublicationPass(error);
+      await options.onFailure?.(error, pass + 1, retryKind);
+      // Previously returned immediately on lease-active, permanently abandoning a higher
+      // requestedGeneration (prod tag-removal: gen 9 stuck after FetchError / busy races).
+      if (retryKind === "lease-busy" && pass < passLimit - 1) {
+        await sleep(LEASE_BUSY_RETRY_DELAY_MS);
+        continue;
+      }
+      if (retryKind === "transient" && pass < passLimit - 1) {
+        await sleep(TRANSIENT_STORAGE_RETRY_BASE_DELAY_MS * (pass + 1) * 5);
+        continue;
       }
       throw error;
     }
   }
+  if (lastError) throw lastError;
 }
 
 async function assertOwnerAdmin(uid: string): Promise<void> {
@@ -832,6 +905,45 @@ export const rebuildCatalogSnapshots = onCall(async (request) => {
       generation: portalResult.value.generation,
     },
   };
+});
+
+/**
+ * Owner/admin catch-up for a stuck portal-catalog coordination doc
+ * (`requestedGeneration` > `publishedGeneration`, e.g. after FetchError).
+ * Does **not** bump requestedGeneration — drains the existing dirty watermark.
+ * Exported for ops runners that share the callable's exact drain path.
+ */
+export async function drainPortalCatalogPublicationCatchUp(): Promise<{
+  requestedGeneration: number | null;
+  publishedGeneration: number | null;
+  status: string | null;
+}> {
+  await runPublicationCatchUpLoop({
+    publish: () => publishKind("portal-catalog"),
+    readRequestedGeneration: async () => {
+      const latest = await adminDb.collection(COORDINATION_COLLECTION).doc("portal-catalog").get();
+      return latest.data()?.requestedGeneration;
+    },
+  });
+  const latest = await adminDb.collection(COORDINATION_COLLECTION).doc("portal-catalog").get();
+  const data = latest.data() ?? {};
+  return {
+    requestedGeneration:
+      typeof data.requestedGeneration === "number" ? data.requestedGeneration : null,
+    publishedGeneration:
+      typeof data.publishedGeneration === "number" ? data.publishedGeneration : null,
+    status: typeof data.status === "string" ? data.status : null,
+  };
+}
+
+export const retryPortalCatalogPublication = onCall(async (request) => {
+  if (!request.auth?.uid) throw unauthenticated();
+  await assertOwnerAdmin(request.auth.uid);
+  try {
+    return await drainPortalCatalogPublicationCatchUp();
+  } catch (error) {
+    mapPublicationFailure("portal-catalog", error);
+  }
 });
 
 export const onCategorySnapshotSourceWritten = onDocumentWritten(

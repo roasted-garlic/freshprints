@@ -796,6 +796,12 @@ Normal Portal browsing remains Firestore cursor pagination. Coordination lives o
 `snapshotPublicationState/catalog-reference` and `snapshotPublicationState/portal-catalog`, both
 denied to clients. See ADR-FP-120.
 
+When `requestedGeneration` exceeds `publishedGeneration` after a failed or lease-busy full publish
+(e.g. transient Storage `FetchError`), the publisher runs a bounded catch-up loop with Storage I/O
+retries rather than abandoning the dirty watermark. Owner/admin may also invoke
+`retryPortalCatalogPublication` to drain an existing failed coordination state without bumping the
+requested generation. Tag and category field changes remain full index/filter republishes.
+
 Card-only design edits use an additive immutable override asset referenced by the Portal manifest.
 The trigger maps the Firestore event payload directly, merges it with the prior override asset, and
 uses a Storage generation-preconditioned manifest swap; it does not query ready designs or

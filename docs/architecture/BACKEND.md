@@ -258,7 +258,7 @@ As of ADR-FP-039/ADR-FP-040 / ADR-FP-113, **AI Processing is a single playground
 | `staffUpdateAssistedCreationStatus` | Callable | Studio: owner/admin start/resume/reject/cancel/restore, or `update_notes` (notes only, no status/history change); **reject only when current status is `submitted`** (fail closed after Start Work); resume clears catalog suggestion; reject/cancel purge all proof full-res |
 | `staffAddAssistedCreationProof` | Callable | Studio: owner/admin attach proof → `proof_ready` (`fulfillmentMode: proof_image`; clears catalog suggestion) |
 | `staffAddAssistedCreationFinalSource` | Callable | Studio: owner/admin attach final HR artwork under `final/` and complete `final_source_needed` → `approved` (ADR-FP-110) |
-| `staffSuggestAssistedCreationCatalogDesign` | Callable | Studio: owner/admin suggest ready catalog design → `proof_ready` (`fulfillmentMode: catalog_share`); in-app notification + optional email outbox (ADR-FP-108) |
+| `staffSuggestAssistedCreationCatalogDesign` | Callable | Studio: owner/admin suggest ready catalog design → `proof_ready` (`fulfillmentMode: catalog_share`); in-app notification + optional email outbox (ADR-FP-108). **List/search** in the Share-a-library-design modal uses Studio generated ready-index (`useReadyDesignsForAssistedCatalogPicker`), not this callable. |
 | `purgeExpiredAssistedCreationProofs` | Callable | Owner/admin: purge approved proof full-res after 14 days + orphan full-res on rejected/cancelled (`dryRun` supported; ADR-FP-093) |
 | `purgeExpiredAssistedCreationProofsScheduled` | Scheduled (daily) | Same purge logic as the callable (ADR-FP-093) |
 | `updateEmailProviderSettings` | Callable | Studio owner: select invitation and proof-notice providers (`resend` \| `brevo`) |

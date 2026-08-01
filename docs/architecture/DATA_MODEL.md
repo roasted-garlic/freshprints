@@ -987,6 +987,13 @@ export interface PrintRequestItem {
   completedAt?: Timestamp;
   createdAt: Timestamp;
   updatedAt: Timestamp;
+  /**
+   * Server-only Wave C idempotency marker written by `onPrintRequestItemCreated` after
+   * incrementing `designs.requestCount` for catalog items. Clients must not set or clear it.
+   * Absent on upload-backed items and on catalog items until the create trigger completes.
+   * Not production status.
+   */
+  requestCountApplied?: boolean;
 }
 ```
 

@@ -130,4 +130,5 @@ export {
   onPortalCatalogSnapshotSourceWritten,
   onTagSnapshotSourceWritten,
   rebuildCatalogSnapshots,
+  retryPortalCatalogPublication,
 } from "./catalogSnapshots/publishCatalogSnapshots";

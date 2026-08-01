@@ -1,34 +1,41 @@
 # Current Goal
-`production-release` (Goal #13)
+`production-release` (Goal #13) — Stage 2 paused; Assisted library design search slice **SIGNED OFF**
 
 Current Mode: managed-phase
-Current Phase: signoff — **bundled brand implement + visual QA PASS; await production release phrases**
-Plan Status: complete — Part B branding implemented
-Review Status: implement signed off (approved); production releases pending
-Implement Status: complete on `development` (`f0f555a`)
-Test Status: automated passed; owner visual QA **PASS**
-Signoff Status: **approved** (dev implement) —
-`docs/workflow/reviews/2026-07-31-production-bundled-brand-implementation-signoff.md`
-DONE: no (Goal #13 continues; Studio/Portal branding not yet in production)
+Current Phase: slice signoff complete — await owner direction (Stage 2 or next priority)
+Plan Status: complete —
+`docs/workflow/plans/2026-07-31-production-studio-assisted-library-design-search-empty-plan.md`
+Review Status: **approved** —
+`docs/workflow/reviews/2026-07-31-production-studio-assisted-library-design-search-empty-review.md`
+Implement Status: **complete**
+Test Status: **passed**
+Ship Status: **complete**
+Signoff Status: **approved** —
+`docs/workflow/reviews/2026-07-31-production-studio-assisted-library-design-search-empty-signoff.md`
+DONE: no (Goal #13 continues; Stage 2 paused)
 Human Checkpoint Required: yes
-Human Checkpoint Reason: Await production release approval(s):
-`APPROVE PRODUCTION STUDIO INSTALLER: BUNDLED BRAND ASSETS` and/or
-`APPROVE PRODUCTION PORTAL APP HOSTING ROLLOUT: BUNDLED BRAND ASSETS`
+Human Checkpoint Reason: Await owner authorization for Stage 2 hosted.app smoke, or next Goal #13
+priority. Do not start Stage 2 or domain cutover until authorized.
 Blocked: no
 Blocker: none
-Allowed Actions: docs; prepare releases when phrases received
-Forbidden Actions: Studio rebuild / Portal branding App Hosting rollout without phrases; Stage 2
-until branding production path complete (or owner resequences)
-Next Required Step: Owner sends Studio installer and/or Portal App Hosting branding rollout phrase(s)
+Allowed Actions: docs; wait for owner direction on Stage 2 / next priority
+Forbidden Actions: resume Stage 2; domain cutover; silent production changes
+Next Required Step: Owner authorizes Stage 2 hosted.app smoke (checklist prepared) or states next
+priority
 
 Decision Log:
-- 2026-07-31 — Owner bundled-brand visual QA **PASS**.
-- 2026-07-31 — Brand sources applied on `development` (`f0f555a`).
-- 2026-07-31 — `APPROVE BUNDLED BRAND ASSET IMPLEMENTATION` + `Brand sources ready`.
+- 2026-07-31 — Owner authorized production branch promotion via protected PR. Opened
+  https://github.com/roasted-garlic/freshprints/pull/15 (`development` → `production`,
+  MERGEABLE/CLEAN). Agent `gh pr merge` blocked by Cursor production hook — owner must merge
+  PR #15 in GitHub UI to finish branch sync (no new Firebase deploy in this PR).
+- 2026-07-31 — Git cleanup: committed remediations as `7a5c593`, pushed `origin/development`,
+  dropped obsolete stash `wip-before-branding-release`. Working tree clean.
+- 2026-07-31 — Assisted library design search slice **SIGNED OFF** (owner Studio QA **PASS**).
+- 2026-07-31 — Production Studio installer built (SHA-256 `998E875E…C0B7`; embeds `fresh-prints-prod`).
+- 2026-07-31 — Implement complete: browse hook on generated ready-index; Wave C Print Request hook unchanged.
+- 2026-07-31 — Tag-removal / resize / branding / registration slices remain signed off.
 
-Last Completed Step: **Bundled brand visual QA PASS / implement signoff.**
-
-Prior: Brand assets implemented on development.
+Last Completed Step: **Signoff approved** for Assisted library design search empty slice.
 
 **Corrected `users/{uid}` field list for any future manual bootstrap:** `id` (string, same as
 document ID / Auth UID), `email` (string), `displayName` (string), `role` (string, `"owner"` for

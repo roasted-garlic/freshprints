@@ -24,6 +24,7 @@
 | Deprecated on designs | `queued`, `printed` |
 | Approval | Staff AI Review / catalogApprovalService only |
 | Library scope | `ready` only by default |
+| ADR-FP-120 (amended 2026-07-31) | Failed portal-catalog publish recovery: Storage retries, catch-up loop, `retryPortalCatalogPublication`; tags/category stay full index-filter republish |
 
 ## Print Requests & Portal
 

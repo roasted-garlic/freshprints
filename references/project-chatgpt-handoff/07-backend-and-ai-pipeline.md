@@ -11,7 +11,15 @@
 
 No custom REST API for core ops. Business logic in app services + Cloud Functions.
 
-Deploy target for current work: **`fresh-prints-dev` only** unless human approves production.
+Deploy target for current work: **`fresh-prints-prod`** is live under Goal #13; still require explicit
+owner phrases for production deploys / catch-up / Stage 2 / domain.
+
+### Generated catalog publication recovery (ADR-FP-120 amendment, 2026-07-31)
+
+- Tag/category edits remain full `index-filter` republishes of `generated/portal-catalog/**`
+- Transient Storage/`FetchError` retries + catch-up loop (no lease-busy abandon of higher `requestedGeneration`)
+- Owner/admin callable `retryPortalCatalogPublication` drains dirty watermark without bumping generation
+- Production catch-up published portal-catalog generation **9**; slice signed off (owner QA PASS)
 
 ### Brand logos (ADR-FP-114)
 

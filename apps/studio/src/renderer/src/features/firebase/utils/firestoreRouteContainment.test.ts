@@ -25,7 +25,8 @@ describe("Phase 0 route read containment alignment", () => {
       "apps/studio/src/renderer/src/features/designs/pages/DesignLibraryPage.tsx",
     );
 
-    assert.match(source, /useDesigns\(listQuery\)/);
+    assert.match(source, /useGeneratedReadyDesigns/);
+    assert.match(source, /useDesigns\(listQuery,\s*\{\s*enabled:/);
     assert.doesNotMatch(source, /useDesigns\(listQuery,\s*\{\s*loadAll:\s*true/);
     assert.match(source, /isTagManagementModalOpen\s*\?\s*\(/);
   });
@@ -62,6 +63,14 @@ describe("Phase 0 route read containment alignment", () => {
     assert.match(page, /useReadyDesignsForSelection\(selectedDesignIds\)/);
     assert.match(hook, /designService\.getDesignById/);
     assert.doesNotMatch(hook, /listReadyDesigns/);
+  });
+
+  it("keeps Assisted library-share picker off the Print Request ID-only ready hook", () => {
+    const modal = read(
+      "apps/studio/src/renderer/src/features/customer-requests/components/AssistedCatalogDesignPickerModal.tsx",
+    );
+    assert.match(modal, /useReadyDesignsForAssistedCatalogPicker/);
+    assert.doesNotMatch(modal, /useReadyDesignsForSelection/);
   });
 
   it("bounds global Staff Inbox listeners and exposes cache outcomes to the trace", () => {
