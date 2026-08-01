@@ -1084,3 +1084,8 @@ See `CURRENT-STATE.md` for live status.
 
 - Tests 1–7: **PASS**. Both controls, default linkage, bidirectional linked editing, independent editing, relinking, and leaving without save passed; retired daily-limit control absent.
 - UI signoff approved. Production settings were not saved during QA; linked 25/25 persistence remains the active checkpoint.
+
+# 2026-08-01 — Production linked dual-limit settings save
+
+- Owner intentionally saved linked 30/30 (superseding proposed 25/25); success message, reopen, and restart persistence all PASS with no errors.
+- Hosted Portal verification remains pending because no authenticated browser backend was available. No deployment, capacity change, or Stage 2 action occurred.

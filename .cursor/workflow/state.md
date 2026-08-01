@@ -4,7 +4,7 @@
 `portal-print-request-and-customer-show-limit-settings` (source workflow)
 
 Current Mode: managed-phase
-Current Phase: authorized production linked-limit settings save and verification
+Current Phase: production linked 30/30 Portal verification
 Plan Status: complete —
 `docs/workflow/plans/2026-07-31-production-portal-show-schedule-and-limit-settings-amendment-1-plan.md`
 Review Status: **approved_with_changes** —
@@ -13,19 +13,20 @@ Implement Status: complete
 Test Status: **passed** — `docs/workflow/reviews/2026-07-31-production-portal-show-schedule-and-limit-settings-amendment-1-test-report.md`
 Implementation Review: **approved** — `docs/workflow/reviews/2026-07-31-production-portal-show-schedule-and-limit-settings-amendment-1-implementation-review.md`
 Ship Status: Functions + Portal App Hosting rollout **passed** (`build-2026-08-01-001`)
-Signoff Status: customer schedule visibility + dual-limit Studio UI **approved**; 25/25 settings persistence pending
+Signoff Status: customer schedule visibility + dual-limit Studio UI **approved**; linked 30/30 Studio persistence PASS; Portal verification pending
 Implementation Review: **approved** —
 `docs/workflow/reviews/2026-07-31-production-portal-show-schedule-and-limit-settings-implementation-review.md`
 DONE: no (Goal #13 continues; Stage 2 paused)
 Human Checkpoint Required: yes
-Human Checkpoint Reason: owner must perform the single authorized Studio save and report its visible result/reload state
+Human Checkpoint Reason: authenticated production Portal verification is required; no browser backend is connected to this session
 Blocked: no
 Blocker: none
-Allowed Actions: save only linked 25/25 through installed production Studio; docs; read-only verification
+Allowed Actions: docs; read-only Portal verification; normal reversible QA with existing smoke fixtures
 Forbidden Actions: further deploys; production actions; Rules/index/data/settings changes; Stage 2; domain
-Next Required Step: Owner saves linked 25/25 once, verifies Studio reload/restart, and reports result for Portal verification
+Next Required Step: Owner completes the 12-point hosted Portal linked-30/30 verification and reports results
 
 Decision Log:
+- 2026-08-01 — Owner intentionally saved linked 30/30; Studio success/reopen/restart PASS. Portal verification pending because no authenticated browser backend was available.
 - 2026-08-01 — Owner QA Tests 1–7 PASS; dual-limit Studio Settings UI signed off. No settings were saved during QA.
 - 2026-08-01 — Production Studio installer built from exact `1196085`; tests/build/icon/branding/prod config/dev-only UI gates verified. Owner QA pending; settings unchanged.
 - 2026-08-01 — Owner QA tests 1–9 PASS; customer schedule visibility slice signed off **approved**.

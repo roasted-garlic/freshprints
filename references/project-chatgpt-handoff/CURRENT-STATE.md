@@ -1,5 +1,11 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-08-01 - Production linked limits SAVED 30/30; Portal verification pending
+
+- Owner intentionally changed linked values from 25/25 to 30/30 and received `Print request limits saved.`
+- Reopen and full Studio restart both reloaded 30/30 with linkage checked; no errors. Studio persistence PASS.
+- Authenticated Portal verification remains unclaimed because no browser backend was available in the coding session. Overall checkpoint remains pending; Stage 2 has not resumed.
+
 ## 2026-08-01 - Production Studio dual-limit Settings UI SIGNED OFF
 
 - Owner QA Tests 1–7 PASS using `Fresh Prints-Windows-0.0.0-Setup-dual-limit-settings.exe` from production commit `11960852f45f948e37a1a5aeb3b09699882cd1fd`.
