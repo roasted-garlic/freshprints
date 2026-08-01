@@ -1100,6 +1100,16 @@ same per-customer-per-show limit `L`. Every other part of this ADR (sole limit `
 full-request-per-show allocation, no `selections`/remainder, Cap A removal, settings write strategy)
 remains unchanged and in effect.
 
+**Amended 2026-07-31 (Goal #13 workstream 2 — independent request vs customer-show limits):**
+
+1. **Dual limits** on `settings/printRequestLimits`:
+   - `maxQuantityPerPrintRequest` — max total quantity in one working print request (add/qty/duplicate/upload/assisted paths).
+   - `maxQuantityPerShowPerCustomer` — max cumulative quantity one customer may allocate to one show (queue fit + personal show usage).
+2. **`linkPrintRequestAndCustomerShowLimits`** (boolean; absent → `true`): when linked, Studio save persists equal numerics (backward compatible with sole-`L` installs).
+3. Working-request enforcement uses **request limit**; queue customer cap and Portal show-picker personal usage use **customer-show limit**. Queue still rejects when `totalRemaining > maxQuantityPerPrintRequest` before show-cap math.
+4. **ADR-FP-122 accumulation** unchanged — multiple separate requests to the same show still sum toward `maxQuantityPerShowPerCustomer`.
+5. Atomic full-request-per-show queue, no `selections`/remainder, Cap A removal, and legacy Cap A mirror on save remain in effect. Migration-free additive fields only.
+
 ---
 
 ### ADR-FP-122: Multiple Portal print requests per customer per show, accumulating to limit `L`

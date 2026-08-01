@@ -14,6 +14,7 @@ import {
   portalPrintProgressPollDelay,
   shouldPollPortalPrintProgress,
 } from '../utils/portalPrintProgressPolling';
+import { buildPortalShowPrintProgressSignature } from '../utils/portalShowPrintProgressSignature';
 import { PortalProgressRequestGate } from '../utils/portalProgressRequestGate';
 import { PortalProgressPollingController } from '../utils/portalProgressPollingController';
 
@@ -66,15 +67,7 @@ export function usePortalShowPrintProgress(printRequestId: string | undefined, e
     return requestGateRef.current.run(
       () => portalShowSelectionService.getShowPrintProgress(printRequestId),
       (nextShows) => {
-      const signature = JSON.stringify(
-        nextShows.map((show) => [
-          show.showId,
-          show.productionStatus,
-          show.accumulatedPrintMs,
-          show.activePrintStartedAtMs,
-          show.printPausedAtMs,
-        ]),
-      );
+      const signature = buildPortalShowPrintProgressSignature(nextShows);
       unchangedPollsRef.current =
         signature === progressSignatureRef.current ? unchangedPollsRef.current + 1 : 0;
       progressSignatureRef.current = signature;
@@ -234,6 +227,7 @@ export function usePortalShowPrintProgress(printRequestId: string | undefined, e
     primaryShow,
     reload: loadProgress,
     showElapsed,
+    shows,
     statusHeadline,
   };
 }

@@ -30,20 +30,22 @@ export interface PortalWorkingRequestLimitHydration {
 }
 
 export interface PortalWorkingRequestLimitState {
-  /** Sole limit L = maxQuantityPerShowPerCustomer. */
+  /** Max prints on one working request (`maxQuantityPerPrintRequest`). */
   limit: number | null;
+  /** Max prints per customer per show (`maxQuantityPerShowPerCustomer`). */
+  customerShowLimit: number | null;
   workingPrintCount: number;
   roomRemaining: number;
   isRequestFull: boolean;
   /**
-   * False until limit L and working print count are both known.
-   * Do not show "L prints left" / open upload UI as available while false.
+   * False until request limit and working print count are both known.
+   * Do not show "N prints left" / open upload UI as available while false.
    */
   isReady: boolean;
   exhaustedMessage: string | null;
   exhaustedStatusText: string | null;
   exhaustedHelperText: string | null;
-  /** True when the Current Request has room below L (false while unknown). */
+  /** True when the Current Request has room below the request limit (false while unknown). */
   canAddPrints: boolean;
 }
 
@@ -62,19 +64,22 @@ export function usePortalWorkingRequestLimitState(
   hydration: PortalWorkingRequestLimitHydration,
 ): PortalWorkingRequestLimitState {
   const { firebaseUser } = useAuth();
-  const [limit, setLimit] = useState<number | null>(null);
+  const [requestLimit, setRequestLimit] = useState<number | null>(null);
+  const [customerShowLimit, setCustomerShowLimit] = useState<number | null>(null);
   const [isLimitReady, setIsLimitReady] = useState(false);
 
   useEffect(() => {
     if (!firebaseUser) {
-      setLimit(null);
+      setRequestLimit(null);
+      setCustomerShowLimit(null);
       setIsLimitReady(true);
       return;
     }
 
     setIsLimitReady(false);
-    const unsubscribe = portalPrintRequestLimitService.subscribe((nextLimit) => {
-      setLimit(nextLimit);
+    const unsubscribe = portalPrintRequestLimitService.subscribe((limits) => {
+      setRequestLimit(limits.requestLimit);
+      setCustomerShowLimit(limits.customerShowLimit);
       setIsLimitReady(true);
     });
 
@@ -91,29 +96,30 @@ export function usePortalWorkingRequestLimitState(
 
   return useMemo(() => {
     const isRequestFull =
-      isReady && limit != null && isWorkingRequestPrintFull(workingPrintCount, limit);
+      isReady && requestLimit != null && isWorkingRequestPrintFull(workingPrintCount, requestLimit);
     const roomRemaining =
-      isReady && limit != null
-        ? workingRequestPrintRoomRemaining(workingPrintCount, limit)
+      isReady && requestLimit != null
+        ? workingRequestPrintRoomRemaining(workingPrintCount, requestLimit)
         : 0;
     // Guests: keep Add CTAs enabled so clicks can redirect to login (#13).
     // Signed-in: conservative while unknown — do not treat missing data as "full room".
     const canAddPrints = !firebaseUser
       ? true
-      : isReady && limit != null && roomRemaining > 0;
+      : isReady && requestLimit != null && roomRemaining > 0;
 
     let exhaustedMessage: string | null = null;
     let exhaustedStatusText: string | null = null;
     let exhaustedHelperText: string | null = null;
 
-    if (isRequestFull && limit != null) {
-      exhaustedMessage = formatWorkingRequestFullUserMessage(limit);
-      exhaustedStatusText = formatWorkingRequestFullStatusLine(limit);
+    if (isRequestFull && requestLimit != null) {
+      exhaustedMessage = formatWorkingRequestFullUserMessage(requestLimit);
+      exhaustedStatusText = formatWorkingRequestFullStatusLine(requestLimit);
       exhaustedHelperText = formatWorkingRequestFullHelperText();
     }
 
     return {
-      limit,
+      limit: requestLimit,
+      customerShowLimit,
       workingPrintCount,
       roomRemaining,
       isRequestFull,
@@ -123,5 +129,5 @@ export function usePortalWorkingRequestLimitState(
       exhaustedHelperText,
       canAddPrints,
     };
-  }, [firebaseUser, isReady, limit, workingPrintCount]);
+  }, [customerShowLimit, firebaseUser, isReady, requestLimit, workingPrintCount]);
 }

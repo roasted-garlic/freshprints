@@ -35,6 +35,10 @@ import { buildShowAllocationSourceFields } from "../../packages/shared/src/utils
 import {
   formatWorkingRequestOverLimitForQueueMessage,
 } from "../../packages/shared/src/utils/printRequestWorkingRequestMax";
+import {
+  printRequestLimitPerCustomerPerShow,
+  printRequestLimitPerRequest,
+} from "../../packages/shared/src/constants/printRequest/printRequestLimitSettings.constants";
 import { adminDb } from "./lib/admin";
 import { failedPrecondition, internal, invalidArgument, unauthenticated } from "./lib/errors";
 import { withoutUndefinedFields } from "./lib/firestoreDocument";
@@ -234,14 +238,15 @@ export const queuePortalPrintRequestToShow = onCall(async (request): Promise<Que
     }
 
     const settings = await loadPrintRequestLimitSettings();
-    const L = settings.maxQuantityPerShowPerCustomer;
+    const maxPerRequest = printRequestLimitPerRequest(settings);
+    const customerShowLimit = printRequestLimitPerCustomerPerShow(settings);
 
-    if (totalRemaining > L) {
+    if (totalRemaining > maxPerRequest) {
       validationStage = "working-request-over-limit";
-      throw failedPrecondition(formatWorkingRequestOverLimitForQueueMessage(L), {
+      throw failedPrecondition(formatWorkingRequestOverLimitForQueueMessage(maxPerRequest), {
         code: PRINT_REQUEST_QUOTA_ERROR_CODES.WORKING_REQUEST_PRINT_LIMIT,
-        cap: L,
-        limit: L,
+        cap: maxPerRequest,
+        limit: maxPerRequest,
       });
     }
 
@@ -308,7 +313,7 @@ export const queuePortalPrintRequestToShow = onCall(async (request): Promise<Que
 
     const showRemainingCapacity =
       maxTotalQuantity === undefined ? undefined : Math.max(0, maxTotalQuantity - allocatedQuantity);
-    const customerLimitRemaining = remainingPerShowCustomerCap(existingOnShowQty, L);
+    const customerLimitRemaining = remainingPerShowCustomerCap(existingOnShowQty, customerShowLimit);
     const fit = planPortalShowQueueFit({
       requestedQuantity: totalRemaining,
       showRemainingCapacity,
@@ -326,7 +331,7 @@ export const queuePortalPrintRequestToShow = onCall(async (request): Promise<Que
           ? formatShowCapacityExceededMessage(totalRemaining, showRemainingCapacity ?? 0)
           : fit.isBlocked
             ? perShowCustomerCapExceededMessage({
-                cap: L,
+                cap: customerShowLimit,
                 existingOnShowQty,
                 newRequestQty: totalRemaining,
               })
@@ -336,7 +341,7 @@ export const queuePortalPrintRequestToShow = onCall(async (request): Promise<Que
               }),
         {
           code,
-          cap: L,
+          cap: customerShowLimit,
           remaining: showRemainingCapacity,
         },
       );
@@ -355,7 +360,7 @@ export const queuePortalPrintRequestToShow = onCall(async (request): Promise<Que
       marker: "simple-request-per-show-v1",
       batchQuantity,
       totalRemaining,
-      limitL: L,
+      limitL: customerShowLimit,
     });
 
     const uploadIds = [
@@ -402,16 +407,16 @@ export const queuePortalPrintRequestToShow = onCall(async (request): Promise<Que
       }
     }
 
-    if (wouldExceedPerShowCustomerCap(existingOnShowQty, batchQuantity, L)) {
+    if (wouldExceedPerShowCustomerCap(existingOnShowQty, batchQuantity, customerShowLimit)) {
       throw failedPrecondition(
         perShowCustomerCapExceededMessage({
-          cap: L,
+          cap: customerShowLimit,
           existingOnShowQty,
           newRequestQty: batchQuantity,
         }),
         {
           code: PRINT_REQUEST_QUOTA_ERROR_CODES.SHOW_CUSTOMER_LIMIT,
-          cap: L,
+          cap: customerShowLimit,
         },
       );
     }
@@ -504,7 +509,7 @@ export const queuePortalPrintRequestToShow = onCall(async (request): Promise<Que
         requestHasExistingAllocation: freshRequestHasAllocation,
         existingCustomerQuantityOnShow: freshCustomerOnShowQty,
         newRequestQuantity: batchQuantity,
-        customerShowCap: L,
+        customerShowCap: customerShowLimit,
       });
       if (transactionBlockReason === "request_already_allocated") {
         throw failedPrecondition(
@@ -553,13 +558,13 @@ export const queuePortalPrintRequestToShow = onCall(async (request): Promise<Que
       if (transactionBlockReason === "customer_show_cap_exceeded") {
         throw failedPrecondition(
           perShowCustomerCapExceededMessage({
-            cap: L,
+            cap: customerShowLimit,
             existingOnShowQty: freshCustomerOnShowQty,
             newRequestQty: batchQuantity,
           }),
           {
             code: PRINT_REQUEST_QUOTA_ERROR_CODES.SHOW_CUSTOMER_LIMIT,
-            cap: L,
+            cap: customerShowLimit,
           },
         );
       }

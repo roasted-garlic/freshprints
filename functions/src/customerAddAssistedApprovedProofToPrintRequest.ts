@@ -195,7 +195,7 @@ export const customerAddAssistedApprovedProofToPrintRequest = onCall(
       const payload = validateRequest(request.data);
       const customerUid = request.auth.uid;
       const settings = await loadPrintRequestLimitSettings();
-      const maxPerRequest = settings.maxQuantityPerShowPerCustomer;
+      const maxPerRequest = settings.maxQuantityPerPrintRequest;
       const assistedRef = adminDb.collection(ASSISTED_CREATION_COLLECTION).doc(payload.requestId);
 
       const assistedSnap = await assistedRef.get();

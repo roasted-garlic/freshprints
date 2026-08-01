@@ -56,8 +56,10 @@ export function PortalWorkingRequestLimitBanner() {
   const remaining = workingRequestLimit.roomRemaining;
   const tone = resolveWorkingRequestLimitBannerTone(remaining, limit);
   const bannerCopy = formatWorkingRequestLimitBannerCopy(remaining, limit);
-  // Sole limit L drives both request capacity and per-show cap (ADR-FP-102).
-  const helpLines = formatWorkingRequestLimitHelpModalCopy(limit, limit);
+  const helpLines = formatWorkingRequestLimitHelpModalCopy(
+    limit,
+    workingRequestLimit.customerShowLimit ?? limit,
+  );
 
   return (
     <>

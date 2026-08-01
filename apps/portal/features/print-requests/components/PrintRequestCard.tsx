@@ -39,9 +39,10 @@ interface PrintRequestCardProps {
   fromTab?: PortalPrintRequestListTab;
   request: PrintRequest;
   progressLabel?: string;
+  scheduleLine?: string | null;
 }
 
-export function PrintRequestCard({ fromTab, request, progressLabel }: PrintRequestCardProps) {
+export function PrintRequestCard({ fromTab, request, progressLabel, scheduleLine }: PrintRequestCardProps) {
   const label = progressLabel ?? getStatusLabel(request.status);
   const href = buildRequestDetailHref(request.id, {
     from: fromTab ?? 'working',
@@ -60,6 +61,7 @@ export function PrintRequestCard({ fromTab, request, progressLabel }: PrintReque
         {request.itemCount} design{request.itemCount === 1 ? '' : 's'} · Updated{' '}
         {formatUpdatedDate(request.updatedAt)}
       </p>
+      {scheduleLine ? <p className="portal-muted portal-request-card-schedule">{scheduleLine}</p> : null}
     </Link>
   );
 }

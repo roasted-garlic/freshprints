@@ -1,6 +1,6 @@
 /**
- * Per Current Request print max (= sole limit `L` = `maxQuantityPerShowPerCustomer`).
- * Same `L` is enforced per customer per show at queue time (atomic full fit or reject).
+ * Per Current Request print max (`maxQuantityPerPrintRequest`).
+ * Per-customer-per-show cap (`maxQuantityPerShowPerCustomer`) is enforced at queue time.
  */
 
 function finiteNonNeg(value: number): number {
@@ -56,7 +56,7 @@ export function isWorkingRequestPrintFull(
 }
 
 /**
- * Clamp a line qty so the working request stays within `L`.
+ * Clamp a line qty so the working request stays within the request limit.
  *
  * Room = maxPerRequest − otherItemsPrintCount (exclude this line).
  * Result = min(requestedQty, room). Never snaps a line to 1 unless room is actually 1;
@@ -114,7 +114,7 @@ export function formatWorkingRequestFullUserMessage(maxPerRequest: number): stri
 }
 
 /**
- * Upload Designs overlay when Current Request is at L.
+ * Upload Designs overlay when Current Request is at the request limit.
  * Title reuses the short status line; body tells customers to return when there is room.
  */
 export function formatWorkingRequestFullUploadOverlayTitle(maxPerRequest: number): string {
@@ -165,7 +165,7 @@ export function resolveUploadSessionImageCap(input: {
   return Math.min(batchMax, finiteNonNeg(input.maxImagesForRequest));
 }
 
-/** Queue blocked because Continuable already exceeds `L` (over-limit compat). */
+/** Queue blocked because Continuable already exceeds the request limit (over-limit compat). */
 export function formatWorkingRequestOverLimitForQueueMessage(maxPerRequest: number): string {
   const max = finitePositive(maxPerRequest) ?? 0;
   return `This request has more than ${max} prints. Remove or lower quantities until you have ${max} or fewer, then add to a show.`;
@@ -196,7 +196,7 @@ export function resolveWorkingRequestLimitBannerTone(
   return "healthy";
 }
 
-/** Sticky top banner: remaining-style fill against L. */
+/** Sticky top banner: remaining-style fill against the request limit. */
 export function formatWorkingRequestLimitBannerCopy(remaining: number, limit: number): string {
   const room = finiteNonNeg(remaining);
   const max = finitePositive(limit) ?? 0;
@@ -227,7 +227,7 @@ function formatShowMultiRequestExample(showMax: number): string | null {
 /**
  * Help modal lines for Portal print limits.
  * Request capacity (X) and per-show-per-customer cap (Y) come from live Studio settings
- * (same sole `L` today; both args so copy stays correct if they diverge).
+ * (same sole `L` when linked; both args so copy stays correct when they diverge).
  * Customers may queue multiple requests to the same show until they hit Y prints.
  * Show-wide capacity ("a max of 200") is illustrative owner wording, not live per-show maxTotalQuantity.
  * Includes owner note that building/submitting a request does not cost money up front

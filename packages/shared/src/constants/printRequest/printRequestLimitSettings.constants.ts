@@ -11,27 +11,36 @@ export const PRINT_REQUEST_LIMIT_BOUND_MAX = 10_000;
 /**
  * Portal print-request limit settings.
  *
- * Sole enforced limit `L` = `maxQuantityPerShowPerCustomer`
- * (max prints on Current Request = max per customer per show).
+ * - `maxQuantityPerPrintRequest` — max total quantity in one working print request.
+ * - `maxQuantityPerShowPerCustomer` — max cumulative quantity one customer may allocate to one show.
+ * - When `linkPrintRequestAndCustomerShowLimits` is true (default), both numeric limits stay equal.
  *
- * `dailyDesignsAddedToRequestsLimit` is legacy Cap A: mirrored = `L` on save for one-release
- * rollback compatibility. Do not read or enforce it for Portal limits.
+ * `dailyDesignsAddedToRequestsLimit` is legacy Cap A: mirrored from the request limit on save for
+ * one-release rollback compatibility. Do not read or enforce it for Portal limits.
  */
 export interface PrintRequestLimitSettings {
   /**
-   * Legacy Cap A field. Write-only mirror of `L` for one release.
+   * Legacy Cap A field. Write-only mirror of the request limit for one release.
    * Not used for enforcement.
    */
   dailyDesignsAddedToRequestsLimit: number;
-  /** Sole limit `L`: max Current Request prints and max per customer per show. */
+  /** Max prints contained in one working print request. */
+  maxQuantityPerPrintRequest: number;
+  /** Max prints one customer may place into one show (sum across their requests). */
   maxQuantityPerShowPerCustomer: number;
+  /**
+   * When true, both numeric limits are kept equal. Absent in Firestore → treated as linked.
+   */
+  linkPrintRequestAndCustomerShowLimits: boolean;
   updatedAt?: unknown;
   updatedBy?: string;
 }
 
 export const DEFAULT_PRINT_REQUEST_LIMIT_SETTINGS: Readonly<PrintRequestLimitSettings> = {
   dailyDesignsAddedToRequestsLimit: PRINT_REQUEST_DAILY_DESIGNS_ADDED_LIMIT,
+  maxQuantityPerPrintRequest: PRINT_REQUEST_MAX_QUANTITY_PER_SHOW_PER_CUSTOMER,
   maxQuantityPerShowPerCustomer: PRINT_REQUEST_MAX_QUANTITY_PER_SHOW_PER_CUSTOMER,
+  linkPrintRequestAndCustomerShowLimits: true,
 };
 
 function isPositiveIntInRange(value: unknown, max: number): value is number {
@@ -51,9 +60,19 @@ export function resolvePrintRequestLimitField(
   return isPositiveIntInRange(value, max) ? value : fallback;
 }
 
+function resolveLinkPreference(value: unknown): boolean {
+  if (typeof value === "boolean") {
+    return value;
+  }
+  // Absent / invalid → linked (backward compatible with sole-L installs).
+  return true;
+}
+
 /**
- * Resolve settings from Firestore. Enforcement uses only `maxQuantityPerShowPerCustomer` (`L`).
- * Legacy Cap A is resolved for display/compat but must not drive Portal gates.
+ * Resolve settings from Firestore.
+ * - Missing `maxQuantityPerPrintRequest` falls back to `maxQuantityPerShowPerCustomer`.
+ * - Missing link preference is treated as linked.
+ * - Legacy Cap A is resolved for display/compat but must not drive Portal gates.
  */
 export function resolvePrintRequestLimitSettings(value: unknown): PrintRequestLimitSettings {
   const data = value && typeof value === "object" ? (value as Record<string, unknown>) : {};
@@ -64,15 +83,26 @@ export function resolvePrintRequestLimitSettings(value: unknown): PrintRequestLi
     defaults.maxQuantityPerShowPerCustomer,
   );
 
-  // Prefer stored Cap A if present (compat), else mirror L so callers always see a number.
+  const maxQuantityPerPrintRequest = resolvePrintRequestLimitField(
+    data.maxQuantityPerPrintRequest,
+    maxQuantityPerShowPerCustomer,
+  );
+
+  const linkPrintRequestAndCustomerShowLimits = resolveLinkPreference(
+    data.linkPrintRequestAndCustomerShowLimits,
+  );
+
+  // Prefer stored Cap A if present (compat), else mirror request limit so callers always see a number.
   const dailyDesignsAddedToRequestsLimit = resolvePrintRequestLimitField(
     data.dailyDesignsAddedToRequestsLimit,
-    maxQuantityPerShowPerCustomer,
+    maxQuantityPerPrintRequest,
   );
 
   const settings: PrintRequestLimitSettings = {
     dailyDesignsAddedToRequestsLimit,
+    maxQuantityPerPrintRequest,
     maxQuantityPerShowPerCustomer,
+    linkPrintRequestAndCustomerShowLimits,
   };
 
   if (data.updatedAt !== undefined) {
@@ -85,9 +115,15 @@ export function resolvePrintRequestLimitSettings(value: unknown): PrintRequestLi
   return settings;
 }
 
+export interface PrintRequestLimitSettingsInput {
+  maxQuantityPerPrintRequest: number;
+  maxQuantityPerShowPerCustomer: number;
+  linkPrintRequestAndCustomerShowLimits: boolean;
+}
+
 /**
- * Strict validation for owner save payloads. Requires only `L`
- * (`maxQuantityPerShowPerCustomer`). Mirrors `L` into legacy Cap A for one-release rollback.
+ * Strict validation for owner save payloads.
+ * When linked, both numeric fields must be equal; Cap A mirrors the request limit.
  * Returns null when invalid.
  */
 export function parsePrintRequestLimitSettingsInput(
@@ -98,21 +134,57 @@ export function parsePrintRequestLimitSettingsInput(
   }
   const data = value as Record<string, unknown>;
 
-  // Accept either single-field `{ maxQuantityPerShowPerCustomer }` or legacy both-fields
-  // (when both present, L wins; Cap A is ignored for the value).
-  if (!isPositiveIntInRange(data.maxQuantityPerShowPerCustomer, PRINT_REQUEST_LIMIT_BOUND_MAX)) {
+  // Legacy sole-L save shape: only customer-show field present → treat as linked equal values.
+  const hasRequestField = isPositiveIntInRange(data.maxQuantityPerPrintRequest, PRINT_REQUEST_LIMIT_BOUND_MAX);
+  const hasCustomerShowField = isPositiveIntInRange(
+    data.maxQuantityPerShowPerCustomer,
+    PRINT_REQUEST_LIMIT_BOUND_MAX,
+  );
+
+  if (!hasCustomerShowField && !hasRequestField) {
     return null;
   }
 
-  const L = data.maxQuantityPerShowPerCustomer as number;
+  const linkPrintRequestAndCustomerShowLimits =
+    typeof data.linkPrintRequestAndCustomerShowLimits === "boolean"
+      ? data.linkPrintRequestAndCustomerShowLimits
+      : true;
+
+  let maxQuantityPerPrintRequest: number;
+  let maxQuantityPerShowPerCustomer: number;
+
+  if (linkPrintRequestAndCustomerShowLimits) {
+    // Linked saves always persist equal numerics. Prefer explicit request field, else customer-show.
+    const linkedValue = hasRequestField
+      ? (data.maxQuantityPerPrintRequest as number)
+      : (data.maxQuantityPerShowPerCustomer as number);
+    maxQuantityPerPrintRequest = linkedValue;
+    maxQuantityPerShowPerCustomer = linkedValue;
+  } else {
+    if (!hasRequestField || !hasCustomerShowField) {
+      return null;
+    }
+    maxQuantityPerPrintRequest = data.maxQuantityPerPrintRequest as number;
+    maxQuantityPerShowPerCustomer = data.maxQuantityPerShowPerCustomer as number;
+  }
+
   return {
-    maxQuantityPerShowPerCustomer: L,
-    // Mirror L into legacy Cap A for one-release rollback compatibility.
-    dailyDesignsAddedToRequestsLimit: L,
+    maxQuantityPerPrintRequest,
+    maxQuantityPerShowPerCustomer,
+    linkPrintRequestAndCustomerShowLimits,
+    dailyDesignsAddedToRequestsLimit: maxQuantityPerPrintRequest,
   };
 }
 
-/** Sole enforced Portal print limit `L` from resolved settings. */
+/** @deprecated Prefer `printRequestLimitPerRequest` / `printRequestLimitPerCustomerPerShow`. */
 export function printRequestLimitL(settings: PrintRequestLimitSettings): number {
+  return settings.maxQuantityPerShowPerCustomer;
+}
+
+export function printRequestLimitPerRequest(settings: PrintRequestLimitSettings): number {
+  return settings.maxQuantityPerPrintRequest;
+}
+
+export function printRequestLimitPerCustomerPerShow(settings: PrintRequestLimitSettings): number {
   return settings.maxQuantityPerShowPerCustomer;
 }

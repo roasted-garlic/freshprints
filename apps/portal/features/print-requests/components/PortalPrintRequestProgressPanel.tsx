@@ -13,6 +13,8 @@ interface PortalPrintRequestProgressPanelProps {
   showElapsed?: boolean;
   /** Status copy shown while the request is queued / not yet printing. */
   waitingLabel?: string;
+  /** Customer-safe scheduled show labels (no show ids/titles). */
+  scheduledShowLabels?: string[];
 }
 
 function getStatusChipLabel(input: {
@@ -43,6 +45,7 @@ export function PortalPrintRequestProgressPanel({
   isPaused = false,
   showElapsed = false,
   waitingLabel = 'Waiting for the printing to start',
+  scheduledShowLabels = [],
 }: PortalPrintRequestProgressPanelProps) {
   const activeIndex = Math.max(0, STAGES.indexOf(activeStage));
   const isRunning = !isLoading && (isLive || (activeStage === 'printing' && !isPaused));
@@ -51,6 +54,8 @@ export function PortalPrintRequestProgressPanel({
   const statusChip = getStatusChipLabel({ activeStage, isRunning, isLoading, isPaused });
   const showPulse = isRunning && activeStage === 'printing';
   const statusText = showWaitingCopy ? waitingLabel : null;
+  const scheduledShowsHeading =
+    scheduledShowLabels.length === 1 ? 'Scheduled show' : 'Scheduled shows';
 
   return (
     <section
@@ -80,6 +85,17 @@ export function PortalPrintRequestProgressPanel({
 
         {statusText ? (
           <p className="portal-print-progress-elapsed is-waiting">{statusText}</p>
+        ) : null}
+
+        {scheduledShowLabels.length > 0 ? (
+          <div className="portal-print-progress-schedules">
+            <p className="portal-eyebrow">{scheduledShowsHeading}</p>
+            <ul className="portal-print-progress-schedule-list">
+              {scheduledShowLabels.map((label, index) => (
+                <li key={`${label}-${index}`}>{label}</li>
+              ))}
+            </ul>
+          </div>
         ) : null}
       </div>
 

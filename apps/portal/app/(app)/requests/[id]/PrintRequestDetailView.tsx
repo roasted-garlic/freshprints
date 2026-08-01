@@ -14,6 +14,10 @@ import {
   resolvePortalPrintProgressStage,
   type PortalPrintProgressStage,
 } from '@fresh-prints/shared/utils/portalPrintProgressStage';
+import {
+  buildPortalCustomerShowSchedulesFromAllocations,
+  formatPortalCustomerShowScheduleLabel,
+} from '@fresh-prints/shared/utils/portalCustomerShowSchedule';
 import { sumPrintRequestItemQuantities } from '@fresh-prints/shared/utils/portalShowQueueCapacity';
 import {
   sumAllocatedQuantityByItemId,
@@ -299,6 +303,23 @@ export default function PrintRequestDetailView() {
   );
   const progressStage = mountedAuthority.stage;
   progressWatermarkRef.current.stage = progressStage;
+  const scheduledShowLabels = useMemo(
+    () =>
+      buildPortalCustomerShowSchedulesFromAllocations(
+        printProgress.shows.map((show) => ({
+          upcomingShowId: show.showId,
+          allocatedQuantity: 1,
+          status: 'queued',
+        })),
+        new Map(
+          printProgress.shows.map((show) => [
+            show.showId,
+            { scheduledStartAt: show.scheduledStartAt },
+          ]),
+        ),
+      ).map((schedule) => formatPortalCustomerShowScheduleLabel(schedule)),
+    [printProgress.shows],
+  );
   const hasAttachedDesigns = items.length > 0;
 
   const handleQueuedToShow = useCallback(
@@ -444,6 +465,7 @@ export default function PrintRequestDetailView() {
           isLive={printProgress.isRunning}
           isLoading={printProgress.isLoading}
           isPaused={printProgress.isPaused}
+          scheduledShowLabels={scheduledShowLabels}
           showElapsed={
             progressStage === 'done'
               ? Boolean(printProgress.primaryShow) || printProgress.showElapsed

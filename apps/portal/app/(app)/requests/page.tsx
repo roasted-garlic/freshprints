@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 
 import { derivePrintRequestQueueState } from '@fresh-prints/shared/utils/printRequestQueueState';
 import { getPrintRequestProgressLabel } from '@fresh-prints/shared/utils/printRequestProgressDisplay';
+import { buildPortalCustomerShowScheduleCardSummary } from '@fresh-prints/shared/utils/portalCustomerShowSchedule';
 import {
   PORTAL_PRINT_REQUEST_LIST_TAB_PARAM,
   getPortalPrintRequestListTabLabel,
@@ -57,6 +58,7 @@ export default function RequestsPage() {
     openCurrentRequestDrawer,
     requests,
     requestsByTab,
+    schedulesByRequestId,
     summariesByRequestId,
   } = usePortalPrintRequests();
 
@@ -183,6 +185,9 @@ export default function RequestsPage() {
                     totalPrintedQuantity: allocationTotals.totalPrintedQuantity,
                   }),
                 );
+                const scheduleLine = buildPortalCustomerShowScheduleCardSummary(
+                  schedulesByRequestId[request.id] ?? [],
+                ).line;
 
                 return (
                   <div key={request.id} role="listitem">
@@ -190,6 +195,7 @@ export default function RequestsPage() {
                       fromTab={activeTab}
                       progressLabel={progressLabel}
                       request={request}
+                      scheduleLine={scheduleLine}
                     />
                   </div>
                 );

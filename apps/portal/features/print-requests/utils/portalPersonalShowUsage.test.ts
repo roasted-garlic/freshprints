@@ -90,4 +90,14 @@ describe('resolveSelectedPortalPersonalShowUsage', () => {
     assert.equal(buildPortalPersonalShowUsage(20, 25, 0, true).remainingLabel, '5 spots remaining');
     assert.equal(buildPortalPersonalShowUsage(20, 25).remainingLabel, '5 spots remaining', 'defaults to allocatable for backward compatibility');
   });
+
+  it('uses the customer-show cap for personal usage, not the per-request limit', () => {
+    const usage = resolveSelectedPortalPersonalShowUsage({
+      shows: [{ id: 'show-a', customerAllocatedQuantity: 18 }],
+      selectedShowId: 'show-a',
+      limit: 30,
+    });
+    assert.equal(usage?.remaining, 12);
+    assert.equal(usage?.usedLabel, 'Your print spots: 18 of 30 used');
+  });
 });

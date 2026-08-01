@@ -2,6 +2,15 @@
 
 > Signed-off or largely complete work. External agents should not re-plan or duplicate this.
 
+## 2026-07-31 - production-release: show-schedule visibility + dual limit settings (source)
+
+- Customer queued-show date/time on My Print Requests cards + request details (no show names)
+- Ownership-bounded `getPortalPrintRequestShowSchedules` + `scheduledStartAt` on progress callable
+- Studio Settings: independently configurable request vs customer-show limits with link checkbox
+- ADR-FP-102 amended; Cap A not restored; overall show capacity unchanged
+- Source commit/PR only — Functions/Portal/Studio deploys and owner QA still gated
+- Prior signed-off remediations unchanged; Stage 2 deferred
+
 ## 2026-07-31 - production-release: Studio Assisted library design search empty signed off
 
 - Root cause: Wave C ID-only `useReadyDesignsForSelection`; picker called with no IDs → always empty

@@ -17,6 +17,7 @@ import {
   sumAllocatedQuantityByItemId,
   sumRemainingUnallocatedQuantity,
 } from '@fresh-prints/shared/utils/portalShowQueueFit';
+import { formatWorkingRequestOverLimitForQueueMessage } from '@fresh-prints/shared/utils/printRequestWorkingRequestMax';
 import {
   SHOW_CAPACITY_BAR_ANIMATION_MS,
   ShowPicker,
@@ -112,7 +113,8 @@ export function PortalQueueToShowModal({
     };
   }, [isOpen]);
 
-  const perShowLimit = workingRequestLimit.limit;
+  const requestLimit = workingRequestLimit.limit;
+  const perShowLimit = workingRequestLimit.customerShowLimit;
 
   const remainingEntries = useMemo(() => {
     return items
@@ -133,6 +135,12 @@ export function PortalQueueToShowModal({
   const totalRemainingQuantity = useMemo(
     () => sumRemainingUnallocatedQuantity(items, allocatedByItemId),
     [allocatedByItemId, items],
+  );
+
+  const isRequestOverLimitForQueue = Boolean(
+    workingRequestLimit.isReady &&
+      requestLimit != null &&
+      totalRemainingQuantity > requestLimit,
   );
 
   const acknowledgmentCopy = useMemo(
@@ -278,6 +286,7 @@ export function PortalQueueToShowModal({
     Boolean(effectiveSelectedId) &&
     effectiveSelectedShow?.isAllocatable !== false &&
     effectiveFit?.fitsEntirely === true &&
+    !isRequestOverLimitForQueue &&
     !isLoading &&
     !isLoadingAllocations &&
     !isBusy &&
@@ -432,6 +441,7 @@ export function PortalQueueToShowModal({
     !effectiveSelectedId ||
     isBlocked ||
     showDoesNotFitEntirely ||
+    isRequestOverLimitForQueue ||
     !canConfirmFull;
 
   return (
@@ -554,6 +564,17 @@ export function PortalQueueToShowModal({
           </div>
 
           <div className="portal-queue-to-show-alerts" aria-live="polite">
+            {isRequestOverLimitForQueue && requestLimit != null ? (
+              <div className="portal-queue-fit-callout portal-queue-fit-callout-blocked" role="alert">
+                <TriangleAlert aria-hidden className="portal-queue-fit-callout-icon" size={20} />
+                <div className="portal-queue-fit-callout-copy">
+                  <p className="portal-queue-fit-callout-text">
+                    {formatWorkingRequestOverLimitForQueueMessage(requestLimit)}
+                  </p>
+                </div>
+              </div>
+            ) : null}
+
             {isBlocked && effectiveFit ? (
               <div className="portal-queue-fit-callout portal-queue-fit-callout-blocked" role="alert">
                 <TriangleAlert aria-hidden className="portal-queue-fit-callout-icon" size={20} />

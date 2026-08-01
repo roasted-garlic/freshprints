@@ -415,6 +415,28 @@
   animation: portal-print-progress-shimmer 1.2s ease-in-out infinite;
 }
 
+.portal-print-progress-schedules {
+  display: grid;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+}
+
+.portal-print-progress-schedule-list {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.portal-print-progress-schedule-list li + li {
+  margin-top: 0.15rem;
+}
+
+.portal-request-card-schedule {
+  margin: 0;
+}
+
 .portal-print-progress-side {
   display: flex;
   flex-direction: column;

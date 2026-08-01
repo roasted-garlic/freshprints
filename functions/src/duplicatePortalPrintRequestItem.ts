@@ -95,7 +95,7 @@ export const duplicatePortalPrintRequestItem = onCall(
       let designId: string | undefined;
       let customerUploadId: string | undefined;
       const settings = await loadPrintRequestLimitSettings();
-      const maxPerRequest = settings.maxQuantityPerShowPerCustomer;
+      const maxPerRequest = settings.maxQuantityPerPrintRequest;
 
       await adminDb.runTransaction(async (tx) => {
         const requestRef = adminDb.collection("printRequests").doc(printRequestId);

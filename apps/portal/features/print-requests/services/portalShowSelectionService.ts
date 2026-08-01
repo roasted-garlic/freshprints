@@ -6,6 +6,11 @@ import type {
   PortalShowPrintProgress,
 } from '@fresh-prints/shared/types/portal/getPortalShowPrintProgress.types';
 import type {
+  GetPortalPrintRequestShowSchedulesRequest,
+  GetPortalPrintRequestShowSchedulesResponse,
+} from '@fresh-prints/shared/types/portal/getPortalPrintRequestShowSchedules.types';
+import type { PortalCustomerShowSchedule } from '@fresh-prints/shared/utils/portalCustomerShowSchedule';
+import type {
   QueuePortalPrintRequestToShowRequest,
   QueuePortalPrintRequestToShowResponse,
 } from '@fresh-prints/shared/types/portal/queuePortalPrintRequestToShow.types';
@@ -14,6 +19,7 @@ import { DEFAULT_PORTAL_QUEUE_CUTOFF_HOURS_BEFORE_START } from '@fresh-prints/sh
 import { callTracedFunction } from '../../../lib/firebase/tracedCallable';
 import { getPortalAuth } from '../../../lib/firebase/client';
 import { mapPortalPrintRequestCallableError } from '../utils/mapPortalPrintRequestCallableError';
+import { sharePortalPrintRequestScheduleLoad } from './portalPrintRequestScheduleLoadOwner';
 import { sharePortalShowQueueSubmission } from './portalShowQueueSubmissionOwner';
 
 function mapCallableError(error: unknown): Error {
@@ -51,6 +57,37 @@ export const portalShowSelectionService = {
         source: 'portalShowSelectionService.getShowPrintProgress',
       })({ printRequestId });
       return result.shows;
+    } catch (error) {
+      throw mapCallableError(error);
+    }
+  },
+
+  async getPrintRequestShowSchedules(
+    printRequestIds: string[],
+  ): Promise<Record<string, PortalCustomerShowSchedule[]>> {
+    if (printRequestIds.length === 0) {
+      return {};
+    }
+
+    try {
+      const result = await sharePortalPrintRequestScheduleLoad(printRequestIds, () =>
+        callTracedFunction<
+          GetPortalPrintRequestShowSchedulesRequest,
+          GetPortalPrintRequestShowSchedulesResponse
+        >('getPortalPrintRequestShowSchedules', {
+          source: 'portalShowSelectionService.getPrintRequestShowSchedules',
+        })({ printRequestIds }),
+      );
+
+      const schedulesByRequestId: Record<string, PortalCustomerShowSchedule[]> = {};
+      for (const entry of result.requests) {
+        schedulesByRequestId[entry.printRequestId] = entry.shows.map((show) => ({
+          upcomingShowId: show.upcomingShowId,
+          scheduledStartAt: show.scheduledStartAt,
+          ...(show.missingShow ? { missingShow: true } : {}),
+        }));
+      }
+      return schedulesByRequestId;
     } catch (error) {
       throw mapCallableError(error);
     }
