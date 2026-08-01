@@ -24,6 +24,10 @@ Next Required Step: Owner authorizes Stage 2 hosted.app smoke (checklist prepare
 priority
 
 Decision Log:
+- 2026-07-31 — Git cleanup: committed remediations as `7a5c593`, pushed `origin/development`,
+  dropped obsolete stash `wip-before-branding-release`. Working tree clean. Production branch
+  promote (`development` → `production` / `origin/production`) blocked by Cursor production
+  hook — needs explicit owner authorization to merge/push.
 - 2026-07-31 — Assisted library design search slice **SIGNED OFF** (owner Studio QA **PASS**).
 - 2026-07-31 — Production Studio installer built (SHA-256 `998E875E…C0B7`; embeds `fresh-prints-prod`).
 - 2026-07-31 — Implement complete: browse hook on generated ready-index; Wave C Print Request hook unchanged.
