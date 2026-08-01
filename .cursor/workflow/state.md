@@ -27,6 +27,9 @@ Forbidden Actions: App Hosting / Functions / Rules / index / data deploys; Stage
 Next Required Step: Commit + push development; open protected PR to production; stop for owner merge if needed
 
 Decision Log:
+- 2026-07-31 — Development commit `b144903` pushed; protected PR #16 opened
+  (`development` → `production`): https://github.com/roasted-garlic/freshprints/pull/16
+  Agent merge likely hook-blocked — owner merges with Create a merge commit. No deploys.
 - 2026-07-31 — Implement + tests + Implementation Review **approved** for show-schedule + dual limits.
   Production `30` was sole `L`; request `25` was cart qty. No separate customer-show field before.
 - 2026-07-31 — Owner authorized full source workflow (no deploys). PR #15 already merged.
@@ -34,7 +37,7 @@ Decision Log:
 - 2026-07-31 — Assisted library / tag-removal / resize / branding / registration PASSes unchanged.
 - 2026-07-31 — Stage 2 / domain remain deferred.
 
-Last Completed Step: Implementation Review **approved**; automated tests passed.
+Last Completed Step: Source on `origin/development` (`b144903`); PR #16 open for production promote.
 
 **Corrected `users/{uid}` field list for any future manual bootstrap:** `id` (string, same as
 document ID / Auth UID), `email` (string), `displayName` (string), `role` (string, `"owner"` for
