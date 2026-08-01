@@ -1,5 +1,11 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-08-01 - Stage 2 hosted Portal smoke RESUMED; interactive tests pending
+
+- Read-only infrastructure PASS: hosted Portal HTTP 200; Coming Soon remains on `myprintrequest.com`; App Hosting manual-policy backend unchanged; 101/101 Functions ACTIVE; nine release Functions on approved hash; 65 indexes/0 overrides.
+- No authenticated browser or Windows app-control backend was available, so lifecycle, intake, sizing/DPI, upload validation, full publication, guest-browser visuals, Studio workspace sanity, and Etsy action remain owner-run and unclaimed.
+- No deployment, data/settings/capacity, DNS/domain, analytics, tag, or secret action occurred. Stage 2 is active but not signed off.
+
 ## 2026-08-01 - Production linked limits 30/30 VERIFIED — PASS
 
 - Owner intentionally changed linked values from 25/25 to 30/30 and received `Print request limits saved.`

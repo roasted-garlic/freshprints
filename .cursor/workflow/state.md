@@ -4,7 +4,7 @@
 `portal-print-request-and-customer-show-limit-settings` (source workflow)
 
 Current Mode: managed-phase
-Current Phase: Stage 2 hosted Portal smoke resume checkpoint
+Current Phase: Stage 2 hosted Portal smoke — interactive owner execution
 Plan Status: complete —
 `docs/workflow/plans/2026-07-31-production-portal-show-schedule-and-limit-settings-amendment-1-plan.md`
 Review Status: **approved_with_changes** —
@@ -16,16 +16,17 @@ Ship Status: Functions + Portal App Hosting rollout **passed** (`build-2026-08-0
 Signoff Status: customer schedule visibility + dual-limit Studio UI + linked 30/30 production settings **approved**
 Implementation Review: **approved** —
 `docs/workflow/reviews/2026-07-31-production-portal-show-schedule-and-limit-settings-implementation-review.md`
-DONE: no (Goal #13 continues; Stage 2 paused)
+DONE: no (Goal #13 continues; Stage 2 active)
 Human Checkpoint Required: yes
-Human Checkpoint Reason: Stage 2 remains paused until the owner explicitly resumes hosted Portal smoke
+Human Checkpoint Reason: remaining Stage 2 lifecycle/intake/sizing/upload/catalog/guest/Studio/Etsy checks require authenticated owner UI execution
 Blocked: no
 Blocker: none
-Allowed Actions: docs; prepare Stage 2 hosted Portal smoke checklist
+Allowed Actions: approved production smoke interactions with existing fixtures; docs; read-only infrastructure checks
 Forbidden Actions: further deploys; production actions; Rules/index/data/settings changes; Stage 2; domain
-Next Required Step: Await `CONTINUE WORKFLOW: RESUME STAGE 2 HOSTED PORTAL SMOKE`
+Next Required Step: Owner executes remaining Stage 2 tests 1–8 and returns PASS/notes/fail per area
 
 Decision Log:
+- 2026-08-01 — Stage 2 resumed. Read-only infrastructure sanity PASS; authenticated Portal/Studio tests pending because no UI-control backend was available.
 - 2026-08-01 — Owner confirmed production Portal checks 1–12 PASS for linked 30/30; request/customer-show limits, capacity separation, warnings, no daily limit, and stale-session refresh verified.
 - 2026-08-01 — Owner intentionally saved linked 30/30; Studio success/reopen/restart PASS. Portal verification pending because no authenticated browser backend was available.
 - 2026-08-01 — Owner QA Tests 1–7 PASS; dual-limit Studio Settings UI signed off. No settings were saved during QA.

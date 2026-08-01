@@ -1094,3 +1094,8 @@ See `CURRENT-STATE.md` for live status.
 
 - Owner confirmed all 12 hosted Portal checks PASS: request limit, customer-show allowance/usage, capacity separation, warning attribution, retired daily-limit absence, and stale-session refresh.
 - Production linked dual-limit settings checkpoint closed PASS. No deployment, domain, capacity, or unrelated production action occurred; Stage 2 awaits explicit resume.
+
+# 2026-08-01 — Stage 2 hosted Portal smoke resumed
+
+- Read-only infrastructure sanity passed: hosted Portal and Coming Soon both HTTP 200; backend manual rollout configuration unchanged; all 101 Functions ACTIVE; nine release Functions match approved hash; 65 indexes present.
+- Interactive Stage 2 tests remain pending owner execution because no authenticated browser/Studio control session was available. No production mutation or domain action occurred.
