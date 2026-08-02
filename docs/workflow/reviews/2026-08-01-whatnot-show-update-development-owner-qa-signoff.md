@@ -16,4 +16,3 @@ The owner confirmed the reviewed development behavior:
 - a valid merged update does not produce the generic incomplete-record failure.
 
 No sanitized IDs or additional fixture details were supplied, so none are invented here. No production Whatnot show was updated during this development QA checkpoint.
-

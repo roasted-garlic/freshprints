@@ -35,4 +35,3 @@ Their changed files include production Portal/App Hosting, Functions deployment,
 ## Verdict
 
 **BLOCKED — no PR opened.** The workflow explicitly requires stopping when the development-to-production diff contains unrelated Portal work. No cherry-pick branch, history rewrite, squash, rebase, or alternative PR was created because the requested PR head was specifically `development` and no expanded promotion approval was provided.
-
