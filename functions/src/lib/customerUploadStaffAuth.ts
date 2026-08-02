@@ -15,6 +15,13 @@ export function assertCanPromoteOrRetryCustomerUpload(caller: TeamUserProfile): 
   }
 }
 
+/** Permanent upload cleanup is restricted to active owners and admins. */
+export function assertCanDeleteCustomerUpload(caller: TeamUserProfile): void {
+  if (!caller.isActive || !["owner", "admin"].includes(caller.role)) {
+    throw permissionDenied("You do not have permission to delete uploads.");
+  }
+}
+
 export function parseUploadId(data: unknown): string {
   if (!data || typeof data !== "object") {
     throw new Error("Request data is required.");

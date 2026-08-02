@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type MutableRefObject,
+} from "react";
 import { createPortal } from "react-dom";
 import { MoreHorizontal } from "lucide-react";
 
@@ -24,6 +32,7 @@ interface DangerOverflowMenuProps {
   disabled?: boolean;
   items: DangerOverflowMenuItem[];
   placement?: DangerOverflowMenuPlacement;
+  triggerRef?: MutableRefObject<HTMLButtonElement | null>;
 }
 
 /**
@@ -35,11 +44,12 @@ export function DangerOverflowMenu({
   disabled = false,
   items,
   placement = "bottom",
+  triggerRef: externalTriggerRef,
 }: DangerOverflowMenuProps) {
   const [open, setOpen] = useState(false);
   const [position, setPosition] = useState<DangerOverflowMenuPosition | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
-  const triggerRef = useRef<HTMLButtonElement>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const menuId = useId();
   const visibleItems = items.filter(Boolean);
@@ -140,7 +150,12 @@ export function DangerOverflowMenu({
         onClick={() => {
           setOpen((current) => transitionDangerOverflowMenu(current, "trigger", disabled).open);
         }}
-        ref={triggerRef}
+        ref={(element) => {
+          triggerRef.current = element;
+          if (externalTriggerRef) {
+            externalTriggerRef.current = element;
+          }
+        }}
         type="button"
       >
         <MoreHorizontal aria-hidden="true" size={18} strokeWidth={2.2} />

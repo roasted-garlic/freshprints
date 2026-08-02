@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 
 import {
   assertCanManageCustomerUploadIntake,
+  assertCanDeleteCustomerUpload,
   assertCanPromoteOrRetryCustomerUpload,
   parseUploadId,
 } from "./customerUploadStaffAuth";
@@ -40,5 +41,19 @@ describe("customerUploadStaffAuth", () => {
     assert.doesNotThrow(() => assertCanPromoteOrRetryCustomerUpload(caller({ role: "owner" })));
     assert.doesNotThrow(() => assertCanPromoteOrRetryCustomerUpload(caller({ role: "admin" })));
     assert.throws(() => assertCanPromoteOrRetryCustomerUpload(caller({ role: "helper" })));
+  });
+
+  it("assertCanDeleteCustomerUpload allows owner/admin and denies helper/inactive callers", () => {
+    assert.doesNotThrow(() => assertCanDeleteCustomerUpload(caller({ role: "owner" })));
+    assert.doesNotThrow(() => assertCanDeleteCustomerUpload(caller({ role: "admin" })));
+    assert.throws(() => assertCanDeleteCustomerUpload(caller({ role: "helper" })), /permission/i);
+    assert.throws(
+      () => assertCanDeleteCustomerUpload(caller({ role: "customer" as never })),
+      /permission/i,
+    );
+    assert.throws(
+      () => assertCanDeleteCustomerUpload(caller({ role: "admin", isActive: false })),
+      /permission/i,
+    );
   });
 });

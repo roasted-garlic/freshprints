@@ -9,19 +9,16 @@ import {
 } from "../../packages/shared/src/types/deletion/deletion.types";
 import { adminDb, adminStorage } from "./lib/admin";
 import { loadCallerProfile } from "./lib/caller";
-import { isCustomerUploadPromoted } from "./lib/deletionEligibility";
+import {
+  listCustomerUploadStoragePaths,
+  resolveCustomerUploadDeletionBlockers,
+} from "./lib/customerUploadDeletionEligibility";
+import { assertCanDeleteCustomerUpload } from "./lib/customerUploadStaffAuth";
 import {
   failedPrecondition,
   invalidArgument,
-  permissionDenied,
   unauthenticated,
 } from "./lib/errors";
-
-function assertOwnerCaller(caller: Awaited<ReturnType<typeof loadCallerProfile>>): void {
-  if (!caller.isActive || caller.role !== "owner") {
-    throw permissionDenied("Only owners can permanently delete customer uploads.");
-  }
-}
 
 function mapHttpsError(error: unknown): never {
   if (error instanceof HttpsError) {
@@ -103,34 +100,14 @@ async function buildPreview(
     .limit(20)
     .get();
 
-  if (!itemRefs.empty) {
+  const blockers = resolveCustomerUploadDeletionBlockers({
+    printRequestItemCount: itemRefs.size,
+    promotedDesignId: data.promotedDesignId,
+  });
+  if (blockers.length > 0) {
     return {
       outcome: "blocked",
-      blockers: [
-        {
-          code: "attached_to_print_request",
-          message: `This upload cannot be deleted because it is attached to ${itemRefs.size} print request item(s). Remove those items first.`,
-          count: itemRefs.size,
-          navigateHint: "Print Requests",
-        },
-      ],
-      entityLabel: title,
-      customerUploadId,
-      title,
-    };
-  }
-
-  if (isCustomerUploadPromoted(data.promotedDesignId)) {
-    return {
-      outcome: "blocked",
-      blockers: [
-        {
-          code: "promoted_to_design",
-          message:
-            "This upload cannot be deleted because it was promoted to a catalog design. Resolve the promotion relationship first.",
-          navigateHint: "Design Library",
-        },
-      ],
+      blockers,
       entityLabel: title,
       customerUploadId,
       title,
@@ -141,7 +118,7 @@ async function buildPreview(
     outcome: "allowed_hard_delete",
     blockers: [],
     entityLabel: title,
-    confirmLabel: "Delete unused upload",
+    confirmLabel: "Delete Upload",
     notes: ["This permanently deletes the upload document and its Storage files."],
     customerUploadId,
     title,
@@ -155,7 +132,7 @@ export const previewCustomerUploadDeletion = onCall(
     }
     try {
       const caller = await loadCallerProfile(request.auth.uid);
-      assertOwnerCaller(caller);
+      assertCanDeleteCustomerUpload(caller);
       return await buildPreview(parseUploadId(request.data as PreviewCustomerUploadDeletionRequest));
     } catch (error) {
       mapHttpsError(error);
@@ -170,7 +147,7 @@ export const deleteEligibleCustomerUpload = onCall(
     }
     try {
       const caller = await loadCallerProfile(request.auth.uid);
-      assertOwnerCaller(caller);
+      assertCanDeleteCustomerUpload(caller);
       const customerUploadId = parseUploadId(request.data as DeleteEligibleCustomerUploadRequest);
       requirePhrase(request.data);
 
@@ -212,12 +189,7 @@ export const deleteEligibleCustomerUpload = onCall(
 
       const snap = await adminDb.collection("customerUploads").doc(customerUploadId).get();
       const data = snap.data() ?? {};
-      const paths = [
-        data.sourceStoragePath,
-        data.productionStoragePath,
-        data.previewStoragePath,
-        data.thumbnailStoragePath,
-      ].filter((value): value is string => typeof value === "string" && value.trim().length > 0);
+      const paths = listCustomerUploadStoragePaths(data);
 
       let storageFilesDeleted = 0;
       let storageCleanupFailed = false;

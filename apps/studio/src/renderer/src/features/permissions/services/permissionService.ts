@@ -177,9 +177,9 @@ export const permissionService = {
     return isOwner(user);
   },
 
-  /** Owner-only hard delete of unattached, unpromoted customer uploads. */
+  /** Owner/admin hard delete of unattached, unpromoted customer uploads. */
   canDeleteEligibleCustomerUpload(user: UserLike) {
-    return isOwner(user);
+    return hasActiveRole(user, ["owner", "admin"]);
   },
 
   /** Owner-only for this phase (extra safeguard). */

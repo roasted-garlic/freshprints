@@ -29,8 +29,8 @@ test("Donated Designs route reuses the catalog-donation intake", () => {
 test("the only established overflow action is the existing owner-gated unused-upload delete", () => {
   assert.match(componentSource, /intake\.canDeleteEligible && !row\.promotedDesignId/);
   assert.match(componentSource, /id: "delete-upload"/);
-  assert.match(componentSource, /label: pendingAction === "delete" \? "Deleting…" : "Delete unused upload…"/);
-  assert.match(componentSource, /void intake\.deleteEligible\(row\.id\)/);
+  assert.match(componentSource, /label: "Delete Upload"/);
+  assert.match(componentSource, /setIsDeleteOpen\(true\)/);
 });
 
 test("opening the menu is state-only and cannot invoke the deletion handler", () => {
@@ -68,8 +68,12 @@ test("accessible menu semantics, keyboard focus, and design context are wired", 
 
 test("primary intake actions and halftone control remain on their existing handlers", () => {
   assert.match(componentSource, /void intake\.promote\(row\.id\)/);
-  assert.match(componentSource, /void intake\.exclude\(row\.id\)/);
+  assert.match(componentSource, /await intake\.exclude\(row\.id\)/);
   assert.match(componentSource, /void intake\.setHalftoneDecision\(row\.id, checked\)/);
+});
+
+test("customer upload intake contains no browser-native prompt, confirm, or alert", () => {
+  assert.doesNotMatch(componentSource, /window\.(?:prompt|confirm|alert)\s*\(/);
 });
 
 test("empty or ineligible action states cannot display a dead trigger", () => {

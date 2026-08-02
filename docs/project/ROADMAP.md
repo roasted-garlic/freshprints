@@ -1467,7 +1467,7 @@ Production App Hosting deploy to a live customer URL is a **separate** human che
 
 **Owner Studio design asset purge** — **complete** (2026-07-14 signoff, PASS). Archive-first; owner single/bulk Delete images (keep thumbnail); purged hidden from Archived browse. ADR-FP-084. Signoff: `docs/workflow/reviews/2026-07-14-owner-studio-design-asset-purge-signoff.md`.
 
-**Reject auto-archive + request-upload full-size cleanup** — **complete** (2026-07-14 signoff, PASS). Callables + Studio Retention maintenance UI; donation exclude purges full-size immediately. ADR-FP-086 §2–§4 (exclude path). Signoff: `docs/workflow/reviews/2026-07-14-reject-auto-archive-customer-upload-cleanup-signoff.md`.
+**Reject auto-archive + request-upload full-size cleanup** — **complete** (2026-07-14 signoff, PASS). Callables + Studio Retention maintenance UI. Donation exclusion's former immediate full-size purge was superseded 2026-08-01: exclusion now preserves upload assets and remains reversible; permanent cleanup uses the separately guarded Delete Upload flow. ADR-FP-086 amendment. Signoff: `docs/workflow/reviews/2026-07-14-reject-auto-archive-customer-upload-cleanup-signoff.md`.
 
 **ADR-FP-086 promote purge + Portal account artwork** — **complete** (2026-07-14). Promote cool-off purge shipped; account UX revised: single gallery + Reusable modal tab; Favorites in Quick links; past-request Add / no longer in catalog. Signoff: `docs/workflow/reviews/2026-07-14-adr086-promote-purge-portal-account-artwork-signoff.md`. UX revision plan: `docs/workflow/plans/2026-07-14-portal-account-artwork-ux-revision-plan.md`.
 
