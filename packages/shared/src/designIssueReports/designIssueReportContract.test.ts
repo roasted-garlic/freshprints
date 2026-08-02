@@ -8,6 +8,7 @@ test("Portal report UI uses trusted callable and approved accessible copy", () =
   const details = read("apps/portal/features/catalog/components/CatalogDesignDetailsModal.tsx");
   const modal = read("apps/portal/features/catalog/components/CatalogDesignIssueReportModal.tsx");
   const service = read("apps/portal/features/catalog/services/catalogDesignIssueReportService.ts");
+  const sharePage = read("apps/portal/features/catalog/pages/ShareDesignPortalPageContent.tsx");
   assert.match(details, />Report an Issue</);
   const reportPosition = details.indexOf(">Report an Issue</");
   const controlsPosition = details.indexOf('className="design-details-toolbar-controls"');
@@ -29,6 +30,11 @@ test("Portal report UI uses trusted callable and approved accessible copy", () =
   assert.match(styles, /\.design-issue-report-actions\s*\{[^}]*display:\s*flex;[^}]*justify-content:\s*space-between;[^}]*width:\s*100%/s);
   assert.doesNotMatch(modal, /\b(?:alert|prompt|confirm)\s*\(/);
   assert.match(service, /submitPortalDesignIssueReport/);
+  const shareControls = sharePage.indexOf("design-details-toolbar-controls-end");
+  assert.ok(shareControls < sharePage.indexOf("<CatalogArtworkBackgroundPreviewPicker", shareControls));
+  assert.ok(sharePage.indexOf("<CatalogArtworkBackgroundPreviewPicker", shareControls) < sharePage.indexOf("<CatalogDesignShareButton", shareControls));
+  assert.ok(sharePage.indexOf("<CatalogDesignShareButton", shareControls) < sharePage.indexOf("<CatalogFavoriteButton", shareControls));
+  assert.match(sharePage, /className="design-details-primary-action-row"[\s\S]*design-details-add-btn/);
 });
 
 test("backend owns identity lifecycle quotas uniqueness and never updates designs", () => {

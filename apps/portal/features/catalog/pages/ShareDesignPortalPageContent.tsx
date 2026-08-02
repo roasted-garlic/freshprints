@@ -239,53 +239,43 @@ export function ShareDesignPortalPageContent({
         <div className="modal-body design-details-body">
           <div className="design-details-toolbar">
             <div className="design-details-toolbar-start">
-              {design && isAuthenticated ? (
-                <CatalogFavoriteButton
-                  className="design-details-favorite-btn"
-                  designId={design.id}
-                  designTitle={design.title}
-                />
-              ) : null}
-              {design ? <CatalogDesignShareButton design={design} variant="labeled" /> : null}
-              {design ? (
-                <CatalogArtworkBackgroundPreviewPicker
-                  designDefaultHex={designDefaultBgHex}
-                  onPreviewHexChange={setPreviewBgHex}
-                  previewHex={previewBgHex}
-                />
-              ) : null}
+              <div className="design-details-toolbar-controls design-details-toolbar-controls-end">
+                {design ? (
+                  <CatalogArtworkBackgroundPreviewPicker
+                    designDefaultHex={designDefaultBgHex}
+                    onPreviewHexChange={setPreviewBgHex}
+                    previewHex={previewBgHex}
+                  />
+                ) : null}
+                {design ? <CatalogDesignShareButton design={design} variant="labeled" /> : null}
+                {design && isAuthenticated ? (
+                  <CatalogFavoriteButton
+                    className="design-details-favorite-btn"
+                    designId={design.id}
+                    designTitle={design.title}
+                  />
+                ) : null}
+              </div>
+            </div>
+            <div className="design-details-primary-action-row">
               {requestFullLabel ? (
                 <p className="design-details-request-full-label is-request-full">{requestFullLabel}</p>
               ) : null}
+              {isAuthenticated ? (
+                <button
+                  className="portal-button portal-button-primary portal-button-sm portal-button-leading-icon design-details-add-btn"
+                  disabled={!design || addDesignFlow.isAdding || addDesignFlow.isEnsuringWorkingRequest || !addDesignFlow.canAddPrints}
+                  onClick={handleAddToRequest}
+                  title={requestFullLabel ?? undefined}
+                  type="button"
+                >
+                  <PlusIcon size={14} />
+                  {addDesignFlow.isAdding || addDesignFlow.isEnsuringWorkingRequest ? 'Adding…' : 'Add to request'}
+                </button>
+              ) : (
+                <button className="portal-button portal-button-primary portal-button-sm design-details-add-btn" onClick={handleGuestSignIn} type="button">Sign in to add to a request</button>
+              )}
             </div>
-
-            {isAuthenticated ? (
-              <button
-                className="portal-button portal-button-primary portal-button-sm portal-button-leading-icon design-details-add-btn"
-                disabled={
-                  !design ||
-                  addDesignFlow.isAdding ||
-                  addDesignFlow.isEnsuringWorkingRequest ||
-                  !addDesignFlow.canAddPrints
-                }
-                onClick={handleAddToRequest}
-                title={requestFullLabel ?? undefined}
-                type="button"
-              >
-                <PlusIcon size={14} />
-                {addDesignFlow.isAdding || addDesignFlow.isEnsuringWorkingRequest
-                  ? 'Adding…'
-                  : 'Add to request'}
-              </button>
-            ) : (
-              <button
-                className="portal-button portal-button-primary portal-button-sm"
-                onClick={handleGuestSignIn}
-                type="button"
-              >
-                Sign in to add to a request
-              </button>
-            )}
           </div>
 
           <section className="design-details-section">

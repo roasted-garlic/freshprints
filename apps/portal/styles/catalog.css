@@ -1835,6 +1835,10 @@
   gap: var(--space-3);
 }
 
+.design-details-toolbar-controls-end {
+  margin-left: auto;
+}
+
 .design-details-primary-action-row {
   display: flex;
   flex-direction: column;
