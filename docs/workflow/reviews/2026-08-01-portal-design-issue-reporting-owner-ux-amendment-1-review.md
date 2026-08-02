@@ -1,6 +1,6 @@
 # Amendment Review: Portal design issue reporting owner UX amendment 1
 
-Date: 2026-08-01  
+Date: 2026-08-01
 Verdict: **APPROVED**
 
 ## Scope reviewed
