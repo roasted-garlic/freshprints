@@ -50,11 +50,38 @@ export interface StaffInboxSubscriptionState {
   designIssueReportError: string | null;
 }
 
-function mapDesignIssueReport(id: string, data: DocumentData): DesignIssueReport | null {
-  if (data.status !== "open" || typeof data.designId !== "string" || typeof data.description !== "string" || typeof data.designTitleSnapshot !== "string") return null;
+function mapDesignIssueReportFields(id: string, data: DocumentData): Omit<DesignIssueReport, "status"> | null {
+  if (typeof data.designId !== "string" || typeof data.description !== "string" || typeof data.designTitleSnapshot !== "string") return null;
   const createdAt = mapFirestoreTimestamp(data.createdAt)?.toMillis() ?? 0;
   const updatedAt = mapFirestoreTimestamp(data.updatedAt)?.toMillis() ?? createdAt;
-  return { id, designId: data.designId, customerUid: typeof data.customerUid === "string" ? data.customerUid : "", customerId: typeof data.customerId === "string" ? data.customerId : "", customerDisplayNameSnapshot: typeof data.customerDisplayNameSnapshot === "string" ? data.customerDisplayNameSnapshot : "Customer", customerUsernameSnapshot: typeof data.customerUsernameSnapshot === "string" ? data.customerUsernameSnapshot : "", description: data.description, status: "open", designTitleSnapshot: data.designTitleSnapshot, designThumbnailPathSnapshot: typeof data.designThumbnailPathSnapshot === "string" ? data.designThumbnailPathSnapshot : undefined, createdAtMillis: createdAt, updatedAtMillis: updatedAt };
+  const resolvedAt = mapFirestoreTimestamp(data.resolvedAt)?.toMillis();
+  return {
+    id,
+    designId: data.designId,
+    customerUid: typeof data.customerUid === "string" ? data.customerUid : "",
+    customerId: typeof data.customerId === "string" ? data.customerId : "",
+    customerDisplayNameSnapshot: typeof data.customerDisplayNameSnapshot === "string" ? data.customerDisplayNameSnapshot : "",
+    customerUsernameSnapshot: typeof data.customerUsernameSnapshot === "string" ? data.customerUsernameSnapshot : "",
+    description: data.description,
+    designTitleSnapshot: data.designTitleSnapshot,
+    designThumbnailPathSnapshot: typeof data.designThumbnailPathSnapshot === "string" ? data.designThumbnailPathSnapshot : undefined,
+    createdAtMillis: createdAt,
+    updatedAtMillis: updatedAt,
+    ...(resolvedAt ? { resolvedAtMillis: resolvedAt } : {}),
+    ...(typeof data.resolvedByUid === "string" ? { resolvedByUid: data.resolvedByUid } : {}),
+  };
+}
+
+function mapDesignIssueReport(id: string, data: DocumentData): DesignIssueReport | null {
+  if (data.status !== "open") return null;
+  const mapped = mapDesignIssueReportFields(id, data);
+  return mapped ? { ...mapped, status: "open" } : null;
+}
+
+export function mapResolvedDesignIssueReport(id: string, data: DocumentData): DesignIssueReport | null {
+  if (data.status !== "resolved") return null;
+  const mapped = mapDesignIssueReportFields(id, data);
+  return mapped ? { ...mapped, status: "resolved" } : null;
 }
 
 const REQUESTS_TRACE: FirestoreTraceMetadata = {

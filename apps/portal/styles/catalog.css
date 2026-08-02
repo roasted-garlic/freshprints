@@ -2854,3 +2854,107 @@
 .design-issue-report-close-button { position: absolute; right: var(--space-3); top: var(--space-3); z-index: 1; }
 .design-issue-report-counter { color: var(--color-text-muted); font-size: .8rem; margin: .25rem 0 0; text-align: right; }
 .design-issue-report-actions { display: flex; justify-content: space-between; width: 100%; }
+
+.design-issue-report-success {
+  align-items: center;
+  animation: design-issue-report-success-in 280ms ease-out;
+  display: grid;
+  gap: 1.15rem;
+  justify-items: center;
+  padding: 1.25rem 0.5rem 0.35rem;
+  text-align: center;
+}
+
+.design-issue-report-success-badge {
+  align-items: center;
+  background: color-mix(in srgb, var(--color-success) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-success) 28%, transparent);
+  border-radius: 999px;
+  color: var(--color-success-text);
+  display: inline-flex;
+  height: 4.5rem;
+  justify-content: center;
+  width: 4.5rem;
+}
+
+.design-issue-report-success-copy {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.design-issue-report-success-copy h2 {
+  margin: 0;
+  padding-right: 0;
+}
+
+.design-issue-report-success-copy p {
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.design-issue-report-success .portal-button {
+  min-width: 8rem;
+}
+
+.design-issue-report-success-check {
+  display: block;
+  height: 2.75rem;
+  width: 2.75rem;
+}
+
+.design-issue-report-success-check-circle,
+.design-issue-report-success-check-mark {
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 3.5;
+}
+
+.design-issue-report-success-check-circle {
+  stroke-dasharray: 176;
+  stroke-dashoffset: 176;
+  animation: design-issue-report-check-circle 320ms ease-out forwards;
+}
+
+.design-issue-report-success-check-mark {
+  stroke-dasharray: 48;
+  stroke-dashoffset: 48;
+  animation: design-issue-report-check-mark 240ms ease-out 220ms forwards;
+}
+
+@keyframes design-issue-report-success-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes design-issue-report-check-circle {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes design-issue-report-check-mark {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .design-issue-report-success {
+    animation: none;
+  }
+
+  .design-issue-report-success-check-circle,
+  .design-issue-report-success-check-mark {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+}

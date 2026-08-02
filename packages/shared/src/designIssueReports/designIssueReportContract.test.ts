@@ -19,15 +19,22 @@ test("Portal report UI uses trusted callable and approved accessible copy", () =
   assert.match(details, /className="design-details-primary-action-row"[\s\S]*className="[^"]*design-details-add-btn/);
   assert.match(modal, /readOnly value=\{designId\}/);
   assert.match(modal, /aria-modal="true"/);
-  assert.match(modal, /aria-label="Close report form"[^>]*disabled=\{report\.isSubmitting\}[^>]*onClick=\{onClose\}/);
+  assert.match(modal, /aria-label="Close report form"[\s\S]*disabled=\{report\.isSubmitting\}[\s\S]*onClick=\{onClose\}/);
   assert.match(modal, /className="modal-actions design-issue-report-actions"/);
   assert.ok(modal.indexOf(">Cancel</button>") < modal.indexOf("'Submit Report'"));
+  assert.match(modal, /className="design-issue-report-success"/);
+  assert.match(modal, /className="design-issue-report-success-check"/);
+  assert.match(modal, />Report sent</);
+  assert.match(modal, /We’ll take a look\./);
+  assert.doesNotMatch(modal, /Thanks\. Your report was submitted for staff review\./);
   const styles = read("apps/portal/styles/catalog.css");
   assert.match(styles, /\.design-details-primary-action-row\s*\{[^}]*width:\s*100%/s);
   assert.match(styles, /\.design-details-toolbar-start\s*\{[^}]*justify-content:\s*space-between/s);
   assert.match(styles, /\.design-details-toolbar-controls\s*\{[^}]*gap:\s*var\(--space-3\)/s);
   assert.match(styles, /\.design-details-add-btn\s*\{[^}]*width:\s*100%/s);
   assert.match(styles, /\.design-issue-report-actions\s*\{[^}]*display:\s*flex;[^}]*justify-content:\s*space-between;[^}]*width:\s*100%/s);
+  assert.match(styles, /\.design-issue-report-success-check-circle/);
+  assert.match(styles, /prefers-reduced-motion:\s*reduce/);
   assert.doesNotMatch(modal, /\b(?:alert|prompt|confirm)\s*\(/);
   assert.match(service, /submitPortalDesignIssueReport/);
   const shareControls = sharePage.indexOf("design-details-toolbar-controls-end");
@@ -55,6 +62,32 @@ test("Studio listener is bounded and resolved history is on demand", () => {
   assert.match(subscription, /limit\(DESIGN_ISSUE_REPORT_OPEN_LIMIT\)/);
   assert.match(history, /limit\(DESIGN_ISSUE_REPORT_HISTORY_PAGE_SIZE\)/);
   assert.doesNotMatch(history, /onSnapshot/);
+});
+
+test("Studio Inbox shows submitter and opens design details with edit and archive in place", () => {
+  const row = read("apps/studio/src/renderer/src/features/staff-inbox/components/StaffInboxItemRow.tsx");
+  const page = read("apps/studio/src/renderer/src/features/staff-inbox/pages/StaffInboxPage.tsx");
+  const host = read("apps/studio/src/renderer/src/features/staff-inbox/components/StaffInboxDesignEditHost.tsx");
+  const submitter = read("packages/shared/src/designIssueReports/formatDesignIssueReportSubmitter.ts");
+  assert.match(row, /formatDesignIssueReportSubmitter/);
+  assert.match(row, /Submitted by \{submitter\}/);
+  assert.match(row, /View Design/);
+  assert.match(page, /StaffInboxDesignEditHost/);
+  assert.match(page, /setEditDesignId/);
+  assert.match(page, /Resolved design reports/);
+  assert.match(page, /loadResolvedReports/);
+  assert.doesNotMatch(page, /Load Resolved Reports/);
+  assert.doesNotMatch(page, /useCatalogTags|useCategories|useDesigns|listReadyDesigns/);
+  assert.match(host, /DesignDetailsModal/);
+  assert.match(host, /EditDesignModal/);
+  assert.match(host, /ArchiveDesignConfirmDialog/);
+  assert.match(host, /getDesignById/);
+  assert.match(host, /useCategories\(\{[\s\S]*enabled:/);
+  assert.match(host, /useCatalogTags\(\{\s*enabled/);
+  assert.match(submitter, /Anonymous/);
+  const provider = read("apps/studio/src/renderer/src/features/staff-inbox/components/StaffInboxProvider.tsx");
+  assert.match(provider, /pendingResolvedReportIds/);
+  assert.match(provider, /designIssueReportService\s*\n?\s*\.resolve|designIssueReportService\.resolve/);
 });
 
 test("Rules deny client writes and exact report indexes exist", () => {

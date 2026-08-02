@@ -1,5 +1,6 @@
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Eye } from "lucide-react";
 
+import { formatDesignIssueReportSubmitter } from "@fresh-prints/shared/designIssueReports/formatDesignIssueReportSubmitter";
 import { getStaffInboxKindLabel } from "@fresh-prints/shared/staffInbox/staffInboxItemIds";
 import type { StaffInboxCompletedItem, StaffInboxItem } from "@fresh-prints/shared/staffInbox/staffInbox.types";
 import { Badge } from "../../../shared/components/Badge";
@@ -42,6 +43,9 @@ export function StaffInboxItemRow({
     : undefined;
   const isDesignReport = item.kind === "design_issue_report";
   const showCheckbox = !isCompleted && !isDesignReport && Boolean(onAcknowledge);
+  const submitter = isDesignReport && item.designIssueReport
+    ? formatDesignIssueReportSubmitter(item.designIssueReport)
+    : null;
 
   return (
     <li
@@ -74,6 +78,7 @@ export function StaffInboxItemRow({
         <div className="staff-inbox-item-detail-copy">
           {!compact ? <span className="staff-inbox-item-subtitle">{item.subtitle}</span> : null}
           {compact ? <span className="staff-inbox-item-glance">{item.subtitle}</span> : null}
+          {submitter ? <span className="staff-inbox-item-submitter">Submitted by {submitter}</span> : null}
           {!compact ? (
             <div className="staff-inbox-item-timestamps">
               <span className="staff-inbox-timestamp-pill">
@@ -81,8 +86,8 @@ export function StaffInboxItemRow({
               </span>
               {isCompleted && acknowledgedAtMillis ? (
                 <span className="staff-inbox-timestamp-pill staff-inbox-timestamp-pill-done">
-                  Marked done {formatInboxTimestamp(acknowledgedAtMillis)}
-                  {acknowledgedByDisplayName ? ` by ${acknowledgedByDisplayName}` : ""}
+                  {isDesignReport ? "Resolved" : "Marked done"} {formatInboxTimestamp(acknowledgedAtMillis)}
+                  {!isDesignReport && acknowledgedByDisplayName ? ` by ${acknowledgedByDisplayName}` : ""}
                 </span>
               ) : null}
             </div>
@@ -94,7 +99,11 @@ export function StaffInboxItemRow({
             onClick={() => onOpen(item)}
             variant="secondary"
           >
-            <ExternalLink aria-hidden="true" size={14} strokeWidth={2} />
+            {isDesignReport ? (
+              <Eye aria-hidden="true" size={14} strokeWidth={2} />
+            ) : (
+              <ExternalLink aria-hidden="true" size={14} strokeWidth={2} />
+            )}
             {isDesignReport ? "View Design" : "Open"}
           </Button>
           {isCompleted && onRestore ? (

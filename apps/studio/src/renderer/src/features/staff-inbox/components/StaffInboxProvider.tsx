@@ -91,6 +91,7 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [toasts, setToasts] = useState<StaffInboxToast[]>([]);
   const [highlightedItemIds, setHighlightedItemIds] = useState<Set<string>>(() => new Set());
+  const [pendingResolvedReportIds, setPendingResolvedReportIds] = useState<Set<string>>(() => new Set());
 
   const acknowledgedItemIdsRef = useRef(acknowledgedItemIds);
   const ackRecordsRef = useRef(ackRecords);
@@ -471,10 +472,26 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
         showTitleById,
         shows: showSnapshots,
       });
-      const reports: StaffInboxItem[] = subscriptionSnapshot.designIssueReports.map((report) => ({ id: `design_issue_report:${report.id}`, kind: "design_issue_report", title: report.designTitleSnapshot, subtitle: report.description, occurredAtMillis: report.createdAtMillis, designIssueReport: report }));
+      const reports: StaffInboxItem[] = subscriptionSnapshot.designIssueReports
+        .filter((report) => !pendingResolvedReportIds.has(report.id))
+        .map((report) => ({
+          id: `design_issue_report:${report.id}`,
+          kind: "design_issue_report",
+          title: report.designTitleSnapshot,
+          subtitle: report.description,
+          occurredAtMillis: report.createdAtMillis,
+          designIssueReport: report,
+        }));
       return [...reports, ...existing].sort((left, right) => right.occurredAtMillis - left.occurredAtMillis);
     },
-    [acknowledgedItemIds, showSnapshots, showTitleById, subscriptionSnapshot.designIssueReports, subscriptionSnapshot.portalAllocations],
+    [
+      acknowledgedItemIds,
+      pendingResolvedReportIds,
+      showSnapshots,
+      showTitleById,
+      subscriptionSnapshot.designIssueReports,
+      subscriptionSnapshot.portalAllocations,
+    ],
   );
 
   const highlightItem = useCallback((itemId: string) => {
@@ -569,7 +586,39 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
       }
 
       if (item.kind === "design_issue_report" && item.designIssueReport) {
-        void designIssueReportService.resolve(item.designIssueReport.id).catch(() => setWarning("Unable to resolve this design report. Check your connection and try again."));
+        const reportId = item.designIssueReport.id;
+        const itemId = item.id;
+        clearItemHighlight(itemId);
+        setPendingResolvedReportIds((current) => {
+          const next = new Set(current);
+          next.add(reportId);
+          return next;
+        });
+        const acknowledgedByDisplayName = user.displayName?.trim() || undefined;
+        setCompletedItems((current) => [
+          {
+            ...item,
+            acknowledgedAtMillis: Date.now(),
+            acknowledgedByUserId: user.id,
+            acknowledgedByDisplayName,
+          },
+          ...current.filter((entry) => entry.id !== itemId),
+        ]);
+
+        void designIssueReportService
+          .resolve(reportId)
+          .then(() => {
+            setWarning(null);
+          })
+          .catch(() => {
+            setPendingResolvedReportIds((current) => {
+              const next = new Set(current);
+              next.delete(reportId);
+              return next;
+            });
+            setCompletedItems((current) => current.filter((entry) => entry.id !== itemId));
+            setWarning("Unable to resolve this design report. Check your connection and try again.");
+          });
         return;
       }
 
@@ -601,7 +650,7 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
 
   const restoreItem = useCallback(
     (itemId: string) => {
-      if (!user?.id) {
+      if (!user?.id || itemId.startsWith("design_issue_report:")) {
         return;
       }
 
@@ -618,6 +667,25 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
     },
     [user?.id],
   );
+
+  useEffect(() => {
+    const openReportIds = new Set(subscriptionSnapshot.designIssueReports.map((report) => report.id));
+    setPendingResolvedReportIds((current) => {
+      if (current.size === 0) {
+        return current;
+      }
+      let changed = false;
+      const next = new Set<string>();
+      for (const reportId of current) {
+        if (openReportIds.has(reportId)) {
+          next.add(reportId);
+        } else {
+          changed = true;
+        }
+      }
+      return changed ? next : current;
+    });
+  }, [subscriptionSnapshot.designIssueReports]);
 
   const dismissToast = useCallback(
     (toastId: string) => {
