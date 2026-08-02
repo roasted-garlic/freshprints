@@ -30,6 +30,19 @@ describe("helper permission restrictions", () => {
     assert.equal(permissionService.canOpenDevTools(inactiveHelper), false);
   });
 
+  it("owner and admin can delete eligible uploads while helpers cannot", () => {
+    assert.equal(permissionService.canDeleteEligibleCustomerUpload(activeOwner), true);
+    assert.equal(permissionService.canDeleteEligibleCustomerUpload(activeAdmin), true);
+    assert.equal(permissionService.canDeleteEligibleCustomerUpload(activeHelper), false);
+    assert.equal(permissionService.canDeleteEligibleCustomerUpload(inactiveHelper), false);
+  });
+
+  it("helpers retain catalog exclusion permission", () => {
+    assert.equal(permissionService.canExcludeCustomerUploadFromCatalog(activeOwner), true);
+    assert.equal(permissionService.canExcludeCustomerUploadFromCatalog(activeAdmin), true);
+    assert.equal(permissionService.canExcludeCustomerUploadFromCatalog(activeHelper), true);
+  });
+
   it("hasPermission mirrors dedicated helpers for new keys", () => {
     assert.equal(permissionService.hasPermission(activeHelper, "restoreDesigns"), false);
     assert.equal(permissionService.hasPermission(activeHelper, "importWhatnotShows"), false);

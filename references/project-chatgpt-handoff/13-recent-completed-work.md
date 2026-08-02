@@ -1,5 +1,9 @@
 # Recent Completed Work
 
+## 2026-08-01 - Final Studio remediation development QA passed
+
+Owner confirmed PASS for Whatnot matched-show updates and Customer Upload exclusion/restore/delete parity. A clean production branch was created from `11960852` because development contained unrelated rollout documentation; no development history was rewritten.
+
 > Signed-off or largely complete work. External agents should not re-plan or duplicate this.
 
 ## 2026-07-31 - production-release: show-schedule visibility + dual limit settings (source)

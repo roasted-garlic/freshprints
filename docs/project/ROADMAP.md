@@ -1,5 +1,7 @@
 # Fresh Prints Roadmap
 
+> 2026-08-01: Clean final-Studio remediation promotion is in progress. Production Functions deployment and combined installer QA remain pending; Stage 2 remains paused and domain cutover deferred.
+
 ## Purpose
 
 This document defines the official roadmap for the Fresh Prints platform.

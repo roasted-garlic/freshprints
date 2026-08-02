@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { resolveIntakeHalftoneStaffToggle } from "@fresh-prints/shared/utils/halftoneReviewState";
@@ -12,6 +12,9 @@ import { DesignPreviewLightbox } from "../../designs/components/DesignPreviewLig
 import { getPrintRequestsPath } from "../../print-requests/constants/printRequestRoutes";
 import type { useCustomerUploadIntake } from "../hooks/useCustomerUploadIntake";
 import type { CustomerUploadIntakeRow } from "../services/customerUploadIntakeService";
+import { CustomerUploadDeletionDialog } from "./CustomerUploadDeletionDialog";
+import { CustomerUploadExclusionDialog } from "./CustomerUploadExclusionDialog";
+import { CustomerUploadRestoreDialog } from "./CustomerUploadRestoreDialog";
 
 type IntakeApi = ReturnType<typeof useCustomerUploadIntake>;
 
@@ -82,6 +85,11 @@ function IntakeDetail({
   const navigate = useNavigate();
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isExcludeOpen, setIsExcludeOpen] = useState(false);
+  const [isRestoreOpen, setIsRestoreOpen] = useState(false);
+  const deleteTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const restoreTriggerRef = useRef<HTMLButtonElement | null>(null);
   const pendingAction = intake.pendingByUploadId[row.id] ?? null;
   const busy = Boolean(pendingAction);
   const fromAssisted = Boolean(row.assistedCreationRequestId);
@@ -212,15 +220,7 @@ function IntakeDetail({
           <Button
             disabled={busy}
             onClick={() => {
-              if (
-                window.confirm(
-                  isDonation
-                    ? "Exclude this donation from the catalog? Full-size files will be deleted now. A thumbnail is kept for staff history; it will not be listed or reusable."
-                    : "Exclude this upload from the catalog? Artwork stays on the print request and production files are kept.",
-                )
-              ) {
-                void intake.exclude(row.id);
-              }
+              setIsExcludeOpen(true);
             }}
             size="sm"
             variant="danger"
@@ -229,19 +229,24 @@ function IntakeDetail({
           </Button>
         ) : null}
 
-        {intake.canExclude &&
-        row.catalogReviewStatus === "excluded_from_catalog" &&
-        !row.fullSizePurgedAtMs ? (
-          <Button
-            disabled={busy}
-            onClick={() => {
-              void intake.restore(row.id);
-            }}
-            size="sm"
-            variant="secondary"
-          >
-            {pendingAction === "restore" ? "Restoring…" : "Restore"}
-          </Button>
+        {intake.canExclude && row.catalogReviewStatus === "excluded_from_catalog" ? (
+          <div>
+            <button
+              className="button button-secondary button-sm"
+              disabled={busy || Boolean(row.fullSizePurgedAtMs)}
+              onClick={() => setIsRestoreOpen(true)}
+              ref={restoreTriggerRef}
+              type="button"
+            >
+              Restore to Pending
+            </button>
+            {row.fullSizePurgedAtMs ? (
+              <p className="customer-upload-intake-meta" role="status">
+                This historical upload cannot be restored because its full-size artwork was
+                previously removed.
+              </p>
+            ) : null}
+          </div>
         ) : null}
 
         {row.catalogReviewStatus === "sent_to_ai_review" ? (
@@ -258,21 +263,67 @@ function IntakeDetail({
 
         {intake.canDeleteEligible && !row.promotedDesignId ? (
           <DangerOverflowMenu
-            ariaLabel="Upload destructive actions"
+            ariaLabel={`More actions for ${row.originalFilename}`}
             disabled={busy}
             items={[
               {
                 id: "delete-upload",
-                label: pendingAction === "delete" ? "Deleting…" : "Delete unused upload…",
+                label: "Delete Upload",
                 disabled: busy || pendingAction === "delete",
                 onSelect: () => {
-                  void intake.deleteEligible(row.id);
+                  setIsDeleteOpen(true);
                 },
               },
             ]}
+            placement="bottom"
+            triggerRef={deleteTriggerRef}
           />
         ) : null}
       </div>
+
+      <CustomerUploadExclusionDialog
+        isOpen={isExcludeOpen}
+        onCancel={() => setIsExcludeOpen(false)}
+        onConfirm={async () => {
+          const succeeded = await intake.exclude(row.id);
+          if (succeeded) {
+            setIsExcludeOpen(false);
+          }
+          return succeeded;
+        }}
+        title={row.originalFilename}
+      />
+
+      <CustomerUploadDeletionDialog
+        isOpen={isDeleteOpen}
+        onCancel={() => {
+          setIsDeleteOpen(false);
+          deleteTriggerRef.current?.focus();
+        }}
+        onCompleted={(message) => {
+          setIsDeleteOpen(false);
+          intake.deleteCompleted(row.id, message);
+        }}
+        title={row.originalFilename}
+        uploadId={row.id}
+      />
+
+      <CustomerUploadRestoreDialog
+        isOpen={isRestoreOpen}
+        isSubmitting={pendingAction === "restore"}
+        onCancel={() => {
+          setIsRestoreOpen(false);
+          restoreTriggerRef.current?.focus();
+        }}
+        onConfirm={async () => {
+          const succeeded = await intake.restore(row.id);
+          if (succeeded) {
+            setIsRestoreOpen(false);
+          }
+          return succeeded;
+        }}
+        title={row.originalFilename}
+      />
 
       {detailsOpen ? (
         <div
@@ -498,7 +549,12 @@ export function CustomerUploadIntakeSection({
                 })}
               </ul>
               {intake.selected ? (
-                <IntakeDetail intake={intake} isDonation={isDonation} row={intake.selected} />
+                <IntakeDetail
+                  intake={intake}
+                  isDonation={isDonation}
+                  key={`${intake.filter}:${intake.selected.id}`}
+                  row={intake.selected}
+                />
               ) : null}
             </div>
           )}

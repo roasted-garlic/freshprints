@@ -9,19 +9,19 @@ import {
 } from "../../packages/shared/src/types/deletion/deletion.types";
 import { adminDb, adminStorage } from "./lib/admin";
 import { loadCallerProfile } from "./lib/caller";
-import { isCustomerUploadPromoted } from "./lib/deletionEligibility";
+import {
+  buildCustomerUploadBatchDeletionPatch,
+  resolveCustomerUploadAssetManifest,
+  resolveCustomerUploadDeletionBlockers,
+} from "./lib/customerUploadDeletionEligibility";
+import { assertCanDeleteCustomerUpload } from "./lib/customerUploadStaffAuth";
 import {
   failedPrecondition,
   invalidArgument,
-  permissionDenied,
   unauthenticated,
 } from "./lib/errors";
-
-function assertOwnerCaller(caller: Awaited<ReturnType<typeof loadCallerProfile>>): void {
-  if (!caller.isActive || caller.role !== "owner") {
-    throw permissionDenied("Only owners can permanently delete customer uploads.");
-  }
-}
+import { storageObjectPath } from "./lib/storageObjectPath";
+import { FieldValue } from "firebase-admin/firestore";
 
 function mapHttpsError(error: unknown): never {
   if (error instanceof HttpsError) {
@@ -65,7 +65,7 @@ function requirePhrase(data: unknown): string {
 
 async function deleteStoragePath(path: string): Promise<boolean> {
   try {
-    await adminStorage.bucket().file(path).delete({ ignoreNotFound: true });
+    await adminStorage.bucket().file(storageObjectPath(path)).delete({ ignoreNotFound: true });
     return true;
   } catch (error) {
     console.error("Failed to delete customer upload Storage object.", {
@@ -97,40 +97,32 @@ async function buildPreview(
       ? data.originalFilename.trim()
       : "Customer upload";
 
-  const itemRefs = await adminDb
-    .collection("printRequestItems")
-    .where("customerUploadId", "==", customerUploadId)
-    .limit(20)
-    .get();
+  const [itemRefs, promotedDesignRefs] = await Promise.all([
+    adminDb
+      .collection("printRequestItems")
+      .where("customerUploadId", "==", customerUploadId)
+      .limit(20)
+      .get(),
+    adminDb
+      .collection("designs")
+      .where("sourceCustomerUploadId", "==", customerUploadId)
+      .limit(20)
+      .get(),
+  ]);
 
-  if (!itemRefs.empty) {
-    return {
-      outcome: "blocked",
-      blockers: [
-        {
-          code: "attached_to_print_request",
-          message: `This upload cannot be deleted because it is attached to ${itemRefs.size} print request item(s). Remove those items first.`,
-          count: itemRefs.size,
-          navigateHint: "Print Requests",
-        },
-      ],
-      entityLabel: title,
-      customerUploadId,
-      title,
-    };
+  const blockers = resolveCustomerUploadDeletionBlockers({
+    printRequestItemCount: itemRefs.size,
+    promotedDesignId: data.promotedDesignId,
+    promotedDesignReferenceCount: promotedDesignRefs.size,
+  });
+  const assetManifest = resolveCustomerUploadAssetManifest(data, customerUploadId);
+  if (assetManifest.blocker) {
+    blockers.push(assetManifest.blocker);
   }
-
-  if (isCustomerUploadPromoted(data.promotedDesignId)) {
+  if (blockers.length > 0) {
     return {
       outcome: "blocked",
-      blockers: [
-        {
-          code: "promoted_to_design",
-          message:
-            "This upload cannot be deleted because it was promoted to a catalog design. Resolve the promotion relationship first.",
-          navigateHint: "Design Library",
-        },
-      ],
+      blockers,
       entityLabel: title,
       customerUploadId,
       title,
@@ -141,7 +133,7 @@ async function buildPreview(
     outcome: "allowed_hard_delete",
     blockers: [],
     entityLabel: title,
-    confirmLabel: "Delete unused upload",
+    confirmLabel: "Delete Upload",
     notes: ["This permanently deletes the upload document and its Storage files."],
     customerUploadId,
     title,
@@ -155,7 +147,7 @@ export const previewCustomerUploadDeletion = onCall(
     }
     try {
       const caller = await loadCallerProfile(request.auth.uid);
-      assertOwnerCaller(caller);
+      assertCanDeleteCustomerUpload(caller);
       return await buildPreview(parseUploadId(request.data as PreviewCustomerUploadDeletionRequest));
     } catch (error) {
       mapHttpsError(error);
@@ -170,7 +162,7 @@ export const deleteEligibleCustomerUpload = onCall(
     }
     try {
       const caller = await loadCallerProfile(request.auth.uid);
-      assertOwnerCaller(caller);
+      assertCanDeleteCustomerUpload(caller);
       const customerUploadId = parseUploadId(request.data as DeleteEligibleCustomerUploadRequest);
       requirePhrase(request.data);
 
@@ -212,16 +204,22 @@ export const deleteEligibleCustomerUpload = onCall(
 
       const snap = await adminDb.collection("customerUploads").doc(customerUploadId).get();
       const data = snap.data() ?? {};
-      const paths = [
-        data.sourceStoragePath,
-        data.productionStoragePath,
-        data.previewStoragePath,
-        data.thumbnailStoragePath,
-      ].filter((value): value is string => typeof value === "string" && value.trim().length > 0);
+      const assetManifest = resolveCustomerUploadAssetManifest(data, customerUploadId);
+      if (assetManifest.blocker) {
+        return {
+          outcome: "blocked",
+          blockers: [assetManifest.blocker],
+          message: assetManifest.blocker.message,
+          entityId: customerUploadId,
+          customerUploadId,
+          storageFilesDeleted: 0,
+          storageCleanupFailed: false,
+        };
+      }
 
       let storageFilesDeleted = 0;
       let storageCleanupFailed = false;
-      for (const path of paths) {
+      for (const path of assetManifest.paths) {
         const ok = await deleteStoragePath(path);
         if (ok) {
           storageFilesDeleted += 1;
@@ -230,13 +228,46 @@ export const deleteEligibleCustomerUpload = onCall(
         }
       }
 
-      await adminDb.collection("customerUploads").doc(customerUploadId).delete();
+      if (storageCleanupFailed) {
+        return {
+          outcome: "failed",
+          message:
+            "Some upload files could not be removed. The upload record was retained so cleanup can be retried safely.",
+          entityId: customerUploadId,
+          customerUploadId,
+          storageFilesDeleted,
+          storageCleanupFailed: true,
+        };
+      }
+
+      const uploadRef = adminDb.collection("customerUploads").doc(customerUploadId);
+      await adminDb.runTransaction(async (transaction) => {
+        const currentUpload = await transaction.get(uploadRef);
+        if (!currentUpload.exists) {
+          return;
+        }
+        const currentData = currentUpload.data() ?? {};
+        const batchId = typeof currentData.batchId === "string" ? currentData.batchId.trim() : "";
+        if (batchId) {
+          const batchRef = adminDb.collection("customerUploadBatches").doc(batchId);
+          const batchSnap = await transaction.get(batchRef);
+          if (batchSnap.exists) {
+            transaction.update(batchRef, {
+              ...buildCustomerUploadBatchDeletionPatch(
+                batchSnap.data() ?? {},
+                customerUploadId,
+                currentData.technicalStatus,
+              ),
+              updatedAt: FieldValue.serverTimestamp(),
+            });
+          }
+        }
+        transaction.delete(uploadRef);
+      });
 
       return {
         outcome: "allowed_hard_delete",
-        message: storageCleanupFailed
-          ? "Upload deleted, but some Storage files failed to clean up. Check logs for recovery."
-          : "Unused customer upload deleted.",
+        message: "Unused customer upload and all owned assets deleted.",
         entityId: customerUploadId,
         customerUploadId,
         storageFilesDeleted,

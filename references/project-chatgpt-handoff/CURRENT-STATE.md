@@ -1,5 +1,12 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-08-01 - Clean final Studio remediation promotion in progress
+
+- Clean branch `release/final-studio-remediations` was created directly from production `11960852`; `development` remains unchanged.
+- Includes only the approved Whatnot existing-show update and Customer Upload overflow/exclusion/restore/delete remediations, focused tests, and narrow workflow artifacts.
+- Development owner QA for both remediation groups is PASS.
+- Production Functions deployment and combined Studio installer/owner QA remain pending. Stage 2 remains paused and domain cutover blocked.
+
 ## 2026-07-31 - Goal #13 Amendment 1 promoted as draft PR #17; awaiting owner merge
 
 - Draft PR #17: `development` → `production`, title “Fix customer show schedules across all request states”.
