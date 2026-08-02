@@ -23,6 +23,8 @@ import { registerExportIpcHandlers } from './ipc/export/exportIpcHandlers'
 import { registerImportIpcHandlers } from './ipc/import/importIpcHandlers'
 import { registerInboxAlertIpcHandlers } from './ipc/inboxAlert/inboxAlertIpcHandlers'
 import { registerWhatnotImportIpcHandlers } from './ipc/whatnotImport/whatnotImportIpcHandlers'
+import { registerStudioUpdateIpcHandlers } from './ipc/studioUpdate/studioUpdateIpcHandlers'
+import { startPeriodicStudioUpdateChecks } from './ipc/studioUpdate/studioUpdateService'
 import { attachTextInputContextMenu } from './services/app/textInputContextMenu'
 
 suppressDevToolsAutofillConsoleNoise()
@@ -315,6 +317,11 @@ app.whenReady().then(() => {
   registerInboxAlertIpcHandlers()
   registerWhatnotImportIpcHandlers()
   registerExportIpcHandlers()
+  registerStudioUpdateIpcHandlers()
 
   createWindow()
+
+  // Update checks run only in packaged builds (see isUpdateCapable in studioUpdateService) —
+  // this call is a no-op during `npm run dev:studio`.
+  startPeriodicStudioUpdateChecks()
 })

@@ -4,6 +4,7 @@ import type { FreshPrintsInboxAlertApi } from "../inboxAlert/inboxAlertIpc.types
 import type { FreshPrintsExportApi } from "../export/showExportIpc.types";
 import type { FreshPrintsWhatnotImportApi } from "../whatnotImport/whatnotImport.types";
 import type { FreshPrintsFirebaseDebugApi } from "../firebaseDebug/firebaseDebugIpc.types";
+import type { FreshPrintsStudioUpdateApi } from "../studioUpdate/studioUpdateIpc.types";
 import type { PrintSizeAssessment } from "../printSize/printSize.types";
 import type {
   BatchDiscoveryCompleteEvent,
@@ -300,4 +301,5 @@ export interface FreshPrintsPreloadApi {
   inboxAlert: FreshPrintsInboxAlertApi;
   whatnotImport: FreshPrintsWhatnotImportApi;
   export: FreshPrintsExportApi;
+  studioUpdate: FreshPrintsStudioUpdateApi;
 }
