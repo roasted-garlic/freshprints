@@ -1,12 +1,14 @@
 # Roadmap and Phases
 
+> 2026-08-01: Final Studio remediations are on a clean production-promotion branch. Production Functions deployment and combined installer QA remain pending; Stage 2 stays paused and domain cutover blocked.
+
 > Align all work with the current phase / active managed goal. Do not jump ahead.
 
 ## Current status (2026-07-31)
 
 | Item | Status |
 |------|--------|
-| Goal #13 `production-release` | **Active** — Stage 2 paused; Customer Upload intake parity Amendment 4 and separate Whatnot development QA pending; domain deferred; Stage 1 + Class D closed |
+| Goal #13 `production-release` | **Active** — Stage 2 paused; Assisted library search / tag-removal / resize / branding / registration slices signed off; domain deferred; Stage 1 + Class D closed |
 | Phases 1-7 | Complete (Studio foundation through Show Queue MVP; staff-assisted Whatnot import built; live scheduled Whatnot sync **not planned**) |
 | Phase 8 Portal MVP | **Complete in `fresh-prints-dev`** |
 | Phase 8 fast-follows (uploads, CR, image quality, caching, auth, etc.) | **Complete** through mid-July signoffs |

@@ -1,12 +1,8 @@
 # Recent Completed Work
 
-## 2026-08-01 - Customer Upload intake parity Amendment 4 implemented
+## 2026-08-01 - Final Studio remediation development QA passed
 
-Added the shared visible `Restore to Pending` confirmation workflow to both Donated Designs and Customer Uploads while preserving purpose/status eligibility, role boundaries, deletion behavior, and stale-state cleanup. Automated verification passed; authenticated development QA remains pending.
-
-## 2026-08-01 - Donated Designs exclusion/deletion Amendment 3 implemented
-
-Implemented the final reversible exclusion/restore and complete safe-delete contract on `development`: authoritative schema-aligned asset ownership validation, fail-closed future-field handling, partial-cleanup retry safety, upload-specific batch metadata cleanup, and focused authorization/restoration/deletion tests. Automated verification passed; manual development QA and every production action remain pending.
+Owner confirmed PASS for Whatnot matched-show updates and Customer Upload exclusion/restore/delete parity. A clean production branch was created from `11960852` because development contained unrelated rollout documentation; no development history was rewritten.
 
 > Signed-off or largely complete work. External agents should not re-plan or duplicate this.
 

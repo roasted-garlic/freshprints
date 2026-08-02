@@ -1,4 +1,6 @@
 # Current Goal
+Clean final-Studio remediation promotion is in progress on `release/final-studio-remediations` from production base `11960852`. Development owner QA passed for Whatnot and Customer Upload intake. Production Functions deployment, combined installer QA, Stage 2, and domain cutover remain pending/blocked.
+
 `production-release` (Goal #13) — Phase G; slice
 `portal-customer-queued-show-schedule-visibility` +
 `portal-print-request-and-customer-show-limit-settings` (source workflow)
