@@ -1105,3 +1105,9 @@ See `CURRENT-STATE.md` for live status.
 - Fixed update execution to reuse the scanner-matched Firestore ID, verify Whatnot identity, and avoid strict post-write remapping/generic incomplete-record failures.
 - Exact external-field allowlist preserves capacity, allocations, production/lifecycle state, notes, and metadata. Known missing identity/title/time errors are specific.
 - Automated suite 59/59 plus Studio typecheck/build, lint, whitespace PASS. Manual development Studio QA remains pending; no production/domain action.
+# 2026-08-01 — Goal #13 Donated Designs overflow menu source complete; owner QA pending
+
+- Separate slice `donated-designs-overflow-menu-no-op`, starting after Whatnot commit `ca315f2`; no amend or bundling.
+- Confirmed approved overflow action is existing owner-gated **Delete unused upload…**. Downward panel was clipped by intake `overflow: hidden`; explicit top placement, focus handling, accessible design label, and filter/row state reset implemented.
+- Automated 15/15 plus Studio TypeScript/build/package, lint, whitespace PASS. Implementation Review `approved_with_note`; manual development Studio QA pending.
+- Whatnot owner QA separately pending; Stage 2/domain paused; no production/deployment/data action.

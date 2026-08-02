@@ -1,5 +1,13 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-08-01 - Donated Designs overflow-menu remediation implemented on development
+
+- Separate Goal #13 slice from the Whatnot remediation. Starting commit `ca315f2391b4961dc97ddbe87bf351c335405c6a` remains intact.
+- Root cause: the existing **Delete unused upload…** menu mounted below the final action row but was clipped by the intake panel's `overflow: hidden` boundary.
+- Fix uses explicit upward placement, first-item/Escape focus behavior, a design-specific accessible label, and filter/selected-row reset. Existing owner permission, preview/confirmation/callable, primary actions, halftone, and Customer Uploads reuse are unchanged.
+- Focused tests 15/15, Studio typecheck/build/package, lint, and whitespace checks PASS. Implementation Review `approved_with_note`; authenticated development owner QA pending.
+- Whatnot show-update owner QA remains separately pending. Stage 2 and domain cutover remain paused; no production action occurred.
+
 ## 2026-08-01 - Whatnot existing-show update remediation implemented on development
 
 - Root cause: scanner retained `existingShowId`, but executor discarded it and reused strict rematching/upsert; ten mapper failures collapsed to `An upcoming show record is incomplete.`

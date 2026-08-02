@@ -4,28 +4,29 @@
 `portal-print-request-and-customer-show-limit-settings` (source workflow)
 
 Current Mode: managed-phase
-Current Phase: Goal #13 remediation — Whatnot show update development owner QA
+Current Phase: Goal #13 remediation — Donated Designs overflow menu development owner QA
 Plan Status: complete —
-`docs/workflow/plans/2026-08-01-whatnot-show-import-update-incomplete-record-plan.md`
+`docs/workflow/plans/2026-08-01-donated-designs-overflow-menu-no-op-plan.md`
 Review Status: **approved_with_changes** —
-`docs/workflow/reviews/2026-08-01-whatnot-show-import-update-incomplete-record-review.md`
-Implement Status: complete (development)
-Test Status: **automated passed; manual development QA pending** — `docs/workflow/reviews/2026-08-01-whatnot-show-import-update-incomplete-record-test-report.md`
-Implementation Review: **approved_with_note** — `docs/workflow/reviews/2026-08-01-whatnot-show-import-update-incomplete-record-implementation-review.md`
+`docs/workflow/reviews/2026-08-01-donated-designs-overflow-menu-no-op-review.md`
+Implement Status: complete (development; separate from Whatnot commit)
+Test Status: **automated passed; manual development QA pending** — `docs/workflow/reviews/2026-08-01-donated-designs-overflow-menu-no-op-test-report.md`
+Implementation Review: **approved_with_note** — `docs/workflow/reviews/2026-08-01-donated-designs-overflow-menu-no-op-implementation-review.md`
 Ship Status: Functions + Portal App Hosting rollout **passed** (`build-2026-08-01-001`)
 Signoff Status: customer schedule visibility + dual-limit Studio UI + linked 30/30 production settings **approved**
 Implementation Review: **approved** —
 `docs/workflow/reviews/2026-07-31-production-portal-show-schedule-and-limit-settings-implementation-review.md`
 DONE: no (Goal #13 continues; Stage 2 paused on importer defect)
 Human Checkpoint Required: yes
-Human Checkpoint Reason: owner must run the specified development Studio importer QA before production promotion
+Human Checkpoint Reason: owner must run the specified development Studio overflow-menu QA before production promotion; separate Whatnot owner QA also remains pending
 Blocked: no
 Blocker: none
 Allowed Actions: development Studio QA with approved fixture; docs; read-only verification
 Forbidden Actions: further deploys; production actions; Rules/index/data/settings changes; Stage 2; domain
-Next Required Step: Owner verifies existing-show update/no duplicate/capacity+allocation preservation/rescan/error copy in development
+Next Required Step: Owner verifies the Donated Designs overflow menu in development; separately complete the existing Whatnot show-update owner QA
 
 Decision Log:
+- 2026-08-01 — Separate Donated Designs overflow slice implemented from `ca315f2`: clipped downward menu corrected with explicit upward placement, focus handling, and stale-context reset. Automated 15/15/build/lint PASS; owner development QA pending. Whatnot checkpoint unchanged.
 - 2026-08-01 — Stage 2 paused: existing Whatnot update loses matched document identity and reuses strict generic pre-merge mapper. Narrow Plan reviewed `approved_with_changes`.
 - 2026-08-01 — Stage 2 resumed. Read-only infrastructure sanity PASS; authenticated Portal/Studio tests pending because no UI-control backend was available.
 - 2026-08-01 — Owner confirmed production Portal checks 1–12 PASS for linked 30/30; request/customer-show limits, capacity separation, warnings, no daily limit, and stale-session refresh verified.
