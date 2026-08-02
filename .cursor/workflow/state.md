@@ -4,14 +4,14 @@
 `portal-print-request-and-customer-show-limit-settings` (source workflow)
 
 Current Mode: managed-phase
-Current Phase: Goal #13 remediation — Donation exclude/Delete Upload Amendment 3 owner QA
+Current Phase: Goal #13 remediation — Customer Upload intake parity Amendment 4 owner QA
 Plan Status: complete —
-`docs/workflow/plans/2026-08-01-donated-designs-exclusion-deletion-amendment-3-plan.md`
+`docs/workflow/plans/2026-08-01-customer-upload-intake-parity-amendment-4-plan.md`
 Review Status: **approved_with_conditions** —
-`docs/workflow/reviews/2026-08-01-donated-designs-exclusion-deletion-amendment-3-review.md`
+`docs/workflow/reviews/2026-08-01-customer-upload-intake-parity-amendment-4-review.md`
 Implement Status: complete (development; separate from Whatnot commit)
-Test Status: **automated passed; owner/admin/helper development QA pending** — `docs/workflow/reviews/2026-08-01-donated-designs-exclusion-deletion-amendment-3-test-report.md`
-Implementation Review: **approved_with_note** — `docs/workflow/reviews/2026-08-01-donated-designs-exclusion-deletion-amendment-3-implementation-review.md`
+Test Status: **automated passed; owner/admin/helper development QA pending** — `docs/workflow/reviews/2026-08-01-customer-upload-intake-parity-amendment-4-test-report.md`
+Implementation Review: **approved_with_note** — `docs/workflow/reviews/2026-08-01-customer-upload-intake-parity-amendment-4-implementation-review.md`
 Ship Status: Functions + Portal App Hosting rollout **passed** (`build-2026-08-01-001`)
 Signoff Status: customer schedule visibility + dual-limit Studio UI + linked 30/30 production settings **approved**
 Implementation Review: **approved** —
@@ -23,9 +23,10 @@ Blocked: no
 Blocker: none
 Allowed Actions: development Studio QA with approved fixture; docs; read-only verification
 Forbidden Actions: further deploys; production actions; Rules/index/data/settings changes; Stage 2; domain
-Next Required Step: Owner verifies complete schema-owned asset cleanup, in-app Delete Upload, safe blockers, reversible cross-role exclusion/restore, and role behavior in development; separately complete Whatnot QA
+Next Required Step: Owner verifies shared Pending/Excluded action parity and Restore to Pending across Donated Designs and Customer Uploads in development; separately complete Whatnot QA
 
 Decision Log:
+- 2026-08-01 — Amendment 4 implemented: shared visible Restore to Pending modal/action across Donated Designs and Customer Uploads, with historical-purge explanation and status eligibility preserved. Focused 63/63, Studio typecheck/build, lint PASS; development QA pending; no deploy.
 - 2026-08-01 — Amendment 3 implemented: schema-owned asset manifest, exact path ownership validation, direct promoted-design reference check, fail-closed unknown paths, retry-safe partial cleanup, and upload-specific batch metadata cleanup. Focused 34/34/builds/lint PASS; development QA pending; no deploy.
 - 2026-08-01 — Amendment 2 implemented: native dialogs removed; owner/admin safe delete; helper exclusion/delete denial; exclusion preserves assets. Focused 43/43/builds/lint PASS. Functions source changed but not deployed; development QA pending.
 - 2026-08-01 — Owner requested Amendment 1: menu defaults below. Body portal + measured fixed collision positioning implemented; 19/19/build/lint PASS. Amended owner QA pending; no promotion.

@@ -1,5 +1,12 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-08-01 - Customer Upload intake parity Amendment 4 implemented
+
+- Both Studio routes use the shared intake: Donated Designs = `catalog_donation`; Customer Uploads = resolved non-donation/`print_request` records.
+- Excluded records now visibly show `Restore to Pending` and use an accessible in-app confirmation before the existing callable-backed same-document restore.
+- Historically purged rows show a disabled restore action with explanation; `not_eligible` uploads remain outside the Pending/Excluded status queries.
+- Focused 63/63, Studio typecheck/build, lint, and diff validation passed. Functions and Rules did not change. Development QA remains pending; Stage 2 remains paused and production blocked.
+
 ## 2026-08-01 - Donation exclusion/Delete Upload Amendment 3 implemented
 
 - Exclusion/restoration remain actor-independent metadata transitions for active helpers/admins/owners; permanent deletion remains owner/admin-only.
