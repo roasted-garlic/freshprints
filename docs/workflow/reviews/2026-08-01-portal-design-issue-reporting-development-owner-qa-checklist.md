@@ -1,6 +1,12 @@
 # Development owner QA checklist: Portal design issue reporting
 
-Use `fresh-prints-dev` after approved Functions, Rules, indexes, and development Portal rollout.
+Use `fresh-prints-dev` after approved Functions, Rules, and indexes. **Superseded (2026-08-02):**
+no development Portal App Hosting rollout occurs or is required — `fresh-prints-dev` intentionally
+has no App Hosting backend (see "Development and Production Portal Hosting Policy" in
+`docs/standards/DEPLOYMENT.md`). Run Portal locally via `npm run dev:portal`
+(`http://localhost:3100`) against `fresh-prints-dev`, and Studio via `npm run dev:studio`. See also
+`docs/workflow/reviews/2026-08-01-portal-design-issue-reporting-owner-qa-checklist.md` for the
+current consolidated 24-item checklist.
 
 ## Portal customer
 
