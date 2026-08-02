@@ -1,35 +1,31 @@
 # Current Goal
-`portal-design-issue-reporting` implementation and owner UX amendment 1 are complete on `feature/portal-design-issue-reporting`. The report modal has opposite-edge Cancel/Submit actions and a top-right close control; the design modal has Report alone at left, Favorite/Share/Background grouped at right, and a full-width request action below. Focused checks pass. The Studio Inbox permission error is expected until the approved development Firestore Rules are deployed. Await `APPROVE DEVELOPMENT DEPLOY: PORTAL DESIGN ISSUE REPORTING`; nothing is deployed. Stage 2/domain remain blocked and the prior installer remains intermediate.
-
-Clean final-Studio remediation promotion is in progress on `release/final-studio-remediations` from production base `11960852`. Development owner QA passed for Whatnot and Customer Upload intake. Production Functions deployment, combined installer QA, Stage 2, and domain cutover remain pending/blocked.
-
-`production-release` (Goal #13) — Phase G; slice
-`portal-customer-queued-show-schedule-visibility` +
-`portal-print-request-and-customer-show-limit-settings` (source workflow)
+**Portal design issue reporting: convergence complete, development-deployed, awaiting owner QA.** Feature branch `feature/portal-design-issue-reporting` now has the post-candidate UX (success animation, submitter, in-place View Design/archive host) committed and pushed (`3beacbe` app code, `52f4de7` docs) on top of `5f6f383`. `fresh-prints-dev` already had both reporting Functions (`submitPortalDesignIssueReport`, `resolveDesignIssueReport`) and both `designIssueReports` indexes live (confirmed via `firebase functions:list` / `firebase firestore:indexes --project fresh-prints-dev`) prior to this pass, despite the repo checkpoint doc saying "nothing deployed" — that doc was stale, not the live state. Firestore Rules deploy was **not** performed this pass (no CLI facility to diff live vs. local Rules content; treated as unverifiable per the hard "stop and report" instruction rather than guessed). Portal App Hosting rollout is **blocked**: `firebase apphosting:backends:get fresh-prints-portal --project fresh-prints-dev` returns "not found" — no backend is provisioned on dev at all, so there is nothing to roll out to via `firebase deploy --only apphosting`; provisioning one is infra/console setup requiring separate owner approval. `origin/production` = `fe8c4f0`, untouched. No production action taken.
 
 Current Mode: managed-phase
-Current Phase: protected PR (Amendment 1)
-Plan Status: complete —
-`docs/workflow/plans/2026-07-31-production-portal-show-schedule-and-limit-settings-amendment-1-plan.md`
-Review Status: **approved_with_changes** —
-`docs/workflow/reviews/2026-07-31-production-portal-show-schedule-and-limit-settings-amendment-1-review.md`
-Implement Status: complete
-Test Status: **passed** — `docs/workflow/reviews/2026-07-31-production-portal-show-schedule-and-limit-settings-amendment-1-test-report.md`
-Implementation Review: **approved** — `docs/workflow/reviews/2026-07-31-production-portal-show-schedule-and-limit-settings-amendment-1-implementation-review.md`
-Ship Status: Amendment 1 draft PR #17 open (`development` → `production`); merge pending
-Signoff Status: pending owner QA after rollouts
-Implementation Review: **approved** —
-`docs/workflow/reviews/2026-07-31-production-portal-show-schedule-and-limit-settings-implementation-review.md`
-DONE: no (Goal #13 continues; Stage 2 paused)
+Current Phase: development deployment reconciliation complete; awaiting owner QA
+Plan Status (reporting): complete (prior)
+Plan Status (studio-automatic-updates): complete —
+`docs/workflow/plans/2026-08-01-studio-automatic-updates-plan.md`
+Review Status (studio-automatic-updates): **approved_with_changes** —
+`docs/workflow/reviews/2026-08-01-studio-automatic-updates-review.md`
+Implement Status (updater): blocked pending owner decisions; not implemented this pass
+DONE: no
 Human Checkpoint Required: yes
-Human Checkpoint Reason: owner review and merge of protected PR #17; all rollouts remain separately gated
+Human Checkpoint Reason: (1) owner QA per `docs/workflow/reviews/2026-08-01-portal-design-issue-reporting-owner-qa-checklist.md`; (2) explicit owner decision on Firestore Rules deploy to `fresh-prints-dev` (live content unverifiable from this environment — see above); (3) explicit owner approval to provision the `fresh-prints-portal` App Hosting backend on `fresh-prints-dev` before any Portal dev rollout can happen
 Blocked: no
 Blocker: none
-Allowed Actions: docs; inspect PR #17; wait for owner merge
-Forbidden Actions: further deploys; production actions; Rules/index/data/settings changes; Stage 2; domain
-Next Required Step: Owner reviews and merges draft PR #17 with Create a merge commit; then verify production branch and stop before rollout
+Allowed Actions: docs; record owner QA; await Rules-deploy and App-Hosting-backend decisions; no production promote
+Forbidden Actions: production merge/deploy; any fresh-prints-prod action; Storage Rules deploy; Functions other than the two reporting callables; updater implement; Stage 2; domain cutover
+Next Required Step: Owner runs QA against `fresh-prints-dev` per the checklist; owner separately decides whether to approve the Firestore Rules deploy and the App Hosting backend provisioning for dev
+
+Background (not active gate): Goal #13 / clean Studio remediation / Stage 2 remain deferred; prior installer intermediate; domain cutover blocked until `APPROVE MYPRINTREQUEST.COM CUTOVER`.
 
 Decision Log:
+- 2026-08-01 — Convergence pass: committed post-candidate reporting UX (`3beacbe`, `52f4de7`), pushed to `origin/feature/portal-design-issue-reporting`. Confirmed via `firebase` CLI that both reporting Functions and both indexes are already live on `fresh-prints-dev` (repo checkpoint doc was stale). Did not deploy Firestore Rules (unverifiable live diff — flagged, not guessed). Found no `fresh-prints-portal` App Hosting backend on dev at all; Portal rollout blocked pending owner-approved backend provisioning. No production action.
+- 2026-08-01 — Release orchestration Phase A: no deploy/QA evidence in repo; dirty tree beyond `5f6f383`; updater Plan+Review ready; stop for owner QA phrase. No production action.
+- 2026-08-01 — Inbox design host now opens Design Details (preview) with Edit + Archive confirm in place. No deploy.
+- 2026-08-01 — Studio Inbox design-report submitter display + in-place Edit Design implemented. Plan/review/test docs under `docs/workflow/`. No deploy.
+- 2026-08-01 — Report success UX amendment implemented (animated check; new short copy). Plan/review/test docs under `docs/workflow/`. No deploy.
 - 2026-07-31 — Amendment 1 commits `c4c8b38` + `c96755c` pushed; draft PR #17 opened
   (`development` → `production`). No merge or deployment.
 - 2026-07-31 — Development commit `b144903` pushed; protected PR #16 opened
