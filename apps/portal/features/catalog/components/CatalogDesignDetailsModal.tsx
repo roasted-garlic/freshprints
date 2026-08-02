@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { resolveArtworkBackgroundHex } from '@fresh-prints/shared/constants/design/artworkBackground.constants';
 
@@ -14,6 +14,7 @@ import type { CatalogDesign } from '../types/catalog.types';
 import { PORTAL_DESIGN_DEEP_LINK_PARAM } from '../utils/portalDesignShareUrls';
 import { CatalogArtworkBackgroundPreviewPicker } from './CatalogArtworkBackgroundPreviewPicker';
 import { CatalogDesignShareButton } from './CatalogDesignShareButton';
+import { CatalogDesignIssueReportModal } from './CatalogDesignIssueReportModal';
 import { CatalogPreviewLightbox } from './CatalogPreviewLightbox';
 import { CatalogThumbnailPanel } from './CatalogThumbnailPanel';
 
@@ -55,6 +56,8 @@ export function CatalogDesignDetailsModal({
   const searchParams = useSearchParams();
   const { isAuthenticated } = useAuth();
   const [isPreviewLightboxOpen, setIsPreviewLightboxOpen] = useState(false);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const reportTriggerRef = useRef<HTMLButtonElement>(null);
   const [previewBgHex, setPreviewBgHex] = useState(() =>
     resolveArtworkBackgroundHex(design?.artworkBackgroundHex),
   );
@@ -79,6 +82,11 @@ export function CatalogDesignDetailsModal({
 
   function handleGuestSignIn(designId: string) {
     redirectToPortalLogin(router, buildSignInReturnTo(designId));
+  }
+
+  function handleReportIssue() {
+    if (!isAuthenticated) { handleGuestSignIn(design!.id); return; }
+    setIsReportModalOpen(true);
   }
 
   useEffect(() => {
@@ -156,41 +164,46 @@ export function CatalogDesignDetailsModal({
           <div className="modal-body design-details-body">
             <div className="design-details-toolbar">
               <div className="design-details-toolbar-start">
-                <CatalogFavoriteButton
-                  className="design-details-favorite-btn"
-                  designId={design.id}
-                  designTitle={design.title}
-                />
-                <CatalogDesignShareButton design={design} variant="labeled" />
-                <CatalogArtworkBackgroundPreviewPicker
-                  designDefaultHex={designDefaultBgHex}
-                  onPreviewHexChange={setPreviewBgHex}
-                  previewHex={previewBgHex}
-                />
+                <button className="portal-button portal-button-secondary portal-button-sm" onClick={handleReportIssue} ref={reportTriggerRef} type="button">Report an Issue</button>
+                <div className="design-details-toolbar-controls">
+                  <CatalogArtworkBackgroundPreviewPicker
+                    designDefaultHex={designDefaultBgHex}
+                    onPreviewHexChange={setPreviewBgHex}
+                    previewHex={previewBgHex}
+                  />
+                  <CatalogDesignShareButton design={design} variant="labeled" />
+                  <CatalogFavoriteButton
+                    className="design-details-favorite-btn"
+                    designId={design.id}
+                    designTitle={design.title}
+                  />
+                </div>
+              </div>
+              <div className="design-details-primary-action-row">
                 {requestFullLabel ? (
                   <p className="design-details-request-full-label is-request-full">{requestFullLabel}</p>
                 ) : null}
+                {onAddToRequest ? (
+                  <button
+                    className="portal-button portal-button-primary portal-button-sm portal-button-leading-icon design-details-add-btn"
+                    disabled={addDisabled}
+                    onClick={() => onAddToRequest(design)}
+                    title={exhaustedTitle}
+                    type="button"
+                  >
+                    <PlusIcon size={14} />
+                    {isAdding ? 'Adding…' : 'Add to request'}
+                  </button>
+                ) : showGuestSignInCta ? (
+                  <button
+                    className="portal-button portal-button-primary portal-button-sm design-details-add-btn"
+                    onClick={() => handleGuestSignIn(design.id)}
+                    type="button"
+                  >
+                    Sign in to add to a request
+                  </button>
+                ) : null}
               </div>
-              {onAddToRequest ? (
-                <button
-                  className="portal-button portal-button-primary portal-button-sm portal-button-leading-icon design-details-add-btn"
-                  disabled={addDisabled}
-                  onClick={() => onAddToRequest(design)}
-                  title={exhaustedTitle}
-                  type="button"
-                >
-                  <PlusIcon size={14} />
-                  {isAdding ? 'Adding…' : 'Add to request'}
-                </button>
-              ) : showGuestSignInCta ? (
-                <button
-                  className="portal-button portal-button-primary portal-button-sm"
-                  onClick={() => handleGuestSignIn(design.id)}
-                  type="button"
-                >
-                  Sign in to add to a request
-                </button>
-              ) : null}
             </div>
             <h2 id="catalog-design-details-title">{design.title}</h2>
 
@@ -224,6 +237,7 @@ export function CatalogDesignDetailsModal({
         onClose={() => setIsPreviewLightboxOpen(false)}
         previewUrl={previewUrl}
       />
+      <CatalogDesignIssueReportModal designId={design.id} isOpen={isReportModalOpen} onClose={() => { setIsReportModalOpen(false); window.requestAnimationFrame(() => reportTriggerRef.current?.focus()); }} />
     </>
   );
 }

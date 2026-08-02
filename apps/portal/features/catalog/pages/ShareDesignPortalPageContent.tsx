@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { resolveArtworkBackgroundHex } from '@fresh-prints/shared/constants/design/artworkBackground.constants';
 
@@ -14,6 +14,7 @@ import { useCatalogCategories } from '../hooks/useCatalogCategories';
 import { CatalogFavoriteButton } from '../../favorites/components/CatalogFavoriteButton';
 import { CatalogArtworkBackgroundPreviewPicker } from '../components/CatalogArtworkBackgroundPreviewPicker';
 import { CatalogDesignShareButton } from '../components/CatalogDesignShareButton';
+import { CatalogDesignIssueReportModal } from '../components/CatalogDesignIssueReportModal';
 import { CatalogPreviewLightbox } from '../components/CatalogPreviewLightbox';
 import { CatalogThumbnailPanel } from '../components/CatalogThumbnailPanel';
 import { useCatalogDerivativeUrl } from '../hooks/useCatalogDerivativeUrl';
@@ -59,6 +60,8 @@ export function ShareDesignPortalPageContent({
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isPreviewLightboxOpen, setIsPreviewLightboxOpen] = useState(false);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const reportTriggerRef = useRef<HTMLButtonElement>(null);
   const [previewBgHex, setPreviewBgHex] = useState(() =>
     resolveArtworkBackgroundHex(undefined),
   );
@@ -138,6 +141,11 @@ export function ShareDesignPortalPageContent({
 
   function handleGuestSignIn() {
     redirectToPortalLogin(router, buildPortalDesignSharePath(designId));
+  }
+
+  function handleReportIssue() {
+    if (!isAuthenticated) { handleGuestSignIn(); return; }
+    setIsReportModalOpen(true);
   }
 
   function handleAddToRequest() {
@@ -239,53 +247,44 @@ export function ShareDesignPortalPageContent({
         <div className="modal-body design-details-body">
           <div className="design-details-toolbar">
             <div className="design-details-toolbar-start">
-              {design && isAuthenticated ? (
-                <CatalogFavoriteButton
-                  className="design-details-favorite-btn"
-                  designId={design.id}
-                  designTitle={design.title}
-                />
-              ) : null}
-              {design ? <CatalogDesignShareButton design={design} variant="labeled" /> : null}
-              {design ? (
-                <CatalogArtworkBackgroundPreviewPicker
-                  designDefaultHex={designDefaultBgHex}
-                  onPreviewHexChange={setPreviewBgHex}
-                  previewHex={previewBgHex}
-                />
-              ) : null}
+              {design ? <button className="portal-button portal-button-secondary portal-button-sm" onClick={handleReportIssue} ref={reportTriggerRef} type="button">Report an Issue</button> : null}
+              <div className="design-details-toolbar-controls design-details-toolbar-controls-end">
+                {design ? (
+                  <CatalogArtworkBackgroundPreviewPicker
+                    designDefaultHex={designDefaultBgHex}
+                    onPreviewHexChange={setPreviewBgHex}
+                    previewHex={previewBgHex}
+                  />
+                ) : null}
+                {design ? <CatalogDesignShareButton design={design} variant="labeled" /> : null}
+                {design && isAuthenticated ? (
+                  <CatalogFavoriteButton
+                    className="design-details-favorite-btn"
+                    designId={design.id}
+                    designTitle={design.title}
+                  />
+                ) : null}
+              </div>
+            </div>
+            <div className="design-details-primary-action-row">
               {requestFullLabel ? (
                 <p className="design-details-request-full-label is-request-full">{requestFullLabel}</p>
               ) : null}
+              {isAuthenticated ? (
+                <button
+                  className="portal-button portal-button-primary portal-button-sm portal-button-leading-icon design-details-add-btn"
+                  disabled={!design || addDesignFlow.isAdding || addDesignFlow.isEnsuringWorkingRequest || !addDesignFlow.canAddPrints}
+                  onClick={handleAddToRequest}
+                  title={requestFullLabel ?? undefined}
+                  type="button"
+                >
+                  <PlusIcon size={14} />
+                  {addDesignFlow.isAdding || addDesignFlow.isEnsuringWorkingRequest ? 'Adding…' : 'Add to request'}
+                </button>
+              ) : (
+                <button className="portal-button portal-button-primary portal-button-sm design-details-add-btn" onClick={handleGuestSignIn} type="button">Sign in to add to a request</button>
+              )}
             </div>
-
-            {isAuthenticated ? (
-              <button
-                className="portal-button portal-button-primary portal-button-sm portal-button-leading-icon design-details-add-btn"
-                disabled={
-                  !design ||
-                  addDesignFlow.isAdding ||
-                  addDesignFlow.isEnsuringWorkingRequest ||
-                  !addDesignFlow.canAddPrints
-                }
-                onClick={handleAddToRequest}
-                title={requestFullLabel ?? undefined}
-                type="button"
-              >
-                <PlusIcon size={14} />
-                {addDesignFlow.isAdding || addDesignFlow.isEnsuringWorkingRequest
-                  ? 'Adding…'
-                  : 'Add to request'}
-              </button>
-            ) : (
-              <button
-                className="portal-button portal-button-primary portal-button-sm"
-                onClick={handleGuestSignIn}
-                type="button"
-              >
-                Sign in to add to a request
-              </button>
-            )}
           </div>
 
           <section className="design-details-section">
@@ -323,6 +322,8 @@ export function ShareDesignPortalPageContent({
         onClose={() => setIsPreviewLightboxOpen(false)}
         previewUrl={previewUrl}
       />
+
+      {design ? <CatalogDesignIssueReportModal designId={design.id} isOpen={isReportModalOpen} onClose={() => { setIsReportModalOpen(false); window.requestAnimationFrame(() => reportTriggerRef.current?.focus()); }} /> : null}
 
       <PortalConfirmModal
         confirmLabel={addDesignFlow.isAdding ? 'Adding…' : 'Add to request'}

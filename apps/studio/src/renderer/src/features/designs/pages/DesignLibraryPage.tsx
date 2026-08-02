@@ -142,6 +142,7 @@ export function DesignLibraryPage() {
       requestId: selectionModeActive ? selectionRequestId ?? undefined : undefined,
       search: searchQuery,
       tags: selectedTags,
+      designId: filters.designId,
     });
 
     if (nextParams.toString() !== searchParams.toString()) {
@@ -156,7 +157,16 @@ export function DesignLibraryPage() {
     selectionModeActive,
     selectionRequestId,
     setSearchParams,
+    filters.designId,
   ]);
+
+  useEffect(() => {
+    const designId = filters.designId;
+    if (!user || !designId || !/^[A-Za-z0-9_-]{1,128}$/.test(designId)) return;
+    let cancelled = false;
+    void designService.getDesignById(user, designId).then((design) => { if (!cancelled) setSelectedDesign(design); }).catch(() => { if (!cancelled) setActionError("The referenced design is unavailable. The report snapshot remains available in Inbox."); });
+    return () => { cancelled = true; };
+  }, [filters.designId, user]);
 
   useEffect(() => {
     if (!selectionModeActive) {

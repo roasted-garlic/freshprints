@@ -1,6 +1,6 @@
 import type { PrintRequestListTab } from "../utils/printRequestListGrouping";
 
-export type StaffInboxItemKind = "portal_queued" | "show_queue_full";
+export type StaffInboxItemKind = "portal_queued" | "show_queue_full" | "design_issue_report";
 
 export interface StaffInboxPortalRequestSnapshot {
   id: string;
@@ -27,6 +27,7 @@ export interface StaffInboxItem {
   subtitle: string;
   printRequestTab?: PrintRequestListTab;
   occurredAtMillis: number;
+  designIssueReport?: import("../designIssueReports/designIssueReport.types").DesignIssueReport;
 }
 
 export interface StaffInboxCompletedItem extends StaffInboxItem {
@@ -39,4 +40,5 @@ export interface StaffInboxCompletedItem extends StaffInboxItem {
 export interface StaffInboxBadgeCounts {
   printRequests: number;
   showQueue: number;
+  designReports: number;
 }

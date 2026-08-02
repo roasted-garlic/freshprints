@@ -6,6 +6,7 @@ import { formatUpcomingShowTitle } from "../../upcoming-shows/utils/upcomingShow
 import { getUpcomingShowsPath } from "../../upcoming-shows/constants/upcomingShowRoutes";
 
 export function getStaffInboxItemNavigationPath(item: StaffInboxItem): string {
+  if (item.kind === "design_issue_report" && item.designIssueReport) return `/designs?designId=${encodeURIComponent(item.designIssueReport.designId)}`;
   if (item.kind === "show_queue_full" && item.upcomingShowId) {
     return getUpcomingShowsPath({ showId: item.upcomingShowId });
   }

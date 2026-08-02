@@ -13,6 +13,8 @@ export function buildStaffInboxItemId(
     return `portal_queued:${primaryId}:${upcomingShowId}`;
   }
 
+  if (kind === "design_issue_report") return `design_issue_report:${primaryId}`;
+
   return `show_queue_full:${primaryId}`;
 }
 
@@ -24,6 +26,8 @@ export function getStaffInboxKindLabel(kind: StaffInboxItemKind): string {
   if (kind === "portal_queued") {
     return "Queued";
   }
+
+  if (kind === "design_issue_report") return "Design report";
 
   return "Full";
 }

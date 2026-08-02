@@ -7,6 +7,7 @@ export const DESIGN_LIBRARY_TAGS_QUERY_PARAM = "tags";
 export const DESIGN_LIBRARY_ARCHIVED_QUERY_PARAM = "archived";
 export const DESIGN_LIBRARY_MODE_QUERY_PARAM = "mode";
 export const DESIGN_LIBRARY_REQUEST_ID_QUERY_PARAM = "requestId";
+export const DESIGN_LIBRARY_DESIGN_ID_QUERY_PARAM = "designId";
 
 /** @deprecated Legacy URL param — stripped on load; imported/processing redirects to AI Review */
 export const DESIGN_LIBRARY_STATUS_QUERY_PARAM = "status";
@@ -32,6 +33,7 @@ export interface DesignLibraryUrlFilters {
   requestId?: string;
   search?: string;
   tags?: string[];
+  designId?: string;
 }
 
 export function normalizeDesignLibraryTag(value: string): string {
@@ -89,6 +91,7 @@ export function parseDesignLibraryUrlFilters(searchParams: URLSearchParams): Des
     requestId: requestId || undefined,
     search: searchParams.get(DESIGN_LIBRARY_SEARCH_QUERY_PARAM)?.trim() || undefined,
     tags: tagsFromQuery.length > 0 ? tagsFromQuery : undefined,
+    designId: searchParams.get(DESIGN_LIBRARY_DESIGN_ID_QUERY_PARAM)?.trim() || undefined,
   };
 }
 
@@ -132,6 +135,7 @@ export function buildDesignLibrarySearchParams(
   if (filters.archived) {
     searchParams.set(DESIGN_LIBRARY_ARCHIVED_QUERY_PARAM, "true");
   }
+  if (filters.designId?.trim()) searchParams.set(DESIGN_LIBRARY_DESIGN_ID_QUERY_PARAM, filters.designId.trim());
 
   return searchParams;
 }

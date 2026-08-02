@@ -1,5 +1,7 @@
 # Fresh Prints Roadmap
 
+> 2026-08-01: `portal-design-issue-reporting` implementation is complete and awaits development deployment/owner QA. Stage 2 and public domain cutover remain blocked; the prior Studio installer is intermediate and automatic updates remain separate.
+
 > 2026-08-01: Clean final-Studio remediation promotion is in progress. Production Functions deployment and combined installer QA remain pending; Stage 2 remains paused and domain cutover deferred.
 
 ## Purpose
