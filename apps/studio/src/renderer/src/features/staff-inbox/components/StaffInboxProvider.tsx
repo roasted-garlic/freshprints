@@ -27,6 +27,7 @@ import { enqueueStaffInboxAlertSound } from "../services/staffInboxAlertSoundSer
 import { staffInboxSubscriptionService } from "../services/staffInboxSubscriptionService";
 import { formatStaffInboxFirestoreError } from "../utils/formatStaffInboxFirestoreError";
 import { getStaffInboxItemNavigationPath } from "../utils/staffInboxNavigation";
+import { designIssueReportService } from "../services/designIssueReportService";
 
 const HIGHLIGHT_DURATION_MS = 8_000;
 /** Wide enough that queue-add + show-full Firestore emits coalesce into one sound. */
@@ -36,6 +37,7 @@ const EMPTY_SUBSCRIPTION_SNAPSHOT: StaffInboxSubscriptionSnapshot = {
   portalRequests: [],
   portalAllocations: [],
   shows: [],
+  designIssueReports: [],
 };
 
 interface StaffInboxProviderProps {
@@ -58,9 +60,10 @@ function buildInboxWarningMessage(
   requestError: string | null,
   allocationError: string | null,
   showError: string | null,
+  designIssueReportError: string | null = null,
 ): string | null {
   const message =
-    showError ?? (requestError && allocationError ? allocationError : allocationError);
+    designIssueReportError ?? showError ?? (requestError && allocationError ? allocationError : allocationError);
 
   return message ? formatStaffInboxFirestoreError(message) : null;
 }
@@ -422,7 +425,7 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
       subscriptionHydratedRef.current = true;
       setSubscriptionSnapshot(state.snapshot);
       setError(buildInboxErrorMessage(state.requestError, state.allocationError));
-      setWarning(buildInboxWarningMessage(state.requestError, state.allocationError, state.showError));
+      setWarning(buildInboxWarningMessage(state.requestError, state.allocationError, state.showError, state.designIssueReportError));
       evaluateAlerts(state.snapshot);
     });
 
@@ -461,14 +464,17 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
   }, [evaluateAlerts, isEnabled, showSnapshots, subscriptionSnapshot]);
 
   const openItems = useMemo(
-    () =>
-      deriveStaffInboxItems({
+    () => {
+      const existing = deriveStaffInboxItems({
         portalAllocations: subscriptionSnapshot.portalAllocations,
         acknowledgedItemIds,
         showTitleById,
         shows: showSnapshots,
-      }),
-    [acknowledgedItemIds, showSnapshots, showTitleById, subscriptionSnapshot.portalAllocations],
+      });
+      const reports: StaffInboxItem[] = subscriptionSnapshot.designIssueReports.map((report) => ({ id: `design_issue_report:${report.id}`, kind: "design_issue_report", title: report.designTitleSnapshot, subtitle: report.description, occurredAtMillis: report.createdAtMillis, designIssueReport: report }));
+      return [...reports, ...existing].sort((left, right) => right.occurredAtMillis - left.occurredAtMillis);
+    },
+    [acknowledgedItemIds, showSnapshots, showTitleById, subscriptionSnapshot.designIssueReports, subscriptionSnapshot.portalAllocations],
   );
 
   const highlightItem = useCallback((itemId: string) => {
@@ -559,6 +565,11 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
   const acknowledgeItem = useCallback(
     (item: StaffInboxItem) => {
       if (!user?.id) {
+        return;
+      }
+
+      if (item.kind === "design_issue_report" && item.designIssueReport) {
+        void designIssueReportService.resolve(item.designIssueReport.id).catch(() => setWarning("Unable to resolve this design report. Check your connection and try again."));
         return;
       }
 

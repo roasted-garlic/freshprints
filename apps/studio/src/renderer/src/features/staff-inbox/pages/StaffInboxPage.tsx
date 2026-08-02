@@ -1,15 +1,18 @@
 import { useCallback, useMemo, useState } from "react";
 
 import { EmptyState } from "../../../shared/components/EmptyState";
+import { Button } from "../../../shared/components/Button";
 import { ErrorState } from "../../../shared/components/ErrorState";
 import { useShellHeaderConfig } from "../../../shared/hooks/useShellHeaderConfig";
 import { StaffInboxAlertSettingsModal } from "../components/StaffInboxAlertSettingsModal";
+import { useResolvedDesignIssueReports } from "../hooks/useResolvedDesignIssueReports";
 import { StaffInboxItemRow } from "../components/StaffInboxItemRow";
 import { useStaffInboxContext } from "../context/staffInboxContext";
 
 type InboxPageTab = "open" | "done";
 
 export function StaffInboxPage() {
+  const resolvedDesignReports = useResolvedDesignIssueReports();
   const {
     acknowledgeItem,
     completedItems,
@@ -70,6 +73,8 @@ export function StaffInboxPage() {
           Done ({completedItems.length})
         </button>
       </div>
+
+      {activeTab === "done" ? <section className="staff-inbox-resolved-reports" aria-label="Resolved design reports"><Button disabled={resolvedDesignReports.isLoading} onClick={() => void resolvedDesignReports.load()} variant="secondary">{resolvedDesignReports.isLoading ? "Loading…" : "Load Resolved Reports"}</Button>{resolvedDesignReports.error ? <p role="alert">{resolvedDesignReports.error}</p> : null}{resolvedDesignReports.reports.length > 0 ? <ul>{resolvedDesignReports.reports.map((report) => <li key={String(report.id)}><strong>{String(report.designTitleSnapshot ?? "Design report")}</strong><p>{String(report.description ?? "")}</p><span>{String(report.designId ?? "")}</span></li>)}</ul> : null}</section> : null}
 
       {visibleItems.length === 0 ? (
         <EmptyState

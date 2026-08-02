@@ -264,6 +264,9 @@ export const permissionService = {
     return isStaff(user);
   },
 
+  canViewDesignIssueReports(user: UserLike) { return isStaff(user); },
+  canResolveDesignIssueReports(user: UserLike) { return isStaff(user); },
+
   canManagePrintRequests(user: UserLike) {
     return isStaff(user);
   },

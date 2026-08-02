@@ -2830,3 +2830,6 @@
   }
 }
 
+.design-issue-report-overlay { z-index: 1200; }
+.design-issue-report-modal { max-height: min(90vh, 42rem); max-width: 36rem; overflow-y: auto; width: min(92vw, 36rem); }
+.design-issue-report-counter { color: var(--color-text-muted); font-size: .8rem; margin: .25rem 0 0; text-align: right; }

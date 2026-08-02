@@ -126,6 +126,8 @@ export {
 } from "./onCustomerFavoriteChanged";
 export { onEmailDeliveryJobCreated } from "./onEmailDeliveryJobCreated";
 export { registerWebPushSubscription } from "./registerWebPushSubscription";
+export { submitPortalDesignIssueReport } from "./submitPortalDesignIssueReport";
+export { resolveDesignIssueReport } from "./resolveDesignIssueReport";
 export {
   onCategorySnapshotSourceWritten,
   onPortalCatalogSnapshotSourceWritten,

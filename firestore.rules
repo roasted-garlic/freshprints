@@ -1793,6 +1793,15 @@ service cloud.firestore {
       allow create, update, delete: if false;
     }
 
+    // Customer-authored reports are created and resolved only by trusted callables.
+    match /designIssueReports/{reportId} {
+      allow read: if isStaff();
+      allow create, update, delete: if false;
+    }
+    match /designIssueReportIntents/{docId} { allow read, write: if false; }
+    match /designIssueReportOpenGuards/{docId} { allow read, write: if false; }
+    match /designIssueReportDailyQuotas/{docId} { allow read, write: if false; }
+
     // Server-only lease/generation state for manifest-last snapshot publication.
     match /snapshotPublicationState/{snapshotId} {
       allow read, write: if false;

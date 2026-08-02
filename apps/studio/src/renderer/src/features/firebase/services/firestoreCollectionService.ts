@@ -80,6 +80,8 @@ export const firestoreCollectionService = {
     return this.getCollectionReference("staffInboxAlertDeliveries");
   },
 
+  getDesignIssueReportsCollection() { return this.getCollectionReference("designIssueReports"); },
+
   getAssistedCreationUpdateAcksCollection() {
     return this.getCollectionReference("assistedCreationUpdateAcks");
   },

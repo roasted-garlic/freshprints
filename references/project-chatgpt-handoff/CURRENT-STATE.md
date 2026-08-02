@@ -1,5 +1,12 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-08-01 - Portal design issue reporting ready for development deployment
+
+- Feature branch is based on production `fe8c4f05`; all 15 owner decisions are implemented.
+- Portal modal, trusted submission/resolution callables, Studio Inbox integration, bounded reads/history, exact design deep link, centralized permissions, Rules, and indexes are complete.
+- Focused tests 6/6 and Rules emulator 60/60 pass; typechecks/builds, lint, packaging, and diff checks pass. Implementation Review is approved_with_notes.
+- No deployment or production action occurred. Stage 2 and domain remain blocked; prior installer is intermediate; automatic updates remain a separate phase.
+
 ## 2026-08-01 - Clean final Studio remediation promotion in progress
 
 - Clean branch `release/final-studio-remediations` was created directly from production `11960852`; `development` remains unchanged.

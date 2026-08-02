@@ -153,6 +153,7 @@ export function deriveStaffInboxBadgeCounts(items: StaffInboxItem[]): StaffInbox
   return {
     printRequests: items.length,
     showQueue: showIds.size,
+    designReports: items.filter((item) => item.kind === "design_issue_report").length,
   };
 }
 

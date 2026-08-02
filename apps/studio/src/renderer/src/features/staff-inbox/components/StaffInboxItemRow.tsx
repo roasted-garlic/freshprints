@@ -40,7 +40,8 @@ export function StaffInboxItemRow({
   const acknowledgedByDisplayName = isCompletedItem(item)
     ? item.acknowledgedByDisplayName
     : undefined;
-  const showCheckbox = !isCompleted && Boolean(onAcknowledge);
+  const isDesignReport = item.kind === "design_issue_report";
+  const showCheckbox = !isCompleted && !isDesignReport && Boolean(onAcknowledge);
 
   return (
     <li
@@ -50,7 +51,7 @@ export function StaffInboxItemRow({
         {showCheckbox ? (
           <label className="staff-inbox-item-check">
             <input
-              aria-label={`Mark ${item.title} done`}
+              aria-label={isDesignReport ? `Mark ${item.title} resolved` : `Mark ${item.title} done`}
               onChange={() => onAcknowledge?.(item)}
               type="checkbox"
             />
@@ -94,13 +95,14 @@ export function StaffInboxItemRow({
             variant="secondary"
           >
             <ExternalLink aria-hidden="true" size={14} strokeWidth={2} />
-            Open
+            {isDesignReport ? "View Design" : "Open"}
           </Button>
           {isCompleted && onRestore ? (
             <Button onClick={() => onRestore(item.id)} variant="secondary">
               Restore
             </Button>
           ) : null}
+          {!isCompleted && isDesignReport && onAcknowledge ? <Button onClick={() => onAcknowledge(item)} variant="primary">Mark Resolved</Button> : null}
         </div>
       </div>
     </li>

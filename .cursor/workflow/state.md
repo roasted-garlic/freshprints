@@ -1,4 +1,6 @@
 # Current Goal
+`portal-design-issue-reporting` implementation and independent review are complete on `feature/portal-design-issue-reporting`. Verdict: approved_with_notes. Await `APPROVE DEVELOPMENT DEPLOY: PORTAL DESIGN ISSUE REPORTING`; nothing is deployed. Stage 2/domain remain blocked and the prior installer remains intermediate.
+
 Clean final-Studio remediation promotion is in progress on `release/final-studio-remediations` from production base `11960852`. Development owner QA passed for Whatnot and Customer Upload intake. Production Functions deployment, combined installer QA, Stage 2, and domain cutover remain pending/blocked.
 
 `production-release` (Goal #13) — Phase G; slice

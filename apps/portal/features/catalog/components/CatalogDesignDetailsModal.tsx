@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { resolveArtworkBackgroundHex } from '@fresh-prints/shared/constants/design/artworkBackground.constants';
 
@@ -14,6 +14,7 @@ import type { CatalogDesign } from '../types/catalog.types';
 import { PORTAL_DESIGN_DEEP_LINK_PARAM } from '../utils/portalDesignShareUrls';
 import { CatalogArtworkBackgroundPreviewPicker } from './CatalogArtworkBackgroundPreviewPicker';
 import { CatalogDesignShareButton } from './CatalogDesignShareButton';
+import { CatalogDesignIssueReportModal } from './CatalogDesignIssueReportModal';
 import { CatalogPreviewLightbox } from './CatalogPreviewLightbox';
 import { CatalogThumbnailPanel } from './CatalogThumbnailPanel';
 
@@ -55,6 +56,8 @@ export function CatalogDesignDetailsModal({
   const searchParams = useSearchParams();
   const { isAuthenticated } = useAuth();
   const [isPreviewLightboxOpen, setIsPreviewLightboxOpen] = useState(false);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const reportTriggerRef = useRef<HTMLButtonElement>(null);
   const [previewBgHex, setPreviewBgHex] = useState(() =>
     resolveArtworkBackgroundHex(design?.artworkBackgroundHex),
   );
@@ -79,6 +82,11 @@ export function CatalogDesignDetailsModal({
 
   function handleGuestSignIn(designId: string) {
     redirectToPortalLogin(router, buildSignInReturnTo(designId));
+  }
+
+  function handleReportIssue() {
+    if (!isAuthenticated) { handleGuestSignIn(design!.id); return; }
+    setIsReportModalOpen(true);
   }
 
   useEffect(() => {
@@ -162,6 +170,7 @@ export function CatalogDesignDetailsModal({
                   designTitle={design.title}
                 />
                 <CatalogDesignShareButton design={design} variant="labeled" />
+                <button className="portal-button portal-button-secondary portal-button-sm" onClick={handleReportIssue} ref={reportTriggerRef} type="button">Report an Issue</button>
                 <CatalogArtworkBackgroundPreviewPicker
                   designDefaultHex={designDefaultBgHex}
                   onPreviewHexChange={setPreviewBgHex}
@@ -224,6 +233,7 @@ export function CatalogDesignDetailsModal({
         onClose={() => setIsPreviewLightboxOpen(false)}
         previewUrl={previewUrl}
       />
+      <CatalogDesignIssueReportModal designId={design.id} isOpen={isReportModalOpen} onClose={() => { setIsReportModalOpen(false); window.requestAnimationFrame(() => reportTriggerRef.current?.focus()); }} />
     </>
   );
 }
