@@ -114,3 +114,4 @@ Read-only infrastructure verification completed:
 - Linked production limits 30/30 remain owner-verified PASS from the separate settings checkpoint.
 
 Remaining tests 1–8 in the resumed owner checklist are **NOT TESTED in this session** pending owner interaction with approved smoke fixtures. Stage 2 is not signed off and domain readiness is not claimed yet.
+> **2026-08-01 update:** Final Whatnot and Customer Upload development QA passed. Stage 2 remains paused because the final Studio production promotion is blocked on resolving unrelated Portal/dual-limit documentation commits in the `production...development` diff; production Functions and combined installer remain pending.

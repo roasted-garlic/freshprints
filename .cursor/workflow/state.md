@@ -4,13 +4,13 @@
 `portal-print-request-and-customer-show-limit-settings` (source workflow)
 
 Current Mode: managed-phase
-Current Phase: Goal #13 remediation — Customer Upload intake parity Amendment 4 owner QA
+Current Phase: Goal #13 remediation — final Studio promotion blocked on mixed development diff
 Plan Status: complete —
 `docs/workflow/plans/2026-08-01-customer-upload-intake-parity-amendment-4-plan.md`
 Review Status: **approved_with_conditions** —
 `docs/workflow/reviews/2026-08-01-customer-upload-intake-parity-amendment-4-review.md`
 Implement Status: complete (development; separate from Whatnot commit)
-Test Status: **automated passed; three development Functions deployed; owner/admin/helper development QA pending** — `docs/workflow/reviews/2026-08-01-customer-upload-exclusion-deletion-development-functions-deploy-checkpoint.md`
+Test Status: **development owner QA PASS for Whatnot and Customer Upload intake; promotion diff audit blocked** — `docs/workflow/reviews/2026-08-01-final-studio-remediations-production-diff-audit.md`
 Implementation Review: **approved_with_note** — `docs/workflow/reviews/2026-08-01-customer-upload-intake-parity-amendment-4-implementation-review.md`
 Ship Status: Functions + Portal App Hosting rollout **passed** (`build-2026-08-01-001`)
 Signoff Status: customer schedule visibility + dual-limit Studio UI + linked 30/30 production settings **approved**
@@ -18,14 +18,15 @@ Implementation Review: **approved** —
 `docs/workflow/reviews/2026-07-31-production-portal-show-schedule-and-limit-settings-implementation-review.md`
 DONE: no (Goal #13 continues; Stage 2 paused on importer defect)
 Human Checkpoint Required: yes
-Human Checkpoint Reason: owner must run development owner/admin/helper donation exclude/Delete Upload QA; separate Whatnot owner QA also remains pending
+Human Checkpoint Reason: owner direction is required because development contains unrelated Portal/dual-limit documentation commits outside the narrow production PR authorization
 Blocked: no
 Blocker: none
 Allowed Actions: development Studio QA with approved fixture; docs; read-only verification
 Forbidden Actions: further deploys; production actions; Rules/index/data/settings changes; Stage 2; domain
-Next Required Step: Owner uses fresh post-deployment fixtures to verify metadata-only exclusion and Restore to Pending across Donated Designs and Customer Uploads; separately complete Whatnot QA
+Next Required Step: Owner approves either including the previously completed Portal/dual-limit documentation commits in the promotion PR or authorizes a separate clean promotion branch containing only final Studio remediation commits
 
 Decision Log:
+- 2026-08-01 — Owner QA PASS recorded for Whatnot and Customer Upload intake. Production diff audit BLOCKED: development also contains eight earlier Portal/dual-limit documentation commits outside the narrow promotion authorization; no PR opened.
 - 2026-08-01 — Deployed exactly preview/delete/exclude customer-upload Functions to `fresh-prints-dev`: exit 0, 3 deployed, all ACTIVE on hash `039c420950489a41150ee4fbee0e2ded2790c3ca`; owner QA pending; no production action.
 - 2026-08-01 — Amendment 4 implemented: shared visible Restore to Pending modal/action across Donated Designs and Customer Uploads, with historical-purge explanation and status eligibility preserved. Focused 63/63, Studio typecheck/build, lint PASS; development QA pending; no deploy.
 - 2026-08-01 — Amendment 3 implemented: schema-owned asset manifest, exact path ownership validation, direct promoted-design reference check, fail-closed unknown paths, retry-safe partial cleanup, and upload-specific batch metadata cleanup. Focused 34/34/builds/lint PASS; development QA pending; no deploy.

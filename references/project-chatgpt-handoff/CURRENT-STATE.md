@@ -1,5 +1,12 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-08-01 - Final Studio development QA passed; production promotion blocked by mixed diff
+
+- Owner-confirmed PASS for Whatnot existing-show update and all six Customer Upload intake QA groups; no visible errors.
+- Customer Upload restore failure classified as outdated development Function only, not a remaining source defect.
+- `origin/production...origin/development` also contains eight earlier Portal/dual-limit documentation commits (`f566bf1` through `fef69f8`) outside the narrow two-group Studio PR authorization.
+- Per explicit stop rule, no PR, merge, installer, or production deployment was performed. Owner direction is required on promotion branch/scope.
+
 ## 2026-08-01 - Customer upload exclusion/deletion Functions deployed to development
 
 - From development commit `1873b10d7874b36ba4cf95d2d0421e9c1f11bdd0`, deployed exactly `previewCustomerUploadDeletion`, `deleteEligibleCustomerUpload`, and `excludeCustomerUploadFromCatalog` to `fresh-prints-dev`.

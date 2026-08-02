@@ -1,5 +1,9 @@
 # Recent Completed Work
 
+## 2026-08-01 - Final Studio development owner QA PASS
+
+Owner confirmed PASS for the Whatnot existing-show update and Customer Upload exclusion/restore/delete parity across roles and both intake surfaces. Production diff audit then stopped promotion because development also contains earlier Portal/dual-limit documentation commits outside the narrow PR scope. No production action occurred.
+
 ## 2026-08-01 - Customer upload exclusion/deletion Functions deployed to development
 
 Deployed the exact three reviewed Functions to `fresh-prints-dev` from `1873b10d`; all are ACTIVE on common source hash `039c420950489a41150ee4fbee0e2ded2790c3ca`. No unrelated Firebase component or production resource changed. Fresh-fixture owner QA remains pending.
