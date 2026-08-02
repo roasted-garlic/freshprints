@@ -4,6 +4,8 @@
 
 - Feature branch is based on production `fe8c4f05`; all 15 owner decisions are implemented.
 - Portal modal, trusted submission/resolution callables, Studio Inbox integration, bounded reads/history, exact design deep link, centralized permissions, Rules, and indexes are complete.
+- Owner UX amendment 1 is complete: Report is isolated at the toolbar's left, Favorite/Share/Background remain grouped at right, the request action is full width below, and the report modal has Cancel left, Submit right, plus a top-right accessible close control.
+- Studio's current `Missing or insufficient permissions` Inbox message is caused by the still-undeployed development Firestore Rules for `designIssueReports`; no authorization bypass was introduced.
 - Focused tests 6/6 and Rules emulator 60/60 pass; typechecks/builds, lint, packaging, and diff checks pass. Implementation Review is approved_with_notes.
 - No deployment or production action occurred. Stage 2 and domain remain blocked; prior installer is intermediate; automatic updates remain a separate phase.
 

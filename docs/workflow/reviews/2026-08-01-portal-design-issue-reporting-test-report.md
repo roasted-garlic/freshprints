@@ -17,3 +17,15 @@ Date: 2026-08-01
 The first Rules attempt could not locate Java and the first Portal build was blocked by the running dev server's `.next/trace` lock. Both were environmental: the final Rules run used the documented portable JDK and the final Portal build ran after stopping the dev server. The two lint dependency warnings found in the initial pass were corrected before the final zero-warning run.
 
 Coverage includes approved description normalization/bounds, deterministic Chicago quota keys/fingerprints, trusted callable wiring, no native dialogs, server-owned identity/lifecycle, active-customer and staff authorization paths, idempotency/quota/open-guard architecture, design-integrity non-mutation, one bounded open listener, on-demand bounded history, exact Rules denial, and exact composite indexes. Authenticated end-to-end development behavior remains the owner-QA checkpoint after approved deployment.
+
+## Owner UX amendment 1 verification
+
+| Verification | Result |
+|---|---|
+| Focused report UI and cross-layer contract tests | PASS — 4/4 |
+| Portal TypeScript | PASS |
+| Portal production build | PASS — 19/19 static pages generated |
+| Repository lint | PASS |
+| `git diff --check` | PASS |
+
+Focused coverage now also proves the split toolbar layout (Report alone at left; Favorite, Share, and Background grouped at right with the established spacing), the full-width request action row, Cancel-left/Submit-right modal action layout, and the accessible top-right close control. The first build attempt encountered the running Portal dev server's `.next/trace` lock; after stopping only that Portal process tree, the build passed.

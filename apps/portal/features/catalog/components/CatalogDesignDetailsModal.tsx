@@ -164,42 +164,46 @@ export function CatalogDesignDetailsModal({
           <div className="modal-body design-details-body">
             <div className="design-details-toolbar">
               <div className="design-details-toolbar-start">
-                <CatalogFavoriteButton
-                  className="design-details-favorite-btn"
-                  designId={design.id}
-                  designTitle={design.title}
-                />
-                <CatalogDesignShareButton design={design} variant="labeled" />
                 <button className="portal-button portal-button-secondary portal-button-sm" onClick={handleReportIssue} ref={reportTriggerRef} type="button">Report an Issue</button>
-                <CatalogArtworkBackgroundPreviewPicker
-                  designDefaultHex={designDefaultBgHex}
-                  onPreviewHexChange={setPreviewBgHex}
-                  previewHex={previewBgHex}
-                />
+                <div className="design-details-toolbar-controls">
+                  <CatalogFavoriteButton
+                    className="design-details-favorite-btn"
+                    designId={design.id}
+                    designTitle={design.title}
+                  />
+                  <CatalogDesignShareButton design={design} variant="labeled" />
+                  <CatalogArtworkBackgroundPreviewPicker
+                    designDefaultHex={designDefaultBgHex}
+                    onPreviewHexChange={setPreviewBgHex}
+                    previewHex={previewBgHex}
+                  />
+                </div>
+              </div>
+              <div className="design-details-primary-action-row">
                 {requestFullLabel ? (
                   <p className="design-details-request-full-label is-request-full">{requestFullLabel}</p>
                 ) : null}
+                {onAddToRequest ? (
+                  <button
+                    className="portal-button portal-button-primary portal-button-sm portal-button-leading-icon design-details-add-btn"
+                    disabled={addDisabled}
+                    onClick={() => onAddToRequest(design)}
+                    title={exhaustedTitle}
+                    type="button"
+                  >
+                    <PlusIcon size={14} />
+                    {isAdding ? 'Adding…' : 'Add to request'}
+                  </button>
+                ) : showGuestSignInCta ? (
+                  <button
+                    className="portal-button portal-button-primary portal-button-sm design-details-add-btn"
+                    onClick={() => handleGuestSignIn(design.id)}
+                    type="button"
+                  >
+                    Sign in to add to a request
+                  </button>
+                ) : null}
               </div>
-              {onAddToRequest ? (
-                <button
-                  className="portal-button portal-button-primary portal-button-sm portal-button-leading-icon design-details-add-btn"
-                  disabled={addDisabled}
-                  onClick={() => onAddToRequest(design)}
-                  title={exhaustedTitle}
-                  type="button"
-                >
-                  <PlusIcon size={14} />
-                  {isAdding ? 'Adding…' : 'Add to request'}
-                </button>
-              ) : showGuestSignInCta ? (
-                <button
-                  className="portal-button portal-button-primary portal-button-sm"
-                  onClick={() => handleGuestSignIn(design.id)}
-                  type="button"
-                >
-                  Sign in to add to a request
-                </button>
-              ) : null}
             </div>
             <h2 id="catalog-design-details-title">{design.title}</h2>
 

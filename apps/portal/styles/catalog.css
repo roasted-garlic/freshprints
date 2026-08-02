@@ -1813,11 +1813,10 @@
 }
 
 .design-details-toolbar {
-  align-items: center;
   display: flex;
+  flex-direction: column;
   gap: var(--space-3);
-  justify-content: space-between;
-  min-height: 2.5rem;
+  width: 100%;
 }
 
 .design-details-toolbar-start {
@@ -1825,7 +1824,22 @@
   display: flex;
   flex: 1 1 auto;
   gap: var(--space-3);
+  justify-content: space-between;
   min-width: 0;
+  width: 100%;
+}
+
+.design-details-toolbar-controls {
+  align-items: center;
+  display: flex;
+  gap: var(--space-3);
+}
+
+.design-details-primary-action-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: 100%;
 }
 
 .design-details-favorite-btn.catalog-favorite-button {
@@ -2018,8 +2032,8 @@
 }
 
 .design-details-add-btn {
-  flex-shrink: 0;
-  margin-left: auto;
+  justify-content: center;
+  width: 100%;
 }
 
 .design-details-body h2 {
@@ -2831,5 +2845,8 @@
 }
 
 .design-issue-report-overlay { z-index: 1200; }
-.design-issue-report-modal { max-height: min(90vh, 42rem); max-width: 36rem; overflow-y: auto; width: min(92vw, 36rem); }
+.design-issue-report-modal { max-height: min(90vh, 42rem); max-width: 36rem; overflow-y: auto; position: relative; width: min(92vw, 36rem); }
+.design-issue-report-modal h2 { padding-right: 3rem; }
+.design-issue-report-close-button { position: absolute; right: var(--space-3); top: var(--space-3); z-index: 1; }
 .design-issue-report-counter { color: var(--color-text-muted); font-size: .8rem; margin: .25rem 0 0; text-align: right; }
+.design-issue-report-actions { justify-content: space-between; width: 100%; }
