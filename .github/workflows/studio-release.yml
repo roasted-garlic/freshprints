@@ -56,8 +56,15 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Install dependencies
+      - name: Install root dependencies
         run: npm ci
+
+      # functions/ is intentionally not a root npm workspace (see root package.json's
+      # "workspaces": ["apps/*", "packages/*"]) and has its own package.json + package-lock.json.
+      # Root `npm ci` never installs its dependency tree, so `npm --prefix functions run build`
+      # would otherwise fail to resolve firebase-functions and everything that depends on it.
+      - name: Install Functions dependencies
+        run: npm ci --prefix functions
 
       - name: Run tests
         run: |
