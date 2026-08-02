@@ -1,5 +1,24 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-08-02 - Portal design issue reporting SIGNED OFF; promoting to production; updater implementation starting
+
+- Owner confirmed Portal + Studio reporting owner QA PASS (all 24 items in
+  `docs/workflow/reviews/2026-08-01-portal-design-issue-reporting-owner-qa-checklist.md`), tested
+  locally against `fresh-prints-dev`. Recorded in
+  `docs/workflow/reviews/2026-08-02-portal-design-issue-reporting-signoff.md`.
+- Final automated release gate re-run and green on `feature/portal-design-issue-reporting`
+  (`c370ced7ad8a3247701d7e06f534155412017664`): Rules emulator 60/60; shared contract + submitter
+  tests 6/6; Studio containment + Functions validation tests 12/12; Functions build exit 0; Portal
+  typecheck + production build exit 0; Studio `tsc` exit 0; repo lint exit 0; `git diff --check`
+  exit 0.
+- Next: promote to `origin/production` via protected merge-commit PR, then implement Studio
+  automatic updates per the already-approved Plan/Review, prove an A→B prerelease update, promote
+  the updater to production, then a coordinated production Firestore/Functions deploy and final
+  production Portal rollout — stopping only at the signing-certificate/stable-publish-approval and
+  domain-cutover checkpoints, per explicit owner authorization for this scope.
+- Executed directly in-session rather than via an unsupervised background agent, given the
+  production-merge and real-release-publishing blast radius of this pass.
+
 ## 2026-08-02 - Portal design issue reporting: development environment complete, awaiting owner QA
 
 - **Superseding the two blockers recorded in the 2026-08-01 entry below.**

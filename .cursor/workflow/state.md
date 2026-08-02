@@ -1,26 +1,26 @@
 # Current Goal
-**Portal design issue reporting: development environment complete, awaiting owner QA.** Feature branch `feature/portal-design-issue-reporting` has the post-candidate UX (success animation, submitter, in-place View Design/archive host) committed and pushed (`3beacbe` app code, `52f4de7` docs, `d40ea8c` state/checklist) on top of `5f6f383`. `fresh-prints-dev` has both reporting Functions (`submitPortalDesignIssueReport`, `resolveDesignIssueReport`, confirmed ACTIVE) and both `designIssueReports` indexes live. **Firestore Rules deployed 2026-08-02** (`firebase deploy --only firestore:rules --project fresh-prints-dev`, exit 0) after auditing the diff against `origin/production`'s `firestore.rules` (scoped only to `designIssueReports` + support collections) and re-running the Rules emulator suite (60/60 pass). **Portal production build now passes definitively** (stale `.next` lock cleared, no process was actually holding it; `npm run build:portal` exit 0). **Portal App Hosting rollout is no longer a blocker — it is superseded policy.** `fresh-prints-dev` intentionally has no App Hosting backend and never will under current policy; see "Development and Production Portal Hosting Policy" in `docs/standards/DEPLOYMENT.md`. Development Portal QA is localhost-only (`npm run dev:portal`). `origin/production` = `fe8c4f0`, untouched. No production action taken.
+**Portal design issue reporting: SIGNED OFF (owner QA PASS). Promoting to production; Studio automatic updates implementation starting next.** Owner confirmed Portal + Studio reporting QA PASS on 2026-08-02 (all 24 checklist items) — see `docs/workflow/reviews/2026-08-01-portal-design-issue-reporting-owner-qa-checklist.md` and `docs/workflow/reviews/2026-08-02-portal-design-issue-reporting-signoff.md`. Feature branch `feature/portal-design-issue-reporting` at `c370ced` re-passed the full release gate this pass (Rules emulator 60/60, shared/containment/validation tests 12/12, Functions build clean, Portal typecheck+build clean, Studio `tsc` clean, lint clean, diff-check clean). Next: promote to `origin/production` via merge-commit PR (Phase B), then implement the already-approved Studio automatic-updates Plan/Review (Phase C), prove an A→B prerelease update, promote the updater to production, then coordinated production Firestore/Functions deploy and final production Portal rollout — stopping only at the signing-certificate/stable-publish and domain-cutover checkpoints. `origin/production` = `fe8c4f0` as of start of this pass (will change once Phase B merges).
 
 Current Mode: managed-phase
-Current Phase: development environment complete; awaiting owner QA
-Plan Status (reporting): complete (prior)
+Current Phase: reporting signed off; promoting to production; updater implementation starting
+Plan Status (reporting): complete (prior); Signoff complete this pass
 Plan Status (studio-automatic-updates): complete —
 `docs/workflow/plans/2026-08-01-studio-automatic-updates-plan.md`
 Review Status (studio-automatic-updates): **approved_with_changes** —
 `docs/workflow/reviews/2026-08-01-studio-automatic-updates-review.md`
-Implement Status (updater): blocked pending owner decisions; not implemented this pass
+Implement Status (updater): starting this pass, owner-approved 21 decisions as defaults
 DONE: no
-Human Checkpoint Required: yes
-Human Checkpoint Reason: owner QA per `docs/workflow/reviews/2026-08-01-portal-design-issue-reporting-owner-qa-checklist.md`, run locally (`npm run dev:portal` / `npm run dev:studio` against `fresh-prints-dev`) — no dev App Hosting backend is needed or will be created
+Human Checkpoint Required: not yet (will be required before stable 1.0.0 publish and before domain cutover)
 Blocked: no
 Blocker: none
-Allowed Actions: docs; record owner QA; no production promote
-Forbidden Actions: production merge/deploy; any fresh-prints-prod action; Storage Rules deploy; Functions other than the two reporting callables; updater implement; Stage 2; domain cutover; creating any dev App Hosting backend
-Next Required Step: Owner runs QA against `fresh-prints-dev` locally per the checklist
+Allowed Actions: production PR merge for reporting; updater implementation; updater A→B prerelease proof; updater production PR merge; coordinated production Firestore/Functions deploy; production Portal rollout
+Forbidden Actions: publishing stable Studio 1.0.0 without a human checkpoint on signing status; any domain/DNS action without the exact cutover phrase; deleting `master`; broad Functions deploy; creating any dev App Hosting backend
+Next Required Step: Open + merge reporting production PR (Phase B), then begin updater implementation (Phase C)
 
 Background (not active gate): Goal #13 / clean Studio remediation / Stage 2 remain deferred; prior installer intermediate; domain cutover blocked until `APPROVE MYPRINTREQUEST.COM CUTOVER`.
 
 Decision Log:
+- 2026-08-02 — Reporting Signoff recorded (owner-confirmed QA PASS, all 24 checklist items); final release gate re-run and green. Starting production promotion + Studio automatic-updates implementation per owner's explicit go-ahead through Phase G (production backend deploy + Portal rollout), executed directly in-session (not via unsupervised background agent) given the production-merge and release-publish blast radius.
 - 2026-08-02 — Completed development environment: deployed Firestore Rules to `fresh-prints-dev` after diff audit + emulator suite pass (60/60); cleared stale Portal `.next` lock and got a definitive `npm run build:portal` pass; re-confirmed Functions ACTIVE and both indexes Enabled (no redeploy). Adopted owner-confirmed permanent policy: `fresh-prints-dev` will never have an App Hosting backend — documented in `docs/standards/DEPLOYMENT.md`'s new "Development and Production Portal Hosting Policy" section; corrected stale references in the reporting development-deployment checkpoint and development owner-QA checklist that had called the missing dev backend a blocker. No production action.
 - 2026-08-01 — Convergence pass: committed post-candidate reporting UX (`3beacbe`, `52f4de7`), pushed to `origin/feature/portal-design-issue-reporting`. Confirmed via `firebase` CLI that both reporting Functions and both indexes are already live on `fresh-prints-dev` (repo checkpoint doc was stale). Did not deploy Firestore Rules (unverifiable live diff — flagged, not guessed). Found no `fresh-prints-portal` App Hosting backend on dev at all; Portal rollout blocked pending owner-approved backend provisioning. No production action.
 - 2026-08-01 — Release orchestration Phase A: no deploy/QA evidence in repo; dirty tree beyond `5f6f383`; updater Plan+Review ready; stop for owner QA phrase. No production action.
