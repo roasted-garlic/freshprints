@@ -10,7 +10,8 @@ import {
 import { adminDb, adminStorage } from "./lib/admin";
 import { loadCallerProfile } from "./lib/caller";
 import {
-  listCustomerUploadStoragePaths,
+  buildCustomerUploadBatchDeletionPatch,
+  resolveCustomerUploadAssetManifest,
   resolveCustomerUploadDeletionBlockers,
 } from "./lib/customerUploadDeletionEligibility";
 import { assertCanDeleteCustomerUpload } from "./lib/customerUploadStaffAuth";
@@ -19,6 +20,8 @@ import {
   invalidArgument,
   unauthenticated,
 } from "./lib/errors";
+import { storageObjectPath } from "./lib/storageObjectPath";
+import { FieldValue } from "firebase-admin/firestore";
 
 function mapHttpsError(error: unknown): never {
   if (error instanceof HttpsError) {
@@ -62,7 +65,7 @@ function requirePhrase(data: unknown): string {
 
 async function deleteStoragePath(path: string): Promise<boolean> {
   try {
-    await adminStorage.bucket().file(path).delete({ ignoreNotFound: true });
+    await adminStorage.bucket().file(storageObjectPath(path)).delete({ ignoreNotFound: true });
     return true;
   } catch (error) {
     console.error("Failed to delete customer upload Storage object.", {
@@ -94,16 +97,28 @@ async function buildPreview(
       ? data.originalFilename.trim()
       : "Customer upload";
 
-  const itemRefs = await adminDb
-    .collection("printRequestItems")
-    .where("customerUploadId", "==", customerUploadId)
-    .limit(20)
-    .get();
+  const [itemRefs, promotedDesignRefs] = await Promise.all([
+    adminDb
+      .collection("printRequestItems")
+      .where("customerUploadId", "==", customerUploadId)
+      .limit(20)
+      .get(),
+    adminDb
+      .collection("designs")
+      .where("sourceCustomerUploadId", "==", customerUploadId)
+      .limit(20)
+      .get(),
+  ]);
 
   const blockers = resolveCustomerUploadDeletionBlockers({
     printRequestItemCount: itemRefs.size,
     promotedDesignId: data.promotedDesignId,
+    promotedDesignReferenceCount: promotedDesignRefs.size,
   });
+  const assetManifest = resolveCustomerUploadAssetManifest(data, customerUploadId);
+  if (assetManifest.blocker) {
+    blockers.push(assetManifest.blocker);
+  }
   if (blockers.length > 0) {
     return {
       outcome: "blocked",
@@ -189,11 +204,22 @@ export const deleteEligibleCustomerUpload = onCall(
 
       const snap = await adminDb.collection("customerUploads").doc(customerUploadId).get();
       const data = snap.data() ?? {};
-      const paths = listCustomerUploadStoragePaths(data);
+      const assetManifest = resolveCustomerUploadAssetManifest(data, customerUploadId);
+      if (assetManifest.blocker) {
+        return {
+          outcome: "blocked",
+          blockers: [assetManifest.blocker],
+          message: assetManifest.blocker.message,
+          entityId: customerUploadId,
+          customerUploadId,
+          storageFilesDeleted: 0,
+          storageCleanupFailed: false,
+        };
+      }
 
       let storageFilesDeleted = 0;
       let storageCleanupFailed = false;
-      for (const path of paths) {
+      for (const path of assetManifest.paths) {
         const ok = await deleteStoragePath(path);
         if (ok) {
           storageFilesDeleted += 1;
@@ -202,13 +228,46 @@ export const deleteEligibleCustomerUpload = onCall(
         }
       }
 
-      await adminDb.collection("customerUploads").doc(customerUploadId).delete();
+      if (storageCleanupFailed) {
+        return {
+          outcome: "failed",
+          message:
+            "Some upload files could not be removed. The upload record was retained so cleanup can be retried safely.",
+          entityId: customerUploadId,
+          customerUploadId,
+          storageFilesDeleted,
+          storageCleanupFailed: true,
+        };
+      }
+
+      const uploadRef = adminDb.collection("customerUploads").doc(customerUploadId);
+      await adminDb.runTransaction(async (transaction) => {
+        const currentUpload = await transaction.get(uploadRef);
+        if (!currentUpload.exists) {
+          return;
+        }
+        const currentData = currentUpload.data() ?? {};
+        const batchId = typeof currentData.batchId === "string" ? currentData.batchId.trim() : "";
+        if (batchId) {
+          const batchRef = adminDb.collection("customerUploadBatches").doc(batchId);
+          const batchSnap = await transaction.get(batchRef);
+          if (batchSnap.exists) {
+            transaction.update(batchRef, {
+              ...buildCustomerUploadBatchDeletionPatch(
+                batchSnap.data() ?? {},
+                customerUploadId,
+                currentData.technicalStatus,
+              ),
+              updatedAt: FieldValue.serverTimestamp(),
+            });
+          }
+        }
+        transaction.delete(uploadRef);
+      });
 
       return {
         outcome: "allowed_hard_delete",
-        message: storageCleanupFailed
-          ? "Upload deleted, but some Storage files failed to clean up. Check logs for recovery."
-          : "Unused customer upload deleted.",
+        message: "Unused customer upload and all owned assets deleted.",
         entityId: customerUploadId,
         customerUploadId,
         storageFilesDeleted,

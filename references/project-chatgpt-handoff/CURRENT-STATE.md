@@ -1,5 +1,12 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-08-01 - Donation exclusion/Delete Upload Amendment 3 implemented
+
+- Exclusion/restoration remain actor-independent metadata transitions for active helpers/admins/owners; permanent deletion remains owner/admin-only.
+- Deletion now uses an authoritative manifest aligned to every current `CustomerUpload` Storage-path field, validates exact ownership, fails closed on unknown/noncanonical paths, and retains the upload document after partial cleanup failure.
+- Complete cleanup removes the document plus only upload-specific batch manifest/counter metadata; shared batch archives and unrelated assets remain untouched.
+- Focused tests passed 34/34; Functions build, Studio typecheck/build, lint, and diff validation passed. No deployment or production action occurred; development QA remains required.
+
 ## 2026-08-01 - Donation exclusion/Delete Upload Amendment 2 implemented
 
 - `window.prompt` caused Electron's unsupported warning; exclusion also used native `window.confirm`. Both are replaced with Fresh Prints in-app modals.
