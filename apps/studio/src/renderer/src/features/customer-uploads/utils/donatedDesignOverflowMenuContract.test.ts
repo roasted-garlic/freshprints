@@ -39,10 +39,13 @@ test("opening the menu is state-only and cannot invoke the deletion handler", ()
   assert.doesNotMatch(trigger, /item\.onSelect|deleteEligible|onSelect\(\)/);
 });
 
-test("intake requests upward placement inside the clipping panel", () => {
-  assert.match(componentSource, /placement="top"/);
+test("intake prefers a downward portaled menu without weakening the clipping panel", () => {
+  assert.match(componentSource, /placement="bottom"/);
   assert.match(layoutCss, /\.customer-upload-intake-panel\s*\{[\s\S]*?overflow: hidden;/);
-  assert.match(menuCss, /\.danger-overflow-menu-panel--top\s*\{[\s\S]*?bottom:/);
+  assert.match(menuSource, /createPortal\(/);
+  assert.match(menuSource, /document\.body/);
+  assert.match(menuCss, /\.danger-overflow-menu-panel\s*\{[\s\S]*?position: fixed;/);
+  assert.match(menuSource, /resolveDangerOverflowMenuPosition/);
 });
 
 test("selected design and Pending/Excluded filter reset stale local menu state", () => {
@@ -60,6 +63,7 @@ test("accessible menu semantics, keyboard focus, and design context are wired", 
   assert.match(menuSource, /event\.key === "Escape"/);
   assert.match(menuSource, /querySelector<HTMLButtonElement>/);
   assert.match(menuSource, /triggerRef\.current\?\.focus\(\)/);
+  assert.match(menuSource, /!menuRef\.current\?\.contains\(target\)/);
 });
 
 test("primary intake actions and halftone control remain on their existing handlers", () => {

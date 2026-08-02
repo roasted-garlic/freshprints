@@ -1,9 +1,12 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { MoreHorizontal } from "lucide-react";
 
 import {
   getDangerOverflowMenuPanelClass,
+  resolveDangerOverflowMenuPosition,
   transitionDangerOverflowMenu,
+  type DangerOverflowMenuPosition,
   type DangerOverflowMenuPlacement,
 } from "./dangerOverflowMenuBehavior";
 
@@ -34,6 +37,7 @@ export function DangerOverflowMenu({
   placement = "bottom",
 }: DangerOverflowMenuProps) {
   const [open, setOpen] = useState(false);
+  const [position, setPosition] = useState<DangerOverflowMenuPosition | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -45,7 +49,12 @@ export function DangerOverflowMenu({
       return;
     }
     const onPointerDown = (event: MouseEvent | PointerEvent) => {
-      if (rootRef.current && !rootRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      if (
+        rootRef.current &&
+        !rootRef.current.contains(target) &&
+        !menuRef.current?.contains(target)
+      ) {
         setOpen(transitionDangerOverflowMenu(true, "outside").open);
       }
     };
@@ -65,6 +74,46 @@ export function DangerOverflowMenu({
       window.removeEventListener("keydown", onKeyDown);
     };
   }, [open]);
+
+  const updatePosition = useCallback(() => {
+    const trigger = triggerRef.current;
+    const menu = menuRef.current;
+    if (!trigger || !menu) {
+      return;
+    }
+
+    const rect = trigger.getBoundingClientRect();
+    setPosition(
+      resolveDangerOverflowMenuPosition({
+        menuHeight: menu.offsetHeight,
+        menuWidth: menu.offsetWidth,
+        preferredPlacement: placement,
+        trigger: rect,
+        viewportHeight: window.innerHeight,
+        viewportWidth: window.innerWidth,
+      }),
+    );
+  }, [placement]);
+
+  useLayoutEffect(() => {
+    if (!open) {
+      setPosition(null);
+      return;
+    }
+    updatePosition();
+  }, [open, updatePosition]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+    return () => {
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [open, updatePosition]);
 
   useEffect(() => {
     if (!open) {
@@ -96,13 +145,18 @@ export function DangerOverflowMenu({
       >
         <MoreHorizontal aria-hidden="true" size={18} strokeWidth={2.2} />
       </button>
-      {open ? (
+      {open ? createPortal(
         <div
           aria-label={ariaLabel}
-          className={getDangerOverflowMenuPanelClass(placement)}
+          className={getDangerOverflowMenuPanelClass(position?.placement ?? placement)}
           id={menuId}
           ref={menuRef}
           role="menu"
+          style={{
+            left: position?.left ?? 0,
+            top: position?.top ?? 0,
+            visibility: position ? "visible" : "hidden",
+          }}
         >
           {visibleItems.map((item) => {
             const isDanger = item.danger !== false;
@@ -126,7 +180,8 @@ export function DangerOverflowMenu({
               </button>
             );
           })}
-        </div>
+        </div>,
+        document.body,
       ) : null}
     </div>
   );

@@ -46,17 +46,8 @@
   gap: 0.15rem;
   min-width: 12rem;
   padding: 0.35rem;
-  position: absolute;
-  right: 0;
+  position: fixed;
   z-index: var(--z-dropdown, 20);
-}
-
-.danger-overflow-menu-panel--bottom {
-  top: calc(100% + 0.35rem);
-}
-
-.danger-overflow-menu-panel--top {
-  bottom: calc(100% + 0.35rem);
 }
 
 .danger-overflow-menu-item {

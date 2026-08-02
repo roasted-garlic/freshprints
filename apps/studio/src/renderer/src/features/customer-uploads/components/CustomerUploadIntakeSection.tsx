@@ -270,7 +270,7 @@ function IntakeDetail({
                 },
               },
             ]}
-            placement="top"
+            placement="bottom"
           />
         ) : null}
       </div>

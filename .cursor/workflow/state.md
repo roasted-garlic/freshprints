@@ -4,14 +4,14 @@
 `portal-print-request-and-customer-show-limit-settings` (source workflow)
 
 Current Mode: managed-phase
-Current Phase: Goal #13 remediation — Donated Designs overflow menu development owner QA
+Current Phase: Goal #13 remediation — Donated Designs overflow menu Amendment 1 owner QA
 Plan Status: complete —
-`docs/workflow/plans/2026-08-01-donated-designs-overflow-menu-no-op-plan.md`
+`docs/workflow/plans/2026-08-01-donated-designs-overflow-menu-no-op-amendment-1-plan.md`
 Review Status: **approved_with_changes** —
-`docs/workflow/reviews/2026-08-01-donated-designs-overflow-menu-no-op-review.md`
+`docs/workflow/reviews/2026-08-01-donated-designs-overflow-menu-no-op-amendment-1-review.md`
 Implement Status: complete (development; separate from Whatnot commit)
-Test Status: **automated passed; manual development QA pending** — `docs/workflow/reviews/2026-08-01-donated-designs-overflow-menu-no-op-test-report.md`
-Implementation Review: **approved_with_note** — `docs/workflow/reviews/2026-08-01-donated-designs-overflow-menu-no-op-implementation-review.md`
+Test Status: **automated passed; amended manual development QA pending** — `docs/workflow/reviews/2026-08-01-donated-designs-overflow-menu-no-op-amendment-1-test-report.md`
+Implementation Review: **approved_with_note** — `docs/workflow/reviews/2026-08-01-donated-designs-overflow-menu-no-op-amendment-1-implementation-review.md`
 Ship Status: Functions + Portal App Hosting rollout **passed** (`build-2026-08-01-001`)
 Signoff Status: customer schedule visibility + dual-limit Studio UI + linked 30/30 production settings **approved**
 Implementation Review: **approved** —
@@ -26,6 +26,7 @@ Forbidden Actions: further deploys; production actions; Rules/index/data/setting
 Next Required Step: Owner verifies the Donated Designs overflow menu in development; separately complete the existing Whatnot show-update owner QA
 
 Decision Log:
+- 2026-08-01 — Owner requested Amendment 1: menu defaults below. Body portal + measured fixed collision positioning implemented; 19/19/build/lint PASS. Amended owner QA pending; no promotion.
 - 2026-08-01 — Separate Donated Designs overflow slice implemented from `ca315f2`: clipped downward menu corrected with explicit upward placement, focus handling, and stale-context reset. Automated 15/15/build/lint PASS; owner development QA pending. Whatnot checkpoint unchanged.
 - 2026-08-01 — Stage 2 paused: existing Whatnot update loses matched document identity and reuses strict generic pre-merge mapper. Narrow Plan reviewed `approved_with_changes`.
 - 2026-08-01 — Stage 2 resumed. Read-only infrastructure sanity PASS; authenticated Portal/Studio tests pending because no UI-control backend was available.

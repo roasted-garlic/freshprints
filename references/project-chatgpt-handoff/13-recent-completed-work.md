@@ -1111,3 +1111,9 @@ See `CURRENT-STATE.md` for live status.
 - Confirmed approved overflow action is existing owner-gated **Delete unused upload…**. Downward panel was clipped by intake `overflow: hidden`; explicit top placement, focus handling, accessible design label, and filter/row state reset implemented.
 - Automated 15/15 plus Studio TypeScript/build/package, lint, whitespace PASS. Implementation Review `approved_with_note`; manual development Studio QA pending.
 - Whatnot owner QA separately pending; Stage 2/domain paused; no production/deployment/data action.
+# 2026-08-01 — Donated Designs overflow menu Amendment 1 source complete
+
+- Owner requested below-trigger normal placement before signing development QA.
+- Implemented body-portaled, fixed trigger positioning with measured upward collision fallback and viewport clamping; retained panel clipping and all action/accessibility/data boundaries.
+- Focused 19/19, Studio TypeScript/build/package, lint, whitespace PASS. Amendment Review `approved_with_changes`; Implementation Review `approved_with_note`; amended owner QA pending.
+- No Whatnot, production, deployment, installer, Stage 2, or domain action.

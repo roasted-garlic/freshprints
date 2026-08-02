@@ -1,5 +1,12 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-08-01 - Donated Designs overflow-menu Amendment 1 implemented
+
+- Owner confirmed the menu opened but requested normal placement below the trigger; prior owner QA remains unsigned.
+- No shared Studio portal primitive existed. The shared destructive menu now uses React `createPortal` to `document.body`, fixed trigger-relative geometry, below-first placement, viewport clamping, and upward fallback only when measured below-space is insufficient.
+- Intake clipping, z-index convention, exact owner-gated delete action, focus/accessibility/outside click, selected-design context, tab cleanup, and zero-write opening remain intact.
+- Focused tests 19/19, Studio typecheck/build/package, lint, and whitespace PASS. Revised development owner QA pending. Whatnot remediation unchanged; no production action.
+
 ## 2026-08-01 - Donated Designs overflow-menu remediation implemented on development
 
 - Separate Goal #13 slice from the Whatnot remediation. Starting commit `ca315f2391b4961dc97ddbe87bf351c335405c6a` remains intact.
