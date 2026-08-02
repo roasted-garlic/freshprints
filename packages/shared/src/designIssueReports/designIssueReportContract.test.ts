@@ -31,10 +31,12 @@ test("Portal report UI uses trusted callable and approved accessible copy", () =
   assert.doesNotMatch(modal, /\b(?:alert|prompt|confirm)\s*\(/);
   assert.match(service, /submitPortalDesignIssueReport/);
   const shareControls = sharePage.indexOf("design-details-toolbar-controls-end");
+  assert.ok(sharePage.indexOf(">Report an Issue</") < shareControls);
   assert.ok(shareControls < sharePage.indexOf("<CatalogArtworkBackgroundPreviewPicker", shareControls));
   assert.ok(sharePage.indexOf("<CatalogArtworkBackgroundPreviewPicker", shareControls) < sharePage.indexOf("<CatalogDesignShareButton", shareControls));
   assert.ok(sharePage.indexOf("<CatalogDesignShareButton", shareControls) < sharePage.indexOf("<CatalogFavoriteButton", shareControls));
   assert.match(sharePage, /className="design-details-primary-action-row"[\s\S]*design-details-add-btn/);
+  assert.match(sharePage, /<CatalogDesignIssueReportModal designId=\{design\.id\}/);
 });
 
 test("backend owns identity lifecycle quotas uniqueness and never updates designs", () => {
