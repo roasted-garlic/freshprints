@@ -2016,7 +2016,7 @@ Recommended trigger (locked):
 
 - Keep full-size while `pending_staff_review` or `sent_to_ai_review` (until design Storage owns the catalog asset).
 - **Promote to AI Review:** after design derivatives exist, customer-upload full-size is purged via callable `purgePromotedDonationFullSize` after a **14-day** cool-off (`promotedAt`) — catalog lives under `/originals|previews|thumbnails/{designId}`.
-- **Exclude from catalog:** **preserve** the upload document and all source, production, preview, and thumbnail assets; change only catalog-review eligibility so exclusion is reversible and cannot break request-backed artwork. Permanent cleanup is a separate owner/admin **Delete Upload** action guarded by request-item and promoted-design dependency checks. *(Amended 2026-08-01; supersedes the 2026-07-14 immediate-purge-on-exclude decision.)*
+- **Exclude from catalog:** **preserve** the upload document and all source, production, preview, and thumbnail assets; change only catalog-review eligibility so exclusion is reversible and cannot break request-backed artwork. Permanent cleanup is a separate owner/admin **Delete Upload** action guarded by request-item and promoted-design dependency checks. Deletion validates every current schema-owned asset path against the exact upload, fails closed on unknown paths, retains the document after partial cleanup failure, and never deletes shared batch archives. *(Amended 2026-08-01; supersedes the 2026-07-14 immediate-purge-on-exclude decision.)*
 - Donations are **not** keyed off show completion (they may never hit a show).
 
 #### 5. Portal account artwork UX *(amended 2026-07-14)*

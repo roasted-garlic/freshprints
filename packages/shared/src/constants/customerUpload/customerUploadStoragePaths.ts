@@ -1,5 +1,20 @@
 export const CUSTOMER_UPLOAD_STORAGE_ROOT = "customer-uploads" as const;
 
+/**
+ * Authoritative manifest of every upload-owned Storage path persisted by the current
+ * `CustomerUpload` schema. Permanent deletion must use this manifest and fail closed if a new
+ * persisted `*StoragePath` field is introduced without being reviewed here.
+ */
+export const CUSTOMER_UPLOAD_OWNED_STORAGE_PATH_FIELDS = [
+  "sourceStoragePath",
+  "productionStoragePath",
+  "previewStoragePath",
+  "thumbnailStoragePath",
+] as const;
+
+export type CustomerUploadOwnedStoragePathField =
+  (typeof CUSTOMER_UPLOAD_OWNED_STORAGE_PATH_FIELDS)[number];
+
 const PRODUCTION_NAME = "production.png";
 const PREVIEW_NAME = "preview.webp";
 const THUMBNAIL_NAME = "thumbnail.webp";

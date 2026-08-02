@@ -1,5 +1,9 @@
 # Recent Completed Work
 
+## 2026-08-01 - Donated Designs exclusion/deletion Amendment 3 implemented
+
+Implemented the final reversible exclusion/restore and complete safe-delete contract on `development`: authoritative schema-aligned asset ownership validation, fail-closed future-field handling, partial-cleanup retry safety, upload-specific batch metadata cleanup, and focused authorization/restoration/deletion tests. Automated verification passed; manual development QA and every production action remain pending.
+
 > Signed-off or largely complete work. External agents should not re-plan or duplicate this.
 
 ## 2026-07-31 - production-release: show-schedule visibility + dual limit settings (source)
