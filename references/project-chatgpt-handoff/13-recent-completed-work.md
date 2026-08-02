@@ -1,5 +1,9 @@
 # Recent Completed Work
 
+## 2026-08-01 - Customer upload exclusion/deletion Functions deployed to development
+
+Deployed the exact three reviewed Functions to `fresh-prints-dev` from `1873b10d`; all are ACTIVE on common source hash `039c420950489a41150ee4fbee0e2ded2790c3ca`. No unrelated Firebase component or production resource changed. Fresh-fixture owner QA remains pending.
+
 ## 2026-08-01 - Customer Upload intake parity Amendment 4 implemented
 
 Added the shared visible `Restore to Pending` confirmation workflow to both Donated Designs and Customer Uploads while preserving purpose/status eligibility, role boundaries, deletion behavior, and stale-state cleanup. Automated verification passed; authenticated development QA remains pending.

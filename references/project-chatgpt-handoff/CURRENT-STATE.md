@@ -1,5 +1,12 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-08-01 - Customer upload exclusion/deletion Functions deployed to development
+
+- From development commit `1873b10d7874b36ba4cf95d2d0421e9c1f11bdd0`, deployed exactly `previewCustomerUploadDeletion`, `deleteEligibleCustomerUpload`, and `excludeCustomerUploadFromCatalog` to `fresh-prints-dev`.
+- Deployment exit 0: 3 deployed, 0 errors; all three ACTIVE in `us-central1` on source hash `039c420950489a41150ee4fbee0e2ded2790c3ca`.
+- Focused 28/28, Functions build, lint, and diff validation passed before deployment.
+- Authenticated fresh-fixture owner QA remains pending because Windows application control was unavailable. No production action occurred; Stage 2 remains paused.
+
 ## 2026-08-01 - Customer Upload intake parity Amendment 4 implemented
 
 - Both Studio routes use the shared intake: Donated Designs = `catalog_donation`; Customer Uploads = resolved non-donation/`print_request` records.

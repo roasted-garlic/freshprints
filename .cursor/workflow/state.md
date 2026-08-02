@@ -10,7 +10,7 @@ Plan Status: complete —
 Review Status: **approved_with_conditions** —
 `docs/workflow/reviews/2026-08-01-customer-upload-intake-parity-amendment-4-review.md`
 Implement Status: complete (development; separate from Whatnot commit)
-Test Status: **automated passed; owner/admin/helper development QA pending** — `docs/workflow/reviews/2026-08-01-customer-upload-intake-parity-amendment-4-test-report.md`
+Test Status: **automated passed; three development Functions deployed; owner/admin/helper development QA pending** — `docs/workflow/reviews/2026-08-01-customer-upload-exclusion-deletion-development-functions-deploy-checkpoint.md`
 Implementation Review: **approved_with_note** — `docs/workflow/reviews/2026-08-01-customer-upload-intake-parity-amendment-4-implementation-review.md`
 Ship Status: Functions + Portal App Hosting rollout **passed** (`build-2026-08-01-001`)
 Signoff Status: customer schedule visibility + dual-limit Studio UI + linked 30/30 production settings **approved**
@@ -23,9 +23,10 @@ Blocked: no
 Blocker: none
 Allowed Actions: development Studio QA with approved fixture; docs; read-only verification
 Forbidden Actions: further deploys; production actions; Rules/index/data/settings changes; Stage 2; domain
-Next Required Step: Owner verifies shared Pending/Excluded action parity and Restore to Pending across Donated Designs and Customer Uploads in development; separately complete Whatnot QA
+Next Required Step: Owner uses fresh post-deployment fixtures to verify metadata-only exclusion and Restore to Pending across Donated Designs and Customer Uploads; separately complete Whatnot QA
 
 Decision Log:
+- 2026-08-01 — Deployed exactly preview/delete/exclude customer-upload Functions to `fresh-prints-dev`: exit 0, 3 deployed, all ACTIVE on hash `039c420950489a41150ee4fbee0e2ded2790c3ca`; owner QA pending; no production action.
 - 2026-08-01 — Amendment 4 implemented: shared visible Restore to Pending modal/action across Donated Designs and Customer Uploads, with historical-purge explanation and status eligibility preserved. Focused 63/63, Studio typecheck/build, lint PASS; development QA pending; no deploy.
 - 2026-08-01 — Amendment 3 implemented: schema-owned asset manifest, exact path ownership validation, direct promoted-design reference check, fail-closed unknown paths, retry-safe partial cleanup, and upload-specific batch metadata cleanup. Focused 34/34/builds/lint PASS; development QA pending; no deploy.
 - 2026-08-01 — Amendment 2 implemented: native dialogs removed; owner/admin safe delete; helper exclusion/delete denial; exclusion preserves assets. Focused 43/43/builds/lint PASS. Functions source changed but not deployed; development QA pending.
