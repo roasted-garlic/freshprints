@@ -17,6 +17,17 @@
   "directories": {
     "output": "release/${version}"
   },
+  // GitHub Releases on the existing public roasted-garlic/freshprints repo — safe without any
+  // embedded credential because the repo is public (confirmed via GitHub API, "private": false).
+  // electron-builder derives the stable vs. prerelease feed automatically from whether `version`
+  // has a semver prerelease tag (e.g. "1.0.0-beta.1" publishes generic release + prerelease
+  // channel metadata; "1.0.0" publishes stable latest.yml). No token is required for a public
+  // repo's release *assets* to be read anonymously by electron-updater at runtime.
+  "publish": {
+    "provider": "github",
+    "owner": "roasted-garlic",
+    "repo": "freshprints"
+  },
   "files": [
     "dist",
     "dist-electron"

@@ -1,0 +1,116 @@
+name: Studio release
+
+# Manual trigger only. Never runs on push/PR — stable publication requires a human to press
+# "Run workflow" (or push an approved tag) with an explicit prerelease/stable choice.
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Git ref to build from (branch, tag, or commit SHA)"
+        required: true
+      release_type:
+        description: "Release type"
+        required: true
+        type: choice
+        options:
+          - prerelease
+          - stable
+        default: prerelease
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    # Stable releases may only be cut from production — this is a hard gate, not a UI suggestion.
+    # electron-builder itself also never auto-publishes a stable channel from this workflow: the
+    # publish step below only runs `--publish always`, and GitHub Release "prerelease" flag is set
+    # explicitly per release_type, so a non-production ref can only ever produce a prerelease.
+    runs-on: windows-latest
+    steps:
+      - name: Guard stable release ref
+        if: ${{ inputs.release_type == 'stable' }}
+        shell: bash
+        run: |
+          if [ "${{ inputs.ref }}" != "production" ] && [[ ! "${{ inputs.ref }}" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::Stable releases may only be built from the production branch or an exact production commit SHA. Got: ${{ inputs.ref }}"
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 0
+
+      - name: Verify ref is reachable from production (stable only)
+        if: ${{ inputs.release_type == 'stable' }}
+        shell: bash
+        run: |
+          git fetch origin production --depth=1000
+          if ! git merge-base --is-ancestor HEAD origin/production; then
+            echo "::error::The requested ref is not part of production history. Refusing to publish a stable release from it."
+            exit 1
+          fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: |
+          npm run lint
+          npm --prefix functions run build
+          npm run typecheck --workspace @fresh-prints/portal
+
+      - name: Set Studio release channel env
+        shell: bash
+        run: |
+          if [ "${{ inputs.release_type }}" = "stable" ]; then
+            echo "FRESH_PRINTS_UPDATE_CHANNEL=stable" >> "$GITHUB_ENV"
+          else
+            echo "FRESH_PRINTS_UPDATE_CHANNEL=prerelease" >> "$GITHUB_ENV"
+          fi
+
+      - name: Build Studio (Windows NSIS + updater metadata)
+        working-directory: apps/studio
+        env:
+          # Present only if configured as repo/organization secrets. electron-builder no-ops
+          # signing when these are absent — this workflow must never fail solely because signing
+          # secrets are not yet configured; unsigned prerelease/test builds are explicitly allowed.
+          CSC_LINK: ${{ secrets.WINDOWS_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.WINDOWS_CSC_KEY_PASSWORD }}
+          # electron-builder's own publish step (not `gh`) uses this to upload release assets.
+          # Never printed or logged; scoped to this job's environment only.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          npm run build -- --publish always
+
+      - name: Compute installer SHA-256
+        shell: bash
+        working-directory: apps/studio/release
+        run: |
+          version_dir=$(ls -d */ | head -n1)
+          cd "$version_dir"
+          installer=$(ls *Setup*.exe)
+          sha256sum "$installer" | tee sha256.txt
+
+      - name: Upload build evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: studio-release-evidence-${{ github.run_id }}
+          path: |
+            apps/studio/release/*/latest*.yml
+            apps/studio/release/*/*.blockmap
+            apps/studio/release/*/sha256.txt
+          retention-days: 90
+
+  # electron-builder's GitHub publisher (invoked above with `--publish always`) creates the
+  # release as a draft/prerelease automatically based on the version's semver prerelease tag —
+  # it never marks a release as the non-prerelease "Latest" release unless release_type is
+  # "stable" AND a human separately promotes the draft from "Draft" to "Published" in the GitHub
+  # UI (or via a second, explicit `gh release edit --draft=false` step gated on manual approval,
+  # which this workflow deliberately does not automate). No stable release becomes publicly
+  # visible/downloadable to update feeds without that separate human action.
