@@ -1,6 +1,12 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { MoreHorizontal } from "lucide-react";
 
+import {
+  getDangerOverflowMenuPanelClass,
+  transitionDangerOverflowMenu,
+  type DangerOverflowMenuPlacement,
+} from "./dangerOverflowMenuBehavior";
+
 export interface DangerOverflowMenuItem {
   id: string;
   label: string;
@@ -14,6 +20,7 @@ interface DangerOverflowMenuProps {
   ariaLabel?: string;
   disabled?: boolean;
   items: DangerOverflowMenuItem[];
+  placement?: DangerOverflowMenuPlacement;
 }
 
 /**
@@ -24,9 +31,12 @@ export function DangerOverflowMenu({
   ariaLabel = "More actions",
   disabled = false,
   items,
+  placement = "bottom",
 }: DangerOverflowMenuProps) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const menuId = useId();
   const visibleItems = items.filter(Boolean);
 
@@ -36,12 +46,16 @@ export function DangerOverflowMenu({
     }
     const onPointerDown = (event: MouseEvent | PointerEvent) => {
       if (rootRef.current && !rootRef.current.contains(event.target as Node)) {
-        setOpen(false);
+        setOpen(transitionDangerOverflowMenu(true, "outside").open);
       }
     };
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        setOpen(false);
+        const transition = transitionDangerOverflowMenu(true, "escape");
+        setOpen(transition.open);
+        if (transition.restoreTriggerFocus) {
+          triggerRef.current?.focus();
+        }
       }
     };
     window.addEventListener("pointerdown", onPointerDown);
@@ -50,6 +64,15 @@ export function DangerOverflowMenu({
       window.removeEventListener("pointerdown", onPointerDown);
       window.removeEventListener("keydown", onKeyDown);
     };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    menuRef.current
+      ?.querySelector<HTMLButtonElement>('button[role="menuitem"]:not(:disabled)')
+      ?.focus();
   }, [open]);
 
   if (visibleItems.length === 0) {
@@ -65,13 +88,22 @@ export function DangerOverflowMenu({
         aria-label={ariaLabel}
         className="danger-overflow-menu-trigger"
         disabled={disabled}
-        onClick={() => setOpen((current) => !current)}
+        onClick={() => {
+          setOpen((current) => transitionDangerOverflowMenu(current, "trigger", disabled).open);
+        }}
+        ref={triggerRef}
         type="button"
       >
         <MoreHorizontal aria-hidden="true" size={18} strokeWidth={2.2} />
       </button>
       {open ? (
-        <div aria-label={ariaLabel} className="danger-overflow-menu-panel" id={menuId} role="menu">
+        <div
+          aria-label={ariaLabel}
+          className={getDangerOverflowMenuPanelClass(placement)}
+          id={menuId}
+          ref={menuRef}
+          role="menu"
+        >
           {visibleItems.map((item) => {
             const isDanger = item.danger !== false;
             return (
@@ -84,7 +116,7 @@ export function DangerOverflowMenu({
                 disabled={disabled || item.disabled}
                 key={item.id}
                 onClick={() => {
-                  setOpen(false);
+                  setOpen(transitionDangerOverflowMenu(true, "select").open);
                   item.onSelect();
                 }}
                 role="menuitem"

@@ -258,7 +258,7 @@ function IntakeDetail({
 
         {intake.canDeleteEligible && !row.promotedDesignId ? (
           <DangerOverflowMenu
-            ariaLabel="Upload destructive actions"
+            ariaLabel={`More actions for ${row.originalFilename}`}
             disabled={busy}
             items={[
               {
@@ -270,6 +270,7 @@ function IntakeDetail({
                 },
               },
             ]}
+            placement="top"
           />
         ) : null}
       </div>
@@ -498,7 +499,12 @@ export function CustomerUploadIntakeSection({
                 })}
               </ul>
               {intake.selected ? (
-                <IntakeDetail intake={intake} isDonation={isDonation} row={intake.selected} />
+                <IntakeDetail
+                  intake={intake}
+                  isDonation={isDonation}
+                  key={`${intake.filter}:${intake.selected.id}`}
+                  row={intake.selected}
+                />
               ) : null}
             </div>
           )}
