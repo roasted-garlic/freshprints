@@ -28,4 +28,4 @@ Coverage includes approved description normalization/bounds, deterministic Chica
 | Repository lint | PASS |
 | `git diff --check` | PASS |
 
-Focused coverage now also proves the split toolbar layout (Report alone at left; Favorite, Share, and Background grouped at right with the established spacing), the full-width request action row, Cancel-left/Submit-right modal action layout, and the accessible top-right close control. The first build attempt encountered the running Portal dev server's `.next/trace` lock; after stopping only that Portal process tree, the build passed.
+Focused coverage now also proves the split toolbar layout (Report alone at left; Background, Share, and Favorite grouped at right with the established spacing), the full-width request action row, Cancel-left/Submit-right modal action layout, and the accessible top-right close control. The first build attempt encountered the running Portal dev server's `.next/trace` lock; after stopping only that Portal process tree, the build passed.

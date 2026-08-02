@@ -14,7 +14,7 @@ test("Portal report UI uses trusted callable and approved accessible copy", () =
   const favoritePosition = details.indexOf("<CatalogFavoriteButton", controlsPosition);
   const sharePosition = details.indexOf("<CatalogDesignShareButton", controlsPosition);
   const backgroundPosition = details.indexOf("<CatalogArtworkBackgroundPreviewPicker", controlsPosition);
-  assert.ok(reportPosition < controlsPosition && controlsPosition < favoritePosition && favoritePosition < sharePosition && sharePosition < backgroundPosition);
+  assert.ok(reportPosition < controlsPosition && controlsPosition < backgroundPosition && backgroundPosition < sharePosition && sharePosition < favoritePosition);
   assert.match(details, /className="design-details-primary-action-row"[\s\S]*className="[^"]*design-details-add-btn/);
   assert.match(modal, /readOnly value=\{designId\}/);
   assert.match(modal, /aria-modal="true"/);
@@ -26,7 +26,7 @@ test("Portal report UI uses trusted callable and approved accessible copy", () =
   assert.match(styles, /\.design-details-toolbar-start\s*\{[^}]*justify-content:\s*space-between/s);
   assert.match(styles, /\.design-details-toolbar-controls\s*\{[^}]*gap:\s*var\(--space-3\)/s);
   assert.match(styles, /\.design-details-add-btn\s*\{[^}]*width:\s*100%/s);
-  assert.match(styles, /\.design-issue-report-actions\s*\{[^}]*justify-content:\s*space-between;[^}]*width:\s*100%/s);
+  assert.match(styles, /\.design-issue-report-actions\s*\{[^}]*display:\s*flex;[^}]*justify-content:\s*space-between;[^}]*width:\s*100%/s);
   assert.doesNotMatch(modal, /\b(?:alert|prompt|confirm)\s*\(/);
   assert.match(service, /submitPortalDesignIssueReport/);
 });

@@ -166,16 +166,16 @@ export function CatalogDesignDetailsModal({
               <div className="design-details-toolbar-start">
                 <button className="portal-button portal-button-secondary portal-button-sm" onClick={handleReportIssue} ref={reportTriggerRef} type="button">Report an Issue</button>
                 <div className="design-details-toolbar-controls">
-                  <CatalogFavoriteButton
-                    className="design-details-favorite-btn"
-                    designId={design.id}
-                    designTitle={design.title}
-                  />
-                  <CatalogDesignShareButton design={design} variant="labeled" />
                   <CatalogArtworkBackgroundPreviewPicker
                     designDefaultHex={designDefaultBgHex}
                     onPreviewHexChange={setPreviewBgHex}
                     previewHex={previewBgHex}
+                  />
+                  <CatalogDesignShareButton design={design} variant="labeled" />
+                  <CatalogFavoriteButton
+                    className="design-details-favorite-btn"
+                    designId={design.id}
+                    designTitle={design.title}
                   />
                 </div>
               </div>
