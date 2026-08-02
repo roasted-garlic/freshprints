@@ -5,7 +5,7 @@
 | Date | 2026-07-31 |
 | Target | `https://fresh-prints-portal--fresh-prints-prod.us-central1.hosted.app` |
 | Studio | Production installer (`v1.0.0-rc5` or later confirmed build) |
-| Status | **Prepared only — do not mark PASS until owner executes** |
+| Status | **RESUMED 2026-08-01 — interactive owner execution pending** |
 
 **Rule:** A hosted.app pass is **not** a canonical-domain (`myprintrequest.com`) pass.
 
@@ -96,3 +96,22 @@ If Auth on hosted.app fails because the host is not authorized, classify these a
 Owner (or agent under explicit smoke authorization) runs this checklist **after** Stage 1B/1C
 PASS replies. Record results as `PASS` / `PASS WITH NOTES` / `FAIL` per item. Do not start in the
 documentation-only pass that prepared this file.
+
+---
+
+## 2026-08-01 resume evidence
+
+Stage 2 was explicitly resumed. Browser and Windows app-control backends were unavailable, so no authenticated Portal or Studio interaction is claimed by the coding agent.
+
+Read-only infrastructure verification completed:
+
+- Hosted Portal root: HTTP 200, title `Fresh Prints Request Portal`.
+- `https://myprintrequest.com`: HTTP 200, title `MyPrintRequest — Coming Soon`; custom-domain cutover unchanged.
+- App Hosting backend: `fresh-prints-portal`, `us-central1`, `nodejs24`, not reconciling; codebase contains repository + `apps/portal` root only and no automatic rollout policy.
+- Backend update time remains `2026-08-01T15:00:47.889209Z`, matching rollout checkpoint `build-2026-08-01-001` / revision `fresh-prints-portal-build-2026-08-01-001`.
+- Production Functions: 101/101 ACTIVE. All nine schedule/dual-limit release Functions ACTIVE with approved source hash `7eedfc2475a356e21eb4aeac8e9cd45ea232fbed`.
+- Firestore indexes: 65 present, 0 field overrides; no deployment was run.
+- Linked production limits 30/30 remain owner-verified PASS from the separate settings checkpoint.
+
+Remaining tests 1–8 in the resumed owner checklist are **NOT TESTED in this session** pending owner interaction with approved smoke fixtures. Stage 2 is not signed off and domain readiness is not claimed yet.
+> **2026-08-01 update:** Final Whatnot and Customer Upload development QA passed. Stage 2 remains paused because the final Studio production promotion is blocked on resolving unrelated Portal/dual-limit documentation commits in the `production...development` diff; production Functions and combined installer remain pending.

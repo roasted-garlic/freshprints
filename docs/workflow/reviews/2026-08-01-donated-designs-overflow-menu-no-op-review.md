@@ -1,7 +1,7 @@
 # Formal Review: Donated Designs overflow menu no-op
 
-Date: 2026-08-01  
-Plan: `docs/workflow/plans/2026-08-01-donated-designs-overflow-menu-no-op-plan.md`  
+Date: 2026-08-01
+Plan: `docs/workflow/plans/2026-08-01-donated-designs-overflow-menu-no-op-plan.md`
 Verdict: **approved_with_changes**
 
 ## Independent findings
@@ -24,4 +24,3 @@ Verdict: **approved_with_changes**
 ## Verdict rationale
 
 The intended action and root cause are established directly by source and history. With the five constraints above, the change is narrow, reversible, preserves feature/service boundaries, and is approved for implementation on `development` only.
-

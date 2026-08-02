@@ -27,6 +27,25 @@ Decision Log:
 - 2026-08-01 — Inbox design host now opens Design Details (preview) with Edit + Archive confirm in place. No deploy.
 - 2026-08-01 — Studio Inbox design-report submitter display + in-place Edit Design implemented. Plan/review/test docs under `docs/workflow/`. No deploy.
 - 2026-08-01 — Report success UX amendment implemented (animated check; new short copy). Plan/review/test docs under `docs/workflow/`. No deploy.
+- 2026-08-01 — [development branch, since merged into production] Owner QA PASS recorded for Whatnot and Customer Upload intake. Production diff audit was blocked at the time: development also contained eight earlier Portal/dual-limit documentation commits outside the narrow promotion authorization then in effect; that blocker is now superseded — production already contains this work via the subsequent PR #18 merge (`fe8c4f0`).
+- 2026-08-01 — Deployed exactly preview/delete/exclude customer-upload Functions to `fresh-prints-dev`: exit 0, 3 deployed, all ACTIVE on hash `039c420950489a41150ee4fbee0e2ded2790c3ca`; owner QA pending; no production action.
+- 2026-08-01 — Amendment 4 implemented: shared visible Restore to Pending modal/action across Donated Designs and Customer Uploads, with historical-purge explanation and status eligibility preserved. Focused 63/63, Studio typecheck/build, lint PASS; development QA pending; no deploy.
+- 2026-08-01 — Amendment 3 implemented: schema-owned asset manifest, exact path ownership validation, direct promoted-design reference check, fail-closed unknown paths, retry-safe partial cleanup, and upload-specific batch metadata cleanup. Focused 34/34/builds/lint PASS; development QA pending; no deploy.
+- 2026-08-01 — Amendment 2 implemented: native dialogs removed; owner/admin safe delete; helper exclusion/delete denial; exclusion preserves assets. Focused 43/43/builds/lint PASS. Functions source changed but not deployed; development QA pending.
+- 2026-08-01 — Owner requested Amendment 1: menu defaults below. Body portal + measured fixed collision positioning implemented; 19/19/build/lint PASS. Amended owner QA pending; no promotion.
+- 2026-08-01 — Separate Donated Designs overflow slice implemented from `ca315f2`: clipped downward menu corrected with explicit upward placement, focus handling, and stale-context reset. Automated 15/15/build/lint PASS; owner development QA pending. Whatnot checkpoint unchanged.
+- 2026-08-01 — Stage 2 paused: existing Whatnot update loses matched document identity and reuses strict generic pre-merge mapper. Narrow Plan reviewed `approved_with_changes`.
+- 2026-08-01 — Stage 2 resumed. Read-only infrastructure sanity PASS; authenticated Portal/Studio tests pending because no UI-control backend was available.
+- 2026-08-01 — Owner confirmed production Portal checks 1–12 PASS for linked 30/30; request/customer-show limits, capacity separation, warnings, no daily limit, and stale-session refresh verified.
+- 2026-08-01 — Owner intentionally saved linked 30/30; Studio success/reopen/restart PASS. Portal verification pending because no authenticated browser backend was available.
+- 2026-08-01 — Owner QA Tests 1–7 PASS; dual-limit Studio Settings UI signed off. No settings were saved during QA.
+- 2026-08-01 — Production Studio installer built from exact `1196085`; tests/build/icon/branding/prod config/dev-only UI gates verified. Owner QA pending; settings unchanged.
+- 2026-08-01 — Owner QA tests 1–9 PASS; customer schedule visibility slice signed off **approved**.
+  Automatic rollouts disabled; domain deferred; dual-limit Studio/settings remain pending.
+- 2026-08-01 — Portal commit `1196085` rolled out manually to production App Hosting as
+  `build-2026-08-01-001`; hosted HTTP/assets/client schedule chunk verified; auto rollouts disabled; owner QA pending.
+- 2026-08-01 — Production merge `1196085` verified; approved nine-Function allowlist deployed to
+  `fresh-prints-prod` (exit 0; all ACTIVE; hash `7eedfc2`; no unrelated Function update). Portal not rolled out.
 - 2026-07-31 — Amendment 1 commits `c4c8b38` + `c96755c` pushed; draft PR #17 opened
   (`development` → `production`). No merge or deployment.
 - 2026-07-31 — Development commit `b144903` pushed; protected PR #16 opened

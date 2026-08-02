@@ -1,8 +1,8 @@
 # Plan: Donated Designs overflow menu no-op
 
-Date: 2026-08-01  
-Goal: `production-release` Goal #13  
-Slice: `donated-designs-overflow-menu-no-op`  
+Date: 2026-08-01
+Goal: `production-release` Goal #13
+Slice: `donated-designs-overflow-menu-no-op`
 Starting commit: `ca315f2391b4961dc97ddbe87bf351c335405c6a`
 
 ## Repository evidence and root cause
@@ -35,4 +35,3 @@ Starting commit: `ca315f2391b4961dc97ddbe87bf351c335405c6a`
 - No new action, mutation, callable, role, permission, Firestore/Storage rule, or backend change.
 - No production promotion, installer release, deployment, production QA, Stage 2 resume, settings/data/capacity, domain, DNS, analytics, or tag action.
 - Manual authenticated development QA remains a later owner checkpoint after this development commit.
-
