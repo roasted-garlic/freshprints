@@ -5,6 +5,7 @@ export type StaffInboxAlertSoundKind = "request_queued_to_show" | "show_queue_fu
 const ITEM_KIND_PLAY_ORDER: Record<StaffInboxItemKind, number> = {
   portal_queued: 0,
   show_queue_full: 1,
+  design_issue_report: 2,
 };
 
 const SOUND_KIND_PLAY_ORDER: Record<StaffInboxAlertSoundKind, number> = {

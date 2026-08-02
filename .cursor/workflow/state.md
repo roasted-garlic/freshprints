@@ -1,32 +1,33 @@
 # Current Goal
-`production-release` (Goal #13) — Phase G; slice
-`portal-customer-queued-show-schedule-visibility` +
-`portal-print-request-and-customer-show-limit-settings` (source workflow)
+**Portal design issue reporting: SIGNED OFF (owner QA PASS). Promoting to production; Studio automatic updates implementation starting next.** Owner confirmed Portal + Studio reporting QA PASS on 2026-08-02 (all 24 checklist items) — see `docs/workflow/reviews/2026-08-01-portal-design-issue-reporting-owner-qa-checklist.md` and `docs/workflow/reviews/2026-08-02-portal-design-issue-reporting-signoff.md`. Feature branch `feature/portal-design-issue-reporting` at `c370ced` re-passed the full release gate this pass (Rules emulator 60/60, shared/containment/validation tests 12/12, Functions build clean, Portal typecheck+build clean, Studio `tsc` clean, lint clean, diff-check clean). Next: promote to `origin/production` via merge-commit PR (Phase B), then implement the already-approved Studio automatic-updates Plan/Review (Phase C), prove an A→B prerelease update, promote the updater to production, then coordinated production Firestore/Functions deploy and final production Portal rollout — stopping only at the signing-certificate/stable-publish and domain-cutover checkpoints. `origin/production` = `fe8c4f0` as of start of this pass (will change once Phase B merges).
 
 Current Mode: managed-phase
-Current Phase: Goal #13 remediation — final Studio promotion blocked on mixed development diff
-Plan Status: complete —
-`docs/workflow/plans/2026-08-01-customer-upload-intake-parity-amendment-4-plan.md`
-Review Status: **approved_with_conditions** —
-`docs/workflow/reviews/2026-08-01-customer-upload-intake-parity-amendment-4-review.md`
-Implement Status: complete (development; separate from Whatnot commit)
-Test Status: **development owner QA PASS for Whatnot and Customer Upload intake; promotion diff audit blocked** — `docs/workflow/reviews/2026-08-01-final-studio-remediations-production-diff-audit.md`
-Implementation Review: **approved_with_note** — `docs/workflow/reviews/2026-08-01-customer-upload-intake-parity-amendment-4-implementation-review.md`
-Ship Status: Functions + Portal App Hosting rollout **passed** (`build-2026-08-01-001`)
-Signoff Status: customer schedule visibility + dual-limit Studio UI + linked 30/30 production settings **approved**
-Implementation Review: **approved** —
-`docs/workflow/reviews/2026-07-31-production-portal-show-schedule-and-limit-settings-implementation-review.md`
-DONE: no (Goal #13 continues; Stage 2 paused on importer defect)
-Human Checkpoint Required: yes
-Human Checkpoint Reason: owner direction is required because development contains unrelated Portal/dual-limit documentation commits outside the narrow production PR authorization
+Current Phase: reporting signed off; promoting to production; updater implementation starting
+Plan Status (reporting): complete (prior); Signoff complete this pass
+Plan Status (studio-automatic-updates): complete —
+`docs/workflow/plans/2026-08-01-studio-automatic-updates-plan.md`
+Review Status (studio-automatic-updates): **approved_with_changes** —
+`docs/workflow/reviews/2026-08-01-studio-automatic-updates-review.md`
+Implement Status (updater): starting this pass, owner-approved 21 decisions as defaults
+DONE: no
+Human Checkpoint Required: not yet (will be required before stable 1.0.0 publish and before domain cutover)
 Blocked: no
 Blocker: none
-Allowed Actions: development Studio QA with approved fixture; docs; read-only verification
-Forbidden Actions: further deploys; production actions; Rules/index/data/settings changes; Stage 2; domain
-Next Required Step: Owner approves either including the previously completed Portal/dual-limit documentation commits in the promotion PR or authorizes a separate clean promotion branch containing only final Studio remediation commits
+Allowed Actions: production PR merge for reporting; updater implementation; updater A→B prerelease proof; updater production PR merge; coordinated production Firestore/Functions deploy; production Portal rollout
+Forbidden Actions: publishing stable Studio 1.0.0 without a human checkpoint on signing status; any domain/DNS action without the exact cutover phrase; deleting `master`; broad Functions deploy; creating any dev App Hosting backend
+Next Required Step: Open + merge reporting production PR (Phase B), then begin updater implementation (Phase C)
+
+Background (not active gate): Goal #13 / clean Studio remediation / Stage 2 remain deferred; prior installer intermediate; domain cutover blocked until `APPROVE MYPRINTREQUEST.COM CUTOVER`.
 
 Decision Log:
-- 2026-08-01 — Owner QA PASS recorded for Whatnot and Customer Upload intake. Production diff audit BLOCKED: development also contains eight earlier Portal/dual-limit documentation commits outside the narrow promotion authorization; no PR opened.
+- 2026-08-02 — Reporting Signoff recorded (owner-confirmed QA PASS, all 24 checklist items); final release gate re-run and green. Starting production promotion + Studio automatic-updates implementation per owner's explicit go-ahead through Phase G (production backend deploy + Portal rollout), executed directly in-session (not via unsupervised background agent) given the production-merge and release-publish blast radius.
+- 2026-08-02 — Completed development environment: deployed Firestore Rules to `fresh-prints-dev` after diff audit + emulator suite pass (60/60); cleared stale Portal `.next` lock and got a definitive `npm run build:portal` pass; re-confirmed Functions ACTIVE and both indexes Enabled (no redeploy). Adopted owner-confirmed permanent policy: `fresh-prints-dev` will never have an App Hosting backend — documented in `docs/standards/DEPLOYMENT.md`'s new "Development and Production Portal Hosting Policy" section; corrected stale references in the reporting development-deployment checkpoint and development owner-QA checklist that had called the missing dev backend a blocker. No production action.
+- 2026-08-01 — Convergence pass: committed post-candidate reporting UX (`3beacbe`, `52f4de7`), pushed to `origin/feature/portal-design-issue-reporting`. Confirmed via `firebase` CLI that both reporting Functions and both indexes are already live on `fresh-prints-dev` (repo checkpoint doc was stale). Did not deploy Firestore Rules (unverifiable live diff — flagged, not guessed). Found no `fresh-prints-portal` App Hosting backend on dev at all; Portal rollout blocked pending owner-approved backend provisioning. No production action.
+- 2026-08-01 — Release orchestration Phase A: no deploy/QA evidence in repo; dirty tree beyond `5f6f383`; updater Plan+Review ready; stop for owner QA phrase. No production action.
+- 2026-08-01 — Inbox design host now opens Design Details (preview) with Edit + Archive confirm in place. No deploy.
+- 2026-08-01 — Studio Inbox design-report submitter display + in-place Edit Design implemented. Plan/review/test docs under `docs/workflow/`. No deploy.
+- 2026-08-01 — Report success UX amendment implemented (animated check; new short copy). Plan/review/test docs under `docs/workflow/`. No deploy.
+- 2026-08-01 — [development branch, since merged into production] Owner QA PASS recorded for Whatnot and Customer Upload intake. Production diff audit was blocked at the time: development also contained eight earlier Portal/dual-limit documentation commits outside the narrow promotion authorization then in effect; that blocker is now superseded — production already contains this work via the subsequent PR #18 merge (`fe8c4f0`).
 - 2026-08-01 — Deployed exactly preview/delete/exclude customer-upload Functions to `fresh-prints-dev`: exit 0, 3 deployed, all ACTIVE on hash `039c420950489a41150ee4fbee0e2ded2790c3ca`; owner QA pending; no production action.
 - 2026-08-01 — Amendment 4 implemented: shared visible Restore to Pending modal/action across Donated Designs and Customer Uploads, with historical-purge explanation and status eligibility preserved. Focused 63/63, Studio typecheck/build, lint PASS; development QA pending; no deploy.
 - 2026-08-01 — Amendment 3 implemented: schema-owned asset manifest, exact path ownership validation, direct promoted-design reference check, fail-closed unknown paths, retry-safe partial cleanup, and upload-specific batch metadata cleanup. Focused 34/34/builds/lint PASS; development QA pending; no deploy.

@@ -27,6 +27,7 @@ import { enqueueStaffInboxAlertSound } from "../services/staffInboxAlertSoundSer
 import { staffInboxSubscriptionService } from "../services/staffInboxSubscriptionService";
 import { formatStaffInboxFirestoreError } from "../utils/formatStaffInboxFirestoreError";
 import { getStaffInboxItemNavigationPath } from "../utils/staffInboxNavigation";
+import { designIssueReportService } from "../services/designIssueReportService";
 
 const HIGHLIGHT_DURATION_MS = 8_000;
 /** Wide enough that queue-add + show-full Firestore emits coalesce into one sound. */
@@ -36,6 +37,7 @@ const EMPTY_SUBSCRIPTION_SNAPSHOT: StaffInboxSubscriptionSnapshot = {
   portalRequests: [],
   portalAllocations: [],
   shows: [],
+  designIssueReports: [],
 };
 
 interface StaffInboxProviderProps {
@@ -58,9 +60,10 @@ function buildInboxWarningMessage(
   requestError: string | null,
   allocationError: string | null,
   showError: string | null,
+  designIssueReportError: string | null = null,
 ): string | null {
   const message =
-    showError ?? (requestError && allocationError ? allocationError : allocationError);
+    designIssueReportError ?? showError ?? (requestError && allocationError ? allocationError : allocationError);
 
   return message ? formatStaffInboxFirestoreError(message) : null;
 }
@@ -88,6 +91,7 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [toasts, setToasts] = useState<StaffInboxToast[]>([]);
   const [highlightedItemIds, setHighlightedItemIds] = useState<Set<string>>(() => new Set());
+  const [pendingResolvedReportIds, setPendingResolvedReportIds] = useState<Set<string>>(() => new Set());
 
   const acknowledgedItemIdsRef = useRef(acknowledgedItemIds);
   const ackRecordsRef = useRef(ackRecords);
@@ -422,7 +426,7 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
       subscriptionHydratedRef.current = true;
       setSubscriptionSnapshot(state.snapshot);
       setError(buildInboxErrorMessage(state.requestError, state.allocationError));
-      setWarning(buildInboxWarningMessage(state.requestError, state.allocationError, state.showError));
+      setWarning(buildInboxWarningMessage(state.requestError, state.allocationError, state.showError, state.designIssueReportError));
       evaluateAlerts(state.snapshot);
     });
 
@@ -461,14 +465,33 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
   }, [evaluateAlerts, isEnabled, showSnapshots, subscriptionSnapshot]);
 
   const openItems = useMemo(
-    () =>
-      deriveStaffInboxItems({
+    () => {
+      const existing = deriveStaffInboxItems({
         portalAllocations: subscriptionSnapshot.portalAllocations,
         acknowledgedItemIds,
         showTitleById,
         shows: showSnapshots,
-      }),
-    [acknowledgedItemIds, showSnapshots, showTitleById, subscriptionSnapshot.portalAllocations],
+      });
+      const reports: StaffInboxItem[] = subscriptionSnapshot.designIssueReports
+        .filter((report) => !pendingResolvedReportIds.has(report.id))
+        .map((report) => ({
+          id: `design_issue_report:${report.id}`,
+          kind: "design_issue_report",
+          title: report.designTitleSnapshot,
+          subtitle: report.description,
+          occurredAtMillis: report.createdAtMillis,
+          designIssueReport: report,
+        }));
+      return [...reports, ...existing].sort((left, right) => right.occurredAtMillis - left.occurredAtMillis);
+    },
+    [
+      acknowledgedItemIds,
+      pendingResolvedReportIds,
+      showSnapshots,
+      showTitleById,
+      subscriptionSnapshot.designIssueReports,
+      subscriptionSnapshot.portalAllocations,
+    ],
   );
 
   const highlightItem = useCallback((itemId: string) => {
@@ -562,6 +585,43 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
         return;
       }
 
+      if (item.kind === "design_issue_report" && item.designIssueReport) {
+        const reportId = item.designIssueReport.id;
+        const itemId = item.id;
+        clearItemHighlight(itemId);
+        setPendingResolvedReportIds((current) => {
+          const next = new Set(current);
+          next.add(reportId);
+          return next;
+        });
+        const acknowledgedByDisplayName = user.displayName?.trim() || undefined;
+        setCompletedItems((current) => [
+          {
+            ...item,
+            acknowledgedAtMillis: Date.now(),
+            acknowledgedByUserId: user.id,
+            acknowledgedByDisplayName,
+          },
+          ...current.filter((entry) => entry.id !== itemId),
+        ]);
+
+        void designIssueReportService
+          .resolve(reportId)
+          .then(() => {
+            setWarning(null);
+          })
+          .catch(() => {
+            setPendingResolvedReportIds((current) => {
+              const next = new Set(current);
+              next.delete(reportId);
+              return next;
+            });
+            setCompletedItems((current) => current.filter((entry) => entry.id !== itemId));
+            setWarning("Unable to resolve this design report. Check your connection and try again.");
+          });
+        return;
+      }
+
       clearItemHighlight(item.id);
       setAcknowledgedItemIds((current) => {
         const next = new Set(current);
@@ -590,7 +650,7 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
 
   const restoreItem = useCallback(
     (itemId: string) => {
-      if (!user?.id) {
+      if (!user?.id || itemId.startsWith("design_issue_report:")) {
         return;
       }
 
@@ -607,6 +667,25 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
     },
     [user?.id],
   );
+
+  useEffect(() => {
+    const openReportIds = new Set(subscriptionSnapshot.designIssueReports.map((report) => report.id));
+    setPendingResolvedReportIds((current) => {
+      if (current.size === 0) {
+        return current;
+      }
+      let changed = false;
+      const next = new Set<string>();
+      for (const reportId of current) {
+        if (openReportIds.has(reportId)) {
+          next.add(reportId);
+        } else {
+          changed = true;
+        }
+      }
+      return changed ? next : current;
+    });
+  }, [subscriptionSnapshot.designIssueReports]);
 
   const dismissToast = useCallback(
     (toastId: string) => {

@@ -1,8 +1,8 @@
 # Recent Completed Work
 
-## 2026-08-01 - Final Studio development owner QA PASS
+## 2026-08-01 - Final Studio remediation development QA passed
 
-Owner confirmed PASS for the Whatnot existing-show update and Customer Upload exclusion/restore/delete parity across roles and both intake surfaces. Production diff audit then stopped promotion because development also contains earlier Portal/dual-limit documentation commits outside the narrow PR scope. No production action occurred.
+Owner confirmed PASS for Whatnot matched-show updates and Customer Upload exclusion/restore/delete parity. A clean production branch was created from `11960852` because development contained unrelated rollout documentation; no development history was rewritten. (Superseded blocker: production diff audit was initially stopped because development also contained earlier Portal/dual-limit documentation commits outside the narrow PR scope — resolved via the clean branch above, and development itself was brought current with production via merge on 2026-08-02.)
 
 ## 2026-08-01 - Customer upload exclusion/deletion Functions deployed to development
 

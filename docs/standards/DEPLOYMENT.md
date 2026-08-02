@@ -19,8 +19,66 @@ Fresh Prints consists of:
 | Environment | Purpose | URL | Branch / trigger |
 |-------------|---------|-----|------------------|
 | Local | Development | Studio: Electron dev; Portal: `localhost:3100` | `npm run dev` (both), or `dev:studio` / `dev:portal` |
-| Firebase dev | Development backend | `fresh-prints-dev` (`.firebaserc`) | `development` branch; local / manual deploy |
+| Firebase dev | Development backend (Functions/Rules/indexes only — **no App Hosting**, see hosting policy above) | `fresh-prints-dev` (`.firebaserc`) | `development` branch; local / manual deploy |
 | Production | Live users | Portal App Hosting on `fresh-prints-prod` (`.firebaserc` `production` alias); domain `[TBD — pending DNS connection]` | `production` branch; human approval required for every deploy |
+
+---
+
+## Development and Production Portal Hosting Policy (2026-08-02 — owner-confirmed, binding)
+
+**`fresh-prints-dev` must not have a Firebase App Hosting backend.** Its absence is intentional
+policy, not environment drift, missing infrastructure, or a release blocker. Do not report it as
+any of those things.
+
+- **Portal development runs on localhost only** (`npm run dev:portal`, `http://localhost:3100`),
+  connecting to the real `fresh-prints-dev` Firebase project — not emulators, per this repo's
+  established `apps/portal/.env.local` convention.
+- **Studio development runs as the local Electron dev process** (`npm run dev:studio`), also
+  connecting to `fresh-prints-dev`.
+- **Firebase App Hosting is production-only**, used exclusively for the production Portal in
+  `fresh-prints-prod` (backend `fresh-prints-portal`, see the Production Release Checklist below).
+- Cloud Functions, Firestore Rules, Storage Rules, and Firestore indexes may still be deployed to
+  `fresh-prints-dev` when separately reviewed and approved — this policy governs Portal/Studio
+  **hosting** only, not backend resource deployment.
+- Localhost-only Portal development does **not** mean Firebase emulators are required; local Portal
+  connects to the real `fresh-prints-dev` backend per existing environment configuration.
+- Do not create Firebase Hosting, classic Hosting, or App Hosting resources for the development
+  Portal, and do not modify `firebase.json`, App Hosting configuration, project aliases, or
+  deployment workflows to add a development Portal hosting target — unless the owner explicitly
+  reverses this policy through a separately reviewed decision.
+- Agents must not recommend development App Hosting merely to obtain production-like QA parity.
+  Production-like source verification is provided by builds and tests (typecheck, production build,
+  lint); interactive development QA remains localhost-based.
+- Production App Hosting rollout and `hosted.app` smoke testing remain production-release
+  activities only (see the Production Release Checklist below).
+
+**Do not interpret an empty result from `firebase apphosting:backends:list --project
+fresh-prints-dev` as an error. That is the expected state.**
+
+### Environment matrix
+
+| | Runtime | Firebase project | App Hosting | Purpose |
+|---|---|---|---|---|
+| Development Portal | `localhost:3100` | `fresh-prints-dev` | Prohibited by this policy | Implementation, local smoke, authenticated owner QA |
+| Development Studio | Local Electron dev process | `fresh-prints-dev` | N/A (packaged installer not required) | Implementation, local smoke, authenticated owner QA |
+| Production Portal | Firebase App Hosting | `fresh-prints-prod` | Existing `fresh-prints-portal` backend | `hosted.app` smoke and public release |
+| Production Studio | Packaged Windows application | `fresh-prints-prod` | N/A | Approved installer/update release workflow |
+
+### Checklist for future agents before proposing any hosting or rollout work
+
+Before proposing Portal/Studio hosting or rollout work, answer:
+
+1. Is this Portal work for localhost development or production App Hosting?
+2. Which Firebase project is authorized for this action?
+3. Is the requested action source verification (build/typecheck/lint), backend resource deployment
+   (Functions/Rules/indexes), or Portal **hosting**?
+4. Does the action require a human deployment checkpoint?
+
+Ordinary reporting-feature work, local QA, or a missing dev App Hosting backend do **not**, by
+themselves, justify proposing a policy change. Any future proposal to create development Portal
+hosting must stop with the literal checkpoint phrase:
+
+`[NEEDS OWNER DECISION: REVERSE LOCALHOST-ONLY DEVELOPMENT POLICY]`
 
 ---
 
@@ -580,10 +638,14 @@ Artifacts: Electron distributable from electron-builder → `apps/studio/release
 npm run build:portal
 ```
 
-Deploy to Firebase App Hosting (human approval required for production):
+**Superseded (2026-08-02):** the `firebase deploy --only apphosting --project fresh-prints-dev`
+command previously shown here is no longer authorized — see "Development and Production Portal
+Hosting Policy" above. `fresh-prints-dev` intentionally has no App Hosting backend; development
+Portal QA is localhost-only (`npm run dev:portal`). App Hosting deploys only ever target
+`fresh-prints-prod` (human approval required):
 
 ```bash
-firebase deploy --only apphosting --project fresh-prints-dev
+firebase deploy --only apphosting --project fresh-prints-prod
 ```
 
 Portal backend config: `apps/portal/apphosting.yaml`. App root: `apps/portal` in `firebase.json`.

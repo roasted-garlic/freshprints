@@ -239,6 +239,25 @@
   min-width: 0;
 }
 
+.staff-inbox-item-submitter {
+  color: var(--color-text-muted, var(--color-text-secondary));
+  font-size: var(--font-size-xs);
+  line-height: 1.35;
+}
+
+.staff-inbox-design-edit-host-status {
+  align-items: center;
+  background: color-mix(in srgb, var(--color-bg-secondary) 92%, transparent);
+  display: grid;
+  gap: var(--space-3);
+  inset: 0;
+  justify-items: center;
+  padding: var(--space-6);
+  place-content: center;
+  position: fixed;
+  z-index: 1200;
+}
+
 .staff-inbox-item-glance {
   display: -webkit-box;
   overflow: hidden;
@@ -424,6 +443,44 @@
   background: var(--color-accent-primary-soft);
   border-color: var(--color-accent-primary);
   color: var(--color-text-primary);
+}
+
+.staff-inbox-done-panel {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.staff-inbox-done-section {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.staff-inbox-done-section-header {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.staff-inbox-done-section-header h2 {
+  font-size: var(--font-size-lg);
+  font-weight: 650;
+  margin: 0;
+}
+
+.staff-inbox-done-section-header p {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  margin: 0;
+}
+
+.staff-inbox-done-loading,
+.staff-inbox-done-error {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  margin: 0;
+}
+
+.staff-inbox-done-error {
+  color: var(--color-danger-text, var(--color-text-secondary));
 }
 
 .staff-inbox-page-list {

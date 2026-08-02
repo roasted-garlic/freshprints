@@ -1,6 +1,23 @@
 # Fresh Prints - Current State Snapshot
 
-## 2026-08-01 - Final Studio development QA passed; production promotion blocked by mixed diff
+## 2026-08-02 - development branch merged forward to match production (`9726edb`)
+
+Resolved a real divergence discovered while preparing to land the Studio automatic-updates
+workflow file on the default branch: `origin/development` was 5 commits behind `origin/production`
+(missing the entire Portal Design Issue Reporting merge) while also containing 5 commits of its
+own real work never merged into `production` (customer-upload restore parity, safe donation-delete
+dialogs, donated-menu positioning fixes, Whatnot matched-show-update preservation, and a QA-signoff
+formatting commit). Merged `origin/production` into `development` via a real merge commit
+(non-fast-forward); resolved 3 genuine content conflicts (`.cursor/workflow/state.md`,
+`references/project-chatgpt-handoff/13-recent-completed-work.md`, this file) by combining both
+sides' distinct history chronologically rather than discarding either, and 5 add/add conflicts on
+identical "Donated Designs overflow menu no-op" docs that existed on both branches (only trailing
+markdown hard-break whitespace differed) by keeping one copy. No source code conflicts. Entries
+below marked "[from development, superseded]" reflect `development`'s own narrative of events that
+`production`'s subsequent history (PR #17/#18/#19 merges) later resolved differently — preserved
+for historical accuracy, not because they reflect current state.
+
+## 2026-08-02 - Portal design issue reporting SIGNED OFF; promoting to production; updater implementation starting
 
 - Owner-confirmed PASS for Whatnot existing-show update and all six Customer Upload intake QA groups; no visible errors.
 - Customer Upload restore failure classified as outdated development Function only, not a remaining source defect.
@@ -109,6 +126,71 @@
 - Focused tests 50/50, Functions build, applicable lint, and whitespace checks passed.
 - No Portal/Rules/index/Auth/secret/settings/data/Studio/domain/analytics/Stage 2/catalog-snapshot action occurred.
 - Next gated phrase: `APPROVE PRODUCTION PORTAL APP HOSTING ROLLOUT: CUSTOMER SHOW SCHEDULE AND DUAL LIMITS`.
+
+## 2026-08-02 - Portal design issue reporting SIGNED OFF; promoting to production; updater implementation starting
+
+- Owner confirmed Portal + Studio reporting owner QA PASS (all 24 items in
+  `docs/workflow/reviews/2026-08-01-portal-design-issue-reporting-owner-qa-checklist.md`), tested
+  locally against `fresh-prints-dev`. Recorded in
+  `docs/workflow/reviews/2026-08-02-portal-design-issue-reporting-signoff.md`.
+- Final automated release gate re-run and green on `feature/portal-design-issue-reporting`
+  (`c370ced7ad8a3247701d7e06f534155412017664`): Rules emulator 60/60; shared contract + submitter
+  tests 6/6; Studio containment + Functions validation tests 12/12; Functions build exit 0; Portal
+  typecheck + production build exit 0; Studio `tsc` exit 0; repo lint exit 0; `git diff --check`
+  exit 0.
+- Next: promote to `origin/production` via protected merge-commit PR, then implement Studio
+  automatic updates per the already-approved Plan/Review, prove an A→B prerelease update, promote
+  the updater to production, then a coordinated production Firestore/Functions deploy and final
+  production Portal rollout — stopping only at the signing-certificate/stable-publish-approval and
+  domain-cutover checkpoints, per explicit owner authorization for this scope.
+- Executed directly in-session rather than via an unsupervised background agent, given the
+  production-merge and real-release-publishing blast radius of this pass.
+
+## 2026-08-02 - Portal design issue reporting: development environment complete, awaiting owner QA
+
+- **Superseding the two blockers recorded in the 2026-08-01 entry below.**
+- **Firestore Rules deployed.** Audited `git diff origin/production -- firestore.rules`: scoped only to the new `designIssueReports` match block (staff read, all client writes denied) plus `designIssueReportIntents`/`designIssueReportOpenGuards`/`designIssueReportDailyQuotas` support collections (fully denied to clients) — no unrelated collections touched. Re-ran `npm run test:rules` (Firestore/Storage Rules emulator, portable JDK 21 at `.local-jdk`): 60/60 pass, exit 0. Deployed: `firebase deploy --only firestore:rules --project fresh-prints-dev` — exit 0, "Deploy complete!" (CLI reported rules content already matched what was live, compiled successfully, released). No Storage Rules, no indexes, no production project touched by this command.
+- **Portal production build now passes definitively.** No process was actually holding `.next` at the time of this pass (checked via `Get-CimInstance Win32_Process` for `node.exe` — none referenced the Portal dev server or `.next`). Removed the stale `.next` directory and re-ran `npm run build:portal`: clean compile, all 19 routes generated, exit 0. Also re-ran Portal `tsc --noEmit` (exit 0), repo-wide `npm run lint` (exit 0), and `git diff --check` (exit 0, only pre-existing LF/CRLF notices, no conflict markers).
+- **Portal App Hosting rollout is no longer a blocker — it is owner-confirmed permanent policy that `fresh-prints-dev` will never have an App Hosting backend.** Documented as binding policy in a new "Development and Production Portal Hosting Policy" section in `docs/standards/DEPLOYMENT.md`, including an environment matrix and a checklist for future agents proposing hosting/rollout work. Corrected stale language in `docs/workflow/reviews/2026-08-01-portal-design-issue-reporting-development-deployment-checkpoint.md` (previously required an App Hosting rollout step) and `docs/workflow/reviews/2026-08-01-portal-design-issue-reporting-development-owner-qa-checklist.md` (previously said to use dev "after... development Portal rollout") — both now point at localhost-only dev QA (`npm run dev:portal`, `npm run dev:studio`) against `fresh-prints-dev`. Historical conclusions were marked superseded, not deleted.
+- Functions and indexes re-verified, unchanged, no redeploy: `submitPortalDesignIssueReport` / `resolveDesignIssueReport` both ACTIVE (v2, callable, `us-central1`); both `designIssueReports` composite indexes present in `firebase firestore:indexes --project fresh-prints-dev` output.
+- No `fresh-prints-prod` action of any kind. Owner QA checklist (`docs/workflow/reviews/2026-08-01-portal-design-issue-reporting-owner-qa-checklist.md`) remains unfilled — 24 blank items, not completed by this pass.
+- Next: `CONTINUE WORKFLOW: DEVELOPMENT OWNER QA PORTAL DESIGN ISSUE REPORTING` — owner runs QA locally against `fresh-prints-dev` per the checklist. No further environment blockers remain for reporting development readiness.
+
+## 2026-08-01 - Portal design issue reporting: convergence committed, dev deployment reconciled, awaiting owner QA
+
+- Committed and pushed the post-candidate reporting UX that was previously uncommitted: `3beacbe` (app code — report success animation, Studio Inbox submitter display, in-place View Design/Edit/Archive host, optimistic Mark Resolved) and `52f4de7` (docs — plans/reviews/test-reports, including the Studio automatic-updates Plan+Review, docs only, no updater source). `origin/feature/portal-design-issue-reporting` now at these commits on top of `5f6f383`; `origin/production` unchanged at `fe8c4f0`.
+- Full test gate re-run: shared contract + submitter tests 6/6 pass; Studio Firestore route containment 10/10 pass; Functions `designIssueReportValidation` 2/2 pass; Firestore/Storage Rules emulator suite 60/60 pass (includes `designIssueReport.rules.test.ts`); Portal `tsc --noEmit` exit 0; Studio `tsc --noEmit` exit 0; Functions `npm run build` exit 0; repo-wide `npm run lint` exit 0 (0 warnings); `git diff --check` exit 0. Portal production build (`next build`) could not be confirmed clean in this environment — it hit a Windows file-lock (`EPERM` on `.next/trace`, later `rm -rf .next` itself failed with "Directory not empty") from another long-running local process; this is an environment/session artifact, not a code defect (typecheck is clean and the only changed Portal files are the modal/CSS already covered by the contract test).
+- **Development deployment reconciliation (`fresh-prints-dev`, read-only inspection + no unauthorized writes):** both reporting Functions (`submitPortalDesignIssueReport`, `resolveDesignIssueReport`) and both `designIssueReports` composite indexes (`status ASC, createdAt DESC` and `status ASC, resolvedAt DESC`) were **already live** on `fresh-prints-dev`, confirmed via `firebase functions:list --project fresh-prints-dev` and `firebase firestore:indexes --project fresh-prints-dev` — this contradicts the repo's own checkpoint doc ("AWAITING EXPLICIT APPROVAL — nothing deployed"), which was stale relative to actual project state. Did **not** deploy Firestore Rules: there is no Firebase CLI command to read back live deployed Rules content for a safe diff against `firestore.rules`, so per the hard "stop and report rather than guess" instruction, Rules deployment was skipped and flagged for an explicit owner decision instead of assumed safe. Portal App Hosting rollout is **blocked**, not merely undone: `firebase apphosting:backends:get fresh-prints-portal --project fresh-prints-dev` returns "Backend ... not found" — no App Hosting backend exists on the dev project at all, so there is no target for `firebase deploy --only apphosting`; provisioning a new backend is infrastructure/console setup outside this pass's authorization.
+- **No `fresh-prints-prod` action of any kind** — one incidental attempt to read prod App Hosting state for context was self-blocked by the session's own safety classifier and not retried; only `fresh-prints-dev` was inspected or touched.
+- Owner QA checklist (24 items, all blank): `docs/workflow/reviews/2026-08-01-portal-design-issue-reporting-owner-qa-checklist.md`.
+- Firestore listener containment re-confirmed by reading the committed code: single bounded open-report listener in `apps/studio/src/renderer/src/features/staff-inbox/services/staffInboxSubscriptionService.ts` line 354 (`where("status","==","open"), orderBy("createdAt","desc"), limit(DESIGN_ISSUE_REPORT_OPEN_LIMIT)`, limit constant = 100); resolved history is a bounded on-demand `getDocs` (not a listener) in `apps/studio/src/renderer/src/features/staff-inbox/services/designIssueReportService.ts` (`listResolved()`, `limit(DESIGN_ISSUE_REPORT_HISTORY_PAGE_SIZE)`, constant = 50), only triggered when the Inbox "Done" tab is opened.
+- Next: owner runs QA against `fresh-prints-dev` per the checklist, and separately decides (a) whether to approve a Firestore Rules deploy to dev given the unverifiable live-diff situation, and (b) whether to approve provisioning the `fresh-prints-portal` App Hosting backend on dev so a Portal rollout becomes possible.
+
+## 2026-08-01 - Release orchestration Phase A STOP (reporting QA / deploy evidence)
+
+- Verified remotes: `origin/production` = `fe8c4f05675d1f47e532982089dc744b75b44786`; `origin/feature/portal-design-issue-reporting` = `5f6f3839398c0f545b76994105bf4909cd3e2235` (7 commits ahead of production).
+- Repo deploy checkpoint still **AWAITING — nothing deployed**; no recorded Function revisions / Portal revision / formal smoke. Owner QA checklist has **no PASS**.
+- Local branch tip matches remote SHA but **working tree dirty** with uncommitted reporting UX (success animation, submitter line, in-place View Design + archive).
+- Studio automatic-updates Plan + Formal Review (**approved_with_changes**, owner decisions required): `docs/workflow/plans/2026-08-01-studio-automatic-updates-plan.md` / `docs/workflow/reviews/2026-08-01-studio-automatic-updates-review.md`.
+- Phase A checkpoint: `docs/workflow/reviews/2026-08-01-portal-design-issue-reporting-orchestration-phase-a-checkpoint.md`.
+- **No production merge, deploy, updater implement, Stage 2, or domain action.**
+- Next: `CONTINUE WORKFLOW: DEVELOPMENT OWNER QA PORTAL DESIGN ISSUE REPORTING`
+
+## 2026-08-01 - Portal design issue reporting ready for development deployment
+
+- Feature branch is based on production `fe8c4f05`; all 15 owner decisions are implemented.
+- Portal modal, trusted submission/resolution callables, Studio Inbox integration, bounded reads/history, exact design deep link, centralized permissions, Rules, and indexes are complete.
+- Owner UX amendment 1 is complete: Report is isolated at the toolbar's left, Favorite/Share/Background remain grouped at right, the request action is full width below, and the report modal has Cancel left, Submit right, plus a top-right accessible close control.
+- Studio's current `Missing or insufficient permissions` Inbox message is caused by the still-undeployed development Firestore Rules for `designIssueReports`; no authorization bypass was introduced.
+- Focused tests 6/6 and Rules emulator 60/60 pass; typechecks/builds, lint, packaging, and diff checks pass. Implementation Review is approved_with_notes.
+- No deployment or production action occurred. Stage 2 and domain remain blocked; prior installer is intermediate; automatic updates remain a separate phase.
+
+## 2026-08-01 - Clean final Studio remediation promotion in progress
+
+- Clean branch `release/final-studio-remediations` was created directly from production `11960852`; `development` remains unchanged.
+- Includes only the approved Whatnot existing-show update and Customer Upload overflow/exclusion/restore/delete remediations, focused tests, and narrow workflow artifacts.
+- Development owner QA for both remediation groups is PASS.
+- Production Functions deployment and combined Studio installer/owner QA remain pending. Stage 2 remains paused and domain cutover blocked.
 
 ## 2026-07-31 - Goal #13 Amendment 1 promoted as draft PR #17; awaiting owner merge
 
