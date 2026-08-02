@@ -13,4 +13,3 @@
 - Domain cutover: **BLOCKED/DEFERRED**.
 
 The clean branch excludes the unrelated development commits `f566bf1`, `462e3b2`, `6d20742`, `9cca806`, `e8ab27d`, `3c3620b`, `c2af84d`, and `fef69f8` and their unrelated rollout/settings artifacts.
-

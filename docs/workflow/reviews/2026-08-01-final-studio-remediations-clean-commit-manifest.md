@@ -12,4 +12,3 @@ Production base: `11960852f45f948e37a1a5aeb3b09699882cd1fd`
 | `1873b10d7874b36ba4cf95d2d0421e9c1f11bdd0` | `5a75e56` | add customer upload restore parity | Customer upload Amendment 4 | Visible Restore to Pending modal/parity, focused tests and artifacts; depends on Amendments 1–3 |
 
 All implementation cherry-picks used `-x`. Shared state/handoff conflicts were resolved to the production side; a separate narrow documentation commit records release state. The downward-positioning commit is conclusively `1bbd2594ca7595dba6a98e2dc59c77a3972914a7`.
-
