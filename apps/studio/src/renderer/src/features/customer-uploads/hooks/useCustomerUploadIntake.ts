@@ -23,7 +23,6 @@ import {
   type CustomerUploadIntakeFilter,
   type CustomerUploadIntakeRow,
 } from "../services/customerUploadIntakeService";
-import { customerUploadDeletionService } from "../services/customerUploadDeletionService";
 import { mapCustomerUploadPurgeTimestamp } from "../utils/customerUploadPurgeTimestamp";
 
 export type CustomerUploadIntakePendingAction =
@@ -309,7 +308,7 @@ export function useCustomerUploadIntake(options?: {
       onSuccess?: () => void,
     ) => {
       if (pendingByUploadId[uploadId]) {
-        return;
+        return false;
       }
       setPending(uploadId, action);
       setError(null);
@@ -318,8 +317,10 @@ export function useCustomerUploadIntake(options?: {
         await execute();
         setNotice(successMessage);
         onSuccess?.();
+        return true;
       } catch (err) {
         setError(err instanceof Error ? err.message : "Action failed.");
+        return false;
       } finally {
         setPending(uploadId, null);
       }
@@ -393,7 +394,7 @@ export function useCustomerUploadIntake(options?: {
         async () => {
           await customerUploadIntakeService.exclude(uploadId);
         },
-        "Excluded from catalog. Artwork remains on the print request.",
+        "Excluded from catalog. Upload metadata and stored artwork were preserved.",
         () => {
           if (filter === "pending_staff_review") {
             removeRowLocally(uploadId);
@@ -435,37 +436,11 @@ export function useCustomerUploadIntake(options?: {
         },
         "Technical processing retry succeeded.",
       ),
-    deleteEligible: (uploadId: string) =>
-      runMutation(
-        uploadId,
-        "delete",
-        async () => {
-          const preview = await customerUploadDeletionService.preview(uploadId);
-          if (preview.outcome === "blocked") {
-            throw new Error(preview.blockers[0]?.message ?? "This upload cannot be deleted.");
-          }
-          if (preview.outcome === "already_done") {
-            return;
-          }
-          const phrase = window.prompt(
-            `Type ${customerUploadDeletionService.confirmationPhrase} to permanently delete this unused upload.`,
-          );
-          if (phrase?.trim() !== customerUploadDeletionService.confirmationPhrase) {
-            throw new Error("Deletion cancelled.");
-          }
-          const result = await customerUploadDeletionService.deleteEligible(
-            uploadId,
-            customerUploadDeletionService.confirmationPhrase,
-          );
-          if (result.outcome === "blocked") {
-            throw new Error(result.blockers?.[0]?.message ?? result.message);
-          }
-        },
-        "Unused customer upload deleted.",
-        () => {
-          removeRowLocally(uploadId);
-        },
-      ),
+    deleteCompleted: (uploadId: string, message: string) => {
+      setError(null);
+      setNotice(message || "Unused customer upload deleted.");
+      removeRowLocally(uploadId);
+    },
     setHalftoneDecision: async (uploadId: string, value: boolean) => {
       setError(null);
       try {

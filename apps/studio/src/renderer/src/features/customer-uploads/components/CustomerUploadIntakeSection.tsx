@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { resolveIntakeHalftoneStaffToggle } from "@fresh-prints/shared/utils/halftoneReviewState";
@@ -12,6 +12,8 @@ import { DesignPreviewLightbox } from "../../designs/components/DesignPreviewLig
 import { getPrintRequestsPath } from "../../print-requests/constants/printRequestRoutes";
 import type { useCustomerUploadIntake } from "../hooks/useCustomerUploadIntake";
 import type { CustomerUploadIntakeRow } from "../services/customerUploadIntakeService";
+import { CustomerUploadDeletionDialog } from "./CustomerUploadDeletionDialog";
+import { CustomerUploadExclusionDialog } from "./CustomerUploadExclusionDialog";
 
 type IntakeApi = ReturnType<typeof useCustomerUploadIntake>;
 
@@ -82,6 +84,9 @@ function IntakeDetail({
   const navigate = useNavigate();
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isExcludeOpen, setIsExcludeOpen] = useState(false);
+  const deleteTriggerRef = useRef<HTMLButtonElement | null>(null);
   const pendingAction = intake.pendingByUploadId[row.id] ?? null;
   const busy = Boolean(pendingAction);
   const fromAssisted = Boolean(row.assistedCreationRequestId);
@@ -212,15 +217,7 @@ function IntakeDetail({
           <Button
             disabled={busy}
             onClick={() => {
-              if (
-                window.confirm(
-                  isDonation
-                    ? "Exclude this donation from the catalog? Full-size files will be deleted now. A thumbnail is kept for staff history; it will not be listed or reusable."
-                    : "Exclude this upload from the catalog? Artwork stays on the print request and production files are kept.",
-                )
-              ) {
-                void intake.exclude(row.id);
-              }
+              setIsExcludeOpen(true);
             }}
             size="sm"
             variant="danger"
@@ -263,17 +260,45 @@ function IntakeDetail({
             items={[
               {
                 id: "delete-upload",
-                label: pendingAction === "delete" ? "Deleting…" : "Delete unused upload…",
+                label: "Delete Upload",
                 disabled: busy || pendingAction === "delete",
                 onSelect: () => {
-                  void intake.deleteEligible(row.id);
+                  setIsDeleteOpen(true);
                 },
               },
             ]}
             placement="bottom"
+            triggerRef={deleteTriggerRef}
           />
         ) : null}
       </div>
+
+      <CustomerUploadExclusionDialog
+        isOpen={isExcludeOpen}
+        onCancel={() => setIsExcludeOpen(false)}
+        onConfirm={async () => {
+          const succeeded = await intake.exclude(row.id);
+          if (succeeded) {
+            setIsExcludeOpen(false);
+          }
+          return succeeded;
+        }}
+        title={row.originalFilename}
+      />
+
+      <CustomerUploadDeletionDialog
+        isOpen={isDeleteOpen}
+        onCancel={() => {
+          setIsDeleteOpen(false);
+          deleteTriggerRef.current?.focus();
+        }}
+        onCompleted={(message) => {
+          setIsDeleteOpen(false);
+          intake.deleteCompleted(row.id, message);
+        }}
+        title={row.originalFilename}
+        uploadId={row.id}
+      />
 
       {detailsOpen ? (
         <div

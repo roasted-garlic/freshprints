@@ -1,5 +1,13 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-08-01 - Donation exclusion/Delete Upload Amendment 2 implemented
+
+- `window.prompt` caused Electron's unsupported warning; exclusion also used native `window.confirm`. Both are replaced with Fresh Prints in-app modals.
+- Overflow label is exactly **Delete Upload**. Trusted preview/delete eligibility remains request-item reference + promoted-design linkage; execution rechecks, then deletes only four upload asset paths and the upload document.
+- Active owner/admin may preview/delete at UI and callable boundaries. Helpers may exclude but cannot see or invoke delete; nonstaff/inactive callers are denied.
+- Exclusion now updates catalog-review status only and preserves metadata, source/production/preview/thumbnail assets, request relationships, and technical state. No migration of historically purged donations.
+- Focused 43/43, Studio TypeScript/build/package, Functions build, lint, whitespace PASS. Manual development role QA pending; Functions not deployed. Production PR/installer, Stage 2, and domain remain blocked.
+
 ## 2026-08-01 - Donated Designs overflow-menu Amendment 1 implemented
 
 - Owner confirmed the menu opened but requested normal placement below the trigger; prior owner QA remains unsigned.

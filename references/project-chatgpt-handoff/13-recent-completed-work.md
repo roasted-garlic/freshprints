@@ -1117,3 +1117,10 @@ See `CURRENT-STATE.md` for live status.
 - Implemented body-portaled, fixed trigger positioning with measured upward collision fallback and viewport clamping; retained panel clipping and all action/accessibility/data boundaries.
 - Focused 19/19, Studio TypeScript/build/package, lint, whitespace PASS. Amendment Review `approved_with_changes`; Implementation Review `approved_with_note`; amended owner QA pending.
 - No Whatnot, production, deployment, installer, Stage 2, or domain action.
+# 2026-08-01 — Donation exclude/Delete Upload Amendment 2 source complete
+
+- Replaced unsupported `window.prompt` delete and native exclusion confirm with in-app modals; exact label **Delete Upload**.
+- Owner/admin delete capability enforced in Studio and both trusted callables; helper keeps exclusion and is denied deletion.
+- Safe blockers preserved (any print-request item; promoted design); deletion allowlists four asset paths. Exclusion is now reversible metadata-only catalog state and performs no Storage cleanup.
+- Focused 43/43, Studio/Functions builds, Studio package, lint, whitespace PASS. Manual development QA pending. Functions source changed but no deployment occurred.
+- Production diff/PR/merge/combined installer not started; Whatnot QA remains separate; no production/Stage 2/domain action.
