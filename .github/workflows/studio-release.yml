@@ -16,6 +16,14 @@ on:
           - prerelease
           - stable
         default: prerelease
+      distribution_mode:
+        description: "Stable distribution mode (ignored for prerelease, which always builds unsigned): 'signed' requires Windows signing credentials and is intended for any public/external distribution; 'internal-unsigned' is an explicit, owner-approved exception for internal-only staff installs and produces an unsigned executable"
+        required: true
+        type: choice
+        options:
+          - signed
+          - internal-unsigned
+        default: signed
 
 permissions:
   contents: write
@@ -158,10 +166,13 @@ jobs:
           WINDOWS_CSC_LINK_SECRET: ${{ secrets.WINDOWS_CSC_LINK }}
           WINDOWS_CSC_KEY_PASSWORD_SECRET: ${{ secrets.WINDOWS_CSC_KEY_PASSWORD }}
           RELEASE_TYPE: ${{ inputs.release_type }}
+          DISTRIBUTION_MODE: ${{ inputs.distribution_mode }}
         run: |
           $hasLink = -not [string]::IsNullOrWhiteSpace($env:WINDOWS_CSC_LINK_SECRET)
           $hasPassword = -not [string]::IsNullOrWhiteSpace($env:WINDOWS_CSC_KEY_PASSWORD_SECRET)
 
+          # A half-configured secret pair is always an error, in every release type and
+          # distribution mode — never silently treated as "no signing configured".
           if ($hasLink -xor $hasPassword) {
             Write-Error "Windows signing configuration is incomplete: both WINDOWS_CSC_LINK and WINDOWS_CSC_KEY_PASSWORD secrets must be set together, or neither."
             exit 1
@@ -176,12 +187,22 @@ jobs:
             exit 0
           }
 
-          if ($env:RELEASE_TYPE -eq "stable") {
-            Write-Error "Stable Studio releases require Windows signing credentials (WINDOWS_CSC_LINK + WINDOWS_CSC_KEY_PASSWORD secrets), or a separately reviewed exception."
-            exit 1
+          if ($env:RELEASE_TYPE -ne "stable") {
+            Write-Host "No Windows signing credentials configured; building unsigned prerelease."
+            exit 0
           }
 
-          Write-Host "No Windows signing credentials configured; building unsigned prerelease."
+          # Stable, no signing secrets configured — distribution_mode decides the outcome.
+          # 'signed' (the default) always fails closed here, same as before this change existed.
+          # 'internal-unsigned' is an explicit, owner-approved exception for internal-only staff
+          # distribution — never the default, never silent, and never available to prerelease.
+          if ($env:DISTRIBUTION_MODE -eq "internal-unsigned") {
+            Write-Warning "INTERNAL-UNSIGNED STABLE BUILD: this installer is NOT code-signed and is approved only for internal, owner-controlled staff distribution. It is NOT suitable for public release and will trigger Windows SmartScreen warnings on install. Do not share this build outside the approved internal GitHub Release."
+            exit 0
+          }
+
+          Write-Error "Stable Studio releases require Windows signing credentials (WINDOWS_CSC_LINK + WINDOWS_CSC_KEY_PASSWORD secrets), or explicit selection of distribution_mode: internal-unsigned for an owner-approved internal-only exception."
+          exit 1
 
       - name: Build Studio (Windows NSIS + updater metadata)
         working-directory: apps/studio
