@@ -1,5 +1,38 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-08-02 - Studio automatic updates: final Signoff PASS; production convergence audit complete
+
+- **Live-proven end to end across 4 consecutive real update cycles** (beta.2→beta.3→beta.4→beta.5)
+  on a real installed application, not just static bundle inspection. Two real defects were found
+  and fixed during the live proof chain: (1) the NSIS installer wizard appeared during automatic
+  updates because `quitAndInstall(false, true)` ran the installer non-silently — fixed to
+  `quitAndInstall(true, true)`, live-confirmed silent on the next two cycles; (2) GitHub's raw
+  release-note HTML rendered unsanitized in an unbounded `<pre>` — fixed with a new dependency-free
+  `normalizeStudioReleaseNotes()` converter (strips script/style, converts structure to plain-text
+  line breaks, extracts anchor text, decodes entities, caps at 2000 chars) rendered in a bounded
+  scrollable container, live-confirmed on the beta.4→beta.5 cycle with a release body containing
+  headings, bold text, lists, a link, and a long unbroken string.
+- Final Signoff: `docs/workflow/reviews/2026-08-02-studio-automatic-updates-final-signoff.md` —
+  **PASS, ready for production promotion subject to production release gates.** Does not claim
+  stable `1.0.0` is built, signed, or published.
+- **Production convergence audit:** `docs/workflow/reviews/2026-08-02-production-convergence-audit.md`.
+  Confirmed `origin/production` (`9726edb`) is a strict ancestor of `origin/development` (`0c8498c`)
+  — 44 commits/63 files ahead, 0 behind, clean history, direct PR appropriate. Categorized the full
+  diff: Studio automatic-updates implementation + CI release workflow + Settings single-row-tabs
+  fix + associated docs only — **zero** Firestore Rules/indexes/Functions/Portal code in this
+  specific diff (reporting was already promoted to `production` source in an earlier phase of this
+  session, `9726edb`, but confirmed **not yet deployed** to `fresh-prints-prod` — flagged as an
+  outstanding Phase D item). No unexpected or unrelated files found.
+- **Windows signing:** the CI workflow fails closed for `release_type: stable` without both
+  `WINDOWS_CSC_LINK`/`WINDOWS_CSC_KEY_PASSWORD` secrets — confirmed at the source level, not
+  weakened. Whether these secrets (or `PROD_FIREBASE_*`, 6 secrets) are actually populated in
+  GitHub is owner-only information this environment cannot check.
+- **Prepared a 10-phase (A–J) human-gated production sequence** (Signoff/audit → PR → merge →
+  scoped Rules/indexes/Functions deploy → Portal rollout → signed stable build → publish → owner
+  QA → Stage 2 smoke → domain cutover), each stopping at its own checkpoint. Phase A (this pass) is
+  complete. **Stopped before opening the production PR — pending explicit owner approval.**
+- No production action of any kind occurred in this pass.
+
 ## 2026-08-02 - development branch merged forward to match production (`9726edb`)
 
 Resolved a real divergence discovered while preparing to land the Studio automatic-updates
