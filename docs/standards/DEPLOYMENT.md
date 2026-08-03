@@ -962,16 +962,49 @@ First updater-enabled version: `1.0.0` (stable). Prerelease test versions use va
 prerelease tags, e.g. `1.0.0-beta.1`, `1.0.0-beta.2`. `apps/studio/package.json`'s `version` field
 is the source of truth — update it before each build/publish.
 
-### Code signing
+### Code signing and distribution mode (2026-08-03 — owner-approved internal-unsigned policy)
 
-Not yet configured (`WINDOWS_CSC_LINK` / `WINDOWS_CSC_KEY_PASSWORD` GitHub encrypted secrets are
-referenced by the workflow but not currently set). electron-builder silently skips signing when
-these are absent — this is intentional so prerelease/test builds are never blocked by a missing
-certificate. **A stable `1.0.0` release must not be published to the public "Latest" slot without
-either (a) a real Authenticode certificate configured via those secrets, or (b) an explicit,
-separately recorded owner decision to accept Windows SmartScreen "unrecognized publisher"
-friction for the initial release.** Never commit signing material to the repository; CI encrypted
-secrets only.
+**Fresh Prints Studio is currently an internal-only staff tool**, installed only on
+owner-controlled computers. The owner has explicitly decided not to purchase a publicly trusted
+Windows Authenticode code-signing certificate for this release. This is documented as a durable
+policy, not a one-off exception buried in a workflow run.
+
+The Studio release workflow (`.github/workflows/studio-release.yml`) exposes a `distribution_mode`
+`workflow_dispatch` input with two values:
+
+- **`signed`** (the default) — requires both `WINDOWS_CSC_LINK` and `WINDOWS_CSC_KEY_PASSWORD`
+  GitHub encrypted secrets; fails closed (before packaging) for any `release_type: stable` run if
+  either is missing. This remains the only path intended for any future public/external Studio
+  distribution.
+- **`internal-unsigned`** — an explicit, deliberately-selected exception. Only applies to
+  `release_type: stable`; **never** the default; ignored entirely for `release_type: prerelease`
+  (prerelease has always built unsigned regardless of this input, unchanged). When selected with no
+  signing secrets configured, the workflow proceeds without signing but prints a prominent
+  `Write-Warning` stating the build is unsigned, internal-only, and will trigger Windows SmartScreen
+  warnings. A partially-configured secret pair (only one of the two present) still fails closed in
+  either mode — having a certificate available is never silently discarded.
+
+**No certificate is required for internal-only distribution under this policy.** If a certificate
+is later obtained for a public release, `signed` (the default) already works with no further
+workflow change — just populate the two secrets and select `signed` (or omit `distribution_mode`
+input reasoning entirely, since `signed` is the default).
+
+**Prominent staff-facing guidance:**
+- **Unsigned installers will show a Windows SmartScreen "Windows protected your PC" warning** on
+  first run — this is expected for an unsigned internal build, not a sign of a corrupted or
+  malicious file.
+- **Staff must obtain the Studio installer only from the approved private GitHub Releases page**
+  on this repository (`https://github.com/roasted-garlic/freshprints/releases`) — never from any
+  other source.
+- Before clicking "More info" → "Run anyway" on the SmartScreen prompt, staff should confirm they
+  downloaded the installer from that exact GitHub Releases page and that the release was created
+  by an authorized workflow run (visible in the repository's Actions history).
+- **A future public-facing Studio release must return to the `signed` distribution mode** — do not
+  treat `internal-unsigned` as a permanent replacement for signing; it exists specifically because
+  today's distribution is internal-only.
+
+Never commit signing material (certificates, passwords, base64 PFX data) to the repository — CI
+encrypted secrets only, for the `signed` path.
 
 ### Update behavior (user-gated, never silent)
 
