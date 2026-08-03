@@ -66,13 +66,6 @@ jobs:
       - name: Install Functions dependencies
         run: npm ci --prefix functions
 
-      - name: Run tests
-        run: |
-          npm run lint
-          npm --prefix functions run build
-          npm run typecheck --workspace @fresh-prints/portal
-          npx tsx --test packages/shared/src/studioUpdate/studioUpdateStateTransitions.test.ts packages/shared/src/studioUpdate/studioUpdateErrorMapping.test.ts apps/studio/electron/ipc/studioUpdate/studioUpdateChannel.test.ts apps/studio/electron/ipc/studioUpdate/studioUpdateIpcChannels.test.ts apps/studio/scripts/generate-packaged-build-config.test.ts
-
       - name: Set Studio release channel env
         shell: bash
         run: |
@@ -81,6 +74,22 @@ jobs:
           else
             echo "FRESH_PRINTS_UPDATE_CHANNEL=prerelease" >> "$GITHUB_ENV"
           fi
+
+      # apps/studio/electron/generated/packagedBuildConfig.ts is gitignored and produced only by
+      # this script. studioUpdateChannel.ts (and its test) import it directly, so it must exist
+      # before the updater tests below run on a clean checkout — this step must stay between
+      # "Set Studio release channel env" (which provides FRESH_PRINTS_UPDATE_CHANNEL) and
+      # "Run tests" (which imports the generated file transitively).
+      - name: Generate Studio packaged build config
+        working-directory: apps/studio
+        run: node scripts/generate-packaged-build-config.mjs
+
+      - name: Run tests
+        run: |
+          npm run lint
+          npm --prefix functions run build
+          npm run typecheck --workspace @fresh-prints/portal
+          npx tsx --test packages/shared/src/studioUpdate/studioUpdateStateTransitions.test.ts packages/shared/src/studioUpdate/studioUpdateErrorMapping.test.ts apps/studio/electron/ipc/studioUpdate/studioUpdateChannel.test.ts apps/studio/electron/ipc/studioUpdate/studioUpdateIpcChannels.test.ts apps/studio/scripts/generate-packaged-build-config.test.ts
 
       - name: Configure Studio Firebase environment
         shell: pwsh
