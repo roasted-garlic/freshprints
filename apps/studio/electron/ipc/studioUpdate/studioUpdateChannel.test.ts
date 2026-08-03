@@ -3,44 +3,20 @@ import test from "node:test";
 
 import { resolveStudioUpdateChannel } from "./studioUpdateChannel";
 
-test("defaults to stable when the env var is unset", () => {
-  const original = process.env.FRESH_PRINTS_UPDATE_CHANNEL;
-  delete process.env.FRESH_PRINTS_UPDATE_CHANNEL;
-  try {
-    assert.equal(resolveStudioUpdateChannel(), "stable");
-  } finally {
-    if (original === undefined) {
-      delete process.env.FRESH_PRINTS_UPDATE_CHANNEL;
-    } else {
-      process.env.FRESH_PRINTS_UPDATE_CHANNEL = original;
-    }
-  }
+// The channel is now a compiled-in constant (apps/studio/electron/generated/packagedBuildConfig.ts,
+// produced by apps/studio/scripts/generate-packaged-build-config.mjs), not a runtime environment
+// variable — this repo's dev/test default is always "stable" (see the generator script's fallback),
+// which is exactly the safe behavior we want to prove: an unconfigured or default build never
+// reports itself as a prerelease build.
+test("resolves to a valid channel value", () => {
+  const channel = resolveStudioUpdateChannel();
+  assert.ok(channel === "stable" || channel === "prerelease");
 });
 
-test("defaults to stable for any unrecognized value", () => {
-  const original = process.env.FRESH_PRINTS_UPDATE_CHANNEL;
-  process.env.FRESH_PRINTS_UPDATE_CHANNEL = "not-a-real-channel";
-  try {
-    assert.equal(resolveStudioUpdateChannel(), "stable");
-  } finally {
-    if (original === undefined) {
-      delete process.env.FRESH_PRINTS_UPDATE_CHANNEL;
-    } else {
-      process.env.FRESH_PRINTS_UPDATE_CHANNEL = original;
-    }
-  }
-});
-
-test("selects prerelease only on the exact opt-in value", () => {
-  const original = process.env.FRESH_PRINTS_UPDATE_CHANNEL;
-  process.env.FRESH_PRINTS_UPDATE_CHANNEL = "prerelease";
-  try {
-    assert.equal(resolveStudioUpdateChannel(), "prerelease");
-  } finally {
-    if (original === undefined) {
-      delete process.env.FRESH_PRINTS_UPDATE_CHANNEL;
-    } else {
-      process.env.FRESH_PRINTS_UPDATE_CHANNEL = original;
-    }
-  }
+test("dev-default generated config resolves to stable", () => {
+  // apps/studio/scripts/generate-packaged-build-config.mjs's own default (no
+  // FRESH_PRINTS_UPDATE_CHANNEL set) is "stable" — this is what a local `npm run dev`/`npm test`
+  // environment actually has on disk, and is asserted directly rather than re-implementing the
+  // generator's logic here.
+  assert.equal(resolveStudioUpdateChannel(), "stable");
 });
