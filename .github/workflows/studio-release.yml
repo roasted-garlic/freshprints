@@ -81,15 +81,47 @@ jobs:
             echo "FRESH_PRINTS_UPDATE_CHANNEL=prerelease" >> "$GITHUB_ENV"
           fi
 
+      - name: Configure optional Windows signing
+        shell: pwsh
+        env:
+          WINDOWS_CSC_LINK_SECRET: ${{ secrets.WINDOWS_CSC_LINK }}
+          WINDOWS_CSC_KEY_PASSWORD_SECRET: ${{ secrets.WINDOWS_CSC_KEY_PASSWORD }}
+          RELEASE_TYPE: ${{ inputs.release_type }}
+        run: |
+          $hasLink = -not [string]::IsNullOrWhiteSpace($env:WINDOWS_CSC_LINK_SECRET)
+          $hasPassword = -not [string]::IsNullOrWhiteSpace($env:WINDOWS_CSC_KEY_PASSWORD_SECRET)
+
+          if ($hasLink -xor $hasPassword) {
+            Write-Error "Windows signing configuration is incomplete: both WINDOWS_CSC_LINK and WINDOWS_CSC_KEY_PASSWORD secrets must be set together, or neither."
+            exit 1
+          }
+
+          if ($hasLink -and $hasPassword) {
+            "WIN_CSC_LINK=$($env:WINDOWS_CSC_LINK_SECRET)" |
+              Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+            "WIN_CSC_KEY_PASSWORD=$($env:WINDOWS_CSC_KEY_PASSWORD_SECRET)" |
+              Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+            Write-Host "Windows signing credentials configured."
+            exit 0
+          }
+
+          if ($env:RELEASE_TYPE -eq "stable") {
+            Write-Error "Stable Studio releases require Windows signing credentials (WINDOWS_CSC_LINK + WINDOWS_CSC_KEY_PASSWORD secrets), or a separately reviewed exception."
+            exit 1
+          }
+
+          Write-Host "No Windows signing credentials configured; building unsigned prerelease."
+
       - name: Build Studio (Windows NSIS + updater metadata)
         working-directory: apps/studio
         env:
-          # Present only if configured as repo/organization secrets. electron-builder no-ops
-          # signing when these are absent — this workflow must never fail solely because signing
-          # secrets are not yet configured; unsigned prerelease/test builds are explicitly allowed.
-          CSC_LINK: ${{ secrets.WINDOWS_CSC_LINK }}
-          CSC_KEY_PASSWORD: ${{ secrets.WINDOWS_CSC_KEY_PASSWORD }}
-          # electron-builder's own publish step (not `gh`) uses this to upload release assets.
+          # WIN_CSC_LINK / WIN_CSC_KEY_PASSWORD are set above via $GITHUB_ENV only when both
+          # signing secrets are genuinely present — never defined as empty strings here. An empty
+          # CSC_LINK/WIN_CSC_LINK causes electron-builder to try to resolve it as a certificate
+          # file path and fail ("not a file"), so these must be entirely absent for unsigned
+          # prerelease builds, not merely blank.
+          #
+          # electron-builder's own publish step (not `gh`) uses GH_TOKEN to upload release assets.
           # Never printed or logged; scoped to this job's environment only.
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
