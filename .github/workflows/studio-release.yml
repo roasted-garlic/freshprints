@@ -81,6 +81,67 @@ jobs:
             echo "FRESH_PRINTS_UPDATE_CHANNEL=prerelease" >> "$GITHUB_ENV"
           fi
 
+      - name: Configure Studio Firebase environment
+        shell: pwsh
+        working-directory: apps/studio
+        env:
+          RELEASE_TYPE: ${{ inputs.release_type }}
+          DEV_FIREBASE_API_KEY: ${{ secrets.DEV_FIREBASE_API_KEY }}
+          DEV_FIREBASE_AUTH_DOMAIN: ${{ secrets.DEV_FIREBASE_AUTH_DOMAIN }}
+          DEV_FIREBASE_PROJECT_ID: ${{ secrets.DEV_FIREBASE_PROJECT_ID }}
+          DEV_FIREBASE_STORAGE_BUCKET: ${{ secrets.DEV_FIREBASE_STORAGE_BUCKET }}
+          DEV_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.DEV_FIREBASE_MESSAGING_SENDER_ID }}
+          DEV_FIREBASE_APP_ID: ${{ secrets.DEV_FIREBASE_APP_ID }}
+          PROD_FIREBASE_API_KEY: ${{ secrets.PROD_FIREBASE_API_KEY }}
+          PROD_FIREBASE_AUTH_DOMAIN: ${{ secrets.PROD_FIREBASE_AUTH_DOMAIN }}
+          PROD_FIREBASE_PROJECT_ID: ${{ secrets.PROD_FIREBASE_PROJECT_ID }}
+          PROD_FIREBASE_STORAGE_BUCKET: ${{ secrets.PROD_FIREBASE_STORAGE_BUCKET }}
+          PROD_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.PROD_FIREBASE_MESSAGING_SENDER_ID }}
+          PROD_FIREBASE_APP_ID: ${{ secrets.PROD_FIREBASE_APP_ID }}
+        run: |
+          # Studio reads its Firebase project from apps/studio/.env.local (Vite env file,
+          # gitignored) at build time — see src/renderer/src/config/env.ts's
+          # validateFirebaseEnv(). A fresh GitHub Actions checkout never has this file, and
+          # without it Vite still builds "successfully" but bakes in empty config, which throws
+          # at Studio's actual runtime launch rather than failing the build. This step writes the
+          # correct project's config explicitly rather than letting the build silently proceed
+          # with nothing.
+          if ($env:RELEASE_TYPE -eq "stable") {
+            $apiKey = $env:PROD_FIREBASE_API_KEY
+            $authDomain = $env:PROD_FIREBASE_AUTH_DOMAIN
+            $projectId = $env:PROD_FIREBASE_PROJECT_ID
+            $storageBucket = $env:PROD_FIREBASE_STORAGE_BUCKET
+            $senderId = $env:PROD_FIREBASE_MESSAGING_SENDER_ID
+            $appId = $env:PROD_FIREBASE_APP_ID
+            $missingLabel = "PROD_FIREBASE_*"
+          } else {
+            $apiKey = $env:DEV_FIREBASE_API_KEY
+            $authDomain = $env:DEV_FIREBASE_AUTH_DOMAIN
+            $projectId = $env:DEV_FIREBASE_PROJECT_ID
+            $storageBucket = $env:DEV_FIREBASE_STORAGE_BUCKET
+            $senderId = $env:DEV_FIREBASE_MESSAGING_SENDER_ID
+            $appId = $env:DEV_FIREBASE_APP_ID
+            $missingLabel = "DEV_FIREBASE_*"
+          }
+
+          $values = @($apiKey, $authDomain, $projectId, $storageBucket, $senderId, $appId)
+          $missingCount = ($values | Where-Object { [string]::IsNullOrWhiteSpace($_) }).Count
+          if ($missingCount -gt 0) {
+            Write-Error "Missing one or more $missingLabel repository secrets. Refusing to build Studio with an incomplete or empty Firebase configuration."
+            exit 1
+          }
+
+          @"
+          VITE_FIREBASE_API_KEY=$apiKey
+          VITE_FIREBASE_AUTH_DOMAIN=$authDomain
+          VITE_FIREBASE_PROJECT_ID=$projectId
+          VITE_FIREBASE_STORAGE_BUCKET=$storageBucket
+          VITE_FIREBASE_MESSAGING_SENDER_ID=$senderId
+          VITE_FIREBASE_APP_ID=$appId
+          "@ | Set-Content -Path ".env.local" -Encoding utf8
+
+          Write-Host "Studio Firebase environment configured for project: $projectId"
+
       - name: Configure optional Windows signing
         shell: pwsh
         env:
