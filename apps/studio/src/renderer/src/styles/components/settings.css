@@ -67,6 +67,29 @@
   margin: 0;
 }
 
+.settings-release-notes {
+  display: grid;
+  gap: var(--space-1);
+  max-width: 100%;
+  min-width: 0;
+}
+
+.settings-release-notes-label {
+  margin: 0;
+}
+
+.settings-release-notes-body {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  margin: 0;
+  max-height: 12rem;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  overflow-y: auto;
+  padding-right: var(--space-2);
+  white-space: pre-wrap;
+}
+
 .settings-form-grid {
   display: grid;
   gap: var(--space-3);
