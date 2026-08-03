@@ -1,13 +1,13 @@
 {
   "name": "@fresh-prints/studio",
   "private": true,
-  "version": "1.0.0-beta.1",
+  "version": "1.0.0-beta.2",
   "description": "Fresh Prints Studio (Electron + Vite)",
   "author": "Fresh Prints",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build && electron-builder",
+    "dev": "node scripts/generate-packaged-build-config.mjs && vite",
+    "build": "node scripts/generate-packaged-build-config.mjs && tsc && vite build && electron-builder",
     "preview": "vite preview"
   },
   "main": "dist-electron/main.js",

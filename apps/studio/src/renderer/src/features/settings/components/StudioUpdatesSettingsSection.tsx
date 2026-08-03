@@ -54,9 +54,15 @@ export function StudioUpdatesSettingsSection() {
         ) : null}
 
         {state.status === "error" ? (
+          // state.errorMessage is always a short, fixed, pre-written string produced by
+          // toSafeStudioUpdateError (packages/shared/src/studioUpdate/studioUpdateErrorMapping.ts)
+          // in the main process — never derived from a raw error's message text, which can carry
+          // HTTP response bodies, headers, or cookies. Rendered in a plain wrapping <p>, never a
+          // <pre> or any container sized to fit arbitrary diagnostic payloads. The "Check for
+          // updates" button below doubles as this state's retry action.
           <p className="auth-message auth-message-error" role="alert">
-            {state.errorMessage ?? "Unable to check for updates right now."} Studio will keep
-            working normally.
+            {state.errorMessage ?? "The update service is temporarily unavailable."} Studio
+            remains fully usable.
           </p>
         ) : null}
 

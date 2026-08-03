@@ -12,6 +12,7 @@ dist
 dist-ssr
 dist-electron/
 release/
+apps/studio/electron/generated/
 functions/lib
 .turbo
 functions/node_modules

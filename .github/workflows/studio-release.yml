@@ -71,6 +71,7 @@ jobs:
           npm run lint
           npm --prefix functions run build
           npm run typecheck --workspace @fresh-prints/portal
+          npx tsx --test packages/shared/src/studioUpdate/studioUpdateStateTransitions.test.ts packages/shared/src/studioUpdate/studioUpdateErrorMapping.test.ts apps/studio/electron/ipc/studioUpdate/studioUpdateChannel.test.ts apps/studio/electron/ipc/studioUpdate/studioUpdateIpcChannels.test.ts apps/studio/scripts/generate-packaged-build-config.test.ts
 
       - name: Set Studio release channel env
         shell: bash
