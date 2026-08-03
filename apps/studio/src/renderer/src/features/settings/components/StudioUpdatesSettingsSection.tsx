@@ -76,7 +76,16 @@ export function StudioUpdatesSettingsSection() {
               <p className="settings-field-hint">{state.availableRelease.releaseName}</p>
             ) : null}
             {state.availableRelease.releaseNotes ? (
-              <pre className="settings-field-hint">{state.availableRelease.releaseNotes}</pre>
+              <div className="settings-release-notes">
+                <p className="settings-field-label settings-release-notes-label">What's new</p>
+                {/*
+                  state.availableRelease.releaseNotes is always safe, bounded plain text produced
+                  by normalizeStudioReleaseNotes (packages/shared/src/studioUpdate/
+                  studioUpdateReleaseNotes.ts) in the main process — never raw HTML. Rendered as
+                  plain text with CSS-driven wrapping (white-space: pre-wrap), not dangerouslySetInnerHTML.
+                */}
+                <p className="settings-release-notes-body">{state.availableRelease.releaseNotes}</p>
+              </div>
             ) : null}
           </div>
         ) : null}

@@ -14,6 +14,12 @@ export type StudioUpdateStatus =
 export interface StudioUpdateReleaseInfo {
   version: string;
   releaseName: string | null;
+  /**
+   * Safe, bounded plain text only (max 2000 chars, truncated with a trailing ellipsis) — normalized
+   * from GitHub's rendered release-note HTML by `normalizeStudioReleaseNotes`
+   * (packages/shared/src/studioUpdate/studioUpdateReleaseNotes.ts) in the main process before this
+   * value ever crosses IPC. Never contains HTML markup.
+   */
   releaseNotes: string | null;
   releaseDate: string | null;
 }

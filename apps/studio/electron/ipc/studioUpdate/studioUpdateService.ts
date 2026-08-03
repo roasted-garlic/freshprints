@@ -17,6 +17,7 @@ import {
   canStartDownload,
 } from "@fresh-prints/shared/studioUpdate/studioUpdateStateTransitions";
 import { toSafeStudioUpdateError } from "@fresh-prints/shared/studioUpdate/studioUpdateErrorMapping";
+import { normalizeStudioReleaseNotes } from "@fresh-prints/shared/studioUpdate/studioUpdateReleaseNotes";
 import { resolveStudioUpdateChannel } from "./studioUpdateChannel";
 import { STUDIO_UPDATE_STATE_CHANGED } from "./studioUpdateIpcChannels";
 
@@ -105,7 +106,11 @@ async function getAutoUpdater(): Promise<AutoUpdaterLike | null> {
       applyUpdateAvailable(state, {
         version: info.version,
         releaseName: typeof info.releaseName === "string" ? info.releaseName : null,
-        releaseNotes: typeof info.releaseNotes === "string" ? info.releaseNotes : null,
+        // GitHub renders release notes as HTML; electron-updater's UpdateInfo.releaseNotes is
+        // `string | Array<{ version, note }> | null`. Normalized to safe plain text here, in the
+        // trusted main process, before it ever enters renderer-visible state — the original HTML
+        // is never sent across IPC or stored anywhere.
+        releaseNotes: normalizeStudioReleaseNotes(info.releaseNotes),
         releaseDate: typeof info.releaseDate === "string" ? info.releaseDate : null,
       }),
     );
@@ -217,9 +222,14 @@ export function restartAndInstallStudioUpdate(): { willRestart: boolean } {
     return { willRestart: false };
   }
 
-  // isSilent=false shows the OS installer UI; isForceRunAfter=true relaunches Studio post-install.
-  // This only ever runs from an explicit renderer "Restart to Update" click — never automatically.
-  autoUpdater.quitAndInstall(false, true);
+  // isSilent=true runs the NSIS installer without showing its wizard UI; isForceRunAfter=true
+  // relaunches Studio after the silent install completes. This only ever runs from an explicit
+  // renderer "Restart to Update" click — never automatically, and never before update-downloaded
+  // has fired (canRestartAndInstall/hasPendingDownloadedUpdate above gate that). Silent install
+  // applies only to this automatic-update path; the manually downloaded first-time installer is
+  // launched by the user directly (not through this code) and keeps its normal oneClick:false
+  // assisted wizard — see apps/studio/electron-builder.json5, unchanged by this.
+  autoUpdater.quitAndInstall(true, true);
   return { willRestart: true };
 }
 
