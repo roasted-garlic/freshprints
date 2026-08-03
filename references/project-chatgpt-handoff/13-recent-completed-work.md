@@ -2,7 +2,19 @@
 
 ## 2026-08-01 - Final Studio remediation development QA passed
 
-Owner confirmed PASS for Whatnot matched-show updates and Customer Upload exclusion/restore/delete parity. A clean production branch was created from `11960852` because development contained unrelated rollout documentation; no development history was rewritten.
+Owner confirmed PASS for Whatnot matched-show updates and Customer Upload exclusion/restore/delete parity. A clean production branch was created from `11960852` because development contained unrelated rollout documentation; no development history was rewritten. (Superseded blocker: production diff audit was initially stopped because development also contained earlier Portal/dual-limit documentation commits outside the narrow PR scope — resolved via the clean branch above, and development itself was brought current with production via merge on 2026-08-02.)
+
+## 2026-08-01 - Customer upload exclusion/deletion Functions deployed to development
+
+Deployed the exact three reviewed Functions to `fresh-prints-dev` from `1873b10d`; all are ACTIVE on common source hash `039c420950489a41150ee4fbee0e2ded2790c3ca`. No unrelated Firebase component or production resource changed. Fresh-fixture owner QA remains pending.
+
+## 2026-08-01 - Customer Upload intake parity Amendment 4 implemented
+
+Added the shared visible `Restore to Pending` confirmation workflow to both Donated Designs and Customer Uploads while preserving purpose/status eligibility, role boundaries, deletion behavior, and stale-state cleanup. Automated verification passed; authenticated development QA remains pending.
+
+## 2026-08-01 - Donated Designs exclusion/deletion Amendment 3 implemented
+
+Implemented the final reversible exclusion/restore and complete safe-delete contract on `development`: authoritative schema-aligned asset ownership validation, fail-closed future-field handling, partial-cleanup retry safety, upload-specific batch metadata cleanup, and focused authorization/restoration/deletion tests. Automated verification passed; manual development QA and every production action remain pending.
 
 > Signed-off or largely complete work. External agents should not re-plan or duplicate this.
 
@@ -1072,3 +1084,59 @@ See `CURRENT-STATE.md` for live status.
 
 
 
+# 2026-08-01 — Production customer show-schedule visibility
+
+- Owner QA tests 1–9: **PASS** on App Hosting build `build-2026-08-01-001` / revision `fresh-prints-portal-build-2026-08-01-001`.
+- Cards, tabs, lifecycle details, refresh/navigation, queue refresh, multi-show, privacy, and limit-callout sanity passed.
+- Slice signoff approved; dual-limit Studio Settings and production settings save remain separate checkpoints.
+
+# 2026-08-01 — Production Studio dual-limit Settings installer
+
+- Exact production source `11960852f45f948e37a1a5aeb3b09699882cd1fd`; focused tests 38/38 and Studio production package passed.
+- Verified production Firebase config, dual-limit UI, official branding/icons, and production exclusion gates for Test Data Reset / Catalog Storage Inventory.
+- Installer ready at `apps/studio/release/0.0.0/Fresh Prints-Windows-0.0.0-Setup-dual-limit-settings.exe`; owner QA pending; no settings change.
+
+# 2026-08-01 — Production Studio dual-limit Settings UI owner QA
+
+- Tests 1–7: **PASS**. Both controls, default linkage, bidirectional linked editing, independent editing, relinking, and leaving without save passed; retired daily-limit control absent.
+- UI signoff approved. Production settings were not saved during QA; linked 25/25 persistence remains the active checkpoint.
+
+# 2026-08-01 — Production linked dual-limit settings save
+
+- Owner intentionally saved linked 30/30 (superseding proposed 25/25); success message, reopen, and restart persistence all PASS with no errors.
+- Hosted Portal verification remains pending because no authenticated browser backend was available. No deployment, capacity change, or Stage 2 action occurred.
+
+# 2026-08-01 — Production linked 30/30 Portal verification
+
+- Owner confirmed all 12 hosted Portal checks PASS: request limit, customer-show allowance/usage, capacity separation, warning attribution, retired daily-limit absence, and stale-session refresh.
+- Production linked dual-limit settings checkpoint closed PASS. No deployment, domain, capacity, or unrelated production action occurred; Stage 2 awaits explicit resume.
+
+# 2026-08-01 — Stage 2 hosted Portal smoke resumed
+
+- Read-only infrastructure sanity passed: hosted Portal and Coming Soon both HTTP 200; backend manual rollout configuration unchanged; all 101 Functions ACTIVE; nine release Functions match approved hash; 65 indexes present.
+- Interactive Stage 2 tests remain pending owner execution because no authenticated browser/Studio control session was available. No production mutation or domain action occurred.
+
+# 2026-08-01 — Whatnot existing-show update remediation implemented
+
+- Fixed update execution to reuse the scanner-matched Firestore ID, verify Whatnot identity, and avoid strict post-write remapping/generic incomplete-record failures.
+- Exact external-field allowlist preserves capacity, allocations, production/lifecycle state, notes, and metadata. Known missing identity/title/time errors are specific.
+- Automated suite 59/59 plus Studio typecheck/build, lint, whitespace PASS. Manual development Studio QA remains pending; no production/domain action.
+# 2026-08-01 — Goal #13 Donated Designs overflow menu source complete; owner QA pending
+
+- Separate slice `donated-designs-overflow-menu-no-op`, starting after Whatnot commit `ca315f2`; no amend or bundling.
+- Confirmed approved overflow action is existing owner-gated **Delete unused upload…**. Downward panel was clipped by intake `overflow: hidden`; explicit top placement, focus handling, accessible design label, and filter/row state reset implemented.
+- Automated 15/15 plus Studio TypeScript/build/package, lint, whitespace PASS. Implementation Review `approved_with_note`; manual development Studio QA pending.
+- Whatnot owner QA separately pending; Stage 2/domain paused; no production/deployment/data action.
+# 2026-08-01 — Donated Designs overflow menu Amendment 1 source complete
+
+- Owner requested below-trigger normal placement before signing development QA.
+- Implemented body-portaled, fixed trigger positioning with measured upward collision fallback and viewport clamping; retained panel clipping and all action/accessibility/data boundaries.
+- Focused 19/19, Studio TypeScript/build/package, lint, whitespace PASS. Amendment Review `approved_with_changes`; Implementation Review `approved_with_note`; amended owner QA pending.
+- No Whatnot, production, deployment, installer, Stage 2, or domain action.
+# 2026-08-01 — Donation exclude/Delete Upload Amendment 2 source complete
+
+- Replaced unsupported `window.prompt` delete and native exclusion confirm with in-app modals; exact label **Delete Upload**.
+- Owner/admin delete capability enforced in Studio and both trusted callables; helper keeps exclusion and is denied deletion.
+- Safe blockers preserved (any print-request item; promoted design); deletion allowlists four asset paths. Exclusion is now reversible metadata-only catalog state and performs no Storage cleanup.
+- Focused 43/43, Studio/Functions builds, Studio package, lint, whitespace PASS. Manual development QA pending. Functions source changed but no deployment occurred.
+- Production diff/PR/merge/combined installer not started; Whatnot QA remains separate; no production/Stage 2/domain action.

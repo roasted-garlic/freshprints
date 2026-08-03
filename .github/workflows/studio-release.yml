@@ -1,0 +1,228 @@
+name: Studio release
+
+# Manual trigger only. Never runs on push/PR — stable publication requires a human to press
+# "Run workflow" (or push an approved tag) with an explicit prerelease/stable choice.
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Git ref to build from (branch, tag, or commit SHA)"
+        required: true
+      release_type:
+        description: "Release type"
+        required: true
+        type: choice
+        options:
+          - prerelease
+          - stable
+        default: prerelease
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    # Stable releases may only be cut from production — this is a hard gate, not a UI suggestion.
+    # electron-builder itself also never auto-publishes a stable channel from this workflow: the
+    # publish step below only runs `--publish always`, and GitHub Release "prerelease" flag is set
+    # explicitly per release_type, so a non-production ref can only ever produce a prerelease.
+    runs-on: windows-latest
+    steps:
+      - name: Guard stable release ref
+        if: ${{ inputs.release_type == 'stable' }}
+        shell: bash
+        run: |
+          if [ "${{ inputs.ref }}" != "production" ] && [[ ! "${{ inputs.ref }}" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::Stable releases may only be built from the production branch or an exact production commit SHA. Got: ${{ inputs.ref }}"
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 0
+
+      - name: Verify ref is reachable from production (stable only)
+        if: ${{ inputs.release_type == 'stable' }}
+        shell: bash
+        run: |
+          git fetch origin production --depth=1000
+          if ! git merge-base --is-ancestor HEAD origin/production; then
+            echo "::error::The requested ref is not part of production history. Refusing to publish a stable release from it."
+            exit 1
+          fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install root dependencies
+        run: npm ci
+
+      # functions/ is intentionally not a root npm workspace (see root package.json's
+      # "workspaces": ["apps/*", "packages/*"]) and has its own package.json + package-lock.json.
+      # Root `npm ci` never installs its dependency tree, so `npm --prefix functions run build`
+      # would otherwise fail to resolve firebase-functions and everything that depends on it.
+      - name: Install Functions dependencies
+        run: npm ci --prefix functions
+
+      - name: Set Studio release channel env
+        shell: bash
+        run: |
+          if [ "${{ inputs.release_type }}" = "stable" ]; then
+            echo "FRESH_PRINTS_UPDATE_CHANNEL=stable" >> "$GITHUB_ENV"
+          else
+            echo "FRESH_PRINTS_UPDATE_CHANNEL=prerelease" >> "$GITHUB_ENV"
+          fi
+
+      # apps/studio/electron/generated/packagedBuildConfig.ts is gitignored and produced only by
+      # this script. studioUpdateChannel.ts (and its test) import it directly, so it must exist
+      # before the updater tests below run on a clean checkout — this step must stay between
+      # "Set Studio release channel env" (which provides FRESH_PRINTS_UPDATE_CHANNEL) and
+      # "Run tests" (which imports the generated file transitively).
+      - name: Generate Studio packaged build config
+        working-directory: apps/studio
+        run: node scripts/generate-packaged-build-config.mjs
+
+      - name: Run tests
+        run: |
+          npm run lint
+          npm --prefix functions run build
+          npm run typecheck --workspace @fresh-prints/portal
+          npx tsx --test packages/shared/src/studioUpdate/studioUpdateStateTransitions.test.ts packages/shared/src/studioUpdate/studioUpdateErrorMapping.test.ts apps/studio/electron/ipc/studioUpdate/studioUpdateChannel.test.ts apps/studio/electron/ipc/studioUpdate/studioUpdateIpcChannels.test.ts apps/studio/scripts/generate-packaged-build-config.test.ts
+
+      - name: Configure Studio Firebase environment
+        shell: pwsh
+        working-directory: apps/studio
+        env:
+          RELEASE_TYPE: ${{ inputs.release_type }}
+          DEV_FIREBASE_API_KEY: ${{ secrets.DEV_FIREBASE_API_KEY }}
+          DEV_FIREBASE_AUTH_DOMAIN: ${{ secrets.DEV_FIREBASE_AUTH_DOMAIN }}
+          DEV_FIREBASE_PROJECT_ID: ${{ secrets.DEV_FIREBASE_PROJECT_ID }}
+          DEV_FIREBASE_STORAGE_BUCKET: ${{ secrets.DEV_FIREBASE_STORAGE_BUCKET }}
+          DEV_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.DEV_FIREBASE_MESSAGING_SENDER_ID }}
+          DEV_FIREBASE_APP_ID: ${{ secrets.DEV_FIREBASE_APP_ID }}
+          PROD_FIREBASE_API_KEY: ${{ secrets.PROD_FIREBASE_API_KEY }}
+          PROD_FIREBASE_AUTH_DOMAIN: ${{ secrets.PROD_FIREBASE_AUTH_DOMAIN }}
+          PROD_FIREBASE_PROJECT_ID: ${{ secrets.PROD_FIREBASE_PROJECT_ID }}
+          PROD_FIREBASE_STORAGE_BUCKET: ${{ secrets.PROD_FIREBASE_STORAGE_BUCKET }}
+          PROD_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.PROD_FIREBASE_MESSAGING_SENDER_ID }}
+          PROD_FIREBASE_APP_ID: ${{ secrets.PROD_FIREBASE_APP_ID }}
+        run: |
+          # Studio reads its Firebase project from apps/studio/.env.local (Vite env file,
+          # gitignored) at build time — see src/renderer/src/config/env.ts's
+          # validateFirebaseEnv(). A fresh GitHub Actions checkout never has this file, and
+          # without it Vite still builds "successfully" but bakes in empty config, which throws
+          # at Studio's actual runtime launch rather than failing the build. This step writes the
+          # correct project's config explicitly rather than letting the build silently proceed
+          # with nothing.
+          if ($env:RELEASE_TYPE -eq "stable") {
+            $apiKey = $env:PROD_FIREBASE_API_KEY
+            $authDomain = $env:PROD_FIREBASE_AUTH_DOMAIN
+            $projectId = $env:PROD_FIREBASE_PROJECT_ID
+            $storageBucket = $env:PROD_FIREBASE_STORAGE_BUCKET
+            $senderId = $env:PROD_FIREBASE_MESSAGING_SENDER_ID
+            $appId = $env:PROD_FIREBASE_APP_ID
+            $missingLabel = "PROD_FIREBASE_*"
+          } else {
+            $apiKey = $env:DEV_FIREBASE_API_KEY
+            $authDomain = $env:DEV_FIREBASE_AUTH_DOMAIN
+            $projectId = $env:DEV_FIREBASE_PROJECT_ID
+            $storageBucket = $env:DEV_FIREBASE_STORAGE_BUCKET
+            $senderId = $env:DEV_FIREBASE_MESSAGING_SENDER_ID
+            $appId = $env:DEV_FIREBASE_APP_ID
+            $missingLabel = "DEV_FIREBASE_*"
+          }
+
+          $values = @($apiKey, $authDomain, $projectId, $storageBucket, $senderId, $appId)
+          $missingCount = ($values | Where-Object { [string]::IsNullOrWhiteSpace($_) }).Count
+          if ($missingCount -gt 0) {
+            Write-Error "Missing one or more $missingLabel repository secrets. Refusing to build Studio with an incomplete or empty Firebase configuration."
+            exit 1
+          }
+
+          @"
+          VITE_FIREBASE_API_KEY=$apiKey
+          VITE_FIREBASE_AUTH_DOMAIN=$authDomain
+          VITE_FIREBASE_PROJECT_ID=$projectId
+          VITE_FIREBASE_STORAGE_BUCKET=$storageBucket
+          VITE_FIREBASE_MESSAGING_SENDER_ID=$senderId
+          VITE_FIREBASE_APP_ID=$appId
+          "@ | Set-Content -Path ".env.local" -Encoding utf8
+
+          Write-Host "Studio Firebase environment configured for project: $projectId"
+
+      - name: Configure optional Windows signing
+        shell: pwsh
+        env:
+          WINDOWS_CSC_LINK_SECRET: ${{ secrets.WINDOWS_CSC_LINK }}
+          WINDOWS_CSC_KEY_PASSWORD_SECRET: ${{ secrets.WINDOWS_CSC_KEY_PASSWORD }}
+          RELEASE_TYPE: ${{ inputs.release_type }}
+        run: |
+          $hasLink = -not [string]::IsNullOrWhiteSpace($env:WINDOWS_CSC_LINK_SECRET)
+          $hasPassword = -not [string]::IsNullOrWhiteSpace($env:WINDOWS_CSC_KEY_PASSWORD_SECRET)
+
+          if ($hasLink -xor $hasPassword) {
+            Write-Error "Windows signing configuration is incomplete: both WINDOWS_CSC_LINK and WINDOWS_CSC_KEY_PASSWORD secrets must be set together, or neither."
+            exit 1
+          }
+
+          if ($hasLink -and $hasPassword) {
+            "WIN_CSC_LINK=$($env:WINDOWS_CSC_LINK_SECRET)" |
+              Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+            "WIN_CSC_KEY_PASSWORD=$($env:WINDOWS_CSC_KEY_PASSWORD_SECRET)" |
+              Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+            Write-Host "Windows signing credentials configured."
+            exit 0
+          }
+
+          if ($env:RELEASE_TYPE -eq "stable") {
+            Write-Error "Stable Studio releases require Windows signing credentials (WINDOWS_CSC_LINK + WINDOWS_CSC_KEY_PASSWORD secrets), or a separately reviewed exception."
+            exit 1
+          }
+
+          Write-Host "No Windows signing credentials configured; building unsigned prerelease."
+
+      - name: Build Studio (Windows NSIS + updater metadata)
+        working-directory: apps/studio
+        env:
+          # WIN_CSC_LINK / WIN_CSC_KEY_PASSWORD are set above via $GITHUB_ENV only when both
+          # signing secrets are genuinely present — never defined as empty strings here. An empty
+          # CSC_LINK/WIN_CSC_LINK causes electron-builder to try to resolve it as a certificate
+          # file path and fail ("not a file"), so these must be entirely absent for unsigned
+          # prerelease builds, not merely blank.
+          #
+          # electron-builder's own publish step (not `gh`) uses GH_TOKEN to upload release assets.
+          # Never printed or logged; scoped to this job's environment only.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          npm run build -- --publish always
+
+      - name: Compute installer SHA-256
+        shell: bash
+        working-directory: apps/studio/release
+        run: |
+          version_dir=$(ls -d */ | head -n1)
+          cd "$version_dir"
+          installer=$(ls *Setup*.exe)
+          sha256sum "$installer" | tee sha256.txt
+
+      - name: Upload build evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: studio-release-evidence-${{ github.run_id }}
+          path: |
+            apps/studio/release/*/latest*.yml
+            apps/studio/release/*/*.blockmap
+            apps/studio/release/*/sha256.txt
+          retention-days: 90
+
+  # electron-builder's GitHub publisher (invoked above with `--publish always`) creates the
+  # release as a DRAFT. It does NOT reliably mark the draft as a "Pre-release" on its own —
+  # confirmed against a real run (2026-08-02, beta.2): the draft was created but the "Set as a
+  # pre-release" checkbox was not automatically checked, requiring the owner to manually select
+  # it before publishing. Marking a release as prerelease and publishing it (moving it out of
+  # Draft) are both currently manual human checkpoints in the GitHub UI for every release this
+  # workflow produces, stable or prerelease — this workflow does not automate either step. No
+  # release, stable or prerelease, becomes publicly visible/downloadable to update feeds without
+  # that separate human action.

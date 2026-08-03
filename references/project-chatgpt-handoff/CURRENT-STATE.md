@@ -1,5 +1,165 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-08-02 - Studio automatic updates: final Signoff PASS; production convergence audit complete
+
+- **Live-proven end to end across 4 consecutive real update cycles** (beta.2→beta.3→beta.4→beta.5)
+  on a real installed application, not just static bundle inspection. Two real defects were found
+  and fixed during the live proof chain: (1) the NSIS installer wizard appeared during automatic
+  updates because `quitAndInstall(false, true)` ran the installer non-silently — fixed to
+  `quitAndInstall(true, true)`, live-confirmed silent on the next two cycles; (2) GitHub's raw
+  release-note HTML rendered unsanitized in an unbounded `<pre>` — fixed with a new dependency-free
+  `normalizeStudioReleaseNotes()` converter (strips script/style, converts structure to plain-text
+  line breaks, extracts anchor text, decodes entities, caps at 2000 chars) rendered in a bounded
+  scrollable container, live-confirmed on the beta.4→beta.5 cycle with a release body containing
+  headings, bold text, lists, a link, and a long unbroken string.
+- Final Signoff: `docs/workflow/reviews/2026-08-02-studio-automatic-updates-final-signoff.md` —
+  **PASS, ready for production promotion subject to production release gates.** Does not claim
+  stable `1.0.0` is built, signed, or published.
+- **Production convergence audit:** `docs/workflow/reviews/2026-08-02-production-convergence-audit.md`.
+  Confirmed `origin/production` (`9726edb`) is a strict ancestor of `origin/development` (`0c8498c`)
+  — 44 commits/63 files ahead, 0 behind, clean history, direct PR appropriate. Categorized the full
+  diff: Studio automatic-updates implementation + CI release workflow + Settings single-row-tabs
+  fix + associated docs only — **zero** Firestore Rules/indexes/Functions/Portal code in this
+  specific diff (reporting was already promoted to `production` source in an earlier phase of this
+  session, `9726edb`, but confirmed **not yet deployed** to `fresh-prints-prod` — flagged as an
+  outstanding Phase D item). No unexpected or unrelated files found.
+- **Windows signing:** the CI workflow fails closed for `release_type: stable` without both
+  `WINDOWS_CSC_LINK`/`WINDOWS_CSC_KEY_PASSWORD` secrets — confirmed at the source level, not
+  weakened. Whether these secrets (or `PROD_FIREBASE_*`, 6 secrets) are actually populated in
+  GitHub is owner-only information this environment cannot check.
+- **Prepared a 10-phase (A–J) human-gated production sequence** (Signoff/audit → PR → merge →
+  scoped Rules/indexes/Functions deploy → Portal rollout → signed stable build → publish → owner
+  QA → Stage 2 smoke → domain cutover), each stopping at its own checkpoint. Phase A (this pass) is
+  complete. **Stopped before opening the production PR — pending explicit owner approval.**
+- No production action of any kind occurred in this pass.
+
+## 2026-08-02 - development branch merged forward to match production (`9726edb`)
+
+Resolved a real divergence discovered while preparing to land the Studio automatic-updates
+workflow file on the default branch: `origin/development` was 5 commits behind `origin/production`
+(missing the entire Portal Design Issue Reporting merge) while also containing 5 commits of its
+own real work never merged into `production` (customer-upload restore parity, safe donation-delete
+dialogs, donated-menu positioning fixes, Whatnot matched-show-update preservation, and a QA-signoff
+formatting commit). Merged `origin/production` into `development` via a real merge commit
+(non-fast-forward); resolved 3 genuine content conflicts (`.cursor/workflow/state.md`,
+`references/project-chatgpt-handoff/13-recent-completed-work.md`, this file) by combining both
+sides' distinct history chronologically rather than discarding either, and 5 add/add conflicts on
+identical "Donated Designs overflow menu no-op" docs that existed on both branches (only trailing
+markdown hard-break whitespace differed) by keeping one copy. No source code conflicts. Entries
+below marked "[from development, superseded]" reflect `development`'s own narrative of events that
+`production`'s subsequent history (PR #17/#18/#19 merges) later resolved differently — preserved
+for historical accuracy, not because they reflect current state.
+
+## 2026-08-02 - Portal design issue reporting SIGNED OFF; promoting to production; updater implementation starting
+
+- Owner-confirmed PASS for Whatnot existing-show update and all six Customer Upload intake QA groups; no visible errors.
+- Customer Upload restore failure classified as outdated development Function only, not a remaining source defect.
+- `origin/production...origin/development` also contains eight earlier Portal/dual-limit documentation commits (`f566bf1` through `fef69f8`) outside the narrow two-group Studio PR authorization.
+- Per explicit stop rule, no PR, merge, installer, or production deployment was performed. Owner direction is required on promotion branch/scope.
+
+## 2026-08-01 - Customer upload exclusion/deletion Functions deployed to development
+
+- From development commit `1873b10d7874b36ba4cf95d2d0421e9c1f11bdd0`, deployed exactly `previewCustomerUploadDeletion`, `deleteEligibleCustomerUpload`, and `excludeCustomerUploadFromCatalog` to `fresh-prints-dev`.
+- Deployment exit 0: 3 deployed, 0 errors; all three ACTIVE in `us-central1` on source hash `039c420950489a41150ee4fbee0e2ded2790c3ca`.
+- Focused 28/28, Functions build, lint, and diff validation passed before deployment.
+- Authenticated fresh-fixture owner QA remains pending because Windows application control was unavailable. No production action occurred; Stage 2 remains paused.
+
+## 2026-08-01 - Customer Upload intake parity Amendment 4 implemented
+
+- Both Studio routes use the shared intake: Donated Designs = `catalog_donation`; Customer Uploads = resolved non-donation/`print_request` records.
+- Excluded records now visibly show `Restore to Pending` and use an accessible in-app confirmation before the existing callable-backed same-document restore.
+- Historically purged rows show a disabled restore action with explanation; `not_eligible` uploads remain outside the Pending/Excluded status queries.
+- Focused 63/63, Studio typecheck/build, lint, and diff validation passed. Functions and Rules did not change. Development QA remains pending; Stage 2 remains paused and production blocked.
+
+## 2026-08-01 - Donation exclusion/Delete Upload Amendment 3 implemented
+
+- Exclusion/restoration remain actor-independent metadata transitions for active helpers/admins/owners; permanent deletion remains owner/admin-only.
+- Deletion now uses an authoritative manifest aligned to every current `CustomerUpload` Storage-path field, validates exact ownership, fails closed on unknown/noncanonical paths, and retains the upload document after partial cleanup failure.
+- Complete cleanup removes the document plus only upload-specific batch manifest/counter metadata; shared batch archives and unrelated assets remain untouched.
+- Focused tests passed 34/34; Functions build, Studio typecheck/build, lint, and diff validation passed. No deployment or production action occurred; development QA remains required.
+
+## 2026-08-01 - Donation exclusion/Delete Upload Amendment 2 implemented
+
+- `window.prompt` caused Electron's unsupported warning; exclusion also used native `window.confirm`. Both are replaced with Fresh Prints in-app modals.
+- Overflow label is exactly **Delete Upload**. Trusted preview/delete eligibility remains request-item reference + promoted-design linkage; execution rechecks, then deletes only four upload asset paths and the upload document.
+- Active owner/admin may preview/delete at UI and callable boundaries. Helpers may exclude but cannot see or invoke delete; nonstaff/inactive callers are denied.
+- Exclusion now updates catalog-review status only and preserves metadata, source/production/preview/thumbnail assets, request relationships, and technical state. No migration of historically purged donations.
+- Focused 43/43, Studio TypeScript/build/package, Functions build, lint, whitespace PASS. Manual development role QA pending; Functions not deployed. Production PR/installer, Stage 2, and domain remain blocked.
+
+## 2026-08-01 - Donated Designs overflow-menu Amendment 1 implemented
+
+- Owner confirmed the menu opened but requested normal placement below the trigger; prior owner QA remains unsigned.
+- No shared Studio portal primitive existed. The shared destructive menu now uses React `createPortal` to `document.body`, fixed trigger-relative geometry, below-first placement, viewport clamping, and upward fallback only when measured below-space is insufficient.
+- Intake clipping, z-index convention, exact owner-gated delete action, focus/accessibility/outside click, selected-design context, tab cleanup, and zero-write opening remain intact.
+- Focused tests 19/19, Studio typecheck/build/package, lint, and whitespace PASS. Revised development owner QA pending. Whatnot remediation unchanged; no production action.
+
+## 2026-08-01 - Donated Designs overflow-menu remediation implemented on development
+
+- Separate Goal #13 slice from the Whatnot remediation. Starting commit `ca315f2391b4961dc97ddbe87bf351c335405c6a` remains intact.
+- Root cause: the existing **Delete unused upload…** menu mounted below the final action row but was clipped by the intake panel's `overflow: hidden` boundary.
+- Fix uses explicit upward placement, first-item/Escape focus behavior, a design-specific accessible label, and filter/selected-row reset. Existing owner permission, preview/confirmation/callable, primary actions, halftone, and Customer Uploads reuse are unchanged.
+- Focused tests 15/15, Studio typecheck/build/package, lint, and whitespace checks PASS. Implementation Review `approved_with_note`; authenticated development owner QA pending.
+- Whatnot show-update owner QA remains separately pending. Stage 2 and domain cutover remain paused; no production action occurred.
+
+## 2026-08-01 - Whatnot existing-show update remediation implemented on development
+
+- Root cause: scanner retained `existingShowId`, but executor discarded it and reused strict rematching/upsert; ten mapper failures collapsed to `An upcoming show record is incomplete.`
+- Dedicated direct-ID update now verifies Whatnot identity and writes only upstream-owned fields plus audit/import timestamps. Internal capacity, allocations, lifecycle/production state, notes, and metadata are preserved.
+- Focused tests 59/59, Studio typecheck/build/package, lint, and whitespace checks PASS. Implementation Review `approved_with_note`.
+- Manual development Studio QA pending because no authenticated UI-control session was available. Stage 2 and domain cutover remain paused; no production action occurred.
+
+## 2026-08-01 - Stage 2 hosted Portal smoke RESUMED; interactive tests pending
+
+- Read-only infrastructure PASS: hosted Portal HTTP 200; Coming Soon remains on `myprintrequest.com`; App Hosting manual-policy backend unchanged; 101/101 Functions ACTIVE; nine release Functions on approved hash; 65 indexes/0 overrides.
+- No authenticated browser or Windows app-control backend was available, so lifecycle, intake, sizing/DPI, upload validation, full publication, guest-browser visuals, Studio workspace sanity, and Etsy action remain owner-run and unclaimed.
+- No deployment, data/settings/capacity, DNS/domain, analytics, tag, or secret action occurred. Stage 2 is active but not signed off.
+
+## 2026-08-01 - Production linked limits 30/30 VERIFIED — PASS
+
+- Owner intentionally changed linked values from 25/25 to 30/30 and received `Print request limits saved.`
+- Reopen and full Studio restart both reloaded 30/30 with linkage checked; no errors. Studio persistence PASS.
+- Owner confirmed hosted Portal checks 1–12 PASS: request max/copy/validation, customer-show allowance and usage, independent overall capacity, limiting-warning attribution, retired daily-limit absence, and stale-session refresh all use current 30/30 behavior.
+- Checkpoint PASS. No capacity/deployment/domain action occurred. Stage 2 remains paused pending explicit resume phrase.
+
+## 2026-08-01 - Production Studio dual-limit Settings UI SIGNED OFF
+
+- Owner QA Tests 1–7 PASS using `Fresh Prints-Windows-0.0.0-Setup-dual-limit-settings.exe` from production commit `11960852f45f948e37a1a5aeb3b09699882cd1fd`.
+- Both fields, linked editing, independent editing, relinking, persistence-safe exit, and retired-control absence passed.
+- No production setting was saved during UI QA. Separate linked 25/25 save is now explicitly authorized but not yet confirmed performed.
+
+## 2026-08-01 - Production Studio dual-limit Settings installer READY
+
+- Built from exact production commit `11960852f45f948e37a1a5aeb3b09699882cd1fd`.
+- Installer: `apps/studio/release/0.0.0/Fresh Prints-Windows-0.0.0-Setup-dual-limit-settings.exe`; 106,249,514 bytes; SHA-256 `294EC213F811010D61EA4028ACF9185BC8DDEA3426530F242346ED9FC3AB0BE9`.
+- Focused tests 38/38, Studio TypeScript, lint, production build/packaging, branding/icon/config/dev-only gates, and whitespace checks passed.
+- Not installed; production settings and all deployment surfaces unchanged. Next: `CONTINUE WORKFLOW: PRODUCTION OWNER QA DUAL LIMIT SETTINGS`.
+
+## 2026-08-01 - Customer show-schedule visibility SIGNED OFF (owner QA PASS)
+
+- Production build `build-2026-08-01-001`, revision `fresh-prints-portal-build-2026-08-01-001`, commit `11960852f45f948e37a1a5aeb3b09699882cd1fd`.
+- Owner reported tests 1–9 PASS across cards/tabs/statuses/details, navigation persistence, queue lifecycle, multi-show behavior, privacy, and limit-callout sanity.
+- Signoff: `docs/workflow/reviews/2026-08-01-production-customer-show-schedule-visibility-signoff.md` (**approved**, schedule slice only).
+- Automatic rollouts disabled; domain deferred. Dual-limit Studio Settings installer/QA and production settings save remain pending.
+
+## 2026-08-01 - Goal #13 customer schedule + dual-limit Portal LIVE; owner QA pending
+
+- Manual App Hosting rollout pinned to production merge `11960852f45f948e37a1a5aeb3b09699882cd1fd`.
+- Build/rollout `build-2026-08-01-001`; revision `fresh-prints-portal-build-2026-08-01-001`; READY/backend update `2026-08-01T15:00:47Z`.
+- Hosted URL returns HTTP 200; schedule client chunk and static brand assets verified; unauthenticated callable probe returns expected 401.
+- Automatic rollouts remain disabled. Owner/customer authenticated QA is pending.
+- No Functions, Rules/indexes, Studio, settings/data, Auth/secrets, Stage 2, DNS/domain, analytics, snapshots, or tag action occurred.
+- Next: `CONTINUE WORKFLOW: PRODUCTION OWNER QA CUSTOMER SHOW SCHEDULE VISIBILITY`.
+
+## 2026-08-01 - Goal #13 customer schedule + dual-limit Functions DEPLOYED to production
+
+- Production source: PR #17 merge `11960852f45f948e37a1a5aeb3b09699882cd1fd`.
+- Exact reviewed nine-Function allowlist deployed to `fresh-prints-prod`: exit 0, 9 deployed, 0 errors/aborts.
+- All nine ACTIVE in `us-central1`, shared source hash `7eedfc2475a356e21eb4aeac8e9cd45ea232fbed`; no unrelated Function updated.
+- Initial attempt stopped before mutation on the default 10-second local discovery timeout; same command succeeded with a local 30-second discovery timeout.
+- Focused tests 50/50, Functions build, applicable lint, and whitespace checks passed.
+- No Portal/Rules/index/Auth/secret/settings/data/Studio/domain/analytics/Stage 2/catalog-snapshot action occurred.
+- Next gated phrase: `APPROVE PRODUCTION PORTAL APP HOSTING ROLLOUT: CUSTOMER SHOW SCHEDULE AND DUAL LIMITS`.
+
 ## 2026-08-02 - Portal design issue reporting SIGNED OFF; promoting to production; updater implementation starting
 
 - Owner confirmed Portal + Studio reporting owner QA PASS (all 24 items in

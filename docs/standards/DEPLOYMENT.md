@@ -915,6 +915,96 @@ coordination state. Do not delete immutable versions during incident rollback.
 
 ---
 
+## Studio Automatic Updates
+
+Implemented via `electron-updater`, publishing to GitHub Releases on this repository
+(`roasted-garlic/freshprints` — confirmed public, `"private": false` via the GitHub API, so no
+client-embedded credential is required for anonymous release-asset reads).
+
+### Channels
+
+- **`stable`** — production users. Selected via a compiled-in constant
+  (`apps/studio/electron/generated/packagedBuildConfig.ts`, gitignored, produced at build time by
+  `apps/studio/scripts/generate-packaged-build-config.mjs` from the `FRESH_PRINTS_UPDATE_CHANNEL`
+  env var available only during the build itself — not a runtime environment variable, which an
+  installed application never has) when that value is `stable`, or absent/unset (fail-safe default
+  — see `apps/studio/electron/ipc/studioUpdate/studioUpdateChannel.ts`).
+- **`prerelease`** — development/test builds only, versioned with a semver prerelease tag (e.g.
+  `1.0.0-beta.1`). electron-builder derives the update-feed channel automatically from the
+  version's prerelease identifier (`packages/app-builder-lib`'s `AppInfo.channel` getter) — no
+  manual channel override is configured, so this isolation is structural, not a convention that
+  can silently drift.
+- Stable clients never see prerelease releases and vice versa; `allowPrerelease` is only ever
+  `true` when the packaged build's own channel is `prerelease`.
+
+### Release trigger
+
+Manual only — `.github/workflows/studio-release.yml`'s `workflow_dispatch` with an explicit
+`ref` and `release_type` (`prerelease` | `stable`) input. There is no push-triggered or tag-triggered
+automatic publish. A `stable` release_type is refused by the workflow itself unless `ref` is exactly
+`production` or a commit already reachable from `origin/production`.
+
+### Human approval gate before any release is publicly visible
+
+`npm run build -- --publish always` (invoked by the workflow) always creates the GitHub Release as
+a **draft**. **Confirmed against a real run (2026-08-02, `1.0.0-beta.2`): electron-builder's
+GitHub publisher does not reliably mark the draft's "Set as a pre-release" checkbox on its own** —
+the draft was created, but the owner had to manually select "Pre-release" in the GitHub UI before
+publishing. Both marking a release as prerelease and publishing it (moving it out of Draft) are
+currently **manual human checkpoints in the GitHub UI for every release this workflow produces**,
+stable or prerelease — the workflow does not automate either step, and this doc previously
+overstated that prerelease labeling happened automatically. No release, stable or prerelease,
+reaches its update feed without that separate human action.
+
+### Versioning
+
+First updater-enabled version: `1.0.0` (stable). Prerelease test versions use valid semver
+prerelease tags, e.g. `1.0.0-beta.1`, `1.0.0-beta.2`. `apps/studio/package.json`'s `version` field
+is the source of truth — update it before each build/publish.
+
+### Code signing
+
+Not yet configured (`WINDOWS_CSC_LINK` / `WINDOWS_CSC_KEY_PASSWORD` GitHub encrypted secrets are
+referenced by the workflow but not currently set). electron-builder silently skips signing when
+these are absent — this is intentional so prerelease/test builds are never blocked by a missing
+certificate. **A stable `1.0.0` release must not be published to the public "Latest" slot without
+either (a) a real Authenticode certificate configured via those secrets, or (b) an explicit,
+separately recorded owner decision to accept Windows SmartScreen "unrecognized publisher"
+friction for the initial release.** Never commit signing material to the repository; CI encrypted
+secrets only.
+
+### Update behavior (user-gated, never silent)
+
+- Check frequency: on launch, then every 4 hours while Studio remains running
+  (`apps/studio/electron/ipc/studioUpdate/studioUpdateService.ts`).
+- Download only starts after an explicit "Download update" click in Settings → Studio updates.
+- Install only happens after an explicit "Restart to Update" click — Studio never force-quits or
+  force-installs.
+- Postponing an offered update is allowed; it is re-offered on the next check.
+- No mandatory updates in v1. Update-feed failures leave Studio fully operable — errors surface in
+  Settings but never block the rest of the app.
+- Rollback: no automatic downgrade. Keep at least the two most recent known-good stable installers
+  archived (e.g. in the GitHub Release history) in case a stable release needs to be pulled.
+
+### Where the update UI lives
+
+Settings → **Studio updates** tab (`apps/studio/src/renderer/src/features/settings/components/StudioUpdatesSettingsSection.tsx`).
+
+### A→B prerelease proof procedure
+
+Before any stable release, prove the update path end-to-end on the `prerelease` channel:
+
+1. Build and publish `1.0.0-beta.1` (`release_type: prerelease`), install it manually.
+2. Bump to `1.0.0-beta.2`, build and publish to the same prerelease channel.
+3. From the running `1.0.0-beta.1` install, confirm: update detected, download starts on click,
+   progress shown, "Restart to Update" appears, clicking it relaunches Studio as `1.0.0-beta.2`
+   with local settings and Firebase project (`fresh-prints-dev`) intact.
+
+Record versions, release IDs, installer names/sizes/SHA-256, and source commits in a dated Test
+Report under `docs/workflow/reviews/`.
+
+---
+
 ## Revision History
 
 | Date | Summary |

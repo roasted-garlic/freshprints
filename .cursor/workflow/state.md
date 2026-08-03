@@ -1,25 +1,26 @@
 # Current Goal
-**Portal design issue reporting: SIGNED OFF (owner QA PASS). Promoting to production; Studio automatic updates implementation starting next.** Owner confirmed Portal + Studio reporting QA PASS on 2026-08-02 (all 24 checklist items) — see `docs/workflow/reviews/2026-08-01-portal-design-issue-reporting-owner-qa-checklist.md` and `docs/workflow/reviews/2026-08-02-portal-design-issue-reporting-signoff.md`. Feature branch `feature/portal-design-issue-reporting` at `c370ced` re-passed the full release gate this pass (Rules emulator 60/60, shared/containment/validation tests 12/12, Functions build clean, Portal typecheck+build clean, Studio `tsc` clean, lint clean, diff-check clean). Next: promote to `origin/production` via merge-commit PR (Phase B), then implement the already-approved Studio automatic-updates Plan/Review (Phase C), prove an A→B prerelease update, promote the updater to production, then coordinated production Firestore/Functions deploy and final production Portal rollout — stopping only at the signing-certificate/stable-publish and domain-cutover checkpoints. `origin/production` = `fe8c4f0` as of start of this pass (will change once Phase B merges).
+**Studio automatic updates: final Signoff PASS. Production convergence audit complete; awaiting owner approval to open the production PR.** Full updater implementation (build-time packaged channel, safe error mapping, safe bounded release notes, silent automatic install) live-proven across 4 consecutive real update cycles (beta.2→3→4→5) on a real installed application. See `docs/workflow/reviews/2026-08-02-studio-automatic-updates-final-signoff.md` and `docs/workflow/reviews/2026-08-02-production-convergence-audit.md` (full branch-topology/diff/prerequisite audit + phased production sequence). `origin/production` = `9726edb`, `origin/development` = `0c8498c` (44 commits / 63 files ahead, clean ancestor relationship — direct PR is appropriate). Reporting Functions/Rules/indexes were merged to `production` source earlier but are **not yet confirmed deployed** to `fresh-prints-prod` — flagged as an outstanding Phase D item, separate from this Studio-updater diff. Windows signing secrets and PROD_FIREBASE_* secret population status are owner-only information, not verifiable from this environment.
 
 Current Mode: managed-phase
-Current Phase: reporting signed off; promoting to production; updater implementation starting
-Plan Status (reporting): complete (prior); Signoff complete this pass
+Current Phase: Phase A complete (updater Signoff + production diff audit); awaiting owner approval for Phase B (open production PR)
+Plan Status (reporting): complete; Signoff complete
 Plan Status (studio-automatic-updates): complete —
 `docs/workflow/plans/2026-08-01-studio-automatic-updates-plan.md`
-Review Status (studio-automatic-updates): **approved_with_changes** —
-`docs/workflow/reviews/2026-08-01-studio-automatic-updates-review.md`
-Implement Status (updater): starting this pass, owner-approved 21 decisions as defaults
+Review Status (studio-automatic-updates): **approved_with_changes**, then **final Signoff PASS** —
+`docs/workflow/reviews/2026-08-02-studio-automatic-updates-final-signoff.md`
+Implement Status (updater): complete, live-proven beta.2 through beta.5
 DONE: no
-Human Checkpoint Required: not yet (will be required before stable 1.0.0 publish and before domain cutover)
+Human Checkpoint Required: yes — owner approval to proceed to Phase B (open production PR); signing-secret/PROD_FIREBASE_* population status; stable 1.0.0 publish approval; domain cutover phrase — all later phases
 Blocked: no
 Blocker: none
-Allowed Actions: production PR merge for reporting; updater implementation; updater A→B prerelease proof; updater production PR merge; coordinated production Firestore/Functions deploy; production Portal rollout
-Forbidden Actions: publishing stable Studio 1.0.0 without a human checkpoint on signing status; any domain/DNS action without the exact cutover phrase; deleting `master`; broad Functions deploy; creating any dev App Hosting backend
-Next Required Step: Open + merge reporting production PR (Phase B), then begin updater implementation (Phase C)
+Allowed Actions: docs; further audit; Phase B (open production PR) once approved
+Forbidden Actions: merging the production PR without approval; any production Firebase deploy; publishing stable Studio 1.0.0; any domain/DNS action without the exact cutover phrase; deleting `master`; broad Functions deploy; creating any dev App Hosting backend
+Next Required Step: Owner reviews the production convergence audit and approves Phase B (open production PR: base `production`, head `development`, merge commit)
 
 Background (not active gate): Goal #13 / clean Studio remediation / Stage 2 remain deferred; prior installer intermediate; domain cutover blocked until `APPROVE MYPRINTREQUEST.COM CUTOVER`.
 
 Decision Log:
+- 2026-08-02 — Studio automatic updates: final Signoff PASS after 4 consecutive live update-cycle proofs (beta.2→3 revealed the NSIS-wizard + raw-HTML-release-notes defects; both fixed; beta.3→4 confirmed the silent-install fix; beta.4→5 confirmed the release-note formatter). Completed a full production convergence audit: confirmed clean 44-commit/0-behind branch topology, categorized the full 63-file diff (Studio updater + Settings tabs + docs only — no Rules/indexes/Functions/Portal code), confirmed reporting Functions/Rules/indexes are merged to production source but not yet deployed to fresh-prints-prod, confirmed Windows signing fails closed for stable builds, and prepared a 10-phase (A–J) human-gated production sequence. No production action occurred; stopped before opening the production PR pending owner approval.
 - 2026-08-02 — Reporting Signoff recorded (owner-confirmed QA PASS, all 24 checklist items); final release gate re-run and green. Starting production promotion + Studio automatic-updates implementation per owner's explicit go-ahead through Phase G (production backend deploy + Portal rollout), executed directly in-session (not via unsupervised background agent) given the production-merge and release-publish blast radius.
 - 2026-08-02 — Completed development environment: deployed Firestore Rules to `fresh-prints-dev` after diff audit + emulator suite pass (60/60); cleared stale Portal `.next` lock and got a definitive `npm run build:portal` pass; re-confirmed Functions ACTIVE and both indexes Enabled (no redeploy). Adopted owner-confirmed permanent policy: `fresh-prints-dev` will never have an App Hosting backend — documented in `docs/standards/DEPLOYMENT.md`'s new "Development and Production Portal Hosting Policy" section; corrected stale references in the reporting development-deployment checkpoint and development owner-QA checklist that had called the missing dev backend a blocker. No production action.
 - 2026-08-01 — Convergence pass: committed post-candidate reporting UX (`3beacbe`, `52f4de7`), pushed to `origin/feature/portal-design-issue-reporting`. Confirmed via `firebase` CLI that both reporting Functions and both indexes are already live on `fresh-prints-dev` (repo checkpoint doc was stale). Did not deploy Firestore Rules (unverifiable live diff — flagged, not guessed). Found no `fresh-prints-portal` App Hosting backend on dev at all; Portal rollout blocked pending owner-approved backend provisioning. No production action.
@@ -27,6 +28,25 @@ Decision Log:
 - 2026-08-01 — Inbox design host now opens Design Details (preview) with Edit + Archive confirm in place. No deploy.
 - 2026-08-01 — Studio Inbox design-report submitter display + in-place Edit Design implemented. Plan/review/test docs under `docs/workflow/`. No deploy.
 - 2026-08-01 — Report success UX amendment implemented (animated check; new short copy). Plan/review/test docs under `docs/workflow/`. No deploy.
+- 2026-08-01 — [development branch, since merged into production] Owner QA PASS recorded for Whatnot and Customer Upload intake. Production diff audit was blocked at the time: development also contained eight earlier Portal/dual-limit documentation commits outside the narrow promotion authorization then in effect; that blocker is now superseded — production already contains this work via the subsequent PR #18 merge (`fe8c4f0`).
+- 2026-08-01 — Deployed exactly preview/delete/exclude customer-upload Functions to `fresh-prints-dev`: exit 0, 3 deployed, all ACTIVE on hash `039c420950489a41150ee4fbee0e2ded2790c3ca`; owner QA pending; no production action.
+- 2026-08-01 — Amendment 4 implemented: shared visible Restore to Pending modal/action across Donated Designs and Customer Uploads, with historical-purge explanation and status eligibility preserved. Focused 63/63, Studio typecheck/build, lint PASS; development QA pending; no deploy.
+- 2026-08-01 — Amendment 3 implemented: schema-owned asset manifest, exact path ownership validation, direct promoted-design reference check, fail-closed unknown paths, retry-safe partial cleanup, and upload-specific batch metadata cleanup. Focused 34/34/builds/lint PASS; development QA pending; no deploy.
+- 2026-08-01 — Amendment 2 implemented: native dialogs removed; owner/admin safe delete; helper exclusion/delete denial; exclusion preserves assets. Focused 43/43/builds/lint PASS. Functions source changed but not deployed; development QA pending.
+- 2026-08-01 — Owner requested Amendment 1: menu defaults below. Body portal + measured fixed collision positioning implemented; 19/19/build/lint PASS. Amended owner QA pending; no promotion.
+- 2026-08-01 — Separate Donated Designs overflow slice implemented from `ca315f2`: clipped downward menu corrected with explicit upward placement, focus handling, and stale-context reset. Automated 15/15/build/lint PASS; owner development QA pending. Whatnot checkpoint unchanged.
+- 2026-08-01 — Stage 2 paused: existing Whatnot update loses matched document identity and reuses strict generic pre-merge mapper. Narrow Plan reviewed `approved_with_changes`.
+- 2026-08-01 — Stage 2 resumed. Read-only infrastructure sanity PASS; authenticated Portal/Studio tests pending because no UI-control backend was available.
+- 2026-08-01 — Owner confirmed production Portal checks 1–12 PASS for linked 30/30; request/customer-show limits, capacity separation, warnings, no daily limit, and stale-session refresh verified.
+- 2026-08-01 — Owner intentionally saved linked 30/30; Studio success/reopen/restart PASS. Portal verification pending because no authenticated browser backend was available.
+- 2026-08-01 — Owner QA Tests 1–7 PASS; dual-limit Studio Settings UI signed off. No settings were saved during QA.
+- 2026-08-01 — Production Studio installer built from exact `1196085`; tests/build/icon/branding/prod config/dev-only UI gates verified. Owner QA pending; settings unchanged.
+- 2026-08-01 — Owner QA tests 1–9 PASS; customer schedule visibility slice signed off **approved**.
+  Automatic rollouts disabled; domain deferred; dual-limit Studio/settings remain pending.
+- 2026-08-01 — Portal commit `1196085` rolled out manually to production App Hosting as
+  `build-2026-08-01-001`; hosted HTTP/assets/client schedule chunk verified; auto rollouts disabled; owner QA pending.
+- 2026-08-01 — Production merge `1196085` verified; approved nine-Function allowlist deployed to
+  `fresh-prints-prod` (exit 0; all ACTIVE; hash `7eedfc2`; no unrelated Function update). Portal not rolled out.
 - 2026-07-31 — Amendment 1 commits `c4c8b38` + `c96755c` pushed; draft PR #17 opened
   (`development` → `production`). No merge or deployment.
 - 2026-07-31 — Development commit `b144903` pushed; protected PR #16 opened

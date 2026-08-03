@@ -32,6 +32,11 @@ import {
   CATALOG_ASSET_IPC_CHANNELS,
   isAllowedCatalogAssetIpcChannel,
 } from "./ipc/catalogAsset/catalogAssetIpcChannels";
+import {
+  STUDIO_UPDATE_IPC_CHANNELS,
+  STUDIO_UPDATE_STATE_CHANGED,
+  isAllowedStudioUpdateIpcChannel,
+} from "./ipc/studioUpdate/studioUpdateIpcChannels";
 import type {
   ClearInboxAlertSoundRequest,
   ClearInboxAlertSoundResult,
@@ -92,6 +97,13 @@ import type {
   FetchCatalogAssetJsonRequest,
   FetchCatalogAssetJsonIpcResult,
 } from "@fresh-prints/shared/types/catalogAsset/catalogAssetIpc.types";
+import type {
+  CheckForStudioUpdateResult,
+  DownloadStudioUpdateResult,
+  PostponeStudioUpdateResult,
+  RestartAndInstallStudioUpdateResult,
+  StudioUpdateState,
+} from "@fresh-prints/shared/types/studioUpdate/studioUpdateIpc.types";
 import type {
   FirebaseDebugCommand,
   OpenFirebaseDebugWindowRequest,
@@ -213,6 +225,22 @@ function invokeExportChannel<T>(
   }
 
   return ipcRenderer.invoke(channel, payload) as Promise<ImportIpcResult<T>>;
+}
+
+function invokeStudioUpdateChannel<T>(
+  channel: (typeof STUDIO_UPDATE_IPC_CHANNELS)[keyof typeof STUDIO_UPDATE_IPC_CHANNELS],
+): Promise<ImportIpcResult<T>> {
+  if (!isAllowedStudioUpdateIpcChannel(channel)) {
+    return Promise.resolve({
+      success: false,
+      error: {
+        code: "INTERNAL_ERROR",
+        message: "The requested Studio update operation is not allowed.",
+      },
+    });
+  }
+
+  return ipcRenderer.invoke(channel) as Promise<ImportIpcResult<T>>;
 }
 
 function subscribeExportEvent<T>(
@@ -601,6 +629,43 @@ contextBridge.exposeInMainWorld("freshPrints", {
         EXPORT_IPC_EVENT_CHANNELS.GANG_SHEET_PROGRESS,
         callback,
       );
+    },
+  },
+
+  studioUpdate: {
+    getState(): Promise<ImportIpcResult<StudioUpdateState>> {
+      return invokeStudioUpdateChannel<StudioUpdateState>(STUDIO_UPDATE_IPC_CHANNELS.GET_STATE);
+    },
+
+    checkForUpdate(): Promise<ImportIpcResult<CheckForStudioUpdateResult>> {
+      return invokeStudioUpdateChannel<CheckForStudioUpdateResult>(
+        STUDIO_UPDATE_IPC_CHANNELS.CHECK,
+      );
+    },
+
+    downloadUpdate(): Promise<ImportIpcResult<DownloadStudioUpdateResult>> {
+      return invokeStudioUpdateChannel<DownloadStudioUpdateResult>(
+        STUDIO_UPDATE_IPC_CHANNELS.DOWNLOAD,
+      );
+    },
+
+    restartAndInstall(): Promise<ImportIpcResult<RestartAndInstallStudioUpdateResult>> {
+      return invokeStudioUpdateChannel<RestartAndInstallStudioUpdateResult>(
+        STUDIO_UPDATE_IPC_CHANNELS.RESTART_AND_INSTALL,
+      );
+    },
+
+    postpone(): Promise<ImportIpcResult<PostponeStudioUpdateResult>> {
+      return invokeStudioUpdateChannel<PostponeStudioUpdateResult>(
+        STUDIO_UPDATE_IPC_CHANNELS.POSTPONE,
+      );
+    },
+
+    onStateChanged(callback: (state: StudioUpdateState) => void): () => void {
+      const listener = (_event: Electron.IpcRendererEvent, state: StudioUpdateState) =>
+        callback(state);
+      ipcRenderer.on(STUDIO_UPDATE_STATE_CHANGED, listener);
+      return () => ipcRenderer.removeListener(STUDIO_UPDATE_STATE_CHANGED, listener);
     },
   },
 });

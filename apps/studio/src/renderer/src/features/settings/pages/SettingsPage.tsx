@@ -17,6 +17,7 @@ import { PortalSocialMetaSettingsSection } from "../components/PortalSocialMetaS
 import { PortalHelpSettingsSection } from "../components/PortalHelpSettingsSection";
 import { BrandLogoSettingsSection } from "../components/BrandLogoSettingsSection";
 import { PrintRequestLimitSettingsSection } from "../components/PrintRequestLimitSettingsSection";
+import { StudioUpdatesSettingsSection } from "../components/StudioUpdatesSettingsSection";
 import {
   AI_ENRICHMENT_APPROVED_CATEGORIES_PLACEHOLDER,
   AI_ENRICHMENT_APPROVED_CATEGORY_NAMES_PLACEHOLDER,
@@ -115,7 +116,8 @@ type SettingsPageTabId =
   | "socialSharing"
   | "faqHowTo"
   | "brandLogos"
-  | "aiEnrichment";
+  | "aiEnrichment"
+  | "studioUpdates";
 
 interface SettingsPageTab {
   id: SettingsPageTabId;
@@ -150,6 +152,7 @@ export function SettingsPage() {
     }
 
     tabs.push({ id: "aiEnrichment", label: "AI Enrichment" });
+    tabs.push({ id: "studioUpdates", label: "Studio updates" });
     return tabs;
   }, [canManageCustomerUploadQuotas, canManageEmailProviders, canManageSettings, isOwner]);
   const [activeTab, setActiveTab] = useState<SettingsPageTabId | null>(null);
@@ -751,6 +754,17 @@ export function SettingsPage() {
               </div>
             )}
           </section>
+        </div>
+      ) : null}
+
+      {resolvedTab === "studioUpdates" ? (
+        <div
+          aria-labelledby="settings-tab-studioUpdates"
+          className="settings-page-tab-panel"
+          id="settings-tab-panel-studioUpdates"
+          role="tabpanel"
+        >
+          <StudioUpdatesSettingsSection />
         </div>
       ) : null}
 
