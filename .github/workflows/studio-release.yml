@@ -218,9 +218,11 @@ jobs:
           retention-days: 90
 
   # electron-builder's GitHub publisher (invoked above with `--publish always`) creates the
-  # release as a draft/prerelease automatically based on the version's semver prerelease tag —
-  # it never marks a release as the non-prerelease "Latest" release unless release_type is
-  # "stable" AND a human separately promotes the draft from "Draft" to "Published" in the GitHub
-  # UI (or via a second, explicit `gh release edit --draft=false` step gated on manual approval,
-  # which this workflow deliberately does not automate). No stable release becomes publicly
-  # visible/downloadable to update feeds without that separate human action.
+  # release as a DRAFT. It does NOT reliably mark the draft as a "Pre-release" on its own —
+  # confirmed against a real run (2026-08-02, beta.2): the draft was created but the "Set as a
+  # pre-release" checkbox was not automatically checked, requiring the owner to manually select
+  # it before publishing. Marking a release as prerelease and publishing it (moving it out of
+  # Draft) are both currently manual human checkpoints in the GitHub UI for every release this
+  # workflow produces, stable or prerelease — this workflow does not automate either step. No
+  # release, stable or prerelease, becomes publicly visible/downloadable to update feeds without
+  # that separate human action.

@@ -923,9 +923,12 @@ client-embedded credential is required for anonymous release-asset reads).
 
 ### Channels
 
-- **`stable`** — production users. Selected when the packaged build's `FRESH_PRINTS_UPDATE_CHANNEL`
-  env var (baked in at build time by `.github/workflows/studio-release.yml`) is `stable`, or absent
-  (fail-safe default — see `apps/studio/electron/ipc/studioUpdate/studioUpdateChannel.ts`).
+- **`stable`** — production users. Selected via a compiled-in constant
+  (`apps/studio/electron/generated/packagedBuildConfig.ts`, gitignored, produced at build time by
+  `apps/studio/scripts/generate-packaged-build-config.mjs` from the `FRESH_PRINTS_UPDATE_CHANNEL`
+  env var available only during the build itself — not a runtime environment variable, which an
+  installed application never has) when that value is `stable`, or absent/unset (fail-safe default
+  — see `apps/studio/electron/ipc/studioUpdate/studioUpdateChannel.ts`).
 - **`prerelease`** — development/test builds only, versioned with a semver prerelease tag (e.g.
   `1.0.0-beta.1`). electron-builder derives the update-feed channel automatically from the
   version's prerelease identifier (`packages/app-builder-lib`'s `AppInfo.channel` getter) — no
@@ -941,15 +944,17 @@ Manual only — `.github/workflows/studio-release.yml`'s `workflow_dispatch` wit
 automatic publish. A `stable` release_type is refused by the workflow itself unless `ref` is exactly
 `production` or a commit already reachable from `origin/production`.
 
-### Human approval gate before stable is publicly visible
+### Human approval gate before any release is publicly visible
 
 `npm run build -- --publish always` (invoked by the workflow) always creates the GitHub Release as
-a **draft/prerelease** — electron-builder's GitHub publisher does this automatically based on the
-version's prerelease tag. Promoting a release to the public, non-prerelease "Latest" release (the
-one `electron-updater`'s stable feed actually resolves) requires a **separate, manual GitHub UI
-action** (or an explicit follow-up `gh release edit --draft=false`) — this repository's workflow
-deliberately does not automate that step. No stable release reaches production users without that
-explicit human action.
+a **draft**. **Confirmed against a real run (2026-08-02, `1.0.0-beta.2`): electron-builder's
+GitHub publisher does not reliably mark the draft's "Set as a pre-release" checkbox on its own** —
+the draft was created, but the owner had to manually select "Pre-release" in the GitHub UI before
+publishing. Both marking a release as prerelease and publishing it (moving it out of Draft) are
+currently **manual human checkpoints in the GitHub UI for every release this workflow produces**,
+stable or prerelease — the workflow does not automate either step, and this doc previously
+overstated that prerelease labeling happened automatically. No release, stable or prerelease,
+reaches its update feed without that separate human action.
 
 ### Versioning
 
