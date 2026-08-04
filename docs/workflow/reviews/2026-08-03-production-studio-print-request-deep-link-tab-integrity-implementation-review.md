@@ -1,8 +1,9 @@
 # Implementation Review: Studio Print Request Deep-Link Tab Integrity
 
-Date: 2026-08-03
+Date: 2026-08-03 (initial pass); addended 2026-08-03 (follow-up pass)
 Branch reviewed: `fix/studio-print-request-deep-link-tab-integrity`
-Commit reviewed: `368530b25259e90366ea4ccf7bdfa08200b2caf9`
+Commits reviewed: `368530b25259e90366ea4ccf7bdfa08200b2caf9` (initial pass), plus
+`eaa9023a4deb7756af05a227478b461e41535a71` (follow-up pass — final branch HEAD)
 Diff base: `origin/production` at `7b75bd7d51858f12e0f397e7e3eec15bc88198e4`
 Plan: `docs/workflow/plans/2026-08-03-production-studio-print-request-deep-link-tab-integrity-plan.md`
 Prior Formal Review (Plan phase): `docs/workflow/reviews/2026-08-03-production-studio-print-request-deep-link-tab-integrity-review.md`
@@ -14,7 +15,17 @@ reproduction of the merge logic — not a re-read of the author's own Test Repor
 face value. This review re-derived every finding from source and, where a concern was suspected,
 constructed and ran an isolated reproduction before recording it as confirmed.
 
-## Verdict: APPROVED WITH ONE REQUIRED FOLLOW-UP FIX
+## FINAL VERDICT (follow-up pass, commit `eaa9023`): APPROVED — NO REMAINING REQUIRED CHANGES
+
+The required follow-up identified in §7 below (the initial pass's finding) has been independently
+re-verified as correctly and completely fixed in commit `eaa9023`. See the "Follow-Up Review" section
+appended below §8 for the full independent re-verification of all 8 checks requested for this pass.
+The sections below this point (§1–§8, "Files reviewed," "Confirmation," "Final commit SHA," "Next
+approval phrase") are the **original, unmodified initial-pass review** of commit `368530b`, preserved
+as the historical record of that pass. They are superseded where noted by the Follow-Up Review section
+that follows.
+
+## Verdict (initial pass, commit `368530b`): APPROVED WITH ONE REQUIRED FOLLOW-UP FIX
 
 The core fix for both originally reported defects is correct, narrowly scoped, and verified sound.
 This review found **one new, real, reproducible defect introduced by the Defect B fix itself** — a
@@ -239,10 +250,206 @@ Exactly one commit ahead of `origin/production`, working tree clean. **Confirmed
 
 `368530b25259e90366ea4ccf7bdfa08200b2caf9`
 
-## Next approval phrase
+## Next approval phrase (superseded by the Follow-Up Review below)
 
 Once the required follow-up in §7 is implemented and independently re-verified:
 
 ```
 APPROVE STUDIO PRINT REQUEST DEEP-LINK TAB INTEGRITY SUMMARY MERGE FOLLOW-UP
+```
+
+---
+
+# Follow-Up Review (2026-08-03): verification of the summary-merge fix (commit `eaa9023`)
+
+Final branch HEAD reviewed: `eaa9023a4deb7756af05a227478b461e41535a71`
+Diff base: `origin/production` at `7b75bd7d51858f12e0f397e7e3eec15bc88198e4`
+Both commits reviewed together: `368530b` (initial fix) + `eaa9023` (summary-merge follow-up)
+
+Reviewer stance for this pass: every check below was independently re-derived — re-reading the
+actual committed file content via `git show`, writing fresh standalone reproductions rather than
+reusing the initial pass's scripts unmodified, and physically swapping the working tree to the
+pre-follow-up source to confirm the regression test's discriminating power, rather than trusting the
+prior pass's or the author's own Test Report's narrative.
+
+## Pre-checks: branch state
+
+```
+git status --porcelain                          -> (empty; clean)
+git rev-parse HEAD                                -> eaa9023a4deb7756af05a227478b461e41535a71
+git rev-parse origin/production                   -> 7b75bd7d51858f12e0f397e7e3eec15bc88198e4
+git rev-list --count origin/production..HEAD       -> 2
+git log --oneline origin/production..HEAD          -> eaa9023, 368530b
+git branch -r --list "*fix/studio-print-request-deep-link-tab-integrity*" -> (no output; not pushed)
+```
+
+## 1. `mergeShowQueuePrintRequestSources` only admits a request into the source matching its `queueTab` — CONFIRMED
+
+Re-read the final committed function body via `git show HEAD:.../showQueuePrintRequestSources.ts`.
+The `requests` loop's admission guard (`if (request.queueTab && request.queueTab !== source.tab) {
+continue; }` before `requestsById.set(...)`) is unchanged from the initial pass and was re-verified
+via a freshly written reproduction: a `queueTab: "queued"` request placed only in a `tab: "working"`
+source is correctly excluded from `merged.requests`; the same request placed in a `tab: "queued"`
+source is correctly included. **Confirmed.**
+
+## 2. A source may only contribute a `summariesByRequestId` entry for a request it admitted — CONFIRMED
+
+Re-read the follow-up's exact change: `admittedIdsThisSource` is a `Set<string>` scoped to each
+source's own loop iteration, populated only inside the same `if` guard that gates `requestsById.set`,
+and the summary-merge step now filters on `admittedIdsThisSource.has(requestId)` instead of the
+cross-source `requestsById.has(requestId)` used in the initial (defective) version. This structurally
+ties summary admission to the identical per-source condition as request admission — there is no code
+path by which a source can contribute a summary entry for an ID its own `requests` loop rejected.
+**Confirmed by direct source inspection**, not merely by test-passing.
+
+## 3. A mismatched `working`, `queued`, or `printing` source cannot overwrite a correct summary from another source — CONFIRMED, and found to be stronger than required (order-independent)
+
+Wrote a fresh reproduction (not reused from the initial pass) that runs the exact three-source
+scenario from §7 of the initial-pass review across **all three possible permutations** of source
+processing order (`[working,queued,printing]`, `[printing,queued,working]`,
+`[queued,working,printing]`), each time confirming `merged.summariesByRequestId["q1"]` equals the one
+correct value (`{ totalQuantity: 5, uniqueDesignCount: 2 }`) from the `queued` source, never the
+`working` or `printing` sources' distractor values (`111`/`111` and `999`/`999` respectively),
+regardless of which order they were processed in. This is a **stronger property than the initial
+review required**: the original defect was order-dependent (only reachable because
+`useShowQueuePrintRequests.ts` happens to fix the order `[working, queued, printing]`); this fix
+removes the dependency on iteration order entirely, so it is not merely a fix for the one reachable
+ordering but a structurally sound fix for all orderings. **Confirmed, exceeds the required bar.**
+
+## 4. The regression test genuinely fails without the follow-up and passes with it — CONFIRMED (physically verified, not inferred)
+
+Rather than trusting the Test Report's claim, this review physically reproduced the before/after
+by copying `git show 368530b:.../showQueuePrintRequestSources.ts` (the pre-follow-up source) over
+the working tree's file, running the final `showQueuePrintRequestSources.test.ts` (from `eaa9023`)
+against it, and observing the result:
+
+```
+# tests 10
+# pass 9
+# fail 1
+not ok 4 - never lets a source that did not admit a request overwrite that request's summary
+           from a source that did (Implementation Review finding, 2026-08-03)
+```
+
+Confirmed it is exactly the intended new regression test that fails, and no other test (including
+both original-defect regression tests, §5 below) is affected by the pre-follow-up source. The working
+tree file was then restored to the committed `eaa9023` state (`cp` back the backed-up committed
+version), and the suite was re-run, confirming **10/10 pass** and `git status --porcelain` /
+`git diff --stat` both empty (no residual difference from the commit). **Confirmed — the test has
+genuine discriminating power, not a vacuous or coincidental pass.**
+
+## 5. Existing tests still cover the two original defects — CONFIRMED
+
+Re-read the final test file in full via `git show HEAD:...test.ts`. Both original-defect regression
+tests are present, unmodified in substance, and semantically sound:
+
+- **Queued deep links resolving to the Queued tab:**
+  `"prefers the matched request's own queueTab over recomputing from local totals"` — asserts
+  `resolveShowQueuePrintRequestLinkTab` returns `"queued"` given a `queueTab: "queued"` match and
+  deliberately stale/zero totals, directly covering the original Defect A staleness mechanism.
+- **Queued requests not contaminating the Working requests array:**
+  `"does not admit a request into a source whose tab disagrees with the request's own queueTab"` —
+  asserts `merged.requests` is empty when a `queueTab: "queued"` request is placed only in the
+  `working` source, directly covering the original Defect B contamination mechanism.
+
+Both were re-run as part of the full 10-test suite (§4) and pass against the final committed code.
+**Confirmed.**
+
+## 6. No unbounded scan, new listener, backend/Rules/index/Portal change, dependency, or unrelated formatting — CONFIRMED
+
+```
+git diff origin/production..HEAD --name-only | grep -v "^docs/"
+```
+returns exactly the same 4 non-doc files as the initial pass — no additional file was touched by the
+follow-up commit. Re-grepped the full `origin/production..HEAD` diff for `onSnapshot`, `getDocs`,
+`listAllShowAllocations`, `collection(` — zero matches, confirming the follow-up commit introduced no
+new listener or query of any kind (it is pure local `Set`-based bookkeeping). Independently confirmed
+no `functions/`, `firestore.rules`, `firestore.indexes.json`, `storage.rules`, `apps/portal/`, or any
+`package.json` file appears anywhere in the full two-commit diff. Reviewed the follow-up commit's
+isolated diff (`git diff 368530b..eaa9023`) line by line: 9 inserted lines (mostly a comment
+explaining the fix's rationale) and exactly 1 changed line
+(`requestsById.has(requestId)` → `admittedIdsThisSource.has(requestId)`) in the source file, plus
+purely additive test/doc content — no reformatting, no incidental changes. **Confirmed.**
+
+## 7. Direct links and manual tab navigation remain correct (carried forward from initial pass) — RE-CONFIRMED
+
+`PrintRequestsPage.tsx` still has a byte-for-byte empty diff against `origin/production` across both
+commits combined — the follow-up commit did not touch it either. **Re-confirmed.**
+
+## 8. `usePrintRequestAllocationTotals`'s full-collection scan remains a separate, out-of-scope, undocumented-as-fixed finding — CONFIRMED
+
+```
+git diff origin/production..HEAD -- apps/studio/.../usePrintRequestAllocationTotals.ts
+```
+produces an empty diff — confirmed untouched by either commit. Re-checked that all three governing
+documents (this Implementation Review's initial-pass §4/§5, the Plan-phase Formal Review, and the
+Test Report addendum) consistently describe this hook's `listAllShowAllocations` full-collection-scan
+pattern as a related-but-separate, explicitly out-of-scope finding — none of them claim it was fixed,
+silently expand this task's scope to include it, or contradict each other on this point. **Confirmed
+not silently expanded into this remediation.**
+
+## Final Verdict
+
+**APPROVED.** All 8 requested checks independently re-verified against the actual final two-commit
+branch state, with several (checks 3 and 4) verified via physical reproduction rather than
+inference. No remaining required changes. This branch's implementation is complete and correct for
+the scope defined in the Plan.
+
+## Any remaining required changes
+
+None. The one item noted as informational-only (not required): `usePrintRequestAllocationTotals`'s
+full-collection scan remains a legitimate candidate for a future, separately-scoped tech-debt pass —
+this is unchanged guidance from the initial review, not a new requirement, and does not block this
+branch.
+
+## Exact files reviewed (this follow-up pass)
+
+- `apps/studio/src/renderer/src/features/upcoming-shows/utils/showQueuePrintRequestSources.ts` (full
+  content via `git show HEAD:...`; isolated follow-up diff via `git diff 368530b..eaa9023`)
+- `apps/studio/src/renderer/src/features/upcoming-shows/utils/showQueuePrintRequestSources.test.ts`
+  (full content via `git show HEAD:...`)
+- `apps/studio/src/renderer/src/features/upcoming-shows/pages/UpcomingShowsPage.tsx` (confirmed
+  empty diff across both commits combined)
+- `apps/studio/src/renderer/src/features/upcoming-shows/hooks/useShowQueuePrintRequests.ts`
+  (confirmed unchanged by the follow-up commit specifically)
+- `apps/studio/src/renderer/src/features/print-requests/pages/PrintRequestsPage.tsx` (confirmed
+  empty diff)
+- `apps/studio/src/renderer/src/features/print-requests/hooks/usePrintRequestAllocationTotals.ts`
+  (confirmed empty diff)
+- Full diff via `git diff origin/production..HEAD --stat`/`--name-only` and
+  `git diff 368530b..eaa9023 --stat`
+- `git log`, `git rev-parse`, `git rev-list --count`, `git status --porcelain`,
+  `git branch -r --list` (all re-run fresh for this pass)
+- Independent, freshly-written standalone reproductions (not reused unmodified from the initial
+  pass) of `mergeShowQueuePrintRequestSources`'s behavior, including an order-permutation test not
+  present in the initial pass
+- Physical working-tree swap to the pre-follow-up commit's source file, re-running the final test
+  suite against it, then restoring and re-confirming a clean tree
+
+## Test results independently verified (this follow-up pass)
+
+| Check | Result |
+|---|---|
+| Full `showQueuePrintRequestSources.test.ts` suite against final `eaa9023` code | **10/10 pass** |
+| Same test file against `368530b`'s (pre-follow-up) source, via physical file swap | **9/10 pass, exactly the intended new test fails** |
+| Working tree after swap-back | clean, byte-identical to commit |
+| Fresh order-permutation reproduction (3 orderings) of the summary-merge fix | all 3 orderings correct |
+| `npm run lint` | exit 0, 0 warnings |
+| Studio typecheck (`tsc --noEmit`, after generating the build-time config) | exit 0 |
+| `git diff --check` | exit 0 (benign CRLF-normalization warnings only) |
+
+## Confirmation that the branch remains unpushed
+
+`git branch -r --list "*fix/studio-print-request-deep-link-tab-integrity*"` returns no results —
+confirmed no remote-tracking ref exists for this branch. No push, PR, merge, installer build, or
+Release publish action was performed by this review.
+
+## Final branch commit SHA
+
+`eaa9023a4deb7756af05a227478b461e41535a71`
+
+## Next exact approval phrase (for pushing and opening the production PR)
+
+```
+APPROVE STUDIO PRINT REQUEST DEEP-LINK TAB INTEGRITY PUSH AND OPEN PRODUCTION PR
 ```
