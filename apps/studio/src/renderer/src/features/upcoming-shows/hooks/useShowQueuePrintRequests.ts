@@ -11,10 +11,16 @@ export function useShowQueuePrintRequests(attachedRequestIds: string[]) {
   const working = usePrintRequests("working");
   const queued = usePrintRequests("queued");
   const printing = usePrintRequests("printing");
-  const { ensureRequestsLoaded } = working;
+  const { ensureRequestsLoaded: ensureWorkingRequestsLoaded } = working;
+  const { ensureRequestsLoaded: ensureQueuedRequestsLoaded } = queued;
+  const { ensureRequestsLoaded: ensurePrintingRequestsLoaded } = printing;
 
   const sources = useMemo<ShowQueuePrintRequestSource[]>(
-    () => [working, queued, printing],
+    () => [
+      { ...working, tab: "working" as const },
+      { ...queued, tab: "queued" as const },
+      { ...printing, tab: "printing" as const },
+    ],
     [printing, queued, working],
   );
   const attachedIdsKey = useMemo(
@@ -22,12 +28,21 @@ export function useShowQueuePrintRequests(attachedRequestIds: string[]) {
     [attachedRequestIds],
   );
 
+  // Every source's own `ensureRequestsLoaded` must fetch the full attached-ID set — an attached
+  // request can be Working, Queued, or Printing, and each source only admits a fetched request
+  // into `mergeShowQueuePrintRequestSources`'s output when its own tab matches that request's
+  // `queueTab` (see that function). Calling this on only one source would silently drop any
+  // attached request whose tab isn't that one source's tab and isn't already on that tab's own
+  // loaded page.
   useEffect(() => {
     if (!attachedIdsKey) {
       return;
     }
-    void ensureRequestsLoaded(attachedIdsKey.split("|"));
-  }, [attachedIdsKey, ensureRequestsLoaded]);
+    const attachedIds = attachedIdsKey.split("|");
+    void ensureWorkingRequestsLoaded(attachedIds);
+    void ensureQueuedRequestsLoaded(attachedIds);
+    void ensurePrintingRequestsLoaded(attachedIds);
+  }, [attachedIdsKey, ensureWorkingRequestsLoaded, ensureQueuedRequestsLoaded, ensurePrintingRequestsLoaded]);
 
   const merged = useMemo(() => mergeShowQueuePrintRequestSources(sources), [sources]);
   const loadMore = useCallback(
