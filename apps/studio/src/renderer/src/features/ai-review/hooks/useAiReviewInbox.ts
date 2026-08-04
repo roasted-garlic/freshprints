@@ -510,8 +510,16 @@ export function useAiReviewInbox(
       setDraftForm(null);
       setBaselineForm(null);
       setLiveDesign(null);
-      options?.onNavigateToTab?.(resolveRejectedRerunTargetTab(), designId);
+      // Reconcile the Processing list and its count deterministically, rather than relying
+      // solely on tab navigation's own side-effect refetch (a real navigation happens to
+      // trigger a fresh listDesignsPage call, which previously masked this gap — but a design
+      // whose reprocessing completes without the user changing tabs, or whose completion lands
+      // between this reset and the navigation, could leave the Processing list/count stale
+      // until an unrelated remount). See the matching reloadDesigns -> onQueueChanged sequence
+      // in runInboxAction above (post-launch-catalog-and-processing-stability, Workstream D).
+      await reloadDesigns();
       options?.onQueueChanged?.();
+      options?.onNavigateToTab?.(resolveRejectedRerunTargetTab(), designId);
     } catch (rerunError) {
       pendingCrossTabSelectionRef.current = null;
       setActionError(
@@ -523,7 +531,7 @@ export function useAiReviewInbox(
       setIsSendingBackToProcessing(false);
       setIsActionLoading(false);
     }
-  }, [canRerunAiSuggestions, canRerunSelected, options, selectedDesign, user]);
+  }, [canRerunAiSuggestions, canRerunSelected, options, reloadDesigns, selectedDesign, user]);
 
   const requestRerunAiSuggestions = useCallback(() => {
     if (!canRerunAiSuggestions && !canRerunSelected) {

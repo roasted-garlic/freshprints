@@ -3,6 +3,7 @@ import { useCallback, useState } from "react";
 import { useAuth } from "../../auth/hooks/useAuth";
 import { categoryService } from "../services/categoryService";
 import { taxonomyArchiveGuardsService } from "../services/taxonomyArchiveGuardsService";
+import { clearStudioTaxonomyCaches } from "../services/taxonomyCacheControl";
 import type { Category } from "../types/category.types";
 
 interface ArchiveCategoryState {
@@ -34,6 +35,12 @@ export function useArchiveCategory() {
           setState({ isSubmitting: false, error: message });
           throw new Error(message);
         }
+        // archiveCategoryWithGuards writes through the Admin SDK, bypassing
+        // the client-side categoryListCache entirely. Without this, the
+        // cache serves pre-archive data even though the write succeeded.
+        // Only clear on confirmed success, never on a blocked/failed
+        // attempt.
+        clearStudioTaxonomyCaches();
         const category = await categoryService.getCategoryById(user, categoryId);
         setState({ isSubmitting: false, error: null });
         return category;

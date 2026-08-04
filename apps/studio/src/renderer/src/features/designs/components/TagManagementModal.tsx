@@ -99,9 +99,11 @@ export function TagManagementModal({ isOpen, onClose, onUpdated }: TagManagement
     isLoading,
     isSubmitting,
     reloadTags,
+    restoreTag,
     tags,
     updateTag,
   } = useCatalogTags({ includeArchived: true });
+  const [restoringTagId, setRestoringTagId] = useState<string | null>(null);
 
   const [editorMode, setEditorMode] = useState<TagEditorMode>("list");
   const [showArchived, setShowArchived] = useState(false);
@@ -433,6 +435,21 @@ export function TagManagementModal({ isOpen, onClose, onUpdated }: TagManagement
     }
   }
 
+  async function handleRestore(tag: CatalogTag) {
+    clearActionError();
+    setRestoringTagId(tag.id);
+
+    try {
+      await restoreTag(tag.id);
+      await onUpdated();
+      setSuccessMessage(`${tag.name} restored to the approved list.`);
+    } catch {
+      // Error handled in hook.
+    } finally {
+      setRestoringTagId(null);
+    }
+  }
+
   const formTitle =
     editorMode === "create"
       ? "Add tag"
@@ -602,19 +619,34 @@ export function TagManagementModal({ isOpen, onClose, onUpdated }: TagManagement
 
                       {canManageTags ? (
                         <div className="category-management-item-actions">
-                          <Button onClick={() => openEditForm(tag)} type="button" variant="secondary">
-                            Edit
-                          </Button>
                           {tag.status === "approved" ? (
-                            <Button
-                              disabled={isMutatingTags}
-                              onClick={() => setTagToArchive(tag)}
-                              type="button"
-                              variant="danger"
-                            >
-                              Archive
-                            </Button>
-                          ) : null}
+                            <>
+                              <Button onClick={() => openEditForm(tag)} type="button" variant="secondary">
+                                Edit
+                              </Button>
+                              <Button
+                                disabled={isMutatingTags}
+                                onClick={() => setTagToArchive(tag)}
+                                type="button"
+                                variant="danger"
+                              >
+                                Archive
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              <Button onClick={() => openEditForm(tag)} type="button" variant="secondary">
+                                Edit
+                              </Button>
+                              <Button
+                                disabled={isMutatingTags && restoringTagId === tag.id}
+                                onClick={() => void handleRestore(tag)}
+                                type="button"
+                              >
+                                {isMutatingTags && restoringTagId === tag.id ? "Restoring..." : "Restore"}
+                              </Button>
+                            </>
+                          )}
                         </div>
                       ) : null}
                     </article>

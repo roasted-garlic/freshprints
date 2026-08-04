@@ -39,7 +39,6 @@ test("classifies search/filter/membership fields for full publication", () => {
     { description: "Changed" },
     { categoryId: "cat-2" },
     { tags: ["tag-2"] },
-    { status: "archived" },
     { createdAt: 200 },
   ]) {
     assert.equal(
@@ -47,6 +46,43 @@ test("classifies search/filter/membership fields for full publication", () => {
       "index-filter",
     );
   }
+});
+
+test("classifies a status change that crosses the ready boundary for full publication", () => {
+  // ready -> archived leaves the published set (removed).
+  assert.equal(
+    classifyPortalCatalogDesignChange(base, { ...base, status: "archived" }),
+    "index-filter",
+  );
+  // imported -> ready enters the published set (added).
+  const notYetReady = { ...base, status: "imported" };
+  assert.equal(
+    classifyPortalCatalogDesignChange(notYetReady, { ...notYetReady, status: "ready" }),
+    "index-filter",
+  );
+});
+
+test("does not schedule a full publication for status churn that never crosses the ready boundary", () => {
+  // imported -> processing and back: publishPortal only ever reads
+  // status == "ready", so this status churn cannot change the published
+  // card set and must not classify as index-filter (Workstream C: this was
+  // previously scheduling wasted full portal-catalog rebuilds for every
+  // import/derivative status transition).
+  const notReady = { ...base, status: "imported" };
+  assert.equal(
+    classifyPortalCatalogDesignChange(notReady, { ...notReady, status: "processing" }),
+    "operational",
+  );
+  assert.equal(
+    classifyPortalCatalogDesignChange({ ...notReady, status: "processing" }, notReady),
+    "operational",
+  );
+  // rejected -> imported (re-run for reprocessing) also never crosses the
+  // ready boundary.
+  assert.equal(
+    classifyPortalCatalogDesignChange({ ...notReady, status: "rejected" }, notReady),
+    "operational",
+  );
 });
 
 test("classifies request/show/favorite/updated metadata as operational", () => {

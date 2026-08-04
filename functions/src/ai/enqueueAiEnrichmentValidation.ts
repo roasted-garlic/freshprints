@@ -25,6 +25,28 @@ export function shouldAllowAiEnqueueForReviewStatus(
   return !design.aiReviewStatus || design.aiReviewStatus === "pending";
 }
 
+/**
+ * A plain (non-rerun) enqueue call rejected by shouldAllowAiEnqueueForReviewStatus is not
+ * automatically a genuine failure — the most common real-world cause is a stale/duplicate call
+ * racing a design that already reached its desired terminal state (aiReviewStatus ===
+ * "needs_review", i.e. processing already completed successfully). The caller should treat that
+ * case as an idempotent no-op, not surface "This design is no longer eligible for automatic AI
+ * enqueue." as a hard failure (post-launch-catalog-and-processing-stability, Workstream D).
+ *
+ * Only a plain enqueue call can hit this path — rerunFromReview/rerunRejected calls have their own
+ * distinct eligibility checks upstream and are never classified as already-terminal here.
+ */
+export function isAlreadyTerminalPlainEnqueue(
+  design: Record<string, unknown>,
+  flags: EnqueueAiEnrichmentFlags,
+): boolean {
+  if (flags.rerunFromReview || flags.rerunRejected) {
+    return false;
+  }
+
+  return design.aiReviewStatus === "needs_review" || design.aiReviewStatus === "approved";
+}
+
 export function parseEnqueueAiEnrichmentRequest(data: unknown): {
   designId: string;
   rerunRejected: boolean;

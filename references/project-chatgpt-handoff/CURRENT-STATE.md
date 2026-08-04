@@ -1,5 +1,114 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-08-04 - Post-launch catalog and processing stability: Implement + Test + Implementation Review complete; A–D shipped to fresh-prints-dev, E stopped
+
+Continuation of the Plan/Review entry immediately below, following owner approval
+(`APPROVE POST-LAUNCH CATALOG AND PROCESSING STABILITY IMPLEMENTATION`). Separate, concurrent
+managed goal — does not affect or reopen the Studio automatic-updates / production-PR gate.
+
+**Branch:** `fix/post-launch-catalog-and-processing-stability` (renamed from the Plan/Review-phase
+branch, which was exactly 1 commit ahead of `origin/production` and 0 behind). Committed and pushed;
+no PR opened, no merge, no production deploy.
+
+**Workstreams A–D implemented, tested, and (where applicable) deployed to `fresh-prints-dev`:**
+- **A (tag/category archive):** wired the existing `clearStudioTaxonomyCaches()` helper into both
+  guarded-archive success paths (tags and categories — categories had the identical bug, confirmed
+  and fixed in the same pass, not just flagged); added a new tag Restore action/button (previously
+  missing entirely from the tag UI).
+- **B (Design Library ordering):** `DESIGN_LIBRARY_DEFAULT_SORT_FIELD` corrected to `createdAt`; the
+  Firestore-fallback path in `useGeneratedReadyDesigns.ts` corrected to match. Portal re-confirmed
+  not reproduced in current source during implementation — no Portal file changed.
+- **C (snapshot scheduling cost):** narrowed the `portal-catalog` change classifier so only a
+  transition into/out of `ready` schedules a full rebuild (ordinary import/processing status churn no
+  longer does); replaced the per-invocation in-memory debounce with a persisted, Firestore-
+  transactional "debounce waiter" claim so concurrent trigger invocations coalesce into one sleep-
+  and-publish attempt instead of each racing independently; added scheduling/publication attribution
+  logs (counts and reasons only, no document contents). The existing transactional publish lease and
+  last-valid-snapshot-serves-during-publish behavior were both explicitly preserved, not touched.
+- **D (AI Processing reconciliation):** `enqueueAiEnrichment` now returns a structured
+  `{queued:false, reason:"already_terminal"}` response instead of throwing when a stale/duplicate
+  plain enqueue call finds a design already at `needs_review`/`approved` (genuine failures — including
+  staff-rejected designs — still throw); the Studio client no longer treats that response as an
+  error and applies the design's real terminal state to local state; `executeRerunToProcessing` now
+  calls `reloadDesigns()` deterministically before tab navigation instead of relying on navigation's
+  own side-effect refetch.
+- **E (Studio upload authorization):** **stopped, not implemented.** Reproduction requires an
+  authenticated Studio session (no interactive Electron/Chromium GUI available in this environment)
+  and/or Application Default Credentials for a scripted Admin SDK check (not configured here,
+  confirmed by a failed direct Firestore read attempt). Exact remaining evidence needed is recorded
+  in the Test Report. Per instruction, this stop did not block A–D.
+
+**Independent Implementation Review found and fixed one real gap** (not merely re-confirmed the
+Plan): the new debounce claim's expiry only covered the 15-second sleep, not the ensuing publish
+attempt, which could let a second invocation become a second waiter while the first was still
+mid-publish (still safe — the existing lease prevented a concurrent scan — but it defeated the
+coalescing goal under sustained bursts). Fixed by extending the claim to `DEBOUNCE_MS + LEASE_MS`;
+added a regression test; corrected one stale test assertion; rebuilt/retested/relinted; redeployed
+the 5 affected functions to `fresh-prints-dev`.
+
+**Deployed to `fresh-prints-dev` only** (explicitly switched off the ambient `fresh-prints-prod`
+active CLI alias first — confirmed via `firebase use` before switching): `rebuildCatalogSnapshots`,
+`retryPortalCatalogPublication`, `onCategorySnapshotSourceWritten`, `onTagSnapshotSourceWritten`,
+`onPortalCatalogSnapshotSourceWritten`, `enqueueAiEnrichment` — all confirmed `ACTIVE`, function
+count unchanged (109) before and after both the initial deploy and the post-review redeploy. No
+Rules, Storage Rules, index, secret, Hosting, or unrelated Function was touched. **No production
+action of any kind occurred.**
+
+**Full verification suite green:** Functions build, Studio/Portal typecheck, Studio 3-target Vite
+build, repo lint, `git diff --check` — all exit 0. Full test sweep confirmed zero new failures versus
+a fully clean `origin/production` tree (verified via `git stash -u`, not assumed) — the same 2
+Functions-side and 8 Studio-side pre-existing, unrelated failures remain on both trees, all
+previously documented elsewhere (e.g. the 2026-07-27 Firestore Usage Efficiency Wave C signoff's
+5 pre-existing print-request DPI/print-size failures).
+
+**Owner follow-up required** (recorded in the Test Report, not silently dropped): Workstream E
+reproduction; a live controlled-batch Firestore cost measurement using the new
+`catalog-snapshot-scheduling`/`catalog-snapshot-publication` log events; a live AI Processing
+reconciliation UI check; one live Firestore-document check confirming Workstream A's archive write
+in `fresh-prints-dev`.
+
+Reference docs: `docs/workflow/plans/2026-08-04-post-launch-catalog-and-processing-stability-plan.md`,
+`docs/workflow/reviews/2026-08-04-post-launch-catalog-and-processing-stability-review.md`,
+`docs/workflow/reviews/2026-08-04-post-launch-catalog-and-processing-stability-test-report.md`,
+`docs/workflow/reviews/2026-08-04-post-launch-catalog-and-processing-stability-implementation-review.md`.
+
+## 2026-08-04 - Post-launch catalog and processing stability: Plan + independent Formal Review complete
+
+Separate, concurrent managed goal — does not affect or reopen the Studio automatic-updates /
+production-PR gate described below.
+
+- Diagnosed five post-launch defects discovered during real production use, via five parallel
+  read-only source-tracing investigations, one per workstream:
+  1. **Tag archive silently fails to update the UI** — the `archiveTagWithGuards` callable writes
+     correctly server-side, but the client's tag-list cache is never invalidated afterward (a
+     ready-made `clearStudioTaxonomyCaches()` helper exists for this and is wired to auth
+     transitions only, not to the archive path).
+  2. **Catalog ordering** — Studio Design Library's default sort constant is wrong
+     (`updatedAt` instead of `createdAt`); Portal (Library, Discover, filtered results) was traced
+     and found to already sort correctly in current source — no Portal defect found, pending owner
+     re-confirmation of the reported symptom.
+  3. **Firestore read spikes during import** — a single imported design can schedule up to 4
+     independent full-catalog-snapshot rebuilds across its status lifecycle, each an unbounded full
+     scan of designs+categories+tags; debounce is per-invocation in-memory, not coalesced across
+     concurrent Cloud Functions instances (a persisted lease does correctly prevent concurrent
+     *scans*, but not the wasted *scheduling*).
+  4. **AI Processing stays stale after completing** — a benign, correctly-rejected duplicate/stale
+     enqueue call is surfaced to the user as a hard error instead of a no-op; the Processing list and
+     its count are two independently-refreshed one-shot reads with no shared reconciliation trigger.
+  5. **First Studio upload after launch gets a Storage permission error** — not a size-limit issue
+     (confirmed the 150 MiB pre-decode gate would have blocked decode/trim entirely); best-evidence
+     hypothesis is a timing gap between the client's one-time bootstrap Firestore read and Storage
+     Rules' own live `firestore.get()` re-check at upload time — not a Rules misconfiguration.
+- **No two defects share one root cause.**
+- Plan: `docs/workflow/plans/2026-08-04-post-launch-catalog-and-processing-stability-plan.md`.
+  Independent Formal Review: `docs/workflow/reviews/2026-08-04-post-launch-catalog-and-processing-stability-review.md`
+  — verdict **approved_with_notes** (four minor refinements, no blockers; all Plan citations
+  independently spot-checked against live source during Review).
+- **No application source, Firebase, Rules, index, Function, or production change was made.**
+  Stopped after Plan + Formal Review per explicit task scope. Implement has not started.
+- Approval phrase for the eventual batched Implement pass:
+  `APPROVE POST-LAUNCH CATALOG AND PROCESSING STABILITY IMPLEMENTATION`.
+
 ## 2026-08-02 - Studio automatic updates: final Signoff PASS; production convergence audit complete
 
 - **Live-proven end to end across 4 consecutive real update cycles** (beta.2→beta.3→beta.4→beta.5)

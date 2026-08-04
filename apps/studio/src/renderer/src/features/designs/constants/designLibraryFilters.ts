@@ -154,8 +154,8 @@ export function getAiReviewPath(): string {
   return AI_REVIEW_PATH;
 }
 
-/** Design Library default: most recently processed/updated first (AI completion bumps updatedAt). */
-export const DESIGN_LIBRARY_DEFAULT_SORT_FIELD: DesignListSortField = "updatedAt";
+/** Design Library default: most recently added to the catalog first (createdAt), not most recently edited. */
+export const DESIGN_LIBRARY_DEFAULT_SORT_FIELD: DesignListSortField = "createdAt";
 export const DESIGN_LIBRARY_DEFAULT_SORT_DIRECTION: DesignListSortDirection = "desc";
 
 export function buildCatalogDesignListQuery(options: {

@@ -14,8 +14,16 @@ function project(
   return Object.fromEntries(fields.map((field) => [field, value[field]]));
 }
 
+// "status" is intentionally excluded here — publishPortal's own query is
+// `where("status", "==", "ready")`, so only a transition into or out of
+// "ready" can change the published card set. Every other status-to-status
+// transition (imported -> processing, processing -> imported, imported ->
+// rejected, etc.) is classified separately below via isReadyBoundaryChange,
+// so a design's ordinary import/processing lifecycle churn does not each
+// independently schedule a full, unbounded portal-catalog rebuild for a set
+// membership that never actually changed (post-launch-catalog-and-
+// processing-stability, Workstream C).
 const INDEX_FILTER_FIELDS = [
-  "status",
   "title",
   "description",
   "categoryId",
@@ -33,10 +41,24 @@ const CARD_ONLY_FIELDS = [
   "printHeightInches",
 ] as const;
 
+const PUBLISHED_STATUS = "ready";
+
+function isReadyBoundaryChange(
+  before: Record<string, unknown> | undefined,
+  after: Record<string, unknown> | undefined,
+): boolean {
+  const beforeIsReady = before?.status === PUBLISHED_STATUS;
+  const afterIsReady = after?.status === PUBLISHED_STATUS;
+  return beforeIsReady !== afterIsReady;
+}
+
 export function classifyPortalCatalogDesignChange(
   before: Record<string, unknown> | undefined,
   after: Record<string, unknown> | undefined,
 ): PortalCatalogChangeClassification {
+  if (isReadyBoundaryChange(before, after)) {
+    return "index-filter";
+  }
   if (
     stableJson(project(before, INDEX_FILTER_FIELDS)) !==
     stableJson(project(after, INDEX_FILTER_FIELDS))

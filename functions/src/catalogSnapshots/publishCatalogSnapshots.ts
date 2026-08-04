@@ -681,6 +681,99 @@ async function markDirty(kind: SnapshotKind): Promise<void> {
   }, { merge: true });
 }
 
+/**
+ * Decides, from the coordination document's current debounce-claim fields,
+ * whether the calling invocation should become the one that sleeps
+ * DEBOUNCE_MS and then publishes ("waiter"), or should simply mark dirty
+ * and return immediately, trusting an already-active waiter (or the
+ * existing lease/catch-up-loop generation check) to cover its dirty mark.
+ *
+ * Cloud Functions gives no cross-invocation shared memory, so a plain
+ * per-invocation setTimeout previously meant every qualifying trigger
+ * invocation in a burst independently slept and raced for the lease
+ * (post-launch-catalog-and-processing-stability, Workstream C). This claim
+ * is a persisted (Firestore-backed), not process-local, coordination
+ * signal: exactly one invocation per debounce window becomes the waiter;
+ * the rest coalesce into its eventual publish.
+ *
+ * Deliberately not a strict mutual-exclusion guarantee — the existing
+ * transactional publish lease in publishKind() remains the sole
+ * concurrency boundary for the actual publish/scan. This claim only
+ * reduces how many invocations redundantly sleep and attempt to publish; a
+ * missed or double claim (e.g. a crashed waiter, a clock skew edge) is
+ * safe, just occasionally less efficient, never incorrect.
+ *
+ * The claim's own expiry (set by the caller to cover both the sleep and a
+ * publish-attempt margin, not just the sleep) is deliberately longer than
+ * DEBOUNCE_MS itself — a claim that expired the moment the sleep ended
+ * would let a second invocation become a second waiter while the first
+ * waiter's runPublicationCatchUpLoop() is still in flight, which is safe
+ * (the lease still prevents a concurrent scan) but defeats the point of
+ * coalescing.
+ */
+export function shouldBecomeDebounceWaiter(
+  data: { debounceOwner?: unknown; debounceExpiresAt?: unknown },
+  nowMs: number,
+): boolean {
+  const claimExpiresAt =
+    data.debounceExpiresAt instanceof Timestamp ? data.debounceExpiresAt.toMillis() : 0;
+  const hasOwner = typeof data.debounceOwner === "string" && data.debounceOwner.length > 0;
+  return !(hasOwner && claimExpiresAt > nowMs);
+}
+
+/**
+ * Marks the coordination doc dirty and, in the same transaction, either
+ * claims the debounce-waiter role (if no other invocation currently holds
+ * an unexpired claim) or joins an already-claimed window. Returns whether
+ * this invocation must become the waiter.
+ *
+ * claimDurationMs should cover the full sleep-then-publish window (sleep +
+ * a publish-attempt margin), not just the debounce sleep itself — see
+ * shouldBecomeDebounceWaiter's doc comment.
+ */
+async function markDirtyAndClaimDebounceWaiter(
+  kind: SnapshotKind,
+  claimDurationMs: number,
+): Promise<{ isWaiter: boolean; waiterOwner: string }> {
+  const reference = adminDb.collection(COORDINATION_COLLECTION).doc(kind);
+  const owner = randomUUID();
+  return adminDb.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(reference);
+    const data = snapshot.data() ?? {};
+    const now = Date.now();
+    const isWaiter = shouldBecomeDebounceWaiter(data, now);
+    transaction.set(reference, {
+      requestedGeneration: FieldValue.increment(1),
+      wakeGeneration: FieldValue.increment(1),
+      status: "dirty",
+      ...(isWaiter
+        ? { debounceOwner: owner, debounceExpiresAt: Timestamp.fromMillis(now + claimDurationMs) }
+        : {}),
+    }, { merge: true });
+    return { isWaiter, waiterOwner: owner };
+  });
+}
+
+/**
+ * Clears the debounce claim only if it still belongs to `owner` — so a
+ * waiter that finished publishing does not clear a newer claim a
+ * subsequent invocation has since taken over (e.g. after this waiter's own
+ * claim expired and a later invocation reclaimed the role before this
+ * invocation's cleanup ran).
+ */
+async function releaseDebounceClaimIfOwned(kind: SnapshotKind, owner: string): Promise<void> {
+  const reference = adminDb.collection(COORDINATION_COLLECTION).doc(kind);
+  await adminDb.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(reference);
+    const data = snapshot.data() ?? {};
+    if (data.debounceOwner !== owner) return;
+    transaction.set(reference, {
+      debounceOwner: null,
+      debounceExpiresAt: null,
+    }, { merge: true });
+  });
+}
+
 async function publishKind(kind: SnapshotKind): Promise<{
   contentVersion: string;
   generation: number;
@@ -740,55 +833,122 @@ async function publishKind(kind: SnapshotKind): Promise<{
   }
 }
 
-async function markAndPublishAfterDebounce(kind: SnapshotKind): Promise<void> {
+/**
+ * Marks the coordination doc dirty for `kind` and coalesces concurrent
+ * scheduling attempts into a single debounce-and-publish pass. Only the
+ * invocation that claims the debounce-waiter role (see
+ * markDirtyAndClaimDebounceWaiter) sleeps DEBOUNCE_MS and attempts the
+ * publish; every other invocation in the same window marks dirty and
+ * returns immediately — the eventual waiter's publish (and, if generation
+ * has advanced further by then, the catch-up loop) covers their dirty mark
+ * too. The existing transactional publish lease in publishKind() remains
+ * the sole concurrency boundary for the scan/write itself; this claim only
+ * bounds how many invocations redundantly sleep and race for that lease.
+ */
+async function markAndPublishAfterDebounce(
+  kind: SnapshotKind,
+  schedulingReason: string,
+): Promise<void> {
   const startedAtMs = Date.now();
-  await markDirty(kind);
+  // The claim must outlive the sleep below plus the eventual publish
+  // attempt, not just the sleep itself — otherwise a second invocation
+  // could become a second waiter while this one's publish is still in
+  // flight (see markDirtyAndClaimDebounceWaiter's doc comment). LEASE_MS
+  // is already the established bound for "how long a publish may
+  // legitimately take," so reuse it as the publish-attempt margin.
+  const { isWaiter, waiterOwner } = await markDirtyAndClaimDebounceWaiter(
+    kind,
+    DEBOUNCE_MS + LEASE_MS,
+  );
+
+  logger.info("catalog-snapshot-scheduling", {
+    kind,
+    schedulingReason,
+    outcome: isWaiter ? "claimed-debounce-waiter" : "joined-existing-debounce-window",
+  });
+
+  if (!isWaiter) {
+    return;
+  }
+
   await new Promise<void>((resolve) => setTimeout(resolve, DEBOUNCE_MS));
 
-  await runPublicationCatchUpLoop({
-    publish: () => publishKind(kind),
-    readRequestedGeneration: async () => {
-      const latest = await adminDb.collection(COORDINATION_COLLECTION).doc(kind).get();
-      return latest.data()?.requestedGeneration;
-    },
-    onSuccess: async (published, pass) => {
-      if (
-        kind === "portal-catalog" &&
-        published.accounting &&
-        process.env.GCLOUD_PROJECT === "fresh-prints-dev"
-      ) {
-        logger.info("portal-catalog-publication-accounting", {
-          mode: "full",
-          classification: "index-filter",
-          publicationReason: "design-write",
+  try {
+    await runPublicationCatchUpLoop({
+      publish: () => publishKind(kind),
+      readRequestedGeneration: async () => {
+        const latest = await adminDb.collection(COORDINATION_COLLECTION).doc(kind).get();
+        return latest.data()?.requestedGeneration;
+      },
+      onSuccess: async (published, pass) => {
+        logger.info("catalog-snapshot-publication", {
+          kind,
+          schedulingReason,
           pass,
-          ...published.accounting,
-          coordinationDocumentsRead: 2,
-          coordinationDocumentsWritten: pass === 1 ? 3 : 2,
           durationMs: Date.now() - startedAtMs,
           outcome: "success",
+          generation: published.generation,
+          ...(published.accounting
+            ? {
+              readyDesignsRead: published.accounting.readyDesignsRead,
+              categoriesRead: published.accounting.categoriesRead,
+              tagsRead: published.accounting.tagsRead,
+            }
+            : {}),
         });
-      }
-    },
-    onFailure: async (error, pass, retryKind) => {
-      if (kind === "portal-catalog" && process.env.GCLOUD_PROJECT === "fresh-prints-dev") {
-        logger.error("portal-catalog-publication-accounting", {
-          mode: "full",
-          classification: "index-filter",
-          publicationReason: "design-write",
+        if (
+          kind === "portal-catalog" &&
+          published.accounting &&
+          process.env.GCLOUD_PROJECT === "fresh-prints-dev"
+        ) {
+          logger.info("portal-catalog-publication-accounting", {
+            mode: "full",
+            classification: "index-filter",
+            publicationReason: schedulingReason,
+            pass,
+            ...published.accounting,
+            coordinationDocumentsRead: 2,
+            coordinationDocumentsWritten: pass === 1 ? 3 : 2,
+            durationMs: Date.now() - startedAtMs,
+            outcome: "success",
+          });
+        }
+      },
+      onFailure: async (error, pass, retryKind) => {
+        const failureCode =
+          retryKind === "lease-busy"
+            ? "lease-active-retrying"
+            : retryKind === "transient"
+              ? "transient-storage-retrying"
+              : "full-publication-failed";
+        logger.warn("catalog-snapshot-publication", {
+          kind,
+          schedulingReason,
           pass,
           durationMs: Date.now() - startedAtMs,
-          outcome: "failure",
-          failureCode:
-            retryKind === "lease-busy"
-              ? "lease-active-retrying"
-              : retryKind === "transient"
-                ? "transient-storage-retrying"
-                : "full-publication-failed",
+          outcome: retryKind === "fatal" ? "failure" : "contention",
+          failureCode,
         });
-      }
-    },
-  });
+        if (kind === "portal-catalog" && process.env.GCLOUD_PROJECT === "fresh-prints-dev") {
+          logger.error("portal-catalog-publication-accounting", {
+            mode: "full",
+            classification: "index-filter",
+            publicationReason: schedulingReason,
+            pass,
+            durationMs: Date.now() - startedAtMs,
+            outcome: "failure",
+            failureCode,
+          });
+        }
+      },
+    });
+  } finally {
+    // Release only if this invocation still owns the claim — a failed
+    // publish leaves requestedGeneration recoverable (markDirty already
+    // persisted it before this ran) for the next scheduling attempt to
+    // pick up as its own new debounce window.
+    await releaseDebounceClaimIfOwned(kind, waiterOwner);
+  }
 }
 
 /**
@@ -958,7 +1118,7 @@ export const onCategorySnapshotSourceWritten = onDocumentWritten(
     const before = event.data?.before.exists ? event.data.before.data() : undefined;
     const after = event.data?.after.exists ? event.data.after.data() : undefined;
     if (stableJson(project(before)) === stableJson(project(after))) return;
-    await markAndPublishAfterDebounce("catalog-reference");
+    await markAndPublishAfterDebounce("catalog-reference", "category-write");
   },
 );
 
@@ -974,7 +1134,7 @@ export const onTagSnapshotSourceWritten = onDocumentWritten(
     const before = event.data?.before.exists ? event.data.before.data() : undefined;
     const after = event.data?.after.exists ? event.data.after.data() : undefined;
     if (stableJson(project(before)) === stableJson(project(after))) return;
-    await markAndPublishAfterDebounce("catalog-reference");
+    await markAndPublishAfterDebounce("catalog-reference", "tag-write");
   },
 );
 
@@ -1009,6 +1169,6 @@ export const onPortalCatalogSnapshotSourceWritten = onDocumentWritten(
         return;
       }
     }
-    await markAndPublishAfterDebounce("portal-catalog");
+    await markAndPublishAfterDebounce("portal-catalog", "design-write");
   },
 );

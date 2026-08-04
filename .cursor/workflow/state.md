@@ -19,7 +19,51 @@ Next Required Step: Owner reviews the production convergence audit and approves 
 
 Background (not active gate): Goal #13 / clean Studio remediation / Stage 2 remain deferred; prior installer intermediate; domain cutover blocked until `APPROVE MYPRINTREQUEST.COM CUTOVER`.
 
+**Separate concurrent managed goal (does not affect the gate above):**
+`post-launch-catalog-and-processing-stability` — Plan + Formal Review + Implement + Test +
+Implementation Review complete (2026-08-04). Owner-approved batched implementation
+(`APPROVE POST-LAUNCH CATALOG AND PROCESSING STABILITY IMPLEMENTATION`) executed through A–D;
+Workstream E stopped (documented, does not block A–D). Branch `fix/post-launch-catalog-and-
+processing-stability` (renamed from the Plan/Review-phase branch, which was exactly 1 commit
+ahead of `origin/production`). Committed and pushed; no PR opened, no merge, no production
+deploy. Functions changes for Workstreams C/D deployed to `fresh-prints-dev` only (6 functions,
+confirmed ACTIVE); one real correctness gap (debounce-claim duration) found and fixed during the
+independent Implementation Review, redeployed. See:
+`docs/workflow/plans/2026-08-04-post-launch-catalog-and-processing-stability-plan.md`,
+`docs/workflow/reviews/2026-08-04-post-launch-catalog-and-processing-stability-review.md`,
+`docs/workflow/reviews/2026-08-04-post-launch-catalog-and-processing-stability-test-report.md`,
+`docs/workflow/reviews/2026-08-04-post-launch-catalog-and-processing-stability-implementation-review.md`.
+Owner follow-up required: Workstream E reproduction (needs an authenticated Studio session this
+environment cannot provide); live controlled-batch Firestore cost measurement; live AI Processing
+reconciliation UI check; one live Firestore-document check for Workstream A's archive write.
+
 Decision Log:
+- 2026-08-04 — `post-launch-catalog-and-processing-stability` Implement/Test/Implementation Review:
+  completed Workstreams A (tag/category archive cache invalidation + new tag Restore action), B
+  (Studio Design Library createdAt default sort fix; Portal ordering re-confirmed not reproduced, no
+  Portal change), C (snapshot scheduling coalescing via a persisted debounce-waiter claim + narrowed
+  ready-boundary-only status classification + attribution logging), D (AI Processing structured
+  `already_terminal` response + client reconciliation fix). Workstream E stopped — this sandboxed
+  environment has neither an interactive Electron session nor Application Default Credentials, so
+  the required reproduction/log-inspection steps could not be performed; exact remaining evidence
+  documented in the Test Report. Full verification suite green (Functions build, Studio/Portal
+  typecheck, Studio 3-target Vite build, lint, `git diff --check`, and the full test sweep — zero new
+  failures vs. a fully clean `origin/production` tree, confirmed via `git stash -u` comparison).
+  Deployed the 6 changed Cloud Functions to `fresh-prints-dev` (explicitly switched off the ambient
+  `fresh-prints-prod` active alias first) — confirmed ACTIVE, function count unchanged (109). The
+  independent Implementation Review re-derived correctness from the actual diff (not from this
+  session's own earlier reasoning) and found one real gap: the debounce claim's expiry only covered
+  the 15s sleep, not the ensuing publish attempt, which could let a second invocation become a
+  second waiter while the first was still mid-publish. Fixed in the same pass
+  (`DEBOUNCE_MS + LEASE_MS`), added a regression test, corrected one stale test assertion, rebuilt,
+  retested, relinted, and redeployed the 5 affected functions to `fresh-prints-dev`. No Rules, index,
+  Storage Rules, secret, or production change occurred at any point. Committed and pushed
+  `fix/post-launch-catalog-and-processing-stability`; no PR opened.
+- 2026-08-04 — `post-launch-catalog-and-processing-stability`: five parallel read-only source-tracing
+  investigations (one per defect workstream) completed and independently spot-checked against live
+  source during Review. Plan + Formal Review both written; verdict `approved_with_notes` (four minor
+  refinements, no blockers). No code/Firebase/production change. Stopped after Plan + Review per
+  task instruction; awaiting owner review before any Implement work begins.
 - 2026-08-02 — Studio automatic updates: final Signoff PASS after 4 consecutive live update-cycle proofs (beta.2→3 revealed the NSIS-wizard + raw-HTML-release-notes defects; both fixed; beta.3→4 confirmed the silent-install fix; beta.4→5 confirmed the release-note formatter). Completed a full production convergence audit: confirmed clean 44-commit/0-behind branch topology, categorized the full 63-file diff (Studio updater + Settings tabs + docs only — no Rules/indexes/Functions/Portal code), confirmed reporting Functions/Rules/indexes are merged to production source but not yet deployed to fresh-prints-prod, confirmed Windows signing fails closed for stable builds, and prepared a 10-phase (A–J) human-gated production sequence. No production action occurred; stopped before opening the production PR pending owner approval.
 - 2026-08-02 — Reporting Signoff recorded (owner-confirmed QA PASS, all 24 checklist items); final release gate re-run and green. Starting production promotion + Studio automatic-updates implementation per owner's explicit go-ahead through Phase G (production backend deploy + Portal rollout), executed directly in-session (not via unsupervised background agent) given the production-merge and release-publish blast radius.
 - 2026-08-02 — Completed development environment: deployed Firestore Rules to `fresh-prints-dev` after diff audit + emulator suite pass (60/60); cleared stale Portal `.next` lock and got a definitive `npm run build:portal` pass; re-confirmed Functions ACTIVE and both indexes Enabled (no redeploy). Adopted owner-confirmed permanent policy: `fresh-prints-dev` will never have an App Hosting backend — documented in `docs/standards/DEPLOYMENT.md`'s new "Development and Production Portal Hosting Policy" section; corrected stale references in the reporting development-deployment checkpoint and development owner-QA checklist that had called the missing dev backend a blocker. No production action.

@@ -207,7 +207,7 @@ export function useAiProcessingQueue({
           return;
         }
 
-        if (!result.queued) {
+        if (!result.queued && result.reason !== "already_terminal") {
           setEnqueueingDesignId(null);
           throw new Error(
             result.reason === "already_processing"
@@ -216,9 +216,13 @@ export function useAiProcessingQueue({
           );
         }
 
-        // The callable runs the pipeline synchronously and returns the terminal AI state.
-        // Apply it immediately so the UI reflects completion without waiting on the
-        // background Firestore reload below.
+        // The callable either ran the pipeline synchronously and returned the terminal AI
+        // state (queued + completed), or found the design had already reached that terminal
+        // state from an earlier call (reason: "already_terminal") — both carry the design's
+        // real current fields. Apply the patch immediately so Processing/Needs Review bucket
+        // membership and counts reconcile without waiting on the background Firestore reload
+        // below, and without this benign duplicate-call outcome ever surfacing as an error
+        // (post-launch-catalog-and-processing-stability, Workstream D).
         const patch = buildDesignPatchFromEnqueueResult(result);
 
         if (patch) {

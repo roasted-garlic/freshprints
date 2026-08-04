@@ -120,12 +120,12 @@ export function useGeneratedReadyDesigns(user: User | null): UseGeneratedReadyDe
             { app: "studio", triggerReason: "route" },
           );
           const page = await designService.listDesignsPage(user, {
-            sortField: "updatedAt",
+            sortField: "createdAt",
             sortDirection: "desc",
             statusIn: ["ready"],
             limitCount: PAGE_SIZE,
           });
-          return sortDesignsForListQuery(page.designs, "updatedAt", "desc");
+          return sortDesignsForListQuery(page.designs, "createdAt", "desc");
         }
         : undefined,
       shouldActivateFallback: () =>

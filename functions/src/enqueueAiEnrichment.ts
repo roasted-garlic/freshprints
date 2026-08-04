@@ -11,6 +11,7 @@ import {
   AI_ENRICHMENT_STALE_STAGE_MS,
 } from "./ai/aiEnrichmentConfig";
 import {
+  isAlreadyTerminalPlainEnqueue,
   isRerunFromReviewEligible,
   parseEnqueueAiEnrichmentRequest,
   shouldAllowAiEnqueueForReviewStatus,
@@ -97,6 +98,28 @@ export const enqueueAiEnrichment = onCall(
     }
 
     if (!shouldAllowAiEnqueueForReviewStatus(design, { rerunRejected, rerunFromReview })) {
+      if (isAlreadyTerminalPlainEnqueue(design, { rerunRejected, rerunFromReview })) {
+        // The design already reached its desired terminal state (most commonly a stale/duplicate
+        // enqueue call racing a design that already completed to needs_review). This is an
+        // idempotent no-op, not a failure — return structured data so the client can reconcile
+        // local state instead of surfacing a false "no longer eligible" error.
+        logPipelineEvent("enqueue.skipped", {
+          designId,
+          reason: "already_terminal",
+          aiReviewStatus: typeof design.aiReviewStatus === "string" ? design.aiReviewStatus : null,
+        });
+        return {
+          designId,
+          queued: false,
+          reason: "already_terminal",
+          aiProcessingStage:
+            typeof design.aiProcessingStage === "string" ? design.aiProcessingStage : null,
+          aiReviewStatus:
+            typeof design.aiReviewStatus === "string" ? design.aiReviewStatus : null,
+          status: typeof design.status === "string" ? design.status : null,
+        };
+      }
+
       throw failedPrecondition("This design is no longer eligible for automatic AI enqueue.");
     }
 

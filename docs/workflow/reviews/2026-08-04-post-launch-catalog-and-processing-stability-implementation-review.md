@@ -1,0 +1,214 @@
+# Independent Implementation Review: Post-Launch Catalog and Processing Stability
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-08-04 |
+| Managed goal | `post-launch-catalog-and-processing-stability` |
+| Reviewed diff | `git diff` against `origin/production` on branch `fix/post-launch-catalog-and-processing-stability`, 16 source/test files, 482 insertions / 75 deletions (plus new untracked test files) |
+| Method | Independently re-read every changed file's actual diff hunk-by-hunk, re-derived correctness from first principles rather than trusting the Plan, the Test Report, or prior reasoning in this same session |
+| Verdict | **approved_with_changes — one real correctness gap found and fixed in this pass; see §3** |
+
+---
+
+## 1. Review method
+
+Per instruction, this review does not rely only on the Plan's conclusions. For each of the 5
+workstreams, the actual `git diff` was re-read independently, and specific correctness questions
+were asked and answered against the diff itself (not against the earlier investigation's prose):
+Does the write order actually prevent staleness? Does the new classifier logic handle every status
+transition correctly, including boundary crossings in both directions? Does the new debounce claim
+actually bound concurrency the way its comment claims? Does the structured `already_terminal`
+response get correctly excluded for rerun calls and for a genuinely different terminal state
+(`rejected`)? Is there a Firestore index gap for the changed query? Several of these questions were
+answered by re-deriving the logic by hand against concrete before/after status pairs, not by reading
+the code's own comments as proof.
+
+## 2. Workstream A — Tag/category archive cache invalidation
+
+**Verified independently:**
+- `useCatalogTags.archiveTag`'s cache-clear call is placed strictly after the `blocked`-outcome
+  throw, confirmed by reading the actual control flow (not just the accompanying comment) — a
+  blocked/failed archive cannot evict good cache state.
+- Traced the full call chain by hand: `archiveTag` (clears cache) → `runAction` (then calls
+  `loadTags()`) → `loadTags()` reads through `catalogTagService.listTags` → `listAllTags` →
+  `tagListCache.get(...)`. Since the cache was already cleared before `loadTags()` runs, the fetch
+  correctly misses the cache. This ordering dependency is easy to get backwards (clearing the cache
+  *after* the reload would silently reintroduce the exact staleness bug) — confirmed it is not
+  backwards here.
+- `useArchiveCategory.archiveCategory` — identical pattern, confirmed the same ordering holds.
+- `restoreTag`'s reuse of `catalogTagService.updateTag` (which already self-invalidates via its own
+  existing `invalidateCatalogTagListCache()` call) was confirmed by re-reading `updateTag`'s body
+  directly, not assumed from its name.
+- Re-examined the `TagManagementModal.tsx` Restore button's `disabled` condition
+  (`isMutatingTags && restoringTagId === tag.id`) for a false-shared-disable bug across
+  unrelated rows sharing the single `useCatalogTags`-level `isSubmitting` flag — traced through by
+  hand and confirmed correct: the button for tag A only shows disabled/"Restoring…" while `A` is the
+  one being restored; other rows remain independently clickable. No bug found here despite the
+  pattern looking superficially different from `CategoryManagementModal`'s dedicated-hook shape.
+
+**No defect found in this workstream's implementation.**
+
+## 3. Workstream C — Snapshot scheduling coalescing (real defect found and fixed in this review)
+
+**Defect found:** the original implementation set the debounce claim's expiry to
+`now + DEBOUNCE_MS` (15 seconds) — the same duration as the sleep the waiter itself performs. But
+after that sleep ends, the waiter still has to run `runPublicationCatchUpLoop()`, which invokes
+`publishKind()` (a full collection scan + Storage writes) and can retry on lease contention or
+transient storage errors for up to `PUBLICATION_PASS_LIMIT` (3) passes with backoff delays. This
+means the claim could expire **before** the waiter's actual publish work finished. A second
+invocation arriving in that gap would see no active claim, become a second waiter, sleep another 15
+seconds, and also attempt to publish — landing on the still-active 10-minute transactional lease and
+retrying via the catch-up loop.
+
+This was not a correctness bug in the strict sense — the existing transactional publish lease in
+`publishKind()` (unmodified) still fully prevented two concurrent scans from ever running — but it
+materially undercut the stated goal of this fix ("exactly one invocation per debounce window becomes
+the waiter"). Under a real import burst, this gap could let two or more waiters spin up per burst
+instead of one, each incurring its own sleep and lease-contention retry cycle — a real, measurable
+regression against the Plan's own acceptance criterion ("one imported design cannot schedule up to
+four independent full rebuilds" — the fix for the *scheduling* side was correct, but this claim-TTL
+gap could reintroduce a milder version of the same multiplication on the *coalescing* side under
+sustained bursts).
+
+**Root cause:** `markDirtyAndClaimDebounceWaiter(kind, debounceMs)` was called with only
+`DEBOUNCE_MS`, conflating "how long to sleep before attempting to publish" with "how long the claim
+should be held," when the claim actually needs to cover both the sleep and the ensuing publish
+attempt.
+
+**Fix applied in this review pass:** changed the call to
+`markDirtyAndClaimDebounceWaiter(kind, DEBOUNCE_MS + LEASE_MS)` — the claim now outlives the sleep by
+a margin equal to `LEASE_MS` (the already-established bound for "how long a publish may legitimately
+take"), while the actual sleep duration (the batching window itself) is unchanged at exactly
+`DEBOUNCE_MS`. Added a new regression test
+(`snapshotSchedulingCoalescing.test.ts`, "still holds the claim after the debounce sleep window
+elapses, while a publish could still be in flight") asserting this directly, and corrected one
+existing test whose regex assertion had pinned the old, narrower call signature.
+
+**Verification after the fix:**
+- `npm --prefix functions run build` — exit 0.
+- `npx tsx --test functions/src/catalogSnapshots/snapshotSchedulingCoalescing.test.ts` — 9/9 pass
+  (was 8/8 before the fix + new test).
+- `npx tsx --test functions/src/catalogSnapshots/*.test.ts functions/src/ai/enqueueAiEnrichmentValidation.test.ts` —
+  124/125 pass (the 1 failure is the same pre-existing, unrelated `Wave C read containment wiring`
+  stale assertion documented in the Test Report, confirmed present on the clean `origin/production`
+  tree before any change in this pass).
+- `npm run lint` — exit 0.
+- `git diff --check` — exit 0.
+- Redeployed the 5 affected functions (`rebuildCatalogSnapshots`, `retryPortalCatalogPublication`,
+  `onCategorySnapshotSourceWritten`, `onTagSnapshotSourceWritten`,
+  `onPortalCatalogSnapshotSourceWritten`) to `fresh-prints-dev` after this fix — exit 0, "Deploy
+  complete!", all 5 confirmed `ACTIVE` via `firebase functions:list --project fresh-prints-dev`
+  post-deploy. `enqueueAiEnrichment` was correctly excluded from this second deploy since this fix
+  did not touch it.
+
+**Other Workstream C correctness checks performed (no further defect found):**
+- Re-derived `isReadyBoundaryChange` by hand against every status pair reachable in the real design
+  lifecycle (`imported→processing`, `processing→imported`, `imported→rejected`, `rejected→imported`,
+  `imported→ready`, `ready→archived`, `ready→ready` with a `title` edit) — confirmed the classifier
+  produces the correct classification (`operational`/`card-only` for non-boundary status churn,
+  `index-filter` for both directions of a `ready` boundary crossing and for genuine field edits on an
+  already-`ready` design) in every case, not just the cases the Plan's own investigation happened to
+  cite.
+- Confirmed via `firestore.indexes.json` (read directly, not assumed) that the composite index
+  `designs: status ASC, createdAt DESC, __name__ DESC` already exists and supports the
+  Workstream-B fallback query change — no new index deploy is required for this pass, consistent
+  with the Plan's §8 claim, and now independently re-verified rather than merely repeated.
+- Confirmed the `try { ... } finally { await releaseDebounceClaimIfOwned(...) }` restructuring does
+  not swallow a fatal publish error — the `finally` block has no `catch`, so any thrown error
+  continues propagating to the `onDocumentWritten` handler exactly as before this change.
+- Confirmed `releaseDebounceClaimIfOwned`'s owner-check (`if (data.debounceOwner !== owner) return;`)
+  correctly avoids a slow waiter clearing a newer claim a subsequent invocation has since taken over.
+
+## 4. Workstream D — AI Processing reconciliation
+
+**Verified independently:**
+- Re-derived `isAlreadyTerminalPlainEnqueue`'s exclusion logic by hand: confirmed
+  `aiReviewStatus === "rejected"` is deliberately **not** classified as already-terminal, and
+  confirmed this is the *correct* choice, not an oversight — a staff rejection is a genuinely
+  different, more concerning outcome than "already succeeded," and silently no-op'ing a plain
+  enqueue against a rejected design would hide a real problem rather than surface it. Added an
+  explicit test for this distinction (`does not classify a staff-rejected review as already-terminal`)
+  since it was not previously asserted and is easy to get wrong in either direction.
+- Confirmed `flags.rerunFromReview || flags.rerunRejected` are excluded from the already-terminal
+  classification even when their target design's `aiReviewStatus` happens to be `needs_review` or
+  `approved` — re-derived that this is correct because rerun calls have their own distinct,
+  upstream eligibility checks (`isRerunFromReviewEligible`, the `rerunRejected` + owner/admin gate)
+  that must never be silently bypassed by this new benign-no-op path.
+- Traced `buildDesignPatchFromEnqueueResult`'s consumers (`isDesignAwaitingAiStart`,
+  `isDesignAiProcessingFailed`, `isAiProcessingTerminal` in `aiProcessingQueueEligibility.ts`) to
+  confirm they all derive from `aiReviewStatus`/`aiProcessingStage` — the exact fields the
+  already-terminal patch now correctly populates — so the auto-queue loop's post-enqueue eligibility
+  checks behave correctly for this new code path without any further change needed there.
+- Confirmed `executeRerunToProcessing`'s new `await reloadDesigns()` call is placed before
+  `onQueueChanged()` and before `onNavigateToTab()`, matching the exact order already established by
+  the sibling `runInboxAction` handler in the same file (`await action(); ... await reloadDesigns();
+  options?.onQueueChanged?.();`) — this is a genuine behavioral fix, not just a comment describing
+  intent.
+
+**No further defect found in this workstream's implementation.**
+
+## 5. Workstream B — Studio Design Library ordering; Portal reproduction result
+
+**Verified independently:**
+- Confirmed the corrected `DESIGN_LIBRARY_DEFAULT_SORT_FIELD` and the corrected
+  `useGeneratedReadyDesigns.ts` fallback are the only two places in this feature that needed to
+  change — re-grepped `designService.ts`'s internal `?? "updatedAt"` defaults and confirmed by
+  tracing every actual call site that no Design Library caller omits `sortField` (they all pass one
+  explicitly), so those internal defaults remain correctly unreached and untouched.
+- Independently re-ran the full Portal catalog test suite (56/56 pass, zero changes) and re-read
+  `useCatalogDesigns.ts` directly (not merely re-citing the earlier investigation) to confirm the
+  "not reproduced" conclusion — `sortFieldForDiscovery` returns `'createdAt'` for default browse and
+  the generated `discover.json` asset is explicitly re-sorted client-side for default browse. No
+  Portal defect found; no Portal file changed. This matches the governing instruction's requirement
+  that Portal only be touched given a deterministic reproduction, which does not exist.
+
+**No defect found in this workstream's implementation.**
+
+## 6. Workstream E — Stopped
+
+**Verified independently:** re-confirmed (not merely re-asserted) that this sandboxed environment
+cannot run an interactive Electron/Chromium session (matching the project's own documented
+white-screen-incident constraint) and has no Application Default Credentials configured for
+scripted Admin SDK access (confirmed by a direct attempted Firestore read, which failed with
+"Could not load the default credentials"). Both are genuine, independently-verified blockers, not
+assumed. Per the explicit instruction, this stop does not block A–D, which share no unsafe
+dependency with E.
+
+## 7. Cross-workstream checks
+
+- Confirmed via `git status` that only the files listed in the Test Report's diff-stat were touched
+  — no unrelated file was modified anywhere in the repository.
+- Confirmed via `git diff --check` and a full `npm run lint` run (exit 0 both times, re-run after the
+  Workstream C fix) that the corrected diff remains clean.
+- Confirmed via `firebase use` (re-run at both the pre-deploy and pre-redeploy steps) that every
+  deploy in this pass explicitly targeted `fresh-prints-dev` — the ambient active project alias was
+  actually `fresh-prints-prod` at session start, making this an active, necessary safety check, not
+  routine formality.
+- Confirmed via `firebase functions:list --project fresh-prints-dev --json` (both before and after
+  the redeploy) that the total function count remained 109 throughout — no unrelated Function was
+  added, removed, or touched.
+
+## 8. Verdict
+
+**approved_with_changes.** One real, independently-discovered correctness gap (Workstream C's
+debounce-claim duration) was found during this review, fixed in the same pass per the governing
+instruction ("If the review finds a narrow defect entirely inside approved scope: fix it without
+requesting another routine approval, rerun affected and full verification, append a follow-up review
+section"), reverified (functions build, targeted + full test sweeps, lint, `git diff --check`, all
+exit 0 / green), and redeployed to `fresh-prints-dev`. No other defect was found across the 4
+completed workstreams after independent, diff-level re-derivation of correctness (not reliance on
+this session's own earlier reasoning). Workstream E remains correctly stopped and unimplemented, with
+its exact remaining evidence needed documented in the Test Report.
+
+## 9. Follow-up review section (per instruction, appended after the in-scope fix)
+
+| Item | Outcome |
+|---|---|
+| Workstream C debounce-claim-duration gap | **fixed** — claim duration extended from `DEBOUNCE_MS` to `DEBOUNCE_MS + LEASE_MS`; new regression test added; stale test assertion corrected; rebuilt, retested (9/9 + 124/125 unrelated-failure-only), relinted, redeployed to `fresh-prints-dev`, confirmed ACTIVE |
+| Workstream A cache-invalidation ordering | **no_change_needed** — independently re-derived correct ordering in both `useCatalogTags.ts` and `useArchiveCategory.ts` |
+| Workstream A Restore button shared-disable risk | **no_change_needed** — traced by hand, confirmed correct despite differing from the category modal's dedicated-hook shape |
+| Workstream D `rejected`-status exclusion from already-terminal | **no_change_needed**, but under-tested — added an explicit regression test for this exact distinction since it was previously only implicit in the code, not asserted |
+| Workstream D rerun-flag exclusion from already-terminal | **no_change_needed** — re-derived correct by design intent |
+| Workstream B unreached `designService.ts` internal defaults | **no_change_needed** — confirmed unreachable from every actual Design Library call site |
+| Workstream B / Portal reproduction | **no_change_needed** — independently re-confirmed not reproduced; no Portal file touched |
+| Firestore index coverage for the Workstream B fallback query | **no_change_needed** — confirmed the required composite index already exists in `firestore.indexes.json` |
