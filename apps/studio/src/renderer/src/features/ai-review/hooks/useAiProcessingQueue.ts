@@ -42,6 +42,14 @@ interface UseAiProcessingQueueOptions {
   defaultVisionModelId: string;
   designs: Design[];
   onActionError: (message: string | null) => void;
+  /**
+   * Called after a design finishes processing (manual single-image "Process" or the auto-advance
+   * queue), so Processing/Needs Review tab counts reconcile immediately — previously only the
+   * rerun-from-inbox path (executeRerunToProcessing) triggered a count reload; the manual/
+   * auto-queue paths never did (post-launch-catalog-and-processing-stability, Owner QA
+   * Amendment 1, Workstream 2).
+   */
+  onQueueChanged?: () => void;
   reloadDesigns: () => Promise<void>;
   requestSelectDesign: (designId: string | null) => void;
   selectedDesignId: string | null;
@@ -54,6 +62,7 @@ export function useAiProcessingQueue({
   defaultVisionModelId,
   designs,
   onActionError,
+  onQueueChanged,
   reloadDesigns,
   requestSelectDesign,
   selectedDesignId,
@@ -249,6 +258,13 @@ export function useAiProcessingQueue({
   const refreshDesignList = useCallback(async () => {
     await reloadDesigns();
 
+    // Reconcile Processing/Needs Review counts alongside the design list itself — previously only
+    // the rerun-from-inbox path did this; the manual "Process" and auto-advance-queue paths never
+    // called anything reaching useAiReviewTabCounts.reloadCounts(), leaving the count stale after
+    // every successful completion through this hook (post-launch-catalog-and-processing-stability,
+    // Owner QA Amendment 1, Workstream 2).
+    onQueueChanged?.();
+
     // Brief settle delay before the caller reads designsRef/advances selection, so the
     // just-applied optimistic patch has a couple of frames to render before layout shifts again.
     // Uses a bounded timeout rather than requestAnimationFrame: rAF callbacks are throttled or
@@ -259,7 +275,7 @@ export function useAiProcessingQueue({
     await new Promise<void>((resolve) => {
       window.setTimeout(resolve, 32);
     });
-  }, [reloadDesigns]);
+  }, [onQueueChanged, reloadDesigns]);
 
   const runAutoQueueLoop = useCallback(
     async (
@@ -287,12 +303,24 @@ export function useAiProcessingQueue({
           const currentDesigns = designsRef.current;
 
           if (index >= currentDesigns.length) {
+            // Nothing left to select in this now-shrunk list — clear rather than leave
+            // selectedDesignId dangling on a design that may no longer exist here (see the
+            // nextAwaitingIndex < 0 branch below for the fuller explanation).
+            requestSelectDesign(null);
             break;
           }
 
           const nextAwaitingIndex = findNextAwaitingIndex(currentDesigns, index);
 
           if (nextAwaitingIndex < 0) {
+            // No design remains awaiting AI start. If the previously-selected design (from the
+            // prior loop iteration) just left this filtered list — e.g. it was the last design
+            // awaiting and just completed — selectedDesignId would otherwise keep pointing at an
+            // ID no longer present in `designs`, permanently collapsing this hook's own
+            // selectedDesign derivation to null and disabling "Start AI" until an unrelated route
+            // remount re-selects a valid design (post-launch-catalog-and-processing-stability,
+            // Owner QA Amendment 1, Workstream 2).
+            requestSelectDesign(null);
             break;
           }
 
@@ -429,6 +457,15 @@ export function useAiProcessingQueue({
 
       if (nextIndex >= 0) {
         advanceSelectionToIndex(nextIndex);
+      } else {
+        // The just-processed design left the Processing tab (successful completion moves
+        // aiReviewStatus off "pending", filtering it out of `designs`) and no other design is
+        // awaiting AI start. selectedDesignId must not keep pointing at that now-absent ID — this
+        // hook's own selectedDesign derivation (designs.find(...)) would otherwise permanently
+        // collapse to null, disabling "Start AI" until an unrelated route remount re-selects a
+        // valid design (post-launch-catalog-and-processing-stability, Owner QA Amendment 1,
+        // Workstream 2).
+        requestSelectDesign(null);
       }
     } catch (processError) {
       if (isMountedRef.current) {
@@ -456,6 +493,7 @@ export function useAiProcessingQueue({
     enqueueDesign,
     onActionError,
     refreshDesignList,
+    requestSelectDesign,
     resolvedSessionVisionModelId,
     selectedDesignId,
   ]);

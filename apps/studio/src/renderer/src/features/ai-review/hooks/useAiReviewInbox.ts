@@ -274,6 +274,7 @@ export function useAiReviewInbox(
     defaultVisionModelId: options?.defaultVisionModelId ?? "",
     designs,
     onActionError: setActionError,
+    onQueueChanged: options?.onQueueChanged,
     reloadDesigns,
     requestSelectDesign: (designId) => {
       if (designId === selectedDesignId) {

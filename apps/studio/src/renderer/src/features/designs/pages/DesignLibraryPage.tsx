@@ -4,10 +4,7 @@ import { ArrowLeft, FolderCog, Save, Tags, Trash2, X } from "lucide-react";
 import { Timestamp } from "firebase/firestore";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
-import {
-  traceGeneratedEntryReconciliation,
-  withFirebaseTraceAction,
-} from "@fresh-prints/shared/utils/firestoreUsageTrace";
+import { withFirebaseTraceAction } from "@fresh-prints/shared/utils/firestoreUsageTrace";
 
 import { Button } from "../../../shared/components/Button";
 import { Card } from "../../../shared/components/Card";
@@ -38,10 +35,6 @@ import { useCategories } from "../hooks/useCategories";
 import { useCatalogTags } from "../hooks/useCatalogTags";
 import { useDesigns } from "../hooks/useDesigns";
 import { useGeneratedDesignLibraryTaxonomy } from "../hooks/useGeneratedDesignLibraryTaxonomy";
-import {
-  entryToFilterableDesign,
-  useGeneratedReadyDesigns,
-} from "../hooks/useGeneratedReadyDesigns";
 import { usePurgeArchivedDesignAssets } from "../hooks/usePurgeArchivedDesignAssets";
 import { useRestoreDesign } from "../hooks/useRestoreDesign";
 import { designService } from "../services/designService";
@@ -58,7 +51,6 @@ import {
   visibleSelectedTags,
 } from "../utils/designLibrarySearch";
 import { getDesignLibraryFirestoreLoadPolicy } from "../utils/designLibraryFirestoreLoadPolicy";
-import { sortDesignLibraryResults } from "../utils/sortDesignLibraryResults";
 
 const ALL_FILTER_VALUE = "all";
 
@@ -204,11 +196,14 @@ export function DesignLibraryPage() {
     [includeArchived, selectionModeActive],
   );
 
-  // Normal ready browse (not archived) uses the generated Storage catalog instead of Firestore —
-  // see the Wave C Plan amendment. Archived mode always stays on the existing bounded Firestore
-  // path (`useDesigns`) since archived designs are staff-only and never enter public generated
-  // assets. Hooks stay mounted consistently, but their enabled gates prevent Firestore work until
-  // archived mode or a verified generated-asset failure requires it.
+  // The design LIST is always bounded-Firestore-authoritative for normal (non-archived) browse —
+  // post-launch-catalog-and-processing-stability, Owner QA Amendment 1. A generated Storage
+  // snapshot that fetches successfully but is merely stale (has not yet republished a
+  // newly-approved design) previously left approved designs permanently invisible, because only
+  // an outright fetch *failure* ever triggered a Firestore fallback. The design page read itself
+  // was never the Wave C cost problem (already bounded, ≤101 docs, already cached) — only the
+  // taxonomy reads were, so categories/tags for normal browse remain generated-taxonomy-first,
+  // unchanged.
   const usingGeneratedCatalog = !includeArchived;
   const generatedTaxonomy = useGeneratedDesignLibraryTaxonomy(usingGeneratedCatalog ? user : null);
   const firestoreLoadPolicy = getDesignLibraryFirestoreLoadPolicy({
@@ -217,10 +212,9 @@ export function DesignLibraryPage() {
     usingGeneratedCatalog,
   });
 
-  // Categories/tags for the normal (non-archived) Design Library also move to the same generated
-  // taxonomy snapshot (zero Firestore reads) — archived mode keeps the existing Firestore-backed
-  // hooks, since staff need the full approved+archived taxonomy while browsing/managing archived
-  // designs.
+  // Categories/tags for the normal (non-archived) Design Library stay on the generated taxonomy
+  // snapshot (zero Firestore reads) — archived mode keeps the existing Firestore-backed hooks,
+  // since staff need the full approved+archived taxonomy while browsing/managing archived designs.
   const {
     categories: firestoreCategories,
     error: categoriesError,
@@ -237,20 +231,15 @@ export function DesignLibraryPage() {
   const categories = usingGeneratedCatalog ? generatedTaxonomy.categories : firestoreCategories;
   const catalogTags = usingGeneratedCatalog ? generatedTaxonomy.tags : firestoreCatalogTags;
   const {
-    designs: firestoreDesigns,
+    designs,
     error: designsError,
-    hasMore: firestoreHasMore,
+    hasMore,
     isLoading: isDesignsLoading,
     isLoadingMore,
-    loadMoreDesigns: loadMoreFirestoreDesigns,
+    loadMoreDesigns,
     reloadDesigns,
     applyDesignPatch,
   } = useDesigns(listQuery, { enabled: firestoreLoadPolicy.loadReadyDesignPage });
-
-  const generatedReady = useGeneratedReadyDesigns(usingGeneratedCatalog ? user : null);
-  const [generatedVisibleCount, setGeneratedVisibleCount] = useState(100);
-  const [generatedCardsById, setGeneratedCardsById] = useState<Map<string, Design>>(new Map());
-  const [generatedCardsUnavailable, setGeneratedCardsUnavailable] = useState(false);
 
   const {
     archiveDesign,
@@ -270,18 +259,6 @@ export function DesignLibraryPage() {
     () => new Map(categories.map((category) => [category.id, category.name])),
     [categories],
   );
-
-  // Filtering-only stand-ins for the whole generated ready catalog — cheap (no thumbnail
-  // resolution), reused so downstream filters need no changes. Only the final visible page's IDs
-  // (after search/category/tag filtering and pagination, below) ever get real card fields.
-  const generatedFilterableDesigns = useMemo(
-    () => generatedReady.entries.map(entryToFilterableDesign),
-    [generatedReady.entries],
-  );
-
-  const designs = usingGeneratedCatalog
-    ? (generatedReady.usedFirestoreFallback ? generatedReady.fallbackDesigns : generatedFilterableDesigns)
-    : firestoreDesigns;
 
   const visibleDesigns = useMemo(() => {
     if (!includeArchived || selectionModeActive) {
@@ -316,85 +293,13 @@ export function DesignLibraryPage() {
     [categories, categoryFilter, searchMatchedDesigns, selectedTags],
   );
 
-  const allFilteredDesigns = useMemo(() => {
-    const tagged = filterDesignsByTags(categoryFilteredDesigns, selectedTags);
-    return sortDesignLibraryResults({
-      designs: tagged,
-      generatedEntries: generatedReady.entries,
-      useGeneratedOrdering: usingGeneratedCatalog && !generatedReady.usedFirestoreFallback,
-    });
-  }, [
-    categoryFilteredDesigns,
-    generatedReady.entries,
-    generatedReady.usedFirestoreFallback,
-    selectedTags,
-    usingGeneratedCatalog,
-  ]);
-
-  const selectedTagsKey = selectedTags.join(" ");
-  useEffect(() => {
-    setGeneratedVisibleCount(100);
-  }, [searchQuery, categoryFilter, selectedTagsKey, includeArchived]);
-
-  const generatedVisibleIds = useMemo(
-    () =>
-      usingGeneratedCatalog && !generatedReady.usedFirestoreFallback
-        ? allFilteredDesigns.slice(0, generatedVisibleCount).map((design) => design.id)
-        : [],
-    [usingGeneratedCatalog, generatedReady.usedFirestoreFallback, allFilteredDesigns, generatedVisibleCount],
+  // Designs come straight from useDesigns (bounded, cursor-paginated, already sorted createdAt
+  // desc by the query itself) — no generated-index re-sort or card-resolution stage needed, since
+  // useDesigns already returns full authoritative Design objects, not synthetic filter stand-ins.
+  const filteredDesigns = useMemo(
+    () => filterDesignsByTags(categoryFilteredDesigns, selectedTags),
+    [categoryFilteredDesigns, selectedTags],
   );
-
-  useEffect(() => {
-    if (generatedVisibleIds.length === 0) {
-      return;
-    }
-    let isCancelled = false;
-    generatedReady
-      .resolveVisibleCards(generatedVisibleIds)
-      .then((resolved) => {
-        if (isCancelled) return;
-        setGeneratedCardsById((current) => new Map([...current, ...resolved]));
-        setGeneratedCardsUnavailable(false);
-      })
-      .catch(() => {
-        if (isCancelled) return;
-        setGeneratedCardsUnavailable(true);
-      });
-    return () => {
-      isCancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- generatedReady.resolveVisibleCards is stable
-  }, [generatedVisibleIds.join(" ")]);
-
-  const filteredDesigns = useMemo(() => {
-    if (!usingGeneratedCatalog || generatedReady.usedFirestoreFallback) {
-      return allFilteredDesigns;
-    }
-
-    return generatedVisibleIds.flatMap((id) => {
-      const resolved = generatedCardsById.get(id);
-      return resolved ? [resolved] : [];
-    });
-  }, [
-    usingGeneratedCatalog,
-    generatedReady.usedFirestoreFallback,
-    allFilteredDesigns,
-    generatedVisibleIds,
-    generatedCardsById,
-  ]);
-
-  const generatedHasMore =
-    usingGeneratedCatalog &&
-    !generatedReady.usedFirestoreFallback &&
-    generatedVisibleCount < allFilteredDesigns.length;
-  const hasMore = usingGeneratedCatalog ? generatedHasMore : firestoreHasMore;
-  const loadMoreDesigns = useCallback(() => {
-    if (usingGeneratedCatalog) {
-      setGeneratedVisibleCount((current) => current + 100);
-      return;
-    }
-    loadMoreFirestoreDesigns();
-  }, [usingGeneratedCatalog, loadMoreFirestoreDesigns]);
 
   const visibleTags = useMemo(() => visibleSelectedTags(selectedTags), [selectedTags]);
   const visibleTagCount = useMemo(() => countVisibleSelectedTags(selectedTags), [selectedTags]);
@@ -406,11 +311,11 @@ export function DesignLibraryPage() {
     selectedTags.length > 0 ||
     (selectionModeActive ? false : includeArchived);
 
-  // The full scope is loaded (generated ready-index or Firestore loadAll-equivalent), so the
-  // total filtered length is always accurate even when fewer are currently resolved/visible.
+  // This reflects only the currently-loaded bounded page(s), not the full matching scope —
+  // consistent with archived mode's existing (unchanged) pagination behavior.
   const designCountLabel = useMemo(
-    () => `${allFilteredDesigns.length} design${allFilteredDesigns.length === 1 ? "" : "s"}`,
-    [allFilteredDesigns.length],
+    () => `${filteredDesigns.length} design${filteredDesigns.length === 1 ? "" : "s"}`,
+    [filteredDesigns.length],
   );
 
   const clearFilters = useCallback(() => {
@@ -431,20 +336,13 @@ export function DesignLibraryPage() {
   }, []);
 
   const refreshCatalog = useCallback(async () => {
-    // Generated ready mode does not reload the whole design index on every action — Firestore
-    // stays authoritative and the affected card is patched/removed locally instead (see
-    // handleDesignUpdated/handleArchiveConfirm below); a later snapshot republish reconciles the
-    // generated catalog. Category management explicitly enables/reloads its Firestore-backed hook;
-    // TagManagementModal owns its own full Firestore hook. The normal generated browse keeps the
-    // page-level legacy hooks disabled. Those management flows need their own data to show edits —
-    // the generated-sourced Design Library filter/dropdown views only pick up such edits on the
-    // next snapshot republish, unaffected by this reload.
-    await Promise.all([
-      usingGeneratedCatalog ? Promise.resolve() : reloadDesigns(),
-      reloadCategories(),
-      reloadTags(),
-    ]);
-  }, [reloadCategories, reloadDesigns, reloadTags, usingGeneratedCatalog]);
+    // Firestore (useDesigns) is the unconditional design-list authority — always reload it so a
+    // just-completed action (approval, archive, edit, restore) is reflected immediately, not only
+    // after a later generated-snapshot republish. Category management explicitly enables/reloads
+    // its own Firestore-backed hook when open; TagManagementModal owns its own full Firestore hook.
+    // reloadCategories/reloadTags remain safe no-ops when their hooks are disabled.
+    await Promise.all([reloadDesigns(), reloadCategories(), reloadTags()]);
+  }, [reloadCategories, reloadDesigns, reloadTags]);
 
   const dismissSuccessMessage = useCallback(() => {
     setSuccessMessage(null);
@@ -466,29 +364,13 @@ export function DesignLibraryPage() {
     setIsTagManagementModalOpen(true);
   }, []);
 
-  const openDesignDetails = useCallback(
-    (design: Design) => {
-      setSuccessMessage(null);
-      setActionError(null);
-      setSelectedDesign(design);
-
-      // The generated-catalog card is a rendering-only stand-in (no uploadedBy/aiSuggestions/
-      // createdAt/etc. — see cardToDesign's doc comment). Detail/edit is always Firestore
-      // authoritative: re-fetch the real document (bounded, cached `getDesignById`) and swap it
-      // in once resolved, so the modal never treats the synthetic card as edit authority.
-      if (usingGeneratedCatalog && user) {
-        void designService
-          .getDesignById(user, design.id)
-          .then((authoritative) => {
-            setSelectedDesign((current) => (current?.id === design.id ? authoritative : current));
-          })
-          .catch(() => {
-            // Best-effort refresh; the synthetic card still renders read-only detail fields.
-          });
-      }
-    },
-    [user, usingGeneratedCatalog],
-  );
+  const openDesignDetails = useCallback((design: Design) => {
+    // designs is always sourced from useDesigns (bounded Firestore, full authoritative Design
+    // objects) — no synthetic-card re-fetch needed here anymore.
+    setSuccessMessage(null);
+    setActionError(null);
+    setSelectedDesign(design);
+  }, []);
 
   const closeDesignDetails = useCallback(() => {
     setSelectedDesign(null);
@@ -514,60 +396,14 @@ export function DesignLibraryPage() {
 
   const handleDesignUpdated = useCallback(async (updated: Design) => {
     await withFirebaseTraceAction("Save design", async () => {
-      // Firestore is always the save target (unchanged). In generated mode, patch the edited
-      // design's local ready-index entry from the just-saved authoritative document instead of
-      // reloading the whole generated catalog — a later snapshot republish reconciles the public
-      // asset; this keeps the list showing the authoritative edit immediately in the meantime.
-      if (usingGeneratedCatalog) {
-        try {
-          const reconciliation = await generatedReady.reconcileAuthoritativeDesign(updated);
-          const reconciledFilterDesign = reconciliation.entry
-            ? entryToFilterableDesign(reconciliation.entry)
-            : null;
-          const remainedVisible = reconciledFilterDesign !== null &&
-            filterDesignsByTags(
-              filterDesignsByCategory(
-                filterDesignsBySearch([reconciledFilterDesign], searchQuery),
-                categoryFilter === ALL_FILTER_VALUE ? undefined : categoryFilter,
-              ),
-              selectedTags,
-            ).length === 1;
-          setGeneratedCardsById((current) => {
-            const next = new Map(current);
-            if (remainedVisible) {
-              next.set(updated.id, reconciliation.card);
-            } else {
-              next.delete(updated.id);
-            }
-            return next;
-          });
-          traceGeneratedEntryReconciliation(updated.id, {
-            success: true,
-            preservedSortValue: reconciliation.preservedSortValue,
-            remainedVisible,
-            cardCacheInvalidated: reconciliation.cardCacheInvalidated,
-          });
-        } catch {
-          traceGeneratedEntryReconciliation(updated.id, {
-            success: false,
-            preservedSortValue: false,
-            remainedVisible: false,
-            cardCacheInvalidated: false,
-          });
-        }
-      }
+      // Firestore is the save target and, since useDesigns is now the unconditional design-list
+      // source, also the immediate read authority — patch the local list from the just-saved
+      // authoritative document so the edit is visible without waiting on a full reload.
+      applyDesignPatch(updated.id, updated);
       await refreshCatalog();
       showSuccessMessage("Design updated successfully.");
     });
-  }, [
-    categoryFilter,
-    generatedReady,
-    refreshCatalog,
-    searchQuery,
-    selectedTags,
-    showSuccessMessage,
-    usingGeneratedCatalog,
-  ]);
+  }, [applyDesignPatch, refreshCatalog, showSuccessMessage]);
 
   const handleCategoriesUpdated = useCallback(async () => {
     await refreshCatalog();
@@ -594,19 +430,15 @@ export function DesignLibraryPage() {
 
     try {
       await archiveDesign(designToArchive.id);
-      // Archived designs never enter public generated assets — remove immediately from the
-      // local ready-index so the (still staff-only, Firestore-authoritative) archive takes
-      // visible effect in the ready view without waiting for the next snapshot republish.
-      if (usingGeneratedCatalog) {
-        generatedReady.removeLocalEntry(designToArchive.id);
-      }
       setDesignToArchive(null);
+      // Firestore (useDesigns) is the unconditional design-list authority — refreshCatalog's
+      // reloadDesigns() picks up the archive immediately; no separate local-index removal needed.
       await refreshCatalog();
       showSuccessMessage(`${designToArchive.title} archived successfully.`);
     } catch {
       // Error handled in hook.
     }
-  }, [archiveDesign, designToArchive, generatedReady, refreshCatalog, showSuccessMessage, usingGeneratedCatalog]);
+  }, [archiveDesign, designToArchive, refreshCatalog, showSuccessMessage]);
 
   const togglePurgeSelection = useCallback((design: Design) => {
     setSelectedPurgeIds((current) =>
@@ -798,19 +630,15 @@ export function DesignLibraryPage() {
 
   useShellHeaderConfig(shellHeaderConfig);
 
-  const generatedUnavailableMessage =
+  const generatedTaxonomyUnavailableMessage =
     "Design Library is temporarily unavailable. Please try again.";
   const loadError = usingGeneratedCatalog
-    ? (
-        generatedReady.isUnavailable ||
-        generatedTaxonomy.isUnavailable ||
-        generatedCardsUnavailable
-          ? generatedUnavailableMessage
-          : null
-      ) ?? categoriesError
+    ? (generatedTaxonomy.isUnavailable ? generatedTaxonomyUnavailableMessage : null) ??
+      designsError ??
+      categoriesError
     : designsError ?? categoriesError;
   const isLoading = usingGeneratedCatalog
-    ? generatedReady.isLoading || (generatedTaxonomy.isLoading && !generatedTaxonomy.isUnavailable)
+    ? isDesignsLoading || (generatedTaxonomy.isLoading && !generatedTaxonomy.isUnavailable)
     : isDesignsLoading || isCategoriesLoading || (selectionModeActive && selectionMode.isLoading);
   const shouldShowSelectionError = selectionModeActive && !selectionMode.isLoading && Boolean(selectionError);
 

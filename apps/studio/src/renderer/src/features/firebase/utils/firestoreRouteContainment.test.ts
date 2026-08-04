@@ -25,7 +25,12 @@ describe("Phase 0 route read containment alignment", () => {
       "apps/studio/src/renderer/src/features/designs/pages/DesignLibraryPage.tsx",
     );
 
-    assert.match(source, /useGeneratedReadyDesigns/);
+    // post-launch-catalog-and-processing-stability, Owner QA Amendment 1, Workstream 1: the
+    // design LIST is now unconditionally Firestore-authoritative (useDesigns), not gated by
+    // useGeneratedReadyDesigns — see designLibraryAuthoritativeSource.test.ts for the full
+    // regression coverage of that change. Generated taxonomy (categories/tags) is unaffected.
+    assert.doesNotMatch(source, /useGeneratedReadyDesigns/);
+    assert.match(source, /useGeneratedDesignLibraryTaxonomy/);
     assert.match(source, /useDesigns\(listQuery,\s*\{\s*enabled:/);
     assert.doesNotMatch(source, /useDesigns\(listQuery,\s*\{\s*loadAll:\s*true/);
     assert.match(source, /isTagManagementModalOpen\s*\?\s*\(/);

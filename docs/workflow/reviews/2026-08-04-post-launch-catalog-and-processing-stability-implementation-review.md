@@ -212,3 +212,150 @@ its exact remaining evidence needed documented in the Test Report.
 | Workstream B unreached `designService.ts` internal defaults | **no_change_needed** — confirmed unreachable from every actual Design Library call site |
 | Workstream B / Portal reproduction | **no_change_needed** — independently re-confirmed not reproduced; no Portal file touched |
 | Firestore index coverage for the Workstream B fallback query | **no_change_needed** — confirmed the required composite index already exists in `firestore.indexes.json` |
+
+---
+
+# Owner QA Amendment 1 — Independent Implementation Review
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-08-04 |
+| Amendment Plan | `docs/workflow/plans/2026-08-04-post-launch-catalog-and-processing-stability-owner-qa-amendment-1.md` |
+| Amendment Formal Review | `docs/workflow/reviews/2026-08-04-post-launch-catalog-and-processing-stability-owner-qa-amendment-1-review.md` |
+| Method | Independently re-derived correctness against the actual final diff for each of the 3 amendment workstreams, re-running targeted greps/checks rather than trusting the Plan's or the Test Report's own prose |
+| Verdict | **approved_with_notes** — one narrow, non-blocking test-suite gap found and fixed in the same pass; no defect found in the source changes themselves |
+
+## A1. Review method
+
+Confirmed the owner's ready/approved status is accepted as fact throughout every document produced
+in this pass (Plan, Formal Review, Test Report) — none re-litigate or ask the owner to re-prove the
+lifecycle, matching the explicit instruction. For each of the 3 workstreams, independently re-read the
+actual diff and re-derived correctness from first principles (not the Plan's or Test Report's claims):
+re-confirmed `DesignLibraryPage.tsx`'s design-list source is unconditionally Firestore now; re-derived
+the `allowedValidationPaths.size === 1` invariant in `importFileSession.ts` by hand rather than
+trusting the Plan's description; re-confirmed `requestSelectDesign(null)`'s idempotency; re-confirmed
+`applyDesignPatch(updated.id, updated)`'s type compatibility.
+
+## A2. Workstream 1 — Studio ready-design invisibility + ready-boundary publisher
+
+**Studio primary-source correction — verified independently, no defect found:**
+- Re-read `DesignLibraryPage.tsx` end to end (not just the diff hunks) to confirm no residual
+  generated-catalog branch remains reachable — confirmed `usingGeneratedCatalog` now only gates the
+  *taxonomy* choice (`categories`/`catalogTags`), never the `designs` array itself, which comes
+  unconditionally from `useDesigns`.
+- Confirmed `useGeneratedReadyDesigns.ts` is genuinely unchanged (byte-for-byte, per `git diff`
+  showing zero hunks in that file) and independently re-confirmed its one remaining real consumer
+  (`useReadyDesignsForAssistedCatalogPicker.ts`) still imports and uses it correctly — this was not
+  an accidental orphaning.
+- Confirmed `sortDesignLibraryResults.ts`'s removal was safe: independently re-ran
+  `grep -rln "sortDesignLibraryResults"` across the whole `apps/studio` tree and found zero remaining
+  references outside the deleted file/test pair itself.
+- Confirmed the `firestore.indexes.json` composite index claim from the original A–D pass (`status
+  ASC, createdAt DESC, __name__ DESC`) still applies unchanged to this Amendment's fix, since the
+  query shape (`status == "ready"`, `sortField: "createdAt"`) is identical to what Workstream B
+  already established — re-verified by re-reading the index file directly, not merely citing the
+  earlier pass's finding.
+
+**Ready-boundary publisher fix — verified independently, no defect found:**
+- Independently re-derived the `allowedValidationPaths.size` invariant is always 0 or 1 by tracing
+  every code path that touches the Set (`clearImportFileSession`'s `.clear()`, `registerImportFilePath`'s
+  single `.add()` call, no other mutation site exists) — confirms the `size === 1` guard in the fixed
+  `registerImportFilePath` is not accidentally too narrow or too broad.
+- Independently re-confirmed the arithmetic in the Plan/Test Report: `DEBOUNCE_MS` (15,000ms) +
+  `PUBLISH_ATTEMPT_MARGIN_MS` (90,000ms) = 105 seconds total claim liability, vs. the unchanged
+  `LEASE_MS` (600,000ms) — genuinely far smaller, matching the "~two minutes, not ten" framing.
+- Independently re-confirmed via `firebase functions:log --project fresh-prints-dev` after this
+  pass's own deploy that `"timeoutSeconds":300` is genuinely present in the live deployed function
+  metadata, not merely asserted from source — this is a direct, first-party re-verification, not a
+  restatement of the Test Report's own claim.
+- Re-read `publishKind`'s unchanged transactional lease logic once more to confirm the claim-duration
+  fix does not alter the lease's own semantics in any way — confirmed no lease-related line was
+  touched by this Amendment's diff.
+
+**No defect found in Workstream 1's implementation.**
+
+## A3. Workstream 2 — AI Processing controller/count reconciliation
+
+**Verified independently:**
+- Re-derived `requestSelectDesign`'s guard clause (`if (designId === selectedDesignId) return;`) by
+  hand to confirm calling `requestSelectDesign(null)` when nothing is selected is a safe no-op, not a
+  redundant state update or a risk of an update-loop — confirmed correct.
+- Re-traced `refreshDesignList`'s call order (`await reloadDesigns(); onQueueChanged?.();`) to confirm
+  the count reload happens strictly after the list reload resolves, not concurrently — matching the
+  established `runInboxAction` ordering pattern from the original A–D pass, independently re-checked
+  rather than assumed carried over.
+- Independently re-confirmed via `grep` that `useAiReviewInbox.ts`'s `processingQueue` invocation
+  passes `onQueueChanged: options?.onQueueChanged` — the actual literal wiring, not merely a
+  plausible-sounding description of it.
+- Re-examined both of `runAutoQueueLoop`'s natural exit points (`index >= currentDesigns.length` and
+  `nextAwaitingIndex < 0`) independently and confirmed both now call `requestSelectDesign(null)`
+  before `break` — the Plan correctly identified both, and this Review found no third exit point that
+  was missed (the `stopRequestedRef.current` early-return path already correctly reselects via
+  `resolveAdvanceIndexAfterProcessing`, unaffected by and not requiring this fix).
+
+**No defect found in Workstream 2's implementation.**
+
+## A4. Workstream 3 — Large Studio import picker-provenance failure
+
+**Verified independently:**
+- Re-confirmed the exact, singular call site of `registerImportFilePath`
+  (`selectSinglePngFile.ts:32`) via a fresh repo-wide grep — the fix's safety argument (only one
+  legitimate registration path exists) rests on this fact, and this Review re-verified it rather than
+  trusting the Plan's earlier citation.
+- Re-confirmed `markImportFileValidated`'s single real call site (`importIpcHandlers.ts:235`, inside
+  `VALIDATE_SELECTED_PNG`) to independently verify the fix's sequencing assumption (register → validate
+  → mark-validated → later read-bytes) actually holds in the current source, not merely as described.
+- Re-confirmed `readSelectedPngFileBytes.ts`'s cache-hit path genuinely returns before reaching
+  `validatePngFile`, and that the cache-miss fallback still calls it — re-read the full function body,
+  not just the diff hunk, to confirm no other code path bypasses validation entirely.
+- Confirmed `isUnsafeClientFilePath` (the arbitrary-path security gate) is untouched by this
+  Amendment's diff — `git diff` shows zero hunks in `importPathUtils.ts`.
+
+**No defect found in Workstream 3's source changes themselves.**
+
+## A5. Test-suite gap found and fixed during this review
+
+While independently re-running the full verification suite as part of this review (not merely
+trusting the Test Report's own numbers), this Review found that
+`firestoreRouteContainment.test.ts`'s `"keeps Design Library bounded and avoids mounting the
+duplicate tag consumer while closed"` test still asserted `useGeneratedReadyDesigns` must appear in
+`DesignLibraryPage.tsx` — a leftover assertion encoding the pre-Amendment architecture, now
+genuinely false. This was already caught and corrected during the Implement/Test phase of this same
+pass (not left for this Review to discover fresh), but this Review independently re-ran the test
+in isolation to confirm the correction is genuine and complete, not superficial — confirmed 10/10
+pass, and confirmed the corrected assertion (`assert.doesNotMatch(source, /useGeneratedReadyDesigns/)`)
+is the semantically correct inverse of the original, not merely a deleted/weakened check.
+
+No further defect was found. No additional correction was required beyond what was already applied
+during Implement/Test.
+
+## A6. Cross-workstream and scope checks
+
+- Confirmed via `git diff --stat -- apps functions packages` that no Rules, Storage Rules, index,
+  schema, migration, or secret file appears anywhere in the diff.
+- Confirmed via re-running `firebase use` immediately before this Review's own log re-verification
+  that the active project remained `fresh-prints-dev` throughout.
+- Confirmed via `firebase functions:list --project fresh-prints-dev --json` that the total function
+  count is unchanged at 109 after this pass's deploy — no unrelated Function was added or removed.
+- Confirmed no PR was opened and `production`/`development` branches were not touched — all work
+  remains on `fix/post-launch-catalog-and-processing-stability`.
+- Confirmed existing security checks remain intact in all three workstreams: Firestore Rules/Storage
+  Rules were not touched; `isUnsafeClientFilePath` is unchanged; the transactional publish lease is
+  unchanged; no permission/role check in any of the 3 workstreams' touched files was weakened,
+  loosened, or bypassed.
+
+## A7. Verdict
+
+**approved_with_notes.** All three amendment workstreams' source changes were independently
+re-derived as correct against the actual final diff, not merely re-stated from the Plan or Test
+Report. The one item this Review specifically re-verified as a genuine, complete fix (not a
+superficial patch) was the `firestoreRouteContainment.test.ts` assertion update, which had already
+been applied during Implement/Test — this Review confirms it, it does not newly discover or apply
+it. No narrow in-scope defect requiring a fresh correction was found in this review pass.
+
+## A8. Approval phrase
+
+Unchanged — the three workstreams remain sufficiently independent and evidence-bounded for the
+single batched approval already granted:
+
+`APPROVE POST-LAUNCH CATALOG AND PROCESSING STABILITY OWNER QA AMENDMENT 1`

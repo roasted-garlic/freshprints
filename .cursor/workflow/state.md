@@ -20,24 +20,56 @@ Next Required Step: Owner reviews the production convergence audit and approves 
 Background (not active gate): Goal #13 / clean Studio remediation / Stage 2 remain deferred; prior installer intermediate; domain cutover blocked until `APPROVE MYPRINTREQUEST.COM CUTOVER`.
 
 **Separate concurrent managed goal (does not affect the gate above):**
-`post-launch-catalog-and-processing-stability` — Plan + Formal Review + Implement + Test +
-Implementation Review complete (2026-08-04). Owner-approved batched implementation
-(`APPROVE POST-LAUNCH CATALOG AND PROCESSING STABILITY IMPLEMENTATION`) executed through A–D;
-Workstream E stopped (documented, does not block A–D). Branch `fix/post-launch-catalog-and-
-processing-stability` (renamed from the Plan/Review-phase branch, which was exactly 1 commit
-ahead of `origin/production`). Committed and pushed; no PR opened, no merge, no production
-deploy. Functions changes for Workstreams C/D deployed to `fresh-prints-dev` only (6 functions,
-confirmed ACTIVE); one real correctness gap (debounce-claim duration) found and fixed during the
-independent Implementation Review, redeployed. See:
+`post-launch-catalog-and-processing-stability` — original A–D pass complete, **plus Owner QA
+Amendment 1 complete (2026-08-04)**. Amendment fixed a confirmed, urgent production defect: ready/
+approved designs never appearing in Studio Design Library (owner-confirmed, repeated, not a
+fluke). Root cause: Studio's normal browse depended entirely on generated-snapshot publication,
+which itself was stalled by a debounce-claim/function-timeout interaction found via live
+`fresh-prints-dev` log inspection (18 consecutive stuck-claim events, zero actual publishes).
+Fixed by making bounded Firestore (`useDesigns`) the unconditional Studio design-list source, and
+by shrinking the publisher's debounce-claim liability window (`DEBOUNCE_MS + LEASE_MS` →
+`DEBOUNCE_MS + PUBLISH_ATTEMPT_MARGIN_MS`) plus explicit `timeoutSeconds: 300` on the three
+trigger functions. Also fixed: AI Processing "Start AI" staying disabled after successful
+single-image completion (missing `onQueueChanged` wiring + dangling selection on the manual/
+auto-queue paths — the original A–D fix only covered the rerun-from-inbox path), and a large
+(159MB) Studio import failing with a picker-provenance error (a single global, non-session-scoped
+Set in `importFileSession.ts` was unconditionally wiped on any re-registration, more likely to be
+hit during a large file's longer validate-to-upload window). Branch `fix/post-launch-catalog-and-
+processing-stability` (existing, unchanged — no new branch/PR per instruction). Deployed 3
+trigger functions to `fresh-prints-dev` (confirmed ACTIVE, `timeoutSeconds:300` confirmed live via
+logs). No Rules/index/Storage Rules/secret/production change. See:
 `docs/workflow/plans/2026-08-04-post-launch-catalog-and-processing-stability-plan.md`,
 `docs/workflow/reviews/2026-08-04-post-launch-catalog-and-processing-stability-review.md`,
+`docs/workflow/plans/2026-08-04-post-launch-catalog-and-processing-stability-owner-qa-amendment-1.md`,
+`docs/workflow/reviews/2026-08-04-post-launch-catalog-and-processing-stability-owner-qa-amendment-1-review.md`,
 `docs/workflow/reviews/2026-08-04-post-launch-catalog-and-processing-stability-test-report.md`,
-`docs/workflow/reviews/2026-08-04-post-launch-catalog-and-processing-stability-implementation-review.md`.
-Owner follow-up required: Workstream E reproduction (needs an authenticated Studio session this
-environment cannot provide); live controlled-batch Firestore cost measurement; live AI Processing
-reconciliation UI check; one live Firestore-document check for Workstream A's archive write.
+`docs/workflow/reviews/2026-08-04-post-launch-catalog-and-processing-stability-implementation-review.md`
+(includes the appended Amendment 1 Implementation Review section).
+Owner follow-up required: the compact 3-approval Studio-visibility + Portal-publication QA
+checklist (Test Report §15.3) — could not be run live in this environment (no interactive Studio
+session, no Application Default Credentials); original A–D Workstream E reproduction remains
+outstanding for the same reason; one live Firestore-document check for Workstream A's archive
+write remains outstanding.
 
 Decision Log:
+- 2026-08-04 — `post-launch-catalog-and-processing-stability` Owner QA Amendment 1: fixed the
+  confirmed, urgent ready-design-invisibility defect by making bounded Firestore (`useDesigns`)
+  the unconditional Studio Design Library design-list source (previously gated entirely behind a
+  generated Storage snapshot with no fallback for a successfully-fetched-but-stale asset).
+  Independently traced and fixed the underlying ready-boundary publisher stall via live
+  `fresh-prints-dev` log inspection: the debounce-waiter claim (from the prior pass's own
+  Implementation Review correction) could outlive the trigger functions' 60s default timeout,
+  stranding the claim un-released for up to ~10 minutes after any timed-out publish attempt —
+  fixed via a smaller dedicated claim margin plus explicit 300s trigger timeouts. Also fixed AI
+  Processing's manual-process/auto-queue count and selection reconciliation gap (distinct from the
+  already-fixed rerun-path gap) and a large-import Storage picker-provenance failure (session-slot
+  fragility in `importFileSession.ts`, worsened by a redundant double-validation pass now
+  removed). Full verification suite green, zero new failures (one pre-existing test assertion
+  updated to match the intentional new architecture, confirmed via re-running in isolation).
+  Independent Implementation Review re-derived every workstream's correctness from the actual
+  diff and found no further defect. Deployed the 3 changed trigger functions to `fresh-prints-dev`
+  only; confirmed ACTIVE; confirmed `timeoutSeconds:300` genuinely live via logs. No Rules/index/
+  Storage Rules/secret/production change; no new branch or PR.
 - 2026-08-04 — `post-launch-catalog-and-processing-stability` Implement/Test/Implementation Review:
   completed Workstreams A (tag/category archive cache invalidation + new tag Restore action), B
   (Studio Design Library createdAt default sort fix; Portal ordering re-confirmed not reproduced, no

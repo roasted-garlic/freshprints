@@ -57,6 +57,18 @@ const JSON_CONTENT_TYPE = "application/json; charset=utf-8";
 const IMMUTABLE_CACHE = "public,max-age=31536000,immutable";
 const MANIFEST_CACHE = "public,max-age=30,must-revalidate";
 const DEBOUNCE_MS = 15_000;
+// Bounds how long the debounce-waiter claim (see markDirtyAndClaimDebounceWaiter) stays active
+// after the sleep ends, covering one realistic full publish attempt. Deliberately much smaller
+// than LEASE_MS: LEASE_MS bounds the *publish lease*'s own contention-retry window, not this
+// claim's liability if the waiter's invocation is killed (e.g. by its own Cloud Functions
+// timeout) before reaching its `finally` release block — a hard kill skips `finally` entirely, so
+// the claim would otherwise sit stuck for up to the full LEASE_MS duration
+// (post-launch-catalog-and-processing-stability, Owner QA Amendment 1: live fresh-prints-dev logs
+// showed 18 consecutive "joined-existing-debounce-window" events with zero
+// "claimed-debounce-waiter"/"catalog-snapshot-publication" events in the same window — a claim
+// stuck for its full ~10-minute duration after the prior claim owner's invocation was killed by
+// the trigger functions' 60-second default timeout mid-publish).
+const PUBLISH_ATTEMPT_MARGIN_MS = 90_000;
 const KIB = 1024;
 const TARGETED_MANIFEST_RETRY_LIMIT = 3;
 
@@ -850,15 +862,17 @@ async function markAndPublishAfterDebounce(
   schedulingReason: string,
 ): Promise<void> {
   const startedAtMs = Date.now();
-  // The claim must outlive the sleep below plus the eventual publish
-  // attempt, not just the sleep itself — otherwise a second invocation
-  // could become a second waiter while this one's publish is still in
-  // flight (see markDirtyAndClaimDebounceWaiter's doc comment). LEASE_MS
-  // is already the established bound for "how long a publish may
-  // legitimately take," so reuse it as the publish-attempt margin.
+  // The claim must outlive the sleep below plus the eventual publish attempt, not just the sleep
+  // itself — otherwise a second invocation could become a second waiter while this one's publish
+  // is still in flight (see markDirtyAndClaimDebounceWaiter's doc comment). Deliberately NOT
+  // LEASE_MS (10 minutes) — a killed waiter (e.g. hitting the trigger function's own timeout mid-
+  // publish) would strand the claim for that entire duration, since a hard kill skips the
+  // `finally` release block. PUBLISH_ATTEMPT_MARGIN_MS bounds this to a much smaller, self-healing
+  // window (Owner QA Amendment 1 — see PUBLISH_ATTEMPT_MARGIN_MS's own doc comment for the live
+  // log evidence that motivated this).
   const { isWaiter, waiterOwner } = await markDirtyAndClaimDebounceWaiter(
     kind,
-    DEBOUNCE_MS + LEASE_MS,
+    DEBOUNCE_MS + PUBLISH_ATTEMPT_MARGIN_MS,
   );
 
   logger.info("catalog-snapshot-scheduling", {
@@ -1106,8 +1120,14 @@ export const retryPortalCatalogPublication = onCall(async (request) => {
   }
 });
 
+// timeoutSeconds explicitly raised from the 60-second default: the debounce-waiter invocation
+// sleeps DEBOUNCE_MS then runs a full publishKind() scan/write pass, which can exceed 60s on a
+// catalog of real size — a hard timeout kill skips the claim's release entirely (see
+// PUBLISH_ATTEMPT_MARGIN_MS's doc comment for the live-log evidence this was actually happening
+// on fresh-prints-dev). 300s comfortably covers DEBOUNCE_MS + a realistic full publish with
+// margin, well under the Cloud Functions v2 event-driven ceiling.
 export const onCategorySnapshotSourceWritten = onDocumentWritten(
-  "categories/{categoryId}",
+  { document: "categories/{categoryId}", timeoutSeconds: 300 },
   async (event) => {
     const project = (value: Record<string, unknown> | undefined) => value ? {
       name: value.name,
@@ -1122,8 +1142,9 @@ export const onCategorySnapshotSourceWritten = onDocumentWritten(
   },
 );
 
+// See onCategorySnapshotSourceWritten's comment for why timeoutSeconds is explicitly raised.
 export const onTagSnapshotSourceWritten = onDocumentWritten(
-  "tags/{tagId}",
+  { document: "tags/{tagId}", timeoutSeconds: 300 },
   async (event) => {
     const project = (value: Record<string, unknown> | undefined) => value ? {
       name: value.name,
@@ -1138,8 +1159,9 @@ export const onTagSnapshotSourceWritten = onDocumentWritten(
   },
 );
 
+// See onCategorySnapshotSourceWritten's comment for why timeoutSeconds is explicitly raised.
 export const onPortalCatalogSnapshotSourceWritten = onDocumentWritten(
-  "designs/{designId}",
+  { document: "designs/{designId}", timeoutSeconds: 300 },
   async (event) => {
     const before = event.data?.before.exists ? event.data.before.data() : undefined;
     const after = event.data?.after.exists ? event.data.after.data() : undefined;

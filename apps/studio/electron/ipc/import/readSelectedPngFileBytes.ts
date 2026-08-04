@@ -10,11 +10,15 @@ import { consumeCorrectedImportBytes } from "./correctedImportBytesCache";
 export async function readSelectedPngFileBytes(
   filePath: string,
 ): Promise<ReadSelectedPngFileBytesResult> {
-  await validatePngFile(filePath);
-
   const cached = consumeCorrectedImportBytes(filePath);
 
   if (cached) {
+    // VALIDATE_SELECTED_PNG already ran validatePngFile (and the trim/upscale pass that produced
+    // this cached result) for this exact path — re-running it here was a fully redundant second
+    // full-file re-stat/re-read/re-trim pass, doubling the cost of the single most expensive step
+    // in the import pipeline for a large file (post-launch-catalog-and-processing-stability,
+    // Owner QA Amendment 1, Workstream 3). Skipping it here does not weaken validation: the file
+    // was already validated once, synchronously, before this cache entry could exist.
     return {
       filePath,
       fileName: getFileName(filePath),
@@ -22,6 +26,10 @@ export async function readSelectedPngFileBytes(
       bytes: Uint8Array.from(cached.bytes),
     };
   }
+
+  // Cache miss (e.g. a retry after the cached correction was already consumed once, or the
+  // renderer re-invoked this channel directly) — fall back to a fresh, fully validated read.
+  await validatePngFile(filePath);
 
   const fileBuffer = await readFile(filePath);
   const trimResult = await trimImportImageIfNeeded(fileBuffer);

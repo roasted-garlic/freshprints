@@ -1,5 +1,90 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-08-04 - Post-launch catalog and processing stability: Owner QA Amendment 1 complete (urgent ready-design-visibility fix)
+
+Continuation of the A–D pass immediately below, on the same branch/PR
+(`fix/post-launch-catalog-and-processing-stability`, no new branch or PR). Fixes a confirmed,
+urgent, owner-repeated production defect discovered during real QA of the A–D pass.
+
+**Confirmed defect:** designs imported, AI-processed, manually approved to `ready` in Needs Review
+never appeared in Studio Design Library — not after waiting, refreshing, navigating away and back,
+or restarting Studio. Treated as confirmed fact per explicit instruction, not re-litigated.
+
+**Root cause (Studio side):** Studio's normal (non-archived) Design Library browse depended
+entirely on a generated Storage snapshot (`useGeneratedReadyDesigns`) as its design-list source.
+Firestore fallback only ever activated when that snapshot's *fetch itself failed* — a
+successfully-fetched but merely stale snapshot (missing a newly-approved design) left the design
+permanently invisible, since nothing else in the page ever consulted Firestore for the list.
+
+**Root cause (Portal-facing, ready-boundary publisher):** independently traced via live
+`fresh-prints-dev` Function log inspection — the persistent debounce-coalescing claim shipped in
+the original A–D pass (and further extended by that pass's own Implementation Review to
+`DEBOUNCE_MS + LEASE_MS` ≈ 10m15s) could easily outlive the three trigger functions' default
+60-second Cloud Functions timeout. A genuinely slow full-catalog publish reliably risked exceeding
+that timeout; a hard kill skips the claim's release entirely, stranding it for up to ~10 minutes.
+Direct log evidence: 18 consecutive `"joined-existing-debounce-window"` scheduling events with
+zero `"claimed-debounce-waiter"` and zero actual publish attempts in the same window — every
+design write, including every real owner approval, was silently absorbed by a claim that was never
+going to publish.
+
+**Fixes:**
+- Studio Design Library's design list is now unconditionally sourced from bounded Firestore
+  (`useDesigns`/`designService.listDesignsPage` — already cursor-paginated, `createdAt desc`,
+  15-second-TTL cached, and already correctly invalidated on approval via the pre-existing
+  `invalidateDesignReadCaches` call). Generated taxonomy (categories/tags) is completely
+  unaffected and remains the source for normal-browse filtering. `useGeneratedReadyDesigns` itself
+  is unchanged and retained for its one other real consumer (the Assisted Creation catalog-share
+  picker).
+- The ready-boundary publisher's debounce claim now uses a small, dedicated 90-second
+  publish-attempt margin (`DEBOUNCE_MS + PUBLISH_ATTEMPT_MARGIN_MS`) instead of the full 10-minute
+  lease duration, so a killed waiter self-heals in roughly two minutes instead of ten. All three
+  trigger functions now explicitly set `timeoutSeconds: 300` (previously the 60-second platform
+  default), making a hard-timeout kill rare in the first place.
+
+**Also fixed in this Amendment (owner-confirmed, related QA findings):**
+- **AI Processing:** the manual "Process image with AI" and auto-advance-queue paths never
+  reconciled Processing/Needs Review counts at all (only the previously-fixed rerun-from-inbox
+  path did), and left `selectedDesignId` dangling on a filtered-out design when the completed
+  design was the last one awaiting AI start — permanently disabling "Start AI" until an unrelated
+  route remount. Both gaps fixed: `onQueueChanged` now wired through the manual/auto-queue paths;
+  explicit `requestSelectDesign(null)` at every point selection would otherwise dangle.
+- **Large Studio import:** a 159.24 MB PNG failed at upload time with "Use a PNG file only after
+  selecting it with the file picker." despite having already passed picker selection, validation,
+  trim, and normalization successfully. Root cause: a single, process-global, non-session-scoped
+  `Set<string>` tracked picker-approved paths, unconditionally wiped on any re-registration — a
+  redundant second full-file validation pass at upload time (now removed) roughly doubled the
+  large-file exposure window for this fragility. Fixed: re-registering the identical
+  already-active path is now a no-op; a genuinely different path still correctly invalidates the
+  prior session (unchanged "one file at a time" model preserved). Arbitrary-filesystem-path
+  security validation is completely unaffected.
+
+**Verification:** full test suite green — zero new failures beyond one intentionally-updated
+pre-existing assertion (`firestoreRouteContainment.test.ts`, which had encoded the now-superseded
+generated-catalog-first architecture). Every new discriminating test independently confirmed to
+fail against the corresponding pre-fix source. Functions build, Studio/Portal typecheck, Studio
+3-target Vite build, lint, `git diff --check` all exit 0. Independent Implementation Review
+re-derived every workstream's correctness from the actual diff and found no further defect (one
+already-applied test-suite correction was independently re-confirmed as genuine, not superficial).
+
+**Deployed to `fresh-prints-dev` only:** `onCategorySnapshotSourceWritten`,
+`onTagSnapshotSourceWritten`, `onPortalCatalogSnapshotSourceWritten` — confirmed `ACTIVE`, function
+count unchanged (109), `timeoutSeconds:300` confirmed genuinely live via post-deploy logs (not
+just present in source). No Rules, Storage Rules, index, secret, Hosting, or unrelated Function
+touched. **No production action of any kind occurred.**
+
+**Owner follow-up required:** a compact 3-approval Studio-visibility + Portal-publication QA
+checklist (Test Report §15.3) could not be run live in this environment (no interactive Studio
+session, no Application Default Credentials for scripted Admin SDK access) — same constraint
+documented throughout this goal. Also outstanding from the original A–D pass: Workstream E
+(Studio upload authorization) reproduction, and one live Firestore-document check for Workstream
+A's archive write.
+
+Reference docs: `docs/workflow/plans/2026-08-04-post-launch-catalog-and-processing-stability-owner-qa-amendment-1.md`,
+`docs/workflow/reviews/2026-08-04-post-launch-catalog-and-processing-stability-owner-qa-amendment-1-review.md`,
+`docs/workflow/reviews/2026-08-04-post-launch-catalog-and-processing-stability-test-report.md`
+(§15 addendum), `docs/workflow/reviews/2026-08-04-post-launch-catalog-and-processing-stability-implementation-review.md`
+(Amendment 1 section appended).
+
 ## 2026-08-04 - Post-launch catalog and processing stability: Implement + Test + Implementation Review complete; A–D shipped to fresh-prints-dev, E stopped
 
 Continuation of the Plan/Review entry immediately below, following owner approval

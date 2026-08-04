@@ -118,7 +118,7 @@ describe("markAndPublishAfterDebounce wiring", () => {
       source.indexOf("async function markAndPublishAfterDebounce("),
       source.indexOf("export const rebuildCatalogSnapshots"),
     );
-    assert.match(debounceFunctionBlock, /markDirtyAndClaimDebounceWaiter\(\s*\n?\s*kind,\s*\n?\s*DEBOUNCE_MS \+ LEASE_MS,?\s*\n?\s*\);/);
+    assert.match(debounceFunctionBlock, /markDirtyAndClaimDebounceWaiter\(\s*\n?\s*kind,\s*\n?\s*DEBOUNCE_MS \+ PUBLISH_ATTEMPT_MARGIN_MS,?\s*\n?\s*\);/);
     assert.match(debounceFunctionBlock, /if \(!isWaiter\) \{\s*return;\s*\}/);
     assert.match(debounceFunctionBlock, /releaseDebounceClaimIfOwned\(kind, waiterOwner\)/);
   });
@@ -146,5 +146,86 @@ describe("markAndPublishAfterDebounce wiring", () => {
 
     assert.match(publishKindBlock, /snapshot-publication-lease-active/);
     assert.doesNotMatch(publishKindBlock, /debounceOwner|debounceExpiresAt/);
+  });
+});
+
+/**
+ * Regression coverage for the ready-boundary publisher stall
+ * (post-launch-catalog-and-processing-stability, Owner QA Amendment 1).
+ *
+ * Live fresh-prints-dev logs showed 18 consecutive "joined-existing-debounce-window" scheduling
+ * events with zero "claimed-debounce-waiter" and zero "catalog-snapshot-publication" events in
+ * the same window — consistent with a debounce claim left stuck by a waiter invocation that was
+ * killed by its own Cloud Functions timeout mid-publish, skipping the `finally` release block
+ * entirely. Root cause: the claim's expiry (DEBOUNCE_MS + LEASE_MS ≈ 10m15s) vastly outlived the
+ * trigger functions' default 60-second timeout, so a genuinely slow publish (a full collection
+ * scan + many Storage writes, easily exceeding the ~45s remaining after the 15s sleep) reliably
+ * got killed before it could release its claim, silently absorbing every subsequent design write
+ * — including every owner approval — into a dead claim for up to ~10 minutes at a time.
+ */
+describe("ready-boundary publisher stall fix (Owner QA Amendment 1)", () => {
+  it("the debounce claim duration no longer depends on LEASE_MS — it uses a small, dedicated publish-attempt margin", () => {
+    const source = read("functions/src/catalogSnapshots/publishCatalogSnapshots.ts");
+
+    assert.match(source, /const PUBLISH_ATTEMPT_MARGIN_MS = 90_000;/);
+    assert.match(source, /DEBOUNCE_MS \+ PUBLISH_ATTEMPT_MARGIN_MS/);
+    assert.doesNotMatch(source, /DEBOUNCE_MS \+ LEASE_MS/);
+  });
+
+  it("the claim's total liability window is far smaller than LEASE_MS, so a killed waiter self-heals in roughly two minutes, not ten", () => {
+    const source = read("functions/src/catalogSnapshots/publishCatalogSnapshots.ts");
+    const debounceMsMatch = source.match(/const DEBOUNCE_MS = (\d+)_?(\d*);/);
+    const marginMatch = source.match(/const PUBLISH_ATTEMPT_MARGIN_MS = (\d+)_?(\d*);/);
+    const leaseMsMatch = source.match(/const LEASE_MS = (\d+) \* (\d+)_?(\d*);/);
+    assert.ok(debounceMsMatch && marginMatch && leaseMsMatch, "expected to find all three duration constants");
+
+    const debounceMs = Number(`${debounceMsMatch![1]}${debounceMsMatch![2]}`);
+    const marginMs = Number(`${marginMatch![1]}${marginMatch![2]}`);
+    const leaseMs = Number(leaseMsMatch![1]) * Number(`${leaseMsMatch![2]}${leaseMsMatch![3]}`);
+
+    const claimTotalMs = debounceMs + marginMs;
+    assert.ok(
+      claimTotalMs < leaseMs / 3,
+      `expected the claim's total liability window (${claimTotalMs}ms) to be far smaller than ` +
+        `LEASE_MS (${leaseMs}ms) — a stuck claim must self-heal in roughly two minutes, not ten`,
+    );
+  });
+
+  it("all three trigger functions explicitly set a timeoutSeconds comfortably covering the sleep-plus-publish window, not the 60s platform default", () => {
+    const source = read("functions/src/catalogSnapshots/publishCatalogSnapshots.ts");
+
+    for (const triggerName of [
+      "onCategorySnapshotSourceWritten",
+      "onTagSnapshotSourceWritten",
+      "onPortalCatalogSnapshotSourceWritten",
+    ]) {
+      const declarationIndex = source.indexOf(`export const ${triggerName} = onDocumentWritten(`);
+      assert.ok(declarationIndex > -1, `expected to find the ${triggerName} declaration`);
+      const declarationBlock = source.slice(declarationIndex, declarationIndex + 200);
+      assert.match(
+        declarationBlock,
+        /timeoutSeconds: 300/,
+        `expected ${triggerName} to explicitly set timeoutSeconds: 300`,
+      );
+      // Confirms the options-object call form (document path moved inside { document: ... }),
+      // not the old 2-argument (bare path string, handler) form that has no way to set a timeout.
+      assert.match(declarationBlock, /\{ document: "[^"]+", timeoutSeconds: 300 \}/);
+    }
+  });
+
+  it("300s comfortably exceeds DEBOUNCE_MS + PUBLISH_ATTEMPT_MARGIN_MS with margin, so the claim expires and a fresh waiter can retry before the function's own timeout would recur", () => {
+    const source = read("functions/src/catalogSnapshots/publishCatalogSnapshots.ts");
+    const debounceMsMatch = source.match(/const DEBOUNCE_MS = (\d+)_?(\d*);/);
+    const marginMatch = source.match(/const PUBLISH_ATTEMPT_MARGIN_MS = (\d+)_?(\d*);/);
+    assert.ok(debounceMsMatch && marginMatch);
+
+    const debounceMs = Number(`${debounceMsMatch![1]}${debounceMsMatch![2]}`);
+    const marginMs = Number(`${marginMatch![1]}${marginMatch![2]}`);
+    const claimTotalSeconds = (debounceMs + marginMs) / 1000;
+
+    assert.ok(
+      300 > claimTotalSeconds,
+      `expected the 300s function timeout to exceed the claim's own ${claimTotalSeconds}s total window`,
+    );
   });
 });

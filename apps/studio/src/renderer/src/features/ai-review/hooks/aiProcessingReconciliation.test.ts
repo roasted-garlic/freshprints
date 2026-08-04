@@ -91,3 +91,128 @@ describe("AI Processing reconciliation — duplicate/stale enqueue is an idempot
     assert.match(enqueueBlock, /applyDesignPatch\(designId, patch\)/);
   });
 });
+
+/**
+ * Regression coverage for the AI Processing controller/count reconciliation defect
+ * (post-launch-catalog-and-processing-stability, Owner QA Amendment 1, Workstream 2).
+ *
+ * The prior pass (commit eeec2e2) only fixed executeRerunToProcessing (rerun-from-inbox). The
+ * owner's confirmed reproduction — reprocess → completes → Processing count stays stale → "Start
+ * AI" stays disabled → only fixed by navigating away and back — exercises the manual single-image
+ * "Process image with AI" (processSelectedDesign) and auto-advance queue (runAutoQueueLoop) paths,
+ * neither of which the prior fix touched.
+ */
+describe("AI Processing controller/count reconciliation — manual process and auto-queue paths", () => {
+  it("refreshDesignList (used by both processSelectedDesign and runAutoQueueLoop) calls onQueueChanged alongside reloadDesigns", () => {
+    const source = read(
+      "apps/studio/src/renderer/src/features/ai-review/hooks/useAiProcessingQueue.ts",
+    );
+    const refreshBlock = source.slice(
+      source.indexOf("const refreshDesignList = useCallback("),
+      source.indexOf("const runAutoQueueLoop = useCallback("),
+    );
+    assert.match(refreshBlock, /await reloadDesigns\(\);/);
+    assert.match(refreshBlock, /onQueueChanged\?\.\(\);/);
+
+    const reloadIndex = refreshBlock.indexOf("await reloadDesigns();");
+    const queueChangedIndex = refreshBlock.indexOf("onQueueChanged?.();");
+    assert.ok(
+      reloadIndex > -1 && queueChangedIndex > -1 && reloadIndex < queueChangedIndex,
+      "onQueueChanged must run after the design list itself has been reloaded",
+    );
+  });
+
+  it("useAiProcessingQueueOptions accepts onQueueChanged and useAiReviewInbox threads it through from its own options", () => {
+    const hookSource = read(
+      "apps/studio/src/renderer/src/features/ai-review/hooks/useAiProcessingQueue.ts",
+    );
+    assert.match(hookSource, /onQueueChanged\?:\s*\(\) => void;/);
+
+    const inboxSource = read(
+      "apps/studio/src/renderer/src/features/ai-review/hooks/useAiReviewInbox.ts",
+    );
+    const processingQueueCallBlock = inboxSource.slice(
+      inboxSource.indexOf("const processingQueue = useAiProcessingQueue({"),
+      inboxSource.indexOf("const processingQueue = useAiProcessingQueue({") + 400,
+    );
+    assert.match(processingQueueCallBlock, /onQueueChanged: options\?\.onQueueChanged,/);
+  });
+
+  it("processSelectedDesign clears selection (does not leave a dangling selectedDesignId) when no design remains awaiting AI start", () => {
+    const source = read(
+      "apps/studio/src/renderer/src/features/ai-review/hooks/useAiProcessingQueue.ts",
+    );
+    const processBlock = source.slice(
+      source.indexOf("const processSelectedDesign = useCallback("),
+      source.indexOf("}, [\n    advanceSelectionToIndex,"),
+    );
+
+    assert.match(processBlock, /if \(nextIndex >= 0\) \{/);
+    assert.match(processBlock, /requestSelectDesign\(null\);/);
+
+    const ifIndex = processBlock.indexOf("if (nextIndex >= 0) {");
+    const elseIndex = processBlock.indexOf("} else {");
+    const requestSelectNullIndex = processBlock.indexOf("requestSelectDesign(null);");
+    assert.ok(
+      ifIndex > -1 && elseIndex > ifIndex && requestSelectNullIndex > elseIndex,
+      "requestSelectDesign(null) must be the else-branch companion to the nextIndex >= 0 advance",
+    );
+  });
+
+  it("runAutoQueueLoop clears selection at both natural loop-exit points (index exhausted, no next awaiting design)", () => {
+    const source = read(
+      "apps/studio/src/renderer/src/features/ai-review/hooks/useAiProcessingQueue.ts",
+    );
+    const loopBlock = source.slice(
+      source.indexOf("const runAutoQueueLoop = useCallback("),
+      source.indexOf("const startAutoQueue = useCallback("),
+    );
+
+    const indexExhaustedBlock = loopBlock.slice(
+      loopBlock.indexOf("if (index >= currentDesigns.length) {"),
+      loopBlock.indexOf("const nextAwaitingIndex = findNextAwaitingIndex"),
+    );
+    assert.match(indexExhaustedBlock, /requestSelectDesign\(null\);/);
+
+    const noAwaitingBlock = loopBlock.slice(
+      loopBlock.indexOf("if (nextAwaitingIndex < 0) {"),
+      loopBlock.indexOf("index = nextAwaitingIndex;"),
+    );
+    assert.match(noAwaitingBlock, /requestSelectDesign\(null\);/);
+  });
+
+  it("requestSelectDesign is a real dependency of both processSelectedDesign and runAutoQueueLoop's useCallback", () => {
+    const source = read(
+      "apps/studio/src/renderer/src/features/ai-review/hooks/useAiProcessingQueue.ts",
+    );
+
+    // File order is runAutoQueueLoop, then startAutoQueue, then stopAutoQueue, then
+    // processSelectedDesign — slice to end-of-file for processSelectedDesign since it's the last
+    // of these four in the file. Dependency arrays close in two different textual shapes in this
+    // file ("}, [a, b]);" on one line, or "},\n    [a, b],\n  );" split across lines) — rather
+    // than matching the exact closing shape, just confirm requestSelectDesign appears somewhere
+    // in the tail of each function's own block (after its last requestSelectDesign(null) call),
+    // which is where a useCallback's dependency array always lives.
+    const processBlock = source.slice(source.indexOf("const processSelectedDesign = useCallback("));
+    const processTail = processBlock.slice(processBlock.lastIndexOf("requestSelectDesign(null);"));
+    assert.match(
+      processTail,
+      /requestSelectDesign/,
+      "expected requestSelectDesign to also appear in processSelectedDesign's dependency array",
+    );
+    assert.ok(
+      (processTail.match(/requestSelectDesign/g) ?? []).length >= 2,
+      "expected requestSelectDesign to appear both in the call and in the dependency array",
+    );
+
+    const loopBlock = source.slice(
+      source.indexOf("const runAutoQueueLoop = useCallback("),
+      source.indexOf("const startAutoQueue = useCallback("),
+    );
+    const loopTail = loopBlock.slice(loopBlock.lastIndexOf("requestSelectDesign(null);"));
+    assert.ok(
+      (loopTail.match(/requestSelectDesign/g) ?? []).length >= 2,
+      "expected requestSelectDesign to appear both in the call and in runAutoQueueLoop's dependency array",
+    );
+  });
+});

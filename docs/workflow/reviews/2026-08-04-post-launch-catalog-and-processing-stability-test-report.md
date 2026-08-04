@@ -196,9 +196,116 @@ Before deploying: explicitly ran `firebase use fresh-prints-dev` and confirmed v
 
 ---
 
-## 14. Unresolved items and required owner QA
+## 14. Unresolved items and required owner QA (original A–D pass)
 
 1. **Workstream E is fully unimplemented**, blocked on the evidence checklist in §1. This requires an authorized owner to run Studio interactively.
 2. **Live controlled Firestore cost measurement** (§4) and **live AI Processing reconciliation UI verification** (§5) were not performed against real `fresh-prints-dev` traffic — both require an authenticated Studio session this environment cannot provide. Recommended owner follow-up: after reviewing this deploy, perform one real batch import (a handful of designs) and one real reprocess-a-design cycle in Studio against `fresh-prints-dev`, checking (a) the new `catalog-snapshot-scheduling`/`catalog-snapshot-publication` log events for a bounded publication count, and (b) that the Processing tab immediately reflects a completed reprocess without navigating away and back.
 3. **Workstream A's required live-Firestore-document check** (per the managed-goal brief: "before deciding whether this is a write failure or stale-read failure" for Workstream A) was performed at the source level only (confirmed the write path and the missing invalidation directly in code) — an owner should still click Archive once in Studio against `fresh-prints-dev` and confirm the tag disappears from the active list immediately, to close the loop empirically.
 4. **Category-archive parity** was implemented (not just flagged) in this pass, since the same guarded-callable-plus-unwired-cache-invalidation pattern was independently confirmed for categories during implementation — this exceeds the Review's "should be a required first step" framing by actually fixing it, not just re-flagging it.
+
+---
+
+## 15. Owner QA Amendment 1 — Test Report addendum
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-08-04 |
+| Amendment Plan | `docs/workflow/plans/2026-08-04-post-launch-catalog-and-processing-stability-owner-qa-amendment-1.md` |
+| Amendment Formal Review | `docs/workflow/reviews/2026-08-04-post-launch-catalog-and-processing-stability-owner-qa-amendment-1-review.md` |
+
+### 15.1 Implementation summary
+
+**Workstream 1 — Studio ready-design invisibility (highest priority):**
+- `DesignLibraryPage.tsx`: removed `useGeneratedReadyDesigns` from the page's design-list decision entirely. `useDesigns`/`designService.listDesignsPage` (bounded, cursor-paginated, `createdAt desc`, 15s-TTL-cached with confirmed pre-existing `invalidateDesignReadCaches` invalidation on approval) is now the unconditional primary source for both normal and archived browse. Generated taxonomy (`useGeneratedDesignLibraryTaxonomy`) is completely unchanged and remains the source for categories/tags in normal browse. `refreshCatalog` now unconditionally calls `reloadDesigns()` (previously skipped for generated-catalog mode). `handleDesignUpdated`/`handleArchiveConfirm` simplified to use `applyDesignPatch`/`refreshCatalog` directly instead of generated-index reconciliation machinery that no longer applies.
+- `useGeneratedReadyDesigns.ts` itself is **unchanged and retained** — it remains the active source for `useReadyDesignsForAssistedCatalogPicker.ts` (the Assisted Creation catalog-share picker), its one other real consumer, confirmed via repo-wide grep before and after the change.
+- `designLibraryFirestoreLoadPolicy.ts`: `loadReadyDesignPage` is now `true` unconditionally (previously `false` whenever `usingGeneratedCatalog` was true — the exact line the defect lived on).
+- Removed `sortDesignLibraryResults.ts` and its test — confirmed orphaned (zero remaining consumers) after the above change; kept dead code out per coding standards rather than leaving it silently unused.
+- `publishCatalogSnapshots.ts` (ready-boundary publisher self-healing fix): replaced the debounce claim's `DEBOUNCE_MS + LEASE_MS` (~10m15s) duration with `DEBOUNCE_MS + PUBLISH_ATTEMPT_MARGIN_MS` (a new 90-second constant, ~1m45s total) so a waiter invocation killed by its own function timeout mid-publish self-heals in roughly two minutes instead of ten. Added explicit `timeoutSeconds: 300` to all three `onDocumentWritten` triggers (previously relying on the 60-second platform default), converting each to the options-object call form.
+
+**Workstream 2 — AI Processing controller/count reconciliation:**
+- `useAiProcessingQueue.ts`: added `onQueueChanged?: () => void` to the options interface; `refreshDesignList` (shared by both `processSelectedDesign` and `runAutoQueueLoop`) now calls it after `reloadDesigns()` — closing the gap where the manual single-image "Process" and auto-advance-queue paths never reconciled Processing/Needs Review counts at all (only the previously-fixed rerun-from-inbox path did). Both `processSelectedDesign`'s post-completion branch and `runAutoQueueLoop`'s two natural loop-exit points now explicitly call `requestSelectDesign(null)` when no design remains awaiting AI start, instead of leaving `selectedDesignId` dangling on a design already filtered out of `designs` — this was the exact mechanism causing "Start AI" to stay permanently disabled until an unrelated route remount.
+- `useAiReviewInbox.ts`: threads `options?.onQueueChanged` into the `useAiProcessingQueue` call, so `AiReviewPage.tsx`'s existing `onQueueChanged: () => void tabCounts.reloadCounts()` now genuinely reaches the manual/auto-queue paths.
+
+**Workstream 3 — large Studio import picker-provenance failure:**
+- `importFileSession.ts`: `registerImportFilePath` no longer unconditionally clears the session Sets on every call — it is now a no-op when re-registering the exact same (normalized) path already active, while still correctly clearing when a genuinely different path is registered (preserving the intended "one file at a time" model). This is the fix for the confirmed structural defect: previously, any second registration for the identical file — plausible during the wider validate-to-upload window a large/slow file creates — silently wiped provenance/validation state and produced "Use a PNG file only after selecting it with the file picker." even for a genuinely still-valid, already-validated selection.
+- `readSelectedPngFileBytes.ts`: the redundant second `validatePngFile()` call is now skipped on a `consumeCorrectedImportBytes` cache hit (the file was already fully validated once during `VALIDATE_SELECTED_PNG`) — only a genuine cache miss (e.g. a retry) re-validates from scratch. This roughly halves the large-file processing cost that widened the original exposure window.
+- Arbitrary-filesystem-path protection (`isUnsafeClientFilePath`) is completely unchanged — confirmed by direct re-reading of every call site; this fix narrows *identity* handling, not *authorization*.
+
+### 15.2 Ready-boundary publisher root cause and correction (restated per required return item)
+
+**Root cause (confirmed via live `fresh-prints-dev` log inspection, not source-only inference):** the debounce-waiter claim (shipped in the prior A–D pass, then further extended by that pass's own Implementation Review to `DEBOUNCE_MS + LEASE_MS` ≈ 10m15s) vastly outlived the three trigger functions' default 60-second Cloud Functions timeout. A genuinely slow publish (full collection scan + many Storage writes) reliably risked exceeding the ~45 seconds remaining after the 15-second sleep, and a hard function-timeout kill skips the `finally { releaseDebounceClaimIfOwned }` block entirely — stranding the claim, unreleased, for up to its full ~10-minute duration. Direct evidence: a 500-line `fresh-prints-dev` log window showed 18 consecutive `"joined-existing-debounce-window"` scheduling events with **zero** `"claimed-debounce-waiter"` and **zero** `"catalog-snapshot-publication"` events in the same window — every incoming design write, including the owner's real approvals, silently deferred to a claim that was never going to publish.
+
+**Correction:** (1) shrunk the claim's own liability window from `DEBOUNCE_MS + LEASE_MS` to `DEBOUNCE_MS + PUBLISH_ATTEMPT_MARGIN_MS` (90s), so a killed waiter now self-heals in roughly two minutes; (2) explicitly raised `timeoutSeconds` to 300 on all three triggers so a hard kill becomes rare in the first place, rather than a routine occurrence on any catalog of real size. The existing transactional publish lease (`LEASE_MS`, `publishKind`'s own guard) is completely unchanged — it remains the correctness boundary for preventing concurrent scans.
+
+### 15.3 Three-approval publication measurement — not performed live; owner QA checklist provided
+
+Per explicit instruction and consistent with the original A–D pass's documented, unchanged environment constraints (no interactive Electron/Chromium session; no Application Default Credentials for scripted Admin SDK writes — both re-confirmed still true this pass), a live controlled three-approval measurement could not be performed. Source implementation and automated tests were completed regardless, per the explicit instruction that lack of interactive access must not block implementing the Studio authoritative bounded path.
+
+**Compact owner QA checklist (perform against `fresh-prints-dev` after this deploy):**
+
+1. In Studio, import 3 designs, run AI processing to completion, and manually approve all 3 to `ready` in Needs Review.
+2. Immediately open Studio Design Library (normal, non-archived view) — **expected: all 3 designs are visible immediately, with no wait, no refresh, no navigation required.**
+3. Wait ~2–3 minutes, then check Firebase Console → Cloud Functions → Logs (or `firebase functions:log --project fresh-prints-dev`), filtering for `catalog-snapshot-scheduling` and `catalog-snapshot-publication` — **expected: a bounded number of `claimed-debounce-waiter` events (not one per design write), followed by at least one `catalog-snapshot-publication` event with `"outcome":"success"` and a real `durationMs` value** (record this value — it is the first real data point for how long a full publish actually takes on this catalog's current scale, informing whether 90s/300s remain comfortable margins as the catalog grows).
+4. Open Portal (or the Portal catalog preview) and confirm the same 3 designs eventually appear in the public catalog once the publication event above completes — **expected: Portal reflects the 3 designs after that publish, without needing a manual `rebuildCatalogSnapshots` trigger.**
+5. While waiting for step 3, confirm Portal's existing catalog (any previously-published designs) remains fully browsable and unaffected — **expected: no visible Portal outage or stale-to-broken transition, only stale-to-fresher.**
+
+### 15.4 Studio visibility before and after (restated per required return item)
+
+**Before:** approved `status: ready` designs never appeared in Studio Design Library — confirmed dependent entirely on generated Storage snapshot publication, which was itself confirmed stalled by the root cause in §15.2. **After:** Studio Design Library's design list is sourced unconditionally from bounded Firestore (`useDesigns`), independent of generated-snapshot publication health — confirmed via `designLibraryAuthoritativeSource.test.ts` (7/7 pass, 4/7 independently confirmed to fail against the pre-fix source) and via the existing `invalidateDesignReadCaches` call already present on the approval write path (`designService.ts:1132`, unchanged, now actually reachable for this surface).
+
+### 15.5 Portal behavior after the change (restated per required return item)
+
+**Unchanged.** Portal continues to read exclusively from `generated/portal-catalog/**` assets — confirmed no Portal file was touched by this Amendment (`git diff --stat` shows zero files under `apps/portal/`). Portal's own visibility timing now depends on the corrected, self-healing publisher (§15.2), not on any Studio-side change.
+
+### 15.6 AI Processing stale-state root cause and reproduction (restated per required return item)
+
+**Confirmed root cause:** two independent gaps, both in the manual "Process image with AI" / auto-advance-queue paths (`useAiProcessingQueue.ts`), neither touched by the prior pass's rerun-path-only fix: (1) no `onQueueChanged`-equivalent callback existed at all on this hook, so Processing/Needs Review counts were never reconciled after these paths' completions; (2) when the just-completed design was the last one awaiting AI start, no reselection occurred, leaving `selectedDesignId` dangling on a design already filtered out of the tab's `designs` array — collapsing this hook's own `selectedDesign` derivation to `null` and permanently disabling `canProcessSelected`/"Start AI" until an unrelated route remount re-populated selection.
+
+**Before:** reprocess → completes → Processing count stays stale → "Start AI" stays disabled → only fixed by navigating away and back. **After:** `onQueueChanged` fires after every completion through these paths (confirmed wired end-to-end: `AiReviewPage.tsx` → `useAiReviewInbox.ts` → `useAiProcessingQueue.ts`), and `requestSelectDesign(null)` is called at every point selection would otherwise dangle — confirmed via `aiProcessingReconciliation.test.ts`'s new 5 tests (10/10 total pass, 5/5 new tests independently confirmed to fail against the pre-fix source).
+
+### 15.7 Exact source of the picker-only PNG error and large-file reproduction (restated per required return items)
+
+**Exact source:** `validateReadPngFileBytesRequest.ts:61,87` and `importIpcHandlers.ts:52` (`validateFilePathInput`), all gated by `!isRegisteredImportFilePath(...)`, itself backed by the single global `Set<string>` in `importFileSession.ts`. **Before:** any second call to `registerImportFilePath` — plausible during the wider validate-to-upload window a 159MB/10800×10800 file's slower processing creates — unconditionally wiped the session via `clearImportFileSession()`, producing the exact confirmed error even for a genuinely still-valid, already-validated selection. **After:** re-registering the identical already-active path is a no-op (confirmed via `importFileSession.test.ts`'s 6 tests, 2/6 independently confirmed to fail against the pre-fix source); the redundant second full-file validation pass in `readSelectedPngFileBytes.ts` (which roughly doubled the exposure window for large files specifically) is skipped on a cache hit (confirmed via `readSelectedPngFileBytesValidation.test.ts`'s 2 tests, both independently confirmed to fail against the pre-fix source). Arbitrary-path protection is unaffected.
+
+### 15.8 Every test command and result (Amendment 1)
+
+| Command | Result |
+|---|---|
+| `npx tsx --test apps/studio/src/renderer/src/features/designs/pages/designLibraryAuthoritativeSource.test.ts` | **7/7 pass** (new file; 4/7 confirmed to fail against pre-fix source) |
+| `npx tsx --test apps/studio/src/renderer/src/features/designs/utils/designLibraryFirestoreLoadPolicy.test.ts` | **6/6 pass** (updated) |
+| `npx tsx --test apps/studio/src/renderer/src/features/designs/hooks/studioDesignLibraryNewestFirst.test.ts` | **3/3 pass** (unchanged, re-confirmed) |
+| `npx tsx --test functions/src/catalogSnapshots/snapshotSchedulingCoalescing.test.ts` | **13/13 pass** (4 new tests added; stale assertion corrected) |
+| `npx tsx --test functions/src/catalogSnapshots/publishCatalogSnapshots.test.ts functions/src/catalogSnapshots/snapshotBuilders.test.ts functions/src/catalogSnapshots/targetedPortalPublication.test.ts functions/src/catalogSnapshots/publicationRecovery.test.ts functions/src/catalogSnapshots/portalCatalogChangeClassifier.test.ts` | **100/100 pass** |
+| `npx tsx --test apps/studio/src/renderer/src/features/ai-review/hooks/aiProcessingReconciliation.test.ts` (+ 12 other ai-review test files) | **87/87 pass** (5 new tests added; 5/5 confirmed to fail against pre-fix source) |
+| `npx tsx --test apps/studio/electron/ipc/import/importFileSession.test.ts` | **6/6 pass** (new file; 2/6 confirmed to fail against pre-fix source) |
+| `npx tsx --test apps/studio/electron/ipc/import/readSelectedPngFileBytesValidation.test.ts` | **2/2 pass** (new file; 2/2 confirmed to fail against pre-fix source) |
+| `npx tsx --test apps/studio/src/renderer/src/features/firebase/utils/firestoreRouteContainment.test.ts` | **10/10 pass** (updated — one assertion encoded the pre-Amendment architecture and was corrected) |
+| `npx tsx --test functions/src/**/*.test.ts` (full sweep) | **522/524 pass** — same 2 pre-existing, unrelated failures as the original A–D pass, re-confirmed |
+| `npx tsx --test packages/shared/src/**/*.test.ts` | **857/858 pass** — same 1 pre-existing, unrelated failure |
+| Full Studio test sweep (118 files, batched via PowerShell) | **690/698 pass** — same 8 pre-existing, unrelated failures as the original A–D pass (`sanitizeDownloadFileName`, `usePrintRequestSelectionMode`, print request item sizing/oversized selection, `portalSocialMetaSettingsService`); zero new failures beyond the one already-corrected `firestoreRouteContainment.test.ts` assertion |
+
+Every discriminating test above was independently confirmed to fail against the corresponding pre-fix source (via `git stash push -- <file>` / re-run / `git stash pop`), not merely asserted to pass post-fix.
+
+### 15.9 Functions build, typecheck, build, lint, diff-check (Amendment 1)
+
+- `npm --prefix functions run build` — exit 0.
+- `npx tsc --noEmit` (Studio renderer, from `apps/studio/`) — exit 0.
+- `npx tsc --noEmit -p tsconfig.node.json` (Studio Electron/main context) — exit 0.
+- `npm run typecheck --workspace @fresh-prints/portal` — exit 0 (no Portal source changed; run regardless since shared-adjacent files changed).
+- `npx vite build` (Studio, all 3 targets: renderer, main, preload) — exit 0, no `CIRCULAR_CHUNK` warning.
+- `npm run lint` — exit 0.
+- `git diff --check` — exit 0.
+
+### 15.10 Exact dev Functions deployed (Amendment 1)
+
+```
+firebase deploy --only functions:onCategorySnapshotSourceWritten,functions:onTagSnapshotSourceWritten,functions:onPortalCatalogSnapshotSourceWritten --project fresh-prints-dev
+```
+
+Confirmed `firebase use` was still `fresh-prints-dev` from the prior pass before deploying (re-checked, not assumed). `enqueueAiEnrichment`, `rebuildCatalogSnapshots`, and `retryPortalCatalogPublication` were **not** redeployed in this pass since none of their source changed. Post-deploy `firebase functions:list --project fresh-prints-dev` confirms all 3 `ACTIVE`, total function count unchanged at 109. Post-deploy `firebase functions:log` directly confirms `"timeoutSeconds":300` is genuinely live on the deployed functions (not merely present in source). No Rules, Storage Rules, indexes, Hosting, extensions, secrets, or unrelated Function were touched.
+
+### 15.11 Remaining owner QA (Amendment 1, in addition to §14's original items)
+
+1. **§15.3's compact 3-approval checklist** — not performed live in this environment; required to empirically confirm the ready-boundary publisher fix under real traffic and to capture a real `durationMs` data point for future capacity planning.
+2. **Existing stuck claim risk:** if a debounce claim was already stranded on `fresh-prints-dev` from before this deploy (consistent with the log evidence in §15.2), it will not retroactively shrink to the new, smaller duration — it will continue to block publication until its own original (pre-fix, ~10-minute) expiry elapses at most once more. After that single natural expiry, all future claims use the corrected, smaller duration. No manual intervention is required, but the owner should not expect the very first post-deploy write to necessarily publish instantly if a stale claim happens to still be active from before this deploy.
+3. Workstream 1's Studio-visibility fix should be spot-checked by the owner directly (approve a design, confirm immediate Design Library visibility) as the highest-priority empirical confirmation, independent of the log-based checklist above.
