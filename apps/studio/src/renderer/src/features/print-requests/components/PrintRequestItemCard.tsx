@@ -15,6 +15,7 @@ import {
   formatPrintRequestItemSizeLabel,
 } from "@fresh-prints/shared/utils/printRequestItemSizing";
 import type { UpdatePrintRequestItemInput } from "../services/printRequestService";
+import { resolvePrintRequestItemArtworkBackground } from "../utils/resolvePrintRequestItemArtworkBackground";
 
 export interface PrintRequestItemUploadSummary {
   title: string;
@@ -143,6 +144,7 @@ export function PrintRequestItemCard({
     upload?.previewPath ??
     upload?.thumbnailPath ??
     undefined;
+  const artworkBackgroundHex = resolvePrintRequestItemArtworkBackground(design);
   const [quantityInput, setQuantityInput] = useState(String(item.quantity));
   const [printWidthInput, setPrintWidthInput] = useState(
     formatEditableNumber(resolveInitialWidth(item, design, upload)),
@@ -399,6 +401,7 @@ export function PrintRequestItemCard({
         <div className="print-requests-item-card-header">
           <DesignThumbnailPanel
             alt={`${title} preview`}
+            artworkBackgroundHex={artworkBackgroundHex}
             catalogPath={previewPath}
             className="print-requests-item-card-thumbnail"
             fallbackLabel="Preview unavailable"
@@ -547,6 +550,7 @@ export function PrintRequestItemCard({
 
       <DesignPreviewLightbox
         alt={`${title} preview`}
+        artworkBackgroundHex={artworkBackgroundHex}
         isOpen={isLightboxOpen}
         onClose={() => setIsLightboxOpen(false)}
         previewUrl={previewUrl ?? null}

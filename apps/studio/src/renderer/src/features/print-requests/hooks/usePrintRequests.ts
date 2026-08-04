@@ -13,6 +13,7 @@ import {
   loadPrintRequestsPageCached,
 } from "../services/printRequestsPageReadCache";
 import { reconcileDeletedOrArchivedRequest as reconcileDeletedOrArchivedRequestInState } from "../utils/reconcileDeletedOrArchivedRequest";
+import { mergePrintRequestsById } from "../utils/mergePrintRequestsById";
 import type { PrintRequestListTab } from "@fresh-prints/shared/utils/printRequestListGrouping";
 import type { PrintRequest } from "@fresh-prints/shared/types/printRequest/printRequest.types";
 import type { Customer } from "@fresh-prints/shared/types/customer/customer.types";
@@ -50,22 +51,20 @@ interface LoadPrintRequestsOptions {
   silent?: boolean;
 }
 
-export function mergePrintRequestsById(
-  current: PrintRequest[],
-  additions: PrintRequest[],
-): PrintRequest[] {
-  const byId = new Map(current.map((request) => [request.id, request]));
-  for (const request of additions) {
-    byId.set(request.id, request);
-  }
-  return [...byId.values()];
-}
-
 export function usePrintRequests(activeTab: PrintRequestListTab) {
   const { user } = useAuth();
   const [state, setState] = useState<PrintRequestsState>(initialState);
   const cursorRef = useRef<PrintRequestListCursor | undefined>(undefined);
   const requestGenerationRef = useRef(0);
+  // `ensureRequestsLoaded` is async and can resolve after `activeTab` has since changed (the user
+  // switched tabs while the fetch was in flight). Its merge must be guarded against whatever tab is
+  // ACTUALLY active at the moment `setState` runs, not the tab captured when the fetch started —
+  // a plain closure over the `activeTab` parameter would still admit a now-mismatched request,
+  // since the guard would compare it against the (also stale) tab it was originally fetched for.
+  const activeTabRef = useRef(activeTab);
+  useEffect(() => {
+    activeTabRef.current = activeTab;
+  }, [activeTab]);
 
   const loadCounts = useCallback(async (): Promise<Record<PrintRequestListTab, number>> => {
     if (!user) {
@@ -249,7 +248,7 @@ export function usePrintRequests(activeTab: PrintRequestListTab) {
       const hydrated = await hydratePage(found);
       setState((current) => ({
         ...current,
-        requests: mergePrintRequestsById(current.requests, found),
+        requests: mergePrintRequestsById(current.requests, found, activeTabRef.current),
         summariesByRequestId: { ...current.summariesByRequestId, ...hydrated.summariesByRequestId },
         allocationTotalsByRequestId: {
           ...current.allocationTotalsByRequestId,
