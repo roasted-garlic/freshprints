@@ -1,9 +1,22 @@
 import type { PrintRequest } from "@fresh-prints/shared/types/printRequest/printRequest.types";
 import { isPrintRequestFullyPrinted } from "@fresh-prints/shared/utils/printRequestQueueState";
+import {
+  derivePrintRequestListTab,
+  type PrintRequestListTab,
+} from "@fresh-prints/shared/utils/printRequestListGrouping";
 
 import type { PrintRequestItemSummary } from "../../print-requests/services/printRequestService";
 
 export interface ShowQueuePrintRequestSource {
+  /**
+   * The tab this source's own `usePrintRequests` instance was mounted for. Used only to filter out
+   * requests that `ensureRequestsLoaded` force-fetched by ID into this source but whose own
+   * `queueTab` says they actually belong to a different tab (a request queued to a show forces a
+   * fetch through whichever source happens to own `ensureRequestsLoaded`, not necessarily its
+   * matching tab) — never used to decide the tab for a request whose `queueTab` is absent, since a
+   * pre-backfill request without `queueTab` yet has no better classification available here.
+   */
+  tab: PrintRequestListTab;
   requests: PrintRequest[];
   summariesByRequestId: Record<string, PrintRequestItemSummary>;
   hasMore: boolean;
@@ -46,6 +59,40 @@ export function buildShowQueuePrintRequestOptions(input: {
   ];
 }
 
+/**
+ * Resolves the tab a Show Queue "Attached Print Requests" deep link should open. Prefers the
+ * matched request's own server-maintained `queueTab` (already present on any request loaded via a
+ * paged tab query or a direct-ID fetch) since it reflects the request's persisted state, not a
+ * point-in-time local snapshot. Falls back to a live `derivePrintRequestListTab` recomputation only
+ * when `queueTab` is absent (pre-backfill legacy documents) — this is the same fallback the field's
+ * own doc comment already prescribes, not a new behavior.
+ *
+ * The prior implementation always recomputed the tab from locally-cached summary/allocation-totals
+ * inputs, one of which (`usePrintRequestAllocationTotals`) is fetched once per page mount and never
+ * refreshed — after adding a request to a show without remounting the page, those inputs remain the
+ * pre-add zero/default values for the rest of that page session, deterministically producing the
+ * wrong tab (`working`) even though the request's real `queueTab` had already updated.
+ */
+export function resolveShowQueuePrintRequestLinkTab(input: {
+  matchedRequest: Pick<PrintRequest, "queueTab" | "status"> | undefined;
+  totalRequestedQuantity: number;
+  totalAllocatedQuantity: number;
+  totalInProgressQuantity: number;
+  totalPrintedQuantity: number;
+}): PrintRequestListTab {
+  if (input.matchedRequest?.queueTab) {
+    return input.matchedRequest.queueTab;
+  }
+
+  return derivePrintRequestListTab({
+    totalRequestedQuantity: input.totalRequestedQuantity,
+    totalAllocatedQuantity: input.totalAllocatedQuantity,
+    totalInProgressQuantity: input.totalInProgressQuantity,
+    totalPrintedQuantity: input.totalPrintedQuantity,
+    status: input.matchedRequest?.status ?? "active",
+  });
+}
+
 export function mergeShowQueuePrintRequestSources(
   sources: ShowQueuePrintRequestSource[],
 ): {
@@ -57,9 +104,25 @@ export function mergeShowQueuePrintRequestSources(
 
   for (const source of sources) {
     for (const request of source.requests) {
+      // A request force-loaded by ID (e.g. attached to this show but outside its owning source's
+      // paged tab query) can land in a source whose tab does not match the request's own
+      // server-maintained `queueTab`. Only admit it into a source's contribution when the two
+      // agree, or when `queueTab` is absent (pre-backfill legacy documents, for which no source is
+      // more "correct" than another) — this keeps `mergeShowQueuePrintRequestSources`'s output from
+      // ever claiming a Queued request is Working-tab data.
+      if (request.queueTab && request.queueTab !== source.tab) {
+        continue;
+      }
       requestsById.set(request.id, request);
     }
-    Object.assign(summariesByRequestId, source.summariesByRequestId);
+    Object.assign(
+      summariesByRequestId,
+      Object.fromEntries(
+        Object.entries(source.summariesByRequestId).filter(([requestId]) =>
+          requestsById.has(requestId),
+        ),
+      ),
+    );
   }
 
   return {

@@ -70,8 +70,10 @@ import {
   getShowCapacityPercent,
 } from "@fresh-prints/shared/utils/showCapacityDisplay";
 import { canRemoveRequestFromShow } from "@fresh-prints/shared/utils/showQueueEditability";
-import { derivePrintRequestListTab } from "@fresh-prints/shared/utils/printRequestListGrouping";
-import { buildShowQueuePrintRequestOptions } from "../utils/showQueuePrintRequestSources";
+import {
+  buildShowQueuePrintRequestOptions,
+  resolveShowQueuePrintRequestLinkTab,
+} from "../utils/showQueuePrintRequestSources";
 import { refreshSelectedShowGangSheetCache } from "../utils/gangSheetCacheRefresh";
 import { parseDateTimeInputToTimestamp } from "../utils/upcomingShowDateTimeInput";
 import {
@@ -1330,12 +1332,12 @@ export function UpcomingShowsPage() {
                         totalPrintedQuantity: 0,
                       };
                       const matchedRequest = requests.find((request) => request.id === group.printRequestId);
-                      const requestTab = derivePrintRequestListTab({
+                      const requestTab = resolveShowQueuePrintRequestLinkTab({
+                        matchedRequest,
                         totalRequestedQuantity: requestSummary.totalQuantity,
                         totalAllocatedQuantity: requestAllocationTotals.totalAllocatedQuantity,
                         totalInProgressQuantity: requestAllocationTotals.totalInProgressQuantity,
                         totalPrintedQuantity: requestAllocationTotals.totalPrintedQuantity,
-                        status: matchedRequest?.status ?? "active",
                       });
                       const printRequestHref = getPrintRequestsPath({
                         tab: requestTab,
