@@ -103,6 +103,13 @@ export function mergeShowQueuePrintRequestSources(
   const summariesByRequestId: Record<string, PrintRequestItemSummary> = {};
 
   for (const source of sources) {
+    // Tracks only the IDs THIS source's own iteration admits, so the summary step below can never
+    // attribute a summary to a source that never actually contributed that request — checking the
+    // cross-source `requestsById` accumulator instead would let an unrelated, differently-fetched
+    // source silently overwrite an already-correct summary for the same request ID whenever that
+    // request is (legitimately) force-loaded into more than one source (Implementation Review
+    // finding, 2026-08-03).
+    const admittedIdsThisSource = new Set<string>();
     for (const request of source.requests) {
       // A request force-loaded by ID (e.g. attached to this show but outside its owning source's
       // paged tab query) can land in a source whose tab does not match the request's own
@@ -114,12 +121,13 @@ export function mergeShowQueuePrintRequestSources(
         continue;
       }
       requestsById.set(request.id, request);
+      admittedIdsThisSource.add(request.id);
     }
     Object.assign(
       summariesByRequestId,
       Object.fromEntries(
         Object.entries(source.summariesByRequestId).filter(([requestId]) =>
-          requestsById.has(requestId),
+          admittedIdsThisSource.has(requestId),
         ),
       ),
     );

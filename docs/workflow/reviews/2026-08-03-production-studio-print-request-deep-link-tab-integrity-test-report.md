@@ -102,3 +102,38 @@ this pass. All changes are local, uncommitted Studio renderer source and test fi
 decision on how to land this fix (this branch was created for the Plan/Review docs-only phase; the
 owner may want the implementation moved to its own appropriately-named branch before opening a PR —
 flagged here rather than assumed).
+
+## Addendum (same day, later pass): Implementation Review follow-up fix
+
+An independent Implementation Review
+(`docs/workflow/reviews/2026-08-03-production-studio-print-request-deep-link-tab-integrity-implementation-review.md`,
+verdict: APPROVED WITH ONE REQUIRED FOLLOW-UP FIX) of commit `368530b` found a new, narrow defect
+introduced by the Defect B fix above — distinct from both originally reported symptoms. Because
+`useShowQueuePrintRequests` now force-loads every attached request into all three tab sources,
+`mergeShowQueuePrintRequestSources`'s summary-merging step could let a source that never admitted a
+given request into `requests` still silently overwrite an earlier, correct summary for that same
+request ID via `Object.assign`, since its filter checked the cross-source `requestsById` accumulator
+rather than which IDs that specific source's own iteration had actually admitted.
+
+**Fix:** `mergeShowQueuePrintRequestSources` now tracks `admittedIdsThisSource` per source iteration
+and only merges a source's summary entries for IDs that source itself admitted — the `requests`-array
+tab-matching guard was already correct and is unchanged.
+
+**Verification:**
+
+| Check | Result |
+|---|---|
+| Standalone reproduction of the Review's exact failing scenario, re-run against the fix | correct source's summary wins, `requests` array unaffected |
+| New regression test (`showQueuePrintRequestSources.test.ts`) added for this exact scenario | pass |
+| Confirmed the new test fails against the pre-follow-up code (reverted the file, re-ran, saw 1/10 fail; restored the fix, 10/10 pass) | confirmed the test actually detects the defect, not a vacuous assertion |
+| Full `showQueuePrintRequestSources.test.ts` suite | **10/10 pass** |
+| Repo lint | exit 0, 0 warnings |
+| Studio typecheck | exit 0 |
+| `git diff --check` | exit 0 (only benign CRLF-normalization warnings) |
+
+**Files changed in this addendum:**
+
+- `apps/studio/src/renderer/src/features/upcoming-shows/utils/showQueuePrintRequestSources.ts`
+- `apps/studio/src/renderer/src/features/upcoming-shows/utils/showQueuePrintRequestSources.test.ts`
+
+No other file was touched. No Cloud Function, Firestore Rule/index, or Portal file was changed.

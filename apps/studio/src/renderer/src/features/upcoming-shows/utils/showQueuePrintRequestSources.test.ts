@@ -30,14 +30,16 @@ function request(id: string, queueTab: PrintRequest["queueTab"], status: PrintRe
 function source(
   tab: PrintRequestListTab,
   requests: PrintRequest[],
-  options: Partial<Pick<ShowQueuePrintRequestSource, "hasMore" | "loadMore">> = {},
+  options: Partial<
+    Pick<ShowQueuePrintRequestSource, "hasMore" | "loadMore" | "summariesByRequestId">
+  > = {},
 ): ShowQueuePrintRequestSource {
   return {
     tab,
     requests,
-    summariesByRequestId: Object.fromEntries(
-      requests.map((entry) => [entry.id, { totalQuantity: 1, uniqueDesignCount: 1 }]),
-    ),
+    summariesByRequestId:
+      options.summariesByRequestId ??
+      Object.fromEntries(requests.map((entry) => [entry.id, { totalQuantity: 1, uniqueDesignCount: 1 }])),
     hasMore: options.hasMore ?? false,
     isLoadingMore: false,
     loadMore: options.loadMore ?? (async () => undefined),
@@ -98,6 +100,36 @@ describe("Show Queue print-request sources", () => {
 
     assert.deepEqual(merged.requests.map((entry) => entry.id), ["queued-request"]);
     assert.deepEqual(Object.keys(merged.summariesByRequestId), ["queued-request"]);
+  });
+
+  it("never lets a source that did not admit a request overwrite that request's summary from a source that did (Implementation Review finding, 2026-08-03)", () => {
+    // A request attached to a show is force-loaded (via ensureRequestsLoaded) into ALL THREE
+    // sources, each of which independently fetches its own summary for the same ID. Only the
+    // "queued" source's copy of this request is actually admitted (its queueTab is "queued"), but
+    // before this fix, `mergeShowQueuePrintRequestSources` processed sources in a fixed order and
+    // let whichever source was processed LAST silently overwrite the correct summary via
+    // `Object.assign`, even though that later source never admitted the request at all.
+    const queuedRequest = request("queued-request", "queued");
+
+    const merged = mergeShowQueuePrintRequestSources([
+      source("working", [queuedRequest], {
+        summariesByRequestId: { "queued-request": { totalQuantity: 1, uniqueDesignCount: 1 } },
+      }),
+      source("queued", [queuedRequest], {
+        summariesByRequestId: { "queued-request": { totalQuantity: 5, uniqueDesignCount: 2 } },
+      }),
+      source("printing", [queuedRequest], {
+        // Processed last; must not win, since this source never admits this request (its
+        // queueTab "queued" disagrees with this source's tab "printing").
+        summariesByRequestId: { "queued-request": { totalQuantity: 999, uniqueDesignCount: 999 } },
+      }),
+    ]);
+
+    assert.deepEqual(merged.requests.map((entry) => entry.id), ["queued-request"]);
+    assert.deepEqual(merged.summariesByRequestId["queued-request"], {
+      totalQuantity: 5,
+      uniqueDesignCount: 2,
+    });
   });
 
   it("admits a request with no queueTab (pre-backfill legacy document) regardless of source tab", () => {
