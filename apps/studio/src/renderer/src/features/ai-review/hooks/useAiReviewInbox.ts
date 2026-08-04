@@ -342,9 +342,12 @@ export function useAiReviewInbox(
     }
 
     if (liveDesign.aiReviewStatus === "needs_review") {
+      // Backend-initiated completion (no client action) — Amendment 2, Defect A: reconcile the
+      // Processing/Needs Review counts alongside the list, not just the list.
       void reloadDesigns();
+      options?.onQueueChanged?.();
     }
-  }, [filters.tab, liveDesign, reloadDesigns]);
+  }, [filters.tab, liveDesign, options, reloadDesigns]);
 
   useEffect(() => {
     if (isLoading || pendingAdvanceIndexRef.current === null) {

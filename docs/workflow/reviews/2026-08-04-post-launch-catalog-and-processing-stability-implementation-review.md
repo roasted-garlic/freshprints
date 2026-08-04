@@ -359,3 +359,11 @@ Unchanged — the three workstreams remain sufficiently independent and evidence
 single batched approval already granted:
 
 `APPROVE POST-LAUNCH CATALOG AND PROCESSING STABILITY OWNER QA AMENDMENT 1`
+
+---
+
+# Owner QA Amendment 2 — Independent Implementation Review
+
+Reviewed final diff only (2 files: `useAiReviewInbox.ts`, `importUploadService.ts`) plus their direct test coverage. Both fixes are minimal, reuse existing constants/helpers (`MAX_SINGLE_PNG_SIZE_BYTES`, `formatPngSizeLimitExceededMessage`, the existing `liveDesign` subscription), and touch no security or read-cost boundary (no Rules, no new listener, no new query). No defect found; no correction required.
+
+**Verdict:** approved. Defect C correctly stopped per Plan.

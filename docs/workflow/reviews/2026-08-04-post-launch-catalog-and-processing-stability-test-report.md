@@ -309,3 +309,17 @@ Confirmed `firebase use` was still `fresh-prints-dev` from the prior pass before
 1. **§15.3's compact 3-approval checklist** — not performed live in this environment; required to empirically confirm the ready-boundary publisher fix under real traffic and to capture a real `durationMs` data point for future capacity planning.
 2. **Existing stuck claim risk:** if a debounce claim was already stranded on `fresh-prints-dev` from before this deploy (consistent with the log evidence in §15.2), it will not retroactively shrink to the new, smaller duration — it will continue to block publication until its own original (pre-fix, ~10-minute) expiry elapses at most once more. After that single natural expiry, all future claims use the corrected, smaller duration. No manual intervention is required, but the owner should not expect the very first post-deploy write to necessarily publish instantly if a stale claim happens to still be active from before this deploy.
 3. Workstream 1's Studio-visibility fix should be spot-checked by the owner directly (approve a design, confirm immediate Design Library visibility) as the highest-priority empirical confirmation, independent of the log-based checklist above.
+
+---
+
+## 16. Owner QA Amendment 2 — Test Report addendum
+
+See Amendment 2 Plan/Review for root causes. Summary: Defect A (backend-initiated AI completion count staleness) and Defect B (misleading Storage permission error on legitimately oversized upload buffer) fixed; Defect C (ready-transition ordering) blocked pending owner approval of a new field/index.
+
+**Tests:** `aiProcessingReconciliation.test.ts` 11/11 pass (1 new, discriminating vs pre-fix confirmed via stash); `importUploadServiceSizeCheck.test.ts` 1/1 pass (new, discriminating confirmed). Combined ai-review + import regression: 87/87 pass.
+
+**Builds:** Functions build, Studio typecheck, Portal typecheck, Studio 3-target Vite build, lint, `git diff --check` — all exit 0.
+
+**Deploy:** none — both fixes are Studio-renderer-only, no Functions changed.
+
+**Defect C:** blocked. Approval phrase: `APPROVE READY-TRANSITION TIMESTAMP FIELD AND INDEX`.

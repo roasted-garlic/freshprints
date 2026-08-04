@@ -216,3 +216,20 @@ describe("AI Processing controller/count reconciliation — manual process and a
     );
   });
 });
+
+// Amendment 2, Defect A: backend-initiated completion (no client action) — the selected design's
+// live listener only reloaded the design list, never the count, so a design completing while
+// selected still left Processing's count stale even though the list itself updated.
+describe("useAiReviewInbox live-design reconciliation calls onQueueChanged (Amendment 2, Defect A)", () => {
+  it("the needs_review live-design effect calls both reloadDesigns and onQueueChanged", () => {
+    const source = read(
+      "apps/studio/src/renderer/src/features/ai-review/hooks/useAiReviewInbox.ts",
+    );
+    const effectBlock = source.slice(
+      source.indexOf('if (liveDesign.aiReviewStatus === "needs_review")'),
+      source.indexOf('if (liveDesign.aiReviewStatus === "needs_review")') + 300,
+    );
+    assert.match(effectBlock, /void reloadDesigns\(\);/);
+    assert.match(effectBlock, /options\?\.onQueueChanged\?\.\(\);/);
+  });
+});
