@@ -45,6 +45,7 @@ import { groupAllocationsByShow } from "@fresh-prints/shared/utils/groupAllocati
 import { canRemoveRequestFromShow } from "@fresh-prints/shared/utils/showQueueEditability";
 import { getPrintRequestQueueStateBadgeLabel, getPrintRequestQueueStateBadgeVariant } from "../utils/printRequestQueueBadge";
 import { filterPrintRequestsByListSearch } from "../utils/printRequestListSearch";
+import { filterPrintRequestsByActiveTab } from "../utils/filterPrintRequestsByActiveTab";
 import {
   PRINT_REQUEST_ID_QUERY_PARAM,
   PRINT_REQUEST_TAB_QUERY_PARAM,
@@ -537,12 +538,20 @@ export function PrintRequestsPage() {
 
   // `requests` already IS the current tab's bounded, server-filtered page (filtered by the
   // server-maintained `queueTab` field) — no client-side re-derivation/grouping across tabs is
-  // needed or possible anymore, since only the active tab's page is loaded (Wave C hydration
+  // needed in the steady state, since only the active tab's page is loaded (Wave C hydration
   // remediation, 2026-07-25). Archived requests are excluded server-side by the callers that
-  // build tab query options.
+  // build tab query options. `filterPrintRequestsByActiveTab` is a render-time safety net for the
+  // one transitional window where `requests` can still briefly hold the PREVIOUS tab's page after
+  // `activeListTab` changes but before `usePrintRequests`'s own reset has completed — never a
+  // substitute for that fix, but a second, independent guarantee that a mismatched-`queueTab` row
+  // can never render under the wrong tab label (tab-switch stale-list-state remediation,
+  // 2026-08-04).
   const activeTabRequests = useMemo(
-    () => requests.filter((request) => isPrintRequestIncludedInListTabs(request.status)),
-    [requests],
+    () =>
+      filterPrintRequestsByActiveTab(requests, activeListTab).filter((request) =>
+        isPrintRequestIncludedInListTabs(request.status),
+      ),
+    [activeListTab, requests],
   );
 
   const workingRequestsByFilter = useMemo(() => {

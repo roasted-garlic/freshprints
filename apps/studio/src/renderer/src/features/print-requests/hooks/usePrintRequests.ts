@@ -14,6 +14,7 @@ import {
 } from "../services/printRequestsPageReadCache";
 import { reconcileDeletedOrArchivedRequest as reconcileDeletedOrArchivedRequestInState } from "../utils/reconcileDeletedOrArchivedRequest";
 import { mergePrintRequestsById } from "../utils/mergePrintRequestsById";
+import { derivePrintRequestsListLoading } from "../utils/derivePrintRequestsListLoading";
 import type { PrintRequestListTab } from "@fresh-prints/shared/utils/printRequestListGrouping";
 import type { PrintRequest } from "@fresh-prints/shared/types/printRequest/printRequest.types";
 import type { Customer } from "@fresh-prints/shared/types/customer/customer.types";
@@ -65,6 +66,16 @@ export function usePrintRequests(activeTab: PrintRequestListTab) {
   useEffect(() => {
     activeTabRef.current = activeTab;
   }, [activeTab]);
+  // Tracks which tab `state` actually reflects, updated only when `loadFirstPage` completes (success
+  // or the `!user`/permission-denied reset). `loadFirstPage`'s own reset runs inside a `useEffect`,
+  // which React only runs AFTER the render where `activeTab` changed has already committed and
+  // painted — so on that first render, `state` still holds the PREVIOUS tab's `requests` and
+  // `isLoading: false`. Comparing `loadedTabRef.current` against the live `activeTab` argument during
+  // render (a read, never a write, so this is safe during render) lets the hook report an accurate
+  // "still loading" status for that transitional render too, closing the gap that otherwise let a
+  // stale tab's list render under the new tab's label with no spinner masking it.
+  const loadedTabRef = useRef<PrintRequestListTab | null>(null);
+  const isLoading = derivePrintRequestsListLoading(state.isLoading, loadedTabRef.current, activeTab);
 
   const loadCounts = useCallback(async (): Promise<Record<PrintRequestListTab, number>> => {
     if (!user) {
@@ -116,6 +127,7 @@ export function usePrintRequests(activeTab: PrintRequestListTab) {
   const loadFirstPage = useCallback(
     async (options?: LoadPrintRequestsOptions) => {
       if (!user || !permissionService.canViewPrintRequests(user)) {
+        loadedTabRef.current = activeTab;
         setState({ ...initialState, isLoading: false });
         return;
       }
@@ -145,6 +157,7 @@ export function usePrintRequests(activeTab: PrintRequestListTab) {
           return;
         }
         cursorRef.current = page.nextCursor;
+        loadedTabRef.current = activeTab;
         setState({
           requests: page.requests,
           ...hydrated,
@@ -158,6 +171,7 @@ export function usePrintRequests(activeTab: PrintRequestListTab) {
         if (generation !== requestGenerationRef.current) {
           return;
         }
+        loadedTabRef.current = activeTab;
         setState((current) => ({
           ...current,
           error: error instanceof Error ? error.message : "Unable to load print requests.",
@@ -317,6 +331,7 @@ export function usePrintRequests(activeTab: PrintRequestListTab) {
 
   return {
     ...state,
+    isLoading,
     reloadPrintRequests,
     loadMore,
     ensureRequestsLoaded,
