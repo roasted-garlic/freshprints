@@ -323,3 +323,21 @@ See Amendment 2 Plan/Review for root causes. Summary: Defect A (backend-initiate
 **Deploy:** none — both fixes are Studio-renderer-only, no Functions changed.
 
 **Defect C:** blocked. Approval phrase: `APPROVE READY-TRANSITION TIMESTAMP FIELD AND INDEX`.
+
+---
+
+## 17. Owner QA Amendment 3 — Test Report addendum
+
+**Failure 1 (AI queue 3→0):** `importAiBackgroundQueue.ts`'s pump was already strictly sequential but entirely detached from AI Review — it never signalled per-design terminal transitions, so Processing held its initial count then collapsed to zero. Added a bounded in-process observer on the existing pump; `useAiReviewInbox` subscribes while the Processing tab is active. No Firestore listener, no polling, no concurrency change.
+
+**Failure 2 (large PNG):** added `normalizeImportOutputBytes` — lossless max-compression re-encode first, then bounded (≤4) minimal proportional downscale to a 97% target, preserving transparency/aspect, never upscaling. Final pixels flow back through `normalizedWidth/Height` so `importOrchestrationService` recalculates stored print size from what is actually persisted. Single upload, single `createDesign`. Real error surfaced when it cannot fit.
+
+**Ordering:** new `readyAt` timestamp stamped only on the ready transition in `applyCatalogApprovalUpdate`. Documented legacy fallback to `createdAt` (`resolveReadyOrderMillis` / `resolveCardReadyOrderMillis`) so pre-existing ready designs stay visible without a migration. Applied in Studio Design Library, Portal default browse + filtered results, generated browse/Studio ready-index orders, and the change classifier. Metric collections unchanged.
+
+**Tests:** sequencing 5/5 (proves 3→2→1→0 and single-flight), normalization 12/12, readyAt ordering 15/15; combined Studio regression 299/299 pass. `catalogSnapshots` 116/117 — the single failure is the pre-existing, unrelated `Wave C read containment wiring` assertion (confirmed identical on a clean tree).
+
+**Builds:** Functions build, Studio renderer/node typecheck, Portal typecheck, Studio 3-target production build, lint, `git diff --check` — all exit 0.
+
+**Dev deploy:** `firestore:indexes` (adds `designs: status ASC, readyAt DESC, __name__ DESC`, confirmed live) and Functions `rebuildCatalogSnapshots`, `retryPortalCatalogPublication`, `onCategorySnapshotSourceWritten`, `onTagSnapshotSourceWritten`, `onPortalCatalogSnapshotSourceWritten` — all successful on `fresh-prints-dev`. No Rules deployed, no production action.
+
+**Future production checkpoint (prepared, not executed):** deploy the same index to `fresh-prints-prod`, then optionally backfill `readyAt` for legacy ready designs and retire the `createdAt` fallback. Until backfilled, the bounded Firestore query intentionally still orders by `createdAt` (a Firestore `orderBy("readyAt")` would silently exclude legacy documents); ready-transition order is applied over the bounded page.

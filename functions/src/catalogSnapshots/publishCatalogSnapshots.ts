@@ -34,6 +34,7 @@ import {
   mapPortalCatalogCard,
   portalCatalogBrowseOrder,
   portalCatalogPathTemplates,
+  resolveCardReadyOrderMillis,
   stableJson,
   type TaxonomySource,
 } from "./snapshotBuilders";
@@ -531,7 +532,12 @@ async function publishPortal(
     cardBuckets.set(bucket, [...(cardBuckets.get(bucket) ?? []), card]);
   }
   const recentPages = page(
-    [...cards].sort((left, right) => (right.createdAtMs ?? 0) - (left.createdAtMs ?? 0)),
+    // Owner QA Amendment 3: default browse pages order by the most recent transition into
+    // `ready` (readyAtMs), falling back to createdAtMs for legacy designs. The metric-ranked
+    // `ranked`/discover collection above is deliberately unchanged.
+    [...cards].sort(
+      (left, right) => resolveCardReadyOrderMillis(right) - resolveCardReadyOrderMillis(left),
+    ),
     40,
   );
   const categoryPages = new Map<string, PortalCatalogCard[][]>();

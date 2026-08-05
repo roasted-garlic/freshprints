@@ -151,6 +151,7 @@ export function mapPortalCatalogCard(
       ? { printHeightInches: data.printHeightInches }
       : {}),
     ...(millis(data.createdAt) !== undefined ? { createdAtMs: millis(data.createdAt) } : {}),
+    ...(millis(data.readyAt) !== undefined ? { readyAtMs: millis(data.readyAt) } : {}),
     requestCount: typeof data.requestCount === "number" ? data.requestCount : 0,
     ...(millis(data.lastRequestedAt) !== undefined
       ? { lastRequestedAtMs: millis(data.lastRequestedAt) }
@@ -172,9 +173,21 @@ export function mapPortalCatalogCard(
  * combination of them (tag filter ∩ category filter ∩ search-term matches) and the result stays
  * correctly ordered without needing to resolve card data before pagination.
  */
+/**
+ * Canonical default catalog ordering key (Owner QA Amendment 3): the most recent transition into
+ * `status: "ready"`, with a documented `createdAtMs` fallback for legacy designs approved before
+ * `readyAt` existed. Shared by both the Portal and Studio generated orders so Studio and Portal
+ * agree. Metric collections (Popular / Most Liked / Recently Requested) keep their own keys.
+ */
+export function resolveCardReadyOrderMillis(card: PortalCatalogCard): number {
+  return card.readyAtMs ?? card.createdAtMs ?? 0;
+}
+
 export function portalCatalogBrowseOrder(cards: PortalCatalogCard[]): PortalCatalogCard[] {
   return [...cards].sort(
-    (left, right) => (right.createdAtMs ?? 0) - (left.createdAtMs ?? 0) || right.id.localeCompare(left.id),
+    (left, right) =>
+      resolveCardReadyOrderMillis(right) - resolveCardReadyOrderMillis(left) ||
+      right.id.localeCompare(left.id),
   );
 }
 
@@ -195,7 +208,9 @@ export function portalCatalogBrowseOrder(cards: PortalCatalogCard[]): PortalCata
  */
 export function studioCatalogReadyOrder(cards: PortalCatalogCard[]): PortalCatalogCard[] {
   return [...cards].sort(
-    (left, right) => (right.createdAtMs ?? 0) - (left.createdAtMs ?? 0) || right.id.localeCompare(left.id),
+    (left, right) =>
+      resolveCardReadyOrderMillis(right) - resolveCardReadyOrderMillis(left) ||
+      right.id.localeCompare(left.id),
   );
 }
 

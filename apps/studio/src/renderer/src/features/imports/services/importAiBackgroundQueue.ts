@@ -12,6 +12,52 @@ const pendingDesignIds: string[] = [];
 const seenDesignIds = new Set<string>();
 let isPumpRunning = false;
 
+/**
+ * Owner QA Amendment 3, Failure 1: this pump is already strictly sequential (one awaited
+ * enqueueForProcessing at a time), but it was entirely detached from the AI Review UI — it never
+ * signalled a design's terminal transition, so Processing stayed at its initial count while all
+ * designs completed server-side, then jumped straight to zero on the next unrelated reload.
+ *
+ * These observers let AI Review reconcile one design at a time as each terminal transition
+ * happens. Deliberately a plain in-process callback set: no Firestore listener, no polling, no
+ * extra reads, and no change to the one-at-a-time execution model.
+ */
+export interface BackgroundAiQueueEvent {
+  designId: string;
+  /** Remaining queued designs after this one settled (0 once the pump drains). */
+  pending: number;
+  outcome: "completed" | "failed";
+}
+
+type BackgroundAiQueueObserver = (event: BackgroundAiQueueEvent) => void;
+
+const observers = new Set<BackgroundAiQueueObserver>();
+
+/** Subscribe to per-design terminal transitions. Returns an unsubscribe function. */
+export function subscribeToBackgroundAiQueue(
+  observer: BackgroundAiQueueObserver,
+): () => void {
+  observers.add(observer);
+  return () => {
+    observers.delete(observer);
+  };
+}
+
+/** True while the pump still has queued work — used to gate active-only UI reconciliation. */
+export function hasPendingBackgroundAiWork(): boolean {
+  return isPumpRunning || pendingDesignIds.length > 0;
+}
+
+function notifyObservers(event: BackgroundAiQueueEvent): void {
+  for (const observer of [...observers]) {
+    try {
+      observer(event);
+    } catch {
+      // An observer must never break the queue pump.
+    }
+  }
+}
+
 export function enqueueImportedDesignsForBackgroundAi(designIds: readonly string[]): void {
   let added = 0;
   for (const rawId of designIds) {
@@ -52,11 +98,13 @@ async function pumpBackgroundAiQueue(): Promise<void> {
       try {
         await aiEnrichmentEnqueueService.enqueueForProcessing(designId);
         logPipelineEvent("import.ai_background.enqueued", { designId });
+        notifyObservers({ designId, pending: pendingDesignIds.length, outcome: "completed" });
       } catch (error) {
         logPipelineEvent("import.ai_background.enqueue_failed", {
           designId,
           message: error instanceof Error ? error.message : "Unknown error",
         });
+        notifyObservers({ designId, pending: pendingDesignIds.length, outcome: "failed" });
       }
     }
   } finally {

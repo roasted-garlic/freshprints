@@ -70,6 +70,7 @@ interface DesignDocumentData {
   printHeightInches?: unknown;
   updatedAt?: unknown;
   createdAt?: unknown;
+  readyAt?: unknown;
   requestCount?: unknown;
   favoriteCount?: unknown;
   lastRequestedAt?: unknown;
@@ -119,6 +120,7 @@ function mapCatalogDesign(designId: string, data: DesignDocumentData): CatalogDe
     printWidthInches: typeof data.printWidthInches === 'number' ? data.printWidthInches : undefined,
     printHeightInches: typeof data.printHeightInches === 'number' ? data.printHeightInches : undefined,
     createdAtMs: timestampToMillis(data.createdAt),
+    readyAtMs: timestampToMillis(data.readyAt),
     updatedAtMs: timestampToMillis(data.updatedAt),
     requestCount:
       typeof data.requestCount === 'number' && Number.isFinite(data.requestCount) && data.requestCount >= 0
@@ -140,7 +142,9 @@ function resolveSortField(listQuery: CatalogDesignListQuery): CatalogDesignSortF
 function getDesignSortValue(design: CatalogDesign, sortField: CatalogDesignSortField): number {
   switch (sortField) {
     case 'createdAt':
-      return design.createdAtMs ?? 0;
+      // Owner QA Amendment 3: default browse orders by the most recent transition into `ready`,
+      // falling back to createdAt for legacy designs approved before `readyAt` existed.
+      return design.readyAtMs ?? design.createdAtMs ?? 0;
     case 'requestCount':
       return design.requestCount;
     case 'favoriteCount':

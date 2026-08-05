@@ -181,8 +181,11 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
                     designs: options.discoveryMode
                       ? rankCatalogDiscoveryDesigns(designs, options.discoveryMode)
                       : designs.slice().sort(
+                          // Owner QA Amendment 3: default browse orders by the most recent
+                          // transition into `ready`, falling back to createdAt for legacy designs.
                           (left, right) =>
-                            (right.createdAtMs ?? 0) - (left.createdAtMs ?? 0) ||
+                            (right.readyAtMs ?? right.createdAtMs ?? 0) -
+                              (left.readyAtMs ?? left.createdAtMs ?? 0) ||
                             right.id.localeCompare(left.id),
                         ),
                     total: null,

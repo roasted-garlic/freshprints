@@ -77,6 +77,12 @@ export interface PortalCatalogCard {
   printWidthInches?: number;
   printHeightInches?: number;
   createdAtMs?: number;
+  /**
+   * Most recent transition into `status: "ready"` (Owner QA Amendment 3) — the canonical default
+   * catalog ordering key. Absent for legacy designs approved before the field existed; consumers
+   * fall back to `createdAtMs` (see resolveCardReadyOrderMillis).
+   */
+  readyAtMs?: number;
   requestCount: number;
   lastRequestedAtMs?: number;
   lastAddedToShowAtMs?: number;

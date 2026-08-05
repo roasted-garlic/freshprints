@@ -244,6 +244,7 @@ interface DesignDocumentData {
   uploadedBy?: unknown;
   requestedByCustomerId?: unknown;
   queueCount?: unknown;
+  readyAt?: unknown;
   aiProcessed?: unknown;
   aiReviewed?: unknown;
   aiReviewStatus?: unknown;
@@ -356,6 +357,7 @@ function mapDesignDocument(designId: string, data: DesignDocumentData): Design {
       typeof data.aiReviewStatus === "string" && isAiReviewStatus(data.aiReviewStatus)
         ? data.aiReviewStatus
         : undefined,
+    readyAt: mapFirestoreTimestamp(data.readyAt),
     aiReviewedAt: mapFirestoreTimestamp(data.aiReviewedAt),
     aiReviewedBy: typeof data.aiReviewedBy === "string" ? data.aiReviewedBy : undefined,
     aiReviewVersion: typeof data.aiReviewVersion === "string" ? data.aiReviewVersion : undefined,
@@ -1090,6 +1092,13 @@ export const designService = {
       aiReviewedAt: serverTimestamp(),
       aiReviewedBy: input.aiReviewedBy,
     };
+
+    // Owner QA Amendment 3: stamp the canonical ready-transition timestamp only when this write
+    // actually moves the design into `ready`. Rejections and every metadata edit leave it alone,
+    // and a reprocessed design approved back into ready is correctly re-stamped to the front.
+    if (input.status === "ready") {
+      updatePayload.readyAt = serverTimestamp();
+    }
 
     if (input.aiReviewVersion !== undefined) {
       updatePayload.aiReviewVersion = input.aiReviewVersion ? input.aiReviewVersion : deleteField();

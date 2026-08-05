@@ -70,6 +70,14 @@ export interface Design {
   lastRequestedAt?: Timestamp;
   lastAddedToShowAt?: Timestamp;
   lastPrintedAt?: Timestamp;
+  /**
+   * Most recent transition into `status: "ready"` — the canonical default catalog ordering key
+   * (Owner QA Amendment 3). Set on approval into ready and refreshed when a reprocessed design is
+   * approved back into ready. Never changed by title/tag/category/description/background/sizing or
+   * any request/show metadata edit. Absent on legacy designs approved before this field existed;
+   * consumers fall back to `createdAt` for those (see resolveReadyOrderMillis).
+   */
+  readyAt?: Timestamp;
   /** True when an AI review pipeline has processed this design. */
   aiProcessed: boolean;
   /**

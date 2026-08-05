@@ -33,6 +33,12 @@ export interface CatalogDesign {
   printHeightInches?: number;
   /** Milliseconds since epoch; omitted when missing on legacy docs. */
   createdAtMs?: number;
+  /**
+   * Most recent transition into `status: "ready"` (Owner QA Amendment 3) — the canonical default
+   * catalog ordering key. Omitted for legacy designs approved before the field existed; ordering
+   * falls back to `createdAtMs` for those.
+   */
+  readyAtMs?: number;
   requestCount: number;
   /** Milliseconds since epoch; omitted when never added to a Working cart / request item. */
   lastRequestedAtMs?: number;

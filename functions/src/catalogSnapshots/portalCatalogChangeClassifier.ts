@@ -29,6 +29,9 @@ const INDEX_FILTER_FIELDS = [
   "categoryId",
   "tags",
   "createdAt",
+  // Owner QA Amendment 3: readyAt is the default catalog ordering key, so a change to it must
+  // republish the generated browse order.
+  "readyAt",
 ] as const;
 
 const CARD_ONLY_FIELDS = [

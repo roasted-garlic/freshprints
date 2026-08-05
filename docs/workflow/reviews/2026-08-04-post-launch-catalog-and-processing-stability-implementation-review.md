@@ -367,3 +367,16 @@ single batched approval already granted:
 Reviewed final diff only (2 files: `useAiReviewInbox.ts`, `importUploadService.ts`) plus their direct test coverage. Both fixes are minimal, reuse existing constants/helpers (`MAX_SINGLE_PNG_SIZE_BYTES`, `formatPngSizeLimitExceededMessage`, the existing `liveDesign` subscription), and touch no security or read-cost boundary (no Rules, no new listener, no new query). No defect found; no correction required.
 
 **Verdict:** approved. Defect C correctly stopped per Plan.
+
+---
+
+# Owner QA Amendment 3 — Independent Implementation Review
+
+Reviewed the final diff, directly affected callers, and security/read-cost boundaries only.
+
+- **Read cost / bounds:** the new queue observer is a plain in-process callback set on an existing sequential pump — no Firestore listener, no polling, no added reads. Verified the pump still awaits one `enqueueForProcessing` per iteration with no `Promise.all`. Subscription is torn down when the Processing tab is not active.
+- **Security:** no Rules were deployed. `firestore.rules` gained only an `isOptionalTimestamp(data, "readyAt")` type guard (tightening, not weakening); the design validator has no `hasOnly` allowlist, so the field was already permitted. Storage Rules and the 150MB ceiling are untouched — normalization fits the output to the existing ceiling rather than raising it.
+- **Correctness:** `readyAt` is written at exactly one site, gated on `input.status === "ready"`; verified no metadata-edit path writes it. Legacy fallback keeps pre-existing ready designs visible, and the Firestore query deliberately still orders by `createdAt` to avoid excluding documents missing the field. Metric collections confirmed unchanged.
+- **Duplication:** exactly one `uploadOriginalPng` and one `createDesign` call remain in the orchestration path; normalization happens before upload and cannot duplicate either.
+
+**Verdict:** approved. No defect found; no correction required.

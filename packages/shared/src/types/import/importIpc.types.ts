@@ -164,6 +164,13 @@ export interface ReadSelectedPngFileBytesResult {
   fileName: string;
   filePath: string;
   fileSizeBytes: number;
+  /**
+   * Final pixel dimensions of the returned bytes after byte-limit normalization (Owner QA
+   * Amendment 3). Present only when normalization actually changed the pixels, so the renderer
+   * recalculates stored print size from what is really persisted.
+   */
+  normalizedWidth?: number;
+  normalizedHeight?: number;
   /** Present when includeDerivatives was true and generation succeeded */
   derivatives?: ReadSelectedPngFileBytesDerivatives;
   /**

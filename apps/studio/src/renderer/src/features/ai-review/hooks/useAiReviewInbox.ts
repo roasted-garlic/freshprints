@@ -31,6 +31,7 @@ import {
 } from "../utils/aiReviewInboxEligibility";
 import { filterDesignsByAiReviewStatus } from "../../designs/utils/designLibrarySearch";
 import { useDesigns } from "../../designs/hooks/useDesigns";
+import { subscribeToBackgroundAiQueue } from "../../imports/services/importAiBackgroundQueue";
 import { useAiProcessingQueue } from "./useAiProcessingQueue";
 import {
   addApprovedSuggestedTagToDraftTags,
@@ -348,6 +349,23 @@ export function useAiReviewInbox(
       options?.onQueueChanged?.();
     }
   }, [filters.tab, liveDesign, options, reloadDesigns]);
+
+  // Owner QA Amendment 3, Failure 1: the import background AI pump processes designs strictly
+  // one at a time but was detached from this view, so Processing stayed at its initial count and
+  // then jumped straight to zero. Reconcile once per design as each terminal transition lands, so
+  // the visible sequence is 3 -> 2 -> 1 -> 0. Bounded: a plain in-process callback tied to the
+  // existing sequential pump — no Firestore listener, no polling, no extra reads, and no change to
+  // the one-at-a-time execution model.
+  useEffect(() => {
+    if (filters.tab !== "processing") {
+      return;
+    }
+
+    return subscribeToBackgroundAiQueue(() => {
+      void reloadDesigns();
+      options?.onQueueChanged?.();
+    });
+  }, [filters.tab, options, reloadDesigns]);
 
   useEffect(() => {
     if (isLoading || pendingAdvanceIndexRef.current === null) {
