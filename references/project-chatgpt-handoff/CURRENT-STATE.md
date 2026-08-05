@@ -1,5 +1,48 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-08-05 - Post-launch catalog and processing stability: Owner QA Amendment 7 — AI queue observer resubscription loop fixed
+
+Same branch throughout (`fix/post-launch-catalog-and-processing-stability`, still no new branch or
+PR, still no merge). This entry covers Amendment 7, which used the now-working Amendment 6
+follow-up trace transport to capture a real runaway loop and fix it.
+
+**The problem:** the owner's runtime trace showed `useDesigns` request IDs climbing from ~344 to
+~584 in about 5.5 seconds, with the AI Processing observer's `observer.subscribed` event re-firing
+after nearly every state replacement — an unacceptable Firestore read/effect-churn storm, visible
+to the user as Processing staying stuck at its initial count until the whole batch finished, then
+clearing all at once instead of the expected `3 → 2 → 1 → 0`.
+
+**Root cause (confirmed via direct source inspection, no broad re-investigation):** the AI
+Processing tab's background-queue observer subscription effect
+(`useAiReviewInbox.ts`) depended on `designs` and `options`, both of which get a new object/array
+identity on every render — `options` is a fresh object/callback literal the parent page passes on
+every one of its own renders; `designs` gets a new array reference every time the observer's own
+successful reconciliation (`applyDesignPatch`) resolves. That created a self-feeding loop: the
+observer handles a completed design → patches state → the list reference changes → the parent
+re-renders → the effect's dependencies changed → it unsubscribes and resubscribes → the next
+completion repeats the cycle.
+
+**Fix:** introduced three refs (`optionsRef`, `designsRef`, `selectedDesignIdRef`) assigned
+directly during render — the same pattern this codebase already uses elsewhere for exactly this
+purpose — so the observer's long-lived callback always reads the current values without forcing a
+resubscription. The effect now subscribes exactly once per Processing-tab activation. The actual
+`3 → 2 → 1 → 0` / selection-advance reconciliation logic (fixed in an earlier amendment) was not
+touched — this fix is entirely about *how often* the effect resubscribes, not the reconciliation
+decision itself.
+
+**Verification:** a new source-grep regression test (7/7 pass) proves the fix; the existing
+17-test reconciliation suite and 19-test trace suite both pass unmodified (zero regression). Studio
+typecheck, 3-target build, lint, and `git diff --check` all exit 0. Two independent reviews ran —
+one on the Plan (required two corrections, both applied), one on the finished implementation
+(approved with no required changes, including empirically confirming the new tests actually fail
+against the pre-fix code). Full detail in
+`docs/workflow/reviews/2026-08-04-post-launch-catalog-and-processing-stability-test-report.md` §23
+and the accompanying Amendment 7 review document.
+
+No Firebase project action, Function/Rules/index/IAM/migration/secret change, production action, or
+merge occurred. Large-PNG normalization, `readyAt` ordering, and the Amendment 5 callable-timeout
+fix are all confirmed unchanged.
+
 ## 2026-08-05 - Post-launch catalog and processing stability: Owner QA Amendment 6 follow-up — AI queue trace cross-window transport fixed
 
 Same branch throughout (`fix/post-launch-catalog-and-processing-stability`, still no new branch or

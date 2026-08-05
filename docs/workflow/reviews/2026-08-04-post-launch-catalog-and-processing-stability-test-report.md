@@ -814,3 +814,105 @@ first pass — confirmed by the unmodified subset of tests in §22.3's test file
 safety-contract tests from the first pass all still pass unchanged) and by `git diff` showing zero
 hunks in `importAiBackgroundQueue.ts`, `useAiReviewInbox.ts`, or `useDesigns.ts` outside of their
 one-line import statements.
+
+## 23. Owner QA Amendment 7 — AI queue observer resubscription loop (Test Report addendum)
+
+### 23.1 Trace-proven root cause
+
+The owner's runtime trace (using the now-working Amendment 6 follow-up transport) captured a
+runaway same-query reload/resubscription loop: `useDesigns` request IDs advanced from ~344 to ~584
+in ~5.5 seconds, with `observer.subscribed` re-emitted after nearly every state replacement.
+
+**Confirmed exact cause via source inspection (no further broad investigation performed, per
+instruction):** the background-queue observer subscription effect in `useAiReviewInbox.ts` had a
+dependency array of `[applyDesignPatch, designs, filters.tab, options, reloadDesigns,
+selectedDesignId]`. Two of these six change identity every render:
+
+- `options` — `AiReviewPage.tsx:64-68` passes a brand-new object literal (with a brand-new
+  `onQueueChanged` arrow function) to `useAiReviewInbox` on every render of the parent, never
+  memoized.
+- `designs` — a `useMemo` over `rawDesigns` from `useDesigns`, which gets a new array reference
+  every time `applyDesignPatch`/`reloadDesigns` resolve — **including as a direct result of this
+  same effect's own successful reconciliation**, since the observer callback calls
+  `applyDesignPatch` synchronously on every terminal pump event.
+
+This made the effect unsubscribe and resubscribe after nearly every state replacement: subscribe →
+pump event fires → `applyDesignPatch` → `designs` reference changes → parent re-renders → `options`
+reference also changes → effect tears down and re-runs → subscribe again → next pump event repeats
+the cycle. `applyDesignPatch` and `reloadDesigns` (from `useDesigns.ts`) were independently
+confirmed genuinely stable (`useCallback` with deps that do not change in this context) — they were
+never part of the problem.
+
+Confirmed Amendment 5's mount/tab-switch-only reconciliation effect (`[filters.tab]` only,
+unrelated to this loop) was **not** running on every render — it correctly fires only on a genuine
+tab-activation edge.
+
+### 23.2 Correction
+
+`useAiReviewInbox.ts` now maintains three render-time refs — `optionsRef`, `designsRef`,
+`selectedDesignIdRef` — each assigned as a plain statement in the hook body during render (never
+inside a `useEffect`), mirroring the existing `designsMirrorRef`/`listQueryKeyRef` pattern already
+used in `useDesigns.ts` for exactly this purpose. The observer subscription effect's dependency
+array is reduced to `[applyDesignPatch, filters.tab, reloadDesigns]` — it now subscribes exactly
+once per Processing-tab mount or genuine inactive→active transition, never per state update. The
+long-lived observer callback reads `designsRef.current`/`selectedDesignIdRef.current` and calls
+`optionsRef.current?.onQueueChanged?.()` instead of closing over the live variables.
+
+No change to `reconcileBackgroundAiQueueEvent`'s pure decision contract, `applyDesignPatch`'s
+patch-based reconciliation semantics, the background pump's sequential control flow, or the
+Amendment 5 200-second callable timeout override — all confirmed byte-identical via `git diff`
+showing zero hunks in `backgroundAiQueueReconciliation.ts`, the reconciliation logic in
+`useDesigns.ts`, `importAiBackgroundQueue.ts`, or `aiEnrichmentCallableErrorMessage.ts`. No polling,
+no full designs listener, no per-design listener, no concurrency change, and no backend change were
+introduced. `reloadDesigns` remains called only where it already was — the observer's own fallback
+path (a genuine enqueue failure), the Amendment 2 live-design backend-completion path, and the
+Amendment 5 mount-reconciliation path — never as a periodic or debounced timer.
+
+### 23.3 Proof of required behaviors
+
+- **Subscription count**: exactly 1 per Processing-tab activation (confirmed via source-grep
+  assertion against the effect's own dependency array and callback body — `designs`/
+  `selectedDesignId`/`options` are provably absent as direct dependencies or as bare values inside
+  the callback).
+- **`3 → 2 → 1 → 0` and `A → B → C → none`**: unchanged from Amendment 4's patch-based
+  reconciliation mechanism (`reconcileBackgroundAiQueueEvent` + `applyDesignPatch` +
+  `pendingAdvanceIndexRef`), confirmed untouched and still covered by the existing 17-test
+  `backgroundAiQueueReconciliation.test.ts` suite (all pass unmodified) — this Amendment's fix is
+  entirely about *how often the effect resubscribes*, not the reconciliation decision itself, which
+  was already correct since Amendment 4.
+- **Firestore read-bound proof**: `reloadDesigns()`/`onQueueChanged()` call sites are unchanged in
+  number and location; the fix removes only the spurious effect teardown/setup churn and its
+  associated trace-buffer volume. `onQueueChanged()` was already invoked exactly once per real
+  terminal pump event (never from the subscribe/unsubscribe effect body itself) both before and
+  after this fix — independently confirmed during the Implementation Review, correcting an
+  overstated claim in this Amendment's own first-draft Plan that resubscription churn multiplied
+  `reloadCounts()` volume.
+- **Trace-noise correction**: `observer.subscribed` is emitted exactly once per effect run
+  (confirmed unchanged at the emission site); the fix means that effect now runs once per tab
+  activation instead of once per state replacement, which is the entire trace-noise reduction — no
+  additional coalescing or debounce logic was needed or added.
+
+### 23.4 Tests and results
+
+| Command | Result |
+|---|---|
+| `npx tsx --test .../useAiReviewInbox.observerSubscription.test.ts` (new) | **7/7 pass** |
+| `npx tsx --test .../backgroundAiQueueReconciliation.test.ts` | **17/17 pass** (unmodified, zero regression) |
+| `npx tsx --test .../aiQueueTrace.test.ts` | **19/19 pass** (unmodified, zero regression) |
+| Studio typecheck (`npx tsc --noEmit`) | exit 0 |
+| Studio 3-target Vite build (renderer/main/preload) | exit 0, no new build warning |
+| `npm run lint` | exit 0 |
+| `git diff --check` | exit 0 (CRLF-on-checkout warnings only) |
+
+### 23.5 Files changed
+
+- `apps/studio/src/renderer/src/features/ai-review/hooks/useAiReviewInbox.ts` (modified — three new
+  render-time refs; observer subscription effect's dependency array reduced from 6 to 3 entries;
+  observer callback body migrated to read from refs)
+- `apps/studio/src/renderer/src/features/ai-review/hooks/useAiReviewInbox.observerSubscription.test.ts` (new)
+
+**Confirmed unchanged (independently re-verified, not merely asserted):** large-PNG normalization
+(`normalizeImportOutputBytes.ts`), `readyAt` ordering/completeness-guard logic, and the Amendment 5
+200-second callable timeout override (`aiEnrichmentCallableErrorMessage.ts`) — zero `git diff` hunks
+in any of these files. No Firebase project action, Function/Rules/index/IAM/migration/secret change,
+or production action occurred. No merge occurred.

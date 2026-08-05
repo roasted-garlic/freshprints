@@ -116,6 +116,23 @@ export function useAiReviewInbox(
   const pendingCrossTabSelectionRef = useRef<PendingCrossTabSelection | null>(null);
   const previousTabRef = useRef(filters.tab);
   const liveDesignRef = useRef<Design | null>(null);
+  /**
+   * Owner QA Amendment 7: read-only mirrors of `options`, `designs`, and `selectedDesignId`,
+   * assigned directly here in the hook body during render (never inside a `useEffect`), mirroring
+   * the existing `designsMirrorRef`/`listQueryKeyRef` pattern in `useDesigns.ts`. The background
+   * queue observer subscription effect below reads these instead of closing over the live
+   * variables, so a design-list or selection update — including the update the observer's own
+   * `applyDesignPatch` call just caused — never forces that effect to unsubscribe and resubscribe.
+   * Before this fix, `designs` and `options` (a fresh object/callback literal from the parent on
+   * every render) were both in that effect's dependency array, so every successful reconciliation
+   * tore down and recreated its own subscription — the exact runaway loop the owner's trace
+   * captured (observer.subscribed repeating after nearly every state replacement).
+   */
+  const optionsRef = useRef(options);
+  optionsRef.current = options;
+  const designsRef = useRef<Design[]>([]);
+  const selectedDesignIdRef = useRef<string | null>(null);
+  selectedDesignIdRef.current = selectedDesignId;
 
   const isPinnedNeedsReviewDesign = resolveIsPinnedNeedsReviewDesign({
     tab: filters.tab,
@@ -155,6 +172,7 @@ export function useAiReviewInbox(
 
     return sorted.map((design, index) => (index === liveIndex ? liveDesign : design));
   }, [filters.tab, isPinnedNeedsReviewDesign, liveDesign, rawDesigns]);
+  designsRef.current = designs;
 
   const [draftForm, setDraftForm] = useState<AiReviewDraftForm | null>(null);
   const [baselineForm, setBaselineForm] = useState<AiReviewDraftForm | null>(null);
@@ -430,6 +448,20 @@ export function useAiReviewInbox(
   // selected design is the one that just completed, capture its index before patching so the
   // existing pendingAdvanceIndexRef effect (used elsewhere for approve/reject) selects the next
   // remaining design once `designs` recomputes — deterministic, not dependent on reload timing.
+  //
+  // Owner QA Amendment 7: this effect previously depended on `designs`, `selectedDesignId`, and
+  // `options` directly. `options` is a fresh object/callback literal from the parent
+  // (`AiReviewPage`) on every render, and `designs` gets a new array reference every time
+  // `applyDesignPatch`/`reloadDesigns` resolve — including as a *direct result* of this very
+  // effect's own reconciliation. That made the effect unsubscribe and resubscribe after nearly
+  // every state replacement, which the owner's runtime trace captured as a runaway
+  // `observer.subscribed` loop (request IDs climbing ~344→584 in 5.5s). `applyDesignPatch` and
+  // `reloadDesigns` are already stable (`useCallback` with dependencies that do not change in
+  // this context — confirmed in `useDesigns.ts`), so the only genuine trigger this effect needs
+  // is `filters.tab`: it must subscribe exactly once per Processing-tab mount or inactive->active
+  // transition, never per state update. `designsRef`/`selectedDesignIdRef`/`optionsRef` (assigned
+  // during render, above) let the long-lived observer callback always read the current values
+  // without forcing a resubscription when they change.
   useEffect(() => {
     if (filters.tab !== "processing") {
       return;
@@ -438,23 +470,29 @@ export function useAiReviewInbox(
     traceAiQueueEvent({
       event: "observer.subscribed",
       source: "inbox",
-      selectedDesignId,
+      selectedDesignId: selectedDesignIdRef.current,
       activeQueueDesignId: getActiveBackgroundAiDesignId(),
-      processingDesignIds: designs.map((design) => design.id),
-      processingCount: designs.length,
+      processingDesignIds: designsRef.current.map((design) => design.id),
+      processingCount: designsRef.current.length,
     });
 
     return subscribeToBackgroundAiQueue((event) => {
-      const reconciliation = reconcileBackgroundAiQueueEvent(event, designs, selectedDesignId);
+      const currentDesigns = designsRef.current;
+      const currentSelectedDesignId = selectedDesignIdRef.current;
+      const reconciliation = reconcileBackgroundAiQueueEvent(
+        event,
+        currentDesigns,
+        currentSelectedDesignId,
+      );
 
       traceAiQueueEvent({
         event: "observer.received",
         source: "inbox",
         designId: event.designId,
-        selectedDesignId,
+        selectedDesignId: currentSelectedDesignId,
         activeQueueDesignId: getActiveBackgroundAiDesignId(),
-        processingDesignIds: designs.map((design) => design.id),
-        processingCount: designs.length,
+        processingDesignIds: currentDesigns.map((design) => design.id),
+        processingCount: currentDesigns.length,
         incomingStage: event.patchSource?.aiProcessingStage ?? null,
         incomingReviewStatus: event.patchSource?.aiReviewStatus ?? null,
         incomingStatus: event.patchSource?.status ?? null,
@@ -471,7 +509,7 @@ export function useAiReviewInbox(
           event: "inbox.applyDesignPatch",
           source: "inbox",
           designId: event.designId,
-          selectedDesignId,
+          selectedDesignId: currentSelectedDesignId,
           incomingStage:
             typeof reconciliation.patch.aiProcessingStage === "string"
               ? reconciliation.patch.aiProcessingStage
@@ -486,7 +524,7 @@ export function useAiReviewInbox(
               : "no-advance",
         });
         applyDesignPatch(event.designId, reconciliation.patch);
-        options?.onQueueChanged?.();
+        optionsRef.current?.onQueueChanged?.();
         traceAiQueueEvent({
           event: "inbox.onQueueChanged",
           source: "inbox",
@@ -506,9 +544,9 @@ export function useAiReviewInbox(
         outcome: "observer-fallback",
       });
       void reloadDesigns();
-      options?.onQueueChanged?.();
+      optionsRef.current?.onQueueChanged?.();
     });
-  }, [applyDesignPatch, designs, filters.tab, options, reloadDesigns, selectedDesignId]);
+  }, [applyDesignPatch, filters.tab, reloadDesigns]);
 
   // Owner QA Amendment 5: the background pump can start before the Processing tab is ever
   // mounted (e.g. import happens while the user is on a different route). subscribeToBackgroundAiQueue

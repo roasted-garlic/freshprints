@@ -106,6 +106,40 @@ archive write — none of these could be run live in this environment (no intera
 no Application Default Credentials for scripted checks beyond read-only CLI operations).
 
 Decision Log:
+- 2026-08-05 — `post-launch-catalog-and-processing-stability` Owner QA Amendment 7: the owner's
+  runtime trace (using the now-working Amendment 6 follow-up transport) proved a runaway
+  observer-resubscription loop in the AI Processing "Processing" tab — `useDesigns` request IDs
+  climbed ~344→584 in ~5.5s, with `observer.subscribed` re-emitted after nearly every state
+  replacement. Root cause confirmed via direct source inspection (no broad re-investigation, per
+  instruction): `useAiReviewInbox.ts`'s background-queue observer subscription effect depended on
+  `designs` and `options`, both of which change identity every render — `options` is a fresh
+  object/callback literal from `AiReviewPage.tsx` on every parent render; `designs` gets a new
+  array reference every time `applyDesignPatch`/`reloadDesigns` resolve, including as a direct
+  result of the effect's own successful reconciliation. This created a self-feeding
+  subscribe→patch→resubscribe cycle. Fixed by introducing `optionsRef`/`designsRef`/
+  `selectedDesignIdRef` (assigned as plain statements during render, mirroring the existing
+  `designsMirrorRef`/`listQueryKeyRef` pattern already in `useDesigns.ts`), reducing the effect's
+  dependency array to `[applyDesignPatch, filters.tab, reloadDesigns]` (both genuinely stable) so
+  it subscribes exactly once per Processing-tab activation. No change to
+  `reconcileBackgroundAiQueueEvent`, `applyDesignPatch`'s patch semantics, the background pump's
+  sequential control flow, or the Amendment 5 200-second callable timeout — all confirmed
+  byte-identical via `git diff`. The `3 → 2 → 1 → 0` / `A → B → C → none` sequences were already
+  correct since Amendment 4; this fix is entirely about resubscription frequency, not
+  reconciliation logic. Independent Plan Review required two corrections (a test-filename
+  inconsistency, and an overstated claim that resubscription churn multiplied
+  `reloadCounts()`/Firestore-read volume — corrected to state the churn's real cost is effect
+  overhead and trace-buffer volume only) before implementation; Independent Implementation Review
+  then verified the diff line-by-line (no missed reference, no partial migration, no stale-closure
+  risk) and empirically confirmed the new test file's assertions genuinely fail against the pre-fix
+  source — verdict **approved** with no required changes. Full verification suite green: new
+  wiring test 7/7, existing reconciliation test 17/17 (unmodified), existing trace test 19/19
+  (unmodified), Studio typecheck exit 0, Studio 3-target build exit 0, lint exit 0, `git diff
+  --check` exit 0. See
+  `docs/workflow/reviews/2026-08-04-post-launch-catalog-and-processing-stability-test-report.md`
+  §23 and
+  `docs/workflow/reviews/2026-08-04-post-launch-catalog-and-processing-stability-owner-qa-amendment-7-review.md`
+  for full detail. No Firebase, Function/Rules/index/IAM/migration/secret action, production
+  action, or merge occurred.
 - 2026-08-05 — `post-launch-catalog-and-processing-stability` Owner QA Amendment 6 follow-up: the
   Amendment 6 dev-only AI queue runtime trace (commit `8e2f6a2`) was itself non-functional — owner
   reproduction returned `enabled: false, eventCount: 0` from the Firebase Debug panel every time.
