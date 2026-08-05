@@ -4,6 +4,7 @@ import {
   setFirestoreUsageTraceEnabled,
   subscribeFirestoreUsageTrace,
 } from "@fresh-prints/shared/utils/firestoreUsageTrace";
+import { setAiQueueTraceEnabled } from "@fresh-prints/shared/utils/aiQueueTrace";
 
 import { isFirebaseDebugPanelEnabledForStudio } from "../utils/firebaseDebugPanelStudioGate";
 import {
@@ -23,6 +24,18 @@ export function FirebaseDebugPanelMount() {
   const isEnabled = isFirebaseDebugPanelEnabledForStudio();
 
   useFirebaseDebugPanelShortcut(isEnabled ? () => void openFirebaseDebugWindow() : () => undefined);
+
+  // Owner QA Amendment 6: the AI Processing queue trace shares this same dev-build +
+  // dev-project gate, so it can never activate in a production Studio package. Unlike the
+  // Firestore tracer it needs no localStorage opt-in — the owner's reproduction is a one-shot
+  // "import three designs, then copy the trace" flow, and requiring a flag-then-reload would
+  // discard the very pump activity being investigated.
+  useEffect(() => {
+    setAiQueueTraceEnabled(isEnabled);
+    return () => {
+      setAiQueueTraceEnabled(false);
+    };
+  }, [isEnabled]);
 
   useEffect(() => {
     if (!isEnabled) return;

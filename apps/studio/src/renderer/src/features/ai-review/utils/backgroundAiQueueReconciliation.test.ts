@@ -403,7 +403,13 @@ describe("Mount/tab-switch reconciliation reuses hasPendingBackgroundAiWork() (O
       "apps/studio/src/renderer/src/features/ai-review/hooks/useAiReviewInbox.ts",
     );
 
-    assert.match(source, /import \{\s*\n\s*hasPendingBackgroundAiWork,/);
+    // Order-independent: the import block also carries the Amendment 6 diagnostic accessor, so
+    // assert the symbol is imported from the queue module rather than pinning its position.
+    const queueImportBlock = source.slice(
+      source.indexOf("} from \"../../imports/services/importAiBackgroundQueue\";") - 300,
+      source.indexOf("} from \"../../imports/services/importAiBackgroundQueue\";"),
+    );
+    assert.match(queueImportBlock, /hasPendingBackgroundAiWork,/);
 
     const effectStart = source.indexOf('if (filters.tab !== "processing" || !hasPendingBackgroundAiWork())');
     const effectBlock = source.slice(effectStart, source.indexOf("}, [filters.tab]);", effectStart) + "}, [filters.tab]);".length);

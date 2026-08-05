@@ -31,7 +31,9 @@ import {
 } from "../utils/aiReviewInboxEligibility";
 import { filterDesignsByAiReviewStatus } from "../../designs/utils/designLibrarySearch";
 import { useDesigns } from "../../designs/hooks/useDesigns";
+import { traceAiQueueEvent } from "@fresh-prints/shared/utils/aiQueueTrace";
 import {
+  getActiveBackgroundAiDesignId,
   hasPendingBackgroundAiWork,
   subscribeToBackgroundAiQueue,
 } from "../../imports/services/importAiBackgroundQueue";
@@ -234,6 +236,53 @@ export function useAiReviewInbox(
     [designs, selectedDesignId],
   );
 
+  // Owner QA Amendment 6 derived/render-state probe. Answers, per render where the derived
+  // state actually changed: which IDs the Processing bucket currently holds, whether the
+  // selected design still belongs to that bucket, and whether the details pane is falling back
+  // to a stale selected-design object (liveDesign / resolveFreshestInboxDesign) that survives
+  // independently of Processing membership. Read-only: derives nothing new and changes no state.
+  const renderProbeRef = useRef<string>("");
+  useEffect(() => {
+    if (filters.tab !== "processing") {
+      return;
+    }
+
+    const processingIds = designs.map((design) => design.id);
+    const selectedStillInList = selectedDesignId ? processingIds.includes(selectedDesignId) : false;
+    const signature = [
+      processingIds.join(","),
+      selectedDesignId ?? "",
+      selectedStillInList ? "in" : "out",
+      selectedDesign?.aiProcessingStage ?? "",
+      selectedDesign?.aiReviewStatus ?? "",
+      liveDesign?.id ?? "",
+    ].join("|");
+
+    if (signature === renderProbeRef.current) {
+      return;
+    }
+    renderProbeRef.current = signature;
+
+    traceAiQueueEvent({
+      event: "render.derived_state",
+      source: "render",
+      selectedDesignId,
+      activeQueueDesignId: getActiveBackgroundAiDesignId(),
+      processingDesignIds: processingIds,
+      processingCount: processingIds.length,
+      visibleStage: selectedDesign?.aiProcessingStage ?? null,
+      incomingReviewStatus: selectedDesign?.aiReviewStatus ?? null,
+      incomingStatus: selectedDesign?.status ?? null,
+      outcome: [
+        selectedStillInList ? "selected-in-processing" : "selected-NOT-in-processing",
+        liveDesign ? `liveDesign=${liveDesign.id === selectedDesignId ? "selected" : "other"}` : "liveDesign=none",
+        selectedDesign && !selectedStillInList ? "stale-selected-object-rendered" : "",
+      ]
+        .filter(Boolean)
+        .join("|"),
+    });
+  }, [designs, filters.tab, liveDesign, selectedDesign, selectedDesignId]);
+
   const isDraftDirty = useMemo(() => {
     if (!draftForm || !baselineForm || !canEditSelected) {
       return false;
@@ -243,6 +292,16 @@ export function useAiReviewInbox(
   }, [baselineForm, canEditSelected, draftForm]);
 
   const applySelection = useCallback((design: Design | null) => {
+    traceAiQueueEvent({
+      event: "inbox.selection_changed",
+      source: "inbox",
+      designId: design?.id ?? null,
+      activeQueueDesignId: getActiveBackgroundAiDesignId(),
+      visibleStage: design?.aiProcessingStage ?? null,
+      incomingReviewStatus: design?.aiReviewStatus ?? null,
+      outcome: design ? "selected" : "cleared",
+    });
+
     if (!design) {
       setSelectedDesignId(null);
       setDraftForm(null);
@@ -376,22 +435,76 @@ export function useAiReviewInbox(
       return;
     }
 
+    traceAiQueueEvent({
+      event: "observer.subscribed",
+      source: "inbox",
+      selectedDesignId,
+      activeQueueDesignId: getActiveBackgroundAiDesignId(),
+      processingDesignIds: designs.map((design) => design.id),
+      processingCount: designs.length,
+    });
+
     return subscribeToBackgroundAiQueue((event) => {
       const reconciliation = reconcileBackgroundAiQueueEvent(event, designs, selectedDesignId);
+
+      traceAiQueueEvent({
+        event: "observer.received",
+        source: "inbox",
+        designId: event.designId,
+        selectedDesignId,
+        activeQueueDesignId: getActiveBackgroundAiDesignId(),
+        processingDesignIds: designs.map((design) => design.id),
+        processingCount: designs.length,
+        incomingStage: event.patchSource?.aiProcessingStage ?? null,
+        incomingReviewStatus: event.patchSource?.aiReviewStatus ?? null,
+        incomingStatus: event.patchSource?.status ?? null,
+        queueRemaining: event.pending,
+        outcome: reconciliation.patch ? "patch" : "fallback-reload",
+      });
 
       if (reconciliation.patch) {
         if (reconciliation.pendingAdvanceIndex !== null) {
           pendingAdvanceIndexRef.current = reconciliation.pendingAdvanceIndex;
         }
 
+        traceAiQueueEvent({
+          event: "inbox.applyDesignPatch",
+          source: "inbox",
+          designId: event.designId,
+          selectedDesignId,
+          incomingStage:
+            typeof reconciliation.patch.aiProcessingStage === "string"
+              ? reconciliation.patch.aiProcessingStage
+              : null,
+          incomingReviewStatus:
+            typeof reconciliation.patch.aiReviewStatus === "string"
+              ? reconciliation.patch.aiReviewStatus
+              : null,
+          outcome:
+            reconciliation.pendingAdvanceIndex !== null
+              ? `pendingAdvanceIndex=${reconciliation.pendingAdvanceIndex}`
+              : "no-advance",
+        });
         applyDesignPatch(event.designId, reconciliation.patch);
         options?.onQueueChanged?.();
+        traceAiQueueEvent({
+          event: "inbox.onQueueChanged",
+          source: "inbox",
+          designId: event.designId,
+          outcome: "after-patch",
+        });
         return;
       }
 
       // No usable patch (e.g. the enqueue call itself failed rather than completing) — fall
       // back to a reload for this one event only, still gated by useDesigns' own generation
       // guard against any other in-flight request.
+      traceAiQueueEvent({
+        event: "inbox.reloadDesigns",
+        source: "inbox",
+        designId: event.designId,
+        outcome: "observer-fallback",
+      });
       void reloadDesigns();
       options?.onQueueChanged?.();
     });
@@ -410,10 +523,23 @@ export function useAiReviewInbox(
   // double-enqueueing — the pump itself is unaffected; this only asks the already-existing reload
   // path to double-check once whether pump activity happened while unmounted.
   useEffect(() => {
+    traceAiQueueEvent({
+      event: "inbox.tab_activated",
+      source: "inbox",
+      activeQueueDesignId: getActiveBackgroundAiDesignId(),
+      outcome: `${filters.tab}|pendingWork=${hasPendingBackgroundAiWork()}`,
+    });
+
     if (filters.tab !== "processing" || !hasPendingBackgroundAiWork()) {
       return;
     }
 
+    traceAiQueueEvent({
+      event: "inbox.reloadDesigns",
+      source: "inbox",
+      activeQueueDesignId: getActiveBackgroundAiDesignId(),
+      outcome: "mount-pending-work",
+    });
     void reloadDesigns();
     options?.onQueueChanged?.();
     // Deliberately mount/tab-switch-only: re-running this effect on every `designs` change would

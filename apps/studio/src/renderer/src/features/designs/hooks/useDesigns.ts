@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { traceAiQueueEvent } from "@fresh-prints/shared/utils/aiQueueTrace";
+
 import { useAuth } from "../../auth/hooks/useAuth";
 import { permissionService } from "../../permissions/services/permissionService";
 import { designService } from "../services/designService";
@@ -60,6 +62,13 @@ function serializeDesignListQuery(listQuery: DesignListQuery): string {
 export function useDesigns(listQuery: DesignListQuery, options?: UseDesignsOptions) {
   const { user } = useAuth();
   const [state, setState] = useState<DesignsState>(initialState);
+  /**
+   * Read-only mirror of the current designs array, used exclusively by the development AI queue
+   * trace (Owner QA Amendment 6) so a diagnostic never has to run inside a setState updater.
+   * Nothing in this hook's behavior reads it.
+   */
+  const designsMirrorRef = useRef<Design[]>(state.designs);
+  designsMirrorRef.current = state.designs;
   const nextCursorRef = useRef<DesignListCursor | undefined>(undefined);
   const listQueryKey = useMemo(() => serializeDesignListQuery(listQuery), [listQuery]);
   const listQueryKeyRef = useRef(listQueryKey);
@@ -88,6 +97,13 @@ export function useDesigns(listQuery: DesignListQuery, options?: UseDesignsOptio
     async (loadOptions?: { append?: boolean }) => {
       const requestQueryKey = listQueryKeyRef.current;
       const requestGeneration = ++generationRef.current;
+
+      traceAiQueueEvent({
+        event: "load.start",
+        source: "useDesigns",
+        requestId: requestGeneration,
+        outcome: loadOptions?.append ? "append" : "replace",
+      });
 
       if (!enabled || !user || !permissionService.canViewDesigns(user)) {
         nextCursorRef.current = undefined;
@@ -150,11 +166,37 @@ export function useDesigns(listQuery: DesignListQuery, options?: UseDesignsOptio
           cursor: append ? nextCursorRef.current : undefined,
         });
 
+        traceAiQueueEvent({
+          event: "load.response",
+          source: "useDesigns",
+          requestId: requestGeneration,
+          processingDesignIds: page.designs.map((design) => design.id),
+          processingCount: page.designs.length,
+        });
+
         if (listQueryKeyRef.current !== requestQueryKey || generationRef.current !== requestGeneration) {
+          traceAiQueueEvent({
+            event: "load.rejected",
+            source: "useDesigns",
+            requestId: requestGeneration,
+            outcome:
+              listQueryKeyRef.current !== requestQueryKey ? "query-key-changed" : "generation-superseded",
+          });
           return;
         }
 
         nextCursorRef.current = page.nextCursor;
+
+        // Emitted before setState (not inside the updater) so the updater stays pure — React
+        // StrictMode double-invokes updaters in development and would otherwise duplicate events.
+        traceAiQueueEvent({
+          event: "load.accepted",
+          source: "useDesigns",
+          requestId: requestGeneration,
+          processingDesignIds: page.designs.map((design) => design.id),
+          processingCount: page.designs.length,
+          outcome: append ? "append" : "replace",
+        });
 
         setState((currentState) => ({
           designs: append ? [...currentState.designs, ...page.designs] : page.designs,
@@ -204,6 +246,26 @@ export function useDesigns(listQuery: DesignListQuery, options?: UseDesignsOptio
   }, [loadDesigns]);
 
   const applyDesignPatch = useCallback((designId: string, patch: Partial<Design>) => {
+    // Diagnostic only (Owner QA Amendment 6): read the current list from a ref rather than from
+    // inside the setState updater. A setState updater must stay pure — React StrictMode
+    // double-invokes it in development, which would duplicate every trace event and corrupt the
+    // very trace this instrumentation exists to produce.
+    const designsAtPatchTime = designsMirrorRef.current;
+    const willApply = designsAtPatchTime.some((design) => design.id === designId);
+
+    traceAiQueueEvent({
+      event: willApply ? "patch.accepted" : "patch.ignored",
+      source: "useDesigns",
+      designId,
+      processingDesignIds: designsAtPatchTime.map((design) => design.id),
+      processingCount: designsAtPatchTime.length,
+      incomingStage: typeof patch.aiProcessingStage === "string" ? patch.aiProcessingStage : null,
+      incomingReviewStatus: typeof patch.aiReviewStatus === "string" ? patch.aiReviewStatus : null,
+      incomingStatus: typeof patch.status === "string" ? patch.status : null,
+      requestId: generationRef.current,
+      outcome: willApply ? "applied" : "design-not-in-list",
+    });
+
     setState((currentState) => {
       const index = currentState.designs.findIndex((design) => design.id === designId);
 

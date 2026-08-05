@@ -18,6 +18,10 @@ import {
   resetFirestoreUsageTraceForTests,
   type FirestoreTraceSnapshot,
 } from "@fresh-prints/shared/utils/firestoreUsageTrace";
+import {
+  getAiQueueTraceSnapshot,
+  resetAiQueueTrace,
+} from "@fresh-prints/shared/utils/aiQueueTrace";
 
 import { firebaseConfig } from "../../../config/env";
 
@@ -197,6 +201,7 @@ export function FirebaseDebugPanel({
     [externalSnapshot, localReport, projectId],
   );
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied">("idle");
+  const [aiQueueCopyStatus, setAiQueueCopyStatus] = useState<"idle" | "copied">("idle");
   const traceEnabled = externalSnapshot?.enabled ?? isFirestoreUsageTraceEnabled();
   const displayedRoute = route ?? location.pathname;
 
@@ -235,6 +240,15 @@ export function FirebaseDebugPanel({
     window.setTimeout(() => setCopyStatus("idle"), 2000);
   };
 
+  // Owner QA Amendment 6: copies the AI Processing queue state-transition trace (design IDs,
+  // bucket membership, counts, stages, request generations). Deliberately separate from the
+  // Firestore debug report above — different schema, different question.
+  const handleCopyAiQueueTrace = async () => {
+    await navigator.clipboard.writeText(JSON.stringify(getAiQueueTraceSnapshot(), null, 2));
+    setAiQueueCopyStatus("copied");
+    window.setTimeout(() => setAiQueueCopyStatus("idle"), 2000);
+  };
+
   return (
     <div style={styles.overlay}>
       <div style={styles.panel}>
@@ -263,6 +277,19 @@ export function FirebaseDebugPanel({
           </button>
           <button onClick={() => void handleCopyReport()} style={styles.button} type="button">
             {copyStatus === "copied" ? "Copied!" : "Copy Debug Report"}
+          </button>
+          <button onClick={() => void handleCopyAiQueueTrace()} style={styles.button} type="button">
+            {aiQueueCopyStatus === "copied" ? "Copied!" : "Copy AI Queue Trace"}
+          </button>
+          <button
+            onClick={() => {
+              resetAiQueueTrace();
+              setAiQueueCopyStatus("idle");
+            }}
+            style={styles.button}
+            type="button"
+          >
+            Reset AI Queue Trace
           </button>
         </div>
 
