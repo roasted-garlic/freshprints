@@ -106,6 +106,37 @@ archive write — none of these could be run live in this environment (no intera
 no Application Default Credentials for scripted checks beyond read-only CLI operations).
 
 Decision Log:
+- 2026-08-05 — `post-launch-catalog-and-processing-stability` Owner QA Amendment 7 follow-up: the
+  owner reproduced the identical symptom after the Amendment 7 observer-subscription fix (below)
+  and provided a fresh trace showing a TIGHT infinite reload loop — the same single design ID,
+  `processingCount: 1`, request IDs advancing by exactly 1 every ~20-24ms for hundreds of cycles.
+  Root cause: a *different* effect in `useAiReviewInbox.ts` (the Amendment 2 live-design
+  backend-completion reconciliation effect) also had `options` in its dependency array — but
+  unlike the observer effect, this one's own body (not a subscription) calls `reloadDesigns()`
+  whenever the selected design's live subscription reports `needs_review`, with nothing else
+  advancing `selectedDesignId` away from it. That created a true self-feeding loop:
+  `reloadDesigns()` → state changes → parent re-renders → fresh `options` → effect re-runs →
+  still `needs_review` → `reloadDesigns()` again, indefinitely. Fixed by removing `options` from
+  this effect's deps (reading `optionsRef.current` instead) and adding a one-shot guard
+  (`alreadyReconciledLiveDesignIdRef`) so reconciliation fires at most once per completion. An
+  independent review of the first draft of this second fix caught a real regression — the guard
+  was written but never reset, which would have permanently blocked re-reconciliation of any
+  design later reprocessed and completed again — corrected in the same pass (the guard now clears
+  only when it currently holds the same design's ID that has moved off `needs_review`). A second,
+  final independent review then hand-traced the full render/reload sequence (confirming
+  `liveDesign` itself gets a new object reference on every Firestore snapshot even with unchanged
+  content, so the guard — not the dependency array alone — is what stops the loop), confirmed no
+  cross-design clobbering, confirmed this fix plus the observer-effect fix together resolve both
+  loop shapes reported across both rounds of owner feedback, and confirmed no further loop risk
+  remains anywhere else in the file — verdict **approved**. This was missed in the first Amendment
+  7 pass because that pass's review classified this effect as out-of-scope on the reasoning that it
+  is "not a subscribe/unsubscribe cycle" — correct that it isn't a resubscription loop, but wrong
+  to assume a plain effect's body cannot loop on its own dependency without one. Full verification
+  green: new test 6/6, all prior AI-queue-related tests unmodified and still passing (7+17+19),
+  Studio typecheck exit 0, Studio 3-target build exit 0, lint exit 0, `git diff --check` exit 0.
+  See `docs/workflow/reviews/2026-08-04-post-launch-catalog-and-processing-stability-test-report.md`
+  §24. No Firebase, Function/Rules/index/IAM/migration/secret action, production action, or merge
+  occurred.
 - 2026-08-05 — `post-launch-catalog-and-processing-stability` Owner QA Amendment 7: the owner's
   runtime trace (using the now-working Amendment 6 follow-up transport) proved a runaway
   observer-resubscription loop in the AI Processing "Processing" tab — `useDesigns` request IDs

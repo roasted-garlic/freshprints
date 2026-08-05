@@ -133,6 +133,19 @@ export function useAiReviewInbox(
   const designsRef = useRef<Design[]>([]);
   const selectedDesignIdRef = useRef<string | null>(null);
   selectedDesignIdRef.current = selectedDesignId;
+  /**
+   * Owner QA Amendment 7 follow-up: the live-design backend-completion reconciliation effect
+   * below must reload/reconcile at most once per genuine completion, not once per render for as
+   * long as the completed design remains selected. Tracks the design ID this effect has already
+   * reconciled so a subsequent render observing the same still-"needs_review" liveDesign is a
+   * no-op. The effect itself clears this back to null as soon as that design's liveDesign moves
+   * off "needs_review" (e.g. sent back to Processing via Retry/Rerun), so a later, genuinely new
+   * completion of the *same* design ID is still correctly reconciled — this ref intentionally
+   * does not simply track "the current liveDesign.id", since it must keep remembering "already
+   * reconciled" across every render while the design stays completed and selected, independent of
+   * how many times `liveDesign`'s own object reference changes in the meantime.
+   */
+  const alreadyReconciledLiveDesignIdRef = useRef<string | null>(null);
 
   const isPinnedNeedsReviewDesign = resolveIsPinnedNeedsReviewDesign({
     tab: filters.tab,
@@ -418,18 +431,45 @@ export function useAiReviewInbox(
     setBaselineForm(nextDraft);
   }, [canEditSelected, isDraftDirty, selectedDesign, selectedDesignId]);
 
+  // Owner QA Amendment 7 follow-up: this effect previously depended on `options` and re-ran its
+  // body — not merely resubscribed — on every render in which `liveDesign.aiReviewStatus` was
+  // still "needs_review". Because nothing here ever advances `selectedDesignId` away from the
+  // just-completed design, and `options` is a fresh object/callback literal from the parent on
+  // every render, the effect's own `reloadDesigns()` call (which changes `designs`, forcing a
+  // parent re-render, which changes `options`, which re-runs this effect) fed itself indefinitely
+  // for as long as the completed design remained selected — a tight `load.start -> load.response
+  // -> load.accepted` cycle every ~20ms, visible in the owner's trace as `processingCount: 1`
+  // repeating hundreds of times with the same single design ID, and to the user as that one
+  // design's tile appearing to "stick" (frozen re-renders of the same reload) until the whole
+  // batch finished. `alreadyReconciledLiveDesignIdRef` makes this a one-shot reconciliation per
+  // design per completion, exactly like the Amendment 5 mount-reconciliation effect below is a
+  // one-shot check per tab activation — and `optionsRef` (declared above) removes the unstable
+  // dependency entirely, matching the observer subscription effect's fix.
   useEffect(() => {
     if (!liveDesign || filters.tab !== "processing") {
       return;
     }
 
-    if (liveDesign.aiReviewStatus === "needs_review") {
+    if (liveDesign.aiReviewStatus !== "needs_review") {
+      // Not (or no longer) in the completed state this effect reconciles — clear the guard so a
+      // *future* completion of this same design (e.g. sent back to Processing via "Retry" or
+      // "Rerun" and completing again later) is still reconciled once. Without this, the guard
+      // would permanently remember this design's ID from an earlier completion and silently skip
+      // its next genuine completion.
+      if (alreadyReconciledLiveDesignIdRef.current === liveDesign.id) {
+        alreadyReconciledLiveDesignIdRef.current = null;
+      }
+      return;
+    }
+
+    if (alreadyReconciledLiveDesignIdRef.current !== liveDesign.id) {
       // Backend-initiated completion (no client action) — Amendment 2, Defect A: reconcile the
       // Processing/Needs Review counts alongside the list, not just the list.
+      alreadyReconciledLiveDesignIdRef.current = liveDesign.id;
       void reloadDesigns();
-      options?.onQueueChanged?.();
+      optionsRef.current?.onQueueChanged?.();
     }
-  }, [filters.tab, liveDesign, options, reloadDesigns]);
+  }, [filters.tab, liveDesign, reloadDesigns]);
 
   // Owner QA Amendment 3, Failure 1 (initial fix) found that the background AI pump was
   // detached from this view. Owner QA Amendment 4 found that the Amendment 3 fix — an

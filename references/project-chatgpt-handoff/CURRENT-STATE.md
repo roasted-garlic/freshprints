@@ -1,5 +1,39 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-08-05 - Post-launch catalog and processing stability: Owner QA Amendment 7 follow-up — the actual root cause, a second infinite reload loop, found and fixed
+
+Same branch throughout (`fix/post-launch-catalog-and-processing-stability`, still no new branch or
+PR, still no merge). This entry is a correction to the entry immediately below (the first
+Amendment 7 fix) — the owner reproduced the identical symptom after that fix shipped, and a fresh
+trace revealed the real, tighter loop.
+
+**The problem, more precisely this time:** the owner's fresh trace showed a request ID climbing by
+exactly 1 every ~20-24ms, hundreds of times in a row, always for the same single design, always
+reporting `processingCount: 1`. This is a true infinite loop, not just excess effect churn — the
+hook never reached a settled render for that one completed design until the whole batch finished.
+
+**Root cause:** a second effect in the same hook (unrelated to the one fixed in the entry below)
+had the same category of bug: its dependency array included a value that changes identity on every
+render, and — critically — its own body directly triggers a reload whenever the currently-selected
+design's live status shows it just completed. Since nothing else in that path moves the selection
+away from a just-completed design, the effect's own reload kept re-triggering itself indefinitely.
+
+**Fix:** removed the unstable dependency (reading a stable ref instead, matching the pattern from
+the entry below) and added a guard so the reload fires at most once per completion — while still
+correctly resetting for a genuinely later completion of the same design (e.g. if it's sent back to
+processing and redone). An independent review caught that an early draft of this guard never reset,
+which would have silently broken re-processing for any design touched twice; that was corrected
+before shipping, and a second independent review confirmed the corrected version has no cross-design
+side effects and, combined with the earlier fix, resolves both loop shapes the owner reported.
+
+**Verification:** new regression test (6/6), all prior AI-queue-related tests unmodified and still
+passing, Studio typecheck/build/lint/`git diff --check` all exit 0. Full detail in
+`docs/workflow/reviews/2026-08-04-post-launch-catalog-and-processing-stability-test-report.md` §24.
+
+No Firebase project action, Function/Rules/index/IAM/migration/secret change, production action, or
+merge occurred. Large-PNG normalization, `readyAt` ordering, and the callable-timeout fix remain
+unchanged.
+
 ## 2026-08-05 - Post-launch catalog and processing stability: Owner QA Amendment 7 — AI queue observer resubscription loop fixed
 
 Same branch throughout (`fix/post-launch-catalog-and-processing-stability`, still no new branch or

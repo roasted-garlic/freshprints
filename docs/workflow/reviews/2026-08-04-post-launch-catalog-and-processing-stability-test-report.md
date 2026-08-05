@@ -916,3 +916,119 @@ Amendment 5 mount-reconciliation path — never as a periodic or debounced timer
 200-second callable timeout override (`aiEnrichmentCallableErrorMessage.ts`) — zero `git diff` hunks
 in any of these files. No Firebase project action, Function/Rules/index/IAM/migration/secret change,
 or production action occurred. No merge occurred.
+
+## 24. Owner QA Amendment 7 follow-up — the actual root cause: a second, tighter infinite loop (Test Report addendum)
+
+### 24.1 Owner reproduction after §23's fix
+
+The owner reset the trace, confirmed `enabled: true` (the Amendment 6 follow-up transport is
+working), reproduced the exact same symptom, and captured a full 1,000-event trace buffer — nearly
+entirely consumed by a single repeating pattern:
+
+```
+load.start (requestId N)  ->  load.response (processingCount: 1, same design ID)  ->
+load.accepted (outcome: "replace")  ->  load.start (requestId N+1)  ->  ...
+```
+
+Request IDs advanced by exactly 1 every cycle, roughly every 20-24ms, for hundreds of consecutive
+cycles — always the same single design ID, always `processingCount: 1`. This is functionally a
+true infinite reload loop for one design, not the resubscription-churn shape §23's fix targeted.
+The owner's own description was exact: designs advance through Processing correctly one at a time,
+but each *completed* design's tile visibly "sticks" and the whole list only updates once the entire
+batch finishes — because the hook was stuck re-reloading the same completed design's state hundreds
+of times per second instead of ever reaching a settled render.
+
+### 24.2 Root cause (confirmed via direct source inspection of the reload/state chain, not a re-derivation of §23's already-fixed effect)
+
+A **different** effect in the same file — the Amendment 2 live-design backend-completion
+reconciliation effect — had `options` in its dependency array:
+
+```ts
+useEffect(() => {
+  if (!liveDesign || filters.tab !== "processing") return;
+  if (liveDesign.aiReviewStatus === "needs_review") {
+    void reloadDesigns();
+    options?.onQueueChanged?.();
+  }
+}, [filters.tab, liveDesign, options, reloadDesigns]);
+```
+
+This effect's *own body* (not merely its subscription) calls `reloadDesigns()` whenever the
+selected design's live Firestore subscription reports `aiReviewStatus === "needs_review"` — and
+nothing else in this specific path ever advances `selectedDesignId` away from that design. The
+loop: `reloadDesigns()` → `useDesigns`' internal state changes → parent `AiReviewPage` re-renders →
+a fresh `options` object is created (same root cause as §23) → this effect's dependency changed →
+its full body re-runs → `liveDesign.aiReviewStatus` is *still* `"needs_review"` → `reloadDesigns()`
+fires again — indefinitely, for as long as the completed design remains selected. This is a true
+self-feeding infinite loop (not merely excess resubscription), which explains both the tight ~20ms
+cadence and why the affected design's tile appeared frozen: the hook never reached a settled render
+between one completion and the eventual full-batch clear.
+
+Independently confirmed during review: `liveDesign` itself gets a **new object reference on every
+Firestore snapshot emission**, even when its content (including `aiReviewStatus`) is unchanged —
+so simply removing `options` from this effect's dependency array would not fully stop the effect
+from re-running; a one-shot guard was required in addition to (not instead of) the `options`
+removal.
+
+### 24.3 Fix
+
+1. Removed `options` from this effect's dependency array (now `[filters.tab, liveDesign,
+   reloadDesigns]`); the effect reads `optionsRef.current?.onQueueChanged?.()` instead, using the
+   same `optionsRef` introduced in §23's fix.
+2. Added `alreadyReconciledLiveDesignIdRef`, a one-shot guard: the reload/reconcile fires at most
+   once per genuine completion of a given design ID. The guard is explicitly cleared back to `null`
+   as soon as that same design's `liveDesign.aiReviewStatus` moves off `"needs_review"` (e.g. sent
+   back to Processing via Retry/Rerun) — an independent review of the first draft of this fix
+   caught that an earlier version wrote the guard but never reset it, which would have permanently
+   blocked reconciliation for any design that completes, is reprocessed, and completes again later.
+   The corrected version resets the guard only when it currently holds the *same* design's ID that
+   is no longer completed, so a different design's guard state is never disturbed.
+3. No change to `reconcileBackgroundAiQueueEvent`, `applyDesignPatch`'s patch semantics, the
+   background pump's control flow, the Amendment 5 200-second callable timeout, or the §23
+   observer-subscription fix itself (confirmed unchanged via `git diff`).
+
+### 24.4 Why this was missed in §23's pass
+
+§23's Plan and Implementation Review both explicitly examined this same effect (the "Amendment 2
+backend-completion effect") and classified it as out of scope, reasoning that it is "a one-shot
+reconciliation gated on `liveDesign` object identity and status check, not a subscribe/unsubscribe
+cycle." That reasoning correctly ruled out a *resubscription* loop (there is no subscribe/unsubscribe
+here), but incorrectly assumed a plain `useEffect`'s body cannot itself loop without a
+subscription — it can, when the body's own side effect changes one of its own dependencies and
+nothing else advances the guarding state. This amendment's independent review caught the gap by
+re-tracing the owner's fresh trace evidence directly against source rather than re-confirming the
+already-fixed §23 mechanism.
+
+### 24.5 Tests and results
+
+| Command | Result |
+|---|---|
+| `npx tsx --test .../useAiReviewInbox.liveDesignReconciliation.test.ts` (new) | **6/6 pass** |
+| `npx tsx --test .../useAiReviewInbox.observerSubscription.test.ts` | **7/7 pass** (unmodified, zero regression) |
+| `npx tsx --test .../backgroundAiQueueReconciliation.test.ts` | **17/17 pass** (unmodified, zero regression) |
+| `npx tsx --test .../aiQueueTrace.test.ts` | **19/19 pass** (unmodified, zero regression) |
+| Studio typecheck (`npx tsc --noEmit`) | exit 0 |
+| Studio 3-target Vite build (renderer/main/preload) | exit 0, no new build warning |
+| `npm run lint` | exit 0 |
+| `git diff --check` | exit 0 (CRLF-on-checkout warnings only) |
+
+### 24.6 Files changed
+
+- `apps/studio/src/renderer/src/features/ai-review/hooks/useAiReviewInbox.ts` (modified — one
+  additional ref; the Amendment 2 live-design reconciliation effect's dependency array reduced
+  from 4 to 3 entries; effect body migrated to the ref-derived `optionsRef` and gated by the new
+  one-shot guard)
+- `apps/studio/src/renderer/src/features/ai-review/hooks/useAiReviewInbox.liveDesignReconciliation.test.ts` (new)
+
+**Independent review sequence for this addendum:** an initial fix draft was reviewed and found to
+have a real regression (the one-shot guard never reset, permanently blocking re-reconciliation of a
+reprocessed design) — corrected in the same pass. A second, final independent review then verified
+the corrected reset logic does not clobber a different design's guard state, traced the full
+render/reload sequence by hand (confirming the guard, not the dependency array alone, is what stops
+the loop given `liveDesign`'s own reference churn), confirmed this fix and §23's fix together
+address both loop shapes reported by the owner across both rounds of feedback, and confirmed no
+further loop risk remains anywhere else in the file — verdict **approved**.
+
+**No AI queue behavior beyond this reconciliation effect's own dependency/guard wiring was changed;
+no Firebase project action, Function/Rules/index/IAM/migration/secret change, or production action
+occurred; no merge occurred.**

@@ -119,3 +119,38 @@ is minimal and surgical (a single file's effect-dependency wiring plus refs, no 
 reconciliation, selection-advance, or reload semantics), and the new test file's assertions are
 empirically confirmed to discriminate the fixed state from the pre-fix regression rather than
 passing vacuously.
+
+---
+
+# Owner QA Amendment 7 Follow-Up — Independent Review (second loop, found after this fix shipped)
+
+The owner reproduced the identical symptom after the fix above shipped, with a fresh trace showing
+a true tight infinite loop (not resubscription churn) for a single design. Independent review
+traced this to a **different** effect in the same file — the Amendment 2 live-design
+backend-completion reconciliation effect — which also had `options` in its dependency array, but
+whose body directly triggers `reloadDesigns()` on every run where the selected design's live status
+is `"needs_review"`, with nothing advancing the selection away from it. This is a genuine
+self-feeding loop distinct from (and missed by) the review above, which had examined this exact
+effect and incorrectly concluded it was safe because it "is not a subscribe/unsubscribe cycle" — a
+correct but insufficient observation, since a plain effect's body can loop on its own dependency
+without any subscription involved.
+
+**First-draft fix review finding (regression, corrected before shipping):** the initial fix wrote a
+one-shot guard (`alreadyReconciledLiveDesignIdRef`) but never reset it, which would have
+permanently blocked reconciliation for any design later reprocessed (e.g. via Retry/Rerun) and
+completed a second time. Required fix: reset the guard when it currently holds the same design's ID
+that has moved off `"needs_review"`.
+
+**Final independent review** (after the correction): confirmed the reset condition is scoped to
+`alreadyReconciledLiveDesignIdRef.current === liveDesign.id` before clearing, so a different
+design's guard state is never disturbed. Hand-traced the full render/reload sequence and confirmed
+`liveDesign` gets a new object reference on every Firestore snapshot even with unchanged content —
+meaning the effect can still re-run more often than the dependency array alone suggests, but the
+one-shot guard (not the dependency array) is what actually prevents a repeat `reloadDesigns()` call,
+and does so correctly. Confirmed this fix, together with the fix reviewed above, resolves both loop
+shapes reported by the owner across both rounds of feedback, and confirmed no further loop risk
+remains anywhere else in the file.
+
+## Verdict
+
+**approved.** No further changes required.
