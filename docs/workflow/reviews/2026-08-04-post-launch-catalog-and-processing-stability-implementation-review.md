@@ -402,3 +402,38 @@ Reviewed the final diff, directly affected callers, and security/read-cost bound
 **Tests:** `readyOrderPagination.test.ts` (8/8) includes the required failing-before/passing-after pair — a `createdAt`-ordered page provably excludes the reapproved design and no local sort can recover it, while the `readyAt`-ordered page puts it first — plus tie-breaking and gap-free pagination. Three earlier assertions that encoded the superseded ordering were updated (their original intent, "never `updatedAt`", is preserved). Combined Studio regression 337/337; catalogSnapshots 116/117 (the one failure is the pre-existing, unrelated Wave C assertion).
 
 **Verdict:** approved. Production migration, index deployment, and release remain a separate human checkpoint; no production action taken.
+
+---
+
+# `readyAt` Development Backfill — Execution Review
+
+Application Default Credentials became available, unblocking the backfill this Review's own §
+above (and the Test Report's §18) had documented as written-but-not-executed. Executed the
+pre-approved script exactly as written — no code change was made or required.
+
+**Verified independently before running anything:** `firebase use` resolved `fresh-prints-dev`; the
+script's own hard-coded refusal (`projectId !== "fresh-prints-dev" && !allowNonDev`) provides a
+second, independent guard against a wrong-project run, and was not triggered.
+
+**Execution sequence and results** (full command output in Test Report §19):
+1. Dry run: `ready=99 alreadySet=0 needsBackfill=99` — matches the exact pre-condition state this
+   goal's prior passes measured (99 ready designs on `fresh-prints-dev`, none previously seeded).
+2. Apply (`APPLY=1`): `committed 99/99` — every targeted document written, zero failures.
+3. Dry run again: `ready=99 alreadySet=99 needsBackfill=0` — directly confirms the required
+   post-condition (zero ready designs without `readyAt`), not merely inferred from the apply step's
+   own success message.
+
+**No further defect found.** The script performed exactly as its own dry-run-then-apply-then-
+verify design promises; idempotency is now empirically demonstrated (the second dry run reports
+`alreadySet=99`, meaning a third run would again write zero documents). This closes the one
+concretely-actionable item from this goal's list of outstanding owner follow-ups — the completeness
+guard in `listDesignsPage` will no longer need to fall back to `createdAt` ordering for any of these
+99 designs, since the `readyAt`-ordered query and `countDesigns` now agree for them.
+
+**Confirmed still true after this step:** no Rules, index, Function, or production change was made
+or required. The `readyAt` Rules type-guard remains undeployed and unaffected by this step (the
+design validator's lack of a `hasOnly` restriction means this write path never depended on it). The
+4 `readyAt` indexes were unaffected (already live, not touched). No PR was opened or merged.
+
+**Verdict:** approved. Dev-only backfill execution confirmed complete and correct. Production
+backfill remains its own separate, later human checkpoint.

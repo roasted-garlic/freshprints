@@ -415,3 +415,61 @@ typecheck, Studio 3-target Vite build, repo lint, `git diff --check` — all exi
 **No new Functions deploy was required or performed for this correction** — it is a Studio-client
 query change plus an index addition (already deployed per the commit) and a Rules change (not yet
 deployed, see above). No production action of any kind occurred.
+
+---
+
+## 19. `readyAt` development backfill — execution results
+
+Application Default Credentials became available in this environment, unblocking the backfill
+previously documented as written-but-not-executed in §18. Ran the pre-approved script exactly as
+written, with no code changes.
+
+**1. Project confirmation:** `firebase use` → `fresh-prints-dev`. The script's own project guard
+(`projectId !== "fresh-prints-dev" && !allowNonDev` → refuse) was not triggered, confirming the
+script itself also resolved `fresh-prints-dev`.
+
+**2. Dry run (before):**
+
+```
+node functions/scripts/backfill-design-ready-at.mjs
+project=fresh-prints-dev ready=99 alreadySet=0 needsBackfill=99 mode=DRY-RUN
+Dry run only — re-run with APPLY=1 to write.
+```
+
+99 `status: "ready"` designs, 0 already carrying `readyAt`, 99 needing backfill.
+
+**3. Apply:**
+
+```
+APPLY=1 node functions/scripts/backfill-design-ready-at.mjs
+project=fresh-prints-dev ready=99 alreadySet=0 needsBackfill=99 mode=APPLY
+committed 99/99
+Backfill complete: 99 design(s) updated.
+```
+
+All 99 writes committed successfully; 0 failures.
+
+**4. Dry run (after), verifying zero remain without `readyAt`:**
+
+```
+node functions/scripts/backfill-design-ready-at.mjs
+project=fresh-prints-dev ready=99 alreadySet=99 needsBackfill=0 mode=DRY-RUN
+Dry run only — re-run with APPLY=1 to write.
+```
+
+99 `status: "ready"` designs, all 99 now carrying `readyAt`, 0 needing backfill — confirms the
+backfill is complete and idempotent (re-running performs no further writes).
+
+**Effect:** every pre-existing `fresh-prints-dev` ready design now has a real `readyAt` value, seeded
+per the script's documented precedence (`aiReviewedAt` → `updatedAt` → `createdAt`, best evidence
+first). §18's completeness-guard fallback to `createdAt` ordering will no longer trigger for any of
+these 99 designs going forward, since the `readyAt`-ordered query and `countDesigns` will now agree
+for every filter combination that includes them.
+
+**No Rules, index, Function, or production change was made or is required for this step.** The
+`readyAt` Rules type-guard remains undeployed (§18) — this backfill does not depend on it, since the
+design validator has no `hasOnly` restriction and the write already succeeds without it. The 4
+`readyAt` indexes were already confirmed live before this step and were not touched.
+
+**Production backfill remains a separate, later human checkpoint** — not performed, not requested,
+not implied by this dev-only execution.
