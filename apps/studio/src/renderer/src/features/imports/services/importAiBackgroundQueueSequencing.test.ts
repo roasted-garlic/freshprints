@@ -70,7 +70,14 @@ describe("import background AI queue sequencing (Amendment 3, Failure 1)", () =>
       source.indexOf('logPipelineEvent("import.ai_background.enqueued"'),
       source.indexOf('logPipelineEvent("import.ai_background.enqueue_failed"'),
     );
-    assert.match(successBlock, /notifyObservers\(\{ designId, pending: pendingDesignIds\.length, outcome: "completed" \}\)/);
+    assert.match(successBlock, /notifyObservers\(\{/);
+    assert.match(successBlock, /designId,/);
+    assert.match(successBlock, /pending: pendingDesignIds\.length,/);
+    assert.match(successBlock, /outcome: "completed",/);
+    // Owner QA Amendment 4: the success notification must also carry the enqueue callable's own
+    // terminal fields, so the observer can apply an authoritative local patch instead of racing
+    // multiple ungated reloadDesigns() calls against each other.
+    assert.match(successBlock, /patchSource: result,/);
 
     const failureBlock = source.slice(
       source.indexOf('logPipelineEvent("import.ai_background.enqueue_failed"'),
@@ -93,13 +100,26 @@ describe("import background AI queue sequencing (Amendment 3, Failure 1)", () =>
       "apps/studio/src/renderer/src/features/ai-review/hooks/useAiReviewInbox.ts",
     );
 
-    assert.match(inbox, /subscribeToBackgroundAiQueue\(\(\) => \{/);
+    // Owner QA Amendment 4: the observer callback now receives the event and reconciles it
+    // through the authoritative, monotonic reconcileBackgroundAiQueueEvent path — applying a
+    // local patch by design ID — rather than unconditionally calling reloadDesigns() on every
+    // terminal event (the Amendment 3 shape, which raced multiple ungated reloads against
+    // each other; see backgroundAiQueueReconciliation.test.ts for the full regression coverage).
+    assert.match(inbox, /subscribeToBackgroundAiQueue\(\(event\) => \{/);
+    const subscribeStart = inbox.indexOf("return subscribeToBackgroundAiQueue((event) => {");
     const subscribeBlock = inbox.slice(
-      inbox.indexOf("return subscribeToBackgroundAiQueue(() => {"),
-      inbox.indexOf("return subscribeToBackgroundAiQueue(() => {") + 260,
+      subscribeStart,
+      inbox.indexOf(
+        "}, [applyDesignPatch, designs, filters.tab, options, reloadDesigns, selectedDesignId]);",
+        subscribeStart,
+      ),
     );
-    assert.match(subscribeBlock, /void reloadDesigns\(\);/);
+    assert.match(subscribeBlock, /reconcileBackgroundAiQueueEvent\(event, designs, selectedDesignId\)/);
+    assert.match(subscribeBlock, /applyDesignPatch\(event\.designId, reconciliation\.patch\)/);
     assert.match(subscribeBlock, /options\?\.onQueueChanged\?\.\(\);/);
+    // A reload remains only as the no-usable-patch fallback (e.g. a genuine enqueue failure),
+    // still gated by useDesigns' own generation guard — not the primary reconciliation mechanism.
+    assert.match(subscribeBlock, /void reloadDesigns\(\);/);
     assert.doesNotMatch(subscribeBlock, /setInterval|onSnapshot/);
   });
 });

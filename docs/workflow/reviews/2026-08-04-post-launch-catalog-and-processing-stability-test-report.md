@@ -473,3 +473,136 @@ design validator has no `hasOnly` restriction and the write already succeeds wit
 
 **Production backfill remains a separate, later human checkpoint** — not performed, not requested,
 not implied by this dev-only execution.
+
+---
+
+## 20. Owner QA Amendment 4 — AI Processing race fix (Test Report addendum)
+
+### 20.1 Owner reproduction
+
+With three newly imported designs: Processing correctly showed 3, the first design began
+processing and its progress advanced step 1 → step 2, then the page/list attempted to refresh —
+the first design **still** appeared as Processing and its progress **regressed** from step 2 back
+to step 1. The UI hung on that design while the remaining two completed server-side, then all
+three disappeared together. Required behavior (`3 → 2 → 1 → 0`, one design leaving individually,
+next design becoming the active selection) was not met.
+
+### 20.2 Root cause
+
+Amendment 3's fix for the prior "3 → 0" defect (Test Report §17) subscribed AI Review to the
+background AI pump's per-design terminal events, but reconciled each one with an **unconditional,
+ungated `void reloadDesigns()`** call. `useDesigns.loadDesigns()` had exactly one staleness guard —
+`listQueryKeyRef.current !== requestQueryKey`, which only discards a response if the *query itself*
+changed. It had **no protection against multiple calls for the *same* query racing each other**.
+Three designs completing in quick succession fired three independent, ungated reloads; whichever
+resolved *last* — not whichever was *most recent* — won, because there was nothing comparing "is
+this the newest request" versus "is this the newest *resolved* request." An earlier-started,
+slower-resolving reload could overwrite state a later-started, faster-resolving reload (or a design
+patch) had already correctly updated. Independently reproduced this exact mechanism in isolation
+(Node, no test framework) before writing any fix — three synchronous reload calls representing "A
+removed," "B+C removed," then a deliberately-last-resolving stale snapshot still showing "B+C
+pending" overwrote the correct empty state, reproducing the reported stall-then-mass-disappearance
+symptom precisely.
+
+The visible progress regression (step 2 → step 1) is the same mechanism observed on the currently
+selected design: the 3-step pipeline UI (`AI_PROCESSING_UI_PIPELINE_GROUPS`,
+`aiProcessingOutput.ts`) derives its step purely from whatever `aiProcessingStage` currently sits on
+that design in `designs` — it holds no local "high water mark." A stale reload overwriting the
+selected design with an older cached `aiProcessingStage` value is visually indistinguishable from a
+genuine regression.
+
+**Stale cache vs. out-of-order reload:** out-of-order reload resolution is the confirmed mechanism,
+not a stale in-memory cache — `designService.listDesignsPage` reads Firestore directly per call with
+no client-side cache layer in this path; the staleness is purely a same-query-race timing issue in
+`useDesigns`, not any cached response being served.
+
+### 20.3 Fix
+
+1. **`importAiBackgroundQueue.ts`** — the pump's success notification now carries the enqueue
+   callable's own already-available terminal response (`patchSource`) instead of discarding it.
+2. **`backgroundAiQueueReconciliation.ts`** (new, pure) — `reconcileBackgroundAiQueueEvent` derives,
+   from one event: the `Partial<Design>` patch to apply (via the existing
+   `buildDesignPatchFromEnqueueResult`), and — only when the completed design is the current
+   selection — the index to hand to the existing `pendingAdvanceIndexRef` mechanism (already used
+   elsewhere in this file for approve/reject actions) so the next remaining design becomes selected
+   deterministically once `designs` recomputes.
+3. **`useAiReviewInbox.ts`** — the background-queue observer now calls this pure function and
+   applies the patch by design ID as the **primary** reconciliation mechanism. The design leaves
+   Processing immediately because this hook's own `designs` memo already client-re-filters by
+   `aiReviewStatus` on every render (`filterDesignsByAiReviewStatus(filtered, "pending")`) — no
+   explicit removal code was needed. A reload is retained only as a fallback for the one case with
+   no usable patch (a genuine enqueue failure), and that fallback is itself now protected by item 4.
+4. **`useDesigns.ts`** — added a monotonic `generationRef` counter. Every `loadDesigns()` call
+   captures the generation in effect at its own start; a response is only committed to state if the
+   generation is still current when it resolves. `applyDesignPatch` also bumps the generation, so
+   any reload already in flight when a patch lands is discarded on arrival rather than overwriting
+   the patch — while a reload started *after* the patch still gets its own fresh generation and is
+   honored normally as a legitimate confirmation read. This is the "existing generation/request-
+   token pattern... or the narrowest equivalent" called for — narrowly scoped to `useDesigns`, no
+   new listener, no new dependency.
+
+No full designs listener, no per-design listener, no concurrency change (the pump remains strictly
+sequential — confirmed unchanged, see §20.4), no permanent polling, and no unbounded reads were
+introduced. `readyAt` ordering and the large-PNG normalization implementation were not touched.
+
+### 20.4 Proof of required behaviors
+
+All proven in `backgroundAiQueueReconciliation.test.ts` (new, 13 tests) by chaining the actual
+production functions (`reconcileBackgroundAiQueueEvent`, `designMatchesInboxTab`,
+`filterDesignsByAiReviewStatus`, `sortInboxDesigns`) against realistic `Design` fixtures — not an
+isolated pump simulation:
+
+- **`3 → 2 → 1 → 0`**: proven directly; each of the three designs' completion event is reconciled
+  one at a time, and the Processing-tab-derived design count is asserted to be `[3, 2, 1, 0]` after
+  each — never a stall followed by a group drop.
+- **`Design A → Design B → Design C → none`**: proven directly; the selection sequence produced by
+  chaining `pendingAdvanceIndex` through the same re-derivation the real `pendingAdvanceIndexRef`
+  effect performs is asserted equal to `["a", "b", "c", null]`.
+- **Monotonic progress (never `1 → 2 → 1`)**: proven via the 3-group pipeline-step mapping used by
+  the real UI; asserts the observed group sequence never decreases.
+- **Stale reload cannot reinsert a completed design**: a reload started before design A completes,
+  deliberately resolved *after* A's patch has already landed, is proven discarded (does not
+  reinsert A) via the generation-guard simulation — which itself is a faithful mirror of
+  `useDesigns`'s real comparison, independently confirmed present in source by a companion test.
+- **An older async response cannot overwrite a newer queue state**: proven directly — an older
+  reload resolving after a newer one still loses, regardless of resolve order.
+- **Needs Review receives each design exactly once; counts remain exact**: proven directly across
+  all three designs; a `Set` guards against any design entering Needs Review twice.
+- **`maxConcurrent === 1`**: proven via the pre-existing sequential-pump source assertion, re-
+  confirmed unaffected by this fix (`importAiBackgroundQueueSequencing.test.ts`).
+- **Controls reset correctly when the queue becomes empty**: unaffected by this fix — the existing
+  `runAutoQueueLoop`/`processSelectedDesign` `requestSelectDesign(null)` paths (Owner QA Amendment 1)
+  remain untouched and still covered by `aiProcessingReconciliation.test.ts`.
+
+Also independently reproduced the pre-fix bug mechanism in isolation (documented in §20.2) to
+confirm the fix targets the actual cause, not a plausible-sounding alternative.
+
+### 20.5 Tests and results
+
+| Command | Result |
+|---|---|
+| `npx tsx --test .../backgroundAiQueueReconciliation.test.ts` | **14/14 pass** (new; includes one test added during the Implementation Review, see the appended Implementation Review section) |
+| `npx tsx --test .../importAiBackgroundQueueSequencing.test.ts` | **5/5 pass** (2 assertions updated to match the corrected observer signature/behavior; 3 unchanged) |
+| Combined AI Processing + designs focused regression (14 files) | **104/104 pass** |
+| `readyOrderPagination.test.ts` + `readyOrder.test.ts` | **23/23 pass** (unaffected, confirmed) |
+| Full Studio test sweep (740 files → 748 with new tests) | **745/753 pass** — the same 8 pre-existing, unrelated failures documented throughout this entire managed goal; zero new failures |
+| `npm --prefix functions run build` | not required — no Functions/backend file touched; confirmed via `git status` |
+| Studio typecheck (`npx tsc --noEmit`) | exit 0 |
+| Portal typecheck | exit 0 (no shared code touched; run anyway per instruction) |
+| Studio 3-target Vite build (renderer/main/preload) | exit 0, no new build warning |
+| `npm run lint` | exit 0 |
+| `git diff --check` | exit 0 |
+
+### 20.6 Files changed
+
+- `apps/studio/src/renderer/src/features/imports/services/importAiBackgroundQueue.ts` (modified)
+- `apps/studio/src/renderer/src/features/imports/services/importAiBackgroundQueueSequencing.test.ts` (modified — 2 stale assertions corrected)
+- `apps/studio/src/renderer/src/features/ai-review/hooks/useAiReviewInbox.ts` (modified)
+- `apps/studio/src/renderer/src/features/designs/hooks/useDesigns.ts` (modified)
+- `apps/studio/src/renderer/src/features/ai-review/utils/backgroundAiQueueReconciliation.ts` (new)
+- `apps/studio/src/renderer/src/features/ai-review/utils/backgroundAiQueueReconciliation.test.ts` (new)
+
+**No Rules, index, Function, secret, or production file was touched.** No deployment was needed or
+performed. `readyAt` ordering and the large-PNG normalization implementation are confirmed
+byte-for-byte unchanged (`git diff` shows zero hunks in any file under
+`apps/studio/.../designs/utils/readyOrder*` or `apps/studio/electron/services/import/normalizeImportOutputBytes.ts`).

@@ -27,6 +27,22 @@ export interface BackgroundAiQueueEvent {
   /** Remaining queued designs after this one settled (0 once the pump drains). */
   pending: number;
   outcome: "completed" | "failed";
+  /**
+   * The enqueue callable's own terminal fields (aiProcessingStage/aiReviewStatus/status/queued/
+   * reason), when available. Lets the observer apply an authoritative local patch for exactly
+   * this design instead of triggering a full reload — a reload has no way to distinguish "this
+   * design's own terminal transition" from "some other in-flight request," so multiple designs
+   * completing in quick succession previously raced each other through independent, ungated
+   * reloadDesigns() calls (Owner QA Amendment 4).
+   */
+  patchSource?: {
+    aiProcessingStage?: string | null;
+    aiReviewStatus?: string | null;
+    completed?: boolean;
+    queued: boolean;
+    reason?: string;
+    status?: string | null;
+  };
 }
 
 type BackgroundAiQueueObserver = (event: BackgroundAiQueueEvent) => void;
@@ -96,9 +112,14 @@ async function pumpBackgroundAiQueue(): Promise<void> {
       }
 
       try {
-        await aiEnrichmentEnqueueService.enqueueForProcessing(designId);
+        const result = await aiEnrichmentEnqueueService.enqueueForProcessing(designId);
         logPipelineEvent("import.ai_background.enqueued", { designId });
-        notifyObservers({ designId, pending: pendingDesignIds.length, outcome: "completed" });
+        notifyObservers({
+          designId,
+          pending: pendingDesignIds.length,
+          outcome: "completed",
+          patchSource: result,
+        });
       } catch (error) {
         logPipelineEvent("import.ai_background.enqueue_failed", {
           designId,

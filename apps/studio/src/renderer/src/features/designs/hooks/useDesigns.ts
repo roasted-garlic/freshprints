@@ -70,9 +70,24 @@ export function useDesigns(listQuery: DesignListQuery, options?: UseDesignsOptio
   const enabled = options?.enabled ?? true;
   const maxLoadAll = options?.maxLoadAll ?? DEFAULT_MAX_LOAD_ALL;
 
+  /**
+   * Monotonic generation counter for this hook instance. Every `loadDesigns()` call (whether from
+   * the query-key-change effect or an explicit `reloadDesigns()`) captures the generation in
+   * effect at its own start; only the request whose captured generation still matches the current
+   * generation when it resolves is allowed to write state. This is distinct from the existing
+   * `listQueryKeyRef` check, which only guards against a *different query* landing late — it does
+   * nothing when several `reloadDesigns()` calls for the *same* query race each other (e.g. three
+   * designs each independently completing AI processing and each triggering their own reload).
+   * Without this, an earlier-started-but-later-resolving read can overwrite state a later-started
+   * read (or a local `applyDesignPatch` call) already correctly updated — visibly regressing the
+   * UI (post-launch-catalog-and-processing-stability, Owner QA Amendment 4).
+   */
+  const generationRef = useRef(0);
+
   const loadDesigns = useCallback(
     async (loadOptions?: { append?: boolean }) => {
       const requestQueryKey = listQueryKeyRef.current;
+      const requestGeneration = ++generationRef.current;
 
       if (!enabled || !user || !permissionService.canViewDesigns(user)) {
         nextCursorRef.current = undefined;
@@ -107,8 +122,9 @@ export function useDesigns(listQuery: DesignListQuery, options?: UseDesignsOptio
 
           nextCursorRef.current = cursor;
 
-          // Ignore late responses if the query changed while we were paging.
-          if (listQueryKeyRef.current !== requestQueryKey) {
+          // Ignore late responses if the query changed while we were paging, or if a newer
+          // load for this same query has since started (see generationRef's doc comment).
+          if (listQueryKeyRef.current !== requestQueryKey || generationRef.current !== requestGeneration) {
             return;
           }
 
@@ -134,7 +150,7 @@ export function useDesigns(listQuery: DesignListQuery, options?: UseDesignsOptio
           cursor: append ? nextCursorRef.current : undefined,
         });
 
-        if (listQueryKeyRef.current !== requestQueryKey) {
+        if (listQueryKeyRef.current !== requestQueryKey || generationRef.current !== requestGeneration) {
           return;
         }
 
@@ -150,7 +166,7 @@ export function useDesigns(listQuery: DesignListQuery, options?: UseDesignsOptio
           nextCursor: page.nextCursor,
         }));
       } catch (error) {
-        if (listQueryKeyRef.current !== requestQueryKey) {
+        if (listQueryKeyRef.current !== requestQueryKey || generationRef.current !== requestGeneration) {
           return;
         }
 
@@ -192,8 +208,20 @@ export function useDesigns(listQuery: DesignListQuery, options?: UseDesignsOptio
       const index = currentState.designs.findIndex((design) => design.id === designId);
 
       if (index < 0) {
+        // Genuinely a no-op (e.g. the design isn't part of this hook instance's current list, or
+        // the initial load simply hasn't resolved yet) — do NOT bump the generation here. Doing
+        // so unconditionally would invalidate a real, still-in-flight load for no reason whenever
+        // a patch happens to target a design this instance never had, discarding data that load
+        // would otherwise have correctly delivered.
         return currentState;
       }
+
+      // Bump the generation only when the patch genuinely changes local state, so any reload
+      // already in flight (started before this patch, carrying an older captured generation) is
+      // discarded on arrival instead of overwriting this patch with stale data — a reload started
+      // after this patch still gets its own fresh generation and is honored normally as a
+      // legitimate newer confirmation read.
+      generationRef.current += 1;
 
       const nextDesigns = currentState.designs.slice();
       nextDesigns[index] = { ...nextDesigns[index], ...patch };

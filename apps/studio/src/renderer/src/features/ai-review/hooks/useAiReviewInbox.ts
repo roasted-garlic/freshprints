@@ -32,6 +32,7 @@ import {
 import { filterDesignsByAiReviewStatus } from "../../designs/utils/designLibrarySearch";
 import { useDesigns } from "../../designs/hooks/useDesigns";
 import { subscribeToBackgroundAiQueue } from "../../imports/services/importAiBackgroundQueue";
+import { reconcileBackgroundAiQueueEvent } from "../utils/backgroundAiQueueReconciliation";
 import { useAiProcessingQueue } from "./useAiProcessingQueue";
 import {
   addApprovedSuggestedTagToDraftTags,
@@ -350,22 +351,48 @@ export function useAiReviewInbox(
     }
   }, [filters.tab, liveDesign, options, reloadDesigns]);
 
-  // Owner QA Amendment 3, Failure 1: the import background AI pump processes designs strictly
-  // one at a time but was detached from this view, so Processing stayed at its initial count and
-  // then jumped straight to zero. Reconcile once per design as each terminal transition lands, so
-  // the visible sequence is 3 -> 2 -> 1 -> 0. Bounded: a plain in-process callback tied to the
-  // existing sequential pump — no Firestore listener, no polling, no extra reads, and no change to
-  // the one-at-a-time execution model.
+  // Owner QA Amendment 3, Failure 1 (initial fix) found that the background AI pump was
+  // detached from this view. Owner QA Amendment 4 found that the Amendment 3 fix — an
+  // unconditional reloadDesigns() per terminal event — was itself the source of a worse defect:
+  // three designs completing in quick succession fired three independent, ungated reloads. Since
+  // loadDesigns() had no protection against a same-query race (only a different-query guard),
+  // an earlier-started-but-later-resolving read could overwrite state a later-started read (or
+  // this hook's own patch) had already correctly updated — visibly regressing progress and
+  // stalling the visible 3 -> 2 -> 1 -> 0 sequence into "stuck, then all disappear together."
+  //
+  // Fix: apply the enqueue result's own terminal fields as a local patch, by design ID, the
+  // moment each design's own transition lands — the same authoritative-response pattern already
+  // used for the manual/auto-queue paths (buildDesignPatchFromEnqueueResult). No reload is the
+  // primary reconciliation mechanism; a design leaves Processing immediately because this hook's
+  // own `designs` memo already re-filters by aiReviewStatus on every render. If the currently
+  // selected design is the one that just completed, capture its index before patching so the
+  // existing pendingAdvanceIndexRef effect (used elsewhere for approve/reject) selects the next
+  // remaining design once `designs` recomputes — deterministic, not dependent on reload timing.
   useEffect(() => {
     if (filters.tab !== "processing") {
       return;
     }
 
-    return subscribeToBackgroundAiQueue(() => {
+    return subscribeToBackgroundAiQueue((event) => {
+      const reconciliation = reconcileBackgroundAiQueueEvent(event, designs, selectedDesignId);
+
+      if (reconciliation.patch) {
+        if (reconciliation.pendingAdvanceIndex !== null) {
+          pendingAdvanceIndexRef.current = reconciliation.pendingAdvanceIndex;
+        }
+
+        applyDesignPatch(event.designId, reconciliation.patch);
+        options?.onQueueChanged?.();
+        return;
+      }
+
+      // No usable patch (e.g. the enqueue call itself failed rather than completing) — fall
+      // back to a reload for this one event only, still gated by useDesigns' own generation
+      // guard against any other in-flight request.
       void reloadDesigns();
       options?.onQueueChanged?.();
     });
-  }, [filters.tab, options, reloadDesigns]);
+  }, [applyDesignPatch, designs, filters.tab, options, reloadDesigns, selectedDesignId]);
 
   useEffect(() => {
     if (isLoading || pendingAdvanceIndexRef.current === null) {

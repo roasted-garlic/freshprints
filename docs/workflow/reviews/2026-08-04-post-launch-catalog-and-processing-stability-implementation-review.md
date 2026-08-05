@@ -437,3 +437,88 @@ design validator's lack of a `hasOnly` restriction means this write path never d
 
 **Verdict:** approved. Dev-only backfill execution confirmed complete and correct. Production
 backfill remains its own separate, later human checkpoint.
+
+---
+
+# Owner QA Amendment 4 — Independent Implementation Review
+
+Reviewed the final diff (4 modified files, 2 new files) against the owner's exact reported
+reproduction, re-deriving correctness from the actual source rather than restating the fix's own
+design intent.
+
+## Root-cause confirmation
+
+Independently re-traced the call chain from the background-queue observer through to state commit,
+confirmed `useDesigns.loadDesigns()`'s **only** pre-fix staleness guard was the query-key check
+(`listQueryKeyRef.current !== requestQueryKey`) at all three commit points (`loadAll` branch, normal
+page branch, catch block) — genuinely no protection existed against two calls for the *same* query
+racing each other. Independently reproduced the exact overwrite mechanism in isolation (three
+synchronous reload calls, deliberately resolved out of order) before accepting the fix's own
+diagnosis, rather than trusting the Test Report's narrative. Confirmed the 3-step pipeline UI
+(`aiProcessingOutput.ts`'s `AI_PROCESSING_UI_PIPELINE_GROUPS`) has no local "high water mark" and
+is a pure function of whatever `aiProcessingStage` currently sits on the design — confirming the
+progress-regression symptom is the same stale-overwrite mechanism, not a second, independent bug.
+
+## Real defect found and fixed during this review
+
+**`applyDesignPatch`'s generation bump was unconditional**, even when the patch was a genuine no-op
+(design not found in the hook instance's current list — e.g. the initial mount load hadn't resolved
+yet, or the patch targeted a design belonging to a different tab/query). An unconditional bump would
+invalidate a real, still-in-flight load for no reason whenever this happened, discarding correct data
+that load would otherwise have delivered — a new, narrower version of the exact staleness class this
+whole fix exists to prevent. Confirmed reproducible: simulated the pre-fix (unconditional) bump
+against the same no-op scenario and confirmed a legitimate in-flight load was wrongly discarded
+(`applied: false` where `true` was correct).
+
+**Fix applied in this review pass:** moved the `generationRef.current += 1` bump inside the
+`setState` updater's "found" branch, strictly after the `index < 0` early-return, so the generation
+only advances when the patch actually changes local state. Added a new regression test
+(`backgroundAiQueueReconciliation.test.ts`, "a patch that targets a design not present in the list
+(no-op) does not invalidate a real, still-in-flight load") and a textual-ordering assertion
+confirming the bump is positioned after the early return, not before it. Updated the harness's
+`applyPatch` simulation to match (it had inherited the same unconditional-bump shape from the first
+draft of the source fix).
+
+**Verification after this fix:**
+- `npx tsc --noEmit` (Studio) — exit 0.
+- `npm run lint` — exit 0.
+- `npx tsx --test .../backgroundAiQueueReconciliation.test.ts` — **14/14 pass** (was 13/13 before
+  this review's fix + new test).
+- Combined AI Processing + designs focused regression (6 files) — **61/61 pass**.
+- Studio 3-target Vite build — exit 0.
+- `git diff --check` — exit 0.
+- Independently re-confirmed the fix is discriminating (not vacuous): simulated the pre-fix
+  unconditional-bump behavior against the exact same test scenario and confirmed it fails
+  (`applied: false`) where the corrected behavior passes (`applied: true`).
+
+## Other correctness checks performed (no further defect found)
+
+- Confirmed `designMatchesInboxTab`'s `"processing"` case (`status in [imported, processing] &&
+  aiReviewStatus === "pending"`) means a patch changing `aiReviewStatus` to `needs_review` is
+  sufficient, on its own, to remove a design from the Processing-tab-derived `designs` memo on the
+  next render — no explicit local-removal code was needed, and none was added. Verified by reading
+  `designMatchesInboxTab`'s and `filterDesignsByAiReviewStatus`'s actual bodies, not assumed.
+- Confirmed `reconcileBackgroundAiQueueEvent`'s `pendingAdvanceIndex` is computed from the **pre-
+  patch** `designs` array's index of the completed design, matching exactly how the pre-existing
+  `pendingAdvanceIndexRef` consumer effect (used elsewhere for approve/reject) expects to receive
+  it — re-read that consumer effect directly to confirm the contract, not inferred from its name.
+- Confirmed the background pump itself (`importAiBackgroundQueue.ts`) remains strictly sequential —
+  `git diff` shows the only change to `pumpBackgroundAiQueue` is capturing and forwarding the
+  existing `result` value; the `while` loop, the single `await`, and the absence of `Promise.all`
+  are all unchanged.
+- Confirmed the fallback-to-reload path (when `patchSource` yields no usable patch, e.g. a genuine
+  enqueue failure) is itself protected by the same generation guard — it calls the same
+  `reloadDesigns()` that now carries the fix, not a separate unguarded path.
+- Confirmed via `git diff --stat` that no file under `apps/studio/.../designs/utils/readyOrder*`,
+  `apps/studio/electron/services/import/normalizeImportOutputBytes.ts`, or any Functions/Rules/
+  index file appears anywhere in this amendment's diff — `readyAt` ordering and large-PNG
+  normalization are confirmed untouched, not merely asserted.
+
+## Verdict
+
+**approved_with_changes.** One real, narrower correctness gap (the unconditional generation bump on
+a no-op patch) was found during this review, fixed in the same pass per the governing instruction,
+reverified (typecheck, lint, targeted + combined test sweeps, Studio build, `git diff --check`, all
+green), and independently confirmed discriminating. No other defect was found. The core fix — patch-
+based reconciliation as the primary mechanism, generation-guarded reloads as the fallback — is
+confirmed correct against the owner's exact reported reproduction sequence.
