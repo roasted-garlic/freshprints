@@ -1,5 +1,73 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-08-04 - Post-launch catalog and processing stability: Amendments 2 and 3 plus a readyAt global-ordering correction complete; this pass re-verified everything live and closed two documentation gaps
+
+Continuation of the Amendment 1 entry immediately below, same branch (`fix/post-launch-catalog-
+and-processing-stability`, still no new branch or PR). This pass's own work was almost entirely
+independent re-verification of already-completed, already-pushed work (commits `7e5d4f4`, `13a1099`,
+`c031c01`) plus closing two gaps neither `state.md` nor this file had previously recorded.
+
+**Amendment 2** (owner QA on Amendment 1) fixed: a further AI-reconciliation gap in
+`useAiReviewInbox.ts`, and a missing pre-upload byte-size re-check in `importUploadService.ts`
+(`MAX_SINGLE_PNG_SIZE_BYTES`, reusing the existing constant and message formatter). Both minimal,
+no Rules/listener/read-cost change.
+
+**Amendment 3** (owner QA on Amendment 2) added: a strictly-sequential AI background processing
+queue (`importAiBackgroundQueue.ts`, one awaited `enqueueForProcessing` call per iteration, no
+`Promise.all`), server-side pixel normalization of oversized normalized import output
+(`normalizeImportOutputBytes.ts`, fits output to the existing Storage ceiling rather than raising
+it), and an initial `readyAt`-based Studio ordering (a design's most recent ready-transition time,
+distinct from `createdAt`).
+
+**Global-ordering follow-up (commit `c031c01`)** — a genuine defect Amendment 3 itself introduced,
+caught and fixed in the same overall pass: `readyAt` ordering had been implemented as a **page-local
+sort over a `createdAt`-ordered bounded page**, which cannot surface an old design re-approved
+today (it can fall entirely outside the fetched page). Corrected to a real server-side
+`where(status=="ready") orderBy(readyAt desc) orderBy(__name__ desc)` Firestore cursor query.
+Because `orderBy("readyAt")` silently omits any document missing that field, added a
+**completeness guard**: `listDesignsPage` compares the `readyAt`-ordered result's count against
+`countDesigns` and falls back to `createdAt` ordering (also on a missing-index error) whenever they
+disagree — Studio cannot silently hide legacy ready designs before a backfill runs. Archived browse
+deliberately stays on `createdAt` (`readyAt` is only ever written on the ready transition, so
+archived designs may lack it).
+
+**Two items independently, freshly verified in this pass against live `fresh-prints-dev` state —
+not merely restated from commit messages:**
+1. **The `firestore.rules` `readyAt` type-guard addition (`isOptionalTimestamp(data, "readyAt")`)
+   is committed to source but has NOT been deployed.** Confirmed via
+   `node functions/scripts/compare-deployed-firestore-rules.mjs`: the live ruleset
+   (`c3b89a7a-ae2a-4e0d-978e-c98c3e10991e`, created 2026-08-02) predates and does not contain this
+   line. Not a security gate either way — the design-document validator has no `hasOnly`
+   restriction, so `readyAt` writes already succeed today (merely unvalidated, not rejected).
+   Deploying this Rules change is a separate future checkpoint needing its own owner approval.
+2. **The 4 new `readyAt` composite indexes (added to `firestore.indexes.json` in the same
+   follow-up commit) ARE confirmed live** on `fresh-prints-dev`, verified directly via
+   `firebase firestore:indexes --project fresh-prints-dev`.
+3. **The `readyAt` backfill script (`functions/scripts/backfill-design-ready-at.mjs`) has not been
+   run anywhere.** Idempotent, dry-run-by-default, refuses non-dev projects without an explicit
+   override — but requires Application Default Credentials or an interactive terminal this
+   environment does not have. The completeness guard above keeps Studio correct in the meantime.
+
+**Full verification suite re-run fresh on current HEAD (`c031c01`) in this pass, not assumed from
+prior claims:** Functions build, Studio/Portal typecheck, Studio 3-target Vite build, repo lint,
+`git diff --check` — all exit 0. Full test sweep: Functions 522/524 pass, shared 857/858 pass,
+Studio 732/740 pass — the same 2 / 1 / 8 pre-existing, unrelated failures (respectively) that have
+been documented and unchanged across every pass of this entire managed goal; zero new failures.
+All 6 Functions from the original A–D deploy plus the 3 Amendment 1 trigger-timeout functions
+remain `ACTIVE` on `fresh-prints-dev` (function count unchanged at 109, directly re-confirmed).
+
+**No source or test change was made in this pass** — the prior Amendment 1–3 and follow-up work was
+already correct, complete, committed, and pushed. This pass's only durable output is the live-state
+verification above and closing the `state.md`/`CURRENT-STATE.md` documentation gap (neither
+previously mentioned Amendments 2, 3, or the follow-up correction).
+
+Reference docs (in addition to the Amendment 1 docs listed below):
+`docs/workflow/plans/2026-08-04-post-launch-catalog-and-processing-stability-owner-qa-amendment-2.md`,
+`docs/workflow/reviews/2026-08-04-post-launch-catalog-and-processing-stability-owner-qa-amendment-2-review.md`,
+`docs/workflow/reviews/2026-08-04-post-launch-catalog-and-processing-stability-implementation-review.md`
+(now includes Amendment 1, Amendment 2, and Amendment 3 sections plus the global-ordering
+follow-up correction, all appended to the same file).
+
 ## 2026-08-04 - Post-launch catalog and processing stability: Owner QA Amendment 1 complete (urgent ready-design-visibility fix)
 
 Continuation of the A–D pass immediately below, on the same branch/PR

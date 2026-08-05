@@ -21,37 +21,103 @@ Background (not active gate): Goal #13 / clean Studio remediation / Stage 2 rema
 
 **Separate concurrent managed goal (does not affect the gate above):**
 `post-launch-catalog-and-processing-stability` — original A–D pass complete, **plus Owner QA
-Amendment 1 complete (2026-08-04)**. Amendment fixed a confirmed, urgent production defect: ready/
-approved designs never appearing in Studio Design Library (owner-confirmed, repeated, not a
-fluke). Root cause: Studio's normal browse depended entirely on generated-snapshot publication,
-which itself was stalled by a debounce-claim/function-timeout interaction found via live
-`fresh-prints-dev` log inspection (18 consecutive stuck-claim events, zero actual publishes).
-Fixed by making bounded Firestore (`useDesigns`) the unconditional Studio design-list source, and
-by shrinking the publisher's debounce-claim liability window (`DEBOUNCE_MS + LEASE_MS` →
-`DEBOUNCE_MS + PUBLISH_ATTEMPT_MARGIN_MS`) plus explicit `timeoutSeconds: 300` on the three
-trigger functions. Also fixed: AI Processing "Start AI" staying disabled after successful
-single-image completion (missing `onQueueChanged` wiring + dangling selection on the manual/
-auto-queue paths — the original A–D fix only covered the rerun-from-inbox path), and a large
-(159MB) Studio import failing with a picker-provenance error (a single global, non-session-scoped
-Set in `importFileSession.ts` was unconditionally wiped on any re-registration, more likely to be
-hit during a large file's longer validate-to-upload window). Branch `fix/post-launch-catalog-and-
-processing-stability` (existing, unchanged — no new branch/PR per instruction). Deployed 3
-trigger functions to `fresh-prints-dev` (confirmed ACTIVE, `timeoutSeconds:300` confirmed live via
-logs). No Rules/index/Storage Rules/secret/production change. See:
+Amendments 1, 2, and 3 complete, plus a global-ordering follow-up correction to Amendment 3
+(2026-08-04)**. All work remains on the existing branch `fix/post-launch-catalog-and-processing-
+stability` — no new branch or PR at any point, matching every instruction across the whole managed
+goal. Latest commit `c031c01`; branch pushed and in sync with `origin` (0 ahead/0 behind, confirmed
+via `git rev-list`).
+
+**Amendment 1** fixed a confirmed, urgent production defect: ready/approved designs never
+appearing in Studio Design Library. Root cause: Studio's normal browse depended entirely on
+generated-snapshot publication, itself stalled by a debounce-claim/function-timeout interaction
+(found via live `fresh-prints-dev` log inspection — 18 consecutive stuck-claim events, zero actual
+publishes). Fixed by making bounded Firestore (`useDesigns`) the unconditional Studio design-list
+source, shrinking the publisher's debounce-claim liability window, and adding explicit
+`timeoutSeconds: 300` on the three trigger functions (confirmed genuinely live via
+`firebase functions:list --project fresh-prints-dev --json`, not merely asserted). Also fixed AI
+Processing's manual-process/auto-queue count/selection reconciliation gap and a large-import
+Storage picker-provenance failure.
+
+**Amendment 2** (owner QA on Amendment 1) fixed two further defects: an AI-reconciliation gap in
+`useAiReviewInbox.ts` and a missing pre-upload size re-check in `importUploadService.ts`. Both
+minimal, reusing existing constants/helpers; no Rules/listener/read-cost change.
+
+**Amendment 3** (owner QA on Amendment 2) added: a strictly-sequential AI background queue
+(replacing whatever concurrency existed before, per the queue-sequencing test), server-side pixel
+normalization for oversized normalized import output, and a first attempt at `readyAt`-based
+Studio ordering (a design's most-recent approval-to-`ready` transition, distinct from `createdAt`).
+
+**Global-ordering follow-up (commit `c031c01`)** corrected a defect Amendment 3 itself shipped:
+`readyAt` ordering was implemented as a **page-local sort over a `createdAt`-ordered bounded
+page**, which is structurally incapable of surfacing an old design re-approved today (it can fall
+outside the fetched page entirely). Corrected to a genuine server-side
+`where(status=="ready") orderBy(readyAt desc) orderBy(__name__ desc)` cursor query. Because
+`orderBy("readyAt")` silently omits any document missing that field, added a **completeness
+guard**: `listDesignsPage` compares the `readyAt`-ordered result's count against `countDesigns` and
+falls back to `createdAt` ordering (also on a missing-index error) whenever they disagree — so
+Studio cannot silently hide legacy ready designs before a backfill runs. Four `readyAt` composite
+indexes were added to `firestore.indexes.json` and **are confirmed live** on `fresh-prints-dev`
+(directly verified via `firebase firestore:indexes --project fresh-prints-dev`, not assumed from
+the commit message).
+
+**Two items from this pass remain genuinely open, verified directly against live state, not
+assumed from commit messages:**
+1. **`firestore.rules`'s `readyAt` type-guard change (adding `isOptionalTimestamp(data, "readyAt")`
+   to the design-document validator) exists only in source — it has NOT been deployed to
+   `fresh-prints-dev`.** Confirmed via `node functions/scripts/compare-deployed-firestore-rules.mjs`:
+   the deployed ruleset (`c3b89a7a-ae2a-4e0d-978e-c98c3e10991e`, created 2026-08-02) predates this
+   change and does not contain it. This is a tightening, not a gate — the design validator has no
+   `hasOnly` restriction, so `readyAt` writes already succeed today unvalidated (not rejected);
+   deploying this Rules change is a **separate future checkpoint requiring its own explicit owner
+   approval phrase**, not silently bundled into this goal's existing approval.
+2. **The `readyAt` backfill (`functions/scripts/backfill-design-ready-at.mjs`) has NOT been run
+   against `fresh-prints-dev` or any project.** The script is written, idempotent, dry-run-by-
+   default, and refuses any non-dev project without an explicit override — but it requires
+   Application Database Credentials or an interactive terminal this sandboxed environment does not
+   have. The completeness guard in item above means Studio remains functionally correct in the
+   interim (falls back to `createdAt` ordering for any design missing `readyAt`), but the intended
+   `readyAt`-first ordering will not take effect for pre-existing ready designs until an owner runs
+   this script once.
+
+See:
 `docs/workflow/plans/2026-08-04-post-launch-catalog-and-processing-stability-plan.md`,
 `docs/workflow/reviews/2026-08-04-post-launch-catalog-and-processing-stability-review.md`,
 `docs/workflow/plans/2026-08-04-post-launch-catalog-and-processing-stability-owner-qa-amendment-1.md`,
 `docs/workflow/reviews/2026-08-04-post-launch-catalog-and-processing-stability-owner-qa-amendment-1-review.md`,
+`docs/workflow/plans/2026-08-04-post-launch-catalog-and-processing-stability-owner-qa-amendment-2.md`,
+`docs/workflow/reviews/2026-08-04-post-launch-catalog-and-processing-stability-owner-qa-amendment-2-review.md`,
 `docs/workflow/reviews/2026-08-04-post-launch-catalog-and-processing-stability-test-report.md`,
 `docs/workflow/reviews/2026-08-04-post-launch-catalog-and-processing-stability-implementation-review.md`
-(includes the appended Amendment 1 Implementation Review section).
-Owner follow-up required: the compact 3-approval Studio-visibility + Portal-publication QA
-checklist (Test Report §15.3) — could not be run live in this environment (no interactive Studio
-session, no Application Default Credentials); original A–D Workstream E reproduction remains
-outstanding for the same reason; one live Firestore-document check for Workstream A's archive
-write remains outstanding.
+(includes appended Amendment 1, Amendment 2, and Amendment 3 Implementation Review sections, plus
+the global-ordering follow-up correction).
+
+**Full verification suite reconfirmed clean on current HEAD (`c031c01`) during this pass**: Functions
+build, Studio/Portal typecheck, Studio 3-target Vite build, repo lint, `git diff --check` — all exit
+0. Full test sweep: Functions 522/524 (2 pre-existing unrelated failures, unchanged from every prior
+pass in this goal), shared 857/858 (1 pre-existing unrelated failure, unchanged), Studio 732/740 (8
+pre-existing unrelated failures, unchanged) — zero new failures anywhere across the whole goal's
+history. All 6 originally-deployed Functions plus the 3 Amendment 1 trigger-timeout functions remain
+`ACTIVE` on `fresh-prints-dev` (function count unchanged at 109).
+
+Owner follow-up required (in addition to the two open items above): the compact 3-approval
+Studio-visibility + Portal-publication QA checklist (Test Report §15.3); original A–D Workstream E
+(Studio upload authorization) reproduction; one live Firestore-document check for Workstream A's
+archive write — none of these could be run live in this environment (no interactive Studio session,
+no Application Default Credentials for scripted checks beyond read-only CLI operations).
 
 Decision Log:
+- 2026-08-04 — `post-launch-catalog-and-processing-stability`: reconfirmed the full Amendment 1–3 +
+  global-ordering-follow-up state already committed and pushed on `fix/post-launch-catalog-and-
+  processing-stability` (commit `c031c01`, 0 ahead/0 behind `origin`). Re-ran the complete
+  verification suite fresh on current HEAD (build/typecheck/lint/tests/diff-check, all green, same
+  pre-existing unrelated failures as every prior pass) rather than trusting prior claims. Directly
+  verified two live-state facts that were not previously confirmed against `fresh-prints-dev`
+  itself: (1) the `readyAt` Firestore Rules type-guard exists only in source, never deployed
+  (confirmed via `compare-deployed-firestore-rules.mjs` against the live ruleset); (2) the 4
+  `readyAt` composite indexes ARE live (confirmed via `firebase firestore:indexes`). Recorded both
+  findings here since neither state.md nor CURRENT-STATE.md previously reflected work past
+  Amendment 1. No source change was required in this pass — the prior Amendment 1–3 and
+  follow-up work was already correct and complete.
 - 2026-08-04 — `post-launch-catalog-and-processing-stability` Owner QA Amendment 1: fixed the
   confirmed, urgent ready-design-invisibility defect by making bounded Firestore (`useDesigns`)
   the unconditional Studio Design Library design-list source (previously gated entirely behind a

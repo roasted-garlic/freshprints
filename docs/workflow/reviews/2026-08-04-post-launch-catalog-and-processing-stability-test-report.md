@@ -341,3 +341,77 @@ See Amendment 2 Plan/Review for root causes. Summary: Defect A (backend-initiate
 **Dev deploy:** `firestore:indexes` (adds `designs: status ASC, readyAt DESC, __name__ DESC`, confirmed live) and Functions `rebuildCatalogSnapshots`, `retryPortalCatalogPublication`, `onCategorySnapshotSourceWritten`, `onTagSnapshotSourceWritten`, `onPortalCatalogSnapshotSourceWritten` — all successful on `fresh-prints-dev`. No Rules deployed, no production action.
 
 **Future production checkpoint (prepared, not executed):** deploy the same index to `fresh-prints-prod`, then optionally backfill `readyAt` for legacy ready designs and retire the `createdAt` fallback. Until backfilled, the bounded Firestore query intentionally still orders by `createdAt` (a Firestore `orderBy("readyAt")` would silently exclude legacy documents); ready-transition order is applied over the bounded page.
+
+---
+
+## 18. Global-ordering follow-up correction (commit `c031c01`) — Test Report addendum
+
+**Defect found in Amendment 3's own shipped fix:** the note directly above ("ready-transition order
+is applied over the bounded page") was the defect. `readyAt` ordering had been implemented as a
+**page-local sort** — fetch one bounded page in `createdAt` order, then re-sort just that page by
+`readyAt`. This is structurally incapable of surfacing a design that was re-approved (ready-
+transition bumped) after the page it belongs to (by `createdAt`) had already been paginated past.
+An old design reapproved today could never reach the top of a page-local sort, because it was never
+fetched into that page at all.
+
+**Fix:** replaced the page-local sort with a genuine server-side Firestore query:
+`where(status == "ready") orderBy(readyAt, desc) orderBy(__name__, desc)`, using the existing cursor
+pagination shape. `DESIGN_LIBRARY_DEFAULT_SORT_FIELD` is now `readyAt`; a new
+`DESIGN_LIBRARY_ARCHIVED_SORT_FIELD` keeps archived browse on `createdAt` (archived designs may
+never have received a `readyAt` stamp). `getDesignSortMillis`/`getDesignSortValue` resolve `readyAt`
+with a `createdAt` fallback so client-side cursor values mirror what Firestore itself ordered by.
+Removed the now-incorrect page-local `sortReadyDesigns` call from `DesignLibraryPage.tsx`. Portal's
+generated-catalog sorting was already `readyAtMs`-with-`createdAtMs`-fallback and required no change.
+
+**Completeness guard (new, added specifically to prevent a silent regression during the pre-backfill
+window):** Firestore's `orderBy("readyAt")` silently omits any document that lacks the field
+entirely — before a backfill runs, this would *hide* every legacy ready design from Studio, a worse
+outcome than the page-local bug it replaces. `listDesignsPage` now runs the `readyAt`-ordered query
+and independently compares its result count against `countDesigns`'s exact count for the same
+filter; if they disagree (or the query itself fails with a missing-index error), it transparently
+falls back to the already-proven `createdAt`-ordered query for that same page request. Once the
+backfill has run, the counts agree and the fallback never triggers.
+
+**Indexes (dev only):** added and deployed all four `readyAt` composite-index variants needed to
+match every existing `createdAt` variant (`status`; `categoryId+status`; `tags+status`;
+`categoryId+tags+status`; each `+readyAt DESC +__name__ DESC`) — no filtered Design Library query
+shape can hit a missing index. **Independently re-verified live in this pass** via
+`firebase firestore:indexes --project fresh-prints-dev` (not merely re-stated from the commit
+message) — all 4 confirmed present.
+
+**Backfill: written, NOT executed, genuinely blocked.**
+`functions/scripts/backfill-design-ready-at.mjs` is idempotent, dry-run-by-default, and refuses any
+non-dev project without an explicit override. It could not be run in this environment: no
+Application Default Credentials are configured (`firebase login:application-default` is not a
+command in the installed CLI version; no `gcloud`; no service-account key), and there is no
+interactive terminal available to run one. **This is a required owner action, not an optional
+follow-up** — until it runs, any pre-existing ready design that predates the `readyAt` field will be
+served via the `createdAt` fallback (correct, but not in the intended `readyAt`-first order) rather
+than by its actual most-recent-approval time.
+
+**Rules: written, NOT deployed, independently re-verified in this pass.** The same commit added
+`isOptionalTimestamp(data, "readyAt")` to the design-document validator in `firestore.rules`. This
+pass ran `node functions/scripts/compare-deployed-firestore-rules.mjs` against `fresh-prints-dev`
+and confirmed the live ruleset (`c3b89a7a-ae2a-4e0d-978e-c98c3e10991e`, created 2026-08-02) predates
+this change and does not contain it. Confirmed via direct inspection of the design validator that it
+has no `hasOnly` restriction, so this is a tightening (adds type validation), not a gate — `readyAt`
+writes already succeed today without it, merely unvalidated. Deploying this Rules change requires
+its own separate owner approval and is not bundled into any approval already granted for this goal.
+
+**Tests:** `readyOrderPagination.test.ts` (8/8, new) is the required failing-before/passing-after
+pair — proves a `createdAt`-ordered page provably excludes a reapproved design and that no
+page-local sort can recover it, while the corrected `readyAt`-ordered query surfaces it first;
+includes tie-breaking and gap-free-pagination coverage. `readyOrder.test.ts` (updated) and
+`studioDesignLibraryNewestFirst.test.ts` (updated) had their "never `updatedAt`" invariant assertions
+adjusted to assert `readyAt` (their original protective intent is unchanged, only the expected field
+name). Combined Studio regression: 337/337 pass (per the commit). **Independently re-run fresh in
+this pass** (not merely re-stated): full Studio sweep 732/740 pass, full Functions sweep 522/524
+pass, full shared sweep 857/858 pass — the same pre-existing, unrelated failures documented
+throughout this entire managed goal, zero new failures.
+
+**Builds (independently re-run fresh in this pass):** Functions build, Studio typecheck, Portal
+typecheck, Studio 3-target Vite build, repo lint, `git diff --check` — all exit 0.
+
+**No new Functions deploy was required or performed for this correction** — it is a Studio-client
+query change plus an index addition (already deployed per the commit) and a Rules change (not yet
+deployed, see above). No production action of any kind occurred.
