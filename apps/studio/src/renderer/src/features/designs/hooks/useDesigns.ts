@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { traceAiQueueEvent } from "@fresh-prints/shared/utils/aiQueueTrace";
+import { traceAiQueueEvent } from "../../../config/aiQueueTraceClient";
 
 import { useAuth } from "../../auth/hooks/useAuth";
 import { permissionService } from "../../permissions/services/permissionService";

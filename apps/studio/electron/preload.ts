@@ -113,6 +113,11 @@ import {
   FIREBASE_DEBUG_IPC_CHANNELS,
   isAllowedFirebaseDebugIpcChannel,
 } from "./ipc/firebaseDebug/firebaseDebugIpcChannels";
+import type { AiQueueTraceEventInput, AiQueueTraceSnapshot } from "@fresh-prints/shared/utils/aiQueueTrace";
+import {
+  AI_QUEUE_TRACE_IPC_CHANNELS,
+  isAllowedAiQueueTraceIpcChannel,
+} from "./ipc/aiQueueTrace/aiQueueTraceIpcChannels";
 import type {
   ClearGangSheetCacheRequest,
   DownloadCachedGangSheetRequest,
@@ -312,6 +317,23 @@ contextBridge.exposeInMainWorld("freshPrints", {
     },
     close(): void {
       ipcRenderer.send(FIREBASE_DEBUG_IPC_CHANNELS.CLOSE);
+    },
+  },
+
+  aiQueueTrace: {
+    append(event: AiQueueTraceEventInput): void {
+      if (!isAllowedAiQueueTraceIpcChannel(AI_QUEUE_TRACE_IPC_CHANNELS.APPEND)) return;
+      ipcRenderer.send(AI_QUEUE_TRACE_IPC_CHANNELS.APPEND, event);
+    },
+    getSnapshot(): Promise<AiQueueTraceSnapshot> {
+      return ipcRenderer.invoke(AI_QUEUE_TRACE_IPC_CHANNELS.GET_SNAPSHOT);
+    },
+    reset(): void {
+      if (!isAllowedAiQueueTraceIpcChannel(AI_QUEUE_TRACE_IPC_CHANNELS.RESET)) return;
+      ipcRenderer.send(AI_QUEUE_TRACE_IPC_CHANNELS.RESET);
+    },
+    isEnabled(): Promise<boolean> {
+      return ipcRenderer.invoke(AI_QUEUE_TRACE_IPC_CHANNELS.IS_ENABLED);
     },
   },
 

@@ -31,7 +31,7 @@ import {
 } from "../utils/aiReviewInboxEligibility";
 import { filterDesignsByAiReviewStatus } from "../../designs/utils/designLibrarySearch";
 import { useDesigns } from "../../designs/hooks/useDesigns";
-import { traceAiQueueEvent } from "@fresh-prints/shared/utils/aiQueueTrace";
+import { traceAiQueueEvent } from "../../../config/aiQueueTraceClient";
 import {
   getActiveBackgroundAiDesignId,
   hasPendingBackgroundAiWork,

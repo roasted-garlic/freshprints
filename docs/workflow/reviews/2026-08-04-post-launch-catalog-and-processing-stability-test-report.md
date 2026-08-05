@@ -699,3 +699,118 @@ the Owner QA Amendment 5 Review document).
 large-PNG normalization implementation are confirmed byte-for-byte unchanged (`git diff` shows zero
 hunks in `apps/studio/.../designs/utils/readyOrder*`,
 `apps/studio/electron/services/import/normalizeImportOutputBytes.ts`, or any `functions/` file).
+
+## 22. Owner QA Amendment 6 — Runtime trace, then cross-window transport fix (Test Report addendum)
+
+### 22.1 Amendment 6, first pass (commit `8e2f6a2`) — instrumentation only
+
+Owner reproduction after Amendment 5 still showed AI Processing failing (Processing count varying
+by mount timing, the active design flickering as if removed, the list/count freezing, then all
+designs disappearing at once on a later reload) — this **disproved Amendment 5's conclusion** that
+the client/server callable timeout mismatch was the primary cause (the fix was kept, as it is a
+real, independently-verified issue, just not the whole story). Per the task's explicit instruction,
+no further behavioral fix was attempted in this pass; instead a dev-only, bounded (max 1,000
+events), field-allowlisted runtime trace (`packages/shared/src/utils/aiQueueTrace.ts`) was added
+and wired into `importAiBackgroundQueue.ts`, `useAiReviewInbox.ts`, and `useDesigns.ts`, with a
+"Copy AI Queue Trace" / "Reset AI Queue Trace" action added to the Firebase Debug panel. Self-review
+during this pass caught and fixed a `setState`-updater-purity bug (trace calls were originally
+inside `setState` updaters in `useDesigns.ts`, which React 18 StrictMode double-invokes in
+development — moved outside the updaters via a read-only `designsMirrorRef`).
+
+### 22.2 Amendment 6 follow-up — the instrumentation itself was broken (this addendum)
+
+Owner reproduction of the Amendment 6 instrumentation returned
+`{"enabled": false, "eventCount": 0, "events": []}` from the Firebase Debug panel for both a
+mid-run and a final copy. Per the task's explicit instruction, AI queue behavior was not
+investigated or modified in this pass — only the trace transport.
+
+**Confirmed reason tracing was disabled.** `openFirebaseDebugWindow()` (`firebaseDebugWindowService.ts`)
+opens the Firebase Debug panel as a genuinely separate Electron `BrowserWindow`
+(`firebaseDebugIpcHandlers.ts`'s `new BrowserWindow({...})`), with its own independent renderer
+process and JS module scope. The original `aiQueueTrace.ts` stored `enabled`/`events` as plain
+module-level variables. Each renderer (the main Studio window and the Debug window) therefore
+imported its **own independent copy** of that state — writes from the Studio window's renderer
+(where `traceAiQueueEvent` calls actually happen) never reached the Debug window's renderer (where
+`getAiQueueTraceSnapshot`/`resetAiQueueTrace` were being called), and
+`FirebaseDebugPanelMount.tsx`'s renderer-side `setAiQueueTraceEnabled(isEnabled)` call only ever
+enabled the Debug window's own disconnected copy — never the Studio window's. This matches exactly
+the failure the owner reported: always `enabled: false, eventCount: 0` from the Debug window, no
+matter what happened in the app.
+
+**Final shared transport/store.** `aiQueueTrace.ts` was refactored from module-level functions into
+a pure, environment-agnostic `AiQueueTraceStore` class (same allowlist, same 1,000-event bound, same
+sanitize logic — unchanged). Exactly one instance of this class now lives in the Electron **main**
+process, constructed once at module scope in the new
+`apps/studio/electron/ipc/aiQueueTrace/aiQueueTraceIpcHandlers.ts` (mirroring the existing
+`firebaseDebugIpcHandlers.ts`'s `latestSnapshot`/`debugWindowLifecycle` precedent exactly). Four IPC
+channels (`ai-queue-trace:append`, `:get-snapshot`, `:reset`, `:is-enabled`) are registered via
+`registerAiQueueTraceIpcHandlers`, called once from `apps/studio/electron/main.ts` inside
+`app.whenReady().then(...)`. The preload script (`apps/studio/electron/preload.ts`) exposes a
+`window.freshPrints.aiQueueTrace` bridge with the same four methods over
+`ipcRenderer.send`/`ipcRenderer.invoke`. Because both the main Studio window and the Debug window
+load the **same** preload script, both get the same bridge into the **same** main-process store —
+there is no second instance anywhere. A new renderer-side thin client
+(`apps/studio/src/renderer/src/config/aiQueueTraceClient.ts`) is the only file any renderer code
+imports from; all four instrumented call sites
+(`importAiBackgroundQueue.ts`, `useAiReviewInbox.ts`, `useDesigns.ts`,
+`FirebaseDebugPanel.tsx`) were repointed from the old direct shared-package import to this client.
+No Firestore, Storage, localStorage, disk file, or new backend service is used.
+
+**Where enable gating occurs.** `registerAiQueueTraceIpcHandlers` calls
+`store.setEnabled(!options.isPackaged())` exactly once, at registration time, in the main process
+only — confirmed by a test asserting `store.setEnabled(` appears exactly once in the handler
+module's source. `FirebaseDebugPanelMount.tsx`'s renderer-side enable call was removed entirely (the
+defect's root cause); neither renderer can enable or disable the store. Every handler
+(`APPEND`/`GET_SNAPSHOT`/`RESET`/`IS_ENABLED`) additionally short-circuits per-call when
+`options.isPackaged()` is true, so a production build gets an inert `{enabled: false, eventCount: 0,
+events: []}` snapshot and never mutates the store even if IPC glue were somehow reachable — no trace
+code path can affect a packaged build.
+
+**Proof a main-renderer event is visible in the Debug window.** No live Electron process is
+available in this environment (consistent with every prior amendment in this managed goal), so this
+is proven from source plus a same-instance IPC simulation test rather than a real two-window run —
+the same proof style already established for the sibling `firebaseDebug` feature in this codebase.
+The new test `"simulated writer (Studio window) and reader (Debug window) IPC calls observe the
+same store"` (`packages/shared/src/utils/aiQueueTrace.test.ts`) enables the one real store instance
+exactly as `registerAiQueueTraceIpcHandlers` does, appends an event the way the Studio-window
+`append()` → `ipcRenderer.send` → `ipcMain.on` path ultimately would, then reads it back the way the
+Debug-window `getSnapshot()` → `ipcRenderer.invoke` → `ipcMain.handle` path ultimately would —
+confirming `enabled: true` and the appended event are visible, that `reset()` clears what was
+written, and that a write after reset remains visible (proving closing/reopening the Debug window
+cannot lose events from the active Studio session, since the store's lifetime is tied to the main
+process, not to either renderer window).
+
+### 22.3 Tests and results
+
+| Command | Result |
+|---|---|
+| `npx tsx --test packages/shared/src/utils/aiQueueTrace.test.ts` | **19/19 pass** (rewritten for the `AiQueueTraceStore` class API; includes 7 new cross-window/IPC regression tests) |
+| Studio typecheck (`npx tsc --noEmit`) | exit 0 |
+| Studio 3-target Vite build (renderer/main/preload) | exit 0, no new build warning |
+| `npm run lint` | exit 0 |
+| `git diff --check` | exit 0 (CRLF-on-checkout warnings only, pre-existing repo line-ending config, not whitespace errors) |
+
+### 22.4 Files changed (this follow-up)
+
+- `packages/shared/src/utils/aiQueueTrace.ts` (rewritten: module-level functions → `AiQueueTraceStore` class)
+- `packages/shared/src/utils/aiQueueTrace.test.ts` (rewritten for the class API; added cross-window/IPC regression tests)
+- `packages/shared/src/types/aiQueueTrace/aiQueueTraceIpc.types.ts` (new)
+- `packages/shared/src/types/import/importIpc.types.ts` (modified — added `aiQueueTrace` field to `FreshPrintsPreloadApi`)
+- `apps/studio/electron/ipc/aiQueueTrace/aiQueueTraceIpcChannels.ts` (new)
+- `apps/studio/electron/ipc/aiQueueTrace/aiQueueTraceIpcHandlers.ts` (new — the one real store instance)
+- `apps/studio/electron/main.ts` (modified — registers the new IPC handlers once, alongside `registerFirebaseDebugIpcHandlers`)
+- `apps/studio/electron/preload.ts` (modified — exposes `window.freshPrints.aiQueueTrace`)
+- `apps/studio/src/renderer/src/config/aiQueueTraceClient.ts` (new — the only renderer-side import point)
+- `apps/studio/src/renderer/src/features/firebase-debug/components/FirebaseDebugPanelMount.tsx` (modified — removed the renderer-side enable effect that was the root cause)
+- `apps/studio/src/renderer/src/features/firebase-debug/components/FirebaseDebugPanel.tsx` (modified — import swapped to the IPC client; `handleCopyAiQueueTrace` now awaits the async `getSnapshot()`)
+- `apps/studio/src/renderer/src/features/imports/services/importAiBackgroundQueue.ts` (modified — import swapped)
+- `apps/studio/src/renderer/src/features/ai-review/hooks/useAiReviewInbox.ts` (modified — import swapped)
+- `apps/studio/src/renderer/src/features/designs/hooks/useDesigns.ts` (modified — import swapped; unrelated Amendment 6 `designsMirrorRef` purity fix retained)
+
+**No AI queue behavior, Firebase project, or production action was touched or performed.** This
+pass is transport-only: the trace's enable gate, field allowlist, 1,000-event bound, and every
+instrumented call site's position in the existing control flow are unchanged from Amendment 6's
+first pass — confirmed by the unmodified subset of tests in §22.3's test file (the pre-existing
+safety-contract tests from the first pass all still pass unchanged) and by `git diff` showing zero
+hunks in `importAiBackgroundQueue.ts`, `useAiReviewInbox.ts`, or `useDesigns.ts` outside of their
+one-line import statements.

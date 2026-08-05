@@ -106,6 +106,26 @@ archive write — none of these could be run live in this environment (no intera
 no Application Default Credentials for scripted checks beyond read-only CLI operations).
 
 Decision Log:
+- 2026-08-05 — `post-launch-catalog-and-processing-stability` Owner QA Amendment 6 follow-up: the
+  Amendment 6 dev-only AI queue runtime trace (commit `8e2f6a2`) was itself non-functional — owner
+  reproduction returned `enabled: false, eventCount: 0` from the Firebase Debug panel every time.
+  Root cause confirmed via source tracing (no live Electron process available in this environment):
+  the Debug panel opens as a genuinely separate Electron `BrowserWindow`/renderer process
+  (`firebaseDebugIpcHandlers.ts`), so the original `aiQueueTrace.ts` module-level store gave each
+  renderer its own disconnected copy — writes from the Studio window's renderer never reached the
+  Debug window's renderer. Fixed per the required architecture: `aiQueueTrace.ts` refactored into a
+  pure `AiQueueTraceStore` class; exactly one instance now lives in the Electron main process
+  (`apps/studio/electron/ipc/aiQueueTrace/aiQueueTraceIpcHandlers.ts`), registered once from
+  `main.ts`, gated `!app.isPackaged` exactly once at registration (never per-renderer, never in a
+  packaged build); both the Studio window and the Debug window reach it through the same
+  preload-exposed `window.freshPrints.aiQueueTrace` IPC bridge, mirroring the existing
+  `firebaseDebug` feature's precedent exactly. Same 1,000-event bound, same field allowlist, no
+  Firestore/Storage/localStorage/disk/new backend — transport only, zero AI queue behavior change.
+  Added the required cross-window/IPC regression tests (7 new, proving writer and reader observe
+  the same store instance). Full verification suite green: focused trace tests 19/19, Studio
+  typecheck exit 0, Studio 3-target build exit 0, repo lint exit 0, `git diff --check` exit 0. See
+  `docs/workflow/reviews/2026-08-04-post-launch-catalog-and-processing-stability-test-report.md`
+  §22 for full detail. No Firebase, AI queue behavior, or production action was taken.
 - 2026-08-04 — `post-launch-catalog-and-processing-stability`: reconfirmed the full Amendment 1–3 +
   global-ordering-follow-up state already committed and pushed on `fix/post-launch-catalog-and-
   processing-stability` (commit `c031c01`, 0 ahead/0 behind `origin`). Re-ran the complete

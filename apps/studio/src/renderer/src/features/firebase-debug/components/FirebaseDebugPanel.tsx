@@ -21,7 +21,7 @@ import {
 import {
   getAiQueueTraceSnapshot,
   resetAiQueueTrace,
-} from "@fresh-prints/shared/utils/aiQueueTrace";
+} from "../../../config/aiQueueTraceClient";
 
 import { firebaseConfig } from "../../../config/env";
 
@@ -244,7 +244,8 @@ export function FirebaseDebugPanel({
   // bucket membership, counts, stages, request generations). Deliberately separate from the
   // Firestore debug report above — different schema, different question.
   const handleCopyAiQueueTrace = async () => {
-    await navigator.clipboard.writeText(JSON.stringify(getAiQueueTraceSnapshot(), null, 2));
+    const snapshot = await getAiQueueTraceSnapshot();
+    await navigator.clipboard.writeText(JSON.stringify(snapshot, null, 2));
     setAiQueueCopyStatus("copied");
     window.setTimeout(() => setAiQueueCopyStatus("idle"), 2000);
   };

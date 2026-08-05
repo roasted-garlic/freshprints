@@ -1,5 +1,50 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-08-05 - Post-launch catalog and processing stability: Owner QA Amendment 6 follow-up — AI queue trace cross-window transport fixed
+
+Same branch throughout (`fix/post-launch-catalog-and-processing-stability`, still no new branch or
+PR, still no merge). Amendments 4 and 5 (races/timeout fixes) and Amendment 6's first pass (a
+dev-only AI Processing queue runtime trace, commit `8e2f6a2`) are covered by the state.md Decision
+Log and Test Report §20–21; this entry covers the follow-up correction to Amendment 6's
+instrumentation itself.
+
+**The problem:** the owner's reproduction of the Amendment 6 trace returned
+`{"enabled": false, "eventCount": 0, "events": []}` from the Firebase Debug panel's "Copy AI Queue
+Trace" action, every time — the diagnostic itself was broken, separate from whatever the real AI
+Processing defect turns out to be. Per instruction, AI queue behavior was **not** touched in this
+pass — only the trace's transport.
+
+**Root cause (confirmed via source tracing, no live Electron process available in this
+environment):** the Firebase Debug panel opens as a genuinely separate Electron `BrowserWindow`
+with its own independent renderer process. The original trace collector
+(`packages/shared/src/utils/aiQueueTrace.ts`) stored its state as plain module-level variables, so
+each renderer process (the main Studio window vs. the Debug window) got its **own disconnected
+copy** — events written from the Studio window's renderer (where AI Processing actually happens)
+never reached the Debug window's renderer (where Copy/Reset were being called), and the Debug
+window's own renderer-side enable call only ever turned on its own copy.
+
+**Fix:** refactored the collector into a pure `AiQueueTraceStore` class; exactly one instance now
+lives in the Electron **main** process
+(`apps/studio/electron/ipc/aiQueueTrace/aiQueueTraceIpcHandlers.ts`), registered once from
+`main.ts`, gated `!app.isPackaged` exactly once at registration time (never per-renderer, never in
+a packaged build). Both renderer windows reach the one store through the same preload-exposed
+`window.freshPrints.aiQueueTrace` IPC bridge — the same pattern this codebase already uses for the
+sibling `firebaseDebug` cross-window feature. Same 1,000-event bound, same strict field allowlist,
+still no Firestore/Storage/localStorage/disk file/new backend service. Added 7 new cross-window/IPC
+regression tests proving the writer (Studio window) and reader (Debug window) observe the same
+store instance, including that a reset from one side is visible from the other and that a later
+write after reset remains visible (proving closing/reopening the Debug window cannot lose events
+from an active Studio session).
+
+**Verification:** focused trace tests 19/19 pass, Studio typecheck exit 0, Studio 3-target Vite
+build (renderer/main/preload) exit 0, repo lint exit 0, `git diff --check` exit 0 (CRLF-on-checkout
+warnings only). Full detail in
+`docs/workflow/reviews/2026-08-04-post-launch-catalog-and-processing-stability-test-report.md` §22.
+
+No Firebase project action, AI queue behavior change, or production action was taken in this pass.
+The real AI Processing defect this trace exists to diagnose is still open — the owner needs to
+reproduce again with the now-working trace and copy the result before root cause can be identified.
+
 ## 2026-08-04 - Post-launch catalog and processing stability: Amendments 2 and 3 plus a readyAt global-ordering correction complete; this pass re-verified everything live and closed two documentation gaps
 
 Continuation of the Amendment 1 entry immediately below, same branch (`fix/post-launch-catalog-

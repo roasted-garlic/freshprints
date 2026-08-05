@@ -1,6 +1,6 @@
 import { aiEnrichmentEnqueueService } from "../../ai-review/services/aiEnrichmentEnqueueService";
 import { logPipelineEvent } from "../../../shared/utils/pipelineLog";
-import { traceAiQueueEvent } from "@fresh-prints/shared/utils/aiQueueTrace";
+import { traceAiQueueEvent } from "../../../config/aiQueueTraceClient";
 
 /**
  * Session-scoped sequential AI enqueue for Studio import.

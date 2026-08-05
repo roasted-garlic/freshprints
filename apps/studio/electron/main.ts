@@ -19,6 +19,7 @@ import {
   closeFirebaseDebugWindow,
   registerFirebaseDebugIpcHandlers,
 } from './ipc/firebaseDebug/firebaseDebugIpcHandlers'
+import { registerAiQueueTraceIpcHandlers } from './ipc/aiQueueTrace/aiQueueTraceIpcHandlers'
 import { registerExportIpcHandlers } from './ipc/export/exportIpcHandlers'
 import { registerImportIpcHandlers } from './ipc/import/importIpcHandlers'
 import { registerInboxAlertIpcHandlers } from './ipc/inboxAlert/inboxAlertIpcHandlers'
@@ -311,6 +312,9 @@ app.whenReady().then(() => {
     getPreloadPath: () => path.join(__dirname, 'preload.mjs'),
     getRendererDist: () => RENDERER_DIST,
     getDevServerUrl: () => VITE_DEV_SERVER_URL,
+    isPackaged: () => app.isPackaged,
+  })
+  registerAiQueueTraceIpcHandlers({
     isPackaged: () => app.isPackaged,
   })
   registerImportIpcHandlers()
