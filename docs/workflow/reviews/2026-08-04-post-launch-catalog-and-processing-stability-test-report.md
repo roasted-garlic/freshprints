@@ -606,3 +606,96 @@ confirm the fix targets the actual cause, not a plausible-sounding alternative.
 performed. `readyAt` ordering and the large-PNG normalization implementation are confirmed
 byte-for-byte unchanged (`git diff` shows zero hunks in any file under
 `apps/studio/.../designs/utils/readyOrder*` or `apps/studio/electron/services/import/normalizeImportOutputBytes.ts`).
+
+---
+
+## 21. Owner QA Amendment 5 — AI Processing still froze after Amendment 4 (Test Report addendum)
+
+### 21.1 Critical architecture correction
+
+The task brief for this amendment assumed `enqueueAiEnrichment` writes a queued state and an async
+Firestore trigger (`onDesignAiEnrichmentQueued`) later performs the Gemini pipeline. **This is not
+the deployed architecture.** Confirmed directly from source, not assumed: `functions/src/index.ts:63`
+exports only `enqueueAiEnrichment`; a repo-wide `grep -rn "onDesignAiEnrichmentQueued"` across
+`functions/src/**/*.ts` returns zero matches; `docs/architecture/BACKEND.md:272` explicitly
+documents that trigger as "Legacy compatibility trigger; live Processing flow should use direct
+callable execution." `enqueueAiEnrichment.ts:193-219` calls
+`await runAiEnrichmentPipeline(...)` **synchronously inside the callable** and returns only after
+re-reading the design's real post-completion Firestore state. **Amendment 4's premise (trusting
+the enqueue callable's own returned terminal fields) is architecturally correct for this
+codebase's actual contract** — it was not the source of the still-frozen symptom.
+
+### 21.2 Actual root cause found
+
+A genuine, previously unexamined client/server timeout mismatch:
+- Server: `enqueueAiEnrichment` is provisioned with `timeoutSeconds: 180` (3 minutes).
+- Client: `httpsCallable(...)` was called with no `timeout` option anywhere in the call chain,
+  leaving the Firebase JS SDK's documented **70-second** default in effect — independently
+  confirmed against the actual installed SDK source
+  (`node_modules/@firebase/functions/dist/index.cjs.js:623-624`:
+  `// Default timeout to 70s, but let the options override it.` /
+  `const timeout = options.timeout || 70000;`), not merely Firebase's public docs.
+- Any design whose Gemini pipeline genuinely ran longer than 70s caused the **client** call to
+  reject with `functions/deadline-exceeded` while the **server-side pipeline kept running to
+  completion independently** (`onCall` execution is not cancelled by a client disconnect). The
+  pump's `catch` block then notified observers with `outcome: "failed"` and no `patchSource`;
+  `reconcileBackgroundAiQueueEvent` correctly fell back to `reloadDesigns()` — but that reload ran
+  immediately upon the client timeout, before the still-running server pipeline had actually
+  finished, so it read the design as still `pending`/mid-stage. This is the confirmed mechanism
+  behind "the count and list then remain frozen" and "one final refresh removes everything
+  together" (some later, unrelated reload eventually catches the true state once all pipelines
+  have genuinely finished server-side).
+- Secondary, smaller gap: `hasPendingBackgroundAiWork()` was exported but never consumed anywhere —
+  confirmed via `grep` returning zero references in `useAiReviewInbox.ts`/`useAiProcessingQueue.ts`
+  before this amendment.
+
+### 21.3 Fix
+
+1. `tracedCallable.ts` — `callTracedFunction` accepts an optional `HttpsCallableOptions` parameter,
+   forwarded to `httpsCallable`. Omitting it preserves the SDK's existing default exactly.
+2. `aiEnrichmentCallableErrorMessage.ts` (new, pure — extracted from `aiEnrichmentEnqueueService.ts`
+   specifically so it could be unit-tested without importing the Firebase-config-coupled service
+   module) — `ENQUEUE_AI_ENRICHMENT_CLIENT_TIMEOUT_MS = 200_000` (a real buffer above the server's
+   180,000ms, not merely matching it) and a new `functions/deadline-exceeded` case in
+   `resolveAiEnrichmentCallableErrorMessage` mapping to an accurate, non-alarming message.
+3. `aiEnrichmentEnqueueService.ts` — imports from the new pure module; passes the aligned timeout
+   specifically on the `enqueueAiEnrichment` call only (`resetAiEnrichmentForProcessing`, a
+   Firestore-only callable with its own unrelated, shorter server timeout, is unaffected).
+4. `useAiReviewInbox.ts` — a new, narrowly-scoped effect reuses `hasPendingBackgroundAiWork()`: on
+   mount or switching to the Processing tab, if the pump reports pending work, triggers one bounded
+   `reloadDesigns()` + `onQueueChanged()` pass (dependency array is `[filters.tab]` only —
+   deliberately not re-triggered by every `designs` change, which would turn a bounded check into
+   an unbounded reload loop). No new listener, no enqueue call, no restart of in-flight work.
+
+No Firestore subscription, no per-design listener, no polling, and no concurrency change were
+introduced — the literally-requested Firestore-subscription architecture was not built, since the
+independently-confirmed real cause did not require it (see §21.1; the Formal Review concurred, see
+the Owner QA Amendment 5 Review document).
+
+### 21.4 Tests and results
+
+| Command | Result |
+|---|---|
+| `npx tsx --test .../aiEnrichmentCallableErrorMessage.test.ts` | **8/8 pass** (new) |
+| `npx tsx --test .../backgroundAiQueueReconciliation.test.ts` | **17/17 pass** (3 new tests for the mount-reconciliation wiring; 14 pre-existing unaffected) |
+| Combined AI Processing + designs focused regression (11 files) | **91/91 pass** |
+| Full Studio test sweep (740 → 757 with new tests) | **757/765 pass** — the same 8 pre-existing, unrelated failures documented throughout this entire managed goal; zero new failures |
+| Studio typecheck (`npx tsc --noEmit`) | exit 0 |
+| Studio 3-target Vite build (renderer/main/preload) | exit 0, no new build warning |
+| `npm run lint` | exit 0 |
+| `git diff --check` | exit 0 |
+| `npm --prefix functions run build` | not required — no Functions/backend file touched; confirmed via `git status` |
+
+### 21.5 Files changed
+
+- `apps/studio/src/renderer/src/config/tracedCallable.ts` (modified)
+- `apps/studio/src/renderer/src/features/ai-review/services/aiEnrichmentEnqueueService.ts` (modified)
+- `apps/studio/src/renderer/src/features/ai-review/hooks/useAiReviewInbox.ts` (modified)
+- `apps/studio/src/renderer/src/features/ai-review/utils/backgroundAiQueueReconciliation.test.ts` (modified — 3 new tests)
+- `apps/studio/src/renderer/src/features/ai-review/utils/aiEnrichmentCallableErrorMessage.ts` (new)
+- `apps/studio/src/renderer/src/features/ai-review/utils/aiEnrichmentCallableErrorMessage.test.ts` (new)
+
+**No Rules, index, Function, secret, or production file was touched.** `readyAt` ordering and the
+large-PNG normalization implementation are confirmed byte-for-byte unchanged (`git diff` shows zero
+hunks in `apps/studio/.../designs/utils/readyOrder*`,
+`apps/studio/electron/services/import/normalizeImportOutputBytes.ts`, or any `functions/` file).

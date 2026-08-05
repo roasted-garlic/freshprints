@@ -391,3 +391,49 @@ describe("useDesigns source contains the real generation guard this test suite s
     assert.equal(harness.getDesigns().length, 2);
   });
 });
+
+// Owner QA Amendment 5: the background pump can start (and complete work on) designs before the
+// Processing tab is ever mounted. subscribeToBackgroundAiQueue only delivers events to observers
+// subscribed at the moment they fire, so a design that completes entirely while the tab is
+// unmounted produces no event this hook instance ever sees. hasPendingBackgroundAiWork() was
+// exported for exactly this purpose but never actually consumed anywhere before this amendment.
+describe("Mount/tab-switch reconciliation reuses hasPendingBackgroundAiWork() (Owner QA Amendment 5)", () => {
+  it("useAiReviewInbox wires hasPendingBackgroundAiWork() into a bounded, mount/tab-switch-only reload — not a new listener", () => {
+    const source = read(
+      "apps/studio/src/renderer/src/features/ai-review/hooks/useAiReviewInbox.ts",
+    );
+
+    assert.match(source, /import \{\s*\n\s*hasPendingBackgroundAiWork,/);
+
+    const effectStart = source.indexOf('if (filters.tab !== "processing" || !hasPendingBackgroundAiWork())');
+    const effectBlock = source.slice(effectStart, source.indexOf("}, [filters.tab]);", effectStart) + "}, [filters.tab]);".length);
+    assert.match(effectBlock, /void reloadDesigns\(\);/);
+    assert.match(effectBlock, /options\?\.onQueueChanged\?\.\(\);/);
+    // Must depend only on filters.tab — depending on `designs` or `selectedDesignId` here would
+    // turn a bounded one-time mount/tab-switch check into an unbounded reload loop.
+    assert.match(effectBlock, /\}, \[filters\.tab\]\);/);
+    assert.doesNotMatch(effectBlock, /setInterval|onSnapshot/);
+  });
+
+  it("this effect does not restart, double-enqueue, or bypass the existing generation-guarded reload path", () => {
+    const source = read(
+      "apps/studio/src/renderer/src/features/ai-review/hooks/useAiReviewInbox.ts",
+    );
+    const effectStart = source.indexOf('if (filters.tab !== "processing" || !hasPendingBackgroundAiWork())');
+    const effectBlock = source.slice(effectStart, source.indexOf("}, [filters.tab]);", effectStart) + "}, [filters.tab]);".length);
+
+    // No enqueue call of any kind in this effect — it only asks the existing list to refresh.
+    assert.doesNotMatch(effectBlock, /enqueueForProcessing|enqueueAiEnrichment/);
+  });
+
+  it("hasPendingBackgroundAiWork() itself is a bounded module-state check — no Firestore read, no listener", () => {
+    const source = read(
+      "apps/studio/src/renderer/src/features/imports/services/importAiBackgroundQueue.ts",
+    );
+    const fnBlock = source.slice(
+      source.indexOf("export function hasPendingBackgroundAiWork("),
+      source.indexOf("export function hasPendingBackgroundAiWork(") + 200,
+    );
+    assert.match(fnBlock, /return isPumpRunning \|\| pendingDesignIds\.length > 0;/);
+  });
+});

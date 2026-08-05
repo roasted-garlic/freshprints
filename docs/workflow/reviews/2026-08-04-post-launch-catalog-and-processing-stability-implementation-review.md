@@ -522,3 +522,82 @@ reverified (typecheck, lint, targeted + combined test sweeps, Studio build, `git
 green), and independently confirmed discriminating. No other defect was found. The core fix — patch-
 based reconciliation as the primary mechanism, generation-guarded reloads as the fallback — is
 confirmed correct against the owner's exact reported reproduction sequence.
+
+---
+
+# Owner QA Amendment 5 — Independent Implementation Review
+
+Reviewed the final diff (4 modified files, 2 new files) against the owner's fresh reproduction and
+the task's own assumed architecture, independently re-verifying rather than trusting either.
+
+## Architecture-correction re-verification
+
+Before accepting the Plan's architecture correction, independently re-ran the same checks from
+scratch: `grep -rn "onDesignAiEnrichmentQueued" functions/src/**/*.ts` (zero matches, confirmed
+directly, not copied from the Plan's own claim), `functions/src/index.ts:63` (confirmed only
+`enqueueAiEnrichment` is exported), and re-read `enqueueAiEnrichment.ts:193-219` in full (confirmed
+the callable itself awaits the pipeline and returns post-completion fields). **Independently
+confirmed the deployed architecture does not match the task's assumed contract, and that
+Amendment 4's premise was already correct for the real contract.**
+
+## Root-cause re-verification
+
+Independently re-derived the 70-second-vs-180-second mismatch by reading the actual installed SDK
+source directly (`node_modules/@firebase/functions/dist/index.cjs.js:623-624`), not by trusting
+either the task's description or the Plan's citation of it — confirmed the exact same lines
+(`// Default timeout to 70s, but let the options override it.` /
+`const timeout = options.timeout || 70000;`) are genuinely present in the code that will execute.
+Independently re-confirmed `enqueueAiEnrichment.ts:53`'s `timeoutSeconds: 180` and that
+`tracedCallable.ts`'s pre-fix `httpsCallable` call passed no options object anywhere in the chain.
+Re-traced the failure mechanism by hand (client timeout → pump catch block → no `patchSource` →
+correct fallback reload → reload runs before server pipeline actually finishes → frozen UI) and
+confirmed it matches every element of the owner's reported symptom, including why a much later,
+unrelated reload eventually "removes everything together."
+
+## Real defect found and fixed during this review
+
+**A dead, unnecessary re-export.** The initial implementation added
+`export { resolveAiEnrichmentCallableErrorMessage } from "../utils/aiEnrichmentCallableErrorMessage";`
+to `aiEnrichmentEnqueueService.ts` for backward compatibility with any external importer of the old
+symbol location. Independently ran `grep -rln "from.*aiEnrichmentEnqueueService\"" ... | xargs grep
+-l resolveAiEnrichmentCallableErrorMessage` and found zero external consumers of that symbol from
+the service module — the re-export was unnecessary dead code, not a real compatibility need.
+**Fixed in this review pass:** removed the unnecessary re-export line. Re-typechecked and re-linted
+(both exit 0) to confirm nothing depended on it.
+
+## Other correctness checks performed (no further defect found)
+
+- Confirmed the new mount-reconciliation effect's dependency array is genuinely `[filters.tab]`
+  only — re-read the effect body directly rather than trusting the comment describing it, and
+  confirmed no `designs`/`selectedDesignId` dependency was accidentally left in that would turn a
+  bounded check into an unbounded reload loop.
+- Considered a race the Plan did not explicitly analyze: the mount-reconciliation effect reads
+  `hasPendingBackgroundAiWork()` synchronously at the moment `filters.tab` becomes `"processing"`;
+  if the pump is not yet running at that exact instant but starts microseconds later, this effect
+  will not re-fire (it has already run). Traced through and confirmed this is **not a gap**: the
+  always-active `subscribeToBackgroundAiQueue` observer effect (unconditional on mount, no gate)
+  will still receive that design's real-time completion event normally once the pump does start —
+  the mount-reconciliation effect only needs to cover work already done or in-progress at the exact
+  moment of mount, which it correctly does.
+- Confirmed `resetAiEnrichmentForProcessing`'s own call site in the same service file was correctly
+  left untouched (no timeout override, no import of the new constant) — re-read the function body
+  directly and the new discriminating test (`aiEnrichmentEnqueueService passes the aligned timeout
+  specifically for enqueueAiEnrichment, not as a blanket change`) to confirm this.
+- Confirmed via `git diff --stat -- functions/` and direct checks against
+  `apps/studio/.../designs/utils/readyOrder*` and
+  `apps/studio/electron/services/import/normalizeImportOutputBytes.ts` that zero hunks exist in any
+  of those areas — large-PNG normalization and `readyAt` ordering/backfill are confirmed untouched,
+  not merely asserted.
+- Confirmed the extraction of `aiEnrichmentCallableErrorMessage.ts` did not change any existing
+  case's behavior — diffed the moved logic line-by-line against the pre-move version and confirmed
+  it is a verbatim relocation plus exactly one new `case`.
+
+## Verdict
+
+**approved_with_changes.** One real, narrow cleanup item (a dead, unnecessary re-export) was found
+during this review and removed in the same pass, reverified (typecheck, lint, both exit 0). The
+architecture correction and root-cause finding were both independently re-derived from primary
+source (Functions source, the installed Firebase SDK's own code) rather than accepted from the
+Plan's or the task's own framing — both hold. The fix directly targets the confirmed cause (client/
+server timeout misalignment) without introducing the unneeded Firestore-subscription architecture
+the task's incorrect premise would otherwise have required.

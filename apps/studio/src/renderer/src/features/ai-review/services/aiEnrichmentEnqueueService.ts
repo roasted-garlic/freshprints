@@ -1,7 +1,9 @@
-import { FirebaseError } from "firebase/app";
-
 import { callTracedFunction } from "../../../config/tracedCallable";
 import { logPipelineEvent } from "../../../shared/utils/pipelineLog";
+import {
+  ENQUEUE_AI_ENRICHMENT_CLIENT_TIMEOUT_MS,
+  resolveAiEnrichmentCallableErrorMessage,
+} from "../utils/aiEnrichmentCallableErrorMessage";
 
 interface EnqueueAiEnrichmentInput {
   designId: string;
@@ -43,6 +45,8 @@ async function enqueueAiEnrichment(
     const response = await callTracedFunction<EnqueueAiEnrichmentInput, EnqueueAiEnrichmentResult>(
       "enqueueAiEnrichment",
       { source: "aiEnrichmentEnqueueService.enqueueAiEnrichment" },
+      undefined,
+      { timeout: ENQUEUE_AI_ENRICHMENT_CLIENT_TIMEOUT_MS },
     )({
       designId,
       rerunRejected: options?.rerunRejected,
@@ -65,52 +69,6 @@ async function enqueueAiEnrichment(
   } catch (error) {
     throw new Error(resolveAiEnrichmentCallableErrorMessage(error));
   }
-}
-
-function resolveAiEnrichmentCallableErrorMessage(error: unknown): string {
-  if (error instanceof FirebaseError) {
-    const message = error.message?.trim() ?? "";
-
-    switch (error.code) {
-      case "functions/unauthenticated":
-        return "You must be signed in to run AI processing.";
-      case "functions/permission-denied":
-        return message && !isGenericCallableMessage(message)
-          ? message
-          : "You do not have permission to run AI processing.";
-      case "functions/invalid-argument":
-      case "functions/failed-precondition":
-        return message && !isGenericCallableMessage(message)
-          ? message
-          : "AI processing could not start for this design.";
-      case "functions/unavailable":
-      case "functions/not-found":
-      case "functions/internal":
-        return "AI Processing is unavailable right now. Confirm Cloud Functions are deployed for the selected Firebase project.";
-      default:
-        if (message && !isGenericCallableMessage(message)) {
-          return message;
-        }
-    }
-  }
-
-  if (error instanceof Error && error.message.trim()) {
-    return error.message.trim();
-  }
-
-  return "Unable to run AI processing right now.";
-}
-
-function isGenericCallableMessage(message: string): boolean {
-  return new Set([
-    "internal",
-    "unknown",
-    "unavailable",
-    "failed-precondition",
-    "invalid-argument",
-    "permission-denied",
-    "not-found",
-  ]).has(message.trim().toLowerCase());
 }
 
 export const aiEnrichmentEnqueueService = {

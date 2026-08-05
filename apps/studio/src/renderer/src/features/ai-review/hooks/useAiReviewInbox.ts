@@ -31,7 +31,10 @@ import {
 } from "../utils/aiReviewInboxEligibility";
 import { filterDesignsByAiReviewStatus } from "../../designs/utils/designLibrarySearch";
 import { useDesigns } from "../../designs/hooks/useDesigns";
-import { subscribeToBackgroundAiQueue } from "../../imports/services/importAiBackgroundQueue";
+import {
+  hasPendingBackgroundAiWork,
+  subscribeToBackgroundAiQueue,
+} from "../../imports/services/importAiBackgroundQueue";
 import { reconcileBackgroundAiQueueEvent } from "../utils/backgroundAiQueueReconciliation";
 import { useAiProcessingQueue } from "./useAiProcessingQueue";
 import {
@@ -393,6 +396,31 @@ export function useAiReviewInbox(
       options?.onQueueChanged?.();
     });
   }, [applyDesignPatch, designs, filters.tab, options, reloadDesigns, selectedDesignId]);
+
+  // Owner QA Amendment 5: the background pump can start before the Processing tab is ever
+  // mounted (e.g. import happens while the user is on a different route). subscribeToBackgroundAiQueue
+  // only delivers events to observers subscribed at the moment they fire — a design that
+  // completes (or is still mid-pipeline) entirely before this tab mounts produces no event this
+  // hook instance ever sees. useDesigns' own initial load already reflects the true current
+  // Firestore state at mount time, which is correct for any design that has already reached a
+  // terminal state — but gives no signal about a design that is still genuinely in flight right
+  // now. Reusing hasPendingBackgroundAiWork() (previously exported but never consumed) to trigger
+  // one bounded, already-generation-guarded reconciliation pass on mount/tab-switch-to-processing
+  // closes that gap without adding a listener, without restarting anything, and without
+  // double-enqueueing — the pump itself is unaffected; this only asks the already-existing reload
+  // path to double-check once whether pump activity happened while unmounted.
+  useEffect(() => {
+    if (filters.tab !== "processing" || !hasPendingBackgroundAiWork()) {
+      return;
+    }
+
+    void reloadDesigns();
+    options?.onQueueChanged?.();
+    // Deliberately mount/tab-switch-only: re-running this effect on every `designs` change would
+    // turn a bounded one-time check into an unbounded reload loop. filters.tab is the only
+    // dependency that should re-trigger it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional mount/tab-switch-only trigger
+  }, [filters.tab]);
 
   useEffect(() => {
     if (isLoading || pendingAdvanceIndexRef.current === null) {
