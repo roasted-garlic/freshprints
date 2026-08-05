@@ -19,15 +19,19 @@ function read(relativePath: string): string {
  * and useGeneratedReadyDesigns.ts's Firestore-fallback query (used when the
  * generated ready-index asset itself is unavailable).
  */
-describe("Studio Design Library defaults to createdAt desc on every fallback path", () => {
-  it("designLibraryFilters.ts's default sort constant is createdAt, not updatedAt", () => {
+describe("Studio Design Library never orders by updatedAt on any path", () => {
+  // Original defect (Amendment 1): the default sort was `updatedAt`, so unrelated metadata edits
+  // reshuffled the library. Amendment 3 then moved normal browse from `createdAt` to `readyAt`
+  // (most recent ready transition). The invariant this test protects is unchanged: never
+  // `updatedAt`.
+  it("designLibraryFilters.ts's default sort constant is readyAt, and never updatedAt", () => {
     const source = read(
       "apps/studio/src/renderer/src/features/designs/constants/designLibraryFilters.ts",
     );
 
     assert.match(
       source,
-      /export const DESIGN_LIBRARY_DEFAULT_SORT_FIELD: DesignListSortField = "createdAt";/,
+      /export const DESIGN_LIBRARY_DEFAULT_SORT_FIELD: DesignListSortField = "readyAt";/,
     );
     assert.doesNotMatch(
       source,

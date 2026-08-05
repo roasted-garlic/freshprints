@@ -380,3 +380,25 @@ Reviewed the final diff, directly affected callers, and security/read-cost bound
 - **Duplication:** exactly one `uploadOriginalPng` and one `createDesign` call remain in the orchestration path; normalization happens before upload and cannot duplicate either.
 
 **Verdict:** approved. No defect found; no correction required.
+
+---
+
+# Amendment 3 — Follow-up Correction (global ordering defect)
+
+**Defect:** Amendment 3 shipped `readyAt` ordering as a *page-local* sort over a `createdAt`-ordered bounded page. An old design reapproved today falls outside that page entirely, so it could never reach the top. Page-local sorting is structurally incapable of fixing a global ordering problem.
+
+**Correction:**
+- `DESIGN_LIBRARY_DEFAULT_SORT_FIELD` is now `readyAt`; the bounded query issues `where(status == "ready")` + `orderBy(readyAt, desc)` + `orderBy(__name__, desc)` with existing cursor pagination. Archived browse stays on `createdAt` (new `DESIGN_LIBRARY_ARCHIVED_SORT_FIELD`) because `readyAt` is only written on the ready transition.
+- Removed the page-local `sortReadyDesigns` call from `DesignLibraryPage`.
+- `getDesignSortMillis` and `getDesignSortValue` resolve `readyAt` (legacy `createdAt` fallback) so cursor values mirror what Firestore ordered by.
+- Portal generated catalog sorting is unchanged: still `readyAtMs` with `createdAtMs` fallback.
+
+**Backfill-safety guard (added during this correction):** a Firestore `orderBy("readyAt")` silently omits documents missing the field, so before the backfill runs this query would *hide* legacy ready designs. `listDesignsPage` now compares the ordered result against `countDesigns` and falls back to `createdAt` ordering when they disagree, plus falls back on a missing-index error. Once backfilled, the counts agree and neither fallback triggers.
+
+**Indexes (dev only):** added and deployed all four `readyAt` variants — `status`, `categoryId+status`, `tags+status`, `categoryId+tags+status`, each `+ readyAt DESC + __name__ DESC` — mirroring the existing `createdAt` variants so no filtered query shape can hit a missing index. All four verified live via `firebase firestore:indexes --project fresh-prints-dev`.
+
+**Backfill: NOT EXECUTED — blocked.** `functions/scripts/backfill-design-ready-at.mjs` is written, idempotent, dry-run-by-default, and refuses any non-dev project without an explicit override. It could not be run here: Application Default Credentials are unavailable in this environment (`firebase login:application-default` is not a command in the installed CLI, no `gcloud`, no service-account key). The owner must run it once against dev. The completeness guard above means Studio remains correct in the meantime.
+
+**Tests:** `readyOrderPagination.test.ts` (8/8) includes the required failing-before/passing-after pair — a `createdAt`-ordered page provably excludes the reapproved design and no local sort can recover it, while the `readyAt`-ordered page puts it first — plus tie-breaking and gap-free pagination. Three earlier assertions that encoded the superseded ordering were updated (their original intent, "never `updatedAt`", is preserved). Combined Studio regression 337/337; catalogSnapshots 116/117 (the one failure is the pre-existing, unrelated Wave C assertion).
+
+**Verdict:** approved. Production migration, index deployment, and release remain a separate human checkpoint; no production action taken.

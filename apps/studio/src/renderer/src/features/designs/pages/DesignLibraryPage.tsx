@@ -51,7 +51,6 @@ import {
   visibleSelectedTags,
 } from "../utils/designLibrarySearch";
 import { getDesignLibraryFirestoreLoadPolicy } from "../utils/designLibraryFirestoreLoadPolicy";
-import { sortReadyDesigns } from "../utils/readyOrder";
 
 const ALL_FILTER_VALUE = "all";
 
@@ -297,14 +296,14 @@ export function DesignLibraryPage() {
   // Designs come straight from useDesigns (bounded, cursor-paginated, already sorted createdAt
   // desc by the query itself) — no generated-index re-sort or card-resolution stage needed, since
   // useDesigns already returns full authoritative Design objects, not synthetic filter stand-ins.
-  const filteredDesigns = useMemo(() => {
-    const tagged = filterDesignsByTags(categoryFilteredDesigns, selectedTags);
-
-    // Owner QA Amendment 3: default catalog order is the most recent transition into `ready`
-    // (readyAt), with a documented createdAt fallback for legacy designs approved before the
-    // field existed. Archived browse keeps its existing order.
-    return includeArchived ? tagged : sortReadyDesigns(tagged);
-  }, [categoryFilteredDesigns, includeArchived, selectedTags]);
+  // Order comes from the bounded Firestore query itself (`orderBy(readyAt desc, __name__ desc)`
+  // for normal browse — Owner QA Amendment 3 correction). Sorting the page locally afterwards was
+  // insufficient: a design reapproved today but created long ago falls outside a `createdAt`-
+  // ordered page entirely, so no page-local sort could ever surface it.
+  const filteredDesigns = useMemo(
+    () => filterDesignsByTags(categoryFilteredDesigns, selectedTags),
+    [categoryFilteredDesigns, selectedTags],
+  );
 
   const visibleTags = useMemo(() => visibleSelectedTags(selectedTags), [selectedTags]);
   const visibleTagCount = useMemo(() => countVisibleSelectedTags(selectedTags), [selectedTags]);

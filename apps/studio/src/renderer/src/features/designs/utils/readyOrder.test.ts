@@ -106,11 +106,16 @@ describe("readyAt write semantics (Amendment 3)", () => {
 });
 
 describe("ordering consumers use the same key (Amendment 3)", () => {
-  it("Studio Design Library orders normal browse by ready transition", () => {
-    const page = read(
-      "apps/studio/src/renderer/src/features/designs/pages/DesignLibraryPage.tsx",
+  it("Studio Design Library orders normal browse by ready transition at the query level", () => {
+    // Owner QA Amendment 3 correction: this is a server-side orderBy, not a page-local sort —
+    // see readyOrderPagination.test.ts for the failing-before/passing-after proof.
+    const filters = read(
+      "apps/studio/src/renderer/src/features/designs/constants/designLibraryFilters.ts",
     );
-    assert.match(page, /sortReadyDesigns\(tagged\)/);
+    assert.match(
+      filters,
+      /export const DESIGN_LIBRARY_DEFAULT_SORT_FIELD: DesignListSortField = "readyAt";/,
+    );
   });
 
   it("Portal default browse and generated pages use readyAt with createdAt fallback", () => {

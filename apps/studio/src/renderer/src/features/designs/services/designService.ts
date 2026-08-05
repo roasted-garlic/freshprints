@@ -134,6 +134,13 @@ function shouldApplyServerAiReviewFilter(listQuery: DesignListQuery): boolean {
 }
 
 function getDesignSortMillis(design: Design, sortField: DesignListSortField): number {
+  if (sortField === "readyAt") {
+    // Must mirror the value Firestore ordered by so the next-page cursor lands correctly. After
+    // the dev backfill every ready design carries `readyAt`; the `createdAt` fallback only covers
+    // a not-yet-backfilled document (Owner QA Amendment 3 correction).
+    return (design.readyAt ?? design.createdAt).toMillis();
+  }
+
   return sortField === "createdAt" ? design.createdAt.toMillis() : design.updatedAt.toMillis();
 }
 
@@ -610,8 +617,30 @@ export const designService = {
         );
       }
 
-      return await fetchDesignListPage(caller, listQuery);
+      const page = await fetchDesignListPage(caller, listQuery);
+
+      // Backfill-completeness guard (Owner QA Amendment 3 correction). A Firestore
+      // `orderBy("readyAt")` silently omits documents missing the field, so before the
+      // `readyAt` backfill has run in a given environment this query would hide legacy ready
+      // designs entirely. If the true matching count exceeds what the ordered query returned,
+      // fall back to `createdAt` ordering for this request so nothing is ever invisible. Once
+      // backfilled, the counts agree and this fallback never triggers.
+      if (listQuery.sortField === "readyAt" && !listQuery.cursor && !page.hasMore) {
+        const matchingCount = await this.countDesigns(caller, listQuery);
+
+        if (matchingCount > page.designs.length) {
+          return await fetchDesignListPage(caller, { ...listQuery, sortField: "createdAt" });
+        }
+      }
+
+      return page;
     } catch (error) {
+      if (listQuery.sortField === "readyAt" && isFirestoreIndexError(error)) {
+        // The `readyAt` composite index is not deployed in this environment yet — never break
+        // Design Library over it.
+        return await fetchDesignListPage(caller, { ...listQuery, sortField: "createdAt" });
+      }
+
       if (listQuery.tag?.trim() && isFirestoreIndexError(error)) {
         const fallbackPage = await fetchDesignListPage(caller, {
           ...listQuery,
