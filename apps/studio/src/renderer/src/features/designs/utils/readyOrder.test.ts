@@ -118,9 +118,10 @@ describe("ordering consumers use the same key (Amendment 3)", () => {
     );
   });
 
-  it("Portal default browse and generated pages use readyAt with createdAt fallback", () => {
+  it("Portal default browse uses readyAt orderBy with createdAt fallback for legacy", () => {
     const portalService = read("apps/portal/features/catalog/services/catalogService.ts");
-    assert.match(portalService, /design\.readyAtMs \?\? design\.createdAtMs \?\? 0/);
+    assert.match(portalService, /return listQuery\.sortField \?\? 'readyAt'/);
+    assert.match(portalService, /case 'readyAt':\s*\n\s*return design\.readyAtMs \?\? design\.createdAtMs \?\? 0/);
     assert.match(portalService, /readyAtMs: timestampToMillis\(data\.readyAt\)/);
 
     const builders = read("functions/src/catalogSnapshots/snapshotBuilders.ts");

@@ -58,12 +58,14 @@ export interface CatalogDesign {
 
 /**
  * Firestore orderBy field for ready-catalog paging.
- * Default browse uses `createdAt` (Studio-newest). Metric discover modes use
- * requestCount / favoriteCount / lastAddedToShowAt (Recently Requested).
+ * Default browse uses `readyAt` (most recent approval to ready), with `createdAt` fallback
+ * for legacy docs / completeness. Metric discover modes use requestCount / favoriteCount /
+ * lastAddedToShowAt. Discover "new this week" uses `createdAt` + `createdAfterMs`.
  */
 export type CatalogDesignSortField =
   | 'updatedAt'
   | 'createdAt'
+  | 'readyAt'
   | 'requestCount'
   | 'lastRequestedAt'
   | 'lastAddedToShowAt'

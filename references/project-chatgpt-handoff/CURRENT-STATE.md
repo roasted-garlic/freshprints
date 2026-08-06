@@ -1,5 +1,17 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-08-06 - Catalog display mats + ready-approval ordering (awaiting owner QA)
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, unmerged).
+Baseline: Amendment 9 P0 Signoff `120337a`.
+
+Studio Design Details thumbnail + lightbox now use `artworkBackgroundHex` (same as card).
+Portal ordinary browse/category/single-tag use server `orderBy(readyAt desc)` with completeness
++ index fallback. Studio ready ordering already correct (unchanged). Generated search publisher
+order deferred. Owner QA:
+`docs/workflow/reviews/2026-08-06-catalog-display-background-and-ready-ordering-manual-qa.md`.
+No Signoff. No snapshot/P4/Phase 1B/deploy.
+
 ## 2026-08-06 - Amendment 9 P0 Signoff approved_with_notes
 
 Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).

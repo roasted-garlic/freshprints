@@ -48,9 +48,8 @@ function sortFieldForDiscovery(mode: CatalogDiscoveryMode | null | undefined): C
     case 'recent':
       return 'lastAddedToShowAt';
     default:
-      // Browse-all / filters: Studio-newest first. Do not use updatedAt —
-      // request/favorite counters bump updatedAt and would reshuffle the grid.
-      return 'createdAt';
+      // Browse-all / filters: most recently approved to ready first.
+      return 'readyAt';
   }
 }
 
@@ -74,7 +73,7 @@ function serializeServerListQuery(listQuery: CatalogDesignListQuery): string {
   return JSON.stringify({
     categoryId: listQuery.categoryId ?? null,
     createdAfterMs: listQuery.createdAfterMs ?? null,
-    sortField: listQuery.sortField ?? 'createdAt',
+    sortField: listQuery.sortField ?? 'readyAt',
     tag: listQuery.tag ?? null,
   });
 }

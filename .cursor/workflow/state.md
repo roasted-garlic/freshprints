@@ -37,6 +37,12 @@ modal/lightbox artwork-mat follow-up (does not fail P0); **snapshot-publication 
 amplification remains a production-promotion blocker** (P4 later). P1/P3/P4/Phase 1B **not
 started**. PR #40 open/**unmerged**. No Firebase/production deploy.
 
+**Follow-up (2026-08-06) — `catalog-display-background-and-ready-ordering`:** Plan + Formal
+Review **APPROVED**; implement complete; Implementation Review **APPROVED**; awaiting owner QA
+(`docs/workflow/reviews/2026-08-06-catalog-display-background-and-ready-ordering-manual-qa.md`).
+Studio Details mat wiring + Portal Firestore browse `readyAt` ordering. No Signoff yet. No
+snapshot/P4/Phase 1B. PR #40 open/unmerged.
+
 **Amendment 1** fixed a confirmed, urgent production defect: ready/approved designs never
 appearing in Studio Design Library. Root cause: Studio's normal browse depended entirely on
 generated-snapshot publication, itself stalled by a debounce-claim/function-timeout interaction
@@ -116,6 +122,9 @@ archive write — none of these could be run live in this environment (no intera
 no Application Default Credentials for scripted checks beyond read-only CLI operations).
 
 Decision Log:
+- 2026-08-06 — `catalog-display-background-and-ready-ordering`: Plan+Review APPROVED; implement
+  (Details mats + Portal readyAt browse); Implementation Review APPROVED; owner QA pending.
+  No Signoff. PR #40 unmerged; no deploy.
 - 2026-08-06 — Amendment 9 **P0 Signoff approved_with_notes**. Owner re-QA **PASS WITH NOTES**:
   scroll + P0 client budgets verified; Processing intact. Notes: Design Library modal/lightbox
   mat follow-up; snapshot-publication amplification remains production-promotion blocker.

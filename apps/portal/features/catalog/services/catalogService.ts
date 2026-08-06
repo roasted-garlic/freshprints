@@ -61,7 +61,7 @@ function serializeCatalogPageCacheKey(listQuery: CatalogDesignListQuery): string
     createdAfterMs: listQuery.createdAfterMs ?? null,
     cursor: listQuery.cursor ?? null,
     limitCount: listQuery.limitCount ?? DEFAULT_CATALOG_PAGE_SIZE,
-    sortField: listQuery.sortField ?? 'createdAt',
+    sortField: listQuery.sortField ?? 'readyAt',
     tag: listQuery.tag ?? null,
   });
 }
@@ -166,15 +166,17 @@ function mapCatalogDesign(designId: string, data: DesignDocumentData): CatalogDe
 }
 
 function resolveSortField(listQuery: CatalogDesignListQuery): CatalogDesignSortField {
-  return listQuery.sortField ?? 'createdAt';
+  return listQuery.sortField ?? 'readyAt';
 }
 
-function getDesignSortValue(design: CatalogDesign, sortField: CatalogDesignSortField): number {
+/** Exported for focused ordering tests — mirrors Studio ready-order key. */
+export function getDesignSortValue(design: CatalogDesign, sortField: CatalogDesignSortField): number {
   switch (sortField) {
-    case 'createdAt':
-      // Owner QA Amendment 3: default browse orders by the most recent transition into `ready`,
-      // falling back to createdAt for legacy designs approved before `readyAt` existed.
+    case 'readyAt':
       return design.readyAtMs ?? design.createdAtMs ?? 0;
+    case 'createdAt':
+      // Discover "new this week" and legacy fallbacks order by document createdAt.
+      return design.createdAtMs ?? 0;
     case 'requestCount':
       return design.requestCount;
     case 'favoriteCount':
@@ -317,6 +319,15 @@ export const catalogService = {
 
     const page = buildDesignListPage(designs, sortField, pageSize);
 
+    // `orderBy(readyAt)` silently omits ready docs missing the field — same completeness
+    // guard as Studio Design Library (fall back to createdAt for this request only).
+    if (sortField === 'readyAt' && !listQuery.cursor && !page.hasMore) {
+      const matchingCount = await this.countReadyDesigns(listQuery);
+      if (matchingCount > page.designs.length) {
+        return this.listReadyDesignsPage({ ...listQuery, sortField: 'createdAt' });
+      }
+    }
+
     if (!listQuery.search?.trim()) {
       return page;
     }
@@ -440,7 +451,7 @@ export const catalogService = {
       const preferredQueries: CatalogDesignListQuery[] = [
         {
           limitCount: HOME_DISCOVERY_POOL_PAGE_SIZE,
-          sortField: 'createdAt',
+          sortField: 'readyAt',
         },
         {
           limitCount: HOME_DISCOVERY_POOL_PAGE_SIZE,
@@ -483,7 +494,7 @@ export const catalogService = {
       if (indexBlocked || settled.some((result) => result.status === 'rejected')) {
         const fallback = await this.listReadyDesignsPage({
           limitCount: HOME_DISCOVERY_POOL_PAGE_SIZE,
-          sortField: 'createdAt',
+          sortField: 'readyAt',
         });
         return fallback.designs;
       }
@@ -505,10 +516,18 @@ export const catalogService = {
       try {
         return await this.listReadyDesignsPage(listQuery);
       } catch (error) {
-        const sortField = listQuery.sortField ?? 'createdAt';
+        const sortField = listQuery.sortField ?? 'readyAt';
 
         if (!isFirestoreIndexNotReadyError(error)) {
           throw error;
+        }
+
+        if (sortField === 'readyAt') {
+          return this.listReadyDesignsPage({
+            ...listQuery,
+            createdAfterMs: undefined,
+            sortField: 'createdAt',
+          });
         }
 
         if (sortField === 'createdAt') {
@@ -526,7 +545,7 @@ export const catalogService = {
         return this.listReadyDesignsPage({
           ...listQuery,
           createdAfterMs: undefined,
-          sortField: 'createdAt',
+          sortField: 'readyAt',
         });
       }
     });
@@ -541,7 +560,7 @@ export const catalogService = {
       const page = await this.listReadyDesignsPage({
         cursor,
         limitCount: Math.min(48, maxDesigns - designs.length),
-        sortField: 'createdAt',
+        sortField: 'readyAt',
       });
 
       designs.push(...page.designs);

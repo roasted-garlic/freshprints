@@ -145,6 +145,7 @@ export function DesignDetailsModal({
                   ? `${design.title} thumbnail (large images deleted)`
                   : `${design.title} preview`
               }
+              artworkBackgroundHex={design.artworkBackgroundHex}
               catalogPath={isAssetsPurged ? design.thumbnailPath : design.previewPath}
               fallbackLabel={isAssetsPurged ? "Thumbnail unavailable" : "Preview unavailable"}
               imageFit="contain"
@@ -437,6 +438,7 @@ export function DesignDetailsModal({
 
       <DesignPreviewLightbox
         alt={`${design.title} preview`}
+        artworkBackgroundHex={design.artworkBackgroundHex}
         isOpen={isPreviewLightboxOpen}
         onClose={() => setIsPreviewLightboxOpen(false)}
         previewUrl={previewUrl}
