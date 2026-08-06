@@ -7,7 +7,6 @@ import {
   parseClientCatalogReferenceSnapshot,
   parsePortalCatalogCardBucket,
   parsePortalCatalogCardOverrides,
-  parsePortalCatalogDiscoverSnapshot,
   parsePortalCatalogIdAsset,
   parsePortalCatalogManifest,
   parsePortalCatalogSearchShard,
@@ -299,21 +298,6 @@ export const portalCatalogAssetService = {
     if (uniqueIds.length === 0) return [];
     const manifest = await loadPortalManifest();
     return loadCards(manifest, uniqueIds);
-  },
-
-  async listDiscoverDesigns(): Promise<CatalogDesign[]> {
-    const manifest = await loadPortalManifest();
-    const discover = parsePortalCatalogDiscoverSnapshot(await fetchJson(manifest.discoverPath));
-    if (discover.catalogVersion !== manifest.contentVersion) throw new Error('Stale discover asset.');
-    if (!manifest.cardOverrides) return discover.designs;
-    const overrides = parsePortalCatalogCardOverrides(
-      await fetchJson(manifest.cardOverrides.path),
-    );
-    const overlaid = applyPortalCatalogCardOverrides(
-      new Map(discover.designs.map((card) => [card.id, card])),
-      overrides.cards,
-    );
-    return discover.designs.map((card) => overlaid.get(card.id) ?? card);
   },
 
   async listMatchingDesigns(

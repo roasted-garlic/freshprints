@@ -1,5 +1,37 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-08-06 - Amendment 8 Phase 1B Stage 1a awaiting owner QA
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, unmerged).
+
+Implemented: Firestore-primary known-ID hydration; Firestore-only active categories; removed
+dead `listDiscoverDesigns`. Search/multi-tag/facets still generated (Stage 1b blocked on D1).
+
+Test report: `docs/workflow/reviews/2026-08-06-amendment-8-phase-1b-stage-1a-test-report.md`
+Impl review **APPROVED**:
+`docs/workflow/reviews/2026-08-06-amendment-8-phase-1b-stage-1a-implementation-review.md`
+Owner QA: `docs/workflow/reviews/2026-08-06-amendment-8-phase-1b-stage-1a-manual-qa.md`
+
+No deploy / merge / Function retirement / cleanup / production.
+
+## 2026-08-06 - Amendment 8 Phase 1B revalidation Plan APPROVED (Investigate/Plan/Review only)
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, unmerged).
+HEAD: `71a4cec`.
+
+**Pass:** Investigate → Revised Phase 1B Plan → Independent Formal Review → **Stop**.
+No Implement, deploy, merge, cleanup, Function retirement, or production action.
+
+Plan:
+`docs/workflow/plans/2026-08-06-post-launch-catalog-and-processing-stability-amendment-8-phase-1b-revalidation-plan.md`
+Review (APPROVED):
+`docs/workflow/reviews/2026-08-06-post-launch-catalog-and-processing-stability-amendment-8-phase-1b-revalidation-plan-review.md`
+
+Headline: Studio + Portal ordinary browse already Firestore; 5 Portal generated-read entry
+points remain (search/multi-tag/facets/by-id/categories-prefer); AI taxonomy already FS
+Strategy 2; recommend Option A managed search (D1); no design snapshot in steady state; P4
+→ short transition only. Owner D1 required before Stage 1b Implement.
+
 ## 2026-08-06 - Catalog mats / ready order / Assisted proof 80 MB Signoff approved
 
 Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, unmerged).

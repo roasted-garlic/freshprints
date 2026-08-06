@@ -2,51 +2,106 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
 
-import { resolveMissingDesignIds } from './catalogService';
+import { orderReadyDesignsByRequestedIds } from './catalogService';
+import type { CatalogDesign } from '../types/catalog.types';
 
-describe('catalogService.resolveMissingDesignIds (item 1: cold-start manifest gap)', () => {
-  it('returns an empty list when every requested design was found (fully successful response)', () => {
-    const requestedIds = ['design-a', 'design-b', 'design-c'];
-    const found = [{ id: 'design-a' }, { id: 'design-b' }, { id: 'design-c' }];
-    const missing = resolveMissingDesignIds(requestedIds, found);
-    assert.deepEqual(missing, []);
+function read(path: string): string {
+  return readFileSync(path, 'utf8');
+}
+
+function stubDesign(id: string): CatalogDesign {
+  return {
+    id,
+    title: id,
+    tags: [],
+    status: 'ready',
+    thumbnailPath: `thumbs/${id}.webp`,
+  } as CatalogDesign;
+}
+
+describe('orderReadyDesignsByRequestedIds', () => {
+  it('preserves requested order when Firestore-like results arrive out of order', () => {
+    const found = [stubDesign('design-c'), stubDesign('design-a'), stubDesign('design-b')];
+    const ordered = orderReadyDesignsByRequestedIds(
+      ['design-a', 'design-b', 'design-c'],
+      found,
+    );
+    assert.deepEqual(
+      ordered.map((design) => design.id),
+      ['design-a', 'design-b', 'design-c'],
+    );
   });
 
-  it('returns only the missing subset when the generated response is successful but incomplete', () => {
-    const requestedIds = ['design-a', 'design-b', 'design-c'];
-    const found = [{ id: 'design-a' }, { id: 'design-c' }];
-    const missing = resolveMissingDesignIds(requestedIds, found);
-    assert.deepEqual(missing, ['design-b']);
+  it('omits missing IDs without inventing placeholders', () => {
+    const ordered = orderReadyDesignsByRequestedIds(
+      ['design-a', 'design-missing', 'design-b'],
+      [stubDesign('design-b'), stubDesign('design-a')],
+    );
+    assert.deepEqual(
+      ordered.map((design) => design.id),
+      ['design-a', 'design-b'],
+    );
+  });
+});
+
+describe('Phase 1B Stage 1a — Firestore-primary known-ID + categories', () => {
+  const catalogServiceSource = read(
+    'apps/portal/features/catalog/services/catalogService.ts',
+  );
+
+  it('getReadyDesignsByIds does not call generated card loading', () => {
+    const start = catalogServiceSource.indexOf('async getReadyDesignsByIds');
+    assert.ok(start >= 0);
+    const nextMethod = catalogServiceSource.indexOf('\n  async ', start + 1);
+    const block = catalogServiceSource.slice(start, nextMethod > start ? nextMethod : undefined);
+    assert.doesNotMatch(block, /portalCatalogAssetService/);
+    assert.doesNotMatch(block, /getDesignsByIds/);
+    assert.doesNotMatch(block, /generatedPortalCatalogEnabled/);
+    assert.match(block, /loadCatalogDesignByIdCached/);
+    assert.match(block, /getDoc/);
+    assert.match(block, /orderReadyDesignsByRequestedIds/);
   });
 
-  it('never expands beyond the exact missing subset — not the full requested set', () => {
-    const requestedIds = ['design-a', 'design-b', 'design-c', 'design-d'];
-    const found = [{ id: 'design-a' }];
-    const missing = resolveMissingDesignIds(requestedIds, found);
-    assert.deepEqual(missing, ['design-b', 'design-c', 'design-d']);
-    assert.ok(missing.length < requestedIds.length);
+  it('known-ID hydration uses per-doc getDoc with cache (not batch in / not listAllReadyDesigns)', () => {
+    const start = catalogServiceSource.indexOf('async getReadyDesignsByIds');
+    const nextMethod = catalogServiceSource.indexOf('\n  async ', start + 1);
+    const block = catalogServiceSource.slice(start, nextMethod > start ? nextMethod : undefined);
+    assert.doesNotMatch(block, /where\(['"]__name__['"]/);
+    assert.doesNotMatch(block, /documentId\(/);
+    assert.doesNotMatch(block, /\bin\b.*chunk|chunkValues/);
+    assert.doesNotMatch(block, /listAllReadyDesigns/);
+    assert.match(block, /permission-denied/);
+    assert.match(block, /mapCatalogDesign/);
   });
 
-  it('returns every requested id when the generated response found none of them', () => {
-    const requestedIds = ['design-a', 'design-b'];
-    const missing = resolveMissingDesignIds(requestedIds, []);
-    assert.deepEqual(missing, requestedIds);
+  it('listActiveCategories is Firestore-only (no catalog-reference / loadClientTaxonomy)', () => {
+    const start = catalogServiceSource.indexOf('async listActiveCategories');
+    assert.ok(start >= 0);
+    const marker = "source: 'catalogService.listActiveCategories'";
+    assert.match(catalogServiceSource.slice(start, start + 800), new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+    const closing = catalogServiceSource.indexOf("where('isActive', '==', true)", start);
+    assert.ok(closing > start);
+    // Bound the assertion to the method body only (exclude the following JSDoc that
+    // still documents Stage 1b facet readers on portalCatalogAssetService).
+    const bodyOnly = catalogServiceSource.slice(start, closing + 80);
+    assert.doesNotMatch(bodyOnly, /loadClientTaxonomy/);
+    assert.doesNotMatch(bodyOnly, /generatedPortalCatalogEnabled/);
+    assert.doesNotMatch(bodyOnly, /portalCatalogAssetService/);
+    assert.match(bodyOnly, /where\('isActive', '==', true\)/);
+    assert.match(catalogServiceSource.slice(start, start + 1200), /sortOrder/);
   });
 
-  it('preserves requested order and de-duplicates only via the found-id set, not by sorting', () => {
-    const requestedIds = ['design-z', 'design-a', 'design-m'];
-    const found = [{ id: 'design-a' }];
-    const missing = resolveMissingDesignIds(requestedIds, found);
-    assert.deepEqual(missing, ['design-z', 'design-m']);
+  it('does not import generatedPortalCatalogEnabled after Stage 1a cutover of by-id and categories', () => {
+    assert.doesNotMatch(
+      catalogServiceSource,
+      /generatedPortalCatalogEnabled/,
+    );
   });
 });
 
 describe('Phase 1A catalogService page cache + home pool wiring', () => {
   it('exports page-cache invalidation and wraps sort-fallback + home pool with bounded cache', () => {
-    const source = readFileSync(
-      'apps/portal/features/catalog/services/catalogService.ts',
-      'utf8',
-    );
+    const source = read('apps/portal/features/catalog/services/catalogService.ts');
     assert.match(source, /createBoundedAsyncCache/);
     assert.match(source, /invalidateCatalogPageCaches/);
     assert.match(source, /catalogPageCache\.get/);

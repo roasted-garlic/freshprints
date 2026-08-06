@@ -20,14 +20,12 @@ Next Required Step: Owner reviews the production convergence audit and approves 
 Background (not active gate): Goal #13 / clean Studio remediation / Stage 2 remain deferred; prior installer intermediate; domain cutover blocked until `APPROVE MYPRINTREQUEST.COM CUTOVER`.
 
 **Separate concurrent managed goal (does not affect the gate above):**
-`post-launch-catalog-and-processing-stability` — original A–D + Amendments 1–7 + AI Processing
-monotonic repair Signoff complete. **Amendment 8 Phase 1A Signoff approved** (2026-08-06):
-owner re-QA **PASS** covered Studio/Portal artwork-background correction and updated
-`staffSuggestAssistedCreationCatalogDesign` on `fresh-prints-dev` (owner-executed scoped deploy
-before PASS). Commits `4ed41bc` + `bc9e7e7`. Signoff:
-`docs/workflow/reviews/2026-08-05-amendment-8-phase-1a-signoff.md`. No Phase 1A deployment
-residual or blocker. Phase 1B (managed search) not started — provider decision deferred.
-PR #40 remains open/unmerged. No production Firebase deploy.
+`post-launch-catalog-and-processing-stability` — **Amendment 8 Phase 1B Stage 1a** Implement +
+focused Test + Implementation Review **APPROVED**; awaiting **owner QA**. Plan/Review baseline:
+`docs/workflow/plans/2026-08-06-post-launch-catalog-and-processing-stability-amendment-8-phase-1b-revalidation-plan.md`.
+Stage 1a: Firestore-primary `getReadyDesignsByIds`; Firestore-only categories; removed dead
+`listDiscoverDesigns`. Search/multi-tag/facets still generated (Stage 1b / D1). PR #40 open/
+unmerged. No deploy / Function retirement / cleanup / production.
 
 **Amendment 9 (2026-08-06) — Large-batch Firestore read amplification:** Investigate → Plan →
 Review → **P0 Signoff approved_with_notes**. Owner re-QA **PASS WITH NOTES** (scroll + zero

@@ -15,7 +15,6 @@ import {
 import { FirebaseError } from 'firebase/app';
 
 import {
-  traceGeneratedFallbackActivation,
   traceFirestoreOneShotComplete,
   traceFirestoreOneShotStart,
   type FirestoreTraceMetadata,
@@ -34,7 +33,6 @@ import type {
 } from '../types/catalog.types';
 import { filterCatalogDesignsBySearch } from '../utils/catalogSearch';
 import { portalCatalogAssetService } from './portalCatalogAssetService';
-import { generatedPortalCatalogEnabled } from './catalogSnapshotFlags';
 import {
   invalidateCatalogDesignById,
   loadCatalogDesignByIdCached,
@@ -260,18 +258,18 @@ function buildDesignListPage(
 }
 
 /**
- * Exact set of requested design ids not present in a generated-manifest response. A
- * successful-but-incomplete response (a manifest cold-start gap) omits designs without
- * throwing — this is what getReadyDesignsByIds uses to bound its per-doc fallback retry to
- * exactly the missing subset, never the full requested set. Pure/exported for direct testing
- * per this repo's hook/service testing convention (docs/standards/TESTING.md).
+ * Reorders found ready designs to match the caller’s requested ID sequence (deduped /
+ * trimmed by the caller). Pure/exported for focused Stage 1a ordering tests.
  */
-export function resolveMissingDesignIds(
+export function orderReadyDesignsByRequestedIds(
   requestedIds: readonly string[],
-  foundDesigns: readonly Pick<CatalogDesign, 'id'>[],
-): string[] {
-  const foundIds = new Set(foundDesigns.map((design) => design.id));
-  return requestedIds.filter((id) => !foundIds.has(id));
+  foundDesigns: readonly CatalogDesign[],
+): CatalogDesign[] {
+  const byId = new Map(foundDesigns.map((design) => [design.id, design]));
+  return requestedIds.flatMap((id) => {
+    const design = byId.get(id);
+    return design ? [design] : [];
+  });
 }
 
 function catalogListTraceMetadata(
@@ -338,6 +336,14 @@ export const catalogService = {
     };
   },
 
+  /**
+   * Phase 1B Stage 1a: Firestore-primary known-ID hydration.
+   *
+   * Uses per-document `getDoc` (via short-lived cache + in-flight dedupe) rather than a
+   * batch `in` query: archived/non-ready designs deny customer read and would fail an entire
+   * `in` batch. Only ready, mappable designs are returned; missing/denied IDs are omitted.
+   * Result order matches the deduped requested-ID sequence.
+   */
   async getReadyDesignsByIds(designIds: string[]): Promise<CatalogDesign[]> {
     const uniqueIds = [...new Set(designIds.map((id) => id.trim()).filter(Boolean))];
 
@@ -345,77 +351,43 @@ export const catalogService = {
       return [];
     }
 
-    let generatedDesigns: CatalogDesign[] = [];
-    let missingIds = uniqueIds;
-
-    if (generatedPortalCatalogEnabled()) {
-      try {
-        generatedDesigns = await portalCatalogAssetService.getDesignsByIds(uniqueIds);
-        missingIds = resolveMissingDesignIds(uniqueIds, generatedDesigns);
-
-        // Fully successful — every requested design was in the generated snapshot.
-        // Zero extra reads: do not fall through to the per-doc fallback below.
-        if (missingIds.length === 0) {
-          return generatedDesigns;
-        }
-
-        // Successful-but-incomplete: a manifest cold-start gap (just-approved design not yet
-        // reflected in the cached snapshot) can omit a design without throwing. Retry only the
-        // exact missing subset via the per-doc fallback — never the full requested set.
-        traceGeneratedFallbackActivation(
-          'portal-catalog/request-card',
-          'generated-card-partial-result',
-          { app: 'portal', triggerReason: 'route' },
-        );
-      } catch {
-        traceGeneratedFallbackActivation(
-          'portal-catalog/request-card',
-          'generated-card-resolution-failed',
-          { app: 'portal', triggerReason: 'route' },
-        );
-      }
-    }
-
-    // Per-doc reads: archived/non-ready designs deny customer read and must not
-    // fail the whole Favorites page (batch `in` queries are rules-unsafe here).
-    // Bounded to `missingIds` — the exact subset not already resolved above.
-    const fallbackDesigns = await Promise.all(
-      missingIds.map((designId) =>
+    const loaded = await Promise.all(
+      uniqueIds.map((designId) =>
         loadCatalogDesignByIdCached(designId, async () => {
-        try {
-          const traceMetadata: FirestoreTraceMetadata = {
-            app: 'portal',
-            collection: PORTAL_FIRESTORE_COLLECTIONS.designs,
-            documentPathPattern: 'designs/{designId}',
-            source: 'catalogService.getReadyDesignsByIds',
-            triggerReason: 'route',
-          };
-          traceFirestoreOneShotStart('getDoc', traceMetadata);
-          const snapshot = await getDoc(
-            doc(getPortalDb(), PORTAL_FIRESTORE_COLLECTIONS.designs, designId),
-          );
-          traceFirestoreOneShotComplete('getDoc', traceMetadata, snapshot.exists() ? 1 : 0);
+          try {
+            const traceMetadata: FirestoreTraceMetadata = {
+              app: 'portal',
+              collection: PORTAL_FIRESTORE_COLLECTIONS.designs,
+              documentPathPattern: 'designs/{designId}',
+              source: 'catalogService.getReadyDesignsByIds',
+              triggerReason: 'route',
+            };
+            traceFirestoreOneShotStart('getDoc', traceMetadata);
+            const snapshot = await getDoc(
+              doc(getPortalDb(), PORTAL_FIRESTORE_COLLECTIONS.designs, designId),
+            );
+            traceFirestoreOneShotComplete('getDoc', traceMetadata, snapshot.exists() ? 1 : 0);
 
-          if (!snapshot.exists()) {
+            if (!snapshot.exists()) {
+              return null;
+            }
+
+            return mapCatalogDesign(snapshot.id, snapshot.data() as DesignDocumentData);
+          } catch (error) {
+            if (error instanceof FirebaseError && error.code === 'permission-denied') {
+              return null;
+            }
+
             return null;
           }
-
-          return mapCatalogDesign(snapshot.id, snapshot.data() as DesignDocumentData);
-        } catch (error) {
-          if (error instanceof FirebaseError && error.code === 'permission-denied') {
-            return null;
-          }
-
-          return null;
-        }
         }),
       ),
     );
 
-    return [
-      ...generatedDesigns,
-      ...fallbackDesigns.filter((design): design is CatalogDesign => design !== null),
-    ];
+    return orderReadyDesignsByRequestedIds(
+      uniqueIds,
+      loaded.filter((design): design is CatalogDesign => design !== null),
+    );
   },
 
   invalidateReadyDesignById(designId: string): void {
@@ -575,20 +547,13 @@ export const catalogService = {
     return designs;
   },
 
+  /** Phase 1B Stage 1a: active categories from Firestore only (no catalog-reference snapshot). */
   async listActiveCategories(): Promise<CatalogCategory[]> {
-    if (generatedPortalCatalogEnabled()) {
-      try {
-        const snapshot = await portalCatalogAssetService.loadClientTaxonomy();
-        return snapshot.categories;
-      } catch {
-        // Bounded rollout/rollback fallback while a valid manifest is unavailable.
-      }
-    }
     const traceMetadata: FirestoreTraceMetadata = {
       app: 'portal',
       collection: PORTAL_FIRESTORE_COLLECTIONS.categories,
       constraints: ['isActive==true'],
-      source: 'catalogService.listActiveCategories.fallback',
+      source: 'catalogService.listActiveCategories',
       triggerReason: 'route',
     };
     traceFirestoreOneShotStart('getDocs', traceMetadata);
