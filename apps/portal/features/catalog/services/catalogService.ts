@@ -272,6 +272,38 @@ export function orderReadyDesignsByRequestedIds(
   });
 }
 
+/**
+ * Maps a Firestore category document to the Portal public category contract.
+ * Authoritative active-state field is boolean `isActive` (DATA_MODEL / Studio categoryService).
+ * Inactive (`false`), missing, or non-boolean active-state values are excluded — matching the
+ * pre–Wave C `mapCategoryDocument` contract. Query filter remains; client enforcement prevents
+ * archived/malformed docs from appearing if a read is ever widened.
+ */
+export function mapPortalActiveCategory(
+  categoryId: string,
+  data: Record<string, unknown>,
+): CatalogCategory | null {
+  if (typeof data.name !== 'string' || data.isActive !== true) {
+    return null;
+  }
+
+  return {
+    id: categoryId,
+    name: data.name,
+    ...(typeof data.description === 'string' ? { description: data.description } : {}),
+    sortOrder: typeof data.sortOrder === 'number' ? data.sortOrder : 0,
+  };
+}
+
+/** Stable Portal category display order — sortOrder asc, then name. */
+export function sortPortalCatalogCategories(
+  categories: readonly CatalogCategory[],
+): CatalogCategory[] {
+  return [...categories].sort(
+    (left, right) => left.sortOrder - right.sortOrder || left.name.localeCompare(right.name),
+  );
+}
+
 function catalogListTraceMetadata(
   listQuery: CatalogDesignListQuery,
   source: string,
@@ -562,16 +594,15 @@ export const catalogService = {
       where('isActive', '==', true),
     ));
     traceFirestoreOneShotComplete('getDocs', traceMetadata, snapshot.size);
-    return snapshot.docs.flatMap((document) => {
-      const data = document.data();
-      if (typeof data.name !== 'string') return [];
-      return [{
-        id: document.id,
-        name: data.name,
-        ...(typeof data.description === 'string' ? { description: data.description } : {}),
-        sortOrder: typeof data.sortOrder === 'number' ? data.sortOrder : 0,
-      }];
-    }).sort((left, right) => left.sortOrder - right.sortOrder || left.name.localeCompare(right.name));
+    return sortPortalCatalogCategories(
+      snapshot.docs.flatMap((document) => {
+        const mapped = mapPortalActiveCategory(
+          document.id,
+          document.data() as Record<string, unknown>,
+        );
+        return mapped ? [mapped] : [];
+      }),
+    );
   },
 
   /**
