@@ -1,5 +1,17 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-08-06 - Catalog display mats + ready-approval ordering Signoff approved_with_notes
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, unmerged).
+Commit: `42f7b20` (already pushed).
+
+Owner QA **PASS WITH NOTES**. Signoff **approved_with_notes**:
+`docs/workflow/reviews/2026-08-06-catalog-display-background-and-ready-ordering-signoff.md`.
+
+Studio Details mats + Portal `readyAt` browse complete. Notes: generated search publisher order
+deferred; Portal local `next build` robots/`.next` failure documented (tsc green); Amendment 9
+P4 snapshot reads remain production-promotion blocker. No merge/deploy.
+
 ## 2026-08-06 - Catalog display mats + ready-approval ordering (awaiting owner QA)
 
 Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, unmerged).

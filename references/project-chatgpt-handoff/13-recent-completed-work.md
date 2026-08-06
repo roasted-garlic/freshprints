@@ -1,5 +1,14 @@
 # Recent Completed Work
 
+## 2026-08-06 - Catalog display mats + ready-approval ordering Signoff
+
+- Studio Design Details thumbnail/lightbox use `artworkBackgroundHex`; Portal browse/category/tag order by `readyAt`
+- Commit `42f7b20` on `fix/post-launch-catalog-and-processing-stability`
+- Owner QA **PASS WITH NOTES**; Signoff **approved_with_notes**
+- Notes: generated-search publisher order deferred; Portal `.next`/robots build flake documented; Amendment 9 P4 still blocks production promotion
+- PR #40 open/unmerged; no production deploy
+- Signoff: `docs/workflow/reviews/2026-08-06-catalog-display-background-and-ready-ordering-signoff.md`
+
 ## 2026-08-06 - Amendment 9 P0 Signoff approved_with_notes
 
 - AI Review local reconciliation (no post-action full list/count reload) + scroll-to-top after approve/reject/archive

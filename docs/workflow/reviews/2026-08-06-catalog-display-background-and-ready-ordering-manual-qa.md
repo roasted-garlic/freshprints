@@ -17,17 +17,19 @@
 
 ### Pass criteria
 
-- [ ] Card / Details thumbnail / lightbox mats match
-- [ ] Download PNG unchanged
-- [ ] New approval first in Studio + Portal browse
-- [ ] Re-approval moves older design to top
-- [ ] Category + tag retain approval ordering
-- [ ] No silent disappearances / obvious duplicates
+- [x] Card / Details thumbnail / lightbox mats match
+- [x] Download PNG unchanged
+- [x] New approval first in Studio + Portal browse
+- [x] Re-approval moves older design to top
+- [x] Category + tag retain approval ordering
+- [x] No silent disappearances / obvious duplicates
 
-### Please reply with
+---
 
-- `PASS`
-- `FAIL: [description]`
-- `PASS WITH NOTES: [notes]`
+## Owner result (2026-08-06)
 
-**Do not Signoff until owner replies.** No PR merge / deploy.
+**PASS WITH NOTES**
+
+Implementation ready per report; commit `42f7b20` already pushed; PR #40 updated. Unrelated Portal `.next`/robots prerender build failure remains documented in the test report (typecheck green).
+
+Signoff: `docs/workflow/reviews/2026-08-06-catalog-display-background-and-ready-ordering-signoff.md` — **approved_with_notes**.
