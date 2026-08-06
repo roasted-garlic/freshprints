@@ -1,5 +1,4 @@
 import type { FreshPrintsAppApi } from "../app/appIpc.types";
-import type { FreshPrintsCatalogAssetApi } from "../catalogAsset/catalogAssetIpc.types";
 import type { FreshPrintsInboxAlertApi } from "../inboxAlert/inboxAlertIpc.types";
 import type { FreshPrintsExportApi } from "../export/showExportIpc.types";
 import type { FreshPrintsWhatnotImportApi } from "../whatnotImport/whatnotImport.types";
@@ -303,7 +302,6 @@ export interface FreshPrintsImportsApi {
 
 export interface FreshPrintsPreloadApi {
   app: FreshPrintsAppApi;
-  catalogAsset: FreshPrintsCatalogAssetApi;
   firebaseDebug: FreshPrintsFirebaseDebugApi;
   aiQueueTrace: FreshPrintsAiQueueTraceApi;
   imports: FreshPrintsImportsApi;

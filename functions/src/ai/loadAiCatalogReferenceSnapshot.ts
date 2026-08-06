@@ -1,27 +1,12 @@
-import {
-  parseAiCatalogReferenceSnapshot,
-  parseCatalogReferenceManifest,
-} from "../../../packages/shared/src/catalog-snapshots/catalogSnapshot.parsers";
 import type { AiCatalogReferenceSnapshot } from "../../../packages/shared/src/catalog-snapshots/catalogSnapshot.types";
 import { CATALOG_REFERENCE_SCHEMA_VERSION } from "../../../packages/shared/src/catalog-snapshots/catalogSnapshot.types";
 import type { CatalogTag } from "../../../packages/shared/src/types/catalogTag.types";
-import { adminDb, adminStorage } from "../lib/admin";
+import { adminDb } from "../lib/admin";
 
-const MANIFEST_PATH = "generated/catalog-reference/manifest.json";
 const FALLBACK_TTL_MS = 5 * 60_000;
-const MANIFEST_TTL_MS = 60_000;
 
-let cachedSnapshot: AiCatalogReferenceSnapshot | null = null;
-let manifestExpiresAtMs = 0;
-const immutableSnapshots = new Map<string, AiCatalogReferenceSnapshot>();
-let snapshotLoad: Promise<AiCatalogReferenceSnapshot> | null = null;
 let fallbackCache: { expiresAtMs: number; value: AiCatalogReferenceSnapshot } | null = null;
 let fallbackLoad: Promise<AiCatalogReferenceSnapshot> | null = null;
-
-async function downloadJson(path: string): Promise<unknown> {
-  const [bytes] = await adminStorage.bucket().file(path).download();
-  return JSON.parse(bytes.toString("utf8")) as unknown;
-}
 
 async function loadFirestoreFallback(): Promise<AiCatalogReferenceSnapshot> {
   if (fallbackCache && fallbackCache.expiresAtMs > Date.now()) return fallbackCache.value;
@@ -82,41 +67,9 @@ async function loadFirestoreFallback(): Promise<AiCatalogReferenceSnapshot> {
   }
 }
 
+/** Firestore-only taxonomy load (5min TTL + in-flight dedupe). */
 export async function loadAiCatalogReferenceSnapshot(): Promise<AiCatalogReferenceSnapshot> {
-  if (process.env.AI_CATALOG_SNAPSHOT_ENABLED === "false") {
-    return loadFirestoreFallback();
-  }
-  if (cachedSnapshot && manifestExpiresAtMs > Date.now()) return cachedSnapshot;
-  if (snapshotLoad) return snapshotLoad;
-
-  snapshotLoad = (async () => {
-    try {
-      const manifest = parseCatalogReferenceManifest(await downloadJson(MANIFEST_PATH));
-      const snapshot = immutableSnapshots.get(manifest.contentVersion) ??
-        parseAiCatalogReferenceSnapshot(await downloadJson(manifest.aiPath));
-      if (snapshot.contentVersion !== manifest.contentVersion) {
-        throw new Error("AI catalog reference snapshot version mismatch.");
-      }
-      immutableSnapshots.delete(snapshot.contentVersion);
-      immutableSnapshots.set(snapshot.contentVersion, snapshot);
-      while (immutableSnapshots.size > 2) {
-        const oldest = immutableSnapshots.keys().next().value as string | undefined;
-        if (!oldest) break;
-        immutableSnapshots.delete(oldest);
-      }
-      cachedSnapshot = snapshot;
-      manifestExpiresAtMs = Date.now() + MANIFEST_TTL_MS;
-      return snapshot;
-    } catch {
-      return loadFirestoreFallback();
-    }
-  })();
-
-  try {
-    return await snapshotLoad;
-  } finally {
-    snapshotLoad = null;
-  }
+  return loadFirestoreFallback();
 }
 
 export function aiSnapshotTagsToCatalogTags(
@@ -132,10 +85,6 @@ export function aiSnapshotTagsToCatalogTags(
 }
 
 export function clearAiCatalogReferenceSnapshotCache(): void {
-  cachedSnapshot = null;
-  manifestExpiresAtMs = 0;
-  immutableSnapshots.clear();
-  snapshotLoad = null;
   fallbackCache = null;
   fallbackLoad = null;
 }

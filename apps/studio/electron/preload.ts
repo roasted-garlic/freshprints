@@ -29,10 +29,6 @@ import {
   isAllowedWhatnotImportIpcChannel,
 } from "./ipc/whatnotImport/whatnotImportIpcChannels";
 import {
-  CATALOG_ASSET_IPC_CHANNELS,
-  isAllowedCatalogAssetIpcChannel,
-} from "./ipc/catalogAsset/catalogAssetIpcChannels";
-import {
   STUDIO_UPDATE_IPC_CHANNELS,
   STUDIO_UPDATE_STATE_CHANGED,
   isAllowedStudioUpdateIpcChannel,
@@ -93,10 +89,6 @@ import type {
   ExportShowZipResult,
   ShowExportProgressEvent,
 } from "@fresh-prints/shared/types/export/showExportIpc.types";
-import type {
-  FetchCatalogAssetJsonRequest,
-  FetchCatalogAssetJsonIpcResult,
-} from "@fresh-prints/shared/types/catalogAsset/catalogAssetIpc.types";
 import type {
   CheckForStudioUpdateResult,
   DownloadStudioUpdateResult,
@@ -334,28 +326,6 @@ contextBridge.exposeInMainWorld("freshPrints", {
     },
     isEnabled(): Promise<boolean> {
       return ipcRenderer.invoke(AI_QUEUE_TRACE_IPC_CHANNELS.IS_ENABLED);
-    },
-  },
-
-  catalogAsset: {
-    fetchJson(
-      request: FetchCatalogAssetJsonRequest,
-    ): Promise<FetchCatalogAssetJsonIpcResult> {
-      if (!isAllowedCatalogAssetIpcChannel(CATALOG_ASSET_IPC_CHANNELS.FETCH_JSON)) {
-        return Promise.resolve({
-          success: false,
-          error: {
-            code: "INVALID_INPUT",
-            message: "The requested catalog asset operation is not allowed.",
-            diagnostics: {
-              durationMs: 0,
-              failureCode: "ipc-channel-denied",
-              failureStage: "electron-ipc",
-            },
-          },
-        });
-      }
-      return ipcRenderer.invoke(CATALOG_ASSET_IPC_CHANNELS.FETCH_JSON, request);
     },
   },
 

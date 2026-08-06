@@ -7,16 +7,8 @@ function read(relativePath: string): string {
 }
 
 /**
- * Regression coverage for the confirmed Studio Design Library ready-design invisibility defect
- * (post-launch-catalog-and-processing-stability, Owner QA Amendment 1, Workstream 1).
- *
- * Root cause: normal (non-archived) browse was gated entirely off a successfully-fetched
- * generated Storage snapshot (useGeneratedReadyDesigns), with Firestore fallback only activating
- * on an outright fetch *failure* — a stale-but-successful snapshot fetch left newly-approved
- * ready designs permanently invisible. The fix makes useDesigns (bounded, cursor-paginated
- * Firestore, already createdAt desc, already cache-invalidated on approval) the unconditional
- * primary source for the design LIST. Generated taxonomy (categories/tags) is unaffected and
- * remains the primary source for normal browse.
+ * Phase 1A / Amendment 1 regression: Design Library design LIST is Firestore-authoritative.
+ * Display taxonomy uses Firestore via useGeneratedDesignLibraryTaxonomy (export name preserved).
  */
 describe("Design Library design-list source is unconditionally Firestore-authoritative", () => {
   it("DesignLibraryPage no longer imports or renders through useGeneratedReadyDesigns", () => {
@@ -29,7 +21,7 @@ describe("Design Library design-list source is unconditionally Firestore-authori
     assert.doesNotMatch(source, /usedFirestoreFallback/);
   });
 
-  it("useDesigns (bounded Firestore) is called unconditionally for the design list, not gated by generated-catalog mode", () => {
+  it("useDesigns (bounded Firestore) is called unconditionally for the design list", () => {
     const source = read(
       "apps/studio/src/renderer/src/features/designs/pages/DesignLibraryPage.tsx",
     );
@@ -38,10 +30,6 @@ describe("Design Library design-list source is unconditionally Firestore-authori
       source.indexOf("} = useDesigns(listQuery"),
       source.indexOf("} = useDesigns(listQuery") + 120,
     );
-    // The `enabled` gate comes from getDesignLibraryFirestoreLoadPolicy's loadReadyDesignPage,
-    // which the amendment made unconditionally true for both archived and normal browse — the
-    // useDesigns call itself is no longer wrapped in an `if (usingGeneratedCatalog) { ... } else`
-    // branch selecting between two different design sources.
     assert.match(useDesignsCallBlock, /firestoreLoadPolicy\.loadReadyDesignPage/);
 
     assert.doesNotMatch(
@@ -51,16 +39,13 @@ describe("Design Library design-list source is unconditionally Firestore-authori
     );
   });
 
-  it("getDesignLibraryFirestoreLoadPolicy always loads the ready-design page regardless of generated-taxonomy status", () => {
+  it("getDesignLibraryFirestoreLoadPolicy always loads the ready-design page", () => {
     const source = read(
       "apps/studio/src/renderer/src/features/designs/utils/designLibraryFirestoreLoadPolicy.ts",
     );
 
-    // Both branches (archived and normal/generated-taxonomy) must set loadReadyDesignPage: true —
-    // this is the exact line the defect lived on before the fix (previously `false` in the
-    // generated-taxonomy branch).
     const matches = [...source.matchAll(/loadReadyDesignPage:\s*(true|false)/g)];
-    assert.ok(matches.length >= 2, "expected at least two loadReadyDesignPage assignments");
+    assert.ok(matches.length >= 1, "expected at least one loadReadyDesignPage assignment");
     for (const match of matches) {
       assert.equal(match[1], "true", "every loadReadyDesignPage assignment must be true");
     }
@@ -83,7 +68,7 @@ describe("Design Library design-list source is unconditionally Firestore-authori
     );
   });
 
-  it("generated taxonomy (categories/tags) remains the primary source for normal browse, unaffected by this fix", () => {
+  it("display taxonomy uses Firestore-backed useGeneratedDesignLibraryTaxonomy for normal browse", () => {
     const source = read(
       "apps/studio/src/renderer/src/features/designs/pages/DesignLibraryPage.tsx",
     );
@@ -91,12 +76,13 @@ describe("Design Library design-list source is unconditionally Firestore-authori
     assert.match(source, /useGeneratedDesignLibraryTaxonomy/);
     assert.match(
       source,
-      /const categories = usingGeneratedCatalog \? generatedTaxonomy\.categories : firestoreCategories;/,
+      /const categories = includeArchived \? firestoreCategories : displayTaxonomy\.categories;/,
     );
     assert.match(
       source,
-      /const catalogTags = usingGeneratedCatalog \? generatedTaxonomy\.tags : firestoreCatalogTags;/,
+      /const catalogTags = includeArchived \? firestoreCatalogTags : displayTaxonomy\.tags;/,
     );
+    assert.doesNotMatch(source, /usingGeneratedCatalog/);
   });
 
   it("no loadAll, full collection scan, or new realtime listener is introduced", () => {
@@ -108,13 +94,13 @@ describe("Design Library design-list source is unconditionally Firestore-authori
     assert.doesNotMatch(source, /onSnapshot/);
   });
 
-  it("useGeneratedReadyDesigns remains defined and used by its other real consumer (Assisted Creation catalog picker), not deleted", () => {
-    // The hook must survive this amendment for useReadyDesignsForAssistedCatalogPicker — deleting
-    // it would be an unrequested, out-of-scope removal.
+  it("useGeneratedReadyDesigns remains for Assisted Creation and uses Firestore pagination", () => {
     const hookSource = read(
       "apps/studio/src/renderer/src/features/designs/hooks/useGeneratedReadyDesigns.ts",
     );
     assert.match(hookSource, /export function useGeneratedReadyDesigns/);
+    assert.match(hookSource, /loadAllReadyDesignsFromFirestore|listDesignsPage/);
+    assert.doesNotMatch(hookSource, /studioCatalogAssetService/);
 
     const consumerSource = read(
       "apps/studio/src/renderer/src/features/customer-requests/hooks/useReadyDesignsForAssistedCatalogPicker.ts",

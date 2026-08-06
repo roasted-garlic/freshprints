@@ -4,6 +4,8 @@ import test from "node:test";
 import {
   buildPortalGlobalOpenGraphAccounting,
   createPortalGlobalOpenGraphCache,
+  mergeAndRankPortalOgLibraryCandidates,
+  type PortalOgLibraryDesignCandidate,
 } from "./getPortalGlobalOpenGraph";
 
 test("global metadata cache reuses resolved and concurrent loads", async () => {
@@ -46,23 +48,35 @@ test("global metadata cache expires once and rejected loads never poison it", as
   }
 });
 
-test("accounting reports exact Firestore reads and contains safe aggregate keys only", () => {
+test("accounting reports exact Firestore reads including design docs on miss only", () => {
   const library = buildPortalGlobalOpenGraphAccounting("miss", "library", {
     settingsDocumentsRead: 1,
-    totalFirestoreDocumentReads: 1,
+    designDocumentsReturned: 73,
+    totalFirestoreDocumentReads: 74,
   });
   const logo = buildPortalGlobalOpenGraphAccounting("miss", "logo", {
     settingsDocumentsRead: 2,
+    designDocumentsReturned: 0,
     totalFirestoreDocumentReads: 2,
   });
   const hit = buildPortalGlobalOpenGraphAccounting("hit", "library", {
     settingsDocumentsRead: 1,
-    totalFirestoreDocumentReads: 1,
+    designDocumentsReturned: 73,
+    totalFirestoreDocumentReads: 74,
   });
-  assert.equal(library.totalFirestoreDocumentReads, 1);
-  assert.equal(library.designDocumentsReturned, 0);
+  const inFlight = buildPortalGlobalOpenGraphAccounting("in-flight-reuse", "library", {
+    settingsDocumentsRead: 1,
+    designDocumentsReturned: 40,
+    totalFirestoreDocumentReads: 41,
+  });
+  assert.equal(library.totalFirestoreDocumentReads, 74);
+  assert.equal(library.designDocumentsReturned, 73);
   assert.equal(logo.totalFirestoreDocumentReads, 2);
+  assert.equal(logo.designDocumentsReturned, 0);
   assert.equal(hit.totalFirestoreDocumentReads, 0);
+  assert.equal(hit.designDocumentsReturned, 0);
+  assert.equal(inFlight.totalFirestoreDocumentReads, 0);
+  assert.equal(inFlight.designDocumentsReturned, 0);
   assert.deepEqual(Object.keys(library).sort(), [
     "cacheStatus",
     "designDocumentsReturned",
@@ -70,4 +84,52 @@ test("accounting reports exact Firestore reads and contains safe aggregate keys 
     "sourceMode",
     "totalFirestoreDocumentReads",
   ]);
+});
+
+test("mergeAndRank dedups by id and ranks by readyAt??createdAt desc then id desc", () => {
+  const readyAtPage: PortalOgLibraryDesignCandidate[] = [
+    { id: "a", readyAtMs: 100, createdAtMs: 10 },
+    { id: "b", readyAtMs: 90, createdAtMs: 50 },
+    { id: "legacy-missing", readyAtMs: null, createdAtMs: 5 },
+  ];
+  const createdAtPage: PortalOgLibraryDesignCandidate[] = [
+    { id: "c", readyAtMs: null, createdAtMs: 200 },
+    { id: "b", readyAtMs: 90, createdAtMs: 50 },
+    { id: "legacy-only-created", readyAtMs: null, createdAtMs: 80 },
+  ];
+
+  const ranked = mergeAndRankPortalOgLibraryCandidates([readyAtPage, createdAtPage], 40);
+  assert.deepEqual(
+    ranked.map((candidate) => candidate.id),
+    ["c", "a", "b", "legacy-only-created", "legacy-missing"],
+  );
+  assert.equal(ranked.length, 5);
+});
+
+test("mergeAndRank caps at sample size and uses id desc for equal rank timestamps", () => {
+  const page: PortalOgLibraryDesignCandidate[] = [
+    { id: "z", readyAtMs: 50, createdAtMs: 1 },
+    { id: "m", readyAtMs: 50, createdAtMs: 2 },
+    { id: "a", readyAtMs: 50, createdAtMs: 3 },
+    { id: "older", readyAtMs: 10, createdAtMs: 100 },
+  ];
+  const ranked = mergeAndRankPortalOgLibraryCandidates([page], 3);
+  assert.deepEqual(
+    ranked.map((candidate) => candidate.id),
+    ["z", "m", "a"],
+  );
+});
+
+test("mergeAndRank keeps legacy ready designs that only appear on createdAt page", () => {
+  const readyAtPage: PortalOgLibraryDesignCandidate[] = [
+    { id: "with-ready-at", readyAtMs: 300, createdAtMs: 1 },
+  ];
+  const createdAtPage: PortalOgLibraryDesignCandidate[] = [
+    { id: "legacy-no-ready-at", readyAtMs: null, createdAtMs: 250 },
+    { id: "with-ready-at", readyAtMs: 300, createdAtMs: 1 },
+  ];
+  const ranked = mergeAndRankPortalOgLibraryCandidates([readyAtPage, createdAtPage]);
+  assert.equal(ranked[0]?.id, "with-ready-at");
+  assert.equal(ranked[1]?.id, "legacy-no-ready-at");
+  assert.equal(ranked.length, 2);
 });

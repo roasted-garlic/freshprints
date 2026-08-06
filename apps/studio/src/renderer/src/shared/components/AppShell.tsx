@@ -9,7 +9,6 @@ import { UploadActivityProvider } from "../context/UploadActivityProvider";
 import { StaffInboxProvider } from "../../features/staff-inbox/components/StaffInboxProvider";
 import { StaffInboxToastHost } from "../../features/staff-inbox/components/StaffInboxToastHost";
 import { AssistedMessagesProvider } from "../../features/customer-requests/components/AssistedMessagesProvider";
-import { installCatalogSnapshotAdminConsole } from "../../features/designs/services/catalogSnapshotAdminService";
 import { installPrintRequestQueueTabBackfillAdminConsole } from "../../features/print-requests/services/printRequestQueueTabBackfillAdminService";
 import { FirebaseDebugPanelMount } from "../../features/firebase-debug/components/FirebaseDebugPanelMount";
 import { AppHeader } from "./AppHeader";
@@ -30,7 +29,6 @@ function AppShellContent({ children }: AppShellProps) {
     setFirestoreUsageTraceContext({ app: "studio", route: location.pathname });
   }, [location.pathname]);
 
-  useEffect(() => installCatalogSnapshotAdminConsole(), []);
   useEffect(() => installPrintRequestQueueTabBackfillAdminConsole(), []);
 
   const openDrawer = useCallback(() => setIsDrawerOpen(true), []);

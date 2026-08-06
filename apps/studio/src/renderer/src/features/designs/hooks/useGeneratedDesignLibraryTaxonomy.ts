@@ -1,15 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import {
-  traceGeneratedAssetOutcome,
-} from "@fresh-prints/shared/utils/firestoreUsageTrace";
 
-import { studioCatalogAssetService } from "../services/studioCatalogAssetService";
+import { categoryService } from "../services/categoryService";
+import { catalogTagService } from "../services/catalogTagService";
 import type { CatalogTag } from "../types/catalogTag.types";
 import type { Category } from "../types/category.types";
-import { clientCategoryToCategory, clientTagToCatalogTag } from "../utils/generatedReadyDesignMapping";
 import type { User } from "../../users/types/user.types";
-
-const TAXONOMY_TRACE_SOURCE = "studioDesignLibrary.generatedTaxonomy@generated-first-v3";
 
 interface TaxonomyState {
   categories: Category[];
@@ -28,16 +23,12 @@ const initialState: TaxonomyState = {
 };
 
 /**
- * Categories and (display/filter-only) tags for the normal ready Design Library, sourced from the
- * same generated client-safe taxonomy snapshot Portal already publishes and consumes
- * (`generated/catalog-reference/**`) — zero Firestore reads, replacing the previously-unconditional
- * `categoryService.listCategories`/`catalogTagService.listTags` calls on every Design Library mount
- * (see the Wave C Plan amendment's taxonomy-read-gap correction).
+ * Categories and (display/filter-only) tags for the normal ready Design Library.
  *
- * Not a replacement for `useCategories`/`useCatalogTags` everywhere — `TagManagementModal` and
- * `CategoryManagementModal` keep their existing Firestore-backed hooks unchanged, since those pages
- * need the full approved+archived taxonomy (including `preferredWhen`) for editing, which this
- * public, active/approved-only snapshot deliberately does not carry.
+ * Phase 1A: Firestore-backed via `categoryService` / `catalogTagService` (active categories +
+ * approved tags). Export name and `TaxonomyState` shape are preserved so AI Review callers stay
+ * unchanged. Tag/Category management modals still use `useCategories` / `useCatalogTags` for the
+ * full approved+archived taxonomy.
  */
 export function useGeneratedDesignLibraryTaxonomy(user: User | null): TaxonomyState {
   const [state, setState] = useState<TaxonomyState>(initialState);
@@ -64,17 +55,15 @@ export function useGeneratedDesignLibraryTaxonomy(user: User | null): TaxonomySt
       status: "loading",
     }));
 
-    void studioCatalogAssetService
-      .loadClientTaxonomy()
-      .then((snapshot) => {
+    void Promise.all([
+      categoryService.listCategories(user),
+      catalogTagService.listTags(user),
+    ])
+      .then(([categories, tags]) => {
         if (isCancelled || generation !== generationRef.current) return;
-        traceGeneratedAssetOutcome("success", TAXONOMY_TRACE_SOURCE, {
-          app: "studio",
-          triggerReason: "route",
-        });
         setState({
-          categories: snapshot.categories.map(clientCategoryToCategory),
-          tags: snapshot.tags.map(clientTagToCatalogTag),
+          categories,
+          tags,
           isLoading: false,
           isUnavailable: false,
           status: "ready",
@@ -82,10 +71,6 @@ export function useGeneratedDesignLibraryTaxonomy(user: User | null): TaxonomySt
       })
       .catch(() => {
         if (isCancelled || generation !== generationRef.current) return;
-        traceGeneratedAssetOutcome("failure", TAXONOMY_TRACE_SOURCE, {
-          app: "studio",
-          triggerReason: "route",
-        });
         setState({
           categories: [],
           tags: [],

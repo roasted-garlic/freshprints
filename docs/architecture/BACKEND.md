@@ -302,7 +302,7 @@ project if Firebase params were previously set. On each target project, set both
 All transactional templates include an unmonitored-mailbox disclaimer. Verify
 `myprintrequest.com` (or `noreply@myprintrequest.com`) in Resend and/or Brevo before live send.
 
-**Portal Open Graph absolute URLs (2026-07-20; letterbox/toggles 2026-07-21):** The Next.js Portal
+**Portal Open Graph absolute URLs (2026-07-20; letterbox/toggles 2026-07-21; Amendment 8 Phase 1A 2026-08-05):** The Next.js Portal
 uses the same customer hosts for `metadataBase` / OG image resolution via optional
 `NEXT_PUBLIC_PORTAL_ORIGIN`, else `NEXT_PUBLIC_FIREBASE_PROJECT_ID=fresh-prints-dev` →
 `https://myprintrequest.dev`, else production non-dev project → `https://myprintrequest.com`, else
@@ -311,16 +311,25 @@ uses the same customer hosts for `metadataBase` / OG image resolution via option
 | Function | Role |
 |----------|------|
 | `getPortalDesignShareOpenGraph` | Public JSON for `/share/design/{id}` title/description/`imageUrl` |
-| `getPortalGlobalOpenGraph` | Public JSON for non-design URLs (settings + library/logo image) |
+| `getPortalGlobalOpenGraph` | Public JSON for non-design URLs. **Phase 1A:** library image candidates from bounded dual Firestore queries (`readyAt` + `createdAt`, merge/dedup, top 40) — not generated catalog shards. Logo path unchanged. 1h in-process cache; HTTP `max-age=300`. |
 | `getPortalOgShareImage` | Public JPEG letterbox compositor (`designId` + `fit=contain`) |
 | `updatePortalSocialMetaSettings` | Owner callable for title/description + letterbox + global image source |
 | `updatePortalHelpSettings` | Owner/admin callable for Portal FAQ and How To (`settings/portalHelp`) |
 | `finalizeBrandLogoSlot` | Owner callable: finalize/clear Studio+Portal brand logo slots from Admin Storage metadata |
 | `updateBrandLogoDisplaySizes` | Owner callable: set Portal/Studio logo display heights (px) on `settings/brandLogos` |
 
+**AI enrichment taxonomy (Phase 1A):** `loadAiCatalogReferenceSnapshot` loads active categories +
+approved tags from Firestore only (5-minute TTL + in-flight dedupe). `aiEnrichmentRuntimeCache`
+(60s) is unchanged. Generated `catalog-reference` AI snapshot is no longer the primary path.
+
+**Managed search (Phase 1B, not implemented):** When a provider is selected, document Secret Manager
+write keys, public search-only keys (never in client bundles), and env vars here. Index records are
+not an authorization boundary.
+
 Portal metadata prefers these Functions (no App Hosting Admin ADC required for crawlers). Studio
 **Settings → Social sharing** toggles letterbox and library-vs-logo. Studio **Settings → Brand logos**
-uploads PNGs to Storage `brand/**` + `settings/brandLogos`. See `DEPLOYMENT.md` and ADR-FP-114.
+uploads PNGs to Storage `brand/**` + `settings/brandLogos`. See `DEPLOYMENT.md` and ADR-FP-114 /
+ADR-FP-120-S.
 
 ---
 

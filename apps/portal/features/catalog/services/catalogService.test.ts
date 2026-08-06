@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
 
 import { resolveMissingDesignIds } from './catalogService';
@@ -8,16 +9,10 @@ describe('catalogService.resolveMissingDesignIds (item 1: cold-start manifest ga
     const requestedIds = ['design-a', 'design-b', 'design-c'];
     const found = [{ id: 'design-a' }, { id: 'design-b' }, { id: 'design-c' }];
     const missing = resolveMissingDesignIds(requestedIds, found);
-    // A fully successful/complete generated-catalog response must cause zero fallback reads:
-    // an empty missing-ids list is what getReadyDesignsByIds uses to skip the fallback loop
-    // entirely (Array.prototype.map over `[]` performs zero iterations/zero reads).
     assert.deepEqual(missing, []);
   });
 
   it('returns only the missing subset when the generated response is successful but incomplete', () => {
-    // Simulates a manifest cold-start gap: design-b was just approved and has not yet been
-    // reflected in the cached generated-catalog snapshot, so the generated response omits it
-    // without throwing (a successful, valid, but incomplete result).
     const requestedIds = ['design-a', 'design-b', 'design-c'];
     const found = [{ id: 'design-a' }, { id: 'design-c' }];
     const missing = resolveMissingDesignIds(requestedIds, found);
@@ -43,5 +38,19 @@ describe('catalogService.resolveMissingDesignIds (item 1: cold-start manifest ga
     const found = [{ id: 'design-a' }];
     const missing = resolveMissingDesignIds(requestedIds, found);
     assert.deepEqual(missing, ['design-z', 'design-m']);
+  });
+});
+
+describe('Phase 1A catalogService page cache + home pool wiring', () => {
+  it('exports page-cache invalidation and wraps sort-fallback + home pool with bounded cache', () => {
+    const source = readFileSync(
+      'apps/portal/features/catalog/services/catalogService.ts',
+      'utf8',
+    );
+    assert.match(source, /createBoundedAsyncCache/);
+    assert.match(source, /invalidateCatalogPageCaches/);
+    assert.match(source, /catalogPageCache\.get/);
+    assert.match(source, /homeDiscoveryPoolCache\.get/);
+    assert.match(source, /CATALOG_PAGE_CACHE_TTL_MS/);
   });
 });

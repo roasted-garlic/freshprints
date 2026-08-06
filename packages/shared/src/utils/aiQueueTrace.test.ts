@@ -255,7 +255,7 @@ describe("AI queue trace: shared main-process store, IPC-mediated (cross-window 
     // this same preload script — the main window and the Debug window both do).
     const bridgeBlock = preloadSource.slice(
       preloadSource.indexOf("aiQueueTrace: {"),
-      preloadSource.indexOf("catalogAsset: {"),
+      preloadSource.indexOf("app: {"),
     );
     assert.match(bridgeBlock, /append\(event: AiQueueTraceEventInput\): void/);
     assert.match(bridgeBlock, /ipcRenderer\.send\(AI_QUEUE_TRACE_IPC_CHANNELS\.APPEND/);

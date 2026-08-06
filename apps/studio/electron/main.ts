@@ -14,7 +14,6 @@ import {
   STUDIO_MIN_WINDOW_HEIGHT,
   STUDIO_MIN_WINDOW_WIDTH,
 } from './window/studioWindowConstraints'
-import { registerCatalogAssetIpcHandlers } from './ipc/catalogAsset/catalogAssetIpcHandlers'
 import {
   closeFirebaseDebugWindow,
   registerFirebaseDebugIpcHandlers,
@@ -306,7 +305,6 @@ app.whenReady().then(() => {
   app.setName(appName)
   Menu.setApplicationMenu(null)
   registerAppIpcHandlers()
-  registerCatalogAssetIpcHandlers()
   registerFirebaseDebugIpcHandlers({
     getMainWindow: () => win,
     getPreloadPath: () => path.join(__dirname, 'preload.mjs'),

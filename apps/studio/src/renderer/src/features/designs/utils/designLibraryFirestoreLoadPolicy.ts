@@ -5,29 +5,21 @@ export interface DesignLibraryFirestoreLoadPolicy {
 }
 
 /**
- * The design LIST is always bounded-Firestore-authoritative for normal (non-archived) browse —
- * see the post-launch-catalog-and-processing-stability Owner QA Amendment 1 Plan. A generated
- * Storage snapshot that fetches successfully but is merely stale (has not yet republished a
- * newly-approved design) previously left approved designs permanently invisible in Studio Design
- * Library, because nothing ever fell back to Firestore in that case — only an outright fetch
- * *failure* triggered fallback. Firestore is cheap for this specific read (already bounded,
- * cached, ≤101 docs per page — see the Wave C Plan's own read inventory) and is now unconditional
- * for both archived and normal browse.
- *
- * Categories/tags remain generated-taxonomy-first for normal browse — that read genuinely was the
- * expensive part Wave C's Studio amendment targeted (~1,122 tags + ≤200 categories per cold entry)
- * and is unaffected by this correction.
+ * Phase 1A: design LIST remains bounded-Firestore-authoritative. Display taxonomy is also
+ * Firestore-backed via `useGeneratedDesignLibraryTaxonomy` (active/approved). Full
+ * category/tag management still loads archived-inclusive Firestore hooks when needed.
  */
 export function getDesignLibraryFirestoreLoadPolicy(input: {
-  generatedTaxonomyStatus: "loading" | "ready" | "failed" | "inactive";
   requiresFullCategoryManagementData?: boolean;
-  usingGeneratedCatalog: boolean;
+  includeArchived: boolean;
 }): DesignLibraryFirestoreLoadPolicy {
-  if (!input.usingGeneratedCatalog) {
+  if (input.includeArchived || input.requiresFullCategoryManagementData === true) {
     return { loadCategories: true, loadReadyDesignPage: true, loadTags: true };
   }
+  // Normal browse: taxonomy comes from useGeneratedDesignLibraryTaxonomy (Firestore active/approved).
+  // Skip duplicate full archived taxonomy hooks unless management modal needs them.
   return {
-    loadCategories: input.requiresFullCategoryManagementData === true,
+    loadCategories: false,
     loadReadyDesignPage: true,
     loadTags: false,
   };

@@ -196,25 +196,16 @@ export function DesignLibraryPage() {
     [includeArchived, selectionModeActive],
   );
 
-  // The design LIST is always bounded-Firestore-authoritative for normal (non-archived) browse —
-  // post-launch-catalog-and-processing-stability, Owner QA Amendment 1. A generated Storage
-  // snapshot that fetches successfully but is merely stale (has not yet republished a
-  // newly-approved design) previously left approved designs permanently invisible, because only
-  // an outright fetch *failure* ever triggered a Firestore fallback. The design page read itself
-  // was never the Wave C cost problem (already bounded, ≤101 docs, already cached) — only the
-  // taxonomy reads were, so categories/tags for normal browse remain generated-taxonomy-first,
-  // unchanged.
-  const usingGeneratedCatalog = !includeArchived;
-  const generatedTaxonomy = useGeneratedDesignLibraryTaxonomy(usingGeneratedCatalog ? user : null);
+  // The design LIST is always bounded-Firestore-authoritative (Amendment 1).
+  // Phase 1A: display taxonomy is Firestore-backed via useGeneratedDesignLibraryTaxonomy.
+  // Archived browse and category-management still load full Firestore taxonomy hooks.
+  const displayTaxonomy = useGeneratedDesignLibraryTaxonomy(includeArchived ? null : user);
   const firestoreLoadPolicy = getDesignLibraryFirestoreLoadPolicy({
-    generatedTaxonomyStatus: generatedTaxonomy.status,
+    includeArchived,
     requiresFullCategoryManagementData: isCategoryModalOpen,
-    usingGeneratedCatalog,
   });
 
-  // Categories/tags for the normal (non-archived) Design Library stay on the generated taxonomy
-  // snapshot (zero Firestore reads) — archived mode keeps the existing Firestore-backed hooks,
-  // since staff need the full approved+archived taxonomy while browsing/managing archived designs.
+  // Categories/tags: normal browse uses displayTaxonomy; archived/management use Firestore hooks.
   const {
     categories: firestoreCategories,
     error: categoriesError,
@@ -228,8 +219,8 @@ export function DesignLibraryPage() {
     enabled: firestoreLoadPolicy.loadTags,
     includeArchived: true,
   });
-  const categories = usingGeneratedCatalog ? generatedTaxonomy.categories : firestoreCategories;
-  const catalogTags = usingGeneratedCatalog ? generatedTaxonomy.tags : firestoreCatalogTags;
+  const categories = includeArchived ? firestoreCategories : displayTaxonomy.categories;
+  const catalogTags = includeArchived ? firestoreCatalogTags : displayTaxonomy.tags;
   const {
     designs,
     error: designsError,
@@ -634,16 +625,15 @@ export function DesignLibraryPage() {
 
   useShellHeaderConfig(shellHeaderConfig);
 
-  const generatedTaxonomyUnavailableMessage =
-    "Design Library is temporarily unavailable. Please try again.";
-  const loadError = usingGeneratedCatalog
-    ? (generatedTaxonomy.isUnavailable ? generatedTaxonomyUnavailableMessage : null) ??
-      designsError ??
-      categoriesError
-    : designsError ?? categoriesError;
-  const isLoading = usingGeneratedCatalog
-    ? isDesignsLoading || (generatedTaxonomy.isLoading && !generatedTaxonomy.isUnavailable)
-    : isDesignsLoading || isCategoriesLoading || (selectionModeActive && selectionMode.isLoading);
+  const loadError = designsError ?? categoriesError ??
+    (!includeArchived && displayTaxonomy.isUnavailable
+      ? "Design Library taxonomy is temporarily unavailable. Please try again."
+      : null);
+  const isLoading = includeArchived
+    ? isDesignsLoading || isCategoriesLoading || (selectionModeActive && selectionMode.isLoading)
+    : isDesignsLoading ||
+      (displayTaxonomy.isLoading && !displayTaxonomy.isUnavailable) ||
+      (selectionModeActive && selectionMode.isLoading);
   const shouldShowSelectionError = selectionModeActive && !selectionMode.isLoading && Boolean(selectionError);
 
   if (shouldShowSelectionError) {

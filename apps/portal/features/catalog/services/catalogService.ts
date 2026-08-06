@@ -20,6 +20,7 @@ import {
   traceFirestoreOneShotStart,
   type FirestoreTraceMetadata,
 } from '@fresh-prints/shared/utils/firestoreUsageTrace';
+import { createBoundedAsyncCache } from '@fresh-prints/shared/utils/boundedAsyncCache';
 
 import { PORTAL_FIRESTORE_COLLECTIONS } from '../../../lib/firebase/collections';
 import { getPortalDb } from '../../../lib/firebase/client';
@@ -41,6 +42,35 @@ import {
 
 export const DEFAULT_CATALOG_PAGE_SIZE = 40;
 export const HOME_DISCOVERY_POOL_PAGE_SIZE = 80;
+/** Warm back-navigation reuse for ordinary Firestore catalog pages. */
+export const CATALOG_PAGE_CACHE_TTL_MS = 15_000;
+
+const catalogPageCache = createBoundedAsyncCache<CatalogDesignListPage>({
+  maxEntries: 48,
+  ttlMs: CATALOG_PAGE_CACHE_TTL_MS,
+});
+
+const homeDiscoveryPoolCache = createBoundedAsyncCache<CatalogDesign[]>({
+  maxEntries: 4,
+  ttlMs: CATALOG_PAGE_CACHE_TTL_MS,
+});
+
+function serializeCatalogPageCacheKey(listQuery: CatalogDesignListQuery): string {
+  return JSON.stringify({
+    categoryId: listQuery.categoryId ?? null,
+    createdAfterMs: listQuery.createdAfterMs ?? null,
+    cursor: listQuery.cursor ?? null,
+    limitCount: listQuery.limitCount ?? DEFAULT_CATALOG_PAGE_SIZE,
+    sortField: listQuery.sortField ?? 'createdAt',
+    tag: listQuery.tag ?? null,
+  });
+}
+
+/** Explicit invalidation after catalog-affecting mutations (favorites do not mutate design docs). */
+export function invalidateCatalogPageCaches(): void {
+  catalogPageCache.clear();
+  homeDiscoveryPoolCache.clear();
+}
 
 function isFirestoreIndexNotReadyError(error: unknown): boolean {
   if (!(error instanceof FirebaseError)) {
@@ -406,94 +436,100 @@ export const catalogService = {
    * still building, falls back to status+createdAt (Studio-newest) so home stays usable.
    */
   async listHomeDiscoveryPool(): Promise<CatalogDesign[]> {
-    const preferredQueries: CatalogDesignListQuery[] = [
-      {
-        limitCount: HOME_DISCOVERY_POOL_PAGE_SIZE,
-        sortField: 'createdAt',
-      },
-      {
-        limitCount: HOME_DISCOVERY_POOL_PAGE_SIZE,
-        sortField: 'requestCount',
-      },
-      {
-        limitCount: HOME_DISCOVERY_POOL_PAGE_SIZE,
-        sortField: 'favoriteCount',
-      },
-      {
-        limitCount: HOME_DISCOVERY_POOL_PAGE_SIZE,
-        sortField: 'lastAddedToShowAt',
-      },
-    ];
+    return homeDiscoveryPoolCache.get('home-discovery-pool', async () => {
+      const preferredQueries: CatalogDesignListQuery[] = [
+        {
+          limitCount: HOME_DISCOVERY_POOL_PAGE_SIZE,
+          sortField: 'createdAt',
+        },
+        {
+          limitCount: HOME_DISCOVERY_POOL_PAGE_SIZE,
+          sortField: 'requestCount',
+        },
+        {
+          limitCount: HOME_DISCOVERY_POOL_PAGE_SIZE,
+          sortField: 'favoriteCount',
+        },
+        {
+          limitCount: HOME_DISCOVERY_POOL_PAGE_SIZE,
+          sortField: 'lastAddedToShowAt',
+        },
+      ];
 
-    const settled = await Promise.allSettled(
-      preferredQueries.map((listQuery) => this.listReadyDesignsPage(listQuery)),
-    );
+      const settled = await Promise.allSettled(
+        preferredQueries.map((listQuery) => this.listReadyDesignsPage(listQuery)),
+      );
 
-    const byId = new Map<string, CatalogDesign>();
+      const byId = new Map<string, CatalogDesign>();
 
-    for (const result of settled) {
-      if (result.status !== 'fulfilled') {
-        continue;
+      for (const result of settled) {
+        if (result.status !== 'fulfilled') {
+          continue;
+        }
+
+        for (const design of result.value.designs) {
+          byId.set(design.id, design);
+        }
       }
 
-      for (const design of result.value.designs) {
-        byId.set(design.id, design);
+      if (byId.size > 0) {
+        return [...byId.values()];
       }
-    }
 
-    if (byId.size > 0) {
-      return [...byId.values()];
-    }
+      const indexBlocked = settled.every(
+        (result) => result.status === 'rejected' && isFirestoreIndexNotReadyError(result.reason),
+      );
 
-    const indexBlocked = settled.every(
-      (result) => result.status === 'rejected' && isFirestoreIndexNotReadyError(result.reason),
-    );
+      if (indexBlocked || settled.some((result) => result.status === 'rejected')) {
+        const fallback = await this.listReadyDesignsPage({
+          limitCount: HOME_DISCOVERY_POOL_PAGE_SIZE,
+          sortField: 'createdAt',
+        });
+        return fallback.designs;
+      }
 
-    if (indexBlocked || settled.some((result) => result.status === 'rejected')) {
-      const fallback = await this.listReadyDesignsPage({
-        limitCount: HOME_DISCOVERY_POOL_PAGE_SIZE,
-        sortField: 'createdAt',
-      });
-      return fallback.designs;
-    }
-
-    return [];
+      return [];
+    });
   },
 
   /**
    * Paged list with automatic fallback to `createdAt` (then `updatedAt`) when a
    * sort-specific composite index is missing or still building.
+   * Stable query-key cache + shared in-flight Promise for warm back-navigation.
    */
   async listReadyDesignsPageWithSortFallback(
     listQuery: CatalogDesignListQuery = {},
   ): Promise<CatalogDesignListPage> {
-    try {
-      return await this.listReadyDesignsPage(listQuery);
-    } catch (error) {
-      const sortField = listQuery.sortField ?? 'createdAt';
+    const cacheKey = serializeCatalogPageCacheKey(listQuery);
+    return catalogPageCache.get(cacheKey, async () => {
+      try {
+        return await this.listReadyDesignsPage(listQuery);
+      } catch (error) {
+        const sortField = listQuery.sortField ?? 'createdAt';
 
-      if (!isFirestoreIndexNotReadyError(error)) {
-        throw error;
-      }
+        if (!isFirestoreIndexNotReadyError(error)) {
+          throw error;
+        }
 
-      if (sortField === 'createdAt') {
+        if (sortField === 'createdAt') {
+          return this.listReadyDesignsPage({
+            ...listQuery,
+            createdAfterMs: undefined,
+            sortField: 'updatedAt',
+          });
+        }
+
+        if (sortField === 'updatedAt') {
+          throw error;
+        }
+
         return this.listReadyDesignsPage({
           ...listQuery,
           createdAfterMs: undefined,
-          sortField: 'updatedAt',
+          sortField: 'createdAt',
         });
       }
-
-      if (sortField === 'updatedAt') {
-        throw error;
-      }
-
-      return this.listReadyDesignsPage({
-        ...listQuery,
-        createdAfterMs: undefined,
-        sortField: 'createdAt',
-      });
-    }
+    });
   },
 
   /** @deprecated Prefer paged listReadyDesignsPage — retained for rare admin/debug callers. */

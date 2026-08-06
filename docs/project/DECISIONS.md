@@ -431,12 +431,58 @@ two Firestore composite indexes) was not justified by a benefit that, in practic
 
 | Field | Value |
 |-------|-------|
+| Date | 2026-07-23 (amended 2026-07-24: AI budget and targeted card overrides; amended 2026-07-31: failed-publish recovery; **superseded 2026-08-05** by Amendment 8 Hybrid) |
+| Status | **superseded** by Amendment 8 Hybrid architecture (ADR-FP-120-S below) |
+| Related | `firestore-usage-efficiency-wave-c`; `production-portal-catalog-tag-removal-publication`; Amendment 8 Phase 1A |
+| Target | Functions, Storage, Portal catalog, AI enrichment |
+
+**Supersession (2026-08-05)**
+
+Amendment 8 replaces generated Storage JSON as the permanent Portal ordinary-browse / Studio taxonomy architecture with:
+
+- **Firestore** authoritative metadata for ordinary Portal browse (unfiltered, category, single-tag, discovery), Discover home pools, Studio taxonomy, Assisted ready designs, Open Graph library candidates, and AI enrichment taxonomy.
+- **Firebase Storage** for image bytes (thumbnails/previews) only on those cut-over paths.
+- **Managed search** (provider TBD — Algolia recommended; Typesense/Meilisearch acceptable) for Portal text search, multi-tag AND, and facets — **not implemented in Phase 1A**.
+- Generated Portal search/facet/card readers and snapshot **publisher** Functions remain live until Phase 1B / Stages 4–5.
+- Index/search records are derived and **never** an authorization boundary.
+
+Historical ADR body retained below for archaeology. See ADR-FP-120-S.
+
+### ADR-FP-120-S: Hybrid Portal catalog reads (Firestore + managed search)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-08-05 |
+| Status | accepted (Phase 1A implemented; Phase 1B managed search pending owner provider decision) |
+| Related | Amendment 8 Plan; supersedes ADR-FP-120 |
+| Target | Portal catalog, Studio taxonomy/Assisted, Functions OG + AI taxonomy |
+
+**Decision**
+
+1. Firestore remains the authoritative catalog metadata store. Storage remains the authoritative image/file store.
+2. Phase 1A ordinary Portal browse, Discover home, Studio display taxonomy, Assisted ready designs, Portal Global Open Graph, and AI enrichment taxonomy use bounded Firestore (no full-catalog hydration; no 2,000-doc client search service).
+3. Phase 1B will add a managed search index for text / multi-tag / facets. Provider is **not** selected or configured in Phase 1A.
+4. Search/index documents (when added) contain only public allowlisted fields and are never used to authorize mutations.
+5. Write/Admin search API keys must never ship in Portal or Studio client bundles; customer keys are search-only with provider allowlists where supported.
+6. Generated snapshot publishers and Portal generated search readers remain until Phase 1B cutover + staged retirement.
+
+**Consequences**
+
+- Phase 1A does not claim full snapshot-client removal.
+- ADR-FP-120 generated-first ordinary browse is no longer the target architecture.
+
+---
+
+### ADR-FP-120 (historical body — superseded)
+
+| Field | Value |
+|-------|-------|
 | Date | 2026-07-23 (amended 2026-07-24: AI budget and targeted card overrides; amended 2026-07-31: failed-publish recovery) |
-| Status | accepted; production Functions recovery deploy pending owner approval |
+| Status | superseded — historical record only |
 | Related | `firestore-usage-efficiency-wave-c`; `production-portal-catalog-tag-removal-publication` |
 | Target | Functions, Storage, Portal catalog, AI enrichment |
 
-**Decision**
+**Decision (historical)**
 
 1. Firestore remains canonical; Functions project taxonomy and ready-design data into immutable,
    versioned Storage JSON and replace short-lived manifests only after every object validates.

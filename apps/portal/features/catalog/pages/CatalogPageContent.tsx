@@ -13,6 +13,7 @@ import { useAuth } from '../../auth/context/AuthContext';
 import { CatalogDesignDetailsModal } from '../components/CatalogDesignDetailsModal';
 import { CatalogFilterBar } from '../components/CatalogFilterBar';
 import { CatalogSelectionCard } from '../components/CatalogSelectionCard';
+import { CATALOG_FIRST_VIEWPORT_EAGER_COUNT } from '../hooks/useCatalogDesigns';
 import { CatalogTagFilterModal } from '../components/CatalogTagFilterModal';
 import { useCatalogDesignDeepLink } from '../hooks/useCatalogDesignDeepLink';
 import { useCatalogCategories } from '../hooks/useCatalogCategories';
@@ -494,7 +495,8 @@ export function CatalogPageContent() {
           ) : (
             <>
               <div className="design-grid" role="list">
-                {displayedDesigns.map((design) => {
+                {displayedDesigns.map((design, index) => {
+                  const prioritizeLoading = index < CATALOG_FIRST_VIEWPORT_EAGER_COUNT;
                   if (selectionModeActive) {
                     const selection = selectionMode.selectedDesigns[design.id];
                     return (
@@ -509,6 +511,7 @@ export function CatalogPageContent() {
                           onOpenDetails={openDesignDetails}
                           onQuantityChange={selectionMode.setQuantity}
                           onRemove={(designId) => void selectionMode.removeDesign(designId)}
+                          prioritizeLoading={prioritizeLoading}
                           quantity={selection?.quantity ?? 1}
                         />
                       </div>
@@ -534,6 +537,7 @@ export function CatalogPageContent() {
                         onOpenDetails={openDesignDetails}
                         onQuantityChange={isAuthenticated ? addDesignFlow.setQuantity : undefined}
                         onRemove={isAuthenticated ? addDesignFlow.removeDesign : undefined}
+                        prioritizeLoading={prioritizeLoading}
                         quantity={quantity > 0 ? quantity : 1}
                       />
                     </div>

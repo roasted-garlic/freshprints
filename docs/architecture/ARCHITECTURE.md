@@ -783,29 +783,28 @@ Fresh Prints should be:
 
 Every architectural decision should move the project closer to those goals.
 
-## Generated catalog read models
+## Catalog read architecture (Amendment 8 Hybrid)
 
-Firestore is the write authority. `functions/src/catalogSnapshots/` publishes versioned JSON under
-`generated/catalog-reference/**` and `generated/portal-catalog/**`; manifests are the only mutable
-pointers and are written last with Storage generation preconditions. The immediately prior content
-version remains addressable.
+Firestore remains the write authority for designs, categories, and tags. Firebase Storage remains the
+image/file store (thumbnails, previews, originals).
 
-AI Functions read the private taxonomy projection through Admin Storage. Portal services—not React
-components—read public-safe taxonomy, Discover, search/tag/category IDs, and bounded card buckets.
-Normal Portal browsing remains Firestore cursor pagination. Coordination lives only in
-`snapshotPublicationState/catalog-reference` and `snapshotPublicationState/portal-catalog`, both
-denied to clients. See ADR-FP-120.
+**Phase 1A (implemented):** Ordinary Portal browse (unfiltered, category, single-tag, discovery
+sorts), Discover home (`listHomeDiscoveryPool`), Studio display taxonomy, Assisted Creation ready
+designs, Portal Global Open Graph library candidates, and AI enrichment taxonomy use **bounded
+Firestore**. Images load via Storage URL resolution (not Firestore). Studio catalogAsset IPC and
+generated ready-index consumers are removed.
 
-When `requestedGeneration` exceeds `publishedGeneration` after a failed or lease-busy full publish
-(e.g. transient Storage `FetchError`), the publisher runs a bounded catch-up loop with Storage I/O
-retries rather than abandoning the dirty watermark. Owner/admin may also invoke
-`retryPortalCatalogPublication` to drain an existing failed coordination state without bumping the
-requested generation. Tag and category field changes remain full index/filter republishes.
+**Phase 1B (pending):** Portal text search, multi-tag AND, and facets move to a managed search
+index (provider TBD). Until then, those Portal modes still use generated `portal-catalog` assets
+via `portalCatalogAssetService`. Snapshot publisher Functions under `functions/src/catalogSnapshots/`
+remain deployed for rollback; source retirement is staged after Phase 1B.
 
-Card-only design edits use an additive immutable override asset referenced by the Portal manifest.
-The trigger maps the Firestore event payload directly, merges it with the prior override asset, and
-uses a Storage generation-preconditioned manifest swap; it does not query ready designs or
-taxonomy. Studio additionally keeps a memory-only, authenticated-session override so its card stays
-authoritatively updated during the manifest's documented 30-second cache window and across route
-unmounts. Full index/filter changes still rebuild the full catalog; operational-only metadata does
-not publish. Consumers overlay overrides in services, never React components.
+**Not an authorization boundary:** Future search-index documents must never authorize mutations;
+trusted actions validate Firestore. See ADR-FP-120-S (supersedes ADR-FP-120).
+
+### Generated snapshot publishers (legacy, still live through Phase 1B / Stages 4–5)
+
+`functions/src/catalogSnapshots/` still publishes versioned JSON under
+`generated/catalog-reference/**` and `generated/portal-catalog/**` for Phase 1A search/facet
+readers and rollback. Coordination lives in `snapshotPublicationState/**` (denied to clients).
+Do not treat generated assets as the ordinary-browse architecture going forward.
