@@ -1,5 +1,17 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-08-06 - Assisted proof 80 MB (+ mats/ordering already signed) awaiting owner QA
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, unmerged).
+Baseline: `2d2ecbb`. Mats/ordering: `42f7b20` (signed off).
+
+**This pass:** `ASSISTED_CREATION_MAX_PROOF_BYTES` → 80 MB; Storage Rules
+`isValidAssistedCreationProof` → `<= 80 * 1024 * 1024` (inclusive). Reference limits unchanged.
+Owner QA:
+`docs/workflow/reviews/2026-08-06-catalog-display-ready-ordering-and-assisted-proof-limit-manual-qa.md`.
+**Later deploy:** `storage.rules` (+ Functions/Studio as needed) before 80 MB uploads succeed
+against Storage. No Signoff. No Firebase action this pass.
+
 ## 2026-08-06 - Catalog display mats + ready-approval ordering Signoff approved_with_notes
 
 Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, unmerged).
