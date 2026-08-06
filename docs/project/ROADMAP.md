@@ -1,5 +1,7 @@
 # Fresh Prints Roadmap
 
+> 2026-08-06: **Catalog mats + ready order + Assisted proof 80 MB Signoff** — **approved**. Owner QA **PASS**. Commits `42f7b20` / `982855c`; `fresh-prints-dev` storage + three Functions deployed. Signoff: `docs/workflow/reviews/2026-08-06-catalog-display-ready-ordering-and-assisted-proof-limit-signoff.md`. PR #40 open/unmerged. No production. Amendment 9 P4 still deferred.
+
 > 2026-08-06: **Catalog display background + ready-approval ordering Signoff** — **approved_with_notes**. Studio Details mats + Portal Firestore `readyAt` browse. Owner QA **PASS WITH NOTES**. Commit `42f7b20` on `fix/post-launch-catalog-and-processing-stability` (PR #40 open/unmerged). Signoff: `docs/workflow/reviews/2026-08-06-catalog-display-background-and-ready-ordering-signoff.md`. Generated search publisher order and Amendment 9 P4 snapshot reads remain deferred. No production deploy.
 
 > 2026-08-06: Amendment 9 **P0 Signoff** — **approved_with_notes**. AI Review local reconciliation + post-action scroll correction owner re-QA **PASS WITH NOTES**. Client post-action list/count budgets met. Notes: Design Library modal/lightbox artwork-mat follow-up; snapshot-publication read amplification remains **production-promotion blocker** (P4 later). Commits `0a948e0` + `21f95d7` on `fix/post-launch-catalog-and-processing-stability` (PR #40 open/unmerged). Signoff: `docs/workflow/reviews/2026-08-06-amendment-9-p0-signoff.md`. P1/P3/P4/Phase 1B not started. No production deploy.

@@ -20,12 +20,14 @@ see `docs/workflow/reviews/2026-08-06-assisted-creation-proof-80mb-dev-deploy.md
 
 ## Assisted proof 80 MB
 
-7. Upload proof **> 25 MB and < 80 MB** → accepted; preview works; submit to customer succeeds (**requires deployed Rules**).
+7. Upload proof **> 25 MB and < 80 MB** → accepted; preview works; submit to customer succeeds.
 8. Select proof **> 80 MB** → reject: `Proof must be 80 MB or smaller.`
 9. Customer reference-image / other upload limits unchanged.
 
-### Please reply
+---
 
-- `PASS` / `FAIL: …` / `PASS WITH NOTES: …`
+## Owner result (2026-08-06)
 
-**Do not Signoff until owner replies.** No PR merge / Firebase deploy from this agent.
+**PASS**
+
+Signoff: `docs/workflow/reviews/2026-08-06-catalog-display-ready-ordering-and-assisted-proof-limit-signoff.md` — **approved**.

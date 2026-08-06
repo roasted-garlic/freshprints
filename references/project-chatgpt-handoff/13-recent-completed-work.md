@@ -1,5 +1,13 @@
 # Recent Completed Work
 
+## 2026-08-06 - Catalog mats, ready order, Assisted proof 80 MB Signoff
+
+- Details mats + Portal/Studio `readyAt` ordering + staff proof max 80 MB
+- Commits `42f7b20` / `982855c`; `fresh-prints-dev` storage + three Functions deployed
+- Owner QA **PASS**; Signoff **approved**
+- PR #40 open/unmerged; no production; Amendment 9 P4 deferred
+- Signoff: `docs/workflow/reviews/2026-08-06-catalog-display-ready-ordering-and-assisted-proof-limit-signoff.md`
+
 ## 2026-08-06 - Catalog display mats + ready-approval ordering Signoff
 
 - Studio Design Details thumbnail/lightbox use `artworkBackgroundHex`; Portal browse/category/tag order by `readyAt`

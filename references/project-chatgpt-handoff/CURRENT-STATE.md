@@ -1,5 +1,16 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-08-06 - Catalog mats / ready order / Assisted proof 80 MB Signoff approved
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, unmerged).
+Commits: `42f7b20`, `982855c`, deploy record `59b52a0`.
+
+Owner QA **PASS**. Signoff **approved**:
+`docs/workflow/reviews/2026-08-06-catalog-display-ready-ordering-and-assisted-proof-limit-signoff.md`.
+
+`fresh-prints-dev` has Storage Rules + three Assisted proof Functions at 80 MB. No production.
+Amendment 9 P4 / PR merge still deferred.
+
 ## 2026-08-06 - Assisted proof 80 MB deployed to fresh-prints-dev (awaiting owner QA)
 
 Owner approved: `APPROVE DEV DEPLOYMENT: ASSISTED CREATION PROOF 80 MB LIMIT`.

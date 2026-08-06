@@ -13,8 +13,9 @@
 | ESLint touched shared files | **exit 0** |
 | Studio `tsc --noEmit` | **exit 0** |
 | `git diff --check` | **exit 0** |
-| Functions source untouched (constant import only) | no Functions rebuild required this pass |
-| Portal runtime untouched this pass | N/A |
+| Owner QA | **PASS** (2026-08-06) |
+| Signoff | **approved** — `docs/workflow/reviews/2026-08-06-catalog-display-ready-ordering-and-assisted-proof-limit-signoff.md` |
+| Dev deploy | **completed** on `fresh-prints-dev` — `docs/workflow/reviews/2026-08-06-assisted-creation-proof-80mb-dev-deploy.md` |
 
 ## Proof boundary
 
