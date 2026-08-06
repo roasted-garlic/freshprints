@@ -204,6 +204,8 @@ export function useAiReviewInbox(
   const [isActionLoading, setIsActionLoading] = useState(false);
   const [isSavingArtworkBackground, setIsSavingArtworkBackground] = useState(false);
   const [isSendingBackToProcessing, setIsSendingBackToProcessing] = useState(false);
+  /** Amendment 9 P0 scroll correction: bump only after successful approve/reject/archive. */
+  const [reviewScrollNonce, setReviewScrollNonce] = useState(0);
 
   const canManageCatalog = Boolean(user && permissionService.canEditAiReviewInbox(user));
   const canApprove = Boolean(user && permissionService.canApproveDesignForCatalog(user));
@@ -984,6 +986,7 @@ export function useAiReviewInbox(
             },
           },
         });
+        setReviewScrollNonce((current) => current + 1);
       } catch (inboxError) {
         setActionError(
           inboxError instanceof Error ? inboxError.message : "Unable to complete the action.",
@@ -1240,6 +1243,7 @@ export function useAiReviewInbox(
     queueListRef,
     reloadDesigns,
     requestSelectDesign,
+    reviewScrollNonce,
     selectedDesign,
     selectedIndex,
     selectRelative,

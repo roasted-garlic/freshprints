@@ -1,5 +1,39 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-08-06 - Amendment 9 P0 owner-QA scroll correction + server attribution (awaiting re-QA; no Signoff)
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, unmerged).
+P0 baseline: `0a948e0`. Scroll correction + docs commit follows.
+
+**Owner QA FAIL:** (1) post-action scroll stayed at bottom; (2) Console ~7.7K reads while client
+Debug met P0 (~1,375 approx reads; designs 236; tags 1,121; listeners 0; no triangular reload).
+
+**Scroll fix:** After successful approve/reject/archive, bump `reviewScrollNonce` and
+`useLayoutEffect` scrolls `.page-content-area--ai-review` to top (not `window`). P0 budgets kept.
+
+**Server attribution (read-only):** UTC `16:54:30Z`–`17:02:00Z` → **snapshot publication
+dominated** (25 successful full portal publications; C+T+R sum **28,710**). AI taxonomy: **3**
+full loads on **1** Function instance (~3,420 docs). P4 warranted for later planning; P3
+secondary. **Do not implement P3/P4 this pass.**
+
+Re-QA: `docs/workflow/reviews/2026-08-06-amendment-9-p0-manual-qa.md`. Signoff blocked.
+
+P1/P3/P4/Phase 1B not started. No Firebase/production action.
+
+## 2026-08-06 - Amendment 9 P0 implemented (awaiting owner QA; no Signoff)
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, unmerged).
+
+**P0:** AI Review successful approve/reject/archive reconcile list, selection, and tab counts
+locally — no full remaining-page reload and no three-tab count refresh on the happy path.
+Failure: one bounded `reloadDesigns` + `onQueueChanged`. Processing paths keep authoritative
+count refresh. K=∞ (no timers/polling).
+
+Manual QA: `docs/workflow/reviews/2026-08-06-amendment-9-p0-manual-qa.md` — reply `PASS` /
+`FAIL: …` / `PASS WITH NOTES: …`. Signoff blocked until owner QA.
+
+P1/P3/P4/Phase 1B not started. No Firebase/production action.
+
 ## 2026-08-06 - Amendment 9 Plan + Formal Review complete (Investigate → Plan → Review ONLY)
 
 Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, unmerged).

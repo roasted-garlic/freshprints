@@ -30,12 +30,14 @@ residual or blocker. Phase 1B (managed search) not started — provider decision
 PR #40 remains open/unmerged. No production Firebase deploy.
 
 **Amendment 9 (2026-08-06) — Large-batch Firestore read amplification:** Investigate → Plan →
-Independent Formal Review complete. **P0 Implement + Test + Implementation Review complete**
-(awaiting owner manual QA — no Signoff yet). Artifacts: incident/plan/formal review (docs);
-P0 reports `docs/workflow/reviews/2026-08-06-amendment-9-p0-*.md`; manual QA
-`docs/workflow/reviews/2026-08-06-amendment-9-p0-manual-qa.md`. Successful approve/reject/archive
-reconcile locally (no full page/count reload). Processing paths preserved. K=∞. P1/P3/P4/Phase 1B
-not started. PR #40 open/unmerged. No Firebase/production action.
+Independent Formal Review complete. **P0 Implement + Test + Implementation Review complete.**
+Owner QA **FAIL** (scroll regression; Console ~7.7K vs client Debug ~1,375). **Scroll correction
+implemented + Implementation Review APPROVED**; server attribution (read-only Cloud Logging)
+classifies remaining spike as **snapshot publication dominated** (~25 full pubs / ~28.8K docs in
+`16:54:30Z`–`17:02:00Z`; AI taxonomy secondary ~3.4K). **Awaiting owner re-QA — no Signoff.**
+Artifacts: `docs/workflow/reviews/2026-08-06-amendment-9-p0-*.md` incl. owner-QA scroll correction,
+server-read-attribution, updated manual QA. P0 not reverted. P1/P3/P4/Phase 1B not started.
+PR #40 open/unmerged. No Firebase/production action.
 
 **Amendment 1** fixed a confirmed, urgent production defect: ready/approved designs never
 appearing in Studio Design Library. Root cause: Studio's normal browse depended entirely on
@@ -116,6 +118,12 @@ archive write — none of these could be run live in this environment (no intera
 no Application Default Credentials for scripted checks beyond read-only CLI operations).
 
 Decision Log:
+- 2026-08-06 — Amendment 9 P0 owner QA **FAIL** (scroll + Console ~7.7K). Scroll correction
+  implemented + Implementation Review **APPROVED**; read-only Cloud Logging attributes remaining
+  spike as **snapshot publication dominated** (25 full pubs / ~28.8K C+T+R in
+  `16:54:30Z`–`17:02:00Z`; AI taxonomy ~3.4K secondary). Awaiting owner re-QA
+  (`docs/workflow/reviews/2026-08-06-amendment-9-p0-manual-qa.md`). **No Signoff.** P0 not
+  reverted. P1/P3/P4/Phase 1B not started. PR #40 open/unmerged. No Firebase/production action.
 - 2026-08-06 — Documentation correction: Phase 1A Signoff deploy record. Owner confirms
   `firebase deploy --only functions:staffSuggestAssistedCreationCatalogDesign --project fresh-prints-dev`
   was completed before final QA **PASS**. Signoff status corrected to **approved** (fully signed

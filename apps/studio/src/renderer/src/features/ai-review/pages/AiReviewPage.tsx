@@ -221,6 +221,7 @@ function AiReviewPageContent() {
             processingVisionModelId={inbox.processingQueue.resolvedSessionVisionModelId}
             selectedDesign={inbox.selectedDesign}
             showReadOnlySuggestions={inbox.showReadOnlySuggestions}
+            reviewScrollNonce={inbox.reviewScrollNonce}
             showRerunAiButton={inbox.canRerunAiSuggestions || inbox.isRerunningAi}
           />
         </main>
