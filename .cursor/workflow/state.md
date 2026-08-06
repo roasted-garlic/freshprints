@@ -21,11 +21,11 @@ Background (not active gate): Goal #13 / clean Studio remediation / Stage 2 rema
 
 **Separate concurrent managed goal (does not affect the gate above):**
 `post-launch-catalog-and-processing-stability` — original A–D pass complete, **plus Owner QA
-Amendments 1, 2, and 3 complete, plus a global-ordering follow-up correction to Amendment 3
-(2026-08-04)**. All work remains on the existing branch `fix/post-launch-catalog-and-processing-
-stability` — no new branch or PR at any point, matching every instruction across the whole managed
-goal. Latest commit `c031c01`; branch pushed and in sync with `origin` (0 ahead/0 behind, confirmed
-via `git rev-list`).
+Amendments 1–7 (+ follow-ups) complete**, **plus AI Processing monotonic reconciliation repair
+Signoff approved** (owner live QA **PASS** 2026-08-05; commit `30e1e28`; signoff
+`docs/workflow/reviews/2026-08-05-ai-processing-monotonic-reconciliation-repair-signoff.md`).
+Amendment 8 snapshot removal remains a separate unstarted track. All work remains on
+`fix/post-launch-catalog-and-processing-stability` / PR #40 (open, unmerged).
 
 **Amendment 1** fixed a confirmed, urgent production defect: ready/approved designs never
 appearing in Studio Design Library. Root cause: Studio's normal browse depended entirely on
@@ -106,6 +106,13 @@ archive write — none of these could be run live in this environment (no intera
 no Application Default Credentials for scripted checks beyond read-only CLI operations).
 
 Decision Log:
+- 2026-08-05 — `post-launch-catalog-and-processing-stability` AI Processing monotonic reconciliation
+  repair **Signoff approved**. Owner live QA reply: **PASS**. Automated suites 60/60; Independent
+  Implementation Review APPROVED; no outstanding checkpoints for this repair. Signoff:
+  `docs/workflow/reviews/2026-08-05-ai-processing-monotonic-reconciliation-repair-signoff.md`.
+  This repair's managed phase is **DONE**. Concurrent production-updater Phase B gate and
+  Amendment 8 snapshot track unchanged. PR #40 remains open/unmerged. No deploy/merge/Firebase
+  action.
 - 2026-08-05 — `post-launch-catalog-and-processing-stability` AI Processing monotonic reconciliation
   repair (Approach C): Implemented gated P1/P4 post-terminal list reloads, cache invalidation on
   terminal AI patches, and session-scoped pending-list monotonic merge ledger. Stale/cached pending

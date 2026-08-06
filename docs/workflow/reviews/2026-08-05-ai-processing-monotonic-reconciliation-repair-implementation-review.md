@@ -16,7 +16,7 @@
 
 **APPROVED**
 
-Approach C is correctly implemented. No critical or major defects. Scope discipline holds. Focused suites **60/60** pass; Studio typecheck, Vite build, lint, and `git diff --check` pass. Signoff remains blocked on live owner QA only.
+Approach C is correctly implemented. No critical or major defects. Scope discipline holds. Focused suites **60/60** pass; Studio typecheck, Vite build, lint, and `git diff --check` pass. Owner live QA **PASS** (2026-08-05). Signoff: **approved**.
 
 ---
 
@@ -64,11 +64,13 @@ Touched only approved Studio AI Processing surfaces + focused tests + workflow d
 
 ## Residual risks
 
-- Live owner QA still required for import-pump 3→2→1→0 / A→B→C→none without navigation.
-- P1 no longer list-reloads; selection advance for import completion still relies on observer `pendingAdvanceIndexRef` (Amendment 4 primary path).
+- Shared `applyDesignPatch` may invalidate caches for non-AI full-document patches (safe; merge no-op outside pending Processing).
+- Scenario 13 remount covered implicitly; owner live QA confirmed remount/navigation path.
 
 ---
 
 ## Next step
 
-**Human checkpoint:** live owner QA (see Manual Test Checkpoint below). Do **not** Signoff until owner replies PASS / FAIL / PASS WITH NOTES. Keep PR #40 open and unmerged.
+**Complete.** Owner live QA **PASS** (2026-08-05). See
+`docs/workflow/reviews/2026-08-05-ai-processing-monotonic-reconciliation-repair-signoff.md`.
+PR #40 remains open/unmerged (separate owner decision).

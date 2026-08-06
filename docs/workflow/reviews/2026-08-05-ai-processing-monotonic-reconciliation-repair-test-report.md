@@ -108,9 +108,10 @@ Post-repair harness tests assert the opposite contract (A stays out; 3→2→1�
 
 ## 5. Test status for workflow
 
-**Test Status:** `passed_with_notes`
+**Test Status:** `passed`
 
 Notes:
 
-- Scenario 13 remount is implicit (fresh hook instance → empty ledger).
-- Live owner QA of import background pump 3→2→1→0 / A→B→C→none is still required before Signoff.
+- Scenario 13 remount is implicit (fresh hook instance → empty ledger); owner live QA covered navigation remount.
+- **Owner live QA: PASS** (2026-08-05) — Signoff recorded in
+  `docs/workflow/reviews/2026-08-05-ai-processing-monotonic-reconciliation-repair-signoff.md`.

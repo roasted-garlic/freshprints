@@ -1,5 +1,7 @@
 # Fresh Prints Roadmap
 
+> 2026-08-05: Studio AI Processing monotonic reconciliation repair (Approach C) — owner live QA **PASS** / Signoff **approved**. Commit `30e1e28` on `fix/post-launch-catalog-and-processing-stability` (PR #40 open). Signoff: `docs/workflow/reviews/2026-08-05-ai-processing-monotonic-reconciliation-repair-signoff.md`. Amendment 8 snapshot removal remains a separate unstarted track.
+
 > 2026-08-01: `portal-design-issue-reporting` implementation is complete and awaits development deployment/owner QA. Stage 2 and public domain cutover remain blocked; the prior Studio installer is intermediate and automatic updates remain separate.
 
 > 2026-08-01: Clean final-Studio remediation promotion is in progress. Production Functions deployment and combined installer QA remain pending; Stage 2 remains paused and domain cutover deferred.
