@@ -105,18 +105,17 @@ describe("import background AI queue sequencing (Amendment 3, Failure 1)", () =>
     // local patch by design ID — rather than unconditionally calling reloadDesigns() on every
     // terminal event (the Amendment 3 shape, which raced multiple ungated reloads against
     // each other; see backgroundAiQueueReconciliation.test.ts for the full regression coverage).
+    // Owner QA Amendment 7: callback reads designs/selection via refs; deps stay tab-stable.
     assert.match(inbox, /subscribeToBackgroundAiQueue\(\(event\) => \{/);
     const subscribeStart = inbox.indexOf("return subscribeToBackgroundAiQueue((event) => {");
-    const subscribeBlock = inbox.slice(
-      subscribeStart,
-      inbox.indexOf(
-        "}, [applyDesignPatch, designs, filters.tab, options, reloadDesigns, selectedDesignId]);",
-        subscribeStart,
-      ),
-    );
-    assert.match(subscribeBlock, /reconcileBackgroundAiQueueEvent\(event, designs, selectedDesignId\)/);
+    const subscribeEnd = inbox.indexOf("}, [applyDesignPatch, filters.tab, reloadDesigns]);", subscribeStart);
+    assert.ok(subscribeEnd > subscribeStart, "observer effect must keep Amendment 7 tab-stable deps");
+    const subscribeBlock = inbox.slice(subscribeStart, subscribeEnd);
+    assert.match(subscribeBlock, /reconcileBackgroundAiQueueEvent\(/);
+    assert.match(subscribeBlock, /designsRef\.current/);
+    assert.match(subscribeBlock, /selectedDesignIdRef\.current/);
     assert.match(subscribeBlock, /applyDesignPatch\(event\.designId, reconciliation\.patch\)/);
-    assert.match(subscribeBlock, /options\?\.onQueueChanged\?\.\(\);/);
+    assert.match(subscribeBlock, /optionsRef\.current\?\.onQueueChanged\?\.\(\)/);
     // A reload remains only as the no-usable-patch fallback (e.g. a genuine enqueue failure),
     // still gated by useDesigns' own generation guard — not the primary reconciliation mechanism.
     assert.match(subscribeBlock, /void reloadDesigns\(\);/);

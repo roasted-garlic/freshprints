@@ -106,6 +106,17 @@ archive write — none of these could be run live in this environment (no intera
 no Application Default Credentials for scripted checks beyond read-only CLI operations).
 
 Decision Log:
+- 2026-08-05 — `post-launch-catalog-and-processing-stability` AI Processing monotonic reconciliation
+  repair (Approach C): Implemented gated P1/P4 post-terminal list reloads, cache invalidation on
+  terminal AI patches, and session-scoped pending-list monotonic merge ledger. Stale/cached pending
+  pages can no longer reinsert a design already confirmed terminal in the same Processing run;
+  ledger clears before retry/rerun. Focused suites 60/60 pass; Studio typecheck/build/lint/
+  `git diff --check` pass. Independent Implementation Review **APPROVED**. Stopped before Signoff —
+  live owner QA required. No Amendment 8, Portal/Algolia/Open Graph/taxonomy/Firebase infra,
+  production, merge, or deploy. PR #40 remains open/unmerged. Docs:
+  `docs/workflow/plans/2026-08-05-ai-processing-monotonic-reconciliation-repair-plan.md`,
+  `docs/workflow/reviews/2026-08-05-ai-processing-monotonic-reconciliation-repair-test-report.md`,
+  `docs/workflow/reviews/2026-08-05-ai-processing-monotonic-reconciliation-repair-implementation-review.md`.
 - 2026-08-05 — `post-launch-catalog-and-processing-stability` Owner QA Amendment 7 follow-up: the
   owner reproduced the identical symptom after the Amendment 7 observer-subscription fix (below)
   and provided a fresh trace showing a TIGHT infinite reload loop — the same single design ID,

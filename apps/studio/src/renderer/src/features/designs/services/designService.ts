@@ -588,6 +588,15 @@ export const designService = {
     return mapDesignDocument(designId, data as DesignDocumentData);
   },
 
+  /**
+   * Clear the Studio design page/count/document read caches. Used after an AI terminal patch so a
+   * later confirmation reload cannot hit a stale 15s pending page (AI Processing monotonic
+   * reconciliation repair).
+   */
+  invalidateReadCaches(designId?: string): void {
+    invalidateDesignReadCaches(designId);
+  },
+
   async listDesignsPage(caller: User, listQuery: DesignListQuery = {}): Promise<DesignListPage> {
     if (!permissionService.canViewDesigns(caller)) {
       return { designs: [], hasMore: false };

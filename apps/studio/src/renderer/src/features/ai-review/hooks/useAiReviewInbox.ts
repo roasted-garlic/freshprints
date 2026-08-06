@@ -75,9 +75,11 @@ export function useAiReviewInbox(
   const listQuery = useMemo(() => buildAiReviewInboxListQuery(filters), [filters]);
   const {
     applyDesignPatch,
+    clearTerminalAiProcessingLedgerEntry,
     designs: rawDesigns,
     error,
     hasMore,
+    hasTerminalAiProcessingLedgerEntry,
     isLoading,
     isLoadingMore,
     loadMoreDesigns,
@@ -368,6 +370,7 @@ export function useAiReviewInbox(
     applyDesignPatch,
     defaultVisionModelId: options?.defaultVisionModelId ?? "",
     designs,
+    hasTerminalAiProcessingLedgerEntry,
     onActionError: setActionError,
     onQueueChanged: options?.onQueueChanged,
     reloadDesigns,
@@ -465,11 +468,20 @@ export function useAiReviewInbox(
     if (alreadyReconciledLiveDesignIdRef.current !== liveDesign.id) {
       // Backend-initiated completion (no client action) — Amendment 2, Defect A: reconcile the
       // Processing/Needs Review counts alongside the list, not just the list.
+      // Approach C (monotonic repair): apply the live document's terminal status as a local patch
+      // (records ledger + invalidates page cache) and skip the redundant list reload. A post-patch
+      // reload was the primary reintroduction vector for completed designs via stale/cached pending
+      // pages. Counts still refresh via onQueueChanged.
       alreadyReconciledLiveDesignIdRef.current = liveDesign.id;
-      void reloadDesigns();
+      applyDesignPatch(liveDesign.id, {
+        aiReviewStatus: liveDesign.aiReviewStatus,
+        ...(typeof liveDesign.aiProcessingStage === "string"
+          ? { aiProcessingStage: liveDesign.aiProcessingStage }
+          : {}),
+      });
       optionsRef.current?.onQueueChanged?.();
     }
-  }, [filters.tab, liveDesign, reloadDesigns]);
+  }, [applyDesignPatch, filters.tab, liveDesign]);
 
   // Owner QA Amendment 3, Failure 1 (initial fix) found that the background AI pump was
   // detached from this view. Owner QA Amendment 4 found that the Amendment 3 fix — an
@@ -786,6 +798,9 @@ export function useAiReviewInbox(
 
     try {
       await aiReviewInboxService.rerunAiFromInbox(user, designId);
+      // Clear any prior terminal-leave ledger entry so this design may legitimately reappear as
+      // pending in Processing after the confirmation reload.
+      clearTerminalAiProcessingLedgerEntry(designId);
       pendingCrossTabSelectionRef.current = { tab: resolveRejectedRerunTargetTab(), designId };
       setSelectedDesignId(designId);
       setDraftForm(null);
@@ -812,7 +827,15 @@ export function useAiReviewInbox(
       setIsSendingBackToProcessing(false);
       setIsActionLoading(false);
     }
-  }, [canRerunAiSuggestions, canRerunSelected, options, reloadDesigns, selectedDesign, user]);
+  }, [
+    canRerunAiSuggestions,
+    canRerunSelected,
+    clearTerminalAiProcessingLedgerEntry,
+    options,
+    reloadDesigns,
+    selectedDesign,
+    user,
+  ]);
 
   const requestRerunAiSuggestions = useCallback(() => {
     if (!canRerunAiSuggestions && !canRerunSelected) {
@@ -1037,6 +1060,9 @@ export function useAiReviewInbox(
     setActionError(null);
 
     try {
+      // Allow this design to re-enter the pending Processing list after a genuine retry.
+      clearTerminalAiProcessingLedgerEntry(selectedDesign.id);
+
       const result = await aiEnrichmentEnqueueService.retryFailedProcessing(selectedDesign.id, {
         visionModelIdOverride: processingQueue.resolvedSessionVisionModelId,
       });
@@ -1063,7 +1089,16 @@ export function useAiReviewInbox(
     } finally {
       setIsActionLoading(false);
     }
-  }, [applyDesignPatch, canRetryProcessingSelected, options, processingQueue.resolvedSessionVisionModelId, reloadDesigns, selectedDesign, user]);
+  }, [
+    applyDesignPatch,
+    canRetryProcessingSelected,
+    clearTerminalAiProcessingLedgerEntry,
+    options,
+    processingQueue.resolvedSessionVisionModelId,
+    reloadDesigns,
+    selectedDesign,
+    user,
+  ]);
 
   const ignoreSuggestedTag = useCallback(
     (name: string) => {

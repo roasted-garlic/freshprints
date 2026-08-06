@@ -2,6 +2,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { traceAiQueueEvent } from "../../../config/aiQueueTraceClient";
 
+import {
+  applyMonotonicPendingProcessingListMerge,
+  clearTerminalAiProcessingLedgerEntry as clearLedgerEntry,
+  createTerminalAiProcessingLedger,
+  hasTerminalAiProcessingLedgerEntry as ledgerHasEntry,
+  patchLeavesAiProcessingPending,
+  recordTerminalAiProcessingPatch,
+} from "../../ai-review/utils/monotonicAiProcessingListMerge";
 import { useAuth } from "../../auth/hooks/useAuth";
 import { permissionService } from "../../permissions/services/permissionService";
 import { designService } from "../services/designService";
@@ -93,6 +101,14 @@ export function useDesigns(listQuery: DesignListQuery, options?: UseDesignsOptio
    */
   const generationRef = useRef(0);
 
+  /**
+   * Session-scoped ledger of designs that left `pending` via a terminal AI patch during this hook
+   * lifetime. Accept-time merge omits those IDs from stale pending-list responses so a post-patch
+   * reload (or 15s page-cache hit) cannot reinsert them. Cleared explicitly before genuine
+   * retry/rerun-to-Processing transitions.
+   */
+  const terminalAiProcessingLedgerRef = useRef(createTerminalAiProcessingLedger());
+
   const loadDesigns = useCallback(
     async (loadOptions?: { append?: boolean }) => {
       const requestQueryKey = listQueryKeyRef.current;
@@ -147,7 +163,12 @@ export function useDesigns(listQuery: DesignListQuery, options?: UseDesignsOptio
           const sortField = requestListQuery.sortField ?? "updatedAt";
           const sortDirection = requestListQuery.sortDirection ?? "desc";
           // loadAll concatenates pages; enforce final order so oldest-first never sticks.
-          const designs = sortDesignsForListQuery(collected, sortField, sortDirection);
+          const sorted = sortDesignsForListQuery(collected, sortField, sortDirection);
+          const designs = applyMonotonicPendingProcessingListMerge({
+            incoming: sorted,
+            ledger: terminalAiProcessingLedgerRef.current,
+            isPendingProcessingQuery: requestListQuery.aiReviewStatus === "pending",
+          });
 
           setState({
             designs,
@@ -187,19 +208,25 @@ export function useDesigns(listQuery: DesignListQuery, options?: UseDesignsOptio
 
         nextCursorRef.current = page.nextCursor;
 
+        const mergedPageDesigns = applyMonotonicPendingProcessingListMerge({
+          incoming: page.designs,
+          ledger: terminalAiProcessingLedgerRef.current,
+          isPendingProcessingQuery: requestListQuery.aiReviewStatus === "pending",
+        });
+
         // Emitted before setState (not inside the updater) so the updater stays pure — React
         // StrictMode double-invokes updaters in development and would otherwise duplicate events.
         traceAiQueueEvent({
           event: "load.accepted",
           source: "useDesigns",
           requestId: requestGeneration,
-          processingDesignIds: page.designs.map((design) => design.id),
-          processingCount: page.designs.length,
+          processingDesignIds: mergedPageDesigns.map((design) => design.id),
+          processingCount: mergedPageDesigns.length,
           outcome: append ? "append" : "replace",
         });
 
         setState((currentState) => ({
-          designs: append ? [...currentState.designs, ...page.designs] : page.designs,
+          designs: append ? [...currentState.designs, ...mergedPageDesigns] : mergedPageDesigns,
           error: null,
           hasMore: page.hasMore,
           isLoading: false,
@@ -253,6 +280,14 @@ export function useDesigns(listQuery: DesignListQuery, options?: UseDesignsOptio
     const designsAtPatchTime = designsMirrorRef.current;
     const willApply = designsAtPatchTime.some((design) => design.id === designId);
 
+    // Record terminal leave-pending before the local list update so any reload that starts after
+    // this patch (and any accept of a stale pending page) cannot reinsert the design. Invalidate
+    // the 15s design page/count caches so confirmation reads miss the pre-completion pending page.
+    if (patchLeavesAiProcessingPending(patch)) {
+      recordTerminalAiProcessingPatch(terminalAiProcessingLedgerRef.current, designId, patch);
+      designService.invalidateReadCaches(designId);
+    }
+
     traceAiQueueEvent({
       event: willApply ? "patch.accepted" : "patch.ignored",
       source: "useDesigns",
@@ -282,7 +317,7 @@ export function useDesigns(listQuery: DesignListQuery, options?: UseDesignsOptio
       // already in flight (started before this patch, carrying an older captured generation) is
       // discarded on arrival instead of overwriting this patch with stale data — a reload started
       // after this patch still gets its own fresh generation and is honored normally as a
-      // legitimate newer confirmation read.
+      // legitimate newer confirmation read, subject to the monotonic pending-list merge above.
       generationRef.current += 1;
 
       const nextDesigns = currentState.designs.slice();
@@ -290,6 +325,14 @@ export function useDesigns(listQuery: DesignListQuery, options?: UseDesignsOptio
 
       return { ...currentState, designs: nextDesigns };
     });
+  }, []);
+
+  const clearTerminalAiProcessingLedgerEntry = useCallback((designId: string) => {
+    clearLedgerEntry(terminalAiProcessingLedgerRef.current, designId);
+  }, []);
+
+  const hasTerminalAiProcessingLedgerEntry = useCallback((designId: string) => {
+    return ledgerHasEntry(terminalAiProcessingLedgerRef.current, designId);
   }, []);
 
   const isAwaitingCurrentQuery = state.isLoading || state.loadedQueryKey !== listQueryKey;
@@ -301,6 +344,8 @@ export function useDesigns(listQuery: DesignListQuery, options?: UseDesignsOptio
     isLoading: isAwaitingCurrentQuery,
     isLoadingMore: state.isLoadingMore,
     applyDesignPatch,
+    clearTerminalAiProcessingLedgerEntry,
+    hasTerminalAiProcessingLedgerEntry,
     loadMoreDesigns,
     reloadDesigns,
   };

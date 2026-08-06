@@ -103,7 +103,7 @@ describe("AI Processing reconciliation — duplicate/stale enqueue is an idempot
  * neither of which the prior fix touched.
  */
 describe("AI Processing controller/count reconciliation — manual process and auto-queue paths", () => {
-  it("refreshDesignList (used by both processSelectedDesign and runAutoQueueLoop) calls onQueueChanged alongside reloadDesigns", () => {
+  it("refreshDesignList (used by both processSelectedDesign and runAutoQueueLoop) calls onQueueChanged and gates list reload after terminal patch", () => {
     const source = read(
       "apps/studio/src/renderer/src/features/ai-review/hooks/useAiProcessingQueue.ts",
     );
@@ -111,14 +111,23 @@ describe("AI Processing controller/count reconciliation — manual process and a
       source.indexOf("const refreshDesignList = useCallback("),
       source.indexOf("const runAutoQueueLoop = useCallback("),
     );
+    assert.match(refreshBlock, /if \(!refreshOptions\?\.skipListReload\) \{/);
     assert.match(refreshBlock, /await reloadDesigns\(\);/);
     assert.match(refreshBlock, /onQueueChanged\?\.\(\);/);
 
-    const reloadIndex = refreshBlock.indexOf("await reloadDesigns();");
-    const queueChangedIndex = refreshBlock.indexOf("onQueueChanged?.();");
-    assert.ok(
-      reloadIndex > -1 && queueChangedIndex > -1 && reloadIndex < queueChangedIndex,
-      "onQueueChanged must run after the design list itself has been reloaded",
+    const processBlock = source.slice(source.indexOf("const processSelectedDesign = useCallback("));
+    assert.match(
+      processBlock,
+      /refreshDesignList\(\{\s*skipListReload: hasTerminalAiProcessingLedgerEntry\(selectedDesignId\),\s*\}\)/,
+    );
+
+    const loopBlock = source.slice(
+      source.indexOf("const runAutoQueueLoop = useCallback("),
+      source.indexOf("const startAutoQueue = useCallback("),
+    );
+    assert.match(
+      loopBlock,
+      /refreshDesignList\(\{\s*skipListReload: hasTerminalAiProcessingLedgerEntry\(design\.id\),\s*\}\)/,
     );
   });
 
@@ -221,15 +230,19 @@ describe("AI Processing controller/count reconciliation — manual process and a
 // live listener only reloaded the design list, never the count, so a design completing while
 // selected still left Processing's count stale even though the list itself updated.
 describe("useAiReviewInbox live-design reconciliation calls onQueueChanged (Amendment 2, Defect A)", () => {
-  it("the needs_review live-design effect calls both reloadDesigns and onQueueChanged", () => {
+  it("the needs_review live-design effect patches locally and calls onQueueChanged without list reload", () => {
     const source = read(
       "apps/studio/src/renderer/src/features/ai-review/hooks/useAiReviewInbox.ts",
     );
-    const effectBlock = source.slice(
-      source.indexOf('if (liveDesign.aiReviewStatus === "needs_review")'),
-      source.indexOf('if (liveDesign.aiReviewStatus === "needs_review")') + 300,
+    const start = source.indexOf(
+      "// Owner QA Amendment 7 follow-up: this effect previously depended on `options`",
     );
-    assert.match(effectBlock, /void reloadDesigns\(\);/);
-    assert.match(effectBlock, /options\?\.onQueueChanged\?\.\(\);/);
+    const end = source.indexOf(
+      "// Owner QA Amendment 3, Failure 1 (initial fix) found that the background AI pump was",
+    );
+    const effectBlock = source.slice(start, end);
+    assert.match(effectBlock, /applyDesignPatch\(liveDesign\.id,/);
+    assert.match(effectBlock, /optionsRef\.current\?\.onQueueChanged\?\.\(\)/);
+    assert.doesNotMatch(effectBlock, /void reloadDesigns\(\);/);
   });
 });

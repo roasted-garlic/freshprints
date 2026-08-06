@@ -52,9 +52,13 @@ describe("AI queue live-design reconciliation: infinite-reload regression (Owner
 
     const deps = depsMatch![1].split(",").map((dep) => dep.trim());
     assert.ok(!deps.includes("options"), "options must not be a dependency (a fresh literal from the parent every render)");
+    assert.ok(
+      !deps.includes("reloadDesigns"),
+      "reloadDesigns must not be a dependency after Approach C (live completion patches locally; no list reload)",
+    );
     assert.deepEqual(
       [...deps].sort(),
-      ["filters.tab", "liveDesign", "reloadDesigns"].sort(),
+      ["applyDesignPatch", "filters.tab", "liveDesign"].sort(),
     );
   });
 
@@ -73,12 +77,22 @@ describe("AI queue live-design reconciliation: infinite-reload regression (Owner
     assert.match(
       effectBody,
       /alreadyReconciledLiveDesignIdRef\.current !== liveDesign\.id/,
-      "must gate reloadDesigns()/onQueueChanged() on not having already reconciled this exact design",
+      "must gate reconciliation on not having already reconciled this exact design",
     );
     assert.match(
       effectBody,
       /alreadyReconciledLiveDesignIdRef\.current = liveDesign\.id;/,
-      "must record the design as reconciled before calling reloadDesigns()",
+      "must record the design as reconciled before applying the terminal patch",
+    );
+    assert.match(
+      effectBody,
+      /applyDesignPatch\(liveDesign\.id,/,
+      "Approach C: live completion must patch locally (ledger + invalidate) instead of reloading the list",
+    );
+    assert.doesNotMatch(
+      effectBody,
+      /void reloadDesigns\(\);/,
+      "Approach C: must not call reloadDesigns after a terminal liveDesign completion",
     );
   });
 
