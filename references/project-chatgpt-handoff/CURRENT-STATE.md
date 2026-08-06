@@ -1,5 +1,18 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-08-06 - Amendment 9 P0 Signoff approved_with_notes
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+Commits: P0 `0a948e0`; scroll `21f95d7`.
+
+Owner re-QA **PASS WITH NOTES**: post-action scroll-to-top works; client list/count budgets zero
+on success; Processing intact. Signoff:
+`docs/workflow/reviews/2026-08-06-amendment-9-p0-signoff.md`.
+
+**Notes / blockers outside P0:** Design Library Details modal thumbnail + lightbox missing
+`artworkBackgroundHex` mat (card OK); snapshot-publication read amplification remains
+**production-promotion blocker** (P4 later). P1/P3/P4/Phase 1B not started. No merge/deploy.
+
 ## 2026-08-06 - Amendment 9 P0 owner-QA scroll correction + server attribution (awaiting re-QA; no Signoff)
 
 Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, unmerged).

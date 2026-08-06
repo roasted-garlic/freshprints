@@ -47,4 +47,17 @@ First owner QA: **FAIL** — next design selected but page stayed scrolled to ac
 - `FAIL: [description]` — what failed
 - `PASS WITH NOTES: [notes]` — acceptable with follow-ups
 
-**Do not Signoff until owner replies.** P1/P3/P4/Phase 1B remain not started.
+---
+
+## Owner result (2026-08-06)
+
+**PASS WITH NOTES**
+
+P0 re-QA passed: approve/reject/archive reveal next design at top; button and keyboard OK; no scroll loop; post-action list reloads **0**; per-action count refreshes **0**; Processing intact.
+
+**Notes (do not fail P0):**
+
+1. Design Library Details modal thumbnail + lightbox do not apply design `artworkBackgroundHex` (card does) — separate visual follow-up.
+2. Snapshot-publication read amplification remains a separate production-promotion blocker.
+
+Signoff: `docs/workflow/reviews/2026-08-06-amendment-9-p0-signoff.md` — **approved_with_notes**. PR #40 unmerged; no production deploy.

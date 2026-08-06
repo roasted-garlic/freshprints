@@ -5,7 +5,8 @@
 | Date | 2026-08-06 |
 | Scope | Amendment 9 P0 + owner-QA scroll correction |
 | Owner QA (first pass) | **FAIL** — scroll regression; Console ~7.7K unresolved vs client |
-| Owner QA (re-QA) | Pending — see updated manual checklist |
+| Owner QA (re-QA) | **PASS WITH NOTES** (2026-08-06) — scroll + budgets OK; Design Library modal/lightbox mat + snapshot spike are follow-ups |
+| Signoff | **approved_with_notes** — `docs/workflow/reviews/2026-08-06-amendment-9-p0-signoff.md` |
 
 ## Commands run (scroll correction pass)
 
@@ -90,4 +91,5 @@ Firebase Console still showed ~**7.7K** reads for the same owner test — see
 | First owner QA | **FAIL** (scroll + unresolved Console attribution) |
 | Automated P0 budgets | **PASS** |
 | Scroll correction Implementation Review | **APPROVED** |
-| Signoff | **Not authorized** until owner re-QA |
+| Owner re-QA | **PASS WITH NOTES** |
+| Signoff | **approved_with_notes** (P0 only; PR unmerged; no deploy) |

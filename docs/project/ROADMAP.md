@@ -1,5 +1,7 @@
 # Fresh Prints Roadmap
 
+> 2026-08-06: Amendment 9 **P0 Signoff** — **approved_with_notes**. AI Review local reconciliation + post-action scroll correction owner re-QA **PASS WITH NOTES**. Client post-action list/count budgets met. Notes: Design Library modal/lightbox artwork-mat follow-up; snapshot-publication read amplification remains **production-promotion blocker** (P4 later). Commits `0a948e0` + `21f95d7` on `fix/post-launch-catalog-and-processing-stability` (PR #40 open/unmerged). Signoff: `docs/workflow/reviews/2026-08-06-amendment-9-p0-signoff.md`. P1/P3/P4/Phase 1B not started. No production deploy.
+
 > 2026-08-06: Amendment 8 **Phase 1A Signoff** — **approved**. Owner re-QA **PASS** covered Studio/Portal Assisted artwork-background correction and updated `staffSuggestAssistedCreationCatalogDesign` on `fresh-prints-dev` (owner-executed scoped deploy before PASS). Commits `4ed41bc` + `bc9e7e7` on `fix/post-launch-catalog-and-processing-stability` (PR #40 open). Signoff: `docs/workflow/reviews/2026-08-05-amendment-8-phase-1a-signoff.md`. No Phase 1A deployment residual. Phase 1B managed-search provider decision still deferred.
 >
 > 2026-08-05: Studio AI Processing monotonic reconciliation repair (Approach C) — owner live QA **PASS** / Signoff **approved**. Commit `30e1e28` on `fix/post-launch-catalog-and-processing-stability` (PR #40 open). Signoff: `docs/workflow/reviews/2026-08-05-ai-processing-monotonic-reconciliation-repair-signoff.md`. Amendment 8 snapshot removal remains a separate unstarted track.

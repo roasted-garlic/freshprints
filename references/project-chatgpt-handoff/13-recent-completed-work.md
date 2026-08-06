@@ -1,5 +1,14 @@
 # Recent Completed Work
 
+## 2026-08-06 - Amendment 9 P0 Signoff approved_with_notes
+
+- AI Review local reconciliation (no post-action full list/count reload) + scroll-to-top after approve/reject/archive
+- Commits `0a948e0` + `21f95d7` on `fix/post-launch-catalog-and-processing-stability`
+- Owner re-QA **PASS WITH NOTES**; Signoff **approved_with_notes**
+- Notes: Design Library modal/lightbox artwork-mat follow-up; snapshot-publication reads remain production-promotion blocker (P4 later)
+- PR #40 open/unmerged; no production deploy; P1/P3/P4/Phase 1B not started
+- Signoff: `docs/workflow/reviews/2026-08-06-amendment-9-p0-signoff.md`
+
 ## 2026-08-06 - Amendment 8 Phase 1A Signoff approved
 
 - Phase 1A Firestore ordinary browse + Studio teardown (`4ed41bc`) and Assisted catalog-share artwork-background correction (`bc9e7e7`)
