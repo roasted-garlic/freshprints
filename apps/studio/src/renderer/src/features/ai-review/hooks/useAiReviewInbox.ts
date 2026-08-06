@@ -56,11 +56,20 @@ import {
   shouldUseLiveDesignForSelection,
   type PendingCrossTabSelection,
 } from "../utils/aiReviewInboxSelection";
+import {
+  reconcileSuccessfulInboxManualAction,
+  recoverFailedInboxManualAction,
+  type AiReviewInboxManualAction,
+  type AiReviewTabCountDeltas,
+} from "../utils/aiReviewLocalReconciliation";
 
 export interface UseAiReviewInboxOptions {
   defaultVisionModelId: string;
   onNavigateToTab?: (tab: AiReviewInboxTab, designId: string) => void;
+  /** Authoritative three-tab count refresh (Processing / queue / failure recovery). */
   onQueueChanged?: () => void;
+  /** Amendment 9 P0: local count deltas after successful approve/reject/archive. */
+  onInboxCountsDelta?: (deltas: AiReviewTabCountDeltas) => void;
 }
 
 export interface PendingSelectionChange {
@@ -944,7 +953,10 @@ export function useAiReviewInbox(
   );
 
   const runInboxAction = useCallback(
-    async (action: () => Promise<void>) => {
+    async (input: {
+      action: () => Promise<Design>;
+      manualAction: AiReviewInboxManualAction;
+    }) => {
       if (!user) {
         return;
       }
@@ -953,21 +965,41 @@ export function useAiReviewInbox(
       setActionError(null);
 
       try {
-        await action();
-        setLiveDesign(null);
-        pendingAdvanceIndexRef.current = selectedIndex;
-        await reloadDesigns();
-        options?.onQueueChanged?.();
+        const updated = await input.action();
+        reconcileSuccessfulInboxManualAction({
+          updated,
+          manualAction: input.manualAction,
+          sourceTab: filters.tab,
+          selectedIndex,
+          deps: {
+            clearLiveDesign: () => {
+              setLiveDesign(null);
+            },
+            setPendingAdvanceIndex: (index) => {
+              pendingAdvanceIndexRef.current = index;
+            },
+            applyDesignPatch,
+            onInboxCountsDelta: (deltas) => {
+              optionsRef.current?.onInboxCountsDelta?.(deltas);
+            },
+          },
+        });
       } catch (inboxError) {
-        pendingAdvanceIndexRef.current = null;
         setActionError(
           inboxError instanceof Error ? inboxError.message : "Unable to complete the action.",
         );
+        await recoverFailedInboxManualAction({
+          clearPendingAdvance: () => {
+            pendingAdvanceIndexRef.current = null;
+          },
+          reloadDesigns,
+          onQueueChanged: () => optionsRef.current?.onQueueChanged?.(),
+        });
       } finally {
         setIsActionLoading(false);
       }
     },
-    [options, reloadDesigns, selectedIndex, user],
+    [applyDesignPatch, filters.tab, reloadDesigns, selectedIndex, user],
   );
 
   const runRejectedTabNavigationAction = useCallback(
@@ -1009,8 +1041,9 @@ export function useAiReviewInbox(
       return;
     }
 
-    await runInboxAction(async () => {
-      await aiReviewInboxService.approveFromInbox(user, selectedDesign.id, draftForm);
+    await runInboxAction({
+      manualAction: "approve",
+      action: async () => aiReviewInboxService.approveFromInbox(user, selectedDesign.id, draftForm),
     });
   }, [canApproveSelected, draftForm, runInboxAction, selectedDesign, user]);
 
@@ -1019,8 +1052,9 @@ export function useAiReviewInbox(
       return;
     }
 
-    await runInboxAction(async () => {
-      await aiReviewInboxService.rejectFromInbox(user, selectedDesign.id);
+    await runInboxAction({
+      manualAction: "reject",
+      action: async () => aiReviewInboxService.rejectFromInbox(user, selectedDesign.id),
     });
   }, [canRejectSelected, runInboxAction, selectedDesign, user]);
 
@@ -1042,8 +1076,9 @@ export function useAiReviewInbox(
       return;
     }
 
-    await runInboxAction(async () => {
-      await aiReviewInboxService.archiveFromInbox(user, selectedDesign.id);
+    await runInboxAction({
+      manualAction: "archive",
+      action: async () => aiReviewInboxService.archiveFromInbox(user, selectedDesign.id),
     });
   }, [canArchiveSelected, runInboxAction, selectedDesign, user]);
 

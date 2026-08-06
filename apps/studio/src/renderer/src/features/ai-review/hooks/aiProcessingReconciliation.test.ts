@@ -21,7 +21,7 @@ function read(relativePath: string): string {
  *    eligible for automatic AI enqueue." even after a successful run.
  */
 describe("AI Processing reconciliation — reprocess deterministically reloads before navigating", () => {
-  it("executeRerunToProcessing calls reloadDesigns() and onQueueChanged() before onNavigateToTab, matching runInboxAction's established order", () => {
+  it("executeRerunToProcessing calls reloadDesigns() and onQueueChanged() before onNavigateToTab (authoritative Processing recovery order)", () => {
     const source = read(
       "apps/studio/src/renderer/src/features/ai-review/hooks/useAiReviewInbox.ts",
     );

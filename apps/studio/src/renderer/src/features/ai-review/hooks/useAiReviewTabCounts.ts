@@ -5,6 +5,10 @@ import { designService } from "../../designs/services/designService";
 import { buildAiReviewInboxListQuery } from "../constants/aiReviewInboxConstants";
 import type { AiReviewTabCounts } from "../components/AiReviewQueueStats";
 import type { AiReviewInboxTab } from "../types/aiReviewInbox.types";
+import {
+  applyAiReviewTabCountDeltas,
+  type AiReviewTabCountDeltas,
+} from "../utils/aiReviewLocalReconciliation";
 
 const AI_REVIEW_TABS: AiReviewInboxTab[] = ["processing", "needs_review", "rejected"];
 
@@ -63,6 +67,15 @@ export function useAiReviewTabCounts(refreshKey = 0) {
     }
   }, [user]);
 
+  /**
+   * Amendment 9 P0: apply local deltas after successful approve/reject/archive without
+   * re-running the three-tab `countDesigns` fan-out. Processing / queue paths still use
+   * `reloadCounts` via `onQueueChanged`.
+   */
+  const applyCountsDelta = useCallback((deltas: AiReviewTabCountDeltas) => {
+    setCounts((current) => applyAiReviewTabCountDeltas(current, deltas));
+  }, []);
+
   useEffect(() => {
     void reloadCounts();
   }, [reloadCounts, refreshKey]);
@@ -72,5 +85,6 @@ export function useAiReviewTabCounts(refreshKey = 0) {
     hasMoreByTab,
     isLoading,
     reloadCounts,
+    applyCountsDelta,
   };
 }
