@@ -1,5 +1,34 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-08-05 - Amendment 8 Phase 1A Assisted artwork-background correction ready for owner re-QA
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open). Phase 1A base
+`4ed41bc`. Owner Phase 1A QA: **PASS WITH NOTES** (Assisted catalog-share lost configured mat).
+
+Correction implemented + Independent Implementation Review **APPROVED**: authoritative hex
+snapshot on suggest; Studio/Portal CSS mats; legacy one-shot live-resolve (including Portal proofs
+list panel-scoped). Automated suites green (focused 66/66; AI regression 60/60). Signoff **not**
+approved. Owner re-QA:
+`docs/workflow/reviews/2026-08-05-amendment-8-phase-1a-assisted-catalog-artwork-background-manual-qa.md`.
+
+No Phase 1B, Firebase deploy, production, or PR merge.
+
+## 2026-08-05 - Amendment 8 Phase 1A owner QA PASS WITH NOTES; Assisted catalog-share artwork background fix (awaiting re-QA)
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open). Phase 1A commit
+`4ed41bc` remains. Owner Phase 1A QA: **PASS WITH NOTES** — library designs shared via Assisted
+Creation lost configured artwork background (raw transparent PNG).
+
+**Fix (working tree, not committed yet):** suggest callable snapshots `artworkBackgroundHex` /
+`catalogArtworkBackgroundHex`; Studio + Portal Assisted catalog-share UI apply mat color; legacy
+shares live-resolve ready design hex when snapshot missing. Plumbing test 4/4; Studio/Portal
+typecheck + Functions build exit 0.
+
+**Owner next:** re-QA per
+`docs/workflow/reviews/2026-08-05-amendment-8-phase-1a-assisted-catalog-artwork-background-manual-qa.md`
+→ `PASS` / `FAIL: …` / `PASS WITH NOTES: …`. Signoff blocked until note cleared. No Firebase
+deploy/merge. Phase 1B still blocked on managed-search provider choice.
+
 ## 2026-08-05 - Post-launch catalog and processing stability: Owner QA Amendment 7 follow-up — the actual root cause, a second infinite reload loop, found and fixed
 
 Same branch throughout (`fix/post-launch-catalog-and-processing-stability`, still no new branch or

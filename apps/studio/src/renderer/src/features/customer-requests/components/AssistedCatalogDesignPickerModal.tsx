@@ -130,6 +130,7 @@ export function AssistedCatalogDesignPickerModal({
                 >
                   <DesignThumbnailPanel
                     alt=""
+                    artworkBackgroundHex={design.artworkBackgroundHex}
                     catalogPath={design.thumbnailPath || design.previewPath}
                     className="customer-requests-assisted-catalog-picker-thumb"
                     decorative

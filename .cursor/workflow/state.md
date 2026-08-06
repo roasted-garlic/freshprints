@@ -24,8 +24,14 @@ Background (not active gate): Goal #13 / clean Studio remediation / Stage 2 rema
 Amendments 1–7 (+ follow-ups) complete**, **plus AI Processing monotonic reconciliation repair
 Signoff approved** (owner live QA **PASS** 2026-08-05; commit `30e1e28`; signoff
 `docs/workflow/reviews/2026-08-05-ai-processing-monotonic-reconciliation-repair-signoff.md`).
-Amendment 8 snapshot removal remains a separate unstarted track. All work remains on
-`fix/post-launch-catalog-and-processing-stability` / PR #40 (open, unmerged).
+**Amendment 8 Phase 1A** shipped at `4ed41bc` (Firestore ordinary browse + Studio teardown).
+Owner Phase 1A QA: **PASS WITH NOTES** — Assisted catalog-share loses configured artwork
+background. Fix implemented (uncommitted): snapshot hex on suggest + Studio/Portal display +
+legacy live-resolve. Manual re-QA checkpoint:
+`docs/workflow/reviews/2026-08-05-amendment-8-phase-1a-assisted-catalog-artwork-background-manual-qa.md`.
+**Stop before Signoff** until owner clears the note. Phase 1B (managed search) still blocked on
+provider choice. All work remains on `fix/post-launch-catalog-and-processing-stability` /
+PR #40 (open, unmerged). No production Firebase deploy.
 
 **Amendment 1** fixed a confirmed, urgent production defect: ready/approved designs never
 appearing in Studio Design Library. Root cause: Studio's normal browse depended entirely on
@@ -106,6 +112,21 @@ archive write — none of these could be run live in this environment (no intera
 no Application Default Credentials for scripted checks beyond read-only CLI operations).
 
 Decision Log:
+- 2026-08-05 — Amendment 8 Phase 1A Assisted catalog-share artwork-background correction complete
+  (implement → test → Independent Implementation Review **APPROVED**). Shared snapshot/resolve
+  helpers; Functions suggest writes optional hex; Studio/Portal surfaces apply CSS mat; legacy
+  panel-scoped one-shot live-resolve. Owner Phase 1A result remains **PASS WITH NOTES** until
+  live re-QA. Signoff not started. Docs:
+  `docs/workflow/reviews/2026-08-05-amendment-8-phase-1a-assisted-catalog-artwork-background-test-report.md`,
+  `...-implementation-review.md`,
+  `...-manual-qa.md`. No Firebase deploy/merge/Phase 1B.
+- 2026-08-05 — Amendment 8 Phase 1A owner QA: **PASS WITH NOTES**. Note: Assisted catalog-share
+  drops configured artwork background (raw transparent PNG). Fix in working tree (not yet
+  committed): Functions suggest snapshots hex; Studio/Portal apply mat; legacy live-resolve when
+  snapshot missing. Automated plumbing test 4/4; Studio/Portal typecheck + Functions build exit 0.
+  Awaiting owner re-QA per
+  `docs/workflow/reviews/2026-08-05-amendment-8-phase-1a-assisted-catalog-artwork-background-manual-qa.md`.
+  Signoff blocked until note cleared. No Firebase deploy/merge.
 - 2026-08-05 — `post-launch-catalog-and-processing-stability` AI Processing monotonic reconciliation
   repair **Signoff approved**. Owner live QA reply: **PASS**. Automated suites 60/60; Independent
   Implementation Review APPROVED; no outstanding checkpoints for this repair. Signoff:

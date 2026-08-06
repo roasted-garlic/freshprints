@@ -46,6 +46,7 @@ import {
   traceWrappedUnsubscribe,
 } from '@fresh-prints/shared/utils/firestoreUsageTrace';
 import { buildAssistedCreationFinalArtworkDownloadFileName } from '@fresh-prints/shared/utils/assistedCreationProofFileName';
+import { snapshotAssistedCatalogArtworkBackgroundHex } from '@fresh-prints/shared/utils/assistedCreationCatalogShareArtworkBackground';
 import { withTimeout } from '@fresh-prints/shared/utils/withTimeout';
 
 import { getPortalAuth, getPortalDb, getPortalStorage } from '../../../lib/firebase/client';
@@ -259,12 +260,16 @@ function parseSuggestedCatalogDesign(
   if (!designId || !title) {
     return undefined;
   }
+  const artworkBackgroundHex = snapshotAssistedCatalogArtworkBackgroundHex(
+    record.artworkBackgroundHex,
+  );
   return {
     designId,
     title,
     ...(typeof record.previewImageUrl === 'string' && record.previewImageUrl.trim()
       ? { previewImageUrl: record.previewImageUrl.trim() }
       : {}),
+    ...(artworkBackgroundHex ? { artworkBackgroundHex } : {}),
     suggestedAt: record.suggestedAt ?? null,
     suggestedByUid:
       typeof record.suggestedByUid === 'string' ? record.suggestedByUid.trim() : '',

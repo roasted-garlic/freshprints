@@ -21,6 +21,15 @@ Reviewed the working-tree diff against Plan Phase 1A and Formal Review. Spot-che
 - Stale prose comments near Design Library taxonomy may still mention older generated-first wording in places; runtime behavior is Firestore-backed.
 - Wave C Assisted contract test title still says “generated ready-index”; assertions remain valid; new completeness test covers pagination.
 
+## Follow-up (2026-08-05) — Assisted catalog-share artwork background
+
+Owner Phase 1A QA returned **PASS WITH NOTES**. Correction implemented and independently reviewed in:
+
+- `docs/workflow/reviews/2026-08-05-amendment-8-phase-1a-assisted-catalog-artwork-background-implementation-review.md`
+- `docs/workflow/reviews/2026-08-05-amendment-8-phase-1a-assisted-catalog-artwork-background-test-report.md`
+
+Phase 1A Signoff remains pending owner re-QA of that note.
+
 ## Safety
 
 No Firebase deploy, provider account, production action, or PR merge. AI Processing files unchanged aside from preload delimiter in `aiQueueTrace.test.ts`.

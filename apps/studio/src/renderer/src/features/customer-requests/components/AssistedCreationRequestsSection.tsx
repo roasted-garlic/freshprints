@@ -10,6 +10,7 @@ import {
   formatAssistedCreationStatus,
   type AssistedCreationStatus,
 } from "@fresh-prints/shared/constants/assistedCreation/assistedCreation.constants";
+import { resolveArtworkBackgroundHex } from "@fresh-prints/shared/constants/design/artworkBackground.constants";
 import type {
   AssistedCreationProof,
   AssistedCreationRevisionEntry,
@@ -23,6 +24,11 @@ import {
   isAssistedCreationProofEmailSentEntry,
   latestAssistedCreationCustomerUpdateAtMs,
 } from "@fresh-prints/shared/utils/assistedCreationHistory";
+import {
+  needsAssistedCatalogShareArtworkBackgroundLiveResolve,
+  resolveAssistedCatalogShareArtworkBackgroundHex,
+  snapshotAssistedCatalogArtworkBackgroundHex,
+} from "@fresh-prints/shared/utils/assistedCreationCatalogShareArtworkBackground";
 import {
   ASSISTED_CREATION_STAGE_TABS,
   stageForAssistedCreationStatus,
@@ -49,6 +55,7 @@ import { desktopAppService } from "../../../shared/services/desktopAppService";
 import { DesignThumbnailPanel } from "../../designs/components/DesignThumbnailPanel";
 import { getDesignLibraryPath } from "../../designs/constants/designLibraryFilters";
 import { designDerivativeUrlService } from "../../designs/services/designDerivativeUrlService";
+import { designService } from "../../designs/services/designService";
 import { useAssistedCreationRequests } from "../hooks/useAssistedCreationRequests";
 import {
   assistedCreationRequestsService,
@@ -82,6 +89,7 @@ function resolveCatalogShareStaffSummary(item: AssistedCreationRequestListItem):
   designId: string;
   previewPath: string;
   title: string;
+  artworkBackgroundHex?: string;
 } | null {
   const suggestion = item.suggestedCatalogDesign;
   const designId = suggestion?.designId?.trim() || item.approvedCatalogDesignId?.trim() || "";
@@ -103,18 +111,62 @@ function resolveCatalogShareStaffSummary(item: AssistedCreationRequestListItem):
     suggestion?.previewImageUrl?.trim() ||
     catalogProof?.catalogPreviewImageUrl?.trim() ||
     "";
+  const artworkBackgroundHex = resolveAssistedCatalogShareArtworkBackgroundHex({
+    suggestedArtworkBackgroundHex: suggestion?.artworkBackgroundHex,
+    proofCatalogArtworkBackgroundHex: catalogProof?.catalogArtworkBackgroundHex,
+  });
 
-  return { designId, previewPath, title };
+  return { designId, previewPath, title, artworkBackgroundHex };
 }
 
 function AssistedCatalogShareStaffCard({ item }: { item: AssistedCreationRequestListItem }) {
+  const { user } = useAuth();
   const summary = resolveCatalogShareStaffSummary(item);
+  const snapshotHex = resolveAssistedCatalogShareArtworkBackgroundHex({
+    suggestedArtworkBackgroundHex: summary?.artworkBackgroundHex,
+  });
+  const designId = summary?.designId?.trim() || "";
+  const [liveHex, setLiveHex] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    if (
+      !needsAssistedCatalogShareArtworkBackgroundLiveResolve({
+        suggestedArtworkBackgroundHex: snapshotHex,
+      }) ||
+      !designId ||
+      !user
+    ) {
+      setLiveHex(undefined);
+      return;
+    }
+    let cancelled = false;
+    void designService
+      .getDesignById(user, designId)
+      .then((design) => {
+        if (!cancelled) {
+          setLiveHex(snapshotAssistedCatalogArtworkBackgroundHex(design.artworkBackgroundHex));
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setLiveHex(undefined);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [designId, snapshotHex, user]);
+
   if (!summary) {
     return null;
   }
 
   const statusLabel = catalogShareCustomerStatusLabel(item);
   const libraryPath = getDesignLibraryPath({ search: summary.designId });
+  const artworkBackgroundHex = resolveAssistedCatalogShareArtworkBackgroundHex({
+    suggestedArtworkBackgroundHex: snapshotHex,
+    liveDesignArtworkBackgroundHex: liveHex,
+  });
 
   return (
     <section className="customer-requests-assisted-panel customer-requests-assisted-catalog-share">
@@ -125,6 +177,7 @@ function AssistedCatalogShareStaffCard({ item }: { item: AssistedCreationRequest
       <div className="customer-requests-assisted-catalog-share-row">
         <DesignThumbnailPanel
           alt={`${summary.title} preview`}
+          artworkBackgroundHex={artworkBackgroundHex}
           catalogPath={summary.previewPath || undefined}
           className="customer-requests-assisted-catalog-share-thumb"
           fallbackLabel="Preview unavailable"
@@ -179,6 +232,8 @@ interface AssistedProofPreview extends AssistedMediaPreview {
   catalogDesignTitle?: string;
   /** Catalog derivative path for `catalog_share` thumbs (never assisted proof Storage). */
   catalogPreviewImageUrl?: string;
+  /** Snapshot artwork mat for catalog_share thumbs. */
+  catalogArtworkBackgroundHex?: string;
 }
 
 function assistedMediaFingerprint(
@@ -642,12 +697,23 @@ function AssistedProofDetailModal({
           <ModalBody className="customer-requests-assisted-proof-modal-body">
             {proof.isCatalogShare ? (
               catalogPreviewPath || proof.url ? (
-                <div className="customer-requests-assisted-proof-modal-image">
+                <div
+                  className="customer-requests-assisted-proof-modal-image"
+                  style={
+                    proof.catalogArtworkBackgroundHex
+                      ? {
+                          ["--color-artwork-preview-bg" as string]:
+                            resolveArtworkBackgroundHex(proof.catalogArtworkBackgroundHex),
+                        }
+                      : undefined
+                  }
+                >
                   {proof.url ? (
                     <img alt={title} src={proof.url} />
                   ) : (
                     <DesignThumbnailPanel
                       alt={title}
+                      artworkBackgroundHex={proof.catalogArtworkBackgroundHex}
                       catalogPath={catalogPreviewPath}
                       className="customer-requests-assisted-proof-modal-catalog-thumb"
                       fallbackLabel="Preview unavailable"
@@ -759,6 +825,7 @@ function AssistedDetail({
   readThroughAtMs: number | null;
   unreadUpdateCount: number;
 }) {
+  const { user } = useAuth();
   const [busy, setBusy] = useState(false);
   const [savingNotes, setSavingNotes] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -982,11 +1049,20 @@ function AssistedDetail({
         notes: notesForProof(proof, item.proofs, item.revisionHistory),
         isCatalogShare,
         ...(isCatalogShare
-          ? {
-              catalogDesignId: proof.catalogDesignId?.trim() || "",
-              catalogDesignTitle: catalogTitle,
-              catalogPreviewImageUrl: catalogPreviewPath,
-            }
+          ? (() => {
+              const catalogArtworkBackgroundHex = resolveAssistedCatalogShareArtworkBackgroundHex({
+                suggestedArtworkBackgroundHex: item.suggestedCatalogDesign?.artworkBackgroundHex,
+                proofCatalogArtworkBackgroundHex: proof.catalogArtworkBackgroundHex,
+              });
+              return {
+                catalogDesignId: proof.catalogDesignId?.trim() || "",
+                catalogDesignTitle: catalogTitle,
+                catalogPreviewImageUrl: catalogPreviewPath,
+                ...(catalogArtworkBackgroundHex
+                  ? { catalogArtworkBackgroundHex }
+                  : {}),
+              };
+            })()
           : {}),
       };
     }
@@ -1040,9 +1116,34 @@ function AssistedDetail({
         let settled: AssistedProofPreview;
 
         if (isCatalogShare) {
+          let catalogArtworkBackgroundHex = base.catalogArtworkBackgroundHex;
+          if (
+            !catalogArtworkBackgroundHex &&
+            user &&
+            base.catalogDesignId &&
+            needsAssistedCatalogShareArtworkBackgroundLiveResolve({
+              suggestedArtworkBackgroundHex: item.suggestedCatalogDesign?.artworkBackgroundHex,
+              proofCatalogArtworkBackgroundHex: proof.catalogArtworkBackgroundHex,
+            })
+          ) {
+            try {
+              const design = await designService.getDesignById(user, base.catalogDesignId);
+              catalogArtworkBackgroundHex = resolveAssistedCatalogShareArtworkBackgroundHex({
+                suggestedArtworkBackgroundHex: item.suggestedCatalogDesign?.artworkBackgroundHex,
+                proofCatalogArtworkBackgroundHex: proof.catalogArtworkBackgroundHex,
+                liveDesignArtworkBackgroundHex: design.artworkBackgroundHex,
+              });
+            } catch {
+              catalogArtworkBackgroundHex = undefined;
+            }
+          }
+          const withBg = {
+            ...base,
+            ...(catalogArtworkBackgroundHex ? { catalogArtworkBackgroundHex } : {}),
+          };
           if (!catalogPreviewPath) {
             settled = {
-              ...base,
+              ...withBg,
               fileName: displayName,
               url: "",
               unavailable: true,
@@ -1056,7 +1157,7 @@ function AssistedDetail({
                   catalogPreviewPath,
                 )) ?? "";
               settled = {
-                ...base,
+                ...withBg,
                 fileName: displayName,
                 url,
                 unavailable: !url,
@@ -1065,7 +1166,7 @@ function AssistedDetail({
               };
             } catch {
               settled = {
-                ...base,
+                ...withBg,
                 fileName: displayName,
                 url: "",
                 // List/modal can still render via DesignThumbnailPanel + catalog path.
@@ -1138,7 +1239,7 @@ function AssistedDetail({
       window.clearTimeout(safetyTimer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional stable deps
-  }, [item.id, proofFingerprint, historyFingerprint]);
+  }, [item.id, proofFingerprint, historyFingerprint, user?.id]);
 
   useEffect(() => {
     return () => {
@@ -1679,6 +1780,7 @@ function AssistedDetail({
                           catalogPreviewPath ? (
                             <DesignThumbnailPanel
                               alt=""
+                              artworkBackgroundHex={proof.catalogArtworkBackgroundHex}
                               catalogPath={catalogPreviewPath}
                               className="customer-requests-assisted-proof-row-catalog-thumb"
                               decorative
@@ -1686,7 +1788,20 @@ function AssistedDetail({
                               imageFit="cover"
                             />
                           ) : proof.url ? (
-                            <img alt="" src={proof.url} />
+                            <img
+                              alt=""
+                              src={proof.url}
+                              style={
+                                proof.catalogArtworkBackgroundHex
+                                  ? {
+                                      ["--color-artwork-preview-bg" as string]:
+                                        resolveArtworkBackgroundHex(
+                                          proof.catalogArtworkBackgroundHex,
+                                        ),
+                                    }
+                                  : undefined
+                              }
+                            />
                           ) : (
                             <span
                               aria-hidden="true"

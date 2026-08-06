@@ -92,6 +92,8 @@ export interface AssistedCreationProof {
    * Distinct from `storagePath` so purge never deletes catalog assets.
    */
   catalogPreviewImageUrl?: string;
+  /** Snapshot of design artwork mat color for catalog_share preview mats. */
+  catalogArtworkBackgroundHex?: string;
 }
 
 export type AssistedCreationRevisionKind =
@@ -149,6 +151,11 @@ export interface AssistedCreationSuggestedCatalogDesign {
    * Live UI may re-resolve from the ready design when available.
    */
   previewImageUrl?: string;
+  /**
+   * Snapshot of the design's configured artwork mat color (`#rrggbb`) at suggest time.
+   * Used so transparent PNG previews keep the Library background in Assisted UI.
+   */
+  artworkBackgroundHex?: string;
   /** Server Timestamp or ISO string in DTOs. */
   suggestedAt: unknown;
   suggestedByUid: string;
