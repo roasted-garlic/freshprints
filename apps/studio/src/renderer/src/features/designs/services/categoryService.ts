@@ -1,6 +1,7 @@
 import {
   deleteField,
   doc,
+  getCountFromServer,
   getDoc,
   getDocs,
   limit,
@@ -633,6 +634,27 @@ export const categoryService = {
   async archiveCategory(caller: User, categoryId: string): Promise<Category> {
     if (!permissionService.canManageCategories(caller)) {
       throw new Error("You do not have permission to manage categories.");
+    }
+
+    const designsCollection = firestoreCollectionService.getDesignsCollection();
+    const referenceTrace: FirestoreTraceMetadata = {
+      app: "studio",
+      collection: "designs",
+      constraints: ["categoryId=={categoryId}"],
+      source: "categoryService.archiveCategory.designRefs",
+      triggerReason: "route",
+    };
+    traceFirestoreOneShotStart("getCountFromServer", referenceTrace);
+    const referenceCountSnap = await getCountFromServer(
+      query(designsCollection, where("categoryId", "==", categoryId)),
+    );
+    const referencingDesignCount = referenceCountSnap.data().count;
+    traceFirestoreOneShotComplete("getCountFromServer", referenceTrace, 0);
+
+    if (referencingDesignCount > 0) {
+      throw new Error(
+        `This category cannot be archived while ${referencingDesignCount} design(s) still use it. Reassign those designs first.`,
+      );
     }
 
     return this.updateCategory(caller, categoryId, { isActive: false });

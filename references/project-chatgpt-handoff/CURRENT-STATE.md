@@ -1,5 +1,23 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-08-06 - Stage 1a Amendment 2 (Case A archive persist) awaiting owner re-QA
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, unmerged).
+
+Amendment 1 mapper FAIL on live QA → Amendment 2 **Case A**: Firestore never went
+`isActive: false` (0/18 inactive; 0 category-archive Function POSTs). Studio
+`persistCategoryArchive` + client fallback; Portal focus/visibility reload. Impl
+review **APPROVED**. No Signoff. No Function deploy. Reduced re-QA:
+`docs/workflow/reviews/2026-08-06-amendment-8-phase-1b-stage-1a-amendment-2-manual-qa.md`.
+
+## 2026-08-06 - Stage 1a Amendment 1 (inactive categories) awaiting owner re-QA
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, unmerged).
+
+Owner QA #7 FAIL → Amendment 1: restore `mapPortalActiveCategory` requiring `isActive === true`.
+Record / review / re-QA under `docs/workflow/reviews/2026-08-06-amendment-8-phase-1b-stage-1a-amendment-1-*`.
+Superseded by Amendment 2 (Case A). No Signoff. No deploy. Stage 1b not started.
+
 ## 2026-08-06 - Amendment 8 Phase 1B Stage 1a awaiting owner QA
 
 Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, unmerged).

@@ -21,10 +21,12 @@ Background (not active gate): Goal #13 / clean Studio remediation / Stage 2 rema
 
 **Separate concurrent managed goal (does not affect the gate above):**
 `post-launch-catalog-and-processing-stability` — **Amendment 8 Phase 1B Stage 1a** Implement
-complete; owner QA **FAIL on #7** (inactive categories). **Amendment 1** restored strict
-`mapPortalActiveCategory` (`isActive === true`); impl review **APPROVED**; awaiting owner re-QA.
-Record: `docs/workflow/reviews/2026-08-06-amendment-8-phase-1b-stage-1a-amendment-1-record.md`.
-Re-QA: `docs/workflow/reviews/2026-08-06-amendment-8-phase-1b-stage-1a-amendment-1-manual-qa.md`.
+complete; owner QA **FAIL on #7** → Amendment 1 mapper → owner re-QA **FAIL** → **Amendment 2
+Case A** (Firestore never inactive). Studio `persistCategoryArchive` + client fallback;
+Portal focus/visibility category reload. Impl review **APPROVED**. Awaiting reduced owner
+re-QA (no Signoff). Record:
+`docs/workflow/reviews/2026-08-06-amendment-8-phase-1b-stage-1a-amendment-2-record.md`.
+Re-QA: `docs/workflow/reviews/2026-08-06-amendment-8-phase-1b-stage-1a-amendment-2-manual-qa.md`.
 PR #40 open/unmerged. No deploy / Function retirement / cleanup / production. Stage 1b not started.
 
 **Amendment 9 (2026-08-06) — Large-batch Firestore read amplification:** Investigate → Plan →
@@ -127,6 +129,10 @@ archive write — none of these could be run live in this environment (no intera
 no Application Default Credentials for scripted checks beyond read-only CLI operations).
 
 Decision Log:
+- 2026-08-06 — Stage 1a Amendment 2 **Case A**: live Firestore 0 inactive; Studio
+  `persistCategoryArchive` + client fallback; Portal focus reload; impl review APPROVED;
+  owner re-QA pending; no Signoff; no Function deploy. Record:
+  `docs/workflow/reviews/2026-08-06-amendment-8-phase-1b-stage-1a-amendment-2-record.md`.
 - 2026-08-06 — `catalog-display-ready-ordering-and-assisted-proof-limit` **Signoff approved**.
   Owner QA **PASS**. Dev deploy already on `fresh-prints-dev`. Signoff:
   `docs/workflow/reviews/2026-08-06-catalog-display-ready-ordering-and-assisted-proof-limit-signoff.md`.

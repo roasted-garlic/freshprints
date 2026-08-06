@@ -94,14 +94,16 @@ describe("taxonomy archive/restore cache invalidation", () => {
     const source = read(
       "apps/studio/src/renderer/src/features/designs/hooks/useArchiveCategory.ts",
     );
+    const persistSource = read(
+      "apps/studio/src/renderer/src/features/designs/hooks/persistCategoryArchive.ts",
+    );
 
     assert.match(source, /import \{ clearStudioTaxonomyCaches \} from "\.\.\/services\/taxonomyCacheControl";/);
-    assert.match(source, /taxonomyArchiveGuardsService\.archiveCategory\(categoryId\)/);
-    assert.match(source, /clearStudioTaxonomyCaches\(\);/);
-
-    const blockedIndex = source.indexOf('if (result.outcome === "blocked")');
-    const invalidateIndex = source.indexOf("clearStudioTaxonomyCaches();");
-    assert.ok(blockedIndex > -1 && invalidateIndex > -1 && invalidateIndex > blockedIndex);
+    assert.match(source, /persistCategoryArchive/);
+    assert.match(source, /clearCaches: clearStudioTaxonomyCaches/);
+    assert.match(persistSource, /archiveViaGuards/);
+    assert.match(persistSource, /archiveViaClient/);
+    assert.match(persistSource, /Category archive did not persist/);
   });
 
   it("adds a tag restoreTag action that reuses catalogTagService.updateTag (which already self-invalidates)", () => {
