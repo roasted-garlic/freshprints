@@ -1,5 +1,18 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-08-06 - Assisted proof 80 MB deployed to fresh-prints-dev (awaiting owner QA)
+
+Owner approved: `APPROVE DEV DEPLOYMENT: ASSISTED CREATION PROOF 80 MB LIMIT`.
+
+Deployed from `982855c` to **`fresh-prints-dev` only**:
+- `firebase deploy --only storage`
+- `functions:staffAddAssistedCreationProof`
+- `functions:staffAddAssistedCreationFinalSource`
+- `functions:customerAddAssistedApprovedProofToPrintRequest`
+
+Record: `docs/workflow/reviews/2026-08-06-assisted-creation-proof-80mb-dev-deploy.md`.
+Continue owner QA checklist. No production. PR #40 open/unmerged.
+
 ## 2026-08-06 - Assisted proof 80 MB (+ mats/ordering already signed) awaiting owner QA
 
 Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, unmerged).

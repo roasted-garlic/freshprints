@@ -38,10 +38,11 @@ amplification remains a production-promotion blocker** (P4 later). P1/P3/P4/Phas
 started**. PR #40 open/**unmerged**. No Firebase/production deploy.
 
 **Follow-up (2026-08-06) — `catalog-display-ready-ordering-and-assisted-proof-limit`:**
-A+B already signed off (`42f7b20`). Workstream C: Assisted proof max **80 MB** (shared
-constant + inclusive Storage Rules). Implementation Review **APPROVED**; awaiting owner QA
-(`docs/workflow/reviews/2026-08-06-catalog-display-ready-ordering-and-assisted-proof-limit-manual-qa.md`).
-**No Signoff yet.** Rules/Functions deploy **not** done this pass. PR #40 open/unmerged.
+A+B already signed off (`42f7b20`). Workstream C: Assisted proof max **80 MB**. Source
+`982855c`. **Dev deploy approved and completed** (storage + three Functions on
+`fresh-prints-dev`) — see
+`docs/workflow/reviews/2026-08-06-assisted-creation-proof-80mb-dev-deploy.md`. Awaiting owner QA.
+No production deploy. PR #40 open/unmerged.
 
 **Follow-up (2026-08-06) — `catalog-display-background-and-ready-ordering`:** **Signoff
 approved_with_notes**. Owner QA **PASS WITH NOTES**. Commit `42f7b20`. Studio Details mats +
@@ -129,6 +130,11 @@ archive write — none of these could be run live in this environment (no intera
 no Application Default Credentials for scripted checks beyond read-only CLI operations).
 
 Decision Log:
+- 2026-08-06 — Owner `APPROVE DEV DEPLOYMENT: ASSISTED CREATION PROOF 80 MB LIMIT`. Deployed
+  `storage` + `staffAddAssistedCreationProof` + `staffAddAssistedCreationFinalSource` +
+  `customerAddAssistedApprovedProofToPrintRequest` to `fresh-prints-dev` from `982855c`.
+  Record: `docs/workflow/reviews/2026-08-06-assisted-creation-proof-80mb-dev-deploy.md`. No
+  production. Awaiting owner QA.
 - 2026-08-06 — `catalog-display-ready-ordering-and-assisted-proof-limit`: A+B already shipped;
   C raises Assisted proof to 80 MB (constant + Rules `<=`). Impl Review APPROVED; owner QA
   pending. No Signoff. No Firebase deploy. PR #40 unmerged.

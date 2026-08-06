@@ -2,7 +2,9 @@
 
 **Branch:** `fix/post-launch-catalog-and-processing-stability`  
 **Environment:** `fresh-prints-dev`  
-**Note:** Mats + ready ordering shipped in `42f7b20`. This pass adds 80 MB proof limit in source; **Storage Rules must be deployed** before oversize-vs-Rules behavior is live.
+**Note:** Mats + ready ordering shipped in `42f7b20`. Proof 80 MB source in `982855c`.
+**Dev deploy completed 2026-08-06** (storage + three Functions on `fresh-prints-dev`) —
+see `docs/workflow/reviews/2026-08-06-assisted-creation-proof-80mb-dev-deploy.md`.
 
 ## Background
 
