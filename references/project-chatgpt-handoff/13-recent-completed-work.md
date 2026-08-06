@@ -1,10 +1,11 @@
 # Recent Completed Work
 
-## 2026-08-06 - Amendment 8 Phase 1A Signoff approved_with_notes
+## 2026-08-06 - Amendment 8 Phase 1A Signoff approved
 
 - Phase 1A Firestore ordinary browse + Studio teardown (`4ed41bc`) and Assisted catalog-share artwork-background correction (`bc9e7e7`)
-- Owner re-QA **PASS**; Signoff **approved_with_notes**
-- Residual: optional scoped deploy of `staffSuggestAssistedCreationCatalogDesign` to `fresh-prints-dev` (prepared, not run)
+- Owner deployed `staffSuggestAssistedCreationCatalogDesign` to `fresh-prints-dev` before final QA
+- Owner re-QA **PASS** covered updated Function runtime + Studio/Portal display correction
+- Signoff **approved** — no Phase 1A deployment residual
 - Phase 1B not started; PR #40 remains open/unmerged
 - Signoff: `docs/workflow/reviews/2026-08-05-amendment-8-phase-1a-signoff.md`
 

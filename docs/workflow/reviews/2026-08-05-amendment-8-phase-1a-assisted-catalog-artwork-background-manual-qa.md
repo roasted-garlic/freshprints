@@ -3,11 +3,11 @@
 **Branch:** `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, unmerged)  
 **Prior Phase 1A owner result:** **PASS WITH NOTES** (Assisted catalog-share artwork background)  
 **Correction status:** Implemented, independently reviewed **APPROVED**, committed at `bc9e7e7`  
-**Owner re-QA result (2026-08-06):** **PASS**  
-**Signoff:** `docs/workflow/reviews/2026-08-05-amendment-8-phase-1a-signoff.md` — **approved_with_notes**
+**Owner re-QA result (2026-08-06):** **PASS** — covered updated `staffSuggestAssistedCreationCatalogDesign` on `fresh-prints-dev` and Studio/Portal display correction  
+**Signoff:** `docs/workflow/reviews/2026-08-05-amendment-8-phase-1a-signoff.md` — **approved**
 
 **Environment:** Studio + Portal vs `fresh-prints-dev`  
-**Note:** New catalog-share snapshots need the updated `staffSuggestAssistedCreationCatalogDesign` Functions runtime. Owner **PASS** was recorded with live-resolve/CSS mats available; scoped Functions deploy remains optional follow-up if durable suggest-time snapshots are required.
+**Deploy:** Owner ran `firebase deploy --only functions:staffSuggestAssistedCreationCatalogDesign --project fresh-prints-dev` before final PASS. No Phase 1A deployment residual remains.
 
 ---
 

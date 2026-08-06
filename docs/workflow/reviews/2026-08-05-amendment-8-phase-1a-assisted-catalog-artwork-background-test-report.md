@@ -8,7 +8,7 @@
 | Correction commit | `bc9e7e779dd529e5b54faf562938f78aa675caae` |
 | Scope | Narrow Phase 1A correction only |
 | Owner Phase 1A QA | **PASS WITH NOTES** (artwork mat on Assisted catalog-share) |
-| Signoff | **Not started** — owner re-QA required after scoped Functions deploy |
+| Signoff | **approved** — owner re-QA **PASS** after scoped Function deploy |
 | Independent Implementation Review | **APPROVED** (after required Portal proofs-list live-resolve fix) |
 
 ## Root cause
@@ -74,16 +74,14 @@ npx tsx --test \
 | Check | Result |
 |---|---|
 | Branch | `fix/post-launch-catalog-and-processing-stability` |
-| HEAD | `bc9e7e779dd529e5b54faf562938f78aa675caae` (clean vs origin; no unrelated source drift) |
+| HEAD (correction) | `bc9e7e779dd529e5b54faf562938f78aa675caae` |
 | Portal production build | **PASS** (exit 0) after stopping local Portal dev only |
-| Scoped Functions deploy | **Awaiting owner approval** — exact command prepared; not executed |
+| Scoped Functions deploy | **Done (owner-executed)** — `firebase deploy --only functions:staffSuggestAssistedCreationCatalogDesign --project fresh-prints-dev` before final owner QA PASS |
 
 ## Owner result (Phase 1A)
 
 **PASS WITH NOTES** (2026-08-05) — note addressed by correction.  
-**Owner re-QA:** **PASS** (2026-08-06).  
-Signoff: `docs/workflow/reviews/2026-08-05-amendment-8-phase-1a-signoff.md` — **approved_with_notes**.
+**Owner re-QA:** **PASS** (2026-08-06) — covered the updated Function runtime on `fresh-prints-dev` and the Studio/Portal display correction.  
+Signoff: `docs/workflow/reviews/2026-08-05-amendment-8-phase-1a-signoff.md` — **approved**.
 
-### Residual (non-blocking)
-
-Scoped deploy of `staffSuggestAssistedCreationCatalogDesign` to `fresh-prints-dev` was prepared but not executed (no explicit deploy-approval phrase). Display QA passed with live-resolve/CSS mats.
+No remaining Phase 1A deployment note or blocker.

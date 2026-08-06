@@ -7,15 +7,23 @@
 | Plan | `docs/workflow/plans/2026-08-05-post-launch-catalog-and-processing-stability-amendment-8-plan.md` |
 | Review | `docs/workflow/reviews/2026-08-05-post-launch-catalog-and-processing-stability-amendment-8-plan-review.md`; Phase 1A impl `docs/workflow/reviews/2026-08-05-amendment-8-phase-1a-implementation-review.md`; correction impl `docs/workflow/reviews/2026-08-05-amendment-8-phase-1a-assisted-catalog-artwork-background-implementation-review.md` |
 | Test report | `docs/workflow/reviews/2026-08-05-amendment-8-phase-1a-assisted-catalog-artwork-background-test-report.md` |
-| Commits | Phase 1A `4ed41bc`; correction `bc9e7e7` |
+| Commits | Phase 1A `4ed41bc`; correction `bc9e7e7`; signoff docs `5ceeba1` (+ this deployment-record correction) |
 | Branch / PR | `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, unmerged) |
-| Final status | **approved_with_notes** |
+| Final status | **approved** |
 
 ---
 
 ## Summary
 
-Amendment 8 **Phase 1A** (Firestore ordinary Portal browse, Discover home, Studio taxonomy/Assisted pagination, safe Studio teardown, OG/AI taxonomy Firestore paths, ADR-FP-120 supersession) shipped and owner-QA’d. Owner first result was **PASS WITH NOTES** (Assisted catalog-share lost configured artwork background). The narrow correction (authoritative hex snapshot + Studio/Portal CSS mats + legacy one-shot live-resolve) was implemented, reviewed **APPROVED**, committed, and pushed. Owner re-QA reply: **PASS** (2026-08-06).
+Amendment 8 **Phase 1A** (Firestore ordinary Portal browse, Discover home, Studio taxonomy/Assisted pagination, safe Studio teardown, OG/AI taxonomy Firestore paths, ADR-FP-120 supersession) shipped and owner-QA’d. Owner first result was **PASS WITH NOTES** (Assisted catalog-share lost configured artwork background). The narrow correction (authoritative hex snapshot + Studio/Portal CSS mats + legacy one-shot live-resolve) was implemented, reviewed **APPROVED**, committed, and pushed.
+
+Before final owner re-QA, the owner manually deployed:
+
+```bash
+firebase deploy --only functions:staffSuggestAssistedCreationCatalogDesign --project fresh-prints-dev
+```
+
+Owner re-QA reply: **PASS** (2026-08-06). That PASS covered the updated Function runtime **and** the Studio/Portal display correction. Phase 1A is fully signed off. There is **no** remaining Phase 1A deployment note or blocker.
 
 Phase 1B (managed search) was **not** started. No production Firebase deploy. PR #40 remains open/unmerged.
 
@@ -49,7 +57,7 @@ Phase 1B (managed search) was **not** started. No production Firebase deploy. PR
 ### Manual
 | Test | Result | Approved by |
 |------|--------|-------------|
-| Phase 1A catalog speed/behavior + Assisted catalog-share artwork background (consolidated QA) | **PASS** | owner (2026-08-06) |
+| Phase 1A catalog speed/behavior + Assisted catalog-share artwork background (consolidated QA), including updated suggest Function on `fresh-prints-dev` | **PASS** | owner (2026-08-06) |
 | Prior Phase 1A pass with artwork note | PASS WITH NOTES | owner (2026-08-05) |
 
 ---
@@ -57,9 +65,9 @@ Phase 1B (managed search) was **not** started. No production Firebase deploy. PR
 ## Human Approvals Obtained
 | Approval | Status | Date | Notes |
 |----------|--------|------|-------|
-| Phase 1A owner QA | obtained | 2026-08-06 | `PASS` |
+| Phase 1A owner QA | obtained | 2026-08-06 | `PASS` — covered Studio/Portal display correction **and** updated `staffSuggestAssistedCreationCatalogDesign` on `fresh-prints-dev` |
+| Scoped `staffSuggestAssistedCreationCatalogDesign` → `fresh-prints-dev` | obtained (owner-executed) | before final PASS | Owner ran `firebase deploy --only functions:staffSuggestAssistedCreationCatalogDesign --project fresh-prints-dev` |
 | Production deploy | not required | | none performed |
-| Scoped `staffSuggestAssistedCreationCatalogDesign` → `fresh-prints-dev` | **not obtained** | | Command prepared; owner replied `PASS` (QA) without the deploy approval phrase — see notes |
 | Database migration | not required | | optional fields only |
 | Secrets / env | not required | | |
 | Phase 1B provider | not started | | Typesense recommended earlier; decision deferred |
@@ -70,16 +78,16 @@ Phase 1B (managed search) was **not** started. No production Firebase deploy. PR
 
 | Item | Severity | Mitigation / follow-up |
 |------|----------|------------------------|
-| Updated suggest callable may not yet be live on `fresh-prints-dev` | Medium (display covered by live-resolve) | Deploy only `functions:staffSuggestAssistedCreationCatalogDesign` when owner issues the explicit approval phrase |
 | Generated Portal search/facet readers + snapshot publishers still live | Expected | Phase 1B + later Stages 3–4 retirement |
 | PR #40 open/unmerged | Process | Separate merge decision |
+
+No Phase 1A Functions-deploy residual remains.
 
 ---
 
 ## Deferred Items (Roadmap)
 - Amendment 8 Phase 1B — managed-search provider choice + implementation
 - Snapshot publisher / generated reader retirement (Stages 3–4)
-- Scoped Functions deploy of suggest callable if not yet live on the QA project
 
 ---
 
@@ -90,7 +98,7 @@ Phase 1B (managed search) was **not** started. No production Firebase deploy. PR
 
 ## Verdict
 
-**approved_with_notes** — Owner **PASS** clears the Assisted artwork-background note and Phase 1A Signoff. Residual: scoped Functions deploy for durable suggest-time hex snapshots was prepared but not executed (awaiting explicit deploy approval). Client live-resolve and CSS mats remain sufficient for display QA that passed.
+**approved** — Phase 1A is fully signed off. Owner **PASS** covered the Studio/Portal artwork-background correction and the updated `staffSuggestAssistedCreationCatalogDesign` runtime already deployed to `fresh-prints-dev`. No Phase 1A deployment note or blocker remains. Phase 1B remains unstarted. PR #40 remains open/unmerged.
 
 ---
 
@@ -102,4 +110,4 @@ Phase 1B (managed search) was **not** started. No production Firebase deploy. PR
 - [ ] Phase 1B not started (intentional)
 - [ ] PR #40 not merged (intentional)
 
-**Recommended next action for user:** Choose Phase 1B managed-search provider (Typesense Cloud recommended), and optionally approve the one-Function suggest deploy to `fresh-prints-dev` if durable snapshots are desired beyond live-resolve.
+**Recommended next action for user:** Choose Phase 1B managed-search provider (Typesense Cloud recommended earlier).

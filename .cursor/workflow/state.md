@@ -21,12 +21,12 @@ Background (not active gate): Goal #13 / clean Studio remediation / Stage 2 rema
 
 **Separate concurrent managed goal (does not affect the gate above):**
 `post-launch-catalog-and-processing-stability` — original A–D + Amendments 1–7 + AI Processing
-monotonic repair Signoff complete. **Amendment 8 Phase 1A Signoff approved_with_notes**
-(2026-08-06): owner re-QA **PASS** on Assisted catalog-share artwork background. Commits
-`4ed41bc` + `bc9e7e7`. Signoff:
-`docs/workflow/reviews/2026-08-05-amendment-8-phase-1a-signoff.md`. Phase 1B (managed search)
-not started — provider decision deferred. Optional residual: scoped deploy
-`functions:staffSuggestAssistedCreationCatalogDesign` → `fresh-prints-dev` (prepared; not run).
+monotonic repair Signoff complete. **Amendment 8 Phase 1A Signoff approved** (2026-08-06):
+owner re-QA **PASS** covered Studio/Portal artwork-background correction and updated
+`staffSuggestAssistedCreationCatalogDesign` on `fresh-prints-dev` (owner-executed scoped deploy
+before PASS). Commits `4ed41bc` + `bc9e7e7`. Signoff:
+`docs/workflow/reviews/2026-08-05-amendment-8-phase-1a-signoff.md`. No Phase 1A deployment
+residual or blocker. Phase 1B (managed search) not started — provider decision deferred.
 PR #40 remains open/unmerged. No production Firebase deploy.
 
 **Amendment 1** fixed a confirmed, urgent production defect: ready/approved designs never
@@ -108,17 +108,20 @@ archive write — none of these could be run live in this environment (no intera
 no Application Default Credentials for scripted checks beyond read-only CLI operations).
 
 Decision Log:
-- 2026-08-06 — Amendment 8 Phase 1A **Signoff approved_with_notes**. Owner reply: **PASS**
-  (Assisted catalog-share artwork background re-QA). Signoff:
-  `docs/workflow/reviews/2026-08-05-amendment-8-phase-1a-signoff.md`. Residual: scoped
-  `staffSuggestAssistedCreationCatalogDesign` deploy to `fresh-prints-dev` prepared but not
-  executed (no explicit deploy-approval phrase). Phase 1B not started. PR #40 open/unmerged.
+- 2026-08-06 — Documentation correction: Phase 1A Signoff deploy record. Owner confirms
+  `firebase deploy --only functions:staffSuggestAssistedCreationCatalogDesign --project fresh-prints-dev`
+  was completed before final QA **PASS**. Signoff status corrected to **approved** (fully signed
+  off); no Phase 1A deployment residual. Phase 1B still unstarted; PR #40 open/unmerged. Docs only;
+  no redeploy.
+- 2026-08-06 — Amendment 8 Phase 1A **Signoff approved**. Owner reply: **PASS** (Assisted
+  catalog-share artwork background re-QA covering updated Function runtime + Studio/Portal
+  display). Signoff: `docs/workflow/reviews/2026-08-05-amendment-8-phase-1a-signoff.md`.
+  Phase 1B not started. PR #40 open/unmerged.
 - 2026-08-06 — Phase 1A final development checkpoint: working tree clean at `bc9e7e7`; stopped only
   local Portal `npm run dev:portal` / `next dev --port 3100` tree; Portal production build
-  `npm run build:portal` **PASS** (exit 0). Scoped Firebase deploy of
-  `staffSuggestAssistedCreationCatalogDesign` to `fresh-prints-dev` prepared; **awaiting explicit
-  owner approval** before execute. No other Function/Rules/index/Storage/App Hosting/production
-  deploy. Phase 1B not started. PR #40 remains open/unmerged. Signoff still blocked on owner re-QA.
+  `npm run build:portal` **PASS** (exit 0). Scoped Firebase deploy command prepared for owner;
+  owner later executed it on `fresh-prints-dev` before final PASS (see corrected Signoff).
+  Phase 1B not started. PR #40 remains open/unmerged.
 - 2026-08-05 — Amendment 8 Phase 1A Assisted catalog-share artwork-background correction complete
   (implement → test → Independent Implementation Review **APPROVED**). Shared snapshot/resolve
   helpers; Functions suggest writes optional hex; Studio/Portal surfaces apply CSS mat; legacy
