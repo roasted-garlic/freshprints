@@ -1,5 +1,24 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-08-06 - Amendment 9 Plan + Formal Review complete (Investigate → Plan → Review ONLY)
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, unmerged).
+Baseline HEAD for this docs pass: `4a0c039e63778d82a40efba678fdfa3c311cead3`.
+
+**Amendment 9:** Large-batch Firestore read amplification. Planning artifacts only — **no
+implementation**, no Phase 1B, no Firebase/production action, no PR merge.
+
+- Incident: `docs/workflow/reviews/2026-08-06-large-batch-firestore-read-amplification-incident.md`
+- Plan: `docs/workflow/plans/2026-08-06-post-launch-catalog-and-processing-stability-amendment-9-plan.md`
+- Formal Review: `docs/workflow/reviews/2026-08-06-post-launch-catalog-and-processing-stability-amendment-9-review.md`
+  — **APPROVED WITH REQUIRED CHANGES** (R1–R6 applied to Plan)
+
+**Proven (Test Run B Debug):** AI Review reloads remaining Needs Review page after every
+approval (triangular / O(n²) for N≤100) and refreshes all three tab counts; tags loaded once
+(~1,121); imports 2× traced `getDesignById`/design; 0 listeners. Test Run A (~7.1K Console)
+kept **separate** — owner log checklist outstanding. Phase 1B does **not** fix client AI Review
+cost. Next: owner log retrieval + explicit **Implement Amendment 9 P0** approval.
+
 ## 2026-08-06 - Amendment 8 Phase 1A Signoff approved (owner PASS; Function deployed)
 
 Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, unmerged).

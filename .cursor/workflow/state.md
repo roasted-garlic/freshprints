@@ -29,6 +29,17 @@ before PASS). Commits `4ed41bc` + `bc9e7e7`. Signoff:
 residual or blocker. Phase 1B (managed search) not started — provider decision deferred.
 PR #40 remains open/unmerged. No production Firebase deploy.
 
+**Amendment 9 (2026-08-06) — Large-batch Firestore read amplification:** Investigate → Plan →
+Independent Formal Review **complete**. Docs-only at HEAD baseline `4a0c039`. Artifacts:
+incident `docs/workflow/reviews/2026-08-06-large-batch-firestore-read-amplification-incident.md`;
+Plan `docs/workflow/plans/2026-08-06-post-launch-catalog-and-processing-stability-amendment-9-plan.md`;
+Review `docs/workflow/reviews/2026-08-06-post-launch-catalog-and-processing-stability-amendment-9-review.md`
+(**APPROVED WITH REQUIRED CHANGES**, changes applied). Proven client root cause: AI Review
+O(n²) remaining-page reload + 3× `countDesigns` after every approval (Debug Run B). Run A
+(~7.1K Console) kept separate — needs owner logs. **Implement not started**; requires explicit
+owner approval for **P0**. Production promotion / PR merge remain paused. Phase 1B not started.
+No Firebase/production action.
+
 **Amendment 1** fixed a confirmed, urgent production defect: ready/approved designs never
 appearing in Studio Design Library. Root cause: Studio's normal browse depended entirely on
 generated-snapshot publication, itself stalled by a debounce-claim/function-timeout interaction
