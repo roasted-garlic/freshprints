@@ -5,9 +5,10 @@
 | Date | 2026-08-05 |
 | Branch | `fix/post-launch-catalog-and-processing-stability` |
 | Base HEAD | `4ed41bc6e9cacf55f74c68633762d86b3eb38e46` |
+| Correction commit | `bc9e7e779dd529e5b54faf562938f78aa675caae` |
 | Scope | Narrow Phase 1A correction only |
 | Owner Phase 1A QA | **PASS WITH NOTES** (artwork mat on Assisted catalog-share) |
-| Signoff | **Not started** — owner re-QA required |
+| Signoff | **Not started** — owner re-QA required after scoped Functions deploy |
 | Independent Implementation Review | **APPROVED** (after required Portal proofs-list live-resolve fix) |
 
 ## Root cause
@@ -63,10 +64,26 @@ npx tsx --test \
 | Portal `typecheck` | exit 0 |
 | Functions `build` | exit 0 |
 | Studio Vite build (renderer/main/preload) | exit 0 |
-| Portal `build:portal` | **blocked** — concurrent `npm run dev:portal` holds `.next` (`EPERM` on `.next/trace`); Portal typecheck green |
+| Portal `build:portal` (initial attempt) | **blocked** — concurrent `npm run dev:portal` held `.next` |
+| Portal `build:portal` (final checkpoint 2026-08-06) | **PASS** — stopped Portal `next dev --port 3100` only; removed `apps/portal/.next`; `npm run build:portal` exit **0** (compiled, typed, 19/19 static pages) |
 | `npm run lint` | exit 0 |
 | `git diff --check` (changed paths) | exit 0 |
 
+### Final development checkpoint (2026-08-06)
+
+| Check | Result |
+|---|---|
+| Branch | `fix/post-launch-catalog-and-processing-stability` |
+| HEAD | `bc9e7e779dd529e5b54faf562938f78aa675caae` (clean vs origin; no unrelated source drift) |
+| Portal production build | **PASS** (exit 0) after stopping local Portal dev only |
+| Scoped Functions deploy | **Awaiting owner approval** — exact command prepared; not executed |
+
 ## Owner result (Phase 1A)
 
-**PASS WITH NOTES** — note addressed by this correction; live re-QA pending. Do not treat as Signoff PASS.
+**PASS WITH NOTES** (2026-08-05) — note addressed by correction.  
+**Owner re-QA:** **PASS** (2026-08-06).  
+Signoff: `docs/workflow/reviews/2026-08-05-amendment-8-phase-1a-signoff.md` — **approved_with_notes**.
+
+### Residual (non-blocking)
+
+Scoped deploy of `staffSuggestAssistedCreationCatalogDesign` to `fresh-prints-dev` was prepared but not executed (no explicit deploy-approval phrase). Display QA passed with live-resolve/CSS mats.

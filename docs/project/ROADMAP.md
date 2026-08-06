@@ -1,5 +1,7 @@
 # Fresh Prints Roadmap
 
+> 2026-08-06: Amendment 8 **Phase 1A Signoff** — **approved_with_notes**. Owner re-QA **PASS** on Assisted catalog-share artwork background. Commits `4ed41bc` (Phase 1A) + `bc9e7e7` (artwork mat correction) on `fix/post-launch-catalog-and-processing-stability` (PR #40 open). Signoff: `docs/workflow/reviews/2026-08-05-amendment-8-phase-1a-signoff.md`. Phase 1B managed-search provider decision still deferred. Scoped suggest-Function deploy to `fresh-prints-dev` optional residual.
+>
 > 2026-08-05: Studio AI Processing monotonic reconciliation repair (Approach C) — owner live QA **PASS** / Signoff **approved**. Commit `30e1e28` on `fix/post-launch-catalog-and-processing-stability` (PR #40 open). Signoff: `docs/workflow/reviews/2026-08-05-ai-processing-monotonic-reconciliation-repair-signoff.md`. Amendment 8 snapshot removal remains a separate unstarted track.
 
 > 2026-08-01: `portal-design-issue-reporting` implementation is complete and awaits development deployment/owner QA. Stage 2 and public domain cutover remain blocked; the prior Studio installer is intermediate and automatic updates remain separate.

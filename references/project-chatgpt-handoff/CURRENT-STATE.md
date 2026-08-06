@@ -1,5 +1,17 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-08-06 - Amendment 8 Phase 1A Signoff approved_with_notes (owner PASS)
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, unmerged).
+Commits: Phase 1A `4ed41bc`; Assisted artwork-background correction `bc9e7e7`.
+
+Owner re-QA: **PASS**. Signoff:
+`docs/workflow/reviews/2026-08-05-amendment-8-phase-1a-signoff.md` — **approved_with_notes**.
+
+Residual: scoped `firebase deploy --only functions:staffSuggestAssistedCreationCatalogDesign --project fresh-prints-dev` prepared but not executed (no explicit deploy-approval phrase). Display covered by live-resolve/CSS mats.
+
+Phase 1B not started. No production Firebase deploy. No PR merge.
+
 ## 2026-08-05 - Amendment 8 Phase 1A Assisted artwork-background correction ready for owner re-QA
 
 Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open). Phase 1A base

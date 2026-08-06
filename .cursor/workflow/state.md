@@ -20,18 +20,14 @@ Next Required Step: Owner reviews the production convergence audit and approves 
 Background (not active gate): Goal #13 / clean Studio remediation / Stage 2 remain deferred; prior installer intermediate; domain cutover blocked until `APPROVE MYPRINTREQUEST.COM CUTOVER`.
 
 **Separate concurrent managed goal (does not affect the gate above):**
-`post-launch-catalog-and-processing-stability` — original A–D pass complete, **plus Owner QA
-Amendments 1–7 (+ follow-ups) complete**, **plus AI Processing monotonic reconciliation repair
-Signoff approved** (owner live QA **PASS** 2026-08-05; commit `30e1e28`; signoff
-`docs/workflow/reviews/2026-08-05-ai-processing-monotonic-reconciliation-repair-signoff.md`).
-**Amendment 8 Phase 1A** shipped at `4ed41bc` (Firestore ordinary browse + Studio teardown).
-Owner Phase 1A QA: **PASS WITH NOTES** — Assisted catalog-share loses configured artwork
-background. Fix implemented (uncommitted): snapshot hex on suggest + Studio/Portal display +
-legacy live-resolve. Manual re-QA checkpoint:
-`docs/workflow/reviews/2026-08-05-amendment-8-phase-1a-assisted-catalog-artwork-background-manual-qa.md`.
-**Stop before Signoff** until owner clears the note. Phase 1B (managed search) still blocked on
-provider choice. All work remains on `fix/post-launch-catalog-and-processing-stability` /
-PR #40 (open, unmerged). No production Firebase deploy.
+`post-launch-catalog-and-processing-stability` — original A–D + Amendments 1–7 + AI Processing
+monotonic repair Signoff complete. **Amendment 8 Phase 1A Signoff approved_with_notes**
+(2026-08-06): owner re-QA **PASS** on Assisted catalog-share artwork background. Commits
+`4ed41bc` + `bc9e7e7`. Signoff:
+`docs/workflow/reviews/2026-08-05-amendment-8-phase-1a-signoff.md`. Phase 1B (managed search)
+not started — provider decision deferred. Optional residual: scoped deploy
+`functions:staffSuggestAssistedCreationCatalogDesign` → `fresh-prints-dev` (prepared; not run).
+PR #40 remains open/unmerged. No production Firebase deploy.
 
 **Amendment 1** fixed a confirmed, urgent production defect: ready/approved designs never
 appearing in Studio Design Library. Root cause: Studio's normal browse depended entirely on
@@ -112,6 +108,17 @@ archive write — none of these could be run live in this environment (no intera
 no Application Default Credentials for scripted checks beyond read-only CLI operations).
 
 Decision Log:
+- 2026-08-06 — Amendment 8 Phase 1A **Signoff approved_with_notes**. Owner reply: **PASS**
+  (Assisted catalog-share artwork background re-QA). Signoff:
+  `docs/workflow/reviews/2026-08-05-amendment-8-phase-1a-signoff.md`. Residual: scoped
+  `staffSuggestAssistedCreationCatalogDesign` deploy to `fresh-prints-dev` prepared but not
+  executed (no explicit deploy-approval phrase). Phase 1B not started. PR #40 open/unmerged.
+- 2026-08-06 — Phase 1A final development checkpoint: working tree clean at `bc9e7e7`; stopped only
+  local Portal `npm run dev:portal` / `next dev --port 3100` tree; Portal production build
+  `npm run build:portal` **PASS** (exit 0). Scoped Firebase deploy of
+  `staffSuggestAssistedCreationCatalogDesign` to `fresh-prints-dev` prepared; **awaiting explicit
+  owner approval** before execute. No other Function/Rules/index/Storage/App Hosting/production
+  deploy. Phase 1B not started. PR #40 remains open/unmerged. Signoff still blocked on owner re-QA.
 - 2026-08-05 — Amendment 8 Phase 1A Assisted catalog-share artwork-background correction complete
   (implement → test → Independent Implementation Review **APPROVED**). Shared snapshot/resolve
   helpers; Functions suggest writes optional hex; Studio/Portal surfaces apply CSS mat; legacy

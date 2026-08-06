@@ -1,5 +1,13 @@
 # Recent Completed Work
 
+## 2026-08-06 - Amendment 8 Phase 1A Signoff approved_with_notes
+
+- Phase 1A Firestore ordinary browse + Studio teardown (`4ed41bc`) and Assisted catalog-share artwork-background correction (`bc9e7e7`)
+- Owner re-QA **PASS**; Signoff **approved_with_notes**
+- Residual: optional scoped deploy of `staffSuggestAssistedCreationCatalogDesign` to `fresh-prints-dev` (prepared, not run)
+- Phase 1B not started; PR #40 remains open/unmerged
+- Signoff: `docs/workflow/reviews/2026-08-05-amendment-8-phase-1a-signoff.md`
+
 ## 2026-08-01 - Final Studio remediation development QA passed
 
 Owner confirmed PASS for Whatnot matched-show updates and Customer Upload exclusion/restore/delete parity. A clean production branch was created from `11960852` because development contained unrelated rollout documentation; no development history was rewritten. (Superseded blocker: production diff audit was initially stopped because development also contained earlier Portal/dual-limit documentation commits outside the narrow PR scope — resolved via the clean branch above, and development itself was brought current with production via merge on 2026-08-02.)

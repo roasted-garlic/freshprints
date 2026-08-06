@@ -2,11 +2,12 @@
 
 **Branch:** `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, unmerged)  
 **Prior Phase 1A owner result:** **PASS WITH NOTES** (Assisted catalog-share artwork background)  
-**Correction status:** Implemented, independently reviewed **APPROVED**, committed on this branch — **live re-QA required**  
-**Do not Signoff** until you reply `PASS` or a non-blocking `PASS WITH NOTES`.
+**Correction status:** Implemented, independently reviewed **APPROVED**, committed at `bc9e7e7`  
+**Owner re-QA result (2026-08-06):** **PASS**  
+**Signoff:** `docs/workflow/reviews/2026-08-05-amendment-8-phase-1a-signoff.md` — **approved_with_notes**
 
 **Environment:** Studio + Portal vs `fresh-prints-dev`  
-**Note:** New catalog-share snapshots need the updated `staffSuggestAssistedCreationCatalogDesign` Functions runtime. If that Function is not yet deployed to the project you use, legacy live-resolve still covers display for designs that remain ready/readable; prefer testing a **fresh share after Functions include this fix** for end-to-end snapshot proof.
+**Note:** New catalog-share snapshots need the updated `staffSuggestAssistedCreationCatalogDesign` Functions runtime. Owner **PASS** was recorded with live-resolve/CSS mats available; scoped Functions deploy remains optional follow-up if durable suggest-time snapshots are required.
 
 ---
 
