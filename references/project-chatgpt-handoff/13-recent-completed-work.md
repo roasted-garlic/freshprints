@@ -1,5 +1,31 @@
 # Recent Completed Work
 
+## 2026-08-07 - Amendment 9 live QA attribution + P1/P3 Signoff; P2 no-implement
+
+- Combined live QA **PASS WITH NOTES** (P0 PASS, P1 PASS WITH NOTES, P3 PASS, P4 PASS)
+- P3: 1 instance, 1 cold load (1139 docs), 89 hits, 0 TTL reloads
+- P4 this run: 3 pubs / 3,462 C+T+R; spacing ~120s
+- P1 import live **2.00**/design; approval ~2/design (summary; Debug JSON not on disk)
+- Console ~2K/~1.7K = stacked P3+P4 (± Studio tags), not runaway
+- Signoffs: `2026-08-07-amendment-9-p1-signoff.md` (approved_with_notes), `…-p3-signoff.md` (approved)
+- P2 Plan+Formal Review: **recommend NO IMPLEMENTATION** (accept ~1.1K Studio tag hydrate)
+- Amendment 9 optimization set closed; Stage 1b not started; no deploy/merge/production
+
+## 2026-08-07 - Amendment 9 P3 deployed to fresh-prints-dev
+
+- Owner phrase `APPROVE DEV FUNCTIONS DEPLOY: AMENDMENT 9 P3`
+- Updated: enqueueAiEnrichment, testAiEnrichmentPlayground, testAiEnrichmentTagRerank, updateAiEnrichmentSettings
+- First attempt discovery timeout; retry with FUNCTIONS_DISCOVERY_TIMEOUT=60 succeeded
+- Record: `docs/workflow/reviews/2026-08-07-amendment-9-p3-dev-deploy-record.md`
+- Next: combined 45-design QA; no production / no PR merge
+
+## 2026-08-07 - Amendment 9 P1 import/approval design-doc read containment
+
+- Import oneshots 5→2 (I1+I4); approve 3→2 (A1+A3); I4/A3 retained per Formal Review
+- DesignAuthoritySnapshot + knownExistingData; draft Design passed into approve
+- Wiring tests + Studio tsc/vite build + lint green; Impl Review **APPROVED**
+- No Firebase deploy (Studio-only); PR #40 open/unmerged
+
 ## 2026-08-07 - Amendment 9 P3 server AI taxonomy read containment
 
 - Unified process-local taxonomy cache: `AI_TAXONOMY_CACHE_TTL_MS = 15m`, in-flight dedupe, generation-guarded clear
