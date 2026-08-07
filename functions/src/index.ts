@@ -136,3 +136,8 @@ export {
   rebuildCatalogSnapshots,
   retryPortalCatalogPublication,
 } from "./catalogSnapshots/publishCatalogSnapshots";
+export { syncPortalCatalogDesignToAlgolia } from "./algolia/syncPortalCatalogDesignToAlgolia";
+export {
+  reconcilePortalCatalogAlgoliaIndex,
+  reconcilePortalCatalogAlgoliaIndexScheduled,
+} from "./algolia/reconcilePortalCatalogAlgoliaIndex";

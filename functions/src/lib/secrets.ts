@@ -10,6 +10,9 @@ export const geminiApiKeySecret = defineSecret("GEMINI_API_KEY");
 /** Etsy Open API `x-api-key` value (`keystring:shared_secret`). Bound to searchEtsyRecommendations + staffSearchEtsyRecommendationApiResults. */
 export const etsyXApiKeySecret = defineSecret("ETSY_X_API_KEY");
 
+/** Algolia Admin API key — write/index only. Never ship to Portal. */
+export const algoliaAdminApiKeySecret = defineSecret("ALGOLIA_ADMIN_API_KEY");
+
 /**
  * Must match a sender verified for the selected provider (Resend and/or Brevo).
  * See docs/workflow/setup/resend-email-setup.md and brevo-email-setup.md
