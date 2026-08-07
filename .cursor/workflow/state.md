@@ -24,14 +24,19 @@ Background (not active gate): Goal #13 / clean Studio remediation / Stage 2 rema
 - **Case D** New This Week → `readyAt`: Signoff **approved** (`f9bc19c`)
 - **Amendment 9 P4**: Signoff **approved_with_notes** (`9fe6430` + dev deploy); rate-guard
   PASSING (3 pubs; 3,436 C+T+R vs ~28,710); **production-promotion blocker cleared**
+- **Amendment 9 P3** (server AI taxonomy read containment): Implement **APPROVED**;
+  unified 15m process-local taxonomy cache + in-flight dedupe; tests 12/12 + build/lint green.
+  **No Firebase deploy yet** — morning checkpoint prepared.
 - Generated text search / multi-tag / facets remain temporary (~1.1K C+T+R per full pub remains)
-- Stage 1b / P3 **not** started
+- Stage 1b **not** started; P1 next (separate commit)
 - PR #40 open / **unmerged**
 - No production deploy this pass
 
 Case D Signoff: `docs/workflow/reviews/2026-08-06-portal-new-this-week-readyat-signoff.md`
 P4 Signoff: `docs/workflow/reviews/2026-08-06-amendment-9-p4-signoff.md`
-Next for this goal: owner decides Stage 1b D1 / further roadmap; no auto-start.
+P3 Impl Review: `docs/workflow/reviews/2026-08-07-amendment-9-p3-server-ai-taxonomy-read-containment-implementation-review.md`
+P3 Deploy checkpoint: `docs/workflow/reviews/2026-08-07-amendment-9-p3-dev-deployment-checkpoint.md`
+Next for this goal: P1 import/approval read containment; owner deploys P3 Functions when ready.
 
 **Prior (still true):** Amendment 8 Phase 1B Stage 1a **Signoff approved**. Amendments 1–3
 closed. Generated search/multi-tag/facets remain temporary. Stage 1b blocked on owner D1.
@@ -131,6 +136,12 @@ archive write — none of these could be run live in this environment (no intera
 no Application Default Credentials for scripted checks beyond read-only CLI operations).
 
 Decision Log:
+- 2026-08-07 — Amendment 9 P3 Implement **APPROVED** (Formal Review approved_with_changes applied).
+  Unified process-local `AI_TAXONOMY_CACHE_TTL_MS=15m`; generation-guarded clear; taxonomy-* metrics
+  at Firestore boundary. No deploy overnight. Deploy allowlist:
+  enqueueAiEnrichment,testAiEnrichmentPlayground,testAiEnrichmentTagRerank,updateAiEnrichmentSettings.
+- 2026-08-07 — Amendment 9 P3 Formal Review **approved_with_changes**. Process-local 15m TTL
+  staleness accepted for staff taxonomy edits during AI batches.
 - 2026-08-06 — Case D Signoff **approved** + Amendment 9 P4 Signoff **approved_with_notes**.
   Owner QA PASS on New This Week readyAt. P4 rate-guard PASSING; production-promotion blocker
   cleared. PR #40 still open/unmerged. No Stage 1b/P3/deploy/merge/production.

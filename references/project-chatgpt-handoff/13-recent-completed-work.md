@@ -1,5 +1,13 @@
 # Recent Completed Work
 
+## 2026-08-07 - Amendment 9 P3 server AI taxonomy read containment
+
+- Unified process-local taxonomy cache: `AI_TAXONOMY_CACHE_TTL_MS = 15m`, in-flight dedupe, generation-guarded clear
+- Removed outer 60s categories/tags dual TTL; thin adapters only
+- Metrics: taxonomy-cache-hit/miss/join-inflight/expired + taxonomy-load-success/failure
+- Tests: 12/12 P3 + AI regressions; Functions build + lint green; Impl Review **APPROVED**
+- **No Firebase deploy**; allowlist checkpoint prepared; PR #40 open/unmerged
+
 ## 2026-08-06 - Case D + Amendment 9 P4 dual Signoff
 
 - Case D New This Week → `readyAt`: owner QA **PASS**; Signoff **approved** (`f9bc19c`)

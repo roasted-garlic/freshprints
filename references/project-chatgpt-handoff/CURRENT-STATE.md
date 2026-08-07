@@ -1,5 +1,24 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-08-07 - Amendment 9 P3 implemented (awaiting Functions deploy)
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Amendment 9 P3 taxonomy cache | Impl Review **APPROVED**; 15m process-local TTL + in-flight dedupe |
+| P3 live deploy | **Not deployed** — checkpoint ready for owner |
+| Case D / P4 | Signoffs complete (unchanged) |
+| Stage 1b / P1 | Stage 1b not started; P1 next |
+| Production | **None** |
+
+Deploy checkpoint:
+`docs/workflow/reviews/2026-08-07-amendment-9-p3-dev-deployment-checkpoint.md`
+
+```bash
+firebase deploy --only functions:enqueueAiEnrichment,functions:testAiEnrichmentPlayground,functions:testAiEnrichmentTagRerank,functions:updateAiEnrichmentSettings --project fresh-prints-dev
+```
+
 ## 2026-08-06 - Case D + Amendment 9 P4 Signoff complete
 
 Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
@@ -10,7 +29,7 @@ Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unm
 | Amendment 9 P4 rate guard | Signoff **approved_with_notes** (`9fe6430` + `fresh-prints-dev` deploy) |
 | P4 live rate-guard | **PASSING** — 3 pubs; 3,436 C+T+R vs ~28,710 (~88%↓) |
 | P4 production-promotion blocker | **Cleared** |
-| Stage 1b / P3 | **Not started** |
+| Stage 1b | **Not started** |
 | Production deploy | **None** |
 
 Note: each remaining full generated catalog publication still costs ~1.1K C+T+R; permanent

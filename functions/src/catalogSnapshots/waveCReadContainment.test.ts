@@ -26,8 +26,11 @@ describe("Wave C read containment wiring", () => {
     assert.doesNotMatch(runtime, /adminDb\.collection\("categories"\)/);
     assert.doesNotMatch(runtime, /adminDb\.collection\("tags"\)/);
     assert.match(runtime, /loadAiCatalogReferenceSnapshot/);
-    assert.match(loader, /fallbackLoad/);
+    assert.match(loader, /taxonomyInFlight/);
+    assert.match(loader, /AI_TAXONOMY_CACHE_TTL_MS/);
     assert.match(loader, /Promise\.all/);
+    assert.doesNotMatch(runtime, /categoriesCache/);
+    assert.doesNotMatch(runtime, /tagsCache/);
   });
 
   it("writes immutable assets before generation-matched manifests and retains rollback versions", () => {
