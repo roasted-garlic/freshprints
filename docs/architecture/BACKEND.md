@@ -322,6 +322,16 @@ uses the same customer hosts for `metadataBase` / OG image resolution via option
 approved tags from Firestore only (5-minute TTL + in-flight dedupe). `aiEnrichmentRuntimeCache`
 (60s) is unchanged. Generated `catalog-reference` AI snapshot is no longer the primary path.
 
+**Portal catalog publication rate guard (Amendment 9 P4 — temporary until Stage 1b):** Full
+`portal-catalog` publications remain required for generated text search / multi-tag / facets.
+Automatic design-trigger and W2 coordination wakes use: quiet **30s**, min interval **120s**
+between successful full pubs (`nextEligiblePublishAt` on `snapshotPublicationState/portal-catalog`),
+claim liability **240s**, lease **10 min**, and **passLimit=1** per wake. Dirty remaining after one
+pass is drained by `onPortalCatalogPublicationStateWritten` (deferredWakeNonce), not by immediate
+multi-pass catch-up. Non-ready INDEX_FILTER field churn does not schedule a full portal publish.
+Owner/admin `rebuildCatalogSnapshots` / `retryPortalCatalogPublication` intentionally bypass quiet
+and min-interval. Catalog-reference publication timing is unchanged (15s debounce + legacy catch-up).
+
 **Managed search (Phase 1B, not implemented):** When a provider is selected, document Secret Manager
 write keys, public search-only keys (never in client bundles), and env vars here. Index records are
 not an authorization boundary.

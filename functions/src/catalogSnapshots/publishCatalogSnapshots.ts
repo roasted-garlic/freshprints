@@ -41,35 +41,47 @@ import {
 import {
   classifyPortalCatalogDesignChange,
   hasMatchingPortalCardOverride,
+  isNonReadyIndexFilterChurn,
   mergePortalCardOverrides,
 } from "./portalCatalogChangeClassifier";
 import {
+  isPortalPublicationEligible,
   LEASE_BUSY_RETRY_DELAY_MS,
+  PORTAL_PUBLICATION_PASS_LIMIT,
   PUBLICATION_PASS_LIMIT,
   publicationNeedsCatchUp,
+  resolveNextEligiblePublishAtMs,
   shouldRetryPublicationPass,
   TRANSIENT_STORAGE_RETRY_BASE_DELAY_MS,
   withTransientStorageRetry,
 } from "./publicationRecovery";
+import {
+  canWaitAndPublishWithinBudget,
+  decidePortalDeferredWakeAction,
+  PORTAL_CLAIM_DURATION_MS,
+  PORTAL_MIN_PUBLICATION_INTERVAL_MS,
+  PORTAL_QUIET_MS,
+  PUBLISH_ATTEMPT_MARGIN_MS,
+} from "./portalPublicationRateGuard";
 
 const COORDINATION_COLLECTION = "snapshotPublicationState";
-const LEASE_MS = 10 * 60_000;
+const PORTAL_COORDINATION_DOC = "portal-catalog";
+/** Publication lease — sole full-scan mutex across instances. */
+export const LEASE_MS = 10 * 60_000;
 const JSON_CONTENT_TYPE = "application/json; charset=utf-8";
 const IMMUTABLE_CACHE = "public,max-age=31536000,immutable";
 const MANIFEST_CACHE = "public,max-age=30,must-revalidate";
+/** Catalog-reference quiet window (unchanged by Amendment 9 P4). */
 const DEBOUNCE_MS = 15_000;
-// Bounds how long the debounce-waiter claim (see markDirtyAndClaimDebounceWaiter) stays active
-// after the sleep ends, covering one realistic full publish attempt. Deliberately much smaller
-// than LEASE_MS: LEASE_MS bounds the *publish lease*'s own contention-retry window, not this
-// claim's liability if the waiter's invocation is killed (e.g. by its own Cloud Functions
-// timeout) before reaching its `finally` release block — a hard kill skips `finally` entirely, so
-// the claim would otherwise sit stuck for up to the full LEASE_MS duration
-// (post-launch-catalog-and-processing-stability, Owner QA Amendment 1: live fresh-prints-dev logs
-// showed 18 consecutive "joined-existing-debounce-window" events with zero
-// "claimed-debounce-waiter"/"catalog-snapshot-publication" events in the same window — a claim
-// stuck for its full ~10-minute duration after the prior claim owner's invocation was killed by
-// the trigger functions' 60-second default timeout mid-publish).
-const PUBLISH_ATTEMPT_MARGIN_MS = 90_000;
+// Re-export portal constants for existing test imports / attribution.
+export {
+  PORTAL_CLAIM_DURATION_MS,
+  PORTAL_MIN_PUBLICATION_INTERVAL_MS,
+  PORTAL_QUIET_MS,
+  PORTAL_TRIGGER_TIMEOUT_MS,
+  PUBLISH_ATTEMPT_MARGIN_MS,
+} from "./portalPublicationRateGuard";
+export { ESTIMATED_PORTAL_PUBLISH_MS } from "./portalPublicationRateGuard";
 const KIB = 1024;
 const TARGETED_MANIFEST_RETRY_LIMIT = 3;
 
@@ -792,13 +804,23 @@ async function releaseDebounceClaimIfOwned(kind: SnapshotKind, owner: string): P
   });
 }
 
-async function publishKind(kind: SnapshotKind): Promise<{
+async function publishKind(
+  kind: SnapshotKind,
+  options?: {
+    /**
+     * When true (owner/admin callables only), skip the portal min-interval eligibility gate.
+     * Automatic design/W2 paths leave this undefined/false.
+     */
+    bypassMinInterval?: boolean;
+  },
+): Promise<{
   contentVersion: string;
   generation: number;
   accounting?: PortalPublicationAccounting;
 }> {
   const owner = randomUUID();
   const reference = adminDb.collection(COORDINATION_COLLECTION).doc(kind);
+  const bypassMinInterval = options?.bypassMinInterval === true;
   const generation = await adminDb.runTransaction(async (transaction) => {
     const snapshot = await transaction.get(reference);
     const data = snapshot.data() ?? {};
@@ -807,6 +829,13 @@ async function publishKind(kind: SnapshotKind): Promise<{
       data.leaseExpiresAt instanceof Timestamp ? data.leaseExpiresAt.toMillis() : 0;
     if (data.status === "publishing" && leaseExpiresAt > now) {
       throw new Error("snapshot-publication-lease-active");
+    }
+    if (
+      kind === "portal-catalog" &&
+      !bypassMinInterval &&
+      !isPortalPublicationEligible(data, now)
+    ) {
+      throw new Error("snapshot-publication-not-yet-eligible");
     }
     const requested = typeof data.requestedGeneration === "number"
       ? data.requestedGeneration
@@ -826,9 +855,12 @@ async function publishKind(kind: SnapshotKind): Promise<{
   });
   try {
     const generatedAt = new Date().toISOString();
+    const publishedAtMs = Date.now();
     const published = kind === "catalog-reference"
       ? { contentVersion: await publishReference(generation, generatedAt) }
       : await publishPortal(generation, generatedAt);
+    // Amendment 9 P4: nextEligiblePublishAt advances in the same authoritative write as
+    // publishedGeneration so automatic paths cannot mark published without a rate-limit stamp.
     await reference.set({
       publishedGeneration: generation,
       leaseOwner: null,
@@ -837,6 +869,13 @@ async function publishKind(kind: SnapshotKind): Promise<{
       lastPublishedAt: FieldValue.serverTimestamp(),
       lastErrorCode: null,
       lastErrorAt: null,
+      ...(kind === "portal-catalog"
+        ? {
+          nextEligiblePublishAt: Timestamp.fromMillis(
+            publishedAtMs + PORTAL_MIN_PUBLICATION_INTERVAL_MS,
+          ),
+        }
+        : {}),
     }, { merge: true });
     return { ...published, generation };
   } catch (error) {
@@ -853,32 +892,25 @@ async function publishKind(kind: SnapshotKind): Promise<{
 
 /**
  * Marks the coordination doc dirty for `kind` and coalesces concurrent
- * scheduling attempts into a single debounce-and-publish pass. Only the
- * invocation that claims the debounce-waiter role (see
- * markDirtyAndClaimDebounceWaiter) sleeps DEBOUNCE_MS and attempts the
- * publish; every other invocation in the same window marks dirty and
- * returns immediately — the eventual waiter's publish (and, if generation
- * has advanced further by then, the catch-up loop) covers their dirty mark
- * too. The existing transactional publish lease in publishKind() remains
- * the sole concurrency boundary for the scan/write itself; this claim only
- * bounds how many invocations redundantly sleep and race for that lease.
+ * scheduling attempts into a single debounce-and-publish pass.
+ *
+ * Catalog-reference: legacy quiet (DEBOUNCE_MS) + catch-up up to PUBLICATION_PASS_LIMIT.
+ * Portal-catalog (Amendment 9 P4): PORTAL_QUIET_MS + eligibility gate + passLimit=1 + W2 wake.
  */
 async function markAndPublishAfterDebounce(
   kind: SnapshotKind,
   schedulingReason: string,
 ): Promise<void> {
   const startedAtMs = Date.now();
-  // The claim must outlive the sleep below plus the eventual publish attempt, not just the sleep
-  // itself — otherwise a second invocation could become a second waiter while this one's publish
-  // is still in flight (see markDirtyAndClaimDebounceWaiter's doc comment). Deliberately NOT
-  // LEASE_MS (10 minutes) — a killed waiter (e.g. hitting the trigger function's own timeout mid-
-  // publish) would strand the claim for that entire duration, since a hard kill skips the
-  // `finally` release block. PUBLISH_ATTEMPT_MARGIN_MS bounds this to a much smaller, self-healing
-  // window (Owner QA Amendment 1 — see PUBLISH_ATTEMPT_MARGIN_MS's own doc comment for the live
-  // log evidence that motivated this).
+  const claimDurationMs =
+    kind === "portal-catalog"
+      ? PORTAL_CLAIM_DURATION_MS
+      : DEBOUNCE_MS + PUBLISH_ATTEMPT_MARGIN_MS;
+  const quietMs = kind === "portal-catalog" ? PORTAL_QUIET_MS : DEBOUNCE_MS;
+
   const { isWaiter, waiterOwner } = await markDirtyAndClaimDebounceWaiter(
     kind,
-    DEBOUNCE_MS + PUBLISH_ATTEMPT_MARGIN_MS,
+    claimDurationMs,
   );
 
   logger.info("catalog-snapshot-scheduling", {
@@ -891,84 +923,231 @@ async function markAndPublishAfterDebounce(
     return;
   }
 
-  await new Promise<void>((resolve) => setTimeout(resolve, DEBOUNCE_MS));
+  await new Promise<void>((resolve) => setTimeout(resolve, quietMs));
+
+  // Must not request W2 while this invocation still holds the debounce claim —
+  // W2 would join the claim and exit, then claim release strands remaining dirty.
+  let needsDeferredWake = false;
+  try {
+    if (kind === "portal-catalog") {
+      const result = await runPortalAutomaticPublicationPass({
+        startedAtMs,
+        schedulingReason,
+        source: "design-trigger",
+      });
+      needsDeferredWake = result.needsDeferredWake;
+    } else {
+      await runPublicationCatchUpLoop({
+        publish: () => publishKind(kind),
+        readRequestedGeneration: async () => {
+          const latest = await adminDb.collection(COORDINATION_COLLECTION).doc(kind).get();
+          return latest.data()?.requestedGeneration;
+        },
+        onSuccess: async (published, pass) => {
+          logger.info("catalog-snapshot-publication", {
+            kind,
+            schedulingReason,
+            pass,
+            durationMs: Date.now() - startedAtMs,
+            outcome: "success",
+            generation: published.generation,
+          });
+        },
+        onFailure: async (_error, pass, retryKind) => {
+          logger.warn("catalog-snapshot-publication", {
+            kind,
+            schedulingReason,
+            pass,
+            durationMs: Date.now() - startedAtMs,
+            outcome: retryKind === "fatal" ? "failure" : "contention",
+            failureCode:
+              retryKind === "lease-busy"
+                ? "lease-active-retrying"
+                : retryKind === "transient"
+                  ? "transient-storage-retrying"
+                  : "full-publication-failed",
+          });
+        },
+      });
+    }
+  } finally {
+    await releaseDebounceClaimIfOwned(kind, waiterOwner);
+  }
+
+  if (needsDeferredWake) {
+    await requestPortalDeferredWake("deferred-wake-requested");
+  }
+}
+
+/**
+ * Request a W2 deferred wake without bumping requestedGeneration.
+ * Bumping deferredWakeNonce is the only signal that makes W2 process (anti-recursion).
+ */
+async function requestPortalDeferredWake(outcome: string): Promise<void> {
+  const reference = adminDb.collection(COORDINATION_COLLECTION).doc(PORTAL_COORDINATION_DOC);
+  const latest = await reference.get();
+  const data = latest.data() ?? {};
+  const eligibleAt =
+    resolveNextEligiblePublishAtMs(data) ?? Date.now();
+  await reference.set({
+    deferredWakeNonce: FieldValue.increment(1),
+    deferredWakeAt: Timestamp.fromMillis(eligibleAt),
+    status: typeof data.status === "string" ? data.status : "dirty",
+  }, { merge: true });
+  logger.info("catalog-snapshot-scheduling", {
+    kind: "portal-catalog",
+    schedulingReason: "deferred-wake",
+    outcome,
+  });
+}
+
+async function claimPortalDebounceWaiterOnly(
+  claimDurationMs: number,
+): Promise<{ isWaiter: boolean; waiterOwner: string }> {
+  const reference = adminDb.collection(COORDINATION_COLLECTION).doc(PORTAL_COORDINATION_DOC);
+  const owner = randomUUID();
+  return adminDb.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(reference);
+    const data = snapshot.data() ?? {};
+    const now = Date.now();
+    const isWaiter = shouldBecomeDebounceWaiter(data, now);
+    if (isWaiter) {
+      transaction.set(reference, {
+        debounceOwner: owner,
+        debounceExpiresAt: Timestamp.fromMillis(now + claimDurationMs),
+      }, { merge: true });
+    }
+    return { isWaiter, waiterOwner: owner };
+  });
+}
+
+/**
+ * One automatic portal full-publication attempt with eligibility wait + W2 re-arm.
+ * passLimit=1: never immediately serial-scans additional generations in this wake.
+ *
+ * Does NOT call requestPortalDeferredWake — the caller must release its debounce
+ * claim first, then wake if needsDeferredWake is true (avoids W2 join-and-exit race).
+ */
+async function runPortalAutomaticPublicationPass(options: {
+  startedAtMs: number;
+  schedulingReason: string;
+  source: "design-trigger" | "deferred-wake";
+}): Promise<{ needsDeferredWake: boolean }> {
+  const reference = adminDb.collection(COORDINATION_COLLECTION).doc(PORTAL_COORDINATION_DOC);
+  const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+  const latest = await reference.get();
+  const data = latest.data() ?? {};
+  const requested =
+    typeof data.requestedGeneration === "number" ? data.requestedGeneration : 0;
+  const published =
+    typeof data.publishedGeneration === "number" ? data.publishedGeneration : 0;
+  if (!publicationNeedsCatchUp(requested, published)) {
+    return { needsDeferredWake: false };
+  }
+
+  const nowMs = Date.now();
+  const eligibleAt = resolveNextEligiblePublishAtMs(data);
+  const waitMs = eligibleAt === null ? 0 : Math.max(0, eligibleAt - nowMs);
+  if (waitMs > 0) {
+    if (!canWaitAndPublishWithinBudget(waitMs, options.startedAtMs, nowMs)) {
+      logger.info("catalog-snapshot-scheduling", {
+        kind: "portal-catalog",
+        schedulingReason: options.schedulingReason,
+        outcome: "deferred-not-yet-eligible",
+        waitMs,
+      });
+      return { needsDeferredWake: true };
+    }
+    await sleep(waitMs);
+  }
 
   try {
     await runPublicationCatchUpLoop({
-      publish: () => publishKind(kind),
+      // Transient/lease retries may retry the *same* attempted pass; success still
+      // advances at most one generation because passLimit=1 stops after first success.
+      passLimit: PORTAL_PUBLICATION_PASS_LIMIT,
+      publish: () => publishKind("portal-catalog"),
       readRequestedGeneration: async () => {
-        const latest = await adminDb.collection(COORDINATION_COLLECTION).doc(kind).get();
-        return latest.data()?.requestedGeneration;
+        const snap = await reference.get();
+        return snap.data()?.requestedGeneration;
       },
-      onSuccess: async (published, pass) => {
+      onSuccess: async (publishedResult, pass) => {
         logger.info("catalog-snapshot-publication", {
-          kind,
-          schedulingReason,
+          kind: "portal-catalog",
+          schedulingReason: options.schedulingReason,
           pass,
-          durationMs: Date.now() - startedAtMs,
-          outcome: "success",
-          generation: published.generation,
-          ...(published.accounting
+          durationMs: Date.now() - options.startedAtMs,
+          outcome: options.source === "deferred-wake" ? "deferred-wake-published" : "success",
+          generation: publishedResult.generation,
+          ...(publishedResult.accounting
             ? {
-              readyDesignsRead: published.accounting.readyDesignsRead,
-              categoriesRead: published.accounting.categoriesRead,
-              tagsRead: published.accounting.tagsRead,
+              readyDesignsRead: publishedResult.accounting.readyDesignsRead,
+              categoriesRead: publishedResult.accounting.categoriesRead,
+              tagsRead: publishedResult.accounting.tagsRead,
             }
             : {}),
         });
         if (
-          kind === "portal-catalog" &&
-          published.accounting &&
+          publishedResult.accounting &&
           process.env.GCLOUD_PROJECT === "fresh-prints-dev"
         ) {
           logger.info("portal-catalog-publication-accounting", {
             mode: "full",
             classification: "index-filter",
-            publicationReason: schedulingReason,
+            publicationReason: options.schedulingReason,
             pass,
-            ...published.accounting,
+            ...publishedResult.accounting,
             coordinationDocumentsRead: 2,
-            coordinationDocumentsWritten: pass === 1 ? 3 : 2,
-            durationMs: Date.now() - startedAtMs,
+            coordinationDocumentsWritten: 2,
+            durationMs: Date.now() - options.startedAtMs,
             outcome: "success",
           });
         }
       },
-      onFailure: async (error, pass, retryKind) => {
+      onFailure: async (_error, pass, retryKind) => {
         const failureCode =
           retryKind === "lease-busy"
-            ? "lease-active-retrying"
+            ? options.source === "deferred-wake"
+              ? "deferred-wake-lease-busy"
+              : "lease-active-retrying"
             : retryKind === "transient"
               ? "transient-storage-retrying"
-              : "full-publication-failed";
+              : options.source === "deferred-wake"
+                ? "deferred-wake-failed"
+                : "full-publication-failed";
         logger.warn("catalog-snapshot-publication", {
-          kind,
-          schedulingReason,
+          kind: "portal-catalog",
+          schedulingReason: options.schedulingReason,
           pass,
-          durationMs: Date.now() - startedAtMs,
+          durationMs: Date.now() - options.startedAtMs,
           outcome: retryKind === "fatal" ? "failure" : "contention",
           failureCode,
         });
-        if (kind === "portal-catalog" && process.env.GCLOUD_PROJECT === "fresh-prints-dev") {
-          logger.error("portal-catalog-publication-accounting", {
-            mode: "full",
-            classification: "index-filter",
-            publicationReason: schedulingReason,
-            pass,
-            durationMs: Date.now() - startedAtMs,
-            outcome: "failure",
-            failureCode,
-          });
-        }
       },
     });
-  } finally {
-    // Release only if this invocation still owns the claim — a failed
-    // publish leaves requestedGeneration recoverable (markDirty already
-    // persisted it before this ran) for the next scheduling attempt to
-    // pick up as its own new debounce window.
-    await releaseDebounceClaimIfOwned(kind, waiterOwner);
+  } catch (error) {
+    if (error instanceof Error && error.message === "snapshot-publication-not-yet-eligible") {
+      logger.info("catalog-snapshot-scheduling", {
+        kind: "portal-catalog",
+        schedulingReason: options.schedulingReason,
+        outcome: "deferred-not-yet-eligible",
+      });
+      return { needsDeferredWake: true };
+    }
+    throw error;
   }
+
+  const after = await reference.get();
+  const afterData = after.data() ?? {};
+  const afterRequested =
+    typeof afterData.requestedGeneration === "number" ? afterData.requestedGeneration : 0;
+  const afterPublished =
+    typeof afterData.publishedGeneration === "number" ? afterData.publishedGeneration : 0;
+  if (publicationNeedsCatchUp(afterRequested, afterPublished)) {
+    return { needsDeferredWake: true };
+  }
+  return { needsDeferredWake: false };
 }
 
 /**
@@ -1009,8 +1188,10 @@ export async function runPublicationCatchUpLoop(options: {
       lastError = error;
       const retryKind = shouldRetryPublicationPass(error);
       await options.onFailure?.(error, pass + 1, retryKind);
-      // Previously returned immediately on lease-active, permanently abandoning a higher
-      // requestedGeneration (prod tag-removal: gen 9 stuck after FetchError / busy races).
+      // Not-yet-eligible is not a same-pass retry — caller must defer wake.
+      if (error instanceof Error && error.message === "snapshot-publication-not-yet-eligible") {
+        throw error;
+      }
       if (retryKind === "lease-busy" && pass < passLimit - 1) {
         await sleep(LEASE_BUSY_RETRY_DELAY_MS);
         continue;
@@ -1061,13 +1242,17 @@ export function mapPublicationFailure(kind: SnapshotKind, error: unknown): never
   );
 }
 
+/**
+ * Owner/admin rebuild — intentional bypass of quiet/min-interval scheduling.
+ * Still stamps nextEligiblePublishAt on successful portal publish so automatic paths honor it.
+ */
 export const rebuildCatalogSnapshots = onCall(async (request) => {
   if (!request.auth?.uid) throw unauthenticated();
   await assertOwnerAdmin(request.auth.uid);
   await Promise.all([markDirty("catalog-reference"), markDirty("portal-catalog")]);
   const [referenceResult, portalResult] = await Promise.allSettled([
     publishKind("catalog-reference"),
-    publishKind("portal-catalog"),
+    publishKind("portal-catalog", { bypassMinInterval: true }),
   ]);
   if (referenceResult.status === "rejected") {
     mapPublicationFailure("catalog-reference", referenceResult.reason);
@@ -1088,10 +1273,8 @@ export const rebuildCatalogSnapshots = onCall(async (request) => {
 });
 
 /**
- * Owner/admin catch-up for a stuck portal-catalog coordination doc
- * (`requestedGeneration` > `publishedGeneration`, e.g. after FetchError).
- * Does **not** bump requestedGeneration — drains the existing dirty watermark.
- * Exported for ops runners that share the callable's exact drain path.
+ * Owner/admin catch-up for a stuck portal-catalog coordination doc.
+ * Explicitly bypasses quiet/min-interval; may drain multiple generations (ops escape hatch).
  */
 export async function drainPortalCatalogPublicationCatchUp(): Promise<{
   requestedGeneration: number | null;
@@ -1099,13 +1282,13 @@ export async function drainPortalCatalogPublicationCatchUp(): Promise<{
   status: string | null;
 }> {
   await runPublicationCatchUpLoop({
-    publish: () => publishKind("portal-catalog"),
+    publish: () => publishKind("portal-catalog", { bypassMinInterval: true }),
     readRequestedGeneration: async () => {
-      const latest = await adminDb.collection(COORDINATION_COLLECTION).doc("portal-catalog").get();
+      const latest = await adminDb.collection(COORDINATION_COLLECTION).doc(PORTAL_COORDINATION_DOC).get();
       return latest.data()?.requestedGeneration;
     },
   });
-  const latest = await adminDb.collection(COORDINATION_COLLECTION).doc("portal-catalog").get();
+  const latest = await adminDb.collection(COORDINATION_COLLECTION).doc(PORTAL_COORDINATION_DOC).get();
   const data = latest.data() ?? {};
   return {
     requestedGeneration:
@@ -1126,12 +1309,7 @@ export const retryPortalCatalogPublication = onCall(async (request) => {
   }
 });
 
-// timeoutSeconds explicitly raised from the 60-second default: the debounce-waiter invocation
-// sleeps DEBOUNCE_MS then runs a full publishKind() scan/write pass, which can exceed 60s on a
-// catalog of real size — a hard timeout kill skips the claim's release entirely (see
-// PUBLISH_ATTEMPT_MARGIN_MS's doc comment for the live-log evidence this was actually happening
-// on fresh-prints-dev). 300s comfortably covers DEBOUNCE_MS + a realistic full publish with
-// margin, well under the Cloud Functions v2 event-driven ceiling.
+// timeoutSeconds: quiet + publish must fit; Amendment 1 — hard kill skips claim release.
 export const onCategorySnapshotSourceWritten = onDocumentWritten(
   { document: "categories/{categoryId}", timeoutSeconds: 300 },
   async (event) => {
@@ -1148,7 +1326,6 @@ export const onCategorySnapshotSourceWritten = onDocumentWritten(
   },
 );
 
-// See onCategorySnapshotSourceWritten's comment for why timeoutSeconds is explicitly raised.
 export const onTagSnapshotSourceWritten = onDocumentWritten(
   { document: "tags/{tagId}", timeoutSeconds: 300 },
   async (event) => {
@@ -1165,7 +1342,6 @@ export const onTagSnapshotSourceWritten = onDocumentWritten(
   },
 );
 
-// See onCategorySnapshotSourceWritten's comment for why timeoutSeconds is explicitly raised.
 export const onPortalCatalogSnapshotSourceWritten = onDocumentWritten(
   { document: "designs/{designId}", timeoutSeconds: 300 },
   async (event) => {
@@ -1173,6 +1349,9 @@ export const onPortalCatalogSnapshotSourceWritten = onDocumentWritten(
     const after = event.data?.after.exists ? event.data.after.data() : undefined;
     const classification = classifyPortalCatalogDesignChange(before, after);
     if (classification === "operational") {
+      const skipReason = isNonReadyIndexFilterChurn(before, after)
+        ? "non-ready-index-filter-skipped"
+        : "skipped";
       if (process.env.GCLOUD_PROJECT === "fresh-prints-dev") {
         logger.info("portal-catalog-publication-accounting", {
           mode: "none",
@@ -1185,7 +1364,7 @@ export const onPortalCatalogSnapshotSourceWritten = onDocumentWritten(
           coordinationDocumentsRead: 0,
           coordinationDocumentsWritten: 0,
           durationMs: 0,
-          outcome: "skipped",
+          outcome: skipReason,
         });
       }
       return;
@@ -1198,5 +1377,56 @@ export const onPortalCatalogSnapshotSourceWritten = onDocumentWritten(
       }
     }
     await markAndPublishAfterDebounce("portal-catalog", "design-write");
+  },
+);
+
+/**
+ * Amendment 9 P4 W2 — coordination-document deferred wake.
+ * Fires only on meaningful deferredWakeNonce advances while dirty remains.
+ * Does not require another design/category/tag write to drain the final generation.
+ * Anti-recursion: bookkeeping writes that do not bump deferredWakeNonce are ignored;
+ * after a successful drain with no remaining dirty, the idle stamp does not re-process.
+ */
+export const onPortalCatalogPublicationStateWritten = onDocumentWritten(
+  {
+    document: `${COORDINATION_COLLECTION}/${PORTAL_COORDINATION_DOC}`,
+    timeoutSeconds: 300,
+  },
+  async (event) => {
+    const startedAtMs = Date.now();
+    const before = event.data?.before.exists ? event.data.before.data() : undefined;
+    const after = event.data?.after.exists ? event.data.after.data() : undefined;
+    const decision = decidePortalDeferredWakeAction({ before, after });
+    if (decision !== "process") {
+      return;
+    }
+
+    const { isWaiter, waiterOwner } = await claimPortalDebounceWaiterOnly(
+      PORTAL_CLAIM_DURATION_MS,
+    );
+    logger.info("catalog-snapshot-scheduling", {
+      kind: "portal-catalog",
+      schedulingReason: "deferred-wake",
+      outcome: isWaiter ? "deferred-wake-claimed" : "deferred-wake-joined",
+    });
+    if (!isWaiter) {
+      return;
+    }
+
+    let needsDeferredWake = false;
+    try {
+      const result = await runPortalAutomaticPublicationPass({
+        startedAtMs,
+        schedulingReason: "deferred-wake",
+        source: "deferred-wake",
+      });
+      needsDeferredWake = result.needsDeferredWake;
+    } finally {
+      await releaseDebounceClaimIfOwned("portal-catalog", waiterOwner);
+    }
+
+    if (needsDeferredWake) {
+      await requestPortalDeferredWake("deferred-wake-requested");
+    }
   },
 );

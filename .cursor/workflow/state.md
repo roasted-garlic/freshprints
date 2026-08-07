@@ -20,21 +20,18 @@ Next Required Step: Owner reviews the production convergence audit and approves 
 Background (not active gate): Goal #13 / clean Studio remediation / Stage 2 remain deferred; prior installer intermediate; domain cutover blocked until `APPROVE MYPRINTREQUEST.COM CUTOVER`.
 
 **Separate concurrent managed goal (does not affect the gate above):**
-`post-launch-catalog-and-processing-stability` — **Amendment 8 Phase 1B Stage 1a**
-**Signoff approved** (complete). Firestore known-ID hydration + Firestore-only categories
-(active ∧ ready count &gt; 0). Amendments 1–3 closed (`c15a7be`, `bc893f6`, `e97ab3b`).
-Owner QA **PASS**. Final Signoff:
-`docs/workflow/reviews/2026-08-06-amendment-8-phase-1b-stage-1a-signoff.md`.
-Generated search/multi-tag/facets remain temporary. **Stage 1b blocked on owner D1**
-(managed search provider vs product simplification). PR #40 open/unmerged. No deploy.
+`post-launch-catalog-and-processing-stability` — **Amendment 9 P4**
+**Implement + Test + Impl Review APPROVED**; committed/pushed; **awaiting owner phrase**
+`APPROVE DEV FUNCTIONS DEPLOY: AMENDMENT 9 P4`. No Signoff until live QA.
+Plan/Review/Test/ImplReview/DeployCheckpoint/ManualQA under `docs/workflow/*amendment-9-p4*`.
+W2 export: `onPortalCatalogPublicationStateWritten`. Stage 1b / P3 **not** started.
+PR #40 open/unmerged. No deploy yet.
 
-**Amendment 9 (2026-08-06) — Large-batch Firestore read amplification:** Investigate → Plan →
-Review → **P0 Signoff approved_with_notes**. Owner re-QA **PASS WITH NOTES** (scroll + zero
-post-action list/count reloads; Processing intact). Commits `0a948e0` + `21f95d7`. Signoff:
-`docs/workflow/reviews/2026-08-06-amendment-9-p0-signoff.md`. Notes: Design Library
-modal/lightbox artwork-mat follow-up (does not fail P0); **snapshot-publication read
-amplification remains a production-promotion blocker** (P4 later). P1/P3/P4/Phase 1B **not
-started**. PR #40 open/**unmerged**. No Firebase/production deploy.
+**Prior (still true):** Amendment 8 Phase 1B Stage 1a **Signoff approved**. Amendments 1–3
+closed. Generated search/multi-tag/facets remain temporary. Stage 1b blocked on owner D1.
+Amendment 9 **P0 Signoff approved_with_notes** (`0a948e0` + `21f95d7`). Snapshot publication
+read amplification remains production-promotion blocker until P4 Implement+deploy.
+
 
 **Follow-up (2026-08-06) — `catalog-display-ready-ordering-and-assisted-proof-limit`:**
 **Signoff approved.** Owner QA **PASS**. Mats/ordering `42f7b20`; proof 80 MB `982855c`;
@@ -128,6 +125,11 @@ archive write — none of these could be run live in this environment (no intera
 no Application Default Credentials for scripted checks beyond read-only CLI operations).
 
 Decision Log:
+- 2026-08-06 — Amendment 9 **P4 Implement + Test + Impl Review APPROVED**; push pending deploy
+  phrase. W2 `onPortalCatalogPublicationStateWritten`. No Signoff / deploy / merge / Stage 1b.
+- 2026-08-06 — Amendment 9 **P4 Plan + Formal Review approved** (Investigate/Plan/Review only;
+  no Implement). Quiet 30s + min interval 120s + W2 wake + non-ready INDEX_FILTER skip.
+  Plan/Review under `docs/workflow/*amendment-9-p4*`. Stage 1b not started. PR #40 unmerged.
 - 2026-08-06 — Amendment 8 Phase 1B **Stage 1a Signoff approved** (final). Owner QA **PASS**
   (hydration + categories + Amendment 3 criteria). Commit `e97ab3b` (impl) / docs on PR #40
   (open/unmerged). Stage 1b blocked on D1. No deploy / merge / cleanup / Function retirement.

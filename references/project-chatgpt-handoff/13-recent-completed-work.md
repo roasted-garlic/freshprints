@@ -1,5 +1,30 @@
 # Recent Completed Work
 
+## 2026-08-06 - Amendment 9 P4 implement (awaiting Functions deploy)
+
+- Portal full-publication rate guard: quiet 30s, min interval 120s, claim 240s, passLimit=1
+- W2 `onPortalCatalogPublicationStateWritten`; P4-a non-ready INDEX_FILTER skip
+- catalogSnapshots tests 138/138; Functions build green; Impl Review APPROVED
+- Stop for `APPROVE DEV FUNCTIONS DEPLOY: AMENDMENT 9 P4`; PR #40 open/unmerged; no deploy
+- Checkpoint: `docs/workflow/reviews/2026-08-06-amendment-9-p4-dev-deployment-checkpoint.md`
+
+## 2026-08-06 - Amendment 8 Phase 1B Stage 1a Signoff (final)
+
+- Firestore-primary known-ID hydration; Firestore-only Portal categories (active ∧ ready &gt; 0)
+- Dead generated Discover entry removed; search/multi-tag/facets remain temporary
+- Impl through `e97ab3b` (Amendments 1–3); Owner QA **PASS**; Signoff **approved**
+- Stage 1b blocked on D1 (managed search vs product simplification)
+- PR #40 open/unmerged; no deploy / cleanup / Function retirement / production
+- Signoff: `docs/workflow/reviews/2026-08-06-amendment-8-phase-1b-stage-1a-signoff.md`
+
+## 2026-08-06 - Stage 1a Amendment 3 (Portal category availability) Signoff
+
+- Portal hides active categories with zero Rules-ready designs; Studio empty actives unchanged
+- Commit `e97ab3b` on `fix/post-launch-catalog-and-processing-stability`
+- Owner QA **PASS**; Signoff **approved**
+- PR #40 open/unmerged; no deploy; Stage 1b not started
+- Signoff: `docs/workflow/reviews/2026-08-06-amendment-8-phase-1b-stage-1a-amendment-3-signoff.md`
+
 ## 2026-08-06 - Catalog mats, ready order, Assisted proof 80 MB Signoff
 
 - Details mats + Portal/Studio `readyAt` ordering + staff proof max 80 MB

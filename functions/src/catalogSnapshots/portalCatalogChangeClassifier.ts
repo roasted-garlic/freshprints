@@ -55,6 +55,37 @@ function isReadyBoundaryChange(
   return beforeIsReady !== afterIsReady;
 }
 
+function isEitherSideReady(
+  before: Record<string, unknown> | undefined,
+  after: Record<string, unknown> | undefined,
+): boolean {
+  return before?.status === PUBLISHED_STATUS || after?.status === PUBLISHED_STATUS;
+}
+
+function indexFilterFieldsChanged(
+  before: Record<string, unknown> | undefined,
+  after: Record<string, unknown> | undefined,
+): boolean {
+  return (
+    stableJson(project(before, INDEX_FILTER_FIELDS)) !==
+    stableJson(project(after, INDEX_FILTER_FIELDS))
+  );
+}
+
+/**
+ * Amendment 9 P4-a: INDEX_FILTER field churn on documents that are never in the
+ * published ready set cannot change portal search/facet assets, so it must not
+ * schedule a full catalog scan.
+ */
+export function isNonReadyIndexFilterChurn(
+  before: Record<string, unknown> | undefined,
+  after: Record<string, unknown> | undefined,
+): boolean {
+  if (isReadyBoundaryChange(before, after)) return false;
+  if (isEitherSideReady(before, after)) return false;
+  return indexFilterFieldsChanged(before, after);
+}
+
 export function classifyPortalCatalogDesignChange(
   before: Record<string, unknown> | undefined,
   after: Record<string, unknown> | undefined,
@@ -62,10 +93,11 @@ export function classifyPortalCatalogDesignChange(
   if (isReadyBoundaryChange(before, after)) {
     return "index-filter";
   }
-  if (
-    stableJson(project(before, INDEX_FILTER_FIELDS)) !==
-    stableJson(project(after, INDEX_FILTER_FIELDS))
-  ) {
+  if (indexFilterFieldsChanged(before, after)) {
+    // P4-a: neither side ready → published set unchanged → skip full schedule.
+    if (!isEitherSideReady(before, after)) {
+      return "operational";
+    }
     return "index-filter";
   }
   if (

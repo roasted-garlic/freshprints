@@ -130,6 +130,7 @@ export { submitPortalDesignIssueReport } from "./submitPortalDesignIssueReport";
 export { resolveDesignIssueReport } from "./resolveDesignIssueReport";
 export {
   onCategorySnapshotSourceWritten,
+  onPortalCatalogPublicationStateWritten,
   onPortalCatalogSnapshotSourceWritten,
   onTagSnapshotSourceWritten,
   rebuildCatalogSnapshots,

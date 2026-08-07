@@ -563,6 +563,15 @@ Recovery (preserving ADR-FP-120 architecture — no Portal Firestore catalog wor
 See `docs/project/RISK_REGISTER.md` R-017 and
 `docs/workflow/reviews/2026-07-31-production-portal-catalog-tag-removal-publication-implement-checkpoint.md`.
 
+**Amendment 2026-08-06 — Portal publication rate guard (Amendment 9 P4)**
+
+Temporary transition guard while generated search/multi-tag/facets remain (Stage 1a boundary;
+Stage 1b not started). Caps automatic full portal publications via quiet 30s + min interval 120s +
+W2 coordination-doc wake (`onPortalCatalogPublicationStateWritten`) + classifier skip for non-ready
+INDEX_FILTER churn. Retire after Stage 1b removes generated search consumers.
+
+See Plan/Review under `docs/workflow/*amendment-9-p4*`.
+
 ---
 
 ### ADR-FP-119: Studio default landing is Staff Inbox

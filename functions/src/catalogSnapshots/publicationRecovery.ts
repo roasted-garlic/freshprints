@@ -4,10 +4,35 @@
  * pass from permanently abandoning a higher requestedGeneration (tag-removal incident).
  */
 
+/** Default catch-up pass limit (catalog-reference + admin drain). Portal automatic wakes use 1. */
 export const PUBLICATION_PASS_LIMIT = 3;
+/** Amendment 9 P4: at most one successful full portal publication per automatic wake. */
+export const PORTAL_PUBLICATION_PASS_LIMIT = 1;
 export const LEASE_BUSY_RETRY_DELAY_MS = 5_000;
 export const TRANSIENT_STORAGE_RETRY_LIMIT = 3;
 export const TRANSIENT_STORAGE_RETRY_BASE_DELAY_MS = 400;
+
+export function resolveNextEligiblePublishAtMs(
+  data: { nextEligiblePublishAt?: unknown },
+): number | null {
+  const raw = data.nextEligiblePublishAt;
+  if (raw == null) return null;
+  if (typeof raw === "object" && typeof (raw as { toMillis?: unknown }).toMillis === "function") {
+    return (raw as { toMillis: () => number }).toMillis();
+  }
+  return null;
+}
+
+/**
+ * Missing/null nextEligiblePublishAt ⇒ eligible immediately (additive field compatibility).
+ */
+export function isPortalPublicationEligible(
+  data: { nextEligiblePublishAt?: unknown },
+  nowMs: number,
+): boolean {
+  const eligibleAt = resolveNextEligiblePublishAtMs(data);
+  return eligibleAt === null || nowMs >= eligibleAt;
+}
 
 export type PublicationPassRetryKind = "lease-busy" | "transient" | "fatal";
 
@@ -59,6 +84,10 @@ export function publicationNeedsCatchUp(
 export function shouldRetryPublicationPass(error: unknown): PublicationPassRetryKind {
   if (error instanceof Error && error.message === "snapshot-publication-lease-active") {
     return "lease-busy";
+  }
+  // Eligibility deferral is not a same-wake retry — catch-up rethrows for W2 wake.
+  if (error instanceof Error && error.message === "snapshot-publication-not-yet-eligible") {
+    return "fatal";
   }
   if (isTransientPublicationStorageError(error)) return "transient";
   return "fatal";

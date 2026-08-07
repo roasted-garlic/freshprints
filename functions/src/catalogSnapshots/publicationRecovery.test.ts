@@ -41,6 +41,10 @@ describe("publication recovery helpers (tag-removal stuck publish)", () => {
     );
     assert.equal(shouldRetryPublicationPass(fetchError()), "transient");
     assert.equal(shouldRetryPublicationPass(new Error("snapshot-asset-budget-exceeded:x")), "fatal");
+    assert.equal(
+      shouldRetryPublicationPass(new Error("snapshot-publication-not-yet-eligible")),
+      "fatal",
+    );
   });
 
   it("retries transient storage failures then succeeds", async () => {

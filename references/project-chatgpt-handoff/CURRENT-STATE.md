@@ -1,20 +1,56 @@
 # Fresh Prints - Current State Snapshot
 
-## 2026-08-06 - Stage 1a Amendment 3 Implement APPROVED — awaiting owner re-QA
+## 2026-08-06 - Amendment 9 P4 implemented (awaiting Functions deploy approval)
 
 Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, unmerged).
-Starting HEAD: `bc893f6`.
 
-Portal customer categories = active ∧ `countReadyDesigns({ categoryId }) > 0` (Option A).
-C≤64 / partial count fail-closed; in-flight Promise clear-by-identity; no module TTL;
-no snapshots; Studio Category Management still shows empty actives.
-Impl Review **APPROVED** after in-flight clear correction.
-**No Signoff** until owner QA. No deploy / Stage 1b / merge / production.
+Implemented: portal quiet 30s + min interval 120s + passLimit=1 + `nextEligiblePublishAt` +
+W2 `onPortalCatalogPublicationStateWritten` + P4-a non-ready INDEX_FILTER skip.
+Tests: catalogSnapshots **138/138**; Functions build exit 0.
+Impl Review **APPROVED**. Stop for:
+`APPROVE DEV FUNCTIONS DEPLOY: AMENDMENT 9 P4`
+Deploy checkpoint:
+`docs/workflow/reviews/2026-08-06-amendment-9-p4-dev-deployment-checkpoint.md`
+Manual QA: `docs/workflow/reviews/2026-08-06-amendment-9-p4-manual-qa.md`
+No Signoff / merge / production. Stage 1b / P3 not started.
 
-Owner QA: `docs/workflow/reviews/2026-08-06-amendment-8-phase-1b-stage-1a-amendment-3-manual-qa.md`
-Test report: `docs/workflow/reviews/2026-08-06-amendment-8-phase-1b-stage-1a-amendment-3-test-report.md`
-Impl review: `docs/workflow/reviews/2026-08-06-amendment-8-phase-1b-stage-1a-amendment-3-implementation-review.md`
-Plan: `docs/workflow/plans/2026-08-06-amendment-8-phase-1b-stage-1a-amendment-3-category-availability-plan.md`
+## 2026-08-06 - Amendment 9 P4 Plan + Formal Review approved (Investigate/Plan/Review only)
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, unmerged).
+HEAD: `862f7d1`.
+
+**Pass:** Refresh source → Investigate post–Stage 1a publication → Plan → Independent Formal
+Review → **Stop**. No Implement, deploy, merge, cleanup, Stage 1b, or production action.
+
+Plan:
+`docs/workflow/plans/2026-08-06-post-launch-catalog-and-processing-stability-amendment-9-p4-plan.md`
+Review (**approved**; R1–R5 applied):
+`docs/workflow/reviews/2026-08-06-post-launch-catalog-and-processing-stability-amendment-9-p4-review.md`
+
+**Root cause of 25 pubs:** claim windows reopen across paced approvals + immediate catch-up
+serial full scans (≤3) + non-ready INDEX_FILTER full schedules (R=0 waste).
+
+**Recommended guard:** quiet 30s + min interval 120s + portal `passLimit=1` + W2
+coordination-doc auto-wake + classifier skip when neither side is `ready`. Bounds: ≤5 pubs
+for 45 approvals (≤10 min wall); ≤8 for 100 (≤14 min). Worst-case search freshness ≤ ~6 min.
+Estimated ~80% fewer publication reads vs observed 28.7K. Stage 1b / D1 not started. P3
+separate. Generated search/multi-tag/facets preserved.
+
+**Next:** Owner authorizes Implement Amendment 9 P4 (separate). No Firebase until after
+Implement + Test + owner deploy phrase.
+
+## 2026-08-06 - Amendment 8 Phase 1B Stage 1a Signoff approved (final)
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, unmerged).
+Implementation commit: `e97ab3b` (Amendments 1–3 on top of Stage 1a `b397ec0`).
+
+Stage 1a **complete and approved**. Firestore-primary known-ID hydration; Firestore-only
+categories (active ∧ ready count &gt; 0); Studio empty actives retained; dead Discover
+generated entry removed; search/multi-tag/facets still generated temporarily.
+Owner QA **PASS**. Signoff **approved**:
+`docs/workflow/reviews/2026-08-06-amendment-8-phase-1b-stage-1a-signoff.md`.
+**Stage 1b blocked on owner D1** (Algolia vs Typesense managed search, or Option B product
+simplification). No deploy / merge / cleanup / Function retirement / production.
 
 ## 2026-08-06 - Stage 1a Amendment 2 (Case A archive persist) awaiting owner re-QA
 

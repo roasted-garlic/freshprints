@@ -35,7 +35,7 @@ describe("Wave C read containment wiring", () => {
     assert.match(publisher, /previousContentVersion/);
     assert.match(publisher, /preconditionOpts: \{ ifGenerationMatch \}/);
     assert.match(publisher, /snapshot-asset-metadata-verification-failed/);
-    assert.match(publisher, /for \(let pass = 0; pass < 2; pass \+= 1\)/);
+    assert.match(publisher, /for \(let pass = 0; pass < passLimit; pass \+= 1\)/);
   });
 
   it("keeps private/public snapshot paths separated by Storage rules", () => {

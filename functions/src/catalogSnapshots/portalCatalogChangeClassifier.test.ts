@@ -5,6 +5,7 @@ import type { PortalCatalogCard } from "../../../packages/shared/src/catalog-sna
 import {
   classifyPortalCatalogDesignChange,
   hasMatchingPortalCardOverride,
+  isNonReadyIndexFilterChurn,
   mergePortalCardOverrides,
 } from "./portalCatalogChangeClassifier";
 
@@ -33,7 +34,7 @@ test("classifies background and derivative metadata as card-only", () => {
   );
 });
 
-test("classifies search/filter/membership fields for full publication", () => {
+test("classifies search/filter/membership fields for full publication when already ready", () => {
   for (const update of [
     { title: "Changed" },
     { description: "Changed" },
@@ -46,6 +47,42 @@ test("classifies search/filter/membership fields for full publication", () => {
       "index-filter",
     );
   }
+});
+
+test("P4-a: non-ready index-filter churn does not schedule full publication", () => {
+  const imported = { ...base, status: "imported" };
+  for (const update of [
+    { title: "Changed" },
+    { description: "Changed" },
+    { categoryId: "cat-2" },
+    { tags: ["tag-2"] },
+    { createdAt: 200 },
+  ]) {
+    assert.equal(
+      classifyPortalCatalogDesignChange(imported, { ...imported, ...update }),
+      "operational",
+      `expected operational skip for ${JSON.stringify(update)}`,
+    );
+    assert.equal(
+      isNonReadyIndexFilterChurn(imported, { ...imported, ...update }),
+      true,
+      `expected isNonReadyIndexFilterChurn for ${JSON.stringify(update)}`,
+    );
+  }
+  // Ready document title churn is not non-ready churn.
+  assert.equal(isNonReadyIndexFilterChurn(base, { ...base, title: "Changed" }), false);
+});
+
+test("P4-a: readyAt change on non-ready is operational; on ready remains index-filter", () => {
+  const imported = { ...base, status: "imported", readyAt: undefined };
+  assert.equal(
+    classifyPortalCatalogDesignChange(imported, { ...imported, readyAt: 123 }),
+    "operational",
+  );
+  assert.equal(
+    classifyPortalCatalogDesignChange(base, { ...base, readyAt: 456 }),
+    "index-filter",
+  );
 });
 
 test("classifies a status change that crosses the ready boundary for full publication", () => {

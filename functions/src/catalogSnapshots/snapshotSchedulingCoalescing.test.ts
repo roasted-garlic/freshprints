@@ -118,7 +118,14 @@ describe("markAndPublishAfterDebounce wiring", () => {
       source.indexOf("async function markAndPublishAfterDebounce("),
       source.indexOf("export const rebuildCatalogSnapshots"),
     );
-    assert.match(debounceFunctionBlock, /markDirtyAndClaimDebounceWaiter\(\s*\n?\s*kind,\s*\n?\s*DEBOUNCE_MS \+ PUBLISH_ATTEMPT_MARGIN_MS,?\s*\n?\s*\);/);
+    // Amendment 9 P4: claim duration is kind-specific (portal vs catalog-reference).
+    assert.match(debounceFunctionBlock, /claimDurationMs/);
+    assert.match(debounceFunctionBlock, /PORTAL_CLAIM_DURATION_MS/);
+    assert.match(debounceFunctionBlock, /DEBOUNCE_MS \+ PUBLISH_ATTEMPT_MARGIN_MS/);
+    assert.match(debounceFunctionBlock, /markDirtyAndClaimDebounceWaiter\(\s*\n?\s*kind,\s*\n?\s*claimDurationMs,?\s*\n?\s*\);/);
+    assert.match(debounceFunctionBlock, /PORTAL_QUIET_MS/);
+    assert.match(debounceFunctionBlock, /runPortalAutomaticPublicationPass/);
+    assert.match(debounceFunctionBlock, /passLimit:\s*PORTAL_PUBLICATION_PASS_LIMIT/);
     assert.match(debounceFunctionBlock, /if \(!isWaiter\) \{\s*return;\s*\}/);
     assert.match(debounceFunctionBlock, /releaseDebounceClaimIfOwned\(kind, waiterOwner\)/);
   });
@@ -133,7 +140,7 @@ describe("markAndPublishAfterDebounce wiring", () => {
     // Approximate source document counts are logged via the existing
     // accounting object (readyDesignsRead/categoriesRead/tagsRead) — never
     // document field values, artwork metadata, or customer data.
-    assert.match(source, /readyDesignsRead: published\.accounting\.readyDesignsRead/);
+    assert.match(source, /readyDesignsRead: publishedResult\.accounting\.readyDesignsRead/);
     assert.doesNotMatch(source, /logger\.(info|warn|error)\("catalog-snapshot-(scheduling|publication)"[^)]*title/);
   });
 
@@ -166,27 +173,30 @@ describe("markAndPublishAfterDebounce wiring", () => {
 describe("ready-boundary publisher stall fix (Owner QA Amendment 1)", () => {
   it("the debounce claim duration no longer depends on LEASE_MS — it uses a small, dedicated publish-attempt margin", () => {
     const source = read("functions/src/catalogSnapshots/publishCatalogSnapshots.ts");
+    const guard = read("functions/src/catalogSnapshots/portalPublicationRateGuard.ts");
 
-    assert.match(source, /const PUBLISH_ATTEMPT_MARGIN_MS = 90_000;/);
+    assert.match(guard, /export const PUBLISH_ATTEMPT_MARGIN_MS = 90_000;/);
     assert.match(source, /DEBOUNCE_MS \+ PUBLISH_ATTEMPT_MARGIN_MS/);
     assert.doesNotMatch(source, /DEBOUNCE_MS \+ LEASE_MS/);
   });
 
   it("the claim's total liability window is far smaller than LEASE_MS, so a killed waiter self-heals in roughly two minutes, not ten", () => {
     const source = read("functions/src/catalogSnapshots/publishCatalogSnapshots.ts");
+    const guard = read("functions/src/catalogSnapshots/portalPublicationRateGuard.ts");
     const debounceMsMatch = source.match(/const DEBOUNCE_MS = (\d+)_?(\d*);/);
-    const marginMatch = source.match(/const PUBLISH_ATTEMPT_MARGIN_MS = (\d+)_?(\d*);/);
-    const leaseMsMatch = source.match(/const LEASE_MS = (\d+) \* (\d+)_?(\d*);/);
+    const marginMatch = guard.match(/export const PUBLISH_ATTEMPT_MARGIN_MS = (\d+)_?(\d*);/);
+    const leaseMsMatch = source.match(/export const LEASE_MS = (\d+) \* (\d+)_?(\d*);/);
     assert.ok(debounceMsMatch && marginMatch && leaseMsMatch, "expected to find all three duration constants");
 
     const debounceMs = Number(`${debounceMsMatch![1]}${debounceMsMatch![2]}`);
     const marginMs = Number(`${marginMatch![1]}${marginMatch![2]}`);
     const leaseMs = Number(leaseMsMatch![1]) * Number(`${leaseMsMatch![2]}${leaseMsMatch![3]}`);
 
-    const claimTotalMs = debounceMs + marginMs;
+    // Catalog-reference claim (Amendment 1) remains the short self-heal window.
+    const catalogReferenceClaimMs = debounceMs + marginMs;
     assert.ok(
-      claimTotalMs < leaseMs / 3,
-      `expected the claim's total liability window (${claimTotalMs}ms) to be far smaller than ` +
+      catalogReferenceClaimMs < leaseMs / 3,
+      `expected catalog-reference claim (${catalogReferenceClaimMs}ms) to be far smaller than ` +
         `LEASE_MS (${leaseMs}ms) — a stuck claim must self-heal in roughly two minutes, not ten`,
     );
   });
@@ -215,8 +225,9 @@ describe("ready-boundary publisher stall fix (Owner QA Amendment 1)", () => {
 
   it("300s comfortably exceeds DEBOUNCE_MS + PUBLISH_ATTEMPT_MARGIN_MS with margin, so the claim expires and a fresh waiter can retry before the function's own timeout would recur", () => {
     const source = read("functions/src/catalogSnapshots/publishCatalogSnapshots.ts");
+    const guard = read("functions/src/catalogSnapshots/portalPublicationRateGuard.ts");
     const debounceMsMatch = source.match(/const DEBOUNCE_MS = (\d+)_?(\d*);/);
-    const marginMatch = source.match(/const PUBLISH_ATTEMPT_MARGIN_MS = (\d+)_?(\d*);/);
+    const marginMatch = guard.match(/export const PUBLISH_ATTEMPT_MARGIN_MS = (\d+)_?(\d*);/);
     assert.ok(debounceMsMatch && marginMatch);
 
     const debounceMs = Number(`${debounceMsMatch![1]}${debounceMsMatch![2]}`);
@@ -227,5 +238,14 @@ describe("ready-boundary publisher stall fix (Owner QA Amendment 1)", () => {
       300 > claimTotalSeconds,
       `expected the 300s function timeout to exceed the claim's own ${claimTotalSeconds}s total window`,
     );
+  });
+
+  it("Amendment 9 P4: portal claim uses PORTAL_CLAIM_DURATION_MS and quiet uses PORTAL_QUIET_MS", () => {
+    const source = read("functions/src/catalogSnapshots/publishCatalogSnapshots.ts");
+    const guard = read("functions/src/catalogSnapshots/portalPublicationRateGuard.ts");
+    assert.match(guard, /export const PORTAL_QUIET_MS = 30_000;/);
+    assert.match(guard, /export const PORTAL_CLAIM_DURATION_MS =/);
+    assert.match(source, /kind === "portal-catalog"\s*\n?\s*\? PORTAL_CLAIM_DURATION_MS/);
+    assert.match(source, /kind === "portal-catalog" \? PORTAL_QUIET_MS : DEBOUNCE_MS/);
   });
 });
