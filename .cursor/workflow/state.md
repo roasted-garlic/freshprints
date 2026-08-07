@@ -25,8 +25,13 @@ Background (not active gate): Goal #13 / clean Studio remediation / Stage 2 rema
 - **Stage 1b D1 = A (Algolia)** selected. Stage 1b-A code implemented.
 - Implementation Review **APPROVED_WITH_CHANGES** (corrections applied in-review):
   `docs/workflow/reviews/2026-08-07-stage-1b-algolia-implementation-review.md`
-- **STOP** at secrets/account checkpoint (no Algolia account/secrets/deploy yet):
-  `docs/workflow/reviews/2026-08-07-stage-1b-algolia-dev-secrets-checkpoint.md`
+- **Stage 1b Algolia Functions deployed** to `fresh-prints-dev` (`03aa490`):
+  `syncPortalCatalogDesignToAlgolia`, `reconcilePortalCatalogAlgoliaIndex`,
+  `reconcilePortalCatalogAlgoliaIndexScheduled`. Record:
+  `docs/workflow/reviews/2026-08-07-stage-1b-algolia-dev-deploy-record.md`
+- Portal Algolia path still **disabled** (`NEXT_PUBLIC_USE_ALGOLIA_CATALOG_SEARCH` unset).
+- Next: owner/admin **reconcile** (`dryRun: false`), then enable Portal flag, then Stage 1b-C QA.
+- Publisher / generated assets **retained**. PR #40 **unmerged**. No production.
 - Decision analysis:
   `docs/workflow/reviews/2026-08-07-stage-1b-d1-search-architecture-decision-analysis.md`
 - Stage 1b Plan:
@@ -44,10 +49,9 @@ P3 Deploy record: `docs/workflow/reviews/2026-08-07-amendment-9-p3-dev-deploy-re
 Combined live QA: `docs/workflow/reviews/2026-08-07-amendment-9-combined-live-qa-attribution.md`
 P2 Formal Review: `docs/workflow/reviews/2026-08-07-amendment-9-p2-studio-tag-library-read-containment-review.md`
   (**approved — recommend NO IMPLEMENTATION**)
-Next for this goal: **Owner secrets checkpoint** — Algolia app/keys + Secret Manager +
-  Functions deploy + reconcile, then Stage 1b-B/C. QA checklist:
-  `docs/workflow/reviews/2026-08-07-stage-1b-algolia-owner-qa-checklist.md`.
-  No Stage 4/5/6 yet.
+Next for this goal: Owner/admin run Algolia **reconcile** (`dryRun: false`) on
+  `fresh-prints-dev`, then enable `NEXT_PUBLIC_USE_ALGOLIA_CATALOG_SEARCH=true` locally,
+  then Stage 1b-C QA. No Stage 4/5/6 yet.
 
 **Prior (still true):** Amendment 8 Phase 1B Stage 1a **Signoff approved**. Amendments 1–3
 closed. Generated search/multi-tag/facets remain temporary. Stage 1b blocked on owner D1.
@@ -146,6 +150,12 @@ archive write — none of these could be run live in this environment (no intera
 no Application Default Credentials for scripted checks beyond read-only CLI operations).
 
 Decision Log:
+- 2026-08-07 — Owner `APPROVE DEV FUNCTIONS DEPLOY: STAGE 1B ALGOLIA SYNC`. Deployed three
+  Algolia Functions to `fresh-prints-dev` (exit 0). Portal enable flag still off. Awaiting
+  reconcile. No production / no PR merge / publisher retained.
+- 2026-08-07 — Owner `APPROVE DEV ALGOLIA SECRETS: STAGE 1B`. Admin secret + Functions
+  params + Portal search-only env confirmed for `fresh-prints-dev`. Enable flag still off.
+  Waiting on `APPROVE DEV FUNCTIONS DEPLOY: STAGE 1B ALGOLIA SYNC`. No deploy/merge/production.
 - 2026-08-07 — Owner D1 = **Algolia**. Stage 1b-A Implement complete; Impl Review
   **APPROVED_WITH_CHANGES**. STOP at Algolia secrets/account/deploy checkpoint. Publisher
   retained. No deploy/merge/production.

@@ -3,7 +3,7 @@
 | Field | Value |
 |-------|-------|
 | Date | 2026-08-07 |
-| Status | **WAITING ON OWNER** — do not create credentials in-repo |
+| Status | **Functions deployed to `fresh-prints-dev`** — next: reconcile index, then Portal enable flag |
 | Branch | `fix/post-launch-catalog-and-processing-stability` |
 | PR | #40 — keep open / **unmerged** |
 | Code | Stage 1b-A Algolia adapter + sync implemented; **not live** until secrets + deploy |
