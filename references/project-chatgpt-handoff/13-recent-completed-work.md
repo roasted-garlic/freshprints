@@ -1,5 +1,11 @@
 # Recent Completed Work
 
+## 2026-08-07 - Stage 1b-A Algolia search replacement (code; secrets STOP)
+
+- D1 = Algolia; Portal adapter + 300ms debounce + FS by-id hydrate
+- Functions syncPortalCatalogDesignToAlgolia + reconcile callable/scheduled
+- Impl Review APPROVED_WITH_CHANGES; no account/secrets/deploy
+- Publisher retained; PR #40 unmerged
 ## 2026-08-07 - Stage 1b D1 search architecture decision package
 
 - Inventory: 3 remaining generated Portal chains (search/multi-tag, global facets, narrowed facets)

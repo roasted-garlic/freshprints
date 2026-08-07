@@ -1,5 +1,20 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-08-07 - Stage 1b-A Algolia implement complete; STOP at secrets checkpoint
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| D1 | **Algolia** (owner selected) |
+| Stage 1b-A code | Adapter + sync + reconcile + debounce; Impl Review **APPROVED_WITH_CHANGES** |
+| Live Algolia | **Not enabled** — awaiting account/secrets/deploy |
+| Publisher | **Still alive** (Stage 4 not started) |
+| Production / merge | **None** |
+
+Checkpoint: `docs/workflow/reviews/2026-08-07-stage-1b-algolia-dev-secrets-checkpoint.md`
+Impl Review: `docs/workflow/reviews/2026-08-07-stage-1b-algolia-implementation-review.md`
+
 ## 2026-08-07 - Stage 1b D1 decision package ready (Implement BLOCKED)
 
 Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).

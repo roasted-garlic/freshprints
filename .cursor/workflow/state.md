@@ -22,8 +22,11 @@ Background (not active gate): Goal #13 / clean Studio remediation / Stage 2 rema
 **Separate concurrent managed goal (does not affect the gate above):**
 `post-launch-catalog-and-processing-stability`
 - **Amendment 9** optimization set **closed** (P0/P1/P3/P4; P2 no-implement).
-- **Stage 1b D1 decision package ready** — Formal Review **APPROVED_WITH_CHANGES**.
-  **Stage 1b Implement BLOCKED on owner D1** (not started).
+- **Stage 1b D1 = A (Algolia)** selected. Stage 1b-A code implemented.
+- Implementation Review **APPROVED_WITH_CHANGES** (corrections applied in-review):
+  `docs/workflow/reviews/2026-08-07-stage-1b-algolia-implementation-review.md`
+- **STOP** at secrets/account checkpoint (no Algolia account/secrets/deploy yet):
+  `docs/workflow/reviews/2026-08-07-stage-1b-algolia-dev-secrets-checkpoint.md`
 - Decision analysis:
   `docs/workflow/reviews/2026-08-07-stage-1b-d1-search-architecture-decision-analysis.md`
 - Stage 1b Plan:
@@ -41,9 +44,10 @@ P3 Deploy record: `docs/workflow/reviews/2026-08-07-amendment-9-p3-dev-deploy-re
 Combined live QA: `docs/workflow/reviews/2026-08-07-amendment-9-combined-live-qa-attribution.md`
 P2 Formal Review: `docs/workflow/reviews/2026-08-07-amendment-9-p2-studio-tag-library-read-containment-review.md`
   (**approved — recommend NO IMPLEMENTATION**)
-Next for this goal: **Owner D1** — Plan letters **A**=Algolia / **B**=Typesense Cloud /
-  **C**=Product Simplification B1. Conditional lean Algolia only if features MUST KEEP;
-  B1 co-equal if CAN REMOVE.
+Next for this goal: **Owner secrets checkpoint** — Algolia app/keys + Secret Manager +
+  Functions deploy + reconcile, then Stage 1b-B/C. QA checklist:
+  `docs/workflow/reviews/2026-08-07-stage-1b-algolia-owner-qa-checklist.md`.
+  No Stage 4/5/6 yet.
 
 **Prior (still true):** Amendment 8 Phase 1B Stage 1a **Signoff approved**. Amendments 1–3
 closed. Generated search/multi-tag/facets remain temporary. Stage 1b blocked on owner D1.
@@ -142,6 +146,9 @@ archive write — none of these could be run live in this environment (no intera
 no Application Default Credentials for scripted checks beyond read-only CLI operations).
 
 Decision Log:
+- 2026-08-07 — Owner D1 = **Algolia**. Stage 1b-A Implement complete; Impl Review
+  **APPROVED_WITH_CHANGES**. STOP at Algolia secrets/account/deploy checkpoint. Publisher
+  retained. No deploy/merge/production.
 - 2026-08-07 — Stage 1b D1 decision package complete (analysis + Plan + Formal Review
   **APPROVED_WITH_CHANGES**). Implement **BLOCKED** on owner D1 (A Algolia / B Typesense /
   C Product Simplification B1). No provider accounts, secrets, deploy, merge, or production.
