@@ -27,10 +27,8 @@ Background (not active gate): Goal #13 / clean Studio remediation / Stage 2 rema
 - **Amendment 9 P3** (server AI taxonomy read containment): Implement **APPROVED**;
   unified 15m process-local taxonomy cache + in-flight dedupe; tests 12/12 + build/lint green.
   **No Firebase deploy yet** — morning checkpoint prepared.
-- **Amendment 9 P1** (import/approval read containment): Formal Review
-  **approved_with_changes** —
-  `docs/workflow/reviews/2026-08-07-amendment-9-p1-import-approval-read-containment-review.md`
-  (I2/I3/A2 approve; I5 conditional; **I4 + A3 retain**; Implement may proceed only with those retains).
+- **Amendment 9 P1** (import/approval read containment): Implement **APPROVED** (`dab3c44`);
+  import oneshots 5→2; approve 3→2 (I4+A3 retained).
 - Generated text search / multi-tag / facets remain temporary (~1.1K C+T+R per full pub remains)
 - Stage 1b **not** started
 - PR #40 open / **unmerged**
@@ -40,8 +38,9 @@ Case D Signoff: `docs/workflow/reviews/2026-08-06-portal-new-this-week-readyat-s
 P4 Signoff: `docs/workflow/reviews/2026-08-06-amendment-9-p4-signoff.md`
 P3 Impl Review: `docs/workflow/reviews/2026-08-07-amendment-9-p3-server-ai-taxonomy-read-containment-implementation-review.md`
 P3 Deploy checkpoint: `docs/workflow/reviews/2026-08-07-amendment-9-p3-dev-deployment-checkpoint.md`
-P1 Formal Review: `docs/workflow/reviews/2026-08-07-amendment-9-p1-import-approval-read-containment-review.md`
-Next for this goal: Implement P1 under approved_with_changes (retain I4 + A3); owner deploys P3 Functions when ready.
+P1 Impl Review: `docs/workflow/reviews/2026-08-07-amendment-9-p1-import-approval-read-containment-implementation-review.md`
+Combined morning QA: `docs/workflow/reviews/2026-08-07-amendment-9-p3-p1-combined-manual-qa.md`
+Next for this goal: owner deploys P3 Functions + runs combined 45-design QA; Stage 1b still owner D1.
 
 **Prior (still true):** Amendment 8 Phase 1B Stage 1a **Signoff approved**. Amendments 1–3
 closed. Generated search/multi-tag/facets remain temporary. Stage 1b blocked on owner D1.
