@@ -12,7 +12,7 @@ describe('Portal Phase 1A / 1B Stage 1a ordinary browse containment', () => {
     assert.match(source, /allowsBoundedCatalogFirestoreFallback/);
     assert.match(source, /listReadyDesignsPageWithSortFallback/);
     assert.match(source, /listHomeDiscoveryPool/);
-    assert.match(source, /requiresGeneratedSearchPath|useGeneratedSearch/);
+    assert.match(source, /requiresGeneratedSearchPath|useGeneratedSearch|requiresManagedSearchPath|useManagedSearch|useAlgoliaSearch/);
   });
 
   it('Discover home uses listHomeDiscoveryPool; listDiscoverDesigns is removed', () => {

@@ -684,28 +684,34 @@ export const catalogService = {
 
   /**
    * Tags for the Portal tag modal: only tags with at least one ready design, each with its
-   * ready-design count — never the full approved-tag taxonomy. Sourced exclusively from the
-   * compact generated tag-facet asset (`portalCatalogAssetService.listTagFacets`).
+   * ready-design count — never the full approved-tag taxonomy.
    *
-   * No Firestore fallback exists deliberately: the only way to derive a *complete* "tags with
-   * counts" shape from Firestore alone is either a full-collection scan (unbounded — the exact
-   * defect this asset exists to remove) or one `getCountFromServer` call per approved tag
-   * (~1,122 network round trips, worse). Rather than ship an incomplete/inaccurate bounded
-   * fallback, this throws when the generated asset is unavailable; `useCatalogTags` surfaces that
-   * as an "unavailable" state so the caller never silently under- or over-counts. Owner-approved
-   * 2026-07-24 (see the Wave C dev deployment checkpoint's "Blocking Issue 2" resolution).
+   * Stage 1b: Algolia facets when configured; otherwise generated `tags-facet.json`
+   * (transition until Stage 4). No Firestore full-scan fallback.
    */
   async listApprovedTags(): Promise<CatalogTagOption[]> {
+    const { isPortalAlgoliaCatalogConfigured } = await import('./portalAlgoliaCatalogFlags');
+    if (isPortalAlgoliaCatalogConfigured()) {
+      const { portalAlgoliaCatalogSearchService } = await import(
+        './portalAlgoliaCatalogSearchService'
+      );
+      return portalAlgoliaCatalogSearchService.listTagFacets();
+    }
     return portalCatalogAssetService.listTagFacets();
   },
 
   /**
    * Same contract as `listApprovedTags`, narrowed to designs matching every tag in
-   * `selectedTags` (AND semantics) — powers dynamic tag-modal narrowing (selecting a tag hides
-   * unrelated tags and recalculates remaining counts). Same no-Firestore-fallback rule applies;
-   * see `portalCatalogAssetService.listNarrowedTagFacets` for how this stays bounded.
+   * `selectedTags` (AND semantics).
    */
   async listNarrowedApprovedTags(selectedTags: string[]): Promise<CatalogTagOption[]> {
+    const { isPortalAlgoliaCatalogConfigured } = await import('./portalAlgoliaCatalogFlags');
+    if (isPortalAlgoliaCatalogConfigured()) {
+      const { portalAlgoliaCatalogSearchService } = await import(
+        './portalAlgoliaCatalogSearchService'
+      );
+      return portalAlgoliaCatalogSearchService.listNarrowedTagFacets(selectedTags);
+    }
     return portalCatalogAssetService.listNarrowedTagFacets(selectedTags);
   },
 };
