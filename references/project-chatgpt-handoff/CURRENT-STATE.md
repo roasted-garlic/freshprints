@@ -1,5 +1,65 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-08-06 - Case D New This Week → readyAt implemented (awaiting owner QA)
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, unmerged).
+
+Implemented: Discover New This Week membership + order = `readyAt`; Home rail via
+`rankNewThisWeek` on `readyAtMs` (legacy key fallback `readyAtMs ?? createdAtMs`).
+Impl Review **APPROVED**. No deploy / merge / production / Stage 1b / P3.
+P4 rate-guard remains **PASSING**; P4 Signoff still blocked.
+
+Manual QA: `docs/workflow/reviews/2026-08-06-portal-new-this-week-readyat-manual-qa.md`
+**Next:** Owner `PASS` / `FAIL` / `PASS WITH NOTES`.
+
+## 2026-08-06 - Discover New This Week → readyAt Plan approved (STOP — no Implement)
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, unmerged).
+
+Owner surface: **Portal → Discover → New This Week** (Case D). Ordinary Library not assumed broken.
+Product: “new” = newly ready (`readyAt`) for membership **and** order; Home New This Week rail in scope.
+Amended corrective Plan Formal Review **approved**.
+**Superseded by Implement entry above.**
+
+## 2026-08-06 - Amendment 9 P4 owner QA FAIL (rate-guard PASS; ordering FAIL) — STOP
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, unmerged).
+Deploy SHA: `9fe6430`.
+
+Owner QA **FAIL** — Portal catalog ordering ≠ Studio (newest approved first).
+**Do not Signoff P4.** No implement / deploy / merge / production / Stage 1b / P3 this pass.
+*(Classification updated: surface = Discover New This Week; see entry above.)*
+
+### A. Rate-guard attribution (Cloud Logging `fresh-prints-dev`)
+
+Window: `2026-08-07T02:27:31Z`–`02:36:30Z` (~45 AI enqueues).
+
+| Metric | Value |
+|--------|------:|
+| Successful full portal pubs | **3** |
+| Timestamps | 02:29:48Z; 02:31:49Z; 02:34:35Z |
+| Spacing | ~120.8s; ~166.6s |
+| claimed-debounce-waiter | 2 |
+| joined-existing-debounce-window | 88 |
+| deferred-wake-requested / claimed | 2 / 2 |
+| W2 publications | 1 |
+| not-yet-eligible | 0 |
+| lease-busy / failed | 0 / 0 |
+| C+T+R total | **3,436** (vs prior ~28,710) |
+
+Rate-guard live target: **PASSING** (≤6 pubs; reads ≪ 28.7K). ~1.5K Console spikes align with ~1.1K C+T+R per pub.
+
+### B. Ordering
+
+Investigation: Case **D** confirmed (Discover New This Week). See newer snapshot entry.
+
+Docs:
+- `docs/workflow/reviews/2026-08-06-amendment-9-p4-owner-qa-fail-attribution.md`
+- `docs/workflow/reviews/2026-08-06-amendment-9-p4-portal-ordering-investigation.md`
+- `docs/workflow/plans/2026-08-06-portal-studio-catalog-ordering-mismatch-corrective-plan.md`
+- `docs/workflow/reviews/2026-08-06-portal-studio-catalog-ordering-mismatch-corrective-review.md`
+
+
 ## 2026-08-06 - Amendment 9 P4 deployed to fresh-prints-dev (awaiting owner QA)
 
 Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, unmerged).
@@ -12,6 +72,7 @@ Owner phrase obtained. Deployed to **`fresh-prints-dev` only**:
 Record: `docs/workflow/reviews/2026-08-06-amendment-9-p4-dev-deploy-record.md`
 Manual QA: `docs/workflow/reviews/2026-08-06-amendment-9-p4-manual-qa.md`
 No Signoff / merge / production. Stage 1b / P3 not started.
+**Superseded:** owner QA FAIL recorded above.
 
 ## 2026-08-06 - Amendment 9 P4 implemented (awaiting Functions deploy approval)
 

@@ -79,7 +79,7 @@ describe('Portal catalog readyAt ordering', () => {
     );
   });
 
-  it('createdAt sort key uses document createdAt (Discover new window)', () => {
+  it('createdAt sort key uses document createdAt (legacy / non–New-This-Week)', () => {
     assert.equal(
       getDesignSortValue(
         design({ id: 'x', createdAtMs: 1_000, readyAtMs: 9_000 }),
@@ -89,14 +89,25 @@ describe('Portal catalog readyAt ordering', () => {
     );
   });
 
-  it('completeness guard and index fallback remain for readyAt', () => {
-    assert.match(service, /sortField === 'readyAt' && !listQuery\.cursor && !page\.hasMore/);
+  it('completeness guard and index fallback remain for readyAt (not New This Week)', () => {
+    assert.match(
+      service,
+      /typeof listQuery\.readyAfterMs !== 'number'/,
+    );
     assert.match(service, /matchingCount > page\.designs\.length/);
     assert.match(service, /sortField === 'readyAt'/);
+    assert.match(service, /Never demote New This Week/);
     assert.match(
       service,
       /sortField: 'createdAt'/,
     );
+  });
+
+  it('New This Week membership filters readyAt (not createdAt)', () => {
+    assert.match(service, /where\('readyAt', '>=', Timestamp\.fromMillis\(listQuery\.readyAfterMs\)\)/);
+    assert.match(hook, /case 'new':[\s\S]*?return 'readyAt'/);
+    assert.match(hook, /readyAfterMs:/);
+    assert.match(types, /readyAfterMs\?: number/);
   });
 
   it('does not introduce page-local sort of Firestore browse results', () => {

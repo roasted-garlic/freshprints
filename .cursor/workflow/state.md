@@ -20,11 +20,16 @@ Next Required Step: Owner reviews the production convergence audit and approves 
 Background (not active gate): Goal #13 / clean Studio remediation / Stage 2 remain deferred; prior installer intermediate; domain cutover blocked until `APPROVE MYPRINTREQUEST.COM CUTOVER`.
 
 **Separate concurrent managed goal (does not affect the gate above):**
-`post-launch-catalog-and-processing-stability` — **Amendment 9 P4**
-**Functions deployed to `fresh-prints-dev`** from `9fe6430` (owner phrase obtained).
-W2 `onPortalCatalogPublicationStateWritten` created; five related Functions updated.
-**Awaiting owner Manual QA** (`docs/workflow/reviews/2026-08-06-amendment-9-p4-manual-qa.md`).
-Signoff blocked until QA. Stage 1b / P3 **not** started. PR #40 open/unmerged. No production.
+`post-launch-catalog-and-processing-stability` — **Amendment 9 P4** + **Case D corrective**
+P4 Functions on `fresh-prints-dev` (`9fe6430`); rate-guard **PASSING** (3 pubs; 3,436 C+T+R).
+**P4 Signoff still blocked** (await Case D owner QA disposition).
+Case D **Implement + Test + Impl Review APPROVED**; committed/pushed; **awaiting owner Manual QA**.
+Stage 1b / P3 **not** started. PR #40 open/unmerged. No production. No deploy this pass.
+
+Case D Manual QA: `docs/workflow/reviews/2026-08-06-portal-new-this-week-readyat-manual-qa.md`
+Impl Review: `docs/workflow/reviews/2026-08-06-portal-new-this-week-readyat-implementation-review.md`
+Test report: `docs/workflow/reviews/2026-08-06-portal-new-this-week-readyat-test-report.md`
+Next: owner replies `PASS` / `FAIL` / `PASS WITH NOTES` on Case D QA.
 
 **Prior (still true):** Amendment 8 Phase 1B Stage 1a **Signoff approved**. Amendments 1–3
 closed. Generated search/multi-tag/facets remain temporary. Stage 1b blocked on owner D1.
@@ -124,6 +129,20 @@ archive write — none of these could be run live in this environment (no intera
 no Application Default Credentials for scripted checks beyond read-only CLI operations).
 
 Decision Log:
+- 2026-08-06 — Case D **Implement + Test + Impl Review APPROVED**; New This Week uses
+  `readyAt`/`readyAfterMs` (Library) and `readyAtMs` (Home `rankNewThisWeek`). Awaiting
+  owner Manual QA. No deploy / merge / P4 Signoff. Portal `next build` blocked by concurrent
+  `dev:portal` `.next` lock (typecheck/lint/tests green).
+- 2026-08-06 — Ordering corrective **Case D** confirmed: Portal Discover → New This Week.
+  Product: membership + order = `readyAt` (not `createdAt`). Home New This Week rail in
+  scope. Amended Plan Formal Review **approved**. No Implement / deploy / merge. P4
+  rate-guard remains PASSING; P4 Signoff still blocked pending corrective disposition.
+- 2026-08-06 — Amendment 9 **P4 owner QA FAIL** (ordering). Rate-guard **PASSING**: 3 full
+  `portal-catalog` pubs in `2026-08-07T02:27:31Z`–`02:36:30Z`; C+T+R **3436** vs ~28710;
+  joins 88; W2 pub 1; not-yet-eligible 0; lease/fail 0. Ordering: Case C primary / A product
+  symptom; not P4 Portal code (P4 touched Functions only). Linked corrective Plan Formal
+  Review **approved_with_changes**. No Implement / deploy / merge / Signoff / Stage 1b.
+  *(Superseded classification: owner later confirmed Case D Discover New This Week.)*
 - 2026-08-06 — Amendment 9 **P4 deployed to fresh-prints-dev** (`9fe6430`); owner phrase
   obtained. Awaiting Manual QA. No Signoff / merge / production / Stage 1b.
 - 2026-08-06 — Amendment 9 **P4 Implement + Test + Impl Review APPROVED**; push pending deploy

@@ -45,3 +45,27 @@
 - `PASS` — all criteria met
 - `FAIL: [description]` — what failed
 - `PASS WITH NOTES: [notes]` — acceptable with follow-ups
+
+---
+
+## Owner result (2026-08-06 ~9:27–9:35 PM Central)
+
+**FAIL: Amendment 9 P4 owner QA**
+
+| Criterion | Result |
+|-----------|--------|
+| Full portal success count ≤ 6 | **PASS** — **3** successes (Cloud Logging) |
+| C+T+R ≪ ~28.7K | **PASS** — **3,436** vs ~28,710 |
+| Search / multi-tag / facets eventually correct | **PASS** (owner) |
+| Non-ready import spam | **PASS** (owner) |
+| No Portal feature regression on ordinary browse | **FAIL** — Portal catalog ordering ≠ Studio (newest / most recently approved first) |
+| Overall P4 QA | **FAIL** — Signoff blocked |
+| P4 rate-guard live target (subset) | **PASSING** |
+
+Attribution: `docs/workflow/reviews/2026-08-06-amendment-9-p4-owner-qa-fail-attribution.md`
+Ordering investigation: `docs/workflow/reviews/2026-08-06-amendment-9-p4-portal-ordering-investigation.md`
+Corrective Plan + Formal Review:
+`docs/workflow/plans/2026-08-06-portal-studio-catalog-ordering-mismatch-corrective-plan.md`
+`docs/workflow/reviews/2026-08-06-portal-studio-catalog-ordering-mismatch-corrective-review.md`
+
+**Do not Signoff P4 yet.** No implement/deploy/merge this pass.

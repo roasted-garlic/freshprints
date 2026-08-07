@@ -37,10 +37,12 @@ export interface UseCatalogDesignsQuery {
 /** First-viewport thumbnails may load eagerly; below-fold stay lazy. */
 export const CATALOG_FIRST_VIEWPORT_EAGER_COUNT = 8;
 
-function sortFieldForDiscovery(mode: CatalogDiscoveryMode | null | undefined): CatalogDesignSortField {
+/** Exported for Case D New This Week query tests. */
+export function sortFieldForDiscovery(mode: CatalogDiscoveryMode | null | undefined): CatalogDesignSortField {
   switch (mode) {
     case 'new':
-      return 'createdAt';
+      // Newly ready for customers — not original import time.
+      return 'readyAt';
     case 'popular':
       return 'requestCount';
     case 'mostLiked':
@@ -53,14 +55,15 @@ function sortFieldForDiscovery(mode: CatalogDiscoveryMode | null | undefined): C
   }
 }
 
-function buildServerListQuery(options: UseCatalogDesignsQuery): CatalogDesignListQuery {
+/** Exported for Case D New This Week query tests. */
+export function buildServerListQuery(options: UseCatalogDesignsQuery): CatalogDesignListQuery {
   const discoveryMode = options.discoveryMode ?? null;
   const sortField = sortFieldForDiscovery(discoveryMode);
   const primaryTag = getPrimaryCatalogQueryTag(options.selectedTags);
 
   return {
     categoryId: options.categoryId?.trim() || undefined,
-    createdAfterMs:
+    readyAfterMs:
       discoveryMode === 'new'
         ? Date.now() - CATALOG_NEW_THIS_WEEK_DAYS * 24 * 60 * 60 * 1000
         : undefined,
@@ -73,6 +76,7 @@ function serializeServerListQuery(listQuery: CatalogDesignListQuery): string {
   return JSON.stringify({
     categoryId: listQuery.categoryId ?? null,
     createdAfterMs: listQuery.createdAfterMs ?? null,
+    readyAfterMs: listQuery.readyAfterMs ?? null,
     sortField: listQuery.sortField ?? 'readyAt',
     tag: listQuery.tag ?? null,
   });

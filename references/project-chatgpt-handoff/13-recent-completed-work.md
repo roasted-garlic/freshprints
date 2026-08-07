@@ -1,5 +1,29 @@
 # Recent Completed Work
 
+## 2026-08-06 - Case D New This Week → readyAt (awaiting owner QA)
+
+- Discover + Home New This Week: membership/order use `readyAt` / `readyAtMs`
+- Tests 35 focused + 23 studio ready-order; portal typecheck + lint green
+- Portal `next build` blocked by concurrent `dev:portal` `.next` lock (documented)
+- Impl Review APPROVED; Manual QA checklist ready; no deploy; PR #40 open
+- P4 rate-guard remains PASSING; P4 Signoff still blocked
+
+## 2026-08-06 - Discover New This Week → readyAt Plan + Formal Review (STOP)
+
+- Owner surface: Portal Discover → New This Week (Case D); ordinary Library not assumed broken
+- Current: membership + order both `createdAt`; both must move to `readyAt`
+- Home New This Week rail in scope (same concept); metric rails / ordinary Library out
+- Corrective Plan Formal Review **approved**; Implement authorized separately (see entry above)
+- P4 rate-guard remains PASSING; P4 Signoff still blocked
+
+## 2026-08-06 - Amendment 9 P4 owner QA FAIL (docs only; STOP)
+
+- Rate-guard **PASSING**: 3 full pubs; C+T+R 3436 vs ~28710; ~1.5K spikes align with pubs
+- Overall QA **FAIL**: Portal ordering ≠ Studio; P4 Signoff blocked
+- Ordering: later confirmed Case D Discover New This Week (see entry above)
+- No implement / deploy / merge / Stage 1b / production
+- Attribution + investigation + Plan/Review under `docs/workflow/*p4-owner-qa*` / `*ordering-mismatch*`
+
 ## 2026-08-06 - Amendment 9 P4 implement (awaiting Functions deploy)
 
 - Portal full-publication rate guard: quiet 30s, min interval 120s, claim 240s, passLimit=1

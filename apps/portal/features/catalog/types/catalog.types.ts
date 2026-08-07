@@ -60,7 +60,7 @@ export interface CatalogDesign {
  * Firestore orderBy field for ready-catalog paging.
  * Default browse uses `readyAt` (most recent approval to ready), with `createdAt` fallback
  * for legacy docs / completeness. Metric discover modes use requestCount / favoriteCount /
- * lastAddedToShowAt. Discover "new this week" uses `createdAt` + `createdAfterMs`.
+ * lastAddedToShowAt. Discover "new this week" uses `readyAt` + `readyAfterMs`.
  */
 export type CatalogDesignSortField =
   | 'updatedAt'
@@ -85,8 +85,16 @@ export interface CatalogDesignListQuery {
   limitCount?: number;
   cursor?: CatalogDesignListCursor;
   sortField?: CatalogDesignSortField;
-  /** Inclusive lower bound for `createdAt` when `sortField` is `createdAt` (e.g. New This Week). */
+  /**
+   * Inclusive lower bound for `createdAt` when `sortField` is `createdAt`.
+   * Not used for Discover New This Week (that uses `readyAfterMs`).
+   */
   createdAfterMs?: number;
+  /**
+   * Inclusive lower bound for `readyAt` when listing New This Week
+   * (`sortField: 'readyAt'` + seven-day customer-ready window).
+   */
+  readyAfterMs?: number;
 }
 
 export interface CatalogDesignListPage {

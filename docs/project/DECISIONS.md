@@ -2594,6 +2594,8 @@ The Portal catalog was a flat searchable grid. Customers needed curated discover
 
 **Amendment (2026-07-20, ADR-FP-107):** Recently Requested now uses `lastAddedToShowAt` (show allocation create), not Working-cart `lastRequestedAt`. Popular still uses `requestCount` from item create.
 
+**Amendment (2026-08-06, Case D corrective):** **New This Week** membership and order use authoritative **`readyAt`** (last 7 days, newest ready first) — not import `createdAt`. Home “New This Week” rail uses the same `rankNewThisWeek` semantics. Ordinary Library / metric rails unchanged.
+
 **Consequences**
 
 - Deploy `onPrintRequestItemCreated` required for accurate Popular after Portal adds; Recently Requested requires `onShowAllocationCreated` (ADR-FP-107).

@@ -65,6 +65,7 @@ function serializeCatalogPageCacheKey(listQuery: CatalogDesignListQuery): string
   return JSON.stringify({
     categoryId: listQuery.categoryId ?? null,
     createdAfterMs: listQuery.createdAfterMs ?? null,
+    readyAfterMs: listQuery.readyAfterMs ?? null,
     cursor: listQuery.cursor ?? null,
     limitCount: listQuery.limitCount ?? DEFAULT_CATALOG_PAGE_SIZE,
     sortField: listQuery.sortField ?? 'readyAt',
@@ -181,7 +182,7 @@ export function getDesignSortValue(design: CatalogDesign, sortField: CatalogDesi
     case 'readyAt':
       return design.readyAtMs ?? design.createdAtMs ?? 0;
     case 'createdAt':
-      // Discover "new this week" and legacy fallbacks order by document createdAt.
+      // Legacy / non–New-This-Week createdAt sorts only.
       return design.createdAtMs ?? 0;
     case 'requestCount':
       return design.requestCount;
@@ -217,7 +218,10 @@ function buildDesignFilterConstraints(listQuery: CatalogDesignListQuery): QueryC
     constraints.push(where('tags', 'array-contains', listQuery.tag.trim().toLowerCase()));
   }
 
-  if (sortField === 'createdAt' && typeof listQuery.createdAfterMs === 'number') {
+  // Discover New This Week: customer-ready window on readyAt (not import createdAt).
+  if (typeof listQuery.readyAfterMs === 'number') {
+    constraints.push(where('readyAt', '>=', Timestamp.fromMillis(listQuery.readyAfterMs)));
+  } else if (sortField === 'createdAt' && typeof listQuery.createdAfterMs === 'number') {
     constraints.push(where('createdAt', '>=', Timestamp.fromMillis(listQuery.createdAfterMs)));
   }
 
@@ -347,6 +351,7 @@ function catalogListTraceMetadata(
     'status==ready',
     listQuery.categoryId?.trim() ? 'categoryId=={categoryId}' : '',
     listQuery.tag?.trim() ? 'tags array-contains {tag}' : '',
+    typeof listQuery.readyAfterMs === 'number' ? 'readyAt>={timestamp}' : '',
     typeof listQuery.createdAfterMs === 'number' ? 'createdAt>={timestamp}' : '',
   ].filter(Boolean);
 
@@ -385,7 +390,13 @@ export const catalogService = {
 
     // `orderBy(readyAt)` silently omits ready docs missing the field — same completeness
     // guard as Studio Design Library (fall back to createdAt for this request only).
-    if (sortField === 'readyAt' && !listQuery.cursor && !page.hasMore) {
+    // New This Week (`readyAfterMs`) must NOT demote to createdAt week/order semantics.
+    if (
+      sortField === 'readyAt' &&
+      typeof listQuery.readyAfterMs !== 'number' &&
+      !listQuery.cursor &&
+      !page.hasMore
+    ) {
       const matchingCount = await this.countReadyDesigns(listQuery);
       if (matchingCount > page.designs.length) {
         return this.listReadyDesignsPage({ ...listQuery, sortField: 'createdAt' });
@@ -561,9 +572,14 @@ export const catalogService = {
         }
 
         if (sortField === 'readyAt') {
+          // Never demote New This Week to createdAt membership/order.
+          if (typeof listQuery.readyAfterMs === 'number') {
+            throw error;
+          }
           return this.listReadyDesignsPage({
             ...listQuery,
             createdAfterMs: undefined,
+            readyAfterMs: undefined,
             sortField: 'createdAt',
           });
         }
@@ -572,6 +588,7 @@ export const catalogService = {
           return this.listReadyDesignsPage({
             ...listQuery,
             createdAfterMs: undefined,
+            readyAfterMs: undefined,
             sortField: 'updatedAt',
           });
         }
@@ -583,6 +600,7 @@ export const catalogService = {
         return this.listReadyDesignsPage({
           ...listQuery,
           createdAfterMs: undefined,
+          readyAfterMs: undefined,
           sortField: 'readyAt',
         });
       }
