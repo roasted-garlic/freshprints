@@ -21,20 +21,17 @@ Background (not active gate): Goal #13 / clean Studio remediation / Stage 2 rema
 
 **Separate concurrent managed goal (does not affect the gate above):**
 `post-launch-catalog-and-processing-stability`
-- **Amendment 9 live QA (2026-08-07):** **PASS WITH NOTES** — attribution
-  `docs/workflow/reviews/2026-08-07-amendment-9-combined-live-qa-attribution.md`
-- **P0** PASS · **P1** PASS WITH NOTES (Signoff **approved_with_notes**) · **P3** PASS
-  (Signoff **approved**) · **P4** PASS (prior Signoff still stands; this run 3 pubs / 3,462 C+T+R)
-- **Amendment 9 optimization set (P0/P1/P3/P4) live-validated / closed** for read-containment
-  goals. **P2 closed without Implement** (accept ~1.1K Studio tag hydrate). Stage 1b **not**
-  complete / **not** started.
-- **Case D** New This Week → `readyAt`: Signoff **approved** (`f9bc19c`)
-- **P4**: Signoff **approved_with_notes**; rate-guard still PASSING; production-promotion
-  blocker cleared. Residual ~1.1K C+T+R per full pub until generated-search retirement.
-- **P3**: Impl `c3d3c45`; deployed `fresh-prints-dev`; live 1 cold load / 89 hits / 0 same-
-  instance TTL reloads
-- **P1**: Impl `dab3c44`; live import **2.00**/design; approval ~2/design (summary-level)
-- PR #40 open / **unmerged** · No production · No merge this pass
+- **Amendment 9** optimization set **closed** (P0/P1/P3/P4; P2 no-implement).
+- **Stage 1b D1 decision package ready** — Formal Review **APPROVED_WITH_CHANGES**.
+  **Stage 1b Implement BLOCKED on owner D1** (not started).
+- Decision analysis:
+  `docs/workflow/reviews/2026-08-07-stage-1b-d1-search-architecture-decision-analysis.md`
+- Stage 1b Plan:
+  `docs/workflow/plans/2026-08-07-stage-1b-search-replacement-plan.md`
+- Plan Review:
+  `docs/workflow/reviews/2026-08-07-stage-1b-search-replacement-plan-review.md`
+- Residual ~1.1K C+T+R/full pub until search cutover + Stage 4.
+- PR #40 open / **unmerged** · No production · No provider accounts this pass
 
 Case D Signoff: `docs/workflow/reviews/2026-08-06-portal-new-this-week-readyat-signoff.md`
 P4 Signoff: `docs/workflow/reviews/2026-08-06-amendment-9-p4-signoff.md`
@@ -42,11 +39,11 @@ P3 Signoff: `docs/workflow/reviews/2026-08-07-amendment-9-p3-signoff.md`
 P1 Signoff: `docs/workflow/reviews/2026-08-07-amendment-9-p1-signoff.md`
 P3 Deploy record: `docs/workflow/reviews/2026-08-07-amendment-9-p3-dev-deploy-record.md`
 Combined live QA: `docs/workflow/reviews/2026-08-07-amendment-9-combined-live-qa-attribution.md`
-P2 Plan: `docs/workflow/plans/2026-08-07-amendment-9-p2-studio-tag-library-read-containment-plan.md`
 P2 Formal Review: `docs/workflow/reviews/2026-08-07-amendment-9-p2-studio-tag-library-read-containment-review.md`
   (**approved — recommend NO IMPLEMENTATION**)
-Next for this goal: Stage 1b still owner D1; Amendment 9 P2 deferred forever unless dual `:all`
-hydrate proven; PR #40 merge / production remain owner gates.
+Next for this goal: **Owner D1** — Plan letters **A**=Algolia / **B**=Typesense Cloud /
+  **C**=Product Simplification B1. Conditional lean Algolia only if features MUST KEEP;
+  B1 co-equal if CAN REMOVE.
 
 **Prior (still true):** Amendment 8 Phase 1B Stage 1a **Signoff approved**. Amendments 1–3
 closed. Generated search/multi-tag/facets remain temporary. Stage 1b blocked on owner D1.
@@ -145,6 +142,9 @@ archive write — none of these could be run live in this environment (no intera
 no Application Default Credentials for scripted checks beyond read-only CLI operations).
 
 Decision Log:
+- 2026-08-07 — Stage 1b D1 decision package complete (analysis + Plan + Formal Review
+  **APPROVED_WITH_CHANGES**). Implement **BLOCKED** on owner D1 (A Algolia / B Typesense /
+  C Product Simplification B1). No provider accounts, secrets, deploy, merge, or production.
 - 2026-08-07 — Combined live QA attribution (P3+P1+P4+P0). OVERALL **PASS WITH NOTES**. P1 Signoff
   **approved_with_notes**; P3 Signoff **approved**. P2 Plan+Formal Review → **NO IMPLEMENTATION**
   (accept Studio ~1.1K tag hydrate). Amendment 9 optimization set closed; Stage 1b not started.

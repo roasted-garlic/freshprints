@@ -1,5 +1,22 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-08-07 - Stage 1b D1 decision package ready (Implement BLOCKED)
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Amendment 9 | **Closed** (P0/P1/P3/P4); P2 no-implement |
+| Stage 1b D1 package | Decision analysis + Plan + Formal Review **APPROVED_WITH_CHANGES** |
+| Stage 1b Implement | **BLOCKED on owner D1** |
+| Options | A Algolia · B Typesense Cloud · C Product Simplification B1 |
+| Production / merge / providers | **None** |
+
+Docs:
+- `docs/workflow/reviews/2026-08-07-stage-1b-d1-search-architecture-decision-analysis.md`
+- `docs/workflow/plans/2026-08-07-stage-1b-search-replacement-plan.md`
+- `docs/workflow/reviews/2026-08-07-stage-1b-search-replacement-plan-review.md`
+
 ## 2026-08-07 - Amendment 9 live QA PASS WITH NOTES; P1/P3 signed off; P2 no-implement
 
 Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).

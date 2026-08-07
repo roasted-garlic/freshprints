@@ -1,5 +1,13 @@
 # Recent Completed Work
 
+## 2026-08-07 - Stage 1b D1 search architecture decision package
+
+- Inventory: 3 remaining generated Portal chains (search/multi-tag, global facets, narrowed facets)
+- Compared Algolia Grow vs Typesense Cloud vs Product Simplification B1
+- Matrix: Algolia 390 · Typesense 355 · B1 390 (tie Algolia/B1)
+- Conditional lean: Algolia if features MUST KEEP; B1 if owner accepts UX cuts
+- Formal Review APPROVED_WITH_CHANGES; Implement BLOCKED on owner D1
+- No provider accounts, secrets, deploy, merge, or production
 ## 2026-08-07 - Amendment 9 live QA attribution + P1/P3 Signoff; P2 no-implement
 
 - Combined live QA **PASS WITH NOTES** (P0 PASS, P1 PASS WITH NOTES, P3 PASS, P4 PASS)
