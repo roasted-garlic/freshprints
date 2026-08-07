@@ -24,4 +24,8 @@
 - `FAIL: …`
 - `PASS WITH NOTES: …`
 
-**Do not Signoff** until owner reply is recorded.
+## Owner reply (recorded)
+
+**PASS** — 2026-08-06
+
+Signoff: `docs/workflow/reviews/2026-08-06-amendment-8-phase-1b-stage-1a-amendment-3-signoff.md`
