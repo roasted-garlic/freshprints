@@ -60,4 +60,9 @@
 
 ---
 
-**Do not Signoff Amendment 9 P4 yet.** P4 rate-guard remains PASSING separately.
+## Owner result (2026-08-06)
+
+**PASS**
+
+Signoff: `docs/workflow/reviews/2026-08-06-portal-new-this-week-readyat-signoff.md` (**approved**).
+Implementation commit: `f9bc19c`. No deploy required for local Portal QA.

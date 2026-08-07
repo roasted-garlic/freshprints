@@ -1,16 +1,32 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-08-06 - Case D + Amendment 9 P4 Signoff complete
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Case D New This Week → `readyAt` | Signoff **approved** (`f9bc19c`) |
+| Amendment 9 P4 rate guard | Signoff **approved_with_notes** (`9fe6430` + `fresh-prints-dev` deploy) |
+| P4 live rate-guard | **PASSING** — 3 pubs; 3,436 C+T+R vs ~28,710 (~88%↓) |
+| P4 production-promotion blocker | **Cleared** |
+| Stage 1b / P3 | **Not started** |
+| Production deploy | **None** |
+
+Note: each remaining full generated catalog publication still costs ~1.1K C+T+R; permanent
+removal depends on later generated search/facet retirement/replacement.
+
+Signoffs:
+- `docs/workflow/reviews/2026-08-06-portal-new-this-week-readyat-signoff.md`
+- `docs/workflow/reviews/2026-08-06-amendment-9-p4-signoff.md`
+
 ## 2026-08-06 - Case D New This Week → readyAt implemented (awaiting owner QA)
 
 Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, unmerged).
 
 Implemented: Discover New This Week membership + order = `readyAt`; Home rail via
 `rankNewThisWeek` on `readyAtMs` (legacy key fallback `readyAtMs ?? createdAtMs`).
-Impl Review **APPROVED**. No deploy / merge / production / Stage 1b / P3.
-P4 rate-guard remains **PASSING**; P4 Signoff still blocked.
-
-Manual QA: `docs/workflow/reviews/2026-08-06-portal-new-this-week-readyat-manual-qa.md`
-**Next:** Owner `PASS` / `FAIL` / `PASS WITH NOTES`.
+Impl Review **APPROVED**. **Superseded:** owner PASS + Signoff approved (see entry above).
 
 ## 2026-08-06 - Discover New This Week → readyAt Plan approved (STOP — no Implement)
 

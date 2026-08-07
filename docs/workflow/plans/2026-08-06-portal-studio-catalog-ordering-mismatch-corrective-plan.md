@@ -4,7 +4,7 @@
 |-------|-------|
 | Date | 2026-08-06 |
 | Author | Planning Agent |
-| Status | implemented (Impl Review APPROVED; awaiting owner Manual QA) |
+| Status | signed off (approved; owner QA PASS) |
 | Workflow | managed-phase (linked corrective; **not** P4 Implement scope) |
 | Supersedes (classification) | Prior draft assumed ordinary Library / Case C; **owner surface confirm = Case D** |
 | Related | `docs/workflow/reviews/2026-08-06-amendment-9-p4-owner-qa-fail-attribution.md`, `docs/workflow/reviews/2026-08-06-amendment-9-p4-portal-ordering-investigation.md`, prior signoff `docs/workflow/reviews/2026-08-06-catalog-display-background-and-ready-ordering-signoff.md` |

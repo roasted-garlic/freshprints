@@ -69,3 +69,11 @@ Corrective Plan + Formal Review:
 `docs/workflow/reviews/2026-08-06-portal-studio-catalog-ordering-mismatch-corrective-review.md`
 
 **Do not Signoff P4 yet.** No implement/deploy/merge this pass.
+
+---
+
+## Follow-up disposition (2026-08-06)
+
+Case D New This Week corrective owner QA **PASS** + Signoff **approved**.
+Amendment 9 P4 Signoff **approved_with_notes** — rate-guard PASSING; production-promotion blocker **cleared**.
+See: `docs/workflow/reviews/2026-08-06-amendment-9-p4-signoff.md`

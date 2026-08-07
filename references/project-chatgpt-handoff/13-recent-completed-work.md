@@ -1,12 +1,20 @@
 # Recent Completed Work
 
+## 2026-08-06 - Case D + Amendment 9 P4 dual Signoff
+
+- Case D New This Week → `readyAt`: owner QA **PASS**; Signoff **approved** (`f9bc19c`)
+- Amendment 9 P4: rate-guard live **PASSING** (3 pubs; 3,436 vs ~28,710 C+T+R); Signoff **approved_with_notes**
+- P4 production-promotion blocker **cleared**; ~1.1K C+T+R per remaining full pub noted
+- Stage 1b / P3 not started; PR #40 open/unmerged; no production deploy
+- Signoffs under `docs/workflow/reviews/2026-08-06-portal-new-this-week-readyat-signoff.md` and `…-amendment-9-p4-signoff.md`
+
 ## 2026-08-06 - Case D New This Week → readyAt (awaiting owner QA)
 
 - Discover + Home New This Week: membership/order use `readyAt` / `readyAtMs`
 - Tests 35 focused + 23 studio ready-order; portal typecheck + lint green
 - Portal `next build` blocked by concurrent `dev:portal` `.next` lock (documented)
 - Impl Review APPROVED; Manual QA checklist ready; no deploy; PR #40 open
-- P4 rate-guard remains PASSING; P4 Signoff still blocked
+- **Superseded:** owner PASS + Signoff (see entry above)
 
 ## 2026-08-06 - Discover New This Week → readyAt Plan + Formal Review (STOP)
 

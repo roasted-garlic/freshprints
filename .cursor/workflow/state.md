@@ -20,16 +20,18 @@ Next Required Step: Owner reviews the production convergence audit and approves 
 Background (not active gate): Goal #13 / clean Studio remediation / Stage 2 remain deferred; prior installer intermediate; domain cutover blocked until `APPROVE MYPRINTREQUEST.COM CUTOVER`.
 
 **Separate concurrent managed goal (does not affect the gate above):**
-`post-launch-catalog-and-processing-stability` — **Amendment 9 P4** + **Case D corrective**
-P4 Functions on `fresh-prints-dev` (`9fe6430`); rate-guard **PASSING** (3 pubs; 3,436 C+T+R).
-**P4 Signoff still blocked** (await Case D owner QA disposition).
-Case D **Implement + Test + Impl Review APPROVED**; committed/pushed; **awaiting owner Manual QA**.
-Stage 1b / P3 **not** started. PR #40 open/unmerged. No production. No deploy this pass.
+`post-launch-catalog-and-processing-stability`
+- **Case D** New This Week → `readyAt`: Signoff **approved** (`f9bc19c`)
+- **Amendment 9 P4**: Signoff **approved_with_notes** (`9fe6430` + dev deploy); rate-guard
+  PASSING (3 pubs; 3,436 C+T+R vs ~28,710); **production-promotion blocker cleared**
+- Generated text search / multi-tag / facets remain temporary (~1.1K C+T+R per full pub remains)
+- Stage 1b / P3 **not** started
+- PR #40 open / **unmerged**
+- No production deploy this pass
 
-Case D Manual QA: `docs/workflow/reviews/2026-08-06-portal-new-this-week-readyat-manual-qa.md`
-Impl Review: `docs/workflow/reviews/2026-08-06-portal-new-this-week-readyat-implementation-review.md`
-Test report: `docs/workflow/reviews/2026-08-06-portal-new-this-week-readyat-test-report.md`
-Next: owner replies `PASS` / `FAIL` / `PASS WITH NOTES` on Case D QA.
+Case D Signoff: `docs/workflow/reviews/2026-08-06-portal-new-this-week-readyat-signoff.md`
+P4 Signoff: `docs/workflow/reviews/2026-08-06-amendment-9-p4-signoff.md`
+Next for this goal: owner decides Stage 1b D1 / further roadmap; no auto-start.
 
 **Prior (still true):** Amendment 8 Phase 1B Stage 1a **Signoff approved**. Amendments 1–3
 closed. Generated search/multi-tag/facets remain temporary. Stage 1b blocked on owner D1.
@@ -129,10 +131,14 @@ archive write — none of these could be run live in this environment (no intera
 no Application Default Credentials for scripted checks beyond read-only CLI operations).
 
 Decision Log:
+- 2026-08-06 — Case D Signoff **approved** + Amendment 9 P4 Signoff **approved_with_notes**.
+  Owner QA PASS on New This Week readyAt. P4 rate-guard PASSING; production-promotion blocker
+  cleared. PR #40 still open/unmerged. No Stage 1b/P3/deploy/merge/production.
 - 2026-08-06 — Case D **Implement + Test + Impl Review APPROVED**; New This Week uses
   `readyAt`/`readyAfterMs` (Library) and `readyAtMs` (Home `rankNewThisWeek`). Awaiting
   owner Manual QA. No deploy / merge / P4 Signoff. Portal `next build` blocked by concurrent
   `dev:portal` `.next` lock (typecheck/lint/tests green).
+  *(Superseded: owner PASS + dual Signoff above.)*
 - 2026-08-06 — Ordering corrective **Case D** confirmed: Portal Discover → New This Week.
   Product: membership + order = `readyAt` (not `createdAt`). Home New This Week rail in
   scope. Amended Plan Formal Review **approved**. No Implement / deploy / merge. P4
