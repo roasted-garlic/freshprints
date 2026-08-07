@@ -24,9 +24,9 @@ Background (not active gate): Goal #13 / clean Studio remediation / Stage 2 rema
 - **Case D** New This Week → `readyAt`: Signoff **approved** (`f9bc19c`)
 - **Amendment 9 P4**: Signoff **approved_with_notes** (`9fe6430` + dev deploy); rate-guard
   PASSING (3 pubs; 3,436 C+T+R vs ~28,710); **production-promotion blocker cleared**
-- **Amendment 9 P3** (server AI taxonomy read containment): Implement **APPROVED**;
-  unified 15m process-local taxonomy cache + in-flight dedupe; tests 12/12 + build/lint green.
-  **No Firebase deploy yet** — morning checkpoint prepared.
+- **Amendment 9 P3** (server AI taxonomy read containment): Implement **APPROVED** (`c3d3c45`);
+  unified 15m process-local taxonomy cache. **Deployed to `fresh-prints-dev`** (owner phrase
+  2026-08-07). Await combined live QA.
 - **Amendment 9 P1** (import/approval read containment): Implement **APPROVED** (`dab3c44`);
   import oneshots 5→2; approve 3→2 (I4+A3 retained).
 - Generated text search / multi-tag / facets remain temporary (~1.1K C+T+R per full pub remains)
@@ -37,10 +37,10 @@ Background (not active gate): Goal #13 / clean Studio remediation / Stage 2 rema
 Case D Signoff: `docs/workflow/reviews/2026-08-06-portal-new-this-week-readyat-signoff.md`
 P4 Signoff: `docs/workflow/reviews/2026-08-06-amendment-9-p4-signoff.md`
 P3 Impl Review: `docs/workflow/reviews/2026-08-07-amendment-9-p3-server-ai-taxonomy-read-containment-implementation-review.md`
-P3 Deploy checkpoint: `docs/workflow/reviews/2026-08-07-amendment-9-p3-dev-deployment-checkpoint.md`
+P3 Deploy record: `docs/workflow/reviews/2026-08-07-amendment-9-p3-dev-deploy-record.md`
 P1 Impl Review: `docs/workflow/reviews/2026-08-07-amendment-9-p1-import-approval-read-containment-implementation-review.md`
 Combined morning QA: `docs/workflow/reviews/2026-08-07-amendment-9-p3-p1-combined-manual-qa.md`
-Next for this goal: owner deploys P3 Functions + runs combined 45-design QA; Stage 1b still owner D1.
+Next for this goal: owner runs combined 45-design QA; Stage 1b still owner D1.
 
 **Prior (still true):** Amendment 8 Phase 1B Stage 1a **Signoff approved**. Amendments 1–3
 closed. Generated search/multi-tag/facets remain temporary. Stage 1b blocked on owner D1.
@@ -140,11 +140,14 @@ archive write — none of these could be run live in this environment (no intera
 no Application Default Credentials for scripted checks beyond read-only CLI operations).
 
 Decision Log:
+- 2026-08-07 — Owner `APPROVE DEV FUNCTIONS DEPLOY: AMENDMENT 9 P3`. Deployed four AI Functions to
+  `fresh-prints-dev` (retry after discovery timeout; `FUNCTIONS_DISCOVERY_TIMEOUT=60`). Record:
+  `docs/workflow/reviews/2026-08-07-amendment-9-p3-dev-deploy-record.md`. No production / no merge.
 - 2026-08-07 — Amendment 9 P1 Implement **APPROVED**. Import 5→2 oneshots; approve 3→2;
   I4+A3 retained; DesignAuthoritySnapshot documentData for safe merge skips.
 - 2026-08-07 — Amendment 9 P3 Implement **APPROVED** (Formal Review approved_with_changes applied).
   Unified process-local `AI_TAXONOMY_CACHE_TTL_MS=15m`; generation-guarded clear; taxonomy-* metrics
-  at Firestore boundary. No deploy overnight. Deploy allowlist:
+  at Firestore boundary. Deploy allowlist:
   enqueueAiEnrichment,testAiEnrichmentPlayground,testAiEnrichmentTagRerank,updateAiEnrichmentSettings.
 - 2026-08-07 — Amendment 9 P3 Formal Review **approved_with_changes**. Process-local 15m TTL
   staleness accepted for staff taxonomy edits during AI batches.

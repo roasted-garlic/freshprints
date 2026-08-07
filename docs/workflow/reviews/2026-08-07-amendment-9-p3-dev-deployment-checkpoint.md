@@ -6,7 +6,7 @@
 | Implementation | Amendment 9 P3 — server AI taxonomy read containment |
 | Impl Review | **APPROVED** |
 | Project | `fresh-prints-dev` only |
-| Status | **Prepared — awaiting owner phrase. DO NOT DEPLOY without owner approval.** |
+| Status | **Deployed to `fresh-prints-dev`** — see deploy record |
 
 ---
 
