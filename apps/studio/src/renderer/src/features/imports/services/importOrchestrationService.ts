@@ -201,10 +201,10 @@ export async function importValidatedPngFile(
     };
   }
 
-  let design;
+  let designAuthority;
 
   try {
-    design = await designService.createDesign(caller, {
+    designAuthority = await designService.createDesign(caller, {
       id: designId,
       title: importDesignTitleFromFileName(validationResult.fileName),
       description: "",
@@ -241,6 +241,8 @@ export async function importValidatedPngFile(
     };
   }
 
+  const design = designAuthority.design;
+
   const baseUploadFields = {
     designId: design.id,
     designTitle: design.title,
@@ -276,6 +278,7 @@ export async function importValidatedPngFile(
     designId: design.id,
     thumbnailBytes: derivatives.thumbnailBytes,
     previewBytes: derivatives.previewBytes,
+    knownAuthority: designAuthority,
   });
 
   if (!pipelineOutcome.success) {

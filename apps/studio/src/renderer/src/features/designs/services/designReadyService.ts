@@ -1,7 +1,7 @@
 import type { DerivativeProcessingStatus } from "@fresh-prints/shared/types/import/derivativeGeneration.types";
 import { permissionService } from "../../permissions/services/permissionService";
 import type { User } from "../../users/types/user.types";
-import type { Design } from "../types/design.types";
+import type { Design, DesignAuthoritySnapshot } from "../types/design.types";
 import {
   type DesignReadyPathValidationResult,
   type MarkDesignReadyPaths,
@@ -44,21 +44,45 @@ export const designReadyService = {
     return validateDesignReadyPaths(design, paths);
   },
 
-  async markDesignProcessing(caller: User, designId: string): Promise<Design> {
+  /**
+   * @param knownAuthority Optional same-stack snapshot from createDesign (P1 I2/I3).
+   *   Must not be a pre-Storage processing return used across uploads.
+   */
+  async markDesignProcessing(
+    caller: User,
+    designId: string,
+    knownAuthority?: DesignAuthoritySnapshot,
+  ): Promise<Design> {
     assertCanEditDesigns(caller);
 
-    const design = await designService.getDesignById(caller, designId);
+    const design =
+      knownAuthority && knownAuthority.design.id === designId
+        ? knownAuthority.design
+        : await designService.getDesignById(caller, designId);
 
     if (design.status !== "imported") {
       throw new Error("Only imported designs can be marked as processing.");
     }
 
-    return designService.updateDesign(caller, designId, { status: "processing" }, { allowStatusChange: true });
+    return designService.updateDesign(
+      caller,
+      designId,
+      { status: "processing" },
+      {
+        allowStatusChange: true,
+        ...(knownAuthority && knownAuthority.design.id === designId
+          ? { knownExistingData: knownAuthority.documentData }
+          : {}),
+      },
+    );
   },
 
   /**
    * Persists canonical derivative paths after Storage upload.
    * Keeps or restores `status: "imported"` — derivatives complete does not mean catalog-ready.
+   *
+   * Always performs a fresh authority read (P1 I4 retained) after Storage I/O, then may skip
+   * the updateDesign pre-write getDoc using that same snapshot (P1 I5).
    */
   async markDesignDerivativesComplete(
     caller: User,
@@ -67,7 +91,8 @@ export const designReadyService = {
   ): Promise<MarkDesignDerivativesCompleteResult> {
     assertCanEditDesigns(caller);
 
-    const design = await designService.getDesignById(caller, designId);
+    const authority = await designService.getDesignAuthoritySnapshot(caller, designId);
+    const design = authority.design;
 
     if (design.status !== "imported" && design.status !== "processing") {
       throw new Error("Only imported or processing designs can have derivatives completed.");
@@ -87,7 +112,10 @@ export const designReadyService = {
         thumbnailPath: paths.thumbnailPath,
         previewPath: paths.previewPath,
       },
-      { allowStatusChange: true },
+      {
+        allowStatusChange: true,
+        knownExistingData: authority.documentData,
+      },
     );
 
     return {

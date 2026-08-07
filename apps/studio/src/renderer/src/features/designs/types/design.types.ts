@@ -178,3 +178,12 @@ export type UpdateDesignInput = Partial<
    */
   artworkBackgroundHex?: string | null;
 };
+
+/**
+ * Same-stack authority snapshot: mapped Design plus raw Firestore fields safe for
+ * `mergeDesignDocumentDataAfterWrite` when skipping a redundant pre-write getDoc.
+ */
+export interface DesignAuthoritySnapshot {
+  design: Design;
+  documentData: Record<string, unknown>;
+}
