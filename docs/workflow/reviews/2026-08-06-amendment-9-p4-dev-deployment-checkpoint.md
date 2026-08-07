@@ -4,8 +4,9 @@
 |-------|-------|
 | Date | 2026-08-06 |
 | Project | `fresh-prints-dev` only |
-| Status | **Awaiting owner phrase** — do not deploy until approved |
-| Required phrase | `APPROVE DEV FUNCTIONS DEPLOY: AMENDMENT 9 P4` |
+| Status | **Deployed to `fresh-prints-dev`** (2026-08-06) |
+| Required phrase | `APPROVE DEV FUNCTIONS DEPLOY: AMENDMENT 9 P4` — **obtained** |
+| Deploy record | `docs/workflow/reviews/2026-08-06-amendment-9-p4-dev-deploy-record.md` |
 | Branch | `fix/post-launch-catalog-and-processing-stability` |
 | PR | #40 — keep open / unmerged |
 

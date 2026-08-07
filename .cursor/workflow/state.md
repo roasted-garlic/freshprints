@@ -21,11 +21,10 @@ Background (not active gate): Goal #13 / clean Studio remediation / Stage 2 rema
 
 **Separate concurrent managed goal (does not affect the gate above):**
 `post-launch-catalog-and-processing-stability` — **Amendment 9 P4**
-**Implement + Test + Impl Review APPROVED**; committed/pushed; **awaiting owner phrase**
-`APPROVE DEV FUNCTIONS DEPLOY: AMENDMENT 9 P4`. No Signoff until live QA.
-Plan/Review/Test/ImplReview/DeployCheckpoint/ManualQA under `docs/workflow/*amendment-9-p4*`.
-W2 export: `onPortalCatalogPublicationStateWritten`. Stage 1b / P3 **not** started.
-PR #40 open/unmerged. No deploy yet.
+**Functions deployed to `fresh-prints-dev`** from `9fe6430` (owner phrase obtained).
+W2 `onPortalCatalogPublicationStateWritten` created; five related Functions updated.
+**Awaiting owner Manual QA** (`docs/workflow/reviews/2026-08-06-amendment-9-p4-manual-qa.md`).
+Signoff blocked until QA. Stage 1b / P3 **not** started. PR #40 open/unmerged. No production.
 
 **Prior (still true):** Amendment 8 Phase 1B Stage 1a **Signoff approved**. Amendments 1–3
 closed. Generated search/multi-tag/facets remain temporary. Stage 1b blocked on owner D1.
@@ -125,6 +124,8 @@ archive write — none of these could be run live in this environment (no intera
 no Application Default Credentials for scripted checks beyond read-only CLI operations).
 
 Decision Log:
+- 2026-08-06 — Amendment 9 **P4 deployed to fresh-prints-dev** (`9fe6430`); owner phrase
+  obtained. Awaiting Manual QA. No Signoff / merge / production / Stage 1b.
 - 2026-08-06 — Amendment 9 **P4 Implement + Test + Impl Review APPROVED**; push pending deploy
   phrase. W2 `onPortalCatalogPublicationStateWritten`. No Signoff / deploy / merge / Stage 1b.
 - 2026-08-06 — Amendment 9 **P4 Plan + Formal Review approved** (Investigate/Plan/Review only;

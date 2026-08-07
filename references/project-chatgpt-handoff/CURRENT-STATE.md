@@ -1,5 +1,18 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-08-06 - Amendment 9 P4 deployed to fresh-prints-dev (awaiting owner QA)
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, unmerged).
+HEAD: `9fe6430`.
+
+Owner phrase obtained. Deployed to **`fresh-prints-dev` only**:
+- created `onPortalCatalogPublicationStateWritten` (W2)
+- updated design/category/tag snapshot triggers + rebuild/retry callables
+
+Record: `docs/workflow/reviews/2026-08-06-amendment-9-p4-dev-deploy-record.md`
+Manual QA: `docs/workflow/reviews/2026-08-06-amendment-9-p4-manual-qa.md`
+No Signoff / merge / production. Stage 1b / P3 not started.
+
 ## 2026-08-06 - Amendment 9 P4 implemented (awaiting Functions deploy approval)
 
 Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, unmerged).
