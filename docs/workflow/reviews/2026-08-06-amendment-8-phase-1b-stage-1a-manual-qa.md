@@ -25,3 +25,11 @@
 - `PASS WITH NOTES: [notes]` — acceptable with follow-ups
 
 **Do not** merge PR #40, deploy, or retire snapshot publishers in this checkpoint.
+
+## Owner reply (recorded)
+
+**PASS** — 2026-08-06
+
+Confirmed with Amendment 3 category-availability criteria (empty actives absent on Portal; Studio empty actives retained; appear/disappear after ready-count changes; Library / Discover / share / search / multi-tag / facets; no duplicate/missing ordinary ready designs).
+
+Final Stage 1a Signoff: `docs/workflow/reviews/2026-08-06-amendment-8-phase-1b-stage-1a-signoff.md`

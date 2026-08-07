@@ -20,12 +20,13 @@ Next Required Step: Owner reviews the production convergence audit and approves 
 Background (not active gate): Goal #13 / clean Studio remediation / Stage 2 remain deferred; prior installer intermediate; domain cutover blocked until `APPROVE MYPRINTREQUEST.COM CUTOVER`.
 
 **Separate concurrent managed goal (does not affect the gate above):**
-`post-launch-catalog-and-processing-stability` — **Amendment 8 Phase 1B Stage 1a Amendment 3**
-(Portal category availability) **Signoff approved**. Owner QA **PASS**. Commit `e97ab3b`.
-Option A: active ∧ `countReadyDesigns({ categoryId }) > 0`; C≤64 fail-closed; no module TTL.
-Signoff: `docs/workflow/reviews/2026-08-06-amendment-8-phase-1b-stage-1a-amendment-3-signoff.md`.
-Amendments 1–2 remain landed (`c15a7be`, `bc893f6`). PR #40 open/unmerged. No deploy.
-Stage 1b not started.
+`post-launch-catalog-and-processing-stability` — **Amendment 8 Phase 1B Stage 1a**
+**Signoff approved** (complete). Firestore known-ID hydration + Firestore-only categories
+(active ∧ ready count &gt; 0). Amendments 1–3 closed (`c15a7be`, `bc893f6`, `e97ab3b`).
+Owner QA **PASS**. Final Signoff:
+`docs/workflow/reviews/2026-08-06-amendment-8-phase-1b-stage-1a-signoff.md`.
+Generated search/multi-tag/facets remain temporary. **Stage 1b blocked on owner D1**
+(managed search provider vs product simplification). PR #40 open/unmerged. No deploy.
 
 **Amendment 9 (2026-08-06) — Large-batch Firestore read amplification:** Investigate → Plan →
 Review → **P0 Signoff approved_with_notes**. Owner re-QA **PASS WITH NOTES** (scroll + zero
@@ -127,6 +128,10 @@ archive write — none of these could be run live in this environment (no intera
 no Application Default Credentials for scripted checks beyond read-only CLI operations).
 
 Decision Log:
+- 2026-08-06 — Amendment 8 Phase 1B **Stage 1a Signoff approved** (final). Owner QA **PASS**
+  (hydration + categories + Amendment 3 criteria). Commit `e97ab3b` (impl) / docs on PR #40
+  (open/unmerged). Stage 1b blocked on D1. No deploy / merge / cleanup / Function retirement.
+  Signoff: `docs/workflow/reviews/2026-08-06-amendment-8-phase-1b-stage-1a-signoff.md`.
 - 2026-08-06 — Stage 1a Amendment 3 **Signoff approved**. Owner QA **PASS**. Commit `e97ab3b`
   on PR #40 (open/unmerged). No deploy / Stage 1b / merge / production.
   Signoff: `docs/workflow/reviews/2026-08-06-amendment-8-phase-1b-stage-1a-amendment-3-signoff.md`.
