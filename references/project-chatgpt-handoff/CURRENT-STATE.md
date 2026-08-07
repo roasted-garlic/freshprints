@@ -1,5 +1,21 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-08-06 - Stage 1a Amendment 3 Implement APPROVED — awaiting owner re-QA
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, unmerged).
+Starting HEAD: `bc893f6`.
+
+Portal customer categories = active ∧ `countReadyDesigns({ categoryId }) > 0` (Option A).
+C≤64 / partial count fail-closed; in-flight Promise clear-by-identity; no module TTL;
+no snapshots; Studio Category Management still shows empty actives.
+Impl Review **APPROVED** after in-flight clear correction.
+**No Signoff** until owner QA. No deploy / Stage 1b / merge / production.
+
+Owner QA: `docs/workflow/reviews/2026-08-06-amendment-8-phase-1b-stage-1a-amendment-3-manual-qa.md`
+Test report: `docs/workflow/reviews/2026-08-06-amendment-8-phase-1b-stage-1a-amendment-3-test-report.md`
+Impl review: `docs/workflow/reviews/2026-08-06-amendment-8-phase-1b-stage-1a-amendment-3-implementation-review.md`
+Plan: `docs/workflow/plans/2026-08-06-amendment-8-phase-1b-stage-1a-amendment-3-category-availability-plan.md`
+
 ## 2026-08-06 - Stage 1a Amendment 2 (Case A archive persist) awaiting owner re-QA
 
 Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, unmerged).
@@ -9,6 +25,7 @@ Amendment 1 mapper FAIL on live QA → Amendment 2 **Case A**: Firestore never w
 `persistCategoryArchive` + client fallback; Portal focus/visibility reload. Impl
 review **APPROVED**. No Signoff. No Function deploy. Reduced re-QA:
 `docs/workflow/reviews/2026-08-06-amendment-8-phase-1b-stage-1a-amendment-2-manual-qa.md`.
+Note: item 7 Portal empty-visible wording **superseded** by Amendment 3 product rule.
 
 ## 2026-08-06 - Stage 1a Amendment 1 (inactive categories) awaiting owner re-QA
 

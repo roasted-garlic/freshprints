@@ -11,7 +11,7 @@
 4. Open Current Request containing catalog designs → item cards display.
 5. Open a prior reusable catalog design from the account area → design displays.
 6. Open an Assisted Creation catalog-share design → artwork background mat is correct.
-7. Confirm categories load; inactive categories do not appear.
+7. Confirm categories load; inactive categories do not appear; **active categories with zero ready designs also do not appear** (supersedes earlier “empty actives remain visible” Stage 1a wording — see Amendment 3 Plan).
 8. Confirm Discover / recent rails still load.
 9. Confirm text search still works (generated path).
 10. Confirm selecting multiple tags still works (generated path).

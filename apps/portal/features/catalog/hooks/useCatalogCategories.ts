@@ -6,12 +6,14 @@ import { catalogService } from '../services/catalogService';
 import type { CatalogCategory } from '../types/catalog.types';
 
 /**
- * Loads Portal catalog categories from Firestore (`listActiveCategories`).
+ * Loads Portal customer-visible catalog categories (`listActiveCategories`).
  *
- * Freshness contract (Amendment 2): every load hits Firestore (no module TTL).
- * Window focus / tab visibility reloads so Studio archive/restore becomes visible
- * without clearing browser storage. Full page refresh also reloads. No polling
- * or Firestore listeners.
+ * Contract (Amendment 3): active categories with `countReadyDesigns({ categoryId }) > 0`.
+ *
+ * Freshness (Amendment 2, retained): every load hits Firestore (no module TTL).
+ * Window focus / tab visibility reloads so Studio archive/restore and ready-count
+ * changes become visible without clearing browser storage. Full page refresh also
+ * reloads. Concurrent loads share one in-flight Promise. No polling or listeners.
  */
 export function useCatalogCategories() {
   const [categories, setCategories] = useState<CatalogCategory[]>([]);

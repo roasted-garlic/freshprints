@@ -20,14 +20,14 @@ Next Required Step: Owner reviews the production convergence audit and approves 
 Background (not active gate): Goal #13 / clean Studio remediation / Stage 2 remain deferred; prior installer intermediate; domain cutover blocked until `APPROVE MYPRINTREQUEST.COM CUTOVER`.
 
 **Separate concurrent managed goal (does not affect the gate above):**
-`post-launch-catalog-and-processing-stability` — **Amendment 8 Phase 1B Stage 1a** Implement
-complete; owner QA **FAIL on #7** → Amendment 1 mapper → owner re-QA **FAIL** → **Amendment 2
-Case A** (Firestore never inactive). Studio `persistCategoryArchive` + client fallback;
-Portal focus/visibility category reload. Impl review **APPROVED**. Awaiting reduced owner
-re-QA (no Signoff). Record:
-`docs/workflow/reviews/2026-08-06-amendment-8-phase-1b-stage-1a-amendment-2-record.md`.
-Re-QA: `docs/workflow/reviews/2026-08-06-amendment-8-phase-1b-stage-1a-amendment-2-manual-qa.md`.
-PR #40 open/unmerged. No deploy / Function retirement / cleanup / production. Stage 1b not started.
+`post-launch-catalog-and-processing-stability` — **Amendment 8 Phase 1B Stage 1a Amendment 3**
+(Portal category availability). Implement + focused Test + Implementation Review **APPROVED**.
+Option A: `listActiveCategories` → active mapper → `countReadyDesigns({ categoryId }) > 0`;
+C≤64 fail-closed; in-flight clear-by-identity (no module TTL). **Awaiting owner re-QA** —
+`docs/workflow/reviews/2026-08-06-amendment-8-phase-1b-stage-1a-amendment-3-manual-qa.md`.
+**No Signoff** until owner QA. Plan/Review/Test/Impl Review under
+`docs/workflow/*amendment-3*`. Amendments 1–2 remain landed (`c15a7be`, `bc893f6`). PR #40
+open/unmerged. No deploy. Stage 1b not started.
 
 **Amendment 9 (2026-08-06) — Large-batch Firestore read amplification:** Investigate → Plan →
 Review → **P0 Signoff approved_with_notes**. Owner re-QA **PASS WITH NOTES** (scroll + zero
@@ -129,6 +129,13 @@ archive write — none of these could be run live in this environment (no intera
 no Application Default Credentials for scripted checks beyond read-only CLI operations).
 
 Decision Log:
+- 2026-08-06 — Stage 1a Amendment 3 **Implement + Test + Impl Review APPROVED**; owner re-QA
+  pending; no Signoff. Option A ready-count filter; in-flight clear fix re-reviewed. Checklist:
+  `docs/workflow/reviews/2026-08-06-amendment-8-phase-1b-stage-1a-amendment-3-manual-qa.md`.
+  No deploy / Stage 1b / merge.
+- 2026-08-06 — Stage 1a Amendment 3 **Plan+Review APPROVED** (then Implement): Portal category
+  availability = active ∧ ready count &gt; 0 (Option A bridge). Empty-active Portal QA superseded.
+  Plan/Review under `docs/workflow/*amendment-3-category-availability*`.
 - 2026-08-06 — Stage 1a Amendment 2 **Case A**: live Firestore 0 inactive; Studio
   `persistCategoryArchive` + client fallback; Portal focus reload; impl review APPROVED;
   owner re-QA pending; no Signoff; no Function deploy. Record:

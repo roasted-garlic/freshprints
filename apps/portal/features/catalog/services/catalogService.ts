@@ -42,6 +42,14 @@ export const DEFAULT_CATALOG_PAGE_SIZE = 40;
 export const HOME_DISCOVERY_POOL_PAGE_SIZE = 80;
 /** Warm back-navigation reuse for ordinary Firestore catalog pages. */
 export const CATALOG_PAGE_CACHE_TTL_MS = 15_000;
+/**
+ * Amendment 3 — hard cap on active categories before running one ready-design
+ * aggregate count per category. Exceeding this fails closed (no all-actives fallback).
+ */
+export const MAX_ACTIVE_CATEGORIES_FOR_COUNT = 64;
+
+export const TOO_MANY_ACTIVE_CATEGORIES_MESSAGE =
+  `Too many active categories for customer availability counts (max ${MAX_ACTIVE_CATEGORIES_FOR_COUNT}).`;
 
 const catalogPageCache = createBoundedAsyncCache<CatalogDesignListPage>({
   maxEntries: 48,
@@ -303,6 +311,32 @@ export function sortPortalCatalogCategories(
     (left, right) => left.sortOrder - right.sortOrder || left.name.localeCompare(right.name),
   );
 }
+
+/**
+ * Amendment 3 — keep active categories that have at least one Rules-ready design.
+ * Preserves input order. Fail-closed when the active set exceeds the count cap or when
+ * any `countReadyByCategoryId` call rejects (Promise.all).
+ */
+export async function selectCustomerVisibleCategories(
+  activeCategories: readonly CatalogCategory[],
+  countReadyByCategoryId: (categoryId: string) => Promise<number>,
+): Promise<CatalogCategory[]> {
+  if (activeCategories.length > MAX_ACTIVE_CATEGORIES_FOR_COUNT) {
+    throw new Error(TOO_MANY_ACTIVE_CATEGORIES_MESSAGE);
+  }
+
+  const counted = await Promise.all(
+    activeCategories.map(async (category) => ({
+      category,
+      count: await countReadyByCategoryId(category.id),
+    })),
+  );
+
+  return counted.filter(({ count }) => count > 0).map(({ category }) => category);
+}
+
+/** In-flight dedupe for concurrent `listActiveCategories` callers (no module TTL). */
+let listActiveCategoriesInFlight: Promise<CatalogCategory[]> | null = null;
 
 function catalogListTraceMetadata(
   listQuery: CatalogDesignListQuery,
@@ -579,30 +613,55 @@ export const catalogService = {
     return designs;
   },
 
-  /** Phase 1B Stage 1a: active categories from Firestore only (no catalog-reference snapshot). */
+  /**
+   * Customer-visible categories: active (Amendment 1 mapper) with at least one
+   * Rules-ready design (`countReadyDesigns({ categoryId }) > 0`). Firestore-only —
+   * no catalog-reference snapshot / generated taxonomy. Amendment 3 Stage 1a bridge.
+   */
   async listActiveCategories(): Promise<CatalogCategory[]> {
-    const traceMetadata: FirestoreTraceMetadata = {
-      app: 'portal',
-      collection: PORTAL_FIRESTORE_COLLECTIONS.categories,
-      constraints: ['isActive==true'],
-      source: 'catalogService.listActiveCategories',
-      triggerReason: 'route',
-    };
-    traceFirestoreOneShotStart('getDocs', traceMetadata);
-    const snapshot = await getDocs(query(
-      collection(getPortalDb(), PORTAL_FIRESTORE_COLLECTIONS.categories),
-      where('isActive', '==', true),
-    ));
-    traceFirestoreOneShotComplete('getDocs', traceMetadata, snapshot.size);
-    return sortPortalCatalogCategories(
-      snapshot.docs.flatMap((document) => {
-        const mapped = mapPortalActiveCategory(
-          document.id,
-          document.data() as Record<string, unknown>,
-        );
-        return mapped ? [mapped] : [];
-      }),
-    );
+    if (listActiveCategoriesInFlight) {
+      return listActiveCategoriesInFlight;
+    }
+
+    const load = (async () => {
+      const traceMetadata: FirestoreTraceMetadata = {
+        app: 'portal',
+        collection: PORTAL_FIRESTORE_COLLECTIONS.categories,
+        constraints: ['isActive==true'],
+        source: 'catalogService.listActiveCategories',
+        triggerReason: 'route',
+      };
+      traceFirestoreOneShotStart('getDocs', traceMetadata);
+      const snapshot = await getDocs(query(
+        collection(getPortalDb(), PORTAL_FIRESTORE_COLLECTIONS.categories),
+        where('isActive', '==', true),
+      ));
+      traceFirestoreOneShotComplete('getDocs', traceMetadata, snapshot.size);
+
+      const activeCategories = sortPortalCatalogCategories(
+        snapshot.docs.flatMap((document) => {
+          const mapped = mapPortalActiveCategory(
+            document.id,
+            document.data() as Record<string, unknown>,
+          );
+          return mapped ? [mapped] : [];
+        }),
+      );
+
+      return selectCustomerVisibleCategories(activeCategories, (categoryId) =>
+        catalogService.countReadyDesigns({ categoryId }),
+      );
+    })();
+
+    // Store the load Promise itself (not load.finally(...)), so settle can clear by identity.
+    listActiveCategoriesInFlight = load;
+    void load.finally(() => {
+      if (listActiveCategoriesInFlight === load) {
+        listActiveCategoriesInFlight = null;
+      }
+    });
+
+    return load;
   },
 
   /**

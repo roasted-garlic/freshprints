@@ -112,6 +112,7 @@ describe('Amendment 1 — mapPortalActiveCategory excludes inactive (fails on b3
     const block = source.slice(start, facetDoc);
     assert.match(block, /mapPortalActiveCategory/);
     assert.match(block, /where\('isActive', '==', true\)/);
+    assert.match(block, /selectCustomerVisibleCategories/);
     assert.doesNotMatch(block, /loadClientTaxonomy/);
     assert.doesNotMatch(block, /portalCatalogAssetService/);
   });
@@ -159,6 +160,8 @@ describe('Phase 1B Stage 1a — Firestore-primary known-ID + categories', () => 
     assert.match(block, /where\('isActive', '==', true\)/);
     assert.match(block, /mapPortalActiveCategory/);
     assert.match(block, /sortPortalCatalogCategories/);
+    assert.match(block, /selectCustomerVisibleCategories/);
+    assert.match(block, /countReadyDesigns/);
   });
 
   it('does not import generatedPortalCatalogEnabled after Stage 1a cutover of by-id and categories', () => {

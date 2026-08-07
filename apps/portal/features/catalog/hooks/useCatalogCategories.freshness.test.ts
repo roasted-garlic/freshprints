@@ -7,13 +7,13 @@ function read(path: string): string {
 }
 
 describe('Amendment 2 — Portal category freshness (Case A companion)', () => {
-  it('listActiveCategories remains uncached Firestore-only (no module TTL staleness)', () => {
+  it('listActiveCategories remains without a module TTL cache', () => {
     const source = read('apps/portal/features/catalog/services/catalogService.ts');
     const start = source.indexOf('async listActiveCategories');
-    const block = source.slice(start, start + 900);
+    const block = source.slice(start, start + 1600);
     assert.match(block, /where\('isActive', '==', true\)/);
     assert.match(block, /mapPortalActiveCategory/);
-    assert.match(block, /sortPortalCatalogCategories/);
+    assert.match(block, /selectCustomerVisibleCategories/);
     assert.doesNotMatch(block, /catalogCategoriesCache|CATALOG_CATEGORIES_TTL/);
     assert.doesNotMatch(block, /loadClientTaxonomy|listDiscoverDesigns/);
   });
@@ -26,10 +26,15 @@ describe('Amendment 2 — Portal category freshness (Case A companion)', () => {
     assert.match(source, /listActiveCategories/);
   });
 
-  it('archive-to-inactive becomes visible after a fresh listActiveCategories load', () => {
-    // Discriminator vs c15a7be: freshness is focus/reload of Firestore, not mapper-only.
+  it('archive-to-inactive and ready-count changes refresh via focus/reload', () => {
     const hook = read('apps/portal/features/catalog/hooks/useCatalogCategories.ts');
-    assert.match(hook, /Freshness contract \(Amendment 2\)/);
-    assert.match(hook, /Studio archive\/restore/);
+    assert.match(hook, /Freshness \(Amendment 2, retained\)/);
+    assert.match(hook, /Amendment 3/);
+    assert.match(hook, /no module TTL/);
+  });
+
+  it('listActiveCategories shares one in-flight Promise for concurrent callers', () => {
+    const source = read('apps/portal/features/catalog/services/catalogService.ts');
+    assert.match(source, /listActiveCategoriesInFlight/);
   });
 });
