@@ -35,14 +35,21 @@ Background (not active gate): Goal #13 / clean Studio remediation / Stage 2 rema
 
 **Separate concurrent managed goal (does not affect the gate above):**
 `post-launch-catalog-and-processing-stability`
+- **Overnight closeout (2026-08-08):** Stage 5 Signoff **approved_with_notes** + PR #40
+  production-promotion Plan Formal Review **approved_with_changes** (docs only).
+  Stage 5: `docs/workflow/reviews/2026-08-07-stage-5-generated-asset-cleanup-signoff.md`
+  Plan: `docs/workflow/plans/2026-08-08-pr-40-production-promotion-plan.md`
+  Review: `docs/workflow/reviews/2026-08-08-pr-40-production-promotion-plan-review.md`
+  HEAD `54b9fef`; PR mergeable clean; **0** GitHub checks.
+  App Hosting secrets **CLOSED**; rollout **NOT RUN**.
+  Next: `APPROVE PR 40 PRE-MERGE VERIFICATION` (no merge/deploy).
 - **Follow-up PLAN+REVIEW COMPLETE — `pr-40-production-promotion`**
   Plan: `docs/workflow/plans/2026-08-08-pr-40-production-promotion-plan.md`
-  Formal Review: **approved_with_changes** (RC-R1–RC-R7) —
+  Formal Review: **approved_with_changes** (RC-R1 **SATISFIED**; RC-R2–R8 open at execution) —
   `docs/workflow/reviews/2026-08-08-pr-40-production-promotion-plan-review.md`
   **Amendment:** `apphosting-env-secrets` folded in (Firebase web secrets READY; rollout still gated).
-  Stage 5 Formal Signoff: **MISSING** (dev work recorded; parent Signoff absent).
-  PR #40 source: **not merge-ready as-is** until Stage 5 Signoff + prod inventory +
-  pre-merge verification + Algolia strategy.
+  Stage 5 Formal Signoff: **CLOSED** (`approved_with_notes`).
+  PR #40 source: not merge-ready until pre-merge verification + prod inventory + Algolia strategy.
   STOP: no merge / deploy / App Hosting rollout / Algolia mutation / Storage cleanup / implement.
 - **Amendment 9** optimization set **closed** (P0/P1/P3/P4; P2 no-implement).
 - **Stage 1b D1 = A (Algolia)** selected. Stage 1b-A code implemented.
@@ -154,7 +161,7 @@ Background (not active gate): Goal #13 / clean Studio remediation / Stage 2 rema
   `APPROVE DEV RULES DEPLOY: STAGE 5`; CLI exit 0.
   Record: `docs/workflow/reviews/2026-08-07-stage-5-rules-deploy-dev-record.md`
   Storage delete already PASS (empty). Stage 5 Signoff still pending separately.
-- Deferred: Stage 5 Signoff; Stage 6 / prod; TD-030; PR #40 merge.
+- Deferred: Stage 6 / prod; TD-030; PR #40 merge; App Hosting rollout.
 - PR #40 open / **unmerged** · No production
 
 Case D Signoff: `docs/workflow/reviews/2026-08-06-portal-new-this-week-readyat-signoff.md`
@@ -165,10 +172,8 @@ P3 Deploy record: `docs/workflow/reviews/2026-08-07-amendment-9-p3-dev-deploy-re
 Combined live QA: `docs/workflow/reviews/2026-08-07-amendment-9-combined-live-qa-attribution.md`
 P2 Formal Review: `docs/workflow/reviews/2026-08-07-amendment-9-p2-studio-tag-library-read-containment-review.md`
   (**approved — recommend NO IMPLEMENTATION**)
-Next for this goal: **STOP** — PR #40 production-promotion Plan + Formal Review
-  **approved_with_changes**; `apphosting-env-secrets` integrated (secrets READY; rollout gated).
-  Next owner: `APPROVE STAGE 5 SIGNOFF` (or draft Signoff),
-  then `APPROVE PR 40 PRODUCTION PROMOTION PLAN`.
+Next for this goal: **STOP** — Stage 5 Signoff **approved_with_notes**; PR #40 promotion Plan
+  Formal Review **approved_with_changes**. Next owner: `APPROVE PR 40 PRE-MERGE VERIFICATION`.
   No merge / App Hosting rollout / deploy / prod mutation.
 
 **Prior (still true):** Amendment 8 Phase 1B Stage 1a **Signoff approved**. Amendments 1–3
@@ -268,15 +273,16 @@ archive write — none of these could be run live in this environment (no intera
 no Application Default Credentials for scripted checks beyond read-only CLI operations).
 
 Decision Log:
+- 2026-08-08 — Owner `APPROVE STAGE 5 SIGNOFF` + conditional `APPROVE PR 40 PRODUCTION PROMOTION PLAN`.
+  Stage 5 Signoff **approved_with_notes**. PR #40 promotion Plan Formal Review
+  **approved_with_changes** (RC-R1 SATISFIED; RC-R2–R8 execution-open). Docs only.
+  Signoff: `docs/workflow/reviews/2026-08-07-stage-5-generated-asset-cleanup-signoff.md`
+  Plan: `docs/workflow/plans/2026-08-08-pr-40-production-promotion-plan.md`
+  Review: `docs/workflow/reviews/2026-08-08-pr-40-production-promotion-plan-review.md`
+  Next: `APPROVE PR 40 PRE-MERGE VERIFICATION`. No merge/deploy/mutation.
 - 2026-08-08 — Handoff: fold `apphosting-env-secrets` into `pr-40-production-promotion`.
   Secrets create gate **closed** (`APP HOSTING SECRETS READY`). Plan amended with
   Checkpoint 2b / `APPROVE APP HOSTING ROLLOUT`. No App Hosting deploy this pass.
-- 2026-08-08 — Owner `PR #40 — PRODUCTION PROMOTION + MERGE-READINESS PLANNING`.
-  Plan + Formal Review **approved_with_changes** (RC-R1–RC-R7).
-  Stage 5 Signoff **MISSING**. PR #40 not merge-ready as-is.
-  Plan: `docs/workflow/plans/2026-08-08-pr-40-production-promotion-plan.md`
-  Review: `docs/workflow/reviews/2026-08-08-pr-40-production-promotion-plan-review.md`
-  STOP: no merge/deploy/mutation/implement.
 - 2026-08-07 — Owner `45-DESIGN PERFORMANCE VALIDATION: AI SPOT CHECK PASS`.
   Final 45-design validation **PASS WITH NOTES**; parent Signoff **approved_with_notes**.
   Studio ~139 billable; 0 tags/cats; import 2.00/design; Console peak 222; AI 8/8.

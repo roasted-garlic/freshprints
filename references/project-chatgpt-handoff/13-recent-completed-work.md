@@ -1,5 +1,12 @@
 # Recent Completed Work
 
+## 2026-08-08 - Overnight closeout: Stage 5 Signoff + PR #40 promotion Plan
+
+- Stage 5 Signoff **approved_with_notes** — `docs/workflow/reviews/2026-08-07-stage-5-generated-asset-cleanup-signoff.md`
+- PR #40 production-promotion Formal Review **approved_with_changes**
+- App Hosting secrets CLOSED; rollout NOT RUN
+- Next: `APPROVE PR 40 PRE-MERGE VERIFICATION` — no merge/deploy
+
 ## 2026-08-08 - apphosting-env-secrets Signoff (approved_with_notes) + PR #40 plan integration
 
 - Plaintext production `NEXT_PUBLIC_*` removed from `apphosting.yaml` → Secret Manager `secret:` refs

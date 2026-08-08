@@ -1,5 +1,23 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-08-08 - OVERNIGHT CLOSEOUT — Stage 5 Signoff + PR #40 promotion Plan — STOP
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+HEAD: `54b9fef8a0ccfa29c8b0dbcd238f8379a74e5608`
+
+| Item | Status |
+|------|--------|
+| Stage 5 Signoff | **approved_with_notes** |
+| Stage 5 path | `docs/workflow/reviews/2026-08-07-stage-5-generated-asset-cleanup-signoff.md` |
+| PR #40 promotion Plan | `docs/workflow/plans/2026-08-08-pr-40-production-promotion-plan.md` |
+| Formal Review | **approved_with_changes** (RC-R1 SATISFIED; RC-R2–R8 open) |
+| Review path | `docs/workflow/reviews/2026-08-08-pr-40-production-promotion-plan-review.md` |
+| PR | mergeable clean; 54 commits / 415 files / +42399 −6907; 0 checks |
+| App Hosting secrets | **CLOSED** (`APP HOSTING SECRETS READY`) |
+| App Hosting rollout | **NOT RUN** |
+| Next phrase | `APPROVE PR 40 PRE-MERGE VERIFICATION` |
+| Confirmations | NO merge / deploy / Firebase / Algolia / secrets / Storage / App Hosting |
+
 ## 2026-08-08 - apphosting-env-secrets integrated into PR #40 promotion — STOP
 
 Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).

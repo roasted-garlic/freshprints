@@ -1,6 +1,8 @@
 # Fresh Prints Roadmap
 
-> 2026-08-08: **PR #40 production-promotion Plan + Formal Review** — **approved_with_changes**. Stage 5 Formal Signoff **MISSING**. PR #40 not merge-ready as-is. Plan: `docs/workflow/plans/2026-08-08-pr-40-production-promotion-plan.md`. Review: `docs/workflow/reviews/2026-08-08-pr-40-production-promotion-plan-review.md`. No merge / production deploy.
+> 2026-08-08: **Overnight closeout** — Stage 5 Signoff **approved_with_notes**; PR #40 production-promotion Formal Review **approved_with_changes**. App Hosting secrets CLOSED; rollout NOT RUN. Next: `APPROVE PR 40 PRE-MERGE VERIFICATION`. No merge / production deploy. Signoff: `docs/workflow/reviews/2026-08-07-stage-5-generated-asset-cleanup-signoff.md`. Plan: `docs/workflow/plans/2026-08-08-pr-40-production-promotion-plan.md`.
+
+> 2026-08-08: **PR #40 production-promotion Plan + Formal Review** — **approved_with_changes**. Stage 5 Formal Signoff now closed (see overnight note). PR #40 not merge-ready until pre-merge verification. Plan: `docs/workflow/plans/2026-08-08-pr-40-production-promotion-plan.md`. Review: `docs/workflow/reviews/2026-08-08-pr-40-production-promotion-plan-review.md`. No merge / production deploy.
 
 > 2026-08-07: **`taxonomy-read-spike-elimination` Signoff** — **approved_with_notes** on `fresh-prints-dev`. 45-design validation **PASS WITH NOTES** (Studio 0 tags/cats; ~139 billable vs ~1461; server materialization cold+warm; Console peak 222 vs ~1.3K/1.4K; AI spot-check 8/8). Signoff: `docs/workflow/reviews/2026-08-07-taxonomy-read-spike-elimination-signoff.md`. Result: `docs/workflow/reviews/2026-08-07-taxonomy-45-design-performance-validation-result.md`. PR #40 open/unmerged. No production. No Stage 6.
 

@@ -4,15 +4,42 @@
 |-------|-------|
 | Date | 2026-08-08 |
 | Author | Planning Agent |
-| Status | ready_for_review |
+| Status | **ready_for_review** → Formal Review **approved_with_changes** (overnight closeout) |
 | Workflow | managed-phase |
 | Managed goal | `post-launch-catalog-and-processing-stability` |
 | Follow-up | `pr-40-production-promotion` |
 | PR | [#40](https://github.com/roasted-garlic/freshprints/pull/40) |
 | Branch | `fix/post-launch-catalog-and-processing-stability` |
-| Planned HEAD | `2ae8b454b734c6535add30ccfcc2ff728c7f43b9` (re-verify at execution) |
-| Base | `production` |
-| Related Signoffs | Stage 1b-C, Stage 4, taxonomy-read-spike-elimination |
+| Planned HEAD | **`54b9fef8a0ccfa29c8b0dbcd238f8379a74e5608`** (re-verify at execution) |
+| Base | `production` (`70c083af6ec0165e95f439fe6111e7e0a62c8ecd`) |
+| Owner auth (docs only) | `APPROVE STAGE 5 SIGNOFF` → `APPROVE PR 40 PRODUCTION PROMOTION PLAN` |
+| Related Signoffs | Stage 1b-C, Stage 4, Stage 5, taxonomy-read-spike-elimination, apphosting-env-secrets |
+
+---
+
+## Overnight closeout status (2026-08-08)
+
+| Gate | Status |
+|------|--------|
+| Stage 5 Formal Signoff | **CLOSED** — `approved_with_notes` — `docs/workflow/reviews/2026-08-07-stage-5-generated-asset-cleanup-signoff.md` |
+| `apphosting-env-secrets` | **CLOSED** — `APP HOSTING SECRETS READY` (Checkpoint 2b secrets create/grant **SATISFIED**) |
+| App Hosting rollout | **NOT RUN** — still needs `APPROVE APP HOSTING ROLLOUT` |
+| PR #40 merge | **NOT authorized** |
+| Pre-merge verification on HEAD | **Pending** — next live gate before merge |
+
+### Live PR audit (refreshed this pass)
+
+| Item | Value |
+|------|-------|
+| Title | `fix: harden post-launch catalog and processing stability` |
+| Head | `54b9fef8a0ccfa29c8b0dbcd238f8379a74e5608` |
+| Base | `production` @ `70c083a` |
+| Mergeable | `true` / `clean` |
+| Commits | **54** |
+| Files | **415** |
+| Diff | **+42,399 / −6,907** |
+| Behind production | **0** (ahead 54) |
+| GitHub checks / reviews / threads | **0 / 0 / 0** |
 
 ---
 
@@ -78,31 +105,27 @@ Stage 5 ops script is hard-pinned to `fresh-prints-dev` and cannot clean product
 
 ### 1. Is PR #40 source ready to merge as-is?
 
-**No — not yet.** Source quality is production-candidate after gates, but merge is blocked
-until:
+**Not yet — gates remain before merge, but Stage 5 docs gate is cleared.**
 
 | Gate | Status |
 |------|--------|
-| Stage 5 Formal Signoff (dev) | **MISSING** |
-| Pre-merge verification suite on exact HEAD | **Not re-run on `2ae8b45` in this pass** |
-| Read-only production inventory | **NEEDS PROD CHECK** |
-| Algolia production strategy documented + owner-approved | **NEEDS PROD CHECK** |
-| App Hosting Algolia public env plan (flag off until ready) | **Required** |
+| Stage 5 Formal Signoff (dev) | **CLOSED** (`approved_with_notes`) |
+| Pre-merge verification suite on exact HEAD | **Not yet run/recorded on `54b9fef`** |
+| Read-only production inventory | **[NEEDS OWNER CHECK]** |
+| Algolia production strategy documented + owner-approved | **[NEEDS OWNER CHECK]** |
+| App Hosting Firebase web secrets create/grant | **CLOSED** (`APP HOSTING SECRETS READY`) |
+| App Hosting rollout consuming secret YAML | **NOT RUN** |
+| App Hosting Algolia public env plan (flag off until ready) | **Required at enable time** |
 
 Mergeable GitHub state only proves git conflict cleanliness, not release readiness.
 
 ### 2. Does Stage 5 require a missing Formal Signoff?
 
-**Yes.** Repo search: `*stage-5*signoff*` → **0 files**.
+**Resolved (2026-08-08):** Stage 5 Formal Signoff exists and is **`approved_with_notes`**:
+`docs/workflow/reviews/2026-08-07-stage-5-generated-asset-cleanup-signoff.md`.
 
-Dev evidence exists (plan, reviews, dry-run, storage delete record, Rules deploy record) but
-**Formal parent Signoff is absent**. Treat Stage 5 as **dev-complete, Signoff-incomplete**.
-
-**Required before production Stage 5–class cleanup authorization:**
-
-1. Create Stage 5 Signoff from existing evidence (`approved_with_notes` expected if smoke OK)
-2. Do **not** treat Rules/Storage delete on prod as authorized by Stage 4 or taxonomy Signoffs
-
+Dev cleanup remains **not** authorization for production Storage delete. Production Stage 5–class
+cleanup stays separately gated (dev-pinned script cannot target prod).
 ### 3–4. Production Firebase delta (source vs `origin/production`)
 
 #### Cloud Functions — CREATE (new on HEAD; deploy allowlist)
@@ -349,13 +372,14 @@ If App Hosting auto-deploys on merge to `production`, treat merge as **also** Po
 
 ### Checkpoint 0 — Docs / gates (no prod mutation)
 
-1. Complete **Stage 5 Formal Signoff** from existing dev evidence
-2. Owner: `APPROVE PR 40 PRODUCTION PROMOTION PLAN` (after Formal Review)
-3. Record read-only prod inventory (Functions list, Rules versions, Algolia, App Hosting auto-deploy, Storage residual sample)
+1. ~~Complete Stage 5 Formal Signoff~~ → **DONE** (`approved_with_notes`)
+2. Owner: `APPROVE PR 40 PRODUCTION PROMOTION PLAN` (this overnight closeout)
+3. Record read-only prod inventory (Functions list, Rules versions, Algolia, App Hosting auto-deploy, Storage residual sample) — **[NEEDS OWNER CHECK]**
 
 ### Checkpoint 1 — Pre-merge verification (local / CI-less)
 
-Run suite in § Test Strategy A against exact HEAD. Record results.
+Run suite in § Test Strategy A against exact HEAD (`54b9fef` or newer). Record results.
+Owner phrase: `APPROVE PR 40 PRE-MERGE VERIFICATION` (or equivalent after PASS recorded).
 
 ### Checkpoint 2 — Merge (source only)
 
@@ -365,13 +389,17 @@ Merge PR #40 → `production` (must include secret-backed `apphosting.yaml`).
 is confirmed and owner accepts that merge == rollout (RC-R5).  
 Portal Algolia flag: keep **off** unless Checkpoint 3 already green.
 
-### Checkpoint 2b — First App Hosting rollout after secret cutover (explicit)
+### Checkpoint 2b — App Hosting secrets readiness + first rollout
 
-Owner: `APPROVE APP HOSTING ROLLOUT` (or equivalent explicit production deploy approval).  
-Only after secret-backed YAML is on `production`. Prefer Secret Manager as single source; avoid
-duplicating the same vars as Console overrides unless intentional.  
-Smoke: homepage 200; no `fresh-prints-dev` in served HTML; production `NEXT_PUBLIC_*` resolve.
+| Sub-gate | Status |
+|----------|--------|
+| Secret-backed YAML in repo | **SATISFIED** |
+| Eight secrets created/granted | **SATISFIED** (`APP HOSTING SECRETS READY`) — **do not reopen** |
+| First rollout consuming secrets | **NOT RUN** — Owner: `APPROVE APP HOSTING ROLLOUT` after YAML on `production` |
 
+Smoke after rollout: homepage HTTP 200; served HTML must **not** contain `fresh-prints-dev`;
+production `NEXT_PUBLIC_*` resolve. Prefer Secret Manager as single source; avoid duplicating
+the same vars as Console overrides unless intentional.
 ### Checkpoint 3 — Algolia production prep (secrets / index)
 
 Owner phrases for secret/config (separate).  
@@ -445,22 +473,26 @@ Record PASS/FAIL. Only then consider promotion complete.
 
 ## Test Strategy
 
-### A. Automated / local (pre-merge, exact HEAD)
+### A. Automated / local (pre-merge, exact HEAD) — MUST RERUN on promotion HEAD
 
-| Check | Command / approach | Required |
-|-------|--------------------|----------|
-| Diff hygiene | `git diff --check` | yes |
-| Taxonomy suites | `npx tsx --test` on taxonomy coalesce/containment/builder + shared alignment | yes |
-| Stage 4/1b containment | Portal Stage 4 + Algolia containment tests previously in Stage 4 report | yes |
-| Functions typecheck/build | `npm run build --prefix functions` or `tsc --noEmit` | yes |
-| Portal typecheck | `npm run typecheck` in portal | yes |
-| Studio typecheck | Studio documented typecheck | yes |
-| Lint touched / repo | project eslint | yes |
-| Rules tests | `npm run test:rules` when Java available | yes if runnable |
-| Full monorepo test sweep | optional; document known pre-existing failures | recommended |
+Lookup from repo scripts (`package.json` workspaces). Do not invent commands.
 
-**Note:** No GitHub checks on HEAD — local suite is the merge evidence. Do **not** invent CI in this task.
+| Check | Command | Required | Notes |
+|-------|---------|----------|-------|
+| Diff hygiene | `git diff --check` | yes | Always |
+| Taxonomy suites | `npx tsx --test` on `functions/src/taxonomy/*.test.ts` + shared builder/alignment tests | yes | Focused |
+| Stage 4 / Algolia containment | Portal Stage 4 + Algolia / discover / facet tests under `apps/portal/features/catalog/` | yes | Focused |
+| Stage 5 guard tests | `node --test functions/scripts/lib/stage5GeneratedAssetCleanup*.test.mjs` | yes | Focused |
+| Functions build | `npm run build --prefix functions` | yes | |
+| Portal typecheck | `npm run typecheck --workspace @fresh-prints/portal` | yes | |
+| Portal build | `npm run build:portal` | recommended | Catches Next build issues |
+| Studio typecheck | `npx tsc --noEmit` in Studio (or equivalent workspace script if present); Studio `build` runs `tsc` | yes type / optional full package | Full `npm run build:studio` is heavy (electron-builder) — typecheck sufficient for merge gate unless owner requires package |
+| Repo lint | `npm run lint` | yes | |
+| Rules tests | `npm run test:rules` | yes **if Java available** | Document skip if blocked |
 
+**Already valid without re-live QA:** Stage 1b-C / Stage 4 / Stage 5 / taxonomy 45-design **dev** Signoffs — do not re-run destructive live QA. They do **not** replace automated suite on final HEAD.
+
+**No GitHub checks on HEAD** — local suite is the merge evidence. Do **not** invent CI in this task.
 ### B. Read-only production prerequisite checks
 
 | Check | Method |
@@ -496,9 +528,9 @@ Per Approach checkpoints 2–8; each with own phrase.
 
 | # | Phrase (recommended) | Action |
 |---|----------------------|--------|
-| 1 | `APPROVE STAGE 5 SIGNOFF` / complete Signoff doc | Close Stage 5 docs gate |
-| 2 | `APPROVE PR 40 PRODUCTION PROMOTION PLAN` | Accept this plan post-review |
-| 3 | `APPROVE PR 40 PRE-MERGE VERIFICATION` | After suite recorded |
+| 1 | ~~`APPROVE STAGE 5 SIGNOFF`~~ | **DONE** |
+| 2 | ~~`APPROVE PR 40 PRODUCTION PROMOTION PLAN`~~ | **DONE** (overnight closeout; docs only) |
+| 3 | `APPROVE PR 40 PRE-MERGE VERIFICATION` | After suite recorded on exact HEAD |
 | 4 | `APPROVE PR 40 MERGE TO PRODUCTION` | GitHub merge only (includes secret-backed YAML) |
 | 4b | `APPROVE APP HOSTING ROLLOUT` | First prod Portal build consuming Secret Manager YAML |
 | 5 | `APPROVE PROD ALGOLIA CONFIG` | Algolia secrets/index/App Hosting Algolia public env |
