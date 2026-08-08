@@ -6,7 +6,7 @@
 | Owner authorizations | `APPROVE PR 40 PRE-MERGE VERIFICATION` |
 | Branch | `fix/post-launch-catalog-and-processing-stability` |
 | **Source verification baseline SHA** | `1d13edf2eb3d685773157c469b1b2e154fe0fd93` |
-| **Final docs-only HEAD SHA** | *(filled after docs commit; application source unchanged from baseline)* |
+| **Final docs-only HEAD SHA** | $docs1 (docs-only; application source still `1d13edf`) |
 | Local = origin = PR head (pre-docs) | **Yes** (asserted before and after suite) |
 | Base | `production` @ `70c083af6ec0165e95f439fe6111e7e0a62c8ecd` |
 | Working tree at start | **clean** |
