@@ -2,7 +2,10 @@
 
 import type { PortalPrintProgressStage } from '@fresh-prints/shared/utils/portalPrintProgressStage';
 
-import { PortalPrintRequestScheduleSection } from './PortalPrintRequestScheduleSection';
+import {
+  PortalPrintRequestScheduleSection,
+  type PortalPrintRequestScheduleEntry,
+} from './PortalPrintRequestScheduleSection';
 import { getPortalPrintProgressStageLabel } from '@fresh-prints/shared/utils/portalPrintProgressStage';
 
 const STAGES: PortalPrintProgressStage[] = ['queued', 'printing', 'done'];
@@ -15,8 +18,8 @@ interface PortalPrintRequestProgressPanelProps {
   showElapsed?: boolean;
   /** Status copy shown while the request is queued / not yet printing. */
   waitingLabel?: string;
-  /** Customer-safe scheduled show labels (no show ids/titles). */
-  scheduledShowLabels?: string[];
+  /** Customer-safe scheduled show entries (ids for keys only; labels never expose show ids/titles). */
+  scheduledShowEntries?: PortalPrintRequestScheduleEntry[];
 }
 
 function getStatusChipLabel(input: {
@@ -47,7 +50,7 @@ export function PortalPrintRequestProgressPanel({
   isPaused = false,
   showElapsed = false,
   waitingLabel = 'Waiting for the printing to start',
-  scheduledShowLabels = [],
+  scheduledShowEntries = [],
 }: PortalPrintRequestProgressPanelProps) {
   const activeIndex = Math.max(0, STAGES.indexOf(activeStage));
   const isRunning = !isLoading && (isLive || (activeStage === 'printing' && !isPaused));
@@ -87,7 +90,7 @@ export function PortalPrintRequestProgressPanel({
           <p className="portal-print-progress-elapsed is-waiting">{statusText}</p>
         ) : null}
 
-        <PortalPrintRequestScheduleSection labels={scheduledShowLabels} />
+        <PortalPrintRequestScheduleSection entries={scheduledShowEntries} />
       </div>
 
       <div className="portal-print-progress-side">

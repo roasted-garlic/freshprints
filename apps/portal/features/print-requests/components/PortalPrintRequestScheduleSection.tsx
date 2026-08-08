@@ -1,17 +1,24 @@
-interface PortalPrintRequestScheduleSectionProps {
-  labels: string[];
+export interface PortalPrintRequestScheduleEntry {
+  /** Stable identity for list reconciliation (e.g. upcomingShowId). Not displayed. */
+  id: string;
+  /** Customer-safe label (no show ids/titles). */
+  label: string;
 }
 
-export function PortalPrintRequestScheduleSection({ labels }: PortalPrintRequestScheduleSectionProps) {
-  if (labels.length === 0) return null;
-  const heading = labels.length === 1 ? 'Scheduled show' : 'Scheduled shows';
+interface PortalPrintRequestScheduleSectionProps {
+  entries: PortalPrintRequestScheduleEntry[];
+}
+
+export function PortalPrintRequestScheduleSection({ entries }: PortalPrintRequestScheduleSectionProps) {
+  if (entries.length === 0) return null;
+  const heading = entries.length === 1 ? 'Scheduled show' : 'Scheduled shows';
 
   return (
     <div className="portal-print-progress-schedules">
       <p className="portal-eyebrow">{heading}</p>
       <ul className="portal-print-progress-schedule-list">
-        {labels.map((label, index) => (
-          <li key={`${label}-${index}`}>{label}</li>
+        {entries.map((entry) => (
+          <li key={entry.id}>{entry.label}</li>
         ))}
       </ul>
     </div>

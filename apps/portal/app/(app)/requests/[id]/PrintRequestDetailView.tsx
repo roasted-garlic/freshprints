@@ -306,9 +306,12 @@ export default function PrintRequestDetailView() {
   );
   const progressStage = mountedAuthority.stage;
   progressWatermarkRef.current.stage = progressStage;
-  const scheduledShowLabels = useMemo(
+  const scheduledShowEntries = useMemo(
     () =>
-      requestSchedules.map((schedule) => formatPortalCustomerShowScheduleLabel(schedule)),
+      requestSchedules.map((schedule) => ({
+        id: schedule.upcomingShowId,
+        label: formatPortalCustomerShowScheduleLabel(schedule),
+      })),
     [requestSchedules],
   );
   const hasAttachedDesigns = items.length > 0;
@@ -458,7 +461,7 @@ export default function PrintRequestDetailView() {
           isLive={printProgress.isRunning}
           isLoading={printProgress.isLoading}
           isPaused={printProgress.isPaused}
-          scheduledShowLabels={scheduledShowLabels}
+          scheduledShowEntries={scheduledShowEntries}
           showElapsed={
             progressStage === 'done'
               ? Boolean(printProgress.primaryShow) || printProgress.showElapsed
@@ -466,9 +469,9 @@ export default function PrintRequestDetailView() {
           }
           waitingLabel={printProgress.statusHeadline}
         />
-      ) : scheduledShowLabels.length > 0 ? (
+      ) : scheduledShowEntries.length > 0 ? (
         <section className="portal-panel" aria-label="Scheduled shows">
-          <PortalPrintRequestScheduleSection labels={scheduledShowLabels} />
+          <PortalPrintRequestScheduleSection entries={scheduledShowEntries} />
         </section>
       ) : null}
 
