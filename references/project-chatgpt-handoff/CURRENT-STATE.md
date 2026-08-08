@@ -1,5 +1,161 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-08-08 - OPTIONAL ALGOLIA SECRET DISCOVERY CORRECTIVE — IMPLEMENT+TEST+REVIEW APPROVED — STOP BEFORE WAVE A RETRY
+
+Managed goal: `functions-optional-algolia-secret-deployment-discovery-corrective` — **PASS** (source only).
+Option E: Algolia `defineSecret` moved to `functions/src/algolia/algoliaSecrets.ts`; trio removed from default `index.ts` (restore via `algoliaFunctionExports.ts`); ADR-FP-129.
+Discovery proof: default/enqueue **no** `ALGOLIA_ADMIN_API_KEY`; Algolia module still registers it. Tests: discovery 4/4; Algolia 12/12; taxonomy/AI 30/30; OG 6/6; build/lint 0.
+NO prod Functions deploy; NO Algolia secret created; Algolia still OFF.
+Artifacts: Plan / Formal Review / Test report / Implementation Review under `docs/workflow/…-optional-algolia-secret-deployment-discovery-corrective-*`.
+Next owner phrase (ONE): **`APPROVE PROD FUNCTIONS WAVE A TAXONOMY RETRY`**
+(Prerequisite: corrective present on the production tip used for deploy.)
+## 2026-08-08 - OPTIONAL ALGOLIA SECRET DISCOVERY CORRECTIVE — Plan+Review approved_with_changes — STOP BEFORE IMPLEMENT
+
+Managed goal: `functions-optional-algolia-secret-deployment-discovery-corrective`
+Wave A owner CLI failed (zero mutation) because Firebase discovers all `defineSecret` params from the default codebase; shared `lib/secrets.ts` registers `ALGOLIA_ADMIN_API_KEY` when `enqueueAiEnrichment` loads, and `index.ts` exports Algolia trio. Prod secret **NOT FOUND** (Algolia OFF by design). Option A (create secret to unblock) **REJECTED**.
+Selected Option E: move Algolia `defineSecret` out of shared secrets + remove Algolia exports from default `index` while OFF.
+Plan: `docs/workflow/plans/2026-08-08-functions-optional-algolia-secret-deployment-discovery-corrective-plan.md`
+Formal Review: **approved_with_changes** — `docs/workflow/reviews/2026-08-08-functions-optional-algolia-secret-deployment-discovery-corrective-review.md`
+Next owner phrase (ONE): **`APPROVE IMPLEMENT: OPTIONAL ALGOLIA SECRET DISCOVERY CORRECTIVE`**
+Confirmations: NO secret create / Functions deploy / bootstrap / Algolia enable / publisher delete / Rules / cleanup / Studio / Implement yet
+## 2026-08-08 - PR #40 FUNCTIONS WAVE A TAXONOMY — OWNER CLI FAIL (ALGOLIA SECRET MISSING) — ZERO MUTATION — STOP
+
+Owner ran exact five-function deploy; predeploy build OK; **failed** at analyze:
+`In non-interactive mode but have no value for the secret ALGOLIA_ADMIN_API_KEY`
+`ALGOLIA_ADMIN_API_KEY` Secret Manager **NOT FOUND** on `fresh-prints-prod`.
+Cause: codebase exports Algolia trio with `defineSecret`; `--only` does not skip that check.
+CREATE still **ABSENT**; UPDATE unchanged; Algolia Functions still **ABSENT**; Algolia **OFF**.
+Record: `docs/workflow/reviews/2026-08-08-pr-40-prod-functions-wave-a-taxonomy-deploy-record.md`
+Next owner phrase (ONE): **`APPROVE PROD ALGOLIA_ADMIN_API_KEY SECRET SET: WAVE A UNBLOCK ONLY`**
+Then retry same Wave A five-function deploy (no Algolia Functions / enable / bootstrap).
+## 2026-08-08 - PR #40 FUNCTIONS WAVE A TAXONOMY — AUTHORIZED / HOOK-BLOCKED — OWNER CLI REQUIRED — STOP
+
+Owner: `APPROVE PROD FUNCTIONS WAVE A TAXONOMY`
+Preflight **PASS** on clean `production` @ `7e139685099f90eb1532771e927384316a432e87`
+App Hosting **100%** `build-2026-08-08-004`; Firestore/Storage Rules **COMPLETE**; Algolia **OFF**
+CREATE: onTag/onCategoryTaxonomySourceWritten + rebuildTaxonomyMaterializationCallable — still **ABSENT**
+UPDATE: enqueueAiEnrichment + getPortalGlobalOpenGraph — still **PRESENT** (not updated)
+Agent deploy **hook-blocked**; production Functions **unchanged**.
+Record: `docs/workflow/reviews/2026-08-08-pr-40-prod-functions-wave-a-taxonomy-deploy-record.md`
+**Owner run:**
+```bash
+firebase deploy --only functions:onTagTaxonomySourceWritten,functions:onCategoryTaxonomySourceWritten,functions:rebuildTaxonomyMaterializationCallable,functions:enqueueAiEnrichment,functions:getPortalGlobalOpenGraph --project fresh-prints-prod --non-interactive
+```
+Then reply `PROD FUNCTIONS WAVE A TAXONOMY: COMPLETE` for post-deploy verify.
+After verify PASS, next phrase: `APPROVE PROD TAXONOMY MATERIALIZATION BOOTSTRAP` (do not auto-run).
+Confirmations: NO bootstrap / Algolia / publisher delete / Rules / cleanup / Studio this pass
+
+## 2026-08-08 - PR #40 STORAGE RULES VERIFY PASS + FUNCTIONS WAVE A TAXONOMY CHECKPOINT READY — STOP
+
+Owner: `PROD STORAGE RULES DEPLOY: COMPLETE`
+Live Storage ruleset: **`ccb8e2ea-74e6-4ed6-b1f8-e3cb3e386cd6`** (was `fbcb0ee4-…`); SHA256 = tip `ac3a6830…`
+Markers PASS; Portal `/` `/catalog` **200**; Algolia **OFF**; Firestore **untouched** (`2c0578a0-…`)
+Record: `docs/workflow/reviews/2026-08-08-pr-40-prod-storage-rules-deploy-record.md`
+Wave A Taxonomy checkpoint + Formal Review **approved** (NO deploy):
+`docs/workflow/reviews/2026-08-08-pr-40-prod-functions-wave-a-taxonomy-checkpoint.md`
+`docs/workflow/reviews/2026-08-08-pr-40-prod-functions-wave-a-taxonomy-checkpoint-review.md`
+CREATE: onTag/onCategoryTaxonomySourceWritten + rebuildTaxonomyMaterializationCallable
+UPDATE: enqueueAiEnrichment + getPortalGlobalOpenGraph
+Next owner phrase (ONE): **`APPROVE PROD FUNCTIONS WAVE A TAXONOMY`**
+Confirmations: NO Functions/bootstrap/Algolia/cleanup this pass
+
+## 2026-08-08 - PR #40 STORAGE RULES DEPLOY — AUTHORIZED / HOOK-BLOCKED — OWNER CLI REQUIRED — STOP
+
+Owner: `APPROVE PROD STORAGE RULES DEPLOY: PR40 REMAINING`
+Preflight **PASS** on clean `production` @ `7e139685099f90eb1532771e927384316a432e87`
+(`storage.rules` blob `162f5167…`; Stage 4 generated refs NONE; proof 80 MB OK; tests 59/59 + 16/16 align).
+Agent `firebase deploy --only storage --project fresh-prints-prod` **hook-blocked**.
+Live Storage ruleset **unchanged**: `fbcb0ee4-732e-420f-afff-01041d2eee1b`.
+Firestore Rules untouched: `2c0578a0-9764-4081-a5b3-6a5f23795e7d`.
+Record: `docs/workflow/reviews/2026-08-08-pr-40-prod-storage-rules-deploy-record.md`
+**Owner run:**
+`firebase deploy --only storage --project fresh-prints-prod --non-interactive`
+Then reply `PROD STORAGE RULES DEPLOY: COMPLETE` for post-deploy verify.
+Next after verify: `APPROVE PROD FUNCTIONS WAVE A TAXONOMY` (prepare only; do not auto-run).
+Confirmations: NO Firestore redeploy / Functions / Algolia / bootstrap / object cleanup / Studio
+
+## 2026-08-08 - PR #40 FIRESTORE RULES DEPLOY VERIFY PASS — COMPLETE — STOP
+
+Owner: `PROD FIRESTORE RULES DEPLOY: COMPLETE`
+Live Firestore ruleset: **`2c0578a0-9764-4081-a5b3-6a5f23795e7d`** (was `198d35a7-…`)
+Content SHA256 **exact match** tip `48c21310…` @ `7e13968`
+Markers PASS: taxonomyMaterialization staff-read/write-deny; readyAt optional; snapshotPublicationState match absent
+Portal `/` `/catalog` **200**; Algolia **OFF**; Storage Rules **unchanged** (`fbcb0ee4-…`)
+Record: `docs/workflow/reviews/2026-08-08-pr-40-prod-firestore-rules-deploy-record.md`
+Next owner phrase (ONE): **`APPROVE PROD STORAGE RULES DEPLOY: PR40 REMAINING`**
+Confirmations: NO Storage/Functions/Algolia/bootstrap/indexes/cleanup this verify
+
+## 2026-08-08 - PR #40 FIRESTORE RULES DEPLOY — AUTHORIZED / HOOK-BLOCKED — OWNER CLI REQUIRED — STOP
+
+Owner: `APPROVE PROD FIRESTORE RULES DEPLOY: PR40 REMAINING`
+Preflight **PASS** on clean `production` @ `7e139685099f90eb1532771e927384316a432e87`
+(`firestore.rules` blob `dc8d7906…`; tests 59/59 + taxonomy align 2/2).
+Agent `firebase deploy --only firestore:rules --project fresh-prints-prod` **hook-blocked**.
+Live ruleset **unchanged**: `198d35a7-c309-4c0b-97e0-80e0458c0c01`.
+Record: `docs/workflow/reviews/2026-08-08-pr-40-prod-firestore-rules-deploy-record.md`
+**Owner run:**
+`firebase deploy --only firestore:rules --project fresh-prints-prod --non-interactive`
+Then reply `PROD FIRESTORE RULES DEPLOY: COMPLETE` for post-deploy verify.
+Next after verify: `APPROVE PROD STORAGE RULES DEPLOY: PR40 REMAINING`
+Confirmations: NO Storage/Functions/Algolia/bootstrap/indexes/cleanup/Studio
+
+## 2026-08-08 - PR #40 PROD RULES PREFLIGHT READY — Formal Review approved_with_changes — STOP
+
+Managed goal: `pr-40-prod-rules-deploy-preflight` — **checkpoint READY; NO deploy**.
+Live: `7e13968` / **100%** `build-2026-08-08-004`; Algolia **OFF**; Stage 4 live.
+Tests: `npm run test:rules` **59/59** exit 0; storage+taxonomy alignment **8/8**; `git diff --check` exit 0.
+Granularity: **Option B** — Firestore Rules first, Storage Rules separate later.
+Artifacts:
+- Checkpoint: `docs/workflow/reviews/2026-08-08-pr-40-prod-rules-deploy-checkpoint.md`
+- Formal Review: **approved_with_changes** — `docs/workflow/reviews/2026-08-08-pr-40-prod-rules-deploy-checkpoint-review.md`
+- Plan sequencing amended (Algolia optional parallel): `docs/workflow/plans/2026-08-08-pr-40-remaining-production-gates-plan.md`
+Next owner phrase (ONE): **`APPROVE PROD FIRESTORE RULES DEPLOY: PR40 REMAINING`**
+Confirmations: NO Rules/Functions/Algolia/bootstrap/index/backfill/cleanup/Studio
+
+## 2026-08-08 - PR #40 REMAINING GATES RECONCILIATION — Plan+Review approved_with_changes — STOP
+
+Managed goal: `pr-40-remaining-production-gates-reconciliation` — **Plan + Formal Review DONE; NO mutation**.
+Live: `origin/production` = **`7e139685099f90eb1532771e927384316a432e87`**; App Hosting **100%** **`build-2026-08-08-004`** @ same SHA; Algolia **OFF**; auto-rollout **disabled**.
+RC: R1/R2/R4(prereq)/R5/R7/R8 **SATISFIED**; R3 Algolia **OPEN**; R6 Storage cleanup **OPEN**.
+Indexes: **NO redeploy** (71/71; readyAt 4/4 READY). Taxonomy materialization **absent**. Publishers **5/6** still live.
+Artifacts:
+- Reconciliation: `docs/workflow/reviews/2026-08-08-pr-40-remaining-production-gates-reconciliation.md`
+- Plan: `docs/workflow/plans/2026-08-08-pr-40-remaining-production-gates-plan.md`
+- Formal Review: **approved_with_changes** — `docs/workflow/reviews/2026-08-08-pr-40-remaining-production-gates-plan-review.md`
+Next owner phrase (ONE): `ALGOLIA PROD APP: SEPARATE|REUSE WQ6OPP2E6Z` (then App ID + `ALGOLIA ADMIN SECRET: READY`).
+Confirmations: NO deploy / Algolia enable / secrets value / bootstrap / cleanup / Studio release
+
+## 2026-08-08 - TD-031 SIGNOFF APPROVED — GOAL CLOSED
+
+Managed goal: `portal-discover-view-all-complete-pagination` — **DONE / CLOSED**.
+Owner: `DISCOVER VIEW ALL PAGINATION QA: PASS`.
+Live: **100%** `build-2026-08-08-004` @ `7e139685099f90eb1532771e927384316a432e87`.
+TD-031 **resolved**. Signoff: `docs/workflow/reviews/2026-08-08-portal-discover-view-all-complete-pagination-signoff.md`
+Confirmations: NO Functions/Rules/indexes/Algolia/data this closeout
+
+## 2026-08-08 - TD-031 BUILD LIVE build-2026-08-08-004 / OWNER QA PENDING — STOP BEFORE SIGNOFF
+
+Managed goal: `portal-discover-view-all-complete-pagination`.
+Live App Hosting: **100%** **`build-2026-08-08-004`** @ **`7e139685099f90eb1532771e927384316a432e87`** (NTW `82ea610` + schedule PR #45).
+Rollout: **SUCCEEDED** / build **READY**. Smoke PASS (/, /catalog, /catalog?discover=new; Algolia OFF; no fresh-prints-dev).
+Record: `docs/workflow/reviews/2026-08-08-portal-discover-ntw-count-badge-corrective-app-hosting-rollout-record.md`
+Owner QA: `docs/workflow/reviews/2026-08-08-portal-discover-ntw-count-badge-corrective-owner-qa-checklist.md`
+Next reply: `DISCOVER VIEW ALL PAGINATION QA: PASS` (or FAIL / PASS WITH NOTES).
+Confirmations: NO Signoff yet; NO Functions/Rules/indexes/Algolia/data
+
+## 2026-08-08 - TD-031 APP HOSTING AUTHORIZED — OWNER CLI REQUIRED (HOOK-BLOCKED) — STOP
+
+Managed goal: `portal-discover-view-all-complete-pagination`.
+Phrase: `APPROVE PROD DISCOVER NTW COUNT BADGE APP HOSTING ROLLOUT`
+`origin/production` = **`7e139685099f90eb1532771e927384316a432e87`** (PR #45 MERGED; contains `82ea610` + `ce80dac`).
+Live still **100%** `build-2026-08-08-003` until owner rolls.
+Agent `firebase apphosting:rollouts:create … --force` **hook-blocked**.
+Gate: `docs/workflow/reviews/2026-08-08-portal-discover-ntw-count-badge-corrective-app-hosting-gate.md`
+Record: `docs/workflow/reviews/2026-08-08-portal-discover-ntw-count-badge-corrective-app-hosting-rollout-record.md`
+**Owner run:**
+`firebase apphosting:rollouts:create fresh-prints-portal --project fresh-prints-prod --git-commit 7e139685099f90eb1532771e927384316a432e87 --force`
+Then reply with new build id for verify + owner QA.
+
 ## 2026-08-08 - TD-031 NTW SOURCE PROMOTED + SCHEDULE COMPANION READY — STOP BEFORE APP HOSTING
 
 Managed goal: `portal-discover-view-all-complete-pagination`.

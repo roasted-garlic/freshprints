@@ -1,7 +1,7 @@
 import { algoliasearch, type Algoliasearch } from 'algoliasearch';
 import { defineString } from 'firebase-functions/params';
 
-import { algoliaAdminApiKeySecret } from '../lib/secrets';
+import { algoliaAdminApiKeySecret } from './algoliaSecrets';
 
 export const algoliaAppId = defineString('ALGOLIA_APP_ID', { default: '' });
 export const algoliaPortalCatalogIndexName = defineString('ALGOLIA_PORTAL_CATALOG_INDEX_NAME', {

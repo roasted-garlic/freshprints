@@ -251,6 +251,15 @@ for the full list and exact command). Excluded from production: `inventoryCatalo
 **Never** use a bare `firebase deploy --only functions` — always the full explicit
 `--only functions:name1,functions:name2,...` list.
 
+**Optional Algolia (ADR-FP-129):** While Algolia is OFF, do not export the Algolia Function trio
+from default `functions/src/index.ts` (restore via `algolia/algoliaFunctionExports.ts` under an
+approved Algolia checkpoint). `ALGOLIA_ADMIN_API_KEY` lives in `algolia/algoliaSecrets.ts` only —
+not shared `lib/secrets` — so taxonomy/AI scoped deploys do not require the Algolia secret to
+exist. Dev and prod must use separate indexes (`portal_catalog_ready_dev` vs a production-only
+name such as `portal_catalog_ready_prod`). On `fresh-prints-dev`, if Algolia Functions are already
+live, prefer scoped `--only` until those exports are restored (unfiltered Functions deploy can
+propose deleting endpoints missing from `index.ts`).
+
 ### `master` deletion policy (reminder)
 
 `master` must remain until after the first production smoke test passes. It may be deleted only

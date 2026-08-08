@@ -1,21 +1,27 @@
 # Current Goal
-**Studio automatic updates: final Signoff PASS. Production convergence audit complete; awaiting owner approval to open the production PR.** Full updater implementation (build-time packaged channel, safe error mapping, safe bounded release notes, silent automatic install) live-proven across 4 consecutive real update cycles (beta.2→3→4→5) on a real installed application. See `docs/workflow/reviews/2026-08-02-studio-automatic-updates-final-signoff.md` and `docs/workflow/reviews/2026-08-02-production-convergence-audit.md` (full branch-topology/diff/prerequisite audit + phased production sequence). `origin/production` = `9726edb`, `origin/development` = `0c8498c` (44 commits / 63 files ahead, clean ancestor relationship — direct PR is appropriate). Reporting Functions/Rules/indexes were merged to `production` source earlier but are **not yet confirmed deployed** to `fresh-prints-prod` — flagged as an outstanding Phase D item, separate from this Studio-updater diff. Windows signing secrets and PROD_FIREBASE_* secret population status are owner-only information, not verifiable from this environment.
+**Optional Algolia secret discovery corrective — Implement + Test + Implementation Review APPROVED. STOP before production Wave A retry.**
 
 Current Mode: managed-phase
-Current Phase: Phase A complete (updater Signoff + production diff audit); awaiting owner approval for Phase B (open production PR)
-Plan Status (reporting): complete; Signoff complete
-Plan Status (studio-automatic-updates): complete —
-`docs/workflow/plans/2026-08-01-studio-automatic-updates-plan.md`
-Review Status (studio-automatic-updates): **approved_with_changes**, then **final Signoff PASS** —
-`docs/workflow/reviews/2026-08-02-studio-automatic-updates-final-signoff.md`
-Implement Status (updater): complete, live-proven beta.2 through beta.5
-DONE: no
-Human Checkpoint Required: yes — (1) owner approval to proceed to Phase B (open production PR); signing-secret/PROD_FIREBASE_* population status; stable 1.0.0 publish approval; domain cutover phrase — all later phases; (2) optional: approve App Hosting rollout that consumes secret-backed `apphosting.yaml` (secrets already confirmed READY)
+Current Phase: implement+test+implementation-review complete
+Managed goal: `functions-optional-algolia-secret-deployment-discovery-corrective`
+Plan Status: complete
+Review Status: approved_with_changes (plan)
+Implementation Status: complete
+Implementation Review: **approved** — `docs/workflow/reviews/2026-08-08-functions-optional-algolia-secret-deployment-discovery-corrective-implementation-review.md`
+Test Status: **passed** — `…-corrective-test-report.md`
+DONE: no (Wave A production deploy still pending)
+Human Checkpoint Required: yes — authorize Wave A Taxonomy retry (after corrective on production tip)
 Blocked: no
-Blocker: none
-Allowed Actions: docs; further audit; Phase B (open production PR) once approved; App Hosting rollout only after explicit owner deploy approval
-Forbidden Actions: merging the production PR without approval; any production Firebase deploy without explicit approval; publishing stable Studio 1.0.0; any domain/DNS action without the exact cutover phrase; deleting `master`; broad Functions deploy; creating any dev App Hosting backend; pasting production env/secret values into chat
-Next Required Step: Owner reviews the production convergence audit and approves Phase B (open production PR: base `production`, head `development`, merge commit); **or** replies with explicit App Hosting rollout approval if the secret-backed YAML should go live now
+Allowed Actions: read docs; await Wave A retry phrase; commit/promote corrective if still local
+Forbidden Actions: create ALGOLIA_ADMIN_API_KEY; Algolia Functions/config/enable; taxonomy bootstrap; publisher DELETE; Rules; Storage cleanup; App Hosting; Studio; Node/firebase-functions upgrades; Wave A deploy without phrase
+Next Required Step: Owner replies **`APPROVE PROD FUNCTIONS WAVE A TAXONOMY RETRY`** (ensure corrective is on the tip used for deploy)
+
+**Verified 2026-08-08 (Implement):**
+- Option E: `algolia/algoliaSecrets.ts`; Algolia trio removed from default `index.ts`; restore barrel `algoliaFunctionExports.ts`
+- Discovery proof: enqueue/index **exclude** `ALGOLIA_ADMIN_API_KEY`; Algolia sync **includes**; tests 4/4
+- Build 0; Algolia 12/12; taxonomy/AI 30/30; OG 6/6; scoped eslint 0
+- Prod: no Functions deploy; `ALGOLIA_ADMIN_API_KEY` still NOT FOUND; ADR-FP-129 recorded
+Background (not active gate): Studio automatic-updates Signoff PASS / production convergence audit historical; Goal #13 / Stage 2 deferred; domain cutover blocked until `APPROVE MYPRINTREQUEST.COM CUTOVER`.
 
 Background (not active gate): Goal #13 / clean Studio remediation / Stage 2 remain deferred; prior installer intermediate; domain cutover blocked until `APPROVE MYPRINTREQUEST.COM CUTOVER`.
 
@@ -33,14 +39,13 @@ Background (not active gate): Goal #13 / clean Studio remediation / Stage 2 rema
 - Follow-up (not auto-run): next App Hosting rollout under separate production deploy approval.
 - Goal DONE for repo config hygiene; live cutover gated by explicit rollout phrase.
 
-**Separate concurrent managed goal:** `portal-discover-view-all-complete-pagination` (TD-031) - **ACTIVE — NTW SOURCE PROMOTED; SCHEDULE COMPANION READY; STOP BEFORE APP HOSTING**
-- PR **#44 MERGED** — production `c181f5694bde83ddee26863a0a6a8d546c39619e` (contains `82ea610`)
-- Record: `docs/workflow/reviews/2026-08-08-portal-discover-ntw-count-badge-corrective-source-promotion-record.md`
-- Companion PR **#45** `fix/portal-schedule-prop-wiring` @ `3fb2a8d` — merge to production before App Hosting
-- App Hosting gate READY (not run): `docs/workflow/reviews/2026-08-08-portal-discover-ntw-count-badge-corrective-app-hosting-gate.md`
-- Live: 100% `build-2026-08-08-003` — corrective **NOT LIVE**
-- Next Required Step: merge PR #45 → then `APPROVE PROD DISCOVER NTW COUNT BADGE APP HOSTING ROLLOUT` (production tip SHA)
-- Forbidden: App Hosting without phrase; Rules/Functions/indexes; Algolia; data mutation; Signoff before QA
+**Separate concurrent managed goal:** `portal-discover-view-all-complete-pagination` (TD-031) - **CLOSED — Signoff approved**
+- Live **100%** `build-2026-08-08-004` @ `7e139685099f90eb1532771e927384316a432e87`
+- Owner `DISCOVER VIEW ALL PAGINATION QA: PASS`
+- TD-031 **resolved**
+- Signoff: `docs/workflow/reviews/2026-08-08-portal-discover-view-all-complete-pagination-signoff.md`
+- Rollout record: `docs/workflow/reviews/2026-08-08-portal-discover-ntw-count-badge-corrective-app-hosting-rollout-record.md`
+- Do **not** reopen; parent PR #40 Algolia/Rules/cleanup remain separately gated
 **Separate concurrent managed goal:** `prod-readyat-backfill` - **CLOSED**
 - Signoff **approved_with_notes**: `docs/workflow/reviews/2026-08-08-prod-readyat-backfill-signoff.md`
 - R-018 **resolved** (46/46 readyAt; NTW populated).

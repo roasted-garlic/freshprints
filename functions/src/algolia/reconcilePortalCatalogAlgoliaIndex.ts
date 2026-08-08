@@ -5,7 +5,7 @@ import type { QueryDocumentSnapshot } from 'firebase-admin/firestore';
 
 import { assertStaffCaller, loadCallerProfile } from '../lib/caller';
 import { adminDb } from '../lib/admin';
-import { algoliaAdminApiKeySecret } from '../lib/secrets';
+import { algoliaAdminApiKeySecret } from './algoliaSecrets';
 import {
   createAlgoliaAdminClient,
   ensurePortalCatalogAlgoliaIndexSettings,
