@@ -36,10 +36,10 @@ Background (not active gate): Goal #13 / clean Studio remediation / Stage 2 rema
 **Separate concurrent managed goal:** `portal-discover-view-all-complete-pagination` (TD-031) - **ACTIVE — NTW SOURCE PROMOTED; SCHEDULE COMPANION READY; STOP BEFORE APP HOSTING**
 - PR **#44 MERGED** — production `c181f5694bde83ddee26863a0a6a8d546c39619e` (contains `82ea610`)
 - Record: `docs/workflow/reviews/2026-08-08-portal-discover-ntw-count-badge-corrective-source-promotion-record.md`
-- Companion branch `fix/portal-schedule-prop-wiring` @ `aeff84f` (`ce80dac` schedule wiring + gate docs) — merge to production before App Hosting
+- Companion PR **#45** `fix/portal-schedule-prop-wiring` @ `3fb2a8d` — merge to production before App Hosting
 - App Hosting gate READY (not run): `docs/workflow/reviews/2026-08-08-portal-discover-ntw-count-badge-corrective-app-hosting-gate.md`
 - Live: 100% `build-2026-08-08-003` — corrective **NOT LIVE**
-- Next Required Step: merge schedule companion → then `APPROVE PROD DISCOVER NTW COUNT BADGE APP HOSTING ROLLOUT` (production tip SHA)
+- Next Required Step: merge PR #45 → then `APPROVE PROD DISCOVER NTW COUNT BADGE APP HOSTING ROLLOUT` (production tip SHA)
 - Forbidden: App Hosting without phrase; Rules/Functions/indexes; Algolia; data mutation; Signoff before QA
 **Separate concurrent managed goal:** `prod-readyat-backfill` - **CLOSED**
 - Signoff **approved_with_notes**: `docs/workflow/reviews/2026-08-08-prod-readyat-backfill-signoff.md`

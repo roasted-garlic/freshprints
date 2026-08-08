@@ -6,14 +6,14 @@
 | Managed goal | `portal-discover-view-all-complete-pagination` (NTW count corrective + schedule companion) |
 | Status | **READY AFTER COMPANION MERGE — DO NOT EXECUTE UNTIL OWNER PHRASE** |
 | NTW corrective on production | `c181f5694bde83ddee26863a0a6a8d546c39619e` (contains `82ea610`) |
-| Schedule companion (local) | branch `fix/portal-schedule-prop-wiring` tip `36d71ff` (`ce80dac` + docs) — **merge to production before rollout** |
+| Schedule companion | PR **#45** `fix/portal-schedule-prop-wiring` @ `3fb2a8d` — **merge to production before rollout** |
 
 ---
 
 ## Preconditions
 
 - [x] NTW corrective on `production` (`c181f56` / `82ea610`)
-- [ ] Schedule prop companion merged to `production` (branch `fix/portal-schedule-prop-wiring` @ `ce80dac`)
+- [ ] Schedule prop companion merged to `production` — PR **#45** https://github.com/roasted-garlic/freshprints/pull/45
 - [x] Live still **`build-2026-08-08-003`** until this gate runs
 - [x] Source-promotion record finalized for PR #44
 

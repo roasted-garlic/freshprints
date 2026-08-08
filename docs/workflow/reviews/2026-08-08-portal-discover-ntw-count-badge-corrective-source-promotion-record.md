@@ -61,9 +61,9 @@ Schedule prop wiring (`scheduledShowEntries` / `entries` in `PrintRequestDetailV
 |------|-------|
 | Branch | `fix/portal-schedule-prop-wiring` |
 | Commits | `ce80dac` (wiring + test) · `aeff84f` (gate) · `36d71ff` (source-promotion finalize + state) |
-| Branch tip | `36d71ff55141d0c320f8fa5e25567e890e06cfed` |
+| Branch tip | `3fb2a8d` (includes `36d71ff` tip-SHA doc commit) |
 | Base | `c181f56` (`origin/production` post–PR #44) |
-| Merge status | **NOT YET MERGED** — push/PR may need owner CLI if hooks block |
+| PR | **#45** — https://github.com/roasted-garlic/freshprints/pull/45 — **OPEN** (merge before App Hosting) |
 | Live App Hosting reconfirm | **100%** `build-2026-08-08-003` — corrective still **NOT LIVE** |
 ---
 

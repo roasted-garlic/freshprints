@@ -6,9 +6,9 @@ Managed goal: `portal-discover-view-all-complete-pagination`.
 PR **#44 MERGED** — production **`c181f5694bde83ddee26863a0a6a8d546c39619e`** (contains `82ea610`).
 Live App Hosting: **100%** `build-2026-08-08-003` — NTW count corrective **NOT LIVE**.
 Record: `docs/workflow/reviews/2026-08-08-portal-discover-ntw-count-badge-corrective-source-promotion-record.md`
-**Companion (same goal):** schedule prop wiring on `fix/portal-schedule-prop-wiring` @ **`aeff84f`** (`ce80dac` + gate doc) — merge to `production` before App Hosting (do not leave as stray local diff).
+**Companion (same goal):** PR **#45** `fix/portal-schedule-prop-wiring` @ **`3fb2a8d`** — merge to `production` before App Hosting (do not leave as stray local diff).
 Gate: `docs/workflow/reviews/2026-08-08-portal-discover-ntw-count-badge-corrective-app-hosting-gate.md`
-Next: merge schedule companion → then `APPROVE PROD DISCOVER NTW COUNT BADGE APP HOSTING ROLLOUT` using production tip SHA.
+Next: merge PR #45 → then `APPROVE PROD DISCOVER NTW COUNT BADGE APP HOSTING ROLLOUT` using production tip SHA.
 Confirmations: NO App Hosting / Rules / Functions / indexes / Algolia / data this pass
 
 ## 2026-08-08 - TD-031 NTW COUNT SOURCE PROMOTED — LIVE STILL build-2026-08-08-003 — STOP
