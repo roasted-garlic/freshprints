@@ -3,23 +3,34 @@
 | Field | Value |
 |-------|-------|
 | Date | 2026-08-08 |
-| Reviewer | Review Agent (overnight closeout — independent re-challenge) |
+| Reviewer | Review Agent (pre-merge verification + prod inventory reconciliation) |
 | Plan | `docs/workflow/plans/2026-08-08-pr-40-production-promotion-plan.md` |
-| Planned HEAD | `54b9fef8a0ccfa29c8b0dbcd238f8379a74e5608` |
-| Stage 5 Signoff | `docs/workflow/reviews/2026-08-07-stage-5-generated-asset-cleanup-signoff.md` (**approved_with_notes**) |
+| Source verification SHA | `1d13edf2eb3d685773157c469b1b2e154fe0fd93` |
+| Verification record | `docs/workflow/reviews/2026-08-08-pr-40-pre-merge-verification-result.md` |
+| Inventory record | `docs/workflow/reviews/2026-08-08-pr-40-production-inventory-result.md` |
+| Stage 5 Signoff | **approved_with_notes** |
 | Verdict | **approved_with_changes** |
-| Owner auth | `APPROVE STAGE 5 SIGNOFF` + conditional `APPROVE PR 40 PRODUCTION PROMOTION PLAN` (docs only) |
 
 ---
 
 ## Summary
 
-Independent Formal Review after Stage 5 closeout and App Hosting secrets integration. The
-promotion Plan remains the correct cumulative release guide for PR #40. Stage 5 docs gate and
-App Hosting **secrets create/grant** are now closed. Remaining blockers before merge are
-**pre-merge verification on exact HEAD**, **read-only production inventory**, and **Algolia /
-App Hosting auto-deploy strategy** — not missing Stage 5 Signoff. Verdict:
-**approved_with_changes** (execution RCs still binding; no production action authorized).
+Exact-HEAD pre-merge verification **PASS WITH NOTES** and read-only `fresh-prints-prod` inventory completed under owner phrases. RC-R2, RC-R5, RC-R7 are now **SATISFIED**. RC-R3 remains **OPEN** (Algolia admin secret absent; app/index unproven). RC-R4 / RC-R6 remain gated until Portal is live / Storage cleanup is separately approved. App Hosting automatic rollouts are **proven disabled** — merge ≠ Portal rollout.
+
+---
+
+## RC reconciliation
+
+| ID | Status | Evidence |
+|----|--------|----------|
+| RC-R1 | **SATISFIED** | Stage 5 Signoff `approved_with_notes` |
+| RC-R2 | **SATISFIED** | Live Function inventory → Wave A CREATE/UPDATE + Wave B DELETE allowlists finalized |
+| RC-R3 | **OPEN** | `ALGOLIA_ADMIN_API_KEY` NOT_FOUND; Algolia app/index/search key **[NEEDS OWNER CHECK]** |
+| RC-R4 | **OPEN** | Binding until Portal Stage 4 code live on prod App Hosting |
+| RC-R5 | **SATISFIED** | `rolloutPolicy.disabled=true`, branch `production` — **MANUAL ROLLOUT PROVEN** |
+| RC-R6 | **OPEN** | Residual ~31.5k+229 generated objects; delete still separately gated |
+| RC-R7 | **SATISFIED** | Suite PASS WITH NOTES on `1d13edf` (md trailing whitespace only) |
+| RC-R8 | **SATISFIED / BINDING** | App Hosting Firebase secrets CLOSED; rollout still `APPROVE APP HOSTING ROLLOUT` |
 
 ---
 
@@ -27,63 +38,25 @@ App Hosting auto-deploy strategy** — not missing Stage 5 Signoff. Verdict:
 
 | Area | Status | Notes |
 |------|--------|-------|
-| Scope clear and bounded | pass | Docs/planning only |
-| Architecture alignment | pass | Algolia search; taxonomy materialization; publishers retired |
-| Security impact addressed | pass | Secret Manager YAML; no secret values; allowlists |
-| Data model impact addressed | pass | Materialization; indexes; snapshotPublicationState |
-| Backend impact addressed | pass | CREATE/UPDATE/DELETE Waves |
-| Test strategy adequate | pass | Exact package.json commands listed |
-| Human checkpoints identified | pass | Separated; Stage 5 + plan approval marked DONE |
-| Roadmap alignment | pass | Stage 6 track |
-| Documentation plan | pass | Stage 5 Signoff + this review |
-| No silent scope expansion | pass | No merge/deploy in this pass |
+| Scope clear and bounded | pass | Docs + read-only inventory only |
+| Architecture alignment | pass | |
+| Security impact addressed | pass | No secret values accessed |
+| Backend impact addressed | pass | Allowlists grounded |
+| Test strategy adequate | pass | Exact HEAD suite recorded |
+| Human checkpoints identified | pass | Next: merge phrase (source only) |
+| No silent scope expansion | pass | |
 
 ---
 
-## Independent challenges
+## Challenges after inventory
 
-| Challenge | Finding | Disposition |
-|-----------|---------|-------------|
-| Deployment ordering | Merge before destructive deletes; Algolia OFF initially; Storage Rules after Portal Stage 4 live | **Accept** |
-| Rollback safety | Publisher delete + Storage cleanup irreversible without regen — correctly late-gated | **Accept** |
-| Secret handling | Firebase web secrets CLOSED; never print values; Algolia admin still **[NEEDS OWNER CHECK]** | **Accept** + RC-R3 |
-| Algolia outage | FS browse safe when flag off — evidenced Stage 1b-C / Stage 4 | **Accept** |
-| Publisher deletion timing | After Portal cutover — correct | **Accept** |
-| Taxonomy bootstrap timing | Functions + fallback before dependence; bootstrap before spike claim | **Accept** |
-| Stage 5 prod cleanup timing | Separate from Stage 5 **dev** Signoff; script cannot hit prod | **Accept** |
-| App Hosting rollout timing | After YAML on `production`; separate `APPROVE APP HOSTING ROLLOUT` | **Accept** |
-| Project targeting | Explicit `--project fresh-prints-prod` on all future prod commands | **Accept** |
-| Dev-only tools | Stage 5 script + Studio bridges gated | **Accept** |
-| Merge point | After pre-merge suite + inventory; before deletes — correct | **Accept** |
-| Missing owner checkpoints | Pre-merge verification still outstanding | **RC-R7** |
-| Stage 5 Signoff missing | **Cleared** this pass | RC-R1 **SATISFIED** |
-
----
-
-## Required Changes (execution-binding)
-
-| ID | Status | Change |
-|----|--------|--------|
-| RC-R1 | **SATISFIED** | Stage 5 Formal Signoff complete (`approved_with_notes`) |
-| RC-R2 | Open | Finalize Function allowlists from live `fresh-prints-prod` inventory |
-| RC-R3 | Open | Prove Algolia prod app/index/secrets (non-`_dev`) before enable |
-| RC-R4 | Open | Storage Rules after Portal Stage 4 live on prod |
-| RC-R5 | Open | Resolve App Hosting auto-deploy behavior before merge |
-| RC-R6 | Open | Prod Storage delete only via separate procedure + late checkpoint |
-| RC-R7 | Open | Re-run/record pre-merge suite on exact merge HEAD (`54b9fef` or newer) |
-| RC-R8 | Open (new) | Do not reopen App Hosting Firebase secret create; rollout remains `APPROVE APP HOSTING ROLLOUT` only |
-
----
-
-## Architecture / Security / Backend
-
-Prior review findings stand. Additional overnight notes:
-
-- PR head refreshed: **54 commits / 415 files / +42399/−6907**; mergeable clean; **0** GitHub checks.
-- Checkpoint 2b secrets create/grant = **SATISFIED**; rollout = **NOT RUN**.
-- Stage 5 Signoff notes (Rules emulator unrun; optional post-Rules smoke) do **not** block promotion planning.
-
-**Human approval needed before production:** all remaining phrases in plan § Human Checkpoints 3–14.
+| Topic | Finding |
+|-------|---------|
+| Merge vs App Hosting | Safe: auto-rollout **disabled**; merge alone does not ship Portal |
+| Algolia before merge | Not required for source merge; FS browse safe with Algolia OFF; RC-R3 blocks **enable**, not merge |
+| Indexes missing | Four `readyAt` composites missing — deploy after merge under indexes phrase; New This Week may degrade until then |
+| Publishers still live | Expected; Wave B after Portal Stage 4 live |
+| PR body Stage 5 text | Still stale (“Signoff still separate if pending”) — **agent PR body PATCH blocked by hook**; owner should refresh description |
 
 ---
 
@@ -91,32 +64,21 @@ Prior review findings stand. Additional overnight notes:
 
 **approved_with_changes**
 
-Owner may treat the production-promotion **Plan as accepted for sequencing**. Next live human
-checkpoint is **pre-merge verification** (and/or read-only prod inventory), **not** merge,
-App Hosting rollout, or any Firebase mutation.
+Source merge may proceed under owner phrase once owner accepts remaining notes (Algolia/indexes/post-merge runtime remain gated). Do **not** treat this as deploy or Algolia enable authorization.
 
 ---
 
 ## Next required owner phrase
 
 ```text
-APPROVE PR 40 PRE-MERGE VERIFICATION
+APPROVE PR 40 MERGE TO PRODUCTION
 ```
 
-(After recording PASS on exact HEAD suite — or request agent to run the suite under that phrase.)
-
-Alternate concurrent prep (read-only):
-
-```text
-APPROVE PR 40 PROD INVENTORY
-```
+(Merge only. Does **not** deploy Functions, Rules, indexes, App Hosting, Algolia, or Storage cleanup.)
 
 ---
 
 ## Confirmations
 
 - NO application implementation
-- NO production mutation
-- NO Firebase / Algolia / secret / App Hosting / taxonomy / Function / Storage / Rules action
-- NO PR merge
-- NO force push
+- NO production mutation / deploy / bootstrap / Algolia / secrets / App Hosting / merge

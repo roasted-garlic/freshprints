@@ -10,9 +10,9 @@
 | Follow-up | `pr-40-production-promotion` |
 | PR | [#40](https://github.com/roasted-garlic/freshprints/pull/40) |
 | Branch | `fix/post-launch-catalog-and-processing-stability` |
-| Planned HEAD | **`54b9fef8a0ccfa29c8b0dbcd238f8379a74e5608`** (re-verify at execution) |
+| Planned HEAD | **`1d13edf2eb3d685773157c469b1b2e154fe0fd93`** (source verification baseline; re-verify at merge) |
 | Base | `production` (`70c083af6ec0165e95f439fe6111e7e0a62c8ecd`) |
-| Owner auth (docs only) | `APPROVE STAGE 5 SIGNOFF` → `APPROVE PR 40 PRODUCTION PROMOTION PLAN` |
+| Owner auth (docs only) | Stage 5 Signoff → Plan approve → Pre-merge + Prod inventory |
 | Related Signoffs | Stage 1b-C, Stage 4, Stage 5, taxonomy-read-spike-elimination, apphosting-env-secrets |
 
 ---
@@ -21,25 +21,31 @@
 
 | Gate | Status |
 |------|--------|
-| Stage 5 Formal Signoff | **CLOSED** — `approved_with_notes` — `docs/workflow/reviews/2026-08-07-stage-5-generated-asset-cleanup-signoff.md` |
-| `apphosting-env-secrets` | **CLOSED** — `APP HOSTING SECRETS READY` (Checkpoint 2b secrets create/grant **SATISFIED**) |
-| App Hosting rollout | **NOT RUN** — still needs `APPROVE APP HOSTING ROLLOUT` |
-| PR #40 merge | **NOT authorized** |
-| Pre-merge verification on HEAD | **Pending** — next live gate before merge |
+| Stage 5 Formal Signoff | **CLOSED** — `approved_with_notes` |
+| `apphosting-env-secrets` | **CLOSED** — `APP HOSTING SECRETS READY` |
+| App Hosting automatic rollouts | **DISABLED** (proven) — branch `production`; rollout still manual |
+| Pre-merge verification on `1d13edf` | **PASS WITH NOTES** — RC-R7 **SATISFIED** |
+| Prod Function inventory | **DONE** — RC-R2 **SATISFIED** |
+| Algolia prod prerequisites | **OPEN** — RC-R3 |
+| PR #40 merge | **NOT authorized until** `APPROVE PR 40 MERGE TO PRODUCTION` |
 
-### Live PR audit (refreshed this pass)
+### Live PR audit (verification pass)
 
 | Item | Value |
 |------|-------|
 | Title | `fix: harden post-launch catalog and processing stability` |
-| Head | `54b9fef8a0ccfa29c8b0dbcd238f8379a74e5608` |
+| Source HEAD | `1d13edf2eb3d685773157c469b1b2e154fe0fd93` |
 | Base | `production` @ `70c083a` |
 | Mergeable | `true` / `clean` |
-| Commits | **54** |
-| Files | **415** |
-| Diff | **+42,399 / −6,907** |
-| Behind production | **0** (ahead 54) |
-| GitHub checks / reviews / threads | **0 / 0 / 0** |
+| Commits / files | **55** / **416** |
+| Diff | **+42,546 / −6,907** |
+| Behind production | **0** |
+| GitHub checks | **0** |
+
+### Records
+
+- Verification: `docs/workflow/reviews/2026-08-08-pr-40-pre-merge-verification-result.md`
+- Inventory: `docs/workflow/reviews/2026-08-08-pr-40-production-inventory-result.md`
 
 ---
 

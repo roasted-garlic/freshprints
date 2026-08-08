@@ -1,5 +1,13 @@
 # Recent Completed Work
 
+## 2026-08-08 - PR #40 pre-merge verification + prod inventory
+
+- Pre-merge **PASS WITH NOTES** on `1d13edf` (taxonomy 37, Stage4/Algolia 48, Stage5 26, Rules 59, builds/lint PASS)
+- Prod inventory: 5/6 publishers still live; Algolia Functions absent; readyAt indexes missing; App Hosting auto-rollout **disabled**
+- RC-R2/R5/R7 SATISFIED; RC-R3/R4/R6 OPEN
+- Next: `APPROVE PR 40 MERGE TO PRODUCTION` (merge only)
+- Records: `docs/workflow/reviews/2026-08-08-pr-40-pre-merge-verification-result.md`, `…-production-inventory-result.md`
+
 ## 2026-08-08 - Overnight closeout: Stage 5 Signoff + PR #40 promotion Plan
 
 - Stage 5 Signoff **approved_with_notes** — `docs/workflow/reviews/2026-08-07-stage-5-generated-asset-cleanup-signoff.md`

@@ -1,6 +1,8 @@
 # Fresh Prints Roadmap
 
-> 2026-08-08: **Overnight closeout** — Stage 5 Signoff **approved_with_notes**; PR #40 production-promotion Formal Review **approved_with_changes**. App Hosting secrets CLOSED; rollout NOT RUN. Next: `APPROVE PR 40 PRE-MERGE VERIFICATION`. No merge / production deploy. Signoff: `docs/workflow/reviews/2026-08-07-stage-5-generated-asset-cleanup-signoff.md`. Plan: `docs/workflow/plans/2026-08-08-pr-40-production-promotion-plan.md`.
+> 2026-08-08: **PR #40 pre-merge verification + prod inventory** — pre-merge **PASS WITH NOTES** on `1d13edf`; RC-R2/R5/R7 SATISFIED; RC-R3 Algolia OPEN; App Hosting auto-rollout **disabled** (manual). Next: `APPROVE PR 40 MERGE TO PRODUCTION`. No deploy. Records: `docs/workflow/reviews/2026-08-08-pr-40-pre-merge-verification-result.md`, `docs/workflow/reviews/2026-08-08-pr-40-production-inventory-result.md`.
+
+> 2026-08-08: **Overnight closeout** — Stage 5 Signoff **approved_with_notes**; PR #40 production-promotion Formal Review **approved_with_changes**. App Hosting secrets CLOSED; rollout NOT RUN. Signoff: `docs/workflow/reviews/2026-08-07-stage-5-generated-asset-cleanup-signoff.md`. Plan: `docs/workflow/plans/2026-08-08-pr-40-production-promotion-plan.md`.
 
 > 2026-08-08: **PR #40 production-promotion Plan + Formal Review** — **approved_with_changes**. Stage 5 Formal Signoff now closed (see overnight note). PR #40 not merge-ready until pre-merge verification. Plan: `docs/workflow/plans/2026-08-08-pr-40-production-promotion-plan.md`. Review: `docs/workflow/reviews/2026-08-08-pr-40-production-promotion-plan-review.md`. No merge / production deploy.
 

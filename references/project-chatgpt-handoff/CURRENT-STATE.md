@@ -1,5 +1,24 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-08-08 - PR #40 PRE-MERGE VERIFICATION + PROD INVENTORY — STOP
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+Source verification SHA: `1d13edf2eb3d685773157c469b1b2e154fe0fd93`
+
+| Item | Status |
+|------|--------|
+| Pre-merge verdict | **PASS WITH NOTES** |
+| RC-R7 | **SATISFIED** |
+| RC-R2 / RC-R5 | **SATISFIED** (Function allowlists; App Hosting auto-rollout **disabled**) |
+| RC-R3 | **OPEN** — Algolia admin secret absent; app/index **[NEEDS OWNER CHECK]** |
+| RC-R4 / RC-R6 | **OPEN** (Portal live / Storage cleanup gates) |
+| App Hosting secrets | **CLOSED** |
+| App Hosting rollout | **NOT RUN** (manual; `APPROVE APP HOSTING ROLLOUT`) |
+| Verification | `docs/workflow/reviews/2026-08-08-pr-40-pre-merge-verification-result.md` |
+| Inventory | `docs/workflow/reviews/2026-08-08-pr-40-production-inventory-result.md` |
+| Next phrase | `APPROVE PR 40 MERGE TO PRODUCTION` |
+| Confirmations | NO merge / deploy / Algolia / secrets / Storage / App Hosting |
+
 ## 2026-08-08 - OVERNIGHT CLOSEOUT — Stage 5 Signoff + PR #40 promotion Plan — STOP
 
 Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
