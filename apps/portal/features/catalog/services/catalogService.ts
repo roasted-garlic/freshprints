@@ -78,7 +78,7 @@ export function invalidateCatalogPageCaches(): void {
   homeDiscoveryPoolCache.clear();
 }
 
-function isFirestoreIndexNotReadyError(error: unknown): boolean {
+export function isFirestoreIndexNotReadyError(error: unknown): boolean {
   if (!(error instanceof FirebaseError)) {
     return false;
   }
@@ -88,6 +88,64 @@ function isFirestoreIndexNotReadyError(error: unknown): boolean {
   }
 
   return /index/i.test(error.message);
+}
+
+/**
+ * Approved Home pool sufficiency: incomplete relative to ready membership,
+ * capped by the existing home page size (not a magic min like 8/12/20).
+ */
+export function isHomeDiscoveryPoolIncompleteRelativeToReadyMembership(
+  preferredPoolSize: number,
+  readyMembershipCount: number,
+  poolPageSize: number = HOME_DISCOVERY_POOL_PAGE_SIZE,
+): boolean {
+  if (readyMembershipCount <= 0) {
+    return false;
+  }
+
+  const poolTarget = Math.min(readyMembershipCount, poolPageSize);
+  return preferredPoolSize < poolTarget;
+}
+
+/**
+ * When preferred readyAt is unavailable (index) or the merged preferred pool is
+ * incomplete vs ready membership, Home must fill from the catalog-safe base path.
+ */
+export function shouldFillHomeDiscoveryPoolFromBaseReady(args: {
+  preferredPoolSize: number;
+  readyMembershipCount: number;
+  readyAtIndexUnavailable: boolean;
+  poolPageSize?: number;
+}): boolean {
+  if (args.readyAtIndexUnavailable) {
+    return true;
+  }
+
+  return isHomeDiscoveryPoolIncompleteRelativeToReadyMembership(
+    args.preferredPoolSize,
+    args.readyMembershipCount,
+    args.poolPageSize ?? HOME_DISCOVERY_POOL_PAGE_SIZE,
+  );
+}
+
+/** First-wins merge so metric candidate rows keep their counts when base fill overlaps. */
+export function mergeHomeDiscoveryPoolById(
+  preferred: readonly CatalogDesign[],
+  baseFill: readonly CatalogDesign[],
+): CatalogDesign[] {
+  const byId = new Map<string, CatalogDesign>();
+
+  for (const design of preferred) {
+    byId.set(design.id, design);
+  }
+
+  for (const design of baseFill) {
+    if (!byId.has(design.id)) {
+      byId.set(design.id, design);
+    }
+  }
+
+  return [...byId.values()];
 }
 
 
@@ -485,6 +543,54 @@ function catalogListTraceMetadata(
   };
 }
 
+type CatalogServiceHomeFillHost = {
+  listReadyDesignsPage: (listQuery?: CatalogDesignListQuery) => Promise<CatalogDesignListPage>;
+  listReadyDesignsPageWithSortFallback: (
+    listQuery?: CatalogDesignListQuery,
+  ) => Promise<CatalogDesignListPage>;
+};
+
+/**
+ * Catalog-safe Home base fill: WithSortFallback (readyAt → createdAt on index error),
+ * then explicit createdAt when the preferred readyAt path succeeds empty (legacy docs
+ * missing readyAt) so the pool can still reach ready membership within the home page size.
+ */
+async function fillHomeDiscoveryPoolFromBaseReady(
+  host: CatalogServiceHomeFillHost,
+  byId: Map<string, CatalogDesign>,
+  readyMembershipCount: number,
+): Promise<void> {
+  const fallbackPage = await host.listReadyDesignsPageWithSortFallback({
+    limitCount: HOME_DISCOVERY_POOL_PAGE_SIZE,
+    skipClientSortRepair: true,
+    sortField: 'readyAt',
+  });
+
+  for (const design of fallbackPage.designs) {
+    if (!byId.has(design.id)) {
+      byId.set(design.id, design);
+    }
+  }
+
+  if (
+    !isHomeDiscoveryPoolIncompleteRelativeToReadyMembership(byId.size, readyMembershipCount)
+  ) {
+    return;
+  }
+
+  const createdAtPage = await host.listReadyDesignsPage({
+    limitCount: HOME_DISCOVERY_POOL_PAGE_SIZE,
+    skipClientSortRepair: true,
+    sortField: 'createdAt',
+  });
+
+  for (const design of createdAtPage.designs) {
+    if (!byId.has(design.id)) {
+      byId.set(design.id, design);
+    }
+  }
+}
+
 export const catalogService = {
   async listReadyDesignsPage(listQuery: CatalogDesignListQuery = {}): Promise<CatalogDesignListPage> {
     const sortField = resolveSortField(listQuery);
@@ -645,8 +751,10 @@ export const catalogService = {
    * Bounded pools for Discover home rails — not the full catalog.
    * Prefer library paging for browse-all.
    *
-   * While composite indexes for requestCount / favoriteCount / lastAddedToShowAt are
-   * still building, falls back to status+createdAt (Studio-newest) so home stays usable.
+   * Preferred sorts: readyAt + metric candidates. When readyAt is index-blocked or the
+   * merged preferred pool is incomplete relative to ready membership, fill from the
+   * catalog-safe path (WithSortFallback → createdAt), without treating any non-empty
+   * metric-only pool as sufficient.
    */
   async listHomeDiscoveryPool(): Promise<CatalogDesign[]> {
     return homeDiscoveryPoolCache.get('home-discovery-pool', async () => {
@@ -691,24 +799,33 @@ export const catalogService = {
         }
       }
 
-      if (byId.size > 0) {
-        return [...byId.values()];
-      }
+      const readyAtResult = settled[0];
+      const readyAtIndexUnavailable =
+        readyAtResult?.status === 'rejected' &&
+        isFirestoreIndexNotReadyError(readyAtResult.reason);
 
-      const indexBlocked = settled.every(
-        (result) => result.status === 'rejected' && isFirestoreIndexNotReadyError(result.reason),
+      const hardFailures = settled.filter(
+        (result): result is PromiseRejectedResult =>
+          result.status === 'rejected' && !isFirestoreIndexNotReadyError(result.reason),
       );
 
-      if (indexBlocked || settled.some((result) => result.status === 'rejected')) {
-        const fallback = await this.listReadyDesignsPage({
-          limitCount: HOME_DISCOVERY_POOL_PAGE_SIZE,
-          skipClientSortRepair: true,
-          sortField: 'readyAt',
-        });
-        return fallback.designs;
+      const readyMembershipCount = await this.countReadyDesigns({});
+
+      if (
+        shouldFillHomeDiscoveryPoolFromBaseReady({
+          preferredPoolSize: byId.size,
+          readyAtIndexUnavailable,
+          readyMembershipCount,
+        })
+      ) {
+        await fillHomeDiscoveryPoolFromBaseReady(this, byId, readyMembershipCount);
       }
 
-      return [];
+      if (byId.size === 0 && hardFailures.length > 0) {
+        throw hardFailures[0].reason;
+      }
+
+      return [...byId.values()];
     });
   },
 

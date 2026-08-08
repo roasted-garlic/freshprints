@@ -33,14 +33,41 @@ Background (not active gate): Goal #13 / clean Studio remediation / Stage 2 rema
 - Follow-up (not auto-run): next App Hosting rollout under separate production deploy approval.
 - Goal DONE for repo config hygiene; live cutover gated by explicit rollout phrase.
 
+**Separate concurrent managed goal:** `prod-portal-home-discover-population-regression`
+- Owner: `APPROVE PROD HOME DISCOVER FIX IMPLEMENT` — **SOURCE FIX APPROVED — PRODUCTION STILL AFFECTED**.
+- Branch: `fix/prod-home-discover-population` (base `1e65a43`).
+- Implement + Test + Implementation Review **APPROVED** (source only).
+- Fallback: incomplete vs ready membership / readyAt index unavailable → WithSortFallback + bounded createdAt.
+- Plan: `docs/workflow/plans/2026-08-08-prod-portal-home-discover-population-regression-plan.md`
+- Formal Review: `docs/workflow/reviews/2026-08-08-prod-portal-home-discover-population-regression-plan-review.md`
+- Test: `docs/workflow/reviews/2026-08-08-prod-portal-home-discover-population-regression-test-report.md`
+- Impl Review: `docs/workflow/reviews/2026-08-08-prod-portal-home-discover-population-regression-implementation-review.md`
+- Deploy prep: `docs/workflow/reviews/2026-08-08-prod-portal-home-discover-population-regression-deployment-checkpoint.md`
+- Owner QA prep: `docs/workflow/reviews/2026-08-08-prod-portal-home-discover-population-regression-owner-qa-checklist.md`
+- Next: `APPROVE PROD HOME DISCOVER FIX PROMOTION`
+- STOP: no prod index deploy / App Hosting / Algolia / backfill until owner phrases.
+
 **Separate concurrent managed goal (does not affect the gate above):**
 `post-launch-catalog-and-processing-stability`
+- **Prod Algolia config (2026-08-08):** Owner `APPROVE PROD ALGOLIA CONFIG` — **PARTIAL**.
+  Proposed index `portal_catalog_ready_prod`; Portal enable **OFF**; admin secret still missing.
+  Owner must create/select Algolia app + keys + `functions:secrets:set ALGOLIA_ADMIN_API_KEY`.
+  Record: `docs/workflow/reviews/2026-08-08-pr-40-production-algolia-config-record.md`
+  RC-R3 remains **OPEN**. Next: owner Algolia replies (not Wave A yet).
+- **App Hosting rollout (2026-08-08):** Owner `APPROVE APP HOSTING ROLLOUT` (+ continue; CLI after hook).
+  **`build-2026-08-08-001` SUCCEEDED** on `fresh-prints-portal` @ `1e65a43`; traffic 100%.
+  Smoke PASS (HTTP); **post-rollout Home/Discover content QA FAIL** (see regression goal above).
+  Stage 4 Portal **LIVE**. RC-R4 prerequisite SATISFIED; Rules deploy still OPEN.
+  Record: `docs/workflow/reviews/2026-08-08-pr-40-app-hosting-production-rollout-record.md`
+- **PR #40 SOURCE MERGED (2026-08-08):** Owner `APPROVE PR 40 MERGE TO PRODUCTION`.
+  Merge commit `1e65a43` on `production` (head `66d906c`; prior prod `70c083a`).
+  Portal App Hosting now live; Functions / Rules / indexes / Algolia / Storage cleanup **not** run.
+  Record: `docs/workflow/reviews/2026-08-08-pr-40-production-source-merge-record.md`
 - **Pre-merge + inventory (2026-08-08):** verification **PASS WITH NOTES** on `1d13edf`
   (RC-R7 SATISFIED); prod inventory done (RC-R2/R5 SATISFIED; RC-R3/R4/R6 OPEN).
   Verification: `docs/workflow/reviews/2026-08-08-pr-40-pre-merge-verification-result.md`
   Inventory: `docs/workflow/reviews/2026-08-08-pr-40-production-inventory-result.md`
-  Formal Review reconciled: `docs/workflow/reviews/2026-08-08-pr-40-production-promotion-plan-review.md`
-  Next: `APPROVE PR 40 MERGE TO PRODUCTION` (merge only).
+  Formal Review: `docs/workflow/reviews/2026-08-08-pr-40-production-promotion-plan-review.md`
 - **Overnight closeout (2026-08-08):** Stage 5 Signoff **approved_with_notes** + PR #40
   production-promotion Plan Formal Review **approved_with_changes**.
   Stage 5: `docs/workflow/reviews/2026-08-07-stage-5-generated-asset-cleanup-signoff.md`
@@ -275,6 +302,25 @@ archive write — none of these could be run live in this environment (no intera
 no Application Default Credentials for scripted checks beyond read-only CLI operations).
 
 Decision Log:
+- 2026-08-08 — Managed Phase `prod-portal-home-discover-population-regression`.
+  Plan + Formal Review **approved_with_changes**. Root cause PROVEN (Home pool / missing readyAt
+  index / metric short-circuit). Next: `APPROVE PROD HOME DISCOVER FIX IMPLEMENT`.
+  Plan: `docs/workflow/plans/2026-08-08-prod-portal-home-discover-population-regression-plan.md`
+- 2026-08-08 — Owner `APPROVE PROD ALGOLIA CONFIG`.
+  Partial: contract verified; proposed index `portal_catalog_ready_prod`; Portal OFF;
+  admin secret / prod app / search key **pending owner**. RC-R3 remains OPEN.
+  Record: `docs/workflow/reviews/2026-08-08-pr-40-production-algolia-config-record.md`.
+  STOP before Functions Wave A / enable / reconcile.
+- 2026-08-08 — Owner `APPROVE APP HOSTING ROLLOUT` (+ CONTINUE; owner CLI after Cursor hook).
+  Rollout **`build-2026-08-08-001` SUCCEEDED** @ `1e65a43`. Smoke PASS. Algolia OFF.
+  Stage 4 Portal live; RC-R4 prerequisite SATISFIED (Rules deploy still gated).
+  Record: `docs/workflow/reviews/2026-08-08-pr-40-app-hosting-production-rollout-record.md`.
+  Next: `APPROVE PROD ALGOLIA CONFIG`.
+- 2026-08-08 — Owner `APPROVE PR 40 MERGE TO PRODUCTION`.
+  PR #40 **merged** to `production` as merge commit `1e65a43` (head `66d906c`; prior `70c083a`).
+  SOURCE ONLY — runtime promotion **NOT COMPLETE**.
+  Record: `docs/workflow/reviews/2026-08-08-pr-40-production-source-merge-record.md`.
+  Next: `APPROVE APP HOSTING ROLLOUT`. No Firebase/Algolia/Functions/Rules/Storage this pass.
 - 2026-08-08 — Owner `APPROVE PR 40 PRE-MERGE VERIFICATION` + `APPROVE PR 40 PROD INVENTORY`.
   Pre-merge **PASS WITH NOTES** on `1d13edf` (RC-R7 SATISFIED).
   Prod inventory: Wave A/B allowlists grounded (RC-R2 SATISFIED);
