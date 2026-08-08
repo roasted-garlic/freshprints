@@ -142,9 +142,9 @@ P3 Deploy record: `docs/workflow/reviews/2026-08-07-amendment-9-p3-dev-deploy-re
 Combined live QA: `docs/workflow/reviews/2026-08-07-amendment-9-combined-live-qa-attribution.md`
 P2 Formal Review: `docs/workflow/reviews/2026-08-07-amendment-9-p2-studio-tag-library-read-containment-review.md`
   (**approved — recommend NO IMPLEMENTATION**)
-Next for this goal: **STOP** — `taxonomy-read-spike-elimination` **SIGNOFF approved_with_notes**.
-  45-design final validation **PASS WITH NOTES**; primary spike-elimination proven live.
-  No Stage 6 / prod / PR merge / deploy / implement. Owner gates remaining deferred work.
+Next for this goal: **STOP** — commit+push complete; PR #40 audited/refreshed (**unmerged**).
+  Local/remote HEAD `cb804ba`. Title/body updated to current cumulative scope.
+  Recommendation: **KEEP PR #40**. No Stage 6 / prod / PR merge / deploy / implement.
 
 **Prior (still true):** Amendment 8 Phase 1B Stage 1a **Signoff approved**. Amendments 1–3
 closed. Generated search/multi-tag/facets remain temporary. Stage 1b blocked on owner D1.
