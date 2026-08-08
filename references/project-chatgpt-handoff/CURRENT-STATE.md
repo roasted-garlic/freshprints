@@ -1,5 +1,22 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-08-08 - COMMIT/PUSH + PR #40 AUDIT — STOP
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Main commit | `cb804ba` — `fix: harden post-launch catalog and processing stability` (161 files) |
+| Follow-up | `e562411` — workflow state after PR audit |
+| Push | **PASS** (no force) |
+| PR title | `fix: harden post-launch catalog and processing stability` |
+| PR body | **refreshed** to current cumulative scope |
+| PR head | `e562411` |
+| Diff vs production | 52 commits / 406 files / +41055 / -6886 |
+| Mergeable | **True / clean** |
+| Recommendation | **KEEP PR #40** |
+| Confirmations | NO force push / implement / deploy / production / merge / close / replacement PR |
+
 ## 2026-08-07 - taxonomy-read-spike-elimination SIGNOFF — approved_with_notes — STOP
 
 Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
