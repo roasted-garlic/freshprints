@@ -3,19 +3,21 @@
 | Field | Value |
 |-------|-------|
 | Date | 2026-08-08 |
-| Managed goal | `portal-discover-view-all-complete-pagination` (NTW count corrective) |
-| Status | **READY — DO NOT EXECUTE UNTIL OWNER PHRASE** |
-| Source | PR **#44** MERGED → `production` `c181f5694bde83ddee26863a0a6a8d546c39619e` |
-| Contains fix | `82ea6100a8480890d3d7c5e4bc62168253369e2b` |
+| Managed goal | `portal-discover-view-all-complete-pagination` (NTW count corrective + schedule companion) |
+| Status | **READY AFTER COMPANION MERGE — DO NOT EXECUTE UNTIL OWNER PHRASE** |
+| NTW corrective on production | `c181f5694bde83ddee26863a0a6a8d546c39619e` (contains `82ea610`) |
+| Schedule companion (local) | `ce80dacc4c01dfdfb174da9abe1bf74e57bde8c4` on `fix/portal-schedule-prop-wiring` — **merge to production before rollout** |
 
 ---
 
-## Preconditions (satisfied)
+## Preconditions
 
-- [x] `origin/production` = `c181f5694bde83ddee26863a0a6a8d546c39619e`
-- [x] Production contains approved corrective `82ea610`
-- [x] Live still **`build-2026-08-08-003`** (100%) until this gate runs
-- [x] Source-promotion record finalized
+- [x] NTW corrective on `production` (`c181f56` / `82ea610`)
+- [ ] Schedule prop companion merged to `production` (branch `fix/portal-schedule-prop-wiring` @ `ce80dac`)
+- [x] Live still **`build-2026-08-08-003`** until this gate runs
+- [x] Source-promotion record finalized for PR #44
+
+**Rollout `--git-commit`:** use the **exact `origin/production` tip after the schedule companion is merged** (not `c181f56` alone if companion lands after).
 
 ---
 
@@ -27,24 +29,26 @@ APPROVE PROD DISCOVER NTW COUNT BADGE APP HOSTING ROLLOUT
 
 ---
 
-## Exact command (after phrase only)
+## Expected command (after phrase only)
 
 ```powershell
-firebase apphosting:rollouts:create fresh-prints-portal --project fresh-prints-prod --git-commit c181f5694bde83ddee26863a0a6a8d546c39619e --force
+firebase apphosting:rollouts:create fresh-prints-portal --project fresh-prints-prod --git-commit <EXACT_PRODUCTION_TIP_INCLUDING_SCHEDULE_COMPANION> --force
 ```
 
 ---
 
 ## After SUCCEEDED
 
-1. Verify traffic 100% on the new build (expect next `build-2026-08-08-*` @ `c181f56`).
-2. Smoke `/` + `/catalog` + `/catalog?discover=new` HTTP 200.
+1. Traffic 100% on new build  
+2. Smoke `/` + `/catalog` + `/catalog?discover=new`  
 3. Owner QA:  
-   `docs/workflow/reviews/2026-08-08-portal-discover-ntw-count-badge-corrective-owner-qa-checklist.md`
-4. Reply: `DISCOVER VIEW ALL PAGINATION QA: PASS` (or FAIL / PASS WITH NOTES)
+   `docs/workflow/reviews/2026-08-08-portal-discover-ntw-count-badge-corrective-owner-qa-checklist.md`  
+4. Reply: `DISCOVER VIEW ALL PAGINATION QA: PASS`
+
+Also spot-check print-request detail schedule section still renders when scheduled shows exist.
 
 ---
 
-## Out of scope for this gate
+## Out of scope
 
 Functions, Rules, indexes, Algolia, readyAt, Storage, taxonomy.
