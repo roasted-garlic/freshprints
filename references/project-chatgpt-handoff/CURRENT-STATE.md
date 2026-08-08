@@ -1,24 +1,82 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-08-08 - HOME/DISCOVER SOURCE FIX APPROVED — PRODUCTION STILL AFFECTED — STOP
+
+Managed goal: `prod-portal-home-discover-population-regression`
+Branch: `fix/prod-home-discover-population` (from `1e65a43`)
+**SOURCE FIX APPROVED** — Implementation Review **APPROVED**; tests **54/54**; Portal typecheck/build/lint/diff-check **pass**.
+Fallback: membership-incomplete / readyAt-index-unavailable → `WithSortFallback` + bounded `createdAt` fill (no magic 8/12/20).
+**Production still affected** (`build-2026-08-08-001`). Algolia OFF unrelated. Indexes 0/4 live (defs verified; not deployed).
+Test: `docs/workflow/reviews/2026-08-08-prod-portal-home-discover-population-regression-test-report.md`
+Impl Review: `docs/workflow/reviews/2026-08-08-prod-portal-home-discover-population-regression-implementation-review.md`
+Deploy prep: `docs/workflow/reviews/2026-08-08-prod-portal-home-discover-population-regression-deployment-checkpoint.md`
+Owner QA prep: `docs/workflow/reviews/2026-08-08-prod-portal-home-discover-population-regression-owner-qa-checklist.md`
+Next: `APPROVE PROD HOME DISCOVER FIX PROMOTION`
+Confirmations: NO prod index/App Hosting/Algolia/Rules/Functions/backfill/mutation this pass
+
+## 2026-08-08 - HOME/DISCOVER POPULATION REGRESSION — PLAN+REVIEW — STOP
+
+Managed goal: `prod-portal-home-discover-population-regression`
+**Root cause PROVEN:** Home `listHomeDiscoveryPool` — missing `readyAt` index + metric queries return 1 design + early return (no createdAt fallback). `/catalog` uses `WithSortFallback` → createdAt → 46 designs. **0/46** ready docs have `readyAt`. Algolia unrelated.
+Plan: `docs/workflow/plans/2026-08-08-prod-portal-home-discover-population-regression-plan.md`
+Formal Review: **approved_with_changes** —
+`docs/workflow/reviews/2026-08-08-prod-portal-home-discover-population-regression-plan-review.md`
+Next: `APPROVE PROD HOME DISCOVER FIX IMPLEMENT`
+Confirmations: NO implement / index deploy / Algolia / Rules / Functions
+
+## 2026-08-08 - PROD ALGOLIA CONFIG — PARTIAL / OWNER ACTIONS REQUIRED — STOP
+
+Owner: `APPROVE PROD ALGOLIA CONFIG`.
+Contract verified; live Portal Algolia **OFF**; prod admin secret **NOT FOUND**.
+Proposed index: **`portal_catalog_ready_prod`** (≠ `_dev`).
+Prod Algolia Application / keys / Secret Manager **pending owner dashboard**.
+Record: `docs/workflow/reviews/2026-08-08-pr-40-production-algolia-config-record.md`
+RC-R3: **OPEN** (not CONFIG READY).
+Next owner replies: `ALGOLIA PROD APP: SEPARATE|REUSE WQ6OPP2E6Z` then App ID + `ALGOLIA ADMIN SECRET: READY`.
+Do **not** start Functions Wave A yet.
+
+## 2026-08-08 - APP HOSTING ROLLOUT SUCCEEDED — STOP
+
+Backend `fresh-prints-portal` / `fresh-prints-prod`.
+Build/rollout **`build-2026-08-08-001`** — **SUCCEEDED**; traffic 100%.
+Source: `1e65a43e131b3b5709a8870b1a24a40f8a004978` (owner CLI after Cursor hook block).
+Smoke: homepage **200**; **0** `fresh-prints-dev`; `/catalog` + category browse **200**; Algolia **OFF**.
+Stage 4 Portal runtime **LIVE**. RC-R4 prerequisite satisfied; Storage Rules **not** deployed.
+Record: `docs/workflow/reviews/2026-08-08-pr-40-app-hosting-production-rollout-record.md`
+Next: `APPROVE PROD ALGOLIA CONFIG`
+
+| Confirmations | NO Functions/Rules/indexes/Algolia/Storage/taxonomy/secrets action beyond App Hosting |
+
+## 2026-08-08 - PR #40 MERGED TO production — SOURCE ONLY — STOP
+
+PR #40 **merged** via merge commit.
+Merge SHA: `1e65a43e131b3b5709a8870b1a24a40f8a004978`
+Head merged: `66d906c39f0fd07bc8b4a39dcdc889e8b0d11506`
+Production before: `70c083af6ec0165e95f439fe6111e7e0a62c8ecd`
+
+| Item | Status |
+|------|--------|
+| Git source | **MERGED TO production — SOURCE ONLY** |
+| App Hosting | **SUCCEEDED** — see rollout record above |
+| Runtime promotion | **PARTIAL** — Portal live; Functions/Rules/Algolia/Storage still gated |
+| RC-R3 / R6 | **OPEN** |
+| RC-R4 | prerequisite **SATISFIED**; Rules deploy still **OPEN** |
+
 ## 2026-08-08 - PR #40 PRE-MERGE VERIFICATION + PROD INVENTORY — STOP
 
-Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (was open; now merged).
 Source verification SHA: `1d13edf2eb3d685773157c469b1b2e154fe0fd93`
-Docs tip (after verification records): `2d5526530ce7f21858d14fc31f51627490f7b33d` (+ any follow-up SHA-pin commit)
 
 | Item | Status |
 |------|--------|
 | Pre-merge verdict | **PASS WITH NOTES** |
 | RC-R7 | **SATISFIED** |
-| RC-R2 / RC-R5 | **SATISFIED** (Function allowlists; App Hosting auto-rollout **disabled**) |
-| RC-R3 | **OPEN** — Algolia admin secret absent; app/index **[NEEDS OWNER CHECK]** |
-| RC-R4 / RC-R6 | **OPEN** (Portal live / Storage cleanup gates) |
-| App Hosting secrets | **CLOSED** |
-| App Hosting rollout | **NOT RUN** (manual; `APPROVE APP HOSTING ROLLOUT`) |
+| RC-R2 / RC-R5 | **SATISFIED** |
+| RC-R3 | **OPEN** |
+| RC-R4 / RC-R6 | **OPEN** |
 | Verification | `docs/workflow/reviews/2026-08-08-pr-40-pre-merge-verification-result.md` |
 | Inventory | `docs/workflow/reviews/2026-08-08-pr-40-production-inventory-result.md` |
-| Next phrase | `APPROVE PR 40 MERGE TO PRODUCTION` |
-| Confirmations | NO merge / deploy / Algolia / secrets / Storage / App Hosting |
+
 
 ## 2026-08-08 - OVERNIGHT CLOSEOUT — Stage 5 Signoff + PR #40 promotion Plan — STOP
 
