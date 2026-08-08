@@ -14,6 +14,7 @@ See field definitions in template. Fixes require approved Managed Phases — **n
 
 | ID | Issue | Category | Severity | Location | Why it matters | Recommended fix | Suggested phase | Status |
 |----|-------|----------|----------|----------|----------------|-----------------|-----------------|--------|
+| TD-031 | Discover/View All total badge shows first-page size (40) instead of full membership | ui/data | medium | Portal Discover `new` (and possibly other View All modes); `DEFAULT_CATALOG_PAGE_SIZE=40` | After readyAt backfill, NTW membership=45 but UI badge/list presents **40 designs** | Use `countReadyDesigns` (with discover filters e.g. `readyAfterMs`) for badge/total; keep page size for paging only | `portal-discover-view-all-complete-pagination` | implement+tests+impl-review **complete** 2026-08-08; production deploy / owner QA pending |
 | TD-001 | Generated build artifacts tracked in git | deployment | **high** | `release/`, `dist-electron/`, `build/icon.*` | Bloated repo, slow clones | Added to `.gitignore`; `git rm --cached` | `git-generated-output-cleanup` | **resolved** |
 | TD-002 | Unit tests exist but no `npm test` script | testing | medium | 13 `*.test.ts` files; root `package.json` | Tests cannot run in CI or signoff workflow | Add vitest or node:test runner; `npm test` script | `testing-and-ci-bootstrap` | open |
 | TD-003 | No CI pipeline | deployment | medium | No `.github/workflows/` | Regressions caught only manually | Add lint (+ test when TD-002 done) workflow | `testing-and-ci-bootstrap` | open |
@@ -59,6 +60,7 @@ See field definitions in template. Fixes require approved Managed Phases — **n
 
 | Date | Summary |
 |------|---------|
+| 2026-08-08 | TD-031 added — Discover New This Week View All badge shows 40 vs membership 45 after readyAt backfill (owner PASS WITH NOTES) |
 | 2026-07-04 | TD-019, TD-020, and TD-021 added from `print-request-oversized-selection-unblock` PASS WITH FOLLOW-UP NOTES manual QA |
 | 2026-07-04 | TD-016, TD-017, and TD-018 resolved by `print-request-detail-autosave-and-name-locking`; TD-015 remains open |
 | 2026-07-04 | TD-016, TD-017, and TD-018 added from `print-request-item-sizing-and-username-naming` manual QA follow-up notes |
