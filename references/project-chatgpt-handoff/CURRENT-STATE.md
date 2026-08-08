@@ -4,6 +4,7 @@
 
 Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
 Source verification SHA: `1d13edf2eb3d685773157c469b1b2e154fe0fd93`
+Docs tip (after verification records): `2d5526530ce7f21858d14fc31f51627490f7b33d` (+ any follow-up SHA-pin commit)
 
 | Item | Status |
 |------|--------|
