@@ -127,6 +127,7 @@ export function CatalogPageContent() {
     error,
     hasMore,
     isHydrating,
+    isCountUnavailable,
     isLoading,
     isLoadingMore,
     loadMoreDesigns,
@@ -151,7 +152,9 @@ export function CatalogPageContent() {
     matchingCount === null
       ? isHydrating
         ? 'Counting designs…'
-        : '0 designs'
+        : isCountUnavailable
+          ? 'Count unavailable'
+          : '0 designs'
       : `${matchingCount} design${matchingCount === 1 ? '' : 's'}`;
 
   function syncLibraryUrl(next: {

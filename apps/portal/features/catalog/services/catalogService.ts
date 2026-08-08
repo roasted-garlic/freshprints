@@ -732,14 +732,23 @@ export const catalogService = {
 
   /** Exact count of ready designs matching category / primary tag / new-this-week bounds. */
   async countReadyDesigns(listQuery: CatalogDesignListQuery = {}): Promise<number> {
+    const constraints: QueryConstraint[] = [...buildDesignFilterConstraints(listQuery)];
+    // NTW (readyAt inequality): mirror list orderBy so getCountFromServer uses existing
+    // status + readyAt DESC composites (ASC-only implicit order would miss those indexes).
+    const usesReadyAtInequality = typeof listQuery.readyAfterMs === 'number';
+    if (usesReadyAtInequality) {
+      constraints.push(orderBy('readyAt', 'desc'));
+      constraints.push(orderBy('__name__', 'desc'));
+    }
+
     const countQuery = query(
       collection(getPortalDb(), PORTAL_FIRESTORE_COLLECTIONS.designs),
-      ...buildDesignFilterConstraints(listQuery),
+      ...constraints,
     );
     const traceMetadata = {
       ...catalogListTraceMetadata(listQuery, 'catalogService.countReadyDesigns'),
       limit: undefined,
-      orderBy: undefined,
+      orderBy: usesReadyAtInequality ? (['readyAt:desc', '__name__:desc'] as const) : undefined,
     };
     traceFirestoreOneShotStart('getCountFromServer', traceMetadata);
     const snapshot = await getCountFromServer(countQuery);

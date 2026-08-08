@@ -15,6 +15,7 @@ import {
   reconcilePagingWithAggregateCount,
   resolveOrdinaryMatchingCount,
   shouldShowOrdinaryCountPending,
+  shouldShowOrdinaryCountUnavailable,
   sortFieldForDiscovery,
 } from './useCatalogDesigns';
 
@@ -276,10 +277,18 @@ test('H: count failure — badge not loaded-page length; retry then fail; list s
     }),
     null,
   );
+  // Failed must NOT look like infinite “Counting designs…”
   assert.equal(
     shouldShowOrdinaryCountPending({
       countAuthority: { status: 'failed' },
       isFullyHydrated: false,
+    }),
+    false,
+  );
+  assert.equal(
+    shouldShowOrdinaryCountUnavailable({
+      countAuthority: { status: 'failed' },
+      matchingCount: null,
     }),
     true,
   );
@@ -292,11 +301,18 @@ test('H: count failure — badge not loaded-page length; retry then fail; list s
     }),
     45,
   );
+  assert.equal(
+    shouldShowOrdinaryCountUnavailable({
+      countAuthority: { status: 'failed' },
+      matchingCount: 45,
+    }),
+    false,
+  );
 
   let attempts = 0;
   const failed = await fetchReadyDesignCountWithRetry(async () => {
     attempts += 1;
-    throw new Error('aggregate unavailable');
+    throw new Error('failed-precondition: missing index');
   }, {});
   assert.equal(failed.ok, false);
   assert.equal(attempts, 2);
@@ -314,6 +330,38 @@ test('H: count failure — badge not loaded-page length; retry then fail; list s
     assert.equal(recovered.total, 45);
   }
   assert.equal(attempts, 2);
+});
+
+test('D: pending shows Counting; E: failed shows Count unavailable contract', () => {
+  assert.equal(
+    shouldShowOrdinaryCountPending({
+      countAuthority: { status: 'pending' },
+      isFullyHydrated: false,
+    }),
+    true,
+  );
+  assert.equal(
+    shouldShowOrdinaryCountUnavailable({
+      countAuthority: { status: 'pending' },
+      matchingCount: null,
+    }),
+    false,
+  );
+  assert.equal(
+    shouldShowOrdinaryCountPending({
+      countAuthority: { status: 'resolved', total: 45 },
+      isFullyHydrated: false,
+    }),
+    false,
+  );
+  assert.equal(
+    resolveOrdinaryMatchingCount({
+      countAuthority: { status: 'resolved', total: 45 },
+      loadedCount: 40,
+      isFullyHydrated: false,
+    }),
+    45,
+  );
 });
 
 test('reconcile restores Load more when aggregate > loaded but list claimed end', () => {
@@ -347,6 +395,16 @@ test('pending count shows Counting… state and never uses loaded length as auth
     }),
     true,
   );
+});
+
+test('CatalogPageContent surfaces Count unavailable for failed incomplete aggregate', () => {
+  const page = readFileSync(
+    'apps/portal/features/catalog/pages/CatalogPageContent.tsx',
+    'utf8',
+  );
+  assert.match(page, /isCountUnavailable/);
+  assert.match(page, /Count unavailable/);
+  assert.match(page, /Counting designs…/);
 });
 
 test('I/K containment: ordinary path no longer seeds badge from firstPage.designs.length', () => {

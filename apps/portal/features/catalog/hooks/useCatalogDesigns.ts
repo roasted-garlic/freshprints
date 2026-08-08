@@ -68,14 +68,16 @@ export function shouldShowOrdinaryCountPending(args: {
   countAuthority: CatalogCountAuthorityState;
   isFullyHydrated: boolean;
 }): boolean {
-  if (args.countAuthority.status === 'pending') {
-    return true;
-  }
-  // Failed aggregate while more pages may exist — never flash a fake loaded-page total.
-  if (args.countAuthority.status === 'failed' && !args.isFullyHydrated) {
-    return true;
-  }
-  return false;
+  // Only while the aggregate request is actually in flight — never after failure.
+  return args.countAuthority.status === 'pending';
+}
+
+/** Failed aggregate with no authoritative total yet — distinct from pending / zero results. */
+export function shouldShowOrdinaryCountUnavailable(args: {
+  countAuthority: CatalogCountAuthorityState;
+  matchingCount: number | null;
+}): boolean {
+  return args.countAuthority.status === 'failed' && args.matchingCount === null;
 }
 
 /**
@@ -238,6 +240,8 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
   error: string | null;
   hasMore: boolean;
   isHydrating: boolean;
+  /** Aggregate failed and no authoritative total — UI shows “Count unavailable”. */
+  isCountUnavailable: boolean;
   isLoading: boolean;
   isLoadingMore: boolean;
   loadMoreDesigns: () => void;
@@ -479,6 +483,13 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
         isFullyHydrated,
       });
 
+  const isCountUnavailable =
+    !isManagedSearchQuery &&
+    shouldShowOrdinaryCountUnavailable({
+      countAuthority,
+      matchingCount,
+    });
+
   const loadMoreDesigns = useCallback(() => {
     if (isManagedSearchQuery) {
       if (managedSearchHasMore && !isLoadingMore) {
@@ -597,6 +608,7 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
     error,
     hasMore,
     isHydrating,
+    isCountUnavailable,
     isLoading,
     isLoadingMore,
     loadMoreDesigns,
