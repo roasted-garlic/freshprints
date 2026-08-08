@@ -55,10 +55,14 @@
 
 ## Companion Portal fix (same managed goal — next App Hosting)
 
-Uncommitted schedule prop wiring (`scheduledShowEntries` / `entries`) must **not** remain a stray local diff. It is tracked under this goal and must be on `production` before (or as part of) the next Portal App Hosting rollout so the corrective build is not shipped without it.
+Schedule prop wiring (`scheduledShowEntries` / `entries` in `PrintRequestDetailView`, `PortalPrintRequestProgressPanel`, `PortalPrintRequestScheduleSection` + independence test) is tracked under this goal and must be on `production` before the next Portal App Hosting rollout — not left as a stray local diff.
 
-See: companion promotion / commit under `fix/portal-schedule-prop-wiring` (or successor) before App Hosting if not yet merged.
-
+| Item | Value |
+|------|-------|
+| Branch | `fix/portal-schedule-prop-wiring` |
+| Commits | `ce80dac` (wiring + test) · `aeff84f` (App Hosting gate requires companion) |
+| Base | `c181f56` (`origin/production` post–PR #44) |
+| Merge status | **NOT YET MERGED** — push/PR may need owner CLI if hooks block |
 ---
 
 ## Binding status

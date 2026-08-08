@@ -33,19 +33,27 @@ Background (not active gate): Goal #13 / clean Studio remediation / Stage 2 rema
 - Follow-up (not auto-run): next App Hosting rollout under separate production deploy approval.
 - Goal DONE for repo config hygiene; live cutover gated by explicit rollout phrase.
 
-**Separate concurrent managed goal:** `prod-portal-home-discover-population-regression`
-- Owner: `APPROVE PROD HOME DISCOVER FIX IMPLEMENT` — **SOURCE FIX APPROVED — PRODUCTION STILL AFFECTED**.
-- Branch: `fix/prod-home-discover-population` (base `1e65a43`).
-- Implement + Test + Implementation Review **APPROVED** (source only).
-- Fallback: incomplete vs ready membership / readyAt index unavailable → WithSortFallback + bounded createdAt.
-- Plan: `docs/workflow/plans/2026-08-08-prod-portal-home-discover-population-regression-plan.md`
-- Formal Review: `docs/workflow/reviews/2026-08-08-prod-portal-home-discover-population-regression-plan-review.md`
-- Test: `docs/workflow/reviews/2026-08-08-prod-portal-home-discover-population-regression-test-report.md`
-- Impl Review: `docs/workflow/reviews/2026-08-08-prod-portal-home-discover-population-regression-implementation-review.md`
-- Deploy prep: `docs/workflow/reviews/2026-08-08-prod-portal-home-discover-population-regression-deployment-checkpoint.md`
-- Owner QA prep: `docs/workflow/reviews/2026-08-08-prod-portal-home-discover-population-regression-owner-qa-checklist.md`
-- Next: `APPROVE PROD HOME DISCOVER FIX PROMOTION`
-- STOP: no prod index deploy / App Hosting / Algolia / backfill until owner phrases.
+**Separate concurrent managed goal:** `portal-discover-view-all-complete-pagination` (TD-031) - **ACTIVE — NTW SOURCE PROMOTED; SCHEDULE COMPANION READY; STOP BEFORE APP HOSTING**
+- PR **#44 MERGED** — production `c181f5694bde83ddee26863a0a6a8d546c39619e` (contains `82ea610`)
+- Record: `docs/workflow/reviews/2026-08-08-portal-discover-ntw-count-badge-corrective-source-promotion-record.md`
+- Companion branch `fix/portal-schedule-prop-wiring` @ `aeff84f` (`ce80dac` schedule wiring + gate docs) — merge to production before App Hosting
+- App Hosting gate READY (not run): `docs/workflow/reviews/2026-08-08-portal-discover-ntw-count-badge-corrective-app-hosting-gate.md`
+- Live: 100% `build-2026-08-08-003` — corrective **NOT LIVE**
+- Next Required Step: merge schedule companion → then `APPROVE PROD DISCOVER NTW COUNT BADGE APP HOSTING ROLLOUT` (production tip SHA)
+- Forbidden: App Hosting without phrase; Rules/Functions/indexes; Algolia; data mutation; Signoff before QA
+**Separate concurrent managed goal:** `prod-readyat-backfill` - **CLOSED**
+- Signoff **approved_with_notes**: `docs/workflow/reviews/2026-08-08-prod-readyat-backfill-signoff.md`
+- R-018 **resolved** (46/46 readyAt; NTW populated).
+- Owner QA **PASS WITH NOTES** → **TD-031** tracked under `portal-discover-view-all-complete-pagination` (Plan+Review above).
+- STOP: no reopen of backfill goal.
+
+**Separate concurrent managed goal:** `prod-portal-home-discover-population-regression` — **CLOSED**
+- Signoff **approved_with_notes** (2026-08-08):
+  `docs/workflow/reviews/2026-08-08-prod-portal-home-discover-population-regression-signoff.md`
+- Live `build-2026-08-08-002` @ `ccfc974`; Home multi-design **fixed**.
+- Owner QA **PASS WITH NOTES**: New This Week empty = legacy `readyAt` coverage (R-018).
+- Recommended next (separate gated): `APPROVE PROD READYAT BACKFILL`
+- Do **not** auto-start Algolia / Functions / Rules / cleanup / backfill.
 
 **Separate concurrent managed goal (does not affect the gate above):**
 `post-launch-catalog-and-processing-stability`
@@ -302,6 +310,10 @@ archive write — none of these could be run live in this environment (no intera
 no Application Default Credentials for scripted checks beyond read-only CLI operations).
 
 Decision Log:
+- 2026-08-08 — `prod-portal-home-discover-population-regression` Signoff **approved_with_notes**.
+  Live `build-2026-08-08-002`; Home single-design regression fixed. New This Week empty noted
+  (legacy readyAt; R-018). Next recommended: `APPROVE PROD READYAT BACKFILL` (separate).
+  Signoff: `docs/workflow/reviews/2026-08-08-prod-portal-home-discover-population-regression-signoff.md`
 - 2026-08-08 — Managed Phase `prod-portal-home-discover-population-regression`.
   Plan + Formal Review **approved_with_changes**. Root cause PROVEN (Home pool / missing readyAt
   index / metric short-circuit). Next: `APPROVE PROD HOME DISCOVER FIX IMPLEMENT`.
