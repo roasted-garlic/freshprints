@@ -60,9 +60,11 @@ Schedule prop wiring (`scheduledShowEntries` / `entries` in `PrintRequestDetailV
 | Item | Value |
 |------|-------|
 | Branch | `fix/portal-schedule-prop-wiring` |
-| Commits | `ce80dac` (wiring + test) · `aeff84f` (App Hosting gate requires companion) |
+| Commits | `ce80dac` (wiring + test) · `aeff84f` (gate) · `36d71ff` (source-promotion finalize + state) |
+| Branch tip | `36d71ff55141d0c320f8fa5e25567e890e06cfed` |
 | Base | `c181f56` (`origin/production` post–PR #44) |
 | Merge status | **NOT YET MERGED** — push/PR may need owner CLI if hooks block |
+| Live App Hosting reconfirm | **100%** `build-2026-08-08-003` — corrective still **NOT LIVE** |
 ---
 
 ## Binding status

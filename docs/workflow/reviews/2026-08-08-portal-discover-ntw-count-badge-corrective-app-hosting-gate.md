@@ -6,7 +6,7 @@
 | Managed goal | `portal-discover-view-all-complete-pagination` (NTW count corrective + schedule companion) |
 | Status | **READY AFTER COMPANION MERGE — DO NOT EXECUTE UNTIL OWNER PHRASE** |
 | NTW corrective on production | `c181f5694bde83ddee26863a0a6a8d546c39619e` (contains `82ea610`) |
-| Schedule companion (local) | `ce80dacc4c01dfdfb174da9abe1bf74e57bde8c4` on `fix/portal-schedule-prop-wiring` — **merge to production before rollout** |
+| Schedule companion (local) | branch `fix/portal-schedule-prop-wiring` tip `36d71ff` (`ce80dac` + docs) — **merge to production before rollout** |
 
 ---
 
