@@ -1,5 +1,6 @@
 import type { FreshPrintsAppApi } from "../app/appIpc.types";
 import type { FreshPrintsInboxAlertApi } from "../inboxAlert/inboxAlertIpc.types";
+import type { FreshPrintsTaxonomyCacheApi } from "../taxonomy/taxonomyCacheIpc.types";
 import type { FreshPrintsExportApi } from "../export/showExportIpc.types";
 import type { FreshPrintsWhatnotImportApi } from "../whatnotImport/whatnotImport.types";
 import type { FreshPrintsFirebaseDebugApi } from "../firebaseDebug/firebaseDebugIpc.types";
@@ -306,6 +307,7 @@ export interface FreshPrintsPreloadApi {
   aiQueueTrace: FreshPrintsAiQueueTraceApi;
   imports: FreshPrintsImportsApi;
   inboxAlert: FreshPrintsInboxAlertApi;
+  taxonomyCache: FreshPrintsTaxonomyCacheApi;
   whatnotImport: FreshPrintsWhatnotImportApi;
   export: FreshPrintsExportApi;
   studioUpdate: FreshPrintsStudioUpdateApi;

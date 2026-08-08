@@ -1,5 +1,584 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-08-07 - taxonomy-read-spike-elimination SIGNOFF — approved_with_notes — STOP
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Owner | `45-DESIGN PERFORMANCE VALIDATION: AI SPOT CHECK PASS` |
+| Follow-up | **`taxonomy-read-spike-elimination` CLOSED** |
+| Signoff | **approved_with_notes** |
+| Signoff path | `docs/workflow/reviews/2026-08-07-taxonomy-read-spike-elimination-signoff.md` |
+| 45-design final | **PASS WITH NOTES** |
+| Final result | `docs/workflow/reviews/2026-08-07-taxonomy-45-design-performance-validation-result.md` |
+| Studio | ~139 billable; **0** `/tags`; **0** `/categories`; import **2.00**/design |
+| Server cold | materialization rev **2**, chunkCount **1**, ~207ms |
+| Server warm | **89** process-cache hits; **0** fallback |
+| Console peak | **222** reads/min (vs historical ~1.3K/1.4K towers) |
+| AI quality | **PASS — 8/8 reasonable** |
+| Next | **STOP** — no Stage 6 / prod / PR merge / deploy / implement |
+| Confirmations | NO implementation / taxonomy mutation / deploy / production / PR merge / Stage 6 |
+
+## 2026-08-07 - 45-design SERVER TAXONOMY VALIDATION PASS WITH NOTES
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Owner | `45-DESIGN PERFORMANCE VALIDATION: INSPECT SERVER TAXONOMY LOGS` |
+| Verdict | **PASS WITH NOTES** |
+| Window | `2026-08-08T03:58Z`–`04:12Z` |
+| Instances | **1** |
+| Cold load | materialization rev **2**, chunkCount **1**, 207ms |
+| Cache hits | **89** |
+| Fallback / publishers | **0** / **0** |
+| Note | `documentCount:1139` = corpus size when `source:materialization` |
+| Record | `docs/workflow/reviews/2026-08-07-taxonomy-45-design-server-taxonomy-validation-result.md` |
+| Confirmations | NO mutation / deploy / prod / merge |
+
+## 2026-08-07 - taxonomy corrective SIGNOFF + 45-design checkpoint PREP — STOP
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Corrective | `taxonomy-trigger-rebuild-corrective` |
+| Signoff | **approved_with_notes** |
+| Signoff path | `docs/workflow/reviews/2026-08-07-taxonomy-trigger-rebuild-corrective-signoff.md` |
+| Parent follow-up | `taxonomy-read-spike-elimination` **closed** (see parent Signoff above) |
+| 45-design checkpoint | `docs/workflow/reviews/2026-08-07-taxonomy-45-design-performance-validation-checkpoint.md` |
+| Batch executed | **Yes** (later; final PASS WITH NOTES) |
+| Confirmations | NO batch / mutation / implement / deploy / prod / merge (at prep time) |
+
+## 2026-08-07 - STUDIO STALE-REVISION DISK CACHE PASS
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Owner | Full Studio restart + Design Library |
+| Path | `%APPDATA%\@fresh-prints\studio\taxonomy-cache\v1.json` |
+| revision | **2** |
+| contentHash | matches live `38e69b…bdd33e59` |
+| Structure | 1121 tags / 18 cats; healthy |
+| Verdict | **PASS** |
+| Record | `docs/workflow/reviews/2026-08-07-taxonomy-studio-stale-revision-disk-cache-verify-result.md` |
+| Confirmations | NO file modify / mutation / deploy / prod / merge |
+
+## 2026-08-07 - Studio stale-refresh Debug INCONCLUSIVE — investigate DONE
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Owner | Studio stale-revision Debug inconclusive |
+| Classification | Expected remount + **tracer blind spot** |
+| Cause | `taxonomyMaterializationService` `getDoc`s uninstrumented |
+| Next QA | Hard-reload → Design Library → `userData/taxonomy-cache/v1.json` revision **2** |
+| Record | `docs/workflow/reviews/2026-08-07-taxonomy-studio-stale-revision-refresh-inconclusive-investigation.md` |
+| Implement | **No** |
+| Confirmations | NO mutation / deploy / prod / merge |
+
+## 2026-08-07 - taxonomy MUTATION SERVER RE-QA PASS (rev 2) — STOP before Studio refresh
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Owner | `TAXONOMY MUTATION RE-QA: ALIAS REMOVED SUCCESSFULLY` |
+| Verdict | **PASS** |
+| Revision | **1 → 2** |
+| Alias | absent canonical + materialization |
+| Trigger | `onTagTaxonomySourceWritten` ~**5.91s**; 1 start / 1 success |
+| Hash | unchanged vs rev1 (**expected** — rev1 never had smoke alias) |
+| Record | `docs/workflow/reviews/2026-08-07-taxonomy-trigger-rebuild-corrective-mutation-server-re-qa-result.md` |
+| Next | Studio stale-cache refresh (separate) |
+| Confirmations | NO agent mutation / deploy / prod / merge |
+
+## 2026-08-07 - taxonomy TRIGGER REBUILD CORRECTIVE DEPLOY PASS — STOP before mutation re-QA
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Owner | `APPROVE DEV TAXONOMY TRIGGER REBUILD CORRECTIVE DEPLOY` |
+| Verdict | **PASS** |
+| Updated | `onTagTaxonomySourceWritten`, `onCategoryTaxonomySourceWritten` (ACTIVE) |
+| Materialization | still revision **1** (no unexpected rebuild) |
+| Alias | `taxonomy-smoke-20260807` still on `tags/acdc` only |
+| Record | `docs/workflow/reviews/2026-08-07-taxonomy-trigger-rebuild-corrective-dev-deploy-record.md` |
+| Next | Owner remove alias once → prove rev **1→2** |
+| Confirmations | NO mutation / callable / Rules / Storage / Algolia / prod / merge |
+
+## 2026-08-07 - taxonomy TRIGGER REBUILD CORRECTIVE — Implement APPROVED, STOP before deploy
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Owner | `APPROVE TAXONOMY TRIGGER REBUILD CORRECTIVE IMPLEMENTATION` |
+| Selected | **Option A** awaited per-instance coalesce |
+| Impl Review | **APPROVED** |
+| Review path | `docs/workflow/reviews/2026-08-07-taxonomy-trigger-rebuild-corrective-implementation-review.md` |
+| Tests | 18/18; functions tsc + eslint PASS |
+| Live defect | still present until deploy (rev 1; alias on `acdc`) |
+| Next | `APPROVE DEV TAXONOMY TRIGGER REBUILD CORRECTIVE DEPLOY` |
+| Deploy allowlist | `onTagTaxonomySourceWritten`, `onCategoryTaxonomySourceWritten` |
+| Confirmations | NO deploy / mutation / Studio / Rules / Algolia / prod / merge |
+
+## 2026-08-07 - taxonomy TRIGGER REBUILD CORRECTIVE — Plan+Review STOP
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Owner | `PLAN TAXONOMY TRIGGER REBUILD CORRECTIVE` |
+| Plan | `docs/workflow/plans/2026-08-07-taxonomy-trigger-rebuild-corrective-plan.md` |
+| Review | **approved_with_changes** RC-R1–RC-R8 |
+| Review path | `docs/workflow/reviews/2026-08-07-taxonomy-trigger-rebuild-corrective-plan-review.md` |
+| Recommend | Option A awaited coalesce (B fallback); reject C |
+| Live defect | still present (rev 1 stale; alias on `acdc`) |
+| Next | `APPROVE TAXONOMY TRIGGER REBUILD CORRECTIVE IMPLEMENTATION` |
+| Confirmations | NO implement / deploy / mutation / prod / merge |
+
+## 2026-08-07 - taxonomy MUTATION SERVER REBUILD FAIL — STOP before Studio refresh
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Owner | `TAXONOMY MUTATION SMOKE: OWNER MUTATION COMPLETE` |
+| Alias | `taxonomy-smoke-20260807` on `tags/acdc` (**canonical PASS**) |
+| Materialization | still revision **1** / hash unchanged (**FAIL**) |
+| Tag trigger | fired; HTTP 200 ~176ms; **0** rebuild-success |
+| Category trigger | **0** runs |
+| Suspected cause | coalesce `setTimeout(750)` after Gen2 handler return |
+| Record | `docs/workflow/reviews/2026-08-07-taxonomy-mutation-server-rebuild-verify-result.md` |
+| Studio stale refresh | **STOPPED** |
+| Confirmations | NO deploy / prod / merge / alias removal |
+
+## 2026-08-07 - taxonomy STUDIO READ SMOKE PASS WITH NOTES — mutation checkpoint ready
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Owner | `STUDIO TAXONOMY MATERIALIZATION READ: PASS WITH NOTES` |
+| Proof | Design Library warm-cache: **0** tags / **0** categories reads |
+| Result | `docs/workflow/reviews/2026-08-07-taxonomy-studio-materialization-read-smoke-result.md` |
+| Cold retest | Waived |
+| Next checkpoint | `docs/workflow/reviews/2026-08-07-taxonomy-mutation-revision-smoke-checkpoint.md` (1→2) |
+| Mutation executed | **No** |
+| Confirmations | NO deploy / prod / merge |
+
+## 2026-08-07 - taxonomy STUDIO READ SMOKE — awaiting owner QA
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Owner | `CONTINUE WORKFLOW: TAXONOMY STUDIO MATERIALIZATION READ SMOKE` |
+| Checkpoint | `docs/workflow/reviews/2026-08-07-taxonomy-studio-materialization-read-smoke-checkpoint.md` |
+| Goal | Prove AI Review uses materialization (not listTags 1121 / listCategories 18) |
+| Mutation | **Forbidden** |
+| Next | Owner reply PASS / FAIL / PASS WITH NOTES + debug counts |
+| Confirmations | NO mutation / deploy / prod / merge this pass |
+
+## 2026-08-07 - taxonomy STEADY-STATE RULES DEPLOYED on fresh-prints-dev — STOP
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Owner | `APPROVE DEV TAXONOMY STEADY-STATE RULES DEPLOY` |
+| Command | `firebase deploy --only firestore:rules --project fresh-prints-dev` |
+| Result | **PASS** — rules released to cloud.firestore |
+| Materialization | revision still **1** (no unexpected rebuild) |
+| Record | `docs/workflow/reviews/2026-08-07-taxonomy-steady-state-rules-dev-deploy-record.md` |
+| Next | Studio reload → staff meta/chunk read → controlled mutation 1→2 |
+| Confirmations | NO Functions/Storage/prod/merge this pass |
+
+## 2026-08-07 - taxonomy STEADY-STATE FUNCTIONS DEPLOYED on fresh-prints-dev — STOP
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Owner | `APPROVE DEV TAXONOMY STEADY-STATE FUNCTIONS DEPLOY` |
+| Result | **PASS** — Deploy complete |
+| Created | `onTagTaxonomySourceWritten`, `onCategoryTaxonomySourceWritten` |
+| Updated | `enqueueAiEnrichment`, `testAiEnrichmentPlayground`, `testAiEnrichmentTagRerank` |
+| Materialization | revision still **1** (no unexpected rebuild) |
+| Record | `docs/workflow/reviews/2026-08-07-taxonomy-steady-state-functions-dev-deploy-record.md` |
+| Next | `APPROVE DEV TAXONOMY STEADY-STATE RULES DEPLOY` |
+| Confirmations | NO Rules/Storage/prod/merge this pass |
+
+## 2026-08-07 - taxonomy STEADY-STATE DEPLOY CHECKPOINT READY — STOP
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Owner | `PREPARE DEV TAXONOMY STEADY-STATE DEPLOYMENT CHECKPOINT` |
+| Bootstrap | still healthy revision 1 / 1121 / 18 / hash unchanged |
+| Rules tests | **59/59 PASS** (portable Temurin 21.0.11) |
+| Functions allowlist | triggers + `enqueueAiEnrichment` + playground + tagRerank |
+| Callable redeploy | **No** |
+| Checkpoint | `docs/workflow/reviews/2026-08-07-taxonomy-steady-state-deployment-checkpoint.md` |
+| Next | `APPROVE DEV TAXONOMY STEADY-STATE FUNCTIONS DEPLOY` |
+| Confirmations | NO deploy / mutation / prod / merge this pass |
+
+## 2026-08-07 - taxonomy MATERIALIZATION BOOTSTRAP PASS on fresh-prints-dev — STOP
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Owner | `APPROVE DEV TAXONOMY MATERIALIZATION BOOTSTRAP` |
+| Invoke | Studio `window.freshPrintsDev.rebuildTaxonomyMaterialization()` |
+| Verdict | **TAXONOMY MATERIALIZATION BOOTSTRAP: PASS** |
+| revision / chunks | **1** / **1** |
+| tags / categories | **1121** / **18** |
+| contentHash | `38e69b3851688e963470b1dc17c879a3e947a481c6d111a0d2a4fe74bdd33e59` |
+| chunk-0 size | 298,509 bytes |
+| Record | `docs/workflow/reviews/2026-08-07-taxonomy-materialization-bootstrap-dev-record.md` |
+| Next | Separate phrase for triggers / AI loader / Rules deploy |
+| Confirmations | NO triggers/loader/Rules/Storage/Algolia/prod/merge this pass |
+
+## 2026-08-07 - taxonomy BOOTSTRAP authorized — awaiting owner Studio invoke
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Owner | `APPROVE DEV TAXONOMY MATERIALIZATION BOOTSTRAP` |
+| meta | **still absent** (read-only pre-check) |
+| Agent | Cannot invoke (shell hook); no Admin bypass |
+| Owner command | `await window.freshPrintsDev.rebuildTaxonomyMaterialization()` |
+| Checkpoint | `docs/workflow/reviews/2026-08-07-taxonomy-materialization-bootstrap-owner-invoke-checkpoint.md` |
+| Next | Owner paste invoke JSON → agent verify + record |
+| Confirmations | NO agent mutation / deploy / prod / merge this pass |
+
+## 2026-08-07 - taxonomy bootstrap DEV CONSOLE BRIDGE APPROVED — STOP
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Owner | `APPROVE TAXONOMY BOOTSTRAP DEV CONSOLE BRIDGE IMPLEMENT` |
+| Impl Review | **APPROVED** |
+| Bridge | `window.freshPrintsDev.rebuildTaxonomyMaterialization` |
+| Gate | DEV + `fresh-prints-dev` via `isFirebaseDebugPanelEnabled` |
+| Callable invoked | **No** |
+| Records | impl-review + test-report under `docs/workflow/reviews/2026-08-07-taxonomy-bootstrap-dev-console-bridge-*` |
+| Next | Reload Studio → `APPROVE DEV TAXONOMY MATERIALIZATION BOOTSTRAP` |
+| Confirmations | NO invoke / mutation / deploy / prod / merge |
+
+## 2026-08-07 - taxonomy bootstrap DevTools invoke INVALID — no existing owner path
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Owner | DevTools import failed; investigation authorized |
+| Cause | Electron DevTools cannot resolve bare `firebase/functions` |
+| Existing wrapper / `freshPrintsDev` / UI | **None** for `rebuildTaxonomyMaterializationCallable` |
+| Record | `docs/workflow/reviews/2026-08-07-taxonomy-bootstrap-devtools-invoke-corrective-investigation.md` |
+| Proposed | Minimal DEV-only `window.freshPrintsDev` bridge (not implemented) |
+| Confirmations | NO invoke / mutation / deploy / prod / merge |
+
+## 2026-08-07 - taxonomy BOOTSTRAP INVOKE STOPPED — shell hook / owner Studio run needed
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Owner | `APPROVE DEV TAXONOMY MATERIALIZATION BOOTSTRAP` |
+| Pre-checks | **PASS** (project, callable present, triggers absent, meta absent) |
+| Agent invoke | **Blocked** by Cursor shell hook |
+| Checkpoint | `docs/workflow/reviews/2026-08-07-taxonomy-materialization-bootstrap-invoke-checkpoint.md` |
+| Next | Owner Studio console `httpsCallable("rebuildTaxonomyMaterializationCallable")` once → paste JSON → agent verify |
+| Confirmations | NO mutation this pass; NO triggers/Rules/loader/Studio/prod/merge |
+
+## 2026-08-07 - taxonomy bootstrap CALLABLE DEPLOYED on fresh-prints-dev — STOP
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Owner | `APPROVE DEV TAXONOMY BOOTSTRAP CALLABLE DEPLOY` |
+| Command | `firebase deploy --only functions:rebuildTaxonomyMaterializationCallable --project fresh-prints-dev` |
+| Result | **Deploy complete** — Successful create (`us-central1`) |
+| List | `rebuildTaxonomyMaterializationCallable` present; taxonomy triggers **absent** |
+| Record | `docs/workflow/reviews/2026-08-07-taxonomy-bootstrap-callable-dev-deploy-record.md` |
+| Callable invoked | **No** |
+| Next | `APPROVE DEV TAXONOMY MATERIALIZATION BOOTSTRAP` |
+| Triggers / Rules / loader / Studio / prod / merge | **Forbidden** this gate |
+
+## 2026-08-07 - taxonomy materialization BOOTSTRAP STOPPED — needs Functions deploy
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Owner | `APPROVE DEV TAXONOMY MATERIALIZATION BOOTSTRAP` |
+| Result | **STOPPED — no mutation** |
+| Reason | Only approved path is undeployed `rebuildTaxonomyMaterializationCallable`; no ops script in Implement |
+| Checkpoint | `docs/workflow/reviews/2026-08-07-taxonomy-materialization-bootstrap-dev-checkpoint.md` |
+| Minimal next | `firebase deploy --only functions:rebuildTaxonomyMaterializationCallable --project fresh-prints-dev` then re-authorize bootstrap |
+| Confirmations | NO bootstrap write / Functions deploy / Rules deploy / Storage / prod / PR merge |
+
+## 2026-08-07 - taxonomy-read-spike-elimination SOURCE IMPLEMENT APPROVED — STOP
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+HEAD: `eaa461e` (working tree dirty — taxonomy source uncommitted).
+
+| Item | Status |
+|------|--------|
+| Follow-up | `taxonomy-read-spike-elimination` |
+| Owner | `APPROVE TAXONOMY SPIKE ELIMINATION IMPLEMENT` |
+| Implement + Test + Impl Review | **APPROVED** (source only) |
+| Impl Review | `docs/workflow/reviews/2026-08-07-taxonomy-read-spike-elimination-implementation-review.md` |
+| Test report | `docs/workflow/reviews/2026-08-07-taxonomy-read-spike-elimination-test-report.md` (37/37 targeted) |
+| Live bootstrap | **NOT done** |
+| Functions / Rules deploy | **NOT done** |
+| Confirmations | NO bootstrap / Rules deploy / Functions deploy / Storage / Algolia taxonomy / prod / PR merge |
+| Next | Separate owner phrases for bootstrap → deploy → validation |
+
+## 2026-08-07 - taxonomy-read-spike-elimination PLAN + Formal Review — STOP
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Follow-up | `taxonomy-read-spike-elimination` |
+| Plan | `docs/workflow/plans/2026-08-07-taxonomy-read-spike-elimination-plan.md` |
+| Formal Review | **approved_with_changes** |
+| 00:20Z spike | **1** AI `taxonomy-load-success` = **1139** docs (instance `0278ec32…`) |
+| 00:22Z spike | Studio AI Review hydrate **1139** (proven) |
+| Recommend | Hybrid B+D compact Firestore materialization + Studio disk cache |
+| Implement | **Authorized and completed (source)** — see section above |
+| Confirmations | NO implement / deploy / Firebase mutation / Storage / Rules / Algolia / prod / PR merge |
+
+## 2026-08-07 - Stage 5 Rules DEPLOYED on fresh-prints-dev
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Owner | `APPROVE DEV RULES DEPLOY: STAGE 5` |
+| Command | `firebase deploy --only firestore:rules,storage --project fresh-prints-dev` |
+| Result | **exit 0** — Storage + Firestore Rules released |
+| Record | `docs/workflow/reviews/2026-08-07-stage-5-rules-deploy-dev-record.md` |
+| Storage delete | Already empty / PASS |
+| Next | Stage 5 Signoff (optional owner smoke) |
+| Stage 6 / prod / merge | **Forbidden** |
+
+## 2026-08-07 - Stage 5 STORAGE DELETED PASS — STOP before Rules deploy
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Owner | `STAGE 5 STORAGE DELETED: PASS` |
+| Agent verify (list-only) | portal-catalog **0**; catalog-reference **0**; snapshotPublicationState **0** |
+| Record | `docs/workflow/reviews/2026-08-07-stage-5-storage-delete-dev-record.md` |
+| Verify JSON | `docs/workflow/reviews/2026-08-07-stage-5-generated-asset-cleanup-post-delete-verify-fresh-prints-dev.json` |
+| Next | `APPROVE DEV RULES DEPLOY: STAGE 5` |
+| Stage 6 / prod / merge | **Forbidden** |
+
+## 2026-08-07 - Stage 5 APPLY resilience corrective APPROVED — resume pending
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Partial APPLY | Run1 ≥11k/57377; Run2 ≥10k/46298; GCS internal error |
+| Corrective | concurrency 8 + retry/backoff + re-list verify |
+| Impl Review | **APPROVED** — `docs/workflow/reviews/2026-08-07-stage-5-apply-resilience-corrective-implementation-review.md` |
+| Live delete this pass | **None** |
+| Next | Owner resume APPLY (checkpoint); reply `STAGE 5 STORAGE DELETED: PASS` |
+| Rules / Stage 6 / prod / merge | **Forbidden** until separate phrases |
+
+## 2026-08-07 - Stage 5 DELETE authorized — owner must run APPLY locally
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Owner | `STAGE 5 DRY-RUN: PASS` + `APPROVE DEV STORAGE DELETE: STAGE 5` |
+| Agent APPLY | **Blocked** by shell delete hook |
+| Checkpoint | `docs/workflow/reviews/2026-08-07-stage-5-storage-delete-dev-checkpoint.md` |
+| Next | Owner runs APPLY=1 command; reply `STAGE 5 STORAGE DELETED: PASS` |
+| Rules deploy | **Not authorized** yet |
+| Stage 6 / prod / merge | **Forbidden** |
+
+## 2026-08-07 - Stage 5 DRY-RUN complete — STOP before delete
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Owner phrase | `APPROVE DEV STORAGE DRY-RUN: STAGE 5` |
+| Mode | **DRY RUN** only |
+| portal-catalog | **57,354** objects / **146,829,893** bytes |
+| catalog-reference | **23** objects / **4,478,422** bytes |
+| snapshotPublicationState | **2** docs (`catalog-reference`, `portal-catalog`) |
+| Record | `docs/workflow/reviews/2026-08-07-stage-5-generated-asset-cleanup-dry-run-record.md` |
+| JSON | `docs/workflow/reviews/2026-08-07-stage-5-generated-asset-cleanup-dry-run-fresh-prints-dev.json` |
+| Deletes / Rules deploy | **None** |
+| Next | Owner `STAGE 5 DRY-RUN: PASS` → then `APPROVE DEV STORAGE DELETE: STAGE 5` |
+| Stage 6 / prod / merge | **Forbidden** |
+
+## 2026-08-07 - Stage 5 source Implement APPROVED — STOP before live dry-run
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+HEAD: `eaa461e` (Stage 5 source changes **uncommitted**).
+
+| Item | Status |
+|------|--------|
+| Owner phrase | `APPROVE STAGE 5 IMPLEMENT` |
+| Implementation Review | **APPROVED** |
+| Ops script | `functions/scripts/stage5-generated-asset-cleanup.mjs` (not run live) |
+| Rules source | Narrowed in repo; **not deployed** |
+| Tests | Guard 15/15; containment 10/10; Functions tsc ok; Rules suite blocked (no Java) |
+| Next | `APPROVE DEV STORAGE DRY-RUN: STAGE 5` |
+| Stage 6 / prod / merge | **Forbidden** |
+
+## 2026-08-07 - Stage 5 PLANNING complete — STOP before Implement
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Owner phrase | `APPROVE STAGE 5 PLANNING` |
+| Plan | `docs/workflow/plans/2026-08-07-stage-5-generated-asset-cleanup-plan.md` |
+| Formal Review | **approved_with_changes** — `docs/workflow/reviews/2026-08-07-stage-5-generated-asset-cleanup-plan-review.md` |
+| Scope | Dry-run → delete `generated/portal-catalog/**` + `generated/catalog-reference/**`; orphan `snapshotPublicationState`; narrow Rules on **dev** |
+| Next | `APPROVE STAGE 5 IMPLEMENT` (then dry-run / delete / Rules deploy phrases) |
+| Stage 6 / prod / merge | **Forbidden** |
+
+## 2026-08-07 - Stage 4 Signoff COMPLETE (dev) — STOP before Stage 5
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Stage 4 | **approved_with_notes** |
+| Owner QA | `STAGE 4 POST-DELETE QA: PASS` + `ALGOLIA OFF: PASS` |
+| Publishers on `fresh-prints-dev` | **Deleted** |
+| Algolia | Sync/reconcile live |
+| Signoff | `docs/workflow/reviews/2026-08-07-stage-4-publisher-retirement-signoff.md` |
+| Next | Owner may authorize **Stage 5 PLANNING** (Storage cleanup) — not started |
+| Stage 6 / prod / merge | **Forbidden** |
+
+## 2026-08-07 - Stage 4 publishers deleted on fresh-prints-dev — post-delete QA next
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Owner | `STAGE 4 PUBLISHERS DELETED: PASS` |
+| Six publishers | **Absent** (verified) |
+| Algolia sync/reconcile | **Present** |
+| Record | `docs/workflow/reviews/2026-08-07-stage-4-publisher-delete-dev-record.md` |
+| Next | Stage 4 post-delete QA |
+| Stage 5/6 / prod / merge | **Forbidden** |
+
+## 2026-08-07 - Stage 4 publisher DELETE — owner must run functions:delete
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Phrase | `APPROVE DEV FUNCTIONS DELETE: STAGE 4 PUBLISHERS` |
+| Algolia redeploy | **Done** (sync + reconcile + scheduled) |
+| Six publisher delete | **Blocked in agent** — owner runs CLI locally |
+| Checkpoint | `docs/workflow/reviews/2026-08-07-stage-4-publisher-delete-dev-checkpoint.md` |
+| Reply after delete | `STAGE 4 PUBLISHERS DELETED: PASS` |
+
+## 2026-08-07 - Stage 4 source Implement APPROVED — STOP before live Function delete
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+HEAD (last commit): `eaa461e` — Stage 4 source changes **uncommitted**.
+
+| Item | Status |
+|------|--------|
+| Owner | `APPROVE STAGE 4 IMPLEMENT` |
+| Impl Review | **APPROVED** |
+| Portal generated fallback | **Removed** |
+| Classifier | `functions/src/algolia/portalCatalogChangeClassifier.ts` |
+| Six publishers in source | **Removed** (live still deployed until delete phrase) |
+| Next | `APPROVE DEV FUNCTIONS DELETE: STAGE 4 PUBLISHERS` |
+| Stage 5/6 / prod / merge | **Forbidden** |
+
+## 2026-08-07 - Stage 4 PLANNING approved (code Implement gated; no live delete yet)
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Owner | `APPROVE STAGE 4 PLANNING` |
+| Plan | `docs/workflow/plans/2026-08-07-stage-4-publisher-retirement-plan.md` |
+| Formal Review | **approved_with_changes** |
+| Next | Owner may authorize Stage 4 **code** Implement |
+| Live Function delete | **Not authorized** until deploy phrase after Impl Review |
+| Stage 5/6 / prod / merge | **Forbidden** |
+| Publisher | **Still alive** |
+
+## 2026-08-07 - Stage 1b-C Algolia owner QA complete (STOP before Stage 4)
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Stage 1b-C | **approved_with_notes** — `ALGOLIA OUTAGE: PASS` closes checklist |
+| Signoff | `docs/workflow/reviews/2026-08-07-stage-1b-c-algolia-owner-qa-signoff.md` |
+| Deferred | TD-030; Discover rail≠View All note |
+| Stage 4 / prod / merge | **Not started / none / unmerged** — owner-gated |
+| Publisher | **Still alive** |
+
+## 2026-08-07 - Stage 1b-C Favorites/details/share/request PASS WITH NOTES
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Owner QA | `FAVORITES DETAILS SHARE REQUEST: PASS WITH NOTES` |
+| Deferred | TD-030 — details/share Add-to-Request → quantity control parity with catalog cards |
+| Next | **Algolia outage / kill-switch** |
+| Publisher / prod / merge / Stage 4+ | Alive / none / unmerged / not started |
+
+## 2026-08-07 - Stage 1b-C Discover View All corrective signed off (PASS WITH NOTES)
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Owner QA | `DISCOVER VIEW ALL: PASS WITH NOTES` |
+| Signoff | **approved_with_notes** |
+| Note | Popular/category View All order ≠ Discover rails (accepted; home pool vs View All contracts). New This Week matches exactly. |
+| Next | Stage 1b-C **Favorites / details / share / Add to Request** |
+| Publisher / prod / merge / Stage 4+ | Alive / none / unmerged / not started |
+
+Signoff: `docs/workflow/reviews/2026-08-07-stage-1b-c-discover-view-all-regressions-signoff.md`
+
+## 2026-08-07 - Stage 1b-C Discover View All corrective — STOP for owner re-QA
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Defects | Popular View All blank; category View All wrong order |
+| Root causes | `orderBy(requestCount)` omits missing field; readyAt completeness demoted to createdAt order |
+| Fix | Membership + client-sort repair in `catalogService` (metric / ready-order keys) |
+| Automated | **68/68** + Portal tsc + eslint + diff-check |
+| Impl Review | **APPROVED** — `docs/workflow/reviews/2026-08-07-stage-1b-c-discover-view-all-regressions-implementation-review.md` |
+| Publisher / prod / merge / Stage 4+ | **Unchanged** (alive / none / unmerged / not started) |
+
+Owner re-QA: Popular → View All; Funny & Sarcastic → View All; one other category; New This Week → View All.
+
 ## 2026-08-07 - Stage 1b-A Algolia implement complete; STOP at secrets checkpoint
 
 Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).

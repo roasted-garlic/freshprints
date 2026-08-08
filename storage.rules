@@ -225,26 +225,10 @@ service firebase.storage {
         && isBrandLogoFileName(fileName);
     }
 
-    // Generated catalog snapshots are written only by Admin SDK publication
-    // functions. The AI projection is intentionally not client-readable.
-    match /generated/catalog-reference/ai/{fileName} {
-      allow read, write: if false;
-    }
-
-    match /generated/catalog-reference/manifest.json {
-      allow read: if true;
-      allow write: if false;
-    }
-
-    match /generated/catalog-reference/client/{fileName} {
-      allow read: if true;
-      allow write: if false;
-    }
-
-    match /generated/portal-catalog/{allPaths=**} {
-      allow read: if true;
-      allow write: if false;
-    }
+    // Stage 5 (2026-08-07): generated portal-catalog / catalog-reference Storage
+    // matches removed after publisher retirement (Stage 4). Residual objects are
+    // cleaned via ops script; client access falls through to default-deny below.
+    // Do not re-add public-read generated catalog paths without a new managed Stage.
 
     match /{allPaths=**} {
       allow read, write: if false;

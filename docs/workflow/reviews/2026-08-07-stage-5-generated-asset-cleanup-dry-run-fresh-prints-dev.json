@@ -1,0 +1,106 @@
+{
+  "stage": "Stage 5 — Generated Asset Cleanup",
+  "projectId": "fresh-prints-dev",
+  "mode": "dry-run",
+  "performedAt": "2026-08-07T22:21:44.206Z",
+  "storageAllowlist": [
+    "generated/portal-catalog/",
+    "generated/catalog-reference/"
+  ],
+  "firestoreAllowlist": [
+    "snapshotPublicationState"
+  ],
+  "storageByPrefix": [
+    {
+      "prefix": "generated/portal-catalog/",
+      "objectCount": 57354,
+      "totalBytes": 146829893,
+      "samplePaths": [
+        "generated/portal-catalog/card-overrides/v1329-ea5e942bd5423bb3.json",
+        "generated/portal-catalog/card-overrides/v1446-7367520c3a3c53b5.json",
+        "generated/portal-catalog/card-overrides/v64-0228cb6b856de95c.json",
+        "generated/portal-catalog/card-overrides/v64-403864cc69a01adb.json",
+        "generated/portal-catalog/card-overrides/v64-dd2594f83b4f5c98.json",
+        "generated/portal-catalog/card-overrides/v721-00a67f09776a5a5d.json",
+        "generated/portal-catalog/card-overrides/v721-ac9ca5cd1e08129e.json",
+        "generated/portal-catalog/card-overrides/v721-e30c21cc56d1953f.json",
+        "generated/portal-catalog/manifest.json",
+        "generated/portal-catalog/v1-e0e5b3ae9fb69797/discover.json",
+        "generated/portal-catalog/v1-e0e5b3ae9fb69797/filters/tags/funny.json",
+        "generated/portal-catalog/v1-e0e5b3ae9fb69797/filters/tags/shrek.json",
+        "generated/portal-catalog/v1012-4f53cda18c2baa0c/discover.json",
+        "generated/portal-catalog/v1012-4f53cda18c2baa0c/filters/tags-facet.json",
+        "generated/portal-catalog/v1012-4f53cda18c2baa0c/studio/ready-index.json",
+        "generated/portal-catalog/v1013-4f53cda18c2baa0c/discover.json",
+        "generated/portal-catalog/v1013-4f53cda18c2baa0c/filters/tags-facet.json",
+        "generated/portal-catalog/v1013-4f53cda18c2baa0c/studio/ready-index.json",
+        "generated/portal-catalog/v1020-4f53cda18c2baa0c/discover.json",
+        "generated/portal-catalog/v1020-4f53cda18c2baa0c/filters/tags-facet.json"
+      ]
+    },
+    {
+      "prefix": "generated/catalog-reference/",
+      "objectCount": 23,
+      "totalBytes": 4478422,
+      "samplePaths": [
+        "generated/catalog-reference/ai/v10-e5a18178b556f311.json",
+        "generated/catalog-reference/ai/v12-c57dd941ad3d6a9d.json",
+        "generated/catalog-reference/ai/v14-8385315d8ba802c5.json",
+        "generated/catalog-reference/ai/v3-1a810751ceb2b381.json",
+        "generated/catalog-reference/ai/v4-1a810751ceb2b381.json",
+        "generated/catalog-reference/ai/v5-1a810751ceb2b381.json",
+        "generated/catalog-reference/ai/v6-1a810751ceb2b381.json",
+        "generated/catalog-reference/ai/v7-1a810751ceb2b381.json",
+        "generated/catalog-reference/ai/v8-1a810751ceb2b381.json",
+        "generated/catalog-reference/ai/v9-1a810751ceb2b381.json",
+        "generated/catalog-reference/client/v1-1a810751ceb2b381.json",
+        "generated/catalog-reference/client/v10-e5a18178b556f311.json",
+        "generated/catalog-reference/client/v12-c57dd941ad3d6a9d.json",
+        "generated/catalog-reference/client/v14-8385315d8ba802c5.json",
+        "generated/catalog-reference/client/v2-1a810751ceb2b381.json",
+        "generated/catalog-reference/client/v3-1a810751ceb2b381.json",
+        "generated/catalog-reference/client/v4-1a810751ceb2b381.json",
+        "generated/catalog-reference/client/v5-1a810751ceb2b381.json",
+        "generated/catalog-reference/client/v6-1a810751ceb2b381.json",
+        "generated/catalog-reference/client/v7-1a810751ceb2b381.json"
+      ]
+    }
+  ],
+  "firestore": {
+    "collectionId": "snapshotPublicationState",
+    "documentCount": 2,
+    "sampleIds": [
+      "catalog-reference",
+      "portal-catalog"
+    ]
+  },
+  "negativeRootChecklist": [
+    {
+      "root": "originals/",
+      "targetedForDeletion": false,
+      "note": "Confirmed not in Stage 5 Storage allowlist"
+    },
+    {
+      "root": "thumbnails/",
+      "targetedForDeletion": false,
+      "note": "Confirmed not in Stage 5 Storage allowlist"
+    },
+    {
+      "root": "previews/",
+      "targetedForDeletion": false,
+      "note": "Confirmed not in Stage 5 Storage allowlist"
+    },
+    {
+      "root": "display/",
+      "targetedForDeletion": false,
+      "note": "Confirmed not in Stage 5 Storage allowlist"
+    },
+    {
+      "root": "customer-uploads/",
+      "targetedForDeletion": false,
+      "note": "Confirmed not in Stage 5 Storage allowlist"
+    }
+  ],
+  "otherRootsNote": "Every Storage root outside the two allowlisted generated prefixes is out of scope and was not targeted.",
+  "destructiveActionsPerformed": false
+}

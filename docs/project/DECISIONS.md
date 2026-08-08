@@ -4,6 +4,113 @@
 
 ---
 
+### ADR-FP-128: Taxonomy materialization — server-owned chunked Firestore + revision caches
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-08-07 |
+| Status | accepted (source Implement; live bootstrap / Functions+Rules deploy gated) |
+| Related | `post-launch-catalog-and-processing-stability` / `taxonomy-read-spike-elimination` |
+| Plan | `docs/workflow/plans/2026-08-07-taxonomy-read-spike-elimination-plan.md` |
+
+**Context**
+
+Cold AI Function instances and Studio AI Review each hydrate ~1,139 Firestore taxonomy docs
+(approved tags + active categories). P3 process cache helps only within one warm instance.
+Stage 4/5 retired generated catalog Storage — must not revive those prefixes.
+
+**Decision**
+
+1. Firestore `tags/**` and `categories/**` remain authoritative.
+2. Derived read model: `taxonomyMaterialization/meta` + `taxonomyMaterialization/chunk-*`
+   (approved tags + active categories only), written only by Admin/Functions via shared
+   `rebuildTaxonomyMaterialization` (chunks first, then meta — publication fence).
+3. AI loader prefers materialization (revision-keyed process cache); FS full hydrate is
+   single-flight fallback with circuit after repeated failures. Single-flight is
+   **per-instance only** (N cold instances can still each hydrate once).
+4. Studio reads meta, short-circuits on matching Electron `userData/taxonomy-cache/v1.json`,
+   else fetches chunks. Clients cannot write materialization (Rules deny).
+5. Taxonomy source writes (`tags`/`categories` onWrite triggers) rebuild via an **awaited**
+   process-local coalesce Promise (no detached timer after Gen2 return); design
+   writes, Algolia sync, and enqueue must not rebuild. Cross-instance duplicate rebuilds
+   remain an accepted residual (no fleet lock).
+6. Soft max ~900 KiB/chunk; revisit Option A / private Storage when projected corpus exceeds
+   `TAXONOMY_MATERIALIZATION_REVISIT_BYTES` (2.5 MiB).
+
+**Consequences**
+
+- Live bootstrap callable + Functions/Rules deploy require separate owner authorization.
+- Until bootstrap exists in an environment, Studio/AI keep FS list fallback (RC4).
+
+---
+
+### ADR-FP-127: Stage 5 — Retire generated catalog Storage + Rules; ops-script cleanup only
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-08-07 |
+| Status | accepted (source Implement); live dry-run / delete / Rules deploy pending owner phrases |
+| Related | `post-launch-catalog-and-processing-stability` Stage 5 |
+| Plan | `docs/workflow/plans/2026-08-07-stage-5-generated-asset-cleanup-plan.md` |
+
+**Context**
+
+Stage 4 retired publishers and Portal generated fallbacks. Residual `generated/portal-catalog/**` and
+`generated/catalog-reference/**` objects plus `snapshotPublicationState` docs may remain on
+`fresh-prints-dev`. Storage Rules still publicly read obsolete snapshots; Firestore Rules still named
+the coordination collection.
+
+**Decision**
+
+1. Narrow Rules source: remove generated catalog Storage matches and `snapshotPublicationState` match
+   (default-deny). Do not widen unrelated rules.
+2. Clean residual data only via local ops script
+   `functions/scripts/stage5-generated-asset-cleanup.mjs` — hard-pinned to `fresh-prints-dev`, dry-run
+   default, exact Storage prefixes + sole Firestore collection; **no** deployed cleanup callable;
+   **no** production escape hatch.
+3. Keep Strategy 2 AI Firestore taxonomy; keep shared catalog-snapshots types; keep Portal stubs.
+4. Live dry-run / delete / Rules deploy require separate owner phrases. Stage 6 / prod / PR merge out
+   of scope.
+
+**Consequences**
+
+- Clients can no longer read generated catalog snapshots once Rules are deployed.
+- Storage object loss after APPLY is accepted (Algolia + Firestore are primary).
+- Rollback for Rules = redeploy prior rules from git; objects are not auto-restored.
+
+---
+
+### ADR-FP-126: Stage 4 — Retire generated portal-catalog publishers (source); Algolia-only search/facets
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-08-07 |
+| Status | accepted (source + live Function delete on `fresh-prints-dev`; Stage 4 Signoff approved_with_notes) |
+| Related | `post-launch-catalog-and-processing-stability` Stage 4 |
+| Plan | `docs/workflow/plans/2026-08-07-stage-4-publisher-retirement-plan.md` |
+
+**Context**
+
+Stage 1b Algolia replaced generated search/multi-tag/facets. Publishers still wrote
+`generated/portal-catalog/**` (~1.1K C+T+R full pubs) and Portal still fell back to Storage when
+Algolia was off.
+
+**Decision**
+
+1. Remove Portal generated search/facet fallback — Algolia-off fails closed; Firestore browse stays.
+2. Delete publisher Function **source** and un-export six Functions; relocate classifier under
+   `functions/src/algolia/` for sync.
+3. Live Function delete on `fresh-prints-dev` requires `APPROVE DEV FUNCTIONS DELETE: STAGE 4 PUBLISHERS`.
+4. Storage object / Rules cleanup deferred to Stage 5. Prod Function delete / PR merge / production
+   deferred to Stage 6+.
+
+**Consequences**
+
+- After live delete: design writes no longer trigger portal-catalog full publications.
+- Rollback = redeploy prior Functions revision (Storage objects may still exist until Stage 5).
+
+---
+
 ### ADR-FP-125: Customer-upload oversized-pixel normalization, narrow ADR-FP-080 downsampling exception, and processing-timeout watchdog
 
 | Field | Value |

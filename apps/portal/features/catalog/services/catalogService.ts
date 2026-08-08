@@ -32,7 +32,6 @@ import type {
   CatalogTagOption,
 } from '../types/catalog.types';
 import { filterCatalogDesignsBySearch } from '../utils/catalogSearch';
-import { portalCatalogAssetService } from './portalCatalogAssetService';
 import {
   invalidateCatalogDesignById,
   loadCatalogDesignByIdCached,
@@ -270,6 +269,126 @@ function buildDesignListPage(
 }
 
 /**
+ * Client-side ranking for cases where Firestore `orderBy(field)` omits docs missing the field,
+ * or where ready-order must use `readyAtMs ?? createdAtMs` after a complete membership fetch.
+ */
+export function sortCatalogDesignsByField(
+  designs: readonly CatalogDesign[],
+  sortField: CatalogDesignSortField,
+): CatalogDesign[] {
+  return designs.slice().sort((left, right) => {
+    const valueCompare = getDesignSortValue(right, sortField) - getDesignSortValue(left, sortField);
+    if (valueCompare !== 0) {
+      return valueCompare;
+    }
+    return right.id.localeCompare(left.id);
+  });
+}
+
+function isMetricSortField(sortField: CatalogDesignSortField): boolean {
+  return sortField === 'requestCount' || sortField === 'favoriteCount';
+}
+
+/** Max designs pulled for client-sort completeness (Popular / ready-order repair). */
+const CLIENT_SORT_MEMBERSHIP_CAP = 500;
+
+/**
+ * Apply startAfter semantics on an already client-sorted membership (desc by sortField, then id).
+ */
+export function sliceSortedDesignsAfterCursor(
+  sorted: readonly CatalogDesign[],
+  sortField: CatalogDesignSortField,
+  pageSize: number,
+  cursor: CatalogDesignListQuery['cursor'] | undefined,
+): CatalogDesignListPage {
+  let start = 0;
+
+  if (cursor) {
+    const cursorIndex = sorted.findIndex((design) => {
+      const value = getDesignSortValue(design, sortField);
+      if (value !== cursor.sortValue) {
+        return value < cursor.sortValue;
+      }
+      // Desc id tie-break: after cursor ⇒ lexicographically smaller id.
+      return design.id.localeCompare(cursor.designId) < 0;
+    });
+    start = cursorIndex >= 0 ? cursorIndex : sorted.length;
+  }
+
+  return buildDesignListPage(sorted.slice(start), sortField, pageSize);
+}
+
+async function queryReadyDesignsPageFromFirestore(
+  listQuery: CatalogDesignListQuery,
+  source: string,
+): Promise<CatalogDesignListPage> {
+  const pageSize = listQuery.limitCount ?? DEFAULT_CATALOG_PAGE_SIZE;
+  const sortField = resolveSortField(listQuery);
+  const designsQuery = query(
+    collection(getPortalDb(), PORTAL_FIRESTORE_COLLECTIONS.designs),
+    ...buildDesignListConstraints(listQuery),
+  );
+  const traceMetadata = catalogListTraceMetadata(listQuery, source);
+  traceFirestoreOneShotStart('getDocs', traceMetadata);
+  const snapshot = await getDocs(designsQuery);
+  traceFirestoreOneShotComplete('getDocs', traceMetadata, snapshot.size);
+
+  const designs = snapshot.docs
+    .map((designSnapshot) => mapCatalogDesign(designSnapshot.id, designSnapshot.data() as DesignDocumentData))
+    .filter((design): design is CatalogDesign => design !== null);
+
+  const page = buildDesignListPage(designs, sortField, pageSize);
+
+  if (!listQuery.search?.trim()) {
+    return page;
+  }
+
+  return {
+    ...page,
+    designs: filterCatalogDesignsBySearch(page.designs, listQuery.search),
+  };
+}
+
+/**
+ * Complete ready membership via createdAt paging (field always present on normal docs),
+ * then client-rank by the requested sortField and return the requested page slice.
+ */
+async function listReadyDesignsPageByClientSortedMembership(
+  listQuery: CatalogDesignListQuery,
+  sortField: CatalogDesignSortField,
+): Promise<CatalogDesignListPage> {
+  const pageSize = listQuery.limitCount ?? DEFAULT_CATALOG_PAGE_SIZE;
+  const membership: CatalogDesign[] = [];
+  let membershipCursor: CatalogDesignListQuery['cursor'] | undefined;
+
+  while (membership.length < CLIENT_SORT_MEMBERSHIP_CAP) {
+    const membershipPage = await queryReadyDesignsPageFromFirestore(
+      {
+        categoryId: listQuery.categoryId,
+        tag: listQuery.tag,
+        search: listQuery.search,
+        // Membership fetch must not carry readyAfterMs / metric orderBy / browse cursor.
+        limitCount: Math.min(48, CLIENT_SORT_MEMBERSHIP_CAP - membership.length),
+        sortField: 'createdAt',
+        cursor: membershipCursor,
+      },
+      'catalogService.listReadyDesignsPage.clientSortedMembership',
+    );
+
+    membership.push(...membershipPage.designs);
+
+    if (!membershipPage.hasMore || !membershipPage.nextCursor) {
+      break;
+    }
+
+    membershipCursor = membershipPage.nextCursor;
+  }
+
+  const sorted = sortCatalogDesignsByField(membership, sortField);
+  return sliceSortedDesignsAfterCursor(sorted, sortField, pageSize, listQuery.cursor);
+}
+
+/**
  * Reorders found ready designs to match the caller’s requested ID sequence (deduped /
  * trimmed by the caller). Pure/exported for focused Stage 1a ordering tests.
  */
@@ -368,49 +487,83 @@ function catalogListTraceMetadata(
 
 export const catalogService = {
   async listReadyDesignsPage(listQuery: CatalogDesignListQuery = {}): Promise<CatalogDesignListPage> {
-    const pageSize = listQuery.limitCount ?? DEFAULT_CATALOG_PAGE_SIZE;
     const sortField = resolveSortField(listQuery);
-    const designsQuery = query(
-      collection(getPortalDb(), PORTAL_FIRESTORE_COLLECTIONS.designs),
-      ...buildDesignListConstraints(listQuery),
-    );
-    const traceMetadata = catalogListTraceMetadata(
-      listQuery,
-      'catalogService.listReadyDesignsPage',
-    );
-    traceFirestoreOneShotStart('getDocs', traceMetadata);
-    const snapshot = await getDocs(designsQuery);
-    traceFirestoreOneShotComplete('getDocs', traceMetadata, snapshot.size);
 
-    const designs = snapshot.docs
-      .map((designSnapshot) => mapCatalogDesign(designSnapshot.id, designSnapshot.data() as DesignDocumentData))
-      .filter((design): design is CatalogDesign => design !== null);
-
-    const page = buildDesignListPage(designs, sortField, pageSize);
-
-    // `orderBy(readyAt)` silently omits ready docs missing the field — same completeness
-    // guard as Studio Design Library (fall back to createdAt for this request only).
-    // New This Week (`readyAfterMs`) must NOT demote to createdAt week/order semantics.
+    // Popular / Most Liked: Firestore orderBy(metric) omits docs missing the field.
+    // Home rails rank the mixed pool client-side (missing → 0); View All must match.
+    // lastAddedToShowAt stays Firestore-native (Recently Requested requires the field).
+    // With a cursor, always use membership+client-sort so Load More cannot fall back to
+    // the incomplete orderBy path after a repaired first page.
     if (
-      sortField === 'readyAt' &&
+      isMetricSortField(sortField) &&
       typeof listQuery.readyAfterMs !== 'number' &&
-      !listQuery.cursor &&
-      !page.hasMore
+      !listQuery.skipClientSortRepair
     ) {
-      const matchingCount = await this.countReadyDesigns(listQuery);
-      if (matchingCount > page.designs.length) {
-        return this.listReadyDesignsPage({ ...listQuery, sortField: 'createdAt' });
+      if (listQuery.cursor) {
+        return listReadyDesignsPageByClientSortedMembership(listQuery, sortField);
       }
-    }
 
-    if (!listQuery.search?.trim()) {
+      const page = await queryReadyDesignsPageFromFirestore(
+        listQuery,
+        'catalogService.listReadyDesignsPage',
+      );
+
+      if (!page.hasMore || page.designs.length === 0) {
+        const matchingCount = await this.countReadyDesigns(listQuery);
+        if (matchingCount > page.designs.length || (matchingCount > 0 && page.designs.length === 0)) {
+          return listReadyDesignsPageByClientSortedMembership(listQuery, sortField);
+        }
+      }
+
       return page;
     }
 
-    return {
-      ...page,
-      designs: filterCatalogDesignsBySearch(page.designs, listQuery.search),
-    };
+    const page = await queryReadyDesignsPageFromFirestore(
+      listQuery,
+      'catalogService.listReadyDesignsPage',
+    );
+
+    // readyAt completeness: orderBy(readyAt) omits legacy ready docs missing the field.
+    // Repair with membership + ready-order key (readyAtMs ?? createdAtMs) — never demote
+    // New This Week (readyAfterMs) and never return createdAt-ordered results as "ready order".
+    if (
+      sortField === 'readyAt' &&
+      typeof listQuery.readyAfterMs !== 'number' &&
+      !listQuery.skipClientSortRepair
+    ) {
+      const nativeIncomplete = async (): Promise<boolean> => {
+        const matchingCount = await this.countReadyDesigns(listQuery);
+        if (matchingCount === 0) {
+          return false;
+        }
+
+        if (!listQuery.cursor) {
+          return !page.hasMore && matchingCount > page.designs.length;
+        }
+
+        // Load More after a possible repair: probe native completeness without cursor.
+        const probe = await queryReadyDesignsPageFromFirestore(
+          {
+            categoryId: listQuery.categoryId,
+            tag: listQuery.tag,
+            search: listQuery.search,
+            sortField: 'readyAt',
+            limitCount: Math.min(
+              Math.max(matchingCount, DEFAULT_CATALOG_PAGE_SIZE),
+              CLIENT_SORT_MEMBERSHIP_CAP,
+            ),
+          },
+          'catalogService.listReadyDesignsPage.readyAtCompletenessProbe',
+        );
+        return !probe.hasMore && probe.designs.length < matchingCount;
+      };
+
+      if (await nativeIncomplete()) {
+        return listReadyDesignsPageByClientSortedMembership(listQuery, sortField);
+      }
+    }
+
+    return page;
   },
 
   /**
@@ -497,21 +650,27 @@ export const catalogService = {
    */
   async listHomeDiscoveryPool(): Promise<CatalogDesign[]> {
     return homeDiscoveryPoolCache.get('home-discovery-pool', async () => {
+      // skipClientSortRepair: home merges pools and client-ranks; avoid full-membership
+      // repair on every Discover load (View All leaves the flag unset).
       const preferredQueries: CatalogDesignListQuery[] = [
         {
           limitCount: HOME_DISCOVERY_POOL_PAGE_SIZE,
+          skipClientSortRepair: true,
           sortField: 'readyAt',
         },
         {
           limitCount: HOME_DISCOVERY_POOL_PAGE_SIZE,
+          skipClientSortRepair: true,
           sortField: 'requestCount',
         },
         {
           limitCount: HOME_DISCOVERY_POOL_PAGE_SIZE,
+          skipClientSortRepair: true,
           sortField: 'favoriteCount',
         },
         {
           limitCount: HOME_DISCOVERY_POOL_PAGE_SIZE,
+          skipClientSortRepair: true,
           sortField: 'lastAddedToShowAt',
         },
       ];
@@ -543,6 +702,7 @@ export const catalogService = {
       if (indexBlocked || settled.some((result) => result.status === 'rejected')) {
         const fallback = await this.listReadyDesignsPage({
           limitCount: HOME_DISCOVERY_POOL_PAGE_SIZE,
+          skipClientSortRepair: true,
           sortField: 'readyAt',
         });
         return fallback.designs;
@@ -686,32 +846,41 @@ export const catalogService = {
    * Tags for the Portal tag modal: only tags with at least one ready design, each with its
    * ready-design count — never the full approved-tag taxonomy.
    *
-   * Stage 1b: Algolia facets when configured; otherwise generated `tags-facet.json`
-   * (transition until Stage 4). No Firestore full-scan fallback.
+   * Stage 4: Algolia facets when configured; otherwise fail closed (no generated Storage).
+   * No Firestore full-scan fallback.
    */
   async listApprovedTags(): Promise<CatalogTagOption[]> {
     const { isPortalAlgoliaCatalogConfigured } = await import('./portalAlgoliaCatalogFlags');
-    if (isPortalAlgoliaCatalogConfigured()) {
-      const { portalAlgoliaCatalogSearchService } = await import(
-        './portalAlgoliaCatalogSearchService'
-      );
-      return portalAlgoliaCatalogSearchService.listTagFacets();
+    if (!isPortalAlgoliaCatalogConfigured()) {
+      throw new Error('Tag filters are temporarily unavailable. Please try again in a moment.');
     }
-    return portalCatalogAssetService.listTagFacets();
+    const { portalAlgoliaCatalogSearchService } = await import(
+      './portalAlgoliaCatalogSearchService'
+    );
+    return portalAlgoliaCatalogSearchService.listTagFacets();
   },
 
   /**
-   * Same contract as `listApprovedTags`, narrowed to designs matching every tag in
-   * `selectedTags` (AND semantics).
+   * Same contract as `listApprovedTags`, narrowed to the active catalog filter context.
+   *
+   * Stage 4: Algolia only — free-text `search`, selected-tag AND, and optional `categoryId`
+   * refine facet counts. Kill switch does not restore generated facet assets.
    */
-  async listNarrowedApprovedTags(selectedTags: string[]): Promise<CatalogTagOption[]> {
+  async listNarrowedApprovedTags(
+    selectedTags: string[],
+    options: { search?: string; categoryId?: string } = {},
+  ): Promise<CatalogTagOption[]> {
     const { isPortalAlgoliaCatalogConfigured } = await import('./portalAlgoliaCatalogFlags');
-    if (isPortalAlgoliaCatalogConfigured()) {
-      const { portalAlgoliaCatalogSearchService } = await import(
-        './portalAlgoliaCatalogSearchService'
-      );
-      return portalAlgoliaCatalogSearchService.listNarrowedTagFacets(selectedTags);
+    if (!isPortalAlgoliaCatalogConfigured()) {
+      throw new Error('Tag filters are temporarily unavailable. Please try again in a moment.');
     }
-    return portalCatalogAssetService.listNarrowedTagFacets(selectedTags);
+    const { portalAlgoliaCatalogSearchService } = await import(
+      './portalAlgoliaCatalogSearchService'
+    );
+    return portalAlgoliaCatalogSearchService.listNarrowedTagFacets({
+      selectedTags,
+      search: options.search,
+      categoryId: options.categoryId,
+    });
   },
 };

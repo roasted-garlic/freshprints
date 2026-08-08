@@ -6,12 +6,7 @@ import {
   CATALOG_NEW_THIS_WEEK_DAYS,
   type CatalogDiscoveryMode,
 } from '@fresh-prints/shared/utils/catalogDiscoveryRanking';
-import {
-  traceGeneratedAssetOutcome,
-} from '@fresh-prints/shared/utils/firestoreUsageTrace';
 import { catalogService, DEFAULT_CATALOG_PAGE_SIZE } from '../services/catalogService';
-import { portalCatalogAssetService } from '../services/portalCatalogAssetService';
-import { generatedPortalCatalogEnabled } from '../services/catalogSnapshotFlags';
 import { isPortalAlgoliaCatalogConfigured } from '../services/portalAlgoliaCatalogFlags';
 import { portalAlgoliaCatalogSearchService } from '../services/portalAlgoliaCatalogSearchService';
 import type {
@@ -135,7 +130,7 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
   const [serverHasMore, setServerHasMore] = useState(false);
   const [isFullyHydrated, setIsFullyHydrated] = useState(false);
   const [isManagedSearchQuery, setIsManagedSearchQuery] = useState(false);
-  /** Algolia/generated hit offset — advances by provider page size, not hydrated card count. */
+  /** Algolia hit offset — advances by provider page size, not hydrated card count. */
   const [managedSearchNextOffset, setManagedSearchNextOffset] = useState(0);
   const hydrateGenerationRef = useRef(0);
 
@@ -216,53 +211,14 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
             }
           }
 
-          // Transition: generated path until Algolia is configured (Stage 4 retires publisher).
-          if (!generatedPortalCatalogEnabled()) {
-            if (!isCancelled && generation === hydrateGenerationRef.current) {
-              setError('Catalog search is temporarily unavailable. Please try again in a moment.');
-              setAllDesigns([]);
-              setIsLoading(false);
-              setServerTotalCount(null);
-            }
-            return;
-          }
-
-          try {
-            const generatedPage = await portalCatalogAssetService.listMatchingDesigns(
-              options.searchQuery ?? '',
-              selectedTagsForAssets,
-              { categoryId: options.categoryId, limit: pageSize, offset: 0 },
-            );
-            if (isCancelled || generation !== hydrateGenerationRef.current) return;
-            traceGeneratedAssetOutcome(
-              'success',
-              'portal-catalog-query@generated-search-phase1a',
-              { app: 'portal', triggerReason: 'route' },
-            );
-            const nextOffset = generatedPage.designs.length;
-            setAllDesigns(generatedPage.designs);
-            setServerTotalCount(generatedPage.total ?? generatedPage.designs.length);
-            setManagedSearchNextOffset(nextOffset);
-            setIsFullyHydrated(
-              nextOffset >= (generatedPage.total ?? nextOffset) || generatedPage.designs.length === 0,
-            );
-            setIsManagedSearchQuery(true);
+          // Stage 4: no generated Storage fallback. Algolia off → fail closed for managed search.
+          if (!isCancelled && generation === hydrateGenerationRef.current) {
+            setError('Catalog search is temporarily unavailable. Please try again in a moment.');
+            setAllDesigns([]);
             setIsLoading(false);
-            return;
-          } catch {
-            traceGeneratedAssetOutcome(
-              'failure',
-              'portal-catalog-query@generated-search-phase1a',
-              { app: 'portal', triggerReason: 'route' },
-            );
-            if (!isCancelled && generation === hydrateGenerationRef.current) {
-              setError('Catalog filters are temporarily unavailable. Please try again in a moment.');
-              setAllDesigns([]);
-              setIsLoading(false);
-              setServerTotalCount(null);
-            }
-            return;
+            setServerTotalCount(null);
           }
+          return;
         }
 
         // Phase 1A ordinary path: bounded Firestore (unfiltered / category / single-tag / discovery).
@@ -325,7 +281,7 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
     useOrdinaryFirestore,
   ]);
 
-  // Managed search (Algolia/generated) already applied q/tags/category — do not re-filter
+  // Managed search (Algolia) already applied q/tags/category — do not re-filter
   // client-side (would discard Algolia typo-tolerant hits that fail substring match).
   const filteredDesigns = useFilteredCatalogDesigns({
     designs: allDesigns,
@@ -386,21 +342,7 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
               setVisibleCount((current) => current + pageSize);
               setIsFullyHydrated(nextOffset >= page.total || page.hitCount === 0);
             } else {
-              const page = await portalCatalogAssetService.listMatchingDesigns(
-                options.searchQuery ?? '',
-                selectedTagsForAssets,
-                {
-                  categoryId: options.categoryId,
-                  limit: pageSize,
-                  offset: requestOffset,
-                },
-              );
-              const nextOffset = requestOffset + page.designs.length;
-              setAllDesigns((current) => [...current, ...page.designs]);
-              setServerTotalCount(page.total);
-              setManagedSearchNextOffset(nextOffset);
-              setVisibleCount((current) => current + pageSize);
-              setIsFullyHydrated(nextOffset >= page.total || page.designs.length === 0);
+              setError('Catalog search is temporarily unavailable. Please try again in a moment.');
             }
           } catch (loadError) {
             setError(toFriendlyCatalogError(loadError));

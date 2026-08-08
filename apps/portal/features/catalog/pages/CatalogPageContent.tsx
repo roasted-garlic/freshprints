@@ -629,6 +629,8 @@ export function CatalogPageContent() {
 
       <CatalogTagFilterModal
         approvedTags={approvedTags}
+        catalogSearchQuery={debouncedSearchQuery}
+        categoryId={categoryFilter || undefined}
         error={approvedTagsError}
         isOpen={isTagFilterModalOpen}
         onApply={(nextTags) => setSelectedTags(sortCatalogTags(nextTags))}

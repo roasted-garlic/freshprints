@@ -1803,10 +1803,17 @@ service cloud.firestore {
     match /designIssueReportOpenGuards/{docId} { allow read, write: if false; }
     match /designIssueReportDailyQuotas/{docId} { allow read, write: if false; }
 
-    // Server-only lease/generation state for manifest-last snapshot publication.
-    match /snapshotPublicationState/{snapshotId} {
-      allow read, write: if false;
+    // Stage 5 / taxonomy spike elimination: derived compact taxonomy (approved tags +
+    // active categories). Staff read only; client writes denied — Admin/Functions write.
+    // Do not revive generated/portal-catalog or generated/catalog-reference.
+    match /taxonomyMaterialization/{docId} {
+      allow read: if isStaff();
+      allow create, update, delete: if false;
     }
+
+    // Stage 5 (2026-08-07): snapshotPublicationState match removed after publisher
+    // retirement (Stage 4). Orphan docs cleaned via ops script; access falls through
+    // to default-deny below. Do not re-add without a new managed Stage.
 
     match /{document=**} {
       allow read, write: if false;

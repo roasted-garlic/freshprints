@@ -21,26 +21,19 @@ describe('Portal Phase 1A / 1B Stage 1a ordinary browse containment', () => {
     const homeBlock = source.slice(homeStart, homeStart + 1200);
     assert.match(homeBlock, /listHomeDiscoveryPool/);
     assert.doesNotMatch(homeBlock, /listDiscoverDesigns/);
-
-    const assetService = read(
-      'apps/portal/features/catalog/services/portalCatalogAssetService.ts',
-    );
-    assert.doesNotMatch(assetService, /listDiscoverDesigns/);
-    assert.doesNotMatch(assetService, /parsePortalCatalogDiscoverSnapshot/);
   });
 
-  it('keeps portal generated search/facet readers intact for Stage 1b', () => {
-    const asset = read('apps/portal/features/catalog/services/portalCatalogAssetService.ts');
-    assert.match(asset, /listMatchingDesigns/);
-    assert.match(asset, /listTagFacets/);
-    assert.match(asset, /listNarrowedTagFacets/);
-    assert.ok(
-      read('apps/portal/features/catalog/services/catalogSnapshotFlags.ts').length > 0,
-    );
+  it('Stage 4: managed search/facets are Algolia-only (no generated Storage readers)', () => {
+    const flags = read('apps/portal/features/catalog/services/catalogSnapshotFlags.ts');
+    assert.match(flags, /return false/);
 
     const catalogService = read('apps/portal/features/catalog/services/catalogService.ts');
     assert.match(catalogService, /listApprovedTags[\s\S]*listTagFacets/);
     assert.match(catalogService, /listNarrowedApprovedTags[\s\S]*listNarrowedTagFacets/);
+    assert.doesNotMatch(catalogService, /portalCatalogAssetService/);
+
+    const hook = read('apps/portal/features/catalog/hooks/useCatalogDesigns.ts');
+    assert.doesNotMatch(hook, /portalCatalogAssetService/);
   });
 
   it('Favorites / share / request / Assisted / account hydrate via catalogService.getReadyDesignsByIds', () => {

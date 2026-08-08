@@ -24,6 +24,10 @@ import {
   isAllowedInboxAlertIpcChannel,
 } from "./ipc/inboxAlert/inboxAlertIpcChannels";
 import {
+  TAXONOMY_CACHE_IPC_CHANNELS,
+  isAllowedTaxonomyCacheIpcChannel,
+} from "./ipc/taxonomyCache/taxonomyCacheIpcChannels";
+import {
   WHATNOT_IMPORT_CONFIRMED_EVENT,
   WHATNOT_IMPORT_IPC_CHANNELS,
   isAllowedWhatnotImportIpcChannel,
@@ -41,6 +45,12 @@ import type {
   SelectInboxAlertSoundRequest,
   SelectInboxAlertSoundResult,
 } from "@fresh-prints/shared/types/inboxAlert/inboxAlertIpc.types";
+import type {
+  TaxonomyDiskCacheClearResult,
+  TaxonomyDiskCacheReadResult,
+  TaxonomyDiskCacheWriteRequest,
+  TaxonomyDiskCacheWriteResult,
+} from "@fresh-prints/shared/types/taxonomy/taxonomyCacheIpc.types";
 import type {
   ConfirmCloseResult,
   DownloadUrlToFileRequest,
@@ -183,6 +193,23 @@ function invokeInboxAlertChannel<T>(
       error: {
         code: "INTERNAL_ERROR",
         message: "The requested inbox alert operation is not allowed.",
+      },
+    });
+  }
+
+  return ipcRenderer.invoke(channel, payload) as Promise<ImportIpcResult<T>>;
+}
+
+function invokeTaxonomyCacheChannel<T>(
+  channel: (typeof TAXONOMY_CACHE_IPC_CHANNELS)[keyof typeof TAXONOMY_CACHE_IPC_CHANNELS],
+  payload?: unknown,
+): Promise<ImportIpcResult<T>> {
+  if (!isAllowedTaxonomyCacheIpcChannel(channel)) {
+    return Promise.resolve({
+      success: false,
+      error: {
+        code: "INTERNAL_ERROR",
+        message: "The requested taxonomy cache operation is not allowed.",
       },
     });
   }
@@ -559,6 +586,27 @@ contextBridge.exposeInMainWorld("freshPrints", {
       return invokeInboxAlertChannel<ClearInboxAlertSoundResult>(
         INBOX_ALERT_IPC_CHANNELS.CLEAR_LOCAL_SOUND,
         request,
+      );
+    },
+  },
+
+  taxonomyCache: {
+    readDiskCache(): Promise<ImportIpcResult<TaxonomyDiskCacheReadResult>> {
+      return invokeTaxonomyCacheChannel<TaxonomyDiskCacheReadResult>(TAXONOMY_CACHE_IPC_CHANNELS.READ);
+    },
+
+    writeDiskCache(
+      request: TaxonomyDiskCacheWriteRequest,
+    ): Promise<ImportIpcResult<TaxonomyDiskCacheWriteResult>> {
+      return invokeTaxonomyCacheChannel<TaxonomyDiskCacheWriteResult>(
+        TAXONOMY_CACHE_IPC_CHANNELS.WRITE,
+        request,
+      );
+    },
+
+    clearDiskCache(): Promise<ImportIpcResult<TaxonomyDiskCacheClearResult>> {
+      return invokeTaxonomyCacheChannel<TaxonomyDiskCacheClearResult>(
+        TAXONOMY_CACHE_IPC_CHANNELS.CLEAR,
       );
     },
   },

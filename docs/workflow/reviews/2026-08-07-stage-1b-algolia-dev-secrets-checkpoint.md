@@ -3,7 +3,7 @@
 | Field | Value |
 |-------|-------|
 | Date | 2026-08-07 |
-| Status | **Functions deployed to `fresh-prints-dev`** — next: reconcile index, then Portal enable flag |
+| Status | **Reconcile OK (45/45)** — local Portal Algolia flag enabled; next Stage 1b-C QA |
 | Branch | `fix/post-launch-catalog-and-processing-stability` |
 | PR | #40 — keep open / **unmerged** |
 | Code | Stage 1b-A Algolia adapter + sync implemented; **not live** until secrets + deploy |
@@ -129,7 +129,29 @@ Suggested allowlist deploy:
 firebase deploy --only functions:syncPortalCatalogDesignToAlgolia,functions:reconcilePortalCatalogAlgoliaIndex,functions:reconcilePortalCatalogAlgoliaIndexScheduled --project fresh-prints-dev
 ```
 
-Then call reconcile (owner/admin) with `{ "dryRun": false }` once.
+### Reconcile via Studio DevTools bridge (approved)
+
+Phrase: `APPROVE STUDIO DEV BRIDGE: ALGOLIA RECONCILE`
+
+Minimal Studio console bridge (same pattern as print-request queue-tab backfill):
+
+- Service: `apps/studio/.../portalCatalogAlgoliaReconcileAdminService.ts`
+- Gate: dev build + `fresh-prints-dev` only (`isFirebaseDebugPanelEnabled`)
+- Client timeout: `540_000` ms (matches Function `timeoutSeconds: 540`)
+
+**Owner step (logged in as owner/admin on Studio → `fresh-prints-dev`):**
+
+1. Restart or hard-refresh Studio so the bridge installs.
+2. DevTools console:
+
+```js
+await window.freshPrintsDev.reconcilePortalCatalogAlgoliaIndex({ dryRun: false })
+```
+
+3. Expect `{ scanned, upserted, cleared: true, dryRun: false }`.
+4. Reply `ALGOLIA RECONCILE: OK` (optional counts).
+
+**Do not** enable `NEXT_PUBLIC_USE_ALGOLIA_CATALOG_SEARCH` until after a successful reconcile.
 
 Then set Portal env / App Hosting secrets for search-only vars and enable `NEXT_PUBLIC_USE_ALGOLIA_CATALOG_SEARCH=true`.
 

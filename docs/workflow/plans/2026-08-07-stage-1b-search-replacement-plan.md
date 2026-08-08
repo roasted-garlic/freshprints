@@ -194,7 +194,7 @@ Separate owner checkpoint. PR #40 merge is not automatic authorization.
 
 - [ ] **Owner D1** (blocks Implement)
 - [ ] Secret Manager / provider account phrases (A/B only)
-- [ ] Stage 1b-C owner QA
+- [x] Stage 1b-C owner QA
 - [ ] Stage 4 / 5 / 6 separately
 
 ## Risks and Rollback

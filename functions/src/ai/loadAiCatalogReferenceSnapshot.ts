@@ -5,13 +5,17 @@ import { randomUUID } from "node:crypto";
 
 import { adminDb } from "../lib/admin";
 import { logPipelineEvent } from "../lib/pipelineLog";
+import { readTaxonomyMaterializationCorpus } from "../taxonomy/rebuildTaxonomyMaterialization";
 
 /**
- * Process-local AI taxonomy cache TTL.
- * Firestore remains authoritative. Cloud Function instances are independent —
- * this is not a global guarantee. Cold starts always load fresh Firestore data.
+ * Process-local AI taxonomy cache.
+ * Revision-keyed (RC5); TTL is secondary. Not global across Function instances.
  */
 export const AI_TAXONOMY_CACHE_TTL_MS = 15 * 60_000;
+
+/** After this many FS fallbacks in-process, stay on FS-only for the circuit window (RC3). */
+export const TAXONOMY_FALLBACK_CIRCUIT_THRESHOLD = 3;
+export const TAXONOMY_FALLBACK_CIRCUIT_MS = 5 * 60_000;
 
 export interface AiTaxonomyLoadContext {
   functionName?: string;
@@ -25,10 +29,13 @@ type TaxonomyLogEvent =
   | "taxonomy-cache-join-inflight"
   | "taxonomy-cache-expired"
   | "taxonomy-load-success"
-  | "taxonomy-load-failure";
+  | "taxonomy-load-failure"
+  | "taxonomy-fallback-fs"
+  | "taxonomy-materialization-hit"
+  | "taxonomy-fallback-circuit-open";
 
 interface AiTaxonomyCacheDeps {
-  loadFromFirestore: () => Promise<AiCatalogReferenceSnapshot>;
+  loadTaxonomy: () => Promise<{ snapshot: AiCatalogReferenceSnapshot; revision: number | "fs-fallback" }>;
   now: () => number;
   log: (event: TaxonomyLogEvent, context: Record<string, unknown>) => void;
   ttlMs: number;
@@ -37,12 +44,13 @@ interface AiTaxonomyCacheDeps {
 
 interface CacheEntry {
   value: AiCatalogReferenceSnapshot;
+  revision: number | "fs-fallback";
   expiresAtMs: number;
   categoryCount: number;
   tagCount: number;
 }
 
-async function defaultLoadFromFirestore(): Promise<AiCatalogReferenceSnapshot> {
+async function defaultLoadFromFirestoreDocs(): Promise<AiCatalogReferenceSnapshot> {
   const [categoriesSnapshot, tagsSnapshot] = await Promise.all([
     adminDb.collection("categories").where("isActive", "==", true).get(),
     adminDb.collection("tags").where("status", "==", "approved").get(),
@@ -90,13 +98,85 @@ async function defaultLoadFromFirestore(): Promise<AiCatalogReferenceSnapshot> {
   };
 }
 
+function corpusToSnapshot(
+  corpus: { categories: AiCatalogReferenceSnapshot["categories"]; tags: AiCatalogReferenceSnapshot["tags"] },
+  revision: number,
+): AiCatalogReferenceSnapshot {
+  return {
+    schemaVersion: CATALOG_REFERENCE_SCHEMA_VERSION,
+    contentVersion: `materialization-r${revision}`,
+    generatedAt: new Date().toISOString(),
+    categories: corpus.categories,
+    tags: corpus.tags,
+    categoryNames: corpus.categories.map(({ name }) => name),
+    categoryIdsByName: Object.fromEntries(
+      corpus.categories.map(({ id, name }) => [name.toLowerCase(), id]),
+    ),
+  };
+}
+
+let fallbackCount = 0;
+let circuitOpenUntilMs = 0;
+
+async function defaultLoadTaxonomy(): Promise<{
+  snapshot: AiCatalogReferenceSnapshot;
+  revision: number | "fs-fallback";
+}> {
+  const now = Date.now();
+  if (circuitOpenUntilMs > now) {
+    logPipelineEvent("taxonomy-fallback-circuit-open", {
+      fallbackCount,
+      circuitOpenUntilMs,
+    });
+    const snapshot = await defaultLoadFromFirestoreDocs();
+    return { snapshot, revision: "fs-fallback" };
+  }
+
+  const materialized = await readTaxonomyMaterializationCorpus();
+  if (materialized.ok) {
+    logPipelineEvent("taxonomy-materialization-hit", {
+      revision: materialized.revision,
+      chunkCount: materialized.meta.chunkCount,
+      tagCount: materialized.meta.tagCount,
+      categoryCount: materialized.meta.categoryCount,
+      reason: "healthy_materialization",
+    });
+    fallbackCount = 0;
+    return {
+      snapshot: corpusToSnapshot(materialized.corpus, materialized.revision),
+      revision: materialized.revision,
+    };
+  }
+
+  fallbackCount += 1;
+  logPipelineEvent("taxonomy-fallback-fs", {
+    reason: materialized.reason,
+    fallbackCount,
+    revision: null,
+    chunkCount: null,
+    runtimeInstanceId: deps.runtimeInstanceId,
+    coldStart: isColdStart,
+  });
+  if (fallbackCount >= TAXONOMY_FALLBACK_CIRCUIT_THRESHOLD) {
+    circuitOpenUntilMs = now + TAXONOMY_FALLBACK_CIRCUIT_MS;
+    logPipelineEvent("taxonomy-fallback-circuit-open", {
+      fallbackCount,
+      circuitOpenUntilMs,
+      reason: "threshold",
+    });
+  }
+
+  const snapshot = await defaultLoadFromFirestoreDocs();
+  return { snapshot, revision: "fs-fallback" };
+}
+
 function defaultLog(event: TaxonomyLogEvent, context: Record<string, unknown>): void {
   logPipelineEvent(event, context);
 }
 
 function createDefaultDeps(): AiTaxonomyCacheDeps {
   return {
-    loadFromFirestore: defaultLoadFromFirestore,
+    loadTaxonomy: defaultLoadTaxonomy,
     now: () => Date.now(),
     log: defaultLog,
     ttlMs: AI_TAXONOMY_CACHE_TTL_MS,
@@ -137,12 +217,14 @@ async function loadThroughCache(
 ): Promise<AiCatalogReferenceSnapshot> {
   const now = deps.now();
 
+  // Revision-keyed hit: same revision in process memory → zero FS (TTL secondary).
   if (cacheEntry && cacheEntry.expiresAtMs > now) {
     deps.log("taxonomy-cache-hit", {
       ...baseLogContext(context),
       cacheAgeMs: now - (cacheEntry.expiresAtMs - deps.ttlMs),
       categoryCount: cacheEntry.categoryCount,
       tagCount: cacheEntry.tagCount,
+      revision: cacheEntry.revision,
     });
     finishColdStartFlag();
     return cacheEntry.value;
@@ -154,6 +236,7 @@ async function loadThroughCache(
       cacheAgeMs: now - (cacheEntry.expiresAtMs - deps.ttlMs),
       categoryCount: cacheEntry.categoryCount,
       tagCount: cacheEntry.tagCount,
+      revision: cacheEntry.revision,
     });
     cacheEntry = null;
   }
@@ -177,15 +260,16 @@ async function loadThroughCache(
   };
   loadSlot.promise = (async (): Promise<AiCatalogReferenceSnapshot> => {
     try {
-      const value = await deps.loadFromFirestore();
+      const loaded = await deps.loadTaxonomy();
+      const value = loaded.snapshot;
       const elapsedMs = deps.now() - startedAtMs;
       const categoryCount = value.categories.length;
       const tagCount = value.tags.length;
 
-      // Only publish into the live cache when this load's generation is still current.
       if (loadGeneration === cacheGeneration) {
         cacheEntry = {
           value,
+          revision: loaded.revision,
           expiresAtMs: deps.now() + deps.ttlMs,
           categoryCount,
           tagCount,
@@ -199,6 +283,8 @@ async function loadThroughCache(
         tagCount,
         documentCount: categoryCount + tagCount,
         publishedToCache: loadGeneration === cacheGeneration,
+        revision: loaded.revision,
+        source: loaded.revision === "fs-fallback" ? "firestore" : "materialization",
       });
       return value;
     } catch (error) {
@@ -226,8 +312,7 @@ async function loadThroughCache(
 }
 
 /**
- * Firestore-only taxonomy load with process-local TTL + in-flight dedupe.
- * Not globally authoritative across Function instances.
+ * Prefer compact materialization (O(chunks)); FS full hydrate only on fallback (RC3).
  */
 export async function loadAiCatalogReferenceSnapshot(
   context?: AiTaxonomyLoadContext,
@@ -247,10 +332,6 @@ export function aiSnapshotTagsToCatalogTags(
   }));
 }
 
-/**
- * Invalidate process-local taxonomy cache. Bumps generation so any in-flight
- * load that started before clear cannot republish into the live cache.
- */
 export function clearAiCatalogReferenceSnapshotCache(): void {
   cacheGeneration += 1;
   cacheEntry = null;
@@ -261,11 +342,13 @@ export function clearAiCatalogReferenceSnapshotCache(): void {
 /** @internal Test hooks — not for production callers. */
 export function __setAiTaxonomyCacheTestDeps(
   overrides: Partial<AiTaxonomyCacheDeps> & {
-    loadFromFirestore: () => Promise<AiCatalogReferenceSnapshot>;
+    loadTaxonomy: () => Promise<{ snapshot: AiCatalogReferenceSnapshot; revision: number | "fs-fallback" }>;
   },
 ): void {
   clearAiCatalogReferenceSnapshotCache();
   isColdStart = true;
+  fallbackCount = 0;
+  circuitOpenUntilMs = 0;
   deps = {
     ...createDefaultDeps(),
     ...overrides,
@@ -277,5 +360,7 @@ export function __setAiTaxonomyCacheTestDeps(
 export function __resetAiTaxonomyCacheForTests(): void {
   clearAiCatalogReferenceSnapshotCache();
   isColdStart = true;
+  fallbackCount = 0;
+  circuitOpenUntilMs = 0;
   deps = createDefaultDeps();
 }

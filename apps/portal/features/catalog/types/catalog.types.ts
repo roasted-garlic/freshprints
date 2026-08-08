@@ -95,6 +95,12 @@ export interface CatalogDesignListQuery {
    * (`sortField: 'readyAt'` + seven-day customer-ready window).
    */
   readyAfterMs?: number;
+  /**
+   * When true, skip membership + client-sort repair for incomplete Firestore orderBy results.
+   * Used by Discover home pool queries (rails already client-rank a mixed pool).
+   * Catalog View All must leave this unset so Popular / category ready-order repair runs.
+   */
+  skipClientSortRepair?: boolean;
 }
 
 export interface CatalogDesignListPage {

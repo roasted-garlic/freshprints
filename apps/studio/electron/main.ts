@@ -24,6 +24,7 @@ import { registerImportIpcHandlers } from './ipc/import/importIpcHandlers'
 import { registerInboxAlertIpcHandlers } from './ipc/inboxAlert/inboxAlertIpcHandlers'
 import { registerWhatnotImportIpcHandlers } from './ipc/whatnotImport/whatnotImportIpcHandlers'
 import { registerStudioUpdateIpcHandlers } from './ipc/studioUpdate/studioUpdateIpcHandlers'
+import { registerTaxonomyCacheIpcHandlers } from './ipc/taxonomyCache/taxonomyCacheIpcHandlers'
 import { startPeriodicStudioUpdateChecks } from './ipc/studioUpdate/studioUpdateService'
 import { attachTextInputContextMenu } from './services/app/textInputContextMenu'
 
@@ -320,6 +321,7 @@ app.whenReady().then(() => {
   registerWhatnotImportIpcHandlers()
   registerExportIpcHandlers()
   registerStudioUpdateIpcHandlers()
+  registerTaxonomyCacheIpcHandlers()
 
   createWindow()
 

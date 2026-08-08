@@ -24,11 +24,14 @@ describe('Stage 1b Algolia portal catalog wiring', () => {
     assert.match(source, /useAlgoliaSearch/);
   });
 
-  it('catalogService facets route through Algolia when configured', () => {
+  it('catalogService facets route through Algolia when configured (no generated fallback)', () => {
     const source = readFileSync(join(catalogRoot, 'services/catalogService.ts'), 'utf8');
     assert.match(source, /portalAlgoliaCatalogSearchService/);
     assert.match(source, /listTagFacets/);
     assert.match(source, /listNarrowedTagFacets/);
+    assert.match(source, /search: options\.search/);
+    assert.doesNotMatch(source, /portalCatalogAssetService/);
+    assert.match(source, /Tag filters are temporarily unavailable/);
   });
 
   it('CatalogPageContent debounces search input (no per-keystroke Algolia)', () => {
@@ -56,13 +59,14 @@ describe('Stage 1b Algolia portal catalog wiring', () => {
     assert.match(source, /hitCount/);
     assert.match(
       source,
-      /Managed search \(Algolia\/generated\) already applied q\/tags\/category/,
+      /Managed search \(Algolia\) already applied q\/tags\/category|Managed search \(Algolia\/generated\) already applied/,
     );
   });
 
-  it('generated asset service remains for Stage 4 transition (not deleted)', () => {
+  it('Stage 4: generated asset service is retired stub (no Storage fetch API surface for callers)', () => {
     const source = readFileSync(join(catalogRoot, 'services/portalCatalogAssetService.ts'), 'utf8');
-    assert.match(source, /listMatchingDesigns/);
-    assert.match(source, /listTagFacets/);
+    assert.match(source, /Stage 4/);
+    assert.match(source, /throw new Error/);
+    assert.doesNotMatch(source, /generated\/portal-catalog/);
   });
 });

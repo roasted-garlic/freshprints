@@ -274,7 +274,7 @@ async function resetDesignRequestStats(): Promise<number> {
     let batchWrites = 0;
     for (const document of snapshot.docs) {
       // No-op skip: an already-reset design needs no write — and skipping also avoids bumping
-      // updatedAt, which would fire one onPortalCatalogSnapshotSourceWritten invocation per
+      // updatedAt, which would fire one syncPortalCatalogDesignToAlgolia invocation per
       // design on every repeat wipe (Wave C comprehensive audit).
       const data = document.data();
       if (

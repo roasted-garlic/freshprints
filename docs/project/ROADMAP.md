@@ -1,5 +1,17 @@
 # Fresh Prints Roadmap
 
+> 2026-08-07: **`taxonomy-read-spike-elimination` Signoff** — **approved_with_notes** on `fresh-prints-dev`. 45-design validation **PASS WITH NOTES** (Studio 0 tags/cats; ~139 billable vs ~1461; server materialization cold+warm; Console peak 222 vs ~1.3K/1.4K; AI spot-check 8/8). Signoff: `docs/workflow/reviews/2026-08-07-taxonomy-read-spike-elimination-signoff.md`. Result: `docs/workflow/reviews/2026-08-07-taxonomy-45-design-performance-validation-result.md`. PR #40 open/unmerged. No production. No Stage 6.
+
+> 2026-08-07: Taxonomy trigger rebuild corrective **Signoff approved_with_notes** on `fresh-prints-dev` (awaited coalesce live; rev 1→2; Studio disk cache rev 2). Parent closed via 45-design Signoff above. Checkpoint: `docs/workflow/reviews/2026-08-07-taxonomy-45-design-performance-validation-checkpoint.md`. PR #40 open/unmerged. No production.
+
+> 2026-08-07: Stage 4 **publisher retirement Signoff** — **approved_with_notes** on `fresh-prints-dev`. Six publishers deleted; Algolia sync live; Portal generated search/facet fallback removed. Owner `STAGE 4 POST-DELETE QA: PASS`. Signoff: `docs/workflow/reviews/2026-08-07-stage-4-publisher-retirement-signoff.md`. Stage 5 Storage cleanup **not started**. PR #40 open/unmerged. No production.
+
+> 2026-08-07: Stage 4 **publisher retirement PLANNING** — Formal Review **approved_with_changes**. Plan: `docs/workflow/plans/2026-08-07-stage-4-publisher-retirement-plan.md`. Code Implement owner-gated; live Function delete separately gated. Stage 5/6 / PR merge / production not started. PR #40 open/unmerged.
+
+> 2026-08-07: Stage 1b-C **Algolia owner QA Signoff** — **approved_with_notes**. Checklist complete (`ALGOLIA OUTAGE: PASS`). Publisher retained. Stage 4 **not started**. Signoff: `docs/workflow/reviews/2026-08-07-stage-1b-c-algolia-owner-qa-signoff.md`. PR #40 open/unmerged. No production.
+
+> 2026-08-07: Stage 1b-C **Discover View All regressions Signoff** — **approved_with_notes**. Owner `DISCOVER VIEW ALL: PASS WITH NOTES` (Popular/category View All fixed; rail≠View All order accepted). Signoff: `docs/workflow/reviews/2026-08-07-stage-1b-c-discover-view-all-regressions-signoff.md`. Next Stage 1b-C: Favorites / details / share / Add to Request. PR #40 open/unmerged. No production. No Stage 4.
+
 > 2026-08-06: **Catalog mats + ready order + Assisted proof 80 MB Signoff** — **approved**. Owner QA **PASS**. Commits `42f7b20` / `982855c`; `fresh-prints-dev` storage + three Functions deployed. Signoff: `docs/workflow/reviews/2026-08-06-catalog-display-ready-ordering-and-assisted-proof-limit-signoff.md`. PR #40 open/unmerged. No production. Amendment 9 P4 still deferred.
 
 > 2026-08-06: **Catalog display background + ready-approval ordering Signoff** — **approved_with_notes**. Studio Details mats + Portal Firestore `readyAt` browse. Owner QA **PASS WITH NOTES**. Commit `42f7b20` on `fix/post-launch-catalog-and-processing-stability` (PR #40 open/unmerged). Signoff: `docs/workflow/reviews/2026-08-06-catalog-display-background-and-ready-ordering-signoff.md`. Generated search publisher order and Amendment 9 P4 snapshot reads remain deferred. No production deploy.

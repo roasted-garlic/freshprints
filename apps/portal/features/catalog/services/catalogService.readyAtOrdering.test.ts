@@ -97,9 +97,12 @@ describe('Portal catalog readyAt ordering', () => {
     assert.match(service, /matchingCount > page\.designs\.length/);
     assert.match(service, /sortField === 'readyAt'/);
     assert.match(service, /Never demote New This Week/);
-    assert.match(
+    // Membership fetch for repair uses createdAt (complete field), then client ready-order.
+    assert.match(service, /listReadyDesignsPageByClientSortedMembership/);
+    assert.match(service, /sortField: 'createdAt'/);
+    assert.doesNotMatch(
       service,
-      /sortField: 'createdAt'/,
+      /matchingCount > page\.designs\.length\) \{\s*return this\.listReadyDesignsPage\(\{ \.\.\.listQuery, sortField: 'createdAt' \}\)/,
     );
   });
 
@@ -110,7 +113,11 @@ describe('Portal catalog readyAt ordering', () => {
     assert.match(types, /readyAfterMs\?: number/);
   });
 
-  it('does not introduce page-local sort of Firestore browse results', () => {
-    assert.doesNotMatch(service, /\.sort\(\s*\(left,\s*right\)\s*=>\s*getDesignSortValue/);
+  it('client-sort repair is gated (not applied to every Firestore page blindly)', () => {
+    assert.match(service, /sortCatalogDesignsByField/);
+    assert.match(service, /isMetricSortField/);
+    assert.match(service, /isMetricSortField\(sortField\) &&/);
+    assert.match(service, /typeof listQuery\.readyAfterMs !== 'number'/);
+    assert.match(service, /!listQuery\.skipClientSortRepair/);
   });
 });

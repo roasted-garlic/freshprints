@@ -123,27 +123,20 @@ describe("ordering consumers use the same key (Amendment 3)", () => {
     assert.match(portalService, /return listQuery\.sortField \?\? 'readyAt'/);
     assert.match(portalService, /case 'readyAt':\s*\n\s*return design\.readyAtMs \?\? design\.createdAtMs \?\? 0/);
     assert.match(portalService, /readyAtMs: timestampToMillis\(data\.readyAt\)/);
-
-    const builders = read("functions/src/catalogSnapshots/snapshotBuilders.ts");
-    assert.match(builders, /card\.readyAtMs \?\? card\.createdAtMs \?\? 0/);
-    assert.match(builders, /readyAtMs: millis\(data\.readyAt\)/);
   });
 
-  it("metric collections (Popular / Recently Requested) keep their own ordering", () => {
-    const publisher = read("functions/src/catalogSnapshots/publishCatalogSnapshots.ts");
-    // The metric-ranked discover list still ranks by request+favorite counts.
-    assert.match(
-      publisher,
-      /\(right\.requestCount \+ right\.favoriteCount\) - \(left\.requestCount \+ left\.favoriteCount\)/,
-    );
+  it("metric Discover modes keep requestCount / lastAddedToShowAt sort fields (not readyAt demotion)", () => {
+    const hook = read("apps/portal/features/catalog/hooks/useCatalogDesigns.ts");
+    assert.match(hook, /case 'popular':[\s\S]*?return 'requestCount'/);
+    assert.match(hook, /case 'recent':[\s\S]*?return 'lastAddedToShowAt'/);
   });
 
-  it("a readyAt change republishes the generated browse order", () => {
-    const classifier = read("functions/src/catalogSnapshots/portalCatalogChangeClassifier.ts");
+  it("a readyAt change is an Algolia index-filter classification field", () => {
+    const classifier = read("functions/src/algolia/portalCatalogChangeClassifier.ts");
     const indexFilterBlock = classifier.slice(
       classifier.indexOf("const INDEX_FILTER_FIELDS"),
       classifier.indexOf("const CARD_ONLY_FIELDS"),
     );
-    assert.match(indexFilterBlock, /"readyAt"/);
+    assert.match(indexFilterBlock, /['"]readyAt['"]/);
   });
 });

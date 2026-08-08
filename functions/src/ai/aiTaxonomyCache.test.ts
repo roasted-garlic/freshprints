@@ -36,7 +36,11 @@ function makeSnapshot(label: string): AiCatalogReferenceSnapshot {
   };
 }
 
-describe("AI taxonomy process-local cache (P3)", () => {
+function loadOf(label: string, revision: number | "fs-fallback" = 1) {
+  return async () => ({ snapshot: makeSnapshot(label), revision });
+}
+
+describe("AI taxonomy process-local cache (P3 + materialization)", () => {
   afterEach(() => {
     __resetAiTaxonomyCacheForTests();
   });
@@ -45,7 +49,7 @@ describe("AI taxonomy process-local cache (P3)", () => {
     assert.equal(AI_TAXONOMY_CACHE_TTL_MS, 15 * 60_000);
   });
 
-  it("first request is a cache miss and calls the Firestore loader once", async () => {
+  it("first request is a cache miss and calls the loader once", async () => {
     let loadCount = 0;
     const events: string[] = [];
     const nowMs = 1_000_000;
@@ -55,9 +59,9 @@ describe("AI taxonomy process-local cache (P3)", () => {
       log: (event) => {
         events.push(event);
       },
-      loadFromFirestore: async () => {
+      loadTaxonomy: async () => {
         loadCount += 1;
-        return makeSnapshot("v1");
+        return { snapshot: makeSnapshot("v1"), revision: 1 };
       },
     });
 
@@ -69,7 +73,7 @@ describe("AI taxonomy process-local cache (P3)", () => {
     assert.ok(!events.includes("taxonomy-cache-hit"));
   });
 
-  it("second request within TTL is a cache hit and does not call the loader", async () => {
+  it("second request within TTL is a revision-keyed cache hit", async () => {
     let loadCount = 0;
     const events: string[] = [];
     const nowMs = 1_000_000;
@@ -79,9 +83,9 @@ describe("AI taxonomy process-local cache (P3)", () => {
       log: (event) => {
         events.push(event);
       },
-      loadFromFirestore: async () => {
+      loadTaxonomy: async () => {
         loadCount += 1;
-        return makeSnapshot("v1");
+        return { snapshot: makeSnapshot("v1"), revision: 1 };
       },
     });
 
@@ -100,14 +104,14 @@ describe("AI taxonomy process-local cache (P3)", () => {
       now: () => nowMs,
       ttlMs: AI_TAXONOMY_CACHE_TTL_MS,
       log: () => undefined,
-      loadFromFirestore: async () => {
+      loadTaxonomy: async () => {
         loadCount += 1;
-        return makeSnapshot("v1");
+        return { snapshot: makeSnapshot("v1"), revision: 1 };
       },
     });
 
     for (let i = 0; i < 45; i += 1) {
-      nowMs += 10_000; // 45 * 10s = 7.5min < 15min TTL
+      nowMs += 10_000;
       await loadAiCatalogReferenceSnapshot();
     }
     assert.equal(loadCount, 1);
@@ -127,9 +131,10 @@ describe("AI taxonomy process-local cache (P3)", () => {
       log: (event) => {
         events.push(event);
       },
-      loadFromFirestore: async () => {
+      loadTaxonomy: async () => {
         loadCount += 1;
-        return loadGate;
+        const snapshot = await loadGate;
+        return { snapshot, revision: 1 };
       },
     });
 
@@ -137,7 +142,6 @@ describe("AI taxonomy process-local cache (P3)", () => {
     const p2 = loadAiCatalogReferenceSnapshot();
     const p3 = loadAiCatalogReferenceSnapshot();
 
-    // Allow microtasks to register joins before releasing the loader.
     await Promise.resolve();
     assert.equal(loadCount, 1);
     assert.ok(events.includes("taxonomy-cache-miss"));
@@ -164,9 +168,9 @@ describe("AI taxonomy process-local cache (P3)", () => {
       log: (event) => {
         events.push(event);
       },
-      loadFromFirestore: async () => {
+      loadTaxonomy: async () => {
         loadCount += 1;
-        return makeSnapshot(`v${loadCount}`);
+        return { snapshot: makeSnapshot(`v${loadCount}`), revision: loadCount };
       },
     });
 
@@ -183,41 +187,6 @@ describe("AI taxonomy process-local cache (P3)", () => {
     assert.ok(events.includes("taxonomy-load-success"));
   });
 
-  it("parallel requests immediately after expiry share one refresh", async () => {
-    let loadCount = 0;
-    let nowMs = 1_000_000;
-    let resolveLoad!: (value: AiCatalogReferenceSnapshot) => void;
-    let loadGate = Promise.resolve(makeSnapshot("v1"));
-
-    __setAiTaxonomyCacheTestDeps({
-      now: () => nowMs,
-      ttlMs: AI_TAXONOMY_CACHE_TTL_MS,
-      log: () => undefined,
-      loadFromFirestore: async () => {
-        loadCount += 1;
-        return loadGate;
-      },
-    });
-
-    await loadAiCatalogReferenceSnapshot();
-    assert.equal(loadCount, 1);
-
-    nowMs += AI_TAXONOMY_CACHE_TTL_MS + 1;
-    loadGate = new Promise<AiCatalogReferenceSnapshot>((resolve) => {
-      resolveLoad = resolve;
-    });
-
-    const p1 = loadAiCatalogReferenceSnapshot();
-    const p2 = loadAiCatalogReferenceSnapshot();
-    await Promise.resolve();
-    assert.equal(loadCount, 2);
-    resolveLoad(makeSnapshot("refreshed"));
-    const [a, b] = await Promise.all([p1, p2]);
-    assert.equal(a.contentVersion, "test-refreshed");
-    assert.equal(b.contentVersion, "test-refreshed");
-    assert.equal(loadCount, 2);
-  });
-
   it("loader failure does not persist broken data and retry can reload", async () => {
     let loadCount = 0;
     let shouldFail = true;
@@ -225,12 +194,12 @@ describe("AI taxonomy process-local cache (P3)", () => {
       now: () => 1_000_000,
       ttlMs: AI_TAXONOMY_CACHE_TTL_MS,
       log: () => undefined,
-      loadFromFirestore: async () => {
+      loadTaxonomy: async () => {
         loadCount += 1;
         if (shouldFail) {
           throw new Error("firestore_unavailable");
         }
-        return makeSnapshot("recovered");
+        return { snapshot: makeSnapshot("recovered"), revision: 1 };
       },
     });
 
@@ -242,7 +211,6 @@ describe("AI taxonomy process-local cache (P3)", () => {
     assert.equal(loadCount, 2);
     assert.equal(value.contentVersion, "test-recovered");
 
-    // Hit after recovery — no third load.
     const again = await loadAiCatalogReferenceSnapshot();
     assert.equal(loadCount, 2);
     assert.equal(again.contentVersion, "test-recovered");
@@ -253,7 +221,7 @@ describe("AI taxonomy process-local cache (P3)", () => {
       now: () => 1_000_000,
       ttlMs: AI_TAXONOMY_CACHE_TTL_MS,
       log: () => undefined,
-      loadFromFirestore: async () => makeSnapshot("complete"),
+      loadTaxonomy: loadOf("complete"),
     });
     const value = await loadAiCatalogReferenceSnapshot();
     assert.ok(Array.isArray(value.categories));
@@ -272,11 +240,12 @@ describe("AI taxonomy process-local cache (P3)", () => {
       now: () => nowMs,
       ttlMs: AI_TAXONOMY_CACHE_TTL_MS,
       log: () => undefined,
-      loadFromFirestore: async () => {
+      loadTaxonomy: async () => {
         loadCount += 1;
-        return new Promise<AiCatalogReferenceSnapshot>((resolve) => {
+        const snapshot = await new Promise<AiCatalogReferenceSnapshot>((resolve) => {
           resolvers.push(resolve);
         });
+        return { snapshot, revision: loadCount };
       },
     });
 
@@ -290,7 +259,6 @@ describe("AI taxonomy process-local cache (P3)", () => {
     await Promise.resolve();
     assert.equal(loadCount, 2);
 
-    // Resolve stale first — must not become the cached value.
     resolvers[0]!(makeSnapshot("stale-inflight"));
     const staleValue = await stalePromise;
     assert.equal(staleValue.contentVersion, "test-stale-inflight");
@@ -311,9 +279,9 @@ describe("AI taxonomy process-local cache (P3)", () => {
       now: () => nowMs,
       ttlMs: AI_TAXONOMY_CACHE_TTL_MS,
       log: () => undefined,
-      loadFromFirestore: async () => {
+      loadTaxonomy: async () => {
         loadCount += 1;
-        return makeSnapshot(`v${loadCount}`);
+        return { snapshot: makeSnapshot(`v${loadCount}`), revision: loadCount };
       },
     });
 
@@ -332,9 +300,9 @@ describe("AI taxonomy process-local cache (P3)", () => {
       now: () => 1_000_000,
       ttlMs: AI_TAXONOMY_CACHE_TTL_MS,
       log: () => undefined,
-      loadFromFirestore: async () => {
+      loadTaxonomy: async () => {
         loadCount += 1;
-        return makeSnapshot("shared-adapters");
+        return { snapshot: makeSnapshot("shared-adapters"), revision: 1 };
       },
     });
 
@@ -343,5 +311,27 @@ describe("AI taxonomy process-local cache (P3)", () => {
     assert.equal(loadCount, 1);
     assert.equal(categories.categories[0]?.id, "cat-shared-adapters");
     assert.equal(tags[0]?.name, "tag-shared-adapters");
+  });
+
+  it("explicit clear then new revision load refreshes cache", async () => {
+    let loadCount = 0;
+    let revision: number | "fs-fallback" = 1;
+    __setAiTaxonomyCacheTestDeps({
+      now: () => 1_000_000,
+      ttlMs: AI_TAXONOMY_CACHE_TTL_MS,
+      log: () => undefined,
+      loadTaxonomy: async () => {
+        loadCount += 1;
+        return { snapshot: makeSnapshot(`r${revision}`), revision };
+      },
+    });
+
+    const first = await loadAiCatalogReferenceSnapshot();
+    assert.equal(first.contentVersion, "test-r1");
+    clearAiCatalogReferenceSnapshotCache();
+    revision = 2;
+    const second = await loadAiCatalogReferenceSnapshot();
+    assert.equal(loadCount, 2);
+    assert.equal(second.contentVersion, "test-r2");
   });
 });

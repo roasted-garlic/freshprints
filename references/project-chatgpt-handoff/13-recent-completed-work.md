@@ -1,5 +1,65 @@
 # Recent Completed Work
 
+## 2026-08-07 - taxonomy-read-spike-elimination Signoff (approved_with_notes)
+
+- 45-design validation **PASS WITH NOTES** — Studio 0 tags/cats; ~139 vs ~1461 billable; Console peak 222 vs ~1.3K/1.4K; AI 8/8
+- Server: 1 materialization cold (rev 2, 1 chunk) + 89 cache hits; 0 fallback/publishers
+- Signoff: `docs/workflow/reviews/2026-08-07-taxonomy-read-spike-elimination-signoff.md`
+- Result: `docs/workflow/reviews/2026-08-07-taxonomy-45-design-performance-validation-result.md`
+- STOP: no Stage 6, no PR merge, no production
+
+## 2026-08-07 - Stage 4 publisher retirement Signoff (approved_with_notes)
+
+- Portal generated search/facet fallback removed; Algolia-only managed search
+- Six publisher Functions deleted from `fresh-prints-dev`; Algolia sync retained
+- Owner `STAGE 4 POST-DELETE QA: PASS` / `ALGOLIA OFF: PASS`
+- Signoff: `docs/workflow/reviews/2026-08-07-stage-4-publisher-retirement-signoff.md`
+- STOP: no Stage 5/6, no PR merge, no production
+
+## 2026-08-07 - Stage 4 publisher Functions deleted (fresh-prints-dev)
+
+- Owner `STAGE 4 PUBLISHERS DELETED: PASS`
+- Six snapshot publishers absent; Algolia sync/reconcile remain
+- Record: `docs/workflow/reviews/2026-08-07-stage-4-publisher-delete-dev-record.md`
+- Next: post-delete QA → Stage 4 Signoff; no Stage 5/6 yet
+
+## 2026-08-07 - Stage 4 publisher retirement SOURCE Implement
+
+- Portal: no generated search/facet fallback; Algolia-off fails closed; FS browse kept
+- Relocated `classifyPortalCatalogDesignChange` → `functions/src/algolia/`
+- Deleted catalogSnapshots publisher stack + six index exports + retry script
+- Tests 114/114; Portal+Functions tsc; eslint; Impl Review **APPROVED**
+- STOP: no live Function delete — next `APPROVE DEV FUNCTIONS DELETE: STAGE 4 PUBLISHERS`
+
+## 2026-08-07 - Stage 4 publisher retirement PLANNING
+
+- Owner `APPROVE STAGE 4 PLANNING`
+- Plan + Formal Review **approved_with_changes** (Portal generated fallback removal, classifier relocate, 6 Function allowlist, P4 retire with publishers)
+- Code Implement may proceed when owner authorizes; live Function delete still gated
+- Stage 5 Storage cleanup / Stage 6 / PR merge / production out of scope
+
+## 2026-08-07 - Stage 1b-C Algolia owner QA Signoff (approved_with_notes)
+
+- Owner `ALGOLIA OUTAGE: PASS` — kill-switch / FS browse healthy
+- Full Stage 1b-C checklist closed (search, sync, Firestore regressions, correctives)
+- Signoff: `docs/workflow/reviews/2026-08-07-stage-1b-c-algolia-owner-qa-signoff.md`
+- STOP: no Stage 4, no PR merge, no production; publisher retained
+- Deferred: TD-030 details/share quantity-control parity
+
+## 2026-08-07 - Stage 1b-C Favorites / details / share / Add to Request
+
+- Owner `FAVORITES DETAILS SHARE REQUEST: PASS WITH NOTES`
+- Deferred TD-030: Design Details modal + shared-design page should switch to Working Request quantity control after add (parity with Discover/catalog cards)
+- Next Stage 1b-C: Algolia outage / kill-switch
+
+## 2026-08-07 - Stage 1b-C Discover View All regressions (PASS WITH NOTES)
+
+- Fixed Popular View All blank (`orderBy(requestCount)` omission → membership + metric client-sort)
+- Fixed category View All order (readyAt completeness no longer demotes to createdAt order)
+- Owner `DISCOVER VIEW ALL: PASS WITH NOTES` — rail≠View All order for Popular/category accepted
+- Signoff **approved_with_notes**; next Stage 1b-C: Favorites / details / share / Add to Request
+- No production / no PR merge / no Stage 4; publisher alive
+
 ## 2026-08-07 - Stage 1b-A Algolia search replacement (code; secrets STOP)
 
 - D1 = Algolia; Portal adapter + 300ms debounce + FS by-id hydrate

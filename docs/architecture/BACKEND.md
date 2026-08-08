@@ -318,23 +318,41 @@ uses the same customer hosts for `metadataBase` / OG image resolution via option
 | `finalizeBrandLogoSlot` | Owner callable: finalize/clear Studio+Portal brand logo slots from Admin Storage metadata |
 | `updateBrandLogoDisplaySizes` | Owner callable: set Portal/Studio logo display heights (px) on `settings/brandLogos` |
 
-**AI enrichment taxonomy (Phase 1A):** `loadAiCatalogReferenceSnapshot` loads active categories +
-approved tags from Firestore only (5-minute TTL + in-flight dedupe). `aiEnrichmentRuntimeCache`
-(60s) is unchanged. Generated `catalog-reference` AI snapshot is no longer the primary path.
+**AI enrichment taxonomy (ADR-FP-128):** `loadAiCatalogReferenceSnapshot` prefers compact
+`taxonomyMaterialization/**` (revision-keyed process cache; TTL secondary). Missing/corrupt
+materialization falls back once per process flight to Firestore `categories`+`tags` queries
+(`taxonomy-fallback-fs`), with a bounded circuit after repeated fallbacks. Authoritative
+writes remain on `tags/**` / `categories/**`; rebuilds are server-owned via
+`rebuildTaxonomyMaterialization`. Taxonomy source triggers (`onTagTaxonomySourceWritten`,
+`onCategoryTaxonomySourceWritten`) **await** a process-local coalesced rebuild Promise before
+the Gen2 invocation completes (no detached `setTimeout` rebuild). Cross-instance duplicate
+rebuilds remain an accepted residual (no fleet lock). Owner/admin callable remains available
+for bootstrap/repair. Studio AI Review / Design Library prefers the same materialization with
+Electron `userData/taxonomy-cache` revision short-circuit. Generated `catalog-reference` AI
+snapshot is not used. **Do not** treat Algolia as taxonomy authority.
 
-**Portal catalog publication rate guard (Amendment 9 P4 — temporary until Stage 1b):** Full
-`portal-catalog` publications remain required for generated text search / multi-tag / facets.
-Automatic design-trigger and W2 coordination wakes use: quiet **30s**, min interval **120s**
-between successful full pubs (`nextEligiblePublishAt` on `snapshotPublicationState/portal-catalog`),
-claim liability **240s**, lease **10 min**, and **passLimit=1** per wake. Dirty remaining after one
-pass is drained by `onPortalCatalogPublicationStateWritten` (deferredWakeNonce), not by immediate
-multi-pass catch-up. Non-ready INDEX_FILTER field churn does not schedule a full portal publish.
-Owner/admin `rebuildCatalogSnapshots` / `retryPortalCatalogPublication` intentionally bypass quiet
-and min-interval. Catalog-reference publication timing is unchanged (15s debounce + legacy catch-up).
+**Portal catalog publishers (Stage 4 source retirement — 2026-08-07):** Generated
+`portal-catalog` / `catalog-reference` publisher Functions are **removed from Functions source**
+(`catalogSnapshots/` deleted; six exports un-exported from `index.ts`). Portal search/multi-tag/facets
+are **Algolia-only** when configured; Algolia-off fails closed (Firestore ordinary browse continues).
+`classifyPortalCatalogDesignChange` lives at `functions/src/algolia/portalCatalogChangeClassifier.ts`
+for Algolia sync. Live Function deletion on `fresh-prints-dev` completed Stage 4 Signoff.
+Amendment 9 P4 rate-guard source is retired with the publishers.
 
-**Managed search (Phase 1B, not implemented):** When a provider is selected, document Secret Manager
-write keys, public search-only keys (never in client bundles), and env vars here. Index records are
-not an authorization boundary.
+**Generated Storage / Rules cleanup (Stage 5 source — 2026-08-07):** Obsolete public-read Storage
+matches for `generated/portal-catalog/**` and `generated/catalog-reference/**` are **removed** from
+`storage.rules` (client access → default-deny). The `snapshotPublicationState` Firestore Rules match
+is **removed** (default-deny). Residual objects/docs on `fresh-prints-dev` are cleaned only via the
+local ops script `functions/scripts/stage5-generated-asset-cleanup.mjs` (hard-pinned to
+`fresh-prints-dev`; dry-run default; allowlisted prefixes only). **Live dry-run / delete / Rules
+deploy require separate owner phrases** — source narrowing alone does not delete data or deploy.
+AI taxonomy prefers `taxonomyMaterialization/**` when bootstrapped (ADR-FP-128); otherwise
+Strategy 2 Firestore hydrate remains the fallback. Shared `packages/shared/src/catalog-snapshots` types
+are retained for AI + Algolia classifier.
+
+**Managed search (Stage 1b Algolia):** Portal uses `NEXT_PUBLIC_USE_ALGOLIA_CATALOG_SEARCH` + public
+search-only env; Functions sync/reconcile use Secret Manager admin key. Index records are not an
+authorization boundary.
 
 Portal metadata prefers these Functions (no App Hosting Admin ADC required for crawlers). Studio
 **Settings → Social sharing** toggles letterbox and library-vs-logo. Studio **Settings → Brand logos**

@@ -29,17 +29,110 @@ Background (not active gate): Goal #13 / clean Studio remediation / Stage 2 rema
   `syncPortalCatalogDesignToAlgolia`, `reconcilePortalCatalogAlgoliaIndex`,
   `reconcilePortalCatalogAlgoliaIndexScheduled`. Record:
   `docs/workflow/reviews/2026-08-07-stage-1b-algolia-dev-deploy-record.md`
-- Portal Algolia path still **disabled** (`NEXT_PUBLIC_USE_ALGOLIA_CATALOG_SEARCH` unset).
-- Next: owner/admin **reconcile** (`dryRun: false`), then enable Portal flag, then Stage 1b-C QA.
-- Publisher / generated assets **retained**. PR #40 **unmerged**. No production.
-- Decision analysis:
-  `docs/workflow/reviews/2026-08-07-stage-1b-d1-search-architecture-decision-analysis.md`
-- Stage 1b Plan:
-  `docs/workflow/plans/2026-08-07-stage-1b-search-replacement-plan.md`
-- Plan Review:
-  `docs/workflow/reviews/2026-08-07-stage-1b-search-replacement-plan-review.md`
-- Residual ~1.1K C+T+R/full pub until search cutover + Stage 4.
-- PR #40 open / **unmerged** · No production · No provider accounts this pass
+- **Stage 4 COMPLETE on `fresh-prints-dev`** — Signoff **approved_with_notes**
+  (`STAGE 4 POST-DELETE QA: PASS`, `ALGOLIA OFF: PASS`, publishers deleted).
+  Signoff: `docs/workflow/reviews/2026-08-07-stage-4-publisher-retirement-signoff.md`
+  Delete record: `docs/workflow/reviews/2026-08-07-stage-4-publisher-delete-dev-record.md`
+  Spike attribution (4:42 PM): Studio taxonomy class, not publisher —
+  `docs/workflow/reviews/2026-08-07-stage-4-post-delete-142-spike-attribution.md`
+- Algolia sync/reconcile live; six publishers **absent** on dev.
+- **Follow-up SIGNOFF COMPLETE — `taxonomy-read-spike-elimination`** (**approved_with_notes**)
+  Signoff: `docs/workflow/reviews/2026-08-07-taxonomy-read-spike-elimination-signoff.md`
+  45-design final: `docs/workflow/reviews/2026-08-07-taxonomy-45-design-performance-validation-result.md`
+  Plan: `docs/workflow/plans/2026-08-07-taxonomy-read-spike-elimination-plan.md`
+  Formal Review: **approved_with_changes** —
+  `docs/workflow/reviews/2026-08-07-taxonomy-read-spike-elimination-plan-review.md`
+  Owner: `APPROVE TAXONOMY SPIKE ELIMINATION IMPLEMENT`
+  Implement + Test + Implementation Review **APPROVED** (source only):
+  `docs/workflow/reviews/2026-08-07-taxonomy-read-spike-elimination-implementation-review.md`
+  Test report: `docs/workflow/reviews/2026-08-07-taxonomy-read-spike-elimination-test-report.md`
+  Owner: `APPROVE DEV TAXONOMY MATERIALIZATION BOOTSTRAP` → **STOPPED**
+  Checkpoint: `docs/workflow/reviews/2026-08-07-taxonomy-materialization-bootstrap-dev-checkpoint.md`
+  Reason: only approved bootstrap path was undeployed callable.
+  Owner: `APPROVE DEV TAXONOMY BOOTSTRAP CALLABLE DEPLOY` → **PASS**
+  Deploy record: `docs/workflow/reviews/2026-08-07-taxonomy-bootstrap-callable-dev-deploy-record.md`
+  Live: `rebuildTaxonomyMaterializationCallable` created on `fresh-prints-dev` (us-central1).
+  Owner: `APPROVE DEV TAXONOMY MATERIALIZATION BOOTSTRAP` → **STOPPED** (shell hook blocked invoke)
+  Checkpoint: `docs/workflow/reviews/2026-08-07-taxonomy-materialization-bootstrap-invoke-checkpoint.md`
+  Owner: DevTools `import("firebase/functions")` **FAILED** (no bare specifier in Electron)
+  Investigation: `docs/workflow/reviews/2026-08-07-taxonomy-bootstrap-devtools-invoke-corrective-investigation.md`
+  Verdict: **NO existing owner-invokable path** for bootstrap callable.
+  Owner: `APPROVE TAXONOMY BOOTSTRAP DEV CONSOLE BRIDGE IMPLEMENT` → **APPROVED**
+  Impl Review: `docs/workflow/reviews/2026-08-07-taxonomy-bootstrap-dev-console-bridge-implementation-review.md`
+  Test report: `docs/workflow/reviews/2026-08-07-taxonomy-bootstrap-dev-console-bridge-test-report.md` (8/8)
+  Bridge: `window.freshPrintsDev.rebuildTaxonomyMaterialization` (DEV + fresh-prints-dev only).
+  Callable **not** invoked this pass.
+  Owner: `APPROVE DEV TAXONOMY MATERIALIZATION BOOTSTRAP` → **PASS**
+  Record: `docs/workflow/reviews/2026-08-07-taxonomy-materialization-bootstrap-dev-record.md`
+  Live: revision **1**, chunkCount **1**, tags **1121**, cats **18**,
+  contentHash `38e69b3851688e963470b1dc17c879a3e947a481c6d111a0d2a4fe74bdd33e59`
+  Parity + integrity **PASS**. Triggers / loader / Rules **not** deployed this pass.
+  Owner: `PREPARE DEV TAXONOMY STEADY-STATE DEPLOYMENT CHECKPOINT` → **READY**
+  Checkpoint: `docs/workflow/reviews/2026-08-07-taxonomy-steady-state-deployment-checkpoint.md`
+  Bootstrap recheck PASS; Rules suite **59/59** (portable JDK 21).
+  Owner: `APPROVE DEV TAXONOMY STEADY-STATE FUNCTIONS DEPLOY` → **PASS**
+  Deploy record: `docs/workflow/reviews/2026-08-07-taxonomy-steady-state-functions-dev-deploy-record.md`
+  Created: `onTagTaxonomySourceWritten`, `onCategoryTaxonomySourceWritten`
+  Updated: `enqueueAiEnrichment`, `testAiEnrichmentPlayground`, `testAiEnrichmentTagRerank`
+  Materialization revision still **1** (no unexpected rebuild).
+  Owner: `APPROVE DEV TAXONOMY STEADY-STATE RULES DEPLOY` → **PASS**
+  Rules record: `docs/workflow/reviews/2026-08-07-taxonomy-steady-state-rules-dev-deploy-record.md`
+  Firestore Rules released on `fresh-prints-dev`; materialization still revision **1**.
+  Owner: `CONTINUE WORKFLOW: TAXONOMY STUDIO MATERIALIZATION READ SMOKE` → **PASS WITH NOTES**
+  Result: `docs/workflow/reviews/2026-08-07-taxonomy-studio-materialization-read-smoke-result.md`
+  Design Library warm-cache: 0 `/tags`, 0 `/categories`, 0 fallbacks/errors; design reads only.
+  Cold-cache retest **waived**; AI Review deferred to later batch; refresh path → mutation smoke.
+  Owner: `TAXONOMY MUTATION SMOKE: OWNER MUTATION COMPLETE` → server verify **FAIL**
+  Alias `taxonomy-smoke-20260807` on `tags/acdc`; materialization still revision **1**.
+  Tag trigger fired (~176ms 200); **0** rebuild-success; category trigger **0**.
+  Likely cause: coalesce `setTimeout(750)` after handler return (Gen2 drop).
+  Record: `docs/workflow/reviews/2026-08-07-taxonomy-mutation-server-rebuild-verify-result.md`
+  Owner: `PLAN TAXONOMY TRIGGER REBUILD CORRECTIVE` → Plan + Formal Review **DONE**
+  Plan: `docs/workflow/plans/2026-08-07-taxonomy-trigger-rebuild-corrective-plan.md`
+  Review: **approved_with_changes** (RC-R1–RC-R8) —
+  `docs/workflow/reviews/2026-08-07-taxonomy-trigger-rebuild-corrective-plan-review.md`
+  Owner: `APPROVE TAXONOMY TRIGGER REBUILD CORRECTIVE IMPLEMENTATION` → **APPROVED**
+  Option A awaited coalesce shipped (source only). Impl Review:
+  `docs/workflow/reviews/2026-08-07-taxonomy-trigger-rebuild-corrective-implementation-review.md`
+  Tests: `docs/workflow/reviews/2026-08-07-taxonomy-trigger-rebuild-corrective-test-report.md`
+  (18/18 taxonomy suites; functions tsc + eslint PASS).
+  Owner: `APPROVE DEV TAXONOMY TRIGGER REBUILD CORRECTIVE DEPLOY` → **PASS**
+  Record: `docs/workflow/reviews/2026-08-07-taxonomy-trigger-rebuild-corrective-dev-deploy-record.md`
+  Updated: `onTagTaxonomySourceWritten`, `onCategoryTaxonomySourceWritten` (ACTIVE).
+  Owner: `TAXONOMY MUTATION RE-QA: ALIAS REMOVED SUCCESSFULLY` → server re-QA **PASS**
+  Result: `docs/workflow/reviews/2026-08-07-taxonomy-trigger-rebuild-corrective-mutation-server-re-qa-result.md`
+  Live: revision **1→2**, alias gone both sides; trigger ~5.91s awaited; 1 start/1 success.
+  Hash unchanged (expected: rev1 never had smoke alias).
+  Owner: Studio stale-refresh Debug **INCONCLUSIVE** → investigate **DONE** (read-only)
+  Classification: expected remount + **tracer blind spot** (materialization getDoc untraced).
+  Record: `docs/workflow/reviews/2026-08-07-taxonomy-studio-stale-revision-refresh-inconclusive-investigation.md`
+  Owner: `STUDIO STALE-REVISION REFRESH: OWNER RESTART COMPLETE` → disk cache **PASS**
+  Path: `%APPDATA%\@fresh-prints\studio\taxonomy-cache\v1.json` (from live `--user-data-dir`)
+  revision **2**, hash match, 1121/18, structurally healthy.
+  Result: `docs/workflow/reviews/2026-08-07-taxonomy-studio-stale-revision-disk-cache-verify-result.md`
+  Owner: `CONTINUE WORKFLOW: TAXONOMY 45-DESIGN PERFORMANCE VALIDATION PREP` → **DONE**
+  Corrective Signoff: **approved_with_notes** —
+  `docs/workflow/reviews/2026-08-07-taxonomy-trigger-rebuild-corrective-signoff.md`
+  45-design checkpoint prepared (not executed):
+  `docs/workflow/reviews/2026-08-07-taxonomy-45-design-performance-validation-checkpoint.md`
+  Owner: `45-DESIGN PERFORMANCE VALIDATION: INSPECT SERVER TAXONOMY LOGS` → **PASS WITH NOTES**
+  Result: `docs/workflow/reviews/2026-08-07-taxonomy-45-design-server-taxonomy-validation-result.md`
+  1 instance; 1 materialization cold load (rev 2, chunkCount 1); 89 cache hits; 0 fallback;
+  `documentCount:1139` on load-success = corpus size, **not** FS hydrate (`source:materialization`).
+  Publishers 0. Console peaks = import/enrichment I/O (max 222), not taxonomy towers.
+  Owner: `45-DESIGN PERFORMANCE VALIDATION: AI SPOT CHECK PASS` → **PASS WITH NOTES**
+  Final result: `docs/workflow/reviews/2026-08-07-taxonomy-45-design-performance-validation-result.md`
+  Studio Debug: ~139 billable; `/tags` 0; `/categories` 0; import 90 = 2.00/design;
+  Console peak 222 (no ~1.3K/1.4K towers); AI spot-check **8/8**.
+  **Follow-up SIGNOFF COMPLETE — `taxonomy-read-spike-elimination`**
+  Signoff: **approved_with_notes** —
+  `docs/workflow/reviews/2026-08-07-taxonomy-read-spike-elimination-signoff.md`
+- **Stage 5 RULES DEPLOYED** on `fresh-prints-dev` — owner
+  `APPROVE DEV RULES DEPLOY: STAGE 5`; CLI exit 0.
+  Record: `docs/workflow/reviews/2026-08-07-stage-5-rules-deploy-dev-record.md`
+  Storage delete already PASS (empty). Stage 5 Signoff still pending separately.
+- Deferred: Stage 5 Signoff; Stage 6 / prod; TD-030; PR #40 merge.
+- PR #40 open / **unmerged** · No production
 
 Case D Signoff: `docs/workflow/reviews/2026-08-06-portal-new-this-week-readyat-signoff.md`
 P4 Signoff: `docs/workflow/reviews/2026-08-06-amendment-9-p4-signoff.md`
@@ -49,9 +142,9 @@ P3 Deploy record: `docs/workflow/reviews/2026-08-07-amendment-9-p3-dev-deploy-re
 Combined live QA: `docs/workflow/reviews/2026-08-07-amendment-9-combined-live-qa-attribution.md`
 P2 Formal Review: `docs/workflow/reviews/2026-08-07-amendment-9-p2-studio-tag-library-read-containment-review.md`
   (**approved — recommend NO IMPLEMENTATION**)
-Next for this goal: Owner/admin run Algolia **reconcile** (`dryRun: false`) on
-  `fresh-prints-dev`, then enable `NEXT_PUBLIC_USE_ALGOLIA_CATALOG_SEARCH=true` locally,
-  then Stage 1b-C QA. No Stage 4/5/6 yet.
+Next for this goal: **STOP** — `taxonomy-read-spike-elimination` **SIGNOFF approved_with_notes**.
+  45-design final validation **PASS WITH NOTES**; primary spike-elimination proven live.
+  No Stage 6 / prod / PR merge / deploy / implement. Owner gates remaining deferred work.
 
 **Prior (still true):** Amendment 8 Phase 1B Stage 1a **Signoff approved**. Amendments 1–3
 closed. Generated search/multi-tag/facets remain temporary. Stage 1b blocked on owner D1.
@@ -150,6 +243,171 @@ archive write — none of these could be run live in this environment (no intera
 no Application Default Credentials for scripted checks beyond read-only CLI operations).
 
 Decision Log:
+- 2026-08-07 — Owner `45-DESIGN PERFORMANCE VALIDATION: AI SPOT CHECK PASS`.
+  Final 45-design validation **PASS WITH NOTES**; parent Signoff **approved_with_notes**.
+  Studio ~139 billable; 0 tags/cats; import 2.00/design; Console peak 222; AI 8/8.
+  Server: 1 materialization cold (rev 2, 1 chunk) + 89 cache hits; 0 fallback.
+  Result: `docs/workflow/reviews/2026-08-07-taxonomy-45-design-performance-validation-result.md`
+  Signoff: `docs/workflow/reviews/2026-08-07-taxonomy-read-spike-elimination-signoff.md`
+  Follow-up `taxonomy-read-spike-elimination` **CLOSED** on fresh-prints-dev.
+  STOP: no Stage 6 / prod / PR merge / deploy / implement.
+- 2026-08-07 — Owner `CONTINUE WORKFLOW: TAXONOMY 45-DESIGN PERFORMANCE VALIDATION PREP`.
+  Corrective Signoff **approved_with_notes**. 45-design checkpoint prepared (not run).
+  Signoff: `docs/workflow/reviews/2026-08-07-taxonomy-trigger-rebuild-corrective-signoff.md`
+  Checkpoint: `docs/workflow/reviews/2026-08-07-taxonomy-45-design-performance-validation-checkpoint.md`
+  Parent spike-elimination remains open. STOP before Stage 1.
+- 2026-08-07 — Owner `TAXONOMY MUTATION RE-QA: ALIAS REMOVED SUCCESSFULLY`.
+  Read-only: **TAXONOMY MUTATION SERVER RE-QA: PASS**. Rev 1→2; alias absent both sides;
+  tag trigger awaited ~5.91s; 1 rebuild-start/success; hash unchanged (expected).
+  Result: `docs/workflow/reviews/2026-08-07-taxonomy-trigger-rebuild-corrective-mutation-server-re-qa-result.md`.
+  Next: Studio stale-cache refresh (separate). No deploy/prod/merge.
+- 2026-08-07 — Owner `APPROVE DEV TAXONOMY TRIGGER REBUILD CORRECTIVE DEPLOY`.
+  Deploy **PASS** on fresh-prints-dev (two triggers only). Rev still 1; alias intact.
+  Record: `docs/workflow/reviews/2026-08-07-taxonomy-trigger-rebuild-corrective-dev-deploy-record.md`.
+  Next: owner remove-alias mutation smoke (rev 1→2). No agent mutation this pass.
+- 2026-08-07 — Owner `APPROVE TAXONOMY TRIGGER REBUILD CORRECTIVE IMPLEMENTATION`.
+  Option A awaited coalesce Implement+Test+Impl Review **APPROVED**.
+  Detached setTimeout rebuild removed; handlers await shared Promise.
+  Tests 18/18; tsc+eslint PASS. NO deploy this pass.
+  Impl Review:
+  `docs/workflow/reviews/2026-08-07-taxonomy-trigger-rebuild-corrective-implementation-review.md`
+  Next: `APPROVE DEV TAXONOMY TRIGGER REBUILD CORRECTIVE DEPLOY`.
+- 2026-08-07 — Owner `PLAN TAXONOMY TRIGGER REBUILD CORRECTIVE`.
+  Plan + Formal Review **approved_with_changes** (RC-R1–RC-R8).
+  Root cause confirmed: detached setTimeout coalesce. Recommend awaited
+  Option A (B fallback). No Implement/deploy/mutation this pass.
+  Plan: `docs/workflow/plans/2026-08-07-taxonomy-trigger-rebuild-corrective-plan.md`
+  Review: `docs/workflow/reviews/2026-08-07-taxonomy-trigger-rebuild-corrective-plan-review.md`
+  Next: `APPROVE TAXONOMY TRIGGER REBUILD CORRECTIVE IMPLEMENTATION`.
+- 2026-08-07 — Owner `TAXONOMY MUTATION SMOKE: OWNER MUTATION COMPLETE`.
+  Read-only verify: **TAXONOMY MUTATION SERVER REBUILD: FAIL**.
+  Alias on `tags/acdc`; meta still rev 1 / old hash; chunk lacks alias.
+  `onTagTaxonomySourceWritten` fired; 0 rebuilds; category trigger 0.
+  Suspected: coalesce setTimeout after CF return. Studio refresh STOPPED.
+  Record: `docs/workflow/reviews/2026-08-07-taxonomy-mutation-server-rebuild-verify-result.md`.
+- 2026-08-07 — Owner `STUDIO TAXONOMY MATERIALIZATION READ: PASS WITH NOTES`.
+  Design Library warm-cache: 0 `/tags`, 0 `/categories`, 0 fallbacks/errors.
+  Cold retest waived; AI Review deferred. Result:
+  `docs/workflow/reviews/2026-08-07-taxonomy-studio-materialization-read-smoke-result.md`.
+  Mutation checkpoint prepared (not executed):
+  `docs/workflow/reviews/2026-08-07-taxonomy-mutation-revision-smoke-checkpoint.md`.
+  Next: owner revision 1→2 mutation smoke → `TAXONOMY MUTATION SMOKE: PASS|FAIL|…`.
+  No deploy / prod / PR merge.
+- 2026-08-07 — Owner `MANAGED PHASE — TAXONOMY READ SPIKE ELIMINATION` (Plan+Review only).
+  Plan + Formal Review **approved_with_changes**. Attribution: single AI cold load
+  1139 @ 00:20:07Z; Studio Review hydrate 1139 @ 00:22Z. Recommend B+D hybrid.
+  RCs RC1–RC9 (server-owned rebuild critical). No Implement/deploy/mutation.
+  Plan: `docs/workflow/plans/2026-08-07-taxonomy-read-spike-elimination-plan.md`
+- 2026-08-07 — Owner `APPROVE DEV RULES DEPLOY: STAGE 5`. Deployed
+  `firestore:rules,storage` to `fresh-prints-dev` (exit 0). Record:
+  `docs/workflow/reviews/2026-08-07-stage-5-rules-deploy-dev-record.md`.
+  Next: Stage 5 Signoff / optional owner smoke. No Stage 6 / prod / PR merge.
+- 2026-08-07 — Owner `STAGE 5 STORAGE DELETED: PASS`. Agent list-only verify:
+  portal-catalog 0, catalog-reference 0, snapshotPublicationState 0.
+  Record: `docs/workflow/reviews/2026-08-07-stage-5-storage-delete-dev-record.md`.
+  Next: `APPROVE DEV RULES DEPLOY: STAGE 5`. No Stage 6 / prod / PR merge.
+- 2026-08-07 — Owner `STAGE 5 DELETE PARTIAL` corrective. Diagnosis: concurrency 40 +
+  no retry → transient GCS internal error aborted APPLY. Hardened script (concurrency 8,
+  per-object retry/backoff, re-list resume, final verify). Impl Review **APPROVED**.
+  No live delete this pass. Resume command in checkpoint doc. Await owner APPLY resume +
+  `STAGE 5 STORAGE DELETED: PASS`. Rules deploy still gated.
+- 2026-08-07 — Owner `STAGE 5 DRY-RUN: PASS` + `APPROVE DEV STORAGE DELETE: STAGE 5`.
+  Agent cannot run APPLY=1 (shell delete hook). Owner must run local command in
+  `docs/workflow/reviews/2026-08-07-stage-5-storage-delete-dev-checkpoint.md`,
+  then reply `STAGE 5 STORAGE DELETED: PASS`. Rules deploy still gated.
+- 2026-08-07 — Owner `APPROVE DEV STORAGE DRY-RUN: STAGE 5`. List-only inventory
+  completed on `fresh-prints-dev`. Record:
+  `docs/workflow/reviews/2026-08-07-stage-5-generated-asset-cleanup-dry-run-record.md`
+  Counts: portal-catalog 57354 objs / 146829893 B; catalog-reference 23 / 4478422 B;
+  snapshotPublicationState 2 docs. No deletes. No Rules deploy. Await
+  `STAGE 5 DRY-RUN: PASS` then `APPROVE DEV STORAGE DELETE: STAGE 5`.
+- 2026-08-07 — Owner `APPROVE STAGE 5 IMPLEMENT`. Source Implement complete;
+  Implementation Review **APPROVED**. Ops script prepared (not run live);
+  Rules source narrowed (not deployed). `npm run test:rules` blocked (no Java).
+  Next: `APPROVE DEV STORAGE DRY-RUN: STAGE 5`. No Stage 6 / prod / PR merge.
+- 2026-08-07 — Owner `APPROVE STAGE 5 PLANNING`. Stage 5 plan + Formal Review
+  **approved_with_changes**. Plan:
+  `docs/workflow/plans/2026-08-07-stage-5-generated-asset-cleanup-plan.md`
+  Review:
+  `docs/workflow/reviews/2026-08-07-stage-5-generated-asset-cleanup-plan-review.md`
+  STOP before Implement / dry-run / Storage delete / Rules deploy. Stage 6 / prod /
+  PR #40 still forbidden.
+- 2026-08-07 — Owner `ALGOLIA OFF: PASS` + `STAGE 4 POST-DELETE QA: PASS`.
+  Stage 4 Signoff **approved_with_notes**. STOP before Stage 5/6 / merge / production.
+- 2026-08-07 — Read-only attribution ~4:42 PM CDT spike (~1.4K): Algolia
+  per-design upsert tiny; **no** AI taxonomy cold load; **no** retired publishers;
+  ~1.4K attributed to Studio taxonomy hydrate class. Doc:
+  `docs/workflow/reviews/2026-08-07-stage-4-post-delete-142-spike-attribution.md`.
+  Stage 4 NO PUB SPIKE (publisher class) **not blocked**.
+- 2026-08-07 — Owner `ALGOLIA POST-DELETE SMOKE: PASS` (Stage 4 post-delete step 1).
+  Next: design-write no portal-catalog pub spike; then Algolia OFF kill-switch Network proof.
+- 2026-08-07 — Owner `STAGE 4 PUBLISHERS DELETED: PASS`. Agent re-list confirms six
+  publishers absent; Algolia sync/reconcile remain. Record:
+  `docs/workflow/reviews/2026-08-07-stage-4-publisher-delete-dev-record.md`.
+  Next: Stage 4 post-delete QA.
+- 2026-08-07 — Owner `APPROVE DEV FUNCTIONS DELETE: STAGE 4 PUBLISHERS`. Algolia
+  Functions redeployed (exit 0). Agent cannot run `functions:delete --force` (shell hook).
+  Owner must execute delete command in checkpoint doc; then reply
+  `STAGE 4 PUBLISHERS DELETED: PASS`.
+- 2026-08-07 — Owner `APPROVE STAGE 4 IMPLEMENT`. Source Implement complete; Impl Review
+  **APPROVED**. Live Function delete STOP — await
+  `APPROVE DEV FUNCTIONS DELETE: STAGE 4 PUBLISHERS`. No Stage 5/6 / merge / production.
+- 2026-08-07 — Owner `APPROVE STAGE 4 PLANNING`. Stage 4 plan written; Formal Review
+  **approved_with_changes**. Code Implement may be authorized next; live Function delete
+  still needs separate deploy phrase. No Stage 5/6 / merge / production.
+- 2026-08-07 — Owner `ALGOLIA OUTAGE: PASS`. Stage 1b-C sequential checklist complete.
+  Stage 1b-C Signoff **approved_with_notes**. STOP before Stage 4 / PR merge / production.
+- 2026-08-07 — Owner `FAVORITES DETAILS SHARE REQUEST: PASS WITH NOTES`. Favorites,
+  details, share, Add to Request work. Deferred UX: details/share should switch to
+  catalog-card quantity control after add (TD-030). Next: Algolia outage / kill-switch.
+- 2026-08-07 — Owner `DISCOVER VIEW ALL: PASS WITH NOTES`. Popular/category View All
+  load + intended ordering; rail≠View All order accepted (home pool vs View All contracts).
+  New This Week exact match. Signoff **approved_with_notes**. Next: Favorites / details /
+  share / Add to Request.
+- 2026-08-07 — Owner `SINGLE TAG BROWSE: PASS` (H3). Next: DISCOVER / HOME / NEW THIS WEEK.
+- 2026-08-07 — Owner `CATEGORY BROWSE: PASS` (H2). Next: SINGLE-TAG BROWSE.
+- 2026-08-07 — Owner `LIBRARY BROWSE: PASS` (H1). Next: CATEGORY BROWSE.
+- 2026-08-07 — Owner `EMPTY SEARCH: PASS`. Next: FIRESTORE REGRESSIONS.
+- 2026-08-07 — Owner `PAGINATION ORDER: PASS`. Next: EMPTY SEARCH.
+- 2026-08-07 — Owner `CATEGORY SEARCH: PASS`. Next: PAGINATION / ORDER.
+- 2026-08-07 — Owner `GLOBAL FACETS: PASS`. Next: CATEGORY + SEARCH/TAGS.
+- 2026-08-07 — Owner confirmed `ARCHIVE SYNC: PASS` and `RESTORE SYNC: PASS`
+  (archive upgraded from inferred PASS WITH NOTES). Next: GLOBAL FACETS.
+- 2026-08-07 — Owner `RESTORE SYNC: PASS`. Archive recorded PASS WITH NOTES
+  (inferred from restore cycle; no separate ARCHIVE phrase). Next: GLOBAL FACETS.
+- 2026-08-07 — Owner `READY EDIT SYNC: PASS`. Next: ARCHIVE SYNC.
+- 2026-08-07 — Continue Stage 1b-C owner QA completion. Initial facet freshness already
+  PASS (no redo). Sequential remaining sync/regression tests; next = READY EDIT SYNC.
+  Spike attribution not a blocker. No implement/Stage 4/merge/production.
+- 2026-08-07 — Read-only attribution: Console spike 12:47–12:53 CDT =
+  3× portal-catalog full pubs (~1184–1185 C+T+R, ~120s spacing) + overlapping AI
+  taxonomy cold load (~1139 docs) on first peak. Not Algolia reconcile / not new
+  amplification. Record:
+  `docs/workflow/reviews/2026-08-07-firestore-spike-1247-1253-attribution.md`
+- 2026-08-07 — Owner `INITIAL FACET COUNT: PASS`. Initial facet freshness corrective
+  signed off. Publisher retained. No Stage 4/5/6 / merge / production.
+- 2026-08-07 — Owner cartoon initial count 3→4 on select. Live Algolia probe: cartoon=4 /
+  nbHits=4 / index=46. Root cause stale mount-cached Tags (`useCatalogTags`), not index.
+  Modal always refreshes facets on open. Impl Review **APPROVED**. No reconcile. STOP re-QA.
+- 2026-08-07 — Owner `NARROWED FACET COUNTS: PASS`. Stage 1b-C narrowed-facet
+  corrective signed off (Algolia + generated parity). Publisher retained. No
+  Stage 4/5/6 / merge / production.
+- 2026-08-07 — Owner A/B: Algolia OFF still shows global Tags counts for `q=jerk`.
+  Treated as generated fallback parity defect. Plan approved → Implement → Test (48 pass)
+  → Impl Review **APPROVED**. Portal-only. STOP for owner A/B re-QA (ON+OFF).
+- 2026-08-07 — Stage 1b-C narrowed-facet fix: Plan approved → Implement → Test (22 pass) →
+  Impl Review **APPROVED**. Portal-only; no deploy. STOP for owner re-QA.
+  Root cause: missing catalog q/category plumbing + Algolia facet `query: ''`.
+- 2026-08-07 — Owner Stage 1b-C: `NARROWED FACET COUNTS: FAIL` (q=stupid + funny+quote).
+  Corrective plan approved; implement Portal-only facet plumbing/query fix. Do not mark
+  Stage 1b-C PASS. No deploy/merge/production/Stage 4–6.
+- 2026-08-07 — Owner `ALGOLIA RECONCILE: OK` (scanned=45, upserted=45). Local Portal
+  `NEXT_PUBLIC_USE_ALGOLIA_CATALOG_SEARCH=true` set. Next: restart Portal + Stage 1b-C QA.
+  Publisher retained. No merge / production / Stage 4–6.
+- 2026-08-07 — Owner `APPROVE STUDIO DEV BRIDGE: ALGOLIA RECONCILE`. Minimal Studio
+  `window.freshPrintsDev.reconcilePortalCatalogAlgoliaIndex` bridge implemented (dev +
+  `fresh-prints-dev` only, 540s client timeout). Awaiting owner console reconcile
+  (`dryRun: false`). Portal enable flag still off. No Functions redeploy / merge / production.
 - 2026-08-07 — Owner `APPROVE DEV FUNCTIONS DEPLOY: STAGE 1B ALGOLIA SYNC`. Deployed three
   Algolia Functions to `fresh-prints-dev` (exit 0). Portal enable flag still off. Awaiting
   reconcile. No production / no PR merge / publisher retained.
@@ -4369,6 +4627,7 @@ workstreams), which now extends to #11 and #12 as well. `production-release` (#1
 regardless of that structure until all four are signed off.
 
 ## Decision Log
+- 2026-08-07 - Owner `APPROVE STAGE 5 PLANNING`. Stage 5 generated-asset cleanup plan written and Formal Review **approved_with_changes** (`docs/workflow/plans/2026-08-07-stage-5-generated-asset-cleanup-plan.md`, `docs/workflow/reviews/2026-08-07-stage-5-generated-asset-cleanup-plan-review.md`). Scope: dry-run then delete `generated/portal-catalog/**` + `generated/catalog-reference/**`, orphan `snapshotPublicationState`, narrow Rules on `fresh-prints-dev` only; Strategy 2 AI KEEP (no tags-only Storage); shared catalog-snapshots types KEEP. STOP before Implement / dry-run / delete / Rules deploy pending matching owner phrases. Stage 6 / prod / PR #40 still forbidden.
 - 2026-07-24 - Owner directed closing the surfaced taxonomy read gap. Confirmed by inspection that
   the Design Library's own filter/dropdown/tag-picker code never reads anything beyond
   id/name/sortOrder/isActive (categories) and id/name/aliases/status (tags), so the existing public

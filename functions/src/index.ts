@@ -100,6 +100,12 @@ export {
   previewTagArchive,
   archiveTagWithGuards,
 } from "./archiveTaxonomyWithGuards";
+export {
+  onTagTaxonomySourceWritten,
+  onCategoryTaxonomySourceWritten,
+  rebuildTaxonomyMaterializationCallable,
+} from "./taxonomy/onTaxonomySourceWritten";
+export { rebuildTaxonomyMaterialization } from "./taxonomy/rebuildTaxonomyMaterialization";
 export { syncPortalAccountEmail } from "./syncPortalAccountEmail";
 export {
   requestPortalAccountDeletion,
@@ -128,14 +134,6 @@ export { onEmailDeliveryJobCreated } from "./onEmailDeliveryJobCreated";
 export { registerWebPushSubscription } from "./registerWebPushSubscription";
 export { submitPortalDesignIssueReport } from "./submitPortalDesignIssueReport";
 export { resolveDesignIssueReport } from "./resolveDesignIssueReport";
-export {
-  onCategorySnapshotSourceWritten,
-  onPortalCatalogPublicationStateWritten,
-  onPortalCatalogSnapshotSourceWritten,
-  onTagSnapshotSourceWritten,
-  rebuildCatalogSnapshots,
-  retryPortalCatalogPublication,
-} from "./catalogSnapshots/publishCatalogSnapshots";
 export { syncPortalCatalogDesignToAlgolia } from "./algolia/syncPortalCatalogDesignToAlgolia";
 export {
   reconcilePortalCatalogAlgoliaIndex,

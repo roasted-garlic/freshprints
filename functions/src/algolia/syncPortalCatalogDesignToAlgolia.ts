@@ -1,7 +1,7 @@
 import { logger } from 'firebase-functions';
 import { onDocumentWritten } from 'firebase-functions/v2/firestore';
 
-import { classifyPortalCatalogDesignChange } from '../catalogSnapshots/portalCatalogChangeClassifier';
+import { classifyPortalCatalogDesignChange } from './portalCatalogChangeClassifier';
 import { adminDb } from '../lib/admin';
 import { algoliaAdminApiKeySecret } from '../lib/secrets';
 import {

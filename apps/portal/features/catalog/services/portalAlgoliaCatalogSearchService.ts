@@ -13,24 +13,76 @@ export interface PortalAlgoliaSearchPageOptions {
   offset?: number;
 }
 
+/** Constraints that must refine tag facet distribution (Stage 1b-C). */
+export interface PortalAlgoliaFacetQueryOptions {
+  search?: string;
+  selectedTags?: string[];
+  categoryId?: string;
+}
+
 function buildTagAndFilters(tagIds: string[]): string[][] {
   return [...new Set(tagIds.map((id) => id.trim()).filter(Boolean))].map((tagId) => [
     `tagIds:${tagId}`,
   ]);
 }
 
-function facetDistributionToTagOptions(
+export function hasPortalAlgoliaFacetConstraints(
+  options: PortalAlgoliaFacetQueryOptions = {},
+): boolean {
+  const search = options.search?.trim() ?? '';
+  const categoryId = options.categoryId?.trim() ?? '';
+  const tags = (options.selectedTags ?? []).map((tag) => tag.trim()).filter(Boolean);
+  return Boolean(search || categoryId || tags.length > 0);
+}
+
+/**
+ * Pure search params for Algolia tag facets — mirrors listMatchingDesigns filters
+ * so modal counts match the active catalog result context.
+ */
+export function buildPortalAlgoliaFacetSearchParams(
+  options: PortalAlgoliaFacetQueryOptions = {},
+): {
+  query: string;
+  facetFilters?: string[][];
+  filters?: string;
+  hitsPerPage: number;
+  facets: string[];
+  maxValuesPerFacet: number;
+} {
+  const query = options.search?.trim() ?? '';
+  const facetFilters = buildTagAndFilters(options.selectedTags ?? []);
+  const categoryId = options.categoryId?.trim();
+  return {
+    query,
+    facetFilters: facetFilters.length > 0 ? facetFilters : undefined,
+    filters: categoryId ? `categoryId:${categoryId}` : undefined,
+    hitsPerPage: 0,
+    facets: ['tagFacetKeys'],
+    maxValuesPerFacet: 2000,
+  };
+}
+
+/**
+ * Convert Algolia tagFacetKeys distribution into tag options.
+ * Merges by display name so split keys for the same label cannot under-count.
+ */
+export function mergePortalAlgoliaTagFacetDistribution(
   distribution: Record<string, number> | undefined,
 ): CatalogTagOption[] {
   if (!distribution) return [];
-  const options: CatalogTagOption[] = [];
+  const countByName = new Map<string, { id: string; name: string; count: number }>();
   for (const [key, count] of Object.entries(distribution)) {
     if (count <= 0) continue;
     const parsed = parsePortalCatalogTagFacetKey(key);
     if (!parsed) continue;
-    options.push({ id: parsed.id, name: parsed.name, count });
+    const existing = countByName.get(parsed.name);
+    if (existing) {
+      existing.count += count;
+    } else {
+      countByName.set(parsed.name, { id: parsed.id, name: parsed.name, count });
+    }
   }
-  return options.sort((left, right) => left.name.localeCompare(right.name));
+  return [...countByName.values()].sort((left, right) => left.name.localeCompare(right.name));
 }
 
 /**
@@ -91,21 +143,21 @@ export const portalAlgoliaCatalogSearchService = {
     const indexName = getPortalAlgoliaIndexName();
     const response = await client.searchSingleIndex({
       indexName,
-      searchParams: {
-        query: '',
-        hitsPerPage: 0,
-        facets: ['tagFacetKeys'],
-        maxValuesPerFacet: 2000,
-      },
+      searchParams: buildPortalAlgoliaFacetSearchParams({}),
     });
-    return facetDistributionToTagOptions(
+    return mergePortalAlgoliaTagFacetDistribution(
       response.facets?.tagFacetKeys as Record<string, number> | undefined,
     );
   },
 
-  async listNarrowedTagFacets(selectedTags: string[]): Promise<CatalogTagOption[]> {
-    const uniqueSelected = [...new Set(selectedTags.map((tag) => tag.trim()).filter(Boolean))];
-    if (uniqueSelected.length === 0) {
+  /**
+   * Tag facets refined by the same constraints as catalog search (q + tag AND + category).
+   * With no constraints, equivalent to `listTagFacets()`.
+   */
+  async listNarrowedTagFacets(
+    options: PortalAlgoliaFacetQueryOptions = {},
+  ): Promise<CatalogTagOption[]> {
+    if (!hasPortalAlgoliaFacetConstraints(options)) {
       return portalAlgoliaCatalogSearchService.listTagFacets();
     }
 
@@ -113,16 +165,10 @@ export const portalAlgoliaCatalogSearchService = {
     const indexName = getPortalAlgoliaIndexName();
     const response = await client.searchSingleIndex({
       indexName,
-      searchParams: {
-        query: '',
-        hitsPerPage: 0,
-        facetFilters: buildTagAndFilters(uniqueSelected),
-        facets: ['tagFacetKeys'],
-        maxValuesPerFacet: 2000,
-      },
+      searchParams: buildPortalAlgoliaFacetSearchParams(options),
     });
 
-    return facetDistributionToTagOptions(
+    return mergePortalAlgoliaTagFacetDistribution(
       response.facets?.tagFacetKeys as Record<string, number> | undefined,
     );
   },
