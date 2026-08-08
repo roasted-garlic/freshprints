@@ -7,7 +7,7 @@
 | Branch | `fix/post-launch-catalog-and-processing-stability` |
 | **Source verification baseline SHA** | `1d13edf2eb3d685773157c469b1b2e154fe0fd93` |
 | **Verification docs commit** | `63e821479d361ef4936779be91f3ff1aaf71b74f` (records this suite; application source unchanged from `1d13edf`) |
-| **Branch tip after docs push** | see post-commit note below / owner report |
+| **Branch tip after docs push** | `08f4beac218fcc7122c6280a0e3179c19344448a` (docs-only tip; source baseline remains `1d13edf`) |
 | Local = origin = PR head (pre-docs) | **Yes** (asserted before and after suite) |
 | Base | `production` @ `70c083af6ec0165e95f439fe6111e7e0a62c8ecd` |
 | Working tree at start | **clean** |
