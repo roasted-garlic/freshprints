@@ -5,6 +5,7 @@ import {
 } from "@fresh-prints/shared/constants/design/designStoragePaths";
 import type { ImportDerivativePipelineResult } from "@fresh-prints/shared/types/import/importOrchestration.types";
 import type { User } from "../../users/types/user.types";
+import type { DesignAuthoritySnapshot } from "../../designs/types/design.types";
 import { designDerivativeStorageService } from "../../designs/services/designDerivativeStorageService";
 import { designReadyService } from "../../designs/services/designReadyService";
 import { designService } from "../../designs/services/designService";
@@ -74,15 +75,17 @@ export const importDerivativeService = {
       designId: string;
       thumbnailBytes: Uint8Array;
       previewBytes: Uint8Array;
+      /** Same-stack createDesign authority; used only before Storage uploads (P1 I2/I3). */
+      knownAuthority?: DesignAuthoritySnapshot;
     },
   ): Promise<ImportDerivativePipelineResult> {
-    const { designId, thumbnailBytes, previewBytes } = input;
+    const { designId, thumbnailBytes, previewBytes, knownAuthority } = input;
     const originalPath = getOriginalStoragePath(designId);
     const thumbnailPath = getThumbnailStoragePath(designId);
     const previewPath = getPreviewStoragePath(designId);
 
     try {
-      await designReadyService.markDesignProcessing(caller, designId);
+      await designReadyService.markDesignProcessing(caller, designId, knownAuthority);
     } catch (error) {
       return {
         success: false,
@@ -112,6 +115,7 @@ export const importDerivativeService = {
     }
 
     try {
+      // I4 retained: fresh authority read inside markDesignDerivativesComplete after Storage.
       await designReadyService.markDesignDerivativesComplete(caller, designId, {
         originalPath,
         thumbnailPath,

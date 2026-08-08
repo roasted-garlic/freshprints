@@ -68,7 +68,7 @@ export const aiReviewInboxService = {
       throw new Error("Enter a valid 6-digit hex color (for example #2c2d2d).");
     }
 
-    await designService.updateDesign(caller, designId, {
+    const draftUpdated = await designService.updateDesign(caller, designId, {
       title: draft.title.trim(),
       description: draft.description.trim() || undefined,
       categoryId: draft.categoryId.trim() || undefined,
@@ -81,7 +81,7 @@ export const aiReviewInboxService = {
       },
     });
 
-    return catalogApprovalService.approveDesignForCatalog(caller, designId);
+    return catalogApprovalService.approveDesignForCatalog(caller, designId, draftUpdated);
   },
 
   async rejectFromInbox(caller: User, designId: string, reason?: string): Promise<Design> {

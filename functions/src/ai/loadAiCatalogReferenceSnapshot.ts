@@ -1,122 +1,323 @@
-import {
-  parseAiCatalogReferenceSnapshot,
-  parseCatalogReferenceManifest,
-} from "../../../packages/shared/src/catalog-snapshots/catalogSnapshot.parsers";
 import type { AiCatalogReferenceSnapshot } from "../../../packages/shared/src/catalog-snapshots/catalogSnapshot.types";
 import { CATALOG_REFERENCE_SCHEMA_VERSION } from "../../../packages/shared/src/catalog-snapshots/catalogSnapshot.types";
 import type { CatalogTag } from "../../../packages/shared/src/types/catalogTag.types";
-import { adminDb, adminStorage } from "../lib/admin";
+import { randomUUID } from "node:crypto";
 
-const MANIFEST_PATH = "generated/catalog-reference/manifest.json";
-const FALLBACK_TTL_MS = 5 * 60_000;
-const MANIFEST_TTL_MS = 60_000;
+import { adminDb } from "../lib/admin";
+import { logPipelineEvent } from "../lib/pipelineLog";
+import { readTaxonomyMaterializationCorpus } from "../taxonomy/rebuildTaxonomyMaterialization";
 
-let cachedSnapshot: AiCatalogReferenceSnapshot | null = null;
-let manifestExpiresAtMs = 0;
-const immutableSnapshots = new Map<string, AiCatalogReferenceSnapshot>();
-let snapshotLoad: Promise<AiCatalogReferenceSnapshot> | null = null;
-let fallbackCache: { expiresAtMs: number; value: AiCatalogReferenceSnapshot } | null = null;
-let fallbackLoad: Promise<AiCatalogReferenceSnapshot> | null = null;
+/**
+ * Process-local AI taxonomy cache.
+ * Revision-keyed (RC5); TTL is secondary. Not global across Function instances.
+ */
+export const AI_TAXONOMY_CACHE_TTL_MS = 15 * 60_000;
 
-async function downloadJson(path: string): Promise<unknown> {
-  const [bytes] = await adminStorage.bucket().file(path).download();
-  return JSON.parse(bytes.toString("utf8")) as unknown;
+/** After this many FS fallbacks in-process, stay on FS-only for the circuit window (RC3). */
+export const TAXONOMY_FALLBACK_CIRCUIT_THRESHOLD = 3;
+export const TAXONOMY_FALLBACK_CIRCUIT_MS = 5 * 60_000;
+
+export interface AiTaxonomyLoadContext {
+  functionName?: string;
+  invocationId?: string;
+  designId?: string;
 }
 
-async function loadFirestoreFallback(): Promise<AiCatalogReferenceSnapshot> {
-  if (fallbackCache && fallbackCache.expiresAtMs > Date.now()) return fallbackCache.value;
-  if (fallbackLoad) return fallbackLoad;
+type TaxonomyLogEvent =
+  | "taxonomy-cache-hit"
+  | "taxonomy-cache-miss"
+  | "taxonomy-cache-join-inflight"
+  | "taxonomy-cache-expired"
+  | "taxonomy-load-success"
+  | "taxonomy-load-failure"
+  | "taxonomy-fallback-fs"
+  | "taxonomy-materialization-hit"
+  | "taxonomy-fallback-circuit-open";
 
-  fallbackLoad = (async () => {
-    const [categoriesSnapshot, tagsSnapshot] = await Promise.all([
-      adminDb.collection("categories").where("isActive", "==", true).get(),
-      adminDb.collection("tags").where("status", "==", "approved").get(),
-    ]);
-    const categories: AiCatalogReferenceSnapshot["categories"] = [];
-    const tags: AiCatalogReferenceSnapshot["tags"] = [];
-    categoriesSnapshot.forEach((document) => {
-      const data = document.data();
-      if (typeof data.name !== "string" || !data.name.trim()) return;
-      categories.push({
-        id: document.id,
-        name: data.name.trim(),
-        ...(typeof data.description === "string" && data.description.trim()
-          ? { description: data.description.trim() }
-          : {}),
-      });
+interface AiTaxonomyCacheDeps {
+  loadTaxonomy: () => Promise<{ snapshot: AiCatalogReferenceSnapshot; revision: number | "fs-fallback" }>;
+  now: () => number;
+  log: (event: TaxonomyLogEvent, context: Record<string, unknown>) => void;
+  ttlMs: number;
+  runtimeInstanceId: string;
+}
+
+interface CacheEntry {
+  value: AiCatalogReferenceSnapshot;
+  revision: number | "fs-fallback";
+  expiresAtMs: number;
+  categoryCount: number;
+  tagCount: number;
+}
+
+async function defaultLoadFromFirestoreDocs(): Promise<AiCatalogReferenceSnapshot> {
+  const [categoriesSnapshot, tagsSnapshot] = await Promise.all([
+    adminDb.collection("categories").where("isActive", "==", true).get(),
+    adminDb.collection("tags").where("status", "==", "approved").get(),
+  ]);
+  const categories: AiCatalogReferenceSnapshot["categories"] = [];
+  const tags: AiCatalogReferenceSnapshot["tags"] = [];
+  categoriesSnapshot.forEach((document) => {
+    const data = document.data();
+    if (typeof data.name !== "string" || !data.name.trim()) return;
+    categories.push({
+      id: document.id,
+      name: data.name.trim(),
+      ...(typeof data.description === "string" && data.description.trim()
+        ? { description: data.description.trim() }
+        : {}),
     });
-    tagsSnapshot.forEach((document) => {
-      const data = document.data();
-      if (
-        typeof data.name !== "string" ||
-        !Array.isArray(data.aliases) ||
-        typeof data.preferredWhen !== "string"
-      ) return;
-      tags.push({
-        id: document.id,
-        name: data.name,
-        aliases: data.aliases.filter((alias): alias is string => typeof alias === "string"),
-        preferredWhen: data.preferredWhen,
-        status: "approved",
-      });
+  });
+  tagsSnapshot.forEach((document) => {
+    const data = document.data();
+    if (
+      typeof data.name !== "string" ||
+      !Array.isArray(data.aliases) ||
+      typeof data.preferredWhen !== "string"
+    ) {
+      return;
+    }
+    tags.push({
+      id: document.id,
+      name: data.name,
+      aliases: data.aliases.filter((alias): alias is string => typeof alias === "string"),
+      preferredWhen: data.preferredWhen,
+      status: "approved",
     });
-    const value: AiCatalogReferenceSnapshot = {
-      schemaVersion: CATALOG_REFERENCE_SCHEMA_VERSION,
-      contentVersion: "firestore-fallback",
-      generatedAt: new Date().toISOString(),
-      categories,
-      tags,
-      categoryNames: categories.map(({ name }) => name),
-      categoryIdsByName: Object.fromEntries(
-        categories.map(({ id, name }) => [name.toLowerCase(), id]),
-      ),
+  });
+  return {
+    schemaVersion: CATALOG_REFERENCE_SCHEMA_VERSION,
+    contentVersion: "firestore-fallback",
+    generatedAt: new Date().toISOString(),
+    categories,
+    tags,
+    categoryNames: categories.map(({ name }) => name),
+    categoryIdsByName: Object.fromEntries(
+      categories.map(({ id, name }) => [name.toLowerCase(), id]),
+    ),
+  };
+}
+
+function corpusToSnapshot(
+  corpus: { categories: AiCatalogReferenceSnapshot["categories"]; tags: AiCatalogReferenceSnapshot["tags"] },
+  revision: number,
+): AiCatalogReferenceSnapshot {
+  return {
+    schemaVersion: CATALOG_REFERENCE_SCHEMA_VERSION,
+    contentVersion: `materialization-r${revision}`,
+    generatedAt: new Date().toISOString(),
+    categories: corpus.categories,
+    tags: corpus.tags,
+    categoryNames: corpus.categories.map(({ name }) => name),
+    categoryIdsByName: Object.fromEntries(
+      corpus.categories.map(({ id, name }) => [name.toLowerCase(), id]),
+    ),
+  };
+}
+
+let fallbackCount = 0;
+let circuitOpenUntilMs = 0;
+
+async function defaultLoadTaxonomy(): Promise<{
+  snapshot: AiCatalogReferenceSnapshot;
+  revision: number | "fs-fallback";
+}> {
+  const now = Date.now();
+  if (circuitOpenUntilMs > now) {
+    logPipelineEvent("taxonomy-fallback-circuit-open", {
+      fallbackCount,
+      circuitOpenUntilMs,
+    });
+    const snapshot = await defaultLoadFromFirestoreDocs();
+    return { snapshot, revision: "fs-fallback" };
+  }
+
+  const materialized = await readTaxonomyMaterializationCorpus();
+  if (materialized.ok) {
+    logPipelineEvent("taxonomy-materialization-hit", {
+      revision: materialized.revision,
+      chunkCount: materialized.meta.chunkCount,
+      tagCount: materialized.meta.tagCount,
+      categoryCount: materialized.meta.categoryCount,
+      reason: "healthy_materialization",
+    });
+    fallbackCount = 0;
+    return {
+      snapshot: corpusToSnapshot(materialized.corpus, materialized.revision),
+      revision: materialized.revision,
     };
-    fallbackCache = { value, expiresAtMs: Date.now() + FALLBACK_TTL_MS };
-    return value;
-  })();
-
-  try {
-    return await fallbackLoad;
-  } finally {
-    fallbackLoad = null;
   }
+
+  fallbackCount += 1;
+  logPipelineEvent("taxonomy-fallback-fs", {
+    reason: materialized.reason,
+    fallbackCount,
+    revision: null,
+    chunkCount: null,
+    runtimeInstanceId: deps.runtimeInstanceId,
+    coldStart: isColdStart,
+  });
+  if (fallbackCount >= TAXONOMY_FALLBACK_CIRCUIT_THRESHOLD) {
+    circuitOpenUntilMs = now + TAXONOMY_FALLBACK_CIRCUIT_MS;
+    logPipelineEvent("taxonomy-fallback-circuit-open", {
+      fallbackCount,
+      circuitOpenUntilMs,
+      reason: "threshold",
+    });
+  }
+
+  const snapshot = await defaultLoadFromFirestoreDocs();
+  return { snapshot, revision: "fs-fallback" };
 }
 
-export async function loadAiCatalogReferenceSnapshot(): Promise<AiCatalogReferenceSnapshot> {
-  if (process.env.AI_CATALOG_SNAPSHOT_ENABLED === "false") {
-    return loadFirestoreFallback();
-  }
-  if (cachedSnapshot && manifestExpiresAtMs > Date.now()) return cachedSnapshot;
-  if (snapshotLoad) return snapshotLoad;
+function defaultLog(event: TaxonomyLogEvent, context: Record<string, unknown>): void {
+  logPipelineEvent(event, context);
+}
 
-  snapshotLoad = (async () => {
+function createDefaultDeps(): AiTaxonomyCacheDeps {
+  return {
+    loadTaxonomy: defaultLoadTaxonomy,
+    now: () => Date.now(),
+    log: defaultLog,
+    ttlMs: AI_TAXONOMY_CACHE_TTL_MS,
+    runtimeInstanceId: randomUUID(),
+  };
+}
+
+let deps: AiTaxonomyCacheDeps = createDefaultDeps();
+
+/** Monotonic generation; bumped on clear so in-flight loads cannot republish after clear. */
+let cacheGeneration = 0;
+let cacheEntry: CacheEntry | null = null;
+/** In-flight Promise for the current generation only. */
+let taxonomyInFlight: Promise<AiCatalogReferenceSnapshot> | null = null;
+let taxonomyInFlightGeneration: number | null = null;
+let isColdStart = true;
+
+function baseLogContext(context?: AiTaxonomyLoadContext): Record<string, unknown> {
+  const payload: Record<string, unknown> = {
+    runtimeInstanceId: deps.runtimeInstanceId,
+    coldStart: isColdStart,
+    ttlMs: deps.ttlMs,
+    functionName: context?.functionName ?? "unknown",
+    invocationId: context?.invocationId ?? "unknown",
+  };
+  if (context?.designId) {
+    payload.designId = context.designId;
+  }
+  return payload;
+}
+
+function finishColdStartFlag(): void {
+  isColdStart = false;
+}
+
+async function loadThroughCache(
+  context?: AiTaxonomyLoadContext,
+): Promise<AiCatalogReferenceSnapshot> {
+  const now = deps.now();
+
+  // Revision-keyed hit: same revision in process memory → zero FS (TTL secondary).
+  if (cacheEntry && cacheEntry.expiresAtMs > now) {
+    deps.log("taxonomy-cache-hit", {
+      ...baseLogContext(context),
+      cacheAgeMs: now - (cacheEntry.expiresAtMs - deps.ttlMs),
+      categoryCount: cacheEntry.categoryCount,
+      tagCount: cacheEntry.tagCount,
+      revision: cacheEntry.revision,
+    });
+    finishColdStartFlag();
+    return cacheEntry.value;
+  }
+
+  if (cacheEntry && cacheEntry.expiresAtMs <= now) {
+    deps.log("taxonomy-cache-expired", {
+      ...baseLogContext(context),
+      cacheAgeMs: now - (cacheEntry.expiresAtMs - deps.ttlMs),
+      categoryCount: cacheEntry.categoryCount,
+      tagCount: cacheEntry.tagCount,
+      revision: cacheEntry.revision,
+    });
+    cacheEntry = null;
+  }
+
+  if (taxonomyInFlight && taxonomyInFlightGeneration === cacheGeneration) {
+    deps.log("taxonomy-cache-join-inflight", {
+      ...baseLogContext(context),
+    });
+    finishColdStartFlag();
+    return taxonomyInFlight;
+  }
+
+  const loadGeneration = cacheGeneration;
+  deps.log("taxonomy-cache-miss", {
+    ...baseLogContext(context),
+  });
+
+  const startedAtMs = deps.now();
+  const loadSlot: { promise: Promise<AiCatalogReferenceSnapshot> | null } = {
+    promise: null,
+  };
+  loadSlot.promise = (async (): Promise<AiCatalogReferenceSnapshot> => {
     try {
-      const manifest = parseCatalogReferenceManifest(await downloadJson(MANIFEST_PATH));
-      const snapshot = immutableSnapshots.get(manifest.contentVersion) ??
-        parseAiCatalogReferenceSnapshot(await downloadJson(manifest.aiPath));
-      if (snapshot.contentVersion !== manifest.contentVersion) {
-        throw new Error("AI catalog reference snapshot version mismatch.");
+      const loaded = await deps.loadTaxonomy();
+      const value = loaded.snapshot;
+      const elapsedMs = deps.now() - startedAtMs;
+      const categoryCount = value.categories.length;
+      const tagCount = value.tags.length;
+
+      if (loadGeneration === cacheGeneration) {
+        cacheEntry = {
+          value,
+          revision: loaded.revision,
+          expiresAtMs: deps.now() + deps.ttlMs,
+          categoryCount,
+          tagCount,
+        };
       }
-      immutableSnapshots.delete(snapshot.contentVersion);
-      immutableSnapshots.set(snapshot.contentVersion, snapshot);
-      while (immutableSnapshots.size > 2) {
-        const oldest = immutableSnapshots.keys().next().value as string | undefined;
-        if (!oldest) break;
-        immutableSnapshots.delete(oldest);
+
+      deps.log("taxonomy-load-success", {
+        ...baseLogContext(context),
+        elapsedMs,
+        categoryCount,
+        tagCount,
+        documentCount: categoryCount + tagCount,
+        publishedToCache: loadGeneration === cacheGeneration,
+        revision: loaded.revision,
+        source: loaded.revision === "fs-fallback" ? "firestore" : "materialization",
+      });
+      return value;
+    } catch (error) {
+      deps.log("taxonomy-load-failure", {
+        ...baseLogContext(context),
+        elapsedMs: deps.now() - startedAtMs,
+        reason: error instanceof Error ? error.name : "unknown_error",
+      });
+      throw error;
+    } finally {
+      if (
+        taxonomyInFlight === loadSlot.promise &&
+        taxonomyInFlightGeneration === loadGeneration
+      ) {
+        taxonomyInFlight = null;
+        taxonomyInFlightGeneration = null;
       }
-      cachedSnapshot = snapshot;
-      manifestExpiresAtMs = Date.now() + MANIFEST_TTL_MS;
-      return snapshot;
-    } catch {
-      return loadFirestoreFallback();
     }
   })();
 
-  try {
-    return await snapshotLoad;
-  } finally {
-    snapshotLoad = null;
-  }
+  taxonomyInFlight = loadSlot.promise;
+  taxonomyInFlightGeneration = loadGeneration;
+  finishColdStartFlag();
+  return loadSlot.promise;
+}
+
+/**
+ * Prefer compact materialization (O(chunks)); FS full hydrate only on fallback (RC3).
+ */
+export async function loadAiCatalogReferenceSnapshot(
+  context?: AiTaxonomyLoadContext,
+): Promise<AiCatalogReferenceSnapshot> {
+  return loadThroughCache(context);
 }
 
 export function aiSnapshotTagsToCatalogTags(
@@ -132,10 +333,34 @@ export function aiSnapshotTagsToCatalogTags(
 }
 
 export function clearAiCatalogReferenceSnapshotCache(): void {
-  cachedSnapshot = null;
-  manifestExpiresAtMs = 0;
-  immutableSnapshots.clear();
-  snapshotLoad = null;
-  fallbackCache = null;
-  fallbackLoad = null;
+  cacheGeneration += 1;
+  cacheEntry = null;
+  taxonomyInFlight = null;
+  taxonomyInFlightGeneration = null;
+}
+
+/** @internal Test hooks — not for production callers. */
+export function __setAiTaxonomyCacheTestDeps(
+  overrides: Partial<AiTaxonomyCacheDeps> & {
+    loadTaxonomy: () => Promise<{ snapshot: AiCatalogReferenceSnapshot; revision: number | "fs-fallback" }>;
+  },
+): void {
+  clearAiCatalogReferenceSnapshotCache();
+  isColdStart = true;
+  fallbackCount = 0;
+  circuitOpenUntilMs = 0;
+  deps = {
+    ...createDefaultDeps(),
+    ...overrides,
+    runtimeInstanceId: overrides.runtimeInstanceId ?? "test-runtime-instance",
+  };
+}
+
+/** @internal Reset module state after tests. */
+export function __resetAiTaxonomyCacheForTests(): void {
+  clearAiCatalogReferenceSnapshotCache();
+  isColdStart = true;
+  fallbackCount = 0;
+  circuitOpenUntilMs = 0;
+  deps = createDefaultDeps();
 }

@@ -1,5 +1,236 @@
 # Recent Completed Work
 
+## 2026-08-08 - PR #40 pre-merge verification + prod inventory
+
+- Pre-merge **PASS WITH NOTES** on `1d13edf` (taxonomy 37, Stage4/Algolia 48, Stage5 26, Rules 59, builds/lint PASS)
+- Prod inventory: 5/6 publishers still live; Algolia Functions absent; readyAt indexes missing; App Hosting auto-rollout **disabled**
+- RC-R2/R5/R7 SATISFIED; RC-R3/R4/R6 OPEN
+- Next: `APPROVE PR 40 MERGE TO PRODUCTION` (merge only)
+- Records: `docs/workflow/reviews/2026-08-08-pr-40-pre-merge-verification-result.md`, `…-production-inventory-result.md`
+
+## 2026-08-08 - Overnight closeout: Stage 5 Signoff + PR #40 promotion Plan
+
+- Stage 5 Signoff **approved_with_notes** — `docs/workflow/reviews/2026-08-07-stage-5-generated-asset-cleanup-signoff.md`
+- PR #40 production-promotion Formal Review **approved_with_changes**
+- App Hosting secrets CLOSED; rollout NOT RUN
+- Next: `APPROVE PR 40 PRE-MERGE VERIFICATION` — no merge/deploy
+
+## 2026-08-08 - apphosting-env-secrets Signoff (approved_with_notes) + PR #40 plan integration
+
+- Plaintext production `NEXT_PUBLIC_*` removed from `apphosting.yaml` → Secret Manager `secret:` refs
+- Owner `APP HOSTING SECRETS READY` (eight secrets on fresh-prints-prod / fresh-prints-portal)
+- Signoff: `docs/workflow/reviews/2026-08-08-apphosting-env-secrets-signoff.md`
+- Folded into PR #40 promotion plan Checkpoint 2b (`APPROVE APP HOSTING ROLLOUT`)
+- STOP: no App Hosting rollout / PR merge without explicit phrases
+
+## 2026-08-08 - PR #40 production-promotion Plan + Formal Review (approved_with_changes)
+
+- Plan: `docs/workflow/plans/2026-08-08-pr-40-production-promotion-plan.md`
+- Review: **approved_with_changes** (RC-R1–RC-R7)
+- Stage 5 Signoff **MISSING**; PR #40 not merge-ready as-is
+- Next: `APPROVE STAGE 5 SIGNOFF` → `APPROVE PR 40 PRODUCTION PROMOTION PLAN`
+- STOP: no merge / deploy / production mutation
+
+## 2026-08-07 - taxonomy-read-spike-elimination Signoff (approved_with_notes)
+
+- 45-design validation **PASS WITH NOTES** — Studio 0 tags/cats; ~139 vs ~1461 billable; Console peak 222 vs ~1.3K/1.4K; AI 8/8
+- Server: 1 materialization cold (rev 2, 1 chunk) + 89 cache hits; 0 fallback/publishers
+- Signoff: `docs/workflow/reviews/2026-08-07-taxonomy-read-spike-elimination-signoff.md`
+- Result: `docs/workflow/reviews/2026-08-07-taxonomy-45-design-performance-validation-result.md`
+- STOP: no Stage 6, no PR merge, no production
+
+## 2026-08-07 - Stage 4 publisher retirement Signoff (approved_with_notes)
+
+- Portal generated search/facet fallback removed; Algolia-only managed search
+- Six publisher Functions deleted from `fresh-prints-dev`; Algolia sync retained
+- Owner `STAGE 4 POST-DELETE QA: PASS` / `ALGOLIA OFF: PASS`
+- Signoff: `docs/workflow/reviews/2026-08-07-stage-4-publisher-retirement-signoff.md`
+- STOP: no Stage 5/6, no PR merge, no production
+
+## 2026-08-07 - Stage 4 publisher Functions deleted (fresh-prints-dev)
+
+- Owner `STAGE 4 PUBLISHERS DELETED: PASS`
+- Six snapshot publishers absent; Algolia sync/reconcile remain
+- Record: `docs/workflow/reviews/2026-08-07-stage-4-publisher-delete-dev-record.md`
+- Next: post-delete QA → Stage 4 Signoff; no Stage 5/6 yet
+
+## 2026-08-07 - Stage 4 publisher retirement SOURCE Implement
+
+- Portal: no generated search/facet fallback; Algolia-off fails closed; FS browse kept
+- Relocated `classifyPortalCatalogDesignChange` → `functions/src/algolia/`
+- Deleted catalogSnapshots publisher stack + six index exports + retry script
+- Tests 114/114; Portal+Functions tsc; eslint; Impl Review **APPROVED**
+- STOP: no live Function delete — next `APPROVE DEV FUNCTIONS DELETE: STAGE 4 PUBLISHERS`
+
+## 2026-08-07 - Stage 4 publisher retirement PLANNING
+
+- Owner `APPROVE STAGE 4 PLANNING`
+- Plan + Formal Review **approved_with_changes** (Portal generated fallback removal, classifier relocate, 6 Function allowlist, P4 retire with publishers)
+- Code Implement may proceed when owner authorizes; live Function delete still gated
+- Stage 5 Storage cleanup / Stage 6 / PR merge / production out of scope
+
+## 2026-08-07 - Stage 1b-C Algolia owner QA Signoff (approved_with_notes)
+
+- Owner `ALGOLIA OUTAGE: PASS` — kill-switch / FS browse healthy
+- Full Stage 1b-C checklist closed (search, sync, Firestore regressions, correctives)
+- Signoff: `docs/workflow/reviews/2026-08-07-stage-1b-c-algolia-owner-qa-signoff.md`
+- STOP: no Stage 4, no PR merge, no production; publisher retained
+- Deferred: TD-030 details/share quantity-control parity
+
+## 2026-08-07 - Stage 1b-C Favorites / details / share / Add to Request
+
+- Owner `FAVORITES DETAILS SHARE REQUEST: PASS WITH NOTES`
+- Deferred TD-030: Design Details modal + shared-design page should switch to Working Request quantity control after add (parity with Discover/catalog cards)
+- Next Stage 1b-C: Algolia outage / kill-switch
+
+## 2026-08-07 - Stage 1b-C Discover View All regressions (PASS WITH NOTES)
+
+- Fixed Popular View All blank (`orderBy(requestCount)` omission → membership + metric client-sort)
+- Fixed category View All order (readyAt completeness no longer demotes to createdAt order)
+- Owner `DISCOVER VIEW ALL: PASS WITH NOTES` — rail≠View All order for Popular/category accepted
+- Signoff **approved_with_notes**; next Stage 1b-C: Favorites / details / share / Add to Request
+- No production / no PR merge / no Stage 4; publisher alive
+
+## 2026-08-07 - Stage 1b-A Algolia search replacement (code; secrets STOP)
+
+- D1 = Algolia; Portal adapter + 300ms debounce + FS by-id hydrate
+- Functions syncPortalCatalogDesignToAlgolia + reconcile callable/scheduled
+- Impl Review APPROVED_WITH_CHANGES; no account/secrets/deploy
+- Publisher retained; PR #40 unmerged
+## 2026-08-07 - Stage 1b D1 search architecture decision package
+
+- Inventory: 3 remaining generated Portal chains (search/multi-tag, global facets, narrowed facets)
+- Compared Algolia Grow vs Typesense Cloud vs Product Simplification B1
+- Matrix: Algolia 390 · Typesense 355 · B1 390 (tie Algolia/B1)
+- Conditional lean: Algolia if features MUST KEEP; B1 if owner accepts UX cuts
+- Formal Review APPROVED_WITH_CHANGES; Implement BLOCKED on owner D1
+- No provider accounts, secrets, deploy, merge, or production
+## 2026-08-07 - Amendment 9 live QA attribution + P1/P3 Signoff; P2 no-implement
+
+- Combined live QA **PASS WITH NOTES** (P0 PASS, P1 PASS WITH NOTES, P3 PASS, P4 PASS)
+- P3: 1 instance, 1 cold load (1139 docs), 89 hits, 0 TTL reloads
+- P4 this run: 3 pubs / 3,462 C+T+R; spacing ~120s
+- P1 import live **2.00**/design; approval ~2/design (summary; Debug JSON not on disk)
+- Console ~2K/~1.7K = stacked P3+P4 (± Studio tags), not runaway
+- Signoffs: `2026-08-07-amendment-9-p1-signoff.md` (approved_with_notes), `…-p3-signoff.md` (approved)
+- P2 Plan+Formal Review: **recommend NO IMPLEMENTATION** (accept ~1.1K Studio tag hydrate)
+- Amendment 9 optimization set closed; Stage 1b not started; no deploy/merge/production
+
+## 2026-08-07 - Amendment 9 P3 deployed to fresh-prints-dev
+
+- Owner phrase `APPROVE DEV FUNCTIONS DEPLOY: AMENDMENT 9 P3`
+- Updated: enqueueAiEnrichment, testAiEnrichmentPlayground, testAiEnrichmentTagRerank, updateAiEnrichmentSettings
+- First attempt discovery timeout; retry with FUNCTIONS_DISCOVERY_TIMEOUT=60 succeeded
+- Record: `docs/workflow/reviews/2026-08-07-amendment-9-p3-dev-deploy-record.md`
+- Next: combined 45-design QA; no production / no PR merge
+
+## 2026-08-07 - Amendment 9 P1 import/approval design-doc read containment
+
+- Import oneshots 5→2 (I1+I4); approve 3→2 (A1+A3); I4/A3 retained per Formal Review
+- DesignAuthoritySnapshot + knownExistingData; draft Design passed into approve
+- Wiring tests + Studio tsc/vite build + lint green; Impl Review **APPROVED**
+- No Firebase deploy (Studio-only); PR #40 open/unmerged
+
+## 2026-08-07 - Amendment 9 P3 server AI taxonomy read containment
+
+- Unified process-local taxonomy cache: `AI_TAXONOMY_CACHE_TTL_MS = 15m`, in-flight dedupe, generation-guarded clear
+- Removed outer 60s categories/tags dual TTL; thin adapters only
+- Metrics: taxonomy-cache-hit/miss/join-inflight/expired + taxonomy-load-success/failure
+- Tests: 12/12 P3 + AI regressions; Functions build + lint green; Impl Review **APPROVED**
+- **No Firebase deploy**; allowlist checkpoint prepared; PR #40 open/unmerged
+
+## 2026-08-06 - Case D + Amendment 9 P4 dual Signoff
+
+- Case D New This Week → `readyAt`: owner QA **PASS**; Signoff **approved** (`f9bc19c`)
+- Amendment 9 P4: rate-guard live **PASSING** (3 pubs; 3,436 vs ~28,710 C+T+R); Signoff **approved_with_notes**
+- P4 production-promotion blocker **cleared**; ~1.1K C+T+R per remaining full pub noted
+- Stage 1b / P3 not started; PR #40 open/unmerged; no production deploy
+- Signoffs under `docs/workflow/reviews/2026-08-06-portal-new-this-week-readyat-signoff.md` and `…-amendment-9-p4-signoff.md`
+
+## 2026-08-06 - Case D New This Week → readyAt (awaiting owner QA)
+
+- Discover + Home New This Week: membership/order use `readyAt` / `readyAtMs`
+- Tests 35 focused + 23 studio ready-order; portal typecheck + lint green
+- Portal `next build` blocked by concurrent `dev:portal` `.next` lock (documented)
+- Impl Review APPROVED; Manual QA checklist ready; no deploy; PR #40 open
+- **Superseded:** owner PASS + Signoff (see entry above)
+
+## 2026-08-06 - Discover New This Week → readyAt Plan + Formal Review (STOP)
+
+- Owner surface: Portal Discover → New This Week (Case D); ordinary Library not assumed broken
+- Current: membership + order both `createdAt`; both must move to `readyAt`
+- Home New This Week rail in scope (same concept); metric rails / ordinary Library out
+- Corrective Plan Formal Review **approved**; Implement authorized separately (see entry above)
+- P4 rate-guard remains PASSING; P4 Signoff still blocked
+
+## 2026-08-06 - Amendment 9 P4 owner QA FAIL (docs only; STOP)
+
+- Rate-guard **PASSING**: 3 full pubs; C+T+R 3436 vs ~28710; ~1.5K spikes align with pubs
+- Overall QA **FAIL**: Portal ordering ≠ Studio; P4 Signoff blocked
+- Ordering: later confirmed Case D Discover New This Week (see entry above)
+- No implement / deploy / merge / Stage 1b / production
+- Attribution + investigation + Plan/Review under `docs/workflow/*p4-owner-qa*` / `*ordering-mismatch*`
+
+## 2026-08-06 - Amendment 9 P4 implement (awaiting Functions deploy)
+
+- Portal full-publication rate guard: quiet 30s, min interval 120s, claim 240s, passLimit=1
+- W2 `onPortalCatalogPublicationStateWritten`; P4-a non-ready INDEX_FILTER skip
+- catalogSnapshots tests 138/138; Functions build green; Impl Review APPROVED
+- Stop for `APPROVE DEV FUNCTIONS DEPLOY: AMENDMENT 9 P4`; PR #40 open/unmerged; no deploy
+- Checkpoint: `docs/workflow/reviews/2026-08-06-amendment-9-p4-dev-deployment-checkpoint.md`
+
+## 2026-08-06 - Amendment 8 Phase 1B Stage 1a Signoff (final)
+
+- Firestore-primary known-ID hydration; Firestore-only Portal categories (active ∧ ready &gt; 0)
+- Dead generated Discover entry removed; search/multi-tag/facets remain temporary
+- Impl through `e97ab3b` (Amendments 1–3); Owner QA **PASS**; Signoff **approved**
+- Stage 1b blocked on D1 (managed search vs product simplification)
+- PR #40 open/unmerged; no deploy / cleanup / Function retirement / production
+- Signoff: `docs/workflow/reviews/2026-08-06-amendment-8-phase-1b-stage-1a-signoff.md`
+
+## 2026-08-06 - Stage 1a Amendment 3 (Portal category availability) Signoff
+
+- Portal hides active categories with zero Rules-ready designs; Studio empty actives unchanged
+- Commit `e97ab3b` on `fix/post-launch-catalog-and-processing-stability`
+- Owner QA **PASS**; Signoff **approved**
+- PR #40 open/unmerged; no deploy; Stage 1b not started
+- Signoff: `docs/workflow/reviews/2026-08-06-amendment-8-phase-1b-stage-1a-amendment-3-signoff.md`
+
+## 2026-08-06 - Catalog mats, ready order, Assisted proof 80 MB Signoff
+
+- Details mats + Portal/Studio `readyAt` ordering + staff proof max 80 MB
+- Commits `42f7b20` / `982855c`; `fresh-prints-dev` storage + three Functions deployed
+- Owner QA **PASS**; Signoff **approved**
+- PR #40 open/unmerged; no production; Amendment 9 P4 deferred
+- Signoff: `docs/workflow/reviews/2026-08-06-catalog-display-ready-ordering-and-assisted-proof-limit-signoff.md`
+
+## 2026-08-06 - Catalog display mats + ready-approval ordering Signoff
+
+- Studio Design Details thumbnail/lightbox use `artworkBackgroundHex`; Portal browse/category/tag order by `readyAt`
+- Commit `42f7b20` on `fix/post-launch-catalog-and-processing-stability`
+- Owner QA **PASS WITH NOTES**; Signoff **approved_with_notes**
+- Notes: generated-search publisher order deferred; Portal `.next`/robots build flake documented; Amendment 9 P4 still blocks production promotion
+- PR #40 open/unmerged; no production deploy
+- Signoff: `docs/workflow/reviews/2026-08-06-catalog-display-background-and-ready-ordering-signoff.md`
+
+## 2026-08-06 - Amendment 9 P0 Signoff approved_with_notes
+
+- AI Review local reconciliation (no post-action full list/count reload) + scroll-to-top after approve/reject/archive
+- Commits `0a948e0` + `21f95d7` on `fix/post-launch-catalog-and-processing-stability`
+- Owner re-QA **PASS WITH NOTES**; Signoff **approved_with_notes**
+- Notes: Design Library modal/lightbox artwork-mat follow-up; snapshot-publication reads remain production-promotion blocker (P4 later)
+- PR #40 open/unmerged; no production deploy; P1/P3/P4/Phase 1B not started
+- Signoff: `docs/workflow/reviews/2026-08-06-amendment-9-p0-signoff.md`
+
+## 2026-08-06 - Amendment 8 Phase 1A Signoff approved
+
+- Phase 1A Firestore ordinary browse + Studio teardown (`4ed41bc`) and Assisted catalog-share artwork-background correction (`bc9e7e7`)
+- Owner deployed `staffSuggestAssistedCreationCatalogDesign` to `fresh-prints-dev` before final QA
+- Owner re-QA **PASS** covered updated Function runtime + Studio/Portal display correction
+- Signoff **approved** — no Phase 1A deployment residual
+- Phase 1B not started; PR #40 remains open/unmerged
+- Signoff: `docs/workflow/reviews/2026-08-05-amendment-8-phase-1a-signoff.md`
+
 ## 2026-08-01 - Final Studio remediation development QA passed
 
 Owner confirmed PASS for Whatnot matched-show updates and Customer Upload exclusion/restore/delete parity. A clean production branch was created from `11960852` because development contained unrelated rollout documentation; no development history was rewritten. (Superseded blocker: production diff audit was initially stopped because development also contained earlier Portal/dual-limit documentation commits outside the narrow PR scope — resolved via the clean branch above, and development itself was brought current with production via merge on 2026-08-02.)

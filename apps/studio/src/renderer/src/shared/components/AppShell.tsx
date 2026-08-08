@@ -9,8 +9,9 @@ import { UploadActivityProvider } from "../context/UploadActivityProvider";
 import { StaffInboxProvider } from "../../features/staff-inbox/components/StaffInboxProvider";
 import { StaffInboxToastHost } from "../../features/staff-inbox/components/StaffInboxToastHost";
 import { AssistedMessagesProvider } from "../../features/customer-requests/components/AssistedMessagesProvider";
-import { installCatalogSnapshotAdminConsole } from "../../features/designs/services/catalogSnapshotAdminService";
 import { installPrintRequestQueueTabBackfillAdminConsole } from "../../features/print-requests/services/printRequestQueueTabBackfillAdminService";
+import { installPortalCatalogAlgoliaReconcileAdminConsole } from "../../features/designs/services/portalCatalogAlgoliaReconcileAdminService";
+import { installTaxonomyMaterializationBootstrapAdminConsole } from "../../features/designs/services/taxonomyMaterializationBootstrapAdminService";
 import { FirebaseDebugPanelMount } from "../../features/firebase-debug/components/FirebaseDebugPanelMount";
 import { AppHeader } from "./AppHeader";
 import { Sidebar } from "./Sidebar";
@@ -30,8 +31,16 @@ function AppShellContent({ children }: AppShellProps) {
     setFirestoreUsageTraceContext({ app: "studio", route: location.pathname });
   }, [location.pathname]);
 
-  useEffect(() => installCatalogSnapshotAdminConsole(), []);
-  useEffect(() => installPrintRequestQueueTabBackfillAdminConsole(), []);
+  useEffect(() => {
+    const uninstallBackfill = installPrintRequestQueueTabBackfillAdminConsole();
+    const uninstallAlgoliaReconcile = installPortalCatalogAlgoliaReconcileAdminConsole();
+    const uninstallTaxonomyBootstrap = installTaxonomyMaterializationBootstrapAdminConsole();
+    return () => {
+      uninstallBackfill();
+      uninstallAlgoliaReconcile();
+      uninstallTaxonomyBootstrap();
+    };
+  }, []);
 
   const openDrawer = useCallback(() => setIsDrawerOpen(true), []);
   const closeDrawer = useCallback(() => setIsDrawerOpen(false), []);

@@ -1,6 +1,8 @@
 import { FirebaseError } from "firebase/app";
 import { deleteObject, ref, uploadBytesResumable } from "firebase/storage";
 
+import { MAX_SINGLE_PNG_SIZE_BYTES } from "@fresh-prints/shared/constants/importValidation.constants";
+import { formatPngSizeLimitExceededMessage } from "@fresh-prints/shared/utils/importLimitMessages";
 import { storage } from "../../../config/firebase";
 import { getOriginalStoragePath } from "../../designs/constants/designStoragePaths";
 import type { UploadCancelToken } from "../utils/uploadCancelToken";
@@ -58,6 +60,15 @@ export const importUploadService = {
 
     if (cancelToken?.isCancelled) {
       throw new Error("The upload was canceled.");
+    }
+
+    // Amendment 2, Defect B: pngValidator.ts's MAX_SINGLE_PNG_SIZE_BYTES check only covers the
+    // original on-disk file (pre-trim/upscale) — the final uploaded buffer (post-trim, post-
+    // upscale) was never re-checked, so a legitimately-large source that upscales past 150MB hit
+    // storage.rules' isValidOriginalUpload() ceiling server-side and surfaced as a misleading
+    // "permission" error instead of an accurate size-limit one.
+    if (bytes.byteLength > MAX_SINGLE_PNG_SIZE_BYTES) {
+      throw new Error(formatPngSizeLimitExceededMessage());
     }
 
     const uploadTask = uploadBytesResumable(storageRef, bytes, {

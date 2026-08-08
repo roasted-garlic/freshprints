@@ -44,6 +44,7 @@ import type {
   AssistedCreationRevisionEntry,
   AssistedCreationSuggestedCatalogDesign,
 } from "../../packages/shared/src/types/assistedCreation/assistedCreation.types";
+import { buildAssistedCatalogShareArtworkBackgroundSnapshots } from "../../packages/shared/src/utils/assistedCreationCatalogShareArtworkBackground";
 import { buildAssistedCreationFinalArtworkDownloadFileName } from "../../packages/shared/src/utils/assistedCreationProofFileName";
 import { EMAIL_DELIVERY_JOBS_COLLECTION } from "../../packages/shared/src/constants/emailProviders.constants";
 import { formatAssistedCreationRequestUpdatedNote } from "../../packages/shared/src/utils/assistedCreationHistory";
@@ -1256,6 +1257,9 @@ export const staffSuggestAssistedCreationCatalogDesign = onCall(
         (typeof designData.previewPath === "string" && designData.previewPath.trim()) ||
         (typeof designData.thumbnailPath === "string" && designData.thumbnailPath.trim()) ||
         "";
+      const artworkBackgroundSnapshots = buildAssistedCatalogShareArtworkBackgroundSnapshots(
+        designData.artworkBackgroundHex,
+      );
 
       const emailSettings = await loadEmailProviderSettings();
       const docRef = adminDb.collection(ASSISTED_CREATION_COLLECTION).doc(requestId);
@@ -1293,6 +1297,9 @@ export const staffSuggestAssistedCreationCatalogDesign = onCall(
           designId,
           title,
           ...(previewPath ? { previewImageUrl: previewPath } : {}),
+          ...(artworkBackgroundSnapshots.artworkBackgroundHex
+            ? { artworkBackgroundHex: artworkBackgroundSnapshots.artworkBackgroundHex }
+            : {}),
           suggestedAt,
           suggestedByUid: caller.id,
         };
@@ -1315,6 +1322,12 @@ export const staffSuggestAssistedCreationCatalogDesign = onCall(
           catalogDesignId: designId,
           catalogDesignTitle: title,
           ...(previewPath ? { catalogPreviewImageUrl: previewPath } : {}),
+          ...(artworkBackgroundSnapshots.catalogArtworkBackgroundHex
+            ? {
+                catalogArtworkBackgroundHex:
+                  artworkBackgroundSnapshots.catalogArtworkBackgroundHex,
+              }
+            : {}),
         };
 
         const history = Array.isArray(current.revisionHistory) ? current.revisionHistory : [];

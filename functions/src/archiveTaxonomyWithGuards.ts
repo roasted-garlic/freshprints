@@ -21,8 +21,12 @@ import {
 } from "./lib/errors";
 
 function assertOwnerAdmin(caller: Awaited<ReturnType<typeof loadCallerProfile>>): void {
-  if (!caller.isActive || caller.role !== "owner") {
-    throw permissionDenied("Only owners can archive categories and tags.");
+  // Matches Firestore Rules `isOwnerOrAdmin` and Studio `canManageCategories` /
+  // `canManageTags`. Prior owner-only check rejected admins who can open the
+  // archive UI — source fix for the next Functions deploy (not deployed in
+  // Amendment 2; Studio client persist is the live path).
+  if (!caller.isActive || (caller.role !== "owner" && caller.role !== "admin")) {
+    throw permissionDenied("Only owners and admins can archive categories and tags.");
   }
 }
 

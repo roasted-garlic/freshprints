@@ -8,6 +8,7 @@ interface EnqueueResultTerminalFields {
   aiReviewStatus?: string | null;
   completed?: boolean;
   queued: boolean;
+  reason?: string;
   status?: string | null;
 }
 
@@ -16,15 +17,28 @@ function isAiProcessingStage(value: string): value is AiProcessingStage {
 }
 
 /**
- * Build a local `Design` patch from a completed `enqueueAiEnrichment` callable result so the
- * renderer can reflect the terminal AI state immediately, without waiting on a Firestore
- * reload or subscription. Returns null when the result is not a real terminal run, or when no
+ * Build a local `Design` patch from an `enqueueAiEnrichment` callable result so the renderer can
+ * reflect the design's true current terminal state immediately, without waiting on a Firestore
+ * reload or subscription. Covers two cases that both carry a real, authoritative terminal state:
+ *
+ * - `queued: true, completed: true` — this call itself ran the pipeline synchronously to
+ *   completion.
+ * - `queued: false, reason: "already_terminal"` — a stale/duplicate call found the design had
+ *   already reached its desired terminal state from an earlier call; the server still returns
+ *   the design's real current fields so the client can reconcile local state (Processing/Needs
+ *   Review bucket membership, counts) without treating this as a failure
+ *   (post-launch-catalog-and-processing-stability, Workstream D).
+ *
+ * Returns null for every other case (genuinely still in-flight, or a real failure), or when no
  * recognized fields are present.
  */
 export function buildDesignPatchFromEnqueueResult(
   result: EnqueueResultTerminalFields,
 ): Partial<Design> | null {
-  if (!result.queued || !result.completed) {
+  const isRealTerminalResult =
+    (result.queued && result.completed) || (!result.queued && result.reason === "already_terminal");
+
+  if (!isRealTerminalResult) {
     return null;
   }
 

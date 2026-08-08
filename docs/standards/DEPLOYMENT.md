@@ -348,11 +348,16 @@ own separate, later, explicitly-approved checkpoint.
    all in `us-central1`, no function in a non-`ACTIVE` state, `rebuildCatalogSnapshots` present**
    (deployed but not yet invoked — invocation is its own Phase D checkpoint). No secret value was
    ever accessed, printed, or logged.
-6. ✅ **App Hosting environment-variable configuration** — **COMPLETE 2026-07-30.** Added an `env:`
-   block to `apps/portal/apphosting.yaml` with the 7 required `NEXT_PUBLIC_FIREBASE_*` values plus
-   `NEXT_PUBLIC_PORTAL_ORIGIN=https://myprintrequest.com`, sourced from the owner's gitignored
-   `apps/portal/.env.production.local`. `NEXT_PUBLIC_GA_MEASUREMENT_ID` deliberately stays unset —
-   GA4 go-live remains its own separate, later checkpoint. Promoted via PR #6 (merge `9437d4b`).
+6. ✅ **App Hosting environment-variable configuration** — **COMPLETE 2026-07-30; corrected
+   2026-08-08.** Initial cutover added an `env:` block with plaintext `value:` entries in
+   `apps/portal/apphosting.yaml` (PR #6 / `9437d4b`). That approach is **superseded**: YAML now
+   declares the same eight variables via `secret:` references to Cloud Secret Manager (names only;
+   no committed plaintext). Local production values remain in gitignored
+   `apps/portal/.env.production.local`. Owner must create/grant the eight secrets on
+   `fresh-prints-prod` / backend `fresh-prints-portal` **before** the next App Hosting rollout that
+   consumes the secret-backed YAML (see "Portal App Hosting environment variables" below).
+   `NEXT_PUBLIC_GA_MEASUREMENT_ID` deliberately stays unset — GA4 go-live remains its own separate,
+   later checkpoint.
 7. ✅ **First App Hosting Portal release** — **COMPLETE 2026-07-30.** The first-ever Fresh Prints
    production Portal deployment. Two rollout attempts failed with `Missing dependency lock file at
    path '/workspace/apps/portal'` — root cause: Firebase App Hosting's buildpack has official
@@ -649,6 +654,49 @@ firebase deploy --only apphosting --project fresh-prints-prod
 ```
 
 Portal backend config: `apps/portal/apphosting.yaml`. App root: `apps/portal` in `firebase.json`.
+
+### Portal App Hosting environment variables
+
+**Do not commit plaintext production Firebase Web config or Portal origin values in
+`apphosting.yaml`.** Declare variable names with `secret:` references; store values in Cloud
+Secret Manager. Local production builds use gitignored `apps/portal/.env.production.local`
+(same names as `apps/portal/.env.example`).
+
+Required secrets (each secret ID matches the env var name; `BUILD` + `RUNTIME` availability):
+
+| Secret / env var | Purpose |
+|------------------|---------|
+| `NEXT_PUBLIC_FIREBASE_API_KEY` | Firebase Web API key |
+| `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | Auth domain |
+| `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | `fresh-prints-prod` |
+| `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` | Storage bucket |
+| `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | Messaging sender |
+| `NEXT_PUBLIC_FIREBASE_APP_ID` | Web app ID |
+| `NEXT_PUBLIC_FIREBASE_VAPID_KEY` | Web Push VAPID key |
+| `NEXT_PUBLIC_PORTAL_ORIGIN` | Canonical origin (`https://myprintrequest.com`) |
+
+Create or update (values from `.env.production.local` — never paste into chat/logs):
+
+```bash
+firebase apphosting:secrets:set NEXT_PUBLIC_FIREBASE_API_KEY --project fresh-prints-prod
+# …repeat for each secret above…
+```
+
+If a secret was created in Cloud Secret Manager outside that CLI flow:
+
+```bash
+firebase apphosting:secrets:grantaccess NEXT_PUBLIC_FIREBASE_API_KEY --backend fresh-prints-portal --project fresh-prints-prod
+```
+
+**Sequencing:** secrets must exist and be granted to `fresh-prints-portal` before any App Hosting
+rollout that references them. Firebase Console backend env overrides take precedence over
+`apphosting.yaml` if both are set — prefer Secret Manager as the single production source after
+cutover. `NEXT_PUBLIC_*` values are browser-exposed after build by design; Secret Manager here is
+config hygiene (keep env-specific identifiers out of the repo), not confidentiality of true
+backend secrets.
+
+**Residual:** plaintext values previously committed in `apphosting.yaml` remain in git history;
+history rewrite is out of scope unless explicitly approved.
 
 ### Portal Cloud Functions (customer flows)
 

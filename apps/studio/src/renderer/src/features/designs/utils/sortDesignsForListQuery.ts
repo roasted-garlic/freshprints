@@ -20,6 +20,12 @@ function getDesignSortMillis(
   design: Design,
   sortField: DesignListSortField,
 ): number | undefined {
+  if (sortField === "readyAt") {
+    // Legacy ready designs approved before `readyAt` existed fall back to `createdAt` so they
+    // remain visible and ordered (Owner QA Amendment 3 correction).
+    return readTimestampMillis(design.readyAt) ?? readTimestampMillis(design.createdAt);
+  }
+
   return readTimestampMillis(sortField === "createdAt" ? design.createdAt : design.updatedAt);
 }
 

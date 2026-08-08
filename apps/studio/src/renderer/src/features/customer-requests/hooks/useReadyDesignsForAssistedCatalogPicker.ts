@@ -24,7 +24,8 @@ export interface UseReadyDesignsForAssistedCatalogPickerResult {
 
 /**
  * Browse-capable ready-design source for Assisted library-share.
- * Uses the Design Library generated ready-index (ADR-FP-120) with bounded Firestore fallback.
+ * Phase 1A: Firestore pagination via `useGeneratedReadyDesigns` (ADR-FP-120 browse contract
+ * retained; generated-index Storage path retired).
  * Does **not** use ID-only `useReadyDesignsForSelection` (Wave C Print Request contract).
  */
 export function useReadyDesignsForAssistedCatalogPicker(

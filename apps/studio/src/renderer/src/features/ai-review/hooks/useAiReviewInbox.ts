@@ -31,6 +31,13 @@ import {
 } from "../utils/aiReviewInboxEligibility";
 import { filterDesignsByAiReviewStatus } from "../../designs/utils/designLibrarySearch";
 import { useDesigns } from "../../designs/hooks/useDesigns";
+import { traceAiQueueEvent } from "../../../config/aiQueueTraceClient";
+import {
+  getActiveBackgroundAiDesignId,
+  hasPendingBackgroundAiWork,
+  subscribeToBackgroundAiQueue,
+} from "../../imports/services/importAiBackgroundQueue";
+import { reconcileBackgroundAiQueueEvent } from "../utils/backgroundAiQueueReconciliation";
 import { useAiProcessingQueue } from "./useAiProcessingQueue";
 import {
   addApprovedSuggestedTagToDraftTags,
@@ -49,11 +56,20 @@ import {
   shouldUseLiveDesignForSelection,
   type PendingCrossTabSelection,
 } from "../utils/aiReviewInboxSelection";
+import {
+  reconcileSuccessfulInboxManualAction,
+  recoverFailedInboxManualAction,
+  type AiReviewInboxManualAction,
+  type AiReviewTabCountDeltas,
+} from "../utils/aiReviewLocalReconciliation";
 
 export interface UseAiReviewInboxOptions {
   defaultVisionModelId: string;
   onNavigateToTab?: (tab: AiReviewInboxTab, designId: string) => void;
+  /** Authoritative three-tab count refresh (Processing / queue / failure recovery). */
   onQueueChanged?: () => void;
+  /** Amendment 9 P0: local count deltas after successful approve/reject/archive. */
+  onInboxCountsDelta?: (deltas: AiReviewTabCountDeltas) => void;
 }
 
 export interface PendingSelectionChange {
@@ -68,9 +84,11 @@ export function useAiReviewInbox(
   const listQuery = useMemo(() => buildAiReviewInboxListQuery(filters), [filters]);
   const {
     applyDesignPatch,
+    clearTerminalAiProcessingLedgerEntry,
     designs: rawDesigns,
     error,
     hasMore,
+    hasTerminalAiProcessingLedgerEntry,
     isLoading,
     isLoadingMore,
     loadMoreDesigns,
@@ -109,6 +127,36 @@ export function useAiReviewInbox(
   const pendingCrossTabSelectionRef = useRef<PendingCrossTabSelection | null>(null);
   const previousTabRef = useRef(filters.tab);
   const liveDesignRef = useRef<Design | null>(null);
+  /**
+   * Owner QA Amendment 7: read-only mirrors of `options`, `designs`, and `selectedDesignId`,
+   * assigned directly here in the hook body during render (never inside a `useEffect`), mirroring
+   * the existing `designsMirrorRef`/`listQueryKeyRef` pattern in `useDesigns.ts`. The background
+   * queue observer subscription effect below reads these instead of closing over the live
+   * variables, so a design-list or selection update — including the update the observer's own
+   * `applyDesignPatch` call just caused — never forces that effect to unsubscribe and resubscribe.
+   * Before this fix, `designs` and `options` (a fresh object/callback literal from the parent on
+   * every render) were both in that effect's dependency array, so every successful reconciliation
+   * tore down and recreated its own subscription — the exact runaway loop the owner's trace
+   * captured (observer.subscribed repeating after nearly every state replacement).
+   */
+  const optionsRef = useRef(options);
+  optionsRef.current = options;
+  const designsRef = useRef<Design[]>([]);
+  const selectedDesignIdRef = useRef<string | null>(null);
+  selectedDesignIdRef.current = selectedDesignId;
+  /**
+   * Owner QA Amendment 7 follow-up: the live-design backend-completion reconciliation effect
+   * below must reload/reconcile at most once per genuine completion, not once per render for as
+   * long as the completed design remains selected. Tracks the design ID this effect has already
+   * reconciled so a subsequent render observing the same still-"needs_review" liveDesign is a
+   * no-op. The effect itself clears this back to null as soon as that design's liveDesign moves
+   * off "needs_review" (e.g. sent back to Processing via Retry/Rerun), so a later, genuinely new
+   * completion of the *same* design ID is still correctly reconciled — this ref intentionally
+   * does not simply track "the current liveDesign.id", since it must keep remembering "already
+   * reconciled" across every render while the design stays completed and selected, independent of
+   * how many times `liveDesign`'s own object reference changes in the meantime.
+   */
+  const alreadyReconciledLiveDesignIdRef = useRef<string | null>(null);
 
   const isPinnedNeedsReviewDesign = resolveIsPinnedNeedsReviewDesign({
     tab: filters.tab,
@@ -148,6 +196,7 @@ export function useAiReviewInbox(
 
     return sorted.map((design, index) => (index === liveIndex ? liveDesign : design));
   }, [filters.tab, isPinnedNeedsReviewDesign, liveDesign, rawDesigns]);
+  designsRef.current = designs;
 
   const [draftForm, setDraftForm] = useState<AiReviewDraftForm | null>(null);
   const [baselineForm, setBaselineForm] = useState<AiReviewDraftForm | null>(null);
@@ -155,6 +204,8 @@ export function useAiReviewInbox(
   const [isActionLoading, setIsActionLoading] = useState(false);
   const [isSavingArtworkBackground, setIsSavingArtworkBackground] = useState(false);
   const [isSendingBackToProcessing, setIsSendingBackToProcessing] = useState(false);
+  /** Amendment 9 P0 scroll correction: bump only after successful approve/reject/archive. */
+  const [reviewScrollNonce, setReviewScrollNonce] = useState(0);
 
   const canManageCatalog = Boolean(user && permissionService.canEditAiReviewInbox(user));
   const canApprove = Boolean(user && permissionService.canApproveDesignForCatalog(user));
@@ -229,6 +280,53 @@ export function useAiReviewInbox(
     [designs, selectedDesignId],
   );
 
+  // Owner QA Amendment 6 derived/render-state probe. Answers, per render where the derived
+  // state actually changed: which IDs the Processing bucket currently holds, whether the
+  // selected design still belongs to that bucket, and whether the details pane is falling back
+  // to a stale selected-design object (liveDesign / resolveFreshestInboxDesign) that survives
+  // independently of Processing membership. Read-only: derives nothing new and changes no state.
+  const renderProbeRef = useRef<string>("");
+  useEffect(() => {
+    if (filters.tab !== "processing") {
+      return;
+    }
+
+    const processingIds = designs.map((design) => design.id);
+    const selectedStillInList = selectedDesignId ? processingIds.includes(selectedDesignId) : false;
+    const signature = [
+      processingIds.join(","),
+      selectedDesignId ?? "",
+      selectedStillInList ? "in" : "out",
+      selectedDesign?.aiProcessingStage ?? "",
+      selectedDesign?.aiReviewStatus ?? "",
+      liveDesign?.id ?? "",
+    ].join("|");
+
+    if (signature === renderProbeRef.current) {
+      return;
+    }
+    renderProbeRef.current = signature;
+
+    traceAiQueueEvent({
+      event: "render.derived_state",
+      source: "render",
+      selectedDesignId,
+      activeQueueDesignId: getActiveBackgroundAiDesignId(),
+      processingDesignIds: processingIds,
+      processingCount: processingIds.length,
+      visibleStage: selectedDesign?.aiProcessingStage ?? null,
+      incomingReviewStatus: selectedDesign?.aiReviewStatus ?? null,
+      incomingStatus: selectedDesign?.status ?? null,
+      outcome: [
+        selectedStillInList ? "selected-in-processing" : "selected-NOT-in-processing",
+        liveDesign ? `liveDesign=${liveDesign.id === selectedDesignId ? "selected" : "other"}` : "liveDesign=none",
+        selectedDesign && !selectedStillInList ? "stale-selected-object-rendered" : "",
+      ]
+        .filter(Boolean)
+        .join("|"),
+    });
+  }, [designs, filters.tab, liveDesign, selectedDesign, selectedDesignId]);
+
   const isDraftDirty = useMemo(() => {
     if (!draftForm || !baselineForm || !canEditSelected) {
       return false;
@@ -238,6 +336,16 @@ export function useAiReviewInbox(
   }, [baselineForm, canEditSelected, draftForm]);
 
   const applySelection = useCallback((design: Design | null) => {
+    traceAiQueueEvent({
+      event: "inbox.selection_changed",
+      source: "inbox",
+      designId: design?.id ?? null,
+      activeQueueDesignId: getActiveBackgroundAiDesignId(),
+      visibleStage: design?.aiProcessingStage ?? null,
+      incomingReviewStatus: design?.aiReviewStatus ?? null,
+      outcome: design ? "selected" : "cleared",
+    });
+
     if (!design) {
       setSelectedDesignId(null);
       setDraftForm(null);
@@ -273,7 +381,9 @@ export function useAiReviewInbox(
     applyDesignPatch,
     defaultVisionModelId: options?.defaultVisionModelId ?? "",
     designs,
+    hasTerminalAiProcessingLedgerEntry,
     onActionError: setActionError,
+    onQueueChanged: options?.onQueueChanged,
     reloadDesigns,
     requestSelectDesign: (designId) => {
       if (designId === selectedDesignId) {
@@ -335,15 +445,209 @@ export function useAiReviewInbox(
     setBaselineForm(nextDraft);
   }, [canEditSelected, isDraftDirty, selectedDesign, selectedDesignId]);
 
+  // Owner QA Amendment 7 follow-up: this effect previously depended on `options` and re-ran its
+  // body — not merely resubscribed — on every render in which `liveDesign.aiReviewStatus` was
+  // still "needs_review". Because nothing here ever advances `selectedDesignId` away from the
+  // just-completed design, and `options` is a fresh object/callback literal from the parent on
+  // every render, the effect's own `reloadDesigns()` call (which changes `designs`, forcing a
+  // parent re-render, which changes `options`, which re-runs this effect) fed itself indefinitely
+  // for as long as the completed design remained selected — a tight `load.start -> load.response
+  // -> load.accepted` cycle every ~20ms, visible in the owner's trace as `processingCount: 1`
+  // repeating hundreds of times with the same single design ID, and to the user as that one
+  // design's tile appearing to "stick" (frozen re-renders of the same reload) until the whole
+  // batch finished. `alreadyReconciledLiveDesignIdRef` makes this a one-shot reconciliation per
+  // design per completion, exactly like the Amendment 5 mount-reconciliation effect below is a
+  // one-shot check per tab activation — and `optionsRef` (declared above) removes the unstable
+  // dependency entirely, matching the observer subscription effect's fix.
   useEffect(() => {
     if (!liveDesign || filters.tab !== "processing") {
       return;
     }
 
-    if (liveDesign.aiReviewStatus === "needs_review") {
-      void reloadDesigns();
+    if (liveDesign.aiReviewStatus !== "needs_review") {
+      // Not (or no longer) in the completed state this effect reconciles — clear the guard so a
+      // *future* completion of this same design (e.g. sent back to Processing via "Retry" or
+      // "Rerun" and completing again later) is still reconciled once. Without this, the guard
+      // would permanently remember this design's ID from an earlier completion and silently skip
+      // its next genuine completion.
+      if (alreadyReconciledLiveDesignIdRef.current === liveDesign.id) {
+        alreadyReconciledLiveDesignIdRef.current = null;
+      }
+      return;
     }
-  }, [filters.tab, liveDesign, reloadDesigns]);
+
+    if (alreadyReconciledLiveDesignIdRef.current !== liveDesign.id) {
+      // Backend-initiated completion (no client action) — Amendment 2, Defect A: reconcile the
+      // Processing/Needs Review counts alongside the list, not just the list.
+      // Approach C (monotonic repair): apply the live document's terminal status as a local patch
+      // (records ledger + invalidates page cache) and skip the redundant list reload. A post-patch
+      // reload was the primary reintroduction vector for completed designs via stale/cached pending
+      // pages. Counts still refresh via onQueueChanged.
+      alreadyReconciledLiveDesignIdRef.current = liveDesign.id;
+      applyDesignPatch(liveDesign.id, {
+        aiReviewStatus: liveDesign.aiReviewStatus,
+        ...(typeof liveDesign.aiProcessingStage === "string"
+          ? { aiProcessingStage: liveDesign.aiProcessingStage }
+          : {}),
+      });
+      optionsRef.current?.onQueueChanged?.();
+    }
+  }, [applyDesignPatch, filters.tab, liveDesign]);
+
+  // Owner QA Amendment 3, Failure 1 (initial fix) found that the background AI pump was
+  // detached from this view. Owner QA Amendment 4 found that the Amendment 3 fix — an
+  // unconditional reloadDesigns() per terminal event — was itself the source of a worse defect:
+  // three designs completing in quick succession fired three independent, ungated reloads. Since
+  // loadDesigns() had no protection against a same-query race (only a different-query guard),
+  // an earlier-started-but-later-resolving read could overwrite state a later-started read (or
+  // this hook's own patch) had already correctly updated — visibly regressing progress and
+  // stalling the visible 3 -> 2 -> 1 -> 0 sequence into "stuck, then all disappear together."
+  //
+  // Fix: apply the enqueue result's own terminal fields as a local patch, by design ID, the
+  // moment each design's own transition lands — the same authoritative-response pattern already
+  // used for the manual/auto-queue paths (buildDesignPatchFromEnqueueResult). No reload is the
+  // primary reconciliation mechanism; a design leaves Processing immediately because this hook's
+  // own `designs` memo already re-filters by aiReviewStatus on every render. If the currently
+  // selected design is the one that just completed, capture its index before patching so the
+  // existing pendingAdvanceIndexRef effect (used elsewhere for approve/reject) selects the next
+  // remaining design once `designs` recomputes — deterministic, not dependent on reload timing.
+  //
+  // Owner QA Amendment 7: this effect previously depended on `designs`, `selectedDesignId`, and
+  // `options` directly. `options` is a fresh object/callback literal from the parent
+  // (`AiReviewPage`) on every render, and `designs` gets a new array reference every time
+  // `applyDesignPatch`/`reloadDesigns` resolve — including as a *direct result* of this very
+  // effect's own reconciliation. That made the effect unsubscribe and resubscribe after nearly
+  // every state replacement, which the owner's runtime trace captured as a runaway
+  // `observer.subscribed` loop (request IDs climbing ~344→584 in 5.5s). `applyDesignPatch` and
+  // `reloadDesigns` are already stable (`useCallback` with dependencies that do not change in
+  // this context — confirmed in `useDesigns.ts`), so the only genuine trigger this effect needs
+  // is `filters.tab`: it must subscribe exactly once per Processing-tab mount or inactive->active
+  // transition, never per state update. `designsRef`/`selectedDesignIdRef`/`optionsRef` (assigned
+  // during render, above) let the long-lived observer callback always read the current values
+  // without forcing a resubscription when they change.
+  useEffect(() => {
+    if (filters.tab !== "processing") {
+      return;
+    }
+
+    traceAiQueueEvent({
+      event: "observer.subscribed",
+      source: "inbox",
+      selectedDesignId: selectedDesignIdRef.current,
+      activeQueueDesignId: getActiveBackgroundAiDesignId(),
+      processingDesignIds: designsRef.current.map((design) => design.id),
+      processingCount: designsRef.current.length,
+    });
+
+    return subscribeToBackgroundAiQueue((event) => {
+      const currentDesigns = designsRef.current;
+      const currentSelectedDesignId = selectedDesignIdRef.current;
+      const reconciliation = reconcileBackgroundAiQueueEvent(
+        event,
+        currentDesigns,
+        currentSelectedDesignId,
+      );
+
+      traceAiQueueEvent({
+        event: "observer.received",
+        source: "inbox",
+        designId: event.designId,
+        selectedDesignId: currentSelectedDesignId,
+        activeQueueDesignId: getActiveBackgroundAiDesignId(),
+        processingDesignIds: currentDesigns.map((design) => design.id),
+        processingCount: currentDesigns.length,
+        incomingStage: event.patchSource?.aiProcessingStage ?? null,
+        incomingReviewStatus: event.patchSource?.aiReviewStatus ?? null,
+        incomingStatus: event.patchSource?.status ?? null,
+        queueRemaining: event.pending,
+        outcome: reconciliation.patch ? "patch" : "fallback-reload",
+      });
+
+      if (reconciliation.patch) {
+        if (reconciliation.pendingAdvanceIndex !== null) {
+          pendingAdvanceIndexRef.current = reconciliation.pendingAdvanceIndex;
+        }
+
+        traceAiQueueEvent({
+          event: "inbox.applyDesignPatch",
+          source: "inbox",
+          designId: event.designId,
+          selectedDesignId: currentSelectedDesignId,
+          incomingStage:
+            typeof reconciliation.patch.aiProcessingStage === "string"
+              ? reconciliation.patch.aiProcessingStage
+              : null,
+          incomingReviewStatus:
+            typeof reconciliation.patch.aiReviewStatus === "string"
+              ? reconciliation.patch.aiReviewStatus
+              : null,
+          outcome:
+            reconciliation.pendingAdvanceIndex !== null
+              ? `pendingAdvanceIndex=${reconciliation.pendingAdvanceIndex}`
+              : "no-advance",
+        });
+        applyDesignPatch(event.designId, reconciliation.patch);
+        optionsRef.current?.onQueueChanged?.();
+        traceAiQueueEvent({
+          event: "inbox.onQueueChanged",
+          source: "inbox",
+          designId: event.designId,
+          outcome: "after-patch",
+        });
+        return;
+      }
+
+      // No usable patch (e.g. the enqueue call itself failed rather than completing) — fall
+      // back to a reload for this one event only, still gated by useDesigns' own generation
+      // guard against any other in-flight request.
+      traceAiQueueEvent({
+        event: "inbox.reloadDesigns",
+        source: "inbox",
+        designId: event.designId,
+        outcome: "observer-fallback",
+      });
+      void reloadDesigns();
+      optionsRef.current?.onQueueChanged?.();
+    });
+  }, [applyDesignPatch, filters.tab, reloadDesigns]);
+
+  // Owner QA Amendment 5: the background pump can start before the Processing tab is ever
+  // mounted (e.g. import happens while the user is on a different route). subscribeToBackgroundAiQueue
+  // only delivers events to observers subscribed at the moment they fire — a design that
+  // completes (or is still mid-pipeline) entirely before this tab mounts produces no event this
+  // hook instance ever sees. useDesigns' own initial load already reflects the true current
+  // Firestore state at mount time, which is correct for any design that has already reached a
+  // terminal state — but gives no signal about a design that is still genuinely in flight right
+  // now. Reusing hasPendingBackgroundAiWork() (previously exported but never consumed) to trigger
+  // one bounded, already-generation-guarded reconciliation pass on mount/tab-switch-to-processing
+  // closes that gap without adding a listener, without restarting anything, and without
+  // double-enqueueing — the pump itself is unaffected; this only asks the already-existing reload
+  // path to double-check once whether pump activity happened while unmounted.
+  useEffect(() => {
+    traceAiQueueEvent({
+      event: "inbox.tab_activated",
+      source: "inbox",
+      activeQueueDesignId: getActiveBackgroundAiDesignId(),
+      outcome: `${filters.tab}|pendingWork=${hasPendingBackgroundAiWork()}`,
+    });
+
+    if (filters.tab !== "processing" || !hasPendingBackgroundAiWork()) {
+      return;
+    }
+
+    traceAiQueueEvent({
+      event: "inbox.reloadDesigns",
+      source: "inbox",
+      activeQueueDesignId: getActiveBackgroundAiDesignId(),
+      outcome: "mount-pending-work",
+    });
+    void reloadDesigns();
+    options?.onQueueChanged?.();
+    // Deliberately mount/tab-switch-only: re-running this effect on every `designs` change would
+    // turn a bounded one-time check into an unbounded reload loop. filters.tab is the only
+    // dependency that should re-trigger it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional mount/tab-switch-only trigger
+  }, [filters.tab]);
 
   useEffect(() => {
     if (isLoading || pendingAdvanceIndexRef.current === null) {
@@ -505,13 +809,24 @@ export function useAiReviewInbox(
 
     try {
       await aiReviewInboxService.rerunAiFromInbox(user, designId);
+      // Clear any prior terminal-leave ledger entry so this design may legitimately reappear as
+      // pending in Processing after the confirmation reload.
+      clearTerminalAiProcessingLedgerEntry(designId);
       pendingCrossTabSelectionRef.current = { tab: resolveRejectedRerunTargetTab(), designId };
       setSelectedDesignId(designId);
       setDraftForm(null);
       setBaselineForm(null);
       setLiveDesign(null);
-      options?.onNavigateToTab?.(resolveRejectedRerunTargetTab(), designId);
+      // Reconcile the Processing list and its count deterministically, rather than relying
+      // solely on tab navigation's own side-effect refetch (a real navigation happens to
+      // trigger a fresh listDesignsPage call, which previously masked this gap — but a design
+      // whose reprocessing completes without the user changing tabs, or whose completion lands
+      // between this reset and the navigation, could leave the Processing list/count stale
+      // until an unrelated remount). See the matching reloadDesigns -> onQueueChanged sequence
+      // in runInboxAction above (post-launch-catalog-and-processing-stability, Workstream D).
+      await reloadDesigns();
       options?.onQueueChanged?.();
+      options?.onNavigateToTab?.(resolveRejectedRerunTargetTab(), designId);
     } catch (rerunError) {
       pendingCrossTabSelectionRef.current = null;
       setActionError(
@@ -523,7 +838,15 @@ export function useAiReviewInbox(
       setIsSendingBackToProcessing(false);
       setIsActionLoading(false);
     }
-  }, [canRerunAiSuggestions, canRerunSelected, options, selectedDesign, user]);
+  }, [
+    canRerunAiSuggestions,
+    canRerunSelected,
+    clearTerminalAiProcessingLedgerEntry,
+    options,
+    reloadDesigns,
+    selectedDesign,
+    user,
+  ]);
 
   const requestRerunAiSuggestions = useCallback(() => {
     if (!canRerunAiSuggestions && !canRerunSelected) {
@@ -632,7 +955,10 @@ export function useAiReviewInbox(
   );
 
   const runInboxAction = useCallback(
-    async (action: () => Promise<void>) => {
+    async (input: {
+      action: () => Promise<Design>;
+      manualAction: AiReviewInboxManualAction;
+    }) => {
       if (!user) {
         return;
       }
@@ -641,21 +967,42 @@ export function useAiReviewInbox(
       setActionError(null);
 
       try {
-        await action();
-        setLiveDesign(null);
-        pendingAdvanceIndexRef.current = selectedIndex;
-        await reloadDesigns();
-        options?.onQueueChanged?.();
+        const updated = await input.action();
+        reconcileSuccessfulInboxManualAction({
+          updated,
+          manualAction: input.manualAction,
+          sourceTab: filters.tab,
+          selectedIndex,
+          deps: {
+            clearLiveDesign: () => {
+              setLiveDesign(null);
+            },
+            setPendingAdvanceIndex: (index) => {
+              pendingAdvanceIndexRef.current = index;
+            },
+            applyDesignPatch,
+            onInboxCountsDelta: (deltas) => {
+              optionsRef.current?.onInboxCountsDelta?.(deltas);
+            },
+          },
+        });
+        setReviewScrollNonce((current) => current + 1);
       } catch (inboxError) {
-        pendingAdvanceIndexRef.current = null;
         setActionError(
           inboxError instanceof Error ? inboxError.message : "Unable to complete the action.",
         );
+        await recoverFailedInboxManualAction({
+          clearPendingAdvance: () => {
+            pendingAdvanceIndexRef.current = null;
+          },
+          reloadDesigns,
+          onQueueChanged: () => optionsRef.current?.onQueueChanged?.(),
+        });
       } finally {
         setIsActionLoading(false);
       }
     },
-    [options, reloadDesigns, selectedIndex, user],
+    [applyDesignPatch, filters.tab, reloadDesigns, selectedIndex, user],
   );
 
   const runRejectedTabNavigationAction = useCallback(
@@ -697,8 +1044,9 @@ export function useAiReviewInbox(
       return;
     }
 
-    await runInboxAction(async () => {
-      await aiReviewInboxService.approveFromInbox(user, selectedDesign.id, draftForm);
+    await runInboxAction({
+      manualAction: "approve",
+      action: async () => aiReviewInboxService.approveFromInbox(user, selectedDesign.id, draftForm),
     });
   }, [canApproveSelected, draftForm, runInboxAction, selectedDesign, user]);
 
@@ -707,8 +1055,9 @@ export function useAiReviewInbox(
       return;
     }
 
-    await runInboxAction(async () => {
-      await aiReviewInboxService.rejectFromInbox(user, selectedDesign.id);
+    await runInboxAction({
+      manualAction: "reject",
+      action: async () => aiReviewInboxService.rejectFromInbox(user, selectedDesign.id),
     });
   }, [canRejectSelected, runInboxAction, selectedDesign, user]);
 
@@ -730,8 +1079,9 @@ export function useAiReviewInbox(
       return;
     }
 
-    await runInboxAction(async () => {
-      await aiReviewInboxService.archiveFromInbox(user, selectedDesign.id);
+    await runInboxAction({
+      manualAction: "archive",
+      action: async () => aiReviewInboxService.archiveFromInbox(user, selectedDesign.id),
     });
   }, [canArchiveSelected, runInboxAction, selectedDesign, user]);
 
@@ -748,6 +1098,9 @@ export function useAiReviewInbox(
     setActionError(null);
 
     try {
+      // Allow this design to re-enter the pending Processing list after a genuine retry.
+      clearTerminalAiProcessingLedgerEntry(selectedDesign.id);
+
       const result = await aiEnrichmentEnqueueService.retryFailedProcessing(selectedDesign.id, {
         visionModelIdOverride: processingQueue.resolvedSessionVisionModelId,
       });
@@ -774,7 +1127,16 @@ export function useAiReviewInbox(
     } finally {
       setIsActionLoading(false);
     }
-  }, [applyDesignPatch, canRetryProcessingSelected, options, processingQueue.resolvedSessionVisionModelId, reloadDesigns, selectedDesign, user]);
+  }, [
+    applyDesignPatch,
+    canRetryProcessingSelected,
+    clearTerminalAiProcessingLedgerEntry,
+    options,
+    processingQueue.resolvedSessionVisionModelId,
+    reloadDesigns,
+    selectedDesign,
+    user,
+  ]);
 
   const ignoreSuggestedTag = useCallback(
     (name: string) => {
@@ -881,6 +1243,7 @@ export function useAiReviewInbox(
     queueListRef,
     reloadDesigns,
     requestSelectDesign,
+    reviewScrollNonce,
     selectedDesign,
     selectedIndex,
     selectRelative,

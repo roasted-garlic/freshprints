@@ -64,7 +64,10 @@ function AiReviewPageContent() {
   const inbox = useAiReviewInbox(filters, {
     defaultVisionModelId: enrichmentSettings.visionModelId,
     onNavigateToTab: handleNavigateToTab,
+    // Processing / background queue still refreshes authoritative counts.
     onQueueChanged: () => void tabCounts.reloadCounts(),
+    // Amendment 9 P0: successful approve/reject/archive adjust badges locally (no 3× count).
+    onInboxCountsDelta: (deltas) => tabCounts.applyCountsDelta(deltas),
   });
 
   const shellHeaderConfig = useMemo(
@@ -218,6 +221,7 @@ function AiReviewPageContent() {
             processingVisionModelId={inbox.processingQueue.resolvedSessionVisionModelId}
             selectedDesign={inbox.selectedDesign}
             showReadOnlySuggestions={inbox.showReadOnlySuggestions}
+            reviewScrollNonce={inbox.reviewScrollNonce}
             showRerunAiButton={inbox.canRerunAiSuggestions || inbox.isRerunningAi}
           />
         </main>

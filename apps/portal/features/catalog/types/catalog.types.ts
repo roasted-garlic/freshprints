@@ -33,6 +33,12 @@ export interface CatalogDesign {
   printHeightInches?: number;
   /** Milliseconds since epoch; omitted when missing on legacy docs. */
   createdAtMs?: number;
+  /**
+   * Most recent transition into `status: "ready"` (Owner QA Amendment 3) — the canonical default
+   * catalog ordering key. Omitted for legacy designs approved before the field existed; ordering
+   * falls back to `createdAtMs` for those.
+   */
+  readyAtMs?: number;
   requestCount: number;
   /** Milliseconds since epoch; omitted when never added to a Working cart / request item. */
   lastRequestedAtMs?: number;
@@ -52,12 +58,14 @@ export interface CatalogDesign {
 
 /**
  * Firestore orderBy field for ready-catalog paging.
- * Default browse uses `createdAt` (Studio-newest). Metric discover modes use
- * requestCount / favoriteCount / lastAddedToShowAt (Recently Requested).
+ * Default browse uses `readyAt` (most recent approval to ready), with `createdAt` fallback
+ * for legacy docs / completeness. Metric discover modes use requestCount / favoriteCount /
+ * lastAddedToShowAt. Discover "new this week" uses `readyAt` + `readyAfterMs`.
  */
 export type CatalogDesignSortField =
   | 'updatedAt'
   | 'createdAt'
+  | 'readyAt'
   | 'requestCount'
   | 'lastRequestedAt'
   | 'lastAddedToShowAt'
@@ -77,8 +85,22 @@ export interface CatalogDesignListQuery {
   limitCount?: number;
   cursor?: CatalogDesignListCursor;
   sortField?: CatalogDesignSortField;
-  /** Inclusive lower bound for `createdAt` when `sortField` is `createdAt` (e.g. New This Week). */
+  /**
+   * Inclusive lower bound for `createdAt` when `sortField` is `createdAt`.
+   * Not used for Discover New This Week (that uses `readyAfterMs`).
+   */
   createdAfterMs?: number;
+  /**
+   * Inclusive lower bound for `readyAt` when listing New This Week
+   * (`sortField: 'readyAt'` + seven-day customer-ready window).
+   */
+  readyAfterMs?: number;
+  /**
+   * When true, skip membership + client-sort repair for incomplete Firestore orderBy results.
+   * Used by Discover home pool queries (rails already client-rank a mixed pool).
+   * Catalog View All must leave this unset so Popular / category ready-order repair runs.
+   */
+  skipClientSortRepair?: boolean;
 }
 
 export interface CatalogDesignListPage {

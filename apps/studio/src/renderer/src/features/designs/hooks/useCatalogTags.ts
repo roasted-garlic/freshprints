@@ -4,6 +4,7 @@ import { useAuth } from "../../auth/hooks/useAuth";
 import { permissionService } from "../../permissions/services/permissionService";
 import { catalogTagService } from "../services/catalogTagService";
 import { taxonomyArchiveGuardsService } from "../services/taxonomyArchiveGuardsService";
+import { clearStudioTaxonomyCaches } from "../services/taxonomyCacheControl";
 import type {
   CatalogTag,
   CreateCatalogTagInput,
@@ -115,8 +116,26 @@ export function useCatalogTags(options: { enabled?: boolean; includeArchived?: b
         if (result.outcome === "blocked") {
           throw new Error(result.blockers?.[0]?.message ?? result.message);
         }
+        // archiveTagWithGuards writes through the Admin SDK, bypassing the
+        // client-side tagListCache entirely. Without this, the cache serves
+        // pre-archive data for up to its full TTL even though the write
+        // succeeded. Only clear on confirmed success, never on a blocked/
+        // failed attempt, so a failed write cannot falsely evict good cache
+        // state or imply local state changed.
+        clearStudioTaxonomyCaches();
         return result;
       });
+    },
+    [runAction, user],
+  );
+
+  const restoreTag = useCallback(
+    async (tagId: string) => {
+      if (!user) {
+        throw new Error("You must be signed in to manage tags.");
+      }
+
+      return runAction(() => catalogTagService.updateTag(user, tagId, { status: "approved" }));
     },
     [runAction, user],
   );
@@ -186,6 +205,7 @@ export function useCatalogTags(options: { enabled?: boolean; includeArchived?: b
     createTag,
     isSubmitting,
     reloadTags: loadTags,
+    restoreTag,
     updateTag,
   };
 }

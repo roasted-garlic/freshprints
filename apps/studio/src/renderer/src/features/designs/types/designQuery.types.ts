@@ -2,7 +2,13 @@ import type { AiReviewStatus } from "./aiReview.types";
 import type { Design } from "./design.types";
 import type { DesignStatus } from "./designStatus.types";
 
-export type DesignListSortField = "createdAt" | "updatedAt";
+/**
+ * `readyAt` is the canonical default catalog ordering key (most recent transition into
+ * `status: "ready"`). It is only valid for `status == "ready"` queries, which is the only scope
+ * where the field is written — see the `designs: status ASC, readyAt DESC, __name__ DESC`
+ * composite index.
+ */
+export type DesignListSortField = "createdAt" | "updatedAt" | "readyAt";
 export type DesignListSortDirection = "asc" | "desc";
 
 export interface DesignListCursor {

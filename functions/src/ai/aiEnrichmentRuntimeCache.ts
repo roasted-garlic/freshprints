@@ -9,7 +9,7 @@ import {
   loadAiCatalogReferenceSnapshot,
 } from "./loadAiCatalogReferenceSnapshot";
 
-const CACHE_TTL_MS = 60_000;
+const SETTINGS_CACHE_TTL_MS = 60_000;
 
 interface CacheEntry<T> {
   expiresAtMs: number;
@@ -23,19 +23,9 @@ interface CachedCategory {
 }
 
 let settingsCache: CacheEntry<AiEnrichmentSettingsLoaded> | null = null;
-let categoriesCache: CacheEntry<{
-  categories: CachedCategory[];
-  names: string[];
-  idsByName: Record<string, string>;
-}> | null = null;
-let tagsCache: CacheEntry<CatalogTag[]> | null = null;
 const runtimeInstanceId = randomUUID();
 let isColdStart = true;
-const activeMisses: Record<"settings" | "categories" | "tags", number> = {
-  settings: 0,
-  categories: 0,
-  tags: 0,
-};
+let activeSettingsMisses = 0;
 
 export interface AiEnrichmentReadDiagnosticContext {
   functionName: string;
@@ -43,14 +33,13 @@ export interface AiEnrichmentReadDiagnosticContext {
   designId?: string;
 }
 
-function logReferenceRead(
+function logSettingsRead(
   event: string,
-  resource: keyof typeof activeMisses,
   context?: AiEnrichmentReadDiagnosticContext,
   extra: Record<string, unknown> = {},
 ): void {
   logPipelineEvent(event, {
-    resource,
+    resource: "settings",
     runtimeInstanceId,
     coldStart: isColdStart,
     functionName: context?.functionName ?? "unknown",
@@ -61,39 +50,8 @@ function logReferenceRead(
   isColdStart = false;
 }
 
-async function traceCacheMiss<T>(
-  resource: keyof typeof activeMisses,
-  context: AiEnrichmentReadDiagnosticContext | undefined,
-  load: () => Promise<T>,
-  returnedCount: (value: T) => number,
-): Promise<T> {
-  const concurrentMissOverlap = activeMisses[resource] > 0;
-  activeMisses[resource] += 1;
-  logReferenceRead("reference_cache.miss", resource, context, { concurrentMissOverlap });
-  logReferenceRead("reference_query.started", resource, context);
-
-  try {
-    const value = await load();
-    logReferenceRead("reference_query.completed", resource, context, {
-      returnedDocumentCount: returnedCount(value),
-      concurrentMissOverlap,
-    });
-    return value;
-  } catch (error) {
-    logReferenceRead("reference_query.failed", resource, context, {
-      reason: error instanceof Error ? error.name : "unknown_error",
-      concurrentMissOverlap,
-    });
-    throw error;
-  } finally {
-    activeMisses[resource] -= 1;
-  }
-}
-
 export function clearAiEnrichmentRuntimeCache(): void {
   settingsCache = null;
-  categoriesCache = null;
-  tagsCache = null;
   clearAiCatalogReferenceSnapshotCache();
 }
 
@@ -103,20 +61,38 @@ export async function loadCachedAiEnrichmentSettings(
   const now = Date.now();
 
   if (settingsCache && settingsCache.expiresAtMs > now) {
-    logReferenceRead("reference_cache.hit", "settings", context);
+    logSettingsRead("reference_cache.hit", context);
     return settingsCache.value;
   }
 
-  const value = await traceCacheMiss(
-    "settings",
-    context,
-    loadAiEnrichmentSettings,
-    () => 1,
-  );
-  settingsCache = { value, expiresAtMs: now + CACHE_TTL_MS };
-  return value;
+  const concurrentMissOverlap = activeSettingsMisses > 0;
+  activeSettingsMisses += 1;
+  logSettingsRead("reference_cache.miss", context, { concurrentMissOverlap });
+  logSettingsRead("reference_query.started", context);
+
+  try {
+    const value = await loadAiEnrichmentSettings();
+    logSettingsRead("reference_query.completed", context, {
+      returnedDocumentCount: 1,
+      concurrentMissOverlap,
+    });
+    settingsCache = { value, expiresAtMs: now + SETTINGS_CACHE_TTL_MS };
+    return value;
+  } catch (error) {
+    logSettingsRead("reference_query.failed", context, {
+      reason: error instanceof Error ? error.name : "unknown_error",
+      concurrentMissOverlap,
+    });
+    throw error;
+  } finally {
+    activeSettingsMisses -= 1;
+  }
 }
 
+/**
+ * Thin adapter over the sole taxonomy TTL/in-flight boundary in
+ * `loadAiCatalogReferenceSnapshot`. No independent categories TTL.
+ */
 export async function loadCachedActiveCategories(
   context?: AiEnrichmentReadDiagnosticContext,
 ): Promise<{
@@ -124,47 +100,21 @@ export async function loadCachedActiveCategories(
   names: string[];
   idsByName: Record<string, string>;
 }> {
-  const now = Date.now();
-
-  if (categoriesCache && categoriesCache.expiresAtMs > now) {
-    logReferenceRead("reference_cache.hit", "categories", context);
-    return categoriesCache.value;
-  }
-
-  const value = await traceCacheMiss(
-    "categories",
-    context,
-    async () => {
-      const snapshot = await loadAiCatalogReferenceSnapshot();
-      return {
-        categories: snapshot.categories,
-        names: snapshot.categoryNames,
-        idsByName: snapshot.categoryIdsByName,
-      };
-    },
-    (result) => result.categories.length,
-  );
-  categoriesCache = { value, expiresAtMs: now + CACHE_TTL_MS };
-  return value;
+  const snapshot = await loadAiCatalogReferenceSnapshot(context);
+  return {
+    categories: snapshot.categories,
+    names: snapshot.categoryNames,
+    idsByName: snapshot.categoryIdsByName,
+  };
 }
 
+/**
+ * Thin adapter over the sole taxonomy TTL/in-flight boundary in
+ * `loadAiCatalogReferenceSnapshot`. No independent tags TTL.
+ */
 export async function loadCachedApprovedTags(
   context?: AiEnrichmentReadDiagnosticContext,
 ): Promise<CatalogTag[]> {
-  const now = Date.now();
-
-  if (tagsCache && tagsCache.expiresAtMs > now) {
-    logReferenceRead("reference_cache.hit", "tags", context);
-    return tagsCache.value;
-  }
-
-  const tags = await traceCacheMiss(
-    "tags",
-    context,
-    async () => aiSnapshotTagsToCatalogTags(await loadAiCatalogReferenceSnapshot()),
-    (result) => result.length,
-  );
-
-  tagsCache = { value: tags, expiresAtMs: now + CACHE_TTL_MS };
-  return tags;
+  const snapshot = await loadAiCatalogReferenceSnapshot(context);
+  return aiSnapshotTagsToCatalogTags(snapshot);
 }

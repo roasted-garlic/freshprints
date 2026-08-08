@@ -216,7 +216,7 @@ Local commands should mirror CI where possible.
 ### Wave C snapshot and rules verification
 
 ```bash
-npx tsx --test functions/src/catalogSnapshots/snapshotBuilders.test.ts packages/shared/src/catalog-snapshots/catalogSnapshot.parsers.test.ts apps/portal/features/catalog/services/catalogDesignByIdCache.test.ts apps/portal/features/print-requests/utils/portalPrintProgressPolling.test.ts
+npx tsx --test functions/src/algolia/portalCatalogChangeClassifier.test.ts packages/shared/src/catalog-snapshots/catalogSnapshot.parsers.test.ts apps/portal/features/catalog/services/catalogDesignByIdCache.test.ts apps/portal/features/print-requests/utils/portalPrintProgressPolling.test.ts
 npm run build --prefix functions
 npm run typecheck --workspace @fresh-prints/portal
 npm run test:rules

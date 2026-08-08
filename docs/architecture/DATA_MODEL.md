@@ -725,6 +725,29 @@ Audit fields follow the same rules as designs: `createdBy` / `createdAt` on crea
 
 ---
 
+# Taxonomy Materialization Collection (derived)
+
+> Read-optimized compact corpus. **Not** authoritative — rebuild from `tags` + `categories`.
+> See ADR-FP-128.
+
+```txt
+taxonomyMaterialization/meta
+taxonomyMaterialization/chunk-{n}
+```
+
+| Doc | Purpose |
+|-----|---------|
+| `meta` | `revision`, `schemaVersion`, `chunkCount`, `tagCount`, `categoryCount`, `contentHash`, `updatedAtMs`, `updatedBy`, `ready` |
+| `chunk-{n}` | Deterministic partitions; chunk 0 holds all active categories + first tag slice |
+
+**Inclusion:** approved tags only; active categories only. Archived taxonomy stays on normal management queries.
+
+**Permissions:** staff read (`isStaff()`); all client writes denied. Admin SDK / Functions only write via `rebuildTaxonomyMaterialization`.
+
+**Publication fence:** write all chunks for `newRevision` first, then `meta` last. Readers require `meta.ready`, matching chunk revisions/hashes, and verified `contentHash`.
+
+---
+
 # Customers Collection
 
 Collection:

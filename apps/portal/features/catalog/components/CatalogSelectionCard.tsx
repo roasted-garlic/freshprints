@@ -16,6 +16,11 @@ interface CatalogSelectionCardProps {
   exhaustedHelperText?: string | null;
   exhaustedStatusText?: string | null;
   isSelected: boolean;
+  /**
+   * Eager thumbnail load for the bounded first viewport only.
+   * Below-fold cards should omit this (default lazy).
+   */
+  prioritizeLoading?: boolean;
   quantity: number;
   /** Omit for guests — hides Add to request / qty controls. */
   onAdd?: (design: CatalogDesign) => void;
@@ -49,6 +54,7 @@ export function CatalogSelectionCard({
   disabled = false,
   exhaustedStatusText = null,
   isSelected,
+  prioritizeLoading = false,
   quantity,
   onAdd,
   onOpenDetails,
@@ -113,7 +119,7 @@ export function CatalogSelectionCard({
           interactive
           loadingLabel="Loading thumbnail"
           onImageClick={() => onOpenDetails(design)}
-          prioritizeLoading
+          prioritizeLoading={prioritizeLoading}
         />
 
         <CatalogFavoriteButton

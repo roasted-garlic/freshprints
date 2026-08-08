@@ -13,6 +13,10 @@ import { useAuth } from '../../auth/context/AuthContext';
 import { CatalogDesignDetailsModal } from '../components/CatalogDesignDetailsModal';
 import { CatalogFilterBar } from '../components/CatalogFilterBar';
 import { CatalogSelectionCard } from '../components/CatalogSelectionCard';
+import { CATALOG_FIRST_VIEWPORT_EAGER_COUNT } from '../hooks/useCatalogDesigns';
+
+/** Bound Algolia/search requests while typing — do not fire per raw keystroke. */
+export const CATALOG_SEARCH_DEBOUNCE_MS = 300;
 import { CatalogTagFilterModal } from '../components/CatalogTagFilterModal';
 import { useCatalogDesignDeepLink } from '../hooks/useCatalogDesignDeepLink';
 import { useCatalogCategories } from '../hooks/useCatalogCategories';
@@ -65,12 +69,20 @@ export function CatalogPageContent() {
   const appliedSeedDesignIdRef = useRef<string | null>(null);
 
   const [searchQuery, setSearchQuery] = useState(initialSearch);
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(initialSearch);
   const [categoryFilter, setCategoryFilter] = useState(initialCategory);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [isTagFilterModalOpen, setIsTagFilterModalOpen] = useState(false);
   const [selectedDesign, setSelectedDesign] = useState<CatalogDesign | null>(null);
   const [selectionActionError, setSelectionActionError] = useState<string | null>(null);
   const [isLeavingSelection, setIsLeavingSelection] = useState(false);
+
+  useEffect(() => {
+    const handle = window.setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, CATALOG_SEARCH_DEBOUNCE_MS);
+    return () => window.clearTimeout(handle);
+  }, [searchQuery]);
 
   const {
     actionError: creationActionError,
@@ -122,7 +134,7 @@ export function CatalogPageContent() {
   } = useCatalogDesigns({
     categoryId: categoryFilter || undefined,
     discoveryMode,
-    searchQuery,
+    searchQuery: debouncedSearchQuery,
     selectedTags,
   });
 
@@ -160,6 +172,7 @@ export function CatalogPageContent() {
 
   function clearFilters() {
     setSearchQuery('');
+    setDebouncedSearchQuery('');
     setCategoryFilter('');
     setSelectedTags([]);
     syncLibraryUrl({ discover: discoveryMode, search: '', categoryId: '' });
@@ -185,7 +198,9 @@ export function CatalogPageContent() {
   const { resetTransientState } = addDesignFlow;
 
   useEffect(() => {
-    setSearchQuery(searchParams.get('q') ?? '');
+    const nextSearch = searchParams.get('q') ?? '';
+    setSearchQuery(nextSearch);
+    setDebouncedSearchQuery(nextSearch);
     setCategoryFilter(searchParams.get('category') ?? '');
   }, [searchParams]);
 
@@ -494,7 +509,8 @@ export function CatalogPageContent() {
           ) : (
             <>
               <div className="design-grid" role="list">
-                {displayedDesigns.map((design) => {
+                {displayedDesigns.map((design, index) => {
+                  const prioritizeLoading = index < CATALOG_FIRST_VIEWPORT_EAGER_COUNT;
                   if (selectionModeActive) {
                     const selection = selectionMode.selectedDesigns[design.id];
                     return (
@@ -509,6 +525,7 @@ export function CatalogPageContent() {
                           onOpenDetails={openDesignDetails}
                           onQuantityChange={selectionMode.setQuantity}
                           onRemove={(designId) => void selectionMode.removeDesign(designId)}
+                          prioritizeLoading={prioritizeLoading}
                           quantity={selection?.quantity ?? 1}
                         />
                       </div>
@@ -534,6 +551,7 @@ export function CatalogPageContent() {
                         onOpenDetails={openDesignDetails}
                         onQuantityChange={isAuthenticated ? addDesignFlow.setQuantity : undefined}
                         onRemove={isAuthenticated ? addDesignFlow.removeDesign : undefined}
+                        prioritizeLoading={prioritizeLoading}
                         quantity={quantity > 0 ? quantity : 1}
                       />
                     </div>
@@ -611,6 +629,8 @@ export function CatalogPageContent() {
 
       <CatalogTagFilterModal
         approvedTags={approvedTags}
+        catalogSearchQuery={debouncedSearchQuery}
+        categoryId={categoryFilter || undefined}
         error={approvedTagsError}
         isOpen={isTagFilterModalOpen}
         onApply={(nextTags) => setSelectedTags(sortCatalogTags(nextTags))}

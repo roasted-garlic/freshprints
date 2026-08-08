@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 import type { User as FirebaseUser } from "firebase/auth";
 
 import type { User } from "../../users/types/user.types";
-import { studioGeneratedCardOverrideService } from "../../designs/services/studioGeneratedCardOverrideService";
 import { clearStudioTaxonomyCaches } from "../../designs/services/taxonomyCacheControl";
 import { authService } from "../services/authService";
 import { authSessionService } from "../services/authSessionService";
@@ -106,7 +105,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const nextAuthScope = firebaseUser?.uid ?? null;
         if (taxonomyCacheAuthScope !== nextAuthScope) {
           clearStudioTaxonomyCaches();
-          studioGeneratedCardOverrideService.setSessionScope(nextAuthScope);
           taxonomyCacheAuthScope = nextAuthScope;
         }
 

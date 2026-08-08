@@ -1,0 +1,106 @@
+{
+  "stage": "Stage 5 — Generated Asset Cleanup",
+  "projectId": "fresh-prints-dev",
+  "mode": "dry-run",
+  "performedAt": "2026-08-07T22:44:14.699Z",
+  "storageAllowlist": [
+    "generated/portal-catalog/",
+    "generated/catalog-reference/"
+  ],
+  "firestoreAllowlist": [
+    "snapshotPublicationState"
+  ],
+  "storageByPrefix": [
+    {
+      "prefix": "generated/portal-catalog/",
+      "objectCount": 35836,
+      "totalBytes": 96158139,
+      "samplePaths": [
+        "generated/portal-catalog/v27-0ac8186bebae9077/filters/tags/awareness.json",
+        "generated/portal-catalog/v27-0ac8186bebae9077/filters/tags/cowprint.json",
+        "generated/portal-catalog/v27-0ac8186bebae9077/filters/tags/cupcake.json",
+        "generated/portal-catalog/v27-0ac8186bebae9077/filters/tags/cute.json",
+        "generated/portal-catalog/v27-0ac8186bebae9077/filters/tags/dad.json",
+        "generated/portal-catalog/v27-0ac8186bebae9077/filters/tags/daisy.json",
+        "generated/portal-catalog/v27-0ac8186bebae9077/filters/tags/dance.json",
+        "generated/portal-catalog/v27-0ac8186bebae9077/filters/tags/daughter.json",
+        "generated/portal-catalog/v27-0ac8186bebae9077/filters/tags/desert.json",
+        "generated/portal-catalog/v27-0ac8186bebae9077/filters/tags/disney.json",
+        "generated/portal-catalog/v27-0ac8186bebae9077/filters/tags/distressed.json",
+        "generated/portal-catalog/v27-0ac8186bebae9077/filters/tags/doctor.json",
+        "generated/portal-catalog/v27-0ac8186bebae9077/filters/tags/dog.json",
+        "generated/portal-catalog/v27-0ac8186bebae9077/filters/tags/dolphin.json",
+        "generated/portal-catalog/v27-0ac8186bebae9077/filters/tags/duck.json",
+        "generated/portal-catalog/v27-0ac8186bebae9077/filters/tags/eagle.json",
+        "generated/portal-catalog/v27-0ac8186bebae9077/filters/tags/faith.json",
+        "generated/portal-catalog/v27-0ac8186bebae9077/filters/tags/family.json",
+        "generated/portal-catalog/v27-0ac8186bebae9077/filters/tags/farm.json",
+        "generated/portal-catalog/v27-0ac8186bebae9077/filters/tags/fashion.json"
+      ]
+    },
+    {
+      "prefix": "generated/catalog-reference/",
+      "objectCount": 23,
+      "totalBytes": 4478422,
+      "samplePaths": [
+        "generated/catalog-reference/ai/v10-e5a18178b556f311.json",
+        "generated/catalog-reference/ai/v12-c57dd941ad3d6a9d.json",
+        "generated/catalog-reference/ai/v14-8385315d8ba802c5.json",
+        "generated/catalog-reference/ai/v3-1a810751ceb2b381.json",
+        "generated/catalog-reference/ai/v4-1a810751ceb2b381.json",
+        "generated/catalog-reference/ai/v5-1a810751ceb2b381.json",
+        "generated/catalog-reference/ai/v6-1a810751ceb2b381.json",
+        "generated/catalog-reference/ai/v7-1a810751ceb2b381.json",
+        "generated/catalog-reference/ai/v8-1a810751ceb2b381.json",
+        "generated/catalog-reference/ai/v9-1a810751ceb2b381.json",
+        "generated/catalog-reference/client/v1-1a810751ceb2b381.json",
+        "generated/catalog-reference/client/v10-e5a18178b556f311.json",
+        "generated/catalog-reference/client/v12-c57dd941ad3d6a9d.json",
+        "generated/catalog-reference/client/v14-8385315d8ba802c5.json",
+        "generated/catalog-reference/client/v2-1a810751ceb2b381.json",
+        "generated/catalog-reference/client/v3-1a810751ceb2b381.json",
+        "generated/catalog-reference/client/v4-1a810751ceb2b381.json",
+        "generated/catalog-reference/client/v5-1a810751ceb2b381.json",
+        "generated/catalog-reference/client/v6-1a810751ceb2b381.json",
+        "generated/catalog-reference/client/v7-1a810751ceb2b381.json"
+      ]
+    }
+  ],
+  "firestore": {
+    "collectionId": "snapshotPublicationState",
+    "documentCount": 2,
+    "sampleIds": [
+      "catalog-reference",
+      "portal-catalog"
+    ]
+  },
+  "negativeRootChecklist": [
+    {
+      "root": "originals/",
+      "targetedForDeletion": false,
+      "note": "Confirmed not in Stage 5 Storage allowlist"
+    },
+    {
+      "root": "thumbnails/",
+      "targetedForDeletion": false,
+      "note": "Confirmed not in Stage 5 Storage allowlist"
+    },
+    {
+      "root": "previews/",
+      "targetedForDeletion": false,
+      "note": "Confirmed not in Stage 5 Storage allowlist"
+    },
+    {
+      "root": "display/",
+      "targetedForDeletion": false,
+      "note": "Confirmed not in Stage 5 Storage allowlist"
+    },
+    {
+      "root": "customer-uploads/",
+      "targetedForDeletion": false,
+      "note": "Confirmed not in Stage 5 Storage allowlist"
+    }
+  ],
+  "otherRootsNote": "Every Storage root outside the two allowlisted generated prefixes is out of scope and was not targeted.",
+  "destructiveActionsPerformed": false
+}

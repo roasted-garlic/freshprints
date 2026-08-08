@@ -4,16 +4,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   CATALOG_NEW_THIS_WEEK_DAYS,
-  rankCatalogDiscoveryDesigns,
   type CatalogDiscoveryMode,
 } from '@fresh-prints/shared/utils/catalogDiscoveryRanking';
-import {
-  traceGeneratedAssetOutcome,
-  traceGeneratedFallbackActivation,
-} from '@fresh-prints/shared/utils/firestoreUsageTrace';
 import { catalogService, DEFAULT_CATALOG_PAGE_SIZE } from '../services/catalogService';
-import { portalCatalogAssetService } from '../services/portalCatalogAssetService';
-import { generatedPortalCatalogEnabled } from '../services/catalogSnapshotFlags';
+import { isPortalAlgoliaCatalogConfigured } from '../services/portalAlgoliaCatalogFlags';
+import { portalAlgoliaCatalogSearchService } from '../services/portalAlgoliaCatalogSearchService';
 import type {
   CatalogCategory,
   CatalogDesign,
@@ -36,10 +31,15 @@ export interface UseCatalogDesignsQuery {
   searchQuery?: string;
 }
 
-function sortFieldForDiscovery(mode: CatalogDiscoveryMode | null | undefined): CatalogDesignSortField {
+/** First-viewport thumbnails may load eagerly; below-fold stay lazy. */
+export const CATALOG_FIRST_VIEWPORT_EAGER_COUNT = 8;
+
+/** Exported for Case D New This Week query tests. */
+export function sortFieldForDiscovery(mode: CatalogDiscoveryMode | null | undefined): CatalogDesignSortField {
   switch (mode) {
     case 'new':
-      return 'createdAt';
+      // Newly ready for customers — not original import time.
+      return 'readyAt';
     case 'popular':
       return 'requestCount';
     case 'mostLiked':
@@ -47,20 +47,20 @@ function sortFieldForDiscovery(mode: CatalogDiscoveryMode | null | undefined): C
     case 'recent':
       return 'lastAddedToShowAt';
     default:
-      // Browse-all / filters: Studio-newest first. Do not use updatedAt —
-      // request/favorite counters bump updatedAt and would reshuffle the grid.
-      return 'createdAt';
+      // Browse-all / filters: most recently approved to ready first.
+      return 'readyAt';
   }
 }
 
-function buildServerListQuery(options: UseCatalogDesignsQuery): CatalogDesignListQuery {
+/** Exported for Case D New This Week query tests. */
+export function buildServerListQuery(options: UseCatalogDesignsQuery): CatalogDesignListQuery {
   const discoveryMode = options.discoveryMode ?? null;
   const sortField = sortFieldForDiscovery(discoveryMode);
   const primaryTag = getPrimaryCatalogQueryTag(options.selectedTags);
 
   return {
     categoryId: options.categoryId?.trim() || undefined,
-    createdAfterMs:
+    readyAfterMs:
       discoveryMode === 'new'
         ? Date.now() - CATALOG_NEW_THIS_WEEK_DAYS * 24 * 60 * 60 * 1000
         : undefined,
@@ -73,7 +73,8 @@ function serializeServerListQuery(listQuery: CatalogDesignListQuery): string {
   return JSON.stringify({
     categoryId: listQuery.categoryId ?? null,
     createdAfterMs: listQuery.createdAfterMs ?? null,
-    sortField: listQuery.sortField ?? 'createdAt',
+    readyAfterMs: listQuery.readyAfterMs ?? null,
+    sortField: listQuery.sortField ?? 'readyAt',
     tag: listQuery.tag ?? null,
   });
 }
@@ -89,13 +90,20 @@ function toFriendlyCatalogError(error: unknown): string {
   return rawMessage;
 }
 
+/**
+ * Phase 1A ordinary browse gate: unfiltered, category, single-tag, and discovery sorts use
+ * bounded Firestore without requiring generated assets or Algolia.
+ *
+ * Search and multi-tag use Stage 1b managed search (Algolia) when configured.
+ */
 export function allowsBoundedCatalogFirestoreFallback(options: UseCatalogDesignsQuery): boolean {
-  return (
-    !options.categoryId?.trim() &&
-    !options.searchQuery?.trim() &&
-    options.selectedTags.length === 0 &&
-    !options.discoveryMode
-  );
+  const hasSearch = Boolean(options.searchQuery?.trim());
+  const isMultiTag = options.selectedTags.length > 1;
+  return !hasSearch && !isMultiTag;
+}
+
+function requiresManagedSearchPath(options: UseCatalogDesignsQuery): boolean {
+  return !allowsBoundedCatalogFirestoreFallback(options);
 }
 
 export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
@@ -121,7 +129,9 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
   const [nextCursor, setNextCursor] = useState<CatalogDesignListQuery['cursor']>(undefined);
   const [serverHasMore, setServerHasMore] = useState(false);
   const [isFullyHydrated, setIsFullyHydrated] = useState(false);
-  const [isGeneratedQuery, setIsGeneratedQuery] = useState(false);
+  const [isManagedSearchQuery, setIsManagedSearchQuery] = useState(false);
+  /** Algolia hit offset — advances by provider page size, not hydrated card count. */
+  const [managedSearchNextOffset, setManagedSearchNextOffset] = useState(0);
   const hydrateGenerationRef = useRef(0);
 
   const selectedTagsKey = useMemo(
@@ -137,7 +147,9 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
     searchQuery: options.searchQuery,
     selectedTags: options.selectedTags,
   });
-  const allowsFirestoreFallback = allowsBoundedCatalogFirestoreFallback(options);
+  const useOrdinaryFirestore = allowsBoundedCatalogFirestoreFallback(options);
+  const useManagedSearch = requiresManagedSearchPath(options);
+  const useAlgoliaSearch = useManagedSearch && isPortalAlgoliaCatalogConfigured();
 
   const serverListQuery = useMemo(
     () =>
@@ -167,76 +179,49 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
       setNextCursor(undefined);
       setServerHasMore(false);
       setIsFullyHydrated(false);
-      setIsGeneratedQuery(false);
+      setIsManagedSearchQuery(false);
+      setManagedSearchNextOffset(0);
 
       try {
-        if (generatedPortalCatalogEnabled()) {
-          try {
-            const isUnfilteredBrowse =
-              !options.categoryId?.trim() &&
-              !options.searchQuery?.trim() &&
-              selectedTagsForAssets.length === 0;
-            const generatedPage = await (isUnfilteredBrowse
-              ? portalCatalogAssetService.listDiscoverDesigns().then((designs) => ({
-                    designs: options.discoveryMode
-                      ? rankCatalogDiscoveryDesigns(designs, options.discoveryMode)
-                      : designs.slice().sort(
-                          (left, right) =>
-                            (right.createdAtMs ?? 0) - (left.createdAtMs ?? 0) ||
-                            right.id.localeCompare(left.id),
-                        ),
-                    total: null,
-                  }))
-              : portalCatalogAssetService.listMatchingDesigns(
-                  options.searchQuery ?? '',
-                  selectedTagsForAssets,
-                  { categoryId: options.categoryId, limit: pageSize },
-                ));
-            if (isCancelled || generation !== hydrateGenerationRef.current) return;
-            traceGeneratedAssetOutcome(
-              'success',
-              'portal-catalog-query@generated-first-r015',
-              { app: 'portal', triggerReason: 'route' },
-            );
-            setAllDesigns(generatedPage.designs);
-            setServerTotalCount(generatedPage.total ?? generatedPage.designs.length);
-            setIsFullyHydrated(
-              generatedPage.total === null || generatedPage.designs.length >= generatedPage.total,
-            );
-            setIsGeneratedQuery(true);
-            setIsLoading(false);
-            return;
-          } catch {
-            traceGeneratedAssetOutcome(
-              'failure',
-              'portal-catalog-query@generated-first-r015',
-              { app: 'portal', triggerReason: 'route' },
-            );
-            if (!allowsFirestoreFallback) {
+        if (useManagedSearch) {
+          if (useAlgoliaSearch) {
+            try {
+              const algoliaPage = await portalAlgoliaCatalogSearchService.listMatchingDesigns(
+                options.searchQuery ?? '',
+                selectedTagsForAssets,
+                { categoryId: options.categoryId, limit: pageSize, offset: 0 },
+              );
+              if (isCancelled || generation !== hydrateGenerationRef.current) return;
+              const nextOffset = algoliaPage.hitCount;
+              setAllDesigns(algoliaPage.designs);
+              setServerTotalCount(algoliaPage.total ?? algoliaPage.designs.length);
+              setManagedSearchNextOffset(nextOffset);
+              setIsFullyHydrated(nextOffset >= algoliaPage.total || algoliaPage.hitCount === 0);
+              setIsManagedSearchQuery(true);
+              setIsLoading(false);
+              return;
+            } catch {
               if (!isCancelled && generation === hydrateGenerationRef.current) {
-                setError('Catalog filters are temporarily unavailable. Please try again in a moment.');
+                setError('Catalog search is temporarily unavailable. Please try again in a moment.');
                 setAllDesigns([]);
                 setIsLoading(false);
                 setServerTotalCount(null);
               }
               return;
             }
-            traceGeneratedFallbackActivation(
-              'portal-ready-design-bounded-page@generated-first-r015',
-              'generated-catalog-terminal-failure',
-              { app: 'portal', triggerReason: 'route' },
-            );
           }
-        } else if (!allowsFirestoreFallback) {
-            if (!isCancelled && generation === hydrateGenerationRef.current) {
-              setError('Catalog search is temporarily unavailable. Please try again in a moment.');
-              setAllDesigns([]);
-              setIsLoading(false);
-              setServerTotalCount(null);
-            }
-            return;
+
+          // Stage 4: no generated Storage fallback. Algolia off → fail closed for managed search.
+          if (!isCancelled && generation === hydrateGenerationRef.current) {
+            setError('Catalog search is temporarily unavailable. Please try again in a moment.');
+            setAllDesigns([]);
+            setIsLoading(false);
+            setServerTotalCount(null);
+          }
+          return;
         }
 
+        // Phase 1A ordinary path: bounded Firestore (unfiltered / category / single-tag / discovery).
         const firstPage = await catalogService.listReadyDesignsPageWithSortFallback({
           ...serverListQuery,
           limitCount: pageSize,
@@ -258,7 +243,14 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
           return;
         }
 
-        // Remaining normal-browse pages load only via the bounded cursor.
+        // Optional count for ordinary pages (bounded aggregation; not per-card).
+        void catalogService.countReadyDesigns(serverListQuery).then((total) => {
+          if (!isCancelled && generation === hydrateGenerationRef.current) {
+            setServerTotalCount(total);
+          }
+        }).catch(() => {
+          // Count is best-effort; page list already succeeded.
+        });
       } catch (loadError) {
         if (!isCancelled && generation === hydrateGenerationRef.current) {
           setError(toFriendlyCatalogError(loadError));
@@ -274,9 +266,7 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
     return () => {
       isCancelled = true;
     };
-    // Server or generated-filter changes reset the page.
   }, [
-    allowsFirestoreFallback,
     needsFullHydrate,
     options.categoryId,
     options.discoveryMode,
@@ -286,13 +276,18 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
     selectedTagsKey,
     serverListQuery,
     serverListQueryKey,
+    useAlgoliaSearch,
+    useManagedSearch,
+    useOrdinaryFirestore,
   ]);
 
+  // Managed search (Algolia) already applied q/tags/category — do not re-filter
+  // client-side (would discard Algolia typo-tolerant hits that fail substring match).
   const filteredDesigns = useFilteredCatalogDesigns({
     designs: allDesigns,
-    search: options.searchQuery ?? '',
-    categoryId: options.categoryId,
-    selectedTags: options.selectedTags,
+    search: isManagedSearchQuery ? '' : (options.searchQuery ?? ''),
+    categoryId: isManagedSearchQuery ? undefined : options.categoryId,
+    selectedTags: isManagedSearchQuery ? [] : options.selectedTags,
   });
 
   useEffect(() => {
@@ -305,41 +300,50 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
   );
 
   const clientWindowHasMore = visibleCount < filteredDesigns.length;
-  const generatedHasMore =
-    isGeneratedQuery && serverTotalCount !== null && allDesigns.length < serverTotalCount;
-  const hasMore = isGeneratedQuery
-    ? generatedHasMore || clientWindowHasMore
+  const managedSearchHasMore =
+    isManagedSearchQuery &&
+    serverTotalCount !== null &&
+    managedSearchNextOffset < serverTotalCount;
+  const hasMore = isManagedSearchQuery
+    ? managedSearchHasMore || clientWindowHasMore
     : isFullyHydrated
       ? clientWindowHasMore
       : serverHasMore;
   const matchingCount =
     isHydrating && needsFullHydrate
       ? null
-      : isGeneratedQuery
+      : isManagedSearchQuery
         ? (serverTotalCount ?? filteredDesigns.length)
         : isFullyHydrated
           ? filteredDesigns.length
         : (serverTotalCount ?? filteredDesigns.length);
 
   const loadMoreDesigns = useCallback(() => {
-    if (isGeneratedQuery) {
-      if (generatedHasMore && !isLoadingMore) {
+    if (isManagedSearchQuery) {
+      if (managedSearchHasMore && !isLoadingMore) {
         void (async () => {
           setIsLoadingMore(true);
           try {
-            const page = await portalCatalogAssetService.listMatchingDesigns(
-              options.searchQuery ?? '',
-              selectedTagsForAssets,
-              {
-                categoryId: options.categoryId,
-                limit: pageSize,
-                offset: allDesigns.length,
-              },
-            );
-            setAllDesigns((current) => [...current, ...page.designs]);
-            setServerTotalCount(page.total);
-            setVisibleCount((current) => current + pageSize);
-            setIsFullyHydrated(allDesigns.length + page.designs.length >= page.total);
+            const requestOffset = managedSearchNextOffset;
+            if (useAlgoliaSearch) {
+              const page = await portalAlgoliaCatalogSearchService.listMatchingDesigns(
+                options.searchQuery ?? '',
+                selectedTagsForAssets,
+                {
+                  categoryId: options.categoryId,
+                  limit: pageSize,
+                  offset: requestOffset,
+                },
+              );
+              const nextOffset = requestOffset + page.hitCount;
+              setAllDesigns((current) => [...current, ...page.designs]);
+              setServerTotalCount(page.total);
+              setManagedSearchNextOffset(nextOffset);
+              setVisibleCount((current) => current + pageSize);
+              setIsFullyHydrated(nextOffset >= page.total || page.hitCount === 0);
+            } else {
+              setError('Catalog search is temporarily unavailable. Please try again in a moment.');
+            }
           } catch (loadError) {
             setError(toFriendlyCatalogError(loadError));
           } finally {
@@ -396,11 +400,11 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
       }
     })();
   }, [
-    allDesigns.length,
     clientWindowHasMore,
-    generatedHasMore,
+    managedSearchHasMore,
+    managedSearchNextOffset,
     isFullyHydrated,
-    isGeneratedQuery,
+    isManagedSearchQuery,
     isLoadingMore,
     nextCursor,
     options.categoryId,
@@ -409,6 +413,7 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
     selectedTagsForAssets,
     serverHasMore,
     serverListQuery,
+    useAlgoliaSearch,
   ]);
 
   return {
@@ -441,26 +446,7 @@ export function useCatalogHomeDesigns(): {
       setError(null);
 
       try {
-        let nextDesigns: CatalogDesign[];
-        if (generatedPortalCatalogEnabled()) {
-          try {
-            nextDesigns = await portalCatalogAssetService.listDiscoverDesigns();
-            traceGeneratedAssetOutcome(
-              'success',
-              'portal-catalog-discover@generated-first-r015',
-              { app: 'portal', triggerReason: 'route' },
-            );
-          } catch {
-            traceGeneratedAssetOutcome(
-              'failure',
-              'portal-catalog-discover@generated-first-r015',
-              { app: 'portal', triggerReason: 'route' },
-            );
-            throw new Error('Catalog discovery is temporarily unavailable.');
-          }
-        } else {
-          throw new Error('Catalog discovery is temporarily unavailable.');
-        }
+        const nextDesigns = await catalogService.listHomeDiscoveryPool();
 
         if (!isCancelled) {
           setDesigns(nextDesigns);
