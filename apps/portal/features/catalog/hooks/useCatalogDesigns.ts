@@ -6,12 +6,17 @@ import {
   CATALOG_NEW_THIS_WEEK_DAYS,
   type CatalogDiscoveryMode,
 } from '@fresh-prints/shared/utils/catalogDiscoveryRanking';
-import { catalogService, DEFAULT_CATALOG_PAGE_SIZE } from '../services/catalogService';
+import {
+  catalogService,
+  DEFAULT_CATALOG_PAGE_SIZE,
+  getDesignSortValue,
+} from '../services/catalogService';
 import { isPortalAlgoliaCatalogConfigured } from '../services/portalAlgoliaCatalogFlags';
 import { portalAlgoliaCatalogSearchService } from '../services/portalAlgoliaCatalogSearchService';
 import type {
   CatalogCategory,
   CatalogDesign,
+  CatalogDesignListCursor,
   CatalogDesignListQuery,
   CatalogDesignSortField,
 } from '../types/catalog.types';
@@ -29,6 +34,126 @@ export interface UseCatalogDesignsQuery {
   discoveryMode?: CatalogDiscoveryMode | null;
   pageSize?: number;
   searchQuery?: string;
+}
+
+/** Aggregate-count authority for ordinary Firestore library badges (TD-031). */
+export type CatalogCountAuthorityState =
+  | { status: 'idle' }
+  | { status: 'pending' }
+  | { status: 'resolved'; total: number }
+  | { status: 'failed' };
+
+/**
+ * Badge total for ordinary Firestore browse.
+ * Never treat first-page loaded length as membership while paging may continue.
+ */
+export function resolveOrdinaryMatchingCount(args: {
+  countAuthority: CatalogCountAuthorityState;
+  loadedCount: number;
+  isFullyHydrated: boolean;
+}): number | null {
+  if (args.countAuthority.status === 'resolved') {
+    return args.countAuthority.total;
+  }
+  // All rows loaded — loaded count is the true membership even if aggregate failed.
+  if (args.isFullyHydrated) {
+    return args.loadedCount;
+  }
+  // pending / failed / idle while incomplete: do not advertise page size as the total.
+  return null;
+}
+
+/** Whether the library badge should show “Counting designs…” instead of a number. */
+export function shouldShowOrdinaryCountPending(args: {
+  countAuthority: CatalogCountAuthorityState;
+  isFullyHydrated: boolean;
+}): boolean {
+  if (args.countAuthority.status === 'pending') {
+    return true;
+  }
+  // Failed aggregate while more pages may exist — never flash a fake loaded-page total.
+  if (args.countAuthority.status === 'failed' && !args.isFullyHydrated) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * If aggregate membership exceeds the first page but the list claimed end-of-results,
+ * restore a cursor from the last loaded design so Load more can continue.
+ */
+export function reconcilePagingWithAggregateCount(args: {
+  loadedDesigns: CatalogDesign[];
+  listHasMore: boolean;
+  listNextCursor: CatalogDesignListCursor | undefined;
+  aggregateTotal: number;
+  sortField: CatalogDesignSortField;
+}): {
+  hasMore: boolean;
+  nextCursor: CatalogDesignListCursor | undefined;
+  isFullyHydrated: boolean;
+} {
+  const loadedCount = args.loadedDesigns.length;
+  const listIncomplete = Boolean(args.listHasMore && args.listNextCursor);
+
+  if (args.aggregateTotal > loadedCount && !listIncomplete) {
+    const lastDesign = args.loadedDesigns.at(-1);
+    if (lastDesign) {
+      return {
+        hasMore: true,
+        nextCursor: {
+          designId: lastDesign.id,
+          sortValue: getDesignSortValue(lastDesign, args.sortField),
+        },
+        isFullyHydrated: false,
+      };
+    }
+  }
+
+  if (!listIncomplete) {
+    return {
+      hasMore: false,
+      nextCursor: undefined,
+      isFullyHydrated: true,
+    };
+  }
+
+  return {
+    hasMore: true,
+    nextCursor: args.listNextCursor,
+    isFullyHydrated: false,
+  };
+}
+
+/** One retry on transient aggregate failures; list/Load more stay independent. */
+export async function fetchReadyDesignCountWithRetry(
+  countFn: (query: CatalogDesignListQuery) => Promise<number>,
+  query: CatalogDesignListQuery,
+): Promise<{ ok: true; total: number } | { ok: false }> {
+  try {
+    return { ok: true, total: await countFn(query) };
+  } catch {
+    try {
+      return { ok: true, total: await countFn(query) };
+    } catch {
+      return { ok: false };
+    }
+  }
+}
+
+export function appendCatalogDesignPageWithoutDuplicates(
+  current: CatalogDesign[],
+  pageDesigns: CatalogDesign[],
+): CatalogDesign[] {
+  const seen = new Set(current.map((design) => design.id));
+  const next = [...current];
+  for (const design of pageDesigns) {
+    if (!seen.has(design.id)) {
+      seen.add(design.id);
+      next.push(design);
+    }
+  }
+  return next;
 }
 
 /** First-viewport thumbnails may load eagerly; below-fold stay lazy. */
@@ -122,10 +247,12 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
   const [allDesigns, setAllDesigns] = useState<CatalogDesign[]>([]);
   const [visibleCount, setVisibleCount] = useState(pageSize);
   const [isLoading, setIsLoading] = useState(true);
-  const isHydrating = false;
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [serverTotalCount, setServerTotalCount] = useState<number | null>(null);
+  const [countAuthority, setCountAuthority] = useState<CatalogCountAuthorityState>({
+    status: 'idle',
+  });
   const [nextCursor, setNextCursor] = useState<CatalogDesignListQuery['cursor']>(undefined);
   const [serverHasMore, setServerHasMore] = useState(false);
   const [isFullyHydrated, setIsFullyHydrated] = useState(false);
@@ -176,6 +303,7 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
       setAllDesigns([]);
       setVisibleCount(pageSize);
       setServerTotalCount(null);
+      setCountAuthority({ status: 'idle' });
       setNextCursor(undefined);
       setServerHasMore(false);
       setIsFullyHydrated(false);
@@ -195,6 +323,10 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
               const nextOffset = algoliaPage.hitCount;
               setAllDesigns(algoliaPage.designs);
               setServerTotalCount(algoliaPage.total ?? algoliaPage.designs.length);
+              setCountAuthority({
+                status: 'resolved',
+                total: algoliaPage.total ?? algoliaPage.designs.length,
+              });
               setManagedSearchNextOffset(nextOffset);
               setIsFullyHydrated(nextOffset >= algoliaPage.total || algoliaPage.hitCount === 0);
               setIsManagedSearchQuery(true);
@@ -206,6 +338,7 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
                 setAllDesigns([]);
                 setIsLoading(false);
                 setServerTotalCount(null);
+                setCountAuthority({ status: 'failed' });
               }
               return;
             }
@@ -217,6 +350,7 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
             setAllDesigns([]);
             setIsLoading(false);
             setServerTotalCount(null);
+            setCountAuthority({ status: 'failed' });
           }
           return;
         }
@@ -231,32 +365,50 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
           return;
         }
 
+        const listHasMore = Boolean(firstPage.hasMore && firstPage.nextCursor);
         setAllDesigns(firstPage.designs);
         setIsLoading(false);
         setNextCursor(firstPage.nextCursor);
-        setServerHasMore(Boolean(firstPage.hasMore && firstPage.nextCursor));
-        setServerTotalCount(firstPage.designs.length);
+        setServerHasMore(listHasMore);
+        setIsFullyHydrated(!listHasMore);
+        // Do NOT seed badge from firstPage.designs.length — aggregate is authority (TD-031).
+        setCountAuthority({ status: 'pending' });
 
-        if (!firstPage.hasMore || !firstPage.nextCursor) {
-          setIsFullyHydrated(true);
-          setServerTotalCount((current) => current ?? firstPage.designs.length);
+        const countResult = await fetchReadyDesignCountWithRetry(
+          (query) => catalogService.countReadyDesigns(query),
+          serverListQuery,
+        );
+
+        if (isCancelled || generation !== hydrateGenerationRef.current) {
           return;
         }
 
-        // Optional count for ordinary pages (bounded aggregation; not per-card).
-        void catalogService.countReadyDesigns(serverListQuery).then((total) => {
-          if (!isCancelled && generation === hydrateGenerationRef.current) {
-            setServerTotalCount(total);
-          }
-        }).catch(() => {
-          // Count is best-effort; page list already succeeded.
-        });
+        if (countResult.ok) {
+          const sortField = serverListQuery.sortField ?? 'readyAt';
+          const reconciled = reconcilePagingWithAggregateCount({
+            loadedDesigns: firstPage.designs,
+            listHasMore: Boolean(firstPage.hasMore),
+            listNextCursor: firstPage.nextCursor,
+            aggregateTotal: countResult.total,
+            sortField,
+          });
+          setServerTotalCount(countResult.total);
+          setCountAuthority({ status: 'resolved', total: countResult.total });
+          setNextCursor(reconciled.nextCursor);
+          setServerHasMore(reconciled.hasMore);
+          setIsFullyHydrated(reconciled.isFullyHydrated);
+        } else {
+          // Keep cursor-driven Load more; never promote loaded page length to badge authority.
+          setCountAuthority({ status: 'failed' });
+          setServerTotalCount(null);
+        }
       } catch (loadError) {
         if (!isCancelled && generation === hydrateGenerationRef.current) {
           setError(toFriendlyCatalogError(loadError));
           setAllDesigns([]);
           setIsLoading(false);
           setServerTotalCount(null);
+          setCountAuthority({ status: 'failed' });
         }
       }
     }
@@ -309,14 +461,23 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
     : isFullyHydrated
       ? clientWindowHasMore
       : serverHasMore;
-  const matchingCount =
-    isHydrating && needsFullHydrate
+
+  const isHydrating = isManagedSearchQuery
+    ? false
+    : shouldShowOrdinaryCountPending({
+        countAuthority,
+        isFullyHydrated,
+      });
+
+  const matchingCount = isManagedSearchQuery
+    ? needsFullHydrate && isLoading
       ? null
-      : isManagedSearchQuery
-        ? (serverTotalCount ?? filteredDesigns.length)
-        : isFullyHydrated
-          ? filteredDesigns.length
-        : (serverTotalCount ?? filteredDesigns.length);
+      : (serverTotalCount ?? filteredDesigns.length)
+    : resolveOrdinaryMatchingCount({
+        countAuthority,
+        loadedCount: filteredDesigns.length,
+        isFullyHydrated,
+      });
 
   const loadMoreDesigns = useCallback(() => {
     if (isManagedSearchQuery) {
@@ -376,21 +537,34 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
           cursor: nextCursor,
           limitCount: pageSize,
         });
+        let nextLoadedCount = 0;
+        let lastLoaded: CatalogDesign | undefined;
         setAllDesigns((current) => {
-          const seen = new Set(current.map((design) => design.id));
-          const next = [...current];
-          for (const design of page.designs) {
-            if (!seen.has(design.id)) {
-              seen.add(design.id);
-              next.push(design);
-            }
-          }
+          const next = appendCatalogDesignPageWithoutDuplicates(current, page.designs);
+          nextLoadedCount = next.length;
+          lastLoaded = next.at(-1);
           return next;
         });
-        setNextCursor(page.nextCursor);
-        setServerHasMore(Boolean(page.hasMore && page.nextCursor));
-        if (!page.hasMore) {
-          setIsFullyHydrated(true);
+        const listIncomplete = Boolean(page.hasMore && page.nextCursor);
+        if (
+          countAuthority.status === 'resolved' &&
+          countAuthority.total > nextLoadedCount &&
+          !listIncomplete &&
+          lastLoaded
+        ) {
+          const sortField = serverListQuery.sortField ?? 'readyAt';
+          setNextCursor({
+            designId: lastLoaded.id,
+            sortValue: getDesignSortValue(lastLoaded, sortField),
+          });
+          setServerHasMore(true);
+          setIsFullyHydrated(false);
+        } else {
+          setNextCursor(page.nextCursor);
+          setServerHasMore(listIncomplete);
+          if (!listIncomplete) {
+            setIsFullyHydrated(true);
+          }
         }
         setVisibleCount((current) => current + pageSize);
       } catch (loadError) {
@@ -401,6 +575,7 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
     })();
   }, [
     clientWindowHasMore,
+    countAuthority,
     managedSearchHasMore,
     managedSearchNextOffset,
     isFullyHydrated,
