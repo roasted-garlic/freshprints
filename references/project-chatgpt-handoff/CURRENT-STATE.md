@@ -1,5 +1,264 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-08-08 - TD-031 NTW SOURCE PROMOTED + SCHEDULE COMPANION READY — STOP BEFORE APP HOSTING
+
+Managed goal: `portal-discover-view-all-complete-pagination`.
+PR **#44 MERGED** — production **`c181f5694bde83ddee26863a0a6a8d546c39619e`** (contains `82ea610`).
+Live App Hosting: **100%** `build-2026-08-08-003` — NTW count corrective **NOT LIVE**.
+Record: `docs/workflow/reviews/2026-08-08-portal-discover-ntw-count-badge-corrective-source-promotion-record.md`
+**Companion (same goal):** PR **#45** `fix/portal-schedule-prop-wiring` @ **`3fb2a8d`** — merge to `production` before App Hosting (do not leave as stray local diff).
+Gate: `docs/workflow/reviews/2026-08-08-portal-discover-ntw-count-badge-corrective-app-hosting-gate.md`
+Next: merge PR #45 → then `APPROVE PROD DISCOVER NTW COUNT BADGE APP HOSTING ROLLOUT` using production tip SHA.
+Confirmations: NO App Hosting / Rules / Functions / indexes / Algolia / data this pass
+
+## 2026-08-08 - TD-031 NTW COUNT SOURCE PROMOTED — LIVE STILL build-2026-08-08-003 — STOP
+
+Managed goal: `portal-discover-view-all-complete-pagination` (NTW count corrective).
+PR **#44 MERGED** — merge SHA **`c181f5694bde83ddee26863a0a6a8d546c39619e`** (parents `9f3a01a` + `82ea610`).
+`origin/production` = `c181f56`; contains approved corrective `82ea610`.
+Live App Hosting: **100%** `build-2026-08-08-003` — corrective **NOT LIVE** (NTW Counting defect still present).
+Record: `docs/workflow/reviews/2026-08-08-portal-discover-ntw-count-badge-corrective-source-promotion-record.md`
+Gate: `docs/workflow/reviews/2026-08-08-portal-discover-ntw-count-badge-corrective-app-hosting-gate.md`
+Next: `APPROVE PROD DISCOVER NTW COUNT BADGE APP HOSTING ROLLOUT`
+Confirmations: NO App Hosting / Rules / Functions / indexes / Algolia / data mutation this pass
+
+## 2026-08-08 - TD-031 NTW COUNT SOURCE PROMOTION — LOCAL COMMIT READY; PUSH/PR HOOK-BLOCKED — STOP
+
+Managed goal: `portal-discover-view-all-complete-pagination` (NTW count corrective).
+Owner: `APPROVE PROD DISCOVER NTW COUNT BADGE SOURCE PROMOTION`
+Local branch `fix/portal-discover-ntw-count-badge-corrective` @ **`82ea610`** (base `9f3a01a`).
+Diff containment **PASS**. Live still **`build-2026-08-08-003`** — corrective **NOT LIVE**.
+`git push` + `gh pr create --base production` **blocked by Cursor hook**.
+Record: `docs/workflow/reviews/2026-08-08-portal-discover-ntw-count-badge-corrective-source-promotion-record.md`
+Gate: `docs/workflow/reviews/2026-08-08-portal-discover-ntw-count-badge-corrective-app-hosting-gate.md`
+**Owner:** push + create/merge PR to `production`, then continue post-merge verify.
+Next after merge: `APPROVE PROD DISCOVER NTW COUNT BADGE APP HOSTING ROLLOUT`
+Confirmations: NO App Hosting / Rules / Functions / indexes / Algolia / data mutation
+
+## 2026-08-08 - TD-031 NTW COUNT CORRECTIVE IMPLEMENT+TEST+IMPL-REVIEW — approved — STOP BEFORE PROD DEPLOY
+
+Managed goal: `portal-discover-view-all-complete-pagination` — **NOT signed off**.
+Corrective implement **complete**: NTW `countReadyDesigns` uses readyAt/__name__ DESC orderBy; failed UI → **Count unavailable**.
+Tests: **42/42**; Portal typecheck/lint/build/diff-check **PASS**.
+Implementation Review: **approved** —
+`docs/workflow/reviews/2026-08-08-portal-discover-ntw-count-badge-corrective-implementation-review.md`
+Owner QA checklist: `docs/workflow/reviews/2026-08-08-portal-discover-ntw-count-badge-corrective-owner-qa-checklist.md`
+**STOP BEFORE PRODUCTION DEPLOYMENT.**
+Next: separate source promotion phrase (then App Hosting + `DISCOVER VIEW ALL PAGINATION QA: PASS`).
+Live still `build-2026-08-08-003` (NTW Counting defect until corrective rolls).
+Confirmations: NO App Hosting / Rules / Functions / indexes / Algolia / data mutation
+
+## 2026-08-08 - TD-031 QA FAIL — NTW COUNT BADGE CORRECTIVE PLAN+REVIEW — STOP BEFORE IMPLEMENT
+
+Managed goal: `portal-discover-view-all-complete-pagination` — **NOT signed off**.
+Owner: `DISCOVER VIEW ALL PAGINATION QA: FAIL` — NTW badge stuck on **“Counting designs…”**; other View All totals OK.
+Root cause (plan): (1) NTW `countReadyDesigns` lacks list-aligned readyAt DESC orderBy vs DESC-only indexes → aggregate fails; (2) failed+incomplete mapped to same Counting UI as pending.
+Corrective Plan: `docs/workflow/plans/2026-08-08-portal-discover-ntw-count-badge-corrective-plan.md`
+Formal Review: **approved_with_changes** —
+`docs/workflow/reviews/2026-08-08-portal-discover-ntw-count-badge-corrective-plan-review.md`
+**STOP BEFORE IMPLEMENTATION.**
+Next: `IMPLEMENT PORTAL DISCOVER NTW COUNT BADGE CORRECTIVE`
+Live still `build-2026-08-08-003` (pagination Load more live; NTW count badge defective).
+Confirmations: NO implement / App Hosting / Rules / Functions / indexes / Algolia this pass
+
+## 2026-08-08 - TD-031 APP HOSTING LIVE build-2026-08-08-003 / OWNER QA PENDING — STOP
+
+Managed goal: `portal-discover-view-all-complete-pagination` (TD-031).
+Owner CLI rollout **SUCCEEDED**: **`build-2026-08-08-003`** @ commit `9f3a01a` (contains `a01a9dc`); traffic **100%**.
+Technical smoke **PASS** (`/` `/catalog` `/catalog?discover=new` 200; no `fresh-prints-dev`; Algolia OFF).
+Record: `docs/workflow/reviews/2026-08-08-portal-discover-view-all-complete-pagination-app-hosting-rollout-record.md`
+**OWNER QA REQUIRED** — checklist:
+`docs/workflow/reviews/2026-08-08-portal-discover-view-all-complete-pagination-owner-qa-checklist.md`
+Reply: `DISCOVER VIEW ALL PAGINATION QA: PASS` (or FAIL / PASS WITH NOTES)
+Confirmations: NO Rules/Functions/indexes/Algolia/data mutation this pass
+
+## 2026-08-08 - TD-031 APP HOSTING ROLLOUT — PREFLIGHT PASS; HOOK-BLOCKED — STOP
+
+Managed goal: `portal-discover-view-all-complete-pagination` (TD-031).
+Owner: `APPROVE PROD DISCOVER VIEW ALL PAGINATION APP HOSTING ROLLOUT`
+Preflight **PASS**: `origin/production`=`9f3a01a` contains `a01a9dc`; live still `build-2026-08-08-002` @100%; Algolia OFF.
+Rollout **not executed** — Cursor hook blocked `firebase apphosting:rollouts:create`.
+Owner command:
+`firebase apphosting:rollouts:create fresh-prints-portal --project fresh-prints-prod --git-commit 9f3a01ae0585d607f9a332dad2c86ad2a541548b --force`
+Record: `docs/workflow/reviews/2026-08-08-portal-discover-view-all-complete-pagination-app-hosting-rollout-record.md`
+After SUCCEEDED: agent smoke + owner QA (`DISCOVER VIEW ALL PAGINATION QA: PASS`).
+Confirmations: NO Rules/Functions/indexes/Algolia/data mutation this pass
+
+## 2026-08-08 - TD-031 SOURCE PROMOTED — LIVE STILL build-2026-08-08-002 — STOP
+
+Managed goal: `portal-discover-view-all-complete-pagination` (TD-031).
+PR **#43 MERGED** — merge SHA **`9f3a01ae0585d607f9a332dad2c86ad2a541548b`** (parents `ccfc974` + `a01a9dc`).
+`origin/production` = `9f3a01a`; contains approved fix `a01a9dc`.
+Live App Hosting: **100%** `build-2026-08-08-002` — pagination/count fix **NOT LIVE**.
+Record: `docs/workflow/reviews/2026-08-08-portal-discover-view-all-complete-pagination-source-promotion-record.md`
+Gate: `docs/workflow/reviews/2026-08-08-portal-discover-view-all-complete-pagination-app-hosting-gate.md`
+Next: `APPROVE PROD DISCOVER VIEW ALL PAGINATION APP HOSTING ROLLOUT`
+Confirmations: NO App Hosting / Rules / Functions / indexes / Algolia / data mutation this pass
+
+## 2026-08-08 - TD-031 SOURCE PROMOTION — PREFLIGHT PASS; PR HOOK-BLOCKED — STOP
+
+Managed goal: `portal-discover-view-all-complete-pagination` (TD-031).
+Owner: `APPROVE PROD DISCOVER VIEW ALL PAGINATION SOURCE PROMOTION`
+Branch pushed: `fix/portal-discover-view-all-complete-pagination` @ **`a01a9dc`**
+`origin/production` still **`ccfc974`** (unchanged). Diff containment **PASS** (hook files only + docs).
+PR create **blocked** by Cursor hook (`gh pr create --base production`).
+Live App Hosting: **100%** `build-2026-08-08-002` — pagination fix **NOT LIVE**.
+Record: `docs/workflow/reviews/2026-08-08-portal-discover-view-all-complete-pagination-source-promotion-record.md`
+Gate: `docs/workflow/reviews/2026-08-08-portal-discover-view-all-complete-pagination-app-hosting-gate.md`
+**Owner:** create+merge PR to `production` (or approve hook card), then continue post-merge verify.
+Next after merge: `APPROVE PROD DISCOVER VIEW ALL PAGINATION APP HOSTING ROLLOUT`
+Confirmations: NO App Hosting / Rules / Functions / indexes / Algolia / data mutation
+
+## 2026-08-08 - TD-031 IMPLEMENT+TEST+IMPL-REVIEW — approved — STOP BEFORE PROD DEPLOY
+
+Managed goal: `portal-discover-view-all-complete-pagination` (TD-031).
+Source implement **complete** in `useCatalogDesigns` (aggregate count authority + Load more reconcile).
+Tests: **37/37** focused + Stage 1b-C; Portal typecheck/lint/build/diff-check **PASS**.
+Implementation Review: **approved** —
+`docs/workflow/reviews/2026-08-08-portal-discover-view-all-complete-pagination-implementation-review.md`
+Test report: `docs/workflow/reviews/2026-08-08-portal-discover-view-all-complete-pagination-test-report.md`
+Owner QA checklist: `docs/workflow/reviews/2026-08-08-portal-discover-view-all-complete-pagination-owner-qa-checklist.md`
+**STOP BEFORE PRODUCTION DEPLOYMENT.**
+Next: separate source promotion / App Hosting rollout phrase, then owner QA.
+Confirmations: NO App Hosting / Rules / Functions / indexes / Algolia / readyAt / Storage / taxonomy
+
+## 2026-08-08 - TD-031 PLAN+REVIEW — approved_with_changes — STOP BEFORE IMPLEMENT
+
+Managed goal: `portal-discover-view-all-complete-pagination` (TD-031).
+Plan: `docs/workflow/plans/2026-08-08-portal-discover-view-all-complete-pagination-plan.md`
+Formal Review: **approved_with_changes** —
+`docs/workflow/reviews/2026-08-08-portal-discover-view-all-complete-pagination-plan-review.md`
+Root cause: `/catalog` View All uses `useCatalogDesigns`; first page size 40; badge seeded from loaded length; Load more already exists — fix count authority + paging completeness; do **not** raise page size / enable Algolia / touch Home/readyAt/PR#40.
+**STOP BEFORE IMPLEMENTATION.**
+Next owner phrase: `IMPLEMENT PORTAL DISCOVER VIEW ALL COMPLETE PAGINATION`
+Confirmations: NO implement / App Hosting / Rules / Functions / Algolia this pass
+
+## 2026-08-08 - PROD READYAT BACKFILL SIGNOFF — approved_with_notes — R-018 RESOLVED — STOP
+
+Managed goal: `prod-readyat-backfill` — **CLOSED**.
+Signoff: **approved_with_notes** —
+`docs/workflow/reviews/2026-08-08-prod-readyat-backfill-signoff.md`
+APPLY 46/46; NTW populated; post-write verify PASS; owner QA **PASS WITH NOTES**.
+**R-018 resolved.** Separate follow-up **TD-031**: Discover View All badge/list shows 40 vs membership 45 — now in Plan+Review (see above).
+Confirmations: NO pagination fix / App Hosting / Rules / Functions / Algolia this pass
+
+## 2026-08-08 - PROD READYAT BACKFILL APPLIED — OWNER NTW QA PENDING — STOP
+
+Owner: `APPROVE PROD READYAT BACKFILL APPLY` — owner CLI complete (46 updated).
+Post-write verify **PASS**: ready **46** · readyAt **46/46** · missing **0** · all seeds match `aiReviewedAt` · NTW membership **45**.
+Record: `docs/workflow/reviews/2026-08-08-prod-readyat-backfill-apply-record.md`
+**R-018 still OPEN** until owner NTW visual QA.
+Reply: `READYAT BACKFILL NTW QA: PASS` (or FAIL / PASS WITH NOTES)
+Confirmations: NO App Hosting/Rules/Functions/indexes/Algolia/further mutation
+
+## 2026-08-08 - PROD READYAT BACKFILL APPLY — PREFLIGHT PASS; HOOK-BLOCKED — STOP
+
+Owner: `APPROVE PROD READYAT BACKFILL APPLY`
+Preflight **PASS**: script unchanged; indexes 4/4 READY; candidates still 46/0/46 all `aiReviewedAt`.
+APPLY **not executed** — Cursor hook blocked production mutation.
+Owner PowerShell:
+`$env:FIREBASE_PROJECT_ID='fresh-prints-prod'; $env:ALLOW_NON_DEV='1'; $env:APPLY='1'; node functions/scripts/backfill-design-ready-at.mjs`
+Record: `docs/workflow/reviews/2026-08-08-prod-readyat-backfill-apply-record.md`
+After owner APPLY success: continue post-write verify → NTW QA → Signoff / R-018.
+Confirmations: NO agent writes / NO App Hosting / Rules / Functions / Algolia
+
+## 2026-08-08 - PROD READYAT BACKFILL DRY-RUN — GO (A) — STOP BEFORE WRITES
+
+Owner: `APPROVE PROD READYAT BACKFILL DRY-RUN`
+Project: `fresh-prints-prod` · source `ccfc974` · script `functions/scripts/backfill-design-ready-at.mjs`
+Read-only: ready **46** / alreadySet **0** / needsBackfill **46** / no-seed **0**
+Seeds: **aiReviewedAt 46** · updatedAt **0** · createdAt **0**
+Proposed age: **45** within 7d · **1** in 8–30d
+Predicted New This Week View All after APPLY: **45** (all from aiReviewedAt); before View All: **0** (missing field)
+updatedAt risk: **none** · Classification **A SAFE TO APPLY AS-IS**
+Record: `docs/workflow/reviews/2026-08-08-prod-readyat-backfill-dry-run-record.md`
+R-018 still OPEN. Next: `APPROVE PROD READYAT BACKFILL APPLY` (do not run yet)
+Confirmations: NO APPLY / NO writes / NO Rules/Functions/indexes/App Hosting/Algolia
+
+## 2026-08-08 - HOME/DISCOVER REGRESSION SIGNOFF — approved_with_notes — STOP
+
+Managed goal: `prod-portal-home-discover-population-regression` — **CLOSED**.
+Signoff: **approved_with_notes** —
+`docs/workflow/reviews/2026-08-08-prod-portal-home-discover-population-regression-signoff.md`
+Live: `build-2026-08-08-002` @ `ccfc974` (100%); readyAt indexes **4/4 READY**; Algolia **OFF**.
+Owner QA: **PASS WITH NOTES** — Home multi-design fixed; New This Week empty = legacy readyAt coverage (R-018), not a Home-pool failure.
+No backfill this pass. Recommended separate follow-up: `APPROVE PROD READYAT BACKFILL`
+Parent PR #40 remaining (Algolia RC-R3, Rules, cleanup) still separately gated — do not auto-start.
+Confirmations: NO Algolia/Functions/Rules/backfill/cleanup
+
+## 2026-08-08 - CORRECTIVE BUILD LIVE / OWNER CONTENT QA PENDING — STOP
+
+Managed goal: `prod-portal-home-discover-population-regression`
+Owner: `APPROVE PROD HOME DISCOVER APP HOSTING ROLLOUT` — **SUCCEEDED**.
+Build/rollout **`build-2026-08-08-002`** READY/SUCCEEDED; traffic **100%** @ `ccfc974` (contains `f5e9cf6`).
+Smoke: `/` + `/catalog` **200**; no `fresh-prints-dev`; Algolia OFF; readyAt **4/4 READY**.
+**AUTOMATED RUNTIME VERIFY: PASS** · **OWNER CONTENT QA: REQUIRED** (defect not closed).
+Record: `docs/workflow/reviews/2026-08-08-prod-portal-home-discover-population-regression-app-hosting-rollout-record.md`
+QA checklist: `docs/workflow/reviews/2026-08-08-prod-portal-home-discover-population-regression-owner-qa-checklist.md`
+Reply: `HOME DISCOVER CONTENT QA: PASS` (or FAIL / PASS WITH NOTES)
+Confirmations: NO Algolia/Functions/Rules/backfill/cleanup this pass
+
+## 2026-08-08 - HOME/DISCOVER APP HOSTING ROLLOUT — PREFLIGHT PASS; CLI HOOK-BLOCKED — STOP
+
+Managed goal: `prod-portal-home-discover-population-regression`
+Owner: `APPROVE PROD HOME DISCOVER APP HOSTING ROLLOUT`
+Preflight **PASS**: `production`=`ccfc974` contains `f5e9cf6`; traffic still `build-2026-08-08-001`@`1e65a43`; auto-rollout disabled; readyAt **4/4 READY**; Algolia OFF.
+Rollout **not executed** — Cursor hook blocked `firebase apphosting:rollouts:create`.
+Owner command:
+`firebase apphosting:rollouts:create fresh-prints-portal --project fresh-prints-prod --git-commit ccfc97487a42553146ea3186bde8f710a54b86ca --force`
+Record: `docs/workflow/reviews/2026-08-08-prod-portal-home-discover-population-regression-app-hosting-rollout-record.md`
+After SUCCEEDED: agent smoke + owner content QA (`HOME DISCOVER CONTENT QA: PASS`).
+Confirmations: NO Rules/Functions/indexes/Algolia/backfill this pass
+
+## 2026-08-08 - READYAT INDEXES LIVE 4/4 — LIVE PORTAL STILL AFFECTED — STOP
+
+Managed goal: `prod-portal-home-discover-population-regression`
+Owner: `APPROVE PROD READYAT INDEX DEPLOY` — **COMPLETE**.
+Indexes: **4/4 READY** on `fresh-prints-prod` (canonical compare PASS: 71/71, missing 0, unexpected 0).
+Source: `ccfc974` promoted; indexes deployed (owner CLI).
+Live App Hosting traffic **100%** on **`build-2026-08-08-001`** @ `1e65a43` — Home defect **STILL PRESENT**.
+Record: `docs/workflow/reviews/2026-08-08-prod-portal-home-discover-population-regression-index-deploy-record.md`
+Next: `APPROVE PROD HOME DISCOVER APP HOSTING ROLLOUT`
+Confirmations: NO App Hosting/Algolia/Rules/Functions/backfill this pass
+
+## 2026-08-08 - PROD READYAT INDEX DEPLOY — DELTA PASS; CLI HOOK-BLOCKED — STOP
+
+Managed goal: `prod-portal-home-discover-population-regression`
+Owner: `APPROVE PROD READYAT INDEX DEPLOY`
+Production source: `ccfc974` (verified).
+Pre-deploy live indexes: **67**; local: **71**; readyAt live: **0/4**.
+Canonical delta (**PASS**): CREATE exactly four readyAt composites; DELETE **NONE**; UNEXPECTED **NONE**.
+Deploy command **not executed** — Cursor hook blocked `firebase deploy --only firestore:indexes --project fresh-prints-prod`.
+Owner: approve Cursor card **or** run that command with `--non-interactive` (abort if delete prompted), then continue wait/verify.
+Record: `docs/workflow/reviews/2026-08-08-prod-portal-home-discover-population-regression-index-deploy-record.md`
+Live App Hosting still `build-2026-08-08-001` — Home defect **STILL PRESENT**.
+Next after 4/4 ENABLED: `APPROVE PROD HOME DISCOVER APP HOSTING ROLLOUT`
+
+## 2026-08-08 - HOME/DISCOVER SOURCE PROMOTED — LIVE PORTAL STILL AFFECTED — STOP
+
+Managed goal: `prod-portal-home-discover-population-regression`
+Owner: `APPROVE PROD HOME DISCOVER FIX PROMOTION` — **complete (Git only)**.
+PR **#42 MERGED** — merge SHA `ccfc97487a42553146ea3186bde8f710a54b86ca` (parents `1e65a43` + `f5e9cf6`).
+`origin/production` = `ccfc974`; contains approved fix `f5e9cf6`.
+Live App Hosting traffic **100%** on **`build-2026-08-08-001`** @ `1e65a43` — Home defect **STILL PRESENT**.
+Record: `docs/workflow/reviews/2026-08-08-prod-portal-home-discover-population-regression-source-promotion-record.md`
+Index gate (NOT executed): `docs/workflow/reviews/2026-08-08-prod-portal-home-discover-population-regression-index-deploy-gate.md`
+Next: `APPROVE PROD READYAT INDEX DEPLOY`
+Confirmations: NO index/App Hosting/Algolia/Rules/Functions/backfill this pass
+
+## 2026-08-08 - HOME/DISCOVER SOURCE PROMOTION — PR #42 OPEN; MERGE HOOK-BLOCKED — STOP
+
+Managed goal: `prod-portal-home-discover-population-regression`
+Owner: `APPROVE PROD HOME DISCOVER FIX PROMOTION`
+Feature: `fix/prod-home-discover-population` @ `f5e9cf62524e223aef7f2e289bad51e9b35b18d6`
+PR: **#42** https://github.com/roasted-garlic/freshprints/pull/42 — **MERGEABLE/CLEAN** vs `production` @ `1e65a43`
+**Agent could not complete `gh pr merge`** — Cursor hook blocked merge (source promotion only; not a runtime deploy).
+Live App Hosting still **`build-2026-08-08-001`** — Home defect **STILL PRESENT**.
+Record: `docs/workflow/reviews/2026-08-08-prod-portal-home-discover-population-regression-source-promotion-record.md`
+Index gate prep: `docs/workflow/reviews/2026-08-08-prod-portal-home-discover-population-regression-index-deploy-gate.md`
+Owner: run `gh pr merge 42 --merge --subject "Merge PR #42: restore Home discovery pool fallback"` (or approve Cursor merge card), then continue post-merge verify.
+Next after merge: `APPROVE PROD READYAT INDEX DEPLOY` (do not run yet)
+
 ## 2026-08-08 - HOME/DISCOVER SOURCE FIX APPROVED — PRODUCTION STILL AFFECTED — STOP
 
 Managed goal: `prod-portal-home-discover-population-regression`
