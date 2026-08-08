@@ -1,5 +1,21 @@
 # Recent Completed Work
 
+## 2026-08-08 - apphosting-env-secrets Signoff (approved_with_notes) + PR #40 plan integration
+
+- Plaintext production `NEXT_PUBLIC_*` removed from `apphosting.yaml` → Secret Manager `secret:` refs
+- Owner `APP HOSTING SECRETS READY` (eight secrets on fresh-prints-prod / fresh-prints-portal)
+- Signoff: `docs/workflow/reviews/2026-08-08-apphosting-env-secrets-signoff.md`
+- Folded into PR #40 promotion plan Checkpoint 2b (`APPROVE APP HOSTING ROLLOUT`)
+- STOP: no App Hosting rollout / PR merge without explicit phrases
+
+## 2026-08-08 - PR #40 production-promotion Plan + Formal Review (approved_with_changes)
+
+- Plan: `docs/workflow/plans/2026-08-08-pr-40-production-promotion-plan.md`
+- Review: **approved_with_changes** (RC-R1–RC-R7)
+- Stage 5 Signoff **MISSING**; PR #40 not merge-ready as-is
+- Next: `APPROVE STAGE 5 SIGNOFF` → `APPROVE PR 40 PRODUCTION PROMOTION PLAN`
+- STOP: no merge / deploy / production mutation
+
 ## 2026-08-07 - taxonomy-read-spike-elimination Signoff (approved_with_notes)
 
 - 45-design validation **PASS WITH NOTES** — Studio 0 tags/cats; ~139 vs ~1461 billable; Console peak 222 vs ~1.3K/1.4K; AI 8/8

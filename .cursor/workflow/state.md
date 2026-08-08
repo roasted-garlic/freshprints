@@ -10,17 +10,40 @@ Review Status (studio-automatic-updates): **approved_with_changes**, then **fina
 `docs/workflow/reviews/2026-08-02-studio-automatic-updates-final-signoff.md`
 Implement Status (updater): complete, live-proven beta.2 through beta.5
 DONE: no
-Human Checkpoint Required: yes — owner approval to proceed to Phase B (open production PR); signing-secret/PROD_FIREBASE_* population status; stable 1.0.0 publish approval; domain cutover phrase — all later phases
+Human Checkpoint Required: yes — (1) owner approval to proceed to Phase B (open production PR); signing-secret/PROD_FIREBASE_* population status; stable 1.0.0 publish approval; domain cutover phrase — all later phases; (2) optional: approve App Hosting rollout that consumes secret-backed `apphosting.yaml` (secrets already confirmed READY)
 Blocked: no
 Blocker: none
-Allowed Actions: docs; further audit; Phase B (open production PR) once approved
-Forbidden Actions: merging the production PR without approval; any production Firebase deploy; publishing stable Studio 1.0.0; any domain/DNS action without the exact cutover phrase; deleting `master`; broad Functions deploy; creating any dev App Hosting backend
-Next Required Step: Owner reviews the production convergence audit and approves Phase B (open production PR: base `production`, head `development`, merge commit)
+Allowed Actions: docs; further audit; Phase B (open production PR) once approved; App Hosting rollout only after explicit owner deploy approval
+Forbidden Actions: merging the production PR without approval; any production Firebase deploy without explicit approval; publishing stable Studio 1.0.0; any domain/DNS action without the exact cutover phrase; deleting `master`; broad Functions deploy; creating any dev App Hosting backend; pasting production env/secret values into chat
+Next Required Step: Owner reviews the production convergence audit and approves Phase B (open production PR: base `production`, head `development`, merge commit); **or** replies with explicit App Hosting rollout approval if the secret-backed YAML should go live now
 
 Background (not active gate): Goal #13 / clean Studio remediation / Stage 2 remain deferred; prior installer intermediate; domain cutover blocked until `APPROVE MYPRINTREQUEST.COM CUTOVER`.
 
+**Separate concurrent managed goal (2026-08-08):** `apphosting-env-secrets` — **SIGNOFF approved_with_notes** (**CLOSED** — do not reopen secrets create)
+- Bug verified + fixed: plaintext → `secret:` refs in `apps/portal/apphosting.yaml`.
+- Plan / Review / Test / Checkpoint / Signoff:
+  `docs/workflow/plans/2026-08-08-apphosting-env-secrets-plan.md`
+  `docs/workflow/reviews/2026-08-08-apphosting-env-secrets-review.md`
+  `docs/workflow/reviews/2026-08-08-apphosting-env-secrets-test-report.md`
+  `docs/workflow/reviews/2026-08-08-apphosting-env-secrets-checkpoint.md` (**PASS** — `APP HOSTING SECRETS READY`)
+  `docs/workflow/reviews/2026-08-08-apphosting-env-secrets-signoff.md`
+- Decision Log (2026-08-08): Owner confirmed eight App Hosting secrets created/granted on
+  `fresh-prints-prod` / `fresh-prints-portal`.
+- **Integrated into** `pr-40-production-promotion` plan (Checkpoint 2b / `APPROVE APP HOSTING ROLLOUT`).
+- Follow-up (not auto-run): next App Hosting rollout under separate production deploy approval.
+- Goal DONE for repo config hygiene; live cutover gated by explicit rollout phrase.
+
 **Separate concurrent managed goal (does not affect the gate above):**
 `post-launch-catalog-and-processing-stability`
+- **Follow-up PLAN+REVIEW COMPLETE — `pr-40-production-promotion`**
+  Plan: `docs/workflow/plans/2026-08-08-pr-40-production-promotion-plan.md`
+  Formal Review: **approved_with_changes** (RC-R1–RC-R7) —
+  `docs/workflow/reviews/2026-08-08-pr-40-production-promotion-plan-review.md`
+  **Amendment:** `apphosting-env-secrets` folded in (Firebase web secrets READY; rollout still gated).
+  Stage 5 Formal Signoff: **MISSING** (dev work recorded; parent Signoff absent).
+  PR #40 source: **not merge-ready as-is** until Stage 5 Signoff + prod inventory +
+  pre-merge verification + Algolia strategy.
+  STOP: no merge / deploy / App Hosting rollout / Algolia mutation / Storage cleanup / implement.
 - **Amendment 9** optimization set **closed** (P0/P1/P3/P4; P2 no-implement).
 - **Stage 1b D1 = A (Algolia)** selected. Stage 1b-A code implemented.
 - Implementation Review **APPROVED_WITH_CHANGES** (corrections applied in-review):
@@ -142,9 +165,11 @@ P3 Deploy record: `docs/workflow/reviews/2026-08-07-amendment-9-p3-dev-deploy-re
 Combined live QA: `docs/workflow/reviews/2026-08-07-amendment-9-combined-live-qa-attribution.md`
 P2 Formal Review: `docs/workflow/reviews/2026-08-07-amendment-9-p2-studio-tag-library-read-containment-review.md`
   (**approved — recommend NO IMPLEMENTATION**)
-Next for this goal: **STOP** — commit+push complete; PR #40 audited/refreshed (**unmerged**).
-  Local/remote HEAD `cb804ba`. Title/body updated to current cumulative scope.
-  Recommendation: **KEEP PR #40**. No Stage 6 / prod / PR merge / deploy / implement.
+Next for this goal: **STOP** — PR #40 production-promotion Plan + Formal Review
+  **approved_with_changes**; `apphosting-env-secrets` integrated (secrets READY; rollout gated).
+  Next owner: `APPROVE STAGE 5 SIGNOFF` (or draft Signoff),
+  then `APPROVE PR 40 PRODUCTION PROMOTION PLAN`.
+  No merge / App Hosting rollout / deploy / prod mutation.
 
 **Prior (still true):** Amendment 8 Phase 1B Stage 1a **Signoff approved**. Amendments 1–3
 closed. Generated search/multi-tag/facets remain temporary. Stage 1b blocked on owner D1.
@@ -243,6 +268,15 @@ archive write — none of these could be run live in this environment (no intera
 no Application Default Credentials for scripted checks beyond read-only CLI operations).
 
 Decision Log:
+- 2026-08-08 — Handoff: fold `apphosting-env-secrets` into `pr-40-production-promotion`.
+  Secrets create gate **closed** (`APP HOSTING SECRETS READY`). Plan amended with
+  Checkpoint 2b / `APPROVE APP HOSTING ROLLOUT`. No App Hosting deploy this pass.
+- 2026-08-08 — Owner `PR #40 — PRODUCTION PROMOTION + MERGE-READINESS PLANNING`.
+  Plan + Formal Review **approved_with_changes** (RC-R1–RC-R7).
+  Stage 5 Signoff **MISSING**. PR #40 not merge-ready as-is.
+  Plan: `docs/workflow/plans/2026-08-08-pr-40-production-promotion-plan.md`
+  Review: `docs/workflow/reviews/2026-08-08-pr-40-production-promotion-plan-review.md`
+  STOP: no merge/deploy/mutation/implement.
 - 2026-08-07 — Owner `45-DESIGN PERFORMANCE VALIDATION: AI SPOT CHECK PASS`.
   Final 45-design validation **PASS WITH NOTES**; parent Signoff **approved_with_notes**.
   Studio ~139 billable; 0 tags/cats; import 2.00/design; Console peak 222; AI 8/8.

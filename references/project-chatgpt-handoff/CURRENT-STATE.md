@@ -1,5 +1,35 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-08-08 - apphosting-env-secrets integrated into PR #40 promotion — STOP
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| `apphosting-env-secrets` | **SIGNOFF approved_with_notes** (CLOSED) |
+| Secrets create/grant | **PASS** — `APP HOSTING SECRETS READY` |
+| `apphosting.yaml` | `secret:` refs only (no plaintext Firebase web config) |
+| App Hosting rollout | **Not done** — needs `APPROVE APP HOSTING ROLLOUT` after YAML on `production` |
+| PR #40 promotion plan | Amended with Checkpoint 2b + rollout smoke |
+| Next | `APPROVE STAGE 5 SIGNOFF` → `APPROVE PR 40 PRODUCTION PROMOTION PLAN` |
+| Confirmations | NO App Hosting deploy / merge / secret values in chat |
+
+## 2026-08-08 - PR #40 PRODUCTION PROMOTION PLAN + REVIEW — approved_with_changes — STOP
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Plan | `docs/workflow/plans/2026-08-08-pr-40-production-promotion-plan.md` |
+| Formal Review | **approved_with_changes** (RC-R1–RC-R7) |
+| Review path | `docs/workflow/reviews/2026-08-08-pr-40-production-promotion-plan-review.md` |
+| Stage 5 Signoff | **MISSING** |
+| Source merge-ready as-is? | **No** |
+| Merge timing | After Stage 5 Signoff + prod inventory + pre-merge suite; before destructive deletes |
+| Algolia | Prod prerequisites **NEEDS PROD CHECK**; FS browse safe if Algolia OFF |
+| Next phrase | `APPROVE STAGE 5 SIGNOFF` then `APPROVE PR 40 PRODUCTION PROMOTION PLAN` |
+| Confirmations | NO implement / deploy / Algolia mutation / Storage cleanup / merge |
+
 ## 2026-08-08 - COMMIT/PUSH + PR #40 AUDIT — STOP
 
 Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).

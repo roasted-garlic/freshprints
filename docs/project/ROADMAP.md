@@ -1,5 +1,7 @@
 # Fresh Prints Roadmap
 
+> 2026-08-08: **PR #40 production-promotion Plan + Formal Review** — **approved_with_changes**. Stage 5 Formal Signoff **MISSING**. PR #40 not merge-ready as-is. Plan: `docs/workflow/plans/2026-08-08-pr-40-production-promotion-plan.md`. Review: `docs/workflow/reviews/2026-08-08-pr-40-production-promotion-plan-review.md`. No merge / production deploy.
+
 > 2026-08-07: **`taxonomy-read-spike-elimination` Signoff** — **approved_with_notes** on `fresh-prints-dev`. 45-design validation **PASS WITH NOTES** (Studio 0 tags/cats; ~139 billable vs ~1461; server materialization cold+warm; Console peak 222 vs ~1.3K/1.4K; AI spot-check 8/8). Signoff: `docs/workflow/reviews/2026-08-07-taxonomy-read-spike-elimination-signoff.md`. Result: `docs/workflow/reviews/2026-08-07-taxonomy-45-design-performance-validation-result.md`. PR #40 open/unmerged. No production. No Stage 6.
 
 > 2026-08-07: Taxonomy trigger rebuild corrective **Signoff approved_with_notes** on `fresh-prints-dev` (awaited coalesce live; rev 1→2; Studio disk cache rev 2). Parent closed via 45-design Signoff above. Checkpoint: `docs/workflow/reviews/2026-08-07-taxonomy-45-design-performance-validation-checkpoint.md`. PR #40 open/unmerged. No production.
@@ -384,6 +386,9 @@ block to `apps/portal/apphosting.yaml` with the 7 required `NEXT_PUBLIC_FIREBASE
 `NEXT_PUBLIC_PORTAL_ORIGIN`, sourced from the owner's gitignored `.env.production.local`;
 deliberately omitted `NEXT_PUBLIC_GA_MEASUREMENT_ID` even though a real value already exists in
 that file, since GA4 go-live remains its own separate checkpoint. Promoted via PR #6.
+**(Superseded 2026-08-08):** plaintext `value:` entries were replaced with Cloud Secret Manager
+`secret:` references — see `docs/workflow/plans/2026-08-08-apphosting-env-secrets-plan.md` and
+`DEPLOYMENT.md` "Portal App Hosting environment variables".
 
 First rollout attempt (`firebase apphosting:rollouts:create ... --force`) failed at the Cloud Build
 stage: `Missing dependency lock file at path '/workspace/apps/portal'`. Root cause: Fresh Prints is

@@ -5,47 +5,52 @@ runConfig:
   maxInstances: 10
   concurrency: 80
 
-# Production (fresh-prints-prod) Portal web config. All NEXT_PUBLIC_* values here are
-# browser-exposed by design, not secrets. NEXT_PUBLIC_GA_MEASUREMENT_ID is deliberately
-# omitted — GA4 go-live is its own separate, later production-release checkpoint.
+# Production (fresh-prints-prod) Portal web config.
+# Values live in Cloud Secret Manager (not committed). Create/update with:
+#   firebase apphosting:secrets:set <SECRET_NAME> --project fresh-prints-prod
+# Grant backend access if secrets were created outside that flow:
+#   firebase apphosting:secrets:grantaccess <SECRET_NAME> --backend fresh-prints-portal --project fresh-prints-prod
+# Source of truth for local production builds: gitignored apps/portal/.env.production.local
+# NEXT_PUBLIC_* are browser-exposed by design (not cryptographic secrets).
+# NEXT_PUBLIC_GA_MEASUREMENT_ID is deliberately omitted — GA4 go-live is a separate checkpoint.
 env:
   - variable: NEXT_PUBLIC_FIREBASE_API_KEY
-    value: AIzaSyBE9IAFfLwmnanQ4yUxuTtgIT3yTleIvYc
+    secret: NEXT_PUBLIC_FIREBASE_API_KEY
     availability:
       - BUILD
       - RUNTIME
   - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
-    value: fresh-prints-prod.firebaseapp.com
+    secret: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
     availability:
       - BUILD
       - RUNTIME
   - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
-    value: fresh-prints-prod
+    secret: NEXT_PUBLIC_FIREBASE_PROJECT_ID
     availability:
       - BUILD
       - RUNTIME
   - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
-    value: fresh-prints-prod.firebasestorage.app
+    secret: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
     availability:
       - BUILD
       - RUNTIME
   - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
-    value: "473623863375"
+    secret: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
     availability:
       - BUILD
       - RUNTIME
   - variable: NEXT_PUBLIC_FIREBASE_APP_ID
-    value: "1:473623863375:web:524ec1a63f547e4d85ca3a"
+    secret: NEXT_PUBLIC_FIREBASE_APP_ID
     availability:
       - BUILD
       - RUNTIME
   - variable: NEXT_PUBLIC_FIREBASE_VAPID_KEY
-    value: BKQeXm_CCwq82lELOIw1pgZMVwsS-ppyw3_E4ChxeQbTpQik3ffHCRhch1zqd36ipvkAIX-peh6JWgireT1ANPU
+    secret: NEXT_PUBLIC_FIREBASE_VAPID_KEY
     availability:
       - BUILD
       - RUNTIME
   - variable: NEXT_PUBLIC_PORTAL_ORIGIN
-    value: https://myprintrequest.com
+    secret: NEXT_PUBLIC_PORTAL_ORIGIN
     availability:
       - BUILD
       - RUNTIME
