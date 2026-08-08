@@ -1,26 +1,25 @@
 # Current Goal
-**Optional Algolia secret discovery corrective — Implement + Test + Implementation Review APPROVED. STOP before production Wave A retry.**
+**Optional Algolia secret discovery corrective — SOURCE COMMITTED (`bc0c341`); PUSH/PR/MERGE HOOK-BLOCKED. OWNER CLI REQUIRED.**
 
 Current Mode: managed-phase
-Current Phase: implement+test+implementation-review complete
+Current Phase: source promotion — await owner push + PR merge to `production`
 Managed goal: `functions-optional-algolia-secret-deployment-discovery-corrective`
-Plan Status: complete
-Review Status: approved_with_changes (plan)
-Implementation Status: complete
-Implementation Review: **approved** — `docs/workflow/reviews/2026-08-08-functions-optional-algolia-secret-deployment-discovery-corrective-implementation-review.md`
-Test Status: **passed** — `…-corrective-test-report.md`
-DONE: no (Wave A production deploy still pending)
-Human Checkpoint Required: yes — authorize Wave A Taxonomy retry (after corrective on production tip)
+Branch: `fix/optional-algolia-secret-discovery-corrective`
+Commit: `bc0c34152a53f835dd58343035d7b3b11c773887`
+Base `origin/production`: `7e139685099f90eb1532771e927384316a432e87` (**unchanged** — not merged yet)
+Promotion record: `docs/workflow/reviews/2026-08-08-functions-optional-algolia-secret-discovery-corrective-source-promotion-record.md`
+DONE: no
+Human Checkpoint Required: yes — owner push branch, open PR to production, merge
 Blocked: no
-Allowed Actions: read docs; await Wave A retry phrase; commit/promote corrective if still local
-Forbidden Actions: create ALGOLIA_ADMIN_API_KEY; Algolia Functions/config/enable; taxonomy bootstrap; publisher DELETE; Rules; Storage cleanup; App Hosting; Studio; Node/firebase-functions upgrades; Wave A deploy without phrase
-Next Required Step: Owner replies **`APPROVE PROD FUNCTIONS WAVE A TAXONOMY RETRY`** (ensure corrective is on the tip used for deploy)
+Allowed Actions: read docs; await owner push/PR/merge complete
+Forbidden Actions: Firebase deploy; Algolia secret/config/enable; taxonomy bootstrap; agent alternate push/merge workarounds
+Next Required Step: Owner pushes/PRs/merges, then replies **`OPTIONAL ALGOLIA SECRET CORRECTIVE SOURCE PROMOTION: COMPLETE`**
 
-**Verified 2026-08-08 (Implement):**
-- Option E: `algolia/algoliaSecrets.ts`; Algolia trio removed from default `index.ts`; restore barrel `algoliaFunctionExports.ts`
-- Discovery proof: enqueue/index **exclude** `ALGOLIA_ADMIN_API_KEY`; Algolia sync **includes**; tests 4/4
-- Build 0; Algolia 12/12; taxonomy/AI 30/30; OG 6/6; scoped eslint 0
-- Prod: no Functions deploy; `ALGOLIA_ADMIN_API_KEY` still NOT FOUND; ADR-FP-129 recorded
+**Verified 2026-08-08 (pre-push):**
+- Containment PASS (19 files); Wave A exports retained; Algolia trio unexported; shared secrets have no ALGOLIA
+- Tests: discovery 4/4; build 0; eslint 0; Algolia 12/12; taxonomy/AI 30/30; OG 6/6; staged diff-check 0
+- Repo-wide diff-check exit 2 = unrelated unstaged whitespace only
+- Agent `git push` **hook-blocked** (twice)
 Background (not active gate): Studio automatic-updates Signoff PASS / production convergence audit historical; Goal #13 / Stage 2 deferred; domain cutover blocked until `APPROVE MYPRINTREQUEST.COM CUTOVER`.
 
 Background (not active gate): Goal #13 / clean Studio remediation / Stage 2 remain deferred; prior installer intermediate; domain cutover blocked until `APPROVE MYPRINTREQUEST.COM CUTOVER`.

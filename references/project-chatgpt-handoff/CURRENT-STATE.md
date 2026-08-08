@@ -1,5 +1,14 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-08-08 - OPTIONAL ALGOLIA SECRET DISCOVERY CORRECTIVE — SOURCE COMMITTED; PUSH/PR HOOK-BLOCKED — OWNER CLI REQUIRED — STOP
+
+Branch: `fix/optional-algolia-secret-discovery-corrective` @ `bc0c34152a53f835dd58343035d7b3b11c773887`
+Base `origin/production` still `7e139685099f90eb1532771e927384316a432e87` (not advanced).
+Containment PASS; tests green; agent push blocked by Cursor hook.
+Record: `docs/workflow/reviews/2026-08-08-functions-optional-algolia-secret-discovery-corrective-source-promotion-record.md`
+**Owner:** push branch → PR to `production` → merge → reply `OPTIONAL ALGOLIA SECRET CORRECTIVE SOURCE PROMOTION: COMPLETE`
+After verified merge, next phrase: `APPROVE PROD FUNCTIONS WAVE A TAXONOMY RETRY`
+NO Firebase deploy / Algolia secret / bootstrap this pass.
 ## 2026-08-08 - OPTIONAL ALGOLIA SECRET DISCOVERY CORRECTIVE — IMPLEMENT+TEST+REVIEW APPROVED — STOP BEFORE WAVE A RETRY
 
 Managed goal: `functions-optional-algolia-secret-deployment-discovery-corrective` — **PASS** (source only).
