@@ -134,8 +134,6 @@ export { onEmailDeliveryJobCreated } from "./onEmailDeliveryJobCreated";
 export { registerWebPushSubscription } from "./registerWebPushSubscription";
 export { submitPortalDesignIssueReport } from "./submitPortalDesignIssueReport";
 export { resolveDesignIssueReport } from "./resolveDesignIssueReport";
-export { syncPortalCatalogDesignToAlgolia } from "./algolia/syncPortalCatalogDesignToAlgolia";
-export {
-  reconcilePortalCatalogAlgoliaIndex,
-  reconcilePortalCatalogAlgoliaIndexScheduled,
-} from "./algolia/reconcilePortalCatalogAlgoliaIndex";
+// Algolia trio intentionally omitted from default discovery while Algolia is OFF.
+// Restore via `./algolia/algoliaFunctionExports` only under an approved Algolia
+// Functions checkpoint (see ADR-FP-129). Do not import that barrel here while OFF.

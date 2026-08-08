@@ -351,13 +351,21 @@ Strategy 2 Firestore hydrate remains the fallback. Shared `packages/shared/src/c
 are retained for AI + Algolia classifier.
 
 **Managed search (Stage 1b Algolia):** Portal uses `NEXT_PUBLIC_USE_ALGOLIA_CATALOG_SEARCH` + public
-search-only env; Functions sync/reconcile use Secret Manager admin key. Index records are not an
-authorization boundary.
+search-only env; Functions sync/reconcile use Secret Manager admin key
+(`ALGOLIA_ADMIN_API_KEY` via `functions/src/algolia/algoliaSecrets.ts` — **not** shared
+`lib/secrets`). Index records are not an authorization boundary.
+
+**Optional Algolia discovery coupling (ADR-FP-129):** While Algolia is OFF, the Algolia Function
+trio is **not** exported from default `functions/src/index.ts` (restore via
+`algolia/algoliaFunctionExports.ts` under an approved Algolia checkpoint). Optional provider
+secrets must not be registered into Firebase deployment discovery by unrelated Functions.
+Dev and prod indexes stay separate (`portal_catalog_ready_dev` vs production-only name such as
+`portal_catalog_ready_prod`).
 
 Portal metadata prefers these Functions (no App Hosting Admin ADC required for crawlers). Studio
 **Settings → Social sharing** toggles letterbox and library-vs-logo. Studio **Settings → Brand logos**
 uploads PNGs to Storage `brand/**` + `settings/brandLogos`. See `DEPLOYMENT.md` and ADR-FP-114 /
-ADR-FP-120-S.
+ADR-FP-120-S / ADR-FP-129.
 
 ---
 

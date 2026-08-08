@@ -3,7 +3,7 @@ import { onDocumentWritten } from 'firebase-functions/v2/firestore';
 
 import { classifyPortalCatalogDesignChange } from './portalCatalogChangeClassifier';
 import { adminDb } from '../lib/admin';
-import { algoliaAdminApiKeySecret } from '../lib/secrets';
+import { algoliaAdminApiKeySecret } from './algoliaSecrets';
 import {
   algoliaAppId,
   createAlgoliaAdminClient,

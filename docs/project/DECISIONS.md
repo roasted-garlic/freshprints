@@ -4,6 +4,50 @@
 
 ---
 
+### ADR-FP-129: Optional Algolia admin secret must not couple unrelated Functions discovery
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-08-08 |
+| Status | accepted (source Implement; production Wave A deploy remains separately gated) |
+| Related | `functions-optional-algolia-secret-deployment-discovery-corrective` / PR #40 Wave A Taxonomy |
+| Plan | `docs/workflow/plans/2026-08-08-functions-optional-algolia-secret-deployment-discovery-corrective-plan.md` |
+
+**Context**
+
+Firebase CLI loads the default Functions codebase (`index.ts`) during deploy discovery and
+resolves **all** `defineSecret` entries in `declaredParams`, regardless of `--only`. Shared
+`functions/src/lib/secrets.ts` previously declared `ALGOLIA_ADMIN_API_KEY` at module scope, so
+loading `enqueueAiEnrichment` (Wave A) registered the optional Algolia secret. On
+`fresh-prints-prod` that secret was intentionally absent (Algolia OFF), aborting taxonomy-only
+deploy before any Function mutation.
+
+**Decision**
+
+1. `ALGOLIA_ADMIN_API_KEY` is declared only in `functions/src/algolia/algoliaSecrets.ts`
+   (Algolia boundary). Shared `lib/secrets` keeps GEMINI/RESEND/BREVO/ETSY only.
+2. Default `functions/src/index.ts` does **not** export the Algolia Function trio while Algolia
+   is optional/OFF. Implementations remain under `functions/src/algolia/`; restore exports via
+   `algolia/algoliaFunctionExports.ts` only under an approved Algolia Functions checkpoint.
+3. Admin credentials remain Secret Manager–only (`defineSecret` + Function `secrets:` binding)
+   when Algolia is later enabled. Portal receives search-only credentials only.
+4. Development and production must use **separate** Algolia indexes. Repo default / dev:
+   `portal_catalog_ready_dev`. Production is expected to use a distinct name (proposed
+   `portal_catalog_ready_prod`) via `ALGOLIA_PORTAL_CATALOG_INDEX_NAME` — never share the
+   development index with production.
+5. Creating a production Algolia admin secret solely to unblock unrelated Function deploys is
+   rejected; fix discovery coupling instead.
+
+**Consequences**
+
+- Taxonomy / AI / ordinary Portal browse deploys no longer require Algolia Secret Manager.
+- Later Algolia lane: set prod secret + params (prod index ≠ `_dev`), re-export trio, scoped
+  Algolia Function deploy, then enable Portal flag — each under separate owner phrases.
+- On `fresh-prints-dev` (where Algolia Functions may already be live), avoid unfiltered
+  `firebase deploy --only functions` until exports are restored; prefer scoped `--only`.
+
+---
+
 ### ADR-FP-128: Taxonomy materialization — server-owned chunked Firestore + revision caches
 
 | Field | Value |
