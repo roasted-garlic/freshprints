@@ -1,5 +1,14 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-08-09 - RECOVERY COMMITTED LOCALLY — OWNER PUSH/PR/MERGE
+
+Owner: **`APPROVE RECOVERY COMMIT: FINAL RELEASE ARTIFACTS`**
+Local commit: **`dc19639`** on `chore/recover-final-release-artifacts`
+Agent push: **HOOK-BLOCKED**
+Gate: `docs/workflow/reviews/2026-08-09-final-release-artifact-recovery-push-merge-gate.md`
+Owner next: push → PR base `development` → merge → verify prod⊂dev → `git stash clear`
+Reply: **`RECOVERY MERGE: COMPLETE`** then **`STASH CLEAR: COMPLETE`**
+
 ## 2026-08-09 - FINAL RELEASE ARTIFACT RECOVERY — COMMIT AUTHORIZED
 
 Owner: **`APPROVE RECOVERY COMMIT: FINAL RELEASE ARTIFACTS`**
