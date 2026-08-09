@@ -18,6 +18,11 @@ export interface CatalogDiscoveryDesign {
   id: string;
   categoryId?: string;
   createdAtMs?: number;
+  /**
+   * Most recent transition into customer-ready (`status: "ready"`).
+   * Authoritative for New This Week membership and order.
+   */
+  readyAtMs?: number;
   requestCount: number;
   favoriteCount?: number;
   /** Cart-add timestamp — Popular / analytics; not Recently Requested. */
@@ -73,7 +78,26 @@ function compareById(left: CatalogDiscoveryDesign, right: CatalogDiscoveryDesign
   return left.id.localeCompare(right.id);
 }
 
-/** Designs created within the last 7 days, newest first. */
+/**
+ * New This Week ranking key: customer-ready time first.
+ *
+ * Legacy ready docs missing `readyAtMs` fall back to `createdAtMs` (same key contract as
+ * Portal/Studio ready-order sort). Docs with neither timestamp are excluded.
+ */
+export function resolveNewThisWeekReadyMillis(design: CatalogDiscoveryDesign): number | undefined {
+  if (typeof design.readyAtMs === "number") {
+    return design.readyAtMs;
+  }
+  if (typeof design.createdAtMs === "number") {
+    return design.createdAtMs;
+  }
+  return undefined;
+}
+
+/**
+ * Designs newly ready within the last 7 days, newest `readyAt` first.
+ * Import/`createdAt` alone does not qualify a design as new.
+ */
 export function rankNewThisWeek<T extends CatalogDiscoveryDesign>(
   designs: readonly T[],
   nowMs: number = Date.now(),
@@ -81,12 +105,16 @@ export function rankNewThisWeek<T extends CatalogDiscoveryDesign>(
   const cutoffMs = nowMs - CATALOG_NEW_THIS_WEEK_DAYS * MS_PER_DAY;
 
   return designs
-    .filter((design) => design.createdAtMs !== undefined && design.createdAtMs >= cutoffMs)
+    .filter((design) => {
+      const readyMs = resolveNewThisWeekReadyMillis(design);
+      return readyMs !== undefined && readyMs >= cutoffMs;
+    })
     .slice()
     .sort((left, right) => {
-      const createdCompare = (right.createdAtMs ?? 0) - (left.createdAtMs ?? 0);
-      if (createdCompare !== 0) {
-        return createdCompare;
+      const readyCompare =
+        (resolveNewThisWeekReadyMillis(right) ?? 0) - (resolveNewThisWeekReadyMillis(left) ?? 0);
+      if (readyCompare !== 0) {
+        return readyCompare;
       }
 
       return compareById(left, right);

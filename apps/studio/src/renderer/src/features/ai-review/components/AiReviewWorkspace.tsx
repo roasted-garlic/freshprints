@@ -1,5 +1,5 @@
 import { Settings } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "../../../shared/components/Button";
 import { LoadingSpinner } from "../../../shared/components/LoadingSpinner";
@@ -15,6 +15,7 @@ import { mapArtworkBackgroundToForm, resolveFormArtworkBackgroundHex } from "../
 import type { AiProcessingQueueRunState } from "../hooks/useAiProcessingQueue";
 import type { AiReviewDraftForm, AiReviewInboxTab } from "../types/aiReviewInbox.types";
 import { resolveAiProcessingOutputStatus } from "../utils/aiProcessingOutput";
+import { scrollAiReviewPageContentToTop } from "../utils/aiReviewWorkspaceScroll";
 import { filterIgnoredSuggestedTags } from "../utils/suggestedNewTags";
 import { AiProcessingSettingsModal } from "./AiProcessingSettingsModal";
 import { AiReviewFormPanel } from "./AiReviewFormPanel";
@@ -83,6 +84,8 @@ interface AiReviewWorkspaceProps {
   selectedDesign: Design | null;
   showReadOnlySuggestions: boolean;
   showRerunAiButton: boolean;
+  /** Amendment 9 P0 scroll correction — increments after successful approve/reject/archive. */
+  reviewScrollNonce?: number;
 }
 
 export function AiReviewWorkspace({
@@ -140,10 +143,12 @@ export function AiReviewWorkspace({
   selectedDesign,
   showReadOnlySuggestions,
   showRerunAiButton,
+  reviewScrollNonce = 0,
 }: AiReviewWorkspaceProps) {
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [isProcessingSettingsOpen, setIsProcessingSettingsOpen] = useState(false);
   const previewStageRef = useRef<HTMLDivElement>(null);
+  const workspaceTopRef = useRef<HTMLDivElement>(null);
 
   const previewPath = selectedDesign?.previewPath ?? selectedDesign?.thumbnailPath ?? "";
   const { url: previewUrl } = useDesignDerivativeUrl(previewPath || undefined);
@@ -169,8 +174,22 @@ export function AiReviewWorkspace({
     ...artworkBackgroundValues,
   });
 
+  // After a successful approve/reject/archive, reveal the next design (or empty state) from the
+  // top of the AI Review page scroll container — not window.
+  useLayoutEffect(() => {
+    if (reviewScrollNonce <= 0) {
+      return;
+    }
+
+    scrollAiReviewPageContentToTop(workspaceTopRef.current);
+  }, [reviewScrollNonce, selectedDesign?.id]);
+
   if (!selectedDesign) {
-    return <AiReviewWorkspaceEmpty />;
+    return (
+      <div className="ai-review-workspace" ref={workspaceTopRef}>
+        <AiReviewWorkspaceEmpty />
+      </div>
+    );
   }
 
   const showEditableForm = activeTab === "needs_review" && draftForm;
@@ -195,7 +214,7 @@ export function AiReviewWorkspace({
     !isSelectedDesignProcessing;
 
   return (
-    <div className="ai-review-workspace">
+    <div className="ai-review-workspace" ref={workspaceTopRef}>
       <section aria-label="Design preview" className="ai-review-workspace-preview">
         {canSaveArtworkBackground ? (
           <div className="ai-review-preview-bg-control">

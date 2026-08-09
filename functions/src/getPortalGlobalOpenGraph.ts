@@ -12,14 +12,6 @@ import {
   BRAND_LOGO_SETTINGS_DOC_ID,
   resolveBrandLogoSettings,
 } from "../../packages/shared/src/constants/brand/brandLogoSettings.constants";
-import {
-  parsePortalCatalogDiscoverSnapshot,
-  parsePortalCatalogManifest,
-} from "../../packages/shared/src/catalog-snapshots/catalogSnapshot.parsers";
-import {
-  resolvePortalCatalogPath,
-  type PortalCatalogCard,
-} from "../../packages/shared/src/catalog-snapshots/catalogSnapshot.types";
 import { adminDb, adminStorage } from "./lib/admin";
 import {
   buildPortalOgShareImageFunctionUrl,
@@ -29,7 +21,6 @@ import {
 
 const SIGNED_URL_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 export const PORTAL_GLOBAL_OPEN_GRAPH_CACHE_TTL_MS = 60 * 60 * 1000;
-const PORTAL_CATALOG_MANIFEST_PATH = "generated/portal-catalog/manifest.json";
 
 export interface PortalGlobalOpenGraphResponse {
   ogTitle: string;
@@ -46,6 +37,15 @@ export interface PortalGlobalOpenGraphAccounting {
   designDocumentsReturned: number;
   totalFirestoreDocumentReads: number;
   sourceMode: "library" | "logo";
+}
+
+export interface PortalOgLibraryDesignCandidate {
+  id: string;
+  readyAtMs: number | null;
+  createdAtMs: number | null;
+  previewPath?: string;
+  thumbnailPath?: string;
+  artworkBackgroundHex?: string;
 }
 
 export function createPortalGlobalOpenGraphCache<T>(ttlMs = PORTAL_GLOBAL_OPEN_GRAPH_CACHE_TTL_MS) {
@@ -90,15 +90,98 @@ const responseCache = createPortalGlobalOpenGraphCache<{
 export function buildPortalGlobalOpenGraphAccounting(
   cacheStatus: PortalGlobalOpenGraphAccounting["cacheStatus"],
   sourceMode: PortalGlobalOpenGraphAccounting["sourceMode"],
-  missReads: { settingsDocumentsRead: number; totalFirestoreDocumentReads: number },
+  missReads: {
+    settingsDocumentsRead: number;
+    designDocumentsReturned: number;
+    totalFirestoreDocumentReads: number;
+  },
 ): PortalGlobalOpenGraphAccounting {
   const isMiss = cacheStatus === "miss";
   return {
     cacheStatus,
     settingsDocumentsRead: isMiss ? missReads.settingsDocumentsRead : 0,
-    designDocumentsReturned: 0,
+    designDocumentsReturned: isMiss ? missReads.designDocumentsReturned : 0,
     totalFirestoreDocumentReads: isMiss ? missReads.totalFirestoreDocumentReads : 0,
     sourceMode,
+  };
+}
+
+function toMillis(value: unknown): number | null {
+  if (
+    value &&
+    typeof value === "object" &&
+    "toMillis" in value &&
+    typeof (value as { toMillis: unknown }).toMillis === "function"
+  ) {
+    return (value as { toMillis: () => number }).toMillis();
+  }
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  return null;
+}
+
+function rankingTimestampMs(candidate: PortalOgLibraryDesignCandidate): number {
+  return candidate.readyAtMs ?? candidate.createdAtMs ?? 0;
+}
+
+/**
+ * Merge dual ready-design query pages by id, then rank by (readyAt ?? createdAt) desc, id desc.
+ * Pure helper for tests.
+ */
+export function mergeAndRankPortalOgLibraryCandidates(
+  pages: readonly PortalOgLibraryDesignCandidate[][],
+  limit = PORTAL_GLOBAL_OG_LIBRARY_SAMPLE_SIZE,
+): PortalOgLibraryDesignCandidate[] {
+  const byId = new Map<string, PortalOgLibraryDesignCandidate>();
+  for (const page of pages) {
+    for (const candidate of page) {
+      if (!candidate.id) continue;
+      const existing = byId.get(candidate.id);
+      if (!existing) {
+        byId.set(candidate.id, candidate);
+        continue;
+      }
+      // Prefer the copy with the richer ranking timestamp if both pages returned the same id.
+      if (rankingTimestampMs(candidate) > rankingTimestampMs(existing)) {
+        byId.set(candidate.id, candidate);
+      }
+    }
+  }
+
+  return [...byId.values()]
+    .sort((a, b) => {
+      const rankDiff = rankingTimestampMs(b) - rankingTimestampMs(a);
+      if (rankDiff !== 0) return rankDiff;
+      return b.id < a.id ? -1 : b.id > a.id ? 1 : 0;
+    })
+    .slice(0, limit);
+}
+
+function mapDesignDocToCandidate(
+  id: string,
+  data: Record<string, unknown>,
+): PortalOgLibraryDesignCandidate {
+  const previewPath =
+    typeof data.previewPath === "string" && data.previewPath.trim()
+      ? data.previewPath.trim()
+      : undefined;
+  const thumbnailPath =
+    typeof data.thumbnailPath === "string" && data.thumbnailPath.trim()
+      ? data.thumbnailPath.trim()
+      : undefined;
+  const artworkBackgroundHex =
+    typeof data.artworkBackgroundHex === "string" && data.artworkBackgroundHex.trim()
+      ? data.artworkBackgroundHex.trim()
+      : undefined;
+
+  return {
+    id,
+    readyAtMs: toMillis(data.readyAt),
+    createdAtMs: toMillis(data.createdAt),
+    ...(previewPath ? { previewPath } : {}),
+    ...(thumbnailPath ? { thumbnailPath } : {}),
+    ...(artworkBackgroundHex ? { artworkBackgroundHex } : {}),
   };
 }
 
@@ -131,50 +214,86 @@ async function resolveUploadedPortalLogoUrl(): Promise<string | null> {
   }
 }
 
-async function loadJsonStorageAsset(path: string): Promise<unknown> {
-  const [bytes] = await adminStorage.bucket().file(path).download();
-  return JSON.parse(bytes.toString("utf8")) as unknown;
+async function loadReadyDesignCandidatesForOg(): Promise<{
+  candidates: PortalOgLibraryDesignCandidate[];
+  designDocumentsReturned: number;
+}> {
+  const designs = adminDb.collection("designs");
+  const [readyAtPage, createdAtPage] = await Promise.all([
+    designs
+      .where("status", "==", "ready")
+      .orderBy("readyAt", "desc")
+      .limit(PORTAL_GLOBAL_OG_LIBRARY_SAMPLE_SIZE)
+      .get(),
+    designs
+      .where("status", "==", "ready")
+      .orderBy("createdAt", "desc")
+      .limit(PORTAL_GLOBAL_OG_LIBRARY_SAMPLE_SIZE)
+      .get(),
+  ]);
+
+  const readyAtCandidates = readyAtPage.docs.map((doc) =>
+    mapDesignDocToCandidate(doc.id, doc.data() as Record<string, unknown>),
+  );
+  const createdAtCandidates = createdAtPage.docs.map((doc) =>
+    mapDesignDocToCandidate(doc.id, doc.data() as Record<string, unknown>),
+  );
+
+  return {
+    candidates: mergeAndRankPortalOgLibraryCandidates([
+      readyAtCandidates,
+      createdAtCandidates,
+    ]),
+    designDocumentsReturned: readyAtPage.size + createdAtPage.size,
+  };
 }
 
 async function resolveLibraryImageUrl(
   letterbox: boolean,
   rotationSalt: number,
   interval: PortalLibraryOgRotationInterval,
-): Promise<string | null> {
-  const manifest = parsePortalCatalogManifest(
-    await loadJsonStorageAsset(PORTAL_CATALOG_MANIFEST_PATH),
-  );
-  if (manifest.recent.pageCount === 0) {
-    return null;
+): Promise<{ imageUrl: string | null; designDocumentsReturned: number }> {
+  const { candidates, designDocumentsReturned } = await loadReadyDesignCandidatesForOg();
+  if (candidates.length === 0) {
+    return { imageUrl: null, designDocumentsReturned };
   }
-  const recentPath = resolvePortalCatalogPath(manifest.recent.pathTemplate, { page: 0 });
-  const recent = parsePortalCatalogDiscoverSnapshot(await loadJsonStorageAsset(recentPath));
-  const candidates = recent.designs.slice(0, PORTAL_GLOBAL_OG_LIBRARY_SAMPLE_SIZE);
-  const index = pickLibraryOgRotatedIndex(candidates.length, Date.now(), rotationSalt, interval);
-  const data: PortalCatalogCard | undefined = candidates[index];
+
+  const index = pickLibraryOgRotatedIndex(
+    candidates.length,
+    Date.now(),
+    rotationSalt,
+    interval,
+  );
+  const data = candidates[index];
   const designId = data?.id ?? "";
   if (!designId) {
-    return null;
+    return { imageUrl: null, designDocumentsReturned };
   }
 
   if (letterbox) {
     const projectId = resolveFirebaseProjectId();
     if (!projectId) {
-      return null;
+      return { imageUrl: null, designDocumentsReturned };
     }
-    return buildPortalOgShareImageFunctionUrl({
-      projectId,
-      designId,
-      fit: PORTAL_OG_IMAGE_FIT_CONTAIN,
-      backgroundHex: data?.artworkBackgroundHex,
-    });
+    return {
+      imageUrl: buildPortalOgShareImageFunctionUrl({
+        projectId,
+        designId,
+        fit: PORTAL_OG_IMAGE_FIT_CONTAIN,
+        backgroundHex: data?.artworkBackgroundHex,
+      }),
+      designDocumentsReturned,
+    };
   }
 
   const imagePath =
     (typeof data?.previewPath === "string" && data.previewPath.trim()) ||
     (typeof data?.thumbnailPath === "string" && data.thumbnailPath.trim()) ||
     "";
-  return imagePath ? resolveSignedImageUrl(imagePath) : null;
+  return {
+    imageUrl: imagePath ? await resolveSignedImageUrl(imagePath) : null,
+    designDocumentsReturned,
+  };
 }
 
 /**
@@ -207,38 +326,41 @@ export const getPortalGlobalOpenGraph = onRequest(
     };
     try {
       const cached = await responseCache.get(async () => {
-      const settingsSnap = await adminDb
-        .collection("settings")
-        .doc(PORTAL_SOCIAL_META_SETTINGS_DOC_ID)
-        .get();
-      const settings = resolvePortalSocialMetaSettings(settingsSnap.data());
+        const settingsSnap = await adminDb
+          .collection("settings")
+          .doc(PORTAL_SOCIAL_META_SETTINGS_DOC_ID)
+          .get();
+        const settings = resolvePortalSocialMetaSettings(settingsSnap.data());
 
-      let imageUrl: string | null = null;
-      if (settings.globalOgImageSource === "library") {
-        imageUrl = await resolveLibraryImageUrl(
-          settings.letterboxOgImages,
-          settings.libraryOgRotationSalt,
-          settings.libraryOgRotationInterval,
-        );
-      } else {
-        imageUrl = await resolveUploadedPortalLogoUrl();
-      }
+        let imageUrl: string | null = null;
+        let designDocumentsReturned = 0;
+        if (settings.globalOgImageSource === "library") {
+          const library = await resolveLibraryImageUrl(
+            settings.letterboxOgImages,
+            settings.libraryOgRotationSalt,
+            settings.libraryOgRotationInterval,
+          );
+          imageUrl = library.imageUrl;
+          designDocumentsReturned = library.designDocumentsReturned;
+        } else {
+          imageUrl = await resolveUploadedPortalLogoUrl();
+        }
 
-      const payload: PortalGlobalOpenGraphResponse = {
-        ogTitle: settings.ogTitle,
-        ogDescription: settings.ogDescription,
-        imageUrl,
-        letterboxOgImages: settings.letterboxOgImages,
-        globalOgImageSource: settings.globalOgImageSource,
-      };
-      const settingsDocumentsRead =
-        1 + (settings.globalOgImageSource === "logo" ? 1 : 0);
-      return {
-        payload,
-        settingsDocumentsRead,
-        designDocumentsReturned: 0,
-        totalFirestoreDocumentReads: settingsDocumentsRead,
-      };
+        const payload: PortalGlobalOpenGraphResponse = {
+          ogTitle: settings.ogTitle,
+          ogDescription: settings.ogDescription,
+          imageUrl,
+          letterboxOgImages: settings.letterboxOgImages,
+          globalOgImageSource: settings.globalOgImageSource,
+        };
+        const settingsDocumentsRead =
+          1 + (settings.globalOgImageSource === "logo" ? 1 : 0);
+        return {
+          payload,
+          settingsDocumentsRead,
+          designDocumentsReturned,
+          totalFirestoreDocumentReads: settingsDocumentsRead + designDocumentsReturned,
+        };
       });
       accounting = buildPortalGlobalOpenGraphAccounting(
         cached.status,

@@ -28,10 +28,17 @@ function assertDesignIsCatalogApprovalMutable(design: Design): void {
  * Phase 3D Step 6: service foundation only — no UI buttons, no AI providers.
  */
 export const catalogApprovalService = {
-  async approveDesignForCatalog(caller: User, designId: string): Promise<Design> {
+  async approveDesignForCatalog(
+    caller: User,
+    designId: string,
+    knownDesign?: Design,
+  ): Promise<Design> {
     assertCanManageCatalogApproval(caller);
 
-    const design = await designService.getDesignById(caller, designId);
+    const design =
+      knownDesign && knownDesign.id === designId
+        ? knownDesign
+        : await designService.getDesignById(caller, designId);
     assertDesignIsCatalogApprovalMutable(design);
 
     if (design.status === "rejected") {
@@ -44,6 +51,7 @@ export const catalogApprovalService = {
 
     const reviewFields = buildAiReviewApprovedFields(caller.id);
 
+    // A3 retained: applyCatalogApprovalUpdate always performs its write-boundary getDoc.
     return designService.applyCatalogApprovalUpdate(caller, designId, {
       status: "ready",
       aiReviewStatus: reviewFields.aiReviewStatus,

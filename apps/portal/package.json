@@ -11,6 +11,7 @@
   "dependencies": {
     "@fresh-prints/shared": "*",
     "@fresh-prints/show-picker": "*",
+    "algoliasearch": "^5.56.0",
     "firebase": "^12.15.0",
     "firebase-admin": "^12.7.0",
     "lucide-react": "^1.21.0",

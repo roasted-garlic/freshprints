@@ -1,9 +1,10 @@
 import type { FreshPrintsAppApi } from "../app/appIpc.types";
-import type { FreshPrintsCatalogAssetApi } from "../catalogAsset/catalogAssetIpc.types";
 import type { FreshPrintsInboxAlertApi } from "../inboxAlert/inboxAlertIpc.types";
+import type { FreshPrintsTaxonomyCacheApi } from "../taxonomy/taxonomyCacheIpc.types";
 import type { FreshPrintsExportApi } from "../export/showExportIpc.types";
 import type { FreshPrintsWhatnotImportApi } from "../whatnotImport/whatnotImport.types";
 import type { FreshPrintsFirebaseDebugApi } from "../firebaseDebug/firebaseDebugIpc.types";
+import type { FreshPrintsAiQueueTraceApi } from "../aiQueueTrace/aiQueueTraceIpc.types";
 import type { FreshPrintsStudioUpdateApi } from "../studioUpdate/studioUpdateIpc.types";
 import type { PrintSizeAssessment } from "../printSize/printSize.types";
 import type {
@@ -164,6 +165,13 @@ export interface ReadSelectedPngFileBytesResult {
   fileName: string;
   filePath: string;
   fileSizeBytes: number;
+  /**
+   * Final pixel dimensions of the returned bytes after byte-limit normalization (Owner QA
+   * Amendment 3). Present only when normalization actually changed the pixels, so the renderer
+   * recalculates stored print size from what is really persisted.
+   */
+  normalizedWidth?: number;
+  normalizedHeight?: number;
   /** Present when includeDerivatives was true and generation succeeded */
   derivatives?: ReadSelectedPngFileBytesDerivatives;
   /**
@@ -295,10 +303,11 @@ export interface FreshPrintsImportsApi {
 
 export interface FreshPrintsPreloadApi {
   app: FreshPrintsAppApi;
-  catalogAsset: FreshPrintsCatalogAssetApi;
   firebaseDebug: FreshPrintsFirebaseDebugApi;
+  aiQueueTrace: FreshPrintsAiQueueTraceApi;
   imports: FreshPrintsImportsApi;
   inboxAlert: FreshPrintsInboxAlertApi;
+  taxonomyCache: FreshPrintsTaxonomyCacheApi;
   whatnotImport: FreshPrintsWhatnotImportApi;
   export: FreshPrintsExportApi;
   studioUpdate: FreshPrintsStudioUpdateApi;

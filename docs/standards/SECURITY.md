@@ -1123,6 +1123,17 @@ dev configuration and the exact bucket name (confirmed live: `fresh-prints-dev.f
   default-deny on undeclared collections) is unchanged. Run with `npm run test:rules` on a
   Java 21+-equipped machine (Firebase CLI 15.x requires Java 21+, not 17).
 
+### Amendment 8 Hybrid notes (Phase 1A / pending 1B)
+
+- Phase 1A ordinary Portal browse, Discover home, Studio taxonomy, Assisted ready designs, Open Graph
+  library candidates, and AI enrichment taxonomy use **Firestore** — not generated Storage JSON.
+- Generated Portal search/facet readers remain until Phase 1B; Rules and generated objects are
+  unchanged in Phase 1A.
+- Future managed-search index documents (Phase 1B) are derived public projections only — **never**
+  an authorization boundary. Write/Admin API keys must never ship in Portal or Studio client
+  bundles; customer keys are search-only with provider HTTP-referrer / app allowlists where supported.
+  Document new secrets in `BACKEND.md` / this file when Phase 1B lands. Provider is not selected yet.
+
 ## Dependency audit disposition (2026-07-23, Wave C dev deployment checkpoint)
 
 `npm audit` reported 24 findings (1 critical, 13 high, 10 moderate) at Wave C's dev deployment

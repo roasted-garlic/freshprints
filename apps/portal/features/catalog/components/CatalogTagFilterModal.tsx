@@ -16,6 +16,10 @@ import { CheckIcon, XIcon } from '../../shared/components/PortalIcons';
 
 interface CatalogTagFilterModalProps {
   approvedTags: CatalogTagOption[];
+  /** Applied catalog free-text query (debounced) — refines Algolia facet counts. */
+  catalogSearchQuery?: string;
+  /** Active catalog category filter — refines Algolia facet counts when set. */
+  categoryId?: string;
   /** Set when the generated tag-facet asset could not load. No Firestore fallback exists by design. */
   error?: string | null;
   isOpen: boolean;
@@ -26,6 +30,8 @@ interface CatalogTagFilterModalProps {
 
 export function CatalogTagFilterModal({
   approvedTags,
+  catalogSearchQuery = '',
+  categoryId = '',
   error,
   isOpen,
   onApply,
@@ -52,29 +58,28 @@ export function CatalogTagFilterModal({
     () => [...draftTagsForNarrowing].sort((left, right) => left.localeCompare(right)).join('\0'),
     [draftTagsForNarrowing],
   );
+  const appliedCatalogSearch = catalogSearchQuery.trim();
+  const appliedCategoryId = categoryId.trim();
 
-  // Recomputes only from generated assets already required for search/filtering (per-tag design-ID
-  // lists + card buckets covering the matching set) — no new generated asset, no Firestore read, no
-  // fetch per candidate tag. See `portalCatalogAssetService.listNarrowedTagFacets`.
+  // Always refresh facets when the modal opens (global or constrained). Mount-cached
+  // `approvedTags` from useCatalogTags can lag Algolia sync (Stage 1b-C: cartoon 3→4).
   useEffect(() => {
     if (!isOpen) {
       return;
     }
 
-    if (!draftTagsKey) {
-      setNarrowedTags(null);
-      setNarrowError(null);
-      return;
-    }
-
     let isCancelled = false;
     const generation = ++narrowGenerationRef.current;
-    const tags = draftTagsKey.split('\0');
+    const tags = draftTagsKey ? draftTagsKey.split('\0') : [];
 
+    setNarrowedTags(null);
     setNarrowError(null);
 
     void catalogService
-      .listNarrowedApprovedTags(tags)
+      .listNarrowedApprovedTags(tags, {
+        search: appliedCatalogSearch || undefined,
+        categoryId: appliedCategoryId || undefined,
+      })
       .then((result) => {
         if (isCancelled || generation !== narrowGenerationRef.current) return;
         setNarrowedTags(result);
@@ -90,10 +95,11 @@ export function CatalogTagFilterModal({
     return () => {
       isCancelled = true;
     };
-  }, [draftTagsKey, isOpen]);
+  }, [appliedCatalogSearch, appliedCategoryId, draftTagsKey, isOpen]);
 
-  const activeTagSource = draftTagsKey ? narrowedTags : approvedTags;
-  const activeError = draftTagsKey ? (narrowError ?? error) : error;
+  // Prefer live modal fetch; fall back to mount-cached tags only if the refresh fails.
+  const activeTagSource = narrowedTags ?? (narrowError ? approvedTags : null);
+  const activeError = narrowError ?? error;
   const facetedTags = useMemo(
     () =>
       activeTagSource
@@ -101,7 +107,7 @@ export function CatalogTagFilterModal({
         : [],
     [activeTagSource, draftSelectedTags, searchQuery],
   );
-  const isNarrowLoading = Boolean(draftTagsKey) && narrowedTags === null && !narrowError;
+  const isNarrowLoading = isOpen && narrowedTags === null && !narrowError;
   const visibleDraftTagCount = countVisibleSelectedTags(draftSelectedTags);
 
   if (!isOpen) {

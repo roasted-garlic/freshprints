@@ -41,7 +41,7 @@ import {
   normalizeArtworkBackgroundHex,
 } from "@fresh-prints/shared/constants/design/artworkBackground.constants";
 import { isCanonicalDesignStoragePath } from "../constants/designStoragePaths";
-import type { CreateDesignInput, Design, UpdateDesignInput } from "../types/design.types";
+import type { CreateDesignInput, Design, DesignAuthoritySnapshot, UpdateDesignInput } from "../types/design.types";
 import type { AiReviewStateUpdate, CatalogApprovalUpdate } from "../types/aiReview.types";
 import { isAiReviewStatus } from "../types/aiReview.types";
 import type { DesignListPage, DesignListQuery, DesignListSortDirection, DesignListSortField } from "../types/designQuery.types";
@@ -134,6 +134,13 @@ function shouldApplyServerAiReviewFilter(listQuery: DesignListQuery): boolean {
 }
 
 function getDesignSortMillis(design: Design, sortField: DesignListSortField): number {
+  if (sortField === "readyAt") {
+    // Must mirror the value Firestore ordered by so the next-page cursor lands correctly. After
+    // the dev backfill every ready design carries `readyAt`; the `createdAt` fallback only covers
+    // a not-yet-backfilled document (Owner QA Amendment 3 correction).
+    return (design.readyAt ?? design.createdAt).toMillis();
+  }
+
   return sortField === "createdAt" ? design.createdAt.toMillis() : design.updatedAt.toMillis();
 }
 
@@ -244,6 +251,7 @@ interface DesignDocumentData {
   uploadedBy?: unknown;
   requestedByCustomerId?: unknown;
   queueCount?: unknown;
+  readyAt?: unknown;
   aiProcessed?: unknown;
   aiReviewed?: unknown;
   aiReviewStatus?: unknown;
@@ -356,6 +364,7 @@ function mapDesignDocument(designId: string, data: DesignDocumentData): Design {
       typeof data.aiReviewStatus === "string" && isAiReviewStatus(data.aiReviewStatus)
         ? data.aiReviewStatus
         : undefined,
+    readyAt: mapFirestoreTimestamp(data.readyAt),
     aiReviewedAt: mapFirestoreTimestamp(data.aiReviewedAt),
     aiReviewedBy: typeof data.aiReviewedBy === "string" ? data.aiReviewedBy : undefined,
     aiReviewVersion: typeof data.aiReviewVersion === "string" ? data.aiReviewVersion : undefined,
@@ -579,6 +588,15 @@ export const designService = {
     return mapDesignDocument(designId, data as DesignDocumentData);
   },
 
+  /**
+   * Clear the Studio design page/count/document read caches. Used after an AI terminal patch so a
+   * later confirmation reload cannot hit a stale 15s pending page (AI Processing monotonic
+   * reconciliation repair).
+   */
+  invalidateReadCaches(designId?: string): void {
+    invalidateDesignReadCaches(designId);
+  },
+
   async listDesignsPage(caller: User, listQuery: DesignListQuery = {}): Promise<DesignListPage> {
     if (!permissionService.canViewDesigns(caller)) {
       return { designs: [], hasMore: false };
@@ -608,8 +626,30 @@ export const designService = {
         );
       }
 
-      return await fetchDesignListPage(caller, listQuery);
+      const page = await fetchDesignListPage(caller, listQuery);
+
+      // Backfill-completeness guard (Owner QA Amendment 3 correction). A Firestore
+      // `orderBy("readyAt")` silently omits documents missing the field, so before the
+      // `readyAt` backfill has run in a given environment this query would hide legacy ready
+      // designs entirely. If the true matching count exceeds what the ordered query returned,
+      // fall back to `createdAt` ordering for this request so nothing is ever invisible. Once
+      // backfilled, the counts agree and this fallback never triggers.
+      if (listQuery.sortField === "readyAt" && !listQuery.cursor && !page.hasMore) {
+        const matchingCount = await this.countDesigns(caller, listQuery);
+
+        if (matchingCount > page.designs.length) {
+          return await fetchDesignListPage(caller, { ...listQuery, sortField: "createdAt" });
+        }
+      }
+
+      return page;
     } catch (error) {
+      if (listQuery.sortField === "readyAt" && isFirestoreIndexError(error)) {
+        // The `readyAt` composite index is not deployed in this environment yet — never break
+        // Design Library over it.
+        return await fetchDesignListPage(caller, { ...listQuery, sortField: "createdAt" });
+      }
+
       if (listQuery.tag?.trim() && isFirestoreIndexError(error)) {
         const fallbackPage = await fetchDesignListPage(caller, {
           ...listQuery,
@@ -739,7 +779,49 @@ export const designService = {
     }
   },
 
-  async createDesign(caller: User, input: CreateDesignInput): Promise<Design> {
+  /**
+   * Authority read returning both mapped Design and raw document fields.
+   * Used when a same-stack follow-up write may skip its pre-write getDoc (P1 I5).
+   * Always hits Firestore (does not use the Design-only document cache).
+   */
+  async getDesignAuthoritySnapshot(caller: User, designId: string): Promise<DesignAuthoritySnapshot> {
+    if (!permissionService.canViewDesigns(caller)) {
+      throw new Error("You do not have permission to view designs.");
+    }
+
+    try {
+      const traceMetadata: FirestoreTraceMetadata = {
+        app: "studio",
+        collection: "designs",
+        documentPathPattern: "designs/{designId}",
+        source: "designService.getDesignAuthoritySnapshot",
+        triggerReason: "explicit-refresh",
+      };
+      traceFirestoreOneShotStart("getDoc", traceMetadata);
+      const designSnapshot = await getDoc(
+        doc(firestoreCollectionService.getDesignsCollection(), designId),
+      );
+      traceFirestoreOneShotComplete("getDoc", traceMetadata, designSnapshot.exists() ? 1 : 0);
+
+      if (!designSnapshot.exists()) {
+        throw new Error("The requested design was not found.");
+      }
+
+      const documentData = { ...(designSnapshot.data() as Record<string, unknown>) };
+      return {
+        design: mapDesignDocument(designSnapshot.id, designSnapshot.data()),
+        documentData,
+      };
+    } catch (error) {
+      if (error instanceof Error && error.message === "The requested design was not found.") {
+        throw error;
+      }
+
+      throw new Error(getFirestoreErrorMessage(error, "Unable to load the design. Please try again."));
+    }
+  },
+
+  async createDesign(caller: User, input: CreateDesignInput): Promise<DesignAuthoritySnapshot> {
     if (!permissionService.canCreateDesigns(caller)) {
       throw new Error("You do not have permission to create designs.");
     }
@@ -805,13 +887,26 @@ export const designService = {
         source: "designService.createDesign",
       });
       invalidateDesignReadCaches(designRef.id);
+      const createReadTrace: FirestoreTraceMetadata = {
+        app: "studio",
+        collection: "designs",
+        documentPathPattern: "designs/{designId}",
+        source: "designService.createDesign",
+        triggerReason: "explicit-refresh",
+      };
+      traceFirestoreOneShotStart("getDoc", createReadTrace);
       const createdSnapshot = await getDoc(designRef);
+      traceFirestoreOneShotComplete("getDoc", createReadTrace, createdSnapshot.exists() ? 1 : 0);
 
       if (!createdSnapshot.exists()) {
         throw new Error("The design record could not be created.");
       }
 
-      return mapDesignDocument(createdSnapshot.id, createdSnapshot.data());
+      const documentData = { ...(createdSnapshot.data() as Record<string, unknown>) };
+      return {
+        design: mapDesignDocument(createdSnapshot.id, createdSnapshot.data()),
+        documentData,
+      };
     } catch (error) {
       throw new Error(getFirestoreErrorMessage(error, "Unable to create the design. Please try again."));
     }
@@ -821,7 +916,14 @@ export const designService = {
     caller: User,
     designId: string,
     input: UpdateDesignInput,
-    options?: { allowStatusChange?: boolean },
+    options?: {
+      allowStatusChange?: boolean;
+      /**
+       * Same-stack raw Firestore document fields from a just-completed authority read.
+       * When provided, skips the pre-write getDoc. Must not be a mapped `Design`.
+       */
+      knownExistingData?: Record<string, unknown>;
+    },
   ): Promise<Design> {
     if (!permissionService.canEditDesigns(caller)) {
       throw new Error("You do not have permission to edit designs.");
@@ -918,13 +1020,28 @@ export const designService = {
 
     try {
       const designRef = doc(firestoreCollectionService.getDesignsCollection(), designId);
-      const existingSnapshot = await getDoc(designRef);
+      let existingData: Record<string, unknown>;
 
-      if (!existingSnapshot.exists()) {
-        throw new Error("The design record was not found.");
+      if (options?.knownExistingData) {
+        existingData = options.knownExistingData;
+      } else {
+        const updateReadTrace: FirestoreTraceMetadata = {
+          app: "studio",
+          collection: "designs",
+          documentPathPattern: "designs/{designId}",
+          source: "designService.updateDesign",
+          triggerReason: "explicit-refresh",
+        };
+        traceFirestoreOneShotStart("getDoc", updateReadTrace);
+        const existingSnapshot = await getDoc(designRef);
+        traceFirestoreOneShotComplete("getDoc", updateReadTrace, existingSnapshot.exists() ? 1 : 0);
+
+        if (!existingSnapshot.exists()) {
+          throw new Error("The design record was not found.");
+        }
+
+        existingData = existingSnapshot.data() as Record<string, unknown>;
       }
-
-      const existingData = existingSnapshot.data();
 
       if (input.status !== undefined) {
         const existingStatus = existingData.status;
@@ -961,7 +1078,7 @@ export const designService = {
       return mapDesignDocument(
         designId,
         mergeDesignDocumentDataAfterWrite(
-          existingData as Record<string, unknown>,
+          existingData,
           updatePayload,
           caller.id,
         ) as DesignDocumentData,
@@ -1091,6 +1208,13 @@ export const designService = {
       aiReviewedBy: input.aiReviewedBy,
     };
 
+    // Owner QA Amendment 3: stamp the canonical ready-transition timestamp only when this write
+    // actually moves the design into `ready`. Rejections and every metadata edit leave it alone,
+    // and a reprocessed design approved back into ready is correctly re-stamped to the front.
+    if (input.status === "ready") {
+      updatePayload.readyAt = serverTimestamp();
+    }
+
     if (input.aiReviewVersion !== undefined) {
       updatePayload.aiReviewVersion = input.aiReviewVersion ? input.aiReviewVersion : deleteField();
     }
@@ -1105,7 +1229,16 @@ export const designService = {
 
     try {
       const designRef = doc(firestoreCollectionService.getDesignsCollection(), designId);
+      const applyReadTrace: FirestoreTraceMetadata = {
+        app: "studio",
+        collection: "designs",
+        documentPathPattern: "designs/{designId}",
+        source: "designService.applyCatalogApprovalUpdate",
+        triggerReason: "explicit-refresh",
+      };
+      traceFirestoreOneShotStart("getDoc", applyReadTrace);
       const existingSnapshot = await getDoc(designRef);
+      traceFirestoreOneShotComplete("getDoc", applyReadTrace, existingSnapshot.exists() ? 1 : 0);
 
       if (!existingSnapshot.exists()) {
         throw new Error("The design record was not found.");
@@ -1130,6 +1263,7 @@ export const designService = {
         source: "designService.applyCatalogApprovalUpdate",
       });
       invalidateDesignReadCaches(designId);
+
 
       return mapDesignDocument(
         designId,

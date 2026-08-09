@@ -1,0 +1,61 @@
+{
+  "stage": "Stage 5 — Generated Asset Cleanup",
+  "projectId": "fresh-prints-dev",
+  "mode": "dry-run",
+  "performedAt": "2026-08-08T00:12:49.591Z",
+  "storageAllowlist": [
+    "generated/portal-catalog/",
+    "generated/catalog-reference/"
+  ],
+  "firestoreAllowlist": [
+    "snapshotPublicationState"
+  ],
+  "storageByPrefix": [
+    {
+      "prefix": "generated/portal-catalog/",
+      "objectCount": 0,
+      "totalBytes": 0,
+      "samplePaths": []
+    },
+    {
+      "prefix": "generated/catalog-reference/",
+      "objectCount": 0,
+      "totalBytes": 0,
+      "samplePaths": []
+    }
+  ],
+  "firestore": {
+    "collectionId": "snapshotPublicationState",
+    "documentCount": 0,
+    "sampleIds": []
+  },
+  "negativeRootChecklist": [
+    {
+      "root": "originals/",
+      "targetedForDeletion": false,
+      "note": "Confirmed not in Stage 5 Storage allowlist"
+    },
+    {
+      "root": "thumbnails/",
+      "targetedForDeletion": false,
+      "note": "Confirmed not in Stage 5 Storage allowlist"
+    },
+    {
+      "root": "previews/",
+      "targetedForDeletion": false,
+      "note": "Confirmed not in Stage 5 Storage allowlist"
+    },
+    {
+      "root": "display/",
+      "targetedForDeletion": false,
+      "note": "Confirmed not in Stage 5 Storage allowlist"
+    },
+    {
+      "root": "customer-uploads/",
+      "targetedForDeletion": false,
+      "note": "Confirmed not in Stage 5 Storage allowlist"
+    }
+  ],
+  "otherRootsNote": "Every Storage root outside the two allowlisted generated prefixes is out of scope and was not targeted.",
+  "destructiveActionsPerformed": false
+}

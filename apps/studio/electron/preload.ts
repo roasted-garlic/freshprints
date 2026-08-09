@@ -24,14 +24,14 @@ import {
   isAllowedInboxAlertIpcChannel,
 } from "./ipc/inboxAlert/inboxAlertIpcChannels";
 import {
+  TAXONOMY_CACHE_IPC_CHANNELS,
+  isAllowedTaxonomyCacheIpcChannel,
+} from "./ipc/taxonomyCache/taxonomyCacheIpcChannels";
+import {
   WHATNOT_IMPORT_CONFIRMED_EVENT,
   WHATNOT_IMPORT_IPC_CHANNELS,
   isAllowedWhatnotImportIpcChannel,
 } from "./ipc/whatnotImport/whatnotImportIpcChannels";
-import {
-  CATALOG_ASSET_IPC_CHANNELS,
-  isAllowedCatalogAssetIpcChannel,
-} from "./ipc/catalogAsset/catalogAssetIpcChannels";
 import {
   STUDIO_UPDATE_IPC_CHANNELS,
   STUDIO_UPDATE_STATE_CHANGED,
@@ -45,6 +45,12 @@ import type {
   SelectInboxAlertSoundRequest,
   SelectInboxAlertSoundResult,
 } from "@fresh-prints/shared/types/inboxAlert/inboxAlertIpc.types";
+import type {
+  TaxonomyDiskCacheClearResult,
+  TaxonomyDiskCacheReadResult,
+  TaxonomyDiskCacheWriteRequest,
+  TaxonomyDiskCacheWriteResult,
+} from "@fresh-prints/shared/types/taxonomy/taxonomyCacheIpc.types";
 import type {
   ConfirmCloseResult,
   DownloadUrlToFileRequest,
@@ -94,10 +100,6 @@ import type {
   ShowExportProgressEvent,
 } from "@fresh-prints/shared/types/export/showExportIpc.types";
 import type {
-  FetchCatalogAssetJsonRequest,
-  FetchCatalogAssetJsonIpcResult,
-} from "@fresh-prints/shared/types/catalogAsset/catalogAssetIpc.types";
-import type {
   CheckForStudioUpdateResult,
   DownloadStudioUpdateResult,
   PostponeStudioUpdateResult,
@@ -113,6 +115,11 @@ import {
   FIREBASE_DEBUG_IPC_CHANNELS,
   isAllowedFirebaseDebugIpcChannel,
 } from "./ipc/firebaseDebug/firebaseDebugIpcChannels";
+import type { AiQueueTraceEventInput, AiQueueTraceSnapshot } from "@fresh-prints/shared/utils/aiQueueTrace";
+import {
+  AI_QUEUE_TRACE_IPC_CHANNELS,
+  isAllowedAiQueueTraceIpcChannel,
+} from "./ipc/aiQueueTrace/aiQueueTraceIpcChannels";
 import type {
   ClearGangSheetCacheRequest,
   DownloadCachedGangSheetRequest,
@@ -186,6 +193,23 @@ function invokeInboxAlertChannel<T>(
       error: {
         code: "INTERNAL_ERROR",
         message: "The requested inbox alert operation is not allowed.",
+      },
+    });
+  }
+
+  return ipcRenderer.invoke(channel, payload) as Promise<ImportIpcResult<T>>;
+}
+
+function invokeTaxonomyCacheChannel<T>(
+  channel: (typeof TAXONOMY_CACHE_IPC_CHANNELS)[keyof typeof TAXONOMY_CACHE_IPC_CHANNELS],
+  payload?: unknown,
+): Promise<ImportIpcResult<T>> {
+  if (!isAllowedTaxonomyCacheIpcChannel(channel)) {
+    return Promise.resolve({
+      success: false,
+      error: {
+        code: "INTERNAL_ERROR",
+        message: "The requested taxonomy cache operation is not allowed.",
       },
     });
   }
@@ -315,25 +339,20 @@ contextBridge.exposeInMainWorld("freshPrints", {
     },
   },
 
-  catalogAsset: {
-    fetchJson(
-      request: FetchCatalogAssetJsonRequest,
-    ): Promise<FetchCatalogAssetJsonIpcResult> {
-      if (!isAllowedCatalogAssetIpcChannel(CATALOG_ASSET_IPC_CHANNELS.FETCH_JSON)) {
-        return Promise.resolve({
-          success: false,
-          error: {
-            code: "INVALID_INPUT",
-            message: "The requested catalog asset operation is not allowed.",
-            diagnostics: {
-              durationMs: 0,
-              failureCode: "ipc-channel-denied",
-              failureStage: "electron-ipc",
-            },
-          },
-        });
-      }
-      return ipcRenderer.invoke(CATALOG_ASSET_IPC_CHANNELS.FETCH_JSON, request);
+  aiQueueTrace: {
+    append(event: AiQueueTraceEventInput): void {
+      if (!isAllowedAiQueueTraceIpcChannel(AI_QUEUE_TRACE_IPC_CHANNELS.APPEND)) return;
+      ipcRenderer.send(AI_QUEUE_TRACE_IPC_CHANNELS.APPEND, event);
+    },
+    getSnapshot(): Promise<AiQueueTraceSnapshot> {
+      return ipcRenderer.invoke(AI_QUEUE_TRACE_IPC_CHANNELS.GET_SNAPSHOT);
+    },
+    reset(): void {
+      if (!isAllowedAiQueueTraceIpcChannel(AI_QUEUE_TRACE_IPC_CHANNELS.RESET)) return;
+      ipcRenderer.send(AI_QUEUE_TRACE_IPC_CHANNELS.RESET);
+    },
+    isEnabled(): Promise<boolean> {
+      return ipcRenderer.invoke(AI_QUEUE_TRACE_IPC_CHANNELS.IS_ENABLED);
     },
   },
 
@@ -567,6 +586,27 @@ contextBridge.exposeInMainWorld("freshPrints", {
       return invokeInboxAlertChannel<ClearInboxAlertSoundResult>(
         INBOX_ALERT_IPC_CHANNELS.CLEAR_LOCAL_SOUND,
         request,
+      );
+    },
+  },
+
+  taxonomyCache: {
+    readDiskCache(): Promise<ImportIpcResult<TaxonomyDiskCacheReadResult>> {
+      return invokeTaxonomyCacheChannel<TaxonomyDiskCacheReadResult>(TAXONOMY_CACHE_IPC_CHANNELS.READ);
+    },
+
+    writeDiskCache(
+      request: TaxonomyDiskCacheWriteRequest,
+    ): Promise<ImportIpcResult<TaxonomyDiskCacheWriteResult>> {
+      return invokeTaxonomyCacheChannel<TaxonomyDiskCacheWriteResult>(
+        TAXONOMY_CACHE_IPC_CHANNELS.WRITE,
+        request,
+      );
+    },
+
+    clearDiskCache(): Promise<ImportIpcResult<TaxonomyDiskCacheClearResult>> {
+      return invokeTaxonomyCacheChannel<TaxonomyDiskCacheClearResult>(
+        TAXONOMY_CACHE_IPC_CHANNELS.CLEAR,
       );
     },
   },

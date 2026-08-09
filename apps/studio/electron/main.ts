@@ -14,16 +14,17 @@ import {
   STUDIO_MIN_WINDOW_HEIGHT,
   STUDIO_MIN_WINDOW_WIDTH,
 } from './window/studioWindowConstraints'
-import { registerCatalogAssetIpcHandlers } from './ipc/catalogAsset/catalogAssetIpcHandlers'
 import {
   closeFirebaseDebugWindow,
   registerFirebaseDebugIpcHandlers,
 } from './ipc/firebaseDebug/firebaseDebugIpcHandlers'
+import { registerAiQueueTraceIpcHandlers } from './ipc/aiQueueTrace/aiQueueTraceIpcHandlers'
 import { registerExportIpcHandlers } from './ipc/export/exportIpcHandlers'
 import { registerImportIpcHandlers } from './ipc/import/importIpcHandlers'
 import { registerInboxAlertIpcHandlers } from './ipc/inboxAlert/inboxAlertIpcHandlers'
 import { registerWhatnotImportIpcHandlers } from './ipc/whatnotImport/whatnotImportIpcHandlers'
 import { registerStudioUpdateIpcHandlers } from './ipc/studioUpdate/studioUpdateIpcHandlers'
+import { registerTaxonomyCacheIpcHandlers } from './ipc/taxonomyCache/taxonomyCacheIpcHandlers'
 import { startPeriodicStudioUpdateChecks } from './ipc/studioUpdate/studioUpdateService'
 import { attachTextInputContextMenu } from './services/app/textInputContextMenu'
 
@@ -305,7 +306,6 @@ app.whenReady().then(() => {
   app.setName(appName)
   Menu.setApplicationMenu(null)
   registerAppIpcHandlers()
-  registerCatalogAssetIpcHandlers()
   registerFirebaseDebugIpcHandlers({
     getMainWindow: () => win,
     getPreloadPath: () => path.join(__dirname, 'preload.mjs'),
@@ -313,11 +313,15 @@ app.whenReady().then(() => {
     getDevServerUrl: () => VITE_DEV_SERVER_URL,
     isPackaged: () => app.isPackaged,
   })
+  registerAiQueueTraceIpcHandlers({
+    isPackaged: () => app.isPackaged,
+  })
   registerImportIpcHandlers()
   registerInboxAlertIpcHandlers()
   registerWhatnotImportIpcHandlers()
   registerExportIpcHandlers()
   registerStudioUpdateIpcHandlers()
+  registerTaxonomyCacheIpcHandlers()
 
   createWindow()
 

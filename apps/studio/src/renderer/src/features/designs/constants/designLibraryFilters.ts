@@ -154,8 +154,20 @@ export function getAiReviewPath(): string {
   return AI_REVIEW_PATH;
 }
 
-/** Design Library default: most recently processed/updated first (AI completion bumps updatedAt). */
-export const DESIGN_LIBRARY_DEFAULT_SORT_FIELD: DesignListSortField = "updatedAt";
+/**
+ * Design Library default: most recent transition into `status: "ready"` first (`readyAt`).
+ *
+ * This is a server-side `orderBy`, not a page-local sort — Owner QA Amendment 3 correction. Sorting
+ * a `createdAt`-ordered page by `readyAt` afterwards could never surface an old design reapproved
+ * today, because that design was outside the fetched `createdAt` page to begin with.
+ */
+export const DESIGN_LIBRARY_DEFAULT_SORT_FIELD: DesignListSortField = "readyAt";
+
+/**
+ * Archived browse keeps `createdAt`: `readyAt` is only written on the transition into `ready`, and
+ * the composite index backing the ready ordering is scoped to `status == "ready"`.
+ */
+export const DESIGN_LIBRARY_ARCHIVED_SORT_FIELD: DesignListSortField = "createdAt";
 export const DESIGN_LIBRARY_DEFAULT_SORT_DIRECTION: DesignListSortDirection = "desc";
 
 export function buildCatalogDesignListQuery(options: {
@@ -172,7 +184,9 @@ export function buildCatalogDesignListQuery(options: {
   return {
     categoryId: options.categoryId,
     sortDirection: DESIGN_LIBRARY_DEFAULT_SORT_DIRECTION,
-    sortField: DESIGN_LIBRARY_DEFAULT_SORT_FIELD,
+    sortField: options.archived
+      ? DESIGN_LIBRARY_ARCHIVED_SORT_FIELD
+      : DESIGN_LIBRARY_DEFAULT_SORT_FIELD,
     statusIn: options.archived
       ? [...DESIGN_LIBRARY_ARCHIVED_STATUSES]
       : [...DESIGN_LIBRARY_CATALOG_STATUSES],

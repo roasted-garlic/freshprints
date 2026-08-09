@@ -25,7 +25,10 @@ describe("Phase 0 route read containment alignment", () => {
       "apps/studio/src/renderer/src/features/designs/pages/DesignLibraryPage.tsx",
     );
 
-    assert.match(source, /useGeneratedReadyDesigns/);
+    // design LIST is Firestore-authoritative (useDesigns). Display taxonomy is Firestore via
+    // useGeneratedDesignLibraryTaxonomy (export name preserved; Phase 1A).
+    assert.doesNotMatch(source, /useGeneratedReadyDesigns/);
+    assert.match(source, /useGeneratedDesignLibraryTaxonomy/);
     assert.match(source, /useDesigns\(listQuery,\s*\{\s*enabled:/);
     assert.doesNotMatch(source, /useDesigns\(listQuery,\s*\{\s*loadAll:\s*true/);
     assert.match(source, /isTagManagementModalOpen\s*\?\s*\(/);

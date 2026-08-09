@@ -1,7 +1,15 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type FormEvent,
+  type ReactNode,
+} from 'react';
 import { createPortal } from 'react-dom';
 
 import {
@@ -9,10 +17,16 @@ import {
   ASSISTED_CREATION_MESSAGING_CLOSED_MESSAGE,
   canSendAssistedCreationMessage,
 } from '@fresh-prints/shared/constants/assistedCreation/assistedCreation.constants';
+import { resolveArtworkBackgroundHex } from '@fresh-prints/shared/constants/design/artworkBackground.constants';
 import type {
   AssistedCreationProof,
   AssistedCreationRequest,
 } from '@fresh-prints/shared/types/assistedCreation/assistedCreation.types';
+import {
+  needsAssistedCatalogShareArtworkBackgroundLiveResolve,
+  resolveAssistedCatalogShareArtworkBackgroundHex,
+  snapshotAssistedCatalogArtworkBackgroundHex,
+} from '@fresh-prints/shared/utils/assistedCreationCatalogShareArtworkBackground';
 import {
   evaluateAssistedCreationApprovedProofDownload,
   isAssistedCreationProofPng,
@@ -32,6 +46,7 @@ import {
   notesForProof,
 } from '../utils/assistedCreationDisplay';
 import { assistedCreationService } from '../services/assistedCreationService';
+import { catalogService } from '../../catalog/services/catalogService';
 import { catalogStorageService } from '../../catalog/services/catalogStorageService';
 import { buildPortalDesignDeepLinkPath } from '../../catalog/utils/portalDesignShareUrls';
 import { portalPrintRequestService } from '../../print-requests/services/portalPrintRequestService';
@@ -43,6 +58,18 @@ import {
   type AssistedAddToRequestProgressPhase,
 } from './AssistedAddToRequestProgressModal';
 import { AssistedLibraryListingConsentModal } from './AssistedLibraryListingConsentModal';
+
+function catalogShareArtworkPreviewStyle(hex?: string | null): CSSProperties | undefined {
+  const resolved = resolveAssistedCatalogShareArtworkBackgroundHex({
+    suggestedArtworkBackgroundHex: hex,
+  });
+  if (!resolved) {
+    return undefined;
+  }
+  return {
+    ['--color-artwork-preview-bg' as string]: resolveArtworkBackgroundHex(resolved),
+  };
+}
 
 function proofCreatedAtMillis(value: unknown): number {
   if (value && typeof value === 'object' && 'toDate' in value && typeof value.toDate === 'function') {
@@ -89,6 +116,47 @@ function AssistedApprovedCatalogDesignCard({ request }: { request: AssistedCreat
   const title =
     request.suggestedCatalogDesign?.title?.trim() || 'Approved library design';
   const previewPath = request.suggestedCatalogDesign?.previewImageUrl?.trim() || '';
+  const snapshotArtworkBackgroundHex = resolveAssistedCatalogShareArtworkBackgroundHex({
+    suggestedArtworkBackgroundHex: request.suggestedCatalogDesign?.artworkBackgroundHex,
+  });
+  const [liveArtworkBackgroundHex, setLiveArtworkBackgroundHex] = useState<string | undefined>(
+    undefined,
+  );
+
+  useEffect(() => {
+    if (
+      !needsAssistedCatalogShareArtworkBackgroundLiveResolve({
+        suggestedArtworkBackgroundHex: snapshotArtworkBackgroundHex,
+      }) ||
+      !designId
+    ) {
+      setLiveArtworkBackgroundHex(undefined);
+      return;
+    }
+    let cancelled = false;
+    void catalogService
+      .getReadyDesignsByIds([designId])
+      .then((designs) => {
+        if (!cancelled) {
+          setLiveArtworkBackgroundHex(
+            snapshotAssistedCatalogArtworkBackgroundHex(designs[0]?.artworkBackgroundHex),
+          );
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setLiveArtworkBackgroundHex(undefined);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [designId, snapshotArtworkBackgroundHex]);
+
+  const artworkBackgroundHex = resolveAssistedCatalogShareArtworkBackgroundHex({
+    suggestedArtworkBackgroundHex: snapshotArtworkBackgroundHex,
+    liveDesignArtworkBackgroundHex: liveArtworkBackgroundHex,
+  });
 
   const alreadyInWorkingRequest = useMemo(() => {
     if (!designId) {
@@ -193,7 +261,10 @@ function AssistedApprovedCatalogDesignCard({ request }: { request: AssistedCreat
       </div>
       <p className="assisted-creation-catalog-suggestion-title">{title}</p>
       {previewUrl ? (
-        <div className="assisted-creation-proof-stage">
+        <div
+          className="assisted-creation-proof-stage"
+          style={catalogShareArtworkPreviewStyle(artworkBackgroundHex)}
+        >
           <img
             alt={title}
             className="assisted-creation-proof-stage-image"
@@ -816,11 +887,54 @@ function ProofDetailModal({
   const catalogTitle = assistedCreationCatalogShareProofTitle(proof);
   const catalogDesignId = proof.catalogDesignId?.trim() || '';
   const catalogPreviewPath = proof.catalogPreviewImageUrl?.trim() || '';
+  const snapshotCatalogArtworkBackgroundHex = resolveAssistedCatalogShareArtworkBackgroundHex({
+    suggestedArtworkBackgroundHex: request.suggestedCatalogDesign?.artworkBackgroundHex,
+    proofCatalogArtworkBackgroundHex: proof.catalogArtworkBackgroundHex,
+  });
+  const [liveCatalogArtworkBackgroundHex, setLiveCatalogArtworkBackgroundHex] = useState<
+    string | undefined
+  >(undefined);
   const [url, setUrl] = useState<string | null>(null);
   const [imageUnavailable, setImageUnavailable] = useState(false);
   const [canPortal, setCanPortal] = useState(false);
   const [downloadBusy, setDownloadBusy] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (
+      !isCatalogShare ||
+      !needsAssistedCatalogShareArtworkBackgroundLiveResolve({
+        suggestedArtworkBackgroundHex: snapshotCatalogArtworkBackgroundHex,
+      }) ||
+      !catalogDesignId
+    ) {
+      setLiveCatalogArtworkBackgroundHex(undefined);
+      return;
+    }
+    let cancelled = false;
+    void catalogService
+      .getReadyDesignsByIds([catalogDesignId])
+      .then((designs) => {
+        if (!cancelled) {
+          setLiveCatalogArtworkBackgroundHex(
+            snapshotAssistedCatalogArtworkBackgroundHex(designs[0]?.artworkBackgroundHex),
+          );
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setLiveCatalogArtworkBackgroundHex(undefined);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [catalogDesignId, isCatalogShare, snapshotCatalogArtworkBackgroundHex]);
+
+  const catalogArtworkBackgroundHex = resolveAssistedCatalogShareArtworkBackgroundHex({
+    suggestedArtworkBackgroundHex: snapshotCatalogArtworkBackgroundHex,
+    liveDesignArtworkBackgroundHex: liveCatalogArtworkBackgroundHex,
+  });
 
   const isApprovedCatalog =
     isCatalogShare &&
@@ -950,7 +1064,14 @@ function ProofDetailModal({
         </header>
         <div className="modal-body assisted-creation-proof-modal-body">
           {url ? (
-            <div className="assisted-creation-proof-stage">
+            <div
+              className="assisted-creation-proof-stage"
+              style={
+                isCatalogShare
+                  ? catalogShareArtworkPreviewStyle(catalogArtworkBackgroundHex)
+                  : undefined
+              }
+            >
               <img
                 alt={isCatalogShare ? catalogTitle : `Proof ${proofNumber}`}
                 className="assisted-creation-proof-stage-image"
@@ -1071,10 +1192,20 @@ function ProofDetailModal({
   return canPortal ? createPortal(node, document.body) : node;
 }
 
-function ProofListThumb({ proof }: { proof: AssistedCreationProof }) {
+function ProofListThumb({
+  fallbackArtworkBackgroundHex,
+  proof,
+}: {
+  fallbackArtworkBackgroundHex?: string;
+  proof: AssistedCreationProof;
+}) {
   const [url, setUrl] = useState<string | null>(null);
   const isCatalogShare = isAssistedCreationCatalogShareProof(proof);
   const catalogPreviewPath = proof.catalogPreviewImageUrl?.trim() || '';
+  const artworkBackgroundHex = resolveAssistedCatalogShareArtworkBackgroundHex({
+    suggestedArtworkBackgroundHex: fallbackArtworkBackgroundHex,
+    proofCatalogArtworkBackgroundHex: proof.catalogArtworkBackgroundHex,
+  });
   const unavailable = isCatalogShare
     ? !catalogPreviewPath
     : proof.fullSizePurgedAt != null || !proof.storagePath?.trim();
@@ -1133,7 +1264,14 @@ function ProofListThumb({ proof }: { proof: AssistedCreationProof }) {
   }
 
   return (
-    <img alt="" className="assisted-creation-proof-row-thumb" src={url} />
+    <img
+      alt=""
+      className="assisted-creation-proof-row-thumb"
+      src={url}
+      style={
+        isCatalogShare ? catalogShareArtworkPreviewStyle(artworkBackgroundHex) : undefined
+      }
+    />
   );
 }
 
@@ -1163,6 +1301,57 @@ export function AssistedCreationProofsPanel({ request }: { request: AssistedCrea
   const selectedProofNumber =
     selectedProof == null ? 0 : chronologicalProofNumber(proofsAsc, selectedProof.id);
 
+  const snapshotListArtworkBackgroundHex = resolveAssistedCatalogShareArtworkBackgroundHex({
+    suggestedArtworkBackgroundHex: request.suggestedCatalogDesign?.artworkBackgroundHex,
+    proofCatalogArtworkBackgroundHex: proofsNewestFirst.find((proof) =>
+      isAssistedCreationCatalogShareProof(proof),
+    )?.catalogArtworkBackgroundHex,
+  });
+  const catalogDesignIdForListBg =
+    request.suggestedCatalogDesign?.designId?.trim() ||
+    proofsNewestFirst
+      .find((proof) => isAssistedCreationCatalogShareProof(proof))
+      ?.catalogDesignId?.trim() ||
+    '';
+  const [liveListArtworkBackgroundHex, setLiveListArtworkBackgroundHex] = useState<
+    string | undefined
+  >(undefined);
+
+  useEffect(() => {
+    if (
+      !catalogDesignIdForListBg ||
+      !needsAssistedCatalogShareArtworkBackgroundLiveResolve({
+        suggestedArtworkBackgroundHex: snapshotListArtworkBackgroundHex,
+      })
+    ) {
+      setLiveListArtworkBackgroundHex(undefined);
+      return;
+    }
+    let cancelled = false;
+    void catalogService
+      .getReadyDesignsByIds([catalogDesignIdForListBg])
+      .then((designs) => {
+        if (!cancelled) {
+          setLiveListArtworkBackgroundHex(
+            snapshotAssistedCatalogArtworkBackgroundHex(designs[0]?.artworkBackgroundHex),
+          );
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setLiveListArtworkBackgroundHex(undefined);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [catalogDesignIdForListBg, snapshotListArtworkBackgroundHex]);
+
+  const listArtworkBackgroundHex = resolveAssistedCatalogShareArtworkBackgroundHex({
+    suggestedArtworkBackgroundHex: snapshotListArtworkBackgroundHex,
+    liveDesignArtworkBackgroundHex: liveListArtworkBackgroundHex,
+  });
+
   return (
     <div className="assisted-creation-detail-stack assisted-creation-detail-stack--dense">
       <section className="assisted-creation-detail-block">
@@ -1188,7 +1377,10 @@ export function AssistedCreationProofsPanel({ request }: { request: AssistedCrea
                     onClick={() => setSelectedProofId(proof.id)}
                     type="button"
                   >
-                    <ProofListThumb proof={proof} />
+                    <ProofListThumb
+                      fallbackArtworkBackgroundHex={listArtworkBackgroundHex}
+                      proof={proof}
+                    />
                     <span className="assisted-creation-proof-row-body">
                       <span className="assisted-creation-proof-row-title">
                         <span>

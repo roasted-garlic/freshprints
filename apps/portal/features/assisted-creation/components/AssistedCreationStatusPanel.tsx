@@ -11,8 +11,15 @@ import {
   isAssistedCreationOpenStatus,
   type AssistedCreationStatus,
 } from '@fresh-prints/shared/constants/assistedCreation/assistedCreation.constants';
+import { resolveArtworkBackgroundHex } from '@fresh-prints/shared/constants/design/artworkBackground.constants';
 import type { AssistedCreationRequest } from '@fresh-prints/shared/types/assistedCreation/assistedCreation.types';
+import {
+  needsAssistedCatalogShareArtworkBackgroundLiveResolve,
+  resolveAssistedCatalogShareArtworkBackgroundHex,
+  snapshotAssistedCatalogArtworkBackgroundHex,
+} from '@fresh-prints/shared/utils/assistedCreationCatalogShareArtworkBackground';
 import { CatalogPreviewLightbox } from '../../catalog/components/CatalogPreviewLightbox';
+import { catalogService } from '../../catalog/services/catalogService';
 import { catalogStorageService } from '../../catalog/services/catalogStorageService';
 import { buildPortalDesignDeepLinkPath } from '../../catalog/utils/portalDesignShareUrls';
 import { PortalConfirmModal } from '../../shared/components/PortalConfirmModal';
@@ -210,6 +217,52 @@ export function AssistedCreationStatusPanel({ onStartNew }: AssistedCreationStat
     };
   }, [latest]);
 
+  const catalogShareSnapshotArtworkBackgroundHex =
+    resolveAssistedCatalogShareArtworkBackgroundHex({
+      suggestedArtworkBackgroundHex: latest?.suggestedCatalogDesign?.artworkBackgroundHex,
+      proofCatalogArtworkBackgroundHex: latest
+        ? [...latest.proofs]
+            .reverse()
+            .find((proof) => proof.kind === 'catalog_share')?.catalogArtworkBackgroundHex
+        : undefined,
+    });
+  const catalogShareDesignIdForBg = latest?.suggestedCatalogDesign?.designId?.trim() || '';
+  const catalogShareNeedsLiveBg =
+    latest?.fulfillmentMode === 'catalog_share' &&
+    Boolean(catalogShareDesignIdForBg) &&
+    needsAssistedCatalogShareArtworkBackgroundLiveResolve({
+      suggestedArtworkBackgroundHex: catalogShareSnapshotArtworkBackgroundHex,
+    });
+  const [liveCatalogArtworkBackgroundHex, setLiveCatalogArtworkBackgroundHex] = useState<
+    string | undefined
+  >(undefined);
+
+  useEffect(() => {
+    if (!catalogShareNeedsLiveBg) {
+      setLiveCatalogArtworkBackgroundHex(undefined);
+      return;
+    }
+    let cancelled = false;
+    void catalogService
+      .getReadyDesignsByIds([catalogShareDesignIdForBg])
+      .then((designs) => {
+        if (cancelled) {
+          return;
+        }
+        setLiveCatalogArtworkBackgroundHex(
+          snapshotAssistedCatalogArtworkBackgroundHex(designs[0]?.artworkBackgroundHex),
+        );
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setLiveCatalogArtworkBackgroundHex(undefined);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [catalogShareDesignIdForBg, catalogShareNeedsLiveBg]);
+
   if (loadError) {
     return (
       <section className="etsy-wizard-shell assisted-creation-status">
@@ -263,6 +316,11 @@ export function AssistedCreationStatusPanel({ onStartNew }: AssistedCreationStat
       ? latest.proofs[latest.proofs.length - 1]
       : null;
   const suggestedDesign = latest.suggestedCatalogDesign;
+  const resolvedCatalogArtworkBackgroundHex =
+    resolveAssistedCatalogShareArtworkBackgroundHex({
+      suggestedArtworkBackgroundHex: catalogShareSnapshotArtworkBackgroundHex,
+      liveDesignArtworkBackgroundHex: liveCatalogArtworkBackgroundHex,
+    });
   const libraryDeepLink = suggestedDesign?.designId
     ? buildPortalDesignDeepLinkPath(suggestedDesign.designId)
     : null;
@@ -327,6 +385,14 @@ export function AssistedCreationStatusPanel({ onStartNew }: AssistedCreationStat
                   aria-label={`Open preview of ${suggestedDesign.title}`}
                   className="assisted-creation-proof-image-button assisted-creation-proof-stage"
                   onClick={() => setProofLightboxOpen(true)}
+                  style={
+                    resolvedCatalogArtworkBackgroundHex
+                      ? {
+                          ['--color-artwork-preview-bg' as string]:
+                            resolveArtworkBackgroundHex(resolvedCatalogArtworkBackgroundHex),
+                        }
+                      : undefined
+                  }
                   type="button"
                 >
                   <img
@@ -652,6 +718,9 @@ export function AssistedCreationStatusPanel({ onStartNew }: AssistedCreationStat
           isCatalogShare && suggestedDesign
             ? suggestedDesign.title
             : 'Design proof'
+        }
+        artworkBackgroundHex={
+          isCatalogShare ? resolvedCatalogArtworkBackgroundHex : undefined
         }
         className="assisted-creation-lightbox"
         isOpen={proofLightboxOpen && proofUrl != null}

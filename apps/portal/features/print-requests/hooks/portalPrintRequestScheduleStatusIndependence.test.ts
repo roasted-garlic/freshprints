@@ -17,8 +17,8 @@ describe('schedule visibility is status and tab independent', () => {
   it('loads details schedules by request id without the progress polling gate', () => {
     assert.match(detailSource, /usePortalPrintRequestShowSchedules\(printRequestId\)/);
     assert.doesNotMatch(detailSource, /usePortalPrintRequestShowSchedules\(printRequestId,\s*preLiveAuthority\.pollingEnabled\)/);
-    assert.match(detailSource, /scheduledShowLabels=\{scheduledShowLabels\}/);
-    assert.match(detailSource, /progressStage[\s\S]*scheduledShowLabels\.length > 0[\s\S]*PortalPrintRequestScheduleSection/);
+    assert.match(detailSource, /scheduledShowEntries=\{scheduledShowEntries\}/);
+    assert.match(detailSource, /progressStage[\s\S]*scheduledShowEntries\.length > 0[\s\S]*PortalPrintRequestScheduleSection/);
   });
 
   it('uses the same card schedule branch for every list tab', () => {

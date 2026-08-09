@@ -3,7 +3,9 @@ import { useCallback, useState } from "react";
 import { useAuth } from "../../auth/hooks/useAuth";
 import { categoryService } from "../services/categoryService";
 import { taxonomyArchiveGuardsService } from "../services/taxonomyArchiveGuardsService";
+import { clearStudioTaxonomyCaches } from "../services/taxonomyCacheControl";
 import type { Category } from "../types/category.types";
+import { persistCategoryArchive } from "./persistCategoryArchive";
 
 interface ArchiveCategoryState {
   error: string | null;
@@ -28,13 +30,12 @@ export function useArchiveCategory() {
       setState({ isSubmitting: true, error: null });
 
       try {
-        const result = await taxonomyArchiveGuardsService.archiveCategory(categoryId);
-        if (result.outcome === "blocked") {
-          const message = result.blockers?.[0]?.message ?? result.message;
-          setState({ isSubmitting: false, error: message });
-          throw new Error(message);
-        }
-        const category = await categoryService.getCategoryById(user, categoryId);
+        const category = await persistCategoryArchive(user, categoryId, {
+          archiveViaGuards: (id) => taxonomyArchiveGuardsService.archiveCategory(id),
+          archiveViaClient: (caller, id) => categoryService.archiveCategory(caller, id),
+          getCategoryById: (caller, id) => categoryService.getCategoryById(caller, id),
+          clearCaches: clearStudioTaxonomyCaches,
+        });
         setState({ isSubmitting: false, error: null });
         return category;
       } catch (error) {

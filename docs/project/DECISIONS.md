@@ -4,6 +4,157 @@
 
 ---
 
+### ADR-FP-129: Optional Algolia admin secret must not couple unrelated Functions discovery
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-08-08 |
+| Status | accepted (source Implement; production Wave A deploy remains separately gated) |
+| Related | `functions-optional-algolia-secret-deployment-discovery-corrective` / PR #40 Wave A Taxonomy |
+| Plan | `docs/workflow/plans/2026-08-08-functions-optional-algolia-secret-deployment-discovery-corrective-plan.md` |
+
+**Context**
+
+Firebase CLI loads the default Functions codebase (`index.ts`) during deploy discovery and
+resolves **all** `defineSecret` entries in `declaredParams`, regardless of `--only`. Shared
+`functions/src/lib/secrets.ts` previously declared `ALGOLIA_ADMIN_API_KEY` at module scope, so
+loading `enqueueAiEnrichment` (Wave A) registered the optional Algolia secret. On
+`fresh-prints-prod` that secret was intentionally absent (Algolia OFF), aborting taxonomy-only
+deploy before any Function mutation.
+
+**Decision**
+
+1. `ALGOLIA_ADMIN_API_KEY` is declared only in `functions/src/algolia/algoliaSecrets.ts`
+   (Algolia boundary). Shared `lib/secrets` keeps GEMINI/RESEND/BREVO/ETSY only.
+2. Default `functions/src/index.ts` does **not** export the Algolia Function trio while Algolia
+   is optional/OFF. Implementations remain under `functions/src/algolia/`; restore exports via
+   `algolia/algoliaFunctionExports.ts` only under an approved Algolia Functions checkpoint.
+3. Admin credentials remain Secret Manager–only (`defineSecret` + Function `secrets:` binding)
+   when Algolia is later enabled. Portal receives search-only credentials only.
+4. Development and production must use **separate** Algolia indexes. Repo default / dev:
+   `portal_catalog_ready_dev`. Production is expected to use a distinct name (proposed
+   `portal_catalog_ready_prod`) via `ALGOLIA_PORTAL_CATALOG_INDEX_NAME` — never share the
+   development index with production.
+5. Creating a production Algolia admin secret solely to unblock unrelated Function deploys is
+   rejected; fix discovery coupling instead.
+
+**Consequences**
+
+- Taxonomy / AI / ordinary Portal browse deploys no longer require Algolia Secret Manager.
+- Later Algolia lane: set prod secret + params (prod index ≠ `_dev`), re-export trio, scoped
+  Algolia Function deploy, then enable Portal flag — each under separate owner phrases.
+- On `fresh-prints-dev` (where Algolia Functions may already be live), avoid unfiltered
+  `firebase deploy --only functions` until exports are restored; prefer scoped `--only`.
+
+---
+
+### ADR-FP-128: Taxonomy materialization — server-owned chunked Firestore + revision caches
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-08-07 |
+| Status | accepted (source Implement; live bootstrap / Functions+Rules deploy gated) |
+| Related | `post-launch-catalog-and-processing-stability` / `taxonomy-read-spike-elimination` |
+| Plan | `docs/workflow/plans/2026-08-07-taxonomy-read-spike-elimination-plan.md` |
+
+**Context**
+
+Cold AI Function instances and Studio AI Review each hydrate ~1,139 Firestore taxonomy docs
+(approved tags + active categories). P3 process cache helps only within one warm instance.
+Stage 4/5 retired generated catalog Storage — must not revive those prefixes.
+
+**Decision**
+
+1. Firestore `tags/**` and `categories/**` remain authoritative.
+2. Derived read model: `taxonomyMaterialization/meta` + `taxonomyMaterialization/chunk-*`
+   (approved tags + active categories only), written only by Admin/Functions via shared
+   `rebuildTaxonomyMaterialization` (chunks first, then meta — publication fence).
+3. AI loader prefers materialization (revision-keyed process cache); FS full hydrate is
+   single-flight fallback with circuit after repeated failures. Single-flight is
+   **per-instance only** (N cold instances can still each hydrate once).
+4. Studio reads meta, short-circuits on matching Electron `userData/taxonomy-cache/v1.json`,
+   else fetches chunks. Clients cannot write materialization (Rules deny).
+5. Taxonomy source writes (`tags`/`categories` onWrite triggers) rebuild via an **awaited**
+   process-local coalesce Promise (no detached timer after Gen2 return); design
+   writes, Algolia sync, and enqueue must not rebuild. Cross-instance duplicate rebuilds
+   remain an accepted residual (no fleet lock).
+6. Soft max ~900 KiB/chunk; revisit Option A / private Storage when projected corpus exceeds
+   `TAXONOMY_MATERIALIZATION_REVISIT_BYTES` (2.5 MiB).
+
+**Consequences**
+
+- Live bootstrap callable + Functions/Rules deploy require separate owner authorization.
+- Until bootstrap exists in an environment, Studio/AI keep FS list fallback (RC4).
+
+---
+
+### ADR-FP-127: Stage 5 — Retire generated catalog Storage + Rules; ops-script cleanup only
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-08-07 |
+| Status | accepted (source Implement); live dry-run / delete / Rules deploy pending owner phrases |
+| Related | `post-launch-catalog-and-processing-stability` Stage 5 |
+| Plan | `docs/workflow/plans/2026-08-07-stage-5-generated-asset-cleanup-plan.md` |
+
+**Context**
+
+Stage 4 retired publishers and Portal generated fallbacks. Residual `generated/portal-catalog/**` and
+`generated/catalog-reference/**` objects plus `snapshotPublicationState` docs may remain on
+`fresh-prints-dev`. Storage Rules still publicly read obsolete snapshots; Firestore Rules still named
+the coordination collection.
+
+**Decision**
+
+1. Narrow Rules source: remove generated catalog Storage matches and `snapshotPublicationState` match
+   (default-deny). Do not widen unrelated rules.
+2. Clean residual data only via local ops script
+   `functions/scripts/stage5-generated-asset-cleanup.mjs` — hard-pinned to `fresh-prints-dev`, dry-run
+   default, exact Storage prefixes + sole Firestore collection; **no** deployed cleanup callable;
+   **no** production escape hatch.
+3. Keep Strategy 2 AI Firestore taxonomy; keep shared catalog-snapshots types; keep Portal stubs.
+4. Live dry-run / delete / Rules deploy require separate owner phrases. Stage 6 / prod / PR merge out
+   of scope.
+
+**Consequences**
+
+- Clients can no longer read generated catalog snapshots once Rules are deployed.
+- Storage object loss after APPLY is accepted (Algolia + Firestore are primary).
+- Rollback for Rules = redeploy prior rules from git; objects are not auto-restored.
+
+---
+
+### ADR-FP-126: Stage 4 — Retire generated portal-catalog publishers (source); Algolia-only search/facets
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-08-07 |
+| Status | accepted (source + live Function delete on `fresh-prints-dev`; Stage 4 Signoff approved_with_notes) |
+| Related | `post-launch-catalog-and-processing-stability` Stage 4 |
+| Plan | `docs/workflow/plans/2026-08-07-stage-4-publisher-retirement-plan.md` |
+
+**Context**
+
+Stage 1b Algolia replaced generated search/multi-tag/facets. Publishers still wrote
+`generated/portal-catalog/**` (~1.1K C+T+R full pubs) and Portal still fell back to Storage when
+Algolia was off.
+
+**Decision**
+
+1. Remove Portal generated search/facet fallback — Algolia-off fails closed; Firestore browse stays.
+2. Delete publisher Function **source** and un-export six Functions; relocate classifier under
+   `functions/src/algolia/` for sync.
+3. Live Function delete on `fresh-prints-dev` requires `APPROVE DEV FUNCTIONS DELETE: STAGE 4 PUBLISHERS`.
+4. Storage object / Rules cleanup deferred to Stage 5. Prod Function delete / PR merge / production
+   deferred to Stage 6+.
+
+**Consequences**
+
+- After live delete: design writes no longer trigger portal-catalog full publications.
+- Rollback = redeploy prior Functions revision (Storage objects may still exist until Stage 5).
+
+---
+
 ### ADR-FP-125: Customer-upload oversized-pixel normalization, narrow ADR-FP-080 downsampling exception, and processing-timeout watchdog
 
 | Field | Value |
@@ -431,12 +582,58 @@ two Firestore composite indexes) was not justified by a benefit that, in practic
 
 | Field | Value |
 |-------|-------|
+| Date | 2026-07-23 (amended 2026-07-24: AI budget and targeted card overrides; amended 2026-07-31: failed-publish recovery; **superseded 2026-08-05** by Amendment 8 Hybrid) |
+| Status | **superseded** by Amendment 8 Hybrid architecture (ADR-FP-120-S below) |
+| Related | `firestore-usage-efficiency-wave-c`; `production-portal-catalog-tag-removal-publication`; Amendment 8 Phase 1A |
+| Target | Functions, Storage, Portal catalog, AI enrichment |
+
+**Supersession (2026-08-05)**
+
+Amendment 8 replaces generated Storage JSON as the permanent Portal ordinary-browse / Studio taxonomy architecture with:
+
+- **Firestore** authoritative metadata for ordinary Portal browse (unfiltered, category, single-tag, discovery), Discover home pools, Studio taxonomy, Assisted ready designs, Open Graph library candidates, and AI enrichment taxonomy.
+- **Firebase Storage** for image bytes (thumbnails/previews) only on those cut-over paths.
+- **Managed search** (provider TBD — Algolia recommended; Typesense/Meilisearch acceptable) for Portal text search, multi-tag AND, and facets — **not implemented in Phase 1A**.
+- Generated Portal search/facet/card readers and snapshot **publisher** Functions remain live until Phase 1B / Stages 4–5.
+- Index/search records are derived and **never** an authorization boundary.
+
+Historical ADR body retained below for archaeology. See ADR-FP-120-S.
+
+### ADR-FP-120-S: Hybrid Portal catalog reads (Firestore + managed search)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-08-05 |
+| Status | accepted (Phase 1A implemented; Phase 1B managed search pending owner provider decision) |
+| Related | Amendment 8 Plan; supersedes ADR-FP-120 |
+| Target | Portal catalog, Studio taxonomy/Assisted, Functions OG + AI taxonomy |
+
+**Decision**
+
+1. Firestore remains the authoritative catalog metadata store. Storage remains the authoritative image/file store.
+2. Phase 1A ordinary Portal browse, Discover home, Studio display taxonomy, Assisted ready designs, Portal Global Open Graph, and AI enrichment taxonomy use bounded Firestore (no full-catalog hydration; no 2,000-doc client search service).
+3. Phase 1B will add a managed search index for text / multi-tag / facets. Provider is **not** selected or configured in Phase 1A.
+4. Search/index documents (when added) contain only public allowlisted fields and are never used to authorize mutations.
+5. Write/Admin search API keys must never ship in Portal or Studio client bundles; customer keys are search-only with provider allowlists where supported.
+6. Generated snapshot publishers and Portal generated search readers remain until Phase 1B cutover + staged retirement.
+
+**Consequences**
+
+- Phase 1A does not claim full snapshot-client removal.
+- ADR-FP-120 generated-first ordinary browse is no longer the target architecture.
+
+---
+
+### ADR-FP-120 (historical body — superseded)
+
+| Field | Value |
+|-------|-------|
 | Date | 2026-07-23 (amended 2026-07-24: AI budget and targeted card overrides; amended 2026-07-31: failed-publish recovery) |
-| Status | accepted; production Functions recovery deploy pending owner approval |
+| Status | superseded — historical record only |
 | Related | `firestore-usage-efficiency-wave-c`; `production-portal-catalog-tag-removal-publication` |
 | Target | Functions, Storage, Portal catalog, AI enrichment |
 
-**Decision**
+**Decision (historical)**
 
 1. Firestore remains canonical; Functions project taxonomy and ready-design data into immutable,
    versioned Storage JSON and replace short-lived manifests only after every object validates.
@@ -516,6 +713,15 @@ Recovery (preserving ADR-FP-120 architecture — no Portal Firestore catalog wor
 
 See `docs/project/RISK_REGISTER.md` R-017 and
 `docs/workflow/reviews/2026-07-31-production-portal-catalog-tag-removal-publication-implement-checkpoint.md`.
+
+**Amendment 2026-08-06 — Portal publication rate guard (Amendment 9 P4)**
+
+Temporary transition guard while generated search/multi-tag/facets remain (Stage 1a boundary;
+Stage 1b not started). Caps automatic full portal publications via quiet 30s + min interval 120s +
+W2 coordination-doc wake (`onPortalCatalogPublicationStateWritten`) + classifier skip for non-ready
+INDEX_FILTER churn. Retire after Stage 1b removes generated search consumers.
+
+See Plan/Review under `docs/workflow/*amendment-9-p4*`.
 
 ---
 
@@ -2538,6 +2744,8 @@ The Portal catalog was a flat searchable grid. Customers needed curated discover
 6. Remove Design Library **My requests** header button (nav covers requests).
 
 **Amendment (2026-07-20, ADR-FP-107):** Recently Requested now uses `lastAddedToShowAt` (show allocation create), not Working-cart `lastRequestedAt`. Popular still uses `requestCount` from item create.
+
+**Amendment (2026-08-06, Case D corrective):** **New This Week** membership and order use authoritative **`readyAt`** (last 7 days, newest ready first) — not import `createdAt`. Home “New This Week” rail uses the same `rankNewThisWeek` semantics. Ordinary Library / metric rails unchanged.
 
 **Consequences**
 

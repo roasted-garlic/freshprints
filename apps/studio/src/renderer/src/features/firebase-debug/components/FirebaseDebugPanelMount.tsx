@@ -24,6 +24,16 @@ export function FirebaseDebugPanelMount() {
 
   useFirebaseDebugPanelShortcut(isEnabled ? () => void openFirebaseDebugWindow() : () => undefined);
 
+  // Owner QA Amendment 6 follow-up: the AI Processing queue trace is enabled exactly once by the
+  // Electron MAIN process (registerAiQueueTraceIpcHandlers, gated on !app.isPackaged), not by
+  // either renderer. A renderer-side enable call here was the original defect — the main Studio
+  // window and the Firebase Debug window are two separate renderer processes, so each would have
+  // independently (and possibly inconsistently) evaluated its own copy of this gate against its
+  // own disconnected module-level store, which is why the first cut of this instrumentation always
+  // reported `enabled: false` no matter what happened in the app. Both windows are now IPC clients
+  // of the one real main-process store (see config/aiQueueTraceClient.ts) and need no local enable
+  // call at all.
+
   useEffect(() => {
     if (!isEnabled) return;
     const unsubscribeSnapshot = subscribeFirestoreUsageTrace(publishFirebaseDebugSnapshot);

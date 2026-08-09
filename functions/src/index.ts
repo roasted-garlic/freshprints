@@ -100,6 +100,12 @@ export {
   previewTagArchive,
   archiveTagWithGuards,
 } from "./archiveTaxonomyWithGuards";
+export {
+  onTagTaxonomySourceWritten,
+  onCategoryTaxonomySourceWritten,
+  rebuildTaxonomyMaterializationCallable,
+} from "./taxonomy/onTaxonomySourceWritten";
+export { rebuildTaxonomyMaterialization } from "./taxonomy/rebuildTaxonomyMaterialization";
 export { syncPortalAccountEmail } from "./syncPortalAccountEmail";
 export {
   requestPortalAccountDeletion,
@@ -128,10 +134,10 @@ export { onEmailDeliveryJobCreated } from "./onEmailDeliveryJobCreated";
 export { registerWebPushSubscription } from "./registerWebPushSubscription";
 export { submitPortalDesignIssueReport } from "./submitPortalDesignIssueReport";
 export { resolveDesignIssueReport } from "./resolveDesignIssueReport";
+// Algolia trio restored under APPROVE PROD FUNCTIONS WAVE A ALGOLIA (ADR-FP-129).
+// Params: ALGOLIA_APP_ID + ALGOLIA_PORTAL_CATALOG_INDEX_NAME (prod ≠ _dev index).
 export {
-  onCategorySnapshotSourceWritten,
-  onPortalCatalogSnapshotSourceWritten,
-  onTagSnapshotSourceWritten,
-  rebuildCatalogSnapshots,
-  retryPortalCatalogPublication,
-} from "./catalogSnapshots/publishCatalogSnapshots";
+  syncPortalCatalogDesignToAlgolia,
+  reconcilePortalCatalogAlgoliaIndex,
+  reconcilePortalCatalogAlgoliaIndexScheduled,
+} from "./algolia/algoliaFunctionExports";

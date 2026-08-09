@@ -153,6 +153,36 @@ export async function importValidatedPngFile(
     };
   }
 
+  // Owner QA Amendment 3, Failure 2: byte-limit normalization may have proportionally downscaled
+  // the final output. Recalculate stored print size from the pixels actually persisted, so the
+  // catalog record never describes pre-normalization dimensions.
+  const normalizedWidth = readResult.data.normalizedWidth;
+  const normalizedHeight = readResult.data.normalizedHeight;
+  let effectiveWidth = validationResult.width;
+  let effectiveHeight = validationResult.height;
+  let effectivePrintSizeFields = printSizeFields;
+
+  if (normalizedWidth && normalizedHeight) {
+    const renormalized = buildImportPrintSizeCreateFields({
+      pixelWidth: normalizedWidth,
+      pixelHeight: normalizedHeight,
+      assessment: validationResult.printSizeAssessment,
+      metadataDpiX: validationResult.dpiX,
+      metadataDpiY: validationResult.dpiY,
+    });
+
+    if ("error" in renormalized) {
+      return {
+        status: "failed",
+        message: renormalized.error,
+      };
+    }
+
+    effectiveWidth = normalizedWidth;
+    effectiveHeight = normalizedHeight;
+    effectivePrintSizeFields = renormalized;
+  }
+
   let uploadResult;
 
   try {
@@ -171,10 +201,10 @@ export async function importValidatedPngFile(
     };
   }
 
-  let design;
+  let designAuthority;
 
   try {
-    design = await designService.createDesign(caller, {
+    designAuthority = await designService.createDesign(caller, {
       id: designId,
       title: importDesignTitleFromFileName(validationResult.fileName),
       description: "",
@@ -183,10 +213,10 @@ export async function importValidatedPngFile(
       thumbnailPath: "",
       previewPath: "",
       tags: [],
-      width: validationResult.width,
-      height: validationResult.height,
+      width: effectiveWidth,
+      height: effectiveHeight,
       dpi: resolveImportDpi(validationResult),
-      ...printSizeFields,
+      ...effectivePrintSizeFields,
       wasUpscaled: validationResult.wasUpscaled,
       upscaleFactor: validationResult.upscaleFactor,
       upscalePassCount: validationResult.upscalePassCount,
@@ -210,6 +240,8 @@ export async function importValidatedPngFile(
       cleanupWarning,
     };
   }
+
+  const design = designAuthority.design;
 
   const baseUploadFields = {
     designId: design.id,
@@ -246,6 +278,7 @@ export async function importValidatedPngFile(
     designId: design.id,
     thumbnailBytes: derivatives.thumbnailBytes,
     previewBytes: derivatives.previewBytes,
+    knownAuthority: designAuthority,
   });
 
   if (!pipelineOutcome.success) {

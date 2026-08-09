@@ -14,7 +14,6 @@ import {
 
 import { useAuth } from '../../auth/context/AuthContext';
 import { useCatalogCategories } from '../hooks/useCatalogCategories';
-import { useCatalogHomeDesigns } from '../hooks/useCatalogDesigns';
 import type { CatalogDesign } from '../types/catalog.types';
 import { usePortalPrintRequests } from '../../print-requests/context/PortalPrintRequestContext';
 import { useAddDesignToRequestFlow } from '../../print-requests/hooks/useAddDesignToRequestFlow';
@@ -28,6 +27,7 @@ import { BookSearchIcon, GlobeIcon, SearchIcon } from '../../shared/components/P
 import { CatalogDesignDetailsModal } from '../components/CatalogDesignDetailsModal';
 import { CatalogDiscoveryCarousel } from '../components/CatalogDiscoveryCarousel';
 import { CatalogSelectionCard } from '../components/CatalogSelectionCard';
+import { CATALOG_FIRST_VIEWPORT_EAGER_COUNT, useCatalogHomeDesigns } from '../hooks/useCatalogDesigns';
 import { useCatalogDesignDeepLink } from '../hooks/useCatalogDesignDeepLink';
 
 export function CatalogHomePageContent() {
@@ -227,7 +227,7 @@ export function CatalogHomePageContent() {
               }
               title={section.title}
             >
-              {section.designs.map((design) => {
+              {section.designs.map((design, index) => {
                 const quantity =
                   currentRequestAggregates.primaryQuantityByDesignId[design.id] ??
                   currentRequestAggregates.quantityByDesignId[design.id] ??
@@ -247,6 +247,7 @@ export function CatalogHomePageContent() {
                       onOpenDetails={openDesignDetails}
                       onQuantityChange={isAuthenticated ? addDesignFlow.setQuantity : undefined}
                       onRemove={isAuthenticated ? addDesignFlow.removeDesign : undefined}
+                      prioritizeLoading={index < CATALOG_FIRST_VIEWPORT_EAGER_COUNT}
                       quantity={quantity > 0 ? quantity : 1}
                     />
                   </div>

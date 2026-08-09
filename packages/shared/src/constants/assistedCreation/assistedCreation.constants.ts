@@ -29,7 +29,7 @@ export const ASSISTED_CREATION_ALLOWED_REFERENCE_TYPES = [
   "image/webp",
 ] as const;
 
-export const ASSISTED_CREATION_MAX_PROOF_BYTES = 25 * 1024 * 1024;
+export const ASSISTED_CREATION_MAX_PROOF_BYTES = 80 * 1024 * 1024;
 export const ASSISTED_CREATION_ALLOWED_PROOF_TYPES = [
   "image/jpeg",
   "image/png",

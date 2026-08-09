@@ -302,7 +302,7 @@ project if Firebase params were previously set. On each target project, set both
 All transactional templates include an unmonitored-mailbox disclaimer. Verify
 `myprintrequest.com` (or `noreply@myprintrequest.com`) in Resend and/or Brevo before live send.
 
-**Portal Open Graph absolute URLs (2026-07-20; letterbox/toggles 2026-07-21):** The Next.js Portal
+**Portal Open Graph absolute URLs (2026-07-20; letterbox/toggles 2026-07-21; Amendment 8 Phase 1A 2026-08-05):** The Next.js Portal
 uses the same customer hosts for `metadataBase` / OG image resolution via optional
 `NEXT_PUBLIC_PORTAL_ORIGIN`, else `NEXT_PUBLIC_FIREBASE_PROJECT_ID=fresh-prints-dev` →
 `https://myprintrequest.dev`, else production non-dev project → `https://myprintrequest.com`, else
@@ -311,16 +311,61 @@ uses the same customer hosts for `metadataBase` / OG image resolution via option
 | Function | Role |
 |----------|------|
 | `getPortalDesignShareOpenGraph` | Public JSON for `/share/design/{id}` title/description/`imageUrl` |
-| `getPortalGlobalOpenGraph` | Public JSON for non-design URLs (settings + library/logo image) |
+| `getPortalGlobalOpenGraph` | Public JSON for non-design URLs. **Phase 1A:** library image candidates from bounded dual Firestore queries (`readyAt` + `createdAt`, merge/dedup, top 40) — not generated catalog shards. Logo path unchanged. 1h in-process cache; HTTP `max-age=300`. |
 | `getPortalOgShareImage` | Public JPEG letterbox compositor (`designId` + `fit=contain`) |
 | `updatePortalSocialMetaSettings` | Owner callable for title/description + letterbox + global image source |
 | `updatePortalHelpSettings` | Owner/admin callable for Portal FAQ and How To (`settings/portalHelp`) |
 | `finalizeBrandLogoSlot` | Owner callable: finalize/clear Studio+Portal brand logo slots from Admin Storage metadata |
 | `updateBrandLogoDisplaySizes` | Owner callable: set Portal/Studio logo display heights (px) on `settings/brandLogos` |
 
+**AI enrichment taxonomy (ADR-FP-128):** `loadAiCatalogReferenceSnapshot` prefers compact
+`taxonomyMaterialization/**` (revision-keyed process cache; TTL secondary). Missing/corrupt
+materialization falls back once per process flight to Firestore `categories`+`tags` queries
+(`taxonomy-fallback-fs`), with a bounded circuit after repeated fallbacks. Authoritative
+writes remain on `tags/**` / `categories/**`; rebuilds are server-owned via
+`rebuildTaxonomyMaterialization`. Taxonomy source triggers (`onTagTaxonomySourceWritten`,
+`onCategoryTaxonomySourceWritten`) **await** a process-local coalesced rebuild Promise before
+the Gen2 invocation completes (no detached `setTimeout` rebuild). Cross-instance duplicate
+rebuilds remain an accepted residual (no fleet lock). Owner/admin callable remains available
+for bootstrap/repair. Studio AI Review / Design Library prefers the same materialization with
+Electron `userData/taxonomy-cache` revision short-circuit. Generated `catalog-reference` AI
+snapshot is not used. **Do not** treat Algolia as taxonomy authority.
+
+**Portal catalog publishers (Stage 4 source retirement — 2026-08-07):** Generated
+`portal-catalog` / `catalog-reference` publisher Functions are **removed from Functions source**
+(`catalogSnapshots/` deleted; six exports un-exported from `index.ts`). Portal search/multi-tag/facets
+are **Algolia-only** when configured; Algolia-off fails closed (Firestore ordinary browse continues).
+`classifyPortalCatalogDesignChange` lives at `functions/src/algolia/portalCatalogChangeClassifier.ts`
+for Algolia sync. Live Function deletion on `fresh-prints-dev` completed Stage 4 Signoff.
+Amendment 9 P4 rate-guard source is retired with the publishers.
+
+**Generated Storage / Rules cleanup (Stage 5 source — 2026-08-07):** Obsolete public-read Storage
+matches for `generated/portal-catalog/**` and `generated/catalog-reference/**` are **removed** from
+`storage.rules` (client access → default-deny). The `snapshotPublicationState` Firestore Rules match
+is **removed** (default-deny). Residual objects/docs on `fresh-prints-dev` are cleaned only via the
+local ops script `functions/scripts/stage5-generated-asset-cleanup.mjs` (hard-pinned to
+`fresh-prints-dev`; dry-run default; allowlisted prefixes only). **Live dry-run / delete / Rules
+deploy require separate owner phrases** — source narrowing alone does not delete data or deploy.
+AI taxonomy prefers `taxonomyMaterialization/**` when bootstrapped (ADR-FP-128); otherwise
+Strategy 2 Firestore hydrate remains the fallback. Shared `packages/shared/src/catalog-snapshots` types
+are retained for AI + Algolia classifier.
+
+**Managed search (Stage 1b Algolia):** Portal uses `NEXT_PUBLIC_USE_ALGOLIA_CATALOG_SEARCH` + public
+search-only env; Functions sync/reconcile use Secret Manager admin key
+(`ALGOLIA_ADMIN_API_KEY` via `functions/src/algolia/algoliaSecrets.ts` — **not** shared
+`lib/secrets`). Index records are not an authorization boundary.
+
+**Optional Algolia discovery coupling (ADR-FP-129):** While Algolia is OFF, the Algolia Function
+trio is **not** exported from default `functions/src/index.ts` (restore via
+`algolia/algoliaFunctionExports.ts` under an approved Algolia checkpoint). Optional provider
+secrets must not be registered into Firebase deployment discovery by unrelated Functions.
+Dev and prod indexes stay separate (`portal_catalog_ready_dev` vs production-only name such as
+`portal_catalog_ready_prod`).
+
 Portal metadata prefers these Functions (no App Hosting Admin ADC required for crawlers). Studio
 **Settings → Social sharing** toggles letterbox and library-vs-logo. Studio **Settings → Brand logos**
-uploads PNGs to Storage `brand/**` + `settings/brandLogos`. See `DEPLOYMENT.md` and ADR-FP-114.
+uploads PNGs to Storage `brand/**` + `settings/brandLogos`. See `DEPLOYMENT.md` and ADR-FP-114 /
+ADR-FP-120-S / ADR-FP-129.
 
 ---
 

@@ -49,12 +49,12 @@ describe("getCatalogDiscoveryModeLabel", () => {
 });
 
 describe("rankNewThisWeek", () => {
-  it("keeps only designs created in the last 7 days, newest first", () => {
+  it("keeps only designs ready in the last 7 days, newest readyAt first", () => {
     const ranked = rankNewThisWeek(
       [
-        design({ id: "old", createdAtMs: NOW - 10 * DAY }),
-        design({ id: "mid", createdAtMs: NOW - 2 * DAY }),
-        design({ id: "new", createdAtMs: NOW - 1 * DAY }),
+        design({ id: "old-ready", createdAtMs: NOW - 1 * DAY, readyAtMs: NOW - 10 * DAY }),
+        design({ id: "mid", createdAtMs: NOW - 20 * DAY, readyAtMs: NOW - 2 * DAY }),
+        design({ id: "new", createdAtMs: NOW - 30 * DAY, readyAtMs: NOW - 1 * DAY }),
         design({ id: "no-date" }),
       ],
       NOW,
@@ -63,6 +63,100 @@ describe("rankNewThisWeek", () => {
     assert.deepEqual(
       ranked.map((entry) => entry.id),
       ["new", "mid"],
+    );
+  });
+
+  it("includes old import approved today and excludes new import with stale readyAt", () => {
+    const ranked = rankNewThisWeek(
+      [
+        design({
+          id: "old-import-new-ready",
+          createdAtMs: NOW - 14 * DAY,
+          readyAtMs: NOW - 1 * DAY,
+        }),
+        design({
+          id: "new-import-stale-ready",
+          createdAtMs: NOW - 1 * DAY,
+          readyAtMs: NOW - 8 * DAY,
+        }),
+      ],
+      NOW,
+    );
+
+    assert.deepEqual(
+      ranked.map((entry) => entry.id),
+      ["old-import-new-ready"],
+    );
+  });
+
+  it("orders by readyAtMs even when createdAtMs would rank the opposite way", () => {
+    const ranked = rankNewThisWeek(
+      [
+        design({
+          id: "older-create-newer-ready",
+          createdAtMs: NOW - 20 * DAY,
+          readyAtMs: NOW - 1 * DAY,
+        }),
+        design({
+          id: "newer-create-older-ready",
+          createdAtMs: NOW - 2 * DAY,
+          readyAtMs: NOW - 3 * DAY,
+        }),
+      ],
+      NOW,
+    );
+
+    assert.deepEqual(
+      ranked.map((entry) => entry.id),
+      ["older-create-newer-ready", "newer-create-older-ready"],
+    );
+  });
+
+  it("uses design id ascending as the stable tiebreaker for equal readyAtMs", () => {
+    const ranked = rankNewThisWeek(
+      [
+        design({ id: "design-b", readyAtMs: NOW - 1 * DAY }),
+        design({ id: "design-a", readyAtMs: NOW - 1 * DAY }),
+        design({ id: "design-c", readyAtMs: NOW - 1 * DAY }),
+      ],
+      NOW,
+    );
+
+    assert.deepEqual(
+      ranked.map((entry) => entry.id),
+      ["design-a", "design-b", "design-c"],
+    );
+  });
+
+  it("includes designs exactly at the 7-day readyAt cutoff", () => {
+    const cutoff = NOW - 7 * DAY;
+    const ranked = rankNewThisWeek(
+      [
+        design({ id: "on-cutoff", readyAtMs: cutoff }),
+        design({ id: "just-outside", readyAtMs: cutoff - 1 }),
+      ],
+      NOW,
+    );
+
+    assert.deepEqual(
+      ranked.map((entry) => entry.id),
+      ["on-cutoff"],
+    );
+  });
+
+  it("legacy missing readyAtMs falls back to createdAtMs for membership/order", () => {
+    const ranked = rankNewThisWeek(
+      [
+        design({ id: "legacy-in-window", createdAtMs: NOW - 2 * DAY }),
+        design({ id: "legacy-outside", createdAtMs: NOW - 10 * DAY }),
+        design({ id: "no-timestamps" }),
+      ],
+      NOW,
+    );
+
+    assert.deepEqual(
+      ranked.map((entry) => entry.id),
+      ["legacy-in-window"],
     );
   });
 });

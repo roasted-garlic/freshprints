@@ -1,5 +1,1989 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-08-08 - OPTIONAL ALGOLIA SECRET DISCOVERY CORRECTIVE — SOURCE COMMITTED; PUSH/PR HOOK-BLOCKED — OWNER CLI REQUIRED — STOP
+
+Branch: `fix/optional-algolia-secret-discovery-corrective` @ `bc0c34152a53f835dd58343035d7b3b11c773887`
+Base `origin/production` still `7e139685099f90eb1532771e927384316a432e87` (not advanced).
+Containment PASS; tests green; agent push blocked by Cursor hook.
+Record: `docs/workflow/reviews/2026-08-08-functions-optional-algolia-secret-discovery-corrective-source-promotion-record.md`
+**Owner:** push branch → PR to `production` → merge → reply `OPTIONAL ALGOLIA SECRET CORRECTIVE SOURCE PROMOTION: COMPLETE`
+After verified merge, next phrase: `APPROVE PROD FUNCTIONS WAVE A TAXONOMY RETRY`
+NO Firebase deploy / Algolia secret / bootstrap this pass.
+## 2026-08-08 - OPTIONAL ALGOLIA SECRET DISCOVERY CORRECTIVE — IMPLEMENT+TEST+REVIEW APPROVED — STOP BEFORE WAVE A RETRY
+
+Managed goal: `functions-optional-algolia-secret-deployment-discovery-corrective` — **PASS** (source only).
+Option E: Algolia `defineSecret` moved to `functions/src/algolia/algoliaSecrets.ts`; trio removed from default `index.ts` (restore via `algoliaFunctionExports.ts`); ADR-FP-129.
+Discovery proof: default/enqueue **no** `ALGOLIA_ADMIN_API_KEY`; Algolia module still registers it. Tests: discovery 4/4; Algolia 12/12; taxonomy/AI 30/30; OG 6/6; build/lint 0.
+NO prod Functions deploy; NO Algolia secret created; Algolia still OFF.
+Artifacts: Plan / Formal Review / Test report / Implementation Review under `docs/workflow/…-optional-algolia-secret-deployment-discovery-corrective-*`.
+Next owner phrase (ONE): **`APPROVE PROD FUNCTIONS WAVE A TAXONOMY RETRY`**
+(Prerequisite: corrective present on the production tip used for deploy.)
+## 2026-08-08 - OPTIONAL ALGOLIA SECRET DISCOVERY CORRECTIVE — Plan+Review approved_with_changes — STOP BEFORE IMPLEMENT
+
+Managed goal: `functions-optional-algolia-secret-deployment-discovery-corrective`
+Wave A owner CLI failed (zero mutation) because Firebase discovers all `defineSecret` params from the default codebase; shared `lib/secrets.ts` registers `ALGOLIA_ADMIN_API_KEY` when `enqueueAiEnrichment` loads, and `index.ts` exports Algolia trio. Prod secret **NOT FOUND** (Algolia OFF by design). Option A (create secret to unblock) **REJECTED**.
+Selected Option E: move Algolia `defineSecret` out of shared secrets + remove Algolia exports from default `index` while OFF.
+Plan: `docs/workflow/plans/2026-08-08-functions-optional-algolia-secret-deployment-discovery-corrective-plan.md`
+Formal Review: **approved_with_changes** — `docs/workflow/reviews/2026-08-08-functions-optional-algolia-secret-deployment-discovery-corrective-review.md`
+Next owner phrase (ONE): **`APPROVE IMPLEMENT: OPTIONAL ALGOLIA SECRET DISCOVERY CORRECTIVE`**
+Confirmations: NO secret create / Functions deploy / bootstrap / Algolia enable / publisher delete / Rules / cleanup / Studio / Implement yet
+## 2026-08-08 - PR #40 FUNCTIONS WAVE A TAXONOMY — OWNER CLI FAIL (ALGOLIA SECRET MISSING) — ZERO MUTATION — STOP
+
+Owner ran exact five-function deploy; predeploy build OK; **failed** at analyze:
+`In non-interactive mode but have no value for the secret ALGOLIA_ADMIN_API_KEY`
+`ALGOLIA_ADMIN_API_KEY` Secret Manager **NOT FOUND** on `fresh-prints-prod`.
+Cause: codebase exports Algolia trio with `defineSecret`; `--only` does not skip that check.
+CREATE still **ABSENT**; UPDATE unchanged; Algolia Functions still **ABSENT**; Algolia **OFF**.
+Record: `docs/workflow/reviews/2026-08-08-pr-40-prod-functions-wave-a-taxonomy-deploy-record.md`
+Next owner phrase (ONE): **`APPROVE PROD ALGOLIA_ADMIN_API_KEY SECRET SET: WAVE A UNBLOCK ONLY`**
+Then retry same Wave A five-function deploy (no Algolia Functions / enable / bootstrap).
+## 2026-08-08 - PR #40 FUNCTIONS WAVE A TAXONOMY — AUTHORIZED / HOOK-BLOCKED — OWNER CLI REQUIRED — STOP
+
+Owner: `APPROVE PROD FUNCTIONS WAVE A TAXONOMY`
+Preflight **PASS** on clean `production` @ `7e139685099f90eb1532771e927384316a432e87`
+App Hosting **100%** `build-2026-08-08-004`; Firestore/Storage Rules **COMPLETE**; Algolia **OFF**
+CREATE: onTag/onCategoryTaxonomySourceWritten + rebuildTaxonomyMaterializationCallable — still **ABSENT**
+UPDATE: enqueueAiEnrichment + getPortalGlobalOpenGraph — still **PRESENT** (not updated)
+Agent deploy **hook-blocked**; production Functions **unchanged**.
+Record: `docs/workflow/reviews/2026-08-08-pr-40-prod-functions-wave-a-taxonomy-deploy-record.md`
+**Owner run:**
+```bash
+firebase deploy --only functions:onTagTaxonomySourceWritten,functions:onCategoryTaxonomySourceWritten,functions:rebuildTaxonomyMaterializationCallable,functions:enqueueAiEnrichment,functions:getPortalGlobalOpenGraph --project fresh-prints-prod --non-interactive
+```
+Then reply `PROD FUNCTIONS WAVE A TAXONOMY: COMPLETE` for post-deploy verify.
+After verify PASS, next phrase: `APPROVE PROD TAXONOMY MATERIALIZATION BOOTSTRAP` (do not auto-run).
+Confirmations: NO bootstrap / Algolia / publisher delete / Rules / cleanup / Studio this pass
+
+## 2026-08-08 - PR #40 STORAGE RULES VERIFY PASS + FUNCTIONS WAVE A TAXONOMY CHECKPOINT READY — STOP
+
+Owner: `PROD STORAGE RULES DEPLOY: COMPLETE`
+Live Storage ruleset: **`ccb8e2ea-74e6-4ed6-b1f8-e3cb3e386cd6`** (was `fbcb0ee4-…`); SHA256 = tip `ac3a6830…`
+Markers PASS; Portal `/` `/catalog` **200**; Algolia **OFF**; Firestore **untouched** (`2c0578a0-…`)
+Record: `docs/workflow/reviews/2026-08-08-pr-40-prod-storage-rules-deploy-record.md`
+Wave A Taxonomy checkpoint + Formal Review **approved** (NO deploy):
+`docs/workflow/reviews/2026-08-08-pr-40-prod-functions-wave-a-taxonomy-checkpoint.md`
+`docs/workflow/reviews/2026-08-08-pr-40-prod-functions-wave-a-taxonomy-checkpoint-review.md`
+CREATE: onTag/onCategoryTaxonomySourceWritten + rebuildTaxonomyMaterializationCallable
+UPDATE: enqueueAiEnrichment + getPortalGlobalOpenGraph
+Next owner phrase (ONE): **`APPROVE PROD FUNCTIONS WAVE A TAXONOMY`**
+Confirmations: NO Functions/bootstrap/Algolia/cleanup this pass
+
+## 2026-08-08 - PR #40 STORAGE RULES DEPLOY — AUTHORIZED / HOOK-BLOCKED — OWNER CLI REQUIRED — STOP
+
+Owner: `APPROVE PROD STORAGE RULES DEPLOY: PR40 REMAINING`
+Preflight **PASS** on clean `production` @ `7e139685099f90eb1532771e927384316a432e87`
+(`storage.rules` blob `162f5167…`; Stage 4 generated refs NONE; proof 80 MB OK; tests 59/59 + 16/16 align).
+Agent `firebase deploy --only storage --project fresh-prints-prod` **hook-blocked**.
+Live Storage ruleset **unchanged**: `fbcb0ee4-732e-420f-afff-01041d2eee1b`.
+Firestore Rules untouched: `2c0578a0-9764-4081-a5b3-6a5f23795e7d`.
+Record: `docs/workflow/reviews/2026-08-08-pr-40-prod-storage-rules-deploy-record.md`
+**Owner run:**
+`firebase deploy --only storage --project fresh-prints-prod --non-interactive`
+Then reply `PROD STORAGE RULES DEPLOY: COMPLETE` for post-deploy verify.
+Next after verify: `APPROVE PROD FUNCTIONS WAVE A TAXONOMY` (prepare only; do not auto-run).
+Confirmations: NO Firestore redeploy / Functions / Algolia / bootstrap / object cleanup / Studio
+
+## 2026-08-08 - PR #40 FIRESTORE RULES DEPLOY VERIFY PASS — COMPLETE — STOP
+
+Owner: `PROD FIRESTORE RULES DEPLOY: COMPLETE`
+Live Firestore ruleset: **`2c0578a0-9764-4081-a5b3-6a5f23795e7d`** (was `198d35a7-…`)
+Content SHA256 **exact match** tip `48c21310…` @ `7e13968`
+Markers PASS: taxonomyMaterialization staff-read/write-deny; readyAt optional; snapshotPublicationState match absent
+Portal `/` `/catalog` **200**; Algolia **OFF**; Storage Rules **unchanged** (`fbcb0ee4-…`)
+Record: `docs/workflow/reviews/2026-08-08-pr-40-prod-firestore-rules-deploy-record.md`
+Next owner phrase (ONE): **`APPROVE PROD STORAGE RULES DEPLOY: PR40 REMAINING`**
+Confirmations: NO Storage/Functions/Algolia/bootstrap/indexes/cleanup this verify
+
+## 2026-08-08 - PR #40 FIRESTORE RULES DEPLOY — AUTHORIZED / HOOK-BLOCKED — OWNER CLI REQUIRED — STOP
+
+Owner: `APPROVE PROD FIRESTORE RULES DEPLOY: PR40 REMAINING`
+Preflight **PASS** on clean `production` @ `7e139685099f90eb1532771e927384316a432e87`
+(`firestore.rules` blob `dc8d7906…`; tests 59/59 + taxonomy align 2/2).
+Agent `firebase deploy --only firestore:rules --project fresh-prints-prod` **hook-blocked**.
+Live ruleset **unchanged**: `198d35a7-c309-4c0b-97e0-80e0458c0c01`.
+Record: `docs/workflow/reviews/2026-08-08-pr-40-prod-firestore-rules-deploy-record.md`
+**Owner run:**
+`firebase deploy --only firestore:rules --project fresh-prints-prod --non-interactive`
+Then reply `PROD FIRESTORE RULES DEPLOY: COMPLETE` for post-deploy verify.
+Next after verify: `APPROVE PROD STORAGE RULES DEPLOY: PR40 REMAINING`
+Confirmations: NO Storage/Functions/Algolia/bootstrap/indexes/cleanup/Studio
+
+## 2026-08-08 - PR #40 PROD RULES PREFLIGHT READY — Formal Review approved_with_changes — STOP
+
+Managed goal: `pr-40-prod-rules-deploy-preflight` — **checkpoint READY; NO deploy**.
+Live: `7e13968` / **100%** `build-2026-08-08-004`; Algolia **OFF**; Stage 4 live.
+Tests: `npm run test:rules` **59/59** exit 0; storage+taxonomy alignment **8/8**; `git diff --check` exit 0.
+Granularity: **Option B** — Firestore Rules first, Storage Rules separate later.
+Artifacts:
+- Checkpoint: `docs/workflow/reviews/2026-08-08-pr-40-prod-rules-deploy-checkpoint.md`
+- Formal Review: **approved_with_changes** — `docs/workflow/reviews/2026-08-08-pr-40-prod-rules-deploy-checkpoint-review.md`
+- Plan sequencing amended (Algolia optional parallel): `docs/workflow/plans/2026-08-08-pr-40-remaining-production-gates-plan.md`
+Next owner phrase (ONE): **`APPROVE PROD FIRESTORE RULES DEPLOY: PR40 REMAINING`**
+Confirmations: NO Rules/Functions/Algolia/bootstrap/index/backfill/cleanup/Studio
+
+## 2026-08-08 - PR #40 REMAINING GATES RECONCILIATION — Plan+Review approved_with_changes — STOP
+
+Managed goal: `pr-40-remaining-production-gates-reconciliation` — **Plan + Formal Review DONE; NO mutation**.
+Live: `origin/production` = **`7e139685099f90eb1532771e927384316a432e87`**; App Hosting **100%** **`build-2026-08-08-004`** @ same SHA; Algolia **OFF**; auto-rollout **disabled**.
+RC: R1/R2/R4(prereq)/R5/R7/R8 **SATISFIED**; R3 Algolia **OPEN**; R6 Storage cleanup **OPEN**.
+Indexes: **NO redeploy** (71/71; readyAt 4/4 READY). Taxonomy materialization **absent**. Publishers **5/6** still live.
+Artifacts:
+- Reconciliation: `docs/workflow/reviews/2026-08-08-pr-40-remaining-production-gates-reconciliation.md`
+- Plan: `docs/workflow/plans/2026-08-08-pr-40-remaining-production-gates-plan.md`
+- Formal Review: **approved_with_changes** — `docs/workflow/reviews/2026-08-08-pr-40-remaining-production-gates-plan-review.md`
+Next owner phrase (ONE): `ALGOLIA PROD APP: SEPARATE|REUSE WQ6OPP2E6Z` (then App ID + `ALGOLIA ADMIN SECRET: READY`).
+Confirmations: NO deploy / Algolia enable / secrets value / bootstrap / cleanup / Studio release
+
+## 2026-08-08 - TD-031 SIGNOFF APPROVED — GOAL CLOSED
+
+Managed goal: `portal-discover-view-all-complete-pagination` — **DONE / CLOSED**.
+Owner: `DISCOVER VIEW ALL PAGINATION QA: PASS`.
+Live: **100%** `build-2026-08-08-004` @ `7e139685099f90eb1532771e927384316a432e87`.
+TD-031 **resolved**. Signoff: `docs/workflow/reviews/2026-08-08-portal-discover-view-all-complete-pagination-signoff.md`
+Confirmations: NO Functions/Rules/indexes/Algolia/data this closeout
+
+## 2026-08-08 - TD-031 BUILD LIVE build-2026-08-08-004 / OWNER QA PENDING — STOP BEFORE SIGNOFF
+
+Managed goal: `portal-discover-view-all-complete-pagination`.
+Live App Hosting: **100%** **`build-2026-08-08-004`** @ **`7e139685099f90eb1532771e927384316a432e87`** (NTW `82ea610` + schedule PR #45).
+Rollout: **SUCCEEDED** / build **READY**. Smoke PASS (/, /catalog, /catalog?discover=new; Algolia OFF; no fresh-prints-dev).
+Record: `docs/workflow/reviews/2026-08-08-portal-discover-ntw-count-badge-corrective-app-hosting-rollout-record.md`
+Owner QA: `docs/workflow/reviews/2026-08-08-portal-discover-ntw-count-badge-corrective-owner-qa-checklist.md`
+Next reply: `DISCOVER VIEW ALL PAGINATION QA: PASS` (or FAIL / PASS WITH NOTES).
+Confirmations: NO Signoff yet; NO Functions/Rules/indexes/Algolia/data
+
+## 2026-08-08 - TD-031 APP HOSTING AUTHORIZED — OWNER CLI REQUIRED (HOOK-BLOCKED) — STOP
+
+Managed goal: `portal-discover-view-all-complete-pagination`.
+Phrase: `APPROVE PROD DISCOVER NTW COUNT BADGE APP HOSTING ROLLOUT`
+`origin/production` = **`7e139685099f90eb1532771e927384316a432e87`** (PR #45 MERGED; contains `82ea610` + `ce80dac`).
+Live still **100%** `build-2026-08-08-003` until owner rolls.
+Agent `firebase apphosting:rollouts:create … --force` **hook-blocked**.
+Gate: `docs/workflow/reviews/2026-08-08-portal-discover-ntw-count-badge-corrective-app-hosting-gate.md`
+Record: `docs/workflow/reviews/2026-08-08-portal-discover-ntw-count-badge-corrective-app-hosting-rollout-record.md`
+**Owner run:**
+`firebase apphosting:rollouts:create fresh-prints-portal --project fresh-prints-prod --git-commit 7e139685099f90eb1532771e927384316a432e87 --force`
+Then reply with new build id for verify + owner QA.
+
+## 2026-08-08 - TD-031 NTW SOURCE PROMOTED + SCHEDULE COMPANION READY — STOP BEFORE APP HOSTING
+
+Managed goal: `portal-discover-view-all-complete-pagination`.
+PR **#44 MERGED** — production **`c181f5694bde83ddee26863a0a6a8d546c39619e`** (contains `82ea610`).
+Live App Hosting: **100%** `build-2026-08-08-003` — NTW count corrective **NOT LIVE**.
+Record: `docs/workflow/reviews/2026-08-08-portal-discover-ntw-count-badge-corrective-source-promotion-record.md`
+**Companion (same goal):** PR **#45** `fix/portal-schedule-prop-wiring` @ **`3fb2a8d`** — merge to `production` before App Hosting (do not leave as stray local diff).
+Gate: `docs/workflow/reviews/2026-08-08-portal-discover-ntw-count-badge-corrective-app-hosting-gate.md`
+Next: merge PR #45 → then `APPROVE PROD DISCOVER NTW COUNT BADGE APP HOSTING ROLLOUT` using production tip SHA.
+Confirmations: NO App Hosting / Rules / Functions / indexes / Algolia / data this pass
+
+## 2026-08-08 - TD-031 NTW COUNT SOURCE PROMOTED — LIVE STILL build-2026-08-08-003 — STOP
+
+Managed goal: `portal-discover-view-all-complete-pagination` (NTW count corrective).
+PR **#44 MERGED** — merge SHA **`c181f5694bde83ddee26863a0a6a8d546c39619e`** (parents `9f3a01a` + `82ea610`).
+`origin/production` = `c181f56`; contains approved corrective `82ea610`.
+Live App Hosting: **100%** `build-2026-08-08-003` — corrective **NOT LIVE** (NTW Counting defect still present).
+Record: `docs/workflow/reviews/2026-08-08-portal-discover-ntw-count-badge-corrective-source-promotion-record.md`
+Gate: `docs/workflow/reviews/2026-08-08-portal-discover-ntw-count-badge-corrective-app-hosting-gate.md`
+Next: `APPROVE PROD DISCOVER NTW COUNT BADGE APP HOSTING ROLLOUT`
+Confirmations: NO App Hosting / Rules / Functions / indexes / Algolia / data mutation this pass
+
+## 2026-08-08 - TD-031 NTW COUNT SOURCE PROMOTION — LOCAL COMMIT READY; PUSH/PR HOOK-BLOCKED — STOP
+
+Managed goal: `portal-discover-view-all-complete-pagination` (NTW count corrective).
+Owner: `APPROVE PROD DISCOVER NTW COUNT BADGE SOURCE PROMOTION`
+Local branch `fix/portal-discover-ntw-count-badge-corrective` @ **`82ea610`** (base `9f3a01a`).
+Diff containment **PASS**. Live still **`build-2026-08-08-003`** — corrective **NOT LIVE**.
+`git push` + `gh pr create --base production` **blocked by Cursor hook**.
+Record: `docs/workflow/reviews/2026-08-08-portal-discover-ntw-count-badge-corrective-source-promotion-record.md`
+Gate: `docs/workflow/reviews/2026-08-08-portal-discover-ntw-count-badge-corrective-app-hosting-gate.md`
+**Owner:** push + create/merge PR to `production`, then continue post-merge verify.
+Next after merge: `APPROVE PROD DISCOVER NTW COUNT BADGE APP HOSTING ROLLOUT`
+Confirmations: NO App Hosting / Rules / Functions / indexes / Algolia / data mutation
+
+## 2026-08-08 - TD-031 NTW COUNT CORRECTIVE IMPLEMENT+TEST+IMPL-REVIEW — approved — STOP BEFORE PROD DEPLOY
+
+Managed goal: `portal-discover-view-all-complete-pagination` — **NOT signed off**.
+Corrective implement **complete**: NTW `countReadyDesigns` uses readyAt/__name__ DESC orderBy; failed UI → **Count unavailable**.
+Tests: **42/42**; Portal typecheck/lint/build/diff-check **PASS**.
+Implementation Review: **approved** —
+`docs/workflow/reviews/2026-08-08-portal-discover-ntw-count-badge-corrective-implementation-review.md`
+Owner QA checklist: `docs/workflow/reviews/2026-08-08-portal-discover-ntw-count-badge-corrective-owner-qa-checklist.md`
+**STOP BEFORE PRODUCTION DEPLOYMENT.**
+Next: separate source promotion phrase (then App Hosting + `DISCOVER VIEW ALL PAGINATION QA: PASS`).
+Live still `build-2026-08-08-003` (NTW Counting defect until corrective rolls).
+Confirmations: NO App Hosting / Rules / Functions / indexes / Algolia / data mutation
+
+## 2026-08-08 - TD-031 QA FAIL — NTW COUNT BADGE CORRECTIVE PLAN+REVIEW — STOP BEFORE IMPLEMENT
+
+Managed goal: `portal-discover-view-all-complete-pagination` — **NOT signed off**.
+Owner: `DISCOVER VIEW ALL PAGINATION QA: FAIL` — NTW badge stuck on **“Counting designs…”**; other View All totals OK.
+Root cause (plan): (1) NTW `countReadyDesigns` lacks list-aligned readyAt DESC orderBy vs DESC-only indexes → aggregate fails; (2) failed+incomplete mapped to same Counting UI as pending.
+Corrective Plan: `docs/workflow/plans/2026-08-08-portal-discover-ntw-count-badge-corrective-plan.md`
+Formal Review: **approved_with_changes** —
+`docs/workflow/reviews/2026-08-08-portal-discover-ntw-count-badge-corrective-plan-review.md`
+**STOP BEFORE IMPLEMENTATION.**
+Next: `IMPLEMENT PORTAL DISCOVER NTW COUNT BADGE CORRECTIVE`
+Live still `build-2026-08-08-003` (pagination Load more live; NTW count badge defective).
+Confirmations: NO implement / App Hosting / Rules / Functions / indexes / Algolia this pass
+
+## 2026-08-08 - TD-031 APP HOSTING LIVE build-2026-08-08-003 / OWNER QA PENDING — STOP
+
+Managed goal: `portal-discover-view-all-complete-pagination` (TD-031).
+Owner CLI rollout **SUCCEEDED**: **`build-2026-08-08-003`** @ commit `9f3a01a` (contains `a01a9dc`); traffic **100%**.
+Technical smoke **PASS** (`/` `/catalog` `/catalog?discover=new` 200; no `fresh-prints-dev`; Algolia OFF).
+Record: `docs/workflow/reviews/2026-08-08-portal-discover-view-all-complete-pagination-app-hosting-rollout-record.md`
+**OWNER QA REQUIRED** — checklist:
+`docs/workflow/reviews/2026-08-08-portal-discover-view-all-complete-pagination-owner-qa-checklist.md`
+Reply: `DISCOVER VIEW ALL PAGINATION QA: PASS` (or FAIL / PASS WITH NOTES)
+Confirmations: NO Rules/Functions/indexes/Algolia/data mutation this pass
+
+## 2026-08-08 - TD-031 APP HOSTING ROLLOUT — PREFLIGHT PASS; HOOK-BLOCKED — STOP
+
+Managed goal: `portal-discover-view-all-complete-pagination` (TD-031).
+Owner: `APPROVE PROD DISCOVER VIEW ALL PAGINATION APP HOSTING ROLLOUT`
+Preflight **PASS**: `origin/production`=`9f3a01a` contains `a01a9dc`; live still `build-2026-08-08-002` @100%; Algolia OFF.
+Rollout **not executed** — Cursor hook blocked `firebase apphosting:rollouts:create`.
+Owner command:
+`firebase apphosting:rollouts:create fresh-prints-portal --project fresh-prints-prod --git-commit 9f3a01ae0585d607f9a332dad2c86ad2a541548b --force`
+Record: `docs/workflow/reviews/2026-08-08-portal-discover-view-all-complete-pagination-app-hosting-rollout-record.md`
+After SUCCEEDED: agent smoke + owner QA (`DISCOVER VIEW ALL PAGINATION QA: PASS`).
+Confirmations: NO Rules/Functions/indexes/Algolia/data mutation this pass
+
+## 2026-08-08 - TD-031 SOURCE PROMOTED — LIVE STILL build-2026-08-08-002 — STOP
+
+Managed goal: `portal-discover-view-all-complete-pagination` (TD-031).
+PR **#43 MERGED** — merge SHA **`9f3a01ae0585d607f9a332dad2c86ad2a541548b`** (parents `ccfc974` + `a01a9dc`).
+`origin/production` = `9f3a01a`; contains approved fix `a01a9dc`.
+Live App Hosting: **100%** `build-2026-08-08-002` — pagination/count fix **NOT LIVE**.
+Record: `docs/workflow/reviews/2026-08-08-portal-discover-view-all-complete-pagination-source-promotion-record.md`
+Gate: `docs/workflow/reviews/2026-08-08-portal-discover-view-all-complete-pagination-app-hosting-gate.md`
+Next: `APPROVE PROD DISCOVER VIEW ALL PAGINATION APP HOSTING ROLLOUT`
+Confirmations: NO App Hosting / Rules / Functions / indexes / Algolia / data mutation this pass
+
+## 2026-08-08 - TD-031 SOURCE PROMOTION — PREFLIGHT PASS; PR HOOK-BLOCKED — STOP
+
+Managed goal: `portal-discover-view-all-complete-pagination` (TD-031).
+Owner: `APPROVE PROD DISCOVER VIEW ALL PAGINATION SOURCE PROMOTION`
+Branch pushed: `fix/portal-discover-view-all-complete-pagination` @ **`a01a9dc`**
+`origin/production` still **`ccfc974`** (unchanged). Diff containment **PASS** (hook files only + docs).
+PR create **blocked** by Cursor hook (`gh pr create --base production`).
+Live App Hosting: **100%** `build-2026-08-08-002` — pagination fix **NOT LIVE**.
+Record: `docs/workflow/reviews/2026-08-08-portal-discover-view-all-complete-pagination-source-promotion-record.md`
+Gate: `docs/workflow/reviews/2026-08-08-portal-discover-view-all-complete-pagination-app-hosting-gate.md`
+**Owner:** create+merge PR to `production` (or approve hook card), then continue post-merge verify.
+Next after merge: `APPROVE PROD DISCOVER VIEW ALL PAGINATION APP HOSTING ROLLOUT`
+Confirmations: NO App Hosting / Rules / Functions / indexes / Algolia / data mutation
+
+## 2026-08-08 - TD-031 IMPLEMENT+TEST+IMPL-REVIEW — approved — STOP BEFORE PROD DEPLOY
+
+Managed goal: `portal-discover-view-all-complete-pagination` (TD-031).
+Source implement **complete** in `useCatalogDesigns` (aggregate count authority + Load more reconcile).
+Tests: **37/37** focused + Stage 1b-C; Portal typecheck/lint/build/diff-check **PASS**.
+Implementation Review: **approved** —
+`docs/workflow/reviews/2026-08-08-portal-discover-view-all-complete-pagination-implementation-review.md`
+Test report: `docs/workflow/reviews/2026-08-08-portal-discover-view-all-complete-pagination-test-report.md`
+Owner QA checklist: `docs/workflow/reviews/2026-08-08-portal-discover-view-all-complete-pagination-owner-qa-checklist.md`
+**STOP BEFORE PRODUCTION DEPLOYMENT.**
+Next: separate source promotion / App Hosting rollout phrase, then owner QA.
+Confirmations: NO App Hosting / Rules / Functions / indexes / Algolia / readyAt / Storage / taxonomy
+
+## 2026-08-08 - TD-031 PLAN+REVIEW — approved_with_changes — STOP BEFORE IMPLEMENT
+
+Managed goal: `portal-discover-view-all-complete-pagination` (TD-031).
+Plan: `docs/workflow/plans/2026-08-08-portal-discover-view-all-complete-pagination-plan.md`
+Formal Review: **approved_with_changes** —
+`docs/workflow/reviews/2026-08-08-portal-discover-view-all-complete-pagination-plan-review.md`
+Root cause: `/catalog` View All uses `useCatalogDesigns`; first page size 40; badge seeded from loaded length; Load more already exists — fix count authority + paging completeness; do **not** raise page size / enable Algolia / touch Home/readyAt/PR#40.
+**STOP BEFORE IMPLEMENTATION.**
+Next owner phrase: `IMPLEMENT PORTAL DISCOVER VIEW ALL COMPLETE PAGINATION`
+Confirmations: NO implement / App Hosting / Rules / Functions / Algolia this pass
+
+## 2026-08-08 - PROD READYAT BACKFILL SIGNOFF — approved_with_notes — R-018 RESOLVED — STOP
+
+Managed goal: `prod-readyat-backfill` — **CLOSED**.
+Signoff: **approved_with_notes** —
+`docs/workflow/reviews/2026-08-08-prod-readyat-backfill-signoff.md`
+APPLY 46/46; NTW populated; post-write verify PASS; owner QA **PASS WITH NOTES**.
+**R-018 resolved.** Separate follow-up **TD-031**: Discover View All badge/list shows 40 vs membership 45 — now in Plan+Review (see above).
+Confirmations: NO pagination fix / App Hosting / Rules / Functions / Algolia this pass
+
+## 2026-08-08 - PROD READYAT BACKFILL APPLIED — OWNER NTW QA PENDING — STOP
+
+Owner: `APPROVE PROD READYAT BACKFILL APPLY` — owner CLI complete (46 updated).
+Post-write verify **PASS**: ready **46** · readyAt **46/46** · missing **0** · all seeds match `aiReviewedAt` · NTW membership **45**.
+Record: `docs/workflow/reviews/2026-08-08-prod-readyat-backfill-apply-record.md`
+**R-018 still OPEN** until owner NTW visual QA.
+Reply: `READYAT BACKFILL NTW QA: PASS` (or FAIL / PASS WITH NOTES)
+Confirmations: NO App Hosting/Rules/Functions/indexes/Algolia/further mutation
+
+## 2026-08-08 - PROD READYAT BACKFILL APPLY — PREFLIGHT PASS; HOOK-BLOCKED — STOP
+
+Owner: `APPROVE PROD READYAT BACKFILL APPLY`
+Preflight **PASS**: script unchanged; indexes 4/4 READY; candidates still 46/0/46 all `aiReviewedAt`.
+APPLY **not executed** — Cursor hook blocked production mutation.
+Owner PowerShell:
+`$env:FIREBASE_PROJECT_ID='fresh-prints-prod'; $env:ALLOW_NON_DEV='1'; $env:APPLY='1'; node functions/scripts/backfill-design-ready-at.mjs`
+Record: `docs/workflow/reviews/2026-08-08-prod-readyat-backfill-apply-record.md`
+After owner APPLY success: continue post-write verify → NTW QA → Signoff / R-018.
+Confirmations: NO agent writes / NO App Hosting / Rules / Functions / Algolia
+
+## 2026-08-08 - PROD READYAT BACKFILL DRY-RUN — GO (A) — STOP BEFORE WRITES
+
+Owner: `APPROVE PROD READYAT BACKFILL DRY-RUN`
+Project: `fresh-prints-prod` · source `ccfc974` · script `functions/scripts/backfill-design-ready-at.mjs`
+Read-only: ready **46** / alreadySet **0** / needsBackfill **46** / no-seed **0**
+Seeds: **aiReviewedAt 46** · updatedAt **0** · createdAt **0**
+Proposed age: **45** within 7d · **1** in 8–30d
+Predicted New This Week View All after APPLY: **45** (all from aiReviewedAt); before View All: **0** (missing field)
+updatedAt risk: **none** · Classification **A SAFE TO APPLY AS-IS**
+Record: `docs/workflow/reviews/2026-08-08-prod-readyat-backfill-dry-run-record.md`
+R-018 still OPEN. Next: `APPROVE PROD READYAT BACKFILL APPLY` (do not run yet)
+Confirmations: NO APPLY / NO writes / NO Rules/Functions/indexes/App Hosting/Algolia
+
+## 2026-08-08 - HOME/DISCOVER REGRESSION SIGNOFF — approved_with_notes — STOP
+
+Managed goal: `prod-portal-home-discover-population-regression` — **CLOSED**.
+Signoff: **approved_with_notes** —
+`docs/workflow/reviews/2026-08-08-prod-portal-home-discover-population-regression-signoff.md`
+Live: `build-2026-08-08-002` @ `ccfc974` (100%); readyAt indexes **4/4 READY**; Algolia **OFF**.
+Owner QA: **PASS WITH NOTES** — Home multi-design fixed; New This Week empty = legacy readyAt coverage (R-018), not a Home-pool failure.
+No backfill this pass. Recommended separate follow-up: `APPROVE PROD READYAT BACKFILL`
+Parent PR #40 remaining (Algolia RC-R3, Rules, cleanup) still separately gated — do not auto-start.
+Confirmations: NO Algolia/Functions/Rules/backfill/cleanup
+
+## 2026-08-08 - CORRECTIVE BUILD LIVE / OWNER CONTENT QA PENDING — STOP
+
+Managed goal: `prod-portal-home-discover-population-regression`
+Owner: `APPROVE PROD HOME DISCOVER APP HOSTING ROLLOUT` — **SUCCEEDED**.
+Build/rollout **`build-2026-08-08-002`** READY/SUCCEEDED; traffic **100%** @ `ccfc974` (contains `f5e9cf6`).
+Smoke: `/` + `/catalog` **200**; no `fresh-prints-dev`; Algolia OFF; readyAt **4/4 READY**.
+**AUTOMATED RUNTIME VERIFY: PASS** · **OWNER CONTENT QA: REQUIRED** (defect not closed).
+Record: `docs/workflow/reviews/2026-08-08-prod-portal-home-discover-population-regression-app-hosting-rollout-record.md`
+QA checklist: `docs/workflow/reviews/2026-08-08-prod-portal-home-discover-population-regression-owner-qa-checklist.md`
+Reply: `HOME DISCOVER CONTENT QA: PASS` (or FAIL / PASS WITH NOTES)
+Confirmations: NO Algolia/Functions/Rules/backfill/cleanup this pass
+
+## 2026-08-08 - HOME/DISCOVER APP HOSTING ROLLOUT — PREFLIGHT PASS; CLI HOOK-BLOCKED — STOP
+
+Managed goal: `prod-portal-home-discover-population-regression`
+Owner: `APPROVE PROD HOME DISCOVER APP HOSTING ROLLOUT`
+Preflight **PASS**: `production`=`ccfc974` contains `f5e9cf6`; traffic still `build-2026-08-08-001`@`1e65a43`; auto-rollout disabled; readyAt **4/4 READY**; Algolia OFF.
+Rollout **not executed** — Cursor hook blocked `firebase apphosting:rollouts:create`.
+Owner command:
+`firebase apphosting:rollouts:create fresh-prints-portal --project fresh-prints-prod --git-commit ccfc97487a42553146ea3186bde8f710a54b86ca --force`
+Record: `docs/workflow/reviews/2026-08-08-prod-portal-home-discover-population-regression-app-hosting-rollout-record.md`
+After SUCCEEDED: agent smoke + owner content QA (`HOME DISCOVER CONTENT QA: PASS`).
+Confirmations: NO Rules/Functions/indexes/Algolia/backfill this pass
+
+## 2026-08-08 - READYAT INDEXES LIVE 4/4 — LIVE PORTAL STILL AFFECTED — STOP
+
+Managed goal: `prod-portal-home-discover-population-regression`
+Owner: `APPROVE PROD READYAT INDEX DEPLOY` — **COMPLETE**.
+Indexes: **4/4 READY** on `fresh-prints-prod` (canonical compare PASS: 71/71, missing 0, unexpected 0).
+Source: `ccfc974` promoted; indexes deployed (owner CLI).
+Live App Hosting traffic **100%** on **`build-2026-08-08-001`** @ `1e65a43` — Home defect **STILL PRESENT**.
+Record: `docs/workflow/reviews/2026-08-08-prod-portal-home-discover-population-regression-index-deploy-record.md`
+Next: `APPROVE PROD HOME DISCOVER APP HOSTING ROLLOUT`
+Confirmations: NO App Hosting/Algolia/Rules/Functions/backfill this pass
+
+## 2026-08-08 - PROD READYAT INDEX DEPLOY — DELTA PASS; CLI HOOK-BLOCKED — STOP
+
+Managed goal: `prod-portal-home-discover-population-regression`
+Owner: `APPROVE PROD READYAT INDEX DEPLOY`
+Production source: `ccfc974` (verified).
+Pre-deploy live indexes: **67**; local: **71**; readyAt live: **0/4**.
+Canonical delta (**PASS**): CREATE exactly four readyAt composites; DELETE **NONE**; UNEXPECTED **NONE**.
+Deploy command **not executed** — Cursor hook blocked `firebase deploy --only firestore:indexes --project fresh-prints-prod`.
+Owner: approve Cursor card **or** run that command with `--non-interactive` (abort if delete prompted), then continue wait/verify.
+Record: `docs/workflow/reviews/2026-08-08-prod-portal-home-discover-population-regression-index-deploy-record.md`
+Live App Hosting still `build-2026-08-08-001` — Home defect **STILL PRESENT**.
+Next after 4/4 ENABLED: `APPROVE PROD HOME DISCOVER APP HOSTING ROLLOUT`
+
+## 2026-08-08 - HOME/DISCOVER SOURCE PROMOTED — LIVE PORTAL STILL AFFECTED — STOP
+
+Managed goal: `prod-portal-home-discover-population-regression`
+Owner: `APPROVE PROD HOME DISCOVER FIX PROMOTION` — **complete (Git only)**.
+PR **#42 MERGED** — merge SHA `ccfc97487a42553146ea3186bde8f710a54b86ca` (parents `1e65a43` + `f5e9cf6`).
+`origin/production` = `ccfc974`; contains approved fix `f5e9cf6`.
+Live App Hosting traffic **100%** on **`build-2026-08-08-001`** @ `1e65a43` — Home defect **STILL PRESENT**.
+Record: `docs/workflow/reviews/2026-08-08-prod-portal-home-discover-population-regression-source-promotion-record.md`
+Index gate (NOT executed): `docs/workflow/reviews/2026-08-08-prod-portal-home-discover-population-regression-index-deploy-gate.md`
+Next: `APPROVE PROD READYAT INDEX DEPLOY`
+Confirmations: NO index/App Hosting/Algolia/Rules/Functions/backfill this pass
+
+## 2026-08-08 - HOME/DISCOVER SOURCE PROMOTION — PR #42 OPEN; MERGE HOOK-BLOCKED — STOP
+
+Managed goal: `prod-portal-home-discover-population-regression`
+Owner: `APPROVE PROD HOME DISCOVER FIX PROMOTION`
+Feature: `fix/prod-home-discover-population` @ `f5e9cf62524e223aef7f2e289bad51e9b35b18d6`
+PR: **#42** https://github.com/roasted-garlic/freshprints/pull/42 — **MERGEABLE/CLEAN** vs `production` @ `1e65a43`
+**Agent could not complete `gh pr merge`** — Cursor hook blocked merge (source promotion only; not a runtime deploy).
+Live App Hosting still **`build-2026-08-08-001`** — Home defect **STILL PRESENT**.
+Record: `docs/workflow/reviews/2026-08-08-prod-portal-home-discover-population-regression-source-promotion-record.md`
+Index gate prep: `docs/workflow/reviews/2026-08-08-prod-portal-home-discover-population-regression-index-deploy-gate.md`
+Owner: run `gh pr merge 42 --merge --subject "Merge PR #42: restore Home discovery pool fallback"` (or approve Cursor merge card), then continue post-merge verify.
+Next after merge: `APPROVE PROD READYAT INDEX DEPLOY` (do not run yet)
+
+## 2026-08-08 - HOME/DISCOVER SOURCE FIX APPROVED — PRODUCTION STILL AFFECTED — STOP
+
+Managed goal: `prod-portal-home-discover-population-regression`
+Branch: `fix/prod-home-discover-population` (from `1e65a43`)
+**SOURCE FIX APPROVED** — Implementation Review **APPROVED**; tests **54/54**; Portal typecheck/build/lint/diff-check **pass**.
+Fallback: membership-incomplete / readyAt-index-unavailable → `WithSortFallback` + bounded `createdAt` fill (no magic 8/12/20).
+**Production still affected** (`build-2026-08-08-001`). Algolia OFF unrelated. Indexes 0/4 live (defs verified; not deployed).
+Test: `docs/workflow/reviews/2026-08-08-prod-portal-home-discover-population-regression-test-report.md`
+Impl Review: `docs/workflow/reviews/2026-08-08-prod-portal-home-discover-population-regression-implementation-review.md`
+Deploy prep: `docs/workflow/reviews/2026-08-08-prod-portal-home-discover-population-regression-deployment-checkpoint.md`
+Owner QA prep: `docs/workflow/reviews/2026-08-08-prod-portal-home-discover-population-regression-owner-qa-checklist.md`
+Next: `APPROVE PROD HOME DISCOVER FIX PROMOTION`
+Confirmations: NO prod index/App Hosting/Algolia/Rules/Functions/backfill/mutation this pass
+
+## 2026-08-08 - HOME/DISCOVER POPULATION REGRESSION — PLAN+REVIEW — STOP
+
+Managed goal: `prod-portal-home-discover-population-regression`
+**Root cause PROVEN:** Home `listHomeDiscoveryPool` — missing `readyAt` index + metric queries return 1 design + early return (no createdAt fallback). `/catalog` uses `WithSortFallback` → createdAt → 46 designs. **0/46** ready docs have `readyAt`. Algolia unrelated.
+Plan: `docs/workflow/plans/2026-08-08-prod-portal-home-discover-population-regression-plan.md`
+Formal Review: **approved_with_changes** —
+`docs/workflow/reviews/2026-08-08-prod-portal-home-discover-population-regression-plan-review.md`
+Next: `APPROVE PROD HOME DISCOVER FIX IMPLEMENT`
+Confirmations: NO implement / index deploy / Algolia / Rules / Functions
+
+## 2026-08-08 - PROD ALGOLIA CONFIG — PARTIAL / OWNER ACTIONS REQUIRED — STOP
+
+Owner: `APPROVE PROD ALGOLIA CONFIG`.
+Contract verified; live Portal Algolia **OFF**; prod admin secret **NOT FOUND**.
+Proposed index: **`portal_catalog_ready_prod`** (≠ `_dev`).
+Prod Algolia Application / keys / Secret Manager **pending owner dashboard**.
+Record: `docs/workflow/reviews/2026-08-08-pr-40-production-algolia-config-record.md`
+RC-R3: **OPEN** (not CONFIG READY).
+Next owner replies: `ALGOLIA PROD APP: SEPARATE|REUSE WQ6OPP2E6Z` then App ID + `ALGOLIA ADMIN SECRET: READY`.
+Do **not** start Functions Wave A yet.
+
+## 2026-08-08 - APP HOSTING ROLLOUT SUCCEEDED — STOP
+
+Backend `fresh-prints-portal` / `fresh-prints-prod`.
+Build/rollout **`build-2026-08-08-001`** — **SUCCEEDED**; traffic 100%.
+Source: `1e65a43e131b3b5709a8870b1a24a40f8a004978` (owner CLI after Cursor hook block).
+Smoke: homepage **200**; **0** `fresh-prints-dev`; `/catalog` + category browse **200**; Algolia **OFF**.
+Stage 4 Portal runtime **LIVE**. RC-R4 prerequisite satisfied; Storage Rules **not** deployed.
+Record: `docs/workflow/reviews/2026-08-08-pr-40-app-hosting-production-rollout-record.md`
+Next: `APPROVE PROD ALGOLIA CONFIG`
+
+| Confirmations | NO Functions/Rules/indexes/Algolia/Storage/taxonomy/secrets action beyond App Hosting |
+
+## 2026-08-08 - PR #40 MERGED TO production — SOURCE ONLY — STOP
+
+PR #40 **merged** via merge commit.
+Merge SHA: `1e65a43e131b3b5709a8870b1a24a40f8a004978`
+Head merged: `66d906c39f0fd07bc8b4a39dcdc889e8b0d11506`
+Production before: `70c083af6ec0165e95f439fe6111e7e0a62c8ecd`
+
+| Item | Status |
+|------|--------|
+| Git source | **MERGED TO production — SOURCE ONLY** |
+| App Hosting | **SUCCEEDED** — see rollout record above |
+| Runtime promotion | **PARTIAL** — Portal live; Functions/Rules/Algolia/Storage still gated |
+| RC-R3 / R6 | **OPEN** |
+| RC-R4 | prerequisite **SATISFIED**; Rules deploy still **OPEN** |
+
+## 2026-08-08 - PR #40 PRE-MERGE VERIFICATION + PROD INVENTORY — STOP
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (was open; now merged).
+Source verification SHA: `1d13edf2eb3d685773157c469b1b2e154fe0fd93`
+
+| Item | Status |
+|------|--------|
+| Pre-merge verdict | **PASS WITH NOTES** |
+| RC-R7 | **SATISFIED** |
+| RC-R2 / RC-R5 | **SATISFIED** |
+| RC-R3 | **OPEN** |
+| RC-R4 / RC-R6 | **OPEN** |
+| Verification | `docs/workflow/reviews/2026-08-08-pr-40-pre-merge-verification-result.md` |
+| Inventory | `docs/workflow/reviews/2026-08-08-pr-40-production-inventory-result.md` |
+
+
+## 2026-08-08 - OVERNIGHT CLOSEOUT — Stage 5 Signoff + PR #40 promotion Plan — STOP
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+HEAD: `54b9fef8a0ccfa29c8b0dbcd238f8379a74e5608`
+
+| Item | Status |
+|------|--------|
+| Stage 5 Signoff | **approved_with_notes** |
+| Stage 5 path | `docs/workflow/reviews/2026-08-07-stage-5-generated-asset-cleanup-signoff.md` |
+| PR #40 promotion Plan | `docs/workflow/plans/2026-08-08-pr-40-production-promotion-plan.md` |
+| Formal Review | **approved_with_changes** (RC-R1 SATISFIED; RC-R2–R8 open) |
+| Review path | `docs/workflow/reviews/2026-08-08-pr-40-production-promotion-plan-review.md` |
+| PR | mergeable clean; 54 commits / 415 files / +42399 −6907; 0 checks |
+| App Hosting secrets | **CLOSED** (`APP HOSTING SECRETS READY`) |
+| App Hosting rollout | **NOT RUN** |
+| Next phrase | `APPROVE PR 40 PRE-MERGE VERIFICATION` |
+| Confirmations | NO merge / deploy / Firebase / Algolia / secrets / Storage / App Hosting |
+
+## 2026-08-08 - apphosting-env-secrets integrated into PR #40 promotion — STOP
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| `apphosting-env-secrets` | **SIGNOFF approved_with_notes** (CLOSED) |
+| Secrets create/grant | **PASS** — `APP HOSTING SECRETS READY` |
+| `apphosting.yaml` | `secret:` refs only (no plaintext Firebase web config) |
+| App Hosting rollout | **Not done** — needs `APPROVE APP HOSTING ROLLOUT` after YAML on `production` |
+| PR #40 promotion plan | Amended with Checkpoint 2b + rollout smoke |
+| Next | `APPROVE STAGE 5 SIGNOFF` → `APPROVE PR 40 PRODUCTION PROMOTION PLAN` |
+| Confirmations | NO App Hosting deploy / merge / secret values in chat |
+
+## 2026-08-08 - PR #40 PRODUCTION PROMOTION PLAN + REVIEW — approved_with_changes — STOP
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Plan | `docs/workflow/plans/2026-08-08-pr-40-production-promotion-plan.md` |
+| Formal Review | **approved_with_changes** (RC-R1–RC-R7) |
+| Review path | `docs/workflow/reviews/2026-08-08-pr-40-production-promotion-plan-review.md` |
+| Stage 5 Signoff | **MISSING** |
+| Source merge-ready as-is? | **No** |
+| Merge timing | After Stage 5 Signoff + prod inventory + pre-merge suite; before destructive deletes |
+| Algolia | Prod prerequisites **NEEDS PROD CHECK**; FS browse safe if Algolia OFF |
+| Next phrase | `APPROVE STAGE 5 SIGNOFF` then `APPROVE PR 40 PRODUCTION PROMOTION PLAN` |
+| Confirmations | NO implement / deploy / Algolia mutation / Storage cleanup / merge |
+
+## 2026-08-08 - COMMIT/PUSH + PR #40 AUDIT — STOP
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Main commit | `cb804ba` — `fix: harden post-launch catalog and processing stability` (161 files) |
+| Follow-up | `e562411` — workflow state after PR audit |
+| Push | **PASS** (no force) |
+| PR title | `fix: harden post-launch catalog and processing stability` |
+| PR body | **refreshed** to current cumulative scope |
+| PR head | `e562411` |
+| Diff vs production | 52 commits / 406 files / +41055 / -6886 |
+| Mergeable | **True / clean** |
+| Recommendation | **KEEP PR #40** |
+| Confirmations | NO force push / implement / deploy / production / merge / close / replacement PR |
+
+## 2026-08-07 - taxonomy-read-spike-elimination SIGNOFF — approved_with_notes — STOP
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Owner | `45-DESIGN PERFORMANCE VALIDATION: AI SPOT CHECK PASS` |
+| Follow-up | **`taxonomy-read-spike-elimination` CLOSED** |
+| Signoff | **approved_with_notes** |
+| Signoff path | `docs/workflow/reviews/2026-08-07-taxonomy-read-spike-elimination-signoff.md` |
+| 45-design final | **PASS WITH NOTES** |
+| Final result | `docs/workflow/reviews/2026-08-07-taxonomy-45-design-performance-validation-result.md` |
+| Studio | ~139 billable; **0** `/tags`; **0** `/categories`; import **2.00**/design |
+| Server cold | materialization rev **2**, chunkCount **1**, ~207ms |
+| Server warm | **89** process-cache hits; **0** fallback |
+| Console peak | **222** reads/min (vs historical ~1.3K/1.4K towers) |
+| AI quality | **PASS — 8/8 reasonable** |
+| Next | **STOP** — no Stage 6 / prod / PR merge / deploy / implement |
+| Confirmations | NO implementation / taxonomy mutation / deploy / production / PR merge / Stage 6 |
+
+## 2026-08-07 - 45-design SERVER TAXONOMY VALIDATION PASS WITH NOTES
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Owner | `45-DESIGN PERFORMANCE VALIDATION: INSPECT SERVER TAXONOMY LOGS` |
+| Verdict | **PASS WITH NOTES** |
+| Window | `2026-08-08T03:58Z`–`04:12Z` |
+| Instances | **1** |
+| Cold load | materialization rev **2**, chunkCount **1**, 207ms |
+| Cache hits | **89** |
+| Fallback / publishers | **0** / **0** |
+| Note | `documentCount:1139` = corpus size when `source:materialization` |
+| Record | `docs/workflow/reviews/2026-08-07-taxonomy-45-design-server-taxonomy-validation-result.md` |
+| Confirmations | NO mutation / deploy / prod / merge |
+
+## 2026-08-07 - taxonomy corrective SIGNOFF + 45-design checkpoint PREP — STOP
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Corrective | `taxonomy-trigger-rebuild-corrective` |
+| Signoff | **approved_with_notes** |
+| Signoff path | `docs/workflow/reviews/2026-08-07-taxonomy-trigger-rebuild-corrective-signoff.md` |
+| Parent follow-up | `taxonomy-read-spike-elimination` **closed** (see parent Signoff above) |
+| 45-design checkpoint | `docs/workflow/reviews/2026-08-07-taxonomy-45-design-performance-validation-checkpoint.md` |
+| Batch executed | **Yes** (later; final PASS WITH NOTES) |
+| Confirmations | NO batch / mutation / implement / deploy / prod / merge (at prep time) |
+
+## 2026-08-07 - STUDIO STALE-REVISION DISK CACHE PASS
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Owner | Full Studio restart + Design Library |
+| Path | `%APPDATA%\@fresh-prints\studio\taxonomy-cache\v1.json` |
+| revision | **2** |
+| contentHash | matches live `38e69b…bdd33e59` |
+| Structure | 1121 tags / 18 cats; healthy |
+| Verdict | **PASS** |
+| Record | `docs/workflow/reviews/2026-08-07-taxonomy-studio-stale-revision-disk-cache-verify-result.md` |
+| Confirmations | NO file modify / mutation / deploy / prod / merge |
+
+## 2026-08-07 - Studio stale-refresh Debug INCONCLUSIVE — investigate DONE
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Owner | Studio stale-revision Debug inconclusive |
+| Classification | Expected remount + **tracer blind spot** |
+| Cause | `taxonomyMaterializationService` `getDoc`s uninstrumented |
+| Next QA | Hard-reload → Design Library → `userData/taxonomy-cache/v1.json` revision **2** |
+| Record | `docs/workflow/reviews/2026-08-07-taxonomy-studio-stale-revision-refresh-inconclusive-investigation.md` |
+| Implement | **No** |
+| Confirmations | NO mutation / deploy / prod / merge |
+
+## 2026-08-07 - taxonomy MUTATION SERVER RE-QA PASS (rev 2) — STOP before Studio refresh
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Owner | `TAXONOMY MUTATION RE-QA: ALIAS REMOVED SUCCESSFULLY` |
+| Verdict | **PASS** |
+| Revision | **1 → 2** |
+| Alias | absent canonical + materialization |
+| Trigger | `onTagTaxonomySourceWritten` ~**5.91s**; 1 start / 1 success |
+| Hash | unchanged vs rev1 (**expected** — rev1 never had smoke alias) |
+| Record | `docs/workflow/reviews/2026-08-07-taxonomy-trigger-rebuild-corrective-mutation-server-re-qa-result.md` |
+| Next | Studio stale-cache refresh (separate) |
+| Confirmations | NO agent mutation / deploy / prod / merge |
+
+## 2026-08-07 - taxonomy TRIGGER REBUILD CORRECTIVE DEPLOY PASS — STOP before mutation re-QA
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Owner | `APPROVE DEV TAXONOMY TRIGGER REBUILD CORRECTIVE DEPLOY` |
+| Verdict | **PASS** |
+| Updated | `onTagTaxonomySourceWritten`, `onCategoryTaxonomySourceWritten` (ACTIVE) |
+| Materialization | still revision **1** (no unexpected rebuild) |
+| Alias | `taxonomy-smoke-20260807` still on `tags/acdc` only |
+| Record | `docs/workflow/reviews/2026-08-07-taxonomy-trigger-rebuild-corrective-dev-deploy-record.md` |
+| Next | Owner remove alias once → prove rev **1→2** |
+| Confirmations | NO mutation / callable / Rules / Storage / Algolia / prod / merge |
+
+## 2026-08-07 - taxonomy TRIGGER REBUILD CORRECTIVE — Implement APPROVED, STOP before deploy
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Owner | `APPROVE TAXONOMY TRIGGER REBUILD CORRECTIVE IMPLEMENTATION` |
+| Selected | **Option A** awaited per-instance coalesce |
+| Impl Review | **APPROVED** |
+| Review path | `docs/workflow/reviews/2026-08-07-taxonomy-trigger-rebuild-corrective-implementation-review.md` |
+| Tests | 18/18; functions tsc + eslint PASS |
+| Live defect | still present until deploy (rev 1; alias on `acdc`) |
+| Next | `APPROVE DEV TAXONOMY TRIGGER REBUILD CORRECTIVE DEPLOY` |
+| Deploy allowlist | `onTagTaxonomySourceWritten`, `onCategoryTaxonomySourceWritten` |
+| Confirmations | NO deploy / mutation / Studio / Rules / Algolia / prod / merge |
+
+## 2026-08-07 - taxonomy TRIGGER REBUILD CORRECTIVE — Plan+Review STOP
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Owner | `PLAN TAXONOMY TRIGGER REBUILD CORRECTIVE` |
+| Plan | `docs/workflow/plans/2026-08-07-taxonomy-trigger-rebuild-corrective-plan.md` |
+| Review | **approved_with_changes** RC-R1–RC-R8 |
+| Review path | `docs/workflow/reviews/2026-08-07-taxonomy-trigger-rebuild-corrective-plan-review.md` |
+| Recommend | Option A awaited coalesce (B fallback); reject C |
+| Live defect | still present (rev 1 stale; alias on `acdc`) |
+| Next | `APPROVE TAXONOMY TRIGGER REBUILD CORRECTIVE IMPLEMENTATION` |
+| Confirmations | NO implement / deploy / mutation / prod / merge |
+
+## 2026-08-07 - taxonomy MUTATION SERVER REBUILD FAIL — STOP before Studio refresh
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Owner | `TAXONOMY MUTATION SMOKE: OWNER MUTATION COMPLETE` |
+| Alias | `taxonomy-smoke-20260807` on `tags/acdc` (**canonical PASS**) |
+| Materialization | still revision **1** / hash unchanged (**FAIL**) |
+| Tag trigger | fired; HTTP 200 ~176ms; **0** rebuild-success |
+| Category trigger | **0** runs |
+| Suspected cause | coalesce `setTimeout(750)` after Gen2 handler return |
+| Record | `docs/workflow/reviews/2026-08-07-taxonomy-mutation-server-rebuild-verify-result.md` |
+| Studio stale refresh | **STOPPED** |
+| Confirmations | NO deploy / prod / merge / alias removal |
+
+## 2026-08-07 - taxonomy STUDIO READ SMOKE PASS WITH NOTES — mutation checkpoint ready
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Owner | `STUDIO TAXONOMY MATERIALIZATION READ: PASS WITH NOTES` |
+| Proof | Design Library warm-cache: **0** tags / **0** categories reads |
+| Result | `docs/workflow/reviews/2026-08-07-taxonomy-studio-materialization-read-smoke-result.md` |
+| Cold retest | Waived |
+| Next checkpoint | `docs/workflow/reviews/2026-08-07-taxonomy-mutation-revision-smoke-checkpoint.md` (1→2) |
+| Mutation executed | **No** |
+| Confirmations | NO deploy / prod / merge |
+
+## 2026-08-07 - taxonomy STUDIO READ SMOKE — awaiting owner QA
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Owner | `CONTINUE WORKFLOW: TAXONOMY STUDIO MATERIALIZATION READ SMOKE` |
+| Checkpoint | `docs/workflow/reviews/2026-08-07-taxonomy-studio-materialization-read-smoke-checkpoint.md` |
+| Goal | Prove AI Review uses materialization (not listTags 1121 / listCategories 18) |
+| Mutation | **Forbidden** |
+| Next | Owner reply PASS / FAIL / PASS WITH NOTES + debug counts |
+| Confirmations | NO mutation / deploy / prod / merge this pass |
+
+## 2026-08-07 - taxonomy STEADY-STATE RULES DEPLOYED on fresh-prints-dev — STOP
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Owner | `APPROVE DEV TAXONOMY STEADY-STATE RULES DEPLOY` |
+| Command | `firebase deploy --only firestore:rules --project fresh-prints-dev` |
+| Result | **PASS** — rules released to cloud.firestore |
+| Materialization | revision still **1** (no unexpected rebuild) |
+| Record | `docs/workflow/reviews/2026-08-07-taxonomy-steady-state-rules-dev-deploy-record.md` |
+| Next | Studio reload → staff meta/chunk read → controlled mutation 1→2 |
+| Confirmations | NO Functions/Storage/prod/merge this pass |
+
+## 2026-08-07 - taxonomy STEADY-STATE FUNCTIONS DEPLOYED on fresh-prints-dev — STOP
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Owner | `APPROVE DEV TAXONOMY STEADY-STATE FUNCTIONS DEPLOY` |
+| Result | **PASS** — Deploy complete |
+| Created | `onTagTaxonomySourceWritten`, `onCategoryTaxonomySourceWritten` |
+| Updated | `enqueueAiEnrichment`, `testAiEnrichmentPlayground`, `testAiEnrichmentTagRerank` |
+| Materialization | revision still **1** (no unexpected rebuild) |
+| Record | `docs/workflow/reviews/2026-08-07-taxonomy-steady-state-functions-dev-deploy-record.md` |
+| Next | `APPROVE DEV TAXONOMY STEADY-STATE RULES DEPLOY` |
+| Confirmations | NO Rules/Storage/prod/merge this pass |
+
+## 2026-08-07 - taxonomy STEADY-STATE DEPLOY CHECKPOINT READY — STOP
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Owner | `PREPARE DEV TAXONOMY STEADY-STATE DEPLOYMENT CHECKPOINT` |
+| Bootstrap | still healthy revision 1 / 1121 / 18 / hash unchanged |
+| Rules tests | **59/59 PASS** (portable Temurin 21.0.11) |
+| Functions allowlist | triggers + `enqueueAiEnrichment` + playground + tagRerank |
+| Callable redeploy | **No** |
+| Checkpoint | `docs/workflow/reviews/2026-08-07-taxonomy-steady-state-deployment-checkpoint.md` |
+| Next | `APPROVE DEV TAXONOMY STEADY-STATE FUNCTIONS DEPLOY` |
+| Confirmations | NO deploy / mutation / prod / merge this pass |
+
+## 2026-08-07 - taxonomy MATERIALIZATION BOOTSTRAP PASS on fresh-prints-dev — STOP
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Owner | `APPROVE DEV TAXONOMY MATERIALIZATION BOOTSTRAP` |
+| Invoke | Studio `window.freshPrintsDev.rebuildTaxonomyMaterialization()` |
+| Verdict | **TAXONOMY MATERIALIZATION BOOTSTRAP: PASS** |
+| revision / chunks | **1** / **1** |
+| tags / categories | **1121** / **18** |
+| contentHash | `38e69b3851688e963470b1dc17c879a3e947a481c6d111a0d2a4fe74bdd33e59` |
+| chunk-0 size | 298,509 bytes |
+| Record | `docs/workflow/reviews/2026-08-07-taxonomy-materialization-bootstrap-dev-record.md` |
+| Next | Separate phrase for triggers / AI loader / Rules deploy |
+| Confirmations | NO triggers/loader/Rules/Storage/Algolia/prod/merge this pass |
+
+## 2026-08-07 - taxonomy BOOTSTRAP authorized — awaiting owner Studio invoke
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Owner | `APPROVE DEV TAXONOMY MATERIALIZATION BOOTSTRAP` |
+| meta | **still absent** (read-only pre-check) |
+| Agent | Cannot invoke (shell hook); no Admin bypass |
+| Owner command | `await window.freshPrintsDev.rebuildTaxonomyMaterialization()` |
+| Checkpoint | `docs/workflow/reviews/2026-08-07-taxonomy-materialization-bootstrap-owner-invoke-checkpoint.md` |
+| Next | Owner paste invoke JSON → agent verify + record |
+| Confirmations | NO agent mutation / deploy / prod / merge this pass |
+
+## 2026-08-07 - taxonomy bootstrap DEV CONSOLE BRIDGE APPROVED — STOP
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Owner | `APPROVE TAXONOMY BOOTSTRAP DEV CONSOLE BRIDGE IMPLEMENT` |
+| Impl Review | **APPROVED** |
+| Bridge | `window.freshPrintsDev.rebuildTaxonomyMaterialization` |
+| Gate | DEV + `fresh-prints-dev` via `isFirebaseDebugPanelEnabled` |
+| Callable invoked | **No** |
+| Records | impl-review + test-report under `docs/workflow/reviews/2026-08-07-taxonomy-bootstrap-dev-console-bridge-*` |
+| Next | Reload Studio → `APPROVE DEV TAXONOMY MATERIALIZATION BOOTSTRAP` |
+| Confirmations | NO invoke / mutation / deploy / prod / merge |
+
+## 2026-08-07 - taxonomy bootstrap DevTools invoke INVALID — no existing owner path
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Owner | DevTools import failed; investigation authorized |
+| Cause | Electron DevTools cannot resolve bare `firebase/functions` |
+| Existing wrapper / `freshPrintsDev` / UI | **None** for `rebuildTaxonomyMaterializationCallable` |
+| Record | `docs/workflow/reviews/2026-08-07-taxonomy-bootstrap-devtools-invoke-corrective-investigation.md` |
+| Proposed | Minimal DEV-only `window.freshPrintsDev` bridge (not implemented) |
+| Confirmations | NO invoke / mutation / deploy / prod / merge |
+
+## 2026-08-07 - taxonomy BOOTSTRAP INVOKE STOPPED — shell hook / owner Studio run needed
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Owner | `APPROVE DEV TAXONOMY MATERIALIZATION BOOTSTRAP` |
+| Pre-checks | **PASS** (project, callable present, triggers absent, meta absent) |
+| Agent invoke | **Blocked** by Cursor shell hook |
+| Checkpoint | `docs/workflow/reviews/2026-08-07-taxonomy-materialization-bootstrap-invoke-checkpoint.md` |
+| Next | Owner Studio console `httpsCallable("rebuildTaxonomyMaterializationCallable")` once → paste JSON → agent verify |
+| Confirmations | NO mutation this pass; NO triggers/Rules/loader/Studio/prod/merge |
+
+## 2026-08-07 - taxonomy bootstrap CALLABLE DEPLOYED on fresh-prints-dev — STOP
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Owner | `APPROVE DEV TAXONOMY BOOTSTRAP CALLABLE DEPLOY` |
+| Command | `firebase deploy --only functions:rebuildTaxonomyMaterializationCallable --project fresh-prints-dev` |
+| Result | **Deploy complete** — Successful create (`us-central1`) |
+| List | `rebuildTaxonomyMaterializationCallable` present; taxonomy triggers **absent** |
+| Record | `docs/workflow/reviews/2026-08-07-taxonomy-bootstrap-callable-dev-deploy-record.md` |
+| Callable invoked | **No** |
+| Next | `APPROVE DEV TAXONOMY MATERIALIZATION BOOTSTRAP` |
+| Triggers / Rules / loader / Studio / prod / merge | **Forbidden** this gate |
+
+## 2026-08-07 - taxonomy materialization BOOTSTRAP STOPPED — needs Functions deploy
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Owner | `APPROVE DEV TAXONOMY MATERIALIZATION BOOTSTRAP` |
+| Result | **STOPPED — no mutation** |
+| Reason | Only approved path is undeployed `rebuildTaxonomyMaterializationCallable`; no ops script in Implement |
+| Checkpoint | `docs/workflow/reviews/2026-08-07-taxonomy-materialization-bootstrap-dev-checkpoint.md` |
+| Minimal next | `firebase deploy --only functions:rebuildTaxonomyMaterializationCallable --project fresh-prints-dev` then re-authorize bootstrap |
+| Confirmations | NO bootstrap write / Functions deploy / Rules deploy / Storage / prod / PR merge |
+
+## 2026-08-07 - taxonomy-read-spike-elimination SOURCE IMPLEMENT APPROVED — STOP
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+HEAD: `eaa461e` (working tree dirty — taxonomy source uncommitted).
+
+| Item | Status |
+|------|--------|
+| Follow-up | `taxonomy-read-spike-elimination` |
+| Owner | `APPROVE TAXONOMY SPIKE ELIMINATION IMPLEMENT` |
+| Implement + Test + Impl Review | **APPROVED** (source only) |
+| Impl Review | `docs/workflow/reviews/2026-08-07-taxonomy-read-spike-elimination-implementation-review.md` |
+| Test report | `docs/workflow/reviews/2026-08-07-taxonomy-read-spike-elimination-test-report.md` (37/37 targeted) |
+| Live bootstrap | **NOT done** |
+| Functions / Rules deploy | **NOT done** |
+| Confirmations | NO bootstrap / Rules deploy / Functions deploy / Storage / Algolia taxonomy / prod / PR merge |
+| Next | Separate owner phrases for bootstrap → deploy → validation |
+
+## 2026-08-07 - taxonomy-read-spike-elimination PLAN + Formal Review — STOP
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Follow-up | `taxonomy-read-spike-elimination` |
+| Plan | `docs/workflow/plans/2026-08-07-taxonomy-read-spike-elimination-plan.md` |
+| Formal Review | **approved_with_changes** |
+| 00:20Z spike | **1** AI `taxonomy-load-success` = **1139** docs (instance `0278ec32…`) |
+| 00:22Z spike | Studio AI Review hydrate **1139** (proven) |
+| Recommend | Hybrid B+D compact Firestore materialization + Studio disk cache |
+| Implement | **Authorized and completed (source)** — see section above |
+| Confirmations | NO implement / deploy / Firebase mutation / Storage / Rules / Algolia / prod / PR merge |
+
+## 2026-08-07 - Stage 5 Rules DEPLOYED on fresh-prints-dev
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Owner | `APPROVE DEV RULES DEPLOY: STAGE 5` |
+| Command | `firebase deploy --only firestore:rules,storage --project fresh-prints-dev` |
+| Result | **exit 0** — Storage + Firestore Rules released |
+| Record | `docs/workflow/reviews/2026-08-07-stage-5-rules-deploy-dev-record.md` |
+| Storage delete | Already empty / PASS |
+| Next | Stage 5 Signoff (optional owner smoke) |
+| Stage 6 / prod / merge | **Forbidden** |
+
+## 2026-08-07 - Stage 5 STORAGE DELETED PASS — STOP before Rules deploy
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Owner | `STAGE 5 STORAGE DELETED: PASS` |
+| Agent verify (list-only) | portal-catalog **0**; catalog-reference **0**; snapshotPublicationState **0** |
+| Record | `docs/workflow/reviews/2026-08-07-stage-5-storage-delete-dev-record.md` |
+| Verify JSON | `docs/workflow/reviews/2026-08-07-stage-5-generated-asset-cleanup-post-delete-verify-fresh-prints-dev.json` |
+| Next | `APPROVE DEV RULES DEPLOY: STAGE 5` |
+| Stage 6 / prod / merge | **Forbidden** |
+
+## 2026-08-07 - Stage 5 APPLY resilience corrective APPROVED — resume pending
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Partial APPLY | Run1 ≥11k/57377; Run2 ≥10k/46298; GCS internal error |
+| Corrective | concurrency 8 + retry/backoff + re-list verify |
+| Impl Review | **APPROVED** — `docs/workflow/reviews/2026-08-07-stage-5-apply-resilience-corrective-implementation-review.md` |
+| Live delete this pass | **None** |
+| Next | Owner resume APPLY (checkpoint); reply `STAGE 5 STORAGE DELETED: PASS` |
+| Rules / Stage 6 / prod / merge | **Forbidden** until separate phrases |
+
+## 2026-08-07 - Stage 5 DELETE authorized — owner must run APPLY locally
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Owner | `STAGE 5 DRY-RUN: PASS` + `APPROVE DEV STORAGE DELETE: STAGE 5` |
+| Agent APPLY | **Blocked** by shell delete hook |
+| Checkpoint | `docs/workflow/reviews/2026-08-07-stage-5-storage-delete-dev-checkpoint.md` |
+| Next | Owner runs APPLY=1 command; reply `STAGE 5 STORAGE DELETED: PASS` |
+| Rules deploy | **Not authorized** yet |
+| Stage 6 / prod / merge | **Forbidden** |
+
+## 2026-08-07 - Stage 5 DRY-RUN complete — STOP before delete
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Owner phrase | `APPROVE DEV STORAGE DRY-RUN: STAGE 5` |
+| Mode | **DRY RUN** only |
+| portal-catalog | **57,354** objects / **146,829,893** bytes |
+| catalog-reference | **23** objects / **4,478,422** bytes |
+| snapshotPublicationState | **2** docs (`catalog-reference`, `portal-catalog`) |
+| Record | `docs/workflow/reviews/2026-08-07-stage-5-generated-asset-cleanup-dry-run-record.md` |
+| JSON | `docs/workflow/reviews/2026-08-07-stage-5-generated-asset-cleanup-dry-run-fresh-prints-dev.json` |
+| Deletes / Rules deploy | **None** |
+| Next | Owner `STAGE 5 DRY-RUN: PASS` → then `APPROVE DEV STORAGE DELETE: STAGE 5` |
+| Stage 6 / prod / merge | **Forbidden** |
+
+## 2026-08-07 - Stage 5 source Implement APPROVED — STOP before live dry-run
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+HEAD: `eaa461e` (Stage 5 source changes **uncommitted**).
+
+| Item | Status |
+|------|--------|
+| Owner phrase | `APPROVE STAGE 5 IMPLEMENT` |
+| Implementation Review | **APPROVED** |
+| Ops script | `functions/scripts/stage5-generated-asset-cleanup.mjs` (not run live) |
+| Rules source | Narrowed in repo; **not deployed** |
+| Tests | Guard 15/15; containment 10/10; Functions tsc ok; Rules suite blocked (no Java) |
+| Next | `APPROVE DEV STORAGE DRY-RUN: STAGE 5` |
+| Stage 6 / prod / merge | **Forbidden** |
+
+## 2026-08-07 - Stage 5 PLANNING complete — STOP before Implement
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Owner phrase | `APPROVE STAGE 5 PLANNING` |
+| Plan | `docs/workflow/plans/2026-08-07-stage-5-generated-asset-cleanup-plan.md` |
+| Formal Review | **approved_with_changes** — `docs/workflow/reviews/2026-08-07-stage-5-generated-asset-cleanup-plan-review.md` |
+| Scope | Dry-run → delete `generated/portal-catalog/**` + `generated/catalog-reference/**`; orphan `snapshotPublicationState`; narrow Rules on **dev** |
+| Next | `APPROVE STAGE 5 IMPLEMENT` (then dry-run / delete / Rules deploy phrases) |
+| Stage 6 / prod / merge | **Forbidden** |
+
+## 2026-08-07 - Stage 4 Signoff COMPLETE (dev) — STOP before Stage 5
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Stage 4 | **approved_with_notes** |
+| Owner QA | `STAGE 4 POST-DELETE QA: PASS` + `ALGOLIA OFF: PASS` |
+| Publishers on `fresh-prints-dev` | **Deleted** |
+| Algolia | Sync/reconcile live |
+| Signoff | `docs/workflow/reviews/2026-08-07-stage-4-publisher-retirement-signoff.md` |
+| Next | Owner may authorize **Stage 5 PLANNING** (Storage cleanup) — not started |
+| Stage 6 / prod / merge | **Forbidden** |
+
+## 2026-08-07 - Stage 4 publishers deleted on fresh-prints-dev — post-delete QA next
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Owner | `STAGE 4 PUBLISHERS DELETED: PASS` |
+| Six publishers | **Absent** (verified) |
+| Algolia sync/reconcile | **Present** |
+| Record | `docs/workflow/reviews/2026-08-07-stage-4-publisher-delete-dev-record.md` |
+| Next | Stage 4 post-delete QA |
+| Stage 5/6 / prod / merge | **Forbidden** |
+
+## 2026-08-07 - Stage 4 publisher DELETE — owner must run functions:delete
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Phrase | `APPROVE DEV FUNCTIONS DELETE: STAGE 4 PUBLISHERS` |
+| Algolia redeploy | **Done** (sync + reconcile + scheduled) |
+| Six publisher delete | **Blocked in agent** — owner runs CLI locally |
+| Checkpoint | `docs/workflow/reviews/2026-08-07-stage-4-publisher-delete-dev-checkpoint.md` |
+| Reply after delete | `STAGE 4 PUBLISHERS DELETED: PASS` |
+
+## 2026-08-07 - Stage 4 source Implement APPROVED — STOP before live Function delete
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+HEAD (last commit): `eaa461e` — Stage 4 source changes **uncommitted**.
+
+| Item | Status |
+|------|--------|
+| Owner | `APPROVE STAGE 4 IMPLEMENT` |
+| Impl Review | **APPROVED** |
+| Portal generated fallback | **Removed** |
+| Classifier | `functions/src/algolia/portalCatalogChangeClassifier.ts` |
+| Six publishers in source | **Removed** (live still deployed until delete phrase) |
+| Next | `APPROVE DEV FUNCTIONS DELETE: STAGE 4 PUBLISHERS` |
+| Stage 5/6 / prod / merge | **Forbidden** |
+
+## 2026-08-07 - Stage 4 PLANNING approved (code Implement gated; no live delete yet)
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Owner | `APPROVE STAGE 4 PLANNING` |
+| Plan | `docs/workflow/plans/2026-08-07-stage-4-publisher-retirement-plan.md` |
+| Formal Review | **approved_with_changes** |
+| Next | Owner may authorize Stage 4 **code** Implement |
+| Live Function delete | **Not authorized** until deploy phrase after Impl Review |
+| Stage 5/6 / prod / merge | **Forbidden** |
+| Publisher | **Still alive** |
+
+## 2026-08-07 - Stage 1b-C Algolia owner QA complete (STOP before Stage 4)
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Stage 1b-C | **approved_with_notes** — `ALGOLIA OUTAGE: PASS` closes checklist |
+| Signoff | `docs/workflow/reviews/2026-08-07-stage-1b-c-algolia-owner-qa-signoff.md` |
+| Deferred | TD-030; Discover rail≠View All note |
+| Stage 4 / prod / merge | **Not started / none / unmerged** — owner-gated |
+| Publisher | **Still alive** |
+
+## 2026-08-07 - Stage 1b-C Favorites/details/share/request PASS WITH NOTES
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Owner QA | `FAVORITES DETAILS SHARE REQUEST: PASS WITH NOTES` |
+| Deferred | TD-030 — details/share Add-to-Request → quantity control parity with catalog cards |
+| Next | **Algolia outage / kill-switch** |
+| Publisher / prod / merge / Stage 4+ | Alive / none / unmerged / not started |
+
+## 2026-08-07 - Stage 1b-C Discover View All corrective signed off (PASS WITH NOTES)
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Owner QA | `DISCOVER VIEW ALL: PASS WITH NOTES` |
+| Signoff | **approved_with_notes** |
+| Note | Popular/category View All order ≠ Discover rails (accepted; home pool vs View All contracts). New This Week matches exactly. |
+| Next | Stage 1b-C **Favorites / details / share / Add to Request** |
+| Publisher / prod / merge / Stage 4+ | Alive / none / unmerged / not started |
+
+Signoff: `docs/workflow/reviews/2026-08-07-stage-1b-c-discover-view-all-regressions-signoff.md`
+
+## 2026-08-07 - Stage 1b-C Discover View All corrective — STOP for owner re-QA
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Defects | Popular View All blank; category View All wrong order |
+| Root causes | `orderBy(requestCount)` omits missing field; readyAt completeness demoted to createdAt order |
+| Fix | Membership + client-sort repair in `catalogService` (metric / ready-order keys) |
+| Automated | **68/68** + Portal tsc + eslint + diff-check |
+| Impl Review | **APPROVED** — `docs/workflow/reviews/2026-08-07-stage-1b-c-discover-view-all-regressions-implementation-review.md` |
+| Publisher / prod / merge / Stage 4+ | **Unchanged** (alive / none / unmerged / not started) |
+
+Owner re-QA: Popular → View All; Funny & Sarcastic → View All; one other category; New This Week → View All.
+
+## 2026-08-07 - Stage 1b-A Algolia implement complete; STOP at secrets checkpoint
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| D1 | **Algolia** (owner selected) |
+| Stage 1b-A code | Adapter + sync + reconcile + debounce; Impl Review **APPROVED_WITH_CHANGES** |
+| Live Algolia | **Not enabled** — awaiting account/secrets/deploy |
+| Publisher | **Still alive** (Stage 4 not started) |
+| Production / merge | **None** |
+
+Checkpoint: `docs/workflow/reviews/2026-08-07-stage-1b-algolia-dev-secrets-checkpoint.md`
+Impl Review: `docs/workflow/reviews/2026-08-07-stage-1b-algolia-implementation-review.md`
+
+## 2026-08-07 - Stage 1b D1 decision package ready (Implement BLOCKED)
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Amendment 9 | **Closed** (P0/P1/P3/P4); P2 no-implement |
+| Stage 1b D1 package | Decision analysis + Plan + Formal Review **APPROVED_WITH_CHANGES** |
+| Stage 1b Implement | **BLOCKED on owner D1** |
+| Options | A Algolia · B Typesense Cloud · C Product Simplification B1 |
+| Production / merge / providers | **None** |
+
+Docs:
+- `docs/workflow/reviews/2026-08-07-stage-1b-d1-search-architecture-decision-analysis.md`
+- `docs/workflow/plans/2026-08-07-stage-1b-search-replacement-plan.md`
+- `docs/workflow/reviews/2026-08-07-stage-1b-search-replacement-plan-review.md`
+
+## 2026-08-07 - Amendment 9 live QA PASS WITH NOTES; P1/P3 signed off; P2 no-implement
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Overall Amendment 9 live QA | **PASS WITH NOTES** |
+| P0 | **PASS** |
+| P1 | **PASS WITH NOTES** → Signoff **approved_with_notes** (import 2.00/design) |
+| P3 | **PASS** → Signoff **approved** (1 cold load / 89 hits / 1 instance) |
+| P4 | **PASS** this run (3 pubs / 3,462 C+T+R; min interval OK) |
+| P2 | Formal Review **approved — recommend NO IMPLEMENTATION** |
+| Amendment 9 optimization set | **Closed** (P0/P1/P3/P4 live-validated; P2 accept fixed cost) |
+| Stage 1b | **Not started** |
+| Production / PR merge | **None** |
+
+Attribution: `docs/workflow/reviews/2026-08-07-amendment-9-combined-live-qa-attribution.md`
+P1 Signoff: `docs/workflow/reviews/2026-08-07-amendment-9-p1-signoff.md`
+P3 Signoff: `docs/workflow/reviews/2026-08-07-amendment-9-p3-signoff.md`
+P2 Plan: `docs/workflow/plans/2026-08-07-amendment-9-p2-studio-tag-library-read-containment-plan.md`
+P2 Review: `docs/workflow/reviews/2026-08-07-amendment-9-p2-studio-tag-library-read-containment-review.md`
+
+Console ~2K/~1.7K = stacked fixed costs (P3 cold + P4 pubs ± Studio tags), not O(n²).
+
+## 2026-08-07 - Amendment 9 P3 deployed to fresh-prints-dev (await combined QA)
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| P3 taxonomy cache | Impl **APPROVED** (`c3d3c45`); **deployed** to `fresh-prints-dev` |
+| P1 import/approval reads | Impl **APPROVED** (`dab3c44`); Studio-only (no deploy) |
+| Case D / P4 | Signoffs complete |
+| Stage 1b | **Not started** |
+| Production | **None** |
+
+Deploy record: `docs/workflow/reviews/2026-08-07-amendment-9-p3-dev-deploy-record.md`
+Combined QA: `docs/workflow/reviews/2026-08-07-amendment-9-p3-p1-combined-manual-qa.md`
+
+Functions updated: `enqueueAiEnrichment`, `testAiEnrichmentPlayground`, `testAiEnrichmentTagRerank`, `updateAiEnrichmentSettings`.
+
+## 2026-08-07 - Amendment 9 P3 implemented (awaiting Functions deploy)
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Amendment 9 P3 taxonomy cache | Impl Review **APPROVED**; 15m process-local TTL + in-flight dedupe |
+| P3 live deploy | **Not deployed** — checkpoint ready for owner |
+| Case D / P4 | Signoffs complete (unchanged) |
+| Stage 1b / P1 | Stage 1b not started; P1 next |
+| Production | **None** |
+
+Deploy checkpoint:
+`docs/workflow/reviews/2026-08-07-amendment-9-p3-dev-deployment-checkpoint.md`
+
+```bash
+firebase deploy --only functions:enqueueAiEnrichment,functions:testAiEnrichmentPlayground,functions:testAiEnrichmentTagRerank,functions:updateAiEnrichmentSettings --project fresh-prints-dev
+```
+
+## 2026-08-06 - Case D + Amendment 9 P4 Signoff complete
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+
+| Item | Status |
+|------|--------|
+| Case D New This Week → `readyAt` | Signoff **approved** (`f9bc19c`) |
+| Amendment 9 P4 rate guard | Signoff **approved_with_notes** (`9fe6430` + `fresh-prints-dev` deploy) |
+| P4 live rate-guard | **PASSING** — 3 pubs; 3,436 C+T+R vs ~28,710 (~88%↓) |
+| P4 production-promotion blocker | **Cleared** |
+| Stage 1b | **Not started** |
+| Production deploy | **None** |
+
+Note: each remaining full generated catalog publication still costs ~1.1K C+T+R; permanent
+removal depends on later generated search/facet retirement/replacement.
+
+Signoffs:
+- `docs/workflow/reviews/2026-08-06-portal-new-this-week-readyat-signoff.md`
+- `docs/workflow/reviews/2026-08-06-amendment-9-p4-signoff.md`
+
+## 2026-08-06 - Case D New This Week → readyAt implemented (awaiting owner QA)
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, unmerged).
+
+Implemented: Discover New This Week membership + order = `readyAt`; Home rail via
+`rankNewThisWeek` on `readyAtMs` (legacy key fallback `readyAtMs ?? createdAtMs`).
+Impl Review **APPROVED**. **Superseded:** owner PASS + Signoff approved (see entry above).
+
+## 2026-08-06 - Discover New This Week → readyAt Plan approved (STOP — no Implement)
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, unmerged).
+
+Owner surface: **Portal → Discover → New This Week** (Case D). Ordinary Library not assumed broken.
+Product: “new” = newly ready (`readyAt`) for membership **and** order; Home New This Week rail in scope.
+Amended corrective Plan Formal Review **approved**.
+**Superseded by Implement entry above.**
+
+## 2026-08-06 - Amendment 9 P4 owner QA FAIL (rate-guard PASS; ordering FAIL) — STOP
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, unmerged).
+Deploy SHA: `9fe6430`.
+
+Owner QA **FAIL** — Portal catalog ordering ≠ Studio (newest approved first).
+**Do not Signoff P4.** No implement / deploy / merge / production / Stage 1b / P3 this pass.
+*(Classification updated: surface = Discover New This Week; see entry above.)*
+
+### A. Rate-guard attribution (Cloud Logging `fresh-prints-dev`)
+
+Window: `2026-08-07T02:27:31Z`–`02:36:30Z` (~45 AI enqueues).
+
+| Metric | Value |
+|--------|------:|
+| Successful full portal pubs | **3** |
+| Timestamps | 02:29:48Z; 02:31:49Z; 02:34:35Z |
+| Spacing | ~120.8s; ~166.6s |
+| claimed-debounce-waiter | 2 |
+| joined-existing-debounce-window | 88 |
+| deferred-wake-requested / claimed | 2 / 2 |
+| W2 publications | 1 |
+| not-yet-eligible | 0 |
+| lease-busy / failed | 0 / 0 |
+| C+T+R total | **3,436** (vs prior ~28,710) |
+
+Rate-guard live target: **PASSING** (≤6 pubs; reads ≪ 28.7K). ~1.5K Console spikes align with ~1.1K C+T+R per pub.
+
+### B. Ordering
+
+Investigation: Case **D** confirmed (Discover New This Week). See newer snapshot entry.
+
+Docs:
+- `docs/workflow/reviews/2026-08-06-amendment-9-p4-owner-qa-fail-attribution.md`
+- `docs/workflow/reviews/2026-08-06-amendment-9-p4-portal-ordering-investigation.md`
+- `docs/workflow/plans/2026-08-06-portal-studio-catalog-ordering-mismatch-corrective-plan.md`
+- `docs/workflow/reviews/2026-08-06-portal-studio-catalog-ordering-mismatch-corrective-review.md`
+
+
+## 2026-08-06 - Amendment 9 P4 deployed to fresh-prints-dev (awaiting owner QA)
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, unmerged).
+HEAD: `9fe6430`.
+
+Owner phrase obtained. Deployed to **`fresh-prints-dev` only**:
+- created `onPortalCatalogPublicationStateWritten` (W2)
+- updated design/category/tag snapshot triggers + rebuild/retry callables
+
+Record: `docs/workflow/reviews/2026-08-06-amendment-9-p4-dev-deploy-record.md`
+Manual QA: `docs/workflow/reviews/2026-08-06-amendment-9-p4-manual-qa.md`
+No Signoff / merge / production. Stage 1b / P3 not started.
+**Superseded:** owner QA FAIL recorded above.
+
+## 2026-08-06 - Amendment 9 P4 implemented (awaiting Functions deploy approval)
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, unmerged).
+
+Implemented: portal quiet 30s + min interval 120s + passLimit=1 + `nextEligiblePublishAt` +
+W2 `onPortalCatalogPublicationStateWritten` + P4-a non-ready INDEX_FILTER skip.
+Tests: catalogSnapshots **138/138**; Functions build exit 0.
+Impl Review **APPROVED**. Stop for:
+`APPROVE DEV FUNCTIONS DEPLOY: AMENDMENT 9 P4`
+Deploy checkpoint:
+`docs/workflow/reviews/2026-08-06-amendment-9-p4-dev-deployment-checkpoint.md`
+Manual QA: `docs/workflow/reviews/2026-08-06-amendment-9-p4-manual-qa.md`
+No Signoff / merge / production. Stage 1b / P3 not started.
+
+## 2026-08-06 - Amendment 9 P4 Plan + Formal Review approved (Investigate/Plan/Review only)
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, unmerged).
+HEAD: `862f7d1`.
+
+**Pass:** Refresh source → Investigate post–Stage 1a publication → Plan → Independent Formal
+Review → **Stop**. No Implement, deploy, merge, cleanup, Stage 1b, or production action.
+
+Plan:
+`docs/workflow/plans/2026-08-06-post-launch-catalog-and-processing-stability-amendment-9-p4-plan.md`
+Review (**approved**; R1–R5 applied):
+`docs/workflow/reviews/2026-08-06-post-launch-catalog-and-processing-stability-amendment-9-p4-review.md`
+
+**Root cause of 25 pubs:** claim windows reopen across paced approvals + immediate catch-up
+serial full scans (≤3) + non-ready INDEX_FILTER full schedules (R=0 waste).
+
+**Recommended guard:** quiet 30s + min interval 120s + portal `passLimit=1` + W2
+coordination-doc auto-wake + classifier skip when neither side is `ready`. Bounds: ≤5 pubs
+for 45 approvals (≤10 min wall); ≤8 for 100 (≤14 min). Worst-case search freshness ≤ ~6 min.
+Estimated ~80% fewer publication reads vs observed 28.7K. Stage 1b / D1 not started. P3
+separate. Generated search/multi-tag/facets preserved.
+
+**Next:** Owner authorizes Implement Amendment 9 P4 (separate). No Firebase until after
+Implement + Test + owner deploy phrase.
+
+## 2026-08-06 - Amendment 8 Phase 1B Stage 1a Signoff approved (final)
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, unmerged).
+Implementation commit: `e97ab3b` (Amendments 1–3 on top of Stage 1a `b397ec0`).
+
+Stage 1a **complete and approved**. Firestore-primary known-ID hydration; Firestore-only
+categories (active ∧ ready count &gt; 0); Studio empty actives retained; dead Discover
+generated entry removed; search/multi-tag/facets still generated temporarily.
+Owner QA **PASS**. Signoff **approved**:
+`docs/workflow/reviews/2026-08-06-amendment-8-phase-1b-stage-1a-signoff.md`.
+**Stage 1b blocked on owner D1** (Algolia vs Typesense managed search, or Option B product
+simplification). No deploy / merge / cleanup / Function retirement / production.
+
+## 2026-08-06 - Stage 1a Amendment 2 (Case A archive persist) awaiting owner re-QA
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, unmerged).
+
+Amendment 1 mapper FAIL on live QA → Amendment 2 **Case A**: Firestore never went
+`isActive: false` (0/18 inactive; 0 category-archive Function POSTs). Studio
+`persistCategoryArchive` + client fallback; Portal focus/visibility reload. Impl
+review **APPROVED**. No Signoff. No Function deploy. Reduced re-QA:
+`docs/workflow/reviews/2026-08-06-amendment-8-phase-1b-stage-1a-amendment-2-manual-qa.md`.
+Note: item 7 Portal empty-visible wording **superseded** by Amendment 3 product rule.
+
+## 2026-08-06 - Stage 1a Amendment 1 (inactive categories) awaiting owner re-QA
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, unmerged).
+
+Owner QA #7 FAIL → Amendment 1: restore `mapPortalActiveCategory` requiring `isActive === true`.
+Record / review / re-QA under `docs/workflow/reviews/2026-08-06-amendment-8-phase-1b-stage-1a-amendment-1-*`.
+Superseded by Amendment 2 (Case A). No Signoff. No deploy. Stage 1b not started.
+
+## 2026-08-06 - Amendment 8 Phase 1B Stage 1a awaiting owner QA
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, unmerged).
+
+Implemented: Firestore-primary known-ID hydration; Firestore-only active categories; removed
+dead `listDiscoverDesigns`. Search/multi-tag/facets still generated (Stage 1b blocked on D1).
+
+Test report: `docs/workflow/reviews/2026-08-06-amendment-8-phase-1b-stage-1a-test-report.md`
+Impl review **APPROVED**:
+`docs/workflow/reviews/2026-08-06-amendment-8-phase-1b-stage-1a-implementation-review.md`
+Owner QA: `docs/workflow/reviews/2026-08-06-amendment-8-phase-1b-stage-1a-manual-qa.md`
+
+No deploy / merge / Function retirement / cleanup / production.
+
+## 2026-08-06 - Amendment 8 Phase 1B revalidation Plan APPROVED (Investigate/Plan/Review only)
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, unmerged).
+HEAD: `71a4cec`.
+
+**Pass:** Investigate → Revised Phase 1B Plan → Independent Formal Review → **Stop**.
+No Implement, deploy, merge, cleanup, Function retirement, or production action.
+
+Plan:
+`docs/workflow/plans/2026-08-06-post-launch-catalog-and-processing-stability-amendment-8-phase-1b-revalidation-plan.md`
+Review (APPROVED):
+`docs/workflow/reviews/2026-08-06-post-launch-catalog-and-processing-stability-amendment-8-phase-1b-revalidation-plan-review.md`
+
+Headline: Studio + Portal ordinary browse already Firestore; 5 Portal generated-read entry
+points remain (search/multi-tag/facets/by-id/categories-prefer); AI taxonomy already FS
+Strategy 2; recommend Option A managed search (D1); no design snapshot in steady state; P4
+→ short transition only. Owner D1 required before Stage 1b Implement.
+
+## 2026-08-06 - Catalog mats / ready order / Assisted proof 80 MB Signoff approved
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, unmerged).
+Commits: `42f7b20`, `982855c`, deploy record `59b52a0`.
+
+Owner QA **PASS**. Signoff **approved**:
+`docs/workflow/reviews/2026-08-06-catalog-display-ready-ordering-and-assisted-proof-limit-signoff.md`.
+
+`fresh-prints-dev` has Storage Rules + three Assisted proof Functions at 80 MB. No production.
+Amendment 9 P4 / PR merge still deferred.
+
+## 2026-08-06 - Assisted proof 80 MB deployed to fresh-prints-dev (awaiting owner QA)
+
+Owner approved: `APPROVE DEV DEPLOYMENT: ASSISTED CREATION PROOF 80 MB LIMIT`.
+
+Deployed from `982855c` to **`fresh-prints-dev` only**:
+- `firebase deploy --only storage`
+- `functions:staffAddAssistedCreationProof`
+- `functions:staffAddAssistedCreationFinalSource`
+- `functions:customerAddAssistedApprovedProofToPrintRequest`
+
+Record: `docs/workflow/reviews/2026-08-06-assisted-creation-proof-80mb-dev-deploy.md`.
+Continue owner QA checklist. No production. PR #40 open/unmerged.
+
+## 2026-08-06 - Assisted proof 80 MB (+ mats/ordering already signed) awaiting owner QA
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, unmerged).
+Baseline: `2d2ecbb`. Mats/ordering: `42f7b20` (signed off).
+
+**This pass:** `ASSISTED_CREATION_MAX_PROOF_BYTES` → 80 MB; Storage Rules
+`isValidAssistedCreationProof` → `<= 80 * 1024 * 1024` (inclusive). Reference limits unchanged.
+Owner QA:
+`docs/workflow/reviews/2026-08-06-catalog-display-ready-ordering-and-assisted-proof-limit-manual-qa.md`.
+**Later deploy:** `storage.rules` (+ Functions/Studio as needed) before 80 MB uploads succeed
+against Storage. No Signoff. No Firebase action this pass.
+
+## 2026-08-06 - Catalog display mats + ready-approval ordering Signoff approved_with_notes
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, unmerged).
+Commit: `42f7b20` (already pushed).
+
+Owner QA **PASS WITH NOTES**. Signoff **approved_with_notes**:
+`docs/workflow/reviews/2026-08-06-catalog-display-background-and-ready-ordering-signoff.md`.
+
+Studio Details mats + Portal `readyAt` browse complete. Notes: generated search publisher order
+deferred; Portal local `next build` robots/`.next` failure documented (tsc green); Amendment 9
+P4 snapshot reads remain production-promotion blocker. No merge/deploy.
+
+## 2026-08-06 - Catalog display mats + ready-approval ordering (awaiting owner QA)
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, unmerged).
+Baseline: Amendment 9 P0 Signoff `120337a`.
+
+Studio Design Details thumbnail + lightbox now use `artworkBackgroundHex` (same as card).
+Portal ordinary browse/category/single-tag use server `orderBy(readyAt desc)` with completeness
++ index fallback. Studio ready ordering already correct (unchanged). Generated search publisher
+order deferred. Owner QA:
+`docs/workflow/reviews/2026-08-06-catalog-display-background-and-ready-ordering-manual-qa.md`.
+No Signoff. No snapshot/P4/Phase 1B/deploy.
+
+## 2026-08-06 - Amendment 9 P0 Signoff approved_with_notes
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, **unmerged**).
+Commits: P0 `0a948e0`; scroll `21f95d7`.
+
+Owner re-QA **PASS WITH NOTES**: post-action scroll-to-top works; client list/count budgets zero
+on success; Processing intact. Signoff:
+`docs/workflow/reviews/2026-08-06-amendment-9-p0-signoff.md`.
+
+**Notes / blockers outside P0:** Design Library Details modal thumbnail + lightbox missing
+`artworkBackgroundHex` mat (card OK); snapshot-publication read amplification remains
+**production-promotion blocker** (P4 later). P1/P3/P4/Phase 1B not started. No merge/deploy.
+
+## 2026-08-06 - Amendment 9 P0 owner-QA scroll correction + server attribution (awaiting re-QA; no Signoff)
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, unmerged).
+P0 baseline: `0a948e0`. Scroll correction + docs commit follows.
+
+**Owner QA FAIL:** (1) post-action scroll stayed at bottom; (2) Console ~7.7K reads while client
+Debug met P0 (~1,375 approx reads; designs 236; tags 1,121; listeners 0; no triangular reload).
+
+**Scroll fix:** After successful approve/reject/archive, bump `reviewScrollNonce` and
+`useLayoutEffect` scrolls `.page-content-area--ai-review` to top (not `window`). P0 budgets kept.
+
+**Server attribution (read-only):** UTC `16:54:30Z`–`17:02:00Z` → **snapshot publication
+dominated** (25 successful full portal publications; C+T+R sum **28,710**). AI taxonomy: **3**
+full loads on **1** Function instance (~3,420 docs). P4 warranted for later planning; P3
+secondary. **Do not implement P3/P4 this pass.**
+
+Re-QA: `docs/workflow/reviews/2026-08-06-amendment-9-p0-manual-qa.md`. Signoff blocked.
+
+P1/P3/P4/Phase 1B not started. No Firebase/production action.
+
+## 2026-08-06 - Amendment 9 P0 implemented (awaiting owner QA; no Signoff)
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, unmerged).
+
+**P0:** AI Review successful approve/reject/archive reconcile list, selection, and tab counts
+locally — no full remaining-page reload and no three-tab count refresh on the happy path.
+Failure: one bounded `reloadDesigns` + `onQueueChanged`. Processing paths keep authoritative
+count refresh. K=∞ (no timers/polling).
+
+Manual QA: `docs/workflow/reviews/2026-08-06-amendment-9-p0-manual-qa.md` — reply `PASS` /
+`FAIL: …` / `PASS WITH NOTES: …`. Signoff blocked until owner QA.
+
+P1/P3/P4/Phase 1B not started. No Firebase/production action.
+
+## 2026-08-06 - Amendment 9 Plan + Formal Review complete (Investigate → Plan → Review ONLY)
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, unmerged).
+Baseline HEAD for this docs pass: `4a0c039e63778d82a40efba678fdfa3c311cead3`.
+
+**Amendment 9:** Large-batch Firestore read amplification. Planning artifacts only — **no
+implementation**, no Phase 1B, no Firebase/production action, no PR merge.
+
+- Incident: `docs/workflow/reviews/2026-08-06-large-batch-firestore-read-amplification-incident.md`
+- Plan: `docs/workflow/plans/2026-08-06-post-launch-catalog-and-processing-stability-amendment-9-plan.md`
+- Formal Review: `docs/workflow/reviews/2026-08-06-post-launch-catalog-and-processing-stability-amendment-9-review.md`
+  — **APPROVED WITH REQUIRED CHANGES** (R1–R6 applied to Plan)
+
+**Proven (Test Run B Debug):** AI Review reloads remaining Needs Review page after every
+approval (triangular / O(n²) for N≤100) and refreshes all three tab counts; tags loaded once
+(~1,121); imports 2× traced `getDesignById`/design; 0 listeners. Test Run A (~7.1K Console)
+kept **separate** — owner log checklist outstanding. Phase 1B does **not** fix client AI Review
+cost. Next: owner log retrieval + explicit **Implement Amendment 9 P0** approval.
+
+## 2026-08-06 - Amendment 8 Phase 1A Signoff approved (owner PASS; Function deployed)
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open, unmerged).
+Commits: Phase 1A `4ed41bc`; Assisted artwork-background correction `bc9e7e7`.
+
+Owner executed
+`firebase deploy --only functions:staffSuggestAssistedCreationCatalogDesign --project fresh-prints-dev`
+before final re-QA. Owner re-QA: **PASS** — covered the updated Function runtime and Studio/Portal
+display correction. Signoff:
+`docs/workflow/reviews/2026-08-05-amendment-8-phase-1a-signoff.md` — **approved**.
+
+Phase 1A fully signed off. No Phase 1A deployment residual or blocker. Phase 1B not started. No
+production Firebase deploy. No PR merge.
+
+## 2026-08-05 - Amendment 8 Phase 1A Assisted artwork-background correction ready for owner re-QA
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open). Phase 1A base
+`4ed41bc`. Owner Phase 1A QA: **PASS WITH NOTES** (Assisted catalog-share lost configured mat).
+
+Correction implemented + Independent Implementation Review **APPROVED**: authoritative hex
+snapshot on suggest; Studio/Portal CSS mats; legacy one-shot live-resolve (including Portal proofs
+list panel-scoped). Automated suites green (focused 66/66; AI regression 60/60). Signoff **not**
+approved. Owner re-QA:
+`docs/workflow/reviews/2026-08-05-amendment-8-phase-1a-assisted-catalog-artwork-background-manual-qa.md`.
+
+No Phase 1B, Firebase deploy, production, or PR merge.
+
+## 2026-08-05 - Amendment 8 Phase 1A owner QA PASS WITH NOTES; Assisted catalog-share artwork background fix (awaiting re-QA)
+
+Branch: `fix/post-launch-catalog-and-processing-stability` / PR #40 (open). Phase 1A commit
+`4ed41bc` remains. Owner Phase 1A QA: **PASS WITH NOTES** — library designs shared via Assisted
+Creation lost configured artwork background (raw transparent PNG).
+
+**Fix (working tree, not committed yet):** suggest callable snapshots `artworkBackgroundHex` /
+`catalogArtworkBackgroundHex`; Studio + Portal Assisted catalog-share UI apply mat color; legacy
+shares live-resolve ready design hex when snapshot missing. Plumbing test 4/4; Studio/Portal
+typecheck + Functions build exit 0.
+
+**Owner next:** re-QA per
+`docs/workflow/reviews/2026-08-05-amendment-8-phase-1a-assisted-catalog-artwork-background-manual-qa.md`
+→ `PASS` / `FAIL: …` / `PASS WITH NOTES: …`. Signoff blocked until note cleared. No Firebase
+deploy/merge. Phase 1B still blocked on managed-search provider choice.
+
+## 2026-08-05 - Post-launch catalog and processing stability: Owner QA Amendment 7 follow-up — the actual root cause, a second infinite reload loop, found and fixed
+
+Same branch throughout (`fix/post-launch-catalog-and-processing-stability`, still no new branch or
+PR, still no merge). This entry is a correction to the entry immediately below (the first
+Amendment 7 fix) — the owner reproduced the identical symptom after that fix shipped, and a fresh
+trace revealed the real, tighter loop.
+
+**The problem, more precisely this time:** the owner's fresh trace showed a request ID climbing by
+exactly 1 every ~20-24ms, hundreds of times in a row, always for the same single design, always
+reporting `processingCount: 1`. This is a true infinite loop, not just excess effect churn — the
+hook never reached a settled render for that one completed design until the whole batch finished.
+
+**Root cause:** a second effect in the same hook (unrelated to the one fixed in the entry below)
+had the same category of bug: its dependency array included a value that changes identity on every
+render, and — critically — its own body directly triggers a reload whenever the currently-selected
+design's live status shows it just completed. Since nothing else in that path moves the selection
+away from a just-completed design, the effect's own reload kept re-triggering itself indefinitely.
+
+**Fix:** removed the unstable dependency (reading a stable ref instead, matching the pattern from
+the entry below) and added a guard so the reload fires at most once per completion — while still
+correctly resetting for a genuinely later completion of the same design (e.g. if it's sent back to
+processing and redone). An independent review caught that an early draft of this guard never reset,
+which would have silently broken re-processing for any design touched twice; that was corrected
+before shipping, and a second independent review confirmed the corrected version has no cross-design
+side effects and, combined with the earlier fix, resolves both loop shapes the owner reported.
+
+**Verification:** new regression test (6/6), all prior AI-queue-related tests unmodified and still
+passing, Studio typecheck/build/lint/`git diff --check` all exit 0. Full detail in
+`docs/workflow/reviews/2026-08-04-post-launch-catalog-and-processing-stability-test-report.md` §24.
+
+No Firebase project action, Function/Rules/index/IAM/migration/secret change, production action, or
+merge occurred. Large-PNG normalization, `readyAt` ordering, and the callable-timeout fix remain
+unchanged.
+
+## 2026-08-05 - Post-launch catalog and processing stability: Owner QA Amendment 7 — AI queue observer resubscription loop fixed
+
+Same branch throughout (`fix/post-launch-catalog-and-processing-stability`, still no new branch or
+PR, still no merge). This entry covers Amendment 7, which used the now-working Amendment 6
+follow-up trace transport to capture a real runaway loop and fix it.
+
+**The problem:** the owner's runtime trace showed `useDesigns` request IDs climbing from ~344 to
+~584 in about 5.5 seconds, with the AI Processing observer's `observer.subscribed` event re-firing
+after nearly every state replacement — an unacceptable Firestore read/effect-churn storm, visible
+to the user as Processing staying stuck at its initial count until the whole batch finished, then
+clearing all at once instead of the expected `3 → 2 → 1 → 0`.
+
+**Root cause (confirmed via direct source inspection, no broad re-investigation):** the AI
+Processing tab's background-queue observer subscription effect
+(`useAiReviewInbox.ts`) depended on `designs` and `options`, both of which get a new object/array
+identity on every render — `options` is a fresh object/callback literal the parent page passes on
+every one of its own renders; `designs` gets a new array reference every time the observer's own
+successful reconciliation (`applyDesignPatch`) resolves. That created a self-feeding loop: the
+observer handles a completed design → patches state → the list reference changes → the parent
+re-renders → the effect's dependencies changed → it unsubscribes and resubscribes → the next
+completion repeats the cycle.
+
+**Fix:** introduced three refs (`optionsRef`, `designsRef`, `selectedDesignIdRef`) assigned
+directly during render — the same pattern this codebase already uses elsewhere for exactly this
+purpose — so the observer's long-lived callback always reads the current values without forcing a
+resubscription. The effect now subscribes exactly once per Processing-tab activation. The actual
+`3 → 2 → 1 → 0` / selection-advance reconciliation logic (fixed in an earlier amendment) was not
+touched — this fix is entirely about *how often* the effect resubscribes, not the reconciliation
+decision itself.
+
+**Verification:** a new source-grep regression test (7/7 pass) proves the fix; the existing
+17-test reconciliation suite and 19-test trace suite both pass unmodified (zero regression). Studio
+typecheck, 3-target build, lint, and `git diff --check` all exit 0. Two independent reviews ran —
+one on the Plan (required two corrections, both applied), one on the finished implementation
+(approved with no required changes, including empirically confirming the new tests actually fail
+against the pre-fix code). Full detail in
+`docs/workflow/reviews/2026-08-04-post-launch-catalog-and-processing-stability-test-report.md` §23
+and the accompanying Amendment 7 review document.
+
+No Firebase project action, Function/Rules/index/IAM/migration/secret change, production action, or
+merge occurred. Large-PNG normalization, `readyAt` ordering, and the Amendment 5 callable-timeout
+fix are all confirmed unchanged.
+
+## 2026-08-05 - Post-launch catalog and processing stability: Owner QA Amendment 6 follow-up — AI queue trace cross-window transport fixed
+
+Same branch throughout (`fix/post-launch-catalog-and-processing-stability`, still no new branch or
+PR, still no merge). Amendments 4 and 5 (races/timeout fixes) and Amendment 6's first pass (a
+dev-only AI Processing queue runtime trace, commit `8e2f6a2`) are covered by the state.md Decision
+Log and Test Report §20–21; this entry covers the follow-up correction to Amendment 6's
+instrumentation itself.
+
+**The problem:** the owner's reproduction of the Amendment 6 trace returned
+`{"enabled": false, "eventCount": 0, "events": []}` from the Firebase Debug panel's "Copy AI Queue
+Trace" action, every time — the diagnostic itself was broken, separate from whatever the real AI
+Processing defect turns out to be. Per instruction, AI queue behavior was **not** touched in this
+pass — only the trace's transport.
+
+**Root cause (confirmed via source tracing, no live Electron process available in this
+environment):** the Firebase Debug panel opens as a genuinely separate Electron `BrowserWindow`
+with its own independent renderer process. The original trace collector
+(`packages/shared/src/utils/aiQueueTrace.ts`) stored its state as plain module-level variables, so
+each renderer process (the main Studio window vs. the Debug window) got its **own disconnected
+copy** — events written from the Studio window's renderer (where AI Processing actually happens)
+never reached the Debug window's renderer (where Copy/Reset were being called), and the Debug
+window's own renderer-side enable call only ever turned on its own copy.
+
+**Fix:** refactored the collector into a pure `AiQueueTraceStore` class; exactly one instance now
+lives in the Electron **main** process
+(`apps/studio/electron/ipc/aiQueueTrace/aiQueueTraceIpcHandlers.ts`), registered once from
+`main.ts`, gated `!app.isPackaged` exactly once at registration time (never per-renderer, never in
+a packaged build). Both renderer windows reach the one store through the same preload-exposed
+`window.freshPrints.aiQueueTrace` IPC bridge — the same pattern this codebase already uses for the
+sibling `firebaseDebug` cross-window feature. Same 1,000-event bound, same strict field allowlist,
+still no Firestore/Storage/localStorage/disk file/new backend service. Added 7 new cross-window/IPC
+regression tests proving the writer (Studio window) and reader (Debug window) observe the same
+store instance, including that a reset from one side is visible from the other and that a later
+write after reset remains visible (proving closing/reopening the Debug window cannot lose events
+from an active Studio session).
+
+**Verification:** focused trace tests 19/19 pass, Studio typecheck exit 0, Studio 3-target Vite
+build (renderer/main/preload) exit 0, repo lint exit 0, `git diff --check` exit 0 (CRLF-on-checkout
+warnings only). Full detail in
+`docs/workflow/reviews/2026-08-04-post-launch-catalog-and-processing-stability-test-report.md` §22.
+
+No Firebase project action, AI queue behavior change, or production action was taken in this pass.
+The real AI Processing defect this trace exists to diagnose is still open — the owner needs to
+reproduce again with the now-working trace and copy the result before root cause can be identified.
+
+## 2026-08-04 - Post-launch catalog and processing stability: Amendments 2 and 3 plus a readyAt global-ordering correction complete; this pass re-verified everything live and closed two documentation gaps
+
+Continuation of the Amendment 1 entry immediately below, same branch (`fix/post-launch-catalog-
+and-processing-stability`, still no new branch or PR). This pass's own work was almost entirely
+independent re-verification of already-completed, already-pushed work (commits `7e5d4f4`, `13a1099`,
+`c031c01`) plus closing two gaps neither `state.md` nor this file had previously recorded.
+
+**Amendment 2** (owner QA on Amendment 1) fixed: a further AI-reconciliation gap in
+`useAiReviewInbox.ts`, and a missing pre-upload byte-size re-check in `importUploadService.ts`
+(`MAX_SINGLE_PNG_SIZE_BYTES`, reusing the existing constant and message formatter). Both minimal,
+no Rules/listener/read-cost change.
+
+**Amendment 3** (owner QA on Amendment 2) added: a strictly-sequential AI background processing
+queue (`importAiBackgroundQueue.ts`, one awaited `enqueueForProcessing` call per iteration, no
+`Promise.all`), server-side pixel normalization of oversized normalized import output
+(`normalizeImportOutputBytes.ts`, fits output to the existing Storage ceiling rather than raising
+it), and an initial `readyAt`-based Studio ordering (a design's most recent ready-transition time,
+distinct from `createdAt`).
+
+**Global-ordering follow-up (commit `c031c01`)** — a genuine defect Amendment 3 itself introduced,
+caught and fixed in the same overall pass: `readyAt` ordering had been implemented as a **page-local
+sort over a `createdAt`-ordered bounded page**, which cannot surface an old design re-approved
+today (it can fall entirely outside the fetched page). Corrected to a real server-side
+`where(status=="ready") orderBy(readyAt desc) orderBy(__name__ desc)` Firestore cursor query.
+Because `orderBy("readyAt")` silently omits any document missing that field, added a
+**completeness guard**: `listDesignsPage` compares the `readyAt`-ordered result's count against
+`countDesigns` and falls back to `createdAt` ordering (also on a missing-index error) whenever they
+disagree — Studio cannot silently hide legacy ready designs before a backfill runs. Archived browse
+deliberately stays on `createdAt` (`readyAt` is only ever written on the ready transition, so
+archived designs may lack it).
+
+**Two items independently, freshly verified in this pass against live `fresh-prints-dev` state —
+not merely restated from commit messages:**
+1. **The `firestore.rules` `readyAt` type-guard addition (`isOptionalTimestamp(data, "readyAt")`)
+   is committed to source but has NOT been deployed.** Confirmed via
+   `node functions/scripts/compare-deployed-firestore-rules.mjs`: the live ruleset
+   (`c3b89a7a-ae2a-4e0d-978e-c98c3e10991e`, created 2026-08-02) predates and does not contain this
+   line. Not a security gate either way — the design-document validator has no `hasOnly`
+   restriction, so `readyAt` writes already succeed today (merely unvalidated, not rejected).
+   Deploying this Rules change is a separate future checkpoint needing its own owner approval.
+2. **The 4 new `readyAt` composite indexes (added to `firestore.indexes.json` in the same
+   follow-up commit) ARE confirmed live** on `fresh-prints-dev`, verified directly via
+   `firebase firestore:indexes --project fresh-prints-dev`.
+3. **The `readyAt` backfill script (`functions/scripts/backfill-design-ready-at.mjs`) has not been
+   run anywhere.** Idempotent, dry-run-by-default, refuses non-dev projects without an explicit
+   override — but requires Application Default Credentials or an interactive terminal this
+   environment does not have. The completeness guard above keeps Studio correct in the meantime.
+
+**Full verification suite re-run fresh on current HEAD (`c031c01`) in this pass, not assumed from
+prior claims:** Functions build, Studio/Portal typecheck, Studio 3-target Vite build, repo lint,
+`git diff --check` — all exit 0. Full test sweep: Functions 522/524 pass, shared 857/858 pass,
+Studio 732/740 pass — the same 2 / 1 / 8 pre-existing, unrelated failures (respectively) that have
+been documented and unchanged across every pass of this entire managed goal; zero new failures.
+All 6 Functions from the original A–D deploy plus the 3 Amendment 1 trigger-timeout functions
+remain `ACTIVE` on `fresh-prints-dev` (function count unchanged at 109, directly re-confirmed).
+
+**No source or test change was made in this pass** — the prior Amendment 1–3 and follow-up work was
+already correct, complete, committed, and pushed. This pass's only durable output is the live-state
+verification above and closing the `state.md`/`CURRENT-STATE.md` documentation gap (neither
+previously mentioned Amendments 2, 3, or the follow-up correction).
+
+Reference docs (in addition to the Amendment 1 docs listed below):
+`docs/workflow/plans/2026-08-04-post-launch-catalog-and-processing-stability-owner-qa-amendment-2.md`,
+`docs/workflow/reviews/2026-08-04-post-launch-catalog-and-processing-stability-owner-qa-amendment-2-review.md`,
+`docs/workflow/reviews/2026-08-04-post-launch-catalog-and-processing-stability-implementation-review.md`
+(now includes Amendment 1, Amendment 2, and Amendment 3 sections plus the global-ordering
+follow-up correction, all appended to the same file).
+
+## 2026-08-04 - Post-launch catalog and processing stability: Owner QA Amendment 1 complete (urgent ready-design-visibility fix)
+
+Continuation of the A–D pass immediately below, on the same branch/PR
+(`fix/post-launch-catalog-and-processing-stability`, no new branch or PR). Fixes a confirmed,
+urgent, owner-repeated production defect discovered during real QA of the A–D pass.
+
+**Confirmed defect:** designs imported, AI-processed, manually approved to `ready` in Needs Review
+never appeared in Studio Design Library — not after waiting, refreshing, navigating away and back,
+or restarting Studio. Treated as confirmed fact per explicit instruction, not re-litigated.
+
+**Root cause (Studio side):** Studio's normal (non-archived) Design Library browse depended
+entirely on a generated Storage snapshot (`useGeneratedReadyDesigns`) as its design-list source.
+Firestore fallback only ever activated when that snapshot's *fetch itself failed* — a
+successfully-fetched but merely stale snapshot (missing a newly-approved design) left the design
+permanently invisible, since nothing else in the page ever consulted Firestore for the list.
+
+**Root cause (Portal-facing, ready-boundary publisher):** independently traced via live
+`fresh-prints-dev` Function log inspection — the persistent debounce-coalescing claim shipped in
+the original A–D pass (and further extended by that pass's own Implementation Review to
+`DEBOUNCE_MS + LEASE_MS` ≈ 10m15s) could easily outlive the three trigger functions' default
+60-second Cloud Functions timeout. A genuinely slow full-catalog publish reliably risked exceeding
+that timeout; a hard kill skips the claim's release entirely, stranding it for up to ~10 minutes.
+Direct log evidence: 18 consecutive `"joined-existing-debounce-window"` scheduling events with
+zero `"claimed-debounce-waiter"` and zero actual publish attempts in the same window — every
+design write, including every real owner approval, was silently absorbed by a claim that was never
+going to publish.
+
+**Fixes:**
+- Studio Design Library's design list is now unconditionally sourced from bounded Firestore
+  (`useDesigns`/`designService.listDesignsPage` — already cursor-paginated, `createdAt desc`,
+  15-second-TTL cached, and already correctly invalidated on approval via the pre-existing
+  `invalidateDesignReadCaches` call). Generated taxonomy (categories/tags) is completely
+  unaffected and remains the source for normal-browse filtering. `useGeneratedReadyDesigns` itself
+  is unchanged and retained for its one other real consumer (the Assisted Creation catalog-share
+  picker).
+- The ready-boundary publisher's debounce claim now uses a small, dedicated 90-second
+  publish-attempt margin (`DEBOUNCE_MS + PUBLISH_ATTEMPT_MARGIN_MS`) instead of the full 10-minute
+  lease duration, so a killed waiter self-heals in roughly two minutes instead of ten. All three
+  trigger functions now explicitly set `timeoutSeconds: 300` (previously the 60-second platform
+  default), making a hard-timeout kill rare in the first place.
+
+**Also fixed in this Amendment (owner-confirmed, related QA findings):**
+- **AI Processing:** the manual "Process image with AI" and auto-advance-queue paths never
+  reconciled Processing/Needs Review counts at all (only the previously-fixed rerun-from-inbox
+  path did), and left `selectedDesignId` dangling on a filtered-out design when the completed
+  design was the last one awaiting AI start — permanently disabling "Start AI" until an unrelated
+  route remount. Both gaps fixed: `onQueueChanged` now wired through the manual/auto-queue paths;
+  explicit `requestSelectDesign(null)` at every point selection would otherwise dangle.
+- **Large Studio import:** a 159.24 MB PNG failed at upload time with "Use a PNG file only after
+  selecting it with the file picker." despite having already passed picker selection, validation,
+  trim, and normalization successfully. Root cause: a single, process-global, non-session-scoped
+  `Set<string>` tracked picker-approved paths, unconditionally wiped on any re-registration — a
+  redundant second full-file validation pass at upload time (now removed) roughly doubled the
+  large-file exposure window for this fragility. Fixed: re-registering the identical
+  already-active path is now a no-op; a genuinely different path still correctly invalidates the
+  prior session (unchanged "one file at a time" model preserved). Arbitrary-filesystem-path
+  security validation is completely unaffected.
+
+**Verification:** full test suite green — zero new failures beyond one intentionally-updated
+pre-existing assertion (`firestoreRouteContainment.test.ts`, which had encoded the now-superseded
+generated-catalog-first architecture). Every new discriminating test independently confirmed to
+fail against the corresponding pre-fix source. Functions build, Studio/Portal typecheck, Studio
+3-target Vite build, lint, `git diff --check` all exit 0. Independent Implementation Review
+re-derived every workstream's correctness from the actual diff and found no further defect (one
+already-applied test-suite correction was independently re-confirmed as genuine, not superficial).
+
+**Deployed to `fresh-prints-dev` only:** `onCategorySnapshotSourceWritten`,
+`onTagSnapshotSourceWritten`, `onPortalCatalogSnapshotSourceWritten` — confirmed `ACTIVE`, function
+count unchanged (109), `timeoutSeconds:300` confirmed genuinely live via post-deploy logs (not
+just present in source). No Rules, Storage Rules, index, secret, Hosting, or unrelated Function
+touched. **No production action of any kind occurred.**
+
+**Owner follow-up required:** a compact 3-approval Studio-visibility + Portal-publication QA
+checklist (Test Report §15.3) could not be run live in this environment (no interactive Studio
+session, no Application Default Credentials for scripted Admin SDK access) — same constraint
+documented throughout this goal. Also outstanding from the original A–D pass: Workstream E
+(Studio upload authorization) reproduction, and one live Firestore-document check for Workstream
+A's archive write.
+
+Reference docs: `docs/workflow/plans/2026-08-04-post-launch-catalog-and-processing-stability-owner-qa-amendment-1.md`,
+`docs/workflow/reviews/2026-08-04-post-launch-catalog-and-processing-stability-owner-qa-amendment-1-review.md`,
+`docs/workflow/reviews/2026-08-04-post-launch-catalog-and-processing-stability-test-report.md`
+(§15 addendum), `docs/workflow/reviews/2026-08-04-post-launch-catalog-and-processing-stability-implementation-review.md`
+(Amendment 1 section appended).
+
+## 2026-08-04 - Post-launch catalog and processing stability: Implement + Test + Implementation Review complete; A–D shipped to fresh-prints-dev, E stopped
+
+Continuation of the Plan/Review entry immediately below, following owner approval
+(`APPROVE POST-LAUNCH CATALOG AND PROCESSING STABILITY IMPLEMENTATION`). Separate, concurrent
+managed goal — does not affect or reopen the Studio automatic-updates / production-PR gate.
+
+**Branch:** `fix/post-launch-catalog-and-processing-stability` (renamed from the Plan/Review-phase
+branch, which was exactly 1 commit ahead of `origin/production` and 0 behind). Committed and pushed;
+no PR opened, no merge, no production deploy.
+
+**Workstreams A–D implemented, tested, and (where applicable) deployed to `fresh-prints-dev`:**
+- **A (tag/category archive):** wired the existing `clearStudioTaxonomyCaches()` helper into both
+  guarded-archive success paths (tags and categories — categories had the identical bug, confirmed
+  and fixed in the same pass, not just flagged); added a new tag Restore action/button (previously
+  missing entirely from the tag UI).
+- **B (Design Library ordering):** `DESIGN_LIBRARY_DEFAULT_SORT_FIELD` corrected to `createdAt`; the
+  Firestore-fallback path in `useGeneratedReadyDesigns.ts` corrected to match. Portal re-confirmed
+  not reproduced in current source during implementation — no Portal file changed.
+- **C (snapshot scheduling cost):** narrowed the `portal-catalog` change classifier so only a
+  transition into/out of `ready` schedules a full rebuild (ordinary import/processing status churn no
+  longer does); replaced the per-invocation in-memory debounce with a persisted, Firestore-
+  transactional "debounce waiter" claim so concurrent trigger invocations coalesce into one sleep-
+  and-publish attempt instead of each racing independently; added scheduling/publication attribution
+  logs (counts and reasons only, no document contents). The existing transactional publish lease and
+  last-valid-snapshot-serves-during-publish behavior were both explicitly preserved, not touched.
+- **D (AI Processing reconciliation):** `enqueueAiEnrichment` now returns a structured
+  `{queued:false, reason:"already_terminal"}` response instead of throwing when a stale/duplicate
+  plain enqueue call finds a design already at `needs_review`/`approved` (genuine failures — including
+  staff-rejected designs — still throw); the Studio client no longer treats that response as an
+  error and applies the design's real terminal state to local state; `executeRerunToProcessing` now
+  calls `reloadDesigns()` deterministically before tab navigation instead of relying on navigation's
+  own side-effect refetch.
+- **E (Studio upload authorization):** **stopped, not implemented.** Reproduction requires an
+  authenticated Studio session (no interactive Electron/Chromium GUI available in this environment)
+  and/or Application Default Credentials for a scripted Admin SDK check (not configured here,
+  confirmed by a failed direct Firestore read attempt). Exact remaining evidence needed is recorded
+  in the Test Report. Per instruction, this stop did not block A–D.
+
+**Independent Implementation Review found and fixed one real gap** (not merely re-confirmed the
+Plan): the new debounce claim's expiry only covered the 15-second sleep, not the ensuing publish
+attempt, which could let a second invocation become a second waiter while the first was still
+mid-publish (still safe — the existing lease prevented a concurrent scan — but it defeated the
+coalescing goal under sustained bursts). Fixed by extending the claim to `DEBOUNCE_MS + LEASE_MS`;
+added a regression test; corrected one stale test assertion; rebuilt/retested/relinted; redeployed
+the 5 affected functions to `fresh-prints-dev`.
+
+**Deployed to `fresh-prints-dev` only** (explicitly switched off the ambient `fresh-prints-prod`
+active CLI alias first — confirmed via `firebase use` before switching): `rebuildCatalogSnapshots`,
+`retryPortalCatalogPublication`, `onCategorySnapshotSourceWritten`, `onTagSnapshotSourceWritten`,
+`onPortalCatalogSnapshotSourceWritten`, `enqueueAiEnrichment` — all confirmed `ACTIVE`, function
+count unchanged (109) before and after both the initial deploy and the post-review redeploy. No
+Rules, Storage Rules, index, secret, Hosting, or unrelated Function was touched. **No production
+action of any kind occurred.**
+
+**Full verification suite green:** Functions build, Studio/Portal typecheck, Studio 3-target Vite
+build, repo lint, `git diff --check` — all exit 0. Full test sweep confirmed zero new failures versus
+a fully clean `origin/production` tree (verified via `git stash -u`, not assumed) — the same 2
+Functions-side and 8 Studio-side pre-existing, unrelated failures remain on both trees, all
+previously documented elsewhere (e.g. the 2026-07-27 Firestore Usage Efficiency Wave C signoff's
+5 pre-existing print-request DPI/print-size failures).
+
+**Owner follow-up required** (recorded in the Test Report, not silently dropped): Workstream E
+reproduction; a live controlled-batch Firestore cost measurement using the new
+`catalog-snapshot-scheduling`/`catalog-snapshot-publication` log events; a live AI Processing
+reconciliation UI check; one live Firestore-document check confirming Workstream A's archive write
+in `fresh-prints-dev`.
+
+Reference docs: `docs/workflow/plans/2026-08-04-post-launch-catalog-and-processing-stability-plan.md`,
+`docs/workflow/reviews/2026-08-04-post-launch-catalog-and-processing-stability-review.md`,
+`docs/workflow/reviews/2026-08-04-post-launch-catalog-and-processing-stability-test-report.md`,
+`docs/workflow/reviews/2026-08-04-post-launch-catalog-and-processing-stability-implementation-review.md`.
+
+## 2026-08-04 - Post-launch catalog and processing stability: Plan + independent Formal Review complete
+
+Separate, concurrent managed goal — does not affect or reopen the Studio automatic-updates /
+production-PR gate described below.
+
+- Diagnosed five post-launch defects discovered during real production use, via five parallel
+  read-only source-tracing investigations, one per workstream:
+  1. **Tag archive silently fails to update the UI** — the `archiveTagWithGuards` callable writes
+     correctly server-side, but the client's tag-list cache is never invalidated afterward (a
+     ready-made `clearStudioTaxonomyCaches()` helper exists for this and is wired to auth
+     transitions only, not to the archive path).
+  2. **Catalog ordering** — Studio Design Library's default sort constant is wrong
+     (`updatedAt` instead of `createdAt`); Portal (Library, Discover, filtered results) was traced
+     and found to already sort correctly in current source — no Portal defect found, pending owner
+     re-confirmation of the reported symptom.
+  3. **Firestore read spikes during import** — a single imported design can schedule up to 4
+     independent full-catalog-snapshot rebuilds across its status lifecycle, each an unbounded full
+     scan of designs+categories+tags; debounce is per-invocation in-memory, not coalesced across
+     concurrent Cloud Functions instances (a persisted lease does correctly prevent concurrent
+     *scans*, but not the wasted *scheduling*).
+  4. **AI Processing stays stale after completing** — a benign, correctly-rejected duplicate/stale
+     enqueue call is surfaced to the user as a hard error instead of a no-op; the Processing list and
+     its count are two independently-refreshed one-shot reads with no shared reconciliation trigger.
+  5. **First Studio upload after launch gets a Storage permission error** — not a size-limit issue
+     (confirmed the 150 MiB pre-decode gate would have blocked decode/trim entirely); best-evidence
+     hypothesis is a timing gap between the client's one-time bootstrap Firestore read and Storage
+     Rules' own live `firestore.get()` re-check at upload time — not a Rules misconfiguration.
+- **No two defects share one root cause.**
+- Plan: `docs/workflow/plans/2026-08-04-post-launch-catalog-and-processing-stability-plan.md`.
+  Independent Formal Review: `docs/workflow/reviews/2026-08-04-post-launch-catalog-and-processing-stability-review.md`
+  — verdict **approved_with_notes** (four minor refinements, no blockers; all Plan citations
+  independently spot-checked against live source during Review).
+- **No application source, Firebase, Rules, index, Function, or production change was made.**
+  Stopped after Plan + Formal Review per explicit task scope. Implement has not started.
+- Approval phrase for the eventual batched Implement pass:
+  `APPROVE POST-LAUNCH CATALOG AND PROCESSING STABILITY IMPLEMENTATION`.
+
 ## 2026-08-02 - Studio automatic updates: final Signoff PASS; production convergence audit complete
 
 - **Live-proven end to end across 4 consecutive real update cycles** (beta.2→beta.3→beta.4→beta.5)

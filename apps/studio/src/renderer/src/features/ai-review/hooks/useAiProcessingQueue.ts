@@ -41,7 +41,20 @@ interface UseAiProcessingQueueOptions {
   applyDesignPatch: (designId: string, patch: Partial<Design>) => void;
   defaultVisionModelId: string;
   designs: Design[];
+  /**
+   * True when a terminal AI patch already recorded this design as having left pending in the
+   * current Processing run — used to skip redundant post-patch list reloads (Approach C).
+   */
+  hasTerminalAiProcessingLedgerEntry: (designId: string) => boolean;
   onActionError: (message: string | null) => void;
+  /**
+   * Called after a design finishes processing (manual single-image "Process" or the auto-advance
+   * queue), so Processing/Needs Review tab counts reconcile immediately — previously only the
+   * rerun-from-inbox path (executeRerunToProcessing) triggered a count reload; the manual/
+   * auto-queue paths never did (post-launch-catalog-and-processing-stability, Owner QA
+   * Amendment 1, Workstream 2).
+   */
+  onQueueChanged?: () => void;
   reloadDesigns: () => Promise<void>;
   requestSelectDesign: (designId: string | null) => void;
   selectedDesignId: string | null;
@@ -53,7 +66,9 @@ export function useAiProcessingQueue({
   applyDesignPatch,
   defaultVisionModelId,
   designs,
+  hasTerminalAiProcessingLedgerEntry,
   onActionError,
+  onQueueChanged,
   reloadDesigns,
   requestSelectDesign,
   selectedDesignId,
@@ -207,7 +222,7 @@ export function useAiProcessingQueue({
           return;
         }
 
-        if (!result.queued) {
+        if (!result.queued && result.reason !== "already_terminal") {
           setEnqueueingDesignId(null);
           throw new Error(
             result.reason === "already_processing"
@@ -216,9 +231,13 @@ export function useAiProcessingQueue({
           );
         }
 
-        // The callable runs the pipeline synchronously and returns the terminal AI state.
-        // Apply it immediately so the UI reflects completion without waiting on the
-        // background Firestore reload below.
+        // The callable either ran the pipeline synchronously and returned the terminal AI
+        // state (queued + completed), or found the design had already reached that terminal
+        // state from an earlier call (reason: "already_terminal") — both carry the design's
+        // real current fields. Apply the patch immediately so Processing/Needs Review bucket
+        // membership and counts reconcile without waiting on the background Firestore reload
+        // below, and without this benign duplicate-call outcome ever surfacing as an error
+        // (post-launch-catalog-and-processing-stability, Workstream D).
         const patch = buildDesignPatchFromEnqueueResult(result);
 
         if (patch) {
@@ -242,20 +261,35 @@ export function useAiProcessingQueue({
     [applyDesignPatch],
   );
 
-  const refreshDesignList = useCallback(async () => {
-    await reloadDesigns();
+  const refreshDesignList = useCallback(
+    async (refreshOptions?: { skipListReload?: boolean }) => {
+      // After a successful terminal patch, list replace is redundant and hostile: a 15s page-cache
+      // hit or lagging pending query can reinsert the completed design. Counts still refresh via
+      // onQueueChanged; monotonic merge remains the safety net for any remaining reload path.
+      if (!refreshOptions?.skipListReload) {
+        await reloadDesigns();
+      }
 
-    // Brief settle delay before the caller reads designsRef/advances selection, so the
-    // just-applied optimistic patch has a couple of frames to render before layout shifts again.
-    // Uses a bounded timeout rather than requestAnimationFrame: rAF callbacks are throttled or
-    // fully suspended by Chromium/Electron whenever the window is minimized or loses visibility,
-    // which could hang this await indefinitely and strand isQueueBusy at true for the rest of the
-    // component's life (nothing else resets it). A timeout always fires regardless of window
-    // visibility, so this can never hang the caller's finally block.
-    await new Promise<void>((resolve) => {
-      window.setTimeout(resolve, 32);
-    });
-  }, [reloadDesigns]);
+      // Reconcile Processing/Needs Review counts alongside the design list itself — previously only
+      // the rerun-from-inbox path did this; the manual "Process" and auto-advance-queue paths never
+      // called anything reaching useAiReviewTabCounts.reloadCounts(), leaving the count stale after
+      // every successful completion through this hook (post-launch-catalog-and-processing-stability,
+      // Owner QA Amendment 1, Workstream 2).
+      onQueueChanged?.();
+
+      // Brief settle delay before the caller reads designsRef/advances selection, so the
+      // just-applied optimistic patch has a couple of frames to render before layout shifts again.
+      // Uses a bounded timeout rather than requestAnimationFrame: rAF callbacks are throttled or
+      // fully suspended by Chromium/Electron whenever the window is minimized or loses visibility,
+      // which could hang this await indefinitely and strand isQueueBusy at true for the rest of the
+      // component's life (nothing else resets it). A timeout always fires regardless of window
+      // visibility, so this can never hang the caller's finally block.
+      await new Promise<void>((resolve) => {
+        window.setTimeout(resolve, 32);
+      });
+    },
+    [onQueueChanged, reloadDesigns],
+  );
 
   const runAutoQueueLoop = useCallback(
     async (
@@ -283,12 +317,24 @@ export function useAiProcessingQueue({
           const currentDesigns = designsRef.current;
 
           if (index >= currentDesigns.length) {
+            // Nothing left to select in this now-shrunk list — clear rather than leave
+            // selectedDesignId dangling on a design that may no longer exist here (see the
+            // nextAwaitingIndex < 0 branch below for the fuller explanation).
+            requestSelectDesign(null);
             break;
           }
 
           const nextAwaitingIndex = findNextAwaitingIndex(currentDesigns, index);
 
           if (nextAwaitingIndex < 0) {
+            // No design remains awaiting AI start. If the previously-selected design (from the
+            // prior loop iteration) just left this filtered list — e.g. it was the last design
+            // awaiting and just completed — selectedDesignId would otherwise keep pointing at an
+            // ID no longer present in `designs`, permanently collapsing this hook's own
+            // selectedDesign derivation to null and disabling "Start AI" until an unrelated route
+            // remount re-selects a valid design (post-launch-catalog-and-processing-stability,
+            // Owner QA Amendment 1, Workstream 2).
+            requestSelectDesign(null);
             break;
           }
 
@@ -306,7 +352,9 @@ export function useAiProcessingQueue({
             return;
           }
 
-          await refreshDesignList();
+          await refreshDesignList({
+            skipListReload: hasTerminalAiProcessingLedgerEntry(design.id),
+          });
 
           const refreshedDesigns = designsRef.current;
           const refreshedDesign = refreshedDesigns.find((item) => item.id === design.id);
@@ -353,8 +401,16 @@ export function useAiProcessingQueue({
         setIsQueueBusy(false);
       }
     },
-    [advanceSelectionToIndex, enqueueDesign, onActionError, refreshDesignList, requestSelectDesign],
+    [
+      advanceSelectionToIndex,
+      enqueueDesign,
+      hasTerminalAiProcessingLedgerEntry,
+      onActionError,
+      refreshDesignList,
+      requestSelectDesign,
+    ],
   );
+
 
   const startAutoQueue = useCallback(() => {
     if (!canStartAutoQueue) {
@@ -416,7 +472,9 @@ export function useAiProcessingQueue({
         return;
       }
 
-      await refreshDesignList();
+      await refreshDesignList({
+        skipListReload: hasTerminalAiProcessingLedgerEntry(selectedDesignId),
+      });
 
       const refreshedDesigns = designsRef.current;
       const refreshedDesign = refreshedDesigns.find((item) => item.id === selectedDesignId);
@@ -425,6 +483,15 @@ export function useAiProcessingQueue({
 
       if (nextIndex >= 0) {
         advanceSelectionToIndex(nextIndex);
+      } else {
+        // The just-processed design left the Processing tab (successful completion moves
+        // aiReviewStatus off "pending", filtering it out of `designs`) and no other design is
+        // awaiting AI start. selectedDesignId must not keep pointing at that now-absent ID — this
+        // hook's own selectedDesign derivation (designs.find(...)) would otherwise permanently
+        // collapse to null, disabling "Start AI" until an unrelated route remount re-selects a
+        // valid design (post-launch-catalog-and-processing-stability, Owner QA Amendment 1,
+        // Workstream 2).
+        requestSelectDesign(null);
       }
     } catch (processError) {
       if (isMountedRef.current) {
@@ -450,8 +517,10 @@ export function useAiProcessingQueue({
     advanceSelectionToIndex,
     canProcessSelected,
     enqueueDesign,
+    hasTerminalAiProcessingLedgerEntry,
     onActionError,
     refreshDesignList,
+    requestSelectDesign,
     resolvedSessionVisionModelId,
     selectedDesignId,
   ]);

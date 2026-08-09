@@ -3,55 +3,41 @@ import test from "node:test";
 
 import { getDesignLibraryFirestoreLoadPolicy } from "./designLibraryFirestoreLoadPolicy";
 
-test("successful generated ready browse starts no parallel Firestore queries", () => {
+test("normal browse loads the bounded Firestore ready-design page; display taxonomy is separate", () => {
   assert.deepEqual(
     getDesignLibraryFirestoreLoadPolicy({
-      generatedTaxonomyStatus: "ready",
-      usingGeneratedCatalog: true,
+      includeArchived: false,
     }),
-    { loadCategories: false, loadReadyDesignPage: false, loadTags: false },
+    { loadCategories: false, loadReadyDesignPage: true, loadTags: false },
   );
 });
 
-test("generated taxonomy failure remains unavailable without broad Firestore fallback", () => {
+test("opening category management loads full Firestore taxonomy; design page still bounded", () => {
   assert.deepEqual(
     getDesignLibraryFirestoreLoadPolicy({
-      generatedTaxonomyStatus: "failed",
-      usingGeneratedCatalog: true,
-    }),
-    { loadCategories: false, loadReadyDesignPage: false, loadTags: false },
-  );
-});
-
-test("opening category management explicitly loads its full Firestore taxonomy", () => {
-  assert.deepEqual(
-    getDesignLibraryFirestoreLoadPolicy({
-      generatedTaxonomyStatus: "ready",
+      includeArchived: false,
       requiresFullCategoryManagementData: true,
-      usingGeneratedCatalog: true,
-    }),
-    { loadCategories: true, loadReadyDesignPage: false, loadTags: false },
-  );
-});
-
-test("archived mode keeps its approved Firestore paths", () => {
-  assert.deepEqual(
-    getDesignLibraryFirestoreLoadPolicy({
-      generatedTaxonomyStatus: "ready",
-      usingGeneratedCatalog: false,
     }),
     { loadCategories: true, loadReadyDesignPage: true, loadTags: true },
   );
 });
 
-test("loading, Strict Mode remount, and route remount remain generated-only", () => {
-  const loadingInput = {
-    generatedTaxonomyStatus: "loading" as const,
-    usingGeneratedCatalog: true,
-  };
-  const expected = { loadCategories: false, loadReadyDesignPage: false, loadTags: false };
+test("archived mode loads approved+archived Firestore taxonomy paths", () => {
+  assert.deepEqual(
+    getDesignLibraryFirestoreLoadPolicy({
+      includeArchived: true,
+    }),
+    { loadCategories: true, loadReadyDesignPage: true, loadTags: true },
+  );
+});
 
-  assert.deepEqual(getDesignLibraryFirestoreLoadPolicy(loadingInput), expected);
-  assert.deepEqual(getDesignLibraryFirestoreLoadPolicy(loadingInput), expected);
-  assert.deepEqual(getDesignLibraryFirestoreLoadPolicy({ ...loadingInput }), expected);
+test("never disables the ready-design page load for normal or archived browse", () => {
+  for (const includeArchived of [false, true]) {
+    const policy = getDesignLibraryFirestoreLoadPolicy({ includeArchived });
+    assert.equal(
+      policy.loadReadyDesignPage,
+      true,
+      `loadReadyDesignPage must be true for includeArchived=${includeArchived}`,
+    );
+  }
 });

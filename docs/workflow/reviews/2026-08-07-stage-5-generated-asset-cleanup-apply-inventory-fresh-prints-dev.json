@@ -1,0 +1,106 @@
+{
+  "stage": "Stage 5 — Generated Asset Cleanup",
+  "projectId": "fresh-prints-dev",
+  "mode": "apply",
+  "performedAt": "2026-08-07T22:41:34.136Z",
+  "storageAllowlist": [
+    "generated/portal-catalog/",
+    "generated/catalog-reference/"
+  ],
+  "firestoreAllowlist": [
+    "snapshotPublicationState"
+  ],
+  "storageByPrefix": [
+    {
+      "prefix": "generated/portal-catalog/",
+      "objectCount": 46275,
+      "totalBytes": 124621691,
+      "samplePaths": [
+        "generated/portal-catalog/v131-595a333467e44496/search/shard-ad.json",
+        "generated/portal-catalog/v131-595a333467e44496/search/shard-ai.json",
+        "generated/portal-catalog/v131-595a333467e44496/search/shard-ak.json",
+        "generated/portal-catalog/v131-595a333467e44496/search/shard-al.json",
+        "generated/portal-catalog/v131-595a333467e44496/search/shard-am.json",
+        "generated/portal-catalog/v131-595a333467e44496/search/shard-an.json",
+        "generated/portal-catalog/v131-595a333467e44496/search/shard-ap.json",
+        "generated/portal-catalog/v131-595a333467e44496/search/shard-ar.json",
+        "generated/portal-catalog/v131-595a333467e44496/search/shard-as.json",
+        "generated/portal-catalog/v131-595a333467e44496/search/shard-at.json",
+        "generated/portal-catalog/v131-595a333467e44496/search/shard-au.json",
+        "generated/portal-catalog/v131-595a333467e44496/search/shard-av.json",
+        "generated/portal-catalog/v131-595a333467e44496/search/shard-aw.json",
+        "generated/portal-catalog/v131-595a333467e44496/search/shard-ax.json",
+        "generated/portal-catalog/v131-595a333467e44496/search/shard-ay.json",
+        "generated/portal-catalog/v131-595a333467e44496/search/shard-az.json",
+        "generated/portal-catalog/v131-595a333467e44496/search/shard-b_.json",
+        "generated/portal-catalog/v131-595a333467e44496/search/shard-ba.json",
+        "generated/portal-catalog/v131-595a333467e44496/search/shard-bb.json",
+        "generated/portal-catalog/v131-595a333467e44496/search/shard-bc.json"
+      ]
+    },
+    {
+      "prefix": "generated/catalog-reference/",
+      "objectCount": 23,
+      "totalBytes": 4478422,
+      "samplePaths": [
+        "generated/catalog-reference/ai/v10-e5a18178b556f311.json",
+        "generated/catalog-reference/ai/v12-c57dd941ad3d6a9d.json",
+        "generated/catalog-reference/ai/v14-8385315d8ba802c5.json",
+        "generated/catalog-reference/ai/v3-1a810751ceb2b381.json",
+        "generated/catalog-reference/ai/v4-1a810751ceb2b381.json",
+        "generated/catalog-reference/ai/v5-1a810751ceb2b381.json",
+        "generated/catalog-reference/ai/v6-1a810751ceb2b381.json",
+        "generated/catalog-reference/ai/v7-1a810751ceb2b381.json",
+        "generated/catalog-reference/ai/v8-1a810751ceb2b381.json",
+        "generated/catalog-reference/ai/v9-1a810751ceb2b381.json",
+        "generated/catalog-reference/client/v1-1a810751ceb2b381.json",
+        "generated/catalog-reference/client/v10-e5a18178b556f311.json",
+        "generated/catalog-reference/client/v12-c57dd941ad3d6a9d.json",
+        "generated/catalog-reference/client/v14-8385315d8ba802c5.json",
+        "generated/catalog-reference/client/v2-1a810751ceb2b381.json",
+        "generated/catalog-reference/client/v3-1a810751ceb2b381.json",
+        "generated/catalog-reference/client/v4-1a810751ceb2b381.json",
+        "generated/catalog-reference/client/v5-1a810751ceb2b381.json",
+        "generated/catalog-reference/client/v6-1a810751ceb2b381.json",
+        "generated/catalog-reference/client/v7-1a810751ceb2b381.json"
+      ]
+    }
+  ],
+  "firestore": {
+    "collectionId": "snapshotPublicationState",
+    "documentCount": 2,
+    "sampleIds": [
+      "catalog-reference",
+      "portal-catalog"
+    ]
+  },
+  "negativeRootChecklist": [
+    {
+      "root": "originals/",
+      "targetedForDeletion": false,
+      "note": "Confirmed not in Stage 5 Storage allowlist"
+    },
+    {
+      "root": "thumbnails/",
+      "targetedForDeletion": false,
+      "note": "Confirmed not in Stage 5 Storage allowlist"
+    },
+    {
+      "root": "previews/",
+      "targetedForDeletion": false,
+      "note": "Confirmed not in Stage 5 Storage allowlist"
+    },
+    {
+      "root": "display/",
+      "targetedForDeletion": false,
+      "note": "Confirmed not in Stage 5 Storage allowlist"
+    },
+    {
+      "root": "customer-uploads/",
+      "targetedForDeletion": false,
+      "note": "Confirmed not in Stage 5 Storage allowlist"
+    }
+  ],
+  "otherRootsNote": "Every Storage root outside the two allowlisted generated prefixes is out of scope and was not targeted.",
+  "destructiveActionsPerformed": true
+}

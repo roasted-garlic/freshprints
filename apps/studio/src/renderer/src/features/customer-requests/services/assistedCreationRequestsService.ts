@@ -43,6 +43,7 @@ import {
   buildAssistedCreationFinalArtworkDownloadFileName,
   buildAssistedCreationOpaqueProofObjectId,
 } from "@fresh-prints/shared/utils/assistedCreationProofFileName";
+import { snapshotAssistedCatalogArtworkBackgroundHex } from "@fresh-prints/shared/utils/assistedCreationCatalogShareArtworkBackground";
 import { traceFirestoreListenerEmission } from "@fresh-prints/shared/utils/firestoreUsageTrace";
 import { withTimeout } from "@fresh-prints/shared/utils/withTimeout";
 
@@ -237,12 +238,16 @@ function parseSuggestedCatalogDesign(
   if (!designId || !title) {
     return null;
   }
+  const artworkBackgroundHex = snapshotAssistedCatalogArtworkBackgroundHex(
+    record.artworkBackgroundHex,
+  );
   return {
     designId,
     title,
     ...(typeof record.previewImageUrl === "string" && record.previewImageUrl.trim()
       ? { previewImageUrl: record.previewImageUrl.trim() }
       : {}),
+    ...(artworkBackgroundHex ? { artworkBackgroundHex } : {}),
     suggestedAt: record.suggestedAt ?? null,
     suggestedByUid:
       typeof record.suggestedByUid === "string" ? record.suggestedByUid.trim() : "",
