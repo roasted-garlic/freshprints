@@ -1,5 +1,395 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-08-09 - FINAL RELEASE ARTIFACT RECOVERY — COMMIT AUTHORIZED
+
+Owner: **`APPROVE RECOVERY COMMIT: FINAL RELEASE ARTIFACTS`**
+Managed goal: `final-release-artifact-recovery-and-repository-closeout`
+Branch: `chore/recover-final-release-artifacts` → PR/merge `development`
+Formal Review: **approved_with_changes**
+Do not regress: tip `f5c0bdb`; Algolia LIVE; Gates 1–7 + A/B/C COMPLETE
+Stash clear only after merge verify
+
+## 2026-08-09 - ALGOLIA GATE C-ENABLE COMPLETE — MANAGED SEARCH LIVE
+
+Owner: **`PROD ALGOLIA ENABLE QA: PASS`**
+Signoff **approved_with_notes**: `docs/workflow/reviews/2026-08-09-prod-algolia-gate-c-enable-signoff.md`
+Live: **100%** `build-2026-08-09-001` @ `f5c0bdb` — App `Z1FVCM5QUX` / index `portal_catalog_ready_prod`
+Deferred: **TD-032** filtered catalog briefly shows “Loading your account...”
+Algolia production lane (A→B→C-reconcile→C-enable): **COMPLETE**
+Next: idle (or new managed goal)
+Confirmations: NO further Algolia enable work this pass
+
+## 2026-08-09 - ALGOLIA ENABLE ROLLOUT LIVE — AWAIT OWNER QA
+
+Owner: **`PROD ALGOLIA ENABLE ROLLOUT: COMPLETE`**
+Live: **100%** `build-2026-08-09-001` @ `f5c0bdb` (PR #49)
+Traffic verify PASS; managed-search behavior → owner QA
+Record: `docs/workflow/reviews/2026-08-09-prod-algolia-gate-c-enable-rollout-record.md`
+QA: `docs/workflow/reviews/2026-08-09-prod-algolia-gate-c-enable-owner-qa-checklist.md`
+Next: **`PROD ALGOLIA ENABLE QA: PASS`**
+Confirmations: NO key values in chat
+
+## 2026-08-09 - ALGOLIA ENABLE SOURCE ON TIP — AWAIT APP HOSTING ROLLOUT
+
+Owner: **`ALGOLIA ENABLE SOURCE PROMOTED: PASS`**
+Tip: **`f5c0bdb`** (PR #49; contains `42cf4ad` Algolia secret refs) — agent verify PASS
+Exact rollout:
+```
+firebase apphosting:rollouts:create fresh-prints-portal --project fresh-prints-prod --git-commit f5c0bdb7f37d0d7fab589fbe31a6a76963e456a0 --force
+```
+Reply: **`PROD ALGOLIA ENABLE ROLLOUT: COMPLETE`** then **`PROD ALGOLIA ENABLE QA: PASS`**
+Confirmations: NO agent rollout / NO key values in chat
+
+## 2026-08-09 - ALGOLIA ENABLE SECRETS READY — PROMOTE + ROLLOUT
+
+Owner: **`ALGOLIA PORTAL SECRETS: READY`**
+Four SM secrets present (names only verified)
+Branch: `feat/portal-algolia-enable-apphosting` @ **`42cf4ad`** (pushed)
+Gate: `docs/workflow/reviews/2026-08-09-prod-algolia-gate-c-enable-promote-rollout-gate.md`
+Owner next: PR→`production` → **`ALGOLIA ENABLE SOURCE PROMOTED: PASS`** → App Hosting rollout → **`PROD ALGOLIA ENABLE ROLLOUT: COMPLETE`** → **`PROD ALGOLIA ENABLE QA: PASS`**
+Confirmations: NO key values in chat / NO agent rollout
+
+## 2026-08-09 - ALGOLIA GATE C-ENABLE AUTHORIZED — AWAIT PORTAL SECRETS
+
+Owner: **`APPROVE PROD ALGOLIA ENABLE`**
+Plan+Review **approved**: `docs/workflow/plans/2026-08-09-prod-algolia-gate-c-enable-plan.md`
+Checkpoint: `docs/workflow/reviews/2026-08-09-prod-algolia-gate-c-enable-checkpoint.md`
+Target: App `Z1FVCM5QUX` / index `portal_catalog_ready_prod` / search-only key (not admin)
+Owner next: create Search-Only key → set+grant four App Hosting secrets → **`ALGOLIA PORTAL SECRETS: READY`**
+Then: yaml secret refs → promote → App Hosting rollout → QA
+Confirmations: NO key values in chat / NO rollout before secrets / NO `_dev` index
+
+## 2026-08-09 - ALGOLIA GATE C RECONCILE COMPLETE — ENABLE STILL OFF
+
+Owner: **`PROD ALGOLIA RECONCILE: COMPLETE`**
+Apply: scanned **46** / upserted **46** / cleared **true** (`2026-08-09T15:39:32Z`–`15:39:34Z`)
+Index: `portal_catalog_ready_prod` (app `Z1FVCM5QUX`)
+Record: `docs/workflow/reviews/2026-08-09-prod-algolia-gate-c-reconcile-apply-record.md`
+Portal Algolia product flag: **OFF**
+Next optional: **`APPROVE PROD ALGOLIA ENABLE`** (search-only Portal env + App Hosting)
+Confirmations: NO enable this pass
+
+## 2026-08-09 - ALGOLIA RECONCILE APPLY AUTHORIZED — OWNER CLI
+
+Owner: **`APPROVE PROD ALGOLIA RECONCILE APPLY`**
+Dry-run PASS 46/46; apply clears+upserts `portal_catalog_ready_prod`
+Gate: `docs/workflow/reviews/2026-08-09-prod-algolia-gate-c-reconcile-apply-gate.md`
+Owner:
+```
+$env:ALLOW_PROD_ALGOLIA_RECONCILE_APPLY='1'
+node tmp-prod-algolia-reconcile.mjs --apply
+```
+Reply: **`PROD ALGOLIA RECONCILE: COMPLETE`** (+ scanned/upserted/cleared)
+Confirmations: NO Portal enable / NO secrets in chat
+
+## 2026-08-09 - ALGOLIA RECONCILE DRY-RUN PASS (46/46) — AWAIT APPLY
+
+Owner: **`PROD ALGOLIA RECONCILE DRY-RUN: PASS`** — scanned **46** / upserted **46**
+Record: `docs/workflow/reviews/2026-08-08-prod-algolia-gate-c-reconcile-dry-run-record.md`
+Portal enable: **OFF**; no index clear/write on dry-run
+Next owner phrase (ONE): **`APPROVE PROD ALGOLIA RECONCILE APPLY`**
+Then: `$env:ALLOW_PROD_ALGOLIA_RECONCILE_APPLY='1'; node tmp-prod-algolia-reconcile.mjs --apply` → `PROD ALGOLIA RECONCILE: COMPLETE`
+Confirmations: NO apply yet / NO Portal enable / NO secrets in chat
+
+## 2026-08-08 - ALGOLIA RECONCILE DRY-RUN INVOKE PATH CORRECTED — RERUN
+
+Owner: `PROD ALGOLIA RECONCILE DRY-RUN: BLOCKED` (pre-callable; no mutation)
+Cause: missing/unusable user ADC → metadata; `createCustomToken` needs `serviceAccountId` with user ADC
+Fix: `tmp-prod-algolia-reconcile.mjs` + corrective doc (ADC OAuth + firebase-adminsdk signBlob; **no SA key download**)
+Existing authorize phrase still valid: `APPROVE PROD ALGOLIA RECONCILE DRY-RUN`
+Rerun: `gcloud auth application-default login` (if needed) then `node tmp-prod-algolia-reconcile.mjs`
+Reply: **`PROD ALGOLIA RECONCILE DRY-RUN: PASS`** (+ scanned/upserted)
+Confirmations: NO apply / NO Portal enable / NO SA keys in chat
+
+## 2026-08-08 - ALGOLIA RECONCILE DRY-RUN AUTHORIZED — OWNER CLI
+
+Owner: **`APPROVE PROD ALGOLIA RECONCILE DRY-RUN`**
+Agent invoke: **HOOK-BLOCKED** (no mutation)
+Gate: `docs/workflow/reviews/2026-08-08-prod-algolia-gate-c-reconcile-dry-run-gate.md`
+Owner: `node tmp-prod-algolia-reconcile.mjs` → `{ dryRun: true }` only
+Reply: **`PROD ALGOLIA RECONCILE DRY-RUN: PASS`** (+ scanned/upserted)
+Then: `APPROVE PROD ALGOLIA RECONCILE APPLY`
+Confirmations: NO apply / NO Portal enable / NO secrets in chat
+
+## 2026-08-08 - ALGOLIA GATE C RECONCILE PLAN APPROVED — AWAIT DRY-RUN PHRASE
+
+Owner: `CONTINUE WORKFLOW: PROD ALGOLIA GATE C RECONCILE`
+Managed goal: `pr-40-prod-algolia-gate-c-reconcile`
+Plan+Review **approved** (enable deferred): `docs/workflow/plans/2026-08-08-prod-algolia-gate-c-reconcile-plan.md`
+Checkpoint: `docs/workflow/reviews/2026-08-08-prod-algolia-gate-c-reconcile-checkpoint.md`
+Preflight: trio ACTIVE; params `Z1FVCM5QUX` / `portal_catalog_ready_prod`; Portal enable OFF
+Next owner phrase (ONE): **`APPROVE PROD ALGOLIA RECONCILE DRY-RUN`**
+Then: `PROD ALGOLIA RECONCILE DRY-RUN: PASS` → `APPROVE PROD ALGOLIA RECONCILE APPLY` → `PROD ALGOLIA RECONCILE: COMPLETE`
+Confirmations: NO invoke yet / NO Portal enable / NO secrets in chat
+
+## 2026-08-08 - ALGOLIA GATE B COMPLETE — TRIO ACTIVE — ENABLE STILL OFF
+
+Owner: **`PROD FUNCTIONS WAVE A ALGOLIA: COMPLETE`**
+Tip: **`92d176c`** (PR #48 restore exports)
+Functions ACTIVE: `syncPortalCatalogDesignToAlgolia`, `reconcilePortalCatalogAlgoliaIndex`, `reconcilePortalCatalogAlgoliaIndexScheduled`
+Record: `docs/workflow/reviews/2026-08-08-pr-40-prod-functions-wave-a-algolia-deploy-record.md`
+Portal Algolia product flag: **OFF** (no App Hosting Algolia env); reconcile **not** invoked
+Next optional: Gate C — reconcile + **`APPROVE PROD ALGOLIA ENABLE`** (search-only Portal env)
+Confirmations: NO enable this pass
+
+## 2026-08-08 - ALGOLIA GATE B IN PROGRESS — OWNER PR/MERGE + PARAMS + CREATE
+
+Owner: **`APPROVE PROD FUNCTIONS WAVE A ALGOLIA`**
+Export restore: commit **`c813452`** on `feat/restore-algolia-function-exports` (pushed)
+Agent blocked on: PR→`production`, write `functions/.env.fresh-prints-prod`, Functions deploy
+Deploy gate: `docs/workflow/reviews/2026-08-08-pr-40-prod-functions-wave-a-algolia-deploy-gate.md`
+Owner next (in order): merge branch → set `ALGOLIA_APP_ID=Z1FVCM5QUX` + `ALGOLIA_PORTAL_CATALOG_INDEX_NAME=portal_catalog_ready_prod` → scoped CREATE trio → reply **`PROD FUNCTIONS WAVE A ALGOLIA: COMPLETE`**
+Confirmations: NO Portal enable / NO reconcile / NO secrets in chat
+
+## 2026-08-08 - ALGOLIA ADMIN SECRET ROTATED — GATE B AWAIT WAVE A PHRASE
+
+Owner: **`ALGOLIA ADMIN SECRET: ROTATED`**
+SM `ALGOLIA_ADMIN_API_KEY` on `fresh-prints-prod`: version **v2** enabled (`2026-08-09T01:33:05`); no value printed after rotate
+Optional hygiene (owner CLI): disable SM version **v1** (agent hook-blocked)
+Gate A still COMPLETE (`Z1FVCM5QUX` / `portal_catalog_ready_prod` / enable OFF)
+Gate B Formal Review **approved_with_changes** — restore exports before CREATE
+Next owner phrase (ONE): **`APPROVE PROD FUNCTIONS WAVE A ALGOLIA`**
+Confirmations: NO deploy / NO enable / NO secrets in chat
+
+## 2026-08-08 - ALGOLIA GATE A COMPLETE — WAVE A ALGOLIA CHECKPOINT READY — STOP
+
+Owner: App ID `Z1FVCM5QUX` · index `portal_catalog_ready_prod` · `ALGOLIA ADMIN SECRET: READY`
+Gate A **COMPLETE** — record `docs/workflow/reviews/2026-08-08-pr-40-prod-algolia-config-record.md`
+SM secret **present**; Portal enable **OFF**; Algolia trio still **absent** from default `index.ts` (Option E).
+**Security:** agent verify accessed admin secret into tool output — **rotate** before deploy recommended → `ALGOLIA ADMIN SECRET: ROTATED`
+Gate B Formal Review **approved_with_changes**: `docs/workflow/reviews/2026-08-08-pr-40-prod-functions-wave-a-algolia-checkpoint.md`
+Next owner phrase (ONE): **`APPROVE PROD FUNCTIONS WAVE A ALGOLIA`**
+(Restore exports → params → CREATE trio; no Portal enable)
+Confirmations: NO deploy / NO enable / NO secrets written to docs
+
+## 2026-08-08 - ALGOLIA PROD APP SEPARATE DECIDED — AWAIT APP ID + ADMIN SECRET — ENABLE OFF
+
+Owner: `ALGOLIA PROD APP: SEPARATE` (do **not** reuse `WQ6OPP2E6Z`)
+Index target: `portal_catalog_ready_prod`
+Checkpoint: `docs/workflow/reviews/2026-08-08-pr-40-prod-algolia-config-separate-checkpoint.md`
+Parity Gates 1–7 COMPLETE; Studio 1.0.1 published; Algolia product still **OFF**
+**Owner next:** create SEPARATE Algolia Application + index; `firebase functions:secrets:set ALGOLIA_ADMIN_API_KEY --project fresh-prints-prod`
+Then reply:
+```text
+ALGOLIA PROD APP ID: <ApplicationId>
+ALGOLIA PROD INDEX: portal_catalog_ready_prod
+ALGOLIA ADMIN SECRET: READY
+```
+Confirmations: NO Functions deploy / NO Portal enable / NO secrets in chat
+
+## 2026-08-08 - PR #40 PARITY GATES 1–7 COMPLETE — STUDIO 1.0.1 PUBLISHED — ALGOLIA OPTIONAL/OFF
+
+Owner: `STUDIO 1.0.1 RELEASE PUBLISHED: PASS`
+Release: https://github.com/roasted-garlic/freshprints/releases/tag/v1.0.1 (`draft=false`, `prerelease=false`)
+Tag `v1.0.1` @ `ebcfaf29757d0c107a4ff9f7ad2561816f66f4b0`; assets: Setup.exe + blockmap + `latest.yml`
+Record: `docs/workflow/reviews/2026-08-08-pr-40-prod-studio-package-record.md`
+**Parity lane COMPLETE.** Algolia A–C remain **optional/OFF**.
+Next: idle, or `ALGOLIA PROD APP: SEPARATE|REUSE WQ6OPP2E6Z` if pursuing managed search.
+Confirmations: NO Algolia enable this pass
+
+## 2026-08-08 - PR #40 GATES 1–7 COMPLETE WITH NOTES — STUDIO 1.0.1 WORKFLOW SUCCESS — OPTIONAL PUBLISH/ALGOLIA
+
+Owner: `PROD STUDIO PACKAGE: PASS` + https://github.com/roasted-garlic/freshprints/actions/runs/31287781630
+Run **success** @ tip `ebcfaf29757d0c107a4ff9f7ad2561816f66f4b0` (Studio **1.0.1**).
+Public `v1.0.1` Release/tag **not** visible to agent (electron-builder draft — publish in GitHub UI when ready).
+Record: `docs/workflow/reviews/2026-08-08-pr-40-prod-studio-package-record.md`
+Parity Gates **1–7 done**; Algolia A–C still **optional/OFF**.
+Optional next: `STUDIO 1.0.1 RELEASE PUBLISHED: PASS` · or Algolia phrases · or idle
+Confirmations: NO Algolia enable / NO App Hosting / NO Firebase this pass
+
+## 2026-08-08 - PR #40 GATE 7 STUDIO 1.0.1 PROMOTED — AWAIT RELEASE DISPATCH — STOP
+
+Owner: `STUDIO 1.0.1 PROMOTED: PASS`
+Tip: **`ebcfaf29757d0c107a4ff9f7ad2561816f66f4b0`** (PR #47); `apps/studio/package.json` = **`1.0.1`**
+Record: `docs/workflow/reviews/2026-08-08-studio-version-1.0.1-source-promotion-record.md`
+**Owner next:** Run `studio-release.yml` — ref `production` or `ebcfaf29…` — `release_type=stable` — then `PROD STUDIO PACKAGE: PASS`
+Confirmations: NO agent dispatch / NO 1.0.0 rebuild / NO Algolia / NO App Hosting
+
+## 2026-08-08 - PR #40 GATE 7 STUDIO 1.0.1 COMMITTED — PUSH/PR HOOK-BLOCKED — OWNER PROMOTE REQUIRED — STOP
+
+Owner: `COMMIT AND PROMOTE STUDIO 1.0.1`
+Local commit **`d271b22`** on `chore/studio-version-1.0.1` (package.json → 1.0.1 + plan/review/implement only).
+Agent `git push` **hook-blocked**.
+**Owner:**
+```powershell
+git push -u origin chore/studio-version-1.0.1
+# PR → production → merge
+```
+Then reply `STUDIO 1.0.1 PROMOTED: PASS` (+ tip SHA). Then dispatch `studio-release.yml` stable for **1.0.1**.
+Confirmations: NO release dispatch / NO v1.0.0 mutation / NO Algolia / NO App Hosting
+
+## 2026-08-08 - PR #40 GATE 7 STUDIO VERSION 1.0.1 APPLIED LOCALLY — AWAIT PROMOTE + RELEASE — STOP
+
+Owner: `APPROVE STUDIO VERSION BUMP: 1.0.1 FOR PR40 TIP`
+`apps/studio/package.json` → **`1.0.1`** (local Implement).
+Plan/Review **approved**; record: `docs/workflow/reviews/2026-08-08-studio-version-bump-1.0.1-implement-record.md`
+`origin/production` still `51db805` with Studio **1.0.0** until commit/merge.
+Next: promote `1.0.1` to `production`, then dispatch `studio-release.yml` **stable** for **1.0.1** (not 1.0.0).
+Optional: `COMMIT AND PROMOTE STUDIO 1.0.1` · After assets: `PROD STUDIO PACKAGE: PASS`
+Confirmations: NO release dispatch / NO v1.0.0 mutation / NO Algolia / NO App Hosting
+
+## 2026-08-08 - PR #40 GATE 7 STUDIO PACKAGE AUTHORIZED / BLOCKED — PUBLISHED v1.0.0 COLLISION — STOP
+
+Owner: `APPROVE PROD STUDIO PACKAGE: PR40 TIP`
+Tip `51db805`; Studio version still `1.0.0`.
+**Blocker:** GitHub Release `v1.0.0` is **published** (tag @ `70c083a`) with Setup.exe + `latest.yml` — cannot safely re-cut `1.0.0` from tip.
+Preflight: channel `stable`; Studio tsc OK; updater **23/23**; taxonomy disk-cache on tip; no `gh` dispatch.
+Record: `docs/workflow/reviews/2026-08-08-pr-40-prod-studio-package-authorization-record.md`
+Next owner phrase (ONE): **`APPROVE STUDIO VERSION BUMP: 1.0.1 FOR PR40 TIP`**
+Confirmations: NO workflow dispatch / NO tag move / NO Algolia / NO App Hosting / NO Firebase
+
+## 2026-08-08 - PR #40 GATE 6 STORAGE CLEANUP COMPLETE + GATE 7 STUDIO PACKAGE READY — STOP
+
+Owner: `PROD STORAGE CLEANUP DELETED: PASS` → agent verify **PASS** (`fullyClean` 0/0/0; Portal 200) → Gate 6 **COMPLETE**.
+Record: `docs/workflow/reviews/2026-08-08-prod-storage-cleanup-apply-record.md`
+Tip: `51db805`; App Hosting **100%** `build-2026-08-08-004`; Algolia **OFF**; Gates **1–6 COMPLETE**.
+Gate 7 checkpoint **approved**: `docs/workflow/reviews/2026-08-08-pr-40-prod-studio-package-checkpoint.md`
+Next owner phrase (ONE): **`APPROVE PROD STUDIO PACKAGE: PR40 TIP`**
+Confirmations: NO Studio package yet / NO Algolia enable / NO App Hosting / NO Rules
+
+## 2026-08-08 - PR #40 GATE 6 STORAGE CLEANUP DELETE — AUTHORIZED / HOOK-BLOCKED — OWNER CLI REQUIRED — STOP
+
+Owner: `APPROVE PROD STORAGE CLEANUP DELETE`
+Agent APPLY **hook-blocked** — production unchanged.
+Record: `docs/workflow/reviews/2026-08-08-prod-storage-cleanup-apply-record.md`
+**Owner run:**
+```powershell
+$env:FIREBASE_PROJECT_ID = "fresh-prints-prod"
+$env:CONFIRM_PROD_STORAGE_CLEANUP = "1"
+$env:APPLY = "1"
+node functions/scripts/prod-generated-asset-cleanup.mjs
+```
+Re-run until `APPLY complete` / `fullyClean`. Then reply `PROD STORAGE CLEANUP DELETED: PASS`.
+Confirmations: NO agent mutation / Algolia / Rules / App Hosting / Studio
+
+## 2026-08-08 - PR #40 GATE 6 STORAGE CLEANUP DRY-RUN PASS — DELETE CHECKPOINT READY — STOP BEFORE APPLY
+
+Owner: `PROD STORAGE CLEANUP DRY-RUN: PASS`
+Inventory confirmed: portal-catalog **31557** / catalog-reference **229** / `snapshotPublicationState` **2**.
+DELETE checkpoint **approved**: `docs/workflow/reviews/2026-08-08-prod-storage-cleanup-delete-checkpoint.md`
+Formal Review: **approved** — `…-prod-storage-cleanup-delete-checkpoint-review.md`
+Next owner phrase (ONE): **`APPROVE PROD STORAGE CLEANUP DELETE`**
+Confirmations: NO APPLY yet / NO Algolia / NO Rules / NO App Hosting / NO Studio
+
+## 2026-08-08 - PR #40 GATE 6 STORAGE CLEANUP DRY-RUN COMPLETE — AWAIT OWNER PASS — STOP BEFORE DELETE
+
+Owner: `APPROVE PROD STORAGE CLEANUP DRY-RUN`
+Dry-run **executed** (list-only): portal-catalog **31557** / catalog-reference **229** / `snapshotPublicationState` **2**; ~71.9 MiB allowlisted.
+`destructiveActionsPerformed: false`
+Record: `docs/workflow/reviews/2026-08-08-prod-storage-cleanup-dry-run-record.md`
+JSON: `docs/workflow/reviews/2026-08-08-prod-generated-asset-cleanup-dry-run.json`
+Next: reply **`PROD STORAGE CLEANUP DRY-RUN: PASS`**, then separate phrase **`APPROVE PROD STORAGE CLEANUP DELETE`**
+Confirmations: NO APPLY / NO Algolia / NO Rules / NO App Hosting / NO Studio
+
+## 2026-08-08 - PR #40 GATE 6 STORAGE CLEANUP IMPLEMENT COMPLETE — STOP BEFORE DRY-RUN
+
+Owner: `APPROVE IMPLEMENT: PROD STORAGE CLEANUP`
+Source: `functions/scripts/prod-generated-asset-cleanup.mjs` + `prodGeneratedAssetCleanupGuard.mjs`
+Implementation Review: **APPROVED** — `docs/workflow/reviews/2026-08-08-prod-storage-cleanup-implementation-review.md`
+ADR-FP-130; Stage 5 script **unchanged** (still refuses prod).
+Tests: prod guard **10/10**; Stage 5 regression **26/26**; eslint **0**.
+Next owner phrase (ONE): **`APPROVE PROD STORAGE CLEANUP DRY-RUN`**
+Later: `APPROVE PROD STORAGE CLEANUP DELETE` (do not combine).
+Confirmations: NO live dry-run/delete / Algolia / Rules / App Hosting / Studio this pass
+
+## 2026-08-08 - PR #40 GATE 6 STORAGE CLEANUP PLAN APPROVED — STOP BEFORE IMPLEMENT
+
+Owner: `APPROVE PROD STORAGE CLEANUP PLAN`
+Plan: `docs/workflow/plans/2026-08-08-prod-storage-cleanup-plan.md`
+Formal Review: **approved_with_changes** — `docs/workflow/reviews/2026-08-08-prod-storage-cleanup-plan-review.md`
+Approach: prod-dedicated ops script/guard hard-pinned to `fresh-prints-prod`; reuse Stage 5 APPLY resilience; Stage 5 script **unchanged** (no prod escape).
+Next owner phrase (ONE): **`APPROVE IMPLEMENT: PROD STORAGE CLEANUP`**
+Later (do not combine): `APPROVE PROD STORAGE CLEANUP DRY-RUN` → `APPROVE PROD STORAGE CLEANUP DELETE`
+Confirmations: NO Implement / dry-run / delete / Algolia / Rules / App Hosting / Studio this pass
+
+## 2026-08-08 - PR #40 GATE 5 PUBLISHER DELETE COMPLETE + GATE 6 CLEANUP PLAN READY — STOP
+
+Owner: `STAGE 4 PUBLISHERS DELETED: PASS` → agent verify **PASS** → Gate 5 **COMPLETE**.
+Five publishers **ABSENT**; taxonomy Functions **ACTIVE**; Algolia **ABSENT**; Portal `/`+`/catalog` **200**.
+Record: `docs/workflow/reviews/2026-08-08-pr-40-prod-functions-delete-stage-4-publishers-record.md`
+Tip: `51db805`; App Hosting **100%** `build-2026-08-08-004`; Algolia **OFF**.
+Gate 6 checkpoint **approved**: `docs/workflow/reviews/2026-08-08-pr-40-prod-storage-cleanup-checkpoint.md`
+Note: Stage 5 script hard-pinned to `fresh-prints-dev` — **no** prod dry-run/delete with that script.
+Residuals: `snapshotPublicationState` **2**; generated Storage prefixes still present.
+Next owner phrase (ONE): **`APPROVE PROD STORAGE CLEANUP PLAN`**
+Confirmations: NO cleanup mutation / NO Algolia / NO Rules / NO App Hosting / NO Studio
+
+## 2026-08-08 - PR #40 GATE 5 PUBLISHER DELETE — AUTHORIZED / HOOK-BLOCKED — OWNER CLI REQUIRED — STOP
+
+Owner: `APPROVE PROD FUNCTIONS DELETE: STAGE 4 PUBLISHERS`
+Preflight **PASS**: five publishers PRESENT; taxonomy ACTIVE; Algolia ABSENT; tip `51db805`.
+Agent `functions:delete` **hook-blocked** — production unchanged.
+Record: `docs/workflow/reviews/2026-08-08-pr-40-prod-functions-delete-stage-4-publishers-record.md`
+**Owner run (exact five only):**
+```powershell
+$env:FUNCTIONS_DISCOVERY_TIMEOUT='60'
+firebase functions:delete `
+  onCategorySnapshotSourceWritten `
+  onTagSnapshotSourceWritten `
+  onPortalCatalogSnapshotSourceWritten `
+  rebuildCatalogSnapshots `
+  retryPortalCatalogPublication `
+  --region us-central1 `
+  --project fresh-prints-prod `
+  --force
+```
+Then reply `STAGE 4 PUBLISHERS DELETED: PASS` for post-delete verify.
+Confirmations: NO Algolia / Storage cleanup / Rules / App Hosting / Studio / taxonomy delete
+
+## 2026-08-08 - PROD TAXONOMY BOOTSTRAP COMPLETE + GATE 5 PUBLISHER DELETE CHECKPOINT READY — STOP BEFORE DELETE
+
+Owner: `TAXONOMY BOOTSTRAP INVOKE: OK` → agent verify **PASS** → Gate 4 **COMPLETE**.
+Materialization: `ready:true` rev **1**; tags **1130** / cats **19**; hash `88b122bc27247ff5d4f15aa755aa8bb623c4cbc114f3c99c6cca124d267feff7`; docs `meta`+`chunk-0` only.
+Record: `docs/workflow/reviews/2026-08-08-prod-taxonomy-materialization-bootstrap-record.md`
+Tip: `51db805d2fce6fcb6edee71b1a7f1a9b531fb50f`; App Hosting **100%** `build-2026-08-08-004`; Algolia **OFF**.
+Gate 5 checkpoint **approved**: `docs/workflow/reviews/2026-08-08-pr-40-prod-functions-delete-stage-4-publishers-checkpoint.md`
+Formal Review: **approved** — `…-checkpoint-review.md`
+Delete allowlist (5): `onCategorySnapshotSourceWritten`, `onTagSnapshotSourceWritten`, `onPortalCatalogSnapshotSourceWritten`, `rebuildCatalogSnapshots`, `retryPortalCatalogPublication`
+Next owner phrase (ONE): **`APPROVE PROD FUNCTIONS DELETE: STAGE 4 PUBLISHERS`**
+Confirmations: NO delete yet / NO Algolia / NO Storage cleanup / NO Rules / NO App Hosting / NO Studio / NO second bootstrap
+
+## 2026-08-08 - PROD TAXONOMY MATERIALIZATION BOOTSTRAP — AUTHORIZED / HOOK-BLOCKED — OWNER INVOKE REQUIRED — STOP
+
+Owner: `APPROVE PROD TAXONOMY MATERIALIZATION BOOTSTRAP`
+Preflight **PASS**: callable + taxonomy triggers ACTIVE; materialization **ABSENT**; corpus tags **1130** / cats **19**.
+Studio Dev Console bridge **not** available on prod (dev-only gate).
+Agent callable invoke **hook-blocked** (no Admin SDK bypass).
+Checkpoint: `docs/workflow/reviews/2026-08-08-prod-taxonomy-materialization-bootstrap-owner-invoke-checkpoint.md`
+**Owner:** run one-shot Node callable invoke against `fresh-prints-prod`, then reply `TAXONOMY BOOTSTRAP INVOKE: OK` + payload.
+After OK: agent read-only verify + bootstrap record.
+Confirmations: NO agent mutation / Algolia / publisher delete / Rules / cleanup / Studio
+## 2026-08-08 - PR #40 FUNCTIONS WAVE A TAXONOMY — COMPLETE / VERIFIED — STOP BEFORE BOOTSTRAP
+
+Owner: `PROD FUNCTIONS WAVE A TAXONOMY: COMPLETE`
+Tip: `51db805d2fce6fcb6edee71b1a7f1a9b531fb50f`. All five Wave A Functions **ACTIVE**.
+CREATE: onTag/onCategoryTaxonomySourceWritten + rebuildTaxonomyMaterializationCallable.
+UPDATE: enqueueAiEnrichment + getPortalGlobalOpenGraph (OG GET **200**).
+Algolia trio **ABSENT**; publishers **5** untouched; `taxonomyMaterialization` **ABSENT**; bootstrap **NOT** invoked.
+App Hosting **100%** `build-2026-08-08-004`; Algolia **OFF**.
+Record: `docs/workflow/reviews/2026-08-08-pr-40-prod-functions-wave-a-taxonomy-deploy-record.md`
+Next owner phrase (ONE): **`APPROVE PROD TAXONOMY MATERIALIZATION BOOTSTRAP`**
+Confirmations: NO bootstrap / Algolia / publisher delete / Rules / cleanup / Studio this verify
+## 2026-08-08 - PR #40 FUNCTIONS WAVE A TAXONOMY RETRY — AUTHORIZED / HOOK-BLOCKED — OWNER CLI REQUIRED — STOP
+
+Owner: `APPROVE PROD FUNCTIONS WAVE A TAXONOMY RETRY`
+Preflight **PASS** on `production` @ `51db805d2fce6fcb6edee71b1a7f1a9b531fb50f` (Option E on tip).
+Discovery proof: no `ALGOLIA_ADMIN_API_KEY` on default index / enqueue. CREATE still **ABSENT**.
+Agent deploy **hook-blocked**; production Functions **unchanged**.
+Record: `docs/workflow/reviews/2026-08-08-pr-40-prod-functions-wave-a-taxonomy-deploy-record.md`
+**Owner run:**
+```bash
+firebase deploy --only functions:onTagTaxonomySourceWritten,functions:onCategoryTaxonomySourceWritten,functions:rebuildTaxonomyMaterializationCallable,functions:enqueueAiEnrichment,functions:getPortalGlobalOpenGraph --project fresh-prints-prod --non-interactive
+```
+Then reply `PROD FUNCTIONS WAVE A TAXONOMY: COMPLETE` for post-deploy verify.
+After verify PASS: `APPROVE PROD TAXONOMY MATERIALIZATION BOOTSTRAP` (do not auto-run).
+## 2026-08-08 - OPTIONAL ALGOLIA SECRET DISCOVERY CORRECTIVE — SOURCE PROMOTED (PR #46 / `51db805`) — STOP BEFORE WAVE A RETRY
+
+Owner: `OPTIONAL ALGOLIA SECRET CORRECTIVE SOURCE PROMOTION: COMPLETE`
+`origin/production` = **`51db805d2fce6fcb6edee71b1a7f1a9b531fb50f`** (was `7e13968`)
+Contains Option E (`bc0c341`) + promotion docs (`4a31277`). Tip: `algoliaSecrets.ts` present; Algolia trio **not** on default `index`; shared `lib/secrets` has no ALGOLIA.
+Live Functions unchanged (taxonomy CREATE **ABSENT**; no Firebase deploy this promotion).
+Record: `docs/workflow/reviews/2026-08-08-functions-optional-algolia-secret-discovery-corrective-source-promotion-record.md`
+Next owner phrase (ONE): **`APPROVE PROD FUNCTIONS WAVE A TAXONOMY RETRY`**
 ## 2026-08-08 - OPTIONAL ALGOLIA SECRET DISCOVERY CORRECTIVE — SOURCE COMMITTED; PUSH/PR HOOK-BLOCKED — OWNER CLI REQUIRED — STOP
 
 Branch: `fix/optional-algolia-secret-discovery-corrective` @ `bc0c34152a53f835dd58343035d7b3b11c773887`

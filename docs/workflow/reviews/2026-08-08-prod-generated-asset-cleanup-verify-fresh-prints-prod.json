@@ -1,0 +1,36 @@
+{
+  "projectId": "fresh-prints-prod",
+  "performedAt": "2026-08-09T00:52:18.374Z",
+  "verification": {
+    "remainingStorageObjects": 0,
+    "remainingByPrefix": [
+      {
+        "prefix": "generated/portal-catalog/",
+        "objectCount": 0
+      },
+      {
+        "prefix": "generated/catalog-reference/",
+        "objectCount": 0
+      }
+    ],
+    "remainingFirestoreDocs": 0,
+    "storageClean": true,
+    "firestoreClean": true,
+    "fullyClean": true
+  },
+  "inventory": [
+    {
+      "prefix": "generated/portal-catalog/",
+      "objectCount": 0,
+      "totalBytes": 0,
+      "samplePaths": []
+    },
+    {
+      "prefix": "generated/catalog-reference/",
+      "objectCount": 0,
+      "totalBytes": 0,
+      "samplePaths": []
+    }
+  ],
+  "firestoreIds": []
+}

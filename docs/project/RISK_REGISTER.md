@@ -49,6 +49,7 @@ open, CORS fix confirmed working; dynamic tag-facet narrowing implemented, pendi
 
 | ID | Risk | Resolution | Closed date |
 |----|------|------------|-------------|
+| R-018 | Production New This Week empty: legacy ready designs lacked `readyAt` | Prod backfill APPLY 46/46 (`aiReviewedAt` seeds); NTW populated; Signoff `docs/workflow/reviews/2026-08-08-prod-readyat-backfill-signoff.md`. Separate TD-031 (View All badge 40 vs membership 45) | 2026-08-08 |
 | R-017 | Portal catalog tag removal left Portal on stale generation after failed republish (`FetchError`, requested 9 / published 8) | Storage retries + catch-up loop + `retryPortalCatalogPublication`; Functions deployed; catch-up published generation 9; owner Portal QA **PASS** | 2026-07-31 |
 | R-C01 | AppForge migration incomplete / stale paths in entry docs | Migration + intake verification | 2026-06-24 |
 | R-C02 | Project docs were AppForge templates only | Intake populated PROJECT_HEALTH, TECH_DEBT, INTAKE_FINDINGS | 2026-06-24 |
@@ -62,6 +63,8 @@ open, CORS fix confirmed working; dynamic tag-facet narrowing implemented, pendi
 
 | Date | Summary |
 |------|---------|
+| 2026-08-08 | R-018 closed — prod readyAt backfill 46/46; NTW QA PASS WITH NOTES; TD-031 opened for Discover View All count badge (40 vs 45) |
+| 2026-08-08 | TD-031 closed — Discover View All pagination + NTW count badge live on `build-2026-08-08-004`; owner `DISCOVER VIEW ALL PAGINATION QA: PASS` |
 | 2026-07-31 | R-017 closed — catch-up published generation 9; owner Portal QA PASS; signoff approved |
 | 2026-07-31 | R-017 added — prod portal-catalog tag-removal stuck on failed gen-9 `FetchError`; repo mitigation (retries, catch-up loop, `retryPortalCatalogPublication`) implemented; pending Functions deploy + catch-up + Portal QA |
 | 2026-07-24 | R-016: closed the taxonomy read gap. Converted Design Library categories/tags to the existing generated client-safe taxonomy (no new asset, no redeploy needed). Confirmed by inspection which fields are actually read; kept management modals (Category/Tag Management) on full Firestore data. Owner-approved dropping `preferredWhen` tag-search matching. 7 new tests (155 total). |

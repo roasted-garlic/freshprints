@@ -350,6 +350,15 @@ AI taxonomy prefers `taxonomyMaterialization/**` when bootstrapped (ADR-FP-128);
 Strategy 2 Firestore hydrate remains the fallback. Shared `packages/shared/src/catalog-snapshots` types
 are retained for AI + Algolia classifier.
 
+**Production generated Storage cleanup (Gate 6 / ADR-FP-130 — 2026-08-08):** Residual
+`generated/portal-catalog/**`, `generated/catalog-reference/**`, and `snapshotPublicationState`
+on **`fresh-prints-prod`** are cleaned only via the separate local ops script
+`functions/scripts/prod-generated-asset-cleanup.mjs` (hard-pinned to `fresh-prints-prod`; dry-run
+default; APPLY requires `APPLY=1` **and** `CONFIRM_PROD_STORAGE_CLEANUP=1`; reuses Stage 5 APPLY
+resilience helpers). The Stage 5 script remains **dev-only** with **no** production escape hatch.
+Live prod dry-run / delete require separate owner phrases. Storage Rules on prod already deny
+generated public reads (Gate 2).
+
 **Managed search (Stage 1b Algolia):** Portal uses `NEXT_PUBLIC_USE_ALGOLIA_CATALOG_SEARCH` + public
 search-only env; Functions sync/reconcile use Secret Manager admin key
 (`ALGOLIA_ADMIN_API_KEY` via `functions/src/algolia/algoliaSecrets.ts` — **not** shared
