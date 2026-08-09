@@ -704,6 +704,19 @@ cutover. `NEXT_PUBLIC_*` values are browser-exposed after build by design; Secre
 config hygiene (keep env-specific identifiers out of the repo), not confidentiality of true
 backend secrets.
 
+**Portal Algolia managed search (optional Gate C-enable):** after index reconcile, add four Secret
+Manager secrets (search-only key — never Admin), grant to `fresh-prints-portal`, and reference
+them from `apps/portal/apphosting.yaml`:
+
+| Secret / env | Production intent |
+|--------------|-------------------|
+| `NEXT_PUBLIC_USE_ALGOLIA_CATALOG_SEARCH` | `true` to enable; `false` kill-switch |
+| `NEXT_PUBLIC_ALGOLIA_APP_ID` | SEPARATE prod app (e.g. `Z1FVCM5QUX`) |
+| `NEXT_PUBLIC_ALGOLIA_SEARCH_API_KEY` | Search-only ACL; index-restricted |
+| `NEXT_PUBLIC_ALGOLIA_INDEX_NAME` | `portal_catalog_ready_prod` (never `_dev`) |
+
+Roll out only after secrets exist+granted. Kill-switch: set flag secret to `false` and roll out.
+
 **Residual:** plaintext values previously committed in `apphosting.yaml` remain in git history;
 history rewrite is out of scope unless explicitly approved.
 

@@ -54,3 +54,25 @@ env:
     availability:
       - BUILD
       - RUNTIME
+  # Algolia managed catalog search (Gate C-enable). Search-only key — never admin.
+  # Values: flag true; App ID Z1FVCM5QUX; index portal_catalog_ready_prod (not _dev).
+  - variable: NEXT_PUBLIC_USE_ALGOLIA_CATALOG_SEARCH
+    secret: NEXT_PUBLIC_USE_ALGOLIA_CATALOG_SEARCH
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_ALGOLIA_APP_ID
+    secret: NEXT_PUBLIC_ALGOLIA_APP_ID
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_ALGOLIA_SEARCH_API_KEY
+    secret: NEXT_PUBLIC_ALGOLIA_SEARCH_API_KEY
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_ALGOLIA_INDEX_NAME
+    secret: NEXT_PUBLIC_ALGOLIA_INDEX_NAME
+    availability:
+      - BUILD
+      - RUNTIME
