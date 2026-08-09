@@ -117,9 +117,9 @@ These paths are cited in handoff state but **not present** under `docs/workflow/
 
 | Function | Classification |
 |----------|----------------|
-| `syncPortalCatalogDesignToAlgolia` | **SOURCE EXISTS + NOT DEPLOYED** |
-| `reconcilePortalCatalogAlgoliaIndex` | **SOURCE EXISTS + NOT DEPLOYED** |
-| `reconcilePortalCatalogAlgoliaIndexScheduled` | **SOURCE EXISTS + NOT DEPLOYED** |
+| `syncPortalCatalogDesignToAlgolia` | **ACTIVE** (Gate B COMPLETE @ `92d176c`) |
+| `reconcilePortalCatalogAlgoliaIndex` | **ACTIVE** (not invoked) |
+| `reconcilePortalCatalogAlgoliaIndexScheduled` | **ACTIVE** |
 | `onTagTaxonomySourceWritten` | **SOURCE EXISTS + NOT DEPLOYED** |
 | `onCategoryTaxonomySourceWritten` | **SOURCE EXISTS + NOT DEPLOYED** |
 | `rebuildTaxonomyMaterializationCallable` | **SOURCE EXISTS + NOT DEPLOYED** |
@@ -246,9 +246,9 @@ Bucket: `gs://fresh-prints-prod.firebasestorage.app`
 
 | Firestore | Count |
 |-----------|------:|
-| `snapshotPublicationState` | **2** (`catalog-reference`, `portal-catalog`) |
+| `snapshotPublicationState` | **0** (was 2; Gate 6 COMPLETE) |
 
-**Retired publishers still live (5)** ⇒ still **capable of regenerating** generated assets until Wave B delete.
+**Retired publishers** ⇒ Gate 5 **COMPLETE** (five ABSENT) — residuals will not regenerate via those Functions.
 
 ---
 
@@ -300,15 +300,16 @@ Therefore later Storage Rules deny + publisher delete + Storage cleanup are **se
 |------:|------|----------------|----------|---------------|------|----------|--------------|--------------|-------------------------------|
 | 1 | Firestore Rules deploy (PR #40 remaining delta) | **COMPLETE** | Live ruleset `2c0578a0-…`; SHA256 = tip; record `…-prod-firestore-rules-deploy-record.md` | Rules release | Med | Prior `198d35a7-…` | (done) | Portal Stage 4 live ✅ | — |
 | 2 | Storage Rules deploy (generated deny + proof 80 MB) | **COMPLETE** | Live `ccb8e2ea-…`; SHA256 = tip; record `…-prod-storage-rules-deploy-record.md` | Rules release | Med–High | Prior `fbcb0ee4-…` | (done) | Gate 1 COMPLETE ✅ | — |
-| 3a | Optional Algolia secret deployment-discovery corrective | **SOURCE COMPLETE — Implementation Review approved** | Option E landed; discovery 4/4; Algolia unexported from default index; ADR-FP-129 | Commit/promote to tip then Wave A retry | Low | Revert commits | (done for Implement) → `APPROVE PROD FUNCTIONS WAVE A TAXONOMY RETRY` | Plan+Review approved_with_changes | **YES** |
-| 3 | Functions Wave A-Taxonomy CREATE + AI/OG UPDATE | **READY TO RETRY after 3a on production tip** | Prior CLI fail was discovery coupling; CREATE still absent; corrective removes Algolia from default `declaredParams` | Exact same five-function deploy | Med | Redeploy prior digests | `APPROVE PROD FUNCTIONS WAVE A TAXONOMY RETRY` | Gate 3a on tip used for deploy | **YES** for Portal customers |
-| 4 | Taxonomy materialization bootstrap | **OPEN** | `meta` absent | Callable invoke | Med | Rebuild / FS fallback retained | `APPROVE PROD TAXONOMY MATERIALIZATION BOOTSTRAP` | Wave A-Taxonomy deployed | **YES** (Studio/AI) |
-| 5 | Publisher Function DELETE (5) | **OPEN** | 5/6 still live | Function delete | High (hard restore) | Redeploy pre-Stage-4 publishers (heavy) | `APPROVE PROD FUNCTIONS DELETE: STAGE 4 PUBLISHERS` | Prefer Storage Rules deny first | **YES** |
-| 6 | Generated Storage + `snapshotPublicationState` cleanup | **OPEN** | Residual objects/docs | Storage/FS delete | High | None practical | Separate DRY-RUN / DELETE | Gate 5 done | **YES** |
-| 7 | Studio production package | **OPEN** | No post-tip installer evidence | Release package | Med | Prior installer | Separate Studio release approval | Prefer Gates 1–4 | **YES** |
-| A | Algolia production configuration | **OPEN / PARTIAL** — **optional parallel** | Secret NOT_FOUND | Secrets + dashboard | High if `_dev` | Keep Algolia OFF | `ALGOLIA PROD APP: SEPARATE\|REUSE WQ6OPP2E6Z` … | None | **YES** |
-| B | Functions Wave A-Algolia CREATE | **OPEN** — optional | Algolia Functions absent | Scoped Functions deploy | High if `_dev` | Delete Functions; flag off | `APPROVE PROD FUNCTIONS WAVE A ALGOLIA` | Gate A complete | **YES** |
-| C | Algolia reconcile + Portal enable | **OPEN** — optional | Flag off | App Hosting env + reconcile | Med | Set flag false | `APPROVE PROD ALGOLIA ENABLE` | Gate B + search-only env | **YES** |
+| 3a | Optional Algolia secret deployment-discovery corrective | **PROMOTED to `origin/production`** | Merge PR #46 @ `51db805`; contains `bc0c341`/`4a31277`; Option E on tip | — | Low | Revert merge | (done) | Source promotion COMPLETE | **YES** |
+| 3 | Functions Wave A-Taxonomy CREATE + AI/OG UPDATE | **COMPLETE** | All five ACTIVE; Algolia absent; publishers untouched at Wave A; record `…-prod-functions-wave-a-taxonomy-deploy-record.md` | — | Med | Redeploy prior digests | (done) | Tip `51db805` + Option E ✅ | — |
+| 4 | Taxonomy materialization bootstrap | **COMPLETE** | Owner invoke OK; meta `ready:true` rev1; tags **1130** / cats **19**; hash `88b122bc…`; record `…-prod-taxonomy-materialization-bootstrap-record.md` | — | Med | Rebuild callable / FS fallback | (done) | Wave A COMPLETE ✅ | — |
+| 5 | Publisher Function DELETE (5) | **COMPLETE** | Five ABSENT; taxonomy ACTIVE; Portal `/`+`/catalog` 200; record `…-prod-functions-delete-stage-4-publishers-record.md` | — | High | Redeploy prior publishers (heavy) | (done) | Storage Rules deny ✅ + Gate 4 ✅ | — |
+| 6 | Generated Storage + `snapshotPublicationState` cleanup | **COMPLETE** | fullyClean; 0/0/0; Portal 200; record `…-prod-storage-cleanup-apply-record.md` | — | High | None practical | (done) | Dry-run PASS ✅ | — |
+| 7 | Studio production package | **COMPLETE** | Published https://github.com/roasted-garlic/freshprints/releases/tag/v1.0.1 (`draft=false`); tag @ `ebcfaf29`; Setup.exe + `latest.yml`; record `…-prod-studio-package-record.md` | — | Med | Keep `v1.0.0` archived | (done) | Tip 1.0.1 ✅ | — |
+| A | Algolia production configuration | **COMPLETE** | SEPARATE App `Z1FVCM5QUX`; index `portal_catalog_ready_prod`; SM secret present; enable OFF; record `…-prod-algolia-config-record.md` | — | High if `_dev` | Keep OFF | (done) | SEPARATE decided ✅ | **YES** |
+| B | Functions Wave A-Algolia CREATE | **COMPLETE** | Trio **ACTIVE** @ tip `92d176c` (PR #48); params prod index; enable OFF; record `…-prod-functions-wave-a-algolia-deploy-record.md` | — | High if `_dev` | Delete Functions; flag off | (done) | Gate A + rotate ✅ | **YES** |
+| C-reconcile | Algolia index reconcile (dry-run → apply) | **COMPLETE** | Apply 46/46 cleared; record `…-prod-algolia-gate-c-reconcile-apply-record.md`; enable OFF | — | Med (index clear) | Keep flag OFF; re-run | (done) | Dry-run PASS ✅ | **YES** |
+| C-enable | Algolia Portal enable | **COMPLETE** | Live `build-2026-08-09-001` @ `f5c0bdb`; QA PASS; Signoff **approved_with_notes**; TD-032 deferred | — | Med | Flag false + rollout | (done) | Rollout + QA ✅ | **YES** |
 
 **Index deploy:** removed (complete).
 **App Hosting Portal roll for PR #40:** removed (complete; tip live).
@@ -317,15 +318,11 @@ Therefore later Storage Rules deny + publisher delete + Storage cleanup are **se
 
 ## Step 13 — Recommended next single owner checkpoint
 
-> **Sequencing amendment (2026-08-08 Rules preflight):** Algolia is an **optional parallel lane**. The production-parity lane next gate is **Rules**, not Algolia config. See `docs/workflow/reviews/2026-08-08-pr-40-prod-rules-deploy-checkpoint.md`.
+> **Updated 2026-08-09 Gate C-enable COMPLETE:** managed search live; Signoff **approved_with_notes** (TD-032 deferred).
 
-**Exactly one next checkpoint (amended):**
+**Parity + Algolia optional lane:** no remaining required production Algolia gates.
 
-### `APPROVE PROD FIRESTORE RULES DEPLOY: PR40 REMAINING`
-
-**Why:** Stage 4 Portal is live; Firestore/Storage have a real tip-vs-live delta; taxonomy materialization is absent and needs Rules before staff client reads; Algolia may stay OFF. Storage Rules follow under a **separate** later phrase.
-
-**Optional parallel (not blocking):** owner may still reply `ALGOLIA PROD APP: SEPARATE|REUSE WQ6OPP2E6Z` offline — do not treat as prerequisite for Rules/taxonomy.
+**Idle** unless owner starts a new managed goal (e.g. TD-032 polish, domain cutover, Goal #13).
 
 ---
 
@@ -353,7 +350,7 @@ Therefore later Storage Rules deny + publisher delete + Storage cleanup are **se
 - [x] Algolia readiness inventoried; remains OFF
 - [x] Functions CREATE/UPDATE/DELETE delta produced
 - [x] publisher inventory verified (5/6)
-- [x] taxonomy materialization state verified (absent)
+- [x] taxonomy materialization state verified (absent → bootstrap COMPLETE)
 - [x] Firestore/Storage Rules deltas determined
 - [x] indexes reconciled; no redeploy
 - [x] generated Storage residual recounted

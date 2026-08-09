@@ -1,5 +1,7 @@
 # Roadmap and Phases
 
+> 2026-08-08: TD-031 Discover View All pagination + NTW count badge **CLOSED** — Signoff approved; live `build-2026-08-08-004`. Parent PR #40 Algolia/Rules/cleanup remain separately gated.
+
 > 2026-08-01: Final Studio remediations are on a clean production-promotion branch. Production Functions deployment and combined installer QA remain pending; Stage 2 stays paused and domain cutover blocked.
 
 > Align all work with the current phase / active managed goal. Do not jump ahead.

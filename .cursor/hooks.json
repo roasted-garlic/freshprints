@@ -16,7 +16,7 @@
         "type": "prompt",
         "prompt": "Review this shell command for the managed workflow repo. DENY or ASK if the command appears to: deploy to production; run database migrations against production; delete or truncate data; modify production secrets or env; force-push git; or run irreversible infra changes. ALLOW read-only inspection (ls, cat, git status, git diff, git log, test/lint/typecheck/build in local dev). Command input: $ARGUMENTS",
         "timeout": 20,
-        "failClosed": false
+        "failClosed": true
       }
     ],
     "subagentStop": [

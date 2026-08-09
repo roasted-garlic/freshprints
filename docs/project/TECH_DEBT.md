@@ -14,7 +14,8 @@ See field definitions in template. Fixes require approved Managed Phases — **n
 
 | ID | Issue | Category | Severity | Location | Why it matters | Recommended fix | Suggested phase | Status |
 |----|-------|----------|----------|----------|----------------|-----------------|-----------------|--------|
-| TD-031 | Discover/View All total badge / NTW Counting stuck | ui/data | medium | Portal Discover `new`; `countReadyDesigns` + badge | Page-length badge fixed; NTW aggregate failed without DESC orderBy → stuck Counting; corrective source ready | Align NTW count orderBy + Count unavailable UI; promote+rollout+QA | `portal-discover-view-all-complete-pagination` | open — corrective implement **complete** 2026-08-08; prod deploy / QA pending; **not signed off** |
+| TD-031 | Discover/View All total badge / NTW Counting stuck | ui/data | medium | Portal Discover `new`; `countReadyDesigns` + badge | Page-length badge then NTW Counting stuck | Aggregate count + NTW DESC orderBy + Count unavailable UI | `portal-discover-view-all-complete-pagination` | **resolved** 2026-08-08 — live `build-2026-08-08-004`; owner QA PASS; Signoff `docs/workflow/reviews/2026-08-08-portal-discover-view-all-complete-pagination-signoff.md` |
+
 | TD-001 | Generated build artifacts tracked in git | deployment | **high** | `release/`, `dist-electron/`, `build/icon.*` | Bloated repo, slow clones | Added to `.gitignore`; `git rm --cached` | `git-generated-output-cleanup` | **resolved** |
 | TD-002 | Unit tests exist but no `npm test` script | testing | medium | 13 `*.test.ts` files; root `package.json` | Tests cannot run in CI or signoff workflow | Add vitest or node:test runner; `npm test` script | `testing-and-ci-bootstrap` | open |
 | TD-003 | No CI pipeline | deployment | medium | No `.github/workflows/` | Regressions caught only manually | Add lint (+ test when TD-002 done) workflow | `testing-and-ci-bootstrap` | open |
@@ -38,6 +39,7 @@ See field definitions in template. Fixes require approved Managed Phases — **n
 | TD-028 | `functions/.gitignore` previously matched any `lib/` and hid `functions/src/lib` from git | deployment | **high** | `functions/.gitignore` | Source helpers were local-only / not on origin | Changed to `/lib/`; commit `functions/src/lib` (exclude archived orphans) | `phase-9a-etsy-recommendations-foundation` | in progress |
 | TD-029 | Portal username HTML `pattern` invalid in browser | ui/validation | low | `CompleteProfileForm.tsx`, `RegisterForm.tsx` `pattern="[a-z0-9][a-z0-9_-]{1,30}[a-z0-9]"` | Browser reports invalid character class; may disable native constraint validation (server-side still enforces). Noted in loading-ownership owner QA PASS WITH NOTES | Put `-` at start/end of class or escape; align with server username rules; add regression | `portal-username-html-pattern-fix` | open |
 | TD-030 | Design Details modal / shared-design page keep “Add to Request” after add instead of quantity control | ui/polish | low | Portal Design Details modal; shared-design page | Discover/catalog cards already switch to Working Request quantity control; details/share stay on Add button after add — UX parity gap (Stage 1b-C owner PASS WITH NOTES) | Reuse catalog card quantity control after add; reflect/control Working Request qty | `portal-details-share-add-to-request-quantity-parity` | open |
+| TD-032 | Filtered catalog view briefly shows full-screen “Loading your account...” | ui/polish | low | Portal catalog filter / auth loading gate | Owner Algolia enable QA PASS WITH NOTES — functionality correct; transition flash is jarring | Narrow auth/account loading so filter transitions do not remount full-screen account loader | `portal-catalog-filter-account-loading-polish` | open |
 
 ---
 
@@ -60,6 +62,8 @@ See field definitions in template. Fixes require approved Managed Phases — **n
 
 | Date | Summary |
 |------|---------|
+| 2026-08-09 | TD-032 added — filtered catalog briefly shows “Loading your account...” (Algolia enable QA PASS WITH NOTES) |
+| 2026-08-08 | TD-031 **resolved** — Discover View All aggregate badge + NTW count corrective live on `build-2026-08-08-004`; owner QA PASS |
 | 2026-08-08 | TD-031 added — Discover New This Week View All badge shows 40 vs membership 45 after readyAt backfill (owner PASS WITH NOTES) |
 | 2026-07-04 | TD-019, TD-020, and TD-021 added from `print-request-oversized-selection-unblock` PASS WITH FOLLOW-UP NOTES manual QA |
 | 2026-07-04 | TD-016, TD-017, and TD-018 resolved by `print-request-detail-autosave-and-name-locking`; TD-015 remains open |
