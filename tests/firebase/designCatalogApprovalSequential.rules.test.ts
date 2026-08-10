@@ -1,6 +1,5 @@
 import { after, before, beforeEach, describe, it } from "node:test";
 import {
-  assertFails,
   assertSucceeds,
   initializeTestEnvironment,
   type RulesTestEnvironment,

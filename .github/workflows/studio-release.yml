@@ -92,12 +92,20 @@ jobs:
         working-directory: apps/studio
         run: node scripts/generate-packaged-build-config.mjs
 
-      - name: Run tests
-        run: |
-          npm run lint
-          npm --prefix functions run build
-          npm run typecheck --workspace @fresh-prints/portal
-          npx tsx --test packages/shared/src/studioUpdate/studioUpdateStateTransitions.test.ts packages/shared/src/studioUpdate/studioUpdateErrorMapping.test.ts apps/studio/electron/ipc/studioUpdate/studioUpdateChannel.test.ts apps/studio/electron/ipc/studioUpdate/studioUpdateIpcChannels.test.ts apps/studio/scripts/generate-packaged-build-config.test.ts
+      # Separate steps on purpose: the Windows runner default shell is PowerShell, which does
+      # not fail-fast across multiple external commands in one `run:` block. A prior combined
+      # step let `npm run lint` exit non-zero while the job continued to package and draft.
+      - name: Lint
+        run: npm run lint
+
+      - name: Build Functions
+        run: npm --prefix functions run build
+
+      - name: Typecheck Portal
+        run: npm run typecheck --workspace @fresh-prints/portal
+
+      - name: Studio updater unit tests
+        run: npx tsx --test packages/shared/src/studioUpdate/studioUpdateStateTransitions.test.ts packages/shared/src/studioUpdate/studioUpdateErrorMapping.test.ts apps/studio/electron/ipc/studioUpdate/studioUpdateChannel.test.ts apps/studio/electron/ipc/studioUpdate/studioUpdateIpcChannels.test.ts apps/studio/scripts/generate-packaged-build-config.test.ts
 
       - name: Configure Studio Firebase environment
         shell: pwsh
@@ -218,6 +226,38 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           npm run build -- --publish always
+
+      # electron-builder 24.x createRelease() omits target_commitish, so GitHub defaults the draft
+      # to the repository default branch (development) even when actions/checkout built from a
+      # production SHA. GITHUB_SHA on workflow_dispatch is also the workflow-file branch tip, not
+      # the checkout ref — always pin from `git rev-parse HEAD` after checkout.
+      - name: Pin draft release target_commitish to build SHA
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          SHA="$(git rev-parse HEAD)"
+          VERSION="$(node -p "require('./apps/studio/package.json').version")"
+          TAG="v${VERSION}"
+          RELEASE_ID="$(gh api "repos/${{ github.repository }}/releases" --paginate \
+            --jq ".[] | select(.draft == true and (.tag_name == \"$TAG\" or .tag_name == \"$VERSION\")) | .id" \
+            | head -n1)"
+          if [ -z "$RELEASE_ID" ]; then
+            echo "::error::No draft GitHub Release found for tag $TAG / $VERSION after electron-builder publish."
+            exit 1
+          fi
+          BEFORE="$(gh api "repos/${{ github.repository }}/releases/${RELEASE_ID}" --jq '.target_commitish')"
+          echo "Draft release id=${RELEASE_ID} tag=${TAG} previous target_commitish=${BEFORE}"
+          gh api --method PATCH "repos/${{ github.repository }}/releases/${RELEASE_ID}" \
+            -f target_commitish="$SHA" \
+            --jq '{id, tag_name, draft, target_commitish}'
+          AFTER="$(gh api "repos/${{ github.repository }}/releases/${RELEASE_ID}" --jq '.target_commitish')"
+          if [ "$AFTER" != "$SHA" ]; then
+            echo "::error::Failed to pin target_commitish. expected=${SHA} actual=${AFTER}"
+            exit 1
+          fi
+          echo "Pinned draft release target_commitish to checked-out build SHA ${SHA}"
 
       - name: Compute installer SHA-256
         shell: bash
