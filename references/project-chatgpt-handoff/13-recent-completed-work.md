@@ -1,5 +1,16 @@
 # Recent Completed Work
 
+## 2026-08-10 - Prelaunch companion + censored PRODUCTION PROMOTE COMPLETE
+
+Owner **`PROD COMPANION CENSORED PROMOTE SMOKE: PASS`**. Signoff **approved**.
+Production promotion **COMPLETE**. Studio **v1.0.2** published; production source includes
+`b6e67be1b7fe02a69cd31077a203ee9102611ca5`. LIVE: Rules, indexes, `getPortalGlobalOpenGraph`,
+Portal App Hosting. Workflow **DONE**.
+`myprintrequest.com` cutover **NOT** performed (still awaits `APPROVE MYPRINTREQUEST.COM CUTOVER`).
+Algolia untouched.
+Signoff: `docs/workflow/reviews/2026-08-10-prelaunch-companion-censored-promote-signoff.md`
+Smoke: `docs/workflow/reviews/2026-08-10-prelaunch-companion-censored-promote-smoke-checklist.md`
+
 ## 2026-08-10 - Prelaunch companion + censored DEV COMPLETE (prod promote gated)
 
 Owner **`DEV PLACEMENT SUGGESTION QA: PASS`** + full-goal DEV QA COMPLETE.

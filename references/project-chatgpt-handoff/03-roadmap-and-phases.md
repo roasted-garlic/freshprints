@@ -1,5 +1,10 @@
 # Roadmap and Phases
 
+> 2026-08-10: Prelaunch companion/censored **production promote COMPLETE** — owner
+> `PROD COMPANION CENSORED PROMOTE SMOKE: PASS`; Studio v1.0.2 @ `b6e67be…`; Rules/indexes/
+> `getPortalGlobalOpenGraph`/App Hosting LIVE. Goal #13 remains Active only for deferred
+> `APPROVE MYPRINTREQUEST.COM CUTOVER` (DNS / Coming Soon not performed). Algolia untouched.
+
 > 2026-08-08: TD-031 Discover View All pagination + NTW count badge **CLOSED** — Signoff approved; live `build-2026-08-08-004`. Parent PR #40 Algolia/Rules/cleanup remain separately gated.
 
 > 2026-08-01: Final Studio remediations are on a clean production-promotion branch. Production Functions deployment and combined installer QA remain pending; Stage 2 stays paused and domain cutover blocked.
