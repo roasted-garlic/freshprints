@@ -46,6 +46,18 @@ export interface PortalOgLibraryDesignCandidate {
   previewPath?: string;
   thumbnailPath?: string;
   artworkBackgroundHex?: string;
+  /** When true, must never be used for generic/non-design OG imagery. */
+  isExplicitContent?: boolean;
+}
+
+/**
+ * Generic Portal surfaces must never rotate Explicit Content artwork into social previews.
+ * Direct design share OG is handled separately and may use real artwork intentionally.
+ */
+export function filterPortalOgLibraryCandidatesExcludingExplicit(
+  candidates: readonly PortalOgLibraryDesignCandidate[],
+): PortalOgLibraryDesignCandidate[] {
+  return candidates.filter((candidate) => candidate.isExplicitContent !== true);
 }
 
 export function createPortalGlobalOpenGraphCache<T>(ttlMs = PORTAL_GLOBAL_OPEN_GRAPH_CACHE_TTL_MS) {
@@ -182,6 +194,7 @@ function mapDesignDocToCandidate(
     ...(previewPath ? { previewPath } : {}),
     ...(thumbnailPath ? { thumbnailPath } : {}),
     ...(artworkBackgroundHex ? { artworkBackgroundHex } : {}),
+    ...(data.isExplicitContent === true ? { isExplicitContent: true } : {}),
   };
 }
 
@@ -240,10 +253,9 @@ async function loadReadyDesignCandidatesForOg(): Promise<{
   );
 
   return {
-    candidates: mergeAndRankPortalOgLibraryCandidates([
-      readyAtCandidates,
-      createdAtCandidates,
-    ]),
+    candidates: filterPortalOgLibraryCandidatesExcludingExplicit(
+      mergeAndRankPortalOgLibraryCandidates([readyAtCandidates, createdAtCandidates]),
+    ),
     designDocumentsReturned: readyAtPage.size + createdAtPage.size,
   };
 }

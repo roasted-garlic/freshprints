@@ -200,9 +200,22 @@
   z-index: var(--z-dropdown);
 }
 
+/* Portaled to document.body so the menu is not clipped by modal/scroll overflow. */
+.form-select-menu--portal {
+  margin: 0;
+  position: fixed;
+  right: auto;
+  z-index: calc(var(--z-modal) + 10);
+}
+
 .form-select-menu--upward {
   bottom: 100%;
   margin: 0 0 var(--space-1);
+  top: auto;
+}
+
+.form-select-menu--portal.form-select-menu--upward {
+  margin: 0;
   top: auto;
 }
 

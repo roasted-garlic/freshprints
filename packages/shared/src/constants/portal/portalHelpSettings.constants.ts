@@ -10,10 +10,15 @@ export const PORTAL_HELP_SETTINGS_DOC_ID = "portalHelp";
 
 export const PORTAL_HELP_PATH = "/help" as const;
 export const PORTAL_HELP_PAGE_TITLE = "FAQ and How To";
+/** Visible H1 when the How To videos section is hidden (no published videos). */
+export const PORTAL_HELP_PAGE_TITLE_FAQ_ONLY = "FAQ";
 export const PORTAL_HELP_PAGE_DESCRIPTION =
   "FAQ and how-to guides for browsing the Fresh Prints design library, submitting print requests, and using the Portal.";
 export const PORTAL_HELP_INTRO =
-  "Quick answers for browsing designs, print requests for Fresh Prints Whatnot shows, and account basics. How To videos coming soon.";
+  "Expand a question for quick answers, or watch How To videos for walkthroughs.";
+/** Page lead when How To is hidden because there are no videos yet. */
+export const PORTAL_HELP_INTRO_FAQ_ONLY =
+  "Expand a question for quick answers about browsing designs, print requests, and your account.";
 
 export const PORTAL_HELP_FAQ_QUESTION_MAX_LENGTH = 200;
 export const PORTAL_HELP_FAQ_ANSWER_MAX_LENGTH = 4000;

@@ -6,6 +6,7 @@ import {
   normalizeArtworkBackgroundHex,
   resolveArtworkBackgroundHex,
 } from "@fresh-prints/shared/constants/design/artworkBackground.constants";
+import { parseArtworkPlacement } from "@fresh-prints/shared/constants/design/artworkPlacement.constants";
 
 import type { Design, UpdateDesignInput } from "../types/design.types";
 import type { ArtworkBackgroundPreset, DesignFormValues } from "../types/designForm.types";
@@ -53,6 +54,9 @@ export function mapDesignToFormValues(design: Design): DesignFormValues {
     description: design.description ?? "",
     categoryId: design.categoryId ?? "",
     tagsInput: formatTagsInput(design.tags),
+    censoredTermsInput: formatTagsInput(design.censoredTerms ?? []),
+    artworkPlacement: design.artworkPlacement ?? "",
+    isExplicitContent: design.isExplicitContent ?? false,
     ...mapArtworkBackgroundToForm(design),
   };
 }
@@ -107,7 +111,10 @@ export function buildEditDesignUpdateInput(formValues: DesignFormValues): Update
     description: formValues.description,
     categoryId: formValues.categoryId,
     tags: parseTagsInput(formValues.tagsInput),
+    censoredTerms: parseTagsInput(formValues.censoredTermsInput ?? ""),
     artworkBackgroundHex: artworkBackgroundHex ?? null,
+    artworkPlacement: parseArtworkPlacement(formValues.artworkPlacement ?? "") ?? null,
+    isExplicitContent: formValues.isExplicitContent ?? false,
   };
 }
 

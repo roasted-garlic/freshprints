@@ -4,6 +4,108 @@
 
 ---
 
+### ADR-FP-133: Companion designs are pairwise (non-transitive) links, replacing transitive sets
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-08-09 |
+| Status | accepted (Implement on fresh-prints-dev) |
+| Related | Supersedes ADR-FP-131/132 membership model; Plan `2026-08-09-pairwise-companion-links-and-censored-label-plan.md` |
+
+**Context**
+
+Owner requirement: Matching Designs must be **explicit links only**, never transitive. Under
+the old `companionSets` clique model, linking Front B → Back D when D was already linked to
+Front A incorrectly put A, B, and D in one set, so A wrongly matched B/C. Designs already
+linked elsewhere must remain linkable to additional partners (true many-to-many), just never
+transitively.
+
+**Decision**
+
+1. Replace `companionSets` + `designs.companionSetId` (product path) with canonical pairwise
+   edges `companionLinks/{minId_maxId}` (`designIds: [string, string]`, staff-only) plus a
+   symmetric `designs.companionDesignIds: string[]` denorm (direct neighbors only, ≤ 50).
+2. `linkDesign(a, b)` / `unlinkPair(a, b)` operate on exactly one edge; a design's matches are
+   only its own `companionDesignIds` — never transitive/clique.
+3. Needs Companion semantics from ADR-FP-132 are preserved, keyed on `companionDesignIds`
+   emptiness instead of `companionSetId` presence.
+4. Any pairwise write heals (deletes) a stale legacy `companionSetId` on that design in the same
+   transaction, so staff UI never shows mixed old/new signals.
+5. Portal batch-hydrates a design's own `companionDesignIds`, keeps `status == "ready"` only,
+   and never reads `companionLinks` or walks beyond direct neighbors.
+6. **No automatic migration** converts old `companionSets` clique membership into pairwise
+   edges — intent is unknowable from group membership alone. Old DEV `companionSets` docs and
+   any stale `companionSetId` are left for manual staff cleanup.
+7. Algolia schema untouched.
+
+**Consequences**
+
+- Supersedes ADR-FP-131/132 for the product companion-matching path; Needs Companion queue
+  rules from ADR-FP-132 carry forward unchanged in spirit.
+- Portal Matching Designs no longer requires (or reads) `companionSetId` — see
+  `docs/architecture/DATA_MODEL.md` § Companion Design Links.
+- `companionSetService` keeps its module name with a rewritten pairwise API (`linkDesign`,
+  `unlinkPair`, `markNeedsCompanion`, `clearNeedsCompanionUnlinked`, `listLinkedDesigns`);
+  `setCompanionSetComplete` is a throwing stub (no group completion state exists in the pairwise
+  model).
+
+### ADR-FP-132: Needs Companion is unlinked working-queue only; sets only via explicit Link
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-08-09 |
+| Status | accepted (Implement on fresh-prints-dev) |
+| Related | Amends ADR-FP-131; Plans `…-waiting-queue-vs-link-membership-amendment-plan.md`, `…-final-prelaunch-ux-companion-censor-amendment-plan.md` |
+
+**Context**
+
+Owner QA: Needs Companion must not create singleton sets; later clarified it is **only** for designs with **zero** linked companions (not set-level incomplete).
+
+**Decision**
+
+1. `companionSetIncomplete === true` = staff unlinked working-queue only (no `companionSetId`).
+2. First/any successful Link clears the queue flag on all members of the resulting set.
+3. Linked designs cannot Mark Needs Companion; no set-level Needs Companion / Mark Complete UX in MVP.
+4. Dissolve never auto-raises Needs Companion.
+5. Keep field name `companionSetIncomplete` (no rename/migration). Soft-deprecate `companionSets.complete` for queue UX.
+6. Studio: dedicated Companion Designs modal; searchable Link picker; live member refresh after link/unlink.
+7. Portal: list uses Click to view → Details; Details is sole Click to reveal; request/cart surfaces show artwork without censor overlay.
+
+**Consequences**
+
+- Supersedes ADR-FP-131 singleton-on-expect and earlier “linked incomplete set” queue semantics.
+- **Superseded by ADR-FP-133** for the underlying membership model: Portal Matching designs now
+  require direct pairwise `companionDesignIds` neighbors, not `companionSetId`. The unlinked
+  working-queue rules in this ADR carry forward unchanged.
+
+### ADR-FP-131: Companion sets + Explicit/Censored Content (pre-cutover)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-08-09 |
+| Status | accepted (partially superseded by ADR-FP-132 for expect→singleton) |
+| Related | Goal #13 pre-cutover; Plan `2026-08-09-prelaunch-companion-designs-and-censored-content-plan.md` |
+
+**Context**
+
+Owner requested companion design sets (arbitrary N) and Explicit Content / Portal Censored Content before `myprintrequest.com` cutover. Stage 2 smoke already PASS on hosted.app.
+
+**Decision**
+
+1. Central `companionSets` collection + denorm `companionSetId` / `companionSetIncomplete` on designs (Option A). Staff-only set reads.
+2. Optional `isExplicitContent` on designs; missing ⇒ false; no backfill; human classification only.
+3. Portal censor preference via localStorage (`fresh-prints-portal-show-explicit-content`), theme-style — not Firestore prefs.
+4. Algolia schema unchanged for MVP; Portal hydrates explicit/companion fields from Firestore after search IDs.
+5. Generic OG library rotation excludes explicit designs; direct design share OG keeps real artwork.
+
+**Consequences**
+
+- Rules + indexes required (`companionSets`; `designs` companionSetId+status).
+- Functions: `getPortalGlobalOpenGraph` filter only.
+- Domain cutover remains separately gated.
+- **Amended:** singleton-on-expect superseded by ADR-FP-132.
+
+---
 ### ADR-FP-130: Production generated Storage cleanup — separate prod-pinned ops script
 
 | Field | Value |
@@ -187,6 +289,12 @@ Algolia was off.
 
 - After live delete: design writes no longer trigger portal-catalog full publications.
 - Rollback = redeploy prior Functions revision (Storage objects may still exist until Stage 5).
+
+**Amendment (2026-08-10):** Portal Algolia catalog search is the **default** managed-search feature
+when search-only credentials are present. `NEXT_PUBLIC_USE_ALGOLIA_CATALOG_SEARCH` is no longer an
+opt-in (`=== 'true'`); it is an emergency kill-switch only (`=== 'false'`). Unset / any other value
+keeps Algolia ON. Typed search / multi-tag still fail closed when credentials are missing or the
+kill-switch is set.
 
 ---
 

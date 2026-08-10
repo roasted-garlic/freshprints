@@ -44,6 +44,7 @@ import {
   buildCategoryFilterOptions,
   countVisibleSelectedTags,
   filterDesignsByCategory,
+  filterDesignsByNeedsCompanion,
   filterDesignsBySearch,
   filterDesignsByTags,
   selectedTagsIncludeHalftone,
@@ -87,6 +88,7 @@ export function DesignLibraryPage() {
   const [categoryFilter, setCategoryFilter] = useState<string>(ALL_FILTER_VALUE);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [includeArchived, setIncludeArchived] = useState(false);
+  const [needsCompanionFilter, setNeedsCompanionFilter] = useState(false);
   const [isTagFilterModalOpen, setIsTagFilterModalOpen] = useState(false);
   const [selectedDesign, setSelectedDesign] = useState<Design | null>(null);
   const [editingDesign, setEditingDesign] = useState<Design | null>(null);
@@ -114,6 +116,7 @@ export function DesignLibraryPage() {
     setSearchQuery(nextFilters.search ?? "");
     setCategoryFilter(nextFilters.categoryId ?? ALL_FILTER_VALUE);
     setSelectedTags(nextFilters.tags ?? []);
+    setNeedsCompanionFilter(nextFilters.needsCompanion ?? false);
     // Sync from URL first; the write-back effect skips one pass via urlSyncGenerationRef
     // so it cannot immediately push the previous local archived value back into the URL
     // (that race caused Archived toggle flicker when navigating to bare /designs).
@@ -131,6 +134,7 @@ export function DesignLibraryPage() {
       archived: selectionModeActive ? false : includeArchived,
       categoryId: categoryFilter === ALL_FILTER_VALUE ? undefined : categoryFilter,
       mode: selectionModeActive ? "request-selection" : undefined,
+      needsCompanion: needsCompanionFilter,
       requestId: selectionModeActive ? selectionRequestId ?? undefined : undefined,
       search: searchQuery,
       tags: selectedTags,
@@ -143,6 +147,7 @@ export function DesignLibraryPage() {
   }, [
     categoryFilter,
     includeArchived,
+    needsCompanionFilter,
     searchParams,
     searchQuery,
     selectedTags,
@@ -200,6 +205,11 @@ export function DesignLibraryPage() {
   // Phase 1A: display taxonomy is Firestore-backed via useGeneratedDesignLibraryTaxonomy.
   // Archived browse and category-management still load full Firestore taxonomy hooks.
   const displayTaxonomy = useGeneratedDesignLibraryTaxonomy(includeArchived ? null : user);
+  const {
+    categories: displayCategories,
+    tags: displayTags,
+    reloadFromAuthoritativeSource: reloadDisplayTaxonomy,
+  } = displayTaxonomy;
   const firestoreLoadPolicy = getDesignLibraryFirestoreLoadPolicy({
     includeArchived,
     requiresFullCategoryManagementData: isCategoryModalOpen,
@@ -219,8 +229,8 @@ export function DesignLibraryPage() {
     enabled: firestoreLoadPolicy.loadTags,
     includeArchived: true,
   });
-  const categories = includeArchived ? firestoreCategories : displayTaxonomy.categories;
-  const catalogTags = includeArchived ? firestoreCatalogTags : displayTaxonomy.tags;
+  const categories = includeArchived ? firestoreCategories : displayCategories;
+  const catalogTags = includeArchived ? firestoreCatalogTags : displayTags;
   const {
     designs,
     error: designsError,
@@ -291,9 +301,13 @@ export function DesignLibraryPage() {
   // for normal browse — Owner QA Amendment 3 correction). Sorting the page locally afterwards was
   // insufficient: a design reapproved today but created long ago falls outside a `createdAt`-
   // ordered page entirely, so no page-local sort could ever surface it.
-  const filteredDesigns = useMemo(
+  const tagFilteredDesigns = useMemo(
     () => filterDesignsByTags(categoryFilteredDesigns, selectedTags),
     [categoryFilteredDesigns, selectedTags],
+  );
+  const filteredDesigns = useMemo(
+    () => filterDesignsByNeedsCompanion(tagFilteredDesigns, needsCompanionFilter),
+    [needsCompanionFilter, tagFilteredDesigns],
   );
 
   const visibleTags = useMemo(() => visibleSelectedTags(selectedTags), [selectedTags]);
@@ -304,6 +318,7 @@ export function DesignLibraryPage() {
     searchQuery.trim().length > 0 ||
     categoryFilter !== ALL_FILTER_VALUE ||
     selectedTags.length > 0 ||
+    needsCompanionFilter ||
     (selectionModeActive ? false : includeArchived);
 
   // This reflects only the currently-loaded bounded page(s), not the full matching scope —
@@ -317,6 +332,7 @@ export function DesignLibraryPage() {
     setSearchQuery("");
     setCategoryFilter(ALL_FILTER_VALUE);
     setSelectedTags([]);
+    setNeedsCompanionFilter(false);
     if (!selectionModeActive) {
       setIncludeArchived(false);
     }
@@ -330,14 +346,25 @@ export function DesignLibraryPage() {
     setSelectedTags((currentTags) => setHalftoneInSelectedTags(currentTags, halftoneOn));
   }, []);
 
+  const handleNeedsCompanionFilterChange = useCallback((needsCompanionOn: boolean) => {
+    setNeedsCompanionFilter(needsCompanionOn);
+  }, []);
+
   const refreshCatalog = useCallback(async () => {
     // Firestore (useDesigns) is the unconditional design-list authority — always reload it so a
     // just-completed action (approval, archive, edit, restore) is reflected immediately, not only
     // after a later generated-snapshot republish. Category management explicitly enables/reloads
     // its own Firestore-backed hook when open; TagManagementModal owns its own full Firestore hook.
     // reloadCategories/reloadTags remain safe no-ops when their hooks are disabled.
-    await Promise.all([reloadDesigns(), reloadCategories(), reloadTags()]);
-  }, [reloadCategories, reloadDesigns, reloadTags]);
+    // After Tag Management writes, also refresh display taxonomy from authoritative Firestore lists
+    // so newly created (including featured) tags appear in design TagChipInput before materialization lag.
+    await Promise.all([
+      reloadDesigns(),
+      reloadCategories(),
+      reloadTags(),
+      includeArchived ? Promise.resolve() : reloadDisplayTaxonomy(),
+    ]);
+  }, [includeArchived, reloadCategories, reloadDesigns, reloadDisplayTaxonomy, reloadTags]);
 
   const dismissSuccessMessage = useCallback(() => {
     setSuccessMessage(null);
@@ -403,6 +430,22 @@ export function DesignLibraryPage() {
   const handleCategoriesUpdated = useCallback(async () => {
     await refreshCatalog();
   }, [refreshCatalog]);
+
+  /**
+   * Companion-set mutations (`companionSetService`) write directly to `designs` documents outside
+   * `updateDesign` and can touch other member designs besides the one currently open in the
+   * details modal. Patch the just-refreshed anchor design into the local list and the open modal
+   * immediately, then reload the catalog so any other affected member designs (e.g. after marking
+   * a set complete) pick up their denorm changes too.
+   */
+  const handleDesignCompanionsChanged = useCallback(
+    async (updated: Design) => {
+      applyDesignPatch(updated.id, updated);
+      setSelectedDesign(updated);
+      await refreshCatalog();
+    },
+    [applyDesignPatch, refreshCatalog],
+  );
 
   const handleRestoreDesign = useCallback(
     async (design: Design) => {
@@ -758,8 +801,10 @@ export function DesignLibraryPage() {
               categoryFilter={categoryFilter}
               categoryOptions={categoryFilterOptions}
               halftoneFilterOn={halftoneFilterOn}
+              needsCompanionFilterOn={needsCompanionFilter}
               onCategoryChange={setCategoryFilter}
               onHalftoneFilterChange={handleHalftoneFilterChange}
+              onNeedsCompanionFilterChange={handleNeedsCompanionFilterChange}
               onOpenTags={() => setIsTagFilterModalOpen(true)}
               onSearchChange={setSearchQuery}
               searchQuery={searchQuery}
@@ -830,6 +875,7 @@ export function DesignLibraryPage() {
         isOpen={selectedDesign !== null}
         onArchive={openArchiveDesign}
         onClose={closeDesignDetails}
+        onCompanionsChanged={handleDesignCompanionsChanged}
         onEdit={openEditDesign}
         onPurgeAssets={(design) => {
           void openPurgeDesigns([design]);

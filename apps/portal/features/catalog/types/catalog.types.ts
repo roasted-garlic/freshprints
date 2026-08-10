@@ -1,3 +1,7 @@
+import type { ArtworkPlacement } from '@fresh-prints/shared/constants/design/artworkPlacement.constants';
+
+export type { ArtworkPlacement } from '@fresh-prints/shared/constants/design/artworkPlacement.constants';
+
 export interface CatalogCategory {
   id: string;
   name: string;
@@ -25,6 +29,11 @@ export interface CatalogDesign {
    * Missing → Portal artwork grey.
    */
   artworkBackgroundHex?: string;
+  /**
+   * Optional staff-managed artwork garment placement (display label "Placement").
+   * Missing/unknown → Unspecified — presentation-only badge, never a filter/facet.
+   */
+  artworkPlacement?: ArtworkPlacement;
   /** Production pixel width from the design document. */
   width: number;
   /** Production pixel height from the design document. */
@@ -54,6 +63,24 @@ export interface CatalogDesign {
    * Not used for default library order (request counters bump this field).
    */
   updatedAtMs?: number;
+  /**
+   * Staff "Explicit Content" classification (Portal term: Censored Content).
+   * Always a real boolean after mapping — missing/false on the Firestore doc ⇒ `false`
+   * (not explicit). Presentation-only: never affects search/browse eligibility.
+   */
+  isExplicitContent?: boolean;
+  /**
+   * Staff words/phrases to mask in title/description while Portal is in Censored mode and
+   * `isExplicitContent` is true. Missing/empty ⇒ no text masking. Presentation-only.
+   */
+  censoredTerms?: string[];
+  /**
+   * Denormalized direct-neighbor design IDs from the staff-only pairwise `companionLinks`
+   * edges (never transitive/clique membership). Portal never reads `companionLinks` —
+   * peers are discovered by batch-hydrating these IDs and keeping only `status === "ready"`,
+   * which naturally excludes any staff-incomplete neighbor.
+   */
+  companionDesignIds?: string[];
 }
 
 /**

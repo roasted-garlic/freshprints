@@ -20,6 +20,7 @@ import {
   type FirestoreTraceMetadata,
 } from '@fresh-prints/shared/utils/firestoreUsageTrace';
 import { createBoundedAsyncCache } from '@fresh-prints/shared/utils/boundedAsyncCache';
+import { parseArtworkPlacement } from '@fresh-prints/shared/constants/design/artworkPlacement.constants';
 
 import { PORTAL_FIRESTORE_COLLECTIONS } from '../../../lib/firebase/collections';
 import { getPortalDb } from '../../../lib/firebase/client';
@@ -158,6 +159,7 @@ interface DesignDocumentData {
   thumbnailPath?: unknown;
   previewPath?: unknown;
   artworkBackgroundHex?: unknown;
+  artworkPlacement?: unknown;
   width?: unknown;
   height?: unknown;
   printWidthInches?: unknown;
@@ -169,6 +171,23 @@ interface DesignDocumentData {
   favoriteCount?: unknown;
   lastRequestedAt?: unknown;
   lastAddedToShowAt?: unknown;
+  isExplicitContent?: unknown;
+  censoredTerms?: unknown;
+  companionDesignIds?: unknown;
+}
+
+/** Filters to non-blank, trimmed string neighbor IDs — malformed entries are dropped, not fatal. */
+function mapCompanionDesignIds(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+
+  const ids = value
+    .filter((id): id is string => typeof id === 'string')
+    .map((id) => id.trim())
+    .filter((id) => id.length > 0);
+
+  return ids.length > 0 ? ids : undefined;
 }
 
 function timestampToMillis(value: unknown): number | undefined {
@@ -179,7 +198,7 @@ function timestampToMillis(value: unknown): number | undefined {
   return undefined;
 }
 
-function mapCatalogDesign(designId: string, data: DesignDocumentData): CatalogDesign | null {
+export function mapCatalogDesign(designId: string, data: DesignDocumentData): CatalogDesign | null {
   if (data.status !== 'ready' || typeof data.title !== 'string' || typeof data.thumbnailPath !== 'string') {
     return null;
   }
@@ -209,6 +228,7 @@ function mapCatalogDesign(designId: string, data: DesignDocumentData): CatalogDe
     previewPath: typeof data.previewPath === 'string' ? data.previewPath : undefined,
     artworkBackgroundHex:
       typeof data.artworkBackgroundHex === 'string' ? data.artworkBackgroundHex : undefined,
+    artworkPlacement: parseArtworkPlacement(data.artworkPlacement),
     width: data.width,
     height: data.height,
     printWidthInches: typeof data.printWidthInches === 'number' ? data.printWidthInches : undefined,
@@ -226,7 +246,25 @@ function mapCatalogDesign(designId: string, data: DesignDocumentData): CatalogDe
         : 0,
     lastRequestedAtMs: timestampToMillis(data.lastRequestedAt),
     lastAddedToShowAtMs: timestampToMillis(data.lastAddedToShowAt),
+    // Human-only staff classification; missing/false on the doc always maps to `false`.
+    isExplicitContent: data.isExplicitContent === true,
+    censoredTerms: Array.isArray(data.censoredTerms)
+      ? data.censoredTerms.filter(
+          (term): term is string => typeof term === 'string' && term.trim().length > 0,
+        )
+      : undefined,
+    companionDesignIds: mapCompanionDesignIds(data.companionDesignIds),
   };
+}
+
+/**
+ * Presentation-only "Matching designs available" hint sourced directly from the design's
+ * own hydrated `companionDesignIds` — no extra Firestore reads, no set/clique lookup. Direct
+ * pairwise neighbors only; a non-empty list is hinted even if a given neighbor later turns out
+ * not to be ready — Design Details / Matching designs still filter to ready-only on open.
+ */
+export function designHasMatchingDesignsHint(design: CatalogDesign): boolean {
+  return (design.companionDesignIds?.length ?? 0) > 0;
 }
 
 function resolveSortField(listQuery: CatalogDesignListQuery): CatalogDesignSortField {
@@ -730,6 +768,28 @@ export const catalogService = {
     invalidateCatalogDesignById(designId);
   },
 
+  /**
+   * Customer-safe companion discovery: batch-hydrates the given direct-neighbor design IDs
+   * (from a design's own `companionDesignIds`) and keeps only **ready** results. Never reads
+   * the staff-only `companionLinks` collection and never walks beyond direct neighbors (no
+   * transitive/clique matching) — a neighbor not yet approved to ready simply drops out.
+   * Reuses `getReadyDesignsByIds` (per-ID cached `getDoc`, not a batch `in` query) so an
+   * archived/denied neighbor cannot fail the whole lookup — same no-N+1 pattern as catalog cards.
+   */
+  async listReadyCompanionDesignsByIds(
+    neighborIds: string[],
+    excludeDesignId?: string,
+  ): Promise<CatalogDesign[]> {
+    const excludeId = excludeDesignId?.trim();
+    const ids = neighborIds.filter((id) => id.trim() && id.trim() !== excludeId);
+
+    if (ids.length === 0) {
+      return [];
+    }
+
+    return this.getReadyDesignsByIds(ids);
+  },
+
   /** Exact count of ready designs matching category / primary tag / new-this-week bounds. */
   async countReadyDesigns(listQuery: CatalogDesignListQuery = {}): Promise<number> {
     const constraints: QueryConstraint[] = [...buildDesignFilterConstraints(listQuery)];
@@ -984,6 +1044,33 @@ export const catalogService = {
       './portalAlgoliaCatalogSearchService'
     );
     return portalAlgoliaCatalogSearchService.listTagFacets();
+  },
+
+  /**
+   * Featured approved tags for Portal tag-modal pills (Firestore taxonomy metadata).
+   * Bounded query — not a full taxonomy scan. Algolia is not used (isFeatured is not indexed).
+   */
+  async listFeaturedApprovedTags(): Promise<CatalogTagOption[]> {
+    const { catalogTagOptionsFromFeaturedDocs } = await import('../utils/featuredCatalogTags');
+    const traceMetadata: FirestoreTraceMetadata = {
+      app: 'portal',
+      collection: PORTAL_FIRESTORE_COLLECTIONS.tags,
+      constraints: ['status==approved', 'isFeatured==true'],
+      source: 'catalogService.listFeaturedApprovedTags',
+      triggerReason: 'route',
+    };
+    traceFirestoreOneShotStart('getDocs', traceMetadata);
+    const snapshot = await getDocs(
+      query(
+        collection(getPortalDb(), PORTAL_FIRESTORE_COLLECTIONS.tags),
+        where('status', '==', 'approved'),
+        where('isFeatured', '==', true),
+      ),
+    );
+    traceFirestoreOneShotComplete('getDocs', traceMetadata, snapshot.size);
+    return catalogTagOptionsFromFeaturedDocs(
+      snapshot.docs.map((tagDoc) => ({ id: tagDoc.id, ...tagDoc.data() })),
+    );
   },
 
   /**

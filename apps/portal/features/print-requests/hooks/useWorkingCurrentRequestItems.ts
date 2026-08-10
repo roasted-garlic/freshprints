@@ -366,4 +366,7 @@ export interface PortalRequestDesignSummary {
   printWidthInches?: number;
   printHeightInches?: number;
   updatedAtMs?: number;
+  /** Same censor rules as CatalogDesign — presentation-only. */
+  isExplicitContent?: boolean;
+  companionDesignIds?: string[];
 }

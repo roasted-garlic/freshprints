@@ -188,6 +188,16 @@ service cloud.firestore {
       return !(field in data) || data[field] == null || data[field] is timestamp;
     }
 
+    // Rules cannot iterate list elements (no forEach); size-only validation, same pattern as
+    // isValidTagStringList below. Client-side companionSetService owns element shape (string IDs).
+    function isValidCompanionDesignIdsList(values) {
+      return values is list && values.size() <= 50;
+    }
+
+    function isOptionalCompanionDesignIdsList(data, field) {
+      return !(field in data) || data[field] == null || isValidCompanionDesignIdsList(data[field]);
+    }
+
     function isValidAiReviewStatus(status) {
       return status in ["pending", "approved", "rejected", "needs_review"];
     }
@@ -196,10 +206,139 @@ service cloud.firestore {
       return !(field in data) || data[field] is map;
     }
 
+    // Use affectedKeys — never deep-compare aiSuggestions/aiAnalysis maps. Deep == on large
+    // enrichment payloads exceeds Firestore's 1000-expression evaluation limit and denies
+    // otherwise-valid updates (e.g. catalog approve → status ready after isExplicitContent /
+    // companion denorm writes) as permission-denied.
     function clientAiFieldsUnchanged() {
-      return request.resource.data.get("aiSuggestions", null) == resource.data.get("aiSuggestions", null)
-        && request.resource.data.get("aiAnalysis", null) == resource.data.get("aiAnalysis", null)
-        && request.resource.data.get("aiProcessingStage", null) == resource.data.get("aiProcessingStage", null);
+      return !request.resource.data.diff(resource.data).affectedKeys()
+        .hasAny(["aiSuggestions", "aiAnalysis", "aiProcessingStage"]);
+    }
+
+    // Fast path for companionSetService denorm writes only. Full `designRequiredFieldsValid` on
+    // ready designs with many optional AI/sizing/halftone fields can exceed the 1000-expression
+    // budget (seen after unlink clears companion keys, then Mark needs / Link re-adds them).
+    // `||` short-circuits: this must stay first in `allow update` so companion-only updates never
+    // pay the full validator cost. Does not allow status or other lifecycle field changes.
+    // `companionSetId` is included only so the pairwise service can heal (deleteField) a stale
+    // legacy pointer in the same write — no product code writes it a non-null value anymore.
+    // Fast path for companionSetService denorm writes only. Full `designRequiredFieldsValid` on
+    // ready designs with many optional AI/sizing/halftone fields can exceed the 1000-expression
+    // budget (seen after unlink clears companion keys, then Mark needs / Link re-adds them).
+    // `||` short-circuits: this must stay first in `allow update` so companion-only updates never
+    // pay the full validator cost. Does not allow status or other lifecycle field changes.
+    // `companionSetId` is included only so the pairwise service can heal (deleteField) a stale
+    // legacy pointer in the same write — no product code writes it a non-null value anymore.
+    function companionDenormOnlyUpdate() {
+      // Status compare first — approve→ready must not pay diff() here on large aiSuggestions maps.
+      return request.resource.data.status == resource.data.status
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(["companionDesignIds", "companionSetId", "companionSetIncomplete", "updatedAt", "updatedBy"])
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.uploadedBy == resource.data.uploadedBy
+        && (!("createdBy" in resource.data) || request.resource.data.createdBy == resource.data.createdBy)
+        && (!("createdAt" in resource.data) || request.resource.data.createdAt == resource.data.createdAt)
+        && request.resource.data.updatedBy == request.auth.uid
+        && request.resource.data.updatedAt is timestamp
+        && isOptionalCompanionDesignIdsList(request.resource.data, "companionDesignIds")
+        && isOptionalString(request.resource.data, "companionSetId")
+        && isOptionalBool(request.resource.data, "companionSetIncomplete");
+    }
+
+    function isOptionalCensoredTermsList(data, field) {
+      return !(field in data) || data[field] == null || isValidTagStringList(data[field]);
+    }
+
+    // Fast path for Studio Edit Design catalog metadata + Placement-only writes.
+    // Covers tags/title/category/description/background/placement/explicit/censoredTerms/
+    // AI Review draft Halftone decision + audit.
+    // Same expression-budget failure mode as companion denorm: full `designRequiredFieldsValid`
+    // on enrichment-heavy ready designs denies otherwise-valid Edit Design / Placement saves.
+    // Does not allow status or AI pipeline field changes. `createdBy` is included so
+    // designService can heal legacy docs missing that field.
+    //
+    // Reject status changes with a string compare BEFORE diff() so approve→ready does not pay
+    // a second expensive diff() on large aiSuggestions maps (companion already diff'd above).
+    // Placement-only writes are a subset of this hasOnly list.
+    // `halftoneStaffDecision` must be included — AI Review approve drafts it before status ready;
+    // omitting it forced the full validator and reintroduced permission-denied on enrichment-heavy rows.
+    function catalogMetadataOnlyUpdate() {
+      return request.resource.data.status == resource.data.status
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly([
+            "title",
+            "description",
+            "categoryId",
+            "tags",
+            "artworkBackgroundHex",
+            "artworkPlacement",
+            "isExplicitContent",
+            "censoredTerms",
+            "halftoneStaffDecision",
+            "updatedAt",
+            "updatedBy",
+            "createdBy"
+          ])
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.uploadedBy == resource.data.uploadedBy
+        && (!("createdBy" in resource.data) || request.resource.data.createdBy == resource.data.createdBy)
+        && (!("createdAt" in resource.data) || request.resource.data.createdAt == resource.data.createdAt)
+        && request.resource.data.updatedBy == request.auth.uid
+        && request.resource.data.updatedAt is timestamp
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() <= 200
+        && request.resource.data.tags is list
+        && isOptionalString(request.resource.data, "description")
+        && isOptionalString(request.resource.data, "categoryId")
+        && isOptionalString(request.resource.data, "artworkBackgroundHex")
+        && isOptionalString(request.resource.data, "artworkPlacement")
+        && isOptionalBool(request.resource.data, "isExplicitContent")
+        && isOptionalCensoredTermsList(request.resource.data, "censoredTerms")
+        && isOptionalMap(request.resource.data, "halftoneStaffDecision");
+    }
+
+    // Fast path for catalog approve / reject / reopen status transitions
+    // (`applyCatalogApprovalUpdate`, `applyReopenFromRejectedUpdate`).
+    // Status MUST change — first compare fails cheaply for metadata/companion writes so this
+    // third OR branch does not burn the expression budget on non-approval updates.
+    // When it matches, short-circuits before full `designRequiredFieldsValid` (the path that
+    // previously denied enrichment-heavy approve→ready as permission-denied).
+    function catalogApprovalStatusOnlyUpdate() {
+      return request.resource.data.status != resource.data.status
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly([
+            "status",
+            "aiReviewStatus",
+            "aiReviewed",
+            "aiProcessed",
+            "aiReviewedAt",
+            "aiReviewedBy",
+            "aiReviewVersion",
+            "aiReviewNotes",
+            "aiReviewConfidence",
+            "readyAt",
+            "updatedAt",
+            "updatedBy",
+            "createdBy"
+          ])
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.uploadedBy == resource.data.uploadedBy
+        && (!("createdBy" in resource.data) || request.resource.data.createdBy == resource.data.createdBy)
+        && (!("createdAt" in resource.data) || request.resource.data.createdAt == resource.data.createdAt)
+        && request.resource.data.updatedBy == request.auth.uid
+        && request.resource.data.updatedAt is timestamp
+        && isValidDesignStatus(request.resource.data.status)
+        && request.resource.data.aiReviewed is bool
+        && request.resource.data.aiProcessed is bool
+        && isOptionalString(request.resource.data, "aiReviewStatus")
+        && (!("aiReviewStatus" in request.resource.data) || isValidAiReviewStatus(request.resource.data.aiReviewStatus))
+        && isOptionalString(request.resource.data, "aiReviewedBy")
+        && isOptionalString(request.resource.data, "aiReviewVersion")
+        && isOptionalString(request.resource.data, "aiReviewNotes")
+        && isOptionalNumber(request.resource.data, "aiReviewConfidence")
+        && isOptionalTimestamp(request.resource.data, "aiReviewedAt")
+        && isOptionalTimestamp(request.resource.data, "readyAt");
     }
 
     // Owner purge sets these via Admin SDK only — clients must not forge purge state.
@@ -270,6 +409,10 @@ service cloud.firestore {
         && isOptionalNumber(data, "favoriteCount")
         && isOptionalTimestamp(data, "lastRequestedAt")
         && isOptionalString(data, "printSizeSource")
+        // Optional staff-managed artwork placement (display label "Placement"). Client
+        // allowlists the value on read/write (parseArtworkPlacement) — Rules only validate the
+        // type, matching printSizeSource above.
+        && isOptionalString(data, "artworkPlacement")
         && isOptionalString(data, "aiReviewStatus")
         && (!("aiReviewStatus" in data) || isValidAiReviewStatus(data.aiReviewStatus))
         && isOptionalTimestamp(data, "readyAt")
@@ -285,7 +428,72 @@ service cloud.firestore {
         && isOptionalString(data, "assetsPurgedBy")
         && isOptionalString(data, "aiProcessingStage")
         && isOptionalMap(data, "aiSuggestions")
-        && isOptionalMap(data, "aiAnalysis");
+        && isOptionalMap(data, "aiAnalysis")
+        && isOptionalString(data, "companionSetId")
+        && isOptionalCompanionDesignIdsList(data, "companionDesignIds")
+        && isOptionalBool(data, "companionSetIncomplete")
+        && isOptionalBool(data, "isExplicitContent")
+        && isOptionalCensoredTermsList(data, "censoredTerms");
+    }
+
+    // Rules cannot iterate list elements (no forEach); size-only validation mirrors the existing
+    // isValidTagStringList pattern above. Client-side companionSetService owns element shape.
+    function isValidCompanionSetMemberDesignIds(values) {
+      return values is list && values.size() > 0;
+    }
+
+    function companionSetRequiredFieldsValid(data) {
+      return data.keys().hasOnly([
+          "id",
+          "memberDesignIds",
+          "complete",
+          "createdBy",
+          "updatedBy",
+          "createdAt",
+          "updatedAt"
+        ])
+        && data.id is string
+        && data.id.size() > 0
+        && isValidCompanionSetMemberDesignIds(data.memberDesignIds)
+        && data.complete is bool
+        && data.createdBy is string
+        && data.createdBy.size() > 0
+        && data.updatedBy is string
+        && data.updatedBy.size() > 0
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    // Pairwise (non-transitive) companion edge — exactly two designs. `id` must be the
+    // deterministic `${min(a,b)}_${max(a,b)}` pair key, `designIds` must be that exact pair
+    // sorted ascending, and both must agree with the document ID. Immutable once created (the
+    // service only creates or deletes edges, never updates one) — see `allow update: if false`
+    // on the match below.
+    function companionLinkRequiredFieldsValid(data, linkId) {
+      return data.keys().hasOnly([
+          "id",
+          "designIds",
+          "createdBy",
+          "updatedBy",
+          "createdAt",
+          "updatedAt"
+        ])
+        && data.id is string
+        && data.id == linkId
+        && data.designIds is list
+        && data.designIds.size() == 2
+        && data.designIds[0] is string
+        && data.designIds[1] is string
+        && data.designIds[0].size() > 0
+        && data.designIds[1].size() > 0
+        && data.designIds[0] < data.designIds[1]
+        && data.id == (data.designIds[0] + "_" + data.designIds[1])
+        && data.createdBy is string
+        && data.createdBy.size() > 0
+        && data.updatedBy is string
+        && data.updatedBy.size() > 0
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
     }
 
     function categoryRequiredFieldsValid(data) {
@@ -328,6 +536,7 @@ service cloud.firestore {
           "aliases",
           "preferredWhen",
           "status",
+          "isFeatured",
           "createdBy",
           "updatedBy",
           "createdAt",
@@ -354,6 +563,7 @@ service cloud.firestore {
         && data.preferredWhen.size() <= 500
         && data.status is string
         && isValidCatalogTagStatus(data.status)
+        && (!("isFeatured" in data) || data.isFeatured is bool)
         && data.createdBy is string
         && data.updatedBy is string
         && data.createdAt is timestamp
@@ -933,19 +1143,73 @@ service cloud.firestore {
         && !("assetsPurgedAt" in request.resource.data)
         && !("assetsPurgedBy" in request.resource.data);
 
-      allow update: if isStaff()
-        && designRequiredFieldsValid(request.resource.data)
-        && request.resource.data.id == designId
-        && request.resource.data.id == resource.data.id
-        && request.resource.data.uploadedBy == resource.data.uploadedBy
-        && (!("createdBy" in resource.data) || request.resource.data.createdBy == resource.data.createdBy)
-        && (!("createdAt" in resource.data) || request.resource.data.createdAt == resource.data.createdAt)
-        && request.resource.data.updatedBy == request.auth.uid
-        && clientAiFieldsUnchanged()
-        && clientDesignPurgeFieldsUnchanged()
-        && clientDesignPurgedAssetPathsUnchanged();
+      // Narrow metadata fast paths first (short-circuit) — companion denorm, then catalog
+      // metadata/Placement (tags/title/Halftone draft/etc.), then catalog approval status
+      // transitions. Approval path MUST stay after the status-unchanged fast paths and must
+      // fail on `status !=` first so non-approval writes do not pay its diff().
+      allow update: if isStaff() && (
+        companionDenormOnlyUpdate()
+        || catalogMetadataOnlyUpdate()
+        || catalogApprovalStatusOnlyUpdate()
+        || (
+          designRequiredFieldsValid(request.resource.data)
+          && request.resource.data.id == designId
+          && request.resource.data.id == resource.data.id
+          && request.resource.data.uploadedBy == resource.data.uploadedBy
+          && (!("createdBy" in resource.data) || request.resource.data.createdBy == resource.data.createdBy)
+          && (!("createdAt" in resource.data) || request.resource.data.createdAt == resource.data.createdAt)
+          && request.resource.data.updatedBy == request.auth.uid
+          && clientAiFieldsUnchanged()
+          && clientDesignPurgeFieldsUnchanged()
+          && clientDesignPurgedAssetPathsUnchanged()
+        )
+      );
 
       allow delete: if false;
+    }
+
+    // DEPRECATED (2026-08-09) — legacy transitive companion sets (arbitrary-N), replaced by
+    // pairwise `companionLinks` below. No product code creates or joins these anymore; the
+    // match stays only so staff can still read/delete leftover DEV documents during cleanup.
+    // Staff-only — never customer or public readable, since membership can include non-ready
+    // designs.
+    match /companionSets/{companionSetId} {
+      allow read: if isStaff();
+
+      allow create: if isStaff()
+        && companionSetRequiredFieldsValid(request.resource.data)
+        && request.resource.data.id == companionSetId
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.updatedBy == request.auth.uid;
+
+      allow update: if isStaff()
+        && companionSetRequiredFieldsValid(request.resource.data)
+        && request.resource.data.id == companionSetId
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.updatedBy == request.auth.uid;
+
+      allow delete: if isStaff();
+    }
+
+    // Pairwise (non-transitive) companion links — the canonical edge between exactly two
+    // designs, replacing `companionSets` above. Staff-only — never customer/public readable.
+    // Portal discovers ready peers only by hydrating a design's own `companionDesignIds` (direct
+    // neighbors) and getting those designs by ID, never by reading or querying this collection.
+    // Immutable once created: the service only ever creates or deletes an edge, so `update` is
+    // denied outright.
+    match /companionLinks/{linkId} {
+      allow read: if isStaff();
+
+      allow create: if isStaff()
+        && companionLinkRequiredFieldsValid(request.resource.data, linkId)
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.updatedBy == request.auth.uid;
+
+      allow update: if false;
+
+      allow delete: if isStaff();
     }
 
     match /categories/{categoryId} {

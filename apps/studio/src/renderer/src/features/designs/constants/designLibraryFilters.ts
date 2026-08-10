@@ -5,6 +5,7 @@ export const DESIGN_LIBRARY_SEARCH_QUERY_PARAM = "search";
 export const DESIGN_LIBRARY_CATEGORY_QUERY_PARAM = "category";
 export const DESIGN_LIBRARY_TAGS_QUERY_PARAM = "tags";
 export const DESIGN_LIBRARY_ARCHIVED_QUERY_PARAM = "archived";
+export const DESIGN_LIBRARY_NEEDS_COMPANION_QUERY_PARAM = "needsCompanion";
 export const DESIGN_LIBRARY_MODE_QUERY_PARAM = "mode";
 export const DESIGN_LIBRARY_REQUEST_ID_QUERY_PARAM = "requestId";
 export const DESIGN_LIBRARY_DESIGN_ID_QUERY_PARAM = "designId";
@@ -30,6 +31,8 @@ export interface DesignLibraryUrlFilters {
   archived?: boolean;
   categoryId?: string;
   mode?: DesignLibraryMode;
+  /** `true` ⇒ show only designs with `companionSetIncomplete === true` ("Needs Companion"). */
+  needsCompanion?: boolean;
   requestId?: string;
   search?: string;
   tags?: string[];
@@ -58,7 +61,7 @@ export function parseDesignLibraryTagsParam(value: string | null): string[] {
   return [...uniqueTags].sort((left, right) => left.localeCompare(right));
 }
 
-export function parseDesignLibraryArchivedParam(value: string | null): boolean {
+function parseBooleanUrlParam(value: string | null): boolean {
   if (!value) {
     return false;
   }
@@ -66,6 +69,15 @@ export function parseDesignLibraryArchivedParam(value: string | null): boolean {
   const normalizedValue = value.trim().toLowerCase();
 
   return normalizedValue === "1" || normalizedValue === "true" || normalizedValue === "yes";
+}
+
+export function parseDesignLibraryArchivedParam(value: string | null): boolean {
+  return parseBooleanUrlParam(value);
+}
+
+/** Parses the `needsCompanion` URL param the same way as `archived` (true/1/yes). */
+export function parseDesignLibraryNeedsCompanionParam(value: string | null): boolean {
+  return parseBooleanUrlParam(value);
 }
 
 export function parseDesignLibraryUrlFilters(searchParams: URLSearchParams): DesignLibraryUrlFilters {
@@ -88,6 +100,9 @@ export function parseDesignLibraryUrlFilters(searchParams: URLSearchParams): Des
     archived: parseDesignLibraryArchivedParam(searchParams.get(DESIGN_LIBRARY_ARCHIVED_QUERY_PARAM)),
     categoryId: categoryId || undefined,
     mode: mode === "request-selection" ? "request-selection" : "browse",
+    needsCompanion: parseDesignLibraryNeedsCompanionParam(
+      searchParams.get(DESIGN_LIBRARY_NEEDS_COMPANION_QUERY_PARAM),
+    ),
     requestId: requestId || undefined,
     search: searchParams.get(DESIGN_LIBRARY_SEARCH_QUERY_PARAM)?.trim() || undefined,
     tags: tagsFromQuery.length > 0 ? tagsFromQuery : undefined,
@@ -134,6 +149,10 @@ export function buildDesignLibrarySearchParams(
 
   if (filters.archived) {
     searchParams.set(DESIGN_LIBRARY_ARCHIVED_QUERY_PARAM, "true");
+  }
+
+  if (filters.needsCompanion) {
+    searchParams.set(DESIGN_LIBRARY_NEEDS_COMPANION_QUERY_PARAM, "true");
   }
   if (filters.designId?.trim()) searchParams.set(DESIGN_LIBRARY_DESIGN_ID_QUERY_PARAM, filters.designId.trim());
 

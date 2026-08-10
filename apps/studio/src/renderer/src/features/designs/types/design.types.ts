@@ -2,10 +2,12 @@ import type { Timestamp } from "firebase/firestore";
 
 import type { PrintSizeSource } from "@fresh-prints/shared/types/printSize/printSize.types";
 import type { DesignAiAnalysis, DesignAiSuggestions, AiProcessingStage } from "@fresh-prints/shared/types/ai/aiProcessing.types";
+import type { ArtworkPlacement } from "@fresh-prints/shared/constants/design/artworkPlacement.constants";
 import type { AiReviewStatus } from "./aiReview.types";
 import type { DesignStatus } from "./designStatus.types";
 
 export type { PrintSizeSource } from "@fresh-prints/shared/types/printSize/printSize.types";
+export type { ArtworkPlacement } from "@fresh-prints/shared/constants/design/artworkPlacement.constants";
 
 export interface Design {
   id: string;
@@ -22,6 +24,12 @@ export interface Design {
    * Missing → Portal/Studio artwork grey `#e5e7eb`.
    */
   artworkBackgroundHex?: string;
+  /**
+   * Optional staff-managed artwork garment placement (display label "Placement").
+   * Missing → Unspecified. Allowlisted values only; unknown/legacy strings map to undefined on
+   * read — see `parseArtworkPlacement`. No migration/backfill.
+   */
+  artworkPlacement?: ArtworkPlacement;
   /** Pixel width from the source PNG IHDR chunk. */
   width?: number;
   /** Pixel height from the source PNG IHDR chunk. */
@@ -63,6 +71,39 @@ export interface Design {
   halftoneDetection?: import("@fresh-prints/shared/types/halftone/halftone.types").HalftoneDetectionPersisted;
   halftoneSubmitterResponse?: import("@fresh-prints/shared/types/halftone/halftone.types").HalftoneSubmitterResponsePersisted;
   halftoneStaffDecision?: import("@fresh-prints/shared/types/halftone/halftone.types").HalftoneStaffDecisionPersisted;
+  /**
+   * @deprecated Legacy transitive `companionSets/{id}` pointer, replaced 2026-08-09 by pairwise
+   * `companionDesignIds`. No longer written for new links; healed (deleted) on the next pairwise
+   * link/unlink touch to this design. Ignored for status/matching — use `companionDesignIds`.
+   */
+  companionSetId?: string;
+  /**
+   * Direct companion neighbor IDs only (no transitive closure) — the pairwise, non-transitive
+   * replacement for the old `companionSetId` group pointer. Symmetric: if `b` appears here on
+   * design `a`, `a` appears on design `b`. Bounded to 50 entries. Managed exclusively by
+   * `companionSetService` (transaction writes directly on this document) — never through
+   * `updateDesign`.
+   */
+  companionDesignIds?: string[];
+  /**
+   * Staff working-queue flag ("Needs Companion"). **Unlinked-only**: `true` means staff is still
+   * waiting to link this design and it has no companion neighbors (`companionDesignIds` empty).
+   * Cleared as soon as the design gets its first link — see `companionSetService.linkDesign` —
+   * and never auto-raised on unlink. A design with any neighbor is always "Linked", regardless
+   * of this flag. Managed exclusively by `companionSetService`. Never customer-facing.
+   */
+  companionSetIncomplete?: boolean;
+  /**
+   * Staff-only human classification ("Explicit Content" in Studio, "Censored Content" in
+   * Portal). Missing/undefined ⇒ not explicit. AI must not set this field.
+   */
+  isExplicitContent?: boolean;
+  /**
+   * Staff-entered words/phrases to mask in Portal title/description while Censored mode is on
+   * and `isExplicitContent` is true. Missing/empty = no text masking. Kept if Explicit is later
+   * turned off (inactive until Explicit is on again). Does not alter stored title/description.
+   */
+  censoredTerms?: string[];
   queueCount: number;
   requestCount?: number;
   showAddCount?: number;
@@ -171,12 +212,18 @@ export type UpdateDesignInput = Partial<
     | "printSizeSource"
     | "requestedByCustomerId"
     | "halftoneStaffDecision"
+    | "isExplicitContent"
+    | "censoredTerms"
   >
 > & {
   /**
    * Set a normalized `#rrggbb`, or `null` / `""` to clear (default grey).
    */
   artworkBackgroundHex?: string | null;
+  /**
+   * Set an allowlisted placement, or `null` to clear (Unspecified).
+   */
+  artworkPlacement?: ArtworkPlacement | null;
 };
 
 /**

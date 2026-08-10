@@ -1,5 +1,20 @@
 # Recent Completed Work
 
+## 2026-08-10 - Prelaunch companion + censored DEV COMPLETE (prod promote gated)
+
+Owner **`DEV PLACEMENT SUGGESTION QA: PASS`** + full-goal DEV QA COMPLETE.
+Signoff **approved_with_notes**: `docs/workflow/reviews/2026-08-10-prelaunch-companion-designs-and-censored-content-signoff.md`
+Promotion plan ready (no prod mutation): `docs/workflow/plans/2026-08-10-prelaunch-companion-censored-production-promotion-plan.md`
+Checkpoint: await `APPROVE PROD PROMOTE: PRELAUNCH COMPANION CENSORED`
+
+## 2026-08-09 - Production customer smoke COMPLETE — READY FOR CUSTOMERS
+
+Owner **`PROD CUSTOMER SMOKE QA: PASS`**. Hosted.app Stage 2 smoke closed.
+Verdict: **READY FOR CUSTOMERS**. Signoff approved.
+Cutover blocked until **`APPROVE MYPRINTREQUEST.COM CUTOVER`**.
+Signoff: `docs/workflow/reviews/2026-08-09-production-customer-smoke-test-signoff.md`
+
+
 ## 2026-08-09 - Final release artifact recovery COMPLETE (PR #51)
 
 Signoff **approved**. Development `c7f01d5` contains recovery commits; production `f5c0bdb` ⊂ development.

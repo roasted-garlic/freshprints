@@ -157,6 +157,13 @@ export function AccountArtworkGallery({
 
       <CatalogDesignDetailsModal
         canAddPrints={addDesignFlow.canAddPrints}
+        currentRequestQuantity={
+          selectedDesign === null
+            ? 0
+            : (currentRequestAggregates.primaryQuantityByDesignId[selectedDesign.id] ??
+              currentRequestAggregates.quantityByDesignId[selectedDesign.id] ??
+              0)
+        }
         design={selectedDesign}
         exhaustedHelperText={addDesignFlow.exhaustedHelperText}
         exhaustedStatusText={addDesignFlow.exhaustedStatusText}
@@ -168,6 +175,8 @@ export function AccountArtworkGallery({
         isOpen={selectedDesign !== null}
         onAddToRequest={addDesignFlow.addDesign}
         onClose={() => setSelectedDesign(null)}
+        onQuantityChange={addDesignFlow.setQuantity}
+        onRemoveFromRequest={addDesignFlow.removeDesign}
       />
 
       <PortalConfirmModal

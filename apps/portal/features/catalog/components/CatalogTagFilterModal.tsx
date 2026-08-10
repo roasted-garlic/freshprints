@@ -11,6 +11,7 @@ import {
   sortCatalogTags,
   visibleSelectedTags,
 } from '../utils/catalogSearch';
+import { buildFeaturedTagPills } from '../utils/featuredCatalogTags';
 
 import { CheckIcon, XIcon } from '../../shared/components/PortalIcons';
 
@@ -42,6 +43,7 @@ export function CatalogTagFilterModal({
   const [draftSelectedTags, setDraftSelectedTags] = useState<string[]>(selectedTags);
   const [narrowedTags, setNarrowedTags] = useState<CatalogTagOption[] | null>(null);
   const [narrowError, setNarrowError] = useState<string | null>(null);
+  const [featuredTagNames, setFeaturedTagNames] = useState<string[]>([]);
   const narrowGenerationRef = useRef(0);
 
   useEffect(() => {
@@ -52,6 +54,28 @@ export function CatalogTagFilterModal({
     setSearchQuery('');
     setDraftSelectedTags(selectedTags);
   }, [isOpen, selectedTags]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    let isCancelled = false;
+    void catalogService
+      .listFeaturedApprovedTags()
+      .then((featured) => {
+        if (isCancelled) return;
+        setFeaturedTagNames(featured.map((tag) => tag.name));
+      })
+      .catch(() => {
+        if (isCancelled) return;
+        setFeaturedTagNames([]);
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [isOpen]);
 
   const draftTagsForNarrowing = visibleSelectedTags(draftSelectedTags);
   const draftTagsKey = useMemo(
@@ -106,6 +130,15 @@ export function CatalogTagFilterModal({
         ? buildApprovedCatalogTagOptions(activeTagSource, draftSelectedTags, searchQuery)
         : [],
     [activeTagSource, draftSelectedTags, searchQuery],
+  );
+  const featuredPills = useMemo(
+    () =>
+      buildFeaturedTagPills({
+        featuredTagNames,
+        facetedTags,
+        searchQuery,
+      }),
+    [facetedTags, featuredTagNames, searchQuery],
   );
   const isNarrowLoading = isOpen && narrowedTags === null && !narrowError;
   const visibleDraftTagCount = countVisibleSelectedTags(draftSelectedTags);
@@ -170,26 +203,52 @@ export function CatalogTagFilterModal({
             </p>
           ) : isNarrowLoading ? (
             <p className="design-library-tag-filter-empty">Updating tags…</p>
-          ) : facetedTags.length === 0 ? (
+          ) : facetedTags.length === 0 && featuredPills.length === 0 ? (
             <p className="design-library-tag-filter-empty">No tags match your search.</p>
           ) : (
-            <div aria-label="Tag filters" className="design-library-tag-filter-list" role="group">
-              {facetedTags.map((facetedTag) => (
-                <label className="form-checkbox" key={facetedTag.tag}>
-                  <input
-                    checked={facetedTag.isSelected}
-                    onChange={() => toggleTag(facetedTag.tag)}
-                    type="checkbox"
-                  />
-                  <span>
-                    {facetedTag.tag}
-                    {typeof facetedTag.count === 'number' ? (
-                      <span className="tag-filter-option-count"> ({facetedTag.count})</span>
-                    ) : null}
-                  </span>
-                </label>
-              ))}
-            </div>
+            <>
+              {featuredPills.length > 0 ? (
+                <div aria-label="Featured tags" className="tag-filter-featured">
+                  <p className="tag-filter-featured-label">Featured</p>
+                  <div className="tag-filter-featured-pills" role="group">
+                    {featuredPills.map((pill) => (
+                      <button
+                        aria-pressed={pill.isSelected}
+                        className={`tag-filter-featured-pill${pill.isSelected ? ' is-selected' : ''}`}
+                        key={`featured-${pill.tag}`}
+                        onClick={() => toggleTag(pill.tag)}
+                        type="button"
+                      >
+                        <span className="tag-filter-featured-pill-name">{pill.tag}</span>
+                        {typeof pill.count === 'number' ? (
+                          <span className="tag-filter-featured-pill-count">{pill.count}</span>
+                        ) : null}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              {facetedTags.length > 0 ? (
+                <div aria-label="Tag filters" className="design-library-tag-filter-list" role="group">
+                  {facetedTags.map((facetedTag) => (
+                    <label className="form-checkbox" key={facetedTag.tag}>
+                      <input
+                        checked={facetedTag.isSelected}
+                        onChange={() => toggleTag(facetedTag.tag)}
+                        type="checkbox"
+                      />
+                      <span>
+                        {facetedTag.tag}
+                        {typeof facetedTag.count === 'number' ? (
+                          <span className="tag-filter-option-count"> ({facetedTag.count})</span>
+                        ) : null}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              ) : null}
+            </>
           )}
         </div>
 
@@ -222,12 +281,7 @@ export function CatalogTagFilterModal({
             type="button"
           >
             <CheckIcon size={14} />
-            <span className="tag-filter-action-label tag-filter-action-label-short">
-              Apply{visibleDraftTagCount > 0 ? ` (${visibleDraftTagCount})` : ''}
-            </span>
-            <span className="tag-filter-action-label tag-filter-action-label-full">
-              Apply tags{visibleDraftTagCount > 0 ? ` (${visibleDraftTagCount})` : ''}
-            </span>
+            Apply{visibleDraftTagCount > 0 ? ` (${visibleDraftTagCount})` : ''}
           </button>
         </footer>
       </div>

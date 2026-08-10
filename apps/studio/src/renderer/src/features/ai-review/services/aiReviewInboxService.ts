@@ -1,4 +1,7 @@
+import { syncHalftoneTagInList } from "@fresh-prints/shared/utils/halftoneReviewState";
+
 import { catalogApprovalService } from "../../designs/services/catalogApprovalService";
+import { companionSetService } from "../../designs/services/companionSetService";
 import { designService } from "../../designs/services/designService";
 import type { Design } from "../../designs/types/design.types";
 import type { DesignListPage, DesignListQuery } from "../../designs/types/designQuery.types";
@@ -12,7 +15,6 @@ import type { User } from "../../users/types/user.types";
 import { buildAiReviewInboxListQuery } from "../constants/aiReviewInboxConstants";
 import { aiEnrichmentEnqueueService } from "./aiEnrichmentEnqueueService";
 import type { AiReviewDraftForm, AiReviewInboxFilters } from "../types/aiReviewInbox.types";
-import { syncHalftoneTagInList } from "@fresh-prints/shared/utils/halftoneReviewState";
 
 function assertCanApproveInbox(caller: User): void {
   if (!permissionService.canApproveDesignForCatalog(caller)) {
@@ -74,12 +76,19 @@ export const aiReviewInboxService = {
       categoryId: draft.categoryId.trim() || undefined,
       tags,
       artworkBackgroundHex: artworkBackgroundHex ?? null,
+      isExplicitContent: draft.isExplicitContent,
+      censoredTerms: parseTagsInput(draft.censoredTermsInput),
       halftoneStaffDecision: {
         value: draft.markAsHalftone,
         decidedBy: caller.id,
         isExplicitOverride: true,
       },
     });
+
+    if (draft.expectsCompanions) {
+      // Staff working-queue flag only — never creates or infers companion-set membership.
+      await companionSetService.markNeedsCompanion(caller, designId);
+    }
 
     return catalogApprovalService.approveDesignForCatalog(caller, designId, draftUpdated);
   },

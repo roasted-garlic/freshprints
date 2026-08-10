@@ -359,10 +359,13 @@ resilience helpers). The Stage 5 script remains **dev-only** with **no** product
 Live prod dry-run / delete require separate owner phrases. Storage Rules on prod already deny
 generated public reads (Gate 2).
 
-**Managed search (Stage 1b Algolia):** Portal uses `NEXT_PUBLIC_USE_ALGOLIA_CATALOG_SEARCH` + public
-search-only env; Functions sync/reconcile use Secret Manager admin key
-(`ALGOLIA_ADMIN_API_KEY` via `functions/src/algolia/algoliaSecrets.ts` — **not** shared
-`lib/secrets`). Index records are not an authorization boundary.
+**Managed search (Stage 1b / Stage 4 Algolia):** Portal Algolia catalog search is **on by
+default** when public search-only env vars are present (`NEXT_PUBLIC_ALGOLIA_APP_ID`,
+`NEXT_PUBLIC_ALGOLIA_SEARCH_API_KEY`, `NEXT_PUBLIC_ALGOLIA_INDEX_NAME`). Set
+`NEXT_PUBLIC_USE_ALGOLIA_CATALOG_SEARCH=false` only as an emergency kill-switch. Functions
+sync/reconcile use Secret Manager admin key (`ALGOLIA_ADMIN_API_KEY` via
+`functions/src/algolia/algoliaSecrets.ts` — **not** shared `lib/secrets`). Index records are
+not an authorization boundary.
 
 **Optional Algolia discovery coupling (ADR-FP-129):** While Algolia is OFF, the Algolia Function
 trio is **not** exported from default `functions/src/index.ts` (restore via

@@ -3,17 +3,23 @@
 import { useState } from 'react';
 
 import type { CatalogDesign } from '../types/catalog.types';
+import { useExplicitContentPreference } from '../hooks/useExplicitContentPreference';
+import { resolvePortalDesignDisplayFields } from '../utils/portalCensoredDesignText';
 import { buildPortalDesignShareUrl } from '../utils/portalDesignShareUrls';
 import { ShareIcon } from '../../shared/components/PortalIcons';
 import { usePortalToast } from '../../shared/context/PortalToastContext';
 
-async function shareDesignLink(design: CatalogDesign): Promise<'shared' | 'copied'> {
+async function shareDesignLink(
+  design: CatalogDesign,
+  showExplicitContent: boolean,
+): Promise<'shared' | 'copied'> {
   const url = buildPortalDesignShareUrl(design.id);
+  const { title } = resolvePortalDesignDisplayFields(design, showExplicitContent);
   // Prefer title + URL so messengers show the link preview (OG title/image) instead of
   // pasting the long description as the only visible content.
   const shareData: ShareData = {
-    title: design.title,
-    text: design.title,
+    title,
+    text: title,
     url,
   };
 
@@ -46,10 +52,12 @@ export function CatalogDesignShareButton({
 }: CatalogDesignShareButtonProps) {
   const [isSharing, setIsSharing] = useState(false);
   const { showSuccess, showError } = usePortalToast();
+  const { showExplicitContent } = useExplicitContentPreference();
+  const { title: displayTitle } = resolvePortalDesignDisplayFields(design, showExplicitContent);
 
   return (
     <button
-      aria-label={`Share ${design.title}`}
+      aria-label={`Share ${displayTitle}`}
       className={
         variant === 'labeled'
           ? `portal-button portal-button-secondary portal-button-sm portal-button-leading-icon design-details-share-btn ${className}`.trim()
@@ -62,7 +70,7 @@ export function CatalogDesignShareButton({
         void (async () => {
           setIsSharing(true);
           try {
-            const result = await shareDesignLink(design);
+            const result = await shareDesignLink(design, showExplicitContent);
             if (result === 'copied') {
               showSuccess('Link copied');
             }

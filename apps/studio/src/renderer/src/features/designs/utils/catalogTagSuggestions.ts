@@ -45,9 +45,10 @@ export function buildCatalogTagSuggestions(
       }
     };
 
-    // Empty query lists everything (rank by name); otherwise require a match on name or alias.
+    // Empty query lists approved tags with featured first (autocomplete caps at MAX_TAG_SUGGESTIONS).
+    // Typed queries keep name/alias match ranking so search still feels predictable.
     if (!normalizedQuery) {
-      consider({ name: tag.name, rank: 2 });
+      consider({ name: tag.name, rank: tag.isFeatured === true ? 0 : 2 });
     } else {
       if (nameLower.startsWith(normalizedQuery)) {
         consider({ name: tag.name, rank: 0 });

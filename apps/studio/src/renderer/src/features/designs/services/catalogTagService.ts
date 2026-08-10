@@ -1,4 +1,5 @@
 import {
+  deleteField,
   doc,
   type DocumentData,
   getDoc,
@@ -94,6 +95,7 @@ interface CatalogTagDocumentData {
   aliases?: unknown;
   preferredWhen?: unknown;
   status?: unknown;
+  isFeatured?: unknown;
   createdBy?: unknown;
   updatedBy?: unknown;
   createdAt?: unknown;
@@ -122,6 +124,7 @@ function mapCatalogTagDocument(tagId: string, data: CatalogTagDocumentData): Cat
     aliases: data.aliases.filter((alias): alias is string => typeof alias === "string"),
     preferredWhen: data.preferredWhen,
     status: data.status,
+    ...(data.isFeatured === true ? { isFeatured: true } : {}),
     createdBy: typeof data.createdBy === "string" ? data.createdBy : "",
     updatedBy:
       typeof data.updatedBy === "string"
@@ -135,7 +138,13 @@ function mapCatalogTagDocument(tagId: string, data: CatalogTagDocumentData): Cat
 }
 
 function sortCatalogTags(tags: readonly CatalogTag[]): CatalogTag[] {
-  return [...tags].sort((left, right) => left.name.localeCompare(right.name));
+  return [...tags].sort((left, right) => {
+    const featuredDelta = Number(Boolean(right.isFeatured)) - Number(Boolean(left.isFeatured));
+    if (featuredDelta !== 0) {
+      return featuredDelta;
+    }
+    return left.name.localeCompare(right.name);
+  });
 }
 
 function buildTagListFilterConstraints(options: CatalogTagListOptions = {}): QueryConstraint[] {
@@ -256,6 +265,7 @@ export const catalogTagService = {
             aliases: normalizedInput.aliases,
             preferredWhen: normalizedInput.preferredWhen,
             status: "approved",
+            ...(input.isFeatured === true ? { isFeatured: true } : {}),
             createdBy: caller.id,
             updatedBy: caller.id,
             createdAt: serverTimestamp(),
@@ -317,6 +327,7 @@ export const catalogTagService = {
         aliases: normalizedInput.aliases,
         preferredWhen: normalizedInput.preferredWhen,
         status: "approved",
+        ...(input.isFeatured === true ? { isFeatured: true } : {}),
         createdBy: caller.id,
         updatedBy: caller.id,
         createdAt: serverTimestamp(),
@@ -367,7 +378,7 @@ export const catalogTagService = {
 
       assertCatalogTagAvailable(normalizedInput, existingTags, tagId);
 
-      const updatePayload = withoutUndefinedFields({
+      const updatePayload: Record<string, unknown> = withoutUndefinedFields({
         name: normalizedInput.name,
         aliases: normalizedInput.aliases,
         preferredWhen: normalizedInput.preferredWhen,
@@ -376,10 +387,20 @@ export const catalogTagService = {
         updatedBy: caller.id,
       });
 
+      if (input.isFeatured === true) {
+        updatePayload.isFeatured = true;
+      } else if (input.isFeatured === false) {
+        updatePayload.isFeatured = deleteField();
+      }
+
       assertNoUndefinedFirestoreFields(updatePayload, "Tag update payload");
       await runTracedWrite(
         "updateDoc",
-        () => updateDoc(doc(firestoreCollectionService.getTagsCollection(), tagId), updatePayload),
+        () =>
+          updateDoc(
+            doc(firestoreCollectionService.getTagsCollection(), tagId),
+            updatePayload,
+          ),
         {
           app: "studio",
           collection: "tags",

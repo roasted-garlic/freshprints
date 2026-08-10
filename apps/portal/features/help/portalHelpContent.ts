@@ -1,8 +1,10 @@
 import type { PortalHelpTextFaq, PortalHelpVideoItem } from '@fresh-prints/shared/constants/portal/portalHelpSettings.constants'
 import {
   PORTAL_HELP_INTRO,
+  PORTAL_HELP_INTRO_FAQ_ONLY,
   PORTAL_HELP_PAGE_DESCRIPTION,
   PORTAL_HELP_PAGE_TITLE,
+  PORTAL_HELP_PAGE_TITLE_FAQ_ONLY,
   PORTAL_HELP_PATH,
 } from '@fresh-prints/shared/constants/portal/portalHelpSettings.constants'
 
@@ -10,7 +12,8 @@ import {
  * Bundled fallback FAQ content when Firestore `settings/portalHelp` is missing
  * or the saved `faqs` list is empty.
  * Live edits live in Studio Settings (ADR-FP-118).
- * Empty `videos` do **not** fall back here — Portal shows a Coming soon state instead.
+ * Empty `videos` do **not** fall back here — Portal hides the How To section until
+ * at least one video is published in Studio Settings.
  */
 
 export type PortalTextFaq = PortalHelpTextFaq
@@ -27,10 +30,33 @@ export type PortalVideoFaq = {
 
 export {
   PORTAL_HELP_INTRO,
+  PORTAL_HELP_INTRO_FAQ_ONLY,
   PORTAL_HELP_PAGE_DESCRIPTION,
   PORTAL_HELP_PAGE_TITLE,
+  PORTAL_HELP_PAGE_TITLE_FAQ_ONLY,
   PORTAL_HELP_PATH,
 }
+
+/**
+ * Stand-alone About panel on `/help` (not Studio-editable; not an FAQ accordion).
+ * Explains purpose without repeating limits/quotas from the FAQ below.
+ */
+export const PORTAL_HELP_ABOUT_EYEBROW = 'About this portal'
+
+export const PORTAL_HELP_ABOUT_TITLE = 'What is myprintrequest.com?'
+
+export const PORTAL_HELP_ABOUT_PARAGRAPHS: readonly string[] = [
+  'myprintrequest.com is the Fresh Prints Whatnot customer portal — the place to browse the design library and tell Fresh Prints which prints you want for yourself on an upcoming show (live shopping).',
+  'A print request is your list of designs and quantities for that show. Browsing the catalog does not buy anything by itself. When you are ready, you add designs to a request and assign that request to a show so Fresh Prints can prepare your prints.',
+  'You can look around as a guest. Sign in when you want to build a print request, upload your own artwork, use Custom Designs, Donate Designs, or manage your account.',
+]
+
+/** Callout emphasized separately from body paragraphs. */
+export const PORTAL_HELP_ABOUT_HIGHLIGHT =
+  'Print requests are for you — not suggestions for other shoppers. Only request designs and quantities you expect to buy yourself. Do not submit requests just to fill up the show or because you think someone else might want them.'
+
+export const PORTAL_HELP_ABOUT_FOOTNOTE =
+  'Need to know about limits, step-by-step how-tos, Donate Designs, Custom Designs, or account details? Those answers are in the FAQ below.'
 
 export const PORTAL_TEXT_FAQS: PortalTextFaq[] = [
   {
