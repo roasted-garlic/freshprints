@@ -9,7 +9,6 @@ describe('CatalogCompanionSuggestionModal', () => {
   );
   const home = readFileSync('apps/portal/features/catalog/pages/CatalogHomePageContent.tsx', 'utf8');
   const library = readFileSync('apps/portal/features/catalog/pages/CatalogPageContent.tsx', 'utf8');
-  const css = readFileSync('apps/portal/styles/catalog.css', 'utf8');
 
   it('renders as a fixed dialog overlay, not an inline page banner', () => {
     assert.match(modal, /role="dialog"/);

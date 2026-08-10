@@ -1017,6 +1017,21 @@ Manual only — `.github/workflows/studio-release.yml`'s `workflow_dispatch` wit
 automatic publish. A `stable` release_type is refused by the workflow itself unless `ref` is exactly
 `production` or a commit already reachable from `origin/production`.
 
+### Release gates and draft `target_commitish` (2026-08-10)
+
+Lint, Functions build, Portal typecheck, and Studio updater unit tests each run as **separate**
+workflow steps so any non-zero exit fails the job immediately. Do not recombine them into one
+PowerShell `run:` block — Windows PowerShell does not fail-fast across successive `npm` commands,
+which previously allowed a lint failure to continue into packaging (observed on the first
+`1.0.2` draft attempt).
+
+After electron-builder creates/updates the draft GitHub Release, the workflow **PATCHes** that
+draft's `target_commitish` to `git rev-parse HEAD` (the checked-out build SHA). electron-builder
+24.x does not send `target_commitish` on create, so GitHub would otherwise default the draft to the
+repository default branch; `GITHUB_SHA` on `workflow_dispatch` is also the workflow-file branch tip,
+not the `inputs.ref` checkout. Do not publish a stable draft whose `target_commitish` is not the
+exact production SHA that was built.
+
 ### Human approval gate before any release is publicly visible
 
 `npm run build -- --publish always` (invoked by the workflow) always creates the GitHub Release as
