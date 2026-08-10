@@ -4,6 +4,143 @@
 
 ---
 
+### ADR-FP-133: Companion designs are pairwise (non-transitive) links, replacing transitive sets
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-08-09 |
+| Status | accepted (Implement on fresh-prints-dev) |
+| Related | Supersedes ADR-FP-131/132 membership model; Plan `2026-08-09-pairwise-companion-links-and-censored-label-plan.md` |
+
+**Context**
+
+Owner requirement: Matching Designs must be **explicit links only**, never transitive. Under
+the old `companionSets` clique model, linking Front B → Back D when D was already linked to
+Front A incorrectly put A, B, and D in one set, so A wrongly matched B/C. Designs already
+linked elsewhere must remain linkable to additional partners (true many-to-many), just never
+transitively.
+
+**Decision**
+
+1. Replace `companionSets` + `designs.companionSetId` (product path) with canonical pairwise
+   edges `companionLinks/{minId_maxId}` (`designIds: [string, string]`, staff-only) plus a
+   symmetric `designs.companionDesignIds: string[]` denorm (direct neighbors only, ≤ 50).
+2. `linkDesign(a, b)` / `unlinkPair(a, b)` operate on exactly one edge; a design's matches are
+   only its own `companionDesignIds` — never transitive/clique.
+3. Needs Companion semantics from ADR-FP-132 are preserved, keyed on `companionDesignIds`
+   emptiness instead of `companionSetId` presence.
+4. Any pairwise write heals (deletes) a stale legacy `companionSetId` on that design in the same
+   transaction, so staff UI never shows mixed old/new signals.
+5. Portal batch-hydrates a design's own `companionDesignIds`, keeps `status == "ready"` only,
+   and never reads `companionLinks` or walks beyond direct neighbors.
+6. **No automatic migration** converts old `companionSets` clique membership into pairwise
+   edges — intent is unknowable from group membership alone. Old DEV `companionSets` docs and
+   any stale `companionSetId` are left for manual staff cleanup.
+7. Algolia schema untouched.
+
+**Consequences**
+
+- Supersedes ADR-FP-131/132 for the product companion-matching path; Needs Companion queue
+  rules from ADR-FP-132 carry forward unchanged in spirit.
+- Portal Matching Designs no longer requires (or reads) `companionSetId` — see
+  `docs/architecture/DATA_MODEL.md` § Companion Design Links.
+- `companionSetService` keeps its module name with a rewritten pairwise API (`linkDesign`,
+  `unlinkPair`, `markNeedsCompanion`, `clearNeedsCompanionUnlinked`, `listLinkedDesigns`);
+  `setCompanionSetComplete` is a throwing stub (no group completion state exists in the pairwise
+  model).
+
+### ADR-FP-132: Needs Companion is unlinked working-queue only; sets only via explicit Link
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-08-09 |
+| Status | accepted (Implement on fresh-prints-dev) |
+| Related | Amends ADR-FP-131; Plans `…-waiting-queue-vs-link-membership-amendment-plan.md`, `…-final-prelaunch-ux-companion-censor-amendment-plan.md` |
+
+**Context**
+
+Owner QA: Needs Companion must not create singleton sets; later clarified it is **only** for designs with **zero** linked companions (not set-level incomplete).
+
+**Decision**
+
+1. `companionSetIncomplete === true` = staff unlinked working-queue only (no `companionSetId`).
+2. First/any successful Link clears the queue flag on all members of the resulting set.
+3. Linked designs cannot Mark Needs Companion; no set-level Needs Companion / Mark Complete UX in MVP.
+4. Dissolve never auto-raises Needs Companion.
+5. Keep field name `companionSetIncomplete` (no rename/migration). Soft-deprecate `companionSets.complete` for queue UX.
+6. Studio: dedicated Companion Designs modal; searchable Link picker; live member refresh after link/unlink.
+7. Portal: list uses Click to view → Details; Details is sole Click to reveal; request/cart surfaces show artwork without censor overlay.
+
+**Consequences**
+
+- Supersedes ADR-FP-131 singleton-on-expect and earlier “linked incomplete set” queue semantics.
+- **Superseded by ADR-FP-133** for the underlying membership model: Portal Matching designs now
+  require direct pairwise `companionDesignIds` neighbors, not `companionSetId`. The unlinked
+  working-queue rules in this ADR carry forward unchanged.
+
+### ADR-FP-131: Companion sets + Explicit/Censored Content (pre-cutover)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-08-09 |
+| Status | accepted (partially superseded by ADR-FP-132 for expect→singleton) |
+| Related | Goal #13 pre-cutover; Plan `2026-08-09-prelaunch-companion-designs-and-censored-content-plan.md` |
+
+**Context**
+
+Owner requested companion design sets (arbitrary N) and Explicit Content / Portal Censored Content before `myprintrequest.com` cutover. Stage 2 smoke already PASS on hosted.app.
+
+**Decision**
+
+1. Central `companionSets` collection + denorm `companionSetId` / `companionSetIncomplete` on designs (Option A). Staff-only set reads.
+2. Optional `isExplicitContent` on designs; missing ⇒ false; no backfill; human classification only.
+3. Portal censor preference via localStorage (`fresh-prints-portal-show-explicit-content`), theme-style — not Firestore prefs.
+4. Algolia schema unchanged for MVP; Portal hydrates explicit/companion fields from Firestore after search IDs.
+5. Generic OG library rotation excludes explicit designs; direct design share OG keeps real artwork.
+
+**Consequences**
+
+- Rules + indexes required (`companionSets`; `designs` companionSetId+status).
+- Functions: `getPortalGlobalOpenGraph` filter only.
+- Domain cutover remains separately gated.
+- **Amended:** singleton-on-expect superseded by ADR-FP-132.
+
+---
+### ADR-FP-130: Production generated Storage cleanup — separate prod-pinned ops script
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-08-08 |
+| Status | accepted (source Implement); live dry-run / delete pending owner phrases |
+| Related | PR #40 remaining production gates — Gate 6; ADR-FP-127 |
+| Plan | `docs/workflow/plans/2026-08-08-prod-storage-cleanup-plan.md` |
+
+**Context**
+
+Stage 5 cleanup tooling is hard-pinned to `fresh-prints-dev` with no production escape hatch
+(ADR-FP-127). On `fresh-prints-prod`, Portal Stage 4 is live, Storage Rules already deny generated
+public reads, and publisher Functions are deleted — but residual generated Storage objects and
+`snapshotPublicationState` docs remain.
+
+**Decision**
+
+1. Do **not** unlock Stage 5 for production.
+2. Add a separate local Admin SDK ops script
+   `functions/scripts/prod-generated-asset-cleanup.mjs` hard-pinned to `fresh-prints-prod`, with the
+   same Storage prefix + Firestore collection allowlists, dry-run default, and APPLY resilience
+   reused from Stage 5 helpers.
+3. Destructive APPLY requires `APPLY=1` **and** `CONFIRM_PROD_STORAGE_CLEANUP=1`.
+4. No deployed cleanup callable. No Rules redeploy in this gate (already complete on prod).
+5. Live dry-run / delete require separate owner phrases after Implement.
+
+**Consequences**
+
+- Prod and dev cleanup tooling stay isolated project pins.
+- Storage object loss after APPLY is accepted (Portal browse does not depend on generated assets).
+- Objects are not auto-restored; publishers remain retired.
+
+---
+
 ### ADR-FP-129: Optional Algolia admin secret must not couple unrelated Functions discovery
 
 | Field | Value |
@@ -152,6 +289,12 @@ Algolia was off.
 
 - After live delete: design writes no longer trigger portal-catalog full publications.
 - Rollback = redeploy prior Functions revision (Storage objects may still exist until Stage 5).
+
+**Amendment (2026-08-10):** Portal Algolia catalog search is the **default** managed-search feature
+when search-only credentials are present. `NEXT_PUBLIC_USE_ALGOLIA_CATALOG_SEARCH` is no longer an
+opt-in (`=== 'true'`); it is an emergency kill-switch only (`=== 'false'`). Unset / any other value
+keeps Algolia ON. Typed search / multi-tag still fail closed when credentials are missing or the
+kill-switch is set.
 
 ---
 
@@ -4749,7 +4892,7 @@ and review-tab re-runs now reset the design back to Processing.
 | Date | 2026-06-25 |
 | Status | accepted |
 
-**Context**  
+**Context**
 Vision AI receives designs composited on neutral grey analysis canvas (`prepareAiAnalysisImage`). Models described "gray background" in catalog copy. Skeleton/skull art produced morbid tags (`death`, `skull`) unsuitable for apparel search.
 
 **Decision**
@@ -4759,7 +4902,7 @@ Vision AI receives designs composited on neutral grey analysis canvas (`prepareA
 3. Maintainable **`AI_TAG_EXCLUSIONS`** in `aiTagExclusions.ts` — injected into prompt and filtered in `normalizeAiTags` (exact token match).
 4. Titles/descriptions may still mention skull when accurate; **tags** must avoid exclusion list.
 
-**Consequences**  
+**Consequences**
 Functions redeploy required. Exclusion list changes require code deploy until future settings UI.
 
 ---
@@ -4771,7 +4914,7 @@ Functions redeploy required. Exclusion list changes require code deploy until fu
 | Date | 2026-06-25 |
 | Status | accepted |
 
-**Context**  
+**Context**
 GPT-5 nano snapshots are reasoning models. `max_completion_tokens: 600` counted hidden reasoning tokens; HTTP 200 responses often had empty `message.content` while gpt-4o-mini worked with `max_tokens: 550`.
 
 **Decision**
@@ -4781,7 +4924,7 @@ GPT-5 nano snapshots are reasoning models. `max_completion_tokens: 600` counted 
 3. Empty content: log `openai.empty_content` with usage/reasoning breakdown; user-safe error; `openai_empty_output` or `openai_token_budget_exhausted`.
 4. Keep dated nano allowlist and Settings model switch — do not revert to gpt-4o-mini in this phase.
 
-**Consequences**  
+**Consequences**
 Higher per-request token cap vs prior 600; lower reasoning waste vs default effort. Functions redeploy required.
 
 ---
@@ -4793,7 +4936,7 @@ Higher per-request token cap vs prior 600; lower reasoning waste vs default effo
 | Date | 2026-06-25 |
 | Status | accepted |
 
-**Context**  
+**Context**
 Staff need to A/B test speed vs accuracy between two dated nano snapshots without code deploys.
 
 **Decision**
@@ -4803,7 +4946,7 @@ Staff need to A/B test speed vs accuracy between two dated nano snapshots withou
 3. **AI Processing** shows read-only active model label for all staff; per-design `aiSuggestions.model` records the model used.
 4. No model switch on Processing action bar; no API keys in settings.
 
-**Consequences**  
+**Consequences**
 Functions + Firestore rules deploy required. Helpers see active model on AI Processing but cannot change it.
 
 ---
@@ -4815,7 +4958,7 @@ Functions + Firestore rules deploy required. Helpers see active model on AI Proc
 | Date | 2026-06-25 |
 | Status | accepted |
 
-**Context**  
+**Context**
 After switching to `gpt-5.4-nano`, OpenAI returned HTTP 400 because Chat Completions for GPT-5 family reject `max_tokens` (requires `max_completion_tokens`). Error bodies were discarded, showing only "status 400" in UI. Sequential one-at-a-time queue made bulk **Retry All Failed** redundant.
 
 **Decision**
@@ -4824,7 +4967,7 @@ After switching to `gpt-5.4-nano`, OpenAI returned HTTP 400 because Chat Complet
 2. Parse OpenAI `error.message` on failure; persist in `aiSuggestions.errorMessage`; map HTTP 400 to `openai_invalid_request`.
 3. Remove **Retry All Failed** from Processing tab; keep **Retry AI Processing** for the selected failed design only.
 
-**Consequences**  
+**Consequences**
 Functions redeploy required. Operators see actionable OpenAI errors when requests fail.
 
 ---
@@ -4836,7 +4979,7 @@ Functions redeploy required. Operators see actionable OpenAI errors when request
 | Date | 2026-06-25 |
 | Status | accepted |
 
-**Context**  
+**Context**
 High-volume catalog AI processing (~1024×1024 preview WebP). Staff pricing analysis: `gpt-5.4-nano` is ~5× cheaper per image than `gpt-4o-mini` for this workload; `gpt-5.4-mini` remains a higher-quality fallback for a future escalation tier.
 
 **Decision**
@@ -4845,7 +4988,7 @@ High-volume catalog AI processing (~1024×1024 preview WebP). Staff pricing anal
 2. Keep prompt **`catalog-enrich-openai-v8`** unless QA shows regression.
 3. **No auto-escalation** to mini in this phase — manual ADR if quality gaps require it.
 
-**Consequences**  
+**Consequences**
 Functions redeploy required. Compare Needs Review output vs prior `gpt-4o-mini` runs on diverse designs before production signoff.
 
 ---
@@ -4915,7 +5058,7 @@ Import → AI starts on each ready design without waiting for the full batch, wi
 | Status | accepted |
 | Deciders | Product owner + architecture review |
 
-**Context**  
+**Context**
 Production QA: text-only designs titled `"Text"` despite correct descriptions; 61-design batch left Processing tab with PENDING/FAILED mix.
 
 **Decision**
@@ -4927,9 +5070,9 @@ Production QA: text-only designs titled `"Text"` despite correct descriptions; 6
 5. **Stale recovery**: re-enqueue when active `aiProcessingStage` unchanged >10 minutes.
 6. **UX**: batch import surfaces enqueue failures; Processing tab **Retry All Failed** (owner/admin).
 
-**Consequences**  
-- Positive: Meaningful text-only titles; fewer silent enqueue failures; self-throttling on rate limits  
-- Trade-off: Higher concurrent OpenAI usage during large batches; requires functions deploy  
+**Consequences**
+- Positive: Meaningful text-only titles; fewer silent enqueue failures; self-throttling on rate limits
+- Trade-off: Higher concurrent OpenAI usage during large batches; requires functions deploy
 
 ---
 
@@ -4941,7 +5084,7 @@ Production QA: text-only designs titled `"Text"` despite correct descriptions; 6
 | Status | accepted |
 | Deciders | Product owner (managed phase) |
 
-**Context**  
+**Context**
 Staff hit the 200 MB ZIP cap and needed headroom for large print PNGs during batch import (Select Images, Select ZIP, Select folder).
 
 **Decision**
@@ -4954,10 +5097,10 @@ Staff hit the 200 MB ZIP cap and needed headroom for large print PNGs during bat
 
 ZIP extraction continues entry-by-entry (streamed); cumulative extract budget is the guard. `MAX_BATCH_FILES`, `MAX_FOLDER_ZIPS`, and `MAX_NESTED_ZIP_DEPTH` unchanged. Error messages use `shared/utils/importLimitMessages.ts`. `storage.rules` must be deployed to Firebase before uploads above the prior 50 MB cap succeed in production.
 
-**Consequences**  
-- Positive: Real-world archives import without silent folder ZIP skips at 200 MB  
-- Trade-off: Higher peak renderer memory (~300 MB with `UPLOAD_CONCURRENCY=2`); larger temp extract disk use up to 10 GB per ZIP job  
-- Security: Zip-slip, compression ratio, and entry count limits unchanged  
+**Consequences**
+- Positive: Real-world archives import without silent folder ZIP skips at 200 MB
+- Trade-off: Higher peak renderer memory (~300 MB with `UPLOAD_CONCURRENCY=2`); larger temp extract disk use up to 10 GB per ZIP job
+- Security: Zip-slip, compression ratio, and entry count limits unchanged
 
 ---
 
@@ -4969,7 +5112,7 @@ ZIP extraction continues entry-by-entry (streamed); cumulative extract budget is
 | Status | accepted |
 | Deciders | Architecture review (Phase 5 refinement) |
 
-**Context**  
+**Context**
 Phase 4 separated Design Library (approved catalog) from operational import workflow. Phase 5 architecture needed final simplification before implementation: queue naming, automatic AI, review drafts, confidence routing, and approval UX.
 
 **Decision**
@@ -4982,12 +5125,12 @@ Phase 4 separated Design Library (approved catalog) from operational import work
 6. **Confidence informational only:** No auto-routing or auto-publish based on confidence scores.
 7. **AI version tracking from day one:** `provider`, `model`, `promptVersion`, `generatedAt` on `aiSuggestions`.
 
-**Consequences**  
-- Positive: Simpler schema; predictable queue flow; faster review UX; maintainable Phase 5 implementation  
-- Trade-off: Form state lost on hard refresh unless optional sessionStorage (5E)  
+**Consequences**
+- Positive: Simpler schema; predictable queue flow; faster review UX; maintainable Phase 5 implementation
+- Trade-off: Form state lost on hard refresh unless optional sessionStorage (5E)
 - References: `docs/workflow/plans/phase-5-ai-review-architecture-plan.md`, `docs/workflow/reviews/phase-5-ai-review-architecture-review.md`
 
-**Clarification (2026-07-12 — Customer Uploads)**  
+**Clarification (2026-07-12 — Customer Uploads)**
 ADR-FP-009’s three workspaces remain the **design catalog lifecycle**. **Customer Uploads** (`/customer-uploads`) is an **operational intake queue** for Portal request artwork (similar in role to Print Requests), not a fourth design-lifecycle workspace. Staff may **hand off** eligible uploads to AI Processing via promote; Imports remains the staff local-file import path.
 ---
 
@@ -4999,10 +5142,10 @@ ADR-FP-009’s three workspaces remain the **design catalog lifecycle**. **Custo
 | Status | accepted |
 | Deciders | Project team |
 
-**Context**  
+**Context**
 ADR-FP-007 established two applications and no native mobile, but documentation used inconsistent terms (Desktop Admin App, Customer Web Portal, Customer Website, etc.).
 
-**Decision**  
+**Decision**
 Official product names:
 
 1. **Fresh Prints Studio** — Electron desktop; staff only (owner, admin, helper).
@@ -5010,9 +5153,9 @@ Official product names:
 
 Fresh Prints Portal is the permanent mobile solution. Optional PWA install is still the Portal, not a third app. All future roadmap planning assumes only these two applications unless a future ADR changes this.
 
-**Consequences**  
-- Positive: Stable vocabulary; clear staff vs customer branding  
-- Follow-ups: Active docs updated; historical signoffs unchanged; code routes/folders not renamed by this ADR  
+**Consequences**
+- Positive: Stable vocabulary; clear staff vs customer branding
+- Follow-ups: Active docs updated; historical signoffs unchanged; code routes/folders not renamed by this ADR
 - Full record: `docs/architecture/ADR-Application-Platform-Strategy.md`
 
 ---
@@ -5025,16 +5168,16 @@ Fresh Prints Portal is the permanent mobile solution. Optional PWA install is st
 | Status | accepted (naming superseded by ADR-FP-008) |
 | Deciders | Project team |
 
-**Context**  
+**Context**
 Documentation referenced a future standalone mobile application alongside staff desktop and customer web surfaces.
 
-**Decision**  
+**Decision**
 Fresh Prints consists of **two applications only**. No native iOS, Android, React Native, Flutter, Xamarin, or MAUI application. Responsive web is the permanent mobile strategy.
 
 Official names: see **ADR-FP-008** (Fresh Prints Studio, Fresh Prints Portal).
 
-**Consequences**  
-- Positive: Clear scope; shared Firebase backend; no duplicate mobile codebase  
+**Consequences**
+- Positive: Clear scope; shared Firebase backend; no duplicate mobile codebase
 - References: `docs/architecture/ADR-Application-Platform-Strategy.md`, ADR-FP-006
 
 ---
@@ -5047,22 +5190,22 @@ Official names: see **ADR-FP-008** (Fresh Prints Studio, Fresh Prints Portal).
 | Status | accepted |
 | Deciders | Project team (manual workflow review) |
 
-**Context**  
+**Context**
 Phase 4A and earlier roadmap docs conflated design catalog lifecycle with production queue status, treated customer requests as order-like workflows, and positioned AI review filters in Design Library. Manual review clarified Fresh Prints is a design catalog and print planning system — not ecommerce, shipping, fulfillment, or order payment.
 
-**Decision**  
-1. **Design Library** = approved catalog browse only (search, category, tags, archived toggle).  
-2. **AI Review** = import enrichment queue (Phase 5); sidebar + import navigation in Phase 4 cleanup.  
-3. **Print Request / Print Run** = production planning on items, not designs (Phases 6–7).  
-4. **Custom Request** = separate Q&A + Etsy referral + optional design fee (Phase 9).  
-5. **Fresh Prints Portal** = mobile-first responsive web only; `role: customer` does not access Fresh Prints Studio (Phase 8).  
+**Decision**
+1. **Design Library** = approved catalog browse only (search, category, tags, archived toggle).
+2. **AI Review** = import enrichment queue (Phase 5); sidebar + import navigation in Phase 4 cleanup.
+3. **Print Request / Print Run** = production planning on items, not designs (Phases 6–7).
+4. **Custom Request** = separate Q&A + Etsy referral + optional design fee (Phase 9).
+5. **Fresh Prints Portal** = mobile-first responsive web only; `role: customer` does not access Fresh Prints Studio (Phase 8).
 6. Renumber roadmap phases 4–10 per `docs/workflow/reviews/roadmap-realignment-review.md`.
 
 **Resolved (2026-06-24 cleanup planning):** OD-5 Design Library defaults to `ready` only — **yes**. OD-6 AI Review as dedicated sidebar — **yes**.
 
-**Consequences**  
-- Positive: Clear entity boundaries; Phase 4A search/filter mostly reusable  
-- Follow-ups: Phase 4 cleanup (remove status/AI filters from library); Phase 5–10 plans per new sequence  
+**Consequences**
+- Positive: Clear entity boundaries; Phase 4A search/filter mostly reusable
+- Follow-ups: Phase 4 cleanup (remove status/AI filters from library); Phase 5–10 plans per new sequence
 - References: `docs/workflow/plans/customer-print-request-and-print-run-architecture-plan.md`
 
 ---
@@ -5075,14 +5218,14 @@ Phase 4A and earlier roadmap docs conflated design catalog lifecycle with produc
 | Status | accepted |
 | Deciders | Project team |
 
-**Context**  
+**Context**
 Fresh Prints adopted the AppForge workflow starter. Documentation needed a stable layout separating project docs from workflow artifacts.
 
-**Decision**  
+**Decision**
 Use `docs/project/`, `docs/architecture/`, `docs/standards/`, `docs/intake/`, and `docs/workflow/{plans,reviews,setup}/`. Keep `docs/AI_RULES.md` and `docs/WORKFLOWS.md` at docs root.
 
-**Consequences**  
-- Positive: Managed phase, intake, and bootstrap workflows align with AppForge  
+**Consequences**
+- Positive: Managed phase, intake, and bootstrap workflows align with AppForge
 - Follow-ups: Historical phase docs may retain old paths (acceptable as archive)
 
 ---
@@ -5095,14 +5238,14 @@ Use `docs/project/`, `docs/architecture/`, `docs/standards/`, `docs/intake/`, an
 | Status | accepted |
 | Deciders | Phase 3C signoff |
 
-**Context**  
+**Context**
 Thumbnail/preview generation requires native image processing (`sharp`). Renderer must not perform filesystem or native processing.
 
-**Decision**  
+**Decision**
 Generate WebP derivatives in `electron/` main process; upload via renderer Firebase services.
 
-**Consequences**  
-- Positive: Layer boundaries preserved  
+**Consequences**
+- Positive: Layer boundaries preserved
 - Negative: Native module build complexity on Windows dev machines
 
 ---
@@ -5114,7 +5257,7 @@ Generate WebP derivatives in `electron/` main process; upload via renderer Fireb
 | Date | `[INFERRED]` early foundation |
 | Status | accepted |
 
-**Decision**  
+**Decision**
 Use Firebase Auth, Firestore, Storage, and Cloud Functions as the only production backend. No separate REST API for core operations.
 
 ---
@@ -5126,7 +5269,7 @@ Use Firebase Auth, Firestore, Storage, and Cloud Functions as the only productio
 | Date | `[INFERRED]` Phase 1 |
 | Status | accepted |
 
-**Decision**  
+**Decision**
 Organize React code under `src/renderer/src/features/{domain}/` with `components/`, `hooks/`, `services/`, `types/`, `pages/`.
 
 ---
@@ -5138,7 +5281,7 @@ Organize React code under `src/renderer/src/features/{domain}/` with `components
 | Date | `[INFERRED]` project start |
 | Status | accepted (product naming superseded by ADR-FP-008) |
 
-**Decision**  
+**Decision**
 Build the operational staff application as Electron desktop first (**now: Fresh Prints Studio**); customer surface as responsive web (**now: Fresh Prints Portal**), sharing Firebase and `shared/` types.
 
 ---

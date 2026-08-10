@@ -18,6 +18,7 @@ import { CatalogDesignIssueReportModal } from '../components/CatalogDesignIssueR
 import { CatalogPreviewLightbox } from '../components/CatalogPreviewLightbox';
 import { CatalogThumbnailPanel } from '../components/CatalogThumbnailPanel';
 import { useCatalogDerivativeUrl } from '../hooks/useCatalogDerivativeUrl';
+import { usePortalCensoredDesignText } from '../utils/portalCensoredDesignText';
 import { ArrowLeftIcon, PlusIcon } from '../../shared/components/PortalIcons';
 import { PortalConfirmModal } from '../../shared/components/PortalConfirmModal';
 import { PortalPickContinuableRequestModal } from '../../shared/components/PortalPickContinuableRequestModal';
@@ -61,6 +62,7 @@ export function ShareDesignPortalPageContent({
   const [isLoading, setIsLoading] = useState(true);
   const [isPreviewLightboxOpen, setIsPreviewLightboxOpen] = useState(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [sessionRevealed, setSessionRevealed] = useState(false);
   const reportTriggerRef = useRef<HTMLButtonElement>(null);
   const [previewBgHex, setPreviewBgHex] = useState(() =>
     resolveArtworkBackgroundHex(undefined),
@@ -68,6 +70,7 @@ export function ShareDesignPortalPageContent({
 
   useEffect(() => {
     let cancelled = false;
+    setSessionRevealed(false);
 
     if (!isValidPortalDesignShareId(designId)) {
       setDesign(null);
@@ -85,9 +88,9 @@ export function ShareDesignPortalPageContent({
         if (cancelled) {
           return;
         }
-        const next = designs[0] ?? null;
-        setDesign(next);
-        if (!next) {
+                const next = designs[0] ?? null;
+                setDesign(next);
+                if (!next) {
           setLoadError('This design is not available in the public catalog.');
         } else {
           setPreviewBgHex(resolveArtworkBackgroundHex(next.artworkBackgroundHex));
@@ -126,6 +129,16 @@ export function ShareDesignPortalPageContent({
     design?.description?.trim() ||
     initialMeta?.description ||
     '—';
+  const { title: displayTitle, description: displayDescription } = usePortalCensoredDesignText(
+    design ?? {
+      title,
+      description,
+      isExplicitContent: false,
+    },
+    { sessionRevealed },
+  );
+  const visibleTitle = design ? displayTitle : title;
+  const visibleDescription = design ? displayDescription : description;
   const tags = design?.tags?.length ? design.tags : (initialMeta?.tags ?? []);
   const previewPath = design?.previewPath ?? design?.thumbnailPath;
   const { url: previewUrl } = useCatalogDerivativeUrl(previewPath, design?.updatedAtMs);
@@ -203,7 +216,7 @@ export function ShareDesignPortalPageContent({
             <ArrowLeftIcon />
             Discover
           </button>
-          <h1>{title}</h1>
+          <h1>{visibleTitle}</h1>
           {categoryName ? (
             <p className="portal-muted portal-catalog-topbar-subtitle">Category: {categoryName}</p>
           ) : (
@@ -222,16 +235,20 @@ export function ShareDesignPortalPageContent({
         >
           {design ? (
             <CatalogThumbnailPanel
-              alt={`${title} preview`}
+              alt={`${visibleTitle} preview`}
               artworkBackgroundHex={previewBgHex}
               catalogPath={previewPath}
               className="design-details-hero-media"
               contentVersion={design.updatedAtMs}
               fallbackLabel="Preview unavailable"
               interactive
+              isExplicitContent={design.isExplicitContent}
               loadingLabel="Loading preview"
               onImageClick={() => setIsPreviewLightboxOpen(true)}
+              onReveal={() => setSessionRevealed(true)}
               prioritizeLoading
+              revealMode="session"
+              sessionRevealed={sessionRevealed}
             />
           ) : initialMeta?.imageUrl ? (
             <img
@@ -261,7 +278,7 @@ export function ShareDesignPortalPageContent({
                   <CatalogFavoriteButton
                     className="design-details-favorite-btn"
                     designId={design.id}
-                    designTitle={design.title}
+                    designTitle={visibleTitle}
                   />
                 ) : null}
               </div>
@@ -289,7 +306,7 @@ export function ShareDesignPortalPageContent({
 
           <section className="design-details-section">
             <h3>Description</h3>
-            <p className="design-details-description">{description}</p>
+            <p className="design-details-description">{visibleDescription}</p>
           </section>
 
           <section className="design-details-section">
@@ -316,11 +333,14 @@ export function ShareDesignPortalPageContent({
       </div>
 
       <CatalogPreviewLightbox
-        alt={title}
+        alt={visibleTitle}
         artworkBackgroundHex={previewBgHex}
+        isExplicitContent={design?.isExplicitContent}
         isOpen={isPreviewLightboxOpen}
         onClose={() => setIsPreviewLightboxOpen(false)}
+        onReveal={() => setSessionRevealed(true)}
         previewUrl={previewUrl}
+        sessionRevealed={sessionRevealed}
       />
 
       {design ? <CatalogDesignIssueReportModal designId={design.id} isOpen={isReportModalOpen} onClose={() => { setIsReportModalOpen(false); window.requestAnimationFrame(() => reportTriggerRef.current?.focus()); }} /> : null}

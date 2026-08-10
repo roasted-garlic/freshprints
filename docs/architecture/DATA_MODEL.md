@@ -291,6 +291,16 @@ export interface Design {
    */
   artworkBackgroundHex?: string;
 
+  /**
+   * Optional staff-managed artwork garment placement (display label "Placement", 2026-08-10).
+   * Missing → "Unspecified". Allowlisted values only (`front`, `back`, `front_back`, `pocket`,
+   * `sleeve`); unknown/legacy strings map to undefined on read — no migration/backfill. Edited
+   * via `designService.updateDesign` (Edit Design form and, per-member, the Companion Designs
+   * panel) — never through the companion-link denorm path. Portal shows it as a presentation-
+   * only badge (never a catalog filter/facet or Algolia attribute).
+   */
+  artworkPlacement?: ArtworkPlacement;
+
   width?: number;
   height?: number;
 
@@ -314,6 +324,42 @@ export interface Design {
 
   /** Present when promoted from a Portal customer upload (Sub-phase E). */
   sourceCustomerUploadId?: string;
+
+  /**
+   * Direct pairwise companion neighbor IDs (catalog metadata only; non-transitive — see
+   * "Companion Design Links" below). Denormalized by `companionSetService` from the canonical
+   * `companionLinks/{minId_maxId}` edges; never alters catalog lifecycle status. Portal
+   * discovers ready peers by batch-hydrating these IDs and keeping `status == "ready"`, and
+   * never reads `companionLinks`.
+   */
+  companionDesignIds?: string[];
+
+  /**
+   * @deprecated Legacy transitive group pointer, replaced 2026-08-09 by `companionDesignIds`.
+   * `companionSetService` heals (deletes) this field on any pairwise write it makes to a design.
+   * No product code reads it.
+   */
+  companionSetId?: string;
+
+  /**
+   * Denormalized Needs Companion flag. **Unlinked-only**: `true` means staff is waiting to link
+   * this design and it has no `companionDesignIds` neighbors. Cleared on link, never auto-raised
+   * on unlink. A design with any `companionDesignIds` entry is always "Linked" regardless of
+   * this flag. Staff-only discovery (Design Library filter). Not customer-facing.
+   */
+  companionSetIncomplete?: boolean;
+
+  /**
+   * Staff Explicit Content classification (human only). Missing/undefined/false ⇒ not explicit.
+   * Portal presents as Censored Content by default. Not access control.
+   */
+  isExplicitContent?: boolean;
+  /**
+   * Staff words/phrases masked in Portal title/description while Censored mode is on and
+   * `isExplicitContent` is true. Missing/empty = no text masking. Kept when Explicit is turned
+   * off (inactive until Explicit is on again). Does not alter stored title/description.
+   */
+  censoredTerms?: string[];
 
   /** @deprecated — use showAddCount (Phase 10) */
   queueCount: number;
@@ -610,6 +656,64 @@ Service-layer normalization rules:
 
 As of 2026-06-30, approved tag definitions live in a global `tags` collection. Design documents still store selected design tags as `designs.tags: string[]`; there is no category-owned tag model and no design tag migration/backfill in this phase.
 
+---
+
+## Companion Design Links (pairwise, 2026-08-09 corrective — supersedes the transitive set model)
+
+Companions are **explicit pairwise (non-transitive) many-to-many edges**, not clique/group
+membership: linking B↔D when D is already linked to A must never make A and B "match". A
+design's matches are only its direct `companionDesignIds` neighbors.
+
+Canonical edge collection: `companionLinks/{linkId}` (staff-only; never customer/public
+readable). `linkId = ${min(a,b)}_${max(a,b)}`, so the doc ID is always derivable from either
+design ID and a duplicate edge can never be created.
+
+```ts
+export interface CompanionLink {
+  id: string;
+  designIds: [string, string]; // exactly two IDs, sorted ascending — same as linkId halves
+  createdBy: string;
+  updatedBy: string;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+```
+
+Denorm on designs (symmetric — written to both sides of an edge in the same transaction):
+
+| Field | Meaning |
+|-------|---------|
+| `companionDesignIds?` | Direct neighbor design IDs only — no transitive closure. Bounded to 50 entries (Rules). |
+| `companionSetIncomplete?` | Staff **Needs Companion** working-queue flag. **Unlinked-only**: `true` only when the design has **no** `companionDesignIds` entries. A design with any neighbor is always "Linked" regardless of this flag. |
+
+Rules (owned exclusively by `companionSetService`):
+- **Needs Companion does not create a link** — queue flag only until staff explicitly links two designs.
+- `linkDesign(a, b)`: rejects `a === b`; if the edge already exists, idempotent no-op; otherwise creates the edge and symmetrically adds each ID to the other's `companionDesignIds`, clearing `companionSetIncomplete` on both.
+- `unlinkPair(a, b)`: idempotent delete of the edge (no-op if absent) and symmetric removal from both `companionDesignIds` arrays. **Never** auto-raises Needs Companion on either side — staff must explicitly mark it again.
+- `markNeedsCompanion` / `clearNeedsCompanionUnlinked` reject outright once a design has any `companionDesignIds` entry — unlink first.
+- Catalog metadata only — never changes design `status` / print-request / production state.
+- Any pairwise write to a design also heals (deletes) a stale legacy `companionSetId` pointer in the same transaction, so staff UI can never see mixed old/new signals.
+- Portal discovers ready companions by batch-hydrating a design's own `companionDesignIds` and keeping `status == "ready"` only — never reads `companionLinks` or the queue flag, and never walks beyond direct neighbors.
+
+**Placement (2026-08-10) is independent of companion links** — `artworkPlacement` (see Design
+Interface above) is plain design metadata, not part of the `companionLinks` edge or the
+`companionDesignIds` denorm. Studio's `CompanionSetPanel` shows a Placement badge and lets staff
+edit it per member card (the anchor design and each neighbor) purely as a convenience while
+browsing companions — the edit calls `designService.updateDesign(caller, memberId, {
+artworkPlacement })` on that member's own document and never touches `companionDesignIds`,
+`companionSetIncomplete`, or `status`.
+
+**Legacy `companionSets/{companionSetId}` (transitive groups) is retired for product behavior.**
+No product code creates, joins, or reads it; no migration converts old set membership into
+pairwise edges (intent is unknowable from clique membership alone). Old DEV `companionSets`
+docs and any stale `companionSetId` on designs are left in place for manual staff cleanup —
+see `CompanionSet` (`@deprecated`) in `companionSet.types.ts`.
+
+See plan `2026-08-09-pairwise-companion-links-and-censored-label-plan.md`, prior amendment plan
+`2026-08-09-companion-waiting-queue-vs-link-membership-amendment-plan.md`, final corrective plan
+`2026-08-09-final-prelaunch-ux-companion-censor-amendment-plan.md`, and ADR-FP-132 (superseded
+by the pairwise model for product behavior).
+
 ```ts
 export type CatalogTagStatus = "approved" | "archived";
 
@@ -619,6 +723,8 @@ export interface CatalogTag {
   aliases: string[];
   preferredWhen: string;
   status: CatalogTagStatus;
+  /** Portal tag-modal featured pill; absent/false = normal. */
+  isFeatured?: boolean;
   createdBy: string;
   updatedBy: string;
   createdAt: Timestamp;

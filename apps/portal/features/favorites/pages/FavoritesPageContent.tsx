@@ -222,6 +222,13 @@ export function FavoritesPageContent() {
 
       <CatalogDesignDetailsModal
         canAddPrints={addDesignFlow.canAddPrints}
+        currentRequestQuantity={
+          selectedDesign === null
+            ? 0
+            : (currentRequestAggregates.primaryQuantityByDesignId[selectedDesign.id] ??
+              currentRequestAggregates.quantityByDesignId[selectedDesign.id] ??
+              0)
+        }
         design={selectedDesign}
         exhaustedHelperText={addDesignFlow.exhaustedHelperText}
         exhaustedStatusText={addDesignFlow.exhaustedStatusText}
@@ -237,6 +244,8 @@ export function FavoritesPageContent() {
         isOpen={selectedDesign !== null}
         onAddToRequest={addDesignFlow.addDesign}
         onClose={() => setSelectedDesign(null)}
+        onQuantityChange={addDesignFlow.setQuantity}
+        onRemoveFromRequest={addDesignFlow.removeDesign}
       />
 
       <PortalConfirmModal

@@ -83,6 +83,15 @@ export function filterDesignsByCategory(designs: Design[], categoryId?: string):
   return designs.filter((design) => design.categoryId === categoryId);
 }
 
+/** "Needs Companion" — `companionSetIncomplete === true` (staff-only denorm on `Design`). */
+export function filterDesignsByNeedsCompanion(designs: Design[], needsCompanionOn: boolean): Design[] {
+  if (!needsCompanionOn) {
+    return designs;
+  }
+
+  return designs.filter((design) => design.companionSetIncomplete === true);
+}
+
 export function sortTagsAlphabetically(tags: string[]): string[] {
   return [...tags].sort((left, right) => left.localeCompare(right, undefined, { sensitivity: "base" }));
 }

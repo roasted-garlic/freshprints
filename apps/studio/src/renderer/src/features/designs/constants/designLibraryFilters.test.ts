@@ -4,7 +4,10 @@ import { describe, it } from "node:test";
 import {
   DESIGN_LIBRARY_DEFAULT_SORT_DIRECTION,
   DESIGN_LIBRARY_DEFAULT_SORT_FIELD,
+  DESIGN_LIBRARY_NEEDS_COMPANION_QUERY_PARAM,
   buildCatalogDesignListQuery,
+  buildDesignLibrarySearchParams,
+  parseDesignLibraryUrlFilters,
 } from "./designLibraryFilters";
 
 describe("buildCatalogDesignListQuery", () => {
@@ -36,5 +39,29 @@ describe("buildCatalogDesignListQuery", () => {
     assert.equal(query.categoryId, "cat-1");
     assert.equal(query.tag, "summer");
     assert.deepEqual(query.statusIn, ["archived"]);
+  });
+});
+
+describe("needsCompanion URL filter", () => {
+  it("defaults to false when the param is absent", () => {
+    const filters = parseDesignLibraryUrlFilters(new URLSearchParams());
+    assert.equal(filters.needsCompanion, false);
+  });
+
+  it("parses true/1/yes values as on", () => {
+    for (const value of ["true", "1", "yes"]) {
+      const filters = parseDesignLibraryUrlFilters(
+        new URLSearchParams({ [DESIGN_LIBRARY_NEEDS_COMPANION_QUERY_PARAM]: value }),
+      );
+      assert.equal(filters.needsCompanion, true, `expected "${value}" to parse as true`);
+    }
+  });
+
+  it("round-trips through buildDesignLibrarySearchParams", () => {
+    const params = buildDesignLibrarySearchParams({ needsCompanion: true });
+    assert.equal(params.get(DESIGN_LIBRARY_NEEDS_COMPANION_QUERY_PARAM), "true");
+
+    const offParams = buildDesignLibrarySearchParams({ needsCompanion: false });
+    assert.equal(offParams.has(DESIGN_LIBRARY_NEEDS_COMPANION_QUERY_PARAM), false);
   });
 });

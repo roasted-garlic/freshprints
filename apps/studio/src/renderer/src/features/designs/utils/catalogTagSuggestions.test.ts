@@ -13,6 +13,7 @@ function tag(input: Partial<CatalogTag> & Pick<CatalogTag, "name">): CatalogTag 
     name: input.name,
     preferredWhen: input.preferredWhen ?? "Use when relevant.",
     status: input.status ?? "approved",
+    ...(input.isFeatured === true ? { isFeatured: true } : {}),
     updatedAt: null,
     updatedBy: "owner",
   };
@@ -62,5 +63,24 @@ describe("buildCatalogTagSuggestions", () => {
       suggestions.map((suggestion) => suggestion.name).sort(),
       ["funny", "mom", "music"],
     );
+  });
+
+  it("ranks featured tags first for an empty query so they appear in the capped suggestion list", () => {
+    const manyTags = [
+      tag({ name: "alpha" }),
+      tag({ name: "bravo" }),
+      tag({ name: "charlie" }),
+      tag({ name: "delta" }),
+      tag({ name: "echo" }),
+      tag({ name: "foxtrot" }),
+      tag({ name: "golf" }),
+      tag({ name: "hotel" }),
+      tag({ name: "india" }),
+      tag({ name: "zebra-featured", isFeatured: true }),
+    ];
+
+    const suggestions = buildCatalogTagSuggestions("", manyTags);
+    assert.equal(suggestions[0]?.name, "zebra-featured");
+    assert.ok(suggestions.some((suggestion) => suggestion.name === "zebra-featured"));
   });
 });

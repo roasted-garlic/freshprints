@@ -11,10 +11,12 @@ interface DesignLibraryFilterControlsProps {
   categoryFilter: string;
   categoryOptions: SelectOption[];
   halftoneFilterOn?: boolean;
+  needsCompanionFilterOn?: boolean;
   showArchivedToggle?: boolean;
   onCategoryChange: (value: string) => void;
   onArchivedChange?: (checked: boolean) => void;
   onHalftoneFilterChange?: (on: boolean) => void;
+  onNeedsCompanionFilterChange?: (on: boolean) => void;
   onOpenTags: () => void;
   onSearchChange: (value: string) => void;
   searchQuery: string;
@@ -31,10 +33,12 @@ export function DesignLibraryFilterControls({
   categoryFilter,
   categoryOptions,
   halftoneFilterOn = false,
+  needsCompanionFilterOn = false,
   showArchivedToggle = false,
   onArchivedChange,
   onCategoryChange,
   onHalftoneFilterChange,
+  onNeedsCompanionFilterChange,
   onOpenTags,
   onSearchChange,
   searchQuery,
@@ -68,6 +72,15 @@ export function DesignLibraryFilterControls({
           name="designLibraryHalftoneFilter"
           onChange={onHalftoneFilterChange}
           tone="success"
+        />
+      ) : null}
+
+      {onNeedsCompanionFilterChange ? (
+        <Toggle
+          checked={needsCompanionFilterOn}
+          label="Needs Companion"
+          name="designLibraryNeedsCompanionFilter"
+          onChange={onNeedsCompanionFilterChange}
         />
       ) : null}
 

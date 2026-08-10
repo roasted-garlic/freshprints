@@ -15,16 +15,23 @@ import {
 
 import { useAuth } from '../../auth/context/AuthContext';
 import { redirectToPortalLogin } from '../../auth/utils/requirePortalLogin';
+import { catalogService } from '../../catalog/services/catalogService';
 import type { CatalogDesign } from '../../catalog/types/catalog.types';
 import { usePortalToast } from '../../shared/context/PortalToastContext';
 import { usePortalPrintRequests } from '../context/PortalPrintRequestContext';
 import { portalPrintRequestService } from '../services/portalPrintRequestService';
+import { excludeDesignsInWorkingItems } from '../utils/companionSuggestionWorkingItemsFilter';
 import { mapPortalPrintRequestCallableError } from '../utils/mapPortalPrintRequestCallableError';
 import { resolveAddDesignToRequestBranch } from '../utils/resolveAddDesignToRequestBranch';
 import {
   announceCurrentDesignAdded,
   requireCurrentSignedIn,
 } from '../utils/addDesignRuntime';
+
+export interface CatalogCompanionSuggestion {
+  sourceDesign: CatalogDesign;
+  companions: CatalogDesign[];
+}
 
 interface UseAddDesignToRequestFlowOptions {
   continuableRequests: PrintRequest[];
@@ -58,6 +65,8 @@ function toSeedDesignSummary(design: CatalogDesign) {
     printWidthInches: design.printWidthInches,
     printHeightInches: design.printHeightInches,
     updatedAtMs: design.updatedAtMs,
+    isExplicitContent: design.isExplicitContent,
+    companionDesignIds: design.companionDesignIds,
   };
 }
 
@@ -155,10 +164,15 @@ export function useAddDesignToRequestFlow({
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [busyDesignId, setBusyDesignId] = useState<string | null>(null);
+  const [companionSuggestion, setCompanionSuggestion] = useState<CatalogCompanionSuggestion | null>(
+    null,
+  );
   const adjustQuantityRef = useRef<(design: CatalogDesign, delta: 1 | -1) => void>(() => {});
   const firebaseUserRef = useRef(firebaseUser);
   const routerRef = useRef(router);
   const showSuccessRef = useRef(showSuccess);
+  /** Whether the design pending a request-picker choice should announce/suggest once added. */
+  const pendingAddAnnounceRef = useRef(true);
 
   firebaseUserRef.current = firebaseUser;
   routerRef.current = router;
@@ -173,15 +187,67 @@ export function useAddDesignToRequestFlow({
     });
   }, []);
 
-  const announceDesignAdded = useCallback((design: CatalogDesign) => {
-    announceCurrentDesignAdded({
-      title: design.title,
-      showSuccessRef,
-      onUndo: () => {
-        adjustQuantityRef.current(design, -1);
-      },
+  /**
+   * Non-blocking companion suggestion — never auto-added. Failures are swallowed since this
+   * is a presentation-only nudge; the add itself already succeeded by the time this runs.
+   * Companions already in the working Current Request (by design id, regardless of quantity or
+   * size) are excluded so the modal never re-suggests a design the customer just added; if none
+   * remain, the modal does not open at all. No extra Firestore reads — filtered in-memory
+   * against the current working items snapshot.
+   */
+  const suggestMatchingCompanions = useCallback((design: CatalogDesign) => {
+    if (!design.companionDesignIds?.length) {
+      return;
+    }
+    const companionDesignIds = design.companionDesignIds;
+    catalogService
+      .listReadyCompanionDesignsByIds(companionDesignIds, design.id)
+      .then((companions) => {
+        const remaining = excludeDesignsInWorkingItems(companions, workingItemsSnapshotRef.current);
+        if (remaining.length > 0) {
+          setCompanionSuggestion({ sourceDesign: design, companions: remaining });
+        }
+      })
+      .catch(() => {
+        // Non-blocking — a failed lookup simply means no suggestion is shown.
+      });
+  }, []);
+
+  const dismissCompanionSuggestion = useCallback(() => {
+    setCompanionSuggestion(null);
+  }, []);
+
+  /**
+   * Re-filters the currently open companion suggestion against the latest working items after
+   * adding a design directly from that modal — never opens/replaces it with a new suggestion.
+   * Dismisses the modal once no companions remain.
+   */
+  const refreshCompanionSuggestionAfterAdd = useCallback(() => {
+    setCompanionSuggestion((current) => {
+      if (!current) {
+        return current;
+      }
+      const remaining = excludeDesignsInWorkingItems(
+        current.companions,
+        workingItemsSnapshotRef.current,
+      );
+      return remaining.length > 0 ? { ...current, companions: remaining } : null;
     });
   }, []);
+
+  const announceDesignAdded = useCallback(
+    (design: CatalogDesign) => {
+      announceCurrentDesignAdded({
+        title: design.title,
+        showSuccessRef,
+        onUndo: () => {
+          adjustQuantityRef.current(design, -1);
+        },
+      });
+      suggestMatchingCompanions(design);
+    },
+    [suggestMatchingCompanions],
+  );
   const [actionError, setActionError] = useState<string | null>(null);
 
   /** Latest desired primary qty per design (0 = remove). */
@@ -224,6 +290,7 @@ export function useAddDesignToRequestFlow({
     setIsPickerOpen(false);
     setIsConfirmOpen(false);
     setPendingDesign(null);
+    setCompanionSuggestion(null);
   }, []);
 
   const syncWorkingItems = useCallback(async () => {
@@ -418,6 +485,8 @@ export function useAddDesignToRequestFlow({
       announceAdd?: boolean;
       title?: string;
       catalogDesign?: CatalogDesign;
+      /** Fires once on a 0 → in-request transition, regardless of announceAdd. */
+      onAdded?: () => void;
     }) => {
       const previousDesired =
         desiredPrimaryQtyRef.current.get(input.designId) ??
@@ -441,15 +510,18 @@ export function useAddDesignToRequestFlow({
         input.catalogDesign,
       );
 
-      if (input.announceAdd && wasAbsent && nextQuantity >= 1) {
-        const title = input.title ?? input.catalogDesign?.title;
-        if (input.catalogDesign) {
-          announceDesignAdded(input.catalogDesign);
-        } else {
-          showSuccess(
-            title ? `Added “${title}” to your Current Request.` : 'Added to your Current Request.',
-          );
+      if (wasAbsent && nextQuantity >= 1) {
+        if (input.announceAdd) {
+          const title = input.title ?? input.catalogDesign?.title;
+          if (input.catalogDesign) {
+            announceDesignAdded(input.catalogDesign);
+          } else {
+            showSuccess(
+              title ? `Added “${title}” to your Current Request.` : 'Added to your Current Request.',
+            );
+          }
         }
+        input.onAdded?.();
       }
 
       scheduleQuantityFlush(input.designId, input.printRequestId, input.userId);
@@ -465,8 +537,10 @@ export function useAddDesignToRequestFlow({
   );
 
   const adjustQuantity = useCallback(
-    (design: CatalogDesign, delta: 1 | -1) => {
+    (design: CatalogDesign, delta: 1 | -1, options?: { announce?: boolean }) => {
       setActionError(null);
+      // Only add-flows (delta > 0) consult this — decrements never announce/suggest.
+      const announce = options?.announce ?? true;
 
       const branch = resolveBranch();
 
@@ -546,6 +620,8 @@ export function useAddDesignToRequestFlow({
 
       if (branch.kind === 'pick') {
         onBeforeNavigate?.();
+        // confirmPickRequest reads this once the user picks a request to add into.
+        pendingAddAnnounceRef.current = announce;
         setPendingDesign(design);
         setIsPickerOpen(true);
         return;
@@ -574,7 +650,11 @@ export function useAddDesignToRequestFlow({
         );
 
         if (wasAbsent) {
-          announceDesignAdded(design);
+          if (announce) {
+            announceDesignAdded(design);
+          } else {
+            refreshCompanionSuggestionAfterAdd();
+          }
         }
 
         const generation = (qtyGenerationRef.current.get(design.id) ?? 0) + 1;
@@ -616,9 +696,10 @@ export function useAddDesignToRequestFlow({
         nextQuantity: current + 1,
         printRequestId: branch.requestId,
         userId: firebaseUser.uid,
-        announceAdd: true,
+        announceAdd: announce,
         title: design.title,
         catalogDesign: design,
+        onAdded: announce ? undefined : refreshCompanionSuggestionAfterAdd,
       });
     },
     [
@@ -630,6 +711,7 @@ export function useAddDesignToRequestFlow({
       onBeforeNavigate,
       patchItemsAndSnapshot,
       queuePrimaryQuantity,
+      refreshCompanionSuggestionAfterAdd,
       refreshRequests,
       requireSignedIn,
       resolveBranch,
@@ -652,6 +734,18 @@ export function useAddDesignToRequestFlow({
   const addDesign = useCallback(
     (design: CatalogDesign) => {
       adjustQuantity(design, 1);
+    },
+    [adjustQuantity],
+  );
+
+  /**
+   * Adds a companion directly from the open "Matching designs" suggestion modal — same add path
+   * as `addDesign`, but never toasts/announces and never triggers a nested `suggestMatchingCompanions`
+   * lookup. The open suggestion is instead trimmed in place (see `refreshCompanionSuggestionAfterAdd`).
+   */
+  const addDesignFromCompanionSuggestion = useCallback(
+    (design: CatalogDesign) => {
+      adjustQuantity(design, 1, { announce: false });
     },
     [adjustQuantity],
   );
@@ -809,7 +903,11 @@ export function useAddDesignToRequestFlow({
           return refreshRequests({ silent: true });
         })
         .then(() => {
-          announceDesignAdded(design);
+          if (pendingAddAnnounceRef.current) {
+            announceDesignAdded(design);
+          } else {
+            refreshCompanionSuggestionAfterAdd();
+          }
         })
         .catch((error: unknown) => {
           setActionError(mapPortalPrintRequestCallableError(error).message);
@@ -824,6 +922,7 @@ export function useAddDesignToRequestFlow({
       firebaseUser,
       isBusy,
       pendingDesign,
+      refreshCompanionSuggestionAfterAdd,
       refreshRequests,
       requireSignedIn,
     ],
@@ -833,16 +932,21 @@ export function useAddDesignToRequestFlow({
     actionError,
     addingDesignId: busyDesignId,
     addDesign,
+    /** Non-announcing add for the open companion suggestion modal — trims that suggestion in place. */
+    addDesignFromCompanionSuggestion,
     adjustQuantity,
     /** False when the Current Request is full (no room below L). */
     canAddPrints: workingRequestLimit.canAddPrints,
     closeConfirm,
     closePicker,
+    /** Non-blocking "Matching designs available" nudge shown after a successful add — never auto-added. */
+    companionSuggestion,
     confirmAddDesign,
     confirmMessage: pendingDesign
       ? `Add “${pendingDesign.title}” to your Current Request?`
       : 'Add this design to your Current Request?',
     confirmPickRequest,
+    dismissCompanionSuggestion,
     exhaustedHelperText: workingRequestLimit.exhaustedHelperText,
     exhaustedStatusText: workingRequestLimit.exhaustedStatusText,
     isAdding: isBusy,

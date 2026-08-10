@@ -1,0 +1,107 @@
+{
+  "stage": "PR #40 Gate 6 — Prod Generated Asset Cleanup",
+  "projectId": "fresh-prints-prod",
+  "mode": "dry-run",
+  "performedAt": "2026-08-09T00:39:23.365Z",
+  "storageAllowlist": [
+    "generated/portal-catalog/",
+    "generated/catalog-reference/"
+  ],
+  "firestoreAllowlist": [
+    "snapshotPublicationState"
+  ],
+  "storageByPrefix": [
+    {
+      "prefix": "generated/portal-catalog/",
+      "objectCount": 31557,
+      "totalBytes": 34133628,
+      "samplePaths": [
+        "generated/portal-catalog/card-overrides/v193-a479322fd501387f.json",
+        "generated/portal-catalog/manifest.json",
+        "generated/portal-catalog/v1-4f53cda18c2baa0c/discover.json",
+        "generated/portal-catalog/v1-4f53cda18c2baa0c/filters/tags-facet.json",
+        "generated/portal-catalog/v1-4f53cda18c2baa0c/studio/ready-index.json",
+        "generated/portal-catalog/v10-2bb8abcf09d72316/cards/bucket-58.json",
+        "generated/portal-catalog/v10-2bb8abcf09d72316/categories/fUk0KczGkORw9RLxbIBM/page-0.json",
+        "generated/portal-catalog/v10-2bb8abcf09d72316/discover.json",
+        "generated/portal-catalog/v10-2bb8abcf09d72316/filters/categories/fUk0KczGkORw9RLxbIBM.json",
+        "generated/portal-catalog/v10-2bb8abcf09d72316/filters/tags-facet.json",
+        "generated/portal-catalog/v10-2bb8abcf09d72316/filters/tags/funny.json",
+        "generated/portal-catalog/v10-2bb8abcf09d72316/filters/tags/wild.json",
+        "generated/portal-catalog/v10-2bb8abcf09d72316/recent/page-0.json",
+        "generated/portal-catalog/v10-2bb8abcf09d72316/search/shard-a_.json",
+        "generated/portal-catalog/v10-2bb8abcf09d72316/search/shard-ai.json",
+        "generated/portal-catalog/v10-2bb8abcf09d72316/search/shard-an.json",
+        "generated/portal-catalog/v10-2bb8abcf09d72316/search/shard-ap.json",
+        "generated/portal-catalog/v10-2bb8abcf09d72316/search/shard-ar.json",
+        "generated/portal-catalog/v10-2bb8abcf09d72316/search/shard-as.json",
+        "generated/portal-catalog/v10-2bb8abcf09d72316/search/shard-at.json"
+      ]
+    },
+    {
+      "prefix": "generated/catalog-reference/",
+      "objectCount": 229,
+      "totalBytes": 41291849,
+      "samplePaths": [
+        "generated/catalog-reference/ai/v1022-7e03ee6c990f8eac.json",
+        "generated/catalog-reference/ai/v1023-7e03ee6c990f8eac.json",
+        "generated/catalog-reference/ai/v1026-7e03ee6c990f8eac.json",
+        "generated/catalog-reference/ai/v1031-7e03ee6c990f8eac.json",
+        "generated/catalog-reference/ai/v1053-7e03ee6c990f8eac.json",
+        "generated/catalog-reference/ai/v1054-7e03ee6c990f8eac.json",
+        "generated/catalog-reference/ai/v1061-7e03ee6c990f8eac.json",
+        "generated/catalog-reference/ai/v1065-7e03ee6c990f8eac.json",
+        "generated/catalog-reference/ai/v1066-7e03ee6c990f8eac.json",
+        "generated/catalog-reference/ai/v1067-7e03ee6c990f8eac.json",
+        "generated/catalog-reference/ai/v1068-7e03ee6c990f8eac.json",
+        "generated/catalog-reference/ai/v1070-7e03ee6c990f8eac.json",
+        "generated/catalog-reference/ai/v1073-7e03ee6c990f8eac.json",
+        "generated/catalog-reference/ai/v1074-7e03ee6c990f8eac.json",
+        "generated/catalog-reference/ai/v1075-7e03ee6c990f8eac.json",
+        "generated/catalog-reference/ai/v1076-7e03ee6c990f8eac.json",
+        "generated/catalog-reference/ai/v1077-7e03ee6c990f8eac.json",
+        "generated/catalog-reference/ai/v1093-7e03ee6c990f8eac.json",
+        "generated/catalog-reference/ai/v1095-7e03ee6c990f8eac.json",
+        "generated/catalog-reference/ai/v1097-7e03ee6c990f8eac.json"
+      ]
+    }
+  ],
+  "firestore": {
+    "collectionId": "snapshotPublicationState",
+    "documentCount": 2,
+    "sampleIds": [
+      "catalog-reference",
+      "portal-catalog"
+    ]
+  },
+  "negativeRootChecklist": [
+    {
+      "root": "originals/",
+      "targetedForDeletion": false,
+      "note": "Confirmed not in prod Storage cleanup allowlist"
+    },
+    {
+      "root": "thumbnails/",
+      "targetedForDeletion": false,
+      "note": "Confirmed not in prod Storage cleanup allowlist"
+    },
+    {
+      "root": "previews/",
+      "targetedForDeletion": false,
+      "note": "Confirmed not in prod Storage cleanup allowlist"
+    },
+    {
+      "root": "display/",
+      "targetedForDeletion": false,
+      "note": "Confirmed not in prod Storage cleanup allowlist"
+    },
+    {
+      "root": "customer-uploads/",
+      "targetedForDeletion": false,
+      "note": "Confirmed not in prod Storage cleanup allowlist"
+    }
+  ],
+  "otherRootsNote": "Every Storage root outside the two allowlisted generated prefixes is out of scope and was not targeted.",
+  "destructiveActionsPerformed": false,
+  "applyConfirmEnv": "CONFIRM_PROD_STORAGE_CLEANUP"
+}

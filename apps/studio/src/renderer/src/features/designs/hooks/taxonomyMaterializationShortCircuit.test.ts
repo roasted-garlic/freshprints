@@ -26,6 +26,12 @@ describe("Studio taxonomy materialization short-circuit", () => {
     assert.match(hook, /source === "disk-cache" \|\| preferred\.source === "materialization"/);
   });
 
+  it("exposes reloadFromAuthoritativeSource for Tag Management freshness", () => {
+    const hook = read("./useGeneratedDesignLibraryTaxonomy.ts");
+    assert.match(hook, /reloadFromAuthoritativeSource/);
+    assert.match(hook, /clearStudioTaxonomyCaches/);
+  });
+
   it("materialization service reads meta before chunks and short-circuits on revision", () => {
     const service = read("../services/taxonomyMaterializationService.ts");
     assert.match(service, /TAXONOMY_MATERIALIZATION_META_DOC_ID/);

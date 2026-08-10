@@ -96,6 +96,7 @@ describe("createAiReviewDraftFromDesign", () => {
     );
 
     assert.equal(draft.markAsHalftone, false);
+    assert.equal(draft.isExplicitContent, false);
   });
 
   it("initializes from customer yes when no staff decision exists", () => {
@@ -111,6 +112,40 @@ describe("createAiReviewDraftFromDesign", () => {
     );
 
     assert.equal(draft.markAsHalftone, true);
+  });
+
+  it("seeds Explicit Content and expectsCompanions independently of Halftone", () => {
+    const draft = createAiReviewDraftFromDesign(
+      createDesign({
+        isExplicitContent: true,
+        companionSetId: "set-1",
+        companionSetIncomplete: true,
+        halftoneStaffDecision: { value: true },
+        tags: ["halftone", "cow"],
+      }),
+    );
+
+    assert.equal(draft.markAsHalftone, true);
+    assert.equal(draft.isExplicitContent, true);
+    assert.equal(draft.expectsCompanions, true);
+  });
+
+  it("seeds censoredTermsInput from the design document", () => {
+    const draft = createAiReviewDraftFromDesign(
+      createDesign({
+        isExplicitContent: true,
+        censoredTerms: ["fuck", "eat my ass"],
+      }),
+    );
+    assert.equal(draft.censoredTermsInput, "fuck, eat my ass");
+  });
+
+  it("defaults Explicit Content and expectsCompanions to false when unset", () => {
+    const draft = createAiReviewDraftFromDesign(createDesign());
+    assert.equal(draft.isExplicitContent, false);
+    assert.equal(draft.censoredTermsInput, "");
+    assert.equal(draft.expectsCompanions, false);
+    assert.equal(draft.markAsHalftone, false);
   });
 
   it("seeds artwork background from the design document", () => {

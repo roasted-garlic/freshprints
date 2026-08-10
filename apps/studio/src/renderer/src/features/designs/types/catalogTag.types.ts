@@ -15,6 +15,7 @@ export interface CreateCatalogTagInput {
   name: string;
   aliases?: string[];
   preferredWhen: string;
+  isFeatured?: boolean;
 }
 
 export interface UpdateCatalogTagInput {
@@ -22,4 +23,5 @@ export interface UpdateCatalogTagInput {
   aliases?: string[];
   preferredWhen?: string;
   status?: CatalogTagStatus;
+  isFeatured?: boolean;
 }

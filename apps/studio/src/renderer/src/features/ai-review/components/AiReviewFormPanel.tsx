@@ -144,6 +144,60 @@ export function AiReviewFormPanel({
         </p>
       </div>
 
+      <div className="ai-review-halftone-panel">
+        <div className="ai-review-halftone-panel-header">
+          <h4 className="ai-review-halftone-title">Explicit Content</h4>
+          <Toggle
+            checked={draftForm.isExplicitContent}
+            disabled={!canEdit}
+            label="Explicit Content"
+            name="aiReviewExplicitContent"
+            onChange={(value) => onChange("isExplicitContent", value)}
+            tone="accent"
+          />
+        </div>
+        <p className="ai-review-halftone-help">
+          Human classification only. Portal shows censored artwork by default; AI never sets this.
+        </p>
+        {draftForm.isExplicitContent ? (
+          <TagChipInput
+            adjustmentHint="Masked in Portal titles/descriptions while customers are in Censored mode."
+            disabled={!canEdit}
+            label="Words/phrases to censor"
+            name="aiReviewCensoredTerms"
+            onBlur={handleBlur}
+            onChange={(nextValue) => onChange("censoredTermsInput", nextValue)}
+            onFocus={handleFocus}
+            value={draftForm.censoredTermsInput}
+          />
+        ) : null}
+      </div>
+
+      <div className="ai-review-halftone-panel">
+        <div className="ai-review-halftone-panel-header">
+          <h4 className="ai-review-halftone-title">Companion designs</h4>
+          <Toggle
+            checked={draftForm.expectsCompanions}
+            disabled={!canEdit}
+            label="Expects companion design(s)"
+            name="aiReviewExpectsCompanions"
+            onChange={(value) => onChange("expectsCompanions", value)}
+            tone="success"
+          />
+        </div>
+        <div className="ai-review-halftone-evidence-row">
+          {design?.companionSetIncomplete ? (
+            <span className="ai-review-halftone-chip">Needs Companion</span>
+          ) : design?.companionSetId ? (
+            <span className="ai-review-halftone-chip">In companion set</span>
+          ) : null}
+        </div>
+        <p className="ai-review-halftone-help">
+          Marks that matching artwork is expected even if not uploaded yet. Link, unlink, and mark
+          complete in Design Library after approval.
+        </p>
+      </div>
+
       <ArtworkBackgroundFields
         disabled={!canEdit}
         namePrefix="aiReviewArtworkBackground"

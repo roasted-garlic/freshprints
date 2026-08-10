@@ -58,6 +58,11 @@ export function createAiReviewDraftFromDesign(design: Design): AiReviewDraftForm
       staffDecision: design.halftoneStaffDecision,
       submitterResponse: design.halftoneSubmitterResponse,
     }),
+    isExplicitContent: design.isExplicitContent === true,
+    censoredTermsInput: formatTagsInput(design.censoredTerms ?? []),
+    // Queue flag only — a design already linked to a companion set (no queue flag) does not seed
+    // this toggle ON, since "expects companions" here means "waiting to be linked," not "linked."
+    expectsCompanions: design.companionSetIncomplete === true,
     ...mapArtworkBackgroundToForm(design),
   };
 }
@@ -69,6 +74,9 @@ export function isAiReviewDraftDirty(baseline: AiReviewDraftForm, draft: AiRevie
     baseline.categoryId !== draft.categoryId ||
     baseline.tagsInput !== draft.tagsInput ||
     baseline.markAsHalftone !== draft.markAsHalftone ||
+    baseline.isExplicitContent !== draft.isExplicitContent ||
+    baseline.censoredTermsInput !== draft.censoredTermsInput ||
+    baseline.expectsCompanions !== draft.expectsCompanions ||
     baseline.artworkBackgroundPreset !== draft.artworkBackgroundPreset ||
     baseline.artworkBackgroundCustomHex !== draft.artworkBackgroundCustomHex
   );

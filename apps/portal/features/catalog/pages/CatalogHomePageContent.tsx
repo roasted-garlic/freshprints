@@ -24,9 +24,11 @@ import {
 import { PortalConfirmModal } from '../../shared/components/PortalConfirmModal';
 import { PortalPickContinuableRequestModal } from '../../shared/components/PortalPickContinuableRequestModal';
 import { BookSearchIcon, GlobeIcon, SearchIcon } from '../../shared/components/PortalIcons';
+import { CatalogCompanionSuggestionModal } from '../components/CatalogCompanionSuggestionModal';
 import { CatalogDesignDetailsModal } from '../components/CatalogDesignDetailsModal';
 import { CatalogDiscoveryCarousel } from '../components/CatalogDiscoveryCarousel';
 import { CatalogSelectionCard } from '../components/CatalogSelectionCard';
+import { designHasMatchingDesignsHint } from '../services/catalogService';
 import { CATALOG_FIRST_VIEWPORT_EAGER_COUNT, useCatalogHomeDesigns } from '../hooks/useCatalogDesigns';
 import { useCatalogDesignDeepLink } from '../hooks/useCatalogDesignDeepLink';
 
@@ -199,6 +201,17 @@ export function CatalogHomePageContent() {
         </p>
       ) : null}
 
+      {addDesignFlow.companionSuggestion ? (
+        <CatalogCompanionSuggestionModal
+          addingDesignId={addDesignFlow.addingDesignId}
+          canAdd={isAuthenticated && addDesignFlow.canAddPrints}
+          onAdd={addDesignFlow.addDesignFromCompanionSuggestion}
+          onDismiss={addDesignFlow.dismissCompanionSuggestion}
+          onOpenDetails={openDesignDetails}
+          suggestion={addDesignFlow.companionSuggestion}
+        />
+      ) : null}
+
       {isLoading ? (
         <div className="design-library-loading-state">Loading designs…</div>
       ) : homeRails.length === 0 ? (
@@ -242,6 +255,7 @@ export function CatalogHomePageContent() {
                       disabled={addDesignFlow.addingDesignId === design.id}
                       exhaustedHelperText={addDesignFlow.exhaustedHelperText}
                       exhaustedStatusText={addDesignFlow.exhaustedStatusText}
+                      hasMatchingDesigns={designHasMatchingDesignsHint(design)}
                       isSelected={isSelected}
                       onAdd={isAuthenticated ? addDesignFlow.addDesign : undefined}
                       onOpenDetails={openDesignDetails}
@@ -259,7 +273,15 @@ export function CatalogHomePageContent() {
       )}
 
       <CatalogDesignDetailsModal
+        addingDesignId={addDesignFlow.addingDesignId}
         canAddPrints={addDesignFlow.canAddPrints}
+        currentRequestQuantity={
+          selectedDesign === null
+            ? 0
+            : (currentRequestAggregates.primaryQuantityByDesignId[selectedDesign.id] ??
+              currentRequestAggregates.quantityByDesignId[selectedDesign.id] ??
+              0)
+        }
         design={selectedDesign}
         exhaustedHelperText={addDesignFlow.exhaustedHelperText}
         exhaustedStatusText={addDesignFlow.exhaustedStatusText}
@@ -272,8 +294,11 @@ export function CatalogHomePageContent() {
           (currentRequestAggregates.quantityByDesignId[selectedDesign.id] ?? 0) > 0
         }
         isOpen={selectedDesign !== null}
+        onOpenDesign={openDesignDetails}
         onAddToRequest={isAuthenticated ? addDesignFlow.addDesign : undefined}
         onClose={closeDesignDetails}
+        onQuantityChange={isAuthenticated ? addDesignFlow.setQuantity : undefined}
+        onRemoveFromRequest={isAuthenticated ? addDesignFlow.removeDesign : undefined}
       />
 
       <PortalConfirmModal

@@ -11,6 +11,7 @@ import {
   computeFacetedTagsForDraftSelection,
   filterDesignsByAiReviewStatus,
   filterDesignsByCategory,
+  filterDesignsByNeedsCompanion,
   filterDesignsBySearch,
   filterDesignsByTags,
   filterTagsBySearch,
@@ -149,6 +150,29 @@ describe("filterDesignsByCategory", () => {
     ];
 
     const result = filterDesignsByCategory(designs, "camp");
+    assert.deepEqual(result.map((design) => design.id), ["design-1"]);
+  });
+});
+
+describe("filterDesignsByNeedsCompanion", () => {
+  it("returns all designs unchanged when the filter is off", () => {
+    const designs = [
+      createDesign({ id: "design-1", companionSetIncomplete: true }),
+      createDesign({ id: "design-2" }),
+    ];
+
+    const result = filterDesignsByNeedsCompanion(designs, false);
+    assert.deepEqual(result.map((design) => design.id), ["design-1", "design-2"]);
+  });
+
+  it("keeps only designs with companionSetIncomplete === true when the filter is on", () => {
+    const designs = [
+      createDesign({ id: "design-1", companionSetIncomplete: true }),
+      createDesign({ id: "design-2", companionSetId: "set-1", companionSetIncomplete: false }),
+      createDesign({ id: "design-3" }),
+    ];
+
+    const result = filterDesignsByNeedsCompanion(designs, true);
     assert.deepEqual(result.map((design) => design.id), ["design-1"]);
   });
 });

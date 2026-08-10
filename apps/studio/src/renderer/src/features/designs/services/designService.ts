@@ -40,6 +40,7 @@ import {
   isDefaultArtworkBackgroundHex,
   normalizeArtworkBackgroundHex,
 } from "@fresh-prints/shared/constants/design/artworkBackground.constants";
+import { parseArtworkPlacement } from "@fresh-prints/shared/constants/design/artworkPlacement.constants";
 import { isCanonicalDesignStoragePath } from "../constants/designStoragePaths";
 import type { CreateDesignInput, Design, DesignAuthoritySnapshot, UpdateDesignInput } from "../types/design.types";
 import type { AiReviewStateUpdate, CatalogApprovalUpdate } from "../types/aiReview.types";
@@ -227,6 +228,7 @@ interface DesignDocumentData {
   thumbnailPath?: unknown;
   previewPath?: unknown;
   artworkBackgroundHex?: unknown;
+  artworkPlacement?: unknown;
   width?: unknown;
   height?: unknown;
   dpi?: unknown;
@@ -248,6 +250,11 @@ interface DesignDocumentData {
   halftoneDetection?: unknown;
   halftoneSubmitterResponse?: unknown;
   halftoneStaffDecision?: unknown;
+  companionSetId?: unknown;
+  companionDesignIds?: unknown;
+  companionSetIncomplete?: unknown;
+  isExplicitContent?: unknown;
+  censoredTerms?: unknown;
   uploadedBy?: unknown;
   requestedByCustomerId?: unknown;
   queueCount?: unknown;
@@ -307,6 +314,7 @@ function mapDesignDocument(designId: string, data: DesignDocumentData): Design {
     previewPath: typeof data.previewPath === "string" ? data.previewPath : undefined,
     artworkBackgroundHex:
       typeof data.artworkBackgroundHex === "string" ? data.artworkBackgroundHex : undefined,
+    artworkPlacement: parseArtworkPlacement(data.artworkPlacement),
     width: typeof data.width === "number" ? data.width : undefined,
     height: typeof data.height === "number" ? data.height : undefined,
     dpi: typeof data.dpi === "number" ? data.dpi : undefined,
@@ -357,6 +365,19 @@ function mapDesignDocument(designId: string, data: DesignDocumentData): Design {
       data.halftoneStaffDecision && typeof data.halftoneStaffDecision === "object"
         ? (data.halftoneStaffDecision as Design["halftoneStaffDecision"])
         : undefined,
+    companionSetId: typeof data.companionSetId === "string" ? data.companionSetId : undefined,
+    companionDesignIds: Array.isArray(data.companionDesignIds)
+      ? data.companionDesignIds.filter((id): id is string => typeof id === "string")
+      : undefined,
+    companionSetIncomplete:
+      typeof data.companionSetIncomplete === "boolean" ? data.companionSetIncomplete : undefined,
+    isExplicitContent:
+      typeof data.isExplicitContent === "boolean" ? data.isExplicitContent : undefined,
+    censoredTerms: Array.isArray(data.censoredTerms)
+      ? data.censoredTerms.filter(
+          (term): term is string => typeof term === "string" && term.trim().length > 0,
+        )
+      : undefined,
     queueCount,
     aiProcessed,
     aiReviewed,
@@ -967,6 +988,15 @@ export const designService = {
       };
     }
 
+    if (input.isExplicitContent !== undefined) {
+      updatePayload.isExplicitContent = input.isExplicitContent;
+    }
+
+    if (input.censoredTerms !== undefined) {
+      const terms = normalizeDesignTags(input.censoredTerms);
+      updatePayload.censoredTerms = terms.length > 0 ? terms : deleteField();
+    }
+
     if (input.status !== undefined) {
       validateWritableDesignStatus(input.status);
       updatePayload.status = input.status;
@@ -997,6 +1027,18 @@ export const designService = {
         updatePayload.artworkBackgroundHex = isDefaultArtworkBackgroundHex(normalized)
           ? deleteField()
           : normalized;
+      }
+    }
+
+    if (input.artworkPlacement !== undefined) {
+      if (input.artworkPlacement === null) {
+        updatePayload.artworkPlacement = deleteField();
+      } else {
+        const parsed = parseArtworkPlacement(input.artworkPlacement);
+        if (!parsed) {
+          throw new Error("Placement must be a supported artwork placement value.");
+        }
+        updatePayload.artworkPlacement = parsed;
       }
     }
 

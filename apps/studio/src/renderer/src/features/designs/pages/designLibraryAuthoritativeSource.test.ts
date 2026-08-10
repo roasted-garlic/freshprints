@@ -58,9 +58,13 @@ describe("Design Library design-list source is unconditionally Firestore-authori
 
     const refreshCatalogBlock = source.slice(
       source.indexOf("const refreshCatalog = useCallback("),
-      source.indexOf("}, [reloadCategories, reloadDesigns, reloadTags]);") + 60,
+      source.indexOf("}, [includeArchived, reloadCategories, reloadDesigns, reloadDisplayTaxonomy, reloadTags]);") +
+        80,
     );
-    assert.match(refreshCatalogBlock, /await Promise\.all\(\[reloadDesigns\(\), reloadCategories\(\), reloadTags\(\)\]\);/);
+    assert.match(refreshCatalogBlock, /reloadDesigns\(\)/);
+    assert.match(refreshCatalogBlock, /reloadCategories\(\)/);
+    assert.match(refreshCatalogBlock, /reloadTags\(\)/);
+    assert.match(refreshCatalogBlock, /reloadDisplayTaxonomy\(\)/);
     assert.doesNotMatch(
       refreshCatalogBlock,
       /usingGeneratedCatalog\s*\?\s*Promise\.resolve\(\)/,
@@ -76,11 +80,11 @@ describe("Design Library design-list source is unconditionally Firestore-authori
     assert.match(source, /useGeneratedDesignLibraryTaxonomy/);
     assert.match(
       source,
-      /const categories = includeArchived \? firestoreCategories : displayTaxonomy\.categories;/,
+      /const categories = includeArchived \? firestoreCategories : displayCategories;/,
     );
     assert.match(
       source,
-      /const catalogTags = includeArchived \? firestoreCatalogTags : displayTaxonomy\.tags;/,
+      /const catalogTags = includeArchived \? firestoreCatalogTags : displayTags;/,
     );
     assert.doesNotMatch(source, /usingGeneratedCatalog/);
   });

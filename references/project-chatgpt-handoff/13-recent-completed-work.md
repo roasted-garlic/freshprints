@@ -1,5 +1,80 @@
 # Recent Completed Work
 
+## 2026-08-10 - Prelaunch companion + censored DEV COMPLETE (prod promote gated)
+
+Owner **`DEV PLACEMENT SUGGESTION QA: PASS`** + full-goal DEV QA COMPLETE.
+Signoff **approved_with_notes**: `docs/workflow/reviews/2026-08-10-prelaunch-companion-designs-and-censored-content-signoff.md`
+Promotion plan ready (no prod mutation): `docs/workflow/plans/2026-08-10-prelaunch-companion-censored-production-promotion-plan.md`
+Checkpoint: await `APPROVE PROD PROMOTE: PRELAUNCH COMPANION CENSORED`
+
+## 2026-08-09 - Production customer smoke COMPLETE — READY FOR CUSTOMERS
+
+Owner **`PROD CUSTOMER SMOKE QA: PASS`**. Hosted.app Stage 2 smoke closed.
+Verdict: **READY FOR CUSTOMERS**. Signoff approved.
+Cutover blocked until **`APPROVE MYPRINTREQUEST.COM CUTOVER`**.
+Signoff: `docs/workflow/reviews/2026-08-09-production-customer-smoke-test-signoff.md`
+
+
+## 2026-08-09 - Final release artifact recovery COMPLETE (PR #51)
+
+Signoff **approved**. Development `c7f01d5` contains recovery commits; production `f5c0bdb` ⊂ development.
+Remotes development+production only; stash empty; Algolia LIVE unchanged.
+Signoff: `docs/workflow/reviews/2026-08-09-final-release-artifact-recovery-signoff.md`
+
+## 2026-08-09 - Production Algolia Gate C-enable COMPLETE (managed search LIVE)
+
+Signoff **approved_with_notes**. Live 100% `build-2026-08-09-001` @ `f5c0bdb` (PR #49).
+App `Z1FVCM5QUX` / index `portal_catalog_ready_prod` (46 reconciled). Owner QA PASS.
+Deferred: TD-032 catalog filter “Loading your account...” flash.
+Signoff: `docs/workflow/reviews/2026-08-09-prod-algolia-gate-c-enable-signoff.md`
+
+## 2026-08-08 - PR #40 Storage Rules VERIFY PASS + Wave A Taxonomy checkpoint approved
+
+Storage live `ccb8e2ea-…` exact tip match; Portal smoke 200; Algolia OFF.
+Wave A Taxonomy Formal Review **approved** (NO Functions deploy).
+Next: `APPROVE PROD FUNCTIONS WAVE A TAXONOMY`
+Records: `…-prod-storage-rules-deploy-record.md`, `…-prod-functions-wave-a-taxonomy-checkpoint.md`
+
+## 2026-08-08 - PR #40 production Storage Rules deploy AUTHORIZED / hook-blocked
+
+Preflight PASS; agent CLI hook-blocked; live Storage ruleset unchanged `fbcb0ee4-…`.
+Record: `docs/workflow/reviews/2026-08-08-pr-40-prod-storage-rules-deploy-record.md`
+Owner must run Storage deploy then `PROD STORAGE RULES DEPLOY: COMPLETE`.
+
+## 2026-08-08 - PR #40 production Firestore Rules deploy VERIFY PASS
+
+Owner CLI deploy complete; live ruleset `2c0578a0-9764-4081-a5b3-6a5f23795e7d`
+exact tip SHA256 match; markers PASS; Portal smoke 200; Algolia OFF.
+Record: `docs/workflow/reviews/2026-08-08-pr-40-prod-firestore-rules-deploy-record.md`
+Next: `APPROVE PROD STORAGE RULES DEPLOY: PR40 REMAINING`
+
+## 2026-08-08 - PR #40 production Rules deploy preflight (approved_with_changes)
+
+Checkpoint READY; Formal Review **approved_with_changes**; **NO deploy**.
+`npm run test:rules` 59/59; Option B Firestore-then-Storage.
+Next: `APPROVE PROD FIRESTORE RULES DEPLOY: PR40 REMAINING`
+Artifacts: `docs/workflow/reviews/2026-08-08-pr-40-prod-rules-deploy-checkpoint.md`,
+`docs/workflow/reviews/2026-08-08-pr-40-prod-rules-deploy-checkpoint-review.md`
+
+## 2026-08-08 - PR #40 remaining production gates reconciliation (Plan + Formal Review)
+
+Read-only production reconciliation after Portal cutover / readyAt / TD-031.
+Artifacts: `docs/workflow/reviews/2026-08-08-pr-40-remaining-production-gates-reconciliation.md`,
+`docs/workflow/plans/2026-08-08-pr-40-remaining-production-gates-plan.md`,
+Formal Review **approved_with_changes** —
+`docs/workflow/reviews/2026-08-08-pr-40-remaining-production-gates-plan-review.md`.
+Live tip `7e13968` / `build-2026-08-08-004` 100%; Algolia OFF; no mutation.
+Next: owner Algolia app decision replies (config only).
+
+## 2026-08-08 - TD-031 Discover View All pagination + NTW count Signoff (approved)
+
+- Goal `portal-discover-view-all-complete-pagination` **CLOSED**
+- Live **100%** `build-2026-08-08-004` @ `7e13968` (PR #43/#44/#45)
+- Owner `DISCOVER VIEW ALL PAGINATION QA: PASS`
+- TD-031 **resolved**
+- Signoff: `docs/workflow/reviews/2026-08-08-portal-discover-view-all-complete-pagination-signoff.md`
+- No Functions/Rules/indexes/Algolia/data mutation
+
 ## 2026-08-08 - PR #40 pre-merge verification + prod inventory
 
 - Pre-merge **PASS WITH NOTES** on `1d13edf` (taxonomy 37, Stage4/Algolia 48, Stage5 26, Rules 59, builds/lint PASS)

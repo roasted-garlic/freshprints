@@ -1,5 +1,27 @@
 # Fresh Prints Roadmap
 
+> 2026-08-09: **Production Algolia managed search ON** — Gate C-enable Signoff **approved_with_notes**. Live **100%** `build-2026-08-09-001` @ `f5c0bdb` (PR #49); app `Z1FVCM5QUX` / index `portal_catalog_ready_prod` (46 reconciled). Owner `PROD ALGOLIA ENABLE QA: PASS`. Deferred: **TD-032** catalog filter account-loading flash. Signoff: `docs/workflow/reviews/2026-08-09-prod-algolia-gate-c-enable-signoff.md`.
+
+> 2026-08-08: **PR #40 production Rules preflight** — checkpoint READY; Formal Review **approved_with_changes**. `npm run test:rules` **59/59**. Next: `APPROVE PROD FIRESTORE RULES DEPLOY: PR40 REMAINING` (Storage separate). Algolia optional/OFF. Artifacts: `docs/workflow/reviews/2026-08-08-pr-40-prod-rules-deploy-checkpoint.md`. **STOP before deploy.**
+
+> 2026-08-08: **PR #40 remaining production-parity Gates 1–7 COMPLETE.** Studio `1.0.1` **published**: https://github.com/roasted-garlic/freshprints/releases/tag/v1.0.1 (tag @ `ebcfaf29`). Algolia remains optional/OFF. Record: `docs/workflow/reviews/2026-08-08-pr-40-prod-studio-package-record.md`.
+>
+> 2026-08-08: **PR #40 remaining production-parity Gates 1–7 COMPLETE WITH NOTES.** Studio `1.0.1` workflow run [31287781630](https://github.com/roasted-garlic/freshprints/actions/runs/31287781630) **success** @ `ebcfaf29`. Draft publish may still be needed for public Release visibility. Algolia remains optional/OFF. Record: `docs/workflow/reviews/2026-08-08-pr-40-prod-studio-package-record.md`.
+>
+> 2026-08-08: **PR #40 Gate 6 Storage cleanup COMPLETE** on `fresh-prints-prod` (`fullyClean`). Record: `docs/workflow/reviews/2026-08-08-prod-storage-cleanup-apply-record.md`. Next: `APPROVE PROD STUDIO PACKAGE: PR40 TIP`. Gates 1–6 done; Algolia OFF.
+>
+> 2026-08-08: **PR #40 Gate 5 publisher DELETE COMPLETE** on `fresh-prints-prod` (five ABSENT). Record: `docs/workflow/reviews/2026-08-08-pr-40-prod-functions-delete-stage-4-publishers-record.md`. Next: `APPROVE PROD STORAGE CLEANUP PLAN` (Stage 5 script cannot target prod). Tip `51db805`; Algolia OFF.
+>
+> 2026-08-08: **PR #40 Gate 4 taxonomy bootstrap COMPLETE** on `fresh-prints-prod` (rev1; 1130 tags / 19 cats; hash `88b122bc…`). Record: `docs/workflow/reviews/2026-08-08-prod-taxonomy-materialization-bootstrap-record.md`. Next parity gate: publisher DELETE (`APPROVE PROD FUNCTIONS DELETE: STAGE 4 PUBLISHERS`). Tip `51db805`; Algolia OFF.
+>
+> 2026-08-08: **PR #40 remaining production gates reconciliation** — Plan + Formal Review **approved_with_changes**. Live `build-2026-08-08-004` @ `7e13968` verified; Algolia OFF; indexes complete; RC-R3/R6 still OPEN. Sequencing amended: Rules/taxonomy parity lane first. Artifacts: `docs/workflow/reviews/2026-08-08-pr-40-remaining-production-gates-reconciliation.md`. **STOP before mutation.**
+
+> 2026-08-08: **Discover View All pagination + NTW count Signoff** — **approved**. TD-031 **resolved**. Live `build-2026-08-08-004` @ `7e13968` (PR #43/#44/#45). Owner `DISCOVER VIEW ALL PAGINATION QA: PASS`. Signoff: `docs/workflow/reviews/2026-08-08-portal-discover-view-all-complete-pagination-signoff.md`. Parent PR #40 Algolia/Rules/cleanup still separately gated.
+
+> 2026-08-08: **Production readyAt backfill Signoff** — **approved_with_notes**. APPLY 46/46; NTW populated; R-018 **resolved**. Note: Discover View All badge shows 40 vs membership 45 → **TD-031** (not implemented). Signoff: `docs/workflow/reviews/2026-08-08-prod-readyat-backfill-signoff.md`.
+
+> 2026-08-08: **Home/Discover population regression Signoff** — **approved_with_notes**. Live `build-2026-08-08-002` @ `ccfc974`; whole-Home single-design fixed. Note: New This Week empty until optional prod `readyAt` backfill (R-018). Signoff: `docs/workflow/reviews/2026-08-08-prod-portal-home-discover-population-regression-signoff.md`. Recommended next: `APPROVE PROD READYAT BACKFILL`. Parent PR #40 Algolia/Rules/cleanup still separately gated.
+
 > 2026-08-08: **PR #40 pre-merge verification + prod inventory** — pre-merge **PASS WITH NOTES** on `1d13edf`; RC-R2/R5/R7 SATISFIED; RC-R3 Algolia OPEN; App Hosting auto-rollout **disabled** (manual). Next: `APPROVE PR 40 MERGE TO PRODUCTION`. No deploy. Records: `docs/workflow/reviews/2026-08-08-pr-40-pre-merge-verification-result.md`, `docs/workflow/reviews/2026-08-08-pr-40-production-inventory-result.md`.
 
 > 2026-08-08: **Overnight closeout** — Stage 5 Signoff **approved_with_notes**; PR #40 production-promotion Formal Review **approved_with_changes**. App Hosting secrets CLOSED; rollout NOT RUN. Signoff: `docs/workflow/reviews/2026-08-07-stage-5-generated-asset-cleanup-signoff.md`. Plan: `docs/workflow/plans/2026-08-08-pr-40-production-promotion-plan.md`.
@@ -158,16 +180,15 @@ Current Goal:
 | 10 | Increase the MB limit for custom-request reference images | **Done** (2026-07-29, approved) — 40 MB/file live in `fresh-prints-dev` at every enforcement layer, 8 files unchanged, 320 MB combined ceiling active; owner QA FAIL (stale 15 MB deployed Cloud Functions) → Amendment 1 root-caused and fixed via scoped Functions redeploy → owner re-QA PASS |
 | 11 | `customer-upload-oversized-pixel-normalization-and-processing-timeout-followup` | **Done** (2026-07-30, approved_with_notes; owner QA PASS WITH NOTES — see signoff) |
 | 12 | `catalog-image-derivative-storage-consolidation` | **Done — closed_by_owner_after_inventory** (2026-07-30). Real dev inventory measured originals at ~97.66% of catalog Storage (980.8 MB of 1,004.3 MB); thumbnails+previews combined only 23.5 MB; zero orphans/duplicates/violations found. Owner decided the migration's small addressable Storage win did not justify the required backfill/consumer-cutover/bandwidth-increase — closed before implementation, an evidence-based decision. Retained as dev-only tooling: the read-only `inventoryCatalogImageStorage` callable and its Studio invocation panel. |
-| 13 | `production-release` — prod Firebase / App Hosting / Google / email | **Active** — Stage 2 paused. Customer Upload intake parity Amendment 4 and separate Whatnot development QA pending. Domain deferred. Stage 1 + Class D closed. |
+| 13 | `production-release` — prod Firebase / App Hosting / Google / email | **Active** — Stage 2 customer smoke **COMPLETE / PASS** (2026-08-09): **READY FOR CUSTOMERS** on hosted.app. Pre-launch companion/censored/featured/text-censor + Details qty + AI Review chip + **approve Rules expression-budget hotfix** DEV **signed off** (2026-08-10; owner `DEV APPROVE RULES QA: PASS`). Placement-default **DEFERRED**. **Production promotion prepared — AWAITING owner phrase** (`APPROVE PROD PROMOTE: PRELAUNCH COMPANION CENSORED`). Domain still blocked until `APPROVE MYPRINTREQUEST.COM CUTOVER` after prod promote + smoke. |
 | 14 | `customer-upload-early-transparency-format-validation` — reject invalid customer artwork before the trimming stage is shown | **Done** (2026-07-30, approved; automated verification 23/23 pass, clean build/lint; owner deployed to `fresh-prints-dev` and confirmed manual QA PASS across all 5 goal-brief scenarios). Separate narrow follow-up run alongside the paused `production-release` (#13), which this goal did not modify. See `docs/workflow/plans/2026-07-30-customer-upload-early-transparency-format-validation-plan.md`. |
 
 **Small Managed Items Backlog:** #5–**#14** **Done** (2026-07-21). See [Small Managed Items Backlog](#small-managed-items-backlog-2026-07-18) below.
 
-**Active managed goal:** `production-release` (Goal #13) — Stage 2 paused.
+**Active managed goal:** Goal #13 prelaunch DEV correctives **signed off** (2026-08-10), including approve Rules hotfix (`DEV APPROVE RULES QA: PASS`). Placement-default **DEFERRED**. Production promote still **AWAITING** `APPROVE PROD PROMOTE: PRELAUNCH COMPANION CENSORED`. Stage 2 smoke **PASS** / **READY FOR CUSTOMERS**; cutover phrase still deferred.
 `production-studio-assisted-library-design-search-empty` **signed off** (owner Studio QA **PASS**).
-Tag-removal / resize / branding / registration remain signed off. Custom-domain cutover deferred.
-Stage 1 complete; Class D closed. Next: owner authorizes Stage 2 hosted.app smoke or states next
-priority.
+Tag-removal / resize / branding / registration remain signed off. Custom-domain cutover deferred until phrase.
+Stage 1 complete; Class D closed. Algolia prod enable complete.
 
 **Prior note (superseded — Class D closed):** blocked on Storage↔Firestore cross-service
 permission (Class D). IAM applied; owner upload QA PASS WITH NOTES closed the incident.
@@ -1006,7 +1027,7 @@ Goal:
 
 Every imported design lands in **AI Processing** (`/ai-review`). Successful imports auto-start AI enrichment in the background (sequential). Staff review and approve before designs appear in Design Library.
 
-Architecture plan: `docs/workflow/plans/phase-5-ai-review-architecture-plan.md`  
+Architecture plan: `docs/workflow/plans/phase-5-ai-review-architecture-plan.md`
 Architecture review: `docs/workflow/reviews/phase-5-ai-review-architecture-review.md`
 
 ### Sub-phases (recommended)

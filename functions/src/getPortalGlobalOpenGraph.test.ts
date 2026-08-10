@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   buildPortalGlobalOpenGraphAccounting,
   createPortalGlobalOpenGraphCache,
+  filterPortalOgLibraryCandidatesExcludingExplicit,
   mergeAndRankPortalOgLibraryCandidates,
   type PortalOgLibraryDesignCandidate,
 } from "./getPortalGlobalOpenGraph";
@@ -132,4 +133,17 @@ test("mergeAndRank keeps legacy ready designs that only appear on createdAt page
   assert.equal(ranked[0]?.id, "with-ready-at");
   assert.equal(ranked[1]?.id, "legacy-no-ready-at");
   assert.equal(ranked.length, 2);
+});
+
+test("filterPortalOgLibraryCandidatesExcludingExplicit drops explicit designs only", () => {
+  const filtered = filterPortalOgLibraryCandidatesExcludingExplicit([
+    { id: "safe", readyAtMs: 10, createdAtMs: 1 },
+    { id: "explicit", readyAtMs: 20, createdAtMs: 2, isExplicitContent: true },
+    { id: "legacy-missing-flag", readyAtMs: 30, createdAtMs: 3 },
+    { id: "explicit-false", readyAtMs: 40, createdAtMs: 4, isExplicitContent: false },
+  ]);
+  assert.deepEqual(
+    filtered.map((candidate) => candidate.id),
+    ["safe", "legacy-missing-flag", "explicit-false"],
+  );
 });

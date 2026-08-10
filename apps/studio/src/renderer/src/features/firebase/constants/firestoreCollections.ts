@@ -23,6 +23,11 @@ export const FIRESTORE_COLLECTIONS = {
   assistedCreationUpdateAcks: "assistedCreationUpdateAcks",
   settings: "settings",
   auditLogs: "auditLogs",
+  /** @deprecated Legacy transitive group model — replaced by `companionLinks`. Kept only so
+   * old DEV documents remain typeable/reachable for manual staff cleanup; no product code
+   * creates or joins these anymore. */
+  companionSets: "companionSets",
+  companionLinks: "companionLinks",
 } as const;
 
 export type FirestoreCollectionKey = keyof typeof FIRESTORE_COLLECTIONS;

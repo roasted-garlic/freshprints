@@ -93,4 +93,13 @@ export const firestoreCollectionService = {
   getAuditLogsCollection() {
     return this.getCollectionReference("auditLogs");
   },
+
+  /** @deprecated Legacy transitive group model — see `getCompanionLinksCollection`. */
+  getCompanionSetsCollection() {
+    return this.getCollectionReference("companionSets");
+  },
+
+  getCompanionLinksCollection() {
+    return this.getCollectionReference("companionLinks");
+  },
 };

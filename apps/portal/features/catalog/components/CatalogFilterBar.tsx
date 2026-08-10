@@ -1,5 +1,6 @@
 'use client';
 
+import { useExplicitContentPreference } from '../hooks/useExplicitContentPreference';
 import { FilterIcon, SearchIcon } from '../../shared/components/PortalIcons';
 import { PortalSelect } from '../../shared/components/PortalSelect';
 
@@ -26,6 +27,8 @@ export function CatalogFilterBar({
   searchQuery,
   selectedTagCount,
 }: CatalogFilterBarProps) {
+  const { setShowExplicitContent, showExplicitContent } = useExplicitContentPreference();
+
   return (
     <div className="design-library-filter-controls">
       <div className="design-library-filter-controls-search">
@@ -66,6 +69,27 @@ export function CatalogFilterBar({
             <span className="design-library-halftone-filter-thumb" />
           </span>
           <span className="design-library-halftone-filter-label">Halftone</span>
+        </label>
+
+        <label
+          className="design-library-explicit-content-filter"
+          title={showExplicitContent ? 'Hide censored content' : 'Show censored content'}
+        >
+          <input
+            aria-checked={showExplicitContent}
+            aria-label={showExplicitContent ? 'Hide censored content' : 'Show censored content'}
+            checked={showExplicitContent}
+            className="design-library-explicit-content-filter-input"
+            onChange={(event) => setShowExplicitContent(event.target.checked)}
+            role="switch"
+            type="checkbox"
+          />
+          <span className="design-library-explicit-content-filter-track" aria-hidden="true">
+            <span className="design-library-explicit-content-filter-thumb" />
+          </span>
+          <span aria-hidden="true" className="design-library-explicit-content-filter-label">
+            {showExplicitContent ? 'Uncensored' : 'Censored'}
+          </span>
         </label>
 
         <button

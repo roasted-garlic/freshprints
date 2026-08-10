@@ -35,6 +35,9 @@ describe("suggestedNewTags", () => {
       categoryId: "",
       description: "",
       markAsHalftone: false,
+      isExplicitContent: false,
+      censoredTermsInput: "",
+      expectsCompanions: false,
       tagsInput: "summer",
       title: "",
     };

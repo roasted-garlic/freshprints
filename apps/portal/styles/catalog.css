@@ -1713,6 +1713,38 @@
   gap: var(--space-4);
   overflow-y: auto;
   padding: var(--space-5);
+  scrollbar-color: var(--color-border-strong) transparent;
+  scrollbar-width: thin;
+}
+
+/* Thin themed scrollbar — matches dark modal chrome (avoids default Windows light thumb). */
+.modal-body::-webkit-scrollbar {
+  width: 0.5rem;
+}
+
+.modal-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.modal-body::-webkit-scrollbar-thumb {
+  background-clip: padding-box;
+  background-color: var(--color-border-strong);
+  border: 2px solid transparent;
+  border-radius: 999px;
+}
+
+.modal-body::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-text-tertiary);
+}
+
+.modal-body::-webkit-scrollbar-button {
+  display: none;
+  height: 0;
+  width: 0;
+}
+
+.modal-body::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 .modal-footer {
@@ -1843,6 +1875,12 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+  width: 100%;
+}
+
+.design-details-qty-controls {
+  align-self: stretch;
+  max-width: none;
   width: 100%;
 }
 
@@ -2080,6 +2118,68 @@
   margin: 0;
 }
 
+.tag-filter-featured {
+  display: grid;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.tag-filter-featured-label {
+  color: var(--color-accent-primary);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.tag-filter-featured-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.tag-filter-featured-pill {
+  align-items: center;
+  background: var(--color-accent-primary-soft);
+  border: 1px solid color-mix(in srgb, var(--color-accent-primary) 40%, transparent);
+  border-radius: var(--radius-full);
+  color: var(--color-accent-primary);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  gap: var(--space-2);
+  min-height: 2.25rem;
+  padding: 0.35rem 0.85rem;
+  transition:
+    background var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+.tag-filter-featured-pill:hover {
+  border-color: var(--color-accent-primary);
+}
+
+.tag-filter-featured-pill:focus-visible {
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+  outline: none;
+}
+
+.tag-filter-featured-pill.is-selected {
+  background: var(--color-accent-primary);
+  border-color: var(--color-accent-primary);
+  color: var(--color-accent-primary-text);
+}
+
+.tag-filter-featured-pill-count {
+  font-size: 0.75rem;
+  font-weight: 600;
+  opacity: 0.85;
+}
+
 .design-library-tag-filter-list {
   align-content: start;
   display: grid;
@@ -2210,19 +2310,25 @@
     width: 100%;
   }
 
+  /*
+   * Four controls (Category, Halftone, Censored, Tags) in a balanced 2x2 grid — a 3-track
+   * grid here would leave one control stranded alone on a third row (awkward wrap /
+   * overflow). Two equal tracks let every control stretch to fill its cell so nothing
+   * overflows horizontally on narrow phones.
+   */
   .design-library-filter-controls-secondary {
     align-items: stretch;
     display: grid;
     flex: 0 0 auto;
     gap: var(--space-2);
-    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     width: 100%;
   }
 
   .design-library-filter-controls .design-library-filter-controls-category {
     margin: 0;
     min-width: 0;
-    width: auto;
+    width: 100%;
   }
 
   .design-library-filter-dock .global-search-input,
@@ -2239,9 +2345,15 @@
     width: auto;
   }
 
+  .design-library-filter-dock .design-library-filter-controls-secondary .design-library-filter-tags-button {
+    width: 100%;
+  }
+
   .design-library-filter-dock .design-library-halftone-filter {
     gap: var(--space-1);
+    justify-content: center;
     padding: 0 var(--space-2);
+    width: 100%;
   }
 
   .design-library-filter-dock .design-library-halftone-filter-track {
@@ -2265,8 +2377,7 @@
     font-size: var(--font-size-sm);
   }
 
-  .design-library-filter-select,
-  .design-library-filter-controls .design-library-filter-controls-category {
+  .design-library-filter-select {
     min-width: 0;
     width: auto;
   }
@@ -2894,6 +3005,373 @@
 
 .design-issue-report-success .portal-button {
   min-width: 8rem;
+}
+
+/* Explicit / censored content — presentation-only blur + reveal overlay */
+
+.design-thumbnail-panel--censored .design-thumbnail-panel-image {
+  filter: blur(18px) saturate(85%);
+  transform: scale(1.08);
+}
+
+.design-thumbnail-panel-image--censored {
+  cursor: default;
+  pointer-events: none;
+}
+
+.design-thumbnail-panel-censor-overlay {
+  align-items: center;
+  background: var(--color-overlay);
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  inset: 0;
+  justify-content: center;
+  padding: var(--space-3);
+  position: absolute;
+  text-align: center;
+  z-index: 1;
+}
+
+.design-thumbnail-panel-censor-overlay:focus-visible {
+  box-shadow: inset 0 0 0 2px #fff;
+  outline: none;
+}
+
+/* List surfaces inside a parent card button: clicks pass through to open Details. */
+.design-thumbnail-panel-censor-overlay--static {
+  cursor: pointer;
+  pointer-events: none;
+}
+
+/* Selection / interactive list thumbs: overlay itself opens Details (never reveals). */
+.design-thumbnail-panel-censor-overlay--view {
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.design-thumbnail-panel-censor-overlay-title {
+  font-size: var(--font-size-md);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.design-thumbnail-panel-censor-overlay-action {
+  font-size: var(--font-size-sm);
+  opacity: 0.88;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, #fff 55%, transparent);
+  text-underline-offset: 2px;
+}
+
+/* Residual "Censored Content" badge shown once revealed (or once global preference is
+   on) on single-design surfaces only — Design Details hero + its paired lightbox. */
+.design-thumbnail-panel-censored-indicator {
+  background: var(--color-overlay);
+  border-radius: var(--radius-full);
+  bottom: var(--space-2);
+  color: #fff;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  left: var(--space-2);
+  letter-spacing: 0.01em;
+  padding: 0.2rem var(--space-2);
+  position: absolute;
+  z-index: 1;
+}
+
+.design-preview-lightbox-censored-indicator {
+  background: var(--color-overlay);
+  border-radius: var(--radius-full);
+  bottom: var(--space-3);
+  color: #fff;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  left: var(--space-3);
+  letter-spacing: 0.01em;
+  padding: 0.2rem var(--space-3);
+  position: absolute;
+  z-index: 1;
+}
+
+.design-preview-lightbox-media {
+  display: contents;
+}
+
+.design-preview-lightbox-media--censored {
+  align-items: center;
+  display: flex;
+  justify-content: center;
+  position: relative;
+}
+
+.design-preview-lightbox-image--censored {
+  filter: blur(28px) saturate(85%);
+  transform: scale(1.05);
+}
+
+.design-preview-lightbox-media--censored .design-thumbnail-panel-censor-overlay {
+  border-radius: var(--radius-md);
+}
+
+/* "Show censored content" filter toggle — mirrors the halftone filter switch */
+
+.design-library-explicit-content-filter {
+  align-items: center;
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: var(--space-2);
+  height: 2.5rem;
+  padding: 0 var(--space-3);
+  user-select: none;
+}
+
+.design-library-explicit-content-filter-input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+  width: 0;
+  height: 0;
+}
+
+.design-library-explicit-content-filter-track {
+  background: var(--color-border);
+  border-radius: 999px;
+  display: inline-flex;
+  flex-shrink: 0;
+  height: 1.25rem;
+  padding: 2px;
+  transition: background-color 160ms ease;
+  width: 2.25rem;
+}
+
+.design-library-explicit-content-filter-thumb {
+  background: var(--color-bg-primary);
+  border-radius: 999px;
+  display: block;
+  height: calc(1.25rem - 4px);
+  transform: translateX(0);
+  transition: transform 160ms ease;
+  width: calc(1.25rem - 4px);
+}
+
+.design-library-explicit-content-filter-input:checked + .design-library-explicit-content-filter-track {
+  background: var(--color-success);
+}
+
+.design-library-explicit-content-filter-input:checked
+  + .design-library-explicit-content-filter-track
+  .design-library-explicit-content-filter-thumb {
+  transform: translateX(1rem);
+}
+
+.design-library-explicit-content-filter:focus-within {
+  outline: 2px solid var(--color-accent-primary);
+  outline-offset: 2px;
+}
+
+.design-library-explicit-content-filter-label {
+  font-size: var(--font-size-md);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+@media (max-width: 47.99rem) {
+  .design-library-filter-dock .design-library-explicit-content-filter {
+    font-size: var(--font-size-sm);
+    height: 2.25rem;
+    gap: var(--space-1);
+    justify-content: center;
+    padding: 0 var(--space-2);
+    width: 100%;
+  }
+
+  .design-library-filter-dock .design-library-explicit-content-filter-track {
+    height: 1.125rem;
+    width: 2rem;
+  }
+
+  .design-library-filter-dock .design-library-explicit-content-filter-thumb {
+    height: calc(1.125rem - 4px);
+    width: calc(1.125rem - 4px);
+  }
+
+  .design-library-filter-dock
+    .design-library-explicit-content-filter-input:checked
+    + .design-library-explicit-content-filter-track
+    .design-library-explicit-content-filter-thumb {
+    transform: translateX(0.875rem);
+  }
+
+  .design-library-filter-dock .design-library-explicit-content-filter-label {
+    font-size: var(--font-size-sm);
+  }
+}
+
+/* "Matching designs" hint + section */
+
+.design-card-matching-hint,
+.design-selection-card-matching-hint {
+  color: var(--color-accent-primary);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  margin: 0.35rem 0 0;
+}
+
+.design-matching-designs-section {
+  border-top: 1px solid var(--color-border);
+  padding-top: var(--space-4);
+}
+
+.design-matching-designs-grid {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr));
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.design-matching-designs-item {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.design-matching-designs-thumbnail-button {
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  display: grid;
+  font: inherit;
+  gap: var(--space-2);
+  padding: 0;
+  text-align: left;
+  width: 100%;
+}
+
+.design-matching-designs-thumbnail-button:focus-visible {
+  border-radius: var(--radius-md);
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+  outline: none;
+}
+
+.design-matching-designs-thumbnail-button .design-thumbnail-panel.design-matching-designs-thumbnail {
+  aspect-ratio: 1 / 1;
+  height: auto;
+  width: 100%;
+}
+
+.design-matching-designs-item-title {
+  color: var(--color-text-primary);
+  display: -webkit-box;
+  font-size: var(--font-size-sm);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: break-word;
+}
+
+.design-matching-designs-add-btn {
+  justify-content: center;
+  width: 100%;
+}
+
+/* Presentation-only Placement badge (never a filter/facet) — Unspecified renders nothing. */
+.design-matching-designs-placement-badge {
+  background: var(--color-accent-primary-soft);
+  border: 1px solid color-mix(in srgb, var(--color-accent-primary) 35%, transparent);
+  border-radius: var(--radius-full);
+  color: var(--color-accent-primary);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  justify-self: start;
+  letter-spacing: 0.02em;
+  padding: 0.0625rem var(--space-2);
+  white-space: nowrap;
+}
+
+/* Post-add "Matching designs" nudge — fixed modal overlay (does not push page layout) */
+
+.design-companion-suggestion-overlay {
+  z-index: calc(var(--z-modal) + 1);
+}
+
+.modal-panel.design-companion-suggestion-modal {
+  max-width: min(100%, 40rem);
+}
+
+.design-companion-suggestion-modal-header {
+  gap: var(--space-3);
+  justify-content: space-between;
+}
+
+.design-companion-suggestion-modal-header-copy {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.design-companion-suggestion-modal-header-copy h2 {
+  font-size: var(--font-size-lg);
+  line-height: 1.25;
+  margin: 0;
+}
+
+.design-companion-suggestion-modal-lede {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  margin: 0;
+}
+
+.design-companion-suggestion-modal-body {
+  overflow: auto;
+}
+
+.design-companion-suggestion-modal-body .design-matching-designs-section {
+  border-top: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.design-companion-suggestion-modal-body .design-matching-designs-section h3 {
+  font-size: var(--font-size-sm);
+  margin-bottom: var(--space-3);
+}
+
+.design-companion-suggestion-modal-footer {
+  justify-content: flex-end;
+}
+
+.design-companion-suggestion-dismiss {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  display: inline-flex;
+  flex-shrink: 0;
+  height: 2rem;
+  justify-content: center;
+  width: 2rem;
+}
+
+.design-companion-suggestion-dismiss:hover {
+  color: var(--color-text-primary);
+}
+
+.design-companion-suggestion-dismiss:focus-visible {
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+  outline: none;
 }
 
 .design-issue-report-success-check {

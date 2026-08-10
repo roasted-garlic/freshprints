@@ -6,6 +6,7 @@ import { AutoResizeTextarea } from "../../../shared/components/AutoResizeTextare
 import { Badge } from "../../../shared/components/Badge";
 import { Button } from "../../../shared/components/Button";
 import { CatalogAliasChipInput } from "../../../shared/components/CatalogAliasChipInput";
+import { Checkbox } from "../../../shared/components/Checkbox";
 import { DismissibleSuccessAlert } from "../../../shared/components/DismissibleSuccessAlert";
 import { ModalBody, ModalFooter, ModalHeader } from "../../../shared/components/Modal";
 import { TextInput } from "../../../shared/components/TextInput";
@@ -30,6 +31,7 @@ type TagEditorMode = "list" | "create" | "edit" | "bulk-import";
 
 interface TagFormValues {
   aliasesInput: string;
+  isFeatured: boolean;
   name: string;
   preferredWhen: string;
 }
@@ -44,6 +46,7 @@ const TAG_MANAGEMENT_LIST_BODY_ID = "tag-management-list-body";
 
 const emptyTagFormValues: TagFormValues = {
   aliasesInput: "",
+  isFeatured: false,
   name: "",
   preferredWhen: "",
 };
@@ -51,6 +54,7 @@ const emptyTagFormValues: TagFormValues = {
 function mapTagToFormValues(tag: CatalogTag): TagFormValues {
   return {
     aliasesInput: tag.aliases.join(", "),
+    isFeatured: tag.isFeatured === true,
     name: tag.name,
     preferredWhen: tag.preferredWhen,
   };
@@ -64,7 +68,13 @@ function parseAliasesInput(value: string): string[] {
 }
 
 function sortTags(tags: CatalogTag[]): CatalogTag[] {
-  return [...tags].sort((left, right) => left.name.localeCompare(right.name));
+  return [...tags].sort((left, right) => {
+    const featuredDelta = Number(Boolean(right.isFeatured)) - Number(Boolean(left.isFeatured));
+    if (featuredDelta !== 0) {
+      return featuredDelta;
+    }
+    return left.name.localeCompare(right.name);
+  });
 }
 
 function tagMatchesSearch(tag: CatalogTag, searchQuery: string): boolean {
@@ -399,6 +409,7 @@ export function TagManagementModal({ isOpen, onClose, onUpdated }: TagManagement
     try {
       const input = {
         aliases: parseAliasesInput(formValues.aliasesInput),
+        isFeatured: formValues.isFeatured,
         name: formValues.name,
         preferredWhen: formValues.preferredWhen,
       };
@@ -574,6 +585,7 @@ export function TagManagementModal({ isOpen, onClose, onUpdated }: TagManagement
                       <div className="category-management-item-copy">
                         <div className="category-management-item-header">
                           <h3>{tag.name}</h3>
+                          {tag.isFeatured ? <Badge variant="info">Featured</Badge> : null}
                           {tag.status !== "approved" ? <Badge variant="default">Archived</Badge> : null}
                         </div>
                         <div className="category-management-text-block">
@@ -835,6 +847,18 @@ export function TagManagementModal({ isOpen, onClose, onUpdated }: TagManagement
               }
               required
               value={formValues.preferredWhen}
+            />
+
+            <Checkbox
+              checked={formValues.isFeatured}
+              label="Featured on Portal (show as a pill at the top of the tag filter)"
+              name="tagIsFeatured"
+              onChange={(event) =>
+                setFormValues((currentValues) => ({
+                  ...currentValues,
+                  isFeatured: event.target.checked,
+                }))
+              }
             />
 
             {actionError ? (

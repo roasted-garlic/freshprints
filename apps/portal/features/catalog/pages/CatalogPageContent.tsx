@@ -10,9 +10,11 @@ import {
 } from '@fresh-prints/shared/utils/catalogDiscoveryRanking';
 
 import { useAuth } from '../../auth/context/AuthContext';
+import { CatalogCompanionSuggestionModal } from '../components/CatalogCompanionSuggestionModal';
 import { CatalogDesignDetailsModal } from '../components/CatalogDesignDetailsModal';
 import { CatalogFilterBar } from '../components/CatalogFilterBar';
 import { CatalogSelectionCard } from '../components/CatalogSelectionCard';
+import { designHasMatchingDesignsHint } from '../services/catalogService';
 import { CATALOG_FIRST_VIEWPORT_EAGER_COUNT } from '../hooks/useCatalogDesigns';
 
 /** Bound Algolia/search requests while typing — do not fire per raw keystroke. */
@@ -494,6 +496,17 @@ export function CatalogPageContent() {
           ) : null}
         </div>
 
+        {addDesignFlow.companionSuggestion ? (
+          <CatalogCompanionSuggestionModal
+            addingDesignId={addDesignFlow.addingDesignId}
+            canAdd={isAuthenticated && addDesignFlow.canAddPrints}
+            onAdd={addDesignFlow.addDesignFromCompanionSuggestion}
+            onDismiss={addDesignFlow.dismissCompanionSuggestion}
+            onOpenDetails={openDesignDetails}
+            suggestion={addDesignFlow.companionSuggestion}
+          />
+        ) : null}
+
         <div className="design-library-catalog-scroll">
           {isLoading || (selectionModeActive && selectionMode.isLoading) ? (
             <div className="design-library-loading-state">Loading design library…</div>
@@ -523,6 +536,7 @@ export function CatalogPageContent() {
                           design={design}
                           exhaustedHelperText={addDesignFlow.exhaustedHelperText}
                           exhaustedStatusText={addDesignFlow.exhaustedStatusText}
+                          hasMatchingDesigns={designHasMatchingDesignsHint(design)}
                           isSelected={Boolean(selection)}
                           onAdd={selectionMode.addDesign}
                           onOpenDetails={openDesignDetails}
@@ -549,6 +563,7 @@ export function CatalogPageContent() {
                         disabled={addDesignFlow.addingDesignId === design.id}
                         exhaustedHelperText={addDesignFlow.exhaustedHelperText}
                         exhaustedStatusText={addDesignFlow.exhaustedStatusText}
+                        hasMatchingDesigns={designHasMatchingDesignsHint(design)}
                         isSelected={isSelected}
                         onAdd={isAuthenticated ? addDesignFlow.addDesign : undefined}
                         onOpenDetails={openDesignDetails}
@@ -580,7 +595,17 @@ export function CatalogPageContent() {
       </section>
 
       <CatalogDesignDetailsModal
+        addingDesignId={selectionModeActive ? null : addDesignFlow.addingDesignId}
         canAddPrints={addDesignFlow.canAddPrints}
+        currentRequestQuantity={
+          selectedDesign === null
+            ? 0
+            : selectionModeActive
+              ? (selectionMode.selectedDesigns[selectedDesign.id]?.quantity ?? 0)
+              : (currentRequestAggregates.primaryQuantityByDesignId[selectedDesign.id] ??
+                currentRequestAggregates.quantityByDesignId[selectedDesign.id] ??
+                0)
+        }
         design={selectedDesign}
         exhaustedHelperText={addDesignFlow.exhaustedHelperText}
         exhaustedStatusText={addDesignFlow.exhaustedStatusText}
@@ -598,6 +623,7 @@ export function CatalogPageContent() {
             : (currentRequestAggregates.quantityByDesignId[selectedDesign.id] ?? 0) > 0)
         }
         isOpen={selectedDesign !== null}
+        onOpenDesign={openDesignDetails}
         onAddToRequest={
           !isAuthenticated
             ? undefined
@@ -608,6 +634,22 @@ export function CatalogPageContent() {
               : addDesignFlow.addDesign
         }
         onClose={closeDesignDetails}
+        onQuantityChange={
+          !isAuthenticated
+            ? undefined
+            : selectionModeActive
+              ? selectionMode.setQuantity
+              : addDesignFlow.setQuantity
+        }
+        onRemoveFromRequest={
+          !isAuthenticated
+            ? undefined
+            : selectionModeActive
+              ? (designId) => {
+                  void selectionMode.removeDesign(designId);
+                }
+              : addDesignFlow.removeDesign
+        }
       />
 
       <PortalConfirmModal

@@ -17,11 +17,13 @@ import { formatDesignTimestamp } from "../utils/designDateDisplay";
 import { formatDesignStatusLabel, getDesignStatusBadgeVariant } from "../utils/designStatusDisplay";
 import { formatDesignPrintInches } from "../utils/designPrintSizeDisplay";
 import { resolveDesignAiReviewDisplay } from "../utils/aiReviewState";
+import { resolveCompanionSetStatusLabel } from "../utils/companionSetHelpers";
 import {
   formatAiEstimatedCost,
   formatTagRerankStatusLabel,
   resolveCombinedAiEstimatedCost,
 } from "../utils/aiReviewDisplay";
+import { CompanionSetPanel } from "./CompanionSetPanel";
 import { DesignLibraryModal } from "./DesignLibraryModal";
 import { DesignPreviewLightbox } from "./DesignPreviewLightbox";
 import { DesignThumbnailPanel } from "./DesignThumbnailPanel";
@@ -32,6 +34,8 @@ interface DesignDetailsModalProps {
   isOpen: boolean;
   onArchive?: (design: Design) => void;
   onClose: () => void;
+  /** Called after a companion-set mutation with the freshly-reloaded anchor design. */
+  onCompanionsChanged?: (design: Design) => void;
   onEdit?: (design: Design) => void;
   onPurgeAssets?: (design: Design) => void;
   onRestore?: (design: Design) => void;
@@ -65,6 +69,7 @@ export function DesignDetailsModal({
   isOpen,
   onArchive,
   onClose,
+  onCompanionsChanged,
   onEdit,
   onPurgeAssets,
   onRestore,
@@ -72,6 +77,7 @@ export function DesignDetailsModal({
   const { user } = useAuth();
   const [isPreviewLightboxOpen, setIsPreviewLightboxOpen] = useState(false);
   const [isMoreDetailsOpen, setIsMoreDetailsOpen] = useState(false);
+  const [isCompanionModalOpen, setIsCompanionModalOpen] = useState(false);
   const [isDownloadingOriginal, setIsDownloadingOriginal] = useState(false);
   const [downloadOriginalError, setDownloadOriginalError] = useState<string | null>(null);
   const isAssetsPurged = Boolean(design?.assetsPurgedAt);
@@ -132,6 +138,10 @@ export function DesignDetailsModal({
                 {formatDesignStatusLabel(design.status)}
               </Badge>
               {isAssetsPurged ? <Badge variant="danger">Images deleted</Badge> : null}
+              {design.isExplicitContent ? <Badge variant="warning">Explicit Content</Badge> : null}
+              {resolveCompanionSetStatusLabel(design) === "Needs Companion" ? (
+                <Badge variant="warning">Needs Companion</Badge>
+              ) : null}
               {printSize?.effectiveDpi !== undefined ? (
                 <ResolutionQualityPill effectiveDpi={printSize.effectiveDpi} />
               ) : null}
@@ -184,6 +194,10 @@ export function DesignDetailsModal({
 
         <Button onClick={() => setIsMoreDetailsOpen(true)} type="button" variant="secondary">
           View more details
+        </Button>
+
+        <Button onClick={() => setIsCompanionModalOpen(true)} type="button" variant="secondary">
+          Companion Designs
         </Button>
       </ModalBody>
 
@@ -431,6 +445,38 @@ export function DesignDetailsModal({
 
         <ModalFooter>
           <Button onClick={() => setIsMoreDetailsOpen(false)} variant="secondary">
+            Close
+          </Button>
+        </ModalFooter>
+      </DesignLibraryModal>
+
+      <DesignLibraryModal
+        ariaLabelledBy="design-companion-designs-title"
+        isOpen={isCompanionModalOpen}
+        onClose={() => setIsCompanionModalOpen(false)}
+      >
+        <ModalHeader>
+          <div>
+            <p className="eyebrow">{design.title}</p>
+            <h2 id="design-companion-designs-title">Companion Designs</h2>
+          </div>
+
+          <button
+            aria-label="Close companion designs"
+            className="icon-button icon-button-md icon-button-ghost"
+            onClick={() => setIsCompanionModalOpen(false)}
+            type="button"
+          >
+            <X aria-hidden="true" size={18} strokeWidth={2.2} />
+          </button>
+        </ModalHeader>
+
+        <ModalBody>
+          <CompanionSetPanel design={design} onCompanionsChanged={onCompanionsChanged} />
+        </ModalBody>
+
+        <ModalFooter>
+          <Button onClick={() => setIsCompanionModalOpen(false)} variant="secondary">
             Close
           </Button>
         </ModalFooter>

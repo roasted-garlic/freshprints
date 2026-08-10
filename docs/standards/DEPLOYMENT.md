@@ -438,13 +438,15 @@ own separate, later, explicitly-approved checkpoint.
 9. ✅ / ⏳ **Domain-independent production setup** — emailProviders PASS; owner/taxonomy/infra/CORS/
    Coming Soon DNS rollback recorded. **Remaining owner Studio fixtures:** upcoming show + one
    ready catalog design. Portal-invite test customer **deferred** until domain cutover. Stage 2
-   hosted.app checklist prepared (not executed).
-10. ⏳ **Domain-independent smoke tests** on
-    `https://fresh-prints-portal--fresh-prints-prod.us-central1.hosted.app` (+ production Studio).
-    Classify each check domain-independent vs domain-dependent. Do **not** treat hosted.app
-    results as canonical-domain passes. See Plan §7.6.
-11. ⏳ **Final pre-domain readiness gate** — documented proof + exact owner phrase
+   hosted.app smoke **executed and PASS** (2026-08-09).
+10. ✅ **Domain-independent smoke tests** on
+    `https://fresh-prints-portal--fresh-prints-prod.us-central1.hosted.app` — **COMPLETE**
+    2026-08-09 (`PROD CUSTOMER SMOKE QA: PASS`; verdict **READY FOR CUSTOMERS**). Do **not**
+    treat hosted.app results as canonical-domain passes. See
+    `docs/workflow/reviews/2026-08-09-production-customer-smoke-test-signoff.md`.
+11. ⏳ **Final pre-domain readiness gate** — readiness proof recorded; awaiting exact owner phrase
     `APPROVE MYPRINTREQUEST.COM CUTOVER`. Coming Soon remains live until this gate passes.
+    Checkpoint: `docs/workflow/reviews/2026-08-09-myprintrequest-com-cutover-checkpoint.md`.
 12. ⏳ **Custom domain cutover + domain-dependent smoke** — **only after** the Stage 11 approval.
     Connect `myprintrequest.com` (and approved www behavior), Authorized Domains, Google sign-in
     for the canonical host, then run domain-dependent smoke immediately. Rollback to Coming Soon
@@ -704,18 +706,19 @@ cutover. `NEXT_PUBLIC_*` values are browser-exposed after build by design; Secre
 config hygiene (keep env-specific identifiers out of the repo), not confidentiality of true
 backend secrets.
 
-**Portal Algolia managed search (optional Gate C-enable):** after index reconcile, add four Secret
-Manager secrets (search-only key — never Admin), grant to `fresh-prints-portal`, and reference
-them from `apps/portal/apphosting.yaml`:
+**Portal Algolia managed search (default feature):** after index reconcile, ensure three
+search-only Secret Manager secrets exist (never Admin), grant to `fresh-prints-portal`, and
+reference them from `apps/portal/apphosting.yaml`. Algolia is **on by default** whenever those
+credentials are present; the flag secret is an emergency kill-switch only.
 
 | Secret / env | Production intent |
 |--------------|-------------------|
-| `NEXT_PUBLIC_USE_ALGOLIA_CATALOG_SEARCH` | `true` to enable; `false` kill-switch |
+| `NEXT_PUBLIC_USE_ALGOLIA_CATALOG_SEARCH` | Omit or any value other than `false` → ON; set `false` to kill-switch |
 | `NEXT_PUBLIC_ALGOLIA_APP_ID` | SEPARATE prod app (e.g. `Z1FVCM5QUX`) |
 | `NEXT_PUBLIC_ALGOLIA_SEARCH_API_KEY` | Search-only ACL; index-restricted |
 | `NEXT_PUBLIC_ALGOLIA_INDEX_NAME` | `portal_catalog_ready_prod` (never `_dev`) |
 
-Roll out only after secrets exist+granted. Kill-switch: set flag secret to `false` and roll out.
+Roll out only after credentials exist+granted. Kill-switch: set flag secret to `false` and roll out.
 
 **Residual:** plaintext values previously committed in `apphosting.yaml` remain in git history;
 history rewrite is out of scope unless explicitly approved.

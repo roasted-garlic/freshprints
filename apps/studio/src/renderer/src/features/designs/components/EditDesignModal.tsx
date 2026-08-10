@@ -70,6 +70,14 @@ export function EditDesignModal({
     }));
   }
 
+  function handleExplicitContentChange(checked: boolean) {
+    setValidationError(null);
+    setFormValues((currentValues) => ({
+      ...currentValues,
+      isExplicitContent: checked,
+    }));
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     clearError();
@@ -119,6 +127,7 @@ export function EditDesignModal({
             formValues={formValues}
             isArchived={design.status === "archived"}
             onChange={handleFieldChange}
+            onExplicitContentChange={handleExplicitContentChange}
           />
         </ModalBody>
 

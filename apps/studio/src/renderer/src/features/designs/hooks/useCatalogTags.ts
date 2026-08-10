@@ -89,7 +89,11 @@ export function useCatalogTags(options: { enabled?: boolean; includeArchived?: b
         throw new Error("You must be signed in to manage tags.");
       }
 
-      return runAction(() => catalogTagService.createTag(user, input));
+      return runAction(async () => {
+        const created = await catalogTagService.createTag(user, input);
+        clearStudioTaxonomyCaches();
+        return created;
+      });
     },
     [runAction, user],
   );
@@ -100,7 +104,11 @@ export function useCatalogTags(options: { enabled?: boolean; includeArchived?: b
         throw new Error("You must be signed in to manage tags.");
       }
 
-      return runAction(() => catalogTagService.updateTag(user, tagId, input));
+      return runAction(async () => {
+        const updated = await catalogTagService.updateTag(user, tagId, input);
+        clearStudioTaxonomyCaches();
+        return updated;
+      });
     },
     [runAction, user],
   );
