@@ -159,4 +159,22 @@ describe("storage.rules alignment", () => {
       "brand logos must require image/png",
     );
   });
+
+  it("includes owner-writable public-readable static Global OG paths at 5 MiB", async () => {
+    const rulesPath = path.join(REPO_ROOT, "storage.rules");
+    const rules = await readFile(rulesPath, "utf8");
+
+    assert.ok(
+      rules.includes("match /portal-social-meta/static-og/{fileName}"),
+      "static OG match path",
+    );
+    assert.ok(
+      rules.includes("5 * 1024 * 1024"),
+      "storage.rules must cap static OG images at 5 MiB",
+    );
+    assert.ok(
+      rules.includes('request.resource.contentType == "image/webp"'),
+      "static OG uploads must allow image/webp",
+    );
+  });
 });

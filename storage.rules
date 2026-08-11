@@ -225,6 +225,31 @@ service firebase.storage {
         && isBrandLogoFileName(fileName);
     }
 
+    // Portal Global OG Static Image uploads (Studio Settings → Social sharing).
+    // Owner create/delete; public read so crawlers can fetch Firebase download URLs.
+    // Deploy is a human checkpoint — do not ship rules without explicit owner approval.
+    function isPortalStaticOgFileName(fileName) {
+      return fileName.matches('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\\.(png|jpg|jpeg|webp)$');
+    }
+
+    function isValidPortalStaticOgUpload() {
+      return request.resource.size > 0
+        && request.resource.size <= 5 * 1024 * 1024
+        && (request.resource.contentType == "image/png"
+          || request.resource.contentType == "image/jpeg"
+          || request.resource.contentType == "image/webp");
+    }
+
+    match /portal-social-meta/static-og/{fileName} {
+      allow read: if isPortalStaticOgFileName(fileName);
+      allow create: if isOwner()
+        && isPortalStaticOgFileName(fileName)
+        && isValidPortalStaticOgUpload();
+      allow update: if false;
+      allow delete: if isOwner()
+        && isPortalStaticOgFileName(fileName);
+    }
+
     // Stage 5 (2026-08-07): generated portal-catalog / catalog-reference Storage
     // matches removed after publisher retirement (Stage 4). Residual objects are
     // cleaned via ops script; client access falls through to default-deny below.

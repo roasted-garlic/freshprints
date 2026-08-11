@@ -1,12 +1,24 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
+import { PORTAL_APP_NAME } from './portalBrand';
 import {
   getPortalSiteOrigin,
   buildPortalRootMetadata,
   buildPortalPageMetadata,
+  PORTAL_DEFAULT_DESCRIPTION,
   PORTAL_OG_IMAGE_PATH,
 } from './portalSiteMeta';
+
+describe('Portal brand defaults', () => {
+  it('includes Whatnot in default app name and description', () => {
+    assert.equal(PORTAL_APP_NAME, 'Fresh Prints Whatnot Request Portal');
+    assert.equal(
+      PORTAL_DEFAULT_DESCRIPTION,
+      'Browse the design library and submit print requests for Fresh Prints Whatnot shows.',
+    );
+  });
+});
 
 describe('getPortalSiteOrigin', () => {
   it('prefers NEXT_PUBLIC_PORTAL_ORIGIN and strips trailing slashes', () => {

@@ -5,9 +5,16 @@ import {
   buildPortalGlobalOpenGraphAccounting,
   createPortalGlobalOpenGraphCache,
   filterPortalOgLibraryCandidatesExcludingExplicit,
+  invalidatePortalGlobalOpenGraphCache,
   mergeAndRankPortalOgLibraryCandidates,
   type PortalOgLibraryDesignCandidate,
 } from "./getPortalGlobalOpenGraph";
+
+test("invalidatePortalGlobalOpenGraphCache clears the module cache helper API", () => {
+  // Containment: Save path imports this export to drop sticky in-process meta after write.
+  assert.equal(typeof invalidatePortalGlobalOpenGraphCache, "function");
+  invalidatePortalGlobalOpenGraphCache();
+});
 
 test("global metadata cache reuses resolved and concurrent loads", async () => {
   const cache = createPortalGlobalOpenGraphCache<number>(60_000);
@@ -47,6 +54,19 @@ test("global metadata cache expires once and rejected loads never poison it", as
   } finally {
     Date.now = originalNow;
   }
+});
+
+test("global metadata cache clear drops hits so Save invalidation reloads", async () => {
+  const cache = createPortalGlobalOpenGraphCache<number>(60_000);
+  let loads = 0;
+  const loader = async () => {
+    loads += 1;
+    return loads;
+  };
+  assert.deepEqual(await cache.get(loader), { status: "miss", value: 1 });
+  assert.deepEqual(await cache.get(loader), { status: "hit", value: 1 });
+  cache.clear();
+  assert.deepEqual(await cache.get(loader), { status: "miss", value: 2 });
 });
 
 test("accounting reports exact Firestore reads including design docs on miss only", () => {

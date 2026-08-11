@@ -6,10 +6,16 @@ import {
   parsePortalSocialMetaSettingsInput,
   resolvePortalSocialMetaSettings,
   type PortalSocialMetaSettings,
+  type PortalStaticOgImageSnapshot,
 } from "../../packages/shared/src/constants/portal/portalSocialMetaSettings.constants";
+import { invalidatePortalGlobalOpenGraphCache } from "./getPortalGlobalOpenGraph";
 import { adminDb } from "./lib/admin";
 import { loadCallerProfile } from "./lib/caller";
-import { invalidArgument, permissionDenied, unauthenticated } from "./lib/errors";
+import { failedPrecondition, invalidArgument, permissionDenied, unauthenticated } from "./lib/errors";
+import {
+  resolveStaticOgSnapshotFromDesign,
+  resolveStaticOgSnapshotFromUpload,
+} from "./portalStaticOgImage";
 
 export const updatePortalSocialMetaSettings = onCall(
   async (request): Promise<PortalSocialMetaSettings> => {
@@ -28,14 +34,50 @@ export const updatePortalSocialMetaSettings = onCall(
       );
     }
 
+    const docRef = adminDb.collection("settings").doc(PORTAL_SOCIAL_META_SETTINGS_DOC_ID);
+    const existingSnap = await docRef.get();
+    const existing = resolvePortalSocialMetaSettings(existingSnap.data());
+
+    let staticOgImage: PortalStaticOgImageSnapshot | null = existing.staticOgImage;
+    const staticInput = parsed.staticOgImage;
+
+    if (staticInput?.kind === "upload") {
+      staticOgImage = await resolveStaticOgSnapshotFromUpload(staticInput.storagePath, existing.staticOgImage);
+    } else if (staticInput?.kind === "design") {
+      staticOgImage = await resolveStaticOgSnapshotFromDesign(
+        staticInput.sourceDesignId,
+        existing.staticOgImage,
+      );
+    } else if (staticInput?.kind === "retain") {
+      staticOgImage = existing.staticOgImage;
+    }
+
+    if (parsed.globalOgImageSource === "static" && !staticOgImage) {
+      throw failedPrecondition(
+        "Static Image mode requires an uploaded image or a ready Design Library pick.",
+      );
+    }
+
     const settings: PortalSocialMetaSettings = {
-      ...parsed,
+      ogTitle: parsed.ogTitle,
+      ogDescription: parsed.ogDescription,
+      letterboxOgImages: parsed.letterboxOgImages,
+      globalOgImageSource: parsed.globalOgImageSource,
+      libraryOgRotationInterval: parsed.libraryOgRotationInterval,
+      libraryOgRotationSalt: parsed.libraryOgRotationSalt,
+      staticOgImage,
       updatedBy: request.auth.uid,
     };
-    await adminDb.collection("settings").doc(PORTAL_SOCIAL_META_SETTINGS_DOC_ID).set({
+
+    await docRef.set({
       ...settings,
       updatedAt: FieldValue.serverTimestamp(),
     });
-    return resolvePortalSocialMetaSettings(settings);
+
+    // Same-instance crawlers / Portal proxies see the new title+description+image immediately.
+    invalidatePortalGlobalOpenGraphCache();
+
+    const savedSnap = await docRef.get();
+    return resolvePortalSocialMetaSettings(savedSnap.data());
   },
 );

@@ -1,4 +1,5 @@
 import {
+  PORTAL_SOCIAL_META_SETTINGS_DOC_ID,
   resolvePortalSocialMetaSettings,
 } from '@fresh-prints/shared/constants/portal/portalSocialMetaSettings.constants'
 import { createBoundedAsyncCache } from '@fresh-prints/shared/utils/boundedAsyncCache'
@@ -10,11 +11,14 @@ export interface PortalGlobalSocialMeta {
   ogDescription: string
   /** Absolute HTTPS image URL for crawlers, or null to use brand logo path. */
   imageUrl: string | null
+  /** Settings updatedAt millis when known — used for Function ?v= cache bust. */
+  updatedAtMs: number | null
 }
 
-export const PORTAL_GLOBAL_SOCIAL_META_REVALIDATE_SECONDS = 3600
+/** Short revalidate so Studio Save is visible on Portal without hour-long sticky meta. */
+export const PORTAL_GLOBAL_SOCIAL_META_REVALIDATE_SECONDS = 60
 const socialMetaCache = createBoundedAsyncCache<PortalGlobalSocialMeta>({
-  maxEntries: 1,
+  maxEntries: 4,
   ttlMs: PORTAL_GLOBAL_SOCIAL_META_REVALIDATE_SECONDS * 1000,
 })
 
@@ -24,10 +28,38 @@ function defaultPortalGlobalSocialMeta(): PortalGlobalSocialMeta {
     ogTitle: defaults.ogTitle,
     ogDescription: defaults.ogDescription,
     imageUrl: null,
+    updatedAtMs: null,
   }
 }
 
-function resolveGlobalOpenGraphFunctionUrl(): string | null {
+function toMillis(value: unknown): number | null {
+  if (
+    value &&
+    typeof value === 'object' &&
+    'toMillis' in value &&
+    typeof (value as { toMillis: unknown }).toMillis === 'function'
+  ) {
+    return (value as { toMillis: () => number }).toMillis()
+  }
+  if (
+    value &&
+    typeof value === 'object' &&
+    'seconds' in value &&
+    typeof (value as { seconds: unknown }).seconds === 'number'
+  ) {
+    const nanos =
+      'nanoseconds' in value && typeof (value as { nanoseconds: unknown }).nanoseconds === 'number'
+        ? (value as { nanoseconds: number }).nanoseconds
+        : 0
+    return (value as { seconds: number }).seconds * 1000 + Math.floor(nanos / 1e6)
+  }
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value
+  }
+  return null
+}
+
+function resolveGlobalOpenGraphFunctionUrl(versionMs: number | null): string | null {
   const projectId =
     process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID?.trim() ||
     process.env.GCLOUD_PROJECT?.trim() ||
@@ -36,11 +68,33 @@ function resolveGlobalOpenGraphFunctionUrl(): string | null {
   if (!projectId) {
     return null
   }
-  return `https://us-central1-${projectId}.cloudfunctions.net/getPortalGlobalOpenGraph`
+  const base = `https://us-central1-${projectId}.cloudfunctions.net/getPortalGlobalOpenGraph`
+  if (versionMs === null) {
+    return base
+  }
+  return `${base}?v=${encodeURIComponent(String(versionMs))}`
 }
 
-async function loadPortalGlobalSocialMetaViaFunction(): Promise<PortalGlobalSocialMeta | null> {
-  const url = resolveGlobalOpenGraphFunctionUrl()
+async function readPortalSocialMetaUpdatedAtMs(): Promise<number | null> {
+  const db = tryGetPortalAdminDb()
+  if (!db) {
+    return null
+  }
+  try {
+    const settingsSnap = await db
+      .collection('settings')
+      .doc(PORTAL_SOCIAL_META_SETTINGS_DOC_ID)
+      .get()
+    return toMillis(settingsSnap.data()?.updatedAt) ?? toMillis(settingsSnap.updateTime)
+  } catch {
+    return null
+  }
+}
+
+async function loadPortalGlobalSocialMetaViaFunction(
+  versionMs: number | null,
+): Promise<PortalGlobalSocialMeta | null> {
+  const url = resolveGlobalOpenGraphFunctionUrl(versionMs)
   if (!url) {
     return null
   }
@@ -54,7 +108,9 @@ async function loadPortalGlobalSocialMetaViaFunction(): Promise<PortalGlobalSoci
     if (!response.ok) {
       return null
     }
-    const payload = (await response.json()) as Partial<PortalGlobalSocialMeta>
+    const payload = (await response.json()) as Partial<PortalGlobalSocialMeta> & {
+      updatedAtMs?: unknown
+    }
     if (
       typeof payload.ogTitle !== 'string' ||
       !payload.ogTitle.trim() ||
@@ -63,6 +119,7 @@ async function loadPortalGlobalSocialMetaViaFunction(): Promise<PortalGlobalSoci
     ) {
       return null
     }
+    const responseUpdatedAtMs = toMillis(payload.updatedAtMs)
     return {
       ogTitle: payload.ogTitle.trim(),
       ogDescription: payload.ogDescription.trim(),
@@ -70,6 +127,7 @@ async function loadPortalGlobalSocialMetaViaFunction(): Promise<PortalGlobalSoci
         typeof payload.imageUrl === 'string' && payload.imageUrl.trim()
           ? payload.imageUrl.trim()
           : null,
+      updatedAtMs: responseUpdatedAtMs ?? versionMs,
     }
   } catch {
     return null
@@ -89,34 +147,37 @@ async function loadPortalGlobalSocialMetaViaAdminSettings(): Promise<PortalGloba
   }
 
   try {
-    const settingsSnap = await db.collection('settings').doc('portalSocialMeta').get()
+    const settingsSnap = await db
+      .collection('settings')
+      .doc(PORTAL_SOCIAL_META_SETTINGS_DOC_ID)
+      .get()
     const resolved = resolvePortalSocialMetaSettings(settingsSnap.data())
     return {
       ogTitle: resolved.ogTitle,
       ogDescription: resolved.ogDescription,
       // Image requires Function (or compositor); do not re-query library here.
       imageUrl: null,
+      updatedAtMs: toMillis(resolved.updatedAt) ?? toMillis(settingsSnap.updateTime),
     }
   } catch {
     return defaults
   }
 }
 
-async function loadPortalGlobalSocialMetaUncached(): Promise<PortalGlobalSocialMeta> {
-  const viaFunction = await loadPortalGlobalSocialMetaViaFunction()
-  if (!viaFunction) throw new Error('portal-global-social-meta-unavailable')
-  return viaFunction
-}
-
 /**
  * Loads Studio-configured global OG title/description plus image URL from the
- * public Cloud Function. One bounded one-hour cache is shared by every metadata caller in this
- * server process; Next's fetch cache provides the same one-hour revalidation across processes.
+ * public Cloud Function. Bounded short TTL + `?v=updatedAt` so Save activates coherently.
  * Failed Function loads are evicted and use the lightweight Admin/default fallback for that call.
  */
 export async function loadPortalGlobalSocialMeta(): Promise<PortalGlobalSocialMeta> {
   try {
-    return await socialMetaCache.get('global', loadPortalGlobalSocialMetaUncached)
+    const versionMs = await readPortalSocialMetaUpdatedAtMs()
+    const cacheKey = `global:${versionMs ?? 'default'}`
+    return await socialMetaCache.get(cacheKey, async () => {
+      const viaFunction = await loadPortalGlobalSocialMetaViaFunction(versionMs)
+      if (!viaFunction) throw new Error('portal-global-social-meta-unavailable')
+      return viaFunction
+    })
   } catch {
     return loadPortalGlobalSocialMetaViaAdminSettings()
   }
