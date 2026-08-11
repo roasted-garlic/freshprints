@@ -1,16 +1,10 @@
 import {
-  collection,
   doc,
   getDoc,
   getDocs,
-  limit,
-  orderBy,
-  query,
-  where,
 } from "firebase/firestore";
 import { getDownloadURL, ref } from "firebase/storage";
 
-import { CUSTOMER_UPLOAD_COLLECTIONS } from "@fresh-prints/shared/constants/customerUpload/customerUploadCollections.constants";
 import type {
   CustomerUploadCatalogReviewStatus,
   CustomerUploadPurpose,
@@ -29,9 +23,12 @@ import { db, storage } from "../../../config/firebase";
 import { callTracedFunction } from "../../../config/tracedCallable";
 import { permissionService } from "../../permissions/services/permissionService";
 import type { User } from "../../users/types/user.types";
+import {
+  buildPurposeScopedIntakeQuery,
+  type CustomerUploadIntakeFilter,
+} from "../utils/customerUploadIntakeQueries";
 
-export type CustomerUploadIntakeFilter = "pending_staff_review" | "excluded_from_catalog";
-
+export type { CustomerUploadIntakeFilter };
 export interface CustomerUploadIntakeRow {
   id: string;
   batchId: string;
@@ -127,8 +124,11 @@ export const customerUploadIntakeService = {
     printRequestStatus: string | null;
     previewUrl: string | null;
   }> {
-    let customerDisplayName = input.customerId || "Customer";
-    if (input.customerId) {
+    const resolveCustomer = async (): Promise<string> => {
+      let customerDisplayName = input.customerId || "Customer";
+      if (!input.customerId) {
+        return customerDisplayName;
+      }
       const customerSnap = await getDoc(doc(db, "customers", input.customerId));
       if (customerSnap.exists()) {
         const customer = customerSnap.data();
@@ -137,41 +137,54 @@ export const customerUploadIntakeService = {
           asString(customer.username) ??
           customerDisplayName;
       }
-    }
+      return customerDisplayName;
+    };
 
-    let printRequestName: string | null = null;
-    let printRequestStatus: string | null = null;
-    if (input.printRequestId) {
-      const requestSnap = await getDoc(doc(db, "printRequests", input.printRequestId));
-      if (requestSnap.exists()) {
-        const request = requestSnap.data();
-        printRequestName = asString(request.name);
-        printRequestStatus = asString(request.status);
+    const resolvePrintRequest = async (): Promise<{
+      printRequestName: string | null;
+      printRequestStatus: string | null;
+    }> => {
+      if (!input.printRequestId) {
+        return { printRequestName: null, printRequestStatus: null };
       }
-    }
+      const requestSnap = await getDoc(doc(db, "printRequests", input.printRequestId));
+      if (!requestSnap.exists()) {
+        return { printRequestName: null, printRequestStatus: null };
+      }
+      const request = requestSnap.data();
+      return {
+        printRequestName: asString(request.name),
+        printRequestStatus: asString(request.status),
+      };
+    };
+
+    const [customerDisplayName, printRequest, previewUrl] = await Promise.all([
+      resolveCustomer(),
+      resolvePrintRequest(),
+      resolvePreviewUrl(input.previewStoragePath),
+    ]);
 
     return {
       customerDisplayName,
-      printRequestName,
-      printRequestStatus,
-      previewUrl: await resolvePreviewUrl(input.previewStoragePath),
+      printRequestName: printRequest.printRequestName,
+      printRequestStatus: printRequest.printRequestStatus,
+      previewUrl,
     };
   },
 
   async listForIntake(
     caller: User,
     filter: CustomerUploadIntakeFilter,
+    purposeScope: CustomerUploadPurpose = "print_request",
   ): Promise<CustomerUploadIntakeRow[]> {
     if (!permissionService.canViewCustomerUploadIntake(caller)) {
       throw new Error("You do not have permission to view customer upload intake.");
     }
 
-    const uploadsQuery = query(
-      collection(db, CUSTOMER_UPLOAD_COLLECTIONS.customerUploads),
-      where("catalogReviewStatus", "==", filter),
-      orderBy("createdAt", "desc"),
-      limit(50),
-    );
+    const uploadsQuery = buildPurposeScopedIntakeQuery(db, {
+      purpose: purposeScope,
+      catalogReviewStatus: filter,
+    });
 
     const snapshot = await getDocs(uploadsQuery);
     const rows: CustomerUploadIntakeRow[] = [];

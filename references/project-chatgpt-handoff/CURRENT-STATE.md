@@ -1,17 +1,18 @@
 # Fresh Prints - Current State Snapshot
 
-## 2026-08-10 — COMBINED PORTAL HOTFIX — AWAIT PROD MERGE
+## 2026-08-11 — H IMPLEMENTATION REVIEW COMPLETE (STOP)
 
-Branch: `hotfix/portal-design-modal-scroll-preservation` (base `f5584451…`)
-Includes:
-1. Catalog scroll preservation (`designId`-only skip in PortalScrollReset)
-2. Discover search placeholder uses complete ready-library aggregate (`countReadyDesigns`), not home-pool length (~85)
-Gates: Formal Reviews + combined Implementation Review approved; tests/typecheck/lint/build:portal PASS
-**Paused:** merge until owner OK; second App Hosting; Studio 1.0.3; final QA; Signoff; development sync
-Checkpoint: `docs/workflow/reviews/2026-08-10-portal-design-modal-scroll-preservation-prod-pr-checkpoint.md`
-PR: https://github.com/roasted-garlic/freshprints/compare/production...hotfix/portal-design-modal-scroll-preservation?expand=1
+**Verdict:** `approved_with_notes`
+**Review:** `docs/workflow/reviews/2026-08-11-studio-customer-upload-intake-performance-implementation-review.md`
 
-## 2026-08-10 - FEATURED TAGS AMENDMENT — AWAIT OWNER DEV QA
+**Branch:** `fix/studio-upload-intake-perf-counts`
+**Base / committed tip:** `913329c…` (H still **uncommitted** working tree)
 
-Owner QA: `docs/workflow/reviews/2026-08-10-featured-tags-owner-qa-checklist.md`
-Reply: **`DEV FEATURED TAGS QA: PASS`** / `FAIL: …` / `PASS WITH NOTES: …`
+**Ready for:** DEV integration/QA after commit — **not** production.
+
+**Do not:** merge H/A–G to production; deploy indexes/Functions/Rules/App Hosting; publish Studio 1.0.3; sync development.
+
+**DEV QA later (after A–H on fresh-prints-dev):** cold restart, badge vs Pending, donation/upload load, progressive thumbs, live Pending/Excluded.
+
+### A–G tips (untouched)
+Portal `e618a87` · OG `9d2144d` · Intake `633d3fa` · Quota `e39fc20`

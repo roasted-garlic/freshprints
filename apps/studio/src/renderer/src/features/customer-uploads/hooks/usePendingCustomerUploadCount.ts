@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { collection, onSnapshot, query, where } from "firebase/firestore";
+import { onSnapshot, type Unsubscribe } from "firebase/firestore";
 
 import { CUSTOMER_UPLOAD_COLLECTIONS } from "@fresh-prints/shared/constants/customerUpload/customerUploadCollections.constants";
 import type { CustomerUploadPurpose } from "@fresh-prints/shared/types/customerUpload/customerUpload.enums";
-import { resolveCustomerUploadPurpose } from "@fresh-prints/shared/utils/customerUploadPurpose";
+import { isMissingCustomerUploadPurpose } from "@fresh-prints/shared/utils/customerUploadPurpose";
 import {
   traceFirestoreListenerAttach,
   traceFirestoreListenerEmission,
@@ -13,14 +13,10 @@ import {
 import { db } from "../../../config/firebase";
 import { useAuth } from "../../auth/hooks/useAuth";
 import { permissionService } from "../../permissions/services/permissionService";
-
-const TRACE_METADATA = {
-  app: "studio" as const,
-  collection: CUSTOMER_UPLOAD_COLLECTIONS.customerUploads,
-  constraints: ["catalogReviewStatus==pending_staff_review"],
-  source: "usePendingCustomerUploadCounts",
-  triggerReason: "authentication" as const,
-};
+import {
+  buildPurposeScopedPendingCountQuery,
+  buildStatusScopedCatalogReviewQuery,
+} from "../utils/customerUploadIntakeQueries";
 
 export interface PendingCustomerUploadCounts {
   catalogDonation: number;
@@ -33,8 +29,10 @@ const EMPTY_COUNTS: PendingCustomerUploadCounts = {
 };
 
 /**
- * Live pending staff-review counts for both upload purposes from a single listener.
- * Sidebar badges share this hook so they do not open duplicate queries.
+ * Live pending staff-review counts for both upload purposes.
+ * Purpose-scoped listeners match intake list predicates; a lightweight status
+ * companion adds legacy missing-purpose docs as print_request (H-DM-2).
+ * Sidebar badges share this hook so they do not open duplicate query sets.
  */
 export function usePendingCustomerUploadCounts(): PendingCustomerUploadCounts {
   const { user } = useAuth();
@@ -47,37 +45,108 @@ export function usePendingCustomerUploadCounts(): PendingCustomerUploadCounts {
       return;
     }
 
-    const pendingQuery = query(
-      collection(db, CUSTOMER_UPLOAD_COLLECTIONS.customerUploads),
-      where("catalogReviewStatus", "==", "pending_staff_review"),
+    let cancelled = false;
+    let printRequestScoped = 0;
+    let catalogDonationScoped = 0;
+    let legacyMissingPurpose = 0;
+    const unsubscribers: Unsubscribe[] = [];
+
+    const publish = () => {
+      if (cancelled) {
+        return;
+      }
+      setCounts({
+        catalogDonation: catalogDonationScoped,
+        printRequest: printRequestScoped + legacyMissingPurpose,
+      });
+    };
+
+    const attachPurposeCount = (purpose: CustomerUploadPurpose) => {
+      const countQuery = buildPurposeScopedPendingCountQuery(db, purpose);
+      const trace = {
+        app: "studio" as const,
+        collection: CUSTOMER_UPLOAD_COLLECTIONS.customerUploads,
+        constraints: [`purpose==${purpose}`, "catalogReviewStatus==pending_staff_review"],
+        source: "usePendingCustomerUploadCounts",
+        triggerReason: "authentication" as const,
+      };
+      traceFirestoreListenerAttach(trace);
+      unsubscribers.push(
+        traceWrappedUnsubscribe(
+          trace,
+          onSnapshot(
+            countQuery,
+            (snapshot) => {
+              traceFirestoreListenerEmission(trace, snapshot.size);
+              if (purpose === "catalog_donation") {
+                catalogDonationScoped = snapshot.size;
+              } else {
+                printRequestScoped = snapshot.size;
+              }
+              publish();
+            },
+            (error) => {
+              console.warn(
+                `[usePendingCustomerUploadCounts] ${purpose} listener failed:`,
+                error.message,
+              );
+              if (purpose === "catalog_donation") {
+                catalogDonationScoped = 0;
+              } else {
+                printRequestScoped = 0;
+              }
+              publish();
+            },
+          ),
+        ),
+      );
+    };
+
+    attachPurposeCount("print_request");
+    attachPurposeCount("catalog_donation");
+
+    const legacyQuery = buildStatusScopedCatalogReviewQuery(db, "pending_staff_review");
+    const legacyTrace = {
+      app: "studio" as const,
+      collection: CUSTOMER_UPLOAD_COLLECTIONS.customerUploads,
+      constraints: ["catalogReviewStatus==pending_staff_review", "legacyMissingPurposeOnly"],
+      source: "usePendingCustomerUploadCounts.legacyMissingPurpose",
+      triggerReason: "authentication" as const,
+    };
+    traceFirestoreListenerAttach(legacyTrace);
+    unsubscribers.push(
+      traceWrappedUnsubscribe(
+        legacyTrace,
+        onSnapshot(
+          legacyQuery,
+          (snapshot) => {
+            legacyMissingPurpose = 0;
+            for (const docSnap of snapshot.docs) {
+              if (isMissingCustomerUploadPurpose(docSnap.data().purpose)) {
+                legacyMissingPurpose += 1;
+              }
+            }
+            traceFirestoreListenerEmission(legacyTrace, legacyMissingPurpose);
+            publish();
+          },
+          (error) => {
+            console.warn(
+              "[usePendingCustomerUploadCounts] legacy missing-purpose listener failed:",
+              error.message,
+            );
+            legacyMissingPurpose = 0;
+            publish();
+          },
+        ),
+      ),
     );
 
-    traceFirestoreListenerAttach(TRACE_METADATA);
-    const unsubscribe = onSnapshot(
-      pendingQuery,
-      (snapshot) => {
-        traceFirestoreListenerEmission(TRACE_METADATA, snapshot.size);
-        let printRequest = 0;
-        let catalogDonation = 0;
-
-        for (const docSnap of snapshot.docs) {
-          const purpose = resolveCustomerUploadPurpose(docSnap.data().purpose);
-          if (purpose === "catalog_donation") {
-            catalogDonation += 1;
-          } else {
-            printRequest += 1;
-          }
-        }
-
-        setCounts({ catalogDonation, printRequest });
-      },
-      (error) => {
-        console.warn("[usePendingCustomerUploadCounts] listener failed:", error.message);
-        setCounts(EMPTY_COUNTS);
-      },
-    );
-
-    return traceWrappedUnsubscribe(TRACE_METADATA, unsubscribe);
+    return () => {
+      cancelled = true;
+      for (const unsubscribe of unsubscribers) {
+        unsubscribe();
+      }
+    };
   }, [canView]);
 
   return counts;
@@ -85,7 +154,7 @@ export function usePendingCustomerUploadCounts(): PendingCustomerUploadCounts {
 
 /**
  * Single-purpose pending count. Prefer {@link usePendingCustomerUploadCounts}
- * when both Sidebar badges are shown (one shared listener).
+ * when both Sidebar badges are shown (one shared listener set).
  */
 export function usePendingCustomerUploadCount(
   purposeScope: CustomerUploadPurpose = "print_request",
