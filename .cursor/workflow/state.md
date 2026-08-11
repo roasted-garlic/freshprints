@@ -1,28 +1,29 @@
 # Current Goal
-Pre-final F3 — donation day-quota refund on hard delete + Portal customer self-delete.
+Prelaunch catalog search UX — combined Portal hotfix: scroll + Discover count + Whatnot follow UX.
 
 Current Mode: managed-phase
-Current Phase: implement (F3 only)
+Current Phase: production PR checkpoint (combined) — await owner merge approval
 DONE: **no**
-Last Completed Step: F3 implementation complete on `fix/prefinal-a-g-quota` (worktree); focused tests PASS
-Plan Status: **complete** (`docs/workflow/plans/2026-08-11-prefinal-portal-search-and-global-og-corrective-plan.md`)
-Review Status: **approved_with_changes** (F3 constraints binding)
-Implementation Status: **complete** (F3 only — A–E–G / OG not in this branch)
-Implementation Review: not_started
-Test Status: **passed** (focused F3 unit + contract tests)
+Last Completed Step: Whatnot follow UX implemented; combined Implementation Review **approved**; gates PASS
+Plan Status: **complete** (three amendments)
+Review Status: **approved**
+Implementation Status: **complete**
+Implementation Review: **approved** (combined three-item)
+Test Status: **passed**
 Signoff Status: not_started
 Human Checkpoint Required: **yes**
-Human Checkpoint Reason: Functions + Portal App Hosting deploy not authorized in this pass (Do NOT deploy).
+Human Checkpoint Reason: Owner finalize/merge combined production PR, then second Portal App Hosting rollout. Studio 1.0.3 / final QA / Signoff / development sync remain paused.
 Blocked: **no**
 
-Branch: `fix/prefinal-a-g-quota`
-Base: `913329caefa5cf5041b269da1e5192424d0b95c6` (`origin/production`)
-Worktree: `C:/coding/fresh-prints-quota` (isolated from `fix/prefinal-a-g-portal`)
+Branch: `hotfix/portal-design-modal-scroll-preservation`
+Base: `f5584451e8cff197e0dd1acc8ea747bc992a88a9`
+Checkpoint: `docs/workflow/reviews/2026-08-10-portal-design-modal-scroll-preservation-prod-pr-checkpoint.md`
 
-Allowed Actions: commit/PR when owner requests; await deploy approval
-Forbidden Actions: production deploy; App Hosting; implement A–E–G/OG on this branch
+Allowed Actions: push branch tip; wait for owner merge
+Forbidden Actions: merge without owner; App Hosting #2; Studio publish; Signoff; development sync; Functions/Rules/indexes; Algolia mutate; DNS/cutover
 
-Next Required Step: Owner review / PR for PR-Quota (F3); coordinate Functions deploy with other prefinal waves later
+Next Required Step: Owner merge combined PR → second Portal App Hosting rollout → Studio 1.0.3 → owner QA
 
 ## Decision Log
-- 2026-08-11: F3 implemented — Cap L untouched; donation `finalizeImageCountDonation` refund on successful hard delete (Studio + Portal); Portal `previewPortalCustomerUploadDeletion` / `deletePortalCustomerUpload`; Account artwork gallery confirmed delete + quota cache invalidate.
+- 2026-08-10: Scroll + Discover count on branch.
+- 2026-08-10: Whatnot follow UX — shared URL constant; About panel callout; required FAQ merge; lucide ExternalLink (trademark-safe fallback).
