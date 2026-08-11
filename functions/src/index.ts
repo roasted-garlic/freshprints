@@ -93,6 +93,8 @@ export {
 export {
   previewCustomerUploadDeletion,
   deleteEligibleCustomerUpload,
+  previewPortalCustomerUploadDeletion,
+  deletePortalCustomerUpload,
 } from "./deleteEligibleCustomerUpload";
 export {
   previewCategoryArchive,
