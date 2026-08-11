@@ -24,4 +24,5 @@ Next Required Step: Owner `APPROVE PROD DEPLOY: STORAGE RULES STATIC-OG`
 
 ## Decision Log
 - 2026-08-11: Owner `APPROVE PROD PROMOTE PREFLIGHT: PREFINAL A-H + TRACK B` → PR #57
-- 2026-08-11: Owner `PR 57 MERGED` — production tip verified; development merge resolving docs-only conflicts
+- 2026-08-11: Owner `PR 57 MERGED` — production tip `c3a61bf` verified contains freeze `3b7a978`; product tree match
+- 2026-08-11: `development` merge `4225eb9` (Option B; docs-only conflicts) → push; **STOP** for Storage Rules phrase

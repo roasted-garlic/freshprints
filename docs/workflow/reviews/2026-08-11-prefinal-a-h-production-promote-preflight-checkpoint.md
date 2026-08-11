@@ -3,33 +3,27 @@
 | Field | Value |
 |-------|-------|
 | Date | 2026-08-11 |
-| Owner phrase | `APPROVE PROD PROMOTE PREFLIGHT: PREFINAL A-H + TRACK B` |
+| Owner phrase | `APPROVE PROD PROMOTE PREFLIGHT: PREFINAL A-H + TRACK B` → `PR 57 MERGED` |
 | Plan | `docs/workflow/plans/2026-08-11-prefinal-a-h-production-promotion-plan.md` |
 | Formal Review | `approved_with_changes` |
-| Status | **awaiting_owner_merge** — PR open; agent merge blocked by Cursor production-merge hook |
+| Status | **git_complete** — PR #57 merged; `development` reconciled; **STOP** before Storage Rules |
 
 ---
 
-## Freeze / topology
+## Freeze / topology (post-merge verified)
 
 | Item | Value |
 |------|-------|
 | Frozen product SHA | `3b7a978f324d3c133ead8707ffc51454a20e1f5d` |
-| QA tip | `f7286ed3a5e74d1d4c4b9b242a46b660497ebe53` |
-| Post-freeze commits | **1** docs-only (`f7286ed`) |
-| Product diff freeze↔tip | **empty** (`apps/`, `functions/src/`, `packages/`, `storage.rules`, Firestore rules/indexes) |
-| Working tree | clean except local workflow state update |
-| `origin/production` | `913329caefa5cf5041b269da1e5192424d0b95c6` (**unchanged**) |
-| `origin/development` | `cd33108506932acb7adc8550c6131c5c8748defa` |
-| Ancestry | production is ancestor of QA tip |
-| Commits `production..QA` | **18** |
-| Files `production..QA` | **114** |
-| Product conflicts | **none** |
-| Secret/env leak scan | **pass** (no tracked `.env.local` / credentials / installers) |
+| `origin/production` | `c3a61bfe244b091e2d71bb58d6633b7e57ab67b2` (merge PR #57) |
+| Freeze contained in production | **yes** (ancestor) |
+| Product diff freeze↔production tip | **empty** (`apps/`, `functions/src/`, `packages/`, `storage.rules`) |
+| `development` reconcile | merge commit `4225eb94ccc6e40eb6867f7c2a536c26161ea330` (docs/workflow conflicts only) |
+| Product diff `development`↔`origin/production` | **empty** (same trees) |
 
 ---
 
-## Pre-merge gates
+## Pre-merge gates (unchanged from preflight)
 
 | Check | Result |
 |-------|--------|
@@ -37,22 +31,21 @@
 | Studio typecheck | **pass** |
 | Functions build | **pass** |
 | Track A guards | **18/18** |
-| Track B + focused regressions | **91/91** (includes storageRulesAlignment static-og assert) |
+| Track B + focused regressions | **91/91** |
 | Lint (focused) | **pass** |
-| `git diff --check` | **fail (docs only)** — pre-existing markdown trailing whitespace in workflow plans/reviews; **no product-file hits** |
+| `git diff --check` | **fail (docs only)** — markdown trailing whitespace; no product-file hits |
 
 ---
 
-## Infra preflight (read-only)
+## Infra preflight (read-only; deploys not started)
 
 | Item | Result |
 |------|--------|
-| H indexes (`purpose`+`catalogReviewStatus`; +`createdAt`) | **Present** on `fresh-prints-prod` |
-| Algolia production (from gitignored `.env.production.local`) | App `Z1FVCM5QUX` · Index `portal_catalog_ready_prod` · Project `fresh-prints-prod` |
-| Algolia mutation | **none required** (query-time only) |
-| Firestore Rules vs production | **no diff** → no deploy |
-| Storage Rules vs production | **+25 lines** static-og → **deploy required later** |
-| Functions allowlist | Unchanged from Formal Review; all listed sources **M** vs production; portal delete exports new vs production |
+| H indexes | **Present** on `fresh-prints-prod` |
+| Algolia production | App `Z1FVCM5QUX` · Index `portal_catalog_ready_prod` · **no mutation** |
+| Firestore Rules | **no deploy** |
+| Storage Rules | **deploy required next** (static-og) |
+| Functions allowlist | Binding unchanged; **not deployed** |
 
 ### Functions allowlist (binding)
 
@@ -60,17 +53,14 @@
 
 ---
 
-## Git promotion (Option B)
+## Git promotion (Option B) — COMPLETE
 
 | Item | Value |
 |------|-------|
-| PR | **[#57](https://github.com/roasted-garlic/freshprints/pull/57)** |
-| Base | `production` |
-| Head | `qa/prefinal-a-h-dev` |
-| Agent merge | **blocked** by Cursor hook (production merge) |
-| Owner action required | **Merge PR #57** via GitHub UI (merge commit preferred) |
-| Development reconcile | **deferred** until production lands |
-| Production merge SHA | _pending owner merge_ |
+| PR | [#57](https://github.com/roasted-garlic/freshprints/pull/57) **MERGED** |
+| Production merge SHA | `c3a61bfe244b091e2d71bb58d6633b7e57ab67b2` |
+| Development reconcile | `4225eb94ccc6e40eb6867f7c2a536c26161ea330` onto production lineage |
+| Conflict scope | docs/workflow/handoff only (`.cursor/workflow/state.md`, handoff CURRENT-STATE / 13-recent, ROADMAP auto-merge) |
 
 ---
 
@@ -87,7 +77,7 @@
 
 ---
 
-## Next owner phrase (after PR #57 is merged and verified)
+## Next owner phrase
 
 ```
 APPROVE PROD DEPLOY: STORAGE RULES STATIC-OG

@@ -8,7 +8,7 @@
 |-----|-----|
 | `origin/production` | `c3a61bfe244b091e2d71bb58d6633b7e57ab67b2` (merge PR #57) |
 | Frozen product | `3b7a978f324d3c133ead8707ffc51454a20e1f5d` (contained; product tree match) |
-| `development` | reconciled onto production lineage (this merge) |
+| `development` | `4225eb94ccc6e40eb6867f7c2a536c26161ea330` (merge onto production lineage) |
 
 **PR:** https://github.com/roasted-garlic/freshprints/pull/57
 
