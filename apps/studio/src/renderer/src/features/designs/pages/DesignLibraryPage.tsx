@@ -33,6 +33,7 @@ import { usePrintRequestSelectionMode } from "../../print-requests/hooks/usePrin
 import { useArchiveDesign } from "../hooks/useArchiveDesign";
 import { useCategories } from "../hooks/useCategories";
 import { useCatalogTags } from "../hooks/useCatalogTags";
+import { useDesignLibraryManagedSearch } from "../hooks/useDesignLibraryManagedSearch";
 import { useDesigns } from "../hooks/useDesigns";
 import { useGeneratedDesignLibraryTaxonomy } from "../hooks/useGeneratedDesignLibraryTaxonomy";
 import { usePurgeArchivedDesignAssets } from "../hooks/usePurgeArchivedDesignAssets";
@@ -40,6 +41,10 @@ import { useRestoreDesign } from "../hooks/useRestoreDesign";
 import { designService } from "../services/designService";
 import { findDesignIdsOnActiveShowQueue } from "../services/purgeArchivedDesignAssetsService";
 import type { Design } from "../types/design.types";
+import {
+  resolveDesignLibraryCountLabel,
+  resolveDesignLibraryCountLabelMode,
+} from "../utils/designLibraryCountLabel";
 import {
   buildCategoryFilterOptions,
   countVisibleSelectedTags,
@@ -201,6 +206,10 @@ export function DesignLibraryPage() {
     [includeArchived, selectionModeActive],
   );
 
+  const browsingArchived = selectionModeActive ? false : includeArchived;
+  const trimmedSearch = searchQuery.trim();
+  const managedSearchActive = trimmedSearch.length > 0 && !browsingArchived;
+
   // The design LIST is always bounded-Firestore-authoritative (Amendment 1).
   // Phase 1A: display taxonomy is Firestore-backed via useGeneratedDesignLibraryTaxonomy.
   // Archived browse and category-management still load full Firestore taxonomy hooks.
@@ -240,7 +249,41 @@ export function DesignLibraryPage() {
     loadMoreDesigns,
     reloadDesigns,
     applyDesignPatch,
-  } = useDesigns(listQuery, { enabled: firestoreLoadPolicy.loadReadyDesignPage });
+  } = useDesigns(listQuery, {
+    enabled: firestoreLoadPolicy.loadReadyDesignPage && !managedSearchActive,
+  });
+
+  const managedSearch = useDesignLibraryManagedSearch({
+    categoryId: categoryFilter === ALL_FILTER_VALUE ? undefined : categoryFilter,
+    enabled: managedSearchActive,
+    needsCompanion: needsCompanionFilter,
+    searchQuery: trimmedSearch,
+    selectedTags,
+    user,
+  });
+
+  const [libraryTotal, setLibraryTotal] = useState<number | null>(null);
+  useEffect(() => {
+    if (!user || managedSearchActive) {
+      return;
+    }
+    let cancelled = false;
+    void designService
+      .countDesigns(user, listQuery)
+      .then((count) => {
+        if (!cancelled) {
+          setLibraryTotal(count);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setLibraryTotal(null);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [listQuery, managedSearchActive, user]);
 
   const {
     archiveDesign,
@@ -272,26 +315,31 @@ export function DesignLibraryPage() {
   }, [designs, includeArchived, selectionModeActive]);
 
   const searchMatchedDesigns = useMemo(
-    () => filterDesignsBySearch(visibleDesigns, searchQuery),
-    [searchQuery, visibleDesigns],
+    () =>
+      managedSearchActive
+        ? managedSearch.designs
+        : filterDesignsBySearch(visibleDesigns, searchQuery),
+    [managedSearch.designs, managedSearchActive, searchQuery, visibleDesigns],
   );
   const categoryFilteredDesigns = useMemo(
     () =>
-      filterDesignsByCategory(
-        searchMatchedDesigns,
-        categoryFilter === ALL_FILTER_VALUE ? undefined : categoryFilter,
-      ),
-    [categoryFilter, searchMatchedDesigns],
+      managedSearchActive
+        ? searchMatchedDesigns
+        : filterDesignsByCategory(
+            searchMatchedDesigns,
+            categoryFilter === ALL_FILTER_VALUE ? undefined : categoryFilter,
+          ),
+    [categoryFilter, managedSearchActive, searchMatchedDesigns],
   );
   const categoryFilterOptions = useMemo(
     () =>
       buildCategoryFilterOptions({
         allOptionValue: ALL_FILTER_VALUE,
         categories,
-        designs: filterDesignsByTags(searchMatchedDesigns, selectedTags),
+        designs: filterDesignsByTags(searchMatchedDesigns, managedSearchActive ? [] : selectedTags),
         selectedCategoryId: categoryFilter === ALL_FILTER_VALUE ? undefined : categoryFilter,
       }),
-    [categories, categoryFilter, searchMatchedDesigns, selectedTags],
+    [categories, categoryFilter, managedSearchActive, searchMatchedDesigns, selectedTags],
   );
 
   // Designs come straight from useDesigns (bounded, cursor-paginated, already sorted createdAt
@@ -301,13 +349,21 @@ export function DesignLibraryPage() {
   // for normal browse — Owner QA Amendment 3 correction). Sorting the page locally afterwards was
   // insufficient: a design reapproved today but created long ago falls outside a `createdAt`-
   // ordered page entirely, so no page-local sort could ever surface it.
+  // Managed search: Algolia hit order + Firestore hydrate (category/tags via Algolia; needsCompanion
+  // already applied in useDesignLibraryManagedSearch).
   const tagFilteredDesigns = useMemo(
-    () => filterDesignsByTags(categoryFilteredDesigns, selectedTags),
-    [categoryFilteredDesigns, selectedTags],
+    () =>
+      managedSearchActive
+        ? categoryFilteredDesigns
+        : filterDesignsByTags(categoryFilteredDesigns, selectedTags),
+    [categoryFilteredDesigns, managedSearchActive, selectedTags],
   );
   const filteredDesigns = useMemo(
-    () => filterDesignsByNeedsCompanion(tagFilteredDesigns, needsCompanionFilter),
-    [needsCompanionFilter, tagFilteredDesigns],
+    () =>
+      managedSearchActive
+        ? tagFilteredDesigns
+        : filterDesignsByNeedsCompanion(tagFilteredDesigns, needsCompanionFilter),
+    [managedSearchActive, needsCompanionFilter, tagFilteredDesigns],
   );
 
   const visibleTags = useMemo(() => visibleSelectedTags(selectedTags), [selectedTags]);
@@ -321,12 +377,30 @@ export function DesignLibraryPage() {
     needsCompanionFilter ||
     (selectionModeActive ? false : includeArchived);
 
-  // This reflects only the currently-loaded bounded page(s), not the full matching scope —
-  // consistent with archived mode's existing (unchanged) pagination behavior.
+  const countLabelMode = resolveDesignLibraryCountLabelMode({
+    hasClientCategoryOrTags:
+      !managedSearchActive &&
+      (categoryFilter !== ALL_FILTER_VALUE || selectedTags.length > 0),
+    hasClientPageLocalSearch: !managedSearchActive && trimmedSearch.length > 0,
+    includeArchived: browsingArchived,
+    managedSearchActive,
+    managedSearchUnavailable: managedSearchActive && Boolean(managedSearch.error),
+    needsCompanionFilter,
+  });
   const designCountLabel = useMemo(
-    () => `${filteredDesigns.length} design${filteredDesigns.length === 1 ? "" : "s"}`,
-    [filteredDesigns.length],
+    () =>
+      resolveDesignLibraryCountLabel({
+        libraryTotal,
+        loadedMatchingCount: filteredDesigns.length,
+        managedTotal: managedSearch.total,
+        mode: countLabelMode,
+      }),
+    [countLabelMode, filteredDesigns.length, libraryTotal, managedSearch.total],
   );
+
+  const catalogHasMore = managedSearchActive ? managedSearch.hasMore : hasMore;
+  const catalogIsLoadingMore = managedSearchActive ? managedSearch.isLoadingMore : isLoadingMore;
+  const handleLoadMore = managedSearchActive ? managedSearch.loadMore : loadMoreDesigns;
 
   const clearFilters = useCallback(() => {
     setSearchQuery("");
@@ -668,11 +742,13 @@ export function DesignLibraryPage() {
 
   useShellHeaderConfig(shellHeaderConfig);
 
-  const loadError = designsError ?? categoriesError ??
+  const loadError = (managedSearchActive ? managedSearch.error : null) ?? designsError ?? categoriesError ??
     (!includeArchived && displayTaxonomy.isUnavailable
       ? "Design Library taxonomy is temporarily unavailable. Please try again."
       : null);
-  const isLoading = includeArchived
+  const isLoading = managedSearchActive
+    ? managedSearch.isLoading || (selectionModeActive && selectionMode.isLoading)
+    : includeArchived
     ? isDesignsLoading || isCategoriesLoading || (selectionModeActive && selectionMode.isLoading)
     : isDesignsLoading ||
       (displayTaxonomy.isLoading && !displayTaxonomy.isUnavailable) ||
@@ -850,10 +926,10 @@ export function DesignLibraryPage() {
             requestSelection={selectionRequestSelection}
           />
 
-          {hasMore ? (
+          {catalogHasMore ? (
             <div className="design-library-load-more-row">
-              <Button disabled={isLoadingMore} onClick={loadMoreDesigns} variant="secondary">
-                {isLoadingMore ? "Loading more designs..." : "Load more designs"}
+              <Button disabled={catalogIsLoadingMore} onClick={handleLoadMore} variant="secondary">
+                {catalogIsLoadingMore ? "Loading more designs..." : "Load more designs"}
               </Button>
             </div>
           ) : null}

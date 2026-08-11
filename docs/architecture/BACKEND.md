@@ -367,6 +367,14 @@ sync/reconcile use Secret Manager admin key (`ALGOLIA_ADMIN_API_KEY` via
 `functions/src/algolia/algoliaSecrets.ts` — **not** shared `lib/secrets`). Index records are
 not an authorization boundary.
 
+**Studio Design Library managed search (2026-08-10):** Studio ready-catalog text search may use the
+**same environment-specific Algolia index** as Portal via search-only Vite env:
+`VITE_ALGOLIA_APP_ID`, `VITE_ALGOLIA_SEARCH_API_KEY`, `VITE_ALGOLIA_INDEX_NAME` (optional kill-switch
+`VITE_USE_ALGOLIA_CATALOG_SEARCH=false`). **Never** put an Algolia admin/write key in Studio.
+Missing Studio Algolia config fails closed (clear UI error) — it must not fall back to
+`loadAll` / full-catalog hydrate. Ordinary Design Library browse remains Firestore cursor pagination;
+complete unfiltered counts use existing `designService.countDesigns` (`getCountFromServer`).
+
 **Optional Algolia discovery coupling (ADR-FP-129):** While Algolia is OFF, the Algolia Function
 trio is **not** exported from default `functions/src/index.ts` (restore via
 `algolia/algoliaFunctionExports.ts` under an approved Algolia checkpoint). Optional provider

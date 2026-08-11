@@ -801,6 +801,42 @@ export const designService = {
   },
 
   /**
+   * Ordered batch hydrate by ID for Algolia hit lists.
+   * Missing / unreadable docs are omitted (never authorize from Algolia alone).
+   * Result order matches the requested ID sequence. Never scans the collection.
+   */
+  async getDesignsByIds(caller: User, designIds: string[]): Promise<Design[]> {
+    if (!permissionService.canViewDesigns(caller)) {
+      return [];
+    }
+
+    const uniqueIds = [...new Set(designIds.map((id) => id.trim()).filter(Boolean))];
+    if (uniqueIds.length === 0) {
+      return [];
+    }
+
+    const loaded = await Promise.all(
+      uniqueIds.map(async (designId) => {
+        try {
+          return await this.getDesignById(caller, designId);
+        } catch {
+          return null;
+        }
+      }),
+    );
+
+    const byId = new Map(
+      loaded
+        .filter((design): design is Design => design !== null)
+        .map((design) => [design.id, design] as const),
+    );
+
+    return uniqueIds
+      .map((id) => byId.get(id))
+      .filter((design): design is Design => design !== undefined);
+  },
+
+  /**
    * Authority read returning both mapped Design and raw document fields.
    * Used when a same-stack follow-up write may skip its pre-write getDoc (P1 I5).
    * Always hits Firestore (does not use the Design-only document cache).

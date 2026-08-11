@@ -86,6 +86,26 @@ export function CatalogPageContent() {
     return () => window.clearTimeout(handle);
   }, [searchQuery]);
 
+  /** Keep library `q` in the URL so designId open/close cannot wipe search. */
+  const searchParamsRef = useRef(searchParams);
+  searchParamsRef.current = searchParams;
+  useEffect(() => {
+    const params = searchParamsRef.current;
+    const urlQ = params.get('q') ?? '';
+    const desiredQ = debouncedSearchQuery.trim();
+    if (urlQ === desiredQ) {
+      return;
+    }
+    const next = new URLSearchParams(params.toString());
+    if (desiredQ) {
+      next.set('q', desiredQ);
+    } else {
+      next.delete('q');
+    }
+    const query = next.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }, [debouncedSearchQuery, pathname, router]);
+
   const {
     actionError: creationActionError,
     continuableRequests,
@@ -202,7 +222,20 @@ export function CatalogPageContent() {
 
   const { resetTransientState } = addDesignFlow;
 
+  const libraryParamsWithoutDesignId = useRef<string | null>(null);
   useEffect(() => {
+    const next = new URLSearchParams(searchParams.toString());
+    next.delete('designId');
+    const fingerprint = next.toString();
+    const onlyDesignIdChanged =
+      libraryParamsWithoutDesignId.current !== null &&
+      libraryParamsWithoutDesignId.current === fingerprint;
+    libraryParamsWithoutDesignId.current = fingerprint;
+
+    if (onlyDesignIdChanged) {
+      return;
+    }
+
     const nextSearch = searchParams.get('q') ?? '';
     setSearchQuery(nextSearch);
     setDebouncedSearchQuery(nextSearch);

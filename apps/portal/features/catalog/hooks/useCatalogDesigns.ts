@@ -438,7 +438,7 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
   ]);
 
   // Managed search (Algolia) already applied q/tags/category — do not re-filter
-  // client-side (would discard Algolia typo-tolerant hits that fail substring match).
+  // client-side (would discard legitimate Algolia token matches that fail naive substring checks).
   const filteredDesigns = useFilteredCatalogDesigns({
     designs: allDesigns,
     search: isManagedSearchQuery ? '' : (options.searchQuery ?? ''),

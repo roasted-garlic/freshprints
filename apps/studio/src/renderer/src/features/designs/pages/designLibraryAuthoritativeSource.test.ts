@@ -98,6 +98,20 @@ describe("Design Library design-list source is unconditionally Firestore-authori
     assert.doesNotMatch(source, /onSnapshot/);
   });
 
+  it("managed ready-catalog search fails closed without full hydrate fallback", () => {
+    const source = read(
+      "apps/studio/src/renderer/src/features/designs/pages/DesignLibraryPage.tsx",
+    );
+    const hook = read(
+      "apps/studio/src/renderer/src/features/designs/hooks/useDesignLibraryManagedSearch.ts",
+    );
+
+    assert.match(source, /useDesignLibraryManagedSearch/);
+    assert.doesNotMatch(source, /loadAll:\s*true/);
+    assert.doesNotMatch(hook, /loadAll:\s*true/);
+    assert.match(hook, /Catalog search is not configured/);
+  });
+
   it("useGeneratedReadyDesigns remains for Assisted Creation and uses Firestore pagination", () => {
     const hookSource = read(
       "apps/studio/src/renderer/src/features/designs/hooks/useGeneratedReadyDesigns.ts",
