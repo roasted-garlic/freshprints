@@ -1,7 +1,9 @@
 'use client';
 
 import { usePathname, useSearchParams } from 'next/navigation';
-import { useLayoutEffect } from 'react';
+import { useLayoutEffect, useRef } from 'react';
+
+import { isDesignIdOnlySearchChange } from '../utils/portalScrollResetFingerprint';
 
 function resetPortalScroll() {
   window.scrollTo(0, 0);
@@ -23,15 +25,31 @@ function resetPortalScroll() {
  * Shared app shell keeps the document scrollport across soft navigations.
  * Next.js window scroll restore can race layout/content paint on mobile, so
  * reset synchronously and again after paint when the route (or catalog query) changes.
+ *
+ * Design-details deep links only toggle `?designId=` over an already-scrolled
+ * catalog page. Those must not reset scroll — deep-link code already uses
+ * `router.replace(..., { scroll: false })`, but this shell effect previously
+ * overrode that by depending on the full search string.
  */
 export function PortalScrollReset() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const search = searchParams.toString();
+  const previousRef = useRef<{ pathname: string; search: string } | null>(null);
 
   useLayoutEffect(() => {
     if (typeof window !== 'undefined') {
       window.history.scrollRestoration = 'manual';
+    }
+
+    const previous = previousRef.current;
+    previousRef.current = { pathname, search };
+
+    if (
+      previous &&
+      isDesignIdOnlySearchChange(previous.pathname, previous.search, pathname, search)
+    ) {
+      return;
     }
 
     resetPortalScroll();
