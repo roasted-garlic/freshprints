@@ -56,6 +56,8 @@ export function PortalAboutFirstVisitModal({ isEligible }: PortalAboutFirstVisit
         </header>
         <div className="modal-body">
           <PortalHelpAboutPanel />
+        </div>
+        <footer className="modal-footer portal-about-first-visit-footer">
           <label className="portal-about-first-visit-dont-show">
             <input
               checked={dontShowAgain}
@@ -64,8 +66,6 @@ export function PortalAboutFirstVisitModal({ isEligible }: PortalAboutFirstVisit
             />
             <span>Don&apos;t show this again</span>
           </label>
-        </div>
-        <footer className="modal-footer">
           <button className="portal-button portal-button-primary" onClick={handleDismiss} type="button">
             Close
           </button>

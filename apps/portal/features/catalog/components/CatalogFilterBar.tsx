@@ -7,9 +7,11 @@ import { PortalSelect } from '../../shared/components/PortalSelect';
 interface CatalogFilterBarProps {
   categoryFilter: string;
   categoryOptions: Array<{ value: string; label: string }>;
+  filterSheetActiveCount: number;
   halftoneFilterOn: boolean;
   onCategoryChange: (value: string) => void;
   onHalftoneFilterChange: (on: boolean) => void;
+  onOpenFiltersSheet: () => void;
   onOpenTags: () => void;
   onSearchChange: (value: string) => void;
   searchQuery: string;
@@ -19,9 +21,11 @@ interface CatalogFilterBarProps {
 export function CatalogFilterBar({
   categoryFilter,
   categoryOptions,
+  filterSheetActiveCount,
   halftoneFilterOn,
   onCategoryChange,
   onHalftoneFilterChange,
+  onOpenFiltersSheet,
   onOpenTags,
   onSearchChange,
   searchQuery,
@@ -31,19 +35,37 @@ export function CatalogFilterBar({
 
   return (
     <div className="design-library-filter-controls">
-      <div className="design-library-filter-controls-search">
-        <label className="global-search-field">
-          <span className="global-search-icon">
-            <SearchIcon />
+      <div className="design-library-filter-controls-search-row">
+        <div className="design-library-filter-controls-search">
+          <label className="global-search-field">
+            <span className="global-search-icon">
+              <SearchIcon />
+            </span>
+            <input
+              className="global-search-input"
+              onChange={(event) => onSearchChange(event.target.value)}
+              placeholder="Search catalog..."
+              type="search"
+              value={searchQuery}
+            />
+          </label>
+        </div>
+
+        <button
+          aria-label={
+            filterSheetActiveCount > 0
+              ? `Open filters, ${filterSheetActiveCount} active`
+              : 'Open filters'
+          }
+          className="portal-button portal-button-secondary portal-button-sm portal-button-leading-icon design-library-open-filters-button"
+          onClick={onOpenFiltersSheet}
+          type="button"
+        >
+          <FilterIcon />
+          <span className="design-library-open-filters-button-label">
+            Filters{filterSheetActiveCount > 0 ? ` (${filterSheetActiveCount})` : ''}
           </span>
-          <input
-            className="global-search-input"
-            onChange={(event) => onSearchChange(event.target.value)}
-            placeholder="Search catalog..."
-            type="search"
-            value={searchQuery}
-          />
-        </label>
+        </button>
       </div>
 
       <div className="design-library-filter-controls-secondary">

@@ -253,7 +253,18 @@ export function DesignLibraryPage() {
     enabled: firestoreLoadPolicy.loadReadyDesignPage && !managedSearchActive,
   });
 
-  const managedSearch = useDesignLibraryManagedSearch({
+  const {
+    applyDesignPatch: applyManagedSearchPatch,
+    designs: managedSearchDesigns,
+    error: managedSearchError,
+    hasMore: managedSearchHasMore,
+    isLoading: managedSearchIsLoading,
+    isLoadingMore: managedSearchIsLoadingMore,
+    loadMore: managedSearchLoadMore,
+    reload: reloadManagedSearch,
+    total: managedSearchTotal,
+  } = useDesignLibraryManagedSearch({
+    catalogTags,
     categoryId: categoryFilter === ALL_FILTER_VALUE ? undefined : categoryFilter,
     enabled: managedSearchActive,
     needsCompanion: needsCompanionFilter,
@@ -317,9 +328,9 @@ export function DesignLibraryPage() {
   const searchMatchedDesigns = useMemo(
     () =>
       managedSearchActive
-        ? managedSearch.designs
+        ? managedSearchDesigns
         : filterDesignsBySearch(visibleDesigns, searchQuery),
-    [managedSearch.designs, managedSearchActive, searchQuery, visibleDesigns],
+    [managedSearchDesigns, managedSearchActive, searchQuery, visibleDesigns],
   );
   const categoryFilteredDesigns = useMemo(
     () =>
@@ -384,7 +395,7 @@ export function DesignLibraryPage() {
     hasClientPageLocalSearch: !managedSearchActive && trimmedSearch.length > 0,
     includeArchived: browsingArchived,
     managedSearchActive,
-    managedSearchUnavailable: managedSearchActive && Boolean(managedSearch.error),
+    managedSearchUnavailable: managedSearchActive && Boolean(managedSearchError),
     needsCompanionFilter,
   });
   const designCountLabel = useMemo(
@@ -392,15 +403,15 @@ export function DesignLibraryPage() {
       resolveDesignLibraryCountLabel({
         libraryTotal,
         loadedMatchingCount: filteredDesigns.length,
-        managedTotal: managedSearch.total,
+        managedTotal: managedSearchTotal,
         mode: countLabelMode,
       }),
-    [countLabelMode, filteredDesigns.length, libraryTotal, managedSearch.total],
+    [countLabelMode, filteredDesigns.length, libraryTotal, managedSearchTotal],
   );
 
-  const catalogHasMore = managedSearchActive ? managedSearch.hasMore : hasMore;
-  const catalogIsLoadingMore = managedSearchActive ? managedSearch.isLoadingMore : isLoadingMore;
-  const handleLoadMore = managedSearchActive ? managedSearch.loadMore : loadMoreDesigns;
+  const catalogHasMore = managedSearchActive ? managedSearchHasMore : hasMore;
+  const catalogIsLoadingMore = managedSearchActive ? managedSearchIsLoadingMore : isLoadingMore;
+  const handleLoadMore = managedSearchActive ? managedSearchLoadMore : loadMoreDesigns;
 
   const clearFilters = useCallback(() => {
     setSearchQuery("");
@@ -496,10 +507,23 @@ export function DesignLibraryPage() {
       // source, also the immediate read authority — patch the local list from the just-saved
       // authoritative document so the edit is visible without waiting on a full reload.
       applyDesignPatch(updated.id, updated);
+      // Managed Algolia results are independent of useDesigns — drop/patch immediately from the
+      // saved document (tag alias aware), then refetch so the list converges after index sync.
+      if (managedSearchActive) {
+        applyManagedSearchPatch(updated);
+        reloadManagedSearch();
+      }
       await refreshCatalog();
       showSuccessMessage("Design updated successfully.");
     });
-  }, [applyDesignPatch, refreshCatalog, showSuccessMessage]);
+  }, [
+    applyDesignPatch,
+    applyManagedSearchPatch,
+    managedSearchActive,
+    refreshCatalog,
+    reloadManagedSearch,
+    showSuccessMessage,
+  ]);
 
   const handleCategoriesUpdated = useCallback(async () => {
     await refreshCatalog();
@@ -742,12 +766,12 @@ export function DesignLibraryPage() {
 
   useShellHeaderConfig(shellHeaderConfig);
 
-  const loadError = (managedSearchActive ? managedSearch.error : null) ?? designsError ?? categoriesError ??
+  const loadError = (managedSearchActive ? managedSearchError : null) ?? designsError ?? categoriesError ??
     (!includeArchived && displayTaxonomy.isUnavailable
       ? "Design Library taxonomy is temporarily unavailable. Please try again."
       : null);
   const isLoading = managedSearchActive
-    ? managedSearch.isLoading || (selectionModeActive && selectionMode.isLoading)
+    ? managedSearchIsLoading || (selectionModeActive && selectionMode.isLoading)
     : includeArchived
     ? isDesignsLoading || isCategoriesLoading || (selectionModeActive && selectionMode.isLoading)
     : isDesignsLoading ||

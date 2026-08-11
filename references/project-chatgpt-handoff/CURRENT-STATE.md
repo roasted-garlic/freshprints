@@ -1,17 +1,22 @@
 # Fresh Prints - Current State Snapshot
 
-## 2026-08-10 — COMBINED PORTAL HOTFIX — AWAIT PROD MERGE
+## 2026-08-11 — PROD PROMOTION PLAN READY (await owner phrase)
 
-Branch: `hotfix/portal-design-modal-scroll-preservation` (base `f5584451…`)
-Includes:
-1. Catalog scroll preservation (`designId`-only skip in PortalScrollReset)
-2. Discover search placeholder uses complete ready-library aggregate (`countReadyDesigns`), not home-pool length (~85)
-Gates: Formal Reviews + combined Implementation Review approved; tests/typecheck/lint/build:portal PASS
-**Paused:** merge until owner OK; second App Hosting; Studio 1.0.3; final QA; Signoff; development sync
-Checkpoint: `docs/workflow/reviews/2026-08-10-portal-design-modal-scroll-preservation-prod-pr-checkpoint.md`
-PR: https://github.com/roasted-garlic/freshprints/compare/production...hotfix/portal-design-modal-scroll-preservation?expand=1
+**Frozen product candidate:** `qa/prefinal-a-h-dev` @ `3b7a978f324d3c133ead8707ffc51454a20e1f5d` (pushed; product tree clean at freeze)
 
-## 2026-08-10 - FEATURED TAGS AMENDMENT — AWAIT OWNER DEV QA
+| Ref | SHA |
+|-----|-----|
+| production | `913329caefa5cf5041b269da1e5192424d0b95c6` |
+| development | `cd33108506932acb7adc8550c6131c5c8748defa` |
+| candidate | `3b7a978f324d3c133ead8707ffc51454a20e1f5d` |
 
-Owner QA: `docs/workflow/reviews/2026-08-10-featured-tags-owner-qa-checklist.md`
-Reply: **`DEV FEATURED TAGS QA: PASS`** / `FAIL: …` / `PASS WITH NOTES: …`
+**Plan:** `docs/workflow/plans/2026-08-11-prefinal-a-h-production-promotion-plan.md`  
+**Formal Review:** **approved_with_changes** — `docs/workflow/reviews/2026-08-11-prefinal-a-h-production-promotion-plan-review.md`
+
+### Next owner phrase (does not auto-run)
+
+```
+APPROVE PROD PROMOTE PREFLIGHT: PREFINAL A-H + TRACK B
+```
+
+Still separately gated afterward: Track A APPLY, Studio 1.0.3, domain cutover.

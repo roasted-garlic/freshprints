@@ -4,6 +4,11 @@ import { getDownloadURL, ref, uploadBytesResumable, type UploadMetadata } from '
 
 import { runTracedCallable } from '@fresh-prints/shared/utils/firestoreUsageTrace';
 
+import type {
+  DeleteEligibleCustomerUploadResponse,
+  PreviewCustomerUploadDeletionResponse,
+} from '@fresh-prints/shared/types/deletion/deletion.types';
+import { DELETE_CUSTOMER_UPLOAD_CONFIRMATION_PHRASE } from '@fresh-prints/shared/types/deletion/deletion.types';
 import {
   CUSTOMER_UPLOAD_MAX_CONCURRENT_FINALIZE,
   CUSTOMER_UPLOAD_MAX_FILES_PER_BATCH,
@@ -382,6 +387,39 @@ export const customerUploadService = {
   invalidateDailyQuota(): void {
     const uid = getPortalAuth().currentUser?.uid;
     invalidateCustomerUploadQuota(uid ? `${uid}:` : undefined);
+  },
+
+  confirmationPhrase: DELETE_CUSTOMER_UPLOAD_CONFIRMATION_PHRASE,
+
+  async previewOwnUploadDeletion(
+    customerUploadId: string,
+  ): Promise<PreviewCustomerUploadDeletionResponse> {
+    try {
+      return await callTracedFunction<
+        { customerUploadId: string },
+        PreviewCustomerUploadDeletionResponse
+      >('previewPortalCustomerUploadDeletion', {
+        source: 'customerUploadService.previewOwnUploadDeletion',
+      })({ customerUploadId });
+    } catch (error) {
+      throw new Error(portalAuthService.getCallableErrorMessage(error));
+    }
+  },
+
+  async deleteOwnUpload(
+    customerUploadId: string,
+    confirmationPhrase: string = DELETE_CUSTOMER_UPLOAD_CONFIRMATION_PHRASE,
+  ): Promise<DeleteEligibleCustomerUploadResponse> {
+    try {
+      return await callTracedFunction<
+        { customerUploadId: string; confirmationPhrase: string },
+        DeleteEligibleCustomerUploadResponse
+      >('deletePortalCustomerUpload', {
+        source: 'customerUploadService.deleteOwnUpload',
+      })({ customerUploadId, confirmationPhrase });
+    } catch (error) {
+      throw new Error(portalAuthService.getCallableErrorMessage(error));
+    }
   },
 
   async confirmAndAttach(

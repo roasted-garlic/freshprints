@@ -45,6 +45,7 @@ import { withoutUndefinedFields } from "./lib/firestoreDocument";
 import { loadPortalQueueCutoffHours } from "./lib/loadPortalQueueCutoffHours";
 import { loadPrintRequestLimitSettings } from "./lib/loadPrintRequestLimitSettings";
 import { requirePortalCustomer } from "./lib/portalCustomer";
+import { applyCustomerUploadStaffReviewTransitionInTransaction } from "./lib/customerUploadCatalogConfirmation";
 import { validateQueuePortalPrintRequestToShowRequest } from "./lib/queuePortalPrintRequestToShowValidation";
 import { getPortalQueueTransactionBlockReason } from "./lib/portalQueueTransactionEligibility";
 
@@ -462,11 +463,21 @@ export const queuePortalPrintRequestToShow = onCall(async (request): Promise<Que
           .collection("showAllocations")
           .where("printRequestId", "==", payload.printRequestId),
       );
+      // Reads before writes: re-read customer uploads so successful queue can advance
+      // catalogReviewStatus not_eligible → pending_staff_review in the same TX.
+      const freshUploadSnaps = await Promise.all(
+        uploadIds.map((id) =>
+          transaction.get(
+            adminDb.collection(CUSTOMER_UPLOAD_COLLECTIONS.customerUploads).doc(id),
+          ),
+        ),
+      );
       transactionDocumentsReturned +=
         (freshShowSnap.exists ? 1 : 0) +
         (freshRequestSnap.exists ? 1 : 0) +
         freshShowAllocationsSnap.size +
-        freshRequestAllocationsSnap.size;
+        freshRequestAllocationsSnap.size +
+        freshUploadSnaps.filter((snap) => snap.exists).length;
 
       if (!freshShowSnap.exists || !freshRequestSnap.exists) {
         throw invalidArgument("Print request or show no longer exists.");
@@ -566,6 +577,14 @@ export const queuePortalPrintRequestToShow = onCall(async (request): Promise<Que
             code: PRINT_REQUEST_QUOTA_ERROR_CODES.SHOW_CUSTOMER_LIMIT,
             cap: customerShowLimit,
           },
+        );
+      }
+
+      for (const freshUploadSnap of freshUploadSnaps) {
+        applyCustomerUploadStaffReviewTransitionInTransaction(
+          transaction,
+          freshUploadSnap,
+          timestamp,
         );
       }
 

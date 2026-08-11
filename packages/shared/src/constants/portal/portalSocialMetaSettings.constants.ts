@@ -8,12 +8,55 @@ export const PORTAL_SOCIAL_META_DESCRIPTION_MAX_LENGTH = 300;
  * Defaults match Portal brand copy when settings doc is missing.
  * Kept in shared so Studio + Functions + Portal resolve the same fallbacks.
  */
-export const DEFAULT_PORTAL_SOCIAL_META_TITLE = "Fresh Prints Request Portal";
+export const DEFAULT_PORTAL_SOCIAL_META_TITLE = "Fresh Prints Whatnot Request Portal";
 export const DEFAULT_PORTAL_SOCIAL_META_DESCRIPTION =
-  "Browse the design library and submit print requests for Fresh Prints shows.";
+  "Browse the design library and submit print requests for Fresh Prints Whatnot shows.";
 
-/** Global non-design URLs: brand logo vs interval-rotated ready library image. */
-export type PortalGlobalOgImageSource = "library" | "logo";
+/** Global non-design URLs: brand logo, interval-rotated library, or a fixed static image. */
+export type PortalGlobalOgImageSource = "library" | "logo" | "static";
+
+/** How the static Global OG asset was selected when last saved. */
+export type PortalStaticOgImageKind = "upload" | "design";
+
+/**
+ * Resolved static Global OG asset snapshot persisted at Save.
+ * `downloadUrl` / `storagePath` remain for Studio preview + upload cleanup.
+ * Crawler-facing Global OG Static always letterboxes via `getPortalOgShareImage`
+ * (`designId` from `sourceDesignId`, or validated upload `staticPath`) — never raw URLs.
+ */
+export interface PortalStaticOgImageSnapshot {
+  kind: PortalStaticOgImageKind;
+  storagePath: string | null;
+  downloadUrl: string | null;
+  sourceDesignId: string | null;
+}
+
+/** Client → callable payload for changing or retaining the static OG asset. */
+export type PortalStaticOgImageInput =
+  | { kind: "upload"; storagePath: string }
+  | { kind: "design"; sourceDesignId: string }
+  | { kind: "retain" };
+
+/** Max upload size for static Global OG images (5 MiB) — keep in sync with storage.rules. */
+export const PORTAL_STATIC_OG_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+
+export const PORTAL_STATIC_OG_IMAGE_CONTENT_TYPES = [
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+] as const;
+
+export type PortalStaticOgImageContentType =
+  (typeof PORTAL_STATIC_OG_IMAGE_CONTENT_TYPES)[number];
+
+const STATIC_OG_OBJECT_ID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const STATIC_OG_EXT_BY_CONTENT_TYPE: Record<PortalStaticOgImageContentType, string> = {
+  "image/png": "png",
+  "image/jpeg": "jpg",
+  "image/webp": "webp",
+};
 
 /**
  * How often the global library OG image index advances (plus salt).
@@ -49,9 +92,10 @@ export interface PortalSocialMetaSettings {
   /**
    * When true, design (and library) OG images are letterboxed onto a 1200×630 canvas
    * so Facebook’s wide preview shows the full artwork.
+   * Does **not** apply to Global OG Static Image mode — Static always letterboxes.
    */
   letterboxOgImages: boolean;
-  /** Non-design Portal URLs: rotate library designs on an interval, or always use brand logo. */
+  /** Non-design Portal URLs: rotate library designs, brand logo, or a fixed static image. */
   globalOgImageSource: PortalGlobalOgImageSource;
   /** Library OG rotation cadence when `globalOgImageSource` is `library` (default hourly). */
   libraryOgRotationInterval: PortalLibraryOgRotationInterval;
@@ -60,6 +104,11 @@ export interface PortalSocialMetaSettings {
    * for testing without waiting for the next interval bucket.
    */
   libraryOgRotationSalt: number;
+  /**
+   * Resolved static OG asset when mode is (or was) `static`.
+   * Retained when temporarily switching to library/logo so owners can switch back without re-upload.
+   */
+  staticOgImage: PortalStaticOgImageSnapshot | null;
   updatedAt?: unknown;
   updatedBy?: string;
 }
@@ -71,6 +120,7 @@ export const DEFAULT_PORTAL_SOCIAL_META_SETTINGS: Readonly<PortalSocialMetaSetti
   globalOgImageSource: "library",
   libraryOgRotationInterval: "hourly",
   libraryOgRotationSalt: 0,
+  staticOgImage: null,
 };
 
 function clampText(value: unknown, maxLength: number, fallback: string): string {
@@ -92,7 +142,7 @@ function resolveLetterboxOgImages(value: unknown): boolean {
 }
 
 function resolveGlobalOgImageSource(value: unknown): PortalGlobalOgImageSource {
-  if (value === "logo" || value === "library") {
+  if (value === "logo" || value === "library" || value === "static") {
     return value;
   }
   return DEFAULT_PORTAL_SOCIAL_META_SETTINGS.globalOgImageSource;
@@ -131,6 +181,40 @@ function resolveLibraryOgRotationSalt(value: unknown): number {
   return truncated;
 }
 
+function normalizeOptionalString(value: unknown): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
+}
+
+export function resolvePortalStaticOgImageSnapshot(
+  value: unknown,
+): PortalStaticOgImageSnapshot | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+  const data = value as Record<string, unknown>;
+  if (data.kind !== "upload" && data.kind !== "design") {
+    return null;
+  }
+  const storagePath = normalizeOptionalString(data.storagePath);
+  const downloadUrl = normalizeOptionalString(data.downloadUrl);
+  if (!storagePath && !downloadUrl) {
+    return null;
+  }
+  if (downloadUrl && !downloadUrl.startsWith("https://")) {
+    return null;
+  }
+  return {
+    kind: data.kind,
+    storagePath,
+    downloadUrl,
+    sourceDesignId: normalizeOptionalString(data.sourceDesignId),
+  };
+}
+
 export function resolvePortalSocialMetaSettings(value: unknown): PortalSocialMetaSettings {
   const data = value && typeof value === "object" ? (value as Record<string, unknown>) : {};
   const settings: PortalSocialMetaSettings = {
@@ -144,6 +228,7 @@ export function resolvePortalSocialMetaSettings(value: unknown): PortalSocialMet
     globalOgImageSource: resolveGlobalOgImageSource(data.globalOgImageSource),
     libraryOgRotationInterval: resolveLibraryOgRotationInterval(data.libraryOgRotationInterval),
     libraryOgRotationSalt: resolveLibraryOgRotationSalt(data.libraryOgRotationSalt),
+    staticOgImage: resolvePortalStaticOgImageSnapshot(data.staticOgImage),
   };
   if (data.updatedAt !== undefined) {
     settings.updatedAt = data.updatedAt;
@@ -161,7 +246,98 @@ export type PortalSocialMetaSettingsInput = {
   globalOgImageSource: PortalGlobalOgImageSource;
   libraryOgRotationInterval: PortalLibraryOgRotationInterval;
   libraryOgRotationSalt: number;
+  /**
+   * Required when switching to / saving `static` without an existing snapshot.
+   * `{ kind: "retain" }` keeps the previous resolved snapshot.
+   */
+  staticOgImage?: PortalStaticOgImageInput;
 };
+
+function isPortalStaticOgImageContentType(value: string): value is PortalStaticOgImageContentType {
+  return (PORTAL_STATIC_OG_IMAGE_CONTENT_TYPES as readonly string[]).includes(value);
+}
+
+/** Build Storage object path: `portal-social-meta/static-og/{uuid}.{ext}` (no leading slash). */
+export function buildPortalStaticOgImageStoragePath(
+  objectId: string,
+  contentType: PortalStaticOgImageContentType,
+): string {
+  const id = objectId.trim().toLowerCase();
+  if (!STATIC_OG_OBJECT_ID_PATTERN.test(id)) {
+    throw new Error("Static OG object id must be a UUID.");
+  }
+  return `portal-social-meta/static-og/${id}.${STATIC_OG_EXT_BY_CONTENT_TYPE[contentType]}`;
+}
+
+/**
+ * Normalize and validate a client-provided static OG upload path.
+ * Returns the canonical path or null when invalid.
+ */
+export function parsePortalStaticOgImageStoragePath(value: unknown): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const normalized = value.trim().replace(/^\/+/, "").toLowerCase();
+  const match = /^portal-social-meta\/static-og\/([0-9a-f-]{36})\.(png|jpg|jpeg|webp)$/.exec(
+    normalized,
+  );
+  if (!match) {
+    return null;
+  }
+  const objectId = match[1] ?? "";
+  const ext = match[2] === "jpeg" ? "jpg" : (match[2] ?? "");
+  if (!STATIC_OG_OBJECT_ID_PATTERN.test(objectId) || !ext) {
+    return null;
+  }
+  return `portal-social-meta/static-og/${objectId}.${ext}`;
+}
+
+export function portalStaticOgImageContentTypeFromPath(
+  storagePath: string,
+): PortalStaticOgImageContentType | null {
+  const lower = storagePath.trim().toLowerCase();
+  if (lower.endsWith(".png")) return "image/png";
+  if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return "image/jpeg";
+  if (lower.endsWith(".webp")) return "image/webp";
+  return null;
+}
+
+export function isAllowedPortalStaticOgImageContentType(
+  value: unknown,
+): value is PortalStaticOgImageContentType {
+  return typeof value === "string" && isPortalStaticOgImageContentType(value);
+}
+
+function parsePortalStaticOgImageInput(value: unknown): PortalStaticOgImageInput | undefined | null {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+  const data = value as Record<string, unknown>;
+  if (data.kind === "retain") {
+    return { kind: "retain" };
+  }
+  if (data.kind === "upload") {
+    const storagePath = parsePortalStaticOgImageStoragePath(data.storagePath);
+    if (!storagePath) {
+      return null;
+    }
+    return { kind: "upload", storagePath };
+  }
+  if (data.kind === "design") {
+    if (typeof data.sourceDesignId !== "string") {
+      return null;
+    }
+    const sourceDesignId = data.sourceDesignId.trim();
+    if (!sourceDesignId || sourceDesignId.length > 128 || !/^[A-Za-z0-9_-]+$/.test(sourceDesignId)) {
+      return null;
+    }
+    return { kind: "design", sourceDesignId };
+  }
+  return null;
+}
 
 export function parsePortalSocialMetaSettingsInput(
   value: unknown,
@@ -189,11 +365,18 @@ export function parsePortalSocialMetaSettingsInput(
     typeof data.letterboxOgImages === "boolean"
       ? data.letterboxOgImages
       : DEFAULT_PORTAL_SOCIAL_META_SETTINGS.letterboxOgImages;
-  if (data.globalOgImageSource !== undefined && data.globalOgImageSource !== "library" && data.globalOgImageSource !== "logo") {
+  if (
+    data.globalOgImageSource !== undefined &&
+    data.globalOgImageSource !== "library" &&
+    data.globalOgImageSource !== "logo" &&
+    data.globalOgImageSource !== "static"
+  ) {
     return null;
   }
   const globalOgImageSource =
-    data.globalOgImageSource === "logo" || data.globalOgImageSource === "library"
+    data.globalOgImageSource === "logo" ||
+    data.globalOgImageSource === "library" ||
+    data.globalOgImageSource === "static"
       ? data.globalOgImageSource
       : DEFAULT_PORTAL_SOCIAL_META_SETTINGS.globalOgImageSource;
 
@@ -221,7 +404,12 @@ export function parsePortalSocialMetaSettingsInput(
       ? data.libraryOgRotationSalt
       : DEFAULT_PORTAL_SOCIAL_META_SETTINGS.libraryOgRotationSalt;
 
-  return {
+  const staticOgImage = parsePortalStaticOgImageInput(data.staticOgImage);
+  if (staticOgImage === null) {
+    return null;
+  }
+
+  const input: PortalSocialMetaSettingsInput = {
     ogTitle,
     ogDescription,
     letterboxOgImages,
@@ -229,6 +417,10 @@ export function parsePortalSocialMetaSettingsInput(
     libraryOgRotationInterval,
     libraryOgRotationSalt,
   };
+  if (staticOgImage !== undefined) {
+    input.staticOgImage = staticOgImage;
+  }
+  return input;
 }
 
 /** Newest-ready sample size for global OG image rotation. */

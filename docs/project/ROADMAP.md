@@ -1,5 +1,9 @@
 # Fresh Prints Roadmap
 
+> 2026-08-11: **Track B Static OG letterbox DEV PASS** — Owner `DEV STATIC OG LETTERBOX QA: PASS`. Signoff **approved_with_notes**: `docs/workflow/reviews/2026-08-11-prod-legacy-pending-and-og-static-letterbox-signoff.md`. Track A prod APPLY still gated. Prefinal A–H promote / Studio 1.0.3 / permanent `development` merge still owner-gated.
+>
+> 2026-08-11: **Prefinal A–H DEV QA COMPLETE** — Owner `DEV A-H QA: PASS`. Signoff **approved_with_notes**: `docs/workflow/reviews/2026-08-11-prefinal-a-h-development-qa-signoff.md`. Branch `qa/prefinal-a-h-dev` (+ QA amendments).
+
 > 2026-08-09: **Production Algolia managed search ON** — Gate C-enable Signoff **approved_with_notes**. Live **100%** `build-2026-08-09-001` @ `f5c0bdb` (PR #49); app `Z1FVCM5QUX` / index `portal_catalog_ready_prod` (46 reconciled). Owner `PROD ALGOLIA ENABLE QA: PASS`. Deferred: **TD-032** catalog filter account-loading flash. Signoff: `docs/workflow/reviews/2026-08-09-prod-algolia-gate-c-enable-signoff.md`.
 
 > 2026-08-08: **PR #40 production Rules preflight** — checkpoint READY; Formal Review **approved_with_changes**. `npm run test:rules` **59/59**. Next: `APPROVE PROD FIRESTORE RULES DEPLOY: PR40 REMAINING` (Storage separate). Algolia optional/OFF. Artifacts: `docs/workflow/reviews/2026-08-08-pr-40-prod-rules-deploy-checkpoint.md`. **STOP before deploy.**

@@ -40,7 +40,8 @@ Fresh Prints uses **Firebase** as the primary backend platform for authenticatio
 | Customer account tombstone (2026-07-22) | Studio Users → `previewCustomerAccountDeletion` / `tombstoneCustomerAccount`. Auth disable; retain identity + username reservation + all print requests. Owner only. |
 | Eligible print request delete/archive | `previewPrintRequestDeletion` / `deleteEligiblePrintRequest` / `archivePrintRequest` — staff; server dependency recheck. |
 | Eligible upcoming show delete | `previewUpcomingShowDeletion` / `deleteEligibleUpcomingShow` — staff; empty upcoming only. |
-| Eligible customer upload delete | `previewCustomerUploadDeletion` / `deleteEligibleCustomerUpload` — owner/admin only; request-item and promoted-design blockers; authoritative schema-owned path validation; retry-safe Storage cleanup and upload-specific batch-reference cleanup server-side. |
+| Eligible customer upload delete | `previewCustomerUploadDeletion` / `deleteEligibleCustomerUpload` — owner/admin only; request-item and promoted-design blockers; authoritative schema-owned path validation; retry-safe Storage cleanup and upload-specific batch-reference cleanup server-side. Successful hard delete of a charged `catalog_donation` decrements today’s `finalizeImageCountDonation` once in the same Firestore transaction (Cap L / print-request day counters unchanged). |
+| Portal customer own-upload delete (F3) | `previewPortalCustomerUploadDeletion` / `deletePortalCustomerUpload` — signed-in caller only when `customerUploads.customerUid == auth.uid`; reuses the same blockers + Storage-first / retain-on-failure + donation day refund contract as staff delete. Does **not** use staff `assertCanDeleteCustomerUpload`. |
 | Category/tag archive guards | `previewCategoryArchive` / `archiveCategoryWithGuards` / `previewTagArchive` / `archiveTagWithGuards` — owner/admin; block while designs reference. |
 | Operational wipe — AI Processing (2026-07-21) | Test Data Reset target `aiProcessingDesigns` via `wipeOperationalTestData`: deletes AI Processing inbox designs (any tab/stage) + their Storage only; keeps ready/archived catalog. Dev allowlist + owner only. |
 
@@ -311,12 +312,14 @@ uses the same customer hosts for `metadataBase` / OG image resolution via option
 | Function | Role |
 |----------|------|
 | `getPortalDesignShareOpenGraph` | Public JSON for `/share/design/{id}` title/description/`imageUrl` |
-| `getPortalGlobalOpenGraph` | Public JSON for non-design URLs. **Phase 1A:** library image candidates from bounded dual Firestore queries (`readyAt` + `createdAt`, merge/dedup, top 40) — not generated catalog shards. Logo path unchanged. 1h in-process cache; HTTP `max-age=300`. |
-| `getPortalOgShareImage` | Public JPEG letterbox compositor (`designId` + `fit=contain`) |
-| `updatePortalSocialMetaSettings` | Owner callable for title/description + letterbox + global image source |
+| `getPortalGlobalOpenGraph` | Public JSON for non-design URLs. Library / logo / **static** image modes. In-process cache **60s** (invalidated on Save); HTTP `max-age=60`; response includes `updatedAtMs` for Portal `?v=` bust. **Static always letterboxes** via `getPortalOgShareImage` (ignores `letterboxOgImages`). Static miss fail-safes to brand logo (never raw artwork URL). |
+| `getPortalOgShareImage` | Public JPEG letterbox compositor (`designId` **or** validated `staticPath` + `fit=contain`) |
+| `updatePortalSocialMetaSettings` | Owner callable for title/description + letterbox + global image source + static OG snapshot finalize; clears Global OG in-process cache after write |
 | `updatePortalHelpSettings` | Owner/admin callable for Portal FAQ and How To (`settings/portalHelp`) |
 | `finalizeBrandLogoSlot` | Owner callable: finalize/clear Studio+Portal brand logo slots from Admin Storage metadata |
 | `updateBrandLogoDisplaySizes` | Owner callable: set Portal/Studio logo display heights (px) on `settings/brandLogos` |
+
+**Static Global OG Storage (2026-08-11):** Owner uploads to `portal-social-meta/static-og/{uuid}.{png\|jpg\|webp}` (public read, owner create/delete, ≤5 MiB). Finalize is inlined in `updatePortalSocialMetaSettings` (brand-logo pattern: Admin metadata + download token). **Storage Rules deploy is a human checkpoint** — do not deploy rules without owner approval.
 
 **AI enrichment taxonomy (ADR-FP-128):** `loadAiCatalogReferenceSnapshot` prefers compact
 `taxonomyMaterialization/**` (revision-keyed process cache; TTL secondary). Missing/corrupt

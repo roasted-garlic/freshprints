@@ -50,7 +50,7 @@ export function buildPortalAlgoliaFacetSearchParams(
   facets: string[];
   maxValuesPerFacet: number;
   typoTolerance?: false;
-  queryType?: 'prefixNone';
+  queryType?: 'prefixLast';
 } {
   const query = options.search?.trim() ?? '';
   const facetFilters = buildTagAndFilters(options.selectedTags ?? []);

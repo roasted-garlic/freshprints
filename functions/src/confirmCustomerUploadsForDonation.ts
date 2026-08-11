@@ -91,6 +91,7 @@ export const confirmCustomerUploadsForDonation = onCall(
           catalogUseAcknowledged: true,
           termsVersion: CUSTOMER_UPLOAD_DONATE_TERMS_VERSION,
           printRequestId: null,
+          submitForStaffReview: true,
           now,
         });
 

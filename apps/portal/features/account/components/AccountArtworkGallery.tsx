@@ -14,6 +14,7 @@ import {
   useAccountArtworkGallery,
   type AccountArtworkGalleryTile,
 } from '../hooks/useAccountArtworkGallery';
+import { AccountArtworkDeletionDialog } from './AccountArtworkDeletionDialog';
 import { AccountArtworkGalleryModal } from './AccountArtworkGalleryModal';
 
 interface AccountArtworkGalleryProps {
@@ -34,6 +35,7 @@ export function AccountArtworkGallery({
     isLoading,
     items,
     previewItems,
+    reload,
     reusableDesigns,
     reusableErrorMessage,
     isReusableLoading,
@@ -51,6 +53,8 @@ export function AccountArtworkGallery({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [lightbox, setLightbox] = useState<{ alt: string; url: string } | null>(null);
   const [selectedDesign, setSelectedDesign] = useState<CatalogDesign | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<AccountArtworkGalleryTile | null>(null);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
   const addDesignFlow = useAddDesignToRequestFlow({
     continuableRequests,
@@ -76,6 +80,11 @@ export function AccountArtworkGallery({
     setLightbox({ alt: item.title, url });
   }
 
+  function handleDeleteRequest(item: AccountArtworkGalleryTile) {
+    setStatusMessage(null);
+    setPendingDelete(item);
+  }
+
   const content = (
     <>
       <div className="portal-account-gallery-header">
@@ -98,6 +107,12 @@ export function AccountArtworkGallery({
         </button>
       </div>
 
+      {statusMessage ? (
+        <p className="portal-muted portal-account-gallery-status" role="status">
+          {statusMessage}
+        </p>
+      ) : null}
+
       {isLoading ? (
         <p className="portal-muted">Loading your designs…</p>
       ) : errorMessage ? (
@@ -110,24 +125,32 @@ export function AccountArtworkGallery({
       ) : (
         <div className="portal-account-gallery-grid">
           {previewItems.map((item) => (
-            <button
-              key={item.id}
-              className="portal-account-gallery-tile"
-              onClick={() => void openLightbox(item)}
-              type="button"
-            >
-              {item.imageUrl ? (
-                <img
-                  alt=""
-                  className="portal-account-gallery-tile-image"
-                  decoding="async"
-                  src={item.imageUrl}
-                />
-              ) : null}
-              <span className={`portal-account-gallery-tile-badge is-${item.kind}`}>
-                {item.kind === 'donation' ? 'Donated' : 'Upload'}
-              </span>
-            </button>
+            <div className="portal-account-gallery-tile-wrap" key={item.id}>
+              <button
+                className="portal-account-gallery-tile"
+                onClick={() => void openLightbox(item)}
+                type="button"
+              >
+                {item.imageUrl ? (
+                  <img
+                    alt=""
+                    className="portal-account-gallery-tile-image"
+                    decoding="async"
+                    src={item.imageUrl}
+                  />
+                ) : null}
+                <span className={`portal-account-gallery-tile-badge is-${item.kind}`}>
+                  {item.kind === 'donation' ? 'Donated' : 'Upload'}
+                </span>
+              </button>
+              <button
+                className="portal-account-gallery-tile-delete"
+                onClick={() => handleDeleteRequest(item)}
+                type="button"
+              >
+                Delete
+              </button>
+            </div>
           ))}
         </div>
       )}
@@ -137,6 +160,7 @@ export function AccountArtworkGallery({
         isReusableLoading={isReusableLoading}
         items={items}
         onClose={() => setIsModalOpen(false)}
+        onDeletePast={handleDeleteRequest}
         onSelectPast={(item) => {
           void openLightbox(item);
         }}
@@ -146,6 +170,21 @@ export function AccountArtworkGallery({
         }}
         reusableDesigns={reusableDesigns}
         reusableErrorMessage={reusableErrorMessage}
+      />
+
+      <AccountArtworkDeletionDialog
+        isOpen={pendingDelete !== null}
+        item={pendingDelete}
+        onCancel={() => setPendingDelete(null)}
+        onCompleted={({ kind, message }) => {
+          setPendingDelete(null);
+          setStatusMessage(message);
+          customerUploadService.invalidateDailyQuota();
+          if (kind === 'donation') {
+            void customerUploadService.getDailyQuota('catalog_donation').catch(() => undefined);
+          }
+          reload();
+        }}
       />
 
       <CatalogPreviewLightbox

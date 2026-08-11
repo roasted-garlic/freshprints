@@ -18,6 +18,7 @@ interface AccountArtworkGalleryModalProps {
   isReusableLoading: boolean;
   reusableErrorMessage: string | null;
   onClose: () => void;
+  onDeletePast: (item: AccountArtworkGalleryTile) => void;
   onSelectPast: (item: AccountArtworkGalleryTile) => void;
   onSelectReusable: (design: CatalogDesign) => void;
 }
@@ -62,6 +63,7 @@ export function AccountArtworkGalleryModal({
   isReusableLoading,
   reusableErrorMessage,
   onClose,
+  onDeletePast,
   onSelectPast,
   onSelectReusable,
 }: AccountArtworkGalleryModalProps) {
@@ -203,25 +205,33 @@ export function AccountArtworkGalleryModal({
         ) : (
           <div className="portal-account-gallery-modal-grid">
             {filteredPastItems.map((item) => (
-              <button
-                key={item.id}
-                className="portal-account-gallery-tile"
-                onClick={() => onSelectPast(item)}
-                type="button"
-              >
-                {item.imageUrl ? (
-                  <img
-                    alt=""
-                    className="portal-account-gallery-tile-image"
-                    decoding="async"
-                    src={item.imageUrl}
-                  />
-                ) : null}
-                <span className={`portal-account-gallery-tile-badge is-${item.kind}`}>
-                  {item.kind === 'donation' ? 'Donated' : 'Upload'}
-                </span>
-                <span className="portal-account-gallery-tile-title">{item.title}</span>
-              </button>
+              <div className="portal-account-gallery-tile-wrap" key={item.id}>
+                <button
+                  className="portal-account-gallery-tile"
+                  onClick={() => onSelectPast(item)}
+                  type="button"
+                >
+                  {item.imageUrl ? (
+                    <img
+                      alt=""
+                      className="portal-account-gallery-tile-image"
+                      decoding="async"
+                      src={item.imageUrl}
+                    />
+                  ) : null}
+                  <span className={`portal-account-gallery-tile-badge is-${item.kind}`}>
+                    {item.kind === 'donation' ? 'Donated' : 'Upload'}
+                  </span>
+                  <span className="portal-account-gallery-tile-title">{item.title}</span>
+                </button>
+                <button
+                  className="portal-account-gallery-tile-delete"
+                  onClick={() => onDeletePast(item)}
+                  type="button"
+                >
+                  Delete
+                </button>
+              </div>
             ))}
           </div>
         )}

@@ -13,6 +13,7 @@ import { useAuth } from '../../auth/context/AuthContext';
 import { CatalogCompanionSuggestionModal } from '../components/CatalogCompanionSuggestionModal';
 import { CatalogDesignDetailsModal } from '../components/CatalogDesignDetailsModal';
 import { CatalogFilterBar } from '../components/CatalogFilterBar';
+import { CatalogFiltersSheet } from '../components/CatalogFiltersSheet';
 import { CatalogSelectionCard } from '../components/CatalogSelectionCard';
 import { designHasMatchingDesignsHint } from '../services/catalogService';
 import { CATALOG_FIRST_VIEWPORT_EAGER_COUNT } from '../hooks/useCatalogDesigns';
@@ -34,6 +35,7 @@ import {
   sortCatalogTags,
   visibleSelectedTags,
 } from '../utils/catalogSearch';
+import { shouldApplyCatalogUrlSearchToLocal } from '../utils/shouldApplyCatalogUrlSearchToLocal';
 import type { CatalogDesign } from '../types/catalog.types';
 import { usePortalPrintRequests } from '../../print-requests/context/PortalPrintRequestContext';
 import { useAddDesignToRequestFlow } from '../../print-requests/hooks/useAddDesignToRequestFlow';
@@ -72,9 +74,12 @@ export function CatalogPageContent() {
 
   const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(initialSearch);
+  /** Last `q` this page wrote via debounce or syncLibraryUrl — ignore matching URL echoes. */
+  const lastSelfPushedQRef = useRef<string | null>(initialSearch.trim() ? initialSearch.trim() : null);
   const [categoryFilter, setCategoryFilter] = useState(initialCategory);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [isTagFilterModalOpen, setIsTagFilterModalOpen] = useState(false);
+  const [isFiltersSheetOpen, setIsFiltersSheetOpen] = useState(false);
   const [selectedDesign, setSelectedDesign] = useState<CatalogDesign | null>(null);
   const [selectionActionError, setSelectionActionError] = useState<string | null>(null);
   const [isLeavingSelection, setIsLeavingSelection] = useState(false);
@@ -94,6 +99,7 @@ export function CatalogPageContent() {
     const urlQ = params.get('q') ?? '';
     const desiredQ = debouncedSearchQuery.trim();
     if (urlQ === desiredQ) {
+      lastSelfPushedQRef.current = desiredQ;
       return;
     }
     const next = new URLSearchParams(params.toString());
@@ -102,6 +108,7 @@ export function CatalogPageContent() {
     } else {
       next.delete('q');
     }
+    lastSelfPushedQRef.current = desiredQ;
     const query = next.toString();
     router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
   }, [debouncedSearchQuery, pathname, router]);
@@ -184,6 +191,9 @@ export function CatalogPageContent() {
     search?: string | null;
     categoryId?: string | null;
   }) {
+    const nextSearch =
+      next.search === undefined ? searchQuery : next.search === null ? '' : next.search;
+    lastSelfPushedQRef.current = nextSearch.trim();
     router.replace(
       buildCatalogLibraryHref({
         selectionMode: selectionModeActive,
@@ -219,6 +229,8 @@ export function CatalogPageContent() {
   const visibleTags = useMemo(() => visibleSelectedTags(selectedTags), [selectedTags]);
   const visibleTagCount = countVisibleSelectedTags(selectedTags);
   const halftoneFilterOn = selectedTagsIncludeHalftone(selectedTags);
+  const filterSheetActiveCount =
+    (categoryFilter ? 1 : 0) + (halftoneFilterOn ? 1 : 0) + visibleTagCount;
 
   const { resetTransientState } = addDesignFlow;
 
@@ -237,9 +249,23 @@ export function CatalogPageContent() {
     }
 
     const nextSearch = searchParams.get('q') ?? '';
+    const nextCategory = searchParams.get('category') ?? '';
+
+    // Category URL updates from syncLibraryUrl must apply even when q is a self-echo.
+    setCategoryFilter(nextCategory);
+
+    if (
+      !shouldApplyCatalogUrlSearchToLocal({
+        urlQ: nextSearch,
+        lastSelfPushedQ: lastSelfPushedQRef.current,
+      })
+    ) {
+      return;
+    }
+
+    lastSelfPushedQRef.current = nextSearch;
     setSearchQuery(nextSearch);
     setDebouncedSearchQuery(nextSearch);
-    setCategoryFilter(searchParams.get('category') ?? '');
   }, [searchParams]);
 
   useEffect(() => {
@@ -493,9 +519,11 @@ export function CatalogPageContent() {
             <CatalogFilterBar
               categoryFilter={categoryFilter}
               categoryOptions={categoryOptions}
+              filterSheetActiveCount={filterSheetActiveCount}
               halftoneFilterOn={halftoneFilterOn}
               onCategoryChange={handleCategoryChange}
               onHalftoneFilterChange={handleHalftoneFilterChange}
+              onOpenFiltersSheet={() => setIsFiltersSheetOpen(true)}
               onOpenTags={() => setIsTagFilterModalOpen(true)}
               onSearchChange={setSearchQuery}
               searchQuery={searchQuery}
@@ -703,6 +731,21 @@ export function CatalogPageContent() {
         isOpen={addDesignFlow.isPickerOpen}
         onClose={addDesignFlow.closePicker}
         onSelectRequest={addDesignFlow.confirmPickRequest}
+      />
+
+      <CatalogFiltersSheet
+        categoryFilter={categoryFilter}
+        categoryOptions={categoryOptions}
+        halftoneFilterOn={halftoneFilterOn}
+        isOpen={isFiltersSheetOpen}
+        onCategoryChange={handleCategoryChange}
+        onClose={() => setIsFiltersSheetOpen(false)}
+        onHalftoneFilterChange={handleHalftoneFilterChange}
+        onOpenTags={() => {
+          setIsFiltersSheetOpen(false);
+          setIsTagFilterModalOpen(true);
+        }}
+        selectedTagCount={visibleTagCount}
       />
 
       <CatalogTagFilterModal
