@@ -30,6 +30,23 @@ describe('Portal help About panel wiring', () => {
     assert.equal(/\d{2,}/.test(blob), false, 'About blurb should not hard-code limit counts')
   })
 
+  it('About panel embeds canonical Whatnot follow CTA from shared constants', () => {
+    const panelSource = readFileSync(path.join(__dirname, 'PortalHelpAboutPanel.tsx'), 'utf8')
+    assert.match(panelSource, /FRESH_PRINTS_WHATNOT_PROFILE_URL/)
+    assert.match(panelSource, /PORTAL_HELP_ABOUT_WHATNOT_CTA_LABEL/)
+    assert.match(panelSource, /rel="noopener noreferrer"/)
+    assert.match(panelSource, /target="_blank"/)
+    assert.doesNotMatch(panelSource, /dangerouslySetInnerHTML/)
+  })
+
+  it('first-visit modal still consumes PortalHelpAboutPanel', () => {
+    const modalSource = readFileSync(
+      path.join(__dirname, 'PortalAboutFirstVisitModal.tsx'),
+      'utf8',
+    )
+    assert.match(modalSource, /PortalHelpAboutPanel/)
+  })
+
   it('renders the About panel above the FAQ page header', () => {
     const pageSource = readFileSync(
       path.join(__dirname, 'PortalHelpPageContent.tsx'),
