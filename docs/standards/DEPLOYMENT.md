@@ -1058,6 +1058,23 @@ First updater-enabled version: `1.0.0` (stable). Prerelease test versions use va
 prerelease tags, e.g. `1.0.0-beta.1`, `1.0.0-beta.2`. `apps/studio/package.json`'s `version` field
 is the source of truth — update it before each build/publish.
 
+### Studio Algolia search-only release secrets (2026-08-11)
+
+Stable Studio packages bake search-only Algolia config into the installer via the same
+`.env.local` write step that injects `PROD_FIREBASE_*` (see `.github/workflows/studio-release.yml`).
+**Never** put an Algolia Admin/write key in GitHub Actions Studio secrets or in Studio builds.
+
+| GitHub Actions secret | Stable requirement | Production intent |
+|-----------------------|--------------------|-------------------|
+| `PROD_ALGOLIA_APP_ID` | **Required** for `release_type: stable` | Must be `Z1FVCM5QUX` |
+| `PROD_ALGOLIA_SEARCH_API_KEY` | **Required** for stable | Search-only ACL; same value family as Portal `NEXT_PUBLIC_ALGOLIA_SEARCH_API_KEY` |
+| `PROD_ALGOLIA_INDEX_NAME` | **Required** for stable | Must be `portal_catalog_ready_prod` (never `_dev`) |
+| `DEV_ALGOLIA_APP_ID` / `DEV_ALGOLIA_SEARCH_API_KEY` / `DEV_ALGOLIA_INDEX_NAME` | Optional for prerelease | When unset, prerelease managed catalog search fails closed |
+
+The workflow fails closed if a stable run is missing any `PROD_ALGOLIA_*` secret, if
+`PROD_FIREBASE_PROJECT_ID` is not `fresh-prints-prod`, or if the Algolia app/index values do not
+match the production identifiers above. Secret values are never printed in logs.
+
 ### Code signing and distribution mode (2026-08-03 — owner-approved internal-unsigned policy)
 
 **Fresh Prints Studio is currently an internal-only staff tool**, installed only on
