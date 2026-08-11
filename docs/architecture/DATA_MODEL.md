@@ -1181,6 +1181,8 @@ Customer-provided artwork for **print requests** and **catalog donations** (ADR-
 
 **Purpose:** `print_request` | `catalog_donation` (missing on legacy docs ≡ `print_request`). Donations never set `printRequestId` or create `printRequestItems`.
 
+**Studio intake / sidebar badges (Workstream H):** Uploaded Designs and Donated Designs list queries are server-scoped by `purpose` + `catalogReviewStatus` (+ `createdAt` desc, page size 50). Sidebar badges count **Pending only** (`pending_staff_review`) per purpose — not `not_eligible`, not Excluded. Legacy docs missing `purpose` are still treated as print-request via a metadata-only status companion filtered before enrichment (Firestore equality cannot return missing fields).
+
 **Uploader attribution (#13 Addendum A):**
 - Registered Portal customers: `uploaderType: "customer"` (or omitted on legacy), `customerId` = real `customers/{id}`, `createdBy` = Auth UID, `customerUid` = Auth UID.
 - **Guest catalog donations:** Firebase Anonymous Auth session. Sentinel fields: `uploaderType: "guest"`, `customerId: "guest"`, `createdBy: "guest"` (string sentinel — **not** a `customers` document and **not** Studio staff `customers.isGuest`). `customerUid` remains the anonymous Auth UID for Storage path ownership (`/customer-uploads/{uid}/…`), rate limits, and leases. Guests may donate images only (ZIP blocked). Guest donation finalize-image daily cap is `CUSTOMER_UPLOAD_DAILY_FINALIZE_IMAGE_LIMIT_DONATION_GUEST` (default 20 / Central day per anon UID), stricter than registered donation settings.
