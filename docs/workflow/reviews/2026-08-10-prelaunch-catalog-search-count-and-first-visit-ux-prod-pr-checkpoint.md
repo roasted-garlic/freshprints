@@ -3,9 +3,25 @@
 | Field | Value |
 |-------|-------|
 | Date | 2026-08-10 |
+| Updated | 2026-08-10 (Portal `build:portal` PASS) |
 | Branch | `hotfix/prelaunch-catalog-search-count-first-visit-ux` |
 | Base | `origin/production` @ `b6e67be1b7fe02a69cd31077a203ee9102611ca5` |
-| Status | **READY FOR OWNER** — do not merge/deploy without approval |
+| Implementation commit | `ddaf5e37d80482442481f74a50190d8ed5b6fc00` |
+| Status | **READY** for owner production PR merge — do not merge/deploy without approval |
+
+## Verification gates
+
+| Gate | Result |
+|------|--------|
+| Focused unit tests | PASS |
+| Studio / Portal typecheck | PASS |
+| Lint | PASS |
+| Studio Vite build | PASS |
+| Portal production build (`npm run build:portal`) | **PASS** (exit 0) |
+| `git diff --check` | PASS |
+| Functions / Rules / indexes / Algolia setSettings | untouched |
+| Chris Corner artifacts in commits | none |
+| Implementation Review | **approved** (no re-review — no product code change for build unlock) |
 
 ## Stop line
 
@@ -15,6 +31,7 @@ Do **not**:
 - publish/install a production Studio release
 - mutate Algolia index settings / reconcile
 - change DNS / Coming Soon / myprintrequest.com
+- sync into `development` until after production signoff
 
 ## After owner merge approval
 
@@ -42,3 +59,8 @@ Do **not**:
 6. “Don’t show this again” → indefinite suppress.
 7. `/help` About content matches modal source.
 8. Regression: Discover, filters, favorites, details, share, Add to Current Request.
+
+## Open PR
+
+https://github.com/roasted-garlic/freshprints/pull/new/hotfix/prelaunch-catalog-search-count-first-visit-ux  
+(base: `production`)
