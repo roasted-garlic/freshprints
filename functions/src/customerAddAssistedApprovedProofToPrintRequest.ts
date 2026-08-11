@@ -409,6 +409,7 @@ export const customerAddAssistedApprovedProofToPrintRequest = onCall(
           catalogUseAcknowledged: payload.catalogUseAcknowledged,
           termsVersion: CUSTOMER_UPLOAD_TERMS_VERSION,
           printRequestId,
+          submitForStaffReview: false,
           now,
         });
 
@@ -618,6 +619,7 @@ async function ensureIngestOnWorkingRequest(input: {
       catalogUseAcknowledged,
       termsVersion: CUSTOMER_UPLOAD_TERMS_VERSION,
       printRequestId,
+      submitForStaffReview: false,
       now,
     });
 

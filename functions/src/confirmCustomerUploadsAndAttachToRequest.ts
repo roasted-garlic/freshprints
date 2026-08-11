@@ -211,6 +211,7 @@ export const confirmCustomerUploadsAndAttachToRequest = onCall(
             catalogUseAcknowledged,
             termsVersion: CUSTOMER_UPLOAD_TERMS_VERSION,
             printRequestId,
+            submitForStaffReview: false,
             now,
           });
 
