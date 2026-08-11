@@ -93,8 +93,9 @@ export {
 export {
   previewCustomerUploadDeletion,
   deleteEligibleCustomerUpload,
-} from "./deleteEligibleCustomerUpload";
-export {
+  previewPortalCustomerUploadDeletion,
+  deletePortalCustomerUpload,
+} from "./deleteEligibleCustomerUpload";export {
   previewCategoryArchive,
   archiveCategoryWithGuards,
   previewTagArchive,
