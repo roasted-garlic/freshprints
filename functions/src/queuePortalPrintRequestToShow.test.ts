@@ -54,7 +54,9 @@ describe('ADR-FP-122 — one-request-per-show uniqueness removed from queuePorta
     assert.match(source, /requestHasExistingAllocation: freshRequestHasAllocation/);
     assert.match(source, /existingCustomerQuantityOnShow: freshCustomerOnShowQty/);
     assert.match(source, /newRequestQuantity: batchQuantity/);
-    assert.match(source, /customerShowCap: L/);
+    // Cap value is settings-derived (`printRequestLimitPerCustomerPerShow` → customerShowLimit),
+    // not a bare identifier `L` at the eligibility call site.
+    assert.match(source, /customerShowCap: customerShowLimit/);
     assert.match(source, /transactionBlockReason === "customer_show_cap_exceeded"/);
   });
 
