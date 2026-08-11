@@ -1,35 +1,43 @@
 # Current Goal
-**Studio 1.0.2 release QA corrective** — awaiting production merge + draft delete + clean re-run.
+Prelaunch catalog search, counts, and first-visit UX (`prelaunch-catalog-search-count-and-first-visit-ux`).
 
 Current Mode: managed-phase
-Current Phase: test → **pending_manual** (owner merge + re-release + smoke)
-Managed goal: Studio 1.0.2 release QA corrective
-
-Plan: `docs/workflow/plans/2026-08-10-studio-1.0.2-release-qa-corrective-plan.md`
-Review: `docs/workflow/reviews/2026-08-10-studio-1.0.2-release-qa-corrective-review.md` — **approved**
-Development commit: `a84baed146726a761d109666349b992bf7b20c67`
-PR → production: https://github.com/roasted-garlic/freshprints/pull/54
-
-Plan Status: complete
-Review Status: approved
-Implementation Status: complete
-Test Status: passed_with_notes (`npm run lint` exit 0 locally; full studio-release re-run pending owner)
-Signoff Status: pending
-
-## Production apply status (unchanged — do not redeploy)
-| Artifact | Status |
-|----------|--------|
-| Firestore Rules / indexes / Function / Portal App Hosting | **LIVE** |
-| Studio draft v1.0.2 (from `703f4fc…`) | **DO NOT PUBLISH** — delete + recreate after #54 |
-| Algolia / myprintrequest.com / DNS / Coming Soon | untouched |
-
+Current Phase: pre-production-PR checkpoint (verification complete)
+Managed goal: Fix Studio/Portal catalog search & counts; preserve Portal search on open; first-visit About modal
+DONE: **no**
+Last Completed Step: Portal `npm run build:portal` PASS after resolving local `.next` lock; test report + prod PR checkpoint updated
+Plan Status: **complete**
+Review Status: **approved_with_changes** (plan)
+Implementation Status: **complete**
+Implementation Review: **approved** (no re-review — environment-only unlock; no product code change)
+Test Status: **passed**
+Signoff Status: not_started
 Human Checkpoint Required: **yes**
-Human Checkpoint Reason: Merge PR #54; delete existing v1.0.2 draft; re-run studio-release from new production SHA; then continue smoke → `PROD COMPANION CENSORED PROMOTE SMOKE: PASS`
+Human Checkpoint Reason: Owner must open/merge production PR, then approve Portal App Hosting + Studio publish + production QA. STOP before merge/deploy.
 
-Allowed Actions: await owner; update state after merge SHA / smoke
-Forbidden Actions: redeploy Firebase/App Hosting; publish old draft; Algolia/DNS/Coming Soon
+Plan: `docs/workflow/plans/2026-08-10-prelaunch-catalog-search-count-and-first-visit-ux-plan.md`
+Plan Review: `docs/workflow/reviews/2026-08-10-prelaunch-catalog-search-count-and-first-visit-ux-plan-review.md`
+Implementation Review: `docs/workflow/reviews/2026-08-10-prelaunch-catalog-search-count-and-first-visit-ux-implementation-review.md`
+Portal count verification: `docs/workflow/reviews/2026-08-10-prelaunch-catalog-search-portal-count-verification.md`
+Test report: `docs/workflow/reviews/2026-08-10-prelaunch-catalog-search-count-and-first-visit-ux-test-report.md`
+Prod PR checkpoint: `docs/workflow/reviews/2026-08-10-prelaunch-catalog-search-count-and-first-visit-ux-prod-pr-checkpoint.md`
 
-Next Required Step: Owner merge https://github.com/roasted-garlic/freshprints/pull/54 → delete draft v1.0.2 → re-run studio-release.yml → smoke
+Hotfix branch: `hotfix/prelaunch-catalog-search-count-first-visit-ux`
+Hotfix base: `origin/production` @ `b6e67be1b7fe02a69cd31077a203ee9102611ca5`
+Implementation commit: `ddaf5e37d80482442481f74a50190d8ed5b6fc00`
+PR open URL: https://github.com/roasted-garlic/freshprints/pull/new/hotfix/prelaunch-catalog-search-count-first-visit-ux (base `production`)
+
+## Parked prior workflow
+- Chris Corner tag backfill — untracked only; not in hotfix commits.
+
+Allowed Actions: push workflow/docs commits to hotfix; await owner PR merge approval
+Forbidden Actions: merge to production; Portal App Hosting; Studio production publish; Functions/Rules/indexes; Algolia setSettings/reconcile; DNS/domain cutover; force-push; sync development until after prod signoff
+
+Next Required Step: Owner open/merge PR → `production` → approve App Hosting + Studio publish + QA
 
 ## Decision Log
-- 2026-08-10: Corrective implemented on development (`a84baed`); PR #54 opened. Recommend delete existing draft (not in-place only).
+- 2026-08-10: Plan + Formal Review approved_with_changes; implement on hotfix from origin/production.
+- 2026-08-10: Portal complete count — no UI change (aggregate/nbHits already authoritative).
+- 2026-08-10: Implementation Review approved after corrections.
+- 2026-08-10: Portal build EPERM caused by live Portal next start/dev + hung next build processes; stopped those only; removed `.next`; `npm run build:portal` exit 0.
+- 2026-08-10: Prior push block of workflow-state commit was Cursor agent Auto-review on `git push`, not repo `.githooks/pre-push` (which only blocks direct `production` pushes).
