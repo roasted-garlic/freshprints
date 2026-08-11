@@ -58,13 +58,13 @@ export const PORTAL_HELP_ABOUT_TITLE = 'What is myprintrequest.com?'
 
 export const PORTAL_HELP_ABOUT_PARAGRAPHS: readonly string[] = [
   'myprintrequest.com is the Fresh Prints Whatnot customer portal — the place to browse the design library and tell Fresh Prints which prints you want for yourself on an upcoming show (live shopping).',
-  'A print request is your list of designs and quantities for that show. Browsing the catalog does not buy anything by itself. When you are ready, you add designs to a request and assign that request to a show so Fresh Prints can prepare your prints.',
+  'Submitting a print request does not place an order or charge you. Your request should only include designs you personally intend to purchase, not designs you think other customers might like. It simply tells Fresh Prints which prints to have ready for you during one of our Whatnot shows. To complete your purchase, join us on Whatnot and purchase your requested prints during the show.',
   'You can look around as a guest. Sign in when you want to build a print request, upload your own artwork, use Custom Designs, Donate Designs, or manage your account.',
 ]
 
-/** Callout emphasized separately from body paragraphs. */
+/** Callout emphasized separately from body paragraphs (non-overlapping with purchase≠order copy). */
 export const PORTAL_HELP_ABOUT_HIGHLIGHT =
-  'Print requests are for you — not suggestions for other shoppers. Only request designs and quantities you expect to buy yourself. Do not submit requests just to fill up the show or because you think someone else might want them.'
+  'Do not submit requests just to fill up a show. Space is limited — request only what you plan to buy yourself.'
 
 export const PORTAL_HELP_ABOUT_FOOTNOTE =
   'Need to know about limits, step-by-step how-tos, Donate Designs, Custom Designs, or account details? Those answers are in the FAQ below.'
@@ -89,7 +89,7 @@ export const PORTAL_TEXT_FAQS: PortalHelpTextFaq[] = [
     id: 'what-is-print-request',
     question: 'What is a print request?',
     answer:
-      'A print request is your list of designs and quantities you want printed for yourself. Print requests are for purchases fulfilled through Fresh Prints Whatnot shows (live shopping). Browsing the catalog does not buy anything by itself. You add designs to a request, then assign that request to an upcoming show when you are ready. Only add designs and quantities you expect to buy on the show.',
+      'A print request is your list of designs and quantities you want ready for yourself on a Fresh Prints Whatnot show. Submitting a print request does not place an order or charge you — it tells Fresh Prints which prints to prepare. You complete the purchase by joining the Whatnot show and buying your requested prints there. Only add designs and quantities you personally intend to purchase.',
     order: 1,
   },
   {

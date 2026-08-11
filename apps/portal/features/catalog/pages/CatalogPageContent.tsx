@@ -34,6 +34,7 @@ import {
   sortCatalogTags,
   visibleSelectedTags,
 } from '../utils/catalogSearch';
+import { shouldApplyCatalogUrlSearchToLocal } from '../utils/shouldApplyCatalogUrlSearchToLocal';
 import type { CatalogDesign } from '../types/catalog.types';
 import { usePortalPrintRequests } from '../../print-requests/context/PortalPrintRequestContext';
 import { useAddDesignToRequestFlow } from '../../print-requests/hooks/useAddDesignToRequestFlow';
@@ -72,6 +73,8 @@ export function CatalogPageContent() {
 
   const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(initialSearch);
+  /** Last `q` this page wrote via debounce or syncLibraryUrl — ignore matching URL echoes. */
+  const lastSelfPushedQRef = useRef<string | null>(initialSearch.trim() ? initialSearch.trim() : null);
   const [categoryFilter, setCategoryFilter] = useState(initialCategory);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [isTagFilterModalOpen, setIsTagFilterModalOpen] = useState(false);
@@ -94,6 +97,7 @@ export function CatalogPageContent() {
     const urlQ = params.get('q') ?? '';
     const desiredQ = debouncedSearchQuery.trim();
     if (urlQ === desiredQ) {
+      lastSelfPushedQRef.current = desiredQ;
       return;
     }
     const next = new URLSearchParams(params.toString());
@@ -102,6 +106,7 @@ export function CatalogPageContent() {
     } else {
       next.delete('q');
     }
+    lastSelfPushedQRef.current = desiredQ;
     const query = next.toString();
     router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
   }, [debouncedSearchQuery, pathname, router]);
@@ -184,6 +189,9 @@ export function CatalogPageContent() {
     search?: string | null;
     categoryId?: string | null;
   }) {
+    const nextSearch =
+      next.search === undefined ? searchQuery : next.search === null ? '' : next.search;
+    lastSelfPushedQRef.current = nextSearch.trim();
     router.replace(
       buildCatalogLibraryHref({
         selectionMode: selectionModeActive,
@@ -237,9 +245,23 @@ export function CatalogPageContent() {
     }
 
     const nextSearch = searchParams.get('q') ?? '';
+    const nextCategory = searchParams.get('category') ?? '';
+
+    // Category URL updates from syncLibraryUrl must apply even when q is a self-echo.
+    setCategoryFilter(nextCategory);
+
+    if (
+      !shouldApplyCatalogUrlSearchToLocal({
+        urlQ: nextSearch,
+        lastSelfPushedQ: lastSelfPushedQRef.current,
+      })
+    ) {
+      return;
+    }
+
+    lastSelfPushedQRef.current = nextSearch;
     setSearchQuery(nextSearch);
     setDebouncedSearchQuery(nextSearch);
-    setCategoryFilter(searchParams.get('category') ?? '');
   }, [searchParams]);
 
   useEffect(() => {

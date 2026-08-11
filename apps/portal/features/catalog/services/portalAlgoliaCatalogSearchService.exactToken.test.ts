@@ -22,7 +22,7 @@ describe('Portal Algolia exact-token search params', () => {
   it('facet builder applies exact params for Kill and not for empty query', () => {
     const withQuery = buildPortalAlgoliaFacetSearchParams({ search: 'Kill' });
     assert.equal(withQuery.typoTolerance, false);
-    assert.equal(withQuery.queryType, 'prefixNone');
+    assert.equal(withQuery.queryType, 'prefixLast');
     assert.equal(withQuery.query, 'Kill');
 
     const empty = buildPortalAlgoliaFacetSearchParams({ search: '' });
@@ -30,10 +30,10 @@ describe('Portal Algolia exact-token search params', () => {
     assert.equal(empty.queryType, undefined);
   });
 
-  it('Kill exactness contract: typoTolerance off and prefixNone (blocks Will / Willie)', () => {
+  it('Kill exactness contract: typoTolerance off and prefixLast (kil typeahead; not fuzzy Will)', () => {
     const params = buildPortalAlgoliaFacetSearchParams({ search: 'Kill' });
     assert.equal(params.typoTolerance, false, 'Kill must not typo-match Will');
-    assert.equal(params.queryType, 'prefixNone', 'Kill must not prefix-match Willie');
+    assert.equal(params.queryType, 'prefixLast', 'prefixLast; typoTolerance blocks Will');
   });
 
   it('list and facet paths share the same exact-token helper', () => {
