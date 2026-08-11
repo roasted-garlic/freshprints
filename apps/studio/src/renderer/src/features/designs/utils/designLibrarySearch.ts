@@ -35,21 +35,50 @@ export function setHalftoneInSelectedTags(
   return sortTagsAlphabetically([...withoutHalftone, CANONICAL_HALFTONE_TAG]);
 }
 
-export function filterDesignsBySearch(designs: Design[], searchQuery: string): Design[] {
+/**
+ * Whether a design should remain in text-search results given current Firestore fields.
+ * When catalogTags are provided, tag name/alias matching mirrors Algolia `searchText` membership
+ * (e.g. TMNT alias "turtles") so Studio can drop stale Algolia hits after a tag edit.
+ */
+export function designMatchesSearchQuery(
+  design: Design,
+  searchQuery: string,
+  catalogTags: readonly CatalogTag[] = [],
+): boolean {
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+
+  if (!normalizedQuery) {
+    return true;
+  }
+
+  const idMatches = design.id.toLowerCase().includes(normalizedQuery);
+  const titleMatches = design.title.toLowerCase().includes(normalizedQuery);
+  const descriptionMatches = design.description?.toLowerCase().includes(normalizedQuery) ?? false;
+
+  if (idMatches || titleMatches || descriptionMatches) {
+    return true;
+  }
+
+  if (catalogTags.length === 0) {
+    return design.tags.some((tag) => tag.includes(normalizedQuery));
+  }
+
+  const catalogTagLookup = buildCatalogTagLookup(catalogTags);
+  return design.tags.some((tag) => tagMatchesCatalogSearch(tag, normalizedQuery, catalogTagLookup));
+}
+
+export function filterDesignsBySearch(
+  designs: Design[],
+  searchQuery: string,
+  catalogTags: readonly CatalogTag[] = [],
+): Design[] {
   const normalizedQuery = searchQuery.trim().toLowerCase();
 
   if (!normalizedQuery) {
     return designs;
   }
 
-  return designs.filter((design) => {
-    const idMatches = design.id.toLowerCase().includes(normalizedQuery);
-    const titleMatches = design.title.toLowerCase().includes(normalizedQuery);
-    const descriptionMatches = design.description?.toLowerCase().includes(normalizedQuery) ?? false;
-    const tagMatches = design.tags.some((tag) => tag.includes(normalizedQuery));
-
-    return idMatches || titleMatches || descriptionMatches || tagMatches;
-  });
+  return designs.filter((design) => designMatchesSearchQuery(design, searchQuery, catalogTags));
 }
 
 export function filterDesignsByAiReviewStatus(

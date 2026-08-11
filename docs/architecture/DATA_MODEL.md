@@ -1177,9 +1177,11 @@ customerUploadFinalizeLeases
 customerUploadIdempotency
 ```
 
-Customer-provided artwork for **print requests** and **catalog donations** (ADR-FP-073, ADR-FP-078). Independent of catalog `designs` until staff promotes. **Not** Phase 9 `customRequests`. Optional audit fields `assistedCreationRequestId` / `assistedProofId` mark uploads server-copied from an Assisted approved proof (ADR-FP-094). After Add to Request consent, those uploads use the **same Studio custom-design intake fields** as print-upload attach / donate (`catalogUseAcknowledged`, `catalogReviewStatus: pending_staff_review` via `buildCatalogIntakeConfirmationPatch`) — not a parallel consent model. Studio intake surfaces a **Custom** badge (Portal-aligned purple) when `assistedCreationRequestId` is set so staff can distinguish assisted designs from ordinary uploads.
+Customer-provided artwork for **print requests** and **catalog donations** (ADR-FP-073, ADR-FP-078). Independent of catalog `designs` until staff promotes. **Not** Phase 9 `customRequests`. Optional audit fields `assistedCreationRequestId` / `assistedProofId` mark uploads server-copied from an Assisted approved proof (ADR-FP-094). After Add to Request consent, those uploads use the **same Studio custom-design intake fields** as print-upload attach / donate (`catalogUseAcknowledged`, ownership/terms via `buildCatalogIntakeConfirmationPatch`) — not a parallel consent model. **Intake timing (Workstream E):** print-request attach / assisted confirm reaffirm `catalogReviewStatus: not_eligible` (Studio Pending waits until the Print Request is **successfully added to a show** — Portal `queuePortalPrintRequestToShow` TX and/or `onShowAllocationCreated` for Studio allocate). **Donate confirm** still sets `pending_staff_review` immediately. De-allocation does **not** rewind review status. Studio intake surfaces a **Custom** badge (Portal-aligned purple) when `assistedCreationRequestId` is set so staff can distinguish assisted designs from ordinary uploads.
 
 **Purpose:** `print_request` | `catalog_donation` (missing on legacy docs ≡ `print_request`). Donations never set `printRequestId` or create `printRequestItems`.
+
+**Studio intake / sidebar badges (Workstream H):** Uploaded Designs and Donated Designs list queries are server-scoped by `purpose` + `catalogReviewStatus` (+ `createdAt` desc, page size 50). Sidebar badges count **Pending only** (`pending_staff_review`) per purpose — not `not_eligible`, not Excluded. Legacy docs missing `purpose` are still treated as print-request via a metadata-only status companion filtered before enrichment (Firestore equality cannot return missing fields).
 
 **Uploader attribution (#13 Addendum A):**
 - Registered Portal customers: `uploaderType: "customer"` (or omitted on legacy), `customerId` = real `customers/{id}`, `createdBy` = Auth UID, `customerUid` = Auth UID.
@@ -1190,7 +1192,7 @@ Customer-provided artwork for **print requests** and **catalog donations** (ADR-
 **Technical progress stage (optional, live during finalize):** `reading_upload` | `checking_format` | `checking_transparency` | `preparing_artwork` | `checking_print_size` | `creating_previews` | `saving` — written by finalize/retry callables; cleared (`null`) when `ready` or `failed`. Portal maps these to customer-facing labels via `getCustomerUploadProgressLabel`.
 
 **Catalog review status:** `not_eligible` | `pending_staff_review` | `sent_to_ai_review` | `excluded_from_catalog`  
-(Promotion link: `promotedDesignId` — no `promoted_to_design` status.)
+(Promotion link: `promotedDesignId` — no `promoted_to_design` status.) Print-request artwork enters `pending_staff_review` on **successful show allocation** (not on attach). Donate enters on donate confirm.
 
 When staff promotes via `promoteCustomerUploadToAiReview`, a `designs` document is created with `status: imported`, `sourceCustomerUploadId`, and assets copied to canonical design storage paths. The upload moves to `sent_to_ai_review` with `promotedDesignId` set. Catalog exclusion does **not** remove request items or delete production Storage objects.
 
@@ -1208,7 +1210,7 @@ Staff intake callables (Admin SDK writes only): `promoteCustomerUploadToAiReview
 
 | Collection | Purpose |
 |------------|---------|
-| `customerUploadRateLimits/{uid}_{yyyyMMdd}` | America/Chicago (CST/CDT) daily caps **by purpose**: print-request (`createBatchCount` / `finalizeImageCount` / `finalizeZipCount`) and catalog-donation (`*Donation` fields). Separate buckets so donate and print-request do not share quota. Limits come from `settings/customerUploadQuotas` (ADR-FP-095) with code defaults when unset. Portal Upload Designs no longer charges day buckets; Donate still charges images/day (midnight Central). Field `utcDay` on docs remains the label name for compatibility. |
+| `customerUploadRateLimits/{uid}_{yyyyMMdd}` | America/Chicago (CST/CDT) daily caps **by purpose**: print-request (`createBatchCount` / `finalizeImageCount` / `finalizeZipCount`) and catalog-donation (`*Donation` fields). Separate buckets so donate and print-request do not share quota. Limits come from `settings/customerUploadQuotas` (ADR-FP-095) with code defaults when unset. Portal Upload Designs no longer charges day buckets; Donate still charges images/day (midnight Central). **F3 / 2026-08-11 QA:** donation `finalizeImageCountDonation` is charged only when finalize reaches **ready** (`quotaChargedFinalize`). Failed finalizes do not charge. Successful hard delete of a charged `catalog_donation` decrements today’s counter by 1 (Portal Remove / abandon-unconfirmed / Account gallery). Cap L unchanged. Field `utcDay` on docs remains the label name for compatibility. |
 | `printRequestDesignDailyLimits/{uid}_{yyyyMMdd}` | **Legacy Cap A counters (ADR-FP-096).** No longer written or enforced (ADR-FP-102). Optional wipe target on `fresh-prints-dev` for cleanup. |
 | `customerUploadFinalizeLeases/{leaseId}` | Concurrent finalize leases (max 8; 4-minute TTL; shared across purposes) |
 | `customerUploadIdempotency/{uid}_{clientRequestId}` | Create-batch idempotency |
@@ -1403,7 +1405,7 @@ Portal/Studio proof **previews** load via authenticated `getBytes` → object UR
 
 **Full-res retention (ADR-FP-093):** on customer **approve** (proof_image → `final_source_needed`), set `approvedProofId` + `approvedAt` and **physically delete** other proofs’ Storage objects (set per-proof `fullSizePurgedAt`). On terminal **without** an approved downloadable proof (`rejected` / `cancelled`), delete **all** proof full-res objects. After staff completes with `finalSource`, Portal Download / Add to Request prefer the final artwork. The approved proof full-res remains within the **14-day** window (`ASSISTED_CREATION_APPROVED_PROOF_RETENTION_DAYS`), then `purgeExpiredAssistedCreationProofs` / scheduled job deletes it and sets `fullSizePurgedAt`. Legacy `approved` docs without `approvedProofId`/`approvedAt` fail closed (no download) unless `finalSource` is present. Portal Download is on the Overview **Approved design** card (via Admin-streamed file callable). The Proofs list and modal title label the approved proof with an **Approved** badge.
 
-**Add to Request (ADR-FP-094 / ADR-FP-110):** Portal callable `customerAddAssistedApprovedProofToPrintRequest` server-copies the **final source when present**, else the approved proof, into `customer-uploads/...` (source + production + preview + thumbnail), creates a `customerUploads` doc (`purpose: print_request`, audit fields `assistedCreationRequestId` / `assistedProofId`), and attaches a `printRequestItems` row (`sourceType: customer_upload`, qty 1, size from pixels) to the working Current Request (lazy-create). Skips customer-upload transparency / quality rejection gates (staff-provided art). **Library listing consent (residual):** before add, Portal modal Allow / Don’t allow maps to `catalogUseAcknowledged: true | false` — the same field as print-upload attach and donate. Server applies shared `buildCatalogIntakeConfirmationPatch` so both choices set `catalogReviewStatus: pending_staff_review` (Studio Customer Uploads intake), plus `ownershipConfirmed`, `termsVersion`, `confirmedAt`. Allow → staff may promote later; Don’t allow → intake still sees the row with Design Library permission **Declined** (no auto-publish either way). Skip modal when already in working request. Denormalizes `printRequestIngest` (optional `catalogUseAcknowledged`) on the assisted request for idempotency and “Already in request” UX. Assisted 14-day proof purge does **not** delete the copied upload assets.
+**Add to Request (ADR-FP-094 / ADR-FP-110):** Portal callable `customerAddAssistedApprovedProofToPrintRequest` server-copies the **final source when present**, else the approved proof, into `customer-uploads/...` (source + production + preview + thumbnail), creates a `customerUploads` doc (`purpose: print_request`, audit fields `assistedCreationRequestId` / `assistedProofId`), and attaches a `printRequestItems` row (`sourceType: customer_upload`, qty 1, size from pixels) to the working Current Request (lazy-create). Skips customer-upload transparency / quality rejection gates (staff-provided art). **Library listing consent (residual):** before add, Portal modal Allow / Don’t allow maps to `catalogUseAcknowledged: true | false` — the same field as print-upload attach and donate. Server applies shared `buildCatalogIntakeConfirmationPatch` with `submitForStaffReview: false` so both choices reaffirm `catalogReviewStatus: not_eligible` (Studio Pending only after successful Add to Show), plus `ownershipConfirmed`, `termsVersion`, `confirmedAt`. Allow → staff may promote later after show allocation; Don’t allow → after show submit, intake still sees the row with Design Library permission **Declined** (no auto-publish either way). Skip modal when already in working request. Denormalizes `printRequestIngest` (optional `catalogUseAcknowledged`) on the assisted request for idempotency and “Already in request” UX. Assisted 14-day proof purge does **not** delete the copied upload assets.
 
 One **open** request per customer (`submitted` | `in_progress` | `proof_ready` | `revision_requested` | `final_source_needed`). Status machine supports staff proofing, customer approve → Final Source Needed, staff final upload → `approved`, and revision-with-notes (also `rejected` / `cancelled`). **Staff reject** is allowed only from **`submitted`** (New tab / before Start Work); after Start Work, staff must **cancel** instead (shared `assertAssistedCreationTransition` + `staffUpdateAssistedCreationStatus` fail closed). Staff cancel remains available from open statuses; customer cancel and owner restore are unchanged. While status is **`submitted`** only, the customer may update `answers` and `referenceImages` (callable `customerUpdateAssistedCreationRequest`); content updates are locked once staff marks `in_progress`. Customer cancel (`cancelAssistedCreationRequest`) requires a non-empty `reason` (max revision-note length); the server persists `customerCancelReason` and appends a status history note. Staff cancel/reject/restore still require a reason in history only (no `customerCancelReason`). Separately, `customerSendAssistedCreationMessage` and `staffSendAssistedCreationMessage` append text-only chat notes **only while the request is open** (`canSendAssistedCreationMessage`); terminal statuses (`approved` | `rejected` | `cancelled`) reject new sends with `failed-precondition` (“Messaging is closed for completed requests.”). Entries are same-status and never reopen or transition the request. Messages are trimmed, required, capped at 2,000 characters, and limited to one per actor role per request per 10 seconds. Customer update history notes use `Request updated` (optional staff-visible detail after an em dash). Chat rows use structural `kind: "customer_message"` or `kind: "staff_message"`; `AssistedCreationRevisionEntry.kind` is optional for legacy records and also supports `status`, `request_update`, and `proof_email_sent`. When a proof-ready email delivery job completes successfully, the worker appends a system history entry `Proof-ready email sent` (with optional `emailDeliveryJobId` for idempotency). On approve, customer may optionally set `customerRating` (1–5) and `customerApprovalNote` (short text), plus `approvedProofId` / `approvedAt`. Client Firestore writes denied; callables only. Helper may read; owner/admin mutate status, attach proofs / final artwork, and send staff Messages on open requests (ADR-FP-088, ADR-FP-092, ADR-FP-093, ADR-FP-094, ADR-FP-110). Owner wipe on `fresh-prints-dev` uses Test Data Reset target `assistedCreationRequests` (`wipeOperationalTestData`) and clears Storage under `assisted-creation/` (including `final/`).
 
@@ -2002,13 +2004,20 @@ editable saved items matching bundled defaults (ADR-FP-118).
 ### `settings/portalSocialMeta`
 
 ```ts
+interface PortalStaticOgImageSnapshot {
+  kind: "upload" | "design";
+  storagePath: string | null; // upload: portal-social-meta/static-og/{uuid}.{ext}; design: preview/thumbnail path
+  downloadUrl: string | null; // HTTPS snapshot authored at Save
+  sourceDesignId: string | null; // provenance only when kind === "design"
+}
+
 interface PortalSocialMetaSettings {
   ogTitle: string; // 1–120 chars
   ogDescription: string; // 1–300 chars
   /** Letterbox designs onto 1200×630 for Facebook wide previews (default true). */
   letterboxOgImages: boolean;
-  /** Non-design URLs: interval library rotation or brand logo (default "library"). */
-  globalOgImageSource: "library" | "logo";
+  /** Non-design URLs: library rotation, brand logo, or fixed static image (default "library"). */
+  globalOgImageSource: "library" | "logo" | "static";
   /**
    * UTC-aligned library OG rotation cadence (default "hourly").
    * Values: "daily" | "hourly" | "5min" | "1min" | "30s".
@@ -2020,6 +2029,12 @@ interface PortalSocialMetaSettings {
    * so testing can change the image without waiting for the next interval bucket.
    */
   libraryOgRotationSalt: number; // 0–1_000_000
+  /**
+   * Resolved static OG asset snapshot (upload or Design Library pick).
+   * Retained when temporarily switching to library/logo. Missing/invalid static mode
+   * fail-safes to brand logo / Portal bundled defaults at read time.
+   */
+  staticOgImage: PortalStaticOgImageSnapshot | null;
   updatedAt: Timestamp;
   updatedBy: string;
 }
@@ -2030,14 +2045,19 @@ Studio **Settings → Social sharing**. Writes via `updatePortalSocialMetaSettin
 callable). Client reads: owners only. Portal prefers public Function `getPortalGlobalOpenGraph`
 for crawler meta (title/description/image); Admin settings-only is a fallback. Missing doc
 resolves to brand defaults (`letterboxOgImages: true`, `globalOgImageSource: "library"`,
-`libraryOgRotationInterval: "hourly"`, `libraryOgRotationSalt: 0`). Library image index is
+`libraryOgRotationInterval: "hourly"`, `libraryOgRotationSalt: 0`,
+title/description Whatnot wording). Library image index is
 stable for the selected UTC interval bucket (`pickLibraryOgRotatedIndex` + salt) — Facebook
 Scrape Again alone does not change it until the bucket advances.
 When letterbox is on, design and library `og:image` URLs point at public Function
 `getPortalOgShareImage` (composed JPEG using the design’s `artworkBackgroundHex`, fallback
 `#e5e7eb`) with query `fit=contain&bg=<hex>` (`bg` is a Facebook/CDN cache-bust; Function
 paints from the design document, not the query). When off, signed Storage preview/thumbnail
-URLs are used.
+URLs are used for **library** mode only. **Static Image mode always letterboxes** via
+`getPortalOgShareImage` (`designId` for Design Library picks; validated `staticPath` under
+`portal-social-meta/static-og/` for uploads). The `letterboxOgImages` toggle does **not**
+disable Static letterboxing. Missing/invalid Static sources fail-safe to brand logo / Portal
+bundled defaults — never raw snapshot URLs.
 
 ### `settings/brandLogos`
 

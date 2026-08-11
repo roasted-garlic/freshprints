@@ -3,11 +3,15 @@
  * without using the FAQ accordion pattern.
  */
 import {
+  FRESH_PRINTS_WHATNOT_PROFILE_URL,
   PORTAL_HELP_ABOUT_EYEBROW,
   PORTAL_HELP_ABOUT_FOOTNOTE,
   PORTAL_HELP_ABOUT_HIGHLIGHT,
   PORTAL_HELP_ABOUT_PARAGRAPHS,
   PORTAL_HELP_ABOUT_TITLE,
+  PORTAL_HELP_ABOUT_WHATNOT_BODY,
+  PORTAL_HELP_ABOUT_WHATNOT_CTA_LABEL,
+  PORTAL_HELP_ABOUT_WHATNOT_HEADING,
 } from '../portalHelpContent'
 
 export function PortalHelpAboutPanel() {
@@ -30,6 +34,24 @@ export function PortalHelpAboutPanel() {
 
         <aside className="portal-help-about-highlight" aria-label="Important">
           <p>{PORTAL_HELP_ABOUT_HIGHLIGHT}</p>
+        </aside>
+
+        <aside
+          aria-labelledby="portal-help-about-whatnot-heading"
+          className="portal-help-about-whatnot"
+        >
+          <h3 id="portal-help-about-whatnot-heading" className="portal-help-about-whatnot-heading">
+            {PORTAL_HELP_ABOUT_WHATNOT_HEADING}
+          </h3>
+          <p className="portal-help-about-whatnot-body">{PORTAL_HELP_ABOUT_WHATNOT_BODY}</p>
+          <a
+            className="portal-help-about-whatnot-cta portal-help-external-link"
+            href={FRESH_PRINTS_WHATNOT_PROFILE_URL}
+            rel="noopener noreferrer"
+            target="_blank"
+          >
+            {PORTAL_HELP_ABOUT_WHATNOT_CTA_LABEL}
+          </a>
         </aside>
 
         <p className="portal-help-about-footnote">{PORTAL_HELP_ABOUT_FOOTNOTE}</p>

@@ -1050,9 +1050,31 @@
 }
 
 .design-library-fixed-region {
+  background: color-mix(in srgb, var(--color-bg-primary) 92%, transparent);
+  backdrop-filter: blur(10px);
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+  /* Sit below sticky app chrome (header + optional prints-left banner). */
+  position: sticky;
+  top: var(--portal-sticky-top-offset, 4.5rem);
+  z-index: calc(var(--z-sticky, 30) - 1);
+  /* Keep a little separation from scrolling cards underneath. */
+  margin: 0 calc(-1 * var(--space-1));
+  padding: 0 var(--space-1) var(--space-2);
+}
+
+.design-library-filter-controls-search-row {
+  align-items: center;
+  display: flex;
+  flex: 1 1 auto;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.design-library-open-filters-button {
+  display: none;
+  flex-shrink: 0;
 }
 
 .design-library-filter-dock {
@@ -2296,32 +2318,186 @@
   .design-library-filter-dock .design-library-filter-controls,
   .design-library-filter-controls {
     align-items: stretch;
-    display: grid;
+    display: flex;
     flex: 0 0 auto;
+    flex-direction: column;
     gap: var(--space-2);
-    grid-template-columns: minmax(0, 1fr);
     justify-content: flex-start;
     width: 100%;
   }
 
-  .design-library-filter-controls-search {
-    flex: 0 0 auto;
-    min-width: 0;
+  .design-library-filter-controls-search-row {
     width: 100%;
   }
 
+  .design-library-filter-controls-search {
+    flex: 1 1 auto;
+    min-width: 0;
+    width: auto;
+  }
+
+  .design-library-open-filters-button {
+    display: inline-flex;
+    height: 2.25rem;
+    justify-content: center;
+    padding: 0 var(--space-3);
+  }
+
   /*
-   * Four controls (Category, Halftone, Censored, Tags) in a balanced 2x2 grid — a 3-track
-   * grid here would leave one control stranded alone on a third row (awkward wrap /
-   * overflow). Two equal tracks let every control stretch to fill its cell so nothing
-   * overflows horizontally on narrow phones.
+   * Secondary filters (Category / Halftone / Censored / Tags) move into the mobile
+   * Filters bottom sheet — keep the sticky dock to search + Filters only.
    */
-  .design-library-filter-controls-secondary {
-    align-items: stretch;
-    display: grid;
-    flex: 0 0 auto;
+  .design-library-filter-dock .design-library-filter-controls-secondary {
+    display: none;
+  }
+
+  /* Full-height Filters sheet with room to scroll category options safely. */
+  .modal-panel.catalog-filters-sheet.tag-filter-drawer {
+    height: min(96dvh, calc(100dvh - var(--space-2)));
+    max-height: min(96dvh, calc(100dvh - var(--space-2)));
+  }
+
+  .catalog-filters-sheet-body {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    gap: var(--space-5);
+    min-height: 0;
+    overflow-y: auto;
+    padding: var(--space-2) var(--space-4) var(--space-4);
+  }
+
+  .catalog-filters-sheet-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    min-height: 0;
+  }
+
+  .catalog-filters-sheet-section-title {
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    margin: 0;
+    text-transform: uppercase;
+  }
+
+  .catalog-filters-category-trigger {
+    align-items: center;
+    background: var(--color-bg-tertiary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    color: var(--color-text-primary);
+    cursor: pointer;
+    display: flex;
+    font: inherit;
     gap: var(--space-2);
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    justify-content: space-between;
+    min-height: 3rem;
+    padding: 0 var(--space-3);
+    text-align: left;
+    width: 100%;
+  }
+
+  .catalog-filters-category-trigger:hover,
+  .catalog-filters-category-trigger:focus-visible,
+  .catalog-filters-category-trigger.is-open {
+    border-color: var(--color-accent-primary);
+    box-shadow: 0 0 0 3px var(--color-focus-ring);
+    outline: none;
+  }
+
+  .catalog-filters-category-trigger-value {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .catalog-filters-category-trigger.is-open .catalog-filters-category-chevron {
+    transform: rotate(180deg);
+  }
+
+  .catalog-filters-category-list {
+    background: var(--color-bg-tertiary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    display: flex;
+    flex-direction: column;
+    max-height: min(42dvh, 18rem);
+    min-height: 0;
+    overflow-y: auto;
+    padding: var(--space-1);
+  }
+
+  .catalog-filters-category-option {
+    align-items: center;
+    background: transparent;
+    border: 0;
+    border-radius: var(--radius-sm);
+    color: var(--color-text-primary);
+    cursor: pointer;
+    display: flex;
+    font: inherit;
+    gap: var(--space-2);
+    justify-content: space-between;
+    min-height: 2.75rem;
+    padding: 0 var(--space-3);
+    text-align: left;
+    width: 100%;
+  }
+
+  .catalog-filters-category-option:hover,
+  .catalog-filters-category-option:focus-visible {
+    background: color-mix(in srgb, var(--color-accent-primary) 12%, transparent);
+    outline: none;
+  }
+
+  .catalog-filters-category-option.is-selected {
+    background: var(--color-accent-primary-soft);
+    font-weight: 600;
+  }
+
+  .catalog-filters-category-option-label {
+    min-width: 0;
+  }
+
+  .catalog-filters-category-option-check {
+    color: var(--color-accent-primary);
+    display: inline-flex;
+    flex-shrink: 0;
+  }
+
+  .catalog-filters-sheet-toggles {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .catalog-filters-sheet-toggle {
+    height: 3rem;
+    justify-content: flex-start;
+    padding: 0 var(--space-3);
+    width: 100%;
+  }
+
+  .catalog-filters-tags-button {
+    justify-content: flex-start;
+    min-height: 3rem;
+    padding: 0 var(--space-3);
+    width: 100%;
+  }
+
+  .catalog-filters-sheet-footer {
+    flex-shrink: 0;
+  }
+
+  .catalog-filters-sheet-footer .portal-button {
+    flex: 1 1 auto;
+    justify-content: center;
+    min-height: 2.75rem;
     width: 100%;
   }
 
@@ -2343,10 +2519,6 @@
     justify-content: center;
     padding: 0 var(--space-2);
     width: auto;
-  }
-
-  .design-library-filter-dock .design-library-filter-controls-secondary .design-library-filter-tags-button {
-    width: 100%;
   }
 
   .design-library-filter-dock .design-library-halftone-filter {

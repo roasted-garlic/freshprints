@@ -9,6 +9,7 @@ import {
   PORTAL_HELP_ABOUT_HIGHLIGHT,
   PORTAL_HELP_ABOUT_PARAGRAPHS,
   PORTAL_HELP_ABOUT_TITLE,
+  PORTAL_TEXT_FAQS,
 } from '../portalHelpContent'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -24,10 +25,35 @@ describe('Portal help About panel wiring', () => {
 
     assert.match(blob, /myprintrequest\.com/i)
     assert.match(blob, /Whatnot/i)
-    assert.match(blob, /for you/i)
-    assert.match(blob, /not suggestions for other shoppers/i)
+    assert.match(blob, /does not place an order or charge you/i)
+    assert.match(blob, /personally intend to purchase/i)
+    assert.doesNotMatch(blob, /Browsing the catalog does not buy anything by itself/)
     assert.match(blob, /FAQ below/i)
     assert.equal(/\d{2,}/.test(blob), false, 'About blurb should not hard-code limit counts')
+  })
+
+  it('bundled what-is-print-request FAQ drops browsing-only purchase wording', () => {
+    const faq = PORTAL_TEXT_FAQS.find((item) => item.id === 'what-is-print-request')
+    assert.ok(faq)
+    assert.doesNotMatch(faq!.answer, /Browsing the catalog does not buy anything by itself/)
+    assert.match(faq!.answer, /does not place an order or charge you/i)
+  })
+
+  it('About panel embeds canonical Whatnot follow CTA from shared constants', () => {
+    const panelSource = readFileSync(path.join(__dirname, 'PortalHelpAboutPanel.tsx'), 'utf8')
+    assert.match(panelSource, /FRESH_PRINTS_WHATNOT_PROFILE_URL/)
+    assert.match(panelSource, /PORTAL_HELP_ABOUT_WHATNOT_CTA_LABEL/)
+    assert.match(panelSource, /rel="noopener noreferrer"/)
+    assert.match(panelSource, /target="_blank"/)
+    assert.doesNotMatch(panelSource, /dangerouslySetInnerHTML/)
+  })
+
+  it('first-visit modal still consumes PortalHelpAboutPanel', () => {
+    const modalSource = readFileSync(
+      path.join(__dirname, 'PortalAboutFirstVisitModal.tsx'),
+      'utf8',
+    )
+    assert.match(modalSource, /PortalHelpAboutPanel/)
   })
 
   it('renders the About panel above the FAQ page header', () => {

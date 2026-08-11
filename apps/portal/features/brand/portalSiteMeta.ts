@@ -5,7 +5,7 @@ import { isPortalSearchIndexingEnabled } from './portalSearchIndexing'
 
 /** Assumed default social / SEO description until marketing copy is finalized. */
 export const PORTAL_DEFAULT_DESCRIPTION =
-  'Browse the design library and submit print requests for Fresh Prints shows.'
+  'Browse the design library and submit print requests for Fresh Prints Whatnot shows.'
 
 /** Matches `PORTAL_LOGO_SRC` in PortalLogo (public static asset). */
 export const PORTAL_OG_IMAGE_PATH = '/brand/fresh-prints-request-portal-logo.png'

@@ -1,5 +1,23 @@
 # Recent Completed Work
 
+## 2026-08-11 - Prefinal A–H + Track B Git promote to production (PR #57)
+
+Owner **`PR 57 MERGED`**. Production tip `c3a61bf` contains freeze `3b7a978`.
+Storage Rules / Functions / App Hosting / Track A APPLY / Studio 1.0.3 **not** done.
+Checkpoint: `docs/workflow/reviews/2026-08-11-prefinal-a-h-production-promote-preflight-checkpoint.md`
+
+## 2026-08-11 - Legacy Pending tooling + Global OG Static letterbox DEV COMPLETE
+
+Owner **`DEV STATIC OG LETTERBOX QA: PASS`**. Signoff **approved_with_notes**.
+Track B letterbox on `fresh-prints-dev`; Track A Admin repair tooling ready (no APPLY).
+Signoff: `docs/workflow/reviews/2026-08-11-prod-legacy-pending-and-og-static-letterbox-signoff.md`
+
+## 2026-08-11 - Prefinal A–H DEV QA COMPLETE (PASS)
+
+Owner **`DEV A-H QA: PASS`**. Signoff **approved_with_notes**.
+Branch `qa/prefinal-a-h-dev` integrated A–H + DEV deploy; QA amendments during testing.
+Signoff: `docs/workflow/reviews/2026-08-11-prefinal-a-h-development-qa-signoff.md`
+
 ## 2026-08-10 - Prelaunch companion + censored PRODUCTION PROMOTE COMPLETE
 
 Owner **`PROD COMPANION CENSORED PROMOTE SMOKE: PASS`**. Signoff **approved**.

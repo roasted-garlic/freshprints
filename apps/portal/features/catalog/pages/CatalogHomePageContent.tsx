@@ -29,7 +29,11 @@ import { CatalogDesignDetailsModal } from '../components/CatalogDesignDetailsMod
 import { CatalogDiscoveryCarousel } from '../components/CatalogDiscoveryCarousel';
 import { CatalogSelectionCard } from '../components/CatalogSelectionCard';
 import { designHasMatchingDesignsHint } from '../services/catalogService';
-import { CATALOG_FIRST_VIEWPORT_EAGER_COUNT, useCatalogHomeDesigns } from '../hooks/useCatalogDesigns';
+import {
+  buildDiscoverSearchPlaceholder,
+  CATALOG_FIRST_VIEWPORT_EAGER_COUNT,
+  useCatalogHomeDesigns,
+} from '../hooks/useCatalogDesigns';
 import { useCatalogDesignDeepLink } from '../hooks/useCatalogDesignDeepLink';
 
 export function CatalogHomePageContent() {
@@ -62,9 +66,7 @@ export function CatalogHomePageContent() {
   });
 
   const { categories } = useCatalogCategories();
-  const { designs, error, isLoading } = useCatalogHomeDesigns();
-
-  const readyDesignCount = designs.length || null;
+  const { designs, error, isLoading, readyLibraryCount } = useCatalogHomeDesigns();
 
   const discoveryRails = useMemo(
     () =>
@@ -124,12 +126,7 @@ export function CatalogHomePageContent() {
     openLibrary({ search: query || undefined });
   }
 
-  const searchPlaceholder =
-    readyDesignCount === null
-      ? 'title, tag or description'
-      : readyDesignCount === 1
-        ? 'Search 1 design, by title, tag or description'
-        : `Search ${readyDesignCount.toLocaleString()} designs, by title, tag or description`;
+  const searchPlaceholder = buildDiscoverSearchPlaceholder(readyLibraryCount);
 
   const displayedActionError = creationActionError ?? addDesignFlow.actionError ?? deepLinkError;
 

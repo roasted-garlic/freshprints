@@ -1,17 +1,33 @@
 # Fresh Prints - Current State Snapshot
 
-## 2026-08-10 - PRELAUNCH COMPANION + CENSORED PRODUCTION PROMOTE COMPLETE
+## 2026-08-11 — PR #57 MERGED · Git promote complete · await Storage Rules
 
-**DONE: yes** — Signoff approved.
-Owner: **`PROD COMPANION CENSORED PROMOTE SMOKE: PASS`**
-Production promotion: **COMPLETE**
-Studio: **v1.0.2 published** (`target_commitish` / production source includes `b6e67be1b7fe02a69cd31077a203ee9102611ca5`)
-Feature merge SHA: `8cc014fb23370be6a7ac3672436163a47d390103`
-LIVE (do not redeploy): Firestore Rules · Firestore indexes · `getPortalGlobalOpenGraph` · Portal App Hosting
-Workflow: **DONE**
-Signoff: `docs/workflow/reviews/2026-08-10-prelaunch-companion-censored-promote-signoff.md`
+**Owner:** `PR 57 MERGED` after `APPROVE PROD PROMOTE PREFLIGHT: PREFINAL A-H + TRACK B`
 
-**NOT done:** `myprintrequest.com` cutover / DNS / Coming Soon — still blocked until `APPROVE MYPRINTREQUEST.COM CUTOVER`
-**Untouched:** Algolia mutation
+| Ref | SHA |
+|-----|-----|
+| `origin/production` | `c3a61bfe244b091e2d71bb58d6633b7e57ab67b2` (merge PR #57) |
+| Frozen product | `3b7a978f324d3c133ead8707ffc51454a20e1f5d` (contained; product tree match) |
+| `development` | reconciled onto production lineage (this merge) |
 
-Next: idle / new managed phase, or cutover phrase when ready.
+**PR:** https://github.com/roasted-garlic/freshprints/pull/57
+
+### Not yet done
+- Production Storage Rules (static-og)
+- Scoped Functions wave
+- App Hosting rollout
+- Track A dry-run/APPLY
+- Studio 1.0.3
+- Domain cutover
+
+### Next owner phrase
+
+```
+APPROVE PROD DEPLOY: STORAGE RULES STATIC-OG
+```
+
+---
+
+## Prior: 2026-08-10 — PRELAUNCH COMPANION + CENSORED PRODUCTION PROMOTE COMPLETE
+
+Signoff approved. Studio **v1.0.2** published. Cutover still awaits `APPROVE MYPRINTREQUEST.COM CUTOVER`.

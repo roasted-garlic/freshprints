@@ -6,6 +6,7 @@ import {
   pickLibraryOgRotatedIndex,
   resolvePortalSocialMetaSettings,
   PORTAL_SOCIAL_META_SETTINGS_DOC_ID,
+  type PortalGlobalOgImageSource,
   type PortalLibraryOgRotationInterval,
 } from "../../packages/shared/src/constants/portal/portalSocialMetaSettings.constants";
 import {
@@ -18,9 +19,11 @@ import {
   normalizeStorageObjectPath,
   resolveFirebaseProjectId,
 } from "./lib/portalOgUrls";
+import { resolveStaticOgLetterboxImageUrl } from "./portalStaticOgImage";
 
 const SIGNED_URL_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-export const PORTAL_GLOBAL_OPEN_GRAPH_CACHE_TTL_MS = 60 * 60 * 1000;
+/** Short TTL so multi-instance Functions converge after Save without hour-long sticky stale meta. */
+export const PORTAL_GLOBAL_OPEN_GRAPH_CACHE_TTL_MS = 60 * 1000;
 
 export interface PortalGlobalOpenGraphResponse {
   ogTitle: string;
@@ -28,7 +31,9 @@ export interface PortalGlobalOpenGraphResponse {
   /** Absolute HTTPS image URL for crawlers, or null to use Portal brand logo. */
   imageUrl: string | null;
   letterboxOgImages: boolean;
-  globalOgImageSource: "library" | "logo";
+  globalOgImageSource: PortalGlobalOgImageSource;
+  /** Settings `updatedAt` millis when available — Portal cache-bust / version key. */
+  updatedAtMs: number | null;
 }
 
 export interface PortalGlobalOpenGraphAccounting {
@@ -36,7 +41,7 @@ export interface PortalGlobalOpenGraphAccounting {
   settingsDocumentsRead: number;
   designDocumentsReturned: number;
   totalFirestoreDocumentReads: number;
-  sourceMode: "library" | "logo";
+  sourceMode: PortalGlobalOgImageSource;
 }
 
 export interface PortalOgLibraryDesignCandidate {
@@ -59,6 +64,14 @@ export function filterPortalOgLibraryCandidatesExcludingExplicit(
 ): PortalOgLibraryDesignCandidate[] {
   return candidates.filter((candidate) => candidate.isExplicitContent !== true);
 }
+
+type CachedGlobalOpenGraph = {
+  payload: PortalGlobalOpenGraphResponse;
+  settingsDocumentsRead: number;
+  designDocumentsReturned: number;
+  totalFirestoreDocumentReads: number;
+  settingsUpdatedAtMs: number | null;
+};
 
 export function createPortalGlobalOpenGraphCache<T>(ttlMs = PORTAL_GLOBAL_OPEN_GRAPH_CACHE_TTL_MS) {
   let resolved: { expiresAtMs: number; value: T } | null = null;
@@ -92,12 +105,12 @@ export function createPortalGlobalOpenGraphCache<T>(ttlMs = PORTAL_GLOBAL_OPEN_G
   };
 }
 
-const responseCache = createPortalGlobalOpenGraphCache<{
-  payload: PortalGlobalOpenGraphResponse;
-  settingsDocumentsRead: number;
-  designDocumentsReturned: number;
-  totalFirestoreDocumentReads: number;
-}>();
+const responseCache = createPortalGlobalOpenGraphCache<CachedGlobalOpenGraph>();
+
+/** Clear in-process Global OG cache after settings Save (same Cloud Function instance). */
+export function invalidatePortalGlobalOpenGraphCache(): void {
+  responseCache.clear();
+}
 
 export function buildPortalGlobalOpenGraphAccounting(
   cacheStatus: PortalGlobalOpenGraphAccounting["cacheStatus"],
@@ -308,6 +321,69 @@ async function resolveLibraryImageUrl(
   };
 }
 
+function parseClientCacheBustVersion(raw: unknown): number | null {
+  if (typeof raw === "string" && raw.trim()) {
+    const parsed = Number(raw.trim());
+    return Number.isFinite(parsed) ? Math.trunc(parsed) : null;
+  }
+  if (typeof raw === "number" && Number.isFinite(raw)) {
+    return Math.trunc(raw);
+  }
+  return null;
+}
+
+async function loadCachedGlobalOpenGraph(): Promise<CachedGlobalOpenGraph> {
+  const settingsSnap = await adminDb
+    .collection("settings")
+    .doc(PORTAL_SOCIAL_META_SETTINGS_DOC_ID)
+    .get();
+  const settings = resolvePortalSocialMetaSettings(settingsSnap.data());
+  const settingsUpdatedAtMs = toMillis(settings.updatedAt) ?? toMillis(settingsSnap.updateTime);
+
+  let imageUrl: string | null = null;
+  let designDocumentsReturned = 0;
+  let brandLogoSettingsRead = 0;
+
+  if (settings.globalOgImageSource === "library") {
+    const library = await resolveLibraryImageUrl(
+      settings.letterboxOgImages,
+      settings.libraryOgRotationSalt,
+      settings.libraryOgRotationInterval,
+    );
+    imageUrl = library.imageUrl;
+    designDocumentsReturned = library.designDocumentsReturned;
+  } else if (settings.globalOgImageSource === "static") {
+    // Static always letterboxes via getPortalOgShareImage (ignore letterboxOgImages toggle).
+    // Never return raw snapshot URLs — social crawlers would crop/zoom them.
+    imageUrl = await resolveStaticOgLetterboxImageUrl(settings.staticOgImage);
+    if (!imageUrl) {
+      // Fail-safe: missing/invalid static → brand logo, then null (Portal bundled logo).
+      imageUrl = await resolveUploadedPortalLogoUrl();
+      brandLogoSettingsRead = 1;
+    }
+  } else {
+    imageUrl = await resolveUploadedPortalLogoUrl();
+    brandLogoSettingsRead = 1;
+  }
+
+  const payload: PortalGlobalOpenGraphResponse = {
+    ogTitle: settings.ogTitle,
+    ogDescription: settings.ogDescription,
+    imageUrl,
+    letterboxOgImages: settings.letterboxOgImages,
+    globalOgImageSource: settings.globalOgImageSource,
+    updatedAtMs: settingsUpdatedAtMs,
+  };
+  const settingsDocumentsRead = 1 + brandLogoSettingsRead;
+  return {
+    payload,
+    settingsDocumentsRead,
+    designDocumentsReturned,
+    totalFirestoreDocumentReads: settingsDocumentsRead + designDocumentsReturned,
+    settingsUpdatedAtMs,
+  };
+}
+
 /**
  * Public GET for Portal non-design Open Graph (home, login, etc.).
  * Prefer this from Portal metadata so crawlers do not depend on App Hosting Admin ADC.
@@ -337,51 +413,29 @@ export const getPortalGlobalOpenGraph = onRequest(
       sourceMode: "library",
     };
     try {
-      const cached = await responseCache.get(async () => {
-        const settingsSnap = await adminDb
-          .collection("settings")
-          .doc(PORTAL_SOCIAL_META_SETTINGS_DOC_ID)
-          .get();
-        const settings = resolvePortalSocialMetaSettings(settingsSnap.data());
+      const clientVersion = parseClientCacheBustVersion(request.query.v);
+      let cached = await responseCache.get(loadCachedGlobalOpenGraph);
 
-        let imageUrl: string | null = null;
-        let designDocumentsReturned = 0;
-        if (settings.globalOgImageSource === "library") {
-          const library = await resolveLibraryImageUrl(
-            settings.letterboxOgImages,
-            settings.libraryOgRotationSalt,
-            settings.libraryOgRotationInterval,
-          );
-          imageUrl = library.imageUrl;
-          designDocumentsReturned = library.designDocumentsReturned;
-        } else {
-          imageUrl = await resolveUploadedPortalLogoUrl();
-        }
+      // Portal passes settings updatedAt as ?v= — bust sticky in-process cache across instances.
+      if (
+        clientVersion !== null &&
+        cached.value.settingsUpdatedAtMs !== null &&
+        clientVersion !== cached.value.settingsUpdatedAtMs &&
+        cached.status === "hit"
+      ) {
+        invalidatePortalGlobalOpenGraphCache();
+        cached = await responseCache.get(loadCachedGlobalOpenGraph);
+      }
 
-        const payload: PortalGlobalOpenGraphResponse = {
-          ogTitle: settings.ogTitle,
-          ogDescription: settings.ogDescription,
-          imageUrl,
-          letterboxOgImages: settings.letterboxOgImages,
-          globalOgImageSource: settings.globalOgImageSource,
-        };
-        const settingsDocumentsRead =
-          1 + (settings.globalOgImageSource === "logo" ? 1 : 0);
-        return {
-          payload,
-          settingsDocumentsRead,
-          designDocumentsReturned,
-          totalFirestoreDocumentReads: settingsDocumentsRead + designDocumentsReturned,
-        };
-      });
       accounting = buildPortalGlobalOpenGraphAccounting(
         cached.status,
         cached.value.payload.globalOgImageSource,
         cached.value,
       );
 
-      response.set("Cache-Control", "public, max-age=300");
+      response.set("Cache-Control", "public, max-age=60");
       response.status(200).json(cached.value.payload);
+
       if (process.env.GCLOUD_PROJECT === "fresh-prints-dev") {
         console.info("portal-global-open-graph-accounting", {
           ...accounting,

@@ -16,4 +16,13 @@ describe("buildPortalOgShareImageFunctionUrl", () => {
     assert.match(url, /bg=112233/);
     assert.doesNotMatch(url, /GoogleAccessId|Signature=/);
   });
+
+  it("builds staticPath letterbox URL for Static Upload", () => {
+    const url = buildPortalOgShareImageFunctionUrl({
+      projectId: "fresh-prints-dev",
+      staticStoragePath: "portal-social-meta/static-og/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee.webp",
+    });
+    assert.match(url, /staticPath=portal-social-meta%2Fstatic-og%2Faaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee\.webp/);
+    assert.doesNotMatch(url, /designId=/);
+  });
 });

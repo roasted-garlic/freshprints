@@ -10,6 +10,7 @@ import type { CatalogDesign } from '../types/catalog.types';
 import {
   allowsBoundedCatalogFirestoreFallback,
   appendCatalogDesignPageWithoutDuplicates,
+  buildDiscoverSearchPlaceholder,
   buildServerListQuery,
   fetchReadyDesignCountWithRetry,
   reconcilePagingWithAggregateCount,
@@ -418,12 +419,47 @@ test('I/K containment: ordinary path no longer seeds badge from firstPage.design
   assert.match(source, /requiresManagedSearchPath|useManagedSearch/);
 });
 
-test('J containment: Home rails still use listHomeDiscoveryPool (unaffected)', () => {
+test('J containment: Home rails still use listHomeDiscoveryPool; placeholder count is independent aggregate', () => {
   const source = readFileSync('apps/portal/features/catalog/hooks/useCatalogDesigns.ts', 'utf8');
   const homeStart = source.indexOf('export function useCatalogHomeDesigns');
-  const homeBlock = source.slice(homeStart, homeStart + 1200);
+  const homeEnd = source.indexOf('export function useFilteredCatalogDesigns');
+  const homeBlock = source.slice(homeStart, homeEnd >= 0 ? homeEnd : homeStart + 2500);
   assert.match(homeBlock, /listHomeDiscoveryPool/);
-  assert.doesNotMatch(homeBlock, /fetchReadyDesignCountWithRetry/);
+  assert.match(homeBlock, /fetchReadyDesignCountWithRetry/);
+  assert.match(homeBlock, /countReadyDesigns/);
+  assert.match(homeBlock, /readyLibraryCount/);
+  // Aggregate failure must not advertise pool length.
+  assert.match(homeBlock, /Never fall back to hydrated home-pool length/);
+});
+
+test('Discover search placeholder uses aggregate readyLibraryCount, never designs.length', () => {
+  const page = readFileSync(
+    'apps/portal/features/catalog/pages/CatalogHomePageContent.tsx',
+    'utf8',
+  );
+  assert.match(page, /buildDiscoverSearchPlaceholder\(readyLibraryCount\)/);
+  assert.doesNotMatch(page, /designs\.length\s*\|\|/);
+  assert.doesNotMatch(page, /readyDesignCount\s*=\s*designs\.length/);
+});
+
+test('buildDiscoverSearchPlaceholder: singular, locale thousands, and null fallback', () => {
+  assert.equal(buildDiscoverSearchPlaceholder(null), 'title, tag or description');
+  assert.equal(buildDiscoverSearchPlaceholder(1), 'Search 1 design, by title, tag or description');
+  assert.equal(
+    buildDiscoverSearchPlaceholder(85),
+    `Search ${(85).toLocaleString()} designs, by title, tag or description`,
+  );
+  assert.equal(
+    buildDiscoverSearchPlaceholder(1243),
+    `Search ${(1243).toLocaleString()} designs, by title, tag or description`,
+  );
+  // Bounded home pool of 85 must not be forced into the placeholder when total is larger.
+  const homePoolLength = 85;
+  const authoritativeTotal = 1243;
+  assert.notEqual(
+    buildDiscoverSearchPlaceholder(authoritativeTotal),
+    buildDiscoverSearchPlaceholder(homePoolLength),
+  );
 });
 
 test('CLIENT_SORT_MEMBERSHIP_CAP residual remains 500 in catalogService (unchanged this phase)', () => {

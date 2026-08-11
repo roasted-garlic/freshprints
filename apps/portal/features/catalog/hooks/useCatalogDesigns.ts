@@ -438,7 +438,7 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
   ]);
 
   // Managed search (Algolia) already applied q/tags/category — do not re-filter
-  // client-side (would discard Algolia typo-tolerant hits that fail substring match).
+  // client-side (would discard legitimate Algolia token matches that fail naive substring checks).
   const filteredDesigns = useFilteredCatalogDesigns({
     designs: allDesigns,
     search: isManagedSearchQuery ? '' : (options.searchQuery ?? ''),
@@ -616,14 +616,22 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
   };
 }
 
+/**
+ * Discover home: bounded rail pool plus independent complete ready-library count.
+ * Never treat `designs.length` as library membership — pool is intentionally capped
+ * (`listHomeDiscoveryPool` / `HOME_DISCOVERY_POOL_PAGE_SIZE`).
+ */
 export function useCatalogHomeDesigns(): {
   designs: CatalogDesign[];
   error: string | null;
   isLoading: boolean;
+  /** Authoritative ready membership total; null while pending or if aggregate fails. */
+  readyLibraryCount: number | null;
 } {
   const [designs, setDesigns] = useState<CatalogDesign[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [readyLibraryCount, setReadyLibraryCount] = useState<number | null>(null);
 
   useEffect(() => {
     let isCancelled = false;
@@ -650,14 +658,42 @@ export function useCatalogHomeDesigns(): {
       }
     }
 
+    async function loadReadyLibraryCount() {
+      const countResult = await fetchReadyDesignCountWithRetry(
+        (query) => catalogService.countReadyDesigns(query),
+        {},
+      );
+      if (isCancelled) {
+        return;
+      }
+      if (countResult.ok) {
+        setReadyLibraryCount(countResult.total);
+      } else {
+        // Never fall back to hydrated home-pool length.
+        setReadyLibraryCount(null);
+      }
+    }
+
     void loadHomeDesigns();
+    void loadReadyLibraryCount();
 
     return () => {
       isCancelled = true;
     };
   }, []);
 
-  return { designs, error, isLoading };
+  return { designs, error, isLoading, readyLibraryCount };
+}
+
+/** Discover search field placeholder — aggregate count only; never home-pool length. */
+export function buildDiscoverSearchPlaceholder(readyLibraryCount: number | null): string {
+  if (readyLibraryCount === null) {
+    return 'title, tag or description';
+  }
+  if (readyLibraryCount === 1) {
+    return 'Search 1 design, by title, tag or description';
+  }
+  return `Search ${readyLibraryCount.toLocaleString()} designs, by title, tag or description`;
 }
 
 export function useFilteredCatalogDesigns(options: {

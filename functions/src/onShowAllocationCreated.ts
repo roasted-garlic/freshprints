@@ -4,11 +4,17 @@ import { onDocumentCreated } from "firebase-functions/v2/firestore";
 import { shouldIncrementDesignRequestCount } from "../../packages/shared/src/utils/printRequestItemSource";
 
 import { adminDb } from "./lib/admin";
+import { transitionCustomerUploadToStaffReviewIfEligible } from "./lib/customerUploadCatalogConfirmation";
 
 /**
- * Recently Requested / show-add popularity: bump when a catalog design is allocated
- * to a show (Portal queue-to-show or Studio Add to Show). Working-cart item creates
- * do not write these fields — see onPrintRequestItemCreated for requestCount only.
+ * On show allocation create:
+ * 1. Customer-upload source → idempotently advance upload to Studio Pending
+ *    (`not_eligible` → `pending_staff_review`). Covers Studio client allocate
+ *    (Rules forbid client writes to customerUploads) and complements Portal queue TX.
+ * 2. Catalog design source → bump Recently Requested / show-add popularity.
+ *
+ * De-allocation does not rewind catalogReviewStatus (one-way intake).
+ * Never creates Designs or auto Send to AI.
  */
 export const onShowAllocationCreated = onDocumentCreated(
   "showAllocations/{allocationId}",
@@ -20,6 +26,15 @@ export const onShowAllocationCreated = onDocumentCreated(
     }
 
     if (data.status === "canceled") {
+      return;
+    }
+
+    if (data.sourceType === "customer_upload") {
+      const customerUploadId =
+        typeof data.customerUploadId === "string" ? data.customerUploadId.trim() : "";
+      if (customerUploadId) {
+        await transitionCustomerUploadToStaffReviewIfEligible(customerUploadId);
+      }
       return;
     }
 

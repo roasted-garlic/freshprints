@@ -29,8 +29,14 @@ import {
   customerUploadService,
   defaultCustomerUploadSizeLimits,
 } from '../services/customerUploadService';
+import {
+  buildReadyPreviewFetchKey,
+  resolvePreviewUrlsLimited,
+} from '../utils/resolvePreviewUrlsLimited';
 import { formatCustomerUploadDailyQuota } from '../utils/formatCustomerUploadDailyQuota';
 import { resolveCustomerUploadAttachDisabledReason } from '../utils/resolveCustomerUploadAttachDisabledReason';
+
+const PREVIEW_URL_FETCH_CONCURRENCY = 3;
 
 function quotaToneClassName(tone: WorkingRequestLimitBannerTone): string {
   if (tone === 'exhausted') {
@@ -99,6 +105,7 @@ export function CustomerUploadPanel({
     submitDonation,
     respondToHalftone,
     reset,
+    abandonUnconfirmedUploads,
   } = useCustomerUploadBatch({
     purpose,
     sizeLimits,
@@ -149,45 +156,47 @@ export function CustomerUploadPanel({
     };
   }, [isHalftoneHelpOpen, variant]);
 
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') {
-        return;
-      }
-      if (isHalftoneHelpOpen) {
-        setIsHalftoneHelpOpen(false);
-        return;
-      }
-      if (variant === 'modal' && !isBusy) {
-        onClose();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isBusy, isHalftoneHelpOpen, onClose, variant]);
+  // Do not create object URLs for every queued file — large PNG batches (30–60MB × dozens)
+  // exhaust browser memory and break half the thumbnails. Show ART until a server preview is ready.
+  const readyPreviewKey = buildReadyPreviewFetchKey(rows);
 
   useEffect(() => {
-    let cancelled = false;
-    async function loadPreviews() {
-      const next: Record<string, string | null> = {};
-      await Promise.all(
-        rows.map(async (row) => {
-          if (row.phase !== 'ready' || !row.previewStoragePath) {
-            return;
-          }
-          next[row.localId] = await customerUploadService.getDownloadUrl(row.previewStoragePath);
-        }),
-      );
-      if (!cancelled) {
-        setPreviewUrls((current) => ({ ...current, ...next }));
-      }
+    if (!readyPreviewKey) {
+      return;
     }
-    void loadPreviews();
+    let cancelled = false;
+    const items = rows
+      .filter((row) => row.phase === 'ready' && row.previewStoragePath)
+      .map((row) => ({
+        localId: row.localId,
+        previewStoragePath: row.previewStoragePath as string,
+      }));
+
+    void (async () => {
+      const resolved = await resolvePreviewUrlsLimited({
+        alreadyHave: previewUrls,
+        concurrency: PREVIEW_URL_FETCH_CONCURRENCY,
+        getDownloadUrl: async (storagePath) => {
+          const url = await customerUploadService.getDownloadUrl(storagePath);
+          if (!url) {
+            throw new Error('Preview URL unavailable');
+          }
+          return url;
+        },
+        items,
+      });
+      if (cancelled || Object.keys(resolved).length === 0) {
+        return;
+      }
+      setPreviewUrls((current) => ({ ...current, ...resolved }));
+    })();
+
     return () => {
       cancelled = true;
     };
-  }, [rows]);
+    // previewUrls intentionally omitted — we pass a snapshot via alreadyHave and skip cached ids
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed by readyPreviewKey
+  }, [readyPreviewKey]);
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     if (isRequestFull || isQuotaPending) {
@@ -229,11 +238,34 @@ export function CustomerUploadPanel({
     }
   };
 
-  const handleClose = () => {
-    if (!isBusy) {
-      onClose();
+  const handleClose = useCallback(() => {
+    if (isBusy) {
+      return;
     }
-  };
+    void (async () => {
+      await abandonUnconfirmedUploads();
+      await refreshDailyQuota();
+      onClose();
+    })();
+  }, [abandonUnconfirmedUploads, isBusy, onClose, refreshDailyQuota]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') {
+        return;
+      }
+      if (isHalftoneHelpOpen) {
+        setIsHalftoneHelpOpen(false);
+        return;
+      }
+      if (variant === 'modal' && !isBusy) {
+        handleClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleClose, isBusy, isHalftoneHelpOpen, variant]);
 
   const uploadBlocked = isBusy || isRequestFull || isQuotaPending;
   const attachDisabledReason = resolveCustomerUploadAttachDisabledReason({
@@ -461,7 +493,12 @@ export function CustomerUploadPanel({
               <li className={`portal-customer-upload-file-row is-${row.phase}`} key={row.localId}>
                 <div className="portal-customer-upload-file-preview">
                   {previewUrls[row.localId] ? (
-                    <img alt="" src={previewUrls[row.localId] ?? undefined} />
+                    <img
+                      alt=""
+                      loading="lazy"
+                      decoding="async"
+                      src={previewUrls[row.localId] ?? undefined}
+                    />
                   ) : (
                     <span className="portal-customer-upload-file-preview-fallback" aria-hidden>
                       ART
@@ -566,7 +603,12 @@ export function CustomerUploadPanel({
                       isAttaching ||
                       (isProcessing && row.phase !== 'failed' && row.phase !== 'ready')
                     }
-                    onClick={() => removeRow(row.localId)}
+                    onClick={() => {
+                      void (async () => {
+                        await removeRow(row.localId);
+                        await refreshDailyQuota();
+                      })();
+                    }}
                     type="button"
                   >
                     Remove

@@ -2,6 +2,7 @@ import {
   parsePortalCatalogTagFacetKey,
   type PortalCatalogAlgoliaRecord,
 } from '@fresh-prints/shared/catalog-search/portalCatalogAlgoliaRecord';
+import { withPortalCatalogAlgoliaExactTokenSearchParams } from '@fresh-prints/shared/catalog-search/portalCatalogAlgoliaExactSearchParams';
 
 import type { CatalogDesign, CatalogTagOption } from '../types/catalog.types';
 import { catalogService } from './catalogService';
@@ -48,18 +49,23 @@ export function buildPortalAlgoliaFacetSearchParams(
   hitsPerPage: number;
   facets: string[];
   maxValuesPerFacet: number;
+  typoTolerance?: false;
+  queryType?: 'prefixLast';
 } {
   const query = options.search?.trim() ?? '';
   const facetFilters = buildTagAndFilters(options.selectedTags ?? []);
   const categoryId = options.categoryId?.trim();
-  return {
+  return withPortalCatalogAlgoliaExactTokenSearchParams(
+    {
+      query,
+      facetFilters: facetFilters.length > 0 ? facetFilters : undefined,
+      filters: categoryId ? `categoryId:${categoryId}` : undefined,
+      hitsPerPage: 0,
+      facets: ['tagFacetKeys'],
+      maxValuesPerFacet: 2000,
+    },
     query,
-    facetFilters: facetFilters.length > 0 ? facetFilters : undefined,
-    filters: categoryId ? `categoryId:${categoryId}` : undefined,
-    hitsPerPage: 0,
-    facets: ['tagFacetKeys'],
-    maxValuesPerFacet: 2000,
-  };
+  );
 }
 
 /**
@@ -120,13 +126,16 @@ export const portalAlgoliaCatalogSearchService = {
 
     const response = await client.searchSingleIndex<PortalCatalogAlgoliaRecord>({
       indexName,
-      searchParams: {
+      searchParams: withPortalCatalogAlgoliaExactTokenSearchParams(
+        {
+          query,
+          facetFilters: facetFilters.length > 0 ? facetFilters : undefined,
+          filters,
+          hitsPerPage: limit,
+          page,
+        },
         query,
-        facetFilters: facetFilters.length > 0 ? facetFilters : undefined,
-        filters,
-        hitsPerPage: limit,
-        page,
-      },
+      ),
     });
 
     const ids = response.hits.map((hit) => hit.objectID);

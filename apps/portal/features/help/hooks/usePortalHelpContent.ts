@@ -9,6 +9,7 @@ import {
   type PortalVideoFaq,
 } from '../portalHelpContent'
 import { portalHelpSettingsService } from '../services/portalHelpSettingsService'
+import { mergePortalHelpFaqsWithRequired } from '../utils/mergePortalHelpFaqsWithRequired'
 
 export type PortalHelpContentSource = 'firestore' | 'bundled-fallback'
 
@@ -25,9 +26,12 @@ export type PortalHelpLiveContent = {
  * Missing doc or empty FAQs → bundled FAQ defaults.
  * Empty / missing videos → empty list (Coming soon UI) — never dummy video slots.
  * Partial Studio content: non-empty list stays from Firestore.
+ * Product-required Whatnot FAQ is always merged at the presentation layer.
  */
 export function usePortalHelpContent(): PortalHelpLiveContent {
-  const [faqs, setFaqs] = useState<PortalTextFaq[]>(PORTAL_TEXT_FAQS)
+  const [faqs, setFaqs] = useState<PortalTextFaq[]>(() =>
+    mergePortalHelpFaqsWithRequired(PORTAL_TEXT_FAQS),
+  )
   const [videos, setVideos] = useState<PortalVideoFaq[]>([])
   const [source, setSource] = useState<PortalHelpContentSource>('bundled-fallback')
   const [isLoading, setIsLoading] = useState(true)
@@ -38,16 +42,16 @@ export function usePortalHelpContent(): PortalHelpLiveContent {
       portalHelpSettingsService.subscribe(
         (load) => {
           if (load.status === 'missing') {
-            setFaqs(PORTAL_TEXT_FAQS)
+            setFaqs(mergePortalHelpFaqsWithRequired(PORTAL_TEXT_FAQS))
             setVideos([])
             setSource('bundled-fallback')
           } else {
             const loadedFaqs = load.settings.faqs
             const loadedVideos = load.settings.videos
-            const resolvedFaqs = loadedFaqs.length > 0 ? loadedFaqs : PORTAL_TEXT_FAQS
+            const baseFaqs = loadedFaqs.length > 0 ? loadedFaqs : PORTAL_TEXT_FAQS
             const resolvedVideos =
               loadedVideos.length > 0 ? mapHelpVideosToPortalFaqs(loadedVideos) : []
-            setFaqs(resolvedFaqs)
+            setFaqs(mergePortalHelpFaqsWithRequired(baseFaqs))
             setVideos(resolvedVideos)
             setSource(
               loadedFaqs.length === 0 && loadedVideos.length === 0
@@ -60,7 +64,7 @@ export function usePortalHelpContent(): PortalHelpLiveContent {
         },
         (message) => {
           setError(message)
-          setFaqs(PORTAL_TEXT_FAQS)
+          setFaqs(mergePortalHelpFaqsWithRequired(PORTAL_TEXT_FAQS))
           setVideos([])
           setSource('bundled-fallback')
           setIsLoading(false)

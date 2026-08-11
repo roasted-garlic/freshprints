@@ -6,6 +6,7 @@ import { useLayoutEffect, useRef, type ReactNode, type RefObject } from 'react';
 import { GuestAuthGateOverlay } from '../../auth/components/GuestAuthGateOverlay';
 import { useAuth } from '../../auth/context/AuthContext';
 import { isPortalPublicBrowsePath } from '../../auth/utils/portalPublicBrowsePath';
+import { PortalAboutFirstVisitModal } from '../../help/components/PortalAboutFirstVisitModal';
 import { CurrentRequestDrawer } from '../../print-requests/components/CurrentRequestDrawer';
 import { PortalWorkingRequestLimitBanner } from '../../print-requests/components/PortalWorkingRequestLimitBanner';
 import { PortalPrintRequestProvider } from '../../print-requests/context/PortalPrintRequestContext';
@@ -67,6 +68,12 @@ function PortalAppShellContent({ children }: PortalAppShellProps) {
     !isAuthenticated &&
     isGuestBrowseSession(bootstrapStatus) &&
     !isPortalPublicBrowsePath(pathname);
+  const aboutModalEligible =
+    (bootstrapStatus === 'ready' ||
+      bootstrapStatus === 'unauthenticated' ||
+      bootstrapStatus === 'anonymous-guest') &&
+    isPortalPublicBrowsePath(pathname) &&
+    !showGuestAuthOverlay;
 
   return (
     <div className="portal-app-shell">
@@ -97,6 +104,8 @@ function PortalAppShellContent({ children }: PortalAppShellProps) {
         </div>
         <PortalBottomNav />
       </div>
+
+      <PortalAboutFirstVisitModal isEligible={aboutModalEligible} />
 
       {/* Mounted here (not inside the context module) to avoid Context↔Drawer circular import. */}
       <CurrentRequestDrawer />

@@ -131,14 +131,6 @@ export const finalizeCustomerUpload = onCall(
         targetId: payload.uploadId,
       });
 
-      if (!upload.quotaChargedFinalize) {
-        await chargeDailyQuota(customerUid, "finalizeImage", uploadPurpose, uploaderType);
-        await uploadRef.update({
-          quotaChargedFinalize: true,
-          updatedAt: FieldValue.serverTimestamp(),
-        });
-      }
-
       const expectedSourcePath = getCustomerUploadSourceStoragePath(customerUid, payload.uploadId);
       const sourceStoragePath =
         typeof upload.sourceStoragePath === "string" ? upload.sourceStoragePath : "";
@@ -270,6 +262,18 @@ export const finalizeCustomerUpload = onCall(
         processed,
       });
 
+      // Charge donation day quota only after processing succeeds so failed finalizes never consume
+      // a slot. Persist the flag immediately after charge so retries cannot double-charge if the
+      // ready write fails; abandon/hard-delete still refunds when `quotaChargedFinalize` is true.
+      const freshBeforeCharge = await uploadRef.get();
+      if (!freshBeforeCharge.data()?.quotaChargedFinalize) {
+        await chargeDailyQuota(customerUid, "finalizeImage", uploadPurpose, uploaderType);
+        await uploadRef.update({
+          quotaChargedFinalize: true,
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+      }
+
       const batchRef = adminDb
         .collection(CUSTOMER_UPLOAD_COLLECTIONS.customerUploadBatches)
         .doc(payload.batchId);
@@ -284,6 +288,7 @@ export const finalizeCustomerUpload = onCall(
             technicalProgressStage: null,
             technicalFailureCode: null,
             technicalFailureMessage: null,
+            quotaChargedFinalize: true,
             sourceFormat: processed.sourceFormat,
             sourceWidthPx: processed.sourceWidthPx,
             sourceHeightPx: processed.sourceHeightPx,

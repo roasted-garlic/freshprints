@@ -1302,6 +1302,23 @@
   object-fit: contain;
 }
 
+/* Social sharing static OG preview — keep a compact card, not full artwork size. */
+.settings-og-static-preview-wrap {
+  max-width: min(100%, 28rem);
+}
+
+.settings-og-static-preview {
+  background: var(--color-bg-secondary, #1a1a1a);
+  border: 1px solid var(--color-border, rgba(255, 255, 255, 0.12));
+  border-radius: var(--radius-md, 0.5rem);
+  display: block;
+  height: auto;
+  max-height: 12rem;
+  max-width: 100%;
+  object-fit: contain;
+  width: auto;
+}
+
 .settings-file-input-hidden {
   height: 1px;
   opacity: 0;

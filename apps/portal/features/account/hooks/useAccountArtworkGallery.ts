@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import type { CatalogDesign } from '../../catalog/types/catalog.types';
 import {
@@ -22,6 +22,7 @@ export function useAccountArtworkGallery(customerUid: string | undefined): {
   isLoading: boolean;
   items: AccountArtworkGalleryTile[];
   previewItems: AccountArtworkGalleryTile[];
+  reload: () => void;
   reusableDesigns: CatalogDesign[];
   reusableErrorMessage: string | null;
   isReusableLoading: boolean;
@@ -33,6 +34,11 @@ export function useAccountArtworkGallery(customerUid: string | undefined): {
   const [reusableDesigns, setReusableDesigns] = useState<CatalogDesign[]>([]);
   const [isReusableLoading, setIsReusableLoading] = useState(false);
   const [reusableErrorMessage, setReusableErrorMessage] = useState<string | null>(null);
+  const [reloadToken, setReloadToken] = useState(0);
+
+  const reload = useCallback(() => {
+    setReloadToken((current) => current + 1);
+  }, []);
 
   useEffect(() => {
     if (!customerUid) {
@@ -105,7 +111,7 @@ export function useAccountArtworkGallery(customerUid: string | undefined): {
     return () => {
       cancelled = true;
     };
-  }, [customerUid]);
+  }, [customerUid, reloadToken]);
 
   const visibleItems = items.filter((item) => Boolean(item.imageUrl));
 
@@ -115,6 +121,7 @@ export function useAccountArtworkGallery(customerUid: string | undefined): {
     isLoading,
     items: visibleItems,
     previewItems: visibleItems.slice(0, PREVIEW_LIMIT),
+    reload,
     reusableDesigns,
     reusableErrorMessage,
     isReusableLoading,
