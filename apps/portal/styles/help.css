@@ -305,6 +305,111 @@
   font-size: var(--font-size-sm);
 }
 
+/* Whatnot follow callout — quieter than the Important highlight */
+.portal-help-about-whatnot {
+  background: color-mix(in srgb, var(--color-bg-primary) 55%, var(--color-bg-secondary));
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+}
+
+.portal-help-about-whatnot-heading {
+  color: var(--color-text-primary);
+  font-size: var(--font-size-md);
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  margin: 0;
+}
+
+.portal-help-about-whatnot-body {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: 1.45;
+  margin: 0;
+}
+
+.portal-help-about-whatnot-cta,
+.portal-help-external-link {
+  color: var(--color-accent-primary);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+  width: fit-content;
+}
+
+.portal-help-about-whatnot-cta:hover,
+.portal-help-external-link:hover {
+  color: var(--color-text-primary);
+}
+
+.portal-help-about-whatnot-cta:focus-visible,
+.portal-help-external-link:focus-visible {
+  border-radius: var(--radius-sm);
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+  outline: none;
+}
+
+.portal-help-faq-external-cta {
+  margin: var(--space-2) 0 0;
+}
+
+/* Sidebar footer Whatnot link (external; above Help) */
+.portal-sidebar-whatnot-link {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  display: flex;
+  font-size: var(--font-size-md);
+  font-weight: 500;
+  justify-content: center;
+  margin: 0 var(--space-1);
+  min-height: 2.25rem;
+  padding: 0.4rem var(--space-3);
+  text-decoration: none;
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast);
+  width: auto;
+}
+
+@media (hover: hover) {
+  .portal-sidebar-whatnot-link:hover {
+    background: color-mix(in srgb, var(--color-bg-primary) 40%, transparent);
+    color: var(--color-text-primary);
+  }
+}
+
+.portal-sidebar-whatnot-link:focus-visible {
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+  outline: none;
+}
+
+.portal-sidebar-whatnot-link-main {
+  align-items: center;
+  display: inline-flex;
+  gap: var(--space-2);
+  justify-content: center;
+}
+
+.portal-sidebar-whatnot-link-label {
+  white-space: nowrap;
+}
+
+.portal-sidebar-collapsed .portal-sidebar-whatnot-link {
+  margin: 0;
+  padding: 0.45rem;
+}
+
+.portal-sidebar-collapsed .portal-sidebar-whatnot-link-label {
+  display: none;
+}
+
 /* Sidebar footer Help link (secondary; above Donate) */
 .portal-sidebar-help-link {
   align-items: center;

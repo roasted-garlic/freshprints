@@ -12,7 +12,8 @@ type PortalHelpFaqListProps = {
 }
 
 /**
- * Accessible text FAQ accordion (native details/summary). Plain-text answers only.
+ * Accessible text FAQ accordion (native details/summary).
+ * Answers are plain text; optional typed `externalCta` renders a React link (never HTML).
  */
 export function PortalHelpFaqList({ faqs }: PortalHelpFaqListProps) {
   if (faqs.length === 0) {
@@ -28,6 +29,18 @@ export function PortalHelpFaqList({ faqs }: PortalHelpFaqListProps) {
             {answerParagraphs(faq.answer).map((paragraph, index) => (
               <p key={`${faq.id}-${index}`}>{paragraph}</p>
             ))}
+            {faq.externalCta ? (
+              <p className="portal-help-faq-external-cta">
+                <a
+                  className="portal-help-external-link"
+                  href={faq.externalCta.href}
+                  rel="noopener noreferrer"
+                  target="_blank"
+                >
+                  {faq.externalCta.label}
+                </a>
+              </p>
+            ) : null}
           </div>
         </details>
       ))}

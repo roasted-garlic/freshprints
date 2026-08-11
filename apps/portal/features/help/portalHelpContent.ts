@@ -1,5 +1,9 @@
 import type { PortalHelpTextFaq, PortalHelpVideoItem } from '@fresh-prints/shared/constants/portal/portalHelpSettings.constants'
 import {
+  FRESH_PRINTS_WHATNOT_HANDLE,
+  FRESH_PRINTS_WHATNOT_PROFILE_URL,
+} from '@fresh-prints/shared/constants/portal/portalExternalLinks.constants'
+import {
   PORTAL_HELP_INTRO,
   PORTAL_HELP_INTRO_FAQ_ONLY,
   PORTAL_HELP_PAGE_DESCRIPTION,
@@ -8,15 +12,20 @@ import {
   PORTAL_HELP_PATH,
 } from '@fresh-prints/shared/constants/portal/portalHelpSettings.constants'
 
+import type { PortalTextFaq } from './utils/mergePortalHelpFaqsWithRequired'
+
 /**
  * Bundled fallback FAQ content when Firestore `settings/portalHelp` is missing
  * or the saved `faqs` list is empty.
  * Live edits live in Studio Settings (ADR-FP-118).
  * Empty `videos` do **not** fall back here — Portal hides the How To section until
  * at least one video is published in Studio Settings.
+ *
+ * The product-required Whatnot follow FAQ is merged at presentation time via
+ * `mergePortalHelpFaqsWithRequired` (not only this bundled list).
  */
 
-export type PortalTextFaq = PortalHelpTextFaq
+export type { PortalTextFaq }
 
 /** Portal UI shape — maps shared `videoUrl` for embeds. */
 export type PortalVideoFaq = {
@@ -29,6 +38,8 @@ export type PortalVideoFaq = {
 }
 
 export {
+  FRESH_PRINTS_WHATNOT_HANDLE,
+  FRESH_PRINTS_WHATNOT_PROFILE_URL,
   PORTAL_HELP_INTRO,
   PORTAL_HELP_INTRO_FAQ_ONLY,
   PORTAL_HELP_PAGE_DESCRIPTION,
@@ -58,7 +69,15 @@ export const PORTAL_HELP_ABOUT_HIGHLIGHT =
 export const PORTAL_HELP_ABOUT_FOOTNOTE =
   'Need to know about limits, step-by-step how-tos, Donate Designs, Custom Designs, or account details? Those answers are in the FAQ below.'
 
-export const PORTAL_TEXT_FAQS: PortalTextFaq[] = [
+/** Whatnot follow callout (shared by `/help` About + first-visit modal via PortalHelpAboutPanel). */
+export const PORTAL_HELP_ABOUT_WHATNOT_HEADING = 'Follow Fresh Prints on Whatnot'
+
+export const PORTAL_HELP_ABOUT_WHATNOT_BODY =
+  'Our live shows and print purchases happen on Whatnot. Follow @funkyfreshprints so you can find our upcoming shows and join us when you\'re ready to purchase the prints in your request.'
+
+export const PORTAL_HELP_ABOUT_WHATNOT_CTA_LABEL = `Follow ${FRESH_PRINTS_WHATNOT_HANDLE} on Whatnot`
+
+export const PORTAL_TEXT_FAQS: PortalHelpTextFaq[] = [
   {
     id: 'browse-without-login',
     question: 'Can I browse designs without signing in?',

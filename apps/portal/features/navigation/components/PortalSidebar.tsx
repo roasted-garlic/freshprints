@@ -3,8 +3,18 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { ChevronLeft, ChevronRight, CircleHelp, HeartHandshake, LogIn, LogOut, User } from 'lucide-react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  CircleHelp,
+  ExternalLink,
+  HeartHandshake,
+  LogIn,
+  LogOut,
+  User,
+} from 'lucide-react';
 
+import { FRESH_PRINTS_WHATNOT_PROFILE_URL } from '@fresh-prints/shared/constants/portal/portalExternalLinks.constants';
 import { resolvePortalDisplayName, getProfileInitials } from '../../account/utils/profileDisplay';
 import { useAuth } from '../../auth/context/AuthContext';
 import { buildPortalLoginHref } from '../../auth/utils/requirePortalLogin';
@@ -162,6 +172,20 @@ export function PortalSidebar() {
           <div className="portal-sidebar-spacer" />
 
           <div className="portal-sidebar-footer">
+            <a
+              className="portal-sidebar-whatnot-link"
+              href={FRESH_PRINTS_WHATNOT_PROFILE_URL}
+              onClick={closeDrawer}
+              rel="noopener noreferrer"
+              target="_blank"
+              title="Follow on Whatnot"
+            >
+              <span className="portal-sidebar-whatnot-link-main">
+                <ExternalLink aria-hidden size={18} strokeWidth={1.75} />
+                <span className="portal-sidebar-whatnot-link-label">Follow on Whatnot</span>
+              </span>
+            </a>
+
             <Link
               aria-current={pathname === '/help' || pathname.startsWith('/help/') ? 'page' : undefined}
               className={`portal-sidebar-help-link${
