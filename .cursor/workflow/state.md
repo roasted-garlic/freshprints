@@ -1,23 +1,30 @@
 # Current Goal
-Freeze DEV-tested A–H + Track A/B state on `qa/prefinal-a-h-dev`, then **production promotion Plan + Formal Review only**.
+Prefinal A–H + Track B **production promotion Plan + Formal Review** complete. Awaiting owner promote preflight phrase.
 
 Current Mode: managed-phase
-Current Phase: **plan** (commit/push freeze in progress → production promotion plan)
+Current Phase: **review** (complete) → await owner
 DONE: **no**
-Last Completed Step: Owner `Continue Workflow` — freeze commit/push + prod promotion Plan/Review
-Plan Status: **in_progress**
-Review Status: pending
+Last Completed Step: Formal Review of production promotion Plan (**approved_with_changes**)
+Plan Status: **complete** (reviewed)
+Review Status: **approved_with_changes**
 Implementation Status: not_started (promote not authorized)
-Test Status: pending_gates_before_commit
+Test Status: n/a for this Plan pass (DEV already PASS; prod smoke later)
 Signoff Status: not_started
-Human Checkpoint Required: **no** (until Plan+Review complete → await owner promote phrase)
+Human Checkpoint Required: **yes**
+Human Checkpoint Reason: Await `APPROVE PROD PROMOTE PREFLIGHT: PREFINAL A-H + TRACK B` before any Git merge or production deploy
 Blocked: **no**
 
-Allowed Actions: audit/commit/push QA branch; read-only prod topology; write Plan + Formal Review; update workflow state
+Allowed Actions: read docs/repo; await owner phrase; record decision log
 Forbidden Actions: merge development/production; prod deploy (Rules/Functions/App Hosting/indexes); Track A APPLY; Studio 1.0.3; Algolia mutate; DNS cutover
 
-Next Required Step: Complete release gates → commit+push clean tip → write promotion Plan → Formal Review → STOP.
+Next Required Step: Owner `APPROVE PROD PROMOTE PREFLIGHT: PREFINAL A-H + TRACK B`
+
+## Artifacts
+- Frozen product candidate: `qa/prefinal-a-h-dev` @ `3b7a978f324d3c133ead8707ffc51454a20e1f5d`
+- Plan: `docs/workflow/plans/2026-08-11-prefinal-a-h-production-promotion-plan.md`
+- Formal Review: `docs/workflow/reviews/2026-08-11-prefinal-a-h-production-promotion-plan-review.md`
+- Smoke checklist: `docs/workflow/reviews/2026-08-11-prefinal-a-h-production-smoke-checklist.md`
 
 ## Decision Log
-- 2026-08-11: Owner `DEV STATIC OG LETTERBOX QA: PASS` — Track B DEV cleared.
-- 2026-08-11: Owner `Continue Workflow` — commit/push freeze + production promotion Plan/Review only; no promote/APPLY.
+- 2026-08-11: Freeze commit `3b7a978` pushed; origin matches; working tree clean (product).
+- 2026-08-11: Production promotion Plan + Formal Review **approved_with_changes**. STOP for owner promote preflight phrase. No merge/deploy/APPLY.
