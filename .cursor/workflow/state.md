@@ -1,31 +1,33 @@
 # Current Goal
-Workstream H — Studio Customer Upload / Donation intake load + sidebar count integrity.
+Prefinal A–H **development QA integration** — Plan + Formal Review complete. STOP before integrate/deploy.
 
 Current Mode: managed-phase
-Current Phase: **Implementation Review complete** — STOP before merge/deploy
+Current Phase: **plan + formal review complete** — await owner DEV approval phrase
 DONE: **no**
-Last Completed Step: Independent H Implementation Review **approved_with_notes**
-Plan Status: **complete**
-Review Status: **approved_with_changes** (plan Formal Review)
-Implementation Status: **complete** (working tree on `fix/studio-upload-intake-perf-counts`; **not yet committed**)
-Implementation Review: **approved_with_notes** (`docs/workflow/reviews/2026-08-11-studio-customer-upload-intake-performance-implementation-review.md`)
-Test Status: **passed_with_notes** (13/13 focused; Studio tsc PASS; eslint PASS; vite build not required for this surface)
+Last Completed Step: H committed (`6150eee`); A–H DEV QA Plan + Formal Review (`approved_with_changes`)
+Plan Status: **complete** (`docs/workflow/plans/2026-08-11-prefinal-a-h-development-qa-integration-plan.md`)
+Review Status: **approved_with_changes** (`docs/workflow/reviews/2026-08-11-prefinal-a-h-development-qa-integration-plan-review.md`)
+Implementation Status: not_started (DEV integrate)
+Test Status: not_started (DEV QA)
 Signoff Status: not_started
 Human Checkpoint Required: **yes**
-Human Checkpoint Reason: Commit H; integrate A–G+H into DEV QA only when owner directs. Do not merge/deploy production, indexes, Functions, Rules, App Hosting, or Studio 1.0.3. Prod index verify later. DEV QA after A–H integration (not production).
+Human Checkpoint Reason: Await `APPROVE DEV INTEGRATION + DEV DEPLOY: PREFINAL A-H QA`. No production actions. No integrate/deploy until phrase.
 Blocked: **no**
 
-Branch: `fix/studio-upload-intake-perf-counts`
-Production base / current committed tip: `913329caefa5cf5041b269da1e5192424d0b95c6`
+## Authoritative tips
+- production: `913329c`
+- development: `cd33108` (diverged; docs-only ahead; behind production hotfixes)
+- Portal: `e618a87`
+- OG: `9d2144d`
+- Intake: `633d3fa`
+- Quota: `e39fc20`
+- H: **`6150eee`** (`fix/studio-upload-intake-perf-counts`)
 
-## A–G tips (unchanged)
-- Portal `e618a87` · OG `9d2144d` · Intake `633d3fa` · Quota `e39fc20`
+Allowed Actions: wait for DEV approval phrase; read-only
+Forbidden Actions: integrate/merge without phrase; any production deploy/merge; App Hosting; Algolia prod; Studio 1.0.3; development sync cleanup
 
-Allowed Actions: commit H if owner asks; prepare DEV integration plan; wait
-Forbidden Actions: production merge/deploy; index/Functions/Rules/App Hosting/Studio publish; development sync; mutate production data; additional H product changes unless defect requires plan-scoped fix
-
-Next Required Step: Owner commits H (if desired) then directs DEV integration of A–G+H for fresh-prints-dev QA — **no production approval**
+Next Required Step: Owner `APPROVE DEV INTEGRATION + DEV DEPLOY: PREFINAL A-H QA`
 
 ## Decision Log
-- 2026-08-11: Owner `APPROVE IMPLEMENT: STUDIO UPLOAD INTAKE PERF + COUNTS`. H implemented.
-- 2026-08-11: Independent Implementation Review **approved_with_notes**. STOP. No production merge/deploy.
+- 2026-08-11: H Implementation Review approved_with_notes; H committed `6150eee`.
+- 2026-08-11: A–H DEV QA Plan + Formal Review approved_with_changes. STOP before integrate.
