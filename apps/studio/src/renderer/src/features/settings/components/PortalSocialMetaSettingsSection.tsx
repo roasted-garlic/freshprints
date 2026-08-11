@@ -1,19 +1,24 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 import {
   DEFAULT_PORTAL_SOCIAL_META_SETTINGS,
   PORTAL_LIBRARY_OG_ROTATION_SALT_MAX,
   PORTAL_SOCIAL_META_DESCRIPTION_MAX_LENGTH,
   PORTAL_SOCIAL_META_TITLE_MAX_LENGTH,
+  PORTAL_STATIC_OG_IMAGE_MAX_BYTES,
   parsePortalSocialMetaSettingsInput,
   type PortalGlobalOgImageSource,
   type PortalLibraryOgRotationInterval,
   type PortalSocialMetaSettings,
+  type PortalStaticOgImageInput,
 } from "@fresh-prints/shared/constants/portal/portalSocialMetaSettings.constants";
 import { Button } from "../../../shared/components/Button";
 import { Checkbox } from "../../../shared/components/Checkbox";
 import { Select } from "../../../shared/components/Select";
+import type { Design } from "../../designs/types/design.types";
 import { usePortalSocialMetaSettings } from "../hooks/usePortalSocialMetaSettings";
+import { portalSocialMetaSettingsService } from "../services/portalSocialMetaSettingsService";
+import { PortalStaticOgDesignPickerModal } from "./PortalStaticOgDesignPickerModal";
 
 type SocialMetaDraft = {
   ogTitle: string;
@@ -43,7 +48,15 @@ function settingsToDraft(settings: PortalSocialMetaSettings): SocialMetaDraft {
   };
 }
 
-function draftEqualsSettings(draft: SocialMetaDraft, settings: PortalSocialMetaSettings): boolean {
+function draftEqualsSettings(
+  draft: SocialMetaDraft,
+  settings: PortalSocialMetaSettings,
+  pendingStatic: PortalStaticOgImageInput | null,
+  pendingPreviewUrl: string | null,
+): boolean {
+  if (pendingStatic !== null || pendingPreviewUrl !== null) {
+    return false;
+  }
   return (
     draft.ogTitle === settings.ogTitle &&
     draft.ogDescription === settings.ogDescription &&
@@ -58,11 +71,32 @@ export function PortalSocialMetaSettingsSection() {
   const { error, isLoading, isSaving, save, saved, settings } = usePortalSocialMetaSettings();
   const [draft, setDraft] = useState<SocialMetaDraft>(() => settingsToDraft(settings));
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [pendingStatic, setPendingStatic] = useState<PortalStaticOgImageInput | null>(null);
+  const [pendingPreviewUrl, setPendingPreviewUrl] = useState<string | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputId = useId();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setDraft(settingsToDraft(settings));
     setValidationError(null);
+    setPendingStatic(null);
+    setPendingPreviewUrl((current) => {
+      if (current?.startsWith("blob:")) {
+        URL.revokeObjectURL(current);
+      }
+      return null;
+    });
   }, [settings]);
+
+  useEffect(() => {
+    return () => {
+      if (pendingPreviewUrl?.startsWith("blob:")) {
+        URL.revokeObjectURL(pendingPreviewUrl);
+      }
+    };
+  }, [pendingPreviewUrl]);
 
   function setField<K extends keyof SocialMetaDraft>(key: K, value: SocialMetaDraft[K]) {
     setValidationError(null);
@@ -70,12 +104,30 @@ export function PortalSocialMetaSettingsSection() {
   }
 
   async function handleSave(nextDraft: SocialMetaDraft = draft) {
-    const parsed = parsePortalSocialMetaSettingsInput(nextDraft);
+    const staticOgImage: PortalStaticOgImageInput | undefined =
+      pendingStatic ??
+      (nextDraft.globalOgImageSource === "static"
+        ? settings.staticOgImage
+          ? { kind: "retain" }
+          : undefined
+        : undefined);
+
+    const parsed = parsePortalSocialMetaSettingsInput({
+      ...nextDraft,
+      ...(staticOgImage ? { staticOgImage } : {}),
+    });
     if (!parsed) {
       setValidationError(
         `Title (1–${PORTAL_SOCIAL_META_TITLE_MAX_LENGTH} chars) and description (1–${PORTAL_SOCIAL_META_DESCRIPTION_MAX_LENGTH} chars) are required.`,
       );
       return;
+    }
+    if (parsed.globalOgImageSource === "static" && !parsed.staticOgImage && !settings.staticOgImage) {
+      setValidationError("Static Image mode needs an upload or a Design Library pick before Save.");
+      return;
+    }
+    if (parsed.globalOgImageSource === "static" && !parsed.staticOgImage && settings.staticOgImage) {
+      parsed.staticOgImage = { kind: "retain" };
     }
     setValidationError(null);
     await save(parsed);
@@ -91,9 +143,63 @@ export function PortalSocialMetaSettingsSection() {
     await handleSave(nextDraft);
   }
 
+  async function handleStaticFileSelected(file: File | undefined) {
+    if (!file) {
+      return;
+    }
+    setValidationError(null);
+    setIsUploading(true);
+    try {
+      const { storagePath } = await portalSocialMetaSettingsService.uploadStaticOgImage(file);
+      if (pendingPreviewUrl?.startsWith("blob:")) {
+        URL.revokeObjectURL(pendingPreviewUrl);
+      }
+      setPendingStatic({ kind: "upload", storagePath });
+      setPendingPreviewUrl(URL.createObjectURL(file));
+      setField("globalOgImageSource", "static");
+    } catch (uploadError) {
+      setValidationError(
+        uploadError instanceof Error
+          ? uploadError.message
+          : "Unable to upload static Open Graph image.",
+      );
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  }
+
+  function handleDesignPicked(design: Design) {
+    if (pendingPreviewUrl?.startsWith("blob:")) {
+      URL.revokeObjectURL(pendingPreviewUrl);
+    }
+    setPendingStatic({ kind: "design", sourceDesignId: design.id });
+    setPendingPreviewUrl(null);
+    setField("globalOgImageSource", "static");
+    setPickerOpen(false);
+  }
+
   const displayError = validationError ?? error;
-  const isDirty = !draftEqualsSettings(draft, settings);
+  const isDirty = !draftEqualsSettings(draft, settings, pendingStatic, pendingPreviewUrl);
   const librarySelected = draft.globalOgImageSource === "library";
+  const staticSelected = draft.globalOgImageSource === "static";
+  const staticPreviewUrl =
+    pendingPreviewUrl ??
+    settings.staticOgImage?.downloadUrl ??
+    null;
+  const staticProvenance =
+    pendingStatic?.kind === "design"
+      ? pendingStatic.sourceDesignId
+      : pendingStatic?.kind === "upload"
+        ? "New upload (saved on Save)"
+        : settings.staticOgImage?.sourceDesignId
+          ? `Design ${settings.staticOgImage.sourceDesignId}`
+          : settings.staticOgImage?.kind === "upload"
+            ? "Uploaded image"
+            : null;
+  const busy = isSaving || isUploading;
 
   return (
     <section aria-labelledby="portal-social-meta-settings-title" className="card settings-section">
@@ -104,11 +210,10 @@ export function PortalSocialMetaSettingsSection() {
         <p className="settings-section-description">
           Open Graph title and description for Portal link previews on non-design URLs (home, catalog,
           login, etc.). Library preview images rotate on the interval you choose (UTC-aligned buckets).
-          Facebook, WhatsApp, and Messenger cache previews by page URL, so there is no reliable “new
-          image on every share” — use a short interval or Pick next for testing. Letterboxing pads
-          designs into Facebook’s wide preview so the full artwork is visible. Per-design share links
-          still use that design’s own title, description, image, and artwork background. After changing
-          settings, re-scrape URLs in Facebook Sharing Debugger (previews are cached).
+          Static Image uses one upload or Design Library pick snapshotted at Save. Facebook, WhatsApp,
+          and Messenger cache previews by page URL — use Scrape Again after changing settings.
+          Per-design share links still use that design’s own title, description, image, and artwork
+          background.
         </p>
       </header>
 
@@ -118,7 +223,7 @@ export function PortalSocialMetaSettingsSection() {
         </p>
       ) : (
         <div className="settings-form-grid">
-          <fieldset className="settings-control-item settings-quota-fieldset" disabled={isSaving}>
+          <fieldset className="settings-control-item settings-quota-fieldset" disabled={busy}>
             <legend className="settings-field-hint">Global Open Graph</legend>
             <label className="settings-field-label" htmlFor="portalSocialMetaOgTitle">
               Title
@@ -152,10 +257,10 @@ export function PortalSocialMetaSettingsSection() {
             </label>
           </fieldset>
 
-          <fieldset className="settings-control-item settings-quota-fieldset" disabled={isSaving}>
+          <fieldset className="settings-control-item settings-quota-fieldset" disabled={busy}>
             <legend className="settings-field-hint">Preview images</legend>
             <Select
-              disabled={isSaving}
+              disabled={busy}
               label="Global preview image"
               name="globalOgImageSource"
               onChange={(event) =>
@@ -164,11 +269,12 @@ export function PortalSocialMetaSettingsSection() {
               options={[
                 { label: "Library (rotate)", value: "library" },
                 { label: "Brand logo", value: "logo" },
+                { label: "Static image", value: "static" },
               ]}
               value={draft.globalOgImageSource}
             />
             <Select
-              disabled={isSaving || !librarySelected}
+              disabled={busy || !librarySelected}
               label="Library rotation interval"
               name="libraryOgRotationInterval"
               onChange={(event) =>
@@ -188,7 +294,7 @@ export function PortalSocialMetaSettingsSection() {
             </p>
             <div className="settings-form-actions">
               <Button
-                disabled={isSaving || !librarySelected}
+                disabled={busy || !librarySelected}
                 onClick={() => {
                   void handleRefreshLibraryPreview();
                 }}
@@ -202,9 +308,64 @@ export function PortalSocialMetaSettingsSection() {
               Advances the library rotation immediately for testing. Then Scrape Again on home or
               `/custom-designs` in Facebook Debugger to see the new image.
             </p>
+
+            <div className="settings-control-item">
+              <p className="settings-field-label">Static image</p>
+              <p className="settings-field-hint">
+                Upload a PNG/JPEG/WebP (max {Math.floor(PORTAL_STATIC_OG_IMAGE_MAX_BYTES / (1024 * 1024))}{" "}
+                MB) or pick a ready Design Library design. The resolved asset is stored on Save with
+                title and description.
+              </p>
+              <div className="settings-form-actions">
+                <input
+                  accept="image/png,image/jpeg,image/webp"
+                  className="settings-file-input-hidden"
+                  disabled={busy}
+                  id={fileInputId}
+                  onChange={(event) => {
+                    void handleStaticFileSelected(event.target.files?.[0]);
+                  }}
+                  ref={fileInputRef}
+                  type="file"
+                />
+                <Button
+                  disabled={busy}
+                  onClick={() => fileInputRef.current?.click()}
+                  type="button"
+                  variant="secondary"
+                >
+                  {isUploading ? "Uploading…" : "Upload image"}
+                </Button>
+                <Button
+                  disabled={busy}
+                  onClick={() => setPickerOpen(true)}
+                  type="button"
+                  variant="secondary"
+                >
+                  Choose from Design Library
+                </Button>
+              </div>
+              {staticSelected || staticPreviewUrl ? (
+                <div className="settings-brand-logo-preview-wrap">
+                  {staticPreviewUrl ? (
+                    <img
+                      alt="Static Open Graph preview"
+                      className="settings-brand-logo-preview"
+                      src={staticPreviewUrl}
+                    />
+                  ) : (
+                    <p className="settings-field-hint">No static image saved yet.</p>
+                  )}
+                  {staticProvenance ? (
+                    <p className="settings-field-hint">{staticProvenance}</p>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+
             <Checkbox
               checked={draft.letterboxOgImages}
-              disabled={isSaving}
+              disabled={busy}
               label="Letterbox share images (show full design in wide previews)"
               name="letterboxOgImages"
               onChange={(event) => setField("letterboxOgImages", event.target.checked)}
@@ -212,14 +373,23 @@ export function PortalSocialMetaSettingsSection() {
             <p className="settings-field-hint">
               When on, designs are fitted onto a 1200×630 card with margins using each design’s
               artwork background (default grey). When off, Facebook may crop square or tall artwork.
+              Letterboxing applies to library and design-share images; Static Image uses the saved
+              asset as-is.
             </p>
           </fieldset>
 
           <div className="settings-form-actions">
             <Button
-              disabled={isSaving}
+              disabled={busy}
               onClick={() => {
                 setValidationError(null);
+                setPendingStatic(null);
+                setPendingPreviewUrl((current) => {
+                  if (current?.startsWith("blob:")) {
+                    URL.revokeObjectURL(current);
+                  }
+                  return null;
+                });
                 setDraft(settingsToDraft({ ...DEFAULT_PORTAL_SOCIAL_META_SETTINGS }));
               }}
               type="button"
@@ -228,7 +398,7 @@ export function PortalSocialMetaSettingsSection() {
               Reset to defaults
             </Button>
             <Button
-              disabled={isSaving || !isDirty}
+              disabled={busy || !isDirty}
               onClick={() => {
                 void handleSave();
               }}
@@ -251,6 +421,14 @@ export function PortalSocialMetaSettingsSection() {
           ) : null}
         </div>
       )}
+
+      {pickerOpen ? (
+        <PortalStaticOgDesignPickerModal
+          busy={busy}
+          onCancel={() => setPickerOpen(false)}
+          onConfirm={handleDesignPicked}
+        />
+      ) : null}
     </section>
   );
 }

@@ -2002,13 +2002,20 @@ editable saved items matching bundled defaults (ADR-FP-118).
 ### `settings/portalSocialMeta`
 
 ```ts
+interface PortalStaticOgImageSnapshot {
+  kind: "upload" | "design";
+  storagePath: string | null; // upload: portal-social-meta/static-og/{uuid}.{ext}; design: preview/thumbnail path
+  downloadUrl: string | null; // HTTPS snapshot authored at Save
+  sourceDesignId: string | null; // provenance only when kind === "design"
+}
+
 interface PortalSocialMetaSettings {
   ogTitle: string; // 1–120 chars
   ogDescription: string; // 1–300 chars
   /** Letterbox designs onto 1200×630 for Facebook wide previews (default true). */
   letterboxOgImages: boolean;
-  /** Non-design URLs: interval library rotation or brand logo (default "library"). */
-  globalOgImageSource: "library" | "logo";
+  /** Non-design URLs: library rotation, brand logo, or fixed static image (default "library"). */
+  globalOgImageSource: "library" | "logo" | "static";
   /**
    * UTC-aligned library OG rotation cadence (default "hourly").
    * Values: "daily" | "hourly" | "5min" | "1min" | "30s".
@@ -2020,6 +2027,12 @@ interface PortalSocialMetaSettings {
    * so testing can change the image without waiting for the next interval bucket.
    */
   libraryOgRotationSalt: number; // 0–1_000_000
+  /**
+   * Resolved static OG asset snapshot (upload or Design Library pick).
+   * Retained when temporarily switching to library/logo. Missing/invalid static mode
+   * fail-safes to brand logo / Portal bundled defaults at read time.
+   */
+  staticOgImage: PortalStaticOgImageSnapshot | null;
   updatedAt: Timestamp;
   updatedBy: string;
 }
@@ -2030,14 +2043,16 @@ Studio **Settings → Social sharing**. Writes via `updatePortalSocialMetaSettin
 callable). Client reads: owners only. Portal prefers public Function `getPortalGlobalOpenGraph`
 for crawler meta (title/description/image); Admin settings-only is a fallback. Missing doc
 resolves to brand defaults (`letterboxOgImages: true`, `globalOgImageSource: "library"`,
-`libraryOgRotationInterval: "hourly"`, `libraryOgRotationSalt: 0`). Library image index is
+`libraryOgRotationInterval: "hourly"`, `libraryOgRotationSalt: 0`,
+title/description Whatnot wording). Library image index is
 stable for the selected UTC interval bucket (`pickLibraryOgRotatedIndex` + salt) — Facebook
 Scrape Again alone does not change it until the bucket advances.
 When letterbox is on, design and library `og:image` URLs point at public Function
 `getPortalOgShareImage` (composed JPEG using the design’s `artworkBackgroundHex`, fallback
 `#e5e7eb`) with query `fit=contain&bg=<hex>` (`bg` is a Facebook/CDN cache-bust; Function
 paints from the design document, not the query). When off, signed Storage preview/thumbnail
-URLs are used.
+URLs are used. Static Image mode uses the saved `downloadUrl` / `storagePath` snapshot (no
+design re-query on read).
 
 ### `settings/brandLogos`
 

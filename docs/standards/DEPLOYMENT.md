@@ -882,21 +882,26 @@ advertise the home origin as `og:url`).
 **Site-wide default OG image:** Studio toggle `globalOgImageSource`:
 - `library` (default) — interval-rotated ready design via `getPortalGlobalOpenGraph`
 - `logo` — uploaded Portal full logo (`settings/brandLogos.portalFull.downloadUrl`) when set; else `/brand/fresh-prints-request-portal-logo.png`
+- `static` — owner upload or Design Library pick snapshotted on Save (`staticOgImage`); missing asset fail-safes to logo/defaults
 
-**Global metadata freshness/read policy (2026-07-24):** all root/Login/Register/Help metadata callers
-share one global, non-user-specific result for the existing 3600-second revalidation window. Portal
-uses a one-entry bounded in-memory cache plus Next fetch revalidation; concurrent requests share one
-in-flight load and rejected loads are evicted. `getPortalGlobalOpenGraph` applies the same one-hour
-warm-instance cache. Library rotation reads the already-published newest-card page
-`generated/portal-catalog/**/recent/page-0.json`, preserving the newest-40 rotation candidate set
-without a Firestore design query. Expected measurable Firestore document reads: cache hit 0;
-library miss 1 (`settings/portalSocialMeta`); logo miss 2 (social metadata + brand-logo settings).
+**Global metadata freshness/read policy (2026-08-11):** all root/Login/Register/Help metadata callers
+share a short **60-second** revalidation window (was 3600s). Portal uses a bounded in-memory cache
+keyed by settings `updatedAt` plus Next fetch revalidation with Function `?v=updatedAt` bust.
+`getPortalGlobalOpenGraph` uses a **60s** warm-instance cache, cleared on successful
+`updatePortalSocialMetaSettings`, with HTTP `max-age=60`. Library rotation uses bounded dual
+Firestore ready-design queries (merge/dedup, top 40). Expected measurable Firestore document reads:
+cache hit 0; library miss 1 (`settings/portalSocialMeta`); logo/static-fallback miss 2
+(social metadata + brand-logo settings).
+
+**Static OG Storage path:** `portal-social-meta/static-og/{uuid}.{png|jpg|webp}` — owner create/delete,
+public read, ≤5 MiB. **Deploying Storage Rules is a human checkpoint.**
 
 **Letterbox / crawler images:** Design share and SEO `og:image` / landing `<img>` always use public
 `getPortalOgShareImage?designId=…&fit=contain&bg=<hex>` (1200×630 JPEG). Canvas color comes from
 the design’s `artworkBackgroundHex` (fallback Portal artwork grey `#e5e7eb`). The `bg` query is a
 Facebook/CDN cache-bust; the Function paints from the design document. Short-lived signed Storage
-URLs are not used for crawler-facing share/SEO images.
+URLs are not used for crawler-facing share/SEO images. Static Image mode uses the saved HTTPS
+snapshot as-is (not letterboxed).
 
 **Library rotation:** Global library OG picks a ready design via `pickLibraryOgRotatedIndex` using
 `libraryOgRotationInterval` (`daily` | `hourly` | `5min` | `1min` | `30s`, default `hourly`).
@@ -906,7 +911,8 @@ There is no “every share” mode — social apps cache OG by page URL.
 
 **Global OG title/description:** Studio → **Settings** → **Social sharing** →
 `updatePortalSocialMetaSettings` → `settings/portalSocialMeta`. Portal prefers
-`getPortalGlobalOpenGraph` (hourly revalidate on root layout).
+`getPortalGlobalOpenGraph` (60s revalidate + `updatedAt` cache bust on root layout).
+Default title/description use Fresh Prints Whatnot wording (shared + Portal brand mirrors).
 
 **Per-design share / SEO landing:** `/share/design/{id}` lives under the Portal `(app)` shell
 (header, sidebar, drawer). Guests may browse it without login; signed-in customers get **Add to
