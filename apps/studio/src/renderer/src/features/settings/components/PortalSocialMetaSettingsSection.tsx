@@ -15,6 +15,7 @@ import {
 import { Button } from "../../../shared/components/Button";
 import { Checkbox } from "../../../shared/components/Checkbox";
 import { Select } from "../../../shared/components/Select";
+import { designDerivativeUrlService } from "../../designs/services/designDerivativeUrlService";
 import type { Design } from "../../designs/types/design.types";
 import { usePortalSocialMetaSettings } from "../hooks/usePortalSocialMetaSettings";
 import { portalSocialMetaSettingsService } from "../services/portalSocialMetaSettingsService";
@@ -171,7 +172,7 @@ export function PortalSocialMetaSettingsSection() {
     }
   }
 
-  function handleDesignPicked(design: Design) {
+  async function handleDesignPicked(design: Design) {
     if (pendingPreviewUrl?.startsWith("blob:")) {
       URL.revokeObjectURL(pendingPreviewUrl);
     }
@@ -179,6 +180,13 @@ export function PortalSocialMetaSettingsSection() {
     setPendingPreviewUrl(null);
     setField("globalOgImageSource", "static");
     setPickerOpen(false);
+
+    const previewUrl =
+      (await designDerivativeUrlService.getPreviewUrl(design)) ??
+      (await designDerivativeUrlService.getThumbnailUrl(design));
+    if (previewUrl) {
+      setPendingPreviewUrl(previewUrl);
+    }
   }
 
   const displayError = validationError ?? error;
@@ -191,11 +199,11 @@ export function PortalSocialMetaSettingsSection() {
     null;
   const staticProvenance =
     pendingStatic?.kind === "design"
-      ? pendingStatic.sourceDesignId
+      ? `Design Library pick (saved on Save)`
       : pendingStatic?.kind === "upload"
         ? "New upload (saved on Save)"
         : settings.staticOgImage?.sourceDesignId
-          ? `Design ${settings.staticOgImage.sourceDesignId}`
+          ? `Design Library snapshot`
           : settings.staticOgImage?.kind === "upload"
             ? "Uploaded image"
             : null;
@@ -210,7 +218,8 @@ export function PortalSocialMetaSettingsSection() {
         <p className="settings-section-description">
           Open Graph title and description for Portal link previews on non-design URLs (home, catalog,
           login, etc.). Library preview images rotate on the interval you choose (UTC-aligned buckets).
-          Static Image uses one upload or Design Library pick snapshotted at Save. Facebook, WhatsApp,
+          Static Image uses one upload or Design Library pick snapshotted at Save, then Fresh Prints’
+          social letterbox (1200×630 contain) for crawler previews. Facebook, WhatsApp,
           and Messenger cache previews by page URL — use Scrape Again after changing settings.
           Per-design share links still use that design’s own title, description, image, and artwork
           background.
@@ -346,13 +355,15 @@ export function PortalSocialMetaSettingsSection() {
                 </Button>
               </div>
               {staticSelected || staticPreviewUrl ? (
-                <div className="settings-brand-logo-preview-wrap">
+                <div className="settings-brand-logo-preview-wrap settings-og-static-preview-wrap">
                   {staticPreviewUrl ? (
                     <img
                       alt="Static Open Graph preview"
-                      className="settings-brand-logo-preview"
+                      className="settings-brand-logo-preview settings-og-static-preview"
                       src={staticPreviewUrl}
                     />
+                  ) : pendingStatic?.kind === "design" ? (
+                    <p className="settings-field-hint">Loading design preview…</p>
                   ) : (
                     <p className="settings-field-hint">No static image saved yet.</p>
                   )}
@@ -373,8 +384,8 @@ export function PortalSocialMetaSettingsSection() {
             <p className="settings-field-hint">
               When on, designs are fitted onto a 1200×630 card with margins using each design’s
               artwork background (default grey). When off, Facebook may crop square or tall artwork.
-              Letterboxing applies to library and design-share images; Static Image uses the saved
-              asset as-is.
+              Letterboxing applies to library and design-share images when enabled. Static Image
+              always uses the Fresh Prints social letterbox treatment (never raw crop).
             </p>
           </fieldset>
 
@@ -426,7 +437,9 @@ export function PortalSocialMetaSettingsSection() {
         <PortalStaticOgDesignPickerModal
           busy={busy}
           onCancel={() => setPickerOpen(false)}
-          onConfirm={handleDesignPicked}
+          onConfirm={(design) => {
+            void handleDesignPicked(design);
+          }}
         />
       ) : null}
     </section>

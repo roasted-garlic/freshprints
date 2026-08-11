@@ -13,6 +13,7 @@ import { useAuth } from '../../auth/context/AuthContext';
 import { CatalogCompanionSuggestionModal } from '../components/CatalogCompanionSuggestionModal';
 import { CatalogDesignDetailsModal } from '../components/CatalogDesignDetailsModal';
 import { CatalogFilterBar } from '../components/CatalogFilterBar';
+import { CatalogFiltersSheet } from '../components/CatalogFiltersSheet';
 import { CatalogSelectionCard } from '../components/CatalogSelectionCard';
 import { designHasMatchingDesignsHint } from '../services/catalogService';
 import { CATALOG_FIRST_VIEWPORT_EAGER_COUNT } from '../hooks/useCatalogDesigns';
@@ -78,6 +79,7 @@ export function CatalogPageContent() {
   const [categoryFilter, setCategoryFilter] = useState(initialCategory);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [isTagFilterModalOpen, setIsTagFilterModalOpen] = useState(false);
+  const [isFiltersSheetOpen, setIsFiltersSheetOpen] = useState(false);
   const [selectedDesign, setSelectedDesign] = useState<CatalogDesign | null>(null);
   const [selectionActionError, setSelectionActionError] = useState<string | null>(null);
   const [isLeavingSelection, setIsLeavingSelection] = useState(false);
@@ -227,6 +229,8 @@ export function CatalogPageContent() {
   const visibleTags = useMemo(() => visibleSelectedTags(selectedTags), [selectedTags]);
   const visibleTagCount = countVisibleSelectedTags(selectedTags);
   const halftoneFilterOn = selectedTagsIncludeHalftone(selectedTags);
+  const filterSheetActiveCount =
+    (categoryFilter ? 1 : 0) + (halftoneFilterOn ? 1 : 0) + visibleTagCount;
 
   const { resetTransientState } = addDesignFlow;
 
@@ -515,9 +519,11 @@ export function CatalogPageContent() {
             <CatalogFilterBar
               categoryFilter={categoryFilter}
               categoryOptions={categoryOptions}
+              filterSheetActiveCount={filterSheetActiveCount}
               halftoneFilterOn={halftoneFilterOn}
               onCategoryChange={handleCategoryChange}
               onHalftoneFilterChange={handleHalftoneFilterChange}
+              onOpenFiltersSheet={() => setIsFiltersSheetOpen(true)}
               onOpenTags={() => setIsTagFilterModalOpen(true)}
               onSearchChange={setSearchQuery}
               searchQuery={searchQuery}
@@ -725,6 +731,21 @@ export function CatalogPageContent() {
         isOpen={addDesignFlow.isPickerOpen}
         onClose={addDesignFlow.closePicker}
         onSelectRequest={addDesignFlow.confirmPickRequest}
+      />
+
+      <CatalogFiltersSheet
+        categoryFilter={categoryFilter}
+        categoryOptions={categoryOptions}
+        halftoneFilterOn={halftoneFilterOn}
+        isOpen={isFiltersSheetOpen}
+        onCategoryChange={handleCategoryChange}
+        onClose={() => setIsFiltersSheetOpen(false)}
+        onHalftoneFilterChange={handleHalftoneFilterChange}
+        onOpenTags={() => {
+          setIsFiltersSheetOpen(false);
+          setIsTagFilterModalOpen(true);
+        }}
+        selectedTagCount={visibleTagCount}
       />
 
       <CatalogTagFilterModal

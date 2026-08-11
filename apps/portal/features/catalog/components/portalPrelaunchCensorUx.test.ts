@@ -215,42 +215,48 @@ describe('CatalogFilterBar toggle label (owner #6 — Censored / Uncensored stat
   });
 });
 
-describe('Mobile filter layout — balanced 2x2 grid, no 3-track/4-child overflow (owner #7)', () => {
+describe('Mobile filter layout — sticky search + Filters sheet (owner catalog sticky)', () => {
   const css = read(CATALOG_CSS_PATH);
 
-  it('secondary filter controls use two equal tracks at the mobile breakpoint', () => {
-    const mobileBlockStart = css.indexOf('@media (max-width: 47.99rem)');
-    const secondaryRuleStart = css.indexOf('.design-library-filter-controls-secondary {', mobileBlockStart);
-    assert.ok(secondaryRuleStart > mobileBlockStart);
-    const secondaryRule = css.slice(secondaryRuleStart, secondaryRuleStart + 300);
-    assert.match(secondaryRule, /grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
-    assert.doesNotMatch(secondaryRule, /minmax\(0, 1fr\) auto auto/);
+  it('sticks the catalog filter region below the portal sticky chrome', () => {
+    const ruleStart = css.indexOf('.design-library-fixed-region {');
+    assert.ok(ruleStart >= 0);
+    const rule = css.slice(ruleStart, ruleStart + 500);
+    assert.match(rule, /position:\s*sticky/);
+    assert.match(rule, /top:\s*var\(--portal-sticky-top-offset/);
   });
 
-  it('all four secondary controls stretch to fill their grid cell on mobile (no shrink-wrapped overflow)', () => {
+  it('hides inline secondary filters on mobile and shows the Filters button', () => {
     const mobileBlockStart = css.indexOf('@media (max-width: 47.99rem)');
     const mobileBlockEnd = css.indexOf('\n@media (min-width: 48rem)');
     const mobileBlock = css.slice(mobileBlockStart, mobileBlockEnd);
-    assert.match(mobileBlock, /\.design-library-filter-controls \.design-library-filter-controls-category \{[^}]*width:\s*100%/);
-    assert.match(mobileBlock, /\.design-library-filter-dock \.design-library-halftone-filter \{[^}]*width:\s*100%/);
     assert.match(
       mobileBlock,
-      /\.design-library-filter-dock \.design-library-filter-controls-secondary \.design-library-filter-tags-button \{[^}]*width:\s*100%/,
+      /\.design-library-filter-dock \.design-library-filter-controls-secondary \{[^}]*display:\s*none/,
     );
-
-    const explicitMobileBlockStart = css.indexOf(
-      '@media (max-width: 47.99rem)',
-      css.indexOf('design-library-explicit-content-filter-label {'),
-    );
-    const explicitMobileBlock = css.slice(explicitMobileBlockStart, explicitMobileBlockStart + 600);
-    assert.match(explicitMobileBlock, /\.design-library-explicit-content-filter \{[^}]*width:\s*100%/);
+    assert.match(mobileBlock, /\.design-library-open-filters-button \{[^}]*display:\s*inline-flex/);
   });
 
-  it('desktop (>=48rem) layout is unchanged — no wrap, filters stay a single row', () => {
+  it('desktop (>=48rem) keeps secondary filters inline in a single non-wrapping row', () => {
     const desktopBlockStart = css.indexOf('@media (min-width: 48rem)');
     const desktopBlock = css.slice(desktopBlockStart, desktopBlockStart + 800);
     assert.match(desktopBlock, /flex-wrap:\s*nowrap/);
     assert.match(desktopBlock, /\.design-library-filter-controls-secondary \{[^}]*flex-wrap:\s*nowrap/);
+  });
+
+  it('Filters sheet is near full-height and uses a collapsed-by-default category picker', () => {
+    const mobileBlockStart = css.indexOf('@media (max-width: 47.99rem)');
+    const mobileBlockEnd = css.indexOf('\n@media (min-width: 48rem)');
+    const mobileBlock = css.slice(mobileBlockStart, mobileBlockEnd);
+    assert.match(mobileBlock, /\.modal-panel\.catalog-filters-sheet\.tag-filter-drawer \{[^}]*height:\s*min\(96dvh/);
+    assert.match(mobileBlock, /\.catalog-filters-category-trigger \{/);
+    assert.match(mobileBlock, /\.catalog-filters-category-list \{/);
+
+    const sheetSource = read('apps/portal/features/catalog/components/CatalogFiltersSheet.tsx');
+    assert.match(sheetSource, /useState\(false\)/);
+    assert.match(sheetSource, /catalog-filters-category-trigger/);
+    assert.match(sheetSource, /aria-expanded=\{isCategoryOpen\}/);
+    assert.doesNotMatch(sheetSource, /PortalSelect/);
   });
 });
 

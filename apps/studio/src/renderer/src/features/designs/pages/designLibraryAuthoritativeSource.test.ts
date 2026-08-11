@@ -112,6 +112,21 @@ describe("Design Library design-list source is unconditionally Firestore-authori
     assert.match(hook, /Catalog search is not configured/);
   });
 
+  it("managed search refreshes after design edits and consistency-filters Algolia hits", () => {
+    const source = read(
+      "apps/studio/src/renderer/src/features/designs/pages/DesignLibraryPage.tsx",
+    );
+    const hook = read(
+      "apps/studio/src/renderer/src/features/designs/hooks/useDesignLibraryManagedSearch.ts",
+    );
+
+    assert.match(source, /applyManagedSearchPatch\(updated\)/);
+    assert.match(source, /reloadManagedSearch\(\)/);
+    assert.match(hook, /designMatchesSearchQuery/);
+    assert.match(hook, /refreshNonce/);
+    assert.match(hook, /applyDesignPatch/);
+  });
+
   it("useGeneratedReadyDesigns remains for Assisted Creation and uses Firestore pagination", () => {
     const hookSource = read(
       "apps/studio/src/renderer/src/features/designs/hooks/useGeneratedReadyDesigns.ts",

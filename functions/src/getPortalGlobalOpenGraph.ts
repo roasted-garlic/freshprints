@@ -19,7 +19,7 @@ import {
   normalizeStorageObjectPath,
   resolveFirebaseProjectId,
 } from "./lib/portalOgUrls";
-import { resolveStaticOgImageUrl } from "./portalStaticOgImage";
+import { resolveStaticOgLetterboxImageUrl } from "./portalStaticOgImage";
 
 const SIGNED_URL_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 /** Short TTL so multi-instance Functions converge after Save without hour-long sticky stale meta. */
@@ -353,9 +353,11 @@ async function loadCachedGlobalOpenGraph(): Promise<CachedGlobalOpenGraph> {
     imageUrl = library.imageUrl;
     designDocumentsReturned = library.designDocumentsReturned;
   } else if (settings.globalOgImageSource === "static") {
-    imageUrl = await resolveStaticOgImageUrl(settings.staticOgImage);
+    // Static always letterboxes via getPortalOgShareImage (ignore letterboxOgImages toggle).
+    // Never return raw snapshot URLs — social crawlers would crop/zoom them.
+    imageUrl = await resolveStaticOgLetterboxImageUrl(settings.staticOgImage);
     if (!imageUrl) {
-      // Fail-safe: missing static asset → brand logo, then null (Portal bundled logo).
+      // Fail-safe: missing/invalid static → brand logo, then null (Portal bundled logo).
       imageUrl = await resolveUploadedPortalLogoUrl();
       brandLogoSettingsRead = 1;
     }

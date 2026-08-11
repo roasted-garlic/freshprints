@@ -108,3 +108,10 @@ Reply: `DEV A-H QA: PASS` / `FAIL: …` / `PASS WITH NOTES: …`
 
 - [ ] Confirmed Algolia index during QA was **`portal_catalog_ready_dev`**
 - [ ] Did **not** use production App Hosting / prod Functions / prod Algolia
+
+---
+
+## Owner result
+
+**`DEV A-H QA: PASS`** — recorded 2026-08-11.
+Signoff: `docs/workflow/reviews/2026-08-11-prefinal-a-h-development-qa-signoff.md` (**approved_with_notes**).

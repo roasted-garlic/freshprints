@@ -33,6 +33,29 @@
   max-width: 36rem;
 }
 
+/* —— First-visit About modal: wider on desktop so copy is less scroll-tall —— */
+.modal-panel.portal-about-first-visit-modal {
+  max-width: min(100%, 42rem);
+}
+
+@media (min-width: 48rem) {
+  .modal-panel.portal-about-first-visit-modal {
+    max-width: min(100% - 2rem, 48rem);
+  }
+}
+
+.portal-about-first-visit-dont-show {
+  align-items: center;
+  display: flex;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.modal-panel.portal-about-first-visit-modal > .modal-footer.portal-about-first-visit-footer {
+  align-items: center;
+  justify-content: space-between;
+}
+
 /* —— About this portal: stand-alone intro (not FAQ accordion) —— */
 .portal-help-about {
   margin: 0;

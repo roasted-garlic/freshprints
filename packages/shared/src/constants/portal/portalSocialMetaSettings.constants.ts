@@ -20,8 +20,9 @@ export type PortalStaticOgImageKind = "upload" | "design";
 
 /**
  * Resolved static Global OG asset snapshot persisted at Save.
- * Prefer `downloadUrl` for crawlers; `storagePath` enables re-sign / cleanup.
- * `sourceDesignId` is provenance only — resolvers must not re-query the design on read.
+ * `downloadUrl` / `storagePath` remain for Studio preview + upload cleanup.
+ * Crawler-facing Global OG Static always letterboxes via `getPortalOgShareImage`
+ * (`designId` from `sourceDesignId`, or validated upload `staticPath`) — never raw URLs.
  */
 export interface PortalStaticOgImageSnapshot {
   kind: PortalStaticOgImageKind;
@@ -91,6 +92,7 @@ export interface PortalSocialMetaSettings {
   /**
    * When true, design (and library) OG images are letterboxed onto a 1200×630 canvas
    * so Facebook’s wide preview shows the full artwork.
+   * Does **not** apply to Global OG Static Image mode — Static always letterboxes.
    */
   letterboxOgImages: boolean;
   /** Non-design Portal URLs: rotate library designs, brand logo, or a fixed static image. */

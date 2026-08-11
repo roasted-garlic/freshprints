@@ -900,8 +900,10 @@ public read, ≤5 MiB. **Deploying Storage Rules is a human checkpoint.**
 `getPortalOgShareImage?designId=…&fit=contain&bg=<hex>` (1200×630 JPEG). Canvas color comes from
 the design’s `artworkBackgroundHex` (fallback Portal artwork grey `#e5e7eb`). The `bg` query is a
 Facebook/CDN cache-bust; the Function paints from the design document. Short-lived signed Storage
-URLs are not used for crawler-facing share/SEO images. Static Image mode uses the saved HTTPS
-snapshot as-is (not letterboxed).
+URLs are not used for crawler-facing share/SEO images. **Static Image mode always letterboxes**
+via `getPortalOgShareImage` (`designId` for Design Library picks; validated `staticPath` under
+`portal-social-meta/static-og/` for uploads). The social letterbox toggle does not disable Static
+letterboxing. Missing Static sources fail-safe to brand logo — never raw snapshot URLs.
 
 **Library rotation:** Global library OG picks a ready design via `pickLibraryOgRotatedIndex` using
 `libraryOgRotationInterval` (`daily` | `hourly` | `5min` | `1min` | `30s`, default `hourly`).

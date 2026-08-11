@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { CUSTOMER_UPLOAD_TERMS_VERSION } from '@fresh-prints/shared/types/customerUpload/customerUpload.types';
 import type { CustomerUploadPurpose } from '@fresh-prints/shared/types/customerUpload/customerUpload.enums';
@@ -170,7 +170,8 @@ export function useCustomerUploadBatch(options?: {
     );
   }, []);
 
-  const removeRow = useCallback((localId: string) => {
+  const removeRow = useCallback(async (localId: string) => {
+    const existing = rowsRef.current.find((row) => row.localId === localId);
     setRows((current) =>
       current.map((row) =>
         row.localId === localId
@@ -178,7 +179,52 @@ export function useCustomerUploadBatch(options?: {
           : row,
       ),
     );
+
+    const uploadId = existing?.uploadId;
+    if (!uploadId) {
+      return;
+    }
+
+    try {
+      await customerUploadService.deleteOwnUpload(uploadId);
+      customerUploadService.invalidateDailyQuota();
+    } catch (error: unknown) {
+      console.warn('[customer-upload] remove delete failed', {
+        uploadId,
+        message: error instanceof Error ? error.message : 'unknown',
+      });
+    }
   }, []);
+
+  const abandonUnconfirmedUploads = useCallback(async () => {
+    abortRef.current = true;
+    const uploadIds = [
+      ...new Set(
+        rowsRef.current
+          .filter((row) => row.phase !== 'removed' && Boolean(row.uploadId))
+          .map((row) => row.uploadId as string),
+      ),
+    ];
+
+    if (uploadIds.length > 0) {
+      await Promise.allSettled(
+        uploadIds.map(async (uploadId) => {
+          await customerUploadService.deleteOwnUpload(uploadId);
+        }),
+      );
+      customerUploadService.invalidateDailyQuota();
+    }
+
+    setRows([]);
+    setBatchId(null);
+    setOwnershipConfirmed(false);
+    setCatalogUseAcknowledged(!isDonation);
+    setBannerError(null);
+    setBatchNotes([]);
+    if (firebaseUser) {
+      customerUploadService.clearSession(firebaseUser.uid);
+    }
+  }, [firebaseUser, isDonation]);
 
   const addFiles = useCallback(
     async (fileList: FileList | File[]) => {
@@ -420,7 +466,10 @@ export function useCustomerUploadBatch(options?: {
 
         setRows((current) => {
           const byLocalId = new Map(newRows.map((row) => [row.localId, row] as const));
-          return current.map((row) => byLocalId.get(row.localId) ?? row);
+          const next = current.map((row) => byLocalId.get(row.localId) ?? row);
+          // Keep the ref current for remove/abort checks before React re-renders.
+          rowsRef.current = next;
+          return next;
         });
         customerUploadService.persistSession(
           uploadUser.uid,
@@ -435,7 +484,16 @@ export function useCustomerUploadBatch(options?: {
           newRows,
           customerUploadService.maxConcurrentFinalize,
           async (row) => {
+            // Prefer the queue row for upload targets. rowsRef can still be stale immediately
+            // after setRows, which made every worker exit early and left rows on "Waiting…".
             if (abortRef.current || !row.file || !row.uploadId || !row.sourceStoragePath) {
+              return;
+            }
+
+            const isRemoved = () =>
+              rowsRef.current.find((item) => item.localId === row.localId)?.phase === 'removed';
+
+            if (isRemoved()) {
               return;
             }
 
@@ -454,6 +512,9 @@ export function useCustomerUploadBatch(options?: {
                 row.file,
                 contentType,
                 (percent) => {
+                  if (isRemoved()) {
+                    return;
+                  }
                   updateRow(row.localId, {
                     phase: 'uploading',
                     progressLabel: `Uploading… ${percent}%`,
@@ -461,6 +522,9 @@ export function useCustomerUploadBatch(options?: {
                   });
                 },
               );
+              if (isRemoved()) {
+                return;
+              }
               const uploadMs = Math.round(performance.now() - uploadStartedAt);
               console.info('[customer-upload] source upload complete', {
                 uploadId: row.uploadId,
@@ -475,6 +539,9 @@ export function useCustomerUploadBatch(options?: {
               const unsubscribeProgress = customerUploadService.subscribeUploadProgress(
                 row.uploadId,
                 (progress) => {
+                  if (isRemoved()) {
+                    return;
+                  }
                   updateRow(row.localId, {
                     phase: mapTechnicalStatusToPhase(progress.technicalStatus),
                     progressLabel: progress.progressLabel,
@@ -488,8 +555,14 @@ export function useCustomerUploadBatch(options?: {
                 },
               );
               try {
+                if (isRemoved()) {
+                  return;
+                }
                 const result: FinalizeCustomerUploadResponse =
                   await customerUploadService.finalizeImage(row.uploadId, created.batchId);
+                if (isRemoved()) {
+                  return;
+                }
                 console.info('[customer-upload] finalize complete', {
                   uploadId: row.uploadId,
                   finalizeMs: Math.round(performance.now() - finalizeStartedAt),
@@ -518,6 +591,9 @@ export function useCustomerUploadBatch(options?: {
                 unsubscribeProgress();
               }
             } catch (error) {
+              if (isRemoved()) {
+                return;
+              }
               updateRow(row.localId, {
                 phase: 'failed',
                 progressLabel: 'Failed',
@@ -776,6 +852,49 @@ export function useCustomerUploadBatch(options?: {
     }
   }, [firebaseUser, isDonation]);
 
+  // Recover from refresh / leave without submit: hard-delete leftover session uploads so
+  // donation day quota is restored for charged-but-unconfirmed ready items. Delayed so React
+  // Strict Mode remounts / in-panel state restore are not raced.
+  useEffect(() => {
+    if (!firebaseUser) {
+      return;
+    }
+    const session = customerUploadService.loadSession(firebaseUser.uid);
+    if (!session || session.uploadIds.length === 0) {
+      return;
+    }
+
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      if (cancelled) {
+        return;
+      }
+      const stillActive = rowsRef.current.some(
+        (row) => row.uploadId && session.uploadIds.includes(row.uploadId),
+      );
+      if (stillActive || rowsRef.current.length > 0) {
+        return;
+      }
+      void (async () => {
+        await Promise.allSettled(
+          session.uploadIds.map(async (uploadId) => {
+            await customerUploadService.deleteOwnUpload(uploadId);
+          }),
+        );
+        if (cancelled) {
+          return;
+        }
+        customerUploadService.clearSession(firebaseUser.uid);
+        customerUploadService.invalidateDailyQuota();
+      })();
+    }, 2000);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [firebaseUser]);
+
   return {
     rows: activeRows,
     batchId,
@@ -795,6 +914,7 @@ export function useCustomerUploadBatch(options?: {
     canAttach,
     addFiles,
     removeRow,
+    abandonUnconfirmedUploads,
     retryFailed,
     attachToRequest,
     submitDonation,

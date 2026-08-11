@@ -1210,7 +1210,7 @@ Staff intake callables (Admin SDK writes only): `promoteCustomerUploadToAiReview
 
 | Collection | Purpose |
 |------------|---------|
-| `customerUploadRateLimits/{uid}_{yyyyMMdd}` | America/Chicago (CST/CDT) daily caps **by purpose**: print-request (`createBatchCount` / `finalizeImageCount` / `finalizeZipCount`) and catalog-donation (`*Donation` fields). Separate buckets so donate and print-request do not share quota. Limits come from `settings/customerUploadQuotas` (ADR-FP-095) with code defaults when unset. Portal Upload Designs no longer charges day buckets; Donate still charges images/day (midnight Central). **F3:** successful hard delete of a `catalog_donation` with `quotaChargedFinalize === true` decrements today’s `finalizeImageCountDonation` by 1 (never below 0) once in the same Admin transaction as the upload doc delete (Portal + Studio). Blocked/failed/Storage-partial/Exclude/Restore do not refund. Cap L unchanged. Field `utcDay` on docs remains the label name for compatibility. |
+| `customerUploadRateLimits/{uid}_{yyyyMMdd}` | America/Chicago (CST/CDT) daily caps **by purpose**: print-request (`createBatchCount` / `finalizeImageCount` / `finalizeZipCount`) and catalog-donation (`*Donation` fields). Separate buckets so donate and print-request do not share quota. Limits come from `settings/customerUploadQuotas` (ADR-FP-095) with code defaults when unset. Portal Upload Designs no longer charges day buckets; Donate still charges images/day (midnight Central). **F3 / 2026-08-11 QA:** donation `finalizeImageCountDonation` is charged only when finalize reaches **ready** (`quotaChargedFinalize`). Failed finalizes do not charge. Successful hard delete of a charged `catalog_donation` decrements today’s counter by 1 (Portal Remove / abandon-unconfirmed / Account gallery). Cap L unchanged. Field `utcDay` on docs remains the label name for compatibility. |
 | `printRequestDesignDailyLimits/{uid}_{yyyyMMdd}` | **Legacy Cap A counters (ADR-FP-096).** No longer written or enforced (ADR-FP-102). Optional wipe target on `fresh-prints-dev` for cleanup. |
 | `customerUploadFinalizeLeases/{leaseId}` | Concurrent finalize leases (max 8; 4-minute TTL; shared across purposes) |
 | `customerUploadIdempotency/{uid}_{clientRequestId}` | Create-batch idempotency |
@@ -2053,8 +2053,11 @@ When letterbox is on, design and library `og:image` URLs point at public Functio
 `getPortalOgShareImage` (composed JPEG using the design’s `artworkBackgroundHex`, fallback
 `#e5e7eb`) with query `fit=contain&bg=<hex>` (`bg` is a Facebook/CDN cache-bust; Function
 paints from the design document, not the query). When off, signed Storage preview/thumbnail
-URLs are used. Static Image mode uses the saved `downloadUrl` / `storagePath` snapshot (no
-design re-query on read).
+URLs are used for **library** mode only. **Static Image mode always letterboxes** via
+`getPortalOgShareImage` (`designId` for Design Library picks; validated `staticPath` under
+`portal-social-meta/static-og/` for uploads). The `letterboxOgImages` toggle does **not**
+disable Static letterboxing. Missing/invalid Static sources fail-safe to brand logo / Portal
+bundled defaults — never raw snapshot URLs.
 
 ### `settings/brandLogos`
 

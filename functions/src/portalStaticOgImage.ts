@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
 
 import {
+  PORTAL_OG_IMAGE_FIT_CONTAIN,
+  PORTAL_OG_LETTERBOX_BG_HEX,
   PORTAL_STATIC_OG_IMAGE_MAX_BYTES,
   isAllowedPortalStaticOgImageContentType,
   parsePortalStaticOgImageStoragePath,
@@ -9,7 +11,12 @@ import {
 } from "../../packages/shared/src/constants/portal/portalSocialMetaSettings.constants";
 import { adminDb, adminStorage } from "./lib/admin";
 import { failedPrecondition, invalidArgument } from "./lib/errors";
-import { normalizeStorageObjectPath } from "./lib/portalOgUrls";
+import {
+  buildPortalOgShareImageFunctionUrl,
+  isValidPortalOgDesignId,
+  normalizeStorageObjectPath,
+  resolveFirebaseProjectId,
+} from "./lib/portalOgUrls";
 
 function buildFirebaseDownloadUrl(bucketName: string, objectPath: string, token: string): string {
   const encoded = encodeURIComponent(objectPath);
@@ -175,7 +182,98 @@ export async function resolveStaticOgSnapshotFromDesign(
   };
 }
 
-/** Prefer HTTPS snapshot; fall back to signing storagePath when needed. */
+/**
+ * Build the public letterbox Function URL for a Static Global OG snapshot.
+ * Pure URL construction — does not download artwork or return raw snapshot URLs.
+ * Returns null when the snapshot cannot safely letterbox (caller fail-safes to logo).
+ */
+export function buildStaticOgLetterboxShareImageUrl(params: {
+  projectId: string;
+  snapshot: PortalStaticOgImageSnapshot;
+  /** Design artwork background when kind=design; ignored for upload (Portal grey). */
+  designBackgroundHex?: unknown;
+}): string | null {
+  const projectId = params.projectId.trim();
+  if (!projectId) {
+    return null;
+  }
+  const { snapshot } = params;
+
+  if (snapshot.kind === "design") {
+    const designId =
+      typeof snapshot.sourceDesignId === "string" ? snapshot.sourceDesignId.trim() : "";
+    if (!designId || !isValidPortalOgDesignId(designId)) {
+      return null;
+    }
+    return buildPortalOgShareImageFunctionUrl({
+      projectId,
+      designId,
+      fit: PORTAL_OG_IMAGE_FIT_CONTAIN,
+      backgroundHex: params.designBackgroundHex,
+    });
+  }
+
+  if (snapshot.kind === "upload") {
+    const canonical = parsePortalStaticOgImageStoragePath(snapshot.storagePath);
+    if (!canonical) {
+      return null;
+    }
+    return buildPortalOgShareImageFunctionUrl({
+      projectId,
+      staticStoragePath: canonical,
+      fit: PORTAL_OG_IMAGE_FIT_CONTAIN,
+      backgroundHex: PORTAL_OG_LETTERBOX_BG_HEX,
+    });
+  }
+
+  return null;
+}
+
+/**
+ * Resolve Static Global OG through the existing letterbox Function (always).
+ * Never returns raw design/upload snapshot URLs (those recreate social crop).
+ * Fail-safe: null → caller uses brand logo / bundled Portal logo.
+ */
+export async function resolveStaticOgLetterboxImageUrl(
+  snapshot: PortalStaticOgImageSnapshot | null,
+): Promise<string | null> {
+  if (!snapshot) {
+    return null;
+  }
+
+  const projectId = resolveFirebaseProjectId();
+  if (!projectId) {
+    return null;
+  }
+
+  let designBackgroundHex: unknown;
+  if (snapshot.kind === "design") {
+    const designId =
+      typeof snapshot.sourceDesignId === "string" ? snapshot.sourceDesignId.trim() : "";
+    if (designId && isValidPortalOgDesignId(designId)) {
+      try {
+        const designSnap = await adminDb.collection("designs").doc(designId).get();
+        if (designSnap.exists) {
+          designBackgroundHex = designSnap.data()?.artworkBackgroundHex;
+        }
+      } catch {
+        // Keep default grey mat via URL builder when design bg cannot be loaded.
+      }
+    }
+  }
+
+  return buildStaticOgLetterboxShareImageUrl({
+    projectId,
+    snapshot,
+    designBackgroundHex,
+  });
+}
+
+/**
+ * Prefer HTTPS snapshot; fall back to signing storagePath when needed.
+ * Not used for crawler-facing Global OG Static (use {@link resolveStaticOgLetterboxImageUrl}).
+ * Retained for tooling / non-crawler snapshot URL resolution.
+ */
 export async function resolveStaticOgImageUrl(
   snapshot: PortalStaticOgImageSnapshot | null,
 ): Promise<string | null> {

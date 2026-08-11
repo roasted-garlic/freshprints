@@ -122,15 +122,8 @@ function IntakeDetail({
         <div className="customer-upload-intake-detail-summary">
           <h3 className="customer-upload-intake-detail-title">{row.originalFilename}</h3>
           <p className="customer-upload-intake-meta">
-            <span>
-              {row.customerDisplayName}
-              {isDonation ? " · donation" : ""} · {row.catalogReviewStatus.replace(/_/g, " ")} ·
-            </span>
-            {fromAssisted ? (
-              <span className="customer-upload-intake-custom-badge">Custom</span>
-            ) : (
-              <span className="customer-upload-intake-uploaded-badge">Uploaded</span>
-            )}
+            {row.customerDisplayName}
+            {isDonation ? " · donation" : ""} · {row.catalogReviewStatus.replace(/_/g, " ")}
           </p>
           <p className="customer-upload-intake-meta">
             Approved max {formatInches(row.approvedMaxPrintWidthInches, row.approvedMaxPrintHeightInches)}
@@ -517,7 +510,6 @@ export function CustomerUploadIntakeSection({
               <ul className="customer-upload-intake-list">
                 {intake.rows.map((row) => {
                   const customerMarked = row.halftoneSubmitterResponse?.value === "yes";
-                  const fromAssisted = Boolean(row.assistedCreationRequestId);
                   return (
                     <li key={row.id}>
                       <button
@@ -533,15 +525,8 @@ export function CustomerUploadIntakeSection({
                           {row.originalFilename}
                         </span>
                         <span className="customer-upload-intake-list-sub">
-                          <span>
-                            {row.customerDisplayName} · {row.technicalStatus} ·
-                          </span>
-                          {fromAssisted ? (
-                            <span className="customer-upload-intake-custom-badge">Custom</span>
-                          ) : (
-                            <span className="customer-upload-intake-uploaded-badge">Uploaded</span>
-                          )}
-                          {customerMarked ? <span> · customer: halftone</span> : null}
+                          {row.customerDisplayName} · {row.technicalStatus}
+                          {customerMarked ? " · customer: halftone" : null}
                         </span>
                       </button>
                     </li>

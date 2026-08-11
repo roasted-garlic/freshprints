@@ -1,7 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { User } from "../../users/types/user.types";
-import { filterDesignsByNeedsCompanion } from "../utils/designLibrarySearch";
+import type { CatalogTag } from "../types/catalogTag.types";
+import {
+  designMatchesSearchQuery,
+  filterDesignsByNeedsCompanion,
+} from "../utils/designLibrarySearch";
 import type { Design } from "../types/design.types";
 import { isStudioAlgoliaCatalogConfigured } from "../services/studioAlgoliaCatalogFlags";
 import { studioAlgoliaCatalogSearchService } from "../services/studioAlgoliaCatalogSearchService";
@@ -9,6 +13,7 @@ import { studioAlgoliaCatalogSearchService } from "../services/studioAlgoliaCata
 const DEFAULT_MANAGED_PAGE_SIZE = 100;
 
 export interface UseDesignLibraryManagedSearchOptions {
+  catalogTags?: readonly CatalogTag[];
   categoryId?: string;
   enabled: boolean;
   needsCompanion: boolean;
@@ -21,8 +26,12 @@ export interface UseDesignLibraryManagedSearchOptions {
 /**
  * Ready-catalog text search via Algolia (IDs) + Firestore hydrate.
  * Never loadAll / full collection scan. Fail closed when Algolia is not configured.
+ *
+ * After hydrate, results are consistency-filtered against current design fields (including tag
+ * aliases) so a just-removed tag cannot keep a hit alive while Algolia eventually converges.
  */
 export function useDesignLibraryManagedSearch(options: UseDesignLibraryManagedSearchOptions): {
+  applyDesignPatch: (updated: Design) => void;
   designs: Design[];
   error: string | null;
   hasMore: boolean;
@@ -30,6 +39,7 @@ export function useDesignLibraryManagedSearch(options: UseDesignLibraryManagedSe
   isLoading: boolean;
   isLoadingMore: boolean;
   loadMore: () => void;
+  reload: () => void;
   total: number | null;
 } {
   const pageSize = options.pageSize ?? DEFAULT_MANAGED_PAGE_SIZE;
@@ -40,9 +50,12 @@ export function useDesignLibraryManagedSearch(options: UseDesignLibraryManagedSe
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [refreshNonce, setRefreshNonce] = useState(0);
 
   const selectedTagsKey = options.selectedTags.join("\u0000");
   const searchKey = options.searchQuery.trim();
+  const catalogTagsRef = useRef(options.catalogTags ?? []);
+  catalogTagsRef.current = options.catalogTags ?? [];
 
   useEffect(() => {
     if (!options.enabled || !options.user || !searchKey) {
@@ -78,8 +91,12 @@ export function useDesignLibraryManagedSearch(options: UseDesignLibraryManagedSe
       })
       .then((page) => {
         if (cancelled) return;
-        setDesigns(page.designs);
-        setTotal(page.total);
+        const filtered = page.designs.filter((design) =>
+          designMatchesSearchQuery(design, searchKey, catalogTagsRef.current),
+        );
+        const dropped = page.designs.length - filtered.length;
+        setDesigns(filtered);
+        setTotal(page.total === null ? null : Math.max(0, page.total - dropped));
         setNextOffset(page.hitCount);
       })
       .catch((loadError) => {
@@ -108,6 +125,7 @@ export function useDesignLibraryManagedSearch(options: UseDesignLibraryManagedSe
     options.enabled,
     options.user,
     pageSize,
+    refreshNonce,
     searchKey,
     selectedTagsKey,
   ]);
@@ -138,8 +156,14 @@ export function useDesignLibraryManagedSearch(options: UseDesignLibraryManagedSe
         selectedTags: options.selectedTags,
       })
       .then((page) => {
-        setDesigns((current) => [...current, ...page.designs]);
-        setTotal(page.total);
+        const filtered = page.designs.filter((design) =>
+          designMatchesSearchQuery(design, searchKey, catalogTagsRef.current),
+        );
+        const dropped = page.designs.length - filtered.length;
+        setDesigns((current) => [...current, ...filtered]);
+        setTotal((current) =>
+          page.total === null ? null : Math.max(0, (current ?? page.total) - dropped),
+        );
         setNextOffset((current) => current + page.hitCount);
       })
       .catch((loadError) => {
@@ -163,7 +187,32 @@ export function useDesignLibraryManagedSearch(options: UseDesignLibraryManagedSe
     searchKey,
   ]);
 
+  const reload = useCallback(() => {
+    setRefreshNonce((current) => current + 1);
+  }, []);
+
+  const applyDesignPatch = useCallback((updated: Design) => {
+    setDesigns((current) => {
+      const index = current.findIndex((design) => design.id === updated.id);
+      if (index < 0) {
+        return current;
+      }
+
+      if (!designMatchesSearchQuery(updated, searchKey, catalogTagsRef.current)) {
+        setTotal((currentTotal) =>
+          currentTotal === null ? null : Math.max(0, currentTotal - 1),
+        );
+        return current.filter((design) => design.id !== updated.id);
+      }
+
+      const next = [...current];
+      next[index] = updated;
+      return next;
+    });
+  }, [searchKey]);
+
   return {
+    applyDesignPatch,
     designs: visibleDesigns,
     error,
     hasMore,
@@ -171,6 +220,7 @@ export function useDesignLibraryManagedSearch(options: UseDesignLibraryManagedSe
     isLoading,
     isLoadingMore,
     loadMore,
+    reload,
     total,
   };
 }

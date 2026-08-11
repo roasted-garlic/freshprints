@@ -9,6 +9,7 @@ import {
   collectUniqueDesignTags,
   collectUsedCategoryIds,
   computeFacetedTagsForDraftSelection,
+  designMatchesSearchQuery,
   filterDesignsByAiReviewStatus,
   filterDesignsByCategory,
   filterDesignsByNeedsCompanion,
@@ -90,6 +91,22 @@ describe("filterDesignsBySearch", () => {
   it("matches design ids", () => {
     const result = filterDesignsBySearch(designs, "design-1");
     assert.equal(result.length, 1);
+  });
+
+  it("matches tag aliases when catalog tags are provided", () => {
+    const designsWithTmnt = [createDesign({ id: "mona", title: "Tattooed Mona Lisa", tags: ["tmnt"] })];
+    const catalogTags = [
+      createCatalogTag({ name: "tmnt", aliases: ["teenage mutant ninja turtles", "turtles", "turtle"] }),
+    ];
+    assert.equal(designMatchesSearchQuery(designsWithTmnt[0]!, "turtle", catalogTags), true);
+    assert.equal(
+      designMatchesSearchQuery(
+        createDesign({ id: "mona", title: "Tattooed Mona Lisa", tags: [] }),
+        "turtle",
+        catalogTags,
+      ),
+      false,
+    );
   });
 });
 

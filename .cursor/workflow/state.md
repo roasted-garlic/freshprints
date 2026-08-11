@@ -1,28 +1,23 @@
 # Current Goal
-Prefinal A–H **DEV QA ready** — owner local testing against `fresh-prints-dev`.
+Freeze DEV-tested A–H + Track A/B state on `qa/prefinal-a-h-dev`, then **production promotion Plan + Formal Review only**.
 
 Current Mode: managed-phase
-Current Phase: **owner local DEV QA**
+Current Phase: **plan** (commit/push freeze in progress → production promotion plan)
 DONE: **no**
-Last Completed Step: Integrated `qa/prefinal-a-h-dev`; Storage + scoped Functions deployed to `fresh-prints-dev`; automated checks PASS
-Plan Status: **complete**
-Review Status: **approved_with_changes** (DEV plan Formal Review)
-Implementation Status: **complete** (DEV integrate + DEV deploy)
-Test Status: **passed_with_notes** (65 focused tests; Portal/Studio/Functions typecheck PASS; git diff --check docs whitespace only)
+Last Completed Step: Owner `Continue Workflow` — freeze commit/push + prod promotion Plan/Review
+Plan Status: **in_progress**
+Review Status: pending
+Implementation Status: not_started (promote not authorized)
+Test Status: pending_gates_before_commit
 Signoff Status: not_started
-Human Checkpoint Required: **yes**
-Human Checkpoint Reason: Owner performs DEV A–H QA checklist. Production remains blocked. Do not merge to production/development until owner PASS.
+Human Checkpoint Required: **no** (until Plan+Review complete → await owner promote phrase)
 Blocked: **no**
 
-## Authoritative tips
-- QA branch: `qa/prefinal-a-h-dev` @ see tip after integrate
-- production: `913329c` (untouched)
-- Portal `e618a87` · OG `9d2144d` · Intake `633d3fa` · Quota `e39fc20` · H `6150eee` (H branch tip `d478806`)
+Allowed Actions: audit/commit/push QA branch; read-only prod topology; write Plan + Formal Review; update workflow state
+Forbidden Actions: merge development/production; prod deploy (Rules/Functions/App Hosting/indexes); Track A APPLY; Studio 1.0.3; Algolia mutate; DNS cutover
 
-Allowed Actions: owner local QA; record PASS/FAIL; fix only after amendment if needed
-Forbidden Actions: production merge/deploy; App Hosting; prod Algolia; Studio 1.0.3; auto-merge to permanent development
-
-Next Required Step: Owner runs `docs/workflow/reviews/2026-08-11-prefinal-a-h-development-qa-checklist.md` and replies `DEV A-H QA: PASS` / `FAIL: …` / `PASS WITH NOTES: …`
+Next Required Step: Complete release gates → commit+push clean tip → write promotion Plan → Formal Review → STOP.
 
 ## Decision Log
-- 2026-08-11: Owner `APPROVE DEV INTEGRATION + DEV DEPLOY: PREFINAL A-H QA`. Integrated and DEV-deployed. STOP for owner QA.
+- 2026-08-11: Owner `DEV STATIC OG LETTERBOX QA: PASS` — Track B DEV cleared.
+- 2026-08-11: Owner `Continue Workflow` — commit/push freeze + production promotion Plan/Review only; no promote/APPLY.

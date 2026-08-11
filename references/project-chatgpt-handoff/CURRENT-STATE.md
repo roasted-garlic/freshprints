@@ -1,18 +1,11 @@
 # Fresh Prints - Current State Snapshot
 
-## 2026-08-11 — H IMPLEMENTATION REVIEW COMPLETE (STOP)
+## 2026-08-11 — FREEZE + PROD PROMOTION PLAN (in progress)
 
-**Verdict:** `approved_with_notes`
-**Review:** `docs/workflow/reviews/2026-08-11-studio-customer-upload-intake-performance-implementation-review.md`
+Freezing owner-tested A–H + QA amendments + Track A/B on `qa/prefinal-a-h-dev`, then Plan + Formal Review only (no promote/APPLY).
 
-**Branch:** `fix/studio-upload-intake-perf-counts`
-**Base / committed tip:** `913329c…` (H still **uncommitted** working tree)
+**Prior:** Track B `DEV STATIC OG LETTERBOX QA: PASS`; A–H DEV QA PASS; production tip untouched.
 
-**Ready for:** DEV integration/QA after commit — **not** production.
+### Next after Plan/Review
 
-**Do not:** merge H/A–G to production; deploy indexes/Functions/Rules/App Hosting; publish Studio 1.0.3; sync development.
-
-**DEV QA later (after A–H on fresh-prints-dev):** cold restart, badge vs Pending, donation/upload load, progressive thumbs, live Pending/Excluded.
-
-### A–G tips (untouched)
-Portal `e618a87` · OG `9d2144d` · Intake `633d3fa` · Quota `e39fc20`
+Owner promotion phrase (separate) — do not auto-run.

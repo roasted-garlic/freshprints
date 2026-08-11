@@ -312,8 +312,8 @@ uses the same customer hosts for `metadataBase` / OG image resolution via option
 | Function | Role |
 |----------|------|
 | `getPortalDesignShareOpenGraph` | Public JSON for `/share/design/{id}` title/description/`imageUrl` |
-| `getPortalGlobalOpenGraph` | Public JSON for non-design URLs. Library / logo / **static** image modes. In-process cache **60s** (invalidated on Save); HTTP `max-age=60`; response includes `updatedAtMs` for Portal `?v=` bust. Static miss fail-safes to brand logo. |
-| `getPortalOgShareImage` | Public JPEG letterbox compositor (`designId` + `fit=contain`) |
+| `getPortalGlobalOpenGraph` | Public JSON for non-design URLs. Library / logo / **static** image modes. In-process cache **60s** (invalidated on Save); HTTP `max-age=60`; response includes `updatedAtMs` for Portal `?v=` bust. **Static always letterboxes** via `getPortalOgShareImage` (ignores `letterboxOgImages`). Static miss fail-safes to brand logo (never raw artwork URL). |
+| `getPortalOgShareImage` | Public JPEG letterbox compositor (`designId` **or** validated `staticPath` + `fit=contain`) |
 | `updatePortalSocialMetaSettings` | Owner callable for title/description + letterbox + global image source + static OG snapshot finalize; clears Global OG in-process cache after write |
 | `updatePortalHelpSettings` | Owner/admin callable for Portal FAQ and How To (`settings/portalHelp`) |
 | `finalizeBrandLogoSlot` | Owner callable: finalize/clear Studio+Portal brand logo slots from Admin Storage metadata |
