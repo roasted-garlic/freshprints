@@ -1,27 +1,32 @@
 # Current Goal
-Prefinal A–H + Track B production promote preflight **complete**; **awaiting owner merge of PR #57**. STOP before Storage Rules deploy.
+Studio 1.0.4 macOS **x64 + arm64** release support — implementation + non-mutating CI **PASS**; **await owner merge of PR #64**.
 
 Current Mode: managed-phase
-Current Phase: **implement** (Git promote) — human merge required
+Current Phase: **implement complete** → human merge checkpoint
 DONE: **no**
-Last Completed Step: Opened production PR #57; agent merge blocked by Cursor production-merge hook
+Last Completed Step: Validation CI run 31621714795 success (Windows + Mac x64/arm64 + validation-only finalize); Implementation Review approved_with_notes
 Plan Status: complete
 Review Status: approved_with_changes
-Implementation Status: **awaiting_owner_merge**
+Implementation Status: **complete_awaiting_owner_merge**
 Human Checkpoint Required: **yes**
-Human Checkpoint Reason: Owner must merge https://github.com/roasted-garlic/freshprints/pull/57 into `production` (protected/Cursor-blocked for agent)
-Blocked: **no** (waiting on owner merge, not a plan failure)
+Human Checkpoint Reason: Owner must merge https://github.com/roasted-garlic/freshprints/pull/64 into `production`. Do not publish Studio 1.0.4. Do not run stable release until after merge. Do not mutate draft 369361779.
+Blocked: **no**
 
-Allowed Actions: read docs; await merge; after merge verify tips / reconcile development when authorized
-Forbidden Actions: Storage Rules/Functions/App Hosting/index deploys; Track A dry-run/APPLY; Studio 1.0.3; Algolia mutate; DNS; force-push; bypass merge protections
+Allowed Actions: read docs; await merge authorization; after merge verify tip / run stable draft only when owner authorizes
+Forbidden Actions: merge to production without owner phrase; publish Studio 1.0.4; stable release without post-merge auth; Firebase/App Hosting/Algolia/DNS; auto-delete drafts
 
-Next Required Step: Owner merges PR #57 → then agent (or Continue Workflow) verifies production tip + reconciles `development` → then await `APPROVE PROD DEPLOY: STORAGE RULES STATIC-OG`
+Next Required Step: **STOP — await owner merge of PR #64** (then Continue Workflow for post-merge stable draft rebuild)
 
 ## Artifacts
-- Checkpoint: `docs/workflow/reviews/2026-08-11-prefinal-a-h-production-promote-preflight-checkpoint.md`
-- PR: https://github.com/roasted-garlic/freshprints/pull/57
-- Frozen product: `3b7a978f324d3c133ead8707ffc51454a20e1f5d`
+- Plan: `docs/workflow/plans/2026-08-12-studio-1.0.4-macos-release-support-plan.md`
+- Formal Review: `docs/workflow/reviews/2026-08-12-studio-1.0.4-macos-release-support-plan-review.md`
+- Implementation Review: `docs/workflow/reviews/2026-08-12-studio-1.0.4-macos-release-support-implementation-review.md`
+- Mac smoke checklist: `docs/workflow/reviews/2026-08-12-studio-1.0.4-macos-smoke-checklist.md`
+- Branch: `release/studio-1.0.4-macos-support` @ `adf5eebaa70f080d0266129c3e90d8488996b7ab`
+- Base production SHA: `662b5ef7fde11cd2795201e2f14275cc15e74d55`
+- PR: https://github.com/roasted-garlic/freshprints/pull/64
+- Validation CI: https://github.com/roasted-garlic/freshprints/actions/runs/31621714795
 
 ## Decision Log
-- 2026-08-11: Owner `APPROVE PROD PROMOTE PREFLIGHT: PREFINAL A-H + TRACK B`
-- 2026-08-11: Preflight PASS (docs whitespace-only diff-check note). PR #57 opened. Merge not completed by agent (Cursor hook). No Firebase/App Hosting/APPLY.
+- 2026-08-12: Owner `APPROVE IMPLEMENT` — then amended to **x64 + arm64** + no pre-merge release mutation
+- 2026-08-12: Validation CI green; agent STOP before merge

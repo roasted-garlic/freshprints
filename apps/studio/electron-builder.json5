@@ -9,9 +9,16 @@
   // Default npmRebuild runs `npm install --production` scoped to apps/studio, but npm
   // workspaces hoist all deps to the repo root (apps/studio has no local node_modules), so that
   // step prunes/corrupts the root tree instead. `sharp` (the only native dep) is externalized
-  // from the Vite bundle already, so no native rebuild is needed at package time.
+  // from the Vite bundle already; Mac CI installs the matching darwin-${arch} sharp binary via
+  // prepare-sharp-for-darwin-arch.mjs before each arch package, so no native rebuild is needed
+  // at package time.
   "npmRebuild": false,
   "asar": true,
+  // sharp ships platform-native `.node` binaries that must be loadable outside the asar archive.
+  "asarUnpack": [
+    "**/node_modules/sharp/**",
+    "**/node_modules/@img/**"
+  ],
   "productName": "Fresh Prints",
   "copyright": "Copyright 2026 Fresh Prints",
   "directories": {
@@ -21,8 +28,8 @@
   // embedded credential because the repo is public (confirmed via GitHub API, "private": false).
   // electron-builder derives the stable vs. prerelease feed automatically from whether `version`
   // has a semver prerelease tag (e.g. "1.0.0-beta.1" publishes generic release + prerelease
-  // channel metadata; "1.0.0" publishes stable latest.yml). No token is required for a public
-  // repo's release *assets* to be read anonymously by electron-updater at runtime.
+  // channel metadata; "1.0.0" publishes stable latest.yml / latest-mac.yml). No token is required
+  // for a public repo's release *assets* to be read anonymously by electron-updater at runtime.
   "publish": {
     "provider": "github",
     "owner": "roasted-garlic",
@@ -33,10 +40,38 @@
     "dist-electron"
   ],
   "mac": {
+    // Studio 1.0.4 ships native Intel (x64) and Apple Silicon (arm64) packages.
+    // Universal is deferred; separate artifacts + merged latest-mac.yml keep updater arch-safe.
     "target": [
-      "dmg"
+      {
+        "target": "dmg",
+        "arch": [
+          "x64",
+          "arm64"
+        ]
+      },
+      {
+        "target": "zip",
+        "arch": [
+          "x64",
+          "arm64"
+        ]
+      }
     ],
-    "artifactName": "${productName}-Mac-${version}-Installer.${ext}"
+    // electron-builder converts PNG → ICNS on macOS runners from the approved brand asset.
+    "icon": "icon.png",
+    // Space-free, arch-explicit names so GitHub Release assets match updater paths exactly
+    // (spaced "${productName}-..." becomes Fresh.Prints-* under `gh release upload`).
+    "artifactName": "Fresh-Prints-Mac-${arch}-${version}-Installer.${ext}",
+    "category": "public.app-category.business",
+    // Electron 30 supports macOS 10.15+; pin Big Sur floor for the owner's Intel Mac (11.7.11).
+    // Do not raise above Big Sur without an explicit owner decision.
+    "minimumSystemVersion": "11.0",
+    // Internal-unsigned Mac builds intentionally omit identity/notarization for Studio 1.0.4.
+    "identity": null
+  },
+  "dmg": {
+    "artifactName": "Fresh-Prints-Mac-${arch}-${version}-Installer.${ext}"
   },
   "win": {
     "icon": "icon.ico",
@@ -48,7 +83,7 @@
         ]
       }
     ],
-    "artifactName": "${productName}-Windows-${version}-Setup.${ext}"
+    "artifactName": "Fresh-Prints-Windows-${version}-Setup.${ext}"
   },
   "nsis": {
     "oneClick": false,
@@ -61,6 +96,6 @@
     "target": [
       "AppImage"
     ],
-    "artifactName": "${productName}-Linux-${version}.${ext}"
+    "artifactName": "Fresh-Prints-Linux-${version}.${ext}"
   }
 }

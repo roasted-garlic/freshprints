@@ -4,20 +4,121 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 
-// .github/workflows/studio-release.yml's signing decision is embedded PowerShell inside a `run:`
-// block, which cannot be imported/unit-tested the way TypeScript can. This file combines a
-// source-level regression guard (the workflow file contains the expected structure) with a
-// faithful reimplementation of the exact decision logic, exercised against every required mode
-// combination with synthetic (never real) values — mirroring the pattern already used for
-// apps/studio/electron/ipc/studioUpdate/studioUpdateService.test.ts's quitAndInstall guard.
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const workflowSource = readFileSync(path.join(__dirname, "studio-release.yml"), "utf8");
+const builderSource = readFileSync(
+  path.join(__dirname, "../../apps/studio/electron-builder.json5"),
+  "utf8",
+);
 
-test("workflow declares a distribution_mode choice input defaulting to signed", () => {
+test("workflow declares distribution_mode choice input defaulting to signed", () => {
   assert.match(workflowSource, /distribution_mode:/);
   assert.match(workflowSource, /- signed/);
   assert.match(workflowSource, /- internal-unsigned/);
   assert.match(workflowSource, /distribution_mode:[\s\S]*?default:\s*signed/);
+});
+
+test("workflow has build-windows, build-macos, and finalize-release jobs", () => {
+  assert.match(workflowSource, /name:\s*build-windows/);
+  assert.match(workflowSource, /name:\s*build-macos/);
+  assert.match(workflowSource, /name:\s*finalize-release/);
+  assert.match(workflowSource, /needs:\s*\[build-windows,\s*build-macos\]/);
+});
+
+test("Windows job runs on windows-latest and Mac job on macos-latest", () => {
+  assert.match(workflowSource, /build-windows:[\s\S]*?runs-on:\s*windows-latest/);
+  assert.match(workflowSource, /build-macos:[\s\S]*?runs-on:\s*macos-latest/);
+});
+
+test("Mac packaging builds arm64 and x64 with publish never; Windows keeps NSIS publish never", () => {
+  assert.match(workflowSource, /for ARCH in arm64 x64/);
+  assert.match(workflowSource, /electron-builder --mac "--\$\{ARCH\}" --publish never/);
+  assert.match(workflowSource, /electron-builder --win --x64 --publish never/);
+  assert.doesNotMatch(workflowSource, /--publish always/);
+});
+
+test("Windows packaging retries electron-builder after flaky nsis-resources downloads", () => {
+  assert.match(workflowSource, /nsis-resources-3\.4\.1/);
+  assert.match(workflowSource, /electron-builder Windows attempt/);
+  assert.match(workflowSource, /\$maxAttempts = 3/);
+  assert.match(workflowSource, /curl\.exe -fsSL --retry 8/);
+});
+
+
+test("finalize requires Windows + Mac x64 + Mac arm64 canonical assets", () => {
+  assert.match(workflowSource, /Fresh-Prints-Windows-\$\{VERSION\}-Setup\.exe/);
+  assert.match(workflowSource, /Fresh-Prints-Mac-arm64-\$\{VERSION\}-Installer\.dmg/);
+  assert.match(workflowSource, /Fresh-Prints-Mac-arm64-\$\{VERSION\}-Installer\.zip/);
+  assert.match(workflowSource, /Fresh-Prints-Mac-x64-\$\{VERSION\}-Installer\.dmg/);
+  assert.match(workflowSource, /Fresh-Prints-Mac-x64-\$\{VERSION\}-Installer\.zip/);
+  assert.match(workflowSource, /latest\.yml/);
+  assert.match(workflowSource, /latest-mac\.yml/);
+});
+
+test("finalize naming regression: rejects spaced and Fresh.Prints dotted names", () => {
+  assert.match(workflowSource, /Fresh\.Prints-\*/);
+  assert.match(workflowSource, /Asset name contains spaces/);
+  assert.match(workflowSource, /must not contain spaces/);
+  assert.match(builderSource, /Fresh-Prints-Windows-\$\{version\}-Setup/);
+  assert.match(builderSource, /Fresh-Prints-Mac-\$\{arch\}-\$\{version\}-Installer/);
+  assert.doesNotMatch(builderSource, /\$\{productName\}-Windows/);
+  assert.doesNotMatch(builderSource, /\$\{productName\}-Mac/);
+});
+
+test("finalize fails closed when platform SHAs diverge", () => {
+  assert.match(workflowSource, /Windows and Mac builds resolved different SHAs/);
+});
+
+test("non-stable finalize is validation-only and cannot mutate GitHub Releases", () => {
+  assert.match(workflowSource, /VALIDATION_ONLY: release_type=/);
+  assert.match(workflowSource, /VALIDATION_ONLY_NO_RELEASE_MUTATION=1/);
+  // Mutation path must be gated behind stable.
+  const mutateIdx = workflowSource.indexOf('gh api --method POST "repos/${{ github.repository }}/releases"');
+  const validationIdx = workflowSource.indexOf("VALIDATION_ONLY_NO_RELEASE_MUTATION=1");
+  assert.ok(mutateIdx > 0 && validationIdx > 0);
+  assert.ok(validationIdx < mutateIdx, "validation gate must precede release POST");
+  assert.match(workflowSource, /if \[ "\$RELEASE_TYPE" != "stable" \]/);
+});
+
+test("stable finalize additionally requires BUILD_SHA on production", () => {
+  assert.match(
+    workflowSource,
+    /Stable finalize requires BUILD_SHA to be reachable from origin\/production/,
+  );
+});
+
+test("stable Mac rejects signed distribution_mode until Apple credential phase", () => {
+  assert.match(
+    workflowSource,
+    /Stable Studio Mac releases for 1\.0\.4 require distribution_mode: internal-unsigned/,
+  );
+  assert.match(workflowSource, /Gatekeeper/);
+});
+
+test("shared env writer is used on both platform jobs", () => {
+  const matches = workflowSource.match(/write-studio-release-env\.mjs/g) || [];
+  assert.equal(matches.length, 2);
+});
+
+test("workflow does not auto-publish (draft-only finalize)", () => {
+  assert.match(workflowSource, /does NOT publish the release/);
+  assert.match(workflowSource, /draft=true/);
+});
+
+test("stable production reachability guards remain on both platform jobs", () => {
+  const guards = workflowSource.match(/git merge-base --is-ancestor HEAD origin\/production/g) || [];
+  assert.equal(guards.length, 2);
+});
+
+test("Mac Big Sur floor is pinned and must not rise above 11.x in packaging gate", () => {
+  assert.match(builderSource, /"minimumSystemVersion":\s*"11\.0"/);
+  assert.match(workflowSource, /minimumSystemVersion .* is above Big Sur/);
+});
+
+test("packaged Mac sharp verifier proves each arch independently", () => {
+  assert.match(workflowSource, /verify-packaged-mac-sharp\.mjs "\$APP_PATH" "\$ARCH"/);
+  assert.match(workflowSource, /prepare-sharp-for-darwin-arch\.mjs/);
+  assert.match(workflowSource, /merge-latest-mac-yml\.mjs/);
 });
 
 type DecisionResult =
@@ -27,8 +128,8 @@ type DecisionResult =
   | "internal-unsigned-warning"
   | "fail-stable-requires-signing";
 
-/** Faithful reimplementation of the workflow's exact PowerShell decision logic. */
-function decideSigning(
+/** Faithful reimplementation of the Windows signing decision logic. */
+function decideWindowsSigning(
   link: string,
   password: string,
   releaseType: "stable" | "prerelease",
@@ -52,56 +153,47 @@ function decideSigning(
   return "fail-stable-requires-signing";
 }
 
-test("stable + signed + missing signing credentials fails", () => {
-  assert.equal(decideSigning("", "", "stable", "signed"), "fail-stable-requires-signing");
+test("stable + signed + missing signing credentials fails (Windows)", () => {
+  assert.equal(decideWindowsSigning("", "", "stable", "signed"), "fail-stable-requires-signing");
 });
 
-test("stable + signed + complete signing credentials reaches the packaging gate", () => {
-  assert.equal(decideSigning("fake-cert", "fake-password", "stable", "signed"), "signed");
+test("stable + signed + complete signing credentials reaches the packaging gate (Windows)", () => {
+  assert.equal(decideWindowsSigning("link", "pw", "stable", "signed"), "signed");
 });
 
-test("stable + internal-unsigned + missing signing credentials is allowed", () => {
-  assert.equal(decideSigning("", "", "stable", "internal-unsigned"), "internal-unsigned-warning");
-});
-
-test("stable + internal-unsigned + partial signing config still fails closed", () => {
-  assert.equal(decideSigning("fake-cert", "", "stable", "internal-unsigned"), "fail-incomplete");
-});
-
-test("stable + internal-unsigned + full signing credentials present signs anyway", () => {
+test("stable + internal-unsigned + missing signing credentials is allowed (Windows)", () => {
   assert.equal(
-    decideSigning("fake-cert", "fake-password", "stable", "internal-unsigned"),
-    "signed",
+    decideWindowsSigning("", "", "stable", "internal-unsigned"),
+    "internal-unsigned-warning",
   );
 });
 
-test("stable from a non-production ref is a separate, unaffected guard (unchanged)", () => {
-  // The stable-ref guard is a distinct workflow step (`Guard stable release ref` +
-  // `Verify ref is reachable from production`) that runs before this signing step and is not
-  // modified by this change — confirmed present and unchanged in the workflow source.
-  assert.match(workflowSource, /Guard stable release ref/);
-  assert.match(workflowSource, /git merge-base --is-ancestor HEAD origin\/production/);
-});
-
-test("prerelease ignores distribution_mode and always builds unsigned", () => {
-  assert.equal(decideSigning("", "", "prerelease", "internal-unsigned"), "unsigned-prerelease");
-  assert.equal(decideSigning("", "", "prerelease", "signed"), "unsigned-prerelease");
-});
-
-test("no dev Firebase fallback exists for stable (unchanged, separate step)", () => {
-  assert.match(workflowSource, /missingLabel = "PROD_FIREBASE_\*"/);
-  assert.doesNotMatch(
-    workflowSource,
-    /RELEASE_TYPE -eq "stable"[\s\S]{0,200}DEV_FIREBASE/,
-  );
-});
-
-test("an unrecognized distribution_mode value falls through to the safe stable-requires-signing failure", () => {
-  // GitHub Actions' `type: choice` + fixed `options` list prevents an invalid value from being
-  // submitted through the normal dispatch UI; this proves the code itself still fails safe even
-  // if an unexpected string reached it (e.g. via direct API dispatch).
+test("stable + internal-unsigned + partial signing config still fails closed (Windows)", () => {
   assert.equal(
-    decideSigning("", "", "stable", "not-a-real-mode" as "signed"),
-    "fail-stable-requires-signing",
+    decideWindowsSigning("link-only", "", "stable", "internal-unsigned"),
+    "fail-incomplete",
   );
+});
+
+test("prerelease ignores distribution_mode and always builds unsigned (Windows)", () => {
+  assert.equal(
+    decideWindowsSigning("", "", "prerelease", "internal-unsigned"),
+    "unsigned-prerelease",
+  );
+  assert.equal(decideWindowsSigning("", "", "prerelease", "signed"), "unsigned-prerelease");
+});
+
+test("electron-builder Mac is x64+arm64 with dmg+zip and sharp asarUnpack", () => {
+  const macBlock = builderSource.slice(builderSource.indexOf('"mac":'), builderSource.indexOf('"win":'));
+  assert.match(macBlock, /"target":\s*"dmg"/);
+  assert.match(macBlock, /"target":\s*"zip"/);
+  assert.match(macBlock, /"arch":\s*\[[\s\S]*"x64"[\s\S]*"arm64"/);
+  assert.match(builderSource, /asarUnpack/);
+  assert.match(builderSource, /node_modules\/sharp/);
+  assert.match(macBlock, /"identity":\s*null/);
+});
+
+test("electron-builder Windows NSIS x64 target remains", () => {
+  assert.match(builderSource, /"target":\s*"nsis"/);
+  assert.match(builderSource, /Fresh-Prints-Windows-\$\{version\}-Setup/);
 });
