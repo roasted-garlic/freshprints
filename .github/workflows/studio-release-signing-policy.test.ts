@@ -87,6 +87,15 @@ test("stable finalize additionally requires BUILD_SHA on production", () => {
   );
 });
 
+test("stable finalize uploads assets by release id, not ambiguous shared tag", () => {
+  assert.match(workflowSource, /upload_url/);
+  assert.match(workflowSource, /Uploading \$\{name\} -> release_id=/);
+  assert.match(workflowSource, /UPLOAD_URL\}\?name=\$\{name\}/);
+  assert.match(workflowSource, /NEVER by ambiguous shared tag_name/);
+  assert.doesNotMatch(workflowSource, /^\s*gh release upload\b/m);
+  assert.match(workflowSource, /Tag \$\{TAG\} already used by release/);
+});
+
 test("stable Mac rejects signed distribution_mode until Apple credential phase", () => {
   assert.match(
     workflowSource,
