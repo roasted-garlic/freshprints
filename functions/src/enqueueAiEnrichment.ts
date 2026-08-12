@@ -2,7 +2,7 @@ import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { onCall } from "firebase-functions/v2/https";
 
 import { assertStaffCaller, loadCallerProfile } from "./lib/caller";
-import { failedPrecondition, invalidArgument, permissionDenied, unauthenticated } from "./lib/errors";
+import { failedPrecondition, invalidArgument, unauthenticated } from "./lib/errors";
 import { geminiApiKeySecret } from "./lib/secrets";
 import { adminDb } from "./lib/admin";
 import { runAiEnrichmentPipeline } from "./ai/aiEnrichmentPipeline";
@@ -18,12 +18,6 @@ import {
 } from "./ai/enqueueAiEnrichmentValidation";
 import { logPipelineEvent } from "./lib/pipelineLog";
 import { logPipelineMilestone } from "./ai/pipelineTiming";
-
-function assertOwnerAdminCaller(caller: Awaited<ReturnType<typeof loadCallerProfile>>): void {
-  if (!caller.isActive || !["owner", "admin"].includes(caller.role)) {
-    throw permissionDenied("Only owners and admins can re-run AI suggestions for rejected designs.");
-  }
-}
 
 function isStaleAiProcessing(design: Record<string, unknown>): boolean {
   const currentStage = design.aiProcessingStage;
@@ -91,8 +85,7 @@ export const enqueueAiEnrichment = onCall(
       if (!rerunRejected) {
         throw failedPrecondition("Rejected designs require rerunRejected to re-queue AI processing.");
       }
-
-      assertOwnerAdminCaller(caller);
+      // Active staff (including helper) may re-run rejected designs as operational AI processing.
     } else if (design.status !== "imported") {
       throw failedPrecondition("Only imported designs can be enqueued for AI processing.");
     }

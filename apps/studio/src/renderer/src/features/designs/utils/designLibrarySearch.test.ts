@@ -6,6 +6,7 @@ import type { Category } from "../types/category.types";
 import type { Design } from "../types/design.types";
 import {
   buildCategoryFilterOptions,
+  buildFacetedTagsFromAlgoliaOptions,
   collectUniqueDesignTags,
   collectUsedCategoryIds,
   computeFacetedTagsForDraftSelection,
@@ -389,6 +390,39 @@ describe("computeFacetedTagsForDraftSelection", () => {
     });
 
     assert.deepEqual(result.map((tag) => tag.tag), ["summer"]);
+  });
+});
+
+describe("buildFacetedTagsFromAlgoliaOptions", () => {
+  it("maps Algolia facet counts and excludes halftone", () => {
+    const result = buildFacetedTagsFromAlgoliaOptions({
+      draftSelectedTags: ["cow"],
+      facetOptions: [
+        { name: "cow", count: 12 },
+        { name: "summer", count: 40 },
+        { name: "halftone", count: 9 },
+        { name: "page-two-only", count: 3 },
+      ],
+    });
+
+    assert.deepEqual(
+      result.map((row) => ({ tag: row.tag, count: row.count, isSelected: row.isSelected })),
+      [
+        { tag: "cow", count: 12, isSelected: true },
+        { tag: "page-two-only", count: 3, isSelected: false },
+        { tag: "summer", count: 40, isSelected: false },
+      ],
+    );
+  });
+
+  it("keeps draft-selected tags even when missing from facet distribution", () => {
+    const result = buildFacetedTagsFromAlgoliaOptions({
+      draftSelectedTags: ["orphan"],
+      facetOptions: [{ name: "summer", count: 2 }],
+    });
+
+    assert.equal(result.find((row) => row.tag === "orphan")?.isSelected, true);
+    assert.equal(result.find((row) => row.tag === "orphan")?.count, 0);
   });
 });
 

@@ -8,10 +8,10 @@ export function assertCanManageCustomerUploadIntake(caller: TeamUserProfile): vo
   }
 }
 
-/** Owner/admin only — promote to AI Review and retry technical processing. */
+/** Active staff (owner/admin/helper) — promote to AI Review and retry technical processing. */
 export function assertCanPromoteOrRetryCustomerUpload(caller: TeamUserProfile): void {
-  if (!caller.isActive || !["owner", "admin"].includes(caller.role)) {
-    throw permissionDenied("Only owners and admins can promote or retry customer uploads.");
+  if (!caller.isActive || !["owner", "admin", "helper"].includes(caller.role)) {
+    throw permissionDenied("Only active staff can promote or retry customer uploads.");
   }
 }
 

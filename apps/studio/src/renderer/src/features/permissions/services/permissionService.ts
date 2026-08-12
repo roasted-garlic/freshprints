@@ -283,6 +283,11 @@ export const permissionService = {
     return isStaff(user);
   },
 
+  /** Show Queue settings (capacity, Whatnot URL, cutoff, gang sheet). Owner/admin only. */
+  canManageShowQueueSettings(user: UserLike) {
+    return hasActiveRole(user, ["owner", "admin"]);
+  },
+
   /** Staff-assisted Whatnot Import Shows flow (not manual Add show). */
   canImportWhatnotShows(user: UserLike) {
     return hasActiveRole(user, ["owner", "admin"]);
@@ -326,7 +331,9 @@ export const permissionService = {
   },
 
   canManageAiReview(user: UserLike) {
-    return hasActiveRole(user, ["owner", "admin"]);
+    // Operational AI Review (edit/approve/reject/rerun) — active staff including helper.
+    // Taxonomy / settings / users remain separate owner-admin gates.
+    return isStaff(user);
   },
 
   canApproveAiReview(user: UserLike) {
@@ -342,7 +349,8 @@ export const permissionService = {
   },
 
   canApproveDesignForCatalog(user: UserLike) {
-    return hasActiveRole(user, ["owner", "admin"]);
+    // Operational catalog approve/reject/promote/retry/rerun — active staff including helper.
+    return isStaff(user);
   },
 
   canRejectDesignFromCatalog(user: UserLike) {
@@ -411,6 +419,8 @@ export const permissionService = {
         return this.canViewUpcomingShows(user);
       case "manageUpcomingShows":
         return this.canManageUpcomingShows(user);
+      case "manageShowQueueSettings":
+        return this.canManageShowQueueSettings(user);
       case "importWhatnotShows":
         return this.canImportWhatnotShows(user);
       case "openDevTools":

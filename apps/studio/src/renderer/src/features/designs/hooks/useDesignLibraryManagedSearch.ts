@@ -24,7 +24,8 @@ export interface UseDesignLibraryManagedSearchOptions {
 }
 
 /**
- * Ready-catalog text search via Algolia (IDs) + Firestore hydrate.
+ * Ready-catalog managed search via Algolia (IDs) + Firestore hydrate.
+ * Supports empty query + tag/category filters (Workstream A/B).
  * Never loadAll / full collection scan. Fail closed when Algolia is not configured.
  *
  * After hydrate, results are consistency-filtered against current design fields (including tag
@@ -56,9 +57,10 @@ export function useDesignLibraryManagedSearch(options: UseDesignLibraryManagedSe
   const searchKey = options.searchQuery.trim();
   const catalogTagsRef = useRef(options.catalogTags ?? []);
   catalogTagsRef.current = options.catalogTags ?? [];
+  const requestGenerationRef = useRef(0);
 
   useEffect(() => {
-    if (!options.enabled || !options.user || !searchKey) {
+    if (!options.enabled || !options.user) {
       setDesigns([]);
       setTotal(null);
       setNextOffset(0);
@@ -78,9 +80,14 @@ export function useDesignLibraryManagedSearch(options: UseDesignLibraryManagedSe
       return;
     }
 
+    const generation = ++requestGenerationRef.current;
     let cancelled = false;
     setIsLoading(true);
     setError(null);
+    // Clear stale pagination immediately when query/filters change.
+    setDesigns([]);
+    setTotal(null);
+    setNextOffset(0);
 
     void studioAlgoliaCatalogSearchService
       .listMatchingDesigns(options.user, searchKey, {
@@ -90,7 +97,7 @@ export function useDesignLibraryManagedSearch(options: UseDesignLibraryManagedSe
         selectedTags: options.selectedTags,
       })
       .then((page) => {
-        if (cancelled) return;
+        if (cancelled || generation !== requestGenerationRef.current) return;
         const filtered = page.designs.filter((design) =>
           designMatchesSearchQuery(design, searchKey, catalogTagsRef.current),
         );
@@ -100,7 +107,7 @@ export function useDesignLibraryManagedSearch(options: UseDesignLibraryManagedSe
         setNextOffset(page.hitCount);
       })
       .catch((loadError) => {
-        if (cancelled) return;
+        if (cancelled || generation !== requestGenerationRef.current) return;
         setDesigns([]);
         setTotal(null);
         setNextOffset(0);
@@ -111,7 +118,7 @@ export function useDesignLibraryManagedSearch(options: UseDesignLibraryManagedSe
         );
       })
       .finally(() => {
-        if (!cancelled) setIsLoading(false);
+        if (!cancelled && generation === requestGenerationRef.current) setIsLoading(false);
       });
 
     return () => {
@@ -147,6 +154,7 @@ export function useDesignLibraryManagedSearch(options: UseDesignLibraryManagedSe
       return;
     }
 
+    const generation = requestGenerationRef.current;
     setIsLoadingMore(true);
     void studioAlgoliaCatalogSearchService
       .listMatchingDesigns(options.user, searchKey, {
@@ -156,6 +164,7 @@ export function useDesignLibraryManagedSearch(options: UseDesignLibraryManagedSe
         selectedTags: options.selectedTags,
       })
       .then((page) => {
+        if (generation !== requestGenerationRef.current) return;
         const filtered = page.designs.filter((design) =>
           designMatchesSearchQuery(design, searchKey, catalogTagsRef.current),
         );
@@ -167,13 +176,16 @@ export function useDesignLibraryManagedSearch(options: UseDesignLibraryManagedSe
         setNextOffset((current) => current + page.hitCount);
       })
       .catch((loadError) => {
+        if (generation !== requestGenerationRef.current) return;
         setError(
           loadError instanceof Error
             ? loadError.message
             : "Unable to load more search results. Please try again.",
         );
       })
-      .finally(() => setIsLoadingMore(false));
+      .finally(() => {
+        if (generation === requestGenerationRef.current) setIsLoadingMore(false);
+      });
   }, [
     hasMore,
     isConfigured,

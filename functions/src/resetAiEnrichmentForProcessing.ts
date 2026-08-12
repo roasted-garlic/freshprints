@@ -17,9 +17,9 @@ interface ResetAiEnrichmentResponse {
   status: "imported";
 }
 
-function assertOwnerAdminCaller(caller: Awaited<ReturnType<typeof loadCallerProfile>>): void {
-  if (!caller.isActive || !["owner", "admin"].includes(caller.role)) {
-    throw permissionDenied("Only owners and admins can reset AI processing.");
+function assertStaffCaller(caller: Awaited<ReturnType<typeof loadCallerProfile>>): void {
+  if (!caller.isActive || !["owner", "admin", "helper"].includes(caller.role)) {
+    throw permissionDenied("Only active staff can reset AI processing.");
   }
 }
 
@@ -53,7 +53,7 @@ export const resetAiEnrichmentForProcessing = onCall(
     }
 
     const caller = await loadCallerProfile(request.auth.uid);
-    assertOwnerAdminCaller(caller);
+    assertStaffCaller(caller);
 
     const { designId } = parseRequest(request.data);
     const designRef = adminDb.collection("designs").doc(designId);

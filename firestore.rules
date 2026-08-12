@@ -1750,7 +1750,7 @@ service cloud.firestore {
     match /settings/showQueue {
       allow read: if isStaff();
 
-      allow create, update: if isStaff()
+      allow create, update: if isOwnerOrAdmin()
         && showQueueSettingsFieldsValid(request.resource.data)
         && request.resource.data.updatedBy == request.auth.uid;
 
