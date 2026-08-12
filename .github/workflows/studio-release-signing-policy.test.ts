@@ -130,6 +130,20 @@ test("packaged Mac sharp verifier proves each arch independently", () => {
   assert.match(workflowSource, /merge-latest-mac-yml\.mjs/);
 });
 
+test("Mac packaging fails closed on codesign --strict --deep for each arch", () => {
+  assert.match(workflowSource, /verify-packaged-mac-codesign\.mjs "\$APP_PATH" adhoc/);
+  assert.match(workflowSource, /Structural codesign integrity/);
+  assert.match(workflowSource, /Do NOT clear quarantine as the product fix/);
+});
+
+test("electron-builder Mac uses ad-hoc identity with hardenedRuntime false", () => {
+  const macBlock = builderSource.slice(builderSource.indexOf('"mac":'), builderSource.indexOf('"win":'));
+  assert.match(macBlock, /"identity":\s*"-"/);
+  assert.match(macBlock, /"hardenedRuntime":\s*false/);
+  assert.match(macBlock, /"gatekeeperAssess":\s*false/);
+  assert.doesNotMatch(macBlock, /"identity":\s*null/);
+});
+
 type DecisionResult =
   | "fail-incomplete"
   | "signed"
@@ -199,7 +213,7 @@ test("electron-builder Mac is x64+arm64 with dmg+zip and sharp asarUnpack", () =
   assert.match(macBlock, /"arch":\s*\[[\s\S]*"x64"[\s\S]*"arm64"/);
   assert.match(builderSource, /asarUnpack/);
   assert.match(builderSource, /node_modules\/sharp/);
-  assert.match(macBlock, /"identity":\s*null/);
+  assert.match(macBlock, /"identity":\s*"-"/);
 });
 
 test("electron-builder Windows NSIS x64 target remains", () => {

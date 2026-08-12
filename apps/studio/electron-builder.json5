@@ -67,8 +67,16 @@
     // Electron 30 supports macOS 10.15+; pin Big Sur floor for the owner's Intel Mac (11.7.11).
     // Do not raise above Big Sur without an explicit owner decision.
     "minimumSystemVersion": "11.0",
-    // Internal-unsigned Mac builds intentionally omit identity/notarization for Studio 1.0.4.
-    "identity": null
+    // Internal Mac distribution for Studio 1.0.4: ad-hoc sign (identity "-") so the .app is
+    // structurally valid (sealed CodeResources). This is NOT Developer ID and NOT notarized.
+    // identity:null previously skipped @electron/osx-sign and left incomplete linker signatures,
+    // which macOS reports as "damaged" ("code has no resources but signature indicates they must
+    // be present"). Requires electron-builder >= 26.0.13 for native ad-hoc identity support.
+    "identity": "-",
+    // Least-complex internal path: avoid hardened-runtime Team ID / library-validation failures
+    // with Electron Framework under ad-hoc signing. Future Developer ID phase will revisit.
+    "hardenedRuntime": false,
+    "gatekeeperAssess": false
   },
   "dmg": {
     "artifactName": "Fresh-Prints-Mac-${arch}-${version}-Installer.${ext}"

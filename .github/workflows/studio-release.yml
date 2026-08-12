@@ -383,24 +383,25 @@ jobs:
           PROD_ALGOLIA_INDEX_NAME: ${{ secrets.PROD_ALGOLIA_INDEX_NAME }}
         run: node scripts/write-studio-release-env.mjs
 
-      - name: Configure Mac unsigned distribution policy
+      - name: Configure Mac internal-unsigned (ad-hoc) distribution policy
         shell: bash
         env:
           RELEASE_TYPE: ${{ inputs.release_type }}
           DISTRIBUTION_MODE: ${{ inputs.distribution_mode }}
         run: |
           set -euo pipefail
-          # Never auto-discover Apple signing identities for Studio 1.0.4 Mac (unsigned internal).
+          # Do not auto-discover Apple Developer ID identities for Studio 1.0.4 Mac.
+          # Packaging uses electron-builder mac.identity="-" (ad-hoc) — not Developer ID / notarization.
           echo "CSC_IDENTITY_AUTO_DISCOVERY=false" >> "$GITHUB_ENV"
           if [ "$RELEASE_TYPE" != "stable" ]; then
-            echo "Building unsigned Mac prerelease/validation (Apple Developer ID / notarization not configured)."
+            echo "Building internal Mac prerelease/validation with ad-hoc codesign (no Apple Developer ID / notarization)."
             exit 0
           fi
           if [ "$DISTRIBUTION_MODE" = "internal-unsigned" ]; then
-            echo "::warning::INTERNAL-UNSIGNED STABLE BUILD (Mac x64+arm64): DMG/ZIP are NOT Developer ID signed and NOT notarized. Gatekeeper may block launch until the owner uses the approved internal open procedure (right-click Open / clear quarantine). Not suitable for public distribution."
+            echo "::warning::INTERNAL-UNSIGNED STABLE BUILD (Mac x64+arm64): packages are ad-hoc signed (structurally valid) but NOT Developer ID signed and NOT notarized. Gatekeeper will treat them as unverified — use Open Anyway / right-click Open. Do NOT clear quarantine as the product fix. Not suitable for public distribution."
             exit 0
           fi
-          echo "::error::Stable Studio Mac releases for 1.0.4 require distribution_mode: internal-unsigned (Apple signing/notarization is deferred). Do not select signed for Mac until a future Apple credential phase."
+          echo "::error::Stable Studio Mac releases for 1.0.4 require distribution_mode: internal-unsigned (Apple Developer ID / notarization is deferred). Do not select signed for Mac until a future Apple credential phase."
           exit 1
 
       - name: Build Studio renderer/main once
@@ -446,6 +447,8 @@ jobs:
             APP_PATH=$(find "$STAGING/${ARCH}/unpacked" -maxdepth 3 -name "*.app" -type d | head -n1)
             test -n "$APP_PATH"
             node scripts/verify-packaged-mac-sharp.mjs "$APP_PATH" "$ARCH"
+            # Structural codesign integrity (required). Packaging exit 0 / DMG / sharp are NOT substitutes.
+            node scripts/verify-packaged-mac-codesign.mjs "$APP_PATH" adhoc
             # Big Sur floor recorded in Info.plist
             PLIST="$APP_PATH/Contents/Info.plist"
             if [ -f "$PLIST" ]; then
